@@ -21,8 +21,10 @@ void finish(int result) {
   close(sockfd);
 #ifdef __EMSCRIPTEN__
   REPORT_RESULT();
-#endif
+  emscripten_force_exit(result);
+#else
   exit(result);
+#endif
 }
 
 void iter() {
@@ -54,7 +56,7 @@ void iter() {
   }
 
   if (res != 1) {
-    perror("should read 1 byte");
+    fprintf(stderr, "should read 1 byte, got: %d, sum %d so far\n", res, sum);
     finish(EXIT_FAILURE);
   }
 

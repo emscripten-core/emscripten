@@ -42,6 +42,9 @@ var LibraryOpenAL = {
     },
 
     updateSource: function updateSource(src) {
+      // See comment on updateSources above.
+      if (Browser.mainLoop.timingMode == 1/*EM_TIMING_RAF*/ && document['visibilityState'] != 'visible') return;
+
 #if OPENAL_DEBUG
       var idx = AL.srcIdBySrc(src);
 #endif
@@ -55,8 +58,10 @@ var LibraryOpenAL = {
       for (var i = src.buffersPlayed; i < src.queue.length; i++) {
         var entry = src.queue[i];
 
-        var startOffset = startTime - currentTime;
-        var endTime = startTime + entry.buffer.duration;
+        var startOffset = (startTime - currentTime) / src.playbackRate;
+        var endTime;
+        if (entry.src) endTime = startTime + entry.src.duration; // n.b. entry.src.duration already factors in playbackRate, so no divide by src.playbackRate on it.
+        else endTime = startTime + entry.buffer.duration / src.playbackRate;
 
         // Clean up old buffers.
         if (currentTime >= endTime) {
@@ -81,6 +86,8 @@ var LibraryOpenAL = {
           entry.src = AL.currentContext.ctx.createBufferSource();
           entry.src.buffer = entry.buffer;
           entry.src.connect(src.gain);
+          entry.src.playbackRate.value = src.playbackRate;
+          entry.src.duration = entry.buffer.duration / src.playbackRate;
           if (typeof(entry.src.start) !== 'undefined') {
             entry.src.start(startTime, offset);
           } else if (typeof(entry.src.noteOn) !== 'undefined') {
@@ -345,6 +352,7 @@ var LibraryOpenAL = {
         state: 0x1011 /* AL_INITIAL */,
         queue: [],
         loop: false,
+        playbackRate: 1,
         get refDistance() {
           return this._refDistance || 1;
         },
@@ -521,9 +529,35 @@ var LibraryOpenAL = {
     }
     switch (param) {
     case 0x1003 /* AL_PITCH */:
-#if OPENAL_DEBUG
-      console.log("alSourcef was called with 0x1003 /* AL_PITCH */, but Web Audio does not support static pitch changes");
-#endif
+      if (value <= 0) {
+        AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+        return;
+      }
+      src.playbackRate = value;
+
+      if (src.state === 0x1012 /* AL_PLAYING */) {
+        // update currently playing entry
+        var entry = src.queue[src.buffersPlayed];
+        var currentTime = AL.currentContext.ctx.currentTime;
+        var oldrate = entry.src.playbackRate.value;
+        var offset = currentTime - src.bufferPosition;
+        // entry.src.duration is expressed after factoring in playbackRate, so when changing playback rate, need
+        // to recompute/rescale the rate to the new playback speed.
+        entry.src.duration = (entry.src.duration - offset) * oldrate / src.playbackRate;
+        entry.src.playbackRate.value = src.playbackRate;
+        src.bufferPosition = currentTime;
+
+        // stop other buffers
+        for (var k = src.buffersPlayed + 1; k < src.queue.length; k++) {
+          var entry = src.queue[k];
+          if (entry.src) {
+            entry.src.stop();
+            entry.src = null;
+          }
+        }
+        // update the source to reschedule buffers with the new playbackRate
+        AL.updateSource(src);
+      }
       break;
     case 0x100A /* AL_GAIN */:
       src.gain.gain.value = value;
@@ -1059,8 +1093,9 @@ var LibraryOpenAL = {
       return;
     }
     switch (param) {
-    // case 0x1003 /* AL_PITCH */:
-    //   break;
+     case 0x1003 /* AL_PITCH */:
+      {{{ makeSetValue('value', '0', 'src.playbackRate', 'float') }}}
+      break;
     case 0x100A /* AL_GAIN */:
       {{{ makeSetValue('value', '0', 'src.gain.gain.value', 'float') }}}
       break;

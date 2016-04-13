@@ -600,8 +600,8 @@ window.close = function() {
       Module['arguments'] = ['-0'];
     ''')
 
-    self.btest('sdl_canvas_alpha.c', reference='sdl_canvas_alpha.png', reference_slack=11)
-    self.btest('sdl_canvas_alpha.c', args=['--pre-js', 'flag_0.js'], reference='sdl_canvas_alpha_flag_0.png', reference_slack=11)
+    self.btest('sdl_canvas_alpha.c', reference='sdl_canvas_alpha.png', reference_slack=12)
+    self.btest('sdl_canvas_alpha.c', args=['--pre-js', 'flag_0.js'], reference='sdl_canvas_alpha_flag_0.png', reference_slack=12)
 
 
   def test_sdl_key(self):
@@ -983,7 +983,13 @@ keydown(100);keyup(100); // trigger the end
           context = canvas.getContext('experimental-webgl', {stencil: true});
           attributes = context.getContextAttributes();
           return attributes.stencil;
-       }
+        },
+        webglAlphaSupported: function() {
+          canvas = document.createElement('canvas');
+          context = canvas.getContext('experimental-webgl', {alpha: true});
+          attributes = context.getContextAttributes();
+          return attributes.alpha;
+        }
       });
     ''')
     
@@ -993,9 +999,9 @@ keydown(100);keyup(100); // trigger the end
     shutil.copyfile(filepath, temp_filepath)
     
     # perform tests with attributes activated 
-    self.btest('test_webgl_context_attributes_glut.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED'])
-    self.btest('test_webgl_context_attributes_sdl.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED'])
-    self.btest('test_webgl_context_attributes_glfw.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED'])
+    self.btest('test_webgl_context_attributes_glut.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED'])
+    self.btest('test_webgl_context_attributes_sdl.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED'])
+    self.btest('test_webgl_context_attributes_glfw.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED'])
     
     # perform tests with attributes desactivated
     self.btest('test_webgl_context_attributes_glut.c', '1', args=['--js-library', 'check_webgl_attributes_support.js'])
@@ -1471,6 +1477,9 @@ keydown(100);keyup(100); // trigger the end
 
   def test_emscripten_main_loop(self):
     self.btest('emscripten_main_loop.cpp', '0')
+
+  def test_emscripten_main_loop_settimeout(self):
+    self.btest('emscripten_main_loop_settimeout.cpp', '1')
 
   def test_emscripten_main_loop_and_blocker(self):
     self.btest('emscripten_main_loop_and_blocker.cpp', '0')
@@ -3065,4 +3074,7 @@ window.close = function() {
     size = 2*1024*1024
     open('huge.dat', 'w').write(''.join([chr((x*x)&255) for x in range(size*2)])) # larger than a memory chunk
     self.btest('split_memory_large_file.cpp', expected='1', args=['-s', 'SPLIT_MEMORY=' + str(size), '-s', 'TOTAL_MEMORY=100000000', '-s', 'TOTAL_STACK=10240', '--preload-file', 'huge.dat'], timeout=60)
+
+  def test_binaryen(self):
+    self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
 

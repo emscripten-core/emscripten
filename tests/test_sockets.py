@@ -1,4 +1,4 @@
-import os, multiprocessing, subprocess
+import os, multiprocessing, subprocess, socket, time
 from runner import BrowserCore, path_from_root
 from tools.shared import *
 
@@ -30,12 +30,13 @@ def make_relay_server(port1, port2):
   return proc
 
 class WebsockifyServerHarness:
-  def __init__(self, filename, args, listen_port):
+  def __init__(self, filename, args, listen_port, do_server_check=True):
     self.processes = []
     self.filename = filename
     self.listen_port = listen_port
     self.target_port = listen_port-1
     self.args = args or []
+    self.do_server_check = do_server_check
 
   def __enter__(self):
     import socket, websockify
@@ -44,7 +45,10 @@ class WebsockifyServerHarness:
     # NOTE empty filename support is a hack to support
     # the current test_enet
     if self.filename:
-      Popen([CLANG_CC, path_from_root('tests', self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + get_clang_native_args() + self.args, env=get_clang_native_env()).communicate()
+      sp = Popen([CLANG_CC, path_from_root('tests', self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + get_clang_native_args() + self.args, env=get_clang_native_env(), stdout=PIPE, stderr=PIPE)
+      out = sp.communicate()
+      print 'Socket server build: out:', out[0] or '', '/ err:', out[1] or ''
+      assert sp.returncode == 0
       process = Popen([os.path.abspath('server')])
       self.processes.append(process)
 
@@ -54,6 +58,21 @@ class WebsockifyServerHarness:
     self.websockify = multiprocessing.Process(target=wsp.start_server)
     self.websockify.start()
     self.processes.append(self.websockify)
+    # Make sure both the actual server and the websocket proxy are running
+    for i in range(10):
+      try:
+        if self.do_server_check:
+            server_sock = socket.create_connection(('localhost', self.target_port), timeout=1)
+            server_sock.close()
+        proxy_sock = socket.create_connection(('localhost', self.listen_port), timeout=1)
+        proxy_sock.close()
+        break
+      except:
+        time.sleep(1)
+    else:
+      clean_processes(self.processes)
+      raise Exception('[Websockify failed to start up in a timely manner]')
+
     print '[Websockify on process %s]' % str(self.processes[-2:])
 
   def __exit__(self, *args, **kwargs):
@@ -89,7 +108,11 @@ class CompiledServerHarness:
     assert child.returncode == 0, 'ws module for Node.js not installed, and automatic installation failed! Please run \'npm install\' from %s' % EMSCRIPTEN_ROOT
 
     # compile the server
-    Popen([PYTHON, EMCC, path_from_root('tests', self.filename), '-o', 'server.js', '-DSOCKK=%d' % self.listen_port] + self.args).communicate()
+    sp = Popen([PYTHON, EMCC, path_from_root('tests', self.filename), '-o', 'server.js', '-DSOCKK=%d' % self.listen_port] + self.args)
+    out = sp.communicate()
+    print 'Socket server build: out:', out[0] or '', '/ err:', out[1] or ''
+    assert sp.returncode == 0
+
     process = Popen(NODE_JS + ['server.js'])
     self.processes.append(process)
 
@@ -100,21 +123,12 @@ class CompiledServerHarness:
     # always run these tests last
     # make sure to use different ports in each one because it takes a while for the processes to be cleaned up
 
-    # NOTE all datagram tests are temporarily disabled, as
-    # we can't truly test datagram sockets until we have
-    # proper listen server support.
-
-def filter_harnesses(harnesses):
-  # XXX avoid websockify for now due to intermittent errors. see issue #2700
-  return filter(lambda harness: (harness[0].__class__ if type(harness) is tuple else harness.__class__) is not WebsockifyServerHarness, harnesses)
-
 class sockets(BrowserCore):
   emcc_args = []
 
   @classmethod
   def setUpClass(self):
     super(sockets, self).setUpClass()
-    self.browser_timeout = 30
     print
     print 'Running the socket tests. Make sure the browser allows popups from localhost.'
     print
@@ -335,11 +349,15 @@ ok.
       # The following forces non-NULL addr and addlen parameters for the accept call
       (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1'], 49163), 0)
     ]
-    harnesses = filter_harnesses(harnesses)
 
     for harness, datagram in harnesses:
       with harness:
         self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, sockets_include])
+
+  def test_sdl2_sockets_echo(self):
+    harness = CompiledServerHarness('sdl2_net_server.c', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'], 49164)
+    with harness:
+      self.btest('sdl2_net_client.c', expected='0', args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2', '-DSOCKK=%d' % harness.listen_port])
 
   def test_sockets_async_echo(self):
     if WINDOWS: return self.skip('This test is Unix-specific.')
@@ -354,7 +372,6 @@ ok.
       # The following forces non-NULL addr and addlen parameters for the accept call
       (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1', '-DTEST_ASYNC=1'], 49168), 0)
     ]
-    #harnesses = filter_harnesses(harnesses)
 
     for harness, datagram in harnesses:
       with harness:
@@ -381,7 +398,6 @@ ok.
       (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 49171), 0),
       (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1'], 49172), 1)
     ]
-    harnesses = filter_harnesses(harnesses)
 
     for harness, datagram in harnesses:
       with harness:
@@ -399,7 +415,7 @@ ok.
   def test_sockets_select_server_down(self):
     if WINDOWS: return self.skip('This test is Unix-specific.')
     for harness in [
-      WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_select_server_down_server.c'), [], 49190),
+      WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_select_server_down_server.c'), [], 49190, do_server_check=False),
       CompiledServerHarness(os.path.join('sockets', 'test_sockets_select_server_down_server.c'), [], 49191)
     ]:
       with harness:
@@ -553,7 +569,6 @@ ok.
       (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 59162), 0),
       (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1'], 59164), 1)
     ]
-    harnesses = filter_harnesses(harnesses)
 
     # Basic test of node client against both a Websockified and compiled echo server.
     for harness, datagram in harnesses:
@@ -567,9 +582,9 @@ ok.
     # server because as long as the subprotocol list contains binary it will configure itself to accept binary
     # This test also checks that the connect url contains the correct subprotocols.
     print "\nTesting compile time WebSocket configuration.\n"
-    for harness in filter_harnesses([
+    for harness in [
       WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 59166)
-    ]):
+    ]:
       with harness:
         Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-s', 'SOCKET_DEBUG=1', '-s', 'WEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166', '-DREPORT_RESULT=int dummy'], stdout=PIPE, stderr=PIPE).communicate()
 
@@ -581,9 +596,9 @@ ok.
     # In this test we have *deliberately* used the wrong port '-DSOCKK=12345' to configure the echo_client.c, so
     # the connection would fail without us specifying a valid WebSocket URL in the configuration.
     print "\nTesting runtime WebSocket configuration.\n"
-    for harness in filter_harnesses([
+    for harness in [
       WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 59168)
-    ]):
+    ]:
       with harness:
         open(os.path.join(self.get_dir(), 'websocket_pre.js'), 'w').write('''
         var Module = {

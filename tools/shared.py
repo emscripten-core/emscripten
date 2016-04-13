@@ -168,10 +168,11 @@ def add_coloring_to_emit_ansi(fn):
 WINDOWS = sys.platform.startswith('win')
 OSX = sys.platform == 'darwin'
 
-if WINDOWS:
-  logging.StreamHandler.emit = add_coloring_to_emit_windows(logging.StreamHandler.emit)
-else:
-  logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
+if sys.stderr.isatty():
+  if WINDOWS:
+    logging.StreamHandler.emit = add_coloring_to_emit_windows(logging.StreamHandler.emit)
+  else:
+    logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
 
 # Emscripten configuration is done through the --em-config command line option or
 # the EM_CONFIG environment variable. If the specified string value contains newline
@@ -224,6 +225,9 @@ else:
     config_file = config_file.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(__rootpath__))
     llvm_root = os.path.dirname(find_executable('llvm-dis') or '/usr/bin/llvm-dis')
     config_file = config_file.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
+    binaryen_root = os.path.dirname(find_executable('asm2wasm') or '/usr/bin/asm2wasm')
+    config_file = config_file.replace('\'{{{ BINARYEN_ROOT }}}\'', repr(binaryen_root))
+
     node = find_executable('nodejs') or find_executable('node') or 'node'
     config_file = config_file.replace('\'{{{ NODE }}}\'', repr(node))
     if WINDOWS:
@@ -358,43 +362,66 @@ def get_fastcomp_src_dir():
       d = os.path.dirname(d)
   return None
 
-def check_fastcomp():
+def get_llc_targets():
   try:
     llc_version_info = Popen([LLVM_COMPILER, '--version'], stdout=PIPE).communicate()[0]
     pre, targets = llc_version_info.split('Registered Targets:')
-    if 'js' not in targets or 'JavaScript (asm.js, emscripten) backend' not in targets:
-      logging.critical('fastcomp in use, but LLVM has not been built with the JavaScript backend as a target, llc reports:')
-      print >> sys.stderr, '==========================================================================='
-      print >> sys.stderr, llc_version_info,
-      print >> sys.stderr, '==========================================================================='
-      logging.critical('you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
-      return False
+    return targets
+  except Exception, e:
+    return '(no targets could be identified: ' + str(e) + ')'
 
-    # check repo versions
-    d = get_fastcomp_src_dir()
-    shown_repo_version_error = False
-    if d is not None:
-      llvm_version = get_emscripten_version(os.path.join(d, 'emscripten-version.txt'))
-      if os.path.exists(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt')):
-        clang_version = get_emscripten_version(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt'))
-      elif os.path.exists(os.path.join(d, 'tools', 'clang')):
-        clang_version = '?' # Looks like the LLVM compiler tree has an old checkout from the time before it contained a version.txt: Should update!
-      else:
-        clang_version = llvm_version # This LLVM compiler tree does not have a tools/clang, so it's probably an out-of-source build directory. No need for separate versioning.
-      if EMSCRIPTEN_VERSION != llvm_version or EMSCRIPTEN_VERSION != clang_version:
-        logging.error('Emscripten, llvm and clang repo versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_version, clang_version)
-        logging.error('Make sure to use the same branch in each repo, and to be up-to-date on each. See http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
-        shown_repo_version_error = True
+def has_asm_js_target(targets):
+  return 'js' in targets and 'JavaScript (asm.js, emscripten) backend' in targets
+
+def has_wasm_target(targets):
+  return 'wasm32' in targets and 'WebAssembly 32-bit' in targets
+
+def check_fastcomp():
+  try:
+    targets = get_llc_targets()
+    if get_llvm_target() == ASM_JS_TARGET:
+      if not has_asm_js_target(targets):
+        logging.critical('fastcomp in use, but LLVM has not been built with the JavaScript backend as a target, llc reports:')
+        print >> sys.stderr, '==========================================================================='
+        print >> sys.stderr, targets
+        print >> sys.stderr, '==========================================================================='
+        logging.critical('you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
+        return False
     else:
-      logging.warning('did not see a source tree above or next to the LLVM root directory (guessing based on directory of %s), could not verify version numbers match' % LLVM_COMPILER)
+      assert get_llvm_target() == WASM_TARGET
+      if not has_wasm_target(targets):
+        logging.critical('WebAssembly set as target, but LLVM has not been built with the WebAssembly backend, llc reports:')
+        print >> sys.stderr, '==========================================================================='
+        print >> sys.stderr, targets
+        print >> sys.stderr, '==========================================================================='
+        return False
 
-    # check build versions. don't show it if the repos are wrong, user should fix that first
-    if not shown_repo_version_error:
-      clang_v = Popen([CLANG, '--version'], stdout=PIPE).communicate()[0]
-      llvm_build_version, clang_build_version = clang_v.split('(emscripten ')[1].split(')')[0].split(' : ')
-      if EMSCRIPTEN_VERSION != llvm_build_version or EMSCRIPTEN_VERSION != clang_build_version:
-        logging.error('Emscripten, llvm and clang build versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_build_version, clang_build_version)
-        logging.error('Make sure to rebuild llvm and clang after updating repos')
+    if get_llvm_target() == ASM_JS_TARGET:
+      # check repo versions
+      d = get_fastcomp_src_dir()
+      shown_repo_version_error = False
+      if d is not None:
+        llvm_version = get_emscripten_version(os.path.join(d, 'emscripten-version.txt'))
+        if os.path.exists(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt')):
+          clang_version = get_emscripten_version(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt'))
+        elif os.path.exists(os.path.join(d, 'tools', 'clang')):
+          clang_version = '?' # Looks like the LLVM compiler tree has an old checkout from the time before it contained a version.txt: Should update!
+        else:
+          clang_version = llvm_version # This LLVM compiler tree does not have a tools/clang, so it's probably an out-of-source build directory. No need for separate versioning.
+        if EMSCRIPTEN_VERSION != llvm_version or EMSCRIPTEN_VERSION != clang_version:
+          logging.error('Emscripten, llvm and clang repo versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_version, clang_version)
+          logging.error('Make sure to use the same branch in each repo, and to be up-to-date on each. See http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
+          shown_repo_version_error = True
+      else:
+        logging.warning('did not see a source tree above or next to the LLVM root directory (guessing based on directory of %s), could not verify version numbers match' % LLVM_COMPILER)
+
+      # check build versions. don't show it if the repos are wrong, user should fix that first
+      if not shown_repo_version_error:
+        clang_v = Popen([CLANG, '--version'], stdout=PIPE).communicate()[0]
+        llvm_build_version, clang_build_version = clang_v.split('(emscripten ')[1].split(')')[0].split(' : ')
+        if EMSCRIPTEN_VERSION != llvm_build_version or EMSCRIPTEN_VERSION != clang_build_version:
+          logging.error('Emscripten, llvm and clang build versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_build_version, clang_build_version)
+          logging.error('Make sure to rebuild llvm and clang after updating repos')
 
     return True
   except Exception, e:
@@ -468,7 +495,7 @@ except Exception, e:
   EMSCRIPTEN_VERSION = 'unknown'
 
 def generate_sanity():
-  return EMSCRIPTEN_VERSION + '|' + get_llvm_target() + '|' + LLVM_ROOT + '|' + get_clang_version()
+  return EMSCRIPTEN_VERSION + '|' + LLVM_ROOT + '|' + get_clang_version() + ('_wasm' if get_llvm_target() == WASM_TARGET else '')
 
 def check_sanity(force=False):
   try:
@@ -480,13 +507,15 @@ def check_sanity(force=False):
     else:
       settings_mtime = os.stat(CONFIG_FILE).st_mtime
       sanity_file = CONFIG_FILE + '_sanity'
+      if get_llvm_target() == WASM_TARGET:
+        sanity_file += '_wasm'
       if os.path.exists(sanity_file):
         try:
           sanity_mtime = os.stat(sanity_file).st_mtime
           if sanity_mtime <= settings_mtime:
             reason = 'settings file has changed'
           else:
-            sanity_data = open(sanity_file).read()
+            sanity_data = open(sanity_file).read().rstrip('\n\r') # workaround weird bug with read() that appends new line char in some old python version
             if sanity_data != generate_sanity():
               reason = 'system change: %s vs %s' % (generate_sanity(), sanity_data)
             else:
@@ -785,10 +814,63 @@ except:
 
 # Additional compiler options
 
-# Target choice. Must be synced with src/settings.js (TARGET_*)
+# Target choice.
+ASM_JS_TARGET = 'asmjs-unknown-emscripten'
+WASM_TARGET = 'wasm32-unknown-unknown'
+
+def check_vanilla():
+  global LLVM_TARGET
+  # if the env var tells us what to do, do that
+  if 'EMCC_WASM_BACKEND' in os.environ:
+    if os.environ['EMCC_WASM_BACKEND'] != '0':
+      logging.debug('EMCC_WASM_BACKEND tells us to use wasm backend')
+      LLVM_TARGET = WASM_TARGET
+    else:
+      logging.debug('EMCC_WASM_BACKEND tells us to use asm.js backend')
+      LLVM_TARGET = ASM_JS_TARGET
+  else:
+    # if we are using vanilla LLVM, i.e. we don't have our asm.js backend, then we
+    # must use wasm (or at least try to). to know that, we have to run llc to
+    # see which backends it has. we cache this result.
+    temp_cache = cache.Cache(use_subdir=False)
+    def check_vanilla():
+      logging.debug('testing for asm.js target, because if not present (i.e. this is plain vanilla llvm, not emscripten fastcomp), we will use the wasm target instead (set EMCC_WASM_BACKEND to skip this check)')
+      targets = get_llc_targets()
+      return has_wasm_target(targets) and not has_asm_js_target(targets)
+    def get_vanilla_file():
+      saved_file = os.path.join(temp_cache.dirname, 'is_vanilla.txt')
+      open(saved_file, 'w').write(('1' if check_vanilla() else '0') + ':' + LLVM_ROOT)
+      return saved_file
+    is_vanilla_file = temp_cache.get('is_vanilla', get_vanilla_file, extension='.txt')
+    if CONFIG_FILE and os.stat(CONFIG_FILE).st_mtime > os.stat(is_vanilla_file).st_mtime:
+      logging.debug('config file changed since we checked vanilla; re-checking')
+      is_vanilla_file = temp_cache.get('is_vanilla', get_vanilla_file, extension='.txt', force=True)
+    try:
+      contents = open(is_vanilla_file).read()
+      is_vanilla, llvm_used = contents.split(':')
+      is_vanilla = int(is_vanilla)
+      if llvm_used != LLVM_ROOT:
+        logging.debug('regenerating vanilla check since other llvm')
+        temp_cache.get('is_vanilla', get_vanilla_file, extension='.txt', force=True)
+        is_vanilla = check_vanilla()
+    except Exception, e:
+      logging.debug('failed to use vanilla file, will re-check: ' + str(e))
+      is_vanilla = check_vanilla()
+    temp_cache = None
+    if is_vanilla:
+      logging.debug('check tells us to use wasm backend')
+      LLVM_TARGET = WASM_TARGET
+      os.environ['EMCC_WASM_BACKEND'] = '1'
+    else:
+      logging.debug('check tells us to use asm.js backend')
+      LLVM_TARGET = ASM_JS_TARGET
+
+check_vanilla()
+
 def get_llvm_target():
-  return 'asmjs-unknown-emscripten'
-LLVM_TARGET = get_llvm_target()
+  global LLVM_TARGET
+  assert LLVM_TARGET is not None
+  return LLVM_TARGET
 
 # COMPILER_OPTS: options passed to clang when generating bitcode for us
 try:
@@ -796,19 +878,24 @@ try:
 except:
   COMPILER_OPTS = []
 COMPILER_OPTS = COMPILER_OPTS + [#'-fno-threadsafe-statics', # disabled due to issue 1289
-                                 '-target', LLVM_TARGET,
+                                 '-target', get_llvm_target(),
                                  '-D__EMSCRIPTEN_major__=' + str(EMSCRIPTEN_VERSION_MAJOR),
                                  '-D__EMSCRIPTEN_minor__=' + str(EMSCRIPTEN_VERSION_MINOR),
                                  '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY)]
 
+if LLVM_TARGET == WASM_TARGET:
+  # wasm target does not automatically define emscripten stuff, so do it here
+  COMPILER_OPTS = COMPILER_OPTS + ['-DEMSCRIPTEN',
+                                   '-D__EMSCRIPTEN__']
+
 # Changes to default clang behavior
-if LLVM_TARGET == 'asmjs-unknown-emscripten':
-  # Implicit functions can cause horribly confusing asm.js function pointer type errors, see #2175
-  # If your codebase really needs them - very unrecommended! - you can disable the error with
-  #   -Wno-error=implicit-function-declaration
-  # or disable even a warning about it with
-  #   -Wno-implicit-function-declaration
-  COMPILER_OPTS += ['-Werror=implicit-function-declaration']
+
+# Implicit functions can cause horribly confusing function pointer type errors, see #2175
+# If your codebase really needs them - very unrecommended! - you can disable the error with
+#   -Wno-error=implicit-function-declaration
+# or disable even a warning about it with
+#   -Wno-implicit-function-declaration
+COMPILER_OPTS += ['-Werror=implicit-function-declaration']
 
 USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 
@@ -823,7 +910,8 @@ if USE_EMSDK:
                      path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten')
   ]
   
-  CXX_INCLUDE_PATHS = [path_from_root('system', 'include', 'libcxx')
+  CXX_INCLUDE_PATHS = [path_from_root('system', 'include', 'libcxx'),
+                       path_from_root('system', 'lib', 'libcxxabi', 'include')
   ]
   
   C_OPTS = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc',
@@ -842,9 +930,6 @@ if USE_EMSDK:
 else:
   EMSDK_OPTS = []
   EMSDK_CXX_OPTS = []
-
-#print >> sys.stderr, 'SDK opts', ' '.join(EMSDK_OPTS)
-#print >> sys.stderr, 'Compiler opts', ' '.join(COMPILER_OPTS)
 
 # Engine tweaks
 
@@ -977,9 +1062,12 @@ class Settings2(type):
       for i in range(len(args)):
         if args[i].startswith('-O'):
           v = args[i][2]
-          if v in ['s', 'z']: v = '2'
+          shrink = 0
+          if v in ['s', 'z']:
+            v = '2'
+            shrink = 1 if v == 's' else 2
           level = eval(v)
-          self.apply_opt_level(level)
+          self.apply_opt_level(level, shrink)
       for i in range(len(args)):
         if args[i] == '-s':
           declare = re.sub(r'([\w\d]+)\s*=\s*(.+)', r'self.attrs["\1"]=\2;', args[i+1])
@@ -1001,12 +1089,14 @@ class Settings2(type):
       self.attrs = values
 
     @classmethod
-    def apply_opt_level(self, opt_level, noisy=False):
+    def apply_opt_level(self, opt_level, shrink_level=0, noisy=False):
       if opt_level >= 1:
         self.attrs['ASM_JS'] = 1
         self.attrs['ASSERTIONS'] = 0
         self.attrs['DISABLE_EXCEPTION_CATCHING'] = 1
         self.attrs['ALIASING_FUNCTION_POINTERS'] = 1
+      if shrink_level >= 2:
+        self.attrs['EVAL_CTORS'] = 1
 
     def __getattr__(self, attr):
       if attr in self.attrs:
@@ -1655,9 +1745,69 @@ class Building:
     return ret
 
   @staticmethod
+  def eval_ctors(js_file, mem_init_file):
+    subprocess.check_call([PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, mem_init_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE)])
+
+  @staticmethod
   def eliminate_duplicate_funcs(filename):
     import duplicate_function_eliminator
     duplicate_function_eliminator.eliminate_duplicate_funcs(filename)
+
+  @staticmethod
+  def calculate_reachable_functions(infile, initial_list, can_reach=True):
+    import asm_module
+    temp = configuration.get_temp_files().get('.js').name
+    Building.js_optimizer(infile, ['dumpCallGraph'], output_filename=temp, just_concat=True)
+    asm = asm_module.AsmModule(temp)
+    lines = asm.funcs_js.split('\n')
+    can_call = {}
+    for i in range(len(lines)):
+      line = lines[i]
+      if line.startswith('// REACHABLE '):
+        curr = json.loads(line[len('// REACHABLE '):])
+        func = curr[0]
+        targets = curr[2]
+        can_call[func] = set(targets)
+    # function tables too - treat a function all as a function that can call anything in it, which is effectively what it is
+    for name, funcs in asm.tables.iteritems():
+      can_call[name] = set(map(lambda x: x.strip(), funcs[1:-1].split(',')))
+    #print can_call
+    # Note: We ignore calls in from outside the asm module, so you could do emterpreted => outside => emterpreted, and we would
+    #       miss the first one there. But this is acceptable to do, because we can't save such a stack anyhow, due to the outside!
+    #print 'can call', can_call, '\n!!!\n', asm.tables, '!'
+    reachable_from = {}
+    for func, targets in can_call.iteritems():
+      for target in targets:
+        if target not in reachable_from:
+          reachable_from[target] = set()
+        reachable_from[target].add(func)
+    #print 'reachable from', reachable_from
+    to_check = initial_list[:]
+    advised = set()
+    if can_reach:
+      # find all functions that can reach the initial list
+      while len(to_check) > 0:
+        curr = to_check.pop()
+        if curr in reachable_from:
+          for reacher in reachable_from[curr]:
+            if reacher not in advised:
+              if not JS.is_dyn_call(reacher) and not JS.is_function_table(reacher): advised.add(str(reacher))
+              to_check.append(reacher)
+    else:
+      # find all functions that are reachable from the initial list, including it
+      # all tables are assumed reachable, as they can be called from dyncall from outside
+      for name, funcs in asm.tables.iteritems():
+        to_check.append(name)
+      while len(to_check) > 0:
+        curr = to_check.pop()
+        if not JS.is_function_table(curr):
+          advised.add(curr)
+        if curr in can_call:
+          for target in can_call[curr]:
+            if target not in advised:
+              advised.add(str(target))
+              to_check.append(target)
+    return { 'reachable': list(advised), 'total_funcs': len(can_call) }
 
   @staticmethod
   def closure_compiler(filename, pretty=True):
@@ -1940,6 +2090,14 @@ class JS:
     # Escape the ^Z (= 0x1a = substitute) ASCII character and all characters higher than 7-bit ASCII.
     def escape(x): return '\\x{:02x}'.format(ord(x.group()))
     return re.sub('[\x1a\x80-\xff]', escape, s)
+
+  @staticmethod
+  def is_dyn_call(func):
+    return func.startswith('dynCall_')
+
+  @staticmethod
+  def is_function_table(name):
+    return name.startswith('FUNCTION_TABLE_')
 
 def execute(cmd, *args, **kw):
   try:

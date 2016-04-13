@@ -191,6 +191,10 @@ function run(args) {
     return;
   }
 
+#if STACK_OVERFLOW_CHECK
+  writeStackCookie();
+#endif
+
   preRun();
 
   if (runDependencies > 0) return; // a preRun added a dependency, run will be called later
@@ -230,6 +234,9 @@ function run(args) {
   } else {
     doRun();
   }
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
+#endif
 }
 Module['run'] = Module.run = run;
 

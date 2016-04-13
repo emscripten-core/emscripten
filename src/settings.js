@@ -32,6 +32,11 @@ var ASSERTIONS = 1; // Whether we should add runtime assertions, for example to
                     // of positive size, etc., whether we should throw if we encounter a bad __label__, i.e.,
                     // if code flow runs into a fault
                     // ASSERTIONS == 2 gives even more runtime checks
+var STACK_OVERFLOW_CHECK = 0; // Chooses what kind of stack smash checks to emit to generated code:
+                              // 0: Stack overflows are not checked.
+                              // 1: Adds a security cookie at the top of the stack, which is checked at end of each tick and at exit (practically zero performance overhead)
+                              // 2: Same as above, but also adds an explicit check for allocate() calls which call ALLOC_STACK. Has a small performance cost.
+                              //    -s ASSERTIONS=1 automatically enables -s STACK_OVERFLOW_CHECK=2.
 var VERBOSE = 0; // When set to 1, will generate more verbose output during compilation.
 
 var INVOKE_RUN = 1; // Whether we will run the main() function. Disable if you embed the generated
@@ -616,18 +621,25 @@ var USE_GLFW = 2; // Specify the GLFW version that is being linked against.
                   // Only relevant, if you are linking against the GLFW library.
                   // Valid options are 2 for GLFW2 and 3 for GLFW3.
 
-var BINARYEN = ""; // Path to [Binaryen](https://github.com/WebAssembly/binaryen), which we use to
-                   // compile (at runtime) our asm.js output into WebAssembly. That then runs in
-                   // a shipped Binaryen interpreter for WebAssembly, or, once browsers get native
-                   // WebAssembly support, it will run directly.
-                   // This path should be to the root Binaryen directory (not the /bin subfolder).
-                   // You need to build Binaryen, so that /bin/wasm.js under the Binaryen
-                   // directory exists.
+var BINARYEN = 0; // Whether to use [Binaryen](https://github.com/WebAssembly/binaryen) to
+                  // compile (at runtime) our asm.js output into WebAssembly.
+                  // This will fetch the binaryen port and build it. (If, instead, you set
+                  // BINARYEN_ROOT in your ~/.emscripten file, then we use that instead
+                  // of the port, which can useful for local dev work on binaryen itself).
 var BINARYEN_METHOD = ""; // See binaryen's src/js/post.js for details.
+var BINARYEN_SCRIPTS = ""; // An optional comma-separated list of script hooks to run after binaryen,
+                           // in binaryen's /scripts dir.
+var BINARYEN_IMPRECISE = 0; // Whether to apply imprecise/unsafe binaryen optimizations. If enabled,
+                            // code will run faster, but some types of undefined behavior might
+                            // trap in wasm.
+var BINARYEN_ROOT = ""; // Directory where we can find Binaryen. Will be automatically set for you,
+                        // but you can set it to override if you are a Binaryen developer.
 
 var WASM_BACKEND = 0; // Whether to use the WebAssembly backend that is in development in LLVM.
                       // This requires that BINARYEN be set, as we use Binaryen's s2wasm to
                       // translate the backend output.
+                      // You should not set this yourself, instead set EMCC_WASM_BACKEND=1 in the
+                      // environment.
 
 // Ports
 
@@ -636,6 +648,7 @@ var USE_SDL = 1; // Specify the SDL version that is being linked against.
                  // 2 is a port of the SDL C code on emscripten-ports
 var USE_SDL_IMAGE = 1; // Specify the SDL_image version that is being linked against. Must match USE_SDL
 var USE_SDL_TTF = 1; // Specify the SDL_ttf version that is being linked against. Must match USE_SDL
+var USE_SDL_NET = 1; // Specify the SDL_net version that is being linked against. Must match USE_SDL
 var USE_ZLIB = 0; // 1 = use zlib from emscripten-ports
 var USE_LIBPNG = 0; // 1 = use libpng from emscripten-ports
 var USE_BULLET = 0; // 1 = use bullet from emscripten-ports
@@ -690,5 +703,44 @@ var MAX_GLOBAL_ALIGN = -1; // received from the backend
 var ELIMINATE_DUPLICATE_FUNCTIONS = 0; // disabled by default
 var ELIMINATE_DUPLICATE_FUNCTIONS_PASSES = 5;
 var ELIMINATE_DUPLICATE_FUNCTIONS_DUMP_EQUIVALENT_FUNCTIONS = 0;
+
+var EVAL_CTORS = 0; // This tries to evaluate global ctors at compile-time, applying their
+                    // effects into the mem init file. This saves running code during
+                    // startup, and also allows removing the global ctor functions and
+                    // other code that only they used, so this is also good for reducing
+                    // code size. However, this does make the compile step much slower.
+                    //
+                    // This basically runs the ctors during compile time, seeing if they
+                    // execute safely in a sandbox. Any ffi access out of asm.js causes
+                    // failure, as it could do something nondeterministic and/or
+                    // alter some other state we don't see. If all the global ctor does
+                    // is pure computation inside asm.js, it should be ok. Run with
+                    // EMCC_DEBUG=1 in the env to see logging, and errors when it
+                    // fails to eval (you'll see a message, or a stack trace; in the
+                    // latter case, the functions on the stack should give you an idea
+                    // of what ffi was called and why, and perhaps you can refactor
+                    // your code to avoid it, e.g., remove mallocs, printfs in global ctors).
+                    //
+                    // This optimization can increase the size of the mem init file,
+                    // because ctors can write to memory that would otherwise be
+                    // in a zeroinit area. This may not be a significant increase after
+                    // gzip, if there are mostly zeros in there, and in any case
+                    // the mem init increase would be offset by a code size decrease.
+                    // (Unless you have a small ctor that writes 'random' data to memory,
+                    // which would reduce little code but add potentially lots of
+                    // uncompressible data.)
+                    //
+                    // LLVM's GlobalOpt *almost* does this operation. It does in simple
+                    // cases, where LLVM IR is not too complex for its logic to evaluate,
+                    // but it isn't powerful enough for e.g. libc++ iostream ctors. It
+                    // is just hard to do at the LLVM IR level - LLVM IR is complex and
+                    // getting more complex, this would require GlobalOpt to have a full
+                    // interpreter, plus a way to write back into LLVM IR global objects.
+                    // At the asm.js level, however, everything has been lowered into a
+                    // simple low level, and we also just need to write bytes into an
+                    // array, so this is easy for us to do, but not for LLVM. A further
+                    // issue for LLVM is that it doesn't know that we will not link in
+                    // further code, so it only tries to optimize ctors with lowest
+                    // priority. We do know that, and can optimize all the ctors.
 
 // Reserved: variables containing POINTER_MASKING.
