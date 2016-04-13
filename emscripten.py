@@ -1297,6 +1297,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
   wasm = outfile.name[:-3] + '.wast'
   s2wasm_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 's2wasm'), temp_s]
+  s2wasm_args += ['--emscripten-glue']
   s2wasm_args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
   s2wasm_args += ['--initial-memory=%d' % shared.Settings.TOTAL_MEMORY]
   if DEBUG:
@@ -1345,6 +1346,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   def asmjs_mangle(name):
     # Mangle a name the way asm.js/JSBackend globals are mangled (i.e. prepend
     # '_' and replace non-alphanumerics with '_')
+    if name.startswith('dynCall_'): return name
     return '_' + ''.join(['_' if not c.isalnum() else c for c in name])
 
   # Initializers call the global var version of the export, so they get the mangled name.
