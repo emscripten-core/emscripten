@@ -1346,6 +1346,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   def asmjs_mangle(name):
     # Mangle a name the way asm.js/JSBackend globals are mangled (i.e. prepend
     # '_' and replace non-alphanumerics with '_')
+    if name.startswith('dynCall_'): return name
     return '_' + ''.join(['_' if not c.isalnum() else c for c in name])
 
   # Initializers call the global var version of the export, so they get the mangled name.
