@@ -76,6 +76,7 @@ interface Inner {
   void Inner();
   long get();
   [Operator="*=", Ref] Inner mul(float x);
+  [Operator="[]"] long getAsArray(long x);
 };
 
 enum AnEnum {

@@ -158,9 +158,9 @@ function simdReplaceLane(type, a, i, s) {
 function simdFrom(toType, fromType, a) {
   a = fromType.fn.check(a);
   for (var i = 0; i < fromType.lanes; i++) {
-    var v = fromType.fn.extractLane(a, i);
+    var v = Math.trunc(fromType.fn.extractLane(a, i));
     if (toType.minVal !== undefined &&
-        (v < toType.minVal || v > toType.maxVal)) {
+        !(toType.minVal <= v && v <= toType.maxVal)) {
       throw new RangeError("Can't convert value");
     }
     lanes[i] = v;
@@ -306,13 +306,10 @@ function simdLoad(type, tarray, index, count) {
   for (var i = 0; i < bytes; i++) {
     dst[i] = src[i];
   }
-
-  // XXX Emscripten: Work around to fix bug https://github.com/tc39/ecmascript_simd/issues/313
-  for (var i = bytes; i < 16; ++i) {
+  var typeBytes = type.lanes * type.laneSize;
+  for (var i = bytes; i < typeBytes; i++) {
     dst[i] = 0;
   }
-  // XXX Emscripten
-
   return newValue;
 }
 
@@ -1207,8 +1204,7 @@ var simdFns = {
   shiftLeftByScalar:
     function(type) {
       return function(a, bits) {
-        if (bits>>>0 >= type.laneSize * 8)
-          return type.fn.splat(0);
+        bits &= type.laneSize * 8 - 1;
         return simdShiftOp(type, binaryShiftLeft, a, bits);
       }
     },
@@ -1217,14 +1213,12 @@ var simdFns = {
     function(type) {
       if (type.unsigned) {
         return function(a, bits) {
-          if (bits>>>0 >= type.laneSize * 8)
-            return type.fn.splat(0);
+          bits &= type.laneSize * 8 - 1;
           return simdShiftOp(type, binaryShiftRightLogical, a, bits);
         }
       } else {
         return function(a, bits) {
-          if (bits>>>0 >= type.laneSize * 8)
-            bits = type.laneSize * 8 - 1;
+          bits &= type.laneSize * 8 - 1;
           return simdShiftOp(type, binaryShiftRightArithmetic, a, bits);
         }
       }

@@ -12,7 +12,7 @@ Installation
 ---------------------------
 
 1. This service requires websockify.exe be in the same directory. Instructions on how to compile websockify python script as a windows executable can be found here:
-https://github.com/kanaka/noVNC/wiki/Compiling-Websockify-to-Windows-Executable
+https://github.com/kanaka/websockify/wiki/Compiling-Websockify-as-Windows-Executable
 
 2.To add this service to a Windows PC you need to run the commandline as administrator and then run this line:
 

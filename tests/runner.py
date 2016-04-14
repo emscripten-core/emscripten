@@ -9,7 +9,7 @@ Simple test runner. Consider using parallel_test_core.py for faster iteration ti
 
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string, random, operator, fnmatch
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string, random, operator, fnmatch, httplib
 from urllib import unquote
 
 # Setup
@@ -660,7 +660,7 @@ def harness_server_func(q):
   httpd = BaseHTTPServer.HTTPServer(('localhost', 9999), TestServerHandler)
   httpd.serve_forever() # test runner will kill us
 
-def server_func(dir, q, back_queue):
+def server_func(dir, q):
   class TestServerHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def do_GET(self):
       if 'report_' in self.path:
@@ -675,7 +675,6 @@ def server_func(dir, q, back_queue):
       pass
   os.chdir(dir)
   httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
-  back_queue.put(True) # Send a message back to parent to signal that the server hosting the test page is now running
   httpd.serve_forever() # test runner will kill us
 
 class BrowserCore(RunnerCore):
@@ -685,6 +684,7 @@ class BrowserCore(RunnerCore):
   @classmethod
   def setUpClass(self):
     super(BrowserCore, self).setUpClass()
+    self.browser_timeout = 30
     self.harness_queue = multiprocessing.Queue()
     self.harness_server = multiprocessing.Process(target=harness_server_func, args=(self.harness_queue,))
     self.harness_server.start()
@@ -705,15 +705,20 @@ class BrowserCore(RunnerCore):
     if expectedResult is not None:
       try:
         queue = multiprocessing.Queue()
-        back_queue = multiprocessing.Queue()
-        server = multiprocessing.Process(target=functools.partial(server_func, self.get_dir()), args=(queue, back_queue))
+        server = multiprocessing.Process(target=functools.partial(server_func, self.get_dir()), args=(queue,))
         server.start()
         # Starting the web page server above is an asynchronous procedure, so before we tell the browser below to navigate to
         # the test page, we need to know that the server has started up and is ready to process the site navigation.
-        # Therefore block until we get a message from the server telling that the server has started up.
-        try:
-          back_queue.get(True, 10)
-        except:
+        # Therefore block until we can make a connection to the server.
+        for i in range(10):
+          httpconn = httplib.HTTPConnection('localhost:8888', timeout=1)
+          try:
+            httpconn.connect()
+            httpconn.close()
+            break
+          except:
+            time.sleep(1)
+        else:
           raise Exception('[Test harness server failed to start up in a timely manner]')
         self.harness_queue.put('http://localhost:8888/' + html_file)
         output = '[no http server activity]'

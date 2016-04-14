@@ -10,6 +10,7 @@ declare i32 @printf(i8*, ...)
 define i32 @main() {
 entry:
   %s4 = alloca i64, align 8
+  store i64 0, i64* %s4
   %ar = atomicrmw add i64* %s4, i64 1 monotonic
   ; %ar = load i64, i64* %s4, align 8
   %value = trunc i64 %ar to i32

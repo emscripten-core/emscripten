@@ -1,6 +1,7 @@
 import os, json, logging, zipfile, glob
 import shared
 from subprocess import Popen, CalledProcessError
+import subprocess, multiprocessing, re
 import multiprocessing
 from tools.shared import check_call
 
@@ -49,6 +50,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   gl_symbols = read_symbols(shared.path_from_root('system', 'lib', 'gl.symbols'))
   compiler_rt_symbols = read_symbols(shared.path_from_root('system', 'lib', 'compiler-rt.symbols'))
   pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
+  wasm_libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'wasm-libc.symbols'))
 
   # XXX we should disable EMCC_DEBUG when building libs, just like in the relooper
 
@@ -58,7 +60,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     commands = []
     # Hide several musl warnings that produce a lot of spam to unit test build server logs.
     # TODO: When updating musl the next time, feel free to recheck which of their warnings might have been fixed, and which ones of these could be cleaned up.
-    c_opts = ['-Wno-dangling-else', '-Wno-unknown-pragmas', '-Wno-shift-op-parentheses', '-Wno-string-plus-int', '-Wno-logical-op-parentheses', '-Wno-bitwise-op-parentheses', '-Wno-visibility', '-Wno-pointer-sign']
+    c_opts = ['-Wno-return-type', '-Wno-parentheses', '-Wno-ignored-attributes', '-Wno-shift-count-overflow', '-Wno-shift-negative-value', '-Wno-dangling-else', '-Wno-unknown-pragmas', '-Wno-shift-op-parentheses', '-Wno-string-plus-int', '-Wno-logical-op-parentheses', '-Wno-bitwise-op-parentheses', '-Wno-visibility', '-Wno-pointer-sign']
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
       commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes + default_opts + c_opts + lib_opts)
@@ -125,6 +127,15 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     pthreads_files += [shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'thread', x) for x in ('pthread_attr_destroy.c', 'pthread_condattr_setpshared.c', 'pthread_mutex_lock.c', 'pthread_spin_destroy.c', 'pthread_attr_get.c', 'pthread_cond_broadcast.c', 'pthread_mutex_setprioceiling.c', 'pthread_spin_init.c', 'pthread_attr_init.c', 'pthread_cond_destroy.c', 'pthread_mutex_timedlock.c', 'pthread_spin_lock.c', 'pthread_attr_setdetachstate.c', 'pthread_cond_init.c', 'pthread_mutex_trylock.c', 'pthread_spin_trylock.c', 'pthread_attr_setguardsize.c', 'pthread_cond_signal.c', 'pthread_mutex_unlock.c', 'pthread_spin_unlock.c', 'pthread_attr_setinheritsched.c', 'pthread_cond_timedwait.c', 'pthread_once.c', 'sem_destroy.c', 'pthread_attr_setschedparam.c', 'pthread_cond_wait.c', 'pthread_rwlockattr_destroy.c', 'sem_getvalue.c', 'pthread_attr_setschedpolicy.c', 'pthread_equal.c', 'pthread_rwlockattr_init.c', 'sem_init.c', 'pthread_attr_setscope.c', 'pthread_getspecific.c', 'pthread_rwlockattr_setpshared.c', 'sem_open.c', 'pthread_attr_setstack.c', 'pthread_key_create.c', 'pthread_rwlock_destroy.c', 'sem_post.c', 'pthread_attr_setstacksize.c', 'pthread_mutexattr_destroy.c', 'pthread_rwlock_init.c', 'sem_timedwait.c', 'pthread_barrierattr_destroy.c', 'pthread_mutexattr_init.c', 'pthread_rwlock_rdlock.c', 'sem_trywait.c', 'pthread_barrierattr_init.c', 'pthread_mutexattr_setprotocol.c', 'pthread_rwlock_timedrdlock.c', 'sem_unlink.c', 'pthread_barrierattr_setpshared.c', 'pthread_mutexattr_setpshared.c', 'pthread_rwlock_timedwrlock.c', 'sem_wait.c', 'pthread_barrier_destroy.c', 'pthread_mutexattr_setrobust.c', 'pthread_rwlock_tryrdlock.c', '__timedwait.c', 'pthread_barrier_init.c', 'pthread_mutexattr_settype.c', 'pthread_rwlock_trywrlock.c', 'vmlock.c', 'pthread_barrier_wait.c', 'pthread_mutex_consistent.c', 'pthread_rwlock_unlock.c', '__wait.c', 'pthread_condattr_destroy.c', 'pthread_mutex_destroy.c', 'pthread_rwlock_wrlock.c', 'pthread_condattr_init.c', 'pthread_mutex_getprioceiling.c', 'pthread_setcanceltype.c', 'pthread_condattr_setclock.c', 'pthread_mutex_init.c', 'pthread_setspecific.c')]
     return build_libc(libname, pthreads_files, ['-O2', '-s', 'USE_PTHREADS=1'])
 
+  def create_wasm_libc(libname):
+    # in asm.js we just use Math.sin etc., which is good for code size. But wasm doesn't have such builtins, so
+    # we need to bundle in more code
+    # we also build in musl versions of things that we have hand-optimized asm.js for
+    files = ([shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'math', x) for x in ('cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c', 'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c', 'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c')] +
+             [shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'string', x) for x in ('memcpy.c', 'memset.c', 'memmove.c')])
+
+    return build_libc(libname, files, ['-O2'])
+
   # libcxx
   def create_libcxx(libname):
     logging.debug('building libcxx for cache')
@@ -163,6 +174,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'cxa_default_handlers.cpp',
       'cxa_demangle.cpp',
       'cxa_exception_storage.cpp',
+      'cxa_guard.cpp',
       'cxa_new_delete.cpp',
       'cxa_handlers.cpp',
       'exception.cpp',
@@ -317,6 +329,17 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       else:
         system_libs += [('dlmalloc', 'bc', create_dlmalloc_singlethreaded, [], [], False)]
         force.add('dlmalloc')
+
+  # if building to wasm, we need more math code, since we have less builtins
+  if shared.Settings.BINARYEN:
+    system_libs += [('wasm-libc', 'bc', create_wasm_libc, wasm_libc_symbols, [], False)]
+    # if libc is included, we definitely must be, as it might need us
+    for data in system_libs:
+      if data[3] == libc_symbols:
+        data[4].append('wasm-libc')
+        break
+    else:
+      raise Exception('did not find libc?')
 
   # Go over libraries to figure out which we must include
   def maybe_noexcept(name):
@@ -527,6 +550,32 @@ class Ports:
     shared.try_delete(os.path.join(Ports.get_build_dir(), name))
     shared.try_delete(shared.Cache.get_path(name + '.bc'))
 
+  @staticmethod
+  def build_native(subdir):
+    old = os.getcwd()
+
+    try:
+      os.chdir(subdir)
+
+      cmake_build_type = 'Release'
+
+      # Configure
+      subprocess.check_call(['cmake', '-DCMAKE_BUILD_TYPE=' + cmake_build_type, '.'])
+
+      # Check which CMake generator CMake used so we know which form to pass parameters to make/msbuild/etc. build tool.
+      generator = re.search('CMAKE_GENERATOR:INTERNAL=(.*)$', open('CMakeCache.txt', 'r').read(), re.MULTILINE).group(1)
+
+      # Make variants support '-jX' for number of cores to build, MSBuild does /maxcpucount:X
+      num_cores = os.environ.get('EMCC_CORES') or str(multiprocessing.cpu_count())
+      make_args = []
+      if 'Makefiles' in generator: make_args = ['--', '-j', num_cores]
+      elif 'Visual Studio' in generator: make_args = ['--config', cmake_build_type, '--', '/maxcpucount:' + num_cores]
+
+      # Kick off the build.
+      subprocess.check_call(['cmake', '--build', '.'] + make_args)
+    finally:
+      os.chdir(old)
+
 def get_ports(settings):
   ret = []
 
@@ -534,11 +583,12 @@ def get_ports(settings):
   try:
     process_dependencies(settings)
     for port in ports.ports:
-      ret += port.get(Ports, settings, shared)
+      # ports return their output files, which will be linked, or a txt file
+      ret += filter(lambda f: not f.endswith('.txt'), port.get(Ports, settings, shared))
     ok = True
   finally:
     if not ok:
-      logging.error('a problem occurred when using an emscripten-ports library. try to run    emcc --clear-cache --clear-ports    and then run this command again')
+      logging.error('a problem occurred when using an emscripten-ports library. try to run    emcc --clear-ports    and then run this command again')
 
   ret.reverse()
   return ret

@@ -226,7 +226,7 @@ def should_ignore(fullname):
 
 # Returns the given string with escapes added so that it can safely be placed inside a string in JS code.
 def escape_for_js_string(s):
-  s = s.replace("'", "\\'").replace('"', '\\"')
+  s = s.replace("'", "\\'").replace('"', '\\"').replace('\\', '/')
   return s
 
 # Expand directories into individual files
@@ -515,7 +515,7 @@ if has_preloaded:
             DataRequest.prototype.requests[files[i].filename].onload();
           }
     '''
-    use_data += "          Module['removeRunDependency']('datafile_%s');\n" % data_target
+    use_data += "          Module['removeRunDependency']('datafile_%s');\n" % escape_for_js_string(data_target)
 
   else:
     # LZ4FS usage
@@ -529,7 +529,7 @@ if has_preloaded:
           assert(typeof LZ4 === 'object', 'LZ4 not present - was your app build with  -s LZ4=1  ?');
           LZ4.loadPackage({ 'metadata': metadata, 'compressedData': compressedData });
           Module['removeRunDependency']('datafile_%s');
-    ''' % (meta, data_target)
+    ''' % (meta, escape_for_js_string(data_target))
 
   package_uuid = uuid.uuid4();
   package_name = data_target
@@ -634,12 +634,13 @@ if has_preloaded:
       };
 
       function cacheRemotePackage(db, packageName, packageData, packageMeta, callback, errback) {
-        var transaction = db.transaction([PACKAGE_STORE_NAME, METADATA_STORE_NAME], IDB_RW);
-        var packages = transaction.objectStore(PACKAGE_STORE_NAME);
-        var metadata = transaction.objectStore(METADATA_STORE_NAME);
+        var transaction_packages = db.transaction([PACKAGE_STORE_NAME], IDB_RW);
+        var packages = transaction_packages.objectStore(PACKAGE_STORE_NAME);
 
         var putPackageRequest = packages.put(packageData, packageName);
         putPackageRequest.onsuccess = function(event) {
+          var transaction_metadata = db.transaction([METADATA_STORE_NAME], IDB_RW);
+          var metadata = transaction_metadata.objectStore(METADATA_STORE_NAME);
           var putMetadataRequest = metadata.put(packageMeta, packageName);
           putMetadataRequest.onsuccess = function(event) {
             callback(packageData);
@@ -718,7 +719,7 @@ if has_preloaded:
       %s
     };
     Module['addRunDependency']('datafile_%s');
-  ''' % (use_data, data_target) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
+  ''' % (use_data, escape_for_js_string(data_target)) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
 
   code += r'''
     if (!Module.preloadResults) Module.preloadResults = {};

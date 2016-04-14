@@ -39,7 +39,7 @@ Traffic Legend:
   end
 
   # Echo back whatever is received    
-  def new_client(client)
+  def new_websocket_client(client)
 
     msg "connecting to: %s:%s" % [@target_host, @target_port]
     tsock = TCPSocket.open(@target_host, @target_port)
@@ -92,7 +92,7 @@ Traffic Legend:
       # Receive target data and queue for the client
       if ins && ins.include?(target)
         buf = target.recv(@@Buffer_size)
-        if buf.length == 0:
+        if buf.length == 0
           raise EClose, "Target closed"
         end
 
@@ -128,7 +128,7 @@ parser = OptionParser.new do |o|
   o.parse!
 end
 
-if ARGV.length < 2:
+if ARGV.length < 2
   puts "Too few arguments"
   exit 2
 end

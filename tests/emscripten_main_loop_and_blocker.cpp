@@ -26,10 +26,11 @@ void looper() {
   frame++;
   double curTime = emscripten_get_now();
   double timeSincePrevious = curTime - prevTime;
-  printf("frame: %d. dt: %g\n", frame, timeSincePrevious);
-  if (timeSincePrevious <= 16.0)
+  prevTime = curTime;
+  printf("frame: %d. dt: %g. absolute: %g\n", frame, timeSincePrevious, curTime);
+  if (frame > 1 && timeSincePrevious <= 14.5) // should be 16, but browser jitter
   {
-    printf("Abort: main loop tick was called too quickly after the previous frame!\n");
+    printf("Abort: main loop tick was called too quickly (%f ms > 16) after the previous frame!\n", timeSincePrevious);
     int result = 1;
 #ifdef REPORT_RESULT
     REPORT_RESULT();
@@ -37,8 +38,6 @@ void looper() {
     emscripten_cancel_main_loop();
     exit(0);
   }
-
-  prevTime = curTime;
 
   if (frame == 20) {
     emscripten_cancel_main_loop();
