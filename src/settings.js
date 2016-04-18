@@ -551,14 +551,13 @@ var PGO = 0; // Enables profile-guided optimization in the form of runtime check
              // which functions are actually called. Emits a list during shutdown that you
              // can pass to DEAD_FUNCTIONS (you can also emit the list manually by
              // calling PGOMonitor.dump());
-var DEAD_FUNCTIONS = []; // Functions on this list are not converted to JS, and calls to
+var DEAD_FUNCTIONS = []; // JS library functions on this list are not converted to JS, and calls to
                          // them are turned into abort()s. This is potentially useful for
                          // reducing code size.
                          // If a dead function is actually called, you will get a runtime
                          // error.
-                         // This can affect both functions in compiled code, and system
-                         // library functions (e.g., you can use this to kill printf).
-                         // TODO: options to lazily load such functions
+                         // TODO: make this work on compiled methods as well, perhaps by
+                         //       adding a JS optimizer pass?
 
 var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i32, using ?:
 
