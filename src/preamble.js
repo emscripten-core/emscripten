@@ -514,15 +514,17 @@ function stringToAscii(str, outPtr) {
 
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
 // a copy of that string as a Javascript String object.
+// len parameter (optional): bytewise length in case string is not null terminated
 
-function UTF8ArrayToString(u8Array, idx) {
+function UTF8ArrayToString(u8Array, idx, len) {
   var u0, u1, u2, u3, u4, u5;
 
   var str = '';
+  var lastIndex = (typeof len !== 'undefined') ? (len + idx + 1) : -1;
   while (1) {
     // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description and https://www.ietf.org/rfc/rfc2279.txt and https://tools.ietf.org/html/rfc3629
     u0 = u8Array[idx++];
-    if (!u0) return str;
+    if (!u0 || idx == lastIndex) return str;
     if (!(u0 & 0x80)) { str += String.fromCharCode(u0); continue; }
     u1 = u8Array[idx++] & 63;
     if ((u0 & 0xE0) == 0xC0) { str += String.fromCharCode(((u0 & 31) << 6) | u1); continue; }
@@ -555,9 +557,10 @@ function UTF8ArrayToString(u8Array, idx) {
 
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
+// len parameter (optional): bytewise length in case string is not null terminated
 
-function UTF8ToString(ptr) {
-  return UTF8ArrayToString({{{ heapAndOffset('HEAPU8', 'ptr') }}});
+function UTF8ToString(ptr, len) {
+  return UTF8ArrayToString({{{ heapAndOffset('HEAPU8', 'ptr') }}}, len);
 }
 {{{ maybeExport('UTF8ToString') }}}
 
@@ -571,14 +574,18 @@ function UTF8ToString(ptr) {
 //   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null 
 //                    terminator, i.e. if maxBytesToWrite=1, only the null terminator will be written and nothing else.
 //                    maxBytesToWrite=0 does not write any bytes to the output, not even the null terminator.
+//   withNullTermination: request null terminator to be appended; optional, defaults to true
 // Returns the number of bytes written, EXCLUDING the null terminator.
 
-function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
+function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite, withNullTermination) {
   if (!(maxBytesToWrite > 0)) // Parameter maxBytesToWrite is not optional. Negative values, 0, null, undefined and false each don't write out any bytes.
     return 0;
 
+  var withNullTermination_ = (typeof withNullTermination !== 'undefined') ? withNullTermination : true;
   var startIdx = outIdx;
-  var endIdx = outIdx + maxBytesToWrite - 1; // -1 for string null terminator.
+  var endIdx = outIdx + maxBytesToWrite;
+  if (withNullTermination_)
+    endIdx--;
   for (var i = 0; i < str.length; ++i) {
     // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
     // See http://unicode.org/faq/utf_bom.html#utf16-3
@@ -621,8 +628,12 @@ function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
     }
   }
   // Null-terminate the pointer to the buffer.
-  outU8Array[outIdx] = 0;
-  return outIdx - startIdx;
+	if (withNullTermination_)
+		outU8Array[outIdx] = 0;
+	else
+		outIdx--;
+  
+	return outIdx - startIdx;
 }
 {{{ maybeExport('stringToUTF8Array') }}}
 
@@ -631,11 +642,11 @@ function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
 // Use the function lengthBytesUTF8() to compute the exact number of bytes (excluding null terminator) that this function will write.
 // Returns the number of bytes written, EXCLUDING the null terminator.
 
-function stringToUTF8(str, outPtr, maxBytesToWrite) {
+function stringToUTF8(str, outPtr, maxBytesToWrite, withNullTermination) {
 #if ASSERTIONS
   assert(typeof maxBytesToWrite == 'number', 'stringToUTF8(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
 #endif
-  return stringToUTF8Array(str, {{{ heapAndOffset('HEAPU8', 'outPtr') }}}, maxBytesToWrite);
+  return stringToUTF8Array(str, {{{ heapAndOffset('HEAPU8', 'outPtr') }}}, maxBytesToWrite, withNullTermination);
 }
 {{{ maybeExport('stringToUTF8') }}}
 

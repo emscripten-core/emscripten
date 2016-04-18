@@ -595,47 +595,47 @@ var LibraryEmbind = {
         name: name,
         'fromWireType': function(value) {
             var length = HEAPU32[value >> 2];
-            var a = new Array(length);
-            for (var i = 0; i < length; ++i) {
-                a[i] = String.fromCharCode(HEAPU8[value + 4 + i]);
-            }
+
+            var str = Module['UTF8ToString'](value + 4, length);
             _free(value);
-            return a.join('');
+            
+            return str;
         },
         'toWireType': function(destructors, value) {
             if (value instanceof ArrayBuffer) {
                 value = new Uint8Array(value);
             }
+            
+            var getLength;
 
-            function getTAElement(ta, index) {
-                return ta[index];
+            if (typeof value === 'string')
+            {
+                getLength = function() {return Module['lengthBytesUTF8'](value);};
             }
-            function getStringElement(string, index) {
-                return string.charCodeAt(index);
+            else if (value instanceof Uint8Array || value instanceof Int8Array)
+            {
+                getLength = function() {return value.length;};
             }
-            var getElement;
-            if (value instanceof Uint8Array) {
-                getElement = getTAElement;
-            } else if (value instanceof Int8Array) {
-                getElement = getTAElement;
-            } else if (typeof value === 'string') {
-                getElement = getStringElement;
-            } else {
+            else
+            {
                 throwBindingError('Cannot pass non-string to std::string');
             }
-
+            
             // assumes 4-byte alignment
-            var length = value.length;
+            var length = getLength();
             var ptr = _malloc(4 + length);
             HEAPU32[ptr >> 2] = length;
-            for (var i = 0; i < length; ++i) {
-                var charCode = getElement(value, i);
-                if (charCode > 255) {
-                    _free(ptr);
-                    throwBindingError('String has UTF-16 code units that do not fit in 8 bits');
-                }
-                HEAPU8[ptr + 4 + i] = charCode;
+            
+            if (typeof value === 'string') {
+                Module['stringToUTF8'](value, ptr + 4, length, false);
             }
+            else
+            {
+                for (var i = 0; i < length; ++i) {
+                    HEAPU8[ptr + 4 + i] = value[i];
+                }
+            }
+
             if (destructors !== null) {
                 destructors.push(_free, ptr);
             }

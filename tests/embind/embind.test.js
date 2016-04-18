@@ -378,17 +378,22 @@ module({
 
     BaseFixture.extend("string", function() {
         test("non-ascii strings", function() {
-            var expected = '';
-            for (var i = 0; i < 128; ++i) {
-                expected += String.fromCharCode(128 + i);
-            }
+            //ASCII
+            var expected = 'aei';
+            //Latin-1 Supplement
+            expected += '\u00E1\u00E9\u00ED';
+            //Greek
+            expected += '\u03B1\u03B5\u03B9';
+            //Cyrillic
+            expected += '\u0416\u041B\u0424';
+            //CJK
+            expected += '\u5F9E\u7345\u5B50';
+            //Euro sign
+            expected += '\u20AC';
+            
+            var test = cm.get_non_ascii_string();
+            
             assert.equal(expected, cm.get_non_ascii_string());
-        });
-
-        test("passing non-8-bit strings from JS to std::string throws", function() {
-            assert.throws(cm.BindingError, function() {
-                cm.emval_test_take_and_return_std_string("\u1234");
-            });
         });
 
         test("can't pass integers as strings", function() {
@@ -580,10 +585,6 @@ module({
             assert.equal("foobar", cm.emval_test_take_and_return_std_string("foobar"));
 
             assert.equal("foobar", cm.emval_test_take_and_return_std_string_const_ref("foobar"));
-        });
-
-        test("nuls pass through strings", function() {
-            assert.equal("foo\0bar", cm.emval_test_take_and_return_std_string("foo\0bar"));
         });
 
         test("no memory leak when passing strings in by const reference", function() {

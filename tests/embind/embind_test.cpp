@@ -104,12 +104,19 @@ unsigned emval_test_sum(val v) {
 }
 
 std::string get_non_ascii_string() {
-    char c[128 + 1];
-    c[128] = 0;
-    for (int i = 0; i < 128; ++i) {
-        c[i] = 128 + i;
-    }
-    return c;
+    //ASCII
+    std::string str{"aei"};
+    //Latin-1 Supplement
+    str += "\u00E1\u00E9\u00ED";
+    //Greek
+    str += "\u03B1\u03B5\u03B9";
+    //Cyrillic
+    str += "\u0416\u041B\u0424";
+    //CJK
+    str += "\u5F9E\u7345\u5B50";
+    //Euro sign
+    str += "\u20AC";
+    return str;
 }
 
 std::wstring get_non_ascii_wstring() {
