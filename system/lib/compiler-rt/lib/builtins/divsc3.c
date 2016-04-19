@@ -58,4 +58,3 @@ __divsc3(float __a, float __b, float __c, float __d)
     }
     return z;
 }
-

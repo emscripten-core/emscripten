@@ -71,5 +71,3 @@ __muldc3(double __a, double __b, double __c, double __d)
     }
     return z;
 }
-
-
