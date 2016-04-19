@@ -94,6 +94,10 @@ if (memoryInitializer) {
 #endif
 #endif
 
+#if CYBERDWARF
+  Module['cyberdwarf'] = _cyberdwarf_Debugger(cyberDWARFFile);
+#endif
+
 function ExitStatus(status) {
   this.name = "ExitStatus";
   this.message = "Program terminated with exit(" + status + ")";
@@ -204,7 +208,7 @@ function run(args) {
     if (Module['calledRun']) return; // run may have just been called while the async setStatus time below was happening
     Module['calledRun'] = true;
 
-    if (ABORT) return; 
+    if (ABORT) return;
 
     ensureInitRuntime();
 
@@ -401,4 +405,3 @@ var workerResponded = false, workerCallbackId = -1;
 })();
 
 #endif
-

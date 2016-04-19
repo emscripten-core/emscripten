@@ -132,6 +132,8 @@ def get_and_parse_backend(infile, settings, temp_files, DEBUG):
       backend_args += ['-emscripten-no-exit-runtime']
     if settings['BINARYEN']:
       backend_args += ['-emscripten-wasm']
+    if settings['CYBERDWARF']:
+      backend_args += ['-enable-cyberdwarf']
 
     if DEBUG:
       logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
@@ -239,6 +241,10 @@ def compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DE
       if set(syscalls).issubset(set([6, 54, 140, 146])): # close, ioctl, llseek, writev
         if DEBUG: logging.debug('very limited syscalls (%s) so disabling full filesystem support' % ', '.join(map(str, syscalls)))
         settings['NO_FILESYSTEM'] = 1
+
+    if settings['CYBERDWARF']:
+      settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'].append("cyberdwarf_Debugger")
+      settings['EXPORTED_FUNCTIONS'].append("cyberdwarf_Debugger")
 
     # Integrate info from backend
     if settings['SIDE_MODULE']:
@@ -1137,7 +1143,7 @@ var asm = (function(global, env, buffer) {
        access_quote('asmGlobalArg'), the_global,
        shared_array_buffer,
        access_quote('asmLibraryArg'), sending,
-       "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 else "'almost asm';", 
+       "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 else "'almost asm';",
        first_in_asm,
        '''
   var HEAP8 = new global%s(buffer);
@@ -1258,7 +1264,7 @@ Runtime.getTempRet0 = asm['getTempRet0'];
     if settings['SIDE_MODULE']:
       funcs_js.append('''
 Runtime.registerFunctions(%(sigs)s, Module);
-''' % { 'sigs': str(map(str, last_forwarded_json['Functions']['tables'].keys())) }) 
+''' % { 'sigs': str(map(str, last_forwarded_json['Functions']['tables'].keys())) })
 
     for i in range(len(funcs_js)): # do this loop carefully to save memory
       if WINDOWS: funcs_js[i] = funcs_js[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
@@ -1270,6 +1276,12 @@ Runtime.registerFunctions(%(sigs)s, Module);
 
     if DEBUG:
       logging.debug('  emscript: python processing: finalize took %s seconds' % (time.time() - t))
+
+    if settings['CYBERDWARF']:
+      assert('cyberdwarf_data' in metadata)
+      cd_file_name = outfile.name + ".cd"
+      with open(cd_file_name, "w") as cd_file:
+        json.dump({ 'cyberdwarf': metadata['cyberdwarf_data'] }, cd_file)
 
 def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_engine=None,
                           temp_files=None, DEBUG=None):

@@ -128,9 +128,9 @@ def run():
         break
 
   if len(sys.argv) == 1 or '--help' in sys.argv:
-    # Documentation for emcc and its options must be updated in: 
+    # Documentation for emcc and its options must be updated in:
     #    site/source/docs/tools_reference/emcc.rst
-    # A prebuilt local version of the documentation is available at: 
+    # A prebuilt local version of the documentation is available at:
     #    site/build/text/docs/tools_reference/emcc.txt
     #    (it is read from there and printed out when --help is invoked)
     # You can also build docs locally as HTML or other formats in site/
@@ -241,7 +241,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         idx += 1
 
     if compiler == shared.EMCC: compiler = [shared.PYTHON, shared.EMCC]
-    else: compiler = [compiler] 
+    else: compiler = [compiler]
     cmd = compiler + list(filter_emscripten_options(sys.argv[1:]))
     if not use_js: cmd += shared.EMSDK_OPTS + ['-D__EMSCRIPTEN__', '-DEMSCRIPTEN']
     if use_js: cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'] # configure tests should fail when an undefined symbol exists
@@ -1135,6 +1135,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
       assert not shared.Settings.SPLIT_MEMORY, 'WebAssembly does not support split memory'
 
+    if shared.Settings.CYBERDWARF:
+      newargs.append('-g')
+      shared.Settings.BUNDLED_CD_DEBUG_FILE = target + ".cd"
+      js_libraries.append(shared.path_from_root('src', 'library_cyberdwarf.js'))
+      js_libraries.append(shared.path_from_root('src', 'library_debugger_toolkit.js'))
+
     if tracing:
       if shared.Settings.ALLOW_MEMORY_GROWTH:
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
@@ -1317,7 +1323,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     log_time('calculate system libraries')
 
-    # final will be an array if linking is deferred, otherwise a normal string. 
+    # final will be an array if linking is deferred, otherwise a normal string.
     DEFAULT_FINAL = in_temp(target_basename + '.bc')
     def get_final():
       global final
@@ -1372,7 +1378,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # Optimize, if asked to
     if not LEAVE_INPUTS_RAW:
-      link_opts = [] if debug_level >= 4 else ['-strip-debug'] # remove LLVM debug if we are not asked for it
+      link_opts = [] if debug_level >= 4 or shared.Settings.CYBERDWARF else ['-strip-debug'] # remove LLVM debug if we are not asked for it
       if not shared.Settings.ASSERTIONS:
         link_opts += ['-disable-verify']
 
@@ -1437,6 +1443,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       wasm_temp = final[:-3] + '.wast'
       shutil.move(wasm_temp, wasm_text_target)
       open(wasm_text_target + '.mappedGlobals', 'w').write('{}') # no need for mapped globals for now, but perhaps some day
+
+    if shared.Settings.CYBERDWARF:
+      cd_target = final + '.cd'
+      shutil.move(cd_target, target + '.cd')
 
     log_time('emscript (llvm => executable code)')
 
@@ -1588,7 +1598,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes = ['asm'] + passes
             if shared.Settings.PRECISE_F32:
               passes = ['asmPreciseF32'] + passes
-            if emit_symbol_map and 'minifyNames' in passes:
+            if (emit_symbol_map or shared.Settings.CYBERDWARF) and 'minifyNames' in passes:
               passes += ['symbolMap='+target+'.symbols']
             if profiling_funcs and 'minifyNames' in passes:
               passes += ['profilingFuncs']
@@ -1810,6 +1820,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     #src = open(final).read()
     #src = re.sub(r'\n+[ \n]*\n+', '\n', src)
     #open(final, 'w').write(src)
+
+    # Bundle symbol data in with the cyberdwarf file
+    if shared.Settings.CYBERDWARF:
+        execute([shared.PYTHON, shared.path_from_root('tools', 'emdebug_cd_merger.py'), target + '.cd', target+'.symbols'])
 
     # Emit source maps, if needed
     if debug_level >= 4:
