@@ -605,7 +605,7 @@ if has_preloaded:
         var transaction = db.transaction([METADATA_STORE_NAME], IDB_RO);
         var metadata = transaction.objectStore(METADATA_STORE_NAME);
 
-        var getRequest = metadata.get(packageName);
+        var getRequest = metadata.get("metadata/" + packageName);
         getRequest.onsuccess = function(event) {
           var result = event.target.result;
           if (!result) {
@@ -623,7 +623,7 @@ if has_preloaded:
         var transaction = db.transaction([PACKAGE_STORE_NAME], IDB_RO);
         var packages = transaction.objectStore(PACKAGE_STORE_NAME);
 
-        var getRequest = packages.get(packageName);
+        var getRequest = packages.get("package/" + packageName);
         getRequest.onsuccess = function(event) {
           var result = event.target.result;
           callback(result);
@@ -637,11 +637,11 @@ if has_preloaded:
         var transaction_packages = db.transaction([PACKAGE_STORE_NAME], IDB_RW);
         var packages = transaction_packages.objectStore(PACKAGE_STORE_NAME);
 
-        var putPackageRequest = packages.put(packageData, packageName);
+        var putPackageRequest = packages.put(packageData, "package/" + packageName);
         putPackageRequest.onsuccess = function(event) {
           var transaction_metadata = db.transaction([METADATA_STORE_NAME], IDB_RW);
           var metadata = transaction_metadata.objectStore(METADATA_STORE_NAME);
-          var putMetadataRequest = metadata.put(packageMeta, packageName);
+          var putMetadataRequest = metadata.put(packageMeta, "metadata/" + packageName);
           putMetadataRequest.onsuccess = function(event) {
             callback(packageData);
           };
