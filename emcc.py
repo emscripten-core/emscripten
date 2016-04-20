@@ -1134,6 +1134,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       debug_level = max(1, debug_level) # keep whitespace readable, for asm.js parser simplicity
       shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
       assert not shared.Settings.SPLIT_MEMORY, 'WebAssembly does not support split memory'
+      if not shared.Settings.BINARYEN_METHOD:
+        shared.Settings.BINARYEN_METHOD = 'native-wasm,interpret-binary'
 
     if shared.Settings.CYBERDWARF:
       newargs.append('-g')
@@ -1851,6 +1853,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shutil.move(temp, asm_target)
 
     if shared.Settings.BINARYEN:
+      logging.debug('using binaryen, with method: ' + shared.Settings.BINARYEN_METHOD)
       binaryen_bin = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin')
       # Emit wasm.js at the top of the js. This is *not* optimized with the rest of the code, since
       # (1) it contains asm.js, whose validation would be broken, and (2) it's very large so it would
@@ -1890,7 +1893,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         for script in shared.Settings.BINARYEN_SCRIPTS.split(','):
           logging.debug('running binaryen script: ' + script)
           subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), js_target, wasm_text_target], env=script_env)
-      if 'interpret-binary' in shared.Settings.BINARYEN_METHOD:
+      if 'native-wasm' in shared.Settings.BINARYEN_METHOD or 'interpret-binary' in shared.Settings.BINARYEN_METHOD:
         logging.debug('wasm-as (wasm => binary)')
         subprocess.check_call([os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target])
         shutil.copyfile(wasm_text_target + '.mappedGlobals', wasm_binary_target + '.mappedGlobals')
