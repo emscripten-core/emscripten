@@ -302,7 +302,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   system_libs = [('libcxx',      'a',  create_libcxx,      libcxx_symbols,      ['libcxxabi'], True),
                  ('libcxxabi',   'bc', create_libcxxabi,   libcxxabi_symbols,   ['libc'],      False),
                  ('gl',          'bc', create_gl,          gl_symbols,          ['libc'],      False),
-                 ('compiler-rt', 'a', create_compiler_rt, compiler_rt_symbols, ['libc'],      False)]
+                 ('compiler-rt', 'a',  create_compiler_rt, compiler_rt_symbols, ['libc'],      False)]
 
   # malloc dependency is force-added, so when using pthreads, it must be force-added
   # as well, since malloc needs to be thread-safe, so it depends on mutexes.
