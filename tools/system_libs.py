@@ -192,7 +192,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     return o
 
   def create_compiler_rt(libname):
-    srcdir = shared.path_from_root('system', 'lib', 'compiler-rt')
+    srcdir = shared.path_from_root('system', 'lib', 'compiler-rt', 'lib', 'builtins')
     filenames = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
     files = (os.path.join(srcdir, f) for f in filenames)
 
@@ -203,7 +203,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-O2', '-o', o])
       o_s.append(o)
     run_commands(commands)
-    shared.Building.link(o_s, in_temp(libname))
+    shared.Building.emar('cr', in_temp(libname), o_s)
     return in_temp(libname)
 
   def create_dlmalloc(out_name, clflags):
@@ -302,7 +302,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   system_libs = [('libcxx',      'a',  create_libcxx,      libcxx_symbols,      ['libcxxabi'], True),
                  ('libcxxabi',   'bc', create_libcxxabi,   libcxxabi_symbols,   ['libc'],      False),
                  ('gl',          'bc', create_gl,          gl_symbols,          ['libc'],      False),
-                 ('compiler-rt', 'bc', create_compiler_rt, compiler_rt_symbols, ['libc'],      False)]
+                 ('compiler-rt', 'a',  create_compiler_rt, compiler_rt_symbols, ['libc'],      False)]
 
   # malloc dependency is force-added, so when using pthreads, it must be force-added
   # as well, since malloc needs to be thread-safe, so it depends on mutexes.
@@ -608,4 +608,3 @@ def show_ports():
   print 'Available ports:'
   for port in ports.ports:
     print '   ', port.show()
-
