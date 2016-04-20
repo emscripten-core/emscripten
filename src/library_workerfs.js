@@ -15,8 +15,16 @@ mergeInto(LibraryManager.library, {
         var parent = root;
         for (var i = 0; i < parts.length-1; i++) {
           var curr = parts.slice(0, i+1).join('/');
+		  // Issue 4254: Using curr as a node name will prevent the node
+		  // from being found in FS.nameTable when FS.open is called on
+		  // a path which holds a child of this node,
+		  // given that all FS functions assume node names
+		  // are just their corresponding parts within their given path,
+		  // rather than incremental aggregates which include their parent's
+		  // directories.
           if (!createdParents[curr]) {
-            createdParents[curr] = WORKERFS.createNode(parent, curr, WORKERFS.DIR_MODE, 0);
+            createdParents[curr] = WORKERFS.createNode(parent, /*curr*/ parts[i],
+				WORKERFS.DIR_MODE, 0);
           }
           parent = createdParents[curr];
         }
