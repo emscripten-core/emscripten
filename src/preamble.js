@@ -512,8 +512,8 @@ function stringToAscii(str, outPtr) {
 }
 {{{ maybeExport('stringToAscii') }}}
 
-// Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
-// a copy of that string as a Javascript String object.
+// Given a pointer 'ptr' to an UTF8-encoded string (optionally null terminated) in the given array that contains uint8 values, 
+// returns a copy of that string as a Javascript String object.
 // len parameter (optional): bytewise length in case string is not null terminated
 
 function UTF8ArrayToString(u8Array, idx, len) {
