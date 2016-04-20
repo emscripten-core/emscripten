@@ -628,12 +628,12 @@ function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite, withNullTer
     }
   }
   // Null-terminate the pointer to the buffer.
-	if (withNullTermination_)
-		outU8Array[outIdx] = 0;
-	else
-		outIdx--;
-  
-	return outIdx - startIdx;
+  if (withNullTermination_) {
+    outU8Array[outIdx] = 0;
+  } else {
+    outIdx--;
+  }
+  return outIdx - startIdx;
 }
 {{{ maybeExport('stringToUTF8Array') }}}
 
