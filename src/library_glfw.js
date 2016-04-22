@@ -407,6 +407,26 @@ var LibraryGLFW = {
 #endif
     },
 
+    onMouseenter: function(event) {
+      if (!GLFW.active) return;
+
+      if (event.target != Module["canvas"] || !GLFW.active.cursorEnterFunc) return;
+
+#if USE_GLFW == 3
+      Runtime.dynCall('vii', GLFW.active.cursorEnterFunc, [GLFW.active.id, 1]);
+#endif
+    },
+
+    onMouseleave: function(event) {
+      if (!GLFW.active) return;
+
+      if (event.target != Module["canvas"] || !GLFW.active.cursorEnterFunc) return;
+
+#if USE_GLFW == 3
+      Runtime.dynCall('vii', GLFW.active.cursorEnterFunc, [GLFW.active.id, 0]);
+#endif
+    },
+
     onMouseButtonChanged: function(event, status) {
       if (!GLFW.active || !GLFW.active.mouseButtonFunc) return;
 
@@ -856,6 +876,8 @@ var LibraryGLFW = {
     Module["canvas"].addEventListener("mouseup", GLFW.onMouseButtonUp, true);
     Module["canvas"].addEventListener('wheel', GLFW.onMouseWheel, true);
     Module["canvas"].addEventListener('mousewheel', GLFW.onMouseWheel, true);
+    Module["canvas"].addEventListener('mouseenter', GLFW.onMouseenter, true);
+    Module["canvas"].addEventListener('mouseleave', GLFW.onMouseleave, true);
 
     Browser.resizeListeners.push(function(width, height) {
        GLFW.onFullScreenEventChange();
@@ -872,6 +894,8 @@ var LibraryGLFW = {
     Module["canvas"].removeEventListener("mouseup", GLFW.onMouseButtonUp, true);
     Module["canvas"].removeEventListener('wheel', GLFW.onMouseWheel, true);
     Module["canvas"].removeEventListener('mousewheel', GLFW.onMouseWheel, true);
+    Module["canvas"].removeEventListener('mouseenter', GLFW.onMouseenter, true);
+    Module["canvas"].removeEventListener('mouseleave', GLFW.onMouseleave, true);
     Module["canvas"].width = Module["canvas"].height = 1;
     GLFW.windows = null;
     GLFW.active = null;
