@@ -442,7 +442,7 @@ if has_preloaded:
         var that = this;
 %s
         this.requests[this.name] = null;
-      },
+      }
     };
 %s
   ''' % ('' if not crunch else '''
