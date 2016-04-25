@@ -803,7 +803,8 @@ var LibraryPThread = {
       // Register globally which address the main thread is simulating to be waiting on. When zero, main thread is not waiting on anything,
       // and on nonzero, the contents of address pointed by __main_thread_futex_wait_address tell which address the main thread is simulating its wait on.
       Atomics.store(HEAP32, __main_thread_futex_wait_address >> 2, addr);
-      while (addr) {
+      var ourWaitAddress = addr; // We may recursively re-enter this function while processing queued calls, in which case we'll do a spurious wakeup of the older wait operation.
+      while (addr == ourWaitAddress) {
         tNow = performance.now();
         if (tNow > tEnd) {
 #if PTHREADS_PROFILING
@@ -811,6 +812,7 @@ var LibraryPThread = {
 #endif
           return -{{{ cDefine('ETIMEDOUT') }}};
         }
+        _emscripten_main_thread_process_queued_calls(); // We are performing a blocking loop here, so must pump any pthreads if they want to perform operations that are proxied.
         addr = Atomics.load(HEAP32, __main_thread_futex_wait_address >> 2); // Look for a worker thread waking us up.
       }
 #if PTHREADS_PROFILING
