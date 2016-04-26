@@ -585,6 +585,10 @@ module({
             assert.equal("foobar", cm.emval_test_take_and_return_std_string_const_ref("foobar"));
         });
 
+        test("nuls pass through strings", function() {
+            assert.equal("foo\0bar", cm.emval_test_take_and_return_std_string("foo\0bar"));
+        });
+
         test("no memory leak when passing strings in by const reference", function() {
             cm.emval_test_take_and_return_std_string_const_ref("foobar");
         });
