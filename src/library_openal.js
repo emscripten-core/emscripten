@@ -251,6 +251,10 @@ var LibraryOpenAL = {
 
       var gain = ctx.createGain();
       gain.connect(ctx.destination);
+      // Extend the Web Audio API AudioListener object with a few tracking values of our own.
+      ctx.listener._position = [0, 0, 0];
+      ctx.listener._velocity = [0, 0, 0];
+      ctx.listener._orientation = [0, 0, 0, 0, 0, 0];
       var context = {
         ctx: ctx,
         err: 0,
@@ -353,6 +357,9 @@ var LibraryOpenAL = {
         queue: [],
         loop: false,
         playbackRate: 1,
+        _position: [0, 0, 0],
+        _velocity: [0, 0, 0],
+        _direction: [0, 0, 0],
         get refDistance() {
           return this._refDistance || 1;
         },
@@ -375,24 +382,30 @@ var LibraryOpenAL = {
           if (this.panner) this.panner.rolloffFactor = val;
         },
         get position() {
-          return this._position || [0, 0, 0];
+          return this._position;
         },
         set position(val) {
-          this._position = val;
+          this._position[0] = val[0];
+          this._position[1] = val[1];
+          this._position[2] = val[2];
           if (this.panner) this.panner.setPosition(val[0], val[1], val[2]);
         },
         get velocity() {
-          return this._velocity || [0, 0, 0];
+          return this._velocity;
         },
         set velocity(val) {
-          this._velocity = val;
+          this._velocity[0] = val[0];
+          this._velocity[1] = val[1];
+          this._velocity[2] = val[2];
           if (this.panner) this.panner.setVelocity(val[0], val[1], val[2]);
         },
         get direction() {
-          return this._direction || [0, 0, 0];
+          return this._direction;
         },
         set direction(val) {
-          this._direction = val;
+          this._direction[0] = val[0];
+          this._direction[1] = val[1];
+          this._direction[2] = val[2];
           if (this.panner) this.panner.setOrientation(val[0], val[1], val[2]);
         },
         get coneOuterGain() {
@@ -615,13 +628,19 @@ var LibraryOpenAL = {
     }
     switch (param) {
     case 0x1004 /* AL_POSITION */:
-      src.position = [v1, v2, v3];
+      src.position[0] = v1;
+      src.position[1] = v2;
+      src.position[2] = v3;
       break;
     case 0x1005 /* AL_DIRECTION */:
-      src.direction = [v1, v2, v3];
+      src.direction[0] = v1;
+      src.direction[1] = v2;
+      src.direction[2] = v3;
       break;
     case 0x1006 /* AL_VELOCITY */:
-      src.velocity = [v1, v2, v3];
+      src.velocity[0] = v1;
+      src.velocity[1] = v2;
+      src.velocity[2] = v3;
       break;
     default:
 #if OPENAL_DEBUG
@@ -1230,19 +1249,19 @@ var LibraryOpenAL = {
     }
     switch (pname) {
     case 0x1004 /* AL_POSITION */:
-      var position = AL.currentContext.ctx.listener._position || [0,0,0];
+      var position = AL.currentContext.ctx.listener._position;
       {{{ makeSetValue('values', '0', 'position[0]', 'float') }}}
       {{{ makeSetValue('values', '4', 'position[1]', 'float') }}}
       {{{ makeSetValue('values', '8', 'position[2]', 'float') }}}
       break;
     case 0x1006 /* AL_VELOCITY */:
-      var velocity = AL.currentContext.ctx.listener._velocity || [0,0,0];
+      var velocity = AL.currentContext.ctx.listener._velocity;
       {{{ makeSetValue('values', '0', 'velocity[0]', 'float') }}}
       {{{ makeSetValue('values', '4', 'velocity[1]', 'float') }}}
       {{{ makeSetValue('values', '8', 'velocity[2]', 'float') }}}
       break;
     case 0x100F /* AL_ORIENTATION */:
-      var orientation = AL.currentContext.ctx.listener._orientation || [0,0,0,0,0,0];
+      var orientation = AL.currentContext.ctx.listener._orientation;
       {{{ makeSetValue('values', '0', 'orientation[0]', 'float') }}}
       {{{ makeSetValue('values', '4', 'orientation[1]', 'float') }}}
       {{{ makeSetValue('values', '8', 'orientation[2]', 'float') }}}
@@ -1339,11 +1358,15 @@ var LibraryOpenAL = {
     }
     switch (param) {
     case 0x1004 /* AL_POSITION */:
-      AL.currentContext.ctx.listener._position = [v1, v2, v3];
+      AL.currentContext.ctx.listener._position[0] = v1;
+      AL.currentContext.ctx.listener._position[1] = v2;
+      AL.currentContext.ctx.listener._position[2] = v3;
       AL.currentContext.ctx.listener.setPosition(v1, v2, v3);
       break;
     case 0x1006 /* AL_VELOCITY */:
-      AL.currentContext.ctx.listener._velocity = [v1, v2, v3];
+      AL.currentContext.ctx.listener._velocity[0] = v1;
+      AL.currentContext.ctx.listener._velocity[1] = v2;
+      AL.currentContext.ctx.listener._velocity[2] = v3;
       AL.currentContext.ctx.listener.setVelocity(v1, v2, v3);
       break;
     default:
@@ -1367,14 +1390,18 @@ var LibraryOpenAL = {
       var x = {{{ makeGetValue('values', '0', 'float') }}};
       var y = {{{ makeGetValue('values', '4', 'float') }}};
       var z = {{{ makeGetValue('values', '8', 'float') }}};
-      AL.currentContext.ctx.listener._position = [x, y, z];
+      AL.currentContext.ctx.listener._position[0] = x;
+      AL.currentContext.ctx.listener._position[1] = y;
+      AL.currentContext.ctx.listener._position[2] = z;
       AL.currentContext.ctx.listener.setPosition(x, y, z);
       break;
     case 0x1006 /* AL_VELOCITY */:
       var x = {{{ makeGetValue('values', '0', 'float') }}};
       var y = {{{ makeGetValue('values', '4', 'float') }}};
       var z = {{{ makeGetValue('values', '8', 'float') }}};
-      AL.currentContext.ctx.listener._velocity = [x, y, z];
+      AL.currentContext.ctx.listener._velocity[0] = x;
+      AL.currentContext.ctx.listener._velocity[1] = y;
+      AL.currentContext.ctx.listener._velocity[2] = z;
       AL.currentContext.ctx.listener.setVelocity(x, y, z);
       break;
     case 0x100F /* AL_ORIENTATION */:
@@ -1384,7 +1411,12 @@ var LibraryOpenAL = {
       var x2 = {{{ makeGetValue('values', '12', 'float') }}};
       var y2 = {{{ makeGetValue('values', '16', 'float') }}};
       var z2 = {{{ makeGetValue('values', '20', 'float') }}};
-      AL.currentContext.ctx.listener._orientation = [x, y, z, x2, y2, z2];
+      AL.currentContext.ctx.listener._orientation[0] = x;
+      AL.currentContext.ctx.listener._orientation[1] = y;
+      AL.currentContext.ctx.listener._orientation[2] = z;
+      AL.currentContext.ctx.listener._orientation[3] = x2;
+      AL.currentContext.ctx.listener._orientation[4] = y2;
+      AL.currentContext.ctx.listener._orientation[5] = z2;
       AL.currentContext.ctx.listener.setOrientation(x, y, z, x2, y2, z2);
       break;
     default:
