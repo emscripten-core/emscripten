@@ -562,7 +562,7 @@ function UTF8ArrayToString(u8Array, idx, maxBytes) {
 }
 {{{ maybeExport('UTF8ArrayToString') }}}
 
-// Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the emscripten HEAP, returns
+// Given a pointer 'ptr' to an UTF8-encoded string (optionally null terminated) in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
 // len parameter (optional): bytewise length in case string is not null terminated
 
