@@ -473,7 +473,7 @@ var LibraryOpenAL = {
       AL.updateSource(src);
       break;
     case 0x202 /* AL_SOURCE_RELATIVE */:
-      if (value === 1 /* AL_TRUE */) {
+      if (value === 0 /* AL_FALSE */) {
         if (src.panner) {
           src.panner = null;
 
@@ -482,7 +482,7 @@ var LibraryOpenAL = {
 
           src.gain.connect(AL.currentContext.gain);
         }
-      } else if (value === 0 /* AL_FALSE */) {
+      } else if (value === 1 /* AL_TRUE */) {
         if (!src.panner) {
           var panner = src.panner = AL.currentContext.ctx.createPanner();
           panner.panningModel = "equalpower";
@@ -1242,7 +1242,7 @@ var LibraryOpenAL = {
       {{{ makeSetValue('values', '8', 'velocity[2]', 'float') }}}
       break;
     case 0x100F /* AL_ORIENTATION */:
-      var orientation = AL.currentContext.ctx.listener._orientation || [0,0,0,0,0,0];
+      var orientation = AL.currentContext.ctx.listener._orientation || [0,0,-1,0,1,0];
       {{{ makeSetValue('values', '0', 'orientation[0]', 'float') }}}
       {{{ makeSetValue('values', '4', 'orientation[1]', 'float') }}}
       {{{ makeSetValue('values', '8', 'orientation[2]', 'float') }}}
@@ -1333,7 +1333,7 @@ var LibraryOpenAL = {
   alListener3f: function(param, v1, v2, v3) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
-      console.error("alListenerfv called without a valid context");
+      console.error("alListener3f called without a valid context");
 #endif
       return;
     }
