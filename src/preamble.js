@@ -514,18 +514,19 @@ function stringToAscii(str, outPtr) {
 
 // Given a pointer 'ptr' to an UTF8-encoded string (optionally null terminated) in the given array that contains uint8 values, 
 // returns a copy of that string as a Javascript String object.
-// maxBytes parameter (optional): Limits the number of bytes to read from the array at most. String read finishes when a null terminator is met, 
-// or when this many bytes have been read, whichever comes first. Note that partial/incomplete UTF-8 bytes at the end are discarded.
+// sizeInBytes parameter (optional): specify size of bytes to be converted in the array. When sizeInBytes is used, 
+//                                   null bytes inside or at the end of the buffer are not interpreted as terminators.
+//                                   Note that partial/incomplete UTF-8 sequences at the end are discarded.
 
-function UTF8ArrayToString(u8Array, idx, maxBytes) {
+function UTF8ArrayToString(u8Array, idx, sizeInBytes) {
   var u0, u1, u2, u3, u4, u5;
 
   var str = '';
-  var endIdx = (typeof maxBytes === 'undefined') ? Infinity : (idx + maxBytes);
+  var endIdx = (typeof sizeInBytes === 'undefined') ? Infinity : (idx + sizeInBytes);
   while (idx < endIdx) {
     // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description and https://www.ietf.org/rfc/rfc2279.txt and https://tools.ietf.org/html/rfc3629
     u0 = u8Array[idx++];
-    if (!u0) { break; }
+    if (!u0 && (endIdx === Infinity)) { break; }
     if (!(u0 & 0x80)) { str += String.fromCharCode(u0); continue; }
     if (idx >= endIdx) { break; }
     u1 = u8Array[idx++] & 63;
