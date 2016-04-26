@@ -390,9 +390,7 @@ module({
             expected += '\u5F9E\u7345\u5B50';
             //Euro sign
             expected += '\u20AC';
-            
-            var test = cm.get_non_ascii_string();
-            
+                     
             assert.equal(expected, cm.get_non_ascii_string());
         });
 
