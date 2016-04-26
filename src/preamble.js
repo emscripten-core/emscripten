@@ -572,27 +572,28 @@ function UTF8ToString(ptr, len) {
 {{{ maybeExport('UTF8ToString') }}}
 
 // Copies the given Javascript String object 'str' to the given byte array at address 'outIdx',
-// encoded in UTF8 form and null-terminated. The copy will require at most str.length*4+1 bytes of space in the HEAP.
+// encoded in UTF8 form and optionally null-terminated. The copy will require at most str.length*4+1 bytes of space in the HEAP.
 // Use the function lengthBytesUTF8() to compute the exact number of bytes (excluding null terminator) that this function will write.
 // Parameters:
 //   str: the Javascript string to copy.
 //   outU8Array: the array to copy to. Each index in this array is assumed to be one 8-byte element.
 //   outIdx: The starting offset in the array to begin the copying.
-//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null 
-//                    terminator, i.e. if maxBytesToWrite=1, only the null terminator will be written and nothing else.
+//   maxBytesToWrite: The maximum number of bytes this function can write to the array. 
+//                    When null terminator is used (see skipNullTerminator): This count should include the null terminator, 
+//                    i.e. if maxBytesToWrite=1, only the null terminator will be written and nothing else.
 //                    maxBytesToWrite=0 does not write any bytes to the output, not even the null terminator.
-//   withNullTermination: request null terminator to be appended; optional, defaults to true
-// Returns the number of bytes written, EXCLUDING the null terminator.
+//   skipNullTerminator: request null terminator to be omitted; optional, defaults to false
+// Returns the number of bytes written, EXCLUDING the optional null terminator.
 
-function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite, withNullTermination) {
+function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite, skipNullTerminator) {
   if (!(maxBytesToWrite > 0)) // Parameter maxBytesToWrite is not optional. Negative values, 0, null, undefined and false each don't write out any bytes.
     return 0;
 
-  var withNullTermination_ = (typeof withNullTermination !== 'undefined') ? withNullTermination : true;
+  var omitNullTerminator = (typeof skipNullTerminator === 'undefined') ? false : skipNullTerminator;
   var startIdx = outIdx;
-  var endIdx = outIdx + maxBytesToWrite;
-  if (withNullTermination_)
-    endIdx--;
+  var endIdx = outIdx + maxBytesToWrite - 1;//with null terminator, maxBytesToWrite contains one extra byte not available for string data
+  if (omitNullTerminator)
+    endIdx++;
   for (var i = 0; i < str.length; ++i) {
     // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
     // See http://unicode.org/faq/utf_bom.html#utf16-3
@@ -634,26 +635,26 @@ function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite, withNullTer
       outU8Array[outIdx++] = 0x80 | (u & 63);
     }
   }
-  // Null-terminate the pointer to the buffer.
-  if (withNullTermination_) {
-    outU8Array[outIdx] = 0;
-  } else {
+  // Null-terminate the pointer to the buffer if requested.
+  if (omitNullTerminator) {
     outIdx--;
+  } else {
+    outU8Array[outIdx] = 0;
   }
   return outIdx - startIdx;
 }
 {{{ maybeExport('stringToUTF8Array') }}}
 
 // Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
-// null-terminated and encoded in UTF8 form. The copy will require at most str.length*4+1 bytes of space in the HEAP.
+// optionally null-terminated and encoded in UTF8 form. The copy will require at most str.length*4+1 bytes of space in the HEAP.
 // Use the function lengthBytesUTF8() to compute the exact number of bytes (excluding null terminator) that this function will write.
-// Returns the number of bytes written, EXCLUDING the null terminator.
+// Returns the number of bytes written, EXCLUDING the optional null terminator.
 
 function stringToUTF8(str, outPtr, maxBytesToWrite, withNullTermination) {
 #if ASSERTIONS
   assert(typeof maxBytesToWrite == 'number', 'stringToUTF8(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
 #endif
-  return stringToUTF8Array(str, {{{ heapAndOffset('HEAPU8', 'outPtr') }}}, maxBytesToWrite, withNullTermination);
+  return stringToUTF8Array(str, {{{ heapAndOffset('HEAPU8', 'outPtr') }}}, maxBytesToWrite, !withNullTermination);
 }
 {{{ maybeExport('stringToUTF8') }}}
 
