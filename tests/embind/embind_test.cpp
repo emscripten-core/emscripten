@@ -2831,6 +2831,9 @@ public:
     int getInt() const { return IntValue; }
     bool getBool() const { return BooleanValue; }
 
+
+    void setFloat(float v) { FloatValue = v; }
+
     void Reset(){
         FloatValue = 0.0f;
         IntValue = 0;
@@ -2858,5 +2861,6 @@ EMSCRIPTEN_BINDINGS(trivial_objects){
         .constructor<float>()
         .constructor<float, int>()
         .function("getFloat", &TrivialClass::getFloat)
+        .function("setFloat", &TrivialClass::setFloat)
         ;
 }

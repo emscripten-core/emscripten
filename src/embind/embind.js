@@ -2187,10 +2187,21 @@ var LibraryEmbind = {
     return o;
   },
 
+  $RegisteredTrivialObject_copyAndFreePtr: function(a){
+      var ptr = a[1];
+      var size = a[2];
+      a[0].$$.buffer = HEAP32['buffer'].slice(ptr, ptr + size);
+      _free(ptr);
+  },
+  $RegisteredTrivialObject_freePtr: function(ptr){
+      _free(ptr);
+  },
+  $RegisteredTrivialObject_toWireType__deps:[
+      '$RegisteredTrivialObject_copyAndFreePtr', '$RegisteredTrivialObject_freePtr'],
   $RegisteredTrivialObject_toWireType: function(destructors, object) {
 
       //:TODO: verify alignment
-    var local_heap = new Uint32Array( object.$$ );
+    var local_heap = new Uint32Array( object.$$.buffer );
     var ptr = _malloc( this.size );
     var heap = HEAPU32;
 
@@ -2199,7 +2210,11 @@ var LibraryEmbind = {
     }
 
     if (destructors !== null) {
-        destructors.push(_free, ptr);
+        if(!this.isConst){
+            destructors.push(RegisteredTrivialObject_copyAndFreePtr, [object, ptr, this.size]);
+        } else {
+            destructors.push(RegisteredTrivialObject_freePtr, ptr);
+        }
     }
 
     return ptr;
@@ -2208,7 +2223,7 @@ var LibraryEmbind = {
   $makeTrivialClassHandle: function(prototype, objectBuffer) {
     return Object.create(prototype, {
         $$: {
-            value: objectBuffer,
+            value: {buffer:objectBuffer},
         }
     });
   },
