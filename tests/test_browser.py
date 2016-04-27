@@ -2576,6 +2576,9 @@ window.close = function() {
     ''')
     self.btest('sdl2_pumpevents.c', expected='7', args=['--pre-js', 'pre.js', '-s', 'USE_SDL=2'])
 
+  def test_sdl2_timer(self):
+    self.btest('sdl2_timer.c', expected='5', args=['-s', 'USE_SDL=2'])
+
   def test_sdl2_canvas_size(self):
     self.btest('sdl2_canvas_size.c', expected='1', args=['-s', 'USE_SDL=2'])
 
