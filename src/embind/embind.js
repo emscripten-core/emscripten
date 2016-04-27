@@ -2147,6 +2147,348 @@ var LibraryEmbind = {
     });
   },
 
+  $init_RegisteredTrivialObject__deps: [
+    '$RegisteredTrivialObject_fromWireType', '$RegisteredTrivialObject_toWireType'],
+  $init_RegisteredTrivialObject: function() {
+    RegisteredTrivialObject.prototype['argPackAdvance'] = 8;
+    RegisteredTrivialObject.prototype['readValueFromPointer'] = function(){ throw ":TODO: readValueFromPointer";};
+    RegisteredTrivialObject.prototype['fromWireType'] = RegisteredTrivialObject_fromWireType;
+    RegisteredTrivialObject.prototype['toWireType'] = RegisteredTrivialObject_toWireType;
+  },
+
+  $RegisteredTrivialObject__deps: [
+    '$init_RegisteredTrivialObject'],
+  $RegisteredTrivialObject__postset: 'init_RegisteredTrivialObject()',
+  $RegisteredTrivialObject: function(
+    name,
+    size,
+    registeredClass,
+    isReference,
+    isConst
+  ) {
+    this.name = name;
+    this.size= size;
+    this.registeredClass = registeredClass;
+    this.isReference = isReference;
+    this.isConst = isConst;
+  },
+
+  $RegisteredTrivialObject_fromWireType__deps: [
+     '$makeTrivialClassHandle'],
+  $RegisteredTrivialObject_fromWireType: function(ptr) {
+
+    var buffer = HEAPU32['buffer'];
+    var objectBuffer = buffer.slice( ptr, ptr + this.size );
+
+    var o = makeTrivialClassHandle(this.registeredClass.instancePrototype, objectBuffer);
+
+    //C++ wire is making copy, so free it here
+    this.registeredClass.rawDestructor(o);
+    return o;
+  },
+
+  $RegisteredTrivialObject_toWireType: function(destructors, object) {
+
+      //:TODO: verify alignment
+    var local_heap = new Uint32Array( object.$$ );
+    var ptr = _malloc( this.size );
+    var heap = HEAPU32;
+
+    for(i=0; i< this.size; i+=4){
+        heap[ (ptr + i) >> 2 ] = local_heap[i>>2];
+    }
+
+    if (destructors !== null) {
+        destructors.push(_free, ptr);
+    }
+
+    return ptr;
+  },
+
+  $makeTrivialClassHandle: function(prototype, objectBuffer) {
+    return Object.create(prototype, {
+        $$: {
+            value: objectBuffer,
+        }
+    });
+  },
+
+  $init_TrivialClassHandle__deps: [
+    '$TrivialClassHandle_isAliasOf', '$TrivialClassHandle_clone'],
+  $init_TrivialClassHandle: function() {
+    ClassHandle.prototype['isAliasOf'] = ClassHandle_isAliasOf;
+    ClassHandle.prototype['clone'] = ClassHandle_clone;
+  },
+
+  $TrivialClassHandle__deps: ['$init_TrivialClassHandle'],
+  $TrivialClassHandle__postset: 'init_TrivialClassHandle()',
+  $TrivialClassHandle: function() {
+  },
+
+  $TrivialClassHandle_isAliasOf: function(other) {
+      throw ":TODO:";
+    /*if (!(this instanceof ClassHandle)) {
+        return false;
+    }
+    if (!(other instanceof ClassHandle)) {
+        return false;
+    }
+
+    var leftClass = this.$$.ptrType.registeredClass;
+    var left = this.$$.ptr;
+    var rightClass = other.$$.ptrType.registeredClass;
+    var right = other.$$.ptr;
+
+    while (leftClass.baseClass) {
+        left = leftClass.upcast(left);
+        leftClass = leftClass.baseClass;
+    }
+
+    while (rightClass.baseClass) {
+        right = rightClass.upcast(right);
+        rightClass = rightClass.baseClass;
+    }
+
+    return leftClass === rightClass && left === right;
+    */
+  },
+
+  $TrivialClassHandle_clone: function() {
+      throw ":TODO:";
+    /*if (!this.$$.ptr) {
+        throwInstanceAlreadyDeleted(this);
+    }
+
+    if (this.$$.preservePointerOnDelete) {
+        this.$$.count.value += 1;
+        return this;
+    } else {
+        var clone = Object.create(Object.getPrototypeOf(this), {
+            $$: {
+                value: shallowCopyInternalPointer(this.$$),
+            }
+        });
+
+        clone.$$.count.value += 1;
+        clone.$$.deleteScheduled = false;
+        return clone;
+    }*/
+  },
+
+  _embind_register_trivial_class__deps: [
+    '$BindingError', '$ClassHandle', '$createNamedFunction',
+    '$registeredPointers', '$exposePublicSymbol',
+    '$makeLegalFunctionName', '$readLatin1String',
+    '$RegisteredClass', '$RegisteredTrivialObject', '$replacePublicSymbol',
+    '$requireFunction', '$throwUnboundTypeError',
+    '$whenDependentTypesAreResolved'],
+  _embind_register_trivial_class: function(
+    rawType,
+    rawPointerType,
+    rawConstPointerType,
+    getActualTypeSignature,
+    getActualType,
+    name,
+    classSize,
+    destructorSignature,
+    rawDestructor
+  ) {
+    name = readLatin1String(name);
+    getActualType = requireFunction(getActualTypeSignature, getActualType);
+    rawDestructor = requireFunction(destructorSignature, rawDestructor);
+    var legalFunctionName = makeLegalFunctionName(name);
+
+    exposePublicSymbol(legalFunctionName, function() {
+        // this code cannot run if baseClassRawType is zero
+        throwUnboundTypeError('Cannot construct ' + name + ' due to unbound types', [baseClassRawType]);
+    });
+
+    whenDependentTypesAreResolved(
+        [rawType, rawPointerType, rawConstPointerType],
+        [],
+        function() {
+
+            var baseClass;
+            var basePrototype;
+            basePrototype = ClassHandle.prototype;
+
+            var constructor = createNamedFunction(legalFunctionName, function() {
+
+                if (Object.getPrototypeOf(this) !== instancePrototype) {
+                    throw new BindingError("Use 'new' to construct " + name);
+                }
+                if (undefined === registeredClass.constructor_body) {
+                    throw new BindingError(name + " has no accessible constructor");
+                }
+                var body = registeredClass.constructor_body[arguments.length];
+                if (undefined === body) {
+                    throw new BindingError("Tried to invoke ctor of " + name + " with invalid number of parameters (" + arguments.length + ") - expected (" + Object.keys(registeredClass.constructor_body).toString() + ") parameters instead!");
+                }
+
+                return body.apply(this, arguments);
+            });
+
+            var instancePrototype = Object.create(basePrototype, {
+                constructor: { value: constructor },
+            });
+
+            constructor.prototype = instancePrototype;
+
+            var registeredClass = new RegisteredClass(
+                name,
+                constructor,
+                instancePrototype,
+                rawDestructor,
+                null,
+                getActualType,
+                null,
+                null);
+
+            var referenceConverter = new RegisteredTrivialObject(
+                name,
+                classSize,
+                registeredClass,
+                true,
+                false,
+                false);
+
+            var pointerConverter = new RegisteredTrivialObject(
+                name + '*',
+                classSize,
+                registeredClass,
+                false,
+                false,
+                false);
+
+            var constPointerConverter = new RegisteredTrivialObject(
+                name + ' const*',
+                classSize,
+                registeredClass,
+                false,
+                true,
+                false);
+
+            registeredPointers[rawType] = {
+                pointerType: pointerConverter,
+                constPointerType: constPointerConverter
+            };
+
+            replacePublicSymbol(legalFunctionName, constructor);
+
+            return [referenceConverter, pointerConverter, constPointerConverter];
+        }
+    );
+},
+ _embind_register_trivial_class_constructor__deps: [
+   '$heap32VectorToArray', '$requireFunction', '$runDestructors',
+   '$throwBindingError', '$whenDependentTypesAreResolved'],
+ _embind_register_trivial_class_constructor: function(
+   rawClassType,
+   argCount,
+   rawArgTypesAddr,
+   invokerSignature,
+   invoker,
+   rawConstructor
+ ) {
+
+   var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
+   invoker = requireFunction(invokerSignature, invoker);
+
+   whenDependentTypesAreResolved([], [rawClassType], function(classType) {
+       classType = classType[0];
+       var humanName = 'constructor ' + classType.name;
+
+       if (undefined === classType.registeredClass.constructor_body) {
+           classType.registeredClass.constructor_body = [];
+       }
+       if (undefined !== classType.registeredClass.constructor_body[argCount - 1]) {
+           throw new BindingError("Cannot register multiple constructors with identical number of parameters (" + (argCount-1) + ") for class '" + classType.name + "'! Overload resolution is currently only performed using the parameter count, not actual type info!");
+       }
+       classType.registeredClass.constructor_body[argCount - 1] = function unboundTypeHandler() {
+           throwUnboundTypeError('Cannot construct ' + classType.name + ' due to unbound types', rawArgTypes);
+       };
+
+       whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
+
+           classType.registeredClass.constructor_body[argCount - 1] = function constructor_body() {
+
+               if (arguments.length !== argCount - 1) {
+                   throwBindingError(humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
+               }
+               var destructors = [];
+               var args = new Array(argCount);
+               args[0] = rawConstructor;
+               for (var i = 1; i < argCount; ++i) {
+                   args[i] = argTypes[i]['toWireType'](destructors, arguments[i - 1]);
+               }
+
+               var ptr = invoker.apply(null, args);
+               runDestructors(destructors);
+
+               return argTypes[0]['fromWireType'](ptr);
+           };
+           return [];
+       });
+       return [];
+   });
+ },
+
+ _embind_register_trivial_class_function__deps: [
+   '$craftInvokerFunction', '$heap32VectorToArray', '$readLatin1String',
+   '$requireFunction', '$throwUnboundTypeError',
+   '$whenDependentTypesAreResolved'],
+ _embind_register_trivial_class_function: function(
+   rawClassType,
+   methodName,
+   argCount,
+   rawArgTypesAddr, // [ReturnType, ThisType, Args...]
+   invokerSignature,
+   rawInvoker,
+   context
+ ) {
+   var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
+   methodName = readLatin1String(methodName);
+   rawInvoker = requireFunction(invokerSignature, rawInvoker);
+
+   whenDependentTypesAreResolved([], [rawClassType], function(classType) {
+       classType = classType[0];
+       var humanName = classType.name + '.' + methodName;
+
+       function unboundTypesHandler() {
+           throwUnboundTypeError('Cannot call ' + humanName + ' due to unbound types', rawArgTypes);
+       }
+
+       var proto = classType.registeredClass.instancePrototype;
+       var method = proto[methodName];
+       if (undefined === method || (undefined === method.overloadTable && method.className !== classType.name && method.argCount === argCount - 2)) {
+           // This is the first overload to be registered, OR we are replacing a function in the base class with a function in the derived class.
+           unboundTypesHandler.argCount = argCount - 2;
+           unboundTypesHandler.className = classType.name;
+           proto[methodName] = unboundTypesHandler;
+       } else {
+           // There was an existing function with the same name registered. Set up a function overload routing table.
+           ensureOverloadTable(proto, methodName, humanName);
+           proto[methodName].overloadTable[argCount - 2] = unboundTypesHandler;
+       }
+
+       whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
+
+           var memberFunction = craftInvokerFunction(humanName, argTypes, classType, rawInvoker, context);
+
+           // Replace the initial unbound-handler-stub function with the appropriate member function, now that all types
+           // are resolved. If multiple overloads are registered for this function, the function goes into an overload table.
+           if (undefined === proto[methodName].overloadTable) {
+               proto[methodName] = memberFunction;
+           } else {
+               proto[methodName].overloadTable[argCount - 2] = memberFunction;
+           }
+
+           return [];
+       });
+       return [];
+   });
+ },
+
   _embind_create_inheriting_constructor__deps: [
     '$createNamedFunction', '_emval_register',
     '$PureVirtualError', '$readLatin1String',

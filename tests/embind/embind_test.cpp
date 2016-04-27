@@ -2806,3 +2806,57 @@ EMSCRIPTEN_BINDINGS(static_member) {
         .class_property("v", &HasStaticMember::v)
         ;
 }
+
+class TrivialClass{
+
+public:
+
+    float FloatValue;
+    int IntValue;
+    bool BooleanValue;
+
+    TrivialClass() = default;
+
+    TrivialClass( float value )
+        : FloatValue( value ), IntValue( 0 ), BooleanValue( true ){
+        printf(" Constructed %f", value );
+    }
+
+    TrivialClass( float value, int int_value )
+        : FloatValue( value ), IntValue( int_value ), BooleanValue( false ){
+            printf(" Constructed %f", value );
+    }
+
+    float getFloat() const { return FloatValue; }
+    int getInt() const { return IntValue; }
+    bool getBool() const { return BooleanValue; }
+
+    void Reset(){
+        FloatValue = 0.0f;
+        IntValue = 0;
+        BooleanValue = false;
+    }
+
+};
+
+TrivialClass trivialWrite(){
+    return TrivialClass( 1.234f, 5 );
+}
+
+bool trivialRead( const TrivialClass & value ){
+    return value.FloatValue == 1.0f
+        && value.IntValue == 2
+        && value.BooleanValue == false;
+}
+
+EMSCRIPTEN_BINDINGS(trivial_objects){
+
+    function( "trivialRead", trivialRead );
+    function( "trivialWrite", trivialWrite );
+
+    trivial_class<TrivialClass>("TrivialClass")
+        .constructor<float>()
+        .constructor<float, int>()
+        .function("getFloat", &TrivialClass::getFloat)
+        ;
+}

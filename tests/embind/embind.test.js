@@ -2545,6 +2545,15 @@ module({
             assert.equal(30, cm.HasStaticMember.v);
         });
     });
+
+    BaseFixture.extend("trivia class", function() {
+        test("can construct trivial objects", function() {
+            var e = new cm.TrivialClass(1.5);
+            console.log( JSON.stringify( e, null, 4));
+            assert.instanceof(e, cm.TrivialClass);
+            assert.equal(1.5, e.getFloat());
+        });
+    });
 });
 
 /* global run_all_tests */
