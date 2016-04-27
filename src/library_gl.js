@@ -1083,10 +1083,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
         Module.printErr('GL_INVALID_ENUM due to unknown format in getTexPixelData, type: ' + type + ', format: ' + format);
 #endif
-        return {
-          pixels: null,
-          internalFormat: 0x0
-        };
+        return null;
     }
     switch (type) {
       case 0x1401 /* GL_UNSIGNED_BYTE */:
@@ -1116,34 +1113,27 @@ var LibraryGL = {
 #if GL_ASSERTIONS
         Module.printErr('GL_INVALID_ENUM in glTex[Sub]Image/glReadPixels, type: ' + type + ', format: ' + format);
 #endif
-        return {
-          pixels: null,
-          internalFormat: 0x0
-        };
+        return null;
     }
     var bytes = emscriptenWebGLComputeImageSize(width, height, sizePerPixel, GL.unpackAlignment);
     if (type == 0x1401 /* GL_UNSIGNED_BYTE */) {
-      pixels = {{{ makeHEAPView('U8', 'pixels', 'pixels+bytes') }}};
+      return {{{ makeHEAPView('U8', 'pixels', 'pixels+bytes') }}};
     } else if (type == 0x1406 /* GL_FLOAT */) {
 #if GL_ASSERTIONS
       assert((pixels & 3) == 0, 'Pointer to float data passed to texture get function must be aligned to four bytes!');
 #endif
-      pixels = {{{ makeHEAPView('F32', 'pixels', 'pixels+bytes') }}};
+      return {{{ makeHEAPView('F32', 'pixels', 'pixels+bytes') }}};
     } else if (type == 0x1405 /* GL_UNSIGNED_INT */ || type == 0x84FA /* UNSIGNED_INT_24_8_WEBGL */) {
 #if GL_ASSERTIONS
       assert((pixels & 3) == 0, 'Pointer to integer data passed to texture get function must be aligned to four bytes!');
 #endif
-      pixels = {{{ makeHEAPView('U32', 'pixels', 'pixels+bytes') }}};
+      return {{{ makeHEAPView('U32', 'pixels', 'pixels+bytes') }}};
     } else {
 #if GL_ASSERTIONS
       assert((pixels & 1) == 0, 'Pointer to int16 data passed to texture get function must be aligned to two bytes!');
 #endif
-      pixels = {{{ makeHEAPView('U16', 'pixels', 'pixels+bytes') }}};
+      return {{{ makeHEAPView('U16', 'pixels', 'pixels+bytes') }}};
     }
-    return {
-      pixels: pixels,
-      internalFormat: internalFormat
-    };
   },
 
   glTexImage2D__sig: 'viiiiiiiii',
@@ -1151,9 +1141,7 @@ var LibraryGL = {
   glTexImage2D: function(target, level, internalFormat, width, height, border, format, type, pixels) {
     var pixelData;
     if (pixels) {
-      var data = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat);
-      pixelData = data.pixels;
-      internalFormat = data.internalFormat;
+      pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat);
     } else {
       pixelData = null;
     }
@@ -1165,7 +1153,7 @@ var LibraryGL = {
   glTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, type, pixels) {
     var pixelData;
     if (pixels) {
-      pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, -1).pixels;
+      pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, 0);
     } else {
       pixelData = null;
     }
@@ -1175,15 +1163,15 @@ var LibraryGL = {
   glReadPixels__sig: 'viiiiiii',
   glReadPixels__deps: ['$emscriptenWebGLGetTexPixelData'],
   glReadPixels: function(x, y, width, height, format, type, pixels) {
-    var data = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, format);
-    if (!data.pixels) {
+    var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, format);
+    if (!pixelData) {
       GL.recordError(0x0500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
       Module.printErr('GL_INVALID_ENUM in glReadPixels: Unrecognized combination of type=' + type + ' and format=' + format + '!');
 #endif
       return;
     }
-    GLctx.readPixels(x, y, width, height, format, type, data.pixels);
+    GLctx.readPixels(x, y, width, height, format, type, pixelData);
   },
 
   glBindTexture__sig: 'vii',
