@@ -1540,25 +1540,23 @@ namespace emscripten {
             return *this;
         }
 
-/*
-        template<typename ReturnType, typename ThisType, typename... Args, typename... Policies>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (*function)(ThisType, Args...), Policies...) const {
+        template<typename ReturnType, typename ThisType, typename... Args>
+        EMSCRIPTEN_ALWAYS_INLINE const trivial_class& function(const char* methodName, ReturnType (*function)(ThisType, Args...)) const {
             using namespace internal;
 
-            typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
+            typename WithPolicies<>::template ArgTypeList<ReturnType, ThisType, Args...> args;
             auto invoke = &FunctionInvoker<decltype(function), ReturnType, ThisType, Args...>::invoke;
-            _embind_register_class_function(
+            _embind_register_trivial_class_function(
                 TypeID<ClassType>::get(),
                 methodName,
                 args.getCount(),
                 args.getTypes(),
                 getSignature(invoke),
                 reinterpret_cast<GenericFunction>(invoke),
-                getContext(function),
-                false);
+                getContext(function));
             return *this;
         }
-
+/*
         template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>
         EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, const FieldType ClassType::*field) const {
             using namespace internal;

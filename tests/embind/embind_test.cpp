@@ -2834,7 +2834,7 @@ public:
 
     void setFloat(float v) { FloatValue = v; }
 
-    void Reset(){
+    void reset(){
         FloatValue = 0.0f;
         IntValue = 0;
         BooleanValue = false;
@@ -2842,13 +2842,14 @@ public:
 
 };
 
-TrivialClass trivialWrite(){
-    return TrivialClass( 1.234f, 5 );
+void trivialWrite(TrivialClass & c){
+    c.FloatValue = 1.5f;
+    c.IntValue = 5;
 }
 
 bool trivialRead( const TrivialClass & value ){
-    return value.FloatValue == 1.0f
-        && value.IntValue == 2
+    return value.FloatValue == 0.0f
+        && value.IntValue == 0
         && value.BooleanValue == false;
 }
 
@@ -2861,6 +2862,9 @@ EMSCRIPTEN_BINDINGS(trivial_objects){
         .constructor<float>()
         .constructor<float, int>()
         .function("getFloat", &TrivialClass::getFloat)
+        .function("getInt", &TrivialClass::getInt)
         .function("setFloat", &TrivialClass::setFloat)
+        .function("reset", &TrivialClass::reset)
+        .function("trivialRead", trivialRead);
         ;
 }

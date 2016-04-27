@@ -2553,6 +2553,14 @@ module({
             assert.equal(1.5, e.getFloat());
             e.setFloat(1.0);
             assert.equal(1.0, e.getFloat());
+
+            e.reset();
+            assert.equal( true, e.trivialRead());
+            assert.equal( true, cm.trivialRead(e));
+
+            cm.trivialWrite(e);
+            assert.equal(1.5, e.getFloat());
+            assert.equal(5, e.getInt());
         });
     });
 });
