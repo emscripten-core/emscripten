@@ -242,6 +242,8 @@ var LibraryPThread = {
             Module['print']('Thread ' + e.data.threadId + ': ' + e.data.text);
           } else if (e.data.cmd === 'printErr') {
             Module['printErr']('Thread ' + e.data.threadId + ': ' + e.data.text);
+          } else if (e.data.cmd == 'alert') {
+            alert('Thread ' + e.data.threadId + ': ' + e.data.text);
           } else if (e.data.cmd === 'exit') {
             // todo 
           } else if (e.data.cmd === 'cancelDone') {
