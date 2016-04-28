@@ -5,7 +5,7 @@
 #include <emscripten.h>
 #endif
 
-extern "C" int main(int argc, char** argv) {
+int main(int argc, char** argv) {
   printf("hello, world!\n");
 
   SDL_Init(SDL_INIT_VIDEO);
