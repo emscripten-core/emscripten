@@ -128,9 +128,9 @@ def run():
         break
 
   if len(sys.argv) == 1 or '--help' in sys.argv:
-    # Documentation for emcc and its options must be updated in: 
+    # Documentation for emcc and its options must be updated in:
     #    site/source/docs/tools_reference/emcc.rst
-    # A prebuilt local version of the documentation is available at: 
+    # A prebuilt local version of the documentation is available at:
     #    site/build/text/docs/tools_reference/emcc.txt
     #    (it is read from there and printed out when --help is invoked)
     # You can also build docs locally as HTML or other formats in site/
@@ -241,7 +241,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         idx += 1
 
     if compiler == shared.EMCC: compiler = [shared.PYTHON, shared.EMCC]
-    else: compiler = [compiler] 
+    else: compiler = [compiler]
     cmd = compiler + list(filter_emscripten_options(sys.argv[1:]))
     if not use_js: cmd += shared.EMSDK_OPTS + ['-D__EMSCRIPTEN__', '-DEMSCRIPTEN']
     if use_js: cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'] # configure tests should fail when an undefined symbol exists
@@ -475,6 +475,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       except:
         raise Exception(err_msg)
       return level
+
+    def has_fixed_language_mode(args):
+      check_next = False
+      for item in args:
+        if check_next:
+          if item in ("c++", "c"):
+            return True
+          else:
+            check_next = False
+        if item.startswith("-x"):
+          lmode = item[2:] if len(item) > 2 else None
+          if lmode in ("c++", "c"):
+            return True
+          else:
+            check_next = True
+            continue
+      return False
 
     should_exit = False
 
@@ -812,8 +829,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               logging.error(arg + ': Unknown format, not a static library!')
             exit(1)
         else:
-          logging.error(arg + ": Input file has an unknown suffix, don't know what to do with it!")
-          exit(1)
+          if has_fixed_language_mode(newargs):
+            newargs[i] = ''
+            input_files.append((i, arg))
+            has_source_inputs = True
+          else:
+            logging.error(arg + ": Input file has an unknown suffix, don't know what to do with it!")
+            exit(1)
       elif arg.startswith('-L'):
         lib_dirs.append(arg[2:])
         newargs[i] = ''
@@ -1178,7 +1200,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
     for i, input_file in input_files:
       file_ending = filename_type_ending(input_file)
-      if file_ending.endswith(SOURCE_ENDINGS):
+      if file_ending.endswith(SOURCE_ENDINGS) or has_fixed_language_mode(newargs):
         logging.debug('compiling source file: ' + input_file)
         output_file = get_bitcode_file(input_file)
         temp_files.append((i, output_file))
@@ -1281,7 +1303,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     log_time('calculate system libraries')
 
-    # final will be an array if linking is deferred, otherwise a normal string. 
+    # final will be an array if linking is deferred, otherwise a normal string.
     DEFAULT_FINAL = in_temp(target_basename + '.bc')
     def get_final():
       global final
@@ -1938,4 +1960,3 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
 if __name__ == '__main__':
   run()
-
