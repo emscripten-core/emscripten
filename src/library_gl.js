@@ -1065,45 +1065,55 @@ var LibraryGL = {
         numChannels = 2;
         break;
       case 0x1907 /* GL_RGB */:
+      case 0x8C40 /* GL_SRGB_EXT */:
 #if USE_WEBGL2
       case 0x8D98 /* GL_RGB_INTEGER */:
 #endif
-      case 0x8C40 /* GL_SRGB_EXT */:
         numChannels = 3;
         break;
       case 0x1908 /* GL_RGBA */:
+      case 0x8C42 /* GL_SRGB_ALPHA_EXT */:
 #if USE_WEBGL2
       case 0x8D99 /* GL_RGBA_INTEGER */:
 #endif
-      case 0x8C42 /* GL_SRGB_ALPHA_EXT */:
         numChannels = 4;
         break;
       default:
         GL.recordError(0x0500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
-        Module.printErr('GL_INVALID_ENUM due to unknown format in getTexPixelData, type: ' + type + ', format: ' + format);
+        Module.printErr('GL_INVALID_ENUM due to unknown format in glTex[Sub]Image/glReadPixels, format: ' + format);
 #endif
-        return {
-          pixels: null,
-          internalFormat: 0x0
-        };
+        return null;
     }
     switch (type) {
       case 0x1401 /* GL_UNSIGNED_BYTE */:
+#if USE_WEBGL2
+      case 0x1400 /* GL_BYTE */:
+#endif
         sizePerPixel = numChannels*1;
         break;
       case 0x1403 /* GL_UNSIGNED_SHORT */:
+      case 0x8D61 /* GL_HALF_FLOAT_OES */:
 #if USE_WEBGL2
       case 0x140B /* GL_HALF_FLOAT */:
+      case 0x1402 /* GL_SHORT */:
 #endif
-      case 0x8D61 /* GL_HALF_FLOAT_OES */:
         sizePerPixel = numChannels*2;
         break;
       case 0x1405 /* GL_UNSIGNED_INT */:
       case 0x1406 /* GL_FLOAT */:
+#if USE_WEBGL2
+      case 0x1404 /* GL_INT */:
+#endif
         sizePerPixel = numChannels*4;
         break;
-      case 0x84FA /* UNSIGNED_INT_24_8_WEBGL/UNSIGNED_INT_24_8 */:
+      case 0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */:
+#if USE_WEBGL2
+      case 0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */:
+      case 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */:
+      case 0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */:
+      case 0x84FA /* GL_UNSIGNED_INT_24_8 */:
+#endif
         sizePerPixel = 4;
         break;
       case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
@@ -1116,74 +1126,94 @@ var LibraryGL = {
 #if GL_ASSERTIONS
         Module.printErr('GL_INVALID_ENUM in glTex[Sub]Image/glReadPixels, type: ' + type + ', format: ' + format);
 #endif
-        return {
-          pixels: null,
-          internalFormat: 0x0
-        };
+        return null;
     }
     var bytes = emscriptenWebGLComputeImageSize(width, height, sizePerPixel, GL.unpackAlignment);
-    if (type == 0x1401 /* GL_UNSIGNED_BYTE */) {
-      pixels = {{{ makeHEAPView('U8', 'pixels', 'pixels+bytes') }}};
-    } else if (type == 0x1406 /* GL_FLOAT */) {
-#if GL_ASSERTIONS
-      assert((pixels & 3) == 0, 'Pointer to float data passed to texture get function must be aligned to four bytes!');
+    switch(type) {
+#if USE_WEBGL2
+      case 0x1400 /* GL_BYTE */:
+        return {{{ makeHEAPView('8', 'pixels', 'pixels+bytes') }}};
 #endif
-      pixels = {{{ makeHEAPView('F32', 'pixels', 'pixels+bytes') }}};
-    } else if (type == 0x1405 /* GL_UNSIGNED_INT */ || type == 0x84FA /* UNSIGNED_INT_24_8_WEBGL */) {
+      case 0x1401 /* GL_UNSIGNED_BYTE */:
+        return {{{ makeHEAPView('U8', 'pixels', 'pixels+bytes') }}};
+#if USE_WEBGL2
+      case 0x1402 /* GL_SHORT */:
 #if GL_ASSERTIONS
-      assert((pixels & 3) == 0, 'Pointer to integer data passed to texture get function must be aligned to four bytes!');
+        assert((pixels & 1) == 0, 'Pointer to int16 data passed to texture get function must be aligned to two bytes!');
 #endif
-      pixels = {{{ makeHEAPView('U32', 'pixels', 'pixels+bytes') }}};
-    } else {
+        return {{{ makeHEAPView('16', 'pixels', 'pixels+bytes') }}};
+      case 0x1404 /* GL_INT */:
 #if GL_ASSERTIONS
-      assert((pixels & 1) == 0, 'Pointer to int16 data passed to texture get function must be aligned to two bytes!');
+        assert((pixels & 3) == 0, 'Pointer to integer data passed to texture get function must be aligned to four bytes!');
 #endif
-      pixels = {{{ makeHEAPView('U16', 'pixels', 'pixels+bytes') }}};
+        return {{{ makeHEAPView('32', 'pixels', 'pixels+bytes') }}};
+#endif
+      case 0x1406 /* GL_FLOAT */:
+#if GL_ASSERTIONS
+        assert((pixels & 3) == 0, 'Pointer to float data passed to texture get function must be aligned to four bytes!');
+#endif
+        return {{{ makeHEAPView('F32', 'pixels', 'pixels+bytes') }}};
+      case 0x1405 /* GL_UNSIGNED_INT */:
+      case 0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */:
+#if USE_WEBGL2
+      case 0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */:
+      case 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */:
+      case 0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */:
+      case 0x84FA /* GL_UNSIGNED_INT_24_8 */:
+#endif
+#if GL_ASSERTIONS
+        assert((pixels & 3) == 0, 'Pointer to integer data passed to texture get function must be aligned to four bytes!');
+#endif
+        return {{{ makeHEAPView('U32', 'pixels', 'pixels+bytes') }}};
+      case 0x1403 /* GL_UNSIGNED_SHORT */:
+      case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
+      case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
+      case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
+      case 0x8D61 /* GL_HALF_FLOAT_OES */:
+#if USE_WEBGL2
+      case 0x140B /* GL_HALF_FLOAT */:
+#endif
+#if GL_ASSERTIONS
+        assert((pixels & 1) == 0, 'Pointer to int16 data passed to texture get function must be aligned to two bytes!');
+#endif
+        return {{{ makeHEAPView('U16', 'pixels', 'pixels+bytes') }}};
+      default:
+        GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_ENUM in glTex[Sub]Image/glReadPixels, type: ' + type);
+#endif
+        return null;
     }
-    return {
-      pixels: pixels,
-      internalFormat: internalFormat
-    };
   },
 
   glTexImage2D__sig: 'viiiiiiiii',
   glTexImage2D__deps: ['$emscriptenWebGLGetTexPixelData'],
   glTexImage2D: function(target, level, internalFormat, width, height, border, format, type, pixels) {
-    var pixelData;
-    if (pixels) {
-      var data = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat);
-      pixelData = data.pixels;
-      internalFormat = data.internalFormat;
-    } else {
-      pixelData = null;
-    }
+    var pixelData = null;
+    if (pixels) pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat);
     GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixelData);
   },
 
   glTexSubImage2D__sig: 'viiiiiiiii',
   glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData'],
   glTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, type, pixels) {
-    var pixelData;
-    if (pixels) {
-      pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, -1).pixels;
-    } else {
-      pixelData = null;
-    }
+    var pixelData = null;
+    if (pixels) pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, 0);
     GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixelData);
   },
 
   glReadPixels__sig: 'viiiiiii',
   glReadPixels__deps: ['$emscriptenWebGLGetTexPixelData'],
   glReadPixels: function(x, y, width, height, format, type, pixels) {
-    var data = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, format);
-    if (!data.pixels) {
+    var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, format);
+    if (!pixelData) {
       GL.recordError(0x0500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
       Module.printErr('GL_INVALID_ENUM in glReadPixels: Unrecognized combination of type=' + type + ' and format=' + format + '!');
 #endif
       return;
     }
-    GLctx.readPixels(x, y, width, height, format, type, data.pixels);
+    GLctx.readPixels(x, y, width, height, format, type, pixelData);
   },
 
   glBindTexture__sig: 'vii',
