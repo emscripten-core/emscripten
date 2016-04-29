@@ -3992,19 +3992,10 @@ LibraryManager.library = {
     return 0; // we cannot succeed
   },
 
-  _Unwind_RaiseException__deps: ['__cxa_find_matching_catch', '$EXCEPTIONS'],
+  _Unwind_RaiseException__deps: ['__cxa_throw'],
   _Unwind_RaiseException: function(ex) {
-    // TODO
     Module.printErr('Warning: _Unwind_RaiseException is not correctly implemented');
-    EXCEPTIONS.infos[ex] = {
-      ptr: ex,
-      adjusted: ex,
-      type: null,
-      destructor: null,
-      refcount: 0
-    };
-    EXCEPTIONS.last = ex;
-    {{{ makeThrow('ex') }}}
+    return ___cxa_throw(ex, 0, 0);
   },
 
   _Unwind_DeleteException: function(ex) {
