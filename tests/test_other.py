@@ -2059,7 +2059,7 @@ int f() {
     output = Popen([os.path.join(self.get_dir(), 'files.o.run')], stdin=open(os.path.join(self.get_dir(), 'stdin')), stdout=PIPE, stderr=PIPE).communicate()
     self.assertContained('''size: 37
 data: 119,97,107,97,32,119,97,107,97,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35
-loop: 119 97 107 97 32 119 97 107 97 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 
+loop: 119 97 107 97 32 119 97 107 97 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35
 input:inter-active
 texto
 $
@@ -6365,3 +6365,16 @@ int main() {}
     check_execute([PYTHON, EMCC, path_from_root('tests', 'debugger', 'test_union.cpp'), '-Oz', '-s', 'CYBERDWARF=1',
     '-std=c++11', '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_union.js' ], stderr=PIPE)
     run_js('test_union.js', engine=NODE_JS)
+
+  def test_source_file_with_fixed_language_mode(self):
+    open('src_tmp_fixed_lang', 'w').write('''
+#include <cstdint>
+#include <cstddef>
+
+int main() {
+  return 0;
+}
+    ''')
+    stdout, stderr = Popen([PYTHON, EMCC, '-Wall', '-std=c++14', '-x', 'c++', 'src_tmp_fixed_lang'], stderr=PIPE).communicate()
+    self.assertNotContained("Input file has an unknown suffix, don't know what to do with it!", stderr)
+    self.assertNotContained("Unknown file suffix when compiling to LLVM bitcode", stderr)
