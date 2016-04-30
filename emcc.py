@@ -482,6 +482,24 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         raise Exception(err_msg)
       return level
 
+    def detect_fixed_language_mode(args):
+      check_next = False
+      for item in args:
+        if check_next:
+          if item in ("c++", "c"):
+            return True
+          else:
+            check_next = False
+        if item.startswith("-x"):
+          lmode = item[2:] if len(item) > 2 else None
+          if lmode in ("c++", "c"):
+            return True
+          else:
+            check_next = True
+            continue
+      return False
+
+    has_fixed_language_mode = detect_fixed_language_mode(newargs)
     should_exit = False
 
     for i in range(len(newargs)):
@@ -822,8 +840,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               logging.error(arg + ': Unknown format, not a static library!')
             exit(1)
         else:
-          logging.error(arg + ": Input file has an unknown suffix, don't know what to do with it!")
-          exit(1)
+          if has_fixed_language_mode:
+            newargs[i] = ''
+            input_files.append((i, arg))
+            has_source_inputs = True
+          else:
+            logging.error(arg + ": Input file has an unknown suffix, don't know what to do with it!")
+            exit(1)
       elif arg.startswith('-L'):
         lib_dirs.append(arg[2:])
         newargs[i] = ''
@@ -1222,7 +1245,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
     for i, input_file in input_files:
       file_ending = filename_type_ending(input_file)
-      if file_ending.endswith(SOURCE_ENDINGS):
+      if file_ending.endswith(SOURCE_ENDINGS) or has_fixed_language_mode:
         logging.debug('compiling source file: ' + input_file)
         output_file = get_bitcode_file(input_file)
         temp_files.append((i, output_file))
