@@ -1272,7 +1272,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             shared.Building.llvm_as(input_file, temp_file)
             temp_files.append((i, temp_file))
         else:
-          if(has_fixed_language_mode):
+          if has_fixed_language_mode:
             compile_source_file(i, input_file)
           else:
             logging.error(input_file + ': Unknown file suffix when compiling to LLVM bitcode!')
