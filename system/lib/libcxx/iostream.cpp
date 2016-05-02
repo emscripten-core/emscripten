@@ -41,7 +41,7 @@ static mbstate_t mb_wcerr;
 _ALIGNAS_TYPE (ostream)  _LIBCPP_FUNC_VIS char clog[sizeof(ostream)];
 _ALIGNAS_TYPE (wostream) _LIBCPP_FUNC_VIS char wclog[sizeof(wostream)];
 
-ios_base::Init __start_std_streams;
+ios_base::Init __attribute__((init_priority(101))) __start_std_streams;
 
 ios_base::Init::Init()
 {
