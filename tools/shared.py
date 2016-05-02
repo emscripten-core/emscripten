@@ -902,14 +902,18 @@ USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 if USE_EMSDK:
   # Disable system C and C++ include directories, and add our own (using -idirafter so they are last, like system dirs, which
   # allows projects to override them)
-  INCLUDE_PATHS = [path_from_root('system', 'include', 'compat'),
-                    path_from_root('system', 'include'),
-                    path_from_root('system', 'include', 'emscripten'),
-                    path_from_root('system', 'include', 'libcxx'),
-                    path_from_root('system', 'include', 'libc'),
-                    path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
-                    path_from_root('system', 'lib', 'libcxxabi', 'include'),
-                    path_from_root('system', 'local', 'include')
+  C_INCLUDE_PATHS = [
+    path_from_root('system', 'include', 'compat'),
+    path_from_root('system', 'include'),
+    path_from_root('system', 'include', 'emscripten'),
+    path_from_root('system', 'include', 'libc'),
+    path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
+    path_from_root('system', 'local', 'include')
+  ]
+
+  CXX_INCLUDE_PATHS = [
+    path_from_root('system', 'include', 'libcxx'),
+    path_from_root('system', 'lib', 'libcxxabi', 'include')
   ]
 
   C_OPTS = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc']
@@ -920,7 +924,8 @@ if USE_EMSDK:
       result += ['-Xclang', '-isystem' + path]
     return result
 
-  EMSDK_OPTS = C_OPTS + include_directive(INCLUDE_PATHS)
+  # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
+  EMSDK_OPTS = C_OPTS + include_directive(CXX_INCLUDE_PATHS) + include_directive(C_INCLUDE_PATHS)
 
   EMSDK_CXX_OPTS = []
   COMPILER_OPTS += EMSDK_OPTS
