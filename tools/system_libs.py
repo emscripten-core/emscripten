@@ -141,29 +141,34 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     logging.debug('building libcxx for cache')
     libcxx_files = [
       'algorithm.cpp',
-      'condition_variable.cpp',
-      'future.cpp',
-      'iostream.cpp',
-      'memory.cpp',
-      'random.cpp',
-      'stdexcept.cpp',
-      'system_error.cpp',
-      'utility.cpp',
+      'any.cpp',
       'bind.cpp',
-      'debug.cpp',
-      'hash.cpp',
-      'mutex.cpp',
-      'string.cpp',
-      'thread.cpp',
-      'valarray.cpp',
       'chrono.cpp',
+      'condition_variable.cpp',
+      'debug.cpp',
       'exception.cpp',
+      'future.cpp',
+      'hash.cpp',
       'ios.cpp',
+      'iostream.cpp',
       'locale.cpp',
+      'memory.cpp',
+      'mutex.cpp',
+      'new.cpp',
+      'optional.cpp',
+      'random.cpp',
       'regex.cpp',
-      'strstream.cpp'
+      'shared_mutex.cpp',
+      'stdexcept.cpp',
+      'string.cpp',
+      'strstream.cpp',
+      'system_error.cpp',
+      'thread.cpp',
+      'typeinfo.cpp',
+      'utility.cpp',
+      'valarray.cpp'
     ]
-    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), libname, libcxx_files, ['-Oz', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')], has_noexcept_version=True)
+    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), libname, libcxx_files, ['-DLIBCXX_BUILDING_LIBCXXABI=1', '-Oz', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')], has_noexcept_version=True)
 
   # libcxxabi - just for dynamic_cast for now
   def create_libcxxabi(libname):
@@ -180,8 +185,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'exception.cpp',
       'stdexcept.cpp',
       'typeinfo.cpp',
-      'private_typeinfo.cpp',
-      os.path.join('..', '..', 'libcxx', 'new.cpp'),
+      'private_typeinfo.cpp'
     ]
     return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), libname, libcxxabi_files, ['-Oz', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
 
