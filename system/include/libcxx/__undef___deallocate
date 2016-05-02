@@ -8,20 +8,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef _LIBCPP___TUPLE_03
-#define _LIBCPP___TUPLE_03
-
-#include <__config>
-
-#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
+#ifdef __deallocate
+#if defined(_MSC_VER) && !defined(__clang__)
+_LIBCPP_WARNING("macro __deallocate is incompatible with C++.  #undefining __deallocate")
+#else
+#warning: macro __deallocate is incompatible with C++.  #undefining __deallocate
 #endif
-
-_LIBCPP_BEGIN_NAMESPACE_STD
-
-template <class _Tp> class _LIBCPP_TYPE_VIS_ONLY tuple_size;
-template <size_t _Ip, class _Tp> class _LIBCPP_TYPE_VIS_ONLY tuple_element;
-
-_LIBCPP_END_NAMESPACE_STD
-
-#endif  // _LIBCPP___TUPLE_03
+#undef __deallocate
+#endif
