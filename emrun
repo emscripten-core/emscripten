@@ -243,6 +243,10 @@ user_pref("extensions.getAddons.cache.lastUpdate", 4102437600);
 user_pref("media.gmp-eme-adobe.lastUpdate", 4102437600);
 user_pref("media.gmp-gmpopenh264.lastUpdate", 4102437600);
 user_pref("datareporting.healthreport.nextDataSubmissionTime", 4102437600439);
+// Detect directly when executing if asm.js does not validate by throwing an error.
+user_pref("javascript.options.throw_on_asmjs_validation_failure", true);
+// Throw errors on all JS engine warnings for "strict" mode execution.
+user_pref("javascript.options.werror", true);
 ''')
   f.close()
   logv('create_emrun_safe_firefox_profile: Created new Firefox profile "' + temp_firefox_profile_dir + '"')
@@ -442,13 +446,26 @@ class HTTPHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
       else:
         # Manually implement directory listing support.
         return self.list_directory(path)
-    ctype = self.guess_type(path)
+
     try:
       f = open(path, 'rb')
     except IOError:
       self.send_error(404, "File not found: " + path)
       return None
     self.send_response(200)
+    guess_file_type = path
+    # All files of type x.gz are served as gzip-compressed, which means the browser will transparently decode the file before passing the uncompressed bytes to the JS page.
+    # Note: In a slightly silly manner, detect files ending with "gz" and not ".gz", since both Unity and UE4 generate multiple files with .jsgz, .datagz, .memgz, .symbolsgz suffixes and so on,
+    #       so everything goes.
+    # Note 2: If the JS application would like to receive the actual bits of a gzipped file, instead of having the browser decompress it immediately, then it can't use the suffix .gz when using emrun.
+    #         To work around, one can use the suffix .gzip instead.
+    if 'gzip' in self.headers['Accept-Encoding'] and path.lower().endswith('gz'):
+      self.send_header('Content-Encoding', 'gzip')
+      logv('Serving ' + path + ' as gzip-compressed.')
+      guess_file_type = guess_file_type[:-2]
+      if guess_file_type.endswith('.'): guess_file_type = guess_file_type[:-1]
+
+    ctype = self.guess_type(guess_file_type)
     self.send_header("Content-type", ctype)
     fs = os.fstat(f.fileno())
     self.send_header("Content-Length", str(fs[6]))
@@ -1103,7 +1120,10 @@ def main():
   url = 'http://' + server_root + ':' + str(options.port)+'/'+url
   
   os.chdir(serve_dir)
-  logv('Web server root directory: ' + os.path.abspath('.'))
+  if options.no_browser:
+    logi('Web server root directory: ' + os.path.abspath('.'))
+  else:
+    logv('Web server root directory: ' + os.path.abspath('.'))
 
   if options.android:
     if not options.no_browser:
@@ -1236,6 +1256,8 @@ def main():
     # For Android automation, we execute adb, so this process does not represent a browser and no point killing it.
     if options.android:
       browser_process = None
+  else:
+    logi('Now listening at http://localhost:' + str(options.port) + '/')
 
   if browser_process:
     premature_quit_code = browser_process.poll()
