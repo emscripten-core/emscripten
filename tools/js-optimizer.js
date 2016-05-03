@@ -7818,6 +7818,7 @@ function JSDCE(ast) {
   }, function(node, type) {
     if (type === 'defun' || type === 'function') {
       var scope = scopes.pop();
+      var names = set();
       for (name in scope) {
         var data = scope[name];
         if (data.use && !data.def) {
@@ -7827,9 +7828,10 @@ function JSDCE(ast) {
         }
         if (data.def && !data.use && !data.param) {
           // this is eliminateable!
-          cleanUp(node[3], set(name));
+          names[name] = 0;
         }
       }
+      cleanUp(node[3], names);
     }
   });
   // toplevel
