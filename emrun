@@ -459,7 +459,7 @@ class HTTPHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     #       so everything goes.
     # Note 2: If the JS application would like to receive the actual bits of a gzipped file, instead of having the browser decompress it immediately, then it can't use the suffix .gz when using emrun.
     #         To work around, one can use the suffix .gzip instead.
-    if 'gzip' in self.headers['Accept-Encoding'] and path.lower().endswith('gz'):
+    if self.headers.has_key('Accept-Encoding') and 'gzip' in self.headers['Accept-Encoding'] and path.lower().endswith('gz'):
       self.send_header('Content-Encoding', 'gzip')
       logv('Serving ' + path + ' as gzip-compressed.')
       guess_file_type = guess_file_type[:-2]
