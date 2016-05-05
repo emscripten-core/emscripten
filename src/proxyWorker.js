@@ -458,7 +458,18 @@ onmessage = function onmessage(message) {
       removeRunDependency('worker-init');
       break;
     }
+    case 'custom': {
+      if (Module['onCustomMessage']) {
+        Module['onCustomMessage'](message);
+      } else {
+        throw 'Custom message received but worker Module.onCustomMessage not implemented.';
+      }
+      break;
+    }
     default: throw 'wha? ' + message.data.target;
   }
 };
 
+function postCustomMessage(data) {
+  postMessage({ target: 'custom', userData: data });
+}
