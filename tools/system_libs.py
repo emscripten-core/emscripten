@@ -404,7 +404,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # Handle backend compiler_rt separately because it is not a bitcode system lib like the others.
   # Here, just ensure that it's in the cache.
-  if shared.Settings.BINARYEN:
+  if shared.Settings.BINARYEN and shared.Settings.WASM_BACKEND:
     crt_file = shared.Cache.get('wasm_compiler_rt.a', lambda: create_wasm_compiler_rt('wasm_compiler_rt.a'), extension='a')
 
   for actual in ret:
