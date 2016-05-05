@@ -236,6 +236,23 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     shared.Building.link([dlmalloc_o, split_malloc_o], lib)
     return lib
 
+  def create_wasm_compiler_rt(libname):
+    srcdir = shared.path_from_root('system', 'lib', 'compiler-rt', 'lib', 'builtins')
+    filenames = ['addtf3.c', 'ashlti3.c', 'ashrti3.c', 'comparetf2.c', 'extenddftf2.c', 'fixtfsi.c',
+                 'fixunstfsi.c', 'floatsitf.c', 'floatunsitf.c', 'lshrti3.c', 'multf3.c', 'multi3.c', 'subtf3.c']
+    files = (os.path.join(srcdir, f) for f in filenames)
+    o_s = []
+    commands = []
+    for src in files:
+      o = in_temp(os.path.basename(src) + '.o')
+      commands.append([shared.CLANG_CC, '--target=wasm32', '-S', shared.path_from_root('system', 'lib', src), '-O2', '-o', o])
+      o_s.append(o)
+    run_commands(commands)
+    lib = in_temp(libname)
+    run_commands([[shared.LLVM_AR, 'cr', '-format=gnu', lib] + o_s])
+    return lib
+
+
   # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
   # 1 means include everything; otherwise it can be the name of a lib (libcxx, etc.)
   # You can provide 1 to include everything, or a comma-separated list with the ones you want
@@ -384,6 +401,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       ret.append(libfile)
       force = force.union(deps)
   ret.sort(key=lambda x: x.endswith('.a')) # make sure to put .a files at the end.
+
+  # Handle backend compiler_rt separately because it is not a bitcode system lib like the others.
+  # Here, just ensure that it's in the cache.
+  if shared.Settings.BINARYEN:
+    crt_file = shared.Cache.get('wasm_compiler_rt.a', lambda: create_wasm_compiler_rt('wasm_compiler_rt.a'), extension='a')
 
   for actual in ret:
     if os.path.basename(actual) == 'libcxxabi.bc':
