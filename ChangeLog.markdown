@@ -381,6 +381,7 @@ v1.34.8: 9/9/2015
  - Update emrun to latest, which improves unit test run automation with emrun.
  - Added support for LZ4 compressing file packages, used with the -s LZ4=1 linker flag. (#3754)
  - Fixed noisy build warning on "unexpected number of arguments in call to strtold" (#3760)
+ - Added new linker flag --separate-asm that splits the asm.js module and the handwritten JS functions to separate files.
  - Full list of changes:
     - Emscripten: https://github.com/kripken/emscripten/compare/1.34.7...1.34.8
     - Emscripten-LLVM: no changes.
