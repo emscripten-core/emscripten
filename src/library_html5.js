@@ -13,6 +13,13 @@ var LibraryJSEvents = {
     visibilityChangeEvent: 0,
     touchEvent: 0,
 
+    // In order to ensure most coherent Gamepad API state as possible (https://github.com/w3c/gamepad/issues/22) and
+    // to minimize the amount of garbage created, we sample the gamepad state at most once per frame, and not e.g. once per
+    // each controller or similar. To implement that, the following variables retain a cache of the most recent polled gamepad
+    // state.
+    lastGamepadState: null,
+    lastGamepadStateFrame: null, // The integer value of Browser.mainLoop.currentFrameNumber of when the last gamepad state was produced.
+
     // When we transition from fullscreen to windowed mode, we remember here the element that was just in fullscreen mode
     // so that we can report information about that element in the event message.
     previousFullscreenElement: null,
@@ -1650,37 +1657,36 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
  },
   
-  emscripten_get_num_gamepads: function() {
-    if (!navigator.getGamepads && !navigator.webkitGetGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-    if (navigator.getGamepads) {
-      return navigator.getGamepads().length;
-    } else if (navigator.webkitGetGamepads) {
-      return navigator.webkitGetGamepads().length;
+  _emscripten_sample_gamepad_data: function() {
+    // Produce a new Gamepad API sample if we are ticking a new game frame, or if not using emscripten_set_main_loop() at all to drive animation.
+    if (Browser.mainLoop.currentFrameNumber !== JSEvents.lastGamepadStateFrame || !Browser.mainLoop.currentFrameNumber) {
+      JSEvents.lastGamepadState = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads : null);
+      JSEvents.lastGamepadStateFrame = Browser.mainLoop.currentFrameNumber;
     }
   },
+
+  emscripten_get_num_gamepads__deps: ['_emscripten_sample_gamepad_data'],
+  emscripten_get_num_gamepads: function() {
+    __emscripten_sample_gamepad_data();
+    if (!JSEvents.lastGamepadState) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    return JSEvents.lastGamepadState.length;
+  },
   
+  emscripten_get_gamepad_status__deps: ['_emscripten_sample_gamepad_data'],
   emscripten_get_gamepad_status: function(index, gamepadState) {
-    if (!navigator.getGamepads && !navigator.webkitGetGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-    var gamepads;
-    if (navigator.getGamepads) {
-      gamepads = navigator.getGamepads();
-    } else if (navigator.webkitGetGamepads) {
-      gamepads = navigator.webkitGetGamepads();
-    }
-    if (index < 0 || index >= gamepads.length) {
-      return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
-    }
-    // For previously disconnected gamepads there should be a null at the index.
+    __emscripten_sample_gamepad_data();
+    if (!JSEvents.lastGamepadState) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+
+    // INVALID_PARAM is returned on a Gamepad index that never was there.
+    if (index < 0 || index >= JSEvents.lastGamepadState.length) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
+
+    // NO_DATA is returned on a Gamepad index that was removed.
+    // For previously disconnected gamepads there should be an empty slot (null/undefined/false) at the index.
     // This is because gamepads must keep their original position in the array.
-    // For example, removing the first of two gamepads produces [null, gamepad].
-    // Older implementations of the Gamepad API used undefined instead of null.
-    // The following check works because null and undefined evaluate to false.
-    if (!gamepads[index]) {
-      // There is a "false" but no gamepad at index because it was disconnected.
-      return {{{ cDefine('EMSCRIPTEN_RESULT_NO_DATA') }}};
-    }
-    // There should be a gamepad at index which can be queried.
-    JSEvents.fillGamepadEventData(gamepadState, gamepads[index]);
+    // For example, removing the first of two gamepads produces [null/undefined/false, gamepad].
+    if (!JSEvents.lastGamepadState[index]) return {{{ cDefine('EMSCRIPTEN_RESULT_NO_DATA') }}};
+
+    JSEvents.fillGamepadEventData(gamepadState, JSEvents.lastGamepadState[index]);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
   
