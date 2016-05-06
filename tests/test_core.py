@@ -6929,7 +6929,10 @@ def process(filename):
     src = r'''
     #include <stdio.h>
     #include <math.h>
-
+    
+    // We have to use a proxy function 'acos_test' here because the updated libc++ library provides a set of overloads to acos,
+    // this has the result that we can't take the function pointer to acos anymore due to failed overload resolution.
+    // This proxy function has no overloads so it's allowed to take the function pointer directly.
     double acos_test(double x) {
       return acos(x);
     }
