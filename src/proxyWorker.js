@@ -376,16 +376,18 @@ addRunDependency('worker-init');
 // buffer messages until the program starts to run
 
 var messageBuffer = null;
+var messageResenderTimeout = null;
 
 function messageResender() {
   if (calledMain) {
     assert(messageBuffer && messageBuffer.length > 0);
+    messageResenderTimeout = null;
     messageBuffer.forEach(function(message) {
       onmessage(message);
     });
     messageBuffer = null;
   } else {
-    setTimeout(messageResender, 100);
+    messageResenderTimeout = setTimeout(messageResender, 100);
   }
 }
 
@@ -393,10 +395,14 @@ onmessage = function onmessage(message) {
   if (!calledMain && !message.data.preMain) {
     if (!messageBuffer) {
       messageBuffer = [];
-      setTimeout(messageResender, 100);
+      messageResenderTimeout = setTimeout(messageResender, 100);
     }
     messageBuffer.push(message);
     return;
+  }
+  if (calledMain && messageResenderTimeout) {
+    clearTimeout(messageResenderTimeout);
+    messageResender();
   }
   //dump('worker got ' + JSON.stringify(message.data).substr(0, 150) + '\n');
   switch (message.data.target) {
