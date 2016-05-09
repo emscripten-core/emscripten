@@ -2217,7 +2217,8 @@ seeked= file.
     # run again, should not recrunch!
     time.sleep(0.1)
     Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
-    assert crunch_time == os.stat('ship.crn').st_mtime, 'Crunch is unchanged ' + str([crunch_time, os.stat('ship.crn').st_mtime])
+    if 'linux' in sys.platform: # OS time reporting in other OSes (OS X) seems flaky here
+      assert crunch_time == os.stat('ship.crn').st_mtime, 'Crunch is unchanged ' + str([crunch_time, os.stat('ship.crn').st_mtime])
     # update dds, so should recrunch
     time.sleep(0.1)
     os.utime('ship.dds', None)
