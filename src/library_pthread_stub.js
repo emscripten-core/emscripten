@@ -15,6 +15,8 @@ var LibraryPThreadStub = {
     // Ignored, no threading available.
   },
 
+  emscripten_transfer_canvas: function() {},
+
   emscripten_is_main_runtime_thread: function() {
     return 1;
   },

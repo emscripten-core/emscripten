@@ -2000,6 +2000,15 @@ Functions
 	:rtype: |EMSCRIPTEN_RESULT|
 
 	
+.. c:function:: EMSCRIPTEN_RESULT emscripten_webgl_commit_context(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context)
+
+	Push rendered frame to the original canvas element. This function is only used for ``OffscreenCanvas`` contexts.
+
+	:param EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context: The WebGL context to commit.
+	:returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
+	:rtype: |EMSCRIPTEN_RESULT|
+
+
 .. c:function:: EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_get_current_context()
 
 	Returns the currently active WebGL rendering context, or 0 if no context is active. Calling any WebGL functions when there is no active rendering context is undefined and may throw a JavaScript exception.

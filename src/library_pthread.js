@@ -368,6 +368,15 @@ var LibraryPThread = {
 
     worker.pthread = pthread;
 
+    if (threadParams.transferCanvas) {
+      var offscreen = Module['canvas'].transferControlToOffscreen();
+
+      worker.postMessage({
+        cmd: 'canvas',
+        canvas: offscreen,
+      }, [offscreen]);
+    }
+
     // Ask the worker to start executing its pthread entry point function.
     worker.postMessage({
       cmd: 'run',
@@ -402,6 +411,10 @@ var LibraryPThread = {
 
   emscripten_force_num_logical_cores: function(cores) {
     {{{ makeSetValue('__num_logical_cores', 0, 'cores', 'i32') }}};
+  },
+
+  emscripten_transfer_canvas: function() {
+    Module['transferCanvas'] = true;
   },
 
   pthread_create__deps: ['_spawn_thread', 'pthread_getschedparam', 'pthread_self'],
@@ -470,6 +483,11 @@ var LibraryPThread = {
       pthread_ptr: threadInfoStruct,
       arg: arg,
     };
+
+    if (Module['transferCanvas']) {
+      threadParams.transferCanvas = true;
+      delete Module['transferCanvas'];
+    }
 
     if (ENVIRONMENT_IS_PTHREAD) {
       // The prepopulated pool of web workers that can host pthreads is stored in the main JS thread. Therefore if a

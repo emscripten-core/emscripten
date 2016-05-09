@@ -93,6 +93,14 @@ The following ``Module`` attributes affect code execution.
 
 	If set, :js:attr:`Module.printErr` will log when any file is read.
 
+.. js:attribute:: Module.canvas
+
+	Canvas object used for rendering. Can be ``HTMLCanvasElement`` or ``OffscreenCanvas``.
+
+.. js:attribute:: Module.transferCanvas
+
+	When ``transferCanvas`` is set to ``true``, ``Module.canvas`` will be transferred from main browser thread to the next created thread as ``OffscreenCanvas``. This new thread will be able to create a WebGL context and issue rendering commands directly. Function ``emscripten_transfer_canvas`` can be used in native code to set this flag.
+
 	
 Other methods
 =============
