@@ -16,11 +16,16 @@
 #include "future"
 #include "limits"
 #include <sys/types.h>
+
+#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
+# include <sys/param.h>
+# if defined(BSD)
+#   include <sys/sysctl.h>
+# endif // defined(BSD)
+#endif // defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
+
 #if !defined(_WIN32)
-#if !defined(__sun__) && !defined(__linux__) && !defined(_AIX)
-#include <sys/sysctl.h>
-#endif // !__sun__ && !__linux__ && !_AIX
-#include <unistd.h>
+# include <unistd.h>
 #endif // !_WIN32
 
 #if defined(__NetBSD__)

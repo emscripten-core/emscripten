@@ -10,21 +10,21 @@ import logging, platform, multiprocessing
 from tempfiles import try_delete
 
 # On Windows python suffers from a particularly nasty bug if python is spawning new processes while python itself is spawned from some other non-console process.
-# Use a custom replacement for Popen on Windows to avoid the "WindowsError: [Error 6] The handle is invalid" errors when emcc is driven through cmake or mingw32-make. 
+# Use a custom replacement for Popen on Windows to avoid the "WindowsError: [Error 6] The handle is invalid" errors when emcc is driven through cmake or mingw32-make.
 # See http://bugs.python.org/issue3905
 class WindowsPopen:
-  def __init__(self, args, bufsize=0, executable=None, stdin=None, stdout=None, stderr=None, preexec_fn=None, close_fds=False, 
+  def __init__(self, args, bufsize=0, executable=None, stdin=None, stdout=None, stderr=None, preexec_fn=None, close_fds=False,
                shell=False, cwd=None, env=None, universal_newlines=False, startupinfo=None, creationflags=0):
     self.stdin = stdin
     self.stdout = stdout
     self.stderr = stderr
-    
+
     # (stdin, stdout, stderr) store what the caller originally wanted to be done with the streams.
     # (stdin_, stdout_, stderr_) will store the fixed set of streams that workaround the bug.
     self.stdin_ = stdin
     self.stdout_ = stdout
     self.stderr_ = stderr
-    
+
     # If the caller wants one of these PIPEd, we must PIPE them all to avoid the 'handle is invalid' bug.
     if self.stdin_ == PIPE or self.stdout_ == PIPE or self.stderr_ == PIPE:
       if self.stdin_ == None:
@@ -39,7 +39,7 @@ class WindowsPopen:
     if len(args) >= 2 and args[1].endswith("emscripten.py"):
       response_filename = response_file.create_response_file(args[2:], TEMP_DIR)
       args = args[0:2] + ['@' + response_filename]
-      
+
     try:
       # Call the process with fixed streams.
       self.process = subprocess.Popen(args, bufsize, executable, self.stdin_, self.stdout_, self.stderr_, preexec_fn, close_fds, shell, cwd, env, universal_newlines, startupinfo, creationflags)
@@ -73,7 +73,7 @@ class WindowsPopen:
 
   def kill(self):
     return self.process.kill()
-  
+
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
@@ -266,7 +266,7 @@ except Exception, e:
   logging.error('Error in evaluating %s (at %s): %s, text: %s' % (EM_CONFIG, CONFIG_FILE, str(e), config_text))
   sys.exit(1)
 
-# Returns a suggestion where current .emscripten config file might be located (if EM_CONFIG env. var is used 
+# Returns a suggestion where current .emscripten config file might be located (if EM_CONFIG env. var is used
 # without a file, this hints to "default" location at ~/.emscripten)
 def hint_config_file_location():
   if CONFIG_FILE: return CONFIG_FILE
@@ -304,7 +304,7 @@ except:
 
 # Install our replacement Popen handler if we are running on Windows to avoid python spawn process function.
 # nb. This is by default disabled since it has the adverse effect of buffering up all logging messages, which makes
-# builds look unresponsive (messages are printed only after the whole build finishes). Whether this workaround is needed 
+# builds look unresponsive (messages are printed only after the whole build finishes). Whether this workaround is needed
 # seems to depend on how the host application that invokes emcc has set up its stdout and stderr.
 if EM_POPEN_WORKAROUND and os.name == 'nt':
   logging.debug('Installing Popen workaround handler to avoid bug http://bugs.python.org/issue3905')
@@ -902,28 +902,30 @@ USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 if USE_EMSDK:
   # Disable system C and C++ include directories, and add our own (using -idirafter so they are last, like system dirs, which
   # allows projects to override them)
-  C_INCLUDE_PATHS = [path_from_root('system', 'local', 'include'),
-                     path_from_root('system', 'include', 'compat'),
-                     path_from_root('system', 'include'),
-                     path_from_root('system', 'include', 'emscripten'),
-                     path_from_root('system', 'include', 'libc'),
-                     path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten')
+  C_INCLUDE_PATHS = [
+    path_from_root('system', 'include', 'compat'),
+    path_from_root('system', 'include'),
+    path_from_root('system', 'include', 'emscripten'),
+    path_from_root('system', 'include', 'libc'),
+    path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
+    path_from_root('system', 'local', 'include')
   ]
-  
-  CXX_INCLUDE_PATHS = [path_from_root('system', 'include', 'libcxx'),
-                       path_from_root('system', 'lib', 'libcxxabi', 'include')
+
+  CXX_INCLUDE_PATHS = [
+    path_from_root('system', 'include', 'libcxx'),
+    path_from_root('system', 'lib', 'libcxxabi', 'include')
   ]
-  
-  C_OPTS = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc',
-  ]
-  
+
+  C_OPTS = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc']
+
   def include_directive(paths):
     result = []
     for path in paths:
       result += ['-Xclang', '-isystem' + path]
     return result
-  
-  EMSDK_OPTS = C_OPTS + include_directive(C_INCLUDE_PATHS) + include_directive(CXX_INCLUDE_PATHS)
+
+  # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
+  EMSDK_OPTS = C_OPTS + include_directive(CXX_INCLUDE_PATHS) + include_directive(C_INCLUDE_PATHS)
 
   EMSDK_CXX_OPTS = []
   COMPILER_OPTS += EMSDK_OPTS
@@ -1208,7 +1210,7 @@ class Building:
     path = filter(lambda p: not os.path.exists(os.path.join(p, 'sh.exe')), path)
     env['PATH'] = ';'.join(path)
     return env
-  
+
   @staticmethod
   def handle_CMake_toolchain(args, env):
 
@@ -1246,7 +1248,7 @@ class Building:
       args, env = Building.handle_CMake_toolchain(args, env)
     else:
       # When we configure via a ./configure script, don't do config-time compilation with emcc, but instead
-      # do builds natively with Clang. This is a heuristic emulation that may or may not work. 
+      # do builds natively with Clang. This is a heuristic emulation that may or may not work.
       env['EMMAKEN_JUST_CONFIGURE'] = '1'
     try:
       if EM_BUILD_VERBOSE_LEVEL >= 3: print >> sys.stderr, 'configure: ' + str(args)
@@ -1333,7 +1335,7 @@ class Building:
         pass # Ignore exit code != 0
     def open_make_out(i, mode='r'):
       return open(os.path.join(project_dir, 'make_' + str(i)), mode)
-    
+
     def open_make_err(i, mode='r'):
       return open(os.path.join(project_dir, 'make_err' + str(i)), mode)
 
@@ -1882,10 +1884,10 @@ class Building:
   def ensure_struct_info(info_path):
     if os.path.exists(info_path): return
     Cache.ensure()
-    
+
     import gen_struct_info
     gen_struct_info.main(['-qo', info_path, path_from_root('src/struct_info.json')])
-  
+
 # compatibility with existing emcc, etc. scripts
 Cache = cache.Cache(debug=DEBUG_CACHE)
 chunkify = cache.chunkify

@@ -29,9 +29,16 @@
 # if __ANDROID_API__ <= 20
 #  include <support/android/locale_bionic.h>
 # endif
-#elif (defined(__GLIBC__) || defined(__APPLE__)      || defined(__FreeBSD__) \
-    || defined(__sun__)   || defined(__EMSCRIPTEN__) || defined(__IBMCPP__))
+#elif defined(__sun__)
 # include <xlocale.h>
+# include <support/solaris/xlocale.h>
+#elif defined(_NEWLIB_VERSION)
+# include <support/newlib/xlocale.h>
+#elif (defined(__GLIBC__) || defined(__APPLE__)      || defined(__FreeBSD__) \
+    || defined(__EMSCRIPTEN__) || defined(__IBMCPP__))
+# include <xlocale.h>
+#elif defined(_LIBCPP_HAS_MUSL_LIBC)
+# include <support/musl/xlocale.h>
 #endif // __GLIBC__ || __APPLE__ || __FreeBSD__ || __sun__ || __EMSCRIPTEN__ || __IBMCPP__
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
@@ -324,7 +331,7 @@ locale::operator()(const basic_string<_CharT, _Traits, _Allocator>& __x,
 class _LIBCPP_TYPE_VIS ctype_base
 {
 public:
-#ifdef __GLIBC__
+#if defined(__GLIBC__)
     typedef unsigned short mask;
     static const mask space  = _ISspace;
     static const mask print  = _ISprint;
@@ -348,16 +355,15 @@ public:
     static const mask punct  = _PUNCT;
     static const mask xdigit = _HEX;
     static const mask blank  = _BLANK;
-#elif defined(__APPLE__) || defined(__FreeBSD__) || defined(__EMSCRIPTEN__) || defined(__NetBSD__) || defined(__ANDROID__)
-#ifdef __APPLE__
+# define _LIBCPP_CTYPE_MASK_IS_COMPOSITE_PRINT
+#elif defined(__APPLE__) || defined(__FreeBSD__) || defined(__EMSCRIPTEN__) || defined(__NetBSD__)
+# ifdef __APPLE__
     typedef __uint32_t mask;
-#elif defined(__FreeBSD__)
+# elif defined(__FreeBSD__)
     typedef unsigned long mask;
-#elif defined(__EMSCRIPTEN__) ||  defined(__NetBSD__)
+# elif defined(__EMSCRIPTEN__) || defined(__NetBSD__)
     typedef unsigned short mask;
-#elif defined(__ANDROID__)
-    typedef unsigned char mask;
-#endif
+# endif
     static const mask space  = _CTYPE_S;
     static const mask print  = _CTYPE_R;
     static const mask cntrl  = _CTYPE_C;
@@ -366,11 +372,7 @@ public:
     static const mask alpha  = _CTYPE_A;
     static const mask digit  = _CTYPE_D;
     static const mask punct  = _CTYPE_P;
-# if defined(__ANDROID__)
-    static const mask xdigit = _CTYPE_X | _CTYPE_D;
-# else
     static const mask xdigit = _CTYPE_X;
-# endif
 
 # if defined(__NetBSD__)
     static const mask blank  = _CTYPE_BL;
@@ -389,7 +391,23 @@ public:
     static const mask punct  = _ISPUNCT;
     static const mask xdigit = _ISXDIGIT;
     static const mask blank  = _ISBLANK;
-#else  // __GLIBC__ || _WIN32 || __APPLE__ || __FreeBSD__ || __EMSCRIPTEN__ || __sun__
+#elif defined(_NEWLIB_VERSION)
+    // Same type as Newlib's _ctype_ array in newlib/libc/include/ctype.h.
+    typedef char mask;
+    static const mask space  = _S;
+    static const mask print  = _P | _U | _L | _N | _B;
+    static const mask cntrl  = _C;
+    static const mask upper  = _U;
+    static const mask lower  = _L;
+    static const mask alpha  = _U | _L;
+    static const mask digit  = _N;
+    static const mask punct  = _P;
+    static const mask xdigit = _X | _N;
+    static const mask blank  = _B;
+# define _LIBCPP_CTYPE_MASK_IS_COMPOSITE_PRINT
+# define _LIBCPP_CTYPE_MASK_IS_COMPOSITE_ALPHA
+# define _LIBCPP_CTYPE_MASK_IS_COMPOSITE_XDIGIT
+#else
     typedef unsigned long mask;
     static const mask space  = 1<<0;
     static const mask print  = 1<<1;
@@ -401,7 +419,7 @@ public:
     static const mask punct  = 1<<7;
     static const mask xdigit = 1<<8;
     static const mask blank  = 1<<9;
-#endif  // __GLIBC__ || _WIN32 || __APPLE__ || __FreeBSD__
+#endif
     static const mask alnum  = alpha | digit;
     static const mask graph  = alnum | punct;
 
@@ -1416,7 +1434,7 @@ protected:
 
 // template <class charT> class numpunct_byname
 
-template <class charT> class _LIBCPP_TYPE_VIS_ONLY numpunct_byname;
+template <class _CharT> class _LIBCPP_TYPE_VIS_ONLY numpunct_byname;
 
 template <>
 class _LIBCPP_TYPE_VIS numpunct_byname<char>
