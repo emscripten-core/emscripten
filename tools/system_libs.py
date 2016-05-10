@@ -238,8 +238,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   def create_wasm_compiler_rt(libname):
     srcdir = shared.path_from_root('system', 'lib', 'compiler-rt', 'lib', 'builtins')
-    filenames = ['addtf3.c', 'ashlti3.c', 'ashrti3.c', 'comparetf2.c', 'extenddftf2.c', 'fixtfsi.c',
-                 'fixunstfsi.c', 'floatsitf.c', 'floatunsitf.c', 'lshrti3.c', 'multf3.c', 'multi3.c', 'subtf3.c']
+    filenames = ['addtf3.c', 'comparetf2.c', 'extenddftf2.c', 'fixtfsi.c', 'fixunstfsi.c',
+                 'floatsitf.c', 'floatunsitf.c', 'multf3.c', 'multi3.c', 'subtf3.c']
     files = (os.path.join(srcdir, f) for f in filenames)
     o_s = []
     commands = []
