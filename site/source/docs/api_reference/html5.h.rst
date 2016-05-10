@@ -130,8 +130,17 @@ General types
 
 .. c:macro:: EM_BOOL
 
-	This is the Emscripten type for a ``bool``.  
+	This is the Emscripten type for a ``bool``. 
+	Possible values:
 	
+	.. c:macro:: EM_TRUE
+
+		This is the Emscripten value for ``true``. 
+
+	.. c:macro:: EM_FALSE
+
+		This is the Emscripten value for ``false``. 
+
 	
 .. c:macro:: EM_UTF8
 
