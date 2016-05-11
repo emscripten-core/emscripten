@@ -692,7 +692,10 @@ fi
   def test_embuilder(self):
     restore()
 
-    for command, expected, success, result_libs in [
+    tests = []
+    if get_llvm_target() == WASM_TARGET:
+      tests.append(([PYTHON, 'embuilder.py', 'build', 'wasm_compiler_rt'], ['building and verifying wasm_compiler_rt', 'success'], True, ['wasm_compiler_rt.a']),)
+    for command, expected, success, result_libs in tests + [
       ([PYTHON, 'embuilder.py'], ['Emscripten System Builder Tool', 'build libc', 'native_optimizer'], True, []),
       ([PYTHON, 'embuilder.py', 'build', 'waka'], 'ERROR', False, []),
       ([PYTHON, 'embuilder.py', 'build', 'libc'], ['building and verifying libc', 'success'], True, ['libc.bc']),
@@ -962,4 +965,3 @@ fi
     assert os.path.exists(tag_file)
     subprocess.check_call([PYTHON, 'emcc.py', 'tests/hello_world.c', '-s', 'BINARYEN=1'])
     self.assertContained('hello, world!', run_js('a.out.js'))
-

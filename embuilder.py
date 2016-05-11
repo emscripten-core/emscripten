@@ -144,6 +144,13 @@ if operation == 'build':
       build('''
         int main() {}
       ''', ['optimizer.2.exe'], ['-O2'])
+    elif what == 'wasm_compiler_rt':
+      if shared.get_llvm_target() == shared.WASM_TARGET:
+        build('''
+          int main() {}
+        ''', ['wasm_compiler_rt.a'], ['-s', 'BINARYEN=1'])
+      else:
+        shared.logging.warning('wasm_compiler_rt not built when using JSBackend')
     elif what == 'zlib':
       build_port('zlib', 'libz.a', ['-s', 'USE_ZLIB=1'])
     elif what == 'bullet':
@@ -175,4 +182,3 @@ if operation == 'build':
 else:
   shared.logging.error('unfamiliar operation: ' + operation)
   sys.exit(1)
-
