@@ -43,8 +43,11 @@ var emscriptenCpuProfiler = {
   fpsCounter: function fpsCounter() {
     // Record the new frame time sample, and prune the history to 120 most recent frames.
     var now = performance.now();
-    this.fpsCounterTicks.push(now);
-    if (this.fpsCounterTicks.length > 120) this.fpsCounterTicks = this.fpsCounterTicks.slice(this.fpsCounterTicks.length - 120, this.fpsCounterTicks.length);
+    if (this.fpsCounterTicks.length < 120) this.fpsCounterTicks.push(now);
+    else {
+      for (var i = 0; i < this.fpsCounterTicks.length-1; ++i) this.fpsCounterTicks[i] = this.fpsCounterTicks[i+1];
+      this.fpsCounterTicks[this.fpsCounterTicks.length-1] = now;
+    }
   
     if (now - this.fpsCounterLastPrint > 2000) {
       var fps = ((this.fpsCounterTicks.length - 1) * 1000.0 / (this.fpsCounterTicks[this.fpsCounterTicks.length - 1] - this.fpsCounterTicks[0]));
@@ -83,6 +86,7 @@ var emscriptenCpuProfiler = {
 
   // Creates a new section. Call once at startup.
   createSection: function createSection(number, name, drawColor) {
+    while (this.sections.length <= number) this.sections.push(null); // Keep an array structure.
     var sect = this.sections[number];
     if (!sect) {
       sect = {
@@ -124,7 +128,7 @@ var emscriptenCpuProfiler = {
   frameEnd: function frameEnd() {
     // Aggregate total times spent in each section to memory store to wait until the next stats UI redraw period.
     var totalTimeInSections = 0;
-    for (var i in this.sections) {
+    for(var i = 0; i < this.sections.length; ++i) {
       var sect = this.sections[i];
       sect.frametimes[this.currentHistogramX] = sect.accumulatedTime;
       totalTimeInSections += sect.accumulatedTime;
@@ -153,9 +157,12 @@ var emscriptenCpuProfiler = {
     // you can manually create this beforehand.
     cpuprofiler = document.getElementById('cpuprofiler');
     if (!cpuprofiler) {
-      var div = document.createElement("div");
+      var div = document.getElementById('cpuprofiler_container'); // Users can provide a container element where to place this if desired.
+      if (!div) {
+        div = document.createElement("div");
+        document.body.appendChild(div);
+      }      
       div.innerHTML = "<div style='border: 2px solid black; padding: 2px;'><button style='display:inline;' onclick='Module.noExitRuntime=false;Module.exit();'>Halt</button><span id='fpsResult'></span><canvas style='border: 1px solid black; margin-left:auto; margin-right:auto; display: block;' id='cpuprofiler_canvas' width='800px' height='200'></canvas><div id='cpuprofiler'></div>";
-      document.body.appendChild(div);
       cpuprofiler = document.getElementById('cpuprofiler');
     }
     
@@ -205,7 +212,7 @@ var emscriptenCpuProfiler = {
     y -= h;
     this.drawContext.fillStyle = "#0000BB";
     this.drawContext.fillRect(x, y, 1, h);
-    for (var i in this.sections) {
+    for(var i = 0; i < this.sections.length; ++i) {
       var sect = this.sections[i];
       var h = sect.frametimes[x] * scale;
       y -= h;

@@ -33,8 +33,8 @@ Available operations and tasks:
         libcxx_noexcept
         libcxxabi
         gl
-        struct_info
         native_optimizer
+        binaryen
         bullet
         freetype
         libpng
@@ -42,6 +42,7 @@ Available operations and tasks:
         sdl2
         sdl2-image
         sdl2-ttf
+        sdl2-net
         vorbis
         zlib
 
@@ -67,20 +68,21 @@ def build(src, result_libs, args=[]):
   temp_js = temp_files.get('.js').name
   shared.Building.emcc(temp, args, output_filename=temp_js)
   assert os.path.exists(temp_js), 'failed to build file'
-  for lib in result_libs:
-    assert os.path.exists(shared.Cache.get_path(lib)), 'not seeing that requested library %s has been built because file %s does not exist' % (lib, shared.Cache.get_path(lib))
+  if result_libs:
+    for lib in result_libs:
+      assert os.path.exists(shared.Cache.get_path(lib)), 'not seeing that requested library %s has been built because file %s does not exist' % (lib, shared.Cache.get_path(lib))
 
 def build_port(port_name, lib_name, params):
   build('''
     int main() {}
-  ''', [os.path.join('ports-builds', port_name, lib_name)], params)
+  ''', [os.path.join('ports-builds', port_name, lib_name)] if lib_name else None, params)
 
 operation = sys.argv[1]
 
 if operation == 'build':
   tasks = sys.argv[2:]
   if 'ALL' in tasks:
-    tasks = ['libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'gl', 'struct_info', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'vorbis', 'zlib']
+    tasks = ['libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'gl', 'binaryen', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
     if os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER'):
       print 'Skipping building of native-optimizer since environment variable EMSCRIPTEN_NATIVE_OPTIMIZER is present and set to point to a prebuilt native optimizer path.'
     elif hasattr(shared, 'EMSCRIPTEN_NATIVE_OPTIMIZER'):
@@ -138,14 +140,17 @@ if operation == 'build':
           return int(emscripten_GetProcAddress("waka waka"));
         }
       ''', ['gl.bc'])
-    elif what == 'struct_info':
-      build('''
-        int main() {}
-      ''', ['struct_info.compiled.json'])
     elif what == 'native_optimizer':
       build('''
         int main() {}
       ''', ['optimizer.2.exe'], ['-O2'])
+    elif what == 'wasm_compiler_rt':
+      if shared.get_llvm_target() == shared.WASM_TARGET:
+        build('''
+          int main() {}
+        ''', ['wasm_compiler_rt.a'], ['-s', 'BINARYEN=1'])
+      else:
+        shared.logging.warning('wasm_compiler_rt not built when using JSBackend')
     elif what == 'zlib':
       build_port('zlib', 'libz.a', ['-s', 'USE_ZLIB=1'])
     elif what == 'bullet':
@@ -160,10 +165,14 @@ if operation == 'build':
       build_port('sdl2', 'libsdl2.bc', ['-s', 'USE_SDL=2'])
     elif what == 'sdl2-image':
       build_port('sdl2-image', 'libsdl2_image.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
+    elif what == 'sdl2-net':
+      build_port('sdl2-net', 'libsdl2_net.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
     elif what == 'freetype':
       build_port('freetype', 'libfreetype.a', ['-s', 'USE_FREETYPE=1'])
     elif what == 'sdl2-ttf':
       build_port('sdl2-ttf', 'libsdl2_ttf.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '-s', 'USE_FREETYPE=1'])
+    elif what == 'binaryen':
+      build_port('binaryen', None, ['-s', 'BINARYEN=1'])
     else:
       shared.logging.error('unfamiliar build target: ' + what)
       sys.exit(1)
@@ -173,4 +182,3 @@ if operation == 'build':
 else:
   shared.logging.error('unfamiliar operation: ' + operation)
   sys.exit(1)
-

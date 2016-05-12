@@ -104,8 +104,16 @@ class interactive(BrowserCore):
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_openal_buffers(self):
-    shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.wav'), os.path.join(self.get_dir(), 'the_entertainer.wav'))
-    self.btest('openal_buffers.c', '0', args=['--preload-file', 'the_entertainer.wav'],)
+    self.btest('openal_buffers.c', '0', args=['--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/'],)
+
+  def test_openal_buffers_animated_pitch(self):
+    self.btest('openal_buffers.c', '0', args=['-DTEST_ANIMATED_PITCH=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/'],)
+
+  def test_openal_looped_pitched_playback(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
+  def test_openal_animated_looped_pitched_playback(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_PITCHED_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
 
   def get_freealut_library(self):
     if WINDOWS and Building.which('cmake'):

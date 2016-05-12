@@ -85,6 +85,7 @@ namespace Space {
     Inner() {}
     int get() { return 198; }
     Inner& operator*=(float x) { return *this; }
+    int operator[](int x) { return x*2; }
   };
 }
 

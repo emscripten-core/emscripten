@@ -200,14 +200,19 @@ public:
 
     // 27.9.1.3 Assign/swap:
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
+    _LIBCPP_INLINE_VISIBILITY
     basic_filebuf& operator=(basic_filebuf&& __rhs);
 #endif
     void swap(basic_filebuf& __rhs);
 
     // 27.9.1.4 Members:
+    _LIBCPP_INLINE_VISIBILITY
     bool is_open() const;
+#ifndef _LIBCPP_HAS_NO_GLOBAL_FILESYSTEM_NAMESPACE
     basic_filebuf* open(const char* __s, ios_base::openmode __mode);
+    _LIBCPP_INLINE_VISIBILITY
     basic_filebuf* open(const string& __s, ios_base::openmode __mode);
+#endif
     basic_filebuf* close();
 
 protected:
@@ -338,7 +343,7 @@ basic_filebuf<_CharT, _Traits>::basic_filebuf(basic_filebuf&& __rhs)
 }
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_filebuf<_CharT, _Traits>&
 basic_filebuf<_CharT, _Traits>::operator=(basic_filebuf&& __rhs)
 {
@@ -456,13 +461,14 @@ swap(basic_filebuf<_CharT, _Traits>& __x, basic_filebuf<_CharT, _Traits>& __y)
 }
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 bool
 basic_filebuf<_CharT, _Traits>::is_open() const
 {
     return __file_ != 0;
 }
 
+#ifndef _LIBCPP_HAS_NO_GLOBAL_FILESYSTEM_NAMESPACE
 template <class _CharT, class _Traits>
 basic_filebuf<_CharT, _Traits>*
 basic_filebuf<_CharT, _Traits>::open(const char* __s, ios_base::openmode __mode)
@@ -544,12 +550,13 @@ basic_filebuf<_CharT, _Traits>::open(const char* __s, ios_base::openmode __mode)
 }
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_filebuf<_CharT, _Traits>*
 basic_filebuf<_CharT, _Traits>::open(const string& __s, ios_base::openmode __mode)
 {
     return open(__s.c_str(), __mode);
 }
+#endif
 
 template <class _CharT, class _Traits>
 basic_filebuf<_CharT, _Traits>*
@@ -807,7 +814,7 @@ basic_filebuf<_CharT, _Traits>::seekoff(off_type __off, ios_base::seekdir __way,
     default:
         return pos_type(off_type(-1));
     }
-#if _WIN32
+#if defined(_WIN32) || defined(_NEWLIB_VERSION)
     if (fseek(__file_, __width > 0 ? __width * __off : 0, __whence))
         return pos_type(off_type(-1));
     pos_type __r = ftell(__file_);
@@ -826,7 +833,7 @@ basic_filebuf<_CharT, _Traits>::seekpos(pos_type __sp, ios_base::openmode)
 {
     if (__file_ == 0 || sync())
         return pos_type(off_type(-1));
-#if _WIN32
+#if defined(_WIN32) || defined(_NEWLIB_VERSION)
     if (fseek(__file_, __sp, SEEK_SET))
         return pos_type(off_type(-1));
 #else
@@ -891,7 +898,7 @@ basic_filebuf<_CharT, _Traits>::sync()
                 }
             }
         }
-#if _WIN32
+#if defined(_WIN32) || defined(_NEWLIB_VERSION)
         if (fseek(__file_, -__c, SEEK_CUR))
             return -1;
 #else
@@ -1004,22 +1011,35 @@ public:
     typedef typename traits_type::pos_type pos_type;
     typedef typename traits_type::off_type off_type;
 
+    _LIBCPP_INLINE_VISIBILITY
     basic_ifstream();
+#ifndef _LIBCPP_HAS_NO_GLOBAL_FILESYSTEM_NAMESPACE
+    _LIBCPP_INLINE_VISIBILITY
     explicit basic_ifstream(const char* __s, ios_base::openmode __mode = ios_base::in);
+    _LIBCPP_INLINE_VISIBILITY
     explicit basic_ifstream(const string& __s, ios_base::openmode __mode = ios_base::in);
+#endif
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
+    _LIBCPP_INLINE_VISIBILITY
     basic_ifstream(basic_ifstream&& __rhs);
 #endif
 
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
+    _LIBCPP_INLINE_VISIBILITY
     basic_ifstream& operator=(basic_ifstream&& __rhs);
 #endif
+    _LIBCPP_INLINE_VISIBILITY
     void swap(basic_ifstream& __rhs);
 
+    _LIBCPP_INLINE_VISIBILITY
     basic_filebuf<char_type, traits_type>* rdbuf() const;
+    _LIBCPP_INLINE_VISIBILITY
     bool is_open() const;
+#ifndef _LIBCPP_HAS_NO_GLOBAL_FILESYSTEM_NAMESPACE
     void open(const char* __s, ios_base::openmode __mode = ios_base::in);
     void open(const string& __s, ios_base::openmode __mode = ios_base::in);
+#endif
+    _LIBCPP_INLINE_VISIBILITY
     void close();
 
 private:
@@ -1027,14 +1047,15 @@ private:
 };
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_ifstream<_CharT, _Traits>::basic_ifstream()
     : basic_istream<char_type, traits_type>(&__sb_)
 {
 }
 
+#ifndef _LIBCPP_HAS_NO_GLOBAL_FILESYSTEM_NAMESPACE
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_ifstream<_CharT, _Traits>::basic_ifstream(const char* __s, ios_base::openmode __mode)
     : basic_istream<char_type, traits_type>(&__sb_)
 {
@@ -1043,18 +1064,19 @@ basic_ifstream<_CharT, _Traits>::basic_ifstream(const char* __s, ios_base::openm
 }
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_ifstream<_CharT, _Traits>::basic_ifstream(const string& __s, ios_base::openmode __mode)
     : basic_istream<char_type, traits_type>(&__sb_)
 {
     if (__sb_.open(__s, __mode | ios_base::in) == 0)
         this->setstate(ios_base::failbit);
 }
+#endif
 
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_ifstream<_CharT, _Traits>::basic_ifstream(basic_ifstream&& __rhs)
     : basic_istream<char_type, traits_type>(_VSTD::move(__rhs)),
       __sb_(_VSTD::move(__rhs.__sb_))
@@ -1063,7 +1085,7 @@ basic_ifstream<_CharT, _Traits>::basic_ifstream(basic_ifstream&& __rhs)
 }
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_ifstream<_CharT, _Traits>&
 basic_ifstream<_CharT, _Traits>::operator=(basic_ifstream&& __rhs)
 {
@@ -1075,7 +1097,7 @@ basic_ifstream<_CharT, _Traits>::operator=(basic_ifstream&& __rhs)
 #endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 void
 basic_ifstream<_CharT, _Traits>::swap(basic_ifstream& __rhs)
 {
@@ -1092,7 +1114,7 @@ swap(basic_ifstream<_CharT, _Traits>& __x, basic_ifstream<_CharT, _Traits>& __y)
 }
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_filebuf<_CharT, _Traits>*
 basic_ifstream<_CharT, _Traits>::rdbuf() const
 {
@@ -1100,13 +1122,14 @@ basic_ifstream<_CharT, _Traits>::rdbuf() const
 }
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 bool
 basic_ifstream<_CharT, _Traits>::is_open() const
 {
     return __sb_.is_open();
 }
 
+#ifndef _LIBCPP_HAS_NO_GLOBAL_FILESYSTEM_NAMESPACE
 template <class _CharT, class _Traits>
 void
 basic_ifstream<_CharT, _Traits>::open(const char* __s, ios_base::openmode __mode)
@@ -1126,9 +1149,10 @@ basic_ifstream<_CharT, _Traits>::open(const string& __s, ios_base::openmode __mo
     else
         this->setstate(ios_base::failbit);
 }
+#endif
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 void
 basic_ifstream<_CharT, _Traits>::close()
 {
@@ -1149,22 +1173,33 @@ public:
     typedef typename traits_type::pos_type pos_type;
     typedef typename traits_type::off_type off_type;
 
+    _LIBCPP_INLINE_VISIBILITY
     basic_ofstream();
+    _LIBCPP_INLINE_VISIBILITY
     explicit basic_ofstream(const char* __s, ios_base::openmode __mode = ios_base::out);
+    _LIBCPP_INLINE_VISIBILITY
     explicit basic_ofstream(const string& __s, ios_base::openmode __mode = ios_base::out);
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
+    _LIBCPP_INLINE_VISIBILITY
     basic_ofstream(basic_ofstream&& __rhs);
 #endif
 
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
+    _LIBCPP_INLINE_VISIBILITY
     basic_ofstream& operator=(basic_ofstream&& __rhs);
 #endif
+    _LIBCPP_INLINE_VISIBILITY
     void swap(basic_ofstream& __rhs);
 
+    _LIBCPP_INLINE_VISIBILITY
     basic_filebuf<char_type, traits_type>* rdbuf() const;
+    _LIBCPP_INLINE_VISIBILITY
     bool is_open() const;
+#ifndef _LIBCPP_HAS_NO_GLOBAL_FILESYSTEM_NAMESPACE
     void open(const char* __s, ios_base::openmode __mode = ios_base::out);
     void open(const string& __s, ios_base::openmode __mode = ios_base::out);
+#endif
+    _LIBCPP_INLINE_VISIBILITY
     void close();
 
 private:
@@ -1172,14 +1207,15 @@ private:
 };
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_ofstream<_CharT, _Traits>::basic_ofstream()
     : basic_ostream<char_type, traits_type>(&__sb_)
 {
 }
 
+#ifndef _LIBCPP_HAS_NO_GLOBAL_FILESYSTEM_NAMESPACE
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_ofstream<_CharT, _Traits>::basic_ofstream(const char* __s, ios_base::openmode __mode)
     : basic_ostream<char_type, traits_type>(&__sb_)
 {
@@ -1188,18 +1224,19 @@ basic_ofstream<_CharT, _Traits>::basic_ofstream(const char* __s, ios_base::openm
 }
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_ofstream<_CharT, _Traits>::basic_ofstream(const string& __s, ios_base::openmode __mode)
     : basic_ostream<char_type, traits_type>(&__sb_)
 {
     if (__sb_.open(__s, __mode | ios_base::out) == 0)
         this->setstate(ios_base::failbit);
 }
+#endif
 
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_ofstream<_CharT, _Traits>::basic_ofstream(basic_ofstream&& __rhs)
     : basic_ostream<char_type, traits_type>(_VSTD::move(__rhs)),
       __sb_(_VSTD::move(__rhs.__sb_))
@@ -1208,7 +1245,7 @@ basic_ofstream<_CharT, _Traits>::basic_ofstream(basic_ofstream&& __rhs)
 }
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_ofstream<_CharT, _Traits>&
 basic_ofstream<_CharT, _Traits>::operator=(basic_ofstream&& __rhs)
 {
@@ -1220,7 +1257,7 @@ basic_ofstream<_CharT, _Traits>::operator=(basic_ofstream&& __rhs)
 #endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 void
 basic_ofstream<_CharT, _Traits>::swap(basic_ofstream& __rhs)
 {
@@ -1237,7 +1274,7 @@ swap(basic_ofstream<_CharT, _Traits>& __x, basic_ofstream<_CharT, _Traits>& __y)
 }
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_filebuf<_CharT, _Traits>*
 basic_ofstream<_CharT, _Traits>::rdbuf() const
 {
@@ -1245,13 +1282,14 @@ basic_ofstream<_CharT, _Traits>::rdbuf() const
 }
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 bool
 basic_ofstream<_CharT, _Traits>::is_open() const
 {
     return __sb_.is_open();
 }
 
+#ifndef _LIBCPP_HAS_NO_GLOBAL_FILESYSTEM_NAMESPACE
 template <class _CharT, class _Traits>
 void
 basic_ofstream<_CharT, _Traits>::open(const char* __s, ios_base::openmode __mode)
@@ -1271,9 +1309,10 @@ basic_ofstream<_CharT, _Traits>::open(const string& __s, ios_base::openmode __mo
     else
         this->setstate(ios_base::failbit);
 }
+#endif
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 void
 basic_ofstream<_CharT, _Traits>::close()
 {
@@ -1294,22 +1333,35 @@ public:
     typedef typename traits_type::pos_type pos_type;
     typedef typename traits_type::off_type off_type;
 
+    _LIBCPP_INLINE_VISIBILITY
     basic_fstream();
+#ifndef _LIBCPP_HAS_NO_GLOBAL_FILESYSTEM_NAMESPACE
+    _LIBCPP_INLINE_VISIBILITY
     explicit basic_fstream(const char* __s, ios_base::openmode __mode = ios_base::in | ios_base::out);
+    _LIBCPP_INLINE_VISIBILITY
     explicit basic_fstream(const string& __s, ios_base::openmode __mode = ios_base::in | ios_base::out);
+#endif
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
+    _LIBCPP_INLINE_VISIBILITY
     basic_fstream(basic_fstream&& __rhs);
 #endif
 
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
+    _LIBCPP_INLINE_VISIBILITY
     basic_fstream& operator=(basic_fstream&& __rhs);
 #endif
+    _LIBCPP_INLINE_VISIBILITY
     void swap(basic_fstream& __rhs);
 
+    _LIBCPP_INLINE_VISIBILITY
     basic_filebuf<char_type, traits_type>* rdbuf() const;
+    _LIBCPP_INLINE_VISIBILITY
     bool is_open() const;
+#ifndef _LIBCPP_HAS_NO_GLOBAL_FILESYSTEM_NAMESPACE
     void open(const char* __s, ios_base::openmode __mode = ios_base::in | ios_base::out);
     void open(const string& __s, ios_base::openmode __mode = ios_base::in | ios_base::out);
+#endif
+    _LIBCPP_INLINE_VISIBILITY
     void close();
 
 private:
@@ -1317,14 +1369,15 @@ private:
 };
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_fstream<_CharT, _Traits>::basic_fstream()
     : basic_iostream<char_type, traits_type>(&__sb_)
 {
 }
 
+#ifndef _LIBCPP_HAS_NO_GLOBAL_FILESYSTEM_NAMESPACE
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_fstream<_CharT, _Traits>::basic_fstream(const char* __s, ios_base::openmode __mode)
     : basic_iostream<char_type, traits_type>(&__sb_)
 {
@@ -1333,18 +1386,19 @@ basic_fstream<_CharT, _Traits>::basic_fstream(const char* __s, ios_base::openmod
 }
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_fstream<_CharT, _Traits>::basic_fstream(const string& __s, ios_base::openmode __mode)
     : basic_iostream<char_type, traits_type>(&__sb_)
 {
     if (__sb_.open(__s, __mode) == 0)
         this->setstate(ios_base::failbit);
 }
+#endif
 
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_fstream<_CharT, _Traits>::basic_fstream(basic_fstream&& __rhs)
     : basic_iostream<char_type, traits_type>(_VSTD::move(__rhs)),
       __sb_(_VSTD::move(__rhs.__sb_))
@@ -1353,7 +1407,7 @@ basic_fstream<_CharT, _Traits>::basic_fstream(basic_fstream&& __rhs)
 }
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_fstream<_CharT, _Traits>&
 basic_fstream<_CharT, _Traits>::operator=(basic_fstream&& __rhs)
 {
@@ -1365,7 +1419,7 @@ basic_fstream<_CharT, _Traits>::operator=(basic_fstream&& __rhs)
 #endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 void
 basic_fstream<_CharT, _Traits>::swap(basic_fstream& __rhs)
 {
@@ -1382,7 +1436,7 @@ swap(basic_fstream<_CharT, _Traits>& __x, basic_fstream<_CharT, _Traits>& __y)
 }
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_filebuf<_CharT, _Traits>*
 basic_fstream<_CharT, _Traits>::rdbuf() const
 {
@@ -1390,13 +1444,14 @@ basic_fstream<_CharT, _Traits>::rdbuf() const
 }
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 bool
 basic_fstream<_CharT, _Traits>::is_open() const
 {
     return __sb_.is_open();
 }
 
+#ifndef _LIBCPP_HAS_NO_GLOBAL_FILESYSTEM_NAMESPACE
 template <class _CharT, class _Traits>
 void
 basic_fstream<_CharT, _Traits>::open(const char* __s, ios_base::openmode __mode)
@@ -1416,9 +1471,10 @@ basic_fstream<_CharT, _Traits>::open(const string& __s, ios_base::openmode __mod
     else
         this->setstate(ios_base::failbit);
 }
+#endif
 
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 void
 basic_fstream<_CharT, _Traits>::close()
 {

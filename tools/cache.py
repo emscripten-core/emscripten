@@ -4,11 +4,16 @@ import tempfiles
 
 # Permanent cache for dlmalloc and stdlibc++
 class Cache:
-  def __init__(self, dirname=None, debug=False):
+  def __init__(self, dirname=None, debug=False, use_subdir=True):
     if dirname is None:
       dirname = os.environ.get('EM_CACHE')
     if not dirname:
       dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+    if use_subdir:
+      if os.environ.get('EMCC_WASM_BACKEND') and os.environ.get('EMCC_WASM_BACKEND') != '0':
+        dirname = os.path.join(dirname, 'wasm')
+      else:
+        dirname = os.path.join(dirname, 'asmjs')
     self.dirname = dirname
     self.debug = debug
 
@@ -27,10 +32,10 @@ class Cache:
 
   # Request a cached file. If it isn't in the cache, it will be created with
   # the given creator function
-  def get(self, shortname, creator, extension='.bc', what=None):
+  def get(self, shortname, creator, extension='.bc', what=None, force=False):
     if not shortname.endswith(extension): shortname += extension
     cachename = os.path.join(self.dirname, shortname)
-    if os.path.exists(cachename):
+    if os.path.exists(cachename) and not force:
       return cachename
     if what is None:
       if shortname.endswith(('.bc', '.so', '.a')): what = 'system library'

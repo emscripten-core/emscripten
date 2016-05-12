@@ -13,6 +13,10 @@
 
 #include <__config>
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
+#pragma GCC system_header
+#endif
+
 #define _LIBCPP_BEGIN_NAMESPACE_EXPERIMENTAL namespace std { namespace experimental {
 #define _LIBCPP_END_NAMESPACE_EXPERIMENTAL  } }
 #define _VSTD_EXPERIMENTAL std::experimental
@@ -20,5 +24,9 @@
 #define _LIBCPP_BEGIN_NAMESPACE_LFTS _LIBCPP_BEGIN_NAMESPACE_EXPERIMENTAL inline namespace fundamentals_v1 {
 #define _LIBCPP_END_NAMESPACE_LFTS  } } }
 #define _VSTD_LFTS _VSTD_EXPERIMENTAL::fundamentals_v1
+
+#define _LIBCPP_BEGIN_NAMESPACE_CHRONO_LFTS _LIBCPP_BEGIN_NAMESPACE_STD        \
+  namespace chrono { namespace experimental { inline namespace fundamentals_v1 {
+#define _LIBCPP_END_NAMESPACE_CHRONO_LFTS _LIBCPP_END_NAMESPACE_STD } } }
 
 #endif

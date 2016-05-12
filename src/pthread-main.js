@@ -31,7 +31,10 @@ function threadPrintErr() {
   var text = Array.prototype.slice.call(arguments).join(' ');
   postMessage({cmd: 'printErr', text: text, threadId: selfThreadId});
 }
-
+function threadAlert() {
+  var text = Array.prototype.slice.call(arguments).join(' ');
+  postMessage({cmd: 'alert', text: text, threadId: selfThreadId});
+}
 Module['print'] = threadPrint;
 Module['printErr'] = threadPrintErr;
 
@@ -40,6 +43,8 @@ console = {
   log: threadPrint,
   error: threadPrintErr
 };
+
+this.alert = threadAlert;
 
 this.onmessage = function(e) {
   if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.

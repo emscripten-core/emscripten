@@ -911,7 +911,7 @@ int emscripten_async_wget2_data(const char* url, const char* requesttype, cons
         callbacks, untouched by the API itself. This may be used by a
         callback to identify the associated call.
 
-      * **int free** (*const*) -- Tells the runtime whether to free
+      * **free** (*int*) -- Tells the runtime whether to free
         the returned buffer after "onload" is complete. If "false"
         freeing the buffer is the receiver's responsibility.
 
@@ -1076,7 +1076,7 @@ void emscripten_idb_async_store(const char *db_name, const char *file_id, void* 
         callbacks, untouched by the API itself. This may be used by a
         callback to identify the associated call.
 
-      * **onload** (*em_async_wget_onload_func*) --
+      * **onload** (*em_arg_callback_func*) --
 
         Callback on successful load of the URL into the buffer. The
         callback function parameter values are:
@@ -1119,7 +1119,7 @@ void emscripten_idb_async_delete(const char *db_name, const char *file_id, voi
 
         * *(void*)* : Equal to "arg" (user defined data).
 
-void emscripten_idb_async_exists(const char *db_name, const char *file_id, void* arg, em_arg_callback_func oncheck, em_arg_callback_func onerror)
+void emscripten_idb_async_exists(const char *db_name, const char *file_id, void* arg, em_idb_exists_func oncheck, em_arg_callback_func onerror)
 
    Checks if data with a certain ID exists in the local IndexedDB
    storage asynchronously.
@@ -1136,7 +1136,7 @@ void emscripten_idb_async_exists(const char *db_name, const char *file_id, voi
         callbacks, untouched by the API itself. This may be used by a
         callback to identify the associated call.
 
-      * **oncheck** (*em_arg_callback_func*) --
+      * **oncheck** (*em_idb_exists_func*) --
 
         Callback on successful check, with arguments
 
@@ -1652,7 +1652,7 @@ em_socket_error_callback
 Functions
 ---------
 
-void emscripten_set_socket_error_callback(void *userData, em_socket_error_callback *callback)
+void emscripten_set_socket_error_callback(void *userData, em_socket_error_callback callback)
 
    Triggered by a "WebSocket" error.
 
@@ -1662,7 +1662,7 @@ void emscripten_set_socket_error_callback(void *userData, em_socket_error_callb
       * **userData** (*void**) -- Arbitrary user data to be passed
         to the callback.
 
-      * **callback** (*em_socket_error_callback**) -- Pointer to a
+      * **callback** (*em_socket_error_callback*) -- Pointer to a
         callback function. The callback returns a file descriptor,
         error code and message, and the arbitrary "userData" passed to
         this function.
