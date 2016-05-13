@@ -546,7 +546,7 @@ var LibraryJSEvents = {
     },
 
     fullscreenEnabled: function() {
-      return document.fullscreenEnabled || document.mozFullscreenEnabled || document.mozFullScreenEnabled || document.webkitFullscreenEnabled || document.msFullscreenEnabled;
+      return document.fullscreenEnabled || document.mozFullScreenEnabled || document.webkitFullscreenEnabled || document.msFullscreenEnabled;
     },
     
     fillFullscreenChangeEventData: function(eventStruct, e) {
