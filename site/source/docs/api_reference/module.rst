@@ -102,7 +102,11 @@ Other methods
 	This method should be called to destroy C++ objects created in JavaScript using :ref:`WebIDL bindings <WebIDL-Binder>`. If this method is not called, an object may be garbage collected, but its destructor will not be called.
 
 	:param obj: The JavaScript-wrapped C++ object to be destroyed.
-	
+
+.. js:function:: Module.onCustomMessage
+
+	When compiled with ``PROXY_TO_WORKER = 1`` (see `settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_), this callback (which should be implemented on both the client and worker's ``Module`` object) allows sending custom messages and data between the web worker and the main thread (using the ``postCustomMessage`` function defined in `proxyClient.js <https://github.com/kripken/emscripten/blob/master/src/proxyClient.js>`_ and `proxyWorker.js <https://github.com/kripken/emscripten/blob/master/src/proxyWorker.js>`_).
+
 Overriding execution environment
 ================================
 
