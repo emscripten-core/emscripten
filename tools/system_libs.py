@@ -238,12 +238,13 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   def create_wasm_compiler_rt(libname):
     srcdir = shared.path_from_root('system', 'lib', 'compiler-rt', 'lib', 'builtins')
-    filenames = ['addtf3.c', 'ashlti3.c', 'ashrti3.c', 'comparetf2.c', 'divti3.c', 'extenddftf2.c', 'extendsftf2.c',
+    filenames = ['addtf3.c', 'ashlti3.c', 'ashrti3.c', 'comparetf2.c', 'divtf3.c', 'divti3.c',
+                 'extenddftf2.c', 'extendsftf2.c',
                  'fixdfti.c', 'fixsfti.c', 'fixtfdi.c', 'fixtfsi.c', 'fixtfti.c',
                  'fixunsdfti.c', 'fixunssfti.c', 'fixunstfdi.c', 'fixunstfsi.c', 'fixunstfti.c',
                  'floatditf.c', 'floatsitf.c', 'floattidf.c', 'floattisf.c',
-                 'floatunditf.c', 'floatunsitf.c', 'floatuntidf.c', 'floatuntisf.c', 'lsshrti3.c',
-                 'modti3.c', 'multf3.c', 'multi3.c', 'subtf3.c', 'ashrdi3.c',
+                 'floatunditf.c', 'floatunsitf.c', 'floatuntidf.c', 'floatuntisf.c', 'lshrti3.c',
+                 'modti3.c', 'multf3.c', 'multi3.c', 'subtf3.c', 'udivti3.c', 'umodti3.c', 'ashrdi3.c',
                  'ashldi3.c', 'fixdfdi.c', 'floatdidf.c', 'lshrdi3.c', 'moddi3.c',
                  'trunctfdf2.c', 'umoddi3.c', 'fixunsdfdi.c', 'muldi3.c',
                  'divdi3.c', 'divmoddi4.c', 'udivdi3.c', 'udivmoddi4.c']
