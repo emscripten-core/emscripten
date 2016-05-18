@@ -223,9 +223,22 @@ worker.onmessage = function worker_onmessage(event) {
       }
       break;
     }
+    case 'custom': {
+      if (Module['onCustomMessage']) {
+        Module['onCustomMessage'](event);
+      } else {
+        throw 'Custom message received but client Module.onCustomMessage not implemented.';
+      }
+      break;
+    }
     default: throw 'what?';
   }
 };
+
+function postCustomMessage(data, options) {
+  options = options || {};
+  worker.postMessage({ target: 'custom', userData: data, preMain: options.preMain });
+}
 
 function cloneObject(event) {
   var ret = {};
