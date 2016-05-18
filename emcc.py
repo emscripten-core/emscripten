@@ -518,11 +518,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shrink_level = 2
           settings_changes.append('INLINING_LIMIT=25')
         opt_level = validate_arg_level(requested_level, 3, 'Invalid optimization level: ' + newargs[i])
-        # We leave the -O option in place so that the clang front-end runs in that
-        # optimization mode, but we disable the actual optimization passes, as we'll
-        # run them separately.
-        newargs.append('-mllvm')
-        newargs.append('-disable-llvm-optzns')
       elif newargs[i].startswith('--js-opts'):
         check_bad_eq(newargs[i])
         js_opts = eval(newargs[i+1])
@@ -1178,6 +1173,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.GLOBAL_BASE < 0:
       shared.Settings.GLOBAL_BASE = 8 # default if nothing else sets it
 
+    if shared.Settings.WASM_BACKEND:
+      if shared.Settings.SIMD:
+        newargs.append('-msimd128')
+    else:
+      # We leave the -O option in place so that the clang front-end runs in that
+      # optimization mode, but we disable the actual optimization passes, as we'll
+      # run them separately.
+      if opt_level > 0:
+        newargs.append('-mllvm')
+        newargs.append('-disable-llvm-optzns')
+
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
     shared.Settings.OPT_LEVEL = opt_level
     shared.Settings.DEBUG_LEVEL = debug_level
@@ -1280,7 +1286,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     log_time('bitcodeize inputs')
 
-    if not LEAVE_INPUTS_RAW:
+    if not LEAVE_INPUTS_RAW and not shared.Settings.WASM_BACKEND:
       assert len(temp_files) == len(input_files)
 
       # Optimize source files
