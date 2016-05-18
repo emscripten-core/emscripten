@@ -87,6 +87,8 @@ In addition to the above (defining a separate memory initialization file as :ref
 - You can use the ``NO_FILESYSTEM`` option to disable bundling of filesystem support code (the compiler should optimize it out if not used, but may not always succeed). This can be useful if you are building a pure computational library, for example. See ``settings.js`` for more detals.
 - You can use ``EXPORTED_RUNTIME_METHODS`` to define which runtime methods are exported. By default a bunch of useful methods are exported, which you may not need; setting this to a smaller list will cause fewer methods to be exported. In conjunction with the closure compiler, this can be very effective, since closure can eliminate non-exported code. See ``settings.js`` for more detals. See ``test_no_nuthin`` in ``tests/test_other.py`` for an example usage in the test suite.
 - You can use ``ELIMINATE_DUPLICATE_FUNCTIONS`` to remove duplicate functions, which C++ templates often create. See ``settings.js`` for more details.
+- You can move some of your code into the `Emterpreter <https://github.com/kripken/emscripten/wiki/Emterpreter>`_, which will then run much slower (as it is interpreted), but it will transfer all that code into a smaller amount of data.
+- You can use separate modules through `dynamic linking <https://github.com/kripken/emscripten/wiki/Linking>`_. That can increase the total code size of everything, but reduces the maximum size of a single module, which can help in some cases (e.g. if a single big module hits a memory limit).
 
 Very large codebases
 ====================
