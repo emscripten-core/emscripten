@@ -1228,11 +1228,6 @@ LibraryManager.library = {
     Runtime.stackRestore(ret);
   },
 
-  __cxa_pure_virtual: function() {
-    ABORT = true;
-    throw 'Pure virtual function called!';
-  },
-
   llvm_flt_rounds: function() {
     return -1; // 'indeterminable' for FLT_ROUNDS
   },
