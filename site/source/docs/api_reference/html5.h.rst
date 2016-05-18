@@ -130,8 +130,17 @@ General types
 
 .. c:macro:: EM_BOOL
 
-	This is the Emscripten type for a ``bool``.  
+	This is the Emscripten type for a ``bool``. 
+	Possible values:
 	
+	.. c:macro:: EM_TRUE
+
+		This is the Emscripten value for ``true``. 
+
+	.. c:macro:: EM_FALSE
+
+		This is the Emscripten value for ``false``. 
+
 	
 .. c:macro:: EM_UTF8
 
@@ -1977,7 +1986,7 @@ Functions
 	:param target: The DOM canvas element in which to initialize the WebGL context. If 0 is passed, the element specified by ``Module.canvas`` will be used.
 	:type target: const char*
 	:param attributes: The attributes of the requested context version.
-	:type attributes: EmscriptenWebGLContextAttributes*
+	:type attributes: const EmscriptenWebGLContextAttributes*
 	:returns: On success, a strictly positive value that represents a handle to the created context. On failure, a negative number that can be cast to an |EMSCRIPTEN_RESULT| field to get the reason why the context creation failed.
 	:rtype: |EMSCRIPTEN_WEBGL_CONTEXT_HANDLE|
 

@@ -11,6 +11,12 @@ extern int64_t llvm_cttz_i64(int64_t x, int izZeroUndef);
 extern int32_t llvm_ctpop_i32(int32_t x);
 extern int64_t llvm_ctpop_i64(int64_t x);
 extern int llvm_expect_i32(int x, int y);
+extern float llvm_powi_f32(float x, int32_t y);
+extern double llvm_powi_f64(double x, int32_t y);
+extern float llvm_trunc_f32(float x);
+extern double llvm_trunc_f64(double x);
+extern float llvm_floor_f32(float x);
+extern double llvm_floor_f64(double x);
 }
 
 int main(void) {
@@ -39,6 +45,13 @@ int main(void) {
   int64_t a = 1;
   a = __builtin_bswap64(a);
   printf("%lld\n", a);
+
+  printf("%d\n", (int)llvm_powi_f32(5.0f, 3));
+  printf("%d\n", (int)llvm_powi_f64(3.0, 5));
+  printf("%d\n", (int)llvm_trunc_f32(18.0987f));
+  printf("%d\n", (int)llvm_trunc_f64(-12.42));
+  printf("%d\n", (int)llvm_floor_f32(27.665f));
+  printf("%d\n", (int)llvm_floor_f64(-8.95));
 
   return 0;
 }

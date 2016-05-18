@@ -91,7 +91,7 @@ var LibraryGL = {
     },
 
     // Mini temp buffer
-    MINI_TEMP_BUFFER_SIZE: 16,
+    MINI_TEMP_BUFFER_SIZE: 256,
     miniTempBuffer: null,
     miniTempBufferViews: [0], // index i has the view of size i+1
 
@@ -116,7 +116,7 @@ var LibraryGL = {
       var log2 = 0;
       var pow2 = 1;
       GL.log2ceilLookup[0] = 0;
-      for(var i = 1; i <= maxValue; ++i) {
+      for (var i = 1; i <= maxValue; ++i) {
         if (i > pow2) {
           pow2 <<= 1;
           ++log2;
@@ -135,7 +135,7 @@ var LibraryGL = {
       context.tempVertexBuffers1.length = context.tempVertexBuffers2.length = largestIndex+1;
       context.tempIndexBuffers = [];
       context.tempIndexBuffers.length = largestIndex+1;
-      for(var i = 0; i <= largestIndex; ++i) {
+      for (var i = 0; i <= largestIndex; ++i) {
         context.tempIndexBuffers[i] = null; // Created on-demand
         context.tempVertexBufferCounters1[i] = context.tempVertexBufferCounters2[i] = 0;
         var ringbufferLength = GL.numTempVertexBuffersPerSize;
@@ -144,7 +144,7 @@ var LibraryGL = {
         var ringbuffer1 = context.tempVertexBuffers1[i];
         var ringbuffer2 = context.tempVertexBuffers2[i];
         ringbuffer1.length = ringbuffer2.length = ringbufferLength;
-        for(var j = 0; j < ringbufferLength; ++j) {
+        for (var j = 0; j < ringbufferLength; ++j) {
           ringbuffer1[j] = ringbuffer2[j] = null; // Created on-demand
         }
       }
@@ -221,7 +221,7 @@ var LibraryGL = {
       GL.currentContext.tempVertexBufferCounters1 = GL.currentContext.tempVertexBufferCounters2;
       GL.currentContext.tempVertexBufferCounters2 = vb;
       var largestIndex = GL.log2ceilLookup[GL.MAX_TEMP_BUFFER_SIZE];
-      for(var i = 0; i <= largestIndex; ++i) {
+      for (var i = 0; i <= largestIndex; ++i) {
         GL.currentContext.tempVertexBufferCounters1[i] = 0;
       }
     },
@@ -622,7 +622,7 @@ var LibraryGL = {
                                              "OES_texture_float_linear", "OES_texture_half_float_linear", "WEBGL_compressed_texture_atc",
                                              "WEBGL_compressed_texture_pvrtc", "EXT_color_buffer_half_float", "WEBGL_color_buffer_float",
                                              "EXT_frag_depth", "EXT_sRGB", "WEBGL_draw_buffers", "WEBGL_shared_resources",
-                                             "EXT_shader_texture_lod" ];
+                                             "EXT_shader_texture_lod", "EXT_color_buffer_float"];
 
       function shouldEnableAutomatically(extension) {
         var ret = false;
@@ -1051,47 +1051,69 @@ var LibraryGL = {
       case 0x1906 /* GL_ALPHA */:
       case 0x1909 /* GL_LUMINANCE */:
       case 0x1902 /* GL_DEPTH_COMPONENT */:
+#if USE_WEBGL2
       case 0x1903 /* GL_RED */:
+      case 0x8D94 /* GL_RED_INTEGER */:
+#endif
         numChannels = 1;
         break;
       case 0x190A /* GL_LUMINANCE_ALPHA */:
+#if USE_WEBGL2
       case 0x8227 /* GL_RG */:
+      case 0x8228 /* GL_RG_INTEGER*/:
+#endif
         numChannels = 2;
         break;
       case 0x1907 /* GL_RGB */:
       case 0x8C40 /* GL_SRGB_EXT */:
+#if USE_WEBGL2
+      case 0x8D98 /* GL_RGB_INTEGER */:
+#endif
         numChannels = 3;
         break;
       case 0x1908 /* GL_RGBA */:
       case 0x8C42 /* GL_SRGB_ALPHA_EXT */:
+#if USE_WEBGL2
+      case 0x8D99 /* GL_RGBA_INTEGER */:
+#endif
         numChannels = 4;
         break;
       default:
         GL.recordError(0x0500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
-        Module.printErr('GL_INVALID_ENUM due to unknown format in getTexPixelData, type: ' + type + ', format: ' + format);
+        Module.printErr('GL_INVALID_ENUM due to unknown format in glTex[Sub]Image/glReadPixels, format: ' + format);
 #endif
-        return {
-          pixels: null,
-          internalFormat: 0x0
-        };
+        return null;
     }
     switch (type) {
       case 0x1401 /* GL_UNSIGNED_BYTE */:
+#if USE_WEBGL2
+      case 0x1400 /* GL_BYTE */:
+#endif
         sizePerPixel = numChannels*1;
         break;
       case 0x1403 /* GL_UNSIGNED_SHORT */:
+      case 0x8D61 /* GL_HALF_FLOAT_OES */:
 #if USE_WEBGL2
       case 0x140B /* GL_HALF_FLOAT */:
+      case 0x1402 /* GL_SHORT */:
 #endif
-      case 0x8D61 /* GL_HALF_FLOAT_OES */:
         sizePerPixel = numChannels*2;
         break;
       case 0x1405 /* GL_UNSIGNED_INT */:
       case 0x1406 /* GL_FLOAT */:
+#if USE_WEBGL2
+      case 0x1404 /* GL_INT */:
+#endif
         sizePerPixel = numChannels*4;
         break;
-      case 0x84FA /* UNSIGNED_INT_24_8_WEBGL/UNSIGNED_INT_24_8 */:
+      case 0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */:
+#if USE_WEBGL2
+      case 0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */:
+      case 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */:
+      case 0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */:
+      case 0x84FA /* GL_UNSIGNED_INT_24_8 */:
+#endif
         sizePerPixel = 4;
         break;
       case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
@@ -1104,65 +1126,94 @@ var LibraryGL = {
 #if GL_ASSERTIONS
         Module.printErr('GL_INVALID_ENUM in glTex[Sub]Image/glReadPixels, type: ' + type + ', format: ' + format);
 #endif
-        return {
-          pixels: null,
-          internalFormat: 0x0
-        };
+        return null;
     }
     var bytes = emscriptenWebGLComputeImageSize(width, height, sizePerPixel, GL.unpackAlignment);
-    if (type == 0x1401 /* GL_UNSIGNED_BYTE */) {
-      pixels = {{{ makeHEAPView('U8', 'pixels', 'pixels+bytes') }}};
-    } else if (type == 0x1406 /* GL_FLOAT */) {
-      pixels = {{{ makeHEAPView('F32', 'pixels', 'pixels+bytes') }}};
-    } else if (type == 0x1405 /* GL_UNSIGNED_INT */ || type == 0x84FA /* UNSIGNED_INT_24_8_WEBGL */) {
-      pixels = {{{ makeHEAPView('U32', 'pixels', 'pixels+bytes') }}};
-    } else {
-      pixels = {{{ makeHEAPView('U16', 'pixels', 'pixels+bytes') }}};
+    switch(type) {
+#if USE_WEBGL2
+      case 0x1400 /* GL_BYTE */:
+        return {{{ makeHEAPView('8', 'pixels', 'pixels+bytes') }}};
+#endif
+      case 0x1401 /* GL_UNSIGNED_BYTE */:
+        return {{{ makeHEAPView('U8', 'pixels', 'pixels+bytes') }}};
+#if USE_WEBGL2
+      case 0x1402 /* GL_SHORT */:
+#if GL_ASSERTIONS
+        assert((pixels & 1) == 0, 'Pointer to int16 data passed to texture get function must be aligned to two bytes!');
+#endif
+        return {{{ makeHEAPView('16', 'pixels', 'pixels+bytes') }}};
+      case 0x1404 /* GL_INT */:
+#if GL_ASSERTIONS
+        assert((pixels & 3) == 0, 'Pointer to integer data passed to texture get function must be aligned to four bytes!');
+#endif
+        return {{{ makeHEAPView('32', 'pixels', 'pixels+bytes') }}};
+#endif
+      case 0x1406 /* GL_FLOAT */:
+#if GL_ASSERTIONS
+        assert((pixels & 3) == 0, 'Pointer to float data passed to texture get function must be aligned to four bytes!');
+#endif
+        return {{{ makeHEAPView('F32', 'pixels', 'pixels+bytes') }}};
+      case 0x1405 /* GL_UNSIGNED_INT */:
+      case 0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */:
+#if USE_WEBGL2
+      case 0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */:
+      case 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */:
+      case 0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */:
+      case 0x84FA /* GL_UNSIGNED_INT_24_8 */:
+#endif
+#if GL_ASSERTIONS
+        assert((pixels & 3) == 0, 'Pointer to integer data passed to texture get function must be aligned to four bytes!');
+#endif
+        return {{{ makeHEAPView('U32', 'pixels', 'pixels+bytes') }}};
+      case 0x1403 /* GL_UNSIGNED_SHORT */:
+      case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
+      case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
+      case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
+      case 0x8D61 /* GL_HALF_FLOAT_OES */:
+#if USE_WEBGL2
+      case 0x140B /* GL_HALF_FLOAT */:
+#endif
+#if GL_ASSERTIONS
+        assert((pixels & 1) == 0, 'Pointer to int16 data passed to texture get function must be aligned to two bytes!');
+#endif
+        return {{{ makeHEAPView('U16', 'pixels', 'pixels+bytes') }}};
+      default:
+        GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_ENUM in glTex[Sub]Image/glReadPixels, type: ' + type);
+#endif
+        return null;
     }
-    return {
-      pixels: pixels,
-      internalFormat: internalFormat
-    };
   },
 
   glTexImage2D__sig: 'viiiiiiiii',
   glTexImage2D__deps: ['$emscriptenWebGLGetTexPixelData'],
   glTexImage2D: function(target, level, internalFormat, width, height, border, format, type, pixels) {
-    var pixelData;
-    if (pixels) {
-      var data = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat);
-      pixelData = data.pixels;
-      internalFormat = data.internalFormat;
-    } else {
-      pixelData = null;
-    }
+    var pixelData = null;
+    if (pixels) pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat);
     GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixelData);
   },
 
   glTexSubImage2D__sig: 'viiiiiiiii',
   glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData'],
   glTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, type, pixels) {
-    var pixelData;
-    if (pixels) {
-      pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, -1).pixels;
-    } else {
-      pixelData = null;
-    }
+    var pixelData = null;
+    if (pixels) pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, 0);
     GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixelData);
   },
 
   glReadPixels__sig: 'viiiiiii',
   glReadPixels__deps: ['$emscriptenWebGLGetTexPixelData'],
   glReadPixels: function(x, y, width, height, format, type, pixels) {
-    var data = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, format);
-    if (!data.pixels) {
+    var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, format);
+    if (!pixelData) {
       GL.recordError(0x0500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
       Module.printErr('GL_INVALID_ENUM in glReadPixels: Unrecognized combination of type=' + type + ' and format=' + format + '!');
 #endif
       return;
     }
-    GLctx.readPixels(x, y, width, height, format, type, data.pixels);
+    GLctx.readPixels(x, y, width, height, format, type, pixelData);
   },
 
   glBindTexture__sig: 'vii',
@@ -1991,6 +2042,9 @@ var LibraryGL = {
 
   glClearBufferiv__sig: 'viii',
   glClearBufferiv: function(buffer, drawbuffer, value) {
+#if GL_ASSERTIONS
+    assert((value & 3) == 0, 'Pointer to integer data passed to glClearBufferiv must be aligned to four bytes!');
+#endif
     var view = {{{ makeHEAPView('32', 'value', 'value+16') }}};
 #if USE_PTHREADS
     // TODO: This is temporary to cast a shared Int32Array to a non-shared Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
@@ -2001,6 +2055,9 @@ var LibraryGL = {
 
   glClearBufferuiv__sig: 'viii',
   glClearBufferuiv: function(buffer, drawbuffer, value) {
+#if GL_ASSERTIONS
+    assert((value & 3) == 0, 'Pointer to integer data passed to glClearBufferuiv must be aligned to four bytes!');
+#endif
     var view = {{{ makeHEAPView('U32', 'value', 'value+16') }}};
 #if USE_PTHREADS
     // TODO: This is temporary to cast a shared Uint32Array to a non-shared Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
@@ -2114,7 +2171,7 @@ var LibraryGL = {
     }
     var ret = GLctx.getInternalFormatParameter(target, internalformat, pname);
     if (ret === null) return;
-    for(var i = 0; i < ret.length && i < bufSize; ++i) {
+    for (var i = 0; i < ret.length && i < bufSize; ++i) {
       {{{ makeSetValue('params', 'i', 'ret[i]', 'i32') }}};
     }
   },
@@ -2466,6 +2523,7 @@ var LibraryGL = {
   glUniform1iv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform1iv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform1iv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
@@ -2480,6 +2538,7 @@ var LibraryGL = {
   glUniform2iv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform2iv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform2iv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     count *= 2;
@@ -2495,6 +2554,7 @@ var LibraryGL = {
   glUniform3iv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform3iv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform3iv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     count *= 3;
@@ -2510,6 +2570,7 @@ var LibraryGL = {
   glUniform4iv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform4iv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform4iv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     count *= 4;
@@ -2525,13 +2586,16 @@ var LibraryGL = {
   glUniform1fv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform1fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniform1fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform
-      view = GL.miniTempBufferViews[0];
-      view[0] = {{{ makeGetValue('value', '0', 'float') }}};
+    if (count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[count-1];
+      for (var i = 0; i < count; ++i) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+      }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
 #if USE_PTHREADS
@@ -2546,14 +2610,17 @@ var LibraryGL = {
   glUniform2fv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform2fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniform2fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform
-      view = GL.miniTempBufferViews[1];
-      view[0] = {{{ makeGetValue('value', '0', 'float') }}};
-      view[1] = {{{ makeGetValue('value', '4', 'float') }}};
+    if (2*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[2*count-1];
+      for (var i = 0; i < 2*count; i += 2) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+      }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*8') }}};
 #if USE_PTHREADS
@@ -2568,15 +2635,18 @@ var LibraryGL = {
   glUniform3fv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform3fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniform3fv must be aligned to four bytes!' + value);
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform
-      view = GL.miniTempBufferViews[2];
-      view[0] = {{{ makeGetValue('value', '0', 'float') }}};
-      view[1] = {{{ makeGetValue('value', '4', 'float') }}};
-      view[2] = {{{ makeGetValue('value', '8', 'float') }}};
+    if (3*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[3*count-1];
+      for (var i = 0; i < 3*count; i += 3) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+      }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*12') }}};
 #if USE_PTHREADS
@@ -2591,16 +2661,19 @@ var LibraryGL = {
   glUniform4fv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform4fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniform4fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform
-      view = GL.miniTempBufferViews[3];
-      view[0] = {{{ makeGetValue('value', '0', 'float') }}};
-      view[1] = {{{ makeGetValue('value', '4', 'float') }}};
-      view[2] = {{{ makeGetValue('value', '8', 'float') }}};
-      view[3] = {{{ makeGetValue('value', '12', 'float') }}};
+    if (4*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[4*count-1];
+      for (var i = 0; i < 4*count; i += 4) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+      }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
 #if USE_PTHREADS
@@ -2652,6 +2725,7 @@ var LibraryGL = {
   glUniform1uiv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform1uiv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform1uiv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     value = {{{ makeHEAPView('U32', 'value', 'value+count*4') }}};
@@ -2666,6 +2740,7 @@ var LibraryGL = {
   glUniform2uiv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform2uiv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform2uiv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     count *= 2;
@@ -2681,6 +2756,7 @@ var LibraryGL = {
   glUniform3uiv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform3uiv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform3uiv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     count *= 3;
@@ -2696,6 +2772,7 @@ var LibraryGL = {
   glUniform4uiv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform4uiv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform4uiv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     count *= 4;
@@ -2712,14 +2789,18 @@ var LibraryGL = {
   glUniformMatrix2fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix2fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform matrix
-      view = GL.miniTempBufferViews[3];
-      for (var i = 0; i < 4; i++) {
-        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+    if (4*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[4*count-1];
+      for (var i = 0; i < 4*count; i += 4) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
@@ -2735,14 +2816,23 @@ var LibraryGL = {
   glUniformMatrix3fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix3fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform matrix
-      view = GL.miniTempBufferViews[8];
-      for (var i = 0; i < 9; i++) {
-        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+    if (9*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[9*count-1];
+      for (var i = 0; i < 9*count; i += 9) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
+        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
+        view[i+6] = {{{ makeGetValue('value', '4*i+24', 'float') }}};
+        view[i+7] = {{{ makeGetValue('value', '4*i+28', 'float') }}};
+        view[i+8] = {{{ makeGetValue('value', '4*i+32', 'float') }}};
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*36') }}};
@@ -2758,14 +2848,30 @@ var LibraryGL = {
   glUniformMatrix4fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform matrix
-      view = GL.miniTempBufferViews[15];
-      for (var i = 0; i < 16; i++) {
-        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+    if (16*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[16*count-1];
+      for (var i = 0; i < 16*count; i += 16) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
+        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
+        view[i+6] = {{{ makeGetValue('value', '4*i+24', 'float') }}};
+        view[i+7] = {{{ makeGetValue('value', '4*i+28', 'float') }}};
+        view[i+8] = {{{ makeGetValue('value', '4*i+32', 'float') }}};
+        view[i+9] = {{{ makeGetValue('value', '4*i+36', 'float') }}};
+        view[i+10] = {{{ makeGetValue('value', '4*i+40', 'float') }}};
+        view[i+11] = {{{ makeGetValue('value', '4*i+44', 'float') }}};
+        view[i+12] = {{{ makeGetValue('value', '4*i+48', 'float') }}};
+        view[i+13] = {{{ makeGetValue('value', '4*i+52', 'float') }}};
+        view[i+14] = {{{ makeGetValue('value', '4*i+56', 'float') }}};
+        view[i+15] = {{{ makeGetValue('value', '4*i+60', 'float') }}};
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*64') }}};
@@ -2782,14 +2888,20 @@ var LibraryGL = {
   glUniformMatrix2x3fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix2x3fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x3fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform matrix
-      view = GL.miniTempBufferViews[5];
-      for (var i = 0; i < 6; i++) {
-        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+    if (6*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[6*count-1];
+      for (var i = 0; i < 6*count; i += 6) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
+        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*24') }}};
@@ -2805,14 +2917,20 @@ var LibraryGL = {
   glUniformMatrix3x2fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix3x2fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x2fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform matrix
-      view = GL.miniTempBufferViews[5];
-      for (var i = 0; i < 6; i++) {
-        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+    if (6*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[6*count-1];
+      for (var i = 0; i < 6*count; i += 6) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
+        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*24') }}};
@@ -2828,14 +2946,22 @@ var LibraryGL = {
   glUniformMatrix2x4fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix2x4fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x4fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform matrix
-      view = GL.miniTempBufferViews[7];
-      for (var i = 0; i < 8; i++) {
-        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+    if (8*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[8*count-1];
+      for (var i = 0; i < 8*count; i += 8) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
+        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
+        view[i+6] = {{{ makeGetValue('value', '4*i+24', 'float') }}};
+        view[i+7] = {{{ makeGetValue('value', '4*i+28', 'float') }}};
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*32') }}};
@@ -2851,14 +2977,22 @@ var LibraryGL = {
   glUniformMatrix4x2fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4x2fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x2fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform matrix
-      view = GL.miniTempBufferViews[7];
-      for (var i = 0; i < 8; i++) {
-        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+    if (8*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[8*count-1];
+      for (var i = 0; i < 8*count; i += 8) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
+        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
+        view[i+6] = {{{ makeGetValue('value', '4*i+24', 'float') }}};
+        view[i+7] = {{{ makeGetValue('value', '4*i+28', 'float') }}};
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*32') }}};
@@ -2874,14 +3008,26 @@ var LibraryGL = {
   glUniformMatrix3x4fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix3x4fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x4fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform matrix
-      view = GL.miniTempBufferViews[11];
-      for (var i = 0; i < 12; i++) {
-        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+    if (12*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[12*count-1];
+      for (var i = 0; i < 12*count; i += 12) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
+        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
+        view[i+6] = {{{ makeGetValue('value', '4*i+24', 'float') }}};
+        view[i+7] = {{{ makeGetValue('value', '4*i+28', 'float') }}};
+        view[i+8] = {{{ makeGetValue('value', '4*i+32', 'float') }}};
+        view[i+9] = {{{ makeGetValue('value', '4*i+36', 'float') }}};
+        view[i+10] = {{{ makeGetValue('value', '4*i+40', 'float') }}};
+        view[i+11] = {{{ makeGetValue('value', '4*i+44', 'float') }}};
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*48') }}};
@@ -2893,18 +3039,30 @@ var LibraryGL = {
     GLctx.uniformMatrix3x4fv(location, transpose, view);
   },
 
-  glUniformMatrix3x4fv__sig: 'viiii',
+  glUniformMatrix4x3fv__sig: 'viiii',
   glUniformMatrix4x3fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4x3fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x3fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform matrix
-      view = GL.miniTempBufferViews[11];
-      for (var i = 0; i < 12; i++) {
-        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+    if (12*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[12*count-1];
+      for (var i = 0; i < 12*count; i += 12) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
+        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
+        view[i+6] = {{{ makeGetValue('value', '4*i+24', 'float') }}};
+        view[i+7] = {{{ makeGetValue('value', '4*i+28', 'float') }}};
+        view[i+8] = {{{ makeGetValue('value', '4*i+32', 'float') }}};
+        view[i+9] = {{{ makeGetValue('value', '4*i+36', 'float') }}};
+        view[i+10] = {{{ makeGetValue('value', '4*i+40', 'float') }}};
+        view[i+11] = {{{ makeGetValue('value', '4*i+44', 'float') }}};
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*48') }}};
@@ -2940,47 +3098,56 @@ var LibraryGL = {
 
   glVertexAttrib1fv__sig: 'vii',
   glVertexAttrib1fv: function(index, v) {
-    v = {{{ makeHEAPView('F32', 'v', 'v+' + (1*4)) }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-    v = new Float32Array(v);
+#if GL_ASSERTIONS
+    assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib1fv must be aligned to four bytes!');
 #endif
-    GLctx.vertexAttrib1fv(index, v);
+    var view = GL.miniTempBufferViews[0];
+    view[0] = HEAPF32[v >> 2];
+    GLctx.vertexAttrib1fv(index, view);
   },
 
   glVertexAttrib2fv__sig: 'vii',
   glVertexAttrib2fv: function(index, v) {
-    v = {{{ makeHEAPView('F32', 'v', 'v+' + (2*4)) }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-    v = new Float32Array(v);
+#if GL_ASSERTIONS
+    assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib2fv must be aligned to four bytes!');
 #endif
-    GLctx.vertexAttrib2fv(index, v);
+    var view = GL.miniTempBufferViews[1];
+    view[0] = HEAPF32[v >> 2];
+    view[1] = HEAPF32[v + 4 >> 2];
+    GLctx.vertexAttrib2fv(index, view);
   },
 
   glVertexAttrib3fv__sig: 'vii',
   glVertexAttrib3fv: function(index, v) {
-    v = {{{ makeHEAPView('F32', 'v', 'v+' + (3*4)) }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-    v = new Float32Array(v);
+#if GL_ASSERTIONS
+    assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib3fv must be aligned to four bytes!');
 #endif
-    GLctx.vertexAttrib3fv(index, v);
+    var view = GL.miniTempBufferViews[2];
+    view[0] = HEAPF32[v >> 2];
+    view[1] = HEAPF32[v + 4 >> 2];
+    view[2] = HEAPF32[v + 8 >> 2];
+    GLctx.vertexAttrib3fv(index, view);
   },
 
   glVertexAttrib4fv__sig: 'vii',
   glVertexAttrib4fv: function(index, v) {
-    v = {{{ makeHEAPView('F32', 'v', 'v+' + (4*4)) }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-    v = new Float32Array(v);
+#if GL_ASSERTIONS
+    assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib4fv must be aligned to four bytes!');
 #endif
-    GLctx.vertexAttrib4fv(index, v);
+    var view = GL.miniTempBufferViews[3];
+    view[0] = HEAPF32[v >> 2];
+    view[1] = HEAPF32[v + 4 >> 2];
+    view[2] = HEAPF32[v + 8 >> 2];
+    view[3] = HEAPF32[v + 12 >> 2];
+    GLctx.vertexAttrib4fv(index, view);
   },
 
 #if USE_WEBGL2
   glVertexAttribI4iv__sig: 'vii',
   glVertexAttribI4iv: function(index, v) {
+#if GL_ASSERTIONS
+    assert((v & 3) == 0, 'Pointer to integer data passed to glVertexAttribI4iv must be aligned to four bytes!');
+#endif
     v = {{{ makeHEAPView('32', 'v', 'v+' + (4*4)) }}};
 #if USE_PTHREADS
     // TODO: This is temporary to cast a shared Int32Array to a non-shared Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
@@ -2991,6 +3158,9 @@ var LibraryGL = {
 
   glVertexAttribI4uiv__sig: 'vii',
   glVertexAttribI4uiv: function(index, v) {
+#if GL_ASSERTIONS
+    assert((v & 3) == 0, 'Pointer to integer data passed to glVertexAttribI4uiv must be aligned to four bytes!');
+#endif
     v = {{{ makeHEAPView('U32', 'v', 'v+' + (4*4)) }}};
 #if USE_PTHREADS
     // TODO: This is temporary to cast a shared Uint32Array to a non-shared Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
@@ -3180,7 +3350,7 @@ var LibraryGL = {
           var program = GL.programs[program];
           var numAttribs = GLctx.getProgramParameter(program, GLctx.ACTIVE_ATTRIBUTES);
           ptable.maxAttributeLength = 0; // Spec says if there are no active attribs, 0 must be returned.
-          for(var i = 0; i < numAttribs; ++i) {
+          for (var i = 0; i < numAttribs; ++i) {
             var activeAttrib = GLctx.getActiveAttrib(program, i);
             ptable.maxAttributeLength = Math.max(ptable.maxAttributeLength, activeAttrib.name.length+1);
           }
@@ -3427,7 +3597,7 @@ var LibraryGL = {
     assert(GLctx['createVertexArray'], 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
 
-    for(var i = 0; i < n; i++) {
+    for (var i = 0; i < n; i++) {
       var vao = GLctx['createVertexArray']();
       if (!vao) {
         GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
@@ -3456,7 +3626,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert(GLctx['deleteVertexArray'], 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
-    for(var i = 0; i < n; i++) {
+    for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
       GLctx['deleteVertexArray'](GL.vaos[id]);
       GL.vaos[id] = null;

@@ -2717,7 +2717,7 @@ EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *tar
         which to initialize the WebGL context. If 0 is passed, the
         element specified by "Module.canvas" will be used.
 
-      * **attributes** (*EmscriptenWebGLContextAttributes**) -- The
+      * **attributes** (*const EmscriptenWebGLContextAttributes**) -- The
         attributes of the requested context version.
 
    Returns:

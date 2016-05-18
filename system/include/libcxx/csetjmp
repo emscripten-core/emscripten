@@ -38,10 +38,6 @@ void longjmp(jmp_buf env, int val);
 #pragma GCC system_header
 #endif
 
-#ifndef setjmp
-#define setjmp(env) setjmp(env)
-#endif
-
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 using ::jmp_buf;

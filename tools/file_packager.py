@@ -11,7 +11,7 @@ data downloads.
 
 Usage:
 
-  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata] [--lz4] [--use-preload-plugins]
+  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--no-heap-copy] [--separate-metadata] [--lz4] [--use-preload-plugins]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -33,6 +33,8 @@ Usage:
   --no-force Don't create output if no valid input file is specified.
 
   --use-preload-cache Stores package in IndexedDB so that subsequent loads don't need to do XHR. Checks package version.
+
+  --indexedDB-name Use specified IndexedDB database name (Default: 'EM_PRELOAD_CACHE')
 
   --no-heap-copy If specified, the preloaded filesystem is not copied inside the Emscripten HEAP, but kept in a separate typed array outside it.
                  The default, if this is not specified, is to embed the VFS inside the HEAP, so that mmap()ing files in it is a no-op.
@@ -96,6 +98,7 @@ force = True
 # If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally cache VFS XHR so that subsequent 
 # page loads can read the data from the offline cache instead.
 use_preload_cache = False
+indexeddb_name = 'EM_PRELOAD_CACHE'
 # If set to True, the blob received from XHR is moved to the Emscripten HEAP, optimizing for mmap() performance.
 # If set to False, the XHR blob is kept intact, and fread()s etc. are performed directly to that data. This optimizes for minimal memory usage and fread() performance.
 no_heap_copy = True
@@ -118,6 +121,9 @@ for arg in sys.argv[2:]:
     leading = ''
   elif arg == '--use-preload-cache':
     use_preload_cache = True
+    leading = ''
+  elif arg.startswith('--indexedDB-name'):
+    indexeddb_name = arg.split('=')[1] if '=' in arg else None
     leading = ''
   elif arg == '--no-heap-copy':
     no_heap_copy = False
@@ -226,7 +232,7 @@ def should_ignore(fullname):
 
 # Returns the given string with escapes added so that it can safely be placed inside a string in JS code.
 def escape_for_js_string(s):
-  s = s.replace("'", "\\'").replace('"', '\\"')
+  s = s.replace("'", "\\'").replace('"', '\\"').replace('\\', '/')
   return s
 
 # Expand directories into individual files
@@ -436,7 +442,7 @@ if has_preloaded:
         var that = this;
 %s
         this.requests[this.name] = null;
-      },
+      }
     };
 %s
   ''' % ('' if not crunch else '''
@@ -515,7 +521,7 @@ if has_preloaded:
             DataRequest.prototype.requests[files[i].filename].onload();
           }
     '''
-    use_data += "          Module['removeRunDependency']('datafile_%s');\n" % data_target
+    use_data += "          Module['removeRunDependency']('datafile_%s');\n" % escape_for_js_string(data_target)
 
   else:
     # LZ4FS usage
@@ -529,7 +535,7 @@ if has_preloaded:
           assert(typeof LZ4 === 'object', 'LZ4 not present - was your app build with  -s LZ4=1  ?');
           LZ4.loadPackage({ 'metadata': metadata, 'compressedData': compressedData });
           Module['removeRunDependency']('datafile_%s');
-    ''' % (meta, data_target)
+    ''' % (meta, escape_for_js_string(data_target))
 
   package_uuid = uuid.uuid4();
   package_name = data_target
@@ -568,7 +574,7 @@ if has_preloaded:
       var indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
       var IDB_RO = "readonly";
       var IDB_RW = "readwrite";
-      var DB_NAME = 'EM_PRELOAD_CACHE';
+      var DB_NAME = "''' + indexeddb_name + '''";
       var DB_VERSION = 1;
       var METADATA_STORE_NAME = 'METADATA';
       var PACKAGE_STORE_NAME = 'PACKAGES';
@@ -605,7 +611,7 @@ if has_preloaded:
         var transaction = db.transaction([METADATA_STORE_NAME], IDB_RO);
         var metadata = transaction.objectStore(METADATA_STORE_NAME);
 
-        var getRequest = metadata.get(packageName);
+        var getRequest = metadata.get("metadata/" + packageName);
         getRequest.onsuccess = function(event) {
           var result = event.target.result;
           if (!result) {
@@ -623,7 +629,7 @@ if has_preloaded:
         var transaction = db.transaction([PACKAGE_STORE_NAME], IDB_RO);
         var packages = transaction.objectStore(PACKAGE_STORE_NAME);
 
-        var getRequest = packages.get(packageName);
+        var getRequest = packages.get("package/" + packageName);
         getRequest.onsuccess = function(event) {
           var result = event.target.result;
           callback(result);
@@ -634,13 +640,14 @@ if has_preloaded:
       };
 
       function cacheRemotePackage(db, packageName, packageData, packageMeta, callback, errback) {
-        var transaction = db.transaction([PACKAGE_STORE_NAME, METADATA_STORE_NAME], IDB_RW);
-        var packages = transaction.objectStore(PACKAGE_STORE_NAME);
-        var metadata = transaction.objectStore(METADATA_STORE_NAME);
+        var transaction_packages = db.transaction([PACKAGE_STORE_NAME], IDB_RW);
+        var packages = transaction_packages.objectStore(PACKAGE_STORE_NAME);
 
-        var putPackageRequest = packages.put(packageData, packageName);
+        var putPackageRequest = packages.put(packageData, "package/" + packageName);
         putPackageRequest.onsuccess = function(event) {
-          var putMetadataRequest = metadata.put(packageMeta, packageName);
+          var transaction_metadata = db.transaction([METADATA_STORE_NAME], IDB_RW);
+          var metadata = transaction_metadata.objectStore(METADATA_STORE_NAME);
+          var putMetadataRequest = metadata.put(packageMeta, "metadata/" + packageName);
           putMetadataRequest.onsuccess = function(event) {
             callback(packageData);
           };
@@ -718,7 +725,7 @@ if has_preloaded:
       %s
     };
     Module['addRunDependency']('datafile_%s');
-  ''' % (use_data, data_target) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
+  ''' % (use_data, escape_for_js_string(data_target)) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
 
   code += r'''
     if (!Module.preloadResults) Module.preloadResults = {};

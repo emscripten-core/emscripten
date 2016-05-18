@@ -9,6 +9,7 @@ declare i32 @printf(i8*, ...)
 define i32 @main() {
 entry:
   %s4 = alloca i64, align 8
+  store i64 0, i64* %s4
   %ar = atomicrmw add i64* %s4, i64 1 monotonic
   call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([20 x i8], [20 x i8]* @.str, i32 0, i32 0), i64 %ar)
   %ar2 = atomicrmw add i64* %s4, i64 1099511627776 monotonic

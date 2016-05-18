@@ -2,9 +2,9 @@
 
 // === Preamble library stuff ===
 
-// Documentation for the public APIs defined in this file must be updated in: 
+// Documentation for the public APIs defined in this file must be updated in:
 //    site/source/docs/api_reference/preamble.js.rst
-// A prebuilt local version of the documentation is available at: 
+// A prebuilt local version of the documentation is available at:
 //    site/build/text/docs/api_reference/preamble.js.txt
 // You can also build docs locally as HTML or other formats in site/
 // An online HTML version (which may be of a different version of Emscripten)
@@ -152,7 +152,7 @@ var cwrap, ccall;
   // For fast lookup of conversion functions
   var toC = {'string' : JSfuncs['stringToC'], 'array' : JSfuncs['arrayToC']};
 
-  // C calling interface. 
+  // C calling interface.
   ccall = function ccallFunc(ident, returnType, argTypes, args, opts) {
     var func = getCFunc(ident);
     var cArgs = [];
@@ -213,7 +213,7 @@ var cwrap, ccall;
       }
     }
   }
-  
+
   cwrap = function cwrap(ident, returnType, argTypes) {
     argTypes = argTypes || [];
     var cfunc = getCFunc(ident);
@@ -568,7 +568,7 @@ function UTF8ToString(ptr) {
 //   str: the Javascript string to copy.
 //   outU8Array: the array to copy to. Each index in this array is assumed to be one 8-byte element.
 //   outIdx: The starting offset in the array to begin the copying.
-//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null 
+//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null
 //                    terminator, i.e. if maxBytesToWrite=1, only the null terminator will be written and nothing else.
 //                    maxBytesToWrite=0 does not write any bytes to the output, not even the null terminator.
 // Returns the number of bytes written, EXCLUDING the null terminator.
@@ -690,7 +690,7 @@ function UTF16ToString(ptr) {
 // Parameters:
 //   str: the Javascript string to copy.
 //   outPtr: Byte address in Emscripten HEAP where to write the string to.
-//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null 
+//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null
 //                    terminator, i.e. if maxBytesToWrite=2, only the null terminator will be written and nothing else.
 //                    maxBytesToWrite<2 does not write any bytes to the output, not even the null terminator.
 // Returns the number of bytes written, EXCLUDING the null terminator.
@@ -753,7 +753,7 @@ function UTF32ToString(ptr) {
 // Parameters:
 //   str: the Javascript string to copy.
 //   outPtr: Byte address in Emscripten HEAP where to write the string to.
-//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null 
+//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null
 //                    terminator, i.e. if maxBytesToWrite=4, only the null terminator will be written and nothing else.
 //                    maxBytesToWrite<4 does not write any bytes to the output, not even the null terminator.
 // Returns the number of bytes written, EXCLUDING the null terminator.
@@ -814,15 +814,16 @@ function demangle(func) {
       if (getValue(status, 'i32') === 0 && ret) {
         return Pointer_stringify(ret);
       }
-      // otherwise, libcxxabi failed, we can try ours which may return a partial result
+      // otherwise, libcxxabi failed
     } catch(e) {
-      // failure when using libcxxabi, we can try ours which may return a partial result
-      return func;
+      // ignore problems here
     } finally {
       if (buf) _free(buf);
       if (status) _free(status);
       if (ret) _free(ret);
     }
+    // failure when using libcxxabi, don't demangle
+    return func;
   }
   Runtime.warnOnce('warning: build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling');
   return func;
@@ -850,7 +851,9 @@ function jsStackTrace() {
 }
 
 function stackTrace() {
-  return demangleAll(jsStackTrace());
+  var js = jsStackTrace();
+  if (Module['extraStackTrace']) js += '\n' + Module['extraStackTrace']();
+  return demangleAll(js);
 }
 {{{ maybeExport('stackTrace') }}}
 
@@ -894,6 +897,25 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #if SEPARATE_ASM != 0
   importScripts('{{{ SEPARATE_ASM }}}'); // load the separated-out asm.js
 #endif
+}
+#endif
+
+#if STACK_OVERFLOW_CHECK
+// Initializes the stack cookie. Called at the startup of main and at the startup of each thread in pthreads mode.
+function writeStackCookie() {
+  assert((STACK_MAX & 3) == 0);
+  HEAPU32[(STACK_MAX >> 2)-1] = 0x02135467;
+  HEAPU32[(STACK_MAX >> 2)-2] = 0x89BACDFE;
+}
+
+function checkStackCookie() {
+  if (HEAPU32[(STACK_MAX >> 2)-1] != 0x02135467 || HEAPU32[(STACK_MAX >> 2)-2] != 0x89BACDFE) {
+    abort('Stack overflow! Stack cookie has been overwritten, expected hex dwords 0x89BACDFE and 0x02135467, but received 0x' + HEAPU32[(STACK_MAX >> 2)-2].toString(16) + ' ' + HEAPU32[(STACK_MAX >> 2)-1].toString(16));
+  }
+}
+
+function abortStackOverflow(allocSize) {
+  abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - asm.stackSave() + allocSize) + ' bytes available!');
 }
 #endif
 
@@ -1085,15 +1107,31 @@ if (typeof Atomics === 'undefined') {
   Atomics['add'] = function(t, i, v) { var w = t[i]; t[i] += v; return w; }
   Atomics['and'] = function(t, i, v) { var w = t[i]; t[i] &= v; return w; }
   Atomics['compareExchange'] = function(t, i, e, r) { var w = t[i]; if (w == e) t[i] = r; return w; }
-  Atomics['futexWait'] = function(t, i, v, o) { if (t[i] != v) abort('Multithreading is not supported, cannot sleep to wait for futex!'); }
-  Atomics['futexWake'] = function(t, i, c) {}
-  Atomics['futexWakeOrRequeue'] = function(t, i1, c, i2, v) {}
+  Atomics['wait'] = function(t, i, v, o) { if (t[i] != v) abort('Multithreading is not supported, cannot sleep to wait for futex!'); }
+  Atomics['wake'] = function(t, i, c) {}
+  Atomics['wakeOrRequeue'] = function(t, i1, c, i2, v) {}
   Atomics['isLockFree'] = function(s) { return true; }
   Atomics['load'] = function(t, i) { return t[i]; }
   Atomics['or'] = function(t, i, v) { var w = t[i]; t[i] |= v; return w; }
   Atomics['store'] = function(t, i, v) { t[i] = v; return v; }
   Atomics['sub'] = function(t, i, v) { var w = t[i]; t[i] -= v; return w; }
   Atomics['xor'] = function(t, i, v) { var w = t[i]; t[i] ^= v; return w; }
+}
+
+// In old Atomics spec, Atomics.OK/.TIMEDOUT/.NOTEQUAL were integers. In new spec, Atomics functions return strings, so if we are in the new spec,
+// assign the strings to the place where the integers would have been to keep implementation of emscripten_futex_wait straightforward without dynamic checks for both.
+// See https://github.com/tc39/ecmascript_sharedmem/issues/69 for details.
+if (typeof Atomics['OK'] === 'undefined') {
+  Atomics['OK'] = 'ok';
+  Atomics['TIMEDOUT'] = 'timed-out';
+  Atomics['NOTEQUAL'] = 'not-equal';
+}
+
+// If running browser with old API names, account for function renames. See https://bugzilla.mozilla.org/show_bug.cgi?id=1260910.
+if (typeof Atomics['wait'] === 'undefined') {
+  Atomics['wait'] = Atomics['futexWait'];
+  Atomics['wake'] = Atomics['futexWake'];
+  Atomics['wakeOrRequeue'] = Atomics['futexWakeOrRequeue'];
 }
 
 #else // USE_PTHREADS
@@ -1254,7 +1292,7 @@ function freeSplitChunk(i) {
 function checkPtr(ptr, shifts) {
   if (ptr <= 0) abort('segmentation fault storing to address ' + ptr);
   if (ptr !== ((ptr >> shifts) << shifts)) abort('alignment error storing to address ' + ptr + ', which was expected to be aligned to a shift of ' + shifts);
-  if ((ptr >> SPLIT_MEMORY_BITS) !== (ptr + Math.pow(2, shifts) - 1 >> SPLIT_MEMORY_BITS)) abort('segmentation fault, write spans split chunks ' + [ptr, shifts]); 
+  if ((ptr >> SPLIT_MEMORY_BITS) !== (ptr + Math.pow(2, shifts) - 1 >> SPLIT_MEMORY_BITS)) abort('segmentation fault, write spans split chunks ' + [ptr, shifts]);
 }
 #endif
 
@@ -1298,7 +1336,7 @@ function getU32(ptr) {
 #if SAFE_SPLIT_MEMORY
   checkPtr(ptr, 2);
 #endif
-  return HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] | 0;
+  return HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] >>> 0;
 }
 function getF32(ptr) {
   ptr = ptr | 0;
@@ -1447,6 +1485,9 @@ function preRun() {
 }
 
 function ensureInitRuntime() {
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
+#endif
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
@@ -1456,6 +1497,9 @@ function ensureInitRuntime() {
 }
 
 function preMain() {
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
+#endif
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
@@ -1463,6 +1507,9 @@ function preMain() {
 }
 
 function exitRuntime() {
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
+#endif
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
@@ -1471,6 +1518,9 @@ function exitRuntime() {
 }
 
 function postRun() {
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
+#endif
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
@@ -1620,6 +1670,11 @@ if (!Math['clz32']) Math['clz32'] = function(x) {
 };
 Math.clz32 = Math['clz32']
 
+if (!Math['trunc']) Math['trunc'] = function(x) {
+  return x < 0 ? Math.ceil(x) : Math.floor(x);
+};
+Math.trunc = Math['trunc'];
+
 var Math_abs = Math.abs;
 var Math_cos = Math.cos;
 var Math_sin = Math.sin;
@@ -1638,6 +1693,7 @@ var Math_imul = Math.imul;
 var Math_fround = Math.fround;
 var Math_min = Math.min;
 var Math_clz32 = Math.clz32;
+var Math_trunc = Math.trunc;
 
 // A counter of dependencies for calling run(). If we need to
 // do asynchronous work before running, increment this and
@@ -1847,6 +1903,10 @@ var /* show errors on likely calls to FS when it was not included */ FS = {
 Module['FS_createDataFile'] = FS.createDataFile;
 Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 #endif
+#endif
+
+#if CYBERDWARF
+var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
 #endif
 
 // === Body ===

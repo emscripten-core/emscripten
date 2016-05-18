@@ -68,6 +68,8 @@ extern "C" {
 #define EMSCRIPTEN_RESULT_NO_DATA             -7
 
 #define EM_BOOL int
+#define EM_TRUE 1
+#define EM_FALSE 0
 #define EM_UTF8 char
 
 #define DOM_KEY_LOCATION int

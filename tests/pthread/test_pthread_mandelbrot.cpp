@@ -14,7 +14,9 @@
 #endif
 #endif
 
+#ifdef __SSE__
 #include <xmmintrin.h>
+#endif
 
 // h: 0,360
 // s: 0,1
@@ -146,6 +148,7 @@ unsigned long long ComputeMandelbrot(float *srcReal, float *srcImag, uint32_t *d
   return (unsigned long long)((h-y)/yIncr)*w*numIters;
 }
 
+#ifdef __SSE__
 // Not strictly correct anyzero_ps, but faster, and depends on that color alpha channel is always either 0xFF or 0.
 int anyzero_ps(__m128 m)
 {
@@ -249,6 +252,7 @@ unsigned long long ComputeMandelbrot_SSE(float *srcReal, float *srcImag, uint32_
   }
   return (unsigned long long)((h-y)/yIncr)*w*numIters;
 }
+#endif
 
 const int W = 512;
 const int H = 512;
@@ -304,9 +308,11 @@ void *mandelbrot_thread(void *arg)
     fputs("hello", handle);
     fclose(handle);
 #endif
+#ifdef __SSE__
     if (use_sse)
       ni = ComputeMandelbrot_SSE(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, 0, idx, numTasks, W, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     else
+#endif
       ni = ComputeMandelbrot(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, 0, idx, numTasks, W, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     //emscripten_atomic_add_u32(&numIters, ni);
     double t1 = emscripten_get_now();
@@ -335,9 +341,11 @@ void register_tasks()
   for(int i = 0; i < numTasks; ++i)
   {
     double t0 = emscripten_get_now();
+#ifdef __SSE__
     if (use_sse)
       numIters[0] += ComputeMandelbrot_SSE(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, W*i/numTasks, 0, 1, W/numTasks, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     else
+#endif
       numIters[0] += ComputeMandelbrot(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, W*i/numTasks, 0, 1, W/numTasks, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     double t1 = emscripten_get_now();
     timeSpentInMandelbrot[0] += t1-t0;
@@ -551,7 +559,9 @@ int main(int argc, char** argv)
   }
 #endif
 
+#ifndef SINGLETHREADED
   emscripten_set_thread_name(pthread_self(), "Mandelbrot main");
+#endif
 
   EM_ASM("SDL.defaults.copyOnLock = false; SDL.defaults.discardOnLock = true; SDL.defaults.opaqueFrontBuffer = false;");
 

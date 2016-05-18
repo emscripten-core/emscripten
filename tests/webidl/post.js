@@ -122,6 +122,7 @@ TheModule.print(bv2.getCopy().getValue(bv2));
 bv2.getAnother().PrintFloat(21.12);
 
 TheModule.print(new TheModule.Inner().get());
+TheModule.print('getAsArray: ' + new TheModule.Inner().getAsArray(12));
 new TheModule.Inner().mul(2);
 
 TheModule.print(TheModule.enum_value1);

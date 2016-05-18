@@ -23,15 +23,19 @@ def no_emterpreter(f):
     f(self)
   return decorated
 
+def no_wasm(f):
+  def decorated(self):
+    if self.is_wasm(): return self.skip('todo')
+    f(self)
+  return decorated
+
 class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
   def is_emterpreter(self):
     return 'EMTERPRETIFY=1' in self.emcc_args
   def is_split_memory(self):
     return 'SPLIT_MEMORY=' in str(self.emcc_args)
   def is_wasm(self):
-    return 'WASM=1' in self.emcc_args
-  def is_binaryen(self):
-    return 'BINARYEN' in str(self.emcc_args)
+    return 'BINARYEN' in str(self.emcc_args) or LLVM_TARGET == WASM_TARGET
 
   def test_hello_world(self):
       test_path = path_from_root('tests', 'core', 'test_hello_world')
@@ -654,7 +658,7 @@ int main()
     printf("Alignment: %d addr: 0x%x\n", ((int)&v) % 16, (int)&v);
     printf("Alignment: %d addr: 0x%x\n", ((int)&m) % 16, (int)&m);
 }
-    ''', 'Alignment: 0 addr: 0xa20\nAlignment: 0 addr: 0xa60\n') # hardcoded addresses, just to track if this ever changes by surprise. will need normal updates.
+    ''', ('Alignment: 0 addr: 0xa20\nAlignment: 0 addr: 0xa60\n', 'Alignment: 0 addr: 0xe10\nAlignment: 0 addr: 0xe50\n')) # hardcoded addresses, for 2 common global_base values. this tracks if this ever changes by surprise. will need normal updates.
 
     test()
     print 'relocatable'
@@ -2317,10 +2321,11 @@ int main() {
 
     test()
 
-    print 'split memory'
-    Settings.SPLIT_MEMORY = 16*1024*1024
-    test()
-    Settings.SPLIT_MEMORY = 0
+    if not self.is_wasm():
+      print 'split memory'
+      Settings.SPLIT_MEMORY = 16*1024*1024
+      test()
+      Settings.SPLIT_MEMORY = 0
 
   def test_ssr(self): # struct self-ref
       src = '''
@@ -3019,7 +3024,7 @@ The current type of b is: 9
 
   def can_dlfcn(self):
     if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no dlfcn with memory growth yet')
-    if self.is_binaryen(): return self.skip('no shared modules in wasm')
+    if self.is_wasm(): return self.skip('no shared modules in wasm')
     return True
 
   def prep_dlfcn_lib(self):
@@ -5790,10 +5795,11 @@ return malloc(size);
       self.emcc_args += ['-s', 'EMTERPRETIFY_WHITELIST=["_frexpl"]'] # test double call assertions
       test()
 
-    print 'split memory'
-    Settings.SPLIT_MEMORY = 8*1024*1024
-    test()
-    Settings.SPLIT_MEMORY = 0
+    if not self.is_wasm():
+      print 'split memory'
+      Settings.SPLIT_MEMORY = 8*1024*1024
+      test()
+      Settings.SPLIT_MEMORY = 0
 
   @SIMD
   def test_sse1(self):
@@ -6271,8 +6277,9 @@ def process(filename):
         Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 1
         test()
 
-        # Make sure that DFE ends up eliminating more than 200 functions
-        assert (num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
+        # Make sure that DFE ends up eliminating more than 200 functions (if we can view source)
+        if not self.is_wasm():
+          assert (num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
         break
 
   def test_openjpeg(self):
@@ -6459,7 +6466,7 @@ def process(filename):
           'i1282vecnback', # uses simd
         ]:
           continue
-        if self.is_binaryen() and os.path.basename(shortname) in [
+        if self.is_wasm() and os.path.basename(shortname) in [
           'i1282vecnback', # uses simd
         ]:
           continue
@@ -6922,13 +6929,20 @@ def process(filename):
     src = r'''
     #include <stdio.h>
     #include <math.h>
+    
+    // We have to use a proxy function 'acos_test' here because the updated libc++ library provides a set of overloads to acos,
+    // this has the result that we can't take the function pointer to acos anymore due to failed overload resolution.
+    // This proxy function has no overloads so it's allowed to take the function pointer directly.
+    double acos_test(double x) {
+      return acos(x);
+    }
 
     typedef double (*ddd)(double x, double unused);
     typedef int    (*iii)(int x,    int unused);
 
     int main() {
-      volatile ddd d = (ddd)acos;
-      volatile iii i = (iii)acos;
+      volatile ddd d = (ddd)acos_test;
+      volatile iii i = (iii)acos_test;
       printf("|%.3f,%d|\n", d(0.3, 0.6), i(0, 0));
       return 0;
     }
@@ -6952,6 +6966,77 @@ def process(filename):
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
+
+  def test_eval_ctors(self):
+    if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args): return self.skip('need js optimizations')
+
+    orig_args = self.emcc_args[:] + ['-s', 'EVAL_CTORS=0']
+
+    print 'leave printf in ctor'
+    self.emcc_args = orig_args + ['-s', 'EVAL_CTORS=1']
+    self.do_run(r'''
+      #include <stdio.h>
+      struct C {
+        C() { printf("constructing!\n"); } // don't remove this!
+      };
+      C c;
+      int main() {}
+    ''', "constructing!\n");
+
+    def do_test(test):
+      self.emcc_args = orig_args + ['-s', 'EVAL_CTORS=1']
+      test()
+      ec_js_size = os.stat('src.cpp.o.js').st_size
+      ec_mem_size = os.stat('src.cpp.o.js.mem').st_size
+      self.emcc_args = orig_args[:]
+      test()
+      js_size = os.stat('src.cpp.o.js').st_size
+      mem_size = os.stat('src.cpp.o.js.mem').st_size
+      print js_size, ' => ', ec_js_size
+      print mem_size, ' => ', ec_mem_size
+      assert ec_js_size < js_size
+      assert ec_mem_size > mem_size
+
+    print 'remove ctor of just assigns to memory'
+    def test1():
+      self.do_run(r'''
+        #include <stdio.h>
+        struct C {
+          int x;
+          C() {
+            volatile int y = 10;
+            y++;
+            x = y;
+          }
+        };
+        C c;
+        int main() {
+          printf("x: %d\n", c.x);
+        }
+      ''', "x: 11\n");
+    do_test(test1)
+
+    print 'libcxx'
+
+    src = open(path_from_root('tests', 'hello_libcxx.cpp')).read()
+    output = 'hello, world!'
+    self.do_run(src, output)
+    js_size = os.stat('src.cpp.o.js').st_size
+    if self.uses_memory_init_file():
+      mem_size = os.stat('src.cpp.o.js.mem').st_size
+    self.emcc_args += ['-s', 'EVAL_CTORS=1']
+    self.do_run(src, output)
+    ec_js_size = os.stat('src.cpp.o.js').st_size
+    if self.uses_memory_init_file():
+      ec_mem_size = os.stat('src.cpp.o.js.mem').st_size
+    print js_size, ' => ', ec_js_size
+    print mem_size, ' => ', ec_mem_size
+    assert ec_js_size < js_size
+    assert ec_mem_size > mem_size
+
+    print 'assertions too'
+    Settings.ASSERTIONS = 1
+    self.do_run(src, output)
 
   def test_embind(self):
     Building.COMPILER_TEST_OPTS += ['--bind']
@@ -7894,6 +7979,23 @@ int main(int argc, char **argv) {
       self.emcc_args += ['--pre-js', 'pre.js']
       self.do_run('', 'object\nobject\nobject')
 
+  def test_stack_overflow_check(self):
+    args = self.emcc_args + ['-s', 'TOTAL_STACK=1048576']
+    self.emcc_args = args + ['-s', 'STACK_OVERFLOW_CHECK=1', '-s', 'ASSERTIONS=0']
+    self.do_run(open(path_from_root('tests', 'stack_overflow.cpp'), 'r').read(), 'Stack overflow! Stack cookie has been overwritten' if not Settings.SAFE_HEAP else 'segmentation fault')
+
+    self.emcc_args = args + ['-s', 'STACK_OVERFLOW_CHECK=2', '-s', 'ASSERTIONS=0']
+    self.do_run(open(path_from_root('tests', 'stack_overflow.cpp'), 'r').read(), 'Stack overflow! Attempted to allocate')
+
+    self.emcc_args = args + ['-s', 'ASSERTIONS=1']
+    self.do_run(open(path_from_root('tests', 'stack_overflow.cpp'), 'r').read(), 'Stack overflow! Attempted to allocate')
+
+  @no_wasm
+  @no_emterpreter
+  def test_binaryen(self):
+    self.emcc_args += ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
+    self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
+
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
     typed_arrays=0, emcc_args=None, env=None):
@@ -7962,11 +8064,14 @@ asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-Oz", "-s", "PRECISE_F32=1
 asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "-s", "SAFE_HEAP=1"])
 asm2i = make_run("asm2i", compiler=CLANG, emcc_args=["-O2", '-s', 'EMTERPRETIFY=1'])
 #asm2m = make_run("asm2m", compiler=CLANG, emcc_args=["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"])
-#binaryen = make_run("binaryen", compiler=CLANG, emcc_args=["-s", "BINARYEN='..path..'"])
-#normalyen = make_run("normalyen", compiler=CLANG, emcc_args=['-s', 'GLOBAL_BASE=1024']) # useful comparison to binaryen
+#binaryen0 = make_run("binaryen", compiler=CLANG, emcc_args=['-O0', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-s-expr"'])
+#binaryen1 = make_run("binaryen", compiler=CLANG, emcc_args=['-O1', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-s-expr"'])
+#binaryen2 = make_run("binaryen", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-s-expr"'])
+#binaryen3 = make_run("binaryen", compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-s-expr"'])
+#normalyen = make_run("normalyen", compiler=CLANG, emcc_args=['-O0', '-s', 'GLOBAL_BASE=1024']) # useful comparison to binaryen
+#spidaryen = make_run("binaryen", compiler=CLANG, emcc_args=['-O0', '-s', 'BINARYEN=1', '-s', 'BINARYEN_SCRIPTS="spidermonkify.py"'])
 
 # Legacy test modes - 
 asm2nn = make_run("asm2nn", compiler=CLANG, emcc_args=["-O2"], env={"EMCC_NATIVE_OPTIMIZER": "0"})
 
 del T # T is just a shape for the specific subclasses, we don't test it itself
-

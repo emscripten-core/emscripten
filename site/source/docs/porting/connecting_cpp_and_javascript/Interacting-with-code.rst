@@ -38,6 +38,12 @@ to more detailed information.
    environment, see :ref:`emscripten-runtime-environment`. For file system
    related manners, see the :ref:`file-system-overview`.
 
+.. note:: Before you can call your code, the runtime environment may need
+   to load a memory initialization file, preload files, or
+   do other asynchronous operations depending on optimization
+   and build settings.
+   See :ref:`faq-when-safe-to-call-compiled-functions` in the FAQ.
+
 
 .. _interacting-with-code-ccall-cwrap:
 
@@ -206,23 +212,14 @@ simply integers in the generated code.
 Strings in JavaScript must be converted to pointers for compiled
 code — the relevant function is :js:func:`Pointer_stringify`, which
 given a pointer returns a JavaScript string. Converting a JavaScript
-string ``someString`` to a pointer can be accomplished using
-:js:func:`allocate(intArrayFromString(someString), 'i8', ALLOC_STACK) <allocate>`.
+string ``someString`` to a pointer can be accomplished using ``ptr = ``
+:js:func:`allocate(intArrayFromString(someString), 'i8', ALLOC_NORMAL) <allocate>`.
 
-.. note:: The conversion to a pointer allocates memory, and in this case
-   we allocate it on the stack (if you are calling it from a compiled
-   function, it will rewind the stack for you; otherwise, you should
-   do ``Runtime.stackSave()`` before and
-   ``Runtime.stackRestore(..that value..)`` afterwards).
+.. note:: The conversion to a pointer allocates memory, which needs to be
+   freed up via a call to ``free(ptr)`` afterwards (``_free`` in JavaScript side)
 
 There are other convenience functions for converting strings and encodings
 in :ref:`preamble-js`.
-
-.. todo:: **HamishW** Might be better to show the allocate above using
-   _malloc, as allocate is an advanced API. We also need to better
-   explain the note about stackRestore etc, or remove it - as it
-   doesn't mean a lot to me.
-
 
 .. _interacting-with-code-call-javascript-from-native:
 

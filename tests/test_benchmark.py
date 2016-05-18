@@ -16,6 +16,8 @@ TEST_REPS = 3
 
 CORE_BENCHMARKS = True # core benchmarks vs full regression suite
 
+IGNORE_COMPILATION = 0
+
 class Benchmarker:
   def __init__(self, name):
     self.name = name
@@ -27,7 +29,10 @@ class Benchmarker:
       start = time.time()
       output = self.run(args)
       if not output_parser:
-        curr = time.time()-start
+        if IGNORE_COMPILATION:
+          curr = float(re.search('took +([\d\.]+) milliseconds', output).group(1)) / 1000
+        else:
+          curr = time.time() - start
       else:
         curr = output_parser(output)
       self.times.append(curr)
@@ -58,7 +63,7 @@ class NativeBenchmarker(Benchmarker):
     self.cxx = cxx
     self.args = args
 
-  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
+  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.parent = parent
     if lib_builder: native_args = native_args + lib_builder(self.name, native=True, env_init={ 'CC': self.cc, 'CXX': self.cxx })
     if not native_exec:
@@ -89,7 +94,7 @@ class JSBenchmarker(Benchmarker):
     for k, v in env.iteritems():
       self.env[k] = v
 
-  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
+  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.filename = filename
     llvm_root = self.env.get('LLVM') or LLVM_ROOT
     if lib_builder: emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=self.env)
@@ -105,13 +110,15 @@ process(sys.argv[1])
 ''' % str(args[:-1]) # do not hardcode in the last argument, the default arg
 )
 
-    final = os.path.dirname(filename) + os.path.sep + self.name+'_' + os.path.basename(filename) + '.js'
+    final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
+    final = final.replace('.cpp', '')
     try_delete(final)
     output = Popen([PYTHON, EMCC, filename, #'-O3',
                     '-O3', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
                     '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
                     '-s', 'TOTAL_MEMORY=128*1024*1024',
                     '-s', 'NO_EXIT_RUNTIME=1',
+                    '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
                     #'--profiling',
                     #'--closure', '1',
                     '-o', final] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
@@ -143,6 +150,8 @@ try:
     #NativeBenchmarker('clang-3.4', os.path.join(LLVM_3_4, 'clang'), os.path.join(LLVM_3_4, 'clang++')),
     #NativeBenchmarker('gcc', 'gcc', 'g++'),
     JSBenchmarker('sm-f32', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
+    #JSBenchmarker('sm-wasm',     SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2''-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'BINARYEN_SCRIPTS="spidermonkify.py"'])
+    #JSBenchmarker('sm-imprecise', SPIDERMONKEY_ENGINE,                   ['-s', 'PRECISE_F32=1', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'BINARYEN_SCRIPTS="spidermonkify.py"', '-s', 'BINARYEN_IMPRECISE=1']),
     #JSBenchmarker('sm-f32-si', SPIDERMONKEY_ENGINE, ['--profiling', '-s', 'PRECISE_F32=2', '-s', 'SIMPLIFY_IFS=1']),
     #JSBenchmarker('sm-f32-aggro', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2', '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1']),
     #JSBenchmarker('sm-f32-3.2', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_2 }),
@@ -164,7 +173,7 @@ class benchmark(RunnerCore):
   def setUpClass(self):
     super(benchmark, self).setUpClass()
 
-    fingerprint = [time.asctime()]
+    fingerprint = ['ignoring compilation' if IGNORE_COMPILATION else 'including compilation', time.asctime()]
     try:
       fingerprint.append('em: ' + Popen(['git', 'show'], stdout=PIPE).communicate()[0].split('\n')[0])
     except:
@@ -206,7 +215,7 @@ class benchmark(RunnerCore):
 
     print
     for b in benchmarkers:
-      b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder)
+      b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser=output_parser is not None)
       b.bench(args, output_parser, reps)
       b.display(benchmarkers[0])
 

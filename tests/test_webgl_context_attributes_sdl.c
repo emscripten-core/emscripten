@@ -36,6 +36,13 @@ int main(int argc, char *argv[]) {
 #else
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
 #endif
+
+#ifdef ALPHA_ACTIVATED
+    alphaActivated = true;
+    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+#else
+    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 0);
+#endif
     
     SDL_Surface *screen = SDL_SetVideoMode(WINDOWS_SIZE, WINDOWS_SIZE, 32, SDL_OPENGL);
        
