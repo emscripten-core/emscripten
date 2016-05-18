@@ -18,13 +18,13 @@ emscripten_int32x4_shiftLeftByScalar(v, 0): 1 0 1 4
 emscripten_int32x4_shiftLeftByScalar(v, 1): 2 0 2 8
 emscripten_int32x4_shiftLeftByScalar(v, 2): 4 0 4 16
 emscripten_int32x4_shiftLeftByScalar(v, 16): 65536 0 65536 262144
-emscripten_int32x4_shiftLeftByScalar(v, 32): 0 0 0 0
-emscripten_int32x4_shiftLeftByScalar(v, 48): 0 0 0 0
+emscripten_int32x4_shiftLeftByScalar(v, 32): 1 0 1 4
+emscripten_int32x4_shiftLeftByScalar(v, 48): 65536 0 65536 262144
 emscripten_int32x4_shiftRightByScalar(v, 0): 1 0 1 4
 emscripten_int32x4_shiftRightByScalar(v, 1): 0 0 0 2
 emscripten_int32x4_shiftRightByScalar(v, 2): 0 0 0 1
 emscripten_int32x4_shiftRightByScalar(v, 16): 0 0 0 0
-emscripten_int32x4_shiftRightByScalar(v, 32): 0 0 0 0
+emscripten_int32x4_shiftRightByScalar(v, 32): 1 0 1 4
 emscripten_int32x4_shiftRightByScalar(v, 48): 0 0 0 0
 emscripten_int32x4_select(b, v, w): 2 0 2 4
 emscripten_int32x4_replaceLane(v, 0, 9): 9 0 1 4

@@ -1,4 +1,11 @@
+// wasm breaks musl convention and defines size_t as long, to benefit wasm32/64 similarity
+// on wasm32, in practice it should be the same as asmjs's int.
+#ifdef __wasm__
+#define _Addr long
+#else
 #define _Addr int
+#endif
+
 #define _Int64 long long
 #define _Reg int
 

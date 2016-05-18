@@ -372,7 +372,8 @@ var LibraryBrowser = {
       canvasContainer.requestFullScreen = canvasContainer['requestFullScreen'] ||
                                           canvasContainer['mozRequestFullScreen'] ||
                                           canvasContainer['msRequestFullscreen'] ||
-                                         (canvasContainer['webkitRequestFullScreen'] ? function() { canvasContainer['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null);
+                                         (canvasContainer['webkitRequestFullScreen'] ? function() { canvasContainer['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null) ||
+                                         (canvasContainer['webkitRequestFullscreen'] ? function() { canvasContainer['webkitRequestFullscreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null);
 
       if (vrDevice) {
         canvasContainer.requestFullScreen({ vrDisplay: vrDevice });
@@ -1056,7 +1057,8 @@ var LibraryBrowser = {
 
     if (mode == 0 /*EM_TIMING_SETTIMEOUT*/) {
       Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler_setTimeout() {
-        setTimeout(Browser.mainLoop.runner, value); // doing this each time means that on exception, we stop
+        var timeUntilNextTick = Math.max(0, Browser.mainLoop.tickStartTime + value - _emscripten_get_now())|0;
+        setTimeout(Browser.mainLoop.runner, timeUntilNextTick); // doing this each time means that on exception, we stop
       };
       Browser.mainLoop.method = 'timeout';
     } else if (mode == 1 /*EM_TIMING_RAF*/) {
@@ -1089,7 +1091,7 @@ var LibraryBrowser = {
     return 0;
   },
 
-  emscripten_set_main_loop__deps: ['emscripten_set_main_loop_timing'],
+  emscripten_set_main_loop__deps: ['emscripten_set_main_loop_timing', 'emscripten_get_now'],
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop, arg, noSetTiming) {
     Module['noExitRuntime'] = true;
 
@@ -1097,6 +1099,18 @@ var LibraryBrowser = {
 
     Browser.mainLoop.func = func;
     Browser.mainLoop.arg = arg;
+
+    var browserIterationFunc;
+    if (typeof arg !== 'undefined') {
+      var argArray = [arg];
+      browserIterationFunc = function() {
+        Runtime.dynCall('vi', func, argArray);
+      };
+    } else {
+      browserIterationFunc = function() {
+        Runtime.dynCall('v', func);
+      };
+    }
 
     var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop;
 
@@ -1136,6 +1150,8 @@ var LibraryBrowser = {
         // Not the scheduled time to render this frame - skip.
         Browser.mainLoop.scheduler();
         return;
+      } else if (Browser.mainLoop.timingMode == 0/*EM_TIMING_SETTIMEOUT*/) {
+        Browser.mainLoop.tickStartTime = _emscripten_get_now();
       }
 
       // Signal GL rendering layer that processing of a new frame is about to start. This helps it optimize
@@ -1149,13 +1165,11 @@ var LibraryBrowser = {
         Browser.mainLoop.method = ''; // just warn once per call to set main loop
       }
 
-      Browser.mainLoop.runIter(function() {
-        if (typeof arg !== 'undefined') {
-          Runtime.dynCall('vi', func, [arg]);
-        } else {
-          Runtime.dynCall('v', func);
-        }
-      });
+      Browser.mainLoop.runIter(browserIterationFunc);
+
+#if STACK_OVERFLOW_CHECK
+      checkStackCookie();
+#endif
 
       // catch pauses from the main loop itself
       if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) return;

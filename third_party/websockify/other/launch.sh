@@ -16,6 +16,8 @@ usage() {
     echo "                          Default: localhost:5900"
     echo "    --cert CERT           Path to combined cert/key file"
     echo "                          Default: self.pem"
+    echo "    --web WEB             Path to web files (e.g. vnc.html)"
+    echo "                          Default: ./"
     exit 2
 }
 
@@ -24,6 +26,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 PORT="6080"
 VNC_DEST="localhost:5900"
 CERT=""
+WEB=""
 proxy_pid=""
 
 die() {
@@ -50,6 +53,7 @@ while [ "$*" ]; do
     --listen)  PORT="${OPTARG}"; shift            ;;
     --vnc)     VNC_DEST="${OPTARG}"; shift        ;;
     --cert)    CERT="${OPTARG}"; shift            ;;
+    --web)     WEB="${OPTARG}"; shift            ;;
     -h|--help) usage                              ;;
     -*) usage "Unknown chrooter option: ${param}" ;;
     *) break                                      ;;
@@ -60,18 +64,24 @@ done
 which netstat >/dev/null 2>&1 \
     || die "Must have netstat installed"
 
-netstat -ltn | grep -qs "${PORT}.*LISTEN" \
+netstat -ltn | grep -qs "${PORT} .*LISTEN" \
     && die "Port ${PORT} in use. Try --listen PORT"
 
 trap "cleanup" TERM QUIT INT EXIT
 
 # Find vnc.html
-if [ -e "$(pwd)/vnc.html" ]; then
+if [ -n "${WEB}" ]; then
+    if [ ! -e "${WEB}/vnc.html" ]; then
+        die "Could not find ${WEB}/vnc.html"
+    fi
+elif [ -e "$(pwd)/vnc.html" ]; then
     WEB=$(pwd)
 elif [ -e "${HERE}/../vnc.html" ]; then
     WEB=${HERE}/../
 elif [ -e "${HERE}/vnc.html" ]; then
     WEB=${HERE}
+elif [ -e "${HERE}/../share/novnc/vnc.html" ]; then
+    WEB=${HERE}/../share/novnc/
 else
     die "Could not find vnc.html"
 fi
@@ -92,7 +102,7 @@ else
 fi
 
 echo "Starting webserver and WebSockets proxy on port ${PORT}"
-${HERE}/wsproxy.py --web ${WEB} ${CERT:+--cert ${CERT}} ${PORT} ${VNC_DEST} &
+${HERE}/websockify --web ${WEB} ${CERT:+--cert ${CERT}} ${PORT} ${VNC_DEST} &
 proxy_pid="$!"
 sleep 1
 if ! ps -p ${proxy_pid} >/dev/null; then
@@ -101,7 +111,7 @@ if ! ps -p ${proxy_pid} >/dev/null; then
     exit 1
 fi
 
-echo -e "\n\nNavigate to to this URL:\n"
+echo -e "\n\nNavigate to this URL:\n"
 echo -e "    http://$(hostname):${PORT}/vnc.html?host=$(hostname)&port=${PORT}\n"
 echo -e "Press Ctrl-C to exit\n\n"
 

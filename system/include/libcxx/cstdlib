@@ -84,9 +84,6 @@ void *aligned_alloc(size_t alignment, size_t size);                       // C11
 
 #include <__config>
 #include <stdlib.h>
-#ifdef _LIBCPP_MSVCRT
-#include "support/win32/locale_win32.h"
-#endif // _LIBCPP_MSVCRT
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
@@ -141,9 +138,11 @@ using ::ldiv;
 #ifndef _LIBCPP_HAS_NO_LONG_LONG
 using ::lldiv;
 #endif // _LIBCPP_HAS_NO_LONG_LONG
+#ifndef _LIBCPP_HAS_NO_THREAD_UNSAFE_C_FUNCTIONS
 using ::mblen;
 using ::mbtowc;
 using ::wctomb;
+#endif
 using ::mbstowcs;
 using ::wcstombs;
 #ifdef _LIBCPP_HAS_QUICK_EXIT
@@ -153,19 +152,6 @@ using ::quick_exit;
 #ifdef _LIBCPP_HAS_C11_FEATURES
 using ::aligned_alloc;
 #endif
-
-// MSVCRT already has the correct prototype in <stdlib.h> #ifdef __cplusplus
-#if !defined(_LIBCPP_MSVCRT) && !defined(__sun__) && !defined(_AIX)
-inline _LIBCPP_INLINE_VISIBILITY long      abs(     long __x) _NOEXCEPT {return  labs(__x);}
-#ifndef _LIBCPP_HAS_NO_LONG_LONG
-inline _LIBCPP_INLINE_VISIBILITY long long abs(long long __x) _NOEXCEPT {return llabs(__x);}
-#endif // _LIBCPP_HAS_NO_LONG_LONG
-
-inline _LIBCPP_INLINE_VISIBILITY  ldiv_t div(     long __x,      long __y) _NOEXCEPT {return  ldiv(__x, __y);}
-#ifndef _LIBCPP_HAS_NO_LONG_LONG
-inline _LIBCPP_INLINE_VISIBILITY lldiv_t div(long long __x, long long __y) _NOEXCEPT {return lldiv(__x, __y);}
-#endif // _LIBCPP_HAS_NO_LONG_LONG
-#endif // _LIBCPP_MSVCRT
 
 _LIBCPP_END_NAMESPACE_STD
 

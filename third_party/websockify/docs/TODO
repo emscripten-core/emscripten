@@ -1,9 +1,6 @@
 - Go implementation
-
-- Support multiple targets that are selected by the path line. Some
-  sort of wildcarding of ports too.
-
-- Support SSL targets too.
-
+- Rust implementation
+- Add sub-protocol support to upstream einaros/ws module and use that
+  instead of the patched module.
 - wstelnet: support CSI L and CSI M
 

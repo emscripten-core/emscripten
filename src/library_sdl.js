@@ -390,7 +390,8 @@ var LibrarySDL = {
       var webGLContextAttributes = {
         antialias: ((SDL.glAttributes[13 /*SDL_GL_MULTISAMPLEBUFFERS*/] != 0) && (SDL.glAttributes[14 /*SDL_GL_MULTISAMPLESAMPLES*/] > 1)),
         depth: (SDL.glAttributes[6 /*SDL_GL_DEPTH_SIZE*/] > 0),
-        stencil: (SDL.glAttributes[7 /*SDL_GL_STENCIL_SIZE*/] > 0)
+        stencil: (SDL.glAttributes[7 /*SDL_GL_STENCIL_SIZE*/] > 0),
+        alpha: (SDL.glAttributes[3 /*SDL_GL_ALPHA_SIZE*/] > 0)
       };
       
       var ctx = Browser.createContext(canvas, is_SDL_OPENGL, usePageCanvas, webGLContextAttributes);
