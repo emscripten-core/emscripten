@@ -2077,9 +2077,9 @@ var LibraryGL = {
   },
 
   glFenceSync__sig: 'iii',
-  glFenceSync: function() {
+  glFenceSync: function(condition, flags) {
     var id = GL.getNewId(GL.syncs);
-    var sync = GLctx.fenceSync();
+    var sync = GLctx.fenceSync(condition, flags);
     sync.name = id;
     GL.syncs[id] = sync;
     return id;
