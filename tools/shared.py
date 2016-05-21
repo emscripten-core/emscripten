@@ -884,9 +884,12 @@ COMPILER_OPTS = COMPILER_OPTS + [#'-fno-threadsafe-statics', # disabled due to i
                                  '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY)]
 
 if LLVM_TARGET == WASM_TARGET:
-  # wasm target does not automatically define emscripten stuff, so do it here
+  # wasm target does not automatically define emscripten stuff, so do it here.
+  # Also, set the ABI version to at least 2 so that we get nicely aligned string
+  # data and other nice fixes.
   COMPILER_OPTS = COMPILER_OPTS + ['-DEMSCRIPTEN',
-                                   '-D__EMSCRIPTEN__']
+                                   '-D__EMSCRIPTEN__',
+                                   '-D_LIBCPP_ABI_VERSION=2']
 
 # Changes to default clang behavior
 
