@@ -294,7 +294,16 @@ var SyscallsLibrary = {
     var old = SYSCALLS.getStreamFromFD();
     return FS.open(old.path, old.flags, 0).fd;
   },
-  __syscall42: '__syscall51',      // pipe
+  __syscall42__deps: ['$PIPEFS'],
+  __syscall42: function(which, varargs) { // pipe
+    var res = PIPEFS.createPipe();
+    var fdPtr = SYSCALLS.get();
+
+    {{{ makeSetValue('fdPtr', 0, 'res[0]', 'i32') }}};
+    {{{ makeSetValue('fdPtr', 4, 'res[1]', 'i32') }}};
+
+    return 0;
+  },
   __syscall51: function(which, varargs) { // acct
     return -ERRNO_CODES.ENOSYS; // unsupported features
   },
@@ -1696,4 +1705,3 @@ SyscallsLibrary.emscripten_syscall = eval('(' + switcher + ')');
 #endif
 
 mergeInto(LibraryManager.library, SyscallsLibrary);
-
