@@ -1557,7 +1557,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     js_transform_tempfiles = [final]
 
     if shared.Settings.MEM_INIT_METHOD > 0:
-      memfile = target + '.mem'
+      memfile = unsuffixed(target) + '.mem.js'
       shared.try_delete(memfile)
       def repl(m):
         # handle chunking of the memory initializer
