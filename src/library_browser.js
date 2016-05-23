@@ -283,6 +283,9 @@ var LibraryBrowser = {
             contextAttributes[attribute] = webGLContextAttributes[attribute];
           }
         }
+#if TRANSPARENT_BACKGROUND
+        contextAttributes.alpha = true;
+#endif
 #if GL_TESTING
         contextAttributes.preserveDrawingBuffer = true;
 #endif
@@ -292,7 +295,9 @@ var LibraryBrowser = {
           ctx = GL.getContext(contextHandle).GLctx;
         }
         // Set the background of the WebGL canvas to black
+#if !TRANSPARENT_BACKGROUND
         canvas.style.backgroundColor = "black";
+#endif
       } else {
         ctx = canvas.getContext('2d');
       }
