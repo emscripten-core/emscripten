@@ -877,19 +877,20 @@ try:
   COMPILER_OPTS # Can be set in EM_CONFIG, optionally
 except:
   COMPILER_OPTS = []
+
+# Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
+# data and other nice fixes.
 COMPILER_OPTS = COMPILER_OPTS + [#'-fno-threadsafe-statics', # disabled due to issue 1289
                                  '-target', get_llvm_target(),
                                  '-D__EMSCRIPTEN_major__=' + str(EMSCRIPTEN_VERSION_MAJOR),
                                  '-D__EMSCRIPTEN_minor__=' + str(EMSCRIPTEN_VERSION_MINOR),
-                                 '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY)]
+                                 '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY),
+                                 '-D_LIBCPP_ABI_VERSION=2']
 
 if LLVM_TARGET == WASM_TARGET:
   # wasm target does not automatically define emscripten stuff, so do it here.
-  # Also, set the ABI version to at least 2 so that we get nicely aligned string
-  # data and other nice fixes.
   COMPILER_OPTS = COMPILER_OPTS + ['-DEMSCRIPTEN',
-                                   '-D__EMSCRIPTEN__',
-                                   '-D_LIBCPP_ABI_VERSION=2']
+                                   '-D__EMSCRIPTEN__']
 
 # Changes to default clang behavior
 
