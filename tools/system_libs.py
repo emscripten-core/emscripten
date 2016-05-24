@@ -246,7 +246,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  'floatunditf.c', 'floatunsitf.c', 'floatuntidf.c', 'floatuntisf.c', 'lshrti3.c',
                  'modti3.c', 'multf3.c', 'multi3.c', 'subtf3.c', 'udivti3.c', 'umodti3.c', 'ashrdi3.c',
                  'ashldi3.c', 'fixdfdi.c', 'floatdidf.c', 'lshrdi3.c', 'moddi3.c',
-                 'trunctfdf2.c', 'umoddi3.c', 'fixunsdfdi.c', 'muldi3.c',
+                 'trunctfdf2.c', 'trunctfsf2.c', 'umoddi3.c', 'fixunsdfdi.c', 'muldi3.c',
                  'divdi3.c', 'divmoddi4.c', 'udivdi3.c', 'udivmoddi4.c']
     files = (os.path.join(srcdir, f) for f in filenames)
     o_s = []
