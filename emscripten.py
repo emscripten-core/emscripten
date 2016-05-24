@@ -579,16 +579,16 @@ function _emscripten_asm_const_%s(%s) {
       simdintfloatfuncs += ['fromInt16x8Bits']
     if metadata['simdUint32x4']:
       simdinttypes += ['Uint32x4']
-      simdintfloatfuncs += ['fromUint32x4', 'fromUint32x4Bits']
+      simdintfloatfuncs += ['fromUint32x4Bits']
     if metadata['simdInt32x4']:
       simdinttypes += ['Int32x4']
-      simdintfloatfuncs += ['fromInt32x4', 'fromInt32x4Bits']
+      simdintfloatfuncs += ['fromInt32x4Bits']
     if metadata['simdFloat32x4']:
       simdfloattypes += ['Float32x4']
-      simdintfloatfuncs += ['fromFloat32x4', 'fromFloat32x4Bits']
+      simdintfloatfuncs += ['fromFloat32x4Bits']
     if metadata['simdFloat64x2']:
       simdfloattypes += ['Float64x2']
-      simdintfloatfuncs += ['fromFloat64x2', 'fromFloat64x2Bits']
+      simdintfloatfuncs += ['fromFloat64x2Bits']
     if metadata['simdBool8x16']:
       simdbooltypes += ['Bool8x16']
     if metadata['simdBool16x8']:
@@ -833,6 +833,19 @@ function ftCall_%s(%s) {%s
       simd_bool_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdbooltypes for g in simdboolfuncs]
       simd_bool_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_bool_symbols)
       asm_global_funcs += ''.join(simd_bool_symbols)
+
+      # SIMD conversions (not bitcasts) between same lane sizes:
+      def add_simd_cast(dst, src):
+        return '  var SIMD_' + dst + '_from' + src + '=SIMD_' + dst + '.from' + src + ';\n'
+      def add_simd_casts(t1, t2):
+        return add_simd_cast(t1, t2) + add_simd_cast(t2, t1)
+      if metadata['simdInt8x16'] and metadata['simdUint8x16']: asm_global_funcs += add_simd_casts('Int8x16', 'Uint8x16')
+      if metadata['simdInt16x8'] and metadata['simdUint16x8']: asm_global_funcs += add_simd_casts('Int16x8', 'Uint16x8')
+      if metadata['simdInt32x4'] and metadata['simdUint32x4']: asm_global_funcs += add_simd_casts('Int32x4', 'Uint32x4')
+      if metadata['simdInt32x4'] and metadata['simdFloat32x4']: asm_global_funcs += add_simd_casts('Int32x4', 'Float32x4')
+      if metadata['simdUint32x4'] and metadata['simdFloat32x4']: asm_global_funcs += add_simd_casts('Uint32x4', 'Float32x4')
+      if metadata['simdInt32x4'] and metadata['simdFloat64x2']: asm_global_funcs += add_simd_cast('Int32x4', 'Float64x2') # Unofficial, needed for emscripten_int32x4_fromFloat64x2
+      if metadata['simdUint32x4'] and metadata['simdFloat64x2']: asm_global_funcs += add_simd_cast('Uint32x4', 'Float64x2') # Unofficial, needed for emscripten_uint32x4_fromFloat64x2
 
       # Unofficial, Bool64x2 does not yet exist, but needed for Float64x2 comparisons.
       if metadata['simdFloat64x2']:
