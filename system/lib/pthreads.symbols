@@ -79,6 +79,7 @@
          U emscripten_is_main_runtime_thread
          T emscripten_main_thread_process_queued_calls
          T emscripten_sync_run_in_main_thread
+         T emscripten_sync_run_in_main_thread_0
          T emscripten_sync_run_in_main_thread_1
          T emscripten_sync_run_in_main_thread_2
          T emscripten_sync_run_in_main_thread_3
