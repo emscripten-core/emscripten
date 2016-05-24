@@ -9,6 +9,7 @@ Not all changes are documented here. In particular, new features, user-oriented 
 
 Current trunk code
 ------------------
+ - Updated to libc++'s "v2" ABI, which provides better alignment for string data and other improvements. This is an ABI-incompatible change, so bitcode files from previous versions will not be compatible.
  - To see a list of commits in the active development branch 'incoming', which have not yet been packaged in a release, see
     - Emscripten: https://github.com/kripken/emscripten/compare/1.36.1...incoming
     - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.36.1...incoming
