@@ -74,12 +74,11 @@ mergeInto(LibraryManager.library, {
         data = buffer.subarray(offset, offset + length);
 
         var toRead = Math.min(currentLength, length);
-        var totalRead = toRead;
-
         if(toRead == 0) {
-          return totalRead;
+          return 0;
         }
 
+        var totalRead = toRead;
         var toRemove = 0;
 
         for(var i = 0; i < pipe.buckets.length; i++) {
@@ -87,19 +86,17 @@ mergeInto(LibraryManager.library, {
           var bucketSize = currBucket.offset - currBucket.roffset;
 
           if(toRead <= bucketSize) {
-            var tmpSlice = currBucket.buffer.slice(currBucket.roffset, currBucket.offset);
+            var tmpSlice = currBucket.buffer.subarray(currBucket.roffset, currBucket.offset);
             if(toRead < bucketSize) {
-              tmpSlice = tmpSlice.slice(0, toRead);
+              tmpSlice = tmpSlice.subarray(0, toRead);
+              currBucket.roffset += toRead;
             } else {
               toRemove++;
             }
-            currBucket.roffset += toRead;
             data.set(tmpSlice);
             break;
-          }
-
-          if(toRead > bucketSize) {
-            var tmpSlice = currBucket.buffer.slice(currBucket.roffset, currBucket.offset);
+          } else {
+            var tmpSlice = currBucket.buffer.subarray(currBucket.roffset, currBucket.offset);
             data.set(tmpSlice);
             data = data.subarray(tmpSlice.byteLength);
             toRead -= tmpSlice.byteLength;
@@ -107,7 +104,7 @@ mergeInto(LibraryManager.library, {
           }
         }
 
-        for(var i = 0; i < toRemove; i++) {
+        while(toRemove--) {
           pipe.buckets.shift();
         }
 
@@ -115,15 +112,11 @@ mergeInto(LibraryManager.library, {
       },
       write: function (stream, buffer, offset, length, position /* ignored */) {
         var pipe = stream.node.pipe;
-        var data = null;
 
-        if (buffer instanceof Array || buffer instanceof ArrayBuffer) {
-          data = buffer.slice(offset, offset + length);
-        } else { // ArrayBufferView
-          data = buffer.buffer.slice(buffer.byteOffset + offset, buffer.byteOffset + offset + length);
-        }
+        assert(buffer instanceof ArrayBuffer || ArrayBuffer.isView(buffer));
+        var data = new Uint8Array(buffer);
+        data = buffer.subarray(offset, offset + length);
 
-        data = new Uint8Array(data);
         var dataLen = data.byteLength;
         if (dataLen <= 0) {
           return 0;
@@ -150,12 +143,12 @@ mergeInto(LibraryManager.library, {
           currBucket.offset += dataLen;
           return dataLen;
         } else if (freeBytesInCurrBuffer > 0) {
-          currBucket.buffer.set(data.slice(0, freeBytesInCurrBuffer), currBucket.offset);
+          currBucket.buffer.set(data.subarray(0, freeBytesInCurrBuffer), currBucket.offset);
           currBucket.offset += freeBytesInCurrBuffer;
-          data = data.slice(freeBytesInCurrBuffer, data.byteLength);
+          data = data.subarray(freeBytesInCurrBuffer, data.byteLength);
         }
 
-        var numBuckets = Math.floor(data.byteLength / PIPEFS.BUCKET_BUFFER_SIZE);
+        var numBuckets = ~~(data.byteLength / PIPEFS.BUCKET_BUFFER_SIZE);
         var remElements = data.byteLength % PIPEFS.BUCKET_BUFFER_SIZE;
 
         for (var i = 0; i < numBuckets; i++) {
@@ -165,8 +158,8 @@ mergeInto(LibraryManager.library, {
             roffset: 0
           };
           pipe.buckets.push(newBucket);
-          newBucket.buffer.set(data.slice(0, PIPEFS.BUCKET_BUFFER_SIZE));
-          data = data.slice(PIPEFS.BUCKET_BUFFER_SIZE, data.byteLength);
+          newBucket.buffer.set(data.subarray(0, PIPEFS.BUCKET_BUFFER_SIZE));
+          data = data.subarray(PIPEFS.BUCKET_BUFFER_SIZE, data.byteLength);
         }
 
         if (remElements > 0) {
