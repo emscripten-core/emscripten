@@ -1356,6 +1356,8 @@ LibraryManager.library = {
   llvm_log_f64: 'Math_log',
   llvm_exp_f32: 'Math_exp',
   llvm_exp_f64: 'Math_exp',
+  llvm_sin_f32: 'Math_sin',
+  llvm_sin_f64: 'Math_sin',
   llvm_trunc_f32: 'Math_trunc',
   llvm_trunc_f64: 'Math_trunc',
   llvm_floor_f32: 'Math_floor',
