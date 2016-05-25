@@ -220,9 +220,11 @@
          T abort_message
          T __cxa_bad_cast
          T __cxa_bad_typeid
+         T __cxa_deleted_virtual
          T __cxa_demangle
          T __cxa_get_globals
          T __cxa_get_globals_fast
+         T __cxa_pure_virtual
          T __dynamic_cast
          t _ZL25default_terminate_handlerv
          t _ZL26default_unexpected_handlerv
