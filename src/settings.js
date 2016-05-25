@@ -746,4 +746,6 @@ var CYBERDWARF = 0; // see http://kripken.github.io/emscripten-site/docs/debuggi
 
 var BUNDLED_CD_DEBUG_FILE = ""; // Path to the CyberDWARF debug file passed to the compiler
 
+var TRANSPARENT_BACKGROUND = 0; //Allow a transparent background in the canvas
+
 // Reserved: variables containing POINTER_MASKING.
