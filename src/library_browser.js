@@ -696,7 +696,7 @@ var LibraryBrowser = {
           h = Math.round(w / Module['forcedAspectRatio']);
         }
       }
-      if ((document['fullscreenElement'] || document['mozFullScreenElement'] ||
+      if (((document['fullscreenElement'] || document['mozFullScreenElement'] ||
            document['msFullscreenElement'] || document['webkitFullscreenElement'] ||
            document['webkitCurrentFullScreenElement']) === canvas.parentNode) && (typeof screen != 'undefined')) {
          var factor = Math.min(screen.width / w, screen.height / h);
