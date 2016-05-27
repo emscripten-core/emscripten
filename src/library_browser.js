@@ -291,8 +291,6 @@ var LibraryBrowser = {
         if (contextHandle) {
           ctx = GL.getContext(contextHandle).GLctx;
         }
-        // Set the background of the WebGL canvas to black
-        canvas.style.backgroundColor = "black";
       } else {
         ctx = canvas.getContext('2d');
       }
