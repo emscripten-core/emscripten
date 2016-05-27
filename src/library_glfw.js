@@ -507,7 +507,7 @@ var LibraryGLFW = {
       var resizeNeeded = true;
 
       // If the client is requestiong fullscreen mode
-      if (document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
+      if (document["fullscreen"] || document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
         GLFW.active.storedX = GLFW.active.x;
         GLFW.active.storedY = GLFW.active.y;
         GLFW.active.storedWidth = GLFW.active.width;
@@ -568,22 +568,37 @@ var LibraryGLFW = {
 #endif
     },
 
-    requestFullScreen: function() {
+    requestFullscreen: function() {
       var RFS = Module["canvas"]['requestFullscreen'] ||
-                Module["canvas"]['requestFullScreen'] ||
                 Module["canvas"]['mozRequestFullScreen'] ||
                 Module["canvas"]['webkitRequestFullScreen'] ||
                 (function() {});
       RFS.apply(Module["canvas"], []);
     },
 
-    cancelFullScreen: function() {
+    requestFullScreen: function() {
+      Module.printErr('GLFW.requestFullScreen() is deprecated. Please call GLFW.requestFullscreen instead.');
+      GLFW.requestFullScreen = function() {
+        return GLFW.requestFullscreen();
+      }
+      return GLFW.requestFullscreen();
+    },
+
+    exitFullscreen: function() {
       var CFS = document['exitFullscreen'] ||
                 document['cancelFullScreen'] ||
                 document['mozCancelFullScreen'] ||
                 document['webkitCancelFullScreen'] ||
           (function() {});
       CFS.apply(document, []);
+    },
+
+    cancelFullScreen: function() {
+      Module.printErr('GLFW.cancelFullScreen() is deprecated. Please call GLFW.exitFullscreen instead.');
+      GLFW.cancelFullScreen = function() {
+        return GLFW.exitFullscreen();
+      }
+      return GLFW.exitFullscreen();
     },
 
     getTime: function() {
@@ -777,9 +792,9 @@ var LibraryGLFW = {
 
       if (GLFW.active.id == win.id) {
         if (width == screen.width && height == screen.height) {
-          GLFW.requestFullScreen();
+          GLFW.requestFullscreen();
         } else {
-          GLFW.cancelFullScreen();
+          GLFW.cancelFullscreen();
           Browser.setCanvasSize(width, height);
           win.width = width;
           win.height = height;
@@ -809,7 +824,7 @@ var LibraryGLFW = {
       if (width <= 0 || height <= 0) return 0;
 
       if (monitor) {
-        GLFW.requestFullScreen();
+        GLFW.requestFullscreen();
       } else {
         Browser.setCanvasSize(width, height);
       }

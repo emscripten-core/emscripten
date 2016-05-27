@@ -249,19 +249,19 @@ var LibraryGLUT = {
 
     // TODO add fullscreen API ala:
     // http://johndyer.name/native-fullscreen-javascript-api-plus-jquery-plugin/
-    onFullScreenEventChange: function(event) {
+    onFullscreenEventChange: function(event) {
       var width;
       var height;
-      if (document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
+      if (document["fullscreen"] || document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
         width = screen["width"];
         height = screen["height"];
       } else {
         width = GLUT.windowWidth;
         height = GLUT.windowHeight;
         // TODO set position
-        document.removeEventListener('fullscreenchange', GLUT.onFullScreenEventChange, true);
-        document.removeEventListener('mozfullscreenchange', GLUT.onFullScreenEventChange, true);
-        document.removeEventListener('webkitfullscreenchange', GLUT.onFullScreenEventChange, true);
+        document.removeEventListener('fullscreenchange', GLUT.onFullscreenEventChange, true);
+        document.removeEventListener('mozfullscreenchange', GLUT.onFullscreenEventChange, true);
+        document.removeEventListener('webkitfullscreenchange', GLUT.onFullscreenEventChange, true);
       }
       Browser.setCanvasSize(width, height);
       /* Can't call _glutReshapeWindow as that requests cancelling fullscreen. */
@@ -272,22 +272,33 @@ var LibraryGLUT = {
       _glutPostRedisplay();
     },
 
-    requestFullScreen: function() {
-      var RFS = Module["canvas"]['requestFullscreen'] ||
-                Module["canvas"]['requestFullScreen'] ||
-                Module["canvas"]['mozRequestFullScreen'] ||
-                Module["canvas"]['webkitRequestFullScreen'] ||
-                (function() {});
-      RFS.apply(Module["canvas"], []);
+    requestFullscreen: function() {
+      Browser.requestFullscreen(/*lockPointer=*/false, /*resieCanvas=*/false);
     },
 
-    cancelFullScreen: function() {
+    requestFullScreen: function() {
+      Module.printErr('GLUT.requestFullScreen() is deprecated. Please call GLUT.requestFullscreen instead.');
+      GLUT.requestFullScreen = function() {
+        return GLUT.requestFullscreen();
+      }
+      return GLUT.requestFullscreen();
+    },
+
+    exitFullscreen: function() {
       var CFS = document['exitFullscreen'] ||
                 document['cancelFullScreen'] ||
                 document['mozCancelFullScreen'] ||
                 document['webkitCancelFullScreen'] ||
-                (function() {});
+          (function() {});
       CFS.apply(document, []);
+    },
+
+    cancelFullScreen: function() {
+      Module.printErr('GLUT.cancelFullScreen() is deprecated. Please call GLUT.exitFullscreen instead.');
+      GLUT.cancelFullScreen = function() {
+        return GLUT.exitFullscreen();
+      }
+      return GLUT.exitFullscreen();
     }
   },
 
@@ -530,7 +541,7 @@ var LibraryGLUT = {
 
   glutReshapeWindow__deps: ['$GLUT', 'glutPostRedisplay'],
   glutReshapeWindow: function(width, height) {
-    GLUT.cancelFullScreen();
+    GLUT.exitFullscreen();
     Browser.setCanvasSize(width, height);
     if (GLUT.reshapeFunc) {
       Runtime.dynCall('vii', GLUT.reshapeFunc, [width, height]);
@@ -540,7 +551,7 @@ var LibraryGLUT = {
 
   glutPositionWindow__deps: ['$GLUT', 'glutPostRedisplay'],
   glutPositionWindow: function(x, y) {
-    GLUT.cancelFullScreen();
+    GLUT.exitFullscreen();
     /* TODO */
     _glutPostRedisplay();
   },
@@ -551,10 +562,10 @@ var LibraryGLUT = {
     GLUT.windowY = 0; // TODO
     GLUT.windowWidth  = Module['canvas'].width;
     GLUT.windowHeight = Module['canvas'].height;
-    document.addEventListener('fullscreenchange', GLUT.onFullScreenEventChange, true);
-    document.addEventListener('mozfullscreenchange', GLUT.onFullScreenEventChange, true);
-    document.addEventListener('webkitfullscreenchange', GLUT.onFullScreenEventChange, true);
-    GLUT.requestFullScreen();
+    document.addEventListener('fullscreenchange', GLUT.onFullscreenEventChange, true);
+    document.addEventListener('mozfullscreenchange', GLUT.onFullscreenEventChange, true);
+    document.addEventListener('webkitfullscreenchange', GLUT.onFullscreenEventChange, true);
+    GLUT.requestFullscreen();
   },
 
   glutInitDisplayMode: function(mode) {
