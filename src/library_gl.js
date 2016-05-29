@@ -810,6 +810,14 @@ var LibraryGL = {
         var exts = GLctx.getSupportedExtensions();
         ret = 2*exts.length; // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
         break;
+      case 0x821B: // GL_MAJOR_VERSION
+      case 0x821C: // GL_MINOR_VERSION
+        if (GLctx.canvas.GLctxObject.version < 2) {
+          GL.recordError(0x0500); // GL_INVALID_ENUM
+          return;
+        }
+        ret = name_ == 0x821B ? 3 : 0; // return version 3.0
+        break;
 #endif
     }
 
