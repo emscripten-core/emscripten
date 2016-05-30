@@ -1721,6 +1721,11 @@ function getUniqueRunDependency(id) {
 }
 
 function addRunDependency(id) {
+#if USE_PTHREADS
+  // We should never get here in pthreads (could no-op this out if called in pthreads, but that might indicate a bug in caller side,
+  // so good to be very explicit)
+  assert(!ENVIRONMENT_IS_PTHREAD);
+#endif
   runDependencies++;
   if (Module['monitorRunDependencies']) {
     Module['monitorRunDependencies'](runDependencies);

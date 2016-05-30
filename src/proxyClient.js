@@ -108,6 +108,7 @@ setTimeout(function() {
     height: Module.canvas.height,
     boundingClientRect: cloneObject(Module.canvas.getBoundingClientRect()),
     URL: document.URL,
+    currentScriptUrl: '{{{ filename }}}.js',
     preMain: true });
 }, 0); // delay til next frame, to make sure html is ready
 
