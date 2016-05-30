@@ -236,7 +236,7 @@ var LibraryBrowser = {
       if (canvas) {
         // forced aspect ratio can be enabled by defining 'forcedAspectRatio' on Module
         // Module['forcedAspectRatio'] = 4 / 3;
-        
+
         canvas.requestPointerLock = canvas['requestPointerLock'] ||
                                     canvas['mozRequestPointerLock'] ||
                                     canvas['webkitRequestPointerLock'] ||
@@ -316,23 +316,29 @@ var LibraryBrowser = {
     fullScreenHandlersInstalled: false,
     lockPointer: undefined,
     resizeCanvas: undefined,
-    requestFullScreen: function(lockPointer, resizeCanvas, vrDevice) {
+    canvasContainer: undefined,
+    requestFullScreen: function(lockPointer, resizeCanvas, canvasContainer, vrDevice) {
+      var canvas = Module['canvas'];
       Browser.lockPointer = lockPointer;
       Browser.resizeCanvas = resizeCanvas;
       Browser.vrDevice = vrDevice;
+      if (canvasContainer && canvas.parentNode === canvasContainer) {
+          Browser.canvasContainer = canvasContainer;
+      }
+
       if (typeof Browser.lockPointer === 'undefined') Browser.lockPointer = true;
       if (typeof Browser.resizeCanvas === 'undefined') Browser.resizeCanvas = false;
       if (typeof Browser.vrDevice === 'undefined') Browser.vrDevice = null;
+      if (typeof Browser.canvasContainer === 'undefined') Browser.canvasContainer = null;
 
-      var canvas = Module['canvas'];
+
       function fullScreenChange() {
         Browser.isFullScreen = false;
-        var canvasContainer = canvas.parentNode;
         if ((document['webkitFullScreenElement'] || document['webkitFullscreenElement'] ||
              document['mozFullScreenElement'] || document['mozFullscreenElement'] ||
              document['fullScreenElement'] || document['fullscreenElement'] ||
              document['msFullScreenElement'] || document['msFullscreenElement'] ||
-             document['webkitCurrentFullScreenElement']) === canvasContainer) {
+             document['webkitCurrentFullScreenElement']) === canvas.parentNode) {
           canvas.cancelFullScreen = document['cancelFullScreen'] ||
                                     document['mozCancelFullScreen'] ||
                                     document['webkitCancelFullScreen'] ||
@@ -344,12 +350,14 @@ var LibraryBrowser = {
           Browser.isFullScreen = true;
           if (Browser.resizeCanvas) Browser.setFullScreenCanvasSize();
         } else {
-          
           // remove the full screen specific parent of the canvas again to restore the HTML structure from before going full screen
-          canvasContainer.parentNode.insertBefore(canvas, canvasContainer);
-          canvasContainer.parentNode.removeChild(canvasContainer);
-          
+          if (!Browser.canvasContainer) {
+               var container = canvas.parentNode;
+               container.parentNode.insertBefore(canvas, container);
+               container.parentNode.removeChild(container);
+          }
           if (Browser.resizeCanvas) Browser.setWindowedCanvasSize();
+          Browser.canvasContainer = undefined;
         }
         if (Module['onFullScreen']) Module['onFullScreen'](Browser.isFullScreen);
         Browser.updateCanvasDimensions(canvas);
@@ -363,21 +371,23 @@ var LibraryBrowser = {
         document.addEventListener('MSFullscreenChange', fullScreenChange, false);
       }
 
-      // create a new parent to ensure the canvas has no siblings. this allows browsers to optimize full screen performance when its parent is the full screen root
-      var canvasContainer = document.createElement("div");
-      canvas.parentNode.insertBefore(canvasContainer, canvas);
-      canvasContainer.appendChild(canvas);
-
+      var container = Browser.canvasContainer;
+      if(!Browser.canvasContainer) {
+        // create a new parent to ensure the canvas has no siblings. this allows browsers to optimize full screen performance when its parent is the full screen root
+        container = document.createElement("div");
+        canvas.parentNode.insertBefore(container, canvas);
+        container.appendChild(canvas);
+      }
       // use parent of canvas as full screen root to allow aspect ratio correction (Firefox stretches the root to screen size)
-      canvasContainer.requestFullScreen = canvasContainer['requestFullScreen'] ||
-                                          canvasContainer['mozRequestFullScreen'] ||
-                                          canvasContainer['msRequestFullscreen'] ||
-                                         (canvasContainer['webkitRequestFullScreen'] ? function() { canvasContainer['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null);
+      container.requestFullScreen = container['requestFullScreen'] ||
+                                          container['mozRequestFullScreen'] ||
+                                          container['msRequestFullscreen'] ||
+                                         (container['webkitRequestFullScreen'] ? function() { container['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null);
 
       if (vrDevice) {
-        canvasContainer.requestFullScreen({ vrDisplay: vrDevice });
+        container.requestFullScreen({ vrDisplay: vrDevice });
       } else {
-        canvasContainer.requestFullScreen();
+        container.requestFullScreen();
       }
     },
 
@@ -481,7 +491,7 @@ var LibraryBrowser = {
         'mp3': 'audio/mpeg'
       }[name.substr(name.lastIndexOf('.')+1)];
     },
-    
+
     getUserMedia: function(func) {
       if(!window.getUserMedia) {
         window.getUserMedia = navigator['getUserMedia'] ||
@@ -515,13 +525,13 @@ var LibraryBrowser = {
     getMouseWheelDelta: function(event) {
       var delta = 0;
       switch (event.type) {
-        case 'DOMMouseScroll': 
+        case 'DOMMouseScroll':
           delta = event.detail;
           break;
-        case 'mousewheel': 
+        case 'mousewheel':
           delta = event.wheelDelta;
           break;
-        case 'wheel': 
+        case 'wheel':
           delta = event['deltaY'];
           break;
         default:
@@ -549,7 +559,7 @@ var LibraryBrowser = {
           Browser.mouseMovementX = Browser.getMovementX(event);
           Browser.mouseMovementY = Browser.getMovementY(event);
         }
-        
+
         // check if SDL is available
         if (typeof SDL != "undefined") {
         	Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
@@ -559,7 +569,7 @@ var LibraryBrowser = {
         	// FIXME: ideally this should be clamped against the canvas size and zero
         	Browser.mouseX += Browser.mouseMovementX;
         	Browser.mouseY += Browser.mouseMovementY;
-        }        
+        }
       } else {
         // Otherwise, calculate the movement based on the changes
         // in the coordinates.
@@ -591,7 +601,7 @@ var LibraryBrowser = {
           adjustedY = adjustedY * (ch / rect.height);
 
           var coords = { x: adjustedX, y: adjustedY };
-          
+
           if (event.type === 'touchstart') {
             Browser.lastTouches[touch.identifier] = coords;
             Browser.touches[touch.identifier] = coords;
@@ -600,7 +610,7 @@ var LibraryBrowser = {
             if (!last) last = coords;
             Browser.lastTouches[touch.identifier] = last;
             Browser.touches[touch.identifier] = coords;
-          } 
+          }
           return;
         }
 
@@ -653,7 +663,7 @@ var LibraryBrowser = {
     windowedWidth: 0,
     windowedHeight: 0,
     setFullScreenCanvasSize: function() {
-      // check if SDL is available   
+      // check if SDL is available
       if (typeof SDL != "undefined") {
       	var flags = {{{ makeGetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'i32', 0, 1) }}};
       	flags = flags | 0x00800000; // set SDL_FULLSCREEN flag
@@ -663,7 +673,7 @@ var LibraryBrowser = {
     },
 
     setWindowedCanvasSize: function() {
-      // check if SDL is available       
+      // check if SDL is available
       if (typeof SDL != "undefined") {
       	var flags = {{{ makeGetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'i32', 0, 1) }}};
       	flags = flags & ~0x00800000; // clear SDL_FULLSCREEN flag
@@ -1119,10 +1129,10 @@ var LibraryBrowser = {
         }
         console.log('main loop blocker "' + blocker.name + '" took ' + (Date.now() - start) + ' ms'); //, left: ' + Browser.mainLoop.remainingBlockers);
         Browser.mainLoop.updateStatus();
-        
+
         // catches pause/resume main loop from blocker execution
         if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) return;
-        
+
         setTimeout(Browser.mainLoop.runner, 0);
         return;
       }
@@ -1262,7 +1272,7 @@ var LibraryBrowser = {
   emscripten_set_canvas_size: function(width, height) {
     Browser.setCanvasSize(width, height);
   },
-  
+
   emscripten_get_canvas_size: function(width, height, isFullscreen) {
     var canvas = Module['canvas'];
     {{{ makeSetValue('width', '0', 'canvas.width', 'i32') }}};
@@ -1431,4 +1441,3 @@ function slowLog(label, text) {
 }
 
 */
-
