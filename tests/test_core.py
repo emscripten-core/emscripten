@@ -6158,7 +6158,7 @@ def process(filename):
                  force_c=True)
 
   def test_zlib(self):
-    if '-O2' in self.emcc_args and 'ASM_JS=0' not in self.emcc_args: # without asm, closure minifies Math.imul badly
+    if '-O2' in self.emcc_args and 'ASM_JS=0' not in self.emcc_args and not self.is_wasm(): # without asm, closure minifies Math.imul badly
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
     assert 'asm2g' in test_modes
