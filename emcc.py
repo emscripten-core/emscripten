@@ -1161,6 +1161,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.Settings.BINARYEN_ROOT = shared.BINARYEN_ROOT
         except:
           pass
+      if use_closure_compiler:
+        logging.warning('closure compiler is known to have issues with binaryen (FIXME)')
 
     if shared.Settings.CYBERDWARF:
       newargs.append('-g')
