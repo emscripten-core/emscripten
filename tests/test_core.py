@@ -1261,7 +1261,7 @@ int main() {
       Settings.EXCEPTION_DEBUG = 1
 
       Settings.DISABLE_EXCEPTION_CATCHING = 0
-      if '-O2' in self.emcc_args:
+      if '-O2' in self.emcc_args and not self.is_wasm():
         self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
       src = '''
@@ -1418,13 +1418,14 @@ int main(int argc, char **argv)
     disabled_size = len(open('src.cpp.o.js').read())
     shutil.copyfile('src.cpp.o.js', 'disabled.js')
 
-    print size, empty_size, fake_size, disabled_size
+    if not self.is_wasm():
+      print size, empty_size, fake_size, disabled_size
 
-    assert size - empty_size > 0.0025*size, [empty_size, size] # big change when we disable entirely
-    assert size - fake_size > 0.0025*size, [fake_size, size]
-    assert abs(empty_size - fake_size) < 0.007*size, [empty_size, fake_size]
-    assert empty_size - disabled_size < 0.007*size, [empty_size, disabled_size] # full disable removes a little bit more
-    assert fake_size - disabled_size < 0.007*size, [disabled_size, fake_size]
+      assert size - empty_size > 0.0025*size, [empty_size, size] # big change when we disable entirely
+      assert size - fake_size > 0.0025*size, [fake_size, size]
+      assert abs(empty_size - fake_size) < 0.007*size, [empty_size, fake_size]
+      assert empty_size - disabled_size < 0.007*size, [empty_size, disabled_size] # full disable removes a little bit more
+      assert fake_size - disabled_size < 0.007*size, [disabled_size, fake_size]
 
   def test_exceptions_white_list_2(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 2
@@ -4853,10 +4854,10 @@ Pass: 0.000012 0.000012''')
 
   def test_files(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # closure can generate variables called 'gc', which pick up js shell stuff
-    if '-O2' in self.emcc_args:
+    if '-O2' in self.emcc_args and not self.is_wasm():
       self.emcc_args += ['--closure', '1'] # Use closure here, to test we don't break FS stuff
       self.emcc_args = filter(lambda x: x != '-g', self.emcc_args) # ensure we test --closure 1 --memory-init-file 1 (-g would disable closure)
-    elif '-O3' in self.emcc_args:
+    elif '-O3' in self.emcc_args and not self.is_wasm():
       print 'closure 2'
       self.emcc_args += ['--closure', '2'] # Use closure 2 here for some additional coverage
 
@@ -4893,8 +4894,12 @@ def process(filename):
       print mode
       self.emcc_args = orig_args + mode
       try_delete(mem_file)
+
+      def clean(out, err):
+        return '\n'.join(filter(lambda line: 'binaryen' not in line, (out + err).split('\n')))
+
       self.do_run(src, map(lambda x: x if 'SYSCALL_DEBUG=1' not in mode else ('syscall! 146,SYS_writev' if self.run_name == 'default' else 'syscall! 146'), ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n')),
-                  post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'])
+                  post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'], output_nicerizer=clean)
       if self.uses_memory_init_file():
         assert os.path.exists(mem_file)
 
@@ -4926,7 +4931,7 @@ def process(filename):
       }
       '''
     def clean(out, err):
-      return '\n'.join(filter(lambda line: 'warning' not in line, (out + err).split('\n')))
+      return '\n'.join(filter(lambda line: 'warning' not in line and 'binaryen' not in line, (out + err).split('\n')))
     self.do_run(src, ('got: 35\ngot: 45\ngot: 25\ngot: 15\n \nisatty? 0,0,1\n', 'got: 35\ngot: 45\ngot: 25\ngot: 15\nisatty? 0,0,1\n', 'isatty? 0,0,1\ngot: 35\ngot: 45\ngot: 25\ngot: 15\n'), post_build=post, output_nicerizer=clean)
 
   def test_mount(self):
