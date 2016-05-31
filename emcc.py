@@ -1155,6 +1155,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if not shared.Settings.BINARYEN_METHOD:
         shared.Settings.BINARYEN_METHOD = 'native-wasm,interpret-binary'
       assert not shared.Settings.INCLUDE_FULL_LIBRARY, 'The WebAssembly libc overlaps with JS libs, so INCLUDE_FULL_LIBRARY does not just work (FIXME)'
+      # if root was not specified in -s, it might be fixed in ~/.emscripten, copy from there
+      if not shared.Settings.BINARYEN_ROOT:
+        try:
+          shared.Settings.BINARYEN_ROOT = shared.BINARYEN_ROOT
+        except:
+          pass
 
     if shared.Settings.CYBERDWARF:
       newargs.append('-g')
