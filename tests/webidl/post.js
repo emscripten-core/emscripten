@@ -229,9 +229,12 @@ try {
 
 // Check for overflowing the stack
 
+var before = Date.now();
+
 for (var i = 0; i < 1000000; i++) {
   var temp = new TheModule.StringUser('abc', 1);
   TheModule.destroy(temp);
+  if (Date.now() - before >= 1000) break;
 }
 
 //
