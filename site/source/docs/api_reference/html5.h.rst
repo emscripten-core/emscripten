@@ -1246,8 +1246,11 @@ Defines
 
 .. c:macro:: EMSCRIPTEN_EVENT_POINTERLOCKCHANGE
 			 
-    Emscripten `pointerlockchange <http://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ events.
-	
+    Emscripten `pointerlockchange <http://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
+
+.. c:macro:: EMSCRIPTEN_EVENT_POINTERLOCKERROR
+
+    Emscripten `pointerlockerror <http://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
 
 Struct
 ------
@@ -1291,6 +1294,20 @@ Callback functions
 	:param void* userData: The ``userData`` originally passed to the registration function.
 	:returns: |callback-handler-return-value-doc|
 	:rtype: |EM_BOOL|
+
+.. c:type:: em_pointerlockerror_callback_func
+
+	Function pointer for the :c:func:`pointerlockerror event callback functions <emscripten_set_pointerlockerror_callback>`, defined as:
+
+	.. code-block:: cpp
+
+		typedef EM_BOOL (*em_pointerlockerror_callback_func)(int eventType, const void *reserved, void *userData);
+
+	:param int eventType: The type of pointerlockerror event (:c:data:`EMSCRIPTEN_EVENT_POINTERLOCKERROR`).
+	:param const void* reserved: Reserved for future use; pass in 0.
+	:param void* userData: The ``userData`` originally passed to the registration function.
+	:returns: |callback-handler-return-value-doc|
+	:rtype: |EM_BOOL|
 	
 
 	
@@ -1308,6 +1325,20 @@ Functions
 	:param void* userData: |userData-parameter-doc|
 	:param EM_BOOL useCapture: |useCapture-parameter-doc|
 	:param em_pointerlockchange_callback_func callback: |callback-function-parameter-doc|
+	:returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
+	:rtype: |EMSCRIPTEN_RESULT|
+
+
+
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_pointerlockerror_callback(const char *target, void *userData, EM_BOOL useCapture, em_pointerlockerror_callback_func callback)
+
+	Registers a callback function for receiving the `pointerlockerror <http://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
+
+	:param target: |target-parameter-doc|
+	:type target: const char*
+	:param void* userData: |userData-parameter-doc|
+	:param EM_BOOL useCapture: |useCapture-parameter-doc|
+	:param em_pointerlockerror_callback_func callback: |callback-function-parameter-doc|
 	:returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
 	:rtype: |EMSCRIPTEN_RESULT|
 
