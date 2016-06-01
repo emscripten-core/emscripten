@@ -3294,11 +3294,12 @@ window.close = function() {
     self.btest('test_preallocated_heap.cpp', expected='1', args=['-s', 'TOTAL_MEMORY='+str(16*1024*1024), '-s', 'ABORTING_MALLOC=0', '--shell-file', path_from_root('tests', 'test_preallocated_heap_shell.html')])
 
   def test_fetch_to_memory(self):
+    shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
     # TODO: emscripten_fetch.cpp and library_fetch.js pulled in as system libs
-    self.btest('fetch/to_memory.cpp', expected='0', args=[path_from_root('system/lib/fetch/emscripten_fetch.cpp'), '--std=c++11', '--js-library', 'src/library_fetch.js'])
+    self.btest('fetch/to_memory.cpp', expected='0', args=[path_from_root('system/lib/fetch/emscripten_fetch.cpp'), '--std=c++11', '--js-library', path_from_root('src/library_fetch.js')])
 
   def test_fetch_stream_file(self):
-    self.btest('fetch/stream_file.cpp', expected='0', args=[path_from_root('system/lib/fetch/stream_file.cpp'), '--std=c++11', '--js-library', 'src/library_fetch.js'])
+    self.btest('fetch/stream_file.cpp', expected='0', args=[path_from_root('system/lib/fetch/stream_file.cpp'), '--std=c++11', '--js-library', path_from_root('src/library_fetch.js')])
 
   def test_fetch_cached_xhr(self):
-    self.btest('fetch/cached_xhr.cpp', expected='0', args=[path_from_root('system/lib/fetch/cached_xhr.cpp'), '--std=c++11', '--js-library', 'src/library_fetch.js'])
+    self.btest('fetch/cached_xhr.cpp', expected='0', args=[path_from_root('system/lib/fetch/cached_xhr.cpp'), '--std=c++11', '--js-library', path_from_root('src/library_fetch.js')])
