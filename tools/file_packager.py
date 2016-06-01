@@ -16,6 +16,9 @@ Usage:
   --preload  ,
   --embed    See emcc --help for more details on those options.
 
+  --exclude E [F..] Specifies filename pattern matches to use for excluding given files from being added to the package.
+                    See https://docs.python.org/2/library/fnmatch.html for syntax.
+
   --no-closure In general, the file packager emits closure compiler-compatible code, which requires an eval().
                With this flag passed, we avoid emitting the eval. emcc passes this flag by default whenever
                it knows that closure is not run.
