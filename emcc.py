@@ -1124,9 +1124,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
 
     if shared.Settings.USE_PTHREADS:
-      if shared.Settings.PROXY_TO_WORKER:
-        logging.error('-s PROXY_TO_WORKER=1 is not yet supported with -s USE_PTHREADS=1!')
-        exit(1)
       if shared.Settings.LINKABLE:
         logging.error('-s LINKABLE=1 is not supported with -s USE_PTHREADS=1!')
         exit(1)

@@ -292,7 +292,7 @@ var LibraryPThread = {
   },
 
   _kill_thread: function(pthread_ptr) {
-    if (ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _kill_thread() can only ever be called from main JS thread!';
+    if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _kill_thread() can only ever be called from main application thread!';
     if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in _kill_thread!';
     {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
     var pthread = PThread.pthreads[pthread_ptr];
@@ -305,7 +305,7 @@ var LibraryPThread = {
   },
 
   _cleanup_thread: function(pthread_ptr) {
-    if (ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _cleanup_thread() can only ever be called from main JS thread!';
+    if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _cleanup_thread() can only ever be called from main application thread!';
     if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in _cleanup_thread!';
     {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
     var pthread = PThread.pthreads[pthread_ptr];
@@ -317,14 +317,14 @@ var LibraryPThread = {
   },
 
   _cancel_thread: function(pthread_ptr) {
-    if (ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _cancel_thread() can only ever be called from main JS thread!';
+    if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _cancel_thread() can only ever be called from main application thread!';
     if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in _cancel_thread!';
     var pthread = PThread.pthreads[pthread_ptr];
     pthread.worker.postMessage({ cmd: 'cancel' });
   },
 
   _spawn_thread: function(threadParams) {
-    if (ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _spawn_thread() can only ever be called from main JS thread!';
+    if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _spawn_thread() can only ever be called from main application thread!';
 
     var worker = PThread.getNewWorker();
     if (worker.pthread !== undefined) throw 'Internal error!';
@@ -406,11 +406,7 @@ var LibraryPThread = {
 
   pthread_create__deps: ['_spawn_thread', 'pthread_getschedparam', 'pthread_self'],
   pthread_create: function(pthread_ptr, attr, start_routine, arg) {
-    // When running in PROXY_TO_WORKER=1 mode, the pthread creation needs to be forwarded to the main browser thread, and not the main C runtime thread,
-    // so the following is valid only when in non-proxy-to-worker mode.
-#if !PROXY_TO_WORKER
     if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_4({{{ cDefine('EM_PROXIED_PTHREAD_CREATE') }}}, pthread_ptr, attr, start_routine, arg);
-#endif
 
     if (typeof SharedArrayBuffer === 'undefined') {
       Module['printErr']('Current environment does not support SharedArrayBuffer, pthreads are not available!');
@@ -475,7 +471,7 @@ var LibraryPThread = {
       arg: arg,
     };
 
-    if (ENVIRONMENT_IS_WORKER) {
+    if (ENVIRONMENT_IS_PTHREAD) {
       // The prepopulated pool of web workers that can host pthreads is stored in the main JS thread. Therefore if a
       // pthread is attempting to spawn a new thread, the thread creation must be deferred to the main JS thread.
       threadParams.cmd = 'spawnThread';
@@ -532,7 +528,7 @@ var LibraryPThread = {
         if (status) {{{ makeSetValue('status', 0, 'threadExitCode', 'i32') }}};
         Atomics.store(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 1); // Mark the thread as detached.
 
-        if (!ENVIRONMENT_IS_WORKER) __cleanup_thread(thread);
+        if (!ENVIRONMENT_IS_PTHREAD) __cleanup_thread(thread);
         else postMessage({ cmd: 'cleanupThread', thread: thread});
         return 0;
       }
@@ -564,7 +560,7 @@ var LibraryPThread = {
       return ERRNO_CODES.ESRCH;
     }
     if (signal != 0) {
-      if (!ENVIRONMENT_IS_WORKER) __kill_thread(thread);
+      if (!ENVIRONMENT_IS_PTHREAD) __kill_thread(thread);
       else postMessage({ cmd: 'killThread', thread: thread});
     }
     return 0;
@@ -586,7 +582,7 @@ var LibraryPThread = {
       return ERRNO_CODES.ESRCH;
     }
     Atomics.compareExchange(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0, 2); // Signal the thread that it needs to cancel itself.
-    if (!ENVIRONMENT_IS_WORKER) __cancel_thread(thread);
+    if (!ENVIRONMENT_IS_PTHREAD) __cancel_thread(thread);
     else postMessage({ cmd: 'cancelThread', thread: thread});
     return 0;
   },

@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 #include <vector>
 
 #define NUM_BLOCKS_TO_ALLOC 50000
