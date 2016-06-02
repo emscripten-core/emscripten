@@ -715,6 +715,8 @@ var LibraryGL = {
     switch(name_) {
       case 0x1F00 /* GL_VENDOR */:
       case 0x1F01 /* GL_RENDERER */:
+      case 0x9245 /* UNMASKED_VENDOR_WEBGL */:
+      case 0x9246 /* UNMASKED_RENDERER_WEBGL */:
         ret = allocate(intArrayFromString(GLctx.getParameter(name_)), 'i8', ALLOC_NORMAL);
         break;
       case 0x1F02 /* GL_VERSION */:
