@@ -48,15 +48,17 @@ mergeInto(LibraryManager.library, {
     stream_ops: {
       poll: function (stream) {
         var pipe = stream.node.pipe;
-        var currentLength = 0;
 
         if (pipe.buckets.length > 0) {
-          pipe.buckets.forEach(function (bucket) {
-            currentLength += bucket.offset - bucket.roffset;
-          });
+          for (var i = 0; i < pipe.buckets.length; i++) {
+            var bucket = pipe.buckets[i];
+            if (bucket.offset - bucket.roffset > 0) {
+              return ({{{ cDefine('POLLRDNORM') }}} | {{{ cDefine('POLLIN') }}});
+            }
+          }
         }
 
-        return (currentLength > 0) ? ({{{ cDefine('POLLRDNORM') }}} | {{{ cDefine('POLLIN') }}}) : 0;
+        return 0;
       },
       ioctl: function (stream, request, varargs) {
         return ERRNO_CODES.EINVAL;
