@@ -43,7 +43,10 @@ mergeInto(LibraryManager.library, {
       });
       wNode.stream = writableStream;
 
-      return [ readableStream.fd, writableStream.fd ];
+      return {
+        readable_fd: readableStream.fd,
+        writable_fd: writableStream.fd
+      };
     },
     stream_ops: {
       poll: function (stream) {

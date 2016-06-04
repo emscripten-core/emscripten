@@ -299,8 +299,8 @@ var SyscallsLibrary = {
     var res = PIPEFS.createPipe();
     var fdPtr = SYSCALLS.get();
 
-    {{{ makeSetValue('fdPtr', 0, 'res[0]', 'i32') }}};
-    {{{ makeSetValue('fdPtr', 4, 'res[1]', 'i32') }}};
+    {{{ makeSetValue('fdPtr', 0, 'res.readable_fd', 'i32') }}};
+    {{{ makeSetValue('fdPtr', 4, 'res.writable_fd', 'i32') }}};
 
     return 0;
   },
