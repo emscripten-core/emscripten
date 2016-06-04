@@ -3,7 +3,7 @@ mergeInto(LibraryManager.library, {
   $PIPEFS__deps: ['$FS'],
   $PIPEFS: {
     BUCKET_BUFFER_SIZE: 1024 * 8, // 8KiB Buffer
-    mount: function(mount) {
+    mount: function (mount) {
       return FS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */, 0);
     },
     createPipe: function () {
@@ -46,11 +46,11 @@ mergeInto(LibraryManager.library, {
       return [ readableStream.fd, writableStream.fd ];
     },
     stream_ops: {
-      poll: function(stream) {
+      poll: function (stream) {
         var pipe = stream.node.pipe;
         var currentLength = 0;
 
-        if(pipe.buckets.length > 0) {
+        if (pipe.buckets.length > 0) {
           pipe.buckets.forEach(function (bucket) {
             currentLength += bucket.offset - bucket.roffset;
           });
@@ -58,7 +58,7 @@ mergeInto(LibraryManager.library, {
 
         return (currentLength > 0) ? ({{{ cDefine('POLLRDNORM') }}} | {{{ cDefine('POLLIN') }}}) : 0;
       },
-      ioctl: function(stream, request, varargs) {
+      ioctl: function (stream, request, varargs) {
         return ERRNO_CODES.EINVAL;
       },
       read: function (stream, buffer, offset, length, position /* ignored */) {
@@ -74,20 +74,20 @@ mergeInto(LibraryManager.library, {
         data = buffer.subarray(offset, offset + length);
 
         var toRead = Math.min(currentLength, length);
-        if(toRead == 0) {
+        if (toRead == 0) {
           return 0;
         }
 
         var totalRead = toRead;
         var toRemove = 0;
 
-        for(var i = 0; i < pipe.buckets.length; i++) {
+        for (var i = 0; i < pipe.buckets.length; i++) {
           var currBucket = pipe.buckets[i];
           var bucketSize = currBucket.offset - currBucket.roffset;
 
-          if(toRead <= bucketSize) {
+          if (toRead <= bucketSize) {
             var tmpSlice = currBucket.buffer.subarray(currBucket.roffset, currBucket.offset);
-            if(toRead < bucketSize) {
+            if (toRead < bucketSize) {
               tmpSlice = tmpSlice.subarray(0, toRead);
               currBucket.roffset += toRead;
             } else {
@@ -104,7 +104,7 @@ mergeInto(LibraryManager.library, {
           }
         }
 
-        while(toRemove--) {
+        while (toRemove--) {
           pipe.buckets.shift();
         }
 
@@ -124,7 +124,7 @@ mergeInto(LibraryManager.library, {
 
         var currBucket = null;
 
-        if(pipe.buckets.length == 0) {
+        if (pipe.buckets.length == 0) {
           currBucket = {
             buffer: new Uint8Array(PIPEFS.BUCKET_BUFFER_SIZE),
             offset: 0,
@@ -174,12 +174,12 @@ mergeInto(LibraryManager.library, {
 
         return dataLen;
       },
-      close: function(stream) {
+      close: function (stream) {
         var pipe = stream.node.pipe;
         pipe.buckets = null;
       }
     },
-    nextname: function() {
+    nextname: function () {
       if (!PIPEFS.nextname.current) {
         PIPEFS.nextname.current = 0;
       }
