@@ -16,7 +16,7 @@ int main()
   emscripten_fetch_attr_init(&attr);
   strcpy(attr.requestMethod, "GET");
   attr.userData = (void*)0x12345678;
-  attr.attributes = EMSCRIPTEN_FETCH_APPEND | EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
+  attr.attributes = EMSCRIPTEN_FETCH_REPLACE | EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
 
   attr.onsuccess = [](emscripten_fetch_t *fetch) {
 #if FILE_DOES_NOT_EXIST
@@ -80,8 +80,9 @@ int main()
 #endif
     REPORT_RESULT();
 #endif
-
   };
 
   emscripten_fetch_t *fetch = emscripten_fetch(&attr, "gears.png");
+  assert(fetch != 0);
+  memset(&attr, 0, sizeof(attr)); // emscripten_fetch() must be able to operate without referencing to this structure after the call.
 }

@@ -9,54 +9,6 @@
 extern "C" {
 #endif
 
-struct emscripten_fetch_t
-{
-	// Unique identifier for this fetch in progress.
-	unsigned int id;
-
-	// Custom data that can be tagged along the process.
-	void *userData;
-
-	// The remote URL that is being downloaded.
-	const char *url;
-
-	// In onsuccess() handler:
-	//   - If the EMSCRIPTEN_FETCH_LOAD_TO_MEMORY attribute was specified for the transfer, this points to the
-	//     body of the downloaded data. Otherwise this will be null.
-	// In onprogress() handler:
-	//   - If the EMSCRIPTEN_FETCH_STREAM_DATA attribute was specified for the transfer, this points to a partial
-	//     chunk of bytes related to the transfer. Otherwise this will be null.
-	const char *data;
-
-	// Specifies the length of the above data block in bytes. When the download finishes, this field will be valid even if
-	// EMSCRIPTEN_FETCH_LOAD_TO_MEMORY was not specified.
-	uint64_t numBytes;
-
-	// If EMSCRIPTEN_FETCH_STREAM_DATA is being performed, this indicates the byte offset from the start of the stream
-	// that the data block specifies. (for onprogress() streaming XHR transfer, the number of bytes downloaded so far before this chunk)
-	uint64_t dataOffset;
-
-	// Specifies the total number of bytes that the response body will be.
-	uint64_t totalBytes;
-
-
-
-	// Specifies the readyState of the XHR request:
-	// 0: UNSENT: request not sent yet
-	// 1: OPENED: emscripten_fetch has been called.
-	// 2: HEADERS_RECEIVED: emscripten_fetch has been called, and headers and status are available.
-	// 3: LOADING: download in progress.
-	// 4: DONE: download finished.
-	// See https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/readyState
-	unsigned short readyState;
-
-	// Specifies the status code of the response.
-	unsigned short status;
-
-	// Specifies a human-readable form of the status code.
-	char statusText[64];
-};
-
 // Emscripten fetch attributes:
 // If passed, the body of the request will be present in full in the onsuccess() handler.
 #define EMSCRIPTEN_FETCH_LOAD_TO_MEMORY  1
@@ -81,6 +33,8 @@ struct emscripten_fetch_t
 // over the network but an error is raised.
 // EMSCRIPTEN_FETCH_APPEND, EMSCRIPTEN_FETCH_REPLACE and EMSCRIPTEN_FETCH_NO_DOWNLOAD are mutually exclusive.
 #define EMSCRIPTEN_FETCH_NO_DOWNLOAD 32
+
+struct emscripten_fetch_t;
 
 // Specifies the parameters for a newly initiated fetch operation.
 struct emscripten_fetch_attr_t
@@ -132,6 +86,57 @@ struct emscripten_fetch_attr_t
 
 	// Pass a custom MIME type here to force the browser to treat the received data with the given type.
 	const char *overriddenMimeType;
+};
+
+struct emscripten_fetch_t
+{
+	// Unique identifier for this fetch in progress.
+	unsigned int id;
+
+	// Custom data that can be tagged along the process.
+	void *userData;
+
+	// The remote URL that is being downloaded.
+	const char *url;
+
+	// In onsuccess() handler:
+	//   - If the EMSCRIPTEN_FETCH_LOAD_TO_MEMORY attribute was specified for the transfer, this points to the
+	//     body of the downloaded data. Otherwise this will be null.
+	// In onprogress() handler:
+	//   - If the EMSCRIPTEN_FETCH_STREAM_DATA attribute was specified for the transfer, this points to a partial
+	//     chunk of bytes related to the transfer. Otherwise this will be null.
+	const char *data;
+
+	// Specifies the length of the above data block in bytes. When the download finishes, this field will be valid even if
+	// EMSCRIPTEN_FETCH_LOAD_TO_MEMORY was not specified.
+	uint64_t numBytes;
+
+	// If EMSCRIPTEN_FETCH_STREAM_DATA is being performed, this indicates the byte offset from the start of the stream
+	// that the data block specifies. (for onprogress() streaming XHR transfer, the number of bytes downloaded so far before this chunk)
+	uint64_t dataOffset;
+
+	// Specifies the total number of bytes that the response body will be.
+	uint64_t totalBytes;
+
+
+
+	// Specifies the readyState of the XHR request:
+	// 0: UNSENT: request not sent yet
+	// 1: OPENED: emscripten_fetch has been called.
+	// 2: HEADERS_RECEIVED: emscripten_fetch has been called, and headers and status are available.
+	// 3: LOADING: download in progress.
+	// 4: DONE: download finished.
+	// See https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/readyState
+	unsigned short readyState;
+
+	// Specifies the status code of the response.
+	unsigned short status;
+
+	// Specifies a human-readable form of the status code.
+	char statusText[64];
+
+	// For internal use only.
+	emscripten_fetch_attr_t __attributes;
 };
 
 // Clears the fields of an emscripten_fetch_attr_t structure to their default values in a future-compatible manner.
