@@ -3294,12 +3294,18 @@ window.close = function() {
     self.btest('test_preallocated_heap.cpp', expected='1', args=['-s', 'TOTAL_MEMORY='+str(16*1024*1024), '-s', 'ABORTING_MALLOC=0', '--shell-file', path_from_root('tests', 'test_preallocated_heap_shell.html')])
 
   def test_fetch_to_memory(self):
+    temp_args = [path_from_root('system/lib/fetch/emscripten_fetch.cpp'), '--js-library', path_from_root('src/library_fetch.js')] # TODO: Emscripten system libs, pass these e.g. with -lfetch
+    self.btest('fetch/to_memory.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-DFILE_DOES_NOT_EXIST'] + temp_args)
+
     shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
-    # TODO: emscripten_fetch.cpp and library_fetch.js pulled in as system libs
-    self.btest('fetch/to_memory.cpp', expected='0', args=[path_from_root('system/lib/fetch/emscripten_fetch.cpp'), '--std=c++11', '--js-library', path_from_root('src/library_fetch.js')])
+    self.btest('fetch/to_memory.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1'] + temp_args)
 
   def test_fetch_stream_file(self):
-    self.btest('fetch/stream_file.cpp', expected='0', args=[path_from_root('system/lib/fetch/stream_file.cpp'), '--std=c++11', '--js-library', path_from_root('src/library_fetch.js')])
+    temp_args = [path_from_root('system/lib/fetch/emscripten_fetch.cpp'), '--js-library', path_from_root('src/library_fetch.js')] # TODO: Emscripten system libs, pass these e.g. with -lfetch
+    self.btest('fetch/stream_file.cpp', expected='0', args=['--std=c++11', '-s', 'FETCH_DEBUG=1'] + temp_args)
 
   def test_fetch_cached_xhr(self):
-    self.btest('fetch/cached_xhr.cpp', expected='0', args=[path_from_root('system/lib/fetch/cached_xhr.cpp'), '--std=c++11', '--js-library', path_from_root('src/library_fetch.js')])
+    temp_args = [path_from_root('system/lib/fetch/emscripten_fetch.cpp'), '--js-library', path_from_root('src/library_fetch.js')] # TODO: Emscripten system libs, pass these e.g. with -lfetch
+
+    shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
+    self.btest('fetch/cached_xhr.cpp', expected='0', args=['--std=c++11', '-s', 'FETCH_DEBUG=1'] + temp_args)

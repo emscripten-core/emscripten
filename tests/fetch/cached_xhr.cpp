@@ -9,7 +9,7 @@ void fetchFromIndexedDB()
 {
   emscripten_fetch_attr_t attr;
   emscripten_fetch_attr_init(&attr);
-  strcpy(attr.requestType, "GET");
+  strcpy(attr.requestMethod, "GET");
   attr.onsuccess = [](emscripten_fetch_t *fetch) {
     assert(fetch->numBytes == fetch->totalBytes);
     assert(fetch->data != 0);
@@ -20,11 +20,7 @@ void fetchFromIndexedDB()
     printf("Downloading.. %.2f%% complete.\n", (fetch->dataOffset + fetch->numBytes) * 100.0 / fetch->totalBytes);
   };
   attr.attributes = EMSCRIPTEN_FETCH_APPEND | EMSCRIPTEN_FETCH_NO_DOWNLOAD;
-  emscripten_fetch_t *fetch = emscripten_fetch(&attr, "myfile.dat");
-
-  if (synchronous) {
-    emscripten_fetch_wait(fetch, INFINITY);
-  }
+  emscripten_fetch_t *fetch = emscripten_fetch(&attr, "gears.png");
 }
 
 // XHR and store to cache.
@@ -32,7 +28,7 @@ int main()
 {
   emscripten_fetch_attr_t attr;
   emscripten_fetch_attr_init(&attr);
-  strcpy(attr.requestType, "GET");
+  strcpy(attr.requestMethod, "GET");
   attr.onsuccess = [](emscripten_fetch_t *fetch) {
     assert(fetch->numBytes == fetch->totalBytes);
     assert(fetch->data != 0);
@@ -46,5 +42,5 @@ int main()
     printf("Downloading.. %.2f%% complete.\n", (fetch->dataOffset + fetch->numBytes) * 100.0 / fetch->totalBytes);
   };
   attr.attributes = EMSCRIPTEN_FETCH_APPEND | EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_PERSIST_FILE;
-  emscripten_fetch_t *fetch = emscripten_fetch(&attr, "myfile.dat");
+  emscripten_fetch_t *fetch = emscripten_fetch(&attr, "gears.png");
 }

@@ -38,6 +38,23 @@ struct emscripten_fetch_t
 
 	// Specifies the total number of bytes that the response body will be.
 	uint64_t totalBytes;
+
+
+
+	// Specifies the readyState of the XHR request:
+	// 0: UNSENT: request not sent yet
+	// 1: OPENED: emscripten_fetch has been called.
+	// 2: HEADERS_RECEIVED: emscripten_fetch has been called, and headers and status are available.
+	// 3: LOADING: download in progress.
+	// 4: DONE: download finished.
+	// See https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/readyState
+	unsigned short readyState;
+
+	// Specifies the status code of the response.
+	unsigned short status;
+
+	// Specifies a human-readable form of the status code.
+	char statusText[64];
 };
 
 // Emscripten fetch attributes:
@@ -69,7 +86,7 @@ struct emscripten_fetch_t
 struct emscripten_fetch_attr_t
 {
 	// 'POST', 'GET', etc.
-	char requestType[32];
+	char requestMethod[32];
 
 	// Custom data that can be tagged along the process.
 	void *userData;
@@ -78,12 +95,43 @@ struct emscripten_fetch_attr_t
 	void (*onerror)(emscripten_fetch_t *fetch);
 	void (*onprogress)(emscripten_fetch_t *fetch);
 
-	// Specifies the destination path in IndexedDB where to store the downloaded content body. If this is empty, the transfer
-	// is not stored to IndexedDB at all.
-	char destinationPath[PATH_MAX];
-
 	// EMSCRIPTEN_FETCH_* attributes
 	uint32_t attributes;
+
+	// Specifies the amount of time the request can take before failing due to a timeout.
+	unsigned long timeoutMSecs;
+
+	// Indicates whether cross-site access control requests should be made using credentials.
+	EM_BOOL withCredentials;
+
+	// If true, performs a synchronous blocking XHR. The emscripten_fetch() function call does not return until
+	// the request has completed. Setting this to true in the main browser thread will fail with
+	// EMSCRIPTEN_RESULT_NOT_SUPPORTED. 
+	EM_BOOL synchronousRequest;
+
+	// Specifies the destination path in IndexedDB where to store the downloaded content body. If this is empty, the transfer
+	// is not stored to IndexedDB at all.
+	// Note that this struct does not contain space to hold this string, it only carries a pointer.
+	// Calling emscripten_fetch() will make an internal copy of this string.
+	const char *destinationPath;
+
+	// Specifies the authentication username to use for the request, if necessary.
+	// Note that this struct does not contain space to hold this string, it only carries a pointer.
+	// Calling emscripten_fetch() will make an internal copy of this string.
+	const char *userName;
+
+	// Specifies the authentication username to use for the request, if necessary.
+	// Note that this struct does not contain space to hold this string, it only carries a pointer.
+	// Calling emscripten_fetch() will make an internal copy of this string.
+	const char *password;
+
+	// Points to an array of strings to pass custom headers to the request. This array takes the form
+	// {"key1", "value1", "key2", "value2", "key3", "value3", ..., 0 }; Note especially that the array
+	// needs to be terminated with a null pointer.
+	const char * const *requestHeaders;
+
+	// Pass a custom MIME type here to force the browser to treat the received data with the given type.
+	const char *overriddenMimeType;
 };
 
 // Clears the fields of an emscripten_fetch_attr_t structure to their default values in a future-compatible manner.
@@ -97,7 +145,7 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 // the wait times out, the return value will be EMSCRIPTEN_RESULT_TIMEOUT.
 // The onsuccess()/onerror()/onprogress() handlers will be called in the calling thread from within this function before
 // this function returns.
-EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeoutMsecs);
+EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeoutMSecs);
 
 // Closes a finished or an executing fetch operation and frees up all memory. If the fetch operation was still executing, the
 // onerror() handler will be called in the calling thread before this function returns.
