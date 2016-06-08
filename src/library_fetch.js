@@ -157,7 +157,6 @@ var LibraryFetch = {
     var fetchAttributes = {{{ makeGetValue('fetch_attr', 48/*TODO*/, 'i32') }}};
     var timeoutMsecs = {{{ makeGetValue('fetch_attr', 52/*TODO*/, 'i32') }}};
     var withCredentials = !!({{{ makeGetValue('fetch_attr', 56/*TODO*/, 'i32') }}});
-    var synchronousRequest = !!({{{ makeGetValue('fetch_attr', 60/*TODO*/, 'i32') }}});
     var destinationPath = {{{ makeGetValue('fetch_attr', 64/*TODO*/, 'i32') }}};
     var userName = {{{ makeGetValue('fetch_attr', 68/*TODO*/, 'i32') }}};
     var password = {{{ makeGetValue('fetch_attr', 72/*TODO*/, 'i32') }}};
@@ -170,20 +169,21 @@ var LibraryFetch = {
     var fetchAttrAppend = !!(fetchAttributes & 8/*EMSCRIPTEN_FETCH_APPEND*/);
     var fetchAttrReplace = !!(fetchAttributes & 16/*EMSCRIPTEN_FETCH_REPLACE*/);
     var fetchAttrNoDownload = !!(fetchAttributes & 32/*EMSCRIPTEN_FETCH_NO_DOWNLOAD*/);
+    var fetchAttrSynchronous = !!(fetchAttributes & 64/*EMSCRIPTEN_FETCH_SYNCHRONOUS*/);
 
     var userNameStr = userName ? Pointer_stringify(userName) : undefined;
     var passwordStr = password ? Pointer_stringify(password) : undefined;
     var overriddenMimeTypeStr = overriddenMimeType ? Pointer_stringify(overriddenMimeType) : undefined;
 
     var xhr = new XMLHttpRequest();
-    xhr.responseType = fetchAttrStreamData ? 'moz-chunked-arraybuffer' : 'arraybuffer';
     xhr.timeout = timeoutMsecs;
     xhr.withCredentials = withCredentials;
 #if FETCH_DEBUG
     console.log('fetch: xhr.timeout: ' + xhr.timeout + ', xhr.withCredentials: ' + xhr.withCredentials);
     console.log('fetch: xhr.open(requestMethod="' + requestMethod + '", url: "' + url_ +'", userName: ' + userNameStr + ', password: ' + passwordStr + ');');
 #endif
-    xhr.open(requestMethod, url_, !synchronousRequest, userNameStr, passwordStr);
+    xhr.open(requestMethod, url_, !fetchAttrSynchronous, userNameStr, passwordStr);
+    xhr.responseType = fetchAttrStreamData ? 'moz-chunked-arraybuffer' : 'arraybuffer';
 
     if (overriddenMimeType) {
 #if FETCH_DEBUG

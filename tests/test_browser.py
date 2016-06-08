@@ -3325,3 +3325,10 @@ window.close = function() {
       f.write(s)
     f.close()
     self.btest('fetch/stream_file.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'TOTAL_MEMORY=536870912'] + temp_args)
+
+  # Tests emscripten_fetch() usage in synchronous mode.
+  def test_fetch_sync_xhr(self):
+    temp_args = [path_from_root('system/lib/fetch/emscripten_fetch.cpp'), '--js-library', path_from_root('src/library_fetch.js')] # TODO: Emscripten system libs, pass these e.g. with -lfetch
+
+    shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
+    self.btest('fetch/sync_xhr.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '--proxy-to-worker'] + temp_args)

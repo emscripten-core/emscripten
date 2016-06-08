@@ -34,6 +34,10 @@ extern "C" {
 // EMSCRIPTEN_FETCH_APPEND, EMSCRIPTEN_FETCH_REPLACE and EMSCRIPTEN_FETCH_NO_DOWNLOAD are mutually exclusive.
 #define EMSCRIPTEN_FETCH_NO_DOWNLOAD 32
 
+// If specified, emscripten_fetch() will synchronously run to completion before returning.
+// The callback handlers will be called from within emscripten_fetch() while the operation is in progress.
+#define EMSCRIPTEN_FETCH_SYNCHRONOUS 64
+
 struct emscripten_fetch_t;
 
 // Specifies the parameters for a newly initiated fetch operation.
@@ -61,7 +65,7 @@ struct emscripten_fetch_attr_t
 	// If true, performs a synchronous blocking XHR. The emscripten_fetch() function call does not return until
 	// the request has completed. Setting this to true in the main browser thread will fail with
 	// EMSCRIPTEN_RESULT_NOT_SUPPORTED. 
-	EM_BOOL synchronousRequest;
+	EM_BOOL synchronousRequestTODODELETEONCESTRUCTJSONIFIED;
 
 	// Specifies the destination path in IndexedDB where to store the downloaded content body. If this is empty, the transfer
 	// is not stored to IndexedDB at all.
