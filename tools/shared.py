@@ -676,6 +676,7 @@ def get_clang_native_env():
 
     env['INCLUDE'] = os.path.join(visual_studio_2013_path, 'VC\\INCLUDE')
     env['LIB'] = os.path.join(visual_studio_2013_path, 'VC\\LIB\\amd64') + ';' + os.path.join(windows_sdk_dir, 'lib\\winv6.3\\um\\x64')
+    env['PATH'] = env['PATH'] + ';' + os.path.join(visual_studio_2013_path, 'VC\\BIN')
 
   # Current configuration above is all Visual Studio -specific, so on non-Windowses, no action needed.
 
