@@ -2322,6 +2322,10 @@ def safe_copy(src, dst):
   if dst == '/dev/null': return
   shutil.copyfile(src, dst)
 
+def clang_preprocess(filename):
+  # TODO: REMOVE HACK AND PASS PREPROCESSOR FLAGS TO CLANG.
+  return subprocess.check_output([CLANG_CC, '-DFETCH_DEBUG=1', '-E', '-P', '-C', '-x', 'c', filename])
+
 def read_and_preprocess(filename):
   f = open(filename, 'r').read()
   pos = 0

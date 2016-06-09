@@ -1754,6 +1754,27 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.USE_PTHREADS:
         shutil.copyfile(shared.path_from_root('src', 'pthread-main.js'), os.path.join(os.path.dirname(os.path.abspath(target)), 'pthread-main.js'))
 
+        src = open(final, 'r').read()
+        funcs_to_import = ['alignMemoryPage', '_sbrk', '_pthread_mutex_lock', '_malloc', '_emscripten_sync_run_in_main_thread_1', '_emscripten_sync_run_in_main_thread', '_emscripten_is_main_runtime_thread', '_pthread_mutex_unlock', '_emscripten_set_current_thread_status', '_emscripten_futex_wait', 'writeStringToMemory', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array']
+        function_prologue = ''
+        for func in funcs_to_import:
+          loc = src.find('function ' + func + '(')
+          if loc == -1:
+            logging.fatal('failed to find function ' + func + '!')
+            sys.exit(1)
+          end_loc = src.find('{', loc) + 1
+          nesting_level = 1
+          while nesting_level > 0:
+            if src[end_loc] == '{': nesting_level += 1
+            if src[end_loc] == '}': nesting_level -= 1
+            end_loc += 1
+
+          func_code = src[loc:end_loc]
+          function_prologue = function_prologue + '\n' + func_code
+
+        fetch_worker_src = function_prologue + '\n' + shared.clang_preprocess(shared.path_from_root('src', 'fetch-worker.js'))
+        open('fetch-worker.js', 'w').write(fetch_worker_src)
+
       if shared.Settings.BINARYEN:
         # Insert a call to integrate with wasm.js
         js = open(final).read()

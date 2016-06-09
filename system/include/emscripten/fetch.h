@@ -38,6 +38,10 @@ extern "C" {
 // The callback handlers will be called from within emscripten_fetch() while the operation is in progress.
 #define EMSCRIPTEN_FETCH_SYNCHRONOUS 64
 
+// If specified, it will be possible to call emscripten_fetch_wait() on the fetch
+// to test or wair for its completion.
+#define EMSCRIPTEN_FETCH_WAITABLE 128
+
 struct emscripten_fetch_t;
 
 // Specifies the parameters for a newly initiated fetch operation.
@@ -138,6 +142,8 @@ struct emscripten_fetch_t
 
 	// Specifies a human-readable form of the status code.
 	char statusText[64];
+
+	uint32_t __proxyState;
 
 	// For internal use only.
 	emscripten_fetch_attr_t __attributes;
