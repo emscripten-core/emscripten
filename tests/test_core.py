@@ -1473,6 +1473,30 @@ int main(int argc, char **argv)
       '''
       self.do_run(src, 'success')
 
+  def test_exceptions_uncaught_2(self):
+      Settings.DISABLE_EXCEPTION_CATCHING = 0
+
+      src = r'''
+        #include <iostream>
+        #include <exception>
+
+        int main() {
+          try {
+              throw std::exception();
+          } catch(std::exception) {
+            try {
+              throw;
+            } catch(std::exception) {}
+          }
+
+          if (std::uncaught_exception())
+            std::cout << "ERROR: uncaught_exception still set.";
+          else
+            std::cout << "OK";
+        }
+      '''
+      self.do_run(src, 'OK\n')
+
   def test_exceptions_typed(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     self.emcc_args += ['-s', 'SAFE_HEAP=0'] # Throwing null will cause an ignorable null pointer access.
