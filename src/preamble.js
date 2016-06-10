@@ -52,8 +52,9 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
 #endif
   if (dest <= 0) abort('segmentation fault storing ' + bytes + ' bytes to address ' + dest);
   if (dest % bytes !== 0) abort('alignment error storing to address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
-  if (dest + bytes > Math.max(DYNAMICTOP, STATICTOP)) abort('segmentation fault, exceeded the top of the available heap when storing ' + bytes + ' bytes to address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + DYNAMICTOP);
-  assert(DYNAMICTOP <= TOTAL_MEMORY);
+  if (dest + bytes > Math.max(HEAPU32[DYNAMICTOP_PTR>>2], STATICTOP)) abort('segmentation fault, exceeded the top of the available heap when storing ' + bytes + ' bytes to address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + HEAPU32[DYNAMICTOP_PTR>>2]);
+  assert(DYNAMICTOP_PTR);
+  assert(HEAPU32[DYNAMICTOP_PTR>>2] <= TOTAL_MEMORY);
   setValue(dest, value, getSafeHeapType(bytes, isFloat), 1);
 }
 function SAFE_HEAP_STORE_D(dest, value, bytes) {
@@ -63,8 +64,9 @@ function SAFE_HEAP_STORE_D(dest, value, bytes) {
 function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
   if (dest <= 0) abort('segmentation fault loading ' + bytes + ' bytes from address ' + dest);
   if (dest % bytes !== 0) abort('alignment error loading from address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
-  if (dest + bytes > Math.max(DYNAMICTOP, STATICTOP)) abort('segmentation fault, exceeded the top of the available heap when loading ' + bytes + ' bytes from address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + DYNAMICTOP);
-  assert(DYNAMICTOP <= TOTAL_MEMORY);
+  if (dest + bytes > Math.max(HEAPU32[DYNAMICTOP_PTR>>2], STATICTOP)) abort('segmentation fault, exceeded the top of the available heap when loading ' + bytes + ' bytes from address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + HEAPU32[DYNAMICTOP_PTR>>2]);
+  assert(DYNAMICTOP_PTR);
+  assert(HEAPU32[DYNAMICTOP_PTR>>2] <= TOTAL_MEMORY);
   var type = getSafeHeapType(bytes, isFloat);
   var ret = getValue(dest, type, 1);
   if (unsigned) ret = unSign(ret, parseInt(type.substr(1)), 1);
@@ -935,7 +937,7 @@ function updateGlobalBufferViews() {
 
 var STATIC_BASE = 0, STATICTOP = 0, staticSealed = false; // static area
 var STACK_BASE = 0, STACKTOP = 0, STACK_MAX = 0; // stack area
-var DYNAMIC_BASE = 0, DYNAMICTOP = 0; // dynamic area handled by sbrk
+var DYNAMIC_BASE = 0, DYNAMICTOP_PTR = 0; // dynamic area handled by sbrk
 
 #if USE_PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
@@ -1007,7 +1009,7 @@ function enlargeMemory() {
 #else
   // TOTAL_MEMORY is the current size of the actual array, and DYNAMICTOP is the new top.
 #if ASSERTIONS
-  assert(DYNAMICTOP >= TOTAL_MEMORY);
+  assert(HEAPU32[DYNAMICTOP_PTR>>2] >= TOTAL_MEMORY);
   assert(TOTAL_MEMORY > 4); // So the loop below will not be infinite
 #endif
 
@@ -1020,9 +1022,9 @@ function enlargeMemory() {
 
   var LIMIT = Math.pow(2, 31); // 2GB is a practical maximum, as we use signed ints as pointers
                                // and JS engines seem unhappy to give us 2GB arrays currently
-  if (DYNAMICTOP >= LIMIT) return false;
+  if (HEAPU32[DYNAMICTOP_PTR>>2] >= LIMIT) return false;
 
-  while (TOTAL_MEMORY <= DYNAMICTOP) { // Simple heuristic.
+  while (TOTAL_MEMORY <= HEAPU32[DYNAMICTOP_PTR>>2]) { // Simple heuristic.
     if (TOTAL_MEMORY < LIMIT/2) {
       TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY); // double until 1GB
     } else {
@@ -1469,6 +1471,10 @@ function setF64(ptr, value) {
 #endif // SPLIT_MEMORY
 
 #endif // USE_PTHREADS
+
+function getTotalMemory() {
+  return TOTAL_MEMORY;
+}
 
 // Endianness check (note: assumes compiler arch was little-endian)
 #if SAFE_SPLIT_MEMORY == 0

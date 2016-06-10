@@ -651,7 +651,7 @@ function _emscripten_asm_const_%s(%s) {
              '(it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)' + \
              '"); ' + extra
 
-    basic_funcs = ['abort', 'assert'] + [m.replace('.', '_') for m in math_envs]
+    basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory'] + [m.replace('.', '_') for m in math_envs]
     if settings['STACK_OVERFLOW_CHECK']: basic_funcs += ['abortStackOverflow']
 
     asm_safe_heap = settings['SAFE_HEAP'] and not settings['SAFE_HEAP_LOG'] and not settings['RELOCATABLE'] # optimized safe heap in asm, when we can
@@ -667,10 +667,8 @@ function _emscripten_asm_const_%s(%s) {
         basic_funcs += ['nullFunc_' + sig]
         asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig) + 'abort(x) }\n'
 
-    basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
+    basic_vars = ['STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR', 'tempDoublePtr', 'ABORT']
     basic_float_vars = []
-
-    if settings['SAFE_HEAP']: basic_vars += ['DYNAMICTOP']
 
     if metadata.get('preciseI64MathUsed'):
       basic_vars += ['cttz_i8']
@@ -1063,7 +1061,7 @@ function setThrew(threw, value) {
 '''] + ['' if not settings['SAFE_HEAP'] else '''
 function setDynamicTop(value) {
   value = value | 0;
-  DYNAMICTOP = value;
+  HEAPU32[DYNAMICTOP_PTR>>2] = value;
 }
 '''] + ['' if not asm_safe_heap else '''
 function SAFE_HEAP_STORE(dest, value, bytes) {
@@ -1071,7 +1069,7 @@ function SAFE_HEAP_STORE(dest, value, bytes) {
   value = value | 0;
   bytes = bytes | 0;
   if ((dest|0) <= 0) segfault();
-  if (((dest + bytes)|0) > (DYNAMICTOP|0)) segfault();
+  if (((dest + bytes)|0) > (HEAPU32[DYNAMICTOP_PTR>>2]|0)) segfault();
   if ((bytes|0) == 4) {
     if ((dest&3)) alignfault();
     HEAP32[dest>>2] = value;
@@ -1087,7 +1085,7 @@ function SAFE_HEAP_STORE_D(dest, value, bytes) {
   value = +value;
   bytes = bytes | 0;
   if ((dest|0) <= 0) segfault();
-  if (((dest + bytes)|0) > (DYNAMICTOP|0)) segfault();
+  if (((dest + bytes)|0) > (HEAPU32[DYNAMICTOP_PTR>>2]|0)) segfault();
   if ((bytes|0) == 8) {
     if ((dest&7)) alignfault();
     HEAPF64[dest>>3] = value;
@@ -1101,7 +1099,7 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned) {
   bytes = bytes | 0;
   unsigned = unsigned | 0;
   if ((dest|0) <= 0) segfault();
-  if ((dest + bytes|0) > (DYNAMICTOP|0)) segfault();
+  if ((dest + bytes|0) > (HEAPU32[DYNAMICTOP_PTR>>2]|0)) segfault();
   if ((bytes|0) == 4) {
     if ((dest&3)) alignfault();
     return HEAP32[dest>>2] | 0;
@@ -1120,7 +1118,7 @@ function SAFE_HEAP_LOAD_D(dest, bytes) {
   dest = dest | 0;
   bytes = bytes | 0;
   if ((dest|0) <= 0) segfault();
-  if ((dest + bytes|0) > (DYNAMICTOP|0)) segfault();
+  if ((dest + bytes|0) > (HEAPU32[DYNAMICTOP_PTR>>2]|0)) segfault();
   if ((bytes|0) == 8) {
     if ((dest&7)) alignfault();
     return +HEAPF64[dest>>3];
@@ -1530,7 +1528,7 @@ return ASM_CONSTS[code](%s);
   outfile.write(pre)
   pre = None
 
-  basic_funcs = ['abort', 'assert']
+  basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory']
 
   access_quote = access_quoter(settings)
 
@@ -1547,7 +1545,7 @@ return ASM_CONSTS[code](%s);
   def math_fix(g):
     return g if not g.startswith('Math_') else g.split('_')[1]
 
-  basic_vars = ['STACKTOP', 'STACK_MAX', 'ABORT']
+  basic_vars = ['STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR', 'ABORT']
   basic_float_vars = []
 
   # Asm.js-style exception handling: invoke wrapper generation

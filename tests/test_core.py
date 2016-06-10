@@ -8160,7 +8160,7 @@ int main(int argc, char **argv) {
               typeof STACK_MAX === 'number' &&
               typeof STACKTOP === 'number' &&
               typeof DYNAMIC_BASE === 'number' &&
-              typeof DYNAMICTOP === 'number') {
+              typeof DYNAMICTOP_PTR === 'number') {
              Module.print('able to run memprof');
            } else {
              Module.print('missing the required variables to run memprof');

@@ -381,10 +381,12 @@ function JSify(data, functionsOnly) {
     legalizedI64s = legalizedI64sDefault;
 
     if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
+      print('DYNAMICTOP_PTR = allocate(1, "i32", ALLOC_STATIC);\n');
       print('STACK_BASE = STACKTOP = Runtime.alignMemory(STATICTOP);\n');
-      print('staticSealed = true; // seal the static portion of memory\n');
       print('STACK_MAX = STACK_BASE + TOTAL_STACK;\n');
-      print('DYNAMIC_BASE = DYNAMICTOP = Runtime.alignMemory(STACK_MAX);\n');
+      print('DYNAMIC_BASE = Runtime.alignMemory(STACK_MAX);\n');
+      print('HEAPU32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;\n');
+      print('staticSealed = true; // seal the static portion of memory\n');
       if (ASSERTIONS) print('assert(DYNAMIC_BASE < TOTAL_MEMORY, "TOTAL_MEMORY not big enough for stack");\n');
     }
     if (SPLIT_MEMORY) {

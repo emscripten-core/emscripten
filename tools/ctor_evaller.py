@@ -75,7 +75,7 @@ def eval_ctors(js, mem_init, num):
     for bit in bits:
       name, value = map(lambda x: x.strip(), bit.split('='))
       if value in ['0', '+0', '0.0'] or name in [
-        'STACKTOP', 'STACK_MAX', 'DYNAMICTOP',
+        'STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR',
         'HEAP8', 'HEAP16', 'HEAP32',
         'HEAPU8', 'HEAPU16', 'HEAPU32',
         'HEAPF32', 'HEAPF64',
@@ -125,7 +125,7 @@ var stackBase = stackTop;
 var stackMax = stackTop + totalStack;
 if (stackMax >= totalMemory) throw 'not enough room for stack';
 
-var dynamicTop = stackMax;
+var dynamicTopPtr = stackMax;
 
 if (!Math.imul) {
   Math.imul = Math.imul || function(a, b) {
@@ -162,7 +162,7 @@ var globalArg = {
 var libraryArg = {
   STACKTOP: stackTop,
   STACK_MAX: stackMax,
-  DYNAMICTOP: dynamicTop,
+  DYNAMICTOP_PTR: dynamicTopPtr,
   ___dso_handle: 0, // used by atexit, value doesn't matter
   _emscripten_memcpy_big: function(dest, src, num) {
     heap.set(heap.subarray(src, src+num), dest);
