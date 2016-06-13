@@ -36,7 +36,7 @@ class WindowsPopen:
 
     # emscripten.py supports reading args from a response file instead of cmdline.
     # Use .rsp to avoid cmdline length limitations on Windows.
-    if len(args) >= 2 and args[1].endswith("emscripten.py"):
+    if len(args) >= 2 and args[1].endswith("emscripten.py") or re.match("^.*(clang|llvm).*$", args[0])):
       response_filename = response_file.create_response_file(args[2:], TEMP_DIR)
       args = args[0:2] + ['@' + response_filename]
       
@@ -293,17 +293,12 @@ except:
 COMPILER_ENGINE = listify(COMPILER_ENGINE)
 JS_ENGINES = [listify(ENGINE) for ENGINE in JS_ENGINES]
 
-try:
-  EM_POPEN_WORKAROUND
-except:
-  EM_POPEN_WORKAROUND = os.environ.get('EM_POPEN_WORKAROUND')
-
 # Install our replacement Popen handler if we are running on Windows to avoid python spawn process function.
 # nb. This is by default disabled since it has the adverse effect of buffering up all logging messages, which makes
 # builds look unresponsive (messages are printed only after the whole build finishes). Whether this workaround is needed 
 # seems to depend on how the host application that invokes emcc has set up its stdout and stderr.
-if EM_POPEN_WORKAROUND and os.name == 'nt':
-  logging.debug('Installing Popen workaround handler to avoid bug http://bugs.python.org/issue3905')
+if os.name == 'nt':
+  logging.debug('Installing Popen workaround handler to avoid bug http://bugs.python.org/issue3905 and use response files for Clang')
   Popen = WindowsPopen
 
 # Verbosity level control for any intermediate subprocess spawns from the compiler. Useful for internal debugging.
