@@ -1422,8 +1422,14 @@ function setF64(ptr, value) {
 
 // Endianness check (note: assumes compiler arch was little-endian)
 #if SAFE_SPLIT_MEMORY == 0
-HEAP32[0] = 255;
-if (HEAPU8[0] !== 255 || HEAPU8[3] !== 0) throw 'Typed arrays 2 must be run on a little-endian system';
+#if USE_PTHREADS
+if (!ENVIRONMENT_IS_PTHREAD) {
+#endif
+  HEAP32[0] = 255;
+#if USE_PTHREADS
+}
+#endif
+if (HEAPU8[0] !== 255 || HEAPU8[3] !== 0) throw 'Runtime error: either the current system is not little-endian, or it has corrupted its heap memory area (address zero)!';
 #endif
 
 Module['HEAP'] = HEAP;
