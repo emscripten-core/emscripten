@@ -1,6 +1,5 @@
 import os.path, sys, shutil, time, logging
-
-import tempfiles
+import tempfiles, filelock
 
 # Permanent cache for dlmalloc and stdlibc++
 class Cache:
@@ -17,15 +16,24 @@ class Cache:
     self.dirname = dirname
     self.debug = debug
 
+    def reverse_chop(thestring, ending):
+      if thestring.endswith(ending):
+        return thestring[:-len(ending)]
+      return thestring
+
+    self.filelock = filelock.FileLock(reverse_chop(reverse_chop(self.dirname, '/'), '\\') + '.lock')
+
   def ensure(self):
-    shared.safe_ensure_dirs(self.dirname)
+    with self.filelock:
+      shared.safe_ensure_dirs(self.dirname)
 
   def erase(self):
-    tempfiles.try_delete(self.dirname)
-    try:
-      open(self.dirname + '__last_clear', 'w').write('last clear: ' + time.asctime() + '\n')
-    except Exception, e:
-      print >> sys.stderr, 'failed to save last clear time: ', e
+    with self.filelock:
+      tempfiles.try_delete(self.dirname)
+      try:
+        open(self.dirname + '__last_clear', 'w').write('last clear: ' + time.asctime() + '\n')
+      except Exception, e:
+        print >> sys.stderr, 'failed to save last clear time: ', e
 
   def get_path(self, shortname):
     return os.path.join(self.dirname, shortname)
@@ -35,18 +43,21 @@ class Cache:
   def get(self, shortname, creator, extension='.bc', what=None, force=False):
     if not shortname.endswith(extension): shortname += extension
     cachename = os.path.join(self.dirname, shortname)
-    if os.path.exists(cachename) and not force:
-      return cachename
-    if what is None:
-      if shortname.endswith(('.bc', '.so', '.a')): what = 'system library'
-      else: what = 'system asset'
-    message = 'generating ' + what + ': ' + shortname + '...'
-    logging.warn(message)
-    self.ensure()
-    temp = creator()
-    if temp != cachename:
-      shutil.copyfile(temp, cachename)
-    logging.warn(' '*len(message) + 'ok')
+
+    with self.filelock:
+      if os.path.exists(cachename) and not force:
+        return cachename
+      if what is None:
+        if shortname.endswith(('.bc', '.so', '.a')): what = 'system library'
+        else: what = 'system asset'
+      message = 'generating ' + what + ': ' + shortname + '...'
+      logging.warn(message)
+      self.ensure()
+      temp = creator()
+      if temp != cachename:
+        shutil.copyfile(temp, cachename)
+      logging.warn(' '*len(message) + 'ok')
+
     return cachename
 
 # Given a set of functions of form (ident, text), and a preferred chunk size,
