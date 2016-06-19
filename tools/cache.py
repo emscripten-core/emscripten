@@ -21,19 +21,22 @@ class Cache:
         return thestring[:-len(ending)]
       return thestring
 
-    self.filelock = filelock.FileLock(reverse_chop(reverse_chop(self.dirname, '/'), '\\') + '.lock')
+    self.filelock_name = reverse_chop(reverse_chop(self.dirname, '/'), '\\') + '.lock'
+    self.filelock = filelock.FileLock(self.filelock_name)
 
   def ensure(self):
     with self.filelock:
       shared.safe_ensure_dirs(self.dirname)
 
   def erase(self):
-    with self.filelock:
-      tempfiles.try_delete(self.dirname)
-      try:
-        open(self.dirname + '__last_clear', 'w').write('last clear: ' + time.asctime() + '\n')
-      except Exception, e:
-        print >> sys.stderr, 'failed to save last clear time: ', e
+    tempfiles.try_delete(self.dirname)
+    try:
+      open(self.dirname + '__last_clear', 'w').write('last clear: ' + time.asctime() + '\n')
+    except Exception, e:
+      print >> sys.stderr, 'failed to save last clear time: ', e
+    self.filelock = None
+    tempfiles.try_delete(self.filelock_name)
+    self.filelock = filelock.FileLock(self.filelock_name)
 
   def get_path(self, shortname):
     return os.path.join(self.dirname, shortname)
