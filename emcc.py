@@ -907,7 +907,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               break
           if found: break
         if found: break
-      if not found and lib not in ['GL', 'GLU', 'glut', 'm', 'c', 'SDL', 'stdc++']: # whitelist our default libraries
+      if not found and lib not in ['GL', 'GLU', 'glut', 'm', 'c', 'SDL', 'stdc++', 'pthread']: # whitelist our default libraries
         logging.warning('emcc: cannot find library "%s"', lib)
 
     # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
