@@ -417,7 +417,9 @@ var LibraryGL = {
         errorInfo = event.statusMessage || errorInfo;
       }
       try {
-        canvas.addEventListener('webglcontextcreationerror', onContextCreationError, false);
+        if (canvas.addEventListener) {
+          canvas.addEventListener('webglcontextcreationerror', onContextCreationError, false);
+        }
         try {
           if (webGLContextAttributes.majorVersion == 1 && webGLContextAttributes.minorVersion == 0) {
             ctx = canvas.getContext("webgl", webGLContextAttributes) || canvas.getContext("experimental-webgl", webGLContextAttributes);
@@ -427,7 +429,9 @@ var LibraryGL = {
             throw 'Unsupported WebGL context version ' + majorVersion + '.' + minorVersion + '!'
           }
         } finally {
-          canvas.removeEventListener('webglcontextcreationerror', onContextCreationError, false);
+          if (canvas.removeEventListener) {
+            canvas.removeEventListener('webglcontextcreationerror', onContextCreationError, false);
+          }
         }
         if (!ctx) throw ':(';
       } catch (e) {
@@ -545,6 +549,13 @@ var LibraryGL = {
       if (!context) return false;
       GLctx = Module.ctx = context.GLctx; // Active WebGL context object.
       GL.currentContext = context; // Active Emscripten GL layer context object.
+      return true;
+    },
+
+    commitContext: function(contextHandle) {
+      var context = GL.contexts[contextHandle];
+      if (!context) return false;
+      context.GLctx.commit();
       return true;
     },
 

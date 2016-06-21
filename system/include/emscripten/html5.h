@@ -412,6 +412,7 @@ extern void emscripten_webgl_init_context_attributes(EmscriptenWebGLContextAttri
 extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *target, const EmscriptenWebGLContextAttributes *attributes);
 
 extern EMSCRIPTEN_RESULT emscripten_webgl_make_context_current(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+extern EMSCRIPTEN_RESULT emscripten_webgl_commit_context(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
 extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_get_current_context();
 
