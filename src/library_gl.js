@@ -742,11 +742,13 @@ var LibraryGL = {
         break;
       case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
         var glslVersion = GLctx.getParameter(GLctx.SHADING_LANGUAGE_VERSION);
-        // Map WebGL GL_SHADING_LANGUAGE_VERSION string format to GLES format.
-        if (glslVersion.indexOf('WebGL GLSL ES 1.0') != -1) glslVersion = 'OpenGL ES GLSL ES 1.00 (WebGL)';
-#if USE_WEBGL2
-        else if (glslVersion.indexOf('WebGL GLSL ES 3.00') != -1) glslVersion = 'OpenGL ES GLSL ES 3.00 (WebGL 2)';
-#endif
+        // extract the version number 'N.M' from the string 'WebGL GLSL ES N.M ...'
+        var ver_re = /^WebGL GLSL ES ([0-9]\.[0-9][0-9]?)(?:$| .*)/;
+        var ver_num = glslVersion.match(ver_re);
+        if (ver_num !== null) {
+          if (ver_num[1].length == 3) ver_num[1] = ver_num[1] + '0'; // ensure minor version has 2 digits
+          glslVersion = 'OpenGL ES GLSL ES ' + ver_num[1] + ' (' + glslVersion + ')';
+        }
         ret = allocate(intArrayFromString(glslVersion), 'i8', ALLOC_NORMAL);
         break;
       default:
