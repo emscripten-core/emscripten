@@ -53,6 +53,7 @@ extern "C" {
 #define EMSCRIPTEN_EVENT_MOUSEOVER             35
 #define EMSCRIPTEN_EVENT_MOUSEOUT              36
 #define EMSCRIPTEN_EVENT_CANVASRESIZED         37
+#define EMSCRIPTEN_EVENT_POINTERLOCKERROR      38
 
 #define EMSCRIPTEN_RESULT int
 
@@ -291,6 +292,9 @@ typedef struct EmscriptenPointerlockChangeEvent {
 
 typedef EM_BOOL (*em_pointerlockchange_callback_func)(int eventType, const EmscriptenPointerlockChangeEvent *pointerlockChangeEvent, void *userData);
 extern EMSCRIPTEN_RESULT emscripten_set_pointerlockchange_callback(const char *target, void *userData, EM_BOOL useCapture, em_pointerlockchange_callback_func callback);
+
+typedef EM_BOOL (*em_pointerlockerror_callback_func)(int eventType, const void *reserved, void *userData);
+extern EMSCRIPTEN_RESULT emscripten_set_pointerlockerror_callback(const char *target, void *userData, EM_BOOL useCapture, em_pointerlockerror_callback_func callback);
 
 extern EMSCRIPTEN_RESULT emscripten_get_pointerlock_status(EmscriptenPointerlockChangeEvent *pointerlockStatus);
 
