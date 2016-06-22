@@ -912,6 +912,8 @@ function checkStackCookie() {
   if (HEAPU32[(STACK_MAX >> 2)-1] != 0x02135467 || HEAPU32[(STACK_MAX >> 2)-2] != 0x89BACDFE) {
     abort('Stack overflow! Stack cookie has been overwritten, expected hex dwords 0x89BACDFE and 0x02135467, but received 0x' + HEAPU32[(STACK_MAX >> 2)-2].toString(16) + ' ' + HEAPU32[(STACK_MAX >> 2)-1].toString(16));
   }
+  // Also test the global address 0 for integrity.
+  if (HEAP32[0] !== 0x63736d65 /* 'emsc' */) throw 'Runtime error: The application has corrupted its heap memory area (address zero)!';
 }
 
 function abortStackOverflow(allocSize) {
@@ -1422,8 +1424,17 @@ function setF64(ptr, value) {
 
 // Endianness check (note: assumes compiler arch was little-endian)
 #if SAFE_SPLIT_MEMORY == 0
-HEAP32[0] = 255;
-if (HEAPU8[0] !== 255 || HEAPU8[3] !== 0) throw 'Typed arrays 2 must be run on a little-endian system';
+#if USE_PTHREADS
+if (!ENVIRONMENT_IS_PTHREAD) {
+#endif
+  HEAP32[0] = 0x63736d65; /* 'emsc' */
+#if USE_PTHREADS
+} else {
+  if (HEAP32[0] !== 0x63736d65) throw 'Runtime error: The application has corrupted its heap memory area (address zero)!';
+}
+#endif
+HEAP16[1] = 0x6373;
+if (HEAPU8[2] !== 0x73 || HEAPU8[3] !== 0x63) throw 'Runtime error: expected the system to be little-endian!';
 #endif
 
 Module['HEAP'] = HEAP;
