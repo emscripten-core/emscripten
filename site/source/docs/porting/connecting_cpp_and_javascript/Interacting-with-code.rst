@@ -376,10 +376,10 @@ If you add it to your own file, you should write something like
 first, so this add ``my_js`` onto ``LibraryManager.library``, the global
 object where all JavaScript library code should be.
 
-JavaScript Limits in library files
+JavaScript limits in library files
 ----------------------------------
 
-If you're not familar with JavaScript, say if you're a C/C++ programmer
+If you're not familiar with JavaScript, say if you're a C/C++ programmer
 and just using emscripten, then the following issues probably won't come up, but
 if you're an experienced JavaScript programmer you need to be aware
 some common JavaScript practices can not be used in certain ways in emscripten
@@ -397,7 +397,7 @@ key-value pairs are special. Interior code inside a function can
 have arbitrary JS, of course).
 
 To avoid this limitation of JS libraries, you can put code in another file using
-the ``--pre-js`` or ``--post-js`` options, which allow arbitary normal
+the ``--pre-js`` or ``--post-js`` options, which allow arbitrary normal
 JS, and it is included and optimized with the rest of the output. That is
 the recommended approach for most cases. Another option is another ``<script>`` tag.
 
@@ -433,7 +433,7 @@ initialization.
    });
 
 A `__postset` is a string the compiler will emit directly to the
-output file. For the example above this code will be emited.
+output file. For the example above this code will be emitted.
 
 .. code-block:: javascript
 

@@ -1779,7 +1779,6 @@ Functions
 	Registers a callback function for receiving the `batterymanager <http://www.w3.org/TR/battery-status/#batterymanager-interface>`_ events: ``chargingchange`` and ``levelchange``.
 
 	:param void* userData: |userData-parameter-doc|
-	:param EM_BOOL useCapture: |useCapture-parameter-doc|
 	:param em_battery_callback_func callback: |callback-function-parameter-doc|
 	:returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
 	:rtype: |EMSCRIPTEN_RESULT|	
@@ -2070,7 +2069,7 @@ Functions
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_set_element_css_size(const char * target, double width, double height)
 
-	Resizes the css width and height of the element specified by ``target`` on the Emscripten web page.
+	Resizes the CSS width and height of the element specified by ``target`` on the Emscripten web page.
 
 	:param target: Element to resize. If 0 is passed, the element specified by ``Module.canvas`` will be used.
 	:type target: const char*
@@ -2082,7 +2081,7 @@ Functions
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_get_element_css_size(const char * target, double * width, double * height)
 
-	Gets the current css width and height of the element specified by ``target``.
+	Gets the current CSS width and height of the element specified by ``target``.
 
 	:param target: Element to get size of. If 0 is passed, the element specified by ``Module.canvas`` will be used.
 	:type target: const char*

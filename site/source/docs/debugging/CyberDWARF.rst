@@ -7,17 +7,17 @@ CyberDWARF Debugging
 Building
 ========
 
-To add CyberDWARF support to a build, pass ``-s CYBERDWARF=1`` to ``emcc``. This generates a ``.cd`` file containing type information for debugging and adds a debugging toolkit to the output Javascript.
+To add CyberDWARF support to a build, pass ``-s CYBERDWARF=1`` to ``emcc``. This generates a ``.cd`` file containing type information for debugging and adds a debugging toolkit to the output JavaScript.
 
 Using
 =====
 
-The CyberDWARF debugger is designed to be used from the Javascript devtool console available in most modern browsers.
+The CyberDWARF debugger is designed to be used from the JavaScript devtool console available in most modern browsers.
 
 Heap Pretty Printer
 -------------------
 
-This small example will show how to use CyberDWARF to visualize a simple struct
+This small example will show how to use CyberDWARF to visualize a simple struct.
 
 .. code-block:: cpp
 
@@ -57,7 +57,7 @@ This small example will show how to use CyberDWARF to visualize a simple struct
 
 **Visualizing**
 
-After the page loads, open a Javascript console.
+After the page loads, open a JavaScript console.
 
 .. code-block:: bash
 

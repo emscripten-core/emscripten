@@ -302,7 +302,7 @@ Functions
 
    In most cases, the ``collector_url`` will be ``http://127.0.0.1:5000/``.
 
-.. c:function:: void emscripten_configure_for_google_wtf(void)
+.. c:function:: void emscripten_trace_configure_for_google_wtf(void)
 
    :rtype: void
 
@@ -460,7 +460,7 @@ Functions
    :param address: Memory address which should be annotated.
    :type address: const void*
    :param size: Size of the memory associated with this allocation.
-   :type type: int32_t
+   :type size: int32_t
    :rtype: void
 
    Associate an amount of additional storage with this address. This

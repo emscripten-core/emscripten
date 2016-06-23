@@ -573,7 +573,7 @@ Functions
 	:returns: A handle to request (``int``) that can be used to :c:func:`abort <emscripten_async_wget2_abort>` the request.		
 
 
-.. c:function:: emscripten_async_wget2_abort(int handle)
+.. c:function:: void emscripten_async_wget2_abort(int handle)
 
 	Abort an asynchronous request raised using :c:func:`emscripten_async_wget2` or :c:func:`emscripten_async_wget2_data`.
 	
@@ -637,7 +637,7 @@ Emscripten Asynchronous IndexedDB API
 	:param ptr: A pointer to the data to store.
 	:param num: How many bytes to store.
 	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be used by a callback to identify the associated call.
-	:param em_arg_callback_func onload: Callback on successful load of the URL into the buffer. The callback function parameter values are:
+	:param em_arg_callback_func onstore: Callback on successful store of the data buffer to the URL. The callback function parameter values are:
 	
 		- *(void*)* : Equal to ``arg`` (user defined data).
 	
