@@ -3,6 +3,7 @@
 
 #include <inttypes.h>
 #include <pthread.h>
+#include <emscripten/emscripten.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -147,6 +148,9 @@ void emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS expectedS
 // The name parameter is a UTF-8 encoded string which is truncated to 32 bytes.
 // When thread profiler is not enabled (not building with --threadprofiling), this is a no-op.
 void emscripten_set_thread_name(pthread_t threadId, const char *name);
+
+// Allows the implicit pthread_exit at the end of the pthread-main.js main method to be disabled by calling with 0 as the argument.  It can be re-enabled by calling 1, but only before the end of pthread-main.js is reached!  This is useful if you want async_callbacks to run on a pthread (e.g. to give control back to the browser to run the event loop).
+void emscripten_implicit_pthread_exit(int value);
 
 struct thread_profiler_block
 {

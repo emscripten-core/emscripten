@@ -70,7 +70,8 @@ this.onmessage = function(e) {
     var result = 0;
 
     PThread.setThreadStatus(_pthread_self(), 1/*EM_THREAD_STATUS_RUNNING*/);
-
+    // Make sure we implicitly call pthread_exit at the end of the thread unless asked to do otherwise
+    PThread.implicitPThreadExit = true;
     try {
       // HACK: Some code in the wild has instead signatures of form 'void *ThreadMain()', which seems to be ok in native code.
       // To emulate supporting both in test suites, use the following form. This is brittle!
@@ -90,9 +91,11 @@ this.onmessage = function(e) {
         throw e;
       }
     }
-    // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
-    // (This is a no-op if explicit pthread_exit() had been called prior.)
-    PThread.threadExit(result);
+    if (PThread.implicitPThreadExit) {
+      // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
+      // (This is a no-op if explicit pthread_exit() had been called prior.)
+      PThread.threadExit(result);
+    }
   } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
     if (threadInfoStruct && PThread.thisThreadCancelState == 0/*PTHREAD_CANCEL_ENABLE*/) {
       PThread.threadCancel();

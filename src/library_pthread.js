@@ -44,6 +44,8 @@ var LibraryPThread = {
 
     exitHandlers: null, // An array of C functions to run when this thread exits.
 
+    implicitPThreadExit: true, // Whether or not to implicitly exit the current pthread when the end of pthread-main.js is reached
+
 #if PTHREADS_PROFILING
     createProfilerBlock: function(pthreadPtr) {
       var profilerBlock = (pthreadPtr == PThread.mainThreadBlock) ? allocate({{{ C_STRUCTS.thread_profiler_block.__size__ }}}, "i32*", ALLOC_STATIC) : _malloc({{{ C_STRUCTS.thread_profiler_block.__size__ }}});
@@ -936,6 +938,10 @@ var LibraryPThread = {
 #if PTHREADS_PROFILING
     _emscripten_set_thread_name_js(threadId|0, name|0);
 #endif
+  },
+
+  emscripten_implicit_pthread_exit: function(value) {
+    PThread.implicitPThreadExit = value === 1;
   }
 };
 

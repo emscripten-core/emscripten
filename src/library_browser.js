@@ -1238,16 +1238,22 @@ var LibraryBrowser = {
   },
 
   emscripten_async_call: function(func, arg, millis) {
-    Module['noExitRuntime'] = true;
-
     function wrapper() {
       Runtime.getFuncWrapper(func, 'vi')(arg);
     }
 
-    if (millis >= 0) {
-      Browser.safeSetTimeout(wrapper, millis);
-    } else {
-      Browser.safeRequestAnimationFrame(wrapper);
+    if (ENVIRONMENT_IS_PTHREAD) {
+      setTimeout(wrapper, millis);
+      //Request animation frame doesn't make much sense on a pthread
+    }
+    else {
+      Module['noExitRuntime'] = true;
+
+      if (millis >= 0) {
+        Browser.safeSetTimeout(wrapper, millis);
+      } else {
+        Browser.safeRequestAnimationFrame(wrapper);
+      }
     }
   },
 
