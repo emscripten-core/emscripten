@@ -78,6 +78,8 @@
          U emscripten_get_now
          U emscripten_is_main_runtime_thread
          T emscripten_main_thread_process_queued_calls
+         T emscripten_pthread_attr_settransferedcanvases
+         T emscripten_pthread_attr_gettransferedcanvases
          T emscripten_sync_run_in_main_thread
          T emscripten_sync_run_in_main_thread_0
          T emscripten_sync_run_in_main_thread_1

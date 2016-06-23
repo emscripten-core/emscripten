@@ -1769,6 +1769,7 @@ var LibraryJSEvents = {
     {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion, 1, 'i32') }}};
     {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion, 0, 'i32') }}};
     {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 1, 'i32') }}};
+    {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl, 0, 'i32') }}};
   },
 
   emscripten_webgl_create_context__deps: ['$GL'],
@@ -1785,13 +1786,40 @@ var LibraryJSEvents = {
     contextAttributes.majorVersion = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion, 'i32') }}};
     contextAttributes.minorVersion = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion, 'i32') }}};
     var enableExtensionsByDefault = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 'i32') }}};
+    contextAttributes.explicitSwapControl = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl, 'i32') }}};
 
-    if (!target) {
-      target = Module['canvas'];
+    target = target ? Pointer_stringify(target) : '#canvas';
+    var canvas;
+    if (target) {
+      if (target === '#canvas' && Module['canvas']) {
+        target = Module['canvas'].id;
+      }
+      canvas = GL.offscreenCanvases[target] || JSEvents.findEventTarget(target);
     } else {
-      target = JSEvents.findEventTarget(target);
+      canvas = GL.offscreenCanvases[Module['canvas'].id] || Module['canvas'];
     }
-    var contextHandle = GL.createContext(target, contextAttributes);
+    if (!canvas) {
+#if GL_DEBUG
+      console.error('emscripten_webgl_create_context failed: Unknown target!');
+#endif
+      return 0;
+    }
+    if (contextAttributes.explicitSwapControl) {
+      var supportsOffscreenCanvas = canvas.transferControlToOffscreen || (typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas);
+      if (!supportsOffscreenCanvas) {
+#if GL_DEBUG
+        console.error('emscripten_webgl_create_context failed: OffscreenCanvas is not supported!');
+#endif
+        return 0;
+      }
+      if (canvas.transferControlToOffscreen) {
+        GL.offscreenCanvases[canvas.id] = canvas.transferControlToOffscreen();
+        GL.offscreenCanvases[canvas.id].id = canvas.id;
+        canvas = GL.offscreenCanvases[canvas.id];
+      }
+    }
+
+    var contextHandle = GL.createContext(canvas, contextAttributes);
     return contextHandle;
   },
 
@@ -1802,6 +1830,29 @@ var LibraryJSEvents = {
 
   emscripten_webgl_get_current_context: function() {
     return GL.currentContext ? GL.currentContext.handle : 0;
+  },
+
+  emscripten_webgl_commit_frame: function() {
+    if (!GL.currentContext || !GL.currentContext.GLctx) {
+#if GL_DEBUG
+      console.error('emscripten_webgl_commit_frame() failed: no GL context set current via emscripten_webgl_make_context_current()!');
+#endif
+      return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
+    }
+    if (!GL.currentContext.GLctx.commit) {
+#if GL_DEBUG
+      console.error('emscripten_webgl_commit_frame() failed: OffscreenCanvas is not supported by the current GL context!');
+#endif
+      return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    }
+    if (!GL.currentContext.attributes.explicitSwapControl) {
+#if GL_DEBUG
+      console.error('emscripten_webgl_commit_frame() cannot be called for canvases with implicit swap control mode!');
+#endif
+      return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
+    }
+    GL.currentContext.GLctx.commit();
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
   emscripten_webgl_destroy_context: function(contextHandle) {

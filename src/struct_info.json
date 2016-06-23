@@ -1372,7 +1372,8 @@
               "failIfMajorPerformanceCaveat",
               "majorVersion",
               "minorVersion",
-              "enableExtensionsByDefault"
+              "enableExtensionsByDefault",
+              "explicitSwapControl"
             ],
             "EmscriptenFullscreenStrategy": [
               "scaleMode",

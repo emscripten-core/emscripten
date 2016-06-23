@@ -23,6 +23,7 @@ var LibraryGL = {
     vaos: [],
     contexts: [],
     currentContext: null,
+    offscreenCanvases: {}, // DOM ID -> OffscreenCanvas mappings of <canvas> elements that have their rendering control transferred to offscreen.
 #if USE_WEBGL2
     queries: [],
     samplers: [],
@@ -528,6 +529,7 @@ var LibraryGL = {
       var handle = GL.getNewId(GL.contexts);
       var context = {
         handle: handle,
+        attributes: webGLContextAttributes,
         version: webGLContextAttributes.majorVersion,
         GLctx: ctx
       };

@@ -1164,6 +1164,12 @@ var LibraryBrowser = {
       GL.newRenderingFrameStarted();
 #endif
 
+      // If the current GL context is an OffscreenCanvas, but it was initialized with implicit swap mode, perform the swap
+      // in behalf of the user.
+      if (typeof GL !== 'undefined' && GL.currentContext && !GL.currentContext.attributes.explicitSwapControl && GL.currentContext.GLctx.commit) {
+        GL.currentContext.GLctx.commit();
+      }
+
       if (Browser.mainLoop.method === 'timeout' && Module.ctx) {
         Module.printErr('Looks like you are rendering without using requestAnimationFrame for the main loop. You should use 0 for the frame rate in emscripten_set_main_loop in order to use requestAnimationFrame, as that can greatly improve your frame rates!');
         Browser.mainLoop.method = ''; // just warn once per call to set main loop
