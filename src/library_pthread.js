@@ -159,13 +159,15 @@ var LibraryPThread = {
           for (var i in offscreenCanvases) {
             if (offscreenCanvases[i]) transferList.push(offscreenCanvases[i]);
           }
-          postMessage({
-              targetThread: parentThreadId,
-              cmd: 'objectTransfer',
-              offscreenCanvases: offscreenCanvases,
-              moduleCanvasId: Module['canvas'].id, // moduleCanvasId specifies which canvas is denoted via the "#canvas" shorthand.
-              transferList: transferList
-            }, transferList);
+          if (transferList.length > 0) {
+            postMessage({
+                targetThread: parentThreadId,
+                cmd: 'objectTransfer',
+                offscreenCanvases: offscreenCanvases,
+                moduleCanvasId: Module['canvas'].id, // moduleCanvasId specifies which canvas is denoted via the "#canvas" shorthand.
+                transferList: transferList
+              }, transferList);
+          }
           // And clear the OffscreenCanvases from lingering around in this Worker as well.
           delete Module['canvas'];
 
@@ -226,8 +228,10 @@ var LibraryPThread = {
 
     receiveObjectTransfer: function(data) {
       if (typeof GL !== 'undefined') {
-        GL.offscreenCanvases = data.offscreenCanvases;
-        for (var i in GL.offscreenCanvases) GL.offscreenCanvases[i].id = i; // https://bugzilla.mozilla.org/show_bug.cgi?id=1281909
+        for (var i in data.offscreenCanvases) {
+          GL.offscreenCanvases[i] = data.offscreenCanvases[i];
+          GL.offscreenCanvases[i].id = i; // https://bugzilla.mozilla.org/show_bug.cgi?id=1281909
+        }
         if (!Module['canvas']) Module['canvas'] = GL.offscreenCanvases[data.moduleCanvasId];
       }
     },
@@ -284,14 +288,7 @@ var LibraryPThread = {
           } else if (e.data.cmd === 'alert') {
             alert('Thread ' + e.data.threadId + ': ' + e.data.text);
           } else if (e.data.cmd === 'exit') {
-            // Grab back ownership of all OffscreenCanvases that the child worker had in it.
-            if (typeof GL !== 'undefined') {
-              for (var i in e.data.offscreenCanvases) {
-                GL.offscreenCanvases[i] = e.data.offscreenCanvases[i];
-                GL.offscreenCanvases[i].id = i;
-              }
-              if (!Module['canvas']) Module['canvas'] = GL.offscreenCanvases[e.data.moduleCanvasId];
-            }
+            // currently no-op
           } else if (e.data.cmd === 'cancelDone') {
             PThread.freeThreadData(worker.pthread);
             worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
@@ -468,40 +465,29 @@ var LibraryPThread = {
 
     // Deduce which WebGL canvases (HTMLCanvasElements or OffscreenCanvases) should be passed over to the
     // Worker that hosts the spawned pthread.
-    var transferedCanvasNames = {{{ makeGetValue('attr', 36, 'i32') }}}; // Comma-delimited list of IDs "canvas1, canvas2, ..."
-    if (transferedCanvasNames) {
-      transferedCanvasNames = Pointer_stringify(transferedCanvasNames);
-      transferedCanvasNames = transferedCanvasNames.split(',');
-    }
+    var transferredCanvasNames = {{{ makeGetValue('attr', 36, 'i32') }}}; // Comma-delimited list of IDs "canvas1, canvas2, ..."
+    if (transferredCanvasNames) transferredCanvasNames = Pointer_stringify(transferredCanvasNames).split(',');
+
     var offscreenCanvases = {}; // Dictionary of OffscreenCanvas objects we'll transfer to the created thread to own
     var transferList = []; // List of JS objects that will transfer ownership to the Worker hosting the thread
-    for (var i in transferedCanvasNames) {
-      var name = transferedCanvasNames[i].trim();
+    var moduleCanvasId = Module['canvas'] ? Module['canvas'].id : '';
+    for (var i in transferredCanvasNames) {
+      var name = transferredCanvasNames[i].trim();
       var offscreenCanvas;
       try {
         if (name == '#canvas') {
-          if (GL.offscreenCanvases[Module['canvas'].id]) {
-            offscreenCanvas = GL.offscreenCanvases[Module['canvas'].id];
-            GL.offscreenCanvases[Module['canvas'].id] = null;
+          if (!Module['canvas']) {
+            Module['printErr']('pthread_create: could not find canvas with ID "' + name + '" to transfer to thread!');
+            return {{{ cDefine('EINVAL') }}};
           }
-          else if (Module['canvas'] instanceof OffscreenCanvas) {
-            offscreenCanvas = Module['canvas'];
-            Module['canvas'] = null;
-          }
-          else {
-            if (Module['canvas'].controlTransferredOffscreen) {
-              Module['printErr']('pthread_create: cannot transfer canvas with ID "' + name + '" to thread, since the current thread does not have control over it!');
-              return {{{ cDefine('EINVAL') }}};
-            }
-            offscreenCanvas = Module['canvas'].transferControlToOffscreen();
-            Module['canvas'].controlTransferredOffscreen = true;
-          }
-          offscreenCanvas.id = Module['canvas'].id;
-        } else if (GL.offscreenCanvases[name]) {
+          name = Module['canvas'].id;
+        }
+        if (GL.offscreenCanvases[name]) {
           offscreenCanvas = GL.offscreenCanvases[name];
           GL.offscreenCanvases[name] = null; // This thread no longer owns this canvas.
+          if (Module['canvas'] instanceof OffscreenCanvas && name === Module['canvas'].id) Module['canvas'] = null;
         } else {
-          var canvas = document.getElementByID(name);
+          var canvas = (Module['canvas'] && Module['canvas'].id === name) ? Module['canvas'] : document.getElementByID(name);
           if (!canvas) {
             Module['printErr']('pthread_create: could not find canvas with ID "' + name + '" to transfer to thread!');
             return {{{ cDefine('EINVAL') }}};
@@ -582,7 +568,7 @@ var LibraryPThread = {
       pthread_ptr: threadInfoStruct,
       parent_pthread_ptr: _pthread_self(),
       arg: arg,
-      moduleCanvasId: Module['canvas'] ? Module['canvas'].id : '',
+      moduleCanvasId: moduleCanvasId,
       offscreenCanvases: offscreenCanvases,
       transferList: transferList
     };

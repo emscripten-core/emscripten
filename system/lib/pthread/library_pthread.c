@@ -29,17 +29,17 @@ char *gets(char *);
 #endif
 
 // Extra pthread_attr_t field:
-#define _a_transferedcanvases __u.__s[9]
+#define _a_transferredcanvases __u.__s[9]
 
-int emscripten_pthread_attr_gettransferedcanvases(const pthread_attr_t *a, const char **str)
+int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t *a, const char **str)
 {
-	*str = a->_a_transferedcanvases;
+	*str = a->_a_transferredcanvases;
 	return 0;
 }
 
-int emscripten_pthread_attr_settransferedcanvases(pthread_attr_t *a, const char *str)
+int emscripten_pthread_attr_settransferredcanvases(pthread_attr_t *a, const char *str)
 {
-	a->_a_transferedcanvases = str;
+	a->_a_transferredcanvases = str;
 	return 0;
 }
 

@@ -149,13 +149,13 @@ void emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS expectedS
 void emscripten_set_thread_name(pthread_t threadId, const char *name);
 
 // Gets the stored pointer to a string representing the canvases to transfer to the created thread.
-int emscripten_pthread_attr_gettransferedcanvases(const pthread_attr_t *a, const char **str);
+int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t *a, const char **str);
 
 // Specifies a comma-delimited list of canvas DOM element IDs to transfer to the thread to be created.
 // Note: this pointer is weakly stored (not copied) to the given pthread_attr_t, so must be held alive until
 // pthread_create() has been called. If 0 or "", no canvases are transferred. The special value "#canvas" denotes
 // the element stored in Module.canvas.
-int emscripten_pthread_attr_settransferedcanvases(pthread_attr_t *a, const char *str);
+int emscripten_pthread_attr_settransferredcanvases(pthread_attr_t *a, const char *str);
 
 struct thread_profiler_block
 {

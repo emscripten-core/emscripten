@@ -47,7 +47,7 @@ void CreateThread()
 {
   pthread_attr_t attr;
   pthread_attr_init(&attr);
-  emscripten_pthread_attr_settransferedcanvases(&attr, "#canvas");
+  emscripten_pthread_attr_settransferredcanvases(&attr, "#canvas");
   pthread_create(&thread, &attr, ThreadMain, 0);
   pthread_attr_destroy(&attr);
   emscripten_atomic_store_u32(&threadRunning, 1);
