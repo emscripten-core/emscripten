@@ -374,10 +374,12 @@ ok.
     ]
 
     for harness, datagram in harnesses:
+      print 'harness:', harness
       with harness:
         self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, '-DTEST_ASYNC=1', sockets_include])
 
     # Deliberately attempt a connection on a port that will fail to test the error callback and getsockopt
+    print 'expect fail'
     self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=49169', '-DTEST_ASYNC=1', sockets_include])
 
   def test_sockets_echo_bigdata(self):
