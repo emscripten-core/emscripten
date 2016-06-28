@@ -1,0 +1,779 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>FreeType-2.6.3 API Reference</title>
+<style type="text/css">
+  a:link { color: #0000EF; }
+  a:visited { color: #51188E; }
+  a:hover { color: #FF0000; }
+
+  body { font-family: Verdana, Geneva, Arial, Helvetica, serif;
+         color: #000000;
+         background: #FFFFFF;
+         width: 87%;
+         margin: auto; }
+
+  div.section { width: 75%;
+                margin: auto; }
+  div.section hr { margin: 4ex 0 1ex 0; }
+  div.section h4 { background-color: #EEEEFF;
+                   font-size: medium;
+                   font-style: oblique;
+                   font-weight: bold;
+                   margin: 3ex 0 1.5ex 9%;
+                   padding: 0.3ex 0 0.3ex 1%; }
+  div.section p { margin: 1.5ex 0 1.5ex 10%; }
+  div.section pre { margin: 3ex 0 3ex 9%;
+                    background-color: #D6E8FF;
+                    padding: 2ex 0 2ex 1%; }
+  div.section table.fields { width: 90%;
+                             margin: 1.5ex 0 1.5ex 10%; }
+  div.section table.toc { width: 95%;
+                          margin: 1.5ex 0 1.5ex 5%; }
+  div.timestamp { text-align: center;
+                  font-size: 69%;
+                  margin: 1.5ex 0 1.5ex 0; }
+
+  h1 { text-align: center; }
+  h3 { font-size: medium;
+       margin: 4ex 0 1.5ex 0; }
+
+  p { text-align: justify; }
+
+  pre.colored { color: blue; }
+
+  span.keyword { font-family: monospace;
+                 text-align: left;
+                 white-space: pre;
+                 color: darkblue; }
+
+  table.fields td.val { font-weight: bold;
+                        text-align: right;
+                        width: 30%;
+                        vertical-align: baseline;
+                        padding: 1ex 1em 1ex 0; }
+  table.fields td.desc { vertical-align: baseline;
+                         padding: 1ex 0 1ex 1em; }
+  table.fields td.desc p:first-child { margin: 0; }
+  table.fields td.desc p { margin: 1.5ex 0 0 0; }
+  table.index { margin: 6ex auto 6ex auto;
+                border: 0;
+                border-collapse: separate;
+                border-spacing: 1em 0.3ex; }
+  table.index tr { padding: 0; }
+  table.index td { padding: 0; }
+  table.index-toc-link { width: 100%;
+                         border: 0;
+                         border-spacing: 0;
+                         margin: 1ex 0 1ex 0; }
+  table.index-toc-link td.left { padding: 0 0.5em 0 0.5em;
+                                 font-size: 83%;
+                                 text-align: left; }
+  table.index-toc-link td.middle { padding: 0 0.5em 0 0.5em;
+                                   font-size: 83%;
+                                   text-align: center; }
+  table.index-toc-link td.right { padding: 0 0.5em 0 0.5em;
+                                  font-size: 83%;
+                                  text-align: right; }
+  table.synopsis { margin: 6ex auto 6ex auto;
+                   border: 0;
+                   border-collapse: separate;
+                   border-spacing: 2em 0.6ex; }
+  table.synopsis tr { padding: 0; }
+  table.synopsis td { padding: 0; }
+  table.toc td.link { width: 30%;
+                      text-align: right;
+                      vertical-align: baseline;
+                      padding: 1ex 1em 1ex 0; }
+  table.toc td.desc { vertical-align: baseline;
+                      padding: 1ex 0 1ex 1em;
+                      text-align: left; }
+  table.toc td.desc p:first-child { margin: 0;
+                                    text-align: left; }
+  table.toc td.desc p { margin: 1.5ex 0 0 0;
+                        text-align: left; }
+
+</style>
+</head>
+<body>
+
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table>
+<h1>FreeType-2.6.3 API Reference</h1>
+
+<h1 id="module_management">Module Management</h1>
+<h2>Synopsis</h2>
+<table class="synopsis">
+<tr><td><a href="#FT_Module">FT_Module</a></td><td><a href="#FT_Add_Default_Modules">FT_Add_Default_Modules</a></td><td><a href="#FT_Renderer">FT_Renderer</a></td></tr>
+<tr><td><a href="#FT_Module_Constructor">FT_Module_Constructor</a></td><td>&nbsp;</td><td><a href="#FT_Renderer_Class">FT_Renderer_Class</a></td></tr>
+<tr><td><a href="#FT_Module_Destructor">FT_Module_Destructor</a></td><td><a href="#FT_Property_Set">FT_Property_Set</a></td><td>&nbsp;</td></tr>
+<tr><td><a href="#FT_Module_Requester">FT_Module_Requester</a></td><td><a href="#FT_Property_Get">FT_Property_Get</a></td><td><a href="#FT_Get_Renderer">FT_Get_Renderer</a></td></tr>
+<tr><td><a href="#FT_Module_Class">FT_Module_Class</a></td><td>&nbsp;</td><td><a href="#FT_Set_Renderer">FT_Set_Renderer</a></td></tr>
+<tr><td>&nbsp;</td><td><a href="#FT_New_Library">FT_New_Library</a></td><td>&nbsp;</td></tr>
+<tr><td><a href="#FT_Add_Module">FT_Add_Module</a></td><td><a href="#FT_Done_Library">FT_Done_Library</a></td><td><a href="#FT_Set_Debug_Hook">FT_Set_Debug_Hook</a></td></tr>
+<tr><td><a href="#FT_Get_Module">FT_Get_Module</a></td><td><a href="#FT_Reference_Library">FT_Reference_Library</a></td><td>&nbsp;</td></tr>
+<tr><td><a href="#FT_Remove_Module">FT_Remove_Module</a></td><td>&nbsp;</td><td><a href="#FT_Driver">FT_Driver</a></td></tr>
+</table>
+
+
+<p>The definitions below are used to manage modules within FreeType. Modules can be added, upgraded, and removed at runtime. Additionally, some module properties can be controlled also.</p>
+<p>Here is a list of possible values of the &lsquo;module_name&rsquo; field in the <a href="ft2-module_management.html#FT_Module_Class">FT_Module_Class</a> structure.</p>
+<pre class="colored">
+  autofitter                                                       
+  bdf                                                              
+  cff                                                              
+  gxvalid                                                          
+  otvalid                                                          
+  pcf                                                              
+  pfr                                                              
+  psaux                                                            
+  pshinter                                                         
+  psnames                                                          
+  raster1                                                          
+  sfnt                                                             
+  smooth, smooth-lcd, smooth-lcdv                                  
+  truetype                                                         
+  type1                                                            
+  type42                                                           
+  t1cid                                                            
+  winfonts                                                         
+</pre>
+<p>Note that the FreeType Cache sub-system is not a FreeType module.</p>
+
+<div class="section">
+<h3 id="FT_Module">FT_Module</h3>
+<p>Defined in FT_FREETYPE_H (freetype/freetype.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span> FT_ModuleRec_*  <b>FT_Module</b>;
+</pre>
+
+<p>A handle to a given FreeType module object. Each module can be a font driver, a renderer, or anything else that provides services to the formers.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Module_Constructor">FT_Module_Constructor</h3>
+<p>Defined in FT_MODULE_H (freetype/ftmodapi.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <a href="ft2-basic_types.html#FT_Error">FT_Error</a>
+  (*<b>FT_Module_Constructor</b>)( <a href="ft2-module_management.html#FT_Module">FT_Module</a>  module );
+</pre>
+
+<p>A function used to initialize (not create) a new module object.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="module">module</td><td class="desc">
+<p>The module to initialize.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Module_Destructor">FT_Module_Destructor</h3>
+<p>Defined in FT_MODULE_H (freetype/ftmodapi.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">void</span>
+  (*<b>FT_Module_Destructor</b>)( <a href="ft2-module_management.html#FT_Module">FT_Module</a>  module );
+</pre>
+
+<p>A function used to finalize (not destroy) a given module object.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="module">module</td><td class="desc">
+<p>The module to finalize.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Module_Requester">FT_Module_Requester</h3>
+<p>Defined in FT_MODULE_H (freetype/ftmodapi.h).</p>
+<pre>
+  <span class="keyword">typedef</span> FT_Module_Interface
+  (*<b>FT_Module_Requester</b>)( <a href="ft2-module_management.html#FT_Module">FT_Module</a>    module,
+                          <span class="keyword">const</span> <span class="keyword">char</span>*  name );
+</pre>
+
+<p>A function used to query a given module for a specific interface.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="module">module</td><td class="desc">
+<p>The module to be searched.</p>
+</td></tr>
+<tr><td class="val" id="name">name</td><td class="desc">
+<p>The name of the interface in the module.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Module_Class">FT_Module_Class</h3>
+<p>Defined in FT_MODULE_H (freetype/ftmodapi.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span>  FT_Module_Class_
+  {
+    <a href="ft2-basic_types.html#FT_ULong">FT_ULong</a>               module_flags;
+    <a href="ft2-basic_types.html#FT_Long">FT_Long</a>                module_size;
+    <span class="keyword">const</span> <a href="ft2-basic_types.html#FT_String">FT_String</a>*       module_name;
+    <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>               module_version;
+    <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>               module_requires;
+
+    <span class="keyword">const</span> <span class="keyword">void</span>*            module_interface;
+
+    <a href="ft2-module_management.html#FT_Module_Constructor">FT_Module_Constructor</a>  module_init;
+    <a href="ft2-module_management.html#FT_Module_Destructor">FT_Module_Destructor</a>   module_done;
+    <a href="ft2-module_management.html#FT_Module_Requester">FT_Module_Requester</a>    get_interface;
+
+  } <b>FT_Module_Class</b>;
+</pre>
+
+<p>The module class descriptor.</p>
+
+<h4>fields</h4>
+<table class="fields">
+<tr><td class="val" id="module_flags">module_flags</td><td class="desc">
+<p>Bit flags describing the module.</p>
+</td></tr>
+<tr><td class="val" id="module_size">module_size</td><td class="desc">
+<p>The size of one module object/instance in bytes.</p>
+</td></tr>
+<tr><td class="val" id="module_name">module_name</td><td class="desc">
+<p>The name of the module.</p>
+</td></tr>
+<tr><td class="val" id="module_version">module_version</td><td class="desc">
+<p>The version, as a 16.16 fixed number (major.minor).</p>
+</td></tr>
+<tr><td class="val" id="module_requires">module_requires</td><td class="desc">
+<p>The version of FreeType this module requires, as a 16.16 fixed number (major.minor). Starts at version 2.0, i.e., 0x20000.</p>
+</td></tr>
+<tr><td class="val" id="module_init">module_init</td><td class="desc">
+<p>The initializing function.</p>
+</td></tr>
+<tr><td class="val" id="module_done">module_done</td><td class="desc">
+<p>The finalizing function.</p>
+</td></tr>
+<tr><td class="val" id="get_interface">get_interface</td><td class="desc">
+<p>The interface requesting function.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Add_Module">FT_Add_Module</h3>
+<p>Defined in FT_MODULE_H (freetype/ftmodapi.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Add_Module</b>( <a href="ft2-base_interface.html#FT_Library">FT_Library</a>              library,
+                 <span class="keyword">const</span> <a href="ft2-module_management.html#FT_Module_Class">FT_Module_Class</a>*  clazz );
+</pre>
+
+<p>Add a new module to a given library instance.</p>
+
+<h4>inout</h4>
+<table class="fields">
+<tr><td class="val" id="library">library</td><td class="desc">
+<p>A handle to the library object.</p>
+</td></tr>
+</table>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="clazz">clazz</td><td class="desc">
+<p>A pointer to class descriptor for the module.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>An error will be returned if a module already exists by that name, or if the module requires a version of FreeType that is too great.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Get_Module">FT_Get_Module</h3>
+<p>Defined in FT_MODULE_H (freetype/ftmodapi.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-module_management.html#FT_Module">FT_Module</a> )
+  <b>FT_Get_Module</b>( <a href="ft2-base_interface.html#FT_Library">FT_Library</a>   library,
+                 <span class="keyword">const</span> <span class="keyword">char</span>*  module_name );
+</pre>
+
+<p>Find a module by its name.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="library">library</td><td class="desc">
+<p>A handle to the library object.</p>
+</td></tr>
+<tr><td class="val" id="module_name">module_name</td><td class="desc">
+<p>The module's name (as an ASCII string).</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>A module handle. 0&nbsp;if none was found.</p>
+
+<h4>note</h4>
+<p>FreeType's internal modules aren't documented very well, and you should look up the source code for details.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Remove_Module">FT_Remove_Module</h3>
+<p>Defined in FT_MODULE_H (freetype/ftmodapi.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Remove_Module</b>( <a href="ft2-base_interface.html#FT_Library">FT_Library</a>  library,
+                    <a href="ft2-module_management.html#FT_Module">FT_Module</a>   module );
+</pre>
+
+<p>Remove a given module from a library instance.</p>
+
+<h4>inout</h4>
+<table class="fields">
+<tr><td class="val" id="library">library</td><td class="desc">
+<p>A handle to a library object.</p>
+</td></tr>
+</table>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="module">module</td><td class="desc">
+<p>A handle to a module object.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>The module object is destroyed by the function in case of success.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Add_Default_Modules">FT_Add_Default_Modules</h3>
+<p>Defined in FT_MODULE_H (freetype/ftmodapi.h).</p>
+<pre>
+  FT_EXPORT( <span class="keyword">void</span> )
+  <b>FT_Add_Default_Modules</b>( <a href="ft2-base_interface.html#FT_Library">FT_Library</a>  library );
+</pre>
+
+<p>Add the set of default drivers to a given library object. This is only useful when you create a library object with <a href="ft2-module_management.html#FT_New_Library">FT_New_Library</a> (usually to plug a custom memory manager).</p>
+
+<h4>inout</h4>
+<table class="fields">
+<tr><td class="val" id="library">library</td><td class="desc">
+<p>A handle to a new library object.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Property_Set">FT_Property_Set</h3>
+<p>Defined in FT_MODULE_H (freetype/ftmodapi.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Property_Set</b>( <a href="ft2-base_interface.html#FT_Library">FT_Library</a>        library,
+                   <span class="keyword">const</span> <a href="ft2-basic_types.html#FT_String">FT_String</a>*  module_name,
+                   <span class="keyword">const</span> <a href="ft2-basic_types.html#FT_String">FT_String</a>*  property_name,
+                   <span class="keyword">const</span> <span class="keyword">void</span>*       value );
+</pre>
+
+<p>Set a property for a given module.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="library">library</td><td class="desc">
+<p>A handle to the library the module is part of.</p>
+</td></tr>
+<tr><td class="val" id="module_name">module_name</td><td class="desc">
+<p>The module name.</p>
+</td></tr>
+<tr><td class="val" id="property_name">property_name</td><td class="desc">
+<p>The property name. Properties are described in the &lsquo;Synopsis&rsquo; subsection of the module's documentation.</p>
+<p>Note that only a few modules have properties.</p>
+</td></tr>
+<tr><td class="val" id="value">value</td><td class="desc">
+<p>A generic pointer to a variable or structure that gives the new value of the property. The exact definition of &lsquo;value&rsquo; is dependent on the property; see the &lsquo;Synopsis&rsquo; subsection of the module's documentation.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>If &lsquo;module_name&rsquo; isn't a valid module name, or &lsquo;property_name&rsquo; doesn't specify a valid property, or if &lsquo;value&rsquo; doesn't represent a valid value for the given property, an error is returned.</p>
+<p>The following example sets property &lsquo;bar&rsquo; (a simple integer) in module &lsquo;foo&rsquo; to value&nbsp;1.</p>
+<pre class="colored">
+  FT_UInt  bar;
+
+
+  bar = 1;
+  FT_Property_Set( library, "foo", "bar", &amp;bar );
+</pre>
+<p>Note that the FreeType Cache sub-system doesn't recognize module property changes. To avoid glyph lookup confusion within the cache you should call <a href="ft2-cache_subsystem.html#FTC_Manager_Reset">FTC_Manager_Reset</a> to completely flush the cache if a module property gets changed after <a href="ft2-cache_subsystem.html#FTC_Manager_New">FTC_Manager_New</a> has been called.</p>
+<p>It is not possible to set properties of the FreeType Cache sub-system itself with FT_Property_Set; use ?FTC_Property_Set? instead.</p>
+
+<h4>since</h4>
+<p>2.4.11</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Property_Get">FT_Property_Get</h3>
+<p>Defined in FT_MODULE_H (freetype/ftmodapi.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Property_Get</b>( <a href="ft2-base_interface.html#FT_Library">FT_Library</a>        library,
+                   <span class="keyword">const</span> <a href="ft2-basic_types.html#FT_String">FT_String</a>*  module_name,
+                   <span class="keyword">const</span> <a href="ft2-basic_types.html#FT_String">FT_String</a>*  property_name,
+                   <span class="keyword">void</span>*             value );
+</pre>
+
+<p>Get a module's property value.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="library">library</td><td class="desc">
+<p>A handle to the library the module is part of.</p>
+</td></tr>
+<tr><td class="val" id="module_name">module_name</td><td class="desc">
+<p>The module name.</p>
+</td></tr>
+<tr><td class="val" id="property_name">property_name</td><td class="desc">
+<p>The property name. Properties are described in the &lsquo;Synopsis&rsquo; subsection of the module's documentation.</p>
+</td></tr>
+</table>
+
+<h4>inout</h4>
+<table class="fields">
+<tr><td class="val" id="value">value</td><td class="desc">
+<p>A generic pointer to a variable or structure that gives the value of the property. The exact definition of &lsquo;value&rsquo; is dependent on the property; see the &lsquo;Synopsis&rsquo; subsection of the module's documentation.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>If &lsquo;module_name&rsquo; isn't a valid module name, or &lsquo;property_name&rsquo; doesn't specify a valid property, or if &lsquo;value&rsquo; doesn't represent a valid value for the given property, an error is returned.</p>
+<p>The following example gets property &lsquo;baz&rsquo; (a range) in module &lsquo;foo&rsquo;.</p>
+<pre class="colored">
+  typedef  range_
+  {
+    FT_Int32  min;
+    FT_Int32  max;
+
+  } range;
+
+  range  baz;
+
+
+  FT_Property_Get( library, "foo", "baz", &amp;baz );
+</pre>
+<p>It is not possible to retrieve properties of the FreeType Cache sub-system with FT_Property_Get; use ?FTC_Property_Get? instead.</p>
+
+<h4>since</h4>
+<p>2.4.11</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_New_Library">FT_New_Library</h3>
+<p>Defined in FT_MODULE_H (freetype/ftmodapi.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_New_Library</b>( <a href="ft2-system_interface.html#FT_Memory">FT_Memory</a>    memory,
+                  <a href="ft2-base_interface.html#FT_Library">FT_Library</a>  *alibrary );
+</pre>
+
+<p>This function is used to create a new FreeType library instance from a given memory object. It is thus possible to use libraries with distinct memory allocators within the same program. Note, however, that the used <a href="ft2-system_interface.html#FT_Memory">FT_Memory</a> structure is expected to remain valid for the life of the <a href="ft2-base_interface.html#FT_Library">FT_Library</a> object.</p>
+<p>Normally, you would call this function (followed by a call to <a href="ft2-module_management.html#FT_Add_Default_Modules">FT_Add_Default_Modules</a> or a series of calls to <a href="ft2-module_management.html#FT_Add_Module">FT_Add_Module</a>) instead of <a href="ft2-base_interface.html#FT_Init_FreeType">FT_Init_FreeType</a> to initialize the FreeType library.</p>
+<p>Don't use <a href="ft2-base_interface.html#FT_Done_FreeType">FT_Done_FreeType</a> but <a href="ft2-module_management.html#FT_Done_Library">FT_Done_Library</a> to destroy a library instance.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="memory">memory</td><td class="desc">
+<p>A handle to the original memory object.</p>
+</td></tr>
+</table>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="alibrary">alibrary</td><td class="desc">
+<p>A pointer to handle of a new library object.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>See the discussion of reference counters in the description of <a href="ft2-module_management.html#FT_Reference_Library">FT_Reference_Library</a>.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Done_Library">FT_Done_Library</h3>
+<p>Defined in FT_MODULE_H (freetype/ftmodapi.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Done_Library</b>( <a href="ft2-base_interface.html#FT_Library">FT_Library</a>  library );
+</pre>
+
+<p>Discard a given library object. This closes all drivers and discards all resource objects.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="library">library</td><td class="desc">
+<p>A handle to the target library.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>See the discussion of reference counters in the description of <a href="ft2-module_management.html#FT_Reference_Library">FT_Reference_Library</a>.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Reference_Library">FT_Reference_Library</h3>
+<p>Defined in FT_MODULE_H (freetype/ftmodapi.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Reference_Library</b>( <a href="ft2-base_interface.html#FT_Library">FT_Library</a>  library );
+</pre>
+
+<p>A counter gets initialized to&nbsp;1 at the time an <a href="ft2-base_interface.html#FT_Library">FT_Library</a> structure is created. This function increments the counter. <a href="ft2-module_management.html#FT_Done_Library">FT_Done_Library</a> then only destroys a library if the counter is&nbsp;1, otherwise it simply decrements the counter.</p>
+<p>This function helps in managing life-cycles of structures that reference <a href="ft2-base_interface.html#FT_Library">FT_Library</a> objects.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="library">library</td><td class="desc">
+<p>A handle to a target library object.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>since</h4>
+<p>2.4.2</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Renderer">FT_Renderer</h3>
+<p>Defined in FT_FREETYPE_H (freetype/freetype.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span> FT_RendererRec_*  <b>FT_Renderer</b>;
+</pre>
+
+<p>A handle to a given FreeType renderer. A renderer is a special module in charge of converting a glyph image to a bitmap, when necessary. Each renderer supports a given glyph image format, and one or more target surface depths.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Renderer_Class">FT_Renderer_Class</h3>
+<p>Defined in FT_RENDER_H (freetype/ftrender.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span>  FT_Renderer_Class_
+  {
+    <a href="ft2-module_management.html#FT_Module_Class">FT_Module_Class</a>            root;
+
+    <a href="ft2-basic_types.html#FT_Glyph_Format">FT_Glyph_Format</a>            glyph_format;
+
+    FT_Renderer_RenderFunc     render_glyph;
+    FT_Renderer_TransformFunc  transform_glyph;
+    FT_Renderer_GetCBoxFunc    get_glyph_cbox;
+    FT_Renderer_SetModeFunc    set_mode;
+
+    <a href="ft2-raster.html#FT_Raster_Funcs">FT_Raster_Funcs</a>*           raster_class;
+
+  } <b>FT_Renderer_Class</b>;
+</pre>
+
+<p>The renderer module class descriptor.</p>
+
+<h4>fields</h4>
+<table class="fields">
+<tr><td class="val" id="root">root</td><td class="desc">
+<p>The root <a href="ft2-module_management.html#FT_Module_Class">FT_Module_Class</a> fields.</p>
+</td></tr>
+<tr><td class="val" id="glyph_format">glyph_format</td><td class="desc">
+<p>The glyph image format this renderer handles.</p>
+</td></tr>
+<tr><td class="val" id="render_glyph">render_glyph</td><td class="desc">
+<p>A method used to render the image that is in a given glyph slot into a bitmap.</p>
+</td></tr>
+<tr><td class="val" id="transform_glyph">transform_glyph</td><td class="desc">
+<p>A method used to transform the image that is in a given glyph slot.</p>
+</td></tr>
+<tr><td class="val" id="get_glyph_cbox">get_glyph_cbox</td><td class="desc">
+<p>A method used to access the glyph's cbox.</p>
+</td></tr>
+<tr><td class="val" id="set_mode">set_mode</td><td class="desc">
+<p>A method used to pass additional parameters.</p>
+</td></tr>
+<tr><td class="val" id="raster_class">raster_class</td><td class="desc">
+<p>For <a href="ft2-basic_types.html#FT_Glyph_Format">FT_GLYPH_FORMAT_OUTLINE</a> renderers only. This is a pointer to its raster's class.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Get_Renderer">FT_Get_Renderer</h3>
+<p>Defined in FT_RENDER_H (freetype/ftrender.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-module_management.html#FT_Renderer">FT_Renderer</a> )
+  <b>FT_Get_Renderer</b>( <a href="ft2-base_interface.html#FT_Library">FT_Library</a>       library,
+                   <a href="ft2-basic_types.html#FT_Glyph_Format">FT_Glyph_Format</a>  format );
+</pre>
+
+<p>Retrieve the current renderer for a given glyph format.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="library">library</td><td class="desc">
+<p>A handle to the library object.</p>
+</td></tr>
+<tr><td class="val" id="format">format</td><td class="desc">
+<p>The glyph format.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>A renderer handle. 0&nbsp;if none found.</p>
+
+<h4>note</h4>
+<p>An error will be returned if a module already exists by that name, or if the module requires a version of FreeType that is too great.</p>
+<p>To add a new renderer, simply use <a href="ft2-module_management.html#FT_Add_Module">FT_Add_Module</a>. To retrieve a renderer by its name, use <a href="ft2-module_management.html#FT_Get_Module">FT_Get_Module</a>.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Set_Renderer">FT_Set_Renderer</h3>
+<p>Defined in FT_RENDER_H (freetype/ftrender.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Set_Renderer</b>( <a href="ft2-base_interface.html#FT_Library">FT_Library</a>     library,
+                   <a href="ft2-module_management.html#FT_Renderer">FT_Renderer</a>    renderer,
+                   <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>        num_params,
+                   <a href="ft2-base_interface.html#FT_Parameter">FT_Parameter</a>*  parameters );
+</pre>
+
+<p>Set the current renderer to use, and set additional mode.</p>
+
+<h4>inout</h4>
+<table class="fields">
+<tr><td class="val" id="library">library</td><td class="desc">
+<p>A handle to the library object.</p>
+</td></tr>
+</table>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="renderer">renderer</td><td class="desc">
+<p>A handle to the renderer object.</p>
+</td></tr>
+<tr><td class="val" id="num_params">num_params</td><td class="desc">
+<p>The number of additional parameters.</p>
+</td></tr>
+<tr><td class="val" id="parameters">parameters</td><td class="desc">
+<p>Additional parameters.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>In case of success, the renderer will be used to convert glyph images in the renderer's known format into bitmaps.</p>
+<p>This doesn't change the current renderer for other formats.</p>
+<p>Currently, no FreeType renderer module uses &lsquo;parameters&rsquo;; you should thus always pass NULL as the value.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Set_Debug_Hook">FT_Set_Debug_Hook</h3>
+<p>Defined in FT_MODULE_H (freetype/ftmodapi.h).</p>
+<pre>
+  FT_EXPORT( <span class="keyword">void</span> )
+  <b>FT_Set_Debug_Hook</b>( <a href="ft2-base_interface.html#FT_Library">FT_Library</a>         library,
+                     <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>            hook_index,
+                     FT_DebugHook_Func  debug_hook );
+</pre>
+
+<p>Set a debug hook function for debugging the interpreter of a font format.</p>
+
+<h4>inout</h4>
+<table class="fields">
+<tr><td class="val" id="library">library</td><td class="desc">
+<p>A handle to the library object.</p>
+</td></tr>
+</table>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="hook_index">hook_index</td><td class="desc">
+<p>The index of the debug hook. You should use the values defined in &lsquo;ftobjs.h&rsquo;, e.g., &lsquo;FT_DEBUG_HOOK_TRUETYPE&rsquo;.</p>
+</td></tr>
+<tr><td class="val" id="debug_hook">debug_hook</td><td class="desc">
+<p>The function used to debug the interpreter.</p>
+</td></tr>
+</table>
+
+<h4>note</h4>
+<p>Currently, four debug hook slots are available, but only two (for the TrueType and the Type&nbsp;1 interpreter) are defined.</p>
+<p>Since the internal headers of FreeType are no longer installed, the symbol &lsquo;FT_DEBUG_HOOK_TRUETYPE&rsquo; isn't available publicly. This is a bug and will be fixed in a forthcoming release.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Driver">FT_Driver</h3>
+<p>Defined in FT_FREETYPE_H (freetype/freetype.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span> FT_DriverRec_*  <b>FT_Driver</b>;
+</pre>
+
+<p>A handle to a given FreeType font driver object. Each font driver is a special module capable of creating faces from font files.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>FreeType-2.6.3 API Reference</title>
+<style type="text/css">
+  a:link { color: #0000EF; }
+  a:visited { color: #51188E; }
+  a:hover { color: #FF0000; }
+
+  body { font-family: Verdana, Geneva, Arial, Helvetica, serif;
+         color: #000000;
+         background: #FFFFFF;
+         width: 87%;
+         margin: auto; }
+
+  div.section { width: 75%;
+                margin: auto; }
+  div.section hr { margin: 4ex 0 1ex 0; }
+  div.section h4 { background-color: #EEEEFF;
+                   font-size: medium;
+                   font-style: oblique;
+                   font-weight: bold;
+                   margin: 3ex 0 1.5ex 9%;
+                   padding: 0.3ex 0 0.3ex 1%; }
+  div.section p { margin: 1.5ex 0 1.5ex 10%; }
+  div.section pre { margin: 3ex 0 3ex 9%;
+                    background-color: #D6E8FF;
+                    padding: 2ex 0 2ex 1%; }
+  div.section table.fields { width: 90%;
+                             margin: 1.5ex 0 1.5ex 10%; }
+  div.section table.toc { width: 95%;
+                          margin: 1.5ex 0 1.5ex 5%; }
+  div.timestamp { text-align: center;
+                  font-size: 69%;
+                  margin: 1.5ex 0 1.5ex 0; }
+
+  h1 { text-align: center; }
+  h3 { font-size: medium;
+       margin: 4ex 0 1.5ex 0; }
+
+  p { text-align: justify; }
+
+  pre.colored { color: blue; }
+
+  span.keyword { font-family: monospace;
+                 text-align: left;
+                 white-space: pre;
+                 color: darkblue; }
+
+  table.fields td.val { font-weight: bold;
+                        text-align: right;
+                        width: 30%;
+                        vertical-align: baseline;
+                        padding: 1ex 1em 1ex 0; }
+  table.fields td.desc { vertical-align: baseline;
+                         padding: 1ex 0 1ex 1em; }
+  table.fields td.desc p:first-child { margin: 0; }
+  table.fields td.desc p { margin: 1.5ex 0 0 0; }
+  table.index { margin: 6ex auto 6ex auto;
+                border: 0;
+                border-collapse: separate;
+                border-spacing: 1em 0.3ex; }
+  table.index tr { padding: 0; }
+  table.index td { padding: 0; }
+  table.index-toc-link { width: 100%;
+                         border: 0;
+                         border-spacing: 0;
+                         margin: 1ex 0 1ex 0; }
+  table.index-toc-link td.left { padding: 0 0.5em 0 0.5em;
+                                 font-size: 83%;
+                                 text-align: left; }
+  table.index-toc-link td.middle { padding: 0 0.5em 0 0.5em;
+                                   font-size: 83%;
+                                   text-align: center; }
+  table.index-toc-link td.right { padding: 0 0.5em 0 0.5em;
+                                  font-size: 83%;
+                                  text-align: right; }
+  table.synopsis { margin: 6ex auto 6ex auto;
+                   border: 0;
+                   border-collapse: separate;
+                   border-spacing: 2em 0.6ex; }
+  table.synopsis tr { padding: 0; }
+  table.synopsis td { padding: 0; }
+  table.toc td.link { width: 30%;
+                      text-align: right;
+                      vertical-align: baseline;
+                      padding: 1ex 1em 1ex 0; }
+  table.toc td.desc { vertical-align: baseline;
+                      padding: 1ex 0 1ex 1em;
+                      text-align: left; }
+  table.toc td.desc p:first-child { margin: 0;
+                                    text-align: left; }
+  table.toc td.desc p { margin: 1.5ex 0 0 0;
+                        text-align: left; }
+
+</style>
+</head>
+<body>
+
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table>
+<h1>FreeType-2.6.3 API Reference</h1>
+
+<h1 id="cff_driver">The CFF driver</h1>
+<h2>Synopsis</h2>
+<table class="synopsis">
+<tr><td><a href="#hinting-engine">hinting-engine</a></td><td>&nbsp;</td></tr>
+<tr><td><a href="#no-stem-darkening(cff)">no-stem-darkening</a></td><td><a href="#FT_CFF_HINTING_XXX">FT_CFF_HINTING_XXX</a></td></tr>
+<tr><td><a href="#darkening-parameters(cff)">darkening-parameters</a></td><td></td></tr>
+</table>
+
+
+<p>While FreeType's CFF driver doesn't expose API functions by itself, it is possible to control its behaviour with <a href="ft2-module_management.html#FT_Property_Set">FT_Property_Set</a> and <a href="ft2-module_management.html#FT_Property_Get">FT_Property_Get</a>. The list below gives the available properties together with the necessary macros and structures.</p>
+<p>The CFF driver's module name is &lsquo;cff&rsquo;.</p>
+<p><b>Hinting</b> <b>and</b> <b>antialiasing</b> <b>principles</b> <b>of</b> <b>the</b> <b>new</b> <b>engine</b></p>
+<p>The rasterizer is positioning horizontal features (e.g., ascender height &amp; x-height, or crossbars) on the pixel grid and minimizing the amount of antialiasing applied to them, while placing vertical features (vertical stems) on the pixel grid without hinting, thus representing the stem position and weight accurately. Sometimes the vertical stems may be only partially black. In this context, &lsquo;antialiasing&rsquo; means that stems are not positioned exactly on pixel borders, causing a fuzzy appearance.</p>
+<p>There are two principles behind this approach.</p>
+<p>1) No hinting in the horizontal direction: Unlike &lsquo;superhinted&rsquo; TrueType, which changes glyph widths to accommodate regular inter-glyph spacing, Adobe's approach is &lsquo;faithful to the design&rsquo; in representing both the glyph width and the inter-glyph spacing designed for the font. This makes the screen display as close as it can be to the result one would get with infinite resolution, while preserving what is considered the key characteristics of each glyph. Note that the distances between unhinted and grid-fitted positions at small sizes are comparable to kerning values and thus would be noticeable (and distracting) while reading if hinting were applied.</p>
+<p>One of the reasons to not hint horizontally is antialiasing for LCD screens: The pixel geometry of modern displays supplies three vertical sub-pixels as the eye moves horizontally across each visible pixel. On devices where we can be certain this characteristic is present a rasterizer can take advantage of the sub-pixels to add increments of weight. In Western writing systems this turns out to be the more critical direction anyway; the weights and spacing of vertical stems (see above) are central to Armenian, Cyrillic, Greek, and Latin type designs. Even when the rasterizer uses greyscale antialiasing instead of color (a necessary compromise when one doesn't know the screen characteristics), the unhinted vertical features preserve the design's weight and spacing much better than aliased type would.</p>
+<p>2) Aligment in the vertical direction: Weights and spacing along the y&nbsp;axis are less critical; what is much more important is the visual alignment of related features (like cap-height and x-height). The sense of alignment for these is enhanced by the sharpness of grid-fit edges, while the cruder vertical resolution (full pixels instead of 1/3 pixels) is less of a problem.</p>
+<p>On the technical side, horizontal alignment zones for ascender, x-height, and other important height values (traditionally called &lsquo;blue zones&rsquo;) as defined in the font are positioned independently, each being rounded to the nearest pixel edge, taking care of overshoot suppression at small sizes, stem darkening, and scaling.</p>
+<p>Hstems (this is, hint values defined in the font to help align horizontal features) that fall within a blue zone are said to be &lsquo;captured&rsquo; and are aligned to that zone. Uncaptured stems are moved in one of four ways, top edge up or down, bottom edge up or down. Unless there are conflicting hstems, the smallest movement is taken to minimize distortion.</p>
+
+<div class="section">
+<h3 id="hinting-engine">hinting-engine</h3>
+
+<p>Thanks to Adobe, which contributed a new hinting (and parsing) engine, an application can select between &lsquo;freetype&rsquo; and &lsquo;adobe&rsquo; if compiled with CFF_CONFIG_OPTION_OLD_ENGINE. If this configuration macro isn't defined, &lsquo;hinting-engine&rsquo; does nothing.</p>
+<p>The default engine is &lsquo;freetype&rsquo; if CFF_CONFIG_OPTION_OLD_ENGINE is defined, and &lsquo;adobe&rsquo; otherwise.</p>
+<p>The following example code demonstrates how to select Adobe's hinting engine (omitting the error handling).</p>
+<pre class="colored">
+  FT_Library  library;
+  FT_UInt     hinting_engine = FT_CFF_HINTING_ADOBE;
+
+
+  FT_Init_FreeType( &amp;library );
+
+  FT_Property_Set( library, "cff",
+                            "hinting-engine", &amp;hinting_engine );
+</pre>
+
+<h4>note</h4>
+<p>This property can be used with <a href="ft2-module_management.html#FT_Property_Get">FT_Property_Get</a> also.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="no-stem-darkening(cff)">no-stem-darkening</h3>
+
+<p>By default, the Adobe CFF engine darkens stems at smaller sizes, regardless of hinting, to enhance contrast. This feature requires a rendering system with proper gamma correction. Setting this property, stem darkening gets switched off.</p>
+<p>Note that stem darkening is never applied if <a href="ft2-base_interface.html#FT_LOAD_XXX">FT_LOAD_NO_SCALE</a> is set.</p>
+<pre class="colored">
+  FT_Library  library;
+  FT_Bool     no_stem_darkening = TRUE;
+
+
+  FT_Init_FreeType( &amp;library );
+
+  FT_Property_Set( library, "cff",
+                            "no-stem-darkening", &amp;no_stem_darkening );
+</pre>
+
+<h4>note</h4>
+<p>This property can be used with <a href="ft2-module_management.html#FT_Property_Get">FT_Property_Get</a> also.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="darkening-parameters(cff)">darkening-parameters</h3>
+
+<p>By default, the Adobe CFF engine darkens stems as follows (if the &lsquo;no-stem-darkening&rsquo; property isn't set):</p>
+<pre class="colored">
+  stem width &lt;= 0.5px:   darkening amount = 0.4px
+  stem width  = 1px:     darkening amount = 0.275px
+  stem width  = 1.667px: darkening amount = 0.275px
+  stem width &gt;= 2.333px: darkening amount = 0px
+</pre>
+<p>and piecewise linear in-between. At configuration time, these four control points can be set with the macro &lsquo;CFF_CONFIG_OPTION_DARKENING_PARAMETERS&rsquo;. At runtime, the control points can be changed using the &lsquo;darkening-parameters&rsquo; property, as the following example demonstrates.</p>
+<pre class="colored">
+  FT_Library  library;
+  FT_Int      darken_params[8] = {  500, 300,   // x1, y1
+                                   1000, 200,   // x2, y2
+                                   1500, 100,   // x3, y3
+                                   2000,   0 }; // x4, y4
+
+
+  FT_Init_FreeType( &amp;library );
+
+  FT_Property_Set( library, "cff",
+                            "darkening-parameters", darken_params );
+</pre>
+<p>The x&nbsp;values give the stem width, and the y&nbsp;values the darkening amount. The unit is 1000th of pixels. All coordinate values must be positive; the x&nbsp;values must be monotonically increasing; the y&nbsp;values must be monotonically decreasing and smaller than or equal to 500 (corresponding to half a pixel); the slope of each linear piece must be shallower than -1 (e.g., -.4).</p>
+
+<h4>note</h4>
+<p>This property can be used with <a href="ft2-module_management.html#FT_Property_Get">FT_Property_Get</a> also.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_CFF_HINTING_XXX">FT_CFF_HINTING_XXX</h3>
+<p>Defined in FT_CFF_DRIVER_H (freetype/ftcffdrv.h).</p>
+<pre>
+#define <a href="ft2-cff_driver.html#FT_CFF_HINTING_FREETYPE">FT_CFF_HINTING_FREETYPE</a>  0
+#define <a href="ft2-cff_driver.html#FT_CFF_HINTING_ADOBE">FT_CFF_HINTING_ADOBE</a>     1
+</pre>
+
+<p>A list of constants used for the <a href="ft2-cff_driver.html#hinting-engine">hinting-engine</a> property to select the hinting engine for CFF fonts.</p>
+
+<h4>values</h4>
+<table class="fields">
+<tr><td class="val" id="FT_CFF_HINTING_FREETYPE">FT_CFF_HINTING_FREETYPE</td><td class="desc">
+<p>Use the old FreeType hinting engine.</p>
+</td></tr>
+<tr><td class="val" id="FT_CFF_HINTING_ADOBE">FT_CFF_HINTING_ADOBE</td><td class="desc">
+<p>Use the hinting engine contributed by Adobe.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+</body>
+</html>

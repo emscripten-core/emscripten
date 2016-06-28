@@ -1,0 +1,247 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>FreeType-2.6.3 API Reference</title>
+<style type="text/css">
+  a:link { color: #0000EF; }
+  a:visited { color: #51188E; }
+  a:hover { color: #FF0000; }
+
+  body { font-family: Verdana, Geneva, Arial, Helvetica, serif;
+         color: #000000;
+         background: #FFFFFF;
+         width: 87%;
+         margin: auto; }
+
+  div.section { width: 75%;
+                margin: auto; }
+  div.section hr { margin: 4ex 0 1ex 0; }
+  div.section h4 { background-color: #EEEEFF;
+                   font-size: medium;
+                   font-style: oblique;
+                   font-weight: bold;
+                   margin: 3ex 0 1.5ex 9%;
+                   padding: 0.3ex 0 0.3ex 1%; }
+  div.section p { margin: 1.5ex 0 1.5ex 10%; }
+  div.section pre { margin: 3ex 0 3ex 9%;
+                    background-color: #D6E8FF;
+                    padding: 2ex 0 2ex 1%; }
+  div.section table.fields { width: 90%;
+                             margin: 1.5ex 0 1.5ex 10%; }
+  div.section table.toc { width: 95%;
+                          margin: 1.5ex 0 1.5ex 5%; }
+  div.timestamp { text-align: center;
+                  font-size: 69%;
+                  margin: 1.5ex 0 1.5ex 0; }
+
+  h1 { text-align: center; }
+  h3 { font-size: medium;
+       margin: 4ex 0 1.5ex 0; }
+
+  p { text-align: justify; }
+
+  pre.colored { color: blue; }
+
+  span.keyword { font-family: monospace;
+                 text-align: left;
+                 white-space: pre;
+                 color: darkblue; }
+
+  table.fields td.val { font-weight: bold;
+                        text-align: right;
+                        width: 30%;
+                        vertical-align: baseline;
+                        padding: 1ex 1em 1ex 0; }
+  table.fields td.desc { vertical-align: baseline;
+                         padding: 1ex 0 1ex 1em; }
+  table.fields td.desc p:first-child { margin: 0; }
+  table.fields td.desc p { margin: 1.5ex 0 0 0; }
+  table.index { margin: 6ex auto 6ex auto;
+                border: 0;
+                border-collapse: separate;
+                border-spacing: 1em 0.3ex; }
+  table.index tr { padding: 0; }
+  table.index td { padding: 0; }
+  table.index-toc-link { width: 100%;
+                         border: 0;
+                         border-spacing: 0;
+                         margin: 1ex 0 1ex 0; }
+  table.index-toc-link td.left { padding: 0 0.5em 0 0.5em;
+                                 font-size: 83%;
+                                 text-align: left; }
+  table.index-toc-link td.middle { padding: 0 0.5em 0 0.5em;
+                                   font-size: 83%;
+                                   text-align: center; }
+  table.index-toc-link td.right { padding: 0 0.5em 0 0.5em;
+                                  font-size: 83%;
+                                  text-align: right; }
+  table.synopsis { margin: 6ex auto 6ex auto;
+                   border: 0;
+                   border-collapse: separate;
+                   border-spacing: 2em 0.6ex; }
+  table.synopsis tr { padding: 0; }
+  table.synopsis td { padding: 0; }
+  table.toc td.link { width: 30%;
+                      text-align: right;
+                      vertical-align: baseline;
+                      padding: 1ex 1em 1ex 0; }
+  table.toc td.desc { vertical-align: baseline;
+                      padding: 1ex 0 1ex 1em;
+                      text-align: left; }
+  table.toc td.desc p:first-child { margin: 0;
+                                    text-align: left; }
+  table.toc td.desc p { margin: 1.5ex 0 0 0;
+                        text-align: left; }
+
+</style>
+</head>
+<body>
+
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table>
+<h1>FreeType-2.6.3 API Reference</h1>
+
+<h1 id="ot_validation">OpenType Validation</h1>
+<h2>Synopsis</h2>
+<table class="synopsis">
+<tr><td><a href="#FT_OpenType_Validate">FT_OpenType_Validate</a></td><td>&nbsp;</td><td></td></tr>
+<tr><td><a href="#FT_OpenType_Free">FT_OpenType_Free</a></td><td><a href="#FT_VALIDATE_OTXXX">FT_VALIDATE_OTXXX</a></td><td></td></tr>
+</table>
+
+
+<p>This section contains the declaration of functions to validate some OpenType tables (BASE, GDEF, GPOS, GSUB, JSTF, MATH).</p>
+
+<div class="section">
+<h3 id="FT_OpenType_Validate">FT_OpenType_Validate</h3>
+<p>Defined in FT_OPENTYPE_VALIDATE_H (freetype/ftotval.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_OpenType_Validate</b>( <a href="ft2-base_interface.html#FT_Face">FT_Face</a>    face,
+                        <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>    validation_flags,
+                        <a href="ft2-basic_types.html#FT_Bytes">FT_Bytes</a>  *BASE_table,
+                        <a href="ft2-basic_types.html#FT_Bytes">FT_Bytes</a>  *GDEF_table,
+                        <a href="ft2-basic_types.html#FT_Bytes">FT_Bytes</a>  *GPOS_table,
+                        <a href="ft2-basic_types.html#FT_Bytes">FT_Bytes</a>  *GSUB_table,
+                        <a href="ft2-basic_types.html#FT_Bytes">FT_Bytes</a>  *JSTF_table );
+</pre>
+
+<p>Validate various OpenType tables to assure that all offsets and indices are valid. The idea is that a higher-level library that actually does the text layout can access those tables without error checking (which can be quite time consuming).</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="face">face</td><td class="desc">
+<p>A handle to the input face.</p>
+</td></tr>
+<tr><td class="val" id="validation_flags">validation_flags</td><td class="desc">
+<p>A bit field that specifies the tables to be validated. See <a href="ft2-ot_validation.html#FT_VALIDATE_OTXXX">FT_VALIDATE_OTXXX</a> for possible values.</p>
+</td></tr>
+</table>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="BASE_table">BASE_table</td><td class="desc">
+<p>A pointer to the BASE table.</p>
+</td></tr>
+<tr><td class="val" id="GDEF_table">GDEF_table</td><td class="desc">
+<p>A pointer to the GDEF table.</p>
+</td></tr>
+<tr><td class="val" id="GPOS_table">GPOS_table</td><td class="desc">
+<p>A pointer to the GPOS table.</p>
+</td></tr>
+<tr><td class="val" id="GSUB_table">GSUB_table</td><td class="desc">
+<p>A pointer to the GSUB table.</p>
+</td></tr>
+<tr><td class="val" id="JSTF_table">JSTF_table</td><td class="desc">
+<p>A pointer to the JSTF table.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>This function only works with OpenType fonts, returning an error otherwise.</p>
+<p>After use, the application should deallocate the five tables with <a href="ft2-ot_validation.html#FT_OpenType_Free">FT_OpenType_Free</a>. A NULL value indicates that the table either doesn't exist in the font, or the application hasn't asked for validation.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_OpenType_Free">FT_OpenType_Free</h3>
+<p>Defined in FT_OPENTYPE_VALIDATE_H (freetype/ftotval.h).</p>
+<pre>
+  FT_EXPORT( <span class="keyword">void</span> )
+  <b>FT_OpenType_Free</b>( <a href="ft2-base_interface.html#FT_Face">FT_Face</a>   face,
+                    <a href="ft2-basic_types.html#FT_Bytes">FT_Bytes</a>  table );
+</pre>
+
+<p>Free the buffer allocated by OpenType validator.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="face">face</td><td class="desc">
+<p>A handle to the input face.</p>
+</td></tr>
+<tr><td class="val" id="table">table</td><td class="desc">
+<p>The pointer to the buffer that is allocated by <a href="ft2-ot_validation.html#FT_OpenType_Validate">FT_OpenType_Validate</a>.</p>
+</td></tr>
+</table>
+
+<h4>note</h4>
+<p>This function must be used to free the buffer allocated by <a href="ft2-ot_validation.html#FT_OpenType_Validate">FT_OpenType_Validate</a> only.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_VALIDATE_OTXXX">FT_VALIDATE_OTXXX</h3>
+<p>Defined in FT_OPENTYPE_VALIDATE_H (freetype/ftotval.h).</p>
+<pre>
+#define <a href="ft2-ot_validation.html#FT_VALIDATE_BASE">FT_VALIDATE_BASE</a>  0x0100
+#define <a href="ft2-ot_validation.html#FT_VALIDATE_GDEF">FT_VALIDATE_GDEF</a>  0x0200
+#define <a href="ft2-ot_validation.html#FT_VALIDATE_GPOS">FT_VALIDATE_GPOS</a>  0x0400
+#define <a href="ft2-ot_validation.html#FT_VALIDATE_GSUB">FT_VALIDATE_GSUB</a>  0x0800
+#define <a href="ft2-ot_validation.html#FT_VALIDATE_JSTF">FT_VALIDATE_JSTF</a>  0x1000
+#define <a href="ft2-ot_validation.html#FT_VALIDATE_MATH">FT_VALIDATE_MATH</a>  0x2000
+
+#define <a href="ft2-ot_validation.html#FT_VALIDATE_OT">FT_VALIDATE_OT</a>  <a href="ft2-ot_validation.html#FT_VALIDATE_BASE">FT_VALIDATE_BASE</a> | \
+                        <a href="ft2-ot_validation.html#FT_VALIDATE_GDEF">FT_VALIDATE_GDEF</a> | \
+                        <a href="ft2-ot_validation.html#FT_VALIDATE_GPOS">FT_VALIDATE_GPOS</a> | \
+                        <a href="ft2-ot_validation.html#FT_VALIDATE_GSUB">FT_VALIDATE_GSUB</a> | \
+                        <a href="ft2-ot_validation.html#FT_VALIDATE_JSTF">FT_VALIDATE_JSTF</a> | \
+                        <a href="ft2-ot_validation.html#FT_VALIDATE_MATH">FT_VALIDATE_MATH</a>
+</pre>
+
+<p>A list of bit-field constants used with <a href="ft2-ot_validation.html#FT_OpenType_Validate">FT_OpenType_Validate</a> to indicate which OpenType tables should be validated.</p>
+
+<h4>values</h4>
+<table class="fields">
+<tr><td class="val" id="FT_VALIDATE_BASE">FT_VALIDATE_BASE</td><td class="desc">
+<p>Validate BASE table.</p>
+</td></tr>
+<tr><td class="val" id="FT_VALIDATE_GDEF">FT_VALIDATE_GDEF</td><td class="desc">
+<p>Validate GDEF table.</p>
+</td></tr>
+<tr><td class="val" id="FT_VALIDATE_GPOS">FT_VALIDATE_GPOS</td><td class="desc">
+<p>Validate GPOS table.</p>
+</td></tr>
+<tr><td class="val" id="FT_VALIDATE_GSUB">FT_VALIDATE_GSUB</td><td class="desc">
+<p>Validate GSUB table.</p>
+</td></tr>
+<tr><td class="val" id="FT_VALIDATE_JSTF">FT_VALIDATE_JSTF</td><td class="desc">
+<p>Validate JSTF table.</p>
+</td></tr>
+<tr><td class="val" id="FT_VALIDATE_MATH">FT_VALIDATE_MATH</td><td class="desc">
+<p>Validate MATH table.</p>
+</td></tr>
+<tr><td class="val" id="FT_VALIDATE_OT">FT_VALIDATE_OT</td><td class="desc">
+<p>Validate all OpenType tables (BASE, GDEF, GPOS, GSUB, JSTF, MATH).</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+</body>
+</html>

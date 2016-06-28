@@ -1,0 +1,242 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>FreeType-2.6.3 API Reference</title>
+<style type="text/css">
+  a:link { color: #0000EF; }
+  a:visited { color: #51188E; }
+  a:hover { color: #FF0000; }
+
+  body { font-family: Verdana, Geneva, Arial, Helvetica, serif;
+         color: #000000;
+         background: #FFFFFF;
+         width: 87%;
+         margin: auto; }
+
+  div.section { width: 75%;
+                margin: auto; }
+  div.section hr { margin: 4ex 0 1ex 0; }
+  div.section h4 { background-color: #EEEEFF;
+                   font-size: medium;
+                   font-style: oblique;
+                   font-weight: bold;
+                   margin: 3ex 0 1.5ex 9%;
+                   padding: 0.3ex 0 0.3ex 1%; }
+  div.section p { margin: 1.5ex 0 1.5ex 10%; }
+  div.section pre { margin: 3ex 0 3ex 9%;
+                    background-color: #D6E8FF;
+                    padding: 2ex 0 2ex 1%; }
+  div.section table.fields { width: 90%;
+                             margin: 1.5ex 0 1.5ex 10%; }
+  div.section table.toc { width: 95%;
+                          margin: 1.5ex 0 1.5ex 5%; }
+  div.timestamp { text-align: center;
+                  font-size: 69%;
+                  margin: 1.5ex 0 1.5ex 0; }
+
+  h1 { text-align: center; }
+  h3 { font-size: medium;
+       margin: 4ex 0 1.5ex 0; }
+
+  p { text-align: justify; }
+
+  pre.colored { color: blue; }
+
+  span.keyword { font-family: monospace;
+                 text-align: left;
+                 white-space: pre;
+                 color: darkblue; }
+
+  table.fields td.val { font-weight: bold;
+                        text-align: right;
+                        width: 30%;
+                        vertical-align: baseline;
+                        padding: 1ex 1em 1ex 0; }
+  table.fields td.desc { vertical-align: baseline;
+                         padding: 1ex 0 1ex 1em; }
+  table.fields td.desc p:first-child { margin: 0; }
+  table.fields td.desc p { margin: 1.5ex 0 0 0; }
+  table.index { margin: 6ex auto 6ex auto;
+                border: 0;
+                border-collapse: separate;
+                border-spacing: 1em 0.3ex; }
+  table.index tr { padding: 0; }
+  table.index td { padding: 0; }
+  table.index-toc-link { width: 100%;
+                         border: 0;
+                         border-spacing: 0;
+                         margin: 1ex 0 1ex 0; }
+  table.index-toc-link td.left { padding: 0 0.5em 0 0.5em;
+                                 font-size: 83%;
+                                 text-align: left; }
+  table.index-toc-link td.middle { padding: 0 0.5em 0 0.5em;
+                                   font-size: 83%;
+                                   text-align: center; }
+  table.index-toc-link td.right { padding: 0 0.5em 0 0.5em;
+                                  font-size: 83%;
+                                  text-align: right; }
+  table.synopsis { margin: 6ex auto 6ex auto;
+                   border: 0;
+                   border-collapse: separate;
+                   border-spacing: 2em 0.6ex; }
+  table.synopsis tr { padding: 0; }
+  table.synopsis td { padding: 0; }
+  table.toc td.link { width: 30%;
+                      text-align: right;
+                      vertical-align: baseline;
+                      padding: 1ex 1em 1ex 0; }
+  table.toc td.desc { vertical-align: baseline;
+                      padding: 1ex 0 1ex 1em;
+                      text-align: left; }
+  table.toc td.desc p:first-child { margin: 0;
+                                    text-align: left; }
+  table.toc td.desc p { margin: 1.5ex 0 0 0;
+                        text-align: left; }
+
+</style>
+</head>
+<body>
+
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table>
+<h1>FreeType-2.6.3 API Reference</h1>
+
+<h1 id="pfr_fonts">PFR Fonts</h1>
+<h2>Synopsis</h2>
+<table class="synopsis">
+<tr><td><a href="#FT_Get_PFR_Metrics">FT_Get_PFR_Metrics</a></td><td><a href="#FT_Get_PFR_Kerning">FT_Get_PFR_Kerning</a></td><td><a href="#FT_Get_PFR_Advance">FT_Get_PFR_Advance</a></td></tr>
+</table>
+
+
+<p>This section contains the declaration of PFR-specific functions.</p>
+
+<div class="section">
+<h3 id="FT_Get_PFR_Metrics">FT_Get_PFR_Metrics</h3>
+<p>Defined in FT_PFR_H (freetype/ftpfr.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Get_PFR_Metrics</b>( <a href="ft2-base_interface.html#FT_Face">FT_Face</a>    face,
+                      <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>   *aoutline_resolution,
+                      <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>   *ametrics_resolution,
+                      <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>  *ametrics_x_scale,
+                      <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>  *ametrics_y_scale );
+</pre>
+
+<p>Return the outline and metrics resolutions of a given PFR face.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="face">face</td><td class="desc">
+<p>Handle to the input face. It can be a non-PFR face.</p>
+</td></tr>
+</table>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="aoutline_resolution">aoutline_resolution</td><td class="desc">
+<p>Outline resolution. This is equivalent to &lsquo;face-&gt;units_per_EM&rsquo; for non-PFR fonts. Optional (parameter can be NULL).</p>
+</td></tr>
+<tr><td class="val" id="ametrics_resolution">ametrics_resolution</td><td class="desc">
+<p>Metrics resolution. This is equivalent to &lsquo;outline_resolution&rsquo; for non-PFR fonts. Optional (parameter can be NULL).</p>
+</td></tr>
+<tr><td class="val" id="ametrics_x_scale">ametrics_x_scale</td><td class="desc">
+<p>A 16.16 fixed-point number used to scale distance expressed in metrics units to device sub-pixels. This is equivalent to &lsquo;face-&gt;size-&gt;x_scale&rsquo;, but for metrics only. Optional (parameter can be NULL).</p>
+</td></tr>
+<tr><td class="val" id="ametrics_y_scale">ametrics_y_scale</td><td class="desc">
+<p>Same as &lsquo;ametrics_x_scale&rsquo; but for the vertical direction. optional (parameter can be NULL).</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>If the input face is not a PFR, this function will return an error. However, in all cases, it will return valid values.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Get_PFR_Kerning">FT_Get_PFR_Kerning</h3>
+<p>Defined in FT_PFR_H (freetype/ftpfr.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Get_PFR_Kerning</b>( <a href="ft2-base_interface.html#FT_Face">FT_Face</a>     face,
+                      <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>     left,
+                      <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>     right,
+                      <a href="ft2-basic_types.html#FT_Vector">FT_Vector</a>  *avector );
+</pre>
+
+<p>Return the kerning pair corresponding to two glyphs in a PFR face. The distance is expressed in metrics units, unlike the result of <a href="ft2-base_interface.html#FT_Get_Kerning">FT_Get_Kerning</a>.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="face">face</td><td class="desc">
+<p>A handle to the input face.</p>
+</td></tr>
+<tr><td class="val" id="left">left</td><td class="desc">
+<p>Index of the left glyph.</p>
+</td></tr>
+<tr><td class="val" id="right">right</td><td class="desc">
+<p>Index of the right glyph.</p>
+</td></tr>
+</table>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="avector">avector</td><td class="desc">
+<p>A kerning vector.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>This function always return distances in original PFR metrics units. This is unlike <a href="ft2-base_interface.html#FT_Get_Kerning">FT_Get_Kerning</a> with the <a href="ft2-base_interface.html#FT_Kerning_Mode">FT_KERNING_UNSCALED</a> mode, which always returns distances converted to outline units.</p>
+<p>You can use the value of the &lsquo;x_scale&rsquo; and &lsquo;y_scale&rsquo; parameters returned by <a href="ft2-pfr_fonts.html#FT_Get_PFR_Metrics">FT_Get_PFR_Metrics</a> to scale these to device sub-pixels.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Get_PFR_Advance">FT_Get_PFR_Advance</h3>
+<p>Defined in FT_PFR_H (freetype/ftpfr.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Get_PFR_Advance</b>( <a href="ft2-base_interface.html#FT_Face">FT_Face</a>   face,
+                      <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>   gindex,
+                      <a href="ft2-basic_types.html#FT_Pos">FT_Pos</a>   *aadvance );
+</pre>
+
+<p>Return a given glyph advance, expressed in original metrics units, from a PFR font.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="face">face</td><td class="desc">
+<p>A handle to the input face.</p>
+</td></tr>
+<tr><td class="val" id="gindex">gindex</td><td class="desc">
+<p>The glyph index.</p>
+</td></tr>
+</table>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="aadvance">aadvance</td><td class="desc">
+<p>The glyph advance in metrics units.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>You can use the &lsquo;x_scale&rsquo; or &lsquo;y_scale&rsquo; results of <a href="ft2-pfr_fonts.html#FT_Get_PFR_Metrics">FT_Get_PFR_Metrics</a> to convert the advance to device sub-pixels (i.e., 1/64th of pixels).</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+</body>
+</html>

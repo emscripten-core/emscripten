@@ -1,0 +1,387 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>FreeType-2.6.3 API Reference</title>
+<style type="text/css">
+  a:link { color: #0000EF; }
+  a:visited { color: #51188E; }
+  a:hover { color: #FF0000; }
+
+  body { font-family: Verdana, Geneva, Arial, Helvetica, serif;
+         color: #000000;
+         background: #FFFFFF;
+         width: 87%;
+         margin: auto; }
+
+  div.section { width: 75%;
+                margin: auto; }
+  div.section hr { margin: 4ex 0 1ex 0; }
+  div.section h4 { background-color: #EEEEFF;
+                   font-size: medium;
+                   font-style: oblique;
+                   font-weight: bold;
+                   margin: 3ex 0 1.5ex 9%;
+                   padding: 0.3ex 0 0.3ex 1%; }
+  div.section p { margin: 1.5ex 0 1.5ex 10%; }
+  div.section pre { margin: 3ex 0 3ex 9%;
+                    background-color: #D6E8FF;
+                    padding: 2ex 0 2ex 1%; }
+  div.section table.fields { width: 90%;
+                             margin: 1.5ex 0 1.5ex 10%; }
+  div.section table.toc { width: 95%;
+                          margin: 1.5ex 0 1.5ex 5%; }
+  div.timestamp { text-align: center;
+                  font-size: 69%;
+                  margin: 1.5ex 0 1.5ex 0; }
+
+  h1 { text-align: center; }
+  h3 { font-size: medium;
+       margin: 4ex 0 1.5ex 0; }
+
+  p { text-align: justify; }
+
+  pre.colored { color: blue; }
+
+  span.keyword { font-family: monospace;
+                 text-align: left;
+                 white-space: pre;
+                 color: darkblue; }
+
+  table.fields td.val { font-weight: bold;
+                        text-align: right;
+                        width: 30%;
+                        vertical-align: baseline;
+                        padding: 1ex 1em 1ex 0; }
+  table.fields td.desc { vertical-align: baseline;
+                         padding: 1ex 0 1ex 1em; }
+  table.fields td.desc p:first-child { margin: 0; }
+  table.fields td.desc p { margin: 1.5ex 0 0 0; }
+  table.index { margin: 6ex auto 6ex auto;
+                border: 0;
+                border-collapse: separate;
+                border-spacing: 1em 0.3ex; }
+  table.index tr { padding: 0; }
+  table.index td { padding: 0; }
+  table.index-toc-link { width: 100%;
+                         border: 0;
+                         border-spacing: 0;
+                         margin: 1ex 0 1ex 0; }
+  table.index-toc-link td.left { padding: 0 0.5em 0 0.5em;
+                                 font-size: 83%;
+                                 text-align: left; }
+  table.index-toc-link td.middle { padding: 0 0.5em 0 0.5em;
+                                   font-size: 83%;
+                                   text-align: center; }
+  table.index-toc-link td.right { padding: 0 0.5em 0 0.5em;
+                                  font-size: 83%;
+                                  text-align: right; }
+  table.synopsis { margin: 6ex auto 6ex auto;
+                   border: 0;
+                   border-collapse: separate;
+                   border-spacing: 2em 0.6ex; }
+  table.synopsis tr { padding: 0; }
+  table.synopsis td { padding: 0; }
+  table.toc td.link { width: 30%;
+                      text-align: right;
+                      vertical-align: baseline;
+                      padding: 1ex 1em 1ex 0; }
+  table.toc td.desc { vertical-align: baseline;
+                      padding: 1ex 0 1ex 1em;
+                      text-align: left; }
+  table.toc td.desc p:first-child { margin: 0;
+                                    text-align: left; }
+  table.toc td.desc p { margin: 1.5ex 0 0 0;
+                        text-align: left; }
+
+</style>
+</head>
+<body>
+
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table>
+<h1>FreeType-2.6.3 API Reference</h1>
+
+<h1 id="incremental">Incremental Loading</h1>
+<h2>Synopsis</h2>
+<table class="synopsis">
+<tr><td><a href="#FT_Incremental">FT_Incremental</a></td><td><a href="#FT_Incremental_GetGlyphMetricsFunc">FT_Incremental_GetGlyphMetricsFunc</a></td></tr>
+<tr><td><a href="#FT_Incremental_MetricsRec">FT_Incremental_MetricsRec</a></td><td><a href="#FT_Incremental_FuncsRec">FT_Incremental_FuncsRec</a></td></tr>
+<tr><td><a href="#FT_Incremental_Metrics">FT_Incremental_Metrics</a></td><td><a href="#FT_Incremental_InterfaceRec">FT_Incremental_InterfaceRec</a></td></tr>
+<tr><td><a href="#FT_Incremental_GetGlyphDataFunc">FT_Incremental_GetGlyphDataFunc</a></td><td><a href="#FT_Incremental_Interface">FT_Incremental_Interface</a></td></tr>
+<tr><td><a href="#FT_Incremental_FreeGlyphDataFunc">FT_Incremental_FreeGlyphDataFunc</a></td><td><a href="#FT_PARAM_TAG_INCREMENTAL">FT_PARAM_TAG_INCREMENTAL</a></td></tr>
+</table>
+
+
+<p>This section contains various functions used to perform so-called &lsquo;incremental&rsquo; glyph loading. This is a mode where all glyphs loaded from a given <a href="ft2-base_interface.html#FT_Face">FT_Face</a> are provided by the client application.</p>
+<p>Apart from that, all other tables are loaded normally from the font file. This mode is useful when FreeType is used within another engine, e.g., a PostScript Imaging Processor.</p>
+<p>To enable this mode, you must use <a href="ft2-base_interface.html#FT_Open_Face">FT_Open_Face</a>, passing an <a href="ft2-base_interface.html#FT_Parameter">FT_Parameter</a> with the <a href="ft2-incremental.html#FT_PARAM_TAG_INCREMENTAL">FT_PARAM_TAG_INCREMENTAL</a> tag and an <a href="ft2-incremental.html#FT_Incremental_Interface">FT_Incremental_Interface</a> value. See the comments for <a href="ft2-incremental.html#FT_Incremental_InterfaceRec">FT_Incremental_InterfaceRec</a> for an example.</p>
+
+<div class="section">
+<h3 id="FT_Incremental">FT_Incremental</h3>
+<p>Defined in FT_INCREMENTAL_H (freetype/ftincrem.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span> FT_IncrementalRec_*  <b>FT_Incremental</b>;
+</pre>
+
+<p>An opaque type describing a user-provided object used to implement &lsquo;incremental&rsquo; glyph loading within FreeType. This is used to support embedded fonts in certain environments (e.g., PostScript interpreters), where the glyph data isn't in the font file, or must be overridden by different values.</p>
+
+<h4>note</h4>
+<p>It is up to client applications to create and implement <a href="ft2-incremental.html#FT_Incremental">FT_Incremental</a> objects, as long as they provide implementations for the methods <a href="ft2-incremental.html#FT_Incremental_GetGlyphDataFunc">FT_Incremental_GetGlyphDataFunc</a>, <a href="ft2-incremental.html#FT_Incremental_FreeGlyphDataFunc">FT_Incremental_FreeGlyphDataFunc</a> and <a href="ft2-incremental.html#FT_Incremental_GetGlyphMetricsFunc">FT_Incremental_GetGlyphMetricsFunc</a>.</p>
+<p>See the description of <a href="ft2-incremental.html#FT_Incremental_InterfaceRec">FT_Incremental_InterfaceRec</a> to understand how to use incremental objects with FreeType.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Incremental_MetricsRec">FT_Incremental_MetricsRec</h3>
+<p>Defined in FT_INCREMENTAL_H (freetype/ftincrem.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span>  FT_Incremental_MetricsRec_
+  {
+    <a href="ft2-basic_types.html#FT_Long">FT_Long</a>  bearing_x;
+    <a href="ft2-basic_types.html#FT_Long">FT_Long</a>  bearing_y;
+    <a href="ft2-basic_types.html#FT_Long">FT_Long</a>  advance;
+    <a href="ft2-basic_types.html#FT_Long">FT_Long</a>  advance_v;     /* since 2.3.12 */
+
+  } <b>FT_Incremental_MetricsRec</b>;
+</pre>
+
+<p>A small structure used to contain the basic glyph metrics returned by the <a href="ft2-incremental.html#FT_Incremental_GetGlyphMetricsFunc">FT_Incremental_GetGlyphMetricsFunc</a> method.</p>
+
+<h4>fields</h4>
+<table class="fields">
+<tr><td class="val" id="bearing_x">bearing_x</td><td class="desc">
+<p>Left bearing, in font units.</p>
+</td></tr>
+<tr><td class="val" id="bearing_y">bearing_y</td><td class="desc">
+<p>Top bearing, in font units.</p>
+</td></tr>
+<tr><td class="val" id="advance">advance</td><td class="desc">
+<p>Horizontal component of glyph advance, in font units.</p>
+</td></tr>
+<tr><td class="val" id="advance_v">advance_v</td><td class="desc">
+<p>Vertical component of glyph advance, in font units.</p>
+</td></tr>
+</table>
+
+<h4>note</h4>
+<p>These correspond to horizontal or vertical metrics depending on the value of the &lsquo;vertical&rsquo; argument to the function <a href="ft2-incremental.html#FT_Incremental_GetGlyphMetricsFunc">FT_Incremental_GetGlyphMetricsFunc</a>.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Incremental_Metrics">FT_Incremental_Metrics</h3>
+<p>Defined in FT_INCREMENTAL_H (freetype/ftincrem.h).</p>
+<pre>
+   <span class="keyword">typedef</span> <span class="keyword">struct</span> FT_Incremental_MetricsRec_*  <b>FT_Incremental_Metrics</b>;
+</pre>
+
+<p>A handle to an <a href="ft2-incremental.html#FT_Incremental_MetricsRec">FT_Incremental_MetricsRec</a> structure.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Incremental_GetGlyphDataFunc">FT_Incremental_GetGlyphDataFunc</h3>
+<p>Defined in FT_INCREMENTAL_H (freetype/ftincrem.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <a href="ft2-basic_types.html#FT_Error">FT_Error</a>
+  (*<b>FT_Incremental_GetGlyphDataFunc</b>)( <a href="ft2-incremental.html#FT_Incremental">FT_Incremental</a>  incremental,
+                                      <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>         glyph_index,
+                                      <a href="ft2-basic_types.html#FT_Data">FT_Data</a>*        adata );
+</pre>
+
+<p>A function called by FreeType to access a given glyph's data bytes during <a href="ft2-base_interface.html#FT_Load_Glyph">FT_Load_Glyph</a> or <a href="ft2-base_interface.html#FT_Load_Char">FT_Load_Char</a> if incremental loading is enabled.</p>
+<p>Note that the format of the glyph's data bytes depends on the font file format. For TrueType, it must correspond to the raw bytes within the &lsquo;glyf&rsquo; table. For PostScript formats, it must correspond to the <b>unencrypted</b> charstring bytes, without any &lsquo;lenIV&rsquo; header. It is undefined for any other format.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="incremental">incremental</td><td class="desc">
+<p>Handle to an opaque <a href="ft2-incremental.html#FT_Incremental">FT_Incremental</a> handle provided by the client application.</p>
+</td></tr>
+<tr><td class="val" id="glyph_index">glyph_index</td><td class="desc">
+<p>Index of relevant glyph.</p>
+</td></tr>
+</table>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="adata">adata</td><td class="desc">
+<p>A structure describing the returned glyph data bytes (which will be accessed as a read-only byte block).</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>If this function returns successfully the method <a href="ft2-incremental.html#FT_Incremental_FreeGlyphDataFunc">FT_Incremental_FreeGlyphDataFunc</a> will be called later to release the data bytes.</p>
+<p>Nested calls to <a href="ft2-incremental.html#FT_Incremental_GetGlyphDataFunc">FT_Incremental_GetGlyphDataFunc</a> can happen for compound glyphs.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Incremental_FreeGlyphDataFunc">FT_Incremental_FreeGlyphDataFunc</h3>
+<p>Defined in FT_INCREMENTAL_H (freetype/ftincrem.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">void</span>
+  (*<b>FT_Incremental_FreeGlyphDataFunc</b>)( <a href="ft2-incremental.html#FT_Incremental">FT_Incremental</a>  incremental,
+                                       <a href="ft2-basic_types.html#FT_Data">FT_Data</a>*        data );
+</pre>
+
+<p>A function used to release the glyph data bytes returned by a successful call to <a href="ft2-incremental.html#FT_Incremental_GetGlyphDataFunc">FT_Incremental_GetGlyphDataFunc</a>.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="incremental">incremental</td><td class="desc">
+<p>A handle to an opaque <a href="ft2-incremental.html#FT_Incremental">FT_Incremental</a> handle provided by the client application.</p>
+</td></tr>
+<tr><td class="val" id="data">data</td><td class="desc">
+<p>A structure describing the glyph data bytes (which will be accessed as a read-only byte block).</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Incremental_GetGlyphMetricsFunc">FT_Incremental_GetGlyphMetricsFunc</h3>
+<p>Defined in FT_INCREMENTAL_H (freetype/ftincrem.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <a href="ft2-basic_types.html#FT_Error">FT_Error</a>
+  (*<b>FT_Incremental_GetGlyphMetricsFunc</b>)
+                      ( <a href="ft2-incremental.html#FT_Incremental">FT_Incremental</a>              incremental,
+                        <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>                     glyph_index,
+                        <a href="ft2-basic_types.html#FT_Bool">FT_Bool</a>                     vertical,
+                        <a href="ft2-incremental.html#FT_Incremental_MetricsRec">FT_Incremental_MetricsRec</a>  *ametrics );
+</pre>
+
+<p>A function used to retrieve the basic metrics of a given glyph index before accessing its data. This is necessary because, in certain formats like TrueType, the metrics are stored in a different place from the glyph images proper.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="incremental">incremental</td><td class="desc">
+<p>A handle to an opaque <a href="ft2-incremental.html#FT_Incremental">FT_Incremental</a> handle provided by the client application.</p>
+</td></tr>
+<tr><td class="val" id="glyph_index">glyph_index</td><td class="desc">
+<p>Index of relevant glyph.</p>
+</td></tr>
+<tr><td class="val" id="vertical">vertical</td><td class="desc">
+<p>If true, return vertical metrics.</p>
+</td></tr>
+<tr><td class="val" id="ametrics">ametrics</td><td class="desc">
+<p>This parameter is used for both input and output. The original glyph metrics, if any, in font units. If metrics are not available all the values must be set to zero.</p>
+</td></tr>
+</table>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="ametrics">ametrics</td><td class="desc">
+<p>The replacement glyph metrics in font units.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Incremental_FuncsRec">FT_Incremental_FuncsRec</h3>
+<p>Defined in FT_INCREMENTAL_H (freetype/ftincrem.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span>  FT_Incremental_FuncsRec_
+  {
+    <a href="ft2-incremental.html#FT_Incremental_GetGlyphDataFunc">FT_Incremental_GetGlyphDataFunc</a>     get_glyph_data;
+    <a href="ft2-incremental.html#FT_Incremental_FreeGlyphDataFunc">FT_Incremental_FreeGlyphDataFunc</a>    free_glyph_data;
+    <a href="ft2-incremental.html#FT_Incremental_GetGlyphMetricsFunc">FT_Incremental_GetGlyphMetricsFunc</a>  get_glyph_metrics;
+
+  } <b>FT_Incremental_FuncsRec</b>;
+</pre>
+
+<p>A table of functions for accessing fonts that load data incrementally. Used in <a href="ft2-incremental.html#FT_Incremental_InterfaceRec">FT_Incremental_InterfaceRec</a>.</p>
+
+<h4>fields</h4>
+<table class="fields">
+<tr><td class="val" id="get_glyph_data">get_glyph_data</td><td class="desc">
+<p>The function to get glyph data. Must not be null.</p>
+</td></tr>
+<tr><td class="val" id="free_glyph_data">free_glyph_data</td><td class="desc">
+<p>The function to release glyph data. Must not be null.</p>
+</td></tr>
+<tr><td class="val" id="get_glyph_metrics">get_glyph_metrics</td><td class="desc">
+<p>The function to get glyph metrics. May be null if the font does not provide overriding glyph metrics.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Incremental_InterfaceRec">FT_Incremental_InterfaceRec</h3>
+<p>Defined in FT_INCREMENTAL_H (freetype/ftincrem.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span>  FT_Incremental_InterfaceRec_
+  {
+    <span class="keyword">const</span> <a href="ft2-incremental.html#FT_Incremental_FuncsRec">FT_Incremental_FuncsRec</a>*  funcs;
+    <a href="ft2-incremental.html#FT_Incremental">FT_Incremental</a>                  object;
+
+  } <b>FT_Incremental_InterfaceRec</b>;
+</pre>
+
+<p>A structure to be used with <a href="ft2-base_interface.html#FT_Open_Face">FT_Open_Face</a> to indicate that the user wants to support incremental glyph loading. You should use it with <a href="ft2-incremental.html#FT_PARAM_TAG_INCREMENTAL">FT_PARAM_TAG_INCREMENTAL</a> as in the following example:</p>
+<pre class="colored">
+  FT_Incremental_InterfaceRec  inc_int;
+  FT_Parameter                 parameter;
+  FT_Open_Args                 open_args;
+
+
+  // set up incremental descriptor
+  inc_int.funcs  = my_funcs;
+  inc_int.object = my_object;
+
+  // set up optional parameter
+  parameter.tag  = FT_PARAM_TAG_INCREMENTAL;
+  parameter.data = &amp;inc_int;
+
+  // set up FT_Open_Args structure
+  open_args.flags      = FT_OPEN_PATHNAME | FT_OPEN_PARAMS;
+  open_args.pathname   = my_font_pathname;
+  open_args.num_params = 1;
+  open_args.params     = &amp;parameter; // we use one optional argument
+
+  // open the font
+  error = FT_Open_Face( library, &amp;open_args, index, &amp;face );
+  ...
+</pre>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Incremental_Interface">FT_Incremental_Interface</h3>
+<p>Defined in FT_INCREMENTAL_H (freetype/ftincrem.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <a href="ft2-incremental.html#FT_Incremental_InterfaceRec">FT_Incremental_InterfaceRec</a>*   <b>FT_Incremental_Interface</b>;
+</pre>
+
+<p>A pointer to an <a href="ft2-incremental.html#FT_Incremental_InterfaceRec">FT_Incremental_InterfaceRec</a> structure.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_PARAM_TAG_INCREMENTAL">FT_PARAM_TAG_INCREMENTAL</h3>
+<p>Defined in FT_INCREMENTAL_H (freetype/ftincrem.h).</p>
+<pre>
+#define <b>FT_PARAM_TAG_INCREMENTAL</b>  <a href="ft2-basic_types.html#FT_MAKE_TAG">FT_MAKE_TAG</a>( 'i', 'n', 'c', 'r' )
+</pre>
+
+<p>A constant used as the tag of <a href="ft2-base_interface.html#FT_Parameter">FT_Parameter</a> structures to indicate an incremental loading object to be used by FreeType.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+</body>
+</html>

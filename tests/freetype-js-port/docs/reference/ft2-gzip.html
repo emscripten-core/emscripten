@@ -1,0 +1,199 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>FreeType-2.6.3 API Reference</title>
+<style type="text/css">
+  a:link { color: #0000EF; }
+  a:visited { color: #51188E; }
+  a:hover { color: #FF0000; }
+
+  body { font-family: Verdana, Geneva, Arial, Helvetica, serif;
+         color: #000000;
+         background: #FFFFFF;
+         width: 87%;
+         margin: auto; }
+
+  div.section { width: 75%;
+                margin: auto; }
+  div.section hr { margin: 4ex 0 1ex 0; }
+  div.section h4 { background-color: #EEEEFF;
+                   font-size: medium;
+                   font-style: oblique;
+                   font-weight: bold;
+                   margin: 3ex 0 1.5ex 9%;
+                   padding: 0.3ex 0 0.3ex 1%; }
+  div.section p { margin: 1.5ex 0 1.5ex 10%; }
+  div.section pre { margin: 3ex 0 3ex 9%;
+                    background-color: #D6E8FF;
+                    padding: 2ex 0 2ex 1%; }
+  div.section table.fields { width: 90%;
+                             margin: 1.5ex 0 1.5ex 10%; }
+  div.section table.toc { width: 95%;
+                          margin: 1.5ex 0 1.5ex 5%; }
+  div.timestamp { text-align: center;
+                  font-size: 69%;
+                  margin: 1.5ex 0 1.5ex 0; }
+
+  h1 { text-align: center; }
+  h3 { font-size: medium;
+       margin: 4ex 0 1.5ex 0; }
+
+  p { text-align: justify; }
+
+  pre.colored { color: blue; }
+
+  span.keyword { font-family: monospace;
+                 text-align: left;
+                 white-space: pre;
+                 color: darkblue; }
+
+  table.fields td.val { font-weight: bold;
+                        text-align: right;
+                        width: 30%;
+                        vertical-align: baseline;
+                        padding: 1ex 1em 1ex 0; }
+  table.fields td.desc { vertical-align: baseline;
+                         padding: 1ex 0 1ex 1em; }
+  table.fields td.desc p:first-child { margin: 0; }
+  table.fields td.desc p { margin: 1.5ex 0 0 0; }
+  table.index { margin: 6ex auto 6ex auto;
+                border: 0;
+                border-collapse: separate;
+                border-spacing: 1em 0.3ex; }
+  table.index tr { padding: 0; }
+  table.index td { padding: 0; }
+  table.index-toc-link { width: 100%;
+                         border: 0;
+                         border-spacing: 0;
+                         margin: 1ex 0 1ex 0; }
+  table.index-toc-link td.left { padding: 0 0.5em 0 0.5em;
+                                 font-size: 83%;
+                                 text-align: left; }
+  table.index-toc-link td.middle { padding: 0 0.5em 0 0.5em;
+                                   font-size: 83%;
+                                   text-align: center; }
+  table.index-toc-link td.right { padding: 0 0.5em 0 0.5em;
+                                  font-size: 83%;
+                                  text-align: right; }
+  table.synopsis { margin: 6ex auto 6ex auto;
+                   border: 0;
+                   border-collapse: separate;
+                   border-spacing: 2em 0.6ex; }
+  table.synopsis tr { padding: 0; }
+  table.synopsis td { padding: 0; }
+  table.toc td.link { width: 30%;
+                      text-align: right;
+                      vertical-align: baseline;
+                      padding: 1ex 1em 1ex 0; }
+  table.toc td.desc { vertical-align: baseline;
+                      padding: 1ex 0 1ex 1em;
+                      text-align: left; }
+  table.toc td.desc p:first-child { margin: 0;
+                                    text-align: left; }
+  table.toc td.desc p { margin: 1.5ex 0 0 0;
+                        text-align: left; }
+
+</style>
+</head>
+<body>
+
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table>
+<h1>FreeType-2.6.3 API Reference</h1>
+
+<h1 id="gzip">GZIP Streams</h1>
+<h2>Synopsis</h2>
+<table class="synopsis">
+<tr><td><a href="#FT_Stream_OpenGzip">FT_Stream_OpenGzip</a></td><td><a href="#FT_Gzip_Uncompress">FT_Gzip_Uncompress</a></td><td></td></tr>
+</table>
+
+
+<p>This section contains the declaration of Gzip-specific functions.</p>
+
+<div class="section">
+<h3 id="FT_Stream_OpenGzip">FT_Stream_OpenGzip</h3>
+<p>Defined in FT_GZIP_H (freetype/ftgzip.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Stream_OpenGzip</b>( <a href="ft2-system_interface.html#FT_Stream">FT_Stream</a>  stream,
+                      <a href="ft2-system_interface.html#FT_Stream">FT_Stream</a>  source );
+</pre>
+
+<p>Open a new stream to parse gzip-compressed font files. This is mainly used to support the compressed &lsquo;*.pcf.gz&rsquo; fonts that come with XFree86.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="stream">stream</td><td class="desc">
+<p>The target embedding stream.</p>
+</td></tr>
+<tr><td class="val" id="source">source</td><td class="desc">
+<p>The source stream.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>The source stream must be opened <i>before</i> calling this function.</p>
+<p>Calling the internal function &lsquo;FT_Stream_Close&rsquo; on the new stream will <b>not</b> call &lsquo;FT_Stream_Close&rsquo; on the source stream. None of the stream objects will be released to the heap.</p>
+<p>The stream implementation is very basic and resets the decompression process each time seeking backwards is needed within the stream.</p>
+<p>In certain builds of the library, gzip compression recognition is automatically handled when calling <a href="ft2-base_interface.html#FT_New_Face">FT_New_Face</a> or <a href="ft2-base_interface.html#FT_Open_Face">FT_Open_Face</a>. This means that if no font driver is capable of handling the raw compressed file, the library will try to open a gzipped stream from it and re-open the face with it.</p>
+<p>This function may return &lsquo;FT_Err_Unimplemented_Feature&rsquo; if your build of FreeType was not compiled with zlib support.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Gzip_Uncompress">FT_Gzip_Uncompress</h3>
+<p>Defined in FT_GZIP_H (freetype/ftgzip.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Gzip_Uncompress</b>( <a href="ft2-system_interface.html#FT_Memory">FT_Memory</a>       memory,
+                      <a href="ft2-basic_types.html#FT_Byte">FT_Byte</a>*        output,
+                      <a href="ft2-basic_types.html#FT_ULong">FT_ULong</a>*       output_len,
+                      <span class="keyword">const</span> <a href="ft2-basic_types.html#FT_Byte">FT_Byte</a>*  input,
+                      <a href="ft2-basic_types.html#FT_ULong">FT_ULong</a>        input_len );
+</pre>
+
+<p>Decompress a zipped input buffer into an output buffer. This function is modeled after zlib's &lsquo;uncompress&rsquo; function.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="memory">memory</td><td class="desc">
+<p>A FreeType memory handle.</p>
+</td></tr>
+<tr><td class="val" id="input">input</td><td class="desc">
+<p>The input buffer.</p>
+</td></tr>
+<tr><td class="val" id="input_len">input_len</td><td class="desc">
+<p>The length of the input buffer.</p>
+</td></tr>
+</table>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="output">output</td><td class="desc">
+<p>The output buffer.</p>
+</td></tr>
+</table>
+
+<h4>inout</h4>
+<table class="fields">
+<tr><td class="val" id="output_len">output_len</td><td class="desc">
+<p>Before calling the function, this is the the total size of the output buffer, which must be large enough to hold the entire uncompressed data (so the size of the uncompressed data must be known in advance). After calling the function, &lsquo;output_len&rsquo; is the size of the used data in &lsquo;output&rsquo;.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>This function may return &lsquo;FT_Err_Unimplemented_Feature&rsquo; if your build of FreeType was not compiled with zlib support.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+</body>
+</html>

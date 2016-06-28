@@ -1,0 +1,482 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>FreeType-2.6.3 API Reference</title>
+<style type="text/css">
+  a:link { color: #0000EF; }
+  a:visited { color: #51188E; }
+  a:hover { color: #FF0000; }
+
+  body { font-family: Verdana, Geneva, Arial, Helvetica, serif;
+         color: #000000;
+         background: #FFFFFF;
+         width: 87%;
+         margin: auto; }
+
+  div.section { width: 75%;
+                margin: auto; }
+  div.section hr { margin: 4ex 0 1ex 0; }
+  div.section h4 { background-color: #EEEEFF;
+                   font-size: medium;
+                   font-style: oblique;
+                   font-weight: bold;
+                   margin: 3ex 0 1.5ex 9%;
+                   padding: 0.3ex 0 0.3ex 1%; }
+  div.section p { margin: 1.5ex 0 1.5ex 10%; }
+  div.section pre { margin: 3ex 0 3ex 9%;
+                    background-color: #D6E8FF;
+                    padding: 2ex 0 2ex 1%; }
+  div.section table.fields { width: 90%;
+                             margin: 1.5ex 0 1.5ex 10%; }
+  div.section table.toc { width: 95%;
+                          margin: 1.5ex 0 1.5ex 5%; }
+  div.timestamp { text-align: center;
+                  font-size: 69%;
+                  margin: 1.5ex 0 1.5ex 0; }
+
+  h1 { text-align: center; }
+  h3 { font-size: medium;
+       margin: 4ex 0 1.5ex 0; }
+
+  p { text-align: justify; }
+
+  pre.colored { color: blue; }
+
+  span.keyword { font-family: monospace;
+                 text-align: left;
+                 white-space: pre;
+                 color: darkblue; }
+
+  table.fields td.val { font-weight: bold;
+                        text-align: right;
+                        width: 30%;
+                        vertical-align: baseline;
+                        padding: 1ex 1em 1ex 0; }
+  table.fields td.desc { vertical-align: baseline;
+                         padding: 1ex 0 1ex 1em; }
+  table.fields td.desc p:first-child { margin: 0; }
+  table.fields td.desc p { margin: 1.5ex 0 0 0; }
+  table.index { margin: 6ex auto 6ex auto;
+                border: 0;
+                border-collapse: separate;
+                border-spacing: 1em 0.3ex; }
+  table.index tr { padding: 0; }
+  table.index td { padding: 0; }
+  table.index-toc-link { width: 100%;
+                         border: 0;
+                         border-spacing: 0;
+                         margin: 1ex 0 1ex 0; }
+  table.index-toc-link td.left { padding: 0 0.5em 0 0.5em;
+                                 font-size: 83%;
+                                 text-align: left; }
+  table.index-toc-link td.middle { padding: 0 0.5em 0 0.5em;
+                                   font-size: 83%;
+                                   text-align: center; }
+  table.index-toc-link td.right { padding: 0 0.5em 0 0.5em;
+                                  font-size: 83%;
+                                  text-align: right; }
+  table.synopsis { margin: 6ex auto 6ex auto;
+                   border: 0;
+                   border-collapse: separate;
+                   border-spacing: 2em 0.6ex; }
+  table.synopsis tr { padding: 0; }
+  table.synopsis td { padding: 0; }
+  table.toc td.link { width: 30%;
+                      text-align: right;
+                      vertical-align: baseline;
+                      padding: 1ex 1em 1ex 0; }
+  table.toc td.desc { vertical-align: baseline;
+                      padding: 1ex 0 1ex 1em;
+                      text-align: left; }
+  table.toc td.desc p:first-child { margin: 0;
+                                    text-align: left; }
+  table.toc td.desc p { margin: 1.5ex 0 0 0;
+                        text-align: left; }
+
+</style>
+</head>
+<body>
+
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table>
+<h1>FreeType-2.6.3 API Reference</h1>
+
+<h1 id="multiple_masters">Multiple Masters</h1>
+<h2>Synopsis</h2>
+<table class="synopsis">
+<tr><td><a href="#FT_MM_Axis">FT_MM_Axis</a></td><td><a href="#FT_Get_MM_Var">FT_Get_MM_Var</a></td></tr>
+<tr><td><a href="#FT_Multi_Master">FT_Multi_Master</a></td><td><a href="#FT_Set_MM_Design_Coordinates">FT_Set_MM_Design_Coordinates</a></td></tr>
+<tr><td><a href="#FT_Var_Axis">FT_Var_Axis</a></td><td><a href="#FT_Set_Var_Design_Coordinates">FT_Set_Var_Design_Coordinates</a></td></tr>
+<tr><td><a href="#FT_Var_Named_Style">FT_Var_Named_Style</a></td><td><a href="#FT_Set_MM_Blend_Coordinates">FT_Set_MM_Blend_Coordinates</a></td></tr>
+<tr><td><a href="#FT_MM_Var">FT_MM_Var</a></td><td><a href="#FT_Set_Var_Blend_Coordinates">FT_Set_Var_Blend_Coordinates</a></td></tr>
+<tr><td><a href="#FT_Get_Multi_Master">FT_Get_Multi_Master</a></td><td></td></tr>
+</table>
+
+
+<p>The following types and functions are used to manage Multiple Master fonts, i.e., the selection of specific design instances by setting design axis coordinates.</p>
+<p>George Williams has extended this interface to make it work with both Type&nbsp;1 Multiple Masters fonts and GX distortable (var) fonts. Some of these routines only work with MM fonts, others will work with both types. They are similar enough that a consistent interface makes sense.</p>
+
+<div class="section">
+<h3 id="FT_MM_Axis">FT_MM_Axis</h3>
+<p>Defined in FT_MULTIPLE_MASTERS_H (freetype/ftmm.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span>  FT_MM_Axis_
+  {
+    <a href="ft2-basic_types.html#FT_String">FT_String</a>*  name;
+    <a href="ft2-basic_types.html#FT_Long">FT_Long</a>     minimum;
+    <a href="ft2-basic_types.html#FT_Long">FT_Long</a>     maximum;
+
+  } <b>FT_MM_Axis</b>;
+</pre>
+
+<p>A simple structure used to model a given axis in design space for Multiple Masters fonts.</p>
+<p>This structure can't be used for GX var fonts.</p>
+
+<h4>fields</h4>
+<table class="fields">
+<tr><td class="val" id="name">name</td><td class="desc">
+<p>The axis's name.</p>
+</td></tr>
+<tr><td class="val" id="minimum">minimum</td><td class="desc">
+<p>The axis's minimum design coordinate.</p>
+</td></tr>
+<tr><td class="val" id="maximum">maximum</td><td class="desc">
+<p>The axis's maximum design coordinate.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Multi_Master">FT_Multi_Master</h3>
+<p>Defined in FT_MULTIPLE_MASTERS_H (freetype/ftmm.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span>  FT_Multi_Master_
+  {
+    <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>     num_axis;
+    <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>     num_designs;
+    <a href="ft2-multiple_masters.html#FT_MM_Axis">FT_MM_Axis</a>  axis[T1_MAX_MM_AXIS];
+
+  } <b>FT_Multi_Master</b>;
+</pre>
+
+<p>A structure used to model the axes and space of a Multiple Masters font.</p>
+<p>This structure can't be used for GX var fonts.</p>
+
+<h4>fields</h4>
+<table class="fields">
+<tr><td class="val" id="num_axis">num_axis</td><td class="desc">
+<p>Number of axes. Cannot exceed&nbsp;4.</p>
+</td></tr>
+<tr><td class="val" id="num_designs">num_designs</td><td class="desc">
+<p>Number of designs; should be normally 2^num_axis even though the Type&nbsp;1 specification strangely allows for intermediate designs to be present. This number cannot exceed&nbsp;16.</p>
+</td></tr>
+<tr><td class="val" id="axis">axis</td><td class="desc">
+<p>A table of axis descriptors.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Var_Axis">FT_Var_Axis</h3>
+<p>Defined in FT_MULTIPLE_MASTERS_H (freetype/ftmm.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span>  FT_Var_Axis_
+  {
+    <a href="ft2-basic_types.html#FT_String">FT_String</a>*  name;
+
+    <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>    minimum;
+    <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>    def;
+    <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>    maximum;
+
+    <a href="ft2-basic_types.html#FT_ULong">FT_ULong</a>    tag;
+    <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>     strid;
+
+  } <b>FT_Var_Axis</b>;
+</pre>
+
+<p>A simple structure used to model a given axis in design space for Multiple Masters and GX var fonts.</p>
+
+<h4>fields</h4>
+<table class="fields">
+<tr><td class="val" id="name">name</td><td class="desc">
+<p>The axis's name. Not always meaningful for GX.</p>
+</td></tr>
+<tr><td class="val" id="minimum">minimum</td><td class="desc">
+<p>The axis's minimum design coordinate.</p>
+</td></tr>
+<tr><td class="val" id="def">def</td><td class="desc">
+<p>The axis's default design coordinate. FreeType computes meaningful default values for MM; it is then an integer value, not in 16.16 format.</p>
+</td></tr>
+<tr><td class="val" id="maximum">maximum</td><td class="desc">
+<p>The axis's maximum design coordinate.</p>
+</td></tr>
+<tr><td class="val" id="tag">tag</td><td class="desc">
+<p>The axis's tag (the GX equivalent to &lsquo;name&rsquo;). FreeType provides default values for MM if possible.</p>
+</td></tr>
+<tr><td class="val" id="strid">strid</td><td class="desc">
+<p>The entry in &lsquo;name&rsquo; table (another GX version of &lsquo;name&rsquo;). Not meaningful for MM.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Var_Named_Style">FT_Var_Named_Style</h3>
+<p>Defined in FT_MULTIPLE_MASTERS_H (freetype/ftmm.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span>  FT_Var_Named_Style_
+  {
+    <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>*  coords;
+    <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>    strid;
+
+  } <b>FT_Var_Named_Style</b>;
+</pre>
+
+<p>A simple structure used to model a named style in a GX var font.</p>
+<p>This structure can't be used for MM fonts.</p>
+
+<h4>fields</h4>
+<table class="fields">
+<tr><td class="val" id="coords">coords</td><td class="desc">
+<p>The design coordinates for this style. This is an array with one entry for each axis.</p>
+</td></tr>
+<tr><td class="val" id="strid">strid</td><td class="desc">
+<p>The entry in &lsquo;name&rsquo; table identifying this style.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_MM_Var">FT_MM_Var</h3>
+<p>Defined in FT_MULTIPLE_MASTERS_H (freetype/ftmm.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span>  FT_MM_Var_
+  {
+    <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>              num_axis;
+    <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>              num_designs;
+    <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>              num_namedstyles;
+    <a href="ft2-multiple_masters.html#FT_Var_Axis">FT_Var_Axis</a>*         axis;
+    <a href="ft2-multiple_masters.html#FT_Var_Named_Style">FT_Var_Named_Style</a>*  namedstyle;
+
+  } <b>FT_MM_Var</b>;
+</pre>
+
+<p>A structure used to model the axes and space of a Multiple Masters or GX var distortable font.</p>
+<p>Some fields are specific to one format and not to the other.</p>
+
+<h4>fields</h4>
+<table class="fields">
+<tr><td class="val" id="num_axis">num_axis</td><td class="desc">
+<p>The number of axes. The maximum value is&nbsp;4 for MM; no limit in GX.</p>
+</td></tr>
+<tr><td class="val" id="num_designs">num_designs</td><td class="desc">
+<p>The number of designs; should be normally 2^num_axis for MM fonts. Not meaningful for GX (where every glyph could have a different number of designs).</p>
+</td></tr>
+<tr><td class="val" id="num_namedstyles">num_namedstyles</td><td class="desc">
+<p>The number of named styles; only meaningful for GX that allows certain design coordinates to have a string ID (in the &lsquo;name&rsquo; table) associated with them. The font can tell the user that, for example, Weight=1.5 is &lsquo;Bold&rsquo;.</p>
+</td></tr>
+<tr><td class="val" id="axis">axis</td><td class="desc">
+<p>An axis descriptor table. GX fonts contain slightly more data than MM. Memory management of this pointer is done internally by FreeType.</p>
+</td></tr>
+<tr><td class="val" id="namedstyle">namedstyle</td><td class="desc">
+<p>A named style table. Only meaningful with GX. Memory management of this pointer is done internally by FreeType.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Get_Multi_Master">FT_Get_Multi_Master</h3>
+<p>Defined in FT_MULTIPLE_MASTERS_H (freetype/ftmm.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Get_Multi_Master</b>( <a href="ft2-base_interface.html#FT_Face">FT_Face</a>           face,
+                       <a href="ft2-multiple_masters.html#FT_Multi_Master">FT_Multi_Master</a>  *amaster );
+</pre>
+
+<p>Retrieve the Multiple Master descriptor of a given font.</p>
+<p>This function can't be used with GX fonts.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="face">face</td><td class="desc">
+<p>A handle to the source face.</p>
+</td></tr>
+</table>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="amaster">amaster</td><td class="desc">
+<p>The Multiple Masters descriptor.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Get_MM_Var">FT_Get_MM_Var</h3>
+<p>Defined in FT_MULTIPLE_MASTERS_H (freetype/ftmm.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Get_MM_Var</b>( <a href="ft2-base_interface.html#FT_Face">FT_Face</a>      face,
+                 <a href="ft2-multiple_masters.html#FT_MM_Var">FT_MM_Var</a>*  *amaster );
+</pre>
+
+<p>Retrieve the Multiple Master/GX var descriptor of a given font.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="face">face</td><td class="desc">
+<p>A handle to the source face.</p>
+</td></tr>
+</table>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="amaster">amaster</td><td class="desc">
+<p>The Multiple Masters/GX var descriptor. Allocates a data structure, which the user must deallocate with &lsquo;free&rsquo; after use.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Set_MM_Design_Coordinates">FT_Set_MM_Design_Coordinates</h3>
+<p>Defined in FT_MULTIPLE_MASTERS_H (freetype/ftmm.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Set_MM_Design_Coordinates</b>( <a href="ft2-base_interface.html#FT_Face">FT_Face</a>   face,
+                                <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>   num_coords,
+                                <a href="ft2-basic_types.html#FT_Long">FT_Long</a>*  coords );
+</pre>
+
+<p>For Multiple Masters fonts, choose an interpolated font design through design coordinates.</p>
+<p>This function can't be used with GX fonts.</p>
+
+<h4>inout</h4>
+<table class="fields">
+<tr><td class="val" id="face">face</td><td class="desc">
+<p>A handle to the source face.</p>
+</td></tr>
+</table>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="num_coords">num_coords</td><td class="desc">
+<p>The number of available design coordinates. If it is larger than the number of axes, ignore the excess values. If it is smaller than the number of axes, use default values for the remaining axes.</p>
+</td></tr>
+<tr><td class="val" id="coords">coords</td><td class="desc">
+<p>An array of design coordinates.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Set_Var_Design_Coordinates">FT_Set_Var_Design_Coordinates</h3>
+<p>Defined in FT_MULTIPLE_MASTERS_H (freetype/ftmm.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Set_Var_Design_Coordinates</b>( <a href="ft2-base_interface.html#FT_Face">FT_Face</a>    face,
+                                 <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>    num_coords,
+                                 <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>*  coords );
+</pre>
+
+<p>For Multiple Master or GX Var fonts, choose an interpolated font design through design coordinates.</p>
+
+<h4>inout</h4>
+<table class="fields">
+<tr><td class="val" id="face">face</td><td class="desc">
+<p>A handle to the source face.</p>
+</td></tr>
+</table>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="num_coords">num_coords</td><td class="desc">
+<p>The number of available design coordinates. If it is larger than the number of axes, ignore the excess values. If it is smaller than the number of axes, use default values for the remaining axes.</p>
+</td></tr>
+<tr><td class="val" id="coords">coords</td><td class="desc">
+<p>An array of design coordinates.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Set_MM_Blend_Coordinates">FT_Set_MM_Blend_Coordinates</h3>
+<p>Defined in FT_MULTIPLE_MASTERS_H (freetype/ftmm.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Set_MM_Blend_Coordinates</b>( <a href="ft2-base_interface.html#FT_Face">FT_Face</a>    face,
+                               <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>    num_coords,
+                               <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>*  coords );
+</pre>
+
+<p>For Multiple Masters and GX var fonts, choose an interpolated font design through normalized blend coordinates.</p>
+
+<h4>inout</h4>
+<table class="fields">
+<tr><td class="val" id="face">face</td><td class="desc">
+<p>A handle to the source face.</p>
+</td></tr>
+</table>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="num_coords">num_coords</td><td class="desc">
+<p>The number of available design coordinates. If it is larger than the number of axes, ignore the excess values. If it is smaller than the number of axes, use default values for the remaining axes.</p>
+</td></tr>
+<tr><td class="val" id="coords">coords</td><td class="desc">
+<p>The design coordinates array (each element must be between 0 and 1.0).</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Set_Var_Blend_Coordinates">FT_Set_Var_Blend_Coordinates</h3>
+<p>Defined in FT_MULTIPLE_MASTERS_H (freetype/ftmm.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Set_Var_Blend_Coordinates</b>( <a href="ft2-base_interface.html#FT_Face">FT_Face</a>    face,
+                                <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>    num_coords,
+                                <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>*  coords );
+</pre>
+
+<p>This is another name of <a href="ft2-multiple_masters.html#FT_Set_MM_Blend_Coordinates">FT_Set_MM_Blend_Coordinates</a>.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+</body>
+</html>

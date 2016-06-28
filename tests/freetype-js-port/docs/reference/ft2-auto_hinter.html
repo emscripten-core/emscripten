@@ -1,0 +1,417 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>FreeType-2.6.3 API Reference</title>
+<style type="text/css">
+  a:link { color: #0000EF; }
+  a:visited { color: #51188E; }
+  a:hover { color: #FF0000; }
+
+  body { font-family: Verdana, Geneva, Arial, Helvetica, serif;
+         color: #000000;
+         background: #FFFFFF;
+         width: 87%;
+         margin: auto; }
+
+  div.section { width: 75%;
+                margin: auto; }
+  div.section hr { margin: 4ex 0 1ex 0; }
+  div.section h4 { background-color: #EEEEFF;
+                   font-size: medium;
+                   font-style: oblique;
+                   font-weight: bold;
+                   margin: 3ex 0 1.5ex 9%;
+                   padding: 0.3ex 0 0.3ex 1%; }
+  div.section p { margin: 1.5ex 0 1.5ex 10%; }
+  div.section pre { margin: 3ex 0 3ex 9%;
+                    background-color: #D6E8FF;
+                    padding: 2ex 0 2ex 1%; }
+  div.section table.fields { width: 90%;
+                             margin: 1.5ex 0 1.5ex 10%; }
+  div.section table.toc { width: 95%;
+                          margin: 1.5ex 0 1.5ex 5%; }
+  div.timestamp { text-align: center;
+                  font-size: 69%;
+                  margin: 1.5ex 0 1.5ex 0; }
+
+  h1 { text-align: center; }
+  h3 { font-size: medium;
+       margin: 4ex 0 1.5ex 0; }
+
+  p { text-align: justify; }
+
+  pre.colored { color: blue; }
+
+  span.keyword { font-family: monospace;
+                 text-align: left;
+                 white-space: pre;
+                 color: darkblue; }
+
+  table.fields td.val { font-weight: bold;
+                        text-align: right;
+                        width: 30%;
+                        vertical-align: baseline;
+                        padding: 1ex 1em 1ex 0; }
+  table.fields td.desc { vertical-align: baseline;
+                         padding: 1ex 0 1ex 1em; }
+  table.fields td.desc p:first-child { margin: 0; }
+  table.fields td.desc p { margin: 1.5ex 0 0 0; }
+  table.index { margin: 6ex auto 6ex auto;
+                border: 0;
+                border-collapse: separate;
+                border-spacing: 1em 0.3ex; }
+  table.index tr { padding: 0; }
+  table.index td { padding: 0; }
+  table.index-toc-link { width: 100%;
+                         border: 0;
+                         border-spacing: 0;
+                         margin: 1ex 0 1ex 0; }
+  table.index-toc-link td.left { padding: 0 0.5em 0 0.5em;
+                                 font-size: 83%;
+                                 text-align: left; }
+  table.index-toc-link td.middle { padding: 0 0.5em 0 0.5em;
+                                   font-size: 83%;
+                                   text-align: center; }
+  table.index-toc-link td.right { padding: 0 0.5em 0 0.5em;
+                                  font-size: 83%;
+                                  text-align: right; }
+  table.synopsis { margin: 6ex auto 6ex auto;
+                   border: 0;
+                   border-collapse: separate;
+                   border-spacing: 2em 0.6ex; }
+  table.synopsis tr { padding: 0; }
+  table.synopsis td { padding: 0; }
+  table.toc td.link { width: 30%;
+                      text-align: right;
+                      vertical-align: baseline;
+                      padding: 1ex 1em 1ex 0; }
+  table.toc td.desc { vertical-align: baseline;
+                      padding: 1ex 0 1ex 1em;
+                      text-align: left; }
+  table.toc td.desc p:first-child { margin: 0;
+                                    text-align: left; }
+  table.toc td.desc p { margin: 1.5ex 0 0 0;
+                        text-align: left; }
+
+</style>
+</head>
+<body>
+
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table>
+<h1>FreeType-2.6.3 API Reference</h1>
+
+<h1 id="auto_hinter">The auto-hinter</h1>
+<h2>Synopsis</h2>
+<table class="synopsis">
+<tr><td><a href="#glyph-to-script-map">glyph-to-script-map</a></td><td><a href="#increase-x-height">increase-x-height</a></td></tr>
+<tr><td><a href="#FT_AUTOHINTER_SCRIPT_XXX">FT_AUTOHINTER_SCRIPT_XXX</a></td><td><a href="#FT_Prop_IncreaseXHeight">FT_Prop_IncreaseXHeight</a></td></tr>
+<tr><td><a href="#FT_Prop_GlyphToScriptMap">FT_Prop_GlyphToScriptMap</a></td><td><a href="#warping">warping</a></td></tr>
+<tr><td><a href="#fallback-script">fallback-script</a></td><td><a href="#no-stem-darkening(autofit)">no-stem-darkening</a></td></tr>
+<tr><td><a href="#default-script">default-script</a></td><td><a href="#darkening-parameters(autofit)">darkening-parameters</a></td></tr>
+</table>
+
+
+<p>While FreeType's auto-hinter doesn't expose API functions by itself, it is possible to control its behaviour with <a href="ft2-module_management.html#FT_Property_Set">FT_Property_Set</a> and <a href="ft2-module_management.html#FT_Property_Get">FT_Property_Get</a>. The following lists the available properties together with the necessary macros and structures.</p>
+<p>Note that the auto-hinter's module name is &lsquo;autofitter&rsquo; for historical reasons.</p>
+
+<div class="section">
+<h3 id="glyph-to-script-map">glyph-to-script-map</h3>
+
+<p><b>Experimental</b> <b>only</b></p>
+<p>The auto-hinter provides various script modules to hint glyphs. Examples of supported scripts are Latin or CJK. Before a glyph is auto-hinted, the Unicode character map of the font gets examined, and the script is then determined based on Unicode character ranges, see below.</p>
+<p>OpenType fonts, however, often provide much more glyphs than character codes (small caps, superscripts, ligatures, swashes, etc.), to be controlled by so-called &lsquo;features&rsquo;. Handling OpenType features can be quite complicated and thus needs a separate library on top of FreeType.</p>
+<p>The mapping between glyph indices and scripts (in the auto-hinter sense, see the <a href="ft2-auto_hinter.html#FT_AUTOHINTER_SCRIPT_XXX">FT_AUTOHINTER_SCRIPT_XXX</a> values) is stored as an array with &lsquo;num_glyphs&rsquo; elements, as found in the font's <a href="ft2-base_interface.html#FT_Face">FT_Face</a> structure. The &lsquo;glyph-to-script-map&rsquo; property returns a pointer to this array, which can be modified as needed. Note that the modification should happen before the first glyph gets processed by the auto-hinter so that the global analysis of the font shapes actually uses the modified mapping.</p>
+<p>The following example code demonstrates how to access it (omitting the error handling).</p>
+<pre class="colored">
+  FT_Library                library;
+  FT_Face                   face;
+  FT_Prop_GlyphToScriptMap  prop;
+
+
+  FT_Init_FreeType( &amp;library );
+  FT_New_Face( library, "foo.ttf", 0, &amp;face );
+
+  prop.face = face;
+
+  FT_Property_Get( library, "autofitter",
+                            "glyph-to-script-map", &amp;prop );
+
+  // adjust `prop.map' as needed right here
+
+  FT_Load_Glyph( face, ..., FT_LOAD_FORCE_AUTOHINT );
+</pre>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_AUTOHINTER_SCRIPT_XXX">FT_AUTOHINTER_SCRIPT_XXX</h3>
+<p>Defined in FT_AUTOHINTER_H (freetype/ftautoh.h).</p>
+<pre>
+#define <a href="ft2-auto_hinter.html#FT_AUTOHINTER_SCRIPT_NONE">FT_AUTOHINTER_SCRIPT_NONE</a>   0
+#define <a href="ft2-auto_hinter.html#FT_AUTOHINTER_SCRIPT_LATIN">FT_AUTOHINTER_SCRIPT_LATIN</a>  1
+#define <a href="ft2-auto_hinter.html#FT_AUTOHINTER_SCRIPT_CJK">FT_AUTOHINTER_SCRIPT_CJK</a>    2
+#define <a href="ft2-auto_hinter.html#FT_AUTOHINTER_SCRIPT_INDIC">FT_AUTOHINTER_SCRIPT_INDIC</a>  3
+</pre>
+
+<p><b>Experimental</b> <b>only</b></p>
+<p>A list of constants used for the <a href="ft2-auto_hinter.html#glyph-to-script-map">glyph-to-script-map</a> property to specify the script submodule the auto-hinter should use for hinting a particular glyph.</p>
+
+<h4>values</h4>
+<table class="fields">
+<tr><td class="val" id="FT_AUTOHINTER_SCRIPT_NONE">FT_AUTOHINTER_SCRIPT_NONE</td><td class="desc">
+<p>Don't auto-hint this glyph.</p>
+</td></tr>
+<tr><td class="val" id="FT_AUTOHINTER_SCRIPT_LATIN">FT_AUTOHINTER_SCRIPT_LATIN</td><td class="desc">
+<p>Apply the latin auto-hinter. For the auto-hinter, &lsquo;latin&rsquo; is a very broad term, including Cyrillic and Greek also since characters from those scripts share the same design constraints.</p>
+<p>By default, characters from the following Unicode ranges are assigned to this submodule.</p>
+<pre class="colored">
+  U+0020 - U+007F  // Basic Latin (no control characters)
+  U+00A0 - U+00FF  // Latin-1 Supplement (no control characters)
+  U+0100 - U+017F  // Latin Extended-A
+  U+0180 - U+024F  // Latin Extended-B
+  U+0250 - U+02AF  // IPA Extensions
+  U+02B0 - U+02FF  // Spacing Modifier Letters
+  U+0300 - U+036F  // Combining Diacritical Marks
+  U+0370 - U+03FF  // Greek and Coptic
+  U+0400 - U+04FF  // Cyrillic
+  U+0500 - U+052F  // Cyrillic Supplement
+  U+1D00 - U+1D7F  // Phonetic Extensions
+  U+1D80 - U+1DBF  // Phonetic Extensions Supplement
+  U+1DC0 - U+1DFF  // Combining Diacritical Marks Supplement
+  U+1E00 - U+1EFF  // Latin Extended Additional
+  U+1F00 - U+1FFF  // Greek Extended
+  U+2000 - U+206F  // General Punctuation
+  U+2070 - U+209F  // Superscripts and Subscripts
+  U+20A0 - U+20CF  // Currency Symbols
+  U+2150 - U+218F  // Number Forms
+  U+2460 - U+24FF  // Enclosed Alphanumerics
+  U+2C60 - U+2C7F  // Latin Extended-C
+  U+2DE0 - U+2DFF  // Cyrillic Extended-A
+  U+2E00 - U+2E7F  // Supplemental Punctuation
+  U+A640 - U+A69F  // Cyrillic Extended-B
+  U+A720 - U+A7FF  // Latin Extended-D
+  U+FB00 - U+FB06  // Alphab. Present. Forms (Latin Ligatures)
+ U+1D400 - U+1D7FF // Mathematical Alphanumeric Symbols
+ U+1F100 - U+1F1FF // Enclosed Alphanumeric Supplement
+</pre>
+<p></p>
+</td></tr>
+<tr><td class="val" id="FT_AUTOHINTER_SCRIPT_CJK">FT_AUTOHINTER_SCRIPT_CJK</td><td class="desc">
+<p>Apply the CJK auto-hinter, covering Chinese, Japanese, Korean, old Vietnamese, and some other scripts.</p>
+<p>By default, characters from the following Unicode ranges are assigned to this submodule.</p>
+<pre class="colored">
+  U+1100 - U+11FF  // Hangul Jamo
+  U+2E80 - U+2EFF  // CJK Radicals Supplement
+  U+2F00 - U+2FDF  // Kangxi Radicals
+  U+2FF0 - U+2FFF  // Ideographic Description Characters
+  U+3000 - U+303F  // CJK Symbols and Punctuation
+  U+3040 - U+309F  // Hiragana
+  U+30A0 - U+30FF  // Katakana
+  U+3100 - U+312F  // Bopomofo
+  U+3130 - U+318F  // Hangul Compatibility Jamo
+  U+3190 - U+319F  // Kanbun
+  U+31A0 - U+31BF  // Bopomofo Extended
+  U+31C0 - U+31EF  // CJK Strokes
+  U+31F0 - U+31FF  // Katakana Phonetic Extensions
+  U+3200 - U+32FF  // Enclosed CJK Letters and Months
+  U+3300 - U+33FF  // CJK Compatibility
+  U+3400 - U+4DBF  // CJK Unified Ideographs Extension A
+  U+4DC0 - U+4DFF  // Yijing Hexagram Symbols
+  U+4E00 - U+9FFF  // CJK Unified Ideographs
+  U+A960 - U+A97F  // Hangul Jamo Extended-A
+  U+AC00 - U+D7AF  // Hangul Syllables
+  U+D7B0 - U+D7FF  // Hangul Jamo Extended-B
+  U+F900 - U+FAFF  // CJK Compatibility Ideographs
+  U+FE10 - U+FE1F  // Vertical forms
+  U+FE30 - U+FE4F  // CJK Compatibility Forms
+  U+FF00 - U+FFEF  // Halfwidth and Fullwidth Forms
+ U+1B000 - U+1B0FF // Kana Supplement
+ U+1D300 - U+1D35F // Tai Xuan Hing Symbols
+ U+1F200 - U+1F2FF // Enclosed Ideographic Supplement
+ U+20000 - U+2A6DF // CJK Unified Ideographs Extension B
+ U+2A700 - U+2B73F // CJK Unified Ideographs Extension C
+ U+2B740 - U+2B81F // CJK Unified Ideographs Extension D
+ U+2F800 - U+2FA1F // CJK Compatibility Ideographs Supplement
+</pre>
+<p></p>
+</td></tr>
+<tr><td class="val" id="FT_AUTOHINTER_SCRIPT_INDIC">FT_AUTOHINTER_SCRIPT_INDIC</td><td class="desc">
+<p>Apply the indic auto-hinter, covering all major scripts from the Indian sub-continent and some other related scripts like Thai, Lao, or Tibetan.</p>
+<p>By default, characters from the following Unicode ranges are assigned to this submodule.</p>
+<pre class="colored">
+  U+0900 - U+0DFF  // Indic Range
+  U+0F00 - U+0FFF  // Tibetan
+  U+1900 - U+194F  // Limbu
+  U+1B80 - U+1BBF  // Sundanese
+  U+1C80 - U+1CDF  // Meetei Mayak
+  U+A800 - U+A82F  // Syloti Nagri
+ U+11800 - U+118DF // Sharada
+</pre>
+<p>Note that currently Indic support is rudimentary only, missing blue zone support.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Prop_GlyphToScriptMap">FT_Prop_GlyphToScriptMap</h3>
+<p>Defined in FT_AUTOHINTER_H (freetype/ftautoh.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span>  FT_Prop_GlyphToScriptMap_
+  {
+    <a href="ft2-base_interface.html#FT_Face">FT_Face</a>     face;
+    <a href="ft2-basic_types.html#FT_UShort">FT_UShort</a>*  map;
+
+  } <b>FT_Prop_GlyphToScriptMap</b>;
+</pre>
+
+<p><b>Experimental</b> <b>only</b></p>
+<p>The data exchange structure for the <a href="ft2-auto_hinter.html#glyph-to-script-map">glyph-to-script-map</a> property.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="fallback-script">fallback-script</h3>
+
+<p><b>Experimental</b> <b>only</b></p>
+<p>If no auto-hinter script module can be assigned to a glyph, a fallback script gets assigned to it (see also the <a href="ft2-auto_hinter.html#glyph-to-script-map">glyph-to-script-map</a> property). By default, this is <a href="ft2-auto_hinter.html#FT_AUTOHINTER_SCRIPT_XXX">FT_AUTOHINTER_SCRIPT_CJK</a>. Using the &lsquo;fallback-script&rsquo; property, this fallback value can be changed.</p>
+<pre class="colored">
+  FT_Library  library;
+  FT_UInt     fallback_script = FT_AUTOHINTER_SCRIPT_NONE;
+
+
+  FT_Init_FreeType( &amp;library );
+
+  FT_Property_Set( library, "autofitter",
+                            "fallback-script", &amp;fallback_script );
+</pre>
+
+<h4>note</h4>
+<p>This property can be used with <a href="ft2-module_management.html#FT_Property_Get">FT_Property_Get</a> also.</p>
+<p>It's important to use the right timing for changing this value: The creation of the glyph-to-script map that eventually uses the fallback script value gets triggered either by setting or reading a face-specific property like <a href="ft2-auto_hinter.html#glyph-to-script-map">glyph-to-script-map</a>, or by auto-hinting any glyph from that face. In particular, if you have already created an <a href="ft2-base_interface.html#FT_Face">FT_Face</a> structure but not loaded any glyph (using the auto-hinter), a change of the fallback script will affect this face.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="default-script">default-script</h3>
+
+<p><b>Experimental</b> <b>only</b></p>
+<p>If FreeType gets compiled with FT_CONFIG_OPTION_USE_HARFBUZZ to make the HarfBuzz library access OpenType features for getting better glyph coverages, this property sets the (auto-fitter) script to be used for the default (OpenType) script data of a font's GSUB table. Features for the default script are intended for all scripts not explicitly handled in GSUB; an example is a &lsquo;dlig&rsquo; feature, containing the combination of the characters &lsquo;T&rsquo;, &lsquo;E&rsquo;, and &lsquo;L&rsquo; to form a &lsquo;TEL&rsquo; ligature.</p>
+<p>By default, this is <a href="ft2-auto_hinter.html#FT_AUTOHINTER_SCRIPT_XXX">FT_AUTOHINTER_SCRIPT_LATIN</a>. Using the &lsquo;default-script&rsquo; property, this default value can be changed.</p>
+<pre class="colored">
+  FT_Library  library;
+  FT_UInt     default_script = FT_AUTOHINTER_SCRIPT_NONE;
+
+
+  FT_Init_FreeType( &amp;library );
+
+  FT_Property_Set( library, "autofitter",
+                            "default-script", &amp;default_script );
+</pre>
+
+<h4>note</h4>
+<p>This property can be used with <a href="ft2-module_management.html#FT_Property_Get">FT_Property_Get</a> also.</p>
+<p>It's important to use the right timing for changing this value: The creation of the glyph-to-script map that eventually uses the default script value gets triggered either by setting or reading a face-specific property like <a href="ft2-auto_hinter.html#glyph-to-script-map">glyph-to-script-map</a>, or by auto-hinting any glyph from that face. In particular, if you have already created an <a href="ft2-base_interface.html#FT_Face">FT_Face</a> structure but not loaded any glyph (using the auto-hinter), a change of the default script will affect this face.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="increase-x-height">increase-x-height</h3>
+
+<p>For ppem values in the range 6&nbsp;&lt;= ppem &lt;= &lsquo;increase-x-height&rsquo;, round up the font's x&nbsp;height much more often than normally. If the value is set to&nbsp;0, which is the default, this feature is switched off. Use this property to improve the legibility of small font sizes if necessary.</p>
+<pre class="colored">
+  FT_Library               library;
+  FT_Face                  face;
+  FT_Prop_IncreaseXHeight  prop;
+
+
+  FT_Init_FreeType( &amp;library );
+  FT_New_Face( library, "foo.ttf", 0, &amp;face );
+  FT_Set_Char_Size( face, 10 * 64, 0, 72, 0 );
+
+  prop.face  = face;
+  prop.limit = 14;
+
+  FT_Property_Set( library, "autofitter",
+                            "increase-x-height", &amp;prop );
+</pre>
+
+<h4>note</h4>
+<p>This property can be used with <a href="ft2-module_management.html#FT_Property_Get">FT_Property_Get</a> also.</p>
+<p>Set this value right after calling <a href="ft2-base_interface.html#FT_Set_Char_Size">FT_Set_Char_Size</a>, but before loading any glyph (using the auto-hinter).</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Prop_IncreaseXHeight">FT_Prop_IncreaseXHeight</h3>
+<p>Defined in FT_AUTOHINTER_H (freetype/ftautoh.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span>  FT_Prop_IncreaseXHeight_
+  {
+    <a href="ft2-base_interface.html#FT_Face">FT_Face</a>  face;
+    <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>  limit;
+
+  } <b>FT_Prop_IncreaseXHeight</b>;
+</pre>
+
+<p>The data exchange structure for the <a href="ft2-auto_hinter.html#increase-x-height">increase-x-height</a> property.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="warping">warping</h3>
+
+<p><b>Experimental</b> <b>only</b></p>
+<p>If FreeType gets compiled with option AF_CONFIG_OPTION_USE_WARPER to activate the warp hinting code in the auto-hinter, this property switches warping on and off.</p>
+<p>Warping only works in &lsquo;light&rsquo; auto-hinting mode. The idea of the code is to slightly scale and shift a glyph along the non-hinted dimension (which is usually the horizontal axis) so that as much of its segments are aligned (more or less) to the grid. To find out a glyph's optimal scaling and shifting value, various parameter combinations are tried and scored.</p>
+<p>By default, warping is off. The example below shows how to switch on warping (omitting the error handling).</p>
+<pre class="colored">
+  FT_Library  library;
+  FT_Bool     warping = 1;
+
+
+  FT_Init_FreeType( &amp;library );
+
+  FT_Property_Set( library, "autofitter",
+                            "warping", &amp;warping );
+</pre>
+
+<h4>note</h4>
+<p>This property can be used with <a href="ft2-module_management.html#FT_Property_Get">FT_Property_Get</a> also.</p>
+<p>The warping code can also change advance widths. Have a look at the &lsquo;lsb_delta&rsquo; and &lsquo;rsb_delta&rsquo; fields in the <a href="ft2-base_interface.html#FT_GlyphSlotRec">FT_GlyphSlotRec</a> structure for details on improving inter-glyph distances while rendering.</p>
+<p>Since warping is a global property of the auto-hinter it is best to change its value before rendering any face. Otherwise, you should reload all faces that get auto-hinted in &lsquo;light&rsquo; hinting mode.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="no-stem-darkening(autofit)">no-stem-darkening</h3>
+
+<p><b>Experimental</b> *only,* <b>requires</b> <b>linear</b> <b>alpha</b> <b>blending</b> <b>and</b> <b>gamma</b> <b>correction</b></p>
+<p>Stem darkening emboldens glyphs at smaller sizes to make them more readable on common low-DPI screens when using linear alpha blending and gamma correction, see <a href="ft2-base_interface.html#FT_Render_Glyph">FT_Render_Glyph</a>. When not using linear alpha blending and gamma correction, glyphs will appear heavy and fuzzy!</p>
+<p>Gamma correction essentially lightens fonts since shades of grey are shifted to higher pixel values (=&nbsp;higher brightness) to match the original intention to the reality of our screens. The side-effect is that glyphs &lsquo;thin out&rsquo;. Mac OS&nbsp;X and Adobe's proprietary font rendering library implement a counter-measure: stem darkening at smaller sizes where shades of gray dominate. By emboldening a glyph slightly in relation to its pixel size, individual pixels get higher coverage of filled-in outlines and are therefore &lsquo;blacker&rsquo;. This counteracts the &lsquo;thinning out&rsquo; of glyphs, making text remain readable at smaller sizes. All glyphs that pass through the auto-hinter will be emboldened unless this property is set to TRUE.</p>
+<p>See the description of the CFF driver for algorithmic details. Total consistency with the CFF driver is currently not achieved because the emboldening method differs and glyphs must be scaled down on the Y-axis to keep outline points inside their precomputed blue zones. The smaller the size (especially 9ppem and down), the higher the loss of emboldening versus the CFF driver.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="darkening-parameters(autofit)">darkening-parameters</h3>
+
+<p><b>Experimental</b> <b>only</b></p>
+<p>See the description of the CFF driver for details. This implementation appropriates the CFF_CONFIG_OPTION_DARKENING_PARAMETER_* #defines for consistency. Note the differences described in <a href="ft2-auto_hinter.html#no-stem-darkening(autofit)">no-stem-darkening</a>.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+</body>
+</html>

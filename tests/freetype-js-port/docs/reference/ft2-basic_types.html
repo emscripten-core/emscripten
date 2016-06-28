@@ -1,0 +1,866 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>FreeType-2.6.3 API Reference</title>
+<style type="text/css">
+  a:link { color: #0000EF; }
+  a:visited { color: #51188E; }
+  a:hover { color: #FF0000; }
+
+  body { font-family: Verdana, Geneva, Arial, Helvetica, serif;
+         color: #000000;
+         background: #FFFFFF;
+         width: 87%;
+         margin: auto; }
+
+  div.section { width: 75%;
+                margin: auto; }
+  div.section hr { margin: 4ex 0 1ex 0; }
+  div.section h4 { background-color: #EEEEFF;
+                   font-size: medium;
+                   font-style: oblique;
+                   font-weight: bold;
+                   margin: 3ex 0 1.5ex 9%;
+                   padding: 0.3ex 0 0.3ex 1%; }
+  div.section p { margin: 1.5ex 0 1.5ex 10%; }
+  div.section pre { margin: 3ex 0 3ex 9%;
+                    background-color: #D6E8FF;
+                    padding: 2ex 0 2ex 1%; }
+  div.section table.fields { width: 90%;
+                             margin: 1.5ex 0 1.5ex 10%; }
+  div.section table.toc { width: 95%;
+                          margin: 1.5ex 0 1.5ex 5%; }
+  div.timestamp { text-align: center;
+                  font-size: 69%;
+                  margin: 1.5ex 0 1.5ex 0; }
+
+  h1 { text-align: center; }
+  h3 { font-size: medium;
+       margin: 4ex 0 1.5ex 0; }
+
+  p { text-align: justify; }
+
+  pre.colored { color: blue; }
+
+  span.keyword { font-family: monospace;
+                 text-align: left;
+                 white-space: pre;
+                 color: darkblue; }
+
+  table.fields td.val { font-weight: bold;
+                        text-align: right;
+                        width: 30%;
+                        vertical-align: baseline;
+                        padding: 1ex 1em 1ex 0; }
+  table.fields td.desc { vertical-align: baseline;
+                         padding: 1ex 0 1ex 1em; }
+  table.fields td.desc p:first-child { margin: 0; }
+  table.fields td.desc p { margin: 1.5ex 0 0 0; }
+  table.index { margin: 6ex auto 6ex auto;
+                border: 0;
+                border-collapse: separate;
+                border-spacing: 1em 0.3ex; }
+  table.index tr { padding: 0; }
+  table.index td { padding: 0; }
+  table.index-toc-link { width: 100%;
+                         border: 0;
+                         border-spacing: 0;
+                         margin: 1ex 0 1ex 0; }
+  table.index-toc-link td.left { padding: 0 0.5em 0 0.5em;
+                                 font-size: 83%;
+                                 text-align: left; }
+  table.index-toc-link td.middle { padding: 0 0.5em 0 0.5em;
+                                   font-size: 83%;
+                                   text-align: center; }
+  table.index-toc-link td.right { padding: 0 0.5em 0 0.5em;
+                                  font-size: 83%;
+                                  text-align: right; }
+  table.synopsis { margin: 6ex auto 6ex auto;
+                   border: 0;
+                   border-collapse: separate;
+                   border-spacing: 2em 0.6ex; }
+  table.synopsis tr { padding: 0; }
+  table.synopsis td { padding: 0; }
+  table.toc td.link { width: 30%;
+                      text-align: right;
+                      vertical-align: baseline;
+                      padding: 1ex 1em 1ex 0; }
+  table.toc td.desc { vertical-align: baseline;
+                      padding: 1ex 0 1ex 1em;
+                      text-align: left; }
+  table.toc td.desc p:first-child { margin: 0;
+                                    text-align: left; }
+  table.toc td.desc p { margin: 1.5ex 0 0 0;
+                        text-align: left; }
+
+</style>
+</head>
+<body>
+
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table>
+<h1>FreeType-2.6.3 API Reference</h1>
+
+<h1 id="basic_types">Basic Data Types</h1>
+<h2>Synopsis</h2>
+<table class="synopsis">
+<tr><td><a href="#FT_Byte">FT_Byte</a></td><td><a href="#FT_Bool">FT_Bool</a></td><td><a href="#FT_UnitVector">FT_UnitVector</a></td></tr>
+<tr><td><a href="#FT_Bytes">FT_Bytes</a></td><td><a href="#FT_Offset">FT_Offset</a></td><td><a href="#FT_F26Dot6">FT_F26Dot6</a></td></tr>
+<tr><td><a href="#FT_Char">FT_Char</a></td><td><a href="#FT_PtrDist">FT_PtrDist</a></td><td><a href="#FT_Data">FT_Data</a></td></tr>
+<tr><td><a href="#FT_Int">FT_Int</a></td><td><a href="#FT_String">FT_String</a></td><td>&nbsp;</td></tr>
+<tr><td><a href="#FT_UInt">FT_UInt</a></td><td><a href="#FT_Tag">FT_Tag</a></td><td><a href="#FT_MAKE_TAG">FT_MAKE_TAG</a></td></tr>
+<tr><td><a href="#FT_Int16">FT_Int16</a></td><td><a href="#FT_Error">FT_Error</a></td><td>&nbsp;</td></tr>
+<tr><td><a href="#FT_UInt16">FT_UInt16</a></td><td><a href="#FT_Fixed">FT_Fixed</a></td><td><a href="#FT_Generic">FT_Generic</a></td></tr>
+<tr><td><a href="#FT_Int32">FT_Int32</a></td><td><a href="#FT_Pointer">FT_Pointer</a></td><td><a href="#FT_Generic_Finalizer">FT_Generic_Finalizer</a></td></tr>
+<tr><td><a href="#FT_UInt32">FT_UInt32</a></td><td><a href="#FT_Pos">FT_Pos</a></td><td>&nbsp;</td></tr>
+<tr><td><a href="#FT_Int64">FT_Int64</a></td><td><a href="#FT_Vector">FT_Vector</a></td><td><a href="#FT_Bitmap">FT_Bitmap</a></td></tr>
+<tr><td><a href="#FT_UInt64">FT_UInt64</a></td><td><a href="#FT_BBox">FT_BBox</a></td><td><a href="#FT_Pixel_Mode">FT_Pixel_Mode</a></td></tr>
+<tr><td><a href="#FT_Short">FT_Short</a></td><td><a href="#FT_Matrix">FT_Matrix</a></td><td><a href="#FT_Palette_Mode">FT_Palette_Mode</a></td></tr>
+<tr><td><a href="#FT_UShort">FT_UShort</a></td><td><a href="#FT_FWord">FT_FWord</a></td><td><a href="#FT_Glyph_Format">FT_Glyph_Format</a></td></tr>
+<tr><td><a href="#FT_Long">FT_Long</a></td><td><a href="#FT_UFWord">FT_UFWord</a></td><td><a href="#FT_IMAGE_TAG">FT_IMAGE_TAG</a></td></tr>
+<tr><td><a href="#FT_ULong">FT_ULong</a></td><td><a href="#FT_F2Dot14">FT_F2Dot14</a></td><td></td></tr>
+</table>
+
+
+<p>This section contains the basic data types defined by FreeType&nbsp;2, ranging from simple scalar types to bitmap descriptors. More font-specific structures are defined in a different section.</p>
+
+<div class="section">
+<h3 id="FT_Byte">FT_Byte</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">unsigned</span> <span class="keyword">char</span>  <b>FT_Byte</b>;
+</pre>
+
+<p>A simple typedef for the <i>unsigned</i> char type.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Bytes">FT_Bytes</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">const</span> <a href="ft2-basic_types.html#FT_Byte">FT_Byte</a>*  <b>FT_Bytes</b>;
+</pre>
+
+<p>A typedef for constant memory areas.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Char">FT_Char</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">signed</span> <span class="keyword">char</span>  <b>FT_Char</b>;
+</pre>
+
+<p>A simple typedef for the <i>signed</i> char type.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Int">FT_Int</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">signed</span> <span class="keyword">int</span>  <b>FT_Int</b>;
+</pre>
+
+<p>A typedef for the int type.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_UInt">FT_UInt</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">unsigned</span> <span class="keyword">int</span>  <b>FT_UInt</b>;
+</pre>
+
+<p>A typedef for the unsigned int type.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Int16">FT_Int16</h3>
+<p>Defined in FT_CONFIG_CONFIG_H (freetype/config/ftconfig.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">signed</span> <span class="keyword">short</span>  <b>FT_Int16</b>;
+</pre>
+
+<p>A typedef for a 16bit signed integer type.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_UInt16">FT_UInt16</h3>
+<p>Defined in FT_CONFIG_CONFIG_H (freetype/config/ftconfig.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">unsigned</span> <span class="keyword">short</span>  <b>FT_UInt16</b>;
+</pre>
+
+<p>A typedef for a 16bit unsigned integer type.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Int32">FT_Int32</h3>
+<p>Defined in FT_CONFIG_CONFIG_H (freetype/config/ftconfig.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">signed</span> XXX  <b>FT_Int32</b>;
+</pre>
+
+<p>A typedef for a 32bit signed integer type. The size depends on the configuration.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_UInt32">FT_UInt32</h3>
+<p>Defined in FT_CONFIG_CONFIG_H (freetype/config/ftconfig.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">unsigned</span> XXX  <b>FT_UInt32</b>;
+</pre>
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Int64">FT_Int64</h3>
+<p>Defined in FT_CONFIG_CONFIG_H (freetype/config/ftconfig.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">signed</span> XXX  <b>FT_Int64</b>;
+</pre>
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_UInt64">FT_UInt64</h3>
+<p>Defined in FT_CONFIG_CONFIG_H (freetype/config/ftconfig.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">unsigned</span> XXX  <b>FT_UInt64</b>;
+</pre>
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Short">FT_Short</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">signed</span> <span class="keyword">short</span>  <b>FT_Short</b>;
+</pre>
+
+<p>A typedef for signed short.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_UShort">FT_UShort</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">unsigned</span> <span class="keyword">short</span>  <b>FT_UShort</b>;
+</pre>
+
+<p>A typedef for unsigned short.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Long">FT_Long</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">signed</span> <span class="keyword">long</span>  <b>FT_Long</b>;
+</pre>
+
+<p>A typedef for signed long.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_ULong">FT_ULong</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">unsigned</span> <span class="keyword">long</span>  <b>FT_ULong</b>;
+</pre>
+
+<p>A typedef for unsigned long.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Bool">FT_Bool</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">unsigned</span> <span class="keyword">char</span>  <b>FT_Bool</b>;
+</pre>
+
+<p>A typedef of unsigned char, used for simple booleans. As usual, values 1 and&nbsp;0 represent true and false, respectively.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Offset">FT_Offset</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> size_t  <b>FT_Offset</b>;
+</pre>
+
+<p>This is equivalent to the ANSI&nbsp;C &lsquo;size_t&rsquo; type, i.e., the largest <i>unsigned</i> integer type used to express a file size or position, or a memory block size.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_PtrDist">FT_PtrDist</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> ft_ptrdiff_t  <b>FT_PtrDist</b>;
+</pre>
+
+<p>This is equivalent to the ANSI&nbsp;C &lsquo;ptrdiff_t&rsquo; type, i.e., the largest <i>signed</i> integer type used to express the distance between two pointers.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_String">FT_String</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">char</span>  <b>FT_String</b>;
+</pre>
+
+<p>A simple typedef for the char type, usually used for strings.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Tag">FT_Tag</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <a href="ft2-basic_types.html#FT_UInt32">FT_UInt32</a>  <b>FT_Tag</b>;
+</pre>
+
+<p>A typedef for 32-bit tags (as used in the SFNT format).</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Error">FT_Error</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">int</span>  <b>FT_Error</b>;
+</pre>
+
+<p>The FreeType error code type. A value of&nbsp;0 is always interpreted as a successful operation.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Fixed">FT_Fixed</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">signed</span> <span class="keyword">long</span>  <b>FT_Fixed</b>;
+</pre>
+
+<p>This type is used to store 16.16 fixed-point values, like scaling values or matrix coefficients.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Pointer">FT_Pointer</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">void</span>*  <b>FT_Pointer</b>;
+</pre>
+
+<p>A simple typedef for a typeless pointer.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Pos">FT_Pos</h3>
+<p>Defined in FT_IMAGE_H (freetype/ftimage.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">signed</span> <span class="keyword">long</span>  <b>FT_Pos</b>;
+</pre>
+
+<p>The type FT_Pos is used to store vectorial coordinates. Depending on the context, these can represent distances in integer font units, or 16.16, or 26.6 fixed-point pixel coordinates.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Vector">FT_Vector</h3>
+<p>Defined in FT_IMAGE_H (freetype/ftimage.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span>  FT_Vector_
+  {
+    <a href="ft2-basic_types.html#FT_Pos">FT_Pos</a>  x;
+    <a href="ft2-basic_types.html#FT_Pos">FT_Pos</a>  y;
+
+  } <b>FT_Vector</b>;
+</pre>
+
+<p>A simple structure used to store a 2D vector; coordinates are of the FT_Pos type.</p>
+
+<h4>fields</h4>
+<table class="fields">
+<tr><td class="val" id="x">x</td><td class="desc">
+<p>The horizontal coordinate.</p>
+</td></tr>
+<tr><td class="val" id="y">y</td><td class="desc">
+<p>The vertical coordinate.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_BBox">FT_BBox</h3>
+<p>Defined in FT_IMAGE_H (freetype/ftimage.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span>  FT_BBox_
+  {
+    <a href="ft2-basic_types.html#FT_Pos">FT_Pos</a>  xMin, yMin;
+    <a href="ft2-basic_types.html#FT_Pos">FT_Pos</a>  xMax, yMax;
+
+  } <b>FT_BBox</b>;
+</pre>
+
+<p>A structure used to hold an outline's bounding box, i.e., the coordinates of its extrema in the horizontal and vertical directions.</p>
+
+<h4>fields</h4>
+<table class="fields">
+<tr><td class="val" id="xMin">xMin</td><td class="desc">
+<p>The horizontal minimum (left-most).</p>
+</td></tr>
+<tr><td class="val" id="yMin">yMin</td><td class="desc">
+<p>The vertical minimum (bottom-most).</p>
+</td></tr>
+<tr><td class="val" id="xMax">xMax</td><td class="desc">
+<p>The horizontal maximum (right-most).</p>
+</td></tr>
+<tr><td class="val" id="yMax">yMax</td><td class="desc">
+<p>The vertical maximum (top-most).</p>
+</td></tr>
+</table>
+
+<h4>note</h4>
+<p>The bounding box is specified with the coordinates of the lower left and the upper right corner. In PostScript, those values are often called (llx,lly) and (urx,ury), respectively.</p>
+<p>If &lsquo;yMin&rsquo; is negative, this value gives the glyph's descender. Otherwise, the glyph doesn't descend below the baseline. Similarly, if &lsquo;ymax&rsquo; is positive, this value gives the glyph's ascender.</p>
+<p>&lsquo;xMin&rsquo; gives the horizontal distance from the glyph's origin to the left edge of the glyph's bounding box. If &lsquo;xMin&rsquo; is negative, the glyph extends to the left of the origin.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Matrix">FT_Matrix</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span>  FT_Matrix_
+  {
+    <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>  xx, xy;
+    <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>  yx, yy;
+
+  } <b>FT_Matrix</b>;
+</pre>
+
+<p>A simple structure used to store a 2x2 matrix. Coefficients are in 16.16 fixed-point format. The computation performed is:</p>
+<pre class="colored">
+   x' = x*xx + y*xy                                             
+   y' = x*yx + y*yy                                             
+</pre>
+
+<h4>fields</h4>
+<table class="fields">
+<tr><td class="val" id="xx">xx</td><td class="desc">
+<p>Matrix coefficient.</p>
+</td></tr>
+<tr><td class="val" id="xy">xy</td><td class="desc">
+<p>Matrix coefficient.</p>
+</td></tr>
+<tr><td class="val" id="yx">yx</td><td class="desc">
+<p>Matrix coefficient.</p>
+</td></tr>
+<tr><td class="val" id="yy">yy</td><td class="desc">
+<p>Matrix coefficient.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_FWord">FT_FWord</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">signed</span> <span class="keyword">short</span>  <b>FT_FWord</b>;   /* distance in FUnits */
+</pre>
+
+<p>A signed 16-bit integer used to store a distance in original font units.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_UFWord">FT_UFWord</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">unsigned</span> <span class="keyword">short</span>  <b>FT_UFWord</b>;  /* <span class="keyword">unsigned</span> distance */
+</pre>
+
+<p>An unsigned 16-bit integer used to store a distance in original font units.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_F2Dot14">FT_F2Dot14</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">signed</span> <span class="keyword">short</span>  <b>FT_F2Dot14</b>;
+</pre>
+
+<p>A signed 2.14 fixed-point type used for unit vectors.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_UnitVector">FT_UnitVector</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span>  FT_UnitVector_
+  {
+    <a href="ft2-basic_types.html#FT_F2Dot14">FT_F2Dot14</a>  x;
+    <a href="ft2-basic_types.html#FT_F2Dot14">FT_F2Dot14</a>  y;
+
+  } <b>FT_UnitVector</b>;
+</pre>
+
+<p>A simple structure used to store a 2D vector unit vector. Uses FT_F2Dot14 types.</p>
+
+<h4>fields</h4>
+<table class="fields">
+<tr><td class="val" id="x">x</td><td class="desc">
+<p>Horizontal coordinate.</p>
+</td></tr>
+<tr><td class="val" id="y">y</td><td class="desc">
+<p>Vertical coordinate.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_F26Dot6">FT_F26Dot6</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">signed</span> <span class="keyword">long</span>  <b>FT_F26Dot6</b>;
+</pre>
+
+<p>A signed 26.6 fixed-point type used for vectorial pixel coordinates.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Data">FT_Data</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span>  FT_Data_
+  {
+    <span class="keyword">const</span> <a href="ft2-basic_types.html#FT_Byte">FT_Byte</a>*  pointer;
+    <a href="ft2-basic_types.html#FT_Int">FT_Int</a>          length;
+
+  } <b>FT_Data</b>;
+</pre>
+
+<p>Read-only binary data represented as a pointer and a length.</p>
+
+<h4>fields</h4>
+<table class="fields">
+<tr><td class="val" id="pointer">pointer</td><td class="desc">
+<p>The data.</p>
+</td></tr>
+<tr><td class="val" id="length">length</td><td class="desc">
+<p>The length of the data in bytes.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_MAKE_TAG">FT_MAKE_TAG</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+#define <b>FT_MAKE_TAG</b>( _x1, _x2, _x3, _x4 ) \
+          (<a href="ft2-basic_types.html#FT_Tag">FT_Tag</a>)                        \
+          ( ( (<a href="ft2-basic_types.html#FT_ULong">FT_ULong</a>)_x1 &lt;&lt; 24 ) |     \
+            ( (<a href="ft2-basic_types.html#FT_ULong">FT_ULong</a>)_x2 &lt;&lt; 16 ) |     \
+            ( (<a href="ft2-basic_types.html#FT_ULong">FT_ULong</a>)_x3 &lt;&lt;  8 ) |     \
+              (<a href="ft2-basic_types.html#FT_ULong">FT_ULong</a>)_x4         )
+</pre>
+
+<p>This macro converts four-letter tags that are used to label TrueType tables into an unsigned long, to be used within FreeType.</p>
+
+<h4>note</h4>
+<p>The produced values <b>must</b> be 32-bit integers. Don't redefine this macro.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Generic">FT_Generic</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span>  FT_Generic_
+  {
+    <span class="keyword">void</span>*                 data;
+    <a href="ft2-basic_types.html#FT_Generic_Finalizer">FT_Generic_Finalizer</a>  finalizer;
+
+  } <b>FT_Generic</b>;
+</pre>
+
+<p>Client applications often need to associate their own data to a variety of FreeType core objects. For example, a text layout API might want to associate a glyph cache to a given size object.</p>
+<p>Some FreeType object contains a &lsquo;generic&rsquo; field, of type FT_Generic, which usage is left to client applications and font servers.</p>
+<p>It can be used to store a pointer to client-specific data, as well as the address of a &lsquo;finalizer&rsquo; function, which will be called by FreeType when the object is destroyed (for example, the previous client example would put the address of the glyph cache destructor in the &lsquo;finalizer&rsquo; field).</p>
+
+<h4>fields</h4>
+<table class="fields">
+<tr><td class="val" id="data">data</td><td class="desc">
+<p>A typeless pointer to any client-specified data. This field is completely ignored by the FreeType library.</p>
+</td></tr>
+<tr><td class="val" id="finalizer">finalizer</td><td class="desc">
+<p>A pointer to a &lsquo;generic finalizer&rsquo; function, which will be called when the object is destroyed. If this field is set to NULL, no code will be called.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Generic_Finalizer">FT_Generic_Finalizer</h3>
+<p>Defined in FT_TYPES_H (freetype/fttypes.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">void</span>  (*<b>FT_Generic_Finalizer</b>)(<span class="keyword">void</span>*  object);
+</pre>
+
+<p>Describe a function used to destroy the &lsquo;client&rsquo; data of any FreeType object. See the description of the <a href="ft2-basic_types.html#FT_Generic">FT_Generic</a> type for details of usage.</p>
+
+<h4>input</h4>
+<p>The address of the FreeType object that is under finalization. Its client data is accessed through its &lsquo;generic&rsquo; field.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Bitmap">FT_Bitmap</h3>
+<p>Defined in FT_IMAGE_H (freetype/ftimage.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span>  FT_Bitmap_
+  {
+    <span class="keyword">unsigned</span> <span class="keyword">int</span>    rows;
+    <span class="keyword">unsigned</span> <span class="keyword">int</span>    width;
+    <span class="keyword">int</span>             pitch;
+    <span class="keyword">unsigned</span> <span class="keyword">char</span>*  buffer;
+    <span class="keyword">unsigned</span> <span class="keyword">short</span>  num_grays;
+    <span class="keyword">unsigned</span> <span class="keyword">char</span>   pixel_mode;
+    <span class="keyword">unsigned</span> <span class="keyword">char</span>   palette_mode;
+    <span class="keyword">void</span>*           palette;
+
+  } <b>FT_Bitmap</b>;
+</pre>
+
+<p>A structure used to describe a bitmap or pixmap to the raster. Note that we now manage pixmaps of various depths through the &lsquo;pixel_mode&rsquo; field.</p>
+
+<h4>fields</h4>
+<table class="fields">
+<tr><td class="val" id="rows">rows</td><td class="desc">
+<p>The number of bitmap rows.</p>
+</td></tr>
+<tr><td class="val" id="width">width</td><td class="desc">
+<p>The number of pixels in bitmap row.</p>
+</td></tr>
+<tr><td class="val" id="pitch">pitch</td><td class="desc">
+<p>The pitch's absolute value is the number of bytes taken by one bitmap row, including padding. However, the pitch is positive when the bitmap has a &lsquo;down&rsquo; flow, and negative when it has an &lsquo;up&rsquo; flow. In all cases, the pitch is an offset to add to a bitmap pointer in order to go down one row.</p>
+<p>Note that &lsquo;padding&rsquo; means the alignment of a bitmap to a byte border, and FreeType functions normally align to the smallest possible integer value.</p>
+<p>For the B/W rasterizer, &lsquo;pitch&rsquo; is always an even number.</p>
+<p>To change the pitch of a bitmap (say, to make it a multiple of 4), use <a href="ft2-bitmap_handling.html#FT_Bitmap_Convert">FT_Bitmap_Convert</a>. Alternatively, you might use callback functions to directly render to the application's surface; see the file &lsquo;example2.cpp&rsquo; in the tutorial for a demonstration.</p>
+</td></tr>
+<tr><td class="val" id="buffer">buffer</td><td class="desc">
+<p>A typeless pointer to the bitmap buffer. This value should be aligned on 32-bit boundaries in most cases.</p>
+</td></tr>
+<tr><td class="val" id="num_grays">num_grays</td><td class="desc">
+<p>This field is only used with <a href="ft2-basic_types.html#FT_Pixel_Mode">FT_PIXEL_MODE_GRAY</a>; it gives the number of gray levels used in the bitmap.</p>
+</td></tr>
+<tr><td class="val" id="pixel_mode">pixel_mode</td><td class="desc">
+<p>The pixel mode, i.e., how pixel bits are stored. See <a href="ft2-basic_types.html#FT_Pixel_Mode">FT_Pixel_Mode</a> for possible values.</p>
+</td></tr>
+<tr><td class="val" id="palette_mode">palette_mode</td><td class="desc">
+<p>This field is intended for paletted pixel modes; it indicates how the palette is stored. Not used currently.</p>
+</td></tr>
+<tr><td class="val" id="palette">palette</td><td class="desc">
+<p>A typeless pointer to the bitmap palette; this field is intended for paletted pixel modes. Not used currently.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Pixel_Mode">FT_Pixel_Mode</h3>
+<p>Defined in FT_IMAGE_H (freetype/ftimage.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">enum</span>  FT_Pixel_Mode_
+  {
+    <a href="ft2-basic_types.html#FT_PIXEL_MODE_NONE">FT_PIXEL_MODE_NONE</a> = 0,
+    <a href="ft2-basic_types.html#FT_PIXEL_MODE_MONO">FT_PIXEL_MODE_MONO</a>,
+    <a href="ft2-basic_types.html#FT_PIXEL_MODE_GRAY">FT_PIXEL_MODE_GRAY</a>,
+    <a href="ft2-basic_types.html#FT_PIXEL_MODE_GRAY2">FT_PIXEL_MODE_GRAY2</a>,
+    <a href="ft2-basic_types.html#FT_PIXEL_MODE_GRAY4">FT_PIXEL_MODE_GRAY4</a>,
+    <a href="ft2-basic_types.html#FT_PIXEL_MODE_LCD">FT_PIXEL_MODE_LCD</a>,
+    <a href="ft2-basic_types.html#FT_PIXEL_MODE_LCD_V">FT_PIXEL_MODE_LCD_V</a>,
+    <a href="ft2-basic_types.html#FT_PIXEL_MODE_BGRA">FT_PIXEL_MODE_BGRA</a>,
+
+    FT_PIXEL_MODE_MAX      /* do not remove */
+
+  } <b>FT_Pixel_Mode</b>;
+
+
+  /* these constants are deprecated; use the corresponding `<b>FT_Pixel_Mode</b>' */
+  /* values instead.                                                       */
+#define ft_pixel_mode_none   <a href="ft2-basic_types.html#FT_PIXEL_MODE_NONE">FT_PIXEL_MODE_NONE</a>
+#define ft_pixel_mode_mono   <a href="ft2-basic_types.html#FT_PIXEL_MODE_MONO">FT_PIXEL_MODE_MONO</a>
+#define ft_pixel_mode_grays  <a href="ft2-basic_types.html#FT_PIXEL_MODE_GRAY">FT_PIXEL_MODE_GRAY</a>
+#define ft_pixel_mode_pal2   <a href="ft2-basic_types.html#FT_PIXEL_MODE_GRAY2">FT_PIXEL_MODE_GRAY2</a>
+#define ft_pixel_mode_pal4   <a href="ft2-basic_types.html#FT_PIXEL_MODE_GRAY4">FT_PIXEL_MODE_GRAY4</a>
+</pre>
+
+<p>An enumeration type used to describe the format of pixels in a given bitmap. Note that additional formats may be added in the future.</p>
+
+<h4>values</h4>
+<table class="fields">
+<tr><td class="val" id="FT_PIXEL_MODE_NONE">FT_PIXEL_MODE_NONE</td><td class="desc">
+<p>Value&nbsp;0 is reserved.</p>
+</td></tr>
+<tr><td class="val" id="FT_PIXEL_MODE_MONO">FT_PIXEL_MODE_MONO</td><td class="desc">
+<p>A monochrome bitmap, using 1&nbsp;bit per pixel. Note that pixels are stored in most-significant order (MSB), which means that the left-most pixel in a byte has value 128.</p>
+</td></tr>
+<tr><td class="val" id="FT_PIXEL_MODE_GRAY">FT_PIXEL_MODE_GRAY</td><td class="desc">
+<p>An 8-bit bitmap, generally used to represent anti-aliased glyph images. Each pixel is stored in one byte. Note that the number of &lsquo;gray&rsquo; levels is stored in the &lsquo;num_grays&rsquo; field of the <a href="ft2-basic_types.html#FT_Bitmap">FT_Bitmap</a> structure (it generally is 256).</p>
+</td></tr>
+<tr><td class="val" id="FT_PIXEL_MODE_GRAY2">FT_PIXEL_MODE_GRAY2</td><td class="desc">
+<p>A 2-bit per pixel bitmap, used to represent embedded anti-aliased bitmaps in font files according to the OpenType specification. We haven't found a single font using this format, however.</p>
+</td></tr>
+<tr><td class="val" id="FT_PIXEL_MODE_GRAY4">FT_PIXEL_MODE_GRAY4</td><td class="desc">
+<p>A 4-bit per pixel bitmap, representing embedded anti-aliased bitmaps in font files according to the OpenType specification. We haven't found a single font using this format, however.</p>
+</td></tr>
+<tr><td class="val" id="FT_PIXEL_MODE_LCD">FT_PIXEL_MODE_LCD</td><td class="desc">
+<p>An 8-bit bitmap, representing RGB or BGR decimated glyph images used for display on LCD displays; the bitmap is three times wider than the original glyph image. See also <a href="ft2-base_interface.html#FT_Render_Mode">FT_RENDER_MODE_LCD</a>.</p>
+</td></tr>
+<tr><td class="val" id="FT_PIXEL_MODE_LCD_V">FT_PIXEL_MODE_LCD_V</td><td class="desc">
+<p>An 8-bit bitmap, representing RGB or BGR decimated glyph images used for display on rotated LCD displays; the bitmap is three times taller than the original glyph image. See also <a href="ft2-base_interface.html#FT_Render_Mode">FT_RENDER_MODE_LCD_V</a>.</p>
+</td></tr>
+<tr><td class="val" id="FT_PIXEL_MODE_BGRA">FT_PIXEL_MODE_BGRA</td><td class="desc">
+<p>An image with four 8-bit channels per pixel, representing a color image (such as emoticons) with alpha channel. For each pixel, the format is BGRA, which means, the blue channel comes first in memory. The color channels are pre-multiplied and in the sRGB colorspace. For example, full red at half-translucent opacity will be represented as &lsquo;00,00,80,80&rsquo;, not &lsquo;00,00,FF,80&rsquo;. See also <a href="ft2-base_interface.html#FT_LOAD_XXX">FT_LOAD_COLOR</a>.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Glyph_Format">FT_Glyph_Format</h3>
+<p>Defined in FT_IMAGE_H (freetype/ftimage.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">enum</span>  FT_Glyph_Format_
+  {
+    <a href="ft2-basic_types.html#FT_IMAGE_TAG">FT_IMAGE_TAG</a>( <a href="ft2-basic_types.html#FT_GLYPH_FORMAT_NONE">FT_GLYPH_FORMAT_NONE</a>, 0, 0, 0, 0 ),
+
+    <a href="ft2-basic_types.html#FT_IMAGE_TAG">FT_IMAGE_TAG</a>( <a href="ft2-basic_types.html#FT_GLYPH_FORMAT_COMPOSITE">FT_GLYPH_FORMAT_COMPOSITE</a>, 'c', 'o', 'm', 'p' ),
+    <a href="ft2-basic_types.html#FT_IMAGE_TAG">FT_IMAGE_TAG</a>( <a href="ft2-basic_types.html#FT_GLYPH_FORMAT_BITMAP">FT_GLYPH_FORMAT_BITMAP</a>,    'b', 'i', 't', 's' ),
+    <a href="ft2-basic_types.html#FT_IMAGE_TAG">FT_IMAGE_TAG</a>( <a href="ft2-basic_types.html#FT_GLYPH_FORMAT_OUTLINE">FT_GLYPH_FORMAT_OUTLINE</a>,   'o', 'u', 't', 'l' ),
+    <a href="ft2-basic_types.html#FT_IMAGE_TAG">FT_IMAGE_TAG</a>( <a href="ft2-basic_types.html#FT_GLYPH_FORMAT_PLOTTER">FT_GLYPH_FORMAT_PLOTTER</a>,   'p', 'l', 'o', 't' )
+
+  } <b>FT_Glyph_Format</b>;
+
+
+  /* these constants are deprecated; use the corresponding */
+  /* `<b>FT_Glyph_Format</b>' values instead.                     */
+#define ft_glyph_format_none       <a href="ft2-basic_types.html#FT_GLYPH_FORMAT_NONE">FT_GLYPH_FORMAT_NONE</a>
+#define ft_glyph_format_composite  <a href="ft2-basic_types.html#FT_GLYPH_FORMAT_COMPOSITE">FT_GLYPH_FORMAT_COMPOSITE</a>
+#define ft_glyph_format_bitmap     <a href="ft2-basic_types.html#FT_GLYPH_FORMAT_BITMAP">FT_GLYPH_FORMAT_BITMAP</a>
+#define ft_glyph_format_outline    <a href="ft2-basic_types.html#FT_GLYPH_FORMAT_OUTLINE">FT_GLYPH_FORMAT_OUTLINE</a>
+#define ft_glyph_format_plotter    <a href="ft2-basic_types.html#FT_GLYPH_FORMAT_PLOTTER">FT_GLYPH_FORMAT_PLOTTER</a>
+</pre>
+
+<p>An enumeration type used to describe the format of a given glyph image. Note that this version of FreeType only supports two image formats, even though future font drivers will be able to register their own format.</p>
+
+<h4>values</h4>
+<table class="fields">
+<tr><td class="val" id="FT_GLYPH_FORMAT_NONE">FT_GLYPH_FORMAT_NONE</td><td class="desc">
+<p>The value&nbsp;0 is reserved.</p>
+</td></tr>
+<tr><td class="val" id="FT_GLYPH_FORMAT_COMPOSITE">FT_GLYPH_FORMAT_COMPOSITE</td><td class="desc">
+<p>The glyph image is a composite of several other images. This format is <i>only</i> used with <a href="ft2-base_interface.html#FT_LOAD_XXX">FT_LOAD_NO_RECURSE</a>, and is used to report compound glyphs (like accented characters).</p>
+</td></tr>
+<tr><td class="val" id="FT_GLYPH_FORMAT_BITMAP">FT_GLYPH_FORMAT_BITMAP</td><td class="desc">
+<p>The glyph image is a bitmap, and can be described as an <a href="ft2-basic_types.html#FT_Bitmap">FT_Bitmap</a>. You generally need to access the &lsquo;bitmap&rsquo; field of the <a href="ft2-base_interface.html#FT_GlyphSlotRec">FT_GlyphSlotRec</a> structure to read it.</p>
+</td></tr>
+<tr><td class="val" id="FT_GLYPH_FORMAT_OUTLINE">FT_GLYPH_FORMAT_OUTLINE</td><td class="desc">
+<p>The glyph image is a vectorial outline made of line segments and Bézier arcs; it can be described as an <a href="ft2-outline_processing.html#FT_Outline">FT_Outline</a>; you generally want to access the &lsquo;outline&rsquo; field of the <a href="ft2-base_interface.html#FT_GlyphSlotRec">FT_GlyphSlotRec</a> structure to read it.</p>
+</td></tr>
+<tr><td class="val" id="FT_GLYPH_FORMAT_PLOTTER">FT_GLYPH_FORMAT_PLOTTER</td><td class="desc">
+<p>The glyph image is a vectorial path with no inside and outside contours. Some Type&nbsp;1 fonts, like those in the Hershey family, contain glyphs in this format. These are described as <a href="ft2-outline_processing.html#FT_Outline">FT_Outline</a>, but FreeType isn't currently capable of rendering them correctly.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_IMAGE_TAG">FT_IMAGE_TAG</h3>
+<p>Defined in FT_IMAGE_H (freetype/ftimage.h).</p>
+<pre>
+#ifndef <b>FT_IMAGE_TAG</b>
+#define <b>FT_IMAGE_TAG</b>( value, _x1, _x2, _x3, _x4 )  \
+          value = ( ( (<span class="keyword">unsigned</span> <span class="keyword">long</span>)_x1 &lt;&lt; 24 ) | \
+                    ( (<span class="keyword">unsigned</span> <span class="keyword">long</span>)_x2 &lt;&lt; 16 ) | \
+                    ( (<span class="keyword">unsigned</span> <span class="keyword">long</span>)_x3 &lt;&lt; 8  ) | \
+                      (<span class="keyword">unsigned</span> <span class="keyword">long</span>)_x4         )
+#endif /* <b>FT_IMAGE_TAG</b> */
+</pre>
+
+<p>This macro converts four-letter tags to an unsigned long type.</p>
+
+<h4>note</h4>
+<p>Since many 16-bit compilers don't like 32-bit enumerations, you should redefine this macro in case of problems to something like this:</p>
+<pre class="colored">
+  #define FT_IMAGE_TAG( value, _x1, _x2, _x3, _x4 )  value         
+</pre>
+<p>to get a simple enumeration without assigning special numbers.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+</body>
+</html>

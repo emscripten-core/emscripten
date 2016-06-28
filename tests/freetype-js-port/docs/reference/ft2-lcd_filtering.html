@@ -1,0 +1,247 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>FreeType-2.6.3 API Reference</title>
+<style type="text/css">
+  a:link { color: #0000EF; }
+  a:visited { color: #51188E; }
+  a:hover { color: #FF0000; }
+
+  body { font-family: Verdana, Geneva, Arial, Helvetica, serif;
+         color: #000000;
+         background: #FFFFFF;
+         width: 87%;
+         margin: auto; }
+
+  div.section { width: 75%;
+                margin: auto; }
+  div.section hr { margin: 4ex 0 1ex 0; }
+  div.section h4 { background-color: #EEEEFF;
+                   font-size: medium;
+                   font-style: oblique;
+                   font-weight: bold;
+                   margin: 3ex 0 1.5ex 9%;
+                   padding: 0.3ex 0 0.3ex 1%; }
+  div.section p { margin: 1.5ex 0 1.5ex 10%; }
+  div.section pre { margin: 3ex 0 3ex 9%;
+                    background-color: #D6E8FF;
+                    padding: 2ex 0 2ex 1%; }
+  div.section table.fields { width: 90%;
+                             margin: 1.5ex 0 1.5ex 10%; }
+  div.section table.toc { width: 95%;
+                          margin: 1.5ex 0 1.5ex 5%; }
+  div.timestamp { text-align: center;
+                  font-size: 69%;
+                  margin: 1.5ex 0 1.5ex 0; }
+
+  h1 { text-align: center; }
+  h3 { font-size: medium;
+       margin: 4ex 0 1.5ex 0; }
+
+  p { text-align: justify; }
+
+  pre.colored { color: blue; }
+
+  span.keyword { font-family: monospace;
+                 text-align: left;
+                 white-space: pre;
+                 color: darkblue; }
+
+  table.fields td.val { font-weight: bold;
+                        text-align: right;
+                        width: 30%;
+                        vertical-align: baseline;
+                        padding: 1ex 1em 1ex 0; }
+  table.fields td.desc { vertical-align: baseline;
+                         padding: 1ex 0 1ex 1em; }
+  table.fields td.desc p:first-child { margin: 0; }
+  table.fields td.desc p { margin: 1.5ex 0 0 0; }
+  table.index { margin: 6ex auto 6ex auto;
+                border: 0;
+                border-collapse: separate;
+                border-spacing: 1em 0.3ex; }
+  table.index tr { padding: 0; }
+  table.index td { padding: 0; }
+  table.index-toc-link { width: 100%;
+                         border: 0;
+                         border-spacing: 0;
+                         margin: 1ex 0 1ex 0; }
+  table.index-toc-link td.left { padding: 0 0.5em 0 0.5em;
+                                 font-size: 83%;
+                                 text-align: left; }
+  table.index-toc-link td.middle { padding: 0 0.5em 0 0.5em;
+                                   font-size: 83%;
+                                   text-align: center; }
+  table.index-toc-link td.right { padding: 0 0.5em 0 0.5em;
+                                  font-size: 83%;
+                                  text-align: right; }
+  table.synopsis { margin: 6ex auto 6ex auto;
+                   border: 0;
+                   border-collapse: separate;
+                   border-spacing: 2em 0.6ex; }
+  table.synopsis tr { padding: 0; }
+  table.synopsis td { padding: 0; }
+  table.toc td.link { width: 30%;
+                      text-align: right;
+                      vertical-align: baseline;
+                      padding: 1ex 1em 1ex 0; }
+  table.toc td.desc { vertical-align: baseline;
+                      padding: 1ex 0 1ex 1em;
+                      text-align: left; }
+  table.toc td.desc p:first-child { margin: 0;
+                                    text-align: left; }
+  table.toc td.desc p { margin: 1.5ex 0 0 0;
+                        text-align: left; }
+
+</style>
+</head>
+<body>
+
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table>
+<h1>FreeType-2.6.3 API Reference</h1>
+
+<h1 id="lcd_filtering">LCD Filtering</h1>
+<h2>Synopsis</h2>
+<table class="synopsis">
+<tr><td><a href="#FT_LcdFilter">FT_LcdFilter</a></td><td><a href="#FT_Library_SetLcdFilterWeights">FT_Library_SetLcdFilterWeights</a></td></tr>
+<tr><td><a href="#FT_Library_SetLcdFilter">FT_Library_SetLcdFilter</a></td><td></td></tr>
+</table>
+
+
+<p>Subpixel rendering exploits the color-striped structure of LCD pixels, increasing the available resolution in the direction of the stripe (usually horizontal RGB) by a factor of&nbsp;3. Since these subpixels are color pixels, using them unfiltered creates severe color fringes. Use the <a href="ft2-lcd_filtering.html#FT_Library_SetLcdFilter">FT_Library_SetLcdFilter</a> API to specify a low-pass filter, which is then applied to subpixel-rendered bitmaps generated through <a href="ft2-base_interface.html#FT_Render_Glyph">FT_Render_Glyph</a>. The filter sacrifices some of the higher resolution to reduce color fringes, making the glyph image slightly blurrier. Positional improvements will remain.</p>
+<p>Note that no filter is active by default, and that this function is <b>not</b> implemented in default builds of the library. You need to #define FT_CONFIG_OPTION_SUBPIXEL_RENDERING in your &lsquo;ftoption.h&rsquo; file in order to activate it and explicitly call <a href="ft2-lcd_filtering.html#FT_Library_SetLcdFilter">FT_Library_SetLcdFilter</a> to enable it.</p>
+<p>A filter should have two properties:</p>
+<p>1) It should be normalized, meaning the sum of the 5&nbsp;components should be 256 (0x100). It is possible to go above or under this target sum, however: going under means tossing out contrast, going over means invoking clamping and thereby non-linearities that increase contrast somewhat at the expense of greater distortion and color-fringing. Contrast is better enhanced through stem darkening.</p>
+<p>2) It should be color-balanced, meaning a filter &lsquo;{&nbsp;a, b, c, b, a&nbsp;}&rsquo; where a&nbsp;+ b&nbsp;=&nbsp;c. It distributes the computed coverage for one subpixel to all subpixels equally, sacrificing some won resolution but drastically reducing color-fringing. Positioning improvements remain! Note that color-fringing can only really be minimized when using a color-balanced filter and alpha-blending the glyph onto a surface in linear space; see <a href="ft2-base_interface.html#FT_Render_Glyph">FT_Render_Glyph</a>.</p>
+<p>Regarding the form, a filter can be a &lsquo;boxy&rsquo; filter or a &lsquo;beveled&rsquo; filter. Boxy filters are sharper but are less forgiving of non-ideal gamma curves of a screen (viewing angles!), beveled filters are fuzzier but more tolerant.</p>
+<p>Examples:</p>
+<p>- [0x10 0x40 0x70 0x40 0x10] is beveled and neither balanced nor normalized.</p>
+<p>- [0x1A 0x33 0x4D 0x33 0x1A] is beveled and balanced but not normalized.</p>
+<p>- [0x19 0x33 0x66 0x4c 0x19] is beveled and normalized but not balanced.</p>
+<p>- [0x00 0x4c 0x66 0x4c 0x00] is boxily beveled and normalized but not balanced.</p>
+<p>- [0x00 0x55 0x56 0x55 0x00] is boxy, normalized, and almost balanced.</p>
+<p>- [0x08 0x4D 0x56 0x4D 0x08] is beveled, normalized and, almost balanced.</p>
+<p>The filter affects glyph bitmaps rendered through <a href="ft2-base_interface.html#FT_Render_Glyph">FT_Render_Glyph</a>, <a href="ft2-base_interface.html#FT_Load_Glyph">FT_Load_Glyph</a>, and <a href="ft2-base_interface.html#FT_Load_Char">FT_Load_Char</a>. It does <i>not</i> affect the output of <a href="ft2-outline_processing.html#FT_Outline_Render">FT_Outline_Render</a> and <a href="ft2-outline_processing.html#FT_Outline_Get_Bitmap">FT_Outline_Get_Bitmap</a>.</p>
+<p>If this feature is activated, the dimensions of LCD glyph bitmaps are either wider or taller than the dimensions of the corresponding outline with regard to the pixel grid. For example, for <a href="ft2-base_interface.html#FT_Render_Mode">FT_RENDER_MODE_LCD</a>, the filter adds 3&nbsp;subpixels to the left, and 3&nbsp;subpixels to the right. The bitmap offset values are adjusted accordingly, so clients shouldn't need to modify their layout and glyph positioning code when enabling the filter.</p>
+<p>It is important to understand that linear alpha blending and gamma correction is critical for correctly rendering glyphs onto surfaces without artifacts and even more critical when subpixel rendering is involved.</p>
+<p>Each of the 3&nbsp;alpha values (subpixels) is independently used to blend one color channel. That is, red alpha blends the red channel of the text color with the red channel of the background pixel. The distribution of density values by the color-balanced filter assumes alpha blending is done in linear space; only then color artifacts cancel out.</p>
+
+<div class="section">
+<h3 id="FT_LcdFilter">FT_LcdFilter</h3>
+<p>Defined in FT_LCD_FILTER_H (freetype/ftlcdfil.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">enum</span>  FT_LcdFilter_
+  {
+    <a href="ft2-lcd_filtering.html#FT_LCD_FILTER_NONE">FT_LCD_FILTER_NONE</a>    = 0,
+    <a href="ft2-lcd_filtering.html#FT_LCD_FILTER_DEFAULT">FT_LCD_FILTER_DEFAULT</a> = 1,
+    <a href="ft2-lcd_filtering.html#FT_LCD_FILTER_LIGHT">FT_LCD_FILTER_LIGHT</a>   = 2,
+    <a href="ft2-lcd_filtering.html#FT_LCD_FILTER_LEGACY1">FT_LCD_FILTER_LEGACY1</a> = 3,
+    <a href="ft2-lcd_filtering.html#FT_LCD_FILTER_LEGACY">FT_LCD_FILTER_LEGACY</a>  = 16,
+
+    FT_LCD_FILTER_MAX   /* do not remove */
+
+  } <b>FT_LcdFilter</b>;
+</pre>
+
+<p>A list of values to identify various types of LCD filters.</p>
+
+<h4>values</h4>
+<table class="fields">
+<tr><td class="val" id="FT_LCD_FILTER_NONE">FT_LCD_FILTER_NONE</td><td class="desc">
+<p>Do not perform filtering. When used with subpixel rendering, this results in sometimes severe color fringes.</p>
+</td></tr>
+<tr><td class="val" id="FT_LCD_FILTER_DEFAULT">FT_LCD_FILTER_DEFAULT</td><td class="desc">
+<p>The default filter reduces color fringes considerably, at the cost of a slight blurriness in the output.</p>
+<p>It is a beveled, normalized, and color-balanced five-tap filter that is more forgiving to screens with non-ideal gamma curves and viewing angles. Note that while color-fringing is reduced, it can only be minimized by using linear alpha blending and gamma correction to render glyphs onto surfaces. The default filter weights are [0x08 0x4D 0x56 0x4D 0x08].</p>
+</td></tr>
+<tr><td class="val" id="FT_LCD_FILTER_LIGHT">FT_LCD_FILTER_LIGHT</td><td class="desc">
+<p>The light filter is a variant that is sharper at the cost of slightly more color fringes than the default one.</p>
+<p>It is a boxy, normalized, and color-balanced three-tap filter that is less forgiving to screens with non-ideal gamma curves and viewing angles. This filter works best when the rendering system uses linear alpha blending and gamma correction to render glyphs onto surfaces. The light filter weights are [0x00 0x55 0x56 0x55 0x00].</p>
+</td></tr>
+<tr><td class="val" id="FT_LCD_FILTER_LEGACY">FT_LCD_FILTER_LEGACY</td><td class="desc">
+<p>This filter corresponds to the original libXft color filter. It provides high contrast output but can exhibit really bad color fringes if glyphs are not extremely well hinted to the pixel grid. In other words, it only works well if the TrueType bytecode interpreter is enabled <b>and</b> high-quality hinted fonts are used.</p>
+<p>This filter is only provided for comparison purposes, and might be disabled or stay unsupported in the future.</p>
+</td></tr>
+<tr><td class="val" id="FT_LCD_FILTER_LEGACY1">FT_LCD_FILTER_LEGACY1</td><td class="desc">
+<p>For historical reasons, the FontConfig library returns a different enumeration value for legacy LCD filtering. To make code work that (incorrectly) forwards FontConfig's enumeration value to <a href="ft2-lcd_filtering.html#FT_Library_SetLcdFilter">FT_Library_SetLcdFilter</a> without proper mapping, it is thus easiest to have another enumeration value, which is completely equal to &lsquo;FT_LCD_FILTER_LEGACY&rsquo;.</p>
+</td></tr>
+</table>
+
+<h4>since</h4>
+<p>2.3.0 (&lsquo;FT_LCD_FILTER_LEGACY1&rsquo; since 2.6.2)</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Library_SetLcdFilter">FT_Library_SetLcdFilter</h3>
+<p>Defined in FT_LCD_FILTER_H (freetype/ftlcdfil.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Library_SetLcdFilter</b>( <a href="ft2-base_interface.html#FT_Library">FT_Library</a>    library,
+                           <a href="ft2-lcd_filtering.html#FT_LcdFilter">FT_LcdFilter</a>  filter );
+</pre>
+
+<p>This function is used to apply color filtering to LCD decimated bitmaps, like the ones used when calling <a href="ft2-base_interface.html#FT_Render_Glyph">FT_Render_Glyph</a> with <a href="ft2-base_interface.html#FT_Render_Mode">FT_RENDER_MODE_LCD</a> or <a href="ft2-base_interface.html#FT_Render_Mode">FT_RENDER_MODE_LCD_V</a>.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="library">library</td><td class="desc">
+<p>A handle to the target library instance.</p>
+</td></tr>
+<tr><td class="val" id="filter">filter</td><td class="desc">
+<p>The filter type.</p>
+<p>You can use <a href="ft2-lcd_filtering.html#FT_LcdFilter">FT_LCD_FILTER_NONE</a> here to disable this feature, or <a href="ft2-lcd_filtering.html#FT_LcdFilter">FT_LCD_FILTER_DEFAULT</a> to use a default filter that should work well on most LCD screens.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>This feature is always disabled by default. Clients must make an explicit call to this function with a &lsquo;filter&rsquo; value other than <a href="ft2-lcd_filtering.html#FT_LcdFilter">FT_LCD_FILTER_NONE</a> in order to enable it.</p>
+<p>Due to <b>PATENTS</b> covering subpixel rendering, this function doesn't do anything except returning &lsquo;FT_Err_Unimplemented_Feature&rsquo; if the configuration macro FT_CONFIG_OPTION_SUBPIXEL_RENDERING is not defined in your build of the library, which should correspond to all default builds of FreeType.</p>
+
+<h4>since</h4>
+<p>2.3.0</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Library_SetLcdFilterWeights">FT_Library_SetLcdFilterWeights</h3>
+<p>Defined in FT_LCD_FILTER_H (freetype/ftlcdfil.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Library_SetLcdFilterWeights</b>( <a href="ft2-base_interface.html#FT_Library">FT_Library</a>      library,
+                                  <span class="keyword">unsigned</span> <span class="keyword">char</span>  *weights );
+</pre>
+
+<p>This function can be used to enable LCD filter with custom weights, instead of using presets in <a href="ft2-lcd_filtering.html#FT_Library_SetLcdFilter">FT_Library_SetLcdFilter</a>.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="library">library</td><td class="desc">
+<p>A handle to the target library instance.</p>
+</td></tr>
+<tr><td class="val" id="weights">weights</td><td class="desc">
+<p>A pointer to an array; the function copies the first five bytes and uses them to specify the filter weights.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>Due to <b>PATENTS</b> covering subpixel rendering, this function doesn't do anything except returning &lsquo;FT_Err_Unimplemented_Feature&rsquo; if the configuration macro FT_CONFIG_OPTION_SUBPIXEL_RENDERING is not defined in your build of the library, which should correspond to all default builds of FreeType.</p>
+
+<h4>since</h4>
+<p>2.4.0</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+</body>
+</html>

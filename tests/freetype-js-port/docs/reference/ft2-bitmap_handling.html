@@ -1,0 +1,323 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>FreeType-2.6.3 API Reference</title>
+<style type="text/css">
+  a:link { color: #0000EF; }
+  a:visited { color: #51188E; }
+  a:hover { color: #FF0000; }
+
+  body { font-family: Verdana, Geneva, Arial, Helvetica, serif;
+         color: #000000;
+         background: #FFFFFF;
+         width: 87%;
+         margin: auto; }
+
+  div.section { width: 75%;
+                margin: auto; }
+  div.section hr { margin: 4ex 0 1ex 0; }
+  div.section h4 { background-color: #EEEEFF;
+                   font-size: medium;
+                   font-style: oblique;
+                   font-weight: bold;
+                   margin: 3ex 0 1.5ex 9%;
+                   padding: 0.3ex 0 0.3ex 1%; }
+  div.section p { margin: 1.5ex 0 1.5ex 10%; }
+  div.section pre { margin: 3ex 0 3ex 9%;
+                    background-color: #D6E8FF;
+                    padding: 2ex 0 2ex 1%; }
+  div.section table.fields { width: 90%;
+                             margin: 1.5ex 0 1.5ex 10%; }
+  div.section table.toc { width: 95%;
+                          margin: 1.5ex 0 1.5ex 5%; }
+  div.timestamp { text-align: center;
+                  font-size: 69%;
+                  margin: 1.5ex 0 1.5ex 0; }
+
+  h1 { text-align: center; }
+  h3 { font-size: medium;
+       margin: 4ex 0 1.5ex 0; }
+
+  p { text-align: justify; }
+
+  pre.colored { color: blue; }
+
+  span.keyword { font-family: monospace;
+                 text-align: left;
+                 white-space: pre;
+                 color: darkblue; }
+
+  table.fields td.val { font-weight: bold;
+                        text-align: right;
+                        width: 30%;
+                        vertical-align: baseline;
+                        padding: 1ex 1em 1ex 0; }
+  table.fields td.desc { vertical-align: baseline;
+                         padding: 1ex 0 1ex 1em; }
+  table.fields td.desc p:first-child { margin: 0; }
+  table.fields td.desc p { margin: 1.5ex 0 0 0; }
+  table.index { margin: 6ex auto 6ex auto;
+                border: 0;
+                border-collapse: separate;
+                border-spacing: 1em 0.3ex; }
+  table.index tr { padding: 0; }
+  table.index td { padding: 0; }
+  table.index-toc-link { width: 100%;
+                         border: 0;
+                         border-spacing: 0;
+                         margin: 1ex 0 1ex 0; }
+  table.index-toc-link td.left { padding: 0 0.5em 0 0.5em;
+                                 font-size: 83%;
+                                 text-align: left; }
+  table.index-toc-link td.middle { padding: 0 0.5em 0 0.5em;
+                                   font-size: 83%;
+                                   text-align: center; }
+  table.index-toc-link td.right { padding: 0 0.5em 0 0.5em;
+                                  font-size: 83%;
+                                  text-align: right; }
+  table.synopsis { margin: 6ex auto 6ex auto;
+                   border: 0;
+                   border-collapse: separate;
+                   border-spacing: 2em 0.6ex; }
+  table.synopsis tr { padding: 0; }
+  table.synopsis td { padding: 0; }
+  table.toc td.link { width: 30%;
+                      text-align: right;
+                      vertical-align: baseline;
+                      padding: 1ex 1em 1ex 0; }
+  table.toc td.desc { vertical-align: baseline;
+                      padding: 1ex 0 1ex 1em;
+                      text-align: left; }
+  table.toc td.desc p:first-child { margin: 0;
+                                    text-align: left; }
+  table.toc td.desc p { margin: 1.5ex 0 0 0;
+                        text-align: left; }
+
+</style>
+</head>
+<body>
+
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table>
+<h1>FreeType-2.6.3 API Reference</h1>
+
+<h1 id="bitmap_handling">Bitmap Handling</h1>
+<h2>Synopsis</h2>
+<table class="synopsis">
+<tr><td><a href="#FT_Bitmap_Init">FT_Bitmap_Init</a></td><td><a href="#FT_Bitmap_Embolden">FT_Bitmap_Embolden</a></td><td><a href="#FT_GlyphSlot_Own_Bitmap">FT_GlyphSlot_Own_Bitmap</a></td></tr>
+<tr><td><a href="#FT_Bitmap_Copy">FT_Bitmap_Copy</a></td><td><a href="#FT_Bitmap_Convert">FT_Bitmap_Convert</a></td><td><a href="#FT_Bitmap_Done">FT_Bitmap_Done</a></td></tr>
+</table>
+
+
+<p>This section contains functions for handling <a href="ft2-basic_types.html#FT_Bitmap">FT_Bitmap</a> objects. Note that none of the functions changes the bitmap's &lsquo;flow&rsquo; (as indicated by the sign of the &lsquo;pitch&rsquo; field in &lsquo;FT_Bitmap&rsquo;).</p>
+
+<div class="section">
+<h3 id="FT_Bitmap_Init">FT_Bitmap_Init</h3>
+<p>Defined in FT_BITMAP_H (freetype/ftbitmap.h).</p>
+<pre>
+  FT_EXPORT( <span class="keyword">void</span> )
+  <b>FT_Bitmap_Init</b>( <a href="ft2-basic_types.html#FT_Bitmap">FT_Bitmap</a>  *abitmap );
+
+
+  /* deprecated */
+  FT_EXPORT( <span class="keyword">void</span> )
+  FT_Bitmap_New( <a href="ft2-basic_types.html#FT_Bitmap">FT_Bitmap</a>  *abitmap );
+</pre>
+
+<p>Initialize a pointer to an <a href="ft2-basic_types.html#FT_Bitmap">FT_Bitmap</a> structure.</p>
+
+<h4>inout</h4>
+<table class="fields">
+<tr><td class="val" id="abitmap">abitmap</td><td class="desc">
+<p>A pointer to the bitmap structure.</p>
+</td></tr>
+</table>
+
+<h4>note</h4>
+<p>A deprecated name for the same function is &lsquo;FT_Bitmap_New&rsquo;.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Bitmap_Copy">FT_Bitmap_Copy</h3>
+<p>Defined in FT_BITMAP_H (freetype/ftbitmap.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Bitmap_Copy</b>( <a href="ft2-base_interface.html#FT_Library">FT_Library</a>        library,
+                  <span class="keyword">const</span> <a href="ft2-basic_types.html#FT_Bitmap">FT_Bitmap</a>  *source,
+                  <a href="ft2-basic_types.html#FT_Bitmap">FT_Bitmap</a>        *target);
+</pre>
+
+<p>Copy a bitmap into another one.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="library">library</td><td class="desc">
+<p>A handle to a library object.</p>
+</td></tr>
+<tr><td class="val" id="source">source</td><td class="desc">
+<p>A handle to the source bitmap.</p>
+</td></tr>
+</table>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="target">target</td><td class="desc">
+<p>A handle to the target bitmap.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Bitmap_Embolden">FT_Bitmap_Embolden</h3>
+<p>Defined in FT_BITMAP_H (freetype/ftbitmap.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Bitmap_Embolden</b>( <a href="ft2-base_interface.html#FT_Library">FT_Library</a>  library,
+                      <a href="ft2-basic_types.html#FT_Bitmap">FT_Bitmap</a>*  bitmap,
+                      <a href="ft2-basic_types.html#FT_Pos">FT_Pos</a>      xStrength,
+                      <a href="ft2-basic_types.html#FT_Pos">FT_Pos</a>      yStrength );
+</pre>
+
+<p>Embolden a bitmap. The new bitmap will be about &lsquo;xStrength&rsquo; pixels wider and &lsquo;yStrength&rsquo; pixels higher. The left and bottom borders are kept unchanged.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="library">library</td><td class="desc">
+<p>A handle to a library object.</p>
+</td></tr>
+<tr><td class="val" id="xStrength">xStrength</td><td class="desc">
+<p>How strong the glyph is emboldened horizontally. Expressed in 26.6 pixel format.</p>
+</td></tr>
+<tr><td class="val" id="yStrength">yStrength</td><td class="desc">
+<p>How strong the glyph is emboldened vertically. Expressed in 26.6 pixel format.</p>
+</td></tr>
+</table>
+
+<h4>inout</h4>
+<table class="fields">
+<tr><td class="val" id="bitmap">bitmap</td><td class="desc">
+<p>A handle to the target bitmap.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>The current implementation restricts &lsquo;xStrength&rsquo; to be less than or equal to&nbsp;8 if bitmap is of pixel_mode <a href="ft2-basic_types.html#FT_Pixel_Mode">FT_PIXEL_MODE_MONO</a>.</p>
+<p>If you want to embolden the bitmap owned by a <a href="ft2-base_interface.html#FT_GlyphSlotRec">FT_GlyphSlotRec</a>, you should call <a href="ft2-bitmap_handling.html#FT_GlyphSlot_Own_Bitmap">FT_GlyphSlot_Own_Bitmap</a> on the slot first.</p>
+<p>Bitmaps in <a href="ft2-basic_types.html#FT_Pixel_Mode">FT_PIXEL_MODE_GRAY2</a> and <a href="ft2-basic_types.html#FT_Pixel_Mode">FT_PIXEL_MODE_GRAY</a>@ format are converted to <a href="ft2-basic_types.html#FT_Pixel_Mode">FT_PIXEL_MODE_GRAY</a> format (i.e., 8bpp).</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Bitmap_Convert">FT_Bitmap_Convert</h3>
+<p>Defined in FT_BITMAP_H (freetype/ftbitmap.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Bitmap_Convert</b>( <a href="ft2-base_interface.html#FT_Library">FT_Library</a>        library,
+                     <span class="keyword">const</span> <a href="ft2-basic_types.html#FT_Bitmap">FT_Bitmap</a>  *source,
+                     <a href="ft2-basic_types.html#FT_Bitmap">FT_Bitmap</a>        *target,
+                     <a href="ft2-basic_types.html#FT_Int">FT_Int</a>            alignment );
+</pre>
+
+<p>Convert a bitmap object with depth 1bpp, 2bpp, 4bpp, 8bpp or 32bpp to a bitmap object with depth 8bpp, making the number of used bytes line (a.k.a. the &lsquo;pitch&rsquo;) a multiple of &lsquo;alignment&rsquo;.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="library">library</td><td class="desc">
+<p>A handle to a library object.</p>
+</td></tr>
+<tr><td class="val" id="source">source</td><td class="desc">
+<p>The source bitmap.</p>
+</td></tr>
+<tr><td class="val" id="alignment">alignment</td><td class="desc">
+<p>The pitch of the bitmap is a multiple of this parameter. Common values are 1, 2, or 4.</p>
+</td></tr>
+</table>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="target">target</td><td class="desc">
+<p>The target bitmap.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>It is possible to call <a href="ft2-bitmap_handling.html#FT_Bitmap_Convert">FT_Bitmap_Convert</a> multiple times without calling <a href="ft2-bitmap_handling.html#FT_Bitmap_Done">FT_Bitmap_Done</a> (the memory is simply reallocated).</p>
+<p>Use <a href="ft2-bitmap_handling.html#FT_Bitmap_Done">FT_Bitmap_Done</a> to finally remove the bitmap object.</p>
+<p>The &lsquo;library&rsquo; argument is taken to have access to FreeType's memory handling functions.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_GlyphSlot_Own_Bitmap">FT_GlyphSlot_Own_Bitmap</h3>
+<p>Defined in FT_BITMAP_H (freetype/ftbitmap.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_GlyphSlot_Own_Bitmap</b>( <a href="ft2-base_interface.html#FT_GlyphSlot">FT_GlyphSlot</a>  slot );
+</pre>
+
+<p>Make sure that a glyph slot owns &lsquo;slot-&gt;bitmap&rsquo;.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="slot">slot</td><td class="desc">
+<p>The glyph slot.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>This function is to be used in combination with <a href="ft2-bitmap_handling.html#FT_Bitmap_Embolden">FT_Bitmap_Embolden</a>.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Bitmap_Done">FT_Bitmap_Done</h3>
+<p>Defined in FT_BITMAP_H (freetype/ftbitmap.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Bitmap_Done</b>( <a href="ft2-base_interface.html#FT_Library">FT_Library</a>  library,
+                  <a href="ft2-basic_types.html#FT_Bitmap">FT_Bitmap</a>  *bitmap );
+</pre>
+
+<p>Destroy a bitmap object initialized with <a href="ft2-bitmap_handling.html#FT_Bitmap_Init">FT_Bitmap_Init</a>.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="library">library</td><td class="desc">
+<p>A handle to a library object.</p>
+</td></tr>
+<tr><td class="val" id="bitmap">bitmap</td><td class="desc">
+<p>The bitmap object to be freed.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>The &lsquo;library&rsquo; argument is taken to have access to FreeType's memory handling functions.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+</body>
+</html>

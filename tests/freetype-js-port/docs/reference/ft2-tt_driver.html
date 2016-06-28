@@ -1,0 +1,227 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>FreeType-2.6.3 API Reference</title>
+<style type="text/css">
+  a:link { color: #0000EF; }
+  a:visited { color: #51188E; }
+  a:hover { color: #FF0000; }
+
+  body { font-family: Verdana, Geneva, Arial, Helvetica, serif;
+         color: #000000;
+         background: #FFFFFF;
+         width: 87%;
+         margin: auto; }
+
+  div.section { width: 75%;
+                margin: auto; }
+  div.section hr { margin: 4ex 0 1ex 0; }
+  div.section h4 { background-color: #EEEEFF;
+                   font-size: medium;
+                   font-style: oblique;
+                   font-weight: bold;
+                   margin: 3ex 0 1.5ex 9%;
+                   padding: 0.3ex 0 0.3ex 1%; }
+  div.section p { margin: 1.5ex 0 1.5ex 10%; }
+  div.section pre { margin: 3ex 0 3ex 9%;
+                    background-color: #D6E8FF;
+                    padding: 2ex 0 2ex 1%; }
+  div.section table.fields { width: 90%;
+                             margin: 1.5ex 0 1.5ex 10%; }
+  div.section table.toc { width: 95%;
+                          margin: 1.5ex 0 1.5ex 5%; }
+  div.timestamp { text-align: center;
+                  font-size: 69%;
+                  margin: 1.5ex 0 1.5ex 0; }
+
+  h1 { text-align: center; }
+  h3 { font-size: medium;
+       margin: 4ex 0 1.5ex 0; }
+
+  p { text-align: justify; }
+
+  pre.colored { color: blue; }
+
+  span.keyword { font-family: monospace;
+                 text-align: left;
+                 white-space: pre;
+                 color: darkblue; }
+
+  table.fields td.val { font-weight: bold;
+                        text-align: right;
+                        width: 30%;
+                        vertical-align: baseline;
+                        padding: 1ex 1em 1ex 0; }
+  table.fields td.desc { vertical-align: baseline;
+                         padding: 1ex 0 1ex 1em; }
+  table.fields td.desc p:first-child { margin: 0; }
+  table.fields td.desc p { margin: 1.5ex 0 0 0; }
+  table.index { margin: 6ex auto 6ex auto;
+                border: 0;
+                border-collapse: separate;
+                border-spacing: 1em 0.3ex; }
+  table.index tr { padding: 0; }
+  table.index td { padding: 0; }
+  table.index-toc-link { width: 100%;
+                         border: 0;
+                         border-spacing: 0;
+                         margin: 1ex 0 1ex 0; }
+  table.index-toc-link td.left { padding: 0 0.5em 0 0.5em;
+                                 font-size: 83%;
+                                 text-align: left; }
+  table.index-toc-link td.middle { padding: 0 0.5em 0 0.5em;
+                                   font-size: 83%;
+                                   text-align: center; }
+  table.index-toc-link td.right { padding: 0 0.5em 0 0.5em;
+                                  font-size: 83%;
+                                  text-align: right; }
+  table.synopsis { margin: 6ex auto 6ex auto;
+                   border: 0;
+                   border-collapse: separate;
+                   border-spacing: 2em 0.6ex; }
+  table.synopsis tr { padding: 0; }
+  table.synopsis td { padding: 0; }
+  table.toc td.link { width: 30%;
+                      text-align: right;
+                      vertical-align: baseline;
+                      padding: 1ex 1em 1ex 0; }
+  table.toc td.desc { vertical-align: baseline;
+                      padding: 1ex 0 1ex 1em;
+                      text-align: left; }
+  table.toc td.desc p:first-child { margin: 0;
+                                    text-align: left; }
+  table.toc td.desc p { margin: 1.5ex 0 0 0;
+                        text-align: left; }
+
+</style>
+</head>
+<body>
+
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table>
+<h1>FreeType-2.6.3 API Reference</h1>
+
+<h1 id="tt_driver">The TrueType driver</h1>
+<h2>Synopsis</h2>
+<table class="synopsis">
+<tr><td><a href="#interpreter-version">interpreter-version</a></td><td><a href="#TT_INTERPRETER_VERSION_XXX">TT_INTERPRETER_VERSION_XXX</a></td></tr>
+</table>
+
+
+<p>While FreeType's TrueType driver doesn't expose API functions by itself, it is possible to control its behaviour with <a href="ft2-module_management.html#FT_Property_Set">FT_Property_Set</a> and <a href="ft2-module_management.html#FT_Property_Get">FT_Property_Get</a>. The following lists the available properties together with the necessary macros and structures.</p>
+<p>The TrueType driver's module name is &lsquo;truetype&rsquo;.</p>
+<p>We start with a list of definitions, kindly provided by Greg Hitchcock.</p>
+<p><i>Bi-Level</i> <i>Rendering</i></p>
+<p>Monochromatic rendering, exclusively used in the early days of TrueType by both Apple and Microsoft. Microsoft's GDI interface supported hinting of the right-side bearing point, such that the advance width could be non-linear. Most often this was done to achieve some level of glyph symmetry. To enable reasonable performance (e.g., not having to run hinting on all glyphs just to get the widths) there was a bit in the head table indicating if the side bearing was hinted, and additional tables, &lsquo;hdmx&rsquo; and &lsquo;LTSH&rsquo;, to cache hinting widths across multiple sizes and device aspect ratios.</p>
+<p><i>Font</i> <i>Smoothing</i></p>
+<p>Microsoft's GDI implementation of anti-aliasing. Not traditional anti-aliasing as the outlines were hinted before the sampling. The widths matched the bi-level rendering.</p>
+<p><i>ClearType</i> <i>Rendering</i></p>
+<p>Technique that uses physical subpixels to improve rendering on LCD (and other) displays. Because of the higher resolution, many methods of improving symmetry in glyphs through hinting the right-side bearing were no longer necessary. This lead to what GDI calls &lsquo;natural widths&rsquo; ClearType, see <a href="http://www.beatstamm.com/typography/RTRCh4.htm#Sec21">http://www.beatstamm.com/typography/RTRCh4.htm#Sec21</a>. Since hinting has extra resolution, most non-linearity went away, but it is still possible for hints to change the advance widths in this mode.</p>
+<p><i>ClearType</i> <i>Compatible</i> <i>Widths</i></p>
+<p>One of the earliest challenges with ClearType was allowing the implementation in GDI to be selected without requiring all UI and documents to reflow. To address this, a compatible method of rendering ClearType was added where the font hints are executed once to determine the width in bi-level rendering, and then re-run in ClearType, with the difference in widths being absorbed in the font hints for ClearType (mostly in the white space of hints); see <a href="http://www.beatstamm.com/typography/RTRCh4.htm#Sec20">http://www.beatstamm.com/typography/RTRCh4.htm#Sec20</a>. Somewhat by definition, compatible width ClearType allows for non-linear widths, but only when the bi-level version has non-linear widths.</p>
+<p><i>ClearType</i> <i>Subpixel</i> <i>Positioning</i></p>
+<p>One of the nice benefits of ClearType is the ability to more crisply display fractional widths; unfortunately, the GDI model of integer bitmaps did not support this. However, the WPF and Direct Write frameworks do support fractional widths. DWrite calls this &lsquo;natural mode&rsquo;, not to be confused with GDI's &lsquo;natural widths&rsquo;. Subpixel positioning, in the current implementation of Direct Write, unfortunately does not support hinted advance widths, see <a href="http://www.beatstamm.com/typography/RTRCh4.htm#Sec22">http://www.beatstamm.com/typography/RTRCh4.htm#Sec22</a>. Note that the TrueType interpreter fully allows the advance width to be adjusted in this mode, just the DWrite client will ignore those changes.</p>
+<p><i>ClearType</i> <i>Backwards</i> <i>Compatibility</i></p>
+<p>This is a set of exceptions made in the TrueType interpreter to minimize hinting techniques that were problematic with the extra resolution of ClearType; see <a href="http://www.beatstamm.com/typography/RTRCh4.htm#Sec1">http://www.beatstamm.com/typography/RTRCh4.htm#Sec1</a> and <a href="http://www.microsoft.com/typography/cleartype/truetypecleartype.aspx">http://www.microsoft.com/typography/cleartype/truetypecleartype.aspx</a>. This technique is not to be confused with ClearType compatible widths. ClearType backwards compatibility has no direct impact on changing advance widths, but there might be an indirect impact on disabling some deltas. This could be worked around in backwards compatibility mode.</p>
+<p><i>Native</i> <i>ClearType</i> <i>Mode</i></p>
+<p>(Not to be confused with &lsquo;natural widths&rsquo;.) This mode removes all the exceptions in the TrueType interpreter when running with ClearType. Any issues on widths would still apply, though.</p>
+
+<div class="section">
+<h3 id="interpreter-version">interpreter-version</h3>
+
+<p>Currently, two versions are available, representing the bytecode interpreter with and without subpixel hinting support, respectively. The default is subpixel support if TT_CONFIG_OPTION_SUBPIXEL_HINTING is defined, and no subpixel support otherwise (since it isn't available then).</p>
+<p>If subpixel hinting is on, many TrueType bytecode instructions behave differently compared to B/W or grayscale rendering (except if &lsquo;native ClearType&rsquo; is selected by the font). The main idea is to render at a much increased horizontal resolution, then sampling down the created output to subpixel precision. However, many older fonts are not suited to this and must be specially taken care of by applying (hardcoded) font-specific tweaks.</p>
+<p>Details on subpixel hinting and some of the necessary tweaks can be found in Greg Hitchcock's whitepaper at &lsquo;<a href="http://www.microsoft.com/typography/cleartype/truetypecleartype.aspx">http://www.microsoft.com/typography/cleartype/truetypecleartype.aspx</a>&rsquo;.</p>
+<p>The following example code demonstrates how to activate subpixel hinting (omitting the error handling).</p>
+<pre class="colored">
+  FT_Library  library;
+  FT_Face     face;
+  FT_UInt     interpreter_version = TT_INTERPRETER_VERSION_38;
+
+
+  FT_Init_FreeType( &amp;library );
+
+  FT_Property_Set( library, "truetype",
+                            "interpreter-version",
+                            &amp;interpreter_version );
+</pre>
+
+<h4>note</h4>
+<p>This property can be used with <a href="ft2-module_management.html#FT_Property_Get">FT_Property_Get</a> also.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="TT_INTERPRETER_VERSION_XXX">TT_INTERPRETER_VERSION_XXX</h3>
+<p>Defined in FT_TRUETYPE_DRIVER_H (freetype/ftttdrv.h).</p>
+<pre>
+#define <a href="ft2-tt_driver.html#TT_INTERPRETER_VERSION_35">TT_INTERPRETER_VERSION_35</a>  35
+#define <a href="ft2-tt_driver.html#TT_INTERPRETER_VERSION_38">TT_INTERPRETER_VERSION_38</a>  38
+</pre>
+
+<p>A list of constants used for the <a href="ft2-tt_driver.html#interpreter-version">interpreter-version</a> property to select the hinting engine for Truetype fonts.</p>
+<p>The numeric value in the constant names represents the version number as returned by the &lsquo;GETINFO&rsquo; bytecode instruction.</p>
+
+<h4>values</h4>
+<table class="fields">
+<tr><td class="val" id="TT_INTERPRETER_VERSION_35">TT_INTERPRETER_VERSION_35</td><td class="desc">
+<p>Version&nbsp;35 corresponds to MS rasterizer v.1.7 as used e.g. in Windows&nbsp;98; only grayscale and B/W rasterizing is supported.</p>
+</td></tr>
+<tr><td class="val" id="TT_INTERPRETER_VERSION_38">TT_INTERPRETER_VERSION_38</td><td class="desc">
+<p>Version&nbsp;38 corresponds to MS rasterizer v.1.9; it is roughly equivalent to the hinting provided by DirectWrite ClearType (as can be found, for example, in the Internet Explorer&nbsp;9 running on Windows&nbsp;7).</p>
+</td></tr>
+</table>
+
+<h4>note</h4>
+<p>This property controls the behaviour of the bytecode interpreter and thus how outlines get hinted. It does <b>not</b> control how glyph get rasterized! In particular, it does not control subpixel color filtering.</p>
+<p>If FreeType has not been compiled with configuration option FT_CONFIG_OPTION_SUBPIXEL_HINTING, selecting version&nbsp;38 causes an &lsquo;FT_Err_Unimplemented_Feature&rsquo; error.</p>
+<p>Depending on the graphics framework, Microsoft uses different bytecode and rendering engines. As a consequence, the version numbers returned by a call to the &lsquo;GETINFO&rsquo; bytecode instruction are more convoluted than desired.</p>
+<p>Here are two tables that try to shed some light on the possible values for the MS rasterizer engine, together with the additional features introduced by it.</p>
+<pre class="colored">
+  GETINFO framework               version feature
+  -------------------------------------------------------------------
+      3   GDI (Win 3.1),            v1.0  16-bit, first version
+          TrueImage
+     33   GDI (Win NT 3.1),         v1.5  32-bit
+          HP Laserjet
+     34   GDI (Win 95)              v1.6  font smoothing,
+                                          new SCANTYPE opcode
+     35   GDI (Win 98/2000)         v1.7  (UN)SCALED_COMPONENT_OFFSET
+                                            bits in composite glyphs
+     36   MGDI (Win CE 2)           v1.6+ classic ClearType
+     37   GDI (XP and later),       v1.8  ClearType
+          GDI+ old (before Vista)
+     38   GDI+ old (Vista, Win 7),  v1.9  subpixel ClearType,
+          WPF                             Y-direction ClearType,
+                                          additional error checking
+     39   DWrite (before Win 8)     v2.0  subpixel ClearType flags
+                                            in GETINFO opcode,
+                                          bug fixes
+     40   GDI+ (after Win 7),       v2.1  Y-direction ClearType flag
+          DWrite (Win 8)                    in GETINFO opcode,
+                                          Gray ClearType
+</pre>
+<p>The &lsquo;version&rsquo; field gives a rough orientation only, since some applications provided certain features much earlier (as an example, Microsoft Reader used subpixel and Y-direction ClearType already in Windows 2000). Similarly, updates to a given framework might include improved hinting support.</p>
+<pre class="colored">
+   version   sampling          rendering        comment
+            x        y       x           y
+  --------------------------------------------------------------
+    v1.0   normal  normal  B/W           B/W    bi-level
+    v1.6   high    high    gray          gray   grayscale
+    v1.8   high    normal  color-filter  B/W    (GDI) ClearType
+    v1.9   high    high    color-filter  gray   Color ClearType
+    v2.1   high    normal  gray          B/W    Gray ClearType
+    v2.1   high    high    gray          gray   Gray ClearType
+</pre>
+<p>Color and Gray ClearType are the two available variants of &lsquo;Y-direction ClearType&rsquo;, meaning grayscale rasterization along the Y-direction; the name used in the TrueType specification for this feature is &lsquo;symmetric smoothing&rsquo;. &lsquo;Classic ClearType&rsquo; is the original algorithm used before introducing a modified version in Win&nbsp;XP. Another name for v1.6's grayscale rendering is &lsquo;font smoothing&rsquo;, and &lsquo;Color ClearType&rsquo; is sometimes also called &lsquo;DWrite ClearType&rsquo;. To differentiate between today's Color ClearType and the earlier ClearType variant with B/W rendering along the vertical axis, the latter is sometimes called &lsquo;GDI ClearType&rsquo;.</p>
+<p>&lsquo;Normal&rsquo; and &lsquo;high&rsquo; sampling describe the (virtual) resolution to access the rasterized outline after the hinting process. &lsquo;Normal&rsquo; means 1 sample per grid line (i.e., B/W). In the current Microsoft implementation, &lsquo;high&rsquo; means an extra virtual resolution of 16x16 (or 16x1) grid lines per pixel for bytecode instructions like &lsquo;MIRP&rsquo;. After hinting, these 16 grid lines are mapped to 6x5 (or 6x1) grid lines for color filtering if Color ClearType is activated.</p>
+<p>Note that &lsquo;Gray ClearType&rsquo; is essentially the same as v1.6's grayscale rendering. However, the GETINFO instruction handles it differently: v1.6 returns bit&nbsp;12 (hinting for grayscale), while v2.1 returns bits&nbsp;13 (hinting for ClearType), 18 (symmetrical smoothing), and&nbsp;19 (Gray ClearType). Also, this mode respects bits 2 and&nbsp;3 for the version&nbsp;1 gasp table exclusively (like Color ClearType), while v1.6 only respects the values of version&nbsp;0 (bits 0 and&nbsp;1).</p>
+<p>FreeType doesn't provide all capabilities of the most recent ClearType incarnation, thus we identify our subpixel support as version&nbsp;38.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+</body>
+</html>

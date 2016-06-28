@@ -1,0 +1,240 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>FreeType-2.6.3 API Reference</title>
+<style type="text/css">
+  a:link { color: #0000EF; }
+  a:visited { color: #51188E; }
+  a:hover { color: #FF0000; }
+
+  body { font-family: Verdana, Geneva, Arial, Helvetica, serif;
+         color: #000000;
+         background: #FFFFFF;
+         width: 87%;
+         margin: auto; }
+
+  div.section { width: 75%;
+                margin: auto; }
+  div.section hr { margin: 4ex 0 1ex 0; }
+  div.section h4 { background-color: #EEEEFF;
+                   font-size: medium;
+                   font-style: oblique;
+                   font-weight: bold;
+                   margin: 3ex 0 1.5ex 9%;
+                   padding: 0.3ex 0 0.3ex 1%; }
+  div.section p { margin: 1.5ex 0 1.5ex 10%; }
+  div.section pre { margin: 3ex 0 3ex 9%;
+                    background-color: #D6E8FF;
+                    padding: 2ex 0 2ex 1%; }
+  div.section table.fields { width: 90%;
+                             margin: 1.5ex 0 1.5ex 10%; }
+  div.section table.toc { width: 95%;
+                          margin: 1.5ex 0 1.5ex 5%; }
+  div.timestamp { text-align: center;
+                  font-size: 69%;
+                  margin: 1.5ex 0 1.5ex 0; }
+
+  h1 { text-align: center; }
+  h3 { font-size: medium;
+       margin: 4ex 0 1.5ex 0; }
+
+  p { text-align: justify; }
+
+  pre.colored { color: blue; }
+
+  span.keyword { font-family: monospace;
+                 text-align: left;
+                 white-space: pre;
+                 color: darkblue; }
+
+  table.fields td.val { font-weight: bold;
+                        text-align: right;
+                        width: 30%;
+                        vertical-align: baseline;
+                        padding: 1ex 1em 1ex 0; }
+  table.fields td.desc { vertical-align: baseline;
+                         padding: 1ex 0 1ex 1em; }
+  table.fields td.desc p:first-child { margin: 0; }
+  table.fields td.desc p { margin: 1.5ex 0 0 0; }
+  table.index { margin: 6ex auto 6ex auto;
+                border: 0;
+                border-collapse: separate;
+                border-spacing: 1em 0.3ex; }
+  table.index tr { padding: 0; }
+  table.index td { padding: 0; }
+  table.index-toc-link { width: 100%;
+                         border: 0;
+                         border-spacing: 0;
+                         margin: 1ex 0 1ex 0; }
+  table.index-toc-link td.left { padding: 0 0.5em 0 0.5em;
+                                 font-size: 83%;
+                                 text-align: left; }
+  table.index-toc-link td.middle { padding: 0 0.5em 0 0.5em;
+                                   font-size: 83%;
+                                   text-align: center; }
+  table.index-toc-link td.right { padding: 0 0.5em 0 0.5em;
+                                  font-size: 83%;
+                                  text-align: right; }
+  table.synopsis { margin: 6ex auto 6ex auto;
+                   border: 0;
+                   border-collapse: separate;
+                   border-spacing: 2em 0.6ex; }
+  table.synopsis tr { padding: 0; }
+  table.synopsis td { padding: 0; }
+  table.toc td.link { width: 30%;
+                      text-align: right;
+                      vertical-align: baseline;
+                      padding: 1ex 1em 1ex 0; }
+  table.toc td.desc { vertical-align: baseline;
+                      padding: 1ex 0 1ex 1em;
+                      text-align: left; }
+  table.toc td.desc p:first-child { margin: 0;
+                                    text-align: left; }
+  table.toc td.desc p { margin: 1.5ex 0 0 0;
+                        text-align: left; }
+
+</style>
+</head>
+<body>
+
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table>
+<h1>FreeType-2.6.3 API Reference</h1>
+
+<h1 id="cid_fonts">CID Fonts</h1>
+<h2>Synopsis</h2>
+<table class="synopsis">
+<tr><td><a href="#FT_Get_CID_Registry_Ordering_Supplement">FT_Get_CID_Registry_Ordering_Supplement</a></td></tr>
+<tr><td><a href="#FT_Get_CID_Is_Internally_CID_Keyed">FT_Get_CID_Is_Internally_CID_Keyed</a></td></tr>
+<tr><td><a href="#FT_Get_CID_From_Glyph_Index">FT_Get_CID_From_Glyph_Index</a></td></tr>
+</table>
+
+
+<p>This section contains the declaration of CID-keyed font specific functions.</p>
+
+<div class="section">
+<h3 id="FT_Get_CID_Registry_Ordering_Supplement">FT_Get_CID_Registry_Ordering_Supplement</h3>
+<p>Defined in FT_CID_H (freetype/ftcid.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Get_CID_Registry_Ordering_Supplement</b>( <a href="ft2-base_interface.html#FT_Face">FT_Face</a>       face,
+                                           <span class="keyword">const</span> <span class="keyword">char</span>*  *registry,
+                                           <span class="keyword">const</span> <span class="keyword">char</span>*  *ordering,
+                                           <a href="ft2-basic_types.html#FT_Int">FT_Int</a>       *supplement);
+</pre>
+
+<p>Retrieve the Registry/Ordering/Supplement triple (also known as the "R/O/S") from a CID-keyed font.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="face">face</td><td class="desc">
+<p>A handle to the input face.</p>
+</td></tr>
+</table>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="registry">registry</td><td class="desc">
+<p>The registry, as a C&nbsp;string, owned by the face.</p>
+</td></tr>
+<tr><td class="val" id="ordering">ordering</td><td class="desc">
+<p>The ordering, as a C&nbsp;string, owned by the face.</p>
+</td></tr>
+<tr><td class="val" id="supplement">supplement</td><td class="desc">
+<p>The supplement.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>This function only works with CID faces, returning an error otherwise.</p>
+
+<h4>since</h4>
+<p>2.3.6</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Get_CID_Is_Internally_CID_Keyed">FT_Get_CID_Is_Internally_CID_Keyed</h3>
+<p>Defined in FT_CID_H (freetype/ftcid.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Get_CID_Is_Internally_CID_Keyed</b>( <a href="ft2-base_interface.html#FT_Face">FT_Face</a>   face,
+                                      <a href="ft2-basic_types.html#FT_Bool">FT_Bool</a>  *is_cid );
+</pre>
+
+<p>Retrieve the type of the input face, CID keyed or not. In constrast to the <a href="ft2-base_interface.html#FT_IS_CID_KEYED">FT_IS_CID_KEYED</a> macro this function returns successfully also for CID-keyed fonts in an SNFT wrapper.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="face">face</td><td class="desc">
+<p>A handle to the input face.</p>
+</td></tr>
+</table>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="is_cid">is_cid</td><td class="desc">
+<p>The type of the face as an <a href="ft2-basic_types.html#FT_Bool">FT_Bool</a>.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>This function only works with CID faces and OpenType fonts, returning an error otherwise.</p>
+
+<h4>since</h4>
+<p>2.3.9</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Get_CID_From_Glyph_Index">FT_Get_CID_From_Glyph_Index</h3>
+<p>Defined in FT_CID_H (freetype/ftcid.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Get_CID_From_Glyph_Index</b>( <a href="ft2-base_interface.html#FT_Face">FT_Face</a>   face,
+                               <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>   glyph_index,
+                               <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>  *cid );
+</pre>
+
+<p>Retrieve the CID of the input glyph index.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="face">face</td><td class="desc">
+<p>A handle to the input face.</p>
+</td></tr>
+<tr><td class="val" id="glyph_index">glyph_index</td><td class="desc">
+<p>The input glyph index.</p>
+</td></tr>
+</table>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="cid">cid</td><td class="desc">
+<p>The CID as an <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>This function only works with CID faces and OpenType fonts, returning an error otherwise.</p>
+
+<h4>since</h4>
+<p>2.3.9</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+</body>
+</html>

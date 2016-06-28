@@ -1,0 +1,144 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>FreeType-2.6.3 API Reference</title>
+<style type="text/css">
+  a:link { color: #0000EF; }
+  a:visited { color: #51188E; }
+  a:hover { color: #FF0000; }
+
+  body { font-family: Verdana, Geneva, Arial, Helvetica, serif;
+         color: #000000;
+         background: #FFFFFF;
+         width: 87%;
+         margin: auto; }
+
+  div.section { width: 75%;
+                margin: auto; }
+  div.section hr { margin: 4ex 0 1ex 0; }
+  div.section h4 { background-color: #EEEEFF;
+                   font-size: medium;
+                   font-style: oblique;
+                   font-weight: bold;
+                   margin: 3ex 0 1.5ex 9%;
+                   padding: 0.3ex 0 0.3ex 1%; }
+  div.section p { margin: 1.5ex 0 1.5ex 10%; }
+  div.section pre { margin: 3ex 0 3ex 9%;
+                    background-color: #D6E8FF;
+                    padding: 2ex 0 2ex 1%; }
+  div.section table.fields { width: 90%;
+                             margin: 1.5ex 0 1.5ex 10%; }
+  div.section table.toc { width: 95%;
+                          margin: 1.5ex 0 1.5ex 5%; }
+  div.timestamp { text-align: center;
+                  font-size: 69%;
+                  margin: 1.5ex 0 1.5ex 0; }
+
+  h1 { text-align: center; }
+  h3 { font-size: medium;
+       margin: 4ex 0 1.5ex 0; }
+
+  p { text-align: justify; }
+
+  pre.colored { color: blue; }
+
+  span.keyword { font-family: monospace;
+                 text-align: left;
+                 white-space: pre;
+                 color: darkblue; }
+
+  table.fields td.val { font-weight: bold;
+                        text-align: right;
+                        width: 30%;
+                        vertical-align: baseline;
+                        padding: 1ex 1em 1ex 0; }
+  table.fields td.desc { vertical-align: baseline;
+                         padding: 1ex 0 1ex 1em; }
+  table.fields td.desc p:first-child { margin: 0; }
+  table.fields td.desc p { margin: 1.5ex 0 0 0; }
+  table.index { margin: 6ex auto 6ex auto;
+                border: 0;
+                border-collapse: separate;
+                border-spacing: 1em 0.3ex; }
+  table.index tr { padding: 0; }
+  table.index td { padding: 0; }
+  table.index-toc-link { width: 100%;
+                         border: 0;
+                         border-spacing: 0;
+                         margin: 1ex 0 1ex 0; }
+  table.index-toc-link td.left { padding: 0 0.5em 0 0.5em;
+                                 font-size: 83%;
+                                 text-align: left; }
+  table.index-toc-link td.middle { padding: 0 0.5em 0 0.5em;
+                                   font-size: 83%;
+                                   text-align: center; }
+  table.index-toc-link td.right { padding: 0 0.5em 0 0.5em;
+                                  font-size: 83%;
+                                  text-align: right; }
+  table.synopsis { margin: 6ex auto 6ex auto;
+                   border: 0;
+                   border-collapse: separate;
+                   border-spacing: 2em 0.6ex; }
+  table.synopsis tr { padding: 0; }
+  table.synopsis td { padding: 0; }
+  table.toc td.link { width: 30%;
+                      text-align: right;
+                      vertical-align: baseline;
+                      padding: 1ex 1em 1ex 0; }
+  table.toc td.desc { vertical-align: baseline;
+                      padding: 1ex 0 1ex 1em;
+                      text-align: left; }
+  table.toc td.desc p:first-child { margin: 0;
+                                    text-align: left; }
+  table.toc td.desc p { margin: 1.5ex 0 0 0;
+                        text-align: left; }
+
+</style>
+</head>
+<body>
+
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table>
+<h1>FreeType-2.6.3 API Reference</h1>
+
+<h1 id="error_enumerations">Error Enumerations</h1>
+
+<p>The header file &lsquo;fterrors.h&rsquo; (which is automatically included by &lsquo;freetype.h&rsquo; defines the handling of FreeType's enumeration constants. It can also be used to generate error message strings with a small macro trick explained below.</p>
+<p><b>Error</b> <b>Formats</b></p>
+<p>The configuration macro FT_CONFIG_OPTION_USE_MODULE_ERRORS can be defined in &lsquo;ftoption.h&rsquo; in order to make the higher byte indicate the module where the error has happened (this is not compatible with standard builds of FreeType&amp;nbsp;2, however). See the file &lsquo;ftmoderr.h&rsquo; for more details.</p>
+<p><b>Error</b> <b>Message</b> <b>Strings</b></p>
+<p>Error definitions are set up with special macros that allow client applications to build a table of error message strings. The strings are not included in a normal build of FreeType&amp;nbsp;2 to save space (most client applications do not use them).</p>
+<p>To do so, you have to define the following macros before including this file.</p>
+<pre class="colored">
+  FT_ERROR_START_LIST                                               
+</pre>
+<p>This macro is called before anything else to define the start of the error list. It is followed by several FT_ERROR_DEF calls.</p>
+<pre class="colored">
+  FT_ERROR_DEF( e, v, s )                                           
+</pre>
+<p>This macro is called to define one single error. &lsquo;e&rsquo; is the error code identifier (e.g., &lsquo;Invalid_Argument&rsquo;), &lsquo;v&rsquo; is the error's numerical value, and &lsquo;s&rsquo; is the corresponding error string.</p>
+<pre class="colored">
+  FT_ERROR_END_LIST                                                 
+</pre>
+<p>This macro ends the list.</p>
+<p>Additionally, you have to undefine &lsquo;FTERRORS_H_&rsquo; before #including this file.</p>
+<p>Here is a simple example.</p>
+<pre class="colored">
+  #undef FTERRORS_H_                                                
+  #define FT_ERRORDEF( e, v, s )  { e, s },                         
+  #define FT_ERROR_START_LIST     {                                 
+  #define FT_ERROR_END_LIST       { 0, NULL } };                    
+                                                                    
+  const struct                                                      
+  {                                                                 
+    int          err_code;                                          
+    const char*  err_msg;                                           
+  } ft_errors[] =                                                   
+                                                                    
+  #include FT_ERRORS_H                                              
+</pre>
+<p>Note that &lsquo;FT_Err_Ok&rsquo; is <i>not</i> defined with &lsquo;FT_ERRORDEF&rsquo; but with &lsquo;FT_NOERRORDEF&rsquo;; it is always zero.</p>
+
+</body>
+</html>

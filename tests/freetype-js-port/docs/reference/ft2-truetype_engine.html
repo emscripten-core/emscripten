@@ -1,0 +1,175 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>FreeType-2.6.3 API Reference</title>
+<style type="text/css">
+  a:link { color: #0000EF; }
+  a:visited { color: #51188E; }
+  a:hover { color: #FF0000; }
+
+  body { font-family: Verdana, Geneva, Arial, Helvetica, serif;
+         color: #000000;
+         background: #FFFFFF;
+         width: 87%;
+         margin: auto; }
+
+  div.section { width: 75%;
+                margin: auto; }
+  div.section hr { margin: 4ex 0 1ex 0; }
+  div.section h4 { background-color: #EEEEFF;
+                   font-size: medium;
+                   font-style: oblique;
+                   font-weight: bold;
+                   margin: 3ex 0 1.5ex 9%;
+                   padding: 0.3ex 0 0.3ex 1%; }
+  div.section p { margin: 1.5ex 0 1.5ex 10%; }
+  div.section pre { margin: 3ex 0 3ex 9%;
+                    background-color: #D6E8FF;
+                    padding: 2ex 0 2ex 1%; }
+  div.section table.fields { width: 90%;
+                             margin: 1.5ex 0 1.5ex 10%; }
+  div.section table.toc { width: 95%;
+                          margin: 1.5ex 0 1.5ex 5%; }
+  div.timestamp { text-align: center;
+                  font-size: 69%;
+                  margin: 1.5ex 0 1.5ex 0; }
+
+  h1 { text-align: center; }
+  h3 { font-size: medium;
+       margin: 4ex 0 1.5ex 0; }
+
+  p { text-align: justify; }
+
+  pre.colored { color: blue; }
+
+  span.keyword { font-family: monospace;
+                 text-align: left;
+                 white-space: pre;
+                 color: darkblue; }
+
+  table.fields td.val { font-weight: bold;
+                        text-align: right;
+                        width: 30%;
+                        vertical-align: baseline;
+                        padding: 1ex 1em 1ex 0; }
+  table.fields td.desc { vertical-align: baseline;
+                         padding: 1ex 0 1ex 1em; }
+  table.fields td.desc p:first-child { margin: 0; }
+  table.fields td.desc p { margin: 1.5ex 0 0 0; }
+  table.index { margin: 6ex auto 6ex auto;
+                border: 0;
+                border-collapse: separate;
+                border-spacing: 1em 0.3ex; }
+  table.index tr { padding: 0; }
+  table.index td { padding: 0; }
+  table.index-toc-link { width: 100%;
+                         border: 0;
+                         border-spacing: 0;
+                         margin: 1ex 0 1ex 0; }
+  table.index-toc-link td.left { padding: 0 0.5em 0 0.5em;
+                                 font-size: 83%;
+                                 text-align: left; }
+  table.index-toc-link td.middle { padding: 0 0.5em 0 0.5em;
+                                   font-size: 83%;
+                                   text-align: center; }
+  table.index-toc-link td.right { padding: 0 0.5em 0 0.5em;
+                                  font-size: 83%;
+                                  text-align: right; }
+  table.synopsis { margin: 6ex auto 6ex auto;
+                   border: 0;
+                   border-collapse: separate;
+                   border-spacing: 2em 0.6ex; }
+  table.synopsis tr { padding: 0; }
+  table.synopsis td { padding: 0; }
+  table.toc td.link { width: 30%;
+                      text-align: right;
+                      vertical-align: baseline;
+                      padding: 1ex 1em 1ex 0; }
+  table.toc td.desc { vertical-align: baseline;
+                      padding: 1ex 0 1ex 1em;
+                      text-align: left; }
+  table.toc td.desc p:first-child { margin: 0;
+                                    text-align: left; }
+  table.toc td.desc p { margin: 1.5ex 0 0 0;
+                        text-align: left; }
+
+</style>
+</head>
+<body>
+
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table>
+<h1>FreeType-2.6.3 API Reference</h1>
+
+<h1 id="truetype_engine">The TrueType Engine</h1>
+<h2>Synopsis</h2>
+<table class="synopsis">
+<tr><td><a href="#FT_TrueTypeEngineType">FT_TrueTypeEngineType</a></td><td><a href="#FT_Get_TrueType_Engine_Type">FT_Get_TrueType_Engine_Type</a></td></tr>
+</table>
+
+
+<p>This section contains a function used to query the level of TrueType bytecode support compiled in this version of the library.</p>
+
+<div class="section">
+<h3 id="FT_TrueTypeEngineType">FT_TrueTypeEngineType</h3>
+<p>Defined in FT_MODULE_H (freetype/ftmodapi.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">enum</span>  FT_TrueTypeEngineType_
+  {
+    <a href="ft2-truetype_engine.html#FT_TRUETYPE_ENGINE_TYPE_NONE">FT_TRUETYPE_ENGINE_TYPE_NONE</a> = 0,
+    <a href="ft2-truetype_engine.html#FT_TRUETYPE_ENGINE_TYPE_UNPATENTED">FT_TRUETYPE_ENGINE_TYPE_UNPATENTED</a>,
+    <a href="ft2-truetype_engine.html#FT_TRUETYPE_ENGINE_TYPE_PATENTED">FT_TRUETYPE_ENGINE_TYPE_PATENTED</a>
+
+  } <b>FT_TrueTypeEngineType</b>;
+</pre>
+
+<p>A list of values describing which kind of TrueType bytecode engine is implemented in a given FT_Library instance. It is used by the <a href="ft2-truetype_engine.html#FT_Get_TrueType_Engine_Type">FT_Get_TrueType_Engine_Type</a> function.</p>
+
+<h4>values</h4>
+<table class="fields">
+<tr><td class="val" id="FT_TRUETYPE_ENGINE_TYPE_NONE">FT_TRUETYPE_ENGINE_TYPE_NONE</td><td class="desc">
+<p>The library doesn't implement any kind of bytecode interpreter.</p>
+</td></tr>
+<tr><td class="val" id="FT_TRUETYPE_ENGINE_TYPE_UNPATENTED">FT_TRUETYPE_ENGINE_TYPE_UNPATENTED</td><td class="desc">
+<p>Deprecated and removed.</p>
+</td></tr>
+<tr><td class="val" id="FT_TRUETYPE_ENGINE_TYPE_PATENTED">FT_TRUETYPE_ENGINE_TYPE_PATENTED</td><td class="desc">
+<p>The library implements a bytecode interpreter that covers the full instruction set of the TrueType virtual machine (this was governed by patents until May 2010, hence the name).</p>
+</td></tr>
+</table>
+
+<h4>since</h4>
+<p>2.2</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Get_TrueType_Engine_Type">FT_Get_TrueType_Engine_Type</h3>
+<p>Defined in FT_MODULE_H (freetype/ftmodapi.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-truetype_engine.html#FT_TrueTypeEngineType">FT_TrueTypeEngineType</a> )
+  <b>FT_Get_TrueType_Engine_Type</b>( <a href="ft2-base_interface.html#FT_Library">FT_Library</a>  library );
+</pre>
+
+<p>Return an <a href="ft2-truetype_engine.html#FT_TrueTypeEngineType">FT_TrueTypeEngineType</a> value to indicate which level of the TrueType virtual machine a given library instance supports.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="library">library</td><td class="desc">
+<p>A library instance.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>A value indicating which level is supported.</p>
+
+<h4>since</h4>
+<p>2.2</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+</body>
+</html>

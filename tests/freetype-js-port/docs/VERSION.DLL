@@ -1,0 +1,119 @@
+Due  to our  use of  `libtool' to  generate and  install the  FreeType 2
+libraries on  Unix systems, as  well as  other historical events,  it is
+generally very  difficult to  know precisely which  release of  the font
+engine is installed on a given system.
+
+This file tries  to explain why and to document  ways to properly detect
+FreeType on Unix.
+
+
+1. Version and Release numbers
+------------------------------
+
+For each new  public release of FreeType 2, there  are generally *three*
+distinct `version' numbers to consider:
+
+  * The official FreeType 2 release number, like 2.3.1 or 2.4.10.
+
+  * The libtool (and  Unix) specific version number,  like 13.0.7.  This
+    is what `freetype-config --version' returns.
+
+  * The platform-specific  shared object  number, used for  example when
+    the library is installed as `/usr/lib/libfreetype.so.6.7.1'.
+
+The platform-specific  number is, unsurprisingly,  platform-specific and
+varies  with the  operating system  you are  using (several  variants of
+Linux, FreeBSD,  Solaris, etc.).  You  should thus _never_ use  it, even
+for simple tests.
+
+The libtool-specific  number does  not equal the  release number  but is
+tied to it.
+
+The release number is available  at *compile* time through the following
+macros defined in FT_FREETYPE_H:
+
+  - FREETYPE_MAJOR: major release number
+  - FREETYPE_MINOR: minor release number
+  - FREETYPE_PATCH: patch release number
+
+See below for a small autoconf fragment.
+
+The  release  number   is  also  available  at   *runtime*  through  the
+`FT_Library_Version' API.
+
+
+2. History
+----------
+
+The  following   table  gives,  for   all  releases  since   2.4.0,  the
+corresponding libtool number, as well  as the shared object number found
+on _most_ systems, but not all of them:
+
+
+    release     libtool     so
+  -------------------------------
+     2.6.3      18.3.12   6.12.3
+     2.6.2      18.2.12   6.12.2
+     2.6.1      18.1.12   6.12.1
+     2.6.0      18.0.12   6.12.0
+     2.5.5      17.4.11   6.11.4
+     2.5.4      17.3.11   6.11.3
+     2.5.3      17.2.11   6.11.2
+     2.5.2      17.1.11   6.11.1
+     2.5.1      17.0.11   6.11.0
+     2.5.0      16.2.10   6.10.2
+     2.4.12     16.1.10   6.10.1
+     2.4.11     16.0.10   6.10.0
+     2.4.10     15.0.9    6.9.0
+     2.4.9      14.1.8    6.8.1
+     2.4.8      14.0.8    6.8.0
+     2.4.7      13.2.7    6.7.2
+     2.4.6      13.1.7    6.7.1
+     2.4.5      13.0.7    6.7.0
+     2.4.4      12.2.6    6.6.2
+     2.4.3      12.1.6    6.6.1
+     2.4.2      12.0.6    6.6.0
+     2.4.1      11.1.5    6.5.1
+     2.4.0      11.0.5    6.5.0
+
+
+3. Autoconf Code Fragment
+-------------------------
+
+Lars Clausen contributed the following autoconf fragment to detect which
+version of  FreeType is  installed on  a system.  This  one tests  for a
+version that  is at least 2.0.9;  you should change it  to check against
+other release numbers.
+
+
+  AC_MSG_CHECKING([whether FreeType version is 2.0.9 or higher])
+  old_CPPFLAGS="$CPPFLAGS"
+  CPPFLAGS=`freetype-config --cflags`
+  AC_TRY_CPP([
+
+#include <ft2build.h>
+#include FT_FREETYPE_H
+#if (FREETYPE_MAJOR*1000 + FREETYPE_MINOR)*1000 + FREETYPE_PATCH < 2000009
+#error Freetype version too low.
+#endif
+  ],
+  [AC_MSG_RESULT(yes)
+   FREETYPE_LIBS=`freetype-config --libs`
+   AC_SUBST(FREETYPE_LIBS)
+   AC_DEFINE(HAVE_FREETYPE,1,[Define if you have the FreeType2 library])
+   CPPFLAGS="$old_CPPFLAGS"],
+  [AC_MSG_ERROR([Need FreeType library version 2.0.9 or higher])])
+
+------------------------------------------------------------------------
+
+Copyright 2002-2016 by
+David Turner, Robert Wilhelm, and Werner Lemberg.
+
+This  file is  part  of the  FreeType  project, and  may  only be  used,
+modified,  and  distributed under  the  terms  of  the FreeType  project
+license, LICENSE.TXT.  By continuing  to use, modify, or distribute this
+file  you indicate that  you have  read the  license and  understand and
+accept it fully.
+
+
+--- end of VERSION.DLL ---

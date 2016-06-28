@@ -1,0 +1,292 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>FreeType-2.6.3 API Reference</title>
+<style type="text/css">
+  a:link { color: #0000EF; }
+  a:visited { color: #51188E; }
+  a:hover { color: #FF0000; }
+
+  body { font-family: Verdana, Geneva, Arial, Helvetica, serif;
+         color: #000000;
+         background: #FFFFFF;
+         width: 87%;
+         margin: auto; }
+
+  div.section { width: 75%;
+                margin: auto; }
+  div.section hr { margin: 4ex 0 1ex 0; }
+  div.section h4 { background-color: #EEEEFF;
+                   font-size: medium;
+                   font-style: oblique;
+                   font-weight: bold;
+                   margin: 3ex 0 1.5ex 9%;
+                   padding: 0.3ex 0 0.3ex 1%; }
+  div.section p { margin: 1.5ex 0 1.5ex 10%; }
+  div.section pre { margin: 3ex 0 3ex 9%;
+                    background-color: #D6E8FF;
+                    padding: 2ex 0 2ex 1%; }
+  div.section table.fields { width: 90%;
+                             margin: 1.5ex 0 1.5ex 10%; }
+  div.section table.toc { width: 95%;
+                          margin: 1.5ex 0 1.5ex 5%; }
+  div.timestamp { text-align: center;
+                  font-size: 69%;
+                  margin: 1.5ex 0 1.5ex 0; }
+
+  h1 { text-align: center; }
+  h3 { font-size: medium;
+       margin: 4ex 0 1.5ex 0; }
+
+  p { text-align: justify; }
+
+  pre.colored { color: blue; }
+
+  span.keyword { font-family: monospace;
+                 text-align: left;
+                 white-space: pre;
+                 color: darkblue; }
+
+  table.fields td.val { font-weight: bold;
+                        text-align: right;
+                        width: 30%;
+                        vertical-align: baseline;
+                        padding: 1ex 1em 1ex 0; }
+  table.fields td.desc { vertical-align: baseline;
+                         padding: 1ex 0 1ex 1em; }
+  table.fields td.desc p:first-child { margin: 0; }
+  table.fields td.desc p { margin: 1.5ex 0 0 0; }
+  table.index { margin: 6ex auto 6ex auto;
+                border: 0;
+                border-collapse: separate;
+                border-spacing: 1em 0.3ex; }
+  table.index tr { padding: 0; }
+  table.index td { padding: 0; }
+  table.index-toc-link { width: 100%;
+                         border: 0;
+                         border-spacing: 0;
+                         margin: 1ex 0 1ex 0; }
+  table.index-toc-link td.left { padding: 0 0.5em 0 0.5em;
+                                 font-size: 83%;
+                                 text-align: left; }
+  table.index-toc-link td.middle { padding: 0 0.5em 0 0.5em;
+                                   font-size: 83%;
+                                   text-align: center; }
+  table.index-toc-link td.right { padding: 0 0.5em 0 0.5em;
+                                  font-size: 83%;
+                                  text-align: right; }
+  table.synopsis { margin: 6ex auto 6ex auto;
+                   border: 0;
+                   border-collapse: separate;
+                   border-spacing: 2em 0.6ex; }
+  table.synopsis tr { padding: 0; }
+  table.synopsis td { padding: 0; }
+  table.toc td.link { width: 30%;
+                      text-align: right;
+                      vertical-align: baseline;
+                      padding: 1ex 1em 1ex 0; }
+  table.toc td.desc { vertical-align: baseline;
+                      padding: 1ex 0 1ex 1em;
+                      text-align: left; }
+  table.toc td.desc p:first-child { margin: 0;
+                                    text-align: left; }
+  table.toc td.desc p { margin: 1.5ex 0 0 0;
+                        text-align: left; }
+
+</style>
+</head>
+<body>
+
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table>
+<h1>FreeType-2.6.3 API Reference</h1>
+
+<h1 id="glyph_variants">Glyph Variants</h1>
+<h2>Synopsis</h2>
+<table class="synopsis">
+<tr><td><a href="#FT_Face_GetCharVariantIndex">FT_Face_GetCharVariantIndex</a></td><td><a href="#FT_Face_GetVariantsOfChar">FT_Face_GetVariantsOfChar</a></td></tr>
+<tr><td><a href="#FT_Face_GetCharVariantIsDefault">FT_Face_GetCharVariantIsDefault</a></td><td><a href="#FT_Face_GetCharsOfVariant">FT_Face_GetCharsOfVariant</a></td></tr>
+<tr><td><a href="#FT_Face_GetVariantSelectors">FT_Face_GetVariantSelectors</a></td><td></td></tr>
+</table>
+
+
+<p>Many CJK characters have variant forms. They are a sort of grey area somewhere between being totally irrelevant and semantically distinct; for this reason, the Unicode consortium decided to introduce Ideographic Variation Sequences (IVS), consisting of a Unicode base character and one of 240 variant selectors (U+E0100-U+E01EF), instead of further extending the already huge code range for CJK characters.</p>
+<p>An IVS is registered and unique; for further details please refer to Unicode Technical Standard #37, the Ideographic Variation Database:</p>
+<p><a href="http://www.unicode.org/reports/tr37/">http://www.unicode.org/reports/tr37/</a></p>
+<p>To date (November 2014), the character with the most variants is U+9089, having 32 such IVS.</p>
+<p>Adobe and MS decided to support IVS with a new cmap subtable (format&nbsp;14). It is an odd subtable because it is not a mapping of input code points to glyphs, but contains lists of all variants supported by the font.</p>
+<p>A variant may be either &lsquo;default&rsquo; or &lsquo;non-default&rsquo;. A default variant is the one you will get for that code point if you look it up in the standard Unicode cmap. A non-default variant is a different glyph.</p>
+
+<div class="section">
+<h3 id="FT_Face_GetCharVariantIndex">FT_Face_GetCharVariantIndex</h3>
+<p>Defined in FT_FREETYPE_H (freetype/freetype.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a> )
+  <b>FT_Face_GetCharVariantIndex</b>( <a href="ft2-base_interface.html#FT_Face">FT_Face</a>   face,
+                               <a href="ft2-basic_types.html#FT_ULong">FT_ULong</a>  charcode,
+                               <a href="ft2-basic_types.html#FT_ULong">FT_ULong</a>  variantSelector );
+</pre>
+
+<p>Return the glyph index of a given character code as modified by the variation selector.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="face">face</td><td class="desc">
+<p>A handle to the source face object.</p>
+</td></tr>
+<tr><td class="val" id="charcode">charcode</td><td class="desc">
+<p>The character code point in Unicode.</p>
+</td></tr>
+<tr><td class="val" id="variantSelector">variantSelector</td><td class="desc">
+<p>The Unicode code point of the variation selector.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>The glyph index. 0&nbsp;means either &lsquo;undefined character code&rsquo;, or &lsquo;undefined selector code&rsquo;, or &lsquo;no variation selector cmap subtable&rsquo;, or &lsquo;current CharMap is not Unicode&rsquo;.</p>
+
+<h4>note</h4>
+<p>If you use FreeType to manipulate the contents of font files directly, be aware that the glyph index returned by this function doesn't always correspond to the internal indices used within the file. This is done to ensure that value&nbsp;0 always corresponds to the &lsquo;missing glyph&rsquo;.</p>
+<p>This function is only meaningful if a) the font has a variation selector cmap sub table, and b) the current charmap has a Unicode encoding.</p>
+
+<h4>since</h4>
+<p>2.3.6</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Face_GetCharVariantIsDefault">FT_Face_GetCharVariantIsDefault</h3>
+<p>Defined in FT_FREETYPE_H (freetype/freetype.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Int">FT_Int</a> )
+  <b>FT_Face_GetCharVariantIsDefault</b>( <a href="ft2-base_interface.html#FT_Face">FT_Face</a>   face,
+                                   <a href="ft2-basic_types.html#FT_ULong">FT_ULong</a>  charcode,
+                                   <a href="ft2-basic_types.html#FT_ULong">FT_ULong</a>  variantSelector );
+</pre>
+
+<p>Check whether this variant of this Unicode character is the one to be found in the &lsquo;cmap&rsquo;.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="face">face</td><td class="desc">
+<p>A handle to the source face object.</p>
+</td></tr>
+<tr><td class="val" id="charcode">charcode</td><td class="desc">
+<p>The character codepoint in Unicode.</p>
+</td></tr>
+<tr><td class="val" id="variantSelector">variantSelector</td><td class="desc">
+<p>The Unicode codepoint of the variation selector.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>1&nbsp;if found in the standard (Unicode) cmap, 0&nbsp;if found in the variation selector cmap, or -1 if it is not a variant.</p>
+
+<h4>note</h4>
+<p>This function is only meaningful if the font has a variation selector cmap subtable.</p>
+
+<h4>since</h4>
+<p>2.3.6</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Face_GetVariantSelectors">FT_Face_GetVariantSelectors</h3>
+<p>Defined in FT_FREETYPE_H (freetype/freetype.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_UInt32">FT_UInt32</a>* )
+  <b>FT_Face_GetVariantSelectors</b>( <a href="ft2-base_interface.html#FT_Face">FT_Face</a>  face );
+</pre>
+
+<p>Return a zero-terminated list of Unicode variant selectors found in the font.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="face">face</td><td class="desc">
+<p>A handle to the source face object.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>A pointer to an array of selector code points, or NULL if there is no valid variant selector cmap subtable.</p>
+
+<h4>note</h4>
+<p>The last item in the array is&nbsp;0; the array is owned by the <a href="ft2-base_interface.html#FT_Face">FT_Face</a> object but can be overwritten or released on the next call to a FreeType function.</p>
+
+<h4>since</h4>
+<p>2.3.6</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Face_GetVariantsOfChar">FT_Face_GetVariantsOfChar</h3>
+<p>Defined in FT_FREETYPE_H (freetype/freetype.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_UInt32">FT_UInt32</a>* )
+  <b>FT_Face_GetVariantsOfChar</b>( <a href="ft2-base_interface.html#FT_Face">FT_Face</a>   face,
+                             <a href="ft2-basic_types.html#FT_ULong">FT_ULong</a>  charcode );
+</pre>
+
+<p>Return a zero-terminated list of Unicode variant selectors found for the specified character code.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="face">face</td><td class="desc">
+<p>A handle to the source face object.</p>
+</td></tr>
+<tr><td class="val" id="charcode">charcode</td><td class="desc">
+<p>The character codepoint in Unicode.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>A pointer to an array of variant selector code points that are active for the given character, or NULL if the corresponding list is empty.</p>
+
+<h4>note</h4>
+<p>The last item in the array is&nbsp;0; the array is owned by the <a href="ft2-base_interface.html#FT_Face">FT_Face</a> object but can be overwritten or released on the next call to a FreeType function.</p>
+
+<h4>since</h4>
+<p>2.3.6</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Face_GetCharsOfVariant">FT_Face_GetCharsOfVariant</h3>
+<p>Defined in FT_FREETYPE_H (freetype/freetype.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_UInt32">FT_UInt32</a>* )
+  <b>FT_Face_GetCharsOfVariant</b>( <a href="ft2-base_interface.html#FT_Face">FT_Face</a>   face,
+                             <a href="ft2-basic_types.html#FT_ULong">FT_ULong</a>  variantSelector );
+</pre>
+
+<p>Return a zero-terminated list of Unicode character codes found for the specified variant selector.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="face">face</td><td class="desc">
+<p>A handle to the source face object.</p>
+</td></tr>
+<tr><td class="val" id="variantSelector">variantSelector</td><td class="desc">
+<p>The variant selector code point in Unicode.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>A list of all the code points that are specified by this selector (both default and non-default codes are returned) or NULL if there is no valid cmap or the variant selector is invalid.</p>
+
+<h4>note</h4>
+<p>The last item in the array is&nbsp;0; the array is owned by the <a href="ft2-base_interface.html#FT_Face">FT_Face</a> object but can be overwritten or released on the next call to a FreeType function.</p>
+
+<h4>since</h4>
+<p>2.3.6</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+</body>
+</html>

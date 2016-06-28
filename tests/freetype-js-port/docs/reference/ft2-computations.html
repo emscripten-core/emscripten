@@ -1,0 +1,700 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>FreeType-2.6.3 API Reference</title>
+<style type="text/css">
+  a:link { color: #0000EF; }
+  a:visited { color: #51188E; }
+  a:hover { color: #FF0000; }
+
+  body { font-family: Verdana, Geneva, Arial, Helvetica, serif;
+         color: #000000;
+         background: #FFFFFF;
+         width: 87%;
+         margin: auto; }
+
+  div.section { width: 75%;
+                margin: auto; }
+  div.section hr { margin: 4ex 0 1ex 0; }
+  div.section h4 { background-color: #EEEEFF;
+                   font-size: medium;
+                   font-style: oblique;
+                   font-weight: bold;
+                   margin: 3ex 0 1.5ex 9%;
+                   padding: 0.3ex 0 0.3ex 1%; }
+  div.section p { margin: 1.5ex 0 1.5ex 10%; }
+  div.section pre { margin: 3ex 0 3ex 9%;
+                    background-color: #D6E8FF;
+                    padding: 2ex 0 2ex 1%; }
+  div.section table.fields { width: 90%;
+                             margin: 1.5ex 0 1.5ex 10%; }
+  div.section table.toc { width: 95%;
+                          margin: 1.5ex 0 1.5ex 5%; }
+  div.timestamp { text-align: center;
+                  font-size: 69%;
+                  margin: 1.5ex 0 1.5ex 0; }
+
+  h1 { text-align: center; }
+  h3 { font-size: medium;
+       margin: 4ex 0 1.5ex 0; }
+
+  p { text-align: justify; }
+
+  pre.colored { color: blue; }
+
+  span.keyword { font-family: monospace;
+                 text-align: left;
+                 white-space: pre;
+                 color: darkblue; }
+
+  table.fields td.val { font-weight: bold;
+                        text-align: right;
+                        width: 30%;
+                        vertical-align: baseline;
+                        padding: 1ex 1em 1ex 0; }
+  table.fields td.desc { vertical-align: baseline;
+                         padding: 1ex 0 1ex 1em; }
+  table.fields td.desc p:first-child { margin: 0; }
+  table.fields td.desc p { margin: 1.5ex 0 0 0; }
+  table.index { margin: 6ex auto 6ex auto;
+                border: 0;
+                border-collapse: separate;
+                border-spacing: 1em 0.3ex; }
+  table.index tr { padding: 0; }
+  table.index td { padding: 0; }
+  table.index-toc-link { width: 100%;
+                         border: 0;
+                         border-spacing: 0;
+                         margin: 1ex 0 1ex 0; }
+  table.index-toc-link td.left { padding: 0 0.5em 0 0.5em;
+                                 font-size: 83%;
+                                 text-align: left; }
+  table.index-toc-link td.middle { padding: 0 0.5em 0 0.5em;
+                                   font-size: 83%;
+                                   text-align: center; }
+  table.index-toc-link td.right { padding: 0 0.5em 0 0.5em;
+                                  font-size: 83%;
+                                  text-align: right; }
+  table.synopsis { margin: 6ex auto 6ex auto;
+                   border: 0;
+                   border-collapse: separate;
+                   border-spacing: 2em 0.6ex; }
+  table.synopsis tr { padding: 0; }
+  table.synopsis td { padding: 0; }
+  table.toc td.link { width: 30%;
+                      text-align: right;
+                      vertical-align: baseline;
+                      padding: 1ex 1em 1ex 0; }
+  table.toc td.desc { vertical-align: baseline;
+                      padding: 1ex 0 1ex 1em;
+                      text-align: left; }
+  table.toc td.desc p:first-child { margin: 0;
+                                    text-align: left; }
+  table.toc td.desc p { margin: 1.5ex 0 0 0;
+                        text-align: left; }
+
+</style>
+</head>
+<body>
+
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table>
+<h1>FreeType-2.6.3 API Reference</h1>
+
+<h1 id="computations">Computations</h1>
+<h2>Synopsis</h2>
+<table class="synopsis">
+<tr><td><a href="#FT_MulDiv">FT_MulDiv</a></td><td>&nbsp;</td><td><a href="#FT_Atan2">FT_Atan2</a></td></tr>
+<tr><td><a href="#FT_MulFix">FT_MulFix</a></td><td><a href="#FT_Angle">FT_Angle</a></td><td><a href="#FT_Angle_Diff">FT_Angle_Diff</a></td></tr>
+<tr><td><a href="#FT_DivFix">FT_DivFix</a></td><td><a href="#FT_ANGLE_PI">FT_ANGLE_PI</a></td><td><a href="#FT_Vector_Unit">FT_Vector_Unit</a></td></tr>
+<tr><td><a href="#FT_RoundFix">FT_RoundFix</a></td><td><a href="#FT_ANGLE_2PI">FT_ANGLE_2PI</a></td><td><a href="#FT_Vector_Rotate">FT_Vector_Rotate</a></td></tr>
+<tr><td><a href="#FT_CeilFix">FT_CeilFix</a></td><td><a href="#FT_ANGLE_PI2">FT_ANGLE_PI2</a></td><td><a href="#FT_Vector_Length">FT_Vector_Length</a></td></tr>
+<tr><td><a href="#FT_FloorFix">FT_FloorFix</a></td><td><a href="#FT_ANGLE_PI4">FT_ANGLE_PI4</a></td><td><a href="#FT_Vector_Polarize">FT_Vector_Polarize</a></td></tr>
+<tr><td><a href="#FT_Vector_Transform">FT_Vector_Transform</a></td><td><a href="#FT_Sin">FT_Sin</a></td><td><a href="#FT_Vector_From_Polar">FT_Vector_From_Polar</a></td></tr>
+<tr><td><a href="#FT_Matrix_Multiply">FT_Matrix_Multiply</a></td><td><a href="#FT_Cos">FT_Cos</a></td><td></td></tr>
+<tr><td><a href="#FT_Matrix_Invert">FT_Matrix_Invert</a></td><td><a href="#FT_Tan">FT_Tan</a></td><td></td></tr>
+</table>
+
+
+<p>This section contains various functions used to perform computations on 16.16 fixed-float numbers or 2d vectors.</p>
+
+<div class="section">
+<h3 id="FT_MulDiv">FT_MulDiv</h3>
+<p>Defined in FT_FREETYPE_H (freetype/freetype.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Long">FT_Long</a> )
+  <b>FT_MulDiv</b>( <a href="ft2-basic_types.html#FT_Long">FT_Long</a>  a,
+             <a href="ft2-basic_types.html#FT_Long">FT_Long</a>  b,
+             <a href="ft2-basic_types.html#FT_Long">FT_Long</a>  c );
+</pre>
+
+<p>A very simple function used to perform the computation &lsquo;(a*b)/c&rsquo; with maximum accuracy (it uses a 64-bit intermediate integer whenever necessary).</p>
+<p>This function isn't necessarily as fast as some processor specific operations, but is at least completely portable.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="a">a</td><td class="desc">
+<p>The first multiplier.</p>
+</td></tr>
+<tr><td class="val" id="b">b</td><td class="desc">
+<p>The second multiplier.</p>
+</td></tr>
+<tr><td class="val" id="c">c</td><td class="desc">
+<p>The divisor.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>The result of &lsquo;(a*b)/c&rsquo;. This function never traps when trying to divide by zero; it simply returns &lsquo;MaxInt&rsquo; or &lsquo;MinInt&rsquo; depending on the signs of &lsquo;a&rsquo; and &lsquo;b&rsquo;.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_MulFix">FT_MulFix</h3>
+<p>Defined in FT_FREETYPE_H (freetype/freetype.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Long">FT_Long</a> )
+  <b>FT_MulFix</b>( <a href="ft2-basic_types.html#FT_Long">FT_Long</a>  a,
+             <a href="ft2-basic_types.html#FT_Long">FT_Long</a>  b );
+</pre>
+
+<p>A very simple function used to perform the computation &lsquo;(a*b)/0x10000&rsquo; with maximum accuracy. Most of the time this is used to multiply a given value by a 16.16 fixed-point factor.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="a">a</td><td class="desc">
+<p>The first multiplier.</p>
+</td></tr>
+<tr><td class="val" id="b">b</td><td class="desc">
+<p>The second multiplier. Use a 16.16 factor here whenever possible (see note below).</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>The result of &lsquo;(a*b)/0x10000&rsquo;.</p>
+
+<h4>note</h4>
+<p>This function has been optimized for the case where the absolute value of &lsquo;a&rsquo; is less than 2048, and &lsquo;b&rsquo; is a 16.16 scaling factor. As this happens mainly when scaling from notional units to fractional pixels in FreeType, it resulted in noticeable speed improvements between versions 2.x and 1.x.</p>
+<p>As a conclusion, always try to place a 16.16 factor as the <i>second</i> argument of this function; this can make a great difference.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_DivFix">FT_DivFix</h3>
+<p>Defined in FT_FREETYPE_H (freetype/freetype.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Long">FT_Long</a> )
+  <b>FT_DivFix</b>( <a href="ft2-basic_types.html#FT_Long">FT_Long</a>  a,
+             <a href="ft2-basic_types.html#FT_Long">FT_Long</a>  b );
+</pre>
+
+<p>A very simple function used to perform the computation &lsquo;(a*0x10000)/b&rsquo; with maximum accuracy. Most of the time, this is used to divide a given value by a 16.16 fixed-point factor.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="a">a</td><td class="desc">
+<p>The numerator.</p>
+</td></tr>
+<tr><td class="val" id="b">b</td><td class="desc">
+<p>The denominator. Use a 16.16 factor here.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>The result of &lsquo;(a*0x10000)/b&rsquo;.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_RoundFix">FT_RoundFix</h3>
+<p>Defined in FT_FREETYPE_H (freetype/freetype.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a> )
+  <b>FT_RoundFix</b>( <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>  a );
+</pre>
+
+<p>A very simple function used to round a 16.16 fixed number.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="a">a</td><td class="desc">
+<p>The number to be rounded.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>&lsquo;a&rsquo; rounded to nearest 16.16 fixed integer, halfway cases away from zero.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_CeilFix">FT_CeilFix</h3>
+<p>Defined in FT_FREETYPE_H (freetype/freetype.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a> )
+  <b>FT_CeilFix</b>( <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>  a );
+</pre>
+
+<p>A very simple function used to compute the ceiling function of a 16.16 fixed number.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="a">a</td><td class="desc">
+<p>The number for which the ceiling function is to be computed.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>&lsquo;a&rsquo; rounded towards plus infinity.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_FloorFix">FT_FloorFix</h3>
+<p>Defined in FT_FREETYPE_H (freetype/freetype.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a> )
+  <b>FT_FloorFix</b>( <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>  a );
+</pre>
+
+<p>A very simple function used to compute the floor function of a 16.16 fixed number.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="a">a</td><td class="desc">
+<p>The number for which the floor function is to be computed.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>&lsquo;a&rsquo; rounded towards minus infinity.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Vector_Transform">FT_Vector_Transform</h3>
+<p>Defined in FT_FREETYPE_H (freetype/freetype.h).</p>
+<pre>
+  FT_EXPORT( <span class="keyword">void</span> )
+  <b>FT_Vector_Transform</b>( <a href="ft2-basic_types.html#FT_Vector">FT_Vector</a>*        vec,
+                       <span class="keyword">const</span> <a href="ft2-basic_types.html#FT_Matrix">FT_Matrix</a>*  matrix );
+</pre>
+
+<p>Transform a single vector through a 2x2 matrix.</p>
+
+<h4>inout</h4>
+<table class="fields">
+<tr><td class="val" id="vector">vector</td><td class="desc">
+<p>The target vector to transform.</p>
+</td></tr>
+</table>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="matrix">matrix</td><td class="desc">
+<p>A pointer to the source 2x2 matrix.</p>
+</td></tr>
+</table>
+
+<h4>note</h4>
+<p>The result is undefined if either &lsquo;vector&rsquo; or &lsquo;matrix&rsquo; is invalid.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Matrix_Multiply">FT_Matrix_Multiply</h3>
+<p>Defined in FT_GLYPH_H (freetype/ftglyph.h).</p>
+<pre>
+  FT_EXPORT( <span class="keyword">void</span> )
+  <b>FT_Matrix_Multiply</b>( <span class="keyword">const</span> <a href="ft2-basic_types.html#FT_Matrix">FT_Matrix</a>*  a,
+                      <a href="ft2-basic_types.html#FT_Matrix">FT_Matrix</a>*        b );
+</pre>
+
+<p>Perform the matrix operation &lsquo;b = a*b&rsquo;.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="a">a</td><td class="desc">
+<p>A pointer to matrix &lsquo;a&rsquo;.</p>
+</td></tr>
+</table>
+
+<h4>inout</h4>
+<table class="fields">
+<tr><td class="val" id="b">b</td><td class="desc">
+<p>A pointer to matrix &lsquo;b&rsquo;.</p>
+</td></tr>
+</table>
+
+<h4>note</h4>
+<p>The result is undefined if either &lsquo;a&rsquo; or &lsquo;b&rsquo; is zero.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Matrix_Invert">FT_Matrix_Invert</h3>
+<p>Defined in FT_GLYPH_H (freetype/ftglyph.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Matrix_Invert</b>( <a href="ft2-basic_types.html#FT_Matrix">FT_Matrix</a>*  matrix );
+</pre>
+
+<p>Invert a 2x2 matrix. Return an error if it can't be inverted.</p>
+
+<h4>inout</h4>
+<table class="fields">
+<tr><td class="val" id="matrix">matrix</td><td class="desc">
+<p>A pointer to the target matrix. Remains untouched in case of error.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Angle">FT_Angle</h3>
+<p>Defined in FT_TRIGONOMETRY_H (freetype/fttrigon.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>  <b>FT_Angle</b>;
+</pre>
+
+<p>This type is used to model angle values in FreeType. Note that the angle is a 16.16 fixed-point value expressed in degrees.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_ANGLE_PI">FT_ANGLE_PI</h3>
+<p>Defined in FT_TRIGONOMETRY_H (freetype/fttrigon.h).</p>
+<pre>
+#define <b>FT_ANGLE_PI</b>  ( 180L &lt;&lt; 16 )
+</pre>
+
+<p>The angle pi expressed in <a href="ft2-computations.html#FT_Angle">FT_Angle</a> units.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_ANGLE_2PI">FT_ANGLE_2PI</h3>
+<p>Defined in FT_TRIGONOMETRY_H (freetype/fttrigon.h).</p>
+<pre>
+#define <b>FT_ANGLE_2PI</b>  ( <a href="ft2-computations.html#FT_ANGLE_PI">FT_ANGLE_PI</a> * 2 )
+</pre>
+
+<p>The angle 2*pi expressed in <a href="ft2-computations.html#FT_Angle">FT_Angle</a> units.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_ANGLE_PI2">FT_ANGLE_PI2</h3>
+<p>Defined in FT_TRIGONOMETRY_H (freetype/fttrigon.h).</p>
+<pre>
+#define <b>FT_ANGLE_PI2</b>  ( <a href="ft2-computations.html#FT_ANGLE_PI">FT_ANGLE_PI</a> / 2 )
+</pre>
+
+<p>The angle pi/2 expressed in <a href="ft2-computations.html#FT_Angle">FT_Angle</a> units.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_ANGLE_PI4">FT_ANGLE_PI4</h3>
+<p>Defined in FT_TRIGONOMETRY_H (freetype/fttrigon.h).</p>
+<pre>
+#define <b>FT_ANGLE_PI4</b>  ( <a href="ft2-computations.html#FT_ANGLE_PI">FT_ANGLE_PI</a> / 4 )
+</pre>
+
+<p>The angle pi/4 expressed in <a href="ft2-computations.html#FT_Angle">FT_Angle</a> units.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Sin">FT_Sin</h3>
+<p>Defined in FT_TRIGONOMETRY_H (freetype/fttrigon.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a> )
+  <b>FT_Sin</b>( <a href="ft2-computations.html#FT_Angle">FT_Angle</a>  angle );
+</pre>
+
+<p>Return the sinus of a given angle in fixed-point format.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="angle">angle</td><td class="desc">
+<p>The input angle.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>The sinus value.</p>
+
+<h4>note</h4>
+<p>If you need both the sinus and cosinus for a given angle, use the function <a href="ft2-computations.html#FT_Vector_Unit">FT_Vector_Unit</a>.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Cos">FT_Cos</h3>
+<p>Defined in FT_TRIGONOMETRY_H (freetype/fttrigon.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a> )
+  <b>FT_Cos</b>( <a href="ft2-computations.html#FT_Angle">FT_Angle</a>  angle );
+</pre>
+
+<p>Return the cosinus of a given angle in fixed-point format.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="angle">angle</td><td class="desc">
+<p>The input angle.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>The cosinus value.</p>
+
+<h4>note</h4>
+<p>If you need both the sinus and cosinus for a given angle, use the function <a href="ft2-computations.html#FT_Vector_Unit">FT_Vector_Unit</a>.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Tan">FT_Tan</h3>
+<p>Defined in FT_TRIGONOMETRY_H (freetype/fttrigon.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a> )
+  <b>FT_Tan</b>( <a href="ft2-computations.html#FT_Angle">FT_Angle</a>  angle );
+</pre>
+
+<p>Return the tangent of a given angle in fixed-point format.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="angle">angle</td><td class="desc">
+<p>The input angle.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>The tangent value.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Atan2">FT_Atan2</h3>
+<p>Defined in FT_TRIGONOMETRY_H (freetype/fttrigon.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-computations.html#FT_Angle">FT_Angle</a> )
+  <b>FT_Atan2</b>( <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>  x,
+            <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>  y );
+</pre>
+
+<p>Return the arc-tangent corresponding to a given vector (x,y) in the 2d plane.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="x">x</td><td class="desc">
+<p>The horizontal vector coordinate.</p>
+</td></tr>
+<tr><td class="val" id="y">y</td><td class="desc">
+<p>The vertical vector coordinate.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>The arc-tangent value (i.e. angle).</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Angle_Diff">FT_Angle_Diff</h3>
+<p>Defined in FT_TRIGONOMETRY_H (freetype/fttrigon.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-computations.html#FT_Angle">FT_Angle</a> )
+  <b>FT_Angle_Diff</b>( <a href="ft2-computations.html#FT_Angle">FT_Angle</a>  angle1,
+                 <a href="ft2-computations.html#FT_Angle">FT_Angle</a>  angle2 );
+</pre>
+
+<p>Return the difference between two angles. The result is always constrained to the ]-PI..PI] interval.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="angle1">angle1</td><td class="desc">
+<p>First angle.</p>
+</td></tr>
+<tr><td class="val" id="angle2">angle2</td><td class="desc">
+<p>Second angle.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>Constrained value of &lsquo;value2-value1&rsquo;.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Vector_Unit">FT_Vector_Unit</h3>
+<p>Defined in FT_TRIGONOMETRY_H (freetype/fttrigon.h).</p>
+<pre>
+  FT_EXPORT( <span class="keyword">void</span> )
+  <b>FT_Vector_Unit</b>( <a href="ft2-basic_types.html#FT_Vector">FT_Vector</a>*  vec,
+                  <a href="ft2-computations.html#FT_Angle">FT_Angle</a>    angle );
+</pre>
+
+<p>Return the unit vector corresponding to a given angle. After the call, the value of &lsquo;vec.x&rsquo; will be &lsquo;cos(angle)&rsquo;, and the value of &lsquo;vec.y&rsquo; will be &lsquo;sin(angle)&rsquo;.</p>
+<p>This function is useful to retrieve both the sinus and cosinus of a given angle quickly.</p>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="vec">vec</td><td class="desc">
+<p>The address of target vector.</p>
+</td></tr>
+</table>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="angle">angle</td><td class="desc">
+<p>The input angle.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Vector_Rotate">FT_Vector_Rotate</h3>
+<p>Defined in FT_TRIGONOMETRY_H (freetype/fttrigon.h).</p>
+<pre>
+  FT_EXPORT( <span class="keyword">void</span> )
+  <b>FT_Vector_Rotate</b>( <a href="ft2-basic_types.html#FT_Vector">FT_Vector</a>*  vec,
+                    <a href="ft2-computations.html#FT_Angle">FT_Angle</a>    angle );
+</pre>
+
+<p>Rotate a vector by a given angle.</p>
+
+<h4>inout</h4>
+<table class="fields">
+<tr><td class="val" id="vec">vec</td><td class="desc">
+<p>The address of target vector.</p>
+</td></tr>
+</table>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="angle">angle</td><td class="desc">
+<p>The input angle.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Vector_Length">FT_Vector_Length</h3>
+<p>Defined in FT_TRIGONOMETRY_H (freetype/fttrigon.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a> )
+  <b>FT_Vector_Length</b>( <a href="ft2-basic_types.html#FT_Vector">FT_Vector</a>*  vec );
+</pre>
+
+<p>Return the length of a given vector.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="vec">vec</td><td class="desc">
+<p>The address of target vector.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>The vector length, expressed in the same units that the original vector coordinates.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Vector_Polarize">FT_Vector_Polarize</h3>
+<p>Defined in FT_TRIGONOMETRY_H (freetype/fttrigon.h).</p>
+<pre>
+  FT_EXPORT( <span class="keyword">void</span> )
+  <b>FT_Vector_Polarize</b>( <a href="ft2-basic_types.html#FT_Vector">FT_Vector</a>*  vec,
+                      <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>   *length,
+                      <a href="ft2-computations.html#FT_Angle">FT_Angle</a>   *angle );
+</pre>
+
+<p>Compute both the length and angle of a given vector.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="vec">vec</td><td class="desc">
+<p>The address of source vector.</p>
+</td></tr>
+</table>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="length">length</td><td class="desc">
+<p>The vector length.</p>
+</td></tr>
+<tr><td class="val" id="angle">angle</td><td class="desc">
+<p>The vector angle.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Vector_From_Polar">FT_Vector_From_Polar</h3>
+<p>Defined in FT_TRIGONOMETRY_H (freetype/fttrigon.h).</p>
+<pre>
+  FT_EXPORT( <span class="keyword">void</span> )
+  <b>FT_Vector_From_Polar</b>( <a href="ft2-basic_types.html#FT_Vector">FT_Vector</a>*  vec,
+                        <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>    length,
+                        <a href="ft2-computations.html#FT_Angle">FT_Angle</a>    angle );
+</pre>
+
+<p>Compute vector coordinates from a length and angle.</p>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="vec">vec</td><td class="desc">
+<p>The address of source vector.</p>
+</td></tr>
+</table>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="length">length</td><td class="desc">
+<p>The vector length.</p>
+</td></tr>
+<tr><td class="val" id="angle">angle</td><td class="desc">
+<p>The vector angle.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+</body>
+</html>

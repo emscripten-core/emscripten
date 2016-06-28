@@ -1,0 +1,819 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>FreeType-2.6.3 API Reference</title>
+<style type="text/css">
+  a:link { color: #0000EF; }
+  a:visited { color: #51188E; }
+  a:hover { color: #FF0000; }
+
+  body { font-family: Verdana, Geneva, Arial, Helvetica, serif;
+         color: #000000;
+         background: #FFFFFF;
+         width: 87%;
+         margin: auto; }
+
+  div.section { width: 75%;
+                margin: auto; }
+  div.section hr { margin: 4ex 0 1ex 0; }
+  div.section h4 { background-color: #EEEEFF;
+                   font-size: medium;
+                   font-style: oblique;
+                   font-weight: bold;
+                   margin: 3ex 0 1.5ex 9%;
+                   padding: 0.3ex 0 0.3ex 1%; }
+  div.section p { margin: 1.5ex 0 1.5ex 10%; }
+  div.section pre { margin: 3ex 0 3ex 9%;
+                    background-color: #D6E8FF;
+                    padding: 2ex 0 2ex 1%; }
+  div.section table.fields { width: 90%;
+                             margin: 1.5ex 0 1.5ex 10%; }
+  div.section table.toc { width: 95%;
+                          margin: 1.5ex 0 1.5ex 5%; }
+  div.timestamp { text-align: center;
+                  font-size: 69%;
+                  margin: 1.5ex 0 1.5ex 0; }
+
+  h1 { text-align: center; }
+  h3 { font-size: medium;
+       margin: 4ex 0 1.5ex 0; }
+
+  p { text-align: justify; }
+
+  pre.colored { color: blue; }
+
+  span.keyword { font-family: monospace;
+                 text-align: left;
+                 white-space: pre;
+                 color: darkblue; }
+
+  table.fields td.val { font-weight: bold;
+                        text-align: right;
+                        width: 30%;
+                        vertical-align: baseline;
+                        padding: 1ex 1em 1ex 0; }
+  table.fields td.desc { vertical-align: baseline;
+                         padding: 1ex 0 1ex 1em; }
+  table.fields td.desc p:first-child { margin: 0; }
+  table.fields td.desc p { margin: 1.5ex 0 0 0; }
+  table.index { margin: 6ex auto 6ex auto;
+                border: 0;
+                border-collapse: separate;
+                border-spacing: 1em 0.3ex; }
+  table.index tr { padding: 0; }
+  table.index td { padding: 0; }
+  table.index-toc-link { width: 100%;
+                         border: 0;
+                         border-spacing: 0;
+                         margin: 1ex 0 1ex 0; }
+  table.index-toc-link td.left { padding: 0 0.5em 0 0.5em;
+                                 font-size: 83%;
+                                 text-align: left; }
+  table.index-toc-link td.middle { padding: 0 0.5em 0 0.5em;
+                                   font-size: 83%;
+                                   text-align: center; }
+  table.index-toc-link td.right { padding: 0 0.5em 0 0.5em;
+                                  font-size: 83%;
+                                  text-align: right; }
+  table.synopsis { margin: 6ex auto 6ex auto;
+                   border: 0;
+                   border-collapse: separate;
+                   border-spacing: 2em 0.6ex; }
+  table.synopsis tr { padding: 0; }
+  table.synopsis td { padding: 0; }
+  table.toc td.link { width: 30%;
+                      text-align: right;
+                      vertical-align: baseline;
+                      padding: 1ex 1em 1ex 0; }
+  table.toc td.desc { vertical-align: baseline;
+                      padding: 1ex 0 1ex 1em;
+                      text-align: left; }
+  table.toc td.desc p:first-child { margin: 0;
+                                    text-align: left; }
+  table.toc td.desc p { margin: 1.5ex 0 0 0;
+                        text-align: left; }
+
+</style>
+</head>
+<body>
+
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table>
+<h1>FreeType-2.6.3 API Reference</h1>
+
+<h1 id="glyph_stroker">Glyph Stroker</h1>
+<h2>Synopsis</h2>
+<table class="synopsis">
+<tr><td><a href="#FT_Stroker">FT_Stroker</a></td><td><a href="#FT_Stroker_ParseOutline">FT_Stroker_ParseOutline</a></td></tr>
+<tr><td>&nbsp;</td><td><a href="#FT_Stroker_Done">FT_Stroker_Done</a></td></tr>
+<tr><td><a href="#FT_Stroker_LineJoin">FT_Stroker_LineJoin</a></td><td>&nbsp;</td></tr>
+<tr><td><a href="#FT_Stroker_LineCap">FT_Stroker_LineCap</a></td><td><a href="#FT_Stroker_BeginSubPath">FT_Stroker_BeginSubPath</a></td></tr>
+<tr><td><a href="#FT_StrokerBorder">FT_StrokerBorder</a></td><td><a href="#FT_Stroker_EndSubPath">FT_Stroker_EndSubPath</a></td></tr>
+<tr><td>&nbsp;</td><td>&nbsp;</td></tr>
+<tr><td><a href="#FT_Outline_GetInsideBorder">FT_Outline_GetInsideBorder</a></td><td><a href="#FT_Stroker_LineTo">FT_Stroker_LineTo</a></td></tr>
+<tr><td><a href="#FT_Outline_GetOutsideBorder">FT_Outline_GetOutsideBorder</a></td><td><a href="#FT_Stroker_ConicTo">FT_Stroker_ConicTo</a></td></tr>
+<tr><td>&nbsp;</td><td><a href="#FT_Stroker_CubicTo">FT_Stroker_CubicTo</a></td></tr>
+<tr><td><a href="#FT_Glyph_Stroke">FT_Glyph_Stroke</a></td><td>&nbsp;</td></tr>
+<tr><td><a href="#FT_Glyph_StrokeBorder">FT_Glyph_StrokeBorder</a></td><td><a href="#FT_Stroker_GetBorderCounts">FT_Stroker_GetBorderCounts</a></td></tr>
+<tr><td>&nbsp;</td><td><a href="#FT_Stroker_ExportBorder">FT_Stroker_ExportBorder</a></td></tr>
+<tr><td><a href="#FT_Stroker_New">FT_Stroker_New</a></td><td><a href="#FT_Stroker_GetCounts">FT_Stroker_GetCounts</a></td></tr>
+<tr><td><a href="#FT_Stroker_Set">FT_Stroker_Set</a></td><td><a href="#FT_Stroker_Export">FT_Stroker_Export</a></td></tr>
+<tr><td><a href="#FT_Stroker_Rewind">FT_Stroker_Rewind</a></td><td></td></tr>
+</table>
+
+
+<p>This component generates stroked outlines of a given vectorial glyph. It also allows you to retrieve the &lsquo;outside&rsquo; and/or the &lsquo;inside&rsquo; borders of the stroke.</p>
+<p>This can be useful to generate &lsquo;bordered&rsquo; glyph, i.e., glyphs displayed with a coloured (and anti-aliased) border around their shape.</p>
+
+<div class="section">
+<h3 id="FT_Stroker">FT_Stroker</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">struct</span> FT_StrokerRec_*  <b>FT_Stroker</b>;
+</pre>
+
+<p>Opaque handle to a path stroker object.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Stroker_LineJoin">FT_Stroker_LineJoin</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">enum</span>  FT_Stroker_LineJoin_
+  {
+    <a href="ft2-glyph_stroker.html#FT_STROKER_LINEJOIN_ROUND">FT_STROKER_LINEJOIN_ROUND</a>          = 0,
+    <a href="ft2-glyph_stroker.html#FT_STROKER_LINEJOIN_BEVEL">FT_STROKER_LINEJOIN_BEVEL</a>          = 1,
+    <a href="ft2-glyph_stroker.html#FT_STROKER_LINEJOIN_MITER_VARIABLE">FT_STROKER_LINEJOIN_MITER_VARIABLE</a> = 2,
+    <a href="ft2-glyph_stroker.html#FT_STROKER_LINEJOIN_MITER">FT_STROKER_LINEJOIN_MITER</a>          = <a href="ft2-glyph_stroker.html#FT_STROKER_LINEJOIN_MITER_VARIABLE">FT_STROKER_LINEJOIN_MITER_VARIABLE</a>,
+    <a href="ft2-glyph_stroker.html#FT_STROKER_LINEJOIN_MITER_FIXED">FT_STROKER_LINEJOIN_MITER_FIXED</a>    = 3
+
+  } <b>FT_Stroker_LineJoin</b>;
+</pre>
+
+<p>These values determine how two joining lines are rendered in a stroker.</p>
+
+<h4>values</h4>
+<table class="fields">
+<tr><td class="val" id="FT_STROKER_LINEJOIN_ROUND">FT_STROKER_LINEJOIN_ROUND</td><td class="desc">
+<p>Used to render rounded line joins. Circular arcs are used to join two lines smoothly.</p>
+</td></tr>
+<tr><td class="val" id="FT_STROKER_LINEJOIN_BEVEL">FT_STROKER_LINEJOIN_BEVEL</td><td class="desc">
+<p>Used to render beveled line joins. The outer corner of the joined lines is filled by enclosing the triangular region of the corner with a straight line between the outer corners of each stroke.</p>
+</td></tr>
+<tr><td class="val" id="FT_STROKER_LINEJOIN_MITER_FIXED">FT_STROKER_LINEJOIN_MITER_FIXED</td><td class="desc">
+<p>Used to render mitered line joins, with fixed bevels if the miter limit is exceeded. The outer edges of the strokes for the two segments are extended until they meet at an angle. If the segments meet at too sharp an angle (such that the miter would extend from the intersection of the segments a distance greater than the product of the miter limit value and the border radius), then a bevel join (see above) is used instead. This prevents long spikes being created. FT_STROKER_LINEJOIN_MITER_FIXED generates a miter line join as used in PostScript and PDF.</p>
+</td></tr>
+<tr><td class="val" id="FT_STROKER_LINEJOIN_MITER_VARIABLE">FT_STROKER_LINEJOIN_MITER_VARIABLE</td><td class="desc">
+<p></p>
+</td></tr>
+<tr><td class="val" id="FT_STROKER_LINEJOIN_MITER">FT_STROKER_LINEJOIN_MITER</td><td class="desc">
+<p>Used to render mitered line joins, with variable bevels if the miter limit is exceeded. The intersection of the strokes is clipped at a line perpendicular to the bisector of the angle between the strokes, at the distance from the intersection of the segments equal to the product of the miter limit value and the border radius. This prevents long spikes being created. FT_STROKER_LINEJOIN_MITER_VARIABLE generates a mitered line join as used in XPS. FT_STROKER_LINEJOIN_MITER is an alias for FT_STROKER_LINEJOIN_MITER_VARIABLE, retained for backwards compatibility.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Stroker_LineCap">FT_Stroker_LineCap</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">enum</span>  FT_Stroker_LineCap_
+  {
+    <a href="ft2-glyph_stroker.html#FT_STROKER_LINECAP_BUTT">FT_STROKER_LINECAP_BUTT</a> = 0,
+    <a href="ft2-glyph_stroker.html#FT_STROKER_LINECAP_ROUND">FT_STROKER_LINECAP_ROUND</a>,
+    <a href="ft2-glyph_stroker.html#FT_STROKER_LINECAP_SQUARE">FT_STROKER_LINECAP_SQUARE</a>
+
+  } <b>FT_Stroker_LineCap</b>;
+</pre>
+
+<p>These values determine how the end of opened sub-paths are rendered in a stroke.</p>
+
+<h4>values</h4>
+<table class="fields">
+<tr><td class="val" id="FT_STROKER_LINECAP_BUTT">FT_STROKER_LINECAP_BUTT</td><td class="desc">
+<p>The end of lines is rendered as a full stop on the last point itself.</p>
+</td></tr>
+<tr><td class="val" id="FT_STROKER_LINECAP_ROUND">FT_STROKER_LINECAP_ROUND</td><td class="desc">
+<p>The end of lines is rendered as a half-circle around the last point.</p>
+</td></tr>
+<tr><td class="val" id="FT_STROKER_LINECAP_SQUARE">FT_STROKER_LINECAP_SQUARE</td><td class="desc">
+<p>The end of lines is rendered as a square around the last point.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_StrokerBorder">FT_StrokerBorder</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  <span class="keyword">typedef</span> <span class="keyword">enum</span>  FT_StrokerBorder_
+  {
+    <a href="ft2-glyph_stroker.html#FT_STROKER_BORDER_LEFT">FT_STROKER_BORDER_LEFT</a> = 0,
+    <a href="ft2-glyph_stroker.html#FT_STROKER_BORDER_RIGHT">FT_STROKER_BORDER_RIGHT</a>
+
+  } <b>FT_StrokerBorder</b>;
+</pre>
+
+<p>These values are used to select a given stroke border in <a href="ft2-glyph_stroker.html#FT_Stroker_GetBorderCounts">FT_Stroker_GetBorderCounts</a> and <a href="ft2-glyph_stroker.html#FT_Stroker_ExportBorder">FT_Stroker_ExportBorder</a>.</p>
+
+<h4>values</h4>
+<table class="fields">
+<tr><td class="val" id="FT_STROKER_BORDER_LEFT">FT_STROKER_BORDER_LEFT</td><td class="desc">
+<p>Select the left border, relative to the drawing direction.</p>
+</td></tr>
+<tr><td class="val" id="FT_STROKER_BORDER_RIGHT">FT_STROKER_BORDER_RIGHT</td><td class="desc">
+<p>Select the right border, relative to the drawing direction.</p>
+</td></tr>
+</table>
+
+<h4>note</h4>
+<p>Applications are generally interested in the &lsquo;inside&rsquo; and &lsquo;outside&rsquo; borders. However, there is no direct mapping between these and the &lsquo;left&rsquo; and &lsquo;right&rsquo; ones, since this really depends on the glyph's drawing orientation, which varies between font formats.</p>
+<p>You can however use <a href="ft2-glyph_stroker.html#FT_Outline_GetInsideBorder">FT_Outline_GetInsideBorder</a> and <a href="ft2-glyph_stroker.html#FT_Outline_GetOutsideBorder">FT_Outline_GetOutsideBorder</a> to get these.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Outline_GetInsideBorder">FT_Outline_GetInsideBorder</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-glyph_stroker.html#FT_StrokerBorder">FT_StrokerBorder</a> )
+  <b>FT_Outline_GetInsideBorder</b>( <a href="ft2-outline_processing.html#FT_Outline">FT_Outline</a>*  outline );
+</pre>
+
+<p>Retrieve the <a href="ft2-glyph_stroker.html#FT_StrokerBorder">FT_StrokerBorder</a> value corresponding to the &lsquo;inside&rsquo; borders of a given outline.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="outline">outline</td><td class="desc">
+<p>The source outline handle.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>The border index. <a href="ft2-glyph_stroker.html#FT_StrokerBorder">FT_STROKER_BORDER_RIGHT</a> for empty or invalid outlines.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Outline_GetOutsideBorder">FT_Outline_GetOutsideBorder</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-glyph_stroker.html#FT_StrokerBorder">FT_StrokerBorder</a> )
+  <b>FT_Outline_GetOutsideBorder</b>( <a href="ft2-outline_processing.html#FT_Outline">FT_Outline</a>*  outline );
+</pre>
+
+<p>Retrieve the <a href="ft2-glyph_stroker.html#FT_StrokerBorder">FT_StrokerBorder</a> value corresponding to the &lsquo;outside&rsquo; borders of a given outline.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="outline">outline</td><td class="desc">
+<p>The source outline handle.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>The border index. <a href="ft2-glyph_stroker.html#FT_StrokerBorder">FT_STROKER_BORDER_LEFT</a> for empty or invalid outlines.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Glyph_Stroke">FT_Glyph_Stroke</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Glyph_Stroke</b>( <a href="ft2-glyph_management.html#FT_Glyph">FT_Glyph</a>    *pglyph,
+                   <a href="ft2-glyph_stroker.html#FT_Stroker">FT_Stroker</a>   stroker,
+                   <a href="ft2-basic_types.html#FT_Bool">FT_Bool</a>      destroy );
+</pre>
+
+<p>Stroke a given outline glyph object with a given stroker.</p>
+
+<h4>inout</h4>
+<table class="fields">
+<tr><td class="val" id="pglyph">pglyph</td><td class="desc">
+<p>Source glyph handle on input, new glyph handle on output.</p>
+</td></tr>
+</table>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="stroker">stroker</td><td class="desc">
+<p>A stroker handle.</p>
+</td></tr>
+<tr><td class="val" id="destroy">destroy</td><td class="desc">
+<p>A Boolean. If&nbsp;1, the source glyph object is destroyed on success.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>The source glyph is untouched in case of error.</p>
+<p>Adding stroke may yield a significantly wider and taller glyph depending on how large of a radius was used to stroke the glyph. You may need to manually adjust horizontal and vertical advance amounts to account for this added size.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Glyph_StrokeBorder">FT_Glyph_StrokeBorder</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Glyph_StrokeBorder</b>( <a href="ft2-glyph_management.html#FT_Glyph">FT_Glyph</a>    *pglyph,
+                         <a href="ft2-glyph_stroker.html#FT_Stroker">FT_Stroker</a>   stroker,
+                         <a href="ft2-basic_types.html#FT_Bool">FT_Bool</a>      inside,
+                         <a href="ft2-basic_types.html#FT_Bool">FT_Bool</a>      destroy );
+</pre>
+
+<p>Stroke a given outline glyph object with a given stroker, but only return either its inside or outside border.</p>
+
+<h4>inout</h4>
+<table class="fields">
+<tr><td class="val" id="pglyph">pglyph</td><td class="desc">
+<p>Source glyph handle on input, new glyph handle on output.</p>
+</td></tr>
+</table>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="stroker">stroker</td><td class="desc">
+<p>A stroker handle.</p>
+</td></tr>
+<tr><td class="val" id="inside">inside</td><td class="desc">
+<p>A Boolean. If&nbsp;1, return the inside border, otherwise the outside border.</p>
+</td></tr>
+<tr><td class="val" id="destroy">destroy</td><td class="desc">
+<p>A Boolean. If&nbsp;1, the source glyph object is destroyed on success.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>The source glyph is untouched in case of error.</p>
+<p>Adding stroke may yield a significantly wider and taller glyph depending on how large of a radius was used to stroke the glyph. You may need to manually adjust horizontal and vertical advance amounts to account for this added size.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Stroker_New">FT_Stroker_New</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Stroker_New</b>( <a href="ft2-base_interface.html#FT_Library">FT_Library</a>   library,
+                  <a href="ft2-glyph_stroker.html#FT_Stroker">FT_Stroker</a>  *astroker );
+</pre>
+
+<p>Create a new stroker object.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="library">library</td><td class="desc">
+<p>FreeType library handle.</p>
+</td></tr>
+</table>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="astroker">astroker</td><td class="desc">
+<p>A new stroker object handle. NULL in case of error.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Stroker_Set">FT_Stroker_Set</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  FT_EXPORT( <span class="keyword">void</span> )
+  <b>FT_Stroker_Set</b>( <a href="ft2-glyph_stroker.html#FT_Stroker">FT_Stroker</a>           stroker,
+                  <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>             radius,
+                  <a href="ft2-glyph_stroker.html#FT_Stroker_LineCap">FT_Stroker_LineCap</a>   line_cap,
+                  <a href="ft2-glyph_stroker.html#FT_Stroker_LineJoin">FT_Stroker_LineJoin</a>  line_join,
+                  <a href="ft2-basic_types.html#FT_Fixed">FT_Fixed</a>             miter_limit );
+</pre>
+
+<p>Reset a stroker object's attributes.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="stroker">stroker</td><td class="desc">
+<p>The target stroker handle.</p>
+</td></tr>
+<tr><td class="val" id="radius">radius</td><td class="desc">
+<p>The border radius.</p>
+</td></tr>
+<tr><td class="val" id="line_cap">line_cap</td><td class="desc">
+<p>The line cap style.</p>
+</td></tr>
+<tr><td class="val" id="line_join">line_join</td><td class="desc">
+<p>The line join style.</p>
+</td></tr>
+<tr><td class="val" id="miter_limit">miter_limit</td><td class="desc">
+<p>The miter limit for the FT_STROKER_LINEJOIN_MITER_FIXED and FT_STROKER_LINEJOIN_MITER_VARIABLE line join styles, expressed as 16.16 fixed-point value.</p>
+</td></tr>
+</table>
+
+<h4>note</h4>
+<p>The radius is expressed in the same units as the outline coordinates.</p>
+<p>This function calls <a href="ft2-glyph_stroker.html#FT_Stroker_Rewind">FT_Stroker_Rewind</a> automatically.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Stroker_Rewind">FT_Stroker_Rewind</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  FT_EXPORT( <span class="keyword">void</span> )
+  <b>FT_Stroker_Rewind</b>( <a href="ft2-glyph_stroker.html#FT_Stroker">FT_Stroker</a>  stroker );
+</pre>
+
+<p>Reset a stroker object without changing its attributes. You should call this function before beginning a new series of calls to <a href="ft2-glyph_stroker.html#FT_Stroker_BeginSubPath">FT_Stroker_BeginSubPath</a> or <a href="ft2-glyph_stroker.html#FT_Stroker_EndSubPath">FT_Stroker_EndSubPath</a>.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="stroker">stroker</td><td class="desc">
+<p>The target stroker handle.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Stroker_ParseOutline">FT_Stroker_ParseOutline</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Stroker_ParseOutline</b>( <a href="ft2-glyph_stroker.html#FT_Stroker">FT_Stroker</a>   stroker,
+                           <a href="ft2-outline_processing.html#FT_Outline">FT_Outline</a>*  outline,
+                           <a href="ft2-basic_types.html#FT_Bool">FT_Bool</a>      opened );
+</pre>
+
+<p>A convenience function used to parse a whole outline with the stroker. The resulting outline(s) can be retrieved later by functions like <a href="ft2-glyph_stroker.html#FT_Stroker_GetCounts">FT_Stroker_GetCounts</a> and <a href="ft2-glyph_stroker.html#FT_Stroker_Export">FT_Stroker_Export</a>.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="stroker">stroker</td><td class="desc">
+<p>The target stroker handle.</p>
+</td></tr>
+<tr><td class="val" id="outline">outline</td><td class="desc">
+<p>The source outline.</p>
+</td></tr>
+<tr><td class="val" id="opened">opened</td><td class="desc">
+<p>A boolean. If&nbsp;1, the outline is treated as an open path instead of a closed one.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>If &lsquo;opened&rsquo; is&nbsp;0 (the default), the outline is treated as a closed path, and the stroker generates two distinct &lsquo;border&rsquo; outlines.</p>
+<p>If &lsquo;opened&rsquo; is&nbsp;1, the outline is processed as an open path, and the stroker generates a single &lsquo;stroke&rsquo; outline.</p>
+<p>This function calls <a href="ft2-glyph_stroker.html#FT_Stroker_Rewind">FT_Stroker_Rewind</a> automatically.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Stroker_Done">FT_Stroker_Done</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  FT_EXPORT( <span class="keyword">void</span> )
+  <b>FT_Stroker_Done</b>( <a href="ft2-glyph_stroker.html#FT_Stroker">FT_Stroker</a>  stroker );
+</pre>
+
+<p>Destroy a stroker object.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="stroker">stroker</td><td class="desc">
+<p>A stroker handle. Can be NULL.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Stroker_BeginSubPath">FT_Stroker_BeginSubPath</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Stroker_BeginSubPath</b>( <a href="ft2-glyph_stroker.html#FT_Stroker">FT_Stroker</a>  stroker,
+                           <a href="ft2-basic_types.html#FT_Vector">FT_Vector</a>*  to,
+                           <a href="ft2-basic_types.html#FT_Bool">FT_Bool</a>     open );
+</pre>
+
+<p>Start a new sub-path in the stroker.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="stroker">stroker</td><td class="desc">
+<p>The target stroker handle.</p>
+</td></tr>
+<tr><td class="val" id="to">to</td><td class="desc">
+<p>A pointer to the start vector.</p>
+</td></tr>
+<tr><td class="val" id="open">open</td><td class="desc">
+<p>A boolean. If&nbsp;1, the sub-path is treated as an open one.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>This function is useful when you need to stroke a path that is not stored as an <a href="ft2-outline_processing.html#FT_Outline">FT_Outline</a> object.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Stroker_EndSubPath">FT_Stroker_EndSubPath</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Stroker_EndSubPath</b>( <a href="ft2-glyph_stroker.html#FT_Stroker">FT_Stroker</a>  stroker );
+</pre>
+
+<p>Close the current sub-path in the stroker.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="stroker">stroker</td><td class="desc">
+<p>The target stroker handle.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>You should call this function after <a href="ft2-glyph_stroker.html#FT_Stroker_BeginSubPath">FT_Stroker_BeginSubPath</a>. If the subpath was not &lsquo;opened&rsquo;, this function &lsquo;draws&rsquo; a single line segment to the start position when needed.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Stroker_LineTo">FT_Stroker_LineTo</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Stroker_LineTo</b>( <a href="ft2-glyph_stroker.html#FT_Stroker">FT_Stroker</a>  stroker,
+                     <a href="ft2-basic_types.html#FT_Vector">FT_Vector</a>*  to );
+</pre>
+
+<p>&lsquo;Draw&rsquo; a single line segment in the stroker's current sub-path, from the last position.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="stroker">stroker</td><td class="desc">
+<p>The target stroker handle.</p>
+</td></tr>
+<tr><td class="val" id="to">to</td><td class="desc">
+<p>A pointer to the destination point.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>You should call this function between <a href="ft2-glyph_stroker.html#FT_Stroker_BeginSubPath">FT_Stroker_BeginSubPath</a> and <a href="ft2-glyph_stroker.html#FT_Stroker_EndSubPath">FT_Stroker_EndSubPath</a>.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Stroker_ConicTo">FT_Stroker_ConicTo</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Stroker_ConicTo</b>( <a href="ft2-glyph_stroker.html#FT_Stroker">FT_Stroker</a>  stroker,
+                      <a href="ft2-basic_types.html#FT_Vector">FT_Vector</a>*  control,
+                      <a href="ft2-basic_types.html#FT_Vector">FT_Vector</a>*  to );
+</pre>
+
+<p>&lsquo;Draw&rsquo; a single quadratic Bézier in the stroker's current sub-path, from the last position.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="stroker">stroker</td><td class="desc">
+<p>The target stroker handle.</p>
+</td></tr>
+<tr><td class="val" id="control">control</td><td class="desc">
+<p>A pointer to a Bézier control point.</p>
+</td></tr>
+<tr><td class="val" id="to">to</td><td class="desc">
+<p>A pointer to the destination point.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>You should call this function between <a href="ft2-glyph_stroker.html#FT_Stroker_BeginSubPath">FT_Stroker_BeginSubPath</a> and <a href="ft2-glyph_stroker.html#FT_Stroker_EndSubPath">FT_Stroker_EndSubPath</a>.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Stroker_CubicTo">FT_Stroker_CubicTo</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Stroker_CubicTo</b>( <a href="ft2-glyph_stroker.html#FT_Stroker">FT_Stroker</a>  stroker,
+                      <a href="ft2-basic_types.html#FT_Vector">FT_Vector</a>*  control1,
+                      <a href="ft2-basic_types.html#FT_Vector">FT_Vector</a>*  control2,
+                      <a href="ft2-basic_types.html#FT_Vector">FT_Vector</a>*  to );
+</pre>
+
+<p>&lsquo;Draw&rsquo; a single cubic Bézier in the stroker's current sub-path, from the last position.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="stroker">stroker</td><td class="desc">
+<p>The target stroker handle.</p>
+</td></tr>
+<tr><td class="val" id="control1">control1</td><td class="desc">
+<p>A pointer to the first Bézier control point.</p>
+</td></tr>
+<tr><td class="val" id="control2">control2</td><td class="desc">
+<p>A pointer to second Bézier control point.</p>
+</td></tr>
+<tr><td class="val" id="to">to</td><td class="desc">
+<p>A pointer to the destination point.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>You should call this function between <a href="ft2-glyph_stroker.html#FT_Stroker_BeginSubPath">FT_Stroker_BeginSubPath</a> and <a href="ft2-glyph_stroker.html#FT_Stroker_EndSubPath">FT_Stroker_EndSubPath</a>.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Stroker_GetBorderCounts">FT_Stroker_GetBorderCounts</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Stroker_GetBorderCounts</b>( <a href="ft2-glyph_stroker.html#FT_Stroker">FT_Stroker</a>        stroker,
+                              <a href="ft2-glyph_stroker.html#FT_StrokerBorder">FT_StrokerBorder</a>  border,
+                              <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>          *anum_points,
+                              <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>          *anum_contours );
+</pre>
+
+<p>Call this function once you have finished parsing your paths with the stroker. It returns the number of points and contours necessary to export one of the &lsquo;border&rsquo; or &lsquo;stroke&rsquo; outlines generated by the stroker.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="stroker">stroker</td><td class="desc">
+<p>The target stroker handle.</p>
+</td></tr>
+<tr><td class="val" id="border">border</td><td class="desc">
+<p>The border index.</p>
+</td></tr>
+</table>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="anum_points">anum_points</td><td class="desc">
+<p>The number of points.</p>
+</td></tr>
+<tr><td class="val" id="anum_contours">anum_contours</td><td class="desc">
+<p>The number of contours.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<h4>note</h4>
+<p>When an outline, or a sub-path, is &lsquo;closed&rsquo;, the stroker generates two independent &lsquo;border&rsquo; outlines, named &lsquo;left&rsquo; and &lsquo;right&rsquo;.</p>
+<p>When the outline, or a sub-path, is &lsquo;opened&rsquo;, the stroker merges the &lsquo;border&rsquo; outlines with caps. The &lsquo;left&rsquo; border receives all points, while the &lsquo;right&rsquo; border becomes empty.</p>
+<p>Use the function <a href="ft2-glyph_stroker.html#FT_Stroker_GetCounts">FT_Stroker_GetCounts</a> instead if you want to retrieve the counts associated to both borders.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Stroker_ExportBorder">FT_Stroker_ExportBorder</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  FT_EXPORT( <span class="keyword">void</span> )
+  <b>FT_Stroker_ExportBorder</b>( <a href="ft2-glyph_stroker.html#FT_Stroker">FT_Stroker</a>        stroker,
+                           <a href="ft2-glyph_stroker.html#FT_StrokerBorder">FT_StrokerBorder</a>  border,
+                           <a href="ft2-outline_processing.html#FT_Outline">FT_Outline</a>*       outline );
+</pre>
+
+<p>Call this function after <a href="ft2-glyph_stroker.html#FT_Stroker_GetBorderCounts">FT_Stroker_GetBorderCounts</a> to export the corresponding border to your own <a href="ft2-outline_processing.html#FT_Outline">FT_Outline</a> structure.</p>
+<p>Note that this function appends the border points and contours to your outline, but does not try to resize its arrays.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="stroker">stroker</td><td class="desc">
+<p>The target stroker handle.</p>
+</td></tr>
+<tr><td class="val" id="border">border</td><td class="desc">
+<p>The border index.</p>
+</td></tr>
+<tr><td class="val" id="outline">outline</td><td class="desc">
+<p>The target outline handle.</p>
+</td></tr>
+</table>
+
+<h4>note</h4>
+<p>Always call this function after <a href="ft2-glyph_stroker.html#FT_Stroker_GetBorderCounts">FT_Stroker_GetBorderCounts</a> to get sure that there is enough room in your <a href="ft2-outline_processing.html#FT_Outline">FT_Outline</a> object to receive all new data.</p>
+<p>When an outline, or a sub-path, is &lsquo;closed&rsquo;, the stroker generates two independent &lsquo;border&rsquo; outlines, named &lsquo;left&rsquo; and &lsquo;right&rsquo;.</p>
+<p>When the outline, or a sub-path, is &lsquo;opened&rsquo;, the stroker merges the &lsquo;border&rsquo; outlines with caps. The &lsquo;left&rsquo; border receives all points, while the &lsquo;right&rsquo; border becomes empty.</p>
+<p>Use the function <a href="ft2-glyph_stroker.html#FT_Stroker_Export">FT_Stroker_Export</a> instead if you want to retrieve all borders at once.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Stroker_GetCounts">FT_Stroker_GetCounts</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  FT_EXPORT( <a href="ft2-basic_types.html#FT_Error">FT_Error</a> )
+  <b>FT_Stroker_GetCounts</b>( <a href="ft2-glyph_stroker.html#FT_Stroker">FT_Stroker</a>  stroker,
+                        <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>    *anum_points,
+                        <a href="ft2-basic_types.html#FT_UInt">FT_UInt</a>    *anum_contours );
+</pre>
+
+<p>Call this function once you have finished parsing your paths with the stroker. It returns the number of points and contours necessary to export all points/borders from the stroked outline/path.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="stroker">stroker</td><td class="desc">
+<p>The target stroker handle.</p>
+</td></tr>
+</table>
+
+<h4>output</h4>
+<table class="fields">
+<tr><td class="val" id="anum_points">anum_points</td><td class="desc">
+<p>The number of points.</p>
+</td></tr>
+<tr><td class="val" id="anum_contours">anum_contours</td><td class="desc">
+<p>The number of contours.</p>
+</td></tr>
+</table>
+
+<h4>return</h4>
+<p>FreeType error code. 0&nbsp;means success.</p>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+<div class="section">
+<h3 id="FT_Stroker_Export">FT_Stroker_Export</h3>
+<p>Defined in FT_STROKER_H (freetype/ftstroke.h).</p>
+<pre>
+  FT_EXPORT( <span class="keyword">void</span> )
+  <b>FT_Stroker_Export</b>( <a href="ft2-glyph_stroker.html#FT_Stroker">FT_Stroker</a>   stroker,
+                     <a href="ft2-outline_processing.html#FT_Outline">FT_Outline</a>*  outline );
+</pre>
+
+<p>Call this function after <a href="ft2-glyph_stroker.html#FT_Stroker_GetBorderCounts">FT_Stroker_GetBorderCounts</a> to export all borders to your own <a href="ft2-outline_processing.html#FT_Outline">FT_Outline</a> structure.</p>
+<p>Note that this function appends the border points and contours to your outline, but does not try to resize its arrays.</p>
+
+<h4>input</h4>
+<table class="fields">
+<tr><td class="val" id="stroker">stroker</td><td class="desc">
+<p>The target stroker handle.</p>
+</td></tr>
+<tr><td class="val" id="outline">outline</td><td class="desc">
+<p>The target outline handle.</p>
+</td></tr>
+</table>
+
+<hr>
+<table class="index-toc-link"><tr><td class="left">[<a href="ft2-index.html">Index</a>]</td><td class="middle">[<a href="#">Top</a>]</td><td class="right">[<a href="ft2-toc.html">TOC</a>]</td></tr></table></div>
+
+</body>
+</html>
