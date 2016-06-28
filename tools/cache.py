@@ -3,11 +3,29 @@ import tempfiles, filelock
 
 # Permanent cache for dlmalloc and stdlibc++
 class Cache:
+
+  # If EM_EXCLUSIVE_CACHE_ACCESS is true, this process is allowed to have direct access to
+  # the Emscripten cache without having to obtain an interprocess lock for it. Generally this
+  # is false, and this is used in the case that Emscripten process recursively calls to itself
+  # when building the cache, in which case the parent Emscripten process has already locked
+  # the cache. Essentially the env. var EM_EXCLUSIVE_CACHE_ACCESS signals from parent to
+  # child process that the child can reuse the lock that the parent already has acquired.
+  EM_EXCLUSIVE_CACHE_ACCESS = int(os.environ.get('EM_EXCLUSIVE_CACHE_ACCESS') or 0)
+
   def __init__(self, dirname=None, debug=False, use_subdir=True):
     if dirname is None:
       dirname = os.environ.get('EM_CACHE')
     if not dirname:
       dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+
+    def try_remove_ending(thestring, ending):
+      if thestring.endswith(ending):
+        return thestring[:-len(ending)]
+      return thestring
+
+    self.filelock_name = try_remove_ending(try_remove_ending(dirname, '/'), '\\') + '.lock'
+    self.filelock = filelock.FileLock(self.filelock_name)
+
     if use_subdir:
       if os.environ.get('EMCC_WASM_BACKEND') and os.environ.get('EMCC_WASM_BACKEND') != '0':
         dirname = os.path.join(dirname, 'wasm')
@@ -16,17 +34,27 @@ class Cache:
     self.dirname = dirname
     self.debug = debug
 
-    def try_remove_ending(thestring, ending):
-      if thestring.endswith(ending):
-        return thestring[:-len(ending)]
-      return thestring
+  def acquire_cache_lock(self):
+    if not self.EM_EXCLUSIVE_CACHE_ACCESS:
+      logging.debug('Cache: acquiring multiprocess file lock to Emscripten cache')
+      self.filelock.acquire()
+      self.prev_EM_EXCLUSIVE_CACHE_ACCESS = os.environ.get('EM_EXCLUSIVE_CACHE_ACCESS')
+      os.environ['EM_EXCLUSIVE_CACHE_ACCESS'] = '1'
+      logging.debug('Cache: done')
 
-    self.filelock_name = try_remove_ending(try_remove_ending(self.dirname, '/'), '\\') + '.lock'
-    self.filelock = filelock.FileLock(self.filelock_name)
+  def release_cache_lock(self):
+    if not self.EM_EXCLUSIVE_CACHE_ACCESS:
+      if self.prev_EM_EXCLUSIVE_CACHE_ACCESS: os.environ['EM_EXCLUSIVE_CACHE_ACCESS'] = self.prev_EM_EXCLUSIVE_CACHE_ACCESS
+      else: del os.environ['EM_EXCLUSIVE_CACHE_ACCESS']
+      self.filelock.release()
+      logging.debug('Cache: released multiprocess file lock to Emscripten cache')
 
   def ensure(self):
-    with self.filelock:
+    self.acquire_cache_lock()
+    try:
       shared.safe_ensure_dirs(self.dirname)
+    finally:
+      self.release_cache_lock()
 
   def erase(self):
     tempfiles.try_delete(self.dirname)
@@ -47,7 +75,8 @@ class Cache:
     if not shortname.endswith(extension): shortname += extension
     cachename = os.path.join(self.dirname, shortname)
 
-    with self.filelock:
+    self.acquire_cache_lock()
+    try:
       if os.path.exists(cachename) and not force:
         return cachename
       if what is None:
@@ -60,6 +89,8 @@ class Cache:
       if temp != cachename:
         shutil.copyfile(temp, cachename)
       logging.warn(' '*len(message) + 'ok')
+    finally:
+      self.release_cache_lock()
 
     return cachename
 
