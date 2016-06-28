@@ -339,12 +339,12 @@ fi
 
     # emcc should check sanity if no ${EM_CONFIG}_sanity
     restore()
-    time.sleep(0.1)
+    time.sleep(1)
     assert not os.path.exists(SANITY_FILE) # restore is just the settings, not the sanity
     output = self.check_working(EMCC)
     self.assertContained(SANITY_MESSAGE, output)
     assert os.path.exists(SANITY_FILE) # EMCC should have checked sanity successfully
-    assert mtime(SANITY_FILE) >= mtime(CONFIG_FILE)
+    assert mtime(SANITY_FILE) > mtime(CONFIG_FILE)
     assert generate_sanity() == open(SANITY_FILE).read()
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
