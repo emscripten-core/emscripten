@@ -37,7 +37,14 @@ class Cache:
   def acquire_cache_lock(self):
     if not self.EM_EXCLUSIVE_CACHE_ACCESS:
       logging.debug('Cache: acquiring multiprocess file lock to Emscripten cache')
-      self.filelock.acquire()
+      try:
+        self.filelock.acquire(60)
+      except filelock.Timeout:
+        # The multiprocess cache locking can be disabled altogether by setting EM_EXCLUSIVE_CACHE_ACCESS=1 environment
+        # variable before building. (in that case, use "embuilder.py build ALL" to prepopulate the cache)
+        logging.warning('Accessing the Emscripten cache at "' + self.dirname + '" is taking a long time, another process should be writing to it. If there are none and you suspect this process has deadlocked, try deleting the lock file "' + self.filelock_name + '" and try again. If this occurs deterministically, consider filing a bug.')
+        self.filelock.acquire()
+
       self.prev_EM_EXCLUSIVE_CACHE_ACCESS = os.environ.get('EM_EXCLUSIVE_CACHE_ACCESS')
       os.environ['EM_EXCLUSIVE_CACHE_ACCESS'] = '1'
       logging.debug('Cache: done')

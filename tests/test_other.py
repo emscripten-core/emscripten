@@ -314,6 +314,10 @@ f.close()
   @staticmethod
   def multiprocess_task(c_file, cache_dir_name):
     output = subprocess.check_output([PYTHON, EMCC, c_file, '--cache', cache_dir_name], stderr=subprocess.STDOUT)
+    if len(output.strip()) > 0:
+      print '------'
+      print output
+      print '------'
     sys.exit(1 if 'generating system library: libc.bc' in output else 0)
 
   # Test that if multiple processes attempt to access or build stuff to the cache on demand, that exactly one of the processes
