@@ -16,12 +16,12 @@ class Cache:
     self.dirname = dirname
     self.debug = debug
 
-    def reverse_chop(thestring, ending):
+    def try_remove_ending(thestring, ending):
       if thestring.endswith(ending):
         return thestring[:-len(ending)]
       return thestring
 
-    self.filelock_name = reverse_chop(reverse_chop(self.dirname, '/'), '\\') + '.lock'
+    self.filelock_name = try_remove_ending(try_remove_ending(self.dirname, '/'), '\\') + '.lock'
     self.filelock = filelock.FileLock(self.filelock_name)
 
   def ensure(self):
