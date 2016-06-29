@@ -311,6 +311,42 @@ f.close()
         os.environ['EMCC_FAST_COMPILER'] = old_fastcomp
     self.assertFalse(os.path.exists('a.out.js'))
 
+  @staticmethod
+  def multiprocess_task(c_file, cache_dir_name):
+    output = subprocess.check_output([PYTHON, EMCC, c_file, '--cache', cache_dir_name], stderr=subprocess.STDOUT)
+    if len(output.strip()) > 0:
+      print '------'
+      print output
+      print '------'
+    sys.exit(1 if 'generating system library: libc.bc' in output else 0)
+
+  # Test that if multiple processes attempt to access or build stuff to the cache on demand, that exactly one of the processes
+  # will, and the other processes will block to wait until that process finishes.
+  def test_emcc_multiprocess_cache_access(self):
+    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_emcache_', dir=TEMP_DIR)
+    os.chdir(tempdirname)
+    c_file = os.path.join(tempdirname, 'test.c')
+    open(c_file, 'w').write(r'''
+      #include <stdio.h>
+      int main() {
+        printf("hello, world!\n");
+        return 0;
+      }
+      ''')
+    cache_dir_name = os.path.join(tempdirname, 'emscripten_cache')
+    tasks = []
+    num_times_libc_was_built = 0
+    for i in range(3):
+      p = multiprocessing.Process(target=self.multiprocess_task, args=(c_file,cache_dir_name,))
+      p.start()
+      tasks += [p]
+    for p in tasks:
+      p.join()
+      num_times_libc_was_built += p.exitcode
+    assert os.path.exists(cache_dir_name), 'The cache directory %s must exist after the build' % cache_dir_name
+    assert os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')), 'The cache directory must contain a built libc'
+    assert num_times_libc_was_built == 1, 'Exactly one child process should have triggered libc build! (instead %d processes did)' % num_times_libc_was_built
+
   def test_emcc_cache_flag(self):
     tempdirname = tempfile.mkdtemp(prefix='emscripten_test_emcache_', dir=TEMP_DIR)
     try:
