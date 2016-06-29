@@ -19,7 +19,7 @@ function hashMemory(id) {
   for (var i = 0; i < len; i++) {
     ret = (ret*17 + HEAPU8[i])|0;
   }
-  printErr(id + ':' + ret);
+  return id + ':' + ret;
 }
 
 function hashString(s) {
