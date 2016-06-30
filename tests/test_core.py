@@ -3305,7 +3305,6 @@ def process(filename):
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.cpp')
     Settings.EXPORTED_FUNCTIONS = ['_func']
-    Settings.EXPORTED_GLOBALS = ['_global']
     self.build(lib_src, dirname, filename)
     shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
@@ -3365,7 +3364,6 @@ def process(filename):
       }
       '''
     Settings.EXPORTED_FUNCTIONS = ['_main']
-    Settings.EXPORTED_GLOBALS = []
     self.do_run(src, 'In func: 13*First calling main_fptr from lib.*Second calling lib_fptr from main.*parent_func called from child*parent_func called from child*Var: 42*',
                  output_nicerizer=lambda x, err: x.replace('\n', '*'),
                  post_build=self.dlfcn_post_build)
