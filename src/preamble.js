@@ -681,10 +681,15 @@ function lengthBytesUTF8(str) {
 
 var UTF16Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-16le') : undefined;
 function UTF16ToString(ptr) {
+#if ASSERTIONS
+  assert(ptr % 2 == 0, 'Pointer passed to UTF16ToString must be aligned to two bytes!');
+#endif
   var endPtr = ptr;
   // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
   // Also, use the length info to avoid running tiny strings through TextDecoder, since .subarray() allocates garbage.
-  while ({{{ makeGetValue('endPtr', 0, 'i16') }}}) endPtr += 2;
+  var idx = endPtr >> 1;
+  while (HEAP16[idx]) ++idx;
+  endPtr = idx << 1;
 
   if (endPtr - ptr > 32 && UTF16Decoder) {
     return UTF16Decoder.decode(HEAPU8.subarray(ptr, endPtr));
@@ -716,6 +721,9 @@ function UTF16ToString(ptr) {
 
 function stringToUTF16(str, outPtr, maxBytesToWrite) {
 #if ASSERTIONS
+  assert(outPtr % 2 == 0, 'Pointer passed to stringToUTF16 must be aligned to two bytes!');
+#endif
+#if ASSERTIONS
   assert(typeof maxBytesToWrite == 'number', 'stringToUTF16(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
 #endif
   // Backwards compatibility: if max bytes is not specified, assume unsafe unbounded write is allowed.
@@ -746,6 +754,9 @@ function lengthBytesUTF16(str) {
 {{{ maybeExport('lengthBytesUTF16') }}}
 
 function UTF32ToString(ptr) {
+#if ASSERTIONS
+  assert(ptr % 4 == 0, 'Pointer passed to UTF32ToString must be aligned to four bytes!');
+#endif
   var i = 0;
 
   var str = '';
@@ -778,6 +789,9 @@ function UTF32ToString(ptr) {
 // Returns the number of bytes written, EXCLUDING the null terminator.
 
 function stringToUTF32(str, outPtr, maxBytesToWrite) {
+#if ASSERTIONS
+  assert(outPtr % 4 == 0, 'Pointer passed to stringToUTF32 must be aligned to four bytes!');
+#endif
 #if ASSERTIONS
   assert(typeof maxBytesToWrite == 'number', 'stringToUTF32(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
 #endif
