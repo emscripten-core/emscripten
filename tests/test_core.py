@@ -5204,6 +5204,15 @@ def process(filename):
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
     self.do_run(open(path_from_root('tests', 'utf8.cpp')).read(), 'OK.')
 
+  def test_utf8_textdecoder(self):
+    Building.COMPILER_TEST_OPTS += ['--embed-file', path_from_root('tests/utf8_corpus.txt')+ '@/utf8_corpus.txt']
+    self.do_run(open(path_from_root('tests', 'benchmark_utf8.cpp')).read(), 'OK.')
+
+  def test_utf16_textdecoder(self):
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['UTF16ToString', 'stringToUTF16', 'lengthBytesUTF16']
+    Building.COMPILER_TEST_OPTS += ['--embed-file', path_from_root('tests/utf16_corpus.txt')+ '@/utf16_corpus.txt']
+    self.do_run(open(path_from_root('tests', 'benchmark_utf16.cpp')).read(), 'OK.')
+
   def test_wprintf(self):
     test_path = path_from_root('tests', 'core', 'test_wprintf')
     src, output = (test_path + s for s in ('.c', '.out'))

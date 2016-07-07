@@ -7,9 +7,9 @@
 
 double test(const unsigned short *str) {
   double res = EM_ASM_DOUBLE({
-    var t0 = performance.now();
+    var t0 = _emscripten_get_now();
     var str = Module.UTF16ToString($0);
-    var t1 = performance.now();
+    var t1 = _emscripten_get_now();
     Module.print('t: ' + (t1 - t0) + ', len(result): ' + str.length + ', result: ' + str.slice(0, 100));
     return (t1-t0);
   }, str);
@@ -49,11 +49,18 @@ unsigned short *randomString(int len) {
 int main() {
   srand(time(NULL));
   double t = 0;
+  double t2 = emscripten_get_now();
   for(int i = 0; i < 10; ++i) {
     // FF Nightly: Already on small strings of 64 bytes in length, TextDecoder trumps in performance.
     unsigned short *str = randomString(100);
     t += test(str);
     free(str);
   }
-  printf("OK. Time: %f.\n", t);
+  double t3 = emscripten_get_now();
+  printf("OK. Time: %f (%f).\n", t, t3-t2);
+
+#ifdef REPORT_RESULT
+  int result = 0;
+  REPORT_RESULT();
+#endif
 }
