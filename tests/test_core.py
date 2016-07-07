@@ -6506,9 +6506,9 @@ def process(filename):
 
       image_mean = 83.265
       #print '[image stats:', js_mean, image_mean, true_mean, diff_mean, num, ']'
-      assert abs(js_mean - image_mean) < 0.01
-      assert abs(true_mean - image_mean) < 0.01
-      assert diff_mean < 0.01
+      assert abs(js_mean - image_mean) < 0.01, [js_mean, image_mean]
+      assert abs(true_mean - image_mean) < 0.01, [true_mean, image_mean]
+      assert diff_mean < 0.01, diff_mean
 
       return output
 
