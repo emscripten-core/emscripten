@@ -515,15 +515,15 @@ function stringToAscii(str, outPtr) {
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
 // a copy of that string as a Javascript String object.
 
-var utf8_decoder = new TextDecoder('utf8');
+var UTF8Decoder = new TextDecoder('utf8');
 function UTF8ArrayToString(u8Array, idx) {
   var endPtr = idx;
   // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
   // Also, use the length info to avoid running tiny strings through TextDecoder, since .subarray() allocates garbage.
-  while(u8Array[endPtr]) ++endPtr;
+  while (u8Array[endPtr]) ++endPtr;
 
   if (endPtr - idx > 16 && u8Array.subarray) {
-    return utf8_decoder.decode(u8Array.subarray(idx, endPtr));
+    return UTF8Decoder.decode(u8Array.subarray(idx, endPtr));
   } else {
     var u0, u1, u2, u3, u4, u5;
 
@@ -679,23 +679,22 @@ function lengthBytesUTF8(str) {
 // Given a pointer 'ptr' to a null-terminated UTF16LE-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
 
-var utf16_decoder = new TextDecoder('utf-16le');
+var UTF16Decoder = new TextDecoder('utf-16le');
 function UTF16ToString(ptr) {
   var endPtr = ptr;
   // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
   // Also, use the length info to avoid running tiny strings through TextDecoder, since .subarray() allocates garbage.
-  while({{{ makeGetValue('endPtr', 0, 'i16') }}}) endPtr += 2;
+  while ({{{ makeGetValue('endPtr', 0, 'i16') }}}) endPtr += 2;
 
   if (endPtr - ptr > 32) {
-    return utf16_decoder.decode(HEAPU8.subarray(ptr, endPtr));
+    return UTF16Decoder.decode(HEAPU8.subarray(ptr, endPtr));
   } else {
     var i = 0;
 
     var str = '';
     while (1) {
       var codeUnit = {{{ makeGetValue('ptr', 'i*2', 'i16') }}};
-      if (codeUnit == 0)
-        return str;
+      if (codeUnit == 0) return str;
       ++i;
       // fromCharCode constructs a character from a UTF-16 code unit, so we can pass the UTF16 string right through.
       str += String.fromCharCode(codeUnit);
