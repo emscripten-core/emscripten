@@ -2424,7 +2424,7 @@ int main() {
           struct opj_mqc_state *nlps;
         } opj_mqc_state_t;
 
-        static opj_mqc_state_t mqc_states[2] = {
+        static opj_mqc_state_t mqc_states[4] = {
           {0x5600, 0, &mqc_states[2], &mqc_states[3]},
           {0x5602, 1, &mqc_states[3], &mqc_states[2]},
         };
