@@ -1536,6 +1536,12 @@ class Building:
 
       response_fh = open(response_file, 'w')
       for arg in actual_files:
+        # Starting from LLVM 3.9.0 trunk around July 2016, LLVM escapes backslashes in response files, so Windows paths
+        # "c:\path\to\file.txt" with single slashes no longer work. LLVM upstream dev 3.9.0 from January 2016 still treated
+        # backslashes without escaping. To preserve compatibility with both versions of llvm-link, don't pass backslash
+        # path delimiters at all to response files, but always use forward slashes.
+        if WINDOWS: arg = arg.replace('\\', '/')
+
         # escaped double quotes allows 'space' characters in pathname the response file can use
         response_fh.write("\"" + arg + "\"\n")
       response_fh.close()
