@@ -33,13 +33,13 @@ char *gets(char *);
 
 int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t *a, const char **str)
 {
-	*str = a->_a_transferredcanvases;
+	*str = (const char *)a->_a_transferredcanvases;
 	return 0;
 }
 
 int emscripten_pthread_attr_settransferredcanvases(pthread_attr_t *a, const char *str)
 {
-	a->_a_transferredcanvases = str;
+	a->_a_transferredcanvases = (int)str;
 	return 0;
 }
 
