@@ -436,6 +436,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     default_object_extension = '.o'
     valid_abspaths = []
     separate_asm = False
+    cfi = False
 
     def is_valid_abspath(path_name):
       # Any path that is underneath the emscripten repository root must be ok.
@@ -724,6 +725,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs.append('-D__SSSE3__=1')
         newargs.append('-D__SSE4_1__=1')
         newargs[i] = ''
+      elif newargs[i].startswith("-fsanitize=cfi"):
+        cfi = True
 
     if should_exit:
       sys.exit(0)
@@ -1442,6 +1445,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       else:
         # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
         link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
+
+      if cfi:
+        if use_cxx:
+           link_opts.append("-wholeprogramdevirt")
+        link_opts.append("-lowertypetests")
 
       if AUTODEBUG:
         # let llvm opt directly emit ll, to skip writing and reading all the bitcode
