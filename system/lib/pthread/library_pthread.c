@@ -259,6 +259,8 @@ int usleep(unsigned usec)
 
 static void _do_call(em_queued_call *q)
 {
+	int async = 0;
+
 	switch(q->function)
 	{
 		case EM_PROXIED_UTIME: q->returnValue.i = utime(q->args[0].cp, (struct utimbuf*)q->args[1].vp); break;
@@ -277,18 +279,30 @@ static void _do_call(em_queued_call *q)
 		case EM_PROXIED_TZSET: tzset(); break;
 		case EM_PROXIED_PTHREAD_CREATE: q->returnValue.i = pthread_create(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp); break;
 		case EM_PROXIED_SYSCALL: q->returnValue.i = emscripten_syscall(q->args[0].i, q->args[1].vp); break;
+		case EM_PROXIED_ASYNC_CALLBACK_V: async = 1; q->callback.v(); break;
+		case EM_PROXIED_ASYNC_CALLBACK_VI: async = 1; q->callback.vi(q->args[0].vp); break;
+		case EM_PROXIED_ASYNC_CALLBACK_VII: async = 1; q->callback.vii(q->args[0].vp, q->args[1].vp); break;
+		case EM_PROXIED_ASYNC_CALLBACK_VIII: async = 1; q->callback.viii(q->args[0].vp, q->args[1].vp, q->args[2].vp); break;
 		default: assert(0 && "Invalid Emscripten pthread _do_call opcode!");
 	}
-	q->operationDone = 1;
-	emscripten_futex_wake(&q->operationDone, INT_MAX);
+
+	if (async) {
+		free(q);
+	} else {
+		q->operationDone = 1;
+		emscripten_futex_wake(&q->operationDone, INT_MAX);
+	}
 }
 
 #define CALL_QUEUE_SIZE 128
 static em_queued_call **call_queue = 0;
-static int call_queue_length = 0; // Shared data synchronized by call_queue_lock.
+static int call_queue_begin = 0;
+static int call_queue_end = 0;
+static int call_queue_full = 0;
 static pthread_mutex_t call_queue_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t call_queue_cond = PTHREAD_COND_INITIALIZER;
 
-void EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread(em_queued_call *call)
+void emscripten_async_run_in_main_thread(em_queued_call *call)
 {
 	assert(call);
 	if (emscripten_is_main_runtime_thread()) {
@@ -297,21 +311,66 @@ void EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread(em_queued_call *cal
 	}
 	pthread_mutex_lock(&call_queue_lock);
 	if (!call_queue) call_queue = malloc(sizeof(em_queued_call*) * CALL_QUEUE_SIZE); // Shared data synchronized by call_queue_lock.
-	// Note: currently call_queue_length can be at most the number of pthreads that are currently running, so the queue can never get
-	// full. However if/when the queue is extended to be asynchronous for void-returning functions later, this will need to be revised.
-	assert(call_queue_length < CALL_QUEUE_SIZE);
-	call_queue[call_queue_length] = call;
-	++call_queue_length;
-	if (call_queue_length == 1) {
+	while (call_queue_full) {
+		pthread_cond_wait(&call_queue_cond, &call_queue_lock);
+	}
+	call_queue[call_queue_end] = call;
+	if (call_queue_end == call_queue_begin) {
 		EM_ASM(postMessage({ cmd: 'processQueuedMainThreadWork' }));
 	}
+	call_queue_end = (call_queue_end + 1) % CALL_QUEUE_SIZE;
+	call_queue_full = (call_queue_end == call_queue_begin) ? 1 : 0;
 	pthread_mutex_unlock(&call_queue_lock);
+}
+
+void EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread(em_queued_call *call)
+{
+	emscripten_async_run_in_main_thread(call);
+
 	int r;
 	emscripten_set_current_thread_status(EM_THREAD_STATUS_WAITPROXY);
 	do {
 		r = emscripten_futex_wait(&call->operationDone, 0, INFINITY);
 	} while(r != 0 && call->operationDone == 0);
 	emscripten_set_current_thread_status(EM_THREAD_STATUS_RUNNING);
+}
+
+void emscripten_async_run_in_main_thread_callback_v(em_queued_callback_v callback)
+{
+	em_queued_call *q = malloc(sizeof(em_queued_call));
+	q->function = EM_PROXIED_ASYNC_CALLBACK_V;
+	q->callback.v = callback;
+	emscripten_async_run_in_main_thread(q);
+}
+
+void emscripten_async_run_in_main_thread_callback_vi(em_queued_callback_vi callback, void *arg1)
+{
+	em_queued_call *q = malloc(sizeof(em_queued_call));
+	q->function = EM_PROXIED_ASYNC_CALLBACK_VI;
+	q->callback.vi = callback;
+	q->args[0].vp = arg1;
+	emscripten_async_run_in_main_thread(q);
+}
+
+void emscripten_async_run_in_main_thread_callback_vii(em_queued_callback_vii callback, void *arg1, void *arg2)
+{
+	em_queued_call *q = malloc(sizeof(em_queued_call));
+	q->function = EM_PROXIED_ASYNC_CALLBACK_VII;
+	q->callback.vii = callback;
+	q->args[0].vp = arg1;
+	q->args[1].vp = arg2;
+	emscripten_async_run_in_main_thread(q);
+}
+
+void emscripten_async_run_in_main_thread_callback_viii(em_queued_callback_viii callback, void *arg1, void *arg2, void *arg3)
+{
+	em_queued_call *q = malloc(sizeof(em_queued_call));
+	q->function = EM_PROXIED_ASYNC_CALLBACK_VIII;
+	q->callback.viii = callback;
+	q->args[0].vp = arg1;
+	q->args[1].vp = arg2;
+	q->args[2].vp = arg3;
+	emscripten_async_run_in_main_thread(q);
 }
 
 void * EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_0(int function)
@@ -429,25 +488,41 @@ void * EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_7(int function, v
 	return q.returnValue.vp;
 }
 
-static int bool_inside_nested_process_queued_calls = 0;
+static int bool_skip_process_queued_calls = 0;
 
 void EMSCRIPTEN_KEEPALIVE emscripten_main_thread_process_queued_calls()
 {
 	assert(emscripten_is_main_runtime_thread() && "emscripten_main_thread_process_queued_calls must be called from the main thread!");
 	if (!emscripten_is_main_runtime_thread()) return;
+	if (bool_skip_process_queued_calls) return;
 
-	// It is possible that when processing a queued call, the call flow leads back to calling this function in a nested fashion!
-	// Therefore this scenario must explicitly be detected, and processing the queue must be avoided if we are nesting, or otherwise
-	// the same queued calls would be processed again and again.
-	if (bool_inside_nested_process_queued_calls) return;
-	// This must be before pthread_mutex_lock(), since pthread_mutex_lock() can call back to this function.
-	bool_inside_nested_process_queued_calls = 1;
-	pthread_mutex_lock(&call_queue_lock);
-	for (int i = 0; i < call_queue_length; ++i)
-		_do_call(call_queue[i]);
-	call_queue_length = 0;
-	bool_inside_nested_process_queued_calls = 0;
-	pthread_mutex_unlock(&call_queue_lock);
+	for (;;) {
+		em_queued_call *call = 0;
+		int wake = 0;
+
+		bool_skip_process_queued_calls = 1;
+
+		pthread_mutex_lock(&call_queue_lock);
+		if (call_queue_end != call_queue_begin || call_queue_full) {
+			call = call_queue[call_queue_begin];
+			call_queue_begin = (call_queue_begin + 1) % CALL_QUEUE_SIZE;
+			wake = call_queue_full;
+			call_queue_full = 0;
+		}
+		pthread_mutex_unlock(&call_queue_lock);
+
+		if (wake) {
+			pthread_cond_broadcast(&call_queue_cond);
+		}
+
+		bool_skip_process_queued_calls = 0;
+
+		if (!call) {
+			break;
+		}
+
+		_do_call(call);
+	}
 }
 
 float EMSCRIPTEN_KEEPALIVE emscripten_atomic_load_f32(const void *addr)

@@ -92,16 +92,39 @@ typedef union em_variant_val
   char *cp;
 } em_variant_val;
 
+typedef void (*em_queued_callback_v)(void);
+typedef void (*em_queued_callback_vi)(void*);
+typedef void (*em_queued_callback_vii)(void*, void*);
+typedef void (*em_queued_callback_viii)(void*, void*, void*);
+
+typedef union em_variant_callback
+{
+  em_queued_callback_v v;
+  em_queued_callback_vi vi;
+  em_queued_callback_vii vii;
+  em_queued_callback_viii viii;
+} em_variant_callback;
+
 #define EM_QUEUED_CALL_MAX_ARGS 8
 typedef struct em_queued_call
 {
   int function;
   int operationDone;
+  em_variant_callback callback;
   em_variant_val args[EM_QUEUED_CALL_MAX_ARGS];
   em_variant_val returnValue;
 } em_queued_call;
 
+// Async call struct must be allocated with malloc, and will be freed automatically on the main thread.
+void emscripten_async_run_in_main_thread(em_queued_call *call);
+
 void emscripten_sync_run_in_main_thread(em_queued_call *call);
+
+void emscripten_async_run_in_main_thread_callback_v(em_queued_callback_v callback);
+void emscripten_async_run_in_main_thread_callback_vi(em_queued_callback_vi callback, void *arg1);
+void emscripten_async_run_in_main_thread_callback_vii(em_queued_callback_vii callback, void *arg1, void *arg2);
+void emscripten_async_run_in_main_thread_callback_viii(em_queued_callback_viii callback, void *arg1, void *arg2, void *arg3);
+
 void *emscripten_sync_run_in_main_thread_0(int function);
 void *emscripten_sync_run_in_main_thread_1(int function, void *arg1);
 void *emscripten_sync_run_in_main_thread_2(int function, void *arg1, void *arg2);
@@ -176,6 +199,10 @@ struct thread_profiler_block
 #define EM_PROXIED_TZSET 119
 #define EM_PROXIED_PTHREAD_CREATE 137
 #define EM_PROXIED_SYSCALL 138
+#define EM_PROXIED_ASYNC_CALLBACK_V 139
+#define EM_PROXIED_ASYNC_CALLBACK_VI 140
+#define EM_PROXIED_ASYNC_CALLBACK_VII 141
+#define EM_PROXIED_ASYNC_CALLBACK_VIII 142
 
 #ifdef __cplusplus
 }
