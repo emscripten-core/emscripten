@@ -7,6 +7,8 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 #include <emscripten/threading.h>
+#include <bits/errno.h>
+#include <stdlib.h>
 
 pthread_t thread;
 
@@ -59,7 +61,16 @@ void CreateThread()
   pthread_attr_t attr;
   pthread_attr_init(&attr);
   emscripten_pthread_attr_settransferredcanvases(&attr, "#canvas");
-  pthread_create(&thread, &attr, ThreadMain, 0);
+  int rc = pthread_create(&thread, &attr, ThreadMain, 0);
+  if (rc == ENOSYS)
+  {
+    printf("Test Skipped! OffscreenCanvas is not supported!\n");
+#ifdef REPORT_RESULT
+    int result = 1; // But report success, so that runs on non-supporting browsers don't raise noisy errors.
+    REPORT_RESULT();
+#endif
+    exit(0);
+  }  
   pthread_attr_destroy(&attr);
   emscripten_atomic_store_u32(&threadRunning, 1);
   ++numThreadsCreated;
@@ -69,11 +80,6 @@ int result = 0;
 
 void PollTestExit(void *)
 {
-#ifdef REPORT_RESULT
-  if (result == 1) {
-    REPORT_RESULT();
-  }
-#endif
   emscripten_async_call(PollTestExit, 0, 1000);
 }
 
@@ -112,7 +118,16 @@ int main()
   pthread_attr_t attr;
   pthread_attr_init(&attr);
   emscripten_pthread_attr_settransferredcanvases(&attr, "#canvas");
-  pthread_create(&thread, &attr, mymain, 0);
+  int rc = pthread_create(&thread, &attr, mymain, 0);
+  if (rc == ENOSYS)
+  {
+    printf("Test Skipped! OffscreenCanvas is not supported!\n");
+#ifdef REPORT_RESULT
+    int result = 1; // But report success, so that runs on non-supporting browsers don't raise noisy errors.
+    REPORT_RESULT();
+#endif
+    exit(0);
+  }
 #else
   mymain(0);
 #endif
