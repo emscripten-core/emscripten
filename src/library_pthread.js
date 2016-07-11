@@ -503,11 +503,11 @@ var LibraryPThread = {
           }
           if (canvas.controlTransferredOffscreen) {
             Module['printErr']('pthread_create: cannot transfer canvas with ID "' + name + '" to thread, since the current thread does not have control over it!');
-            return {{{ cDefine('EINVAL') }}};
+            return {{{ cDefine('EPERM') }}}; // Operation not permitted, some other thread is accessing the canvas.
           }
           if (!canvas.transferControlToOffscreen) {
             Module['printErr']('pthread_create: cannot transfer control of canvas "' + name + '" to pthread, because current browser does not support OffscreenCanvas!');
-            return {{{ cDefine('EINVAL') }}};
+            return {{{ cDefine('ENOSYS') }}}; // Function not implemented, browser doesn't have support for this.
           }
           offscreenCanvas = canvas.transferControlToOffscreen();
           canvas.controlTransferredOffscreen = true;
@@ -517,7 +517,7 @@ var LibraryPThread = {
         offscreenCanvases[offscreenCanvas.id] = offscreenCanvas;
       } catch(e) {
         Module['printErr']('pthread_create: failed to transfer control of canvas "' + name + '" to OffscreenCanvas! Error: ' + e);
-        return {{{ cDefine('EINVAL') }}};
+        return {{{ cDefine('EINVAL') }}}; // Hitting this might indicate an implementation bug or some other internal error
       }
     }
 #endif
