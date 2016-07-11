@@ -409,6 +409,7 @@ typedef struct EmscriptenWebGLContextAttributes {
   int minorVersion;
 
   EM_BOOL enableExtensionsByDefault;
+  EM_BOOL explicitSwapControl;
 } EmscriptenWebGLContextAttributes;
 
 extern void emscripten_webgl_init_context_attributes(EmscriptenWebGLContextAttributes *attributes);
@@ -428,6 +429,8 @@ extern EMSCRIPTEN_RESULT emscripten_set_webglcontextlost_callback(const char *ta
 extern EMSCRIPTEN_RESULT emscripten_set_webglcontextrestored_callback(const char *target, void *userData, EM_BOOL useCapture, em_webgl_context_callback callback);
 
 extern EM_BOOL emscripten_is_webgl_context_lost(const char *target);
+
+extern EMSCRIPTEN_RESULT emscripten_webgl_commit_frame();
 
 extern EMSCRIPTEN_RESULT emscripten_set_element_css_size(const char *target, double width, double height);
 extern EMSCRIPTEN_RESULT emscripten_get_element_css_size(const char *target, double *width, double *height);

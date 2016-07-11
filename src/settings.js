@@ -756,4 +756,8 @@ var BUNDLED_CD_DEBUG_FILE = ""; // Path to the CyberDWARF debug file passed to t
 
 var TEXTDECODER = 1; // Is enabled, use the JavaScript TextDecoder API for string marshalling.
                      // Enabled by default, set this to 0 to disable.
+var OFFSCREENCANVAS_SUPPORT = 0; // If set to 1, enables support for transferring canvases to pthreads and creating WebGL contexts in them,
+                                 // as well as explicit swap control for GL contexts. This needs browser support for the OffscreenCanvas
+                                 // specification.
+
 // Reserved: variables containing POINTER_MASKING.

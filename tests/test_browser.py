@@ -3147,3 +3147,11 @@ window.close = function() {
 
   def test_utf16_textdecoder(self):
     self.btest('benchmark_utf16.cpp', expected='0', args=['--embed-file', path_from_root('tests/utf16_corpus.txt') + '@/utf16_corpus.txt', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["UTF16ToString","stringToUTF16","lengthBytesUTF16"]'])
+
+  def test_webgl_offscreen_canvas_in_pthread(self):
+    for args in [[], ['-DTEST_CHAINED_WEBGL_CONTEXT_PASSING']]:
+      self.btest('gl_in_pthread.cpp', expected='1', args=args + ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'OFFSCREENCANVAS_SUPPORT=1'])
+
+  def test_webgl_offscreen_canvas_in_mainthread_after_pthread(self):
+    for args in [[], ['-DTEST_MAIN_THREAD_EXPLICIT_COMMIT']]:
+      self.btest('gl_in_mainthread_after_pthread.cpp', expected='0', args=args+['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'OFFSCREENCANVAS_SUPPORT=1'])

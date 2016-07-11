@@ -9,6 +9,7 @@ var buffer;
 var threadInfoStruct = 0; // Info area for this thread in Emscripten HEAP (shared). If zero, this worker is not currently hosting an executing pthread.
 
 var selfThreadId = 0; // The ID of this thread. 0 if not hosting a pthread.
+var parentThreadId = 0; // The ID of the parent pthread that launched this thread.
 
 var tempDoublePtr = 0; // A temporary memory area for global float and double marshalling operations.
 
@@ -54,12 +55,16 @@ this.onmessage = function(e) {
     importScripts(e.data.url);
     FS.createStandardStreams();
     postMessage({ cmd: 'loaded' });
+  } else if (e.data.cmd === 'objectTransfer') {
+    PThread.receiveObjectTransfer(e.data);
   } else if (e.data.cmd === 'run') { // This worker was idle, and now should start executing its pthread entry point.
     threadInfoStruct = e.data.threadInfoStruct;
     __register_pthread_ptr(threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0); // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
     assert(threadInfoStruct);
     selfThreadId = e.data.selfThreadId;
+    parentThreadId = e.data.parentThreadId;
     assert(selfThreadId);
+    assert(parentThreadId);
     // TODO: Emscripten runtime has these variables twice(!), once outside the asm.js module, and a second time inside the asm.js module.
     //       Review why that is? Can those get out of sync?
     STACK_BASE = STACKTOP = e.data.stackBase;
@@ -68,6 +73,8 @@ this.onmessage = function(e) {
     assert(STACK_MAX > STACK_BASE);
     Runtime.establishStackSpace(e.data.stackBase, e.data.stackBase + e.data.stackSize);
     var result = 0;
+
+    PThread.receiveObjectTransfer(e.data);
 
     PThread.setThreadStatus(_pthread_self(), 1/*EM_THREAD_STATUS_RUNNING*/);
 
@@ -92,7 +99,8 @@ this.onmessage = function(e) {
     }
     // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
     // (This is a no-op if explicit pthread_exit() had been called prior.)
-    PThread.threadExit(result);
+    if (!Module['noExitRuntime']) PThread.threadExit(result);
+    else console.log('pthread noExitRuntime: not quitting.');
   } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
     if (threadInfoStruct && PThread.thisThreadCancelState == 0/*PTHREAD_CANCEL_ENABLE*/) {
       PThread.threadCancel();
