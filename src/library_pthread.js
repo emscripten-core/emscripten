@@ -151,6 +151,8 @@ var LibraryPThread = {
         if (ENVIRONMENT_IS_PTHREAD) {
           // This worker no longer owns any WebGL OffscreenCanvases, so transfer them back to parent thread.
           var transferList = [];
+
+#if OFFSCREENCANVAS_SUPPORT
           var offscreenCanvases = {};
           if (typeof GL !== 'undefined') {
             offscreenCanvases = GL.offscreenCanvases;
@@ -170,6 +172,7 @@ var LibraryPThread = {
           }
           // And clear the OffscreenCanvases from lingering around in this Worker as well.
           delete Module['canvas'];
+#endif
 
           postMessage({ cmd: 'exit' });
         }
@@ -227,6 +230,7 @@ var LibraryPThread = {
     },
 
     receiveObjectTransfer: function(data) {
+#if OFFSCREENCANVAS_SUPPORT
       if (typeof GL !== 'undefined') {
         for (var i in data.offscreenCanvases) {
           GL.offscreenCanvases[i] = data.offscreenCanvases[i];
@@ -234,6 +238,7 @@ var LibraryPThread = {
         }
         if (!Module['canvas']) Module['canvas'] = GL.offscreenCanvases[data.moduleCanvasId];
       }
+#endif
     },
 
     // Allocates the given amount of new web workers and stores them in the pool of unused workers.
@@ -423,8 +428,10 @@ var LibraryPThread = {
       parentThreadId: threadParams.parent_pthread_ptr,
       stackBase: threadParams.stackBase,
       stackSize: threadParams.stackSize,
+#if OFFSCREENCANVAS_SUPPORT
       moduleCanvasId: threadParams.moduleCanvasId,
       offscreenCanvases: threadParams.offscreenCanvases,
+#endif
     }, threadParams.transferList);
   },
 
@@ -463,13 +470,15 @@ var LibraryPThread = {
       return {{{ cDefine('EINVAL') }}};
     }
 
+    var transferList = []; // List of JS objects that will transfer ownership to the Worker hosting the thread
+
+#if OFFSCREENCANVAS_SUPPORT
     // Deduce which WebGL canvases (HTMLCanvasElements or OffscreenCanvases) should be passed over to the
     // Worker that hosts the spawned pthread.
     var transferredCanvasNames = {{{ makeGetValue('attr', 36, 'i32') }}}; // Comma-delimited list of IDs "canvas1, canvas2, ..."
     if (transferredCanvasNames) transferredCanvasNames = Pointer_stringify(transferredCanvasNames).split(',');
 
     var offscreenCanvases = {}; // Dictionary of OffscreenCanvas objects we'll transfer to the created thread to own
-    var transferList = []; // List of JS objects that will transfer ownership to the Worker hosting the thread
     var moduleCanvasId = Module['canvas'] ? Module['canvas'].id : '';
     for (var i in transferredCanvasNames) {
       var name = transferredCanvasNames[i].trim();
@@ -507,6 +516,7 @@ var LibraryPThread = {
         return {{{ cDefine('EINVAL') }}};
       }
     }
+#endif
 
     // Synchronously proxy the thread creation to main thread if possible. If we need to transfer ownership of objects, then
     // proxy asynchronously via postMessage.
@@ -568,8 +578,10 @@ var LibraryPThread = {
       pthread_ptr: threadInfoStruct,
       parent_pthread_ptr: _pthread_self(),
       arg: arg,
+#if OFFSCREENCANVAS_SUPPORT
       moduleCanvasId: moduleCanvasId,
       offscreenCanvases: offscreenCanvases,
+#endif
       transferList: transferList
     };
 

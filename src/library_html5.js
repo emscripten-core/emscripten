@@ -1804,6 +1804,7 @@ var LibraryJSEvents = {
 #endif
       return 0;
     }
+#if OFFSCREENCANVAS_SUPPORT
     if (contextAttributes.explicitSwapControl) {
       var supportsOffscreenCanvas = canvas.transferControlToOffscreen || (typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas);
       if (!supportsOffscreenCanvas) {
@@ -1818,6 +1819,12 @@ var LibraryJSEvents = {
         canvas = GL.offscreenCanvases[canvas.id];
       }
     }
+#else
+    if (contextAttributes.explicitSwapControl) {
+      console.error('emscripten_webgl_create_context failed: explicitSwapControl is not supported, please rebuild with -s OFFSCREENCANVAS_SUPPORT=1 to enable targeting the experimental OffscreenCanvas specification!');
+      return 0;
+    }
+#endif
 
     var contextHandle = GL.createContext(canvas, contextAttributes);
     return contextHandle;
