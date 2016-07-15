@@ -1786,6 +1786,10 @@ value = real 0.00 imag 1.00''', force_c=True)
     src = open(path_from_root('tests', 'stdio', 'test_rename.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
+  def test_remove(self):
+    src = open(path_from_root('tests', 'cstdio', 'test_remove.cpp'), 'r').read()
+    self.do_run(src, 'success')
+
   def test_alloca_stack(self):
     test_path = path_from_root('tests', 'core', 'test_alloca_stack')
     src, output = (test_path + s for s in ('.in', '.out'))
