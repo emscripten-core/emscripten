@@ -30,7 +30,7 @@ def make_command(filename, engine=None, args=[]):
   # label a path to nodejs containing a 'd8' as spidermonkey instead.
   jsengine = os.path.split(engine[0])[-1]
   # Use "'d8' in" because the name can vary, e.g. d8_g, d8, etc.
-  return engine + [filename] + (['--'] if 'd8' in jsengine or 'jsc' in jsengine else []) + args
+  return engine + [filename] + (['--expose-wasm', '--'] if 'd8' in jsengine or 'jsc' in jsengine else []) + args
 
 def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdout=PIPE, stderr=None, cwd=None, full_output=False, assert_returncode=0, error_limit=-1):
   #  # code to serialize out the test suite files
@@ -74,4 +74,3 @@ def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdo
   if assert_returncode is not None and proc.returncode is not assert_returncode:
     raise Exception('Expected the command ' + str(command) + ' to finish with return code ' + str(assert_returncode) + ', but it returned with code ' + str(proc.returncode) + ' instead! Output: ' + str(ret)[:error_limit])
   return ret
-
