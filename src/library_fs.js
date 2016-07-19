@@ -795,6 +795,8 @@ mergeInto(LibraryManager.library, {
       var node = FS.lookupNode(parent, name);
       var err = FS.mayDelete(parent, name, false);
       if (err) {
+        // According to POSIX, we should map EISDIR to EPERM, but
+        // to be 'musl' compliant we have to forward Linux's error code.
         throw new FS.ErrnoError(err);
       }
       if (!parent.node_ops.unlink) {
