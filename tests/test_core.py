@@ -17,17 +17,24 @@ def SIMD(f):
     f(self)
   return decorated
 
-def no_emterpreter(f):
+# Generic decorator that calls a function named 'condition' on the test class and
+# skips the test if that function returns true
+def skip_if(func, condition):
   def decorated(self):
-    if self.is_emterpreter(): return self.skip('todo')
-    f(self)
+    if self.__getattribute__(condition)():
+      return self.skip(condition)
+    return func(self)
   return decorated
 
+def no_emterpreter(f):
+  return skip_if(f, 'is_emterpreter')
+
 def no_wasm(f):
-  def decorated(self):
-    if self.is_wasm(): return self.skip('todo')
-    f(self)
-  return decorated
+  return skip_if(f, 'is_wasm')
+
+def no_wasm_backend(f):
+  return skip_if(f, 'is_wasm_backend')
+
 
 class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
   def is_emterpreter(self):
@@ -35,7 +42,9 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def is_split_memory(self):
     return 'SPLIT_MEMORY=' in str(self.emcc_args)
   def is_wasm(self):
-    return 'BINARYEN' in str(self.emcc_args) or LLVM_TARGET == WASM_TARGET
+    return 'BINARYEN' in str(self.emcc_args) or self.is_wasm_backend()
+  def is_wasm_backend(self):
+    return LLVM_TARGET == WASM_TARGET
 
   def test_hello_world(self):
       test_path = path_from_root('tests', 'core', 'test_hello_world')
@@ -1117,46 +1126,55 @@ base align: 0, 0, 0, 0'''])
 
       self.do_run_from_file(src, output)
 
+  @no_wasm_backend
   def test_longjmp(self):
     test_path = path_from_root('tests', 'core', 'test_longjmp')
     src, output = (test_path + s for s in ('.in', '.out'))
     self.do_run_from_file(src, output)
 
+  @no_wasm_backend
   def test_longjmp2(self):
     test_path = path_from_root('tests', 'core', 'test_longjmp2')
     src, output = (test_path + s for s in ('.in', '.out'))
     self.do_run_from_file(src, output)
 
+  @no_wasm_backend
   def test_longjmp3(self):
     test_path = path_from_root('tests', 'core', 'test_longjmp3')
     src, output = (test_path + s for s in ('.in', '.out'))
     self.do_run_from_file(src, output)
 
+  @no_wasm_backend
   def test_longjmp4(self):
     test_path = path_from_root('tests', 'core', 'test_longjmp4')
     src, output = (test_path + s for s in ('.in', '.out'))
     self.do_run_from_file(src, output)
 
+  @no_wasm_backend
   def test_longjmp_funcptr(self):
     test_path = path_from_root('tests', 'core', 'test_longjmp_funcptr')
     src, output = (test_path + s for s in ('.in', '.out'))
     self.do_run_from_file(src, output)
 
+  @no_wasm_backend
   def test_longjmp_repeat(self):
     test_path = path_from_root('tests', 'core', 'test_longjmp_repeat')
     src, output = (test_path + s for s in ('.in', '.out'))
     self.do_run_from_file(src, output)
 
+  @no_wasm_backend
   def test_longjmp_stacked(self):
     test_path = path_from_root('tests', 'core', 'test_longjmp_stacked')
     src, output = (test_path + s for s in ('.in', '.out'))
     self.do_run_from_file(src, output)
 
+  @no_wasm_backend
   def test_longjmp_exc(self):
     test_path = path_from_root('tests', 'core', 'test_longjmp_exc')
     src, output = (test_path + s for s in ('.in', '.out'))
     self.do_run_from_file(src, output)
 
+  @no_wasm_backend
   def test_longjmp_throw(self):
     for disable_throw in [0, 1]:
       print disable_throw
@@ -1165,6 +1183,7 @@ base align: 0, 0, 0, 0'''])
       src, output = (test_path + s for s in ('.cpp', '.out'))
       self.do_run_from_file(src, output)
 
+  @no_wasm_backend
   def test_setjmp_many(self):
     src = r'''
       #include <stdio.h>
@@ -1181,6 +1200,7 @@ base align: 0, 0, 0, 0'''])
       print num
       self.do_run(src.replace('NUM', str(num)), '0\n' * num)
 
+  @no_wasm_backend
   def test_setjmp_many_2(self):
     src = r'''
 #include <setjmp.h>
@@ -1209,6 +1229,7 @@ int main()
 
     self.do_run(src, r'''d is at 24''')
 
+  @no_wasm_backend
   def test_setjmp_noleak(self):
     src = r'''
 #include <setjmp.h>
@@ -8104,6 +8125,11 @@ binaryen0 = make_run("binaryen0", compiler=CLANG, emcc_args=['-O0', '-s', 'BINAR
 binaryen1 = make_run("binaryen1", compiler=CLANG, emcc_args=['-O1', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
 binaryen2 = make_run("binaryen2", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
 binaryen3 = make_run("binaryen3", compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
+
+# This only works when .emscripten specifies a JS_ENGINE with native wasm support.
+binaryen_native = make_run("binaryen_native", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
+
+
 #normalyen = make_run("normalyen", compiler=CLANG, emcc_args=['-O0', '-s', 'GLOBAL_BASE=1024']) # useful comparison to binaryen
 #spidaryen = make_run("binaryen", compiler=CLANG, emcc_args=['-O0', '-s', 'BINARYEN=1', '-s', 'BINARYEN_SCRIPTS="spidermonkify.py"'])
 
