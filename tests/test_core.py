@@ -1430,9 +1430,8 @@ int main(int argc, char **argv)
     print '2'
     self.do_run(src, 'Caught exception: Hello\nDone.', ['2'], no_build=True)
 
+  @no_wasm_backend
   def test_exceptions_white_list(self):
-    if self.is_wasm_backend():
-      return self.skip("Wasm backend doesn't support exceptions yet")
     Settings.DISABLE_EXCEPTION_CATCHING = 2
     Settings.EXCEPTION_CATCHING_WHITELIST = ["__Z12somefunctionv"]
     Settings.INLINING_LIMIT = 50 # otherwise it is inlined and not identified
@@ -1945,7 +1944,7 @@ value = real 0.00 imag 1.00''', force_c=True)
 
     self.do_run_from_file(src, output)
 
-  # Broken for binaryen2
+  # Fails in wasm because of excessive slowness in the wasm-shell
   @no_wasm
   def test_life(self):
     self.emcc_args += ['-std=c99']
@@ -2956,6 +2955,8 @@ The current type of b is: 9
 
       self.do_run_from_file(src, output)
 
+  # Currently broken under V8_ENGINE but not node
+  @no_wasm_backend
   def test_memcpy_memcmp(self):
       test_path = path_from_root('tests', 'core', 'test_memcpy_memcmp')
       src, output = (test_path + s for s in ('.in', '.out'))
@@ -6288,6 +6289,7 @@ def process(filename):
                  ['font.ttf', 'ea', '40', '32', '0'],
                  no_build=True)
 
+  @no_wasm_backend
   def test_sqlite(self):
     # gcc -O3 -I/home/alon/Dev/emscripten/tests/sqlite -ldl src.c
     self.banned_js_engines = [NODE_JS] # OOM in older node
@@ -6720,6 +6722,8 @@ def process(filename):
     Building.llvm_as(filename)
     Building.llvm_dis(filename)
 
+  # Broken on V8 but not node
+  @no_wasm_backend
   def test_autodebug(self):
     if Building.LLVM_OPTS: return self.skip('LLVM opts mess us up')
     Building.COMPILER_TEST_OPTS += ['--llvm-opts', '0']
@@ -8150,6 +8154,8 @@ int main(int argc, char **argv) {
     self.emcc_args += ['--js-library', os.path.join(self.get_dir(), 'lib.js')]
     self.do_run(open(os.path.join(self.get_dir(), 'main.cpp'), 'r').read(), 'able to run memprof')
 
+  # Currently broken using V8_ENGINE but not node
+  @no_wasm_backend
   def test_fs_dict(self):
       Settings.FORCE_FILESYSTEM = 1
       open(self.in_dir('pre.js'), 'w').write('''
