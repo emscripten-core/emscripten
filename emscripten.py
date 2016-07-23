@@ -1296,52 +1296,64 @@ Runtime.registerFunctions(%(sigs)s, Module);
       with open(cd_file_name, "w") as cd_file:
         json.dump({ 'cyberdwarf': metadata['cyberdwarf_data'] }, cd_file)
 
+
 def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_engine=None,
                           temp_files=None, DEBUG=None):
   # Overview:
   #   * Run LLVM backend to emit .s
   #   * Run Binaryen's s2wasm to generate WebAssembly.
   #   * We may also run some Binaryen passes here.
+  #   * We also accept a WebAssembly input, which could have been from the LLVM backend or any other compiler.
+
+  assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
 
   if libraries is None: libraries = []
 
-  temp_s = temp_files.get('.wb.s').name
-  backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
-  backend_args = [backend_compiler, infile, '-march=wasm32', '-filetype=asm',
-                  '-asm-verbose=false',
-                  '-o', temp_s]
-  backend_args += ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
-  # disable slow and relatively unimportant optimization passes
-  backend_args += ['-combiner-alias-analysis=false', '-combiner-global-alias-analysis=false']
-  if DEBUG:
-    logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
-    t = time.time()
-  shared.check_call(backend_args)
-  if DEBUG:
-    logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
-    t = time.time()
-    import shutil
-    shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
-
-  assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
   wasm = outfile.name[:-3] + '.wast'
-  s2wasm_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 's2wasm'), temp_s]
-  s2wasm_args += ['--emscripten-glue']
-  s2wasm_args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
-  s2wasm_args += ['--initial-memory=%d' % shared.Settings.TOTAL_MEMORY]
-  def compiler_rt_fail(): raise Exception('Expected wasm_compiler_rt.a to already be built')
-  compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', lambda: compiler_rt_fail(), 'a')
-  s2wasm_args += ['-l', compiler_rt_lib]
-  if DEBUG:
-    logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
-    t = time.time()
-    #s2wasm_args += ['--debug']
-  shared.check_call(s2wasm_args, stdout=open(wasm, 'w'))
-  if DEBUG:
-    logging.debug('  emscript: binaryen s2wasm took %s seconds' % (time.time() - t))
-    t = time.time()
+
+  if infile.endswith('.wasm'):
+    # convert wasm input to wast
+    shared.check_call([os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-dis'), infile, '-o', wasm])
+  elif infile.endswith('.wast'):
+    # already in wast format, just copy TODO: optimize out
     import shutil
-    shutil.copyfile(wasm, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-s2wasm-output.wast'))
+    shutil.copyfile(infile, wasm)
+  else:
+    # run LLVM wasm backend
+    temp_s = temp_files.get('.wb.s').name
+    backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
+    backend_args = [backend_compiler, infile, '-march=wasm32', '-filetype=asm',
+                    '-asm-verbose=false',
+                    '-o', temp_s]
+    backend_args += ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
+    # disable slow and relatively unimportant optimization passes
+    backend_args += ['-combiner-alias-analysis=false', '-combiner-global-alias-analysis=false']
+    if DEBUG:
+      logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
+      t = time.time()
+    shared.check_call(backend_args)
+    if DEBUG:
+      logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
+      t = time.time()
+      import shutil
+      shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
+    s2wasm_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 's2wasm'), temp_s]
+    s2wasm_args += ['--emscripten-glue']
+    s2wasm_args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
+    s2wasm_args += ['--initial-memory=%d' % shared.Settings.TOTAL_MEMORY]
+    def compiler_rt_fail(): raise Exception('Expected wasm_compiler_rt.a to already be built')
+    compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', lambda: compiler_rt_fail(), 'a')
+    s2wasm_args += ['-l', compiler_rt_lib]
+    if DEBUG:
+      logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
+      t = time.time()
+      #s2wasm_args += ['--debug']
+    shared.check_call(s2wasm_args, stdout=open(wasm, 'w'))
+    if DEBUG:
+      logging.debug('  emscript: binaryen s2wasm took %s seconds' % (time.time() - t))
+      t = time.time()
+      import shutil
+      shutil.copyfile(wasm, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-s2wasm-output.wast'))
 
   # js compiler
 
@@ -1351,15 +1363,17 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
 
   output = open(wasm).read()
   parts = output.split('\n;; METADATA:')
-  assert len(parts) == 2
-  metadata_raw = parts[1]
+  if len(parts) == 2:
+    metadata_raw = parts[1]
+  else:
+    metadata_raw = '{}' # no metadata provided
   parts = output = None
 
   if DEBUG: logging.debug("METAraw %s", metadata_raw)
   try:
     metadata_json = json.loads(metadata_raw)
   except Exception, e:
-    logging.error('emscript: failure to parse metadata output from s2wasm. raw output is: \n' + metadata_raw)
+    logging.error('emscript: failure to parse metadata output from wasm. raw output is: \n' + metadata_raw)
     raise e
 
   metadata = {
@@ -1370,6 +1384,8 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
     'maxGlobalAlign': 0,
     'initializers': [],
     'exports': [],
+    'staticBump': 0,
+    'asmConsts': {},
   }
 
   for k, v in metadata_json.iteritems():
@@ -1384,7 +1400,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   # Initializers call the global var version of the export, so they get the mangled name.
   metadata['initializers'] = [asmjs_mangle(i) for i in metadata['initializers']]
 
-  # TODO: emit it from s2wasm; for now, we parse it right here
+  # TODO: run a binaryen tool to get this info; for now, we parse it right here
   for line in open(wasm).readlines():
     if line.startswith('  (import '):
       parts = line.split(' ')
@@ -1393,6 +1409,11 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
       parts = line.split(' ')
       func = parts[3][1:]
       metadata['implementedFunctions'].append(func)
+      if '"' in line:
+        parts = line.split('"')
+        exportname = parts[1]
+        assert asmjs_mangle(exportname) not in metadata['exports']
+        metadata['exports'].append(exportname)
     elif line.startswith('  (export '):
       parts = line.split(' ')
       exportname = parts[3][1:-1]
@@ -1577,7 +1598,7 @@ var asm = Module['asm'](%s, %s, buffer);
   funcs_js.append('''
 STACKTOP = STACK_BASE + TOTAL_STACK;
 STACK_MAX = STACK_BASE;
-HEAP32[%d >> 2] = STACKTOP;
+HEAP32[%d >> 2] = STACKTOP; // we assume the stack is stored in the first global var location
 Runtime.stackAlloc = asm['stackAlloc'];
 Runtime.stackSave = asm['stackSave'];
 Runtime.stackRestore = asm['stackRestore'];

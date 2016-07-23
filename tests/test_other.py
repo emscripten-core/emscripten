@@ -6420,3 +6420,27 @@ int main() {
     
     stdout, stderr = Popen([PYTHON, EMCC, '-Wall', '-std=c++14', 'src_tmp_fixed_lang'], stderr=PIPE).communicate()
     self.assertContained("Input file has an unknown suffix, don't know what to do with it!", stderr)
+
+  def test_wasm_input(self):
+    # Test providing a wasm input to emcc. The wast file calls an import which should
+    # be linked in from a js library, and the wast exports a method which we call from
+    # JS.
+    open('input.wast', 'w').write('''
+(module
+  (import $llvm_bswap_i32 "env" "llvm_bswap_i32" (param i32) (result i32))
+  (func "increment_swap" (param i32) (result i32)
+    (call_import $llvm_bswap_i32
+      (i32.add
+        (get_local $0)
+        (i32.const 1)
+      )
+    )
+  )
+)
+''')
+    open('post.js', 'w').write('''
+Module.print('|' + Module._increment_swap(0x12345678) + '|');
+''')
+    check_execute([PYTHON, EMCC, 'input.wast', '--post-js', 'post.js', '-s', 'BINARYEN=1', '-s', 'EXPORTED_FUNCTIONS=["_increment_swap"]'])
+    self.assertContained('|' + str(0x79563412) + '|', run_js('a.out.js'))
+
