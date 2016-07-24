@@ -6,6 +6,15 @@ import tools.shared
 from tools.shared import *
 from runner import RunnerCore, path_from_root, get_zlib_library, get_bullet_library
 
+# Runs an emcc task (used from another process in test test_emcc_multiprocess_cache_access, needs to be at top level for it to be pickleable).
+def multiprocess_task(c_file, cache_dir_name):
+  output = subprocess.check_output([PYTHON, EMCC, c_file, '--cache', cache_dir_name], stderr=subprocess.STDOUT)
+  if len(output.strip()) > 0:
+    print '------'
+    print output
+    print '------'
+  sys.exit(1 if 'generating system library: libc.bc' in output else 0)
+
 class other(RunnerCore):
   def test_emcc(self):
     for compiler in [EMCC, EMXX]:
@@ -311,15 +320,6 @@ f.close()
         os.environ['EMCC_FAST_COMPILER'] = old_fastcomp
     self.assertFalse(os.path.exists('a.out.js'))
 
-  @staticmethod
-  def multiprocess_task(c_file, cache_dir_name):
-    output = subprocess.check_output([PYTHON, EMCC, c_file, '--cache', cache_dir_name], stderr=subprocess.STDOUT)
-    if len(output.strip()) > 0:
-      print '------'
-      print output
-      print '------'
-    sys.exit(1 if 'generating system library: libc.bc' in output else 0)
-
   # Test that if multiple processes attempt to access or build stuff to the cache on demand, that exactly one of the processes
   # will, and the other processes will block to wait until that process finishes.
   def test_emcc_multiprocess_cache_access(self):
@@ -337,7 +337,7 @@ f.close()
     tasks = []
     num_times_libc_was_built = 0
     for i in range(3):
-      p = multiprocessing.Process(target=self.multiprocess_task, args=(c_file,cache_dir_name,))
+      p = multiprocessing.Process(target=multiprocess_task, args=(c_file,cache_dir_name,))
       p.start()
       tasks += [p]
     for p in tasks:
