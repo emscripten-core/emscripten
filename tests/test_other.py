@@ -2027,6 +2027,9 @@ int f() {
       del os.environ['EMCC_DEBUG']
 
   def test_scons(self): # also incidentally tests c++11 integration in llvm 3.1
+    scons_path = Building.which('scons')
+    if not scons_path:
+      return self.skip('Skipping other.test_scons: The tool "scons" was not found in PATH!')
     try_delete(os.path.join(self.get_dir(), 'test'))
     shutil.copytree(path_from_root('tests', 'scons'), os.path.join(self.get_dir(), 'test'))
     shutil.copytree(path_from_root('tools', 'scons', 'site_scons'), os.path.join(self.get_dir(), 'test', 'site_scons'))
