@@ -76,6 +76,7 @@ void emscripten_trace_close(void);
 #define emscripten_trace_record_reallocation(old_address, new_address, size)
 #define emscripten_trace_record_free(address)
 #define emscripten_trace_annotate_address_type(address, type)
+#define emscripten_trace_associate_storage_size(address, size)
 #define emscripten_trace_report_memory_layout()
 #define emscripten_trace_report_off_heap_data()
 #define emscripten_trace_enter_context(name)

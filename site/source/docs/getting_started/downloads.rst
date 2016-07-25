@@ -154,7 +154,7 @@ Linux
 		# Install node.js
 		sudo apt-get install nodejs
 		
-		# Install Java
+		# Install Java (optional, only needed for Closure Compiler minification)
 		sudo apt-get install default-jre
 
 .. note:: Your system may provide Node.js as ``node`` instead of ``nodejs``. In that case, you may need to also update the ``NODE_JS`` attribute of your ``~/.emscripten`` file.

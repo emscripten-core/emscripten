@@ -2,6 +2,9 @@
          C _ZNKSt3__120__vector_base_commonILb1EE20__throw_length_errorEv
          C _ZNKSt3__121__basic_string_commonILb1EE20__throw_length_errorEv
          C _ZNKSt3__121__basic_string_commonILb1EE20__throw_out_of_rangeEv
+         T __cxa_guard_acquire
+         T __cxa_guard_release
+         T __cxa_guard_abort
          D __cxa_new_handler
          D __cxa_terminate_handler
          D __cxa_unexpected_handler

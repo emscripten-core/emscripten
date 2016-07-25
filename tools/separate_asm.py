@@ -19,12 +19,11 @@ if 'var Module' in everything:
   everything = everything.replace(module, 'Module["asm"]')
 else:
   # closure compiler removes |var Module|, we need to find the closured name
-  evil = everything.find('eval(')
-  evil = everything.rfind('=', 0, evil)
-  start = evil
-  while everything[start] in [' ', '=']: start -= 1
-  while everything[start] not in [' ', ',', '(']: start -= 1
-  closured_name = everything[start+1:evil].strip()
+  # seek a pattern like (e.ENVIRONMENT), which is in the shell.js if-cascade for the ENVIRONMENT override
+  import re
+  m = re.search('\((\w+)\.ENVIRONMENT\)', everything)
+  assert m, 'cannot figure out the closured name of Module statically'
+  closured_name = m.group(1)
   everything = everything.replace(module, closured_name + '["asm"]')
 
 o = open(asmfile, 'w')

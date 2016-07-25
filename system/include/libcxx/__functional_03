@@ -17,218 +17,7 @@
 #pragma GCC system_header
 #endif
 
-template <class _Tp>
-class __mem_fn
-    : public __weak_result_type<_Tp>
-{
-public:
-    // types
-    typedef _Tp type;
-private:
-    type __f_;
-
-public:
-    _LIBCPP_INLINE_VISIBILITY __mem_fn(type __f) : __f_(__f) {}
-
-    // invoke
-
-    typename __invoke_return<type>::type
-       operator() () const
-       {
-           return __invoke(__f_);
-       }
-
-    template <class _A0>
-       typename __invoke_return0<type, _A0>::type
-          operator() (_A0& __a0) const
-          {
-              return __invoke(__f_, __a0);
-          }
-
-    template <class _A0, class _A1>
-       typename __invoke_return1<type, _A0, _A1>::type
-          operator() (_A0& __a0, _A1& __a1) const
-          {
-              return __invoke(__f_, __a0, __a1);
-          }
-
-    template <class _A0, class _A1, class _A2>
-       typename __invoke_return2<type, _A0, _A1, _A2>::type
-          operator() (_A0& __a0, _A1& __a1, _A2& __a2) const
-          {
-              return __invoke(__f_, __a0, __a1, __a2);
-          }
-};
-
-template<class _Rp, class _Tp>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp _Tp::*>
-mem_fn(_Rp _Tp::* __pm)
-{
-    return __mem_fn<_Rp _Tp::*>(__pm);
-}
-
-template<class _Rp, class _Tp>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp (_Tp::*)()>
-mem_fn(_Rp (_Tp::* __pm)())
-{
-    return __mem_fn<_Rp (_Tp::*)()>(__pm);
-}
-
-template<class _Rp, class _Tp, class _A0>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp (_Tp::*)(_A0)>
-mem_fn(_Rp (_Tp::* __pm)(_A0))
-{
-    return __mem_fn<_Rp (_Tp::*)(_A0)>(__pm);
-}
-
-template<class _Rp, class _Tp, class _A0, class _A1>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp (_Tp::*)(_A0, _A1)>
-mem_fn(_Rp (_Tp::* __pm)(_A0, _A1))
-{
-    return __mem_fn<_Rp (_Tp::*)(_A0, _A1)>(__pm);
-}
-
-template<class _Rp, class _Tp, class _A0, class _A1, class _A2>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp (_Tp::*)(_A0, _A1, _A2)>
-mem_fn(_Rp (_Tp::* __pm)(_A0, _A1, _A2))
-{
-    return __mem_fn<_Rp (_Tp::*)(_A0, _A1, _A2)>(__pm);
-}
-
-template<class _Rp, class _Tp>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp (_Tp::*)() const>
-mem_fn(_Rp (_Tp::* __pm)() const)
-{
-    return __mem_fn<_Rp (_Tp::*)() const>(__pm);
-}
-
-template<class _Rp, class _Tp, class _A0>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp (_Tp::*)(_A0) const>
-mem_fn(_Rp (_Tp::* __pm)(_A0) const)
-{
-    return __mem_fn<_Rp (_Tp::*)(_A0) const>(__pm);
-}
-
-template<class _Rp, class _Tp, class _A0, class _A1>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp (_Tp::*)(_A0, _A1) const>
-mem_fn(_Rp (_Tp::* __pm)(_A0, _A1) const)
-{
-    return __mem_fn<_Rp (_Tp::*)(_A0, _A1) const>(__pm);
-}
-
-template<class _Rp, class _Tp, class _A0, class _A1, class _A2>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp (_Tp::*)(_A0, _A1, _A2) const>
-mem_fn(_Rp (_Tp::* __pm)(_A0, _A1, _A2) const)
-{
-    return __mem_fn<_Rp (_Tp::*)(_A0, _A1, _A2) const>(__pm);
-}
-
-template<class _Rp, class _Tp>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp (_Tp::*)() volatile>
-mem_fn(_Rp (_Tp::* __pm)() volatile)
-{
-    return __mem_fn<_Rp (_Tp::*)() volatile>(__pm);
-}
-
-template<class _Rp, class _Tp, class _A0>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp (_Tp::*)(_A0) volatile>
-mem_fn(_Rp (_Tp::* __pm)(_A0) volatile)
-{
-    return __mem_fn<_Rp (_Tp::*)(_A0) volatile>(__pm);
-}
-
-template<class _Rp, class _Tp, class _A0, class _A1>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp (_Tp::*)(_A0, _A1) volatile>
-mem_fn(_Rp (_Tp::* __pm)(_A0, _A1) volatile)
-{
-    return __mem_fn<_Rp (_Tp::*)(_A0, _A1) volatile>(__pm);
-}
-
-template<class _Rp, class _Tp, class _A0, class _A1, class _A2>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp (_Tp::*)(_A0, _A1, _A2) volatile>
-mem_fn(_Rp (_Tp::* __pm)(_A0, _A1, _A2) volatile)
-{
-    return __mem_fn<_Rp (_Tp::*)(_A0, _A1, _A2) volatile>(__pm);
-}
-
-template<class _Rp, class _Tp>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp (_Tp::*)() const volatile>
-mem_fn(_Rp (_Tp::* __pm)() const volatile)
-{
-    return __mem_fn<_Rp (_Tp::*)() const volatile>(__pm);
-}
-
-template<class _Rp, class _Tp, class _A0>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp (_Tp::*)(_A0) const volatile>
-mem_fn(_Rp (_Tp::* __pm)(_A0) const volatile)
-{
-    return __mem_fn<_Rp (_Tp::*)(_A0) const volatile>(__pm);
-}
-
-template<class _Rp, class _Tp, class _A0, class _A1>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp (_Tp::*)(_A0, _A1) const volatile>
-mem_fn(_Rp (_Tp::* __pm)(_A0, _A1) const volatile)
-{
-    return __mem_fn<_Rp (_Tp::*)(_A0, _A1) const volatile>(__pm);
-}
-
-template<class _Rp, class _Tp, class _A0, class _A1, class _A2>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp (_Tp::*)(_A0, _A1, _A2) const volatile>
-mem_fn(_Rp (_Tp::* __pm)(_A0, _A1, _A2) const volatile)
-{
-    return __mem_fn<_Rp (_Tp::*)(_A0, _A1, _A2) const volatile>(__pm);
-}
-
-// bad_function_call
-
-class _LIBCPP_EXCEPTION_ABI bad_function_call
-    : public exception
-{
-};
-
-template<class _Fp> class _LIBCPP_TYPE_VIS_ONLY function; // undefined
-
-namespace __function
-{
-
-template<class _Fp>
-struct __maybe_derive_from_unary_function
-{
-};
-
-template<class _Rp, class _A1>
-struct __maybe_derive_from_unary_function<_Rp(_A1)>
-    : public unary_function<_A1, _Rp>
-{
-};
-
-template<class _Fp>
-struct __maybe_derive_from_binary_function
-{
-};
-
-template<class _Rp, class _A1, class _A2>
-struct __maybe_derive_from_binary_function<_Rp(_A1, _A2)>
-    : public binary_function<_A1, _A2, _Rp>
-{
-};
+namespace __function {
 
 template<class _Fp> class __base;
 
@@ -333,7 +122,8 @@ template<class _Fp, class _Alloc, class _Rp>
 __base<_Rp()>*
 __func<_Fp, _Alloc, _Rp()>::__clone() const
 {
-    typedef typename _Alloc::template rebind<__func>::other _Ap;
+    typedef allocator_traits<_Alloc> __alloc_traits;
+    typedef typename __rebind_alloc_helper<__alloc_traits, __func>::type _Ap;
     _Ap __a(__f_.second());
     typedef __allocator_destructor<_Ap> _Dp;
     unique_ptr<__func, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
@@ -359,7 +149,8 @@ template<class _Fp, class _Alloc, class _Rp>
 void
 __func<_Fp, _Alloc, _Rp()>::destroy_deallocate()
 {
-    typedef typename _Alloc::template rebind<__func>::other _Ap;
+    typedef allocator_traits<_Alloc> __alloc_traits;
+    typedef typename __rebind_alloc_helper<__alloc_traits, __func>::type _Ap;
     _Ap __a(__f_.second());
     __f_.~__compressed_pair<_Fp, _Alloc>();
     __a.deallocate(this, 1);
@@ -369,7 +160,8 @@ template<class _Fp, class _Alloc, class _Rp>
 _Rp
 __func<_Fp, _Alloc, _Rp()>::operator()()
 {
-    return __invoke(__f_.first());
+    typedef __invoke_void_return_wrapper<_Rp> _Invoker;
+    return _Invoker::__call(__f_.first());
 }
 
 #ifndef _LIBCPP_NO_RTTI
@@ -416,7 +208,8 @@ template<class _Fp, class _Alloc, class _Rp, class _A0>
 __base<_Rp(_A0)>*
 __func<_Fp, _Alloc, _Rp(_A0)>::__clone() const
 {
-    typedef typename _Alloc::template rebind<__func>::other _Ap;
+    typedef allocator_traits<_Alloc> __alloc_traits;
+    typedef typename __rebind_alloc_helper<__alloc_traits, __func>::type _Ap;
     _Ap __a(__f_.second());
     typedef __allocator_destructor<_Ap> _Dp;
     unique_ptr<__func, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
@@ -442,7 +235,8 @@ template<class _Fp, class _Alloc, class _Rp, class _A0>
 void
 __func<_Fp, _Alloc, _Rp(_A0)>::destroy_deallocate()
 {
-    typedef typename _Alloc::template rebind<__func>::other _Ap;
+    typedef allocator_traits<_Alloc> __alloc_traits;
+    typedef typename __rebind_alloc_helper<__alloc_traits, __func>::type _Ap;
     _Ap __a(__f_.second());
     __f_.~__compressed_pair<_Fp, _Alloc>();
     __a.deallocate(this, 1);
@@ -452,7 +246,8 @@ template<class _Fp, class _Alloc, class _Rp, class _A0>
 _Rp
 __func<_Fp, _Alloc, _Rp(_A0)>::operator()(_A0 __a0)
 {
-    return __invoke(__f_.first(), __a0);
+    typedef __invoke_void_return_wrapper<_Rp> _Invoker;
+    return _Invoker::__call(__f_.first(), __a0);
 }
 
 #ifndef _LIBCPP_NO_RTTI
@@ -499,7 +294,8 @@ template<class _Fp, class _Alloc, class _Rp, class _A0, class _A1>
 __base<_Rp(_A0, _A1)>*
 __func<_Fp, _Alloc, _Rp(_A0, _A1)>::__clone() const
 {
-    typedef typename _Alloc::template rebind<__func>::other _Ap;
+    typedef allocator_traits<_Alloc> __alloc_traits;
+    typedef typename __rebind_alloc_helper<__alloc_traits, __func>::type _Ap;
     _Ap __a(__f_.second());
     typedef __allocator_destructor<_Ap> _Dp;
     unique_ptr<__func, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
@@ -525,7 +321,8 @@ template<class _Fp, class _Alloc, class _Rp, class _A0, class _A1>
 void
 __func<_Fp, _Alloc, _Rp(_A0, _A1)>::destroy_deallocate()
 {
-    typedef typename _Alloc::template rebind<__func>::other _Ap;
+    typedef allocator_traits<_Alloc> __alloc_traits;
+    typedef typename __rebind_alloc_helper<__alloc_traits, __func>::type _Ap;
     _Ap __a(__f_.second());
     __f_.~__compressed_pair<_Fp, _Alloc>();
     __a.deallocate(this, 1);
@@ -535,7 +332,8 @@ template<class _Fp, class _Alloc, class _Rp, class _A0, class _A1>
 _Rp
 __func<_Fp, _Alloc, _Rp(_A0, _A1)>::operator()(_A0 __a0, _A1 __a1)
 {
-    return __invoke(__f_.first(), __a0, __a1);
+    typedef __invoke_void_return_wrapper<_Rp> _Invoker;
+    return _Invoker::__call(__f_.first(), __a0, __a1);
 }
 
 #ifndef _LIBCPP_NO_RTTI
@@ -582,7 +380,8 @@ template<class _Fp, class _Alloc, class _Rp, class _A0, class _A1, class _A2>
 __base<_Rp(_A0, _A1, _A2)>*
 __func<_Fp, _Alloc, _Rp(_A0, _A1, _A2)>::__clone() const
 {
-    typedef typename _Alloc::template rebind<__func>::other _Ap;
+    typedef allocator_traits<_Alloc> __alloc_traits;
+    typedef typename __rebind_alloc_helper<__alloc_traits, __func>::type _Ap;
     _Ap __a(__f_.second());
     typedef __allocator_destructor<_Ap> _Dp;
     unique_ptr<__func, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
@@ -608,7 +407,8 @@ template<class _Fp, class _Alloc, class _Rp, class _A0, class _A1, class _A2>
 void
 __func<_Fp, _Alloc, _Rp(_A0, _A1, _A2)>::destroy_deallocate()
 {
-    typedef typename _Alloc::template rebind<__func>::other _Ap;
+    typedef allocator_traits<_Alloc> __alloc_traits;
+    typedef typename __rebind_alloc_helper<__alloc_traits, __func>::type _Ap;
     _Ap __a(__f_.second());
     __f_.~__compressed_pair<_Fp, _Alloc>();
     __a.deallocate(this, 1);
@@ -618,7 +418,8 @@ template<class _Fp, class _Alloc, class _Rp, class _A0, class _A1, class _A2>
 _Rp
 __func<_Fp, _Alloc, _Rp(_A0, _A1, _A2)>::operator()(_A0 __a0, _A1 __a1, _A2 __a2)
 {
-    return __invoke(__f_.first(), __a0, __a1, __a2);
+    typedef __invoke_void_return_wrapper<_Rp> _Invoker;
+    return _Invoker::__call(__f_.first(), __a0, __a1, __a2);
 }
 
 #ifndef _LIBCPP_NO_RTTI
@@ -650,15 +451,6 @@ class _LIBCPP_TYPE_VIS_ONLY function<_Rp()>
     aligned_storage<3*sizeof(void*)>::type __buf_;
     __base* __f_;
 
-    template <class _Fp>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(const _Fp&) {return true;}
-    template <class _R2>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(_R2 (*__p)()) {return __p;}
-    template <class _R2>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(const function<_R2()>& __p) {return __p;}
 public:
     typedef _Rp result_type;
 
@@ -757,7 +549,7 @@ function<_Rp()>::function(_Fp __f,
                                      typename enable_if<!is_integral<_Fp>::value>::type*)
     : __f_(0)
 {
-    if (__not_null(__f))
+    if (__function::__not_null(__f))
     {
         typedef __function::__func<_Fp, allocator<_Fp>, _Rp()> _FF;
         if (sizeof(_FF) <= sizeof(__buf_))
@@ -784,23 +576,17 @@ function<_Rp()>::function(allocator_arg_t, const _Alloc& __a0, _Fp __f,
     : __f_(0)
 {
     typedef allocator_traits<_Alloc> __alloc_traits;
-    if (__not_null(__f))
+    if (__function::__not_null(__f))
     {
         typedef __function::__func<_Fp, _Alloc, _Rp()> _FF;
         if (sizeof(_FF) <= sizeof(__buf_))
         {
             __f_ = (__base*)&__buf_;
-            ::new (__f_) _FF(__f);
+            ::new (__f_) _FF(__f, __a0);
         }
         else
         {
-            typedef typename __alloc_traits::template
-#ifndef _LIBCPP_HAS_NO_TEMPLATE_ALIASES
-                rebind_alloc<_FF>
-#else
-                rebind_alloc<_FF>::other
-#endif
-                                                         _Ap;
+            typedef typename __rebind_alloc_helper<__alloc_traits, _FF>::type _Ap;
             _Ap __a(__a0);
             typedef __allocator_destructor<_Ap> _Dp;
             unique_ptr<__base, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
@@ -827,6 +613,7 @@ function<_Rp()>::operator=(nullptr_t)
     else if (__f_)
         __f_->destroy_deallocate();
     __f_ = 0;
+    return *this;
 }
 
 template<class _Rp>
@@ -940,27 +727,6 @@ class _LIBCPP_TYPE_VIS_ONLY function<_Rp(_A0)>
     aligned_storage<3*sizeof(void*)>::type __buf_;
     __base* __f_;
 
-    template <class _Fp>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(const _Fp&) {return true;}
-    template <class _R2, class _B0>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(_R2 (*__p)(_B0)) {return __p;}
-    template <class _R2, class _Cp>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(_R2 (_Cp::*__p)()) {return __p;}
-    template <class _R2, class _Cp>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(_R2 (_Cp::*__p)() const) {return __p;}
-    template <class _R2, class _Cp>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(_R2 (_Cp::*__p)() volatile) {return __p;}
-    template <class _R2, class _Cp>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(_R2 (_Cp::*__p)() const volatile) {return __p;}
-    template <class _R2, class _B0>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(const function<_R2(_B0)>& __p) {return __p;}
 public:
     typedef _Rp result_type;
 
@@ -1059,7 +825,7 @@ function<_Rp(_A0)>::function(_Fp __f,
                                      typename enable_if<!is_integral<_Fp>::value>::type*)
     : __f_(0)
 {
-    if (__not_null(__f))
+    if (__function::__not_null(__f))
     {
         typedef __function::__func<_Fp, allocator<_Fp>, _Rp(_A0)> _FF;
         if (sizeof(_FF) <= sizeof(__buf_))
@@ -1086,23 +852,17 @@ function<_Rp(_A0)>::function(allocator_arg_t, const _Alloc& __a0, _Fp __f,
     : __f_(0)
 {
     typedef allocator_traits<_Alloc> __alloc_traits;
-    if (__not_null(__f))
+    if (__function::__not_null(__f))
     {
         typedef __function::__func<_Fp, _Alloc, _Rp(_A0)> _FF;
         if (sizeof(_FF) <= sizeof(__buf_))
         {
             __f_ = (__base*)&__buf_;
-            ::new (__f_) _FF(__f);
+            ::new (__f_) _FF(__f, __a0);
         }
         else
         {
-            typedef typename __alloc_traits::template
-#ifndef _LIBCPP_HAS_NO_TEMPLATE_ALIASES
-                rebind_alloc<_FF>
-#else
-                rebind_alloc<_FF>::other
-#endif
-                                                         _Ap;
+            typedef typename __rebind_alloc_helper<__alloc_traits, _FF>::type _Ap;
             _Ap __a(__a0);
             typedef __allocator_destructor<_Ap> _Dp;
             unique_ptr<__base, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
@@ -1129,6 +889,7 @@ function<_Rp(_A0)>::operator=(nullptr_t)
     else if (__f_)
         __f_->destroy_deallocate();
     __f_ = 0;
+    return *this;
 }
 
 template<class _Rp, class _A0>
@@ -1242,27 +1003,6 @@ class _LIBCPP_TYPE_VIS_ONLY function<_Rp(_A0, _A1)>
     aligned_storage<3*sizeof(void*)>::type __buf_;
     __base* __f_;
 
-    template <class _Fp>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(const _Fp&) {return true;}
-    template <class _R2, class _B0, class _B1>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(_R2 (*__p)(_B0, _B1)) {return __p;}
-    template <class _R2, class _Cp, class _B1>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(_R2 (_Cp::*__p)(_B1)) {return __p;}
-    template <class _R2, class _Cp, class _B1>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(_R2 (_Cp::*__p)(_B1) const) {return __p;}
-    template <class _R2, class _Cp, class _B1>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(_R2 (_Cp::*__p)(_B1) volatile) {return __p;}
-    template <class _R2, class _Cp, class _B1>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(_R2 (_Cp::*__p)(_B1) const volatile) {return __p;}
-    template <class _R2, class _B0, class _B1>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(const function<_R2(_B0, _B1)>& __p) {return __p;}
 public:
     typedef _Rp result_type;
 
@@ -1361,7 +1101,7 @@ function<_Rp(_A0, _A1)>::function(_Fp __f,
                                  typename enable_if<!is_integral<_Fp>::value>::type*)
     : __f_(0)
 {
-    if (__not_null(__f))
+    if (__function::__not_null(__f))
     {
         typedef __function::__func<_Fp, allocator<_Fp>, _Rp(_A0, _A1)> _FF;
         if (sizeof(_FF) <= sizeof(__buf_))
@@ -1388,23 +1128,17 @@ function<_Rp(_A0, _A1)>::function(allocator_arg_t, const _Alloc& __a0, _Fp __f,
     : __f_(0)
 {
     typedef allocator_traits<_Alloc> __alloc_traits;
-    if (__not_null(__f))
+    if (__function::__not_null(__f))
     {
         typedef __function::__func<_Fp, _Alloc, _Rp(_A0, _A1)> _FF;
         if (sizeof(_FF) <= sizeof(__buf_))
         {
             __f_ = (__base*)&__buf_;
-            ::new (__f_) _FF(__f);
+            ::new (__f_) _FF(__f, __a0);
         }
         else
         {
-            typedef typename __alloc_traits::template
-#ifndef _LIBCPP_HAS_NO_TEMPLATE_ALIASES
-                rebind_alloc<_FF>
-#else
-                rebind_alloc<_FF>::other
-#endif
-                                                         _Ap;
+            typedef typename __rebind_alloc_helper<__alloc_traits, _FF>::type _Ap;
             _Ap __a(__a0);
             typedef __allocator_destructor<_Ap> _Dp;
             unique_ptr<__base, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
@@ -1431,6 +1165,7 @@ function<_Rp(_A0, _A1)>::operator=(nullptr_t)
     else if (__f_)
         __f_->destroy_deallocate();
     __f_ = 0;
+    return *this;
 }
 
 template<class _Rp, class _A0, class _A1>
@@ -1543,27 +1278,6 @@ class _LIBCPP_TYPE_VIS_ONLY function<_Rp(_A0, _A1, _A2)>
     aligned_storage<3*sizeof(void*)>::type __buf_;
     __base* __f_;
 
-    template <class _Fp>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(const _Fp&) {return true;}
-    template <class _R2, class _B0, class _B1, class _B2>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(_R2 (*__p)(_B0, _B1, _B2)) {return __p;}
-    template <class _R2, class _Cp, class _B1, class _B2>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(_R2 (_Cp::*__p)(_B1, _B2)) {return __p;}
-    template <class _R2, class _Cp, class _B1, class _B2>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(_R2 (_Cp::*__p)(_B1, _B2) const) {return __p;}
-    template <class _R2, class _Cp, class _B1, class _B2>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(_R2 (_Cp::*__p)(_B1, _B2) volatile) {return __p;}
-    template <class _R2, class _Cp, class _B1, class _B2>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(_R2 (_Cp::*__p)(_B1, _B2) const volatile) {return __p;}
-    template <class _R2, class _B0, class _B1, class _B2>
-        _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(const function<_R2(_B0, _B1, _B2)>& __p) {return __p;}
 public:
     typedef _Rp result_type;
 
@@ -1663,7 +1377,7 @@ function<_Rp(_A0, _A1, _A2)>::function(_Fp __f,
                                      typename enable_if<!is_integral<_Fp>::value>::type*)
     : __f_(0)
 {
-    if (__not_null(__f))
+    if (__function::__not_null(__f))
     {
         typedef __function::__func<_Fp, allocator<_Fp>, _Rp(_A0, _A1, _A2)> _FF;
         if (sizeof(_FF) <= sizeof(__buf_))
@@ -1690,23 +1404,17 @@ function<_Rp(_A0, _A1, _A2)>::function(allocator_arg_t, const _Alloc& __a0, _Fp 
     : __f_(0)
 {
     typedef allocator_traits<_Alloc> __alloc_traits;
-    if (__not_null(__f))
+    if (__function::__not_null(__f))
     {
         typedef __function::__func<_Fp, _Alloc, _Rp(_A0, _A1, _A2)> _FF;
         if (sizeof(_FF) <= sizeof(__buf_))
         {
             __f_ = (__base*)&__buf_;
-            ::new (__f_) _FF(__f);
+            ::new (__f_) _FF(__f, __a0);
         }
         else
         {
-            typedef typename __alloc_traits::template
-#ifndef _LIBCPP_HAS_NO_TEMPLATE_ALIASES
-                rebind_alloc<_FF>
-#else
-                rebind_alloc<_FF>::other
-#endif
-                                                         _Ap;
+            typedef typename __rebind_alloc_helper<__alloc_traits, _FF>::type _Ap;
             _Ap __a(__a0);
             typedef __allocator_destructor<_Ap> _Dp;
             unique_ptr<__base, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
@@ -1733,6 +1441,7 @@ function<_Rp(_A0, _A1, _A2)>::operator=(nullptr_t)
     else if (__f_)
         __f_->destroy_deallocate();
     __f_ = 0;
+    return *this;
 }
 
 template<class _Rp, class _A0, class _A1, class _A2>
@@ -1863,273 +1572,5 @@ inline _LIBCPP_INLINE_VISIBILITY
 void
 swap(function<_Fp>& __x, function<_Fp>& __y)
 {return __x.swap(__y);}
-
-template<class _Tp> struct __is_bind_expression : public false_type {};
-template<class _Tp> struct _LIBCPP_TYPE_VIS_ONLY is_bind_expression
-    : public __is_bind_expression<typename remove_cv<_Tp>::type> {};
-
-template<class _Tp> struct __is_placeholder : public integral_constant<int, 0> {};
-template<class _Tp> struct _LIBCPP_TYPE_VIS_ONLY is_placeholder
-    : public __is_placeholder<typename remove_cv<_Tp>::type> {};
-
-namespace placeholders
-{
-
-template <int _Np> struct __ph {};
-
-extern __ph<1>   _1;
-extern __ph<2>   _2;
-extern __ph<3>   _3;
-extern __ph<4>   _4;
-extern __ph<5>   _5;
-extern __ph<6>   _6;
-extern __ph<7>   _7;
-extern __ph<8>   _8;
-extern __ph<9>   _9;
-extern __ph<10> _10;
-
-}  // placeholders
-
-template<int _Np>
-struct __is_placeholder<placeholders::__ph<_Np> >
-    : public integral_constant<int, _Np> {};
-
-template <class _Tp, class _Uj>
-inline _LIBCPP_INLINE_VISIBILITY
-_Tp&
-__mu(reference_wrapper<_Tp> __t, _Uj&)
-{
-    return __t.get();
-}
-/*
-template <bool _IsBindExpr, class _Ti, class ..._Uj>
-struct __mu_return1 {};
-
-template <class _Ti, class ..._Uj>
-struct __mu_return1<true, _Ti, _Uj...>
-{
-    typedef typename result_of<_Ti(_Uj...)>::type type;
-};
-
-template <class _Ti, class ..._Uj, size_t ..._Indx>
-inline _LIBCPP_INLINE_VISIBILITY
-typename __mu_return1<true, _Ti, _Uj...>::type
-__mu_expand(_Ti& __ti, tuple<_Uj...>&& __uj, __tuple_indices<_Indx...>)
-{
-    __ti(_VSTD::forward<typename tuple_element<_Indx, _Uj>::type>(_VSTD::get<_Indx>(__uj))...);
-}
-
-template <class _Ti, class ..._Uj>
-inline _LIBCPP_INLINE_VISIBILITY
-typename enable_if
-<
-    is_bind_expression<_Ti>::value,
-    typename __mu_return1<is_bind_expression<_Ti>::value, _Ti, _Uj...>::type
->::type
-__mu(_Ti& __ti, tuple<_Uj...>& __uj)
-{
-    typedef typename __make_tuple_indices<sizeof...(_Uj)>::type __indices;
-    return  __mu_expand(__ti, __uj, __indices());
-}
-
-template <bool IsPh, class _Ti, class _Uj>
-struct __mu_return2 {};
-
-template <class _Ti, class _Uj>
-struct __mu_return2<true, _Ti, _Uj>
-{
-    typedef typename tuple_element<is_placeholder<_Ti>::value - 1, _Uj>::type type;
-};
-
-template <class _Ti, class _Uj>
-inline _LIBCPP_INLINE_VISIBILITY
-typename enable_if
-<
-    0 < is_placeholder<_Ti>::value,
-    typename __mu_return2<0 < is_placeholder<_Ti>::value, _Ti, _Uj>::type
->::type
-__mu(_Ti&, _Uj& __uj)
-{
-    const size_t _Indx = is_placeholder<_Ti>::value - 1;
-    // compiler bug workaround
-    typename tuple_element<_Indx, _Uj>::type __t = _VSTD::get<_Indx>(__uj);
-    return __t;
-//    return _VSTD::forward<typename tuple_element<_Indx, _Uj>::type>(_VSTD::get<_Indx>(__uj));
-}
-
-template <class _Ti, class _Uj>
-inline _LIBCPP_INLINE_VISIBILITY
-typename enable_if
-<
-    !is_bind_expression<_Ti>::value &&
-    is_placeholder<_Ti>::value == 0 &&
-    !__is_reference_wrapper<_Ti>::value,
-    _Ti&
->::type
-__mu(_Ti& __ti, _Uj& __uj)
-{
-    return __ti;
-}
-
-template <class _Ti, bool IsBindEx, bool IsPh, class _TupleUj>
-struct ____mu_return;
-
-template <class _Ti, class ..._Uj>
-struct ____mu_return<_Ti, true, false, tuple<_Uj...> >
-{
-    typedef typename result_of<_Ti(_Uj...)>::type type;
-};
-
-template <class _Ti, class _TupleUj>
-struct ____mu_return<_Ti, false, true, _TupleUj>
-{
-    typedef typename tuple_element<is_placeholder<_Ti>::value - 1,
-                                   _TupleUj>::type&& type;
-};
-
-template <class _Ti, class _TupleUj>
-struct ____mu_return<_Ti, false, false, _TupleUj>
-{
-    typedef _Ti& type;
-};
-
-template <class _Ti, class _TupleUj>
-struct __mu_return
-    : public ____mu_return<_Ti,
-                           is_bind_expression<_Ti>::value,
-                           0 < is_placeholder<_Ti>::value,
-                           _TupleUj>
-{
-};
-
-template <class _Ti, class _TupleUj>
-struct __mu_return<reference_wrapper<_Ti>, _TupleUj>
-{
-    typedef _Ti& type;
-};
-
-template <class _Fp, class _BoundArgs, class _TupleUj>
-struct __bind_return;
-
-template <class _Fp, class ..._BoundArgs, class _TupleUj>
-struct __bind_return<_Fp, tuple<_BoundArgs...>, _TupleUj>
-{
-    typedef typename __ref_return
-    <
-        _Fp&,
-        typename __mu_return
-        <
-            _BoundArgs,
-            _TupleUj
-        >::type...
-    >::type type;
-};
-
-template <class _Fp, class ..._BoundArgs, class _TupleUj>
-struct __bind_return<_Fp, const tuple<_BoundArgs...>, _TupleUj>
-{
-    typedef typename __ref_return
-    <
-        _Fp&,
-        typename __mu_return
-        <
-            const _BoundArgs,
-            _TupleUj
-        >::type...
-    >::type type;
-};
-
-template <class _Fp, class _BoundArgs, size_t ..._Indx, class _Args>
-inline _LIBCPP_INLINE_VISIBILITY
-typename __bind_return<_Fp, _BoundArgs, _Args>::type
-__apply_functor(_Fp& __f, _BoundArgs& __bound_args, __tuple_indices<_Indx...>,
-                _Args&& __args)
-{
-    return __invoke(__f, __mu(_VSTD::get<_Indx>(__bound_args), __args)...);
-}
-
-template<class _Fp, class ..._BoundArgs>
-class __bind
-{
-    _Fp __f_;
-    tuple<_BoundArgs...> __bound_args_;
-
-    typedef typename __make_tuple_indices<sizeof...(_BoundArgs)>::type __indices;
-public:
-    template <class _Gp, class ..._BA>
-      explicit __bind(_Gp&& __f, _BA&& ...__bound_args)
-        : __f_(_VSTD::forward<_Gp>(__f)),
-          __bound_args_(_VSTD::forward<_BA>(__bound_args)...) {}
-
-    template <class ..._Args>
-        typename __bind_return<_Fp, tuple<_BoundArgs...>, tuple<_Args&&...> >::type
-        operator()(_Args&& ...__args)
-        {
-            // compiler bug workaround
-            return __apply_functor(__f_, __bound_args_, __indices(),
-                                  tuple<_Args&&...>(__args...));
-        }
-
-    template <class ..._Args>
-        typename __bind_return<_Fp, tuple<_BoundArgs...>, tuple<_Args&&...> >::type
-        operator()(_Args&& ...__args) const
-        {
-            return __apply_functor(__f_, __bound_args_, __indices(),
-                                   tuple<_Args&&...>(__args...));
-        }
-};
-
-template<class _Fp, class ..._BoundArgs>
-struct __is_bind_expression<__bind<_Fp, _BoundArgs...> > : public true_type {};
-
-template<class _Rp, class _Fp, class ..._BoundArgs>
-class __bind_r
-    : public __bind<_Fp, _BoundArgs...>
-{
-    typedef __bind<_Fp, _BoundArgs...> base;
-public:
-    typedef _Rp result_type;
-
-    template <class _Gp, class ..._BA>
-      explicit __bind_r(_Gp&& __f, _BA&& ...__bound_args)
-        : base(_VSTD::forward<_Gp>(__f),
-               _VSTD::forward<_BA>(__bound_args)...) {}
-
-    template <class ..._Args>
-        result_type
-        operator()(_Args&& ...__args)
-        {
-            return base::operator()(_VSTD::forward<_Args>(__args)...);
-        }
-
-    template <class ..._Args>
-        result_type
-        operator()(_Args&& ...__args) const
-        {
-            return base::operator()(_VSTD::forward<_Args>(__args)...);
-        }
-};
-
-template<class _Rp, class _Fp, class ..._BoundArgs>
-struct __is_bind_expression<__bind_r<_Rp, _Fp, _BoundArgs...> > : public true_type {};
-
-template<class _Fp, class ..._BoundArgs>
-inline _LIBCPP_INLINE_VISIBILITY
-__bind<typename decay<_Fp>::type, typename decay<_BoundArgs>::type...>
-bind(_Fp&& __f, _BoundArgs&&... __bound_args)
-{
-    typedef __bind<typename decay<_Fp>::type, typename decay<_BoundArgs>::type...> type;
-    return type(_VSTD::forward<_Fp>(__f), _VSTD::forward<_BoundArgs>(__bound_args)...);
-}
-
-template<class _Rp, class _Fp, class ..._BoundArgs>
-inline _LIBCPP_INLINE_VISIBILITY
-__bind_r<_Rp, typename decay<_Fp>::type, typename decay<_BoundArgs>::type...>
-bind(_Fp&& __f, _BoundArgs&&... __bound_args)
-{
-    typedef __bind_r<_Rp, typename decay<_Fp>::type, typename decay<_BoundArgs>::type...> type;
-    return type(_VSTD::forward<_Fp>(__f), _VSTD::forward<_BoundArgs>(__bound_args)...);
-}
-*/
 
 #endif  // _LIBCPP_FUNCTIONAL_03
