@@ -1374,6 +1374,14 @@ LibraryManager.library = {
   llvm_floor_f32: 'Math_floor',
   llvm_floor_f64: 'Math_floor',
 
+  llvm_copysign_f32: function(x, y) {
+    return y < 0 ? -Math_abs(x) : Math_abs(x);
+  },
+
+  llvm_copysign_f64: function(x, y) {
+    return y < 0 ? -Math_abs(x) : Math_abs(x);
+  },
+
   round__asm: true,
   round__sig: 'dd',
   round: function(d) {
@@ -4062,6 +4070,8 @@ LibraryManager.library = {
   llvm_dbg_value: true,
   llvm_debugtrap: true,
   llvm_ctlz_i32: true,
+  llvm_maxnum_f32: true,
+  llvm_maxnum_f64: true,
   emscripten_asm_const: true,
   emscripten_asm_const_int: true,
   emscripten_asm_const_double: true,
