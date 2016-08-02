@@ -320,7 +320,7 @@ EM_BUILD_VERBOSE_LEVEL = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUI
 
 # Expectations
 
-EXPECTED_LLVM_VERSION = (3, 9)
+EXPECTED_LLVM_VERSION = [(3, 9), (4, 0)]
 
 actual_clang_version = None
 
@@ -333,9 +333,9 @@ def get_clang_version():
   return actual_clang_version
 
 def check_clang_version():
-  expected = '.'.join(map(str, EXPECTED_LLVM_VERSION))
+  expected = map(lambda x: '.'.join(map(str, x)), EXPECTED_LLVM_VERSION)
   actual = get_clang_version()
-  if expected in actual:
+  if actual in expected:
     return True
   logging.warning('LLVM version appears incorrect (seeing "%s", expected "%s")' % (actual, expected))
   return False
