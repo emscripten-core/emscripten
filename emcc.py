@@ -34,10 +34,15 @@ C_ENDINGS = ('.c', '.C', '.i')
 CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.CC', '.C++', '.ii')
 OBJC_ENDINGS = ('.m', '.mi')
 OBJCXX_ENDINGS = ('.mm', '.mii')
-SPECIAL_ENDINGLESS_FILENAMES = ('/dev/null',)
+# A map of platform-specific 'null device' file(s)
+# There are only two keys in the map: False for non-Windows (or for POSIX to be more precise) and True for Windows
+SPECIAL_ENDINGLESS_FILENAMES = {
+  False: ('/dev/null',),
+  True: ('nul', 'NUL')
+}
 
-SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES
-C_ENDINGS = C_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
+SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES[WINDOWS]
+C_ENDINGS = C_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES[WINDOWS] # consider the special endingless filenames like /dev/null to be C
 
 BITCODE_ENDINGS = ('.bc', '.o', '.obj', '.lo')
 DYNAMICLIB_ENDINGS = ('.dylib', '.so') # Windows .dll suffix is not included in this list, since those are never linked to directly on the command line.
@@ -373,7 +378,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     return ''
 
   def filename_type_ending(filename):
-    if filename in SPECIAL_ENDINGLESS_FILENAMES:
+    if filename in SPECIAL_ENDINGLESS_FILENAMES[WINDOWS]:
       return filename
     suffix = filename_type_suffix(filename)
     return '' if not suffix else ('.' + suffix)
@@ -803,11 +808,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         arg = os.path.realpath(arg)
 
       if not arg.startswith('-'):
-        if not os.path.exists(arg):
+        arg_ending = filename_type_ending(arg)
+        if arg != arg_ending and not os.path.exists(arg): # skip checking the existence of the input file if it is an SPECIAL_ENDINGLESS_FILENAMES
           logging.error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
           exit(1)
 
-        arg_ending = filename_type_ending(arg)
         if arg_ending.endswith(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
           newargs[i] = ''
           if arg_ending.endswith(SOURCE_ENDINGS):

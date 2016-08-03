@@ -3595,6 +3595,10 @@ EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny
     assert len(with_dash_o) == 0
     assert len(without_dash_o) != 0
 
+  def test_null_device_as_input(self):
+    out = Popen([PYTHON, EMXX, '-E', '-dM', '-xc', '/dev/null'], stdout=PIPE).communicate()[0]
+    self.assertContained('#define __EMSCRIPTEN__ 1', out) # Verify output contains one of the native predefined macros
+
   def test_malloc_implicit(self):
     open('src.cpp', 'w').write(r'''
 #include <stdlib.h>
