@@ -795,8 +795,9 @@ mergeInto(LibraryManager.library, {
       var node = FS.lookupNode(parent, name);
       var err = FS.mayDelete(parent, name, false);
       if (err) {
-        // POSIX says unlink should set EPERM, not EISDIR
-        if (err === ERRNO_CODES.EISDIR) err = ERRNO_CODES.EPERM;
+        // According to POSIX, we should map EISDIR to EPERM, but
+        // we instead do what Linux does (and we must, as we use
+        // the musl linux libc).
         throw new FS.ErrnoError(err);
       }
       if (!parent.node_ops.unlink) {

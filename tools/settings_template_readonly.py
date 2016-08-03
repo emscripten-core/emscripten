@@ -9,6 +9,7 @@ import os
 # this helps projects using emscripten find it
 EMSCRIPTEN_ROOT = os.path.expanduser(os.getenv('EMSCRIPTEN') or '{{{ EMSCRIPTEN_ROOT }}}') # directory
 LLVM_ROOT = os.path.expanduser(os.getenv('LLVM') or '{{{ LLVM_ROOT }}}') # directory
+BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN') or '{{{ BINARYEN_ROOT }}}') # directory
 
 # If not specified, defaults to sys.executable.
 #PYTHON = 'python'
@@ -54,4 +55,3 @@ COMPILER_ENGINE = NODE_JS
 #                 here because of v8 issue 1822.
 
 JS_ENGINES = [NODE_JS] # add this if you have spidermonkey installed too, SPIDERMONKEY_ENGINE]
-

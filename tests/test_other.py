@@ -6,6 +6,15 @@ import tools.shared
 from tools.shared import *
 from runner import RunnerCore, path_from_root, get_zlib_library, get_bullet_library
 
+# Runs an emcc task (used from another process in test test_emcc_multiprocess_cache_access, needs to be at top level for it to be pickleable).
+def multiprocess_task(c_file, cache_dir_name):
+  output = subprocess.check_output([PYTHON, EMCC, c_file, '--cache', cache_dir_name], stderr=subprocess.STDOUT)
+  if len(output.strip()) > 0:
+    print '------'
+    print output
+    print '------'
+  sys.exit(1 if 'generating system library: libc.bc' in output else 0)
+
 class other(RunnerCore):
   def test_emcc(self):
     for compiler in [EMCC, EMXX]:
@@ -311,6 +320,33 @@ f.close()
         os.environ['EMCC_FAST_COMPILER'] = old_fastcomp
     self.assertFalse(os.path.exists('a.out.js'))
 
+  # Test that if multiple processes attempt to access or build stuff to the cache on demand, that exactly one of the processes
+  # will, and the other processes will block to wait until that process finishes.
+  def test_emcc_multiprocess_cache_access(self):
+    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_emcache_', dir=TEMP_DIR)
+    os.chdir(tempdirname)
+    c_file = os.path.join(tempdirname, 'test.c')
+    open(c_file, 'w').write(r'''
+      #include <stdio.h>
+      int main() {
+        printf("hello, world!\n");
+        return 0;
+      }
+      ''')
+    cache_dir_name = os.path.join(tempdirname, 'emscripten_cache')
+    tasks = []
+    num_times_libc_was_built = 0
+    for i in range(3):
+      p = multiprocessing.Process(target=multiprocess_task, args=(c_file,cache_dir_name,))
+      p.start()
+      tasks += [p]
+    for p in tasks:
+      p.join()
+      num_times_libc_was_built += p.exitcode
+    assert os.path.exists(cache_dir_name), 'The cache directory %s must exist after the build' % cache_dir_name
+    assert os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')), 'The cache directory must contain a built libc'
+    assert num_times_libc_was_built == 1, 'Exactly one child process should have triggered libc build! (instead %d processes did)' % num_times_libc_was_built
+
   def test_emcc_cache_flag(self):
     tempdirname = tempfile.mkdtemp(prefix='emscripten_test_emcache_', dir=TEMP_DIR)
     try:
@@ -325,9 +361,9 @@ f.close()
           return 0;
         }
         ''')
-      Popen([PYTHON, EMCC, c_file, '--cache', cache_dir_name]).communicate()
+      subprocess.check_call([PYTHON, EMCC, c_file, '--cache', cache_dir_name])
       assert os.path.exists(cache_dir_name), 'The cache directory %s must exist after the build' % cache_dir_name
-      assert os.path.exists(os.path.join(cache_dir_name, 'libc.bc')), 'The cache directory must contain a built libc'
+      assert os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')), 'The cache directory must contain a built libc'
     finally:
       os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
       shutil.rmtree(tempdirname)
@@ -752,7 +788,7 @@ This pointer might make sense in another type signature:''', '''Invalid function
       }),
     ]:
       Building.COMPILER_TEST_OPTS = test_opts
-      test('zlib', path_from_root('tests', 'zlib', 'example.c'), 
+      test('zlib', path_from_root('tests', 'zlib', 'example.c'),
                    get_zlib_library(self),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
                    expected_ranges,
@@ -861,10 +897,13 @@ This pointer might make sense in another type signature:''', '''Invalid function
     Building.emar('cr', lib_name, [lib_src_name + '.o']) # libLIB.a with lib.c.o
 
     def test(lib_args, err_expected):
+      print err_expected
       output = Popen([PYTHON, EMCC, main_name, '-o', 'a.out.js'] + lib_args, stdout=PIPE, stderr=PIPE).communicate()
+      #print output[1]
       if err_expected:
         self.assertContained(err_expected, output[1])
       else:
+        self.assertNotContained('unresolved symbol', output[1])
         out_js = os.path.join(self.get_dir(), 'a.out.js')
         assert os.path.exists(out_js), '\n'.join(output)
         self.assertContained('result: 42', run_js(out_js))
@@ -873,6 +912,23 @@ This pointer might make sense in another type signature:''', '''Invalid function
     test(['-Wl,--start-group', lib_name, '-Wl,--start-group'], 'Nested --start-group, missing --end-group?')
     test(['-Wl,--end-group', lib_name, '-Wl,--start-group'], '--end-group without --start-group')
     test(['-Wl,--start-group', lib_name, '-Wl,--end-group'], None)
+
+    print 'embind test with groups'
+
+    main_name = os.path.join(self.get_dir(), 'main.cpp')
+    open(main_name, 'w').write(r'''
+      #include <stdio.h>
+      #include<emscripten/val.h>
+      using namespace emscripten;
+      extern "C" int x();
+      int main() {
+        int y = -x();
+        y = val::global("Math").call<int>("abs", y);
+        printf("result: %d\n", y);
+        return 0;
+      }
+    ''')
+    test(['-Wl,--start-group', lib_name, '-Wl,--end-group', '--bind'], None)
 
   def test_link_group_bitcode(self):
     one = open('1.c', 'w').write(r'''
@@ -1512,7 +1568,7 @@ int f() {
   def test_bullet(self):
     Building.emcc(path_from_root('tests','bullet_hello_world.cpp'), ['-s', 'USE_BULLET=1'], output_filename='a.out.js')
     self.assertContained('BULLET RUNNING', Popen(JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).communicate()[0])
-  
+
   def test_vorbis(self):
     #This will also test if ogg compiles, because vorbis depends on ogg
     Building.emcc(path_from_root('tests','vorbis_test.c'), ['-s', 'USE_VORBIS=1'], output_filename='a.out.js')
@@ -1971,6 +2027,9 @@ int f() {
       del os.environ['EMCC_DEBUG']
 
   def test_scons(self): # also incidentally tests c++11 integration in llvm 3.1
+    scons_path = Building.which('scons')
+    if not scons_path:
+      return self.skip('Skipping other.test_scons: The tool "scons" was not found in PATH!')
     try_delete(os.path.join(self.get_dir(), 'test'))
     shutil.copytree(path_from_root('tests', 'scons'), os.path.join(self.get_dir(), 'test'))
     shutil.copytree(path_from_root('tools', 'scons', 'site_scons'), os.path.join(self.get_dir(), 'test', 'site_scons'))
@@ -1993,7 +2052,7 @@ int f() {
       print args, fail
       self.clear()
       try_delete(self.in_dir('a.out.js'))
-      
+
       testFiles = [
         path_from_root('tests', 'embind', 'underscore-1.4.2.js'),
         path_from_root('tests', 'embind', 'imvu_test_adapter.js'),
@@ -2197,7 +2256,8 @@ seeked= file.
     # run again, should not recrunch!
     time.sleep(0.1)
     Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
-    assert crunch_time == os.stat('ship.crn').st_mtime, 'Crunch is unchanged'
+    if 'linux' in sys.platform: # OS time reporting in other OSes (OS X) seems flaky here
+      assert crunch_time == os.stat('ship.crn').st_mtime, 'Crunch is unchanged ' + str([crunch_time, os.stat('ship.crn').st_mtime])
     # update dds, so should recrunch
     time.sleep(0.1)
     os.utime('ship.dds', None)
@@ -2289,6 +2349,28 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     # test for multiple functions in one stack trace
     assert 'one(int)' in output
     assert 'two(char)' in output
+
+  def test_demangle_cpp(self):
+    open('src.cpp', 'w').write('''
+      #include <stdio.h>
+      #include <emscripten.h>
+      #include <cxxabi.h>
+      #include <assert.h>
+
+      int main() {
+        char out[256];
+        int status = 1;
+        size_t length = 255;
+        abi::__cxa_demangle("_ZN4Waka1f12a234123412345pointEv", out, &length, &status);
+        assert(status == 0);
+        printf("%s\\n", out);
+        return 0;
+      }
+    ''')
+
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    output = run_js('a.out.js')
+    self.assertContained('Waka::f::a23412341234::point()', output)
 
   def test_module_exports_with_closure(self):
     # This test checks that module.export is retained when JavaScript is minified by compiling with --closure 1
@@ -3315,7 +3397,7 @@ int main(int argc, char **argv) {
     self.assertContained(r'''Failed to rename paths: abc, ; errno=2''', run_js('a.out.js', args=['abc', '']))
 
   def test_readdir_r_silly(self):
-    open('src.cpp', 'w').write(r'''  
+    open('src.cpp', 'w').write(r'''
 #include <iostream>
 #include <cstring>
 #include <cerrno>
@@ -4259,7 +4341,6 @@ main(const int argc, const char * const * const argv)
       if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
         assert sizes['no_nuthin'] < 0.975*sizes['no_fs']
       assert sizes['no_fs_manual'] < sizes['no_fs'] # manual can remove a tiny bit more
-      assert sizes['no_fs'] < 1.02*sizes['no_fs_manual']
     test([], 0.75, 360000)
     test(['-O1'], 0.66, 210000)
     test(['-O2'], 0.50, 70000)
@@ -5418,9 +5499,9 @@ mergeInto(LibraryManager.library, {
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
- 
+
 #define TEST_PATH "/boot/README.txt"
- 
+
 int
 main(int argc, char **argv)
 {
@@ -5441,6 +5522,38 @@ main(int argc, char **argv)
     open(os.path.join('boot', 'README.txt'), 'w').write(' ')
     Popen([PYTHON, EMCC, 'src.c', '--embed-file', 'boot']).communicate()
     self.assertContained('Resolved: /boot/README.txt', run_js('a.out.js'))
+
+  def test_realpath_nodefs(self):
+    open('src.c', 'w').write(r'''
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+#include <emscripten.h>
+
+#define TEST_PATH "/working/TEST_NODEFS.txt"
+
+int
+main(int argc, char **argv)
+{
+  errno = 0;
+  EM_ASM({
+    FS.mkdir('/working');
+    FS.mount(NODEFS, { root: '.' }, '/working');
+  });
+  char *t_realpath_buf = realpath(TEST_PATH, NULL);
+  if (NULL == t_realpath_buf) {
+    perror("Resolve failed");
+    return 1;
+  } else {
+    printf("Resolved: %s", t_realpath_buf);
+    free(t_realpath_buf);
+    return 0;
+  }
+}
+''')
+    open('TEST_NODEFS.txt', 'w').write(' ')
+    Popen([PYTHON, EMCC, 'src.c']).communicate()
+    self.assertContained('Resolved: /working/TEST_NODEFS.txt', run_js('a.out.js'))
 
   def test_realpath_2(self):
     open('src.c', 'w').write(r'''
@@ -6008,6 +6121,107 @@ int main() {
     src = open('a.out.js').read()
     assert 'use asm' not in src
 
+  def test_eval_ctors(self):
+    print 'non-terminating ctor'
+    src = r'''
+      struct C {
+        C() {
+          volatile int y = 0;
+          while (y == 0) {}
+        }
+      };
+      C always;
+      int main() {}
+    '''
+    open('src.cpp', 'w').write(src)
+    check_execute([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EVAL_CTORS=1', '-profiling-funcs'])
+    print 'check no ctors is ok'
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Oz'])
+    self.assertContained('hello, world!', run_js('a.out.js'))
+    # on by default in -Oz, but user-overridable
+    def get_size(args):
+      print 'get_size', args
+      check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')] + args)
+      self.assertContained('hello, world!', run_js('a.out.js'))
+      return (os.stat('a.out.js').st_size, os.stat('a.out.js.mem').st_size)
+    def check_size(left, right):
+      if left[0] == right[0] and left[1] == right[1]: return 0
+      if left[0] < right[0] and left[1] > right[1]: return -1 # smaller js, bigger mem
+      if left[0] > right[0] and left[1] < right[1]: return 1
+      assert 0, [left, right]
+    o2_size = get_size(['-O2'])
+    assert check_size(get_size(['-O2']), o2_size) == 0, 'deterministic'
+    assert check_size(get_size(['-O2', '-s', 'EVAL_CTORS=1']), o2_size) < 0, 'eval_ctors works if user asks for it'
+    oz_size = get_size(['-Oz'])
+    assert check_size(get_size(['-Oz']), oz_size) == 0, 'deterministic'
+    assert check_size(get_size(['-Oz', '-s', 'EVAL_CTORS=1']), oz_size) == 0, 'eval_ctors is on by default in oz'
+    assert check_size(get_size(['-Oz', '-s', 'EVAL_CTORS=0']), oz_size) == 1, 'eval_ctors can be turned off'
+
+    linkable_size =   get_size(['-Oz', '-s', 'EVAL_CTORS=1', '-s', 'LINKABLE=1'])
+    assert check_size(get_size(['-Oz', '-s', 'EVAL_CTORS=0', '-s', 'LINKABLE=1']), linkable_size) == 1, 'noticeable difference in linkable too'
+
+    # ensure order of execution remains correct, even with a bad ctor
+    def test(p1, p2, p3, last, expected):
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+        volatile int total = 0;
+        struct C {
+          C(int x) {
+            volatile int y = x;
+            y++;
+            y--;
+            if (y == 0xf) {
+              printf("you can't eval me ahead of time\n"); // bad ctor
+            }
+            total <<= 4;
+            total += int(y);
+          }
+        };
+        C __attribute__((init_priority(%d))) c1(0x5);
+        C __attribute__((init_priority(%d))) c2(0x8);
+        C __attribute__((init_priority(%d))) c3(%d);
+        int main() {
+          printf("total is 0x%%x.\n", total);
+        }
+      ''' % (p1, p2, p3, last)
+      open('src.cpp', 'w').write(src)
+      check_execute([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EVAL_CTORS=1', '-profiling-funcs'])
+      self.assertContained('total is %s.' % hex(expected), run_js('a.out.js'))
+      shutil.copyfile('a.out.js', 'x' + hex(expected) + '.js')
+      return open('a.out.js').read().count('function _')
+    print 'no bad ctor'
+    first  = test(1000, 2000, 3000, 0xe, 0x58e)
+    second = test(3000, 1000, 2000, 0xe, 0x8e5)
+    third  = test(2000, 3000, 1000, 0xe, 0xe58)
+    print first, second, third
+    assert first == second and second == third
+    print 'with bad ctor'
+    first  = test(1000, 2000, 3000, 0xf, 0x58f) # 2 will succeed
+    second = test(3000, 1000, 2000, 0xf, 0x8f5) # 1 will succedd
+    third  = test(2000, 3000, 1000, 0xf, 0xf58) # 0 will succeed
+    print first, second, third
+    assert first < second and second < third
+
+    print 'helpful output'
+    if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+    try:
+      os.environ['EMCC_DEBUG'] = '1'
+      open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+struct C {
+  C() { printf("constructing!\n"); } // don't remove this!
+};
+C c;
+int main() {}
+      ''')
+      out, err = Popen([PYTHON, EMCC, 'src.cpp', '-Oz'], stderr=PIPE).communicate()
+      self.assertContained('___syscall54', err) # the failing call should be mentioned
+      self.assertContained('ctorEval.js', err) # with a stack trace
+      self.assertContained('ctor_evaller: not successful', err) # with logging
+    finally:
+      del os.environ['EMCC_DEBUG']
+
   def test_override_environment(self):
     open('main.cpp', 'w').write(r'''
       #include <emscripten.h>
@@ -6213,3 +6427,31 @@ int main() {
     self.function_eliminator_test_helper('test-function-eliminator-replace-variable-value-with-hash-info.js',
                                          'test-function-eliminator-replace-variable-value-output.js',
                                          use_hash_info=True)
+
+  def test_cyberdwarf_pointers(self):
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'debugger', 'test_pointers.cpp'), '-Oz', '-s', 'CYBERDWARF=1',
+    '-std=c++11', '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_pointers.js' ], stderr=PIPE)
+    run_js('test_pointers.js', engine=NODE_JS)
+
+  def test_cyberdwarf_union(self):
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'debugger', 'test_union.cpp'), '-Oz', '-s', 'CYBERDWARF=1',
+    '-std=c++11', '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_union.js' ], stderr=PIPE)
+    run_js('test_union.js', engine=NODE_JS)
+
+  def test_source_file_with_fixed_language_mode(self):
+    open('src_tmp_fixed_lang', 'w').write('''
+#include <string>
+#include <iostream>
+
+int main() {
+  std::cout << "Test_source_fixed_lang_hello" << std::endl;
+  return 0;
+}
+    ''')
+    stdout, stderr = Popen([PYTHON, EMCC, '-Wall', '-std=c++14', '-x', 'c++', 'src_tmp_fixed_lang'], stderr=PIPE).communicate()
+    self.assertNotContained("Input file has an unknown suffix, don't know what to do with it!", stderr)
+    self.assertNotContained("Unknown file suffix when compiling to LLVM bitcode", stderr)
+    self.assertContained("Test_source_fixed_lang_hello", run_js('a.out.js'))
+    
+    stdout, stderr = Popen([PYTHON, EMCC, '-Wall', '-std=c++14', 'src_tmp_fixed_lang'], stderr=PIPE).communicate()
+    self.assertContained("Input file has an unknown suffix, don't know what to do with it!", stderr)

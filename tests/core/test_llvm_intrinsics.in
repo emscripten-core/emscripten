@@ -11,6 +11,14 @@ extern int64_t llvm_cttz_i64(int64_t x, int izZeroUndef);
 extern int32_t llvm_ctpop_i32(int32_t x);
 extern int64_t llvm_ctpop_i64(int64_t x);
 extern int llvm_expect_i32(int x, int y);
+extern float llvm_powi_f32(float x, int32_t y);
+extern double llvm_powi_f64(double x, int32_t y);
+extern float llvm_trunc_f32(float x);
+extern double llvm_trunc_f64(double x);
+extern float llvm_floor_f32(float x);
+extern double llvm_floor_f64(double x);
+extern float llvm_sin_f32(float x);
+extern double llvm_sin_f64(double x);
 }
 
 int main(void) {
@@ -32,13 +40,32 @@ int main(void) {
          llvm_cttz_i32(1 << 10, 0));
   printf("%d,%d\n", (int)llvm_ctpop_i64((0x3101ULL << 32) | 1),
          llvm_ctpop_i32(0x3101));
-  printf("%d\n", (int)llvm_ctpop_i32(-594093059));
 
+  printf("llvm_ctpop_i32:\n");
+  printf("%d\n", (int)llvm_ctpop_i32(-594093059)); // 22
+  printf("%d\n", (int)llvm_ctpop_i32(0xdeadbeef)); // 24
+  printf("%d\n", (int)llvm_ctpop_i32(0x00000000)); // 0
+  printf("%d\n", (int)llvm_ctpop_i32(0xffffffff)); // 32
+  printf("%d\n", (int)llvm_ctpop_i32(0x55555555)); // 16
+  printf("%d\n", (int)llvm_ctpop_i32(0xa55a5aa5)); // 16
+  printf("%d\n", (int)llvm_ctpop_i32(0xaaaaaaaa)); // 16
+  printf("%d\n", (int)llvm_ctpop_i32(0x80000000)); // 1
+  printf("%d\n", (int)llvm_ctpop_i32(0x00000001)); // 1
+  printf("llvm_expect_i32:\n");
   printf("%d\n", llvm_expect_i32(x % 27, 3));
 
   int64_t a = 1;
   a = __builtin_bswap64(a);
   printf("%lld\n", a);
+
+  printf("%d\n", (int)llvm_powi_f32(5.0f, 3));
+  printf("%d\n", (int)llvm_powi_f64(3.0, 5));
+  printf("%d\n", (int)llvm_trunc_f32(18.0987f));
+  printf("%d\n", (int)llvm_trunc_f64(-12.42));
+  printf("%d\n", (int)llvm_floor_f32(27.665f));
+  printf("%d\n", (int)llvm_floor_f64(-8.95));
+  printf("%.1f\n", llvm_sin_f32(90.0f * 3.14/180));
+  printf("%.1f\n", llvm_sin_f64(270.0 * 3.14/180));
 
   return 0;
 }

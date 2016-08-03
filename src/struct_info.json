@@ -1198,6 +1198,7 @@
             "EMSCRIPTEN_EVENT_MOUSEOVER",
             "EMSCRIPTEN_EVENT_MOUSEOUT",
             "EMSCRIPTEN_EVENT_CANVASRESIZED",
+            "EMSCRIPTEN_EVENT_POINTERLOCKERROR",
 
             "EMSCRIPTEN_RESULT_SUCCESS",
             "EMSCRIPTEN_RESULT_DEFERRED",
@@ -1371,7 +1372,8 @@
               "failIfMajorPerformanceCaveat",
               "majorVersion",
               "minorVersion",
-              "enableExtensionsByDefault"
+              "enableExtensionsByDefault",
+              "explicitSwapControl"
             ],
             "EmscriptenFullscreenStrategy": [
               "scaleMode",

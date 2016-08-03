@@ -145,8 +145,8 @@ var document = {
       case 'div': {
         return {
           appendChild: function() {},
-          requestFullScreen: function() {
-            return document.getElementById('canvas').requestFullScreen();
+          requestFullscreen: function() {
+            return document.getElementById('canvas').requestFullscreen();
           },
         };
       }
@@ -177,7 +177,7 @@ var document = {
     appendChild: function(){},
   },
   exitPointerLock: function(){},
-  cancelFullScreen: function(){},
+  exitFullscreen: function(){},
 };
 var alert = function(x) {
   print(x);

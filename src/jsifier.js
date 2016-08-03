@@ -16,8 +16,6 @@ var INDENTATION = ' ';
 
 var functionStubSigs = {};
 
-var ALWAYS_EMITTED_I64_FUNCS = set('i64Add', 'i64Subtract', 'bitshift64Shl', 'bitshift64Lshr', 'bitshift64Ashr'); // even in side modules
-
 // JSifier
 function JSify(data, functionsOnly) {
   //B.start('jsifier');
@@ -152,7 +150,6 @@ function JSify(data, functionsOnly) {
           LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
         } else {
           var target = (MAIN_MODULE ? '' : 'parent') + "Module['_" + shortident + "']";
-          if (SIDE_MODULE && (ident in ALWAYS_EMITTED_I64_FUNCS)) return ''; // we emit i64Add etc. even in side modules (small, and should be fast)
           var assertion = '';
           if (ASSERTIONS) assertion = 'if (!' + target + ') abort("external function \'' + shortident + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");';
           LibraryManager.library[shortident] = new Function(assertion + "return " + target + ".apply(null, arguments);");
@@ -409,39 +406,7 @@ function JSify(data, functionsOnly) {
     // This is the main 'post' pass. Print out the generated code that we have here, together with the
     // rest of the output that we started to print out earlier (see comment on the
     // "Final shape that will be created").
-    if (PRECISE_I64_MATH && (Types.preciseI64MathUsed || PRECISE_I64_MATH == 2)) {
-      if (SIDE_MODULE) {
-        print('// ASM_LIBRARY FUNCTIONS'); // fastLong.js etc. code is indeed asm library code
-      }
-      if (!INCLUDE_FULL_LIBRARY) {
-        // first row are utilities called from generated code, second are needed from fastLong
-        ['i64Add', 'i64Subtract', 'bitshift64Shl', 'bitshift64Lshr', 'bitshift64Ashr',
-         'llvm_cttz_i32'].forEach(function(ident) {
-          var finalName = '_' + ident;
-          if (!Functions.libraryFunctions[finalName] || (ident[0] === 'l' && !addedLibraryItems[ident])) { // TODO: one-by-one in fastcomp glue mode
-            print(processLibraryFunction(LibraryManager.library[ident], ident, finalName)); // must be first to be close to generated code
-            Functions.implementedFunctions[finalName] = LibraryManager.library[ident + '__sig'];
-            Functions.libraryFunctions[finalName] = 2; // XXX
-            // limited dependency handling
-            var deps = LibraryManager.library[ident + '__deps'];
-            if (deps) {
-              deps.forEach(function(dep) {
-                assert(typeof dep == 'function');
-                var text = dep();
-                assert(text.indexOf('\n') < 0);
-                text = text.replace('ALLOC_STATIC', 'ALLOC_DYNAMIC');
-                print('/* PRE_ASM */ ' + text + '\n');
-              });
-            }
-          }
-        });
-      }
-      // these may be duplicated in side modules and the main module without issue
-      print(processMacros(read('fastLong.js')));
-      print('// EMSCRIPTEN_END_FUNCS\n');
-    } else {
-      print('// EMSCRIPTEN_END_FUNCS\n');
-    }
+    print('// EMSCRIPTEN_END_FUNCS\n');
 
     if (HEADLESS) {
       print('if (!ENVIRONMENT_IS_WEB) {');
@@ -453,7 +418,7 @@ function JSify(data, functionsOnly) {
     if (PROXY_TO_WORKER) {
       print('if (ENVIRONMENT_IS_WORKER) {\n');
       print(read('webGLWorker.js'));
-      print(read('proxyWorker.js'));
+      print(processMacros(preprocess(read('proxyWorker.js'), 'proxyWorker.js')));
       print('}');
     }
     if (DETERMINISTIC) {

@@ -108,6 +108,7 @@ setTimeout(function() {
     height: Module.canvas.height,
     boundingClientRect: cloneObject(Module.canvas.getBoundingClientRect()),
     URL: document.URL,
+    currentScriptUrl: '{{{ filename }}}.js',
     preMain: true });
 }, 0); // delay til next frame, to make sure html is ready
 
@@ -223,9 +224,22 @@ worker.onmessage = function worker_onmessage(event) {
       }
       break;
     }
+    case 'custom': {
+      if (Module['onCustomMessage']) {
+        Module['onCustomMessage'](event);
+      } else {
+        throw 'Custom message received but client Module.onCustomMessage not implemented.';
+      }
+      break;
+    }
     default: throw 'what?';
   }
 };
+
+function postCustomMessage(data, options) {
+  options = options || {};
+  worker.postMessage({ target: 'custom', userData: data, preMain: options.preMain });
+}
 
 function cloneObject(event) {
   var ret = {};

@@ -39,6 +39,7 @@ var LibraryGLFW = {
       this.id = id;
       this.x = 0;
       this.y = 0;
+      this.fullscreen = false; // Used to determine if app in fullscreen mode
       this.storedX = 0; // Used to store X before fullscreen
       this.storedY = 0; // Used to store Y before fullscreen
       this.width = width;
@@ -407,6 +408,26 @@ var LibraryGLFW = {
 #endif
     },
 
+    onMouseenter: function(event) {
+      if (!GLFW.active) return;
+
+      if (event.target != Module["canvas"] || !GLFW.active.cursorEnterFunc) return;
+
+#if USE_GLFW == 3
+      Runtime.dynCall('vii', GLFW.active.cursorEnterFunc, [GLFW.active.id, 1]);
+#endif
+    },
+
+    onMouseleave: function(event) {
+      if (!GLFW.active) return;
+
+      if (event.target != Module["canvas"] || !GLFW.active.cursorEnterFunc) return;
+
+#if USE_GLFW == 3
+      Runtime.dynCall('vii', GLFW.active.cursorEnterFunc, [GLFW.active.id, 0]);
+#endif
+    },
+
     onMouseButtonChanged: function(event, status) {
       if (!GLFW.active || !GLFW.active.mouseButtonFunc) return;
 
@@ -480,10 +501,13 @@ var LibraryGLFW = {
       event.preventDefault();
     },
 
-    onFullScreenEventChange: function() {
+    onCanvasResize: function(width, height) {
       if (!GLFW.active) return;
 
-      if (document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
+      var resizeNeeded = true;
+
+      // If the client is requestiong fullscreen mode
+      if (document["fullscreen"] || document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
         GLFW.active.storedX = GLFW.active.x;
         GLFW.active.storedY = GLFW.active.y;
         GLFW.active.storedWidth = GLFW.active.width;
@@ -491,14 +515,37 @@ var LibraryGLFW = {
         GLFW.active.x = GLFW.active.y = 0;
         GLFW.active.width = screen.width;
         GLFW.active.height = screen.height;
-      } else {
+        GLFW.active.fullscreen = true;
+
+      // If the client is reverting from fullscreen mode
+      } else if (GLFW.active.fullscreen == true) {
         GLFW.active.x = GLFW.active.storedX;
         GLFW.active.y = GLFW.active.storedY;
         GLFW.active.width = GLFW.active.storedWidth;
         GLFW.active.height = GLFW.active.storedHeight;
+        GLFW.active.fullscreen = false;
+
+      // If the width/height values do not match current active window sizes
+      } else if (GLFW.active.width != width || GLFW.active.height != height) {
+          GLFW.active.width = width;
+          GLFW.active.height = height;
+      } else {
+        resizeNeeded = false;
       }
 
-      Browser.setCanvasSize(GLFW.active.width, GLFW.active.height, true); // resets the canvas size to counter the aspect preservation of Browser.updateCanvasDimensions
+      // If any of the above conditions were true, we need to resize the canvas
+      if (resizeNeeded) {
+        // resets the canvas size to counter the aspect preservation of Browser.updateCanvasDimensions
+        Browser.setCanvasSize(GLFW.active.width, GLFW.active.height);
+        // TODO: Client dimensions (clientWidth/clientHeight) vs pixel dimensions (width/height) of
+        // the canvas should drive window and framebuffer size respectfully.
+        GLFW.onWindowSizeChanged();
+        GLFW.onFramebufferSizeChanged();
+      }
+    },
+
+    onWindowSizeChanged: function() {
+      if (!GLFW.active) return;
 
       if (!GLFW.active.windowSizeFunc) return;
 
@@ -511,22 +558,47 @@ var LibraryGLFW = {
 #endif
     },
 
-    requestFullScreen: function() {
+    onFramebufferSizeChanged: function() {
+      if (!GLFW.active) return;
+
+      if (!GLFW.active.framebufferSizeFunc) return;
+
+#if USE_GLFW == 3
+      Runtime.dynCall('viii', GLFW.active.framebufferSizeFunc, [GLFW.active.id, GLFW.active.width, GLFW.active.height]);
+#endif
+    },
+
+    requestFullscreen: function() {
       var RFS = Module["canvas"]['requestFullscreen'] ||
-                Module["canvas"]['requestFullScreen'] ||
                 Module["canvas"]['mozRequestFullScreen'] ||
                 Module["canvas"]['webkitRequestFullScreen'] ||
                 (function() {});
       RFS.apply(Module["canvas"], []);
     },
 
-    cancelFullScreen: function() {
+    requestFullScreen: function() {
+      Module.printErr('GLFW.requestFullScreen() is deprecated. Please call GLFW.requestFullscreen instead.');
+      GLFW.requestFullScreen = function() {
+        return GLFW.requestFullscreen();
+      }
+      return GLFW.requestFullscreen();
+    },
+
+    exitFullscreen: function() {
       var CFS = document['exitFullscreen'] ||
                 document['cancelFullScreen'] ||
                 document['mozCancelFullScreen'] ||
                 document['webkitCancelFullScreen'] ||
           (function() {});
       CFS.apply(document, []);
+    },
+
+    cancelFullScreen: function() {
+      Module.printErr('GLFW.cancelFullScreen() is deprecated. Please call GLFW.exitFullscreen instead.');
+      GLFW.cancelFullScreen = function() {
+        return GLFW.exitFullscreen();
+      }
+      return GLFW.exitFullscreen();
     },
 
     getTime: function() {
@@ -579,6 +651,15 @@ var LibraryGLFW = {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
       win.windowSizeFunc = cbfun;
+     
+#if USE_GLFW == 2
+      // As documented in GLFW2 API (http://www.glfw.org/GLFWReference27.pdf#page=22), when size
+      // callback function is set, it will be called with the current window size before this
+      // function returns.
+      // GLFW3 on the over hand doesn't have this behavior (https://github.com/glfw/glfw/issues/62).
+      if (!win.windowSizeFunc) return;
+      Runtime.dynCall('vii', win.windowSizeFunc, [win.width, win.height]);
+#endif
     },
 
     setWindowCloseCallback: function(winid, cbfun) {
@@ -711,9 +792,9 @@ var LibraryGLFW = {
 
       if (GLFW.active.id == win.id) {
         if (width == screen.width && height == screen.height) {
-          GLFW.requestFullScreen();
+          GLFW.requestFullscreen();
         } else {
-          GLFW.cancelFullScreen();
+          GLFW.exitFullscreen();
           Browser.setCanvasSize(width, height);
           win.width = width;
           win.height = height;
@@ -743,7 +824,7 @@ var LibraryGLFW = {
       if (width <= 0 || height <= 0) return 0;
 
       if (monitor) {
-        GLFW.requestFullScreen();
+        GLFW.requestFullscreen();
       } else {
         Browser.setCanvasSize(width, height);
       }
@@ -754,7 +835,8 @@ var LibraryGLFW = {
         var contextAttributes = {
           antialias: (GLFW.hints[0x0002100D] > 1), // GLFW_SAMPLES
           depth: (GLFW.hints[0x00021005] > 0),     // GLFW_DEPTH_BITS
-          stencil: (GLFW.hints[0x00021006] > 0)    // GLFW_STENCIL_BITS
+          stencil: (GLFW.hints[0x00021006] > 0),   // GLFW_STENCIL_BITS
+          alpha: (GLFW.hints[0x00021004] > 0)      // GLFW_ALPHA_BITS 
         }
         Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
       }
@@ -856,9 +938,11 @@ var LibraryGLFW = {
     Module["canvas"].addEventListener("mouseup", GLFW.onMouseButtonUp, true);
     Module["canvas"].addEventListener('wheel', GLFW.onMouseWheel, true);
     Module["canvas"].addEventListener('mousewheel', GLFW.onMouseWheel, true);
+    Module["canvas"].addEventListener('mouseenter', GLFW.onMouseenter, true);
+    Module["canvas"].addEventListener('mouseleave', GLFW.onMouseleave, true);
 
     Browser.resizeListeners.push(function(width, height) {
-       GLFW.onFullScreenEventChange();
+       GLFW.onCanvasResize(width, height);
     });
     return 1; // GL_TRUE
   },
@@ -872,6 +956,8 @@ var LibraryGLFW = {
     Module["canvas"].removeEventListener("mouseup", GLFW.onMouseButtonUp, true);
     Module["canvas"].removeEventListener('wheel', GLFW.onMouseWheel, true);
     Module["canvas"].removeEventListener('mousewheel', GLFW.onMouseWheel, true);
+    Module["canvas"].removeEventListener('mouseenter', GLFW.onMouseenter, true);
+    Module["canvas"].removeEventListener('mouseleave', GLFW.onMouseleave, true);
     Module["canvas"].width = Module["canvas"].height = 1;
     GLFW.windows = null;
     GLFW.active = null;
@@ -1127,7 +1213,7 @@ var LibraryGLFW = {
   glfwSetFramebufferSizeCallback: function(winid, cbfun) {
     var win = GLFW.WindowFromId(winid);
     if (!win) return;
-    win.windowFramebufferSizeFunc = cbfun;
+    win.framebufferSizeFunc = cbfun;
   },
 
   glfwGetInputMode: function(winid, mode) {
@@ -1185,7 +1271,7 @@ var LibraryGLFW = {
 
   glfwJoystickPresent: function(joy) { throw "glfwJoystickPresent is not implemented."; },
 
-  glfwGetJoystickAxes: function(joy, count) { throw "glfwGetJoystickParam is not implemented."; },
+  glfwGetJoystickAxes: function(joy, count) { throw "glfwGetJoystickAxes is not implemented."; },
 
   glfwGetJoystickButtons: function(joy, count) { throw "glfwGetJoystickButtons is not implemented."; },
 

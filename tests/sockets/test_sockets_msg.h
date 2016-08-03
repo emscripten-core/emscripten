@@ -11,12 +11,13 @@ int do_msg_read(int sockfd, msg_t *msg, int offset, int length, struct sockaddr 
 
   if (!msg->length) {
     // read the message length
-    res = recvfrom(sockfd, &msg->length, sizeof(int), 0, (struct sockaddr *)addr, addrlen);
+    res = recvfrom(sockfd, &msg->length, sizeof(int), 0, addr, addrlen);
     if (res == -1) {
       assert(errno == EAGAIN);
       return res;
+    } else if (res == 0) {
+      return 0;
     }
-    assert(res != 0);
 
     printf("do_msg_read: allocating %d bytes for message\n", msg->length);
 
@@ -28,7 +29,7 @@ int do_msg_read(int sockfd, msg_t *msg, int offset, int length, struct sockaddr 
   if (length && max > length) {
     max = length;
   }
-  res = recvfrom(sockfd, msg->buffer + offset, max, 0, (struct sockaddr *)addr, addrlen);
+  res = recvfrom(sockfd, msg->buffer + offset, max, 0, addr, addrlen);
   if (res == -1) {
     assert(errno == EAGAIN);
     return res;

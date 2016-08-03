@@ -21,7 +21,7 @@ var RuntimeGenerator = {
   stackAlloc: function(size, sep) {
     sep = sep || ';';
     var ret = RuntimeGenerator.alloc(size, 'STACK', sep, (isNumber(size) && parseInt(size) % {{{ STACK_ALIGN }}} == 0));
-    if (ASSERTIONS) {
+    if (ASSERTIONS || STACK_OVERFLOW_CHECK >= 2) {
       ret += sep + '(assert(' + asmCoercion('(STACKTOP|0) < (STACK_MAX|0)', 'i32') + ')|0)';
     }
     return ret;
@@ -196,12 +196,10 @@ var Runtime = {
 #if ASSERTIONS
       assert(args.length == sig.length-1);
 #endif
-      if (!args.splice) args = Array.prototype.slice.call(args);
-      args.splice(0, 0, ptr);
 #if ASSERTIONS
       assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
 #endif
-      return Module['dynCall_' + sig].apply(null, args);
+      return Module['dynCall_' + sig].apply(null, [ptr].concat(args));
     } else {
 #if ASSERTIONS
       assert(sig.length == 1);
@@ -346,9 +344,21 @@ var Runtime = {
     }
     var sigCache = Runtime.funcWrappers[sig];
     if (!sigCache[func]) {
-      sigCache[func] = function dynCall_wrapper() {
-        return Runtime.dynCall(sig, func, arguments);
-      };
+      // optimize away arguments usage in common cases
+      if (sig.length === 1) {
+        sigCache[func] = function dynCall_wrapper() {
+          return Runtime.dynCall(sig, func);
+        };
+      } else if (sig.length === 2) {
+        sigCache[func] = function dynCall_wrapper(arg) {
+          return Runtime.dynCall(sig, func, [arg]);
+        };
+      } else {
+        // general case
+        sigCache[func] = function dynCall_wrapper() {
+          return Runtime.dynCall(sig, func, Array.prototype.slice.call(arguments));
+        };
+      }
     }
     return sigCache[func];
   },
@@ -482,7 +492,7 @@ function reSign(value, bits, ignore) {
 // Above 0 is static memory, starting with globals.
 // Then the stack.
 // Then 'dynamic' memory for sbrk.
-Runtime.GLOBAL_BASE = {{{ GLOBAL_BASE }}} < 0 ? 8 : {{{ GLOBAL_BASE }}};
+Runtime.GLOBAL_BASE = {{{ GLOBAL_BASE }}};
 
 if (RETAIN_COMPILER_SETTINGS) {
   var blacklist = set('STRUCT_INFO');

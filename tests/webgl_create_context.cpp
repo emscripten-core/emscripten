@@ -87,18 +87,14 @@ int main()
     attrs.antialias = antialias;
     printf("Requesting depth: %d, stencil: %d, antialias: %d\n", depth, stencil, antialias);
 
-    if (!first)
-    {
-      EM_ASM(var canvas2 = Module.canvas.cloneNode();
-        Module.canvas.parentElement.appendChild(canvas2);
-   //   Module.canvas.parentElement.removeChild(canvas);
-      Module.canvas = canvas2;
-      );
-    }
-    first = false;
+    EM_ASM(
+      var canvas2 = document.createElement('canvas');
+      Module.canvas.parentElement.appendChild(canvas2);
+      canvas2.id = 'customCanvas';
+    );
     
     assert(emscripten_webgl_get_current_context() == 0);
-    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context(0, &attrs);
+    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("customCanvas", &attrs);
     assert(context > 0); // Must have received a valid context.
     EMSCRIPTEN_RESULT res = emscripten_webgl_make_context_current(context);
     assert(res == EMSCRIPTEN_RESULT_SUCCESS);
@@ -144,6 +140,11 @@ int main()
     res = emscripten_webgl_destroy_context(context);
     assert(res == 0);
     assert(emscripten_webgl_get_current_context() == 0);
+
+    EM_ASM(
+      var canvas2 = document.getElementById('customCanvas');
+      canvas2.parentElement.removeChild(canvas2);
+    );
   }
   
   // result will be reported when mainLoop completes
