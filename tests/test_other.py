@@ -5523,6 +5523,38 @@ main(int argc, char **argv)
     Popen([PYTHON, EMCC, 'src.c', '--embed-file', 'boot']).communicate()
     self.assertContained('Resolved: /boot/README.txt', run_js('a.out.js'))
 
+  def test_realpath_nodefs(self):
+    open('src.c', 'w').write(r'''
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+#include <emscripten.h>
+
+#define TEST_PATH "/working/TEST_NODEFS.txt"
+
+int
+main(int argc, char **argv)
+{
+  errno = 0;
+  EM_ASM({
+    FS.mkdir('/working');
+    FS.mount(NODEFS, { root: '.' }, '/working');
+  });
+  char *t_realpath_buf = realpath(TEST_PATH, NULL);
+  if (NULL == t_realpath_buf) {
+    perror("Resolve failed");
+    return 1;
+  } else {
+    printf("Resolved: %s", t_realpath_buf);
+    free(t_realpath_buf);
+    return 0;
+  }
+}
+''')
+    open('TEST_NODEFS.txt', 'w').write(' ')
+    Popen([PYTHON, EMCC, 'src.c']).communicate()
+    self.assertContained('Resolved: /working/TEST_NODEFS.txt', run_js('a.out.js'))
+
   def test_realpath_2(self):
     open('src.c', 'w').write(r'''
 #include <stdlib.h>
