@@ -130,6 +130,9 @@ class RunnerCore(unittest.TestCase):
   def is_emterpreter(self):
     return False
 
+  def is_wasm_backend(self):
+    return LLVM_TARGET == WASM_TARGET
+
   def uses_memory_init_file(self):
     if self.emcc_args is None:
       return None
