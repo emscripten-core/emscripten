@@ -73,6 +73,8 @@ mergeInto(LibraryManager.library, {
       4098/*O_RDWR|O_DSYNC*/: 'rs+'
     },
     flagsToPermissionString: function(flags) {
+      flags &= ~010000000 /*O_PATH*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
+      flags &= ~00004000 /*O_NONBLOCK*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
       flags &= ~0100000 /*O_LARGEFILE*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
       flags &= ~02000000 /*O_CLOEXEC*/; // Some applications may pass it; it makes no sense for a single process.
       if (flags in NODEFS.flagsToPermissionStringMap) {
