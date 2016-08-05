@@ -1375,11 +1375,11 @@ LibraryManager.library = {
   llvm_floor_f64: 'Math_floor',
 
   llvm_copysign_f32: function(x, y) {
-    return y < 0 ? -Math_abs(x) : Math_abs(x);
+    return y < 0 || (y === 0 && 1/y < 0) ? -Math_abs(x) : Math_abs(x);
   },
 
   llvm_copysign_f64: function(x, y) {
-    return y < 0 ? -Math_abs(x) : Math_abs(x);
+    return y < 0 || (y === 0 && 1/y < 0) ? -Math_abs(x) : Math_abs(x);
   },
 
   round__asm: true,
