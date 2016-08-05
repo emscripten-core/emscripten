@@ -1108,9 +1108,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if proxy_to_worker or use_preload_plugins:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
 
-    if js_opts:
-      shared.Settings.RUNNING_JS_OPTS = 1
-
     if not shared.Settings.NO_FILESYSTEM and not shared.Settings.ONLY_MY_CODE:
       shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location'] # so FS can report errno back to C
       if not shared.Settings.NO_EXIT_RUNTIME:
@@ -1138,6 +1135,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit(1)
 
     if shared.Settings.WASM_BACKEND:
+      js_opts = None
       shared.Settings.BINARYEN = 1
       # Static linking is tricky with LLVM, since e.g. memset might not be used from libc,
       # but be used as an intrinsic, and codegen will generate a libc call from that intrinsic
@@ -1147,6 +1145,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORTED_FUNCTIONS += ['_memcpy', '_memmove', '_memset']
       # to bootstrap struct_info, we need binaryen
       os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
+
+    if js_opts:
+      shared.Settings.RUNNING_JS_OPTS = 1
 
     if shared.Settings.BINARYEN:
       debug_level = max(1, debug_level) # keep whitespace readable, for asm.js parser simplicity
@@ -1635,9 +1636,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       def flush(title='js_opts'):
         JSOptimizer.queue = filter(lambda p: p not in JSOptimizer.blacklist, JSOptimizer.queue)
 
-        if shared.Settings.WASM_BACKEND:
-          logging.debug('ignoring js-optimizer passes since emitting pure wasm: ' + ' '.join(JSOptimizer.queue))
-          return
+        assert not shared.Settings.WASM_BACKEND, 'JSOptimizer should not run with pure wasm output'
 
         if JSOptimizer.extra_info is not None and len(JSOptimizer.extra_info) == 0:
           JSOptimizer.extra_info = None

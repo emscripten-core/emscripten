@@ -44,7 +44,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def is_wasm(self):
     return 'BINARYEN' in str(self.emcc_args) or self.is_wasm_backend()
 
-  @no_wasm_backend
   def test_hello_world(self):
       test_path = path_from_root('tests', 'core', 'test_hello_world')
       src, output = (test_path + s for s in ('.in', '.out'))
