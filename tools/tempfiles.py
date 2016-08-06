@@ -45,12 +45,13 @@ class TempFiles:
     return named_file
 
   def get_file(self, suffix):
-    """Returns an object representing a temp file, that has convenient pythonesque semantics for being
-    used via a construct 'with TempFiles.get_file(..) as filename:'. The file will be deleted immediately
-    once the with block is exited."""
+    """Returns an object representing a RAII-like access to a temp file, that has convenient pythonesque
+    semantics for being used via a construct 'with TempFiles.get_file(..) as filename:'. The file will be
+    deleted immediately once the 'with' block is exited."""
     class TempFileObject:
       def __enter__(self_):
         self_.file = tempfile.NamedTemporaryFile(dir=self.tmp, suffix=suffix, delete=False)
+        self_.file.close() # NamedTemporaryFile passes out open file handles, but callers prefer filenames (and open their own handles manually if needed)
         return self_.file.name
 
       def __exit__(self_, type, value, traceback):
