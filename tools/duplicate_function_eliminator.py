@@ -8,17 +8,17 @@ DUPLICATE_FUNCTION_ELIMINATOR = path_from_root('tools', 'eliminate-duplicate-fun
 def process_shell(js, js_engine, shell, equivalentfn_hash_info=None):
   suffix = '.eliminatedupes'
 
-  temp_file = temp_files.get(suffix + '.js').name
-  f = open(temp_file, 'w')
-  f.write(shell)
-  f.write('\n')
+  with temp_files.get_file(suffix + '.js') as temp_file:
+    f = open(temp_file, 'w')
+    f.write(shell)
+    f.write('\n')
 
-  f.write(equivalentfn_hash_info)
-  f.close()
+    f.write(equivalentfn_hash_info)
+    f.close()
 
-  (output,error) = subprocess.Popen(js_engine +
-      [DUPLICATE_FUNCTION_ELIMINATOR, temp_file, '--use-hash-info', '--no-minimize-whitespace'],
-      stdout=subprocess.PIPE,stderr=subprocess.PIPE).communicate()
+    (output,error) = subprocess.Popen(js_engine +
+        [DUPLICATE_FUNCTION_ELIMINATOR, temp_file, '--use-hash-info', '--no-minimize-whitespace'],
+        stdout=subprocess.PIPE,stderr=subprocess.PIPE).communicate()
   assert len(output) > 0
   assert len(error) == 0
 

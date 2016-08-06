@@ -764,12 +764,12 @@ if __name__ == '__main__':
   tabled_funcs = asm.get_table_funcs()
   exported_funcs = [func.split(':')[0] for func in asm.exports]
 
-  temp = temp_files.get('.js').name # infile + '.tmp.js'
 
   # find emterpreted functions reachable by non-emterpreted ones, we will force a trampoline for them later
 
-  shared.Building.js_optimizer(infile, ['findReachable'], extra_info={ 'blacklist': list(emterpreted_funcs) }, output_filename=temp, just_concat=True)
-  asm = asm_module.AsmModule(temp)
+  with temp_files.get_file('.js') as temp: # infile + '.tmp.js'
+    shared.Building.js_optimizer(infile, ['findReachable'], extra_info={ 'blacklist': list(emterpreted_funcs) }, output_filename=temp, just_concat=True)
+    asm = asm_module.AsmModule(temp)
   lines = asm.funcs_js.split('\n')
 
   reachable_funcs = set([])
@@ -782,10 +782,10 @@ if __name__ == '__main__':
   external_emterpreted_funcs = filter(lambda func: func in tabled_funcs or func in exported_funcs or func in reachable_funcs, emterpreted_funcs)
 
   # process functions, generating bytecode
-  shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES, 'ASYNC': ASYNC, 'PROFILING': PROFILING, 'ASSERTIONS': ASSERTIONS }, output_filename=temp, just_concat=True)
-
-  # load the module and modify it
-  asm = asm_module.AsmModule(temp)
+  with temp_files.get_file('.js') as temp:
+    shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES, 'ASYNC': ASYNC, 'PROFILING': PROFILING, 'ASSERTIONS': ASSERTIONS }, output_filename=temp, just_concat=True)
+    # load the module and modify it
+    asm = asm_module.AsmModule(temp)
 
   relocations = [] # list of places that need to contain absolute offsets, we will add eb to them at runtime to relocate them
 
