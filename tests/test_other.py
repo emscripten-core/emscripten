@@ -2008,6 +2008,10 @@ int f() {
 
   def test_debuginfo(self):
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+
+    # This test runs in EMCC_DEBUG mode and populates files to CANONICAL_TEMP_DIR. Manually clean up CANONICAL_TEMP_DIR if it didn't exist
+    CANONICAL_TEMP_DIR_exists = os.path.exists(CANONICAL_TEMP_DIR)
+
     try:
       os.environ['EMCC_DEBUG'] = '1'
       for args, expect_llvm, expect_js in [
@@ -2024,8 +2028,15 @@ int f() {
         output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).communicate()
         assert expect_llvm == ('strip-debug' not in err)
         assert expect_js == ('registerize' not in err)
+
+        # Clean up the output files that the compilation created
+        for f in ['a.out.js.mem', 'emcc-0-linktime.bc', 'emcc-1-original.js', 'emcc-2-meminit.js', 'emcc-3-js_opts.js']:
+          try_delete(os.path.join(CANONICAL_TEMP_DIR, f))
     finally:
       del os.environ['EMCC_DEBUG']
+
+      if not CANONICAL_TEMP_DIR_exists:
+        os.rmdir(CANONICAL_TEMP_DIR)
 
   def test_scons(self): # also incidentally tests c++11 integration in llvm 3.1
     scons_path = Building.which('scons')
