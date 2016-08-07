@@ -154,6 +154,8 @@ def write_equivalent_fn_hash_to_file(f, json_files, passed_in_filename):
 # the global set of function implementation hashes. If set to
 # False, we assume that we have to use the global hash info to
 # reduce the set of duplicate functions
+# Returns the filename of the processed JS file, which is expected to be
+# deleted by the caller once done.
 def run_on_js(filename, gen_hash_info=False):
   js_engine=shared.NODE_JS
 
@@ -354,11 +356,12 @@ def eliminate_duplicate_funcs(file_name):
 
     # Generate the JSON for the equivalent hash first
     processed_file = run_on_js(filename=file_name, gen_hash_info=True)
-
-    save_temp_file(processed_file)
-
-    # Use the hash to reduce the JS file
-    final_file = run_on_js(filename=processed_file, gen_hash_info=False)
+    try:
+      save_temp_file(processed_file)
+      # Use the hash to reduce the JS file
+      final_file = run_on_js(filename=processed_file, gen_hash_info=False)
+    finally:
+      os.remove(processed_file)
 
     save_temp_file(final_file)
 
