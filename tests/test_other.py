@@ -125,6 +125,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           os.chdir(os.path.dirname(path))
           self.assertContained('hello, world!', run_js(os.path.basename(path)))
           os.chdir(last)
+          try_delete(path)
       finally:
         os.chdir(self.get_dir())
       self.clear()
