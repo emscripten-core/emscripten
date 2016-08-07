@@ -437,7 +437,9 @@ LibraryManager.library = {
     // address of the previous top ('break') of the memory area
     // We control the "dynamic" memory - DYNAMIC_BASE to DYNAMICTOP
     var self = _sbrk;
+    var replacedDynamicAlloc = false;
     if (!self.called) {
+      replacedDynamicAlloc = true;
       DYNAMICTOP = alignMemoryPage(DYNAMICTOP); // make sure we start out aligned
       self.called = true;
       assert(Runtime.dynamicAlloc);
@@ -447,7 +449,17 @@ LibraryManager.library = {
     var ret = DYNAMICTOP;
     if (bytes != 0) {
       var success = self.alloc(bytes);
-      if (!success) return -1 >>> 0; // sbrk failure code
+      if (!success) {
+        if (replacedDynamicAlloc) {
+          self.called = false;
+          Runtime.dynamicAlloc = self.alloc;
+        }
+        return -1 >>> 0; // sbrk failure code
+      }
+    }
+    if (replacedDynamicAlloc) {
+      self.called = false;
+      Runtime.dynamicAlloc = self.alloc;
     }
     return ret;  // Previous break location.
   },
