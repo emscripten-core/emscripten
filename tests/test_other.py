@@ -1981,16 +1981,22 @@ int f() {
 
   def test_emcc_debug_files(self):
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
-    if not os.path.exists(CANONICAL_TEMP_DIR):
+
+    CANONICAL_TEMP_DIR_exists = os.path.exists(CANONICAL_TEMP_DIR)
+    if not CANONICAL_TEMP_DIR_exists:
       os.makedirs(CANONICAL_TEMP_DIR)
+
+    def clean_temp_files():
+      for x in os.listdir(CANONICAL_TEMP_DIR):
+        if x.startswith('emcc-') or x.startswith('a.out'):
+          os.unlink(os.path.join(CANONICAL_TEMP_DIR, x))
+
     for opts in [0, 1, 2, 3]:
       for debug in [None, '1', '2']:
         print opts, debug
         try:
           if debug: os.environ['EMCC_DEBUG'] = debug
-          for x in os.listdir(CANONICAL_TEMP_DIR):
-            if x.startswith('emcc-'):
-              os.unlink(os.path.join(CANONICAL_TEMP_DIR, x))
+          clean_temp_files()
           check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-O'+ str(opts)], stderr=PIPE)
           if debug is None:
             for x in os.listdir(CANONICAL_TEMP_DIR):
@@ -2005,6 +2011,10 @@ int f() {
             assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-2-original.js'))
         finally:
           if debug: del os.environ['EMCC_DEBUG']
+          clean_temp_files()
+
+    if not CANONICAL_TEMP_DIR_exists:
+      os.rmdir(CANONICAL_TEMP_DIR)
 
   def test_debuginfo(self):
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
@@ -2030,7 +2040,7 @@ int f() {
         assert expect_js == ('registerize' not in err)
 
         # Clean up the output files that the compilation created
-        for f in ['a.out.js.mem', 'emcc-0-linktime.bc', 'emcc-1-original.js', 'emcc-2-meminit.js', 'emcc-3-js_opts.js']:
+        for f in ['a.out.js.mem', 'emcc-0-basebc.bc', 'emcc-0-linktime.bc', 'emcc-1-original.js', 'emcc-2-meminit.js', 'emcc-3-js_opts.js']:
           try_delete(os.path.join(CANONICAL_TEMP_DIR, f))
     finally:
       del os.environ['EMCC_DEBUG']
