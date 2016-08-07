@@ -546,6 +546,15 @@ Options that are modified or new in *emcc* are listed below:
    load during startup. See Avoid memory spikes by separating out
    asm.js.
 
+"-fsanitize=<check>"
+   Instructs the compiler to turn on runtime checks for various forms
+   of undefined or suspicious behavior. For more information, refer
+   to the appropriate compiler documentation. Only the following have
+   been tested:
+
+     * "cfi": Enable [control flow integrity](http://clang.llvm.org/docs/ControlFlowIntegrity.html)
+       checks. Note that this is only supported by Clang/LLVM, and
+       indirect function call checking requires Clang/LLVM 3.9+.
 
 Environment variables
 =====================

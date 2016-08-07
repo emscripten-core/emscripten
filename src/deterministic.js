@@ -10,6 +10,7 @@ Date.now = function() {
 };
 if (typeof performance === 'object') performance.now = Date.now;
 
+if (!Module) Module = {};
 Module['thisProgram'] = 'thisProgram'; // for consistency between different builds than between runs of the same build
 
 function hashMemory(id) {
@@ -18,7 +19,7 @@ function hashMemory(id) {
   for (var i = 0; i < len; i++) {
     ret = (ret*17 + HEAPU8[i])|0;
   }
-  printErr(id + ':' + ret);
+  return id + ':' + ret;
 }
 
 function hashString(s) {

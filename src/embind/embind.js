@@ -1487,7 +1487,7 @@ var LibraryEmbind = {
     }
   },
 
-  $makeClassHandle__deps: ['throwInternalError'],
+  $makeClassHandle__deps: ['$throwInternalError'],
   $makeClassHandle: function(prototype, record) {
     if (!record.ptrType || !record.ptr) {
         throwInternalError('makeClassHandle requires ptr and ptrType');
@@ -2280,13 +2280,13 @@ var LibraryEmbind = {
     var shift = getShiftFromSize(size);
     name = readLatin1String(name);
 
-    function constructor() {
+    function ctor() {
     }
-    constructor.values = {};
+    ctor.values = {};
 
     registerType(rawType, {
         name: name,
-        constructor: constructor,
+        constructor: ctor,
         'fromWireType': function(c) {
             return this.constructor.values[c];
         },
@@ -2297,7 +2297,7 @@ var LibraryEmbind = {
         'readValueFromPointer': enumReadValueFromPointer(name, shift, isSigned),
         destructorFunction: null,
     });
-    exposePublicSymbol(name, constructor);
+    exposePublicSymbol(name, ctor);
   },
 
   _embind_register_enum_value__deps: [

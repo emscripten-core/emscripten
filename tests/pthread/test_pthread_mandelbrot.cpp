@@ -14,7 +14,9 @@
 #endif
 #endif
 
+#ifdef __SSE__
 #include <xmmintrin.h>
+#endif
 
 // h: 0,360
 // s: 0,1
@@ -146,6 +148,7 @@ unsigned long long ComputeMandelbrot(float *srcReal, float *srcImag, uint32_t *d
   return (unsigned long long)((h-y)/yIncr)*w*numIters;
 }
 
+#ifdef __SSE__
 // Not strictly correct anyzero_ps, but faster, and depends on that color alpha channel is always either 0xFF or 0.
 int anyzero_ps(__m128 m)
 {
@@ -249,6 +252,7 @@ unsigned long long ComputeMandelbrot_SSE(float *srcReal, float *srcImag, uint32_
   }
   return (unsigned long long)((h-y)/yIncr)*w*numIters;
 }
+#endif
 
 const int W = 512;
 const int H = 512;
@@ -277,6 +281,9 @@ pthread_t thread[MAX_NUM_THREADS];
 double timeSpentInMandelbrot[MAX_NUM_THREADS] = {};
 unsigned long long numIters[MAX_NUM_THREADS] = {};
 
+uint32_t numThreadsRunning = 0;
+uint32_t maxThreadsRunning = 1;
+
 bool use_sse = true;
 
 int tasksDone = 0;
@@ -285,6 +292,7 @@ int tasksPending[MAX_NUM_THREADS] = {};
 void *mandelbrot_thread(void *arg)
 {
   int idx = (int)arg;
+  emscripten_atomic_add_u32(&numThreadsRunning, 1);
 
   char threadName[32];
   sprintf(threadName, "Worker %d", idx);
@@ -304,9 +312,11 @@ void *mandelbrot_thread(void *arg)
     fputs("hello", handle);
     fclose(handle);
 #endif
+#ifdef __SSE__
     if (use_sse)
       ni = ComputeMandelbrot_SSE(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, 0, idx, numTasks, W, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     else
+#endif
       ni = ComputeMandelbrot(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, 0, idx, numTasks, W, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     //emscripten_atomic_add_u32(&numIters, ni);
     double t1 = emscripten_get_now();
@@ -335,9 +345,11 @@ void register_tasks()
   for(int i = 0; i < numTasks; ++i)
   {
     double t0 = emscripten_get_now();
+#ifdef __SSE__
     if (use_sse)
       numIters[0] += ComputeMandelbrot_SSE(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, W*i/numTasks, 0, 1, W/numTasks, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     else
+#endif
       numIters[0] += ComputeMandelbrot(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, W*i/numTasks, 0, 1, W/numTasks, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     double t1 = emscripten_get_now();
     timeSpentInMandelbrot[0] += t1-t0;
@@ -347,7 +359,7 @@ void register_tasks()
 
   numTasks = EM_ASM_INT_V(return parseInt(document.getElementById('num_threads').value));
   if (numTasks < 1) numTasks = 1;
-  if (numTasks > MAX_NUM_THREADS) numTasks = MAX_NUM_THREADS;
+  if (numTasks > emscripten_num_logical_cores()) numTasks = emscripten_num_logical_cores();
 
   // Register tasks.
   emscripten_atomic_store_u32(&tasksDone, 0);
@@ -366,7 +378,7 @@ void wait_tasks()
   // Wait for each task to finish.
   for(;;)
   {
-    int td = tasksDone;
+    int td = emscripten_atomic_load_u32(&tasksDone);
     if (td >= numTasks)
       break;
     emscripten_futex_wait(&tasksDone, td, 1);
@@ -377,6 +389,9 @@ void wait_tasks()
 
 void main_tick()
 {
+  const int threadsRunning = emscripten_atomic_load_u32(&numThreadsRunning);
+  if (threadsRunning < maxThreadsRunning) return;
+
   wait_tasks();
   numItersDoneOnCanvas += numItersPerFrame;
 
@@ -540,7 +555,8 @@ int main(int argc, char** argv)
     outputImage[i] = 0x00000000;
 
 #ifndef SINGLETHREADED
-  for(int i = 0; i < MAX_NUM_THREADS; ++i)
+  maxThreadsRunning = emscripten_num_logical_cores() < MAX_NUM_THREADS ? emscripten_num_logical_cores() : MAX_NUM_THREADS;
+  for(int i = 0; i < maxThreadsRunning; ++i)
   {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -551,7 +567,9 @@ int main(int argc, char** argv)
   }
 #endif
 
+#ifndef SINGLETHREADED
   emscripten_set_thread_name(pthread_self(), "Mandelbrot main");
+#endif
 
   EM_ASM("SDL.defaults.copyOnLock = false; SDL.defaults.discardOnLock = true; SDL.defaults.opaqueFrontBuffer = false;");
 

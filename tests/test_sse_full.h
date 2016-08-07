@@ -353,7 +353,6 @@ __m128 ExtractInRandomOrder(float *arr, int i, int n, int prime)
 			}
 
 #define const_int8_unroll(Ret_type, F, func) \
-	F(Ret_type, func, -1); \
 	F(Ret_type, func, 0); \
 	F(Ret_type, func, 1); \
 	F(Ret_type, func, 2); \
@@ -376,8 +375,7 @@ __m128 ExtractInRandomOrder(float *arr, int i, int n, int prime)
 	F(Ret_type, func, 128); \
 	F(Ret_type, func, 191); \
 	F(Ret_type, func, 254); \
-	F(Ret_type, func, 255); \
-	F(Ret_type, func, 309);
+	F(Ret_type, func, 255);
 
 #define Ret_M128_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128_Tint_body, func)
 #define Ret_M128i_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128i_Tint_body, func)

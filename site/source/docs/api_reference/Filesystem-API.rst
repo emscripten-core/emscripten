@@ -72,7 +72,7 @@ This is provided to overcome the limitation that browsers do not offer synchrono
 .. _filesystem-api-workerfs:
 
 WORKERFS
------
+--------
 
 .. note:: This file system is only for use when running code inside a worker.
 

@@ -1,4 +1,11 @@
+// wasm breaks musl convention and defines size_t as long, to benefit wasm32/64 similarity
+// on wasm32, in practice it should be the same as asmjs's int.
+#ifdef __wasm__
+#define _Addr long
+#else
 #define _Addr int
+#endif
+
 #define _Int64 long long
 #define _Reg int
 
@@ -83,7 +90,13 @@ typedef long suseconds_t;
 
 
 #if defined(__NEED_pthread_attr_t) && !defined(__DEFINED_pthread_attr_t)
+#ifdef __EMSCRIPTEN__
+// For canvas transfer implementation in Emscripten, use an extra 10th control field
+// to pass a pointer to a string denoting the WebGL canvases to transfer.
+typedef struct { union { int __i[10]; unsigned __s[10]; } __u; } pthread_attr_t;
+#else
 typedef struct { union { int __i[9]; unsigned __s[9]; } __u; } pthread_attr_t;
+#endif
 #define __DEFINED_pthread_attr_t
 #endif
 

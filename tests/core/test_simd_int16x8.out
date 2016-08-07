@@ -17,15 +17,15 @@ emscripten_int16x8_notEqual(v, w): -1 -1 -1 -1 -1 -1 -1 -1
 emscripten_int16x8_shiftLeftByScalar(v, 0): 1 0 1 32767 -2 9 13 -32768
 emscripten_int16x8_shiftLeftByScalar(v, 1): 2 0 2 -2 -4 18 26 0
 emscripten_int16x8_shiftLeftByScalar(v, 2): 4 0 4 -4 -8 36 52 0
-emscripten_int16x8_shiftLeftByScalar(v, 16): 0 0 0 0 0 0 0 0
-emscripten_int16x8_shiftLeftByScalar(v, 32): 0 0 0 0 0 0 0 0
-emscripten_int16x8_shiftLeftByScalar(v, 48): 0 0 0 0 0 0 0 0
+emscripten_int16x8_shiftLeftByScalar(v, 16): 1 0 1 32767 -2 9 13 -32768
+emscripten_int16x8_shiftLeftByScalar(v, 32): 1 0 1 32767 -2 9 13 -32768
+emscripten_int16x8_shiftLeftByScalar(v, 48): 1 0 1 32767 -2 9 13 -32768
 emscripten_int16x8_shiftRightByScalar(v, 0): 1 0 1 32767 -2 9 13 -32768
 emscripten_int16x8_shiftRightByScalar(v, 1): 0 0 0 16383 -1 4 6 -16384
 emscripten_int16x8_shiftRightByScalar(v, 2): 0 0 0 8191 -1 2 3 -8192
-emscripten_int16x8_shiftRightByScalar(v, 16): 0 0 0 0 -1 0 0 -1
-emscripten_int16x8_shiftRightByScalar(v, 32): 0 0 0 0 -1 0 0 -1
-emscripten_int16x8_shiftRightByScalar(v, 48): 0 0 0 0 -1 0 0 -1
+emscripten_int16x8_shiftRightByScalar(v, 16): 1 0 1 32767 -2 9 13 -32768
+emscripten_int16x8_shiftRightByScalar(v, 32): 1 0 1 32767 -2 9 13 -32768
+emscripten_int16x8_shiftRightByScalar(v, 48): 1 0 1 32767 -2 9 13 -32768
 emscripten_int16x8_select(b, v, w): 2 0 2 32767 2 9 2 -32768
 emscripten_int16x8_addSaturate(v, w): 3 2 3 32767 0 11 15 -32766
 emscripten_int16x8_subSaturate(v, w): -1 -2 -1 32765 -4 7 11 -32768

@@ -92,12 +92,12 @@ void main_loop() {
     int fd = server.fd;
 #endif
   if (client.state == MSG_READ) {
-    socklen_t addrlen;
 
     if (!FD_ISSET(fd, &fdr)) {
       return;
     }
 
+    socklen_t addrlen = sizeof(client.addr);
     res = do_msg_read(fd, &client.msg, client.read, 0, (struct sockaddr *)&client.addr, &addrlen);
     if (res == -1) {
       return;

@@ -47,7 +47,7 @@ Calling compiled C functions from JavaScript
 			
 			Exported functions can be called as normal: ::
 			
-				a_result = Module.ccall('myfunc', 'number', ['number'], 10)
+				a_result = Module.ccall('myfunc', 'number', ['number'], [10])
 		
 
 	:param ident: The name of the C function to be called.	

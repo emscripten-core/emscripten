@@ -38,6 +38,12 @@ to more detailed information.
    environment, see :ref:`emscripten-runtime-environment`. For file system
    related manners, see the :ref:`file-system-overview`.
 
+.. note:: Before you can call your code, the runtime environment may need
+   to load a memory initialization file, preload files, or
+   do other asynchronous operations depending on optimization
+   and build settings.
+   See :ref:`faq-when-safe-to-call-compiled-functions` in the FAQ.
+
 
 .. _interacting-with-code-ccall-cwrap:
 
@@ -206,23 +212,14 @@ simply integers in the generated code.
 Strings in JavaScript must be converted to pointers for compiled
 code — the relevant function is :js:func:`Pointer_stringify`, which
 given a pointer returns a JavaScript string. Converting a JavaScript
-string ``someString`` to a pointer can be accomplished using
-:js:func:`allocate(intArrayFromString(someString), 'i8', ALLOC_STACK) <allocate>`.
+string ``someString`` to a pointer can be accomplished using ``ptr = ``
+:js:func:`allocate(intArrayFromString(someString), 'i8', ALLOC_NORMAL) <allocate>`.
 
-.. note:: The conversion to a pointer allocates memory, and in this case
-   we allocate it on the stack (if you are calling it from a compiled
-   function, it will rewind the stack for you; otherwise, you should
-   do ``Runtime.stackSave()`` before and
-   ``Runtime.stackRestore(..that value..)`` afterwards).
+.. note:: The conversion to a pointer allocates memory, which needs to be
+   freed up via a call to ``free(ptr)`` afterwards (``_free`` in JavaScript side)
 
 There are other convenience functions for converting strings and encodings
 in :ref:`preamble-js`.
-
-.. todo:: **HamishW** Might be better to show the allocate above using
-   _malloc, as allocate is an advanced API. We also need to better
-   explain the note about stackRestore etc, or remove it - as it
-   doesn't mean a lot to me.
-
 
 .. _interacting-with-code-call-javascript-from-native:
 
@@ -379,10 +376,10 @@ If you add it to your own file, you should write something like
 first, so this add ``my_js`` onto ``LibraryManager.library``, the global
 object where all JavaScript library code should be.
 
-JavaScript Limits in library files
+JavaScript limits in library files
 ----------------------------------
 
-If you're not familar with JavaScript, say if you're a C/C++ programmer
+If you're not familiar with JavaScript, say if you're a C/C++ programmer
 and just using emscripten, then the following issues probably won't come up, but
 if you're an experienced JavaScript programmer you need to be aware
 some common JavaScript practices can not be used in certain ways in emscripten
@@ -400,7 +397,7 @@ key-value pairs are special. Interior code inside a function can
 have arbitrary JS, of course).
 
 To avoid this limitation of JS libraries, you can put code in another file using
-the ``--pre-js`` or ``--post-js`` options, which allow arbitary normal
+the ``--pre-js`` or ``--post-js`` options, which allow arbitrary normal
 JS, and it is included and optimized with the rest of the output. That is
 the recommended approach for most cases. Another option is another ``<script>`` tag.
 
@@ -436,7 +433,7 @@ initialization.
    });
 
 A `__postset` is a string the compiler will emit directly to the
-output file. For the example above this code will be emited.
+output file. For the example above this code will be emitted.
 
 .. code-block:: javascript
 

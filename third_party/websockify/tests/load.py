@@ -6,35 +6,37 @@ that has a random payload (length and content) that is checksummed and
 given a sequence number. Any errors are reported and counted.
 '''
 
-import sys, os, select, random, time, optparse
-sys.path.insert(0,os.path.dirname(__file__) + "/../")
-from websocket import WebSocketServer
+import sys, os, select, random, time, optparse, logging
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), ".."))
+from websockify.websocket import WebSocketServer, WebSocketRequestHandler
 
-class WebSocketLoad(WebSocketServer):
+class WebSocketLoadServer(WebSocketServer):
 
-    buffer_size = 65536
-
-    max_packet_size = 10000
     recv_cnt = 0
     send_cnt = 0
 
     def __init__(self, *args, **kwargs):
-        self.errors = 0
         self.delay = kwargs.pop('delay')
 
+        WebSocketServer.__init__(self, *args, **kwargs)
+
+
+class WebSocketLoad(WebSocketRequestHandler):
+
+    max_packet_size = 10000
+
+    def new_websocket_client(self):
         print "Prepopulating random array"
         self.rand_array = []
         for i in range(0, self.max_packet_size):
             self.rand_array.append(random.randint(0, 9))
 
-        WebSocketServer.__init__(self, *args, **kwargs)
-
-    def new_client(self):
+        self.errors = 0
         self.send_cnt = 0
         self.recv_cnt = 0
 
         try:
-            self.responder(self.client)
+            self.responder(self.request)
         except:
             print "accumulated errors:", self.errors
             self.errors = 0
@@ -61,14 +63,13 @@ class WebSocketLoad(WebSocketServer):
 
                 if closed:
                     self.send_close()
-                    raise self.EClose(closed)
 
             now = time.time() * 1000
             if client in outs:
                 if c_pend:
                     last_send = now
                     c_pend = self.send_frames()
-                elif now > (last_send + self.delay):
+                elif now > (last_send + self.server.delay):
                     last_send = now
                     c_pend = self.send_frames([self.generate()])
 
@@ -161,7 +162,9 @@ if __name__ == '__main__':
     except:
         parser.error("Invalid arguments")
 
+    logging.basicConfig(level=logging.INFO)
+
     opts.web = "."
-    server = WebSocketLoad(**opts.__dict__)
+    server = WebSocketLoadServer(WebSocketLoad, **opts.__dict__)
     server.start_server()
 

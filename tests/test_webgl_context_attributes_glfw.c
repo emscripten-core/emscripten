@@ -7,6 +7,7 @@
 int nbSamples = 0;
 int nbDepthBits = 0;
 int nbStencilBits = 0;
+int nbAlphaBits = 0;
 
 int main() {
   
@@ -28,9 +29,14 @@ int main() {
     stencilActivated = true;  
     nbStencilBits = 8;
 #endif
+  
+#ifdef ALPHA_ACTIVATED
+    alphaActivated = true;  
+    nbAlphaBits = 8;
+#endif
 
     glfwOpenWindowHint(GLFW_FSAA_SAMPLES, nbSamples);
-    glfwOpenWindow(WINDOWS_SIZE, WINDOWS_SIZE, 8, 8, 8, 8, nbDepthBits, nbStencilBits, GLFW_WINDOW);
+    glfwOpenWindow(WINDOWS_SIZE, WINDOWS_SIZE, 8, 8, 8, nbAlphaBits, nbDepthBits, nbStencilBits, GLFW_WINDOW);
   
     glewInit();
     initGlObjects();
