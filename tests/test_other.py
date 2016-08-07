@@ -6239,7 +6239,8 @@ struct C {
 C c;
 int main() {}
       ''')
-      out, err = Popen([PYTHON, EMCC, 'src.cpp', '-Oz'], stderr=PIPE).communicate()
+      with clean_write_access_to_canonical_temp_dir():
+        out, err = Popen([PYTHON, EMCC, 'src.cpp', '-Oz'], stderr=PIPE).communicate()
       self.assertContained('___syscall54', err) # the failing call should be mentioned
       self.assertContained('ctorEval.js', err) # with a stack trace
       self.assertContained('ctor_evaller: not successful', err) # with logging
