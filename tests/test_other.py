@@ -22,8 +22,8 @@ class clean_write_access_to_canonical_temp_dir:
         os.unlink(os.path.join(CANONICAL_TEMP_DIR, x))
 
   def __enter__(self):
-    CANONICAL_TEMP_DIR_exists = os.path.exists(CANONICAL_TEMP_DIR)
-    if not CANONICAL_TEMP_DIR_exists:
+    self.CANONICAL_TEMP_DIR_exists = os.path.exists(CANONICAL_TEMP_DIR)
+    if not self.CANONICAL_TEMP_DIR_exists:
       os.makedirs(CANONICAL_TEMP_DIR)
     else:
       # Delete earlier files in the canonical temp directory so that
@@ -32,7 +32,11 @@ class clean_write_access_to_canonical_temp_dir:
       self.clean_emcc_files_in_temp_dir()
 
   def __exit__(self, type, value, traceback):
-    self.clean_emcc_files_in_temp_dir()
+    if not self.CANONICAL_TEMP_DIR_exists:
+      try_delete(CANONICAL_TEMP_DIR)
+      pass
+    else:
+      self.clean_emcc_files_in_temp_dir()
 
 class other(RunnerCore):
   def test_emcc(self):
