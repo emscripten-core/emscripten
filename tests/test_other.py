@@ -15,6 +15,25 @@ def multiprocess_task(c_file, cache_dir_name):
     print '------'
   sys.exit(1 if 'generating system library: libc.bc' in output else 0)
 
+class clean_write_access_to_canonical_temp_dir:
+  def clean_emcc_files_in_temp_dir(self):
+    for x in os.listdir(CANONICAL_TEMP_DIR):
+      if x.startswith('emcc-') or x.startswith('a.out'):
+        os.unlink(os.path.join(CANONICAL_TEMP_DIR, x))
+
+  def __enter__(self):
+    CANONICAL_TEMP_DIR_exists = os.path.exists(CANONICAL_TEMP_DIR)
+    if not CANONICAL_TEMP_DIR_exists:
+      os.makedirs(CANONICAL_TEMP_DIR)
+    else:
+      # Delete earlier files in the canonical temp directory so that
+      # previous leftover files don't have a possibility of confusing
+      # the test result e.g. on failure of the actual task
+      self.clean_emcc_files_in_temp_dir()
+
+  def __exit__(self, type, value, traceback):
+    self.clean_emcc_files_in_temp_dir()
+
 class other(RunnerCore):
   def test_emcc(self):
     for compiler in [EMCC, EMXX]:
@@ -1987,45 +2006,29 @@ int f() {
   def test_emcc_debug_files(self):
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
 
-    CANONICAL_TEMP_DIR_exists = os.path.exists(CANONICAL_TEMP_DIR)
-    if not CANONICAL_TEMP_DIR_exists:
-      os.makedirs(CANONICAL_TEMP_DIR)
-
-    def clean_temp_files():
-      for x in os.listdir(CANONICAL_TEMP_DIR):
-        if x.startswith('emcc-') or x.startswith('a.out'):
-          os.unlink(os.path.join(CANONICAL_TEMP_DIR, x))
-
     for opts in [0, 1, 2, 3]:
       for debug in [None, '1', '2']:
         print opts, debug
         try:
           if debug: os.environ['EMCC_DEBUG'] = debug
-          clean_temp_files()
-          check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-O'+ str(opts)], stderr=PIPE)
-          if debug is None:
-            for x in os.listdir(CANONICAL_TEMP_DIR):
-              if x.startswith('emcc-'):
-                assert 0
-          elif debug == '1':
-            assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-0-linktime.bc'))
-            assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-1-original.js'))
-          elif debug == '2':
-            assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-0-basebc.bc'))
-            assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-1-linktime.bc'))
-            assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-2-original.js'))
+          with clean_write_access_to_canonical_temp_dir():
+            check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-O'+ str(opts)], stderr=PIPE)
+            if debug is None:
+              for x in os.listdir(CANONICAL_TEMP_DIR):
+                if x.startswith('emcc-'):
+                  assert 0
+            elif debug == '1':
+              assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-0-linktime.bc'))
+              assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-1-original.js'))
+            elif debug == '2':
+              assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-0-basebc.bc'))
+              assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-1-linktime.bc'))
+              assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-2-original.js'))
         finally:
           if debug: del os.environ['EMCC_DEBUG']
-          clean_temp_files()
-
-    if not CANONICAL_TEMP_DIR_exists:
-      os.rmdir(CANONICAL_TEMP_DIR)
 
   def test_debuginfo(self):
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
-
-    # This test runs in EMCC_DEBUG mode and populates files to CANONICAL_TEMP_DIR. Manually clean up CANONICAL_TEMP_DIR if it didn't exist
-    CANONICAL_TEMP_DIR_exists = os.path.exists(CANONICAL_TEMP_DIR)
 
     try:
       os.environ['EMCC_DEBUG'] = '1'
@@ -2040,18 +2043,12 @@ int f() {
           (['-O2', '-g4'], True, True), # drop llvm debug info as js opts kill it anyway
         ]:
         print args, expect_llvm, expect_js
-        output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).communicate()
+        with clean_write_access_to_canonical_temp_dir():
+          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).communicate()
         assert expect_llvm == ('strip-debug' not in err)
         assert expect_js == ('registerize' not in err)
-
-        # Clean up the output files that the compilation created
-        for f in ['a.out.js.mem', 'emcc-0-basebc.bc', 'emcc-0-linktime.bc', 'emcc-1-original.js', 'emcc-2-meminit.js', 'emcc-3-js_opts.js']:
-          try_delete(os.path.join(CANONICAL_TEMP_DIR, f))
     finally:
       del os.environ['EMCC_DEBUG']
-
-      if not CANONICAL_TEMP_DIR_exists:
-        os.rmdir(CANONICAL_TEMP_DIR)
 
   def test_scons(self): # also incidentally tests c++11 integration in llvm 3.1
     scons_path = Building.which('scons')
