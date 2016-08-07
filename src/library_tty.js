@@ -100,13 +100,17 @@ mergeInto(LibraryManager.library, {
             var buf = new Buffer(BUFSIZE);
             var bytesRead = 0;
 
+            var isPosixPlatform = (process.platform != 'win32'); // Node doesn't offer a direct check, so test by exclusion
+
             var fd = process.stdin.fd;
-            // Linux and Mac cannot use process.stdin.fd (which isn't set up as sync)
-            var usingDevice = false;
-            try {
-              fd = fs.openSync('/dev/stdin', 'r');
-              usingDevice = true;
-            } catch (e) {}
+            if (isPosixPlatform) {
+              // Linux and Mac cannot use process.stdin.fd (which isn't set up as sync)
+              var usingDevice = false;
+              try {
+                fd = fs.openSync('/dev/stdin', 'r');
+                usingDevice = true;
+              } catch (e) {}
+            }
 
             bytesRead = fs.readSync(fd, buf, 0, BUFSIZE, null);
 
