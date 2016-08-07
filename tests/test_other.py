@@ -4828,7 +4828,8 @@ int main(void) {
       try:
         os.environ['EMCC_DEBUG'] = '1'
         os.environ['EMCC_NATIVE_OPTIMIZER'] = '1'
-        out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2',] + args, stderr=PIPE).communicate()
+        with clean_write_access_to_canonical_temp_dir():
+          out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2',] + args, stderr=PIPE).communicate()
       finally:
         if old_debug: os.environ['EMCC_DEBUG'] = old_debug
         else: del os.environ['EMCC_DEBUG']
