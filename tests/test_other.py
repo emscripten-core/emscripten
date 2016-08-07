@@ -325,28 +325,33 @@ f.close()
   # will, and the other processes will block to wait until that process finishes.
   def test_emcc_multiprocess_cache_access(self):
     tempdirname = tempfile.mkdtemp(prefix='emscripten_test_emcache_', dir=TEMP_DIR)
-    os.chdir(tempdirname)
-    c_file = os.path.join(tempdirname, 'test.c')
-    open(c_file, 'w').write(r'''
-      #include <stdio.h>
-      int main() {
-        printf("hello, world!\n");
-        return 0;
-      }
-      ''')
-    cache_dir_name = os.path.join(tempdirname, 'emscripten_cache')
-    tasks = []
-    num_times_libc_was_built = 0
-    for i in range(3):
-      p = multiprocessing.Process(target=multiprocess_task, args=(c_file,cache_dir_name,))
-      p.start()
-      tasks += [p]
-    for p in tasks:
-      p.join()
-      num_times_libc_was_built += p.exitcode
-    assert os.path.exists(cache_dir_name), 'The cache directory %s must exist after the build' % cache_dir_name
-    assert os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')), 'The cache directory must contain a built libc'
-    assert num_times_libc_was_built == 1, 'Exactly one child process should have triggered libc build! (instead %d processes did)' % num_times_libc_was_built
+    prev_cwd = os.getcwd()
+    try:
+      os.chdir(tempdirname)
+      c_file = os.path.join(tempdirname, 'test.c')
+      open(c_file, 'w').write(r'''
+        #include <stdio.h>
+        int main() {
+          printf("hello, world!\n");
+          return 0;
+        }
+        ''')
+      cache_dir_name = os.path.join(tempdirname, 'emscripten_cache')
+      tasks = []
+      num_times_libc_was_built = 0
+      for i in range(3):
+        p = multiprocessing.Process(target=multiprocess_task, args=(c_file,cache_dir_name,))
+        p.start()
+        tasks += [p]
+      for p in tasks:
+        p.join()
+        num_times_libc_was_built += p.exitcode
+      assert os.path.exists(cache_dir_name), 'The cache directory %s must exist after the build' % cache_dir_name
+      assert os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')), 'The cache directory must contain a built libc'
+      assert num_times_libc_was_built == 1, 'Exactly one child process should have triggered libc build! (instead %d processes did)' % num_times_libc_was_built
+    finally:
+      os.chdir(prev_cwd) # On Windows, we can't have CWD in the directory we're deleting
+      try_delete(tempdirname)
 
   def test_emcc_cache_flag(self):
     tempdirname = tempfile.mkdtemp(prefix='emscripten_test_emcache_', dir=TEMP_DIR)
