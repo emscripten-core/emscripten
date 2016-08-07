@@ -2763,7 +2763,8 @@ int main(int argc, char **argv) {
           (['-O3'], 'LLVM opts: -O3'),
         ]:
         print args, expect
-        output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).communicate()
+        with clean_write_access_to_canonical_temp_dir():
+          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).communicate()
         self.assertContained(expect, err)
         if '-O3' in args or '-Oz' in args or '-Os' in args:
           self.assertContained('registerizeHarder', err)
