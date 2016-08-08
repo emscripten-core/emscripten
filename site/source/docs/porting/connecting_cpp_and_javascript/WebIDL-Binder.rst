@@ -127,6 +127,7 @@ Once binding is complete, C++ objects can be created and used in JavaScript as t
 
 	While the objects are also available in the global namespace by default, there are cases where they will not be (for example, if you use the :term:`closure compiler` to minify code or wrap compiled code in a function to avoid polluting the global namespace). You can of course use whatever name you like for the module by assigning it to a new variable: ``var MyModuleName = Module;``.
 
+.. important:: You can only use this code when it is :ref:`safe to call compiled code <faq-when-safe-to-call-compiled-functions>`, see more details in that FAQ entry.
 
 JavaScript will automatically garbage collect any of the wrapped C++ objects when there are no more references. If the C++ object doesn't require specific clean up (i.e. it doesn't have a destructor) then no other action needs to be taken.
 
