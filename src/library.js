@@ -1373,7 +1373,11 @@ LibraryManager.library = {
   llvm_trunc_f64: 'Math_trunc',
   llvm_floor_f32: 'Math_floor',
   llvm_floor_f64: 'Math_floor',
-
+  llvm_cos_f32: 'Math_cos',
+  llvm_cos_f64: 'Math_cos',
+  llvm_sin_f32: 'Math_sin',
+  llvm_sin_f64: 'Math_sin',
+  
   round__asm: true,
   round__sig: 'dd',
   round: function(d) {
