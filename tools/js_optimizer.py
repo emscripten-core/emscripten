@@ -227,18 +227,18 @@ class Minifier:
     else:
       self.globs = []
 
-    temp_file = temp_files.get('.minifyglobals.js').name
-    f = open(temp_file, 'w')
-    f.write(shell)
-    f.write('\n')
-    f.write('// EXTRA_INFO:' + json.dumps(self.serialize()))
-    f.close()
+    with temp_files.get_file('.minifyglobals.js') as temp_file:
+      f = open(temp_file, 'w')
+      f.write(shell)
+      f.write('\n')
+      f.write('// EXTRA_INFO:' + json.dumps(self.serialize()))
+      f.close()
 
-    output = subprocess.Popen(self.js_engine +
-        [JS_OPTIMIZER, temp_file, 'minifyGlobals', 'noPrintMetadata'] +
-        (['minifyWhitespace'] if minify_whitespace else []) +
-        (['--debug'] if source_map else []),
-        stdout=subprocess.PIPE).communicate()[0]
+      output = subprocess.Popen(self.js_engine +
+          [JS_OPTIMIZER, temp_file, 'minifyGlobals', 'noPrintMetadata'] +
+          (['minifyWhitespace'] if minify_whitespace else []) +
+          (['--debug'] if source_map else []),
+          stdout=subprocess.PIPE).communicate()[0]
 
     assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
     #print >> sys.stderr, "minified SHELL 3333333333333333", output, "\n44444444444444444444"
@@ -467,34 +467,35 @@ EMSCRIPTEN_FUNCS();
     end_asm = '// EMSCRIPTEN_END_ASM\n'
     cl_sep = 'wakaUnknownBefore(); var asm=wakaUnknownAfter(global,env,buffer)\n'
 
-    cle = temp_files.get('.cl.js').name
-    c = open(cle, 'w')
-    pre_1, pre_2 = pre.split(start_asm)
-    post_1, post_2 = post.split(end_asm)
-    c.write(pre_1)
-    c.write(cl_sep)
-    c.write(post_2)
-    c.close()
-    cld = cle
-    if split_memory:
-      if DEBUG: print >> sys.stderr, 'running splitMemory on shell code'
-      cld = run_on_chunk(js_engine + [JS_OPTIMIZER, cld, 'splitMemoryShell'])
-      f = open(cld, 'a')
-      f.write(suffix_marker)
-      f.close()
-    if closure:
-      if DEBUG: print >> sys.stderr, 'running closure on shell code'
-      cld = shared.Building.closure_compiler(cld, pretty='minifyWhitespace' not in passes)
-      temp_files.note(cld)
-    elif cleanup:
-      if DEBUG: print >> sys.stderr, 'running cleanup on shell code'
-      next = cld + '.cl.js'
-      temp_files.note(next)
-      proc = subprocess.Popen(js_engine + [JS_OPTIMIZER, cld, 'noPrintMetadata', 'JSDCE'] + (['minifyWhitespace'] if 'minifyWhitespace' in passes else []), stdout=open(next, 'w'))
-      proc.communicate()
-      assert proc.returncode == 0
-      cld = next
-    coutput = open(cld).read()
+    with temp_files.get_file('.cl.js') as cle:
+      c = open(cle, 'w')
+      pre_1, pre_2 = pre.split(start_asm)
+      post_1, post_2 = post.split(end_asm)
+      c.write(pre_1)
+      c.write(cl_sep)
+      c.write(post_2)
+      c.close()
+      cld = cle
+      if split_memory:
+        if DEBUG: print >> sys.stderr, 'running splitMemory on shell code'
+        cld = run_on_chunk(js_engine + [JS_OPTIMIZER, cld, 'splitMemoryShell'])
+        f = open(cld, 'a')
+        f.write(suffix_marker)
+        f.close()
+      if closure:
+        if DEBUG: print >> sys.stderr, 'running closure on shell code'
+        cld = shared.Building.closure_compiler(cld, pretty='minifyWhitespace' not in passes)
+        temp_files.note(cld)
+      elif cleanup:
+        if DEBUG: print >> sys.stderr, 'running cleanup on shell code'
+        next = cld + '.cl.js'
+        temp_files.note(next)
+        proc = subprocess.Popen(js_engine + [JS_OPTIMIZER, cld, 'noPrintMetadata', 'JSDCE'] + (['minifyWhitespace'] if 'minifyWhitespace' in passes else []), stdout=open(next, 'w'))
+        proc.communicate()
+        assert proc.returncode == 0
+        cld = next
+      coutput = open(cld).read()
+
     coutput = coutput.replace('wakaUnknownBefore();', start_asm)
     after = 'wakaUnknownAfter'
     start = coutput.find(after)

@@ -97,54 +97,54 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
       shared.try_delete(outfile.name) # remove partial output
 
 def get_and_parse_backend(infile, settings, temp_files, DEBUG):
-    temp_js = temp_files.get('.4.js').name
-    backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
-    backend_args = [backend_compiler, infile, '-march=js', '-filetype=asm', '-o', temp_js]
-    if settings['PRECISE_F32']:
-      backend_args += ['-emscripten-precise-f32']
-    if settings['USE_PTHREADS']:
-      backend_args += ['-emscripten-enable-pthreads']
-    if settings['WARN_UNALIGNED']:
-      backend_args += ['-emscripten-warn-unaligned']
-    if settings['RESERVED_FUNCTION_POINTERS'] > 0:
-      backend_args += ['-emscripten-reserved-function-pointers=%d' % settings['RESERVED_FUNCTION_POINTERS']]
-    if settings['ASSERTIONS'] > 0:
-      backend_args += ['-emscripten-assertions=%d' % settings['ASSERTIONS']]
-    if settings['ALIASING_FUNCTION_POINTERS'] == 0:
-      backend_args += ['-emscripten-no-aliasing-function-pointers']
-    if settings['EMULATED_FUNCTION_POINTERS']:
-      backend_args += ['-emscripten-emulated-function-pointers']
-    if settings['RELOCATABLE']:
-      backend_args += ['-emscripten-relocatable']
-      backend_args += ['-emscripten-global-base=0']
-    elif settings['GLOBAL_BASE'] >= 0:
-      backend_args += ['-emscripten-global-base=%d' % settings['GLOBAL_BASE']]
-    backend_args += ['-O' + str(settings['OPT_LEVEL'])]
-    if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
-      backend_args += ['-enable-emscripten-cxx-exceptions']
-      if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
-        backend_args += ['-emscripten-cxx-exceptions-whitelist=' + ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['fake'])]
-    if settings['ASYNCIFY']:
-      backend_args += ['-emscripten-asyncify']
-      backend_args += ['-emscripten-asyncify-functions=' + ','.join(settings['ASYNCIFY_FUNCTIONS'])]
-      backend_args += ['-emscripten-asyncify-whitelist=' + ','.join(settings['ASYNCIFY_WHITELIST'])]
-    if settings['NO_EXIT_RUNTIME']:
-      backend_args += ['-emscripten-no-exit-runtime']
-    if settings['BINARYEN']:
-      backend_args += ['-emscripten-wasm']
-    if settings['CYBERDWARF']:
-      backend_args += ['-enable-cyberdwarf']
+    with temp_files.get_file('.4.js') as temp_js:
+      backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
+      backend_args = [backend_compiler, infile, '-march=js', '-filetype=asm', '-o', temp_js]
+      if settings['PRECISE_F32']:
+        backend_args += ['-emscripten-precise-f32']
+      if settings['USE_PTHREADS']:
+        backend_args += ['-emscripten-enable-pthreads']
+      if settings['WARN_UNALIGNED']:
+        backend_args += ['-emscripten-warn-unaligned']
+      if settings['RESERVED_FUNCTION_POINTERS'] > 0:
+        backend_args += ['-emscripten-reserved-function-pointers=%d' % settings['RESERVED_FUNCTION_POINTERS']]
+      if settings['ASSERTIONS'] > 0:
+        backend_args += ['-emscripten-assertions=%d' % settings['ASSERTIONS']]
+      if settings['ALIASING_FUNCTION_POINTERS'] == 0:
+        backend_args += ['-emscripten-no-aliasing-function-pointers']
+      if settings['EMULATED_FUNCTION_POINTERS']:
+        backend_args += ['-emscripten-emulated-function-pointers']
+      if settings['RELOCATABLE']:
+        backend_args += ['-emscripten-relocatable']
+        backend_args += ['-emscripten-global-base=0']
+      elif settings['GLOBAL_BASE'] >= 0:
+        backend_args += ['-emscripten-global-base=%d' % settings['GLOBAL_BASE']]
+      backend_args += ['-O' + str(settings['OPT_LEVEL'])]
+      if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
+        backend_args += ['-enable-emscripten-cxx-exceptions']
+        if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
+          backend_args += ['-emscripten-cxx-exceptions-whitelist=' + ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['fake'])]
+      if settings['ASYNCIFY']:
+        backend_args += ['-emscripten-asyncify']
+        backend_args += ['-emscripten-asyncify-functions=' + ','.join(settings['ASYNCIFY_FUNCTIONS'])]
+        backend_args += ['-emscripten-asyncify-whitelist=' + ','.join(settings['ASYNCIFY_WHITELIST'])]
+      if settings['NO_EXIT_RUNTIME']:
+        backend_args += ['-emscripten-no-exit-runtime']
+      if settings['BINARYEN']:
+        backend_args += ['-emscripten-wasm']
+      if settings['CYBERDWARF']:
+        backend_args += ['-enable-cyberdwarf']
 
-    if DEBUG:
-      logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
-      t = time.time()
-    shared.jsrun.timeout_run(subprocess.Popen(backend_args, stdout=subprocess.PIPE))
-    if DEBUG:
-      logging.debug('  emscript: llvm backend took %s seconds' % (time.time() - t))
+      if DEBUG:
+        logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
+        t = time.time()
+      shared.jsrun.timeout_run(subprocess.Popen(backend_args, stdout=subprocess.PIPE))
+      if DEBUG:
+        logging.debug('  emscript: llvm backend took %s seconds' % (time.time() - t))
 
-    # Split up output
-    backend_output = open(temp_js).read()
-    #if DEBUG: print >> sys.stderr, backend_output
+      # Split up output
+      backend_output = open(temp_js).read()
+      #if DEBUG: print >> sys.stderr, backend_output
 
     start_funcs_marker = '// EMSCRIPTEN_START_FUNCTIONS'
     end_funcs_marker = '// EMSCRIPTEN_END_FUNCTIONS'
@@ -267,19 +267,19 @@ def compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DE
     assert not (metadata['simd'] and settings['SPLIT_MEMORY']), 'SIMD is used, but not supported in SPLIT_MEMORY'
 
     # Save settings to a file to work around v8 issue 1579
-    settings_file = temp_files.get('.txt').name
-    def save_settings():
-      global settings_text
-      settings_text = json.dumps(settings, sort_keys=True)
-      s = open(settings_file, 'w')
-      s.write(settings_text)
-      s.close()
-    save_settings()
+    with temp_files.get_file('.txt') as settings_file:
+      def save_settings():
+        global settings_text
+        settings_text = json.dumps(settings, sort_keys=True)
+        s = open(settings_file, 'w')
+        s.write(settings_text)
+        s.close()
+      save_settings()
 
-    # Call js compiler
-    out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
-                       [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
-                       cwd=path_from_root('src'), error_limit=300)
+      # Call js compiler
+      out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
+                         [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                         cwd=path_from_root('src'), error_limit=300)
     assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
     glue, forwarded_data = out.split('//FORWARDED_DATA:')
 
@@ -1305,38 +1305,39 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
 
   if libraries is None: libraries = []
 
-  temp_s = temp_files.get('.wb.s').name
-  backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
-  backend_args = [backend_compiler, infile, '-march=wasm32', '-filetype=asm',
-                  '-asm-verbose=false',
-                  '-o', temp_s]
-  backend_args += ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
-  # disable slow and relatively unimportant optimization passes
-  backend_args += ['-combiner-alias-analysis=false', '-combiner-global-alias-analysis=false']
-  if DEBUG:
-    logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
-    t = time.time()
-  shared.check_call(backend_args)
-  if DEBUG:
-    logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
-    t = time.time()
-    import shutil
-    shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
+  with temp_files.get_file('.wb.s') as temp_s:
+    backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
+    backend_args = [backend_compiler, infile, '-march=wasm32', '-filetype=asm',
+                    '-asm-verbose=false',
+                    '-o', temp_s]
+    backend_args += ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
+    # disable slow and relatively unimportant optimization passes
+    backend_args += ['-combiner-alias-analysis=false', '-combiner-global-alias-analysis=false']
+    if DEBUG:
+      logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
+      t = time.time()
+    shared.check_call(backend_args)
+    if DEBUG:
+      logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
+      t = time.time()
+      import shutil
+      shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
 
-  assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
-  wasm = outfile.name[:-3] + '.wast'
-  s2wasm_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 's2wasm'), temp_s]
-  s2wasm_args += ['--emscripten-glue']
-  s2wasm_args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
-  s2wasm_args += ['--initial-memory=%d' % shared.Settings.TOTAL_MEMORY]
-  def compiler_rt_fail(): raise Exception('Expected wasm_compiler_rt.a to already be built')
-  compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', lambda: compiler_rt_fail(), 'a')
-  s2wasm_args += ['-l', compiler_rt_lib]
-  if DEBUG:
-    logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
-    t = time.time()
-    #s2wasm_args += ['--debug']
-  shared.check_call(s2wasm_args, stdout=open(wasm, 'w'))
+    assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
+    wasm = outfile.name[:-3] + '.wast'
+    s2wasm_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 's2wasm'), temp_s]
+    s2wasm_args += ['--emscripten-glue']
+    s2wasm_args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
+    s2wasm_args += ['--initial-memory=%d' % shared.Settings.TOTAL_MEMORY]
+    def compiler_rt_fail(): raise Exception('Expected wasm_compiler_rt.a to already be built')
+    compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', lambda: compiler_rt_fail(), 'a')
+    s2wasm_args += ['-l', compiler_rt_lib]
+    if DEBUG:
+      logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
+      t = time.time()
+      #s2wasm_args += ['--debug']
+    shared.check_call(s2wasm_args, stdout=open(wasm, 'w'))
+
   if DEBUG:
     logging.debug('  emscript: binaryen s2wasm took %s seconds' % (time.time() - t))
     t = time.time()
@@ -1416,20 +1417,20 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
 
   # Save settings to a file to work around v8 issue 1579
-  settings_file = temp_files.get('.txt').name
-  def save_settings():
-    global settings_text
-    settings_text = json.dumps(settings, sort_keys=True)
-    s = open(settings_file, 'w')
-    s.write(settings_text)
-    s.close()
-  save_settings()
+  with temp_files.get_file('.txt') as settings_file:
+    def save_settings():
+      global settings_text
+      settings_text = json.dumps(settings, sort_keys=True)
+      s = open(settings_file, 'w')
+      s.write(settings_text)
+      s.close()
+    save_settings()
 
-  # Call js compiler
-  if DEBUG: t = time.time()
-  out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
-                     [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
-                     cwd=path_from_root('src'), error_limit=300)
+    # Call js compiler
+    if DEBUG: t = time.time()
+    out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
+                       [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                       cwd=path_from_root('src'), error_limit=300)
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
   glue, forwarded_data = out.split('//FORWARDED_DATA:')
 

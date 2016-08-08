@@ -63,10 +63,11 @@ and set up the location to the native optimizer in ~/.emscripten
 temp_files = shared.configuration.get_temp_files()
 
 def build(src, result_libs, args=[]):
-  temp = temp_files.get('.cpp').name
-  open(temp, 'w').write(src)
-  temp_js = temp_files.get('.js').name
-  shared.Building.emcc(temp, args, output_filename=temp_js)
+  with temp_files.get_file('.cpp') as temp:
+    open(temp, 'w').write(src)
+    temp_js = temp_files.get('.js').name
+    shared.Building.emcc(temp, args, output_filename=temp_js)
+
   assert os.path.exists(temp_js), 'failed to build file'
   if result_libs:
     for lib in result_libs:
