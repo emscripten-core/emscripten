@@ -341,6 +341,12 @@ ok.
   def test_sockets_echo(self):
     sockets_include = '-I'+path_from_root('tests', 'sockets')
 
+    # Note: in the WebsockifyServerHarness and CompiledServerHarness tests below, explicitly use consecutive server listen ports,
+    # because server teardown might not occur deterministically (python dtor time) and is a bit racy.
+    # WebsockifyServerHarness uses two port numbers, x and x-1, so increment it by two.
+    # CompiledServerHarness only uses one. Start with 49160 & 49159 as the first server port addresses. If adding new tests,
+    # increment the used port addresses below.
+
     # Websockify-proxied servers can't run dgram tests
     harnesses = [
       (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 49160), 0),
@@ -366,11 +372,11 @@ ok.
 
     # Websockify-proxied servers can't run dgram tests
     harnesses = [
-      (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_ASYNC=1'], 49165), 0),
-      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0', '-DTEST_ASYNC=1'], 49166), 0),
-      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1', '-DTEST_ASYNC=1'], 49167), 1),
+      (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_ASYNC=1'], 49166), 0),
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0', '-DTEST_ASYNC=1'], 49167), 0),
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1', '-DTEST_ASYNC=1'], 49168), 1),
       # The following forces non-NULL addr and addlen parameters for the accept call
-      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1', '-DTEST_ASYNC=1'], 49168), 0)
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1', '-DTEST_ASYNC=1'], 49169), 0)
     ]
 
     for harness, datagram in harnesses:
