@@ -1066,7 +1066,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if not shared.Settings.ONLY_MY_CODE:
       if type(shared.Settings.EXPORTED_FUNCTIONS) in (list, tuple):
         # always need malloc and free to be kept alive and exported, for internal use and other modules
-        for required_export in ['_malloc', '_free']:
+        # _malloc and _free are for asm.js, malloc and free are for wasm
+        # (Wasm does not append an underscore to function names)
+        for required_export in ['_malloc', '_free', 'malloc', 'free']:
           if required_export not in shared.Settings.EXPORTED_FUNCTIONS:
             shared.Settings.EXPORTED_FUNCTIONS.append(required_export)
       else:
