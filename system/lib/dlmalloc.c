@@ -610,8 +610,15 @@
 #define MAX_SIZE_T           (~(size_t)0)
 
 #ifndef USE_LOCKS /* ensure true if spin or recursive locks set */
-#define USE_LOCKS  ((defined(USE_SPIN_LOCKS) && USE_SPIN_LOCKS != 0) || \
-(defined(USE_RECURSIVE_LOCKS) && USE_RECURSIVE_LOCKS != 0))
+/* XXX: The following block adapted locally to avoid
+        clean up new Clang -Wexpansion-to-defined warnings.
+        http://lists.llvm.org/pipermail/cfe-commits/Week-of-Mon-20160118/147239.html */
+#if (defined(USE_SPIN_LOCKS) && USE_SPIN_LOCKS != 0) || \
+    (defined(USE_RECURSIVE_LOCKS) && USE_RECURSIVE_LOCKS != 0)
+#define USE_LOCKS 1
+#else
+#define USE_LOCKS 0
+#endif
 #endif /* USE_LOCKS */
 
 #if USE_LOCKS /* Spin locks for gcc >= 4.1, older gcc on x86, MSC >= 1310 */
