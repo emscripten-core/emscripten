@@ -6,6 +6,7 @@ This is an LTO-like operation, and to avoid parsing the entire tree (we might fa
 
 import os, sys, json, subprocess
 import shared, js_optimizer
+from tempfiles import try_delete
 
 js_file = sys.argv[1]
 mem_init_file = sys.argv[2]
@@ -213,6 +214,15 @@ while (newSize > globalBase && heap[newSize-1] == 0) newSize--;
 console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subarray(globalBase, newSize)), atexits]));
 
 ''' % (total_memory, total_stack, mem_init, global_base, static_bump, asm, json.dumps(ctors)))
+
+    def read_and_delete(filename):
+      result = ''
+      try:
+        result = open(filename, 'r').read()
+      finally:
+        try_delete(filename)
+      return result
+
     # Execute the sandboxed code. If an error happened due to calling an ffi, that's fine,
     # us exiting with an error tells the caller that we failed. If it times out, give up.
     out_file = config.get_temp_files().get('.out').name
@@ -220,19 +230,22 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
     proc = subprocess.Popen(shared.NODE_JS + [temp_file], stdout=open(out_file, 'w'), stderr=open(err_file, 'w'))
     try:
       shared.jsrun.timeout_run(proc, timeout=10, full_output=True)
-      if proc.returncode != 0:
-        shared.logging.debug('unexpected error while trying to eval ctors:\n' + open(err_file).read())
-        return (0, 0, 0, 0)
     except Exception, e:
       if 'Timed out' not in str(e): raise e
       shared.logging.debug('ctors timed out\n')
       return (0, 0, 0, 0)
+    finally:
+      out_result = read_and_delete(out_file)
+      err_result = read_and_delete(err_file)
+    if proc.returncode != 0:
+      shared.logging.debug('unexpected error while trying to eval ctors:\n' + out_result)
+      return (0, 0, 0, 0)
 
   # out contains the new mem init and other info
-  num_successful, mem_init_raw, atexits = json.loads(open(out_file).read())
+  num_successful, mem_init_raw, atexits = json.loads(out_result)
   mem_init = ''.join(map(chr, mem_init_raw))
   if num_successful < total_ctors:
-    shared.logging.debug('not all ctors could be evalled, something was used that was not safe (and therefore was not defined, and caused an error):\n========\n' + open(err_file).read() + '========')
+    shared.logging.debug('not all ctors could be evalled, something was used that was not safe (and therefore was not defined, and caused an error):\n========\n' + err_result + '========')
   # Remove the evalled ctors, add a new one for atexits if needed, and write that out
   if len(ctors) == total_ctors and len(atexits) == 0:
     new_ctors = ''
