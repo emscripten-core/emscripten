@@ -6421,7 +6421,7 @@ int main() {}
       tools.duplicate_function_eliminator.run(output_file)
 
       # Run last opts
-      tools.shared.safe_copy(tools.js_optimizer.run(output_file, ['last', 'asm']), output_file)
+      shutil.move(tools.js_optimizer.run(output_file, ['last', 'asm']), output_file)
       output_file_contents = self.get_file_contents(output_file)
 
       # Compare
