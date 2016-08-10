@@ -1060,7 +1060,7 @@ void eliminate(Ref ast, bool memSafe) {
             invalidateCalls();
             callsInvalidated = true;
           }
-        } else if (type == UNARY_PREFIX || type == UNARY_POSTFIX) {
+        } else if (type == UNARY_PREFIX) {
           traverseInOrder(node[2], false);
         } else if (IGNORABLE_ELIMINATOR_SCAN_NODES.has(type)) {
         } else if (type == CALL) {
@@ -2876,7 +2876,7 @@ void registerizeHarder(Ref ast) {
         }
       } else if (type == STAT) {
         buildFlowGraph(node[1]);
-      } else if (type == UNARY_PREFIX || type == UNARY_POSTFIX) {
+      } else if (type == UNARY_PREFIX) {
         isInExpr++;
         buildFlowGraph(node[2]);
         isInExpr--;
