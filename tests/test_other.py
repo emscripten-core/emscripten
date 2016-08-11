@@ -3595,10 +3595,6 @@ EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny
     assert len(with_dash_o) == 0
     assert len(without_dash_o) != 0
 
-  def test_null_device_as_input(self):
-    out = Popen([PYTHON, EMXX, '-E', '-dM', '-xc', '/dev/null'], stdout=PIPE).communicate()[0]
-    self.assertContained('#define __EMSCRIPTEN__ 1', out) # Verify output contains one of the native predefined macros
-
   def test_malloc_implicit(self):
     open('src.cpp', 'w').write(r'''
 #include <stdlib.h>
@@ -5430,11 +5426,11 @@ int main() {
     assert set(matches) == set(['6', '54', '140', '146']) # close, ioctl, llseek, writev
 
   def test_emcc_dev_null(self):
-    if WINDOWS: return self.skip('posix-only')
-    proc = Popen([PYTHON, EMCC, '-dM', '-E', '-x', 'c', '/dev/null'], stdout=PIPE)
+    proc = Popen([PYTHON, EMCC, '-dM', '-E', '-xc', '/dev/null' if not WINDOWS else 'nul'], stdout=PIPE, stderr=PIPE)
     out, err = proc.communicate()
     assert proc.returncode == 0
     self.assertContained('#define __EMSCRIPTEN__ 1', out) # all our defines should show up
+    assert len(err) == 0
 
   def test_umask_0(self):
     open('src.c', 'w').write(r'''
