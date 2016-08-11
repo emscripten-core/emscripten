@@ -2103,11 +2103,15 @@ var LibraryGL = {
 
   glFenceSync__sig: 'iii',
   glFenceSync: function(condition, flags) {
-    var id = GL.getNewId(GL.syncs);
     var sync = GLctx.fenceSync(condition, flags);
-    sync.name = id;
-    GL.syncs[id] = sync;
-    return id;
+    if (sync) {
+      var id = GL.getNewId(GL.syncs);
+      sync.name = id;
+      GL.syncs[id] = sync;
+      return id;
+    } else {
+      return 0; // Failed to create a sync object
+    }
   },
 
   glDeleteSync__sig: 'vi',
