@@ -2,6 +2,11 @@
 # It teaches CMake about the Emscripten compiler, so that CMake can generate makefiles
 # from CMakeLists.txt that invoke emcc.
 
+# Since updating to LLVM 3.9, its build system requires CMake 3.4.3 or newer, so use this as a
+# baseline requirement for Emscripten toolchain as well, as developers will have this version or
+# they would have been unable to build LLVM in the first place.
+cmake_minimum_required(VERSION 3.4.3)
+
 # To use this toolchain file with CMake, invoke CMake with the following command line parameters
 # cmake -DCMAKE_TOOLCHAIN_FILE=<EmscriptenRoot>/cmake/Modules/Platform/Emscripten.cmake
 #       -DCMAKE_BUILD_TYPE=<Debug|RelWithDebInfo|Release|MinSizeRel>
