@@ -1662,7 +1662,6 @@ int main () {
 }
     ''', 'exception caught: std::bad_typeid')
 
-  @no_wasm_backend
   def test_iostream_ctors(self): # iostream stuff must be globally constructed before user global constructors, so iostream works in global constructors
     self.do_run(r'''
 #include <iostream>
@@ -1690,7 +1689,6 @@ int main() {
 
     self.do_run_from_file(src, output)
 
-  @no_wasm_backend
   def test_isdigit_l(self):
       test_path = path_from_root('tests', 'core', 'test_isdigit_l')
       src, output = (test_path + s for s in ('.in', '.out'))
@@ -1841,7 +1839,6 @@ value = real 0.00 imag 1.00''', force_c=True)
     src = open(path_from_root('tests', 'stdio', 'test_rename.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
-  @no_wasm_backend
   def test_remove(self):
     src = open(path_from_root('tests', 'cstdio', 'test_remove.cpp'), 'r').read()
     self.do_run(src, 'success')
@@ -4815,7 +4812,6 @@ Have even and odd!
 
     self.do_run_from_file(src, output)
 
-  @no_wasm_backend
   def test_fnmatch(self):
     # Run one test without assertions, for additional coverage
     #assert 'asm2m' in test_modes
@@ -5140,7 +5136,6 @@ def process(filename):
     self.emcc_args += ['--embed-file', 'three_numbers.txt']
     self.do_run(src, 'match = 3\nx = -1.0, y = 0.1, z = -0.1\n')
 
-  @no_wasm_backend
   def test_fscanf_2(self):
     open('a.txt', 'w').write('''1/2/3 4/5/6 7/8/9
 ''')
@@ -5187,7 +5182,6 @@ main( int argv, char ** argc ) {
     self.emcc_args += ['--embed-file', 'empty.txt']
     self.do_run(src, '3\n')
 
-  @no_wasm_backend
   def test_readdir(self):
     self.banned_js_engines = [V8_ENGINE] # stderr printing limitations in v8
     src = open(path_from_root('tests', 'dirent', 'test_readdir.c'), 'r').read()
@@ -5330,7 +5324,6 @@ def process(filename):
       self.emcc_args = orig_args + mode
       self.do_run_from_file(src, output)
 
-  @no_wasm_backend
   def test_direct_string_constant_usage(self):
     test_path = path_from_root('tests', 'core', 'test_direct_string_constant_usage')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5372,7 +5365,6 @@ def process(filename):
     finally:
       Settings.INCLUDE_FULL_LIBRARY = 0
 
-  @no_wasm_backend
   def test_fs_nodefs_rw(self):
     Settings.SYSCALL_DEBUG = 1
     src = open(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'r').read()
@@ -5390,7 +5382,6 @@ def process(filename):
     out = path_from_root('tests', 'fs', 'test_trackingdelegate.out')
     self.do_run_from_file(src, out)
 
-  @no_wasm_backend
   def test_fs_writeFile(self):
     self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=1'] # see issue 2334
     src = path_from_root('tests', 'fs', 'test_writeFile.cc')
@@ -5430,7 +5421,6 @@ def process(filename):
     expected = open(path_from_root('tests', 'unistd', 'curdir.out'), 'r').read()
     self.do_run(src, expected)
 
-  @no_wasm_backend
   def test_unistd_close(self):
     src = open(path_from_root('tests', 'unistd', 'close.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'close.out'), 'r').read()
@@ -5652,7 +5642,6 @@ PORT: 3979
 
   # libc++ tests
 
-  @no_wasm_backend
   def test_iostream_and_determinism(self):
     src = '''
       #include <iostream>
@@ -5685,7 +5674,6 @@ PORT: 3979
 
     self.do_run_from_file(src, output)
 
-  @no_wasm_backend
   def test_random_device(self):
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
 
@@ -6979,7 +6967,6 @@ def process(filename):
     shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('pgoed2.js'))
     assert open('pgoed.js').read() == open('pgoed2.js').read()
 
-  @no_wasm_backend
   def test_exported_response(self):
     src = r'''
       #include <stdio.h>
@@ -7003,7 +6990,6 @@ def process(filename):
     self.do_run(src, '''waka 5!''')
     assert 'other_function' in open('src.cpp.o.js').read()
 
-  @no_wasm_backend
   def test_large_exported_response(self):
     src = r'''
       #include <stdio.h>
@@ -7718,7 +7704,6 @@ Module.printErr = Module['printErr'] = function(){};
       assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
 
   @no_emterpreter
-  @no_wasm_backend
   def test_source_map(self):
     if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
     if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
