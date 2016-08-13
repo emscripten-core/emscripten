@@ -6458,3 +6458,29 @@ int main() {
     
     stdout, stderr = Popen([PYTHON, EMCC, '-Wall', '-std=c++14', 'src_tmp_fixed_lang'], stderr=PIPE).communicate()
     self.assertContained("Input file has an unknown suffix, don't know what to do with it!", stderr)
+
+  def test_disable_inlining(self):
+    open('test.c', 'w').write(r'''
+#include <stdio.h>
+
+void foo() {
+  printf("foo\n");
+}
+
+int main() {
+  foo();
+  return 0;
+}
+''')
+    # Without the 'INLINING_LIMIT=1', -O2 inlines foo()
+    check_execute([PYTHON, EMCC, 'test.c', '-O2', '-o', 'test.bc', '-s', 'INLINING_LIMIT=1'])
+    # If foo() had been wrongly inlined above, internalizing foo and running
+    # global DCE makes foo DCE'd
+    Building.llvm_opt('test.bc', ['-internalize', '-internalize-public-api-list=main', '-globaldce'], 'test.bc')
+
+    # To this test to be successful, foo() shouldn't have been inlined above and
+    # foo() should be in the function list
+    syms = Building.llvm_nm('test.bc')
+    assert 'foo' in syms.defs, 'foo() should not be inlined'
+    try_delete('test.c')
+    try_delete('test.bc')
