@@ -1318,7 +1318,8 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
     if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
       backend_args += ['-enable-emscripten-cxx-exceptions']
     if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
-      backend_args += ['-emscripten-cxx-exceptions-whitelist=' + ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['fake'])]
+      whitelist = ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['fake'])
+      backend_args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
 
     if DEBUG:
       logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
@@ -1396,9 +1397,9 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   for line in open(wasm).readlines():
     if line.startswith('  (import '):
       parts = line.split(' ')
-      # Invoke wrappers for exception handling
-      # Adding them to metadata['declares'] makes them to be generated in JS
-      # glue code
+      # Don't include Invoke wrapper names (for asm.js-style exception handling)
+      # in metadata[declares], the invoke wrappers will be generated in
+      # this script later.
       if not parts[3][1:].startswith('invoke_'):
         metadata['declares'].append(parts[3][1:])
     elif line.startswith('  (func '):
@@ -1544,7 +1545,7 @@ return ASM_CONSTS[code](%s);
   basic_vars = ['STACKTOP', 'STACK_MAX', 'ABORT']
   basic_float_vars = []
 
-  # Invoke wrapper generation
+  # Asm.js-style exception handling: invoke wrapper generation
   invoke_wrappers = ''
   for line in open(wasm).readlines():
     if line.startswith('  (import '):
