@@ -1650,7 +1650,7 @@ class Building:
           ret.undefs.append(symbol)
         elif status == 'C':
           ret.commons.append(symbol)
-        elif status == status.upper(): # all other uppercase statuses ('T', etc.) are normally defined symbols
+        elif status in ['W', 't', 'T', 'd', 'D']:
           ret.defs.append(symbol)
         # otherwise, not something we should notice
     ret.defs = set(ret.defs)
