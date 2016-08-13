@@ -1383,6 +1383,9 @@ int main() {
     Settings.DISABLE_EXCEPTION_CATCHING = 0
 
     for safe in [0,1]:
+      # Wasm backend does not support SAFE_HEAP option
+      if self.is_wasm_backend() and safe == 1:
+        continue
       print safe
       Settings.SAFE_HEAP = safe
       test_path = path_from_root('tests', 'core', 'test_exceptions_2')
@@ -1427,10 +1430,14 @@ int main(int argc, char **argv)
     print '2'
     self.do_run(src, 'Caught exception: Hello\nDone.', ['2'], no_build=True)
 
-  @no_wasm_backend
   def test_exceptions_white_list(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 2
-    Settings.EXCEPTION_CATCHING_WHITELIST = ["__Z12somefunctionv"]
+    # Wasm does not add an underscore to function names. For wasm, the
+    # mismatches are fixed in fixImports() function in JS glue code.
+    if not Settings.BINARYEN:
+      Settings.EXCEPTION_CATCHING_WHITELIST = ["__Z12somefunctionv"]
+    else:
+      Settings.EXCEPTION_CATCHING_WHITELIST = ["_Z12somefunctionv"]
     Settings.INLINING_LIMIT = 50 # otherwise it is inlined and not identified
 
     test_path = path_from_root('tests', 'core', 'test_exceptions_white_list')
@@ -1468,8 +1475,13 @@ int main(int argc, char **argv)
 
   def test_exceptions_white_list_2(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 2
-    Settings.EXCEPTION_CATCHING_WHITELIST = ["_main"]
-    Settings.INLINING_LIMIT = 50 # otherwise it is inlined and not identified
+    # Wasm does not add an underscore to function names. For wasm, the
+    # mismatches are fixed in fixImports() function in JS glue code.
+    if not Settings.BINARYEN:
+      Settings.EXCEPTION_CATCHING_WHITELIST = ["_main"]
+    else:
+      Settings.EXCEPTION_CATCHING_WHITELIST = ["main"]
+    Settings.INLINING_LIMIT = 1 # otherwise it is inlined and not identified
 
     test_path = path_from_root('tests', 'core', 'test_exceptions_white_list_2')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -1624,7 +1636,6 @@ int main(int argc, char **argv)
     src, output = (test_path + s for s in ('.cpp', '.txt'))
     self.do_run_from_file(src, output)
 
-  @no_wasm_backend
   def test_bad_typeid(self):
     Settings.ERROR_ON_UNDEFINED_SYMBOLS = 1
     Settings.DISABLE_EXCEPTION_CATCHING = 0

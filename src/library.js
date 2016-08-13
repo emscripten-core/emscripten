@@ -989,7 +989,12 @@ LibraryManager.library = {
       info.refcount--;
       if (info.refcount === 0) {
         if (info.destructor) {
+#if BINARYEN == 0
           Runtime.dynCall('vi', info.destructor, [ptr]);
+#else
+          // In Wasm, destructors return 'this' as in ARM
+          Runtime.dynCall('ii', info.destructor, [ptr]);
+#endif
         }
         delete EXCEPTIONS.infos[ptr];
         ___cxa_free_exception(ptr);

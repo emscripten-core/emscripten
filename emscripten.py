@@ -1313,6 +1313,13 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
     backend_args += ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
     # disable slow and relatively unimportant optimization passes
     backend_args += ['-combiner-alias-analysis=false', '-combiner-global-alias-analysis=false']
+
+    # asm.js-style exception handling
+    if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
+      backend_args += ['-enable-emscripten-cxx-exceptions']
+    if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
+      backend_args += ['-emscripten-cxx-exceptions-whitelist=' + ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['fake'])]
+
     if DEBUG:
       logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
       t = time.time()
@@ -1389,7 +1396,11 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   for line in open(wasm).readlines():
     if line.startswith('  (import '):
       parts = line.split(' ')
-      metadata['declares'].append(parts[3][1:])
+      # Invoke wrappers for exception handling
+      # Adding them to metadata['declares'] makes them to be generated in JS
+      # glue code
+      if not parts[3][1:].startswith('invoke_'):
+        metadata['declares'].append(parts[3][1:])
     elif line.startswith('  (func '):
       parts = line.split(' ')
       func = parts[3][1:]
@@ -1533,6 +1544,17 @@ return ASM_CONSTS[code](%s);
   basic_vars = ['STACKTOP', 'STACK_MAX', 'ABORT']
   basic_float_vars = []
 
+  # Invoke wrapper generation
+  invoke_wrappers = ''
+  for line in open(wasm).readlines():
+    if line.startswith('  (import '):
+      parts = line.split(' ')
+      func_name = parts[3][1:]
+      if func_name.startswith('invoke_'):
+        sig = func_name[len('invoke_'):]
+        invoke_wrappers += '\n' + shared.JS.make_invoke(sig) + '\n'
+        basic_funcs.append(func_name)
+
   # sent data
   the_global = '{}'
   sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
@@ -1589,6 +1611,8 @@ Runtime.establishStackSpace = asm['establishStackSpace'];
 Runtime.setTempRet0 = asm['setTempRet0'];
 Runtime.getTempRet0 = asm['getTempRet0'];
 ''')
+
+  funcs_js.append(invoke_wrappers)
 
   for i in range(len(funcs_js)): # do this loop carefully to save memory
     if WINDOWS: funcs_js[i] = funcs_js[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
