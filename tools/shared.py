@@ -1627,7 +1627,7 @@ class Building:
   nm_cache = {} # cache results of nm - it can be slow to run
 
   @staticmethod
-  def llvm_nm(filename, stdout=PIPE, stderr=None, **kwargs):
+  def llvm_nm(filename, stdout=PIPE, stderr=None, include_internal=False):
     if filename in Building.nm_cache:
       #logging.debug('loading nm results for %s from cache' % filename)
       return Building.nm_cache[filename]
@@ -1650,9 +1650,8 @@ class Building:
           ret.undefs.append(symbol)
         elif status == 'C':
           ret.commons.append(symbol)
-        # If 'internal' option is set, include internal symbols too
-        elif kwargs.get('internal') and status in ['W', 't', 'T', 'd', 'D'] or \
-             not kwargs.get('internal') and status in ['W', 'T', 'D']:
+        elif include_internal and status in ['W', 't', 'T', 'd', 'D'] or \
+            not include_internal and status in ['W', 'T', 'D']:
           ret.defs.append(symbol)
     ret.defs = set(ret.defs)
     ret.undefs = set(ret.undefs)
