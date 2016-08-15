@@ -6480,7 +6480,7 @@ int main() {
 
     # To this test to be successful, foo() shouldn't have been inlined above and
     # foo() should be in the function list
-    syms = Building.llvm_nm('test.bc')
+    syms = Building.llvm_nm('test.bc', include_internal=True)
     assert 'foo' in syms.defs, 'foo() should not be inlined'
     try_delete('test.c')
     try_delete('test.bc')
