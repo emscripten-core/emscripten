@@ -23,6 +23,10 @@ emcc can be influenced by a few environment variables:
   EMMAKEN_COMPILER - The compiler to be used, if you don't want the default clang.
 '''
 
+from tools.toolchain_profiler import ToolchainProfiler
+if __name__ == '__main__':
+  ToolchainProfiler.record_process_start()
+
 import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
 from subprocess import PIPE
 from tools import shared, jsrun, system_libs
@@ -2103,3 +2107,4 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
 if __name__ == '__main__':
   run()
+  sys.exit(0)

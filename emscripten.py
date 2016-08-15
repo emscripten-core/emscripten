@@ -9,6 +9,10 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 '''
 
+from tools.toolchain_profiler import ToolchainProfiler
+if __name__ == '__main__':
+  ToolchainProfiler.record_process_start()
+
 import os, sys, json, optparse, subprocess, re, time, logging
 
 from tools import shared
@@ -1729,3 +1733,4 @@ WARNING: You should normally never use this! Use emcc instead.
 
 if __name__ == '__main__':
   _main()
+  sys.exit(0)

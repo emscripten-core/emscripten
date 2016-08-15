@@ -1,3 +1,4 @@
+from toolchain_profiler import ToolchainProfiler
 import time, os, sys, logging
 from subprocess import Popen, PIPE, STDOUT
 
