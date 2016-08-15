@@ -123,7 +123,9 @@ def get_and_parse_backend(infile, settings, temp_files, DEBUG):
       if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
         backend_args += ['-enable-emscripten-cxx-exceptions']
         if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
-          backend_args += ['-emscripten-cxx-exceptions-whitelist=' + ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['fake'])]
+          whitelist = \
+            ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['__fake'])
+          backend_args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
       if settings['ASYNCIFY']:
         backend_args += ['-emscripten-asyncify']
         backend_args += ['-emscripten-asyncify-functions=' + ','.join(settings['ASYNCIFY_FUNCTIONS'])]
@@ -1318,7 +1320,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
     if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
       backend_args += ['-enable-emscripten-cxx-exceptions']
     if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
-      whitelist = ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['fake'])
+      whitelist = ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['__fake'])
       backend_args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
 
     if DEBUG:
