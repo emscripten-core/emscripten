@@ -989,7 +989,7 @@ LibraryManager.library = {
       info.refcount--;
       if (info.refcount === 0) {
         if (info.destructor) {
-#if BINARYEN == 0
+#if WASM_BACKEND == 0
           Runtime.dynCall('vi', info.destructor, [ptr]);
 #else
           // In Wasm, destructors return 'this' as in ARM

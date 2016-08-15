@@ -1400,17 +1400,18 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
       # Don't include Invoke wrapper names (for asm.js-style exception handling)
       # in metadata[declares], the invoke wrappers will be generated in
       # this script later.
-      if not parts[3][1:].startswith('invoke_'):
-        metadata['declares'].append(parts[3][1:])
+      func_name = parts[3][1:]
+      if not func_name.startswith('invoke_'):
+        metadata['declares'].append(func_name)
     elif line.startswith('  (func '):
       parts = line.split(' ')
-      func = parts[3][1:]
-      metadata['implementedFunctions'].append(func)
+      func_name = parts[3][1:]
+      metadata['implementedFunctions'].append(func_name)
     elif line.startswith('  (export '):
       parts = line.split(' ')
-      exportname = parts[3][1:-1]
-      assert asmjs_mangle(exportname) not in metadata['exports']
-      metadata['exports'].append(exportname)
+      export_name = parts[3][1:-1]
+      assert asmjs_mangle(export_name) not in metadata['exports']
+      metadata['exports'].append(export_name)
 
   metadata['declares'] = filter(lambda x: not x.startswith('emscripten_asm_const'), metadata['declares']) # we emit those ourselves
 
@@ -1547,14 +1548,15 @@ return ASM_CONSTS[code](%s);
 
   # Asm.js-style exception handling: invoke wrapper generation
   invoke_wrappers = ''
-  for line in open(wasm).readlines():
-    if line.startswith('  (import '):
-      parts = line.split(' ')
-      func_name = parts[3][1:]
-      if func_name.startswith('invoke_'):
-        sig = func_name[len('invoke_'):]
-        invoke_wrappers += '\n' + shared.JS.make_invoke(sig) + '\n'
-        basic_funcs.append(func_name)
+  with open(wasm) as f:
+    for line in f:
+      if line.startswith('  (import '):
+        parts = line.split(' ')
+        func_name = parts[3][1:]
+        if func_name.startswith('invoke_'):
+          sig = func_name[len('invoke_'):]
+          invoke_wrappers += '\n' + shared.JS.make_invoke(sig) + '\n'
+          basic_funcs.append(func_name)
 
   # sent data
   the_global = '{}'
