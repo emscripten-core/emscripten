@@ -1627,7 +1627,7 @@ class Building:
   nm_cache = {} # cache results of nm - it can be slow to run
 
   @staticmethod
-  def llvm_nm(filename, stdout=PIPE, stderr=None):
+  def llvm_nm(filename, stdout=PIPE, stderr=None, include_internal=False):
     if filename in Building.nm_cache:
       #logging.debug('loading nm results for %s from cache' % filename)
       return Building.nm_cache[filename]
@@ -1650,9 +1650,9 @@ class Building:
           ret.undefs.append(symbol)
         elif status == 'C':
           ret.commons.append(symbol)
-        elif status == status.upper(): # all other uppercase statuses ('T', etc.) are normally defined symbols
+        elif include_internal and status in ['W', 't', 'T', 'd', 'D'] or \
+            not include_internal and status in ['W', 'T', 'D']:
           ret.defs.append(symbol)
-        # otherwise, not something we should notice
     ret.defs = set(ret.defs)
     ret.undefs = set(ret.undefs)
     ret.commons = set(ret.commons)
