@@ -6,8 +6,13 @@
 
 #define MULTILINE(...) #__VA_ARGS__
 
-int touch_started = 0;
-int touch_ended = 0;
+int touch_started_button = -1;
+int touch_started_x = -1;
+int touch_started_y = -1;
+
+int touch_ended_button = -1;
+int touch_ended_x = -1;
+int touch_ended_y = -1;
 
 int result = 0;
 
@@ -17,11 +22,15 @@ void mouseCB(int button, int state, int x, int y)
     {
         if(state == GLUT_DOWN)
         {
-            touch_started = 1;
+            touch_started_button = button;
+            touch_started_x = x;
+            touch_started_y = y;
         }
         else if(state == GLUT_UP)
         {
-            touch_ended = 1;
+            touch_ended_button = button;
+            touch_ended_x = x;
+            touch_ended_y = y;
         }
     }
 }
@@ -29,13 +38,22 @@ void mouseCB(int button, int state, int x, int y)
 int main(int argc, char *argv[])
 {
     emscripten_run_script(MULTILINE(
-        Module.injectEvent = function(eventType, x, y) {
+        Module.injectEvent = function(eventType, wantedX, wantedY) {
             // Desktop browsers do not have the event types for touch events,
             // so we fake them by creating a plain-vanilla UIEvent and then
             // filling in the fields that we look for with appropriate values.
+            var rect = Module["canvas"].getBoundingClientRect();
+            var x = wantedX + rect.left;
+            var y = wantedY + rect.top;
             var touch = {
+                identifier: 0,
+                clientX: x,
+                clientY: y,
+                screenX: x,
+                screenY: y,
                 pageX: x,
-                pageY: y
+                pageY: y,
+                target: Module['canvas']
             };
             var touches = [ touch ];
             touches.item = function(i) { return this[i]; };
@@ -43,7 +61,7 @@ int main(int argc, char *argv[])
             var event = document.createEvent('UIEvent');
             event.target = Module['canvas'];
             event.button = 0;
-            event.touches = touches;
+            event.changedTouches = touches;
             event.initUIEvent(eventType, true, true, window, 1);
             Module['canvas'].dispatchEvent(event);
         }
@@ -55,10 +73,12 @@ int main(int argc, char *argv[])
 
     glutMouseFunc(&mouseCB);
 
-    emscripten_run_script("Module.injectEvent('touchend', 100, 100)");
-    emscripten_run_script("Module.injectEvent('touchstart', 100, 100)");
-    result = touch_started && touch_ended;
-
+    emscripten_run_script("Module.injectEvent('touchstart', 101, 102)");
+    emscripten_run_script("Module.injectEvent('touchend', 201, 202)");
+    result = touch_started_button == 0 && touch_started_x == 101 && touch_started_y == 102 &&
+        touch_ended_button == 0 && touch_ended_x == 201 && touch_ended_y == 202;
+    printf("touchstarted: button:%d x:%d y:%d\n", touch_started_button, touch_started_x, touch_started_y);
+    printf("touchended:   button:%d x:%d y:%d\n", touch_ended_button, touch_ended_x, touch_ended_y);
     REPORT_RESULT();
     return 0;
 }
