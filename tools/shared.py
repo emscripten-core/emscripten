@@ -1650,8 +1650,9 @@ class Building:
           ret.undefs.append(symbol)
         elif status == 'C':
           ret.commons.append(symbol)
-        elif include_internal and status in ['W', 't', 'T', 'd', 'D'] or \
-            not include_internal and status in ['W', 'T', 'D']:
+        elif (not include_internal and status == status.upper()) or \
+             (    include_internal and status in ['W', 't', 'T', 'd', 'D']): # FIXME: using WTD in the previous line fails due to llvm-nm behavior on OS X,
+                                                                             #        so for now we assume all uppercase are normally defined external symbols
           ret.defs.append(symbol)
     ret.defs = set(ret.defs)
     ret.undefs = set(ret.undefs)
