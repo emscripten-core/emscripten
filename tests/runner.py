@@ -605,8 +605,6 @@ class RunnerCore(unittest.TestCase):
 
   ## Does a complete test - builds, runs, checks output, etc.
   def do_run(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[], assert_returncode=None):
-    if Settings.DISABLE_EXCEPTION_CATCHING != 1 and self.is_wasm_backend():
-      return self.skip("wasm backend doesn't support exceptions yet")
     if Settings.ASYNCIFY == 1 and self.is_wasm_backend():
       return self.skip("wasm backend doesn't support ASYNCIFY yet")
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
