@@ -19,10 +19,11 @@ def SIMD(f):
 
 # Generic decorator that calls a function named 'condition' on the test class and
 # skips the test if that function returns true
-def skip_if(func, condition):
+def skip_if(func, condition, explanation=''):
+  explanation_str = ' : %s' % explanation if explanation else ''
   def decorated(self):
     if self.__getattribute__(condition)():
-      return self.skip(condition)
+      return self.skip(condition + explanation_str)
     return func(self)
   return decorated
 
@@ -34,6 +35,11 @@ def no_wasm(f):
 
 def no_wasm_backend(f):
   return skip_if(f, 'is_wasm_backend')
+
+def no_wasm_backend_note(note=''):
+  def decorated(f):
+    return skip_if(f, 'is_wasm_backend', note)
+  return decorated
 
 
 class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
@@ -2231,7 +2237,7 @@ int main() {
 }
 ''', 'hello world…')
 
-  @no_wasm_backend
+  @no_wasm_backend_note('requires EM_ASM args support in wasm backend')
   def test_em_asm_unused_arguments(self):
     src = r'''
       #include <stdio.h>
@@ -2251,7 +2257,7 @@ int main() {
   # Maybe tests will later be joined into larger compilation units?
   # Then this must still be compiled separately from other code using EM_ASM
   # macros with arities 1-3. Otherwise this may incorrectly report a success.
-  @no_wasm_backend
+  @no_wasm_backend_note('requires EM_ASM args support in wasm backend')
   def test_em_asm_parameter_pack(self):
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
     src = r'''
@@ -4762,7 +4768,7 @@ Have even and odd!
 
     self.do_run_from_file(src, output)
 
-  @no_wasm_backend
+  @no_wasm_backend_note('takes a very long time to compile')
   def test_printf(self):
     self.banned_js_engines = [NODE_JS, V8_ENGINE] # SpiderMonkey and V8 do different things to float64 typed arrays, un-NaNing, etc.
     src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
@@ -7026,7 +7032,7 @@ def process(filename):
     self.do_run(src, '''waka 4999!''')
     assert '_exported_func_from_response_file_1' in open('src.cpp.o.js').read()
 
-  @no_wasm_backend
+  @no_wasm_backend_note('requires EM_ASM args support in wasm backend')
   def test_add_function(self):
     Settings.INVOKE_RUN = 0
     Settings.RESERVED_FUNCTION_POINTERS = 1
@@ -7060,7 +7066,7 @@ def process(filename):
     Settings.EMULATED_FUNCTION_POINTERS = 1 # with emulation, we don't need to reserve
     self.do_run_from_file(src, expected)
 
-  @no_wasm_backend
+  @no_wasm_backend_note('requires EM_ASM args support in wasm backend')
   def test_getFuncWrapper_sig_alias(self):
     src = r'''
     #include <stdio.h>
