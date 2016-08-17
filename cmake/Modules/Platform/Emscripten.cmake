@@ -95,7 +95,9 @@ if ("${CMAKE_RANLIB}" STREQUAL "")
 	set(CMAKE_RANLIB "${EMSCRIPTEN_ROOT_PATH}/emranlib${EMCC_SUFFIX}" CACHE FILEPATH "Emscripten ranlib")
 endif()
 
-# CMakeForceCompiler is not to be used from CMake 3.5+
+# For older CMakes, one can force to avoid doing compiler autodetection
+# since we are cross-compiling by setting the EMSCRIPTEN_FORCE_COMPILERS option.
+# Default it to OFF since it is deprecated and no longer needed in CMake 3.5+
 # https://cmake.org/cmake/help/v3.5/module/CMakeForceCompiler.html
 option(EMSCRIPTEN_FORCE_COMPILERS "Force C/C++ compiler" OFF)
 if (EMSCRIPTEN_FORCE_COMPILERS)
