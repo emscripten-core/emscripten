@@ -69,12 +69,9 @@ endif()
 # Normalize, convert Windows backslashes to forward slashes or CMake will crash.
 get_filename_component(EMSCRIPTEN_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}" ABSOLUTE)
 
-if (NOT CMAKE_MODULE_PATH)
-	set(CMAKE_MODULE_PATH "")
-endif()
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${EMSCRIPTEN_ROOT_PATH}/cmake/Modules")
+list(APPEND CMAKE_MODULE_PATH "${EMSCRIPTEN_ROOT_PATH}/cmake/Modules")
 
-set(CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}/system")
+list(APPEND CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}/system")
 
 if (CMAKE_HOST_WIN32)
 	set(EMCC_SUFFIX ".bat")
@@ -98,10 +95,14 @@ if ("${CMAKE_RANLIB}" STREQUAL "")
 	set(CMAKE_RANLIB "${EMSCRIPTEN_ROOT_PATH}/emranlib${EMCC_SUFFIX}" CACHE FILEPATH "Emscripten ranlib")
 endif()
 
-# Don't do compiler autodetection, since we are cross-compiling.
-include(CMakeForceCompiler)
-CMAKE_FORCE_C_COMPILER("${CMAKE_C_COMPILER}" Clang)
-CMAKE_FORCE_CXX_COMPILER("${CMAKE_CXX_COMPILER}" Clang)
+# CMakeForceCompiler is not to be used from CMake 3.5+
+# https://cmake.org/cmake/help/v3.5/module/CMakeForceCompiler.html
+option(EMSCRIPTEN_FORCE_COMPILERS "Force C/C++ compiler" OFF)
+if (EMSCRIPTEN_FORCE_COMPILERS)
+	include(CMakeForceCompiler)
+	CMAKE_FORCE_C_COMPILER("${CMAKE_C_COMPILER}" Clang)
+	CMAKE_FORCE_CXX_COMPILER("${CMAKE_CXX_COMPILER}" Clang)
+endif()
 
 # To find programs to execute during CMake run time with find_program(), e.g. 'git' or so, we allow looking
 # into system paths.
