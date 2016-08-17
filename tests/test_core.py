@@ -7031,54 +7031,34 @@ def process(filename):
     Settings.INVOKE_RUN = 0
     Settings.RESERVED_FUNCTION_POINTERS = 1
 
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
-      #include <emscripten.h>
+    test_path = path_from_root('tests', 'interop')
+    src, expected = (os.path.join(test_path, s) for s in ('test_add_function.cpp', 'test_add_function.out'))
 
-      int main(int argc, char **argv) {
-        int fp = atoi(argv[1]);
-        printf("fp: %d\n", fp);
-        void (*f)(int) = reinterpret_cast<void (*)(int)>(fp);
-        f(7);
-        EM_ASM_(Module['Runtime']['removeFunction']($0), f);
-        printf("ok\n");
-        return 0;
-      }
-    '''
-
-    open(os.path.join(self.get_dir(), 'post.js'), 'w').write('''
-      var newFuncPtr = Runtime.addFunction(function(num) {
-        Module.print('Hello ' + num + ' from JS!');
-      });
-      Module.callMain([newFuncPtr.toString()]);
-    ''')
-
-    expected = '''Hello 7 from JS!\nok\n'''
-    self.emcc_args += ['--post-js', 'post.js']
-    self.do_run(src, expected)
+    post_js = os.path.join(test_path, 'test_add_function_post.js')
+    self.emcc_args += ['--post-js', post_js]
+    self.do_run_from_file(src, expected)
 
     if Settings.ASM_JS:
       Settings.RESERVED_FUNCTION_POINTERS = 0
-      self.do_run(src, '''Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.''')
+      self.do_run(open(src).read(), '''Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.''')
       generated = open('src.cpp.o.js').read()
       assert 'jsCall' not in generated
       Settings.RESERVED_FUNCTION_POINTERS = 1
 
       Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS # flip the test
-      self.do_run(src, expected)
+      self.do_run_from_file(src, expected)
 
     assert 'asm2' in test_modes
     if self.run_name == 'asm2':
       print 'closure'
       self.banned_js_engines = [NODE_JS] # weird global handling in node
       self.emcc_args += ['--closure', '1']
-      self.do_run(src, expected)
+      self.do_run_from_file(src, expected)
 
     print 'function pointer emulation'
     Settings.RESERVED_FUNCTION_POINTERS = 0
     Settings.EMULATED_FUNCTION_POINTERS = 1 # with emulation, we don't need to reserve
-    self.do_run(src, expected)
+    self.do_run_from_file(src, expected)
 
   @no_wasm_backend
   def test_getFuncWrapper_sig_alias(self):
