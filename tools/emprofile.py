@@ -61,7 +61,7 @@ def create_profiling_graph():
   print 'Wrote "' + json_file + '"'
 
   html_file = OUTFILE + '.html'
-  html_contents = open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'tools', 'toolchain_profiler.results_template.html'), 'r').read().replace('{{{results_log_file}}}', '"' + json_file + '"')
+  html_contents = open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'toolchain_profiler.results_template.html'), 'r').read().replace('{{{results_log_file}}}', '"' + json_file + '"')
   open(html_file, 'w').write(html_contents)
   print 'Wrote "' + html_file + '"'
 
