@@ -485,7 +485,7 @@ for file_ in data_files:
         parts.append('''fileData%d.push.apply(fileData%d, %s);\n''' % (counter, counter, str(data[start:start+chunk_size])))
         start += chunk_size
       code += ''.join(parts)
-    code += '''Module['FS_createDataFile']('%s', '%s', fileData%d, true, true);\n''' % (dirname, basename, counter)
+    code += '''Module['FS_createDataFile']('%s', '%s', fileData%d, true, true, false);\n''' % (dirname, basename, counter)
     counter += 1
   elif file_['mode'] == 'preload':
     # Preload

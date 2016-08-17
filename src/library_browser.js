@@ -848,7 +848,7 @@ var LibraryBrowser = {
         try {
           FS.unlink(_file);
         } catch (e) {}
-        FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true);
+        FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true, false);
         if (onload) {
           var stack = Runtime.stackSave();
           Runtime.dynCall('viii', onload, [handle, arg, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK)]);
