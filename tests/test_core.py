@@ -4980,7 +4980,7 @@ def process(filename):
       'preRun': function() {
         FS.createLazyFile('/', 'test.file', 'test.file', true, false);
         // Test FS_* exporting
-        Module['FS_createDataFile']('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false);  // 200 becomes -56, since signed chars are used in memory
+        Module['FS_createDataFile']('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false, false);  // 200 becomes -56, since signed chars are used in memory
         var test_files_input = 'hi there!';
         var test_files_input_index = 0;
         FS.init(function() {
@@ -5215,7 +5215,7 @@ name: .
 def process(filename):
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createDataFile('/', 'test', 'abcdef', true, true);"
+    "FS.createDataFile('/', 'test', 'abcdef', true, true, false);"
   )
   open(filename, 'w').write(src)
 '''
@@ -5235,7 +5235,7 @@ def process(filename):
 def process(filename):
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createDataFile('/', 'test', 'abcdef', true, true);"
+    "FS.createDataFile('/', 'test', 'abcdef', true, true, false);"
   )
   open(filename, 'w').write(src)
 '''
@@ -5252,7 +5252,7 @@ def process(filename):
       var dummy_device = FS.makedev(64, 0);
       FS.registerDevice(dummy_device, {});
 
-      FS.createDataFile('/', 'file', 'abcdef', true, true);
+      FS.createDataFile('/', 'file', 'abcdef', true, true, false);
       FS.mkdev('/device', dummy_device);
     \'\'\'
   )
@@ -6250,7 +6250,7 @@ def process(filename):
   # Embed the font into the document
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createDataFile('/', 'font.ttf', %s, true, false);" % str(
+    "FS.createDataFile('/', 'font.ttf', %s, true, false, false);" % str(
       map(ord, open(shared.path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'rb').read())
     )
   )
@@ -6407,7 +6407,7 @@ def process(filename):
   src = open(filename, 'a')
   src.write(
     \'\'\'
-      FS.createDataFile('/', 'paper.pdf', eval(Module.read('paper.pdf.js')), true, false);
+      FS.createDataFile('/', 'paper.pdf', eval(Module.read('paper.pdf.js')), true, false, false);
       Module.callMain(Module.arguments);
       Module.print("Data: " + JSON.stringify(MEMFS.getFileDataAsRegularArray(FS.root.contents['filename-1.ppm']).map(function(x) { return unSign(x, 8) })));
     \'\'\'
@@ -6463,7 +6463,7 @@ def process(filename):
   original_j2k = shared.path_from_root('tests', 'openjpeg', 'syntensity_lobby_s.j2k')
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createDataFile('/', 'image.j2k', %s, true, false);" % shared.line_splitter(str(
+    "FS.createDataFile('/', 'image.j2k', %s, true, false, false);" % shared.line_splitter(str(
       map(ord, open(original_j2k, 'rb').read())
     ))
   ).replace(
