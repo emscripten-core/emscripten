@@ -447,7 +447,9 @@ Options that are modified or new in *emcc* are listed below:
 ``--separate-asm``
 	Emits asm.js in one file, and the rest of the code in another, and emits HTML that loads the asm.js first, in order to reduce memory load during startup. See :ref:`optimizing-code-separating_asm`.
 
-	
+``--output-eol windows|linux``
+	Specifies the line ending to generate for the text files that are outputted. If "--output-eol windows" is passed, the final output files will have Windows \r\n line endings in them. With "--output-eol linux", the final generated files will be written with Unix \n line endings.
+
 .. _emcc-environment-variables:
 
 Environment variables

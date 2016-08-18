@@ -5,6 +5,7 @@ import glob
 import tools.shared
 from tools.shared import *
 from runner import RunnerCore, path_from_root, get_zlib_library, get_bullet_library
+import tools.line_endings
 
 # Runs an emcc task (used from another process in test test_emcc_multiprocess_cache_access, needs to be at top level for it to be pickleable).
 def multiprocess_task(c_file, cache_dir_name):
@@ -6515,3 +6516,14 @@ int main() {
     assert 'foo' in syms.defs, 'foo() should not be inlined'
     try_delete('test.c')
     try_delete('test.bc')
+
+  def test_output_eol(self):
+    for params in [[], ['--separate-asm']]:
+      for eol in ['windows', 'linux']:
+        Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a.html', '--output_eol', eol] + params).communicate()
+        for f in ['a.html', 'a.js', 'a.asm.js']:
+          if os.path.isfile(f):
+            print str(params) + ' ' + eol + ' ' + f
+            ret = tools.line_endings.check_line_endings(f, expect_only_specific_line_endings='\n' if eol == 'linux' else '\r\n')
+            assert ret == 0
+

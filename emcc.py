@@ -28,6 +28,7 @@ from subprocess import PIPE
 from tools import shared, jsrun, system_libs
 from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move
 from tools.response_file import read_response_file
+import tools.line_endings
 
 # endings = dot + a suffix, safe to test by  filename.endswith(endings)
 C_ENDINGS = ('.c', '.C', '.i')
@@ -437,6 +438,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     valid_abspaths = []
     separate_asm = False
     cfi = False
+    # Specifies the line ending format to use for all generated text files.
+    # Defaults to using the native EOL on each platform (\r\n on Windows, \n on Linux&OSX)
+    output_eol = os.linesep
 
     def is_valid_abspath(path_name):
       # Any path that is underneath the emscripten repository root must be ok.
@@ -727,6 +731,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs[i] = ''
       elif newargs[i].startswith("-fsanitize=cfi"):
         cfi = True
+      elif newargs[i] == "--output_eol":
+        if newargs[i+1].lower() == 'windows':
+          output_eol = '\r\n'
+        elif newargs[i+1].lower() == 'linux':
+          output_eol = '\n'
+        else:
+          logging.error('Invalid value "' + newargs[i+1] + '" to --output_eol!')
+          exit(1)
+        newargs[i] = ''
+        newargs[i+1] = ''
 
     if should_exit:
       sys.exit(0)
@@ -1889,11 +1903,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Move final output to the js target
     shutil.move(final, js_target)
 
+    generated_text_files_with_native_eols = [js_target]
+
     # Separate out the asm.js code, if asked. Or, if necessary for another option
     if (separate_asm or shared.Settings.BINARYEN) and not shared.Settings.WASM_BACKEND:
       logging.debug('separating asm')
       with misc_temp_files.get_file(suffix='.js') as temp_target:
         subprocess.check_call([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), js_target, asm_target, temp_target])
+        generated_text_files_with_native_eols += [asm_target]
         shutil.move(temp_target, js_target)
 
       # extra only-my-code logic
@@ -2074,19 +2091,26 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           xhr.send(null);
 ''' % (os.path.basename(wasm_binary_target), script_inline)
 
-      html = open(target, 'w')
+      html = open(target, 'wb')
       assert (script_src or script_inline) and not (script_src and script_inline)
       if script_src:
         script_replacement = '<script async type="text/javascript" src="%s"></script>' % script_src
       else:
         script_replacement = '<script>\n%s\n</script>' % script_inline
-      html.write(shell.replace('{{{ SCRIPT }}}', script_replacement))
+      html_contents = shell.replace('{{{ SCRIPT }}}', script_replacement)
+      html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', output_eol)
+      html.write(html_contents)
       html.close()
     else: # final_suffix != html
       if proxy_to_worker:
         shutil.move(js_target, js_target[:-3] + '.worker.js') # compiler output goes in .worker.js file
         worker_target_basename = target_basename + '.worker'
-        open(target, 'w').write(open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read()))
+        target_contents = open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read())
+        target_contents = tools.line_endings.convert_line_endings(convert_line_endings, '\n', output_eol)
+        open(target, 'wb').write(target_contents)
+
+    for f in generated_text_files_with_native_eols:
+      tools.line_endings.convert_line_endings_in_file(f, os.linesep, output_eol)
 
     log_time('final emitting')
 
