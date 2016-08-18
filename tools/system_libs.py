@@ -2,7 +2,7 @@ import os, json, logging, zipfile, glob
 import shared
 from subprocess import Popen, CalledProcessError
 import subprocess, multiprocessing, re
-import multiprocessing
+from sys import maxint
 from tools.shared import check_call
 
 stdout = None
@@ -24,7 +24,8 @@ def run_commands(commands):
       call_process(command)
   else:
     pool = multiprocessing.Pool(processes=cores)
-    pool.map(call_process, commands, chunksize=1)
+    # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool, https://bugs.python.org/issue8296
+    pool.map_async(call_process, commands, chunksize=1).get(maxint)
 
 def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   global stdout, stderr
