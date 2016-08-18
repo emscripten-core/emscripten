@@ -585,16 +585,18 @@ function UTF8ToString(ptr) {
 //   outU8Array: the array to copy to. Each index in this array is assumed to be one 8-byte element.
 //   outIdx: The starting offset in the array to begin the copying.
 //   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null
-//                    terminator, i.e. if maxBytesToWrite=1, only the null terminator will be written and nothing else.
+//                    terminator (if it's not explicitly disabled), i.e. if maxBytesToWrite=1, and dontWritezero=false,
+//                    then only the null terminator will be written and nothing else.
 //                    maxBytesToWrite=0 does not write any bytes to the output, not even the null terminator.
+//   dontWriteZero: (optional, defaults to false) If true, doesn't write final null terminator
 // Returns the number of bytes written, EXCLUDING the null terminator.
 
-function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
+function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite, dontWriteZero) {
   if (!(maxBytesToWrite > 0)) // Parameter maxBytesToWrite is not optional. Negative values, 0, null, undefined and false each don't write out any bytes.
     return 0;
-
+  dontWriteZero = dontWriteZero === true;
   var startIdx = outIdx;
-  var endIdx = outIdx + maxBytesToWrite - 1; // -1 for string null terminator.
+  var endIdx = outIdx + maxBytesToWrite - (dontWriteZero ? 0 : 1); // -1 for string null terminator.
   for (var i = 0; i < str.length; ++i) {
     // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
     // See http://unicode.org/faq/utf_bom.html#utf16-3
@@ -637,7 +639,7 @@ function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
     }
   }
   // Null-terminate the pointer to the buffer.
-  outU8Array[outIdx] = 0;
+  if (!dontWriteZero) outU8Array[outIdx] = 0;
   return outIdx - startIdx;
 }
 {{{ maybeExport('stringToUTF8Array') }}}
@@ -1644,20 +1646,12 @@ function intArrayToString(array) {
 {{{ maybeExport('intArrayToString') }}}
 
 function writeStringToMemory(string, buffer, dontAddNull) {
-  var array = intArrayFromString(string, dontAddNull);
-  var i = 0;
-  while (i < array.length) {
-    var chr = array[i];
-    {{{ makeSetValue('buffer', 'i', 'chr', 'i8') }}};
-    i = i + 1;
-  }
+  stringToUTF8Array(string, HEAP8, buffer, lengthBytesUTF8(string) + 1, dontAddNull);
 }
 {{{ maybeExport('writeStringToMemory') }}}
 
 function writeArrayToMemory(array, buffer) {
-  for (var i = 0; i < array.length; i++) {
-    {{{ makeSetValue('buffer++', 0, 'array[i]', 'i8') }}};
-  }
+  HEAP8.set(array, buffer);
 }
 {{{ maybeExport('writeArrayToMemory') }}}
 
