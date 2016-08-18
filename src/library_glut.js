@@ -199,6 +199,32 @@ var LibraryGLUT = {
       }
     },
 
+    touchHandler: function(event) {
+      if (event.target != Module['canvas']) {
+        return;
+      }
+
+      var touches = event.changedTouches,
+          main = touches[0],
+          type = "";
+
+      switch(event.type) {
+        case "touchstart": type = "mousedown"; break;
+        case "touchmove": type = "mousemove"; break;
+        case "touchend": type = "mouseup"; break;
+        default: return;
+      }
+
+      var simulatedEvent = document.createEvent("MouseEvent");
+      simulatedEvent.initMouseEvent(type, true, true, window, 1, 
+                                    main.screenX, main.screenY, 
+                                    main.clientX, main.clientY, false, 
+                                    false, false, false, 0/*main*/, null);
+
+      main.target.dispatchEvent(simulatedEvent);
+      event.preventDefault();
+    },
+
     onMouseButtonDown: function(event) {
       Browser.calculateMouseEvent(event);
 
@@ -310,22 +336,27 @@ var LibraryGLUT = {
     GLUT.initTime = Date.now();
 
     var isTouchDevice = 'ontouchstart' in document.documentElement;
+    if (isTouchDevice) {
+      // Historically handling of touch events was made in completely wrong way.
+      // onMouseButtonDown, onMouseButtonUp, onMousemove handlers depends
+      // on Browser.mouseX / Browser.mouseY fields. That fields
+      // doesn`t update by touch events. BTW, in touch mode we interested only 
+      // in left-click (one finger), so we can use workaround and convert
+      // all touch events in mouse events. See touchHandler.
+      window.addEventListener("touchmove", GLUT.touchHandler, true);
+      window.addEventListener("touchstart", GLUT.touchHandler, true);
+      window.addEventListener("touchend", GLUT.touchHandler, true);
+    }
 
     window.addEventListener("keydown", GLUT.onKeydown, true);
     window.addEventListener("keyup", GLUT.onKeyup, true);
-    if (isTouchDevice) {
-      window.addEventListener("touchmove", GLUT.onMousemove, true);
-      window.addEventListener("touchstart", GLUT.onMouseButtonDown, true);
-      window.addEventListener("touchend", GLUT.onMouseButtonUp, true);
-    } else {
-      window.addEventListener("mousemove", GLUT.onMousemove, true);
-      window.addEventListener("mousedown", GLUT.onMouseButtonDown, true);
-      window.addEventListener("mouseup", GLUT.onMouseButtonUp, true);
-      // IE9, Chrome, Safari, Opera
-      window.addEventListener("mousewheel", GLUT.onMouseWheel, true);
-      // Firefox
-      window.addEventListener("DOMMouseScroll", GLUT.onMouseWheel, true);
-    }
+    window.addEventListener("mousemove", GLUT.onMousemove, true);
+    window.addEventListener("mousedown", GLUT.onMouseButtonDown, true);
+    window.addEventListener("mouseup", GLUT.onMouseButtonUp, true);
+    // IE9, Chrome, Safari, Opera
+    window.addEventListener("mousewheel", GLUT.onMouseWheel, true);
+    // Firefox
+    window.addEventListener("DOMMouseScroll", GLUT.onMouseWheel, true);
 
     Browser.resizeListeners.push(function(width, height) {
       if (GLUT.reshapeFunc) {
@@ -334,21 +365,22 @@ var LibraryGLUT = {
     });
 
     __ATEXIT__.push(function() {
+      if (isTouchDevice) {
+        window.removeEventListener("touchmove", GLUT.touchHandler, true);
+        window.removeEventListener("touchstart", GLUT.touchHandler, true);
+        window.removeEventListener("touchend", GLUT.touchHandler, true);
+      }
+
       window.removeEventListener("keydown", GLUT.onKeydown, true);
       window.removeEventListener("keyup", GLUT.onKeyup, true);
-      if (isTouchDevice) {
-        window.removeEventListener("touchmove", GLUT.onMousemove, true);
-        window.removeEventListener("touchstart", GLUT.onMouseButtonDown, true);
-        window.removeEventListener("touchend", GLUT.onMouseButtonUp, true);
-      } else {
-        window.removeEventListener("mousemove", GLUT.onMousemove, true);
-        window.removeEventListener("mousedown", GLUT.onMouseButtonDown, true);
-        window.removeEventListener("mouseup", GLUT.onMouseButtonUp, true);
-        // IE9, Chrome, Safari, Opera
-        window.removeEventListener("mousewheel", GLUT.onMouseWheel, true);
-        // Firefox
-        window.removeEventListener("DOMMouseScroll", GLUT.onMouseWheel, true);
-      }
+      window.removeEventListener("mousemove", GLUT.onMousemove, true);
+      window.removeEventListener("mousedown", GLUT.onMouseButtonDown, true);
+      window.removeEventListener("mouseup", GLUT.onMouseButtonUp, true);
+      // IE9, Chrome, Safari, Opera
+      window.removeEventListener("mousewheel", GLUT.onMouseWheel, true);
+      // Firefox
+      window.removeEventListener("DOMMouseScroll", GLUT.onMouseWheel, true);
+
       Module["canvas"].width = Module["canvas"].height = 1;
     });
   },
