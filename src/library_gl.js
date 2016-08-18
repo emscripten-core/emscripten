@@ -1829,10 +1829,9 @@ var LibraryGL = {
     var info = GLctx['getTransformFeedbackVarying'](program, index);
     if (!info) return; // If an error occurred, the return parameters length, size, type and name will be unmodified.
 
-    var infoname = info.name.slice(0, Math.max(0, bufSize - 1));
     if (name && bufSize > 0) {
-      writeStringToMemory(infoname, name);
-      if (length) {{{ makeSetValue('length', '0', 'infoname.length', 'i32') }}};
+      var numBytesWrittenExclNull = stringToUTF8(info.name, name, bufSize);
+      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
     } else {
       if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
     }
@@ -2046,10 +2045,9 @@ var LibraryGL = {
 
     var result = GLctx['getActiveUniformBlockName'](program, uniformBlockIndex);
     if (!result) return; // If an error occurs, nothing will be written to uniformBlockName or length.
-    var name = result.slice(0, Math.max(0, bufSize - 1));
     if (uniformBlockName && bufSize > 0) {
-      writeStringToMemory(name, uniformBlockName);
-      if (length) {{{ makeSetValue('length', '0', 'name.length', 'i32') }}};
+      var numBytesWrittenExclNull = stringToUTF8(result, uniformBlockName, bufSize);
+      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
     } else {
       if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
     }
@@ -2464,10 +2462,9 @@ var LibraryGL = {
     var info = GLctx.getActiveUniform(program, index);
     if (!info) return; // If an error occurs, nothing will be written to length, size, type and name.
 
-    var infoname = info.name.slice(0, Math.max(0, bufSize - 1));
     if (bufSize > 0 && name) {
-      writeStringToMemory(infoname, name);
-      if (length) {{{ makeSetValue('length', '0', 'infoname.length', 'i32') }}};
+      var numBytesWrittenExclNull = stringToUTF8(info.name, name, bufSize);
+      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
     } else {
       if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
     }
@@ -3215,10 +3212,9 @@ var LibraryGL = {
     var info = GLctx.getActiveAttrib(program, index);
     if (!info) return; // If an error occurs, nothing will be written to length, size and type and name.
 
-    var infoname = info.name.slice(0, Math.max(0, bufSize - 1));
     if (bufSize > 0 && name) {
-      writeStringToMemory(infoname, name);
-      if (length) {{{ makeSetValue('length', '0', 'infoname.length', 'i32') }}};
+      var numBytesWrittenExclNull = stringToUTF8(info.name, name, bufSize);
+      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
     } else {
       if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
     }
@@ -3282,10 +3278,9 @@ var LibraryGL = {
 #endif
     var result = GLctx.getShaderSource(GL.shaders[shader]);
     if (!result) return; // If an error occurs, nothing will be written to length or source.
-    result = result.slice(0, Math.max(0, bufSize - 1));
     if (bufSize > 0 && source) {
-      writeStringToMemory(result, source);
-      if (length) {{{ makeSetValue('length', '0', 'result.length', 'i32') }}};
+      var numBytesWrittenExclNull = stringToUTF8(result, source, bufSize);
+      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
     } else {
       if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
     }
@@ -3306,10 +3301,9 @@ var LibraryGL = {
 #endif
     var log = GLctx.getShaderInfoLog(GL.shaders[shader]);
     if (log === null) log = '(unknown error)';
-    log = log.substr(0, maxLength - 1);
     if (maxLength > 0 && infoLog) {
-      writeStringToMemory(log, infoLog);
-      if (length) {{{ makeSetValue('length', '0', 'log.length', 'i32') }}};
+      var numBytesWrittenExclNull = stringToUTF8(log, infoLog, maxLength);
+      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
     } else {
       if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
     }
@@ -3477,10 +3471,9 @@ var LibraryGL = {
     var log = GLctx.getProgramInfoLog(GL.programs[program]);
     if (log === null) log = '(unknown error)';
 
-    log = log.substr(0, maxLength - 1);
     if (maxLength > 0 && infoLog) {
-      writeStringToMemory(log, infoLog);
-      if (length) {{{ makeSetValue('length', '0', 'log.length', 'i32') }}};
+      var numBytesWrittenExclNull = stringToUTF8(log, infoLog, maxLength);
+      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
     } else {
       if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
     }

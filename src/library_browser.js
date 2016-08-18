@@ -996,8 +996,9 @@ var LibraryBrowser = {
     var _suffix = Pointer_stringify(suffix);
     if (!Browser.asyncPrepareDataCounter) Browser.asyncPrepareDataCounter = 0;
     var name = 'prepare_data_' + (Browser.asyncPrepareDataCounter++) + '.' + _suffix;
-    var cname = _malloc(name.length+1);
-    writeStringToMemory(name, cname);
+    var lengthAsUTF8 = lengthBytesUTF8(name);
+    var cname = _malloc(lengthAsUTF8+1);
+    stringToUTF8(name, cname, lengthAsUTF8+1);
     FS.createPreloadedFile(
       '/',
       name,

@@ -935,7 +935,7 @@ Functions
 
 	:param double x: The double.
 	:param char* to: A pre-allocated buffer of sufficient size, or NULL if no output is requested (useful to get the necessary size).
-	:param signed max: The maximum number of characters to write
+	:param signed max: The maximum number of bytes that can be written to the output pointer 'to' (including the null terminator).
 	:rtype: The number of necessary bytes, not including the null terminator (actually written, if ``to`` is not NULL).
 	
 .. _emscripten-api-reference-sockets:
