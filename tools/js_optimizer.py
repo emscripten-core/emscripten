@@ -1,4 +1,8 @@
 
+from toolchain_profiler import ToolchainProfiler
+if __name__ == '__main__':
+  ToolchainProfiler.record_process_start()
+
 import os, sys, subprocess, multiprocessing, re, string, json, shutil, logging
 import shared
 
@@ -559,4 +563,5 @@ if __name__ == '__main__':
     extra_info = None
   out = run(sys.argv[1], sys.argv[2:], extra_info=extra_info)
   shutil.copyfile(out, sys.argv[1] + '.jsopt.js')
+  sys.exit(0)
 

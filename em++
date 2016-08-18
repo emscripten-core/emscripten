@@ -3,6 +3,8 @@
 # This script should work in python 2 *or* 3. It loads emcc.py, which needs python 2.
 # It also tells emcc.py that we want C++ and not C by default
 
+from tools.toolchain_profiler import ToolchainProfiler
+
 import sys
 
 sys.argv += ['--emscripten-cxx']
@@ -10,7 +12,9 @@ sys.argv += ['--emscripten-cxx']
 if sys.version_info.major == 2:
   import emcc
   if __name__ == '__main__':
+    ToolchainProfiler.record_process_start()
     emcc.run()
+    sys.exit(0)
 else:
   import os, subprocess
   if __name__ == '__main__':
