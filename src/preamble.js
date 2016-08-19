@@ -1651,10 +1651,8 @@ function intArrayToString(array) {
 // function stringToUTF8Array() instead, which takes in a maximum length that can be used
 // to be secure from out of bounds writes.
 function writeStringToMemory(string, buffer, dontAddNull) {
-  if (!writeStringToMemory.deprecationWarningShown) {
-    Module.printErr('Warning: writeStringToMemory is deprecated and should not be called!');
-    writeStringToMemory.deprecationWarningShown = true;
-  }
+  Runtime.warnOnce('writeStringToMemory is deprecated and should not be called! Use stringToUTF8() instead!');
+
   var lastChar, end;
   if (dontAddNull) {
     // stringToUTF8Array always appends null. If we don't want to do that, remember the
