@@ -1017,7 +1017,7 @@ function enlargeMemory() {
 #else
   // TOTAL_MEMORY is the current size of the actual array, and DYNAMICTOP is the new top.
 #if ASSERTIONS
-  assert(HEAPU32[DYNAMICTOP_PTR>>2] >= TOTAL_MEMORY);
+  assert(HEAPU32[DYNAMICTOP_PTR>>2] > TOTAL_MEMORY); // This function should only ever be called after the ceiling of the dynamic heap has already been bumped to exceed the current total size of the asm.js heap.
   assert(TOTAL_MEMORY > 4); // So the loop below will not be infinite
 #endif
 
@@ -1032,12 +1032,12 @@ function enlargeMemory() {
                                // and JS engines seem unhappy to give us 2GB arrays currently
   if (HEAPU32[DYNAMICTOP_PTR>>2] >= LIMIT) return false;
 
-  while (TOTAL_MEMORY <= HEAPU32[DYNAMICTOP_PTR>>2]) { // Simple heuristic.
+  while (TOTAL_MEMORY < HEAPU32[DYNAMICTOP_PTR>>2]) { // Keep incrementing the heap size as long as it's less than what is requested.
     if (TOTAL_MEMORY < LIMIT/2) {
-      TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY); // double until 1GB
+      TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY); // // Simple heuristic: double until 1GB...
     } else {
       var last = TOTAL_MEMORY;
-      TOTAL_MEMORY = alignMemoryPage((3*TOTAL_MEMORY + LIMIT)/4); // add smaller increments towards 2GB, which we cannot reach
+      TOTAL_MEMORY = alignMemoryPage((3*TOTAL_MEMORY + LIMIT)/4); // ..., but after that, add smaller increments towards 2GB, which we cannot reach
       if (TOTAL_MEMORY <= last) return false;
     }
   }
