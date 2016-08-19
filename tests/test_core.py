@@ -50,87 +50,58 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def is_wasm(self):
     return 'BINARYEN' in str(self.emcc_args) or self.is_wasm_backend()
 
-  def test_hello_world(self):
-      test_path = path_from_root('tests', 'core', 'test_hello_world')
+  def do_run_in_out_file_test(self, *path, **kwargs):
+      test_path = path_from_root(*path)
       src, output = (test_path + s for s in ('.in', '.out'))
 
-      self.do_run_from_file(src, output)
+      self.do_run_from_file(src, output, **kwargs)
+
+  def test_hello_world(self):
+      self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
       src = open(self.in_dir('src.cpp.o.js')).read()
       assert 'EMSCRIPTEN_GENERATED_FUNCTIONS' not in src, 'must not emit this unneeded internal thing'
 
   def test_intvars(self):
-      test_path = path_from_root('tests', 'core', 'test_intvars')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_intvars')
 
   def test_sintvars(self):
-      test_path = path_from_root('tests', 'core', 'test_sintvars')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output, force_c=True)
+      self.do_run_in_out_file_test('tests', 'core', 'test_sintvars',
+                                   force_c=True)
 
   @no_wasm_backend
   def test_i64(self):
-      test_path = path_from_root('tests', 'core', 'test_i64')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_i64')
 
   @no_wasm_backend
   def test_i64_2(self):
-      test_path = path_from_root('tests', 'core', 'test_i64_2')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_i64_2')
 
   def test_i64_3(self):
-      test_path = path_from_root('tests', 'core', 'test_i64_3')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_i64_3')
 
   def test_i64_4(self):
       # stuff that also needs sign corrections
 
-      test_path = path_from_root('tests', 'core', 'test_i64_4')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_i64_4')
 
   @no_wasm_backend
   def test_i64_b(self):
-      test_path = path_from_root('tests', 'core', 'test_i64_b')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_i64_b')
 
   def test_i64_cmp(self):
-      test_path = path_from_root('tests', 'core', 'test_i64_cmp')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_i64_cmp')
 
   @no_wasm_backend
   def test_i64_cmp2(self):
-      test_path = path_from_root('tests', 'core', 'test_i64_cmp2')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_i64_cmp2')
 
   def test_i64_double(self):
-      test_path = path_from_root('tests', 'core', 'test_i64_double')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_i64_double')
 
   @no_wasm_backend
   def test_i64_umul(self):
-      test_path = path_from_root('tests', 'core', 'test_i64_umul')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_i64_umul')
 
   @no_wasm_backend
   def test_i64_precise(self):
@@ -204,102 +175,63 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_i64_llabs(self):
     Settings.PRECISE_I64_MATH = 2
 
-    test_path = path_from_root('tests', 'core', 'test_i64_llabs')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_llabs')
 
   def test_i64_zextneg(self):
-    test_path = path_from_root('tests', 'core', 'test_i64_zextneg')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_zextneg')
 
   def test_i64_7z(self):
-    test_path = path_from_root('tests', 'core', 'test_i64_7z')
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_7z')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output, ['hallo'])
 
   def test_i64_i16(self):
-    test_path = path_from_root('tests', 'core', 'test_i64_i16')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_i16')
 
   def test_i64_qdouble(self):
-    test_path = path_from_root('tests', 'core', 'test_i64_qdouble')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_qdouble')
 
   def test_i64_varargs(self):
-    test_path = path_from_root('tests', 'core', 'test_i64_varargs')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output, 'waka fleefl asdfasdfasdfasdf'.split(' '))
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_varargs',
+                                 args='waka fleefl asdfasdfasdfasdf'
+                                      .split(' '))
 
   @no_wasm_backend
   def test_llvm_fabs(self):
     Settings.PRECISE_F32 = 1
-    test_path = path_from_root('tests', 'core', 'test_llvm_fabs')
-    src, output = (test_path + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_llvm_fabs')
 
   def test_double_varargs(self):
-    test_path = path_from_root('tests', 'core', 'test_double_varargs')
-    src, output = (test_path + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_double_varargs')
 
   def test_struct_varargs(self):
-    test_path = path_from_root('tests', 'core', 'test_struct_varargs')
-    src, output = (test_path + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_struct_varargs')
 
   def zzztest_nested_struct_varargs(self):
-    test_path = path_from_root('tests', 'core', 'test_nested_struct_varargs')
-    src, output = (test_path + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_nested_struct_varargs')
 
   def test_i32_mul_precise(self):
-    test_path = path_from_root('tests', 'core', 'test_i32_mul_precise')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_i32_mul_precise')
 
   def test_i16_emcc_intrinsic(self):
-    test_path = path_from_root('tests', 'core', 'test_i16_emcc_intrinsic')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_i16_emcc_intrinsic')
 
   def test_double_i64_conversion(self):
-    test_path = path_from_root('tests', 'core', 'test_double_i64_conversion')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_double_i64_conversion')
 
   def test_float32_precise(self):
     Settings.PRECISE_F32 = 1
-    test_path = path_from_root('tests', 'core', 'test_float32_precise')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_float32_precise')
 
   def test_negative_zero(self):
-    test_path = path_from_root('tests', 'core', 'test_negative_zero')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_negative_zero')
 
   def test_line_endings(self):
     self.build(open(path_from_root('tests', 'hello_world.cpp')).read(), self.get_dir(), self.in_dir('hello_world.cpp'))
 
   def test_literal_negative_zero(self):
-    test_path = path_from_root('tests', 'core', 'test_literal_negative_zero')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_literal_negative_zero')
 
   @no_wasm
   def test_llvm_intrinsics(self):
