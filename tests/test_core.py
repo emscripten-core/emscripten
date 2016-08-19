@@ -73,227 +73,31 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   @no_wasm_backend
   def test_i64(self):
-      src = '''
-        #include <stdio.h>
-        int main()
-        {
-          long long a = 0x2b00505c10;
-          long long b = a >> 29;
-          long long c = a >> 32;
-          long long d = a >> 34;
-          printf("*%lld,%lld,%lld,%lld*\\n", a, b, c, d);
-          unsigned long long ua = 0x2b00505c10;
-          unsigned long long ub = ua >> 29;
-          unsigned long long uc = ua >> 32;
-          unsigned long long ud = ua >> 34;
-          printf("*%lld,%lld,%lld,%lld*\\n", ua, ub, uc, ud);
+      test_path = path_from_root('tests', 'core', 'test_i64')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-          long long x = 0x0000def123450789ULL; // any bigger than this, and we
-          long long y = 0x00020ef123456089ULL; // start to run into the double precision limit!
-          printf("*%lld,%lld,%lld,%lld,%lld*\\n", x, y, x | y, x & y, x ^ y);
+      self.do_run_from_file(src, output)
 
-          printf("*");
-          long long z = 13;
-          int n = 0;
-          while (z > 1) {
-            printf("%.2f,", (float)z); // these must be integers!
-            z = z >> 1;
-            n++;
-          }
-          printf("*%d*\\n", n);
-          return 0;
-        }
-      '''
-      self.do_run(src, '*184688860176,344,43,10*\n*184688860176,344,43,10*\n*245127260211081,579378795077769,808077213656969,16428841631881,791648372025088*\n*13.00,6.00,3.00,*3*')
+  @no_wasm_backend
+  def test_i64_2(self):
+      test_path = path_from_root('tests', 'core', 'test_i64_2')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-      src = r'''
-        #include <time.h>
-        #include <stdio.h>
-        #include <stdint.h>
+      self.do_run_from_file(src, output)
 
-        int64_t returner1() { return 0x0000def123450789ULL; }
-        int64_t returner2(int test) {
-          while (test > 10) test /= 2; // confuse the compiler so it doesn't eliminate this function
-          return test > 5 ? 0x0000def123450123ULL : 0ULL;
-        }
+  def test_i64_3(self):
+      test_path = path_from_root('tests', 'core', 'test_i64_3')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        void modifier1(int64_t t) {
-          t |= 12;
-          printf("m1: %lld\n", t);
-        }
-        void modifier2(int64_t &t) {
-          t |= 12;
-        }
+      self.do_run_from_file(src, output)
 
-        int truthy() {
-          int x = time(0);
-          while (x > 10) {
-            x |= 7;
-            x /= 2;
-          }
-          return x < 3;
-        }
-
-        struct IUB {
-           int c;
-           long long d;
-        };
-
-        IUB iub[] = {
-           { 55, 17179869201 },
-           { 122, 25769803837 },
-        };
-
-        int main(int argc, char **argv)
-        {
-          int64_t x1 = 0x1234def123450789ULL;
-          int64_t x2 = 0x1234def123450788ULL;
-          int64_t x3 = 0x1234def123450789ULL;
-          printf("*%lld\n%d,%d,%d,%d,%d\n%d,%d,%d,%d,%d*\n", x1, x1==x2, x1<x2, x1<=x2, x1>x2, x1>=x2, // note: some rounding in the printing!
-                                                                x1==x3, x1<x3, x1<=x3, x1>x3, x1>=x3);
-          printf("*%lld*\n", returner1());
-          printf("*%lld*\n", returner2(30));
-
-          uint64_t maxx = -1ULL;
-          printf("*%llu*\n*%llu*\n", maxx, maxx >> 5);
-
-          // Make sure params are not modified if they shouldn't be
-          int64_t t = 123;
-          modifier1(t);
-          printf("*%lld*\n", t);
-          modifier2(t);
-          printf("*%lld*\n", t);
-
-          // global structs with i64s
-          printf("*%d,%lld*\n*%d,%lld*\n", iub[0].c, iub[0].d, iub[1].c, iub[1].d);
-
-          // Bitshifts
-          {
-            int64_t a = -1;
-            int64_t b = a >> 29;
-            int64_t c = a >> 32;
-            int64_t d = a >> 34;
-            printf("*%lld,%lld,%lld,%lld*\n", a, b, c, d);
-            uint64_t ua = -1;
-            int64_t ub = ua >> 29;
-            int64_t uc = ua >> 32;
-            int64_t ud = ua >> 34;
-            printf("*%lld,%lld,%lld,%lld*\n", ua, ub, uc, ud);
-          }
-
-          // Nonconstant bitshifts
-          {
-            int64_t a = -1;
-            int64_t b = a >> (29 - argc + 1);
-            int64_t c = a >> (32 - argc + 1);
-            int64_t d = a >> (34 - argc + 1);
-            printf("*%lld,%lld,%lld,%lld*\n", a, b, c, d);
-            uint64_t ua = -1;
-            int64_t ub = ua >> (29 - argc + 1);
-            int64_t uc = ua >> (32 - argc + 1);
-            int64_t ud = ua >> (34 - argc + 1);
-            printf("*%lld,%lld,%lld,%lld*\n", ua, ub, uc, ud);
-          }
-
-          // Math mixtures with doubles
-          {
-            uint64_t a = 5;
-            double b = 6.8;
-            uint64_t c = a * b;
-            if (truthy()) printf("*%d,%d,%d*\n", (int)&a, (int)&b, (int)&c); // printing addresses prevents optimizations
-            printf("*prod:%llu*\n", c);
-          }
-
-          // Basic (rounded, for now) math. Just check compilation.
-          int64_t a = 0x1234def123450789ULL;
-          a--; if (truthy()) a--; // confuse optimizer
-          int64_t b = 0x1234000000450789ULL;
-          b++; if (truthy()) b--; // confuse optimizer
-          printf("*%lld,%lld,%lld,%lld*\n",   (a+b)/5000, (a-b)/5000, (a*3)/5000, (a/5)/5000);
-
-          a -= 17; if (truthy()) a += 5; // confuse optimizer
-          b -= 17; if (truthy()) b += 121; // confuse optimizer
-          printf("*%llx,%llx,%llx,%llx*\n", b - a, b - a/2, b/2 - a, b - 20);
-
-          if (truthy()) a += 5/b; // confuse optimizer
-          if (truthy()) b += 121*(3+a/b); // confuse optimizer
-          printf("*%llx,%llx,%llx,%llx*\n", a - b, a - b/2, a/2 - b, a - 20);
-
-          return 0;
-        }
-      '''
-      self.do_run(src, '*1311918518731868041\n' +
-                       '0,0,0,1,1\n' +
-                       '1,0,1,0,1*\n' +
-                       '*245127260211081*\n' +
-                       '*245127260209443*\n' +
-                       '*18446744073709551615*\n' +
-                       '*576460752303423487*\n' +
-                       'm1: 127\n' +
-                       '*123*\n' +
-                       '*127*\n' +
-                       '*55,17179869201*\n' +
-                       '*122,25769803837*\n' +
-                       '*-1,-1,-1,-1*\n' +
-                       '*-1,34359738367,4294967295,1073741823*\n' +
-                       '*-1,-1,-1,-1*\n' +
-                       '*-1,34359738367,4294967295,1073741823*\n' +
-                       '*prod:34*\n' +
-                       '*524718382041609,49025451137,787151111239120,52476740749274*\n' +
-                       '*ffff210edd000002,91990876ea283be,f6e5210edcdd7c45,1234000000450765*\n' +
-                       '*def122fffffe,91adef1232283bb,f6e66f78915d7c42,1234def123450763*\n')
-
-      src = r'''
-        #include <stdio.h>
-        #include <limits>
-
-        int main()
-        {
-            long long i,j,k;
-
-            i = 0;
-            j = -1,
-            k = 1;
-
-            printf( "*\n" );
-            printf( "%s\n", i > j ? "Ok": "Fail" );
-            printf( "%s\n", k > i ? "Ok": "Fail" );
-            printf( "%s\n", k > j ? "Ok": "Fail" );
-            printf( "%s\n", i < j ? "Fail": "Ok" );
-            printf( "%s\n", k < i ? "Fail": "Ok" );
-            printf( "%s\n", k < j ? "Fail": "Ok" );
-            printf( "%s\n", (i-j) >= k ? "Ok": "Fail" );
-            printf( "%s\n", (i-j) <= k ? "Ok": "Fail" );
-            printf( "%s\n", i > std::numeric_limits<long long>::min() ? "Ok": "Fail" );
-            printf( "%s\n", i < std::numeric_limits<long long>::max() ? "Ok": "Fail" );
-            printf( "*\n" );
-        }
-      '''
-
-      self.do_run(src, '*\nOk\nOk\nOk\nOk\nOk\nOk\nOk\nOk\nOk\nOk\n*')
-
+  def test_i64_4(self):
       # stuff that also needs sign corrections
 
-      src = r'''
-        #include <stdio.h>
-        #include <stdint.h>
+      test_path = path_from_root('tests', 'core', 'test_i64_4')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        int main()
-        {
-          // i32 vs i64
-          int32_t small = -1;
-          int64_t large = -1;
-          printf("*%d*\n", small == large);
-          small++;
-          printf("*%d*\n", small == large);
-          uint32_t usmall = -1;
-          uint64_t ularge = -1;
-          printf("*%d*\n", usmall == ularge);
-          return 0;
-        }
-      '''
-
-      self.do_run(src, '*1*\n*0*\n*0*\n')
+      self.do_run_from_file(src, output)
 
   @no_wasm_backend
   def test_i64_b(self):
