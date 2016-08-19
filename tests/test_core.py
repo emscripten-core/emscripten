@@ -51,8 +51,12 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     return 'BINARYEN' in str(self.emcc_args) or self.is_wasm_backend()
 
   def do_run_in_out_file_test(self, *path, **kwargs):
+      extensions = ('.in', '.out')
+      if 'extensions' in kwargs:
+          extensions = kwargs['extensions']
+          del kwargs['extensions']
       test_path = path_from_root(*path)
-      src, output = (test_path + s for s in ('.in', '.out'))
+      src, output = (test_path + s for s in extensions)
 
       self.do_run_from_file(src, output, **kwargs)
 
@@ -181,10 +185,8 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_zextneg')
 
   def test_i64_7z(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_i64_7z')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output, ['hallo'])
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_7z',
+                                 args=['hallo'])
 
   def test_i64_i16(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_i16')
@@ -200,16 +202,20 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   @no_wasm_backend
   def test_llvm_fabs(self):
     Settings.PRECISE_F32 = 1
-    self.do_run_in_out_file_test('tests', 'core', 'test_llvm_fabs')
+    self.do_run_in_out_file_test('tests', 'core', 'test_llvm_fabs',
+                                 extensions=('.c', '.out'))
 
   def test_double_varargs(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_double_varargs')
+    self.do_run_in_out_file_test('tests', 'core', 'test_double_varargs',
+                                 extensions=('.c', '.out'))
 
   def test_struct_varargs(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_struct_varargs')
+    self.do_run_in_out_file_test('tests', 'core', 'test_struct_varargs',
+                                 extensions=('.c', '.out'))
 
   def zzztest_nested_struct_varargs(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_nested_struct_varargs')
+    self.do_run_in_out_file_test('tests', 'core', 'test_nested_struct_varargs',
+                                 extensions=('.c', '.out'))
 
   def test_i32_mul_precise(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_i32_mul_precise')
