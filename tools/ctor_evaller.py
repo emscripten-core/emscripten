@@ -61,6 +61,8 @@ def eval_ctors(js, mem_init, num):
   asm = get_asm(js)
   assert len(asm) > 0
   asm = asm.replace('use asm', 'not asm') # don't try to validate this
+  # Substitute sbrk with a failing stub: the dynamic heap memory area shouldn't get increased during static ctor initialization.
+  asm = asm.replace('function _sbrk(', 'function _sbrk(increment) { throw "no sbrk when evalling ctors!"; } function KILLED_sbrk(', 1)
   # find all global vars, and provide only safe ones. Also add dumping for those.
   pre_funcs_start = asm.find(';') + 1
   pre_funcs_end = asm.find('function ', pre_funcs_start)
@@ -81,7 +83,7 @@ def eval_ctors(js, mem_init, num):
         'HEAPF32', 'HEAPF64',
         'Int8View', 'Int16View', 'Int32View', 'Uint8View', 'Uint16View', 'Uint32View', 'Float32View', 'Float64View',
         'nan', 'inf',
-        '_emscripten_memcpy_big', '_sbrk', '___dso_handle',
+        '_emscripten_memcpy_big', '___dso_handle',
         '_atexit', '___cxa_atexit',
       ] or name.startswith('Math_'):
         if 'new ' not in value:
@@ -125,7 +127,7 @@ var stackBase = stackTop;
 var stackMax = stackTop + totalStack;
 if (stackMax >= totalMemory) throw 'not enough room for stack';
 
-var dynamicTopPtr = stackMax;
+var dynamicTopPtr = 0;
 
 if (!Math.imul) {
   Math.imul = Math.imul || function(a, b) {
@@ -238,7 +240,7 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
       out_result = read_and_delete(out_file)
       err_result = read_and_delete(err_file)
     if proc.returncode != 0:
-      shared.logging.debug('unexpected error while trying to eval ctors:\n' + out_result)
+      shared.logging.debug('unexpected error while trying to eval ctors:\n' + out_result + '\n' + err_result)
       return (0, 0, 0, 0)
 
   # out contains the new mem init and other info
