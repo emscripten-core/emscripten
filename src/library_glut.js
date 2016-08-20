@@ -337,12 +337,15 @@ var LibraryGLUT = {
 
     var isTouchDevice = 'ontouchstart' in document.documentElement;
     if (isTouchDevice) {
-      // Historically handling of touch events was made in completely wrong way.
-      // onMouseButtonDown, onMouseButtonUp, onMousemove handlers depends
-      // on Browser.mouseX / Browser.mouseY fields. That fields
-      // doesn`t update by touch events. BTW, in touch mode we interested only 
-      // in left-click (one finger), so we can use workaround and convert
-      // all touch events in mouse events. See touchHandler.
+      // onMouseButtonDown, onMouseButtonUp and onMousemove handlers
+      // depend on Browser.mouseX / Browser.mouseY fields. Those fields
+      // don't get updated by touch events. So register a touchHandler
+      // function that translates the touch events to mouse events.
+
+      // GLUT doesn't support touch, mouse only, so from touch events we
+      // are only looking at single finger touches to emulate left click,
+      // so we can use workaround and convert all touch events in mouse
+      // events. See touchHandler.
       window.addEventListener("touchmove", GLUT.touchHandler, true);
       window.addEventListener("touchstart", GLUT.touchHandler, true);
       window.addEventListener("touchend", GLUT.touchHandler, true);
