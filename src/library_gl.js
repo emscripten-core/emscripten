@@ -2383,7 +2383,9 @@ var LibraryGL = {
     }
 #endif
     var data = GLctx.getVertexAttrib(index, pname);
-    if (typeof data == 'number' || typeof data == 'boolean') {
+    if (pname == 0x889F/*VERTEX_ATTRIB_ARRAY_BUFFER_BINDING*/) {
+      {{{ makeSetValue('params', '0', 'data["name"]', 'i32') }}};
+    } else if (typeof data == 'number' || typeof data == 'boolean') {
       switch (type) {
         case 'Integer': {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
         case 'Float': {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;

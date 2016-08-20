@@ -136,6 +136,27 @@ int main()
     assert(!!numSamples == !!antialias);
     printf("\n");
 
+    // Test bug https://github.com/kripken/emscripten/issues/1330:
+    unsigned vb;
+    glGenBuffers(1, &vb);
+    glBindBuffer(GL_ARRAY_BUFFER, vb);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    unsigned vb2;
+    glGenBuffers(1, &vb2);
+    glBindBuffer(GL_ARRAY_BUFFER, vb2);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    int vb3;
+    glGetVertexAttribiv(0, GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, &vb3);
+    if (vb != vb3) printf("Index 0: Generated VB: %d, read back VB: %d\n", vb, vb3);
+    assert(vb == vb3);
+
+    int vb4;
+    glGetVertexAttribiv(1, GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, &vb4);
+    if (vb2 != vb4) printf("Index 1: Generated VB: %d, read back VB: %d\n", vb2, vb4);
+    assert(vb2 == vb4);
+
     // Test that deleting the context works.
     res = emscripten_webgl_destroy_context(context);
     assert(res == 0);
