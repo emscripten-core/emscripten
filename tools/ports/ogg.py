@@ -6,7 +6,7 @@ def get(ports, settings, shared):
   if settings.USE_OGG == 1:
     ports.fetch_project('ogg', 'https://github.com/emscripten-ports/ogg/archive/' + TAG + '.zip', 'Ogg-' + TAG)
     def create():
-      logging.warning('building port: ogg')
+      logging.info('building port: ogg')
       ports.clear_project_build('vorbis')
      
       source_path = os.path.join(ports.get_dir(), 'ogg', 'Ogg-' + TAG)

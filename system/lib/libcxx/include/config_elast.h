@@ -24,6 +24,8 @@
 #define _LIBCPP_ELAST 4095
 #elif defined(__APPLE__)
 // No _LIBCPP_ELAST needed on Apple
+#elif defined(__EMSCRIPTEN__)
+#define _LIBCPP_ELAST 256
 #elif defined(__sun__)
 #define _LIBCPP_ELAST ESTALE
 #elif defined(_WIN32)
