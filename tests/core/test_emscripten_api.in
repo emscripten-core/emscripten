@@ -27,7 +27,7 @@ int main() {
   buffer[1] = 2;
   buffer[2] = 3;
   int n = emscripten_print_double(d, buffer, 2);
-  assert(n == len);
+  assert(n == 1);
   assert(buffer[0] == '0'); // touched
   assert(buffer[1] == 0); // touched
   assert(buffer[2] == 3); // untouched

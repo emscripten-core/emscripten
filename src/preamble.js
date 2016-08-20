@@ -143,8 +143,9 @@ var cwrap, ccall;
       var ret = 0;
       if (str !== null && str !== undefined && str !== 0) { // null string
         // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
-        ret = Runtime.stackAlloc((str.length << 2) + 1);
-        writeStringToMemory(str, ret);
+        var len = (str.length << 2) + 1;
+        ret = Runtime.stackAlloc(len);
+        stringToUTF8(str, ret, len);
       }
       return ret;
     }
@@ -850,8 +851,10 @@ function demangle(func) {
   var hasLibcxxabi = !!Module['___cxa_demangle'];
   if (hasLibcxxabi) {
     try {
-      var buf = _malloc(func.length);
-      writeStringToMemory(func.substr(1), buf);
+      var s = func.substr(1);
+      var len = lengthBytesUTF8(s)+1;
+      var buf = _malloc(len);
+      stringToUTF8(s, buf, len);
       var status = _malloc(4);
       var ret = Module['___cxa_demangle'](buf, 0, 0, status);
       if (getValue(status, 'i32') === 0 && ret) {
@@ -1643,21 +1646,28 @@ function intArrayToString(array) {
 }
 {{{ maybeExport('intArrayToString') }}}
 
+// Deprecated: This function should not be called because it is unsafe and does not provide
+// a maximum length limit of how many bytes it is allowed to write. Prefer calling the
+// function stringToUTF8Array() instead, which takes in a maximum length that can be used
+// to be secure from out of bounds writes.
 function writeStringToMemory(string, buffer, dontAddNull) {
-  var array = intArrayFromString(string, dontAddNull);
-  var i = 0;
-  while (i < array.length) {
-    var chr = array[i];
-    {{{ makeSetValue('buffer', 'i', 'chr', 'i8') }}};
-    i = i + 1;
+  Runtime.warnOnce('writeStringToMemory is deprecated and should not be called! Use stringToUTF8() instead!');
+
+  var lastChar, end;
+  if (dontAddNull) {
+    // stringToUTF8Array always appends null. If we don't want to do that, remember the
+    // character that existed at the location where the null will be placed, and restore
+    // that after the write (below).
+    end = buffer + lengthBytesUTF8(string);
+    lastChar = HEAP8[end];
   }
+  stringToUTF8Array(string, HEAP8, buffer, Infinity);
+  if (dontAddNull) HEAP8[end] = lastChar; // Restore the value under the null character.
 }
 {{{ maybeExport('writeStringToMemory') }}}
 
 function writeArrayToMemory(array, buffer) {
-  for (var i = 0; i < array.length; i++) {
-    {{{ makeSetValue('buffer++', 0, 'array[i]', 'i8') }}};
-  }
+  HEAP8.set(array, buffer);    
 }
 {{{ maybeExport('writeArrayToMemory') }}}
 

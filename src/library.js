@@ -1756,7 +1756,12 @@ LibraryManager.library = {
         (date.tm_min < 10 ? ':0' : ':') + date.tm_min +
         (date.tm_sec < 10 ? ':0' : ':') + date.tm_sec +
         ' ' + (1900 + date.tm_year) + "\n";
-    writeStringToMemory(s, buf);
+
+    // asctime_r is specced to behave in an undefined manner if the algorithm would attempt
+    // to write out more than 26 bytes (including the null terminator).
+    // See http://pubs.opengroup.org/onlinepubs/9699919799/functions/asctime.html
+    // Our undefined behavior is to truncate the write to at most 26 bytes, including null terminator.
+    stringToUTF8(s, buf, 26);
     return buf;
   },
 
@@ -3240,7 +3245,7 @@ LibraryManager.library = {
     // generate hostent
     var ret = _malloc({{{ C_STRUCTS.hostent.__size__ }}}); // XXX possibly leaked, as are others here
     var nameBuf = _malloc(name.length+1);
-    writeStringToMemory(name, nameBuf);
+    stringToUTF8(name, nameBuf, name.length+1);
     {{{ makeSetValue('ret', C_STRUCTS.hostent.h_name, 'nameBuf', 'i8*') }}};
     var aliasesBuf = _malloc(4);
     {{{ makeSetValue('aliasesBuf', '0', '0', 'i8*') }}};
@@ -3447,6 +3452,8 @@ LibraryManager.library = {
     var port = info.port;
     var addr = info.addr;
 
+    var overflowed = false;
+
     if (node && nodelen) {
       var lookup;
       if ((flags & {{{ cDefine('NI_NUMERICHOST') }}}) || !(lookup = DNS.lookup_addr(addr))) {
@@ -3456,18 +3463,25 @@ LibraryManager.library = {
       } else {
         addr = lookup;
       }
-      if (addr.length >= nodelen) {
-        return {{{ cDefine('EAI_OVERFLOW') }}};
+      var numBytesWrittenExclNull = stringToUTF8(addr, node, nodelen);
+
+      if (numBytesWrittenExclNull+1 >= nodelen) {
+        overflowed = true;
       }
-      writeStringToMemory(addr, node);
     }
 
     if (serv && servlen) {
       port = '' + port;
-      if (port.length > servlen) {
-        return {{{ cDefine('EAI_OVERFLOW') }}};
+      var numBytesWrittenExclNull = stringToUTF8(port, serv, servlen);
+
+      if (numBytesWrittenExclNull+1 >= servlen) {
+        overflowed = true;
       }
-      writeStringToMemory(port, serv);
+    }
+
+    if (overflowed) {
+      // Note: even when we overflow, getnameinfo() is specced to write out the truncated results.
+      return {{{ cDefine('EAI_OVERFLOW') }}};
     }
 
     return 0;
@@ -3654,7 +3668,7 @@ LibraryManager.library = {
       me.bufferSize = s.length+1;
       me.buffer = _malloc(me.bufferSize);
     }
-    writeStringToMemory(s, me.buffer);
+    stringToUTF8(s, me.buffer, me.bufferSize);
     return me.buffer;
   },
 
@@ -3832,17 +3846,13 @@ LibraryManager.library = {
     var callstack = _emscripten_get_callstack_js(flags);
     // User can query the required amount of bytes to hold the callstack.
     if (!str || maxbytes <= 0) {
-      return callstack.length+1;
-    }
-    // Truncate output to avoid writing past bounds.
-    if (callstack.length > maxbytes-1) {
-      callstack = callstack.slice(0, maxbytes-1);
+      return lengthBytesUTF8(callstack)+1;
     }
     // Output callstack string as C string to HEAP.
-    writeStringToMemory(callstack, str, false);
+    var bytesWrittenExcludingNull = stringToUTF8(callstack, str, maxbytes);
 
-    // Return number of bytes written.
-    return callstack.length+1;
+    // Return number of bytes written, including null.
+    return bytesWrittenExcludingNull+1;
   },
 
   emscripten_log_js__deps: ['emscripten_get_callstack_js'],
@@ -3902,10 +3912,8 @@ LibraryManager.library = {
 
   emscripten_print_double: function(x, to, max) {
     var str = x + '';
-    var ret = str.length;
-    if (str.length + 1 > max) str = str.substring(0, max - 1);
-    if (to) writeStringToMemory(str, to);
-    return ret;
+    if (to) return stringToUTF8(str, to, max);
+    else return lengthBytesUTF8(str);
   },
 
   //============================

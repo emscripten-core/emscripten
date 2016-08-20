@@ -79,18 +79,21 @@ extern "C" {
 #define DOM_KEY_LOCATION_RIGHT    0x02
 #define DOM_KEY_LOCATION_NUMPAD   0x03
 
+#define EM_HTML5_SHORT_STRING_LEN_BYTES 32
+#define EM_HTML5_MEDIUM_STRING_LEN_BYTES 64
+#define EM_HTML5_LONG_STRING_LEN_BYTES 128
 
 typedef struct EmscriptenKeyboardEvent {
-  EM_UTF8 key[32];
-  EM_UTF8 code[32];
+  EM_UTF8 key[EM_HTML5_SHORT_STRING_LEN_BYTES];
+  EM_UTF8 code[EM_HTML5_SHORT_STRING_LEN_BYTES];
   unsigned long location;
   EM_BOOL ctrlKey;
   EM_BOOL shiftKey;
   EM_BOOL altKey;
   EM_BOOL metaKey;
   EM_BOOL repeat;
-  EM_UTF8 locale[32];
-  EM_UTF8 charValue[32];
+  EM_UTF8 locale[EM_HTML5_SHORT_STRING_LEN_BYTES];
+  EM_UTF8 charValue[EM_HTML5_SHORT_STRING_LEN_BYTES];
   unsigned long charCode;
   unsigned long keyCode;
   unsigned long which;
@@ -172,8 +175,8 @@ extern EMSCRIPTEN_RESULT emscripten_set_resize_callback(const char *target, void
 extern EMSCRIPTEN_RESULT emscripten_set_scroll_callback(const char *target, void *userData, EM_BOOL useCapture, em_ui_callback_func callback);
 
 typedef struct EmscriptenFocusEvent {
-  EM_UTF8 nodeName[128];
-  EM_UTF8 id[128];
+  EM_UTF8 nodeName[EM_HTML5_LONG_STRING_LEN_BYTES];
+  EM_UTF8 id[EM_HTML5_LONG_STRING_LEN_BYTES];
 } EmscriptenFocusEvent;
 
 typedef EM_BOOL (*em_focus_callback_func)(int eventType, const EmscriptenFocusEvent *focusEvent, void *userData);
@@ -234,8 +237,8 @@ extern EMSCRIPTEN_RESULT emscripten_unlock_orientation(void);
 typedef struct EmscriptenFullscreenChangeEvent {
   EM_BOOL isFullscreen;
   EM_BOOL fullscreenEnabled;
-  EM_UTF8 nodeName[128];
-  EM_UTF8 id[128];
+  EM_UTF8 nodeName[EM_HTML5_LONG_STRING_LEN_BYTES];
+  EM_UTF8 id[EM_HTML5_LONG_STRING_LEN_BYTES];
   int elementWidth;
   int elementHeight;
   int screenWidth;
@@ -285,8 +288,8 @@ extern EMSCRIPTEN_RESULT emscripten_exit_soft_fullscreen(void);
 
 typedef struct EmscriptenPointerlockChangeEvent {
   EM_BOOL isActive;
-  EM_UTF8 nodeName[128];
-  EM_UTF8 id[128];
+  EM_UTF8 nodeName[EM_HTML5_LONG_STRING_LEN_BYTES];
+  EM_UTF8 id[EM_HTML5_LONG_STRING_LEN_BYTES];
 } EmscriptenPointerlockChangeEvent;
 
 
@@ -361,8 +364,8 @@ typedef struct EmscriptenGamepadEvent {
   EM_BOOL digitalButton[64];
   EM_BOOL connected;
   long index;
-  EM_UTF8 id[64];
-  EM_UTF8 mapping[64];
+  EM_UTF8 id[EM_HTML5_MEDIUM_STRING_LEN_BYTES];
+  EM_UTF8 mapping[EM_HTML5_MEDIUM_STRING_LEN_BYTES];
 } EmscriptenGamepadEvent;
 
 

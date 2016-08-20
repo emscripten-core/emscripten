@@ -38,7 +38,7 @@ Calling compiled C functions from JavaScript
 	
 	.. note:: 
 		- ``ccall`` uses the C stack for temporary values. If you pass a string then it is only "alive" until the call is complete. If the code being called saves the pointer to be used later, it may point to invalid data. 
-		- If you need a string to live forever, you can create it, for example, using ``_malloc`` and :js:func:`writeStringToMemory`. However, you must later delete it manually!	
+		- If you need a string to live forever, you can create it, for example, using ``_malloc`` and :js:func:`stringToUTF8`. However, you must later delete it manually!
 		- LLVM optimizations can inline and remove functions, after which you will not be able to call them. Similarly, function names minified by the *Closure Compiler* are inaccessible. In either case, the solution is to add the functions to the ``EXPORTED_FUNCTIONS`` list when you invoke *emcc* :  
 		
 			::
@@ -87,7 +87,7 @@ Calling compiled C functions from JavaScript
 	
 	.. note:: 
 		- ``cwrap`` uses the C stack for temporary values. If you pass a string then it is only "alive" until the call is complete. If the code being called saves the pointer to be used later, it may point to invalid data. 
-		- If you need a string to live forever, you can create it, for example, using ``_malloc`` and :js:func:`writeStringToMemory`. However, you must later delete it manually!
+		- If you need a string to live forever, you can create it, for example, using ``_malloc`` and :js:func:`stringToUTF8`. However, you must later delete it manually!
 		- LLVM optimizations can inline and remove functions, after which you will not be able to "wrap" them. Similarly, function names minified by the *Closure Compiler* are inaccessible. In either case, the solution is to add the functions to the ``EXPORTED_FUNCTIONS`` list when you invoke *emcc* :  
 		
 			::
@@ -243,6 +243,9 @@ Conversion functions — strings, pointers and arrays
 .. js:function:: writeStringToMemory(string, buffer, dontAddNull)
 
 	Writes a JavaScript string to a specified address in the heap. 
+
+	.. warning:: This function is deprecated, you should call the function ``stringToUTF8`` instead, which provides a secure
+	bounded version of the same functionality instead.
 	
 	.. code-block:: javascript
 	
