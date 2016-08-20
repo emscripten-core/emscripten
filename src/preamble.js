@@ -1661,7 +1661,7 @@ function writeStringToMemory(string, buffer, dontAddNull) {
     end = buffer + lengthBytesUTF8(string);
     lastChar = HEAP8[end];
   }
-  stringToUTF8Array(string, HEAP8, buffer, Infinity);
+  stringToUTF8(string, buffer, Infinity);
   if (dontAddNull) HEAP8[end] = lastChar; // Restore the value under the null character.
 }
 {{{ maybeExport('writeStringToMemory') }}}
