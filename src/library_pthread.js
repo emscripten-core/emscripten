@@ -321,6 +321,10 @@ var LibraryPThread = {
             url: currentScriptUrl,
             buffer: HEAPU8.buffer,
             tempDoublePtr: tempDoublePtr,
+            TOTAL_MEMORY: TOTAL_MEMORY,
+            STATICTOP: STATICTOP,
+            DYNAMIC_BASE: DYNAMIC_BASE,
+            DYNAMICTOP_PTR: DYNAMICTOP_PTR,
             PthreadWorkerInit: PthreadWorkerInit
           }, [HEAPU8.buffer]);
         PThread.unusedWorkerPool.push(worker);

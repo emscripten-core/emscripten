@@ -2,21 +2,24 @@
 // This is the entry point file that is loaded first by each Web Worker
 // that executes pthreads on the Emscripten application.
 
-// All pthreads share the same Emscripten HEAP as SharedArrayBuffer
-// with the main execution thread.
-var buffer;
-
+// Thread-local:
 var threadInfoStruct = 0; // Info area for this thread in Emscripten HEAP (shared). If zero, this worker is not currently hosting an executing pthread.
-
 var selfThreadId = 0; // The ID of this thread. 0 if not hosting a pthread.
 var parentThreadId = 0; // The ID of the parent pthread that launched this thread.
-
 var tempDoublePtr = 0; // A temporary memory area for global float and double marshalling operations.
 
-// Each thread has its own allocated stack space.
+// Thread-local: Each thread has its own allocated stack space.
 var STACK_BASE = 0;
 var STACKTOP = 0;
 var STACK_MAX = 0;
+
+// These are system-wide memory area parameters that are set at main runtime startup in main thread, and stay constant throughout the application.
+var buffer; // All pthreads share the same Emscripten HEAP as SharedArrayBuffer with the main execution thread.
+var DYNAMICTOP_PTR = 0;
+var TOTAL_MEMORY = 0;
+var STATICTOP = 0;
+var staticSealed = true; // When threads are being initialized, the static memory area has been already sealed a long time ago.
+var DYNAMIC_BASE = 0;
 
 var ENVIRONMENT_IS_PTHREAD = true;
 
@@ -42,8 +45,16 @@ this.alert = threadAlert;
 
 this.onmessage = function(e) {
   if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
-    buffer = e.data.buffer;
+    // Initialize the thread-local field(s):
     tempDoublePtr = e.data.tempDoublePtr;
+
+    // Initialize the global "process"-wide fields:
+    buffer = e.data.buffer;
+    TOTAL_MEMORY = e.data.TOTAL_MEMORY;
+    STATICTOP = e.data.STATICTOP;
+    DYNAMIC_BASE = e.data.DYNAMIC_BASE;
+    DYNAMICTOP_PTR = e.data.DYNAMICTOP_PTR;
+
     PthreadWorkerInit = e.data.PthreadWorkerInit;
     importScripts(e.data.url);
     FS.createStandardStreams();

@@ -3018,6 +3018,20 @@ window.close = function() {
   def test_pthread_proxying_in_futex_wait(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_proxying_in_futex_wait.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '-s', 'PTHREAD_POOL_SIZE=1', '--separate-asm'], timeout=30)
 
+  # Test that sbrk() operates properly in multithreaded conditions
+  def test_pthread_sbrk(self):
+    for aborting_malloc in [0, 1]:
+      print 'aborting malloc=' + str(aborting_malloc)
+      # With aborting malloc = 1, test allocating memory in threads
+      # With aborting malloc = 0, allocate so much memory in threads that some of the allocations fail.
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_sbrk.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--separate-asm', '-s', 'ABORTING_MALLOC=' + str(aborting_malloc), '-DABORTING_MALLOC=' + str(aborting_malloc), '-s', 'TOTAL_MEMORY=134217728'], timeout=30)
+
+  # Test that -s ABORTING_MALLOC=0 works in both pthreads and non-pthreads builds. (sbrk fails gracefully)
+  def test_pthread_gauge_available_memory(self):
+    for opts in [[], ['-O2']]:
+      for args in [[], ['-s', 'USE_PTHREADS=1']]:
+        self.btest(path_from_root('tests', 'gauge_available_memory.cpp'), expected='1', args=['-s', 'ABORTING_MALLOC=0'] + args + opts, timeout=30)
+
   # test atomicrmw i64
   def test_atomicrmw_i64(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'atomicrmw_i64.ll'), '-s', 'USE_PTHREADS=1', '-s', 'IN_TEST_HARNESS=1', '-o', 'test.html']).communicate()

@@ -439,14 +439,47 @@ LibraryManager.library = {
   sbrk: function(increment) {
     increment = increment|0;
     var oldDynamicTop = 0;
+    var oldDynamicTopOnChange = 0;
     var newDynamicTop = 0;
     var totalMemory = 0;
     increment = ((increment + 15) & -16)|0;
 #if USE_PTHREADS
-    oldDynamicTop = Atomics_add(HEAPU32, DYNAMICTOP_PTR>>2, increment);
+    totalMemory = getTotalMemory()|0;
+
+    // Perform a compare-and-swap loop to update the new dynamic top value. This is because
+    // this function can becalled simultaneously in multiple threads.
+    do {
+      oldDynamicTop = Atomics_load(HEAPU32, DYNAMICTOP_PTR>>2);
+      newDynamicTop = oldDynamicTop + increment | 0;
+      // Asking to increase dynamic top to a too high value? In pthreads builds we cannot
+      // enlarge memory, so this needs to fail.
+      if (((increment|0) > 0 & (newDynamicTop|0) < (oldDynamicTop|0)) // Detect and fail if we would wrap around signed 32-bit int.
+        | (newDynamicTop|0) < 0 // Also underflow, sbrk() should be able to be used to subtract.
+        | (newDynamicTop|0) > (totalMemory|0)) {
+#if ABORTING_MALLOC
+        abortOnCannotGrowMemory()|0;
 #else
+        ___setErrNo({{{ cDefine('ENOMEM') }}});
+        return -1;
+#endif
+      }
+      // Attempt to update the dynamic top to new value. Another thread may have beat this thread to the update,
+      // in which case we will need to start over by iterating the loop body again.
+      oldDynamicTopOnChange = Atomics_compareExchange(HEAPU32, DYNAMICTOP_PTR>>2, oldDynamicTop|0, newDynamicTop|0);
+    } while((oldDynamicTopOnChange|0) != (oldDynamicTop|0));
+#else // singlethreaded build: (-s USE_PTHREADS=0)
     oldDynamicTop = HEAPU32[DYNAMICTOP_PTR>>2]|0;
     newDynamicTop = oldDynamicTop + increment | 0;
+
+    if (((increment|0) > 0 & (newDynamicTop|0) < (oldDynamicTop|0)) // Detect and fail if we would wrap around signed 32-bit int.
+      | (newDynamicTop|0) < 0) { // Also underflow, sbrk() should be able to be used to subtract.
+#if ABORTING_MALLOC
+      abortOnCannotGrowMemory()|0;
+#endif
+      ___setErrNo({{{ cDefine('ENOMEM') }}});
+      return -1;
+    }
+
     HEAPU32[DYNAMICTOP_PTR>>2] = newDynamicTop;
     totalMemory = getTotalMemory()|0;
     if ((newDynamicTop|0) > (totalMemory|0)) {
