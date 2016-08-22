@@ -73,11 +73,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run_in_out_file_test('tests', 'core', 'test_sintvars',
                                    force_c=True)
 
-  @no_wasm_backend
+  @no_wasm_backend_note('printf is truncating the output of i64s')
   def test_i64(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64')
 
-  @no_wasm_backend
+  @no_wasm_backend_note('printf is truncating the output of i64s')
   def test_i64_2(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_2')
 
@@ -89,91 +89,41 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_4')
 
-  @no_wasm_backend
+  @no_wasm_backend_note('printf is truncating the output of i64s')
   def test_i64_b(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_b')
 
   def test_i64_cmp(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_cmp')
 
-  @no_wasm_backend
+  @no_wasm_backend_note('printf is truncating the output of i64s')
   def test_i64_cmp2(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_cmp2')
 
   def test_i64_double(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_double')
 
-  @no_wasm_backend
+  # @no_wasm_backend
   def test_i64_umul(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_umul')
 
-  @no_wasm_backend
+  @no_wasm_backend_note('printf is truncating the output of i64s')
   def test_i64_precise(self):
-      src = r'''
-        #include <inttypes.h>
-        #include <stdio.h>
+      self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise')
 
-        int main() {
-          uint64_t x = 0, y = 0;
-          for (int i = 0; i < 64; i++) {
-            x += 1ULL << i;
-            y += x;
-            x /= 3;
-            y *= 5;
-            printf("unsigned %d: %llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu\n", i, x, y, x+y, x-y, x*y, y ? x/y : 0, x ? y/x : 0, y ? x%y : 0, x ? y%x : 0);
-          }
-          int64_t x2 = 0, y2 = 0;
-          for (int i = 0; i < 64; i++) {
-            x2 += 1LL << i;
-            y2 += x2;
-            x2 /= 3 * (i % 7 ? -1 : 1);
-            y2 *= 5 * (i % 2 ? -1 : 1);
-            printf("signed %d: %lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld\n", i, x2, y2, x2+y2, x2-y2, x2*y2, y2 ? x2/y2 : 0, x2 ? y2/x2 : 0, y2 ? x2%y2 : 0, x2 ? y2%x2 : 0);
-          }
-          return 0;
-        }
-      '''
-      self.do_run(src, open(path_from_root('tests', 'i64_precise.txt')).read())
-
+  def test_i64_precise_unneeded(self):
       # Verify that even if we ask for precision, if it is not needed it is not included
       Settings.PRECISE_I64_MATH = 1
-      src = '''
-        #include <inttypes.h>
-        #include <stdio.h>
-
-        int main(int argc, char **argv) {
-          uint64_t x = 2125299906845564, y = 1225891506842664;
-          if (argc == 12) {
-            x = x >> 1;
-            y = y >> 1;
-          }
-          x = x & 12ULL;
-          y = y | 12ULL;
-          x = x ^ y;
-          x <<= 2;
-          y >>= 3;
-          printf("*%llu, %llu*\\n", x, y);
-        }
-      '''
-      self.do_run(src, '*4903566027370624, 153236438355333*')
+      self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise_unneeded')
 
       code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
       assert 'goog.math.Long' not in code, 'i64 precise math should never be included, musl does its own printfing'
 
+  @no_wasm_backend_note('printf is truncating the output of i64s')
+  def test_i64_precise_needed(self):
       # and now one where we do
-      self.do_run(r'''
-        #include <stdio.h>
-
-        int main( int argc, char ** argv )
-        {
-            unsigned long a = 0x60DD1695U;
-            unsigned long b = 0xCA8C4E7BU;
-            unsigned long long c = (unsigned long long)a * b;
-            printf( "c = %016llx\n", c );
-
-            return 0;
-        }
-      ''', 'c = 4ca38a6bd2973f97')
+      Settings.PRECISE_I64_MATH = 1
+      self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise_needed')
 
   @no_wasm_backend
   def test_i64_llabs(self):
@@ -4518,47 +4468,26 @@ Have even and odd!
     self.do_run(src, expected)
 
   def test_printf_2(self):
-    test_path = path_from_root('tests', 'core', 'test_printf_2')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_printf_2')
 
   def test_vprintf(self):
-    test_path = path_from_root('tests', 'core', 'test_vprintf')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_vprintf')
 
   def test_vsnprintf(self):
-    test_path = path_from_root('tests', 'core', 'test_vsnprintf')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    self.do_run_in_out_file_test('tests', 'core', 'test_vsnprintf')
 
-    self.do_run_from_file(src, output)
-
-  @no_wasm_backend
+  @no_wasm_backend_note('printf is incorrectly handling float values')
   def test_printf_more(self):
-    test_path = path_from_root('tests', 'core', 'test_printf_more')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_printf_more')
 
   def test_perrar(self):
-    test_path = path_from_root('tests', 'core', 'test_perrar')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_perrar')
 
   def test_atoX(self):
-    test_path = path_from_root('tests', 'core', 'test_atoX')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_atoX')
 
   def test_strstr(self):
-    test_path = path_from_root('tests', 'core', 'test_strstr')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strstr')
 
   def test_fnmatch(self):
     # Run one test without assertions, for additional coverage
@@ -4572,14 +4501,14 @@ Have even and odd!
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
-  @no_wasm_backend
+  @no_wasm_backend_note('printf is incorrectly handling float values')
   def test_sscanf(self):
     test_path = path_from_root('tests', 'core', 'test_sscanf')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
-  @no_wasm_backend
+  @no_wasm_backend_note('printf is incorrectly handling float values')
   def test_sscanf_2(self):
     # doubles
     for ftype in ['float', 'double']:
@@ -4649,73 +4578,47 @@ Pass: 0.000012 0.000012''')
 
     self.do_run_from_file(src, output)
 
-  @no_wasm_backend
+  # @no_wasm_backend
   def test_sscanf_other_whitespace(self):
     Settings.SAFE_HEAP = 0 # use i16s in printf
 
-    test_path = path_from_root('tests', 'core', 'test_sscanf_other_whitespace')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_other_whitespace')
 
-    self.do_run_from_file(src, output)
-
-  @no_wasm_backend
+  @no_wasm_backend_note('printf is truncating the output of i64s')
   def test_sscanf_3(self):
-    test_path = path_from_root('tests', 'core', 'test_sscanf_3')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_3')
 
   def test_sscanf_4(self):
-    test_path = path_from_root('tests', 'core', 'test_sscanf_4')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_4')
 
   def test_sscanf_5(self):
-    test_path = path_from_root('tests', 'core', 'test_sscanf_5')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_5')
 
-    self.do_run_from_file(src, output)
-
-  @no_wasm_backend
+  @no_wasm_backend_note('sscanf seems to be rewriting local unmentioned variables')
   def test_sscanf_6(self):
-    test_path = path_from_root('tests', 'core', 'test_sscanf_6')
-    src, output = (test_path + s for s in ('.in', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_6')
 
   def test_sscanf_skip(self):
-    test_path = path_from_root('tests', 'core', 'test_sscanf_skip')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_skip')
 
-    self.do_run_from_file(src, output)
-
-  @no_wasm_backend
+  @no_wasm_backend_note('printf is incorrectly handling float values')
   def test_sscanf_caps(self):
-    test_path = path_from_root('tests', 'core', 'test_sscanf_caps')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_caps')
 
-    self.do_run_from_file(src, output)
-
-  @no_wasm_backend
+  @no_wasm_backend_note('for some reasons emscripten_asm_const_ii gets called? and has a bogus memory address that causes a trap')
   def test_sscanf_hex(self):
-    test_path = path_from_root('tests', 'core', 'test_sscanf_hex')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_hex')
 
-    self.do_run_from_file(src, output)
-
-  @no_wasm_backend
+  @no_wasm_backend_note('printf is incorrectly handling float values')
   def test_sscanf_float(self):
-    test_path = path_from_root('tests', 'core', 'test_sscanf_float')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_float')
 
   def test_langinfo(self):
     src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
     expected = open(path_from_root('tests', 'langinfo', 'output.txt'), 'r').read()
     self.do_run(src, expected, extra_emscripten_args=['-H', 'libc/langinfo.h'])
 
-  @no_wasm_backend
+  @no_wasm_backend_note('Does not dump .mem file')
   def test_files(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # closure can generate variables called 'gc', which pick up js shell stuff
     if '-O2' in self.emcc_args and not self.is_wasm():
@@ -4747,7 +4650,7 @@ def process(filename):
   open(filename, 'w').write(src)
 '''
     other = open(os.path.join(self.get_dir(), 'test.file'), 'w')
-    other.write('some data');
+    other.write('some data')
     other.close()
 
     src = open(path_from_root('tests', 'files.cpp'), 'r').read()
@@ -4765,7 +4668,7 @@ def process(filename):
       self.do_run(src, map(lambda x: x if 'SYSCALL_DEBUG=1' not in mode else ('syscall! 146,SYS_writev' if self.run_name == 'default' else 'syscall! 146'), ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n')),
                   post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'], output_nicerizer=clean)
       if self.uses_memory_init_file():
-        assert os.path.exists(mem_file)
+        assert os.path.exists(mem_file), 'File %s does not exist' % mem_file
 
   def test_files_m(self):
     # Test for Module.stdin etc.
@@ -4859,7 +4762,7 @@ def process(filename):
     self.emcc_args += ['--embed-file', 'eol.txt']
     self.do_run(src, 'SUCCESS\n')
 
-  @no_wasm_backend
+  @no_wasm_backend_note('printf is incorrectly handling float values')
   def test_fscanf(self):
     open(os.path.join(self.get_dir(), 'three_numbers.txt'), 'w').write('''-1 0.1 -.1''')
     src = r'''

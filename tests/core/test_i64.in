@@ -5,16 +5,16 @@ int main()
   long long b = a >> 29;
   long long c = a >> 32;
   long long d = a >> 34;
-  printf("*%lld,%lld,%lld,%lld*\\n", a, b, c, d);
+  printf("*%lld,%lld,%lld,%lld*\n", a, b, c, d);
   unsigned long long ua = 0x2b00505c10;
   unsigned long long ub = ua >> 29;
   unsigned long long uc = ua >> 32;
   unsigned long long ud = ua >> 34;
-  printf("*%lld,%lld,%lld,%lld*\\n", ua, ub, uc, ud);
+  printf("*%lld,%lld,%lld,%lld*\n", ua, ub, uc, ud);
 
   long long x = 0x0000def123450789ULL; // any bigger than this, and we
   long long y = 0x00020ef123456089ULL; // start to run into the double precision limit!
-  printf("*%lld,%lld,%lld,%lld,%lld*\\n", x, y, x | y, x & y, x ^ y);
+  printf("*%lld,%lld,%lld,%lld,%lld*\n", x, y, x | y, x & y, x ^ y);
 
   printf("*");
   long long z = 13;
@@ -24,6 +24,6 @@ int main()
     z = z >> 1;
     n++;
   }
-  printf("*%d*\\n", n);
+  printf("*%d*\n", n);
   return 0;
 }
