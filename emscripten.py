@@ -1061,7 +1061,7 @@ function setThrew(threw, value) {
 '''] + ['' if not settings['SAFE_HEAP'] else '''
 function setDynamicTop(value) {
   value = value | 0;
-  HEAPU32[DYNAMICTOP_PTR>>2] = value;
+  HEAP32[DYNAMICTOP_PTR>>2] = value;
 }
 '''] + ['' if not asm_safe_heap else '''
 function SAFE_HEAP_STORE(dest, value, bytes) {
@@ -1069,7 +1069,7 @@ function SAFE_HEAP_STORE(dest, value, bytes) {
   value = value | 0;
   bytes = bytes | 0;
   if ((dest|0) <= 0) segfault();
-  if (((dest + bytes)|0) > (HEAPU32[DYNAMICTOP_PTR>>2]|0)) segfault();
+  if (((dest + bytes)|0) > (HEAP32[DYNAMICTOP_PTR>>2]|0)) segfault();
   if ((bytes|0) == 4) {
     if ((dest&3)) alignfault();
     HEAP32[dest>>2] = value;
@@ -1085,7 +1085,7 @@ function SAFE_HEAP_STORE_D(dest, value, bytes) {
   value = +value;
   bytes = bytes | 0;
   if ((dest|0) <= 0) segfault();
-  if (((dest + bytes)|0) > (HEAPU32[DYNAMICTOP_PTR>>2]|0)) segfault();
+  if (((dest + bytes)|0) > (HEAP32[DYNAMICTOP_PTR>>2]|0)) segfault();
   if ((bytes|0) == 8) {
     if ((dest&7)) alignfault();
     HEAPF64[dest>>3] = value;
@@ -1099,7 +1099,7 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned) {
   bytes = bytes | 0;
   unsigned = unsigned | 0;
   if ((dest|0) <= 0) segfault();
-  if ((dest + bytes|0) > (HEAPU32[DYNAMICTOP_PTR>>2]|0)) segfault();
+  if ((dest + bytes|0) > (HEAP32[DYNAMICTOP_PTR>>2]|0)) segfault();
   if ((bytes|0) == 4) {
     if ((dest&3)) alignfault();
     return HEAP32[dest>>2] | 0;
@@ -1118,7 +1118,7 @@ function SAFE_HEAP_LOAD_D(dest, bytes) {
   dest = dest | 0;
   bytes = bytes | 0;
   if ((dest|0) <= 0) segfault();
-  if ((dest + bytes|0) > (HEAPU32[DYNAMICTOP_PTR>>2]|0)) segfault();
+  if ((dest + bytes|0) > (HEAP32[DYNAMICTOP_PTR>>2]|0)) segfault();
   if ((bytes|0) == 8) {
     if ((dest&7)) alignfault();
     return +HEAPF64[dest>>3];

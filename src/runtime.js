@@ -61,13 +61,13 @@ var RuntimeGenerator = {
   dynamicAlloc: function(size) {
     var ret = '';
     if (ASSERTIONS) ret += 'assert(DYNAMICTOP_PTR);'; // dynamic area must be ready
-    ret += 'var ret = HEAPU32[DYNAMICTOP_PTR>>2];'
+    ret += 'var ret = HEAP32[DYNAMICTOP_PTR>>2];'
       + 'var end = (((ret + size + 15)|0) & -16);'
-      + 'HEAPU32[DYNAMICTOP_PTR>>2] = end;'
+      + 'HEAP32[DYNAMICTOP_PTR>>2] = end;'
       + 'if (end >= TOTAL_MEMORY) {'
       +   'var success = enlargeMemory();'
       +     'if (!success) {'
-      +       'HEAPU32[DYNAMICTOP_PTR>>2] = ret;'
+      +       'HEAP32[DYNAMICTOP_PTR>>2] = ret;'
       +       'return 0;'
       +    '}'
       +  '}'

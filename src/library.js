@@ -449,7 +449,7 @@ LibraryManager.library = {
     // Perform a compare-and-swap loop to update the new dynamic top value. This is because
     // this function can becalled simultaneously in multiple threads.
     do {
-      oldDynamicTop = Atomics_load(HEAPU32, DYNAMICTOP_PTR>>2);
+      oldDynamicTop = Atomics_load(HEAP32, DYNAMICTOP_PTR>>2);
       newDynamicTop = oldDynamicTop + increment | 0;
       // Asking to increase dynamic top to a too high value? In pthreads builds we cannot
       // enlarge memory, so this needs to fail.
@@ -465,10 +465,10 @@ LibraryManager.library = {
       }
       // Attempt to update the dynamic top to new value. Another thread may have beat this thread to the update,
       // in which case we will need to start over by iterating the loop body again.
-      oldDynamicTopOnChange = Atomics_compareExchange(HEAPU32, DYNAMICTOP_PTR>>2, oldDynamicTop|0, newDynamicTop|0);
+      oldDynamicTopOnChange = Atomics_compareExchange(HEAP32, DYNAMICTOP_PTR>>2, oldDynamicTop|0, newDynamicTop|0);
     } while((oldDynamicTopOnChange|0) != (oldDynamicTop|0));
 #else // singlethreaded build: (-s USE_PTHREADS=0)
-    oldDynamicTop = HEAPU32[DYNAMICTOP_PTR>>2]|0;
+    oldDynamicTop = HEAP32[DYNAMICTOP_PTR>>2]|0;
     newDynamicTop = oldDynamicTop + increment | 0;
 
     if (((increment|0) > 0 & (newDynamicTop|0) < (oldDynamicTop|0)) // Detect and fail if we would wrap around signed 32-bit int.
@@ -480,7 +480,7 @@ LibraryManager.library = {
       return -1;
     }
 
-    HEAPU32[DYNAMICTOP_PTR>>2] = newDynamicTop;
+    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop;
     totalMemory = getTotalMemory()|0;
     if ((newDynamicTop|0) > (totalMemory|0)) {
       // Warning: when -s USE_PTHREADS=1, this code block is called in a multithreaded context,
@@ -489,7 +489,7 @@ LibraryManager.library = {
       // operation is performed as a single transaction.
       if ((enlargeMemory()|0) == 0) {
         ___setErrNo({{{ cDefine('ENOMEM') }}});
-        HEAPU32[DYNAMICTOP_PTR>>2] = oldDynamicTop;
+        HEAP32[DYNAMICTOP_PTR>>2] = oldDynamicTop;
         return -1;
       }
     }
@@ -502,9 +502,9 @@ LibraryManager.library = {
   brk: function(addr) {
     addr = addr|0;
 #if USE_PTHREADS
-    Atomics_set(HEAPU32, DYNAMICTOP_PTR>>2, addr);
+    Atomics_set(HEAP32, DYNAMICTOP_PTR>>2, addr);
 #else
-    HEAPU32[DYNAMICTOP_PTR>>2] = addr;
+    HEAP32[DYNAMICTOP_PTR>>2] = addr;
 #endif
     return 0; // TODO: error checking, return -1 on error and set errno.
   },

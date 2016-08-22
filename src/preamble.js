@@ -53,9 +53,9 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
   if (dest <= 0) abort('segmentation fault storing ' + bytes + ' bytes to address ' + dest);
   if (dest % bytes !== 0) abort('alignment error storing to address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
   if (staticSealed) {
-    if (dest + bytes > HEAPU32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when storing ' + bytes + ' bytes to address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + HEAPU32[DYNAMICTOP_PTR>>2]);
+    if (dest + bytes > HEAP32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when storing ' + bytes + ' bytes to address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
     assert(DYNAMICTOP_PTR);
-    assert(HEAPU32[DYNAMICTOP_PTR>>2] <= TOTAL_MEMORY);
+    assert(HEAP32[DYNAMICTOP_PTR>>2] <= TOTAL_MEMORY);
   } else {
     if (dest + bytes > STATICTOP) abort('segmentation fault, exceeded the top of the available static heap when storing ' + bytes + ' bytes to address ' + dest + '. STATICTOP=' + STATICTOP);
   }
@@ -69,9 +69,9 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
   if (dest <= 0) abort('segmentation fault loading ' + bytes + ' bytes from address ' + dest);
   if (dest % bytes !== 0) abort('alignment error loading from address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
   if (staticSealed) {
-    if (dest + bytes > HEAPU32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when loading ' + bytes + ' bytes from address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + HEAPU32[DYNAMICTOP_PTR>>2]);
+    if (dest + bytes > HEAP32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when loading ' + bytes + ' bytes from address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
     assert(DYNAMICTOP_PTR);
-    assert(HEAPU32[DYNAMICTOP_PTR>>2] <= TOTAL_MEMORY);
+    assert(HEAP32[DYNAMICTOP_PTR>>2] <= TOTAL_MEMORY);
   } else {
     if (dest + bytes > STATICTOP) abort('segmentation fault, exceeded the top of the available static heap when loading ' + bytes + ' bytes from address ' + dest + '. STATICTOP=' + STATICTOP);
   }
@@ -1017,7 +1017,7 @@ function enlargeMemory() {
 #else
   // TOTAL_MEMORY is the current size of the actual array, and DYNAMICTOP is the new top.
 #if ASSERTIONS
-  assert(HEAPU32[DYNAMICTOP_PTR>>2] > TOTAL_MEMORY); // This function should only ever be called after the ceiling of the dynamic heap has already been bumped to exceed the current total size of the asm.js heap.
+  assert(HEAP32[DYNAMICTOP_PTR>>2] > TOTAL_MEMORY); // This function should only ever be called after the ceiling of the dynamic heap has already been bumped to exceed the current total size of the asm.js heap.
   assert(TOTAL_MEMORY > 4); // So the loop below will not be infinite
 #endif
 
@@ -1030,9 +1030,9 @@ function enlargeMemory() {
 
   var LIMIT = Math.pow(2, 31); // 2GB is a practical maximum, as we use signed ints as pointers
                                // and JS engines seem unhappy to give us 2GB arrays currently
-  if (HEAPU32[DYNAMICTOP_PTR>>2] >= LIMIT) return false;
+  if (HEAP32[DYNAMICTOP_PTR>>2] >= LIMIT) return false;
 
-  while (TOTAL_MEMORY < HEAPU32[DYNAMICTOP_PTR>>2]) { // Keep incrementing the heap size as long as it's less than what is requested.
+  while (TOTAL_MEMORY < HEAP32[DYNAMICTOP_PTR>>2]) { // Keep incrementing the heap size as long as it's less than what is requested.
     if (TOTAL_MEMORY < LIMIT/2) {
       TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY); // // Simple heuristic: double until 1GB...
     } else {

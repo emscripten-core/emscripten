@@ -386,7 +386,7 @@ function JSify(data, functionsOnly) {
       print('STACK_BASE = STACKTOP = Runtime.alignMemory(STATICTOP);\n');
       print('STACK_MAX = STACK_BASE + TOTAL_STACK;\n');
       print('DYNAMIC_BASE = Runtime.alignMemory(STACK_MAX);\n');
-      print('HEAPU32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;\n');
+      print('HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;\n');
       print('staticSealed = true; // seal the static portion of memory\n');
       if (ASSERTIONS) print('assert(DYNAMIC_BASE < TOTAL_MEMORY, "TOTAL_MEMORY not big enough for stack");\n');
       if (USE_PTHREADS) print('}\n');
