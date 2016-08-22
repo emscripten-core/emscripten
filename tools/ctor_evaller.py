@@ -110,6 +110,7 @@ var totalStack = %d;
 
 var buffer = new ArrayBuffer(totalMemory);
 var heap = new Uint8Array(buffer);
+var heapi32 = new Int32Array(buffer);
 
 var memInit = %s;
 
@@ -127,7 +128,8 @@ var stackBase = stackTop;
 var stackMax = stackTop + totalStack;
 if (stackMax >= totalMemory) throw 'not enough room for stack';
 
-var dynamicTopPtr = 0;
+var dynamicTopPtr = stackMax;
+heapi32[dynamicTopPtr >> 2] = stackMax;
 
 if (!Math.imul) {
   Math.imul = Math.imul || function(a, b) {
@@ -198,6 +200,10 @@ for (var i = 0; i < allCtors.length; i++) {
     var globalsAfter = asm['dumpGlobals']();
     if (JSON.stringify(globalsBefore) !== JSON.stringify(globalsAfter)) {
       console.warn('globals modified');
+      break;
+    }
+    if (heapi32[dynamicTopPtr >> 2] !== stackMax) {
+      console.warn('dynamic allocation was performend');
       break;
     }
 
