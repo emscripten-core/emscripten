@@ -6518,12 +6518,20 @@ int main() {
     try_delete('test.bc')
 
   def test_output_eol(self):
-    for params in [[], ['--separate-asm']]:
-      for eol in ['windows', 'linux']:
-        Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a.html', '--output_eol', eol] + params).communicate()
-        for f in ['a.html', 'a.js', 'a.asm.js']:
-          if os.path.isfile(f):
-            print str(params) + ' ' + eol + ' ' + f
+    for params in [[], ['--separate-asm'], ['--proxy-to-worker'], ['--proxy-to-worker', '--separate-asm']]:
+      for output_suffix in ['html', 'js']:
+        for eol in ['windows', 'linux']:
+          files = ['a.js']
+          if '--separate-asm' in params: files += ['a.asm.js']
+          if output_suffix == 'html': files += ['a.html']
+          cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a.' + output_suffix, '--output_eol', eol] + params
+          Popen(cmd).communicate()
+          for f in files:
+            print str(cmd) + ' ' + str(params) + ' ' + eol + ' ' + f
+            assert os.path.isfile(f)
             ret = tools.line_endings.check_line_endings(f, expect_only_specific_line_endings='\n' if eol == 'linux' else '\r\n')
             assert ret == 0
+
+          for f in files:
+            try_delete(f)
 
