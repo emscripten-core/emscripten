@@ -651,7 +651,7 @@ function _emscripten_asm_const_%s(%s) {
              '(it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)' + \
              '"); ' + extra
 
-    basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory'] + [m.replace('.', '_') for m in math_envs]
+    basic_funcs = ['abort', 'assert', 'enlargeMemory', 'abortOnCannotGrowMemory', 'getTotalMemory'] + [m.replace('.', '_') for m in math_envs]
     if settings['STACK_OVERFLOW_CHECK']: basic_funcs += ['abortStackOverflow']
 
     asm_safe_heap = settings['SAFE_HEAP'] and not settings['SAFE_HEAP_LOG'] and not settings['RELOCATABLE'] # optimized safe heap in asm, when we can
@@ -1528,7 +1528,7 @@ return ASM_CONSTS[code](%s);
   outfile.write(pre)
   pre = None
 
-  basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory']
+  basic_funcs = ['abort', 'assert', 'enlargeMemory', 'abortOnCannotGrowMemory', 'getTotalMemory']
 
   access_quote = access_quoter(settings)
 
