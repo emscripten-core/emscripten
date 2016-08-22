@@ -26,11 +26,11 @@ var Module = {};
 
 function threadPrint() {
   var text = Array.prototype.slice.call(arguments).join(' ');
-  postMessage({cmd: 'print', text: text, threadId: selfThreadId});
+  console.log(text);
 }
 function threadPrintErr() {
   var text = Array.prototype.slice.call(arguments).join(' ');
-  postMessage({cmd: 'printErr', text: text, threadId: selfThreadId});
+  console.error(text);
 }
 function threadAlert() {
   var text = Array.prototype.slice.call(arguments).join(' ');
@@ -38,13 +38,6 @@ function threadAlert() {
 }
 Module['print'] = threadPrint;
 Module['printErr'] = threadPrintErr;
-
-// Work around https://bugzilla.mozilla.org/show_bug.cgi?id=1049091
-console = {
-  log: threadPrint,
-  error: threadPrintErr
-};
-
 this.alert = threadAlert;
 
 this.onmessage = function(e) {
