@@ -89,13 +89,13 @@ class Cache:
       if what is None:
         if shortname.endswith(('.bc', '.so', '.a')): what = 'system library'
         else: what = 'system asset'
-      message = 'generating ' + what + ': ' + shortname + '...'
-      logging.warn(message)
+      message = 'generating ' + what + ': ' + shortname + '... (this will be cached in "' + cachename + '" for subsequent builds)'
+      logging.info(message)
       self.ensure()
       temp = creator()
       if temp != cachename:
         shutil.copyfile(temp, cachename)
-      logging.warn(' '*len(message) + 'ok')
+      logging.info(' - ok')
     finally:
       self.release_cache_lock()
 
