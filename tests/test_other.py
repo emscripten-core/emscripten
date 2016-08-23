@@ -754,6 +754,9 @@ This pointer might make sense in another type signature:''', '''Invalid function
     assert not os.path.exists('a.out') and not os.path.exists('a.exe'), 'Must not leave unneeded linker stubs'
 
   def test_outline(self):
+    if WINDOWS and not Building.which('mingw32-make'):
+      return self.skip('Skipping other.test_outline: This test requires "mingw32-make" tool in PATH on Windows to drive a Makefile build of zlib')
+
     def test(name, src, libs, expected, expected_ranges, args=[], suffix='cpp'):
       print name
 
