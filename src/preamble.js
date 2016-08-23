@@ -979,11 +979,13 @@ function abortStackOverflow(allocSize) {
 }
 #endif
 
-#if ALLOW_MEMORY_GROWTH == 0
+#if ABORTING_MALLOC
 function abortOnCannotGrowMemory() {
   abort('Cannot enlarge memory arrays. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which adjusts the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
 }
-#else // ALLOW_MEMORY_GROWTH
+#endif
+
+#if ALLOW_MEMORY_GROWTH
 if (!Module['reallocBuffer']) Module['reallocBuffer'] = function(size) {
   var ret;
   try {
