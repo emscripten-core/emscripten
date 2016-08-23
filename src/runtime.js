@@ -59,15 +59,19 @@ var RuntimeGenerator = {
 
   // allocation on the top of memory, adjusted dynamically by sbrk
   dynamicAlloc: function(size) {
-    if (ASSERTIONS) size = '(assert(DYNAMICTOP > 0),' + size + ')'; // dynamic area must be ready
-#if USE_PTHREADS
-    if (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD) throw 'Runtime.dynamicAlloc is not available in pthreads!'; // This is because each worker has its own copy of DYNAMICTOP, of which main thread is authoritative.
-#endif
-    var ret = RuntimeGenerator.alloc(size, 'DYNAMIC');
-    if (SAFE_HEAP) ret += '; if (asm) { Runtime.setDynamicTop(DYNAMICTOP); }';
-    ret += '; if (DYNAMICTOP >= TOTAL_MEMORY) { var success = enlargeMemory(); if (!success) { DYNAMICTOP = ret; ';
-    if (SAFE_HEAP) ret += 'if (asm) { Runtime.setDynamicTop(DYNAMICTOP); }';
-    ret += ' return 0; } }'
+    var ret = '';
+    if (ASSERTIONS) ret += 'assert(DYNAMICTOP_PTR);'; // dynamic area must be ready
+    ret += 'var ret = HEAP32[DYNAMICTOP_PTR>>2];'
+      + 'var end = (((ret + size + 15)|0) & -16);'
+      + 'HEAP32[DYNAMICTOP_PTR>>2] = end;'
+      + 'if (end >= TOTAL_MEMORY) {'
+      +   'var success = enlargeMemory();'
+      +     'if (!success) {'
+      +       'HEAP32[DYNAMICTOP_PTR>>2] = ret;'
+      +       'return 0;'
+      +    '}'
+      +  '}'
+      + 'return ret;';
     return ret;
   },
 
@@ -100,8 +104,12 @@ var RuntimeGenerator = {
   }
 };
 
-function unInline(name_, params) {
-  var src = '(function(' + params + ') { var ret = ' + RuntimeGenerator[name_].apply(null, params) + '; return ret; })';
+function unInline(name_, params, isExpression) {
+  if (isExpression) {
+    var src = '(function(' + params + ') { var ret = ' + RuntimeGenerator[name_].apply(null, params) + '; return ret; })';
+  } else {
+    var src = '(function(' + params + ') { ' + RuntimeGenerator[name_].apply(null, params) + '})';
+  }
   var ret = eval(src);
   return ret;
 }
@@ -429,11 +437,11 @@ var Runtime = {
 #endif
 };
 
-Runtime.stackAlloc = unInline('stackAlloc', ['size']);
-Runtime.staticAlloc = unInline('staticAlloc', ['size']);
-Runtime.dynamicAlloc = unInline('dynamicAlloc', ['size']);
-Runtime.alignMemory = unInline('alignMemory', ['size', 'quantum']);
-Runtime.makeBigInt = unInline('makeBigInt', ['low', 'high', 'unsigned']);
+Runtime.stackAlloc = unInline('stackAlloc', ['size'], true);
+Runtime.staticAlloc = unInline('staticAlloc', ['size'], true);
+Runtime.dynamicAlloc = unInline('dynamicAlloc', ['size'], false);
+Runtime.alignMemory = unInline('alignMemory', ['size', 'quantum'], true);
+Runtime.makeBigInt = unInline('makeBigInt', ['low', 'high', 'unsigned'], true);
 
 if (MAIN_MODULE || SIDE_MODULE) {
   Runtime.tempRet0 = 0;

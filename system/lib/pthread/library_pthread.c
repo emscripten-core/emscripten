@@ -282,7 +282,6 @@ static void _do_call(em_queued_call *q)
 		case EM_PROXIED_FPATHCONF: q->returnValue.i = fpathconf(q->args[0].i, q->args[1].i); break;
 		case EM_PROXIED_CONFSTR: q->returnValue.i = confstr(q->args[0].i, q->args[1].cp, q->args[2].i); break;
 		case EM_PROXIED_SYSCONF: q->returnValue.i = sysconf(q->args[0].i); break;
-		case EM_PROXIED_SBRK: q->returnValue.vp = sbrk(q->args[0].i); break;
 		case EM_PROXIED_ATEXIT: q->returnValue.i = atexit(q->args[0].vp); break;
 		case EM_PROXIED_GETENV: q->returnValue.cp = getenv(q->args[0].cp); break;
 		case EM_PROXIED_CLEARENV: q->returnValue.i = clearenv(); break;
