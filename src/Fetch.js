@@ -40,12 +40,18 @@ var Fetch = {
   },
 
   staticInit: function() {
+#if USE_PTHREADS
+    var isMainThread = (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' && !ENVIRONMENT_IS_PTHREAD);
+#else
+    var isMainThread = (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined');
+#endif
+
     var onsuccess = function(db) {
 #if FETCH_DEBUG
       console.log('fetch: IndexedDB successfully opened.');
 #endif
       Fetch.dbInstance = db;
-      if (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' && !ENVIRONMENT_IS_PTHREAD) {
+      if (isMainThread) {
         Fetch.initFetchWorker();
         removeRunDependency('library_fetch_init');
       }
@@ -55,14 +61,14 @@ var Fetch = {
       console.error('fetch: IndexedDB open failed.');
 #endif
       Fetch.dbInstance = false;
-      if (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' && !ENVIRONMENT_IS_PTHREAD) {
+      if (isMainThread) {
         Fetch.initFetchWorker();
         removeRunDependency('library_fetch_init');
       }
     };
     Fetch.openDatabase('emscripten_filesystem', 1, onsuccess, onerror);
 
-    if (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' && !ENVIRONMENT_IS_PTHREAD) {
+    if (isMainThread) {
       addRunDependency('library_fetch_init');
 
       var fetchJs = 'fetch-worker.js';
