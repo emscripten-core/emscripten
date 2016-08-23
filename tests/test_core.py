@@ -103,7 +103,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_i64_double(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_double')
 
-  # @no_wasm_backend
+  @no_wasm_backend_note('printf is truncating the output of i64s')
   def test_i64_umul(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_umul')
 
@@ -125,7 +125,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       Settings.PRECISE_I64_MATH = 1
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise_needed')
 
-  @no_wasm_backend
+  @no_wasm_backend_note('printf is truncating the output of i64s')
   def test_i64_llabs(self):
     Settings.PRECISE_I64_MATH = 2
 
@@ -149,7 +149,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
                                  args='waka fleefl asdfasdfasdfasdf'
                                       .split(' '))
 
-  @no_wasm_backend
+  @no_wasm_backend_note('printf is truncating the output of really big doubles')
   def test_llvm_fabs(self):
     Settings.PRECISE_F32 = 1
     self.do_run_in_out_file_test('tests', 'core', 'test_llvm_fabs',
@@ -198,7 +198,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
     self.do_run_from_file(src, output)
 
-  @no_wasm_backend
+  @no_wasm_backend_note('printf is truncating the output of i64s')
   def test_bswap64(self):
     test_path = path_from_root('tests', 'core', 'test_bswap64')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -214,12 +214,12 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_sha1(self):
     self.do_run(open(path_from_root('tests', 'sha1.c')).read(), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
 
-  @no_wasm_backend
+  @no_wasm_backend_note('test checks that __asmjs__ is #defined')
   def test_asmjs_unknown_emscripten(self):
     # No other configuration is supported, so always run this.
     self.do_run(open(path_from_root('tests', 'asmjs-unknown-emscripten.c')).read(), '')
 
-  @no_wasm_backend
+  @no_wasm_backend_note('printf is incorrectly handling float values')
   def test_cube2md5(self):
     self.emcc_args += ['--embed-file', 'cube2md5.txt']
     shutil.copyfile(path_from_root('tests', 'cube2md5.txt'), os.path.join(self.get_dir(), 'cube2md5.txt'))
@@ -350,10 +350,12 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 0.00,10,123.46,0.00 : 0.00,10,123.46,0.00
 ''')
 
-  @no_wasm_backend
+  @no_wasm_backend_note('specific alignment semantics may be asmjs-specific?')
   def test_align_moar(self):
     self.emcc_args = self.emcc_args + ['-msse']
     def test():
+      # hardcoded addresses, for 2 common global_base values.
+      # this tracks if this ever changes by surprise. will need normal updates.
       self.do_run(r'''
 #include <xmmintrin.h>
 #include <stdio.h>
@@ -375,7 +377,7 @@ int main()
     printf("Alignment: %d addr: 0x%x\n", ((int)&v) % 16, (int)&v);
     printf("Alignment: %d addr: 0x%x\n", ((int)&m) % 16, (int)&m);
 }
-    ''', ('Alignment: 0 addr: 0xa20\nAlignment: 0 addr: 0xa60\n', 'Alignment: 0 addr: 0xe10\nAlignment: 0 addr: 0xe50\n')) # hardcoded addresses, for 2 common global_base values. this tracks if this ever changes by surprise. will need normal updates.
+    ''', ('Alignment: 0 addr: 0xa20\nAlignment: 0 addr: 0xa60\n', 'Alignment: 0 addr: 0xe10\nAlignment: 0 addr: 0xe50\n'))
 
     test()
     print 'relocatable'
@@ -1542,28 +1544,17 @@ value = real 0.00 imag 1.00''', force_c=True)
     self.do_run(src, 'success')
 
   def test_alloca_stack(self):
-    test_path = path_from_root('tests', 'core', 'test_alloca_stack')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output, force_c=True)
+    self.do_run_in_out_file_test('tests', 'core', 'test_alloca_stack')
 
   def test_stack_byval(self):
-    test_path = path_from_root('tests', 'core', 'test_stack_byval')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack_byval')
 
-    self.do_run_from_file(src, output)
-
-  @no_wasm_backend
   def test_stack_varargs(self):
     Settings.INLINING_LIMIT = 50
     Settings.TOTAL_STACK = 2048
 
-    test_path = path_from_root('tests', 'core', 'test_stack_varargs')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack_varargs')
 
-    self.do_run_from_file(src, output)
-
-  @no_wasm_backend
   def test_stack_varargs2(self):
     Settings.TOTAL_STACK = 1536
     src = r'''
