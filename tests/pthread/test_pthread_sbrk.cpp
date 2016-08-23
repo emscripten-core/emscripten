@@ -67,27 +67,6 @@ static void *thread_start(void *arg)
     return_code = 12345678; // We expect to be allocating so much memory that some of the allocations fail.
 #endif
   pthread_exit((void*)return_code);
-/*
-  for(int i = 0; i < N; ++i)
-  {
-    mem[i] = (int*)malloc(4);
-    *mem[i] = n+i;
-  }
-  for(int i = 0; i < N; ++i)
-  {
-    int k = *mem[i];
-    if (k != n+i)
-    {
-      EM_ASM_INT( { console.error('Memory corrupted! mem[i]: ' + $0 + ', i: ' + $1 + ', n: ' + $2); }, k, i, n);
-      pthread_exit((void*)1);
-    }
-
-    assert(*mem[i] == n+i);
-    free(mem[i]);
-  }
-  EM_ASM_INT( { console.log('Worker with task number ' + $0 + ' finished.'); }, n);
-  pthread_exit(0);
-*/
 }
 
 int main()
