@@ -149,6 +149,9 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
                                  args='waka fleefl asdfasdfasdfasdf'
                                       .split(' '))
 
+  def test_vararg_copy(self):
+    self.do_run_in_out_file_test('tests', 'va_arg', 'test_va_copy')
+
   @no_wasm_backend_note('printf is truncating the output of really big doubles')
   def test_llvm_fabs(self):
     Settings.PRECISE_F32 = 1
