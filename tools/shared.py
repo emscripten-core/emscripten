@@ -668,17 +668,22 @@ def get_clang_native_env():
 
     env['INCLUDE'] = os.path.join(visual_studio_path, 'VC\\INCLUDE')
 
+    if 'ProgramFiles(x86)' in env: prog_files_x86 = env['ProgramFiles(x86)']
+    elif 'ProgramFiles' in env: prog_files_x86 = env['ProgramFiles']
+    elif os.path.isdir('C:\\Program Files (x86)'): prog_files_x86 = 'C:\\Program Files (x86)'
+    elif os.path.isdir('C:\\Program Files'): prog_files_x86 = 'C:\\Program Files'
+    else:
+      raise Exception('Unable to detect Program files directory for native Visual Studio build!')
+
     if 'WindowsSdkDir' in env:
       windows_sdk_dir = env['WindowsSdkDir']
-    elif 'ProgramFiles(x86)' in env:
-      windows_sdk_dir = os.path.normpath(os.path.join(env['ProgramFiles(x86)'], 'Windows Kits\\8.1'))
-    elif 'ProgramFiles' in env:
-      windows_sdk_dir = os.path.normpath(os.path.join(env['ProgramFiles'], 'Windows Kits\\8.1'))
-    elif os.path.isdir('C:\\Program Files (x86)\\Windows Kits\\10'):
-      windows_sdk_dir = 'C:\\Program Files (x86)\\Windows Kits\\10'
-      include_dir = 'C:\\Program Files (x86)\\Windows Kits\\10\\Include'
+    elif os.path.isdir(os.path.join(prog_files_x86, 'Windows Kits', '10')):
+      windows_sdk_dir = os.path.join(prog_files_x86, 'Windows Kits', '10')
+      include_dir = os.path.join(windows_sdk_dir, 'Include')
       include_dir = [os.path.join(include_dir,x) for x in os.listdir(include_dir) if os.path.isdir(os.path.join(include_dir, x))][0] + '\\ucrt'
       env['INCLUDE'] = env['INCLUDE'] + ';' + include_dir
+    elif os.path.isdir(os.path.join(prog_files_x86, 'Windows Kits', '8.1')):
+      windows_sdk_dir = os.path.join(prog_files_x86, 'Windows Kits', '8.1')
     else:
       windows_sdk_dir = 'C:\\Program Files (x86)\\Windows Kits\\8.1'
     if not os.path.isdir(windows_sdk_dir):
