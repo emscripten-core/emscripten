@@ -1434,7 +1434,7 @@ int main(int argc, char **argv)
     Settings.DISABLE_EXCEPTION_CATCHING = 2
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
-    if not Settings.BINARYEN:
+    if not self.is_wasm_backend():
       Settings.EXCEPTION_CATCHING_WHITELIST = ["__Z12somefunctionv"]
     else:
       Settings.EXCEPTION_CATCHING_WHITELIST = ["_Z12somefunctionv"]
@@ -1477,7 +1477,7 @@ int main(int argc, char **argv)
     Settings.DISABLE_EXCEPTION_CATCHING = 2
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
-    if not Settings.BINARYEN:
+    if not self.is_wasm_backend():
       Settings.EXCEPTION_CATCHING_WHITELIST = ["_main"]
     else:
       Settings.EXCEPTION_CATCHING_WHITELIST = ["main"]
