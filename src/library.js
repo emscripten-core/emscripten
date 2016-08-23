@@ -483,10 +483,6 @@ LibraryManager.library = {
     HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop;
     totalMemory = getTotalMemory()|0;
     if ((newDynamicTop|0) > (totalMemory|0)) {
-      // Warning: when -s USE_PTHREADS=1, this code block is called in a multithreaded context,
-      // so enlargeMemory() will be set to abort. If enlarging with pthreads is enabled at some point,
-      // sbrk will need to get mutexes to ensure that incrementing the heap size above and this enlarge
-      // operation is performed as a single transaction.
       if ((enlargeMemory()|0) == 0) {
         ___setErrNo({{{ cDefine('ENOMEM') }}});
         HEAP32[DYNAMICTOP_PTR>>2] = oldDynamicTop;
@@ -499,14 +495,44 @@ LibraryManager.library = {
 
   brk__asm: true,
   brk__sig: ['ii'],
-  brk: function(addr) {
-    addr = addr|0;
+  brk: function(newDynamicTop) {
+    newDynamicTop = newDynamicTop|0;
+    var oldDynamicTop = 0;
+    var totalMemory = 0;
 #if USE_PTHREADS
-    Atomics_set(HEAP32, DYNAMICTOP_PTR>>2, addr);
+    totalMemory = getTotalMemory()|0;
+    // Asking to increase dynamic top to a too high value? In pthreads builds we cannot
+    // enlarge memory, so this needs to fail.
+    if ((newDynamicTop|0) < 0 | (newDynamicTop|0) > (totalMemory|0)) {
+#if ABORTING_MALLOC
+      abortOnCannotGrowMemory()|0;
 #else
-    HEAP32[DYNAMICTOP_PTR>>2] = addr;
+      ___setErrNo({{{ cDefine('ENOMEM') }}});
+      return -1;
 #endif
-    return 0; // TODO: error checking, return -1 on error and set errno.
+    }
+    Atomics_store(HEAP32, DYNAMICTOP_PTR>>2, newDynamicTop|0);
+#else // singlethreaded build: (-s USE_PTHREADS=0)
+    if ((newDynamicTop|0) < 0) {
+#if ABORTING_MALLOC
+      abortOnCannotGrowMemory()|0;
+#endif
+      ___setErrNo({{{ cDefine('ENOMEM') }}});
+      return -1;
+    }
+
+    oldDynamicTop = HEAP32[DYNAMICTOP_PTR>>2]|0;
+    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop;
+    totalMemory = getTotalMemory()|0;
+    if ((newDynamicTop|0) > (totalMemory|0)) {
+      if ((enlargeMemory()|0) == 0) {
+        ___setErrNo({{{ cDefine('ENOMEM') }}});
+        HEAP32[DYNAMICTOP_PTR>>2] = oldDynamicTop;
+        return -1;
+      }
+    }
+#endif
+    return 0;
   },
 
   system__deps: ['__setErrNo', '$ERRNO_CODES'],
