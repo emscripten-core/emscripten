@@ -948,6 +948,15 @@ var STACK_BASE, STACKTOP, STACK_MAX; // stack area
 var DYNAMIC_BASE, DYNAMICTOP_PTR; // dynamic area handled by sbrk
 
 #if USE_PTHREADS
+if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/pthread-main.js, where they were passed to the thread worker at startup time
+#endif
+  STATIC_BASE = STATICTOP = STACK_BASE = STACKTOP = STACK_MAX = DYNAMIC_BASE = DYNAMICTOP_PTR = 0;
+  staticSealed = false;
+#if USE_PTHREADS
+}
+#endif
+
+#if USE_PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
   staticSealed = true; // The static memory area has been initialized already in the main thread, pthreads skip this.
 #if SEPARATE_ASM != 0
