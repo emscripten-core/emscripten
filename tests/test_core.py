@@ -3035,7 +3035,7 @@ The current type of b is: 9
 
   def test_stack_overflow(self):
     Settings.ASSERTIONS = 1
-    self.do_run(open(path_from_root('tests', 'core', 'stack_overflow.cpp')).read(), 'abort()')
+    self.do_run(open(path_from_root('tests', 'core', 'stack_overflow.cpp')).read(), 'Stack overflow!')
 
   def test_nestedstructs(self):
       src = '''
