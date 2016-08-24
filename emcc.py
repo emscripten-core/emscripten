@@ -1182,6 +1182,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           pass
       if use_closure_compiler:
         logging.warning('closure compiler is known to have issues with binaryen (FIXME)')
+      # for simplicity, we always have a mem init file, which may also be imported into the wasm module.
+      #  * if we also supported js mem inits we'd have 4 modes
+      #  * and js mem inits are useful for avoiding a side file, but the wasm module avoids that anyhow
+      memory_init_file = True
 
     if shared.Settings.CYBERDWARF:
       newargs.append('-g')
