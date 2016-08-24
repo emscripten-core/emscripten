@@ -1613,7 +1613,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if DEBUG:
           # Copy into temp dir as well, so can be run there too
           shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
-        return 'memoryInitializer = "%s";' % os.path.basename(memfile)
+        if not shared.Settings.BINARYEN:
+          return 'memoryInitializer = "%s";' % os.path.basename(memfile)
+        else:
+          # with wasm, we may have the mem init file in the wasm binary already
+          return 'memoryInitializer = Module["wasmJSMethod"].indexOf("asmjs") >= 0 || Module["wasmJSMethod"].indexOf("interpret-asm2wasm") >= 0 ? "%s" : null;' % os.path.basename(memfile)
       src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
       open(final + '.mem.js', 'w').write(src)
       final += '.mem.js'
@@ -1953,10 +1957,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           cmd += ['--imprecise']
         if opt_level == 0:
           cmd += ['--no-opts']
+        # import mem init file if it exists, and if we will not be using asm.js as a binaryen method (as it needs the mem init file, of course)
+        import_mem_init = memory_init_file and os.path.exists(memfile) and 'asmjs' not in shared.Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD
+        if import_mem_init:
+          cmd += ['--mem-init=' + memfile]
         logging.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
         TimeLogger.update()
         subprocess.check_call(cmd, stdout=open(wasm_text_target, 'w'))
         log_time('asm2wasm')
+        if import_mem_init:
+          # remove and forget about the mem init file in later processing; it does not need to be prefetched in the html, etc.
+          os.unlink(memfile)
+          memory_init_file = False
       if shared.Settings.BINARYEN_SCRIPTS:
         binaryen_scripts = os.path.join(shared.Settings.BINARYEN_ROOT, 'scripts')
         script_env = os.environ.copy()
