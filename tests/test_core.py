@@ -48,13 +48,26 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     return 'BINARYEN' in str(self.emcc_args) or self.is_wasm_backend()
 
   def do_run_in_out_file_test(self, *path, **kwargs):
-      extensions = ('.in', '.out')
-      if 'extensions' in kwargs:
-          extensions = kwargs['extensions']
-          del kwargs['extensions']
       test_path = path_from_root(*path)
-      src, output = (test_path + s for s in extensions)
 
+      def find_extension(*ext_list):
+        ret = None
+        count = 0
+        for ext in ext_list:
+          if os.path.isfile(test_path + ext):
+            ret = ext
+            count += 1
+        if count == 0:
+          assert False, ("No file found at {} with extension {}"
+                         .format(test_path, ext_list))
+        if count > 1:
+          assert False, ("Test file {} found with multiple valid extensions {}"
+                         .format(test_path, ext_list))
+        return ret
+      extensions = (find_extension('.c', '.cpp'), # input extensions
+                    find_extension('.out', '.txt')) # output extensions
+
+      src, output = (test_path + ext for ext in extensions)
       self.do_run_from_file(src, output, **kwargs)
 
   def test_hello_world(self):
@@ -153,20 +166,16 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   @no_wasm_backend('printf is truncating the output of really big doubles')
   def test_llvm_fabs(self):
     Settings.PRECISE_F32 = 1
-    self.do_run_in_out_file_test('tests', 'core', 'test_llvm_fabs',
-                                 extensions=('.c', '.out'))
+    self.do_run_in_out_file_test('tests', 'core', 'test_llvm_fabs')
 
   def test_double_varargs(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_double_varargs',
-                                 extensions=('.c', '.out'))
+    self.do_run_in_out_file_test('tests', 'core', 'test_double_varargs')
 
   def test_struct_varargs(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_struct_varargs',
-                                 extensions=('.c', '.out'))
+    self.do_run_in_out_file_test('tests', 'core', 'test_struct_varargs')
 
   def zzztest_nested_struct_varargs(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_nested_struct_varargs',
-                                 extensions=('.c', '.out'))
+    self.do_run_in_out_file_test('tests', 'core', 'test_nested_struct_varargs')
 
   def test_i32_mul_precise(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_i32_mul_precise')
@@ -194,15 +203,12 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_llvm_intrinsics(self):
     Settings.PRECISE_I64_MATH = 2 # for bswap64
 
-    test_path = path_from_root('tests', 'core', 'test_llvm_intrinsics')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_llvm_intrinsics')
 
   @no_wasm_backend('printf is truncating the output of i64s')
   def test_bswap64(self):
     test_path = path_from_root('tests', 'core', 'test_bswap64')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    src, output = (test_path + s for s in ('.c', '.out'))
 
     # extra coverages
     for emulate_casts in [0, 1]:
@@ -470,67 +476,39 @@ int main()
       self.do_run(src, '*255*\n*65535*\n*-1*\n*-1*\n*-1*')
 
   def test_bitfields(self):
-      test_path = path_from_root('tests', 'core', 'test_bitfields')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_bitfields')
 
   @no_wasm_backend()
   def test_floatvars(self):
-    test_path = path_from_root('tests', 'core', 'test_floatvars')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_floatvars')
 
   def test_closebitcasts(self):
-    test_path = path_from_root('tests', 'core', 'closebitcasts')
-    src, output = (test_path + s for s in ('.c', '.txt'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'closebitcasts')
 
   def test_fast_math(self):
     Building.COMPILER_TEST_OPTS += ['-ffast-math']
 
-    test_path = path_from_root('tests', 'core', 'test_fast_math')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output, ['5', '6', '8'])
+    self.do_run_in_out_file_test('tests', 'core', 'test_fast_math',
+                                 args=['5', '6', '8'])
 
   def test_zerodiv(self):
-    test_path = path_from_root('tests', 'core', 'test_zerodiv')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_zerodiv')
 
   def test_zero_multiplication(self):
-    test_path = path_from_root('tests', 'core', 'test_zero_multiplication')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_zero_multiplication')
 
   @no_wasm_backend()
   def test_isnan(self):
-    test_path = path_from_root('tests', 'core', 'test_isnan')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_isnan')
 
   def test_globaldoubles(self):
-    test_path = path_from_root('tests', 'core', 'test_globaldoubles')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_globaldoubles')
 
   def test_math(self):
-      test_path = path_from_root('tests', 'core', 'test_math')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_math')
 
   def test_erf(self):
-      test_path = path_from_root('tests', 'core', 'test_erf')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_erf')
 
   def test_math_hyperbolic(self):
       src = open(path_from_root('tests', 'hyperbolic', 'src.c'), 'r').read()
@@ -540,7 +518,7 @@ int main()
   @no_wasm_backend()
   def test_math_lgamma(self):
       test_path = path_from_root('tests', 'math', 'lgamma')
-      src, output = (test_path + s for s in ('.in', '.out'))
+      src, output = (test_path + s for s in ('.c', '.out'))
 
       self.do_run_from_file(src, output)
 
@@ -551,40 +529,25 @@ int main()
 
   @no_wasm_backend()
   def test_frexp(self):
-      test_path = path_from_root('tests', 'core', 'test_frexp')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_frexp')
 
   def test_rounding(self):
       for precise_f32 in [0, 1]:
         print precise_f32
         Settings.PRECISE_F32 = precise_f32
 
-        test_path = path_from_root('tests', 'core', 'test_rounding')
-        src, output = (test_path + s for s in ('.in', '.out'))
-
-        self.do_run_from_file(src, output)
+        self.do_run_in_out_file_test('tests', 'core', 'test_rounding')
 
   def test_fcvt(self):
-      test_path = path_from_root('tests', 'core', 'test_fcvt')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_fcvt')
 
   @no_wasm_backend()
   def test_llrint(self):
-    test_path = path_from_root('tests', 'core', 'test_llrint')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_llrint')
 
   def test_getgep(self):
     # Generated code includes getelementptr (getelementptr, 0, 1), i.e., GEP as the first param to GEP
-    test_path = path_from_root('tests', 'core', 'test_getgep')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_getgep')
 
   def test_multiply_defined_symbols(self):
     a1 = "int f() { return 1; }"
@@ -627,30 +590,18 @@ int main()
     self.do_ll_run(all_name, 'result: 1')
 
   def test_if(self):
-    test_path = path_from_root('tests', 'core', 'test_if')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_if')
 
   def test_if_else(self):
-    test_path = path_from_root('tests', 'core', 'test_if_else')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_if_else')
 
   def test_loop(self):
-    test_path = path_from_root('tests', 'core', 'test_loop')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_loop')
 
   def test_stack(self):
     Settings.INLINING_LIMIT = 50
 
-    test_path = path_from_root('tests', 'core', 'test_stack')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack')
 
   def test_stack_align(self):
     Settings.INLINING_LIMIT = 50
@@ -672,7 +623,7 @@ base align: 0, 0, 0, 0'''])
     if self.is_wasm(): return self.skip('generated code not available in wasm')
     self.emcc_args += ['-g3'] # to be able to find the generated code
     test_path = path_from_root('tests', 'core', 'test_stack_restore')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    src, output = (test_path + s for s in ('.c', '.out'))
 
     self.do_run_from_file(src, output)
 
@@ -691,7 +642,7 @@ base align: 0, 0, 0, 0'''])
   @no_wasm_backend()
   def test_strings(self):
       test_path = path_from_root('tests', 'core', 'test_strings')
-      src, output = (test_path + s for s in ('.in', '.out'))
+      src, output = (test_path + s for s in ('.c', '.out'))
 
       self.do_run_from_file(src, output, ['wowie', 'too', '74'])
 
@@ -700,38 +651,23 @@ base align: 0, 0, 0, 0'''])
         assert ('var __str1;' in gen) == named
 
   def test_strcmp_uni(self):
-    test_path = path_from_root('tests', 'core', 'test_strcmp_uni')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strcmp_uni')
 
   def test_strndup(self):
-    test_path = path_from_root('tests', 'core', 'test_strndup')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strndup')
 
   def test_errar(self):
-    test_path = path_from_root('tests', 'core', 'test_errar')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_errar')
 
   def test_mainenv(self):
-    test_path = path_from_root('tests', 'core', 'test_mainenv')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_mainenv')
 
   def test_funcs(self):
-    test_path = path_from_root('tests', 'core', 'test_funcs')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_funcs')
 
   def test_structs(self):
     test_path = path_from_root('tests', 'core', 'test_structs')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    src, output = (test_path + s for s in ('.c', '.out'))
 
     self.do_run_from_file(src, output)
 
@@ -761,22 +697,13 @@ base align: 0, 0, 0, 0'''])
       self.do_run(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
 
   def test_addr_of_stacked(self):
-    test_path = path_from_root('tests', 'core', 'test_addr_of_stacked')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_addr_of_stacked')
 
   def test_globals(self):
-    test_path = path_from_root('tests', 'core', 'test_globals')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_globals')
 
   def test_linked_list(self):
-    test_path = path_from_root('tests', 'core', 'test_linked_list')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_linked_list')
 
   def test_sup(self):
       src = '''
@@ -826,80 +753,53 @@ base align: 0, 0, 0, 0'''])
       self.do_run(src, 'sizeofs:6,8\n*C___: 0,6,12,20<24*\n*Carr: 0,6,12,20<24*\n*C__w: 0,6,12,20<24*\n*Cp1_: 4,6,12,20<24*\n*Cp2_: 0,6,12,20<24*\n*Cint: 0,8,12,20<24*\n*C4__: 0,8,12,20<24*\n*C4_2: 0,6,10,16<20*\n*C__z: 0,8,16,24<28*')
 
   def test_assert(self):
-    test_path = path_from_root('tests', 'core', 'test_assert')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_assert')
 
   def test_libcextra(self):
-      test_path = path_from_root('tests', 'core', 'test_libcextra')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_libcextra')
 
   @no_wasm_backend()
   def test_regex(self):
-      test_path = path_from_root('tests', 'core', 'test_regex')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_regex')
 
   @no_wasm_backend()
   def test_longjmp(self):
-    test_path = path_from_root('tests', 'core', 'test_longjmp')
-    src, output = (test_path + s for s in ('.in', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_longjmp')
 
   @no_wasm_backend()
   def test_longjmp2(self):
-    test_path = path_from_root('tests', 'core', 'test_longjmp2')
-    src, output = (test_path + s for s in ('.in', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_longjmp2')
 
   @no_wasm_backend()
   def test_longjmp3(self):
-    test_path = path_from_root('tests', 'core', 'test_longjmp3')
-    src, output = (test_path + s for s in ('.in', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_longjmp3')
 
   @no_wasm_backend()
   def test_longjmp4(self):
-    test_path = path_from_root('tests', 'core', 'test_longjmp4')
-    src, output = (test_path + s for s in ('.in', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_longjmp4')
 
   @no_wasm_backend()
   def test_longjmp_funcptr(self):
-    test_path = path_from_root('tests', 'core', 'test_longjmp_funcptr')
-    src, output = (test_path + s for s in ('.in', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_funcptr')
 
   @no_wasm_backend()
   def test_longjmp_repeat(self):
-    test_path = path_from_root('tests', 'core', 'test_longjmp_repeat')
-    src, output = (test_path + s for s in ('.in', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_repeat')
 
   @no_wasm_backend()
   def test_longjmp_stacked(self):
-    test_path = path_from_root('tests', 'core', 'test_longjmp_stacked')
-    src, output = (test_path + s for s in ('.in', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_stacked')
 
   @no_wasm_backend()
   def test_longjmp_exc(self):
-    test_path = path_from_root('tests', 'core', 'test_longjmp_exc')
-    src, output = (test_path + s for s in ('.in', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_exc')
 
   @no_wasm_backend()
   def test_longjmp_throw(self):
     for disable_throw in [0, 1]:
       print disable_throw
       Settings.DISABLE_EXCEPTION_CATCHING = disable_throw
-      test_path = path_from_root('tests', 'core', 'test_longjmp_throw')
-      src, output = (test_path + s for s in ('.cpp', '.out'))
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_throw')
 
   @no_wasm_backend()
   def test_setjmp_many(self):
@@ -1089,9 +989,7 @@ int main() {
         continue
       print safe
       Settings.SAFE_HEAP = safe
-      test_path = path_from_root('tests', 'core', 'test_exceptions_2')
-      src, output = (test_path + s for s in ('.in', '.out'))
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_2')
 
   def test_exceptions_3(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 0
@@ -1142,7 +1040,7 @@ int main(int argc, char **argv)
     Settings.INLINING_LIMIT = 50 # otherwise it is inlined and not identified
 
     test_path = path_from_root('tests', 'core', 'test_exceptions_white_list')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    src, output = (test_path + s for s in ('.cpp', '.out'))
     self.do_run_from_file(src, output)
     size = len(open('src.cpp.o.js').read())
     shutil.copyfile('src.cpp.o.js', 'orig.js')
@@ -1184,9 +1082,7 @@ int main(int argc, char **argv)
       Settings.EXCEPTION_CATCHING_WHITELIST = ["main"]
     Settings.INLINING_LIMIT = 1 # otherwise it is inlined and not identified
 
-    test_path = path_from_root('tests', 'core', 'test_exceptions_white_list_2')
-    src, output = (test_path + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_white_list_2')
 
   def test_exceptions_uncaught(self):
       Settings.DISABLE_EXCEPTION_CATCHING = 0
@@ -1253,89 +1149,60 @@ int main(int argc, char **argv)
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     self.emcc_args += ['-s', 'SAFE_HEAP=0'] # Throwing null will cause an ignorable null pointer access.
 
-    test_path = path_from_root('tests', 'core', 'test_exceptions_typed')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_typed')
 
   def test_exceptions_virtual_inheritance(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 0
 
-    test_path = path_from_root('tests', 'core', 'test_exceptions_virtual_inheritance')
-    src, output = (test_path + s for s in ('.cpp', '.txt'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_virtual_inheritance')
 
   def test_exceptions_convert(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 0
-    test_path = path_from_root('tests', 'core', 'test_exceptions_convert')
-    src, output = (test_path + s for s in ('.cpp', '.txt'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_convert')
 
   def test_exceptions_multi(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 0
-    test_path = path_from_root('tests', 'core', 'test_exceptions_multi')
-    src, output = (test_path + s for s in ('.in', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multi')
 
   def test_exceptions_std(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     Settings.ERROR_ON_UNDEFINED_SYMBOLS = 1
     self.emcc_args += ['-s', 'SAFE_HEAP=0']
 
-    test_path = path_from_root('tests', 'core', 'test_exceptions_std')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_std')
 
   def test_exceptions_alias(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 0
-    test_path = path_from_root('tests', 'core', 'test_exceptions_alias')
-    src, output = (test_path + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_alias')
 
   def test_exceptions_rethrow(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 0
-    test_path = path_from_root('tests', 'core', 'test_exceptions_rethrow')
-    src, output = (test_path + s for s in ('.cpp', '.txt'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_rethrow')
 
   def test_exceptions_resume(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     Settings.EXCEPTION_DEBUG = 1
-    test_path = path_from_root('tests', 'core', 'test_exceptions_resume')
-    src, output = (test_path + s for s in ('.cpp', '.txt'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_resume')
 
   def test_exceptions_destroy_virtual(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 0
-    test_path = path_from_root('tests', 'core', 'test_exceptions_destroy_virtual')
-    src, output = (test_path + s for s in ('.cpp', '.txt'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_destroy_virtual')
 
   def test_exceptions_refcount(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 0
-    test_path = path_from_root('tests', 'core', 'test_exceptions_refcount')
-    src, output = (test_path + s for s in ('.cpp', '.txt'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_refcount')
 
   def test_exceptions_primary(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 0
-    test_path = path_from_root('tests', 'core', 'test_exceptions_primary')
-    src, output = (test_path + s for s in ('.cpp', '.txt'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_primary')
 
   def test_exceptions_simplify_cfg(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 0
-    test_path = path_from_root('tests', 'core', 'test_exceptions_simplify_cfg')
-    src, output = (test_path + s for s in ('.cpp', '.txt'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_simplify_cfg')
 
   def test_exceptions_libcxx(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 0
-    test_path = path_from_root('tests', 'core', 'test_exceptions_libcxx')
-    src, output = (test_path + s for s in ('.cpp', '.txt'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_libcxx')
 
   def test_bad_typeid(self):
     Settings.ERROR_ON_UNDEFINED_SYMBOLS = 1
@@ -1379,34 +1246,19 @@ int main() {
 ''', "bugfree code")
 
   def test_class(self):
-    test_path = path_from_root('tests', 'core', 'test_class')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_class')
 
   def test_inherit(self):
-    test_path = path_from_root('tests', 'core', 'test_inherit')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_inherit')
 
   def test_isdigit_l(self):
-      test_path = path_from_root('tests', 'core', 'test_isdigit_l')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_isdigit_l')
 
   def test_iswdigit(self):
-      test_path = path_from_root('tests', 'core', 'test_iswdigit')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_iswdigit')
 
   def test_polymorph(self):
-      test_path = path_from_root('tests', 'core', 'test_polymorph')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_polymorph')
 
   @no_wasm_backend()
   def test_complex(self):
@@ -1478,71 +1330,42 @@ value = real 0.00 imag 1.00''', force_c=True)
       self.do_run(src, 'segmentation fault' if addr.isdigit() else 'marfoosh')
 
   def test_dynamic_cast(self):
-      test_path = path_from_root('tests', 'core', 'test_dynamic_cast')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_dynamic_cast')
 
   def test_dynamic_cast_b(self):
-      test_path = path_from_root('tests', 'core', 'test_dynamic_cast_b')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_dynamic_cast_b')
 
   def test_dynamic_cast_2(self):
-    test_path = path_from_root('tests', 'core', 'test_dynamic_cast_2')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_dynamic_cast_2')
 
   def test_funcptr(self):
-    test_path = path_from_root('tests', 'core', 'test_funcptr')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_funcptr')
 
   def test_mathfuncptr(self):
-    test_path = path_from_root('tests', 'core', 'test_mathfuncptr')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_mathfuncptr')
 
     if self.is_emterpreter():
       print 'emterpreter f32'
       Settings.PRECISE_F32 = 1
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_mathfuncptr')
 
   def test_funcptrfunc(self):
-    test_path = path_from_root('tests', 'core', 'test_funcptrfunc')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_funcptrfunc')
 
   def test_funcptr_namecollide(self):
-    test_path = path_from_root('tests', 'core', 'test_funcptr_namecollide')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output, force_c=True)
+    self.do_run_in_out_file_test('tests', 'core', 'test_funcptr_namecollide')
 
   def test_emptyclass(self):
-      test_path = path_from_root('tests', 'core', 'test_emptyclass')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_emptyclass')
 
   def test_alloca(self):
-    test_path = path_from_root('tests', 'core', 'test_alloca')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output, force_c=True)
+    self.do_run_in_out_file_test('tests', 'core', 'test_alloca')
 
   def test_rename(self):
-    src = open(path_from_root('tests', 'stdio', 'test_rename.c'), 'r').read()
-    self.do_run(src, 'success', force_c=True)
+    self.do_run_in_out_file_test('tests', 'stdio', 'test_rename', force_c=True)
 
   def test_remove(self):
-    src = open(path_from_root('tests', 'cstdio', 'test_remove.cpp'), 'r').read()
-    self.do_run(src, 'success')
+    self.do_run_in_out_file_test('tests', 'cstdio', 'test_remove')
 
   def test_alloca_stack(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_alloca_stack')
@@ -1634,10 +1457,7 @@ value = real 0.00 imag 1.00''', force_c=True)
   def test_stack_void(self):
     Settings.INLINING_LIMIT = 50
 
-    test_path = path_from_root('tests', 'core', 'test_stack_void')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack_void')
 
   # Fails in wasm because of excessive slowness in the wasm-shell
   @no_wasm
@@ -1681,40 +1501,22 @@ value = real 0.00 imag 1.00''', force_c=True)
 ''', ['2'], force_c=True)
 
   def test_array2(self):
-    test_path = path_from_root('tests', 'core', 'test_array2')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_array2')
 
   def test_array2b(self):
-    test_path = path_from_root('tests', 'core', 'test_array2b')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_array2b')
 
   def test_constglobalstructs(self):
-    test_path = path_from_root('tests', 'core', 'test_constglobalstructs')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_constglobalstructs')
 
   def test_conststructs(self):
-    test_path = path_from_root('tests', 'core', 'test_conststructs')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_conststructs')
 
   def test_bigarray(self):
-    test_path = path_from_root('tests', 'core', 'test_bigarray')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_bigarray')
 
   def test_mod_globalstruct(self):
-    test_path = path_from_root('tests', 'core', 'test_mod_globalstruct')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_mod_globalstruct')
 
   @no_wasm_backend()
   def test_pystruct(self):
@@ -1795,7 +1597,7 @@ value = real 0.00 imag 1.00''', force_c=True)
           runner.assertEquals(filter(lambda line: 'Warning' in line, output.split('\n')).__len__(), 4)
 
       test_path = path_from_root('tests', 'core', 'test_ptrtoint')
-      src, output = (test_path + s for s in ('.in', '.out'))
+      src, output = (test_path + s for s in ('.c', '.out'))
 
       self.do_run_from_file(src, output, output_processor=check_warnings)
 
@@ -1804,45 +1606,39 @@ value = real 0.00 imag 1.00''', force_c=True)
       # Has invalid writes between printouts
       Settings.SAFE_HEAP = 0
 
-      test_path = path_from_root('tests', 'core', 'test_sizeof')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output, [], lambda x, err: x.replace('\n', '*'))
+      self.do_run_in_out_file_test(
+          'tests', 'core', 'test_sizeof',
+          output_nicerizer=lambda x, err: x.replace('\n', '*')
+      )
 
   def test_llvm_used(self):
     Building.LLVM_OPTS = 3
 
-    test_path = path_from_root('tests', 'core', 'test_llvm_used')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_llvm_used')
 
   @no_wasm_backend()
   def test_set_align(self):
     Settings.SAFE_HEAP = 1
 
-    test_path = path_from_root('tests', 'core', 'test_set_align')
-    src, output = (test_path + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_set_align')
 
   @no_wasm_backend()
   def test_emscripten_api(self):
-      test_path = path_from_root('tests', 'core', 'test_emscripten_api')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
       check = '''
 def process(filename):
   src = open(filename, 'r').read()
   # TODO: restore this (see comment in emscripten.h) assert '// hello from the source' in src
 '''
       Settings.EXPORTED_FUNCTIONS = ['_main', '_save_me_aimee']
-      self.do_run_from_file(src, output, post_build=check)
+      self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api',
+                                   post_build=check)
 
       # test EXPORT_ALL
       Settings.EXPORTED_FUNCTIONS = []
       Settings.EXPORT_ALL = 1
       Settings.LINKABLE = 1
-      self.do_run_from_file(src, output, post_build=check)
+      self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api',
+                                   post_build=check)
 
   def test_emscripten_get_now(self):
     self.banned_js_engines = [V8_ENGINE] # timer limitations in v8 shell
@@ -1862,10 +1658,7 @@ def process(filename):
   def test_inlinejs(self):
       return self.skip('non-fastcomp is deprecated and fails in 3.5') # only supports EM_ASM
 
-      test_path = path_from_root('tests', 'core', 'test_inlinejs')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_inlinejs')
 
       if self.emcc_args == []: # opts will eliminate the comments
         out = open('src.cpp.o.js').read()
@@ -1875,16 +1668,13 @@ def process(filename):
   def test_inlinejs2(self):
       return self.skip('non-fastcomp is deprecated and fails in 3.5') # only supports EM_ASM
 
-      test_path = path_from_root('tests', 'core', 'test_inlinejs2')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_inlinejs2')
 
   def test_inlinejs3(self):
     if self.is_wasm(): return self.skip('wasm requires a proper asm module')
 
     test_path = path_from_root('tests', 'core', 'test_inlinejs3')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    src, output = (test_path + s for s in ('.c', '.out'))
 
     self.do_run_from_file(src, output)
 
@@ -2138,26 +1928,17 @@ int main() {
       self.do_run(src, '''*16*\n0:22016,0,32,48\n1:22018,1,48,32\n''')
 
   def test_tinyfuncstr(self):
-      test_path = path_from_root('tests', 'core', 'test_tinyfuncstr')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_tinyfuncstr')
 
   def test_llvmswitch(self):
-      test_path = path_from_root('tests', 'core', 'test_llvmswitch')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_llvmswitch')
 
   # By default, when user has not specified a -std flag, Emscripten should always build .cpp files using the C++03 standard,
   # i.e. as if "-std=c++03" had been passed on the command line. On Linux with Clang 3.2 this is the case, but on Windows
   # with Clang 3.2 -std=c++11 has been chosen as default, because of
   # < jrose> clb: it's deliberate, with the idea that for people who don't care about the standard, they should be using the "best" thing we can offer on that platform
   def test_cxx03_do_run(self):
-    test_path = path_from_root('tests', 'core', 'test_cxx03_do_run')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_cxx03_do_run')
 
   @no_emterpreter
   def test_bigswitch(self):
@@ -2184,17 +1965,11 @@ Success!''')
   def test_indirectbr(self):
       Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS)
 
-      test_path = path_from_root('tests', 'core', 'test_indirectbr')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_indirectbr')
 
   @no_wasm_backend()
   def test_indirectbr_many(self):
-      test_path = path_from_root('tests', 'core', 'test_indirectbr_many')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_indirectbr_many')
 
   def test_pack(self):
       src = '''
@@ -2229,10 +2004,7 @@ Success!''')
 
   @no_wasm_backend()
   def test_varargs(self):
-      test_path = path_from_root('tests', 'core', 'test_varargs')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_varargs')
 
   def test_varargs_byval(self):
     return self.skip('clang cannot compile this code with that target yet')
@@ -2307,10 +2079,7 @@ The current type of b is: 9
 ''')
 
   def test_functionpointer_libfunc_varargs(self):
-    test_path = path_from_root('tests', 'core', 'test_functionpointer_libfunc_varargs')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_functionpointer_libfunc_varargs')
 
   def test_structbyval(self):
       Settings.INLINING_LIMIT = 50
@@ -2495,66 +2264,39 @@ The current type of b is: 9
 
   def test_strtoll_hex(self):
     # tests strtoll for hex strings (0x...) 
-    test_path = path_from_root('tests', 'core', 'test_strtoll_hex')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strtoll_hex')
 
   def test_strtoll_dec(self):
     # tests strtoll for decimal strings (0x...) 
-    test_path = path_from_root('tests', 'core', 'test_strtoll_dec')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strtoll_dec')
 
   def test_strtoll_bin(self):
     # tests strtoll for binary strings (0x...) 
-    test_path = path_from_root('tests', 'core', 'test_strtoll_bin')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strtoll_bin')
 
   def test_strtoll_oct(self):
     # tests strtoll for decimal strings (0x...) 
-    test_path = path_from_root('tests', 'core', 'test_strtoll_oct')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strtoll_oct')
 
   def test_strtol_hex(self):
     # tests strtoll for hex strings (0x...) 
-    test_path = path_from_root('tests', 'core', 'test_strtol_hex')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strtol_hex')
 
   def test_strtol_dec(self):
     # tests strtoll for decimal strings (0x...) 
-    test_path = path_from_root('tests', 'core', 'test_strtol_dec')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strtol_dec')
 
   def test_strtol_bin(self):
     # tests strtoll for binary strings (0x...) 
-    test_path = path_from_root('tests', 'core', 'test_strtol_bin')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strtol_bin')
 
   def test_strtol_oct(self):
     # tests strtoll for decimal strings (0x...) 
-    test_path = path_from_root('tests', 'core', 'test_strtol_oct')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strtol_oct')
 
   def test_atexit(self):
     # Confirms they are called in reverse order
-    test_path = path_from_root('tests', 'core', 'test_atexit')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_atexit')
 
   def test_pthread_specific(self):
     src = open(path_from_root('tests', 'pthread', 'specific.c'), 'r').read()
@@ -2573,49 +2315,28 @@ The current type of b is: 9
 
   def test_timeb(self):
     # Confirms they are called in reverse order
-    test_path = path_from_root('tests', 'core', 'test_timeb')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_timeb')
 
   @no_wasm_backend()
   def test_time_c(self):
-    test_path = path_from_root('tests', 'core', 'test_time_c')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_time_c')
 
   def test_gmtime(self):
-    test_path = path_from_root('tests', 'core', 'test_gmtime')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_gmtime')
 
   def test_strptime_tm(self):
-    test_path = path_from_root('tests', 'core', 'test_strptime_tm')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strptime_tm')
 
   @no_wasm_backend()
   def test_strptime_days(self):
-    test_path = path_from_root('tests', 'core', 'test_strptime_days')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strptime_days')
 
   def test_strptime_reentrant(self):
-    test_path = path_from_root('tests', 'core', 'test_strptime_reentrant')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strptime_reentrant')
 
   @no_wasm_backend()
   def test_strftime(self):
-    test_path = path_from_root('tests', 'core', 'test_strftime')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strftime')
 
   @no_wasm_backend()
   def test_intentional_fault(self):
@@ -2629,16 +2350,10 @@ The current type of b is: 9
     self.do_run(src, 'abort()' if self.run_name != 'asm2g' else 'abort("segmentation fault')
 
   def test_trickystring(self):
-    test_path = path_from_root('tests', 'core', 'test_trickystring')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_trickystring')
 
   def test_statics(self):
-      test_path = path_from_root('tests', 'core', 'test_statics')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_statics')
 
   def test_copyop(self):
       # clang generated code is vulnerable to this, as it uses
@@ -2646,7 +2361,7 @@ The current type of b is: 9
       # (llvm-gcc copies items one by one). See QUANTUM_SIZE in
       # settings.js.
       test_path = path_from_root('tests', 'core', 'test_copyop')
-      src, output = (test_path + s for s in ('.in', '.out'))
+      src, output = (test_path + s for s in ('.c', '.out'))
 
       self.do_run_from_file(src, output)
 
@@ -2654,7 +2369,7 @@ The current type of b is: 9
   @no_wasm_backend()
   def test_memcpy_memcmp(self):
       test_path = path_from_root('tests', 'core', 'test_memcpy_memcmp')
-      src, output = (test_path + s for s in ('.in', '.out'))
+      src, output = (test_path + s for s in ('.c', '.out'))
 
       def check(result, err):
         result = result.replace('\n \n', '\n') # remove extra node output
@@ -2663,62 +2378,40 @@ The current type of b is: 9
       self.do_run_from_file(src, output, output_nicerizer = check)
 
   def test_memcpy2(self):
-      test_path = path_from_root('tests', 'core', 'test_memcpy2')
-      src, output = (test_path + s for s in ('.in', '.out'))
-
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_memcpy2')
 
   def test_memcpy3(self):
-    test_path = path_from_root('tests', 'core', 'test_memcpy3')
-    src, output = (test_path + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_memcpy3')
 
   def test_memset(self):
-    test_path = path_from_root('tests', 'core', 'test_memset')
-    src, output = (test_path + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_memset')
 
   def test_getopt(self):
       test_path = path_from_root('tests', 'core', 'test_getopt')
-      src, output = (test_path + s for s in ('.in', '.out'))
+      src, output = (test_path + s for s in ('.c', '.out'))
 
       self.do_run_from_file(src, output, args=['-t', '12', '-n', 'foobar'])
 
   def test_getopt_long(self):
       test_path = path_from_root('tests', 'core', 'test_getopt_long')
-      src, output = (test_path + s for s in ('.in', '.out'))
+      src, output = (test_path + s for s in ('.c', '.out'))
 
       self.do_run_from_file(src, output, args=['--file', 'foobar', '-b'])
 
   def test_memmove(self):
-    test_path = path_from_root('tests', 'core', 'test_memmove')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_memmove')
 
   def test_memmove2(self):
-    test_path = path_from_root('tests', 'core', 'test_memmove2')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_memmove2')
 
   def test_memmove3(self):
-    test_path = path_from_root('tests', 'core', 'test_memmove3')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_memmove3')
 
   def test_flexarray_struct(self):
-    test_path = path_from_root('tests', 'core', 'test_flexarray_struct')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_flexarray_struct')
 
   def test_bsearch(self):
-    test_path = path_from_root('tests', 'core', 'test_bsearch')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_bsearch')
 
   def test_stack_overflow(self):
     Settings.ASSERTIONS = 1
@@ -3207,7 +2900,7 @@ def process(filename):
       assert table.count(',') <= 23, table.count(',')
 
     test_path = path_from_root('tests', 'core', 'test_dlfcn_self')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    src, output = (test_path + s for s in ('.c', '.out'))
 
     self.do_run_from_file(src, output, post_build=(None, post))
 
@@ -4435,10 +4128,7 @@ Have even and odd!
     self.do_run(src.replace('strtod', 'strtold'), re.sub(r'\n\s+', '\n', expected)) # XXX add real support for long double
 
   def test_strtok(self):
-    test_path = path_from_root('tests', 'core', 'test_strtok')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strtok')
 
   @no_wasm_backend()
   def test_parseInt(self):
@@ -4447,10 +4137,7 @@ Have even and odd!
     self.do_run(src, expected)
 
   def test_transtrcase(self):
-    test_path = path_from_root('tests', 'core', 'test_transtrcase')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_transtrcase')
 
   @no_wasm_backend('takes a very long time to compile')
   def test_printf(self):
@@ -4489,16 +4176,11 @@ Have even and odd!
       assert i > 0 and self.emcc_args[i-1] == '-s'
       self.emcc_args[i] = 'ASSERTIONS=0'
       print 'flip assertions off'
-    test_path = path_from_root('tests', 'core', 'fnmatch')
-    src, output = (test_path + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'fnmatch')
 
   @no_wasm_backend('printf is incorrectly handling float values')
   def test_sscanf(self):
-    test_path = path_from_root('tests', 'core', 'test_sscanf')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_sscanf')
 
   @no_wasm_backend('printf is incorrectly handling float values')
   def test_sscanf_2(self):
@@ -4694,7 +4376,7 @@ def process(filename):
 
   def test_fwrite_0(self):
     test_path = path_from_root('tests', 'core', 'test_fwrite_0')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    src, output = (test_path + s for s in ('.c', '.out'))
 
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
@@ -4901,21 +4583,15 @@ def process(filename):
   open(filename, 'w').write(src)
 '''
     test_path = path_from_root('tests', 'core', 'test_poll')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    src, output = (test_path + s for s in ('.c', '.out'))
 
     self.do_run_from_file(src, output, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h,poll.h'])
 
   def test_statvfs(self):
-    test_path = path_from_root('tests', 'core', 'test_statvfs')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_statvfs')
 
   def test_libgen(self):
-    test_path = path_from_root('tests', 'core', 'test_libgen')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_libgen')
 
   def test_utime(self):
     src = open(path_from_root('tests', 'utime', 'test_utime.c'), 'r').read()
@@ -4925,10 +4601,7 @@ def process(filename):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # only node handles utf well
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
 
-    test_path = path_from_root('tests', 'core', 'test_utf')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_utf')
 
   @no_wasm_backend()
   def test_utf32(self):
@@ -4962,21 +4635,15 @@ def process(filename):
       self.do_run_from_file(src, output)
 
   def test_direct_string_constant_usage(self):
-    test_path = path_from_root('tests', 'core', 'test_direct_string_constant_usage')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_direct_string_constant_usage')
 
   @no_wasm_backend()
   def test_std_cout_new(self):
-    test_path = path_from_root('tests', 'core', 'test_std_cout_new')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_std_cout_new')
 
   def test_istream(self):
     test_path = path_from_root('tests', 'core', 'test_istream')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    src, output = (test_path + s for s in ('.c', '.out'))
 
     for linkable in [0]:#, 1]:
       print linkable
@@ -5191,9 +4858,7 @@ def process(filename):
       print '(no v8, skipping no-monotonic case)'
 
   def test_uname(self):
-    test_path = path_from_root('tests', 'core', 'test_uname')
-    src, output = (test_path + s for s in ('.in', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_uname')
 
   @no_wasm_backend()
   def test_env(self):
@@ -5219,16 +4884,10 @@ def process(filename):
     self.do_run(src, expected)
 
   def test_getloadavg(self):
-    test_path = path_from_root('tests', 'core', 'test_getloadavg')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_getloadavg')
 
   def test_nl_types(self):
-    test_path = path_from_root('tests', 'core', 'test_nl_types')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_nl_types')
 
   def test_799(self):
     src = open(path_from_root('tests', '799.cpp'), 'r').read()
@@ -5244,15 +4903,10 @@ PORT: 3979
     self.do_run(src, expected)
 
   def test_strcasecmp(self):
-    test_path = path_from_root('tests', 'core', 'test_strcasecmp')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strcasecmp')
 
   def test_atomic(self):
-    test_path = path_from_root('tests', 'core', 'test_atomic')
-    src, output = (test_path + s for s in ('.in', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_atomic')
 
   @no_wasm_backend()
   def test_atomic_cxx(self):
@@ -5267,10 +4921,7 @@ PORT: 3979
       self.do_run_from_file(src, output)
 
   def test_phiundef(self):
-    test_path = path_from_root('tests', 'core', 'test_phiundef')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_phiundef')
 
   def test_netinet_in(self):
     src = open(path_from_root('tests', 'netinet', 'in.cpp'), 'r').read()
@@ -5306,24 +4957,15 @@ PORT: 3979
       assert 0, 'builds must be deterministic, see unique_X.js'
 
   def test_stdvec(self):
-    test_path = path_from_root('tests', 'core', 'test_stdvec')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_stdvec')
 
   def test_random_device(self):
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
 
-    test_path = path_from_root('tests', 'core', 'test_random_device')
-    src, output = (test_path + s for s in ('.cpp', '.txt'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_random_device')
 
   def test_reinterpreted_ptrs(self):
-    test_path = path_from_root('tests', 'core', 'test_reinterpreted_ptrs')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_reinterpreted_ptrs')
 
   def test_js_libraries(self):
     open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
@@ -5490,10 +5132,7 @@ return malloc(size);
 
     Settings.NO_EXIT_RUNTIME = 1 # if we exit, then we flush streams, but the bad malloc we install here messes that up
 
-    test_path = path_from_root('tests', 'core', 'test_dlmalloc_partial_2')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_dlmalloc_partial_2')
 
   def test_libcxx(self):
     self.do_run(open(path_from_root('tests', 'hashtest.cpp')).read(),
@@ -5511,28 +5150,19 @@ return malloc(size);
       ''', 'hello world');
 
   def test_typeid(self):
-    test_path = path_from_root('tests', 'core', 'test_typeid')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_typeid')
 
   def test_static_variable(self):
-    test_path = path_from_root('tests', 'core', 'test_static_variable')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_static_variable')
 
   def test_fakestat(self):
-    test_path = path_from_root('tests', 'core', 'test_fakestat')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_fakestat')
 
   def test_mmap(self):
     Settings.TOTAL_MEMORY = 128*1024*1024
 
     test_path = path_from_root('tests', 'core', 'test_mmap')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    src, output = (test_path + s for s in ('.c', '.out'))
 
     self.do_run_from_file(src, output)
     self.do_run_from_file(src, output, force_c=True)
@@ -5692,153 +5322,140 @@ return malloc(size);
 
   @SIMD
   def test_simd(self):
-    test_path = path_from_root('tests', 'core', 'test_simd')
-    src, output = (test_path + s for s in ('.in', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_simd')
 
   @SIMD
   def test_simd2(self):
-    test_path = path_from_root('tests', 'core', 'test_simd2')
-    src, output = (test_path + s for s in ('.in', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_simd2')
 
   @SIMD
   def test_simd3(self):
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
-    test_path = path_from_root('tests', 'core', 'test_simd3')
-    src, output = (test_path + s for s in ('.in', '.out'))
     self.emcc_args = self.emcc_args + ['-msse2']
+    test_path = path_from_root('tests', 'core', 'test_simd3')
+    src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
   @SIMD
   def test_simd4(self):
     # test_simd4 is to test phi node handling of SIMD path
-    test_path = path_from_root('tests', 'core', 'test_simd4')
-    src, output = (test_path + s for s in ('.in', '.out'))
     self.emcc_args = self.emcc_args + ['-msse']
+    test_path = path_from_root('tests', 'core', 'test_simd4')
+    src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
   @SIMD
   def test_simd5(self):
     # test_simd5 is to test shufflevector of SIMD path
-    test_path = path_from_root('tests', 'core', 'test_simd5')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_simd5')
 
   @SIMD
   def test_simd6(self):
     # test_simd6 is to test x86 min and max intrinsics on NaN and -0.0
-    test_path = path_from_root('tests', 'core', 'test_simd6')
-    src, output = (test_path + s for s in ('.in', '.out'))
     self.emcc_args = self.emcc_args + ['-msse']
+    test_path = path_from_root('tests', 'core', 'test_simd6')
+    src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
   @SIMD
   def test_simd7(self):
     # test_simd7 is to test negative zero handling: https://github.com/kripken/emscripten/issues/2791
-    test_path = path_from_root('tests', 'core', 'test_simd7')
-    src, output = (test_path + s for s in ('.in', '.out'))
     self.emcc_args = self.emcc_args + ['-msse']
+    test_path = path_from_root('tests', 'core', 'test_simd7')
+    src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
   @SIMD
   def test_simd8(self):
     # test_simd8 is to test unaligned load and store
     test_path = path_from_root('tests', 'core', 'test_simd8')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    src, output = (test_path + s for s in ('.c', '.out'))
     self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
   @SIMD
   def test_simd9(self):
     # test_simd9 is to test a bug where _mm_set_ps(0.f) would generate an expression that did not validate as asm.js
-    test_path = path_from_root('tests', 'core', 'test_simd9')
-    src, output = (test_path + s for s in ('.in', '.out'))
     self.emcc_args = self.emcc_args + ['-msse']
+    test_path = path_from_root('tests', 'core', 'test_simd9')
+    src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
   @SIMD
   def test_simd10(self):
     # test_simd10 is to test that loading and storing arbitrary bit patterns works in SSE1.
-    test_path = path_from_root('tests', 'core', 'test_simd10')
-    src, output = (test_path + s for s in ('.in', '.out'))
     self.emcc_args = self.emcc_args + ['-msse']
+    test_path = path_from_root('tests', 'core', 'test_simd10')
+    src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
   @SIMD
   def test_simd11(self):
     # test_simd11 is to test that _mm_movemask_ps works correctly when handling input floats with 0xFFFFFFFF NaN bit patterns.
     test_path = path_from_root('tests', 'core', 'test_simd11')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    src, output = (test_path + s for s in ('.c', '.out'))
     self.emcc_args = self.emcc_args + ['-msse2']
     self.do_run_from_file(src, output)
 
   @SIMD
   def test_simd12(self):
-    test_path = path_from_root('tests', 'core', 'test_simd12')
-    src, output = (test_path + s for s in ('.in', '.out'))
     self.emcc_args = self.emcc_args + ['-msse']
+    test_path = path_from_root('tests', 'core', 'test_simd12')
+    src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
   @SIMD
   def test_simd13(self):
-    test_path = path_from_root('tests', 'core', 'test_simd13')
-    src, output = (test_path + s for s in ('.in', '.out'))
     self.emcc_args = self.emcc_args + ['-msse']
+    test_path = path_from_root('tests', 'core', 'test_simd13')
+    src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
   @SIMD
   def test_simd14(self):
+    self.emcc_args = self.emcc_args + ['-msse', '-msse2']
     test_path = path_from_root('tests', 'core', 'test_simd14')
     src, output = (test_path + s for s in ('.c', '.out'))
-    self.emcc_args = self.emcc_args + ['-msse', '-msse2']
     self.do_run_from_file(src, output)
 
   @SIMD
   def test_simd15(self):
     if self.run_name == 'asm1': return self.skip('legalizing -O1 output is much harder, and not worth it - we work on -O0 and -O2+')
+    self.emcc_args = self.emcc_args + ['-msse', '-msse2']
     test_path = path_from_root('tests', 'core', 'test_simd15')
     src, output = (test_path + s for s in ('.c', '.out'))
-    self.emcc_args = self.emcc_args + ['-msse', '-msse2']
     self.do_run_from_file(src, output)
 
   @SIMD
   def test_simd16(self):
-    src, output = (path_from_root('tests', 'core', 'test_simd16') + s for s in ('.c', '.out'))
     self.emcc_args = self.emcc_args + ['-msse', '-msse2']
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_simd16')
 
   @SIMD
   def test_simd_float64x2(self):
-    src, output = (path_from_root('tests', 'core', 'test_simd_float64x2') + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_simd_float64x2')
 
   @SIMD
   def test_simd_float32x4(self):
-    src, output = (path_from_root('tests', 'core', 'test_simd_float32x4') + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_simd_float32x4')
 
   @SIMD
   def test_simd_int32x4(self):
-    src, output = (path_from_root('tests', 'core', 'test_simd_int32x4') + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_simd_int32x4')
 
   @SIMD
   def test_simd_int16x8(self):
-    src, output = (path_from_root('tests', 'core', 'test_simd_int16x8') + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_simd_int16x8')
 
   @SIMD
   def test_simd_int8x16(self):
-    src, output = (path_from_root('tests', 'core', 'test_simd_int8x16') + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_simd_int8x16')
 
   @SIMD
   def test_simd_dyncall(self):
+    self.emcc_args = self.emcc_args + ['-msse']
     test_path = path_from_root('tests', 'core', 'test_simd_dyncall')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
-    self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
   @no_wasm_backend()
@@ -6372,7 +5989,7 @@ def process(filename):
 
     # Run a test that should work, generating some code
     test_path = path_from_root('tests', 'core', 'test_structs')
-    src, output = (test_path + s for s in ('.in', '.out'))
+    src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output, build_ll_hook=lambda x: False) # add an ll hook, to force ll generation
 
     filename = os.path.join(self.get_dir(), 'src.cpp')
@@ -6439,15 +6056,12 @@ def process(filename):
 '''
 
     Settings.EXPORTED_FUNCTIONS += ['_get_int', '_get_float', '_get_string', '_print_int', '_print_float', '_print_string', '_multi', '_pointer', '_call_ccall_again', '_malloc']
-    test_path = path_from_root('tests', 'core', 'test_ccall')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output, post_build=post)
+    self.do_run_in_out_file_test('tests', 'core', 'test_ccall', post_build=post)
 
     if '-O2' in self.emcc_args or self.is_emterpreter():
       print 'with closure'
       self.emcc_args += ['--closure', '1']
-      self.do_run_from_file(src, output, post_build=post)
+      self.do_run_in_out_file_test('tests', 'core', 'test_ccall', post_build=post)
 
   @no_wasm_backend()
   def test_dead_functions(self):
@@ -6755,18 +6369,12 @@ def process(filename):
     if '-O' in str(self.emcc_args):
       self.emcc_args += ['--profiling-funcs', '--llvm-opts', '0']
 
-    test_path = path_from_root('tests', 'core', 'test_demangle_stacks')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks')
 
   def test_tracing(self):
     Building.COMPILER_TEST_OPTS += ['--tracing']
 
-    test_path = path_from_root('tests', 'core', 'test_tracing')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_tracing')
 
   @no_wasm_backend()
   def test_eval_ctors(self):
