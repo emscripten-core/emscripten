@@ -1143,6 +1143,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         next_arg_index += 1
         shared.Settings.NO_FILESYSTEM = 1
         shared.Settings.FETCH = 1
+        if not shared.Settings.USE_PTHREADS:
+          logging.error('-s ASMFS=1 requires either -s USE_PTHREADS=1 or -s USE_PTHREADS=2 to be set!')
+          sys.exit(1)
 
       if shared.Settings.FETCH and final_suffix in JS_CONTAINING_SUFFIXES:
         input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'fetch', 'emscripten_fetch.cpp')))
