@@ -2029,4 +2029,13 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
 #endif
 
+#if TRACE_FFI_CALLS
+function traced_ffi_call(funcname, func) {
+  return function() {
+    console.log(funcname);
+    return func.apply(null, arguments);
+  }
+}
+#endif
+
 // === Body ===
