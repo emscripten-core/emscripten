@@ -616,6 +616,8 @@ var LibraryEmbind = {
             var getElement;
             if (value instanceof Uint8Array) {
                 getElement = getTAElement;
+            } else if (value instanceof Uint8ClampedArray) {
+                getElement = getTAElement;
             } else if (value instanceof Int8Array) {
                 getElement = getTAElement;
             } else if (typeof value === 'string') {
