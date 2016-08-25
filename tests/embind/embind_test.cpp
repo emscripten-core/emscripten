@@ -873,6 +873,18 @@ TupleInStruct emval_test_take_and_return_TupleInStruct(TupleInStruct cs) {
     return cs;
 }
 
+struct NestedStruct {
+    int x;
+    int y;
+};
+struct ArrayInStruct {
+    int field1[2];
+    NestedStruct field2[2];
+};
+ArrayInStruct emval_test_take_and_return_ArrayInStruct(ArrayInStruct cs) {
+    return cs;
+}
+
 enum Enum { ONE, TWO };
 
 Enum emval_test_take_and_return_Enum(Enum e) {
@@ -1708,6 +1720,26 @@ EMSCRIPTEN_BINDINGS(tests) {
         ;
 
     function("emval_test_take_and_return_TupleInStruct", &emval_test_take_and_return_TupleInStruct);
+
+
+    value_array<std::array<int, 2>>("array_int_2")
+        .element(index<0>())
+        .element(index<1>())
+        ;
+    value_array<std::array<NestedStruct, 2>>("array_NestedStruct_2")
+        .element(index<0>())
+        .element(index<1>())
+        ;
+    value_object<NestedStruct>("NestedStruct")
+        .field("x", &NestedStruct::x)
+        .field("y", &NestedStruct::y)
+        ;
+
+    value_object<ArrayInStruct>("ArrayInStruct")
+        .field("field1", &ArrayInStruct::field1)
+        .field("field2", &ArrayInStruct::field2)
+        ;
+    function("emval_test_take_and_return_ArrayInStruct", &emval_test_take_and_return_ArrayInStruct);
 
     class_<ValHolder>("ValHolder")
         .smart_ptr<std::shared_ptr<ValHolder>>("std::shared_ptr<ValHolder>")
