@@ -802,4 +802,8 @@ var OFFSCREENCANVAS_SUPPORT = 0; // If set to 1, enables support for transferrin
 
 var FETCH_DEBUG = 0; // If nonzero, prints out debugging information in library_fetch.js
 
+var FETCH = 0; // If nonzero, enables emscripten_fetch API.
+
+var ASMFS = 0; // If set to 1, uses the multithreaded filesystem that is implemented within the asm.js module, using emscripten_fetch. Implies -s FETCH=1.
+
 // Reserved: variables containing POINTER_MASKING.

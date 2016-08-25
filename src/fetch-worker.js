@@ -21,9 +21,6 @@ function enlargeMemory() {
 var nan = NaN;
 var inf = Infinity;
 
-__emscripten_fetch_xhr = _emscripten_fetch_xhr;
-__emscripten_fetch_cache_data = _emscripten_fetch_cache_data;
-
 function _emscripten_asm_const_v() {}
 
 function assert(condition) {

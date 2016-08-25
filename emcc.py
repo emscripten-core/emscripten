@@ -1138,6 +1138,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # stb_image 2.x need to have STB_IMAGE_IMPLEMENTATION defined to include the implementation when compiling
         newargs.append('-DSTB_IMAGE_IMPLEMENTATION')
 
+      if shared.Settings.ASMFS and final_suffix in JS_CONTAINING_SUFFIXES:
+        input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'fetch', 'asmfs.cpp')))
+        next_arg_index += 1
+        shared.Settings.NO_FILESYSTEM = 1
+        shared.Settings.FETCH = 1
+
+      if shared.Settings.FETCH and final_suffix in JS_CONTAINING_SUFFIXES:
+        input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'fetch', 'emscripten_fetch.cpp')))
+        next_arg_index += 1
+        js_libraries.append(shared.path_from_root('src', 'library_fetch.js'))
+
       forced_stdlibs = []
       if shared.Settings.DEMANGLE_SUPPORT:
         shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
@@ -1755,7 +1766,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shutil.copyfile(shared.path_from_root('src', 'pthread-main.js'), os.path.join(os.path.dirname(os.path.abspath(target)), 'pthread-main.js'))
 
         src = open(final, 'r').read()
-        funcs_to_import = ['alignMemoryPage', '_sbrk', '_pthread_mutex_lock', '_malloc', '_emscripten_sync_run_in_main_thread_1', '_emscripten_sync_run_in_main_thread', '_emscripten_is_main_runtime_thread', '_pthread_mutex_unlock', '_emscripten_set_current_thread_status', '_emscripten_futex_wait', 'writeStringToMemory', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array']
+        funcs_to_import = ['alignMemoryPage', '_sbrk', '_pthread_mutex_lock', '_malloc', '_emscripten_sync_run_in_main_thread_1', '_emscripten_sync_run_in_main_thread', '_emscripten_is_main_runtime_thread', '_pthread_mutex_unlock', '_emscripten_set_current_thread_status', '_emscripten_futex_wait', 'stringToUTF8', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array']
         function_prologue = ''
         for func in funcs_to_import:
           loc = src.find('function ' + func + '(')

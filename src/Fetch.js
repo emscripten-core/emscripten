@@ -82,7 +82,7 @@ var Fetch = {
   }
 }
 
-function _emscripten_fetch_load_cached_data(db, fetch, onsuccess, onerror) {
+function __emscripten_fetch_load_cached_data(db, fetch, onsuccess, onerror) {
   if (!db) {
 #if FETCH_DEBUG
     console.error('fetch: IndexedDB not available!');
@@ -138,7 +138,7 @@ function _emscripten_fetch_load_cached_data(db, fetch, onsuccess, onerror) {
   }
 }
 
-function _emscripten_fetch_cache_data(db, fetch, data, onsuccess, onerror) {
+function __emscripten_fetch_cache_data(db, fetch, data, onsuccess, onerror) {
   if (!db) {
 #if FETCH_DEBUG
     console.error('fetch: IndexedDB not available!');
@@ -176,7 +176,7 @@ function _emscripten_fetch_cache_data(db, fetch, data, onsuccess, onerror) {
   }
 }
 
-function _emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
+function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
   var url = HEAPU32[fetch + 8 >> 2];//{{{ makeGetValue('fetch', 8/*TODO:structs_info.jsonify this*/, 'i32') }}};
   if (!url) {
 #if FETCH_DEBUG
@@ -270,7 +270,7 @@ function _emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
     }
     HEAPU16[fetch + 40 >> 1] = xhr.readyState;
     HEAPU16[fetch + 42 >> 1] = xhr.status;
-//    if (xhr.statusText) writeStringToMemory(fetch + 44, xhr.statusText);
+//    if (xhr.statusText) stringToUTF8(fetch + 44, xhr.statusText, 64);
     if (xhr.status == 200 || xhr.status == 0) {
 #if FETCH_DEBUG
       console.log('fetch: xhr succeeded with status 200');
@@ -312,7 +312,7 @@ function _emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
     Fetch.setu64(fetch + 32, e.total);//{{{ makeSetValue('fetch', 32/*TODO:jsonify*/, 'e.total', 'i64')}}};
     HEAPU16[fetch + 40 >> 1] = xhr.readyState;
     HEAPU16[fetch + 42 >> 1] = xhr.status;
-    if (xhr.statusText) writeStringToMemory(fetch + 44, xhr.statusText);
+    if (xhr.statusText) stringToUTF8(fetch + 44, xhr.statusText, 64);
     if (onprogress) onprogress(fetch, xhr, e);
   }
 #if FETCH_DEBUG
