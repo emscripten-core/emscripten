@@ -8,6 +8,8 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/fetch.h>
 #include <math.h>
+#include <libc/fcntl.h>
+#include <errno.h>
 
 extern "C" {
 
@@ -32,6 +34,122 @@ long __syscall5(int which, ...) // open
 	EM_ASM_INT( { Module['printErr']('__syscall5 OPEN, which: ' + $0 + ', pathname ' + Pointer_stringify($1) + ', ' + $2 + ', ' + $3 + '.') }, 
 		which, pathname, flags, mode);
 
+	int accessMode = (flags & O_ACCMODE);
+	if (accessMode != O_RDONLY) // O_WRONLY or O_RDWR
+	{
+		EM_ASM(Module['printErr']('open() syscall failed! pathname refers to a file on a read-only filesystem and write access was requested.'));
+		errno = EROFS; // "pathname refers to a file on a read-only filesystem and write access was requested."
+		return -1;
+	}
+
+	if ((flags & O_ASYNC))
+	{
+		EM_ASM(Module['printErr']('open() syscall failed! Opening files with O_ASYNC flag is not supported in ASMFS (TODO?)'));
+		return -1;
+	}
+
+	// The flags:O_CLOEXEC flag is ignored, doesn't have meaning for Emscripten
+
+	if ((flags & O_CREAT))
+	{
+		EM_ASM(Module['printErr']('open() syscall failed! Opening files with O_CREAT flag is not yet supported in ASMFS (TODO)'));
+		return -1;
+	}
+
+	// TODO: the flags:O_DIRECT flag seems like a great way to let applications explicitly control XHR/IndexedDB read/write buffering behavior?
+	if ((flags & O_DIRECT))
+	{
+		EM_ASM(Module['printErr']('open() syscall failed! The filesystem does not support the O_DIRECT flag.'));
+		errno = EINVAL; // "The filesystem does not support the O_DIRECT flag."
+		return -1;
+	}
+
+	if ((flags & O_DIRECTORY))
+	{
+		EM_ASM(Module['printErr']('open() syscall failed! Opening directories with O_DIRECTORY flag is not yet supported in ASMFS (TODO)'));
+		return -1;
+	}
+
+	if ((flags & O_DSYNC))
+	{
+		EM_ASM(Module['printErr']('open() syscall failed! Opening files with O_DSYNC flag is not yet supported in ASMFS (TODO)'));
+		return -1;
+	}
+
+	if ((flags & O_EXCL))
+	{
+		EM_ASM(Module['printErr']('open() syscall failed! Opening files with O_EXCL flag is not yet supported in ASMFS (TODO)'));
+
+		// TODO: Check if the file exists and if so, return EEXIST error (the file should not exist, but with O_EXCL should always create a new one)
+		return -1;
+	}
+
+	// The flags:O_LARGEFILE flag is ignored, we should always be largefile-compatible
+
+	// TODO: The flags:O_NOATIME is ignored, file access times have not been implemented yet
+	// The flags O_NOCTTY, O_NOFOLLOW
+
+	if ((flags & (O_NONBLOCK|O_NDELAY)))
+	{
+		EM_ASM(Module['printErr']('open() syscall failed! Opening files with O_NONBLOCK or O_NDELAY flags is not yet supported in ASMFS (TODO)'));
+		return -1;
+	}
+
+	if ((flags & O_PATH))
+	{
+		EM_ASM(Module['printErr']('open() syscall failed! Opening files with O_PATH flags is not yet supported in ASMFS (TODO)'));
+		return -1;
+	}
+
+	if ((flags & O_SYNC))
+	{
+		EM_ASM(Module['printErr']('open() syscall failed! Opening files with O_SYNC flags is not yet supported in ASMFS (TODO)'));
+		return -1;
+	}
+
+	if ((flags & O_TMPFILE))
+	{
+		if (accessMode != O_WRONLY && accessMode != O_RDWR)
+		{
+			EM_ASM(Module['printErr']('open() syscall failed! O_TMPFILE was specified in flags, but neither O_WRONLY nor O_RDWR was specified.'));
+			errno = EINVAL; // "O_TMPFILE was specified in flags, but neither O_WRONLY nor O_RDWR was specified."
+			return -1;
+		}
+		EM_ASM(Module['printErr']('open() syscall failed! "The filesystem containing pathname does not support O_TMPFILE.'));
+		errno = EOPNOTSUPP; // "The filesystem containing pathname does not support O_TMPFILE."
+		return -1;
+	}
+
+	if ((flags & O_TRUNC))
+	{
+		EM_ASM(Module['printErr']('open() syscall failed! Opening files with O_TRUNC flags is not yet supported in ASMFS (TODO)'));
+		return -1;
+	}
+
+	/* TODO:
+	if (is_directory and (accessMode == O_WRONLY || accessMode == O_RDWR))
+	{
+		errno = EISDIR; // "pathname refers to a directory and the access requested involved writing (that is, O_WRONLY or O_RDWR is set)."
+		return -1;
+	}
+	*/
+
+	/* TODO:
+	if (too_many_files_open)
+	{
+		errno = EMFILE; // "The per-process limit on the number of open file descriptors has been reached, see getrlimit(RLIMIT_NOFILE)"
+		return -1;
+	}
+	*/
+
+	// http://stackoverflow.com/questions/417142/what-is-the-maximum-length-of-a-url-in-different-browsers
+	if (strlen(pathname) > 2000)
+	{
+		errno = ENAMETOOLONG;
+		EM_ASM(Module['printErr']('open() syscall failed! The URL to open was more than 2000 characters long'));
+		return -1;
+	}
+
 	emscripten_fetch_attr_t attr;
 	emscripten_fetch_attr_init(&attr);
 	strcpy(attr.requestMethod, "GET");
@@ -40,8 +158,33 @@ long __syscall5(int which, ...) // open
 	FileDescriptor *desc = (FileDescriptor*)malloc(sizeof(FileDescriptor));
 	desc->magic = EM_FILEDESCRIPTOR_MAGIC;
 	desc->fetch = emscripten_fetch(&attr, pathname);
-	desc->file_pos = 0;
 
+	// switch(fopen_mode)
+	// {
+	// case synchronous_fopen:
+		emscripten_fetch_wait(desc->fetch, INFINITY);
+
+		if (desc->fetch->status != 200 || desc->fetch->totalBytes == 0)
+		{
+			EM_ASM_INT( { Module['printErr']('__syscall5 OPEN failed! File ' + Pointer_stringify($0) + ' does not exist: XHR returned status code ' + $1 + ', and file length was ' + $2 + '.') }, 
+				pathname, (int)desc->fetch->status, (int)desc->fetch->totalBytes);
+			emscripten_fetch_close(desc->fetch);
+			errno = ENOENT;
+			return -1;
+		}
+
+		desc->file_pos = (flags & O_APPEND) ? desc->fetch->totalBytes : 0;
+
+	//  break;
+	// case asynchronous_fopen:
+	//  break;
+	// }
+
+	// TODO: The file descriptor needs to be a small number, man page:
+	// "a small, nonnegative integer for use in subsequent system calls
+	// (read(2), write(2), lseek(2), fcntl(2), etc.).  The file descriptor
+	// returned by a successful call will be the lowest-numbered file
+	// descriptor not currently open for the process."
 	return (long)desc;
 }
 
