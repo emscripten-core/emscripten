@@ -77,22 +77,22 @@ var HEAPU32 = null;
 
 function processWorkQueue() {
   if (!queuePtr) return;
+  var numQueuedItems = Atomics_load(HEAPU32, queuePtr + 4 >> 2);
+  if (numQueuedItems == 0) return;
 
-  console.log('polling work to perform');
-  var queuedOperations = HEAPU32[queuePtr >> 2];
-  var numQueuedItems = HEAPU32[queuePtr + 4 >> 2];
-  var queueSize = HEAPU32[queuePtr + 8 >> 2];
+  console.log('polling work to perform, there are ' + numQueuedItems + ' work items in the queue.');
+  var queuedOperations = Atomics_load(HEAPU32, queuePtr >> 2);
+  var queueSize = Atomics_load(HEAPU32, queuePtr + 8 >> 2);
   for(var i = 0; i < numQueuedItems; ++i) {
-    var fetch = HEAPU32[(queuedOperations >> 2)+i];
+    var fetch = Atomics_load(HEAPU32, (queuedOperations >> 2)+i);
     console.log('processWorkQueue: starting fetch');
-    console.log('fetch ptr1 ' + fetch + ', state ' + HEAPU32[fetch + 108 >> 2]);
+    console.log('fetch ptr1 ' + fetch + ', state ' + Atomics_load(HEAPU32, fetch + 108 >> 2));
     function successcb(fetch) {
-      console.log('fetch ptr ' + fetch + ', state ' + HEAPU32[fetch + 108 >> 2]);
+      console.log('fetch ptr ' + fetch + ', state ' + Atomics_load(HEAPU32, fetch + 108 >> 2));
       console.log('FETCH-WORKER: fetch finished');
       var oldVal = Atomics.compareExchange(HEAPU32, fetch + 108 >> 2, 1, 2);
       console.log('atomics wake ' + (fetch + 108));
       Atomics.wake(HEAP32, fetch + 108 >> 2, 1);
-      console.log('oldVal ' + oldVal);
     }
     function errorcb(fetch) {
       console.log('FETCH-WORKER: fetch failed');
@@ -105,12 +105,14 @@ function processWorkQueue() {
     } catch(e) {
       console.error(e);
     }
+    /*
     if (interval != undefined) {
       clearInterval(interval);
       interval = undefined;
     }
+    */
   }
-  HEAPU32[queuePtr + 4 >> 2] = 0;
+  Atomics_store(HEAPU32, queuePtr + 4 >> 2, 0);
 }
 
 interval = 0;
@@ -131,6 +133,6 @@ this.onmessage = function(e) {
     console.log('DYNAMICTOP_PTR: ' + DYNAMICTOP_PTR);
     console.log('DYNAMICTOP: ' + HEAP32[DYNAMICTOP_PTR>>2]);
     console.log('fetch worker init, queue ptr ' + queuePtr + ', heap length: ' + buffer.byteLength);
-    interval = setInterval(processWorkQueue, 1000);
+    interval = setInterval(processWorkQueue, 100);
   }
 }
