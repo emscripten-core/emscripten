@@ -114,6 +114,8 @@ function __emscripten_fetch_load_cached_data(db, fetch, onsuccess, onerror) {
         Fetch.setu64(fetch + 16, len);//{{{ makeSetValue('fetch', 16/*TODO:jsonify*/, 'len', 'i64')}}};
         Fetch.setu64(fetch + 24, 0);//{{{ makeSetValue('fetch', 24/*TODO:jsonify*/, '0', 'i64')}}};
         Fetch.setu64(fetch + 32, len);//{{{ makeSetValue('fetch', 32/*TODO:jsonify*/, 'len', 'i64')}}};
+        HEAPU16[fetch + 40 >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+        HEAPU16[fetch + 42 >> 1] = 200; // Mimic XHR HTTP status code 200 "OK"
 
         onsuccess(fetch, 0, value);
       } else {
@@ -269,9 +271,10 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
       Fetch.setu64(fetch + 32, len);//{{{ makeSetValue('fetch', 32/*TODO:jsonify*/, 'len', 'i64')}}};
     }
     HEAPU16[fetch + 40 >> 1] = xhr.readyState;
+    if (xhr.readyState === 4 && xhr.status === 0 && len > 0) xhr.status = 200; // If loading files from a source that does not give HTTP status code, assume success if we got data bytes
     HEAPU16[fetch + 42 >> 1] = xhr.status;
 //    if (xhr.statusText) stringToUTF8(fetch + 44, xhr.statusText, 64);
-    if (xhr.status == 200 || xhr.status == 0) {
+    if (xhr.status == 200) {
 #if FETCH_DEBUG
       console.log('fetch: xhr succeeded with status 200');
 #endif
@@ -311,6 +314,7 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
     Fetch.setu64(fetch + 24, e.loaded - ptrLen);//{{{ makeSetValue('fetch', 24/*TODO:jsonify*/, 'e.loaded - ptrLen', 'i64')}}};
     Fetch.setu64(fetch + 32, e.total);//{{{ makeSetValue('fetch', 32/*TODO:jsonify*/, 'e.total', 'i64')}}};
     HEAPU16[fetch + 40 >> 1] = xhr.readyState;
+    if (xhr.readyState >= 3 && xhr.status === 0 && e.loaded > 0) xhr.status = 200; // If loading files from a source that does not give HTTP status code, assume success if we get data bytes
     HEAPU16[fetch + 42 >> 1] = xhr.status;
     if (xhr.statusText) stringToUTF8(fetch + 44, xhr.statusText, 64);
     if (onprogress) onprogress(fetch, xhr, e);
