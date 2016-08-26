@@ -223,6 +223,7 @@ long __syscall54(int which, ...) // sysctl
 }
 
 // http://man7.org/linux/man-pages/man2/llseek.2.html
+// also useful: http://man7.org/linux/man-pages/man2/lseek.2.html
 long __syscall140(int which, ...) // llseek
 {
 	va_list vl;
@@ -251,19 +252,30 @@ long __syscall140(int which, ...) // llseek
 
 	emscripten_fetch_wait(desc->fetch, INFINITY);
 
-	uint64_t offset = ((uint64_t)offset_high << 32) | (uint64_t)offset_low;
+	int64_t offset = (int64_t)(((uint64_t)offset_high << 32) | (uint64_t)offset_low);
+	int64_t newPos;
 	switch(whence)
 	{
-		case SEEK_SET: desc->file_pos = offset; break;
-		case SEEK_CUR: desc->file_pos += offset; break;
-		case SEEK_END: desc->file_pos = desc->fetch->numBytes - offset; break;
+		case SEEK_SET: newPos = offset; break;
+		case SEEK_CUR: newPos = desc->file_pos + offset; break;
+		case SEEK_END: newPos = desc->fetch->numBytes + offset; break;
 		default:
 			errno = EINVAL; // "whence is invalid."
 			return -1;
 	}
-	// Clamp the seek to within the file size range.
-	if (desc->file_pos < 0) desc->file_pos = 0;
-	if ((size_t)desc->file_pos > desc->fetch->numBytes) desc->file_pos = desc->fetch->numBytes;
+	if (newPos < 0)
+	{
+		errno = EINVAL; // "the resulting file offset would be negative"
+		return -1;
+	}
+	if (newPos > 0x7FFFFFFFLL)
+	{
+		errno = EOVERFLOW; // "The resulting file offset cannot be represented in an off_t."
+		EM_ASM_INT( { Module['printErr']('llseek EOVERFLOW error: fd ' + $0 + 'attempted to seek past unsupported 2^31-1 file size limit (TODO?).') },
+			fd);
+		return -1;
+	}
+	desc->file_pos = newPos;
 
 	if (result) *result = desc->file_pos;
 	return 0;
