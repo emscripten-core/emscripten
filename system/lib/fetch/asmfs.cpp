@@ -201,7 +201,8 @@ long __syscall6(int which, ...) // close
 	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
 	{
 		fprintf(stderr, "Invalid or already closed file descriptor 0x%8X passed to close()!", (unsigned int)desc);
-		return -1; // TODO: set errno
+		errno = EBADF; // "fd isn't a valid open file descriptor."
+		return -1;
 	}
 	if (desc->fetch)
 	{
@@ -239,7 +240,8 @@ long __syscall140(int which, ...) // llseek
 	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
 	{
 		fprintf(stderr, "Invalid or closed file descriptor 0x%8X passed to close()!", (unsigned int)desc);
-		return -1; // TODO: set errno
+		errno = EBADF; // "fd isn't a valid open file descriptor."
+		return -1;
 	}
 	if (!desc->fetch)
 	{
@@ -255,10 +257,14 @@ long __syscall140(int which, ...) // llseek
 		case SEEK_SET: desc->file_pos = offset; break;
 		case SEEK_CUR: desc->file_pos += offset; break;
 		case SEEK_END: desc->file_pos = desc->fetch->numBytes - offset; break;
-		default: return -1;
+		default:
+			errno = EINVAL; // "whence is invalid."
+			return -1;
 	}
+	// Clamp the seek to within the file size range.
 	if (desc->file_pos < 0) desc->file_pos = 0;
 	if (desc->file_pos > desc->fetch->numBytes) desc->file_pos = desc->fetch->numBytes;
+
 	if (result) *result = desc->file_pos;
 	return 0;
 }
@@ -278,7 +284,8 @@ long __syscall145(int which, ...) // readv
 	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
 	{
 		fprintf(stderr, "Invalid or closed file descriptor 0x%8X passed to readv()!", (unsigned int)desc);
-		return -1; // TODO: set errno
+		errno = EBADF; // "fd is not a valid file descriptor or is not open for reading."
+		return -1;
 	}
 	if (!desc->fetch)
 	{
@@ -286,7 +293,28 @@ long __syscall145(int which, ...) // readv
 		return -1;
 	}
 
+	// TODO: Test and detect to return EISDIR.
+
+	// TODO: Support nonblocking IO and check for EAGAIN/EWOULDBLOCK
 	emscripten_fetch_wait(desc->fetch, INFINITY); // TODO: Ensure that multiple waits are ok.
+
+	if (iovcnt < 0)
+	{
+		errno = EINVAL; // "The vector count, iovcnt, is less than zero or greater than the permitted maximum."
+		return -1;
+	}
+
+	ssize_t total_read_amount = 0;
+	for(int i = 0; i < iovcnt; ++i)
+	{
+		ssize_t n = total_read_amount + iov[i].iov_len;
+		if (n < total_read_amount || !iov[i].iov_base)
+		{
+			errno = EINVAL; // "The sum of the iov_len values overflows an ssize_t value." or "the address specified in buf is not valid"
+			return -1;
+		}
+		total_read_amount = n;
+	}
 
 	size_t offset = desc->file_pos;
 	for(int i = 0; i < iovcnt; ++i)
