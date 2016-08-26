@@ -36,7 +36,7 @@ void emscripten_proxy_fetch(emscripten_fetch_t *fetch)
 	__emscripten_fetch_queue *queue = _emscripten_get_fetch_queue();
 //	TODO handle case when queue->numQueuedItems >= queue->queueSize
 	queue->queuedOperations[queue->numQueuedItems++] = fetch;
-	printf("Queueing fetch\n");
+	printf("Queued fetch to fetch-worker to process. There are now %d operations in the queue\n", queue->numQueuedItems);
 	// TODO: mutex unlock
 }
 
