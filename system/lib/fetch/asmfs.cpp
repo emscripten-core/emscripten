@@ -263,7 +263,7 @@ long __syscall140(int which, ...) // llseek
 	}
 	// Clamp the seek to within the file size range.
 	if (desc->file_pos < 0) desc->file_pos = 0;
-	if (desc->file_pos > desc->fetch->numBytes) desc->file_pos = desc->fetch->numBytes;
+	if ((size_t)desc->file_pos > desc->fetch->numBytes) desc->file_pos = desc->fetch->numBytes;
 
 	if (result) *result = desc->file_pos;
 	return 0;
@@ -321,7 +321,7 @@ long __syscall145(int which, ...) // readv
 	{
 		ssize_t dataLeft = desc->fetch->numBytes - offset;
 		if (dataLeft <= 0) break;
-		size_t bytesToCopy = dataLeft < iov[i].iov_len ? dataLeft : iov[i].iov_len;
+		size_t bytesToCopy = (size_t)dataLeft < iov[i].iov_len ? dataLeft : iov[i].iov_len;
 		memcpy(iov[i].iov_base, &desc->fetch->data[offset], bytesToCopy);
 		offset += bytesToCopy;
 	}
