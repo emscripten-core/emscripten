@@ -1768,11 +1768,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.USE_PTHREADS:
         shutil.copyfile(shared.path_from_root('src', 'pthread-main.js'), os.path.join(os.path.dirname(os.path.abspath(target)), 'pthread-main.js'))
 
+      if shared.Settings.FETCH:
         src = open(final, 'r').read()
-        funcs_to_import = ['alignMemoryPage', '_sbrk', '_pthread_mutex_lock', '_malloc', '_emscripten_sync_run_in_main_thread_1', '_emscripten_sync_run_in_main_thread', '_emscripten_is_main_runtime_thread', '_pthread_mutex_unlock', '_emscripten_set_current_thread_status', '_emscripten_futex_wait', 'stringToUTF8', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array']
-        function_prologue = ''
-        for func in funcs_to_import:
-          loc = src.find('function ' + func + '(')
+        funcs_to_import = ['alignMemoryPage', 'getTotalMemory', 'stringToUTF8', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_runtime_thread', '_emscripten_futex_wait']
+        asm_funcs_to_import = ['_malloc', '_free', '_sbrk', '_pthread_mutex_lock', '_emscripten_sync_run_in_main_thread_1', '_emscripten_sync_run_in_main_thread', '_pthread_mutex_unlock', '_emscripten_set_current_thread_status']
+        function_prologue = '''this.onerror = function(e) {
+  console.error(e);
+}
+
+'''
+        asm_start = src.find('// EMSCRIPTEN_START_ASM')
+        for func in funcs_to_import + asm_funcs_to_import:
+          loc = src.find('function ' + func + '(', asm_start if func in asm_funcs_to_import else 0)
           if loc == -1:
             logging.fatal('failed to find function ' + func + '!')
             sys.exit(1)
@@ -1787,7 +1794,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           function_prologue = function_prologue + '\n' + func_code
 
         fetch_worker_src = function_prologue + '\n' + shared.clang_preprocess(shared.path_from_root('src', 'fetch-worker.js'))
-        open('fetch-worker.js', 'w').write(fetch_worker_src)
+        open(os.path.join(os.path.dirname(os.path.abspath(target)), 'fetch-worker.js'), 'w').write(fetch_worker_src)
 
       if shared.Settings.BINARYEN:
         # Insert a call to integrate with wasm.js
