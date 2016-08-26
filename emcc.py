@@ -1948,7 +1948,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         combined.close()
       # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
       if not shared.Settings.WASM_BACKEND:
-        cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--mapped-globals=' + wasm_text_target + '.mappedGlobals', '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
+        cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
         if shared.Settings.BINARYEN_IMPRECISE:
           cmd += ['--imprecise']
         if opt_level == 0:
