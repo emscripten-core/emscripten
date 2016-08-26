@@ -45,6 +45,7 @@
   },
   getStore: function(dbName, type, callback) {
     IDBStore.getDB(dbName, function(error, db) {
+      if (error) return callback(error);
       var transaction = db.transaction([IDBStore.DB_STORE_NAME], type);
       transaction.onerror = function(e) {
         callback(this.error || 'unknown error');
