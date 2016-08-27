@@ -183,12 +183,14 @@ static const char *basename_part(const char *path)
 
 static inode *create_directory_hierarchy_for_file(inode *root, const char *path_to_file)
 {
+	assert(root);
 	if (!root) return 0;
 
 	inode *node = root->child;
 	while(node)
 	{
 		const char *child_path = path_cmp(path_to_file, node->name);
+		EM_ASM_INT( { Module['printErr']('path_cmp ' + Pointer_stringify($0) + ', ' + Pointer_stringify($1) + ', ' + Pointer_stringify($2) + ' .') }, path_to_file, node->name, child_path);
 		if (child_path)
 		{
 			// The directory name matches.
@@ -203,7 +205,9 @@ static inode *create_directory_hierarchy_for_file(inode *root, const char *path_
 			node = node->sibling;
 		}
 	}
+	EM_ASM_INT( { Module['printErr']('path_to_file ' + Pointer_stringify($0) + ' .') }, path_to_file);
 	const char *basename_pos = basename_part(path_to_file);
+	EM_ASM_INT( { Module['printErr']('basename_pos ' + Pointer_stringify($0) + ' .') }, basename_pos);
 	while(*path_to_file && path_to_file < basename_pos)
 	{
 		node = create_inode(INODE_DIR);
@@ -214,6 +218,31 @@ static inode *create_directory_hierarchy_for_file(inode *root, const char *path_
 		root = node;
 	}
 	return root;
+}
+
+// Given a path to a file, finds the inode of the parent directory that contains the file, or 0 if the intermediate path doesn't exist.
+static inode *find_parent_inode(inode *root, const char *path)
+{
+	if (!root) return 0;
+	const char *basename = basename_part(path);
+	inode *node = root->child;
+	while(node)
+	{
+		const char *child_path = path_cmp(path, node->name);
+		if (child_path)
+		{
+			// The directory name matches.
+			path = child_path;
+			if (path >= basename) return node;
+			if (!*path) return 0;
+			node = node->child;
+		}
+		else
+		{
+			node = node->sibling;
+		}
+	}
+	return 0;
 }
 
 // Given a root inode of the filesystem and a path relative to it, e.g. "some/directory/dir_or_file",
@@ -708,7 +737,7 @@ static void print_stream(void *bytes, int numBytes, bool stdout)
 		if (buffer[i] == '\n')
 		{
 			buffer[i] = 0;
-			EM_ASM_INT( { Module['print'](Pointer_stringify($0)) }, buffer);
+			EM_ASM_INT( { Module['print'](Pointer_stringify($0)) }, buffer+new_buffer_start);
 			new_buffer_start = i+1;
 		}
 	}
@@ -801,6 +830,113 @@ long __syscall146(int which, ...) // writev
 //			node->name, node->data, node->size, node->fetch);
 	}
 	return total_write_amount;
+}
+
+// http://man7.org/linux/man-pages/man2/write.2.html
+long __syscall4(int which, ...) // write
+{
+	va_list vl;
+	va_start(vl, which);
+	int fd = va_arg(vl, int);
+	void *buf = va_arg(vl, void *);
+	size_t count = va_arg(vl, size_t);
+	va_end(vl);
+
+	iovec io = { buf, count };
+	return __syscall146(146, fd, &io, 1);
+}
+
+// http://man7.org/linux/man-pages/man2/mkdir.2.html
+long __syscall39(int which, ...) // mkdir
+{
+	va_list vl;
+	va_start(vl, which);
+	const char *pathname = va_arg(vl, const char *);
+	mode_t mode = va_arg(vl, mode_t);
+	va_end(vl);
+
+	EM_ASM_INT( { Module['printErr']('__syscall145 MKDIR, which: ' + $0 + ', pathname ' + Pointer_stringify($1) + ', mode: ' + $2 + ' .') }, which, pathname, mode);
+
+	inode *root;
+	if (pathname[0] == '/')
+	{
+		root = filesystem_root();
+		++pathname;
+	}
+	else
+		root = get_cwd();
+	inode *parent_dir = find_parent_inode(root, pathname); // TODO: This is wrong, shouldn't be recursive
+	inode *directory = create_inode(INODE_DIR);
+	strcpy(directory->name, basename_part(pathname));
+	directory->mode = mode;
+	link_inode(directory, parent_dir);
+	emscripten_dump_fs_root();
+	return 0; // TODO: error checking
+}
+
+// http://man7.org/linux/man-pages/man2/rmdir.2.html
+long __syscall40(int which, ...) // rmdir
+{
+	va_list vl;
+	va_start(vl, which);
+	const char *pathname = va_arg(vl, const char *);
+	va_end(vl);
+
+	inode *root;
+	if (pathname[0] == '/')
+	{
+		root = filesystem_root();
+		++pathname;
+	}
+	else
+		root = get_cwd();
+	inode *node = find_inode(root, pathname);
+	if (node && node->type == INODE_DIR && !node->child)
+	{
+		EM_ASM_INT( { Module['print']('__syscall145 RMDIR, pathname: ' + Pointer_stringify($0) + ' removed.') }, pathname);
+		unlink_inode(node);
+		emscripten_dump_fs_root();
+		return 0;
+	}
+	else
+	{
+		EM_ASM_INT( { Module['printErr']('__syscall145 RMDIR, pathname: ' + Pointer_stringify($0) + ' not deleted.') }, pathname);
+		errno = ENOENT;
+		return -1;
+	}
+
+}
+
+// http://man7.org/linux/man-pages/man2/unlink.2.html
+long __syscall10(int which, ...) // unlink
+{
+	va_list vl;
+	va_start(vl, which);
+	const char *pathname = va_arg(vl, const char *);
+	va_end(vl);
+
+	inode *root;
+	if (pathname[0] == '/')
+	{
+		root = filesystem_root();
+		++pathname;
+	}
+	else
+		root = get_cwd();
+	inode *node = find_inode(root, pathname);
+	if (node && !node->child)
+	{
+		EM_ASM_INT( { Module['print']('__syscall145 UNLINK, pathname: ' + Pointer_stringify($0) + ' removed.') }, pathname);
+		unlink_inode(node);
+		emscripten_dump_fs_root();
+		return 0;
+	}
+	else
+	{
+		EM_ASM_INT( { Module['printErr']('__syscall145 UNLINK, pathname: ' + Pointer_stringify($0) + ' not deleted.') }, pathname);
+		errno = ENOENT;
+		return -1;
+	}
 }
 
 } // ~extern "C"
