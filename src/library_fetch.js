@@ -17,7 +17,7 @@ var LibraryFetch = {
   $__emscripten_fetch_load_cached_data: __emscripten_fetch_load_cached_data,
   $__emscripten_fetch_cache_data: __emscripten_fetch_cache_data,
   $__emscripten_fetch_xhr: __emscripten_fetch_xhr,
-  emscripten_start_fetch__deps: ['$Fetch', '$__emscripten_fetch_xhr', '$__emscripten_fetch_cache_data', '$__emscripten_fetch_load_cached_data', '_emscripten_get_fetch_work_queue'],
+  emscripten_start_fetch__deps: ['$Fetch', '$__emscripten_fetch_xhr', '$__emscripten_fetch_cache_data', '$__emscripten_fetch_load_cached_data', '_emscripten_get_fetch_work_queue', 'emscripten_is_main_runtime_thread', 'pthread_mutex_lock', 'pthread_mutex_unlock'],
   emscripten_start_fetch: emscripten_start_fetch
 };
 

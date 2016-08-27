@@ -51,23 +51,30 @@ var Fetch = {
       console.log('fetch: IndexedDB successfully opened.');
 #endif
       Fetch.dbInstance = db;
+
+#if USE_PTHREADS
       if (isMainThread) {
         Fetch.initFetchWorker();
         removeRunDependency('library_fetch_init');
       }
+#endif
     };
     var onerror = function() {
 #if FETCH_DEBUG
       console.error('fetch: IndexedDB open failed.');
 #endif
       Fetch.dbInstance = false;
+
+#if USE_PTHREADS
       if (isMainThread) {
         Fetch.initFetchWorker();
         removeRunDependency('library_fetch_init');
       }
+#endif
     };
     Fetch.openDatabase('emscripten_filesystem', 1, onsuccess, onerror);
 
+#if USE_PTHREADS
     if (isMainThread) {
       addRunDependency('library_fetch_init');
 
@@ -85,6 +92,7 @@ var Fetch = {
         Module['printErr']('fetch-worker sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
       };
     }
+#endif
   }
 }
 

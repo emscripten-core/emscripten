@@ -1,18 +1,23 @@
 #include "Fetch.js"
 
+var Atomics_add = Atomics.add;
+var Atomics_and = Atomics.and;
+var Atomics_compareExchange = Atomics.compareExchange;
+var Atomics_exchange = Atomics.exchange;
+var Atomics_wait = Atomics.wait;
+var Atomics_wake = Atomics.wake;
+var Atomics_wakeOrRequeue = Atomics.wakeOrRequeue;
+var Atomics_isLockFree = Atomics.isLockFree;
+var Atomics_load = Atomics.load;
+var Atomics_or = Atomics.or;
+var Atomics_store = Atomics.store;
+var Atomics_sub = Atomics.sub;
+var Atomics_xor = Atomics.xor;
+
 var ENVIRONMENT_IS_FETCH_WORKER = true;
 var ENVIRONMENT_IS_WORKER = true;
 var ENVIRONMENT_IS_PTHREAD = true;
 var __pthread_is_main_runtime_thread=0;
-var Atomics_load = Atomics.load;
-var Atomics_store = Atomics.store;
-var Atomics_exchange = Atomics.exchange;
-var Atomics_compareExchange = Atomics.compareExchange;
-var Atomics_add = Atomics.add;
-var Atomics_sub = Atomics.sub;
-var Atomics_and = Atomics.and;
-var Atomics_or = Atomics.or;
-var Atomics_xor = Atomics.xor;
 var DYNAMICTOP_PTR = 0;
 var TOTAL_MEMORY = 0;
 function enlargeMemory() {

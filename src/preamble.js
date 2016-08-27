@@ -1180,6 +1180,7 @@ if (typeof Atomics === 'undefined') {
   Atomics['add'] = function(t, i, v) { var w = t[i]; t[i] += v; return w; }
   Atomics['and'] = function(t, i, v) { var w = t[i]; t[i] &= v; return w; }
   Atomics['compareExchange'] = function(t, i, e, r) { var w = t[i]; if (w == e) t[i] = r; return w; }
+  Atomics['exchange'] = function(t, i, v) { var w = t[i]; t[i] = v; return w; }
   Atomics['wait'] = function(t, i, v, o) { if (t[i] != v) abort('Multithreading is not supported, cannot sleep to wait for futex!'); }
   Atomics['wake'] = function(t, i, c) { return 0; }
   Atomics['wakeOrRequeue'] = function(t, i1, c, i2, v) { return 0; }

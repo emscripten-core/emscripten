@@ -3295,26 +3295,20 @@ window.close = function() {
 
   # Tests emscripten_fetch() usage to XHR data directly to memory without persisting results to IndexedDB.
   def test_fetch_to_memory(self):
-    temp_args = [path_from_root('system/lib/fetch/emscripten_fetch.cpp'), '--js-library', path_from_root('src/library_fetch.js')] # TODO: Emscripten system libs, pass these e.g. with -lfetch
-
     # Test error reporting in the negative case when the file URL doesn't exist. (http 404)
-    self.btest('fetch/to_memory.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-DFILE_DOES_NOT_EXIST'] + temp_args)
+    self.btest('fetch/to_memory.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-DFILE_DOES_NOT_EXIST'])
 
     # Test the positive case when the file URL exists. (http 200)
     shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
-    self.btest('fetch/to_memory.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1'] + temp_args)
+    self.btest('fetch/to_memory.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1'])
 
   # Tests emscripten_fetch() usage to persist an XHR into IndexedDB and subsequently load up from there.
   def test_fetch_cached_xhr(self):
-    temp_args = [path_from_root('system/lib/fetch/emscripten_fetch.cpp'), '--js-library', path_from_root('src/library_fetch.js')] # TODO: Emscripten system libs, pass these e.g. with -lfetch
-
     shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
-    self.btest('fetch/cached_xhr.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1'] + temp_args)
+    self.btest('fetch/cached_xhr.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1'])
 
   # Test emscripten_fetch() usage to stream a XHR in to memory without storing the full file in memory
   def test_fetch_stream_file(self):
-    temp_args = [path_from_root('system/lib/fetch/emscripten_fetch.cpp'), '--js-library', path_from_root('src/library_fetch.js')] # TODO: Emscripten system libs, pass these e.g. with -lfetch
-
     # Strategy: create a large 128MB file, and compile with a small 16MB Emscripten heap, so that the tested file
     # won't fully fit in the heap. This verifies that streaming works properly.
     f = open('largefile.txt', 'w')
@@ -3324,14 +3318,19 @@ window.close = function() {
     for i in xrange(1024):
       f.write(s)
     f.close()
-    self.btest('fetch/stream_file.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'TOTAL_MEMORY=536870912'] + temp_args)
+    self.btest('fetch/stream_file.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'TOTAL_MEMORY=536870912'])
 
   # Tests emscripten_fetch() usage in synchronous mode.
   def test_fetch_sync_xhr(self):
-    temp_args = [path_from_root('system/lib/fetch/emscripten_fetch.cpp'), '--js-library', path_from_root('src/library_fetch.js')] # TODO: Emscripten system libs, pass these e.g. with -lfetch
-
     shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
-    self.btest('fetch/sync_xhr.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '--proxy-to-worker'] + temp_args)
+    self.btest('fetch/sync_xhr.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '--proxy-to-worker', '-s', 'USE_PTHREADS=1'])
+
+  def test_fetch_idb_store(self):
+    self.btest('fetch/idb_store.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '--proxy-to-worker'])
+
+  def test_fetch_idb_delete(self):
+    shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
+    self.btest('fetch/idb_delete.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '--proxy-to-worker'])
 
   def test_asmfs_hello_file(self):
     shutil.copyfile(path_from_root('tests', 'asmfs', 'hello_file.txt'), os.path.join(self.get_dir(), 'hello_file.txt'))

@@ -78,6 +78,7 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 	fetch->__attributes.requestHeaders = 0;// TODO:strdup(fetch->__attributes.requestHeaders);
 	fetch->__attributes.overriddenMimeType = fetch->__attributes.overriddenMimeType ? strdup(fetch->__attributes.overriddenMimeType) : 0; // TODO: free
 
+#if __EMSCRIPTEN_PTHREADS__
 	// Depending on the type of fetch, we can either perform it in the same Worker/thread than the caller, or we might need
 	// to run it in a separate Worker. There is a dedicated fetch worker that is available for the fetch, but in some scenarios
 	// it might be desirable to run in the same Worker as the caller, so deduce here whether to run the fetch in this thread,
@@ -91,12 +92,14 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 		if (synchronous) emscripten_fetch_wait(fetch, INFINITY);
 	}
 	else
+#endif
 		emscripten_start_fetch(fetch);
 	return fetch;
 }
 
 EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeoutMsecs)
 {
+#if __EMSCRIPTEN_PTHREADS__
 	if (!fetch) return EMSCRIPTEN_RESULT_INVALID_PARAM;
 	uint32_t proxyState = emscripten_atomic_load_u32(&fetch->__proxyState);
 	if (proxyState == 2) return EMSCRIPTEN_RESULT_SUCCESS; // already finished.
@@ -115,11 +118,17 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeou
 
 	if (proxyState == 2) return EMSCRIPTEN_RESULT_SUCCESS;
 	else return EMSCRIPTEN_RESULT_FAILED;
+#else
+	EM_ASM({ console.error('fetch: emscripten_fetch_wait is not available when building without pthreads!') });
+	return EMSCRIPTEN_RESULT_FAILED;
+#endif
 }
 
 EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch)
 {
+#if __EMSCRIPTEN_PTHREADS__
 	emscripten_atomic_store_u32(&fetch->__proxyState, 0);
+#endif
 	free(fetch); // TODO: thread-safety before freeing (what if freeing an operation in progress? explicit emscripten_fetch_abort()?)
 	return EMSCRIPTEN_RESULT_SUCCESS;
 }
