@@ -88,6 +88,52 @@ var Fetch = {
   }
 }
 
+function __emscripten_fetch_delete_cached_data(db, fetch, onsuccess, onerror) {
+  if (!db) {
+#if FETCH_DEBUG
+    console.error('fetch: IndexedDB not available!');
+#endif
+    onerror(fetch, 0, 'IndexedDB not available!');
+    return;
+  }
+
+  var fetch_attr = fetch + 112/*TODO:structs_info*/;
+  var path = HEAPU32[fetch_attr + 64 >> 2];//{{{ makeGetValue('fetch_attr', 64/*TODO*/, 'i32') }}};
+  if (!path) path = HEAPU32[fetch + 8 >> 2];//{{{ makeGetValue('fetch', 8/*TODO:structs_info.jsonify this*/, 'i32') }}};
+  var pathStr = Pointer_stringify(path);
+
+  try {
+    var transaction = db.transaction(['FILES'], 'readwrite');
+    var packages = transaction.objectStore('FILES');
+    var request = packages.delete(pathStr);
+    request.onsuccess = function(event) {
+      var value = event.target.result;
+#if FETCH_DEBUG
+      console.log('fetch: Deleted file ' + pathStr + ' from IndexedDB');
+#endif
+      HEAPU32[fetch + 12 >> 2] = 0;//{{{ makeSetValue('fetch', 12/*TODO:jsonify*/, 'ptr', 'i32')}}};
+      Fetch.setu64(fetch + 16, 0);//{{{ makeSetValue('fetch', 16/*TODO:jsonify*/, 'len', 'i64')}}};
+      Fetch.setu64(fetch + 24, 0);//{{{ makeSetValue('fetch', 24/*TODO:jsonify*/, '0', 'i64')}}};
+      Fetch.setu64(fetch + 32, 0);//{{{ makeSetValue('fetch', 32/*TODO:jsonify*/, 'len', 'i64')}}};
+      HEAPU16[fetch + 40 >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+      HEAPU16[fetch + 42 >> 1] = 200; // Mimic XHR HTTP status code 200 "OK"
+
+      onsuccess(fetch, 0, value);
+    };
+    request.onerror = function(error) {
+#if FETCH_DEBUG
+      console.error('fetch: Failed to delete file ' + pathStr + ' from IndexedDB! error: ' + error);
+#endif
+      onerror(fetch, 0, error);
+    };
+  } catch(e) {
+#if FETCH_DEBUG
+    console.error('fetch: Failed to load file ' + pathStr + ' from IndexedDB! Got exception ' + e);
+#endif
+    onerror(fetch, 0, e);
+  }
+}
+
 function __emscripten_fetch_load_cached_data(db, fetch, onsuccess, onerror) {
   if (!db) {
 #if FETCH_DEBUG
@@ -342,6 +388,7 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
   if (typeof Module !== 'undefined') Module['noExitRuntime'] = true; // If we are the main Emscripten runtime, we should not be closing down.
 
   var fetch_attr = fetch + 112/*TODO:structs_info*/;
+  var requestMethod = Pointer_stringify(fetch_attr);
   var onsuccess = HEAPU32[fetch_attr + 36 >> 2];//{{{ makeGetValue('fetch_attr', 36/*TODO:structs_info.jsonify this*/, 'i32') }}};
   var onerror = HEAPU32[fetch_attr + 40 >> 2];//{{{ makeGetValue('fetch_attr', 40/*TODO:structs_info.jsonify this*/, 'i32') }}};
   var onprogress = HEAPU32[fetch_attr + 44 >> 2];//{{{ makeGetValue('fetch_attr', 44/*TODO:structs_info.jsonify this*/, 'i32') }}};
@@ -408,7 +455,7 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
   };
 
   // Should we try IndexedDB first?
-  if (!fetchAttrReplace) {
+  if (!fetchAttrReplace /*|| requestMethod === 'EM_IDB_STORE'*/ || requestMethod === 'EM_IDB_DELETE') {
     if (!Fetch.dbInstance) {
 #if FETCH_DEBUG
       console.error('fetch: failed to read IndexedDB! Database is not open.');
@@ -417,7 +464,9 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
       return 0; // todo: free
     }
 
-    if (fetchAttrNoDownload) {
+    if (requestMethod === 'EM_IDB_DELETE') {
+      __emscripten_fetch_delete_cached_data(Fetch.dbInstance, fetch, reportSuccess, reportError);
+    } else if (fetchAttrNoDownload) {
       __emscripten_fetch_load_cached_data(Fetch.dbInstance, fetch, reportSuccess, reportError);
     } else if (fetchAttrPersistFile) {
       __emscripten_fetch_load_cached_data(Fetch.dbInstance, fetch, reportSuccess, performCachedXhr);        

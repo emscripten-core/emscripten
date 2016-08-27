@@ -5,6 +5,7 @@
 #include <emscripten/html5.h>
 #include <emscripten/fetch.h>
 #include <emscripten/threading.h>
+#include <math.h>
 
 struct __emscripten_fetch_queue
 {
@@ -50,6 +51,19 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 {
 	if (!fetch_attr) return 0;
 	if (!url) return 0;
+
+	const bool waitable = (fetch_attr->attributes & EMSCRIPTEN_FETCH_WAITABLE) != 0;
+	const bool synchronous = (fetch_attr->attributes & EMSCRIPTEN_FETCH_SYNCHRONOUS) != 0;
+	const bool readFromIndexedDB = (fetch_attr->attributes & (EMSCRIPTEN_FETCH_APPEND | EMSCRIPTEN_FETCH_NO_DOWNLOAD)) != 0;
+	const bool writeToIndexedDB = (fetch_attr->attributes & EMSCRIPTEN_FETCH_PERSIST_FILE) != 0 || !strncmp(fetch_attr->requestMethod, "EM_IDB_", strlen("EM_IDB_"));
+	const bool performXhr = (fetch_attr->attributes & EMSCRIPTEN_FETCH_NO_DOWNLOAD) == 0;
+	const bool isMainBrowserThread = emscripten_is_main_browser_thread() != 0;
+	if (isMainBrowserThread && synchronous && (performXhr || readFromIndexedDB || writeToIndexedDB))
+	{
+		printf("emscripten_fetch failed! Synchronous blocking XHRs and IndexedDB operations are not supported on the main browser thread. Try dropping the EMSCRIPTEN_FETCH_SYNCHRONOUS flag, or run with the linker flag --proxy-to-worker to decouple main C runtime thread from the main browser thread.\n");
+		return 0;
+	}
+
 	emscripten_fetch_t *fetch = (emscripten_fetch_t *)malloc(sizeof(emscripten_fetch_t));
 	memset(fetch, 0, sizeof(emscripten_fetch_t));
 	fetch->id = globalFetchIdCounter++; // TODO: make this thread-safe!
@@ -62,10 +76,17 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 	fetch->__attributes.requestHeaders = 0;// TODO:strdup(fetch->__attributes.requestHeaders);
 	fetch->__attributes.overriddenMimeType = fetch->__attributes.overriddenMimeType ? strdup(fetch->__attributes.overriddenMimeType) : 0; // TODO: free
 
-	if ((fetch->__attributes.attributes & EMSCRIPTEN_FETCH_WAITABLE) != 0)
+	// Depending on the type of fetch, we can either perform it in the same Worker/thread than the caller, or we might need
+	// to run it in a separate Worker. There is a dedicated fetch worker that is available for the fetch, but in some scenarios
+	// it might be desirable to run in the same Worker as the caller, so deduce here whether to run the fetch in this thread,
+	// or if we need to use the fetch-worker instead.
+	if (waitable // Waitable fetches can be synchronously waited on, so must always be proxied
+		|| (synchronous && (readFromIndexedDB || writeToIndexedDB))) // Synchronous IndexedDB access needs proxying
 	{
 		emscripten_atomic_store_u32(&fetch->__proxyState, 1); // sent to proxy worker.
 		emscripten_proxy_fetch(fetch);
+
+		if (synchronous) emscripten_fetch_wait(fetch, INFINITY);
 	}
 	else
 		emscripten_start_fetch(fetch);

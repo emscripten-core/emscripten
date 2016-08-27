@@ -130,9 +130,7 @@ this.onmessage = function(e) {
     HEAPU16 = new Uint16Array(buffer);
     HEAP32 = new Int32Array(buffer);
     HEAPU32 = new Uint32Array(buffer);
-    console.log('DYNAMICTOP_PTR: ' + DYNAMICTOP_PTR);
-    console.log('DYNAMICTOP: ' + HEAP32[DYNAMICTOP_PTR>>2]);
-    console.log('fetch worker init, queue ptr ' + queuePtr + ', heap length: ' + buffer.byteLength);
+    console.log('fetch: fetch Worker initialized. queue ptr ' + queuePtr + ', heap length: ' + buffer.byteLength);
     interval = setInterval(processWorkQueue, 100);
   }
 }
