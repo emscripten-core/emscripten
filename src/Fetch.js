@@ -124,6 +124,8 @@ function __emscripten_fetch_delete_cached_data(db, fetch, onsuccess, onerror) {
 #if FETCH_DEBUG
       console.error('fetch: Failed to delete file ' + pathStr + ' from IndexedDB! error: ' + error);
 #endif
+      HEAPU16[fetch + 40 >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+      HEAPU16[fetch + 42 >> 1] = 404; // Mimic XHR HTTP status code 404 "Not Found"
       onerror(fetch, 0, error);
     };
   } catch(e) {
@@ -175,6 +177,8 @@ function __emscripten_fetch_load_cached_data(db, fetch, onsuccess, onerror) {
 #if FETCH_DEBUG
         console.error('fetch: Loaded file ' + pathStr + ' from IndexedDB, but it had 0 length!');
 #endif
+        HEAPU16[fetch + 40 >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+        HEAPU16[fetch + 42 >> 1] = 404; // Mimic XHR HTTP status code 404 "Not Found"
         onerror(fetch, 0, 'no data');
       }
     };
@@ -182,6 +186,8 @@ function __emscripten_fetch_load_cached_data(db, fetch, onsuccess, onerror) {
 #if FETCH_DEBUG
       console.error('fetch: Failed to load file ' + pathStr + ' from IndexedDB!');
 #endif
+      HEAPU16[fetch + 40 >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+      HEAPU16[fetch + 42 >> 1] = 404; // Mimic XHR HTTP status code 404 "Not Found"
       onerror(fetch, 0, error);
     };
   } catch(e) {
@@ -214,12 +220,19 @@ function __emscripten_fetch_cache_data(db, fetch, data, onsuccess, onerror) {
 #if FETCH_DEBUG
       console.log('fetch: Stored file "' + destinationPathStr + '" to IndexedDB cache.');
 #endif
+      HEAPU16[fetch + 40 >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+      HEAPU16[fetch + 42 >> 1] = 200; // Mimic XHR HTTP status code 200 "OK"
       onsuccess(fetch, 0, destinationPathStr);
     };
     putRequest.onerror = function(error) {
 #if FETCH_DEBUG
       console.error('fetch: Failed to store file "' + destinationPathStr + '" to IndexedDB cache!');
 #endif
+      // Most likely we got an error if IndexedDB is unwilling to store any more data for this page.
+      // TODO: Can we identify and break down different IndexedDB-provided errors and convert those
+      // to more HTTP status codes for more information?
+      HEAPU16[fetch + 40 >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+      HEAPU16[fetch + 42 >> 1] = 413; // Mimic XHR HTTP status code 413 "Payload Too Large"
       onerror(fetch, 0, error);
     };
   } catch(e) {
@@ -455,7 +468,7 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
   };
 
   // Should we try IndexedDB first?
-  if (!fetchAttrReplace /*|| requestMethod === 'EM_IDB_STORE'*/ || requestMethod === 'EM_IDB_DELETE') {
+  if (!fetchAttrReplace || requestMethod === 'EM_IDB_STORE' || requestMethod === 'EM_IDB_DELETE') {
     if (!Fetch.dbInstance) {
 #if FETCH_DEBUG
       console.error('fetch: failed to read IndexedDB! Database is not open.');
@@ -464,7 +477,12 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
       return 0; // todo: free
     }
 
-    if (requestMethod === 'EM_IDB_DELETE') {
+    if (requestMethod === 'EM_IDB_STORE') {
+      var dataPtr = HEAPU32[fetch_attr + 84 >> 2];
+      var dataLength = HEAPU32[fetch_attr + 88 >> 2];
+      var data = HEAPU8.slice(dataPtr, dataPtr + dataLength); // TODO(?): Here we perform a clone of the data, because storing shared typed arrays to IndexedDB does not seem to be allowed.
+      __emscripten_fetch_cache_data(Fetch.dbInstance, fetch, data, reportSuccess, reportError);
+    } else if (requestMethod === 'EM_IDB_DELETE') {
       __emscripten_fetch_delete_cached_data(Fetch.dbInstance, fetch, reportSuccess, reportError);
     } else if (fetchAttrNoDownload) {
       __emscripten_fetch_load_cached_data(Fetch.dbInstance, fetch, reportSuccess, reportError);

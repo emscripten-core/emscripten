@@ -45,6 +45,8 @@ int main()
   assert(fetch->data == 0);
   emscripten_fetch_close(fetch);
 
+  printf("Test succeeded!\n");
+
 #ifdef REPORT_RESULT
   int result = 0;
   REPORT_RESULT();

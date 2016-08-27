@@ -86,16 +86,15 @@ function processWorkQueue() {
   for(var i = 0; i < numQueuedItems; ++i) {
     var fetch = Atomics_load(HEAPU32, (queuedOperations >> 2)+i);
     console.log('processWorkQueue: starting fetch');
-    console.log('fetch ptr1 ' + fetch + ', state ' + Atomics_load(HEAPU32, fetch + 108 >> 2));
     function successcb(fetch) {
-      console.log('fetch ptr ' + fetch + ', state ' + Atomics_load(HEAPU32, fetch + 108 >> 2));
-      console.log('FETCH-WORKER: fetch finished');
-      var oldVal = Atomics.compareExchange(HEAPU32, fetch + 108 >> 2, 1, 2);
-      console.log('atomics wake ' + (fetch + 108));
+      console.log('FETCH-WORKER: fetch finished on success');
+      Atomics.compareExchange(HEAPU32, fetch + 108 >> 2, 1, 2);
       Atomics.wake(HEAP32, fetch + 108 >> 2, 1);
     }
     function errorcb(fetch) {
-      console.log('FETCH-WORKER: fetch failed');
+      console.log('FETCH-WORKER: fetch finished on failure');
+      Atomics.compareExchange(HEAPU32, fetch + 108 >> 2, 1, 2);
+      Atomics.wake(HEAP32, fetch + 108 >> 2, 1);
     }
     function progresscb(fetch) {
       console.log('FETCH-WORKER: fetch progress..');
