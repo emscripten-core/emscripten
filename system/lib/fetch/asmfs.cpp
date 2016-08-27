@@ -358,11 +358,9 @@ long __syscall5(int which, ...) // open
 		return -1;
 	}
 
-	if ((flags & O_EXCL))
+	if ((flags & O_EXCL) && !(flags & O_CREAT))
 	{
-		EM_ASM(Module['printErr']('open() syscall failed! Opening files with O_EXCL flag is not yet supported in ASMFS (TODO)'));
-
-		// TODO: Check if the file exists and if so, return EEXIST error (the file should not exist, but with O_EXCL should always create a new one)
+		EM_ASM(Module['printErr']('open() syscall failed! Opening files with O_EXCL flag needs to always be paired with O_CREAT'));
 		return -1;
 	}
 
@@ -446,13 +444,20 @@ long __syscall5(int which, ...) // open
 	inode *node = find_inode(root, pathname, &grandparent);
 	if (node)
 	{
+		if ((flags & O_CREAT) && (flags & O_EXCL))
+		{
+			EM_ASM_INT( { Module['printErr']('__syscall5 OPEN: pathname ' + Pointer_stringify($0) + ', inode open failed because file exists and open flags had O_CREAT and O_EXCL') }, 
+				pathname);
+			errno = EEXIST;
+			return -1;
+		}
 		EM_ASM_INT( { Module['print']('__syscall5 OPEN: pathname ' + Pointer_stringify($0) + ', inode exists. data ptr: ' + $1 + ', data size: ' + $2 + ', fetch ptr: ' + $3) }, 
 			pathname, node->data, node->size, node->fetch);
 	}
 
 	if (node && node->fetch) emscripten_fetch_wait(node->fetch, INFINITY);
 
-	if ((flags & O_CREAT) && (flags & O_TRUNC))
+	if ((flags & O_CREAT) || (flags & O_TRUNC) || (flags & O_EXCL))
 	{
 		// Create a new empty file or truncate existing one.
 		if (node)
