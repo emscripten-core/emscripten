@@ -478,7 +478,7 @@ int main()
   def test_bitfields(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_bitfields')
 
-  @no_wasm_backend()
+  @no_wasm_backend('printf is incorrectly handling float values')
   def test_floatvars(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_floatvars')
 
@@ -497,7 +497,7 @@ int main()
   def test_zero_multiplication(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_zero_multiplication')
 
-  @no_wasm_backend()
+  @no_wasm_backend('printf is incorrectly handling float values')
   def test_isnan(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_isnan')
 
@@ -541,7 +541,7 @@ int main()
   def test_fcvt(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_fcvt')
 
-  @no_wasm_backend()
+  @no_wasm_backend('printf is truncating the output of i64s')
   def test_llrint(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_llrint')
 
@@ -639,7 +639,7 @@ base align: 0, 0, 0, 0'''])
     ensure_stack_restore_count('function _alloca_gets_restored', 1)
     ensure_stack_restore_count('function _stack_usage', 1)
 
-  @no_wasm_backend()
+  @no_wasm_backend('for some reasons emscripten_asm_const_ii gets called? and has a bogus memory address that causes a trap')
   def test_strings(self):
       test_path = path_from_root('tests', 'core', 'test_strings')
       src, output = (test_path + s for s in ('.c', '.out'))
@@ -758,50 +758,50 @@ base align: 0, 0, 0, 0'''])
   def test_libcextra(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_libcextra')
 
-  @no_wasm_backend()
+  @no_wasm_backend('for some reasons emscripten_asm_const_ii gets called? and has a bogus memory address that causes a trap')
   def test_regex(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_regex')
 
-  @no_wasm_backend()
+  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_longjmp(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp')
 
-  @no_wasm_backend()
+  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_longjmp2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp2')
 
-  @no_wasm_backend()
+  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_longjmp3(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp3')
 
-  @no_wasm_backend()
+  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_longjmp4(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp4')
 
-  @no_wasm_backend()
+  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_longjmp_funcptr(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_funcptr')
 
-  @no_wasm_backend()
+  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_longjmp_repeat(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_repeat')
 
-  @no_wasm_backend()
+  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_longjmp_stacked(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_stacked')
 
-  @no_wasm_backend()
+  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_longjmp_exc(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_exc')
 
-  @no_wasm_backend()
+  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_longjmp_throw(self):
     for disable_throw in [0, 1]:
       print disable_throw
       Settings.DISABLE_EXCEPTION_CATCHING = disable_throw
       self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_throw')
 
-  @no_wasm_backend()
+  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_setjmp_many(self):
     src = r'''
       #include <stdio.h>
@@ -818,7 +818,7 @@ base align: 0, 0, 0, 0'''])
       print num
       self.do_run(src.replace('NUM', str(num)), '0\n' * num)
 
-  @no_wasm_backend()
+  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_setjmp_many_2(self):
     src = r'''
 #include <setjmp.h>
@@ -847,7 +847,7 @@ int main()
 
     self.do_run(src, r'''d is at 24''')
 
-  @no_wasm_backend()
+  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_setjmp_noleak(self):
     src = r'''
 #include <setjmp.h>
@@ -1260,44 +1260,11 @@ int main() {
   def test_polymorph(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_polymorph')
 
-  @no_wasm_backend()
+  @no_wasm_backend('no support for complex math division yet')
   def test_complex(self):
-    self.do_run(r'''
-#include <complex.h>
-#include <stdio.h>
+    self.do_run_in_out_file_test('tests', 'core', 'test_complex', force_c=True)
 
-int main(int argc, char**argv)
-{
-   float complex z1 = 1.0 + 3.0 * I;
-   printf("value = real %.2f imag %.2f\n",creal(z1),cimag(z1));
-   float abs_value = cabsf(z1);
-   printf("abs = %.2f\n",abs_value);
-   float complex z2 =  conjf(z1); 
-   printf("value = real %.2f imag %.2f\n",creal(z2),cimag(z2));
-   float complex z3 =  cexpf(z1); 
-   printf("value = real %.2f imag %.2f\n",creal(z3),cimag(z3));
-   float complex z4 =  conj(z1); 
-   printf("value = real %.2f imag %.2f\n",creal(z4),cimag(z4));
-   float complex z5 =  cargf(z1); 
-   printf("value = real %.2f imag %.2f\n",creal(z5),cimag(z5));
-   float complex z6 = 0.5 + 0.5 * I;
-   float complex z7 = 0.5 - 0.5 * I;
-   float complex z8 = z6 * z7;
-   float complex z9 = z6 / z7;
-   printf("value = real %.2f imag %.2f\n",creal(z8),cimag(z8));
-   printf("value = real %.2f imag %.2f\n",creal(z9),cimag(z9));
-   return 0;
-}
-''', '''value = real 1.00 imag 3.00
-abs = 3.16
-value = real 1.00 imag -3.00
-value = real -2.69 imag 0.38
-value = real 1.00 imag -3.00
-value = real 1.25 imag 0.00
-value = real 0.50 imag 0.00
-value = real 0.00 imag 1.00''', force_c=True)
-
-  @no_wasm_backend()
+  @no_wasm_backend("wasm backend doesn't add Runtime.setDynamicTop and crashes")
   def test_segfault(self):
     Settings.SAFE_HEAP = 1
 
@@ -1601,15 +1568,12 @@ value = real 0.00 imag 1.00''', force_c=True)
 
       self.do_run_from_file(src, output, output_processor=check_warnings)
 
-  @no_wasm_backend()
+  @no_wasm_backend("For some reason wasm_backend doesn't link in new[] (aka _Znam) in its libcxx unless paired with a call to delete[]")
   def test_sizeof(self):
       # Has invalid writes between printouts
       Settings.SAFE_HEAP = 0
 
-      self.do_run_in_out_file_test(
-          'tests', 'core', 'test_sizeof',
-          output_nicerizer=lambda x, err: x.replace('\n', '*')
-      )
+      self.do_run_in_out_file_test('tests', 'core', 'test_sizeof')
 
   def test_llvm_used(self):
     Building.LLVM_OPTS = 3
