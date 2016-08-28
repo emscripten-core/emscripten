@@ -104,7 +104,9 @@ test_modes = [
   'asm2f',
   'asm2g',
   'asm2i',
-  'asm2nn',
+  'asm2nn'
+]
+nondefault_test_modes = [
   'binaryen0',
   'binaryen1',
   'binaryen2',
@@ -1007,7 +1009,8 @@ if __name__ == '__main__':
 
   # Create a list of all known tests so that we can choose from them based on a wildcard search
   all_tests = []
-  suites = test_modes + ['other', 'browser', 'sanity', 'sockets', 'interactive']
+  suites = test_modes + nondefault_test_modes + \
+           ['other', 'browser', 'sanity', 'sockets', 'interactive']
   for m in modules:
     for s in suites:
       if hasattr(m, s):
