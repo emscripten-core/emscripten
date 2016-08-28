@@ -2634,9 +2634,22 @@ LibraryManager.library = {
   // setjmp.h
   // ==========================================================================
 
+  // asm.js-style setjmp/longjmp support for wasm
+  // In asm.js compilation, various variables including setjmpId will be
+  // generated within 'var asm' in emscripten.py, while in wasm compilation,
+  // wasm side is considered as 'asm' so they are not generated. But
+  // saveSetjmp() needs setjmpId and no other functions in wasm side needs it.
+  // So we declare it here if WASM_BACKEND=1.
+#if WASM_BACKEND == 1
+  $setjmpId: 0,
+#endif
   saveSetjmp__asm: true,
   saveSetjmp__sig: 'iii',
+#if WASM_BACKEND == 1
+  saveSetjmp__deps: ['realloc', '$setjmpId'],
+#else
   saveSetjmp__deps: ['realloc'],
+#endif
   saveSetjmp: function(env, label, table, size) {
     // Not particularly fast: slow table lookup of setjmpId to label. But setjmp
     // prevents relooping anyhow, so slowness is to be expected. And typical case
@@ -2700,6 +2713,14 @@ LibraryManager.library = {
   emscripten_longjmp: function(env, value) {
     _longjmp(env, value);
   },
+#if WASM_BACKEND == 1
+  // We need this wrapper from llvm wasm backend, but this is generated only
+  // in asm.js compilation, so.
+  emscripten_longjmp__wrapper: function(env, value) {
+    _longjmp(env, value);
+  },
+#endif
+
 
   // ==========================================================================
   // sys/wait.h
