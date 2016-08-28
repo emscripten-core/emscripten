@@ -1143,55 +1143,46 @@ base align: 0, 0, 0, 0'''])
 
       self.do_run_from_file(src, output)
 
-  @no_wasm_backend
   def test_longjmp(self):
     test_path = path_from_root('tests', 'core', 'test_longjmp')
     src, output = (test_path + s for s in ('.in', '.out'))
     self.do_run_from_file(src, output)
 
-  @no_wasm_backend
   def test_longjmp2(self):
     test_path = path_from_root('tests', 'core', 'test_longjmp2')
     src, output = (test_path + s for s in ('.in', '.out'))
     self.do_run_from_file(src, output)
 
-  @no_wasm_backend
   def test_longjmp3(self):
     test_path = path_from_root('tests', 'core', 'test_longjmp3')
     src, output = (test_path + s for s in ('.in', '.out'))
     self.do_run_from_file(src, output)
 
-  @no_wasm_backend
   def test_longjmp4(self):
     test_path = path_from_root('tests', 'core', 'test_longjmp4')
     src, output = (test_path + s for s in ('.in', '.out'))
     self.do_run_from_file(src, output)
 
-  @no_wasm_backend
   def test_longjmp_funcptr(self):
     test_path = path_from_root('tests', 'core', 'test_longjmp_funcptr')
     src, output = (test_path + s for s in ('.in', '.out'))
     self.do_run_from_file(src, output)
 
-  @no_wasm_backend
   def test_longjmp_repeat(self):
     test_path = path_from_root('tests', 'core', 'test_longjmp_repeat')
     src, output = (test_path + s for s in ('.in', '.out'))
     self.do_run_from_file(src, output)
 
-  @no_wasm_backend
   def test_longjmp_stacked(self):
     test_path = path_from_root('tests', 'core', 'test_longjmp_stacked')
     src, output = (test_path + s for s in ('.in', '.out'))
     self.do_run_from_file(src, output)
 
-  @no_wasm_backend
   def test_longjmp_exc(self):
     test_path = path_from_root('tests', 'core', 'test_longjmp_exc')
     src, output = (test_path + s for s in ('.in', '.out'))
     self.do_run_from_file(src, output)
 
-  @no_wasm_backend
   def test_longjmp_throw(self):
     for disable_throw in [0, 1]:
       print disable_throw
@@ -1200,7 +1191,6 @@ base align: 0, 0, 0, 0'''])
       src, output = (test_path + s for s in ('.cpp', '.out'))
       self.do_run_from_file(src, output)
 
-  @no_wasm_backend
   def test_setjmp_many(self):
     src = r'''
       #include <stdio.h>
@@ -1217,7 +1207,6 @@ base align: 0, 0, 0, 0'''])
       print num
       self.do_run(src.replace('NUM', str(num)), '0\n' * num)
 
-  @no_wasm_backend
   def test_setjmp_many_2(self):
     src = r'''
 #include <setjmp.h>
@@ -1246,7 +1235,6 @@ int main()
 
     self.do_run(src, r'''d is at 24''')
 
-  @no_wasm_backend
   def test_setjmp_noleak(self):
     src = r'''
 #include <setjmp.h>
