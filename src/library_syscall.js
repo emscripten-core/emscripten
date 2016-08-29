@@ -969,7 +969,7 @@ var SyscallsLibrary = {
       stream.getdents = FS.readdir(stream.path);
     }
     var pos = 0;
-    while (stream.getdents.length > 0 && pos + {{{ C_STRUCTS.dirent.__size__ }}} < count) {
+    while (stream.getdents.length > 0 && pos + {{{ C_STRUCTS.dirent.__size__ }}} <= count) {
       var id;
       var type;
       var name = stream.getdents.pop();
