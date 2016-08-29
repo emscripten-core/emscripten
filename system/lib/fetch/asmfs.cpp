@@ -660,7 +660,7 @@ long __syscall6(int which, ...) // close
 	{
 		fprintf(stderr, "Invalid or already closed file descriptor 0x%8X passed to close()!", (unsigned int)desc);
 		errno = EBADF; // "fd isn't a valid open file descriptor."
-		return -1;
+		return -EBADF;
 	}
 	if (desc->node && desc->node->fetch)
 	{
@@ -1092,6 +1092,59 @@ long __syscall220(int which, ...) // getdents64 (get directory entries 64-bit)
 	}
 
 	return desc->file_pos - orig_file_pos;
+}
+
+// http://man7.org/linux/man-pages/man2/fsync.2.html
+long __syscall118(int which, ...) // fsync
+{
+	va_list vl;
+	va_start(vl, which);
+	unsigned int fd = va_arg(vl, unsigned int);
+	va_end(vl);
+
+	FileDescriptor *desc = (FileDescriptor*)fd;
+	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
+	{
+		fprintf(stderr, "Invalid or closed file descriptor 0x%8X passed to close()!", (unsigned int)desc);
+		errno = EBADF; // "fd isn't a valid open file descriptor."
+		return -EBADF;
+	}
+
+	inode *node = desc->node;
+	if (!node)
+	{
+		assert(false); // TODO: Internal error handling?
+		return -1;
+	}
+
+	return 0;
+}
+
+// http://man7.org/linux/man-pages/man2/dup.2.html
+long __syscall41(int which, ...) // dup
+{
+	va_list vl;
+	va_start(vl, which);
+	unsigned int fd = va_arg(vl, unsigned int);
+	va_end(vl);
+
+	FileDescriptor *desc = (FileDescriptor*)fd;
+	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
+	{
+		fprintf(stderr, "Invalid or closed file descriptor 0x%8X passed to close()!", (unsigned int)desc);
+		errno = EBADF; // "fd isn't a valid open file descriptor."
+		return -EBADF;
+	}
+
+	inode *node = desc->node;
+	if (!node)
+	{
+		assert(false); // TODO: Internal error handling?
+		return -1;
+	}
+
+	// TODO: Implementing dup() requires separating out file descriptors and file descriptions
+	return 0;
 }
 
 } // ~extern "C"
