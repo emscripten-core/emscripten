@@ -67,6 +67,7 @@ static inode *cwd_inode = 0;
 static inode *filesystem_root()
 {
 	static inode *root_node = create_inode(INODE_DIR);
+	root_node->mode = 0777;
 	return root_node;
 }
 
@@ -219,7 +220,7 @@ static const char *basename_part(const char *path)
 	return s;
 }
 
-static inode *create_directory_hierarchy_for_file(inode *root, const char *path_to_file)
+static inode *create_directory_hierarchy_for_file(inode *root, const char *path_to_file, unsigned int mode)
 {
 	assert(root);
 	if (!root) return 0;
@@ -249,6 +250,7 @@ static inode *create_directory_hierarchy_for_file(inode *root, const char *path_
 	while(*path_to_file && path_to_file < basename_pos)
 	{
 		node = create_inode(INODE_DIR);
+		node->mode = mode;
 		path_to_file += strcpy_inodename(node->name, path_to_file) + 1;
 		link_inode(node, root);
 		EM_ASM_INT( { Module['print']('create_directory_hierarchy_for_file: created directory ' + Pointer_stringify($0) + ' under parent ' + Pointer_stringify($1) + '.') }, 
@@ -556,8 +558,9 @@ long __syscall5(int which, ...) // open
 		}
 		else
 		{
-			inode *directory = create_directory_hierarchy_for_file(root, pathname);
+			inode *directory = create_directory_hierarchy_for_file(root, pathname, mode);
 			node = create_inode((flags & O_DIRECTORY) ? INODE_DIR : INODE_FILE);
+			node->mode = mode;
 			strcpy(node->name, basename_part(pathname));
 			link_inode(node, directory);
 			printf("Created %s %s in directory %s\n", (flags & O_DIRECTORY) ? "directory" : "file", node->name, directory->name);
@@ -598,12 +601,19 @@ long __syscall5(int which, ...) // open
 
 		if (node)
 		{
-			node->fetch = fetch;
+			if (node->type == INODE_FILE)
+			{
+				// If we had an existing inode entry, just associate the entry with the newly fetched data.
+				node->fetch = fetch;
+			}
 		}
-		else if ((flags & O_CREAT))
+		else if ((flags & O_CREAT) // If the filesystem entry did not exist, but we have a create flag, ...
+			|| (!node && fetch)) // ... or if it did not exist in our fs, but it could be found via fetch(), ...
 		{
-			inode *directory = create_directory_hierarchy_for_file(root, pathname);
+			// ... add it as a new entry to the fs.
+			inode *directory = create_directory_hierarchy_for_file(root, pathname, mode);
 			node = create_inode((flags & O_DIRECTORY) ? INODE_DIR : INODE_FILE);
+			node->mode = mode;
 			strcpy(node->name, basename_part(pathname));
 			node->fetch = fetch;
 			link_inode(node, directory);
