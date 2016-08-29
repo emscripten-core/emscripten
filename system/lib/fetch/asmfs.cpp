@@ -624,7 +624,7 @@ long __syscall5(int which, ...) // open
 	FileDescriptor *desc = (FileDescriptor*)malloc(sizeof(FileDescriptor));
 	desc->magic = EM_FILEDESCRIPTOR_MAGIC;
 	desc->node = node;
-	desc->file_pos = (flags & O_APPEND) ? node->fetch->totalBytes : 0;
+	desc->file_pos = ((flags & O_APPEND) && node->fetch) ? node->fetch->totalBytes : 0;
 	desc->mode = mode;
 	desc->flags = flags;
 
@@ -692,13 +692,11 @@ long __syscall140(int which, ...) // llseek
 		errno = EBADF; // "fd isn't a valid open file descriptor."
 		return -1;
 	}
-	if (!desc->node->fetch)
-	{
-		fprintf(stderr, "Internal error: no file data available for fd 0x%8X!", (unsigned int)desc);
-		return -1;
-	}
 
-	emscripten_fetch_wait(desc->node->fetch, INFINITY);
+	if (desc->node->fetch)
+	{
+		emscripten_fetch_wait(desc->node->fetch, INFINITY);
+	}
 
 	int64_t offset = (int64_t)(((uint64_t)offset_high << 32) | (uint64_t)offset_low);
 	int64_t newPos;
@@ -706,7 +704,7 @@ long __syscall140(int which, ...) // llseek
 	{
 		case SEEK_SET: newPos = offset; break;
 		case SEEK_CUR: newPos = desc->file_pos + offset; break;
-		case SEEK_END: newPos = desc->node->fetch->numBytes + offset; break;
+		case SEEK_END: newPos = (desc->node->fetch ? desc->node->fetch->numBytes : desc->node->size) + offset; break;
 		default:
 			errno = EINVAL; // "whence is invalid."
 			return -1;
@@ -1005,6 +1003,85 @@ long __syscall10(int which, ...) // unlink
 		errno = ENOENT;
 		return -1;
 	}
+}
+
+// http://man7.org/linux/man-pages/man2/getdents.2.html
+long __syscall220(int which, ...) // getdents64 (get directory entries 64-bit)
+{
+	va_list vl;
+	va_start(vl, which);
+	unsigned int fd = va_arg(vl, unsigned int);
+	dirent *de = va_arg(vl, dirent*);
+	unsigned int count = va_arg(vl, unsigned int);
+	unsigned int dirents_size = count / sizeof(de); // The number of dirent structures that can fit into the provided buffer.
+	dirent *de_end = de + dirents_size;
+	va_end(vl);
+
+	FileDescriptor *desc = (FileDescriptor*)fd;
+	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
+	{
+		fprintf(stderr, "Invalid or closed file descriptor 0x%8X passed to close()!", (unsigned int)desc);
+		errno = EBADF; // "fd isn't a valid open file descriptor."
+		return -1;
+	}
+
+	inode *node = desc->node;
+	if (!node)
+	{
+		assert(false); // TODO: Internal error handling?
+		return -1;
+	}
+
+	inode *dotdot = node->parent ? node->parent : node; // In "/", the directory ".." refers to itself.
+
+	ssize_t orig_file_pos = desc->file_pos;
+	ssize_t file_pos = 0;
+	// There are always two hardcoded directories "." and ".."
+	if (de >= de_end) return desc->file_pos - orig_file_pos;
+	if (desc->file_pos <= file_pos)
+	{
+		de->d_ino = (ino_t)node; // TODO: Create inode numbers instead of using pointers
+		de->d_off = file_pos;
+		de->d_reclen = sizeof(dirent);
+		de->d_type = DT_DIR;
+		strcpy(de->d_name, ".");
+		++de;
+		desc->file_pos += sizeof(dirent);
+	}
+	file_pos += sizeof(dirent);
+
+	if (de >= de_end) return desc->file_pos - orig_file_pos;
+	if (desc->file_pos <= file_pos)
+	{
+		de->d_ino = (ino_t)dotdot; // TODO: Create inode numbers instead of using pointers
+		de->d_off = file_pos;
+		de->d_reclen = sizeof(dirent);
+		de->d_type = DT_DIR;
+		strcpy(de->d_name, "..");
+		++de;
+		desc->file_pos += sizeof(dirent);
+	}
+	file_pos += sizeof(dirent);
+
+	node = node->child;
+	while(node && de < de_end)
+	{
+		if (desc->file_pos <= file_pos)
+		{
+			de->d_ino = (ino_t)node; // TODO: Create inode numbers instead of using pointers
+			de->d_off = file_pos;
+			de->d_reclen = sizeof(dirent);
+			de->d_type = (node->type == INODE_DIR) ? DT_DIR : DT_REG /*Regular file*/;
+			de->d_name[255] = 0;
+			strncpy(de->d_name, node->name, 255);
+			++de;
+			desc->file_pos += sizeof(dirent);
+		}
+		node = node->sibling;
+		file_pos += sizeof(dirent);
+	}
+
+	return desc->file_pos - orig_file_pos;
 }
 
 } // ~extern "C"
