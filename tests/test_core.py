@@ -7363,7 +7363,6 @@ int main(int argc, char **argv) {
     self.do_run(open(path_from_root('tests', 'stack_overflow.cpp'), 'r').read(), 'Stack overflow! Attempted to allocate')
 
   @no_wasm
-  @no_emterpreter
   def test_binaryen(self):
     self.emcc_args += ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
     self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
