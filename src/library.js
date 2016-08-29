@@ -2634,7 +2634,7 @@ LibraryManager.library = {
   // setjmp.h
   // ==========================================================================
 
-  // asm.js-style setjmp/longjmp support for wasm
+  // asm.js-style setjmp/longjmp support for wasm binaryen backend.
   // In asm.js compilation, various variables including setjmpId will be
   // generated within 'var asm' in emscripten.py, while in wasm compilation,
   // wasm side is considered as 'asm' so they are not generated. But
