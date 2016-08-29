@@ -1,15 +1,16 @@
+#include <assert.h>
+#include <dirent.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
 #define __NEED_struct_iovec
 #include <libc/bits/alltypes.h>
-#include <assert.h>
 #include <string.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/fetch.h>
 #include <math.h>
 #include <libc/fcntl.h>
-#include <errno.h>
 #include <time.h>
 
 extern "C" {
@@ -80,6 +81,41 @@ static void set_cwd(inode *node)
 	cwd_inode = node;
 }
 
+static void inode_abspath(inode *node, char *dst, int dstLen)
+{
+	if (!node)
+	{
+		assert(dstLen >= strlen("(null)")+1);
+		strcpy(dst, "(null)");
+		return;
+	}
+	if (node == filesystem_root())
+	{
+		assert(dstLen >= strlen("/")+1);
+		strcpy(dst, "/");
+		return;
+	}
+#define MAX_DIRECTORY_DEPTH 512
+	inode *stack[MAX_DIRECTORY_DEPTH];
+	int depth = 0;
+	while(node->parent && depth < MAX_DIRECTORY_DEPTH)
+	{
+		stack[depth++] = node;
+		node = node->parent;
+	}
+	char *dstEnd = dst + dstLen;
+	*dstEnd-- = '\0';
+	while(depth > 0 && dst < dstEnd)
+	{
+		if (dst < dstEnd) *dst++ = '/';
+		--depth;
+		int len = strlen(stack[depth]->name);
+		if (len > dstEnd - dst) len = dstEnd - dst;
+		strncpy(dst, stack[depth]->name, len);
+		dst += len;
+	}
+}
+
 static void delete_inode(inode *node)
 {
 	free(node);
@@ -88,8 +124,10 @@ static void delete_inode(inode *node)
 // Makes node the child of parent.
 static void link_inode(inode *node, inode *parent)
 {
-	EM_ASM_INT( { Module['printErr']('link_inode: node ' + Pointer_stringify($0) + ' to parent ' + Pointer_stringify($1) + '.') }, 
-		node->name, parent->name);
+	char parentName[PATH_MAX];
+	inode_abspath(parent, parentName, PATH_MAX);
+	EM_ASM_INT( { Module['printErr']('link_inode: node "' + Pointer_stringify($0) + '" to parent "' + Pointer_stringify($1) + '".') }, 
+		node->name, parentName);
 	// When linking a node, it can't be part of the filesystem tree (but it can have children of its own)
 	assert(!node->parent);
 	assert(!node->sibling);
@@ -223,6 +261,8 @@ static inode *create_directory_hierarchy_for_file(inode *root, const char *path_
 // Given a path to a file, finds the inode of the parent directory that contains the file, or 0 if the intermediate path doesn't exist.
 static inode *find_parent_inode(inode *root, const char *path)
 {
+	EM_ASM_INT( { Module['print']('find_parent_inode: inode: ' + Pointer_stringify($0) + ' path: ' + Pointer_stringify($1) + '.') }, 
+		root ? root->name : "(null)", path);
 	if (!root) return 0;
 	const char *basename = basename_part(path);
 	inode *node = root->child;
@@ -242,7 +282,7 @@ static inode *find_parent_inode(inode *root, const char *path)
 			node = node->sibling;
 		}
 	}
-	return 0;
+	return root;
 }
 
 // Given a root inode of the filesystem and a path relative to it, e.g. "some/directory/dir_or_file",
@@ -374,13 +414,13 @@ long __syscall5(int which, ...) // open
 		errno = EINVAL; // "The filesystem does not support the O_DIRECT flag."
 		return -1;
 	}
-
+/*
 	if ((flags & O_DIRECTORY))
 	{
 		EM_ASM(Module['printErr']('open() syscall failed! Opening directories with O_DIRECTORY flag is not yet supported in ASMFS (TODO)'));
 		return -1;
 	}
-
+*/
 	if ((flags & O_DSYNC))
 	{
 		EM_ASM(Module['printErr']('open() syscall failed! Opening files with O_DSYNC flag is not yet supported in ASMFS (TODO)'));
@@ -473,6 +513,22 @@ long __syscall5(int which, ...) // open
 	inode *node = find_inode(root, pathname, &grandparent);
 	if (node)
 	{
+		if ((flags & O_DIRECTORY) && node->type != INODE_DIR)
+		{
+			EM_ASM_INT( { Module['printErr']('__syscall5 OPEN: asked to open directory with pathname ' + Pointer_stringify($0) + ', but the inode with that pathname is not a directory!') }, 
+				pathname);
+			errno = ENOTDIR;
+			return -ENOTDIR;
+		}
+
+		if (!(node->mode & 0444)) // Test if we have read permissions (todo: actually distinguish between user/group/other when that becomes interesting)
+		{
+			EM_ASM_INT( { Module['printErr']('__syscall5 OPEN: pathname ' + Pointer_stringify($0) + ' failed to open, no file permissions for read available') }, 
+				pathname);
+			errno = EACCES;
+			return -EACCES;
+		}
+
 		if ((flags & O_CREAT) && (flags & O_EXCL))
 		{
 			EM_ASM_INT( { Module['printErr']('__syscall5 OPEN: pathname ' + Pointer_stringify($0) + ', inode open failed because file exists and open flags had O_CREAT and O_EXCL') }, 
@@ -501,53 +557,65 @@ long __syscall5(int which, ...) // open
 		else
 		{
 			inode *directory = create_directory_hierarchy_for_file(root, pathname);
-			node = create_inode(INODE_FILE);
+			node = create_inode((flags & O_DIRECTORY) ? INODE_DIR : INODE_FILE);
 			strcpy(node->name, basename_part(pathname));
 			link_inode(node, directory);
-			printf("Created file %s in directory %s\n", node->name, directory->name);
+			printf("Created %s %s in directory %s\n", (flags & O_DIRECTORY) ? "directory" : "file", node->name, directory->name);
 		}
 
 		emscripten_dump_fs_root();
 	}
 	else if (!node || (!node->fetch && !node->data))
 	{
-		// If not, we'll need to fetch it.
-		emscripten_fetch_attr_t attr;
-		emscripten_fetch_attr_init(&attr);
-		strcpy(attr.requestMethod, "GET");
-		attr.attributes = EMSCRIPTEN_FETCH_APPEND | EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_WAITABLE | EMSCRIPTEN_FETCH_PERSIST_FILE;
-		emscripten_fetch_t *fetch = emscripten_fetch(&attr, pathname);
-
-	// switch(fopen_mode)
-	// {
-	// case synchronous_fopen:
-		emscripten_fetch_wait(fetch, INFINITY);
-
-		if (fetch->status != 200 || fetch->totalBytes == 0)
+		emscripten_fetch_t *fetch = 0;
+		if (!(flags & O_DIRECTORY))
 		{
-			EM_ASM_INT( { Module['printErr']('__syscall5 OPEN failed! File ' + Pointer_stringify($0) + ' does not exist: XHR returned status code ' + $1 + ', and file length was ' + $2 + '.') }, 
-				pathname, (int)fetch->status, (int)fetch->totalBytes);
-			emscripten_fetch_close(fetch);
-			errno = ENOENT;
-			return -1;
+			// If not, we'll need to fetch it.
+			emscripten_fetch_attr_t attr;
+			emscripten_fetch_attr_init(&attr);
+			strcpy(attr.requestMethod, "GET");
+			attr.attributes = EMSCRIPTEN_FETCH_APPEND | EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_WAITABLE | EMSCRIPTEN_FETCH_PERSIST_FILE;
+			fetch = emscripten_fetch(&attr, pathname);
+
+		// switch(fopen_mode)
+		// {
+		// case synchronous_fopen:
+			emscripten_fetch_wait(fetch, INFINITY);
+
+			if (fetch->status != 200 || fetch->totalBytes == 0)
+			{
+				EM_ASM_INT( { Module['printErr']('__syscall5 OPEN failed! File ' + Pointer_stringify($0) + ' does not exist: XHR returned status code ' + $1 + ', and file length was ' + $2 + '.') }, 
+					pathname, (int)fetch->status, (int)fetch->totalBytes);
+				emscripten_fetch_close(fetch);
+				errno = ENOENT;
+				return -1;
+			}
+		//  break;
+		// case asynchronous_fopen:
+		//  break;
+		// }
 		}
-	//  break;
-	// case asynchronous_fopen:
-	//  break;
-	// }
 
 		if (node)
 		{
 			node->fetch = fetch;
 		}
-		else
+		else if ((flags & O_CREAT))
 		{
 			inode *directory = create_directory_hierarchy_for_file(root, pathname);
-			node = create_inode(INODE_FILE);
+			node = create_inode((flags & O_DIRECTORY) ? INODE_DIR : INODE_FILE);
 			strcpy(node->name, basename_part(pathname));
 			node->fetch = fetch;
 			link_inode(node, directory);
-			printf("Created file %s in directory %s\n", node->name, directory->name);
+			printf("Created %s %s in directory %s\n", (flags & O_DIRECTORY) ? "directory" : "file", node->name, directory->name);
+		}
+		else
+		{
+			if (fetch) emscripten_fetch_close(fetch);
+			printf("Failed to open %s %s in directory, it does not exist and O_CREAT flag was not specified\n",
+				(flags & O_DIRECTORY) ? "directory" : "file", pathname);
+			errno = ENOENT;
+			return -ENOENT; // TODO: REVIEW THIS, NEED TO RETURN -errno here instead of -1?
 		}
 		node->size = node->fetch->totalBytes;
 		emscripten_dump_fs_root();
@@ -855,7 +923,7 @@ long __syscall39(int which, ...) // mkdir
 	mode_t mode = va_arg(vl, mode_t);
 	va_end(vl);
 
-	EM_ASM_INT( { Module['printErr']('__syscall145 MKDIR, which: ' + $0 + ', pathname ' + Pointer_stringify($1) + ', mode: ' + $2 + ' .') }, which, pathname, mode);
+	EM_ASM_INT( { Module['printErr']('__syscall145 MKDIR, which: ' + $0 + ', pathname "' + Pointer_stringify($1) + '", mode: ' + $2 + ' .') }, which, pathname, mode);
 
 	inode *root;
 	if (pathname[0] == '/')
