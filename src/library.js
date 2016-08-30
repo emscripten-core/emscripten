@@ -2714,14 +2714,6 @@ LibraryManager.library = {
   emscripten_longjmp: function(env, value) {
     _longjmp(env, value);
   },
-#if WASM_BACKEND == 1
-  // We need this wrapper from llvm wasm backend, but this is generated only
-  // in asm.js compilation, so.
-  emscripten_longjmp__wrapper: function(env, value) {
-    _longjmp(env, value);
-  },
-#endif
-
 
   // ==========================================================================
   // sys/wait.h
