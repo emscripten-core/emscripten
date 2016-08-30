@@ -15,6 +15,9 @@
 
 extern "C" {
 
+// http://stackoverflow.com/questions/417142/what-is-the-maximum-length-of-a-url-in-different-browsers
+#define MAX_PATHNAME_LENGTH 2000
+
 #define INODE_TYPE uint32_t
 #define INODE_FILE 1
 #define INODE_DIR  2
@@ -407,58 +410,39 @@ long __syscall5(int which, ...) // open
 	int flags = va_arg(vl, int);
 	int mode = va_arg(vl, int);
 	va_end(vl);
-
-	EM_ASM_INT( { Module['printErr']('open(pathname="' + Pointer_stringify($0) + '", flags=0x' + ($1).toString(16) + ', mode=0' + ($2).toString(8) + ')') }, pathname, flags, mode);
+	EM_ASM_INT({ Module['printErr']('open(pathname="' + Pointer_stringify($0) + '", flags=0x' + ($1).toString(16) + ', mode=0' + ($2).toString(8) + ')') },
+		pathname, flags, mode);
 
 	int accessMode = (flags & O_ACCMODE);
 
-	if ((flags & O_ASYNC))
-		RETURN_ERRNO(ENOTSUP, "TODO: Opening files with O_ASYNC flag is not supported in ASMFS");
+	if ((flags & O_ASYNC)) RETURN_ERRNO(ENOTSUP, "TODO: Opening files with O_ASYNC flag is not supported in ASMFS");
+	if ((flags & O_DIRECT)) RETURN_ERRNO(ENOTSUP, "TODO: O_DIRECT flag is not supported in ASMFS");
+	if ((flags & O_DSYNC)) RETURN_ERRNO(ENOTSUP, "TODO: O_DSYNC flag is not supported in ASMFS");
+	if ((flags & O_EXCL) && !(flags & O_CREAT)) RETURN_ERRNO(EINVAL, "open() with O_EXCL flag needs to always be paired with O_CREAT"); // Spec says the behavior is undefined, we can just enforce it
+	if ((flags & (O_NONBLOCK|O_NDELAY))) RETURN_ERRNO(ENOTSUP, "TODO: Opening files with O_NONBLOCK or O_NDELAY flags is not supported in ASMFS");
+	if ((flags & O_PATH)) RETURN_ERRNO(ENOTSUP, "TODO: Opening files with O_PATH flag is not supported in ASMFS");
+	if ((flags & O_SYNC)) RETURN_ERRNO(ENOTSUP, "TODO: Opening files with O_SYNC flag is not supported in ASMFS");
 
 	// The flags:O_CLOEXEC flag is ignored, doesn't have meaning for Emscripten
 
 	// TODO: the flags:O_DIRECT flag seems like a great way to let applications explicitly control XHR/IndexedDB read/write buffering behavior?
-	if ((flags & O_DIRECT))
-		RETURN_ERRNO(ENOTSUP, "TODO: O_DIRECT flag is not supported in ASMFS");
-
-	if ((flags & O_DSYNC))
-		RETURN_ERRNO(ENOTSUP, "TODO: O_DSYNC flag is not supported in ASMFS");
-
-	if ((flags & O_EXCL) && !(flags & O_CREAT))
-		RETURN_ERRNO(EINVAL, "open() with O_EXCL flag needs to always be paired with O_CREAT"); // Spec says the behavior is undefined, we can just enforce it
 
 	// The flags:O_LARGEFILE flag is ignored, we should always be largefile-compatible
 
 	// TODO: The flags:O_NOATIME is ignored, file access times have not been implemented yet
 	// The flags O_NOCTTY, O_NOFOLLOW
 
-	if ((flags & (O_NONBLOCK|O_NDELAY)))
-		RETURN_ERRNO(ENOTSUP, "TODO: Opening files with O_NONBLOCK or O_NDELAY flags is not supported in ASMFS");
-
-	if ((flags & O_PATH))
-		RETURN_ERRNO(ENOTSUP, "TODO: Opening files with O_PATH flag is not supported in ASMFS");
-
-	if ((flags & O_SYNC))
-		RETURN_ERRNO(ENOTSUP, "TODO: Opening files with O_SYNC flag is not supported in ASMFS");
-
 	if ((flags & O_TMPFILE))
 	{
-		if (accessMode != O_WRONLY && accessMode != O_RDWR)
-			RETURN_ERRNO(EINVAL, "O_TMPFILE was specified in flags, but neither O_WRONLY nor O_RDWR was specified");
-
-		RETURN_ERRNO(EOPNOTSUPP, "TODO: The filesystem containing pathname does not support O_TMPFILE");
+		if (accessMode != O_WRONLY && accessMode != O_RDWR) RETURN_ERRNO(EINVAL, "O_TMPFILE was specified in flags, but neither O_WRONLY nor O_RDWR was specified");
+		else RETURN_ERRNO(EOPNOTSUPP, "TODO: The filesystem containing pathname does not support O_TMPFILE");
 	}
 
-	/* TODO:
-	if (too_many_files_open)
-	{
-		return -EMFILE; // "The per-process limit on the number of open file descriptors has been reached, see getrlimit(RLIMIT_NOFILE)"
-	}
-	*/
+	// TODO: if (too_many_files_open) RETURN_ERRNO(EMFILE, "The per-process limit on the number of open file descriptors has been reached, see getrlimit(RLIMIT_NOFILE)");
 
-	// http://stackoverflow.com/questions/417142/what-is-the-maximum-length-of-a-url-in-different-browsers
-	if (strlen(pathname) > 2000)
-		RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
+	int len = strlen(pathname);
+	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
+	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
 
 	// Find if this file exists already in the filesystem?
 	inode *root = (pathname[0] == '/') ? filesystem_root() : get_cwd();
@@ -467,17 +451,10 @@ long __syscall5(int which, ...) // open
 	inode *node = find_inode(root, relpath);
 	if (node)
 	{
-		if ((flags & O_DIRECTORY) && node->type != INODE_DIR)
-			RETURN_ERRNO(ENOTDIR, "O_DIRECTORY was specified and pathname was not a directory");
-
-		if (!(node->mode & 0444)) // Test if we have read permissions (todo: actually distinguish between user/group/other when that becomes interesting)
-			RETURN_ERRNO(EACCES, "The requested access to the file is not allowed");
-
-		if ((flags & O_CREAT) && (flags & O_EXCL))
-			RETURN_ERRNO(EEXIST, "pathname already exists and O_CREAT and O_EXCL were used");
-
-		if (node->type == INODE_DIR && accessMode != O_RDONLY)
-			RETURN_ERRNO(EISDIR, "pathname refers to a directory and the access requested involved writing (that is, O_WRONLY or O_RDWR is set)");
+		if ((flags & O_DIRECTORY) && node->type != INODE_DIR) RETURN_ERRNO(ENOTDIR, "O_DIRECTORY was specified and pathname was not a directory");
+		if (!(node->mode & 0444)) RETURN_ERRNO(EACCES, "The requested access to the file is not allowed");
+		if ((flags & O_CREAT) && (flags & O_EXCL)) RETURN_ERRNO(EEXIST, "pathname already exists and O_CREAT and O_EXCL were used");
+		if (node->type == INODE_DIR && accessMode != O_RDONLY) RETURN_ERRNO(EISDIR, "pathname refers to a directory and the access requested involved writing (that is, O_WRONLY or O_RDWR is set)");
 	}
 
 	if (node && node->fetch) emscripten_fetch_wait(node->fetch, INFINITY);
@@ -575,14 +552,11 @@ long __syscall6(int which, ...) // close
 	va_start(vl, which);
 	int fd = va_arg(vl, int);
 	va_end(vl);
-	EM_ASM_INT( { Module['printErr']('__syscall6 CLOSE, which: ' + $0 + ', fd: ' + $1 + '.') }, which, fd);
+	EM_ASM_INT({ Module['printErr']('close(fd=' + $0 + ')') }, fd);
 
 	FileDescriptor *desc = (FileDescriptor*)fd;
-	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
-	{
-		fprintf(stderr, "Invalid or already closed file descriptor 0x%8X passed to close()!", (unsigned int)desc);
-		return -EBADF; // "fd isn't a valid open file descriptor."
-	}
+	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC) RETURN_ERRNO(EBADF, "fd isn't a valid open file descriptor");
+
 	if (desc->node && desc->node->fetch)
 	{
 		emscripten_fetch_wait(desc->node->fetch, INFINITY); // TODO: This should not be necessary- test this out
@@ -597,7 +571,7 @@ long __syscall6(int which, ...) // close
 // http://man7.org/linux/man-pages/man2/sysctl.2.html
 long __syscall54(int which, ...) // sysctl
 {
-	EM_ASM_INT( { Module['printErr']('__syscall54 SYSCTL, which: ' + $0 + '.') }, which);
+	EM_ASM( { Module['printErr']('sysctl() is ignored') });
 	return 0;
 }
 
@@ -613,20 +587,13 @@ long __syscall140(int which, ...) // llseek
 	off_t *result = va_arg(vl, off_t *);
 	unsigned int whence = va_arg(vl, unsigned int);
 	va_end(vl);
-	EM_ASM_INT( { Module['printErr']('__syscall140 LLSEEK, which: ' + $0 + ', fd ' + $1 + ', offset high ' + $2 + ' offset low ' + $3 + ' result ' + $4 + ' whence ' + $5 + '.') }, 
-		which, fd, offset_high, offset_low, result, whence);
+	EM_ASM_INT({ Module['printErr']('llseek(fd=' + $0 + ', offset=0x' + (($1<<32)|$2) + ', result=0x' + ($3).toString(16) + ', whence=' + $4 + ')') },
+		fd, offset_high, offset_low, result, whence);
 
 	FileDescriptor *desc = (FileDescriptor*)fd;
-	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
-	{
-		fprintf(stderr, "Invalid or closed file descriptor 0x%8X passed to close()!", (unsigned int)desc);
-		return -EBADF; // "fd isn't a valid open file descriptor."
-	}
+	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC) RETURN_ERRNO(EBADF, "fd isn't a valid open file descriptor");
 
-	if (desc->node->fetch)
-	{
-		emscripten_fetch_wait(desc->node->fetch, INFINITY);
-	}
+	if (desc->node->fetch) emscripten_fetch_wait(desc->node->fetch, INFINITY);
 
 	int64_t offset = (int64_t)(((uint64_t)offset_high << 32) | (uint64_t)offset_low);
 	int64_t newPos;
@@ -635,19 +602,13 @@ long __syscall140(int which, ...) // llseek
 		case SEEK_SET: newPos = offset; break;
 		case SEEK_CUR: newPos = desc->file_pos + offset; break;
 		case SEEK_END: newPos = (desc->node->fetch ? desc->node->fetch->numBytes : desc->node->size) + offset; break;
-		default:
-			return -EINVAL; // "whence is invalid."
+		case 3/*SEEK_DATA*/: RETURN_ERRNO(EINVAL, "whence is invalid (sparse files, whence=SEEK_DATA, is not supported");
+		case 4/*SEEK_HOLE*/: RETURN_ERRNO(EINVAL, "whence is invalid (sparse files, whence=SEEK_HOLE, is not supported");
+		default: RETURN_ERRNO(EINVAL, "whence is invalid");
 	}
-	if (newPos < 0)
-	{
-		return -EINVAL; // "the resulting file offset would be negative"
-	}
-	if (newPos > 0x7FFFFFFFLL)
-	{
-		EM_ASM_INT( { Module['printErr']('llseek EOVERFLOW error: fd ' + $0 + 'attempted to seek past unsupported 2^31-1 file size limit (TODO?).') },
-			fd);
-		return -EOVERFLOW; // "The resulting file offset cannot be represented in an off_t."
-	}
+	if (newPos < 0) RETURN_ERRNO(EINVAL, "The resulting file offset would be negative");
+	if (newPos > 0x7FFFFFFFLL) RETURN_ERRNO(EOVERFLOW, "The resulting file offset cannot be represented in an off_t");
+
 	desc->file_pos = newPos;
 
 	if (result) *result = desc->file_pos;
@@ -663,39 +624,35 @@ long __syscall145(int which, ...) // readv
 	const iovec *iov = va_arg(vl, const iovec*);
 	int iovcnt = va_arg(vl, int);
 	va_end(vl);
-	EM_ASM_INT( { Module['printErr']('__syscall145 READV, which: ' + $0 + ', fd ' + $1 + ', iov: ' + $2 + ', iovcnt: ' + $3 + ' .') }, which, fd, iov, iovcnt);
+	EM_ASM_INT({ Module['printErr']('readv(fd=' + $0 + ', iov=0x' + ($1).toString(16) + ', iovcnt=' + $2 + ')') }, fd, iov, iovcnt);
 
 	FileDescriptor *desc = (FileDescriptor*)fd;
-	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
-	{
-		EM_ASM_INT( { Module['printErr']('Invalid or closed file descriptor ' + $0 + ' passed to readv!') }, fd);
-		return -EBADF; // "fd is not a valid file descriptor or is not open for reading."
-	}
+	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC) RETURN_ERRNO(EBADF, "fd isn't a valid open file descriptor");
 
-	// TODO: Test and detect to return EISDIR.
+	inode *node = desc->node;
+	if (!node) RETURN_ERRNO(-1, "ASMFS internal error: file descriptor points to a non-file");
+	if (node->type == INODE_DIR) RETURN_ERRNO(EISDIR, "fd refers to a directory");
+	if (node->type != INODE_FILE /* TODO: && node->type != socket */) RETURN_ERRNO(EINVAL, "fd is attached to an object which is unsuitable for reading");
 
-	// TODO: Support nonblocking IO and check for EAGAIN/EWOULDBLOCK
-	if (desc->node->fetch) emscripten_fetch_wait(desc->node->fetch, INFINITY);
+	// TODO: if (node->type == INODE_FILE && desc has O_NONBLOCK && read would block) RETURN_ERRNO(EAGAIN, "The file descriptor fd refers to a file other than a socket and has been marked nonblocking (O_NONBLOCK), and the read would block");
+	// TODO: if (node->type == socket && desc has O_NONBLOCK && read would block) RETURN_ERRNO(EWOULDBLOCK, "The file descriptor fd refers to a socket and has been marked nonblocking (O_NONBLOCK), and the read would block");
 
-	if (iovcnt < 0)
-	{
-		return -EINVAL; // "The vector count, iovcnt, is less than zero or greater than the permitted maximum."
-	}
+	if (node->fetch) emscripten_fetch_wait(node->fetch, INFINITY);
+
+	if (node->size > 0 && !node->data && (!node->fetch || !node->fetch->data)) RETURN_ERRNO(-1, "ASMFS internal error: no file data available");
+	if (iovcnt < 0) RETURN_ERRNO(EINVAL, "The vector count, iovcnt, is less than zero");
 
 	ssize_t total_read_amount = 0;
 	for(int i = 0; i < iovcnt; ++i)
 	{
 		ssize_t n = total_read_amount + iov[i].iov_len;
-		if (n < total_read_amount || (!iov[i].iov_base && iov[i].iov_len > 0))
-		{
-			return -EINVAL; // "The sum of the iov_len values overflows an ssize_t value." or "the address specified in buf is not valid"
-		}
+		if (n < total_read_amount) RETURN_ERRNO(EINVAL, "The sum of the iov_len values overflows an ssize_t value");
+		if (!iov[i].iov_base && iov[i].iov_len > 0) RETURN_ERRNO(EINVAL, "iov_len specifies a positive length buffer but iov_base is a null pointer");
 		total_read_amount = n;
 	}
 
 	size_t offset = desc->file_pos;
-	inode *node = desc->node;
-	uint8_t *data = node->data ? node->data : (uint8_t *)node->fetch->data;
+	uint8_t *data = node->data ? node->data : (node->fetch ? (uint8_t *)node->fetch->data : 0);
 	for(int i = 0; i < iovcnt; ++i)
 	{
 		ssize_t dataLeft = node->size - offset;
@@ -745,38 +702,27 @@ long __syscall146(int which, ...) // writev
 	const iovec *iov = va_arg(vl, const iovec*);
 	int iovcnt = va_arg(vl, int);
 	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('writev(fd=' + $0 + ', iov=0x' + ($1).toString(16) + ', iovcnt=' + $2 + ')') }, fd, iov, iovcnt);
 
 	FileDescriptor *desc = (FileDescriptor*)fd;
-	if (fd != 1/*stdout*/ && fd != 2/*stderr*/)
+	if (fd != 1/*stdout*/ && fd != 2/*stderr*/) // TODO: Resolve the hardcoding of stdin,stdout & stderr
 	{
-//		EM_ASM_INT( { Module['printErr']('__syscall146 WRITEV, which: ' + $0 + ', fd ' + $1 + ', iov: ' + $2 + ', iovcnt: ' + $3 + ' .') }, which, fd, iov, iovcnt);
-		if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
-		{
-			EM_ASM_INT( { Module['printErr']('Invalid or closed file descriptor ' + $0 + ' passed to writev!') }, fd);
-			return -EBADF; // "fd is not a valid file descriptor or is not open for reading."
-		}
+		if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC) RETURN_ERRNO(EBADF, "fd isn't a valid open file descriptor");
 	}
 
-	if (iovcnt < 0)
-	{
-		return -EINVAL; // "The vector count, iovcnt, is less than zero or greater than the permitted maximum."
-	}
+	if (iovcnt < 0) RETURN_ERRNO(EINVAL, "The vector count, iovcnt, is less than zero");
 
 	ssize_t total_write_amount = 0;
 	for(int i = 0; i < iovcnt; ++i)
 	{
 		ssize_t n = total_write_amount + iov[i].iov_len;
-		if (n < total_write_amount || (!iov[i].iov_base && iov[i].iov_len > 0))
-		{
-			return -EINVAL; // "The sum of the iov_len values overflows an ssize_t value." or "the address specified in buf is not valid"
-		}
+		if (n < total_write_amount) RETURN_ERRNO(EINVAL, "The sum of the iov_len values overflows an ssize_t value");
+		if (!iov[i].iov_base && iov[i].iov_len > 0) RETURN_ERRNO(EINVAL, "iov_len specifies a positive length buffer but iov_base is a null pointer");
 		total_write_amount = n;
 	}
-//	EM_ASM_INT( { Module['printErr']('__syscall146 WRITEV, write amount to fd ' + $0 + ' is ' + $1 + '.') }, fd, total_write_amount);
 
 	if (fd == 1/*stdout*/ || fd == 2/*stderr*/)
 	{
-//		EM_ASM_INT( { Module['printErr']('__syscall146 WRITEV, printing to stdout/stderr: ' + $0 + ' .') }, fd);
 		ssize_t bytesWritten = 0;
 		for(int i = 0; i < iovcnt; ++i)
 		{
@@ -787,13 +733,11 @@ long __syscall146(int which, ...) // writev
 	}
 	else
 	{
-//		EM_ASM_INT( { Module['printErr']('__syscall146 WRITEV, printing to file data ptr: ' + $0 + ' .') }, fd);
 		// Enlarge the file in memory to fit space for the new data
 		size_t newSize = desc->file_pos + total_write_amount;
 		inode *node = desc->node;
 		if (node->capacity < newSize)
 		{
-//			EM_ASM_INT( { Module['printErr']('__syscall146 WRITEV, enlarging data ptr: ' + $0 + ' -> ' + $1 + ' .') }, node->capacity, newSize);
 			size_t newCapacity = (newSize > (size_t)(node->capacity*1.25) ? newSize : (size_t)(node->capacity*1.25)); // Geometric increases in size for amortized O(1) behavior
 			uint8_t *newData = (uint8_t *)realloc(node->data, newCapacity);
 			if (!newData)
@@ -813,8 +757,6 @@ long __syscall146(int which, ...) // writev
 			memcpy((uint8_t*)node->data + desc->file_pos, iov[i].iov_base, iov[i].iov_len);
 			desc->file_pos += iov[i].iov_len;
 		}
-//		EM_ASM_INT( { Module['print']('__syscall5 WRITE: wrote pathname ' + Pointer_stringify($0) + ', inode exists. data ptr: ' + $1 + ', data size: ' + $2 + ', fetch ptr: ' + $3) }, 
-//			node->name, node->data, node->size, node->fetch);
 	}
 	return total_write_amount;
 }
@@ -828,6 +770,7 @@ long __syscall4(int which, ...) // write
 	void *buf = va_arg(vl, void *);
 	size_t count = va_arg(vl, size_t);
 	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('write(fd=' + $0 + ', buf=0x' + ($1).toString(16) + ', count=' + $2 + ')') }, fd, buf, count);
 
 	iovec io = { buf, count };
 	return __syscall146(146, fd, &io, 1);
@@ -840,26 +783,24 @@ long __syscall12(int which, ...) // chdir
 	va_start(vl, which);
 	const char *pathname = va_arg(vl, const char *);
 	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('chdir(pathname="' + Pointer_stringify($0) + '")') }, pathname);
 
-	EM_ASM_INT( { Module['printErr']('__syscall145 CHDIR, which: ' + $0 + ', pathname "' + Pointer_stringify($1) + ' .') }, which, pathname);
+	int len = strlen(pathname);
+	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
+	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
 
-	char old_cwd[PATH_MAX];
-	inode_abspath(get_cwd(), old_cwd, PATH_MAX);
+	inode *node = find_inode(pathname);
 
-	inode *cwd = find_inode(pathname);
-	if (!cwd)
-	{
-		EM_ASM_INT( { Module['printErr']('CHDIR("' + Pointer_stringify($0) + '") FAILED: old working directory: "' + Pointer_stringify($1) + '".') }, 
-			pathname, old_cwd);
-		return -1;
-	}
+	// TODO: if (no permissions to navigate the tree to the path) RETURN_ERRNO(EACCES, "Search permission is denied for one of the components of path");
+	// TODO: if (too many symlinks) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving path");
 
-	char new_cwd[PATH_MAX];
-	inode_abspath(cwd, new_cwd, PATH_MAX);
-	EM_ASM_INT( { Module['printErr']('CHDIR("' + Pointer_stringify($0) + '"): old working directory: "' + Pointer_stringify($1) + '", new working directory: "' + Pointer_stringify($2) + '".') }, 
-		pathname, old_cwd, new_cwd);
+	// TODO: Ensure that this is checked for all components of the path
+	if (!node) RETURN_ERRNO(ENOENT, "The directory specified in path does not exist");
 
-	set_cwd(cwd);
+	// TODO: Ensure that this is checked for all components of the path
+	if (node->type != INODE_DIR) RETURN_ERRNO(ENOTDIR, "A component of path is not a directory");
+
+	set_cwd(node);
 	return 0;
 }
 
@@ -871,19 +812,29 @@ long __syscall15(int which, ...) // chmod
 	const char *pathname = va_arg(vl, const char *);
 	int mode = va_arg(vl, int);
 	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('chmod(pathname="' + Pointer_stringify($0) + '", mode=0' + ($1).toString(8) + ')') }, pathname, mode);
+
+	int len = strlen(pathname);
+	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
+	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
 
 	inode *node = find_inode(pathname);
-	if (!node)
-	{
-		assert(false); // TODO: Internal error handling?
-		return -1;
-	}
 
-	// TODO: Access control
+	// TODO: if (no permissions to navigate the tree to the path) RETURN_ERRNO(EACCES, "Search permission is denied on a component of the path prefix");
+	// TODO: if (too many symlinks) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
+
+	// TODO: Ensure that this is checked for all components of the path
+	if (!node) RETURN_ERRNO(ENOENT, "The file does not exist");
+
+	// TODO: Ensure that this is checked for all components of the path
+	if (node->type != INODE_DIR) RETURN_ERRNO(ENOTDIR, "A component of the path prefix is not a directory");
+
+	// TODO: if (not allowed) RETURN_ERRNO(EPERM, "The effective UID does not match the owner of the file");
+	// TODO: read-only filesystems: if (fs is read-only) RETURN_ERRNO(EROFS, "The named file resides on a read-only filesystem");
+
 	node->mode = mode;
 	return 0;
 }
-
 
 // http://man7.org/linux/man-pages/man2/mkdir.2.html
 long __syscall39(int which, ...) // mkdir
@@ -893,19 +844,33 @@ long __syscall39(int which, ...) // mkdir
 	const char *pathname = va_arg(vl, const char *);
 	mode_t mode = va_arg(vl, mode_t);
 	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('mkdir(pathname="' + Pointer_stringify($0) + '", mode=0' + ($1).toString(8) + ')') }, pathname, mode);
 
-	EM_ASM_INT( { Module['printErr']('__syscall145 MKDIR, which: ' + $0 + ', pathname "' + Pointer_stringify($1) + '", mode: ' + $2 + ' .') }, which, pathname, mode);
+	int len = strlen(pathname);
+	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
+	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
 
 	inode *root = (pathname[0] == '/') ? filesystem_root() : get_cwd();
 	const char *relpath = (pathname[0] == '/') ? pathname+1 : pathname;
-
 	inode *parent_dir = find_parent_inode(root, relpath);
+
+	if (!parent_dir) RETURN_ERRNO(ENOENT, "A directory component in pathname does not exist or is a dangling symbolic link");
+
+	// TODO: if (component of path wasn't actually a directory) RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
+
+	inode *existing = find_inode(parent_dir, basename_part(pathname));
+	if (existing) RETURN_ERRNO(EEXIST, "pathname already exists (not necessarily as a directory)");
+	if (!(parent_dir->mode & 0222)) RETURN_ERRNO(EACCES, "The parent directory does not allow write permission to the process");
+
+	// TODO: if (too many symlinks when traversing path) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
+	// TODO: if (any parent dir in path doesn't have search permissions) RETURN_ERRNO(EACCES, "One of the directories in pathname did not allow search permission");
+	// TODO: read-only filesystems: if (fs is read-only) RETURN_ERRNO(EROFS, "Pathname refers to a file on a read-only filesystem");
+
 	inode *directory = create_inode(INODE_DIR);
 	strcpy(directory->name, basename_part(pathname));
 	directory->mode = mode;
 	link_inode(directory, parent_dir);
-	emscripten_dump_fs_root();
-	return 0; // TODO: error checking
+	return 0;
 }
 
 // http://man7.org/linux/man-pages/man2/rmdir.2.html
@@ -915,32 +880,32 @@ long __syscall40(int which, ...) // rmdir
 	va_start(vl, which);
 	const char *pathname = va_arg(vl, const char *);
 	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('rmdir(pathname="' + Pointer_stringify($0) + '")') }, pathname);
+
+	int len = strlen(pathname);
+	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
+	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
+
+	if (!strcmp(pathname, ".") || (len >= 2 && !strcmp(pathname+len-2, "/."))) RETURN_ERRNO(EINVAL, "pathname has . as last component");
+	if (!strcmp(pathname, "..") || (len >= 3 && !strcmp(pathname+len-3, "/.."))) RETURN_ERRNO(ENOTEMPTY, "pathname has .. as its final component");
 
 	inode *node = find_inode(pathname);
-	if (!node)
-	{
-		EM_ASM_INT( { Module['printErr']('__syscall145 RMDIR, pathname: ' + Pointer_stringify($0) + ' not deleted.') }, pathname);
-		return -ENOENT;
-	}
+	if (!node) RETURN_ERRNO(ENOENT, "directory does not exist");
 
-	if (node == filesystem_root() || node == get_cwd())
-		return -EBUSY;
+	// TODO: RETURN_ERRNO(ENOENT, "A directory component in pathname does not exist or is a dangling symbolic link");
+	// TODO: RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
+	// TODO: RETURN_ERRNO(EACCES, "one of the directories in the path prefix of pathname did not allow search permission");
 
-	if (node->parent && !(node->parent->mode & 0222)) // Need to have write access to the the parent directory
-	{
-		EM_ASM_INT( { Module['print']('__syscall145 UNLINK failed: no write access to parent directory of "' + Pointer_stringify($0) + '".') }, pathname);
-		return -EACCES;
-	}
+	if (node == filesystem_root() || node == get_cwd()) RETURN_ERRNO(EBUSY, "pathname is currently in use by the system or some process that prevents its removal (pathname is currently used as a mount point or is the root directory of the calling process)");
+	if (node->parent && !(node->parent->mode & 0222)) RETURN_ERRNO(EACCES, "Write access to the directory containing pathname was not allowed");
+	if (node->type != INODE_DIR) RETURN_ERRNO(ENOTDIR, "pathname is not a directory");
+	if (node->child) RETURN_ERRNO(ENOTEMPTY, "pathname contains entries other than . and ..");
 
-	if (node->type != INODE_DIR)
-		return -ENOTDIR;
+	// TODO: RETURN_ERRNO(EPERM, "The directory containing pathname has the sticky bit (S_ISVTX) set and the process's effective user ID is neither the user ID of the file to be deleted nor that of the directory containing it, and the process is not privileged");
+	// TODO: RETURN_ERRNO(EROFS, "pathname refers to a directory on a read-only filesystem");
 
-	if (node->child)
-		return -ENOTEMPTY;
-
-	EM_ASM_INT( { Module['print']('__syscall145 RMDIR, pathname: ' + Pointer_stringify($0) + ' removed.') }, pathname);
 	unlink_inode(node);
-	emscripten_dump_fs_root();
+
 	return 0;
 }
 
@@ -951,31 +916,38 @@ long __syscall10(int which, ...) // unlink
 	va_start(vl, which);
 	const char *pathname = va_arg(vl, const char *);
 	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('unlink(pathname="' + Pointer_stringify($0) + '")') }, pathname);
+
+	int len = strlen(pathname);
+	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
+	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
 
 	inode *node = find_inode(pathname);
-	if (!node)
+	if (!node) RETURN_ERRNO(ENOENT, "file does not exist");
+
+	inode *parent = node->parent;
+
+	// TODO: RETURN_ERRNO(ENOENT, "A component in pathname does not exist or is a dangling symbolic link");
+	// TODO: RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in translating pathname");
+	// TODO: RETURN_ERRNO(EACCES, "one of the directories in the path prefix of pathname did not allow search permission");
+
+	if (parent && !(parent->mode & 0222))
+		RETURN_ERRNO(EACCES, "Write access to the directory containing pathname is not allowed for the process's effective UID");
+
+	// TODO: RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
+	// TODO: RETURN_ERRNO(EPERM, "The directory containing pathname has the sticky bit (S_ISVTX) set and the process's effective user ID is neither the user ID of the file to be deleted nor that of the directory containing it, and the process is not privileged");
+	// TODO: RETURN_ERRNO(EROFS, "pathname refers to a file on a read-only filesystem");
+
+	if (!(node->mode & 0222))
 	{
-		EM_ASM_INT( { Module['printErr']('__syscall145 UNLINK, ENOENT: ' + Pointer_stringify($0) + ' does not exist.') }, pathname);
-		return -ENOENT;
+		if (node->type == INODE_DIR) RETURN_ERRNO(EISDIR, "directory deletion not permitted"); // Linux quirk: Return EISDIR error for not having permission to delete a directory.
+		else RETURN_ERRNO(EPERM, "file deletion not permitted"); // but return EPERM error for no permission to delete a file.
 	}
 
-	if (!(node->mode & 0222) // Need to have write access to the file/directory to delete it ...
-		|| node->child) // ... and if it's a directory, it can't be deleted if it's not empty
-	{
-		EM_ASM_INT( { Module['print']('__syscall145 UNLINK failed: no write access to "' + Pointer_stringify($0) + '".') }, pathname);
-		if (node->type == INODE_DIR) return -EISDIR; // Linux quirk: Return EISDIR error for not having permission to delete a directory.
-		else return -EPERM; // but return EPERM error for no permission to delete a file.
-	}
+	if (node->child) RETURN_ERRNO(EISDIR, "directory is not empty"); // Linux quirk: Return EISDIR error if not being able to delete a nonempty directory.
 
-	if (node->parent && !(node->parent->mode & 0222)) // Need to have write access to the the parent directory
-	{
-		EM_ASM_INT( { Module['print']('__syscall145 UNLINK failed: no write access to parent directory of "' + Pointer_stringify($0) + '".') }, pathname);
-		return -EACCES;
-	}
-
-	EM_ASM_INT( { Module['print']('__syscall145 UNLINK, pathname: ' + Pointer_stringify($0) + ' removed.') }, pathname);
 	unlink_inode(node);
-	emscripten_dump_fs_root();
+
 	return 0;
 }
 
@@ -987,28 +959,31 @@ long __syscall33(int which, ...) // access
 	const char *pathname = va_arg(vl, const char *);
 	int mode = va_arg(vl, int);
 	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('access(pathname="' + Pointer_stringify($0) + '", mode=0' + ($1).toString(8) + ')') }, pathname, mode);
 
-	if ((mode & F_OK) && (mode & (R_OK | W_OK | X_OK)))
-		return -EINVAL; // mode was incorrectly specified.
+	int len = strlen(pathname);
+	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
+	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
+
+	if ((mode & F_OK) && (mode & (R_OK | W_OK | X_OK))) RETURN_ERRNO(EINVAL, "mode was incorrectly specified");
 
 	inode *node = find_inode(pathname);
-	if (!node)
-	{
-		EM_ASM_INT( { Module['printErr']('__syscall33 ACCESS, ENOENT: ' + Pointer_stringify($0) + ' does not exist.') }, pathname);
-		return -ENOENT;
-	}
+	if (!node) RETURN_ERRNO(ENOENT, "A component of pathname does not exist or is a dangling symbolic link");
 
-	if ((mode & F_OK)) // Just test if file exists
-	{
-		return 0;
-	}
+	// TODO: RETURN_ERRNO(ENOENT, "A component of pathname does not exist or is a dangling symbolic link");
 
-	if (((mode & R_OK) && !(node->mode & 0444))
-		|| ((mode & W_OK) && !(node->mode & 0222))
-		|| ((mode & X_OK) && !(node->mode & 0111)))
-	{
-		return -EACCES;
-	}
+	// Just testing if a file exists?
+	if ((mode & F_OK)) return 0;
+
+	// TODO: RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
+	// TODO: RETURN_ERRNO(EACCES, "search permission is denied for one of the directories in the path prefix of pathname");
+	// TODO: RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
+	// TODO: RETURN_ERRNO(EROFS, "Write permission was requested for a file on a read-only filesystem");
+
+	if ((mode & R_OK) && !(node->mode & 0444)) RETURN_ERRNO(EACCES, "Read access would be denied to the file");
+	if ((mode & W_OK) && !(node->mode & 0222)) RETURN_ERRNO(EACCES, "Write access would be denied to the file");
+	if ((mode & X_OK) && !(node->mode & 0111)) RETURN_ERRNO(EACCES, "Execute access would be denied to the file");
+
 	return 0;
 }
 
@@ -1020,23 +995,18 @@ long __syscall220(int which, ...) // getdents64 (get directory entries 64-bit)
 	unsigned int fd = va_arg(vl, unsigned int);
 	dirent *de = va_arg(vl, dirent*);
 	unsigned int count = va_arg(vl, unsigned int);
+	va_end(vl);
 	unsigned int dirents_size = count / sizeof(de); // The number of dirent structures that can fit into the provided buffer.
 	dirent *de_end = de + dirents_size;
-	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('getdents64(fd=' + $0 + ', de=0x' + ($1).toString(16) + ', count=' + $2 + ')') }, fd, de, count);
 
 	FileDescriptor *desc = (FileDescriptor*)fd;
-	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
-	{
-		fprintf(stderr, "Invalid or closed file descriptor 0x%8X passed to close()!", (unsigned int)desc);
-		return -EBADF; // "fd isn't a valid open file descriptor."
-	}
+	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC) RETURN_ERRNO(EBADF, "Invalid file descriptor fd");
 
 	inode *node = desc->node;
-	if (!node)
-	{
-		assert(false); // TODO: Internal error handling?
-		return -1;
-	}
+	if (!node) RETURN_ERRNO(ENOENT, "No such directory");
+	if (dirents_size == 0) RETURN_ERRNO(EINVAL, "Result buffer is too small");
+	if (node->type != INODE_DIR) RETURN_ERRNO(ENOTDIR, "File descriptor does not refer to a directory");
 
 	inode *dotdot = node->parent ? node->parent : node; // In "/", the directory ".." refers to itself.
 
@@ -1099,11 +1069,7 @@ long __syscall118(int which, ...) // fsync
 	va_end(vl);
 
 	FileDescriptor *desc = (FileDescriptor*)fd;
-	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
-	{
-		fprintf(stderr, "Invalid or closed file descriptor 0x%8X passed to close()!", (unsigned int)desc);
-		return -EBADF; // "fd isn't a valid open file descriptor."
-	}
+	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC) RETURN_ERRNO(EBADF, "fd isn't a valid open file descriptor");
 
 	inode *node = desc->node;
 	if (!node)
@@ -1122,22 +1088,17 @@ long __syscall41(int which, ...) // dup
 	va_start(vl, which);
 	unsigned int fd = va_arg(vl, unsigned int);
 	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('dup(fd=' + $0 + ')') }, fd);
 
 	FileDescriptor *desc = (FileDescriptor*)fd;
-	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
-	{
-		fprintf(stderr, "Invalid or closed file descriptor 0x%8X passed to close()!", (unsigned int)desc);
-		return -EBADF; // "fd isn't a valid open file descriptor."
-	}
+	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC) RETURN_ERRNO(EBADF, "fd isn't a valid open file descriptor");
 
 	inode *node = desc->node;
-	if (!node)
-	{
-		assert(false); // TODO: Internal error handling?
-		return -1;
-	}
+	if (!node) RETURN_ERRNO(-1, "ASMFS internal error: file descriptor points to a nonexisting file");
 
-	// TODO: Implementing dup() requires separating out file descriptors and file descriptions
+	// TODO: RETURN_ERRNO(EMFILE, "The per-process limit on the number of open file descriptors has been reached (see RLIMIT_NOFILE)");
+
+	EM_ASM({ Module['printErr']('TODO: dup() is a stub and not yet implemented') });
 	return 0;
 }
 
@@ -1149,16 +1110,19 @@ long __syscall183(int which, ...) // getcwd
 	char *buf = va_arg(vl, char *);
 	size_t size = va_arg(vl, size_t);
 	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('getcwd(buf=0x' + $0 + ', size= ' + $1 + ')') }, buf, size);
+
+	if (!buf && size > 0) RETURN_ERRNO(EFAULT, "buf points to a bad address");
+	if (buf && size == 0) RETURN_ERRNO(EINVAL, "The size argument is zero and buf is not a null pointer");
 
 	inode *cwd = get_cwd();
-	assert(cwd);
+	if (!cwd) RETURN_ERRNO(-1, "ASMFS internal error: no current working directory?!");
+	// TODO: RETURN_ERRNO(ENOENT, "The current working directory has been unlinked");
+	// TODO: RETURN_ERRNO(EACCES, "Permission to read or search a component of the filename was denied");
 	inode_abspath(cwd, buf, size);
-
-	EM_ASM_INT( { Module['printErr']('getcwd: node "' + Pointer_stringify($0) + '" has abspath "' + Pointer_stringify($1) + '".') }, 
-		cwd->name, buf);
+	if (strlen(buf) >= size-1) RETURN_ERRNO(ERANGE, "The size argument is less than the length of the absolute pathname of the working directory, including the terminating null byte.  You need to allocate a bigger array and try again");
 
 	return 0;
 }
-
 
 } // ~extern "C"
