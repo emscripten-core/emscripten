@@ -1140,6 +1140,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.ASMFS and final_suffix in JS_CONTAINING_SUFFIXES:
         input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'fetch', 'asmfs.cpp')))
+        newargs.append('-D__EMSCRIPTEN_ASMFS__=1')
         next_arg_index += 1
         shared.Settings.NO_FILESYSTEM = 1
         shared.Settings.FETCH = 1

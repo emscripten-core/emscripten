@@ -298,6 +298,10 @@ static inode *find_inode(inode *root, const char *path, inode **out_closest_pare
 		return 0;
 	}
 
+	if (path[0] == 0
+	|| (path[0] == '/' && path[1] == '\0'))
+		return root; // special-case finding empty string path "" or "/" returns the root searched in.
+
 	inode *node = root->child;
 	while(node)
 	{
@@ -390,8 +394,7 @@ long __syscall5(int which, ...) // open
 	if (accessMode != O_RDONLY) // O_WRONLY or O_RDWR
 	{
 		EM_ASM(Module['printErr']('open() syscall failed! pathname refers to a file on a read-only filesystem and write access was requested.'));
-		errno = EROFS; // "pathname refers to a file on a read-only filesystem and write access was requested."
-		return -1;
+		return -EROFS; // "pathname refers to a file on a read-only filesystem and write access was requested."
 	}
 	*/
 
@@ -413,8 +416,7 @@ long __syscall5(int which, ...) // open
 	if ((flags & O_DIRECT))
 	{
 		EM_ASM(Module['printErr']('open() syscall failed! The filesystem does not support the O_DIRECT flag.'));
-		errno = EINVAL; // "The filesystem does not support the O_DIRECT flag."
-		return -1;
+		return -EINVAL; // "The filesystem does not support the O_DIRECT flag."
 	}
 /*
 	if ((flags & O_DIRECTORY))
@@ -463,12 +465,10 @@ long __syscall5(int which, ...) // open
 		if (accessMode != O_WRONLY && accessMode != O_RDWR)
 		{
 			EM_ASM(Module['printErr']('open() syscall failed! O_TMPFILE was specified in flags, but neither O_WRONLY nor O_RDWR was specified.'));
-			errno = EINVAL; // "O_TMPFILE was specified in flags, but neither O_WRONLY nor O_RDWR was specified."
-			return -1;
+			return -EINVAL; // "O_TMPFILE was specified in flags, but neither O_WRONLY nor O_RDWR was specified."
 		}
 		EM_ASM(Module['printErr']('open() syscall failed! "The filesystem containing pathname does not support O_TMPFILE.'));
-		errno = EOPNOTSUPP; // "The filesystem containing pathname does not support O_TMPFILE."
-		return -1;
+		return -EOPNOTSUPP; // "The filesystem containing pathname does not support O_TMPFILE."
 	}
 /*
 	if ((flags & O_TRUNC))
@@ -480,25 +480,22 @@ long __syscall5(int which, ...) // open
 	/* TODO:
 	if (is_directory and (accessMode == O_WRONLY || accessMode == O_RDWR))
 	{
-		errno = EISDIR; // "pathname refers to a directory and the access requested involved writing (that is, O_WRONLY or O_RDWR is set)."
-		return -1;
+		return -EISDIR; // "pathname refers to a directory and the access requested involved writing (that is, O_WRONLY or O_RDWR is set)."
 	}
 	*/
 
 	/* TODO:
 	if (too_many_files_open)
 	{
-		errno = EMFILE; // "The per-process limit on the number of open file descriptors has been reached, see getrlimit(RLIMIT_NOFILE)"
-		return -1;
+		return -EMFILE; // "The per-process limit on the number of open file descriptors has been reached, see getrlimit(RLIMIT_NOFILE)"
 	}
 	*/
 
 	// http://stackoverflow.com/questions/417142/what-is-the-maximum-length-of-a-url-in-different-browsers
 	if (strlen(pathname) > 2000)
 	{
-		errno = ENAMETOOLONG;
 		EM_ASM(Module['printErr']('open() syscall failed! The URL to open was more than 2000 characters long'));
-		return -1;
+		return -ENAMETOOLONG;
 	}
 
 	// Find if this file exists already in the filesystem?
@@ -519,7 +516,6 @@ long __syscall5(int which, ...) // open
 		{
 			EM_ASM_INT( { Module['printErr']('__syscall5 OPEN: asked to open directory with pathname ' + Pointer_stringify($0) + ', but the inode with that pathname is not a directory!') }, 
 				pathname);
-			errno = ENOTDIR;
 			return -ENOTDIR;
 		}
 
@@ -527,7 +523,6 @@ long __syscall5(int which, ...) // open
 		{
 			EM_ASM_INT( { Module['printErr']('__syscall5 OPEN: pathname ' + Pointer_stringify($0) + ' failed to open, no file permissions for read available') }, 
 				pathname);
-			errno = EACCES;
 			return -EACCES;
 		}
 
@@ -535,8 +530,7 @@ long __syscall5(int which, ...) // open
 		{
 			EM_ASM_INT( { Module['printErr']('__syscall5 OPEN: pathname ' + Pointer_stringify($0) + ', inode open failed because file exists and open flags had O_CREAT and O_EXCL') }, 
 				pathname);
-			errno = EEXIST;
-			return -1;
+			return -EEXIST;
 		}
 		EM_ASM_INT( { Module['print']('__syscall5 OPEN: pathname ' + Pointer_stringify($0) + ', inode exists. data ptr: ' + $1 + ', data size: ' + $2 + ', fetch ptr: ' + $3) }, 
 			pathname, node->data, node->size, node->fetch);
@@ -590,8 +584,7 @@ long __syscall5(int which, ...) // open
 				EM_ASM_INT( { Module['printErr']('__syscall5 OPEN failed! File ' + Pointer_stringify($0) + ' does not exist: XHR returned status code ' + $1 + ', and file length was ' + $2 + '.') }, 
 					pathname, (int)fetch->status, (int)fetch->totalBytes);
 				emscripten_fetch_close(fetch);
-				errno = ENOENT;
-				return -1;
+				return -ENOENT;
 			}
 		//  break;
 		// case asynchronous_fopen:
@@ -624,8 +617,7 @@ long __syscall5(int which, ...) // open
 			if (fetch) emscripten_fetch_close(fetch);
 			printf("Failed to open %s %s in directory, it does not exist and O_CREAT flag was not specified\n",
 				(flags & O_DIRECTORY) ? "directory" : "file", pathname);
-			errno = ENOENT;
-			return -ENOENT; // TODO: REVIEW THIS, NEED TO RETURN -errno here instead of -1?
+			return -ENOENT;
 		}
 		node->size = node->fetch->totalBytes;
 		emscripten_dump_fs_root();
@@ -659,8 +651,7 @@ long __syscall6(int which, ...) // close
 	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
 	{
 		fprintf(stderr, "Invalid or already closed file descriptor 0x%8X passed to close()!", (unsigned int)desc);
-		errno = EBADF; // "fd isn't a valid open file descriptor."
-		return -EBADF;
+		return -EBADF; // "fd isn't a valid open file descriptor."
 	}
 	if (desc->node && desc->node->fetch)
 	{
@@ -699,8 +690,7 @@ long __syscall140(int which, ...) // llseek
 	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
 	{
 		fprintf(stderr, "Invalid or closed file descriptor 0x%8X passed to close()!", (unsigned int)desc);
-		errno = EBADF; // "fd isn't a valid open file descriptor."
-		return -1;
+		return -EBADF; // "fd isn't a valid open file descriptor."
 	}
 
 	if (desc->node->fetch)
@@ -716,20 +706,17 @@ long __syscall140(int which, ...) // llseek
 		case SEEK_CUR: newPos = desc->file_pos + offset; break;
 		case SEEK_END: newPos = (desc->node->fetch ? desc->node->fetch->numBytes : desc->node->size) + offset; break;
 		default:
-			errno = EINVAL; // "whence is invalid."
-			return -1;
+			return -EINVAL; // "whence is invalid."
 	}
 	if (newPos < 0)
 	{
-		errno = EINVAL; // "the resulting file offset would be negative"
-		return -1;
+		return -EINVAL; // "the resulting file offset would be negative"
 	}
 	if (newPos > 0x7FFFFFFFLL)
 	{
-		errno = EOVERFLOW; // "The resulting file offset cannot be represented in an off_t."
 		EM_ASM_INT( { Module['printErr']('llseek EOVERFLOW error: fd ' + $0 + 'attempted to seek past unsupported 2^31-1 file size limit (TODO?).') },
 			fd);
-		return -1;
+		return -EOVERFLOW; // "The resulting file offset cannot be represented in an off_t."
 	}
 	desc->file_pos = newPos;
 
@@ -752,8 +739,7 @@ long __syscall145(int which, ...) // readv
 	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
 	{
 		EM_ASM_INT( { Module['printErr']('Invalid or closed file descriptor ' + $0 + ' passed to readv!') }, fd);
-		errno = EBADF; // "fd is not a valid file descriptor or is not open for reading."
-		return -1;
+		return -EBADF; // "fd is not a valid file descriptor or is not open for reading."
 	}
 
 	// TODO: Test and detect to return EISDIR.
@@ -763,8 +749,7 @@ long __syscall145(int which, ...) // readv
 
 	if (iovcnt < 0)
 	{
-		errno = EINVAL; // "The vector count, iovcnt, is less than zero or greater than the permitted maximum."
-		return -1;
+		return -EINVAL; // "The vector count, iovcnt, is less than zero or greater than the permitted maximum."
 	}
 
 	ssize_t total_read_amount = 0;
@@ -773,8 +758,7 @@ long __syscall145(int which, ...) // readv
 		ssize_t n = total_read_amount + iov[i].iov_len;
 		if (n < total_read_amount || (!iov[i].iov_base && iov[i].iov_len > 0))
 		{
-			errno = EINVAL; // "The sum of the iov_len values overflows an ssize_t value." or "the address specified in buf is not valid"
-			return -1;
+			return -EINVAL; // "The sum of the iov_len values overflows an ssize_t value." or "the address specified in buf is not valid"
 		}
 		total_read_amount = n;
 	}
@@ -839,15 +823,13 @@ long __syscall146(int which, ...) // writev
 		if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
 		{
 			EM_ASM_INT( { Module['printErr']('Invalid or closed file descriptor ' + $0 + ' passed to writev!') }, fd);
-			errno = EBADF; // "fd is not a valid file descriptor or is not open for reading."
-			return -1;
+			return -EBADF; // "fd is not a valid file descriptor or is not open for reading."
 		}
 	}
 
 	if (iovcnt < 0)
 	{
-		errno = EINVAL; // "The vector count, iovcnt, is less than zero or greater than the permitted maximum."
-		return -1;
+		return -EINVAL; // "The vector count, iovcnt, is less than zero or greater than the permitted maximum."
 	}
 
 	ssize_t total_write_amount = 0;
@@ -856,8 +838,7 @@ long __syscall146(int which, ...) // writev
 		ssize_t n = total_write_amount + iov[i].iov_len;
 		if (n < total_write_amount || (!iov[i].iov_base && iov[i].iov_len > 0))
 		{
-			errno = EINVAL; // "The sum of the iov_len values overflows an ssize_t value." or "the address specified in buf is not valid"
-			return -1;
+			return -EINVAL; // "The sum of the iov_len values overflows an ssize_t value." or "the address specified in buf is not valid"
 		}
 		total_write_amount = n;
 	}
@@ -922,6 +903,75 @@ long __syscall4(int which, ...) // write
 	return __syscall146(146, fd, &io, 1);
 }
 
+// http://man7.org/linux/man-pages/man2/chdir.2.html
+long __syscall12(int which, ...) // chdir
+{
+	va_list vl;
+	va_start(vl, which);
+	const char *pathname = va_arg(vl, const char *);
+	va_end(vl);
+
+	EM_ASM_INT( { Module['printErr']('__syscall145 CHDIR, which: ' + $0 + ', pathname "' + Pointer_stringify($1) + ' .') }, which, pathname);
+
+	inode *root;
+	if (pathname[0] == '/')
+	{
+		root = filesystem_root();
+		++pathname;
+	}
+	else
+		root = get_cwd();
+	char old_cwd[PATH_MAX];
+	inode_abspath(root, old_cwd, PATH_MAX);
+
+	inode *cwd = find_inode(root, pathname);
+	if (!cwd)
+	{
+		EM_ASM_INT( { Module['printErr']('CHDIR("' + Pointer_stringify($0) + '") FAILED: old working directory: "' + Pointer_stringify($1) + '".') }, 
+			pathname, old_cwd);
+		return -1;
+	}
+
+	char new_cwd[PATH_MAX];
+	inode_abspath(cwd, new_cwd, PATH_MAX);
+	EM_ASM_INT( { Module['printErr']('CHDIR("' + Pointer_stringify($0) + '"): old working directory: "' + Pointer_stringify($1) + '", new working directory: "' + Pointer_stringify($2) + '".') }, 
+		pathname, old_cwd, new_cwd);
+
+	set_cwd(cwd);
+	return 0;
+}
+
+// http://man7.org/linux/man-pages/man2/chmod.2.html
+long __syscall15(int which, ...) // chmod
+{
+	va_list vl;
+	va_start(vl, which);
+	const char *pathname = va_arg(vl, const char *);
+	int mode = va_arg(vl, int);
+	va_end(vl);
+
+	inode *root;
+	if (pathname[0] == '/')
+	{
+		root = filesystem_root();
+		++pathname;
+	}
+	else
+		root = get_cwd();
+
+	inode *node = find_inode(root, pathname);
+	if (!node)
+	{
+		assert(false); // TODO: Internal error handling?
+		return -1;
+	}
+
+	// TODO: Access control
+	node->mode = mode;
+	return 0;
+}
+
+
 // http://man7.org/linux/man-pages/man2/mkdir.2.html
 long __syscall39(int which, ...) // mkdir
 {
@@ -967,20 +1017,31 @@ long __syscall40(int which, ...) // rmdir
 	else
 		root = get_cwd();
 	inode *node = find_inode(root, pathname);
-	if (node && node->type == INODE_DIR && !node->child)
-	{
-		EM_ASM_INT( { Module['print']('__syscall145 RMDIR, pathname: ' + Pointer_stringify($0) + ' removed.') }, pathname);
-		unlink_inode(node);
-		emscripten_dump_fs_root();
-		return 0;
-	}
-	else
+	if (!node)
 	{
 		EM_ASM_INT( { Module['printErr']('__syscall145 RMDIR, pathname: ' + Pointer_stringify($0) + ' not deleted.') }, pathname);
-		errno = ENOENT;
-		return -1;
+		return -ENOENT;
 	}
 
+	if (node == filesystem_root() || node == get_cwd())
+		return -EBUSY;
+
+	if (node->parent && !(node->parent->mode & 0222)) // Need to have write access to the the parent directory
+	{
+		EM_ASM_INT( { Module['print']('__syscall145 UNLINK failed: no write access to parent directory of "' + Pointer_stringify($0) + '".') }, pathname);
+		return -EACCES;
+	}
+
+	if (node->type != INODE_DIR)
+		return -ENOTDIR;
+
+	if (node->child)
+		return -ENOTEMPTY;
+
+	EM_ASM_INT( { Module['print']('__syscall145 RMDIR, pathname: ' + Pointer_stringify($0) + ' removed.') }, pathname);
+	unlink_inode(node);
+	emscripten_dump_fs_root();
+	return 0;
 }
 
 // http://man7.org/linux/man-pages/man2/unlink.2.html
@@ -1000,19 +1061,71 @@ long __syscall10(int which, ...) // unlink
 	else
 		root = get_cwd();
 	inode *node = find_inode(root, pathname);
-	if (node && !node->child)
+	if (!node)
 	{
-		EM_ASM_INT( { Module['print']('__syscall145 UNLINK, pathname: ' + Pointer_stringify($0) + ' removed.') }, pathname);
-		unlink_inode(node);
-		emscripten_dump_fs_root();
-		return 0;
+		EM_ASM_INT( { Module['printErr']('__syscall145 UNLINK, ENOENT: ' + Pointer_stringify($0) + ' does not exist.') }, pathname);
+		return -ENOENT;
+	}
+
+	if (!(node->mode & 0222) // Need to have write access to the file/directory to delete it ...
+		|| node->child) // ... and if it's a directory, it can't be deleted if it's not empty
+	{
+		EM_ASM_INT( { Module['print']('__syscall145 UNLINK failed: no write access to "' + Pointer_stringify($0) + '".') }, pathname);
+		if (node->type == INODE_DIR) return -EISDIR; // Linux quirk: Return EISDIR error for not having permission to delete a directory.
+		else return -EPERM; // but return EPERM error for no permission to delete a file.
+	}
+
+	if (node->parent && !(node->parent->mode & 0222)) // Need to have write access to the the parent directory
+	{
+		EM_ASM_INT( { Module['print']('__syscall145 UNLINK failed: no write access to parent directory of "' + Pointer_stringify($0) + '".') }, pathname);
+		return -EACCES;
+	}
+
+	EM_ASM_INT( { Module['print']('__syscall145 UNLINK, pathname: ' + Pointer_stringify($0) + ' removed.') }, pathname);
+	unlink_inode(node);
+	emscripten_dump_fs_root();
+	return 0;
+}
+
+// http://man7.org/linux/man-pages/man2/faccessat.2.html
+long __syscall33(int which, ...) // access
+{
+	va_list vl;
+	va_start(vl, which);
+	const char *pathname = va_arg(vl, const char *);
+	int mode = va_arg(vl, int);
+	va_end(vl);
+
+	if ((mode & F_OK) && (mode & (R_OK | W_OK | X_OK)))
+		return -EINVAL; // mode was incorrectly specified.
+
+	inode *root;
+	if (pathname[0] == '/')
+	{
+		root = filesystem_root();
+		++pathname;
 	}
 	else
+		root = get_cwd();
+	inode *node = find_inode(root, pathname);
+	if (!node)
 	{
-		EM_ASM_INT( { Module['printErr']('__syscall145 UNLINK, pathname: ' + Pointer_stringify($0) + ' not deleted.') }, pathname);
-		errno = ENOENT;
-		return -1;
+		EM_ASM_INT( { Module['printErr']('__syscall33 ACCESS, ENOENT: ' + Pointer_stringify($0) + ' does not exist.') }, pathname);
+		return -ENOENT;
 	}
+
+	if ((mode & F_OK)) // Just test if file exists
+	{
+		return 0;
+	}
+
+	if (((mode & R_OK) && !(node->mode & 0444))
+		|| ((mode & W_OK) && !(node->mode & 0222))
+		|| ((mode & X_OK) && !(node->mode & 0111)))
+	{
+		return -EACCES;
+	}
+	return 0;
 }
 
 // http://man7.org/linux/man-pages/man2/getdents.2.html
@@ -1031,8 +1144,7 @@ long __syscall220(int which, ...) // getdents64 (get directory entries 64-bit)
 	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
 	{
 		fprintf(stderr, "Invalid or closed file descriptor 0x%8X passed to close()!", (unsigned int)desc);
-		errno = EBADF; // "fd isn't a valid open file descriptor."
-		return -1;
+		return -EBADF; // "fd isn't a valid open file descriptor."
 	}
 
 	inode *node = desc->node;
@@ -1106,8 +1218,7 @@ long __syscall118(int which, ...) // fsync
 	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
 	{
 		fprintf(stderr, "Invalid or closed file descriptor 0x%8X passed to close()!", (unsigned int)desc);
-		errno = EBADF; // "fd isn't a valid open file descriptor."
-		return -EBADF;
+		return -EBADF; // "fd isn't a valid open file descriptor."
 	}
 
 	inode *node = desc->node;
@@ -1132,8 +1243,7 @@ long __syscall41(int which, ...) // dup
 	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
 	{
 		fprintf(stderr, "Invalid or closed file descriptor 0x%8X passed to close()!", (unsigned int)desc);
-		errno = EBADF; // "fd isn't a valid open file descriptor."
-		return -EBADF;
+		return -EBADF; // "fd isn't a valid open file descriptor."
 	}
 
 	inode *node = desc->node;
@@ -1146,5 +1256,25 @@ long __syscall41(int which, ...) // dup
 	// TODO: Implementing dup() requires separating out file descriptors and file descriptions
 	return 0;
 }
+
+// http://man7.org/linux/man-pages/man2/getcwd.2.html
+long __syscall183(int which, ...) // getcwd
+{
+	va_list vl;
+	va_start(vl, which);
+	char *buf = va_arg(vl, char *);
+	size_t size = va_arg(vl, size_t);
+	va_end(vl);
+
+	inode *cwd = get_cwd();
+	assert(cwd);
+	inode_abspath(cwd, buf, size);
+
+	EM_ASM_INT( { Module['printErr']('getcwd: node "' + Pointer_stringify($0) + '" has abspath "' + Pointer_stringify($1) + '".') }, 
+		cwd->name, buf);
+
+	return 0;
+}
+
 
 } // ~extern "C"
