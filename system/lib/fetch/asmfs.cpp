@@ -565,7 +565,7 @@ long __syscall5(int which, ...) // open
 	else if (!node || (!node->fetch && !node->data))
 	{
 		emscripten_fetch_t *fetch = 0;
-		if (!(flags & O_DIRECTORY))
+		if (!(flags & O_DIRECTORY) && accessMode != O_WRONLY)
 		{
 			// If not, we'll need to fetch it.
 			emscripten_fetch_attr_t attr;
