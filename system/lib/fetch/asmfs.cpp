@@ -376,6 +376,11 @@ void emscripten_dump_fs_root()
 	emscripten_dump_fs_tree(filesystem_root(), path);
 }
 
+#define RETURN_ERRNO(errno, error_reason) do { \
+		EM_ASM({ Module['printErr'](__FUNCTION__ + '() returned errno ' + #errno + ': ' + error_reason + '!')}); \
+		return -errno; \
+	} while(0)
+
 // http://man7.org/linux/man-pages/man2/open.2.html
 long __syscall5(int which, ...) // open
 {
@@ -386,56 +391,24 @@ long __syscall5(int which, ...) // open
 	int mode = va_arg(vl, int);
 	va_end(vl);
 
-	EM_ASM_INT( { Module['printErr']('__syscall5 OPEN, which: ' + $0 + ', pathname ' + Pointer_stringify($1) + ', ' + $2 + ', ' + $3 + '.') }, 
-		which, pathname, flags, mode);
+	EM_ASM_INT( { Module['printErr']('open(pathname="' + Pointer_stringify($0) + '", flags=0x' + ($1).toString(16) + ', mode=0' + ($2).toString(8) + ')') }, pathname, flags, mode);
 
 	int accessMode = (flags & O_ACCMODE);
-	/*
-	if (accessMode != O_RDONLY) // O_WRONLY or O_RDWR
-	{
-		EM_ASM(Module['printErr']('open() syscall failed! pathname refers to a file on a read-only filesystem and write access was requested.'));
-		return -EROFS; // "pathname refers to a file on a read-only filesystem and write access was requested."
-	}
-	*/
 
 	if ((flags & O_ASYNC))
-	{
-		EM_ASM(Module['printErr']('open() syscall failed! Opening files with O_ASYNC flag is not supported in ASMFS (TODO?)'));
-		return -1;
-	}
+		RETURN_ERRNO(ENOTSUP, "TODO: Opening files with O_ASYNC flag is not supported in ASMFS");
 
 	// The flags:O_CLOEXEC flag is ignored, doesn't have meaning for Emscripten
-/*
-	if ((flags & O_CREAT))
-	{
-		EM_ASM(Module['printErr']('open() syscall failed! Opening files with O_CREAT flag is not yet supported in ASMFS (TODO)'));
-		return -1;
-	}
-*/
+
 	// TODO: the flags:O_DIRECT flag seems like a great way to let applications explicitly control XHR/IndexedDB read/write buffering behavior?
 	if ((flags & O_DIRECT))
-	{
-		EM_ASM(Module['printErr']('open() syscall failed! The filesystem does not support the O_DIRECT flag.'));
-		return -EINVAL; // "The filesystem does not support the O_DIRECT flag."
-	}
-/*
-	if ((flags & O_DIRECTORY))
-	{
-		EM_ASM(Module['printErr']('open() syscall failed! Opening directories with O_DIRECTORY flag is not yet supported in ASMFS (TODO)'));
-		return -1;
-	}
-*/
+		RETURN_ERRNO(ENOTSUP, "TODO: O_DIRECT flag is not supported in ASMFS");
+
 	if ((flags & O_DSYNC))
-	{
-		EM_ASM(Module['printErr']('open() syscall failed! Opening files with O_DSYNC flag is not yet supported in ASMFS (TODO)'));
-		return -1;
-	}
+		RETURN_ERRNO(ENOTSUP, "TODO: O_DSYNC flag is not supported in ASMFS");
 
 	if ((flags & O_EXCL) && !(flags & O_CREAT))
-	{
-		EM_ASM(Module['printErr']('open() syscall failed! Opening files with O_EXCL flag needs to always be paired with O_CREAT'));
-		return -1;
-	}
+		RETURN_ERRNO(EINVAL, "open() with O_EXCL flag needs to always be paired with O_CREAT"); // Spec says the behavior is undefined, we can just enforce it
 
 	// The flags:O_LARGEFILE flag is ignored, we should always be largefile-compatible
 
@@ -443,46 +416,21 @@ long __syscall5(int which, ...) // open
 	// The flags O_NOCTTY, O_NOFOLLOW
 
 	if ((flags & (O_NONBLOCK|O_NDELAY)))
-	{
-		EM_ASM(Module['printErr']('open() syscall failed! Opening files with O_NONBLOCK or O_NDELAY flags is not yet supported in ASMFS (TODO)'));
-		return -1;
-	}
+		RETURN_ERRNO(ENOTSUP, "TODO: Opening files with O_NONBLOCK or O_NDELAY flags is not supported in ASMFS");
 
 	if ((flags & O_PATH))
-	{
-		EM_ASM(Module['printErr']('open() syscall failed! Opening files with O_PATH flags is not yet supported in ASMFS (TODO)'));
-		return -1;
-	}
+		RETURN_ERRNO(ENOTSUP, "TODO: Opening files with O_PATH flag is not supported in ASMFS");
 
 	if ((flags & O_SYNC))
-	{
-		EM_ASM(Module['printErr']('open() syscall failed! Opening files with O_SYNC flags is not yet supported in ASMFS (TODO)'));
-		return -1;
-	}
+		RETURN_ERRNO(ENOTSUP, "TODO: Opening files with O_SYNC flag is not supported in ASMFS");
 
 	if ((flags & O_TMPFILE))
 	{
 		if (accessMode != O_WRONLY && accessMode != O_RDWR)
-		{
-			EM_ASM(Module['printErr']('open() syscall failed! O_TMPFILE was specified in flags, but neither O_WRONLY nor O_RDWR was specified.'));
-			return -EINVAL; // "O_TMPFILE was specified in flags, but neither O_WRONLY nor O_RDWR was specified."
-		}
-		EM_ASM(Module['printErr']('open() syscall failed! "The filesystem containing pathname does not support O_TMPFILE.'));
-		return -EOPNOTSUPP; // "The filesystem containing pathname does not support O_TMPFILE."
+			RETURN_ERRNO(EINVAL, "O_TMPFILE was specified in flags, but neither O_WRONLY nor O_RDWR was specified");
+
+		RETURN_ERRNO(EOPNOTSUPP, "TODO: The filesystem containing pathname does not support O_TMPFILE");
 	}
-/*
-	if ((flags & O_TRUNC))
-	{
-		EM_ASM(Module['printErr']('open() syscall failed! Opening files with O_TRUNC flags is not yet supported in ASMFS (TODO)'));
-		return -1;
-	}
-*/
-	/* TODO:
-	if (is_directory and (accessMode == O_WRONLY || accessMode == O_RDWR))
-	{
-		return -EISDIR; // "pathname refers to a directory and the access requested involved writing (that is, O_WRONLY or O_RDWR is set)."
-	}
-	*/
 
 	/* TODO:
 	if (too_many_files_open)
@@ -493,10 +441,7 @@ long __syscall5(int which, ...) // open
 
 	// http://stackoverflow.com/questions/417142/what-is-the-maximum-length-of-a-url-in-different-browsers
 	if (strlen(pathname) > 2000)
-	{
-		EM_ASM(Module['printErr']('open() syscall failed! The URL to open was more than 2000 characters long'));
-		return -ENAMETOOLONG;
-	}
+		RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
 
 	// Find if this file exists already in the filesystem?
 	inode *root;
@@ -513,27 +458,16 @@ long __syscall5(int which, ...) // open
 	if (node)
 	{
 		if ((flags & O_DIRECTORY) && node->type != INODE_DIR)
-		{
-			EM_ASM_INT( { Module['printErr']('__syscall5 OPEN: asked to open directory with pathname ' + Pointer_stringify($0) + ', but the inode with that pathname is not a directory!') }, 
-				pathname);
-			return -ENOTDIR;
-		}
+			RETURN_ERRNO(ENOTDIR, "O_DIRECTORY was specified and pathname was not a directory");
 
 		if (!(node->mode & 0444)) // Test if we have read permissions (todo: actually distinguish between user/group/other when that becomes interesting)
-		{
-			EM_ASM_INT( { Module['printErr']('__syscall5 OPEN: pathname ' + Pointer_stringify($0) + ' failed to open, no file permissions for read available') }, 
-				pathname);
-			return -EACCES;
-		}
+			RETURN_ERRNO(EACCES, "The requested access to the file is not allowed");
 
 		if ((flags & O_CREAT) && (flags & O_EXCL))
-		{
-			EM_ASM_INT( { Module['printErr']('__syscall5 OPEN: pathname ' + Pointer_stringify($0) + ', inode open failed because file exists and open flags had O_CREAT and O_EXCL') }, 
-				pathname);
-			return -EEXIST;
-		}
-		EM_ASM_INT( { Module['print']('__syscall5 OPEN: pathname ' + Pointer_stringify($0) + ', inode exists. data ptr: ' + $1 + ', data size: ' + $2 + ', fetch ptr: ' + $3) }, 
-			pathname, node->data, node->size, node->fetch);
+			RETURN_ERRNO(EEXIST, "pathname already exists and O_CREAT and O_EXCL were used");
+
+		if (node->type == INODE_DIR && accessMode != O_RDONLY)
+			RETURN_ERRNO(EISDIR, "pathname refers to a directory and the access requested involved writing (that is, O_WRONLY or O_RDWR is set)");
 	}
 
 	if (node && node->fetch) emscripten_fetch_wait(node->fetch, INFINITY);
@@ -543,11 +477,8 @@ long __syscall5(int which, ...) // open
 		// Create a new empty file or truncate existing one.
 		if (node)
 		{
-			if (node->fetch)
-			{
-				emscripten_fetch_close(node->fetch);
-				node->fetch = 0;
-			}
+			if (node->fetch) emscripten_fetch_close(node->fetch);
+			node->fetch = 0;
 			node->size = 0;
 		}
 		else
@@ -557,10 +488,7 @@ long __syscall5(int which, ...) // open
 			node->mode = mode;
 			strcpy(node->name, basename_part(pathname));
 			link_inode(node, directory);
-			printf("Created %s %s in directory %s\n", (flags & O_DIRECTORY) ? "directory" : "file", node->name, directory->name);
 		}
-
-		emscripten_dump_fs_root();
 	}
 	else if (!node || (!node->fetch && !node->data))
 	{
@@ -581,10 +509,8 @@ long __syscall5(int which, ...) // open
 
 			if (fetch->status != 200 || fetch->totalBytes == 0)
 			{
-				EM_ASM_INT( { Module['printErr']('__syscall5 OPEN failed! File ' + Pointer_stringify($0) + ' does not exist: XHR returned status code ' + $1 + ', and file length was ' + $2 + '.') }, 
-					pathname, (int)fetch->status, (int)fetch->totalBytes);
 				emscripten_fetch_close(fetch);
-				return -ENOENT;
+				RETURN_ERRNO(ENOENT, "O_CREAT is not set and the named file does not exist (attempted emscripten_fetch() XHR to download)");
 			}
 		//  break;
 		// case asynchronous_fopen:
@@ -594,11 +520,8 @@ long __syscall5(int which, ...) // open
 
 		if (node)
 		{
-			if (node->type == INODE_FILE)
-			{
-				// If we had an existing inode entry, just associate the entry with the newly fetched data.
-				node->fetch = fetch;
-			}
+			// If we had an existing inode entry, just associate the entry with the newly fetched data.
+			if (node->type == INODE_FILE) node->fetch = fetch;
 		}
 		else if ((flags & O_CREAT) // If the filesystem entry did not exist, but we have a create flag, ...
 			|| (!node && fetch)) // ... or if it did not exist in our fs, but it could be found via fetch(), ...
@@ -610,14 +533,11 @@ long __syscall5(int which, ...) // open
 			strcpy(node->name, basename_part(pathname));
 			node->fetch = fetch;
 			link_inode(node, directory);
-			printf("Created %s %s in directory %s\n", (flags & O_DIRECTORY) ? "directory" : "file", node->name, directory->name);
 		}
 		else
 		{
 			if (fetch) emscripten_fetch_close(fetch);
-			printf("Failed to open %s %s in directory, it does not exist and O_CREAT flag was not specified\n",
-				(flags & O_DIRECTORY) ? "directory" : "file", pathname);
-			return -ENOENT;
+			RETURN_ERRNO(ENOENT, "O_CREAT is not set and the named file does not exist");
 		}
 		node->size = node->fetch->totalBytes;
 		emscripten_dump_fs_root();
