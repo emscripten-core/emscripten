@@ -259,6 +259,14 @@ static inode *create_directory_hierarchy_for_file(inode *root, const char *path_
 	}
 	return root;
 }
+// Same as above, but the root node is deduced from 'path'. (either absolute if path starts with "/", or relative)
+static inode *create_directory_hierarchy_for_file(const char *path, unsigned int mode)
+{
+	inode *root;
+	if (path[0] == '/') root = filesystem_root(), ++path;
+	else root = get_cwd();
+	return create_directory_hierarchy_for_file(root, path, mode);
+}
 
 // Given a path to a file, finds the inode of the parent directory that contains the file, or 0 if the intermediate path doesn't exist.
 static inode *find_parent_inode(inode *root, const char *path)
@@ -323,6 +331,15 @@ static inode *find_inode(inode *root, const char *path, inode **out_closest_pare
 	return 0;
 }
 
+// Same as above, but the root node is deduced from 'path'. (either absolute if path starts with "/", or relative)
+static inode *find_inode(const char *path, inode **out_closest_parent = 0)
+{
+	inode *root;
+	if (path[0] == '/') root = filesystem_root(), ++path;
+	else root = get_cwd();
+	return find_inode(root, path, out_closest_parent);
+}
+
 // Debug function that dumps out the filesystem tree to console.
 void emscripten_dump_fs_tree(inode *root, char *path)
 {
@@ -377,7 +394,7 @@ void emscripten_dump_fs_root()
 }
 
 #define RETURN_ERRNO(errno, error_reason) do { \
-		EM_ASM({ Module['printErr'](__FUNCTION__ + '() returned errno ' + #errno + ': ' + error_reason + '!')}); \
+		EM_ASM_INT({ Module['printErr'](Pointer_stringify($0) + '() returned errno ' + #errno + ': ' + error_reason + '!')}, __FUNCTION__); \
 		return -errno; \
 	} while(0)
 
@@ -444,17 +461,10 @@ long __syscall5(int which, ...) // open
 		RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
 
 	// Find if this file exists already in the filesystem?
-	inode *root;
-	if (pathname[0] == '/')
-	{
-		root = filesystem_root();
-		++pathname;
-	}
-	else
-		root = get_cwd();
+	inode *root = (pathname[0] == '/') ? filesystem_root() : get_cwd();
+	const char *relpath = (pathname[0] == '/') ? pathname+1 : pathname;
 
-	inode *grandparent = 0;
-	inode *node = find_inode(root, pathname, &grandparent);
+	inode *node = find_inode(root, relpath);
 	if (node)
 	{
 		if ((flags & O_DIRECTORY) && node->type != INODE_DIR)
@@ -483,7 +493,7 @@ long __syscall5(int which, ...) // open
 		}
 		else
 		{
-			inode *directory = create_directory_hierarchy_for_file(root, pathname, mode);
+			inode *directory = create_directory_hierarchy_for_file(root, relpath, mode);
 			node = create_inode((flags & O_DIRECTORY) ? INODE_DIR : INODE_FILE);
 			node->mode = mode;
 			strcpy(node->name, basename_part(pathname));
@@ -527,7 +537,7 @@ long __syscall5(int which, ...) // open
 			|| (!node && fetch)) // ... or if it did not exist in our fs, but it could be found via fetch(), ...
 		{
 			// ... add it as a new entry to the fs.
-			inode *directory = create_directory_hierarchy_for_file(root, pathname, mode);
+			inode *directory = create_directory_hierarchy_for_file(root, relpath, mode);
 			node = create_inode((flags & O_DIRECTORY) ? INODE_DIR : INODE_FILE);
 			node->mode = mode;
 			strcpy(node->name, basename_part(pathname));
@@ -833,18 +843,10 @@ long __syscall12(int which, ...) // chdir
 
 	EM_ASM_INT( { Module['printErr']('__syscall145 CHDIR, which: ' + $0 + ', pathname "' + Pointer_stringify($1) + ' .') }, which, pathname);
 
-	inode *root;
-	if (pathname[0] == '/')
-	{
-		root = filesystem_root();
-		++pathname;
-	}
-	else
-		root = get_cwd();
 	char old_cwd[PATH_MAX];
-	inode_abspath(root, old_cwd, PATH_MAX);
+	inode_abspath(get_cwd(), old_cwd, PATH_MAX);
 
-	inode *cwd = find_inode(root, pathname);
+	inode *cwd = find_inode(pathname);
 	if (!cwd)
 	{
 		EM_ASM_INT( { Module['printErr']('CHDIR("' + Pointer_stringify($0) + '") FAILED: old working directory: "' + Pointer_stringify($1) + '".') }, 
@@ -870,16 +872,7 @@ long __syscall15(int which, ...) // chmod
 	int mode = va_arg(vl, int);
 	va_end(vl);
 
-	inode *root;
-	if (pathname[0] == '/')
-	{
-		root = filesystem_root();
-		++pathname;
-	}
-	else
-		root = get_cwd();
-
-	inode *node = find_inode(root, pathname);
+	inode *node = find_inode(pathname);
 	if (!node)
 	{
 		assert(false); // TODO: Internal error handling?
@@ -903,15 +896,10 @@ long __syscall39(int which, ...) // mkdir
 
 	EM_ASM_INT( { Module['printErr']('__syscall145 MKDIR, which: ' + $0 + ', pathname "' + Pointer_stringify($1) + '", mode: ' + $2 + ' .') }, which, pathname, mode);
 
-	inode *root;
-	if (pathname[0] == '/')
-	{
-		root = filesystem_root();
-		++pathname;
-	}
-	else
-		root = get_cwd();
-	inode *parent_dir = find_parent_inode(root, pathname); // TODO: This is wrong, shouldn't be recursive
+	inode *root = (pathname[0] == '/') ? filesystem_root() : get_cwd();
+	const char *relpath = (pathname[0] == '/') ? pathname+1 : pathname;
+
+	inode *parent_dir = find_parent_inode(root, relpath);
 	inode *directory = create_inode(INODE_DIR);
 	strcpy(directory->name, basename_part(pathname));
 	directory->mode = mode;
@@ -928,15 +916,7 @@ long __syscall40(int which, ...) // rmdir
 	const char *pathname = va_arg(vl, const char *);
 	va_end(vl);
 
-	inode *root;
-	if (pathname[0] == '/')
-	{
-		root = filesystem_root();
-		++pathname;
-	}
-	else
-		root = get_cwd();
-	inode *node = find_inode(root, pathname);
+	inode *node = find_inode(pathname);
 	if (!node)
 	{
 		EM_ASM_INT( { Module['printErr']('__syscall145 RMDIR, pathname: ' + Pointer_stringify($0) + ' not deleted.') }, pathname);
@@ -972,15 +952,7 @@ long __syscall10(int which, ...) // unlink
 	const char *pathname = va_arg(vl, const char *);
 	va_end(vl);
 
-	inode *root;
-	if (pathname[0] == '/')
-	{
-		root = filesystem_root();
-		++pathname;
-	}
-	else
-		root = get_cwd();
-	inode *node = find_inode(root, pathname);
+	inode *node = find_inode(pathname);
 	if (!node)
 	{
 		EM_ASM_INT( { Module['printErr']('__syscall145 UNLINK, ENOENT: ' + Pointer_stringify($0) + ' does not exist.') }, pathname);
@@ -1019,15 +991,7 @@ long __syscall33(int which, ...) // access
 	if ((mode & F_OK) && (mode & (R_OK | W_OK | X_OK)))
 		return -EINVAL; // mode was incorrectly specified.
 
-	inode *root;
-	if (pathname[0] == '/')
-	{
-		root = filesystem_root();
-		++pathname;
-	}
-	else
-		root = get_cwd();
-	inode *node = find_inode(root, pathname);
+	inode *node = find_inode(pathname);
 	if (!node)
 	{
 		EM_ASM_INT( { Module['printErr']('__syscall33 ACCESS, ENOENT: ' + Pointer_stringify($0) + ' does not exist.') }, pathname);
