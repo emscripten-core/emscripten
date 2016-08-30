@@ -42,7 +42,7 @@ int main() {
   }
 
   fd2 = open("/work/file.txt", O_RDONLY, 0666);
-  if (fd == -1) {
+  if (fd2 == -1) {
     result = -5000 - errno;
     goto exit;
   }
