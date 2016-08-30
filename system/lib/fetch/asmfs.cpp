@@ -12,6 +12,7 @@
 #include <math.h>
 #include <libc/fcntl.h>
 #include <time.h>
+#include "syscall_arch.h"
 
 extern "C" {
 
@@ -401,6 +402,48 @@ void emscripten_dump_fs_root()
 		return -errno; \
 	} while(0)
 
+static char stdout_buffer[4096] = {};
+static int stdout_buffer_end = 0;
+static char stderr_buffer[4096] = {};
+static int stderr_buffer_end = 0;
+
+static void print_stream(void *bytes, int numBytes, bool stdout)
+{
+	char *buffer = stdout ? stdout_buffer : stderr_buffer;
+	int &buffer_end = stdout ? stdout_buffer_end : stderr_buffer_end;
+
+	memcpy(buffer + buffer_end, bytes, numBytes);
+	buffer_end += numBytes;
+	int new_buffer_start = 0;
+	for(int i = 0; i < buffer_end; ++i)
+	{
+		if (buffer[i] == '\n')
+		{
+			buffer[i] = 0;
+			EM_ASM_INT( { Module['print'](Pointer_stringify($0)) }, buffer+new_buffer_start);
+			new_buffer_start = i+1;
+		}
+	}
+	size_t new_buffer_size = buffer_end - new_buffer_start;
+	memmove(buffer, buffer + new_buffer_start, new_buffer_size);
+	buffer_end = new_buffer_size;
+}
+
+// http://man7.org/linux/man-pages/man2/write.2.html
+long __syscall4(int which, ...) // write
+{
+	va_list vl;
+	va_start(vl, which);
+	int fd = va_arg(vl, int);
+	void *buf = va_arg(vl, void *);
+	size_t count = va_arg(vl, size_t);
+	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('write(fd=' + $0 + ', buf=0x' + ($1).toString(16) + ', count=' + $2 + ')') }, fd, buf, count);
+
+	iovec io = { buf, count };
+	return __syscall146(146, fd, &io, 1);
+}
+
 // http://man7.org/linux/man-pages/man2/open.2.html
 long __syscall5(int which, ...) // open
 {
@@ -568,10 +611,259 @@ long __syscall6(int which, ...) // close
 	return 0;
 }
 
+// http://man7.org/linux/man-pages/man2/unlink.2.html
+long __syscall10(int which, ...) // unlink
+{
+	va_list vl;
+	va_start(vl, which);
+	const char *pathname = va_arg(vl, const char *);
+	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('unlink(pathname="' + Pointer_stringify($0) + '")') }, pathname);
+
+	int len = strlen(pathname);
+	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
+	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
+
+	inode *node = find_inode(pathname);
+	if (!node) RETURN_ERRNO(ENOENT, "file does not exist");
+
+	inode *parent = node->parent;
+
+	// TODO: RETURN_ERRNO(ENOENT, "A component in pathname does not exist or is a dangling symbolic link");
+	// TODO: RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in translating pathname");
+	// TODO: RETURN_ERRNO(EACCES, "one of the directories in the path prefix of pathname did not allow search permission");
+
+	if (parent && !(parent->mode & 0222))
+		RETURN_ERRNO(EACCES, "Write access to the directory containing pathname is not allowed for the process's effective UID");
+
+	// TODO: RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
+	// TODO: RETURN_ERRNO(EPERM, "The directory containing pathname has the sticky bit (S_ISVTX) set and the process's effective user ID is neither the user ID of the file to be deleted nor that of the directory containing it, and the process is not privileged");
+	// TODO: RETURN_ERRNO(EROFS, "pathname refers to a file on a read-only filesystem");
+
+	if (!(node->mode & 0222))
+	{
+		if (node->type == INODE_DIR) RETURN_ERRNO(EISDIR, "directory deletion not permitted"); // Linux quirk: Return EISDIR error for not having permission to delete a directory.
+		else RETURN_ERRNO(EPERM, "file deletion not permitted"); // but return EPERM error for no permission to delete a file.
+	}
+
+	if (node->child) RETURN_ERRNO(EISDIR, "directory is not empty"); // Linux quirk: Return EISDIR error if not being able to delete a nonempty directory.
+
+	unlink_inode(node);
+
+	return 0;
+}
+
+// http://man7.org/linux/man-pages/man2/chdir.2.html
+long __syscall12(int which, ...) // chdir
+{
+	va_list vl;
+	va_start(vl, which);
+	const char *pathname = va_arg(vl, const char *);
+	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('chdir(pathname="' + Pointer_stringify($0) + '")') }, pathname);
+
+	int len = strlen(pathname);
+	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
+	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
+
+	inode *node = find_inode(pathname);
+
+	// TODO: if (no permissions to navigate the tree to the path) RETURN_ERRNO(EACCES, "Search permission is denied for one of the components of path");
+	// TODO: if (too many symlinks) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving path");
+
+	// TODO: Ensure that this is checked for all components of the path
+	if (!node) RETURN_ERRNO(ENOENT, "The directory specified in path does not exist");
+
+	// TODO: Ensure that this is checked for all components of the path
+	if (node->type != INODE_DIR) RETURN_ERRNO(ENOTDIR, "A component of path is not a directory");
+
+	set_cwd(node);
+	return 0;
+}
+
+// http://man7.org/linux/man-pages/man2/chmod.2.html
+long __syscall15(int which, ...) // chmod
+{
+	va_list vl;
+	va_start(vl, which);
+	const char *pathname = va_arg(vl, const char *);
+	int mode = va_arg(vl, int);
+	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('chmod(pathname="' + Pointer_stringify($0) + '", mode=0' + ($1).toString(8) + ')') }, pathname, mode);
+
+	int len = strlen(pathname);
+	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
+	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
+
+	inode *node = find_inode(pathname);
+
+	// TODO: if (no permissions to navigate the tree to the path) RETURN_ERRNO(EACCES, "Search permission is denied on a component of the path prefix");
+	// TODO: if (too many symlinks) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
+
+	// TODO: Ensure that this is checked for all components of the path
+	if (!node) RETURN_ERRNO(ENOENT, "The file does not exist");
+
+	// TODO: Ensure that this is checked for all components of the path
+	if (node->type != INODE_DIR) RETURN_ERRNO(ENOTDIR, "A component of the path prefix is not a directory");
+
+	// TODO: if (not allowed) RETURN_ERRNO(EPERM, "The effective UID does not match the owner of the file");
+	// TODO: read-only filesystems: if (fs is read-only) RETURN_ERRNO(EROFS, "The named file resides on a read-only filesystem");
+
+	node->mode = mode;
+	return 0;
+}
+
+// http://man7.org/linux/man-pages/man2/faccessat.2.html
+long __syscall33(int which, ...) // access
+{
+	va_list vl;
+	va_start(vl, which);
+	const char *pathname = va_arg(vl, const char *);
+	int mode = va_arg(vl, int);
+	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('access(pathname="' + Pointer_stringify($0) + '", mode=0' + ($1).toString(8) + ')') }, pathname, mode);
+
+	int len = strlen(pathname);
+	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
+	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
+
+	if ((mode & F_OK) && (mode & (R_OK | W_OK | X_OK))) RETURN_ERRNO(EINVAL, "mode was incorrectly specified");
+
+	inode *node = find_inode(pathname);
+	if (!node) RETURN_ERRNO(ENOENT, "A component of pathname does not exist or is a dangling symbolic link");
+
+	// TODO: RETURN_ERRNO(ENOENT, "A component of pathname does not exist or is a dangling symbolic link");
+
+	// Just testing if a file exists?
+	if ((mode & F_OK)) return 0;
+
+	// TODO: RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
+	// TODO: RETURN_ERRNO(EACCES, "search permission is denied for one of the directories in the path prefix of pathname");
+	// TODO: RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
+	// TODO: RETURN_ERRNO(EROFS, "Write permission was requested for a file on a read-only filesystem");
+
+	if ((mode & R_OK) && !(node->mode & 0444)) RETURN_ERRNO(EACCES, "Read access would be denied to the file");
+	if ((mode & W_OK) && !(node->mode & 0222)) RETURN_ERRNO(EACCES, "Write access would be denied to the file");
+	if ((mode & X_OK) && !(node->mode & 0111)) RETURN_ERRNO(EACCES, "Execute access would be denied to the file");
+
+	return 0;
+}
+
+// http://man7.org/linux/man-pages/man2/mkdir.2.html
+long __syscall39(int which, ...) // mkdir
+{
+	va_list vl;
+	va_start(vl, which);
+	const char *pathname = va_arg(vl, const char *);
+	mode_t mode = va_arg(vl, mode_t);
+	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('mkdir(pathname="' + Pointer_stringify($0) + '", mode=0' + ($1).toString(8) + ')') }, pathname, mode);
+
+	int len = strlen(pathname);
+	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
+	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
+
+	inode *root = (pathname[0] == '/') ? filesystem_root() : get_cwd();
+	const char *relpath = (pathname[0] == '/') ? pathname+1 : pathname;
+	inode *parent_dir = find_parent_inode(root, relpath);
+
+	if (!parent_dir) RETURN_ERRNO(ENOENT, "A directory component in pathname does not exist or is a dangling symbolic link");
+
+	// TODO: if (component of path wasn't actually a directory) RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
+
+	inode *existing = find_inode(parent_dir, basename_part(pathname));
+	if (existing) RETURN_ERRNO(EEXIST, "pathname already exists (not necessarily as a directory)");
+	if (!(parent_dir->mode & 0222)) RETURN_ERRNO(EACCES, "The parent directory does not allow write permission to the process");
+
+	// TODO: if (too many symlinks when traversing path) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
+	// TODO: if (any parent dir in path doesn't have search permissions) RETURN_ERRNO(EACCES, "One of the directories in pathname did not allow search permission");
+	// TODO: read-only filesystems: if (fs is read-only) RETURN_ERRNO(EROFS, "Pathname refers to a file on a read-only filesystem");
+
+	inode *directory = create_inode(INODE_DIR);
+	strcpy(directory->name, basename_part(pathname));
+	directory->mode = mode;
+	link_inode(directory, parent_dir);
+	return 0;
+}
+
+// http://man7.org/linux/man-pages/man2/rmdir.2.html
+long __syscall40(int which, ...) // rmdir
+{
+	va_list vl;
+	va_start(vl, which);
+	const char *pathname = va_arg(vl, const char *);
+	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('rmdir(pathname="' + Pointer_stringify($0) + '")') }, pathname);
+
+	int len = strlen(pathname);
+	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
+	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
+
+	if (!strcmp(pathname, ".") || (len >= 2 && !strcmp(pathname+len-2, "/."))) RETURN_ERRNO(EINVAL, "pathname has . as last component");
+	if (!strcmp(pathname, "..") || (len >= 3 && !strcmp(pathname+len-3, "/.."))) RETURN_ERRNO(ENOTEMPTY, "pathname has .. as its final component");
+
+	inode *node = find_inode(pathname);
+	if (!node) RETURN_ERRNO(ENOENT, "directory does not exist");
+
+	// TODO: RETURN_ERRNO(ENOENT, "A directory component in pathname does not exist or is a dangling symbolic link");
+	// TODO: RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
+	// TODO: RETURN_ERRNO(EACCES, "one of the directories in the path prefix of pathname did not allow search permission");
+
+	if (node == filesystem_root() || node == get_cwd()) RETURN_ERRNO(EBUSY, "pathname is currently in use by the system or some process that prevents its removal (pathname is currently used as a mount point or is the root directory of the calling process)");
+	if (node->parent && !(node->parent->mode & 0222)) RETURN_ERRNO(EACCES, "Write access to the directory containing pathname was not allowed");
+	if (node->type != INODE_DIR) RETURN_ERRNO(ENOTDIR, "pathname is not a directory");
+	if (node->child) RETURN_ERRNO(ENOTEMPTY, "pathname contains entries other than . and ..");
+
+	// TODO: RETURN_ERRNO(EPERM, "The directory containing pathname has the sticky bit (S_ISVTX) set and the process's effective user ID is neither the user ID of the file to be deleted nor that of the directory containing it, and the process is not privileged");
+	// TODO: RETURN_ERRNO(EROFS, "pathname refers to a directory on a read-only filesystem");
+
+	unlink_inode(node);
+
+	return 0;
+}
+
+// http://man7.org/linux/man-pages/man2/dup.2.html
+long __syscall41(int which, ...) // dup
+{
+	va_list vl;
+	va_start(vl, which);
+	unsigned int fd = va_arg(vl, unsigned int);
+	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('dup(fd=' + $0 + ')') }, fd);
+
+	FileDescriptor *desc = (FileDescriptor*)fd;
+	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC) RETURN_ERRNO(EBADF, "fd isn't a valid open file descriptor");
+
+	inode *node = desc->node;
+	if (!node) RETURN_ERRNO(-1, "ASMFS internal error: file descriptor points to a nonexisting file");
+
+	// TODO: RETURN_ERRNO(EMFILE, "The per-process limit on the number of open file descriptors has been reached (see RLIMIT_NOFILE)");
+
+	EM_ASM({ Module['printErr']('TODO: dup() is a stub and not yet implemented') });
+	return 0;
+}
+
 // http://man7.org/linux/man-pages/man2/sysctl.2.html
 long __syscall54(int which, ...) // sysctl
 {
 	EM_ASM( { Module['printErr']('sysctl() is ignored') });
+	return 0;
+}
+
+// http://man7.org/linux/man-pages/man2/fsync.2.html
+long __syscall118(int which, ...) // fsync
+{
+	va_list vl;
+	va_start(vl, which);
+	unsigned int fd = va_arg(vl, unsigned int);
+	va_end(vl);
+
+	FileDescriptor *desc = (FileDescriptor*)fd;
+	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC) RETURN_ERRNO(EBADF, "fd isn't a valid open file descriptor");
+
+	inode *node = desc->node;
+	if (!node) RETURN_ERRNO(-1, "ASMFS internal error: file descriptor points to a non-file");
+
 	return 0;
 }
 
@@ -666,33 +958,6 @@ long __syscall145(int which, ...) // readv
 	return numRead;
 }
 
-static char stdout_buffer[4096] = {};
-static int stdout_buffer_end = 0;
-static char stderr_buffer[4096] = {};
-static int stderr_buffer_end = 0;
-
-static void print_stream(void *bytes, int numBytes, bool stdout)
-{
-	char *buffer = stdout ? stdout_buffer : stderr_buffer;
-	int &buffer_end = stdout ? stdout_buffer_end : stderr_buffer_end;
-
-	memcpy(buffer + buffer_end, bytes, numBytes);
-	buffer_end += numBytes;
-	int new_buffer_start = 0;
-	for(int i = 0; i < buffer_end; ++i)
-	{
-		if (buffer[i] == '\n')
-		{
-			buffer[i] = 0;
-			EM_ASM_INT( { Module['print'](Pointer_stringify($0)) }, buffer+new_buffer_start);
-			new_buffer_start = i+1;
-		}
-	}
-	size_t new_buffer_size = buffer_end - new_buffer_start;
-	memmove(buffer, buffer + new_buffer_start, new_buffer_size);
-	buffer_end = new_buffer_size;
-}
-
 // http://man7.org/linux/man-pages/man2/writev.2.html
 long __syscall146(int which, ...) // writev
 {
@@ -761,228 +1026,25 @@ long __syscall146(int which, ...) // writev
 	return total_write_amount;
 }
 
-// http://man7.org/linux/man-pages/man2/write.2.html
-long __syscall4(int which, ...) // write
+// http://man7.org/linux/man-pages/man2/getcwd.2.html
+long __syscall183(int which, ...) // getcwd
 {
 	va_list vl;
 	va_start(vl, which);
-	int fd = va_arg(vl, int);
-	void *buf = va_arg(vl, void *);
-	size_t count = va_arg(vl, size_t);
+	char *buf = va_arg(vl, char *);
+	size_t size = va_arg(vl, size_t);
 	va_end(vl);
-	EM_ASM_INT({ Module['printErr']('write(fd=' + $0 + ', buf=0x' + ($1).toString(16) + ', count=' + $2 + ')') }, fd, buf, count);
+	EM_ASM_INT({ Module['printErr']('getcwd(buf=0x' + $0 + ', size= ' + $1 + ')') }, buf, size);
 
-	iovec io = { buf, count };
-	return __syscall146(146, fd, &io, 1);
-}
+	if (!buf && size > 0) RETURN_ERRNO(EFAULT, "buf points to a bad address");
+	if (buf && size == 0) RETURN_ERRNO(EINVAL, "The size argument is zero and buf is not a null pointer");
 
-// http://man7.org/linux/man-pages/man2/chdir.2.html
-long __syscall12(int which, ...) // chdir
-{
-	va_list vl;
-	va_start(vl, which);
-	const char *pathname = va_arg(vl, const char *);
-	va_end(vl);
-	EM_ASM_INT({ Module['printErr']('chdir(pathname="' + Pointer_stringify($0) + '")') }, pathname);
-
-	int len = strlen(pathname);
-	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
-	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
-
-	inode *node = find_inode(pathname);
-
-	// TODO: if (no permissions to navigate the tree to the path) RETURN_ERRNO(EACCES, "Search permission is denied for one of the components of path");
-	// TODO: if (too many symlinks) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving path");
-
-	// TODO: Ensure that this is checked for all components of the path
-	if (!node) RETURN_ERRNO(ENOENT, "The directory specified in path does not exist");
-
-	// TODO: Ensure that this is checked for all components of the path
-	if (node->type != INODE_DIR) RETURN_ERRNO(ENOTDIR, "A component of path is not a directory");
-
-	set_cwd(node);
-	return 0;
-}
-
-// http://man7.org/linux/man-pages/man2/chmod.2.html
-long __syscall15(int which, ...) // chmod
-{
-	va_list vl;
-	va_start(vl, which);
-	const char *pathname = va_arg(vl, const char *);
-	int mode = va_arg(vl, int);
-	va_end(vl);
-	EM_ASM_INT({ Module['printErr']('chmod(pathname="' + Pointer_stringify($0) + '", mode=0' + ($1).toString(8) + ')') }, pathname, mode);
-
-	int len = strlen(pathname);
-	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
-	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
-
-	inode *node = find_inode(pathname);
-
-	// TODO: if (no permissions to navigate the tree to the path) RETURN_ERRNO(EACCES, "Search permission is denied on a component of the path prefix");
-	// TODO: if (too many symlinks) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
-
-	// TODO: Ensure that this is checked for all components of the path
-	if (!node) RETURN_ERRNO(ENOENT, "The file does not exist");
-
-	// TODO: Ensure that this is checked for all components of the path
-	if (node->type != INODE_DIR) RETURN_ERRNO(ENOTDIR, "A component of the path prefix is not a directory");
-
-	// TODO: if (not allowed) RETURN_ERRNO(EPERM, "The effective UID does not match the owner of the file");
-	// TODO: read-only filesystems: if (fs is read-only) RETURN_ERRNO(EROFS, "The named file resides on a read-only filesystem");
-
-	node->mode = mode;
-	return 0;
-}
-
-// http://man7.org/linux/man-pages/man2/mkdir.2.html
-long __syscall39(int which, ...) // mkdir
-{
-	va_list vl;
-	va_start(vl, which);
-	const char *pathname = va_arg(vl, const char *);
-	mode_t mode = va_arg(vl, mode_t);
-	va_end(vl);
-	EM_ASM_INT({ Module['printErr']('mkdir(pathname="' + Pointer_stringify($0) + '", mode=0' + ($1).toString(8) + ')') }, pathname, mode);
-
-	int len = strlen(pathname);
-	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
-	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
-
-	inode *root = (pathname[0] == '/') ? filesystem_root() : get_cwd();
-	const char *relpath = (pathname[0] == '/') ? pathname+1 : pathname;
-	inode *parent_dir = find_parent_inode(root, relpath);
-
-	if (!parent_dir) RETURN_ERRNO(ENOENT, "A directory component in pathname does not exist or is a dangling symbolic link");
-
-	// TODO: if (component of path wasn't actually a directory) RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
-
-	inode *existing = find_inode(parent_dir, basename_part(pathname));
-	if (existing) RETURN_ERRNO(EEXIST, "pathname already exists (not necessarily as a directory)");
-	if (!(parent_dir->mode & 0222)) RETURN_ERRNO(EACCES, "The parent directory does not allow write permission to the process");
-
-	// TODO: if (too many symlinks when traversing path) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
-	// TODO: if (any parent dir in path doesn't have search permissions) RETURN_ERRNO(EACCES, "One of the directories in pathname did not allow search permission");
-	// TODO: read-only filesystems: if (fs is read-only) RETURN_ERRNO(EROFS, "Pathname refers to a file on a read-only filesystem");
-
-	inode *directory = create_inode(INODE_DIR);
-	strcpy(directory->name, basename_part(pathname));
-	directory->mode = mode;
-	link_inode(directory, parent_dir);
-	return 0;
-}
-
-// http://man7.org/linux/man-pages/man2/rmdir.2.html
-long __syscall40(int which, ...) // rmdir
-{
-	va_list vl;
-	va_start(vl, which);
-	const char *pathname = va_arg(vl, const char *);
-	va_end(vl);
-	EM_ASM_INT({ Module['printErr']('rmdir(pathname="' + Pointer_stringify($0) + '")') }, pathname);
-
-	int len = strlen(pathname);
-	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
-	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
-
-	if (!strcmp(pathname, ".") || (len >= 2 && !strcmp(pathname+len-2, "/."))) RETURN_ERRNO(EINVAL, "pathname has . as last component");
-	if (!strcmp(pathname, "..") || (len >= 3 && !strcmp(pathname+len-3, "/.."))) RETURN_ERRNO(ENOTEMPTY, "pathname has .. as its final component");
-
-	inode *node = find_inode(pathname);
-	if (!node) RETURN_ERRNO(ENOENT, "directory does not exist");
-
-	// TODO: RETURN_ERRNO(ENOENT, "A directory component in pathname does not exist or is a dangling symbolic link");
-	// TODO: RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
-	// TODO: RETURN_ERRNO(EACCES, "one of the directories in the path prefix of pathname did not allow search permission");
-
-	if (node == filesystem_root() || node == get_cwd()) RETURN_ERRNO(EBUSY, "pathname is currently in use by the system or some process that prevents its removal (pathname is currently used as a mount point or is the root directory of the calling process)");
-	if (node->parent && !(node->parent->mode & 0222)) RETURN_ERRNO(EACCES, "Write access to the directory containing pathname was not allowed");
-	if (node->type != INODE_DIR) RETURN_ERRNO(ENOTDIR, "pathname is not a directory");
-	if (node->child) RETURN_ERRNO(ENOTEMPTY, "pathname contains entries other than . and ..");
-
-	// TODO: RETURN_ERRNO(EPERM, "The directory containing pathname has the sticky bit (S_ISVTX) set and the process's effective user ID is neither the user ID of the file to be deleted nor that of the directory containing it, and the process is not privileged");
-	// TODO: RETURN_ERRNO(EROFS, "pathname refers to a directory on a read-only filesystem");
-
-	unlink_inode(node);
-
-	return 0;
-}
-
-// http://man7.org/linux/man-pages/man2/unlink.2.html
-long __syscall10(int which, ...) // unlink
-{
-	va_list vl;
-	va_start(vl, which);
-	const char *pathname = va_arg(vl, const char *);
-	va_end(vl);
-	EM_ASM_INT({ Module['printErr']('unlink(pathname="' + Pointer_stringify($0) + '")') }, pathname);
-
-	int len = strlen(pathname);
-	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
-	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
-
-	inode *node = find_inode(pathname);
-	if (!node) RETURN_ERRNO(ENOENT, "file does not exist");
-
-	inode *parent = node->parent;
-
-	// TODO: RETURN_ERRNO(ENOENT, "A component in pathname does not exist or is a dangling symbolic link");
-	// TODO: RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in translating pathname");
-	// TODO: RETURN_ERRNO(EACCES, "one of the directories in the path prefix of pathname did not allow search permission");
-
-	if (parent && !(parent->mode & 0222))
-		RETURN_ERRNO(EACCES, "Write access to the directory containing pathname is not allowed for the process's effective UID");
-
-	// TODO: RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
-	// TODO: RETURN_ERRNO(EPERM, "The directory containing pathname has the sticky bit (S_ISVTX) set and the process's effective user ID is neither the user ID of the file to be deleted nor that of the directory containing it, and the process is not privileged");
-	// TODO: RETURN_ERRNO(EROFS, "pathname refers to a file on a read-only filesystem");
-
-	if (!(node->mode & 0222))
-	{
-		if (node->type == INODE_DIR) RETURN_ERRNO(EISDIR, "directory deletion not permitted"); // Linux quirk: Return EISDIR error for not having permission to delete a directory.
-		else RETURN_ERRNO(EPERM, "file deletion not permitted"); // but return EPERM error for no permission to delete a file.
-	}
-
-	if (node->child) RETURN_ERRNO(EISDIR, "directory is not empty"); // Linux quirk: Return EISDIR error if not being able to delete a nonempty directory.
-
-	unlink_inode(node);
-
-	return 0;
-}
-
-// http://man7.org/linux/man-pages/man2/faccessat.2.html
-long __syscall33(int which, ...) // access
-{
-	va_list vl;
-	va_start(vl, which);
-	const char *pathname = va_arg(vl, const char *);
-	int mode = va_arg(vl, int);
-	va_end(vl);
-	EM_ASM_INT({ Module['printErr']('access(pathname="' + Pointer_stringify($0) + '", mode=0' + ($1).toString(8) + ')') }, pathname, mode);
-
-	int len = strlen(pathname);
-	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
-	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
-
-	if ((mode & F_OK) && (mode & (R_OK | W_OK | X_OK))) RETURN_ERRNO(EINVAL, "mode was incorrectly specified");
-
-	inode *node = find_inode(pathname);
-	if (!node) RETURN_ERRNO(ENOENT, "A component of pathname does not exist or is a dangling symbolic link");
-
-	// TODO: RETURN_ERRNO(ENOENT, "A component of pathname does not exist or is a dangling symbolic link");
-
-	// Just testing if a file exists?
-	if ((mode & F_OK)) return 0;
-
-	// TODO: RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
-	// TODO: RETURN_ERRNO(EACCES, "search permission is denied for one of the directories in the path prefix of pathname");
-	// TODO: RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
-	// TODO: RETURN_ERRNO(EROFS, "Write permission was requested for a file on a read-only filesystem");
-
-	if ((mode & R_OK) && !(node->mode & 0444)) RETURN_ERRNO(EACCES, "Read access would be denied to the file");
-	if ((mode & W_OK) && !(node->mode & 0222)) RETURN_ERRNO(EACCES, "Write access would be denied to the file");
-	if ((mode & X_OK) && !(node->mode & 0111)) RETURN_ERRNO(EACCES, "Execute access would be denied to the file");
+	inode *cwd = get_cwd();
+	if (!cwd) RETURN_ERRNO(-1, "ASMFS internal error: no current working directory?!");
+	// TODO: RETURN_ERRNO(ENOENT, "The current working directory has been unlinked");
+	// TODO: RETURN_ERRNO(EACCES, "Permission to read or search a component of the filename was denied");
+	inode_abspath(cwd, buf, size);
+	if (strlen(buf) >= size-1) RETURN_ERRNO(ERANGE, "The size argument is less than the length of the absolute pathname of the working directory, including the terminating null byte.  You need to allocate a bigger array and try again");
 
 	return 0;
 }
@@ -1058,67 +1120,6 @@ long __syscall220(int which, ...) // getdents64 (get directory entries 64-bit)
 	}
 
 	return desc->file_pos - orig_file_pos;
-}
-
-// http://man7.org/linux/man-pages/man2/fsync.2.html
-long __syscall118(int which, ...) // fsync
-{
-	va_list vl;
-	va_start(vl, which);
-	unsigned int fd = va_arg(vl, unsigned int);
-	va_end(vl);
-
-	FileDescriptor *desc = (FileDescriptor*)fd;
-	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC) RETURN_ERRNO(EBADF, "fd isn't a valid open file descriptor");
-
-	inode *node = desc->node;
-	if (!node) RETURN_ERRNO(-1, "ASMFS internal error: file descriptor points to a non-file");
-
-	return 0;
-}
-
-// http://man7.org/linux/man-pages/man2/dup.2.html
-long __syscall41(int which, ...) // dup
-{
-	va_list vl;
-	va_start(vl, which);
-	unsigned int fd = va_arg(vl, unsigned int);
-	va_end(vl);
-	EM_ASM_INT({ Module['printErr']('dup(fd=' + $0 + ')') }, fd);
-
-	FileDescriptor *desc = (FileDescriptor*)fd;
-	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC) RETURN_ERRNO(EBADF, "fd isn't a valid open file descriptor");
-
-	inode *node = desc->node;
-	if (!node) RETURN_ERRNO(-1, "ASMFS internal error: file descriptor points to a nonexisting file");
-
-	// TODO: RETURN_ERRNO(EMFILE, "The per-process limit on the number of open file descriptors has been reached (see RLIMIT_NOFILE)");
-
-	EM_ASM({ Module['printErr']('TODO: dup() is a stub and not yet implemented') });
-	return 0;
-}
-
-// http://man7.org/linux/man-pages/man2/getcwd.2.html
-long __syscall183(int which, ...) // getcwd
-{
-	va_list vl;
-	va_start(vl, which);
-	char *buf = va_arg(vl, char *);
-	size_t size = va_arg(vl, size_t);
-	va_end(vl);
-	EM_ASM_INT({ Module['printErr']('getcwd(buf=0x' + $0 + ', size= ' + $1 + ')') }, buf, size);
-
-	if (!buf && size > 0) RETURN_ERRNO(EFAULT, "buf points to a bad address");
-	if (buf && size == 0) RETURN_ERRNO(EINVAL, "The size argument is zero and buf is not a null pointer");
-
-	inode *cwd = get_cwd();
-	if (!cwd) RETURN_ERRNO(-1, "ASMFS internal error: no current working directory?!");
-	// TODO: RETURN_ERRNO(ENOENT, "The current working directory has been unlinked");
-	// TODO: RETURN_ERRNO(EACCES, "Permission to read or search a component of the filename was denied");
-	inode_abspath(cwd, buf, size);
-	if (strlen(buf) >= size-1) RETURN_ERRNO(ERANGE, "The size argument is less than the length of the absolute pathname of the working directory, including the terminating null byte.  You need to allocate a bigger array and try again");
-
-	return 0;
 }
 
 } // ~extern "C"
