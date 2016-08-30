@@ -1292,7 +1292,7 @@ function makeGetTempRet0() {
 }
 
 function makeSetTempRet0(value) {
-  return RELOCATABLE ? "setTempRet0((" + value + ") | 0)" : ("tempRet0 = " + value);
+  return 'asm["setTempRet0"](' + value + ')';
 }
 
 function makeStructuralReturn(values, inAsm) {
