@@ -1072,11 +1072,7 @@ long __syscall118(int which, ...) // fsync
 	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC) RETURN_ERRNO(EBADF, "fd isn't a valid open file descriptor");
 
 	inode *node = desc->node;
-	if (!node)
-	{
-		assert(false); // TODO: Internal error handling?
-		return -1;
-	}
+	if (!node) RETURN_ERRNO(-1, "ASMFS internal error: file descriptor points to a non-file");
 
 	return 0;
 }
