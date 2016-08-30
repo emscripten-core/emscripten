@@ -2112,7 +2112,6 @@ value = real 0.00 imag 1.00''', force_c=True)
 
       self.do_run_from_file(src, output, output_processor=check_warnings)
 
-  @no_wasm_backend
   def test_sizeof(self):
       # Has invalid writes between printouts
       Settings.SAFE_HEAP = 0
