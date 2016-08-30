@@ -655,8 +655,7 @@ long __syscall10(int which, ...) // unlink
 	// TODO: RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in translating pathname");
 	// TODO: RETURN_ERRNO(EACCES, "one of the directories in the path prefix of pathname did not allow search permission");
 
-	if (parent && !(parent->mode & 0222))
-		RETURN_ERRNO(EACCES, "Write access to the directory containing pathname is not allowed for the process's effective UID");
+	if (parent && !(parent->mode & 0222)) RETURN_ERRNO(EACCES, "Write access to the directory containing pathname is not allowed for the process's effective UID");
 
 	// TODO: RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
 	// TODO: RETURN_ERRNO(EPERM, "The directory containing pathname has the sticky bit (S_ISVTX) set and the process's effective user ID is neither the user ID of the file to be deleted nor that of the directory containing it, and the process is not privileged");
