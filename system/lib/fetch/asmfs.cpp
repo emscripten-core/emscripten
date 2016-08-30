@@ -429,7 +429,20 @@ static void print_stream(void *bytes, int numBytes, bool stdout)
 	buffer_end = new_buffer_size;
 }
 
-// http://man7.org/linux/man-pages/man2/write.2.html
+long __syscall3(int which, ...) // read
+{
+	va_list vl;
+	va_start(vl, which);
+	int fd = va_arg(vl, int);
+	void *buf = va_arg(vl, void *);
+	size_t count = va_arg(vl, size_t);
+	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('read(fd=' + $0 + ', buf=0x' + ($1).toString(16) + ', count=' + $2 + ')') }, fd, buf, count);
+
+	iovec io = { buf, count };
+	return __syscall145(145/*readv*/, fd, &io, 1);
+}
+
 long __syscall4(int which, ...) // write
 {
 	va_list vl;
@@ -441,10 +454,9 @@ long __syscall4(int which, ...) // write
 	EM_ASM_INT({ Module['printErr']('write(fd=' + $0 + ', buf=0x' + ($1).toString(16) + ', count=' + $2 + ')') }, fd, buf, count);
 
 	iovec io = { buf, count };
-	return __syscall146(146, fd, &io, 1);
+	return __syscall146(146/*writev*/, fd, &io, 1);
 }
 
-// http://man7.org/linux/man-pages/man2/open.2.html
 long __syscall5(int which, ...) // open
 {
 	va_list vl;
@@ -588,7 +600,6 @@ long __syscall5(int which, ...) // open
 	return (long)desc;
 }
 
-// http://man7.org/linux/man-pages/man2/close.2.html
 long __syscall6(int which, ...) // close
 {
 	va_list vl;
@@ -611,7 +622,18 @@ long __syscall6(int which, ...) // close
 	return 0;
 }
 
-// http://man7.org/linux/man-pages/man2/unlink.2.html
+long __syscall9(int which, ...) // link
+{
+	va_list vl;
+	va_start(vl, which);
+	const char *oldpath = va_arg(vl, const char *);
+	const char *newpath = va_arg(vl, const char *);
+	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('link(oldpath="' + Pointer_stringify($0) + '", newpath="' + Pointer_stringify($1) + '")') }, oldpath, newpath);
+
+	RETURN_ERRNO(ENOTSUP, "TODO: link() is a stub and not yet implemented in ASMFS");
+}
+
 long __syscall10(int which, ...) // unlink
 {
 	va_list vl;
@@ -653,7 +675,6 @@ long __syscall10(int which, ...) // unlink
 	return 0;
 }
 
-// http://man7.org/linux/man-pages/man2/chdir.2.html
 long __syscall12(int which, ...) // chdir
 {
 	va_list vl;
@@ -681,7 +702,19 @@ long __syscall12(int which, ...) // chdir
 	return 0;
 }
 
-// http://man7.org/linux/man-pages/man2/chmod.2.html
+long __syscall14(int which, ...) // mknod
+{
+	va_list vl;
+	va_start(vl, which);
+	const char *pathname = va_arg(vl, const char *);
+	mode_t mode = va_arg(vl, mode_t);
+	dev_t dev = va_arg(vl, dev_t);
+	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('mknod(pathname="' + Pointer_stringify($0) + '", mode=0' + ($1).toString(8) + ', dev=' + $2 + ')') }, pathname, mode, dev);
+
+	RETURN_ERRNO(ENOTSUP, "TODO: mknod() is a stub and not yet implemented in ASMFS");
+}
+
 long __syscall15(int which, ...) // chmod
 {
 	va_list vl;
@@ -713,7 +746,6 @@ long __syscall15(int which, ...) // chmod
 	return 0;
 }
 
-// http://man7.org/linux/man-pages/man2/faccessat.2.html
 long __syscall33(int which, ...) // access
 {
 	va_list vl;
@@ -749,7 +781,16 @@ long __syscall33(int which, ...) // access
 	return 0;
 }
 
-// http://man7.org/linux/man-pages/man2/mkdir.2.html
+long __syscall36(int which, ...) // sync
+{
+	EM_ASM({ Module['printErr']('sync()') });
+
+	// Spec mandates that "sync() is always successful".
+	return 0;
+}
+
+// TODO: syscall38,  int rename(const char *oldpath, const char *newpath);
+
 long __syscall39(int which, ...) // mkdir
 {
 	va_list vl;
@@ -786,7 +827,6 @@ long __syscall39(int which, ...) // mkdir
 	return 0;
 }
 
-// http://man7.org/linux/man-pages/man2/rmdir.2.html
 long __syscall40(int which, ...) // rmdir
 {
 	va_list vl;
@@ -822,7 +862,6 @@ long __syscall40(int which, ...) // rmdir
 	return 0;
 }
 
-// http://man7.org/linux/man-pages/man2/dup.2.html
 long __syscall41(int which, ...) // dup
 {
 	va_list vl;
@@ -839,18 +878,32 @@ long __syscall41(int which, ...) // dup
 
 	// TODO: RETURN_ERRNO(EMFILE, "The per-process limit on the number of open file descriptors has been reached (see RLIMIT_NOFILE)");
 
-	EM_ASM({ Module['printErr']('TODO: dup() is a stub and not yet implemented') });
-	return 0;
+	RETURN_ERRNO(ENOTSUP, "TODO: dup() is a stub and not yet implemented in ASMFS");
 }
 
-// http://man7.org/linux/man-pages/man2/sysctl.2.html
-long __syscall54(int which, ...) // sysctl
+// TODO: syscall42: int pipe(int pipefd[2]);
+
+long __syscall54(int which, ...) // ioctl/sysctl
 {
-	EM_ASM( { Module['printErr']('sysctl() is ignored') });
-	return 0;
+	va_list vl;
+	va_start(vl, which);
+	int fd = va_arg(vl, int);
+	int request = va_arg(vl, int);
+	char *argp = va_arg(vl, char *);
+	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('ioctl(fd=' + $0 + ', request=' + $1 + ', argp=0x' + $2 + ')') }, fd, request, argp);
+	RETURN_ERRNO(ENOTSUP, "TODO: ioctl() is a stub and not yet implemented in ASMFS");
 }
 
-// http://man7.org/linux/man-pages/man2/fsync.2.html
+// TODO: syscall60: mode_t umask(mode_t mask);
+// TODO: syscall63: dup2
+// TODO: syscall83: symlink
+// TODO: syscall85: readlink
+// TODO: syscall91: munmap
+// TODO: syscall94: fchmod
+// TODO: syscall102: socketcall
+
+
 long __syscall118(int which, ...) // fsync
 {
 	va_list vl;
@@ -867,8 +920,8 @@ long __syscall118(int which, ...) // fsync
 	return 0;
 }
 
-// http://man7.org/linux/man-pages/man2/llseek.2.html
-// also useful: http://man7.org/linux/man-pages/man2/lseek.2.html
+// TODO: syscall133: fchdir
+
 long __syscall140(int which, ...) // llseek
 {
 	va_list vl;
@@ -907,7 +960,8 @@ long __syscall140(int which, ...) // llseek
 	return 0;
 }
 
-// http://man7.org/linux/man-pages/man2/readv.2.html
+// TODO: syscall144 msync
+
 long __syscall145(int which, ...) // readv
 {
 	va_list vl;
@@ -958,7 +1012,6 @@ long __syscall145(int which, ...) // readv
 	return numRead;
 }
 
-// http://man7.org/linux/man-pages/man2/writev.2.html
 long __syscall146(int which, ...) // writev
 {
 	va_list vl;
@@ -1026,7 +1079,12 @@ long __syscall146(int which, ...) // writev
 	return total_write_amount;
 }
 
-// http://man7.org/linux/man-pages/man2/getcwd.2.html
+// TODO: syscall148: fdatasync
+// TODO: syscall168: poll
+
+// TODO: syscall180: pread64
+// TODO: syscall181: pwrite64
+
 long __syscall183(int which, ...) // getcwd
 {
 	va_list vl;
@@ -1049,7 +1107,16 @@ long __syscall183(int which, ...) // getcwd
 	return 0;
 }
 
-// http://man7.org/linux/man-pages/man2/getdents.2.html
+// TODO: syscall192: mmap2
+// TODO: syscall193: truncate64
+// TODO: syscall194: ftruncate64
+// TODO: syscall195: SYS_stat64
+// TODO: syscall196: SYS_lstat64
+// TODO: syscall197: SYS_fstat64
+// TODO: syscall198: lchown
+// TODO: syscall207: fchown32
+// TODO: syscall212: chown32
+
 long __syscall220(int which, ...) // getdents64 (get directory entries 64-bit)
 {
 	va_list vl;
@@ -1121,5 +1188,27 @@ long __syscall220(int which, ...) // getdents64 (get directory entries 64-bit)
 
 	return desc->file_pos - orig_file_pos;
 }
+
+// TODO: syscall221: fcntl64
+// TODO: syscall268: statfs64
+// TODO: syscall269: fstatfs64
+// TODO: syscall295: openat
+// TODO: syscall296: mkdirat
+// TODO: syscall297: mknodat
+// TODO: syscall298: fchownat
+// TODO: syscall300: fstatat64
+// TODO: syscall301: unlinkat
+// TODO: syscall302: renameat
+// TODO: syscall303: linkat
+// TODO: syscall304: symlinkat
+// TODO: syscall305: readlinkat
+// TODO: syscall306: fchmodat
+// TODO: syscall307: faccessat
+// TODO: syscall320: utimensat
+// TODO: syscall324: fallocate
+// TODO: syscall330: dup3
+// TODO: syscall331: pipe2
+// TODO: syscall333: preadv
+// TODO: syscall334: pwritev
 
 } // ~extern "C"
