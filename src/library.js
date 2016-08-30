@@ -2643,6 +2643,7 @@ LibraryManager.library = {
 #if WASM_BACKEND == 1
   $setjmpId: 0,
 #endif
+
   saveSetjmp__asm: true,
   saveSetjmp__sig: 'iii',
 #if WASM_BACKEND == 1
