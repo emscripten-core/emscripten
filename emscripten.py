@@ -1324,6 +1324,9 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
       whitelist = ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['__fake'])
       backend_args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
 
+    # asm.js-style setjmp/longjmp handling
+    backend_args += ['-enable-emscripten-sjlj']
+
     if DEBUG:
       logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
       t = time.time()
