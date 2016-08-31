@@ -481,6 +481,10 @@ function onMessageFromMainEmscriptenThread(message) {
       }
       break;
     }
+    case 'setimmediate': {
+      if (Module['setImmediates']) Module['setImmediates'].shift()();
+      break;
+    }
     default: throw 'wha? ' + message.data.target;
   }
 };
