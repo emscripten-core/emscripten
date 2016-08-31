@@ -302,17 +302,28 @@ static inode *find_parent_inode(inode *root, const char *path)
 // Given a root inode of the filesystem and a path relative to it, e.g. "some/directory/dir_or_file",
 // returns the inode that corresponds to "dir_or_file", or 0 if it doesn't exist.
 // If the parameter out_closest_parent is specified, the closest (grand)parent node will be returned.
-static inode *find_inode(inode *root, const char *path, inode **out_closest_parent = 0)
+static inode *find_inode(inode *root, const char *path, int *out_errno)
 {
-	if (out_closest_parent) *out_closest_parent = root;
-	if (!root)
-	{
-		return 0;
-	}
+	char rootName[PATH_MAX];
+	inode_abspath(root, rootName, PATH_MAX);
+	EM_ASM_INT({ Module['printErr']('find_inode(root="' + Pointer_stringify($0) + '", path="' + Pointer_stringify($1) + '")') }, rootName, path);
 
-	if (path[0] == 0
-	|| (path[0] == '/' && path[1] == '\0'))
-		return root; // special-case finding empty string path "" or "/" returns the root searched in.
+#define RETURN_NODE_AND_ERRNO(node, errno) do { *out_errno = (errno); return (node); } while(0)
+	assert(out_errno); // Passing in field to error is not optional.
+
+	if (!root) RETURN_NODE_AND_ERRNO(0, ENOENT);
+
+	// TODO: RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in translating pathname");
+	// TODO: RETURN_ERRNO(EACCES, "one of the directories in the path prefix of pathname did not allow search permission");
+
+	// special-case finding empty string path "" or "/" returns the root searched in.
+	if (!path || path[0] == '\0') RETURN_NODE_AND_ERRNO(root, 0);
+	if (path[0] == '/' && path[1] == '\0')
+	{
+		if (root->type == INODE_DIR) RETURN_NODE_AND_ERRNO(root, 0);
+		else RETURN_NODE_AND_ERRNO(0, ENOTDIR); // "A component used as a directory in pathname is not, in fact, a directory"
+	}
+	if (root->type != INODE_DIR) RETURN_NODE_AND_ERRNO(0, ENOTDIR); // "A component used as a directory in pathname is not, in fact, a directory"
 
 	inode *node = root->child;
 	while(node)
@@ -322,9 +333,14 @@ static inode *find_inode(inode *root, const char *path, inode **out_closest_pare
 		{
 			// The directory name matches.
 			path = child_path;
-			if (path[0] == '\0') return node;
-			if (path[0] == '/' && path[1] == '\0' /* && node is a directory*/) return node;
-			if (out_closest_parent) *out_closest_parent = node;
+
+			// If we arrived to the end of the search, this is the node we were looking for.
+			if (path[0] == '\0') RETURN_NODE_AND_ERRNO(node, 0);
+			if (path[0] == '/' && path[1] == '\0')
+			{
+				if (node->type == INODE_DIR) RETURN_NODE_AND_ERRNO(node, 0);
+				else RETURN_NODE_AND_ERRNO(0, ENOTDIR); // "A component used as a directory in pathname is not, in fact, a directory"
+			}
 			node = node->child;
 		}
 		else
@@ -332,16 +348,16 @@ static inode *find_inode(inode *root, const char *path, inode **out_closest_pare
 			node = node->sibling;
 		}
 	}
-	return 0;
+	RETURN_NODE_AND_ERRNO(0, ENOENT);
 }
 
 // Same as above, but the root node is deduced from 'path'. (either absolute if path starts with "/", or relative)
-static inode *find_inode(const char *path, inode **out_closest_parent = 0)
+static inode *find_inode(const char *path, int *out_errno)
 {
 	inode *root;
 	if (path[0] == '/') root = filesystem_root(), ++path;
 	else root = get_cwd();
-	return find_inode(root, path, out_closest_parent);
+	return find_inode(root, path, out_errno);
 }
 
 // Debug function that dumps out the filesystem tree to console.
@@ -398,7 +414,7 @@ void emscripten_dump_fs_root()
 }
 
 #define RETURN_ERRNO(errno, error_reason) do { \
-		EM_ASM_INT({ Module['printErr'](Pointer_stringify($0) + '() returned errno ' + #errno + ': ' + error_reason + '!')}, __FUNCTION__); \
+		EM_ASM_INT({ Module['printErr'](Pointer_stringify($0) + '() returned errno ' + #errno + '(' + $1 + '): ' + error_reason + '!')}, __FUNCTION__, errno); \
 		return -errno; \
 	} while(0)
 
@@ -503,16 +519,20 @@ long __syscall5(int which, ...) // open
 	inode *root = (pathname[0] == '/') ? filesystem_root() : get_cwd();
 	const char *relpath = (pathname[0] == '/') ? pathname+1 : pathname;
 
-	inode *node = find_inode(root, relpath);
+	int err;
+	inode *node = find_inode(root, relpath, &err);
+	if (err == ENOTDIR) RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
+	if (err == ELOOP) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
+	if (err == EACCES) RETURN_ERRNO(EACCES, "Search permission is denied for one of the directories in the path prefix of pathname");
+	if (err && err != ENOENT) RETURN_ERRNO(err, "find_inode() error");
 	if (node)
 	{
 		if ((flags & O_DIRECTORY) && node->type != INODE_DIR) RETURN_ERRNO(ENOTDIR, "O_DIRECTORY was specified and pathname was not a directory");
 		if (!(node->mode & 0444)) RETURN_ERRNO(EACCES, "The requested access to the file is not allowed");
 		if ((flags & O_CREAT) && (flags & O_EXCL)) RETURN_ERRNO(EEXIST, "pathname already exists and O_CREAT and O_EXCL were used");
 		if (node->type == INODE_DIR && accessMode != O_RDONLY) RETURN_ERRNO(EISDIR, "pathname refers to a directory and the access requested involved writing (that is, O_WRONLY or O_RDWR is set)");
+		if (node->fetch) emscripten_fetch_wait(node->fetch, INFINITY);
 	}
-
-	if (node && node->fetch) emscripten_fetch_wait(node->fetch, INFINITY);
 
 	if ((flags & O_CREAT) || (flags & O_TRUNC) || (flags & O_EXCL))
 	{
@@ -646,18 +666,20 @@ long __syscall10(int which, ...) // unlink
 	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
 	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
 
-	inode *node = find_inode(pathname);
+	int err;
+	inode *node = find_inode(pathname, &err);
+	if (err == ENOTDIR) RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
+	if (err == ELOOP) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in translating pathname");
+	if (err == EACCES) RETURN_ERRNO(EACCES, "One of the directories in the path prefix of pathname did not allow search permission");
+	if (err == ENOENT) RETURN_ERRNO(ENOENT, "A component in pathname does not exist or is a dangling symbolic link");
+	if (err) RETURN_ERRNO(err, "find_inode() error");
+
 	if (!node) RETURN_ERRNO(ENOENT, "file does not exist");
 
 	inode *parent = node->parent;
 
-	// TODO: RETURN_ERRNO(ENOENT, "A component in pathname does not exist or is a dangling symbolic link");
-	// TODO: RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in translating pathname");
-	// TODO: RETURN_ERRNO(EACCES, "one of the directories in the path prefix of pathname did not allow search permission");
-
 	if (parent && !(parent->mode & 0222)) RETURN_ERRNO(EACCES, "Write access to the directory containing pathname is not allowed for the process's effective UID");
 
-	// TODO: RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
 	// TODO: RETURN_ERRNO(EPERM, "The directory containing pathname has the sticky bit (S_ISVTX) set and the process's effective user ID is neither the user ID of the file to be deleted nor that of the directory containing it, and the process is not privileged");
 	// TODO: RETURN_ERRNO(EROFS, "pathname refers to a file on a read-only filesystem");
 
@@ -686,16 +708,15 @@ long __syscall12(int which, ...) // chdir
 	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
 	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
 
-	inode *node = find_inode(pathname);
-
-	// TODO: if (no permissions to navigate the tree to the path) RETURN_ERRNO(EACCES, "Search permission is denied for one of the components of path");
-	// TODO: if (too many symlinks) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving path");
-
-	// TODO: Ensure that this is checked for all components of the path
+	int err;
+	inode *node = find_inode(pathname, &err);
+	if (err == ENOTDIR) RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
+	if (err == ELOOP) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving path");
+	if (err == EACCES) RETURN_ERRNO(EACCES, "Search permission is denied for one of the components of path");
+	if (err == ENOENT) RETURN_ERRNO(ENOENT, "Directory component in pathname does not exist or is a dangling symbolic link");
+	if (err) RETURN_ERRNO(err, "find_inode() error");
 	if (!node) RETURN_ERRNO(ENOENT, "The directory specified in path does not exist");
-
-	// TODO: Ensure that this is checked for all components of the path
-	if (node->type != INODE_DIR) RETURN_ERRNO(ENOTDIR, "A component of path is not a directory");
+	if (node->type != INODE_DIR) RETURN_ERRNO(ENOTDIR, "Path is not a directory");
 
 	set_cwd(node);
 	return 0;
@@ -707,7 +728,7 @@ long __syscall14(int which, ...) // mknod
 	va_start(vl, which);
 	const char *pathname = va_arg(vl, const char *);
 	mode_t mode = va_arg(vl, mode_t);
-	dev_t dev = va_arg(vl, dev_t);
+	int dev = va_arg(vl, int);
 	va_end(vl);
 	EM_ASM_INT({ Module['printErr']('mknod(pathname="' + Pointer_stringify($0) + '", mode=0' + ($1).toString(8) + ', dev=' + $2 + ')') }, pathname, mode, dev);
 
@@ -727,16 +748,14 @@ long __syscall15(int which, ...) // chmod
 	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
 	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
 
-	inode *node = find_inode(pathname);
-
-	// TODO: if (no permissions to navigate the tree to the path) RETURN_ERRNO(EACCES, "Search permission is denied on a component of the path prefix");
-	// TODO: if (too many symlinks) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
-
-	// TODO: Ensure that this is checked for all components of the path
+	int err;
+	inode *node = find_inode(pathname, &err);
+	if (err == ENOTDIR) RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
+	if (err == ELOOP) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
+	if (err == EACCES) RETURN_ERRNO(EACCES, "Search permission is denied on a component of the path prefix");
+	if (err == ENOENT) RETURN_ERRNO(ENOENT, "Directory component in pathname does not exist or is a dangling symbolic link");
+	if (err) RETURN_ERRNO(err, "find_inode() error");
 	if (!node) RETURN_ERRNO(ENOENT, "The file does not exist");
-
-	// TODO: Ensure that this is checked for all components of the path
-	if (node->type != INODE_DIR) RETURN_ERRNO(ENOTDIR, "A component of the path prefix is not a directory");
 
 	// TODO: if (not allowed) RETURN_ERRNO(EPERM, "The effective UID does not match the owner of the file");
 	// TODO: read-only filesystems: if (fs is read-only) RETURN_ERRNO(EROFS, "The named file resides on a read-only filesystem");
@@ -760,17 +779,18 @@ long __syscall33(int which, ...) // access
 
 	if ((mode & F_OK) && (mode & (R_OK | W_OK | X_OK))) RETURN_ERRNO(EINVAL, "mode was incorrectly specified");
 
-	inode *node = find_inode(pathname);
-	if (!node) RETURN_ERRNO(ENOENT, "A component of pathname does not exist or is a dangling symbolic link");
-
-	// TODO: RETURN_ERRNO(ENOENT, "A component of pathname does not exist or is a dangling symbolic link");
+	int err;
+	inode *node = find_inode(pathname, &err);
+	if (err == ENOTDIR) RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
+	if (err == ELOOP) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
+	if (err == EACCES) RETURN_ERRNO(EACCES, "Search permission is denied for one of the directories in the path prefix of pathname");
+	if (err == ENOENT) RETURN_ERRNO(ENOENT, "A component of pathname does not exist or is a dangling symbolic link");
+	if (err) RETURN_ERRNO(err, "find_inode() error");
+	if (!node) RETURN_ERRNO(ENOENT, "Pathname does not exist");
 
 	// Just testing if a file exists?
 	if ((mode & F_OK)) return 0;
 
-	// TODO: RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
-	// TODO: RETURN_ERRNO(EACCES, "search permission is denied for one of the directories in the path prefix of pathname");
-	// TODO: RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
 	// TODO: RETURN_ERRNO(EROFS, "Write permission was requested for a file on a read-only filesystem");
 
 	if ((mode & R_OK) && !(node->mode & 0444)) RETURN_ERRNO(EACCES, "Read access would be denied to the file");
@@ -811,12 +831,15 @@ long __syscall39(int which, ...) // mkdir
 
 	// TODO: if (component of path wasn't actually a directory) RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
 
-	inode *existing = find_inode(parent_dir, basename_part(pathname));
+	int err;
+	inode *existing = find_inode(parent_dir, basename_part(pathname), &err);
+	if (err == ENOTDIR) RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
+	if (err == ELOOP) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
+	if (err == EACCES) RETURN_ERRNO(EACCES, "One of the directories in pathname did not allow search permission");
+	if (err && err != ENOENT) RETURN_ERRNO(err, "find_inode() error");
 	if (existing) RETURN_ERRNO(EEXIST, "pathname already exists (not necessarily as a directory)");
 	if (!(parent_dir->mode & 0222)) RETURN_ERRNO(EACCES, "The parent directory does not allow write permission to the process");
 
-	// TODO: if (too many symlinks when traversing path) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
-	// TODO: if (any parent dir in path doesn't have search permissions) RETURN_ERRNO(EACCES, "One of the directories in pathname did not allow search permission");
 	// TODO: read-only filesystems: if (fs is read-only) RETURN_ERRNO(EROFS, "Pathname refers to a file on a read-only filesystem");
 
 	inode *directory = create_inode(INODE_DIR);
@@ -841,13 +864,14 @@ long __syscall40(int which, ...) // rmdir
 	if (!strcmp(pathname, ".") || (len >= 2 && !strcmp(pathname+len-2, "/."))) RETURN_ERRNO(EINVAL, "pathname has . as last component");
 	if (!strcmp(pathname, "..") || (len >= 3 && !strcmp(pathname+len-3, "/.."))) RETURN_ERRNO(ENOTEMPTY, "pathname has .. as its final component");
 
-	inode *node = find_inode(pathname);
+	int err;
+	inode *node = find_inode(pathname, &err);
+	if (err == ENOTDIR) RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
+	if (err == ELOOP) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
+	if (err == EACCES) RETURN_ERRNO(EACCES, "one of the directories in the path prefix of pathname did not allow search permission");
+	if (err == ENOENT) RETURN_ERRNO(ENOENT, "A directory component in pathname does not exist or is a dangling symbolic link");
+	if (err) RETURN_ERRNO(err, "find_inode() error");
 	if (!node) RETURN_ERRNO(ENOENT, "directory does not exist");
-
-	// TODO: RETURN_ERRNO(ENOENT, "A directory component in pathname does not exist or is a dangling symbolic link");
-	// TODO: RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
-	// TODO: RETURN_ERRNO(EACCES, "one of the directories in the path prefix of pathname did not allow search permission");
-
 	if (node == filesystem_root() || node == get_cwd()) RETURN_ERRNO(EBUSY, "pathname is currently in use by the system or some process that prevents its removal (pathname is currently used as a mount point or is the root directory of the calling process)");
 	if (node->parent && !(node->parent->mode & 0222)) RETURN_ERRNO(EACCES, "Write access to the directory containing pathname was not allowed");
 	if (node->type != INODE_DIR) RETURN_ERRNO(ENOTDIR, "pathname is not a directory");
