@@ -1695,7 +1695,7 @@ int main() {
       int call(Args... args) {
         return(EM_ASM_INT(
           {
-            console.log(Array.prototype.join.call(arguments, ','));
+            Module.print(Array.prototype.join.call(arguments, ','));
           },
           args...
         ));
@@ -7006,13 +7006,14 @@ Module.printErr = Module['printErr'] = function(){};
 
   def test_emscripten_log(self):
     if self.is_wasm(): return self.skip('wasmifying destroys debug info and stack tracability')
+    self.banned_js_engines = [V8_ENGINE] # v8 doesn't support console.log
     self.emcc_args += ['-s', 'DEMANGLE_SUPPORT=1']
     if self.is_emterpreter():
       self.emcc_args += ['--profiling-funcs'] # without this, stack traces are not useful (we jump emterpret=>emterpret)
       Building.COMPILER_TEST_OPTS += ['-DEMTERPRETER'] # even so, we get extra emterpret() calls on the stack
     if Settings.ASM_JS:
       # XXX Does not work in SpiderMonkey since callstacks cannot be captured when running in asm.js, see https://bugzilla.mozilla.org/show_bug.cgi?id=947996
-      self.banned_js_engines = [SPIDERMONKEY_ENGINE] 
+      self.banned_js_engines += [SPIDERMONKEY_ENGINE] 
     if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
     Building.COMPILER_TEST_OPTS += ['-DRUN_FROM_JS_SHELL']
     self.do_run(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read(), '''test print 123
