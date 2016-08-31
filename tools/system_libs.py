@@ -41,7 +41,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       symbols = filter(lambda symbol: symbol not in exclude, symbols)
     return set(symbols)
 
-  default_opts = ['-Werror']
+  default_opts = ['-Werror', '-Wno-error=absolute-value']
 
   # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
   #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
