@@ -327,12 +327,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       for dep in value:
         shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
 
-  all_needed = set()
-  for symbols in symbolses:
-    all_needed.update(symbols.undefs)
-  for symbols in symbolses:
-    all_needed.difference_update(symbols.defs)
-
   system_libs = [('libcxx',      'a',  create_libcxx,      libcxx_symbols,      ['libcxxabi'], True),
                  ('libcxxabi',   'bc', create_libcxxabi,   libcxxabi_symbols,   ['libc'],      False),
                  ('gl',          'bc', create_gl,          gl_symbols,          ['libc'],      False),

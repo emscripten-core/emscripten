@@ -7,7 +7,7 @@ int main() {
          c);
   emscripten_run_script(
       "cheez = _malloc(100);"
-      "Module.writeStringToMemory(\"μ†ℱ ╋ℯ╳╋ 😇\", cheez);"
+      "Module.stringToUTF8(\"μ†ℱ ╋ℯ╳╋ 😇\", cheez, 100);"
       "Module.print([Pointer_stringify(cheez), Module.getValue(cheez, "
       "'i8')&0xff, Module.getValue(cheez+1, 'i8')&0xff, "
       "Module.getValue(cheez+2, 'i8')&0xff, Module.getValue(cheez+3, "
