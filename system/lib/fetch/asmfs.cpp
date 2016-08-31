@@ -55,13 +55,13 @@ struct FileDescriptor
 	inode *node;
 };
 
-static inode *create_inode(INODE_TYPE type)
+static inode *create_inode(INODE_TYPE type, int mode)
 {
 	inode *i = (inode*)malloc(sizeof(inode));
 	memset(i, 0, sizeof(inode));
 	i->ctime = i->mtime = i->atime = time(0);
 	i->type = type;
-	EM_ASM(Module['print']('create_inode allocated new inode object.'));
+	i->mode = mode;
 	return i;
 }
 
@@ -70,8 +70,7 @@ static inode *cwd_inode = 0;
 
 static inode *filesystem_root()
 {
-	static inode *root_node = create_inode(INODE_DIR);
-	root_node->mode = 0777;
+	static inode *root_node = create_inode(INODE_DIR, 0777);
 	return root_node;
 }
 
@@ -253,8 +252,7 @@ static inode *create_directory_hierarchy_for_file(inode *root, const char *path_
 	EM_ASM_INT( { Module['printErr']('basename_pos ' + Pointer_stringify($0) + ' .') }, basename_pos);
 	while(*path_to_file && path_to_file < basename_pos)
 	{
-		node = create_inode(INODE_DIR);
-		node->mode = mode;
+		node = create_inode(INODE_DIR, mode);
 		path_to_file += strcpy_inodename(node->name, path_to_file) + 1;
 		link_inode(node, root);
 		EM_ASM_INT( { Module['print']('create_directory_hierarchy_for_file: created directory ' + Pointer_stringify($0) + ' under parent ' + Pointer_stringify($1) + '.') }, 
@@ -546,8 +544,7 @@ long __syscall5(int which, ...) // open
 		else
 		{
 			inode *directory = create_directory_hierarchy_for_file(root, relpath, mode);
-			node = create_inode((flags & O_DIRECTORY) ? INODE_DIR : INODE_FILE);
-			node->mode = mode;
+			node = create_inode((flags & O_DIRECTORY) ? INODE_DIR : INODE_FILE, mode);
 			strcpy(node->name, basename_part(pathname));
 			link_inode(node, directory);
 		}
@@ -590,8 +587,7 @@ long __syscall5(int which, ...) // open
 		{
 			// ... add it as a new entry to the fs.
 			inode *directory = create_directory_hierarchy_for_file(root, relpath, mode);
-			node = create_inode((flags & O_DIRECTORY) ? INODE_DIR : INODE_FILE);
-			node->mode = mode;
+			node = create_inode((flags & O_DIRECTORY) ? INODE_DIR : INODE_FILE, mode);
 			strcpy(node->name, basename_part(pathname));
 			node->fetch = fetch;
 			link_inode(node, directory);
@@ -842,9 +838,8 @@ long __syscall39(int which, ...) // mkdir
 
 	// TODO: read-only filesystems: if (fs is read-only) RETURN_ERRNO(EROFS, "Pathname refers to a file on a read-only filesystem");
 
-	inode *directory = create_inode(INODE_DIR);
+	inode *directory = create_inode(INODE_DIR, mode);
 	strcpy(directory->name, basename_part(pathname));
-	directory->mode = mode;
 	link_inode(directory, parent_dir);
 	return 0;
 }
