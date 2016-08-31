@@ -41,7 +41,8 @@ function WebGLWorker() {
     arrayBuffer: null,
     elementArrayBuffer: null,
     program: null,
-    framebuffer: null
+    framebuffer: null,
+    activeTexture: 0x84C0 // GL_TEXTURE0
   };
 
   //===========
@@ -454,6 +455,7 @@ function WebGLWorker() {
   this.FRAMEBUFFER_INCOMPLETE_DIMENSIONS         = 0x8CD9;
   this.FRAMEBUFFER_UNSUPPORTED                   = 0x8CDD;
   
+  this.ACTIVE_TEXTURE                 = 0x84E0;
   this.FRAMEBUFFER_BINDING            = 0x8CA6;
   this.RENDERBUFFER_BINDING           = 0x8CA7;
   this.MAX_RENDERBUFFER_SIZE          = 0x84E8;
@@ -514,6 +516,9 @@ function WebGLWorker() {
       }
       case this.FRAMEBUFFER_BINDING: {
         return bindings.framebuffer;
+      }
+      case this.ACTIVE_TEXTURE: {
+        return bindings.activeTexture;
       }
       default: throw 'TODO: get parameter ' + name + ' : ' + revname(name);
     }
@@ -893,6 +898,7 @@ function WebGLWorker() {
   };
   this.activeTexture = function(texture) {
     commandBuffer.push(42, texture);
+    bindings.activeTexture = texture;
   };
   this.getShaderParameter = function(shader, pname) {
     switch (pname) {
