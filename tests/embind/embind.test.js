@@ -1235,6 +1235,23 @@ module({
             assert.deepEqual({field: [1, 2, 3, 4]}, d);
         });
 
+        test("can pass and return arrays in structs", function() {
+            var d = cm.emval_test_take_and_return_ArrayInStruct({
+              field1: [1, 2],
+              field2: [
+                { x: 1, y: 2 },
+                { x: 3, y: 4 }
+              ]
+            });
+            assert.deepEqual({
+              field1: [1, 2],
+              field2: [
+                { x: 1, y: 2 },
+                { x: 3, y: 4 }
+              ]
+            }, d);
+        });
+
         test("can clone handles", function() {
             var a = new cm.ValHolder({});
             assert.equal(1, cm.count_emval_handles());

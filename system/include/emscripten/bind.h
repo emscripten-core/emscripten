@@ -800,7 +800,33 @@ namespace emscripten {
                 getContext(field));
             return *this;
         }
-    
+
+        template<typename InstanceType, typename ElementType, int N>
+        value_object& field(const char* fieldName, ElementType (InstanceType::*field)[N]) {
+            using namespace internal;
+
+            typedef std::array<ElementType, N> FieldType;
+            static_assert(sizeof(FieldType) == sizeof(ElementType[N]));
+
+            auto getter = &MemberAccess<InstanceType, FieldType>
+                ::template getWire<ClassType>;
+            auto setter = &MemberAccess<InstanceType, FieldType>
+                ::template setWire<ClassType>;
+
+            _embind_register_value_object_field(
+                TypeID<ClassType>::get(),
+                fieldName,
+                TypeID<FieldType>::get(),
+                getSignature(getter),
+                reinterpret_cast<GenericFunction>(getter),
+                getContext(field),
+                TypeID<FieldType>::get(),
+                getSignature(setter),
+                reinterpret_cast<GenericFunction>(setter),
+                getContext(field));
+            return *this;
+        }
+
         template<typename Getter, typename Setter>
         value_object& field(
             const char* fieldName,
