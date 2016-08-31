@@ -64,8 +64,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
           assert False, ("Test file {} found with multiple valid extensions {}"
                          .format(test_path, ext_list))
         return ret
-      extensions = (find_extension('.c', '.cpp'), # input extensions
-                    find_extension('.out', '.txt')) # output extensions
+
+      input_extensions = find_extension('.c', '.cpp', '.cc')
+      output_extensions = find_extension('.out', '.txt')
+      extensions = (input_extensions, output_extensions)
 
       src, output = (test_path + ext for ext in extensions)
       self.do_run_from_file(src, output, **kwargs)
