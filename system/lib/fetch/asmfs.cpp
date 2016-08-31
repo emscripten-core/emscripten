@@ -155,10 +155,8 @@ static void link_inode(inode *node, inode *parent)
 static inode *find_predecessor_sibling(inode *node, inode *parent)
 {
 	inode *child = parent->child;
-	if (child == node)
-		return 0;
-	while(child && child->sibling != node)
-		child = child->sibling;
+	if (child == node) return 0;
+	while(child && child->sibling != node) child = child->sibling;
 	if (!child->sibling) return 0;
 	return child;
 }
@@ -178,8 +176,7 @@ static void unlink_inode(inode *node)
 	else
 	{
 		inode *predecessor = find_predecessor_sibling(node, parent);
-		if (predecessor)
-			predecessor->sibling = node->sibling;
+		if (predecessor) predecessor->sibling = node->sibling;
 	}
 	node->parent = node->sibling = 0;
 }
@@ -205,8 +202,7 @@ static const char *path_cmp(const char *s1, const char *s2)
 static int strcpy_inodename(char *dst, const char *path)
 {
 	char *d = dst;
-	while(*path && *path != '/')
-		*dst++ = *path++;
+	while(*path && *path != '/') *dst++ = *path++;
 	*dst = '\0';
 	return dst - d;
 }
@@ -270,13 +266,28 @@ static inode *create_directory_hierarchy_for_file(const char *path, unsigned int
 	return create_directory_hierarchy_for_file(root, path, mode);
 }
 
-// Given a path to a file, finds the inode of the parent directory that contains the file, or 0 if the intermediate path doesn't exist.
-static inode *find_parent_inode(inode *root, const char *path)
+#define RETURN_NODE_AND_ERRNO(node, errno) do { *out_errno = (errno); return (node); } while(0)
+
+// Given a pathname to a file/directory, finds the inode of the directory that would contain the file/directory, or 0 if the intermediate path doesn't exist.
+// Note that the file/directory pointed to by path does not need to exist, only its parent does.
+static inode *find_parent_inode(inode *root, const char *path, int *out_errno)
 {
-	EM_ASM_INT( { Module['print']('find_parent_inode: inode: ' + Pointer_stringify($0) + ' path: ' + Pointer_stringify($1) + '.') }, 
-		root ? root->name : "(null)", path);
-	if (!root) return 0;
+	char rootName[PATH_MAX];
+	inode_abspath(root, rootName, PATH_MAX);
+	EM_ASM_INT({ Module['printErr']('find_parent_inode(root="' + Pointer_stringify($0) + '", path="' + Pointer_stringify($1) + '")') }, rootName, path);
+
+	assert(out_errno); // Passing in error is mandatory.
+
+	if (!root) RETURN_NODE_AND_ERRNO(0, ENOENT);
+	if (!path || path[0] == '\0') RETURN_NODE_AND_ERRNO(0, ENOENT);
+	if (path[0] == '/' && path[1] == '\0') RETURN_NODE_AND_ERRNO(0, ENOENT);
+	if (root->type != INODE_DIR) RETURN_NODE_AND_ERRNO(0, ENOTDIR); // "A component used as a directory in pathname is not, in fact, a directory"
+
+	// TODO: RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in translating pathname");
+	// TODO: RETURN_ERRNO(EACCES, "one of the directories in the path prefix of pathname did not allow search permission");
+
 	const char *basename = basename_part(path);
+	if (path == basename) RETURN_NODE_AND_ERRNO(root, 0);
 	inode *node = root->child;
 	while(node)
 	{
@@ -285,16 +296,17 @@ static inode *find_parent_inode(inode *root, const char *path)
 		{
 			// The directory name matches.
 			path = child_path;
-			if (path >= basename) return node;
-			if (!*path) return 0;
+			if (path >= basename) RETURN_NODE_AND_ERRNO(node, 0);
+			if (!*path) RETURN_NODE_AND_ERRNO(0, ENOENT);
 			node = node->child;
+			if (node->type != INODE_DIR) RETURN_NODE_AND_ERRNO(0, ENOTDIR); // "A component used as a directory in pathname is not, in fact, a directory"
 		}
 		else
 		{
 			node = node->sibling;
 		}
 	}
-	return root;
+	RETURN_NODE_AND_ERRNO(0, ENOTDIR); // "A component used as a directory in pathname is not, in fact, a directory"
 }
 
 // Given a root inode of the filesystem and a path relative to it, e.g. "some/directory/dir_or_file",
@@ -306,8 +318,7 @@ static inode *find_inode(inode *root, const char *path, int *out_errno)
 	inode_abspath(root, rootName, PATH_MAX);
 	EM_ASM_INT({ Module['printErr']('find_inode(root="' + Pointer_stringify($0) + '", path="' + Pointer_stringify($1) + '")') }, rootName, path);
 
-#define RETURN_NODE_AND_ERRNO(node, errno) do { *out_errno = (errno); return (node); } while(0)
-	assert(out_errno); // Passing in field to error is not optional.
+	assert(out_errno); // Passing in error is mandatory.
 
 	if (!root) RETURN_NODE_AND_ERRNO(0, ENOENT);
 
@@ -821,13 +832,16 @@ long __syscall39(int which, ...) // mkdir
 
 	inode *root = (pathname[0] == '/') ? filesystem_root() : get_cwd();
 	const char *relpath = (pathname[0] == '/') ? pathname+1 : pathname;
-	inode *parent_dir = find_parent_inode(root, relpath);
-
+	int err;
+	inode *parent_dir = find_parent_inode(root, relpath, &err);
+	if (err == ENOTDIR) RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
+	if (err == ELOOP) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
+	if (err == EACCES) RETURN_ERRNO(EACCES, "One of the directories in pathname did not allow search permission");
+	if (err) RETURN_ERRNO(err, "find_inode() error");
 	if (!parent_dir) RETURN_ERRNO(ENOENT, "A directory component in pathname does not exist or is a dangling symbolic link");
 
 	// TODO: if (component of path wasn't actually a directory) RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
 
-	int err;
 	inode *existing = find_inode(parent_dir, basename_part(pathname), &err);
 	if (err == ENOTDIR) RETURN_ERRNO(ENOTDIR, "A component used as a directory in pathname is not, in fact, a directory");
 	if (err == ELOOP) RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in resolving pathname");
