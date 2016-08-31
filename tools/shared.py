@@ -862,8 +862,9 @@ def check_vanilla():
       is_vanilla_file = temp_cache.get('is_vanilla', get_vanilla_file, extension='.txt', force=True)
     try:
       contents = open(is_vanilla_file).read()
-      is_vanilla, llvm_used = contents.split(':')
-      is_vanilla = int(is_vanilla)
+      middle = contents.index(':')
+      is_vanilla = int(contents[:middle])
+      llvm_used = contents[middle + 1:]
       if llvm_used != LLVM_ROOT:
         logging.debug('regenerating vanilla check since other llvm')
         temp_cache.get('is_vanilla', get_vanilla_file, extension='.txt', force=True)

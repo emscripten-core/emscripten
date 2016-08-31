@@ -764,46 +764,36 @@ base align: 0, 0, 0, 0'''])
   def test_regex(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_regex')
 
-  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_longjmp(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp')
 
-  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_longjmp2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp2')
 
-  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_longjmp3(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp3')
 
-  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_longjmp4(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp4')
 
-  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_longjmp_funcptr(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_funcptr')
 
-  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_longjmp_repeat(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_repeat')
 
-  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_longjmp_stacked(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_stacked')
 
-  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_longjmp_exc(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_exc')
 
-  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_longjmp_throw(self):
     for disable_throw in [0, 1]:
       print disable_throw
       Settings.DISABLE_EXCEPTION_CATCHING = disable_throw
       self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_throw')
 
-  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_setjmp_many(self):
     src = r'''
       #include <stdio.h>
@@ -820,7 +810,6 @@ base align: 0, 0, 0, 0'''])
       print num
       self.do_run(src.replace('NUM', str(num)), '0\n' * num)
 
-  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_setjmp_many_2(self):
     src = r'''
 #include <setjmp.h>
@@ -849,7 +838,6 @@ int main()
 
     self.do_run(src, r'''d is at 24''')
 
-  @no_wasm_backend('setjmp/longjmp not implemented yet')
   def test_setjmp_noleak(self):
     src = r'''
 #include <setjmp.h>
