@@ -754,6 +754,9 @@ This pointer might make sense in another type signature:''', '''Invalid function
     assert not os.path.exists('a.out') and not os.path.exists('a.exe'), 'Must not leave unneeded linker stubs'
 
   def test_outline(self):
+    if WINDOWS and not Building.which('mingw32-make'):
+      return self.skip('Skipping other.test_outline: This test requires "mingw32-make" tool in PATH on Windows to drive a Makefile build of zlib')
+
     def test(name, src, libs, expected, expected_ranges, args=[], suffix='cpp'):
       print name
 
@@ -5135,7 +5138,7 @@ int main() {
   def test_failing_alloc(self):
     for pre_fail, post_fail, opts in [
       ('', '', []),
-      ('EM_ASM( Module.temp = DYNAMICTOP );', 'EM_ASM( assert(Module.temp === DYNAMICTOP, "must not adjust DYNAMICTOP when an alloc fails!") );', []),
+      ('EM_ASM( Module.temp = HEAP32[DYNAMICTOP_PTR>>2] );', 'EM_ASM( assert(Module.temp === HEAP32[DYNAMICTOP_PTR>>2], "must not adjust DYNAMICTOP when an alloc fails!") );', []),
       ('', '', ['-s', 'SPLIT_MEMORY=' + str(16*1024*1024)]),
     ]:
       for growth in [0, 1]:

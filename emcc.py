@@ -654,12 +654,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs[i] = ''
         newargs[i+1] = ''
       elif newargs[i] == '--clear-cache':
-        logging.warning('clearing cache')
+        logging.info('clearing cache as requested by --clear-cache')
         shared.Cache.erase()
         shared.check_sanity(force=True) # this is a good time for a sanity check
         should_exit = True
       elif newargs[i] == '--clear-ports':
-        logging.warning('clearing ports and cache')
+        logging.info('clearing ports and cache as requested by --clear-ports')
         system_libs.Ports.erase()
         shared.Cache.erase()
         shared.check_sanity(force=True) # this is a good time for a sanity check
@@ -1386,7 +1386,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
        not shared.Settings.ONLY_MY_CODE and \
        not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
       extra_files_to_link = system_libs.get_ports(shared.Settings)
-      extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, in_temp, stdout, stderr, forced=forced_stdlibs)
+      extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, in_temp, stdout_=None, stderr_=None, forced=forced_stdlibs)
 
     log_time('calculate system libraries')
 
@@ -2111,7 +2111,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shutil.move(js_target, js_target[:-3] + '.worker.js') # compiler output goes in .worker.js file
         worker_target_basename = target_basename + '.worker'
         target_contents = open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read())
-        open(target, 'wb').write(target_contents)
+        open(target, 'w').write(target_contents)
 
     for f in generated_text_files_with_native_eols:
       tools.line_endings.convert_line_endings_in_file(f, os.linesep, output_eol)

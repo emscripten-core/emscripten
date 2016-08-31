@@ -1474,7 +1474,7 @@ var LibraryGL = {
   glFlushMappedBufferRange: function(target, offset, length) {
     if (!emscriptenWebGLValidateMapBufferTarget(target)) {
       GL.recordError(0x0500/*GL_INVALID_ENUM*/);
-      Module.printErr('GL_INVALID_ENUM in glUnmapBuffer');
+      Module.printErr('GL_INVALID_ENUM in glFlushMappedBufferRange');
       return 0;
     }
 
@@ -4308,7 +4308,7 @@ var LibraryGL = {
     } else if (GL.shaders[id]) {
       _glGetShaderInfoLog(id, maxLength, length, infoLog);
     } else {
-      Module.printErr('WARNING: getObjectParameteriv received invalid id: ' + id);
+      Module.printErr('WARNING: glGetInfoLog received invalid id: ' + id);
     }
   },
   glGetInfoLogARB: 'glGetInfoLog',

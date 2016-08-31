@@ -1033,7 +1033,7 @@ int main(int argc, char **argv)
     Settings.DISABLE_EXCEPTION_CATCHING = 2
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
-    if not Settings.BINARYEN:
+    if not self.is_wasm_backend():
       Settings.EXCEPTION_CATCHING_WHITELIST = ["__Z12somefunctionv"]
     else:
       Settings.EXCEPTION_CATCHING_WHITELIST = ["_Z12somefunctionv"]
@@ -1076,7 +1076,7 @@ int main(int argc, char **argv)
     Settings.DISABLE_EXCEPTION_CATCHING = 2
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
-    if not Settings.BINARYEN:
+    if not self.is_wasm_backend():
       Settings.EXCEPTION_CATCHING_WHITELIST = ["_main"]
     else:
       Settings.EXCEPTION_CATCHING_WHITELIST = ["main"]
@@ -2379,7 +2379,7 @@ The current type of b is: 9
 
   def test_stack_overflow(self):
     Settings.ASSERTIONS = 1
-    self.do_run(open(path_from_root('tests', 'core', 'stack_overflow.cpp')).read(), 'abort()')
+    self.do_run(open(path_from_root('tests', 'core', 'stack_overflow.cpp')).read(), 'Stack overflow!')
 
   def test_nestedstructs(self):
       src = '''
@@ -7336,7 +7336,7 @@ int main(int argc, char **argv) {
               typeof STACK_MAX === 'number' &&
               typeof STACKTOP === 'number' &&
               typeof DYNAMIC_BASE === 'number' &&
-              typeof DYNAMICTOP === 'number') {
+              typeof DYNAMICTOP_PTR === 'number') {
              Module.print('able to run memprof');
            } else {
              Module.print('missing the required variables to run memprof');
@@ -7377,6 +7377,13 @@ int main(int argc, char **argv) {
   def test_binaryen(self):
     self.emcc_args += ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
     self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
+
+  def test_sbrk(self):
+    self.do_run(open(path_from_root('tests', 'sbrk_brk.cpp')).read(), 'OK.')
+
+  def test_brk(self):
+    self.emcc_args += ['-DTEST_BRK=1']
+    self.do_run(open(path_from_root('tests', 'sbrk_brk.cpp')).read(), 'OK.')
 
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,

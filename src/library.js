@@ -428,28 +428,111 @@ LibraryManager.library = {
     ___setErrNo(ERRNO_CODES.EINVAL);
     return -1;
   },
-  sbrk: function(bytes) {
+
+  // Implement a Linux-like 'memory area' for our 'process'.
+  // Changes the size of the memory area by |bytes|; returns the
+  // address of the previous top ('break') of the memory area
+  // We control the "dynamic" memory - DYNAMIC_BASE to DYNAMICTOP
+  sbrk__asm: true,
+  sbrk__sig: ['ii'],
+  sbrk__deps: ['__setErrNo'],
+  sbrk: function(increment) {
+    increment = increment|0;
+    var oldDynamicTop = 0;
+    var oldDynamicTopOnChange = 0;
+    var newDynamicTop = 0;
+    var totalMemory = 0;
+    increment = ((increment + 15) & -16)|0;
 #if USE_PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_SBRK') }}}, bytes);
+    totalMemory = getTotalMemory()|0;
+
+    // Perform a compare-and-swap loop to update the new dynamic top value. This is because
+    // this function can becalled simultaneously in multiple threads.
+    do {
+      oldDynamicTop = Atomics_load(HEAP32, DYNAMICTOP_PTR>>2);
+      newDynamicTop = oldDynamicTop + increment | 0;
+      // Asking to increase dynamic top to a too high value? In pthreads builds we cannot
+      // enlarge memory, so this needs to fail.
+      if (((increment|0) > 0 & (newDynamicTop|0) < (oldDynamicTop|0)) // Detect and fail if we would wrap around signed 32-bit int.
+        | (newDynamicTop|0) < 0 // Also underflow, sbrk() should be able to be used to subtract.
+        | (newDynamicTop|0) > (totalMemory|0)) {
+#if ABORTING_MALLOC
+        abortOnCannotGrowMemory()|0;
+#else
+        ___setErrNo({{{ cDefine('ENOMEM') }}});
+        return -1;
 #endif
-    // Implement a Linux-like 'memory area' for our 'process'.
-    // Changes the size of the memory area by |bytes|; returns the
-    // address of the previous top ('break') of the memory area
-    // We control the "dynamic" memory - DYNAMIC_BASE to DYNAMICTOP
-    var self = _sbrk;
-    if (!self.called) {
-      DYNAMICTOP = alignMemoryPage(DYNAMICTOP); // make sure we start out aligned
-      self.called = true;
-      assert(Runtime.dynamicAlloc);
-      self.alloc = Runtime.dynamicAlloc;
-      Runtime.dynamicAlloc = function() { abort('cannot dynamically allocate, sbrk now has control') };
+      }
+      // Attempt to update the dynamic top to new value. Another thread may have beat this thread to the update,
+      // in which case we will need to start over by iterating the loop body again.
+      oldDynamicTopOnChange = Atomics_compareExchange(HEAP32, DYNAMICTOP_PTR>>2, oldDynamicTop|0, newDynamicTop|0);
+    } while((oldDynamicTopOnChange|0) != (oldDynamicTop|0));
+#else // singlethreaded build: (-s USE_PTHREADS=0)
+    oldDynamicTop = HEAP32[DYNAMICTOP_PTR>>2]|0;
+    newDynamicTop = oldDynamicTop + increment | 0;
+
+    if (((increment|0) > 0 & (newDynamicTop|0) < (oldDynamicTop|0)) // Detect and fail if we would wrap around signed 32-bit int.
+      | (newDynamicTop|0) < 0) { // Also underflow, sbrk() should be able to be used to subtract.
+#if ABORTING_MALLOC
+      abortOnCannotGrowMemory()|0;
+#endif
+      ___setErrNo({{{ cDefine('ENOMEM') }}});
+      return -1;
     }
-    var ret = DYNAMICTOP;
-    if (bytes != 0) {
-      var success = self.alloc(bytes);
-      if (!success) return -1 >>> 0; // sbrk failure code
+
+    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop;
+    totalMemory = getTotalMemory()|0;
+    if ((newDynamicTop|0) > (totalMemory|0)) {
+      if ((enlargeMemory()|0) == 0) {
+        ___setErrNo({{{ cDefine('ENOMEM') }}});
+        HEAP32[DYNAMICTOP_PTR>>2] = oldDynamicTop;
+        return -1;
+      }
     }
-    return ret;  // Previous break location.
+#endif
+    return oldDynamicTop|0;
+  },
+
+  brk__asm: true,
+  brk__sig: ['ii'],
+  brk: function(newDynamicTop) {
+    newDynamicTop = newDynamicTop|0;
+    var oldDynamicTop = 0;
+    var totalMemory = 0;
+#if USE_PTHREADS
+    totalMemory = getTotalMemory()|0;
+    // Asking to increase dynamic top to a too high value? In pthreads builds we cannot
+    // enlarge memory, so this needs to fail.
+    if ((newDynamicTop|0) < 0 | (newDynamicTop|0) > (totalMemory|0)) {
+#if ABORTING_MALLOC
+      abortOnCannotGrowMemory()|0;
+#else
+      ___setErrNo({{{ cDefine('ENOMEM') }}});
+      return -1;
+#endif
+    }
+    Atomics_store(HEAP32, DYNAMICTOP_PTR>>2, newDynamicTop|0);
+#else // singlethreaded build: (-s USE_PTHREADS=0)
+    if ((newDynamicTop|0) < 0) {
+#if ABORTING_MALLOC
+      abortOnCannotGrowMemory()|0;
+#endif
+      ___setErrNo({{{ cDefine('ENOMEM') }}});
+      return -1;
+    }
+
+    oldDynamicTop = HEAP32[DYNAMICTOP_PTR>>2]|0;
+    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop;
+    totalMemory = getTotalMemory()|0;
+    if ((newDynamicTop|0) > (totalMemory|0)) {
+      if ((enlargeMemory()|0) == 0) {
+        ___setErrNo({{{ cDefine('ENOMEM') }}});
+        HEAP32[DYNAMICTOP_PTR>>2] = oldDynamicTop;
+        return -1;
+      }
+    }
+#endif
+    return 0;
   },
 
   system__deps: ['__setErrNo', '$ERRNO_CODES'],

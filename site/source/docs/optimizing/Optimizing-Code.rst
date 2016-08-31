@@ -81,6 +81,7 @@ Miscellaneous code size tips
 
 In addition to the above (defining a separate memory initialization file as :ref:`mentioned above <optimizing-code-memory-initialization>`, and using ``-Os`` or ``-Oz``  as :ref:`mentioned above <optimizing-code-oz-os>`), the following tips can help to reduce code size:
 
+- `Floh's blogpost on this topic <http://floooh.github.io/2016/08/27/asmjs-diet.html>`_ is very helpful.
 - Use :ref:`llvm-lto <emcc-llvm-lto>` when compiling from bitcode to JavaScript: ``--llvm-lto 1``. This can break some code as the LTO code path is less tested.
 - Disable :ref:`optimizing-code-inlining`: ``-s INLINING_LIMIT=1``. Compiling with -Os or -Oz generally avoids inlining too.
 - Use :ref:`closure <emcc-closure>` on the outside non-asm.js code: ``--closure 1``. This can break code that doesn't use `closure annotations properly <https://developers.google.com/closure/compiler/docs/api-tutorial3>`_.

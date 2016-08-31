@@ -381,11 +381,15 @@ function JSify(data, functionsOnly) {
     legalizedI64s = legalizedI64sDefault;
 
     if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
+      if (USE_PTHREADS) print('if (!ENVIRONMENT_IS_PTHREAD) {\n // Only main thread initializes these, pthreads copy them over at thread worker init time (in pthread-main.js)');
+      print('DYNAMICTOP_PTR = allocate(1, "i32", ALLOC_STATIC);\n');
       print('STACK_BASE = STACKTOP = Runtime.alignMemory(STATICTOP);\n');
-      print('staticSealed = true; // seal the static portion of memory\n');
       print('STACK_MAX = STACK_BASE + TOTAL_STACK;\n');
-      print('DYNAMIC_BASE = DYNAMICTOP = Runtime.alignMemory(STACK_MAX);\n');
+      print('DYNAMIC_BASE = Runtime.alignMemory(STACK_MAX);\n');
+      print('HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;\n');
+      print('staticSealed = true; // seal the static portion of memory\n');
       if (ASSERTIONS) print('assert(DYNAMIC_BASE < TOTAL_MEMORY, "TOTAL_MEMORY not big enough for stack");\n');
+      if (USE_PTHREADS) print('}\n');
     }
     if (SPLIT_MEMORY) {
       print('assert(STACK_MAX < SPLIT_MEMORY, "SPLIT_MEMORY size must be big enough so the entire static memory + stack can fit in one chunk, need " + STACK_MAX);\n');

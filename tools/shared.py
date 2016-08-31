@@ -652,32 +652,45 @@ def get_clang_native_env():
       return env
 
     if 'VSINSTALLDIR' in env:
-      visual_studio_2013_path = env['VSINSTALLDIR']
+      visual_studio_path = env['VSINSTALLDIR']
     elif 'VS120COMNTOOLS' in env:
-      visual_studio_2013_path = os.path.normpath(os.path.join(env['VS120COMNTOOLS'], '../..'))
+      visual_studio_path = os.path.normpath(os.path.join(env['VS120COMNTOOLS'], '../..'))
+    elif 'VS140COMNTOOLS' in env:
+      visual_studio_path = os.path.normpath(os.path.join(env['VS140COMNTOOLS'], '../..'))
     elif 'ProgramFiles(x86)' in env:
-      visual_studio_2013_path = os.path.normpath(os.path.join(env['ProgramFiles(x86)'], 'Microsoft Visual Studio 12.0'))
+      visual_studio_path = os.path.normpath(os.path.join(env['ProgramFiles(x86)'], 'Microsoft Visual Studio 12.0'))
     elif 'ProgramFiles' in env:
-      visual_studio_2013_path = os.path.normpath(os.path.join(env['ProgramFiles'], 'Microsoft Visual Studio 12.0'))
+      visual_studio_path = os.path.normpath(os.path.join(env['ProgramFiles'], 'Microsoft Visual Studio 12.0'))
     else:
-      visual_studio_2013_path = 'C:\\Program Files (x86)\\Microsoft Visual Studio 12.0'
-    if not os.path.isdir(visual_studio_2013_path):
-      raise Exception('Visual Studio 2013 was not found in "' + visual_studio_2013_path + '"! Run in Visual Studio command prompt to avoid the need to autoguess this location (or set VSINSTALLDIR env var).')
+      visual_studio_path = 'C:\\Program Files (x86)\\Microsoft Visual Studio 12.0'
+    if not os.path.isdir(visual_studio_path):
+      raise Exception('Visual Studio 2013 was not found in "' + visual_studio_path + '"! Run in Visual Studio command prompt to avoid the need to autoguess this location (or set VSINSTALLDIR env var).')
+
+    env['INCLUDE'] = os.path.join(visual_studio_path, 'VC\\INCLUDE')
+
+    if 'ProgramFiles(x86)' in env: prog_files_x86 = env['ProgramFiles(x86)']
+    elif 'ProgramFiles' in env: prog_files_x86 = env['ProgramFiles']
+    elif os.path.isdir('C:\\Program Files (x86)'): prog_files_x86 = 'C:\\Program Files (x86)'
+    elif os.path.isdir('C:\\Program Files'): prog_files_x86 = 'C:\\Program Files'
+    else:
+      raise Exception('Unable to detect Program files directory for native Visual Studio build!')
 
     if 'WindowsSdkDir' in env:
       windows_sdk_dir = env['WindowsSdkDir']
-    elif 'ProgramFiles(x86)' in env:
-      windows_sdk_dir = os.path.normpath(os.path.join(env['ProgramFiles(x86)'], 'Windows Kits\\8.1'))
-    elif 'ProgramFiles' in env:
-      windows_sdk_dir = os.path.normpath(os.path.join(env['ProgramFiles'], 'Windows Kits\\8.1'))
+    elif os.path.isdir(os.path.join(prog_files_x86, 'Windows Kits', '10')):
+      windows_sdk_dir = os.path.join(prog_files_x86, 'Windows Kits', '10')
+      include_dir = os.path.join(windows_sdk_dir, 'Include')
+      include_dir = [os.path.join(include_dir,x) for x in os.listdir(include_dir) if os.path.isdir(os.path.join(include_dir, x))][0] + '\\ucrt'
+      env['INCLUDE'] = env['INCLUDE'] + ';' + include_dir
+    elif os.path.isdir(os.path.join(prog_files_x86, 'Windows Kits', '8.1')):
+      windows_sdk_dir = os.path.join(prog_files_x86, 'Windows Kits', '8.1')
     else:
       windows_sdk_dir = 'C:\\Program Files (x86)\\Windows Kits\\8.1'
     if not os.path.isdir(windows_sdk_dir):
       raise Exception('Windows SDK was not found in "' + windows_sdk_dir + '"! Run in Visual Studio command prompt to avoid the need to autoguess this location (or set WindowsSdkDir env var).')
 
-    env['INCLUDE'] = os.path.join(visual_studio_2013_path, 'VC\\INCLUDE')
-    env['LIB'] = os.path.join(visual_studio_2013_path, 'VC\\LIB\\amd64') + ';' + os.path.join(windows_sdk_dir, 'lib\\winv6.3\\um\\x64')
-    env['PATH'] = env['PATH'] + ';' + os.path.join(visual_studio_2013_path, 'VC\\BIN')
+    env['LIB'] = os.path.join(visual_studio_path, 'VC\\LIB\\amd64') + ';' + os.path.join(windows_sdk_dir, 'lib\\winv6.3\\um\\x64')
+    env['PATH'] = env['PATH'] + ';' + os.path.join(visual_studio_path, 'VC\\BIN')
 
   # Current configuration above is all Visual Studio -specific, so on non-Windowses, no action needed.
 

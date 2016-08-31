@@ -41,7 +41,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       symbols = filter(lambda symbol: symbol not in exclude, symbols)
     return set(symbols)
 
-  default_opts = []
+  default_opts = ['-Werror']
 
   # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
   #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
@@ -566,7 +566,7 @@ class Ports:
   @staticmethod
   def build_project(name, subdir, configure, generated_libs, post_create=None):
     def create():
-      logging.warning('building port: ' + name + '...')
+      logging.info('building port: ' + name + '...')
       port_build_dir = Ports.get_build_dir()
       shared.safe_ensure_dirs(port_build_dir)
       libs = shared.Building.build_library(name, port_build_dir, None, generated_libs, source_dir=os.path.join(Ports.get_dir(), name, subdir), copy_project=True,

@@ -1108,6 +1108,7 @@ def subprocess_env():
   e = os.environ.copy()
   # https://bugzilla.mozilla.org/show_bug.cgi?id=745154
   e['MOZ_DISABLE_AUTO_SAFE_MODE'] = '1'
+  e['MOZ_DISABLE_SAFE_MODE_KEY'] = '1' # https://bugzilla.mozilla.org/show_bug.cgi?id=653410#c9
   return e
 
 # Removes a directory tree even if it was readonly, and doesn't throw exception on failure.

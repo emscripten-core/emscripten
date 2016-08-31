@@ -647,7 +647,7 @@ Memory views should be treated like raw pointers; lifetime and validity
 are not managed by the runtime and it's easy to corrupt data if the
 underlying object is modified or deallocated.
 
-.. code::cpp
+.. code:: cpp
 
     #include <emscripten/bind.h>
     #include <emscripten/val.h>
@@ -667,7 +667,7 @@ underlying object is modified or deallocated.
 
 The calling JavaScript code will receive a typed array view into the emscripten heap:
 
-.. code::js
+.. code:: js
 
    var myUint8Array = Module.getBytes()
    var xhr = new XMLHttpRequest();
