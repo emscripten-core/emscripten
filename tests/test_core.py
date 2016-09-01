@@ -1558,7 +1558,6 @@ int main() {
 
       self.do_run_from_file(src, output, output_processor=check_warnings)
 
-  @no_wasm_backend("For some reason wasm_backend doesn't link in new[] (aka _Znam) in its libcxx unless paired with a call to delete[]")
   def test_sizeof(self):
       # Has invalid writes between printouts
       Settings.SAFE_HEAP = 0
