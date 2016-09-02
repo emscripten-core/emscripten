@@ -55,6 +55,7 @@ var LibraryGL = {
     /* { uniforms: {}, // Maps ints back to the opaque WebGLUniformLocation objects.
          maxUniformLength: int, // Cached in order to implement glGetProgramiv(GL_ACTIVE_UNIFORM_MAX_LENGTH)
          maxAttributeLength: int // Cached in order to implement glGetProgramiv(GL_ACTIVE_ATTRIBUTE_MAX_LENGTH)
+         maxUniformBlockNameLength: int // Cached in order to implement glGetProgramiv(GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH)
        } */
 
     stringCache: {},
@@ -661,7 +662,8 @@ var LibraryGL = {
       GL.programInfos[program] = {
         uniforms: {},
         maxUniformLength: 0, // This is eagerly computed below, since we already enumerate all uniforms anyway.
-        maxAttributeLength: -1 // This is lazily computed and cached, computed when/if first asked, "-1" meaning not computed yet.
+        maxAttributeLength: -1, // This is lazily computed and cached, computed when/if first asked, "-1" meaning not computed yet.
+        maxUniformBlockNameLength: -1 // Lazily computed as well
       };
 
       var ptable = GL.programInfos[program];
@@ -3369,7 +3371,8 @@ var LibraryGL = {
       return;
     }
 
-    if (!GL.programInfos[program]) {
+    var ptable = GL.programInfos[program];
+    if (!ptable) {
 #if GL_ASSERTIONS
       Module.printErr('GL_INVALID_OPERATION in glGetProgramiv(program=' + program + ', pname=' + pname + ', p=0x' + p.toString(16) + '): The specified GL object name does not refer to a program object!');
 #endif
@@ -3382,10 +3385,8 @@ var LibraryGL = {
       if (log === null) log = '(unknown error)';
       {{{ makeSetValue('p', '0', 'log.length + 1', 'i32') }}};
     } else if (pname == 0x8B87 /* GL_ACTIVE_UNIFORM_MAX_LENGTH */) {
-      var ptable = GL.programInfos[program];
       {{{ makeSetValue('p', '0', 'ptable.maxUniformLength', 'i32') }}};
     } else if (pname == 0x8B8A /* GL_ACTIVE_ATTRIBUTE_MAX_LENGTH */) {
-      var ptable = GL.programInfos[program];
       if (ptable.maxAttributeLength == -1) {
         var program = GL.programs[program];
         var numAttribs = GLctx.getProgramParameter(program, GLctx.ACTIVE_ATTRIBUTES);
@@ -3396,6 +3397,17 @@ var LibraryGL = {
         }
       }
       {{{ makeSetValue('p', '0', 'ptable.maxAttributeLength', 'i32') }}};
+    } else if (pname == 0x8A35 /* GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH */) {
+      if (ptable.maxUniformBlockNameLength == -1) {
+        var program = GL.programs[program];
+        var numBlocks = GLctx.getProgramParameter(program, GLctx.ACTIVE_UNIFORM_BLOCKS);
+        ptable.maxUniformBlockNameLength = 0;
+        for (var i = 0; i < numBlocks; ++i) {
+          var activeBlockName = GLctx.getActiveUniformBlockName(program, i);
+          ptable.maxUniformBlockNameLength = Math.max(ptable.maxAttributeLength, activeBlockName.length+1);
+        }
+      }
+      {{{ makeSetValue('p', '0', 'ptable.maxUniformBlockNameLength', 'i32') }}};
     } else {
       {{{ makeSetValue('p', '0', 'GLctx.getProgramParameter(GL.programs[program], pname)', 'i32') }}};
     }

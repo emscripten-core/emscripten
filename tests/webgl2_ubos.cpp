@@ -1,0 +1,121 @@
+#define GL_GLEXT_PROTOTYPES
+#include <GLES/gl.h>
+#include <GLES/glext.h>
+#include <GLES3/gl3.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <emscripten.h>
+#include <emscripten/html5.h>
+#include <assert.h>
+
+int result = 0;
+
+#define GL_CALL( x ) \
+    { \
+        x; \
+        GLenum error = glGetError(); \
+        if( error != GL_NO_ERROR ) { \
+            printf( "GL ERROR: %d,  %s\n", (int)error, #x ); \
+            result = 1; \
+        } \
+    } \
+
+
+int main()
+{
+  EmscriptenWebGLContextAttributes attrs;
+  emscripten_webgl_init_context_attributes(&attrs);
+
+  attrs.enableExtensionsByDefault = 1;
+  attrs.majorVersion = 2;
+  attrs.minorVersion = 0;
+
+  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context( 0, &attrs );
+  if (!context)
+  {
+    printf("Skipped: WebGL 2 is not supported.\n");
+#ifdef REPORT_RESULT
+    REPORT_RESULT();
+#endif
+    return 0;
+  }
+  emscripten_webgl_make_context_current(context);
+
+  const char *vertexShader =
+    "#version 300 es\n"
+    "uniform Block1a {\n"
+    "  uniform mat4 var1;\n"
+    "  uniform vec4 variable2;\n"
+    "} block1bb;\n"
+    "uniform Block2ccc {\n"
+    "  uniform mat4 var1;\n"
+    "  uniform vec4 variable2;\n"
+    "} block2dddd;\n"
+    "void main() {\n"
+    "  gl_Position = block1bb.var1*block1bb.variable2 + block2dddd.var1*block2dddd.variable2;\n"
+    "}\n";
+
+    const char *fragmentShader = 
+    "#version 300 es\n"
+    "precision lowp float;\n"
+    "  uniform Block3eeeee {\n"
+    "  uniform vec4 var1;\n"
+    "  uniform vec4 variable2;\n" 
+    "} block3ffffff;\n"   // Append characters of different lengths to test name string lengths.
+    "out vec4 outColor;\n"
+    "void main() {\n"
+    "  outColor = block3ffffff.var1 + block3ffffff.variable2;\n"
+    "}\n";
+
+  GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+  glShaderSource(vs, 1, &vertexShader, NULL);
+  glCompileShader(vs);
+  int ok = 0;
+  glGetShaderiv(vs, GL_COMPILE_STATUS, &ok);
+  if (!ok) {
+    printf("Shader compilation error with vertex\n");
+    GLint infoLen = 0;
+    glGetShaderiv (vs, GL_INFO_LOG_LENGTH, &infoLen);
+    if (infoLen > 1)
+    {
+       char* infoLog = (char *)malloc(sizeof(char) * infoLen+1);
+       glGetShaderInfoLog(vs, infoLen, NULL, infoLog);
+       printf("Error compiling shader:\n%s\n", infoLog);            
+    }
+  }
+
+  GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+  glShaderSource(fs, 1, &fragmentShader, NULL);
+  glCompileShader(fs);
+  glGetShaderiv(fs, GL_COMPILE_STATUS, &ok);
+  if (!ok) {
+    printf("Shader compilation error with fragment\n");
+    GLint infoLen = 0;
+    glGetShaderiv (vs, GL_INFO_LOG_LENGTH, &infoLen);
+    if (infoLen > 1)
+    {
+       char* infoLog = (char *)malloc(sizeof(char) * infoLen+1);
+       glGetShaderInfoLog(vs, infoLen, NULL, infoLog);
+       printf("Error compiling shader:\n%s\n", infoLog);            
+    }
+  }
+
+  GLuint program = glCreateProgram();
+
+  glAttachShader(program, vs);
+  glAttachShader(program, fs);
+  glLinkProgram(program);
+  glGetProgramiv(program, GL_LINK_STATUS, &ok);
+  assert(ok);
+
+  int maxLength = 0;
+  glGetProgramiv(program, GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH, &maxLength);
+  printf("GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH: %d\n", maxLength);
+  assert(maxLength == 12);
+  glUseProgram(program);
+
+#ifdef REPORT_RESULT
+  REPORT_RESULT();
+#endif
+  return 0;
+}
