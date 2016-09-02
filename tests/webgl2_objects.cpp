@@ -42,10 +42,6 @@ int main()
   }
   emscripten_webgl_make_context_current(context);
 
-  EM_BOOL enabled = emscripten_webgl_enable_extension( context, "EXT_texture_filter_anisotropic" );
-  printf("anisotropy enabled: %d\n", enabled);
-  assert(enabled == EM_TRUE);
-
   // Anisotropy
   //
   GLfloat maxAnisotropy;
