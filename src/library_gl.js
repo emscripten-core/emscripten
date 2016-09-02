@@ -2039,14 +2039,21 @@ var LibraryGL = {
 #endif
     program = GL.programs[program];
 
-    var result = GLctx['getActiveUniformBlockParameter'](program, uniformBlockIndex, pname);
-    if (!result) return; // If an error occurs, nothing will be written to params.
-    if (typeof result == 'number') {
-      {{{ makeSetValue('params', '0', 'result', 'i32') }}};
-    } else {
-      for (var i = 0; i < result.length; i++) {
-        {{{ makeSetValue('params', 'i*4', 'result[i]', 'i32') }}};
-      }
+    switch(pname) {
+      case 0x8A41: /* GL_UNIFORM_BLOCK_NAME_LENGTH */
+        var name = GLctx['getActiveUniformBlockName'](program, uniformBlockIndex);
+        {{{ makeSetValue('params', 0, 'name.length+1', 'i32') }}};
+        return;
+      default:
+        var result = GLctx['getActiveUniformBlockParameter'](program, uniformBlockIndex, pname);
+        if (!result) return; // If an error occurs, nothing will be written to params.
+        if (typeof result == 'number') {
+          {{{ makeSetValue('params', '0', 'result', 'i32') }}};
+        } else {
+          for (var i = 0; i < result.length; i++) {
+            {{{ makeSetValue('params', 'i*4', 'result[i]', 'i32') }}};
+          }
+        }
     }
   },
 

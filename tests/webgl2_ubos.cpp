@@ -112,7 +112,33 @@ int main()
   glGetProgramiv(program, GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH, &maxLength);
   printf("GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH: %d\n", maxLength);
   assert(maxLength == 12);
-  glUseProgram(program);
+
+  GLint numActiveUniformBlocks = -1;
+  glGetProgramiv(program, GL_ACTIVE_UNIFORM_BLOCKS, &numActiveUniformBlocks);
+  assert(numActiveUniformBlocks == 3);
+
+  // Dump all active uniform buffer blocks of the current program.
+  for(int i = 0; i < numActiveUniformBlocks; ++i)
+  {
+    char str[256] = {};
+    GLsizei length = -1;
+    glGetActiveUniformBlockName(program, i, 255, &length, str);
+    assert(length > 0);
+    printf("Active uniform block at index %d: %s\n", i, str);
+    
+    GLint param = -1;
+#define DUMPUNIFORMBLOCKSTATUS(stat) glGetActiveUniformBlockiv(program, i, stat, &param); printf("%s: %d\n", #stat, param);
+    DUMPUNIFORMBLOCKSTATUS(GL_UNIFORM_BLOCK_REFERENCED_BY_VERTEX_SHADER);
+    DUMPUNIFORMBLOCKSTATUS(GL_UNIFORM_BLOCK_REFERENCED_BY_FRAGMENT_SHADER);
+    DUMPUNIFORMBLOCKSTATUS(GL_UNIFORM_BLOCK_BINDING);
+    DUMPUNIFORMBLOCKSTATUS(GL_UNIFORM_BLOCK_DATA_SIZE);
+    DUMPUNIFORMBLOCKSTATUS(GL_UNIFORM_BLOCK_NAME_LENGTH);
+    DUMPUNIFORMBLOCKSTATUS(GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS);
+    GLint indices[16] = {};
+    glGetActiveUniformBlockiv(program, i, GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES, indices);
+    for(size_t i = 0; i < param; ++i)
+      printf("offset for index %d: %d\n", i, indices[i]);
+  }
 
 #ifdef REPORT_RESULT
   REPORT_RESULT();
