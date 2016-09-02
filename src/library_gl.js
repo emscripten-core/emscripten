@@ -853,6 +853,11 @@ var LibraryGL = {
               case 0x8CA6: // FRAMEBUFFER_BINDING
               case 0x8CA7: // RENDERBUFFER_BINDING
               case 0x8069: // TEXTURE_BINDING_2D
+#if USE_WEBGL2
+              case 0x85B5: // GL_VERTEX_ARRAY_BINDING
+              case 0x8919: // GL_SAMPLER_BINDING
+              case 0x8E25: // GL_TRANSFORM_FEEDBACK_BINDING
+#endif
               case 0x8514: { // TEXTURE_BINDING_CUBE_MAP
                 ret = 0;
                 break;
@@ -882,6 +887,13 @@ var LibraryGL = {
                      result instanceof WebGLProgram ||
                      result instanceof WebGLFramebuffer ||
                      result instanceof WebGLRenderbuffer ||
+#if USE_WEBGL2
+                     result instanceof WebGLQuery ||
+                     result instanceof WebGLSampler ||
+                     result instanceof WebGLSync ||
+                     result instanceof WebGLTransformFeedback ||
+                     result instanceof WebGLVertexArrayObject ||
+#endif
                      result instanceof WebGLTexture) {
             ret = result.name | 0;
           } else {
