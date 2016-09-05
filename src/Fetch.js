@@ -57,6 +57,8 @@ var Fetch = {
         Fetch.initFetchWorker();
         removeRunDependency('library_fetch_init');
       }
+#else
+      removeRunDependency('library_fetch_init');
 #endif
     };
     var onerror = function() {
@@ -92,6 +94,8 @@ var Fetch = {
         Module['printErr']('fetch-worker sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
       };
     }
+#else
+    addRunDependency('library_fetch_init');
 #endif
   }
 }
@@ -183,7 +187,7 @@ function __emscripten_fetch_load_cached_data(db, fetch, onsuccess, onerror) {
       } else {
         // Succeeded to load, but the load came back with the value of undefined, treat that as an error since we never store undefined in db.
 #if FETCH_DEBUG
-        console.error('fetch: Loaded file ' + pathStr + ' from IndexedDB, but it had 0 length!');
+        console.error('fetch: File ' + pathStr + ' not found in IndexedDB');
 #endif
         HEAPU16[fetch + 40 >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
         HEAPU16[fetch + 42 >> 1] = 404; // Mimic XHR HTTP status code 404 "Not Found"
@@ -344,7 +348,10 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
       Fetch.setu64(fetch + 32, len);//{{{ makeSetValue('fetch', 32/*TODO:jsonify*/, 'len', 'i64')}}};
     }
     HEAPU16[fetch + 40 >> 1] = xhr.readyState;
-    if (xhr.readyState === 4 && xhr.status === 0 && len > 0) xhr.status = 200; // If loading files from a source that does not give HTTP status code, assume success if we got data bytes
+    if (xhr.readyState === 4 && xhr.status === 0) {
+      if (len > 0) xhr.status = 200; // If loading files from a source that does not give HTTP status code, assume success if we got data bytes.
+      else xhr.status = 404; // Conversely, no data bytes is 404.
+    }
     HEAPU16[fetch + 42 >> 1] = xhr.status;
 //    if (xhr.statusText) stringToUTF8(fetch + 44, xhr.statusText, 64);
     if (xhr.status == 200) {
@@ -360,19 +367,26 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
     }
   }
   xhr.onerror = function(e) {
+    var status = xhr.status; // XXX TODO: Overwriting xhr.status doesn't work here, so don't override anywhere else either.
+    if (xhr.readyState == 4 && status == 0) status = 404; // If no error recorded, pretend it was 404 Not Found.
 #if FETCH_DEBUG
-    console.error('fetch: xhr failed with error ' + e);
+    console.error('fetch: xhr error with readyState ' + xhr.readyState + ' and status ' + status);
 #endif
+    HEAPU32[fetch + 12 >> 2] = 0;
+    Fetch.setu64(fetch + 16, 0);
+    Fetch.setu64(fetch + 24, 0);
+    Fetch.setu64(fetch + 32, 0);
+    HEAPU16[fetch + 40 >> 1] = xhr.readyState;
+    HEAPU16[fetch + 42 >> 1] = status;
     if (onerror) onerror(fetch, xhr, e);
   }
   xhr.ontimeout = function(e) {
 #if FETCH_DEBUG
-    console.error('fetch: xhr timed out with error ' + e);
+    console.error('fetch: xhr timed out with readyState ' + xhr.readyState + ' and status ' + xhr.status);
 #endif
     if (onerror) onerror(fetch, xhr, e);
   }
   xhr.onprogress = function(e) {
-    console.log('fetch ptr ' + fetch + ', state ' + HEAPU32[fetch + 108 >> 2]);
     var ptrLen = (fetchAttrLoadToMemory && fetchAttrStreamData && xhr.response) ? xhr.response.byteLength : 0;
     var ptr = 0;
     if (fetchAttrLoadToMemory && fetchAttrStreamData) {
