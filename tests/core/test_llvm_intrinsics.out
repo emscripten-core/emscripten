@@ -5,6 +5,7 @@ c5,de,15,8a
 23,21
 40,10
 5,4
+small ctlz: 6,14
 llvm_ctpop_i32:
 22
 24

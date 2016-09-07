@@ -4,6 +4,8 @@
 extern "C" {
 extern unsigned short llvm_bswap_i16(unsigned short x);
 extern unsigned int llvm_bswap_i32(unsigned int x);
+extern int32_t llvm_ctlz_i8(int8_t x, int izZeroUndef);
+extern int32_t llvm_ctlz_i16(int16_t x, int izZeroUndef);
 extern int32_t llvm_ctlz_i32(int32_t x, int izZeroUndef);
 extern int64_t llvm_ctlz_i64(int64_t x, int izZeroUndef);
 extern int32_t llvm_cttz_i32(int32_t x, int izZeroUndef);
@@ -46,6 +48,8 @@ int main(void) {
          llvm_cttz_i32(1 << 10, 0));
   printf("%d,%d\n", (int)llvm_ctpop_i64((0x3101ULL << 32) | 1),
          llvm_ctpop_i32(0x3101));
+
+  printf("small ctlz: %d,%d\n", (int)llvm_ctlz_i8(2, 0), llvm_ctlz_i16(2, 0));
 
   printf("llvm_ctpop_i32:\n");
   printf("%d\n", (int)llvm_ctpop_i32(-594093059)); // 22
