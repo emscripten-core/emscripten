@@ -131,7 +131,7 @@ else if (ENVIRONMENT_IS_SHELL) {
   if (typeof read != 'undefined') {
     Module['read'] = read;
   } else {
-    Module['read'] = function read() { throw 'no read() available (jsc?)' };
+    Module['read'] = function read() { throw 'no read() available' };
   }
 
   Module['readBinary'] = function readBinary(f) {
