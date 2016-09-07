@@ -946,6 +946,22 @@ LibraryManager.library = {
     {{{ makeStructuralReturn(['retl', 'reth']) }}};
   },
 
+  llvm_ctlz_i8__asm: true,
+  llvm_ctlz_i8__sig: 'ii',
+  llvm_ctlz_i8: function(x, isZeroUndef) {
+    x = x | 0;
+    isZeroUndef = isZeroUndef | 0;
+    return (Math_clz32(x) | 0) - 24 | 0;
+  },
+
+  llvm_ctlz_i16__asm: true,
+  llvm_ctlz_i16__sig: 'ii',
+  llvm_ctlz_i16: function(x, isZeroUndef) {
+    x = x | 0;
+    isZeroUndef = isZeroUndef | 0;
+    return (Math_clz32(x) | 0) - 16 | 0
+  },
+
   llvm_ctlz_i64__asm: true,
   llvm_ctlz_i64__sig: 'iii',
   llvm_ctlz_i64: function(l, h, isZeroUndef) {
@@ -1461,6 +1477,21 @@ LibraryManager.library = {
   llvm_trunc_f64: 'Math_trunc',
   llvm_floor_f32: 'Math_floor',
   llvm_floor_f64: 'Math_floor',
+
+  llvm_exp2_f32: function(x) {
+    return Math.pow(2, x);
+  },
+  llvm_exp2_f64: 'llvm_exp2_f32',
+
+  llvm_log2_f32: function(x) {
+    return Math.log(x) / Math.LN2; // TODO: Math.log2, when browser support is there
+  },
+  llvm_log2_f64: 'llvm_log2_f32',
+
+  llvm_log10_f32: function(x) {
+    return Math.log(x) / Math.LN10; // TODO: Math.log10, when browser support is there
+  },
+  llvm_log10_f64: 'llvm_log10_f32',
 
   llvm_copysign_f32: function(x, y) {
     return y < 0 || (y === 0 && 1/y < 0) ? -Math_abs(x) : Math_abs(x);
