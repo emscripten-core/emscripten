@@ -141,7 +141,11 @@ while 1:
 
   def execute_js(engine):
     print '(run in %s)' % engine
-    js = shared.run_js(filename + '.js', engine=engine, check_timeout=True, assert_returncode=None)
+    try:
+      js = shared.run_js(filename + '.js', engine=engine, check_timeout=True, assert_returncode=None)
+    except:
+      print 'failed to run in primary'
+      return False
     js = js.split('\n')[0] + '\n' # remove any extra printed stuff (node workarounds)
     return correct1 == js or correct2 == js
 
@@ -168,7 +172,7 @@ while 1:
     try:
       js2 = shared.run_js(filename + '.js', stderr=PIPE, engine=engine2 + ['-w'], full_output=True, check_timeout=True, assert_returncode=None)
     except:
-      print 'failed to run in secondary', js2
+      print 'failed to run in secondary'
       break
 
     # asm.js testing
