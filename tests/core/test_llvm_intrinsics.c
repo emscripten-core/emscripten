@@ -19,6 +19,12 @@ extern float llvm_floor_f32(float x);
 extern double llvm_floor_f64(double x);
 extern float llvm_sin_f32(float x);
 extern double llvm_sin_f64(double x);
+extern float llvm_exp2_f32(float x);
+extern double llvm_exp2_f64(double x);
+extern float llvm_log2_f32(float x);
+extern double llvm_log2_f64(double x);
+extern float llvm_log10_f32(float x);
+extern double llvm_log10_f64(double x);
 }
 
 int main(void) {
@@ -66,6 +72,15 @@ int main(void) {
   printf("%d\n", (int)llvm_floor_f64(-8.95));
   printf("%.1f\n", llvm_sin_f32(90.0f * 3.14/180));
   printf("%.1f\n", llvm_sin_f64(270.0 * 3.14/180));
+
+  printf("exp2_f32 %.1f\n", llvm_exp2_f32(3));
+  printf("exp2_f64 %.1f\n", llvm_exp2_f64(4.5));
+  printf("log2_f32 %.1f\n", llvm_log2_f32(16));
+  printf("log2_f64 %.1f\n", llvm_log2_f64(20));
+  printf("log10_f32 %.1f\n", llvm_log10_f32(1000));
+  printf("log10_f64 %.1f\n", llvm_log10_f64(2000));
+
+  printf("ok.\n");
 
   return 0;
 }

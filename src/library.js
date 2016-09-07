@@ -1462,6 +1462,21 @@ LibraryManager.library = {
   llvm_floor_f32: 'Math_floor',
   llvm_floor_f64: 'Math_floor',
 
+  llvm_exp2_f32: function(x) {
+    return Math.pow(2, x);
+  },
+  llvm_exp2_f64: 'llvm_exp2_f32',
+
+  llvm_log2_f32: function(x) {
+    return Math.log(x) / Math.LN2; // TODO: Math.log2, when browser support is there
+  },
+  llvm_log2_f64: 'llvm_log2_f32',
+
+  llvm_log10_f32: function(x) {
+    return Math.log(x) / Math.LN10; // TODO: Math.log10, when browser support is there
+  },
+  llvm_log10_f64: 'llvm_log10_f32',
+
   llvm_copysign_f32: function(x, y) {
     return y < 0 || (y === 0 && 1/y < 0) ? -Math_abs(x) : Math_abs(x);
   },
