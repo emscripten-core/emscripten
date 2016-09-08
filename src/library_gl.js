@@ -803,12 +803,6 @@ var LibraryGL = {
         var formats = GLctx.getParameter(0x86A3 /*GL_COMPRESSED_TEXTURE_FORMATS*/);
         ret = formats.length;
         break;
-      case 0x8B9A: // GL_IMPLEMENTATION_COLOR_READ_TYPE
-        ret = 0x1401; // GL_UNSIGNED_BYTE
-        break;
-      case 0x8B9B: // GL_IMPLEMENTATION_COLOR_READ_FORMAT
-        ret = 0x1908; // GL_RGBA
-        break;
 #if USE_WEBGL2
       case 0x821D: // GL_NUM_EXTENSIONS
         if (GLctx.canvas.GLctxObject.version < 2) {
