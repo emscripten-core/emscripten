@@ -15,7 +15,7 @@
 // can continue to use Module afterwards as well.
 var Module;
 #if USE_CLOSURE_COMPILER
-if (!Module) Module = eval('(function() { try { return {{{ EXPORT_NAME }}} || {} } catch(e) { return {} } })()');
+if (!Module) Module = eval('(function() { try { return Module } catch(e) { return {} } })()');
 #else
 if (!Module) Module = (typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : null) || {};
 #endif
