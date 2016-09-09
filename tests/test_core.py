@@ -529,7 +529,7 @@ int main()
         Settings.MAIN_MODULE = 1
         self.do_run_from_file(src, output)
 
-  @no_wasm_backend()
+  @no_wasm_backend('frexp seems to be failing. printf relies on frexp for float formatting, so that probably causes the print failure')
   def test_frexp(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_frexp')
 
@@ -1475,70 +1475,10 @@ int main() {
   def test_mod_globalstruct(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_mod_globalstruct')
 
-  @no_wasm_backend()
+  @no_wasm_backend('specific alignment semantics may be asmjs-specific?')
   def test_pystruct(self):
-      src = '''
-        #include <stdio.h>
-
-        // Based on CPython code
-        union PyGC_Head {
-            struct {
-                union PyGC_Head *gc_next;
-                union PyGC_Head *gc_prev;
-                size_t gc_refs;
-            } gc;
-            long double dummy;  /* force worst-case alignment */
-        } ;
-
-        struct gc_generation {
-            PyGC_Head head;
-            int threshold; /* collection threshold */
-            int count; /* count of allocations or collections of younger
-                          generations */
-        };
-
-        #define NUM_GENERATIONS 3
-        #define GEN_HEAD(n) (&generations[n].head)
-
-        /* linked lists of container objects */
-        static struct gc_generation generations[NUM_GENERATIONS] = {
-            /* PyGC_Head,                               threshold,      count */
-            {{{GEN_HEAD(0), GEN_HEAD(0), 0}},           700,            0},
-            {{{GEN_HEAD(1), GEN_HEAD(1), 0}},           10,             0},
-            {{{GEN_HEAD(2), GEN_HEAD(2), 0}},           10,             0},
-        };
-
-        int main()
-        {
-          gc_generation *n = NULL;
-          printf("*%d,%d,%d,%d,%d,%d,%d,%d*\\n",
-            (int)(&n[0]),
-            (int)(&n[0].head),
-            (int)(&n[0].head.gc.gc_next),
-            (int)(&n[0].head.gc.gc_prev),
-            (int)(&n[0].head.gc.gc_refs),
-            (int)(&n[0].threshold), (int)(&n[0].count), (int)(&n[1])
-          );
-          printf("*%d,%d,%d*\\n",
-            (int)(&generations[0]) ==
-            (int)(&generations[0].head.gc.gc_next),
-            (int)(&generations[0]) ==
-            (int)(&generations[0].head.gc.gc_prev),
-            (int)(&generations[0]) ==
-            (int)(&generations[1])
-          );
-          int x1 = (int)(&generations[0]);
-          int x2 = (int)(&generations[1]);
-          printf("*%d*\\n", x1 == x2);
-          for (int i = 0; i < NUM_GENERATIONS; i++) {
-            PyGC_Head *list = GEN_HEAD(i);
-            printf("%d:%d,%d\\n", i, (int)list == (int)(list->gc.gc_prev), (int)list ==(int)(list->gc.gc_next));
-          }
-          printf("*%d,%d,%d*\\n", sizeof(PyGC_Head), sizeof(gc_generation), int(GEN_HEAD(2)) - int(GEN_HEAD(1)));
-        }
-      '''
       def test():
-        self.do_run(src, '*0,0,0,4,8,16,20,24*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*16,24,24*')
+        self.do_run_in_out_file_test('tests', 'test_pystruct')
 
       test()
 
@@ -1553,10 +1493,8 @@ int main() {
       def check_warnings(output):
           runner.assertEquals(filter(lambda line: 'Warning' in line, output.split('\n')).__len__(), 4)
 
-      test_path = path_from_root('tests', 'core', 'test_ptrtoint')
-      src, output = (test_path + s for s in ('.c', '.out'))
-
-      self.do_run_from_file(src, output, output_processor=check_warnings)
+      self.do_run_in_out_file_test('tests', 'core', 'test_ptrtoint',
+                                   output_processor=check_warnings)
 
   def test_sizeof(self):
       # Has invalid writes between printouts
@@ -1569,13 +1507,12 @@ int main() {
 
     self.do_run_in_out_file_test('tests', 'core', 'test_llvm_used')
 
-  @no_wasm_backend()
   def test_set_align(self):
     Settings.SAFE_HEAP = 1
 
     self.do_run_in_out_file_test('tests', 'core', 'test_set_align')
 
-  @no_wasm_backend()
+  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_emscripten_api(self):
       check = '''
 def process(filename):
@@ -1914,13 +1851,13 @@ int main() {
 59899: 598995989959899
 Success!''')
 
-  @no_wasm_backend()
+  @no_wasm_backend("WebAssembly hasn't implemented computed gotos")
   def test_indirectbr(self):
       Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS)
 
       self.do_run_in_out_file_test('tests', 'core', 'test_indirectbr')
 
-  @no_wasm_backend()
+  @no_wasm_backend("WebAssembly hasn't implemented computed gotos")
   def test_indirectbr_many(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_indirectbr_many')
 
@@ -4215,7 +4152,7 @@ Pass: 0.000012 0.000012''')
   def test_sscanf_5(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_5')
 
-  @no_wasm_backend('sscanf seems to be rewriting local unmentioned variables')
+  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_6(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_6')
 
