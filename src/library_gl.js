@@ -7416,8 +7416,8 @@ glFuncs.forEach(function(data) {
   var num = data[0];
   var names = data[1];
   var args = range(num).map(function(i) { return 'x' + i }).join(', ');
-  var plainStub = '(function(' + args + ') { GLctx.NAME(' + args + ') })';
-  var returnStub = '(function(' + args + ') { return GLctx.NAME(' + args + ') })';
+  var plainStub = '(function(' + args + ') { GLctx[\'NAME\'](' + args + ') })';
+  var returnStub = '(function(' + args + ') { return GLctx[\'NAME\'](' + args + ') })';
   var sigEnd = range(num).map(function() { return 'i' }).join('');
   names.split(' ').forEach(function(name) {
     if (name.length == 0) return;
