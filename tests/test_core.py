@@ -1955,9 +1955,13 @@ Success!''')
         '''
       self.do_run(src, '*4,3,4*\n*6,4,6*')
 
-  @no_wasm_backend()
   def test_varargs(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_varargs')
+
+  @no_wasm_backend('Calling varargs across function calls is undefined behavior in C,'
+                   ' and asmjs and wasm implement it differently.')
+  def test_varargs_multi(self):
+      self.do_run_in_out_file_test('tests', 'core', 'test_varargs_multi')
 
   def test_varargs_byval(self):
     return self.skip('clang cannot compile this code with that target yet')
