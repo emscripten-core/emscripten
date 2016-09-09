@@ -274,20 +274,23 @@ In this case, the onsuccess() handler will not receive the final file buffer at 
 Byte Range Downloads
 --------------------
 
+Large files can also be managed in smaller chunks by performing Byte Range downloads on them. This initiates an XHR or IndexedDB transfer that only fetches the desired subrange of the whole file. This is useful for example when a large package file contains multiple smaller ones at certain seek offsets, which can be dealt with separately.
+
 TODO: Example about how to perform HTTP Byte Range Requests to obtain parts of files.
 
 TODO To Document
 ===============
 
-TODO for the following tasks/examples:
+Emscripten_fetch() supports the following operations as well, that need documenting:
 
  - Emscripten_fetch can be used to upload files to remote servers via HTTP PUT
  - Emscripten_fetch_attr_t allows setting custom HTTP request headers (e.g. for cache control)
- - Document HTTP simple auth
- - Document how to populate to a certain filesystem path location in IndexedB, and fopen() afterwards
- - Document overriddenMimeType
- - Reference documentation of the individual fields
- - Example about loading only from IndexedDB without XHRing
- - Example about overriding an existing file in IndexedDB with a new XHR
- - Example how to preload a whole filesystem
- - Example how to persist content as gzipped to IndexedDB and decompress on load
+ - Document HTTP simple auth fields in Emscripten_fetch_attr_t.
+ - Document how to populate to a certain filesystem path location in IndexedB, and e.g. fopen() it via ASMFS afterwards.
+ - Document overriddenMimeType attribute in Emscripten_fetch_attr_t.
+ - Reference documentation of the individual fields in Emscripten_fetch_attr_t, Emscripten_fetch_t and #defines.
+ - Example about loading only from IndexedDB without XHRing.
+ - Example about overriding an existing file in IndexedDB with a new XHR.
+ - Example how to preload a whole filesystem to IndexedDB for easy replacement of --preload-file.
+ - Example how to persist content as gzipped to IndexedDB and decompress on load.
+ - Example how to abort and resume partial transfers to IndexedDB.
