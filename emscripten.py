@@ -1343,6 +1343,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
     s2wasm_args += ['--emscripten-glue']
     s2wasm_args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
     s2wasm_args += ['--initial-memory=%d' % shared.Settings.TOTAL_MEMORY]
+    s2wasm_args += ['--allow-memory-growth'] if shared.Settings.ALLOW_MEMORY_GROWTH else []
     def compiler_rt_fail(): raise Exception('Expected wasm_compiler_rt.a to already be built')
     compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', lambda: compiler_rt_fail(), 'a')
     s2wasm_args += ['-l', compiler_rt_lib]
