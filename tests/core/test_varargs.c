@@ -52,18 +52,6 @@ void varargs_listoffsets_args(int type, int count, ...) {
   varags_listoffsets_list_copy(count, ap, 2);
   varags_listoffsets_list_copy(count, ap, 3);
   varags_listoffsets_list_copy(count, ap, 4);
-
-  varargs_listoffsets_list_evaluate(count, ap, 1);
-
-  // NOTE: we expect this test to fail, so we will check the stdout for
-  // <BAD+0><BAD+1>.....
-  varargs_listoffsets_list_evaluate(count, ap, 2);
-
-  // NOTE: this test has to work again, as we restart the list
-  va_end(ap);
-  va_start(ap, count);
-  varargs_listoffsets_list_evaluate(count, ap, 3);
-  va_end(ap);
 }
 
 void varargs_listoffsets_main() {
