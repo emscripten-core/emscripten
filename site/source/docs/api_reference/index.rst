@@ -18,6 +18,9 @@ This section lists Emscripten's public API, organised by header file. At a very 
 - :ref:`Filesystem-API` (**library_fs.js**): 
 	APIs for managing file systems and synchronous file operations.
 
+- :ref:`Fetch API`:
+ 	API for managing accesses to network XHR and IndexedDB.
+
 - :ref:`Module`: 
 	Global JavaScript object that can be used to control code execution and access exported methods.
 
@@ -41,6 +44,7 @@ This section lists Emscripten's public API, organised by header file. At a very 
    html5.h
    preamble.js
    Filesystem-API
+   fetch
    module
    val.h
    bind.h

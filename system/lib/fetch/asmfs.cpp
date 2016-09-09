@@ -372,7 +372,10 @@ static inode *find_inode(const char *path, int *out_errno)
 // Debug function that dumps out the filesystem tree to console.
 void emscripten_dump_fs_tree(inode *root, char *path)
 {
-	printf("%s:\n", path);
+	char str[256];
+	sprintf(str,"%s:", path);
+	EM_ASM_INT( { Module['print'](Pointer_stringify($0)) }, str);
+
 	// Print out:
 	// file mode | number of links | owner name | group name | file size in bytes | file last modified time | path name
 	// which aligns with "ls -AFTRl" on console
@@ -380,7 +383,7 @@ void emscripten_dump_fs_tree(inode *root, char *path)
 	uint64_t totalSize = 0;
 	while(child)
 	{
-		printf("%c%c%c%c%c%c%c%c%c%c  %d user%u group%u %u Jan 1 1970 %s%c\n",
+		sprintf(str,"%c%c%c%c%c%c%c%c%c%c  %d user%u group%u %u Jan 1 1970 %s%c",
 			child->type == INODE_DIR ? 'd' : '-',
 			(child->mode & S_IRUSR) ? 'r' : '-',
 			(child->mode & S_IWUSR) ? 'w' : '-',
@@ -397,10 +400,14 @@ void emscripten_dump_fs_tree(inode *root, char *path)
 			child->size,
 			child->name,
 			child->type == INODE_DIR ? '/' : ' ');
+		EM_ASM_INT( { Module['print'](Pointer_stringify($0)) }, str);
+
 		totalSize += child->size;
 		child = child->sibling;
 	}
-	printf("total %llu bytes\n\n", totalSize);
+
+	sprintf(str, "total %llu bytes\n", totalSize);
+	EM_ASM_INT( { Module['print'](Pointer_stringify($0)) }, str);
 
 	child = root->child;
 	char *path_end = path + strlen(path);
@@ -418,6 +425,7 @@ void emscripten_dump_fs_tree(inode *root, char *path)
 
 void emscripten_dump_fs_root()
 {
+	EM_ASM({ Module['printErr']('emscripten_dump_fs_root()') });
 	char path[PATH_MAX] = "/";
 	emscripten_dump_fs_tree(filesystem_root(), path);
 }

@@ -107,6 +107,7 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeou
 // #ifdef FETCH_DEBUG
 	EM_ASM({ console.log('fetch: emscripten_fetch_wait..') });
 // #endif
+	// TODO: timeoutMsecs is currently ignored. Return EMSCRIPTEN_RESULT_TIMED_OUT on timeout.
 	while(proxyState == 1/*sent to proxy worker*/)
 	{
 		emscripten_futex_wait(&fetch->__proxyState, proxyState, 100 /*TODO HACK:Sleep sometimes doesn't wake up?*/);//timeoutMsecs);
