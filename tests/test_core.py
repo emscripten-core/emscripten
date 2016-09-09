@@ -2078,66 +2078,13 @@ The current type of b is: 9
       generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
       print >> sys.stderr, 'skipping C/C++ conventions warning check, since not i386-pc-linux-gnu'
 
-  @no_wasm_backend()
+  @no_wasm_backend('qsort is sorting improperly')
   def test_stdlibs(self):
       # safe heap prints a warning that messes up our output.
       Settings.SAFE_HEAP = 0
-      src = '''
-        #include <stdio.h>
-        #include <stdlib.h>
-        #include <ctype.h>
-        #include <sys/time.h>
+      self.do_run_in_out_file_test('tests', 'core', 'test_stdlibs')
 
-        void clean()
-        {
-          printf("*cleaned*\\n");
-        }
-
-        int comparer(const void *a, const void *b) {
-          int aa = *((int*)a);
-          int bb = *((int*)b);
-          return aa - bb;
-        }
-
-        int main() {
-          // timeofday
-          timeval t;
-          gettimeofday(&t, NULL);
-          printf("*%d,%d\\n", int(t.tv_sec), int(t.tv_usec)); // should not crash
-
-          // atexit
-          atexit(clean);
-
-          // qsort
-          int values[6] = { 3, 2, 5, 1, 5, 6 };
-          qsort(values, 5, sizeof(int), comparer);
-          printf("*%d,%d,%d,%d,%d,%d*\\n", values[0], values[1], values[2], values[3], values[4], values[5]);
-
-          printf("*stdin==0:%d*\\n", stdin == 0); // check that external values are at least not NULL
-          printf("*%%*\\n");
-          printf("*%.1ld*\\n", 5);
-
-          printf("*%.1f*\\n", strtod("66", NULL)); // checks dependency system, as our strtod needs _isspace etc.
-
-          printf("*%ld*\\n", strtol("10", NULL, 0));
-          printf("*%ld*\\n", strtol("0", NULL, 0));
-          printf("*%ld*\\n", strtol("-10", NULL, 0));
-          printf("*%ld*\\n", strtol("12", NULL, 16));
-
-          printf("*%lu*\\n", strtoul("10", NULL, 0));
-          printf("*%lu*\\n", strtoul("0", NULL, 0));
-          printf("*%lu*\\n", strtoul("-10", NULL, 0));
-
-          printf("*malloc(0)!=0:%d*\\n", malloc(0) != 0); // We should not fail horribly
-
-          printf("tolower_l: %c\\n", tolower_l('A', 0));
-
-          return 0;
-        }
-        '''
-
-      self.do_run(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*66.0*\n*10*\n*0*\n*-10*\n*18*\n*10*\n*0*\n*4294967286*\n*malloc(0)!=0:1*\ntolower_l: a\n*cleaned*')
-
+  def test_stdbool(self):
       src = r'''
         #include <stdio.h>
         #include <stdbool.h>
