@@ -30,6 +30,8 @@ var LibraryPThreadStub = {
   pthread_mutex_init: function() {},
   pthread_mutex_destroy: function() {},
   pthread_mutexattr_init: function() {},
+  pthread_mutexattr_setschedparam: function() {},
+  pthread_mutexattr_setprotocol: function() {},
   pthread_mutexattr_settype: function() {},
   pthread_mutexattr_destroy: function() {},
 
@@ -185,15 +187,23 @@ var LibraryPThreadStub = {
   pthread_spin_unlock: function() { return 0; },
 
   pthread_attr_setdetachstate: function() {},
+  pthread_att_setstacksize: function() {},
 
   pthread_create: function() {
     return {{{ cDefine('EAGAIN') }}};
   },
+  pthread_cancel: function() {},
   pthread_exit: function() {},
 
   pthread_equal: function() {},
   pthread_join: function() {},
   pthread_detach: function() {},
+
+  sem_init: function() {},
+  sem_post: function() {},
+  sem_wait: function() {},
+  sem_trywait: function() {},
+  sem_destroy: function() {},
 
   // When pthreads is not enabled, we can't use the Atomics futex api to do proper sleeps, so simulate a busy spin wait loop instead.
   usleep: function(useconds) {
