@@ -6538,3 +6538,30 @@ int main() {
           for f in files:
             try_delete(f)
 
+  def test_binaryen_and_js_opts(self):
+    if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+
+    try:
+      os.environ['EMCC_DEBUG'] = '1'
+      for args, expect in [
+          ([], False),
+          (['-O0'], False),
+          (['-O1'], False),
+          (['-O2'], False),
+          (['-O2', '--js-opts', '1'], True), # user asked
+          (['-O2', '-s', 'EMTERPRETIFY=1'], True), # option forced
+          (['-O2', '-s', 'EVAL_CTORS=1'], True), # option forced
+          (['-O2', '-s', 'OUTLINING_LIMIT=1000'], True), # option forced
+          (['-O2', '-s', "BINARYEN_METHOD='interpret-binary,asmjs'"], True), # asmjs in methods means we need good asm.js
+          (['-O3'], False),
+          (['-Oz'], True), # for removing duplicate funcs
+        ]:
+        print args, expect
+        try_delete('a.out.js')
+        with clean_write_access_to_canonical_temp_dir():
+          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'BINARYEN=1'], stdout=PIPE, stderr=PIPE).communicate()
+        assert expect == ('applying js optimization passes:' in err)
+        self.assertContained('hello, world!', run_js('a.out.js'))
+    finally:
+      del os.environ['EMCC_DEBUG']
+
