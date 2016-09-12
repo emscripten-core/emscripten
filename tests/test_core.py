@@ -2144,9 +2144,10 @@ The current type of b is: 9
     src = open(path_from_root('tests', 'termios', 'test_tcgetattr.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
-  @no_wasm_backend()
+  @no_wasm_backend("tzname is included in library.js, but s2wasm doesn't know about it "
+                   "at link time")
   def test_time(self):
-    src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
+    src = open(path_from_root('tests', 'time', 'src.cpp'), 'r').read()
     expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
     self.do_run(src, expected);
 
@@ -2154,7 +2155,8 @@ The current type of b is: 9
     # Confirms they are called in reverse order
     self.do_run_in_out_file_test('tests', 'core', 'test_timeb')
 
-  @no_wasm_backend()
+  @no_wasm_backend('ctime relies on stackSave/stackRestore that is only generated in asmjs; '
+                   'need to implement something similar in s2wasm')
   def test_time_c(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_time_c')
 
@@ -2164,14 +2166,14 @@ The current type of b is: 9
   def test_strptime_tm(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strptime_tm')
 
-  @no_wasm_backend()
   def test_strptime_days(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strptime_days')
 
   def test_strptime_reentrant(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strptime_reentrant')
 
-  @no_wasm_backend()
+  @no_wasm_backend("tzname is included in library.js, but s2wasm doesn't know about it "
+                   "at link time")
   def test_strftime(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strftime')
 
