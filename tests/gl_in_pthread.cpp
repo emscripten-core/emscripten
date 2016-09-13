@@ -17,6 +17,8 @@ EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx;
 int threadRunning = 0;
 int numThreadsCreated = 0;
 
+int result = 0;
+
 void *ThreadMain(void *arg)
 {
   switch(numThreadsCreated)
@@ -66,7 +68,7 @@ void CreateThread()
   {
     printf("Test Skipped! OffscreenCanvas is not supported!\n");
 #ifdef REPORT_RESULT
-    int result = 1; // But report success, so that runs on non-supporting browsers don't raise noisy errors.
+    result = 1; // But report success, so that runs on non-supporting browsers don't raise noisy errors.
     REPORT_RESULT();
 #endif
     exit(0);
@@ -76,13 +78,6 @@ void CreateThread()
   ++numThreadsCreated;
 }
 
-int result = 0;
-
-void PollTestExit(void *)
-{
-  emscripten_async_call(PollTestExit, 0, 1000);
-}
-
 void PollThreadExit(void *)
 {
   if (!emscripten_atomic_load_u32(&threadRunning))
@@ -90,6 +85,9 @@ void PollThreadExit(void *)
     if (numThreadsCreated >= 3)
     {
       emscripten_atomic_store_u32(&result, 1);
+#ifdef REPORT_RESULT
+      REPORT_RESULT();
+#endif
       return;
     }
     else
@@ -105,7 +103,6 @@ void *mymain(void*)
   EM_ASM(Module['noExitRuntime'] = true;);
   CreateThread();
   emscripten_async_call(PollThreadExit, 0, 1000);
-  emscripten_async_call(PollTestExit, 0, 1000);
   return 0;
 }
 
@@ -123,7 +120,7 @@ int main()
   {
     printf("Test Skipped! OffscreenCanvas is not supported!\n");
 #ifdef REPORT_RESULT
-    int result = 1; // But report success, so that runs on non-supporting browsers don't raise noisy errors.
+    result = 1; // But report success, so that runs on non-supporting browsers don't raise noisy errors.
     REPORT_RESULT();
 #endif
     exit(0);
