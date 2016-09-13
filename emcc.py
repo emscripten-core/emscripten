@@ -1191,6 +1191,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.Settings.BINARYEN_ROOT = shared.BINARYEN_ROOT
         except:
           pass
+      # default precise-f32 to on, since it works well in wasm
+      if 'PRECISE_F32=0' not in settings_changes and 'PRECISE_F32=2' not in settings_changes:
+        shared.Settings.PRECISE_F32 = 1
       if js_opts and not force_js_opts and 'asmjs' not in shared.Settings.BINARYEN_METHOD:
         js_opts = None
         logging.debug('asm.js opts not forced by user or an option that depends them, and we do not intend to run the asm.js, so disabling and leaving opts to the binaryen optimizer')

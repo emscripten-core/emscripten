@@ -6565,3 +6565,23 @@ int main() {
     finally:
       del os.environ['EMCC_DEBUG']
 
+  def test_binaryen_and_precise_f32(self):
+    if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+
+    try:
+      os.environ['EMCC_DEBUG'] = '1'
+      for args, expect in [
+          ([], True),
+          (['-s', 'PRECISE_F32=0'], False), # explicitly disabled
+          (['-s', 'PRECISE_F32=1'], True),
+          (['-s', 'PRECISE_F32=2'], True),
+        ]:
+        print args, expect
+        try_delete('a.out.js')
+        with clean_write_access_to_canonical_temp_dir():
+          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'BINARYEN=1'], stdout=PIPE, stderr=PIPE).communicate()
+        assert expect == (' -emscripten-precise-f32' in err)
+        self.assertContained('hello, world!', run_js('a.out.js'))
+    finally:
+      del os.environ['EMCC_DEBUG']
+
