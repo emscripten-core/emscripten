@@ -4367,7 +4367,6 @@ name: .
     src = open(path_from_root('tests', 'stat', 'test_mknod.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
-  @no_wasm_backend()
   def test_fcntl(self):
     add_pre_run = '''
 def process(filename):
