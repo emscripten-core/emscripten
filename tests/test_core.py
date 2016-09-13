@@ -4470,7 +4470,6 @@ def process(filename):
   def test_direct_string_constant_usage(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_direct_string_constant_usage')
 
-  @no_wasm_backend()
   def test_std_cout_new(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_std_cout_new')
 
