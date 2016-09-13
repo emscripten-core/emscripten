@@ -2112,6 +2112,10 @@ Module["preRun"].push(function () {
       print opts
       self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts, expected='0', timeout=20)
 
+  # Verify bug https://github.com/kripken/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
+  def test_html5_webgl_create_context2(self):
+    self.btest(path_from_root('tests', 'webgl_create_context2.cpp'), args=['--shell-file', path_from_root('tests', 'webgl_create_context2_shell.html')], expected='0', timeout=20)
+
   def test_html5_webgl_destroy_context(self):
     for opts in [[], ['-O2', '-g1'], ['-s', 'FULL_ES2=1']]:
       print opts

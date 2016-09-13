@@ -1792,9 +1792,11 @@ var LibraryJSEvents = {
     var canvas;
     if (target) {
       if (target === '#canvas' && Module['canvas']) {
+        canvas = Module['canvas'];
         target = Module['canvas'].id;
+      } else {
+        canvas = GL.offscreenCanvases[target] || JSEvents.findEventTarget(target);
       }
-      canvas = GL.offscreenCanvases[target] || JSEvents.findEventTarget(target);
     } else {
       canvas = GL.offscreenCanvases[Module['canvas'].id] || Module['canvas'];
     }
