@@ -6274,15 +6274,19 @@ def process(filename):
       self.emcc_args = orig_args + ['-s', 'EVAL_CTORS=1']
       test()
       ec_js_size = os.stat('src.cpp.o.js').st_size
-      ec_mem_size = os.stat('src.cpp.o.js.mem').st_size
+      if self.uses_memory_init_file():
+        ec_mem_size = os.stat('src.cpp.o.js.mem').st_size
       self.emcc_args = orig_args[:]
       test()
       js_size = os.stat('src.cpp.o.js').st_size
-      mem_size = os.stat('src.cpp.o.js.mem').st_size
+      if self.uses_memory_init_file():
+        mem_size = os.stat('src.cpp.o.js.mem').st_size
       print js_size, ' => ', ec_js_size
-      print mem_size, ' => ', ec_mem_size
+      if self.uses_memory_init_file():
+        print mem_size, ' => ', ec_mem_size
       assert ec_js_size < js_size
-      assert ec_mem_size > mem_size
+      if self.uses_memory_init_file():
+        assert ec_mem_size > mem_size
 
     print 'remove ctor of just assigns to memory'
     def test1():
@@ -6317,9 +6321,11 @@ def process(filename):
     if self.uses_memory_init_file():
       ec_mem_size = os.stat('src.cpp.o.js.mem').st_size
     print js_size, ' => ', ec_js_size
-    print mem_size, ' => ', ec_mem_size
+    if self.uses_memory_init_file():
+      print mem_size, ' => ', ec_mem_size
     assert ec_js_size < js_size
-    assert ec_mem_size > mem_size
+    if self.uses_memory_init_file():
+      assert ec_mem_size > mem_size
 
     print 'assertions too'
     Settings.ASSERTIONS = 1
