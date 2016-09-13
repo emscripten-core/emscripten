@@ -3973,7 +3973,6 @@ Have even and odd!
   def test_transtrcase(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_transtrcase')
 
-  @no_wasm_backend('takes a very long time to compile')
   def test_printf(self):
     self.banned_js_engines = [NODE_JS, V8_ENGINE] # SpiderMonkey and V8 do different things to float64 typed arrays, un-NaNing, etc.
     src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
@@ -3982,6 +3981,13 @@ Have even and odd!
 
   def test_printf_2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_printf_2')
+
+  def test_printf_float(self):
+    self.do_run_in_out_file_test('tests', 'printf', 'test_float')
+
+  @no_wasm_backend('printf is truncating octal numbers at the first digit')
+  def test_printf_octal(self):
+    self.do_run_in_out_file_test('tests', 'printf', 'test_octal')
 
   def test_vprintf(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_vprintf')
@@ -4012,11 +4018,11 @@ Have even and odd!
       print 'flip assertions off'
     self.do_run_in_out_file_test('tests', 'core', 'fnmatch')
 
-  @no_wasm_backend('printf is incorrectly handling float values')
+  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf')
 
-  @no_wasm_backend('printf is incorrectly handling float values')
+  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_2(self):
     # doubles
     for ftype in ['float', 'double']:
@@ -4103,7 +4109,7 @@ Pass: 0.000012 0.000012''')
   def test_sscanf_skip(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_skip')
 
-  @no_wasm_backend('printf is incorrectly handling float values')
+  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_caps(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_caps')
 
@@ -4111,7 +4117,7 @@ Pass: 0.000012 0.000012''')
   def test_sscanf_hex(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_hex')
 
-  @no_wasm_backend('printf is incorrectly handling float values')
+  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_float(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_float')
 
@@ -4380,7 +4386,7 @@ def process(filename):
     expected = open(path_from_root('tests', 'fcntl', 'output.txt'), 'r').read()
     self.do_run(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
-  @no_wasm_backend()
+  @no_wasm_backend('printf is truncating octal numbers at the first digit')
   def test_fcntl_open(self):
     src = open(path_from_root('tests', 'fcntl-open', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'fcntl-open', 'output.txt'), 'r').read()
@@ -4458,7 +4464,7 @@ def process(filename):
     Building.COMPILER_TEST_OPTS += ['--embed-file', path_from_root('tests/utf16_corpus.txt')+ '@/utf16_corpus.txt']
     self.do_run(open(path_from_root('tests', 'benchmark_utf16.cpp')).read(), 'OK.')
 
-  @no_wasm_backend()
+  @no_wasm_backend('printf is incorrectly handling float values')
   def test_wprintf(self):
     test_path = path_from_root('tests', 'core', 'test_wprintf')
     src, output = (test_path + s for s in ('.c', '.out'))
