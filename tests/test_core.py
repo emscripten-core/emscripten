@@ -2200,9 +2200,8 @@ The current type of b is: 9
 
       self.do_run_from_file(src, output)
 
-  # Currently broken under V8_ENGINE but not node
-  @no_wasm_backend()
   def test_memcpy_memcmp(self):
+      self.banned_js_engines = [V8_ENGINE] # Currently broken under V8_ENGINE but not node
       test_path = path_from_root('tests', 'core', 'test_memcpy_memcmp')
       src, output = (test_path + s for s in ('.c', '.out'))
 
