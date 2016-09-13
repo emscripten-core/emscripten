@@ -3886,7 +3886,7 @@ Have even and odd!
 '''
     self.do_run(src, expected)
 
-  @no_wasm_backend()
+  @no_wasm_backend('printf is incorrectly handling float values')
   def test_strtod(self):
     src = r'''
       #include <stdio.h>
@@ -3964,7 +3964,7 @@ Have even and odd!
   def test_strtok(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strtok')
 
-  @no_wasm_backend()
+  @no_wasm_backend('printf is truncating the output of i64s')
   def test_parseInt(self):
     src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
@@ -4072,15 +4072,15 @@ Pass: 123456.789000 123456.789000
 Pass: 0.000012 0.000012
 Pass: 0.000012 0.000012''')
 
-  @no_wasm_backend()
+  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_n(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_n')
 
-  @no_wasm_backend()
+  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_whitespace(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_whitespace')
 
-  @no_wasm_backend()
+  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_other_whitespace(self):
     Settings.SAFE_HEAP = 0 # use i16s in printf
 
