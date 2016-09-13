@@ -2177,15 +2177,11 @@ The current type of b is: 9
   def test_strftime(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strftime')
 
-  @no_wasm_backend()
+  @no_wasm_backend("wasm backend doesn't compile inentional segfault into an abort() call. "
+                   "It also doesn't segfault.")
   def test_intentional_fault(self):
     # Some programs intentionally segfault themselves, we should compile that into a throw
-    src = r'''
-      int main () {
-        *(volatile char *)0 = 0;
-        return *(volatile char *)0;
-      }
-      '''
+    src = open(path_from_root('tests', 'core', 'test_intentional_fault.c'), 'r').read()
     self.do_run(src, 'abort()' if self.run_name != 'asm2g' else 'abort("segmentation fault')
 
   def test_trickystring(self):
