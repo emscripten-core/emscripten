@@ -1270,7 +1270,7 @@ mergeInto(LibraryManager.library, {
       FS.mkdir('/proc/self/fd');
       FS.mount({
         mount: function() {
-          var node = FS.createNode('/proc/self', 'fd', {{{ cDefine('S_IFDIR') }}} | 0777, {{{ cDefine('S_IXUGO') }}});
+          var node = FS.createNode('/proc/self', 'fd', {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */, {{{ cDefine('S_IXUGO') }}});
           node.node_ops = {
             lookup: function(parent, name) {
               var fd = +name;
