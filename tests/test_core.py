@@ -4539,7 +4539,6 @@ def process(filename):
     src = open(path_from_root('tests', 'fs', 'test_append.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
-  @no_wasm_backend()
   def test_fs_mmap(self):
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
     for fs in ['MEMFS']:
@@ -4548,7 +4547,6 @@ def process(filename):
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run_from_file(src, out)
 
-  @no_wasm_backend()
   def test_unistd_access(self):
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
@@ -4568,7 +4566,6 @@ def process(filename):
     expected = open(path_from_root('tests', 'unistd', 'close.out'), 'r').read()
     self.do_run(src, expected)
 
-  @no_wasm_backend()
   def test_unistd_confstr(self):
     src = open(path_from_root('tests', 'unistd', 'confstr.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'confstr.out'), 'r').read()
@@ -4583,7 +4580,6 @@ def process(filename):
     expected = open(path_from_root('tests', 'unistd', 'dup.out'), 'r').read()
     self.do_run(src, expected)
 
-  @no_wasm_backend()
   def test_unistd_pathconf(self):
     src = open(path_from_root('tests', 'unistd', 'pathconf.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'pathconf.out'), 'r').read()
@@ -4607,7 +4603,6 @@ def process(filename):
     src = open(path_from_root('tests', 'unistd', 'isatty.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
-  @no_wasm_backend()
   def test_unistd_sysconf(self):
     src = open(path_from_root('tests', 'unistd', 'sysconf.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'sysconf.out'), 'r').read()
