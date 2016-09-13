@@ -1788,17 +1788,12 @@ var LibraryJSEvents = {
     var enableExtensionsByDefault = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 'i32') }}};
     contextAttributes.explicitSwapControl = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl, 'i32') }}};
 
-    target = target ? Pointer_stringify(target) : '#canvas';
+    target = Pointer_stringify(target);
     var canvas;
-    if (target) {
-      if (target === '#canvas' && Module['canvas']) {
-        canvas = Module['canvas'];
-        target = Module['canvas'].id;
-      } else {
-        canvas = GL.offscreenCanvases[target] || JSEvents.findEventTarget(target);
-      }
+    if ((!target || target === '#canvas') && Module['canvas']) {
+      canvas = Module['canvas'].id ? (GL.offscreenCanvases[Module['canvas'].id] || JSEvents.findEventTarget(Module['canvas'].id)) : Module['canvas'];
     } else {
-      canvas = GL.offscreenCanvases[Module['canvas'].id] || Module['canvas'];
+      canvas = GL.offscreenCanvases[target] || JSEvents.findEventTarget(target);
     }
     if (!canvas) {
 #if GL_DEBUG
