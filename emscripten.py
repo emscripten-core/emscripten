@@ -374,7 +374,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     for k, v in metadata['asmConsts'].iteritems():
       const = v[0].encode('utf-8')
       sigs = v[1]
-      if const[0] == '"' and const[-1] == '"':
+      if len(const) > 1 and const[0] == '"' and const[-1] == '"':
         const = const[1:-1]
       const = '{ ' + const + ' }'
       args = []
@@ -1507,7 +1507,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   for k, v in metadata['asmConsts'].iteritems():
     const = v[0].encode('utf-8')
     sigs = v[1]
-    if const[0] == '"' and const[-1] == '"':
+    if len(const) > 1 and const[0] == '"' and const[-1] == '"':
       const = const[1:-1]
     const = '{ ' + const + ' }'
     args = []
