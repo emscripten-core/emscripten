@@ -2145,7 +2145,7 @@ The current type of b is: 9
     self.do_run(src, 'success', force_c=True)
 
   @no_wasm_backend("tzname is included in library.js, but s2wasm doesn't know about it "
-                   "at link time")
+                   "at link time (unknown relocation $tzname)")
   def test_time(self):
     src = open(path_from_root('tests', 'time', 'src.cpp'), 'r').read()
     expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
@@ -2173,7 +2173,7 @@ The current type of b is: 9
     self.do_run_in_out_file_test('tests', 'core', 'test_strptime_reentrant')
 
   @no_wasm_backend("tzname is included in library.js, but s2wasm doesn't know about it "
-                   "at link time")
+                   "at link time (unknown relocation $tzname)")
   def test_strftime(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strftime')
 
@@ -4691,7 +4691,7 @@ def process(filename):
   def test_uname(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_uname')
 
-  @no_wasm_backend()
+  @no_wasm_backend('unknown relocation: $environ')
   def test_env(self):
     src = open(path_from_root('tests', 'env', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'env', 'output.txt'), 'r').read()
@@ -4700,7 +4700,7 @@ def process(filename):
       expected.replace('{{{ THIS_PROGRAM }}}', './this.program') # spidermonkey, v8
     ])
 
-  @no_wasm_backend()
+  @no_wasm_backend('unknown relocation: $environ')
   def test_environ(self):
     src = open(path_from_root('tests', 'env', 'src-mini.c'), 'r').read()
     expected = open(path_from_root('tests', 'env', 'output-mini.txt'), 'r').read()
@@ -4727,7 +4727,6 @@ Get PORT family: 0
 PORT: 3979
 ''')
 
-  @no_wasm_backend()
   def test_ctype(self):
     src = open(path_from_root('tests', 'ctype', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'ctype', 'output.txt'), 'r').read()
@@ -4956,7 +4955,7 @@ return malloc(size);
 '''
     self.do_run(src, 'new 4!\n*1,0*')
 
-  @no_wasm_backend()
+  @no_wasm_backend('requires EM_ASM args support in wasm backend')
   def test_dlmalloc_partial_2(self):
     if 'SAFE_HEAP' in str(self.emcc_args): return self.skip('we do unsafe stuff here')
     # present part of the symbols of dlmalloc, not all. malloc is harder to link than new which is weak.
@@ -4998,7 +4997,6 @@ return malloc(size);
     self.do_run_from_file(src, output)
     self.do_run_from_file(src, output, force_c=True)
 
-  @no_wasm_backend()
   def test_mmap_file(self):
     for extra_args in [[], ['--no-heap-copy']]:
       self.emcc_args += ['--embed-file', 'data.dat'] + extra_args
