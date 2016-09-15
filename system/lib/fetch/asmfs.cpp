@@ -5,7 +5,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 #define __NEED_struct_iovec
-#include <libc/bits/alltypes.h>
 #include <string.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/fetch.h>

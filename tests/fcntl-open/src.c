@@ -91,5 +91,9 @@ int main() {
   signal(SIGABRT, cleanup);
   setup();
   test();
+#ifdef REPORT_RESULT
+  int result = 0;
+  REPORT_RESULT();
+#endif
   return EXIT_SUCCESS;
 }
