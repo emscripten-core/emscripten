@@ -1918,7 +1918,7 @@ addOnPreRun(function() {
       Runtime.loadDynamicLibrary(lib);
     });
   }
-  asm['runPostSets']();
+  asm['runPostSets'] && asm['runPostSets']();
 });
 
 #if ASSERTIONS

@@ -5012,7 +5012,6 @@ return malloc(size);
       src = open(path_from_root('tests', 'mmap_file.c')).read()
       self.do_run(src, '*\n' + s[0:20] + '\n' + s[4096:4096+20] + '\n*\n')
 
-  @no_wasm_backend()
   def test_cubescript(self):
     assert 'asm3' in test_modes
     if self.run_name == 'asm3':
@@ -5053,6 +5052,10 @@ return malloc(size);
       Settings.SPLIT_MEMORY = 8*1024*1024
       test()
       Settings.SPLIT_MEMORY = 0
+
+  def test_void_function(self):
+    Settings.RELOCATABLE = 1
+    self.do_run_in_out_file_test('tests', 'core', 'test_void_function')
 
   @SIMD
   def test_sse1(self):

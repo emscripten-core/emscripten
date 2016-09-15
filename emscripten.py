@@ -1411,7 +1411,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
         metadata['declares'].append(func_name)
     elif line.startswith('  (func '):
       parts = line.split(' ')
-      func_name = parts[3][1:]
+      func_name = parts[3][1:].strip()
       metadata['implementedFunctions'].append(func_name)
     elif line.startswith('  (export '):
       parts = line.split(' ')
