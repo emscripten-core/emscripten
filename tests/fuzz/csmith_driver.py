@@ -122,7 +122,7 @@ while 1:
       js_args += ['-s', 'MAIN_MODULE=1']
     if random.random() < 0.25:
       js_args += ['-s', 'INLINING_LIMIT=1'] # inline nothing, for more call interaction
-    if random.random() < 0.333 and 'BINARYEN=1' not in js_args:
+    if random.random() < 0.333:
       js_args += ['-s', 'EMTERPRETIFY=1']
       if random.random() < 0.5:
         if random.random() < 0.5:
