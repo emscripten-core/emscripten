@@ -6,7 +6,7 @@
 #include <inttypes.h>
 #include <float.h>
 #include <assert.h>
-#include <string>
+#include <string.h>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
@@ -55,41 +55,45 @@ bool always_true() { return time(NULL) != 0; } // This function always returns t
 
 bool IsNan(float f) { return (fcastu(f) << 1) > 0xFF000000u; }
 
-std::string replace(std::string str, std::string a, std::string b)
+// Replaces all occurrences of 'src' in string 'str' with 'dst', operating in place. strlen(dst) <= strlen(src).
+void contract_inplace(char *str, const char *src, const char *dst)
 {
-	size_t index = 0;
+	int dstLen = strlen(dst);
+	int srcLen = strlen(src);
+	int diff = srcLen - dstLen;
+	assert(diff >= 0);
+
 	while(true)
 	{
-		index = str.find(a, index);
-		if (index == std::string::npos) break;
-		str.replace(index, a.length(), b);
-		index += b.length();
+		char *pos = strstr(str, src);
+		if (!pos) return;
+		str = pos;
+		strcpy(pos, dst);
+		pos += dstLen;
+		strcpy(pos, pos + diff);
 	}
-	return str;
 }
 
 // sprintf standard does not allow controlling how many leading zeros to use
 // for printing out the exponent, and different compilers give different
 // values. Perform a canonicalization step that enforces the printouts are
 // the same.
-std::string CanonicalizeStringComparisons(std::string s)
+void CanonicalizeStringComparisons(char *s)
 {
-	s = replace(s, "e+00", "e+");
-	s = replace(s, "e-00", "e-");
-	s = replace(s, "e+0", "e+");
-	s = replace(s, "e-0", "e-");
-	s = replace(s, "1.#INF", "inf");
-	return s;
+	contract_inplace(s, "e+00", "e+");
+	contract_inplace(s, "e-00", "e-");
+	contract_inplace(s, "e+0", "e+");
+	contract_inplace(s, "e-0", "e-");
+	contract_inplace(s, "1.#INF", "inf");
 }
 
 char *SerializeFloat(float f, char *dstStr)
 {
 	if (!IsNan(f))
 	{
-		int numChars = sprintf(dstStr, "%.9g", f);
-		std::string s = CanonicalizeStringComparisons(dstStr);
-		numChars = sprintf(dstStr, "%s", s.c_str());
-		return dstStr + numChars;
+		sprintf(dstStr, "%.9g", f);
+		CanonicalizeStringComparisons(dstStr);
+		return dstStr + strlen(dstStr);
 	}
 	else
 	{
@@ -107,10 +111,9 @@ char *SerializeDouble(double f, char *dstStr)
 {
 	if (!IsNan(f))
 	{
-		int numChars = sprintf(dstStr, "%.17g", f);
-		std::string s = CanonicalizeStringComparisons(dstStr);
-		numChars = sprintf(dstStr, "%s", s.c_str());
-		return dstStr + numChars;
+		sprintf(dstStr, "%.17g", f);
+		CanonicalizeStringComparisons(dstStr);
+		return dstStr + strlen(dstStr);
 	}
 	else
 	{
