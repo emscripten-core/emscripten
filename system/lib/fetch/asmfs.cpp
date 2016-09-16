@@ -11,6 +11,7 @@
 #include <math.h>
 #include <libc/fcntl.h>
 #include <time.h>
+#include <sys/stat.h>
 #include "syscall_arch.h"
 
 extern "C" {
@@ -505,7 +506,16 @@ long __syscall5(int which, ...) // open
 	if ((flags & O_ASYNC)) RETURN_ERRNO(ENOTSUP, "TODO: Opening files with O_ASYNC flag is not supported in ASMFS");
 	if ((flags & O_DIRECT)) RETURN_ERRNO(ENOTSUP, "TODO: O_DIRECT flag is not supported in ASMFS");
 	if ((flags & O_DSYNC)) RETURN_ERRNO(ENOTSUP, "TODO: O_DSYNC flag is not supported in ASMFS");
-	if ((flags & O_EXCL) && !(flags & O_CREAT)) RETURN_ERRNO(EINVAL, "open() with O_EXCL flag needs to always be paired with O_CREAT"); // Spec says the behavior is undefined, we can just enforce it
+
+	// Spec says that the result of O_EXCL without O_CREAT is undefined.
+	// We could enforce it as an error condition, as follows:
+//	if ((flags & O_EXCL) && !(flags & O_CREAT)) RETURN_ERRNO(EINVAL, "open() with O_EXCL flag needs to always be paired with O_CREAT");
+	// However existing earlier unit tests in Emscripten expect that O_EXCL is simply ignored when O_CREAT was not passed. So do that for now.
+	if ((flags & O_EXCL) && !(flags & O_CREAT)) {
+		EM_ASM_INT({ Module['printErr']('warning: open(pathname="' + Pointer_stringify($0) + '", flags=0x' + ($1).toString(16) + ', mode=0' + ($2).toString(8) + ': flag O_EXCL should always be paired with O_CREAT. Ignoring O_EXCL)') }, pathname, flags, mode);
+		flags &= ~O_EXCL;
+	}
+
 	if ((flags & (O_NONBLOCK|O_NDELAY))) RETURN_ERRNO(ENOTSUP, "TODO: Opening files with O_NONBLOCK or O_NDELAY flags is not supported in ASMFS");
 	if ((flags & O_PATH)) RETURN_ERRNO(ENOTSUP, "TODO: Opening files with O_PATH flag is not supported in ASMFS");
 	if ((flags & O_SYNC)) RETURN_ERRNO(ENOTSUP, "TODO: Opening files with O_SYNC flag is not supported in ASMFS");
@@ -547,10 +557,11 @@ long __syscall5(int which, ...) // open
 		if (!(node->mode & 0444)) RETURN_ERRNO(EACCES, "The requested access to the file is not allowed");
 		if ((flags & O_CREAT) && (flags & O_EXCL)) RETURN_ERRNO(EEXIST, "pathname already exists and O_CREAT and O_EXCL were used");
 		if (node->type == INODE_DIR && accessMode != O_RDONLY) RETURN_ERRNO(EISDIR, "pathname refers to a directory and the access requested involved writing (that is, O_WRONLY or O_RDWR is set)");
+		if (node->type == INODE_DIR && (flags & O_TRUNC)) RETURN_ERRNO(EISDIR, "pathname refers to a directory and the access flags specified invalid flag O_TRUNC");
 		if (node->fetch) emscripten_fetch_wait(node->fetch, INFINITY);
 	}
 
-	if ((flags & O_CREAT) || (flags & O_TRUNC) || (flags & O_EXCL))
+	if ((flags & O_CREAT) && ((flags & O_TRUNC) || (flags & O_EXCL)))
 	{
 		// Create a new empty file or truncate existing one.
 		if (node)
@@ -559,7 +570,7 @@ long __syscall5(int which, ...) // open
 			node->fetch = 0;
 			node->size = 0;
 		}
-		else
+		else if ((flags & O_CREAT))
 		{
 			inode *directory = create_directory_hierarchy_for_file(root, relpath, mode);
 			node = create_inode((flags & O_DIRECTORY) ? INODE_DIR : INODE_FILE, mode);
@@ -567,7 +578,7 @@ long __syscall5(int which, ...) // open
 			link_inode(node, directory);
 		}
 	}
-	else if (!node || (!node->fetch && !node->data))
+	else if (!node || (node->type == INODE_FILE && !node->fetch && !node->data))
 	{
 		emscripten_fetch_t *fetch = 0;
 		if (!(flags & O_DIRECTORY) && accessMode != O_WRONLY)
@@ -584,7 +595,7 @@ long __syscall5(int which, ...) // open
 		// case synchronous_fopen:
 			emscripten_fetch_wait(fetch, INFINITY);
 
-			if (fetch->status != 200 || fetch->totalBytes == 0)
+			if (!(flags & O_CREAT) && (fetch->status != 200 || fetch->totalBytes == 0))
 			{
 				emscripten_fetch_close(fetch);
 				RETURN_ERRNO(ENOENT, "O_CREAT is not set and the named file does not exist (attempted emscripten_fetch() XHR to download)");
@@ -1149,9 +1160,113 @@ long __syscall183(int which, ...) // getcwd
 // TODO: syscall192: mmap2
 // TODO: syscall193: truncate64
 // TODO: syscall194: ftruncate64
-// TODO: syscall195: SYS_stat64
-// TODO: syscall196: SYS_lstat64
-// TODO: syscall197: SYS_fstat64
+
+static long __stat64(inode *node, struct stat *buf)
+{
+	buf->st_dev = 1; // ID of device containing file: Hardcode 1 for now, no meaning at the moment for Emscripten.
+	buf->st_ino = (ino_t)node; // TODO: This needs to be an inode ID number proper.
+	buf->st_mode = node->mode;
+	switch(node->type) {
+		case INODE_DIR: buf->st_mode |= S_IFDIR; break;
+		case INODE_FILE: buf->st_mode |= S_IFREG; break; // Regular file
+		/* TODO:
+		case socket: buf->st_mode |= S_IFSOCK; break;
+		case symlink: buf->st_mode |= S_IFLNK; break;
+		case block device: buf->st_mode |= S_IFBLK; break;
+		case character device: buf->st_mode |= S_IFCHR; break;
+		case FIFO: buf->st_mode |= S_IFIFO; break;
+		*/
+	}
+	buf->st_nlink = 1; // The number of hard links. TODO: Use this for real when links are supported.
+	buf->st_uid = node->uid;
+	buf->st_gid = node->gid;
+	buf->st_rdev = 1; // Device ID (if special file) No meaning right now for Emscripten.
+	buf->st_size = node->fetch ? node->fetch->totalBytes : 0;
+	if (node->size > buf->st_size) buf->st_size = node->size;
+	buf->st_blocks = (buf->st_size + 511) / 512; // The syscall docs state this is hardcoded to # of 512 byte blocks.
+	buf->st_blksize = 1024*1024; // Specifies the preferred blocksize for efficient disk I/O.
+	buf->st_atim.tv_sec = node->atime;
+	buf->st_mtim.tv_sec = node->mtime;
+	buf->st_ctim.tv_sec = node->ctime;
+	return 0;
+}
+
+long __syscall195(int which, ...) // SYS_stat64
+{
+	va_list vl;
+	va_start(vl, which);
+	const char *pathname = va_arg(vl, const char *);
+	struct stat *buf = va_arg(vl, struct stat *);
+	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('SYS_stat64(pathname="' + Pointer_stringify($0) + '", buf=0x' + ($1).toString(16) + ')') }, pathname, buf);
+
+	int len = strlen(pathname);
+	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
+	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
+
+	// Find if this file exists already in the filesystem?
+	inode *root = (pathname[0] == '/') ? filesystem_root() : get_cwd();
+	const char *relpath = (pathname[0] == '/') ? pathname+1 : pathname;
+
+	int err;
+	inode *node = find_inode(root, relpath, &err);
+	if (err == ENOTDIR) RETURN_ERRNO(ENOTDIR, "A component of the path prefix of pathname is not a directory");
+	if (err == ELOOP) RETURN_ERRNO(ELOOP, "Too many symbolic links encountered while traversing the path");
+	if (err == EACCES) RETURN_ERRNO(EACCES, "Search permission is denied for one of the directories in the path prefix of pathname");
+	if (err && err != ENOENT) RETURN_ERRNO(err, "find_inode() error");
+	if (err == ENOENT || !node) RETURN_ERRNO(ENOENT, "A component of pathname does not exist");
+
+	return __stat64(node, buf);
+}
+
+long __syscall196(int which, ...) // SYS_lstat64
+{
+	va_list vl;
+	va_start(vl, which);
+	const char *pathname = va_arg(vl, const char *);
+	struct stat *buf = va_arg(vl, struct stat *);
+	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('SYS_lstat64(pathname="' + Pointer_stringify($0) + '", buf=0x' + ($1).toString(16) + ')') }, pathname, buf);
+
+	int len = strlen(pathname);
+	if (len > MAX_PATHNAME_LENGTH) RETURN_ERRNO(ENAMETOOLONG, "pathname was too long");
+	if (len == 0) RETURN_ERRNO(ENOENT, "pathname is empty");
+
+	// Find if this file exists already in the filesystem?
+	inode *root = (pathname[0] == '/') ? filesystem_root() : get_cwd();
+	const char *relpath = (pathname[0] == '/') ? pathname+1 : pathname;
+
+	// TODO: When symbolic links are implemented, make this return info about the symlink itself and not the file it points to.
+	int err;
+	inode *node = find_inode(root, relpath, &err);
+	if (err == ENOTDIR) RETURN_ERRNO(ENOTDIR, "A component of the path prefix of pathname is not a directory");
+	if (err == ELOOP) RETURN_ERRNO(ELOOP, "Too many symbolic links encountered while traversing the path");
+	if (err == EACCES) RETURN_ERRNO(EACCES, "Search permission is denied for one of the directories in the path prefix of pathname");
+	if (err && err != ENOENT) RETURN_ERRNO(err, "find_inode() error");
+	if (err == ENOENT || !node) RETURN_ERRNO(ENOENT, "A component of pathname does not exist");
+
+	return __stat64(node, buf);
+}
+
+long __syscall197(int which, ...) // SYS_fstat64
+{
+	va_list vl;
+	va_start(vl, which);
+	int fd = va_arg(vl, int);
+	struct stat *buf = va_arg(vl, struct stat *);
+	va_end(vl);
+	EM_ASM_INT({ Module['printErr']('SYS_fstat64(fd="' + Pointer_stringify($0) + '", buf=0x' + ($1).toString(16) + ')') }, fd, buf);
+
+	FileDescriptor *desc = (FileDescriptor*)fd;
+	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC) RETURN_ERRNO(EBADF, "fd isn't a valid open file descriptor");
+
+	int err;
+	inode *node = desc->node;
+	if (!node) RETURN_ERRNO(ENOENT, "A component of pathname does not exist");
+
+	return __stat64(node, buf);
+}
+
 // TODO: syscall198: lchown
 // TODO: syscall207: fchown32
 // TODO: syscall212: chown32
