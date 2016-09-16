@@ -1475,7 +1475,7 @@ int main() {
   def test_mod_globalstruct(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_mod_globalstruct')
 
-  @no_wasm_backend('specific alignment semantics may be asmjs-specific?')
+  @no_wasm_backend('long doubles are f64s in wasm backend')
   def test_pystruct(self):
       def test():
         self.do_run_in_out_file_test('tests', 'test_pystruct')
@@ -1851,13 +1851,13 @@ int main() {
 59899: 598995989959899
 Success!''')
 
-  @no_wasm_backend("WebAssembly hasn't implemented computed gotos")
+  @no_wasm_backend('no implementation of computed gotos')
   def test_indirectbr(self):
       Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS)
 
       self.do_run_in_out_file_test('tests', 'core', 'test_indirectbr')
 
-  @no_wasm_backend("WebAssembly hasn't implemented computed gotos")
+  @no_wasm_backend('no implementation of computed gotos')
   def test_indirectbr_many(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_indirectbr_many')
 
@@ -2177,7 +2177,7 @@ The current type of b is: 9
   def test_strftime(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strftime')
 
-  @no_wasm_backend("wasm backend doesn't compile inentional segfault into an abort() call. "
+  @no_wasm_backend("wasm backend doesn't compile intentional segfault into an abort() call. "
                    "It also doesn't segfault.")
   def test_intentional_fault(self):
     # Some programs intentionally segfault themselves, we should compile that into a throw
@@ -5053,9 +5053,9 @@ return malloc(size);
       test()
       Settings.SPLIT_MEMORY = 0
 
-  def test_void_function(self):
+  def test_relocatable_void_function(self):
     Settings.RELOCATABLE = 1
-    self.do_run_in_out_file_test('tests', 'core', 'test_void_function')
+    self.do_run_in_out_file_test('tests', 'core', 'test_relocatable_void_function')
 
   @SIMD
   def test_sse1(self):

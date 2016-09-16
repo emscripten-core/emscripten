@@ -1402,20 +1402,20 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   # TODO: emit it from s2wasm; for now, we parse it right here
   for line in open(wasm).readlines():
     if line.startswith('  (import '):
-      parts = line.split(' ')
+      parts = line.split()
       # Don't include Invoke wrapper names (for asm.js-style exception handling)
       # in metadata[declares], the invoke wrappers will be generated in
       # this script later.
-      func_name = parts[3][1:]
+      func_name = parts[1][1:]
       if not func_name.startswith('invoke_'):
         metadata['declares'].append(func_name)
     elif line.startswith('  (func '):
-      parts = line.split(' ')
-      func_name = parts[3][1:].strip()
+      parts = line.split()
+      func_name = parts[1][1:]
       metadata['implementedFunctions'].append(func_name)
     elif line.startswith('  (export '):
-      parts = line.split(' ')
-      export_name = parts[3][1:-1]
+      parts = line.split()
+      export_name = parts[1][1:-1]
       assert asmjs_mangle(export_name) not in metadata['exports']
       metadata['exports'].append(export_name)
 
