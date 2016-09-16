@@ -529,7 +529,7 @@ int main()
         Settings.MAIN_MODULE = 1
         self.do_run_from_file(src, output)
 
-  @no_wasm_backend()
+  @no_wasm_backend('frexp seems to be failing. printf relies on frexp for float formatting, so that probably causes the print failure')
   def test_frexp(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_frexp')
 
@@ -1475,70 +1475,10 @@ int main() {
   def test_mod_globalstruct(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_mod_globalstruct')
 
-  @no_wasm_backend()
+  @no_wasm_backend('long doubles are f64s in wasm backend')
   def test_pystruct(self):
-      src = '''
-        #include <stdio.h>
-
-        // Based on CPython code
-        union PyGC_Head {
-            struct {
-                union PyGC_Head *gc_next;
-                union PyGC_Head *gc_prev;
-                size_t gc_refs;
-            } gc;
-            long double dummy;  /* force worst-case alignment */
-        } ;
-
-        struct gc_generation {
-            PyGC_Head head;
-            int threshold; /* collection threshold */
-            int count; /* count of allocations or collections of younger
-                          generations */
-        };
-
-        #define NUM_GENERATIONS 3
-        #define GEN_HEAD(n) (&generations[n].head)
-
-        /* linked lists of container objects */
-        static struct gc_generation generations[NUM_GENERATIONS] = {
-            /* PyGC_Head,                               threshold,      count */
-            {{{GEN_HEAD(0), GEN_HEAD(0), 0}},           700,            0},
-            {{{GEN_HEAD(1), GEN_HEAD(1), 0}},           10,             0},
-            {{{GEN_HEAD(2), GEN_HEAD(2), 0}},           10,             0},
-        };
-
-        int main()
-        {
-          gc_generation *n = NULL;
-          printf("*%d,%d,%d,%d,%d,%d,%d,%d*\\n",
-            (int)(&n[0]),
-            (int)(&n[0].head),
-            (int)(&n[0].head.gc.gc_next),
-            (int)(&n[0].head.gc.gc_prev),
-            (int)(&n[0].head.gc.gc_refs),
-            (int)(&n[0].threshold), (int)(&n[0].count), (int)(&n[1])
-          );
-          printf("*%d,%d,%d*\\n",
-            (int)(&generations[0]) ==
-            (int)(&generations[0].head.gc.gc_next),
-            (int)(&generations[0]) ==
-            (int)(&generations[0].head.gc.gc_prev),
-            (int)(&generations[0]) ==
-            (int)(&generations[1])
-          );
-          int x1 = (int)(&generations[0]);
-          int x2 = (int)(&generations[1]);
-          printf("*%d*\\n", x1 == x2);
-          for (int i = 0; i < NUM_GENERATIONS; i++) {
-            PyGC_Head *list = GEN_HEAD(i);
-            printf("%d:%d,%d\\n", i, (int)list == (int)(list->gc.gc_prev), (int)list ==(int)(list->gc.gc_next));
-          }
-          printf("*%d,%d,%d*\\n", sizeof(PyGC_Head), sizeof(gc_generation), int(GEN_HEAD(2)) - int(GEN_HEAD(1)));
-        }
-      '''
       def test():
-        self.do_run(src, '*0,0,0,4,8,16,20,24*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*16,24,24*')
+        self.do_run_in_out_file_test('tests', 'test_pystruct')
 
       test()
 
@@ -1553,10 +1493,8 @@ int main() {
       def check_warnings(output):
           runner.assertEquals(filter(lambda line: 'Warning' in line, output.split('\n')).__len__(), 4)
 
-      test_path = path_from_root('tests', 'core', 'test_ptrtoint')
-      src, output = (test_path + s for s in ('.c', '.out'))
-
-      self.do_run_from_file(src, output, output_processor=check_warnings)
+      self.do_run_in_out_file_test('tests', 'core', 'test_ptrtoint',
+                                   output_processor=check_warnings)
 
   def test_sizeof(self):
       # Has invalid writes between printouts
@@ -1569,13 +1507,12 @@ int main() {
 
     self.do_run_in_out_file_test('tests', 'core', 'test_llvm_used')
 
-  @no_wasm_backend()
   def test_set_align(self):
     Settings.SAFE_HEAP = 1
 
     self.do_run_in_out_file_test('tests', 'core', 'test_set_align')
 
-  @no_wasm_backend()
+  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_emscripten_api(self):
       check = '''
 def process(filename):
@@ -1834,13 +1771,13 @@ int main() {
 59899: 598995989959899
 Success!''')
 
-  @no_wasm_backend()
+  @no_wasm_backend('no implementation of computed gotos')
   def test_indirectbr(self):
       Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS)
 
       self.do_run_in_out_file_test('tests', 'core', 'test_indirectbr')
 
-  @no_wasm_backend()
+  @no_wasm_backend('no implementation of computed gotos')
   def test_indirectbr_many(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_indirectbr_many')
 
@@ -2065,66 +2002,13 @@ The current type of b is: 9
       generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
       print >> sys.stderr, 'skipping C/C++ conventions warning check, since not i386-pc-linux-gnu'
 
-  @no_wasm_backend()
+  @no_wasm_backend('qsort is sorting improperly')
   def test_stdlibs(self):
       # safe heap prints a warning that messes up our output.
       Settings.SAFE_HEAP = 0
-      src = '''
-        #include <stdio.h>
-        #include <stdlib.h>
-        #include <ctype.h>
-        #include <sys/time.h>
+      self.do_run_in_out_file_test('tests', 'core', 'test_stdlibs')
 
-        void clean()
-        {
-          printf("*cleaned*\\n");
-        }
-
-        int comparer(const void *a, const void *b) {
-          int aa = *((int*)a);
-          int bb = *((int*)b);
-          return aa - bb;
-        }
-
-        int main() {
-          // timeofday
-          timeval t;
-          gettimeofday(&t, NULL);
-          printf("*%d,%d\\n", int(t.tv_sec), int(t.tv_usec)); // should not crash
-
-          // atexit
-          atexit(clean);
-
-          // qsort
-          int values[6] = { 3, 2, 5, 1, 5, 6 };
-          qsort(values, 5, sizeof(int), comparer);
-          printf("*%d,%d,%d,%d,%d,%d*\\n", values[0], values[1], values[2], values[3], values[4], values[5]);
-
-          printf("*stdin==0:%d*\\n", stdin == 0); // check that external values are at least not NULL
-          printf("*%%*\\n");
-          printf("*%.1ld*\\n", 5);
-
-          printf("*%.1f*\\n", strtod("66", NULL)); // checks dependency system, as our strtod needs _isspace etc.
-
-          printf("*%ld*\\n", strtol("10", NULL, 0));
-          printf("*%ld*\\n", strtol("0", NULL, 0));
-          printf("*%ld*\\n", strtol("-10", NULL, 0));
-          printf("*%ld*\\n", strtol("12", NULL, 16));
-
-          printf("*%lu*\\n", strtoul("10", NULL, 0));
-          printf("*%lu*\\n", strtoul("0", NULL, 0));
-          printf("*%lu*\\n", strtoul("-10", NULL, 0));
-
-          printf("*malloc(0)!=0:%d*\\n", malloc(0) != 0); // We should not fail horribly
-
-          printf("tolower_l: %c\\n", tolower_l('A', 0));
-
-          return 0;
-        }
-        '''
-
-      self.do_run(src, '*1,2,3,5,5,6*\n*stdin==0:0*\n*%*\n*5*\n*66.0*\n*10*\n*0*\n*-10*\n*18*\n*10*\n*0*\n*4294967286*\n*malloc(0)!=0:1*\ntolower_l: a\n*cleaned*')
-
+  def test_stdbool(self):
       src = r'''
         #include <stdio.h>
         #include <stdbool.h>
@@ -2184,9 +2068,10 @@ The current type of b is: 9
     src = open(path_from_root('tests', 'termios', 'test_tcgetattr.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
-  @no_wasm_backend()
+  @no_wasm_backend("tzname is included in library.js, but s2wasm doesn't know about it "
+                   "at link time (unknown relocation $tzname)")
   def test_time(self):
-    src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
+    src = open(path_from_root('tests', 'time', 'src.cpp'), 'r').read()
     expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
     self.do_run(src, expected);
 
@@ -2194,7 +2079,8 @@ The current type of b is: 9
     # Confirms they are called in reverse order
     self.do_run_in_out_file_test('tests', 'core', 'test_timeb')
 
-  @no_wasm_backend()
+  @no_wasm_backend('ctime relies on stackSave/stackRestore that is only generated in asmjs; '
+                   'need to implement something similar in s2wasm')
   def test_time_c(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_time_c')
 
@@ -2204,26 +2090,22 @@ The current type of b is: 9
   def test_strptime_tm(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strptime_tm')
 
-  @no_wasm_backend()
   def test_strptime_days(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strptime_days')
 
   def test_strptime_reentrant(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strptime_reentrant')
 
-  @no_wasm_backend()
+  @no_wasm_backend("tzname is included in library.js, but s2wasm doesn't know about it "
+                   "at link time (unknown relocation $tzname)")
   def test_strftime(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strftime')
 
-  @no_wasm_backend()
+  @no_wasm_backend("wasm backend doesn't compile intentional segfault into an abort() call. "
+                   "It also doesn't segfault.")
   def test_intentional_fault(self):
     # Some programs intentionally segfault themselves, we should compile that into a throw
-    src = r'''
-      int main () {
-        *(volatile char *)0 = 0;
-        return *(volatile char *)0;
-      }
-      '''
+    src = open(path_from_root('tests', 'core', 'test_intentional_fault.c'), 'r').read()
     self.do_run(src, 'abort()' if self.run_name != 'asm2g' else 'abort("segmentation fault')
 
   def test_trickystring(self):
@@ -2242,9 +2124,8 @@ The current type of b is: 9
 
       self.do_run_from_file(src, output)
 
-  # Currently broken under V8_ENGINE but not node
-  @no_wasm_backend()
   def test_memcpy_memcmp(self):
+      self.banned_js_engines = [V8_ENGINE] # Currently broken under V8_ENGINE but not node
       test_path = path_from_root('tests', 'core', 'test_memcpy_memcmp')
       src, output = (test_path + s for s in ('.c', '.out'))
 
@@ -3929,7 +3810,7 @@ Have even and odd!
 '''
     self.do_run(src, expected)
 
-  @no_wasm_backend()
+  @no_wasm_backend('printf is incorrectly handling float values')
   def test_strtod(self):
     src = r'''
       #include <stdio.h>
@@ -4007,7 +3888,7 @@ Have even and odd!
   def test_strtok(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strtok')
 
-  @no_wasm_backend()
+  @no_wasm_backend('printf is truncating the output of i64s')
   def test_parseInt(self):
     src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
@@ -4016,7 +3897,6 @@ Have even and odd!
   def test_transtrcase(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_transtrcase')
 
-  @no_wasm_backend('takes a very long time to compile')
   def test_printf(self):
     self.banned_js_engines = [NODE_JS, V8_ENGINE] # SpiderMonkey and V8 do different things to float64 typed arrays, un-NaNing, etc.
     src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
@@ -4025,6 +3905,13 @@ Have even and odd!
 
   def test_printf_2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_printf_2')
+
+  def test_printf_float(self):
+    self.do_run_in_out_file_test('tests', 'printf', 'test_float')
+
+  @no_wasm_backend('printf is truncating octal numbers at the first digit')
+  def test_printf_octal(self):
+    self.do_run_in_out_file_test('tests', 'printf', 'test_octal')
 
   def test_vprintf(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_vprintf')
@@ -4055,11 +3942,11 @@ Have even and odd!
       print 'flip assertions off'
     self.do_run_in_out_file_test('tests', 'core', 'fnmatch')
 
-  @no_wasm_backend('printf is incorrectly handling float values')
+  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf')
 
-  @no_wasm_backend('printf is incorrectly handling float values')
+  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_2(self):
     # doubles
     for ftype in ['float', 'double']:
@@ -4115,15 +4002,15 @@ Pass: 123456.789000 123456.789000
 Pass: 0.000012 0.000012
 Pass: 0.000012 0.000012''')
 
-  @no_wasm_backend()
+  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_n(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_n')
 
-  @no_wasm_backend()
+  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_whitespace(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_whitespace')
 
-  @no_wasm_backend()
+  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_other_whitespace(self):
     Settings.SAFE_HEAP = 0 # use i16s in printf
 
@@ -4139,14 +4026,14 @@ Pass: 0.000012 0.000012''')
   def test_sscanf_5(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_5')
 
-  @no_wasm_backend('sscanf seems to be rewriting local unmentioned variables')
+  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_6(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_6')
 
   def test_sscanf_skip(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_skip')
 
-  @no_wasm_backend('printf is incorrectly handling float values')
+  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_caps(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_caps')
 
@@ -4154,7 +4041,7 @@ Pass: 0.000012 0.000012''')
   def test_sscanf_hex(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_hex')
 
-  @no_wasm_backend('printf is incorrectly handling float values')
+  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_float(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_float')
 
@@ -4410,7 +4297,6 @@ name: .
     src = open(path_from_root('tests', 'stat', 'test_mknod.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
-  @no_wasm_backend()
   def test_fcntl(self):
     add_pre_run = '''
 def process(filename):
@@ -4424,7 +4310,7 @@ def process(filename):
     expected = open(path_from_root('tests', 'fcntl', 'output.txt'), 'r').read()
     self.do_run(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
-  @no_wasm_backend()
+  @no_wasm_backend('printf is truncating octal numbers at the first digit')
   def test_fcntl_open(self):
     src = open(path_from_root('tests', 'fcntl-open', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'fcntl-open', 'output.txt'), 'r').read()
@@ -4480,29 +4366,29 @@ def process(filename):
 
     self.do_run_in_out_file_test('tests', 'core', 'test_utf')
 
-  @no_wasm_backend()
+  @no_wasm_backend('requires EM_ASM args support in wasm backend')
   def test_utf32(self):
     Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['UTF32ToString', 'stringToUTF32', 'lengthBytesUTF32']
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.')
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.', args=['-fshort-wchar'])
 
-  @no_wasm_backend()
+  @no_wasm_backend('requires EM_ASM args support in wasm backend')
   def test_utf8(self):
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
     self.do_run(open(path_from_root('tests', 'utf8.cpp')).read(), 'OK.')
 
-  @no_wasm_backend()
+  @no_wasm_backend('requires EM_ASM args support in wasm backend')
   def test_utf8_textdecoder(self):
     Building.COMPILER_TEST_OPTS += ['--embed-file', path_from_root('tests/utf8_corpus.txt')+ '@/utf8_corpus.txt']
     self.do_run(open(path_from_root('tests', 'benchmark_utf8.cpp')).read(), 'OK.')
 
-  @no_wasm_backend()
+  @no_wasm_backend('requires EM_ASM args support in wasm backend')
   def test_utf16_textdecoder(self):
     Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['UTF16ToString', 'stringToUTF16', 'lengthBytesUTF16']
     Building.COMPILER_TEST_OPTS += ['--embed-file', path_from_root('tests/utf16_corpus.txt')+ '@/utf16_corpus.txt']
     self.do_run(open(path_from_root('tests', 'benchmark_utf16.cpp')).read(), 'OK.')
 
-  @no_wasm_backend()
+  @no_wasm_backend('printf is incorrectly handling float values')
   def test_wprintf(self):
     test_path = path_from_root('tests', 'core', 'test_wprintf')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -4514,7 +4400,6 @@ def process(filename):
   def test_direct_string_constant_usage(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_direct_string_constant_usage')
 
-  @no_wasm_backend()
   def test_std_cout_new(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_std_cout_new')
 
@@ -4578,7 +4463,6 @@ def process(filename):
     src = open(path_from_root('tests', 'fs', 'test_append.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
-  @no_wasm_backend()
   def test_fs_mmap(self):
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
     for fs in ['MEMFS']:
@@ -4587,7 +4471,6 @@ def process(filename):
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run_from_file(src, out)
 
-  @no_wasm_backend()
   def test_unistd_access(self):
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
@@ -4607,7 +4490,6 @@ def process(filename):
     expected = open(path_from_root('tests', 'unistd', 'close.out'), 'r').read()
     self.do_run(src, expected)
 
-  @no_wasm_backend()
   def test_unistd_confstr(self):
     src = open(path_from_root('tests', 'unistd', 'confstr.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'confstr.out'), 'r').read()
@@ -4622,7 +4504,6 @@ def process(filename):
     expected = open(path_from_root('tests', 'unistd', 'dup.out'), 'r').read()
     self.do_run(src, expected)
 
-  @no_wasm_backend()
   def test_unistd_pathconf(self):
     src = open(path_from_root('tests', 'unistd', 'pathconf.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'pathconf.out'), 'r').read()
@@ -4646,7 +4527,6 @@ def process(filename):
     src = open(path_from_root('tests', 'unistd', 'isatty.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
-  @no_wasm_backend()
   def test_unistd_sysconf(self):
     src = open(path_from_root('tests', 'unistd', 'sysconf.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'sysconf.out'), 'r').read()
@@ -4711,7 +4591,6 @@ def process(filename):
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
-  @no_wasm_backend()
   def test_unistd_misc(self):
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
     for fs in ['MEMFS', 'NODEFS']:
@@ -4720,7 +4599,6 @@ def process(filename):
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
-  @no_wasm_backend()
   def test_posixtime(self):
     test_path = path_from_root('tests', 'core', 'test_posixtime')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -4736,7 +4614,7 @@ def process(filename):
   def test_uname(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_uname')
 
-  @no_wasm_backend()
+  @no_wasm_backend('unknown relocation: $environ')
   def test_env(self):
     src = open(path_from_root('tests', 'env', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'env', 'output.txt'), 'r').read()
@@ -4745,7 +4623,7 @@ def process(filename):
       expected.replace('{{{ THIS_PROGRAM }}}', './this.program') # spidermonkey, v8
     ])
 
-  @no_wasm_backend()
+  @no_wasm_backend('unknown relocation: $environ')
   def test_environ(self):
     src = open(path_from_root('tests', 'env', 'src-mini.c'), 'r').read()
     expected = open(path_from_root('tests', 'env', 'output-mini.txt'), 'r').read()
@@ -4772,7 +4650,6 @@ Get PORT family: 0
 PORT: 3979
 ''')
 
-  @no_wasm_backend()
   def test_ctype(self):
     src = open(path_from_root('tests', 'ctype', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'ctype', 'output.txt'), 'r').read()
@@ -5001,7 +4878,7 @@ return malloc(size);
 '''
     self.do_run(src, 'new 4!\n*1,0*')
 
-  @no_wasm_backend()
+  @no_wasm_backend('requires EM_ASM args support in wasm backend')
   def test_dlmalloc_partial_2(self):
     if 'SAFE_HEAP' in str(self.emcc_args): return self.skip('we do unsafe stuff here')
     # present part of the symbols of dlmalloc, not all. malloc is harder to link than new which is weak.
@@ -5043,7 +4920,6 @@ return malloc(size);
     self.do_run_from_file(src, output)
     self.do_run_from_file(src, output, force_c=True)
 
-  @no_wasm_backend()
   def test_mmap_file(self):
     for extra_args in [[], ['--no-heap-copy']]:
       self.emcc_args += ['--embed-file', 'data.dat'] + extra_args
@@ -5059,7 +4935,6 @@ return malloc(size);
       src = open(path_from_root('tests', 'mmap_file.c')).read()
       self.do_run(src, '*\n' + s[0:20] + '\n' + s[4096:4096+20] + '\n*\n')
 
-  @no_wasm_backend()
   def test_cubescript(self):
     assert 'asm3' in test_modes
     if self.run_name == 'asm3':
@@ -5100,6 +4975,10 @@ return malloc(size);
       Settings.SPLIT_MEMORY = 8*1024*1024
       test()
       Settings.SPLIT_MEMORY = 0
+
+  def test_relocatable_void_function(self):
+    Settings.RELOCATABLE = 1
+    self.do_run_in_out_file_test('tests', 'core', 'test_relocatable_void_function')
 
   @SIMD
   def test_sse1(self):
