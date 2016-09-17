@@ -183,12 +183,17 @@ static void unlink_inode(inode *node)
 
 // Compares two strings for equality until a '\0' or a '/' is hit. Returns 0 if the strings differ,
 // or a pointer to the beginning of the next directory component name of s1 if the strings are equal.
-static const char *path_cmp(const char *s1, const char *s2)
+static const char *path_cmp(const char *s1, const char *s2, bool *is_directory)
 {
+	*is_directory = true;
 	while(*s1 == *s2)
 	{
 		if (*s1 == '/') return s1+1;
-		if (*s1 == '\0') return s1;
+		if (*s1 == '\0')
+		{
+			*is_directory = false;
+			return s1;
+		}
 		++s1;
 		++s2;
 	}
@@ -224,15 +229,49 @@ static inode *create_directory_hierarchy_for_file(inode *root, const char *path_
 	assert(root);
 	if (!root) return 0;
 
+	// Traverse . and ..
+	while(path_to_file[0] == '.')
+	{
+		if (path_to_file[1] == '/') path_to_file += 2; // Skip over redundant "./././././" blocks
+		else if (path_to_file[1] == '\0') path_to_file += 1;
+		else if (path_to_file[1] == '.' && (path_to_file[2] == '/' || path_to_file[2] == '\0')) // Go up to parent directories with ".."
+		{
+			root = root->parent;
+			if (!root) return 0;
+			assert(root->type == INODE_DIR); // Anything that is a parent should automatically be a directory.
+			path_to_file += (path_to_file[2] == '/') ? 3 : 2;
+		}
+		else break;
+	}
+	if (path_to_file[0] == '\0') return 0;
+
 	inode *node = root->child;
 	while(node)
 	{
-		const char *child_path = path_cmp(path_to_file, node->name);
+		bool is_directory = false;
+		const char *child_path = path_cmp(path_to_file, node->name, &is_directory);
 		EM_ASM_INT( { Module['printErr']('path_cmp ' + Pointer_stringify($0) + ', ' + Pointer_stringify($1) + ', ' + Pointer_stringify($2) + ' .') }, path_to_file, node->name, child_path);
 		if (child_path)
 		{
+			if (is_directory && node->type != INODE_DIR) return 0; // "A component used as a directory in pathname is not, in fact, a directory"
+
 			// The directory name matches.
 			path_to_file = child_path;
+
+			// Traverse . and ..
+			while(path_to_file[0] == '.')
+			{
+				if (path_to_file[1] == '/') path_to_file += 2; // Skip over redundant "./././././" blocks
+				else if (path_to_file[1] == '\0') path_to_file += 1;
+				else if (path_to_file[1] == '.' && (path_to_file[2] == '/' || path_to_file[2] == '\0')) // Go up to parent directories with ".."
+				{
+					node = node->parent;
+					if (!node) return 0;
+					assert(node->type == INODE_DIR); // Anything that is a parent should automatically be a directory.
+					path_to_file += (path_to_file[2] == '/') ? 3 : 2;
+				}
+				else break;
+			}
 			if (path_to_file[0] == '\0') return node;
 			if (path_to_file[0] == '/' && path_to_file[1] == '\0' /* && node is a directory*/) return node;
 			root = node;
@@ -279,7 +318,23 @@ static inode *find_parent_inode(inode *root, const char *path, int *out_errno)
 	assert(out_errno); // Passing in error is mandatory.
 
 	if (!root) RETURN_NODE_AND_ERRNO(0, ENOENT);
-	if (!path || path[0] == '\0') RETURN_NODE_AND_ERRNO(0, ENOENT);
+	if (!path) RETURN_NODE_AND_ERRNO(0, ENOENT);
+
+	// Traverse . and ..
+	while(path[0] == '.')
+	{
+		if (path[1] == '/') path += 2; // Skip over redundant "./././././" blocks
+		else if (path[1] == '\0') path += 1;
+		else if (path[1] == '.' && (path[2] == '/' || path[2] == '\0')) // Go up to parent directories with ".."
+		{
+			root = root->parent;
+			if (!root) RETURN_NODE_AND_ERRNO(0, ENOENT);
+			assert(root->type == INODE_DIR); // Anything that is a parent should automatically be a directory.
+			path += (path[2] == '/') ? 3 : 2;
+		}
+		else break;
+	}
+	if (path[0] == '\0') RETURN_NODE_AND_ERRNO(0, ENOENT);
 	if (path[0] == '/' && path[1] == '\0') RETURN_NODE_AND_ERRNO(0, ENOENT);
 	if (root->type != INODE_DIR) RETURN_NODE_AND_ERRNO(0, ENOTDIR); // "A component used as a directory in pathname is not, in fact, a directory"
 
@@ -291,11 +346,30 @@ static inode *find_parent_inode(inode *root, const char *path, int *out_errno)
 	inode *node = root->child;
 	while(node)
 	{
-		const char *child_path = path_cmp(path, node->name);
+		bool is_directory = false;
+		const char *child_path = path_cmp(path, node->name, &is_directory);
 		if (child_path)
 		{
+			if (is_directory && node->type != INODE_DIR) RETURN_NODE_AND_ERRNO(0, ENOTDIR); // "A component used as a directory in pathname is not, in fact, a directory"
+
 			// The directory name matches.
 			path = child_path;
+
+			// Traverse . and ..
+			while(path[0] == '.')
+			{
+				if (path[1] == '/') path += 2; // Skip over redundant "./././././" blocks
+				else if (path[1] == '\0') path += 1;
+				else if (path[1] == '.' && (path[2] == '/' || path[2] == '\0')) // Go up to parent directories with ".."
+				{
+					node = node->parent;
+					if (!node) RETURN_NODE_AND_ERRNO(0, ENOENT);
+					assert(node->type == INODE_DIR); // Anything that is a parent should automatically be a directory.
+					path += (path[2] == '/') ? 3 : 2;
+				}
+				else break;
+			}
+
 			if (path >= basename) RETURN_NODE_AND_ERRNO(node, 0);
 			if (!*path) RETURN_NODE_AND_ERRNO(0, ENOENT);
 			node = node->child;
@@ -325,31 +399,57 @@ static inode *find_inode(inode *root, const char *path, int *out_errno)
 	// TODO: RETURN_ERRNO(ELOOP, "Too many symbolic links were encountered in translating pathname");
 	// TODO: RETURN_ERRNO(EACCES, "one of the directories in the path prefix of pathname did not allow search permission");
 
-	// special-case finding empty string path "" or "/" returns the root searched in.
-	if (!path || path[0] == '\0') RETURN_NODE_AND_ERRNO(root, 0);
-	if (path[0] == '/' && path[1] == '\0')
-	{
-		if (root->type == INODE_DIR) RETURN_NODE_AND_ERRNO(root, 0);
-		else RETURN_NODE_AND_ERRNO(0, ENOTDIR); // "A component used as a directory in pathname is not, in fact, a directory"
-	}
+	// special-case finding empty string path "", "." or "/" returns the root searched in.
 	if (root->type != INODE_DIR) RETURN_NODE_AND_ERRNO(0, ENOTDIR); // "A component used as a directory in pathname is not, in fact, a directory"
+	if (!path) RETURN_NODE_AND_ERRNO(root, 0);
+
+	// Traverse . and ..
+	while(path[0] == '.')
+	{
+		if (path[1] == '/') path += 2; // Skip over redundant "./././././" blocks
+		else if (path[1] == '\0') path += 1;
+		else if (path[1] == '.' && (path[2] == '/' || path[2] == '\0')) // Go up to parent directories with ".."
+		{
+			root = root->parent;
+			if (!root) RETURN_NODE_AND_ERRNO(0, ENOENT);
+			assert(root->type == INODE_DIR); // Anything that is a parent should automatically be a directory.
+			path += (path[2] == '/') ? 3 : 2;
+		}
+		else break;
+	}
+	if (path[0] == '\0') RETURN_NODE_AND_ERRNO(root, 0);
 
 	inode *node = root->child;
 	while(node)
 	{
-		const char *child_path = path_cmp(path, node->name);
+		bool is_directory = false;
+		const char *child_path = path_cmp(path, node->name, &is_directory);
 		if (child_path)
 		{
+			if (is_directory && node->type != INODE_DIR) RETURN_NODE_AND_ERRNO(0, ENOTDIR); // "A component used as a directory in pathname is not, in fact, a directory"
+
 			// The directory name matches.
 			path = child_path;
 
+			// Traverse . and ..
+			while(path[0] == '.')
+			{
+				if (path[1] == '/') path += 2; // Skip over redundant "./././././" blocks
+				else if (path[1] == '\0') path += 1;
+				else if (path[1] == '.' && (path[2] == '/' || path[2] == '\0')) // Go up to parent directories with ".."
+				{
+					node = node->parent;
+					if (!node) RETURN_NODE_AND_ERRNO(0, ENOENT);
+					assert(node->type == INODE_DIR); // Anything that is a parent should automatically be a directory.
+					path += (path[2] == '/') ? 3 : 2;
+				}
+				else break;
+			}
+
 			// If we arrived to the end of the search, this is the node we were looking for.
 			if (path[0] == '\0') RETURN_NODE_AND_ERRNO(node, 0);
-			if (path[0] == '/' && path[1] == '\0')
-			{
-				if (node->type == INODE_DIR) RETURN_NODE_AND_ERRNO(node, 0);
-				else RETURN_NODE_AND_ERRNO(0, ENOTDIR); // "A component used as a directory in pathname is not, in fact, a directory"
-			}
+			if (path[0] == '/' && node->type != INODE_DIR) RETURN_NODE_AND_ERRNO(0, ENOTDIR); // "A component used as a directory in pathname is not, in fact, a directory"
+			if (path[0] == '/' && path[1] == '\0') RETURN_NODE_AND_ERRNO(node, 0);
 			node = node->child;
 		}
 		else
