@@ -300,6 +300,7 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
   console.log('fetch: xhr.open(requestMethod="' + requestMethod + '", url: "' + url_ +'", userName: ' + userNameStr + ', password: ' + passwordStr + ');');
 #endif
   xhr.open(requestMethod, url_, !fetchAttrSynchronous, userNameStr, passwordStr);
+  xhr.url_ = url_; // Save the url for debugging purposes (and for comparing to the responseURL that server side advertised)
   xhr.responseType = fetchAttrStreamData ? 'moz-chunked-arraybuffer' : 'arraybuffer';
 
   if (overriddenMimeType) {
@@ -356,12 +357,12 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
 //    if (xhr.statusText) stringToUTF8(fetch + 44, xhr.statusText, 64);
     if (xhr.status == 200) {
 #if FETCH_DEBUG
-      console.log('fetch: xhr succeeded with status 200');
+      console.log('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" succeeded with status 200');
 #endif
       if (onsuccess) onsuccess(fetch, xhr, e);
     } else {
 #if FETCH_DEBUG
-      console.error('fetch: xhr failed with status ' + xhr.status);
+      console.error('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" failed with status ' + xhr.status);
 #endif
       if (onerror) onerror(fetch, xhr, e);
     }
@@ -370,7 +371,7 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
     var status = xhr.status; // XXX TODO: Overwriting xhr.status doesn't work here, so don't override anywhere else either.
     if (xhr.readyState == 4 && status == 0) status = 404; // If no error recorded, pretend it was 404 Not Found.
 #if FETCH_DEBUG
-    console.error('fetch: xhr error with readyState ' + xhr.readyState + ' and status ' + status);
+    console.error('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" finished with error, readyState ' + xhr.readyState + ' and status ' + status);
 #endif
     HEAPU32[fetch + 12 >> 2] = 0;
     Fetch.setu64(fetch + 16, 0);
@@ -382,7 +383,7 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
   }
   xhr.ontimeout = function(e) {
 #if FETCH_DEBUG
-    console.error('fetch: xhr timed out with readyState ' + xhr.readyState + ' and status ' + xhr.status);
+    console.error('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" timed out, readyState ' + xhr.readyState + ' and status ' + xhr.status);
 #endif
     if (onerror) onerror(fetch, xhr, e);
   }

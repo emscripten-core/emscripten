@@ -203,14 +203,15 @@ static const char *path_cmp(const char *s1, const char *s2, bool *is_directory)
 	return 0;
 }
 
-#define HEX_NIBBLE(x) ("0123456789abcdef"[(x)])
+#define NIBBLE_TO_CHAR(x) ("0123456789abcdef"[(x)])
 static void uriEncode(char *dst, int dstLengthBytes, const char *src)
 {
 	char *end = dst + dstLengthBytes - 4; // Use last 4 bytes of dst as a guard area to avoid overflow below.
 	while(*src && dst < end)
 	{
 		if (isalnum(*src) || *src == '-' || *src == '_' || *src == '.' || *src == '~') *dst++ = *src;
-		else *dst++ = '%', *dst++ = HEX_NIBBLE(*src >> 4), *dst++ = HEX_NIBBLE(*src & 15);
+		else if (*src == '/') *dst++ = *src; // NB. forward slashes should generally be uriencoded, but for file path purposes, we want to keep them intact.
+		else *dst++ = '%', *dst++ = NIBBLE_TO_CHAR(*src >> 4), *dst++ = NIBBLE_TO_CHAR(*src & 15); // This charater needs uriencoding.
 		++src;
 	}
 	*dst = '\0';
