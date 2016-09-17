@@ -1557,7 +1557,7 @@ var LibraryJSEvents = {
   },
 
   emscripten_set_pointerlockchange_callback: function(target, userData, useCapture, callbackfunc) {
-    if (!document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock) {
+    if (!document.body || (!document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock)) {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
     if (!target) target = document;
@@ -1590,7 +1590,7 @@ var LibraryJSEvents = {
 
   emscripten_get_pointerlock_status: function(pointerlockStatus) {
     if (pointerlockStatus) JSEvents.fillPointerlockChangeEventData(pointerlockStatus);
-    if (!document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock) {
+    if (!document.body || (!document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock)) {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
