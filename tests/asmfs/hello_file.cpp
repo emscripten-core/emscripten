@@ -6,7 +6,7 @@
 
 int main()
 {
-  FILE *file = fopen("hello_file.txt", "rb");
+  FILE *file = fopen("hello file !#$%&'()+,-.;=@[]^_`{}~ %%.txt", "rb");
   assert(file);
   fseek(file, 0, SEEK_END);
 

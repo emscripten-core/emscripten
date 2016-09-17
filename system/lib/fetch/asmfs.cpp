@@ -12,6 +12,7 @@
 #include <libc/fcntl.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <ctype.h>
 #include "syscall_arch.h"
 
 extern "C" {
@@ -200,6 +201,19 @@ static const char *path_cmp(const char *s1, const char *s2, bool *is_directory)
 	if (*s1 == '/' && *s2 == '\0') return s1+1;
 	if (*s1 == '\0' && *s2 == '/') return s1;
 	return 0;
+}
+
+#define HEX_NIBBLE(x) ("0123456789abcdef"[(x)])
+static void uriEncode(char *dst, int dstLengthBytes, const char *src)
+{
+	char *end = dst + dstLengthBytes - 4; // Use last 4 bytes of dst as a guard area to avoid overflow below.
+	while(*src && dst < end)
+	{
+		if (isalnum(*src) || *src == '-' || *src == '_' || *src == '.' || *src == '~') *dst++ = *src;
+		else *dst++ = '%', *dst++ = HEX_NIBBLE(*src >> 4), *dst++ = HEX_NIBBLE(*src & 15);
+		++src;
+	}
+	*dst = '\0';
 }
 
 // Copies string 'path' to 'dst', but stops on the first forward slash '/' character.
@@ -590,14 +604,8 @@ long __syscall4(int which, ...) // write
 	return __syscall146(146/*writev*/, fd, &io, 1);
 }
 
-long __syscall5(int which, ...) // open
+static long open(const char *pathname, int flags, int mode)
 {
-	va_list vl;
-	va_start(vl, which);
-	const char *pathname = va_arg(vl, const char*);
-	int flags = va_arg(vl, int);
-	int mode = va_arg(vl, int);
-	va_end(vl);
 	EM_ASM_INT({ Module['printErr']('open(pathname="' + Pointer_stringify($0) + '", flags=0x' + ($1).toString(16) + ', mode=0' + ($2).toString(8) + ')') },
 		pathname, flags, mode);
 
@@ -688,7 +696,9 @@ long __syscall5(int which, ...) // open
 			emscripten_fetch_attr_init(&attr);
 			strcpy(attr.requestMethod, "GET");
 			attr.attributes = EMSCRIPTEN_FETCH_APPEND | EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_WAITABLE | EMSCRIPTEN_FETCH_PERSIST_FILE;
-			fetch = emscripten_fetch(&attr, pathname);
+			char uriEncodedPathName[3*PATH_MAX+4]; // times 3 because uri-encoding can expand the filename at most 3x.
+			uriEncode(uriEncodedPathName, 3*PATH_MAX+4, pathname);
+			fetch = emscripten_fetch(&attr, uriEncodedPathName);
 
 		// switch(fopen_mode)
 		// {
@@ -745,12 +755,20 @@ long __syscall5(int which, ...) // open
 	return (long)desc;
 }
 
-long __syscall6(int which, ...) // close
+long __syscall5(int which, ...) // open
 {
 	va_list vl;
 	va_start(vl, which);
-	int fd = va_arg(vl, int);
+	const char *pathname = va_arg(vl, const char*);
+	int flags = va_arg(vl, int);
+	int mode = va_arg(vl, int);
 	va_end(vl);
+
+	return open(pathname, flags, mode);
+}
+
+static long close(int fd)
+{
 	EM_ASM_INT({ Module['printErr']('close(fd=' + $0 + ')') }, fd);
 
 	FileDescriptor *desc = (FileDescriptor*)fd;
@@ -765,6 +783,16 @@ long __syscall6(int which, ...) // close
 	desc->magic = 0;
 	free(desc);
 	return 0;
+}
+
+long __syscall6(int which, ...) // close
+{
+	va_list vl;
+	va_start(vl, which);
+	int fd = va_arg(vl, int);
+	va_end(vl);
+
+	return close(fd);
 }
 
 long __syscall9(int which, ...) // link
@@ -1082,7 +1110,7 @@ long __syscall140(int which, ...) // llseek
 	off_t *result = va_arg(vl, off_t *);
 	unsigned int whence = va_arg(vl, unsigned int);
 	va_end(vl);
-	EM_ASM_INT({ Module['printErr']('llseek(fd=' + $0 + ', offset=0x' + (($1<<32)|$2) + ', result=0x' + ($3).toString(16) + ', whence=' + $4 + ')') },
+	EM_ASM_INT({ Module['printErr']('llseek(fd=' + $0 + ', offset_high=' + $1 + ', offset_low=' + $2 + ', result=0x' + ($3).toString(16) + ', whence=' + $4 + ')') },
 		fd, offset_high, offset_low, result, whence);
 
 	FileDescriptor *desc = (FileDescriptor*)fd;
@@ -1090,7 +1118,9 @@ long __syscall140(int which, ...) // llseek
 
 	if (desc->node->fetch) emscripten_fetch_wait(desc->node->fetch, INFINITY);
 
-	int64_t offset = (int64_t)(((uint64_t)offset_high << 32) | (uint64_t)offset_low);
+// TODO: The following does not work, for some reason seek is getting called with 32-bit signed offsets?
+//	int64_t offset = (int64_t)(((uint64_t)offset_high << 32) | (uint64_t)offset_low);
+	int64_t offset = (int64_t)(int32_t)offset_low;
 	int64_t newPos;
 	switch(whence)
 	{
@@ -1310,6 +1340,15 @@ long __syscall195(int which, ...) // SYS_stat64
 
 	int err;
 	inode *node = find_inode(root, relpath, &err);
+
+	if (!node && (err == ENOENT || err == ENOTDIR))
+	{
+		// Populate the file from the CDN to the filesystem if it didn't yet exist.
+		long fd = open(pathname, O_RDONLY, 0777);
+		if (fd) close(fd);
+		node = find_inode(root, relpath, &err);
+	}
+
 	if (err == ENOTDIR) RETURN_ERRNO(ENOTDIR, "A component of the path prefix of pathname is not a directory");
 	if (err == ELOOP) RETURN_ERRNO(ELOOP, "Too many symbolic links encountered while traversing the path");
 	if (err == EACCES) RETURN_ERRNO(EACCES, "Search permission is denied for one of the directories in the path prefix of pathname");

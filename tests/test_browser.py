@@ -3333,7 +3333,8 @@ window.close = function() {
     self.btest('fetch/idb_delete.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '--proxy-to-worker'])
 
   def test_asmfs_hello_file(self):
-    shutil.copyfile(path_from_root('tests', 'asmfs', 'hello_file.txt'), os.path.join(self.get_dir(), 'hello_file.txt'))
+    # Test basic file loading and the valid character set for files.
+    shutil.copyfile(path_from_root('tests', 'asmfs', 'hello_file.txt'), os.path.join(self.get_dir(), 'hello file !#$%&\'()+,-.;=@[]^_`{}~ %%.txt'))
     self.btest('asmfs/hello_file.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '--proxy-to-worker'])
 
   def test_asmfs_read_file_twice(self):
