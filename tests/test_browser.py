@@ -2635,7 +2635,7 @@ window.close = function() {
         (['-s', 'EXPORT_NAME="HelloWorld"'], '''
           if (typeof Module !== "undefined") throw "what?!"; // do not pollute the global scope, we are modularized!
           HelloWorld();
-          if (Module.Pointer_stringify !== undefined) throw "Unexpected member is detected!"; // module constructor should not be polluted
+          if (HelloWorld.Pointer_stringify !== undefined) throw "Unexpected member is detected!"; // module constructor should not be polluted
         '''), # use EXPORT_NAME
         (['-s', 'EXPORT_NAME="HelloWorld"'], '''
           var hello = HelloWorld({ noInitialRun: true, onRuntimeInitialized: function() {
