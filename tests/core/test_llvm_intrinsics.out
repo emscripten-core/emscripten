@@ -33,4 +33,16 @@ log2_f32 4.0
 log2_f64 4.3
 log10_f32 3.0
 log10_f64 3.3
+llvm_ceil_f64 2.0
+llvm_ceil_f64 2.0
+llvm_ceil_f64 2.0
+llvm_ceil_f64 -1.0
+llvm_ceil_f64 -1.0
+llvm_ceil_f64 -1.0
+llvm_floor_f64 1.0
+llvm_floor_f64 1.0
+llvm_floor_f64 1.0
+llvm_floor_f64 -2.0
+llvm_floor_f64 -2.0
+llvm_floor_f64 -2.0
 ok.
