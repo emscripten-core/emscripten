@@ -87,11 +87,15 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
     # these functions are split up to force variables to go out of scope and allow
     # memory to be reclaimed
 
-    funcs, metadata, mem_init = get_and_parse_backend(infile, settings, temp_files, DEBUG)
-    glue, forwarded_data = compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DEBUG)
+    with ToolchainProfiler.profile_block('get_and_parse_backend'):
+      funcs, metadata, mem_init = get_and_parse_backend(infile, settings, temp_files, DEBUG)
+    with ToolchainProfiler.profile_block('compiler_glue'):
+      glue, forwarded_data = compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DEBUG)
 
-    post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, last_forwarded_json = function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG)
-    finalize_output(metadata, post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, last_forwarded_json, settings, outfile, DEBUG)
+    with ToolchainProfiler.profile_block('function_tables_and_exports'):
+      post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, last_forwarded_json = function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG)
+    with ToolchainProfiler.profile_block('finalize_output'):
+      finalize_output(metadata, post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, last_forwarded_json, settings, outfile, DEBUG)
 
     success = True
 
@@ -144,7 +148,8 @@ def get_and_parse_backend(infile, settings, temp_files, DEBUG):
       if DEBUG:
         logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
         t = time.time()
-      shared.jsrun.timeout_run(subprocess.Popen(backend_args, stdout=subprocess.PIPE))
+      with ToolchainProfiler.profile_block('emscript_llvm_backend'):
+        shared.jsrun.timeout_run(subprocess.Popen(backend_args, stdout=subprocess.PIPE))
       if DEBUG:
         logging.debug('  emscript: llvm backend took %s seconds' % (time.time() - t))
 
