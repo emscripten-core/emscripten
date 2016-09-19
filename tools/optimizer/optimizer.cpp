@@ -627,8 +627,8 @@ StringSet ASSOCIATIVE_BINARIES("+ * | & ^"),
           BOOLEAN_RECEIVERS("if do while conditional"),
           SAFE_TO_DROP_COERCION("unary-prefix name num");
 
-StringSet BREAK_CAPTURERS("do while for switch"),
-          CONTINUE_CAPTURERS("do while for"),
+StringSet BREAK_CAPTURERS("do while switch"),
+          CONTINUE_CAPTURERS("do while"),
           FUNCTIONS_THAT_ALWAYS_THROW("abort ___resumeException ___cxa_throw ___cxa_rethrow");
 
 bool isFunctionTable(const char *name) {
@@ -716,7 +716,7 @@ Ref simplifyCondition(Ref node) {
 
 StringSet ELIMINATION_SAFE_NODES("assign call if toplevel do return label switch binary unary-prefix"); // do is checked carefully, however
 StringSet IGNORABLE_ELIMINATOR_SCAN_NODES("num toplevel string break continue dot"); // dot can only be STRING_TABLE.*
-StringSet ABORTING_ELIMINATOR_SCAN_NODES("new object function defun for while array throw"); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
+StringSet ABORTING_ELIMINATOR_SCAN_NODES("new object defun while array"); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
 StringSet HEAP_NAMES("HEAP8 HEAP16 HEAP32 HEAPU8 HEAPU16 HEAPU32 HEAPF32 HEAPF64");
 
 bool isTempDoublePtrAccess(Ref node) { // these are used in bitcasts; they are not really affecting memory, and should cause no invalidation
@@ -2221,13 +2221,6 @@ void registerize(Ref ast) {
           level++;
           traversePrePostConditional(node[2], possibilifier, [](Ref node){});
           purgeLevel();
-        } else if (type == FOR) {
-          traversePrePostConditional(node[1], possibilifier, [](Ref node){});
-          for (int i = 2; i <= 4; i++) {
-            level++;
-            traversePrePostConditional(node[i], possibilifier, [](Ref node){});
-            purgeLevel();
-          }
         } else if (type == IF) {
           traversePrePostConditional(node[1], possibilifier, [](Ref node){});
           level++;
@@ -2781,25 +2774,6 @@ void registerizeHarder(Ref ast) {
           setJunction(jCondExit, false);
           joinJunction(jExit, false);
         }
-      } else if (type == FOR) {
-        int jTest = addJunction();
-        int jBody = addJunction();
-        int jStep = addJunction();
-        int jExit = addJunction();
-        buildFlowGraph(node[1]);
-        joinJunction(jTest, false);
-        isInExpr++;
-        buildFlowGraph(node[2]);
-        isInExpr--;
-        joinJunction(jBody, false);
-        pushActiveLabels(jStep, jExit);
-        buildFlowGraph(node[4]);
-        popActiveLabels();
-        joinJunction(jStep, false);
-        buildFlowGraph(node[3]);
-        joinJunction(jTest, false);
-        setJunction(jBody, false);
-        joinJunction(jExit, false);
       } else if (type == LABEL) {
         assert(BREAK_CAPTURERS.has(node[2][0])); // 'label on non-loop, non-switch statement')
         nextLoopLabel = node[1]->getIString();
@@ -2906,7 +2880,7 @@ void registerizeHarder(Ref ast) {
         buildFlowGraph(node[1]);
         buildFlowGraph(node[2]);
         isInExpr--;
-      } else if (type == DOT || type == THROW) {
+      } else if (type == DOT) {
         isInExpr++;
         buildFlowGraph(node[1]);
         isInExpr--;

@@ -20,7 +20,6 @@ IString TOPLEVEL("toplevel"),
         ELSE("else"),
         WHILE("while"),
         DO("do"),
-        FOR("for"),
         SEQ("seq"),
         SUB("sub"),
         CALL("call"),
@@ -89,9 +88,9 @@ IString TOPLEVEL("toplevel"),
         NEW("new"),
         ARRAY("array"),
         OBJECT("object"),
-        THROW("throw"),
         SET("=");
 
+// Regardless of whether they're asm.js or not, keywords should be here to avoid treating them as idents
 IStringSet keywords("var const function if else do while for break continue return switch case default throw try catch finally true false null new");
 
 const char *OPERATOR_INITS = "+-*/%<>&^|~=!,?:.",

@@ -33,7 +33,6 @@ extern IString TOPLEVEL,
                ELSE,
                WHILE,
                DO,
-               FOR,
                SEQ,
                SUB,
                CALL,
@@ -102,7 +101,6 @@ extern IString TOPLEVEL,
                NEW,
                ARRAY,
                OBJECT,
-               THROW,
                SET;
 
 extern IStringSet keywords;
