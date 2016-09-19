@@ -1407,7 +1407,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
       # Don't include Invoke wrapper names (for asm.js-style exception handling)
       # in metadata[declares], the invoke wrappers will be generated in
       # this script later.
-      func_name = parts[1][1:]
+      func_name = parts[2][1:-1]
       if not func_name.startswith('invoke_'):
         metadata['declares'].append(func_name)
     elif line.startswith('  (func '):
