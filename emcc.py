@@ -415,6 +415,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     tracing = False
     emit_symbol_map = False
     js_opts = None
+    force_js_opts = False
     llvm_opts = None
     llvm_lto = None
     use_closure_compiler = None
@@ -530,6 +531,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       elif newargs[i].startswith('--js-opts'):
         check_bad_eq(newargs[i])
         js_opts = eval(newargs[i+1])
+        if js_opts: force_js_opts = True
         newargs[i] = ''
         newargs[i+1] = ''
       elif newargs[i].startswith('--llvm-opts'):
@@ -1008,9 +1010,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
 
-    if shared.Settings.SAFE_HEAP and not js_opts:
-      js_opts = True
-      logging.debug('enabling js opts for SAFE_HEAP')
+    if shared.Settings.SAFE_HEAP:
+      if not js_opts:
+        logging.debug('enabling js opts for SAFE_HEAP')
+        js_opts = True
+      force_js_opts = True
 
     if debug_level > 1 and use_closure_compiler:
       logging.warning('disabling closure because debug info was requested')
@@ -1065,6 +1069,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if not js_opts:
         js_opts = True
         logging.debug('enabling js opts for SPLIT_MEMORY')
+      force_js_opts = True
       if use_closure_compiler:
         use_closure_compiler = False
         logging.warning('cannot use closure compiler on split memory, for now, disabling')
@@ -1108,13 +1113,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.SIMPLIFY_IFS = 0 # this is just harmful for emterpreting
       shared.Settings.EXPORTED_FUNCTIONS += ['emterpret']
       if not js_opts:
-        js_opts = True
         logging.debug('enabling js opts for EMTERPRETIFY')
+        js_opts = True
+      force_js_opts = True
       assert use_closure_compiler is not 2, 'EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that'
 
-    if shared.Settings.DEAD_FUNCTIONS and not js_opts:
-      js_opts = True
-      logging.debug('enabling js opts for DEAD_FUNCTIONS')
+    if shared.Settings.DEAD_FUNCTIONS:
+      if not js_opts:
+        logging.debug('enabling js opts for DEAD_FUNCTIONS')
+        js_opts = True
+      force_js_opts = True
 
     if proxy_to_worker:
       shared.Settings.PROXY_TO_WORKER = 1
@@ -1152,6 +1160,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logging.error('-s MAIN_MODULE=1 is not supported with -s USE_PTHREADS=1!')
         exit(1)
 
+    if shared.Settings.EVAL_CTORS or shared.Settings.OUTLINING_LIMIT:
+      if not js_opts:
+        logging.debug('enabling js opts for optional requested functioanlity')
+        js_opts = True
+      force_js_opts = True
+
     if shared.Settings.WASM_BACKEND:
       js_opts = None
       shared.Settings.BINARYEN = 1
@@ -1163,9 +1177,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORTED_FUNCTIONS += ['_memcpy', '_memmove', '_memset']
       # to bootstrap struct_info, we need binaryen
       os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
-
-    if js_opts:
-      shared.Settings.RUNNING_JS_OPTS = 1
 
     if shared.Settings.BINARYEN:
       debug_level = max(1, debug_level) # keep whitespace readable, for asm.js parser simplicity
@@ -1180,12 +1191,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.Settings.BINARYEN_ROOT = shared.BINARYEN_ROOT
         except:
           pass
+      # default precise-f32 to on, since it works well in wasm
+      if 'PRECISE_F32=0' not in settings_changes and 'PRECISE_F32=2' not in settings_changes:
+        shared.Settings.PRECISE_F32 = 1
+      if js_opts and not force_js_opts and 'asmjs' not in shared.Settings.BINARYEN_METHOD:
+        js_opts = None
+        logging.debug('asm.js opts not forced by user or an option that depends them, and we do not intend to run the asm.js, so disabling and leaving opts to the binaryen optimizer')
       if use_closure_compiler:
         logging.warning('closure compiler is known to have issues with binaryen (FIXME)')
       # for simplicity, we always have a mem init file, which may also be imported into the wasm module.
       #  * if we also supported js mem inits we'd have 4 modes
       #  * and js mem inits are useful for avoiding a side file, but the wasm module avoids that anyhow
       memory_init_file = True
+
+    if js_opts:
+      shared.Settings.RUNNING_JS_OPTS = 1
 
     if shared.Settings.CYBERDWARF:
       newargs.append('-g')

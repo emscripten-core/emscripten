@@ -6152,15 +6152,19 @@ def process(filename):
       self.emcc_args = orig_args + ['-s', 'EVAL_CTORS=1']
       test()
       ec_js_size = os.stat('src.cpp.o.js').st_size
-      ec_mem_size = os.stat('src.cpp.o.js.mem').st_size
+      if self.uses_memory_init_file():
+        ec_mem_size = os.stat('src.cpp.o.js.mem').st_size
       self.emcc_args = orig_args[:]
       test()
       js_size = os.stat('src.cpp.o.js').st_size
-      mem_size = os.stat('src.cpp.o.js.mem').st_size
+      if self.uses_memory_init_file():
+        mem_size = os.stat('src.cpp.o.js.mem').st_size
       print js_size, ' => ', ec_js_size
-      print mem_size, ' => ', ec_mem_size
+      if self.uses_memory_init_file():
+        print mem_size, ' => ', ec_mem_size
       assert ec_js_size < js_size
-      assert ec_mem_size > mem_size
+      if self.uses_memory_init_file():
+        assert ec_mem_size > mem_size
 
     print 'remove ctor of just assigns to memory'
     def test1():
@@ -6195,9 +6199,11 @@ def process(filename):
     if self.uses_memory_init_file():
       ec_mem_size = os.stat('src.cpp.o.js.mem').st_size
     print js_size, ' => ', ec_js_size
-    print mem_size, ' => ', ec_mem_size
+    if self.uses_memory_init_file():
+      print mem_size, ' => ', ec_mem_size
     assert ec_js_size < js_size
-    assert ec_mem_size > mem_size
+    if self.uses_memory_init_file():
+      assert ec_mem_size > mem_size
 
     print 'assertions too'
     Settings.ASSERTIONS = 1
@@ -7244,10 +7250,17 @@ asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-Oz", "-s", "PRECISE_F32=1
 asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "-s", "SAFE_HEAP=1"])
 asm2i = make_run("asm2i", compiler=CLANG, emcc_args=["-O2", '-s', 'EMTERPRETIFY=1'])
 #asm2m = make_run("asm2m", compiler=CLANG, emcc_args=["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"])
+
 binaryen0 = make_run("binaryen0", compiler=CLANG, emcc_args=['-O0', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
 binaryen1 = make_run("binaryen1", compiler=CLANG, emcc_args=['-O1', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
 binaryen2 = make_run("binaryen2", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
-binaryen3 = make_run("binaryen3", compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
+binaryen3 = make_run("binaryen3", compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"', '-s', 'ASSERTIONS=1', "-s", "PRECISE_F32=1"])
+
+binaryen2jo = make_run("binaryen2", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"', '--js-opts', '1'])
+binaryen3jo = make_run("binaryen3", compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"', '--js-opts', '1'])
+
+binaryen2jo = make_run("binaryen2", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"', '--js-opts', '1'])
+binaryen3jo = make_run("binaryen3", compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"', '--js-opts', '1'])
 
 # This only works when .emscripten specifies a JS_ENGINE with native wasm support.
 binaryen_native = make_run("binaryen_native", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])

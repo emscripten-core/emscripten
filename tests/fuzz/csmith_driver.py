@@ -111,13 +111,18 @@ while 1:
         js_args += ['-s', 'BINARYEN_METHOD="interpret-binary"']
       else:
         js_args += ['-s', 'BINARYEN_METHOD="interpret-asm2wasm"']
+      if random.random() < 0.5:
+        if random.random() < 0.5:
+          js_args += ['--js-opts', '0']
+        else:
+          js_args += ['--js-opts', '1']
     if random.random() < 0.5:
       js_args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
     if random.random() < 0.5 and 'ALLOW_MEMORY_GROWTH=1' not in js_args and 'BINARYEN=1' not in js_args:
       js_args += ['-s', 'MAIN_MODULE=1']
     if random.random() < 0.25:
       js_args += ['-s', 'INLINING_LIMIT=1'] # inline nothing, for more call interaction
-    if random.random() < 0.333 and 'BINARYEN=1' not in js_args:
+    if random.random() < 0.333:
       js_args += ['-s', 'EMTERPRETIFY=1']
       if random.random() < 0.5:
         if random.random() < 0.5:
