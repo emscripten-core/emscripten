@@ -3691,13 +3691,16 @@ void minifyLocals(Ref ast) {
 void asmLastOpts(Ref ast) {
   std::vector<Ref> statsStack;
   traverseFunctions(ast, [&](Ref fun) {
+    traversePre(fun, [&](Ref node) {
+      Ref type = node[0];
+      if (CONDITION_CHECKERS.has(type)) {
+        node[1] = simplifyCondition(node[1]);
+      }
+    });
     traversePrePost(fun, [&](Ref node) {
       Ref type = node[0];
       Ref stats = getStatements(node);
       if (!!stats) statsStack.push_back(stats);
-      if (CONDITION_CHECKERS.has(type)) {
-        node[1] = simplifyCondition(node[1]);
-      }
       if (type == WHILE && node[1][0] == NUM && node[1][1]->getNumber() == 1 && node[2][0] == BLOCK && node[2]->size() == 2) {
         // This is at the end of the pipeline, we can assume all other optimizations are done, and we modify loops
         // into shapes that might confuse other passes
