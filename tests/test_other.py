@@ -540,6 +540,40 @@ f.close()
             time.sleep(0.1)
             shutil.rmtree(tempdirname)
 
+  # Test that the various CMAKE_xxx_COMPILE_FEATURES that are advertised for the Emscripten toolchain match with the actual language features that Clang supports.
+  # If we update LLVM version and this test fails, copy over the new advertised features from Clang and place them to cmake/Modules/Platform/Emscripten.cmake.
+  def test_cmake_compile_features(self):
+    if WINDOWS: return self.skip('Skipped on Windows because CMake does not configure native Clang builds well on Windows.')
+
+    tempdirname_native = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
+    tempdirname_emscripten = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
+    try:
+      os.chdir(tempdirname_native)
+      native_features = Popen(['cmake', '-DCMAKE_C_COMPILER=' + CLANG_CC, '-DCMAKE_CXX_COMPILER=' + CLANG_CPP, path_from_root('tests', 'cmake', 'stdproperty')], stdout=PIPE).communicate()[0]
+    finally:
+      os.chdir(tempdirname_emscripten)
+      try:
+        shutil.rmtree(tempdirname_native)
+      except:
+        pass
+
+    if os.name == 'nt': emconfigure = path_from_root('emcmake.bat')
+    else: emconfigure = path_from_root('emcmake')
+
+    try:
+      os.chdir(tempdirname_emscripten)
+      emscripten_features = Popen([emconfigure, 'cmake', path_from_root('tests', 'cmake', 'stdproperty')], stdout=PIPE).communicate()[0]
+    finally:
+      os.chdir(path_from_root('tests'))
+      try:
+        shutil.rmtree(tempdirname_emscripten)
+      except:
+        pass
+
+    native_features = '\n'.join(filter(lambda x: '***' in x, native_features.split('\n')))
+    emscripten_features = '\n'.join(filter(lambda x: '***' in x, emscripten_features.split('\n')))
+    self.assertTextDataIdentical(native_features, emscripten_features)
+
   def test_failure_error_code(self):
     for compiler in [EMCC, EMXX]:
       # Test that if one file is missing from the build, then emcc shouldn't succeed, and shouldn't try to produce an output file.
