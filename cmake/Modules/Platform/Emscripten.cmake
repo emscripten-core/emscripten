@@ -95,15 +95,39 @@ if ("${CMAKE_RANLIB}" STREQUAL "")
 	set(CMAKE_RANLIB "${EMSCRIPTEN_ROOT_PATH}/emranlib${EMCC_SUFFIX}" CACHE FILEPATH "Emscripten ranlib")
 endif()
 
-# For older CMakes, one can force to avoid doing compiler autodetection
-# since we are cross-compiling by setting the EMSCRIPTEN_FORCE_COMPILERS option.
-# Default it to OFF since it is deprecated and no longer needed in CMake 3.5+
-# https://cmake.org/cmake/help/v3.5/module/CMakeForceCompiler.html
-option(EMSCRIPTEN_FORCE_COMPILERS "Force C/C++ compiler" OFF)
+# Don't allow CMake to autodetect the compiler, since it does not understand Emscripten.
+# Pass -DEMSCRIPTEN_FORCE_COMPILERS=OFF to disable (sensible mostly only for testing/debugging purposes).
+option(EMSCRIPTEN_FORCE_COMPILERS "Force C/C++ compiler" ON)
 if (EMSCRIPTEN_FORCE_COMPILERS)
-	include(CMakeForceCompiler)
-	CMAKE_FORCE_C_COMPILER("${CMAKE_C_COMPILER}" Clang)
-	CMAKE_FORCE_CXX_COMPILER("${CMAKE_CXX_COMPILER}" Clang)
+
+	# Detect version of the 'emcc' executable. Note that for CMake, we tell it the version of the Clang compiler and not the version of Emscripten,
+	# because CMake understands Clang better.
+	if (NOT CMAKE_C_COMPILER_VERSION) # Toolchain script is interpreted multiple times, so don't rerun the check if already done before.
+		execute_process(COMMAND "${CMAKE_C_COMPILER}" "-v" RESULT_VARIABLE _cmake_compiler_result ERROR_VARIABLE _cmake_compiler_output OUTPUT_QUIET)
+		if (NOT _cmake_compiler_result EQUAL 0)
+			message(FATAL_ERROR "Failed to fetch compiler version information with command \"'${CMAKE_C_COMPILER}' -v\"! Process returned with error code ${_cmake_compiler_result}.")
+		endif()
+		if (NOT "${_cmake_compiler_output}" MATCHES "Emscripten")
+			message(FATAL_ERROR "System LLVM compiler cannot be used to build with Emscripten! Check Emscripten's LLVM toolchain location in .emscripten configuration file, and make sure to point CMAKE_C_COMPILER to where emcc is located. (was pointing to \"${CMAKE_C_COMPILER}\")")
+		endif()
+		string(REGEX MATCH "clang version ([0-9\.]+)" _dummy_unused "${_cmake_compiler_output}")
+		if (NOT CMAKE_MATCH_1)
+			message(FATAL_ERROR "Failed to regex parse Clang compiler version from version string: ${_cmake_compiler_output}")
+		endif()
+
+		set(CMAKE_C_COMPILER_VERSION "${CMAKE_MATCH_1}")
+		set(CMAKE_CXX_COMPILER_VERSION "${CMAKE_MATCH_1}")
+		if (${CMAKE_C_COMPILER_VERSION} VERSION_LESS 3.9.0)
+			message(WARNING "CMAKE_C_COMPILER version looks too old. Was ${CMAKE_C_COMPILER_VERSION}, should be at least 3.9.0.")
+		endif()
+	endif()
+
+	set(CMAKE_C_COMPILER_ID_RUN TRUE)
+	set(CMAKE_C_COMPILER_ID Clang)
+	set(CMAKE_C_STANDARD_COMPUTED_DEFAULT 11)
+	set(CMAKE_CXX_COMPILER_ID_RUN TRUE)
+	set(CMAKE_CXX_COMPILER_ID Clang)
+	set(CMAKE_CXX_STANDARD_COMPUTED_DEFAULT 98)
 endif()
 
 # To find programs to execute during CMake run time with find_program(), e.g. 'git' or so, we allow looking
