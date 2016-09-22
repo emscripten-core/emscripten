@@ -2003,8 +2003,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if 'native-wasm' in shared.Settings.BINARYEN_METHOD or 'interpret-binary' in shared.Settings.BINARYEN_METHOD:
         logging.debug('wasm-as (wasm => binary)')
         subprocess.check_call([os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target])
-        if os.path.exists(wasm_text_target + '.mappedGlobals'): # TODO: remove once we no longer use .mappedGlobals files at all, as binaryen is moving to https://github.com/WebAssembly/binaryen/issues/675
-          shutil.copyfile(wasm_text_target + '.mappedGlobals', wasm_binary_target + '.mappedGlobals')
 
     # If we were asked to also generate HTML, do that
     if final_suffix == 'html':
