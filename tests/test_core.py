@@ -6148,21 +6148,23 @@ def process(filename):
       int main() {}
     ''', "constructing!\n");
 
+    code_file = 'src.cpp.o.js' if not Settings.BINARYEN else 'src.cpp.o.wasm'
+
     def do_test(test):
       self.emcc_args = orig_args + ['-s', 'EVAL_CTORS=1']
       test()
-      ec_js_size = os.stat('src.cpp.o.js').st_size
+      ec_code_size = os.stat(code_file).st_size
       if self.uses_memory_init_file():
         ec_mem_size = os.stat('src.cpp.o.js.mem').st_size
       self.emcc_args = orig_args[:]
       test()
-      js_size = os.stat('src.cpp.o.js').st_size
+      code_size = os.stat(code_file).st_size
       if self.uses_memory_init_file():
         mem_size = os.stat('src.cpp.o.js.mem').st_size
-      print js_size, ' => ', ec_js_size
+      print code_size, ' => ', ec_code_size
       if self.uses_memory_init_file():
         print mem_size, ' => ', ec_mem_size
-      assert ec_js_size < js_size
+      assert ec_code_size < code_size
       if self.uses_memory_init_file():
         assert ec_mem_size > mem_size
 
@@ -6185,25 +6187,14 @@ def process(filename):
       ''', "x: 11\n");
     do_test(test1)
 
-    print 'libcxx'
+    print 'libcxx - remove 2 ctors from iostream code'
 
     src = open(path_from_root('tests', 'hello_libcxx.cpp')).read()
     output = 'hello, world!'
-    self.do_run(src, output)
-    js_size = os.stat('src.cpp.o.js').st_size
-    if self.uses_memory_init_file():
-      mem_size = os.stat('src.cpp.o.js.mem').st_size
-    self.emcc_args += ['-s', 'EVAL_CTORS=1']
-    self.do_run(src, output)
-    ec_js_size = os.stat('src.cpp.o.js').st_size
-    if self.uses_memory_init_file():
-      ec_mem_size = os.stat('src.cpp.o.js.mem').st_size
-    print js_size, ' => ', ec_js_size
-    if self.uses_memory_init_file():
-      print mem_size, ' => ', ec_mem_size
-    assert ec_js_size < js_size
-    if self.uses_memory_init_file():
-      assert ec_mem_size > mem_size
+
+    def test2():
+      self.do_run(src, output)
+    do_test(test2)
 
     print 'assertions too'
     Settings.ASSERTIONS = 1

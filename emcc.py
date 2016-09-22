@@ -1160,11 +1160,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logging.error('-s MAIN_MODULE=1 is not supported with -s USE_PTHREADS=1!')
         exit(1)
 
-    if shared.Settings.EVAL_CTORS or shared.Settings.OUTLINING_LIMIT:
+    if shared.Settings.OUTLINING_LIMIT:
       if not js_opts:
-        logging.debug('enabling js opts for optional requested functioanlity')
+        logging.debug('enabling js opts as optional functionality implemented as a js opt was requested')
         js_opts = True
       force_js_opts = True
+
+    if shared.Settings.EVAL_CTORS:
+      # this option is not a js optimizer pass, but does run the js optimizer internally, so
+      # we need to generate proper code for that
+      shared.Settings.RUNNING_JS_OPTS = 1
 
     if shared.Settings.WASM_BACKEND:
       js_opts = None
@@ -1823,11 +1828,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         JSOptimizer.flush()
         shared.Building.eliminate_duplicate_funcs(final)
 
-      if shared.Settings.EVAL_CTORS and memory_init_file and debug_level < 4:
-        JSOptimizer.flush()
-        shared.Building.eval_ctors(final, memfile)
-        if DEBUG: save_intermediate('eval-ctors', 'js')
+    if shared.Settings.EVAL_CTORS and memory_init_file and debug_level < 4:
+      JSOptimizer.flush()
+      shared.Building.eval_ctors(final, memfile)
+      if DEBUG: save_intermediate('eval-ctors', 'js')
 
+    if js_opts:
       if not shared.Settings.EMTERPRETIFY:
         do_minify()
 

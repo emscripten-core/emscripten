@@ -6578,11 +6578,11 @@ int main() {
           (['-O2'], False),
           (['-O2', '--js-opts', '1'], True), # user asked
           (['-O2', '-s', 'EMTERPRETIFY=1'], True), # option forced
-          (['-O2', '-s', 'EVAL_CTORS=1'], True), # option forced
+          (['-O2', '-s', 'EVAL_CTORS=1'], False), # ctor evaller uses js opts, but is not a js opt, and doesn't force other js opts
           (['-O2', '-s', 'OUTLINING_LIMIT=1000'], True), # option forced
           (['-O2', '-s', "BINARYEN_METHOD='interpret-binary,asmjs'"], True), # asmjs in methods means we need good asm.js
           (['-O3'], False),
-          (['-Oz'], True), # for removing duplicate funcs
+          (['-Oz'], False), # even though we run ctor evaller, don't run js opts
         ]:
         print args, expect
         try_delete('a.out.js')
