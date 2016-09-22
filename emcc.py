@@ -2002,7 +2002,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), js_target, wasm_text_target], env=script_env)
       if 'native-wasm' in shared.Settings.BINARYEN_METHOD or 'interpret-binary' in shared.Settings.BINARYEN_METHOD:
         logging.debug('wasm-as (wasm => binary)')
-        subprocess.check_call([os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target])
+        cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
+        if debug_level >= 2 or profiling_funcs: cmd += ['-g']
+        subprocess.check_call(cmd)
 
     # If we were asked to also generate HTML, do that
     if final_suffix == 'html':

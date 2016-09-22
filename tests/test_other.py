@@ -6613,3 +6613,35 @@ int main() {
     finally:
       del os.environ['EMCC_DEBUG']
 
+  def test_binaryen_names(self):
+    binaryen_bin = os.path.join(Settings.BINARYEN_ROOT, 'bin')
+    if not Settings.BINARYEN_ROOT:
+      try:
+        binaryen_bin = os.path.join(BINARYEN_ROOT, 'bin')
+      except:
+        pass
+    sizes = {}
+    for args, expect_names in [
+        ([], True), # -O0 has debug info by default
+        (['-g'], True),
+        (['-O1'], False),
+        (['-O2'], False),
+        (['-O2', '-g'], True),
+        (['-O2', '-g1'], False),
+        (['-O2', '-g2'], True),
+        (['-O2', '--profiling'], True),
+        (['-O2', '--profiling-funcs'], True),
+      ]:
+      print args, expect_names
+      try_delete('a.out.js')
+      subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
+      cmd = [os.path.join(binaryen_bin, 'wasm-dis'), 'a.out.wasm', '-o', 'text']
+      print cmd
+      subprocess.check_call(cmd)
+      text = open('text').read()
+      assert ('$_main' in text or '$main' in text) == expect_names, 'name expectation must match'
+      sizes[str(args)] = os.stat('a.out.wasm').st_size
+      self.assertContained('hello, world!', run_js('a.out.js'))
+    print sizes
+    assert sizes["['-O2']"] < sizes["['-O2', '--profiling-funcs']"], 'when -profiling-funcs, the size increases due to function names'
+
