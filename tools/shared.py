@@ -207,7 +207,9 @@ if EM_CONFIG and not os.path.isfile(EM_CONFIG):
     EM_CONFIG = EM_CONFIG.replace(';', '\n') + '\n'
 
 if not EM_CONFIG:
-  EM_CONFIG = '~/.emscripten'
+  EM_CONFIG = path_from_root('emscripten.rc')
+  if not os.path.exists(EM_CONFIG):
+    EM_CONFIG = '~/.emscripten'
 if '\n' in EM_CONFIG:
   CONFIG_FILE = None
   logging.debug('EM_CONFIG is specified inline without a file')
