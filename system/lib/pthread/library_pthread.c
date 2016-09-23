@@ -247,11 +247,11 @@ int pthread_getattr_np(pthread_t t, pthread_attr_t *a)
 
 static uint32_t dummyZeroAddress = 0;
 
-int usleep(unsigned usec)
+static void do_sleep(double msecs)
 {
 	int is_main_thread = emscripten_is_main_runtime_thread();
 	double now = emscripten_get_now();
-	double target = now + usec * 1e-3;
+	double target = now + msecs;
 #ifdef __EMSCRIPTEN__
 	emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_SLEEPING);
 #endif
@@ -268,7 +268,19 @@ int usleep(unsigned usec)
 	}
 #ifdef __EMSCRIPTEN__
 	emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_SLEEPING, EM_THREAD_STATUS_RUNNING);
-#endif
+#endif	
+}
+
+int nanosleep(const struct timespec *req, struct timespec *rem)
+{
+	if (!req || req->tv_nsec < 0 || req->tv_nsec > 999999999L || req->tv_sec < 0) return EINVAL;
+	do_sleep(req->tv_sec * 1000.0 + req->tv_nsec / 1e6);
+	return 0;
+}
+
+int usleep(unsigned usec)
+{
+	do_sleep(usec / 1e3);
 	return 0;
 }
 
