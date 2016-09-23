@@ -170,10 +170,12 @@ Conversion functions — strings, pointers and arrays
 
 	Copies the given JavaScript ``String`` object ``str`` to the Emscripten HEAP at address ``outPtr``, null-terminated and encoded in UTF8 form.
 
+	The copy will require at most ``str.length*4+1`` bytes of space in the HEAP. You can use the function ``lengthBytesUTF8()`` to compute the exact amount of bytes (excluding the null terminator) needed to encode the string.
+
 	:param str: A JavaScript ``String`` object.
 	:type str: String
 	:param outPtr: Pointer to data copied from ``str``, encoded in UTF8 format and null-terminated.
-	:param maxBytesToWrite: A limit on the number of bytes that this function can at most write out. If the string is longer than this, the output is truncated. The outputted string will always be null terminated, even if truncation occurred.
+	:param maxBytesToWrite: A limit on the number of bytes that this function can at most write out. If the string is longer than this, the output is truncated. The outputted string will always be null terminated, even if truncation occurred, as long as ``maxBytesToWrite > 0``.
 
 
 .. js:function:: UTF16ToString(ptr)
@@ -189,12 +191,12 @@ Conversion functions — strings, pointers and arrays
 
 	Copies the given JavaScript ``String`` object ``str`` to the Emscripten HEAP at address ``outPtr``, null-terminated and encoded in UTF16LE form. 
 	
-	The copy will require at most ``(str.length*2+1)*2`` bytes of space in the HEAP.
+	The copy will require exactly ``(str.length+1)*2`` bytes of space in the HEAP.
 
 	:param str: A JavaScript ``String`` object.
 	:type str: String
 	:param outPtr: Pointer to data copied from ``str``, encoded in UTF16LE format and null-terminated.
-	:param maxBytesToWrite: A limit on the number of bytes that this function can at most write out. If the string is longer than this, the output is truncated. The outputted string will always be null terminated, even if truncation occurred.
+	:param maxBytesToWrite: A limit on the number of bytes that this function can at most write out. If the string is longer than this, the output is truncated. The outputted string will always be null terminated, even if truncation occurred, as long as ``maxBytesToWrite >= 2`` so that there is space for the null terminator.
 
 
 
@@ -210,12 +212,12 @@ Conversion functions — strings, pointers and arrays
 
 	Copies the given JavaScript ``String`` object ``str`` to the Emscripten HEAP at address ``outPtr``, null-terminated and encoded in UTF32LE form. 
 	
-	The copy will require at most ``(str.length+1)*4`` bytes of space in the HEAP, but can use less, since ``str.length`` does not return the number of characters in the string, but the number of UTF-16 code units in the string.
+	The copy will require at most ``(str.length+1)*4`` bytes of space in the HEAP, but can use less, since ``str.length`` does not return the number of characters in the string, but the number of UTF-16 code units in the string. You can use the function ``lengthBytesUTF32()`` to compute the exact amount of bytes (excluding the null terminator) needed to encode the string.
 	
 	:param str: A JavaScript ``String`` object.
 	:type str: String
 	:param outPtr: Pointer to data copied from ``str``, encoded in encoded in UTF32LE format and null-terminated.
-	:param maxBytesToWrite: A limit on the number of bytes that this function can at most write out. If the string is longer than this, the output is truncated. The outputted string will always be null terminated, even if truncation occurred.
+	:param maxBytesToWrite: A limit on the number of bytes that this function can at most write out. If the string is longer than this, the output is truncated. The outputted string will always be null terminated, even if truncation occurred, as long as `maxBytesToWrite >= 4`` so that there is space for the null terminator.
 
 
 
