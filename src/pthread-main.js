@@ -57,7 +57,7 @@ this.onmessage = function(e) {
 
     PthreadWorkerInit = e.data.PthreadWorkerInit;
     importScripts(e.data.url);
-    FS.createStandardStreams();
+    if (typeof FS !== 'undefined') FS.createStandardStreams();
     postMessage({ cmd: 'loaded' });
   } else if (e.data.cmd === 'objectTransfer') {
     PThread.receiveObjectTransfer(e.data);
