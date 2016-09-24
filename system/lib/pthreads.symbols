@@ -149,6 +149,7 @@
          U mktemp
          U mmap
          U munmap
+         T nanosleep
          U open
          U opendir
          U pclose
