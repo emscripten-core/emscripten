@@ -3,6 +3,7 @@
 
 #include <inttypes.h>
 #include <pthread.h>
+#include <html5.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -95,10 +96,17 @@ typedef union em_variant_val
 #define EM_QUEUED_CALL_MAX_ARGS 8
 typedef struct em_queued_call
 {
-  int function;
+  int functionEnum;
+  void *functionPtr;
   int operationDone;
   em_variant_val args[EM_QUEUED_CALL_MAX_ARGS];
   em_variant_val returnValue;
+
+  // If true, the caller has "detached" itself from this call
+  // object and the Emscripten main runtime thread should free up
+  // this em_queued_call object after it has been executed. If
+  // false, the caller is in control of the memory.
+  int calleeDelete;
 } em_queued_call;
 
 void emscripten_sync_run_in_main_thread(em_queued_call *call);
@@ -107,6 +115,61 @@ void *emscripten_sync_run_in_main_thread_1(int function, void *arg1);
 void *emscripten_sync_run_in_main_thread_2(int function, void *arg1, void *arg2);
 void *emscripten_sync_run_in_main_thread_3(int function, void *arg1, void *arg2, void *arg3);
 void *emscripten_sync_run_in_main_thread_7(int function, void *arg1, void *arg2, void *arg3, void *arg4, void *arg5, void *arg6, void *arg7);
+
+typedef void (*em_func_v)(void);
+typedef void (*em_func_vi)(int);
+typedef void (*em_func_vii)(int, int);
+typedef void (*em_func_viii)(int, int, int);
+typedef int (*em_func_i)(void);
+typedef int (*em_func_ii)(int);
+typedef int (*em_func_iii)(int, int);
+typedef int (*em_func_iiii)(int, int, int);
+
+#define EM_FUNC_SIGNATURE int
+
+#define EM_FUNC_SIG_V 1024
+#define EM_FUNC_SIG_VI (1024 + 1)
+#define EM_FUNC_SIG_VII (1024 + 2)
+#define EM_FUNC_SIG_VIII (1024 + 3)
+#define EM_FUNC_SIG_I 2048
+#define EM_FUNC_SIG_II (2048 + 1)
+#define EM_FUNC_SIG_III (2048 + 2)
+#define EM_FUNC_SIG_IIII (2048 + 3)
+
+#define EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(x) ((x) & 1023)
+
+// Runs the given function synchronously on the main Emscripten runtime thread.
+// If this thread is the main thread, the operation is immediately performed, and the result is returned.
+// If the current thread is not the main Emscripten runtime thread (but a pthread), the function
+// will be proxied to be called by the main thread.
+//  - Calling emscripten_sync_* functions requires that the application was compiled with pthreads
+//    support enabled (-s USE_PTHREADS=1/2) and that the browser supports SharedArrayBuffer specification.
+int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr, ...);
+
+// The 'async' variant of the run_in_main_thread functions are otherwise the same as the synchronous ones,
+// except that the operation is performed in a fire and forget manner. The call is placed to the command
+// queue of the main Emscripten runtime thread, but its completion is not waited for. As a result, if
+// the function did have a return value, the return value is not received.
+//  - Note that multiple asynchronous commands from a single pthread/Worker are guaranteed to be executed
+//    on the main thread in the program order they were called in.
+void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr, ...);
+
+// The 'async_waitable' variant of the run_in_main_runtime_thread functions run like the 'async' variants, except
+// that while the operation starts off asynchronously, the result is then later waited upon to receive
+// the return value.
+//  - The object returned by this function call is dynamically allocated, and should be freed up via a call
+//    to emscripten_async_waitable_close() after the wait has been performed.
+em_queued_call *emscripten_async_waitable_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr, ...);
+
+// Since we can't validate the function pointer type, allow implicit casting of functions to void* without complaining.
+#define emscripten_sync_run_in_main_runtime_thread(sig, func_ptr, ...) emscripten_sync_run_in_main_runtime_thread_((sig), (void*)(func_ptr),##__VA_ARGS__)
+#define emscripten_async_run_in_main_runtime_thread(sig, func_ptr, ...) emscripten_async_run_in_main_runtime_thread_((sig), (void*)(func_ptr),##__VA_ARGS__)
+#define emscripten_async_waitable_run_in_main_runtime_thread(sig, func_ptr, ...) emscripten_async_waitable_run_in_main_runtime_thread_((sig), (void*)(func_ptr),##__VA_ARGS__)
+
+EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call *call, double timeoutMSecs);
+EMSCRIPTEN_RESULT emscripten_wait_for_call_i(em_queued_call *call, double timeoutMSecs, int *outResult);
+
+void emscripten_async_waitable_close(em_queued_call *call);
 
 // Returns 1 if the current thread is the thread that hosts the Emscripten runtime.
 int emscripten_is_main_runtime_thread(void);

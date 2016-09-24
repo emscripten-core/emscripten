@@ -67,6 +67,7 @@ extern "C" {
 #define EMSCRIPTEN_RESULT_INVALID_PARAM       -5
 #define EMSCRIPTEN_RESULT_FAILED              -6
 #define EMSCRIPTEN_RESULT_NO_DATA             -7
+#define EMSCRIPTEN_RESULT_TIMED_OUT           -8
 
 #define EM_BOOL int
 #define EM_TRUE 1
