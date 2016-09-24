@@ -639,6 +639,9 @@ var BINARYEN_SCRIPTS = ""; // An optional comma-separated list of script hooks t
 var BINARYEN_IMPRECISE = 0; // Whether to apply imprecise/unsafe binaryen optimizations. If enabled,
                             // code will run faster, but some types of undefined behavior might
                             // trap in wasm.
+var BINARYEN_PASSES = ""; // A comma-separated list of passes to run in the binaryen optimizer,
+                          // for example, "dce,precompute,vacuum".
+                          // When set, this overrides the default passes we would normally run.
 var BINARYEN_ROOT = ""; // Directory where we can find Binaryen. Will be automatically set for you,
                         // but you can set it to override if you are a Binaryen developer.
 

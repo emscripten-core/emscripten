@@ -1981,7 +1981,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
         if shared.Settings.BINARYEN_IMPRECISE:
           cmd += ['--imprecise']
-        if opt_level == 0:
+        if opt_level == 0 or shared.Settings.BINARYEN_PASSES: # if not optimizing, or which passes we should run was overridden, do not optimize
           cmd += ['--no-opts']
         # import mem init file if it exists, and if we will not be using asm.js as a binaryen method (as it needs the mem init file, of course)
         import_mem_init = memory_init_file and os.path.exists(memfile) and 'asmjs' not in shared.Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD
@@ -2006,6 +2006,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         for script in shared.Settings.BINARYEN_SCRIPTS.split(','):
           logging.debug('running binaryen script: ' + script)
           subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), js_target, wasm_text_target], env=script_env)
+      if shared.Settings.BINARYEN_PASSES:
+        shutil.move(wasm_text_target, wasm_text_target + '.pre')
+        cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_text_target + '.pre', '-o', wasm_text_target] + map(lambda p: '--' + p, shared.Settings.BINARYEN_PASSES.split(','))
+        logging.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))
+        subprocess.check_call(cmd)
       if 'native-wasm' in shared.Settings.BINARYEN_METHOD or 'interpret-binary' in shared.Settings.BINARYEN_METHOD:
         logging.debug('wasm-as (wasm => binary)')
         cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
