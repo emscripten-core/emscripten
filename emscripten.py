@@ -136,6 +136,8 @@ def get_and_parse_backend(infile, settings, temp_files, DEBUG):
         backend_args += ['-emscripten-no-exit-runtime']
       if settings['BINARYEN']:
         backend_args += ['-emscripten-wasm']
+        if 'asmjs' not in settings['BINARYEN_METHOD']:
+          backend_args += ['-emscripten-only-wasm']
       if settings['CYBERDWARF']:
         backend_args += ['-enable-cyberdwarf']
 
