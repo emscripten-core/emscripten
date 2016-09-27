@@ -4,7 +4,7 @@ Tries to evaluate global constructors, applying their effects ahead of time.
 This is an LTO-like operation, and to avoid parsing the entire tree (we might fail to parse a massive project, we operate on the text in python.
 '''
 
-import os, sys, json, subprocess
+import os, sys, json, subprocess, time
 import shared, js_optimizer
 from tempfiles import try_delete
 
@@ -235,7 +235,9 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
     # us exiting with an error tells the caller that we failed. If it times out, give up.
     out_file = config.get_temp_files().get('.out').name
     err_file = config.get_temp_files().get('.err').name
-    proc = subprocess.Popen(shared.NODE_JS + [temp_file], stdout=open(out_file, 'w'), stderr=open(err_file, 'w'))
+    out_file_handle = open(out_file, 'w')
+    err_file_handle = open(err_file, 'w')
+    proc = subprocess.Popen(shared.NODE_JS + [temp_file], stdout=out_file_handle, stderr=err_file_handle)
     try:
       shared.jsrun.timeout_run(proc, timeout=10, full_output=True)
     except Exception, e:
@@ -243,6 +245,9 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
       shared.logging.debug('ctors timed out\n')
       return (0, 0, 0, 0)
     finally:
+      time.sleep(0.5) # On Windows, there is some kind of race condition with Popen output stream related functions, where file handles are still in use a short period after the process has finished.
+      out_file_handle.close()
+      err_file_handle.close()
       out_result = read_and_delete(out_file)
       err_result = read_and_delete(err_file)
     if proc.returncode != 0:
