@@ -1197,7 +1197,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         except:
           pass
       # default precise-f32 to on, since it works well in wasm
-      if 'PRECISE_F32=0' not in settings_changes and 'PRECISE_F32=2' not in settings_changes:
+      # also always use f32s when asm.js is not in the picture
+      if ('PRECISE_F32=0' not in settings_changes and 'PRECISE_F32=2' not in settings_changes) or 'asmjs' not in shared.Settings.BINARYEN_METHOD:
         shared.Settings.PRECISE_F32 = 1
       if js_opts and not force_js_opts and 'asmjs' not in shared.Settings.BINARYEN_METHOD:
         js_opts = None
