@@ -1962,6 +1962,10 @@ class JS:
       return '0'
     elif sig == 'f' and settings.get('PRECISE_F32'):
       return 'Math_fround(0)'
+    elif sig == 'j':
+      if settings:
+        assert settings['BINARYEN'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
+      return 'i64()'
     elif sig == 'F':
       return 'SIMD_Float32x4_check(SIMD_Float32x4(0,0,0,0))'
     elif sig == 'D':
@@ -1994,6 +1998,10 @@ class JS:
         return 'Math_fround(' + value + ')'
     elif sig == 'd' or sig == 'f':
       return '+' + value
+    elif sig == 'j':
+      if settings:
+        assert settings['BINARYEN'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
+      return 'i64(' + value + ')'
     elif sig == 'F':
       return 'SIMD_Float32x4_check(' + value + ')'
     elif sig == 'D':
