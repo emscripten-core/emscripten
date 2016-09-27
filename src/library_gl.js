@@ -24,6 +24,7 @@ var LibraryGL = {
     contexts: [],
     currentContext: null,
     offscreenCanvases: {}, // DOM ID -> OffscreenCanvas mappings of <canvas> elements that have their rendering control transferred to offscreen.
+    timerQueriesEXT: [],
 #if USE_WEBGL2
     queries: [],
     samplers: [],
@@ -614,6 +615,8 @@ var LibraryGL = {
         }
       }
 
+      GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
+
       // These are the 'safe' feature-enabling extensions that don't add any performance impact related to e.g. debugging, and
       // should be enabled by default so that client GLES2/GL code will not need to go through extra hoops to get its stuff working.
       // As new extensions are ratified at http://www.khronos.org/registry/webgl/extensions/ , feel free to add your new extensions
@@ -625,7 +628,7 @@ var LibraryGL = {
                                              "OES_texture_float_linear", "OES_texture_half_float_linear", "WEBGL_compressed_texture_atc",
                                              "WEBGL_compressed_texture_pvrtc", "EXT_color_buffer_half_float", "WEBGL_color_buffer_float",
                                              "EXT_frag_depth", "EXT_sRGB", "WEBGL_draw_buffers", "WEBGL_shared_resources",
-                                             "EXT_shader_texture_lod", "EXT_color_buffer_float", "EXT_disjoint_timer_query"];
+                                             "EXT_shader_texture_lod", "EXT_color_buffer_float"];
 
       function shouldEnableAutomatically(extension) {
         var ret = false;
@@ -1400,6 +1403,131 @@ var LibraryGL = {
     GLctx.bufferSubData(target, offset, HEAPU8.subarray(data, data+size));
   },
 
+  // Queries EXT
+  glGenQueriesEXT__sig: 'vii',
+  glGenQueriesEXT: function(n, ids) {
+    for (var i = 0; i < n; i++) {
+      var query = GLctx.disjointTimerQueryExt['createQueryEXT']();
+      if (!query) {
+        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_OPERATION in glGenQueriesEXT: GLctx.disjointTimerQueryExt.createQueryEXT returned null - most likely GL context is lost!');
+#endif
+        while(i < n) {{{ makeSetValue('ids', 'i++*4', 0, 'i32') }}};
+        return;
+      }
+      var id = GL.getNewId(GL.timerQueriesEXT);
+      query.name = id;
+      GL.timerQueriesEXT[id] = query;
+      {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
+    }
+  },
+
+  glDeleteQueriesEXT__sig: 'vii',
+  glDeleteQueriesEXT: function(n, ids) {
+    for (var i = 0; i < n; i++) {
+      var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
+      var query = GL.timerQueriesEXT[id];
+      if (!query) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
+      GLctx.disjointTimerQueryExt['deleteQueryEXT'](query);
+      GL.timerQueriesEXT[id] = null;
+    }
+  },
+
+  glIsQueryEXT__sig: 'ii',
+  glIsQueryEXT: function(id) {
+    var query = GL.timerQueriesEXT[query];
+    if (!query) return 0;
+    return GLctx.disjointTimerQueryExt['isQueryEXT'](query);
+  },
+
+  glBeginQueryEXT__sig: 'vii',
+  glBeginQueryEXT: function(target, id) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glBeginQueryEXT', 'id');
+#endif
+    GLctx.disjointTimerQueryExt['beginQueryEXT'](target, id ? GL.timerQueriesEXT[id] : null);
+  },
+
+  glEndQueryEXT__sig: 'vi',
+  glEndQueryEXT: function(target) {
+    GLctx.disjointTimerQueryExt['endQueryEXT'](target);
+  },
+
+  glQueryCounterEXT__sig: 'vii',
+  glQueryCounterEXT: function(id, target) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glQueryCounterEXT', 'id');
+#endif
+    GLctx.disjointTimerQueryExt['queryCounterEXT'](id ? GL.timerQueriesEXT[id] : null, target);
+  },
+
+  glGetQueryivEXT__sig: 'viii',
+  glGetQueryivEXT: function(target, pname, params) {
+    if (!params) {
+      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if p == null, issue a GL error to notify user about it. 
+#if GL_ASSERTIONS
+      Module.printErr('GL_INVALID_VALUE in glGetQueryivEXT(target=' + target +', pname=' + pname + ', params=0): Function called with null out pointer!');
+#endif
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+    {{{ makeSetValue('params', '0', 'GLctx.disjointTimerQueryExt[\'getQueryEXT\'](target, pname)', 'i32') }}};
+  },
+
+  glGetQueryObjectivEXT__sig: 'viii',
+  glGetQueryObjectivEXT: function(id, pname, params) {
+    if (!params) {
+      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if p == null, issue a GL error to notify user about it. 
+#if GL_ASSERTIONS
+      Module.printErr('GL_INVALID_VALUE in glGetQueryObject(u)ivEXT(id=' + id +', pname=' + pname + ', params=0): Function called with null out pointer!');
+#endif
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glGetQueryObjectivEXT', 'id');
+#endif
+    var query = GL.timerQueriesEXT[id];
+    var param = GLctx.disjointTimerQueryExt['getQueryObjectEXT'](query, pname);
+    var ret;
+    if (typeof param == 'boolean') {
+      ret = param ? 1 : 0;
+    } else {
+      ret = param;
+    }
+    {{{ makeSetValue('params', '0', 'ret', 'i32') }}};
+  },
+  glGetQueryObjectuivEXT: 'glGetQueryObjectivEXT',
+
+  glGetQueryObjecti64vEXT__sig: 'viii',
+  glGetQueryObjecti64vEXT: function(id, pname, params) {
+    if (!params) {
+      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if p == null, issue a GL error to notify user about it. 
+#if GL_ASSERTIONS
+      Module.printErr('GL_INVALID_VALUE in glGetQueryObject(u)i64vEXT(id=' + id +', pname=' + pname + ', params=0): Function called with null out pointer!');
+#endif
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glGetQueryObjecti64vEXT', 'id');
+#endif
+    var query = GL.timerQueriesEXT[id];
+    var param = GLctx.disjointTimerQueryExt['getQueryObjectEXT'](query, pname);
+    var ret;
+    if (typeof param == 'boolean') {
+      ret = param ? 1 : 0;
+    } else {
+      ret = param;
+    }
+    {{{ makeSetValue('params', '0', 'ret', 'i64') }}};
+  },
+  glGetQueryObjectui64vEXT: 'glGetQueryObjecti64vEXT',
+
 #if FULL_ES3
   $emscriptenWebGLGetBufferBinding: function(target) {
     switch(target) {
@@ -1593,7 +1721,6 @@ var LibraryGL = {
       var query = GL.queries[id];
       if (!query) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
       GLctx['deleteQuery'](query);
-      query.name = 0;
       GL.queries[id] = null;
     }
   },
