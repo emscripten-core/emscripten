@@ -2016,6 +2016,18 @@ class JS:
       return value
 
   @staticmethod
+  def legalize_sig(sig):
+    ret = [sig[0]]
+    for s in sig[1:]:
+      if s != 'j':
+        ret.append(s)
+      else:
+        # an i64 is legalized into i32, i32
+        ret.append('i')
+        ret.append('i')
+    return ''.join(ret)
+
+  @staticmethod
   def make_extcall(sig, named=True):
     args = ','.join(['a' + str(i) for i in range(1, len(sig))])
     args = 'index' + (',' if args else '') + args
@@ -2036,7 +2048,8 @@ class JS:
 
   @staticmethod
   def make_invoke(sig, named=True):
-    args = ','.join(['a' + str(i) for i in range(1, len(sig))])
+    legal_sig = JS.legalize_sig(sig) # TODO: do this in extcall, jscall?
+    args = ','.join(['a' + str(i) for i in range(1, len(legal_sig))])
     args = 'index' + (',' if args else '') + args
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
     ret = '''function%s(%s) {
