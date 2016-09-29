@@ -1965,7 +1965,7 @@ class JS:
     elif sig == 'j':
       if settings:
         assert settings['BINARYEN'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
-      return 'i64()'
+      return 'i64(0)'
     elif sig == 'F':
       return 'SIMD_Float32x4_check(SIMD_Float32x4(0,0,0,0))'
     elif sig == 'D':
