@@ -6568,30 +6568,34 @@ int main() {
 
   def test_binaryen_and_js_opts(self):
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
-
-    try:
-      os.environ['EMCC_DEBUG'] = '1'
-      for args, expect in [
-          ([], False),
-          (['-O0'], False),
-          (['-O1'], False),
-          (['-O2'], False),
-          (['-O2', '--js-opts', '1'], True), # user asked
-          (['-O2', '-s', 'EMTERPRETIFY=1'], True), # option forced
-          (['-O2', '-s', 'EVAL_CTORS=1'], False), # ctor evaller uses js opts, but is not a js opt, and doesn't force other js opts
-          (['-O2', '-s', 'OUTLINING_LIMIT=1000'], True), # option forced
-          (['-O2', '-s', "BINARYEN_METHOD='interpret-binary,asmjs'"], True), # asmjs in methods means we need good asm.js
-          (['-O3'], False),
-          (['-Oz'], False), # even though we run ctor evaller, don't run js opts
-        ]:
-        print args, expect
-        try_delete('a.out.js')
-        with clean_write_access_to_canonical_temp_dir():
-          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'BINARYEN=1'], stdout=PIPE, stderr=PIPE).communicate()
-        assert expect == ('applying js optimization passes:' in err)
-        self.assertContained('hello, world!', run_js('a.out.js'))
-    finally:
-      del os.environ['EMCC_DEBUG']
+ 
+    with clean_write_access_to_canonical_temp_dir():
+      try:
+        os.environ['EMCC_DEBUG'] = '1'
+        for args, expect_js_opts, expect_only_wasm in [
+            ([], False, True),
+            (['-O0'], False, True),
+            (['-O1'], False, True),
+            (['-O2'], False, True),
+            (['-O2', '--js-opts', '1'], True, False), # user asked
+            (['-O2', '-s', 'EMTERPRETIFY=1'], True, False), # option forced
+            (['-O2', '-s', 'EVAL_CTORS=1'], False, False), # ctor evaller uses js opts, but is not a js opt, and doesn't force other js opts
+            (['-O2', '-s', 'OUTLINING_LIMIT=1000'], True, False), # option forced
+            (['-O2', '-s', "BINARYEN_METHOD='interpret-s-expr,asmjs'"], True, False), # asmjs in methods means we need good asm.js
+            (['-O3'], False, True),
+            (['-Oz'], False, False), # even though we run ctor evaller, don't run js opts, but we can't only-wasm due to ctor-evaller running js opts internally
+          ]:
+          print args, 'js opts:', expect_js_opts, 'only-wasm:', expect_only_wasm
+          try_delete('a.out.js')
+          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'core', 'test_i64.c'), '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-s-expr"'] + args, stdout=PIPE, stderr=PIPE).communicate()
+          assert expect_js_opts == ('applying js optimization passes:' in err), err
+          assert expect_only_wasm == ('-emscripten-only-wasm' in err and '--wasm-only' in err), err # check both flag to fastcomp and to asm2wasm
+          wast = open('a.out.wast').read()
+          i64s = wast.count('(i64.')
+          print '    seen i64s:', i64s
+          assert expect_only_wasm == (i64s > 30), 'i64 opts can be emitted in only-wasm mode, but not normally' # note we emit a few i64s even without wasm-only, when we replace udivmoddi (around 15 such)
+      finally:
+        del os.environ['EMCC_DEBUG']
 
   def test_binaryen_and_precise_f32(self):
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')

@@ -1740,6 +1740,12 @@ class Building:
     return Settings.INLINING_LIMIT == 0
 
   @staticmethod
+  def is_wasm_only():
+    # if the asm.js code will not run, and won't be run through the js optimizer, then
+    # fastcomp can emit wasm-only code
+    return 'asmjs' not in Settings.BINARYEN_METHOD and not Settings.RUNNING_JS_OPTS
+
+  @staticmethod
   def get_safe_internalize():
     if not Building.can_build_standalone(): return [] # do not internalize anything
 
