@@ -1559,8 +1559,8 @@ return ASM_CONSTS[code](%s);
   with open(wasm) as f:
     for line in f:
       if line.startswith('  (import '):
-        parts = line.split(' ')
-        func_name = parts[3][1:]
+        parts = line.split()
+        func_name = parts[2][1:-1]
         if func_name.startswith('invoke_'):
           sig = func_name[len('invoke_'):]
           invoke_wrappers += '\n' + shared.JS.make_invoke(sig) + '\n'
