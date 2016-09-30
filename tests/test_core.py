@@ -5278,6 +5278,7 @@ def process(filename):
                    libraries=self.get_freetype(),
                    includes=[path_from_root('tests', 'freetype', 'include')],
                    post_build=post)
+      Settings.OUTLINING_LIMIT = 0
 
     # github issue 324
     print '[issue 324]'
