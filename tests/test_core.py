@@ -6163,10 +6163,13 @@ def process(filename):
       code_size = os.stat(code_file).st_size
       if self.uses_memory_init_file():
         mem_size = os.stat('src.cpp.o.js.mem').st_size
-      print code_size, ' => ', ec_code_size
+      # if we are wasm, then eval-ctors disables wasm-only, losing i64 opts, increasing size
+      code_size_should_shrink = not self.is_wasm()
+      print code_size, ' => ', ec_code_size, ', are we testing code size?', code_size_should_shrink
       if self.uses_memory_init_file():
         print mem_size, ' => ', ec_mem_size
-      assert ec_code_size < code_size
+      if code_size_should_shrink:
+        assert ec_code_size < code_size
       if self.uses_memory_init_file():
         assert ec_mem_size > mem_size
 
