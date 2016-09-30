@@ -6604,7 +6604,8 @@ int main() {
       os.environ['EMCC_DEBUG'] = '1'
       for args, expect in [
           ([], True),
-          (['-s', 'PRECISE_F32=0'], False), # explicitly disabled
+          (['-s', 'PRECISE_F32=0'], True), # disabled, but no asm.js, so we definitely want f32
+          (['-s', 'PRECISE_F32=0', '-s', 'BINARYEN_METHOD="asmjs"'], False), # disabled, and we need the asm.js
           (['-s', 'PRECISE_F32=1'], True),
           (['-s', 'PRECISE_F32=2'], True),
         ]:
