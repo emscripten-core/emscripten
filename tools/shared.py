@@ -1742,8 +1742,10 @@ class Building:
   @staticmethod
   def is_wasm_only():
     # if the asm.js code will not run, and won't be run through the js optimizer, then
-    # fastcomp can emit wasm-only code
-    return 'asmjs' not in Settings.BINARYEN_METHOD and not Settings.RUNNING_JS_OPTS
+    # fastcomp can emit wasm-only code.
+    # also disable this mode if it depends on special optimizations that are not yet
+    # compatible with it.
+    return 'asmjs' not in Settings.BINARYEN_METHOD and not Settings.RUNNING_JS_OPTS and not Settings.EMULATED_FUNCTION_POINTERS and not Settings.EMULATE_FUNCTION_POINTER_CASTS
 
   @staticmethod
   def get_safe_internalize():
