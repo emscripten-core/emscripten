@@ -79,6 +79,11 @@ var ALLOW_MEMORY_GROWTH = 0; // If false, we abort with an error if we try to al
 
 var GLOBAL_BASE = -1; // where global data begins; the start of static memory. -1 means use the
                       // default, any other value will be used as an override
+var STACK_START = -1; // where the stack will begin. -1 means use the default. if the stack cannot
+                      // start at the value specified here, it may start at a higher location.
+                      // this is useful when debugging two builds that may differ in their static
+                      // allocations, by forcing the stack to start in the same place their
+                      // memory usage patterns would be the same.
 
 // Code embetterments
 var DOUBLE_MODE = 1; // How to load and store 64-bit doubles.
