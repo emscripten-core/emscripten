@@ -5650,6 +5650,7 @@ def process(filename):
           continue
         if self.is_wasm() and os.path.basename(shortname) in [
           'i1282vecnback', # uses simd
+          'call_inttoptr_i64', # casts a function pointer from (i32, i32)* to (i64)*, which happens to work in asm.js but is a general function pointer undefined behavior
         ]:
           continue
         if os.path.basename(shortname) in need_no_leave_inputs_raw:
