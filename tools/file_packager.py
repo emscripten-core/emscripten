@@ -564,7 +564,7 @@ if has_preloaded:
     var REMOTE_PACKAGE_NAME = typeof Module['locateFile'] === 'function' ?
                               Module['locateFile'](REMOTE_PACKAGE_BASE) :
                               ((Module['filePackagePrefixURL'] || '') + REMOTE_PACKAGE_BASE);
-  ''' % (data_target, remote_package_name)
+  ''' % (escape_for_js_string(data_target), remote_package_name)
   metadata['remote_package_size'] = remote_package_size
   metadata['package_uuid'] = str(package_uuid)
   ret += '''
