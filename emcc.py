@@ -1854,12 +1854,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       src = open(final).read()
       final = final + '.modular.js'
       f = open(final, 'w')
-      f.write('var ' + shared.Settings.EXPORT_NAME + ' = function(Module) {\n')
-      f.write('  Module = Module || {};\n')
+      f.write('var ' + shared.Settings.EXPORT_NAME + ' = function(' + shared.Settings.EXPORT_NAME + ') {\n')
+      f.write('  ' + shared.Settings.EXPORT_NAME + ' = ' + shared.Settings.EXPORT_NAME + ' || {};\n')
       f.write('\n')
       f.write(src)
       f.write('\n')
-      f.write('  return Module;\n')
+      f.write('  return ' + shared.Settings.EXPORT_NAME + ';\n')
       f.write('};\n')
       f.close()
       src = None
