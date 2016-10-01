@@ -1740,6 +1740,14 @@ class Building:
     return Settings.INLINING_LIMIT == 0
 
   @staticmethod
+  def is_wasm_only():
+    # if the asm.js code will not run, and won't be run through the js optimizer, then
+    # fastcomp can emit wasm-only code.
+    # also disable this mode if it depends on special optimizations that are not yet
+    # compatible with it.
+    return 'asmjs' not in Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in Settings.BINARYEN_METHOD and not Settings.RUNNING_JS_OPTS and not Settings.EMULATED_FUNCTION_POINTERS and not Settings.EMULATE_FUNCTION_POINTER_CASTS
+
+  @staticmethod
   def get_safe_internalize():
     if not Building.can_build_standalone(): return [] # do not internalize anything
 
@@ -1962,6 +1970,10 @@ class JS:
       return '0'
     elif sig == 'f' and settings.get('PRECISE_F32'):
       return 'Math_fround(0)'
+    elif sig == 'j':
+      if settings:
+        assert settings['BINARYEN'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
+      return 'i64(0)'
     elif sig == 'F':
       return 'SIMD_Float32x4_check(SIMD_Float32x4(0,0,0,0))'
     elif sig == 'D':
@@ -1994,6 +2006,10 @@ class JS:
         return 'Math_fround(' + value + ')'
     elif sig == 'd' or sig == 'f':
       return '+' + value
+    elif sig == 'j':
+      if settings:
+        assert settings['BINARYEN'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
+      return 'i64(' + value + ')'
     elif sig == 'F':
       return 'SIMD_Float32x4_check(' + value + ')'
     elif sig == 'D':
@@ -2006,6 +2022,18 @@ class JS:
       return 'SIMD_Int32x4_check(' + value + ')'
     else:
       return value
+
+  @staticmethod
+  def legalize_sig(sig):
+    ret = [sig[0]]
+    for s in sig[1:]:
+      if s != 'j':
+        ret.append(s)
+      else:
+        # an i64 is legalized into i32, i32
+        ret.append('i')
+        ret.append('i')
+    return ''.join(ret)
 
   @staticmethod
   def make_extcall(sig, named=True):
@@ -2028,7 +2056,8 @@ class JS:
 
   @staticmethod
   def make_invoke(sig, named=True):
-    args = ','.join(['a' + str(i) for i in range(1, len(sig))])
+    legal_sig = JS.legalize_sig(sig) # TODO: do this in extcall, jscall?
+    args = ','.join(['a' + str(i) for i in range(1, len(legal_sig))])
     args = 'index' + (',' if args else '') + args
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
     ret = '''function%s(%s) {

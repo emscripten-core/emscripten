@@ -105,17 +105,43 @@ while 1:
     js_args = [shared.PYTHON, shared.EMCC, opts] + llvm_opts + [fullname, '-o', filename + '.js'] + CSMITH_CFLAGS + args + ['-w']
     if 0: # binaryen testing, off by default for now
       js_args += ['-s', 'BINARYEN=1']
-      if random.random() < 0.333:
+      r = random.random()
+      if r < 0.45:
         js_args += ['-s', 'BINARYEN_METHOD="interpret-s-expr"']
-      elif random.random() < 0.5:
+      elif r < 0.90:
         js_args += ['-s', 'BINARYEN_METHOD="interpret-binary"']
       else:
-        js_args += ['-s', 'BINARYEN_METHOD="interpret-asm2wasm"']
+        if random.random() < 0.5:
+          js_args += ['-s', 'BINARYEN_METHOD="interpret-binary,asmjs"']
+        else:
+          js_args += ['-s', 'BINARYEN_METHOD="interpret-s-expr,asmjs"']
       if random.random() < 0.5:
         if random.random() < 0.5:
           js_args += ['--js-opts', '0']
         else:
           js_args += ['--js-opts', '1']
+      if random.random() < 0.5:
+        # pick random passes
+        BINARYEN_PASSES = [
+          "duplicate-function-elimination",
+          "dce",
+          "remove-unused-brs",
+          "remove-unused-names",
+          "optimize-instructions",
+          "precompute",
+          "simplify-locals",
+          "vacuum",
+          "coalesce-locals",
+          "reorder-locals",
+          "merge-blocks",
+          "remove-unused-functions",
+        ]
+        passes = []
+        while 1:
+          passes.append(random.choice(BINARYEN_PASSES))
+          if random.random() < 0.1:
+            break
+        js_args += ['-s', 'BINARYEN_PASSES="' + ','.join(passes) + '"']
     if random.random() < 0.5:
       js_args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
     if random.random() < 0.5 and 'ALLOW_MEMORY_GROWTH=1' not in js_args and 'BINARYEN=1' not in js_args:

@@ -384,6 +384,7 @@ function JSify(data, functionsOnly) {
       if (USE_PTHREADS) print('if (!ENVIRONMENT_IS_PTHREAD) {\n // Only main thread initializes these, pthreads copy them over at thread worker init time (in pthread-main.js)');
       print('DYNAMICTOP_PTR = allocate(1, "i32", ALLOC_STATIC);\n');
       print('STACK_BASE = STACKTOP = Runtime.alignMemory(STATICTOP);\n');
+      if (STACK_START > 0) print('if (STACKTOP < ' + STACK_START + ') STACK_BASE = STACKTOP = Runtime.alignMemory(' + STACK_START + ');\n');
       print('STACK_MAX = STACK_BASE + TOTAL_STACK;\n');
       print('DYNAMIC_BASE = Runtime.alignMemory(STACK_MAX);\n');
       print('HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;\n');

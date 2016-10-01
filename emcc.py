@@ -1160,11 +1160,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logging.error('-s MAIN_MODULE=1 is not supported with -s USE_PTHREADS=1!')
         exit(1)
 
-    if shared.Settings.EVAL_CTORS or shared.Settings.OUTLINING_LIMIT:
+    if shared.Settings.OUTLINING_LIMIT:
       if not js_opts:
-        logging.debug('enabling js opts for optional requested functioanlity')
+        logging.debug('enabling js opts as optional functionality implemented as a js opt was requested')
         js_opts = True
       force_js_opts = True
+
+    if shared.Settings.EVAL_CTORS:
+      # this option is not a js optimizer pass, but does run the js optimizer internally, so
+      # we need to generate proper code for that
+      shared.Settings.RUNNING_JS_OPTS = 1
 
     if shared.Settings.WASM_BACKEND:
       js_opts = None
@@ -1192,7 +1197,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         except:
           pass
       # default precise-f32 to on, since it works well in wasm
-      if 'PRECISE_F32=0' not in settings_changes and 'PRECISE_F32=2' not in settings_changes:
+      # also always use f32s when asm.js is not in the picture
+      if ('PRECISE_F32=0' not in settings_changes and 'PRECISE_F32=2' not in settings_changes) or 'asmjs' not in shared.Settings.BINARYEN_METHOD:
         shared.Settings.PRECISE_F32 = 1
       if js_opts and not force_js_opts and 'asmjs' not in shared.Settings.BINARYEN_METHOD:
         js_opts = None
@@ -1823,11 +1829,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         JSOptimizer.flush()
         shared.Building.eliminate_duplicate_funcs(final)
 
-      if shared.Settings.EVAL_CTORS and memory_init_file and debug_level < 4:
-        JSOptimizer.flush()
-        shared.Building.eval_ctors(final, memfile)
-        if DEBUG: save_intermediate('eval-ctors', 'js')
+    if shared.Settings.EVAL_CTORS and memory_init_file and debug_level < 4:
+      JSOptimizer.flush()
+      shared.Building.eval_ctors(final, memfile)
+      if DEBUG: save_intermediate('eval-ctors', 'js')
 
+    if js_opts:
       if not shared.Settings.EMTERPRETIFY:
         do_minify()
 
@@ -1975,12 +1982,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
         if shared.Settings.BINARYEN_IMPRECISE:
           cmd += ['--imprecise']
-        if opt_level == 0:
+        if opt_level == 0 or shared.Settings.BINARYEN_PASSES: # if not optimizing, or which passes we should run was overridden, do not optimize
           cmd += ['--no-opts']
         # import mem init file if it exists, and if we will not be using asm.js as a binaryen method (as it needs the mem init file, of course)
         import_mem_init = memory_init_file and os.path.exists(memfile) and 'asmjs' not in shared.Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD
         if import_mem_init:
           cmd += ['--mem-init=' + memfile]
+        if shared.Building.is_wasm_only():
+          cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, an can contain special fastcomp-wasm support
         logging.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
         TimeLogger.update()
         subprocess.check_call(cmd, stdout=open(wasm_text_target, 'w'))
@@ -2000,11 +2009,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         for script in shared.Settings.BINARYEN_SCRIPTS.split(','):
           logging.debug('running binaryen script: ' + script)
           subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), js_target, wasm_text_target], env=script_env)
+      if shared.Settings.BINARYEN_PASSES:
+        shutil.move(wasm_text_target, wasm_text_target + '.pre')
+        cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_text_target + '.pre', '-o', wasm_text_target] + map(lambda p: '--' + p, shared.Settings.BINARYEN_PASSES.split(','))
+        logging.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))
+        subprocess.check_call(cmd)
       if 'native-wasm' in shared.Settings.BINARYEN_METHOD or 'interpret-binary' in shared.Settings.BINARYEN_METHOD:
-        logging.debug('wasm-as (wasm => binary)')
-        subprocess.check_call([os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target])
-        if os.path.exists(wasm_text_target + '.mappedGlobals'): # TODO: remove once we no longer use .mappedGlobals files at all, as binaryen is moving to https://github.com/WebAssembly/binaryen/issues/675
-          shutil.copyfile(wasm_text_target + '.mappedGlobals', wasm_binary_target + '.mappedGlobals')
+        cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
+        if debug_level >= 2 or profiling_funcs: cmd += ['-g']
+        logging.debug('wasm-as (text => binary): ' + ' '.join(cmd))
+        subprocess.check_call(cmd)
 
     # If we were asked to also generate HTML, do that
     if final_suffix == 'html':
