@@ -6619,12 +6619,6 @@ int main() {
       del os.environ['EMCC_DEBUG']
 
   def test_binaryen_names(self):
-    binaryen_bin = os.path.join(Settings.BINARYEN_ROOT, 'bin')
-    if not Settings.BINARYEN_ROOT:
-      try:
-        binaryen_bin = os.path.join(BINARYEN_ROOT, 'bin')
-      except:
-        pass
     sizes = {}
     for args, expect_names in [
         ([], True), # -O0 has debug info by default
@@ -6640,11 +6634,8 @@ int main() {
       print args, expect_names
       try_delete('a.out.js')
       subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
-      cmd = [os.path.join(binaryen_bin, 'wasm-dis'), 'a.out.wasm', '-o', 'text']
-      print cmd
-      subprocess.check_call(cmd)
-      text = open('text').read()
-      assert ('$_main' in text or '$main' in text) == expect_names, 'name expectation must match'
+      code = open('a.out.wasm', 'rb').read()
+      assert ('__fflush_unlocked' in code) == expect_names, 'an internal function not exported nor imported must only appear in the binary if we have a names section'
       sizes[str(args)] = os.stat('a.out.wasm').st_size
       self.assertContained('hello, world!', run_js('a.out.js'))
     print sizes
