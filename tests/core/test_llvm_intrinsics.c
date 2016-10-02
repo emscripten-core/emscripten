@@ -30,6 +30,9 @@ extern double llvm_log10_f64(double x);
 
 extern double llvm_ceil_f64(double x);
 extern double llvm_floor_f64(double x);
+
+extern float llvm_copysign_f32(float x, float y);
+extern double llvm_copysign_f64(double x, double y);
 }
 
 int main(void) {
@@ -100,6 +103,15 @@ int main(void) {
   printf("llvm_floor_f64 %.1f\n", llvm_floor_f64(-1.4));
   printf("llvm_floor_f64 %.1f\n", llvm_floor_f64(-1.5));
   printf("llvm_floor_f64 %.1f\n", llvm_floor_f64(-1.6));
+
+  printf("llvm_copysign_f32 %.1f\n", llvm_copysign_f32(-1.2, 3.4));
+  printf("llvm_copysign_f32 %.1f\n", llvm_copysign_f32(5.6, -7.8));
+  printf("llvm_copysign_f32 %.1f\n", llvm_copysign_f32(-1.3, -2.4));
+  printf("llvm_copysign_f32 %.1f\n", llvm_copysign_f32(5.7, 6.8));
+  printf("llvm_copysign_f64 %.1f\n", llvm_copysign_f64(-1.2, 3.4));
+  printf("llvm_copysign_f64 %.1f\n", llvm_copysign_f64(5.6, -7.8));
+  printf("llvm_copysign_f64 %.1f\n", llvm_copysign_f64(-1.3, -2.4));
+  printf("llvm_copysign_f64 %.1f\n", llvm_copysign_f64(5.7, 6.8));
 
   printf("ok.\n");
 
