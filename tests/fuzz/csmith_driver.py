@@ -98,11 +98,13 @@ while 1:
     notes['invalid'] += 1
     continue
 
+  fail_output_name = 'newfail_%d_%d%s' % (os.getpid(), fails, suffix)
+
   print '4) Compile JS-ly and compare'
 
   def try_js(args=[]):
     shared.try_delete(filename + '.js')
-    js_args = [shared.PYTHON, shared.EMCC, opts] + llvm_opts + [fullname, '-o', filename + '.js'] + CSMITH_CFLAGS + args + ['-w']
+    js_args = [shared.PYTHON, shared.EMCC, fullname, '-o', filename + '.js'] + [opts] + llvm_opts + CSMITH_CFLAGS + args + ['-w']
     if 0: # binaryen testing, off by default for now
       js_args += ['-s', 'BINARYEN=1']
       r = random.random()
@@ -162,7 +164,9 @@ while 1:
     if random.random() < 0.5:
       js_args += ['-s', 'ASSERTIONS=1']
     print '(compile)', ' '.join(js_args)
-    open(fullname, 'a').write('\n// ' + ' '.join(js_args) + '\n\n')
+    short_args = [shared.PYTHON, shared.EMCC, fail_output_name] + js_args[5:]
+    escaped_short_args = map(lambda x : ("'" + x + "'") if '"' in x else x, short_args)
+    open(fullname, 'a').write('\n// ' + ' '.join(escaped_short_args) + '\n\n')
     try:
       shared.check_execute(js_args)
       assert os.path.exists(filename + '.js')
@@ -185,7 +189,7 @@ while 1:
     print "EMSCRIPTEN BUG"
     notes['embug'] += 1
     fails += 1
-    shutil.copyfile(fullname, 'newfail_%d_%d%s' % (os.getpid(), fails, suffix))
+    shutil.copyfile(fullname, fail_output_name)
 
   js_args = try_js()
   if not js_args:
