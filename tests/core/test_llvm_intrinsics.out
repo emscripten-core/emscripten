@@ -45,4 +45,12 @@ llvm_floor_f64 1.0
 llvm_floor_f64 -2.0
 llvm_floor_f64 -2.0
 llvm_floor_f64 -2.0
+llvm_copysign_f32 1.2
+llvm_copysign_f32 -5.6
+llvm_copysign_f32 -1.3
+llvm_copysign_f32 5.7
+llvm_copysign_f64 1.2
+llvm_copysign_f64 -5.6
+llvm_copysign_f64 -1.3
+llvm_copysign_f64 5.7
 ok.
