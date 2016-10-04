@@ -86,9 +86,9 @@ Calling compiled C functions from JavaScript
 	.. COMMENT (not rendered): There is more complete documentation in the guide: **HamishW** — add link to guide when it exists (currently in wiki at "Interacting with code").
 	
 	.. note:: 
-		- ``cwrap`` uses the C stack for temporary values. If you pass a string then it is only "alive" until the call is complete. If the code being called saves the pointer to be used later, it may point to invalid data. 
-		- If you need a string to live forever, you can create it, for example, using ``_malloc`` and :js:func:`stringToUTF8`. However, you must later delete it manually!
+		- ``cwrap`` uses the C stack for temporary values. If you pass a string then it is only "alive" until the call is complete. If the code being called saves the pointer to be used later, it may point to invalid data. If you need a string to live forever, you can create it, for example, using ``_malloc`` and :js:func:`stringToUTF8`. However, you must later delete it manually!
 		- LLVM optimizations can inline and remove functions, after which you will not be able to "wrap" them. Similarly, function names minified by the *Closure Compiler* are inaccessible. In either case, the solution is to add the functions to the ``EXPORTED_FUNCTIONS`` list when you invoke *emcc* :  
+		- ``cwrap`` does not actually call compiled code (only calling the wrapper it returns does that). That means that it is safe to call ``cwrap`` early, before the runtime is fully initialized (but calling the returned wrapped function must wait for the runtime, of course, like calling compiled code in general).
 		
 			::
 
