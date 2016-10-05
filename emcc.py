@@ -27,7 +27,7 @@ from tools.toolchain_profiler import ToolchainProfiler
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
-import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
+import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging, urllib
 from subprocess import PIPE
 from tools import shared, jsrun, system_libs
 from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move
@@ -2149,7 +2149,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       html = open(target, 'wb')
       assert (script_src or script_inline) and not (script_src and script_inline)
       if script_src:
-        script_replacement = '<script async type="text/javascript" src="%s"></script>' % script_src
+        script_replacement = '<script async type="text/javascript" src="%s"></script>' % urllib.quote(script_src)
       else:
         script_replacement = '<script>\n%s\n</script>' % script_inline
       html_contents = shell.replace('{{{ SCRIPT }}}', script_replacement)

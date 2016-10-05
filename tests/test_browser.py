@@ -272,6 +272,44 @@ If manually bisecting:
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '-o', 'page.html', '--use-preload-plugins']).communicate()
     self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
+  # Tests that if the output files have single or double quotes in them, that it will be handled by correctly escaping the names.
+  def test_output_file_escaping(self):
+    d = 'dir with \' and \"'
+    abs_d = os.path.join(self.get_dir(), d)
+    try:
+      os.mkdir(abs_d)
+    except:
+      pass
+    txt = 'file with \' and \".txt'
+    abs_txt = os.path.join(abs_d, txt)
+    open(abs_txt, 'w').write('load me right before')
+
+    cpp = os.path.join(d, 'file with \' and \".cpp')
+    open(cpp, 'w').write(self.with_report_result(r'''
+      #include <stdio.h>
+      #include <string.h>
+      #include <emscripten.h>
+      int main() {
+        FILE *f = fopen("%s", "r");
+        char buf[100];
+        fread(buf, 1, 20, f);
+        buf[20] = 0;
+        fclose(f);
+        printf("|%%s|\n", buf);
+        int result = !strcmp("|load me right before|", buf);
+        REPORT_RESULT();
+        return 0;
+      }
+    ''' % (txt.replace('\'', '\\\'').replace('\"', '\\"'))))
+
+    data_file = os.path.join(abs_d, 'file with \' and \".data')
+    data_js_file = os.path.join(abs_d, 'file with \' and \".js')
+    Popen([PYTHON, FILE_PACKAGER, data_file, '--use-preload-cache', '--indexedDB-name=testdb', '--preload', abs_txt + '@' + txt, '--js-output=' + data_js_file]).communicate()
+    page_file = os.path.join(d, 'file with \' and \".html')
+    abs_page_file = os.path.join(self.get_dir(), page_file)
+    Popen([PYTHON, EMCC, cpp, '--pre-js', data_js_file, '-o', abs_page_file]).communicate()
+    self.run_browser(page_file, '|load me right before|.', '/report_result?0')
+
   def test_preload_caching(self):
     open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''load me right before running the code please''')
     def make_main(path):
