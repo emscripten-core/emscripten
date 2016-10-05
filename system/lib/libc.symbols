@@ -739,6 +739,8 @@
          W malloc_trim
          W malloc_usable_size
          W mallopt
+         W emscripten_builtin_malloc
+         W emscripten_builtin_free
          T mblen
          T mbrlen
          T mbrtowc

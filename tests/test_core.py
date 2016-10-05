@@ -7184,6 +7184,9 @@ int main(int argc, char **argv) {
   def test_mallinfo(self):
     self.do_run(open(path_from_root('tests', 'mallinfo.cpp')).read(), 'OK.')
 
+  def test_wrap_malloc(self):
+    self.do_run(open(path_from_root('tests', 'wrap_malloc.cpp')).read(), 'OK.')
+
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
     typed_arrays=0, emcc_args=None, env=None):
