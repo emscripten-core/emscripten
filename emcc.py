@@ -740,7 +740,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     newargs = [arg for arg in newargs if arg is not '']
 
-    for i in range(1, len(newargs)):
+    for i in range(0, len(newargs)):
       arg = newargs[i]
       if not arg.startswith('-'):
         if arg.endswith(C_ENDINGS + OBJC_ENDINGS):
