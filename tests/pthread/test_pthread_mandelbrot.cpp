@@ -389,8 +389,10 @@ void wait_tasks()
 
 void main_tick()
 {
+#ifndef SINGLETHREADED
   const int threadsRunning = emscripten_atomic_load_u32(&numThreadsRunning);
   if (threadsRunning < maxThreadsRunning) return;
+#endif
 
   wait_tasks();
   numItersDoneOnCanvas += numItersPerFrame;
