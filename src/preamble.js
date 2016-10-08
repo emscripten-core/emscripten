@@ -1101,12 +1101,14 @@ try {
 var TOTAL_STACK = Module['TOTAL_STACK'] || {{{ TOTAL_STACK }}};
 var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
 
-var totalMemory = 64*1024;
+var WASM_PAGE_SIZE = 64 * 1024;
+
+var totalMemory = WASM_PAGE_SIZE;
 while (totalMemory < TOTAL_MEMORY || totalMemory < 2*TOTAL_STACK) {
   if (totalMemory < 16*1024*1024) {
     totalMemory *= 2;
   } else {
-    totalMemory += 16*1024*1024
+    totalMemory += 16*1024*1024;
   }
 }
 #if ALLOW_MEMORY_GROWTH
@@ -1215,7 +1217,26 @@ if (Module['buffer']) {
   assert(buffer.byteLength === TOTAL_MEMORY, 'provided buffer should be ' + TOTAL_MEMORY + ' bytes, but it is ' + buffer.byteLength);
 #endif
 } else {
-  buffer = new ArrayBuffer(TOTAL_MEMORY);
+  // Use a WebAssembly memory where available
+#if BINARYEN
+  if (typeof WebAssembly === 'object' && typeof WebAssembly.Memory === 'function') {
+#if ASSERTIONS
+    assert(TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
+#endif
+#if ALLOW_MEMORY_GROWTH
+    Module['wasmMemory'] = new WebAssembly.Memory({ initial: TOTAL_MEMORY / WASM_PAGE_SIZE });
+#else
+    Module['wasmMemory'] = new WebAssembly.Memory({ initial: TOTAL_MEMORY / WASM_PAGE_SIZE, maximum: TOTAL_MEMORY / WASM_PAGE_SIZE });
+#endif
+    buffer = Module['wasmMemory'].buffer;
+  } else
+#endif
+  {
+    buffer = new ArrayBuffer(TOTAL_MEMORY);
+  }
+#if ASSERTIONS
+  assert(buffer.byteLength === TOTAL_MEMORY);
+#endif
 }
 updateGlobalBufferViews();
 #else // SPLIT_MEMORY
