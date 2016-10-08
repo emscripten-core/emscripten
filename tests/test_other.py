@@ -595,6 +595,13 @@ f.close()
         process.communicate()
         assert process.returncode is 0, 'User should be able to specify custom -std= on the command line!'
 
+  # Regression test for issue #4522: Incorrect CC vs CXX detection
+  def test_incorrect_c_detection(self):
+    for compiler in [EMCC, EMXX]:
+      process = Popen([PYTHON, compiler, "--bind", "--embed-file", path_from_root('tests', 'hello_world.c'), path_from_root('tests', 'hello_world.cpp')], stdout=PIPE, stderr=PIPE)
+      process.communicate()
+      assert process.returncode is 0, 'Emscripten should not use the embed file for CC/CXX detection'
+
   def test_odd_suffixes(self):
     for suffix in ['CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC', 'i', 'ii']:
       self.clear()

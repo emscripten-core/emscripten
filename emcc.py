@@ -319,14 +319,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     logging.debug('just ar')
     sys.exit(0)
 
-  use_cxx = True
-
-  for i in range(1, len(sys.argv)):
-    arg = sys.argv[i]
-    if not arg.startswith('-'):
-      if arg.endswith(C_ENDINGS + OBJC_ENDINGS):
-        use_cxx = False
-
   # Check if a target is specified
   target = None
   for i in range(len(sys.argv)-1):
@@ -397,11 +389,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       logging.debug('emcc step "%s" took %.2f seconds', name, now - TimeLogger.last)
       TimeLogger.update()
 
+  use_cxx = True
+
   misc_temp_files = shared.configuration.get_temp_files()
 
   try:
-    call = CXX if use_cxx else CC
-
     ## Parse args
 
     newargs = sys.argv[1:]
@@ -418,6 +410,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     force_js_opts = False
     llvm_opts = None
     llvm_lto = None
+    default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
     use_closure_compiler = None
     js_transform = None
     pre_js = ''
@@ -456,12 +449,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if in_directory(valid_abspath, path_name):
           return True
       return False
-
-
-    if use_cxx:
-      default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
-    else:
-      default_cxx_std = '' # Compiling C code with .c files, don't enforce a default C++ std.
 
     def check_bad_eq(arg):
       assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
@@ -752,6 +739,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       sys.exit(0)
 
     newargs = [arg for arg in newargs if arg is not '']
+
+    for i in range(0, len(newargs)):
+      arg = newargs[i]
+      if not arg.startswith('-'):
+        if arg.endswith(C_ENDINGS + OBJC_ENDINGS):
+          use_cxx = False
+
+    if not use_cxx:
+      default_cxx_std = '' # Compiling C code with .c files, don't enforce a default C++ std.
+
+    call = CXX if use_cxx else CC
 
     # If user did not specify a default -std for C++ code, specify the emscripten default.
     if default_cxx_std:
