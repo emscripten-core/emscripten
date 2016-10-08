@@ -2718,13 +2718,8 @@ window.close = function() {
         ([], 'Module();'), # defaults
         (['-s', 'EXPORT_NAME="HelloWorld"'], '''
           if (typeof Module !== "undefined") throw "what?!"; // do not pollute the global scope, we are modularized!
+          HelloWorld.noInitialRun = true; // errorneous module capture will load this and cause timeout
           HelloWorld();
-          if (HelloWorld.Pointer_stringify) { // module constructor should not be polluted
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', 'http://localhost:8888/report_result?1', true);
-            xhr.send();
-            setTimeout(function() { window.close() }, 1000);
-          }
         '''), # use EXPORT_NAME
         (['-s', 'EXPORT_NAME="HelloWorld"'], '''
           var hello = HelloWorld({ noInitialRun: true, onRuntimeInitialized: function() {
