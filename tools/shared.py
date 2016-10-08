@@ -550,7 +550,7 @@ def check_sanity(force=False):
         logging.critical('The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s' % (COMPILER_ENGINE, EM_CONFIG))
         sys.exit(1)
 
-    if NODE_JS != COMPILER_ENGINE:
+    if NODE_JS != COMPILER_ENGINE and Settings.RUNNING_JS_OPTS:
       if not check_engine(NODE_JS):
         logging.critical('Node.js (%s) does not seem to work, check the paths in %s' % (NODE_JS, EM_CONFIG))
         sys.exit(1)
