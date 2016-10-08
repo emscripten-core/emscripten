@@ -1580,7 +1580,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if use_preload_plugins:
         file_args.append('--use-preload-plugins')
       file_code = execute([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
-      pre_js = file_code + pre_js
+      pre_js = pre_js + file_code
 
     if shared.Settings.BINARYEN:
       # add in the glue integration code as a pre-js, so it is optimized together with everything else
