@@ -988,7 +988,7 @@ LibraryManager.library = {
       var info = EXCEPTIONS.infos[ptr];
       assert(info.refcount > 0);
       info.refcount--;
-      if (info.refcount === 0) {
+      if (info.refcount === 0 && ptr !== EXCEPTIONS.last) {
         if (info.destructor) {
           Runtime.dynCall('vi', info.destructor, [ptr]);
         }
@@ -1057,8 +1057,7 @@ LibraryManager.library = {
   // pop that here from the caught exceptions.
   __cxa_rethrow__deps: ['__cxa_end_catch', '$EXCEPTIONS'],
   __cxa_rethrow: function() {
-    ___cxa_end_catch.rethrown = true;
-    var ptr = EXCEPTIONS.caught.pop();
+    var ptr = EXCEPTIONS.caught[EXCEPTIONS.caught.length-1];
 #if EXCEPTION_DEBUG
     Module.printErr('Compiled code RE-throwing an exception, popped ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
 #endif
@@ -1097,10 +1096,6 @@ LibraryManager.library = {
   // an invalid index into the FUNCTION_TABLE, so something has gone wrong.
   __cxa_end_catch__deps: ['__cxa_free_exception', '$EXCEPTIONS'],
   __cxa_end_catch: function() {
-    if (___cxa_end_catch.rethrown) {
-      ___cxa_end_catch.rethrown = false;
-      return;
-    }
     // Clear state flag.
     asm['setThrew'](0);
     // Call destructor if one is registered then clear it.
@@ -1216,7 +1211,6 @@ LibraryManager.library = {
     Module.print("Resuming exception " + [ptr, EXCEPTIONS.last]);
 #endif
     if (!EXCEPTIONS.last) { EXCEPTIONS.last = ptr; }
-    EXCEPTIONS.clearRef(EXCEPTIONS.deAdjust(ptr)); // exception refcount should be cleared, but don't free it
     {{{ makeThrow('ptr') }}}
   },
 
