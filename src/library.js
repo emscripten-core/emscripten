@@ -449,7 +449,7 @@ LibraryManager.library = {
     // Perform a compare-and-swap loop to update the new dynamic top value. This is because
     // this function can becalled simultaneously in multiple threads.
     do {
-      oldDynamicTop = Atomics_load(HEAP32, DYNAMICTOP_PTR>>2);
+      oldDynamicTop = Atomics_load(HEAP32, DYNAMICTOP_PTR>>2)|0;
       newDynamicTop = oldDynamicTop + increment | 0;
       // Asking to increase dynamic top to a too high value? In pthreads builds we cannot
       // enlarge memory, so this needs to fail.
@@ -465,7 +465,7 @@ LibraryManager.library = {
       }
       // Attempt to update the dynamic top to new value. Another thread may have beat this thread to the update,
       // in which case we will need to start over by iterating the loop body again.
-      oldDynamicTopOnChange = Atomics_compareExchange(HEAP32, DYNAMICTOP_PTR>>2, oldDynamicTop|0, newDynamicTop|0);
+      oldDynamicTopOnChange = Atomics_compareExchange(HEAP32, DYNAMICTOP_PTR>>2, oldDynamicTop|0, newDynamicTop|0)|0;
     } while((oldDynamicTopOnChange|0) != (oldDynamicTop|0));
 #else // singlethreaded build: (-s USE_PTHREADS=0)
     oldDynamicTop = HEAP32[DYNAMICTOP_PTR>>2]|0;
@@ -511,7 +511,7 @@ LibraryManager.library = {
       return -1;
 #endif
     }
-    Atomics_store(HEAP32, DYNAMICTOP_PTR>>2, newDynamicTop|0);
+    Atomics_store(HEAP32, DYNAMICTOP_PTR>>2, newDynamicTop|0)|0;
 #else // singlethreaded build: (-s USE_PTHREADS=0)
     if ((newDynamicTop|0) < 0) {
 #if ABORTING_MALLOC
