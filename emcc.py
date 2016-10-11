@@ -1999,6 +1999,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # remove and forget about the mem init file in later processing; it does not need to be prefetched in the html, etc.
           os.unlink(memfile)
           memory_init_file = False
+      if shared.Settings.BINARYEN_PASSES:
+        shutil.move(wasm_text_target, wasm_text_target + '.pre')
+        cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_text_target + '.pre', '-o', wasm_text_target] + map(lambda p: '--' + p, shared.Settings.BINARYEN_PASSES.split(','))
+        logging.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))
+        subprocess.check_call(cmd)
+      if 'native-wasm' in shared.Settings.BINARYEN_METHOD or 'interpret-binary' in shared.Settings.BINARYEN_METHOD:
+        cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
+        if debug_level >= 2 or profiling_funcs: cmd += ['-g']
+        logging.debug('wasm-as (text => binary): ' + ' '.join(cmd))
+        subprocess.check_call(cmd)
       if shared.Settings.BINARYEN_SCRIPTS:
         binaryen_scripts = os.path.join(shared.Settings.BINARYEN_ROOT, 'scripts')
         script_env = os.environ.copy()
@@ -2010,16 +2020,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         for script in shared.Settings.BINARYEN_SCRIPTS.split(','):
           logging.debug('running binaryen script: ' + script)
           subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), js_target, wasm_text_target], env=script_env)
-      if shared.Settings.BINARYEN_PASSES:
-        shutil.move(wasm_text_target, wasm_text_target + '.pre')
-        cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_text_target + '.pre', '-o', wasm_text_target] + map(lambda p: '--' + p, shared.Settings.BINARYEN_PASSES.split(','))
-        logging.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))
-        subprocess.check_call(cmd)
-      if 'native-wasm' in shared.Settings.BINARYEN_METHOD or 'interpret-binary' in shared.Settings.BINARYEN_METHOD:
-        cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
-        if debug_level >= 2 or profiling_funcs: cmd += ['-g']
-        logging.debug('wasm-as (text => binary): ' + ' '.join(cmd))
-        subprocess.check_call(cmd)
 
     # If we were asked to also generate HTML, do that
     if final_suffix == 'html':
