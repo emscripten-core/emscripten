@@ -285,7 +285,7 @@ var LibraryBrowser = {
           }
         }
 #if GL_TESTING
-        contextAttributes.preserveDrawingBuffer = true;
+        contextAttributes['preserveDrawingBuffer'] = true;
 #endif
 
         contextHandle = GL.createContext(canvas, contextAttributes);

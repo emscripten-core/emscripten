@@ -848,3 +848,5 @@ SIMD.Bool8x16.xor = function() {};
 SIMD.Bool16x8.xor = function() {};
 SIMD.Bool32x4.xor = function() {};
 SIMD.Bool64x2.xor = function() {};
+
+var GLctx = {};
