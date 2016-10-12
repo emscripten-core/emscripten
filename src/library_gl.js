@@ -406,13 +406,13 @@ var LibraryGL = {
     
     // Returns the context handle to the new context.
     createContext: function(canvas, webGLContextAttributes) {
-      if (typeof webGLContextAttributes.majorVersion === 'undefined' && typeof webGLContextAttributes.minorVersion === 'undefined') {
+      if (typeof webGLContextAttributes['majorVersion'] === 'undefined' && typeof webGLContextAttributes['minorVersion'] === 'undefined') {
 #if USE_WEBGL2
-        webGLContextAttributes.majorVersion = 2;
+        webGLContextAttributes['majorVersion'] = 2;
 #else
-        webGLContextAttributes.majorVersion = 1;
+        webGLContextAttributes['majorVersion'] = 1;
 #endif
-        webGLContextAttributes.minorVersion = 0;
+        webGLContextAttributes['minorVersion'] = 0;
       }
       var ctx;
       var errorInfo = '?';
@@ -422,9 +422,9 @@ var LibraryGL = {
       try {
         canvas.addEventListener('webglcontextcreationerror', onContextCreationError, false);
         try {
-          if (webGLContextAttributes.majorVersion == 1 && webGLContextAttributes.minorVersion == 0) {
+          if (webGLContextAttributes['majorVersion'] == 1 && webGLContextAttributes['minorVersion'] == 0) {
             ctx = canvas.getContext("webgl", webGLContextAttributes) || canvas.getContext("experimental-webgl", webGLContextAttributes);
-          } else if (webGLContextAttributes.majorVersion == 2 && webGLContextAttributes.minorVersion == 0) {
+          } else if (webGLContextAttributes['majorVersion'] == 2 && webGLContextAttributes['minorVersion'] == 0) {
             ctx = canvas.getContext("webgl2", webGLContextAttributes) || canvas.getContext("experimental-webgl2", webGLContextAttributes);
           } else {
             throw 'Unsupported WebGL context version ' + majorVersion + '.' + minorVersion + '!'
@@ -532,13 +532,13 @@ var LibraryGL = {
       var context = {
         handle: handle,
         attributes: webGLContextAttributes,
-        version: webGLContextAttributes.majorVersion,
+        version: webGLContextAttributes['majorVersion'],
         GLctx: ctx
       };
       // Store the created context object so that we can access the context given a canvas without having to pass the parameters again.
       if (ctx.canvas) ctx.canvas.GLctxObject = context;
       GL.contexts[handle] = context;
-      if (typeof webGLContextAttributes['enableExtensionsByDefault'] === 'undefined' || webGLContextAttributes.enableExtensionsByDefault) {
+      if (typeof webGLContextAttributes['enableExtensionsByDefault'] === 'undefined' || webGLContextAttributes['enableExtensionsByDefault']) {
         GL.initExtensions(context);
       }
       return handle;
