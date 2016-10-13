@@ -6648,3 +6648,11 @@ int main() {
     print sizes
     assert sizes["['-O2']"] < sizes["['-O2', '--profiling-funcs']"], 'when -profiling-funcs, the size increases due to function names'
 
+  def test_wasm_targets(self):
+    for f in ['a.wasm', 'a.wast']:
+      process = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', f], stdout=PIPE, stderr=PIPE)
+      out, err = process.communicate()
+      print err
+      assert process.returncode is not 0, 'wasm suffix is an error'
+      self.assertContained('''output file "%s" has a wasm suffix, but we cannot emit wasm by itself''' % f, err)
+
