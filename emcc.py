@@ -1195,6 +1195,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.Settings.BINARYEN_ROOT = shared.BINARYEN_ROOT
         except:
           pass
+      # BINARYEN_ROOT could either point directly to a build directory, or to the root of a Binaryen git repository. Fix BINARYEN_ROOT to always point to the location of the built binaries.
+      if os.path.isdir(os.path.join(shared.Settings.BINARYEN_ROOT, 'bin')): shared.Settings.BINARYEN_ROOT = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin')
+
       # default precise-f32 to on, since it works well in wasm
       # also always use f32s when asm.js is not in the picture
       if ('PRECISE_F32=0' not in settings_changes and 'PRECISE_F32=2' not in settings_changes) or 'asmjs' not in shared.Settings.BINARYEN_METHOD:
@@ -1582,7 +1585,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.BINARYEN:
       # add in the glue integration code as a pre-js, so it is optimized together with everything else
-      wasm_js_glue = open(os.path.join(shared.Settings.BINARYEN_ROOT, 'src', 'js', 'wasm.js-post.js')).read()
+      wasm_js_glue = open(os.path.join(shared.Settings.BINARYEN_ROOT, 'js', 'wasm.js-post.js')).read()
       wasm_js_glue = wasm_js_glue.replace('{{{ asmjsCodeFile }}}', '"' + os.path.basename(asm_target) + '"')
       wasm_js_glue = wasm_js_glue.replace('{{{ wasmTextFile }}}', '"' + os.path.basename(wasm_text_target) + '"')
       wasm_js_glue = wasm_js_glue.replace('{{{ wasmBinaryFile }}}', '"' + os.path.basename(wasm_binary_target) + '"')
@@ -1959,7 +1962,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.BINARYEN:
       logging.debug('using binaryen, with method: ' + shared.Settings.BINARYEN_METHOD)
-      binaryen_bin = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin')
       # Emit wasm.js at the top of the js. This is *not* optimized with the rest of the code, since
       # (1) it contains asm.js, whose validation would be broken, and (2) it's very large so it would
       # be slow in cleanup/JSDCE etc.
@@ -1968,7 +1970,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # BINARYEN_METHOD with something that doesn't use the polyfill, then we don't need it.
       if not shared.Settings.BINARYEN_METHOD or 'interpret' in shared.Settings.BINARYEN_METHOD:
         logging.debug('integrating wasm.js polyfill interpreter')
-        wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
+        wasm_js = open(os.path.join(shared.Settings.BINARYEN_ROOT, 'wasm.js')).read()
         wasm_js = wasm_js.replace('EMSCRIPTEN_', 'emscripten_') # do not confuse the markers
         js = open(js_target).read()
         combined = open(js_target, 'w')
@@ -1978,7 +1980,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         combined.close()
       # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
       if not shared.Settings.WASM_BACKEND:
-        cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
+        cmd = [os.path.join(shared.Settings.BINARYEN_ROOT, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
         if shared.Settings.BINARYEN_IMPRECISE:
           cmd += ['--imprecise']
         if opt_level == 0 or shared.Settings.BINARYEN_PASSES: # if not optimizing, or which passes we should run was overridden, do not optimize
@@ -1999,11 +2001,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           memory_init_file = False
       if shared.Settings.BINARYEN_PASSES:
         shutil.move(wasm_text_target, wasm_text_target + '.pre')
-        cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_text_target + '.pre', '-o', wasm_text_target] + map(lambda p: '--' + p, shared.Settings.BINARYEN_PASSES.split(','))
+        cmd = [os.path.join(shared.Settings.BINARYEN_ROOT, 'wasm-opt'), wasm_text_target + '.pre', '-o', wasm_text_target] + map(lambda p: '--' + p, shared.Settings.BINARYEN_PASSES.split(','))
         logging.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))
         subprocess.check_call(cmd)
       if 'native-wasm' in shared.Settings.BINARYEN_METHOD or 'interpret-binary' in shared.Settings.BINARYEN_METHOD:
-        cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
+        cmd = [os.path.join(shared.Settings.BINARYEN_ROOT, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
         if debug_level >= 2 or profiling_funcs: cmd += ['-g']
         logging.debug('wasm-as (text => binary): ' + ' '.join(cmd))
         subprocess.check_call(cmd)
