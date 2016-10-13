@@ -274,17 +274,19 @@ If manually bisecting:
 
   # Tests that if the output files have single or double quotes in them, that it will be handled by correctly escaping the names.
   def test_output_file_escaping(self):
-    d = 'dir with \' and \"'
+    tricky_part = '\'' if WINDOWS else '\' and \"' # On Windows, files/directories may not contain a double quote character. On non-Windowses they can, so test that.
+
+    d = 'dir with ' + tricky_part
     abs_d = os.path.join(self.get_dir(), d)
     try:
       os.mkdir(abs_d)
     except:
       pass
-    txt = 'file with \' and \".txt'
+    txt = 'file with ' + tricky_part + '.txt'
     abs_txt = os.path.join(abs_d, txt)
     open(abs_txt, 'w').write('load me right before')
 
-    cpp = os.path.join(d, 'file with \' and \".cpp')
+    cpp = os.path.join(d, 'file with ' + tricky_part + '.cpp')
     open(cpp, 'w').write(self.with_report_result(r'''
       #include <stdio.h>
       #include <string.h>
@@ -302,10 +304,10 @@ If manually bisecting:
       }
     ''' % (txt.replace('\'', '\\\'').replace('\"', '\\"'))))
 
-    data_file = os.path.join(abs_d, 'file with \' and \".data')
-    data_js_file = os.path.join(abs_d, 'file with \' and \".js')
+    data_file = os.path.join(abs_d, 'file with ' + tricky_part + '.data')
+    data_js_file = os.path.join(abs_d, 'file with ' + tricky_part + '.js')
     Popen([PYTHON, FILE_PACKAGER, data_file, '--use-preload-cache', '--indexedDB-name=testdb', '--preload', abs_txt + '@' + txt, '--js-output=' + data_js_file]).communicate()
-    page_file = os.path.join(d, 'file with \' and \".html')
+    page_file = os.path.join(d, 'file with ' + tricky_part + '.html')
     abs_page_file = os.path.join(self.get_dir(), page_file)
     Popen([PYTHON, EMCC, cpp, '--pre-js', data_js_file, '-o', abs_page_file]).communicate()
     self.run_browser(page_file, '|load me right before|.', '/report_result?0')
