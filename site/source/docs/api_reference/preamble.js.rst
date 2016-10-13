@@ -246,8 +246,7 @@ Conversion functions — strings, pointers and arrays
 
 	Writes a JavaScript string to a specified address in the heap. 
 
-	.. warning:: This function is deprecated, you should call the function ``stringToUTF8`` instead, which provides a secure
-	bounded version of the same functionality instead.
+	.. warning:: This function is deprecated, you should call the function ``stringToUTF8`` instead, which provides a secure bounded version of the same functionality instead.
 	
 	.. code-block:: javascript
 	
