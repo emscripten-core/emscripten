@@ -22,18 +22,22 @@ void mouseCB(int button, int state, int x, int y)
     {
         if(state == GLUT_DOWN)
         {
+            printf("GLUT_DOWN: button: %d, x: %d, y: %d\n", button, x, y);
             touch_started_button = button;
             touch_started_x = x;
             touch_started_y = y;
         }
         else if(state == GLUT_UP)
         {
+            printf("GLUT_UP: button: %d, x: %d, y: %d\n", button, x, y);
             touch_ended_button = button;
             touch_ended_x = x;
             touch_ended_y = y;
         }
     }
 }
+
+#define abs(x) ((x) < 0 ? -(x) : (x))
 
 int main(int argc, char *argv[])
 {
@@ -43,6 +47,8 @@ int main(int argc, char *argv[])
             // so we fake them by creating a plain-vanilla UIEvent and then
             // filling in the fields that we look for with appropriate values.
             var rect = Module["canvas"].getBoundingClientRect();
+            Module['print']('rect corner: ' + rect.left + ',' + rect.top);
+            Module['print']('wanted: ' + wantedX + ',' + wantedY);
             var x = wantedX + rect.left;
             var y = wantedY + rect.top;
             var touch = {
@@ -73,12 +79,14 @@ int main(int argc, char *argv[])
 
     glutMouseFunc(&mouseCB);
 
-    emscripten_run_script("Module.injectEvent('touchstart', 101, 102)");
-    emscripten_run_script("Module.injectEvent('touchend', 201, 202)");
-    result = touch_started_button == 0 && touch_started_x == 101 && touch_started_y == 102 &&
-        touch_ended_button == 0 && touch_ended_x == 201 && touch_ended_y == 202;
+    emscripten_run_script("Module.injectEvent('touchstart', 101, 112)");
+    emscripten_run_script("Module.injectEvent('touchend', 201, 212)");
+    result = touch_started_button == 0 && abs(touch_started_x - 101) <= 1 && abs(touch_started_y - 112) <= 1 &&
+        touch_ended_button == 0 && abs(touch_ended_x - 201) <= 1 && abs(touch_ended_y - 212) <= 1;
     printf("touchstarted: button:%d x:%d y:%d\n", touch_started_button, touch_started_x, touch_started_y);
     printf("touchended:   button:%d x:%d y:%d\n", touch_ended_button, touch_ended_x, touch_ended_y);
+#ifdef REPORT_RESULT
     REPORT_RESULT();
+#endif
     return 0;
 }
