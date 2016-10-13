@@ -2165,6 +2165,7 @@ Module["preRun"].push(function () {
       self.btest(path_from_root('tests', 'webgl_destroy_context.cpp'), args=opts + ['--shell-file', path_from_root('tests/webgl_destroy_context_shell.html'), '-s', 'NO_EXIT_RUNTIME=1'], expected='0', timeout=20)
 
   def test_webgl_context_params(self):
+    if WINDOWS: return self.skip('SKIPPED due to bug https://bugzilla.mozilla.org/show_bug.cgi?id=1310005 - WebGL implementation advertises implementation defined GL_IMPLEMENTATION_COLOR_READ_TYPE/FORMAT pair that it cannot read with')
     self.btest(path_from_root('tests', 'webgl_color_buffer_readpixels.cpp'), expected='0', timeout=20)
 
   def test_webgl2(self):
