@@ -11,7 +11,7 @@ def needed(settings, shared, ports):
       return False
   except:
     pass
-  settings.BINARYEN_ROOT = os.path.join(ports.get_dir(), 'binaryen', 'binaryen-' + TAG)
+  settings.BINARYEN_ROOT = os.path.join(ports.get_dir(), 'binaryen', 'binaryen-' + TAG, 'bin')
   logging.debug('setting binaryen root to ' + settings.BINARYEN_ROOT)
   return True
 
