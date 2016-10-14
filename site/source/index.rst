@@ -24,6 +24,7 @@
 	docs/getting_started/index
 	docs/porting/index
 	docs/optimizing/Optimizing-Code
+	docs/optimizing/Profiling-Toolchain
 	docs/compiling/index
 	docs/building_from_source/index
 	docs/contributing/index

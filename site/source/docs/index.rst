@@ -38,6 +38,7 @@ The full hierarchy of articles, opened to the second level, is shown below.
 	getting_started/index
 	porting/index
 	optimizing/Optimizing-Code
+	optimizing/Profiling-Toolchain
 	compiling/index
 	building_from_source/index
 	contributing/index
