@@ -49,6 +49,8 @@ DYNAMICLIB_ENDINGS = ('.dylib', '.so') # Windows .dll suffix is not included in 
 STATICLIB_ENDINGS = ('.a',)
 ASSEMBLY_ENDINGS = ('.ll',)
 HEADER_ENDINGS = ('.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH')
+WASM_ENDINGS = ('.wasm', '.wast')
+
 SUPPORTED_LINKER_FLAGS = ('--start-group', '-(', '--end-group', '-)')
 
 LIB_PREFIXES = ('', 'lib')
@@ -329,6 +331,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       target = sys.argv[i+1]
       sys.argv = sys.argv[:i] + sys.argv[i+2:]
       break
+
+  if target and target.endswith(WASM_ENDINGS):
+    logging.warning('output file "%s" has a wasm suffix, but we cannot emit wasm by itself. specify an output file with suffix .js or .html, and a wasm file will be created on the side' % target)
+    sys.exit(1)
 
   specified_target = target
   target = specified_target if specified_target is not None else 'a.out.js' # specified_target is the user-specified one, target is what we will generate
