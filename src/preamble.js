@@ -110,7 +110,7 @@ function ftfault() {
 // Runtime essentials
 //========================================
 
-var ABORT = false; // whether we are quitting the application. no code should run after this. set in exit() and abort()
+var ABORT = 0; // whether we are quitting the application. no code should run after this. set in exit() and abort()
 var EXITSTATUS = 0;
 
 function assert(condition, text) {
