@@ -572,5 +572,4 @@ if __name__ == '__main__':
   except Exception, e:
     ToolchainProfiler.record_process_exit(1)
     raise e
-  sys.exit(0)
-
+  ToolchainProfiler.record_process_exit(0)
