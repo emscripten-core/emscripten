@@ -1752,7 +1752,6 @@ int main() {
 
   @no_emterpreter
   def test_bigswitch(self):
-    self.banned_js_engines = [SPIDERMONKEY_ENGINE] # bug 1174230
     src = open(path_from_root('tests', 'bigswitch.cpp')).read()
     self.do_run(src, '''34962: GL_ARRAY_BUFFER (0x8892)
 26214: what?
@@ -1762,7 +1761,6 @@ int main() {
 
   @no_emterpreter
   def test_biggerswitch(self):
-    self.banned_js_engines = [SPIDERMONKEY_ENGINE] # bug 1174230
     num_cases = 20000
     switch_case, err = Popen([PYTHON, path_from_root('tests', 'gen_large_switchcase.py'), str(num_cases)], stdout=PIPE, stderr=PIPE).communicate()
     self.do_run(switch_case, '''58996: 589965899658996

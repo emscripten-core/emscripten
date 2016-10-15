@@ -1106,8 +1106,8 @@ class Settings2(type):
           v = args[i][2]
           shrink = 0
           if v in ['s', 'z']:
-            v = '2'
             shrink = 1 if v == 's' else 2
+            v = '2'
           level = eval(v)
           self.apply_opt_level(level, shrink)
       for i in range(len(args)):

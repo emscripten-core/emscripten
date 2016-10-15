@@ -130,37 +130,13 @@ process(sys.argv[1])
 
 # Benchmarkers
 try:
-  default_native = LLVM_3_2
-  default_native_name = 'clang-3.2'
-except:
-  if 'benchmark' in str(sys.argv):
-    print 'LLVM_3_2 not defined, using our LLVM instead (%s)' % LLVM_ROOT
-  default_native = LLVM_ROOT
-  default_native_name = 'clang'
-
-try:
   benchmarkers_error = ''
   benchmarkers = [
-    #NativeBenchmarker(default_native_name, os.path.join(default_native, 'clang'), os.path.join(default_native, 'clang++')),
     #NativeBenchmarker('clang', CLANG_CC, CLANG),
-    #NativeBenchmarker('clang-3.6', os.path.join(LLVM_3_6, 'clang'), os.path.join(LLVM_3_6, 'clang++')),
-    #NativeBenchmarker(default_native_name, os.path.join(default_native, 'clang'), os.path.join(default_native, 'clang++')),
-    #NativeBenchmarker('clang-3.2-O3', os.path.join(default_native, 'clang'), os.path.join(default_native, 'clang++'), ['-O3']),
-    #NativeBenchmarker('clang-3.3', os.path.join(LLVM_3_3, 'clang'), os.path.join(LLVM_3_3, 'clang++')),
-    #NativeBenchmarker('clang-3.4', os.path.join(LLVM_3_4, 'clang'), os.path.join(LLVM_3_4, 'clang++')),
     #NativeBenchmarker('gcc', 'gcc', 'g++'),
-    JSBenchmarker('sm-f32', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
-    #JSBenchmarker('sm-wasm',     SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2''-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'BINARYEN_SCRIPTS="spidermonkify.py"'])
-    #JSBenchmarker('sm-imprecise', SPIDERMONKEY_ENGINE,                   ['-s', 'PRECISE_F32=1', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'BINARYEN_SCRIPTS="spidermonkify.py"', '-s', 'BINARYEN_IMPRECISE=1']),
-    #JSBenchmarker('sm-f32-si', SPIDERMONKEY_ENGINE, ['--profiling', '-s', 'PRECISE_F32=2', '-s', 'SIMPLIFY_IFS=1']),
-    #JSBenchmarker('sm-f32-aggro', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2', '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1']),
-    #JSBenchmarker('sm-f32-3.2', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_2 }),
-    #JSBenchmarker('sm-f32-3.3', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_3 }),
-    #JSBenchmarker('sm-f32-3.4', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_4 }),
-    #JSBenchmarker('sm-noasm',     SPIDERMONKEY_ENGINE + ['--no-asmjs']),
-    #JSBenchmarker('sm-noasm-f32', SPIDERMONKEY_ENGINE + ['--no-asmjs'], ['-s', 'PRECISE_F32=2']),
-    #JSBenchmarker('v8',           V8_ENGINE),
-    #JSBenchmarker('sm-emterp', SPIDERMONKEY_ENGINE, ['-s', 'EMTERPRETIFY=1', '--memory-init-file', '1']),
+    JSBenchmarker('sm-asmjs-f32', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
+    JSBenchmarker('sm-wasm', SPIDERMONKEY_ENGINE, ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'BINARYEN_IMPRECISE=1']),
+    JSBenchmarker('v8-wasm', V8_ENGINE,           ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'BINARYEN_IMPRECISE=1']),
   ]
 except Exception, e:
   benchmarkers_error = str(e)

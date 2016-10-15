@@ -6590,6 +6590,7 @@ int main() {
             (['-O2', '-s', 'OUTLINING_LIMIT=1000'], True, False), # option forced
             (['-O2', '-s', "BINARYEN_METHOD='interpret-s-expr,asmjs'"], True, False), # asmjs in methods means we need good asm.js
             (['-O3'], False, True),
+            (['-Os'], False, True),
             (['-Oz'], False, False), # even though we run ctor evaller, don't run js opts, but we can't only-wasm due to ctor-evaller running js opts internally
           ]:
           print args, 'js opts:', expect_js_opts, 'only-wasm:', expect_only_wasm
