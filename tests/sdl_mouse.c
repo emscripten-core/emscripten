@@ -33,13 +33,21 @@ void one() {
           emscripten_run_script("throw 'done'");
         }
         printf("button down: %d,%d  %d,%d\n", m->button, m->state, m->x, m->y);
+#ifdef TEST_SDL_MOUSE_OFFSETS
         assert(m->button == 1 && m->state == 1 && abs(m->x-5) <= 1 && abs(m->y-15) <= 1);
+#else
+        assert(m->button == 1 && m->state == 1 && abs(m->x-10) <= 1 && abs(m->y-20) <= 1);
+#endif
         break;
       }
       case SDL_MOUSEBUTTONUP: {
         SDL_MouseButtonEvent *m = (SDL_MouseButtonEvent*)&event;
         printf("button up: %d,%d  %d,%d\n", m->button, m->state, m->x, m->y);
+#ifdef TEST_SDL_MOUSE_OFFSETS
         assert(m->button == 1 && m->state == 0 && abs(m->x-5) <= 1 && abs(m->y-15) <= 1);
+#else
+        assert(m->button == 1 && m->state == 0 && abs(m->x-10) <= 1 && abs(m->y-20) <= 1);
+#endif
         // Remove another click we want to ignore
         assert(SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONDOWN) == 1);
         assert(SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_MOUSEBUTTONUP, SDL_MOUSEBUTTONUP) == 1);
