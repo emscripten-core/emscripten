@@ -967,8 +967,8 @@ keydown(100);keyup(100); // trigger the end
     ''')
     open(os.path.join(self.get_dir(), 'sdl_mouse.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_mouse.c')).read()))
 
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-O2', '--minify', '0', '-o', 'sdl_mouse.js', '--pre-js', 'pre.js']).communicate()
-    self.run_browser('page.html', '', '/report_result?600')
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-DTEST_SDL_MOUSE_OFFSETS', '-O2', '--minify', '0', '-o', 'sdl_mouse.js', '--pre-js', 'pre.js']).communicate()
+    self.run_browser('page.html', '', '/report_result?1')
 
   def test_glut_touchevents(self):
     self.btest('glut_touchevents.c', '1')
