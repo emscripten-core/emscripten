@@ -705,6 +705,14 @@ def server_func(dir, q):
       if 'report_' in self.path:
         print '[server response:', self.path, ']'
         q.put(self.path)
+        # Send a default OK response to the browser.
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.send_header('Cache-Control','no-cache, must-revalidate')
+        self.send_header('Connection','close')
+        self.send_header('Expires','-1')
+        self.end_headers()
+        self.wfile.write('OK')
       else:
         # Use SimpleHTTPServer default file serving operation for GET.
         SimpleHTTPServer.SimpleHTTPRequestHandler.do_GET(self)
