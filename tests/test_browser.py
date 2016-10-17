@@ -691,6 +691,8 @@ window.close = function() {
     self.run_browser('test.html', None, '/report_result?0')
 
   def test_sdl_canvas_alpha(self):
+    # N.B. On Linux with Intel integrated graphics cards, this test needs Firefox 49 or newer.
+    # See https://github.com/kripken/emscripten/issues/4069.
     open(os.path.join(self.get_dir(), 'flag_0.js'), 'w').write('''
       Module['arguments'] = ['-0'];
     ''')
