@@ -430,116 +430,119 @@ EMSCRIPTEN_FUNCS();
   else:
     filenames = []
 
-  if len(filenames) > 0:
-    if not use_native(passes, source_map) or not get_native_optimizer():
-      commands = map(lambda filename: js_engine +
-          [JS_OPTIMIZER, filename, 'noPrintMetadata'] +
-          (['--debug'] if source_map else []) + passes, filenames)
-    else:
-      # use the native optimizer
-      shared.logging.debug('js optimizer using native')
-      assert not source_map # XXX need to use js optimizer
-      commands = map(lambda filename: [get_native_optimizer(), filename] + passes, filenames)
-    #print [' '.join(command) for command in commands]
+  with ToolchainProfiler.profile_block('run_optimizer'):
+    if len(filenames) > 0:
+      if not use_native(passes, source_map) or not get_native_optimizer():
+        commands = map(lambda filename: js_engine +
+            [JS_OPTIMIZER, filename, 'noPrintMetadata'] +
+            (['--debug'] if source_map else []) + passes, filenames)
+      else:
+        # use the native optimizer
+        shared.logging.debug('js optimizer using native')
+        assert not source_map # XXX need to use js optimizer
+        commands = map(lambda filename: [get_native_optimizer(), filename] + passes, filenames)
+      #print [' '.join(command) for command in commands]
 
-    cores = min(cores, len(filenames))
-    if len(chunks) > 1 and cores >= 2:
-      # We can parallelize
-      if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size/(1024*1024.))
-      pool = multiprocessing.Pool(processes=cores)
-      filenames = pool.map(run_on_chunk, commands, chunksize=1)
-      try:
-        # Shut down the pool, since otherwise processes are left alive and would only be lazily terminated,
-        # and in other parts of the toolchain we also build up multiprocessing pools.
-        pool.terminate()
-        pool.join()
-      except Exception, e:
-        # On Windows we get occassional "Access is denied" errors when attempting to tear down the pool, ignore these.
-        logging.debug('Attempting to tear down multiprocessing pool failed with an exception: ' + str(e))
+      cores = min(cores, len(filenames))
+      if len(chunks) > 1 and cores >= 2:
+        # We can parallelize
+        if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size/(1024*1024.))
+        pool = multiprocessing.Pool(processes=cores)
+        filenames = pool.map(run_on_chunk, commands, chunksize=1)
+        try:
+          # Shut down the pool, since otherwise processes are left alive and would only be lazily terminated,
+          # and in other parts of the toolchain we also build up multiprocessing pools.
+          pool.terminate()
+          pool.join()
+        except Exception, e:
+          # On Windows we get occassional "Access is denied" errors when attempting to tear down the pool, ignore these.
+          logging.debug('Attempting to tear down multiprocessing pool failed with an exception: ' + str(e))
+      else:
+        # We can't parallize, but still break into chunks to avoid uglify/node memory issues
+        if len(chunks) > 1 and DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks' % (len(chunks))
+        filenames = [run_on_chunk(command) for command in commands]
     else:
-      # We can't parallize, but still break into chunks to avoid uglify/node memory issues
-      if len(chunks) > 1 and DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks' % (len(chunks))
-      filenames = [run_on_chunk(command) for command in commands]
-  else:
-    filenames = []
+      filenames = []
 
   for filename in filenames: temp_files.note(filename)
 
-  if closure or cleanup or split_memory:
-    # run on the shell code, everything but what we js-optimize
-    start_asm = '// EMSCRIPTEN_START_ASM\n'
-    end_asm = '// EMSCRIPTEN_END_ASM\n'
-    cl_sep = 'wakaUnknownBefore(); var asm=wakaUnknownAfter(global,env,buffer)\n'
+  with ToolchainProfiler.profile_block('split_closure_cleanup'):
+    if closure or cleanup or split_memory:
+      # run on the shell code, everything but what we js-optimize
+      start_asm = '// EMSCRIPTEN_START_ASM\n'
+      end_asm = '// EMSCRIPTEN_END_ASM\n'
+      cl_sep = 'wakaUnknownBefore(); var asm=wakaUnknownAfter(global,env,buffer)\n'
 
-    with temp_files.get_file('.cl.js') as cle:
-      c = open(cle, 'w')
-      pre_1, pre_2 = pre.split(start_asm)
-      post_1, post_2 = post.split(end_asm)
-      c.write(pre_1)
-      c.write(cl_sep)
-      c.write(post_2)
-      c.close()
-      cld = cle
-      if split_memory:
-        if DEBUG: print >> sys.stderr, 'running splitMemory on shell code'
-        cld = run_on_chunk(js_engine + [JS_OPTIMIZER, cld, 'splitMemoryShell'])
-        f = open(cld, 'a')
-        f.write(suffix_marker)
-        f.close()
-      if closure:
-        if DEBUG: print >> sys.stderr, 'running closure on shell code'
-        cld = shared.Building.closure_compiler(cld, pretty='minifyWhitespace' not in passes)
-        temp_files.note(cld)
-      elif cleanup:
-        if DEBUG: print >> sys.stderr, 'running cleanup on shell code'
-        next = cld + '.cl.js'
-        temp_files.note(next)
-        proc = subprocess.Popen(js_engine + [JS_OPTIMIZER, cld, 'noPrintMetadata', 'JSDCE'] + (['minifyWhitespace'] if 'minifyWhitespace' in passes else []), stdout=open(next, 'w'))
-        proc.communicate()
-        assert proc.returncode == 0
-        cld = next
-      coutput = open(cld).read()
+      with temp_files.get_file('.cl.js') as cle:
+        c = open(cle, 'w')
+        pre_1, pre_2 = pre.split(start_asm)
+        post_1, post_2 = post.split(end_asm)
+        c.write(pre_1)
+        c.write(cl_sep)
+        c.write(post_2)
+        c.close()
+        cld = cle
+        if split_memory:
+          if DEBUG: print >> sys.stderr, 'running splitMemory on shell code'
+          cld = run_on_chunk(js_engine + [JS_OPTIMIZER, cld, 'splitMemoryShell'])
+          f = open(cld, 'a')
+          f.write(suffix_marker)
+          f.close()
+        if closure:
+          if DEBUG: print >> sys.stderr, 'running closure on shell code'
+          cld = shared.Building.closure_compiler(cld, pretty='minifyWhitespace' not in passes)
+          temp_files.note(cld)
+        elif cleanup:
+          if DEBUG: print >> sys.stderr, 'running cleanup on shell code'
+          next = cld + '.cl.js'
+          temp_files.note(next)
+          proc = subprocess.Popen(js_engine + [JS_OPTIMIZER, cld, 'noPrintMetadata', 'JSDCE'] + (['minifyWhitespace'] if 'minifyWhitespace' in passes else []), stdout=open(next, 'w'))
+          proc.communicate()
+          assert proc.returncode == 0
+          cld = next
+        coutput = open(cld).read()
 
-    coutput = coutput.replace('wakaUnknownBefore();', start_asm)
-    after = 'wakaUnknownAfter'
-    start = coutput.find(after)
-    end = coutput.find(')', start)
-    pre = coutput[:start] + '(function(global,env,buffer) {\n' + pre_2[pre_2.find('{')+1:]
-    post = post_1 + end_asm + coutput[end+1:]
+      coutput = coutput.replace('wakaUnknownBefore();', start_asm)
+      after = 'wakaUnknownAfter'
+      start = coutput.find(after)
+      end = coutput.find(')', start)
+      pre = coutput[:start] + '(function(global,env,buffer) {\n' + pre_2[pre_2.find('{')+1:]
+      post = post_1 + end_asm + coutput[end+1:]
 
   filename += '.jo.js'
   f = open(filename, 'w')
   f.write(pre);
   pre = None
 
-  if not just_concat:
-    # sort functions by size, to make diffing easier and to improve aot times
-    funcses = []
-    for out_file in filenames:
-      funcses.append(split_funcs(open(out_file).read(), False))
-    funcs = [item for sublist in funcses for item in sublist]
-    funcses = None
-    def sorter(x, y):
-      diff = len(y[1]) - len(x[1])
-      if diff != 0: return diff
-      if x[0] < y[0]: return 1
-      elif x[0] > y[0]: return -1
-      return 0
-    if not os.environ.get('EMCC_NO_OPT_SORT'):
-      funcs.sort(sorter)
+  with ToolchainProfiler.profile_block('sort_or_concat'):
+    if not just_concat:
+      # sort functions by size, to make diffing easier and to improve aot times
+      funcses = []
+      for out_file in filenames:
+        funcses.append(split_funcs(open(out_file).read(), False))
+      funcs = [item for sublist in funcses for item in sublist]
+      funcses = None
+      def sorter(x, y):
+        diff = len(y[1]) - len(x[1])
+        if diff != 0: return diff
+        if x[0] < y[0]: return 1
+        elif x[0] > y[0]: return -1
+        return 0
+      if not os.environ.get('EMCC_NO_OPT_SORT'):
+        funcs.sort(sorter)
 
-    if 'last' in passes and len(funcs) > 0:
-      count = funcs[0][1].count('\n')
-      if count > 3000:
-        print >> sys.stderr, 'warning: Output contains some very large functions (%s lines in %s), consider building source files with -Os or -Oz, and/or trying OUTLINING_LIMIT to break them up (see settings.js; note that the parameter there affects AST nodes, while we measure lines here, so the two may not match up)' % (count, funcs[0][0])
+      if 'last' in passes and len(funcs) > 0:
+        count = funcs[0][1].count('\n')
+        if count > 3000:
+          print >> sys.stderr, 'warning: Output contains some very large functions (%s lines in %s), consider building source files with -Os or -Oz, and/or trying OUTLINING_LIMIT to break them up (see settings.js; note that the parameter there affects AST nodes, while we measure lines here, so the two may not match up)' % (count, funcs[0][0])
 
-    for func in funcs:
-      f.write(func[1])
-    funcs = None
-  else:
-    # just concat the outputs
-    for out_file in filenames:
-      f.write(open(out_file).read())
+      for func in funcs:
+        f.write(func[1])
+      funcs = None
+    else:
+      # just concat the outputs
+      for out_file in filenames:
+        f.write(open(out_file).read())
   f.write('\n')
   f.write(post);
   # No need to write suffix: if there was one, it is inside post which exists when suffix is there
@@ -552,16 +555,21 @@ def run(filename, passes, js_engine=shared.NODE_JS, source_map=False, extra_info
   if 'receiveJSON' in passes: just_split = True
   if 'emitJSON' in passes: just_concat = True
   js_engine = shared.listify(js_engine)
-  return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, source_map, extra_info, just_split, just_concat))
+  with ToolchainProfiler.profile_block('js_optimizer.run_on_js'):
+    return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, source_map, extra_info, just_split, just_concat))
 
 if __name__ == '__main__':
-  last = sys.argv[-1]
-  if '{' in last:
-    extra_info = json.loads(last)
-    sys.argv = sys.argv[:-1]
-  else:
-    extra_info = None
-  out = run(sys.argv[1], sys.argv[2:], extra_info=extra_info)
-  shutil.copyfile(out, sys.argv[1] + '.jsopt.js')
-  sys.exit(0)
-
+  ToolchainProfiler.record_process_start()
+  try:
+    last = sys.argv[-1]
+    if '{' in last:
+      extra_info = json.loads(last)
+      sys.argv = sys.argv[:-1]
+    else:
+      extra_info = None
+    out = run(sys.argv[1], sys.argv[2:], extra_info=extra_info)
+    shutil.copyfile(out, sys.argv[1] + '.jsopt.js')
+  except Exception, e:
+    ToolchainProfiler.record_process_exit(1)
+    raise e
+  ToolchainProfiler.record_process_exit(0)

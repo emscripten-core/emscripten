@@ -499,6 +499,7 @@ def generate_sanity():
   return EMSCRIPTEN_VERSION + '|' + LLVM_ROOT + '|' + get_clang_version() + ('_wasm' if get_llvm_target() == WASM_TARGET else '')
 
 def check_sanity(force=False):
+  ToolchainProfiler.enter_block('sanity')
   try:
     if os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
       return
@@ -544,19 +545,21 @@ def check_sanity(force=False):
 
     logging.info('(Emscripten: Running sanity checks)')
 
-    if not check_engine(COMPILER_ENGINE):
-      logging.critical('The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s' % (COMPILER_ENGINE, EM_CONFIG))
-      sys.exit(1)
+    with ToolchainProfiler.profile_block('sanity compiler_engine'):
+      if not check_engine(COMPILER_ENGINE):
+        logging.critical('The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s' % (COMPILER_ENGINE, EM_CONFIG))
+        sys.exit(1)
 
     if NODE_JS != COMPILER_ENGINE:
       if not check_engine(NODE_JS):
         logging.critical('Node.js (%s) does not seem to work, check the paths in %s' % (NODE_JS, EM_CONFIG))
         sys.exit(1)
 
-    for cmd in [CLANG, LLVM_LINK, LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM, LLVM_INTERPRETER]:
-      if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
-        logging.critical('Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG))
-        sys.exit(1)
+    with ToolchainProfiler.profile_block('sanity LLVM'):
+      for cmd in [CLANG, LLVM_LINK, LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM, LLVM_INTERPRETER]:
+        if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
+          logging.critical('Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG))
+          sys.exit(1)
 
     if not os.path.exists(PYTHON) and not os.path.exists(cmd + '.exe'):
       try:
@@ -570,8 +573,9 @@ def check_sanity(force=False):
       sys.exit(1)
 
     # Sanity check passed!
-    if not check_closure_compiler():
-      logging.warning('closure compiler will not be available')
+    with ToolchainProfiler.profile_block('sanity closure compiler'):
+      if not check_closure_compiler():
+        logging.warning('closure compiler will not be available')
 
     if not force:
       # Only create/update this file if the sanity check succeeded, i.e., we got here
@@ -582,6 +586,8 @@ def check_sanity(force=False):
   except Exception, e:
     # Any error here is not worth failing on
     print 'WARNING: sanity check failed to run', e
+  finally:
+    ToolchainProfiler.exit_block('sanity')
 
 # Tools/paths
 
@@ -1724,7 +1730,8 @@ class Building:
     cmdline = [filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + args
     if jsrun.TRACK_PROCESS_SPAWNS:
       logging.info('Executing emscripten.py compiler with cmdline "' + ' '.join(cmdline) + '"')
-    call_emscripten(cmdline)
+    with ToolchainProfiler.profile_block('emscripten.py'):
+      call_emscripten(cmdline)
 
     # Detect compilation crashes and errors
     assert os.path.exists(filename + '.o.js'), 'Emscripten failed to generate .js'
@@ -1812,95 +1819,97 @@ class Building:
 
   @staticmethod
   def calculate_reachable_functions(infile, initial_list, can_reach=True):
-    import asm_module
-    temp = configuration.get_temp_files().get('.js').name
-    Building.js_optimizer(infile, ['dumpCallGraph'], output_filename=temp, just_concat=True)
-    asm = asm_module.AsmModule(temp)
-    lines = asm.funcs_js.split('\n')
-    can_call = {}
-    for i in range(len(lines)):
-      line = lines[i]
-      if line.startswith('// REACHABLE '):
-        curr = json.loads(line[len('// REACHABLE '):])
-        func = curr[0]
-        targets = curr[2]
-        can_call[func] = set(targets)
-    # function tables too - treat a function all as a function that can call anything in it, which is effectively what it is
-    for name, funcs in asm.tables.iteritems():
-      can_call[name] = set(map(lambda x: x.strip(), funcs[1:-1].split(',')))
-    #print can_call
-    # Note: We ignore calls in from outside the asm module, so you could do emterpreted => outside => emterpreted, and we would
-    #       miss the first one there. But this is acceptable to do, because we can't save such a stack anyhow, due to the outside!
-    #print 'can call', can_call, '\n!!!\n', asm.tables, '!'
-    reachable_from = {}
-    for func, targets in can_call.iteritems():
-      for target in targets:
-        if target not in reachable_from:
-          reachable_from[target] = set()
-        reachable_from[target].add(func)
-    #print 'reachable from', reachable_from
-    to_check = initial_list[:]
-    advised = set()
-    if can_reach:
-      # find all functions that can reach the initial list
-      while len(to_check) > 0:
-        curr = to_check.pop()
-        if curr in reachable_from:
-          for reacher in reachable_from[curr]:
-            if reacher not in advised:
-              if not JS.is_dyn_call(reacher) and not JS.is_function_table(reacher): advised.add(str(reacher))
-              to_check.append(reacher)
-    else:
-      # find all functions that are reachable from the initial list, including it
-      # all tables are assumed reachable, as they can be called from dyncall from outside
+    with ToolchainProfiler.profile_block('calculate_reachable_functions'):
+      import asm_module
+      temp = configuration.get_temp_files().get('.js').name
+      Building.js_optimizer(infile, ['dumpCallGraph'], output_filename=temp, just_concat=True)
+      asm = asm_module.AsmModule(temp)
+      lines = asm.funcs_js.split('\n')
+      can_call = {}
+      for i in range(len(lines)):
+        line = lines[i]
+        if line.startswith('// REACHABLE '):
+          curr = json.loads(line[len('// REACHABLE '):])
+          func = curr[0]
+          targets = curr[2]
+          can_call[func] = set(targets)
+      # function tables too - treat a function all as a function that can call anything in it, which is effectively what it is
       for name, funcs in asm.tables.iteritems():
-        to_check.append(name)
-      while len(to_check) > 0:
-        curr = to_check.pop()
-        if not JS.is_function_table(curr):
-          advised.add(curr)
-        if curr in can_call:
-          for target in can_call[curr]:
-            if target not in advised:
-              advised.add(str(target))
-              to_check.append(target)
-    return { 'reachable': list(advised), 'total_funcs': len(can_call) }
+        can_call[name] = set(map(lambda x: x.strip(), funcs[1:-1].split(',')))
+      #print can_call
+      # Note: We ignore calls in from outside the asm module, so you could do emterpreted => outside => emterpreted, and we would
+      #       miss the first one there. But this is acceptable to do, because we can't save such a stack anyhow, due to the outside!
+      #print 'can call', can_call, '\n!!!\n', asm.tables, '!'
+      reachable_from = {}
+      for func, targets in can_call.iteritems():
+        for target in targets:
+          if target not in reachable_from:
+            reachable_from[target] = set()
+          reachable_from[target].add(func)
+      #print 'reachable from', reachable_from
+      to_check = initial_list[:]
+      advised = set()
+      if can_reach:
+        # find all functions that can reach the initial list
+        while len(to_check) > 0:
+          curr = to_check.pop()
+          if curr in reachable_from:
+            for reacher in reachable_from[curr]:
+              if reacher not in advised:
+                if not JS.is_dyn_call(reacher) and not JS.is_function_table(reacher): advised.add(str(reacher))
+                to_check.append(reacher)
+      else:
+        # find all functions that are reachable from the initial list, including it
+        # all tables are assumed reachable, as they can be called from dyncall from outside
+        for name, funcs in asm.tables.iteritems():
+          to_check.append(name)
+        while len(to_check) > 0:
+          curr = to_check.pop()
+          if not JS.is_function_table(curr):
+            advised.add(curr)
+          if curr in can_call:
+            for target in can_call[curr]:
+              if target not in advised:
+                advised.add(str(target))
+                to_check.append(target)
+      return { 'reachable': list(advised), 'total_funcs': len(can_call) }
 
   @staticmethod
   def closure_compiler(filename, pretty=True):
-    if not check_closure_compiler():
-      logging.error('Cannot run closure compiler')
-      raise Exception('closure compiler check failed')
+    with ToolchainProfiler.profile_block('closure_compiler'):
+      if not check_closure_compiler():
+        logging.error('Cannot run closure compiler')
+        raise Exception('closure compiler check failed')
 
-    CLOSURE_EXTERNS = path_from_root('src', 'closure-externs.js')
-    NODE_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'node-externs')
-    NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
-    NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
-                    if name.endswith('.js')]
+      CLOSURE_EXTERNS = path_from_root('src', 'closure-externs.js')
+      NODE_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'node-externs')
+      NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
+      NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
+                      if name.endswith('.js')]
 
-    # Something like this (adjust memory as needed):
-    #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
-    args = [JAVA,
-            '-Xmx' + (os.environ.get('JAVA_HEAP_SIZE') or '1024m'), # if you need a larger Java heap, use this environment variable
-            '-jar', CLOSURE_COMPILER,
-            '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
-            '--language_in', 'ECMASCRIPT5',
-            '--externs', CLOSURE_EXTERNS,
-            #'--variable_map_output_file', filename + '.vars',
-            '--js', filename, '--js_output_file', filename + '.cc.js']
-    for extern in NODE_EXTERNS:
-        args.append('--externs')
-        args.append(extern)
-    if pretty: args += ['--formatting', 'PRETTY_PRINT']
-    if os.environ.get('EMCC_CLOSURE_ARGS'):
-      args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
-    logging.debug('closure compiler: ' + ' '.join(args))
-    process = Popen(args, stdout=PIPE, stderr=STDOUT)
-    cc_output = process.communicate()[0]
-    if process.returncode != 0 or not os.path.exists(filename + '.cc.js'):
-      raise Exception('closure compiler error: ' + cc_output + ' (rc: %d)' % process.returncode)
+      # Something like this (adjust memory as needed):
+      #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
+      args = [JAVA,
+              '-Xmx' + (os.environ.get('JAVA_HEAP_SIZE') or '1024m'), # if you need a larger Java heap, use this environment variable
+              '-jar', CLOSURE_COMPILER,
+              '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
+              '--language_in', 'ECMASCRIPT5',
+              '--externs', CLOSURE_EXTERNS,
+              #'--variable_map_output_file', filename + '.vars',
+              '--js', filename, '--js_output_file', filename + '.cc.js']
+      for extern in NODE_EXTERNS:
+          args.append('--externs')
+          args.append(extern)
+      if pretty: args += ['--formatting', 'PRETTY_PRINT']
+      if os.environ.get('EMCC_CLOSURE_ARGS'):
+        args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
+      logging.debug('closure compiler: ' + ' '.join(args))
+      process = Popen(args, stdout=PIPE, stderr=STDOUT)
+      cc_output = process.communicate()[0]
+      if process.returncode != 0 or not os.path.exists(filename + '.cc.js'):
+        raise Exception('closure compiler error: ' + cc_output + ' (rc: %d)' % process.returncode)
 
-    return filename + '.cc.js'
+      return filename + '.cc.js'
 
   _is_ar_cache = {}
   @staticmethod
@@ -1938,10 +1947,11 @@ class Building:
   @staticmethod
   def ensure_struct_info(info_path):
     if os.path.exists(info_path): return
-    Cache.ensure()
+    with ToolchainProfiler.profile_block('gen_struct_info'):
+      Cache.ensure()
 
-    import gen_struct_info
-    gen_struct_info.main(['-qo', info_path, path_from_root('src/struct_info.json')])
+      import gen_struct_info
+      gen_struct_info.main(['-qo', info_path, path_from_root('src/struct_info.json')])
 
 # compatibility with existing emcc, etc. scripts
 Cache = cache.Cache(debug=DEBUG_CACHE)

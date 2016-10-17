@@ -46,7 +46,7 @@ d3.js swimlane chart example adapted to use in Emscripten from http://bl.ocks.or
 </style>
 </head><body>
 
-<p>Show only blocks that took at least <input id='hideBlocksSmallerThan' value='10'></input> msecs (0=show all).<input type='button' value='Refresh' onclick='refresh()'></input>
+<p>Show only blocks that took at least <input id='hideBlocksSmallerThan' value='10'></input> msecs (0=show all).<input type='button' value='Refresh' onclick='refresh()'></input> To zoom in, grab with mouse from either the far left or right ends of the blue/purple background rectangle, and drag the selection area smaller.
 
 <script type="text/javascript">
 
@@ -255,11 +255,15 @@ function createSwimlaneChart(data) {
       };
       pushItemToStack(itemsByPid[d.pid], d.pid);
     } else if (d.op === 'exit') { // A top-level tool process has finished
-      itemsByPid[d.pid].end = (d.time - t0)*1000;
-      d.end = (d.time - t0)*1000;
-      itemsOrdered.push(itemsByPid[d.pid]);
-      popItemFromStack(itemsByPid[d.pid], d.pid);
-      delete itemsByPid[d.pid];
+      if (itemsByPid[d.pid]) {
+        itemsByPid[d.pid].end = (d.time - t0)*1000;
+        d.end = (d.time - t0)*1000;
+        itemsOrdered.push(itemsByPid[d.pid]);
+        popItemFromStack(itemsByPid[d.pid], d.pid);
+        delete itemsByPid[d.pid];
+      } else {
+        console.error('"exit" record seen for PID ' + d.pid + ', but no corresponding "start" record present!');
+      }
     } else if (d.op === 'spawn') { // A subprocess was spawned
       itemsByPid[d.targetPid] = {
         parentPid: d.pid,
@@ -276,11 +280,15 @@ function createSwimlaneChart(data) {
       pushItemToStack(itemsByPid[d.targetPid], d.pid);
       pushItemToStack(itemsByPid[d.targetPid], d.targetPid);
     } else if (d.op === 'finish') { // A subprocess has finished
-      itemsByPid[d.targetPid].end = (d.time - t0)*1000;
-      itemsOrdered.push(itemsByPid[d.targetPid]);
-      popItemFromStack(itemsByPid[d.targetPid], d.pid);
-      popItemFromStack(itemsByPid[d.targetPid], d.targetPid);
-      delete itemsByPid[d.targetPid];
+      if (itemsByPid[d.targetPid]) {
+        itemsByPid[d.targetPid].end = (d.time - t0)*1000;
+        itemsOrdered.push(itemsByPid[d.targetPid]);
+        popItemFromStack(itemsByPid[d.targetPid], d.pid);
+        popItemFromStack(itemsByPid[d.targetPid], d.targetPid);
+        delete itemsByPid[d.targetPid];
+      } else {
+        console.error('"finish" record seen for PID ' + d.targetPid + ', but no corresponding "spawn" record present!');
+      }
     } else if (d.op === 'enterBlock') { // A custom profiling block has been stepped into
       var id = d.pid + '-' + d.name + '-' + d.subprocessPid;
       itemsByPid[id] = {
@@ -296,10 +304,14 @@ function createSwimlaneChart(data) {
       pushItemToStack(itemsByPid[id], d.pid);
     } else if (d.op === 'exitBlock') { // A custom profiling block has been exited
       var id = d.pid + '-' + d.name + '-' + d.subprocessPid;
-      itemsByPid[id].end = (d.time - t0)*1000;
-      itemsOrdered.push(itemsByPid[id]);
-      popItemFromStack(itemsByPid[id], d.pid);
-      delete itemsByPid[id];
+      if (itemsByPid[id]) {
+        itemsByPid[id].end = (d.time - t0)*1000;
+        itemsOrdered.push(itemsByPid[id]);
+        popItemFromStack(itemsByPid[id], d.pid);
+        delete itemsByPid[id];
+      } else {
+        console.error('"exitBlock" record seen for PID "' + id + '", but no corresponding "enterBlock" record present!');
+      }
     }
   }
 
