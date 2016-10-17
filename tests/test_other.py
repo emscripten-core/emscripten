@@ -6373,6 +6373,20 @@ int main() {}
     check_execute([PYTHON, EMCC, 'src.cpp', '-O2']) # optimized, so no assertions
     self.assertNotContained(WARNING, open('a.out.js').read())
 
+  def test_arc4random(self):
+    open('src.c', 'w').write(r'''
+#include <stdlib.h>
+#include <stdio.h>
+
+int main() {
+  printf("%d\n", arc4random());
+  printf("%d\n", arc4random());
+}
+    ''')
+    check_execute([PYTHON, EMCC, 'src.c', '-Wno-implicit-function-declaration'])
+
+    self.assertContained('0\n740882966\n', run_js('a.out.js'))
+
   ############################################################
   # Function eliminator tests
   ############################################################
