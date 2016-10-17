@@ -2,6 +2,7 @@
 
 # This script should work in python 2 *or* 3. It loads emmake.py, which needs python 2.
 
+from tools.toolchain_profiler import ToolchainProfiler
 
 import sys
 
@@ -10,7 +11,9 @@ import sys
 if sys.version_info.major == 2:
   import emmake
   if __name__ == '__main__':
+    ToolchainProfiler.record_process_start()
     emmake.run()
+    sys.exit(0)
 else:
   import os, subprocess
   if __name__ == '__main__':
