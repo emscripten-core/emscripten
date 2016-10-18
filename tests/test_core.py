@@ -7180,6 +7180,10 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-DTEST_BRK=1']
     self.do_run(open(path_from_root('tests', 'sbrk_brk.cpp')).read(), 'OK.')
 
+  # Tests that we can use the dlmalloc mallinfo() function to obtain information about malloc()ed blocks and compute how much memory is used/freed.
+  def test_mallinfo(self):
+    self.do_run(open(path_from_root('tests', 'mallinfo.cpp')).read(), 'OK.')
+
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
     typed_arrays=0, emcc_args=None, env=None):
