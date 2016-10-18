@@ -6607,15 +6607,18 @@ int main() {
             (['-Os'], False, True),
             (['-Oz'], False, False), # even though we run ctor evaller, don't run js opts, but we can't only-wasm due to ctor-evaller running js opts internally
           ]:
-          print args, 'js opts:', expect_js_opts, 'only-wasm:', expect_only_wasm
-          try_delete('a.out.js')
-          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'core', 'test_i64.c'), '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-s-expr"'] + args, stdout=PIPE, stderr=PIPE).communicate()
-          assert expect_js_opts == ('applying js optimization passes:' in err), err
-          assert expect_only_wasm == ('-emscripten-only-wasm' in err and '--wasm-only' in err), err # check both flag to fastcomp and to asm2wasm
-          wast = open('a.out.wast').read()
-          i64s = wast.count('(i64.')
-          print '    seen i64s:', i64s
-          assert expect_only_wasm == (i64s > 30), 'i64 opts can be emitted in only-wasm mode, but not normally' # note we emit a few i64s even without wasm-only, when we replace udivmoddi (around 15 such)
+          for option in ['BINARYEN', 'WASM']: # the two should be identical
+            try_delete('a.out.js')
+            try_delete('a.out.wast')
+            cmd = [PYTHON, EMCC, path_from_root('tests', 'core', 'test_i64.c'), '-s', option + '=1', '-s', 'BINARYEN_METHOD="interpret-s-expr"'] + args
+            print args, 'js opts:', expect_js_opts, 'only-wasm:', expect_only_wasm, '   ', ' '.join(cmd)
+            output, err = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
+            assert expect_js_opts == ('applying js optimization passes:' in err), err
+            assert expect_only_wasm == ('-emscripten-only-wasm' in err and '--wasm-only' in err), err # check both flag to fastcomp and to asm2wasm
+            wast = open('a.out.wast').read()
+            i64s = wast.count('(i64.')
+            print '    seen i64s:', i64s
+            assert expect_only_wasm == (i64s > 30), 'i64 opts can be emitted in only-wasm mode, but not normally' # note we emit a few i64s even without wasm-only, when we replace udivmoddi (around 15 such)
       finally:
         del os.environ['EMCC_DEBUG']
 

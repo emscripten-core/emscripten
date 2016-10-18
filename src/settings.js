@@ -634,7 +634,7 @@ var USE_GLFW = 2; // Specify the GLFW version that is being linked against.
                   // Valid options are 2 for GLFW2 and 3 for GLFW3.
 
 var BINARYEN = 0; // Whether to use [Binaryen](https://github.com/WebAssembly/binaryen) to
-                  // compile (at runtime) our asm.js output into WebAssembly.
+                  // compile code to WebAssembly.
                   // This will fetch the binaryen port and build it. (If, instead, you set
                   // BINARYEN_ROOT in your ~/.emscripten file, then we use that instead
                   // of the port, which can useful for local dev work on binaryen itself).
@@ -649,6 +649,8 @@ var BINARYEN_PASSES = ""; // A comma-separated list of passes to run in the bina
                           // When set, this overrides the default passes we would normally run.
 var BINARYEN_ROOT = ""; // Directory where we can find Binaryen. Will be automatically set for you,
                         // but you can set it to override if you are a Binaryen developer.
+
+var WASM = 0; // Alias for BINARYEN, the two are identical. Both make us compile code to WebAssembly.
 
 var WASM_BACKEND = 0; // Whether to use the WebAssembly backend that is in development in LLVM.
                       // This requires that BINARYEN be set, as we use Binaryen's s2wasm to

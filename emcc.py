@@ -1176,6 +1176,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # we need to generate proper code for that
         shared.Settings.RUNNING_JS_OPTS = 1
 
+      if shared.Settings.WASM:
+        shared.Settings.BINARYEN = 1 # these are synonyms
+
       if shared.Settings.WASM_BACKEND:
         js_opts = None
         shared.Settings.BINARYEN = 1
