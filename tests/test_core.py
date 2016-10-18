@@ -5741,7 +5741,9 @@ def process(filename):
     Building.llvm_dis(filename)
 
   def test_autodebug(self):
-    self.banned_js_engines = [V8_ENGINE] # Broken on V8 but not node; wasm-only
+    if self.is_wasm():
+      # Broken on V8 but not node; wasm-only
+      self.banned_js_engines = [V8_ENGINE]
     if Building.LLVM_OPTS: return self.skip('LLVM opts mess us up')
     Building.COMPILER_TEST_OPTS += ['--llvm-opts', '0']
 
