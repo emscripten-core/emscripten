@@ -1780,6 +1780,18 @@ class Building:
     return ['-internalize', internalize_public_api]
 
   @staticmethod
+  def opt_level_to_str(opt_level, shrink_level=0):
+    # convert opt_level/shrink_level pair to a string argument like -O1
+    if opt_level == 0:
+      return '-O0'
+    if shrink_level == 1:
+      return ['-Os']
+    elif shrink_level >= 2:
+      return ['-Oz']
+    else:
+      return ['-O' + str(min(opt_level, 3))]
+
+  @staticmethod
   def pick_llvm_opts(optimization_level):
     '''
       It may be safe to use nonportable optimizations (like -OX) if we remove the platform info from the .ll
