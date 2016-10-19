@@ -628,10 +628,11 @@ var LibraryBrowser = {
     },
 
     asyncLoad: function(url, onload, onerror, noRunDep) {
+      var dep = !noRunDep ? getUniqueRunDependency('al ' + url) : '';
       Module['readAsync'](url, function(arrayBuffer) {
         assert(arrayBuffer, 'Loading data file "' + url + '" failed (no arrayBuffer).');
         onload(new Uint8Array(arrayBuffer));
-        if (!noRunDep) removeRunDependency('al ' + url);
+        if (dep) removeRunDependency(dep);
       }, function(event) {
         if (onerror) {
           onerror();
@@ -639,7 +640,7 @@ var LibraryBrowser = {
           throw 'Loading data file "' + url + '" failed.';
         }
       });
-      if (!noRunDep) addRunDependency('al ' + url);
+      if (dep) addRunDependency(dep);
     },
 
     resizeListeners: [],
