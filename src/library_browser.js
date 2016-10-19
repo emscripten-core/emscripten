@@ -742,12 +742,19 @@ var LibraryBrowser = {
     var _file = Pointer_stringify(file);
     asm.setAsync();
     Module['noExitRuntime'] = true;
+    var destinationDirectory = PATH.dirname(_file);
     FS.createPreloadedFile(
-      PATH.dirname(_file),
+      destinationDirectory,
       PATH.basename(_file),
       _url, true, true,
       _emscripten_async_resume,
-      _emscripten_async_resume
+      _emscripten_async_resume,
+      undefined, // dontCreateFile
+      undefined, // canOwn
+      function() { // preFinish
+        // if the destination directory does not yet exist, create it
+        FS.mkdirTree(destinationDirectory);
+      }
     );
   },
 #else
@@ -769,8 +776,9 @@ var LibraryBrowser = {
         Runtime.stackRestore(stack);
       }
     }
+    var destinationDirectory = PATH.dirname(_file);
     FS.createPreloadedFile(
-      PATH.dirname(_file),
+      destinationDirectory,
       PATH.basename(_file),
       _url, true, true,
       function() {
@@ -786,6 +794,8 @@ var LibraryBrowser = {
         try {
           FS.unlink(_file);
         } catch (e) {}
+        // if the destination directory does not yet exist, create it
+        FS.mkdirTree(destinationDirectory);
       }
     );
   },

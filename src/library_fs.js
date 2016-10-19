@@ -628,6 +628,19 @@ mergeInto(LibraryManager.library, {
       mode |= {{{ cDefine('S_IFDIR') }}};
       return FS.mknod(path, mode, 0);
     },
+    // Creates a whole directory tree chain if it doesn't yet exist
+    mkdirTree: function(path, mode) {
+      var dirs = path.split('/');
+      var d = '';
+      for (var i = 0; i < dirs.length; ++i) {
+        d += '/' + dirs[i];
+        try {
+          FS.mkdir(d, mode);
+        } catch(e) {
+          if (e.errno != ERRNO_CODES.EEXIST) throw e;
+        }
+      }
+    },
     mkdev: function(path, mode, dev) {
       if (typeof(dev) === 'undefined') {
         dev = mode;
