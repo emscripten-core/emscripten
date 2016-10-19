@@ -2015,7 +2015,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             cmd += ['--imprecise']
           # pass optimization level to asm2wasm (if not optimizing, or which passes we should run was overridden, do not optimize)
           if opt_level > 0 and not shared.Settings.BINARYEN_PASSES:
-            cmd.append(Building.opt_level_to_str(opt_level, shrink_level))
+            cmd.append(shared.Building.opt_level_to_str(opt_level, shrink_level))
           # import mem init file if it exists, and if we will not be using asm.js as a binaryen method (as it needs the mem init file, of course)
           import_mem_init = memory_init_file and os.path.exists(memfile) and 'asmjs' not in shared.Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD
           if import_mem_init:

@@ -1785,11 +1785,11 @@ class Building:
     if opt_level == 0:
       return '-O0'
     if shrink_level == 1:
-      return ['-Os']
+      return '-Os'
     elif shrink_level >= 2:
-      return ['-Oz']
+      return '-Oz'
     else:
-      return ['-O' + str(min(opt_level, 3))]
+      return '-O' + str(min(opt_level, 3))
 
   @staticmethod
   def pick_llvm_opts(optimization_level):
