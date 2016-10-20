@@ -6017,6 +6017,15 @@ int mspace_mallopt(int param_number, int value) {
 
 #endif /* MSPACES */
 
+// Export malloc and free as duplicate names emscripten_builtin_malloc and
+// emscripten_builtin_free so that applications can replace malloc and free
+// in their code, and make those replacements refer to the original dlmalloc
+// and dlfree from this file.
+// This allows an easy mechanism for hooking into memory allocation.
+#if defined(__EMSCRIPTEN__)
+extern __typeof(malloc) emscripten_builtin_malloc __attribute__((weak, alias("malloc")));
+extern __typeof(free) emscripten_builtin_free __attribute__((weak, alias("free")));
+#endif
 
 /* -------------------- Alternative MORECORE functions ------------------- */
 
