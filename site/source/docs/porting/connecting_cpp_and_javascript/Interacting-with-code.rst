@@ -335,7 +335,7 @@ As a simple example, consider the case where you have some C code like this:
 
 .. code-block:: c
 
-    extern void my_js();
+    extern void my_js(void);
 
     int main() {
       my_js();
