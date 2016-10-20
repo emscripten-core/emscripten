@@ -1,5 +1,9 @@
 #pragma once
 
+#if __cplusplus < 201103L
+#error Including <emscripten/wire.h> requires building with -std=c++11 or newer!
+#else
+
 // A value moving between JavaScript and C++ has three representations:
 // - The original JS value: a String
 // - The native on-the-wire value: a stack-allocated char*, say
@@ -415,3 +419,5 @@ namespace emscripten {
         };
     }
 }
+
+#endif // ~C++11 version check

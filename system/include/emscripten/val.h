@@ -1,5 +1,9 @@
 #pragma once
 
+#if __cplusplus < 201103L
+#error Including <emscripten/val.h> requires building with -std=c++11 or newer!
+#else
+
 #include <stdint.h> // uintptr_t
 #include <emscripten/wire.h>
 #include <array>
@@ -492,3 +496,5 @@ namespace emscripten {
         return rv;
     };
 }
+
+#endif // ~C++11 version check
