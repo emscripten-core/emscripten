@@ -2789,6 +2789,41 @@ window.close = function() {
         ''' % code)
         self.run_browser('a.html', '...', '/report_result?0')
 
+  # test illustrating the regression on the modularize feature since commit c5af8f6
+  # when compiling with the --preload-file option
+  def test_modularize_and_preload_files(self):
+    # amount of memory different from the default one that will be allocated for the emscripten heap
+    totalMemory = 33554432
+    for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2'], ['-O2', '--closure', '1']]:
+      # the main function simply checks that the amount of allocated heap memory is correct
+      src = r'''
+        #include <stdio.h>
+        #include <emscripten.h>
+        int main() {
+          EM_ASM({
+            // use eval here in order for the test with closure compiler enabled to succeed
+            var totalMemory = eval('Module.TOTAL_MEMORY');
+            assert(totalMemory === %d, 'bad memory size');
+          });
+          int result = 0;
+          REPORT_RESULT();
+          return 0;
+        }
+      ''' % totalMemory
+      open('test.c', 'w').write(self.with_report_result(src))
+      # generate a dummy file
+      open('dummy_file', 'w').write('dummy')
+      # compile the code with the modularize feature and the preload-file option enabled
+      Popen([PYTHON, EMCC, 'test.c', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Foo"', '--preload-file', 'dummy_file'] + opts).communicate()
+      open('a.html', 'w').write('''
+        <script src="a.out.js"></script>
+        <script>
+          // instantiate the Foo module with custom TOTAL_MEMORY value
+          var foo = Foo({ TOTAL_MEMORY: %d });
+        </script>
+      ''' % totalMemory)
+      self.run_browser('a.html', '...', '/report_result?0')
+
   def test_webidl(self):
     # see original in test_core.py
     output = Popen([PYTHON, path_from_root('tools', 'webidl_binder.py'),
