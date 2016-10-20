@@ -6022,7 +6022,7 @@ int mspace_mallopt(int param_number, int value) {
 // in their code, and make those replacements refer to the original dlmalloc
 // and dlfree from this file.
 // This allows an easy mechanism for hooking into memory allocation.
-#if defined(__EMSCRIPTEN__)
+#if defined(__EMSCRIPTEN__) && !ONLY_MSPACES
 extern __typeof(malloc) emscripten_builtin_malloc __attribute__((weak, alias("malloc")));
 extern __typeof(free) emscripten_builtin_free __attribute__((weak, alias("free")));
 #endif
