@@ -35,19 +35,16 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # Check if we need to include some libraries that we compile. (We implement libc ourselves in js, but
   # compile a malloc implementation and stdlibc++.)
 
-  def read_symbols(path, exclude=None):
-    symbols = map(lambda line: line.strip().split(' ')[1], open(path).readlines())
-    if exclude:
-      symbols = filter(lambda symbol: symbol not in exclude, symbols)
-    return set(symbols)
+  def read_symbols(path):
+    return shared.Building.parse_symbols(open(path).read()).defs
 
   default_opts = ['-Werror']
 
   # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
   #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
   libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc.symbols'))
-  libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'), exclude=libc_symbols)
-  libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'), exclude=libc_symbols)
+  libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'))
+  libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'))
   gl_symbols = read_symbols(shared.path_from_root('system', 'lib', 'gl.symbols'))
   compiler_rt_symbols = read_symbols(shared.path_from_root('system', 'lib', 'compiler-rt.symbols'))
   pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
