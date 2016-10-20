@@ -434,7 +434,15 @@ namespace emscripten {
             return fromGenericWireType<T>(result);
         }
 
+// If code is not being compiled with GNU extensions enabled, typeof() is not a reserved keyword, so support that as a member function.
+#if __STRICT_ANSI__
         val typeof() const {
+            return val(_emval_typeof(handle));
+        }
+#endif
+
+// Prefer calling val::typeOf() over val::typeof(), since this form works in both C++11 and GNU++11 build modes. "typeof" is a reserved word in GNU++11 extensions.
+        val typeOf() const {
             return val(_emval_typeof(handle));
         }
 
