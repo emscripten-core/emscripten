@@ -1665,22 +1665,15 @@ class Building:
     assert os.path.exists(output_filename), 'Could not create bc file: ' + output
     return output_filename
 
-  nm_cache = {} # cache results of nm - it can be slow to run
-
   @staticmethod
-  def llvm_nm(filename, stdout=PIPE, stderr=None, include_internal=False):
-    if filename in Building.nm_cache:
-      #logging.debug('loading nm results for %s from cache' % filename)
-      return Building.nm_cache[filename]
-
-    # LLVM binary ==> list of symbols
-    output = Popen([LLVM_NM, filename], stdout=stdout, stderr=stderr).communicate()[0]
+  def parse_symbols(output, include_internal=False):
     class ret:
       defs = []
       undefs = []
       commons = []
     for line in output.split('\n'):
       if len(line) == 0: continue
+      if ':' in line: continue # e.g.  filename.o:  , saying which file it's from
       parts = filter(lambda seg: len(seg) > 0, line.split(' '))
       # pnacl-nm will print zero offsets for bitcode, and newer llvm-nm will print present symbols as  -------- T name
       if len(parts) == 3 and parts[0] in ["00000000", "--------"]:
@@ -1698,6 +1691,19 @@ class Building:
     ret.defs = set(ret.defs)
     ret.undefs = set(ret.undefs)
     ret.commons = set(ret.commons)
+    return ret
+
+  nm_cache = {} # cache results of nm - it can be slow to run
+
+  @staticmethod
+  def llvm_nm(filename, stdout=PIPE, stderr=None, include_internal=False):
+    if filename in Building.nm_cache:
+      #logging.debug('loading nm results for %s from cache' % filename)
+      return Building.nm_cache[filename]
+
+    # LLVM binary ==> list of symbols
+    output = Popen([LLVM_NM, filename], stdout=stdout, stderr=stderr).communicate()[0]
+    ret = Building.parse_symbols(output, include_internal)
     Building.nm_cache[filename] = ret
     return ret
 
