@@ -1894,6 +1894,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         f = open(final, 'w')
         f.write('var ' + shared.Settings.EXPORT_NAME + ' = function(' + shared.Settings.EXPORT_NAME + ') {\n')
         f.write('  ' + shared.Settings.EXPORT_NAME + ' = ' + shared.Settings.EXPORT_NAME + ' || {};\n')
+        f.write('  var Module = ' + shared.Settings.EXPORT_NAME + ';\n')
         f.write('\n')
         f.write(src)
         f.write('\n')
