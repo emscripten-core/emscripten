@@ -605,6 +605,17 @@ class RunnerCore(unittest.TestCase):
     '''
     return (main, supp)
 
+  def filtered_js_engines(self, js_engines=None):
+    if js_engines is None:
+      js_engines = JS_ENGINES
+    for engine in js_engines: assert type(engine) == list
+    for engine in self.banned_js_engines: assert type(engine) == list
+    js_engines = filter(lambda engine: engine[0] not in map(lambda engine: engine[0], self.banned_js_engines), js_engines)
+    if 'BINARYEN_METHOD="native-wasm"' in self.emcc_args:
+      # when testing native wasm support, must use a vm with support
+      js_engines = filter(lambda engine: engine == SPIDERMONKEY_ENGINE or engine == V8_ENGINE, js_engines)
+    return js_engines
+
   def do_run_from_file(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[]):
     self.do_run(open(src).read(), open(expected_output).read(),
                 args, output_nicerizer, output_processor, no_build, main_file,
@@ -626,14 +637,7 @@ class RunnerCore(unittest.TestCase):
                  build_ll_hook=build_ll_hook, extra_emscripten_args=extra_emscripten_args, post_build=post_build)
 
     # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
-    if js_engines is None:
-      js_engines = JS_ENGINES
-    for engine in js_engines: assert type(engine) == list
-    for engine in self.banned_js_engines: assert type(engine) == list
-    js_engines = filter(lambda engine: engine[0] not in map(lambda engine: engine[0], self.banned_js_engines), js_engines)
-    if 'BINARYEN_METHOD="native-wasm"' in self.emcc_args:
-      # when testing native wasm support, must use a vm with support
-      js_engines = filter(lambda engine: engine == SPIDERMONKEY_ENGINE or engine == V8_ENGINE, js_engines)
+    js_engines = self.filtered_js_engines(js_engines)
     if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     if len(js_engines) > 1 and not self.use_all_engines:
       if SPIDERMONKEY_ENGINE in js_engines: # make sure to get asm.js validation checks, using sm
