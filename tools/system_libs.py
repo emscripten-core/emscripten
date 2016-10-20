@@ -36,7 +36,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # compile a malloc implementation and stdlibc++.)
 
   def read_symbols(path):
-    return shared.Building.parse_symbols(open(path).read()).defs
+    with open(path) as f:
+      return shared.Building.parse_symbols(f.read()).defs
 
   default_opts = ['-Werror']
 
