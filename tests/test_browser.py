@@ -2483,7 +2483,7 @@ Module['_main'] = function() {
     open(os.path.join(self.get_dir(), 'sdl2_mouse.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_mouse.c')).read()))
 
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_mouse.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-s', 'USE_SDL=2']).communicate()
-    self.run_browser('page.html', '', '/report_result?712', timeout=30)
+    self.run_browser('page.html', '', '/report_result?1', timeout=30)
 
   def test_sdl2_mouse_offsets(self):
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
