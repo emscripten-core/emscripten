@@ -449,7 +449,7 @@ Functions
 	To use this function, you will need to compile your application with the linker flag ``-s ASYNCIFY=1``
 
 	:param const char* url: The URL to load.
-	:param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten. If the destination directory for the file does not exist on the filesystem, it will be created.
+	:param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten. If the destination directory for the file does not exist on the filesystem, it will be created. A relative pathname may be passed, which will be interpreted relative to the current working directory at the time of the call to this function.
 
 	
 .. c:function:: void emscripten_async_wget(const char* url, const char* file, em_str_callback_func onload, em_str_callback_func onerror)
@@ -461,7 +461,7 @@ Functions
 	When the file is ready the ``onload`` callback will be called. If any error occurs ``onerror`` will be called. The callbacks are called with the file as their argument.
 	
 	:param const char* url: The URL to load.
-	:param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten. If the destination directory for the file does not exist on the filesystem, it will be created.
+	:param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten. If the destination directory for the file does not exist on the filesystem, it will be created. A relative pathname may be passed, which will be interpreted relative to the current working directory at the time of the call to this function.
 	:param em_str_callback_func onload: Callback on successful load of the file. The callback function parameter value is:	
 	
 		- *(const char*)* : The name of the ``file`` that was loaded from the URL.
@@ -508,7 +508,7 @@ Functions
 	
 	:param url: The URL of the file to load.
 	:type url: const char* 
-	:param file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten.
+	:param file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten. If the destination directory for the file does not exist on the filesystem, it will be created. A relative pathname may be passed, which will be interpreted relative to the current working directory at the time of the call to this function.
 	:type file: const char* 
 	:param requesttype: 'GET' or 'POST'.
 	:type requesttype: const char* 	
