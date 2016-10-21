@@ -1144,6 +1144,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if not shared.Settings.NO_EXIT_RUNTIME:
           shared.Settings.EXPORTED_FUNCTIONS += ['_fflush'] # to flush the streams on FS quit
                                                             # TODO this forces 4 syscalls, maybe we should avoid it?
+      if shared.Settings.DISABLE_EXCEPTION_CATCHING:
+        # Even though we later remove exceptions at the bitcode level, we need to prevent clang from emitting
+        # calls to ___clang_call_terminate and other functions that link in libcxxabi unnecessarily.
+        newargs.append('-fno-exceptions')
 
       if shared.Settings.USE_PTHREADS:
         if not any(s.startswith('PTHREAD_POOL_SIZE=') for s in settings_changes):
