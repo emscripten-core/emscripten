@@ -598,6 +598,7 @@ f.close()
       finally:
         os.chdir(cwd)
 
+        # Clean up for EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS mode to be able to detect no leaks
         try:
           shutil.rmtree(tempdirname)
         except:
