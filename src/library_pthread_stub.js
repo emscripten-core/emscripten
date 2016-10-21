@@ -187,7 +187,8 @@ var LibraryPThreadStub = {
   pthread_spin_unlock: function() { return 0; },
 
   pthread_attr_setdetachstate: function() {},
-  pthread_att_setstacksize: function() {},
+  pthread_attr_setschedparam: function() {},
+  pthread_attr_setstacksize: function() {},
 
   pthread_create: function() {
     return {{{ cDefine('EAGAIN') }}};
