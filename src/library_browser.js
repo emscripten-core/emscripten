@@ -741,6 +741,7 @@ var LibraryBrowser = {
   emscripten_wget: function(url, file) {
     var _url = Pointer_stringify(url);
     var _file = Pointer_stringify(file);
+    _file = PATH.resolve(FS.cwd(), _file);
     asm.setAsync();
     Module['noExitRuntime'] = true;
     var destinationDirectory = PATH.dirname(_file);
@@ -770,6 +771,7 @@ var LibraryBrowser = {
 
     var _url = Pointer_stringify(url);
     var _file = Pointer_stringify(file);
+    _file = PATH.resolve(FS.cwd(), _file);
     function doCallback(callback) {
       if (callback) {
         var stack = Runtime.stackSave();
@@ -842,6 +844,7 @@ var LibraryBrowser = {
 
     var _url = Pointer_stringify(url);
     var _file = Pointer_stringify(file);
+    _file = PATH.resolve(FS.cwd(), _file);
     var _request = Pointer_stringify(request);
     var _param = Pointer_stringify(param);
     var index = _file.lastIndexOf('/');
@@ -852,6 +855,8 @@ var LibraryBrowser = {
 
     var handle = Browser.getNextWgetRequestHandle();
 
+    var destinationDirectory = PATH.dirname(_file);
+
     // LOAD
     http.onload = function http_onload(e) {
       if (http.status == 200) {
@@ -859,6 +864,9 @@ var LibraryBrowser = {
         try {
           FS.unlink(_file);
         } catch (e) {}
+        // if the destination directory does not yet exist, create it
+        FS.mkdirTree(destinationDirectory);
+
         FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true, false);
         if (onload) {
           var stack = Runtime.stackSave();

@@ -633,6 +633,7 @@ mergeInto(LibraryManager.library, {
       var dirs = path.split('/');
       var d = '';
       for (var i = 0; i < dirs.length; ++i) {
+        if (!dirs[i]) continue;
         d += '/' + dirs[i];
         try {
           FS.mkdir(d, mode);
