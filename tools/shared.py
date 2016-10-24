@@ -952,12 +952,16 @@ if USE_EMSDK:
   C_INCLUDE_PATHS = [
     path_from_root('system', 'include', 'compat'),
     path_from_root('system', 'include'),
-    path_from_root('system', 'include', 'emscripten'),
     path_from_root('system', 'include', 'SSE'),
     path_from_root('system', 'include', 'libc'),
     path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
     path_from_root('system', 'local', 'include')
   ]
+
+  # The system include path system/include/emscripten/ is deprecated, i.e. instead of #include <emscripten.h>, one should pass in #include <emscripten/emscripten.h>.
+  # This path is not available in EMSCRIPTEN_STRICT mode.
+  if not os.environ.get('EMSCRIPTEN_STRICT') or int(os.environ.get('EMSCRIPTEN_STRICT')) == 0:
+    C_INCLUDE_PATHS += [path_from_root('system', 'include', 'emscripten')]
 
   CXX_INCLUDE_PATHS = [
     path_from_root('system', 'include', 'libcxx'),
