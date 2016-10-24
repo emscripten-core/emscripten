@@ -1482,6 +1482,8 @@ LibraryManager.library = {
   llvm_trunc_f64: 'Math_trunc',
   llvm_floor_f32: 'Math_floor',
   llvm_floor_f64: 'Math_floor',
+  llvm_round_f32: 'Math_round',
+  llvm_round_f64: 'Math_round',
 
   llvm_exp2_f32: function(x) {
     return Math.pow(2, x);

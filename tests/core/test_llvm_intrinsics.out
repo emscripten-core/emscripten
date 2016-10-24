@@ -45,6 +45,16 @@ llvm_floor_f64 1.0
 llvm_floor_f64 -2.0
 llvm_floor_f64 -2.0
 llvm_floor_f64 -2.0
+llvm_round_f64 20.0
+llvm_round_f64 21.0
+llvm_round_f64 42.0
+llvm_round_f64 -20.0
+llvm_round_f64 -21.0
+llvm_round_f32 20.0
+llvm_round_f32 21.0
+llvm_round_f32 42.0
+llvm_round_f32 -20.0
+llvm_round_f32 -21.0
 llvm_copysign_f32 1.2
 llvm_copysign_f32 -5.6
 llvm_copysign_f32 -1.3
