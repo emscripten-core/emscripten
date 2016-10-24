@@ -1647,8 +1647,6 @@ int main() {
     self.do_run(src, '''1\n1,2\n1,2,3''')
 
   def test_memorygrowth(self):
-    # Currently broken under V8 only with native wasm, but no way to express that combined constraint
-    self.banned_js_engines = [V8_ENGINE]
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
 
     # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
@@ -1677,8 +1675,6 @@ int main() {
     self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
   def test_memorygrowth_2(self):
-    # Currently broken under V8 only with native wasm, but no way to express that combined constraint
-    self.banned_js_engines = [V8_ENGINE]
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
 
     emcc_args = self.emcc_args[:]
