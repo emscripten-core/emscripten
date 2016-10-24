@@ -29,11 +29,13 @@ This mode is used by default because it is stable, predictable and fast.
 OpenGL ES 2.0 emulation
 =======================
 
-This mode provides a full OpenGL ES 2.0 environment — specifically it emulates client-side arrays that were missing [#f1]_ from the :ref:`opengl-support-webgl-subset`.
+This mode aims to provide a full OpenGL ES 2.0 environment — specifically it emulates client-side arrays that were missing [#f1]_ from the :ref:`opengl-support-webgl-subset`.
 
 This allows you to use `glDrawArrays <https://www.opengl.org/sdk/docs/man3/xhtml/glDrawArrays.xml>`_ etc. without a bound buffer, and Emscripten's GL bindings will set up the buffer automatically (WebGL requires that a buffer be bound). 
 
 This mode is not as efficient as the WebGL-friendly subset, because Emscripten cannot predict the optimal pattern for buffer creation/sizing/etc. We therefore have to make more (costly) data uploads from the CPU to the GPU than are actually needed.
+
+Sometimes we are not able to know how many vertices are needed to be uploaded. This is a known issue with `glDrawElements <https://www.opengl.org/sdk/docs/man/html/glDrawElements.xhtml>`_. The assumption has been that there are (at most) as many vertices than there are indices, so if any of the index values is larger than the total number of indices drawn (like your example code), the issue does occur.
 
 To enable *OpenGL ES 2.0 emulation*, specify the :ref:`emcc <emcc-s-option-value>` option ``-s FULL_ES2=1`` when compiling the project.
 
