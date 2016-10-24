@@ -1803,6 +1803,7 @@ var Math_floor = Math.floor;
 var Math_pow = Math.pow;
 var Math_imul = Math.imul;
 var Math_fround = Math.fround;
+var Math_round = Math.round;
 var Math_min = Math.min;
 var Math_clz32 = Math.clz32;
 var Math_trunc = Math.trunc;
