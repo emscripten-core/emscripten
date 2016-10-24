@@ -250,7 +250,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if compiler == shared.EMCC: compiler = [shared.PYTHON, shared.EMCC]
     else: compiler = [compiler]
     cmd = compiler + list(filter_emscripten_options(sys.argv[1:]))
-    if not use_js: cmd += shared.EMSDK_OPTS + ['-D__EMSCRIPTEN__', '-DEMSCRIPTEN']
+    if not use_js:
+      cmd += shared.EMSDK_OPTS + ['-D__EMSCRIPTEN__']
+      # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code in strict mode. Code should use the define __EMSCRIPTEN__ instead.
+      if not os.environ.get('EMSCRIPTEN_STRICT') or int(os.environ.get('EMSCRIPTEN_STRICT')) == 0: cmd += ['-DEMSCRIPTEN']
     if use_js: cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'] # configure tests should fail when an undefined symbol exists
 
     logging.debug('just configuring: ' + ' '.join(cmd))
