@@ -2297,8 +2297,8 @@ open(filename, 'w').write(replaced)
 
     # verify that the mem init request succeeded in the latter case
     open('src.cpp', 'w').write(self.with_report_result(r'''
-#include<stdio.h>
-#include<emscripten.h>
+#include <stdio.h>
+#include <emscripten.h>
 
 int main() {
   int result = EM_ASM_INT_V({

@@ -1,6 +1,6 @@
-#include<stdio.h>
-#include<emscripten.h>
-#include<assert.h>
+#include <stdio.h>
+#include <emscripten.h>
+#include <assert.h>
 
 int main() {
   // infinite main loop, turned async using emterpreter

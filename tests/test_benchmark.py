@@ -197,8 +197,8 @@ class benchmark(RunnerCore):
 
   def test_primes(self):
     src = r'''
-      #include<stdio.h>
-      #include<math.h>
+      #include <stdio.h>
+      #include <math.h>
       int main(int argc, char **argv) {
         int arg = argc > 1 ? argv[1][0] - '0' : 3;
         switch(arg) {
@@ -233,9 +233,9 @@ class benchmark(RunnerCore):
 
   def test_memops(self):
     src = '''
-      #include<stdio.h>
-      #include<string.h>
-      #include<stdlib.h>
+      #include <stdio.h>
+      #include <string.h>
+      #include <stdlib.h>
       int main(int argc, char **argv) {
         int N, M;
         int arg = argc > 1 ? argv[1][0] - '0' : 3;
@@ -266,9 +266,9 @@ class benchmark(RunnerCore):
 
   def zzztest_files(self):
     src = r'''
-      #include<stdio.h>
-      #include<stdlib.h>
-      #include<assert.h>
+      #include <stdio.h>
+      #include <stdlib.h>
+      #include <assert.h>
       #include <unistd.h>
 
       int main() {
@@ -309,7 +309,7 @@ class benchmark(RunnerCore):
 
   def test_copy(self):
     src = r'''
-      #include<stdio.h>
+      #include <stdio.h>
       struct vec {
         int x, y, z;
         int r, g, b;
@@ -464,8 +464,8 @@ class benchmark(RunnerCore):
 
   def test_corrections(self):
     src = r'''
-      #include<stdio.h>
-      #include<math.h>
+      #include <stdio.h>
+      #include <math.h>
       int main(int argc, char **argv) {
         int N, M;
         int arg = argc > 1 ? argv[1][0] - '0' : 3;
@@ -497,9 +497,9 @@ class benchmark(RunnerCore):
 
   def zzz_test_corrections64(self):
     src = r'''
-      #include<stdio.h>
-      #include<math.h>
-      #include<stdint.h>
+      #include <stdio.h>
+      #include <math.h>
+      #include <stdint.h>
       int main(int argc, char **argv) {
         int64_t N, M;
         int arg = argc > 1 ? argv[1][0] - '0' : 3;

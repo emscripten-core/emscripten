@@ -1,5 +1,5 @@
-#include<assert.h>
-#include<stdio.h>
+#include <assert.h>
+#include <stdio.h>
 
 int main (int argc, char *argv[])
 {

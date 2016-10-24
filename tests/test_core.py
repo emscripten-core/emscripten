@@ -248,7 +248,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_unaligned(self):
       return self.skip('LLVM marks the reads of s as fully aligned, making this test invalid')
       src = r'''
-        #include<stdio.h>
+        #include <stdio.h>
 
         struct S {
           double x;
@@ -6213,8 +6213,8 @@ def process(filename):
     Building.COMPILER_TEST_OPTS += ['--bind']
 
     src = r'''
-      #include<stdio.h>
-      #include<emscripten/val.h>
+      #include <stdio.h>
+      #include <emscripten/val.h>
 
       using namespace emscripten;
 
@@ -6630,8 +6630,8 @@ Module.printErr = Module['printErr'] = function(){};
     if Building.LLVM_OPTS: return self.skip('LLVM can optimize away the intermediate |x|')
 
     src = '''
-      #include<stdio.h>
-      #include<stdlib.h>
+      #include <stdio.h>
+      #include <stdlib.h>
       int main() { int *x = (int*)malloc(sizeof(int));
         *x = 20;
         float *y = (float*)x;
@@ -6652,8 +6652,8 @@ Module.printErr = Module['printErr'] = function(){};
     # Linking multiple files should work too
 
     module = '''
-      #include<stdio.h>
-      #include<stdlib.h>
+      #include <stdio.h>
+      #include <stdlib.h>
       void callFunc() { int *x = (int*)malloc(sizeof(int));
         *x = 20;
         float *y = (float*)x;
@@ -6664,8 +6664,8 @@ Module.printErr = Module['printErr'] = function(){};
     open(module_name, 'w').write(module)
 
     main = '''
-      #include<stdio.h>
-      #include<stdlib.h>
+      #include <stdio.h>
+      #include <stdlib.h>
       extern void callFunc();
       int main() { callFunc();
         int *x = (int*)malloc(sizeof(int));

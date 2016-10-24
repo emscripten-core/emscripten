@@ -1,8 +1,8 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<emscripten/emscripten.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <emscripten/emscripten.h>
 #define GLFW_INCLUDE_ES2 
-#include<GL/glfw.h>
+#include <GL/glfw.h>
 
 int main() {
     printf("main function started\n");
