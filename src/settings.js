@@ -501,6 +501,19 @@ var WARN_ON_UNDEFINED_SYMBOLS = 1; // If set to 1, we will warn on any undefined
 var ERROR_ON_UNDEFINED_SYMBOLS = 0; // If set to 1, we will give a compile-time error on any
                                     // undefined symbols (see WARN_ON_UNDEFINED_SYMBOLS).
 
+                                    // The default value for this is currently 0, but will be
+                                    // transitioned to 1 in the future. To keep relying on
+                                    // building with -s ERROR_ON_UNDEFINED_SYMBOLS=0 setting,
+                                    // prefer to set that option explicitly in your build system.
+
+var ERROR_ON_MISSING_LIBRARIES = 0; // If set to 1, any -lfoo directives pointing to nonexisting
+                                    // library files will issue a linker error.
+
+                                    // The default value for this is currently 0, but will be
+                                    // transitioned to 1 in the future. To keep relying on
+                                    // building with -s ERROR_ON_MISSING_LIBRARIES=0 setting,
+                                    // prefer to set that option explicitly in your build system.
+
 var SMALL_XHR_CHUNKS = 0; // Use small chunk size for binary synchronous XHR's in Web Workers.
                           // Used for testing.
                           // See test_chunked_synchronous_xhr in runner.py and library.js.

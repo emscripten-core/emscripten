@@ -938,7 +938,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             if found: break
           if found: break
         if not found and lib not in ['GL', 'GLU', 'glut', 'm', 'c', 'SDL', 'stdc++', 'pthread']: # whitelist our default libraries
-          logging.warning('emcc: cannot find library "%s"', lib)
+          emscripten_strict_mode = os.environ.get('EMSCRIPTEN_STRICT') and int(os.environ.get('EMSCRIPTEN_STRICT')) != 0
+          error_on_missing_libraries = (emscripten_strict_mode and not 'ERROR_ON_MISSING_LIBRARIES=0' in settings_changes) or 'ERROR_ON_MISSING_LIBRARIES=1' in settings_changes
+          if error_on_missing_libraries:
+            logging.fatal('emcc: cannot find library "%s"', lib)
+            exit(1)
+          else:
+            logging.warning('emcc: cannot find library "%s"', lib)
 
       # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
       # ignore dynamic linking, since multiple dynamic linkings can interfere with each other
