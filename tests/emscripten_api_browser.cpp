@@ -1,9 +1,9 @@
-#include<stdio.h>
-#include<math.h>
-#include<stdlib.h>
-#include<SDL.h>
-#include<emscripten.h>
-#include<assert.h>
+#include <stdio.h>
+#include <math.h>
+#include <stdlib.h>
+#include <SDL.h>
+#include <emscripten.h>
+#include <assert.h>
 
 int last = 0;
 

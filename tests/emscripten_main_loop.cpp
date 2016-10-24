@@ -1,7 +1,7 @@
-#include<stdlib.h>
-#include<stdio.h>
-#include<assert.h>
-#include<emscripten.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+#include <emscripten.h>
 
 double prevTime = -1.0;
 int frame = 0;

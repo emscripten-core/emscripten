@@ -986,7 +986,7 @@ This pointer might make sense in another type signature:''', '''Invalid function
     main_name = os.path.join(self.get_dir(), 'main.cpp')
     open(main_name, 'w').write(r'''
       #include <stdio.h>
-      #include<emscripten/val.h>
+      #include <emscripten/val.h>
       using namespace emscripten;
       extern "C" int x();
       int main() {
@@ -1297,7 +1297,7 @@ int f() {
       }
     ''')
     open(os.path.join(self.get_dir(), 'bar', 'main.cpp'), 'w').write('''
-      #include<stdio.h>
+      #include <stdio.h>
       void printey() { printf("hello there\\n"); }
     ''')
 
@@ -4679,7 +4679,7 @@ pass: error == ENOTDIR
     assert 'emterpret' not in self.get_func(src, '_atoi'), 'atoi is not in whitelist, so it is not emterpreted'
 
     do_test(r'''
-#include<stdio.h>
+#include <stdio.h>
 
 int main() {
   volatile float f;
@@ -4691,7 +4691,7 @@ int main() {
 ''', [], 'hello, world! -10')
 
     do_test(r'''
-#include<stdio.h>
+#include <stdio.h>
 
 int main() {
   volatile float f;
@@ -5426,7 +5426,7 @@ int main() {
   def test_meminit_crc(self):
     with open('src.c', 'w') as f:
       f.write(r'''
-#include<stdio.h>
+#include <stdio.h>
 int main() { printf("Mary had a little lamb.\n"); }
 ''')
     out, err = Popen([PYTHON, EMCC, 'src.c', '-O2', '--memory-init-file', '0', '-s', 'MEM_INIT_METHOD=2', '-s', 'ASSERTIONS=1']).communicate()
@@ -5530,8 +5530,8 @@ mergeInto(LibraryManager.library, {
 });
 ''')
     open('test.cpp', 'w').write('''
-#include<stdio.h>
-#include<stdlib.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 extern "C" {
   extern void my_js();
@@ -6342,8 +6342,8 @@ int main() {}
 
     def test(contents):
       open('src.cpp', 'w').write(r'''
-  #include<stdio.h>
-  #include<emscripten.h>
+  #include <stdio.h>
+  #include <emscripten.h>
   int main() {
     EM_ASM({ %s });
     printf("hello, world!\n");

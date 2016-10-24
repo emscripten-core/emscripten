@@ -158,8 +158,8 @@ Say you have a C library that exposes some procedures:
 .. code:: c
 
     //api_example.c
-    #include<stdio.h>
-    #include<emscripten.h>
+    #include <stdio.h>
+    #include <emscripten.h>
 
     EMSCRIPTEN_KEEPALIVE
     void sayHi() {
