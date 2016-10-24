@@ -1104,7 +1104,8 @@ class Settings2(type):
 
       # Apply default values for settings that are configured from environment variables.
       if os.environ.get('EMSCRIPTEN_STRICT') and int(os.environ.get('EMSCRIPTEN_STRICT')) != 0:
-        # The default value -s ERROR_ON_UNDEFINED_SYMBOLS=0 is deprecated. Use the default value 1 in strict mode.
+        # Specify default values for Emscripten strict mode.
+        self.attrs['EMSCRIPTEN_STRICT'] = 1
         self.attrs['ERROR_ON_UNDEFINED_SYMBOLS'] = 1
         self.attrs['ERROR_ON_MISSING_LIBRARIES'] = 1
 

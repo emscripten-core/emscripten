@@ -938,7 +938,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             if found: break
           if found: break
         if not found and lib not in ['GL', 'GLU', 'glut', 'm', 'c', 'SDL', 'stdc++', 'pthread']: # whitelist our default libraries
-          emscripten_strict_mode = os.environ.get('EMSCRIPTEN_STRICT') and int(os.environ.get('EMSCRIPTEN_STRICT')) != 0
+          emscripten_strict_mode = (os.environ.get('EMSCRIPTEN_STRICT') and int(os.environ.get('EMSCRIPTEN_STRICT')) != 0) or 'EMSCRIPTEN_STRICT=1' in settings_changes
           error_on_missing_libraries = (emscripten_strict_mode and not 'ERROR_ON_MISSING_LIBRARIES=0' in settings_changes) or 'ERROR_ON_MISSING_LIBRARIES=1' in settings_changes
           if error_on_missing_libraries:
             logging.fatal('emcc: cannot find library "%s"', lib)
