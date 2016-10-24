@@ -407,6 +407,20 @@ var LibraryGLFW = {
 #endif
     },
 
+    DOMToGLFWMouseButton: function(event) {
+      // DOM and glfw have different button codes.
+      // See http://www.w3schools.com/jsref/event_button.asp.
+      var eventButton = event['button'];
+      if (eventButton > 0) {
+        if (eventButton == 1) {
+          eventButton = 2;
+        } else {
+          eventButton = 1;
+        }
+      }
+      return eventButton;
+    },
+
     onMouseButtonChanged: function(event, status) {
       if (!GLFW.active || !GLFW.active.mouseButtonFunc) return;
 
@@ -420,15 +434,7 @@ var LibraryGLFW = {
         } catch (e) {}
       }
 
-      // DOM and glfw have different button codes
-      var eventButton = event['button'];
-      if (eventButton > 0) {
-        if (eventButton == 1) {
-          eventButton = 2;
-        } else {
-          eventButton = 1;
-        }
-      }
+      eventButton = GLFW.DOMToGLFWMouseButton(event);
 
 #if USE_GLFW == 2
       Runtime.dynCall('vii', GLFW.active.mouseButtonFunc, [eventButton, status]);
@@ -441,13 +447,13 @@ var LibraryGLFW = {
 
     onMouseButtonDown: function(event) {
       if (!GLFW.active) return;
-      GLFW.active.buttons |= (1 << event['button']);
+      GLFW.active.buttons |= (1 << GLFW.DOMToGLFWMouseButton(event));
       GLFW.onMouseButtonChanged(event, 1); // GLFW_PRESS
     },
 
     onMouseButtonUp: function(event) {
       if (!GLFW.active) return;
-      GLFW.active.buttons &= ~(1 << event['button']);
+      GLFW.active.buttons &= ~(1 << GLFW.DOMToGLFWMouseButton(event));
       GLFW.onMouseButtonChanged(event, 0); // GLFW_RELEASE
     },
 
