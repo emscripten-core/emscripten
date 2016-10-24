@@ -518,6 +518,9 @@ var ERROR_ON_MISSING_LIBRARIES = 0; // If set to 1, any -lfoo directives pointin
                                     // building with -s ERROR_ON_MISSING_LIBRARIES=0 setting,
                                     // prefer to set that option explicitly in your build system.
 
+var SYSTEM_JS_LIBRARIES = []; // Specifies a list of Emscripten-provided JS libraries to link against.
+                              // (internal, use -lfoo or -lfoo.js to link to Emscripten system JS libraries)
+
 var SMALL_XHR_CHUNKS = 0; // Use small chunk size for binary synchronous XHR's in Web Workers.
                           // Used for testing.
                           // See test_chunked_synchronous_xhr in runner.py and library.js.
