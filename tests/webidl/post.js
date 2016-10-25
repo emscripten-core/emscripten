@@ -122,6 +122,7 @@ TheModule.print(bv2.getCopy().getValue(bv2));
 bv2.getAnother().PrintFloat(21.12);
 
 TheModule.print(new TheModule.Inner().get());
+TheModule.print('getAsArray: ' + new TheModule.Inner().getAsArray(12));
 new TheModule.Inner().mul(2);
 
 TheModule.print(TheModule.enum_value1);
@@ -228,9 +229,12 @@ try {
 
 // Check for overflowing the stack
 
+var before = Date.now();
+
 for (var i = 0; i < 1000000; i++) {
   var temp = new TheModule.StringUser('abc', 1);
   TheModule.destroy(temp);
+  if (Date.now() - before >= 1000) break;
 }
 
 //

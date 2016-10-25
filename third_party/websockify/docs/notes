@@ -13,5 +13,12 @@ browser.
 
 Building web-socket-js emulator:
 
-cd include/web-socket-js/flash-src
-mxmlc -static-link-runtime-shared-libraries WebSocketMain.as
+    cd include/web-socket-js/flash-src
+    mxmlc -static-link-runtime-shared-libraries WebSocketMain.as
+
+Building release tarball:
+    - not really necessary since tagged revision can be downloaded
+      from github as tarballs
+
+    git archive --format=tar --prefix=websockify-${WVER}/ v${WVER} > websockify-${WVER}.tar
+    gzip websockify-${WVER}.tar

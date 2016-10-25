@@ -607,7 +607,7 @@ function headlessCanvas() {
     eventListeners: {},
     addEventListener: function(){},
     removeEventListener: function(){},
-    requestFullScreen: function() {
+    requestFullscreen: function() {
       document.fullscreenElement = document.getElementById('canvas');
       window.setTimeout(function() {
         document.callEventListeners('fullscreenchange');

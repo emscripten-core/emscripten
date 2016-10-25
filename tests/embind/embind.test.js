@@ -402,6 +402,11 @@ module({
             assert.equal('ABCD', e);
         });
 
+        test("can pass Uint8ClampedArray to std::string", function() {
+            var e = cm.emval_test_take_and_return_std_string(new Uint8ClampedArray([65, 66, 67, 68]));
+            assert.equal('ABCD', e);
+        });
+
         test("can pass Int8Array to std::string", function() {
             var e = cm.emval_test_take_and_return_std_string(new Int8Array([65, 66, 67, 68]));
             assert.equal('ABCD', e);
@@ -416,6 +421,12 @@ module({
             var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(new Uint8Array([65, 66, 67, 68]));
             assert.equal('ABCD', e);
         });
+
+        test("can pass Uint8ClampedArray to std::basic_string<unsigned char>", function() {
+            var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(new Uint8ClampedArray([65, 66, 67, 68]));
+            assert.equal('ABCD', e);
+        });
+
 
         test("can pass Int8Array to std::basic_string<unsigned char>", function() {
             var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(new Int8Array([65, 66, 67, 68]));
@@ -1233,6 +1244,23 @@ module({
         test("can pass and return tuples in structs", function() {
             var d = cm.emval_test_take_and_return_TupleInStruct({field: [1, 2, 3, 4]});
             assert.deepEqual({field: [1, 2, 3, 4]}, d);
+        });
+
+        test("can pass and return arrays in structs", function() {
+            var d = cm.emval_test_take_and_return_ArrayInStruct({
+              field1: [1, 2],
+              field2: [
+                { x: 1, y: 2 },
+                { x: 3, y: 4 }
+              ]
+            });
+            assert.deepEqual({
+              field1: [1, 2],
+              field2: [
+                { x: 1, y: 2 },
+                { x: 3, y: 4 }
+              ]
+            }, d);
         });
 
         test("can clone handles", function() {

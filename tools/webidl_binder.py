@@ -465,12 +465,16 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       call += '(' + call_args + ')'
 
     if operator:
-      assert '=' in operator, 'can only do += *= etc. for now, all with "="'
       cast_self = 'self'
       if class_name != func_scope:
         # this function comes from an ancestor class; for operators, we must cast it
         cast_self = 'dynamic_cast<' + type_to_c(func_scope) + '>(' + cast_self + ')'
-      call = '(*%s %s %sarg0)' % (cast_self, operator, '*' if sig[0] in interfaces else '')
+      if '=' in operator:
+        call = '(*%s %s %sarg0)' % (cast_self, operator, '*' if sig[0] in interfaces else '')
+      elif operator == '[]':
+        call = '((*%s)[%sarg0])' % (cast_self, '*' if sig[0] in interfaces else '')
+      else:
+        raise Exception('unfamiliar operator ' + operator)
 
     pre = ''
 

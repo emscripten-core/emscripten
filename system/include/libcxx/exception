@@ -48,7 +48,8 @@ terminate_handler set_terminate(terminate_handler  f ) noexcept;
 terminate_handler get_terminate() noexcept;
 [[noreturn]] void terminate() noexcept;
 
-bool uncaught_exception() noexcept;
+bool uncaught_exception()  noexcept;
+int  uncaught_exceptions() noexcept;  // C++17
 
 typedef unspecified exception_ptr;
 
@@ -115,6 +116,7 @@ _LIBCPP_FUNC_VIS terminate_handler get_terminate() _NOEXCEPT;
 _LIBCPP_NORETURN _LIBCPP_FUNC_VIS void terminate() _NOEXCEPT;
 
 _LIBCPP_FUNC_VIS bool uncaught_exception() _NOEXCEPT;
+_LIBCPP_FUNC_VIS int uncaught_exceptions() _NOEXCEPT;
 
 class _LIBCPP_TYPE_VIS exception_ptr;
 
@@ -193,6 +195,7 @@ void
 throw_with_nested(_Tp&& __t, typename enable_if<
                   is_class<typename remove_reference<_Tp>::type>::value &&
                   !is_base_of<nested_exception, typename remove_reference<_Tp>::type>::value
+                  && !__libcpp_is_final<typename remove_reference<_Tp>::type>::value
                                     >::type* = 0)
 #else  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 throw_with_nested (_Tp& __t, typename enable_if<
@@ -212,6 +215,7 @@ void
 throw_with_nested(_Tp&& __t, typename enable_if<
                   !is_class<typename remove_reference<_Tp>::type>::value ||
                   is_base_of<nested_exception, typename remove_reference<_Tp>::type>::value
+                  || __libcpp_is_final<typename remove_reference<_Tp>::type>::value
                                     >::type* = 0)
 #else  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 throw_with_nested (_Tp& __t, typename enable_if<
@@ -231,7 +235,7 @@ rethrow_if_nested(const _Ep& __e, typename enable_if<
                                    is_polymorphic<_Ep>::value
                                                    >::type* = 0)
 {
-    const nested_exception* __nep = dynamic_cast<const nested_exception*>(&__e);
+    const nested_exception* __nep = dynamic_cast<const nested_exception*>(_VSTD::addressof(__e));
     if (__nep)
         __nep->rethrow_nested();
 }

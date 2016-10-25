@@ -150,6 +150,9 @@ int main()
 
 	int result = 0;
 
+	emscripten_atomic_fence();
+	__sync_synchronize();
+
 	if (!emscripten_has_threading_support())
 	{
 #ifdef REPORT_RESULT

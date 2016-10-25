@@ -628,6 +628,20 @@ mergeInto(LibraryManager.library, {
       mode |= {{{ cDefine('S_IFDIR') }}};
       return FS.mknod(path, mode, 0);
     },
+    // Creates a whole directory tree chain if it doesn't yet exist
+    mkdirTree: function(path, mode) {
+      var dirs = path.split('/');
+      var d = '';
+      for (var i = 0; i < dirs.length; ++i) {
+        if (!dirs[i]) continue;
+        d += '/' + dirs[i];
+        try {
+          FS.mkdir(d, mode);
+        } catch(e) {
+          if (e.errno != ERRNO_CODES.EEXIST) throw e;
+        }
+      }
+    },
     mkdev: function(path, mode, dev) {
       if (typeof(dev) === 'undefined') {
         dev = mode;
@@ -795,8 +809,9 @@ mergeInto(LibraryManager.library, {
       var node = FS.lookupNode(parent, name);
       var err = FS.mayDelete(parent, name, false);
       if (err) {
-        // POSIX says unlink should set EPERM, not EISDIR
-        if (err === ERRNO_CODES.EISDIR) err = ERRNO_CODES.EPERM;
+        // According to POSIX, we should map EISDIR to EPERM, but
+        // we instead do what Linux does (and we must, as we use
+        // the musl linux libc).
         throw new FS.ErrnoError(err);
       }
       if (!parent.node_ops.unlink) {
@@ -1269,7 +1284,7 @@ mergeInto(LibraryManager.library, {
       FS.mkdir('/proc/self/fd');
       FS.mount({
         mount: function() {
-          var node = FS.createNode('/proc/self', 'fd', {{{ cDefine('S_IFDIR') }}} | 0777, {{{ cDefine('S_IXUGO') }}});
+          var node = FS.createNode('/proc/self', 'fd', {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */, {{{ cDefine('S_IXUGO') }}});
           node.node_ops = {
             lookup: function(parent, name) {
               var fd = +name;

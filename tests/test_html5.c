@@ -264,8 +264,8 @@ void mainloop()
   for(int i = 0; i < numGamepads && i < 32; ++i)
   {
     EmscriptenGamepadEvent ge;
-    int failed = emscripten_get_gamepad_status(i, &ge);
-    if (!failed)
+    int ret = emscripten_get_gamepad_status(i, &ge);
+    if (ret == EMSCRIPTEN_RESULT_SUCCESS)
     {
       int g = ge.index;
       for(int j = 0; j < ge.numAxes; ++j)

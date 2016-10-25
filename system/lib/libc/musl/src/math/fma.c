@@ -273,7 +273,7 @@ static inline double add_and_denormalize(double a, double b, int scale)
 	if (sum.lo != 0) {
 		uhi.f = sum.hi;
 		bits_lost = -((int)(uhi.i >> 52) & 0x7ff) - scale + 1;
-		if (bits_lost != 1 ^ (int)(uhi.i & 1)) {
+		if ((bits_lost != 1) ^ (int)(uhi.i & 1)) {
 			/* hibits += (int)copysign(1.0, sum.hi * sum.lo) */
 			ulo.f = sum.lo;
 			uhi.i += 1 - (((uhi.i ^ ulo.i) >> 62) & 2);

@@ -12,7 +12,7 @@ require 'websocket'
 class WebSocketEcho < WebSocketServer
 
   # Echo back whatever is received    
-  def new_client(client)
+  def new_websocket_client(client)
 
     cqueue = []
     c_pend = 0
@@ -50,10 +50,17 @@ class WebSocketEcho < WebSocketServer
   end
 end
 
-port = ARGV[0].to_i
+port = ARGV[0].to_i || 8080
 puts "Starting server on port #{port}"
+server_cert = nil
+server_key = nil
+if ARGV.length > 2
+  server_cert = ARGV[1]
+  server_key = ARGV[2]
+end
 
-server = WebSocketEcho.new('listen_port' => port, 'verbose' => true)
+server = WebSocketEcho.new('listen_port' => port, 'verbose' => true, 
+  'server_cert' => server_cert, 'server_key' => server_key)
 server.start
 server.join
 

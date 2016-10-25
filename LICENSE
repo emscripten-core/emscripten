@@ -92,3 +92,11 @@ in accordance with the terms of the MIT license. Node's license follows:
         FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
         IN THE SOFTWARE.
     """
+
+The musl libc project is bundled in this repo, and it has the MIT license, see
+system/lib/libc/musl/COPYRIGHT
+
+The third_party/ subdirectory contains code with other licenses. None of it is
+used by default, but certain options use it (e.g., the optional closure compiler
+flag will run closure compiler from third_party/).
+

@@ -302,7 +302,7 @@ Functions
 
    In most cases, the ``collector_url`` will be ``http://127.0.0.1:5000/``.
 
-.. c:function:: void emscripten_configure_for_google_wtf(void)
+.. c:function:: void emscripten_trace_configure_for_google_wtf(void)
 
    :rtype: void
 
@@ -404,7 +404,7 @@ Functions
 .. c:function:: void emscripten_trace_record_allocation(const void *address, int32_t size)
 
    :param address: Memory address which has been allocated.
-   :type address: void*
+   :type address: const void*
    :param size: Size of the memory block allocated.
    :type size: int32_t
    :rtype: void
@@ -417,9 +417,9 @@ Functions
 .. c:function:: void emscripten_trace_record_reallocation(const void *old_address, const void *new_address, int32_t size)
 
    :param old_address: Old address of the memory block which has been reallocated.
-   :type old_address: void*
+   :type old_address: const void*
    :param new_address: New address of the memory block which has been reallocated.
-   :type new_address: void*
+   :type new_address: const void*
    :param size: New size of the memory block reallocated.
    :type size: int32_t
    :rtype: void
@@ -432,7 +432,7 @@ Functions
 .. c:function:: void emscripten_trace_record_free(const void *address)
 
    :param address: Memory address which is being freed.
-   :type address: void*
+   :type address: const void*
    :rtype: void
 
    This must be called for each and every ``free`` operation. The best place
@@ -446,7 +446,7 @@ Functions
 .. c:function:: void emscripten_trace_annotate_address_type(const void *address, const char *type)
 
    :param address: Memory address which should be annotated.
-   :type address: void*
+   :type address: const void*
    :param type: The name of the data type being allocated.
    :type type: const char*
    :rtype: void
@@ -458,9 +458,9 @@ Functions
 .. c:function:: void emscripten_trace_associate_storage_size(const void *address, int32_t size)
 
    :param address: Memory address which should be annotated.
-   :type address: void*
+   :type address: const void*
    :param size: Size of the memory associated with this allocation.
-   :type type: int32_t
+   :type size: int32_t
    :rtype: void
 
    Associate an amount of additional storage with this address. This

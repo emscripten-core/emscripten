@@ -179,14 +179,9 @@ RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG;
 
 if (VERBOSE) printErr('VERBOSE is on, this generates a lot of output and can slow down compilation');
 
-if (!BOOTSTRAPPING_STRUCT_INFO) {
+if (!BOOTSTRAPPING_STRUCT_INFO && !ONLY_MY_CODE) {
   // Load struct and define information.
-  //try {
-    var temp = JSON.parse(read(STRUCT_INFO));
-  //} catch(e) {
-  //  printErr('cannot load struct info at ' + STRUCT_INFO + ' : ' + e + ', trying in current dir');
-  //  temp = JSON.parse(read('struct_info.compiled.json'));
-  //}
+  var temp = JSON.parse(read(STRUCT_INFO));
   C_STRUCTS = temp.structs;
   C_DEFINES = temp.defines;
 } else {

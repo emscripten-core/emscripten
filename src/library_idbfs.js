@@ -42,6 +42,9 @@ mergeInto(LibraryManager.library, {
       } catch (e) {
         return callback(e);
       }
+      if (!req) {
+        return callback("Unable to connect to IndexedDB");
+      }
       req.onupgradeneeded = function(e) {
         var db = e.target.result;
         var transaction = e.target.transaction;

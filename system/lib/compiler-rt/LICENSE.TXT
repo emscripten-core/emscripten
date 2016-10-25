@@ -14,7 +14,7 @@ Full text of the relevant licenses is included below.
 University of Illinois/NCSA
 Open Source License
 
-Copyright (c) 2009-2015 by the contributors listed in CREDITS.TXT
+Copyright (c) 2009-2016 by the contributors listed in CREDITS.TXT
 
 All rights reserved.
 
@@ -88,5 +88,4 @@ applies to all code in the LLVM Distribution, and nothing in any of the
 other licenses gives permission to use the names of the LLVM Team or the
 University of Illinois to endorse or promote products derived from this
 Software.
-
 

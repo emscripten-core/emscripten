@@ -1,6 +1,6 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
 
 int main() {
   // Check that a real malloc is used by allocating, freeing, then seeing that we did actually free by a new allocation going to the original place

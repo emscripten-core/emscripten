@@ -1,9 +1,11 @@
-#include<stdio.h>
-#include<emscripten.h>
-#include<assert.h>
-#include<string.h>
-#include<SDL/SDL.h>
-#include"SDL/SDL_image.h"
+#include <stdio.h>
+#include <emscripten.h>
+#include <assert.h>
+#include <string.h>
+#include <SDL/SDL.h>
+#include "SDL/SDL_image.h"
+#include <sys/stat.h>
+#include <unistd.h>
  
 extern "C" {
 
@@ -39,7 +41,7 @@ void wait_wgets() {
     counter = 0;
   }
 
-  if (get_count == 3) {
+  if (get_count == 6) {
     static bool fired = false;
     if (!fired) {
       fired = true;
@@ -54,17 +56,19 @@ void wait_wgets() {
         onLoadedData,
         onErrorData);
     }
-  } else if (get_count == 5) {
+  } else if (get_count == 8) {
     assert(IMG_Load("/tmp/screen_shot.png"));
     assert(data_ok == 1 && data_bad == 1);
     emscripten_cancel_main_loop();
     REPORT_RESULT();
   }
-  assert(get_count <= 5);
+  assert(get_count <= 8);
 }
 
 void onLoaded(const char* file) {
-  if (strcmp(file, "/tmp/test.html") && strcmp(file, "/tmp/screen_shot.png")) {
+  if (strcmp(file, "/tmp/test.html") && strcmp(file, "/tmp/screen_shot.png")
+     && strcmp(file, "/this_directory_does_not_exist_and_should_be_created_by_wget/test.html")
+     && strcmp(file, "/path/this_directory_is_relative_to_cwd/test.html")) {
     result = 0;
   }
 
@@ -104,6 +108,30 @@ int main() {
   emscripten_async_wget(
     "http://localhost:8888/test.html", 
     "/tmp/test.html",
+    onLoaded,
+    onError);
+
+  // Try downloading the same file a second time
+  emscripten_async_wget(
+    "http://localhost:8888/test.html",
+    "/tmp/test.html",
+    onLoaded,
+    onError);
+
+  // Try downloading a file to a destination directory that does not exist.
+  emscripten_async_wget(
+    "http://localhost:8888/test.html",
+    "/this_directory_does_not_exist_and_should_be_created_by_wget/test.html",
+    onLoaded,
+    onError);
+
+  mkdir("/path", 0777);
+  chdir("/path");
+
+  // Try downloading a file to a destination directory that is a nonexisting path relative to CWD.
+  emscripten_async_wget(
+    "http://localhost:8888/test.html",
+    "this_directory_is_relative_to_cwd/test.html",
     onLoaded,
     onError);
 

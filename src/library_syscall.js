@@ -93,9 +93,15 @@ var SyscallsLibrary = {
     doReadlink: function(path, buf, bufsize) {
       if (bufsize <= 0) return -ERRNO_CODES.EINVAL;
       var ret = FS.readlink(path);
-      ret = ret.slice(0, Math.max(0, bufsize));
-      writeStringToMemory(ret, buf, true);
-      return ret.length;
+
+      var len = Math.min(bufsize, lengthBytesUTF8(ret));
+      var endChar = HEAP8[buf+len];
+      stringToUTF8(ret, buf, bufsize+1);
+      // readlink is one of the rare functions that write out a C string, but does never append a null to the output buffer(!)
+      // stringToUTF8() always appends a null byte, so restore the character under the null byte after the write.
+      HEAP8[buf+len] = endChar;
+
+      return len;
     },
     doAccess: function(path, amode) {
       if (amode & ~{{{ cDefine('S_IRWXO') }}}) {

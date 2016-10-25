@@ -110,7 +110,7 @@ mergeInto(LibraryManager.library, {
       i++;
       return r;
     });
-    writeStringToMemory(uuid, out);
+    stringToUTF8(uuid, out, 37); // Always fixed 36 bytes of ASCII characters and a trailing \0.
   },
 
   // Convert a 'compact' form UUID to a lower case string.

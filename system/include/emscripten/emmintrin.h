@@ -64,6 +64,10 @@ typedef long long __v2di __attribute__ ((__vector_size__ (16)));
 typedef short __v8hi __attribute__((__vector_size__(16)));
 typedef char __v16qi __attribute__((__vector_size__(16)));
 
+/* We need an explicitly signed variant for char. Note that this shouldn't
+ * appear in the interface though. */
+typedef signed char __v16qs __attribute__((__vector_size__(16)));
+
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_add_sd(__m128d __a, __m128d __b)
 {
@@ -1408,7 +1412,7 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_slli_epi16(__m128i __a, int __count)
 {
 #ifdef __EMSCRIPTEN__
-  return emscripten_int16x8_shiftLeftByScalar(__a, __count);
+  return ((unsigned int)__count < 16) ? emscripten_int16x8_shiftLeftByScalar(__a, __count) : ((int16x8){ 0, 0, 0, 0, 0, 0, 0, 0 });
 #else
   return (__m128i)__builtin_ia32_psllwi128((__v8hi)__a, __count);
 #endif
@@ -1418,7 +1422,7 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_sll_epi16(__m128i __a, __m128i __count)
 {
 #ifdef __EMSCRIPTEN__
-    return emscripten_int16x8_shiftLeftByScalar(__a, __count[1] == 0 ? __count[0] : 16);
+    return (__count[1] == 0 && (unsigned int)__count[0] < 16) ? emscripten_int16x8_shiftLeftByScalar(__a, __count[0]) : ((int16x8){ 0, 0, 0, 0, 0, 0, 0, 0 });
 #else
   return (__m128i)__builtin_ia32_psllw128((__v8hi)__a, (__v8hi)__count);
 #endif
@@ -1428,7 +1432,7 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_slli_epi32(__m128i __a, int __count)
 {
 #ifdef __EMSCRIPTEN__
-  return emscripten_int32x4_shiftLeftByScalar(__a, __count);
+  return ((unsigned int)__count < 32) ? emscripten_int32x4_shiftLeftByScalar(__a, __count) : ((int32x4){ 0, 0, 0, 0 });
 #else
   return (__m128i)__builtin_ia32_pslldi128((__v4si)__a, __count);
 #endif
@@ -1438,7 +1442,7 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_sll_epi32(__m128i __a, __m128i __count)
 {
 #ifdef __EMSCRIPTEN__
-    return emscripten_int32x4_shiftLeftByScalar(__a, __count[1] == 0 ? __count[0] : 32);
+    return (__count[1] == 0 && (unsigned int)__count[0] < 32) ? emscripten_int32x4_shiftLeftByScalar(__a, __count[0]) : ((int32x4){ 0, 0, 0, 0 });
 #else
   return (__m128i)__builtin_ia32_pslld128((__v4si)__a, (__v4si)__count);
 #endif
@@ -1494,7 +1498,7 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srai_epi16(__m128i __a, int __count)
 {
 #ifdef __EMSCRIPTEN__
-  return emscripten_int16x8_shiftRightByScalar(__a, __count);
+  return emscripten_int16x8_shiftRightByScalar(__a, (unsigned int)__count < 15 ? __count : 15);
 #else
   return (__m128i)__builtin_ia32_psrawi128((__v8hi)__a, __count);
 #endif
@@ -1504,7 +1508,7 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_sra_epi16(__m128i __a, __m128i __count)
 {
 #ifdef __EMSCRIPTEN__
-  return emscripten_int16x8_shiftRightByScalar(__a, __count[1] == 0 ? __count[0] : 16);
+  return emscripten_int16x8_shiftRightByScalar(__a, (__count[1] == 0 && (unsigned int)__count[0] < 15) ? __count[0] : 15);
 #else
   return (__m128i)__builtin_ia32_psraw128((__v8hi)__a, (__v8hi)__count);
 #endif
@@ -1514,7 +1518,7 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srai_epi32(__m128i __a, int __count)
 {
 #ifdef __EMSCRIPTEN__
-  return emscripten_int32x4_shiftRightByScalar(__a, __count);
+  return emscripten_int32x4_shiftRightByScalar(__a, (unsigned int)__count < 31 ? __count : 31);
 #else
   return (__m128i)__builtin_ia32_psradi128((__v4si)__a, __count);
 #endif
@@ -1524,7 +1528,7 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_sra_epi32(__m128i __a, __m128i __count)
 {
 #ifdef __EMSCRIPTEN__
-  return emscripten_int32x4_shiftRightByScalar(__a, __count[1] == 0 ? __count[0] : 32);
+  return emscripten_int32x4_shiftRightByScalar(__a, (__count[1] == 0 && (unsigned int)__count[0] < 31) ? __count[0] : 31);
 #else
   return (__m128i)__builtin_ia32_psrad128((__v4si)__a, (__v4si)__count);
 #endif
@@ -1557,7 +1561,7 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srli_epi16(__m128i __a, int __count)
 {
 #ifdef __EMSCRIPTEN__
-  return (int16x8)emscripten_uint16x8_shiftRightByScalar((uint16x8)__a, __count);
+  return ((unsigned int)__count < 16) ? ((int16x8)emscripten_uint16x8_shiftRightByScalar((uint16x8)__a, __count)) : ((int16x8){ 0, 0, 0, 0, 0, 0, 0, 0 });
 #else
   return (__m128i)__builtin_ia32_psrlwi128((__v8hi)__a, __count);
 #endif
@@ -1567,7 +1571,7 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srl_epi16(__m128i __a, __m128i __count)
 {
 #ifdef __EMSCRIPTEN__
-  return (int16x8)emscripten_uint16x8_shiftRightByScalar((uint16x8)__a, __count[1] == 0 ? __count[0] : 16);
+  return (__count[1] == 0 && (unsigned int)__count[0] < 32) ? ((int16x8)emscripten_uint16x8_shiftRightByScalar((uint16x8)__a, __count[0])) : ((int16x8){ 0, 0, 0, 0, 0, 0, 0, 0 });
 #else
   return (__m128i)__builtin_ia32_psrlw128((__v8hi)__a, (__v8hi)__count);
 #endif
@@ -1577,7 +1581,7 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srli_epi32(__m128i __a, int __count)
 {
 #ifdef __EMSCRIPTEN__
-  return (int32x4)emscripten_uint32x4_shiftRightByScalar((uint32x4)__a, __count);
+  return ((unsigned int)__count < 32) ? ((int32x4)emscripten_uint32x4_shiftRightByScalar((uint32x4)__a, __count)) : ((int32x4){ 0, 0, 0, 0 });
 #else
   return (__m128i)__builtin_ia32_psrldi128((__v4si)__a, __count);
 #endif
@@ -1587,7 +1591,7 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srl_epi32(__m128i __a, __m128i __count)
 {
 #ifdef __EMSCRIPTEN__
-  return (int32x4)emscripten_uint32x4_shiftRightByScalar((uint32x4)__a, __count[1] == 0 ? __count[0] : 32);
+  return (__count[1] == 0 && (unsigned int)__count[0] < 32) ? ((int32x4)emscripten_uint32x4_shiftRightByScalar((uint32x4)__a, __count[0])) : ((int32x4){ 0, 0, 0, 0 });
 #else
   return (__m128i)__builtin_ia32_psrld128((__v4si)__a, (__v4si)__count);
 #endif
@@ -1660,9 +1664,6 @@ _mm_cmpeq_epi32(__m128i __a, __m128i __b)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cmpgt_epi8(__m128i __a, __m128i __b)
 {
-  /* This function always performs a signed comparison, but __v16qi is a char
-     which may be signed or unsigned. */
-  typedef signed char __v16qs __attribute__((__vector_size__(16)));
   return (__m128i)((__v16qs)__a > (__v16qs)__b);
 }
 

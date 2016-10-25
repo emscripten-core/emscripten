@@ -302,6 +302,7 @@ var emscriptenMemoryProfiler = {
     html += '. STACK_MAX: ' + toHex(STACK_MAX, width) + '.';
     html += '<br />STACK memory area used now (should be zero): ' + this.formatBytes(STACKTOP - STACK_BASE) + '.' + colorBar('#FFFF00') + ' STACK watermark highest seen usage (approximate lower-bound!): ' + this.formatBytes(this.stackTopWatermark - STACK_BASE);
 
+    var DYNAMICTOP = HEAP32[DYNAMICTOP_PTR>>2];
     html += '<br />' + colorBar('#70FF70') + 'DYNAMIC memory area size: ' + this.formatBytes(DYNAMICTOP-DYNAMIC_BASE);
     html += '. DYNAMIC_BASE: ' + toHex(DYNAMIC_BASE, width);
     html += '. DYNAMICTOP: ' + toHex(DYNAMICTOP, width) + '.';

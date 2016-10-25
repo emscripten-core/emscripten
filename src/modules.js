@@ -164,9 +164,10 @@ var LibraryManager = {
       if (typeof lib[x] === 'string') {
         var target = x;
         while (typeof lib[target] === 'string') {
-          if (lib[target].indexOf('(') >= 0) continue libloop;
+          // ignore code, aliases are just simple names
+          if (lib[target].search(/[({; ]/) >= 0) continue libloop;
+          // ignore trivial pass-throughs to Math.*
           if (lib[target].indexOf('Math_') == 0) continue libloop;
-          if (lib[target].indexOf(';') > 0) continue libloop; // ignore code
           target = lib[target];
         }
         if (lib[target + '__asm']) continue; // This is an alias of an asm library function. Also needs to be fully optimized.
@@ -174,6 +175,15 @@ var LibraryManager = {
           lib[x] = new Function('return _' + target + '.apply(null, arguments)');
           if (!lib[x + '__deps']) lib[x + '__deps'] = [];
           lib[x + '__deps'].push(target);
+        }
+      }
+    }
+
+    if (WASM_BACKEND) {
+      // all asm.js methods should just be run in JS. We should optimize them eventually into wasm. TODO
+      for (var x in lib) {
+        if (lib[x + '__asm']) {
+          lib[x + '__asm'] = undefined;
         }
       }
     }

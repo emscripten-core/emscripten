@@ -30,32 +30,61 @@ var LibraryPThreadStub = {
   pthread_mutex_init: function() {},
   pthread_mutex_destroy: function() {},
   pthread_mutexattr_init: function() {},
+  pthread_mutexattr_setschedparam: function() {},
+  pthread_mutexattr_setprotocol: function() {},
   pthread_mutexattr_settype: function() {},
   pthread_mutexattr_destroy: function() {},
-  pthread_mutex_lock: function() {},
-  pthread_mutex_unlock: function() {},
-  pthread_mutex_trylock: function() {
+
+  pthread_mutex_lock__asm: true,
+  pthread_mutex_lock__sig: 'ii',
+  pthread_mutex_lock: function(x) {
+    x = x | 0;
     return 0;
   },
+  pthread_mutex_unlock__asm: true,
+  pthread_mutex_unlock__sig: 'ii',
+  pthread_mutex_unlock: function(x) {
+    x = x | 0;
+    return 0;
+  },
+  pthread_mutex_trylock__asm: true,
+  pthread_mutex_trylock__sig: 'ii',
+  pthread_mutex_trylock: function(x) {
+    x = x | 0;
+    return 0;
+  },
+
   pthread_mutexattr_setpshared: function(attr, pshared) {
     // XXX implement if/when getpshared is required
     return 0;
   },
-  pthread_cond_init: function() {},
-  pthread_cond_destroy: function() {},
-  pthread_cond_broadcast: function() {
+
+  pthread_cond_init: function() { return 0; },
+  pthread_cond_destroy: function() { return 0; },
+  pthread_cond_wait: function() { return 0; },
+  pthread_cond_timedwait: function() { return 0; },
+  pthread_cond_signal: function() { return 0; },
+
+  pthread_condattr_init: function() { return 0; },
+  pthread_condattr_destroy: function() { return 0; },
+  pthread_condattr_setclock: function() { return 0; },
+  pthread_condattr_setpshared: function() { return 0; },
+  pthread_condattr_getclock: function() { return 0; },
+  pthread_condattr_getpshared: function() { return 0; },
+
+  pthread_cond_broadcast__asm: true,
+  pthread_cond_broadcast__sig: 'ii',
+  pthread_cond_broadcast: function(x) {
+    x = x | 0;
     return 0;
   },
-  pthread_cond_wait: function() {
-    return 0;
-  },
-  pthread_cond_timedwait: function() {
-    return 0;
-  },
+
+  pthread_self__asm: true,
+  pthread_self__sig: 'i',
   pthread_self: function() {
-    //FIXME: assumes only a single thread
     return 0;
   },
+
   pthread_attr_init: function(attr) {
     /* int pthread_attr_init(pthread_attr_t *attr); */
     //FIXME: should allocate a pthread_attr_t
@@ -136,21 +165,46 @@ var LibraryPThreadStub = {
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
 
-  pthread_rwlock_init: function() {
-    return 0; // XXX
-  },
+  pthread_rwlock_init: function() { return 0; },
+  pthread_rwlock_destroy: function() { return 0; },
+  pthread_rwlock_rdlock: function() { return 0; },
+  pthread_rwlock_tryrdlock: function() { return 0; },
+  pthread_rwlock_timedrdlock: function() { return 0; },
+  pthread_rwlock_wrlock: function() { return 0; },
+  pthread_rwlock_trywrlock: function() { return 0; },
+  pthread_rwlock_timedwrlock: function() { return 0; },
+  pthread_rwlock_unlock: function() { return 0; },
+
+  pthread_rwlockattr_init: function() { return 0; },
+  pthread_rwlockattr_destroy: function() { return 0; },
+  pthread_rwlockattr_setpshared: function() { return 0; },
+  pthread_rwlockattr_getpshared: function() { return 0; },
+
+  pthread_spin_init: function() { return 0; },
+  pthread_spin_destroy: function() { return 0; },
+  pthread_spin_lock: function() { return 0; },
+  pthread_spin_trylock: function() { return 0; },
+  pthread_spin_unlock: function() { return 0; },
 
   pthread_attr_setdetachstate: function() {},
+  pthread_attr_setschedparam: function() {},
+  pthread_attr_setstacksize: function() {},
 
   pthread_create: function() {
     return {{{ cDefine('EAGAIN') }}};
   },
+  pthread_cancel: function() {},
   pthread_exit: function() {},
 
-  pthread_cond_signal: function() {},
   pthread_equal: function() {},
   pthread_join: function() {},
   pthread_detach: function() {},
+
+  sem_init: function() {},
+  sem_post: function() {},
+  sem_wait: function() {},
+  sem_trywait: function() {},
+  sem_destroy: function() {},
 
   // When pthreads is not enabled, we can't use the Atomics futex api to do proper sleeps, so simulate a busy spin wait loop instead.
   usleep: function(useconds) {
@@ -170,6 +224,18 @@ var LibraryPThreadStub = {
       }
     }
     return 0;
+  },
+
+  nanosleep__deps: ['usleep'],
+  nanosleep: function(rqtp, rmtp) {
+    // int nanosleep(const struct timespec  *rqtp, struct timespec *rmtp);
+    var seconds = {{{ makeGetValue('rqtp', C_STRUCTS.timespec.tv_sec, 'i32') }}};
+    var nanoseconds = {{{ makeGetValue('rqtp', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
+    if (rmtp !== 0) {
+      {{{ makeSetValue('rmtp', C_STRUCTS.timespec.tv_sec, '0', 'i32') }}};
+      {{{ makeSetValue('rmtp', C_STRUCTS.timespec.tv_nsec, '0', 'i32') }}};
+    }
+    return _usleep((seconds * 1e6) + (nanoseconds / 1000));
   },
 
   llvm_memory_barrier: function(){},
@@ -219,11 +285,11 @@ var LibraryPThreadStub = {
     }
   },
 
-  __atomic_fetch_add_8__deps: ['llvm_uadd_with_overflow_i64'],
+  __atomic_fetch_add_8__deps: ['i64Add'],
   __atomic_fetch_add_8: function(ptr, vall, valh, memmodel) {
     var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
     var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
-    {{{ makeSetValue('ptr', 0, '_llvm_uadd_with_overflow_i64(l, h, vall, valh)', 'i32') }}};
+    {{{ makeSetValue('ptr', 0, '_i64Add(l, h, vall, valh)', 'i32') }}};
     {{{ makeSetValue('ptr', 4, 'Runtime["getTempRet0"]()', 'i32') }}};
     {{{ makeStructuralReturn(['l', 'h']) }}};
   },

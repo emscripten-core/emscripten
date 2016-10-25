@@ -203,6 +203,7 @@ template <class Key, class T, class Hash, class Pred, class Alloc>
 #include <__hash_table>
 #include <functional>
 #include <stdexcept>
+#include <type_traits>
 #include <ext/__hash>
 
 #if __DEPRECATED
@@ -213,16 +214,16 @@ template <class Key, class T, class Hash, class Pred, class Alloc>
 #endif
 #endif
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 namespace __gnu_cxx {
 
 using namespace std;
 
-template <class _Tp, class _Hash, bool = is_empty<_Hash>::value
-#if __has_feature(is_final)
-                                         && !__is_final(_Hash)
-#endif
+template <class _Tp, class _Hash,
+          bool = is_empty<_Hash>::value && !__libcpp_is_final<_Hash>::value
         >
 class __hash_map_hasher
     : private _Hash
@@ -255,10 +256,8 @@ public:
         {return __hash_(__x);}
 };
 
-template <class _Tp, class _Pred, bool = is_empty<_Pred>::value
-#if __has_feature(is_final)
-                                         && !__is_final(_Pred)
-#endif
+template <class _Tp, class _Pred,
+          bool = is_empty<_Pred>::value && !__libcpp_is_final<_Pred>::value
          >
 class __hash_map_equal
     : private _Pred
@@ -310,7 +309,7 @@ class __hash_map_node_destructor
 {
     typedef _Alloc                              allocator_type;
     typedef allocator_traits<allocator_type>    __alloc_traits;
-    typedef typename __alloc_traits::value_type::value_type value_type;
+    typedef typename __alloc_traits::value_type::__node_value_type value_type;
 public:
     typedef typename __alloc_traits::pointer    pointer;
 private:
@@ -369,7 +368,6 @@ class _LIBCPP_TYPE_VIS_ONLY __hash_map_iterator
 {
     _HashIterator __i_;
 
-    typedef pointer_traits<typename _HashIterator::pointer>      __pointer_traits;
     typedef const typename _HashIterator::value_type::first_type key_type;
     typedef typename _HashIterator::value_type::second_type      mapped_type;
 public:
@@ -377,13 +375,8 @@ public:
     typedef pair<key_type, mapped_type>                          value_type;
     typedef typename _HashIterator::difference_type              difference_type;
     typedef value_type&                                          reference;
-    typedef typename __pointer_traits::template
-#ifndef _LIBCPP_HAS_NO_TEMPLATE_ALIASES
-            rebind<value_type>
-#else
-            rebind<value_type>::other
-#endif
-                                                                 pointer;
+    typedef typename __rebind_pointer<typename _HashIterator::pointer, value_type>::type
+        pointer;
 
     _LIBCPP_INLINE_VISIBILITY __hash_map_iterator() {}
 
@@ -420,7 +413,6 @@ class _LIBCPP_TYPE_VIS_ONLY __hash_map_const_iterator
 {
     _HashIterator __i_;
 
-    typedef pointer_traits<typename _HashIterator::pointer>      __pointer_traits;
     typedef const typename _HashIterator::value_type::first_type key_type;
     typedef typename _HashIterator::value_type::second_type      mapped_type;
 public:
@@ -428,13 +420,8 @@ public:
     typedef pair<key_type, mapped_type>                          value_type;
     typedef typename _HashIterator::difference_type              difference_type;
     typedef const value_type&                                    reference;
-    typedef typename __pointer_traits::template
-#ifndef _LIBCPP_HAS_NO_TEMPLATE_ALIASES
-            rebind<const value_type>
-#else
-            rebind<const value_type>::other
-#endif
-                                                                 pointer;
+    typedef typename __rebind_pointer<typename _HashIterator::pointer, const value_type>::type
+        pointer;
 
     _LIBCPP_INLINE_VISIBILITY __hash_map_const_iterator() {}
 
@@ -493,13 +480,7 @@ private:
     typedef pair<key_type, mapped_type>                    __value_type;
     typedef __hash_map_hasher<__value_type, hasher>   __hasher;
     typedef __hash_map_equal<__value_type, key_equal> __key_equal;
-    typedef typename allocator_traits<allocator_type>::template
-#ifndef _LIBCPP_HAS_NO_TEMPLATE_ALIASES
-            rebind_alloc<__value_type>
-#else
-            rebind_alloc<__value_type>::other
-#endif
-                                                           __allocator_type;
+    typedef typename __rebind_alloc_helper<allocator_traits<allocator_type>, __value_type>::type __allocator_type;
 
     typedef __hash_table<__value_type, __hasher,
                          __key_equal,  __allocator_type>   __table;
@@ -568,6 +549,7 @@ public:
     _LIBCPP_INLINE_VISIBILITY
     iterator insert(const_iterator, const value_type& __x) {return insert(__x).first;}
     template <class _InputIterator>
+        _LIBCPP_INLINE_VISIBILITY
         void insert(_InputIterator __first, _InputIterator __last);
 
     _LIBCPP_INLINE_VISIBILITY
@@ -688,12 +670,12 @@ hash_map<_Key, _Tp, _Hash, _Pred, _Alloc>::__construct_node(const key_type& __k)
     __h.get_deleter().__first_constructed = true;
     __node_traits::construct(__na, _VSTD::addressof(__h->__value_.second));
     __h.get_deleter().__second_constructed = true;
-    return _VSTD::move(__h);  // explicitly moved for C++03
+    return _LIBCPP_EXPLICIT_MOVE(__h);  // explicitly moved for C++03
 }
 
 template <class _Key, class _Tp, class _Hash, class _Pred, class _Alloc>
 template <class _InputIterator>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 void
 hash_map<_Key, _Tp, _Hash, _Pred, _Alloc>::insert(_InputIterator __first,
                                                        _InputIterator __last)
@@ -772,13 +754,7 @@ private:
     typedef pair<key_type, mapped_type>                    __value_type;
     typedef __hash_map_hasher<__value_type, hasher>   __hasher;
     typedef __hash_map_equal<__value_type, key_equal> __key_equal;
-    typedef typename allocator_traits<allocator_type>::template
-#ifndef _LIBCPP_HAS_NO_TEMPLATE_ALIASES
-            rebind_alloc<__value_type>
-#else
-            rebind_alloc<__value_type>::other
-#endif
-                                                           __allocator_type;
+    typedef typename __rebind_alloc_helper<allocator_traits<allocator_type>, __value_type>::type __allocator_type;
 
     typedef __hash_table<__value_type, __hasher,
                          __key_equal,  __allocator_type>   __table;
@@ -845,6 +821,7 @@ public:
     _LIBCPP_INLINE_VISIBILITY
     iterator insert(const_iterator, const value_type& __x) {return insert(__x);}
     template <class _InputIterator>
+        _LIBCPP_INLINE_VISIBILITY
         void insert(_InputIterator __first, _InputIterator __last);
 
     _LIBCPP_INLINE_VISIBILITY
@@ -952,7 +929,7 @@ hash_multimap<_Key, _Tp, _Hash, _Pred, _Alloc>::hash_multimap(
 
 template <class _Key, class _Tp, class _Hash, class _Pred, class _Alloc>
 template <class _InputIterator>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 void
 hash_multimap<_Key, _Tp, _Hash, _Pred, _Alloc>::insert(_InputIterator __first,
                                                             _InputIterator __last)

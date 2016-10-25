@@ -18,15 +18,19 @@
 int serverfd = 0;
 int clientfd = 0;
 
+void cleanup_client() {
+  if (clientfd) {
+    close(clientfd);
+    clientfd = 0;
+  }
+}
+
 void cleanup() {
   if (serverfd) {
     close(serverfd);
     serverfd = 0;
   }
-  if (clientfd) {
-    close(clientfd);
-    clientfd = 0;
-  }
+  cleanup_client();
 }
 
 void do_send(int sockfd) {
@@ -53,12 +57,10 @@ void do_send(int sockfd) {
     res = send(sockfd, buffer, strlen(buffer), 0);
     if (res == -1) {
       perror("send failed");
-      exit(EXIT_FAILURE);
+      return;
     }
     printf("sent \"%s\" (%d bytes)\n", buffer, res);
   }
-
-  exit(EXIT_SUCCESS);
 }
 
 void iter() {
@@ -85,6 +87,7 @@ void iter() {
 
   if (FD_ISSET(clientfd, &fdw)) {
     do_send(clientfd);
+    cleanup_client();
   }
 }
 

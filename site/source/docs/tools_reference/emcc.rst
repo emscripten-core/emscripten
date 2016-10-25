@@ -78,6 +78,8 @@ Options that are modified or new in *emcc* are listed below:
 ``-Oz``
 	Like ``-Os``, but reduces code size even further. This can effect both bitcode generation and JavaScript.
 
+	For JavaScript, this turns on some code size reduction optimizations that can take a significant amount of compilation time.
+
  	.. note:: For more tips on optimizing your code, see :ref:`Optimizing-Code`.
 
 .. _emcc-s-option-value:
@@ -360,7 +362,7 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-clear-ports:
 	 
 ``--clear-ports``
-	Manually clears the local copies and builds of projects from the Emscripten Ports repos (sdl2, etc.)
+	Manually clears the local copies of ports from the Emscripten Ports repos (sdl2, etc.). This also clears the cache, to remove their builds.
 	
 	You should only need to do this if a problem happens and you want all ports that you use to be downloaded and built from scratch. After this operation is complete, this process will exit.
 
@@ -445,7 +447,9 @@ Options that are modified or new in *emcc* are listed below:
 ``--separate-asm``
 	Emits asm.js in one file, and the rest of the code in another, and emits HTML that loads the asm.js first, in order to reduce memory load during startup. See :ref:`optimizing-code-separating_asm`.
 
-	
+``--output-eol windows|linux``
+	Specifies the line ending to generate for the text files that are outputted. If "--output-eol windows" is passed, the final output files will have Windows \r\n line endings in them. With "--output-eol linux", the final generated files will be written with Unix \n line endings.
+
 .. _emcc-environment-variables:
 
 Environment variables

@@ -155,6 +155,11 @@ int main()
 			}
 		}
 	}
+
+	// Test that regex replacing also works on these.
+	emscripten_atomic_fence();
+	__sync_synchronize();
+
 // XXX NAND support does not exist in Atomics API.
 #if 0
 	{
