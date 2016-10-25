@@ -326,7 +326,7 @@ var LibraryPThread = {
             DYNAMIC_BASE: DYNAMIC_BASE,
             DYNAMICTOP_PTR: DYNAMICTOP_PTR,
             PthreadWorkerInit: PthreadWorkerInit
-          }, [HEAPU8.buffer]);
+          });
         PThread.unusedWorkerPool.push(worker);
       }
     },
