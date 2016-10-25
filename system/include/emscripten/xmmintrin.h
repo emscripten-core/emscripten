@@ -1,7 +1,7 @@
 #ifndef __emscripten_xmmintrin_h__
 #define __emscripten_xmmintrin_h__
 
-#include <vector.h>
+#include <emscripten/vector.h>
 
 #include <math.h>
 #include <string.h>

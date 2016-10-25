@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <emscripten.h>
-#include <html5.h>
+#include <emscripten/html5.h>
 static int result = 1;
 
 // The event handler functions can return 1 to suppress the event and disable the default action. That calls event.preventDefault();

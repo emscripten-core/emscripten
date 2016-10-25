@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <SDL.h>
 #include <emscripten.h>
-#include <html5.h>
+#include <emscripten/html5.h>
 
 static enum {
     STATE_INITIAL,      /* Initial state, click needed to enter full screen */
