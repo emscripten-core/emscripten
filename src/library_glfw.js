@@ -536,7 +536,7 @@ var LibraryGLFW = {
       // If any of the above conditions were true, we need to resize the canvas
       if (resizeNeeded) {
         // resets the canvas size to counter the aspect preservation of Browser.updateCanvasDimensions
-        Browser.setCanvasSize(GLFW.active.width, GLFW.active.height);
+        Browser.setCanvasSize(GLFW.active.width, GLFW.active.height, true);
         // TODO: Client dimensions (clientWidth/clientHeight) vs pixel dimensions (width/height) of
         // the canvas should drive window and framebuffer size respectfully.
         GLFW.onWindowSizeChanged();
