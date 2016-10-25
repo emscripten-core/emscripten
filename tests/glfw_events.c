@@ -26,10 +26,12 @@
 
     // Javascript event.button 0 = left, 1 = middle, 2 = right
     test_t g_tests[] = {
-        { "Module.injectMouseEvent(10.0, 10.0, 'mousedown', 0)", { 10.0, 10.0, GLFW_MOUSE_BUTTON_1, GLFW_PRESS, -1 } },
-        { "Module.injectMouseEvent(10.0, 20.0, 'mouseup', 0)", { 10.0, 20.0, GLFW_MOUSE_BUTTON_1, GLFW_RELEASE, -1 } },
-        { "Module.injectMouseEvent(10.0, 30.0, 'mousedown', 2)", { 10.0, 30.0, GLFW_MOUSE_BUTTON_2, GLFW_PRESS, -1 } },
-        { "Module.injectMouseEvent(10.0, 40.0, 'mouseup', 2)", { 10.0, 40.0, GLFW_MOUSE_BUTTON_2, GLFW_RELEASE, -1 } },
+        { "Module.injectMouseEvent(10.0, 10.0, 'mousedown', 0)", { 10.0, 10.0, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, -1 } },
+        { "Module.injectMouseEvent(10.0, 20.0, 'mouseup', 0)", { 10.0, 20.0, GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE, -1 } },
+        { "Module.injectMouseEvent(10.0, 30.0, 'mousedown', 1)", { 10.0, 30.0, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, -1 } },
+        { "Module.injectMouseEvent(10.0, 40.0, 'mouseup', 1)", { 10.0, 40.0, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_RELEASE, -1 } },
+        { "Module.injectMouseEvent(10.0, 30.0, 'mousedown', 2)", { 10.0, 30.0, GLFW_MOUSE_BUTTON_RIGHT, GLFW_PRESS, -1 } },
+        { "Module.injectMouseEvent(10.0, 40.0, 'mouseup', 2)", { 10.0, 40.0, GLFW_MOUSE_BUTTON_RIGHT, GLFW_RELEASE, -1 } },
         //{ "Module.injectMouseEvent(10.0, 50.0, 'mousewheel', 0)", { 10.0, 50.0, -1, -1, -1 } },
         //{ "Module.injectMouseEvent(10.0, 60.0, 'mousemove', 0)", { 10.0, 60.0, -1, -1, -1 } }
 
@@ -50,9 +52,9 @@
     static unsigned int g_state = 0;
 
     #if USE_GLFW == 2
-        static void on_mouse_button_vallback(int button, int action)
+        static void on_mouse_button_callback(int button, int action)
     #else
-        static void on_mouse_button_vallback(GLFWwindow* window, int button, int action, int modify)
+        static void on_mouse_button_callback(GLFWwindow* window, int button, int action, int modify)
     #endif
     {
         test_args_t args = g_tests[g_test_actual].args;
@@ -153,16 +155,14 @@
                 canvas.dispatchEvent(keyboardEvent);
             };
         ));
-
         
         glfwInit();
-        
 
         #if USE_GLFW == 2
             glfwOpenWindow(WIDTH, HEIGHT, 5, 6, 5, 0, 0, 0, GLFW_WINDOW); // != GL_TRUE)
             
             glfwSetMousePosCallback(on_mouse_move);
-            glfwSetMouseButtonCallback(on_mouse_button_vallback);
+            glfwSetMouseButtonCallback(on_mouse_button_callback);
             glfwSetKeyCallback(on_key_callback);
             //glfwSetCharCallback(...);
         #else
@@ -174,7 +174,7 @@
             _mainWindow = glfwCreateWindow(WIDTH, HEIGHT, "glfw3_events", NULL, NULL);
             glfwMakeContextCurrent(_mainWindow);
 
-            glfwSetMouseButtonCallback(_mainWindow, on_mouse_button_vallback);
+            glfwSetMouseButtonCallback(_mainWindow, on_mouse_button_callback);
             glfwSetCursorPosCallback(_mainWindow, on_mouse_move);
             glfwSetScrollCallback(_mainWindow, on_mouse_wheel);
             glfwSetKeyCallback(_mainWindow, on_key_callback);
@@ -185,6 +185,16 @@
         {
             g_test_actual = i;
             emscripten_run_script(g_tests[g_test_actual].cmd);
+
+        #if USE_GLFW == 2
+            if (glfwGetMouseButton(g_tests[g_test_actual].args.button) != g_tests[g_test_actual].args.action)
+        #else
+            if (glfwGetMouseButton(_mainWindow, g_tests[g_test_actual].args.button) != g_tests[g_test_actual].args.action)
+        #endif
+            {
+                printf("Test %d: FAIL\n", g_test_actual);
+                g_state &= ~(1 << g_test_actual);
+            }
         }
 
         glfwTerminate();
