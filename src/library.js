@@ -1625,7 +1625,22 @@ LibraryManager.library = {
       if (flag & 256) { // RTLD_GLOBAL
         for (var ident in lib_module) {
           if (lib_module.hasOwnProperty(ident)) {
-            Module[ident] = lib_module[ident];
+            // When RTLD_GLOBAL is enable, the symbols defined by this shared object will be made
+            // available for symbol resolution of subsequently loaded shared objects.
+            //
+            // We should copy the symbols (which include methods and variables) from SIDE_MODULE to MAIN_MODULE.
+            //
+            // Module of SIDE_MODULE has not only the symbols (which should be copied)
+            // but also others (print*, asmGlobal*, FUNCTION_TABLE_**, NAMED_GLOBALS, and so on).
+            //
+            // When the symbol (which should be copied) is method, Module._* 's type becomes function.
+            // When the symbol (which should be copied) is variable, Module._* 's type becomes number.
+            //
+            // Except for the symbol prefix (_), there is no difference in the symbols (which should be copied) and others.
+            // So this just copies over compiled symbols (which start with _).
+            if (ident[0] == '_') {
+              Module[ident] = lib_module[ident];
+            }
           }
         }
       }

@@ -5514,6 +5514,70 @@ main()
     self.assertContained('Hello3', out)
     self.assertContained('Hello4', out)
 
+  def test_dlopen_rtld_global(self):
+    open('hello1.c', 'w').write(r'''
+#include <stdio.h>
+
+extern int hello1_val;
+int hello1_val=3;
+
+void
+hello1 (int i)
+{
+  printf ("hello1_val by hello1:%d\n",hello1_val);
+  printf ("Hello%d\n",i);
+}
+''')
+    open('hello2.c', 'w').write(r'''
+#include <stdio.h>
+
+extern int hello1_val;
+extern void hello1 (int);
+
+void
+hello2 (int i)
+{
+  void (*f) (int);
+  printf ("hello1_val by hello2:%d\n",hello1_val);
+  f = hello1;
+  f(i);
+}
+''')
+    open('main.c', 'w').write(r'''
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <dlfcn.h>
+
+int
+main(int argc,char** argv)
+{
+  void *h;
+  void *h2;
+  void (*f) (int);
+  h = dlopen ("libhello1.js", RTLD_NOW|RTLD_GLOBAL);
+  h2 = dlopen ("libhello2.js", RTLD_NOW|RTLD_GLOBAL);
+  f = dlsym (h, "hello1");
+  f(1);
+  f = dlsym (h2, "hello2");
+  f(2);
+  dlclose (h);
+  dlclose (h2);
+  return 0;
+}
+''')
+
+    Popen([PYTHON, EMCC, '-o', 'libhello1.js', 'hello1.c', '-s', 'SIDE_MODULE=1']).communicate()
+    Popen([PYTHON, EMCC, '-o', 'libhello2.js', 'hello2.c', '-s', 'SIDE_MODULE=1']).communicate()
+    Popen([PYTHON, EMCC, '-o', 'main.js', 'main.c', '-s', 'MAIN_MODULE=1',
+           '--embed-file', 'libhello1.js',
+           '--embed-file', 'libhello2.js']).communicate()
+    out = run_js('main.js')
+    self.assertContained('Hello1', out)
+    self.assertContained('Hello2', out)
+    self.assertContained('hello1_val by hello1:3', out)
+    self.assertContained('hello1_val by hello2:3', out)
+
   def test_file_packager_eval(self):
     BAD = 'Module = eval('
     src = path_from_root('tests', 'hello_world.c')
