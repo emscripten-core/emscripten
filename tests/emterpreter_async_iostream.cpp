@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <emscripten.h>
-#include <html5.h>
+#include <emscripten/html5.h>
 
 using namespace std;
 
