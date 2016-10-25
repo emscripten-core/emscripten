@@ -449,13 +449,16 @@ var LibraryGLFW = {
 
       if (event.target != Module["canvas"]) return;
 
+      eventButton = GLFW.DOMToGLFWMouseButton(event);
+
       if (status == 1) { // GLFW_PRESS
+        GLFW.active.buttons |= (1 << eventButton);
         try {
           event.target.setCapture();
         } catch (e) {}
+      } else {  // GLFW_RELEASE
+        GLFW.active.buttons &= ~(1 << eventButton);
       }
-
-      eventButton = GLFW.DOMToGLFWMouseButton(event);
 
 #if USE_GLFW == 2
       Runtime.dynCall('vii', GLFW.active.mouseButtonFunc, [eventButton, status]);
@@ -468,13 +471,11 @@ var LibraryGLFW = {
 
     onMouseButtonDown: function(event) {
       if (!GLFW.active) return;
-      GLFW.active.buttons |= (1 << GLFW.DOMToGLFWMouseButton(event));
       GLFW.onMouseButtonChanged(event, 1); // GLFW_PRESS
     },
 
     onMouseButtonUp: function(event) {
       if (!GLFW.active) return;
-      GLFW.active.buttons &= ~(1 << GLFW.DOMToGLFWMouseButton(event));
       GLFW.onMouseButtonChanged(event, 0); // GLFW_RELEASE
     },
 
