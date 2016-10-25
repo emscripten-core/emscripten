@@ -5344,6 +5344,105 @@ int main(int argc, char** argv) {
     assert dce < 0.2*full # big effect, 80%+ is gone
     assert dce_save > 1.1*dce # save exported all of printf
 
+  def test_ld_library_path(self):
+    open('hello1.c', 'w').write(r'''
+#include <stdio.h>
+
+void
+hello1 ()
+{
+  printf ("Hello1\n");
+  return;
+}
+
+''')
+    open('hello2.c', 'w').write(r'''
+#include <stdio.h>
+
+void
+hello2 ()
+{
+  printf ("Hello2\n");
+  return;
+}
+
+''')
+    open('hello3.c', 'w').write(r'''
+#include <stdio.h>
+
+void
+hello3 ()
+{
+  printf ("Hello3\n");
+  return;
+}
+
+''')
+    open('hello4.c', 'w').write(r'''
+#include <stdio.h>
+
+void
+hello4 ()
+{
+  printf ("Hello4\n");
+  return;
+}
+
+''')
+    open('pre.js', 'w').write(r'''
+Module['preRun'].push(function (){
+  ENV['LD_LIBRARY_PATH']='/lib:/usr/lib';
+});
+''')
+    open('main.c', 'w').write(r'''
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <dlfcn.h>
+
+int
+main()
+{
+  void *h;
+  void (*f) ();
+
+  h = dlopen ("libhello1.js", RTLD_NOW);
+  f = dlsym (h, "hello1");
+  f();
+  dlclose (h);
+  h = dlopen ("libhello2.js", RTLD_NOW);
+  f = dlsym (h, "hello2");
+  f();
+  dlclose (h);
+  h = dlopen ("libhello3.js", RTLD_NOW);
+  f = dlsym (h, "hello3");
+  f();
+  dlclose (h);
+  h = dlopen ("/usr/local/lib/libhello4.js", RTLD_NOW);
+  f = dlsym (h, "hello4");
+  f();
+  dlclose (h);
+  return 0;
+}
+
+''')
+
+    Popen([PYTHON, EMCC, '-o', 'libhello1.js', 'hello1.c', '-s', 'SIDE_MODULE=1']).communicate()
+    Popen([PYTHON, EMCC, '-o', 'libhello2.js', 'hello2.c', '-s', 'SIDE_MODULE=1']).communicate()
+    Popen([PYTHON, EMCC, '-o', 'libhello3.js', 'hello3.c', '-s', 'SIDE_MODULE=1']).communicate()
+    Popen([PYTHON, EMCC, '-o', 'libhello4.js', 'hello4.c', '-s', 'SIDE_MODULE=1']).communicate()
+    Popen([PYTHON, EMCC, '-o', 'main.js', 'main.c', '-s', 'MAIN_MODULE=1',
+           '--embed-file', 'libhello1.js@/lib/libhello1.js',
+           '--embed-file', 'libhello2.js@/usr/lib/libhello2.js',
+           '--embed-file', 'libhello3.js@/libhello3.js',
+           '--embed-file', 'libhello4.js@/usr/local/lib/libhello4.js',
+           '--pre-js', 'pre.js']).communicate()
+    out = run_js('main.js')
+    self.assertContained('Hello1', out)
+    self.assertContained('Hello2', out)
+    self.assertContained('Hello3', out)
+    self.assertContained('Hello4', out)
+
   def test_file_packager_eval(self):
     BAD = 'Module = eval('
     src = path_from_root('tests', 'hello_world.c')
