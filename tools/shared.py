@@ -474,7 +474,12 @@ def get_emscripten_version(path):
 
 # Returns true if Emscripten is running in 'strict' mode, in which deprecated compiler features are not supported.
 def is_emscripten_strict():
-  return (os.environ.get('EMCC_STRICT') and int(os.environ.get('EMCC_STRICT')) != 0) or Settings.STRICT
+  if os.environ.get('EMCC_STRICT') and int(os.environ.get('EMCC_STRICT')) != 0: return True
+  try:
+    return Settings.STRICT
+  except:
+    pass
+  return False
 
 # Check that basic stuff we need (a JS engine to compile, Node.js, and Clang and LLVM)
 # exists.

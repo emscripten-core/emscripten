@@ -102,6 +102,7 @@ var LibraryManager = {
       'library_browser.js',
       'library_formatString.js',
       'library_path.js',
+      'library_signals.js',
       'library_syscall.js',
       'library_html5.js'
     ];
@@ -138,7 +139,6 @@ var LibraryManager = {
         'library_glfw.js',
         'library_uuid.js',
         'library_glew.js',
-        'library_signals.js',
         'library_idbstore.js',
         'library_async.js',
         'library_vr.js'
@@ -148,6 +148,11 @@ var LibraryManager = {
     // If there are any explicitly specified system JS libraries to link to, add those to link.
     if (SYSTEM_JS_LIBRARIES) {
       SYSTEM_JS_LIBRARIES = SYSTEM_JS_LIBRARIES.split(',');
+      // For each system JS library library_xxx.js, add a preprocessor token __EMSCRIPTEN_HAS_xxx_js__ so that code can conditionally dead code eliminate out
+      // if a particular feature is not being linked in.
+      for (var i = 0; i < SYSTEM_JS_LIBRARIES.length; ++i) {
+        global['__EMSCRIPTEN_HAS_' + SYSTEM_JS_LIBRARIES[i].replace('.', '_').replace('library_', '') + '__'] = 1
+      }
       libraries = libraries.concat(SYSTEM_JS_LIBRARIES);
     }
 

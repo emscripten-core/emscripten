@@ -954,12 +954,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             'm': '',
             'openal': 'library_openal.js',
             'pthread': '',
+            'X11': 'library_xlib.js',
             'SDL': 'library_sdl.js',
-            'stdc++': ''
+            'stdc++': '',
+            'uuid': 'library_uuid.js'
           }
           if lib in js_system_libraries:
             if len(js_system_libraries[lib]) > 0:
               system_js_libraries += [js_system_libraries[lib]]
+
+              # TODO: This is unintentional due to historical reasons. Improve EGL to use HTML5 API to avoid depending on GLUT.
+              if lib == 'EGL': system_js_libraries += ['library_glut.js']
+
           elif lib.endswith('.js') and os.path.isfile(shared.path_from_root('src', 'library_' + lib)):
             system_js_libraries += ['library_' + lib]
           else:
@@ -971,6 +977,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             else:
               logging.warning('emcc: cannot find library "%s"', lib)
 
+      # Certain linker flags imply some link libraries to be pulled in by default.
+      if 'EMTERPRETIFY_ASYNC=1' in settings_changes: system_js_libraries += ['library_async.js']
+      if 'ASYNCIFY=1' in settings_changes: system_js_libraries += ['library_async.js']
+      if 'LZ4=1' in settings_changes: system_js_libraries += ['library_lz4.js']
+      if 'USE_SDL=1' in settings_changes: system_js_libraries += ['library_sdl.js']
+      if 'USE_SDL=2' in settings_changes: system_js_libraries += ['library_egl.js', 'library_glut.js', 'library_gl.js']
       settings_changes.append('SYSTEM_JS_LIBRARIES="' + ','.join(system_js_libraries) + '"')
 
       # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
