@@ -432,6 +432,7 @@ def check_fastcomp():
 EXPECTED_NODE_VERSION = (0,8,0)
 
 def check_node_version():
+  jsrun.check_engine(NODE_JS, __rootpath__)
   try:
     actual = Popen(NODE_JS + ['--version'], stdout=PIPE).communicate()[0].strip()
     version = tuple(map(int, actual.replace('v', '').replace('-pre', '').split('.')))
@@ -546,13 +547,8 @@ def check_sanity(force=False):
     logging.info('(Emscripten: Running sanity checks)')
 
     with ToolchainProfiler.profile_block('sanity compiler_engine'):
-      if not check_engine(COMPILER_ENGINE):
+      if not jsrun.check_engine(COMPILER_ENGINE, __rootpath__):
         logging.critical('The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s' % (COMPILER_ENGINE, EM_CONFIG))
-        sys.exit(1)
-
-    if NODE_JS != COMPILER_ENGINE and Settings.RUNNING_JS_OPTS:
-      if not check_engine(NODE_JS):
-        logging.critical('Node.js (%s) does not seem to work, check the paths in %s' % (NODE_JS, EM_CONFIG))
         sys.exit(1)
 
     with ToolchainProfiler.profile_block('sanity LLVM'):
@@ -1002,16 +998,6 @@ if not WINDOWS:
     pass
 
 # Utilities
-
-def check_engine(engine):
-  # TODO: we call this several times, perhaps cache the results?
-  try:
-    if not CONFIG_FILE:
-      return True # config stored directly in EM_CONFIG => skip engine check
-    return 'hello, world!' in run_js(path_from_root('src', 'hello_world.js'), engine)
-  except Exception, e:
-    print 'Checking JS engine %s failed. Check %s. Details: %s' % (str(engine), EM_CONFIG, str(e))
-    return False
 
 def make_js_command(filename, engine=None, *args):
   if engine is None:

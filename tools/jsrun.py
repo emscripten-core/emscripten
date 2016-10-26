@@ -3,6 +3,7 @@ import time, os, sys, logging
 from subprocess import Popen, PIPE, STDOUT
 
 TRACK_PROCESS_SPAWNS = True if (os.getenv('EM_BUILD_VERBOSE') and int(os.getenv('EM_BUILD_VERBOSE')) >= 3) else False
+ENGINES_WORK = {}
 
 def timeout_run(proc, timeout=None, note='unnamed process', full_output=False):
   start = time.time()
@@ -32,6 +33,21 @@ def make_command(filename, engine=None, args=[]):
   jsengine = os.path.split(engine[0])[-1]
   # Use "'d8' in" because the name can vary, e.g. d8_g, d8, etc.
   return engine + [filename] + (['--expose-wasm', '--'] if 'd8' in jsengine or 'jsc' in jsengine else []) + args
+
+def check_engine(engine, rootpath):
+  if type(engine) is list: # XXX wat? When is this not a list?
+    engine_path = engine[0]
+  if engine_path in ENGINES_WORK:
+    return ENGINES_WORK[engine_path]
+  try:
+    logging.info('Checking JS engine %s' % engine)
+    if 'hello, world!' in run_js(os.path.join(rootpath, 'src', 'hello_world.js'), engine):
+      ENGINES_WORK[engine_path] = True
+  except Exception, e:
+    logging.info('Checking JS engine %s failed. Check your config file. Details: %s' % (str(engine), str(e)))
+    ENGINES_WORK[engine_path] = False
+  return ENGINES_WORK[engine_path]
+
 
 def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdout=PIPE, stderr=None, cwd=None, full_output=False, assert_returncode=0, error_limit=-1):
   #  # code to serialize out the test suite files
