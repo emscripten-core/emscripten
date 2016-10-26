@@ -952,6 +952,7 @@ if USE_EMSDK:
     path_from_root('system', 'include', 'compat'),
     path_from_root('system', 'include'),
     path_from_root('system', 'include', 'emscripten'),
+    path_from_root('system', 'include', 'SSE'),
     path_from_root('system', 'include', 'libc'),
     path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
     path_from_root('system', 'local', 'include')
