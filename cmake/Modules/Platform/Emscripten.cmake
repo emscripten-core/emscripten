@@ -166,12 +166,24 @@ set(CMAKE_SYSTEM_INCLUDE_PATH "${EMSCRIPTEN_ROOT_PATH}/system/include")
 # but if these are adjusted, ${CMAKE_ROOT}/Modules/CheckIncludeFile.cmake will fail, since it depends on being able to compile output files with predefined names.
 #SET(CMAKE_LINK_LIBRARY_SUFFIX "")
 #SET(CMAKE_STATIC_LIBRARY_PREFIX "")
-#SET(CMAKE_STATIC_LIBRARY_SUFFIX ".bc")
 #SET(CMAKE_SHARED_LIBRARY_PREFIX "")
-#SET(CMAKE_SHARED_LIBRARY_SUFFIX ".bc")
-SET(CMAKE_EXECUTABLE_SUFFIX ".js")
 #SET(CMAKE_FIND_LIBRARY_PREFIXES "")
 #SET(CMAKE_FIND_LIBRARY_SUFFIXES ".bc")
+#SET(CMAKE_SHARED_LIBRARY_SUFFIX ".bc")
+
+option(EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES "If set, static library targets generate LLVM bitcode files (.bc). If disabled (default), UNIX ar archives (.a) are generated." OFF)
+if (EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES)
+	SET(CMAKE_STATIC_LIBRARY_SUFFIX ".bc")
+
+	SET(CMAKE_C_CREATE_STATIC_LIBRARY "<CMAKE_C_COMPILER> -o <TARGET> <LINK_FLAGS> <OBJECTS>")
+	SET(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_CXX_COMPILER> -o <TARGET> <LINK_FLAGS> <OBJECTS>")
+else()
+	# Specify the program to use when building static libraries. Force Emscripten-related command line options to clang.
+	SET(CMAKE_C_CREATE_STATIC_LIBRARY "<CMAKE_AR> rc <TARGET> <LINK_FLAGS> <OBJECTS>")
+	SET(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_AR> rc <TARGET> <LINK_FLAGS> <OBJECTS>")
+endif()
+
+SET(CMAKE_EXECUTABLE_SUFFIX ".js")
 
 SET(CMAKE_C_USE_RESPONSE_FILE_FOR_LIBRARIES 1)
 SET(CMAKE_CXX_USE_RESPONSE_FILE_FOR_LIBRARIES 1)
@@ -182,10 +194,6 @@ SET(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES 1)
 
 set(CMAKE_C_RESPONSE_FILE_LINK_FLAG "@")
 set(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")
-
-# Specify the program to use when building static libraries. Force Emscripten-related command line options to clang.
-set(CMAKE_C_CREATE_STATIC_LIBRARY "<CMAKE_AR> rc <TARGET> <LINK_FLAGS> <OBJECTS>")
-set(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_AR> rc <TARGET> <LINK_FLAGS> <OBJECTS>")
 
 # Set a global EMSCRIPTEN variable that can be used in client CMakeLists.txt to detect when building using Emscripten.
 set(EMSCRIPTEN 1 CACHE BOOL "If true, we are targeting Emscripten output.")

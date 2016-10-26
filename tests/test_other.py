@@ -574,6 +574,42 @@ f.close()
     emscripten_features = '\n'.join(filter(lambda x: '***' in x, emscripten_features.split('\n')))
     self.assertTextDataIdentical(native_features, emscripten_features)
 
+  # Tests that the Emscripten CMake toolchain option -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON works.
+  def test_cmake_bitcode_static_libraries(self):
+    if os.name == 'nt': emcmake = path_from_root('emcmake.bat')
+    else: emcmake = path_from_root('emcmake')
+
+    # Test that building static libraries by default generates UNIX archives (.a, with the emar tool)
+    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
+    os.chdir(tempdirname)
+    subprocess.check_call([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib')])
+    subprocess.check_call([Building.which('cmake'), '--build', '.'])
+    assert tools.shared.Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.a'))
+    assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.a'))
+    os.chdir(path_from_root('tests'))
+    shutil.rmtree(tempdirname)
+
+    # Test that passing the -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON directive causes CMake to generate LLVM bitcode files as static libraries (.bc)
+    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
+    os.chdir(tempdirname)
+    subprocess.check_call([emcmake, 'cmake', '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON', path_from_root('tests', 'cmake', 'static_lib')])
+    subprocess.check_call([Building.which('cmake'), '--build', '.'])
+    assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.bc'))
+    assert not tools.shared.Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.bc'))
+    os.chdir(path_from_root('tests'))
+    shutil.rmtree(tempdirname)
+
+    # Test that one is able to fake custom suffixes for static libraries.
+    # (sometimes projects want to emulate stuff, and do weird things like files with ".so" suffix which are in fact either ar archives or bitcode files)
+    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
+    os.chdir(tempdirname)
+    subprocess.check_call([emcmake, 'cmake', '-DSET_FAKE_SUFFIX_IN_PROJECT=1', path_from_root('tests', 'cmake', 'static_lib')])
+    subprocess.check_call([Building.which('cmake'), '--build', '.'])
+    assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
+    assert tools.shared.Building.is_ar(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
+    os.chdir(path_from_root('tests'))
+    shutil.rmtree(tempdirname)
+
   def test_failure_error_code(self):
     for compiler in [EMCC, EMXX]:
       # Test that if one file is missing from the build, then emcc shouldn't succeed, and shouldn't try to produce an output file.
