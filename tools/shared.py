@@ -849,6 +849,10 @@ except:
   logging.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
   JAVA = 'java'
 
+
+for engine in JS_ENGINES:
+  jsrun.check_engine(engine, __rootpath__)
+
 # Additional compiler options
 
 # Target choice.
