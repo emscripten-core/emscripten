@@ -115,7 +115,7 @@ var LibraryManager = {
       ]);
 
       // Additional filesystem libraries (in strict mode, link to these explicitly via -lxxx.js)
-      if (!EMSCRIPTEN_STRICT) {
+      if (!STRICT) {
         libraries = libraries.concat([
           'library_idbfs.js',
           'library_nodefs.js',
@@ -127,7 +127,7 @@ var LibraryManager = {
     }
 
     // Additional JS libraries (in strict mode, link to these explicitly via -lxxx.js)
-    if (!EMSCRIPTEN_STRICT) {
+    if (!STRICT) {
       libraries = libraries.concat([
         'library_sdl.js',
         'library_gl.js',

@@ -253,7 +253,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if not use_js:
       cmd += shared.EMSDK_OPTS + ['-D__EMSCRIPTEN__']
       # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code in strict mode. Code should use the define __EMSCRIPTEN__ instead.
-      if not os.environ.get('EMSCRIPTEN_STRICT') or int(os.environ.get('EMSCRIPTEN_STRICT')) == 0: cmd += ['-DEMSCRIPTEN']
+      if not shared.is_emscripten_strict(): cmd += ['-DEMSCRIPTEN']
     if use_js: cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'] # configure tests should fail when an undefined symbol exists
 
     logging.debug('just configuring: ' + ' '.join(cmd))
@@ -963,7 +963,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           elif lib.endswith('.js') and os.path.isfile(shared.path_from_root('src', 'library_' + lib)):
             system_js_libraries += ['library_' + lib]
           else:
-            emscripten_strict_mode = (os.environ.get('EMSCRIPTEN_STRICT') and int(os.environ.get('EMSCRIPTEN_STRICT')) != 0) or 'EMSCRIPTEN_STRICT=1' in settings_changes
+            emscripten_strict_mode = shared.is_emscripten_strict() or 'STRICT=1' in settings_changes
             error_on_missing_libraries = (emscripten_strict_mode and not 'ERROR_ON_MISSING_LIBRARIES=0' in settings_changes) or 'ERROR_ON_MISSING_LIBRARIES=1' in settings_changes
             if error_on_missing_libraries:
               logging.fatal('emcc: cannot find library "%s"', lib)

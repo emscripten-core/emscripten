@@ -487,9 +487,9 @@ var LINKABLE = 0; // If set to 1, this file can be linked with others, either as
                   // LINKABLE of 0 is very useful in that we can reduce the size of the
                   // generated code very significantly, by removing everything not actually used.
 
-var EMSCRIPTEN_STRICT = 0; // Emscripten 'strict' build mode: Drop supporting any deprecated build options.
-                           // Set the environment variable EMSCRIPTEN_STRICT=1 or pass -s EMSCRIPTEN_STRICT=1
-                           // to test that a codebase builds nicely in forward compatible manner.
+var STRICT = 0;   // Emscripten 'strict' build mode: Drop supporting any deprecated build options.
+                  // Set the environment variable EMCC_STRICT=1 or pass -s STRICT=1
+                  // to test that a codebase builds nicely in forward compatible manner.
 
 var WARN_ON_UNDEFINED_SYMBOLS = 1; // If set to 1, we will warn on any undefined symbols that
                                    // are not resolved by the library_*.js files. Note that

@@ -472,6 +472,10 @@ def find_temp_directory():
 def get_emscripten_version(path):
   return open(path).read().strip().replace('"', '')
 
+# Returns true if Emscripten is running in 'strict' mode, in which deprecated compiler features are not supported.
+def is_emscripten_strict():
+  return (os.environ.get('EMCC_STRICT') and int(os.environ.get('EMCC_STRICT')) != 0) or Settings.STRICT
+
 # Check that basic stuff we need (a JS engine to compile, Node.js, and Clang and LLVM)
 # exists.
 # The test runner always does this check (through |force|). emcc does this less frequently,
@@ -933,7 +937,7 @@ if LLVM_TARGET == WASM_TARGET:
                                    '-D__unix__']
 
   # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code in strict mode. Code should use the define __EMSCRIPTEN__ instead.
-  if not os.environ.get('EMSCRIPTEN_STRICT') or int(os.environ.get('EMSCRIPTEN_STRICT')) == 0: COMPILER_OPTS += ['-DEMSCRIPTEN']
+  if not is_emscripten_strict(): COMPILER_OPTS += ['-DEMSCRIPTEN']
 
 # Changes to default clang behavior
 
@@ -959,8 +963,8 @@ if USE_EMSDK:
   ]
 
   # The system include path system/include/emscripten/ is deprecated, i.e. instead of #include <emscripten.h>, one should pass in #include <emscripten/emscripten.h>.
-  # This path is not available in EMSCRIPTEN_STRICT mode.
-  if not os.environ.get('EMSCRIPTEN_STRICT') or int(os.environ.get('EMSCRIPTEN_STRICT')) == 0:
+  # This path is not available in Emscripten strict mode.
+  if not is_emscripten_strict():
     C_INCLUDE_PATHS += [path_from_root('system', 'include', 'emscripten')]
 
   CXX_INCLUDE_PATHS = [
@@ -1103,9 +1107,9 @@ class Settings2(type):
       exec settings
 
       # Apply default values for settings that are configured from environment variables.
-      if os.environ.get('EMSCRIPTEN_STRICT') and int(os.environ.get('EMSCRIPTEN_STRICT')) != 0:
+      if is_emscripten_strict():
         # Specify default values for Emscripten strict mode.
-        self.attrs['EMSCRIPTEN_STRICT'] = 1
+        self.attrs['STRICT'] = 1
         self.attrs['ERROR_ON_UNDEFINED_SYMBOLS'] = 1
         self.attrs['ERROR_ON_MISSING_LIBRARIES'] = 1
 
