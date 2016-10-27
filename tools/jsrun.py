@@ -47,16 +47,11 @@ def check_engine(engine, rootpath):
     def get_engine_cache():
       saved_file = os.path.join(temp_cache.dirname, 'js_engine_check.txt')
       with open(saved_file, 'w') as f:
-        print 'json!'
-        print ENGINES_WORK
-        json.dumps(ENGINES_WORK)
         json.dump(ENGINES_WORK, f)
       return saved_file
     engine_file = temp_cache.get('js_engine_check', get_engine_cache, '.txt')
     with open(engine_file) as f:
       engine_cache = json.load(f)
-      print 'loadjson!'
-      print engine_cache
       ENGINES_WORK = engine_cache
     if engine_path in ENGINES_WORK:
       return ENGINES_WORK[engine_path]

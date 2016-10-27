@@ -985,7 +985,7 @@ if __name__ == '__main__':
 
   # Sanity checks
   total_engines = len(JS_ENGINES)
-  JS_ENGINES = filter(check_engine, JS_ENGINES)
+  JS_ENGINES = filter(lambda e: jsrun.check_engine(e, __rootpath__), JS_ENGINES)
   if len(JS_ENGINES) == 0:
     print 'WARNING: None of the JS engines in JS_ENGINES appears to work.'
   elif len(JS_ENGINES) < total_engines:
