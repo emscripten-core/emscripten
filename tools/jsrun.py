@@ -1,5 +1,5 @@
 from toolchain_profiler import ToolchainProfiler
-import time, os, sys, logging
+import time, os, sys, logging, json
 from subprocess import Popen, PIPE, STDOUT
 import cache
 
@@ -39,12 +39,32 @@ def make_command(filename, engine=None, args=[]):
 def check_engine(engine, rootpath):
   if type(engine) is list: # XXX wat? When is this not a list?
     engine_path = engine[0]
+  global ENGINES_WORK
   if engine_path in ENGINES_WORK:
     return ENGINES_WORK[engine_path]
   try:
+    temp_cache = cache.Cache(use_subdir=False)
+    def get_engine_cache():
+      saved_file = os.path.join(temp_cache.dirname, 'js_engine_check.txt')
+      with open(saved_file, 'w') as f:
+        print 'json!'
+        print ENGINES_WORK
+        json.dumps(ENGINES_WORK)
+        json.dump(ENGINES_WORK, f)
+      return saved_file
+    engine_file = temp_cache.get('js_engine_check', get_engine_cache, '.txt')
+    with open(engine_file) as f:
+      engine_cache = json.load(f)
+      print 'loadjson!'
+      print engine_cache
+      ENGINES_WORK = engine_cache
+    if engine_path in ENGINES_WORK:
+      return ENGINES_WORK[engine_path]
     logging.info('Checking JS engine %s' % engine)
     if 'hello, world!' in run_js(os.path.join(rootpath, 'src', 'hello_world.js'), engine, skip_check=True):
       ENGINES_WORK[engine_path] = True
+    with open(engine_file, 'w') as f:
+      json.dump(ENGINES_WORK, f)
   except Exception, e:
     logging.info('Checking JS engine %s failed. Check your config file. Details: %s' % (str(engine), str(e)))
     ENGINES_WORK[engine_path] = False
