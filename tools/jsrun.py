@@ -4,7 +4,8 @@ from subprocess import Popen, PIPE, STDOUT
 import cache
 
 TRACK_PROCESS_SPAWNS = True if (os.getenv('EM_BUILD_VERBOSE') and int(os.getenv('EM_BUILD_VERBOSE')) >= 3) else False
-ENGINES_WORK = {}
+WORKING_ENGINES = {}
+__rootpath__ = os.path.dirname(os.path.dirname(__file__))
 
 def timeout_run(proc, timeout=None, note='unnamed process', full_output=False):
   start = time.time()
@@ -36,40 +37,40 @@ def make_command(filename, engine=None, args=[]):
   return engine + [filename] + (['--expose-wasm', '--'] if 'd8' in jsengine or 'jsc' in jsengine else []) + args
 
 
-def check_engine(engine, rootpath):
+def check_engine(engine):
   if type(engine) is list: # XXX wat? When is this not a list?
     engine_path = engine[0]
-  global ENGINES_WORK
-  if engine_path in ENGINES_WORK:
-    return ENGINES_WORK[engine_path]
+  global WORKING_ENGINES
+  if engine_path in WORKING_ENGINES:
+    return WORKING_ENGINES[engine_path]
   try:
     temp_cache = cache.Cache(use_subdir=False)
     def get_engine_cache():
       saved_file = os.path.join(temp_cache.dirname, 'js_engine_check.txt')
       with open(saved_file, 'w') as f:
-        json.dump(ENGINES_WORK, f)
+        json.dump(WORKING_ENGINES, f)
       return saved_file
     engine_file = temp_cache.get('js_engine_check', get_engine_cache, '.txt')
     with open(engine_file) as f:
       engine_cache = json.load(f)
-      ENGINES_WORK = engine_cache
-    if engine_path in ENGINES_WORK:
-      return ENGINES_WORK[engine_path]
+      WORKING_ENGINES = engine_cache
+    if engine_path in WORKING_ENGINES:
+      return WORKING_ENGINES[engine_path]
     logging.info('Checking JS engine %s' % engine)
-    if 'hello, world!' in run_js(os.path.join(rootpath, 'src', 'hello_world.js'), engine, skip_check=True):
-      ENGINES_WORK[engine_path] = True
+    if 'hello, world!' in run_js(os.path.join(__rootpath__, 'src', 'hello_world.js'), engine, skip_check=True):
+      WORKING_ENGINES[engine_path] = True
     with open(engine_file, 'w') as f:
-      json.dump(ENGINES_WORK, f)
+      json.dump(WORKING_ENGINES, f)
   except Exception, e:
     logging.info('Checking JS engine %s failed. Check your config file. Details: %s' % (str(engine), str(e)))
-    ENGINES_WORK[engine_path] = False
-  return ENGINES_WORK[engine_path]
+    WORKING_ENGINES[engine_path] = False
+  return WORKING_ENGINES[engine_path]
 
 
 def require_engine(engine):
   engine_path = engine[0]
-  assert engine_path in ENGINES_WORK, 'JS engine %s should have been checked at startup' % engine
-  if not ENGINES_WORK[engine_path]:
+  assert engine_path in WORKING_ENGINES, 'JS engine %s should have been checked at startup' % engine
+  if not WORKING_ENGINES[engine_path]:
     logging.critical('The JavaScript shell (%s) does not seem to work, check the paths in the config file' % engine)
     sys.exit(1)
 

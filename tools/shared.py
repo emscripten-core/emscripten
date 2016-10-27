@@ -432,7 +432,7 @@ def check_fastcomp():
 EXPECTED_NODE_VERSION = (0,8,0)
 
 def check_node_version():
-  jsrun.check_engine(NODE_JS, __rootpath__)
+  jsrun.check_engine(NODE_JS)
   try:
     actual = Popen(NODE_JS + ['--version'], stdout=PIPE).communicate()[0].strip()
     version = tuple(map(int, actual.replace('v', '').replace('-pre', '').split('.')))
@@ -547,7 +547,7 @@ def check_sanity(force=False):
     logging.info('(Emscripten: Running sanity checks)')
 
     with ToolchainProfiler.profile_block('sanity compiler_engine'):
-      if not jsrun.check_engine(COMPILER_ENGINE, __rootpath__):
+      if not jsrun.check_engine(COMPILER_ENGINE):
         logging.critical('The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s' % (COMPILER_ENGINE, EM_CONFIG))
         sys.exit(1)
 
@@ -851,7 +851,7 @@ except:
 
 
 for engine in JS_ENGINES:
-  jsrun.check_engine(engine, __rootpath__)
+  jsrun.check_engine(engine)
 
 # Additional compiler options
 
