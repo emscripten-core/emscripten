@@ -1554,7 +1554,32 @@ LibraryManager.library = {
 #endif
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
-    filename = filename === 0 ? '__self__' : (ENV['LD_LIBRARY_PATH'] || '/') + Pointer_stringify(filename);
+    var searchpaths = [];
+    if (filename === 0) {
+      filename = '__self__';
+    } else {
+      var strfilename = Pointer_stringify(filename);
+      var isValidFile = function (filename) {
+        var target = FS.findObject(filename);
+        return target && !target.isFolder && !target.isDevice;
+      };
+
+      if (isValidFile(strfilename)) {
+        filename = strfilename;
+      } else {
+        if (ENV['LD_LIBRARY_PATH']) {
+          searchpaths = ENV['LD_LIBRARY_PATH'].split(':');
+        }
+
+        for (var ident in searchpaths) {
+          var searchfile = PATH.join2(searchpaths[ident],strfilename);
+          if (isValidFile(searchfile)) {
+            filename = searchfile;
+            break;
+          }
+        }
+      }
+    }
 
     if (DLFCN.loadedLibNames[filename]) {
       // Already loaded; increment ref count and return.
