@@ -78,6 +78,7 @@ if EM_PROFILE_TOOLCHAIN:
   class ToolchainProfiler:
     # Provide a running counter towards negative numbers for PIDs for which we don't know what the actual process ID is
     imaginary_pid_ = 0
+    profiler_logs_path = None # Log file not opened yet
 
     @staticmethod
     def timestamp():
@@ -85,6 +86,10 @@ if EM_PROFILE_TOOLCHAIN:
 
     @staticmethod
     def log_access():
+      # If somehow the process escaped opening the log at startup, do so now. (this biases the startup time of the process, but best effort)
+      if not ToolchainProfiler.profiler_logs_path:
+        ToolchainProfiler.record_process_start()
+
       # Note: This function is called in two importantly different contexts: in "main" process and in python subprocesses
       # invoked via subprocessing.Pool.map(). The subprocesses have their own PIDs, and hence record their own data JSON
       # files, but since the process pool is maintained internally by python, the toolchain profiler does not track the
