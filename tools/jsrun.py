@@ -40,6 +40,8 @@ def make_command(filename, engine=None, args=[]):
 def check_engine(engine):
   if type(engine) is list:
     engine_path = engine[0]
+  else:
+    engine_path = engine
   global WORKING_ENGINES
   if engine_path in WORKING_ENGINES:
     return WORKING_ENGINES[engine_path]
@@ -55,7 +57,8 @@ def check_engine(engine):
 
 def require_engine(engine):
   engine_path = engine[0]
-  assert engine_path in WORKING_ENGINES, 'JS engine %s should have been checked at startup' % engine
+  if engine_path not in WORKING_ENGINES:
+    check_engine(engine)
   if not WORKING_ENGINES[engine_path]:
     logging.critical('The JavaScript shell (%s) does not seem to work, check the paths in the config file' % engine)
     sys.exit(1)

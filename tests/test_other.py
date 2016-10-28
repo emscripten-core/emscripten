@@ -6690,3 +6690,32 @@ int main() {
       assert process.returncode is not 0, 'wasm suffix is an error'
       self.assertContained('''output file "%s" has a wasm suffix, but we cannot emit wasm by itself''' % f, err)
 
+  def test_check_engine(self):
+    #restore()
+    compiler_engine = COMPILER_ENGINE
+    bogus_engine = ['/fake/inline4']
+    print compiler_engine
+    jsrun.WORKING_ENGINES = {}
+    # Test that engine check passes
+    assert jsrun.check_engine(COMPILER_ENGINE)
+    # Run it a second time (cache hit)
+    assert jsrun.check_engine(COMPILER_ENGINE)
+    # Test that engine check fails
+    assert not jsrun.check_engine(bogus_engine)
+    assert not jsrun.check_engine(bogus_engine)
+
+    # Test the other possible way (list vs string) to express an engine
+    if type(compiler_engine) is list:
+      engine2 = compiler_engine[0]
+    else:
+      engine2 = [compiler_engine]
+    assert jsrun.check_engine(engine2)
+
+    # Test that run_js requires the engine
+    jsrun.run_js(path_from_root('src', 'hello_world.js'), compiler_engine)
+    caught_exit = 0
+    try:
+      jsrun.run_js(path_from_root('src', 'hello_world.js'), bogus_engine)
+    except SystemExit as e:
+      caught_exit = e.code
+    self.assertEqual(1, caught_exit, 'Did not catch SystemExit with bogus JS engine')

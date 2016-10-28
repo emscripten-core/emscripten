@@ -850,9 +850,6 @@ except:
   JAVA = 'java'
 
 
-for engine in JS_ENGINES:
-  jsrun.check_engine(engine)
-
 # Additional compiler options
 
 # Target choice.
