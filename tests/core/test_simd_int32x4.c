@@ -69,15 +69,11 @@ int main()
     memset(bytes, 0xFF, sizeof(bytes));
     emscripten_int32x4_store2(bytes, v);
     DUMPBYTES("emscripten_int32x4_store2", bytes);
-    memset(bytes, 0xFF, sizeof(bytes));
-    emscripten_int32x4_store3(bytes, v);
-    DUMPBYTES("emscripten_int32x4_store3", bytes);
 
     emscripten_int32x4_store(bytes, v);
     DUMP(emscripten_int32x4_load(bytes));
     DUMP(emscripten_int32x4_load1(bytes));
     DUMP(emscripten_int32x4_load2(bytes));
-    DUMP(emscripten_int32x4_load3(bytes));
     // TODO: emscripten_int32x4_fromFloat64x2Bits
     // TODO: emscripten_int32x4_fromInt32x4Bits
     // TODO: emscripten_int32x4_fromUint32x4Bits
