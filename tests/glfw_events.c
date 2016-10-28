@@ -40,6 +40,14 @@
         { "Module.injectKeyEvent('keyup', 8)", { 0, 0.0, 0.0, GLFW_KEY_BACKSPACE, GLFW_RELEASE, -1 } },
         { "Module.injectKeyEvent('keydown', 9)", { 0, 0.0, 0.0, GLFW_KEY_TAB, GLFW_PRESS, -1 } },
         { "Module.injectKeyEvent('keydown', 112)", { 0, 0.0, 0.0, GLFW_KEY_F1, GLFW_PRESS, -1 } },
+        { "Module.injectKeyEvent('keydown', 37)", { 0, 0.0, 0.0, GLFW_KEY_LEFT, GLFW_PRESS, -1 } },
+        { "Module.injectKeyEvent('keyup', 37)", { 0, 0.0, 0.0, GLFW_KEY_LEFT, GLFW_RELEASE, -1 } },
+        { "Module.injectKeyEvent('keydown', 39)", { 0, 0.0, 0.0, GLFW_KEY_RIGHT, GLFW_PRESS, -1 } },
+        { "Module.injectKeyEvent('keyup', 39)", { 0, 0.0, 0.0, GLFW_KEY_RIGHT, GLFW_RELEASE, -1 } },
+        { "Module.injectKeyEvent('keydown', 38)", { 0, 0.0, 0.0, GLFW_KEY_UP, GLFW_PRESS, -1 } },
+        { "Module.injectKeyEvent('keyup', 38)", { 0, 0.0, 0.0, GLFW_KEY_UP, GLFW_RELEASE, -1 } },
+        { "Module.injectKeyEvent('keydown', 40)", { 0, 0.0, 0.0, GLFW_KEY_DOWN, GLFW_PRESS, -1 } },
+        { "Module.injectKeyEvent('keyup', 40)", { 0, 0.0, 0.0, GLFW_KEY_DOWN, GLFW_RELEASE, -1 } },
 
         #if USE_GLFW == 2
             { "Module.injectKeyEvent('keydown', 27)", { 0, 0.0, 0.0, GLFW_KEY_ESC, GLFW_PRESS, -1 } },

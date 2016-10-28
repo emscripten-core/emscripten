@@ -208,10 +208,10 @@ var LibraryGLFW = {
         case 0x86:return (256+24); // DOM_VK_F23 -> GLFW_KEY_F23
         case 0x87:return (256+25); // DOM_VK_F24 -> GLFW_KEY_F24
         case 0x88:return (256+26); // 0x88 (not used?) -> GLFW_KEY_F25
-        case 0x27:return (256+27); // DOM_VK_RIGHT -> GLFW_KEY_RIGHT
-        case 0x25:return (256+28); // DOM_VK_LEFT -> GLFW_KEY_LEFT
-        case 0x28:return (256+29); // DOM_VK_DOWN -> GLFW_KEY_DOWN
-        case 0x26:return (256+30); // DOM_VK_UP -> GLFW_KEY_UP
+        case 0x27:return (256+30); // DOM_VK_RIGHT -> GLFW_KEY_RIGHT
+        case 0x25:return (256+29); // DOM_VK_LEFT -> GLFW_KEY_LEFT
+        case 0x28:return (256+28); // DOM_VK_DOWN -> GLFW_KEY_DOWN
+        case 0x26:return (256+27); // DOM_VK_UP -> GLFW_KEY_UP
         case 0x10:return (256+31); // DOM_VK_SHIFT -> GLFW_KEY_LSHIFT
         // #define GLFW_KEY_RSHIFT       (GLFW_KEY_SPECIAL+32)
         case 0x11:return (256+33); // DOM_VK_CONTROL -> GLFW_KEY_LCTRL
