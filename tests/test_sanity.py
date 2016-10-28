@@ -286,6 +286,29 @@ class sanity(RunnerCore):
 
     self.check_working([EMCC, 'tests/hello_world.cpp', '-s', 'ASM_JS=0'], '''Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended''')
 
+  def test_check_engine(self):
+    restore()
+    compiler_engine = COMPILER_ENGINE
+    bogus_engine = ['/fake/inline4']
+    print compiler_engine
+    jsrun.WORKING_ENGINES = {}
+    # Test that engine check passes
+    assert jsrun.check_engine(COMPILER_ENGINE)
+    # Run it a second time (cache hit)
+    assert jsrun.check_engine(COMPILER_ENGINE)
+    # Test that engine check fails
+    assert not jsrun.check_engine(bogus_engine)
+    assert not jsrun.check_engine(bogus_engine)
+
+    # Test that run_js requires the engine
+    jsrun.run_js('hello_world.js', compiler_engine)
+    caught_exit = 0
+    try:
+      jsrun.run_js('hello_world.js', bogus_engine)
+    except SystemExit as e:
+      caught_exit = e.code
+    self.assertEqual(1, caught_exit, 'Did not catch SystemExit with bogus JS engine')
+
   def test_node(self):
     NODE_WARNING = 'node version appears too old'
     NODE_WARNING_2 = 'cannot check node version'
