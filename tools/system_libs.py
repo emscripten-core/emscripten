@@ -584,6 +584,8 @@ class Ports:
   @staticmethod
   def build_native(subdir):
     old = os.getcwd()
+    env = shared.Building.get_building_env(native=True)
+    print env
 
     try:
       os.chdir(subdir)
@@ -591,7 +593,7 @@ class Ports:
       cmake_build_type = 'Release'
 
       # Configure
-      subprocess.check_call(['cmake', '-DCMAKE_BUILD_TYPE=' + cmake_build_type, '.'])
+      subprocess.check_call(['cmake', '-DCMAKE_BUILD_TYPE=' + cmake_build_type, '.'], env=env)
 
       # Check which CMake generator CMake used so we know which form to pass parameters to make/msbuild/etc. build tool.
       generator = re.search('CMAKE_GENERATOR:INTERNAL=(.*)$', open('CMakeCache.txt', 'r').read(), re.MULTILINE).group(1)
@@ -603,7 +605,7 @@ class Ports:
       elif 'Visual Studio' in generator: make_args = ['--config', cmake_build_type, '--', '/maxcpucount:' + num_cores]
 
       # Kick off the build.
-      subprocess.check_call(['cmake', '--build', '.'] + make_args)
+      subprocess.check_call(['cmake', '--build', '.'] + make_args, env=env)
     finally:
       os.chdir(old)
 
