@@ -574,6 +574,37 @@ f.close()
     emscripten_features = '\n'.join(filter(lambda x: '***' in x, emscripten_features.split('\n')))
     self.assertTextDataIdentical(native_features, emscripten_features)
 
+  # Tests that it's possible to pass C++11 or GNU++11 build modes to CMake by building code that needs C++11 (embind)
+  def test_cmake_with_embind_cpp11_mode(self):
+    cwd = os.getcwd()
+
+    for args in [[], ['-DNO_GNU_EXTENSIONS=1']]:
+      tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
+      try:
+        os.chdir(tempdirname)
+
+        configure = ['emcmake.bat' if WINDOWS else 'emcmake', 'cmake', path_from_root('tests', 'cmake', 'cmake_with_emval')] + args
+        print str(configure)
+        subprocess.check_call(configure)
+        build = ['cmake', '--build', '.']
+        print str(build)
+        subprocess.check_call(build)
+
+        ret = Popen(NODE_JS + [os.path.join(tempdirname, 'cpp_with_emscripten_val.js')], stdout=PIPE).communicate()[0].strip()
+        if '-DNO_GNU_EXTENSIONS=1' in args:
+          self.assertTextDataIdentical('Hello! __STRICT_ANSI__: 1, __cplusplus: 201103', ret)
+        else:
+          self.assertTextDataIdentical('Hello! __STRICT_ANSI__: 0, __cplusplus: 201103', ret)
+      finally:
+        os.chdir(cwd)
+
+        # Clean up for EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS mode to be able to detect no leaks
+        try:
+          shutil.rmtree(tempdirname)
+        except:
+          time.sleep(0.1)
+          shutil.rmtree(tempdirname)
+
   # Tests that the Emscripten CMake toolchain option -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON works.
   def test_cmake_bitcode_static_libraries(self):
     if os.name == 'nt': emcmake = path_from_root('emcmake.bat')
