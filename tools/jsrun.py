@@ -44,7 +44,7 @@ def check_engine(engine):
   if engine_path in WORKING_ENGINES:
     return WORKING_ENGINES[engine_path]
   try:
-    logging.info('Checking JS engine %s' % engine)
+    logging.debug('Checking JS engine %s' % engine)
     if 'hello, world!' in run_js(os.path.join(__rootpath__, 'src', 'hello_world.js'), engine, skip_check=True):
       WORKING_ENGINES[engine_path] = True
   except Exception, e:
