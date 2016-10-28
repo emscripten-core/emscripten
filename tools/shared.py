@@ -204,7 +204,7 @@ if EM_CONFIG and not os.path.isfile(EM_CONFIG):
   if EM_CONFIG.startswith('-'):
     raise Exception('Passed --em-config without an argument. Usage: --em-config /path/to/.emscripten or --em-config EMSCRIPTEN_ROOT=/path/;LLVM_ROOT=/path;...')
   if not '=' in EM_CONFIG:
-    raise Exception('File ' + EM_CONFIG + ' passed to --em-config does not exist! Call "./emsdk activate latest" to do this for you')
+    raise Exception('File ' + EM_CONFIG + ' passed to --em-config does not exist! Call "./emsdk activate latest" to create this file for you')
   else:
     EM_CONFIG = EM_CONFIG.replace(';', '\n') + '\n'
 
