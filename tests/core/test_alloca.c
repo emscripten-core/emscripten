@@ -9,6 +9,6 @@ int main(int argc, char **argv) {
   assert(((int)pc) % 4 == 0);
   pc2 = (char *)alloca(4+argc);
   assert(((int)pc2) % 4 == 0);
-  printf("z:%d*%d*%d*\n", pc > 0, (int)pc, (int)pc2);
+  printf("z:%d*%d*%d*\n", (int)pc > 0, (int)pc, (int)pc2);
   return 0;
 }

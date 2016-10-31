@@ -606,7 +606,6 @@ int main()
     self.do_run_in_out_file_test('tests', 'core', 'test_stack')
 
   def test_stack_align(self):
-    Settings.INLINING_LIMIT = 50
     src = path_from_root('tests', 'core', 'test_stack_align.cpp')
     def test():
       self.do_run(open(src).read(), ['''align 4: 0
@@ -5737,13 +5736,6 @@ def process(filename):
     Building.llvm_dis(filename)
 
   def test_autodebug(self):
-    if self.is_wasm():
-      # Broken on V8 but not node; wasm-only
-      self.banned_js_engines = [V8_ENGINE]
-      if not self.filtered_js_engines():
-        # Return early to not run into asserts
-        return self.skip('wasm on V8 currently fails')
-
     if Building.LLVM_OPTS: return self.skip('LLVM opts mess us up')
     Building.COMPILER_TEST_OPTS += ['--llvm-opts', '0']
 
@@ -5757,7 +5749,6 @@ def process(filename):
 
     # Compare to each other, and to expected output
     self.do_ll_run(path_from_root('tests', filename+'.o.ll.ll'), '''AD:-1,1''')
-    assert open('stdout').read().startswith('AD:-1'), 'We must note when we enter functions'
 
     # Test using build_ll_hook
     src = '''
@@ -7182,6 +7173,7 @@ int main(int argc, char **argv) {
     self.do_run(open(path_from_root('tests', 'sbrk_brk.cpp')).read(), 'OK.')
 
   # Tests that we can use the dlmalloc mallinfo() function to obtain information about malloc()ed blocks and compute how much memory is used/freed.
+  @no_wasm_backend('requires EM_ASM args support in wasm backend')
   def test_mallinfo(self):
     self.do_run(open(path_from_root('tests', 'mallinfo.cpp')).read(), 'OK.')
 
