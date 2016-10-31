@@ -3,6 +3,8 @@ import time, os, sys, logging
 from subprocess import Popen, PIPE, STDOUT
 
 TRACK_PROCESS_SPAWNS = True if (os.getenv('EM_BUILD_VERBOSE') and int(os.getenv('EM_BUILD_VERBOSE')) >= 3) else False
+WORKING_ENGINES = {} # Holds all configured engines and whether they work: maps path -> True/False
+__rootpath__ = os.path.dirname(os.path.dirname(__file__))
 
 def timeout_run(proc, timeout=None, note='unnamed process', full_output=False):
   start = time.time()
@@ -33,7 +35,36 @@ def make_command(filename, engine=None, args=[]):
   # Use "'d8' in" because the name can vary, e.g. d8_g, d8, etc.
   return engine + [filename] + (['--expose-wasm', '--'] if 'd8' in jsengine or 'jsc' in jsengine else []) + args
 
-def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdout=PIPE, stderr=None, cwd=None, full_output=False, assert_returncode=0, error_limit=-1):
+
+def check_engine(engine):
+  if type(engine) is list:
+    engine_path = engine[0]
+  else:
+    engine_path = engine
+  global WORKING_ENGINES
+  if engine_path in WORKING_ENGINES:
+    return WORKING_ENGINES[engine_path]
+  try:
+    logging.debug('Checking JS engine %s' % engine)
+    if 'hello, world!' in run_js(os.path.join(__rootpath__, 'src', 'hello_world.js'), engine, skip_check=True):
+      WORKING_ENGINES[engine_path] = True
+  except Exception, e:
+    logging.info('Checking JS engine %s failed. Check your config file. Details: %s' % (str(engine), str(e)))
+    WORKING_ENGINES[engine_path] = False
+  return WORKING_ENGINES[engine_path]
+
+
+def require_engine(engine):
+  engine_path = engine[0]
+  if engine_path not in WORKING_ENGINES:
+    check_engine(engine)
+  if not WORKING_ENGINES[engine_path]:
+    logging.critical('The JavaScript shell (%s) does not seem to work, check the paths in the config file' % engine)
+    sys.exit(1)
+
+
+def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdout=PIPE, stderr=None, cwd=None,
+           full_output=False, assert_returncode=0, error_limit=-1, skip_check=False):
   #  # code to serialize out the test suite files
   #  # XXX make sure to disable memory init files, and clear out the base_dir. you may also need to manually grab e.g. paper.pdf.js from a run of test_poppler
   #  import shutil, json
@@ -53,6 +84,8 @@ def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdo
   #  commands += os.path.basename(curr) + ',' + json.dumps(args) + '\n'
   #  open(commands_file, 'w').write(commands)
 
+  if not skip_check:
+    require_engine(engine)
   command = make_command(filename, engine, args)
   try:
     if cwd is not None: os.environ['EMCC_BUILD_DIR'] = os.getcwd()
