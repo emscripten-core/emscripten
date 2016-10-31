@@ -344,7 +344,7 @@ def check_llvm_version():
   try:
     check_clang_version()
   except Exception, e:
-    logging.warning('Could not verify LLVM version: %s' % str(e))
+    logging.critical('Could not verify LLVM version: %s' % str(e))
 
 # look for emscripten-version.txt files under or alongside the llvm source dir
 def get_fastcomp_src_dir():

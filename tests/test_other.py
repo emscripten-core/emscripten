@@ -6691,7 +6691,6 @@ int main() {
       self.assertContained('''output file "%s" has a wasm suffix, but we cannot emit wasm by itself''' % f, err)
 
   def test_check_engine(self):
-    #restore()
     compiler_engine = COMPILER_ENGINE
     bogus_engine = ['/fake/inline4']
     print compiler_engine

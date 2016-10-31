@@ -1,7 +1,6 @@
 from toolchain_profiler import ToolchainProfiler
 import time, os, sys, logging
 from subprocess import Popen, PIPE, STDOUT
-import cache
 
 TRACK_PROCESS_SPAWNS = True if (os.getenv('EM_BUILD_VERBOSE') and int(os.getenv('EM_BUILD_VERBOSE')) >= 3) else False
 WORKING_ENGINES = {} # Holds all configured engines and whether they work: maps path -> True/False
