@@ -849,7 +849,6 @@ except:
   logging.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
   JAVA = 'java'
 
-
 # Additional compiler options
 
 # Target choice.
