@@ -1222,6 +1222,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if js_opts:
         shared.Settings.RUNNING_JS_OPTS = 1
 
+      if shared.Settings.RUNNING_JS_OPTS:
+        jsrun.require_engine(shared.NODE_JS)
+
       if shared.Settings.CYBERDWARF:
         newargs.append('-g')
         shared.Settings.BUNDLED_CD_DEBUG_FILE = target + ".cd"
