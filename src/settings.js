@@ -295,6 +295,11 @@ var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catc
 var EXCEPTION_CATCHING_WHITELIST = [];  // Enables catching exception in the listed functions only, if
                                         // DISABLE_EXCEPTION_CATCHING = 2 is set
 
+var NODEJS_CATCH_EXIT = 1; // If disabled than in node.js environment the exit call will not be handled correctly it
+                           // will throw an exception directly. Usefull if using C/C++ code as a library so
+                           // exceptions thrown in the JS code are not caught and rethrown which obfuscates the
+                           // original issue.
+
 // For more explanations of this option, please visit
 // https://github.com/kripken/emscripten/wiki/Asyncify
 var ASYNCIFY = 0; // Whether to enable asyncify transformation
