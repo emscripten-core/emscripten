@@ -1183,6 +1183,13 @@ class Building:
       env['CXX'] = CLANG_CPP
       env['LD'] = CLANG
       env['CFLAGS'] = '-O2 -fno-math-errno'
+      # get a non-native one, and see if we have some of its effects - remove them if so
+      non_native = Building.get_building_env()
+      # the ones that a non-native would modify
+      EMSCRIPTEN_MODIFIES = ['LDSHARED', 'AR', 'CROSS_COMPILE', 'NM', 'RANLIB']
+      for dangerous in EMSCRIPTEN_MODIFIES:
+        if env.get(dangerous) and env.get(dangerous) == non_native.get(dangerous):
+          del env[dangerous] # better to delete it than leave it, as the non-native one is definitely wrong
       return env
     env['CC'] = EMCC if not WINDOWS else 'python %r' % EMCC
     env['CXX'] = EMXX if not WINDOWS else 'python %r' % EMXX

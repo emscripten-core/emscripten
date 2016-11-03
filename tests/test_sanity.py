@@ -955,13 +955,26 @@ fi
   def test_binaryen(self):
     import tools.ports.binaryen as binaryen
     tag_file = Cache.get_path('binaryen_tag_' + binaryen.TAG + '.txt')
-    try_delete(tag_file)
-    # if BINARYEN_ROOT is set, we don't build the port. Check we do built it if not
-    restore()
-    config = open(CONFIG_FILE).read()
-    config = config.replace('BINARYEN_ROOT', '#')
-    open(CONFIG_FILE, 'w').write(config)
+    def prep():
+      wipe()
+      self.do([PYTHON, EMCC, '--clear-ports'])
+      try_delete(tag_file)
+      # if BINARYEN_ROOT is set, we don't build the port. Check we do built it if not
+      restore()
+      config = open(CONFIG_FILE).read()
+      config = config.replace('BINARYEN_ROOT', '#')
+      open(CONFIG_FILE, 'w').write(config)
+
+    print 'build using embuilder'
+    prep()
     subprocess.check_call([PYTHON, 'embuilder.py', 'build', 'binaryen'])
     assert os.path.exists(tag_file)
     subprocess.check_call([PYTHON, 'emcc.py', 'tests/hello_world.c', '-s', 'BINARYEN=1'])
     self.assertContained('hello, world!', run_js('a.out.js'))
+
+    print 'see if building with emmake works (should not break native compilation of binaryen port'
+    prep()
+    subprocess.check_call([PYTHON, 'emmake.py', EMCC, 'tests/hello_world.c', '-s', 'BINARYEN=1'])
+    assert os.path.exists(tag_file)
+    self.assertContained('hello, world!', run_js('a.out.js'))
+
