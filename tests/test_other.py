@@ -583,7 +583,7 @@ f.close()
       try:
         os.chdir(tempdirname)
 
-        configure = ['emcmake.bat' if WINDOWS else 'emcmake', 'cmake', path_from_root('tests', 'cmake', 'cmake_with_emval')] + args
+        configure = [path_from_root('emcmake.bat' if WINDOWS else 'emcmake'), 'cmake', path_from_root('tests', 'cmake', 'cmake_with_emval')] + args
         print str(configure)
         subprocess.check_call(configure)
         build = ['cmake', '--build', '.']
