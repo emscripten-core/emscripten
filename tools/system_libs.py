@@ -585,7 +585,6 @@ class Ports:
   def build_native(subdir):
     old = os.getcwd()
     env = shared.Building.get_building_env(native=True)
-    print env
 
     try:
       os.chdir(subdir)
