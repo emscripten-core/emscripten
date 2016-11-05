@@ -72,19 +72,20 @@ var currentScriptUrl = ENVIRONMENT_IS_WORKER ? undefined : document.currentScrip
 #endif
 
 #if EMTERPRETIFY_ASYNC
-Module['notifyAbout'] = function(identifier) {
-  if (!EmterpreterAsync.blocking_events.hasOwnProperty(identifier)) {
-    EmterpreterAsync.blocking_events[identifier] = {};
-    EmterpreterAsync.blocking_events[identifier].notify_count = 0;
+Module.emterpreter = {};
+Module.emterpreter['notifyAbout'] = function(identifier) {
+  if (!EmterpreterAsync.blockingEvents.hasOwnProperty(identifier)) {
+    EmterpreterAsync.blockingEvents[identifier] = {};
+    EmterpreterAsync.blockingEvents[identifier].notify_count = 0;
   }
 
-  if (EmterpreterAsync.blocking_events[identifier].notify_count == -1) {
-    var resume = EmterpreterAsync.blocking_events[identifier].raw_resume_handler;
-    EmterpreterAsync.blocking_events[identifier].notify_count = 0;
-    EmterpreterAsync.blocking_events[identifier].raw_resume_handler = undefined;
+  if (EmterpreterAsync.blockingEvents[identifier].notify_count == -1) {
+    var resume = EmterpreterAsync.blockingEvents[identifier].raw_resume_handler;
+    EmterpreterAsync.blockingEvents[identifier].notify_count = 0;
+    EmterpreterAsync.blockingEvents[identifier].raw_resume_handler = undefined;
     resume();
   } else {
-    EmterpreterAsync.blocking_events[identifier].notify_count += 1;
+    EmterpreterAsync.blockingEvents[identifier].notify_count += 1;
   }
 };
 #endif

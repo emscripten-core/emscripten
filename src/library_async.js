@@ -215,7 +215,7 @@ mergeInto(LibraryManager.library, {
     yieldCallbacks: [],
     postAsync: null,
     asyncFinalizers: [], // functions to run when all asynchronicity is done
-    blocking_events: {},
+    blockingEvents: {},
 
     ensureInit: function() {
       if (this.initted) return;
@@ -345,22 +345,22 @@ mergeInto(LibraryManager.library, {
     }, true);
   },
 
-  emscripten_block_on__deps: ['$EmterpreterAsync'],
-  emscripten_block_on: function(identifier) {
+  emscripten_emterpreter_block_on__deps: ['$EmterpreterAsync'],
+  emscripten_emterpreter_block_on: function(identifier) {
     identifier = Pointer_stringify(identifier);
     EmterpreterAsync.handle(function(resume) {
-      if (!EmterpreterAsync.blocking_events.hasOwnProperty(identifier)) {
-        EmterpreterAsync.blocking_events[identifier] = {};
-        EmterpreterAsync.blocking_events[identifier].notify_count = 0;
+      if (!EmterpreterAsync.blockingEvents.hasOwnProperty(identifier)) {
+        EmterpreterAsync.blockingEvents[identifier] = {};
+        EmterpreterAsync.blockingEvents[identifier].notify_count = 0;
       }
 
       // ASSERT: notify_count != -1 (...because we're running somehow!)
-      if (EmterpreterAsync.blocking_events[identifier].notify_count == 0) {
-        EmterpreterAsync.blocking_events[identifier].notify_count = -1;
-        EmterpreterAsync.blocking_events[identifier].raw_resume_handler = resume;
+      if (EmterpreterAsync.blockingEvents[identifier].notify_count == 0) {
+        EmterpreterAsync.blockingEvents[identifier].notify_count = -1;
+        EmterpreterAsync.blockingEvents[identifier].raw_resume_handler = resume;
       } else {
-        EmterpreterAsync.blocking_events[identifier].notify_count -= 1;
-        EmterpreterAsync.blocking_events[identifier].raw_resume_handler = undefined;
+        EmterpreterAsync.blockingEvents[identifier].notify_count -= 1;
+        EmterpreterAsync.blockingEvents[identifier].raw_resume_handler = undefined;
         resume();
       }
     }, true);
