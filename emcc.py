@@ -2021,6 +2021,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           import_mem_init = memory_init_file and os.path.exists(memfile) and 'asmjs' not in shared.Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD
           if import_mem_init:
             cmd += ['--mem-init=' + memfile]
+            if not shared.Settings.RELOCATABLE:
+              cmd += ['--mem-base=' + str(shared.Settings.GLOBAL_BASE)]
           if shared.Building.is_wasm_only():
             cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, an can contain special fastcomp-wasm support
           logging.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
