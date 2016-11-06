@@ -1480,6 +1480,8 @@ LibraryManager.library = {
   llvm_sin_f64: 'Math_sin',
   llvm_trunc_f32: 'Math_trunc',
   llvm_trunc_f64: 'Math_trunc',
+  llvm_ceil_f32: 'Math_ceil',
+  llvm_ceil_f64: 'Math_ceil',
   llvm_floor_f32: 'Math_floor',
   llvm_floor_f64: 'Math_floor',
   llvm_round_f32: 'Math_round',
