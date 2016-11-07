@@ -208,10 +208,10 @@ var LibraryGLFW = {
         case 0x86:return (256+24); // DOM_VK_F23 -> GLFW_KEY_F23
         case 0x87:return (256+25); // DOM_VK_F24 -> GLFW_KEY_F24
         case 0x88:return (256+26); // 0x88 (not used?) -> GLFW_KEY_F25
-        case 0x27:return (256+27); // DOM_VK_RIGHT -> GLFW_KEY_RIGHT
-        case 0x25:return (256+28); // DOM_VK_LEFT -> GLFW_KEY_LEFT
-        case 0x28:return (256+29); // DOM_VK_DOWN -> GLFW_KEY_DOWN
-        case 0x26:return (256+30); // DOM_VK_UP -> GLFW_KEY_UP
+        case 0x27:return (256+30); // DOM_VK_RIGHT -> GLFW_KEY_RIGHT
+        case 0x25:return (256+29); // DOM_VK_LEFT -> GLFW_KEY_LEFT
+        case 0x28:return (256+28); // DOM_VK_DOWN -> GLFW_KEY_DOWN
+        case 0x26:return (256+27); // DOM_VK_UP -> GLFW_KEY_UP
         case 0x10:return (256+31); // DOM_VK_SHIFT -> GLFW_KEY_LSHIFT
         // #define GLFW_KEY_RSHIFT       (GLFW_KEY_SPECIAL+32)
         case 0x11:return (256+33); // DOM_VK_CONTROL -> GLFW_KEY_LCTRL
@@ -408,6 +408,20 @@ var LibraryGLFW = {
 #endif
     },
 
+    DOMToGLFWMouseButton: function(event) {
+      // DOM and glfw have different button codes.
+      // See http://www.w3schools.com/jsref/event_button.asp.
+      var eventButton = event['button'];
+      if (eventButton > 0) {
+        if (eventButton == 1) {
+          eventButton = 2;
+        } else {
+          eventButton = 1;
+        }
+      }
+      return eventButton;
+    },
+
     onMouseenter: function(event) {
       if (!GLFW.active) return;
 
@@ -435,20 +449,15 @@ var LibraryGLFW = {
 
       if (event.target != Module["canvas"]) return;
 
+      eventButton = GLFW.DOMToGLFWMouseButton(event);
+
       if (status == 1) { // GLFW_PRESS
+        GLFW.active.buttons |= (1 << eventButton);
         try {
           event.target.setCapture();
         } catch (e) {}
-      }
-
-      // DOM and glfw have different button codes
-      var eventButton = event['button'];
-      if (eventButton > 0) {
-        if (eventButton == 1) {
-          eventButton = 2;
-        } else {
-          eventButton = 1;
-        }
+      } else {  // GLFW_RELEASE
+        GLFW.active.buttons &= ~(1 << eventButton);
       }
 
 #if USE_GLFW == 2
@@ -462,13 +471,11 @@ var LibraryGLFW = {
 
     onMouseButtonDown: function(event) {
       if (!GLFW.active) return;
-      GLFW.active.buttons |= (1 << event['button']);
       GLFW.onMouseButtonChanged(event, 1); // GLFW_PRESS
     },
 
     onMouseButtonUp: function(event) {
       if (!GLFW.active) return;
-      GLFW.active.buttons &= ~(1 << event['button']);
       GLFW.onMouseButtonChanged(event, 0); // GLFW_RELEASE
     },
 
