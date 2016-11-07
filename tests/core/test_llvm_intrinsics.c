@@ -21,6 +21,8 @@ extern float llvm_ceil_f32(float x);
 extern double llvm_ceil_f64(double x);
 extern float llvm_floor_f32(float x);
 extern double llvm_floor_f64(double x);
+extern float llvm_cos_f32(float x);
+extern double llvm_cos_f64(double x);
 extern float llvm_sin_f32(float x);
 extern double llvm_sin_f64(double x);
 extern float llvm_exp2_f32(float x);
@@ -82,6 +84,8 @@ int main(void) {
   printf("%d\n", (int)llvm_trunc_f64(-12.42));
   printf("%d\n", (int)llvm_floor_f32(27.665f));
   printf("%d\n", (int)llvm_floor_f64(-8.95));
+  printf("%.1f\n", llvm_cos_f32(0.0f * 3.14/180));
+  printf("%.1f\n", llvm_cos_f64(180.0 * 3.14/180));
   printf("%.1f\n", llvm_sin_f32(90.0f * 3.14/180));
   printf("%.1f\n", llvm_sin_f64(270.0 * 3.14/180));
 
