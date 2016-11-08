@@ -85,11 +85,9 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run_in_out_file_test('tests', 'core', 'test_sintvars',
                                    force_c=True)
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_i64(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_i64_2(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_2')
 
@@ -101,29 +99,24 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_4')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_i64_b(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_b')
 
   def test_i64_cmp(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_cmp')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_i64_cmp2(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_cmp2')
 
   def test_i64_double(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_double')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_i64_umul(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_umul')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_i64_precise(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_i64_precise_unneeded(self):
       # Verify that even if we ask for precision, if it is not needed it is not included
       Settings.PRECISE_I64_MATH = 1
@@ -132,13 +125,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
       assert 'goog.math.Long' not in code, 'i64 precise math should never be included, musl does its own printfing'
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_i64_precise_needed(self):
       # and now one where we do
       Settings.PRECISE_I64_MATH = 1
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise_needed')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_i64_llabs(self):
     Settings.PRECISE_I64_MATH = 2
 
@@ -165,7 +156,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_vararg_copy(self):
     self.do_run_in_out_file_test('tests', 'va_arg', 'test_va_copy')
 
-  @no_wasm_backend('printf is truncating the output of really big doubles')
   def test_llvm_fabs(self):
     Settings.PRECISE_F32 = 1
     self.do_run_in_out_file_test('tests', 'core', 'test_llvm_fabs')
@@ -207,7 +197,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
     self.do_run_in_out_file_test('tests', 'core', 'test_llvm_intrinsics')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_bswap64(self):
     test_path = path_from_root('tests', 'core', 'test_bswap64')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -480,7 +469,6 @@ int main()
   def test_bitfields(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_bitfields')
 
-  @no_wasm_backend('printf is incorrectly handling float values')
   def test_floatvars(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_floatvars')
 
@@ -499,7 +487,6 @@ int main()
   def test_zero_multiplication(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_zero_multiplication')
 
-  @no_wasm_backend('printf is incorrectly handling float values')
   def test_isnan(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_isnan')
 
@@ -529,7 +516,6 @@ int main()
         Settings.MAIN_MODULE = 1
         self.do_run_from_file(src, output)
 
-  @no_wasm_backend('frexp seems to be failing. printf relies on frexp for float formatting, so that probably causes the print failure')
   def test_frexp(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_frexp')
 
@@ -543,7 +529,6 @@ int main()
   def test_fcvt(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_fcvt')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_llrint(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_llrint')
 
@@ -3885,7 +3870,6 @@ Have even and odd!
   def test_strtok(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strtok')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_parseInt(self):
     src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
@@ -3906,7 +3890,6 @@ Have even and odd!
   def test_printf_float(self):
     self.do_run_in_out_file_test('tests', 'printf', 'test_float')
 
-  @no_wasm_backend('printf is truncating octal numbers at the first digit')
   def test_printf_octal(self):
     self.do_run_in_out_file_test('tests', 'printf', 'test_octal')
 
@@ -3916,7 +3899,6 @@ Have even and odd!
   def test_vsnprintf(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_vsnprintf')
 
-  @no_wasm_backend('printf is incorrectly handling float values')
   def test_printf_more(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_printf_more')
 
@@ -4013,7 +3995,6 @@ Pass: 0.000012 0.000012''')
 
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_other_whitespace')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_sscanf_3(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_3')
 
@@ -4307,7 +4288,6 @@ def process(filename):
     expected = open(path_from_root('tests', 'fcntl', 'output.txt'), 'r').read()
     self.do_run(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
-  @no_wasm_backend('printf is truncating octal numbers at the first digit')
   def test_fcntl_open(self):
     src = open(path_from_root('tests', 'fcntl-open', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'fcntl-open', 'output.txt'), 'r').read()
@@ -6860,9 +6840,8 @@ Module.printErr = Module['printErr'] = function(){};
 Success!
 ''')
 
-  @no_wasm_backend()
   def test_float_literals(self):
-    self.do_run_from_file(path_from_root('tests', 'test_float_literals.cpp'), path_from_root('tests', 'test_float_literals.out'))
+    self.do_run_in_out_file_test('tests', 'test_float_literals')
 
   def test_exit_status(self):
     src = r'''
