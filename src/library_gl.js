@@ -2979,7 +2979,7 @@ var LibraryGL = {
       view = new Float32Array(view);
 #endif
     }
-    GLctx.uniformMatrix2fv(location, transpose, view);
+    GLctx.uniformMatrix2fv(location, !!transpose, view);
   },
 
   glUniformMatrix3fv__sig: 'viiii',
@@ -3011,7 +3011,7 @@ var LibraryGL = {
       view = new Float32Array(view);
 #endif
     }
-    GLctx.uniformMatrix3fv(location, transpose, view);
+    GLctx.uniformMatrix3fv(location, !!transpose, view);
   },
 
   glUniformMatrix4fv__sig: 'viiii',
@@ -3050,7 +3050,7 @@ var LibraryGL = {
       view = new Float32Array(view);
 #endif
     }
-    GLctx.uniformMatrix4fv(location, transpose, view);
+    GLctx.uniformMatrix4fv(location, !!transpose, view);
   },
 
 #if USE_WEBGL2
@@ -7256,7 +7256,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateVertexAttribPointer(size, type, stride, ptr);
 #endif
-    GLctx.vertexAttribPointer(index, size, type, normalized, stride, ptr);
+    GLctx.vertexAttribPointer(index, size, type, !!normalized, stride, ptr);
   },
 
 #if USE_WEBGL2
@@ -7459,6 +7459,23 @@ var LibraryGL = {
 
   glDrawBuffersEXT: 'glDrawBuffers',
 
+  // passthrough functions with GLboolean parameters
+
+  glColorMask__sig: 'viiii',
+  glColorMask: function(red, green, blue, alpha) {
+    GLctx.colorMask(!!red, !!green, !!blue, !!alpha);
+  },
+
+  glDepthMask__sig: 'vi',
+  glDepthMask: function(flag) {
+    GLctx.depthMask(!!flag);
+  },
+
+  glSampleCoverage__sig: 'vii',
+  glSampleCoverage: function(value, invert) {
+    GLctx.sampleCoverage(value, !!invert);
+  },
+
   // signatures of simple pass-through functions, see later
 
   glActiveTexture__sig: 'vi',
@@ -7478,12 +7495,10 @@ var LibraryGL = {
   glBlendFuncSeparate__sig: 'viiii',
   glBlendColor__sig: 'vffff',
   glPolygonOffset__sig: 'vii',
-  glColorMask__sig: 'viiii',
   glStencilOp__sig: 'viii',
   glStencilOpSeparate__sig: 'viiii',
   glGenerateMipmap__sig: 'vi',
   glHint__sig: 'vii',
-  glDepthMask__sig: 'vi',
   glViewport__sig: 'viiii',
   glDepthFunc__sig: 'vi',
   glStencilMask__sig: 'vi',
@@ -7494,7 +7509,6 @@ var LibraryGL = {
   glClearColor__sig: 'viiii',
   glIsEnabled__sig: 'ii',
   glFrontFace__sig: 'vi',
-  glSampleCoverage__sig: 'vii',
 #if USE_WEBGL2
   glVertexAttribI4i__sig: 'viiiii',
   glVertexAttribI4ui__sig: 'viiiii',
@@ -7516,10 +7530,10 @@ var LibraryGL = {
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
 var glFuncs = [[0, 'finish flush'],
- [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil depthMask stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation isEnabled*'],
- [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset vertexAttrib1f sampleCoverage'],
+ [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation isEnabled*'],
+ [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset vertexAttrib1f'],
  [3, 'texParameteri texParameterf vertexAttrib2f stencilFunc stencilOp'],
- [4, 'viewport clearColor scissor vertexAttrib3f colorMask renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
+ [4, 'viewport clearColor scissor vertexAttrib3f renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
  [5, 'vertexAttrib4f'],
  [6, ''],
  [7, ''],
