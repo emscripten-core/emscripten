@@ -67,7 +67,7 @@ mergeInto(LibraryManager.library, {
       } else if (FS.isFile(node.mode)) {
         node.node_ops = MEMFS.ops_table.file.node;
         node.stream_ops = MEMFS.ops_table.file.stream;
-        node.usedBytes = 0; // The actual number of bytes used in the typed array, as opposed to contents.buffer.byteLength which gives the whole capacity.
+        node.usedBytes = 0; // The actual number of bytes used in the typed array, as opposed to contents.length which gives the whole capacity.
         // When the byte data of the file is populated, this will point to either a typed array, or a normal JS array. Typed arrays are preferred
         // for performance, and used by default. However, typed arrays are not resizable like normal JS arrays are, so there is a small disk size
         // penalty involved for appending file writes that continuously grow a file similar to std::vector capacity vs used -scheme.
@@ -119,7 +119,7 @@ mergeInto(LibraryManager.library, {
 #endif
 
       if (!node.contents || node.contents.subarray) { // Keep using a typed array if creating a new storage, or if old one was a typed array as well.
-        var prevCapacity = node.contents ? node.contents.buffer.byteLength : 0;
+        var prevCapacity = node.contents ? node.contents.length : 0;
         if (prevCapacity >= newCapacity) return; // No need to expand, the storage was already large enough.
         // Don't expand strictly to the given requested limit if it's only a very small increase, but instead geometrically grow capacity.
         // For small filesizes (<1MB), perform size*2 geometric increase, but for large sizes, do a much more conservative size*1.125 increase to
@@ -274,6 +274,9 @@ mergeInto(LibraryManager.library, {
       },
 
       // Writes the byte range (buffer[offset], buffer[offset+length]) to offset 'position' into the file pointed by 'stream'
+      // canOwn: A boolean that tells if this function can take ownership of the passed in buffer from the subbuffer portion
+      //         that the typed array view 'buffer' points to. The underlying ArrayBuffer can be larger than that, but
+      //         canOwn=true will not take ownership of the portion outside the bytes addressed by the view.
       write: function(stream, buffer, offset, length, position, canOwn) {
         if (!length) return 0;
         var node = stream.node;
