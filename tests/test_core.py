@@ -5222,7 +5222,6 @@ return malloc(size);
 
     self.do_run(open(path_from_root('third_party', 'gcc_demangler.c')).read(), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
 
-  @no_wasm_backend()
   def test_lua(self):
     if self.emcc_args: self.emcc_args = ['-g1'] + self.emcc_args
 
@@ -5306,7 +5305,6 @@ def process(filename):
                  ['font.ttf', 'ea', '40', '32', '0'],
                  no_build=True)
 
-  @no_wasm_backend()
   def test_sqlite(self):
     # gcc -O3 -I/home/alon/Dev/emscripten/tests/sqlite -ldl src.c
     self.banned_js_engines = [NODE_JS] # OOM in older node
@@ -5355,7 +5353,6 @@ def process(filename):
                  includes=[path_from_root('tests', 'zlib'), os.path.join(self.get_dir(), 'building', 'zlib')],
                  force_c=True)
 
-  @no_wasm_backend()
   def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
     Settings.DEAD_FUNCTIONS = ['__ZSt9terminatev']
 

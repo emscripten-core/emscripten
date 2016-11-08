@@ -134,8 +134,6 @@ if (EMSCRIPTEN_FORCE_COMPILERS)
 	set(CMAKE_CXX_COMPILER_ID Clang)
 	set(CMAKE_CXX_STANDARD_COMPUTED_DEFAULT 98)
 
-	set(CMAKE_C_COMPILER_TARGET "asmjs-unknown-emscripten")
-	set(CMAKE_CXX_COMPILER_TARGET "asmjs-unknown-emscripten")
 	set(CMAKE_C_PLATFORM_ID "emscripten")
 	set(CMAKE_CXX_PLATFORM_ID "emscripten")
 
