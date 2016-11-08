@@ -84,8 +84,6 @@ def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdo
   #  commands += os.path.basename(curr) + ',' + json.dumps(args) + '\n'
   #  open(commands_file, 'w').write(commands)
 
-  if not skip_check:
-    require_engine(engine)
   command = make_command(filename, engine, args)
   try:
     if cwd is not None: os.environ['EMCC_BUILD_DIR'] = os.getcwd()
@@ -95,16 +93,31 @@ def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdo
         stdout=stdout,
         stderr=stderr,
         cwd=cwd)
+  except Exception, e:
+    # the failure may be because the engine is not present. show the proper
+    # error in that case
+    if not skip_check:
+      require_engine(engine)
+    # if we got here, then require_engine succeeded, so we can raise the original error
+    raise e
   finally:
     if cwd is not None: del os.environ['EMCC_BUILD_DIR']
   timeout = 15*60 if check_timeout else None
   if TRACK_PROCESS_SPAWNS:
     logging.info('Blocking on process ' + str(proc.pid) + ': ' + str(command) + (' for ' + str(timeout) + ' seconds' if timeout else ' until it finishes.'))
-  ret = timeout_run(
-    proc,
-    timeout,
-    'Execution',
-    full_output=full_output)
+  try:
+    ret = timeout_run(
+      proc,
+      timeout,
+      'Execution',
+      full_output=full_output)
+  except Exception, e:
+    # the failure may be because the engine does not work. show the proper
+    # error in that case
+    if not skip_check:
+      require_engine(engine)
+    # if we got here, then require_engine succeeded, so we can raise the original error
+    raise e
   if assert_returncode is not None and proc.returncode is not assert_returncode:
     raise Exception('Expected the command ' + str(command) + ' to finish with return code ' + str(assert_returncode) + ', but it returned with code ' + str(proc.returncode) + ' instead! Output: ' + str(ret)[:error_limit])
   return ret
