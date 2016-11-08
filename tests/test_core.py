@@ -625,7 +625,6 @@ base align: 0, 0, 0, 0'''])
     ensure_stack_restore_count('function _alloca_gets_restored', 1)
     ensure_stack_restore_count('function _stack_usage', 1)
 
-  @no_wasm_backend('for some reasons emscripten_asm_const_ii gets called? and has a bogus memory address that causes a trap')
   def test_strings(self):
       test_path = path_from_root('tests', 'core', 'test_strings')
       src, output = (test_path + s for s in ('.c', '.out'))
@@ -744,7 +743,6 @@ base align: 0, 0, 0, 0'''])
   def test_libcextra(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_libcextra')
 
-  @no_wasm_backend('for some reasons emscripten_asm_const_ii gets called? and has a bogus memory address that causes a trap')
   def test_regex(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_regex')
 
@@ -1496,7 +1494,7 @@ int main() {
 
     self.do_run_in_out_file_test('tests', 'core', 'test_set_align')
 
-  @no_wasm_backend('sscanf seems to be rewriting local variables')
+  @no_wasm_backend('printf is incorrectly handling float values')
   def test_emscripten_api(self):
       check = '''
 def process(filename):
@@ -3921,11 +3919,11 @@ Have even and odd!
       print 'flip assertions off'
     self.do_run_in_out_file_test('tests', 'core', 'fnmatch')
 
-  @no_wasm_backend('sscanf seems to be rewriting local variables')
+  @no_wasm_backend('sscanf seems to be misreading float values')
   def test_sscanf(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf')
 
-  @no_wasm_backend('sscanf seems to be rewriting local variables')
+  @no_wasm_backend('sscanf seems to be misreading float values')
   def test_sscanf_2(self):
     # doubles
     for ftype in ['float', 'double']:
@@ -3981,15 +3979,12 @@ Pass: 123456.789000 123456.789000
 Pass: 0.000012 0.000012
 Pass: 0.000012 0.000012''')
 
-  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_n(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_n')
 
-  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_whitespace(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_whitespace')
 
-  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_other_whitespace(self):
     Settings.SAFE_HEAP = 0 # use i16s in printf
 
@@ -4004,22 +3999,20 @@ Pass: 0.000012 0.000012''')
   def test_sscanf_5(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_5')
 
-  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_6(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_6')
 
   def test_sscanf_skip(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_skip')
 
-  @no_wasm_backend('sscanf seems to be rewriting local variables')
+  @no_wasm_backend('sscanf seems to be misreading float values')
   def test_sscanf_caps(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_caps')
 
-  @no_wasm_backend('for some reasons emscripten_asm_const_ii gets called? and has a bogus memory address that causes a trap')
   def test_sscanf_hex(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_hex')
 
-  @no_wasm_backend('sscanf seems to be rewriting local variables')
+  @no_wasm_backend('sscanf seems to be misreading float values')
   def test_sscanf_float(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_float')
 
