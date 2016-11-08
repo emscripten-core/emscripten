@@ -1982,7 +1982,6 @@ The current type of b is: 9
       generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
       print >> sys.stderr, 'skipping C/C++ conventions warning check, since not i386-pc-linux-gnu'
 
-  @no_wasm_backend('qsort is sorting improperly')
   def test_stdlibs(self):
       # safe heap prints a warning that messes up our output.
       Settings.SAFE_HEAP = 0
@@ -2151,6 +2150,7 @@ The current type of b is: 9
   def test_bsearch(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_bsearch')
 
+  @no_wasm_backend("wasm backend has no support for fastcomp's -emscripten-assertions flag")
   def test_stack_overflow(self):
     Settings.ASSERTIONS = 1
     self.do_run(open(path_from_root('tests', 'core', 'stack_overflow.cpp')).read(), 'Stack overflow!')
@@ -4021,7 +4021,6 @@ Pass: 0.000012 0.000012''')
     expected = open(path_from_root('tests', 'langinfo', 'output.txt'), 'r').read()
     self.do_run(src, expected, extra_emscripten_args=['-H', 'libc/langinfo.h'])
 
-  @no_wasm_backend('Does not dump .mem file')
   def test_files(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # closure can generate variables called 'gc', which pick up js shell stuff
     if '-O2' in self.emcc_args and not self.is_wasm():
@@ -4286,7 +4285,6 @@ def process(filename):
     expected = open(path_from_root('tests', 'fcntl-open', 'output.txt'), 'r').read()
     self.do_run(src, expected, force_c=True, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
-  @no_wasm_backend()
   def test_fcntl_misc(self):
     add_pre_run = '''
 def process(filename):
@@ -5189,7 +5187,6 @@ return malloc(size);
     src, output = (test_path + s for s in ('.cpp', '.txt'))
     self.do_run_from_file(src, output)
 
-  @no_wasm_backend()
   def test_gcc_unmangler(self):
     Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('third_party')]
 
@@ -5561,7 +5558,7 @@ def process(filename):
       Settings.ALLOW_MEMORY_GROWTH = 0
       do_test()
 
-  @no_wasm_backend()
+  @no_wasm_backend('unknown relocation: $environ')
   def test_python(self):
     Settings.EMULATE_FUNCTION_POINTER_CASTS = 1
 
@@ -7146,7 +7143,7 @@ int main(int argc, char **argv) {
       self.emcc_args += ['--pre-js', 'pre.js']
       self.do_run('', 'object\nobject\nobject')
 
-  @no_wasm_backend()
+  @no_wasm_backend("wasm backend has no support for fastcomp's -emscripten-assertions flag")
   def test_stack_overflow_check(self):
     args = self.emcc_args + ['-s', 'TOTAL_STACK=1048576']
     self.emcc_args = args + ['-s', 'STACK_OVERFLOW_CHECK=1', '-s', 'ASSERTIONS=0']
