@@ -12,6 +12,7 @@
 /* Make malloc() and free() threadsafe by securing the memory allocations with pthread mutexes. */
 #if __EMSCRIPTEN_PTHREADS__
 #define USE_LOCKS 1
+#define USE_RECURSIVE_LOCKS 1
 #define USE_SPIN_LOCKS 0 // Ensure we use pthread_mutex_t.
 #endif
 
