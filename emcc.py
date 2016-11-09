@@ -1732,7 +1732,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               if shared.Settings.PRECISE_F32:
                 passes = ['asmPreciseF32'] + passes
               if (emit_symbol_map or shared.Settings.CYBERDWARF) and 'minifyNames' in passes:
-                passes += ['symbolMap='+target+'.symbols']
+                passes += ['symbolMap=' + target + '.symbols']
               if profiling_funcs and 'minifyNames' in passes:
                 passes += ['profilingFuncs']
               if JSOptimizer.minify_whitespace and 'last' in passes:
@@ -2040,7 +2040,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           subprocess.check_call(cmd)
         if 'native-wasm' in shared.Settings.BINARYEN_METHOD or 'interpret-binary' in shared.Settings.BINARYEN_METHOD:
           cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
-          if debug_level >= 2 or profiling_funcs: cmd += ['-g']
+          if debug_level >= 2 or profiling_funcs:
+            cmd += ['-g']
+          if emit_symbol_map or shared.Settings.CYBERDWARF:
+            cmd += ['--symbolmap=' + target + '.symbols']
           logging.debug('wasm-as (text => binary): ' + ' '.join(cmd))
           subprocess.check_call(cmd)
         if shared.Settings.BINARYEN_SCRIPTS:
