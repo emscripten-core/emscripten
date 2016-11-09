@@ -6122,6 +6122,30 @@ def process(filename):
 
     self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks')
 
+  @no_emterpreter
+  @no_wasm_backend()
+  def test_demangle_stacks_symbol_map(self):
+    Settings.DEMANGLE_SUPPORT = 1
+    if '-O' in str(self.emcc_args):
+      self.emcc_args += ['--llvm-opts', '0']
+    self.emcc_args += ['--emit-symbol-map']
+    self.do_run(open(path_from_root('tests', 'core', 'test_demangle_stacks.c')).read(), 'abort')
+    # make sure the shortened name is the right one
+    symbols = open('src.cpp.o.js.symbols').read().split(os.linesep)
+    for line in symbols:
+      if ':' not in line: continue
+      short, full = line.split(':')
+      if 'Aborter' in full:
+        short_aborter = short
+        full_aborter = full
+    if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]):
+      output = run_js('src.cpp.o.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True, assert_returncode=None)
+      # we may see the full one, if -g, or the short one if not
+      if ' ' + short_aborter + ' ' not in output and ' ' + full_aborter + ' ' not in output:
+        # stack traces may also be ' name ' or 'name@' etc
+        if '\n' + short_aborter + ' ' not in output and '\n' + full_aborter + ' ' not in output and 'wasm-function[' + short_aborter + ']' not in output:
+          self.assertContained(' ' + short_aborter + ' ' + '\n' + ' ' + full_aborter + ' ', output)
+
   def test_tracing(self):
     Building.COMPILER_TEST_OPTS += ['--tracing']
 
