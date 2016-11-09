@@ -5327,7 +5327,6 @@ def process(filename):
                  includes=[path_from_root('tests', 'sqlite')],
                  force_c=True)
 
-  @no_wasm_backend()
   def test_zlib(self):
     if '-O2' in self.emcc_args and 'ASM_JS=0' not in self.emcc_args and not self.is_wasm(): # without asm, closure minifies Math.imul badly
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
