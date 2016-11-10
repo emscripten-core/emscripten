@@ -320,7 +320,16 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
     # memory and global initializers
 
-    global_initializers = str(', '.join(map(lambda i: '{ func: function() { %s() } }' % i, metadata['initializers'])))
+    initializers_list = metadata['initializers']
+
+    # make sure embind's global initializer is at the end of the list
+    # fixes problems with dependent types resolution order
+    # see https://github.com/kripken/emscripten/issues/3436
+    embind_global_initializer_name = "__GLOBAL__sub_I_bind_cpp"
+    if(embind_global_initializer_name in initializers_list):
+        embind_initializer_index = initializers_list.index(embind_global_initializer_name)
+        initializers_list.append(initializers_list.pop(embind_initializer_index))
+    global_initializers = str(', '.join(map(lambda i: '{ func: function() { %s() } }' % i, initializers_list)))
 
     if settings['SIMD'] == 1:
       pre = open(path_from_root(os.path.join('src', 'ecmascript_simd.js'))).read() + '\n\n' + pre
