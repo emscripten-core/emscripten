@@ -928,7 +928,10 @@ COMPILER_OPTS = COMPILER_OPTS + [#'-fno-threadsafe-statics', # disabled due to i
 if LLVM_TARGET == WASM_TARGET:
   # wasm target does not automatically define emscripten stuff, so do it here.
   COMPILER_OPTS = COMPILER_OPTS + ['-DEMSCRIPTEN',
-                                   '-D__EMSCRIPTEN__']
+                                   '-D__EMSCRIPTEN__',
+                                   '-Dunix',
+                                   '-D__unix',
+                                   '-D__unix__']
 
 # Changes to default clang behavior
 
