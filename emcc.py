@@ -1306,7 +1306,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           args += shared.EMSDK_CXX_OPTS
         if not shared.Building.can_inline():
           args.append('-fno-inline-functions')
-        args += ['-Dunix', '-D__unix', '-D__unix__']
         args = system_libs.process_args(args, shared.Settings)
         return args
 
