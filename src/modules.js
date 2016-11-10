@@ -120,6 +120,7 @@ var LibraryManager = {
         libraries = libraries.concat([
           'library_idbfs.js',
           'library_nodefs.js',
+          'library_proxyfs.js',
           'library_sockfs.js',
           'library_workerfs.js',
           'library_lz4.js',
