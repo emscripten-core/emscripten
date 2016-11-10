@@ -7165,6 +7165,13 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
     self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
 
+  @no_wasm_backend()
+  def test_binaryen_precision(self):
+    if not self.is_wasm(): return
+    # test that we emit proper code in precise mode
+    Settings.BINARYEN_IMPRECISE = 0
+    self.do_run_in_out_file_test('tests', 'core', 'test_binaryen_precision')
+
   def test_sbrk(self):
     self.do_run(open(path_from_root('tests', 'sbrk_brk.cpp')).read(), 'OK.')
 
