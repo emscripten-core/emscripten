@@ -653,6 +653,9 @@ var BINARYEN_IMPRECISE = 0; // Whether to apply imprecise/unsafe binaryen optimi
 var BINARYEN_PASSES = ""; // A comma-separated list of passes to run in the binaryen optimizer,
                           // for example, "dce,precompute,vacuum".
                           // When set, this overrides the default passes we would normally run.
+var BINARYEN_MEM_MAX = -1; // Set the maximum size of memory in the wasm module (in bytes).
+                           // Without this, TOTAL_MEMORY is used (as it is used for the initial value),
+                           // or if memory growth is enabled, no limit is set. This overrides both of those.
 var BINARYEN_ROOT = ""; // Directory where we can find Binaryen. Will be automatically set for you,
                         // but you can set it to override if you are a Binaryen developer.
 
