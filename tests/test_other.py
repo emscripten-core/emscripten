@@ -6908,7 +6908,7 @@ int main() {
   def test_binaryen_names(self):
     sizes = {}
     for args, expect_names in [
-        ([], True), # -O0 has debug info by default
+        ([], False),
         (['-g'], True),
         (['-O1'], False),
         (['-O2'], False),
