@@ -7713,7 +7713,11 @@ function eliminateDeadGlobals(ast) {
     for (var i = 0; i < stats.length; i++) {
       var asmFunc = stats[i];
       if (asmFunc[0] === 'defun') {
-        if (asmFunc[1] === '_emscripten_replace_memory') return; // the memory growth function does not contain valid asm.js
+        if (asmFunc[1] === '_emscripten_replace_memory') {
+          // the memory growth function does not contain valid asm.js, and can be ignored
+          stats[i] = emptyNode();
+          continue;
+        }
         var asmData = normalizeAsm(asmFunc);
         traverse(asmFunc, function(node, type) {
           if (type == 'name') {
