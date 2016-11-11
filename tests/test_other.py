@@ -6425,6 +6425,20 @@ int main() {
     src = open('a.out.js').read()
     assert 'use asm' not in src
 
+  def test_EM_ASM_i64(self):
+    open('src.cpp', 'w').write('''
+#include <stdint.h>
+#include <emscripten.h>
+
+int main() {
+  EM_ASM_ARGS({
+    Module.print('inputs: ' + $0 + ', ' + $1 + '.');
+  }, int64_t(0x12345678ABCDEF1FLL));
+}
+''')
+    out, err = Popen([PYTHON, EMCC, 'src.cpp', '-Oz'], stderr=PIPE).communicate()
+    self.assertContained('LLVM ERROR: EM_ASM should not receive i64s as inputs, they are not valid in JS', err)
+
   def test_eval_ctors(self):
     print 'non-terminating ctor'
     src = r'''
