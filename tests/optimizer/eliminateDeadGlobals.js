@@ -65,6 +65,20 @@ Module["asm"] =  (function(global,env,buffer) {
   var __ZdlPv=env.__ZdlPv;
   var tempFloat = 0.0;
 
+ function _emscripten_replace_memory(newBuffer) {
+  if (byteLength(newBuffer) & 16777215 || byteLength(newBuffer) <= 16777215 || byteLength(newBuffer) > 2147483648) return false;
+  HEAP8 = new Int8View(newBuffer);
+  HEAP16 = new Int16View(newBuffer);
+  HEAP32 = new Int32View(newBuffer);
+  HEAPU8 = new Uint8View(newBuffer);
+  HEAPU16 = new Uint16View(newBuffer);
+  HEAPU32 = new Uint32View(newBuffer);
+  HEAPF32 = new Float32View(newBuffer);
+  HEAPF64 = new Float64View(newBuffer);
+  buffer = newBuffer;
+  return true;
+ }
+
 // EMSCRIPTEN_START_FUNCS
 function _main(i1, i2) {
  i1 = i1 | 0;
@@ -228,6 +242,6 @@ function runPostSets() {}
 // EMSCRIPTEN_END_FUNCS
 
 
-  return { _main: _main };
+  return { _main: _main, _emscripten_replace_memory: _emscripten_replace_memory };
 })
 ;
