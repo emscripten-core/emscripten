@@ -242,6 +242,6 @@ function runPostSets() {}
 // EMSCRIPTEN_END_FUNCS
 
 
-  return { _main: _main };
+  return { _main: _main, _emscripten_replace_memory: _emscripten_replace_memory };
 })
 ;

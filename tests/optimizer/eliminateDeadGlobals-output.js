@@ -2,7 +2,12 @@ var Module = {};
 Module["asm"] = (function(global, env, buffer) {
  "use asm";
  var HEAP8 = new global.Int8Array(buffer);
+ var HEAP16 = new global.Int16Array(buffer);
  var HEAP32 = new global.Int32Array(buffer);
+ var HEAPU8 = new global.Uint8Array(buffer);
+ var HEAPU16 = new global.Uint16Array(buffer);
+ var HEAPU32 = new global.Uint32Array(buffer);
+ var HEAPF32 = new global.Float32Array(buffer);
  var HEAPF64 = new global.Float64Array(buffer);
  var STACKTOP = env.STACKTOP | 0;
  var _atoi = env._atoi;
@@ -12,6 +17,19 @@ Module["asm"] = (function(global, env, buffer) {
  var _memcpy = env._memcpy;
  var __ZdaPv = env.__ZdaPv;
  var __ZdlPv = env.__ZdlPv;
+ function _emscripten_replace_memory(newBuffer) {
+  if (byteLength(newBuffer) & 16777215 || byteLength(newBuffer) <= 16777215 || byteLength(newBuffer) > 2147483648) return false;
+  HEAP8 = new Int8View(newBuffer);
+  HEAP16 = new Int16View(newBuffer);
+  HEAP32 = new Int32View(newBuffer);
+  HEAPU8 = new Uint8View(newBuffer);
+  HEAPU16 = new Uint16View(newBuffer);
+  HEAPU32 = new Uint32View(newBuffer);
+  HEAPF32 = new Float32View(newBuffer);
+  HEAPF64 = new Float64View(newBuffer);
+  buffer = newBuffer;
+  return true;
+ }
  function _main(i1, i2) {
   i1 = i1 | 0;
   i2 = i2 | 0;
@@ -168,7 +186,10 @@ Module["asm"] = (function(global, env, buffer) {
   return;
  }
  return {
-  _main: _main
+  _main: _main,
+  _emscripten_replace_memory: _emscripten_replace_memory
  };
 });
+
+
 
