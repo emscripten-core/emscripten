@@ -6899,8 +6899,8 @@ int main() {
         print args, expect
         try_delete('a.out.js')
         with clean_write_access_to_canonical_temp_dir():
-          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'BINARYEN=1'], stdout=PIPE, stderr=PIPE).communicate()
-        assert expect == (' -emscripten-precise-f32' in err)
+          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'] + args, stdout=PIPE, stderr=PIPE).communicate()
+        assert expect == (' -emscripten-precise-f32' in err), err
         self.assertContained('hello, world!', run_js('a.out.js'))
     finally:
       del os.environ['EMCC_DEBUG']
