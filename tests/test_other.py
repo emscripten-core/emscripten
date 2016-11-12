@@ -2555,6 +2555,39 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     try_delete(path_from_root('tests', 'Module-exports', 'test.js.map'))
     try_delete(path_from_root('tests', 'Module-exports', 'test.js.mem'))
 
+  def test_node_catch_exit(self):
+    # Test that in node.js exceptions are not caught if NODEJS_EXIT_CATCH=0
+    if NODE_JS not in JS_ENGINES:
+      return
+
+    open(os.path.join(self.get_dir(), 'count.c'), 'w').write('''
+      #include <string.h>
+      int count(const char *str) {
+          return (int)strlen(str);
+      }
+    ''')
+
+    open(os.path.join(self.get_dir(), 'index.js'), 'w').write('''
+      const count = require('./count.js');
+
+      console.log(xxx); //< here is the ReferenceError
+    ''')
+
+    reference_error_text = 'console.log(xxx); //< here is the ReferenceError';
+
+    subprocess.check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'count.c'), '-o', 'count.js'])
+
+    # Check that the ReferenceError is caught and rethrown and thus the original error line is masked
+    self.assertNotContained(reference_error_text,
+                            run_js ('index.js', engine=NODE_JS, stderr=STDOUT, assert_returncode=None))
+
+    subprocess.check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'count.c'), '-o', 'count.js', '-s', 'NODEJS_CATCH_EXIT=0'])
+
+    # Check that the ReferenceError is not caught, so we see the error properly
+    self.assertContained(reference_error_text,
+                         run_js ('index.js', engine=NODE_JS, stderr=STDOUT, assert_returncode=None))
+
+
   def test_fs_stream_proto(self):
     open('src.cpp', 'wb').write(r'''
 #include <stdio.h>
