@@ -325,8 +325,8 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     # make sure embind's global initializer is at the end of the list
     # fixes problems with dependent types resolution order
     # see https://github.com/kripken/emscripten/issues/3436
-    embind_global_initializer_name = "__GLOBAL__sub_I_bind_cpp"
-    if(embind_global_initializer_name in initializers_list):
+    embind_global_initializer_name = '__GLOBAL__sub_I_bind_cpp'
+    if embind_global_initializer_name in initializers_list :
         embind_initializer_index = initializers_list.index(embind_global_initializer_name)
         initializers_list.append(initializers_list.pop(embind_initializer_index))
     global_initializers = str(', '.join(map(lambda i: '{ func: function() { %s() } }' % i, initializers_list)))
