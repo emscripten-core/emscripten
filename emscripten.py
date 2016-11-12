@@ -127,6 +127,9 @@ def get_and_parse_backend(infile, settings, temp_files, DEBUG):
         backend_args += ['-emscripten-global-base=0']
       elif settings['GLOBAL_BASE'] >= 0:
         backend_args += ['-emscripten-global-base=%d' % settings['GLOBAL_BASE']]
+      if settings['SIDE_MODULE']:
+        backend_args += ['-emscripten-side-module']
+      backend_args += ['-emscripten-stack-size=%d' % settings['TOTAL_STACK']]
       backend_args += ['-O' + str(settings['OPT_LEVEL'])]
       if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
         backend_args += ['-enable-emscripten-cxx-exceptions']
@@ -457,6 +460,7 @@ function _emscripten_asm_const_%s(%s) {
     in_table = set()
 
     def make_table(sig, raw):
+      if '[]' in raw: return ('', '') # empty table
       params = make_params(sig)
       coerced_params = make_coerced_params(sig)
       coercions = make_coercions(sig)
@@ -678,7 +682,9 @@ function _emscripten_asm_const_%s(%s) {
         basic_funcs += ['nullFunc_' + sig]
         asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig) + 'abort(x) }\n'
 
-    basic_vars = ['STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR', 'tempDoublePtr', 'ABORT']
+    basic_vars = ['DYNAMICTOP_PTR', 'tempDoublePtr', 'ABORT']
+    if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
+      basic_vars += ['STACKTOP', 'STACK_MAX']
     basic_float_vars = []
 
     if metadata.get('preciseI64MathUsed'):
@@ -692,7 +698,9 @@ function _emscripten_asm_const_%s(%s) {
       if not settings['SIDE_MODULE']:
         asm_setup += 'var gb = Runtime.GLOBAL_BASE, fb = 0;\n'
 
-    asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', 'setThrew']
+    asm_runtime_funcs = []
+    if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
+      asm_runtime_funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', 'setThrew']
     if not settings['RELOCATABLE']:
       asm_runtime_funcs += ['setTempRet0', 'getTempRet0']
     else:
@@ -700,7 +708,10 @@ function _emscripten_asm_const_%s(%s) {
       asm_setup += 'var setTempRet0 = Runtime.setTempRet0, getTempRet0 = Runtime.getTempRet0;\n'
 
     if settings['BINARYEN']:
-      asm_setup += "\nModule['wasmTableSize'] = %d;\n" % sum(map(lambda table: table.count(',') + 1, last_forwarded_json['Functions']['tables'].values()))
+      table_size = sum(map(lambda table: table.count(',') + 1, last_forwarded_json['Functions']['tables'].values()))
+      asm_setup += "\nModule['wasmTableSize'] = %d;\n" % table_size
+      if not settings['EMULATED_FUNCTION_POINTERS']:
+        asm_setup += "\nModule['wasmMaxTableSize'] = %d;\n" % table_size
 
     # See if we need ASYNCIFY functions
     # We might not need them even if ASYNCIFY is enabled
@@ -767,13 +778,20 @@ function jsCall_%s_%s(%s) {
         table_access = 'FUNCTION_TABLE_' + sig
         if settings['SIDE_MODULE']:
           table_access = 'parentModule["' + table_access + '"]' # side module tables were merged into the parent, we need to access the global one
+        if settings['BINARYEN']:
+          # wasm uses a Table, which means we have function pointer emulation capabilities all the time, at no cost. just call the table
+          table_access = "Module['wasmTable']"
+        if settings['BINARYEN']:
+          table_read = table_access + '.get(x)'
+        else:
+          table_read = table_access + '[x]'
         prelude = '''
   if (x < 0 || x >= %s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig))
         asm_setup += '''
 function ftCall_%s(%s) {%s
-  return %s[x](%s);
+  return %s(%s);
 }
-''' % (sig, ', '.join(full_args), prelude, table_access, ', '.join(args))
+''' % (sig, ', '.join(full_args), prelude, table_read, ', '.join(args))
         basic_funcs.append('ftCall_%s' % sig)
 
         if settings.get('RELOCATABLE'):
@@ -802,6 +820,10 @@ function ftCall_%s(%s) {%s
     exports = []
     for export in all_exported:
       exports.append(quote(export) + ": " + export)
+    if settings['BINARYEN'] and settings['SIDE_MODULE']:
+      # named globals in side wasm modules are exported globals from asm/wasm
+      for k, v in metadata['namedGlobals'].iteritems():
+        exports.append(quote('_' + str(k)) + ': ' + str(v))
     exports = '{ ' + ', '.join(exports) + ' }'
     # calculate globals
     try:
@@ -874,6 +896,9 @@ function ftCall_%s(%s) {%s
       asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
     asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in basic_vars + global_vars])
 
+    if settings['BINARYEN'] and settings['SIDE_MODULE']:
+      asm_global_vars += '\n  var STACKTOP = 0, STACK_MAX = 0;\n' # wasm side modules internally define their stack, these are set at module startup time
+
     # sent data
     the_global = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
     sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
@@ -887,7 +912,7 @@ assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. w
 assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
 return real_''' + s + '''.apply(null, arguments);
 };
-''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory']])
+''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory', '__start_module']])
 
     if not settings['SWAPPABLE_ASM_MODULE']:
       receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables])
@@ -895,7 +920,7 @@ return real_''' + s + '''.apply(null, arguments);
       receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions + function_tables])
     receiving += ';\n'
 
-    if settings['EXPORT_FUNCTION_TABLES']:
+    if settings['EXPORT_FUNCTION_TABLES'] and not settings['BINARYEN']:
       for table in last_forwarded_json['Functions']['tables'].values():
         tableName = table.split()[1]
         table = table.replace('var ' + tableName, 'var ' + tableName + ' = Module["' + tableName + '"]')
@@ -907,10 +932,11 @@ return real_''' + s + '''.apply(null, arguments);
     if settings.get('EMULATED_FUNCTION_POINTERS'):
       asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
       receiving += '\n' + function_tables_defs.replace('// EMSCRIPTEN_END_FUNCS\n', '') + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in last_forwarded_json['Functions']['tables']])
-      for sig in last_forwarded_json['Functions']['tables'].keys():
-        name = 'FUNCTION_TABLE_' + sig
-        fullname = name if not settings['SIDE_MODULE'] else ('SIDE_' + name)
-        receiving += 'Module["' + name + '"] = ' + fullname + ';\n'
+      if not settings['BINARYEN']:
+        for sig in last_forwarded_json['Functions']['tables'].keys():
+          name = 'FUNCTION_TABLE_' + sig
+          fullname = name if not settings['SIDE_MODULE'] else ('SIDE_' + name)
+          receiving += 'Module["' + name + '"] = ' + fullname + ';\n'
 
       final_function_tables = final_function_tables.replace("asm['", '').replace("']", '').replace('var SIDE_FUNCTION_TABLE_', 'var FUNCTION_TABLE_').replace('var dynCall_', '//')
 
@@ -1608,7 +1634,7 @@ assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. w
 assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
 return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
 };
-''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory']])
+''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory', '__start_module']])
 
   if not settings['SWAPPABLE_ASM_MODULE']:
     receiving += ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"]' for s in exported_implemented_functions])

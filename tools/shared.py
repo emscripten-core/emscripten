@@ -1986,7 +1986,7 @@ def reconfigure_cache():
   Cache = cache.Cache(debug=DEBUG_CACHE)
 
 class JS:
-  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+Runtime\.GLOBAL_BASEH]+)\);'
+  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+Runtime\.GLOBAL_BASEHgb]+)\);'
   no_memory_initializer_pattern = '/\* no memory initializer \*/'
 
   memory_staticbump_pattern = 'STATICTOP = STATIC_BASE \+ (\d+);'
@@ -2210,6 +2210,35 @@ class JS:
   @staticmethod
   def is_function_table(name):
     return name.startswith('FUNCTION_TABLE_')
+
+class WebAssembly:
+  @staticmethod
+  def make_shared_library(js_file, wasm_file):
+    # a wasm shared library is a special binary file, containing
+    # \0wso
+    # 8 bytes: size of memory segment (little-endian unsigned integer)
+    # 8 bytes: size of table segment (little-endian unsigned integer)
+    # then the wasm module itself
+    # find the sizes, using the mem file and the data in the js
+    js = open(js_file).read()
+    m = re.search("var STATIC_BUMP = (\d+);", js)
+    mem_size = int(m.group(1))
+    m = re.search("Module\['wasmTableSize'\] = (\d+);", js)
+    table_size = int(m.group(1))
+    logging.debug('creating .wso with mem size %d, table size %d' % (mem_size, table_size))
+    wso = js_file + '.wso'
+    # write the binary
+    f = open(wso, 'wb')
+    f.write('\0wso')
+    def write_integer(x):
+      for i in range(8):
+        f.write(chr(x % 256))
+        x = x / 256
+    write_integer(mem_size)
+    write_integer(table_size)
+    f.write(open(wasm_file, 'rb').read())
+    f.close()
+    return wso
 
 def execute(cmd, *args, **kw):
   try:

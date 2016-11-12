@@ -281,6 +281,14 @@ var Runtime = {
     }
     throw 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.';
 #else
+#if BINARYEN
+    // we can simply appent to the wasm table
+    var table = Module['wasmTable'];
+    var ret = table.length;
+    table.grow(1);
+    table.set(ret, func);
+    return ret;
+#else
     Runtime.alignFunctionTables(); // XXX we should rely on this being an invariant
     var tables = Runtime.getFunctionTables();
     var ret = -1;
@@ -291,6 +299,7 @@ var Runtime = {
       table.push(func);
     }
     return ret;
+#endif
 #endif
   },
 
@@ -310,12 +319,16 @@ var Runtime = {
   loadedDynamicLibraries: [],
 
   loadDynamicLibrary: function(lib) {
-    // TODO: addRunDep etc., do asynchronously when in the browser. for now we assume we can do a sync xhr, no mem init files in libs, and we ignore the sync xhr lag
+#if BINARYEN
+    var bin = Module['readBinary'](lib);
+    var libModule = Runtime.loadWebAssemblyModule(bin);
+#else
     var src = Module['read'](lib);
     var libModule = eval(src)(
       Runtime.alignFunctionTables(),
       Module
     );
+#endif
     // add symbols into global namespace TODO: weak linking etc.
     for (var sym in libModule) {
       if (!Module.hasOwnProperty(sym)) {
@@ -333,6 +346,79 @@ var Runtime = {
     }
     Runtime.loadedDynamicLibraries.push(libModule);
   },
+
+#if BINARYEN
+  // Loads a side module from binary data
+  loadWebAssemblyModule: function(lib_data) {
+    var int32View = new Uint32Array(new Uint8Array(lib_data.subarray(0, 24)).buffer);
+    assert(int32View[0] == 0x6f737700); // \0wso
+    var memorySize = int32View[1];
+    var tableSize = int32View[3];
+    assert(int32View[5] == 0x6d736100); // \0asm
+    //Module.printErr('loading module has memorySize ' + memorySize + ', tableSize ' + tableSize);
+    var wasm = lib_data.subarray(20);
+    //Module.printErr('wasm binary size: ' + wasm.length);
+    var env = Module['asmLibraryArg'];
+    // TODO: use only memoryBase and tableBase, need to update asm.js backend
+    var table = Module['wasmTable'];
+    var oldTableSize = table.length;
+    env['memoryBase'] = env['gb'] = Runtime.alignMemory(getMemory(memorySize)); // TODO: add to cleanups
+    env['tableBase'] = env['fb'] = oldTableSize;
+    //Module.printErr('using memoryBase ' + env['memoryBase'] + ', tableBase ' + env['tableBase']);
+    //Module.printErr('growing table from size ' + oldTableSize + ' by ' + tableSize);
+    var originalTable = table;
+    table.grow(tableSize);
+    assert(table === originalTable);
+    //Module.printErr('table is now of size ' + table.length);
+    // copy currently exported symbols so the new module can import them
+    for (var x in Module) {
+      if (!(x in env)) {
+        env[x] = Module[x];
+      }
+    }
+    var info = {
+      global: Module['asmGlobalArg'],
+      env: env
+    };
+#if ASSERTIONS
+    var oldTable = [];
+    for (var i = 0; i < oldTableSize; i++) {
+      oldTable.push(table.get(i));
+    }
+#endif
+    wasm = new WebAssembly.Instance(new WebAssembly.Module(wasm), info);
+#if ASSERTIONS
+    // the table should be unchanged
+    assert(table === originalTable);
+    assert(table === Module['wasmTable']);
+    if (wasm.exports['table']) {
+      assert(table === wasm.exports['table']);
+    }
+    // the old part of the table should be unchanged
+    for (var i = 0; i < oldTableSize; i++) {
+      assert(table.get(i) === oldTable[i], 'old table entries must remain the same');
+    }
+    // verify that the new table region was filled in
+    for (var i = 0; i < tableSize; i++) {
+      assert(table.get(oldTableSize + i) !== undefined, 'table entry was not filled in');
+    }
+#endif
+    var exports = {};
+    for (var e in wasm.exports) {
+      var value = wasm.exports[e];
+      if (typeof value === 'number') {
+        // relocate it - modules export the absolute value, they can't relocate before they export
+        value = value + env['memoryBase'];
+      }
+      exports[e] = value;
+    }
+    // initialize the module
+    if (exports['__start_module']) {
+      exports['__start_module']();
+    }
+    return exports;
+  },
+#endif
 #endif
 
   warnOnce: function(text) {

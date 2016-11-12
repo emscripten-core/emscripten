@@ -1041,7 +1041,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.Settings.INCLUDE_FULL_LIBRARY = 1
       elif shared.Settings.SIDE_MODULE:
         assert not shared.Settings.MAIN_MODULE
-        memory_init_file = False # memory init file is not supported with side modules, must be executable synchronously (for dlopen)
+        memory_init_file = False # memory init file is not supported with asm.js side modules, must be executable synchronously (for dlopen)
 
       if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
         assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
@@ -1186,7 +1186,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         debug_level = max(1, debug_level) # keep whitespace readable, for asm.js parser simplicity
         shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
         assert not shared.Settings.SPLIT_MEMORY, 'WebAssembly does not support split memory'
-        assert not shared.Settings.INCLUDE_FULL_LIBRARY, 'The WebAssembly libc overlaps with JS libs, so INCLUDE_FULL_LIBRARY does not just work (FIXME)'
         # if root was not specified in -s, it might be fixed in ~/.emscripten, copy from there
         if not shared.Settings.BINARYEN_ROOT:
           try:
@@ -2025,18 +2024,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             cmd += ['--mem-init=' + memfile]
             if not shared.Settings.RELOCATABLE:
               cmd += ['--mem-base=' + str(shared.Settings.GLOBAL_BASE)]
-          if shared.Settings.BINARYEN_MEM_MAX >= 0:
+          if shared.Settings.RELOCATABLE:
+            cmd += ['--table-max=-1']
+          if shared.Settings.SIDE_MODULE:
+            cmd += ['--mem-max=-1']
+          elif shared.Settings.BINARYEN_MEM_MAX >= 0:
             cmd += ['--mem-max=' + str(shared.Settings.BINARYEN_MEM_MAX)]
           if shared.Building.is_wasm_only():
             cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, an can contain special fastcomp-wasm support
           logging.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
           TimeLogger.update()
           subprocess.check_call(cmd, stdout=open(wasm_text_target, 'w'))
-          log_time('asm2wasm')
           if import_mem_init:
             # remove and forget about the mem init file in later processing; it does not need to be prefetched in the html, etc.
             os.unlink(memfile)
             memory_init_file = False
+          log_time('asm2wasm')
         if shared.Settings.BINARYEN_PASSES:
           shutil.move(wasm_text_target, wasm_text_target + '.pre')
           cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_text_target + '.pre', '-o', wasm_text_target] + map(lambda p: '--' + p, shared.Settings.BINARYEN_PASSES.split(','))
@@ -2061,6 +2064,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           for script in shared.Settings.BINARYEN_SCRIPTS.split(','):
             logging.debug('running binaryen script: ' + script)
             subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), js_target, wasm_text_target], env=script_env)
+        # after generating the wasm, do some final operations
+        if not shared.Settings.WASM_BACKEND:
+          if shared.Settings.SIDE_MODULE:
+            wso = shared.WebAssembly.make_shared_library(js_target, wasm_binary_target)
+            # replace the .js output with the shared library. TODO: emit a file with suffix .wso
+            shutil.move(wso, js_target)
 
       # If we were asked to also generate HTML, do that
       if final_suffix == 'html':

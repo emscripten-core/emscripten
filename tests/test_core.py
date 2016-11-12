@@ -1455,16 +1455,15 @@ int main() {
 
   @no_wasm_backend('long doubles are f128s in wasm backend')
   def test_pystruct(self):
-      def test():
-        self.do_run_in_out_file_test('tests', 'test_pystruct')
+    def test():
+      self.do_run_in_out_file_test('tests', 'test_pystruct')
 
-      test()
+    test()
 
-      print 'relocatable' # this tests recursive global structs => nontrivial postSets for relocation
-      assert Settings.RELOCATABLE == Settings.EMULATED_FUNCTION_POINTERS == 0
-      Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 1
-      test()
-      Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 0
+    print 'relocatable' # this tests recursive global structs => nontrivial postSets for relocation
+    assert Settings.RELOCATABLE == Settings.EMULATED_FUNCTION_POINTERS == 0
+    Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 1
+    test()
 
   def test_ptrtoint(self):
       runner = self
@@ -2258,7 +2257,7 @@ The current type of b is: 9
 
   def can_dlfcn(self):
     if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no dlfcn with memory growth yet')
-    if self.is_wasm(): return self.skip('no shared modules in wasm')
+    if self.is_wasm_backend(): return self.skip('no shared modules in wasm backend')
     return True
 
   def prep_dlfcn_lib(self):
@@ -2273,7 +2272,7 @@ The current type of b is: 9
 def process(filename):
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
+    "FS.createDataFile('/', 'liblib.so', " + str(map(ord, open('liblib.so', 'rb').read())) + ", true, false, false);"
   )
   open(filename, 'w').write(src)
 '''
@@ -2288,7 +2287,7 @@ def process(filename):
       class Foo {
       public:
         Foo() {
-          printf("Constructing lib object.\\n");
+          puts("Constructing lib object.");
         }
       };
 
@@ -2307,7 +2306,7 @@ def process(filename):
       class Bar {
       public:
         Bar() {
-          printf("Constructing main object.\\n");
+          puts("Constructing main object.");
         }
       };
 
@@ -2360,6 +2359,7 @@ def process(filename):
       '''
     self.do_run(src, '|65830|', post_build=self.dlfcn_post_build)
 
+  @no_wasm # TODO: EM_ASM in shared wasm modules, stored inside the wasm somehow
   def test_dlfcn_em_asm(self):
     if not self.can_dlfcn(): return
 
@@ -2478,7 +2478,7 @@ def process(filename):
                 output_nicerizer=lambda x, err: x.replace('\n', '*'),
                 post_build=self.dlfcn_post_build)
 
-    if Settings.ASM_JS and SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]):
+    if Settings.ASM_JS and SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]) and not self.is_wasm():
       out = run_js('liblib.so', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=STDOUT)
       if 'asm' in out:
         self.validate_asmjs(out)
@@ -3040,7 +3040,7 @@ ok
         # side is just a library
         try_delete('liblib.cpp.o.js')
         Popen([PYTHON, EMCC] + side + self.emcc_args + Settings.serialize() + ['-o', os.path.join(self.get_dir(), 'liblib.cpp.o.js')]).communicate()
-      if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]):
+      if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]) and not self.is_wasm():
         out = run_js('liblib.cpp.o.js', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=STDOUT)
         if 'asm' in out:
           self.validate_asmjs(out)
