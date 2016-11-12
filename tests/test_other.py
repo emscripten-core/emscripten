@@ -6981,6 +6981,28 @@ int main() {
     self.assertContained('trying binaryen method: native-wasm', out) # native is the default
     assert out.count('trying binaryen method') == 1, 'must not try any other method'
 
+  def test_binaryen_mem(self):
+    for args, expect_initial, expect_max in [
+        (['-s', 'TOTAL_MEMORY=20971520'], 320, 320),
+        (['-s', 'TOTAL_MEMORY=20971520', '-s', 'ALLOW_MEMORY_GROWTH=1'], 320, None),
+        (['-s', 'TOTAL_MEMORY=20971520',                                '-s', 'BINARYEN_MEM_MAX=41943040'], 320, 640),
+        (['-s', 'TOTAL_MEMORY=20971520', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN_MEM_MAX=41943040'], 320, 640),
+      ]:
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-O2', '-s', 'BINARYEN_METHOD="interpret-s-expr"'] + args
+      print ' '.join(cmd)
+      subprocess.check_call(cmd)
+      wast = open('a.out.wast').read()
+      lines = wast.split('\n')
+      for line in lines:
+        if '(import "env" "memory" (memory ' in line:
+          parts = line.strip().replace('(', '').replace(')', '').split(' ')
+          print parts
+          assert parts[5] == str(expect_initial)
+          if not expect_max:
+            assert len(parts) == 6
+          else:
+            assert parts[6] == str(expect_max)
+
   def test_wasm_targets(self):
     for f in ['a.wasm', 'a.wast']:
       process = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', f], stdout=PIPE, stderr=PIPE)
