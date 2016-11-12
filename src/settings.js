@@ -643,7 +643,8 @@ var BINARYEN = 0; // Whether to use [Binaryen](https://github.com/WebAssembly/bi
                   // This will fetch the binaryen port and build it. (If, instead, you set
                   // BINARYEN_ROOT in your ~/.emscripten file, then we use that instead
                   // of the port, which can useful for local dev work on binaryen itself).
-var BINARYEN_METHOD = ""; // See binaryen's src/js/wasm.js-post.js for details.
+var BINARYEN_METHOD = "native-wasm"; // How we should run WebAssembly code. By default, we run it natively.
+                                     // See binaryen's src/js/wasm.js-post.js for more details and options.
 var BINARYEN_SCRIPTS = ""; // An optional comma-separated list of script hooks to run after binaryen,
                            // in binaryen's /scripts dir.
 var BINARYEN_IMPRECISE = 0; // Whether to apply imprecise/unsafe binaryen optimizations. If enabled,
