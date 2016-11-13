@@ -7004,6 +7004,27 @@ int main() {
           else:
             assert parts[6] == str(expect_max)
 
+  def test_binaryen_ctors(self):
+    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey')
+    # ctor order must be identical to js builds, deterministically
+    open('src.cpp', 'w').write(r'''
+      #include <stdio.h>
+      struct A {
+        A() { printf("constructing A!\n"); }
+      };
+      A a;
+      struct B {
+        B() { printf("constructing B!\n"); }
+      };
+      B b;
+      int main() {}
+    ''')
+    subprocess.check_call([PYTHON, EMCC, 'src.cpp'])
+    correct = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE)
+    subprocess.check_call([PYTHON, EMCC, 'src.cpp', '-s', 'WASM=1'])
+    seen = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE)
+    assert correct == seen, correct + '\n vs \n' + seen
+
   def test_wasm_targets(self):
     for f in ['a.wasm', 'a.wast']:
       process = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', f], stdout=PIPE, stderr=PIPE)
