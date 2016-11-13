@@ -268,17 +268,17 @@ The :ref:`Tutorial` showed how :ref:`emcc <emccdoc>` can be used to compile sing
 In addition to the capabilities it shares with *gcc*, *emcc* supports options to optimize code, control what debug information is emitted, generate HTML and other output formats, etc. These options are documented in the :ref:`emcc tool reference <emccdoc>` (``./emcc --help`` on the command line).
 
 
-Alternatives to emcc
-====================
+Detecting Emscripten in Preprocessor
+====================================
 
-.. tip:: Do not attempt to bypass *emcc* and call the Emscripten tools directly from your build system. 
+Emscripten provides the following preprocessor macros that can be used to identify the compiler version and platform:
 
-You can in theory call *clang*, *llvm-ld*, and the other tools yourself. This is however considered dangerous because by default:
+ * The preprocessor define ``__EMSCRIPTEN__`` is always defined when compiling programs with Emscripten.
+ * The preprocessor variables ``__EMSCRIPTEN_major__``, ``__EMSCRIPTEN_minor__`` and ``__EMSCRIPTEN_tiny__`` specify, as integers, the currently used Emscripten compiler version.
+ * Emscripten behaves like a variant of Unix, so the preprocessor defines ``unix``, ``__unix`` and ``__unix__`` are always present when compiling code with Emscripten.
+ * When targeting SSEx SIMD APIs using one of the command line compiler flags ``-msse``, ``-msse2``, ``-msse3``, ``-mssse3``, or ``-msse4.1``, one or more of the preprocessor flags ``__SSE__``, ``__SSE2__``, ``__SSE3__``, ``__SSSE3__``, ``__SSE4_1__`` will be present to indicate available support for these instruction sets.
+ * If targeting the pthreads multithreading support with the compiler & linker flag ``-s USE_PTHREADS=1``, the preprocessr define ``__EMSCRIPTEN_PTHREADS__`` will be present.
 
-- *Clang* does not use the Emscripten-bundled headers, which can lead to various errors. 
-- *llvm-ld* uses unsafe/unportable LLVM optimizations. 
-
-*Emcc* automatically ensures the tools are configured and used properly.
 
 
 Examples / test code
