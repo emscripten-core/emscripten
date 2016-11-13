@@ -6879,12 +6879,12 @@ int main() {
             (['-O2'], False, True),
             (['-O2', '--js-opts', '1'], True, False), # user asked
             (['-O2', '-s', 'EMTERPRETIFY=1'], True, False), # option forced
-            (['-O2', '-s', 'EVAL_CTORS=1'], False, False), # ctor evaller uses js opts, but is not a js opt, and doesn't force other js opts
+            (['-O2', '-s', 'EVAL_CTORS=1'], False, True), # ctor evaller turned off since only-wasm
             (['-O2', '-s', 'OUTLINING_LIMIT=1000'], True, False), # option forced
             (['-O2', '-s', "BINARYEN_METHOD='interpret-s-expr,asmjs'"], True, False), # asmjs in methods means we need good asm.js
             (['-O3'], False, True),
             (['-Os'], False, True),
-            (['-Oz'], False, False), # even though we run ctor evaller, don't run js opts, but we can't only-wasm due to ctor-evaller running js opts internally
+            (['-Oz'], False, True), # ctor evaller turned off since only-wasm
           ]:
           for option in ['BINARYEN', 'WASM']: # the two should be identical
             try_delete('a.out.js')

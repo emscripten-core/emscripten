@@ -1166,11 +1166,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           js_opts = True
         force_js_opts = True
 
-      if shared.Settings.EVAL_CTORS:
-        # this option is not a js optimizer pass, but does run the js optimizer internally, so
-        # we need to generate proper code for that
-        shared.Settings.RUNNING_JS_OPTS = 1
-
       if shared.Settings.WASM:
         shared.Settings.BINARYEN = 1 # these are synonyms
 
@@ -1211,6 +1206,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         #  * if we also supported js mem inits we'd have 4 modes
         #  * and js mem inits are useful for avoiding a side file, but the wasm module avoids that anyhow
         memory_init_file = True
+        if shared.Building.is_wasm_only() and shared.Settings.EVAL_CTORS:
+          logging.debug('disabling EVAL_CTORS, as in wasm-only mode it hurts more than it helps. TODO: a wasm version of it')
+          shared.Settings.EVAL_CTORS = 0
+
+      if shared.Settings.EVAL_CTORS:
+        # this option is not a js optimizer pass, but does run the js optimizer internally, so
+        # we need to generate proper code for that
+        shared.Settings.RUNNING_JS_OPTS = 1
 
       if shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.ASM_JS == 1:
         # this is an issue in asm.js, but not wasm
