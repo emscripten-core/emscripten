@@ -276,14 +276,16 @@ mergeInto(LibraryManager.library, {
       // Writes the byte range (buffer[offset], buffer[offset+length]) to offset 'position' into the file pointed by 'stream'
       // canOwn: A boolean that tells if this function can take ownership of the passed in buffer from the subbuffer portion
       //         that the typed array view 'buffer' points to. The underlying ArrayBuffer can be larger than that, but
-      //         canOwn=true will not take ownership of the portion outside the bytes addressed by the view.
+      //         canOwn=true will not take ownership of the portion outside the bytes addressed by the view. This means that
+      //         with canOwn=true, creating a copy of the bytes is avoided, but the caller shouldn't touch the passed in range
+      //         of bytes anymore since their contents now represent file data inside the filesystem.
       write: function(stream, buffer, offset, length, position, canOwn) {
         if (!length) return 0;
         var node = stream.node;
         node.timestamp = Date.now();
 
         if (buffer.subarray && (!node.contents || node.contents.subarray)) { // This write is from a typed array to a typed array?
-          if (canOwn) { // Can we just reuse the buffer we are given?
+          if (canOwn) {
 #if ASSERTIONS
             assert(position === 0, 'canOwn must imply no weird position inside the file');
 #endif
