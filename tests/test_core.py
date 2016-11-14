@@ -1457,7 +1457,7 @@ int main() {
   def test_mod_globalstruct(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_mod_globalstruct')
 
-  @no_wasm_backend('long doubles are f64s in wasm backend')
+  @no_wasm_backend('long doubles are f128s in wasm backend')
   def test_pystruct(self):
       def test():
         self.do_run_in_out_file_test('tests', 'test_pystruct')
@@ -6195,7 +6195,6 @@ def process(filename):
     Settings.ASSERTIONS = 1
     self.do_run(src, output)
 
-  @no_wasm_backend()
   def test_embind(self):
     Building.COMPILER_TEST_OPTS += ['--bind']
 
@@ -6217,7 +6216,6 @@ def process(filename):
     '''
     self.do_run(src, 'abs(-10): 10\nabs(-11): 11');
 
-  @no_wasm_backend()
   def test_embind_2(self):
     Settings.NO_EXIT_RUNTIME = 1 # we emit some post.js that we need to see
     Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
@@ -6240,7 +6238,6 @@ def process(filename):
     '''
     self.do_run(src, 'lerp 166');
 
-  @no_wasm_backend()
   def test_embind_3(self):
     Settings.NO_EXIT_RUNTIME = 1 # we emit some post.js that we need to see
     Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
@@ -6269,6 +6266,39 @@ def process(filename):
       }
     '''
     self.do_run(src, 'UnboundTypeError: Cannot call compute due to unbound types: Pi');
+
+  @no_wasm_backend('long doubles are f128s in wasm backend')
+  def test_embind_4(self):
+    Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
+    open('post.js', 'w').write('''
+      function printFirstElement() {
+        Module.print(Module.getBufferView()[0]);
+      }
+    ''')
+    src = r'''
+      #include <emscripten.h>
+      #include <emscripten/bind.h>
+      #include <emscripten/val.h>
+      #include <stdio.h>
+      using namespace emscripten;
+
+      const size_t kBufferSize = 1024;
+      long double buffer[kBufferSize];
+      val getBufferView(void) {
+          val v = val(typed_memory_view(kBufferSize, buffer));
+          return v;
+      }
+      EMSCRIPTEN_BINDINGS(my_module) {
+          function("getBufferView", &getBufferView);
+      }
+
+      int main(int argc, char **argv) {
+        buffer[0] = 107;
+        EM_ASM(printFirstElement());
+        return 0;
+      }
+    '''
+    self.do_run(src, '107')
 
   @no_wasm_backend()
   def test_scriptaclass(self):
