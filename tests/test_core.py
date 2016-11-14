@@ -6088,6 +6088,8 @@ def process(filename):
 
   @no_wasm_backend()
   def test_demangle_stacks(self):
+    if self.is_wasm():
+      self.banned_js_engines = [V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=5632
     Settings.DEMANGLE_SUPPORT = 1
     if '-O' in str(self.emcc_args):
       self.emcc_args += ['--profiling-funcs', '--llvm-opts', '0']
