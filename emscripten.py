@@ -376,6 +376,9 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
            (('function ' + requested.encode('utf-8')) not in pre): # could be a js library func
           logging.warning('function requested to be exported, but not implemented: "%s"', requested)
 
+    if settings['BINARYEN'] and settings['SIDE_MODULE']:
+      assert len(metadata['asmConsts']) == 0, 'EM_ASM is not yet supported in shared wasm module (it cannot be stored in the wasm itself, need some solution)'
+
     asm_consts = [0]*len(metadata['asmConsts'])
     all_sigs = []
     for k, v in metadata['asmConsts'].iteritems():
