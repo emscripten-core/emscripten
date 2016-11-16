@@ -955,6 +955,7 @@ fi
   def test_binaryen(self):
     import tools.ports.binaryen as binaryen
     tag_file = Cache.get_path('binaryen_tag_' + binaryen.TAG + '.txt')
+
     def prep():
       wipe()
       self.do([PYTHON, EMCC, '--clear-ports'])
@@ -969,12 +970,14 @@ fi
     prep()
     subprocess.check_call([PYTHON, 'embuilder.py', 'build', 'binaryen'])
     assert os.path.exists(tag_file)
-    subprocess.check_call([PYTHON, 'emcc.py', 'tests/hello_world.c', '-s', 'BINARYEN=1'])
+    subprocess.check_call([PYTHON, 'emcc.py', 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
     self.assertContained('hello, world!', run_js('a.out.js'))
 
-    print 'see if building with emmake works (should not break native compilation of binaryen port'
+    print 'see we show an error for emmake (we cannot build natively under emmake)'
     prep()
-    subprocess.check_call([PYTHON, 'emmake.py', EMCC, 'tests/hello_world.c', '-s', 'BINARYEN=1'])
-    assert os.path.exists(tag_file)
-    self.assertContained('hello, world!', run_js('a.out.js'))
+    try_delete('a.out.js')
+    out = self.do([PYTHON, 'emmake.py', EMCC, 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
+    assert not os.path.exists(tag_file)
+    assert not os.path.exists('a.out.js')
+    self.assertContained('For example, for binaryen, do "python embuilder.py build binaryen"', out)
 
