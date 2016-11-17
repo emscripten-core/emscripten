@@ -876,6 +876,27 @@ module({
             p.delete();
         });
 */
+
+        test("overriding an overloaded function from the parent", function() {
+            var override_method_proto = cm.OverridesOverloadedDummy.prototype.dummy;
+            var parent_method_proto = cm.MultipleOverloadsDependingOnDummy.prototype.dummy;
+            if (override_method_proto.hasOwnProperty('overloadTable')) {
+                assert.true(override_method_proto.hasOwnProperty('overloadTable'));
+                assert.true(parent_method_proto.hasOwnProperty('overloadTable'));
+                // modify one overloadTable
+                override_method_proto.overloadTable.test = "test";
+                // the other should remain untouched
+                assert.false(parent_method_proto.overloadTable.hasOwnProperty('test'));
+            }
+
+            //calling the functions now
+            var o = new cm.OverridesOverloadedDummy();
+            var d = o.dummy();
+            // should still be able to call the parent functions
+            var p = new cm.MultipleOverloadsDependingOnDummy();
+            d = p.dummy();
+            d = p.dummy(d);
+        });
     });
 
     BaseFixture.extend("vector", function() {
