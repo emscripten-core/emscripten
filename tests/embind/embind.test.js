@@ -892,6 +892,18 @@ module({
             dummy.delete();
             dependOnDummy.delete();
         });
+
+        test("no undefined entry in overload table for free functions", function() {
+            var dummy_free_func = cm.getDummy;
+            console.log(dummy_free_func);
+
+            if (dummy_free_func.hasOwnProperty('overloadTable')) {
+                assert.false(dummy_free_func.overloadTable.hasOwnProperty('undefined'));
+            }
+
+            var dummy = cm.getDummy();
+            cm.getDummy(dummy);
+        });
     });
 
     BaseFixture.extend("vector", function() {
