@@ -144,6 +144,7 @@ var LibraryEmbind = {
     }
     else {
         Module[name] = value;
+        Module[name].argCount = numArguments;
     }
   },
 
