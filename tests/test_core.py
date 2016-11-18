@@ -2881,6 +2881,7 @@ ok
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc', '_free']
     self.do_run(src, '''*294,153*''', force_c=True, post_build=self.dlfcn_post_build)
 
+  @no_wasm # TODO: wrappers for wasm side modules
   def test_dlfcn_longjmp(self):
     if not self.can_dlfcn(): return
 
@@ -3143,6 +3144,7 @@ var Module = {
       int sidey(voidfunc f) { if (f) f(); return 1; }
     ''', 'hello 1\n', header='typedef void (*voidfunc)();')
 
+  @no_wasm # uses function tables in an asm.js specific way
   def test_dylink_funcpointers2(self):
     self.dylink_test(r'''
       #include "header.h"
@@ -3204,6 +3206,7 @@ var Module = {
       void second();
     ''', need_reverse=False, auto_load=False)
 
+  @no_wasm # TODO: wrappers for wasm side modules
   def test_dylink_funcpointers_wrapper(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3226,6 +3229,7 @@ var Module = {
       extern charfunc get();
     ''')
 
+  @no_wasm # TODO: this needs to import asm2wasm helper stuff, imprecise opts might remove that need
   def test_dylink_funcpointers_float(self):
     self.dylink_test(r'''
       #include <stdio.h>
