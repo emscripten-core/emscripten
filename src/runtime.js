@@ -413,8 +413,14 @@ var Runtime = {
       exports[e] = value;
     }
     // initialize the module
-    if (exports['__start_module']) {
-      exports['__start_module']();
+    var init = exports['__start_module'];
+    if (init) {
+      if (runtimeInitialized) {
+        init();
+      } else {
+        // we aren't ready to run compiled code yet
+        __ATINIT__.push(init);
+      }
     }
     return exports;
   },
