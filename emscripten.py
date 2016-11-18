@@ -552,6 +552,7 @@ function _emscripten_asm_const_%s(%s) {
             code = 'return ' + shared.JS.make_coercion(code, sig[0], settings)
           code += ';'
           Counter.pre.append(make_func(clean_item + '__wrapper', code, params, coercions))
+          assert not sig == 'X', 'must know the signature in order to create a wrapper (TODO for shared wasm modules)'
           return clean_item + '__wrapper'
         return item if not newline else (item + '\n')
       if settings['ASSERTIONS'] >= 2:
