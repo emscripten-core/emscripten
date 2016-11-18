@@ -825,6 +825,9 @@ function ftCall_%s(%s) {%s
       # named globals in side wasm modules are exported globals from asm/wasm
       for k, v in metadata['namedGlobals'].iteritems():
         exports.append(quote('_' + str(k)) + ': ' + str(v))
+      # aliases become additional exports
+      for k, v in metadata['aliases'].iteritems():
+        exports.append(quote(str(k)) + ': ' + str(v))
     exports = '{ ' + ', '.join(exports) + ' }'
     # calculate globals
     try:
