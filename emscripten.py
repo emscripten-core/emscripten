@@ -793,9 +793,10 @@ function ftCall_%s(%s) {%s
   return %s(%s);
 }
 ''' % (sig, ', '.join(full_args), prelude, table_read, ', '.join(args))
-        basic_funcs.append('ftCall_%s' % sig)
+        if not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
+          basic_funcs.append('ftCall_%s' % sig)
 
-        if settings.get('RELOCATABLE'):
+        if settings.get('RELOCATABLE') and not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
           params = ','.join(['ptr'] + ['p%d' % p for p in range(len(sig)-1)])
           coerced_params = ','.join([shared.JS.make_coercion('ptr', 'i', settings)] + [shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
           coercions = ';'.join(['ptr = ptr | 0'] + ['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, unfloat(sig[p+1]), settings)) for p in range(len(sig)-1)]) + ';'
