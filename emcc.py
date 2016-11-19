@@ -940,42 +940,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             if found: break
           if found: break
         if not found:
-          # Some native libraries are implemented in Emscripten as system side JS libraries
-          js_system_libraries = {
-            'c': '',
-            'EGL': 'library_egl.js',
-            'GL': 'library_gl.js',
-            'GLESv2': 'library_gl.js',
-            'GLEW': 'library_glew.js',
-            'glfw': 'library_glfw.js',
-            'glfw3': 'library_glfw.js',
-            'GLU': '',
-            'glut': 'library_glut.js',
-            'm': '',
-            'openal': 'library_openal.js',
-            'pthread': '',
-            'X11': 'library_xlib.js',
-            'SDL': 'library_sdl.js',
-            'stdc++': '',
-            'uuid': 'library_uuid.js'
-          }
-          if lib in js_system_libraries:
-            if len(js_system_libraries[lib]) > 0:
-              system_js_libraries += [js_system_libraries[lib]]
-
-              # TODO: This is unintentional due to historical reasons. Improve EGL to use HTML5 API to avoid depending on GLUT.
-              if lib == 'EGL': system_js_libraries += ['library_glut.js']
-
-          elif lib.endswith('.js') and os.path.isfile(shared.path_from_root('src', 'library_' + lib)):
-            system_js_libraries += ['library_' + lib]
-          else:
-            emscripten_strict_mode = shared.is_emscripten_strict() or 'STRICT=1' in settings_changes
-            error_on_missing_libraries = (emscripten_strict_mode and not 'ERROR_ON_MISSING_LIBRARIES=0' in settings_changes) or 'ERROR_ON_MISSING_LIBRARIES=1' in settings_changes
-            if error_on_missing_libraries:
-              logging.fatal('emcc: cannot find library "%s"', lib)
-              exit(1)
-            else:
-              logging.warning('emcc: cannot find library "%s"', lib)
+          system_js_libraries += shared.Building.path_to_system_js_libraries(lib)
 
       # Certain linker flags imply some link libraries to be pulled in by default.
       if 'EMTERPRETIFY_ASYNC=1' in settings_changes: system_js_libraries += ['library_async.js']

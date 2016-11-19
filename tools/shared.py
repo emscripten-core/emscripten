@@ -1999,6 +1999,50 @@ class Building:
       import gen_struct_info
       gen_struct_info.main(['-qo', info_path, path_from_root('src/struct_info.json')])
 
+  @staticmethod
+  # Given the name of a special Emscripten-implemented system library, returns an array of absolute paths to JS library
+  # files inside emscripten/src/ that corresponds to the library name.
+  def path_to_system_js_libraries(library_name):
+    # Some native libraries are implemented in Emscripten as system side JS libraries
+    js_system_libraries = {
+      'c': '',
+      'EGL': 'library_egl.js',
+      'GL': 'library_gl.js',
+      'GLESv2': 'library_gl.js',
+      'GLEW': 'library_glew.js',
+      'glfw': 'library_glfw.js',
+      'glfw3': 'library_glfw.js',
+      'GLU': '',
+      'glut': 'library_glut.js',
+      'm': '',
+      'openal': 'library_openal.js',
+      'pthread': '',
+      'X11': 'library_xlib.js',
+      'SDL': 'library_sdl.js',
+      'stdc++': '',
+      'uuid': 'library_uuid.js'
+    }
+    library_files = []
+    if library_name in js_system_libraries:
+      if len(js_system_libraries[library_name]) > 0:
+        library_files += [js_system_libraries[library_name]]
+
+        # TODO: This is unintentional due to historical reasons. Improve EGL to use HTML5 API to avoid depending on GLUT.
+        if library_name == 'EGL': library_files += ['library_glut.js']
+
+    elif library_name.endswith('.js') and os.path.isfile(shared.path_from_root('src', 'library_' + library_name)):
+      library_files += ['library_' + library_name]
+    else:
+      emscripten_strict_mode = shared.is_emscripten_strict() or 'STRICT=1' in settings_changes
+      error_on_missing_libraries = (emscripten_strict_mode and not 'ERROR_ON_MISSING_LIBRARIES=0' in settings_changes) or 'ERROR_ON_MISSING_LIBRARIES=1' in settings_changes
+      if error_on_missing_libraries:
+        logging.fatal('emcc: cannot find library "%s"', library_name)
+        exit(1)
+      else:
+        logging.warning('emcc: cannot find library "%s"', library_name)
+
+    return library_files
+
 # compatibility with existing emcc, etc. scripts
 Cache = cache.Cache(debug=DEBUG_CACHE)
 chunkify = cache.chunkify
