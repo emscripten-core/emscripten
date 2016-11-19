@@ -965,7 +965,18 @@ for (var named in NAMED_GLOBALS) {
 }
 Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
 ''' % ', '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].iteritems())
-
+      if settings['BINARYEN']:
+        # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
+        # TODO: this works if we are the main module, but if the supplying module is later, it won't, so
+        #       we'll need another solution for that. one option is to scan the module imports, if/when
+        #       wasm supports that, then the loader can do this.
+        receiving += '''
+for (var named in NAMED_GLOBALS) {
+  (function(named) {
+    Module['g$_' + named] = function() { return Module['_' + named] };
+  })(named);
+}
+'''
       receiving += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in metadata['aliases'].iteritems()])
 
     if settings['USE_PTHREADS']:
