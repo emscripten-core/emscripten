@@ -3282,7 +3282,7 @@ var Module = {
       ''', expected=['new main\nnew side\n', 'new side\nnew main\n'])
     test()
 
-    if Settings.ASSERTIONS == 1:
+    if Settings.ASSERTIONS == 1 and not self.is_wasm(): # TODO: this in wasm
       print 'check warnings'
       Settings.ASSERTIONS = 2
       test()
@@ -3408,6 +3408,7 @@ var Module = {
       }
     ''', expected=['hello through side\n'])
 
+  @no_wasm # TODO: this needs to import asm2wasm helper stuff, imprecise opts might remove that need
   def test_dylink_jslib(self):
     open('lib.js', 'w').write(r'''
       mergeInto(LibraryManager.library, {
@@ -3496,6 +3497,7 @@ var Module = {
       }
     ''', expected=['simple.\nsimple.\nsimple.\nsimple.\n'])
 
+  @no_wasm # TODO: wrappers for wasm side modules
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
     if not self.can_dlfcn(): return
 
@@ -3538,6 +3540,7 @@ var Module = {
     Settings.ASSERTIONS = 1
     test('', expect_pass=False, need_reverse=False)
 
+  @no_wasm # TODO: wrappers for wasm side modules
   def test_dylink_iostream(self):
     try:
       os.environ['EMCC_FORCE_STDLIBS'] = 'libcxx'
@@ -3558,6 +3561,7 @@ var Module = {
     finally:
       del os.environ['EMCC_FORCE_STDLIBS']
 
+  @no_wasm # TODO: wrappers for wasm side modules
   def test_dylink_dynamic_cast(self): # issue 3465
     self.dylink_test(header=r'''
       class Base {
@@ -3606,6 +3610,7 @@ var Module = {
       }
     ''', expected=['starting main\nBase\nDerived\nOK'])
 
+  @no_wasm # TODO
   def test_dylink_hyper_dupe(self):
     if not self.can_dlfcn(): return
 
