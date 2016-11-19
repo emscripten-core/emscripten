@@ -2047,8 +2047,8 @@ The current type of b is: 9
     src = open(path_from_root('tests', 'termios', 'test_tcgetattr.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
-  @no_wasm_backend("tzname is included in library.js, but s2wasm doesn't know about it "
-                   "at link time (unknown relocation $tzname)")
+  @no_wasm_backend('ctime relies on stackSave/stackRestore that is only generated in asmjs; '
+                   'need to implement something similar in s2wasm')
   def test_time(self):
     src = open(path_from_root('tests', 'time', 'src.cpp'), 'r').read()
     expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
@@ -2075,8 +2075,6 @@ The current type of b is: 9
   def test_strptime_reentrant(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strptime_reentrant')
 
-  @no_wasm_backend("tzname is included in library.js, but s2wasm doesn't know about it "
-                   "at link time (unknown relocation $tzname)")
   def test_strftime(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strftime')
 
@@ -4588,7 +4586,6 @@ def process(filename):
   def test_uname(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_uname')
 
-  @no_wasm_backend('unknown relocation: $environ')
   def test_env(self):
     src = open(path_from_root('tests', 'env', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'env', 'output.txt'), 'r').read()
@@ -4597,7 +4594,6 @@ def process(filename):
       expected.replace('{{{ THIS_PROGRAM }}}', './this.program') # spidermonkey, v8
     ])
 
-  @no_wasm_backend('unknown relocation: $environ')
   def test_environ(self):
     src = open(path_from_root('tests', 'env', 'src-mini.c'), 'r').read()
     expected = open(path_from_root('tests', 'env', 'output-mini.txt'), 'r').read()
@@ -5558,7 +5554,7 @@ def process(filename):
       Settings.ALLOW_MEMORY_GROWTH = 0
       do_test()
 
-  @no_wasm_backend('unknown relocation: $environ')
+  @no_wasm_backend("python.bc was compiled with asmjs, and we don't have unified triples")
   def test_python(self):
     Settings.EMULATE_FUNCTION_POINTER_CASTS = 1
 

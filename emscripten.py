@@ -1422,12 +1422,16 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
       # in metadata[declares], the invoke wrappers will be generated in
       # this script later.
       import_type = parts[3][1:]
+      import_name = parts[2][1:-1]
       if import_type == 'memory':
         continue
-      assert import_type == 'func', 'No support for imports other than functions and memories'
-      func_name = parts[2][1:-1]
-      if not func_name.startswith('invoke_'):
-        metadata['declares'].append(func_name)
+      elif import_type == 'func':
+        if not import_name.startswith('invoke_'):
+          metadata['declares'].append(import_name)
+      elif import_type == 'global':
+        metadata['externs'].append('_' + import_name)
+      else:
+        assert False, 'Unhandled import type "%s"' % import_type
     elif line.startswith('  (func '):
       parts = line.split()
       func_name = parts[1][1:]
@@ -1435,8 +1439,12 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
     elif line.startswith('  (export '):
       parts = line.split()
       export_name = parts[1][1:-1]
-      assert asmjs_mangle(export_name) not in metadata['exports']
-      metadata['exports'].append(export_name)
+      export_type = parts[2][1:]
+      if export_type == 'func':
+        assert asmjs_mangle(export_name) not in metadata['exports']
+        metadata['exports'].append(export_name)
+      else:
+        assert False, 'Unhandled export type "%s"' % export_type
 
   metadata['declares'] = filter(lambda x: not x.startswith('emscripten_asm_const'), metadata['declares']) # we emit those ourselves
 
