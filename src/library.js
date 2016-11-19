@@ -1624,7 +1624,7 @@ LibraryManager.library = {
 #if ASSERTIONS
         Module.printErr('Error in loading dynamic library: ' + e);
 #endif
-        DLFCN.errorMsg = 'Could not evaluate dynamic lib: ' + filename;
+        DLFCN.errorMsg = 'Could not evaluate dynamic lib: ' + filename + '\n' + e;
         return 0;
       }
 

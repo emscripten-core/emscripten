@@ -2321,6 +2321,7 @@ def process(filename):
                 post_build=self.dlfcn_post_build)
 
   def test_dlfcn_i64(self):
+    Settings.BINARYEN_IMPRECISE = 1 # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     if not self.can_dlfcn(): return
 
     self.prep_dlfcn_lib()
@@ -2349,6 +2350,10 @@ def process(filename):
       int main() {
         p = malloc(1024);
         void *lib_handle = dlopen("liblib.so", 0);
+        if (!lib_handle) {
+          puts(dlerror());
+          abort();
+        }
         printf("load %p\n", lib_handle);
         intfunc x = (intfunc)dlsym(lib_handle, "foo");
         printf("foo func %p\n", x);
@@ -2483,6 +2488,7 @@ def process(filename):
       if 'asm' in out:
         self.validate_asmjs(out)
 
+  @no_wasm # TODO: wrappers for wasm side modules
   def test_dlfcn_data_and_fptr(self):
     if not self.can_dlfcn(): return
 
@@ -2630,6 +2636,7 @@ def process(filename):
     self.do_run(src, '100\n200\n13\n42\n',
                 post_build=self.dlfcn_post_build)
 
+  @no_wasm # TODO: this needs to add JS functions to a wasm Table, need to figure that out
   def test_dlfcn_self(self):
     if not self.can_dlfcn(): return
     self.prep_dlfcn_main()
@@ -3229,8 +3236,8 @@ var Module = {
       extern charfunc get();
     ''')
 
-  @no_wasm # TODO: this needs to import asm2wasm helper stuff, imprecise opts might remove that need
   def test_dylink_funcpointers_float(self):
+    Settings.BINARYEN_IMPRECISE = 1 # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     self.dylink_test(r'''
       #include <stdio.h>
       #include "header.h"
@@ -3408,8 +3415,8 @@ var Module = {
       }
     ''', expected=['hello through side\n'])
 
-  @no_wasm # TODO: this needs to import asm2wasm helper stuff, imprecise opts might remove that need
   def test_dylink_jslib(self):
+    Settings.BINARYEN_IMPRECISE = 1 # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     open('lib.js', 'w').write(r'''
       mergeInto(LibraryManager.library, {
         test_lib_func: function(x) {
@@ -3709,6 +3716,7 @@ var Module = {
                    'main init sees -524, -534, 72.\nside init sees 82, 72, -534.\nmain main sees -524, -534, 72.'])
 
   def test_dylink_zlib(self):
+    Settings.BINARYEN_IMPRECISE = 1 # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'zlib')]
 
     Popen([PYTHON, path_from_root('embuilder.py'), 'build' ,'zlib']).communicate()
@@ -4946,11 +4954,12 @@ return malloc(size);
       main = main[:main.find('\n}')]
       assert main.count('\n') <= 7, ('must not emit too many postSets: %d' % main.count('\n')) + ' : ' + main
 
-    print 'relocatable'
-    assert Settings.RELOCATABLE == Settings.EMULATED_FUNCTION_POINTERS == 0
-    Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 1
-    test()
-    Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 0
+    if not self.is_wasm(): # TODO: wrappers for wasm modules
+      print 'relocatable'
+      assert Settings.RELOCATABLE == Settings.EMULATED_FUNCTION_POINTERS == 0
+      Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 1
+      test()
+      Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 0
 
     if self.is_emterpreter():
       print 'emterpreter/async/assertions' # extra coverage

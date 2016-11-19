@@ -386,6 +386,7 @@ var Runtime = {
       oldTable.push(table.get(i));
     }
 #endif
+    // create a module from the instance
     wasm = new WebAssembly.Instance(new WebAssembly.Module(wasm), info);
 #if ASSERTIONS
     // the table should be unchanged
