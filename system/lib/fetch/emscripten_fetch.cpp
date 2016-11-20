@@ -127,9 +127,25 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeou
 
 EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch)
 {
+	if (!fetch) return EMSCRIPTEN_RESULT_SUCCESS; // Closing null pointer is ok, same as with free().
+
 #if __EMSCRIPTEN_PTHREADS__
 	emscripten_atomic_store_u32(&fetch->__proxyState, 0);
 #endif
-	free(fetch); // TODO: thread-safety before freeing (what if freeing an operation in progress? explicit emscripten_fetch_abort()?)
+	// This function frees the fetch pointer so that it is invalid to access it anymore.
+	// Use a few key fields as an integrity check that we are being passed a good pointer to a valid fetch structure,
+	// which has not been yet closed. (double close is an error)
+	if (fetch->id == 0 || fetch->readyState > 4) return EMSCRIPTEN_RESULT_INVALID_PARAM;
+
+	// This fetch is aborted. Call the error handler if the fetch was still in progress and was canceled in flight.
+	if (fetch->readyState != 4 /*DONE*/ && fetch->__attributes.onerror)
+	{
+		fetch->status = (unsigned short)-1;
+		strcpy(fetch->statusText, "aborted with emscripten_fetch_close()");
+		fetch->__attributes.onerror(fetch);
+	}
+	fetch->id = 0;
+	free((void*)fetch->data);
+	free(fetch);
 	return EMSCRIPTEN_RESULT_SUCCESS;
 }

@@ -174,7 +174,9 @@ function __emscripten_fetch_load_cached_data(db, fetch, onsuccess, onerror) {
         console.log('fetch: Loaded file ' + pathStr + ' from IndexedDB, length: ' + len);
 #endif
 
-        var ptr = _malloc(len); // TODO: make emscripten_fetch_close() free() this data.
+        // The data pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
+        // freed when emscripten_fetch_close() is called.
+        var ptr = _malloc(len);
         HEAPU8.set(new Uint8Array(value), ptr);
         HEAPU32[fetch + 12 >> 2] = ptr;//{{{ makeSetValue('fetch', 12/*TODO:jsonify*/, 'ptr', 'i32')}}};
         Fetch.setu64(fetch + 16, len);//{{{ makeSetValue('fetch', 16/*TODO:jsonify*/, 'len', 'i64')}}};
@@ -339,7 +341,9 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
 #if FETCH_DEBUG
       console.log('fetch: allocating ' + ptrLen + ' bytes in Emscripten heap for xhr data');
 #endif
-      ptr = _malloc(ptrLen); // TODO: make emscripten_fetch_close() free() this data.
+      // The data pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
+      // freed when emscripten_fetch_close() is called.
+      ptr = _malloc(ptrLen);
       HEAPU8.set(new Uint8Array(xhr.response), ptr); // TODO: Since DYNAMICTOP is not coherent, this can corrupt
     }
     HEAPU32[fetch + 12 >> 2] = ptr;//{{{ makeSetValue('fetch', 12/*TODO:jsonify*/, 'ptr', 'i32')}}};
@@ -397,7 +401,9 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
 #if FETCH_DEBUG
       console.log('fetch: allocating ' + ptrLen + ' bytes in Emscripten heap for xhr data');
 #endif
-      ptr = _malloc(ptrLen); // TODO: make emscripten_fetch_close() free() this data.
+      // The data pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
+      // freed when emscripten_fetch_close() is called.
+      ptr = _malloc(ptrLen);
       HEAPU8.set(new Uint8Array(xhr.response), ptr);
     }
     HEAPU32[fetch + 12 >> 2] = ptr;//{{{ makeSetValue('fetch', 12/*TODO:jsonify*/, 'ptr', 'i32')}}};
