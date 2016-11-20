@@ -16,6 +16,7 @@ void failure(emscripten_fetch_t *fetch)
 
 int main()
 {
+  emscripten_fetch_attr_t attr;
   emscripten_fetch_attr_init(&attr);
   strcpy(attr.requestMethod, "EM_IDB_DELETE");
   emscripten_fetch(&attr, "filename_to_delete.dat");
