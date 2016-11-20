@@ -293,13 +293,13 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
   var overriddenMimeTypeStr = overriddenMimeType ? Pointer_stringify(overriddenMimeType) : undefined;
 
   var xhr = new XMLHttpRequest();
-  xhr.timeout = timeoutMsecs;
   xhr.withCredentials = withCredentials;
 #if FETCH_DEBUG
   console.log('fetch: xhr.timeout: ' + xhr.timeout + ', xhr.withCredentials: ' + xhr.withCredentials);
   console.log('fetch: xhr.open(requestMethod="' + requestMethod + '", url: "' + url_ +'", userName: ' + userNameStr + ', password: ' + passwordStr + ');');
 #endif
   xhr.open(requestMethod, url_, !fetchAttrSynchronous, userNameStr, passwordStr);
+  if (!fetchAttrSynchronous) xhr.timeout = timeoutMsecs; // XHR timeout field is only accessible in async XHRs, and must be set after .open() but before .send().
   xhr.url_ = url_; // Save the url for debugging purposes (and for comparing to the responseURL that server side advertised)
   xhr.responseType = fetchAttrStreamData ? 'moz-chunked-arraybuffer' : 'arraybuffer';
 
