@@ -131,6 +131,7 @@ struct emscripten_fetch_t
 	uint64_t dataOffset; // XXX 24
 
 	// Specifies the total number of bytes that the response body will be.
+	// Note: This field may be zero, if the server does not report the Content-Length field.
 	uint64_t totalBytes; // XXX 32
 
 	// Specifies the readyState of the XHR request:

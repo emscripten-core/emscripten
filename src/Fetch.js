@@ -346,6 +346,9 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
     Fetch.setu64(fetch + 16, ptrLen);//{{{ makeSetValue('fetch', 16/*TODO:jsonify*/, 'ptrLen', 'i64')}}};
     Fetch.setu64(fetch + 24, 0);//{{{ makeSetValue('fetch', 24/*TODO:jsonify*/, '0', 'i64')}}};
     if (len) {
+      // If the final XHR.onload handler receives the bytedata to compute total length, report that,
+      // otherwise don't write anything out here, which will retain the latest byte size reported in
+      // the most recent XHR.onprogress handler.
       Fetch.setu64(fetch + 32, len);//{{{ makeSetValue('fetch', 32/*TODO:jsonify*/, 'len', 'i64')}}};
     }
     HEAPU16[fetch + 40 >> 1] = xhr.readyState;
