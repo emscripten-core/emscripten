@@ -97,6 +97,8 @@ struct emscripten_fetch_attr_t
 
 	// If non-zero, specified a pointer to the data that is to be passed as the body (payload) of the request
 	// that is being performed. Leave as zero if no request body needs to be sent.
+	// The memory pointed to by this field is provided by the user, and needs to be valid only until the call to
+	// emscripten_fetch() returns.
 	const char *requestData; // XXX 84
 
 	// Specifies the length of the buffer pointed by 'requestData'. Leave as 0 if no request body needs to be sent.
@@ -120,6 +122,8 @@ struct emscripten_fetch_t
 	// In onprogress() handler:
 	//   - If the EMSCRIPTEN_FETCH_STREAM_DATA attribute was specified for the transfer, this points to a partial
 	//     chunk of bytes related to the transfer. Otherwise this will be null.
+	// The data buffer provided here has identical lifetime with the emscripten_fetch_t object itself, and is freed by
+	// calling emscripten_fetch_close() on the emscripten_fetch_t pointer.
 	const char *data; // XXX 12
 
 	// Specifies the length of the above data block in bytes. When the download finishes, this field will be valid even if
