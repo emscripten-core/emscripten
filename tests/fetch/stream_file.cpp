@@ -33,8 +33,9 @@ int main()
     assert(fetch->numBytes > 0);
     assert(fetch->dataOffset + fetch->numBytes <= fetch->totalBytes);
     assert(fetch->totalBytes <= 134217728);
-    printf("Downloading.. %.2f%% complete. Received chunk [%llu, %llu[\n", 
-      (fetch->dataOffset + fetch->numBytes) * 100.0 / fetch->totalBytes,
+    printf("Downloading.. %.2f%s complete. Received chunk [%llu, %llu[\n", 
+      (fetch->totalBytes > 0) ? ((fetch->dataOffset + fetch->numBytes) * 100.0 / fetch->totalBytes) : (double)(fetch->dataOffset + fetch->numBytes),
+      (fetch->totalBytes > 0) ? "%" : " bytes",
       fetch->dataOffset,
       fetch->dataOffset + fetch->numBytes);
 

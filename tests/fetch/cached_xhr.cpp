@@ -25,7 +25,11 @@ void fetchFromIndexedDB()
 
   };
   attr.onprogress = [](emscripten_fetch_t *fetch) {
-    printf("Downloading.. %.2f%% complete.\n", (fetch->dataOffset + fetch->numBytes) * 100.0 / fetch->totalBytes);
+    if (fetch->totalBytes > 0) {
+      printf("Downloading.. %.2f%% complete.\n", (fetch->dataOffset + fetch->numBytes) * 100.0 / fetch->totalBytes);
+    } else {
+      printf("Downloading.. %lld bytes complete.\n", fetch->dataOffset + fetch->numBytes);
+    }
   };
   attr.attributes = EMSCRIPTEN_FETCH_APPEND | EMSCRIPTEN_FETCH_NO_DOWNLOAD;
   emscripten_fetch_t *fetch = emscripten_fetch(&attr, "gears.png");
@@ -47,7 +51,11 @@ int main()
     fetchFromIndexedDB();
   };
   attr.onprogress = [](emscripten_fetch_t *fetch) {
-    printf("Downloading.. %.2f%% complete.\n", (fetch->dataOffset + fetch->numBytes) * 100.0 / fetch->totalBytes);
+    if (fetch->totalBytes > 0) {
+      printf("Downloading.. %.2f%% complete.\n", (fetch->dataOffset + fetch->numBytes) * 100.0 / fetch->totalBytes);
+    } else {
+      printf("Downloading.. %lld bytes complete.\n", fetch->dataOffset + fetch->numBytes);
+    }
   };
   attr.attributes = EMSCRIPTEN_FETCH_REPLACE | EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_PERSIST_FILE;
   emscripten_fetch_t *fetch = emscripten_fetch(&attr, "gears.png");

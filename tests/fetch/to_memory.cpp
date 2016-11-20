@@ -51,7 +51,11 @@ int main()
     assert(fetch);
     if (fetch->status != 200) return;
     printf("onprogress: dataOffset: %llu, numBytes: %llu, totalBytes: %llu\n", fetch->dataOffset, fetch->numBytes, fetch->totalBytes);
-    printf("Downloading.. %.2f%% complete.\n", (fetch->dataOffset + fetch->numBytes) * 100.0 / fetch->totalBytes);
+    if (fetch->totalBytes > 0) {
+      printf("Downloading.. %.2f%% complete.\n", (fetch->dataOffset + fetch->numBytes) * 100.0 / fetch->totalBytes);
+    } else {
+      printf("Downloading.. %lld bytes complete.\n", fetch->dataOffset + fetch->numBytes);
+    }
 #ifdef FILE_DOES_NOT_EXIST
     assert(false && "onprogress handler called, but the file should not exist"); // We should not receive progress reports if the file doesn't exist.
 #endif

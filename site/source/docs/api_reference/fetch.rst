@@ -210,19 +210,22 @@ The emscripten_fetch_attr_t object has a timeoutMsecs field which allows specify
 	.. code-block:: cpp
 
 		void downloadProgress(emscripten_fetch_t *fetch) {
-		    printf("Downloading %s.. %.2f%% complete.\n", 
-		      fetch->url, fetch->dataOffset * 100.0 / fetch->totalBytes);
+			if (fetch->totalBytes) {
+				printf("Downloading %s.. %.2f%% complete.\n", fetch->url, fetch->dataOffset * 100.0 / fetch->totalBytes);
+			} else {
+				printf("Downloading %s.. %lld bytes complete.\n", fetch->url, fetch->dataOffset + fetch->numBytes);
+			}
 		}
 
 		int main() {
-		  emscripten_fetch_attr_t attr;
-		  emscripten_fetch_attr_init(&attr);
-		  strcpy(attr.requestMethod, "GET");
-		  attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
-		  attr.onsuccess = downloadSucceeded;
-		  attr.onprogress = downloadProgress;
-		  attr.onerror = downloadFailed;
-		  emscripten_fetch(&attr, "myfile.dat");
+			emscripten_fetch_attr_t attr;
+			emscripten_fetch_attr_init(&attr);
+			strcpy(attr.requestMethod, "GET");
+			attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
+			attr.onsuccess = downloadSucceeded;
+			attr.onprogress = downloadProgress;
+			attr.onerror = downloadFailed;
+			emscripten_fetch(&attr, "myfile.dat");
 		}
 
 Managing Large Files
@@ -245,9 +248,10 @@ If the application does not need random seek access to the file, but is able to 
 	.. code-block:: cpp
 
 		void downloadProgress(emscripten_fetch_t *fetch) {
-		  printf("Downloading %s.. %.2f%% complete. HTTP readyState: %d. HTTP status: %d.\n"
+		  printf("Downloading %s.. %.2f%%s complete. HTTP readyState: %d. HTTP status: %d.\n"
 		    "HTTP statusText: %s. Received chunk [%llu, %llu[\n", 
-		    fetch->url, (fetch->dataOffset + fetch->numBytes) * 100.0 / fetch->totalBytes,
+		    fetch->url, fetch->totalBytes > 0 ? (fetch->dataOffset + fetch->numBytes) * 100.0 / fetch->totalBytes : (fetch->dataOffset + fetch->numBytes),
+		    fetch->totalBytes > 0 ? "%" : " bytes",
 		    fetch->readyState, fetch->status, fetch->statusText,
 		    fetch->dataOffset, fetch->dataOffset + fetch->numBytes);
 

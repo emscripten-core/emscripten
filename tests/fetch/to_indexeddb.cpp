@@ -33,7 +33,11 @@ int main()
   attr.onprogress = [](emscripten_fetch_t *fetch) {
     assert(fetch);
     if (fetch->status != 200) return;
-    printf("Downloading.. %.2f%% complete.\n", (fetch->dataOffset + fetch->numBytes) * 100.0 / fetch->totalBytes);
+    if (fetch->totalBytes > 0) {
+      printf("Downloading.. %.2f%% complete.\n", (fetch->dataOffset + fetch->numBytes) * 100.0 / fetch->totalBytes);
+    } else {
+      printf("Downloading.. %lld bytes complete.\n", fetch->dataOffset + fetch->numBytes);
+    }
   };
 
   attr.onerror = [](emscripten_fetch_t *fetch) {
