@@ -314,6 +314,13 @@ var LibraryOpenAL = {
       }
       {{{ makeSetValue('data', '0', '0', 'i32') }}};
       break;
+    case 0x1007 /* ALC_FREQUENCY */:
+      if (!device) {
+        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        return 0;
+      }
+      {{{ makeSetValue('data', '0', 'AL.currentContext.ctx.sampleRate', 'i32') }}};
+      break;
     case 0x20003 /* ALC_MAX_AUXILIARY_SENDS */:
       if (!device) {
         AL.currentContext.err = 0xA001 /* ALC_INVALID_DEVICE */;
