@@ -93,13 +93,13 @@ function processWorkQueue() {
     console.log('processWorkQueue: starting fetch');
     function successcb(fetch) {
       console.log('FETCH-WORKER: fetch finished on success');
-      Atomics.compareExchange(HEAPU32, fetch + 108 >> 2, 1, 2);
-      Atomics.wake(HEAP32, fetch + 108 >> 2, 1);
+      Atomics.compareExchange(HEAPU32, fetch + Fetch.fetch_t_offset___proxyState >> 2, 1, 2);
+      Atomics.wake(HEAP32, fetch + Fetch.fetch_t_offset___proxyState >> 2, 1);
     }
     function errorcb(fetch) {
       console.log('FETCH-WORKER: fetch finished on failure');
-      Atomics.compareExchange(HEAPU32, fetch + 108 >> 2, 1, 2);
-      Atomics.wake(HEAP32, fetch + 108 >> 2, 1);
+      Atomics.compareExchange(HEAPU32, fetch + Fetch.fetch_t_offset___proxyState >> 2, 1, 2);
+      Atomics.wake(HEAP32, fetch + Fetch.fetch_t_offset___proxyState >> 2, 1);
     }
     function progresscb(fetch) {
       console.log('FETCH-WORKER: fetch progress..');

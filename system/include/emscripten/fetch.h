@@ -48,73 +48,68 @@ struct emscripten_fetch_t;
 struct emscripten_fetch_attr_t
 {
 	// 'POST', 'GET', etc.
-	char requestMethod[32];         // XXX 0
+	char requestMethod[32];
 
 	// Custom data that can be tagged along the process.
-	void *userData; // XXX 32
+	void *userData;
 
-	void (*onsuccess)(emscripten_fetch_t *fetch); // XXX 36
-	void (*onerror)(emscripten_fetch_t *fetch); // XXX 40
-	void (*onprogress)(emscripten_fetch_t *fetch); // XXX 44
+	void (*onsuccess)(emscripten_fetch_t *fetch);
+	void (*onerror)(emscripten_fetch_t *fetch);
+	void (*onprogress)(emscripten_fetch_t *fetch);
 
 	// EMSCRIPTEN_FETCH_* attributes
-	uint32_t attributes; // XXX 48
+	uint32_t attributes;
 
 	// Specifies the amount of time the request can take before failing due to a timeout.
-	unsigned long timeoutMSecs; // XXX 52
+	unsigned long timeoutMSecs;
 
 	// Indicates whether cross-site access control requests should be made using credentials.
-	EM_BOOL withCredentials; // XXX 56
-
-	// If true, performs a synchronous blocking XHR. The emscripten_fetch() function call does not return until
-	// the request has completed. Setting this to true in the main browser thread will fail with
-	// EMSCRIPTEN_RESULT_NOT_SUPPORTED. 
-	EM_BOOL synchronousRequestTODODELETEONCESTRUCTJSONIFIED; // XXX 60
+	EM_BOOL withCredentials;
 
 	// Specifies the destination path in IndexedDB where to store the downloaded content body. If this is empty, the transfer
 	// is not stored to IndexedDB at all.
 	// Note that this struct does not contain space to hold this string, it only carries a pointer.
 	// Calling emscripten_fetch() will make an internal copy of this string.
-	const char *destinationPath; // XXX 64
+	const char *destinationPath;
 
 	// Specifies the authentication username to use for the request, if necessary.
 	// Note that this struct does not contain space to hold this string, it only carries a pointer.
 	// Calling emscripten_fetch() will make an internal copy of this string.
-	const char *userName; // XXX 68
+	const char *userName;
 
 	// Specifies the authentication username to use for the request, if necessary.
 	// Note that this struct does not contain space to hold this string, it only carries a pointer.
 	// Calling emscripten_fetch() will make an internal copy of this string.
-	const char *password; // XXX 72
+	const char *password;
 
 	// Points to an array of strings to pass custom headers to the request. This array takes the form
 	// {"key1", "value1", "key2", "value2", "key3", "value3", ..., 0 }; Note especially that the array
 	// needs to be terminated with a null pointer.
-	const char * const *requestHeaders; // XXX 76
+	const char * const *requestHeaders;
 
 	// Pass a custom MIME type here to force the browser to treat the received data with the given type.
-	const char *overriddenMimeType; // XXX 80
+	const char *overriddenMimeType;
 
 	// If non-zero, specified a pointer to the data that is to be passed as the body (payload) of the request
 	// that is being performed. Leave as zero if no request body needs to be sent.
 	// The memory pointed to by this field is provided by the user, and needs to be valid only until the call to
 	// emscripten_fetch() returns.
-	const char *requestData; // XXX 84
+	const char *requestData;
 
 	// Specifies the length of the buffer pointed by 'requestData'. Leave as 0 if no request body needs to be sent.
-	size_t requestDataSize; // XXX 88
+	size_t requestDataSize;
 };
 
 struct emscripten_fetch_t
 {
 	// Unique identifier for this fetch in progress.
-	unsigned int id; // XXX 0
+	unsigned int id;
 
 	// Custom data that can be tagged along the process.
-	void *userData; // XXX 4
+	void *userData;
 
 	// The remote URL that is being downloaded.
-	const char *url; // XXX 8
+	const char *url;
 
 	// In onsuccess() handler:
 	//   - If the EMSCRIPTEN_FETCH_LOAD_TO_MEMORY attribute was specified for the transfer, this points to the
@@ -124,19 +119,19 @@ struct emscripten_fetch_t
 	//     chunk of bytes related to the transfer. Otherwise this will be null.
 	// The data buffer provided here has identical lifetime with the emscripten_fetch_t object itself, and is freed by
 	// calling emscripten_fetch_close() on the emscripten_fetch_t pointer.
-	const char *data; // XXX 12
+	const char *data;
 
 	// Specifies the length of the above data block in bytes. When the download finishes, this field will be valid even if
 	// EMSCRIPTEN_FETCH_LOAD_TO_MEMORY was not specified.
-	uint64_t numBytes; // XXX 16
+	uint64_t numBytes;
 
 	// If EMSCRIPTEN_FETCH_STREAM_DATA is being performed, this indicates the byte offset from the start of the stream
 	// that the data block specifies. (for onprogress() streaming XHR transfer, the number of bytes downloaded so far before this chunk)
-	uint64_t dataOffset; // XXX 24
+	uint64_t dataOffset;
 
 	// Specifies the total number of bytes that the response body will be.
 	// Note: This field may be zero, if the server does not report the Content-Length field.
-	uint64_t totalBytes; // XXX 32
+	uint64_t totalBytes;
 
 	// Specifies the readyState of the XHR request:
 	// 0: UNSENT: request not sent yet
@@ -145,18 +140,18 @@ struct emscripten_fetch_t
 	// 3: LOADING: download in progress.
 	// 4: DONE: download finished.
 	// See https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/readyState
-	unsigned short readyState; // XXX 40
+	unsigned short readyState;
 
 	// Specifies the status code of the response.
-	unsigned short status; // XXX 42
+	unsigned short status;
 
 	// Specifies a human-readable form of the status code.
-	char statusText[64]; // XXX 44
+	char statusText[64];
 
-	uint32_t __proxyState; // XXX 108
+	uint32_t __proxyState;
 
 	// For internal use only.
-	emscripten_fetch_attr_t __attributes; // XXX 112
+	emscripten_fetch_attr_t __attributes;
 };
 
 // Clears the fields of an emscripten_fetch_attr_t structure to their default values in a future-compatible manner.

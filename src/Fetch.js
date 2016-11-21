@@ -1,4 +1,33 @@
 var Fetch = {
+  attr_t_offset_requestMethod: 0,
+  attr_t_offset_userData: 32,
+  attr_t_offset_onsuccess: 36,
+  attr_t_offset_onerror: 40,
+  attr_t_offset_onprogress: 44,
+  attr_t_offset_attributes: 48,
+  attr_t_offset_timeoutMSecs: 52,
+  attr_t_offset_withCredentials: 56,
+  attr_t_offset_destinationPath: 60,
+  attr_t_offset_userName: 64,
+  attr_t_offset_password: 68,
+  attr_t_offset_requestHeaders: 72,
+  attr_t_offset_overriddenMimeType: 76,
+  attr_t_offset_requestData: 80,
+  attr_t_offset_requestDataSize: 84,
+
+  fetch_t_offset_id: 0,
+  fetch_t_offset_userData: 4,
+  fetch_t_offset_url: 8,
+  fetch_t_offset_data: 12,
+  fetch_t_offset_numBytes: 16,
+  fetch_t_offset_dataOffset: 24,
+  fetch_t_offset_totalBytes: 32,
+  fetch_t_offset_readyState: 40,
+  fetch_t_offset_status: 42,
+  fetch_t_offset_statusText: 44,
+  fetch_t_offset___proxyState: 108,
+  fetch_t_offset___attributes: 112,
+
   xhrs: [],
   // The web worker that runs proxied file I/O requests.
   worker: undefined,
@@ -109,9 +138,9 @@ function __emscripten_fetch_delete_cached_data(db, fetch, onsuccess, onerror) {
     return;
   }
 
-  var fetch_attr = fetch + 112/*TODO:structs_info*/;
-  var path = HEAPU32[fetch_attr + 64 >> 2];//{{{ makeGetValue('fetch_attr', 64/*TODO*/, 'i32') }}};
-  if (!path) path = HEAPU32[fetch + 8 >> 2];//{{{ makeGetValue('fetch', 8/*TODO:structs_info.jsonify this*/, 'i32') }}};
+  var fetch_attr = fetch + Fetch.fetch_t_offset___attributes;
+  var path = HEAPU32[fetch_attr + Fetch.attr_t_offset_destinationPath >> 2];
+  if (!path) path = HEAPU32[fetch + Fetch.fetch_t_offset_url >> 2];
   var pathStr = Pointer_stringify(path);
 
   try {
@@ -123,12 +152,12 @@ function __emscripten_fetch_delete_cached_data(db, fetch, onsuccess, onerror) {
 #if FETCH_DEBUG
       console.log('fetch: Deleted file ' + pathStr + ' from IndexedDB');
 #endif
-      HEAPU32[fetch + 12 >> 2] = 0;//{{{ makeSetValue('fetch', 12/*TODO:jsonify*/, 'ptr', 'i32')}}};
-      Fetch.setu64(fetch + 16, 0);//{{{ makeSetValue('fetch', 16/*TODO:jsonify*/, 'len', 'i64')}}};
-      Fetch.setu64(fetch + 24, 0);//{{{ makeSetValue('fetch', 24/*TODO:jsonify*/, '0', 'i64')}}};
-      Fetch.setu64(fetch + 32, 0);//{{{ makeSetValue('fetch', 32/*TODO:jsonify*/, 'len', 'i64')}}};
-      HEAPU16[fetch + 40 >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
-      HEAPU16[fetch + 42 >> 1] = 200; // Mimic XHR HTTP status code 200 "OK"
+      HEAPU32[fetch + Fetch.fetch_t_offset_data >> 2] = 0;
+      Fetch.setu64(fetch + Fetch.fetch_t_offset_numBytes, 0);
+      Fetch.setu64(fetch + Fetch.fetch_t_offset_dataOffset, 0);
+      Fetch.setu64(fetch + Fetch.fetch_t_offset_dataOffset, 0);
+      HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+      HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 200; // Mimic XHR HTTP status code 200 "OK"
 
       onsuccess(fetch, 0, value);
     };
@@ -136,8 +165,8 @@ function __emscripten_fetch_delete_cached_data(db, fetch, onsuccess, onerror) {
 #if FETCH_DEBUG
       console.error('fetch: Failed to delete file ' + pathStr + ' from IndexedDB! error: ' + error);
 #endif
-      HEAPU16[fetch + 40 >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
-      HEAPU16[fetch + 42 >> 1] = 404; // Mimic XHR HTTP status code 404 "Not Found"
+      HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+      HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 404; // Mimic XHR HTTP status code 404 "Not Found"
       onerror(fetch, 0, error);
     };
   } catch(e) {
@@ -157,9 +186,9 @@ function __emscripten_fetch_load_cached_data(db, fetch, onsuccess, onerror) {
     return;
   }
 
-  var fetch_attr = fetch + 112/*TODO:structs_info*/;
-  var path = HEAPU32[fetch_attr + 64 >> 2];//{{{ makeGetValue('fetch_attr', 64/*TODO*/, 'i32') }}};
-  if (!path) path = HEAPU32[fetch + 8 >> 2];//{{{ makeGetValue('fetch', 8/*TODO:structs_info.jsonify this*/, 'i32') }}};
+  var fetch_attr = fetch + Fetch.fetch_t_offset___attributes;
+  var path = HEAPU32[fetch_attr + Fetch.attr_t_offset_destinationPath >> 2];
+  if (!path) path = HEAPU32[fetch + Fetch.fetch_t_offset_url >> 2];
   var pathStr = Pointer_stringify(path);
 
   try {
@@ -178,12 +207,12 @@ function __emscripten_fetch_load_cached_data(db, fetch, onsuccess, onerror) {
         // freed when emscripten_fetch_close() is called.
         var ptr = _malloc(len);
         HEAPU8.set(new Uint8Array(value), ptr);
-        HEAPU32[fetch + 12 >> 2] = ptr;//{{{ makeSetValue('fetch', 12/*TODO:jsonify*/, 'ptr', 'i32')}}};
-        Fetch.setu64(fetch + 16, len);//{{{ makeSetValue('fetch', 16/*TODO:jsonify*/, 'len', 'i64')}}};
-        Fetch.setu64(fetch + 24, 0);//{{{ makeSetValue('fetch', 24/*TODO:jsonify*/, '0', 'i64')}}};
-        Fetch.setu64(fetch + 32, len);//{{{ makeSetValue('fetch', 32/*TODO:jsonify*/, 'len', 'i64')}}};
-        HEAPU16[fetch + 40 >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
-        HEAPU16[fetch + 42 >> 1] = 200; // Mimic XHR HTTP status code 200 "OK"
+        HEAPU32[fetch + Fetch.fetch_t_offset_data >> 2] = ptr;
+        Fetch.setu64(fetch + Fetch.fetch_t_offset_numBytes, len);
+        Fetch.setu64(fetch + Fetch.fetch_t_offset_dataOffset, 0);
+        Fetch.setu64(fetch + Fetch.fetch_t_offset_totalBytes, len);
+        HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+        HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 200; // Mimic XHR HTTP status code 200 "OK"
 
         onsuccess(fetch, 0, value);
       } else {
@@ -191,8 +220,8 @@ function __emscripten_fetch_load_cached_data(db, fetch, onsuccess, onerror) {
 #if FETCH_DEBUG
         console.error('fetch: File ' + pathStr + ' not found in IndexedDB');
 #endif
-        HEAPU16[fetch + 40 >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
-        HEAPU16[fetch + 42 >> 1] = 404; // Mimic XHR HTTP status code 404 "Not Found"
+        HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+        HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 404; // Mimic XHR HTTP status code 404 "Not Found"
         onerror(fetch, 0, 'no data');
       }
     };
@@ -200,8 +229,8 @@ function __emscripten_fetch_load_cached_data(db, fetch, onsuccess, onerror) {
 #if FETCH_DEBUG
       console.error('fetch: Failed to load file ' + pathStr + ' from IndexedDB!');
 #endif
-      HEAPU16[fetch + 40 >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
-      HEAPU16[fetch + 42 >> 1] = 404; // Mimic XHR HTTP status code 404 "Not Found"
+      HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+      HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 404; // Mimic XHR HTTP status code 404 "Not Found"
       onerror(fetch, 0, error);
     };
   } catch(e) {
@@ -221,9 +250,9 @@ function __emscripten_fetch_cache_data(db, fetch, data, onsuccess, onerror) {
     return;
   }
 
-  var fetch_attr = fetch + 112/*TODO:structs_info*/;
-  var destinationPath = HEAPU32[fetch_attr + 64 >> 2];//{{{ makeGetValue('fetch_attr', 64/*TODO*/, 'i32') }}};
-  if (!destinationPath) destinationPath = HEAPU32[fetch + 8 >> 2];//{{{ makeGetValue('fetch', 8/*TODO*/, 'i32') }}};
+  var fetch_attr = fetch + Fetch.fetch_t_offset___attributes;
+  var destinationPath = HEAPU32[fetch_attr + Fetch.attr_t_offset_destinationPath >> 2];
+  if (!destinationPath) destinationPath = HEAPU32[fetch + Fetch.fetch_t_offset_url >> 2];
   var destinationPathStr = Pointer_stringify(destinationPath);
 
   try {
@@ -234,8 +263,8 @@ function __emscripten_fetch_cache_data(db, fetch, data, onsuccess, onerror) {
 #if FETCH_DEBUG
       console.log('fetch: Stored file "' + destinationPathStr + '" to IndexedDB cache.');
 #endif
-      HEAPU16[fetch + 40 >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
-      HEAPU16[fetch + 42 >> 1] = 200; // Mimic XHR HTTP status code 200 "OK"
+      HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+      HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 200; // Mimic XHR HTTP status code 200 "OK"
       onsuccess(fetch, 0, destinationPathStr);
     };
     putRequest.onerror = function(error) {
@@ -245,8 +274,8 @@ function __emscripten_fetch_cache_data(db, fetch, data, onsuccess, onerror) {
       // Most likely we got an error if IndexedDB is unwilling to store any more data for this page.
       // TODO: Can we identify and break down different IndexedDB-provided errors and convert those
       // to more HTTP status codes for more information?
-      HEAPU16[fetch + 40 >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
-      HEAPU16[fetch + 42 >> 1] = 413; // Mimic XHR HTTP status code 413 "Payload Too Large"
+      HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+      HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 413; // Mimic XHR HTTP status code 413 "Payload Too Large"
       onerror(fetch, 0, error);
     };
   } catch(e) {
@@ -258,7 +287,7 @@ function __emscripten_fetch_cache_data(db, fetch, data, onsuccess, onerror) {
 }
 
 function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
-  var url = HEAPU32[fetch + 8 >> 2];//{{{ makeGetValue('fetch', 8/*TODO:structs_info.jsonify this*/, 'i32') }}};
+  var url = HEAPU32[fetch + Fetch.fetch_t_offset_url >> 2];
   if (!url) {
 #if FETCH_DEBUG
     console.error('fetch: XHR failed, no URL specified!');
@@ -268,18 +297,18 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
   }
   var url_ = Pointer_stringify(url);
 
-  var fetch_attr = fetch + 112/*TODO:structs_info*/;
+  var fetch_attr = fetch + Fetch.fetch_t_offset___attributes;
   var requestMethod = Pointer_stringify(fetch_attr);
   if (!requestMethod) requestMethod = 'GET';
-  var userData = HEAPU32[fetch_attr + 32 >> 2];//{{{ makeGetValue('fetch_attr', 32/*TODO:structs_info.jsonify this*/, 'i32') }}};
-  var fetchAttributes = HEAPU32[fetch_attr + 48 >> 2];//{{{ makeGetValue('fetch_attr', 48/*TODO*/, 'i32') }}};
-  var timeoutMsecs = HEAPU32[fetch_attr + 52 >> 2];//{{{ makeGetValue('fetch_attr', 52/*TODO*/, 'i32') }}};
-  var withCredentials = !!HEAPU32[fetch_attr + 56 >> 2];//({{{ makeGetValue('fetch_attr', 56/*TODO*/, 'i32') }}});
-  var destinationPath = HEAPU32[fetch_attr + 64 >> 2];//{{{ makeGetValue('fetch_attr', 64/*TODO*/, 'i32') }}};
-  var userName = HEAPU32[fetch_attr + 68 >> 2];//{{{ makeGetValue('fetch_attr', 68/*TODO*/, 'i32') }}};
-  var password = HEAPU32[fetch_attr + 72 >> 2];//{{{ makeGetValue('fetch_attr', 72/*TODO*/, 'i32') }}};
-  var requestHeaders = HEAPU32[fetch_attr + 76 >> 2];//{{{ makeGetValue('fetch_attr', 76/*TODO*/, 'i32') }}};
-  var overriddenMimeType = HEAPU32[fetch_attr + 80 >> 2];//{{{ makeGetValue('fetch_attr', 80/*TODO*/, 'i32') }}};
+  var userData = HEAPU32[fetch_attr + Fetch.attr_t_offset_userData >> 2];
+  var fetchAttributes = HEAPU32[fetch_attr + Fetch.attr_t_offset_attributes >> 2];
+  var timeoutMsecs = HEAPU32[fetch_attr + Fetch.attr_t_offset_timeoutMSecs >> 2];
+  var withCredentials = !!HEAPU32[fetch_attr + Fetch.attr_t_offset_withCredentials >> 2];
+  var destinationPath = HEAPU32[fetch_attr + Fetch.attr_t_offset_destinationPath >> 2];
+  var userName = HEAPU32[fetch_attr + Fetch.attr_t_offset_userName >> 2];
+  var password = HEAPU32[fetch_attr + Fetch.attr_t_offset_password >> 2];
+  var requestHeaders = HEAPU32[fetch_attr + Fetch.attr_t_offset_requestHeaders >> 2];
+  var overriddenMimeType = HEAPU32[fetch_attr + Fetch.attr_t_offset_overriddenMimeType >> 2];
 
   var fetchAttrLoadToMemory = !!(fetchAttributes & 1/*EMSCRIPTEN_FETCH_LOAD_TO_MEMORY*/);
   var fetchAttrStreamData = !!(fetchAttributes & 2/*EMSCRIPTEN_FETCH_STREAM_DATA*/);
@@ -313,9 +342,9 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
   }
   if (requestHeaders) {
     for(;;) {
-      var key = HEAPU32[requestHeaders >> 2];//{{{ makeGetValue('requestHeaders', 0, 'i32') }}};
+      var key = HEAPU32[requestHeaders >> 2];
       if (!key) break;
-      var value = HEAPU32[requestHeaders + 4 >> 2];//{{{ makeGetValue('requestHeaders', 4, 'i32') }}};
+      var value = HEAPU32[requestHeaders + 4 >> 2];
       if (!value) break;
       requestHeaders += 8;
       var keyStr = Pointer_stringify(key);
@@ -328,7 +357,7 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
   }
   Fetch.xhrs.push(xhr);
   var id = Fetch.xhrs.length;
-  HEAPU32[fetch >> 2] = id;//{{{ makeSetValue('fetch', 0/*TODO:jsonify*/, 'id', 'i32')}}};
+  HEAPU32[fetch + Fetch.fetch_t_offset_id >> 2] = id;
   var data = null; // TODO: Support user to pass data to request.
   // TODO: Support specifying custom headers to the request.
 
@@ -344,24 +373,24 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
       // The data pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
       // freed when emscripten_fetch_close() is called.
       ptr = _malloc(ptrLen);
-      HEAPU8.set(new Uint8Array(xhr.response), ptr); // TODO: Since DYNAMICTOP is not coherent, this can corrupt
+      HEAPU8.set(new Uint8Array(xhr.response), ptr);
     }
-    HEAPU32[fetch + 12 >> 2] = ptr;//{{{ makeSetValue('fetch', 12/*TODO:jsonify*/, 'ptr', 'i32')}}};
-    Fetch.setu64(fetch + 16, ptrLen);//{{{ makeSetValue('fetch', 16/*TODO:jsonify*/, 'ptrLen', 'i64')}}};
-    Fetch.setu64(fetch + 24, 0);//{{{ makeSetValue('fetch', 24/*TODO:jsonify*/, '0', 'i64')}}};
+    HEAPU32[fetch + Fetch.fetch_t_offset_data >> 2] = ptr;
+    Fetch.setu64(fetch + Fetch.fetch_t_offset_numBytes, ptrLen);
+    Fetch.setu64(fetch + Fetch.fetch_t_offset_dataOffset, 0);
     if (len) {
       // If the final XHR.onload handler receives the bytedata to compute total length, report that,
       // otherwise don't write anything out here, which will retain the latest byte size reported in
       // the most recent XHR.onprogress handler.
-      Fetch.setu64(fetch + 32, len);//{{{ makeSetValue('fetch', 32/*TODO:jsonify*/, 'len', 'i64')}}};
+      Fetch.setu64(fetch + Fetch.fetch_t_offset_totalBytes, len);
     }
-    HEAPU16[fetch + 40 >> 1] = xhr.readyState;
+    HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = xhr.readyState;
     if (xhr.readyState === 4 && xhr.status === 0) {
       if (len > 0) xhr.status = 200; // If loading files from a source that does not give HTTP status code, assume success if we got data bytes.
       else xhr.status = 404; // Conversely, no data bytes is 404.
     }
-    HEAPU16[fetch + 42 >> 1] = xhr.status;
-//    if (xhr.statusText) stringToUTF8(fetch + 44, xhr.statusText, 64);
+    HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = xhr.status;
+//    if (xhr.statusText) stringToUTF8(fetch + Fetch.fetch_t_offset_statusText, xhr.statusText, 64);
     if (xhr.status == 200) {
 #if FETCH_DEBUG
       console.log('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" succeeded with status 200');
@@ -380,12 +409,12 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
 #if FETCH_DEBUG
     console.error('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" finished with error, readyState ' + xhr.readyState + ' and status ' + status);
 #endif
-    HEAPU32[fetch + 12 >> 2] = 0;
-    Fetch.setu64(fetch + 16, 0);
-    Fetch.setu64(fetch + 24, 0);
-    Fetch.setu64(fetch + 32, 0);
-    HEAPU16[fetch + 40 >> 1] = xhr.readyState;
-    HEAPU16[fetch + 42 >> 1] = status;
+    HEAPU32[fetch + Fetch.fetch_t_offset_data >> 2] = 0;
+    Fetch.setu64(fetch + Fetch.fetch_t_offset_numBytes, 0);
+    Fetch.setu64(fetch + Fetch.fetch_t_offset_dataOffset, 0);
+    Fetch.setu64(fetch + Fetch.fetch_t_offset_totalBytes, 0);
+    HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = xhr.readyState;
+    HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = status;
     if (onerror) onerror(fetch, xhr, e);
   }
   xhr.ontimeout = function(e) {
@@ -406,14 +435,14 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
       ptr = _malloc(ptrLen);
       HEAPU8.set(new Uint8Array(xhr.response), ptr);
     }
-    HEAPU32[fetch + 12 >> 2] = ptr;//{{{ makeSetValue('fetch', 12/*TODO:jsonify*/, 'ptr', 'i32')}}};
-    Fetch.setu64(fetch + 16, ptrLen);//{{{ makeSetValue('fetch', 16/*TODO:jsonify*/, 'ptrLen', 'i64')}}};
-    Fetch.setu64(fetch + 24, e.loaded - ptrLen);//{{{ makeSetValue('fetch', 24/*TODO:jsonify*/, 'e.loaded - ptrLen', 'i64')}}};
-    Fetch.setu64(fetch + 32, e.total);//{{{ makeSetValue('fetch', 32/*TODO:jsonify*/, 'e.total', 'i64')}}};
-    HEAPU16[fetch + 40 >> 1] = xhr.readyState;
+    HEAPU32[fetch + Fetch.fetch_t_offset_data >> 2] = ptr;
+    Fetch.setu64(fetch + Fetch.fetch_t_offset_numBytes, ptrLen);
+    Fetch.setu64(fetch + Fetch.fetch_t_offset_dataOffset, e.loaded - ptrLen);
+    Fetch.setu64(fetch + Fetch.fetch_t_offset_totalBytes, e.total);
+    HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = xhr.readyState;
     if (xhr.readyState >= 3 && xhr.status === 0 && e.loaded > 0) xhr.status = 200; // If loading files from a source that does not give HTTP status code, assume success if we get data bytes
-    HEAPU16[fetch + 42 >> 1] = xhr.status;
-    if (xhr.statusText) stringToUTF8(fetch + 44, xhr.statusText, 64);
+    HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = xhr.status;
+    if (xhr.statusText) stringToUTF8(fetch + Fetch.fetch_t_offset_statusText, xhr.statusText, 64);
     if (onprogress) onprogress(fetch, xhr, e);
   }
 #if FETCH_DEBUG
@@ -432,12 +461,12 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
 function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
   if (typeof Module !== 'undefined') Module['noExitRuntime'] = true; // If we are the main Emscripten runtime, we should not be closing down.
 
-  var fetch_attr = fetch + 112/*TODO:structs_info*/;
+  var fetch_attr = fetch + Fetch.fetch_t_offset___attributes;
   var requestMethod = Pointer_stringify(fetch_attr);
-  var onsuccess = HEAPU32[fetch_attr + 36 >> 2];//{{{ makeGetValue('fetch_attr', 36/*TODO:structs_info.jsonify this*/, 'i32') }}};
-  var onerror = HEAPU32[fetch_attr + 40 >> 2];//{{{ makeGetValue('fetch_attr', 40/*TODO:structs_info.jsonify this*/, 'i32') }}};
-  var onprogress = HEAPU32[fetch_attr + 44 >> 2];//{{{ makeGetValue('fetch_attr', 44/*TODO:structs_info.jsonify this*/, 'i32') }}};
-  var fetchAttributes = HEAPU32[fetch_attr + 48 >> 2];//{{{ makeGetValue('fetch_attr', 48/*TODO*/, 'i32') }}};
+  var onsuccess = HEAPU32[fetch_attr + Fetch.attr_t_offset_onsuccess >> 2];
+  var onerror = HEAPU32[fetch_attr + Fetch.attr_t_offset_onerror >> 2];
+  var onprogress = HEAPU32[fetch_attr + Fetch.attr_t_offset_onprogress >> 2];
+  var fetchAttributes = HEAPU32[fetch_attr + Fetch.attr_t_offset_attributes >> 2];
   var fetchAttrLoadToMemory = !!(fetchAttributes & 1/*EMSCRIPTEN_FETCH_LOAD_TO_MEMORY*/);
   var fetchAttrStreamData = !!(fetchAttributes & 2/*EMSCRIPTEN_FETCH_STREAM_DATA*/);
   var fetchAttrPersistFile = !!(fetchAttributes & 4/*EMSCRIPTEN_FETCH_PERSIST_FILE*/);
@@ -510,8 +539,8 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
     }
 
     if (requestMethod === 'EM_IDB_STORE') {
-      var dataPtr = HEAPU32[fetch_attr + 84 >> 2];
-      var dataLength = HEAPU32[fetch_attr + 88 >> 2];
+      var dataPtr = HEAPU32[fetch_attr + Fetch.attr_t_offset_requestData >> 2];
+      var dataLength = HEAPU32[fetch_attr + Fetch.attr_t_offset_requestDataSize >> 2];
       var data = HEAPU8.slice(dataPtr, dataPtr + dataLength); // TODO(?): Here we perform a clone of the data, because storing shared typed arrays to IndexedDB does not seem to be allowed.
       __emscripten_fetch_cache_data(Fetch.dbInstance, fetch, data, reportSuccess, reportError);
     } else if (requestMethod === 'EM_IDB_DELETE') {
