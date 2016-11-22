@@ -61,6 +61,12 @@ class browser(BrowserCore):
     print 'Running the browser tests. Make sure the browser allows popups from localhost.'
     print
 
+  def test_sdl1_in_emscripten_nonstrict_mode(self):
+    if 'EMCC_STRICT' in os.environ and int(os.environ['EMCC_STRICT']): return self.skip('This test requires being run in non-strict mode (EMCC_STRICT env. variable unset)')
+    # TODO: This test is verifying behavior that will be deprecated at some point in the future, remove this test once
+    # system JS libraries are no longer automatically linked to anymore.
+    self.btest('hello_world_sdl.cpp', reference='htmltest.png')
+
   def test_sdl1(self):
     self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-lSDL', '-lGL'])
     self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-s', 'USE_SDL=1', '-lGL']) # is the default anyhow
