@@ -943,11 +943,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           system_js_libraries += shared.Building.path_to_system_js_libraries(lib)
 
       # Certain linker flags imply some link libraries to be pulled in by default.
-      if 'EMTERPRETIFY_ASYNC=1' in settings_changes: system_js_libraries += ['library_async.js']
-      if 'ASYNCIFY=1' in settings_changes: system_js_libraries += ['library_async.js']
-      if 'LZ4=1' in settings_changes: system_js_libraries += ['library_lz4.js']
-      if 'USE_SDL=1' in settings_changes: system_js_libraries += ['library_sdl.js']
-      if 'USE_SDL=2' in settings_changes: system_js_libraries += ['library_egl.js', 'library_glut.js', 'library_gl.js']
+      system_js_libraries += shared.Building.path_to_system_js_libraries_for_settings(settings_changes)
+
       settings_changes.append('SYSTEM_JS_LIBRARIES="' + ','.join(system_js_libraries) + '"')
 
       # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
