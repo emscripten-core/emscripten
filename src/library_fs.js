@@ -1,15 +1,15 @@
 mergeInto(LibraryManager.library, {
   $FS__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo', '$PATH', '$TTY', '$MEMFS',
 #if __EMSCRIPTEN_HAS_idbfs_js__
-  '$IDBFS',
+    '$IDBFS',
 #endif
 #if __EMSCRIPTEN_HAS_nodefs_js__
-   '$NODEFS',
+    '$NODEFS',
 #endif
 #if __EMSCRIPTEN_HAS_workerfs_js__
-   '$WORKERFS',
+    '$WORKERFS',
 #endif
-   'stdin', 'stdout', 'stderr'],
+    'stdin', 'stdout', 'stderr'],
   $FS__postset: 'FS.staticInit();' +
                 '__ATINIT__.unshift(function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() });' +
                 '__ATMAIN__.push(function() { FS.ignorePermissions = false });' +
