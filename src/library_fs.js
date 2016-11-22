@@ -1227,6 +1227,9 @@ mergeInto(LibraryManager.library, {
     },
     chdir: function(path) {
       var lookup = FS.lookupPath(path, { follow: true });
+      if (lookup.node === null) {
+        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+      }
       if (!FS.isDir(lookup.node.mode)) {
         throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
       }
