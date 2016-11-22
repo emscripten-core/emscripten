@@ -253,7 +253,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if not use_js:
       cmd += shared.EMSDK_OPTS + ['-D__EMSCRIPTEN__']
       # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code in strict mode. Code should use the define __EMSCRIPTEN__ instead.
-      if not shared.is_emscripten_strict(): cmd += ['-DEMSCRIPTEN']
+      if not shared.Settings.STRICT:
+        cmd += ['-DEMSCRIPTEN']
     if use_js: cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'] # configure tests should fail when an undefined symbol exists
 
     logging.debug('just configuring: ' + ' '.join(cmd))
@@ -921,6 +922,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if separate_asm:
         shared.Settings.SEPARATE_ASM = os.path.basename(asm_target)
 
+      if 'EMCC_STRICT' in os.environ:
+        shared.Settings.STRICT = int(os.environ.get('EMCC_STRICT'))
+
+      STRICT = ([None] + filter(lambda x: x.startswith('STRICT='), settings_changes))[-1]
+      if STRICT:
+        shared.Settings.STRICT = int(STRICT[len('STRICT='):])
+
+      if shared.Settings.STRICT:
+        shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 1
+        shared.Settings.ERROR_ON_MISSING_LIBRARIES = 1
+
+      # Libraries are searched before settings_changes are applied, so pull its value from the command line already here.
+      ERROR_ON_MISSING_LIBRARIES = ([None] + filter(lambda x: x.startswith('ERROR_ON_MISSING_LIBRARIES='), settings_changes))[-1]
+      if ERROR_ON_MISSING_LIBRARIES:
+        shared.Settings.ERROR_ON_MISSING_LIBRARIES = int(ERROR_ON_MISSING_LIBRARIES[len('ERROR_ON_MISSING_LIBRARIES='):])
+
       system_js_libraries = []
 
       # Find library files
@@ -1008,6 +1025,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.get_llvm_target() == shared.WASM_TARGET:
         shared.Settings.WASM_BACKEND = 1
+
+      if not shared.Settings.STRICT:
+        # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code in strict mode. Code should use the define __EMSCRIPTEN__ instead.
+        shared.COMPILER_OPTS += ['-DEMSCRIPTEN']
+
+        # The system include path system/include/emscripten/ is deprecated, i.e. instead of #include <emscripten.h>, one should pass in #include <emscripten/emscripten.h>.
+        # This path is not available in Emscripten strict mode.
+        if shared.USE_EMSDK:
+          shared.C_INCLUDE_PATHS += [shared.path_from_root('system', 'include', 'emscripten')]
 
       # Use settings
 

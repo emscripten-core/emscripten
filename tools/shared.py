@@ -472,15 +472,6 @@ def find_temp_directory():
 def get_emscripten_version(path):
   return open(path).read().strip().replace('"', '')
 
-# Returns true if Emscripten is running in 'strict' mode, in which deprecated compiler features are not supported.
-def is_emscripten_strict():
-  if os.environ.get('EMCC_STRICT') and int(os.environ.get('EMCC_STRICT')) != 0: return True
-  try:
-    return Settings.STRICT
-  except:
-    pass
-  return False
-
 # Check that basic stuff we need (a JS engine to compile, Node.js, and Clang and LLVM)
 # exists.
 # The test runner always does this check (through |force|). emcc does this less frequently,
@@ -941,9 +932,6 @@ if LLVM_TARGET == WASM_TARGET:
                                    '-D__unix',
                                    '-D__unix__']
 
-  # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code in strict mode. Code should use the define __EMSCRIPTEN__ instead.
-  if not is_emscripten_strict(): COMPILER_OPTS += ['-DEMSCRIPTEN']
-
 # Changes to default clang behavior
 
 # Implicit functions can cause horribly confusing function pointer type errors, see #2175
@@ -966,11 +954,6 @@ if USE_EMSDK:
     path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
     path_from_root('system', 'local', 'include')
   ]
-
-  # The system include path system/include/emscripten/ is deprecated, i.e. instead of #include <emscripten.h>, one should pass in #include <emscripten/emscripten.h>.
-  # This path is not available in Emscripten strict mode.
-  if not is_emscripten_strict():
-    C_INCLUDE_PATHS += [path_from_root('system', 'include', 'emscripten')]
 
   CXX_INCLUDE_PATHS = [
     path_from_root('system', 'include', 'libcxx'),
@@ -1110,13 +1093,6 @@ class Settings2(type):
       settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
       settings = re.sub(r'var ([\w\d]+)', r'self.attrs["\1"]', settings)
       exec settings
-
-      # Apply default values for settings that are configured from environment variables.
-      if is_emscripten_strict():
-        # Specify default values for Emscripten strict mode.
-        self.attrs['STRICT'] = 1
-        self.attrs['ERROR_ON_UNDEFINED_SYMBOLS'] = 1
-        self.attrs['ERROR_ON_MISSING_LIBRARIES'] = 1
 
       # Apply additional settings. First -O, then -s
       for i in range(len(args)):
@@ -2033,9 +2009,7 @@ class Building:
     elif library_name.endswith('.js') and os.path.isfile(shared.path_from_root('src', 'library_' + library_name)):
       library_files += ['library_' + library_name]
     else:
-      emscripten_strict_mode = shared.is_emscripten_strict() or 'STRICT=1' in settings_changes
-      error_on_missing_libraries = (emscripten_strict_mode and not 'ERROR_ON_MISSING_LIBRARIES=0' in settings_changes) or 'ERROR_ON_MISSING_LIBRARIES=1' in settings_changes
-      if error_on_missing_libraries:
+      if Settings.ERROR_ON_MISSING_LIBRARIES:
         logging.fatal('emcc: cannot find library "%s"', library_name)
         exit(1)
       else:
