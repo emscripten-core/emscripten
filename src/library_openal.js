@@ -319,7 +319,15 @@ var LibraryOpenAL = {
         AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
         return 0;
       }
-      {{{ makeSetValue('data', '0', 'AL.currentContext.ctx.sampleRate', 'i32') }}};
+      {{{ makeSetValue('data', '0', '(new (window.AudioContext || window.webkitAudioContext)).sampleRate', 'i32') }}};
+      break;
+    case 0x1010 /* ALC_MONO_SOURCES */:
+    case 0x1011 /* ALC_STEREO_SOURCES */:
+      if (!device) {
+        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        return 0;
+      }
+      {{{ makeSetValue('data', '0', '0x7FFFFFFF', 'i32') }}};
       break;
     case 0x20003 /* ALC_MAX_AUXILIARY_SENDS */:
       if (!device) {
