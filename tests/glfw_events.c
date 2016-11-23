@@ -39,7 +39,9 @@
         { "Module.injectKeyEvent('keydown', 8)", { 0, 0.0, 0.0, GLFW_KEY_BACKSPACE, GLFW_PRESS, -1 } },
         { "Module.injectKeyEvent('keyup', 8)", { 0, 0.0, 0.0, GLFW_KEY_BACKSPACE, GLFW_RELEASE, -1 } },
         { "Module.injectKeyEvent('keydown', 9)", { 0, 0.0, 0.0, GLFW_KEY_TAB, GLFW_PRESS, -1 } },
+        { "Module.injectKeyEvent('keyup', 9)", { 0, 0.0, 0.0, GLFW_KEY_TAB, GLFW_RELEASE, -1 } },
         { "Module.injectKeyEvent('keydown', 112)", { 0, 0.0, 0.0, GLFW_KEY_F1, GLFW_PRESS, -1 } },
+        { "Module.injectKeyEvent('keyup', 112)", { 0, 0.0, 0.0, GLFW_KEY_F1, GLFW_RELEASE, -1 } },
         { "Module.injectKeyEvent('keydown', 37)", { 0, 0.0, 0.0, GLFW_KEY_LEFT, GLFW_PRESS, -1 } },
         { "Module.injectKeyEvent('keyup', 37)", { 0, 0.0, 0.0, GLFW_KEY_LEFT, GLFW_RELEASE, -1 } },
         { "Module.injectKeyEvent('keydown', 39)", { 0, 0.0, 0.0, GLFW_KEY_RIGHT, GLFW_PRESS, -1 } },
@@ -51,8 +53,10 @@
 
         #if USE_GLFW == 2
             { "Module.injectKeyEvent('keydown', 27)", { 0, 0.0, 0.0, GLFW_KEY_ESC, GLFW_PRESS, -1 } },
+            { "Module.injectKeyEvent('keyup', 27)", { 0, 0.0, 0.0, GLFW_KEY_ESC, GLFW_RELEASE, -1 } },
         #else
             { "Module.injectKeyEvent('keydown', 27)", { 0, 0.0, 0.0, GLFW_KEY_ESCAPE, GLFW_PRESS, -1 } },
+            { "Module.injectKeyEvent('keyup', 27)", { 0, 0.0, 0.0, GLFW_KEY_ESCAPE, GLFW_RELEASE, -1 } },
         #endif
     };
 
@@ -133,8 +137,8 @@
 
     int main()
     {
-        int result = 0;
-        unsigned int success = 0;
+        int result = 1;
+        unsigned int success = (1 << (sizeof(g_tests) / sizeof(test_t))) - 1; // (2^count)-1;
 
         emscripten_run_script(MULTILINE(
             Module.injectMouseEvent = function(x, y, event_, button) {
@@ -171,8 +175,6 @@
             glfwOpenWindow(WIDTH, HEIGHT, 5, 6, 5, 0, 0, 0, GLFW_WINDOW); // != GL_TRUE)
             
             glfwSetMousePosCallback(on_mouse_move);
-            glfwSetMouseButtonCallback(on_mouse_button_callback);
-            glfwSetKeyCallback(on_key_callback);
             //glfwSetCharCallback(...);
         #else
             glfwSetErrorCallback(on_error);
@@ -183,49 +185,59 @@
             _mainWindow = glfwCreateWindow(WIDTH, HEIGHT, "glfw3_events", NULL, NULL);
             glfwMakeContextCurrent(_mainWindow);
 
-            glfwSetMouseButtonCallback(_mainWindow, on_mouse_button_callback);
             glfwSetCursorPosCallback(_mainWindow, on_mouse_move);
             glfwSetScrollCallback(_mainWindow, on_mouse_wheel);
-            glfwSetKeyCallback(_mainWindow, on_key_callback);
             //glfwSetCharCallback(_mainWindow, ...);
         #endif
 
-        for (int i = 0; i < g_test_count; ++i)
+        for (int p = 0; p < 2 && result; ++p) // 2 passes, with and without callbacks.
         {
-            g_test_actual = i;
-            test_t test = g_tests[g_test_actual];
-            emscripten_run_script(test.cmd);
+            printf("Running Test pass %d\n", p);
 
-            if (test.args.mouse) {
-            #if USE_GLFW == 2
-                if (glfwGetMouseButton(test.args.button) != test.args.action)
-            #else
-                if (glfwGetMouseButton(_mainWindow, test.args.button) != test.args.action)
-            #endif
-                {
-                    printf("Test %d: FAIL\n", g_test_actual);
-                    g_state &= ~(1 << g_test_actual);
-                }
-            } else {
-                // Keyboard.
-            #if USE_GLFW == 2
-                if (glfwGetKey(test.args.button) != test.args.action)
-            #else
-                if (glfwGetKey(_mainWindow, test.args.button) != test.args.action)
-            #endif
-                {
-                    printf("Test %d: FAIL\n", g_test_actual);
-                    g_state &= ~(1 << g_test_actual);
+        #if USE_GLFW == 2
+            glfwSetMouseButtonCallback(p == 0 ? NULL : on_mouse_button_callback);
+            glfwSetKeyCallback(p == 0 ? NULL : on_key_callback);
+        #else
+            glfwSetMouseButtonCallback(_mainWindow, p == 0 ? NULL : on_mouse_button_callback);
+            glfwSetKeyCallback(_mainWindow, p == 0 ? NULL : on_key_callback);
+        #endif
+            g_state = p == 0 ? success : 0;
+
+            for (int i = 0; i < g_test_count; ++i)
+            {
+                g_test_actual = i;
+                test_t test = g_tests[g_test_actual];
+                emscripten_run_script(test.cmd);
+
+                if (test.args.mouse) {
+                #if USE_GLFW == 2
+                    if (glfwGetMouseButton(test.args.button) != test.args.action)
+                #else
+                    if (glfwGetMouseButton(_mainWindow, test.args.button) != test.args.action)
+                #endif
+                    {
+                        printf("Test %d: FAIL\n", g_test_actual);
+                        g_state &= ~(1 << g_test_actual);
+                    }
+                } else {
+                    // Keyboard.
+                #if USE_GLFW == 2
+                    if (glfwGetKey(test.args.button) != test.args.action)
+                #else
+                    if (glfwGetKey(_mainWindow, test.args.button) != test.args.action)
+                #endif
+                    {
+                        printf("Test %d: FAIL\n", g_test_actual);
+                        g_state &= ~(1 << g_test_actual);
+                    }
                 }
             }
+            result = g_state == success;
         }
 
         glfwTerminate();
 
-        success = (1 << (sizeof(g_tests) / sizeof(test_t))) - 1; // (2^count)-1
-
     #ifdef REPORT_RESULT
-        result = g_state == success;
         REPORT_RESULT();
     #else
         printf("%d == %d = %d", g_state, success, g_state == success);
