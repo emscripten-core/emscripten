@@ -4,6 +4,12 @@ errno: 0
 chdir(file): -1
 errno: 20
 
+chdir(dir): -1
+errno: 2
+
+chdir(""): -1
+errno: 2
+
 chdir(device): -1
 errno: 20
 

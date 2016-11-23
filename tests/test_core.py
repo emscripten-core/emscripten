@@ -85,11 +85,9 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run_in_out_file_test('tests', 'core', 'test_sintvars',
                                    force_c=True)
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_i64(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_i64_2(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_2')
 
@@ -101,29 +99,24 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_4')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_i64_b(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_b')
 
   def test_i64_cmp(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_cmp')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_i64_cmp2(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_cmp2')
 
   def test_i64_double(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_double')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_i64_umul(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_umul')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_i64_precise(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_i64_precise_unneeded(self):
       # Verify that even if we ask for precision, if it is not needed it is not included
       Settings.PRECISE_I64_MATH = 1
@@ -132,13 +125,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
       assert 'goog.math.Long' not in code, 'i64 precise math should never be included, musl does its own printfing'
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_i64_precise_needed(self):
       # and now one where we do
       Settings.PRECISE_I64_MATH = 1
       self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise_needed')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_i64_llabs(self):
     Settings.PRECISE_I64_MATH = 2
 
@@ -165,7 +156,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_vararg_copy(self):
     self.do_run_in_out_file_test('tests', 'va_arg', 'test_va_copy')
 
-  @no_wasm_backend('printf is truncating the output of really big doubles')
   def test_llvm_fabs(self):
     Settings.PRECISE_F32 = 1
     self.do_run_in_out_file_test('tests', 'core', 'test_llvm_fabs')
@@ -207,7 +197,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
     self.do_run_in_out_file_test('tests', 'core', 'test_llvm_intrinsics')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_bswap64(self):
     test_path = path_from_root('tests', 'core', 'test_bswap64')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -480,7 +469,6 @@ int main()
   def test_bitfields(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_bitfields')
 
-  @no_wasm_backend('printf is incorrectly handling float values')
   def test_floatvars(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_floatvars')
 
@@ -499,7 +487,6 @@ int main()
   def test_zero_multiplication(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_zero_multiplication')
 
-  @no_wasm_backend('printf is incorrectly handling float values')
   def test_isnan(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_isnan')
 
@@ -529,7 +516,6 @@ int main()
         Settings.MAIN_MODULE = 1
         self.do_run_from_file(src, output)
 
-  @no_wasm_backend('frexp seems to be failing. printf relies on frexp for float formatting, so that probably causes the print failure')
   def test_frexp(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_frexp')
 
@@ -543,7 +529,6 @@ int main()
   def test_fcvt(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_fcvt')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_llrint(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_llrint')
 
@@ -606,7 +591,6 @@ int main()
     self.do_run_in_out_file_test('tests', 'core', 'test_stack')
 
   def test_stack_align(self):
-    Settings.INLINING_LIMIT = 50
     src = path_from_root('tests', 'core', 'test_stack_align.cpp')
     def test():
       self.do_run(open(src).read(), ['''align 4: 0
@@ -641,7 +625,6 @@ base align: 0, 0, 0, 0'''])
     ensure_stack_restore_count('function _alloca_gets_restored', 1)
     ensure_stack_restore_count('function _stack_usage', 1)
 
-  @no_wasm_backend('for some reasons emscripten_asm_const_ii gets called? and has a bogus memory address that causes a trap')
   def test_strings(self):
       test_path = path_from_root('tests', 'core', 'test_strings')
       src, output = (test_path + s for s in ('.c', '.out'))
@@ -760,7 +743,6 @@ base align: 0, 0, 0, 0'''])
   def test_libcextra(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_libcextra')
 
-  @no_wasm_backend('for some reasons emscripten_asm_const_ii gets called? and has a bogus memory address that causes a trap')
   def test_regex(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_regex')
 
@@ -1475,7 +1457,7 @@ int main() {
   def test_mod_globalstruct(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_mod_globalstruct')
 
-  @no_wasm_backend('long doubles are f64s in wasm backend')
+  @no_wasm_backend('long doubles are f128s in wasm backend')
   def test_pystruct(self):
       def test():
         self.do_run_in_out_file_test('tests', 'test_pystruct')
@@ -1512,7 +1494,7 @@ int main() {
 
     self.do_run_in_out_file_test('tests', 'core', 'test_set_align')
 
-  @no_wasm_backend('sscanf seems to be rewriting local variables')
+  @no_wasm_backend('printf is incorrectly handling float values')
   def test_emscripten_api(self):
       check = '''
 def process(filename):
@@ -2000,7 +1982,6 @@ The current type of b is: 9
       generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
       print >> sys.stderr, 'skipping C/C++ conventions warning check, since not i386-pc-linux-gnu'
 
-  @no_wasm_backend('qsort is sorting improperly')
   def test_stdlibs(self):
       # safe heap prints a warning that messes up our output.
       Settings.SAFE_HEAP = 0
@@ -2169,6 +2150,7 @@ The current type of b is: 9
   def test_bsearch(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_bsearch')
 
+  @no_wasm_backend("wasm backend has no support for fastcomp's -emscripten-assertions flag")
   def test_stack_overflow(self):
     Settings.ASSERTIONS = 1
     self.do_run(open(path_from_root('tests', 'core', 'stack_overflow.cpp')).read(), 'Stack overflow!')
@@ -3886,7 +3868,6 @@ Have even and odd!
   def test_strtok(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strtok')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_parseInt(self):
     src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
@@ -3907,7 +3888,6 @@ Have even and odd!
   def test_printf_float(self):
     self.do_run_in_out_file_test('tests', 'printf', 'test_float')
 
-  @no_wasm_backend('printf is truncating octal numbers at the first digit')
   def test_printf_octal(self):
     self.do_run_in_out_file_test('tests', 'printf', 'test_octal')
 
@@ -3917,7 +3897,6 @@ Have even and odd!
   def test_vsnprintf(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_vsnprintf')
 
-  @no_wasm_backend('printf is incorrectly handling float values')
   def test_printf_more(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_printf_more')
 
@@ -3940,11 +3919,11 @@ Have even and odd!
       print 'flip assertions off'
     self.do_run_in_out_file_test('tests', 'core', 'fnmatch')
 
-  @no_wasm_backend('sscanf seems to be rewriting local variables')
+  @no_wasm_backend('sscanf seems to be misreading float values')
   def test_sscanf(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf')
 
-  @no_wasm_backend('sscanf seems to be rewriting local variables')
+  @no_wasm_backend('sscanf seems to be misreading float values')
   def test_sscanf_2(self):
     # doubles
     for ftype in ['float', 'double']:
@@ -4000,21 +3979,17 @@ Pass: 123456.789000 123456.789000
 Pass: 0.000012 0.000012
 Pass: 0.000012 0.000012''')
 
-  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_n(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_n')
 
-  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_whitespace(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_whitespace')
 
-  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_other_whitespace(self):
     Settings.SAFE_HEAP = 0 # use i16s in printf
 
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_other_whitespace')
 
-  @no_wasm_backend('printf is truncating the output of i64s')
   def test_sscanf_3(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_3')
 
@@ -4024,22 +3999,20 @@ Pass: 0.000012 0.000012''')
   def test_sscanf_5(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_5')
 
-  @no_wasm_backend('sscanf seems to be rewriting local variables')
   def test_sscanf_6(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_6')
 
   def test_sscanf_skip(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_skip')
 
-  @no_wasm_backend('sscanf seems to be rewriting local variables')
+  @no_wasm_backend('sscanf seems to be misreading float values')
   def test_sscanf_caps(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_caps')
 
-  @no_wasm_backend('for some reasons emscripten_asm_const_ii gets called? and has a bogus memory address that causes a trap')
   def test_sscanf_hex(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_hex')
 
-  @no_wasm_backend('sscanf seems to be rewriting local variables')
+  @no_wasm_backend('sscanf seems to be misreading float values')
   def test_sscanf_float(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_float')
 
@@ -4048,7 +4021,6 @@ Pass: 0.000012 0.000012''')
     expected = open(path_from_root('tests', 'langinfo', 'output.txt'), 'r').read()
     self.do_run(src, expected, extra_emscripten_args=['-H', 'libc/langinfo.h'])
 
-  @no_wasm_backend('Does not dump .mem file')
   def test_files(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # closure can generate variables called 'gc', which pick up js shell stuff
     if '-O2' in self.emcc_args and not self.is_wasm():
@@ -4308,13 +4280,11 @@ def process(filename):
     expected = open(path_from_root('tests', 'fcntl', 'output.txt'), 'r').read()
     self.do_run(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
-  @no_wasm_backend('printf is truncating octal numbers at the first digit')
   def test_fcntl_open(self):
     src = open(path_from_root('tests', 'fcntl-open', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'fcntl-open', 'output.txt'), 'r').read()
     self.do_run(src, expected, force_c=True, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
-  @no_wasm_backend()
   def test_fcntl_misc(self):
     add_pre_run = '''
 def process(filename):
@@ -4450,6 +4420,12 @@ def process(filename):
     self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=1'] # see issue 2334
     src = path_from_root('tests', 'fs', 'test_writeFile.cc')
     out = path_from_root('tests', 'fs', 'test_writeFile.out')
+    self.do_run_from_file(src, out)
+
+  def test_fs_write(self):
+    self.emcc_args = ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']
+    src = path_from_root('tests', 'fs', 'test_write.cpp')
+    out = path_from_root('tests', 'fs', 'test_write.out')
     self.do_run_from_file(src, out)
 
   def test_fs_emptyPath(self):
@@ -5211,13 +5187,11 @@ return malloc(size);
     src, output = (test_path + s for s in ('.cpp', '.txt'))
     self.do_run_from_file(src, output)
 
-  @no_wasm_backend()
   def test_gcc_unmangler(self):
     Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('third_party')]
 
     self.do_run(open(path_from_root('third_party', 'gcc_demangler.c')).read(), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
 
-  @no_wasm_backend()
   def test_lua(self):
     if self.emcc_args: self.emcc_args = ['-g1'] + self.emcc_args
 
@@ -5301,7 +5275,6 @@ def process(filename):
                  ['font.ttf', 'ea', '40', '32', '0'],
                  no_build=True)
 
-  @no_wasm_backend()
   def test_sqlite(self):
     # gcc -O3 -I/home/alon/Dev/emscripten/tests/sqlite -ldl src.c
     self.banned_js_engines = [NODE_JS] # OOM in older node
@@ -5328,7 +5301,6 @@ def process(filename):
                  includes=[path_from_root('tests', 'sqlite')],
                  force_c=True)
 
-  @no_wasm_backend()
   def test_zlib(self):
     if '-O2' in self.emcc_args and 'ASM_JS=0' not in self.emcc_args and not self.is_wasm(): # without asm, closure minifies Math.imul badly
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
@@ -5351,7 +5323,6 @@ def process(filename):
                  includes=[path_from_root('tests', 'zlib'), os.path.join(self.get_dir(), 'building', 'zlib')],
                  force_c=True)
 
-  @no_wasm_backend()
   def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
     Settings.DEAD_FUNCTIONS = ['__ZSt9terminatev']
 
@@ -5587,7 +5558,7 @@ def process(filename):
       Settings.ALLOW_MEMORY_GROWTH = 0
       do_test()
 
-  @no_wasm_backend()
+  @no_wasm_backend('unknown relocation: $environ')
   def test_python(self):
     Settings.EMULATE_FUNCTION_POINTER_CASTS = 1
 
@@ -5625,7 +5596,7 @@ def process(filename):
     emcc_args = self.emcc_args
 
     # The following tests link to libc, and must be run with EMCC_LEAVE_INPUTS_RAW = 0
-    need_no_leave_inputs_raw = ['muli33_ta2', 'philoop_ta2', 'uadd_overflow_64_ta2', 'i64toi8star', 'legalizer_ta2', 'quotedlabel', 'alignedunaligned', 'sillybitcast', 'invokeundef', 'loadbitcastgep', 'sillybitcast2', 'legalizer_b_ta2', 'emptystruct', 'entry3', 'atomicrmw_i64', 'atomicrmw_b_i64']
+    need_no_leave_inputs_raw = ['muli33_ta2', 'philoop_ta2', 'uadd_overflow_64_ta2', 'i64toi8star', 'legalizer_ta2', 'quotedlabel', 'alignedunaligned', 'sillybitcast', 'invokeundef', 'loadbitcastgep', 'sillybitcast2', 'legalizer_b_ta2', 'emptystruct', 'entry3', 'atomicrmw_i64', 'atomicrmw_b_i64', 'invoke_byval', 'i24_ce_fastcomp']
 
     try:
       import random
@@ -5737,13 +5708,6 @@ def process(filename):
     Building.llvm_dis(filename)
 
   def test_autodebug(self):
-    if self.is_wasm():
-      # Broken on V8 but not node; wasm-only
-      self.banned_js_engines = [V8_ENGINE]
-      if not self.filtered_js_engines():
-        # Return early to not run into asserts
-        return self.skip('wasm on V8 currently fails')
-
     if Building.LLVM_OPTS: return self.skip('LLVM opts mess us up')
     Building.COMPILER_TEST_OPTS += ['--llvm-opts', '0']
 
@@ -5757,7 +5721,6 @@ def process(filename):
 
     # Compare to each other, and to expected output
     self.do_ll_run(path_from_root('tests', filename+'.o.ll.ll'), '''AD:-1,1''')
-    assert open('stdout').read().startswith('AD:-1'), 'We must note when we enter functions'
 
     # Test using build_ll_hook
     src = '''
@@ -6125,11 +6088,37 @@ def process(filename):
 
   @no_wasm_backend()
   def test_demangle_stacks(self):
+    if self.is_wasm():
+      self.banned_js_engines = [V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=5632
     Settings.DEMANGLE_SUPPORT = 1
     if '-O' in str(self.emcc_args):
       self.emcc_args += ['--profiling-funcs', '--llvm-opts', '0']
 
     self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks')
+
+  @no_emterpreter
+  @no_wasm_backend()
+  def test_demangle_stacks_symbol_map(self):
+    Settings.DEMANGLE_SUPPORT = 1
+    if '-O' in str(self.emcc_args):
+      self.emcc_args += ['--llvm-opts', '0']
+    self.emcc_args += ['--emit-symbol-map']
+    self.do_run(open(path_from_root('tests', 'core', 'test_demangle_stacks.c')).read(), 'abort')
+    # make sure the shortened name is the right one
+    symbols = open('src.cpp.o.js.symbols').read().split(os.linesep)
+    for line in symbols:
+      if ':' not in line: continue
+      short, full = line.split(':')
+      if 'Aborter' in full:
+        short_aborter = short
+        full_aborter = full
+    if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]):
+      output = run_js('src.cpp.o.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True, assert_returncode=None)
+      # we may see the full one, if -g, or the short one if not
+      if ' ' + short_aborter + ' ' not in output and ' ' + full_aborter + ' ' not in output:
+        # stack traces may also be ' name ' or 'name@' etc
+        if '\n' + short_aborter + ' ' not in output and '\n' + full_aborter + ' ' not in output and 'wasm-function[' + short_aborter + ']' not in output:
+          self.assertContained(' ' + short_aborter + ' ' + '\n' + ' ' + full_aborter + ' ', output)
 
   def test_tracing(self):
     Building.COMPILER_TEST_OPTS += ['--tracing']
@@ -6208,7 +6197,6 @@ def process(filename):
     Settings.ASSERTIONS = 1
     self.do_run(src, output)
 
-  @no_wasm_backend()
   def test_embind(self):
     Building.COMPILER_TEST_OPTS += ['--bind']
 
@@ -6230,7 +6218,6 @@ def process(filename):
     '''
     self.do_run(src, 'abs(-10): 10\nabs(-11): 11');
 
-  @no_wasm_backend()
   def test_embind_2(self):
     Settings.NO_EXIT_RUNTIME = 1 # we emit some post.js that we need to see
     Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
@@ -6253,7 +6240,6 @@ def process(filename):
     '''
     self.do_run(src, 'lerp 166');
 
-  @no_wasm_backend()
   def test_embind_3(self):
     Settings.NO_EXIT_RUNTIME = 1 # we emit some post.js that we need to see
     Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
@@ -6282,6 +6268,39 @@ def process(filename):
       }
     '''
     self.do_run(src, 'UnboundTypeError: Cannot call compute due to unbound types: Pi');
+
+  @no_wasm_backend('long doubles are f128s in wasm backend')
+  def test_embind_4(self):
+    Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
+    open('post.js', 'w').write('''
+      function printFirstElement() {
+        Module.print(Module.getBufferView()[0]);
+      }
+    ''')
+    src = r'''
+      #include <emscripten.h>
+      #include <emscripten/bind.h>
+      #include <emscripten/val.h>
+      #include <stdio.h>
+      using namespace emscripten;
+
+      const size_t kBufferSize = 1024;
+      long double buffer[kBufferSize];
+      val getBufferView(void) {
+          val v = val(typed_memory_view(kBufferSize, buffer));
+          return v;
+      }
+      EMSCRIPTEN_BINDINGS(my_module) {
+          function("getBufferView", &getBufferView);
+      }
+
+      int main(int argc, char **argv) {
+        buffer[0] = 107;
+        EM_ASM(printFirstElement());
+        return 0;
+      }
+    '''
+    self.do_run(src, '107')
 
   @no_wasm_backend()
   def test_scriptaclass(self):
@@ -6843,9 +6862,8 @@ Module.printErr = Module['printErr'] = function(){};
 Success!
 ''')
 
-  @no_wasm_backend()
   def test_float_literals(self):
-    self.do_run_from_file(path_from_root('tests', 'test_float_literals.cpp'), path_from_root('tests', 'test_float_literals.out'))
+    self.do_run_in_out_file_test('tests', 'test_float_literals')
 
   def test_exit_status(self):
     src = r'''
@@ -7157,7 +7175,7 @@ int main(int argc, char **argv) {
       self.emcc_args += ['--pre-js', 'pre.js']
       self.do_run('', 'object\nobject\nobject')
 
-  @no_wasm_backend()
+  @no_wasm_backend("wasm backend has no support for fastcomp's -emscripten-assertions flag")
   def test_stack_overflow_check(self):
     args = self.emcc_args + ['-s', 'TOTAL_STACK=1048576']
     self.emcc_args = args + ['-s', 'STACK_OVERFLOW_CHECK=1', '-s', 'ASSERTIONS=0']
@@ -7182,6 +7200,7 @@ int main(int argc, char **argv) {
     self.do_run(open(path_from_root('tests', 'sbrk_brk.cpp')).read(), 'OK.')
 
   # Tests that we can use the dlmalloc mallinfo() function to obtain information about malloc()ed blocks and compute how much memory is used/freed.
+  @no_wasm_backend('requires EM_ASM args support in wasm backend')
   def test_mallinfo(self):
     self.do_run(open(path_from_root('tests', 'mallinfo.cpp')).read(), 'OK.')
 

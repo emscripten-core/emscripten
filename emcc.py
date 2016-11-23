@@ -777,7 +777,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if js_opts is None: js_opts = opt_level >= 2
       if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
-      if opt_level == 0: debug_level = max(3, debug_level)
       if memory_init_file is None: memory_init_file = opt_level >= 2
 
       # TODO: support source maps with js_transform
@@ -1196,8 +1195,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         debug_level = max(1, debug_level) # keep whitespace readable, for asm.js parser simplicity
         shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
         assert not shared.Settings.SPLIT_MEMORY, 'WebAssembly does not support split memory'
-        if not shared.Settings.BINARYEN_METHOD:
-          shared.Settings.BINARYEN_METHOD = 'native-wasm,interpret-binary'
         assert not shared.Settings.INCLUDE_FULL_LIBRARY, 'The WebAssembly libc overlaps with JS libs, so INCLUDE_FULL_LIBRARY does not just work (FIXME)'
         # if root was not specified in -s, it might be fixed in ~/.emscripten, copy from there
         if not shared.Settings.BINARYEN_ROOT:
@@ -1732,7 +1729,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               if shared.Settings.PRECISE_F32:
                 passes = ['asmPreciseF32'] + passes
               if (emit_symbol_map or shared.Settings.CYBERDWARF) and 'minifyNames' in passes:
-                passes += ['symbolMap='+target+'.symbols']
+                passes += ['symbolMap=' + target + '.symbols']
               if profiling_funcs and 'minifyNames' in passes:
                 passes += ['profilingFuncs']
               if JSOptimizer.minify_whitespace and 'last' in passes:
@@ -2021,6 +2018,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           import_mem_init = memory_init_file and os.path.exists(memfile) and 'asmjs' not in shared.Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD
           if import_mem_init:
             cmd += ['--mem-init=' + memfile]
+            if not shared.Settings.RELOCATABLE:
+              cmd += ['--mem-base=' + str(shared.Settings.GLOBAL_BASE)]
+          if shared.Settings.BINARYEN_MEM_MAX >= 0:
+            cmd += ['--mem-max=' + str(shared.Settings.BINARYEN_MEM_MAX)]
           if shared.Building.is_wasm_only():
             cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, an can contain special fastcomp-wasm support
           logging.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
@@ -2038,7 +2039,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           subprocess.check_call(cmd)
         if 'native-wasm' in shared.Settings.BINARYEN_METHOD or 'interpret-binary' in shared.Settings.BINARYEN_METHOD:
           cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
-          if debug_level >= 2 or profiling_funcs: cmd += ['-g']
+          if debug_level >= 2 or profiling_funcs:
+            cmd += ['-g']
+          if emit_symbol_map or shared.Settings.CYBERDWARF:
+            cmd += ['--symbolmap=' + target + '.symbols']
           logging.debug('wasm-as (text => binary): ' + ' '.join(cmd))
           subprocess.check_call(cmd)
         if shared.Settings.BINARYEN_SCRIPTS:

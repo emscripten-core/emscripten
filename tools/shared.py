@@ -344,7 +344,7 @@ def check_llvm_version():
   try:
     check_clang_version()
   except Exception, e:
-    logging.warning('Could not verify LLVM version: %s' % str(e))
+    logging.critical('Could not verify LLVM version: %s' % str(e))
 
 # look for emscripten-version.txt files under or alongside the llvm source dir
 def get_fastcomp_src_dir():
@@ -432,6 +432,7 @@ def check_fastcomp():
 EXPECTED_NODE_VERSION = (0,8,0)
 
 def check_node_version():
+  jsrun.check_engine(NODE_JS)
   try:
     actual = Popen(NODE_JS + ['--version'], stdout=PIPE).communicate()[0].strip()
     version = tuple(map(int, actual.replace('v', '').replace('-pre', '').split('.')))
@@ -546,13 +547,8 @@ def check_sanity(force=False):
     logging.info('(Emscripten: Running sanity checks)')
 
     with ToolchainProfiler.profile_block('sanity compiler_engine'):
-      if not check_engine(COMPILER_ENGINE):
+      if not jsrun.check_engine(COMPILER_ENGINE):
         logging.critical('The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s' % (COMPILER_ENGINE, EM_CONFIG))
-        sys.exit(1)
-
-    if NODE_JS != COMPILER_ENGINE:
-      if not check_engine(NODE_JS):
-        logging.critical('Node.js (%s) does not seem to work, check the paths in %s' % (NODE_JS, EM_CONFIG))
         sys.exit(1)
 
     with ToolchainProfiler.profile_block('sanity LLVM'):
@@ -932,7 +928,10 @@ COMPILER_OPTS = COMPILER_OPTS + [#'-fno-threadsafe-statics', # disabled due to i
 if LLVM_TARGET == WASM_TARGET:
   # wasm target does not automatically define emscripten stuff, so do it here.
   COMPILER_OPTS = COMPILER_OPTS + ['-DEMSCRIPTEN',
-                                   '-D__EMSCRIPTEN__']
+                                   '-D__EMSCRIPTEN__',
+                                   '-Dunix',
+                                   '-D__unix',
+                                   '-D__unix__']
 
 # Changes to default clang behavior
 
@@ -952,6 +951,7 @@ if USE_EMSDK:
     path_from_root('system', 'include', 'compat'),
     path_from_root('system', 'include'),
     path_from_root('system', 'include', 'emscripten'),
+    path_from_root('system', 'include', 'SSE'),
     path_from_root('system', 'include', 'libc'),
     path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
     path_from_root('system', 'local', 'include')
@@ -1001,16 +1001,6 @@ if not WINDOWS:
     pass
 
 # Utilities
-
-def check_engine(engine):
-  # TODO: we call this several times, perhaps cache the results?
-  try:
-    if not CONFIG_FILE:
-      return True # config stored directly in EM_CONFIG => skip engine check
-    return 'hello, world!' in run_js(path_from_root('src', 'hello_world.js'), engine)
-  except Exception, e:
-    print 'Checking JS engine %s failed. Check %s. Details: %s' % (str(engine), EM_CONFIG, str(e))
-    return False
 
 def make_js_command(filename, engine=None, *args):
   if engine is None:
@@ -1196,6 +1186,13 @@ class Building:
       env['CXX'] = CLANG_CPP
       env['LD'] = CLANG
       env['CFLAGS'] = '-O2 -fno-math-errno'
+      # get a non-native one, and see if we have some of its effects - remove them if so
+      non_native = Building.get_building_env()
+      # the ones that a non-native would modify
+      EMSCRIPTEN_MODIFIES = ['LDSHARED', 'AR', 'CROSS_COMPILE', 'NM', 'RANLIB']
+      for dangerous in EMSCRIPTEN_MODIFIES:
+        if env.get(dangerous) and env.get(dangerous) == non_native.get(dangerous):
+          del env[dangerous] # better to delete it than leave it, as the non-native one is definitely wrong
       return env
     env['CC'] = EMCC if not WINDOWS else 'python %r' % EMCC
     env['CXX'] = EMXX if not WINDOWS else 'python %r' % EMXX
@@ -1217,6 +1214,15 @@ class Building:
     env['PATH'] = path_from_root('system', 'bin') + os.pathsep + env['PATH']
     env['CROSS_COMPILE'] = path_from_root('em') # produces /path/to/emscripten/em , which then can have 'cc', 'ar', etc appended to it
     return env
+
+  # if we are in emmake mode, i.e., we changed the env to run emcc etc., then show the message and abort
+  @staticmethod
+  def ensure_no_emmake(message):
+    non_native = Building.get_building_env()
+    if os.environ.get('CC') == non_native.get('CC'):
+      # the environment CC is the one we change to when forcing our em* tools
+      logging.error(message)
+      sys.exit(1)
 
   # Finds the given executable 'program' in PATH. Operates like the Unix tool 'which'.
   @staticmethod

@@ -770,7 +770,7 @@ fi
         os.chmod(test_engine_path, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
 
         try:
-          out = jsrun.run_js(sample_script, engine=test_engine_path, args=['--foo'], full_output=True, assert_returncode=0)
+          out = jsrun.run_js(sample_script, engine=test_engine_path, args=['--foo'], full_output=True, assert_returncode=0, skip_check=True)
         except Exception as e:
           if 'd8' in filename:
             assert False, 'Your d8 version does not correctly parse command-line arguments, please upgrade or delete from ~/.emscripten config file: %s' % (e)
@@ -955,13 +955,29 @@ fi
   def test_binaryen(self):
     import tools.ports.binaryen as binaryen
     tag_file = Cache.get_path('binaryen_tag_' + binaryen.TAG + '.txt')
-    try_delete(tag_file)
-    # if BINARYEN_ROOT is set, we don't build the port. Check we do built it if not
-    restore()
-    config = open(CONFIG_FILE).read()
-    config = config.replace('BINARYEN_ROOT', '#')
-    open(CONFIG_FILE, 'w').write(config)
+
+    def prep():
+      wipe()
+      self.do([PYTHON, EMCC, '--clear-ports'])
+      try_delete(tag_file)
+      # if BINARYEN_ROOT is set, we don't build the port. Check we do built it if not
+      restore()
+      config = open(CONFIG_FILE).read()
+      config = config.replace('BINARYEN_ROOT', '#')
+      open(CONFIG_FILE, 'w').write(config)
+
+    print 'build using embuilder'
+    prep()
     subprocess.check_call([PYTHON, 'embuilder.py', 'build', 'binaryen'])
     assert os.path.exists(tag_file)
-    subprocess.check_call([PYTHON, 'emcc.py', 'tests/hello_world.c', '-s', 'BINARYEN=1'])
+    subprocess.check_call([PYTHON, 'emcc.py', 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
     self.assertContained('hello, world!', run_js('a.out.js'))
+
+    print 'see we show an error for emmake (we cannot build natively under emmake)'
+    prep()
+    try_delete('a.out.js')
+    out = self.do([PYTHON, 'emmake.py', EMCC, 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
+    assert not os.path.exists(tag_file)
+    assert not os.path.exists('a.out.js')
+    self.assertContained('For example, for binaryen, do "python embuilder.py build binaryen"', out)
+

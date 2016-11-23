@@ -295,6 +295,11 @@ var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catc
 var EXCEPTION_CATCHING_WHITELIST = [];  // Enables catching exception in the listed functions only, if
                                         // DISABLE_EXCEPTION_CATCHING = 2 is set
 
+var NODEJS_CATCH_EXIT = 1; // By default we handle exit() in node, by catching the Exit exception. However,
+                           // this means we catch all process exceptions. If you disable this, then we no
+                           // longer do that, and exceptions work normally, which can be useful for libraries
+                           // or programs that don't need exit() to work.
+
 // For more explanations of this option, please visit
 // https://github.com/kripken/emscripten/wiki/Asyncify
 var ASYNCIFY = 0; // Whether to enable asyncify transformation
@@ -638,7 +643,8 @@ var BINARYEN = 0; // Whether to use [Binaryen](https://github.com/WebAssembly/bi
                   // This will fetch the binaryen port and build it. (If, instead, you set
                   // BINARYEN_ROOT in your ~/.emscripten file, then we use that instead
                   // of the port, which can useful for local dev work on binaryen itself).
-var BINARYEN_METHOD = ""; // See binaryen's src/js/post.js for details.
+var BINARYEN_METHOD = "native-wasm"; // How we should run WebAssembly code. By default, we run it natively.
+                                     // See binaryen's src/js/wasm.js-post.js for more details and options.
 var BINARYEN_SCRIPTS = ""; // An optional comma-separated list of script hooks to run after binaryen,
                            // in binaryen's /scripts dir.
 var BINARYEN_IMPRECISE = 0; // Whether to apply imprecise/unsafe binaryen optimizations. If enabled,
@@ -647,6 +653,9 @@ var BINARYEN_IMPRECISE = 0; // Whether to apply imprecise/unsafe binaryen optimi
 var BINARYEN_PASSES = ""; // A comma-separated list of passes to run in the binaryen optimizer,
                           // for example, "dce,precompute,vacuum".
                           // When set, this overrides the default passes we would normally run.
+var BINARYEN_MEM_MAX = -1; // Set the maximum size of memory in the wasm module (in bytes).
+                           // Without this, TOTAL_MEMORY is used (as it is used for the initial value),
+                           // or if memory growth is enabled, no limit is set. This overrides both of those.
 var BINARYEN_ROOT = ""; // Directory where we can find Binaryen. Will be automatically set for you,
                         // but you can set it to override if you are a Binaryen developer.
 

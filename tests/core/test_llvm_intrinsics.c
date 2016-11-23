@@ -17,8 +17,12 @@ extern float llvm_powi_f32(float x, int32_t y);
 extern double llvm_powi_f64(double x, int32_t y);
 extern float llvm_trunc_f32(float x);
 extern double llvm_trunc_f64(double x);
+extern float llvm_ceil_f32(float x);
+extern double llvm_ceil_f64(double x);
 extern float llvm_floor_f32(float x);
 extern double llvm_floor_f64(double x);
+extern float llvm_cos_f32(float x);
+extern double llvm_cos_f64(double x);
 extern float llvm_sin_f32(float x);
 extern double llvm_sin_f64(double x);
 extern float llvm_exp2_f32(float x);
@@ -27,9 +31,6 @@ extern float llvm_log2_f32(float x);
 extern double llvm_log2_f64(double x);
 extern float llvm_log10_f32(float x);
 extern double llvm_log10_f64(double x);
-
-extern double llvm_ceil_f64(double x);
-extern double llvm_floor_f64(double x);
 
 extern float llvm_copysign_f32(float x, float y);
 extern double llvm_copysign_f64(double x, double y);
@@ -83,6 +84,8 @@ int main(void) {
   printf("%d\n", (int)llvm_trunc_f64(-12.42));
   printf("%d\n", (int)llvm_floor_f32(27.665f));
   printf("%d\n", (int)llvm_floor_f64(-8.95));
+  printf("%.1f\n", llvm_cos_f32(0.0f * 3.14/180));
+  printf("%.1f\n", llvm_cos_f64(180.0 * 3.14/180));
   printf("%.1f\n", llvm_sin_f32(90.0f * 3.14/180));
   printf("%.1f\n", llvm_sin_f64(270.0 * 3.14/180));
 
@@ -93,12 +96,26 @@ int main(void) {
   printf("log10_f32 %.1f\n", llvm_log10_f32(1000));
   printf("log10_f64 %.1f\n", llvm_log10_f64(2000));
 
+  printf("llvm_ceil_f32 %.1f\n", llvm_ceil_f32(1.4f));
+  printf("llvm_ceil_f32 %.1f\n", llvm_ceil_f32(1.5f));
+  printf("llvm_ceil_f32 %.1f\n", llvm_ceil_f32(1.6f));
+  printf("llvm_ceil_f32 %.1f\n", llvm_ceil_f32(-1.4f));
+  printf("llvm_ceil_f32 %.1f\n", llvm_ceil_f32(-1.5f));
+  printf("llvm_ceil_f32 %.1f\n", llvm_ceil_f32(-1.6f));
+
   printf("llvm_ceil_f64 %.1f\n", llvm_ceil_f64(1.4));
   printf("llvm_ceil_f64 %.1f\n", llvm_ceil_f64(1.5));
   printf("llvm_ceil_f64 %.1f\n", llvm_ceil_f64(1.6));
   printf("llvm_ceil_f64 %.1f\n", llvm_ceil_f64(-1.4));
   printf("llvm_ceil_f64 %.1f\n", llvm_ceil_f64(-1.5));
   printf("llvm_ceil_f64 %.1f\n", llvm_ceil_f64(-1.6));
+
+  printf("llvm_floor_f32 %.1f\n", llvm_floor_f32(1.4f));
+  printf("llvm_floor_f32 %.1f\n", llvm_floor_f32(1.5f));
+  printf("llvm_floor_f32 %.1f\n", llvm_floor_f32(1.6f));
+  printf("llvm_floor_f32 %.1f\n", llvm_floor_f32(-1.4f));
+  printf("llvm_floor_f32 %.1f\n", llvm_floor_f32(-1.5f));
+  printf("llvm_floor_f32 %.1f\n", llvm_floor_f32(-1.6f));
 
   printf("llvm_floor_f64 %.1f\n", llvm_floor_f64(1.4));
   printf("llvm_floor_f64 %.1f\n", llvm_floor_f64(1.5));

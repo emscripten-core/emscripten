@@ -1,7 +1,7 @@
 #ifndef __emscripten_xmmintrin_h__
 #define __emscripten_xmmintrin_h__
 
-#include <vector.h>
+#include <emscripten/vector.h>
 
 #include <math.h>
 #include <string.h>
@@ -284,7 +284,11 @@ _mm_max_ss(__m128 __a, __m128 __b)
 // unclear, because while they are implemented with actiuap rcp and rsqrt on x86,
 // they may be specified to have a looser tolerance in order to accomodate
 // reciprocal sqrt implementations on other platforms.
-#define _mm_rcp_ps(__a) (_mm_set1_ps(1.0f) / (__a))
+static __inline__ __m128 __attribute__((__always_inline__))
+_mm_rcp_ps(__m128 __a)
+{
+    return _mm_set1_ps(1.0f) / __a;
+}
 
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_rcp_ss(__m128 __a)

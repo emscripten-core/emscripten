@@ -2817,10 +2817,10 @@ EMSCRIPTEN_BINDINGS(intrusive_pointers) {
 }
 
 std::string getTypeOfVal(const val& v) {
-    return v.typeof().as<std::string>();
+    return v.typeOf().as<std::string>();
 }
 
-EMSCRIPTEN_BINDINGS(typeof) {
+EMSCRIPTEN_BINDINGS(typeOf) {
     function("getTypeOfVal", &getTypeOfVal);
 }
 

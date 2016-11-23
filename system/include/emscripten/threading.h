@@ -3,7 +3,7 @@
 
 #include <inttypes.h>
 #include <pthread.h>
-#include <html5.h>
+#include <emscripten/html5.h>
 
 #ifdef __cplusplus
 extern "C" {

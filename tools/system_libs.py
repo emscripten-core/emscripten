@@ -583,6 +583,8 @@ class Ports:
 
   @staticmethod
   def build_native(subdir):
+    shared.Building.ensure_no_emmake('We cannot build the native system library in "%s" when under the influence of emmake/emconfigure. To avoid this, create system dirs beforehand, so they are not auto-built on demand. For example, for binaryen, do "python embuilder.py build binaryen"' % subdir)
+
     old = os.getcwd()
 
     try:

@@ -4,7 +4,7 @@
 #include <string.h>
 #include <assert.h>
 #include <emscripten.h>
-#include <html5.h>
+#include <emscripten/html5.h>
 
 EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context;
 

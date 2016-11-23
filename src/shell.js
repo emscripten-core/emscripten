@@ -115,12 +115,14 @@ if (ENVIRONMENT_IS_NODE) {
     module['exports'] = Module;
   }
 
+#if NODEJS_CATCH_EXIT
   process['on']('uncaughtException', function(ex) {
     // suppress ExitStatus exceptions from showing an error
     if (!(ex instanceof ExitStatus)) {
       throw ex;
     }
   });
+#endif
 
   Module['inspect'] = function () { return '[Emscripten Module object]'; };
 }

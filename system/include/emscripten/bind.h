@@ -1,5 +1,9 @@
 #pragma once
 
+#if __cplusplus < 201103L
+#error Including <emscripten/bind.h> requires building with -std=c++11 or newer!
+#else
+
 #include <stddef.h>
 #include <assert.h>
 #include <string>
@@ -1599,3 +1603,5 @@ namespace emscripten {
         EmscriptenBindingInitializer_##name();                          \
     } EmscriptenBindingInitializer_##name##_instance;                   \
     EmscriptenBindingInitializer_##name::EmscriptenBindingInitializer_##name()
+
+#endif // ~C++11 version check

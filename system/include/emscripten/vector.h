@@ -122,11 +122,9 @@ inline float32x4 emscripten_float32x4_replaceLane(float32x4 __a, int __lane, flo
 void emscripten_float32x4_store(const void *__p, float32x4 __a) __attribute__((__nothrow__));
 void emscripten_float32x4_store1(const void *__p, float32x4 __a) __attribute__((__nothrow__));
 void emscripten_float32x4_store2(const void *__p, float32x4 __a) __attribute__((__nothrow__));
-void emscripten_float32x4_store3(const void *__p, float32x4 __a) __attribute__((__nothrow__));
 float32x4 emscripten_float32x4_load(const void *__p) __attribute__((__nothrow__, __pure__));
 float32x4 emscripten_float32x4_load1(const void *__p) __attribute__((__nothrow__, __pure__));
 float32x4 emscripten_float32x4_load2(const void *__p) __attribute__((__nothrow__, __pure__));
-float32x4 emscripten_float32x4_load3(const void *__p) __attribute__((__nothrow__, __pure__));
 inline float32x4 emscripten_float32x4_fromFloat64x2Bits(float64x2 __a) __attribute__((__nothrow__, __const__)) { return (float32x4)__a; }
 inline float32x4 emscripten_float32x4_fromInt32x4Bits(int32x4 __a) __attribute__((__nothrow__, __const__)) { return (float32x4)__a; }
 inline float32x4 emscripten_float32x4_fromUint32x4Bits(uint32x4 __a) __attribute__((__nothrow__, __const__)) { return (float32x4)__a; }
@@ -178,11 +176,9 @@ inline int32x4 emscripten_int32x4_replaceLane(int32x4 __a, int __lane, int __s) 
 void emscripten_int32x4_store(const void *__p, int32x4 __a) __attribute__((__nothrow__));
 void emscripten_int32x4_store1(const void *__p, int32x4 __a) __attribute__((__nothrow__));
 void emscripten_int32x4_store2(const void *__p, int32x4 __a) __attribute__((__nothrow__));
-void emscripten_int32x4_store3(const void *__p, int32x4 __a) __attribute__((__nothrow__));
 int32x4 emscripten_int32x4_load(const void *__p) __attribute__((__nothrow__, __pure__));
 int32x4 emscripten_int32x4_load1(const void *__p) __attribute__((__nothrow__, __pure__));
 int32x4 emscripten_int32x4_load2(const void *__p) __attribute__((__nothrow__, __pure__));
-int32x4 emscripten_int32x4_load3(const void *__p) __attribute__((__nothrow__, __pure__));
 inline int32x4 emscripten_int32x4_fromFloat64x2Bits(float64x2 __a) __attribute__((__nothrow__, __const__)) { return (int32x4)__a; }
 inline int32x4 emscripten_int32x4_fromFloat32x4Bits(float32x4 __a) __attribute__((__nothrow__, __const__)) { return (int32x4)__a; }
 inline int32x4 emscripten_int32x4_fromUint32x4Bits(uint32x4 __a) __attribute__((__nothrow__, __const__)) { return (int32x4)__a; }
@@ -235,11 +231,9 @@ inline uint32x4 emscripten_uint32x4_replaceLane(uint32x4 __a, int __lane, int __
 void emscripten_uint32x4_store(const void *__p, uint32x4 __a) __attribute__((__nothrow__));
 void emscripten_uint32x4_store1(const void *__p, uint32x4 __a) __attribute__((__nothrow__));
 void emscripten_uint32x4_store2(const void *__p, uint32x4 __a) __attribute__((__nothrow__));
-void emscripten_uint32x4_store3(const void *__p, uint32x4 __a) __attribute__((__nothrow__));
 uint32x4 emscripten_uint32x4_load(const void *__p) __attribute__((__nothrow__, __pure__));
 uint32x4 emscripten_uint32x4_load1(const void *__p) __attribute__((__nothrow__, __pure__));
 uint32x4 emscripten_uint32x4_load2(const void *__p) __attribute__((__nothrow__, __pure__));
-uint32x4 emscripten_uint32x4_load3(const void *__p) __attribute__((__nothrow__, __pure__));
 inline uint32x4 emscripten_uint32x4_fromFloat64x2Bits(float64x2 __a) __attribute__((__nothrow__, __const__)) { return (uint32x4)__a; }
 inline uint32x4 emscripten_uint32x4_fromFloat32x4Bits(float32x4 __a) __attribute__((__nothrow__, __const__)) { return (uint32x4)__a; }
 inline uint32x4 emscripten_uint32x4_fromInt32x4Bits(uint32x4 __a) __attribute__((__nothrow__, __const__)) { return (uint32x4)__a; }

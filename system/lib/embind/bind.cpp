@@ -7,6 +7,7 @@
 #include <typeinfo>
 #include <algorithm>
 #include <emscripten/emscripten.h>
+#include <emscripten/wire.h>
 #include <climits>
 #include <limits>
 
@@ -71,9 +72,7 @@ namespace {
 
     template<typename T>
     constexpr TypedArrayIndex getTypedArrayIndex() {
-        static_assert(
-            (std::is_floating_point<T>::value && (sizeof(T) == 4 || sizeof(T) == 8)) ||
-            (std::is_integral<T>::value && (sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4)),
+        static_assert(internal::typeSupportsMemoryView<T>(),
             "type does not map to a typed array");
         return std::is_floating_point<T>::value
             ? (sizeof(T) == 4
@@ -144,5 +143,7 @@ EMSCRIPTEN_BINDINGS(native_and_builtin_types) {
 
     register_memory_view<float>("emscripten::memory_view<float>");
     register_memory_view<double>("emscripten::memory_view<double>");
+#if __SIZEOF_LONG_DOUBLE__ == __SIZEOF_DOUBLE__
     register_memory_view<long double>("emscripten::memory_view<long double>");
+#endif
 }
