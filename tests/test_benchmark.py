@@ -631,9 +631,7 @@ class benchmark(RunnerCore):
                                          os.path.join('src', '.libs', 'libLinearMath.a')],
                               configure_args=['--disable-demos','--disable-dependency-tracking'], native=native, cache_name_extra=name, env_init=env_init)
 
-    emcc_args = ['-s', 'DEAD_FUNCTIONS=["__ZSt9terminatev"]']
-
-    self.do_benchmark('bullet', src, '\nok.\n', emcc_args=emcc_args, shared_args=['-I' + path_from_root('tests', 'bullet', 'src'),
+    self.do_benchmark('bullet', src, '\nok.\n', shared_args=['-I' + path_from_root('tests', 'bullet', 'src'),
                                 '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')], lib_builder=lib_builder)
 
   def zzz_test_zzz_lzma(self):
