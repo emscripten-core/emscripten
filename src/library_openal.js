@@ -621,7 +621,7 @@ var LibraryOpenAL = {
     }
   },
 
-  alSource3i: ['alSource3f'],
+  alSource3i__deps: ['alSource3f'],
   alSource3i: function(source, param, v1, v2, v3) {
     _alSource3f(source, param, v1, v2, v3);
   },
