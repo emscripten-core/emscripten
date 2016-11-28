@@ -504,7 +504,12 @@ var LibraryOpenAL = {
           panner.maxDistance = src.maxDistance;
           panner.rolloffFactor = src.rolloffFactor;
           panner.setPosition(src.position[0], src.position[1], src.position[2]);
-          panner.setVelocity(src.velocity[0], src.velocity[1], src.velocity[2]);
+          
+          // Panner.protorype.setVelocity was deprecated and removed in Chrome 55+
+          if (src.velocity[0] != 0.0 && src.velocity[1] != 0.0 && velocity[2] != 0.0) {
+            panner.setVelocity(src.velocity[0], src.velocity[1], src.velocity[2]);
+          }
+          
           panner.connect(AL.currentContext.gain);
 
           // Disconnect from the default source.
