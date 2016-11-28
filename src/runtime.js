@@ -349,14 +349,34 @@ var Runtime = {
 
 #if BINARYEN
   // Loads a side module from binary data
-  loadWebAssemblyModule: function(lib_data) {
-    var int32View = new Uint32Array(new Uint8Array(lib_data.subarray(0, 24)).buffer);
-    assert(int32View[0] == 0x6f737700); // \0wso
-    var memorySize = int32View[1];
-    var tableSize = int32View[3];
-    assert(int32View[5] == 0x6d736100); // \0asm
+  loadWebAssemblyModule: function(wasm) {
+    var int32View = new Uint32Array(new Uint8Array(wasm.subarray(0, 24)).buffer);
+    assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0wasm
+    // we should see the dylink section right after the magic number and wasm version
+    assert(wasm[8] === 0, 'need the dylink section to be first')
+    var next = 9;
+    function getLEB() {
+      var ret = 0;
+      var mul = 1;
+      while (1) {
+        var byte = wasm[next++];
+        ret += ((byte & 127) * mul);
+        mul *= 128;
+        if (!(byte & 128)) break;
+      }
+      return ret;
+    }
+    var sectionSize = getLEB();
+    assert(wasm[next] === 6);                 next++; // size of "dylink" string
+    assert(wasm[next] === 'd'.charCodeAt(0)); next++;
+    assert(wasm[next] === 'y'.charCodeAt(0)); next++;
+    assert(wasm[next] === 'l'.charCodeAt(0)); next++;
+    assert(wasm[next] === 'i'.charCodeAt(0)); next++;
+    assert(wasm[next] === 'n'.charCodeAt(0)); next++;
+    assert(wasm[next] === 'k'.charCodeAt(0)); next++;
+    var memorySize = getLEB();
+    var tableSize = getLEB();
     //Module.printErr('loading module has memorySize ' + memorySize + ', tableSize ' + tableSize);
-    var wasm = lib_data.subarray(20);
     //Module.printErr('wasm binary size: ' + wasm.length);
     var env = Module['asmLibraryArg'];
     // TODO: use only memoryBase and tableBase, need to update asm.js backend

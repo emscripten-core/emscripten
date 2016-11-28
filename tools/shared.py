@@ -2213,13 +2213,23 @@ class JS:
 
 class WebAssembly:
   @staticmethod
+  def lebify(x):
+    assert x >= 0, 'TODO: signed'
+    ret = []
+    while 1:
+      byte = x & 127
+      x >>= 7
+      more = x != 0
+      if more:
+        byte = byte | 128
+      ret.append(chr(byte))
+      if not more:
+        break
+    return ret
+
+  @staticmethod
   def make_shared_library(js_file, wasm_file):
-    # a wasm shared library is a special binary file, containing
-    # \0wso
-    # 8 bytes: size of memory segment (little-endian unsigned integer)
-    # 8 bytes: size of table segment (little-endian unsigned integer)
-    # then the wasm module itself
-    # find the sizes, using the mem file and the data in the js
+    # a wasm shared library has a special "dylink" section, see tools-conventions repo
     js = open(js_file).read()
     m = re.search("var STATIC_BUMP = (\d+);", js)
     mem_size = int(m.group(1))
@@ -2228,15 +2238,19 @@ class WebAssembly:
     logging.debug('creating .wso with mem size %d, table size %d' % (mem_size, table_size))
     wso = js_file + '.wso'
     # write the binary
+    wasm = open(wasm_file, 'rb').read()
     f = open(wso, 'wb')
-    f.write('\0wso')
-    def write_integer(x):
-      for i in range(8):
-        f.write(chr(x % 256))
-        x = x / 256
-    write_integer(mem_size)
-    write_integer(table_size)
-    f.write(open(wasm_file, 'rb').read())
+    f.write(wasm[0:8]) # copy magic number and version
+    # write the special section
+    f.write('\0') # user section is code 0
+    # need to find the size of this section
+    name = "\06dylink" # section name, including prefixed size
+    contents = WebAssembly.lebify(mem_size) + WebAssembly.lebify(table_size)
+    size = len(name) + len(contents)
+    f.write(''.join(WebAssembly.lebify(size)))
+    f.write(name)
+    f.write(''.join(contents))
+    f.write(wasm[8:]) # copy rest of binary
     f.close()
     return wso
 
