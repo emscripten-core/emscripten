@@ -434,7 +434,7 @@ var Runtime = {
       exports[e] = value;
     }
     // initialize the module
-    var init = exports['__start_module'];
+    var init = exports['__post_instantiate'];
     if (init) {
       if (runtimeInitialized) {
         init();
