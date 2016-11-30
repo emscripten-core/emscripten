@@ -338,6 +338,16 @@ ok.
   def test_getprotobyname(self):
     self.do_run(open(path_from_root('tests', 'sockets', 'test_getprotobyname.c')).read(), 'success')
 
+  def test_link(self):
+    self.emcc_args += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1']
+    self.do_run(r'''
+#include <netdb.h>
+
+int main () {
+    void* thing = gethostbyname("bing.com");
+    return 0;
+}''', '', force_c=True)
+
   def test_sockets_echo(self):
     sockets_include = '-I'+path_from_root('tests', 'sockets')
 
