@@ -1456,15 +1456,16 @@ class Building:
     # returns True.
     def consider_object(f, force_add=False):
       new_symbols = Building.llvm_nm(f)
-      do_add = force_add or not unresolved_symbols.isdisjoint(new_symbols.defs)
+      provided = new_symbols.defs.union(new_symbols.commons)
+      do_add = force_add or not unresolved_symbols.isdisjoint(provided)
       if do_add:
         logging.debug('adding object %s to link' % (f))
         # Update resolved_symbols table with newly resolved symbols
-        resolved_symbols.update(new_symbols.defs)
+        resolved_symbols.update(provided)
         # Update unresolved_symbols table by adding newly unresolved symbols and
         # removing newly resolved symbols.
         unresolved_symbols.update(new_symbols.undefs.difference(resolved_symbols))
-        unresolved_symbols.difference_update(new_symbols.defs)
+        unresolved_symbols.difference_update(provided)
         actual_files.append(f)
       return do_add
 
