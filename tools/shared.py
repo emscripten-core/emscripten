@@ -1954,17 +1954,21 @@ class Building:
 
   @staticmethod
   def is_bitcode(filename):
-    # look for magic signature
-    b = open(filename, 'r').read(4)
-    if b[0] == 'B' and b[1] == 'C':
-      return True
-    # look for ar signature
-    elif Building.is_ar(filename):
-      return True
-    # on OS X, there is a 20-byte prefix
-    elif ord(b[0]) == 222 and ord(b[1]) == 192 and ord(b[2]) == 23 and ord(b[3]) == 11:
-      b = open(filename, 'r').read(24)
-      return b[20] == 'B' and b[21] == 'C'
+    try:
+      # look for magic signature
+      b = open(filename, 'r').read(4)
+      if b[0] == 'B' and b[1] == 'C':
+        return True
+      # look for ar signature
+      elif Building.is_ar(filename):
+        return True
+      # on OS X, there is a 20-byte prefix
+      elif ord(b[0]) == 222 and ord(b[1]) == 192 and ord(b[2]) == 23 and ord(b[3]) == 11:
+        b = open(filename, 'r').read(24)
+        return b[20] == 'B' and b[21] == 'C'
+    except IndexError:
+      # logging should be done on the caller function
+      pass
 
     return False
 
