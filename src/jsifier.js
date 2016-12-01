@@ -299,7 +299,10 @@ function JSify(data, functionsOnly) {
           print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n'); // comment as metadata only
         }
         if (BINARYEN) {
+          // export static base and bump, needed for linking in wasm binary's memory, dynamic linking, etc.
           print('var STATIC_BUMP = {{{ STATIC_BUMP }}};');
+          print('Module["STATIC_BASE"] = STATIC_BASE;');
+          print('Module["STATIC_BUMP"] = STATIC_BUMP;');
         }
       }
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
