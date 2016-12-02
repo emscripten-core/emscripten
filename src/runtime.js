@@ -384,6 +384,10 @@ var Runtime = {
     var oldTableSize = table.length;
     env['memoryBase'] = env['gb'] = Runtime.alignMemory(getMemory(memorySize + Runtime.STACK_ALIGN), Runtime.STACK_ALIGN); // TODO: add to cleanups
     env['tableBase'] = env['fb'] = oldTableSize;
+    // zero-initialize memory TODO: in some cases we can tell it is already zero initialized
+    for (var i = env['memoryBase']; i < env['memoryBase'] + memorySize; i++) {
+      HEAP8[i] = 0;
+    }
     //Module.printErr('using memoryBase ' + env['memoryBase'] + ', tableBase ' + env['tableBase']);
     //Module.printErr('growing table from size ' + oldTableSize + ' by ' + tableSize);
     var originalTable = table;
