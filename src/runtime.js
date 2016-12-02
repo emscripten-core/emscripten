@@ -382,7 +382,7 @@ var Runtime = {
     // TODO: use only memoryBase and tableBase, need to update asm.js backend
     var table = Module['wasmTable'];
     var oldTableSize = table.length;
-    env['memoryBase'] = env['gb'] = Runtime.alignMemory(getMemory(memorySize)); // TODO: add to cleanups
+    env['memoryBase'] = env['gb'] = Runtime.alignMemory(getMemory(memorySize + Runtime.STACK_ALIGN), Runtime.STACK_ALIGN); // TODO: add to cleanups
     env['tableBase'] = env['fb'] = oldTableSize;
     //Module.printErr('using memoryBase ' + env['memoryBase'] + ', tableBase ' + env['tableBase']);
     //Module.printErr('growing table from size ' + oldTableSize + ' by ' + tableSize);
