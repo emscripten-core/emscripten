@@ -376,24 +376,22 @@ var Runtime = {
     assert(wasm[next] === 'k'.charCodeAt(0)); next++;
     var memorySize = getLEB();
     var tableSize = getLEB();
-    //Module.printErr('loading module has memorySize ' + memorySize + ', tableSize ' + tableSize);
-    //Module.printErr('wasm binary size: ' + wasm.length);
     var env = Module['asmLibraryArg'];
     // TODO: use only memoryBase and tableBase, need to update asm.js backend
     var table = Module['wasmTable'];
     var oldTableSize = table.length;
     env['memoryBase'] = env['gb'] = Runtime.alignMemory(getMemory(memorySize + Runtime.STACK_ALIGN), Runtime.STACK_ALIGN); // TODO: add to cleanups
     env['tableBase'] = env['fb'] = oldTableSize;
-    // zero-initialize memory TODO: in some cases we can tell it is already zero initialized
-    for (var i = env['memoryBase']; i < env['memoryBase'] + memorySize; i++) {
-      HEAP8[i] = 0;
-    }
-    //Module.printErr('using memoryBase ' + env['memoryBase'] + ', tableBase ' + env['tableBase']);
-    //Module.printErr('growing table from size ' + oldTableSize + ' by ' + tableSize);
     var originalTable = table;
     table.grow(tableSize);
     assert(table === originalTable);
-    //Module.printErr('table is now of size ' + table.length);
+    // zero-initialize memory and table TODO: in some cases we can tell it is already zero initialized
+    for (var i = env['memoryBase']; i < env['memoryBase'] + memorySize; i++) {
+      HEAP8[i] = 0;
+    }
+    for (var i = env['tableBase']; i < env['tableBase'] + tableSize; i++) {
+      table.set(i, null);
+    }
     // copy currently exported symbols so the new module can import them
     for (var x in Module) {
       if (!(x in env)) {
