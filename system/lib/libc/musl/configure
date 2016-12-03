@@ -252,7 +252,6 @@ mips*) ARCH=mips ;;
 microblaze*) ARCH=microblaze ;;
 powerpc*) ARCH=powerpc ;;
 sh[1-9bel-]*|sh|superh*) ARCH=sh ;;
-asmjs-unknown-emscripten) ARCH=emscripten ;;
 unknown) fail "$0: unable to detect target arch; try $0 --target=..." ;;
 *) fail "$0: unknown or unsupported target \"$target\"" ;;
 esac
@@ -296,7 +295,7 @@ fi
 # option is sufficient, and if not, add a macro to cripple these
 # functions with volatile...
 #
-# XXX EMSCRIPTEN tryflag CFLAGS_MEMOPS -fno-tree-loop-distribute-patterns
+tryflag CFLAGS_MEMOPS -fno-tree-loop-distribute-patterns
 
 #
 # If debugging is explicitly enabled, don't auto-enable optimizations
@@ -395,7 +394,7 @@ fi
 #
 tryflag CFLAGS_AUTO -Werror=implicit-function-declaration
 tryflag CFLAGS_AUTO -Werror=implicit-int
-# XXX EMSCRIPTEN tryflag CFLAGS_AUTO -Werror=pointer-sign
+tryflag CFLAGS_AUTO -Werror=pointer-sign
 tryflag CFLAGS_AUTO -Werror=pointer-arith
 
 if test "x$warnings" = xyes ; then
