@@ -2024,7 +2024,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             cmd += ['--mem-init=' + memfile]
             if not shared.Settings.RELOCATABLE:
               cmd += ['--mem-base=' + str(shared.Settings.GLOBAL_BASE)]
-          if shared.Settings.RELOCATABLE or shared.Settings.RESERVED_FUNCTION_POINTERS:
+          # various options imply that the imported table may not be the exact size as the wasm module's own table segments
+          if shared.Settings.RELOCATABLE or shared.Settings.RESERVED_FUNCTION_POINTERS > 0 or shared.Settings.EMULATED_FUNCTION_POINTERS:
             cmd += ['--table-max=-1']
           if shared.Settings.SIDE_MODULE:
             cmd += ['--mem-max=-1']
