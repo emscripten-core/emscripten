@@ -6056,10 +6056,11 @@ def process(filename):
       self.emcc_args += ['--closure', '1']
       self.do_run_from_file(src, expected)
 
-    print 'function pointer emulation'
-    Settings.RESERVED_FUNCTION_POINTERS = 0
-    Settings.EMULATED_FUNCTION_POINTERS = 1 # with emulation, we don't need to reserve
-    self.do_run_from_file(src, expected)
+    if not self.is_wasm(): # when emulating, we use a wasm Table, but we can't just assign a JS function to it, TODO: wrap the JS in wasm, see settings.js
+      print 'function pointer emulation'
+      Settings.RESERVED_FUNCTION_POINTERS = 0
+      Settings.EMULATED_FUNCTION_POINTERS = 1 # with emulation, we don't need to reserve
+      self.do_run_from_file(src, expected)
 
   @no_wasm_backend('requires EM_ASM args support in wasm backend')
   def test_getFuncWrapper_sig_alias(self):
