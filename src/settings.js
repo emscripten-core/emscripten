@@ -214,7 +214,8 @@ var EMULATED_FUNCTION_POINTERS = 0; // asm.js:
                                     // the plain JS array with a Table. However, Tables have
                                     // some limitations currently, like not being able to
                                     // assign an arbitrary JS method to them, which we have
-                                    // yet to work around.
+                                    // yet to work around. Another limitation is that this
+                                    // cannot yet mix with EMULATE_FUNCTION_POINTER_CASTS.
 var EMULATE_FUNCTION_POINTER_CASTS = 0; // Allows function pointers to be cast, wraps each
                                         // call of an incorrect type with a runtime correction.
                                         // This adds overhead and should not be used normally.
