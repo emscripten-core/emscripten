@@ -42,6 +42,20 @@ union ldshape {
 		uint64_t hi;
 	} i2;
 };
+#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384 && __BYTE_ORDER == __BIG_ENDIAN
+union ldshape {
+	long double f;
+	struct {
+		uint16_t se;
+		uint16_t top;
+		uint32_t mid;
+		uint64_t lo;
+	} i;
+	struct {
+		uint64_t hi;
+		uint64_t lo;
+	} i2;
+};
 #else
 #error Unsupported long double representation
 #endif
@@ -127,6 +141,18 @@ do {                                              \
   __u.i = (w);                                    \
   (d) = __u.f;                                    \
 } while (0)
+
+#undef __CMPLX
+#undef CMPLX
+#undef CMPLXF
+#undef CMPLXL
+
+#define __CMPLX(x, y, t) \
+	((union { _Complex t __z; t __xy[2]; }){.__xy = {(x),(y)}}.__z)
+
+#define CMPLX(x, y) __CMPLX(x, y, double)
+#define CMPLXF(x, y) __CMPLX(x, y, float)
+#define CMPLXL(x, y) __CMPLX(x, y, long double)
 
 /* fdlibm kernel functions */
 

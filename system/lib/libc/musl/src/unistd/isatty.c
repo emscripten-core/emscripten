@@ -1,8 +1,9 @@
 #include <unistd.h>
-#include <termios.h>
+#include <sys/ioctl.h>
+#include "syscall.h"
 
 int isatty(int fd)
 {
-	struct termios t;
-	return tcgetattr(fd, &t) == 0;
+	struct winsize wsz;
+	return !__syscall(SYS_ioctl, fd, TIOCGWINSZ, &wsz);
 }

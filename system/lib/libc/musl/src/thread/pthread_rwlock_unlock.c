@@ -2,7 +2,7 @@
 
 int pthread_rwlock_unlock(pthread_rwlock_t *rw)
 {
-	int val, cnt, waiters, new;
+	int val, cnt, waiters, new, priv = rw->_rw_shared^128;
 
 	do {
 		val = rw->_rw_lock;
@@ -12,7 +12,7 @@ int pthread_rwlock_unlock(pthread_rwlock_t *rw)
 	} while (a_cas(&rw->_rw_lock, val, new) != val);
 
 	if (!new && (waiters || val<0))
-		__wake(&rw->_rw_lock, cnt, 0);
+		__wake(&rw->_rw_lock, cnt, priv);
 
 	return 0;
 }

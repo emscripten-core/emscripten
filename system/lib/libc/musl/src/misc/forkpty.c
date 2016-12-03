@@ -1,38 +1,57 @@
 #include <pty.h>
+#include <utmp.h>
 #include <unistd.h>
-#include <sys/ioctl.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <sys/wait.h>
+#include <pthread.h>
 
-int forkpty(int *m, char *name, const struct termios *tio, const struct winsize *ws)
+int forkpty(int *pm, char *name, const struct termios *tio, const struct winsize *ws)
 {
-	int s, t, i, istmp[3]={0};
-	pid_t pid;
+	int m, s, ec=0, p[2], cs;
+	pid_t pid=-1;
+	sigset_t set, oldset;
 
-	if (openpty(m, &s, name, tio, ws) < 0) return -1;
+	if (openpty(&m, &s, name, tio, ws) < 0) return -1;
 
-	/* Ensure before forking that we don't exceed fd limit */
-	for (i=0; i<3; i++) {
-		if (fcntl(i, F_GETFL) < 0) {
-			t = fcntl(s, F_DUPFD, i);
-			if (t<0) break;
-			else if (t!=i) close(t);
-			else istmp[i] = 1;
-		}
+	sigfillset(&set);
+	pthread_sigmask(SIG_BLOCK, &set, &oldset);
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
+
+	if (pipe2(p, O_CLOEXEC)) {
+		close(s);
+		goto out;
 	}
-	pid = i==3 ? fork() : -1;
+
+	pid = fork();
 	if (!pid) {
-		close(*m);
-		setsid();
-		ioctl(s, TIOCSCTTY, (char *)0);
-		dup2(s, 0);
-		dup2(s, 1);
-		dup2(s, 2);
-		if (s>2) close(s);
+		close(m);
+		close(p[0]);
+		if (login_tty(s)) {
+			write(p[1], &errno, sizeof errno);
+			_exit(127);
+		}
+		close(p[1]);
+		pthread_setcancelstate(cs, 0);
+		pthread_sigmask(SIG_SETMASK, &oldset, 0);
 		return 0;
 	}
-	for (i=0; i<3; i++)
-		if (istmp[i]) close(i);
 	close(s);
-	if (pid < 0) close(*m);
+	close(p[1]);
+	if (read(p[0], &ec, sizeof ec) > 0) {
+		int status;
+		waitpid(pid, &status, 0);
+		pid = -1;
+		errno = ec;
+	}
+	close(p[0]);
+
+out:
+	if (pid > 0) *pm = m;
+	else close(m);
+
+	pthread_setcancelstate(cs, 0);
+	pthread_sigmask(SIG_SETMASK, &oldset, 0);
+
 	return pid;
 }
