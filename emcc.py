@@ -1052,10 +1052,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         assert not use_closure_compiler, 'cannot use closure compiler on shared modules'
         assert not shared.Settings.ALLOW_MEMORY_GROWTH, 'memory growth is not supported with shared modules yet'
 
-      if shared.Settings.ALLOW_MEMORY_GROWTH:
-        logging.warning('not all asm.js optimizations are possible with ALLOW_MEMORY_GROWTH, disabling those')
-        shared.Settings.ASM_JS = 2 # memory growth does not validate as asm.js http://discourse.wicg.io/t/request-for-comments-switching-resizing-heaps-in-asm-js/641/23
-
       if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
         shared.Settings.ALIASING_FUNCTION_POINTERS = 0
 
@@ -1215,6 +1211,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         #  * if we also supported js mem inits we'd have 4 modes
         #  * and js mem inits are useful for avoiding a side file, but the wasm module avoids that anyhow
         memory_init_file = True
+
+      if shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.ASM_JS == 1:
+        # this is an issue in asm.js, but not wasm
+        if not shared.Settings.WASM or 'asmjs' in shared.Settings.BINARYEN_METHOD:
+          logging.warning('not all asm.js optimizations are possible with ALLOW_MEMORY_GROWTH, disabling those')
+          shared.Settings.ASM_JS = 2 # memory growth does not validate as asm.js http://discourse.wicg.io/t/request-for-comments-switching-resizing-heaps-in-asm-js/641/23
 
       if js_opts:
         shared.Settings.RUNNING_JS_OPTS = 1
