@@ -2024,7 +2024,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             cmd += ['--mem-init=' + memfile]
             if not shared.Settings.RELOCATABLE:
               cmd += ['--mem-base=' + str(shared.Settings.GLOBAL_BASE)]
-          if shared.Settings.RELOCATABLE:
+          if shared.Settings.RELOCATABLE or shared.Settings.RESERVED_FUNCTION_POINTERS:
             cmd += ['--table-max=-1']
           if shared.Settings.SIDE_MODULE:
             cmd += ['--mem-max=-1']
