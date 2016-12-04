@@ -1508,6 +1508,21 @@ def process(filename):
       self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api',
                                    post_build=check)
 
+  def test_emscripten_run_script_string_utf8(self):
+    src = r'''
+      #include <stdio.h>
+      #include <stdlib.h>
+      #include <string.h>
+      #include <emscripten.h>
+
+      int main() {
+        const char *str = emscripten_run_script_string("'\\u2603 \\u2603 \\u2603 Hello!'");
+        printf("length of returned string: %d. Position of substring 'Hello': %d\n", strlen(str), strstr(str, "Hello")-str);
+        return 0;
+      }
+    '''
+    self.do_run(src, '''length of returned string: 18. Position of substring 'Hello': 12''')
+
   def test_emscripten_get_now(self):
     self.banned_js_engines = [V8_ENGINE] # timer limitations in v8 shell
 
