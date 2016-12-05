@@ -22,6 +22,7 @@ long __syscall_ret(unsigned long), __syscall(syscall_arg_t, ...),
 	__syscall_cp(syscall_arg_t, syscall_arg_t, syscall_arg_t, syscall_arg_t,
 	             syscall_arg_t, syscall_arg_t, syscall_arg_t);
 
+#ifndef __EMSCRIPTEN__
 #ifdef SYSCALL_NO_INLINE
 #define __syscall0(n) (__syscall)(n)
 #define __syscall1(n,a) (__syscall)(n,__scc(a))
@@ -69,6 +70,7 @@ long __syscall_ret(unsigned long), __syscall(syscall_arg_t, ...),
 #define __syscall_cp(...) __SYSCALL_DISP(__syscall_cp,__VA_ARGS__)
 #else // __EMSCRIPTEN__
 #define __syscall_cp(...) __syscall(__VA_ARGS__)
+#define SYSCALL_USE_SOCKETCALL
 #endif // __EMSCRIPTEN__
 
 #define syscall_cp(...) __syscall_ret(__syscall_cp(__VA_ARGS__))
@@ -232,6 +234,7 @@ long __syscall_ret(unsigned long), __syscall(syscall_arg_t, ...),
 #define __SC_recvmmsg    19
 #define __SC_sendmmsg    20
 
+#ifndef __EMSCRIPTEN__
 #ifdef SYS_open
 #define __sys_open2(x,pn,fl) __syscall2(SYS_open, pn, (fl)|O_LARGEFILE)
 #define __sys_open3(x,pn,fl,mo) __syscall3(SYS_open, pn, (fl)|O_LARGEFILE, mo)
@@ -243,11 +246,17 @@ long __syscall_ret(unsigned long), __syscall(syscall_arg_t, ...),
 #define __sys_open_cp2(x,pn,fl) __syscall_cp3(SYS_openat, AT_FDCWD, pn, (fl)|O_LARGEFILE)
 #define __sys_open_cp3(x,pn,fl,mo) __syscall_cp4(SYS_openat, AT_FDCWD, pn, (fl)|O_LARGEFILE, mo)
 #endif
-
 #define __sys_open(...) __SYSCALL_DISP(__sys_open,,__VA_ARGS__)
 #define sys_open(...) __syscall_ret(__sys_open(__VA_ARGS__))
 
 #define __sys_open_cp(...) __SYSCALL_DISP(__sys_open_cp,,__VA_ARGS__)
 #define sys_open_cp(...) __syscall_ret(__sys_open_cp(__VA_ARGS__))
+#else // __EMSCRIPTEN__
+#define __sys_open(...) __syscall(SYS_open, __VA_ARGS__)
+#define sys_open(...) __syscall(SYS_open, __VA_ARGS__)
+
+#define __sys_open_cp(...) __syscall(SYS_open, __VA_ARGS__)
+#define sys_open_cp(...) __syscall(SYS_open, __VA_ARGS__)
+#endif // __EMSCRIPTEN__
 
 #endif

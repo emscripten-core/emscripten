@@ -142,6 +142,8 @@ long __syscall333(int which, ...);
 long __syscall334(int which, ...);
 long __syscall340(int which, ...);
 
+#undef SYS_futimesat
+
 #ifdef __cplusplus
 }
 #endif

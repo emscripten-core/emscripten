@@ -14,11 +14,15 @@ int open(const char *filename, int flags, ...)
 		va_end(ap);
 	}
 
+#ifndef __EMSCRIPTEN__
 	int fd = __sys_open_cp(filename, flags, mode);
 	if (fd>=0 && (flags & O_CLOEXEC))
 		__syscall(SYS_fcntl, fd, F_SETFD, FD_CLOEXEC);
 
 	return __syscall_ret(fd);
+#else
+	return -1;
+#endif
 }
 
 LFS64(open);

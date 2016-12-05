@@ -16,7 +16,7 @@ static void do_setxid(void *p)
 #ifdef __EMSCRIPTEN__
 	c->err = EPERM; // we don't allow dynamic syscalls, and don't need to support these anyhow
 	return;
-#endif
+#else
 	int ret = -__syscall(c->nr, c->id, c->eid, c->sid);
 	if (ret && !c->err) {
 		/* If one thread fails to set ids after another has already
@@ -27,6 +27,7 @@ static void do_setxid(void *p)
 		__syscall(SYS_kill, __syscall(SYS_getpid), SIGKILL);
 	}
 	c->err = ret;
+#endif
 }
 
 int __setxid(int nr, int id, int eid, int sid)

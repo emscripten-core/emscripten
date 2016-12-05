@@ -142,21 +142,9 @@ int __libc_sigprocmask(int, const sigset_t *, sigset_t *);
 void __lock(volatile int *);
 void __unmapself(void *, size_t);
 
-<<<<<<< HEAD
 void __vm_wait(void);
 void __vm_lock(void);
 void __vm_unlock(void);
-=======
-int __timedwait(volatile int *, int, clockid_t, const struct timespec *, void (*)(void *), void *, int);
-void __wait(volatile int *, volatile int *, int, int);
-
-#ifdef __EMSCRIPTEN__
-#define __wake(addr, cnt, priv) emscripten_futex_wake((void*)addr, (cnt)<0?INT_MAX:(cnt))
-#else
-#define __wake(addr, cnt, priv) \
-	__syscall(SYS_futex, addr, FUTEX_WAKE, (cnt)<0?INT_MAX:(cnt))
-#endif
->>>>>>> parent of 6d76604... Revert all emscripten musl changes
 
 int __timedwait(volatile int *, int, clockid_t, const struct timespec *, int);
 int __timedwait_cp(volatile int *, int, clockid_t, const struct timespec *, int);
@@ -165,8 +153,12 @@ static inline void __wake(volatile void *addr, int cnt, int priv)
 {
 	if (priv) priv = 128;
 	if (cnt<0) cnt = INT_MAX;
+#ifdef __EMSCRIPTEN__
+	emscripten_futex_wake((void*)addr, (cnt)<0?INT_MAX:(cnt));
+#else
 	__syscall(SYS_futex, addr, FUTEX_WAKE|priv, cnt) != -ENOSYS ||
 	__syscall(SYS_futex, addr, FUTEX_WAKE, cnt);
+#endif
 }
 
 void __acquire_ptc(void);
