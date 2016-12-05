@@ -12,9 +12,6 @@
 extern "C" {
 #endif
 
-#if __EMSCRIPTEN__
-_Noreturn
-#endif
 void __assert_fail (const char *, const char *, int, const char *);
 
 #ifdef __cplusplus
