@@ -173,7 +173,7 @@ void setusershell(void);
 void endusershell(void);
 char *getusershell(void);
 int acct(const char *);
-long syscall(long, ...);
+/* XXX EMSCRIPTEN long syscall(long, ...); */
 int execvpe(const char *, char *const [], char *const []);
 int issetugid(void);
 #endif
@@ -245,7 +245,9 @@ int eaccess(const char *, int);
 #define _POSIX_READER_WRITER_LOCKS _POSIX_VERSION
 #define _POSIX_ASYNCHRONOUS_IO  _POSIX_VERSION
 #define _POSIX_SEMAPHORES       _POSIX_VERSION
+#ifndef __EMSCRIPTEN__
 #define _POSIX_SHARED_MEMORY_OBJECTS _POSIX_VERSION
+#endif
 
 #define _POSIX2_C_BIND          _POSIX_VERSION
 
