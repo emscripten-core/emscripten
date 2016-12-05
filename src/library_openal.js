@@ -319,7 +319,11 @@ var LibraryOpenAL = {
         AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
         return 0;
       }
-      {{{ makeSetValue('data', '0', '(new (window.AudioContext || window.webkitAudioContext)).sampleRate', 'i32') }}};
+      if (!AL.currentContext) {
+        AL.alcErr = 0xA002 /* ALC_INVALID_CONTEXT */;
+        return 0;
+      }
+      {{{ makeSetValue('data', '0', 'AL.currentContext.ctx.sampleRate', 'i32') }}};
       break;
     case 0x1010 /* ALC_MONO_SOURCES */:
     case 0x1011 /* ALC_STEREO_SOURCES */:
