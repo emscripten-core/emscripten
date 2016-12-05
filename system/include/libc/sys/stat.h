@@ -100,8 +100,9 @@ int lchmod(const char *, mode_t);
 #define fstat64 fstat
 #define lstat64 lstat
 #define fstatat64 fstatat
-#define blksize64_t blksize_t
 #define blkcnt64_t blkcnt_t
+#define fsblkcnt64_t fsblkcnt_t
+#define fsfilcnt64_t fsfilcnt_t
 #define ino64_t ino_t
 #define off64_t off_t
 #endif
