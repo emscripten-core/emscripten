@@ -41,7 +41,18 @@ locale_t __newlocale(int mask, const char *name, locale_t loc)
 	if (j==1 && tmp.cat[LC_CTYPE]==&__c_dot_utf8)
 		return UTF8_LOCALE;
 
-	if ((loc = malloc(sizeof *loc))) *loc = tmp;
+	if (!loc) {
+		// XXX EMSCRIPTEN: avoid a malloc (which does time(), sysconf(), sbrk(), etc.) during startup
+		static struct __locale_struct first;
+		static int used_first = 0;
+		if (!used_first) {
+			used_first = 1;
+			loc = &first;
+		} else {
+			loc = calloc(1, sizeof *loc);
+		}
+		*loc = tmp;
+	}
 
 	return loc;
 }

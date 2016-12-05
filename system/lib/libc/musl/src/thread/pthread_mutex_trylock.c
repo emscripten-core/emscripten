@@ -19,7 +19,9 @@ int __pthread_mutex_trylock_owner(pthread_mutex_t *m)
 	if (m->_m_type & 128) {
 		if (!self->robust_list.off) {
 			self->robust_list.off = (char*)&m->_m_lock-(char *)&m->_m_next;
+#ifndef __EMSCRIPTEN__ // XXX Emscripten does not have a concept of multiple processes or kernel space, so robust mutex lists don't need to register to kernel.
 			__syscall(SYS_set_robust_list, &self->robust_list, 3*sizeof(long));
+#endif
 		}
 		if (m->_m_waiters) tid |= 0x80000000;
 		self->robust_list.pending = &m->_m_next;

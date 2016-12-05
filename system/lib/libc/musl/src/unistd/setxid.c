@@ -13,6 +13,10 @@ static void do_setxid(void *p)
 {
 	struct ctx *c = p;
 	if (c->err>0) return;
+#ifdef __EMSCRIPTEN__
+	c->err = EPERM; // we don't allow dynamic syscalls, and don't need to support these anyhow
+	return;
+#endif
 	int ret = -__syscall(c->nr, c->id, c->eid, c->sid);
 	if (ret && !c->err) {
 		/* If one thread fails to set ids after another has already

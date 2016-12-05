@@ -1,5 +1,9 @@
 #include "pthread_impl.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 volatile size_t __pthread_tsd_size = sizeof(void *) * PTHREAD_KEYS_MAX;
 void *__pthread_tsd_main[PTHREAD_KEYS_MAX] = { 0 };
 
@@ -35,7 +39,11 @@ int __pthread_key_delete(pthread_key_t k)
 	return 0;
 }
 
+#ifdef __EMSCRIPTEN__
+void EMSCRIPTEN_KEEPALIVE __pthread_tsd_run_dtors()
+#else
 void __pthread_tsd_run_dtors()
+#endif
 {
 	pthread_t self = __pthread_self();
 	int i, j, not_finished = self->tsd_used;
