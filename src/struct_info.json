@@ -491,7 +491,8 @@
             "TCGETS",
             "TCSETS",
             "TIOCGPGRP",
-            "TIOCSPGRP"
+            "TIOCSPGRP",
+            "TIOCGWINSZ"
         ],
         "structs": {}
     }, 

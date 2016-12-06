@@ -332,6 +332,10 @@ var SyscallsLibrary = {
         var argp = SYSCALLS.get();
         return FS.ioctl(stream, op, argp);
       }
+      case {{{ cDefine('TIOCGWINSZ') }}}: {
+        if (!stream.tty) return -ERRNO_CODES.ENOTTY;
+        return 0;
+      }
       default: abort('bad ioctl syscall ' + op);
     }
 #endif // NO_FILESYSTEM

@@ -176,7 +176,9 @@ static void cleanup(void *ctx)
 			.si_pid = getpid(),
 			.si_uid = getuid()
 		};
+#ifndef __EMSCRIPTEN__
 		__syscall(SYS_rt_sigqueueinfo, si.si_pid, si.si_signo, &si);
+#endif
 	}
 	if (sev.sigev_notify == SIGEV_THREAD) {
 		a_store(&__pthread_self()->cancel, 0);

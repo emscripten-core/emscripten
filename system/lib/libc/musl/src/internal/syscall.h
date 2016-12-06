@@ -255,8 +255,8 @@ long __syscall_ret(unsigned long), __syscall(syscall_arg_t, ...),
 #define __sys_open(...) __syscall(SYS_open, __VA_ARGS__)
 #define sys_open(...) __syscall(SYS_open, __VA_ARGS__)
 
-#define __sys_open_cp(...) __syscall(SYS_open, __VA_ARGS__)
-#define sys_open_cp(...) __syscall(SYS_open, __VA_ARGS__)
+#define __sys_open_cp(...) __syscall_cp(SYS_open, __VA_ARGS__)
+#define sys_open_cp(...) __syscall_cp(SYS_open, __VA_ARGS__)
 #endif // __EMSCRIPTEN__
 
 #endif

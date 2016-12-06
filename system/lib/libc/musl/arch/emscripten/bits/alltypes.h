@@ -2,7 +2,6 @@
 #define _Int64 long long
 #define _Reg int
 
-#if __GNUC__ >= 3
 #if defined(__NEED_va_list) && !defined(__DEFINED_va_list)
 typedef __builtin_va_list va_list;
 #define __DEFINED_va_list
@@ -13,33 +12,13 @@ typedef __builtin_va_list __isoc_va_list;
 #define __DEFINED___isoc_va_list
 #endif
 
-#else
-#if defined(__NEED_va_list) && !defined(__DEFINED_va_list)
-typedef struct __va_list * va_list;
-#define __DEFINED_va_list
-#endif
-
-#if defined(__NEED___isoc_va_list) && !defined(__DEFINED___isoc_va_list)
-typedef struct __va_list * __isoc_va_list;
-#define __DEFINED___isoc_va_list
-#endif
-
-#endif
 
 #ifndef __cplusplus
-#ifdef __WCHAR_TYPE__
 #if defined(__NEED_wchar_t) && !defined(__DEFINED_wchar_t)
-typedef __WCHAR_TYPE__ wchar_t;
+typedef unsigned wchar_t;
 #define __DEFINED_wchar_t
 #endif
 
-#else
-#if defined(__NEED_wchar_t) && !defined(__DEFINED_wchar_t)
-typedef long wchar_t;
-#define __DEFINED_wchar_t
-#endif
-
-#endif
 #endif
 #if defined(__NEED_wint_t) && !defined(__DEFINED_wint_t)
 typedef unsigned wint_t;
@@ -47,7 +26,6 @@ typedef unsigned wint_t;
 #endif
 
 
-#if defined(__FLT_EVAL_METHOD__) && __FLT_EVAL_METHOD__ == 0
 #if defined(__NEED_float_t) && !defined(__DEFINED_float_t)
 typedef float float_t;
 #define __DEFINED_float_t
@@ -58,18 +36,6 @@ typedef double double_t;
 #define __DEFINED_double_t
 #endif
 
-#else
-#if defined(__NEED_float_t) && !defined(__DEFINED_float_t)
-typedef long double float_t;
-#define __DEFINED_float_t
-#endif
-
-#if defined(__NEED_double_t) && !defined(__DEFINED_double_t)
-typedef long double double_t;
-#define __DEFINED_double_t
-#endif
-
-#endif
 
 #if defined(__NEED_time_t) && !defined(__DEFINED_time_t)
 typedef long time_t;
@@ -83,24 +49,12 @@ typedef long suseconds_t;
 
 
 #if defined(__NEED_pthread_attr_t) && !defined(__DEFINED_pthread_attr_t)
-#ifdef __EMSCRIPTEN__
-// For canvas transfer implementation in Emscripten, use an extra 10th control field
-// to pass a pointer to a string denoting the WebGL canvases to transfer.
 typedef struct { union { int __i[10]; unsigned __s[10]; } __u; } pthread_attr_t;
-#else
-typedef struct { union { int __i[9]; unsigned __s[9]; } __u; } pthread_attr_t;
-#endif
 #define __DEFINED_pthread_attr_t
 #endif
 
 #if defined(__NEED_pthread_mutex_t) && !defined(__DEFINED_pthread_mutex_t)
-#ifdef __EMSCRIPTEN__
-// For mutex implementation in Emscripten, need to use an extra seventh control field
-// to hold a temporary futex wait & wake location, designated as mutex->_m_addr.
 typedef struct { union { int __i[7]; void *__p[7]; } __u; } pthread_mutex_t;
-#else
-typedef struct { union { int __i[6]; void *__p[6]; } __u; } pthread_mutex_t;
-#endif
 #define __DEFINED_pthread_mutex_t
 #endif
 
@@ -118,6 +72,7 @@ typedef struct { union { int __i[8]; void *__p[8]; } __u; } pthread_rwlock_t;
 typedef struct { union { int __i[5]; void *__p[5]; } __u; } pthread_barrier_t;
 #define __DEFINED_pthread_barrier_t
 #endif
+
 
 #if defined(__NEED_size_t) && !defined(__DEFINED_size_t)
 typedef unsigned _Addr size_t;
@@ -222,17 +177,17 @@ typedef unsigned _Reg nlink_t;
 #endif
 
 #if defined(__NEED_off_t) && !defined(__DEFINED_off_t)
-typedef int off_t;
+typedef _Int64 off_t;
 #define __DEFINED_off_t
 #endif
 
 #if defined(__NEED_ino_t) && !defined(__DEFINED_ino_t)
-typedef unsigned int ino_t;
+typedef unsigned _Int64 ino_t;
 #define __DEFINED_ino_t
 #endif
 
 #if defined(__NEED_dev_t) && !defined(__DEFINED_dev_t)
-typedef unsigned int dev_t;
+typedef unsigned _Int64 dev_t;
 #define __DEFINED_dev_t
 #endif
 
@@ -242,20 +197,25 @@ typedef long blksize_t;
 #endif
 
 #if defined(__NEED_blkcnt_t) && !defined(__DEFINED_blkcnt_t)
-typedef int blkcnt_t;
+typedef _Int64 blkcnt_t;
 #define __DEFINED_blkcnt_t
 #endif
 
 #if defined(__NEED_fsblkcnt_t) && !defined(__DEFINED_fsblkcnt_t)
-typedef unsigned int fsblkcnt_t;
+typedef unsigned _Int64 fsblkcnt_t;
 #define __DEFINED_fsblkcnt_t
 #endif
 
 #if defined(__NEED_fsfilcnt_t) && !defined(__DEFINED_fsfilcnt_t)
-typedef unsigned int fsfilcnt_t;
+typedef unsigned _Int64 fsfilcnt_t;
 #define __DEFINED_fsfilcnt_t
 #endif
 
+
+#if defined(__NEED_wint_t) && !defined(__DEFINED_wint_t)
+typedef unsigned wint_t;
+#define __DEFINED_wint_t
+#endif
 
 #if defined(__NEED_wctype_t) && !defined(__DEFINED_wctype_t)
 typedef unsigned long wctype_t;
@@ -372,6 +332,12 @@ typedef struct { unsigned __attr[2]; } pthread_rwlockattr_t;
 #if defined(__NEED_FILE) && !defined(__DEFINED_FILE)
 typedef struct _IO_FILE FILE;
 #define __DEFINED_FILE
+#endif
+
+
+#if defined(__NEED_mbstate_t) && !defined(__DEFINED_mbstate_t)
+typedef struct __mbstate_t { unsigned __opaque1, __opaque2; } mbstate_t;
+#define __DEFINED_mbstate_t
 #endif
 
 

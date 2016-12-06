@@ -20,7 +20,9 @@ static void notify_signal(struct sigevent *sev)
 		.si_pid = __pthread_self()->pid,
 		.si_uid = getuid()
 	};
+#ifndef __EMSCRIPTEN__
 	__syscall(SYS_rt_sigqueueinfo, si.si_pid, si.si_signo, &si);
+#endif
 }
 
 static void *io_thread(void *p)
