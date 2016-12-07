@@ -65,8 +65,6 @@ function Pointer_stringify(ptr, /* optional */ length) {
   return Module['UTF8ToString'](ptr);
 }
 
-
-console.log('fetch worker script loading.');
 Fetch.staticInit();
 
 var queuePtr = 0;
@@ -85,24 +83,19 @@ function processWorkQueue() {
   var numQueuedItems = Atomics_load(HEAPU32, queuePtr + 4 >> 2);
   if (numQueuedItems == 0) return;
 
-  console.log('polling work to perform, there are ' + numQueuedItems + ' work items in the queue.');
   var queuedOperations = Atomics_load(HEAPU32, queuePtr >> 2);
   var queueSize = Atomics_load(HEAPU32, queuePtr + 8 >> 2);
   for(var i = 0; i < numQueuedItems; ++i) {
     var fetch = Atomics_load(HEAPU32, (queuedOperations >> 2)+i);
-    console.log('processWorkQueue: starting fetch');
     function successcb(fetch) {
-      console.log('FETCH-WORKER: fetch finished on success');
       Atomics.compareExchange(HEAPU32, fetch + Fetch.fetch_t_offset___proxyState >> 2, 1, 2);
       Atomics.wake(HEAP32, fetch + Fetch.fetch_t_offset___proxyState >> 2, 1);
     }
     function errorcb(fetch) {
-      console.log('FETCH-WORKER: fetch finished on failure');
       Atomics.compareExchange(HEAPU32, fetch + Fetch.fetch_t_offset___proxyState >> 2, 1, 2);
       Atomics.wake(HEAP32, fetch + Fetch.fetch_t_offset___proxyState >> 2, 1);
     }
     function progresscb(fetch) {
-      console.log('FETCH-WORKER: fetch progress..');
     }
     try {
       emscripten_start_fetch(fetch, successcb, errorcb, progresscb);
@@ -134,7 +127,6 @@ this.onmessage = function(e) {
     HEAPU16 = new Uint16Array(buffer);
     HEAP32 = new Int32Array(buffer);
     HEAPU32 = new Uint32Array(buffer);
-    console.log('fetch: fetch Worker initialized. queue ptr ' + queuePtr + ', heap length: ' + buffer.byteLength);
     interval = setInterval(processWorkQueue, 100);
   }
 }
