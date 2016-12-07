@@ -1151,13 +1151,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.USE_PTHREADS:
         if shared.Settings.LINKABLE:
-          logging.error('-s LINKABLE=1 is not supported with -s USE_PTHREADS=1!')
+          logging.error('-s LINKABLE=1 is not supported with -s USE_PTHREADS>0!')
           exit(1)
         if shared.Settings.SIDE_MODULE:
-          logging.error('-s SIDE_MODULE=1 is not supported with -s USE_PTHREADS=1!')
+          logging.error('-s SIDE_MODULE=1 is not supported with -s USE_PTHREADS>0!')
           exit(1)
         if shared.Settings.MAIN_MODULE:
-          logging.error('-s MAIN_MODULE=1 is not supported with -s USE_PTHREADS=1!')
+          logging.error('-s MAIN_MODULE=1 is not supported with -s USE_PTHREADS>0!')
+          exit(1)
+        if shared.Settings.EMTERPRETIFY:
+          logging.error('-s EMTERPRETIFY=1 is not supported with -s USE_PTHREADS>0!')
           exit(1)
 
       if shared.Settings.OUTLINING_LIMIT:
