@@ -923,7 +923,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.SEPARATE_ASM = os.path.basename(asm_target)
 
       if 'EMCC_STRICT' in os.environ:
-        shared.Settings.STRICT = int(os.environ.get('EMCC_STRICT'))
+        shared.Settings.STRICT = os.environ.get('EMCC_STRICT') != '0'
 
       STRICT = ([None] + filter(lambda x: x.startswith('STRICT='), settings_changes))[-1]
       if STRICT:
