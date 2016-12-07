@@ -2006,7 +2006,7 @@ class Building:
         # TODO: This is unintentional due to historical reasons. Improve EGL to use HTML5 API to avoid depending on GLUT.
         if library_name == 'EGL': library_files += ['library_glut.js']
 
-    elif library_name.endswith('.js') and os.path.isfile(shared.path_from_root('src', 'library_' + library_name)):
+    elif library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
       library_files += ['library_' + library_name]
     else:
       if Settings.ERROR_ON_MISSING_LIBRARIES:
