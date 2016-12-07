@@ -147,16 +147,16 @@ var LibraryManager = {
 
     // If there are any explicitly specified system JS libraries to link to, add those to link.
     if (SYSTEM_JS_LIBRARIES) {
-      SYSTEM_JS_LIBRARIES = SYSTEM_JS_LIBRARIES.split(',');
-      // For each system JS library library_xxx.js, add a preprocessor token __EMSCRIPTEN_HAS_xxx_js__ so that code can conditionally dead code eliminate out
-      // if a particular feature is not being linked in.
-      for (var i = 0; i < SYSTEM_JS_LIBRARIES.length; ++i) {
-        global['__EMSCRIPTEN_HAS_' + SYSTEM_JS_LIBRARIES[i].replace('.', '_').replace('library_', '') + '__'] = 1
-      }
       libraries = libraries.concat(SYSTEM_JS_LIBRARIES);
     }
 
     libraries = libraries.concat(additionalLibraries);
+
+    // For each JS library library_xxx.js, add a preprocessor token __EMSCRIPTEN_HAS_xxx_js__ so that code can conditionally dead code eliminate out
+    // if a particular feature is not being linked in.
+    for (var i = 0; i < libraries.length; ++i) {
+      global['__EMSCRIPTEN_HAS_' + libraries[i].replace('.', '_').replace('library_', '') + '__'] = 1
+    }
 
     if (BOOTSTRAPPING_STRUCT_INFO) libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
     if (ONLY_MY_CODE) {
