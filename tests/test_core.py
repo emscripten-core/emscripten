@@ -4117,6 +4117,10 @@ def process(filename):
     src = open(path_from_root('tests', 'fs', 'test_mount.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
+  def test_getdents64(self):
+    src = open(path_from_root('tests', 'fs', 'test_getdents64.cpp'), 'r').read()
+    self.do_run(src, '..')
+
   def test_fwrite_0(self):
     test_path = path_from_root('tests', 'core', 'test_fwrite_0')
     src, output = (test_path + s for s in ('.c', '.out'))
