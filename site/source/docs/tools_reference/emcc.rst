@@ -450,6 +450,9 @@ Options that are modified or new in *emcc* are listed below:
 ``--output-eol windows|linux``
 	Specifies the line ending to generate for the text files that are outputted. If "--output-eol windows" is passed, the final output files will have Windows \r\n line endings in them. With "--output-eol linux", the final generated files will be written with Unix \n line endings.
 
+``--cflags``
+	Prints out the flags ``emcc`` would pass to ``clang`` to compile source code to object/bitcode form. You can use this to invoke clang yourself, and then run ``emcc`` on those outputs just for the final linking+conversion to JS.
+
 .. _emcc-environment-variables:
 
 Environment variables

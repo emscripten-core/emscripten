@@ -181,6 +181,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     print shared.get_llvm_target()
     exit(0)
 
+  elif '--cflags' in sys.argv:
+    print ' '.join(shared.COMPILER_OPTS + ['-emit-llvm', '-c'])
+    exit(0)
+
   def is_minus_s_for_emcc(newargs, i):
     assert newargs[i] == '-s'
     if i+1 < len(newargs) and '=' in newargs[i+1] and not newargs[i+1].startswith('-'): # -s OPT=VALUE is for us, -s by itself is a linker option
