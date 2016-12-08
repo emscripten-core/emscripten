@@ -343,8 +343,13 @@ ok.
     self.do_run(r'''
 #include <netdb.h>
 
+#include <sys/types.h>
+#include <sys/socket.h>
+
 int main () {
     void* thing = gethostbyname("bing.com");
+    ssize_t rval = recv (0, thing, 0, 0);
+    rval = send (0, thing, 0, 0);
     return 0;
 }''', '', force_c=True)
 
