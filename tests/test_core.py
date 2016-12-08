@@ -626,14 +626,10 @@ base align: 0, 0, 0, 0'''])
     ensure_stack_restore_count('function _stack_usage', 1)
 
   def test_strings(self):
-      test_path = path_from_root('tests', 'core', 'test_strings')
-      src, output = (test_path + s for s in ('.c', '.out'))
+    test_path = path_from_root('tests', 'core', 'test_strings')
+    src, output = (test_path + s for s in ('.c', '.out'))
 
-      self.do_run_from_file(src, output, ['wowie', 'too', '74'])
-
-      if self.emcc_args == []:
-        gen = open(self.in_dir('src.cpp.o.js')).read()
-        assert ('var __str1;' in gen) == named
+    self.do_run_from_file(src, output, ['wowie', 'too', '74'])
 
   def test_strcmp_uni(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strcmp_uni')
@@ -1512,6 +1508,21 @@ def process(filename):
       self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api',
                                    post_build=check)
 
+  def test_emscripten_run_script_string_utf8(self):
+    src = r'''
+      #include <stdio.h>
+      #include <stdlib.h>
+      #include <string.h>
+      #include <emscripten.h>
+
+      int main() {
+        const char *str = emscripten_run_script_string("'\\u2603 \\u2603 \\u2603 Hello!'");
+        printf("length of returned string: %d. Position of substring 'Hello': %d\n", strlen(str), strstr(str, "Hello")-str);
+        return 0;
+      }
+    '''
+    self.do_run(src, '''length of returned string: 18. Position of substring 'Hello': 12''')
+
   def test_emscripten_get_now(self):
     self.banned_js_engines = [V8_ENGINE] # timer limitations in v8 shell
 
@@ -2047,8 +2058,8 @@ The current type of b is: 9
     src = open(path_from_root('tests', 'termios', 'test_tcgetattr.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
-  @no_wasm_backend("tzname is included in library.js, but s2wasm doesn't know about it "
-                   "at link time (unknown relocation $tzname)")
+  @no_wasm_backend('ctime relies on stackSave/stackRestore that is only generated in asmjs; '
+                   'need to implement something similar in s2wasm')
   def test_time(self):
     src = open(path_from_root('tests', 'time', 'src.cpp'), 'r').read()
     expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
@@ -2075,8 +2086,6 @@ The current type of b is: 9
   def test_strptime_reentrant(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strptime_reentrant')
 
-  @no_wasm_backend("tzname is included in library.js, but s2wasm doesn't know about it "
-                   "at link time (unknown relocation $tzname)")
   def test_strftime(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strftime')
 
@@ -4588,7 +4597,6 @@ def process(filename):
   def test_uname(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_uname')
 
-  @no_wasm_backend('unknown relocation: $environ')
   def test_env(self):
     src = open(path_from_root('tests', 'env', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'env', 'output.txt'), 'r').read()
@@ -4597,7 +4605,6 @@ def process(filename):
       expected.replace('{{{ THIS_PROGRAM }}}', './this.program') # spidermonkey, v8
     ])
 
-  @no_wasm_backend('unknown relocation: $environ')
   def test_environ(self):
     src = open(path_from_root('tests', 'env', 'src-mini.c'), 'r').read()
     expected = open(path_from_root('tests', 'env', 'output-mini.txt'), 'r').read()
@@ -5558,7 +5565,7 @@ def process(filename):
       Settings.ALLOW_MEMORY_GROWTH = 0
       do_test()
 
-  @no_wasm_backend('unknown relocation: $environ')
+  @no_wasm_backend("python.bc was compiled with asmjs, and we don't have unified triples")
   def test_python(self):
     Settings.EMULATE_FUNCTION_POINTER_CASTS = 1
 
@@ -6100,8 +6107,10 @@ def process(filename):
   @no_wasm_backend()
   def test_demangle_stacks_symbol_map(self):
     Settings.DEMANGLE_SUPPORT = 1
-    if '-O' in str(self.emcc_args):
+    if '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args and '-O1' not in self.emcc_args and '-g' not in self.emcc_args:
       self.emcc_args += ['--llvm-opts', '0']
+    else:
+      return self.skip("without opts, we don't emit a symbol map")
     self.emcc_args += ['--emit-symbol-map']
     self.do_run(open(path_from_root('tests', 'core', 'test_demangle_stacks.c')).read(), 'abort')
     # make sure the shortened name is the right one
@@ -6112,13 +6121,15 @@ def process(filename):
       if 'Aborter' in full:
         short_aborter = short
         full_aborter = full
+    print 'full:', full_aborter, 'short:', short_aborter
     if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]):
       output = run_js('src.cpp.o.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True, assert_returncode=None)
       # we may see the full one, if -g, or the short one if not
       if ' ' + short_aborter + ' ' not in output and ' ' + full_aborter + ' ' not in output:
         # stack traces may also be ' name ' or 'name@' etc
         if '\n' + short_aborter + ' ' not in output and '\n' + full_aborter + ' ' not in output and 'wasm-function[' + short_aborter + ']' not in output:
-          self.assertContained(' ' + short_aborter + ' ' + '\n' + ' ' + full_aborter + ' ', output)
+          if '\n' + short_aborter + '@' not in output and '\n' + full_aborter + '@' not in output:
+            self.assertContained(' ' + short_aborter + ' ' + '\n' + ' ' + full_aborter + ' ', output)
 
   def test_tracing(self):
     Building.COMPILER_TEST_OPTS += ['--tracing']

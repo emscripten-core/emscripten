@@ -443,7 +443,7 @@ var LibraryGLFW = {
     },
 
     onMouseButtonChanged: function(event, status) {
-      if (!GLFW.active || !GLFW.active.mouseButtonFunc) return;
+      if (!GLFW.active) return;
 
       Browser.calculateMouseEvent(event);
 
@@ -459,6 +459,8 @@ var LibraryGLFW = {
       } else {  // GLFW_RELEASE
         GLFW.active.buttons &= ~(1 << eventButton);
       }
+
+      if (!GLFW.active.mouseButtonFunc) return;
 
 #if USE_GLFW == 2
       Runtime.dynCall('vii', GLFW.active.mouseButtonFunc, [eventButton, status]);

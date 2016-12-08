@@ -20,7 +20,7 @@
   "freelocale": ["free"],
   "nl_langinfo": ["malloc"],
   "inet_ntoa": ["malloc"],
-  "gethostbyname": ["malloc"],
+  "gethostbyname": ["malloc", "htons"],
   "gethostbyname_r": ["free"],
   "getaddrinfo": ["malloc", "htonl", "htons", "ntohs"],
   "_inet_ntop6_raw": ["ntohs"],
@@ -44,6 +44,8 @@
   "bind": ["htonl", "htons", "ntohs"],
   "connect": ["htonl", "htons", "ntohs"],
   "socket": ["htonl", "htons", "ntohs"],
-  "sleep": ["usleep"]
+  "sleep": ["usleep"],
+  "recv": ["htons"],
+  "send": ["htons"]
 }
 

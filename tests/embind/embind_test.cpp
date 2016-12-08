@@ -2294,6 +2294,27 @@ struct ConstAndNonConst {
     }
 };
 
+class DummyForOverloads {};
+
+class MultipleOverloadsDependingOnDummy {
+public:
+    DummyForOverloads dummy() {
+        return DummyForOverloads();
+    }
+
+    DummyForOverloads dummy(DummyForOverloads d) {
+        return d;
+    }
+};
+
+DummyForOverloads getDummy() {
+    return DummyForOverloads();
+}
+
+DummyForOverloads getDummy(DummyForOverloads d) {
+    return d;
+}
+
 EMSCRIPTEN_BINDINGS(overloads) {
     function("overloaded_function", select_overload<int(int)>(&overloaded_function));
     function("overloaded_function", select_overload<int(int, int)>(&overloaded_function));
@@ -2336,6 +2357,14 @@ EMSCRIPTEN_BINDINGS(overloads) {
 
     class_<ConstAndNonConst>("ConstAndNonConst")
         .function("method", select_const(&ConstAndNonConst::method))
+        ;
+
+    class_<DummyForOverloads>("DummyForOverloads").constructor();
+
+    class_<MultipleOverloadsDependingOnDummy>("MultipleOverloadsDependingOnDummy")
+        .constructor()
+        .function("dummy", select_overload<DummyForOverloads()>(&MultipleOverloadsDependingOnDummy::dummy))
+        .function("dummy", select_overload<DummyForOverloads(DummyForOverloads)>(&MultipleOverloadsDependingOnDummy::dummy))
         ;
 }
 

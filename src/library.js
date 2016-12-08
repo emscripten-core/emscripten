@@ -3831,9 +3831,10 @@ LibraryManager.library = {
   emscripten_run_script_string: function(ptr) {
     {{{ makeEval("var s = eval(Pointer_stringify(ptr)) + '';") }}}
     var me = _emscripten_run_script_string;
-    if (!me.bufferSize || me.bufferSize < s.length+1) {
+    var len = lengthBytesUTF8(s);
+    if (!me.bufferSize || me.bufferSize < len+1) {
       if (me.bufferSize) _free(me.buffer);
-      me.bufferSize = s.length+1;
+      me.bufferSize = len+1;
       me.buffer = _malloc(me.bufferSize);
     }
     stringToUTF8(s, me.buffer, me.bufferSize);

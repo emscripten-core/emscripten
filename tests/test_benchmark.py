@@ -68,8 +68,8 @@ class NativeBenchmarker(Benchmarker):
     if lib_builder: native_args = native_args + lib_builder(self.name, native=True, env_init={ 'CC': self.cc, 'CXX': self.cxx })
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
-      cmd = [compiler, '-fno-math-errno', filename, '-o', filename+'.native'] + self.args + shared_args + native_args
-      process = Popen(cmd, stdout=PIPE, stderr=parent.stderr_redirect)
+      cmd = [compiler, '-fno-math-errno', filename, '-o', filename+'.native'] + self.args + shared_args + native_args + get_clang_native_args()
+      process = Popen(cmd, stdout=PIPE, stderr=parent.stderr_redirect, env=get_clang_native_env())
       output = process.communicate()
       if process.returncode is not 0:
         print >> sys.stderr, "Building native executable with command failed", ' '.join(cmd)
@@ -132,12 +132,16 @@ process(sys.argv[1])
 # Benchmarkers
 try:
   benchmarkers_error = ''
-  benchmarkers = [
-    NativeBenchmarker('clang', CLANG_CC, CLANG),
-    JSBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
-    JSBenchmarker('sm-wasm',  SPIDERMONKEY_ENGINE, ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'BINARYEN_IMPRECISE=1']),
-    JSBenchmarker('v8-wasm',  V8_ENGINE,           ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'BINARYEN_IMPRECISE=1']),
-  ]
+  benchmarkers = [NativeBenchmarker('clang', CLANG_CC, CLANG)]
+  if SPIDERMONKEY_ENGINE and SPIDERMONKEY_ENGINE[0]:
+    benchmarkers += [
+      JSBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
+      JSBenchmarker('sm-wasm',  SPIDERMONKEY_ENGINE, ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'BINARYEN_IMPRECISE=1'])
+    ]
+  if V8_ENGINE and V8_ENGINE[0]:
+    benchmarkers += [
+      JSBenchmarker('v8-wasm',  V8_ENGINE,           ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'BINARYEN_IMPRECISE=1'])
+    ]
 except Exception, e:
   benchmarkers_error = str(e)
   benchmarkers = []
@@ -631,9 +635,7 @@ class benchmark(RunnerCore):
                                          os.path.join('src', '.libs', 'libLinearMath.a')],
                               configure_args=['--disable-demos','--disable-dependency-tracking'], native=native, cache_name_extra=name, env_init=env_init)
 
-    emcc_args = ['-s', 'DEAD_FUNCTIONS=["__ZSt9terminatev"]']
-
-    self.do_benchmark('bullet', src, '\nok.\n', emcc_args=emcc_args, shared_args=['-I' + path_from_root('tests', 'bullet', 'src'),
+    self.do_benchmark('bullet', src, '\nok.\n', shared_args=['-I' + path_from_root('tests', 'bullet', 'src'),
                                 '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')], lib_builder=lib_builder)
 
   def zzz_test_zzz_lzma(self):
