@@ -15,6 +15,12 @@ var LibraryEGL = {
     currentContext: 0 /* EGL_NO_CONTEXT */,
     currentReadSurface: 0 /* EGL_NO_SURFACE */,
     currentDrawSurface: 0 /* EGL_NO_SURFACE */,
+    contextAttributes: {
+      alpha: false,
+      depth: false,
+      stencil: false,
+      antialias: false
+    },
 
     stringCache: {},
     
@@ -27,10 +33,33 @@ var LibraryEGL = {
         EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
         return 0;
       }
-      // TODO: read attribList.
       if ((!config || !config_size) && !numConfigs) {
         EGL.setErrorCode(0x300C /* EGL_BAD_PARAMETER */);
         return 0;
+      }
+      for(;;) {
+        var param = {{{ makeGetValue('attribList', '0', 'i32') }}};
+        if (param == 0x3038) { // EGL_NONE
+          break;
+        }
+        var value = {{{ makeGetValue('attribList', '4', 'i32') }}};
+        switch (param) {
+        case 0x3021: // EGL_ALPHA_SIZE
+          EGL.contextAttributes.alpha = value > 0;
+          break;
+        case 0x3025: // EGL_DEPTH_SIZE
+          EGL.contextAttributes.depth = value > 0;
+          break;
+        case 0x3026: // EGL_STENCIL_SIZE
+          EGL.contextAttributes.stencil = value > 0;
+          break;
+        case 0x3032: // EGL_SAMPLE_BUFFERS
+          EGL.contextAttributes.antialias = value > 0;
+          break;
+        default:
+          break;
+        }
+        attribList += 8;
       }
       if (numConfigs) {
         {{{ makeSetValue('numConfigs', '0', '1', 'i32') }}}; // Total number of supported configs: 1.
@@ -124,7 +153,7 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', '32' /* 8 bits for each A,R,G,B. */, 'i32') }}};
       return 1;
     case 0x3021: // EGL_ALPHA_SIZE
-      {{{ makeSetValue('value', '0', '8' /* 8 bits for alpha channel. */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.alpha?8:0' /* 8 bits for alpha channel. */, 'i32') }}};
       return 1;
     case 0x3022: // EGL_BLUE_SIZE
       {{{ makeSetValue('value', '0', '8' /* 8 bits for blue channel. */, 'i32') }}};
@@ -136,10 +165,10 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', '8' /* 8 bits for red channel. */, 'i32') }}};
       return 1;
     case 0x3025: // EGL_DEPTH_SIZE
-      {{{ makeSetValue('value', '0', '24' /* 24 bits for depth buffer. TODO: This is hardcoded, add support for this! */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.depth?24:0' /* 24 bits for depth buffer. */, 'i32') }}};
       return 1;
     case 0x3026: // EGL_STENCIL_SIZE
-      {{{ makeSetValue('value', '0', '8' /* 8 bits for stencil buffer. TODO: This is hardcoded, add support for this! */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.stencil?8:0' /* 8 bits for stencil buffer. */, 'i32') }}};
       return 1;
     case 0x3027: // EGL_CONFIG_CAVEAT
       // We can return here one of EGL_NONE (0x3038), EGL_SLOW_CONFIG (0x3050) or EGL_NON_CONFORMANT_CONFIG (0x3051).
@@ -170,10 +199,10 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', '0x3038' /* EGL_NONE */, 'i32') }}};
       return 1;
     case 0x3031: // EGL_SAMPLES
-      {{{ makeSetValue('value', '0', '4' /* 2x2 Multisampling */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.antialias?4:0' /* 2x2 Multisampling */, 'i32') }}};
       return 1;
     case 0x3032: // EGL_SAMPLE_BUFFERS
-      {{{ makeSetValue('value', '0', '1' /* Multisampling enabled */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.antialias?1:0' /* Multisampling enabled */, 'i32') }}};
       return 1;
     case 0x3033: // EGL_SURFACE_TYPE
       {{{ makeSetValue('value', '0', '0x0004' /* EGL_WINDOW_BIT */, 'i32') }}};
@@ -289,7 +318,14 @@ var LibraryEGL = {
       return 0; /* EGL_NO_CONTEXT */
     }
 
-    _glutInitDisplayMode(0xB2 /* GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE | GLUT_STENCIL */);
+    var displayMode = (0x0002 /* GLUT_RGBA|GLUT_DOUBLE */ | 
+      (EGL.contextAttributes.alpha && 0x0008) /* GLUT_ALPHA */ |
+      (EGL.contextAttributes.depth && 0x0010) /* GLUT_DEPTH */ |
+      (EGL.contextAttributes.stencil && 0x0020) /* GLUT_STENCIL */ |
+      (EGL.contextAttributes.antialias && 0x0080) /* GLUT_MULTISAMPLE */
+    )
+    
+    _glutInitDisplayMode(displayMode);
     EGL.windowID = _glutCreateWindow();
     if (EGL.windowID != 0) {
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
