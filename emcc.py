@@ -56,6 +56,7 @@ SUPPORTED_LINKER_FLAGS = ('--start-group', '-(', '--end-group', '-)')
 LIB_PREFIXES = ('', 'lib')
 
 JS_CONTAINING_SUFFIXES = ('js', 'html')
+EXECUTABLE_SUFFIXES = JS_CONTAINING_SUFFIXES + ('wasm',)
 
 DEFERRED_REPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST')
 
@@ -331,10 +332,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       target = sys.argv[i+1]
       sys.argv = sys.argv[:i] + sys.argv[i+2:]
       break
-
-  if target and target.endswith(WASM_ENDINGS):
-    logging.warning('output file "%s" has a wasm suffix, but we cannot emit wasm by itself. specify an output file with suffix .js or .html, and a wasm file will be created on the side' % target)
-    sys.exit(1)
 
   specified_target = target
   target = specified_target if specified_target is not None else 'a.out.js' # specified_target is the user-specified one, target is what we will generate
@@ -1209,6 +1206,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           logging.debug('disabling EVAL_CTORS, as in wasm-only mode it hurts more than it helps. TODO: a wasm version of it')
           shared.Settings.EVAL_CTORS = 0
 
+      # wasm outputs are only possible with a side wasm
+      if target.endswith(WASM_ENDINGS):
+        if not (shared.Settings.BINARYEN and shared.Settings.SIDE_MODULE):
+          logging.warning('output file "%s" has a wasm suffix, but we cannot emit wasm by itself, except as a dynamic library (see SIDE_MODULE option). specify an output file with suffix .js or .html, and a wasm file will be created on the side' % target)
+          sys.exit(1)
+
       if shared.Settings.EVAL_CTORS:
         # this option is not a js optimizer pass, but does run the js optimizer internally, so
         # we need to generate proper code for that
@@ -1379,7 +1382,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       linker_inputs = [val for _, val in sorted(temp_files + link_flags)]
 
       # If we were just asked to generate bitcode, stop there
-      if final_suffix not in JS_CONTAINING_SUFFIXES:
+      if final_suffix not in EXECUTABLE_SUFFIXES:
         if not specified_target:
           assert len(temp_files) == len(input_files)
           for i in range(len(input_files)):
@@ -2070,7 +2073,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.SIDE_MODULE:
             wso = shared.WebAssembly.make_shared_library(js_target, wasm_binary_target)
             # replace the .js output with the shared library. TODO: emit a file with suffix .wso
-            shutil.move(wso, js_target)
+            shutil.move(wso, wasm_binary_target)
+            os.unlink(js_target) # we don't need the js, it can just confuse
+            os.unlink(asm_target) # we don't need the asm.js, it can just confuse
+            sys.exit(0) # and we are done.
 
       # If we were asked to also generate HTML, do that
       if final_suffix == 'html':

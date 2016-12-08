@@ -2278,6 +2278,15 @@ def process(filename):
   open(filename, 'w').write(src)
 '''
 
+  def build_dlfcn_lib(self, lib_src, dirname, filename):
+    if Settings.BINARYEN:
+      # emcc emits a wasm in this case
+      self.build(lib_src, dirname, filename, js_outfile=False)
+      shutil.move(filename + '.o.wasm', os.path.join(dirname, 'liblib.so'))
+    else:
+      self.build(lib_src, dirname, filename)
+      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+
   def test_dlfcn_basic(self):
     if not self.can_dlfcn(): return
 
@@ -2296,8 +2305,7 @@ def process(filename):
       '''
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.cpp')
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     src = '''
@@ -2334,8 +2342,7 @@ def process(filename):
       '''
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.c')
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     Settings.EXPORTED_FUNCTIONS = ['_main']
@@ -2381,8 +2388,7 @@ def process(filename):
       Foo global;
       '''
     filename = 'liblib.cpp'
-    self.build(lib_src, self.get_dir(), filename)
-    shutil.move(filename + '.o.js', 'liblib.so')
+    self.build_dlfcn_lib(lib_src, self.get_dir(), filename)
 
     self.prep_dlfcn_main()
     src = '''
@@ -2426,8 +2432,7 @@ def process(filename):
       '''
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.cpp')
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
@@ -2521,8 +2526,7 @@ def process(filename):
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.cpp')
     Settings.EXPORTED_FUNCTIONS = ['_func']
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     Settings.LINKABLE = 1
@@ -2600,8 +2604,7 @@ def process(filename):
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.cpp')
     Settings.EXPORTED_FUNCTIONS = ['_func']
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     src = r'''
@@ -2673,8 +2676,7 @@ def process(filename):
     Settings.EXPORTED_FUNCTIONS = ['_myfunc']
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.c')
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     src = '''
@@ -2725,8 +2727,7 @@ def process(filename):
     Settings.EXPORTED_FUNCTIONS = ['_myfunc']
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.c')
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     src = '''
@@ -2801,8 +2802,7 @@ def process(filename):
     Settings.EXPORTED_FUNCTIONS = ['_callvoid', '_callint', '_getvoid', '_getint']
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.c')
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     src = r'''
@@ -2881,8 +2881,7 @@ ok
     Settings.EXPORTED_FUNCTIONS = ['_mallocproxy', '_freeproxy']
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.c')
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     src = open(path_from_root('tests', 'dlmalloc_proxy.c')).read()
@@ -2908,8 +2907,7 @@ ok
     Settings.EXPORTED_FUNCTIONS = ['_jumpy']
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.c')
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     src = r'''
@@ -2974,8 +2972,7 @@ out!
     Settings.EXPORTED_FUNCTIONS = ['_ok', '_fail']
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.cpp')
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     src = r'''
@@ -3039,21 +3036,22 @@ ok
       # side settings
       Settings.MAIN_MODULE = 0
       Settings.SIDE_MODULE = 1
+      side_suffix = 'js' if not self.is_wasm() else 'wasm'
       if type(side) == str:
         base = 'liblib.cpp' if not force_c else 'liblib.c'
-        try_delete(base + '.o.js')
-        self.build(side, self.get_dir(), base)
+        try_delete(base + '.o.' + side_suffix)
+        self.build(side, self.get_dir(), base, js_outfile=(side_suffix == 'js'))
         if force_c:
-          shutil.move(base + '.o.js', 'liblib.cpp.o.js')
+          shutil.move(base + '.o.' + side_suffix, 'liblib.cpp.o.' + side_suffix)
       else:
         # side is just a library
-        try_delete('liblib.cpp.o.js')
-        Popen([PYTHON, EMCC] + side + self.emcc_args + Settings.serialize() + ['-o', os.path.join(self.get_dir(), 'liblib.cpp.o.js')]).communicate()
+        try_delete('liblib.cpp.o.' + side_suffix)
+        Popen([PYTHON, EMCC] + side + self.emcc_args + Settings.serialize() + ['-o', os.path.join(self.get_dir(), 'liblib.cpp.o.' + side_suffix)]).communicate()
       if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]) and not self.is_wasm():
         out = run_js('liblib.cpp.o.js', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=STDOUT)
         if 'asm' in out:
           self.validate_asmjs(out)
-      shutil.move('liblib.cpp.o.js', 'liblib.so')
+      shutil.move('liblib.cpp.o.' + side_suffix, 'liblib.so')
 
       # main settings
       Settings.MAIN_MODULE = 1

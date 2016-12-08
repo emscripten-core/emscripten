@@ -2235,7 +2235,7 @@ class WebAssembly:
     mem_size = int(m.group(1))
     m = re.search("Module\['wasmTableSize'\] = (\d+);", js)
     table_size = int(m.group(1))
-    logging.debug('creating .wso with mem size %d, table size %d' % (mem_size, table_size))
+    logging.debug('creating wasm dynamic library with mem size %d, table size %d' % (mem_size, table_size))
     wso = js_file + '.wso'
     # write the binary
     wasm = open(wasm_file, 'rb').read()

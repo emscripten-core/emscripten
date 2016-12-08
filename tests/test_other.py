@@ -7033,7 +7033,16 @@ int main() {
       out, err = process.communicate()
       print err
       assert process.returncode is not 0, 'wasm suffix is an error'
-      self.assertContained('''output file "%s" has a wasm suffix, but we cannot emit wasm by itself''' % f, err)
+      self.assertContained('''output file "%s" has a wasm suffix, but we cannot emit wasm by itself, except as a dynamic library''' % f, err)
+    # side modules do allow a wasm target
+    for opts, target in [([], 'a.out.wasm'), (['-o', 'lib.wasm'], 'lib.wasm')]:
+      # specified target
+      print target
+      self.clear()
+      subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-s', 'SIDE_MODULE=1'] + opts)
+      assert 'dylink' in open(target).read()
+      for x in os.listdir('.'):
+        assert not x.endswith('.js'), 'we should not emit js when making a wasm side module'
 
   def test_check_engine(self):
     compiler_engine = COMPILER_ENGINE

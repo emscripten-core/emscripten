@@ -1607,7 +1607,7 @@ LibraryManager.library = {
       var lib_module;
       try {
 #if BINARYEN
-        // the shared library is a shared wasm library, a '.wso' (see tools/shared.py WebAssembly.make_shared_library)
+        // the shared library is a shared wasm library (see tools/shared.py WebAssembly.make_shared_library)
         var lib_data = FS.readFile(filename, { encoding: 'binary' });
         if (!(lib_data instanceof Uint8Array)) lib_data = new Uint8Array(lib_data);
         //Module.printErr('libfile ' + filename + ' size: ' + lib_data.length);
