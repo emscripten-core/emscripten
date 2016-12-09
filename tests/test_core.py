@@ -4392,7 +4392,7 @@ def process(filename):
   @no_wasm_backend('printf is incorrectly handling float values')
   def test_wprintf(self):
     test_path = path_from_root('tests', 'core', 'test_wprintf')
-    src, output = (test_path + s for s in ('.c', '.out'))
+    src, output = (test_path + s for s in ('.cpp', '.out'))
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
       self.emcc_args = orig_args + mode

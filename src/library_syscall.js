@@ -227,7 +227,7 @@ var SyscallsLibrary = {
   },
   __syscall5: function(which, varargs) { // open
     var pathname = SYSCALLS.getStr(), flags = SYSCALLS.get(), mode = SYSCALLS.get() // optional TODO
-    var stream = FS.open(pathname, flags, mode);
+    var stream = FS.open(pathname, flags | {{{ cDefine('O_LARGEFILE') }}}, mode);
     return stream.fd;
   },
   __syscall6: function(which, varargs) { // close
@@ -333,6 +333,8 @@ var SyscallsLibrary = {
         return FS.ioctl(stream, op, argp);
       }
       case {{{ cDefine('TIOCGWINSZ') }}}: {
+        // TODO: in theory we should write to the winsize struct that gets
+        // passed in, but for now musl doesn't read anything on it
         if (!stream.tty) return -ERRNO_CODES.ENOTTY;
         return 0;
       }

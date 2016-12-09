@@ -467,7 +467,8 @@
             "F_GETOWN_EX",
             "F_SETFD", 
             "O_EXCL", 
-            "F_GETFL"
+            "F_GETFL",
+            "O_LARGEFILE"
         ],
         "structs": {}
     }, 
