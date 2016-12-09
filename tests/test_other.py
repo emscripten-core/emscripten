@@ -404,7 +404,7 @@ f.close()
     flags = output[0].strip()
     self.assertContained(' '.join(COMPILER_OPTS), flags)
     # check they work
-    cmd = [CLANG, path_from_root('tests', 'hello_world.cpp'), '-o', 'a.bc'] + flags.split(' ') + ['-c', '-emit-llvm']
+    cmd = [CLANG, path_from_root('tests', 'hello_world.cpp')] + flags.split(' ') + ['-c', '-emit-llvm', '-o', 'a.bc']
     subprocess.check_call(cmd)
     subprocess.check_call([PYTHON, EMCC, 'a.bc'])
     self.assertContained('hello, world!', run_js(self.in_dir('a.out.js')))

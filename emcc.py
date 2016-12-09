@@ -115,6 +115,8 @@ def run():
   if len(sys.argv) <= 1 or ('--help' not in sys.argv and len(sys.argv) >= 2 and sys.argv[1] != '--version'):
     shared.check_sanity(force=DEBUG)
 
+  misc_temp_files = shared.configuration.get_temp_files()
+
   # Handle some global flags
 
   if len(sys.argv) == 1:
@@ -186,12 +188,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     debug_env = os.environ.copy()
     debug_env['EMCC_DEBUG'] = '1'
     args = filter(lambda x: x != '--cflags', sys.argv)
-    out, err = subprocess.Popen([shared.PYTHON] + args + [shared.path_from_root('tests', 'hello_world.c'), '-c'], stderr=subprocess.PIPE, env=debug_env).communicate()
-    lines = filter(lambda x: 'running:' in x and 'clang' in x, err.split(os.linesep))
-    assert len(lines) == 1
-    parts = lines[0].split(' ')[2:]
-    parts = filter(lambda x: x != '-c' and x != '-o' and 'hello_world' not in x and '-emit-llvm' not in x, parts)
-    print ' '.join(parts)
+    with misc_temp_files.get_file(suffix='.o') as temp_target:
+      out, err = subprocess.Popen([shared.PYTHON] + args + [shared.path_from_root('tests', 'hello_world.c'), '-c', '-o', temp_target], stderr=subprocess.PIPE, env=debug_env).communicate()
+      lines = filter(lambda x: 'running:' in x and 'clang' in x, err.split(os.linesep))
+      assert len(lines) == 1
+      parts = lines[0].split(' ')[2:]
+      parts = filter(lambda x: x != '-c' and x != '-o' and 'hello_world.c' not in x and temp_target not in x and '-emit-llvm' not in x, parts)
+      print ' '.join(parts)
     exit(0)
 
   def is_minus_s_for_emcc(newargs, i):
@@ -409,8 +412,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       TimeLogger.update()
 
   use_cxx = True
-
-  misc_temp_files = shared.configuration.get_temp_files()
 
   try:
     with ToolchainProfiler.profile_block('parse arguments and setup'):
