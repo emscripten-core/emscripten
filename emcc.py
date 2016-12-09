@@ -182,7 +182,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     exit(0)
 
   elif '--cflags' in sys.argv:
-    print ' '.join(shared.COMPILER_OPTS + ['-emit-llvm', '-c'])
+    # fake running the command, to see the full args we pass to clang
+    debug_env = os.environ.copy()
+    debug_env['EMCC_DEBUG'] = '1'
+    args = filter(lambda x: x != '--cflags', sys.argv)
+    out, err = subprocess.Popen([shared.PYTHON] + args + [shared.path_from_root('tests', 'hello_world.c'), '-c'], stderr=subprocess.PIPE, env=debug_env).communicate()
+    lines = filter(lambda x: 'running:' in x and 'clang' in x, err.split(os.linesep))
+    assert len(lines) == 1
+    parts = lines[0].split(' ')[2:]
+    parts = filter(lambda x: x != '-c' and x != '-o' and 'hello_world' not in x and '-emit-llvm' not in x, parts)
+    print ' '.join(parts)
     exit(0)
 
   def is_minus_s_for_emcc(newargs, i):
