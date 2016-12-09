@@ -119,6 +119,12 @@ var LibraryEGL = {
     EGL.currentReadSurface = 0;
     EGL.currentDrawSurface = 0;
     EGL.defaultDisplayInitialized = false;
+    EGL.contextAttributes = {
+      alpha: false,
+      depth: false,
+      stencil: false,
+      antialias: false
+    };
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     return 1;
   },
