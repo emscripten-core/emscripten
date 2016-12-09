@@ -855,6 +855,33 @@ This pointer might make sense in another type signature:''', '''Invalid function
 
     assert not os.path.exists('a.out') and not os.path.exists('a.exe'), 'Must not leave unneeded linker stubs'
 
+  def test_commons_link(self):
+    open('a.h', 'w').write(r'''
+#if !defined(A_H)
+#define A_H
+extern int foo[8];
+#endif
+''')
+    open('a.c', 'w').write(r'''
+#include "a.h"
+int foo[8];
+''')
+    open('main.c', 'w').write(r'''
+#include <stdio.h>
+#include "a.h"
+
+int main() {
+    printf("|%d|\n", foo[0]);
+    return 0;
+}
+''')
+
+    subprocess.check_call([PYTHON, EMCC, '-o', 'a.o', 'a.c'])
+    subprocess.check_call([PYTHON, EMAR, 'rv', 'library.a', 'a.o'])
+    subprocess.check_call([PYTHON, EMCC, '-o', 'main.o', 'main.c'])
+    subprocess.check_call([PYTHON, EMCC, '-o', 'a.js', 'main.o', 'library.a', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'])
+    self.assertContained('|0|', run_js('a.js'))
+
   def test_outline(self):
     if WINDOWS and not Building.which('mingw32-make'):
       return self.skip('Skipping other.test_outline: This test requires "mingw32-make" tool in PATH on Windows to drive a Makefile build of zlib')
