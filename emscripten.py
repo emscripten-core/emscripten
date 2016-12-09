@@ -1329,7 +1329,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
                     '-o', temp_s]
     backend_args += ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
     # disable slow and relatively unimportant optimization passes
-    backend_args += ['-combiner-alias-analysis=false', '-combiner-global-alias-analysis=false']
+    backend_args += ['-combiner-global-alias-analysis=false']
 
     # asm.js-style exception handling
     if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
