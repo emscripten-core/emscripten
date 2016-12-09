@@ -40,6 +40,17 @@ long __syscall_ret(unsigned long), __syscall(syscall_arg_t, ...),
 #define __syscall6(n,a,b,c,d,e,f) __syscall6(n,__scc(a),__scc(b),__scc(c),__scc(d),__scc(e),__scc(f))
 #endif
 #define __syscall7(n,a,b,c,d,e,f,g) (__syscall)(n,__scc(a),__scc(b),__scc(c),__scc(d),__scc(e),__scc(f),__scc(g))
+#else // __EMSCRIPTEN__
+#define __syscall_emscripten(n, ...) __syscall##n(n, ##__VA_ARGS__)
+#define __syscall_emscripten0(n) __syscall_emscripten(n)
+#define __syscall_emscripten1(n,a) __syscall_emscripten(n,__scc(a))
+#define __syscall_emscripten2(n,a,b) __syscall_emscripten(n,__scc(a),__scc(b))
+#define __syscall_emscripten3(n,a,b,c) __syscall_emscripten(n,__scc(a),__scc(b),__scc(c))
+#define __syscall_emscripten4(n,a,b,c,d) __syscall_emscripten(n,__scc(a),__scc(b),__scc(c),__scc(d))
+#define __syscall_emscripten5(n,a,b,c,d,e) __syscall_emscripten(n,__scc(a),__scc(b),__scc(c),__scc(d),__scc(e))
+#define __syscall_emscripten6(n,a,b,c,d,e,f) __syscall_emscripten(n,__scc(a),__scc(b),__scc(c),__scc(d),__scc(e),__scc(f))
+#define __syscall_emscripten7(n,a,b,c,d,e,f,g) __syscall_emscripten(n,__scc(a),__scc(b),__scc(c),__scc(d),__scc(e),__scc(f),__scc(g))
+#endif // __EMSCRIPTEN__
 
 #define __SYSCALL_NARGS_X(a,b,c,d,e,f,g,h,n,...) n
 #define __SYSCALL_NARGS(...) __SYSCALL_NARGS_X(__VA_ARGS__,7,6,5,4,3,2,1,0,)
@@ -47,11 +58,7 @@ long __syscall_ret(unsigned long), __syscall(syscall_arg_t, ...),
 #define __SYSCALL_CONCAT(a,b) __SYSCALL_CONCAT_X(a,b)
 #define __SYSCALL_DISP(b,...) __SYSCALL_CONCAT(b,__SYSCALL_NARGS(__VA_ARGS__))(__VA_ARGS__)
 
-#define __syscall(...) __SYSCALL_DISP(__syscall,__VA_ARGS__)
-#else // __EMSCRIPTEN__
-#define __syscall_emscripten(n, ...) __syscall##n(n, ##__VA_ARGS__)
-#define __syscall(n, ...) __syscall_emscripten(n, ##__VA_ARGS__)
-#endif // __EMSCRIPTEN__
+#define __syscall(...) __SYSCALL_DISP(__syscall_emscripten,__VA_ARGS__)
 
 #define syscall(...) __syscall_ret(__syscall(__VA_ARGS__))
 
