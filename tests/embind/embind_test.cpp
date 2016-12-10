@@ -2366,6 +2366,9 @@ EMSCRIPTEN_BINDINGS(overloads) {
         .function("dummy", select_overload<DummyForOverloads()>(&MultipleOverloadsDependingOnDummy::dummy))
         .function("dummy", select_overload<DummyForOverloads(DummyForOverloads)>(&MultipleOverloadsDependingOnDummy::dummy))
         ;
+
+    function("getDummy", select_overload<DummyForOverloads(void)>(&getDummy));
+    function("getDummy", select_overload<DummyForOverloads(DummyForOverloads)>(&getDummy));
 }
 
 // tests for out-of-order registration
