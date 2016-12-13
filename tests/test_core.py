@@ -381,8 +381,8 @@ int main()
     printf("Alignment: %d addr: 0x%x\n", ((int)&v) % 16, (int)&v);
     printf("Alignment: %d addr: 0x%x\n", ((int)&m) % 16, (int)&m);
 }
-    ''', ('Alignment: 0 addr: 0xa20\nAlignment: 0 addr: 0xa60\n',   # asmjs
-          'Alignment: 0 addr: 0xe10\nAlignment: 0 addr: 0xe50\n',   # asm2wasm
+    ''', ('Alignment: 0 addr: 0xa30\nAlignment: 0 addr: 0xa70\n',   # asmjs
+          'Alignment: 0 addr: 0xe20\nAlignment: 0 addr: 0xe60\n',   # asm2wasm
           'Alignment: 0 addr: 0x410\nAlignment: 0 addr: 0x450\n',)) # wasm_backend
 
     test()
