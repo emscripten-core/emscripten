@@ -51,7 +51,7 @@ Calling compiled C functions from JavaScript
 		
 
 	:param ident: The name of the C function to be called.	
-	:param returnType: The return type of the function. This can be ``"number"``, ``"string"`` or ``"array"``, which correspond to the appropriate JavaScript types (use ``"number"`` for any C pointer, and ``"array"`` for JavaScript arrays and typed arrays; note that arrays are 8-bit), or for a void function it can be ``null`` (note: the JavaScript ``null`` value, not a string containing the word "null").
+	:param returnType: The return type of the function. This can be ``"number"``, ``"string"`` or ``"array"``, which correspond to the appropriate JavaScript types (use ``"number"`` for any C pointer, and ``"array"`` for JavaScript arrays and typed arrays; for typed arrays, it must be a Uint8Array or Int8Array), or for a void function it can be ``null`` (note: the JavaScript ``null`` value, not a string containing the word "null").
 
 	.. note:: 64-bit integers become two 32-bit parameters, for the low and high bits (since 64-bit integers cannot be represented in JavaScript numbers).
 
