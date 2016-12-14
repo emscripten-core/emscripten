@@ -1713,7 +1713,10 @@ function writeStringToMemory(string, buffer, dontAddNull) {
 {{{ maybeExport('writeStringToMemory') }}}
 
 function writeArrayToMemory(array, buffer) {
-  HEAP8.set(array, buffer);    
+#if ASSERTIONS
+  assert(array.length >= 0, 'writeArrayToMemory array must have a length (should be an array or typed array)')
+#endif
+  HEAP8.set(array, buffer);
 }
 {{{ maybeExport('writeArrayToMemory') }}}
 
