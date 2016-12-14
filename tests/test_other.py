@@ -4616,7 +4616,6 @@ main()
     assert 'callback post()' not in output
 
   def test_bad_locale(self):
-    logging.warning('TODO: check with upstream musl if this is correct behavior or not')
     open('src.cpp', 'w').write(r'''
 
 #include <locale.h>
@@ -4639,8 +4638,10 @@ main(const int argc, const char * const * const argv)
     ''')
     Popen([PYTHON, EMCC, 'src.cpp']).communicate()
 
-    self.assertContained('locale set to C: C', run_js('a.out.js', args=['C']))
-    self.assertContained('locale set to waka: C.UTF-8', run_js('a.out.js', args=['waka'])) # the call still succeeds in musl, even if the locale requested was not selected
+    self.assertContained('locale set to C: C;C;C;C;C;C',
+                         run_js('a.out.js', args=['C']))
+    self.assertContained('locale set to waka: waka;waka;waka;waka;waka;waka',
+                         run_js('a.out.js', args=['waka']))
 
   def test_js_malloc(self):
     open('src.cpp', 'w').write(r'''
