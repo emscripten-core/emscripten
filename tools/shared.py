@@ -1496,7 +1496,7 @@ class Building:
             dirname = os.path.dirname(content)
             if dirname:
               safe_ensure_dirs(dirname)
-          Popen([LLVM_AR, 'xo', f], stdout=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
+          Popen([LLVM_AR, 'x', f], stdout=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
           contents = map(lambda content: os.path.join(temp_dir, content), contents)
           contents = filter(os.path.exists, map(os.path.abspath, contents))
           contents = filter(Building.is_bitcode, contents)
