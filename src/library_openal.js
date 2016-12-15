@@ -314,6 +314,25 @@ var LibraryOpenAL = {
       }
       {{{ makeSetValue('data', '0', '0', 'i32') }}};
       break;
+    case 0x1007 /* ALC_FREQUENCY */:
+      if (!device) {
+        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        return 0;
+      }
+      if (!AL.currentContext) {
+        AL.alcErr = 0xA002 /* ALC_INVALID_CONTEXT */;
+        return 0;
+      }
+      {{{ makeSetValue('data', '0', 'AL.currentContext.ctx.sampleRate', 'i32') }}};
+      break;
+    case 0x1010 /* ALC_MONO_SOURCES */:
+    case 0x1011 /* ALC_STEREO_SOURCES */:
+      if (!device) {
+        AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+        return 0;
+      }
+      {{{ makeSetValue('data', '0', '0x7FFFFFFF', 'i32') }}};
+      break;
     case 0x20003 /* ALC_MAX_AUXILIARY_SENDS */:
       if (!device) {
         AL.currentContext.err = 0xA001 /* ALC_INVALID_DEVICE */;
@@ -609,7 +628,7 @@ var LibraryOpenAL = {
     }
   },
 
-  alSource3i: ['alSource3f'],
+  alSource3i__deps: ['alSource3f'],
   alSource3i: function(source, param, v1, v2, v3) {
     _alSource3f(source, param, v1, v2, v3);
   },
