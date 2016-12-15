@@ -6118,7 +6118,7 @@ def process(filename):
     self.emcc_args += ['--emit-symbol-map']
     self.do_run(open(path_from_root('tests', 'core', 'test_demangle_stacks.c')).read(), 'abort')
     # make sure the shortened name is the right one
-    symbols = open('src.cpp.o.js.symbols').read().split(os.linesep)
+    symbols = open('src.cpp.o.js.symbols').read().split('\n')
     for line in symbols:
       if ':' not in line: continue
       short, full = line.split(':')
