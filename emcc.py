@@ -189,11 +189,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     debug_env['EMCC_DEBUG'] = '1'
     args = filter(lambda x: x != '--cflags', sys.argv)
     with misc_temp_files.get_file(suffix='.o') as temp_target:
-      out, err = subprocess.Popen([shared.PYTHON] + args + [shared.path_from_root('tests', 'hello_world.c'), '-c', '-o', temp_target], stderr=subprocess.PIPE, env=debug_env).communicate()
-      lines = filter(lambda x: 'running:' in x and 'clang' in x, err.split(os.linesep))
-      assert len(lines) == 1
-      parts = lines[0].split(' ')[2:]
-      parts = filter(lambda x: x != '-c' and x != '-o' and 'hello_world.c' not in x and temp_target not in x and '-emit-llvm' not in x, parts)
+      input_file = 'hello_world.c'
+      out, err = subprocess.Popen([shared.PYTHON] + args + [shared.path_from_root('tests', input_file), '-c', '-o', temp_target], stderr=subprocess.PIPE, env=debug_env).communicate()
+      lines = filter(lambda x: shared.CLANG_CC in x and input_file in x, err.split(os.linesep))
+      line = lines[0]
+      assert 'running:' in line
+      parts = line.split(' ')[2:]
+      parts = filter(lambda x: x != '-c' and x != '-o' and input_file not in x and temp_target not in x and '-emit-llvm' not in x, parts)
       print ' '.join(parts)
     exit(0)
 
