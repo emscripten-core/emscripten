@@ -115,6 +115,8 @@ def run():
   if len(sys.argv) <= 1 or ('--help' not in sys.argv and len(sys.argv) >= 2 and sys.argv[1] != '--version'):
     shared.check_sanity(force=DEBUG)
 
+  misc_temp_files = shared.configuration.get_temp_files()
+
   # Handle some global flags
 
   if len(sys.argv) == 1:
@@ -179,6 +181,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   elif '-dumpmachine' in sys.argv:
     print shared.get_llvm_target()
+    exit(0)
+
+  elif '--cflags' in sys.argv:
+    # fake running the command, to see the full args we pass to clang
+    debug_env = os.environ.copy()
+    debug_env['EMCC_DEBUG'] = '1'
+    args = filter(lambda x: x != '--cflags', sys.argv)
+    with misc_temp_files.get_file(suffix='.o') as temp_target:
+      input_file = 'hello_world.c'
+      out, err = subprocess.Popen([shared.PYTHON] + args + [shared.path_from_root('tests', input_file), '-c', '-o', temp_target], stderr=subprocess.PIPE, env=debug_env).communicate()
+      lines = filter(lambda x: shared.CLANG_CC in x and input_file in x, err.split(os.linesep))
+      line = lines[0]
+      assert 'running:' in line
+      parts = line.split(' ')[2:]
+      parts = filter(lambda x: x != '-c' and x != '-o' and input_file not in x and temp_target not in x and '-emit-llvm' not in x, parts)
+      print ' '.join(parts)
     exit(0)
 
   def is_minus_s_for_emcc(newargs, i):
@@ -396,8 +414,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       TimeLogger.update()
 
   use_cxx = True
-
-  misc_temp_files = shared.configuration.get_temp_files()
 
   try:
     with ToolchainProfiler.profile_block('parse arguments and setup'):
