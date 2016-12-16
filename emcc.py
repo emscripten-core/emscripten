@@ -2072,7 +2072,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if not shared.Settings.WASM_BACKEND:
           if shared.Settings.SIDE_MODULE:
             wso = shared.WebAssembly.make_shared_library(js_target, wasm_binary_target)
-            # replace the .js output with the shared library. TODO: emit a file with suffix .wso
+            # replace the wasm binary output with the dynamic library. TODO: use a specific suffix for such files?
             shutil.move(wso, wasm_binary_target)
             os.unlink(js_target) # we don't need the js, it can just confuse
             os.unlink(asm_target) # we don't need the asm.js, it can just confuse
