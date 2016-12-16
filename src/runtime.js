@@ -349,17 +349,17 @@ var Runtime = {
 
 #if BINARYEN
   // Loads a side module from binary data
-  loadWebAssemblyModule: function(wasm) {
-    var int32View = new Uint32Array(new Uint8Array(wasm.subarray(0, 24)).buffer);
+  loadWebAssemblyModule: function(binary) {
+    var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
     assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0wasm
     // we should see the dylink section right after the magic number and wasm version
-    assert(wasm[8] === 0, 'need the dylink section to be first')
+    assert(binary[8] === 0, 'need the dylink section to be first')
     var next = 9;
     function getLEB() {
       var ret = 0;
       var mul = 1;
       while (1) {
-        var byte = wasm[next++];
+        var byte = binary[next++];
         ret += ((byte & 0x7f) * mul);
         mul *= 0x80;
         if (!(byte & 0x80)) break;
@@ -367,13 +367,13 @@ var Runtime = {
       return ret;
     }
     var sectionSize = getLEB();
-    assert(wasm[next] === 6);                 next++; // size of "dylink" string
-    assert(wasm[next] === 'd'.charCodeAt(0)); next++;
-    assert(wasm[next] === 'y'.charCodeAt(0)); next++;
-    assert(wasm[next] === 'l'.charCodeAt(0)); next++;
-    assert(wasm[next] === 'i'.charCodeAt(0)); next++;
-    assert(wasm[next] === 'n'.charCodeAt(0)); next++;
-    assert(wasm[next] === 'k'.charCodeAt(0)); next++;
+    assert(binary[next] === 6);                 next++; // size of "dylink" string
+    assert(binary[next] === 'd'.charCodeAt(0)); next++;
+    assert(binary[next] === 'y'.charCodeAt(0)); next++;
+    assert(binary[next] === 'l'.charCodeAt(0)); next++;
+    assert(binary[next] === 'i'.charCodeAt(0)); next++;
+    assert(binary[next] === 'n'.charCodeAt(0)); next++;
+    assert(binary[next] === 'k'.charCodeAt(0)); next++;
     var memorySize = getLEB();
     var tableSize = getLEB();
     var env = Module['asmLibraryArg'];
@@ -409,13 +409,13 @@ var Runtime = {
     }
 #endif
     // create a module from the instance
-    wasm = new WebAssembly.Instance(new WebAssembly.Module(wasm), info);
+    var instance = new WebAssembly.Instance(new WebAssembly.Module(binary), info);
 #if ASSERTIONS
     // the table should be unchanged
     assert(table === originalTable);
     assert(table === Module['wasmTable']);
-    if (wasm.exports['table']) {
-      assert(table === wasm.exports['table']);
+    if (instance.exports['table']) {
+      assert(table === instance.exports['table']);
     }
     // the old part of the table should be unchanged
     for (var i = 0; i < oldTableSize; i++) {
@@ -427,8 +427,8 @@ var Runtime = {
     }
 #endif
     var exports = {};
-    for (var e in wasm.exports) {
-      var value = wasm.exports[e];
+    for (var e in instance.exports) {
+      var value = instance.exports[e];
       if (typeof value === 'number') {
         // relocate it - modules export the absolute value, they can't relocate before they export
         value = value + env['memoryBase'];
