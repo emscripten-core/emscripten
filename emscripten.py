@@ -782,7 +782,6 @@ function jsCall_%s_%s(%s) {
         if settings['BINARYEN']:
           # wasm uses a Table, which means we have function pointer emulation capabilities all the time, at no cost. just call the table
           table_access = "Module['wasmTable']"
-        if settings['BINARYEN']:
           table_read = table_access + '.get(x)'
         else:
           table_read = table_access + '[x]'
