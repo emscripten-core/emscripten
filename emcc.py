@@ -2008,6 +2008,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           print jsrun.run_js(shared.path_from_root('tools', 'js-optimizer.js'), shared.NODE_JS, args=[asm_target, 'eliminateDeadGlobals', 'last', 'asm'], stdout=open(temp, 'w'))
           shutil.move(temp, asm_target)
 
+      if shared.Settings.BINARYEN_METHOD:
+        methods = shared.Settings.BINARYEN_METHOD.split(',')
+        valid_methods = ['asmjs', 'native-wasm', 'interpret-s-expr', 'interpret-binary', 'interpret-asm2wasm']
+        for m in methods:
+          if not m.strip() in valid_methods:
+            logging.error('Unrecognized BINARYEN_METHOD "' + m.strip() + '" specified! Please pass a comma-delimited list containing one or more of: ' + ','.join(valid_methods))
+            sys.exit(1)
+
       if shared.Settings.BINARYEN:
         logging.debug('using binaryen, with method: ' + shared.Settings.BINARYEN_METHOD)
         binaryen_bin = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin')
