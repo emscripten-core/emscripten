@@ -2494,7 +2494,6 @@ def process(filename):
       if 'asm' in out:
         self.validate_asmjs(out)
 
-  @no_wasm_backend('todo: dynamic linking')
   def test_dlfcn_data_and_fptr(self):
     if not self.can_dlfcn(): return
 
@@ -2888,7 +2887,6 @@ ok
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc', '_free']
     self.do_run(src, '''*294,153*''', force_c=True, post_build=self.dlfcn_post_build)
 
-  @no_wasm_backend('todo: dynamic linking')
   def test_dlfcn_longjmp(self):
     if not self.can_dlfcn(): return
 
@@ -3212,7 +3210,6 @@ var Module = {
       void second();
     ''', need_reverse=False, auto_load=False)
 
-  @no_wasm_backend('todo: dynamic linking')
   def test_dylink_funcpointers_wrapper(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3546,7 +3543,6 @@ var Module = {
     Settings.ASSERTIONS = 1
     test('', expect_pass=False, need_reverse=False)
 
-  @no_wasm_backend('todo: dynamic linking')
   def test_dylink_iostream(self):
     try:
       os.environ['EMCC_FORCE_STDLIBS'] = 'libcxx'
@@ -3567,7 +3563,6 @@ var Module = {
     finally:
       del os.environ['EMCC_FORCE_STDLIBS']
 
-  @no_wasm_backend('todo: dynamic linking')
   def test_dylink_dynamic_cast(self): # issue 3465
     self.dylink_test(header=r'''
       class Base {
