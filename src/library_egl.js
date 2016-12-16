@@ -37,7 +37,7 @@ var LibraryEGL = {
         EGL.setErrorCode(0x300C /* EGL_BAD_PARAMETER */);
         return 0;
       }
-      for(;;) {
+      while (1) {
         var param = {{{ makeGetValue('attribList', '0', 'i32') }}};
         if (param == 0x3038) { // EGL_NONE
           break;
@@ -159,7 +159,7 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', '32' /* 8 bits for each A,R,G,B. */, 'i32') }}};
       return 1;
     case 0x3021: // EGL_ALPHA_SIZE
-      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.alpha?8:0' /* 8 bits for alpha channel. */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.alpha ? 8 : 0' /* 8 bits for alpha channel. */, 'i32') }}};
       return 1;
     case 0x3022: // EGL_BLUE_SIZE
       {{{ makeSetValue('value', '0', '8' /* 8 bits for blue channel. */, 'i32') }}};
@@ -171,10 +171,10 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', '8' /* 8 bits for red channel. */, 'i32') }}};
       return 1;
     case 0x3025: // EGL_DEPTH_SIZE
-      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.depth?24:0' /* 24 bits for depth buffer. */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.depth ? 24 : 0' /* 24 bits for depth buffer. */, 'i32') }}};
       return 1;
     case 0x3026: // EGL_STENCIL_SIZE
-      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.stencil?8:0' /* 8 bits for stencil buffer. */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.stencil ? 8 : 0' /* 8 bits for stencil buffer. */, 'i32') }}};
       return 1;
     case 0x3027: // EGL_CONFIG_CAVEAT
       // We can return here one of EGL_NONE (0x3038), EGL_SLOW_CONFIG (0x3050) or EGL_NON_CONFORMANT_CONFIG (0x3051).
@@ -205,10 +205,10 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', '0x3038' /* EGL_NONE */, 'i32') }}};
       return 1;
     case 0x3031: // EGL_SAMPLES
-      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.antialias?4:0' /* 2x2 Multisampling */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.antialias ? 4 : 0' /* 2x2 Multisampling */, 'i32') }}};
       return 1;
     case 0x3032: // EGL_SAMPLE_BUFFERS
-      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.antialias?1:0' /* Multisampling enabled */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.antialias ? 1 : 0' /* Multisampling enabled */, 'i32') }}};
       return 1;
     case 0x3033: // EGL_SURFACE_TYPE
       {{{ makeSetValue('value', '0', '0x0004' /* EGL_WINDOW_BIT */, 'i32') }}};
@@ -303,7 +303,7 @@ var LibraryEGL = {
     // EGL 1.4 spec says default EGL_CONTEXT_CLIENT_VERSION is GLES1, but this is not supported by Emscripten.
     // So user must pass EGL_CONTEXT_CLIENT_VERSION == 2 to initialize EGL.
     var glesContextVersion = 1;
-    for(;;) {
+    while (1) {
       var param = {{{ makeGetValue('contextAttribs', '0', 'i32') }}};
       if (param == 0x3098 /*EGL_CONTEXT_CLIENT_VERSION*/) {
         glesContextVersion = {{{ makeGetValue('contextAttribs', '4', 'i32') }}};
