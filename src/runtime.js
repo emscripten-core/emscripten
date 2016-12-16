@@ -360,9 +360,9 @@ var Runtime = {
       var mul = 1;
       while (1) {
         var byte = wasm[next++];
-        ret += ((byte & 127) * mul);
-        mul *= 128;
-        if (!(byte & 128)) break;
+        ret += ((byte & 0x7f) * mul);
+        mul *= 0x80;
+        if (!(byte & 0x80)) break;
       }
       return ret;
     }
