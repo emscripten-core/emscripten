@@ -53,9 +53,18 @@ static inline void unlock(volatile int *l)
 static inline void unlock_requeue(volatile int *l, volatile int *r, int w)
 {
 	a_store(l, 0);
+#ifdef __EMSCRIPTEN__
+	int futexResult;
+	do {
+		// We want to wake one and requeue all others, without comparing the value, but SAB spec doesn't
+		// have requeue without comparing, so implement it by spinning instead.
+		futexResult = emscripten_futex_wake_or_requeue(l, 0, r, *l);
+	} while(futexResult == -EAGAIN);
+#else
 	if (w) __wake(l, 1, 1);
 	else __syscall(SYS_futex, l, FUTEX_REQUEUE|128, 0, 1, r) != -ENOSYS
 		|| __syscall(SYS_futex, l, FUTEX_REQUEUE, 0, 1, r);
+#endif
 }
 
 enum {

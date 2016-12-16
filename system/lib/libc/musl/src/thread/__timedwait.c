@@ -70,8 +70,8 @@ int __timedwait_cp(volatile int *addr, int val,
 	}
 #else
 	r = -__syscall_cp(SYS_futex, addr, FUTEX_WAIT|priv, val, top);
-#endif
 	if (r == ENOSYS) r = -__syscall_cp(SYS_futex, addr, FUTEX_WAIT, val, top);
+#endif
 	if (r != EINTR && r != ETIMEDOUT && r != ECANCELED) r = 0;
 
 	return r;

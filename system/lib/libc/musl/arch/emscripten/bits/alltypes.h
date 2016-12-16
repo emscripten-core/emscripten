@@ -86,9 +86,9 @@ typedef long suseconds_t;
 #ifdef __EMSCRIPTEN__
 // For canvas transfer implementation in Emscripten, use an extra 10th control field
 // to pass a pointer to a string denoting the WebGL canvases to transfer.
-typedef struct { union { int __i[11]; unsigned __s[11]; } __u; } pthread_attr_t;
+typedef struct { union { int __i[11]; volatile int __vi[11]; unsigned __s[11]; } __u; } pthread_attr_t;
 #else
-typedef struct { union { int __i[10]; unsigned __s[10]; } __u; } pthread_attr_t;
+typedef struct { union { int __i[10]; volatile int __vi[10]; unsigned __s[10]; } __u; } pthread_attr_t;
 #endif
 #define __DEFINED_pthread_attr_t
 #endif
@@ -97,25 +97,27 @@ typedef struct { union { int __i[10]; unsigned __s[10]; } __u; } pthread_attr_t;
 #ifdef __EMSCRIPTEN__
 // For mutex implementation in Emscripten, need to use an extra seventh control field
 // to hold a temporary futex wait & wake location, designated as mutex->_m_addr.
-typedef struct { union { int __i[8]; void *__p[8]; } __u; } pthread_mutex_t;
+typedef struct { union { int __i[8]; volatile int __vi[8]; volatile void *__p[8]; } __u; } pthread_mutex_t;
 #else
-typedef struct { union { int __i[7]; void *__p[7]; } __u; } pthread_mutex_t;
+typedef struct { union { int __i[7]; volatile int __vi[7]; volatile void *__p[7]; } __u; } pthread_mutex_t;
 #endif
+typedef pthread_mutex_t mtx_t;
 #define __DEFINED_pthread_mutex_t
 #endif
 
 #if defined(__NEED_pthread_cond_t) && !defined(__DEFINED_pthread_cond_t)
-typedef struct { union { int __i[12]; void *__p[12]; } __u; } pthread_cond_t;
+typedef struct { union { int __i[12]; volatile int __vi[12]; void *__p[12]; } __u; } pthread_cond_t;
+typedef pthread_cond_t cnd_t;
 #define __DEFINED_pthread_cond_t
 #endif
 
 #if defined(__NEED_pthread_rwlock_t) && !defined(__DEFINED_pthread_rwlock_t)
-typedef struct { union { int __i[8]; void *__p[8]; } __u; } pthread_rwlock_t;
+typedef struct { union { int __i[8]; volatile int __vi[8]; void *__p[8]; } __u; } pthread_rwlock_t;
 #define __DEFINED_pthread_rwlock_t
 #endif
 
 #if defined(__NEED_pthread_barrier_t) && !defined(__DEFINED_pthread_barrier_t)
-typedef struct { union { int __i[5]; void *__p[5]; } __u; } pthread_barrier_t;
+typedef struct { union { int __i[5]; volatile int __vi[5]; void *__p[5]; } __u; } pthread_barrier_t;
 #define __DEFINED_pthread_barrier_t
 #endif
 

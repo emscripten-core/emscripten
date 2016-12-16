@@ -10,9 +10,8 @@
 #include "atomic.h"
 #ifdef __EMSCRIPTEN__
 #include <emscripten/threading.h>
-#else
-#include "futex.h"
 #endif
+#include "futex.h"
 
 #define pthread __pthread
 
