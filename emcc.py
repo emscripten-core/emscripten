@@ -925,18 +925,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if 'EMCC_STRICT' in os.environ:
         shared.Settings.STRICT = os.environ.get('EMCC_STRICT') != '0'
 
-      STRICT = ([None] + filter(lambda x: x.startswith('STRICT='), settings_changes))[-1]
-      if STRICT:
-        shared.Settings.STRICT = int(STRICT[len('STRICT='):])
+      # Libraries are searched before settings_changes are applied, so apply the value for STRICT and ERROR_ON_MISSING_LIBRARIES from
+      # command line already now.
+
+      def get_last_setting_change(setting):
+        return ([None] + filter(lambda x: x.startswith(setting + '='), settings_changes))[-1]
+
+      strict_cmdline = get_last_setting_change('STRICT')
+      if strict_cmdline:
+        shared.Settings.STRICT = int(strict_cmdline[len('STRICT='):])
 
       if shared.Settings.STRICT:
         shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 1
         shared.Settings.ERROR_ON_MISSING_LIBRARIES = 1
 
-      # Libraries are searched before settings_changes are applied, so pull its value from the command line already here.
-      ERROR_ON_MISSING_LIBRARIES = ([None] + filter(lambda x: x.startswith('ERROR_ON_MISSING_LIBRARIES='), settings_changes))[-1]
-      if ERROR_ON_MISSING_LIBRARIES:
-        shared.Settings.ERROR_ON_MISSING_LIBRARIES = int(ERROR_ON_MISSING_LIBRARIES[len('ERROR_ON_MISSING_LIBRARIES='):])
+      error_on_missing_libraries_cmdline = get_last_setting_change('ERROR_ON_MISSING_LIBRARIES')
+      if error_on_missing_libraries_cmdline:
+        shared.Settings.ERROR_ON_MISSING_LIBRARIES = int(error_on_missing_libraries_cmdline[len('ERROR_ON_MISSING_LIBRARIES='):])
 
       system_js_libraries = []
 
