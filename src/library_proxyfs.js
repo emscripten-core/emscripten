@@ -100,7 +100,7 @@ mergeInto(LibraryManager.library, {
         var oldPath = PROXYFS.realPath(oldNode);
         var newPath = PATH.join2(PROXYFS.realPath(newDir), newName);
         try {
-          oldNode.moount.opts.fs.rename(oldPath, newPath);
+          oldNode.mount.opts.fs.rename(oldPath, newPath);
         } catch(e) {
           if (!e.code) throw e;
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);

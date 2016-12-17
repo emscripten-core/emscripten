@@ -2670,6 +2670,22 @@ int main()
       self.assertContained('File size: 724', out)
 
   def test_proxyfs(self):
+    # This test supposes that 3 different programs share the same directory and files.
+    # The same JS object is not used for each of them
+    # But 'require' function caches JS objects.
+    # If we just load same js-file multiple times like following code, 
+    # these programs (m0,m1,m2) share the same JS object.
+    #
+    #   var m0 = require('./proxyfs_test.js');
+    #   var m1 = require('./proxyfs_test.js');
+    #   var m2 = require('./proxyfs_test.js');
+    #
+    # To separate js-objects for each of them, following 'require' use different js-files.
+    #
+    #   var m0 = require('./proxyfs_test.js');
+    #   var m1 = require('./proxyfs_test1.js');
+    #   var m2 = require('./proxyfs_test2.js');
+    #
     open('proxyfs_test_main.js', 'w').write(r'''
 var m0 = require('./proxyfs_test.js');
 var m1 = require('./proxyfs_test1.js');
