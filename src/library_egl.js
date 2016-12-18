@@ -1,7 +1,7 @@
 /*
  The EGL implementation supports only one EGLNativeDisplayType, the EGL_DEFAULT_DISPLAY.
  This native display type returns the only supported EGLDisplay handle with the magic value 62000.
- There is only a single EGLConfig configuration supported, that has the magic value 62002.
+ There are multiple EGLConfig configurations supported; one for each combination of WebGL context attributes.
  The implementation only allows a single EGLContext to be created, that has the magic value of 62004. (multiple creations silently return this same context)
  The implementation only creates a single EGLSurface, a handle with the magic value of 62006. (multiple creations silently return the same surface)
 */ 
@@ -15,12 +15,28 @@ var LibraryEGL = {
     currentContext: 0 /* EGL_NO_CONTEXT */,
     currentReadSurface: 0 /* EGL_NO_SURFACE */,
     currentDrawSurface: 0 /* EGL_NO_SURFACE */,
-    contextAttributes: {
-      alpha: false,
-      depth: false,
-      stencil: false,
-      antialias: false
-    },
+    // Because there's only a single global EGLContext with a single EGLSurface,
+    // we have to store the state for what EGLConfig is being used here. 
+    currentEGLConfig: 0,
+    // List of different EGLConfig configurations in spec order
+    configAttribs: [
+        {alpha: 8,  samples: 0, buffers: 0,  depth: 0,   stencil: 0},
+        {alpha: 8,  samples: 0, buffers: 0,  depth: 0,   stencil: 8},
+        {alpha: 8,  samples: 0, buffers: 0,  depth: 16,  stencil: 0},
+        {alpha: 8,  samples: 0, buffers: 0,  depth: 16,  stencil: 8},
+        {alpha: 8,  samples: 4, buffers: 1,  depth: 0,   stencil: 0},
+        {alpha: 8,  samples: 4, buffers: 1,  depth: 0,   stencil: 8},
+        {alpha: 8,  samples: 4, buffers: 1,  depth: 16,  stencil: 0},
+        {alpha: 8,  samples: 4, buffers: 1,  depth: 16,  stencil: 8},
+        {alpha: 0,  samples: 0, buffers: 0,  depth: 0,   stencil: 0},
+        {alpha: 0,  samples: 0, buffers: 0,  depth: 0,   stencil: 8},
+        {alpha: 0,  samples: 0, buffers: 0,  depth: 16,  stencil: 0},
+        {alpha: 0,  samples: 0, buffers: 0,  depth: 16,  stencil: 8},
+        {alpha: 0,  samples: 4, buffers: 1,  depth: 0,   stencil: 0},
+        {alpha: 0,  samples: 4, buffers: 1,  depth: 0,   stencil: 8},
+        {alpha: 0,  samples: 4, buffers: 1,  depth: 16,  stencil: 0},
+        {alpha: 0,  samples: 4, buffers: 1,  depth: 16,  stencil: 8}
+    ],
 
     stringCache: {},
     
@@ -37,35 +53,65 @@ var LibraryEGL = {
         EGL.setErrorCode(0x300C /* EGL_BAD_PARAMETER */);
         return 0;
       }
-      while (1) {
-        var param = {{{ makeGetValue('attribList', '0', 'i32') }}};
-        if (param == 0x3038) { // EGL_NONE
-          break;
+
+      // config variables to compare against
+      var alpha = 0;
+      var samples = 0;
+      var buffers = 0;
+      var depth = 0;
+      var stencil = 0;
+
+      if (attribList) {
+        while (1) {
+          var param = {{{ makeGetValue('attribList', '0', 'i32') }}};
+          if (param == 0x3038) { // EGL_NONE
+            break;
+          }
+
+          var value = {{{ makeGetValue('attribList', '4', 'i32') }}};
+          switch (param) {
+            case 0x3021: // EGL_ALPHA_SIZE
+              alpha = value;
+              break;
+            case 0x3031: // EGL_SAMPLES
+              samples = value;
+              break;
+            case 0x3032: // EGL_SAMPLE_BUFFERS
+              buffers = value;
+              break;
+            case 0x3025: // EGL_DEPTH_SIZE
+              depth = value;
+              break;
+            case 0x3026: // EGL_STENCIL_SIZE
+              stencil = value;
+              break;
+            default:
+              break;
+          }
+          attribList += 8;
         }
-        var value = {{{ makeGetValue('attribList', '4', 'i32') }}};
-        switch (param) {
-        case 0x3021: // EGL_ALPHA_SIZE
-          EGL.contextAttributes.alpha = value > 0;
-          break;
-        case 0x3025: // EGL_DEPTH_SIZE
-          EGL.contextAttributes.depth = value > 0;
-          break;
-        case 0x3026: // EGL_STENCIL_SIZE
-          EGL.contextAttributes.stencil = value > 0;
-          break;
-        case 0x3032: // EGL_SAMPLE_BUFFERS
-          EGL.contextAttributes.antialias = value > 0;
-          break;
-        default:
-          break;
-        }
-        attribList += 8;
       }
+      var configCount = 0;
+      for (var i=0; i<EGL.configAttribs.length; i++) {
+        if ((EGL.configAttribs[i].alpha >= alpha) &&
+            (EGL.configAttribs[i].samples >= samples) &&
+            (EGL.configAttribs[i].buffers >= buffers) &&
+            (EGL.configAttribs[i].depth >= depth) &&
+            (EGL.configAttribs[i].stencil >= stencil)) {
+          if (config) {
+            if (configCount>=config_size) {
+              break;
+            }
+            {{{ makeSetValue('config', 'configCount*4', 'i+1', 'i32') }}};
+            configCount += 1;
+          } else {
+            configCount += 1;
+          }
+        }
+      }
+ 
       if (numConfigs) {
-        {{{ makeSetValue('numConfigs', '0', '1', 'i32') }}}; // Total number of supported configs: 1.
-      }
-      if (config && config_size > 0) {
-        {{{ makeSetValue('config', '0', '62002' /* Magic ID for the only EGLConfig supported by Emscripten */, 'i32') }}}; 
+        {{{ makeSetValue('numConfigs', '0', 'configCount', 'i32') }}};
       }
       
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
@@ -118,13 +164,8 @@ var LibraryEGL = {
     EGL.currentContext = 0;
     EGL.currentReadSurface = 0;
     EGL.currentDrawSurface = 0;
+    EGL.currentEGLConfig = 0;
     EGL.defaultDisplayInitialized = false;
-    EGL.contextAttributes = {
-      alpha: false,
-      depth: false,
-      stencil: false,
-      antialias: false
-    };
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     return 1;
   },
@@ -145,7 +186,7 @@ var LibraryEGL = {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
-    if (config != 62002 /* Magic ID for the only EGLConfig supported by Emscripten */) {
+    if ((config <= 0) || (config > EGL.configAttribs.length)) { /* Check EGLConfig ID is within acceptable range */
       EGL.setErrorCode(0x3005 /* EGL_BAD_CONFIG */);
       return 0;
     }
@@ -159,7 +200,7 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', '32' /* 8 bits for each A,R,G,B. */, 'i32') }}};
       return 1;
     case 0x3021: // EGL_ALPHA_SIZE
-      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.alpha ? 8 : 0' /* 8 bits for alpha channel. */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.configAttribs[config-1].alpha' /* 8 bits for alpha channel. */, 'i32') }}};
       return 1;
     case 0x3022: // EGL_BLUE_SIZE
       {{{ makeSetValue('value', '0', '8' /* 8 bits for blue channel. */, 'i32') }}};
@@ -171,17 +212,17 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', '8' /* 8 bits for red channel. */, 'i32') }}};
       return 1;
     case 0x3025: // EGL_DEPTH_SIZE
-      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.depth ? 24 : 0' /* 24 bits for depth buffer. */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.configAttribs[config-1].depth' /* 16 bits for depth buffer. */, 'i32') }}};
       return 1;
     case 0x3026: // EGL_STENCIL_SIZE
-      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.stencil ? 8 : 0' /* 8 bits for stencil buffer. */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.configAttribs[config-1].stencil' /* 8 bits for stencil buffer. */, 'i32') }}};
       return 1;
     case 0x3027: // EGL_CONFIG_CAVEAT
       // We can return here one of EGL_NONE (0x3038), EGL_SLOW_CONFIG (0x3050) or EGL_NON_CONFORMANT_CONFIG (0x3051).
       {{{ makeSetValue('value', '0', '0x3038' /* EGL_NONE */, 'i32') }}};
       return 1;
     case 0x3028: // EGL_CONFIG_ID
-      {{{ makeSetValue('value', '0', '62002' /* Magic ID for the only EGLConfig supported by Emscripten */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'config' /* Magic ID for the specified EGLConfig */, 'i32') }}};
       return 1;
     case 0x3029: // EGL_LEVEL
       {{{ makeSetValue('value', '0', '0' /* Z order/depth layer for this level. Not applicable for Emscripten. */, 'i32') }}};
@@ -205,10 +246,10 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', '0x3038' /* EGL_NONE */, 'i32') }}};
       return 1;
     case 0x3031: // EGL_SAMPLES
-      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.antialias ? 4 : 0' /* 2x2 Multisampling */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.configAttribs[config-1].samples' /* 2x2 Multisampling */, 'i32') }}};
       return 1;
     case 0x3032: // EGL_SAMPLE_BUFFERS
-      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.antialias ? 1 : 0' /* Multisampling enabled */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.configAttribs[config-1].buffers' /* Multisampling enabled */, 'i32') }}};
       return 1;
     case 0x3033: // EGL_SURFACE_TYPE
       {{{ makeSetValue('value', '0', '0x0004' /* EGL_WINDOW_BIT */, 'i32') }}};
@@ -259,7 +300,7 @@ var LibraryEGL = {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
-    if (config != 62002 /* Magic ID for the only EGLConfig supported by Emscripten */) {
+    if ((config <= 0) || (config > EGL.configAttribs.length)) { /* Check EGLConfig ID is within acceptable range */
       EGL.setErrorCode(0x3005 /* EGL_BAD_CONFIG */);
       return 0;
     }
@@ -300,6 +341,11 @@ var LibraryEGL = {
       return 0;
     }
 
+    if ((config <= 0) || (config > EGL.configAttribs.length)) { /* Check EGLConfig ID is within acceptable range */
+      EGL.setErrorCode(0x3005 /* EGL_BAD_CONFIG */);
+      return 0;
+    }
+
     // EGL 1.4 spec says default EGL_CONTEXT_CLIENT_VERSION is GLES1, but this is not supported by Emscripten.
     // So user must pass EGL_CONTEXT_CLIENT_VERSION == 2 to initialize EGL.
     var glesContextVersion = 1;
@@ -324,11 +370,13 @@ var LibraryEGL = {
       return 0; /* EGL_NO_CONTEXT */
     }
 
+    EGL.currentEGLConfig = config;
+
     var displayMode = (0x0002 /* GLUT_RGBA|GLUT_DOUBLE */ | 
-      (EGL.contextAttributes.alpha && 0x0008) /* GLUT_ALPHA */ |
-      (EGL.contextAttributes.depth && 0x0010) /* GLUT_DEPTH */ |
-      (EGL.contextAttributes.stencil && 0x0020) /* GLUT_STENCIL */ |
-      (EGL.contextAttributes.antialias && 0x0080) /* GLUT_MULTISAMPLE */
+      (EGL.configAttribs[config-1].alpha && 0x0008) /* GLUT_ALPHA */ |
+      (EGL.configAttribs[config-1].depth && 0x0010) /* GLUT_DEPTH */ |
+      (EGL.configAttribs[config-1].stencil && 0x0020) /* GLUT_STENCIL */ |
+      (EGL.configAttribs[config-1].buffers && 0x0080) /* GLUT_MULTISAMPLE */
     )
     
     _glutInitDisplayMode(displayMode);
@@ -361,24 +409,9 @@ var LibraryEGL = {
     if (EGL.currentContext == context) {
       EGL.currentContext = 0;
     }
+    EGL.currentEGLConfig = 0 /* Clear EGLConfig */;
     return 1 /* EGL_TRUE */;
   },
-
-  // EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext ctx);
-  eglDestroyContext: function(display, context) {
-    if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
-      EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
-      return 0;
-    }
-
-    if (context != 62004 /* Magic ID for Emscripten EGLContext */) {
-      EGL.setErrorCode(0x3006 /* EGL_BAD_CONTEXT */);
-      return 0;
-    }
-
-    EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
-    return 1;
-  }, 
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface, EGLint attribute, EGLint *value);
   eglQuerySurface: function(display, surface, attribute, value) { 
@@ -397,7 +430,7 @@ var LibraryEGL = {
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     switch(attribute) {
     case 0x3028: // EGL_CONFIG_ID
-      {{{ makeSetValue('value', '0', '62002' /* A magic value for the only EGLConfig configuration ID supported by Emscripten. */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.currentEGLConfig' /* Current EGLConfig set for the Emscripten EGLContext */, 'i32') }}};
         return 1;
     case 0x3058: // EGL_LARGEST_PBUFFER
       // Odd EGL API: If surface is not a pbuffer surface, 'value' should not be written to. It's not specified as an error, so true should(?) be returned.
@@ -464,7 +497,7 @@ var LibraryEGL = {
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     switch(attribute) {
       case 0x3028: // EGL_CONFIG_ID
-        {{{ makeSetValue('value', '0', '62002' /* A magic value for the only EGLConfig configuration ID supported by Emscripten. */, 'i32') }}};
+        {{{ makeSetValue('value', '0', 'EGL.currentEGLConfig' /* Current EGLConfig set for the Emscripten EGLContext */, 'i32') }}};
         return 1;
       case 0x3097: // EGL_CONTEXT_CLIENT_TYPE
         {{{ makeSetValue('value', '0', '0x30A0' /* EGL_OPENGL_ES_API */, 'i32') }}};
@@ -635,6 +668,7 @@ var LibraryEGL = {
     EGL.currentContext = 0;
     EGL.currentReadSurface = 0;
     EGL.currentDrawSurface = 0;
+    EGL.currentEGLConfig = 0;
     // EGL spec v1.4 p.55:
     // "calling eglGetError immediately following a successful call to eglReleaseThread should not be done.
     //  Such a call will return EGL_SUCCESS - but will also result in reallocating per-thread state."                     
