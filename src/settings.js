@@ -487,6 +487,10 @@ var LINKABLE = 0; // If set to 1, this file can be linked with others, either as
                   // LINKABLE of 0 is very useful in that we can reduce the size of the
                   // generated code very significantly, by removing everything not actually used.
 
+var STRICT = 0;   // Emscripten 'strict' build mode: Drop supporting any deprecated build options.
+                  // Set the environment variable EMCC_STRICT=1 or pass -s STRICT=1
+                  // to test that a codebase builds nicely in forward compatible manner.
+
 var WARN_ON_UNDEFINED_SYMBOLS = 1; // If set to 1, we will warn on any undefined symbols that
                                    // are not resolved by the library_*.js files. Note that
                                    // it is common in large projects to
@@ -500,6 +504,22 @@ var WARN_ON_UNDEFINED_SYMBOLS = 1; // If set to 1, we will warn on any undefined
 
 var ERROR_ON_UNDEFINED_SYMBOLS = 0; // If set to 1, we will give a compile-time error on any
                                     // undefined symbols (see WARN_ON_UNDEFINED_SYMBOLS).
+
+                                    // The default value for this is currently 0, but will be
+                                    // transitioned to 1 in the future. To keep relying on
+                                    // building with -s ERROR_ON_UNDEFINED_SYMBOLS=0 setting,
+                                    // prefer to set that option explicitly in your build system.
+
+var ERROR_ON_MISSING_LIBRARIES = 0; // If set to 1, any -lfoo directives pointing to nonexisting
+                                    // library files will issue a linker error.
+
+                                    // The default value for this is currently 0, but will be
+                                    // transitioned to 1 in the future. To keep relying on
+                                    // building with -s ERROR_ON_MISSING_LIBRARIES=0 setting,
+                                    // prefer to set that option explicitly in your build system.
+
+var SYSTEM_JS_LIBRARIES = []; // Specifies a list of Emscripten-provided JS libraries to link against.
+                              // (internal, use -lfoo or -lfoo.js to link to Emscripten system JS libraries)
 
 var SMALL_XHR_CHUNKS = 0; // Use small chunk size for binary synchronous XHR's in Web Workers.
                           // Used for testing.

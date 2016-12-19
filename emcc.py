@@ -268,7 +268,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if compiler == shared.EMCC: compiler = [shared.PYTHON, shared.EMCC]
     else: compiler = [compiler]
     cmd = compiler + list(filter_emscripten_options(sys.argv[1:]))
-    if not use_js: cmd += shared.EMSDK_OPTS + ['-D__EMSCRIPTEN__', '-DEMSCRIPTEN']
+    if not use_js:
+      cmd += shared.EMSDK_OPTS + ['-D__EMSCRIPTEN__']
+      # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code in strict mode. Code should use the define __EMSCRIPTEN__ instead.
+      if not shared.Settings.STRICT:
+        cmd += ['-DEMSCRIPTEN']
     if use_js: cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'] # configure tests should fail when an undefined symbol exists
 
     logging.debug('just configuring: ' + ' '.join(cmd))
@@ -934,6 +938,29 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if separate_asm:
         shared.Settings.SEPARATE_ASM = os.path.basename(asm_target)
 
+      if 'EMCC_STRICT' in os.environ:
+        shared.Settings.STRICT = os.environ.get('EMCC_STRICT') != '0'
+
+      # Libraries are searched before settings_changes are applied, so apply the value for STRICT and ERROR_ON_MISSING_LIBRARIES from
+      # command line already now.
+
+      def get_last_setting_change(setting):
+        return ([None] + filter(lambda x: x.startswith(setting + '='), settings_changes))[-1]
+
+      strict_cmdline = get_last_setting_change('STRICT')
+      if strict_cmdline:
+        shared.Settings.STRICT = int(strict_cmdline[len('STRICT='):])
+
+      if shared.Settings.STRICT:
+        shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 1
+        shared.Settings.ERROR_ON_MISSING_LIBRARIES = 1
+
+      error_on_missing_libraries_cmdline = get_last_setting_change('ERROR_ON_MISSING_LIBRARIES')
+      if error_on_missing_libraries_cmdline:
+        shared.Settings.ERROR_ON_MISSING_LIBRARIES = int(error_on_missing_libraries_cmdline[len('ERROR_ON_MISSING_LIBRARIES='):])
+
+      system_js_libraries = []
+
       # Find library files
       for i, lib in libs:
         logging.debug('looking for library "%s"', lib)
@@ -950,8 +977,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                 break
             if found: break
           if found: break
-        if not found and lib not in ['GL', 'GLU', 'glut', 'm', 'c', 'SDL', 'stdc++', 'pthread']: # whitelist our default libraries
-          logging.warning('emcc: cannot find library "%s"', lib)
+        if not found:
+          system_js_libraries += shared.Building.path_to_system_js_libraries(lib)
+
+      # Certain linker flags imply some link libraries to be pulled in by default.
+      system_js_libraries += shared.Building.path_to_system_js_libraries_for_settings(settings_changes)
+
+      settings_changes.append('SYSTEM_JS_LIBRARIES="' + ','.join(system_js_libraries) + '"')
 
       # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
       # ignore dynamic linking, since multiple dynamic linkings can interfere with each other
@@ -1014,6 +1046,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.get_llvm_target() == shared.WASM_TARGET:
         shared.Settings.WASM_BACKEND = 1
+
+      if not shared.Settings.STRICT:
+        # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code in strict mode. Code should use the define __EMSCRIPTEN__ instead.
+        shared.COMPILER_OPTS += ['-DEMSCRIPTEN']
+
+        # The system include path system/include/emscripten/ is deprecated, i.e. instead of #include <emscripten.h>, one should pass in #include <emscripten/emscripten.h>.
+        # This path is not available in Emscripten strict mode.
+        if shared.USE_EMSDK:
+          shared.C_INCLUDE_PATHS += [shared.path_from_root('system', 'include', 'emscripten')]
 
       # Use settings
 
