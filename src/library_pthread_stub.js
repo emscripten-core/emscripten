@@ -80,6 +80,7 @@ var LibraryPThreadStub = {
   },
 
   pthread_self_impl: '{{{ makeStaticAlloc(C_STRUCTS.pthread.__size__) }}}',
+  pthread_self_impl__postset: '__ATINIT__.push(function(){___emscripten_init_pthread_stub();});',
   pthread_self__deps: ['pthread_self_impl'],
   pthread_self__sig: 'i',
   pthread_self: function() {

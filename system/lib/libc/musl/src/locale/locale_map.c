@@ -114,3 +114,9 @@ const struct __locale_map *__get_locale(int cat, const char *val)
 	UNLOCK(lock);
 	return new;
 }
+
+#ifdef __EMSCRIPTEN__
+void __emscripten_init_pthread_stub(void) {
+    __pthread_self()->locale = &libc.global_locale;
+}
+#endif

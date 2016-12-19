@@ -1216,6 +1216,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.FORCE_FILESYSTEM = 1 # proxying of utime requires the filesystem
       else:
         js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
+        shared.Settings.EXPORTED_FUNCTIONS += ['___emscripten_init_pthread_stub']
 
       if shared.Settings.USE_PTHREADS:
         if shared.Settings.LINKABLE:
