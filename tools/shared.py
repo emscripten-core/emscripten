@@ -2028,7 +2028,7 @@ class Building:
     if 'LZ4=1' in link_settings: system_js_libraries += ['library_lz4.js']
     if 'USE_SDL=1' in link_settings: system_js_libraries += ['library_sdl.js']
     if 'USE_SDL=2' in link_settings: system_js_libraries += ['library_egl.js', 'library_glut.js', 'library_gl.js']
-    return system_js_libraries
+    return map(lambda x: path_from_root('src', x), system_js_libraries)
 
 # compatibility with existing emcc, etc. scripts
 Cache = cache.Cache(debug=DEBUG_CACHE)
