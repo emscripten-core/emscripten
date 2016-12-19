@@ -18,21 +18,56 @@ int main(int argc, char *argv[])
     assert(ret == EGL_TRUE);
     assert(major * 10000 + minor >= 10004);
 
+    // Check that EGLConfigs are available
     EGLint numConfigs;
     ret = eglGetConfigs(display, NULL, 0, &numConfigs);
     assert(eglGetError() == EGL_SUCCESS);
     assert(ret == EGL_TRUE);
+    assert(numConfigs > 0);
 
+    // Request an EGLConfig with no special features
+    EGLConfig config;
     EGLint attribs[] = {
         EGL_RED_SIZE, 5,
         EGL_GREEN_SIZE, 6,
         EGL_BLUE_SIZE, 5,
         EGL_NONE
     };
-    EGLConfig config;
-    ret = eglChooseConfig(display, attribs, &config, 1, &numConfigs);
+    EGLint numReturned;
+    ret = eglChooseConfig(display, attribs, &config, 1, &numReturned);
     assert(eglGetError() == EGL_SUCCESS);
     assert(ret == EGL_TRUE);
+    // Test that the depth buffer isn't enabled for this EGLConfig
+    EGLint attribTest;
+    ret = eglGetConfigAttrib(display, config, EGL_DEPTH_SIZE, &attribTest);
+    assert(eglGetError() == EGL_SUCCESS);
+    assert(ret == EGL_TRUE);
+    assert(attribTest == 0);
+
+    // A second EGLConfig, this time with a depth buffer
+    EGLConfig altConfig;
+    EGLint altAttribs[] = {
+        EGL_RED_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_BLUE_SIZE, 8,
+        EGL_DEPTH_SIZE, 16,
+        EGL_NONE
+    };
+    EGLint altNumConfigs;
+    // Request the count of the EGLConfig list that matches the filter criteria,
+    // make sure that it is smaller than the unfiltered count from eglGetConfigs
+    ret = eglChooseConfig(display, altAttribs, NULL, 0, &altNumConfigs);
+    assert(eglGetError() == EGL_SUCCESS);
+    assert(ret == EGL_TRUE);
+    assert(altNumConfigs < numConfigs);
+    // Request the second EGLConfig and test that the depth buffer is enabled
+    ret = eglChooseConfig(display, altAttribs, &altConfig, 1, &numReturned);
+    assert(eglGetError() == EGL_SUCCESS);
+    assert(ret == EGL_TRUE);
+    ret = eglGetConfigAttrib(display, altConfig, EGL_DEPTH_SIZE, &attribTest);
+    assert(eglGetError() == EGL_SUCCESS);
+    assert(ret == EGL_TRUE);
+    assert(attribTest == 16);
 
     EGLNativeWindowType dummyWindow;
     EGLSurface surface = eglCreateWindowSurface(display, config, dummyWindow, NULL);
