@@ -1,4 +1,4 @@
-         CODESET: "UTF-8"
+         CODESET: "ASCII"
          D_T_FMT: "%a %b %e %T %Y"
            D_FMT: "%m/%d/%y"
            T_FMT: "%H:%M:%S"
