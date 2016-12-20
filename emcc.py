@@ -839,7 +839,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               has_source_inputs = True
             elif arg_ending.endswith(HEADER_ENDINGS):
               input_files.append((i, arg))
-              has_header_inputs = True
+              if has_fixed_language_mode:
+                has_source_inputs = True
+              else:
+                has_header_inputs = True
             elif arg_ending.endswith(ASSEMBLY_ENDINGS) or shared.Building.is_bitcode(arg): # this should be bitcode, make sure it is valid
               input_files.append((i, arg))
             elif arg_ending.endswith(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS):
