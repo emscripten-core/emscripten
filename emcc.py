@@ -2319,6 +2319,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           script_replacement = '<script>\n%s\n</script>' % script_inline
         html_contents = shell.replace('{{{ SCRIPT }}}', script_replacement)
+        html_contents = html_contents.replace('{{{ TOTAL_MEMORY }}}', str(shared.Settings.TOTAL_MEMORY))
+        html_contents = html_contents.replace('{{{ BINARYEN_MEM_MAX }}}', str(shared.Settings.BINARYEN_MEM_MAX))
         html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', output_eol)
         html.write(html_contents)
         html.close()
