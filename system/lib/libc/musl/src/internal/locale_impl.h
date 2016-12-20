@@ -37,8 +37,4 @@ const char *__lctrans_cur(const char *);
 #undef MB_CUR_MAX
 #define MB_CUR_MAX (CURRENT_UTF8 ? 4 : 1)
 
-#ifdef __EMSCRIPTEN__
-void __emscripten_init_pthread_stub(void);
-#endif
-
 #endif
