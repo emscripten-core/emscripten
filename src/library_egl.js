@@ -19,25 +19,20 @@ var LibraryEGL = {
     // we have to store the state for what EGLConfig is being used here. 
     currentEGLConfig: 0,
     // List of different EGLConfig configurations in spec order
-    configAttribs: [
-        {alpha: 8,  samples: 0, buffers: 0,  depth: 0,   stencil: 0},
-        {alpha: 8,  samples: 0, buffers: 0,  depth: 0,   stencil: 8},
-        {alpha: 8,  samples: 0, buffers: 0,  depth: 16,  stencil: 0},
-        {alpha: 8,  samples: 0, buffers: 0,  depth: 16,  stencil: 8},
-        {alpha: 8,  samples: 4, buffers: 1,  depth: 0,   stencil: 0},
-        {alpha: 8,  samples: 4, buffers: 1,  depth: 0,   stencil: 8},
-        {alpha: 8,  samples: 4, buffers: 1,  depth: 16,  stencil: 0},
-        {alpha: 8,  samples: 4, buffers: 1,  depth: 16,  stencil: 8},
-        {alpha: 0,  samples: 0, buffers: 0,  depth: 0,   stencil: 0},
-        {alpha: 0,  samples: 0, buffers: 0,  depth: 0,   stencil: 8},
-        {alpha: 0,  samples: 0, buffers: 0,  depth: 16,  stencil: 0},
-        {alpha: 0,  samples: 0, buffers: 0,  depth: 16,  stencil: 8},
-        {alpha: 0,  samples: 4, buffers: 1,  depth: 0,   stencil: 0},
-        {alpha: 0,  samples: 4, buffers: 1,  depth: 0,   stencil: 8},
-        {alpha: 0,  samples: 4, buffers: 1,  depth: 16,  stencil: 0},
-        {alpha: 0,  samples: 4, buffers: 1,  depth: 16,  stencil: 8}
-    ],
-
+    configAttribs: (function() {
+      var result = [];
+      for (var alpha of [0, 8]) {
+        for (var antialias of [[0, 0], [4, 1]]) {
+          for (var depth of [0, 16]) {
+            for (var stencil of [0, 8]) {
+              result.push({alpha: alpha, samples: antialias[0], buffers: antialias[1], depth: depth, stencil: stencil});
+            }
+          }
+        }
+      }
+      return result;
+    })(),
+    
     stringCache: {},
     
     setErrorCode: function(code) {
@@ -69,44 +64,44 @@ var LibraryEGL = {
           }
 
           var value = {{{ makeGetValue('attribList', '4', 'i32') }}};
-          switch (param) {
-            case 0x3021: // EGL_ALPHA_SIZE
-              alpha = value;
-              break;
-            case 0x3031: // EGL_SAMPLES
-              samples = value;
-              break;
-            case 0x3032: // EGL_SAMPLE_BUFFERS
-              buffers = value;
-              break;
-            case 0x3025: // EGL_DEPTH_SIZE
-              depth = value;
-              break;
-            case 0x3026: // EGL_STENCIL_SIZE
-              stencil = value;
-              break;
-            default:
-              break;
+          if (value != -1) { // EGL_DONT_CARE
+            switch (param) {
+              case 0x3021: // EGL_ALPHA_SIZE
+                alpha = value;
+                break;
+              case 0x3031: // EGL_SAMPLES
+                samples = value;
+                break;
+              case 0x3032: // EGL_SAMPLE_BUFFERS
+                buffers = value;
+                break;
+              case 0x3025: // EGL_DEPTH_SIZE
+                depth = value;
+                break;
+              case 0x3026: // EGL_STENCIL_SIZE
+                stencil = value;
+                break;
+              default:
+                break;
+            }
           }
           attribList += 8;
         }
       }
       var configCount = 0;
       for (var i=0; i<EGL.configAttribs.length; i++) {
-        if ((EGL.configAttribs[i].alpha >= alpha) &&
-            (EGL.configAttribs[i].samples >= samples) &&
-            (EGL.configAttribs[i].buffers >= buffers) &&
-            (EGL.configAttribs[i].depth >= depth) &&
-            (EGL.configAttribs[i].stencil >= stencil)) {
+        if (EGL.configAttribs[i].alpha >= alpha &&
+          EGL.configAttribs[i].samples >= samples &&
+          EGL.configAttribs[i].buffers >= buffers &&
+          EGL.configAttribs[i].depth >= depth &&
+          EGL.configAttribs[i].stencil >= stencil) {
           if (config) {
-            if (configCount>=config_size) {
+            if (configCount >= config_size) {
               break;
             }
             {{{ makeSetValue('config', 'configCount*4', 'i+1', 'i32') }}};
-            configCount += 1;
-          } else {
-            configCount += 1;
           }
+          configCount++;
         }
       }
  
@@ -186,10 +181,12 @@ var LibraryEGL = {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
-    if ((config <= 0) || (config > EGL.configAttribs.length)) { /* Check EGLConfig ID is within acceptable range */
+    var configIndex = config-1;
+    if ((configIndex < 0) || (configIndex >= EGL.configAttribs.length)) { /* Check EGLConfig ID is within acceptable range */
       EGL.setErrorCode(0x3005 /* EGL_BAD_CONFIG */);
       return 0;
     }
+    var configAttrib = EGL.configAttribs[configIndex];
     if (!value) {
       EGL.setErrorCode(0x300C /* EGL_BAD_PARAMETER */);
       return 0;
@@ -200,7 +197,7 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', '32' /* 8 bits for each A,R,G,B. */, 'i32') }}};
       return 1;
     case 0x3021: // EGL_ALPHA_SIZE
-      {{{ makeSetValue('value', '0', 'EGL.configAttribs[config-1].alpha' /* 8 bits for alpha channel. */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'configAttrib.alpha' /* 8 bits for alpha channel. */, 'i32') }}};
       return 1;
     case 0x3022: // EGL_BLUE_SIZE
       {{{ makeSetValue('value', '0', '8' /* 8 bits for blue channel. */, 'i32') }}};
@@ -212,10 +209,10 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', '8' /* 8 bits for red channel. */, 'i32') }}};
       return 1;
     case 0x3025: // EGL_DEPTH_SIZE
-      {{{ makeSetValue('value', '0', 'EGL.configAttribs[config-1].depth' /* 16 bits for depth buffer. */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'configAttrib.depth' /* 16 bits for depth buffer. */, 'i32') }}};
       return 1;
     case 0x3026: // EGL_STENCIL_SIZE
-      {{{ makeSetValue('value', '0', 'EGL.configAttribs[config-1].stencil' /* 8 bits for stencil buffer. */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'configAttrib.stencil' /* 8 bits for stencil buffer. */, 'i32') }}};
       return 1;
     case 0x3027: // EGL_CONFIG_CAVEAT
       // We can return here one of EGL_NONE (0x3038), EGL_SLOW_CONFIG (0x3050) or EGL_NON_CONFORMANT_CONFIG (0x3051).
@@ -246,10 +243,10 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', '0x3038' /* EGL_NONE */, 'i32') }}};
       return 1;
     case 0x3031: // EGL_SAMPLES
-      {{{ makeSetValue('value', '0', 'EGL.configAttribs[config-1].samples' /* 2x2 Multisampling */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'configAttrib.samples' /* 2x2 Multisampling */, 'i32') }}};
       return 1;
     case 0x3032: // EGL_SAMPLE_BUFFERS
-      {{{ makeSetValue('value', '0', 'EGL.configAttribs[config-1].buffers' /* Multisampling enabled */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'configAttrib.buffers' /* Multisampling enabled */, 'i32') }}};
       return 1;
     case 0x3033: // EGL_SURFACE_TYPE
       {{{ makeSetValue('value', '0', '0x0004' /* EGL_WINDOW_BIT */, 'i32') }}};
@@ -300,7 +297,8 @@ var LibraryEGL = {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
-    if ((config <= 0) || (config > EGL.configAttribs.length)) { /* Check EGLConfig ID is within acceptable range */
+    var configIndex = config-1;
+    if ((configIndex < 0) || (configIndex >= EGL.configAttribs.length)) { /* Check EGLConfig ID is within acceptable range */
       EGL.setErrorCode(0x3005 /* EGL_BAD_CONFIG */);
       return 0;
     }
@@ -340,8 +338,9 @@ var LibraryEGL = {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
-
-    if ((config <= 0) || (config > EGL.configAttribs.length)) { /* Check EGLConfig ID is within acceptable range */
+    
+    var configIndex = config-1;
+    if ((configIndex < 0) || (configIndex >= EGL.configAttribs.length)) { /* Check EGLConfig ID is within acceptable range */
       EGL.setErrorCode(0x3005 /* EGL_BAD_CONFIG */);
       return 0;
     }
@@ -373,10 +372,10 @@ var LibraryEGL = {
     EGL.currentEGLConfig = config;
 
     var displayMode = (0x0002 /* GLUT_RGBA|GLUT_DOUBLE */ | 
-      (EGL.configAttribs[config-1].alpha && 0x0008) /* GLUT_ALPHA */ |
-      (EGL.configAttribs[config-1].depth && 0x0010) /* GLUT_DEPTH */ |
-      (EGL.configAttribs[config-1].stencil && 0x0020) /* GLUT_STENCIL */ |
-      (EGL.configAttribs[config-1].buffers && 0x0080) /* GLUT_MULTISAMPLE */
+      (EGL.configAttribs[configIndex].alpha && 0x0008) /* GLUT_ALPHA */ |
+      (EGL.configAttribs[configIndex].depth && 0x0010) /* GLUT_DEPTH */ |
+      (EGL.configAttribs[configIndex].stencil && 0x0020) /* GLUT_STENCIL */ |
+      (EGL.configAttribs[configIndex].buffers && 0x0080) /* GLUT_MULTISAMPLE */
     )
     
     _glutInitDisplayMode(displayMode);
