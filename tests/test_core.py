@@ -7293,6 +7293,10 @@ int main(int argc, char **argv) {
 
   def test_wrap_malloc(self):
     self.do_run(open(path_from_root('tests', 'wrap_malloc.cpp')).read(), 'OK.')
+    
+  def test_link_jslib(self):
+    self.emcc_args += ['-L', path_from_root('tests', 'link_jslib'), '-l', 'link_jslib']
+    self.do_run(open(path_from_root('tests', 'link_jslib', 'main.c')).read(), 'res: 42')
 
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
