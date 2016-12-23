@@ -331,6 +331,7 @@ Options that are modified or new in *emcc* are listed below:
 	
 ``--js-library <lib>``
 	A JavaScript library to use in addition to those in Emscripten's core libraries (src/library_*).
+	This can be also achieved by using the linking arguments ``-L`` and ``-l``.
 
 .. _emcc-verbose:
 
