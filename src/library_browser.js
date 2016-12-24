@@ -1297,6 +1297,18 @@ var LibraryBrowser = {
     return window.devicePixelRatio || 1.0;
   },
 
+  emscripten_show_mouse: function() {
+    var styleSheet = document.styleSheets[0];
+    var rules = styleSheet.cssRules;
+    for (var i = 0; i < rules.length; i++) {
+      if (rules[i].cssText.substr(0, 6) == 'canvas') {
+        styleSheet.deleteRule(i);
+        i--;
+      }
+    }
+    styleSheet.insertRule('canvas.emscripten { border: none; cursor: auto; }', 0);
+  },
+
   emscripten_hide_mouse: function() {
     var styleSheet = document.styleSheets[0];
     var rules = styleSheet.cssRules;
