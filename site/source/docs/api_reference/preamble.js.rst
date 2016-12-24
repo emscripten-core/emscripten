@@ -23,7 +23,9 @@ Calling compiled C functions from JavaScript
 	Call a compiled C function from JavaScript.
 
 	The function executes a compiled C function from JavaScript and returns the result. C++ name mangling means that "normal" C++ functions cannot be called; the function must either be defined in a **.c** file or be a C++ function defined with ``extern "C"``.
-	
+
+	``returnType`` and ``argTypes`` let you specify the types of parameters and the return value. The possible types are ``"number"``, ``"string"`` or ``"array"``, which correspond to the appropriate JavaScript types. Use ``"number"`` for any numeric type or C pointer, ``string`` for C ``char*`` that represent strings, and ``"array"`` for JavaScript arrays and typed arrays; for typed arrays, it must be a Uint8Array or Int8Array.
+
 	.. code-block:: javascript
 
 		// Call C from JavaScript
@@ -51,11 +53,11 @@ Calling compiled C functions from JavaScript
 		
 
 	:param ident: The name of the C function to be called.	
-	:param returnType: The return type of the function. This can be ``"number"``, ``"string"`` or ``"array"``, which correspond to the appropriate JavaScript types (use ``"number"`` for any C pointer, and ``"array"`` for JavaScript arrays and typed arrays; note that arrays are 8-bit), or for a void function it can be ``null`` (note: the JavaScript ``null`` value, not a string containing the word "null").
+	:param returnType: The return type of the function. Note that ``array`` is not supported as there is no way for us to know the length of the array. For a void function this can be ``null`` (note: the JavaScript ``null`` value, not a string containing the word "null").
 
 	.. note:: 64-bit integers become two 32-bit parameters, for the low and high bits (since 64-bit integers cannot be represented in JavaScript numbers).
 
-	:param argTypes: An array of the types of arguments for the function (if there are no arguments, this can be omitted). Types are as in ``returnType``, except that ``array`` is not supported as there is no way for us to know the length of the array).
+	:param argTypes: An array of the types of arguments for the function (if there are no arguments, this can be omitted).
 	:param args: An array of the arguments to the function, as native JavaScript values (as in ``returnType``). Note that string arguments will be stored on the stack (the JavaScript string will become a C string on the stack).
 	:returns: The result of the function call as a native JavaScript value (as in ``returnType``).
 	:opts: An optional options object. It can contain the following properties:

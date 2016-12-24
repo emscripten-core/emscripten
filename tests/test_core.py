@@ -5766,7 +5766,8 @@ def process(filename):
       ret = ccall('print_int', null, ['number'], [12]); Module.print(typeof ret);
       ret = ccall('print_float', null, ['number'], [14.56]); Module.print(typeof ret);
       ret = ccall('print_string', null, ['string'], ["cheez"]); Module.print(typeof ret);
-      ret = ccall('print_string', null, ['array'], [[97, 114, 114, 45, 97, 121, 0]]); Module.print(typeof ret);
+      ret = ccall('print_string', null, ['array'], [[97, 114, 114, 45, 97, 121, 0]]); Module.print(typeof ret); // JS array
+      ret = ccall('print_string', null, ['array'], [new Uint8Array([97, 114, 114, 45, 97, 121, 0])]); Module.print(typeof ret); // typed array
       ret = ccall('multi', 'number', ['number', 'number', 'number', 'string'], [2, 1.4, 3, 'more']); Module.print([typeof ret, ret].join(','));
       var p = ccall('malloc', 'pointer', ['number'], [4]);
       setValue(p, 650, 'i32');
