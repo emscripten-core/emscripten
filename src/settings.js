@@ -799,4 +799,6 @@ var OFFSCREENCANVAS_SUPPORT = 0; // If set to 1, enables support for transferrin
                                  // as well as explicit swap control for GL contexts. This needs browser support for the OffscreenCanvas
                                  // specification.
 
+var TRACE_FFI_CALLS = 0; // If set to 1, all FFI calls from within asm.js are logged to console. Useful for debugging where FFI calls occur from.
+
 // Reserved: variables containing POINTER_MASKING.

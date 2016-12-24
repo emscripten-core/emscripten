@@ -873,7 +873,19 @@ function ftCall_%s(%s) {%s
 
     # sent data
     the_global = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
-    sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
+    asm_library_args = {}
+    for f in basic_funcs + global_funcs:
+      if settings['TRACE_FFI_CALLS']:
+        asm_library_args[f] = 'traced_ffi_call("' + f + '", ' + f + ')'
+      else:
+        asm_library_args[f] = f
+    for v in basic_vars + basic_float_vars + global_vars:
+      asm_library_args[v] = v
+
+    sending = []
+    for key, value in asm_library_args.iteritems():
+      sending += ['"' + math_fix(key) + '": ' + value]
+    sending = '{ ' + ', '.join(sending) + ' }'
     # received
     receiving = ''
     if settings['ASSERTIONS']:
