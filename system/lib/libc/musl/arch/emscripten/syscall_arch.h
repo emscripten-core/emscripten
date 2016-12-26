@@ -26,6 +26,10 @@
 
 // static syscalls. we must have one non-variadic argument before the rest due to ISO C.
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 long __syscall1(int which, ...);
 long __syscall3(int which, ...);
 long __syscall4(int which, ...);
@@ -138,3 +142,6 @@ long __syscall333(int which, ...);
 long __syscall334(int which, ...);
 long __syscall340(int which, ...);
 
+#ifdef __cplusplus
+}
+#endif

@@ -308,7 +308,7 @@ var LibraryPThread = {
         };
 
         worker.onerror = function(e) {
-          Module['printErr']('pthread sent an error! ' + e.message);
+          Module['printErr']('pthread sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
         };
 
         // Allocate tempDoublePtr for the worker. This is done here on the worker's behalf, since we may need to do this statically
