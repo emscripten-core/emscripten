@@ -281,6 +281,14 @@ var Runtime = {
     }
     throw 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.';
 #else
+#if BINARYEN
+    // we can simply appent to the wasm table
+    var table = Module['wasmTable'];
+    var ret = table.length;
+    table.grow(1);
+    table.set(ret, func);
+    return ret;
+#else
     Runtime.alignFunctionTables(); // XXX we should rely on this being an invariant
     var tables = Runtime.getFunctionTables();
     var ret = -1;
@@ -291,6 +299,7 @@ var Runtime = {
       table.push(func);
     }
     return ret;
+#endif
 #endif
   },
 
@@ -310,12 +319,16 @@ var Runtime = {
   loadedDynamicLibraries: [],
 
   loadDynamicLibrary: function(lib) {
-    // TODO: addRunDep etc., do asynchronously when in the browser. for now we assume we can do a sync xhr, no mem init files in libs, and we ignore the sync xhr lag
+#if BINARYEN
+    var bin = Module['readBinary'](lib);
+    var libModule = Runtime.loadWebAssemblyModule(bin);
+#else
     var src = Module['read'](lib);
     var libModule = eval(src)(
       Runtime.alignFunctionTables(),
       Module
     );
+#endif
     // add symbols into global namespace TODO: weak linking etc.
     for (var sym in libModule) {
       if (!Module.hasOwnProperty(sym)) {
@@ -333,6 +346,108 @@ var Runtime = {
     }
     Runtime.loadedDynamicLibraries.push(libModule);
   },
+
+#if BINARYEN
+  // Loads a side module from binary data
+  loadWebAssemblyModule: function(binary) {
+    var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
+    assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0wasm
+    // we should see the dylink section right after the magic number and wasm version
+    assert(binary[8] === 0, 'need the dylink section to be first')
+    var next = 9;
+    function getLEB() {
+      var ret = 0;
+      var mul = 1;
+      while (1) {
+        var byte = binary[next++];
+        ret += ((byte & 0x7f) * mul);
+        mul *= 0x80;
+        if (!(byte & 0x80)) break;
+      }
+      return ret;
+    }
+    var sectionSize = getLEB();
+    assert(binary[next] === 6);                 next++; // size of "dylink" string
+    assert(binary[next] === 'd'.charCodeAt(0)); next++;
+    assert(binary[next] === 'y'.charCodeAt(0)); next++;
+    assert(binary[next] === 'l'.charCodeAt(0)); next++;
+    assert(binary[next] === 'i'.charCodeAt(0)); next++;
+    assert(binary[next] === 'n'.charCodeAt(0)); next++;
+    assert(binary[next] === 'k'.charCodeAt(0)); next++;
+    var memorySize = getLEB();
+    var tableSize = getLEB();
+    var env = Module['asmLibraryArg'];
+    // TODO: use only memoryBase and tableBase, need to update asm.js backend
+    var table = Module['wasmTable'];
+    var oldTableSize = table.length;
+    env['memoryBase'] = env['gb'] = Runtime.alignMemory(getMemory(memorySize + Runtime.STACK_ALIGN), Runtime.STACK_ALIGN); // TODO: add to cleanups
+    env['tableBase'] = env['fb'] = oldTableSize;
+    var originalTable = table;
+    table.grow(tableSize);
+    assert(table === originalTable);
+    // zero-initialize memory and table TODO: in some cases we can tell it is already zero initialized
+    for (var i = env['memoryBase']; i < env['memoryBase'] + memorySize; i++) {
+      HEAP8[i] = 0;
+    }
+    for (var i = env['tableBase']; i < env['tableBase'] + tableSize; i++) {
+      table.set(i, null);
+    }
+    // copy currently exported symbols so the new module can import them
+    for (var x in Module) {
+      if (!(x in env)) {
+        env[x] = Module[x];
+      }
+    }
+    var info = {
+      global: Module['asmGlobalArg'],
+      env: env
+    };
+#if ASSERTIONS
+    var oldTable = [];
+    for (var i = 0; i < oldTableSize; i++) {
+      oldTable.push(table.get(i));
+    }
+#endif
+    // create a module from the instance
+    var instance = new WebAssembly.Instance(new WebAssembly.Module(binary), info);
+#if ASSERTIONS
+    // the table should be unchanged
+    assert(table === originalTable);
+    assert(table === Module['wasmTable']);
+    if (instance.exports['table']) {
+      assert(table === instance.exports['table']);
+    }
+    // the old part of the table should be unchanged
+    for (var i = 0; i < oldTableSize; i++) {
+      assert(table.get(i) === oldTable[i], 'old table entries must remain the same');
+    }
+    // verify that the new table region was filled in
+    for (var i = 0; i < tableSize; i++) {
+      assert(table.get(oldTableSize + i) !== undefined, 'table entry was not filled in');
+    }
+#endif
+    var exports = {};
+    for (var e in instance.exports) {
+      var value = instance.exports[e];
+      if (typeof value === 'number') {
+        // relocate it - modules export the absolute value, they can't relocate before they export
+        value = value + env['memoryBase'];
+      }
+      exports[e] = value;
+    }
+    // initialize the module
+    var init = exports['__post_instantiate'];
+    if (init) {
+      if (runtimeInitialized) {
+        init();
+      } else {
+        // we aren't ready to run compiled code yet
+        __ATINIT__.push(init);
+      }
+    }
+    return exports;
+  },
+#endif
 #endif
 
   warnOnce: function(text) {

@@ -2039,7 +2039,7 @@ def reconfigure_cache():
   Cache = cache.Cache(debug=DEBUG_CACHE)
 
 class JS:
-  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+Runtime\.GLOBAL_BASEH]+)\);'
+  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+Runtime\.GLOBAL_BASEHgb]+)\);'
   no_memory_initializer_pattern = '/\* no memory initializer \*/'
 
   memory_staticbump_pattern = 'STATICTOP = STATIC_BASE \+ (\d+);'
@@ -2263,6 +2263,49 @@ class JS:
   @staticmethod
   def is_function_table(name):
     return name.startswith('FUNCTION_TABLE_')
+
+class WebAssembly:
+  @staticmethod
+  def lebify(x):
+    assert x >= 0, 'TODO: signed'
+    ret = []
+    while 1:
+      byte = x & 127
+      x >>= 7
+      more = x != 0
+      if more:
+        byte = byte | 128
+      ret.append(chr(byte))
+      if not more:
+        break
+    return ret
+
+  @staticmethod
+  def make_shared_library(js_file, wasm_file):
+    # a wasm shared library has a special "dylink" section, see tools-conventions repo
+    js = open(js_file).read()
+    m = re.search("var STATIC_BUMP = (\d+);", js)
+    mem_size = int(m.group(1))
+    m = re.search("Module\['wasmTableSize'\] = (\d+);", js)
+    table_size = int(m.group(1))
+    logging.debug('creating wasm dynamic library with mem size %d, table size %d' % (mem_size, table_size))
+    wso = js_file + '.wso'
+    # write the binary
+    wasm = open(wasm_file, 'rb').read()
+    f = open(wso, 'wb')
+    f.write(wasm[0:8]) # copy magic number and version
+    # write the special section
+    f.write('\0') # user section is code 0
+    # need to find the size of this section
+    name = "\06dylink" # section name, including prefixed size
+    contents = WebAssembly.lebify(mem_size) + WebAssembly.lebify(table_size)
+    size = len(name) + len(contents)
+    f.write(''.join(WebAssembly.lebify(size)))
+    f.write(name)
+    f.write(''.join(contents))
+    f.write(wasm[8:]) # copy rest of binary
+    f.close()
+    return wso
 
 def execute(cmd, *args, **kw):
   try:

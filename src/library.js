@@ -1601,21 +1601,30 @@ LibraryManager.library = {
       if (!target || target.isFolder || target.isDevice) {
         DLFCN.errorMsg = 'Could not find dynamic lib: ' + filename;
         return 0;
-      } else {
-        FS.forceLoadFile(target);
-        var lib_data = FS.readFile(filename, { encoding: 'utf8' });
       }
+      FS.forceLoadFile(target);
 
+      var lib_module;
       try {
-        var lib_module = eval(lib_data)(
+#if BINARYEN
+        // the shared library is a shared wasm library (see tools/shared.py WebAssembly.make_shared_library)
+        var lib_data = FS.readFile(filename, { encoding: 'binary' });
+        if (!(lib_data instanceof Uint8Array)) lib_data = new Uint8Array(lib_data);
+        //Module.printErr('libfile ' + filename + ' size: ' + lib_data.length);
+        lib_module = Runtime.loadWebAssemblyModule(lib_data);
+#else
+        // the shared library is a JS file, which we eval
+        var lib_data = FS.readFile(filename, { encoding: 'utf8' });
+        lib_module = eval(lib_data)(
           Runtime.alignFunctionTables(),
           Module
         );
+#endif
       } catch (e) {
 #if ASSERTIONS
         Module.printErr('Error in loading dynamic library: ' + e);
 #endif
-        DLFCN.errorMsg = 'Could not evaluate dynamic lib: ' + filename;
+        DLFCN.errorMsg = 'Could not evaluate dynamic lib: ' + filename + '\n' + e;
         return 0;
       }
 
@@ -1705,6 +1714,7 @@ LibraryManager.library = {
         var result = lib.module[symbol];
         if (typeof result == 'function') {
           result = Runtime.addFunction(result);
+          //Module.printErr('adding function dlsym result for ' + symbol + ' => ' + result);
           lib.cached_functions = result;
         }
         return result;

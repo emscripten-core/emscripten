@@ -204,6 +204,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     # extra coverages
     for emulate_casts in [0, 1]:
       for emulate_fps in [0, 1, 2]:
+        if self.is_wasm() and emulate_casts and emulate_fps: continue # in wasm we can't do both
         print emulate_casts, emulate_fps
         Settings.EMULATE_FUNCTION_POINTER_CASTS = emulate_casts
         Settings.EMULATED_FUNCTION_POINTERS = emulate_fps
@@ -1455,16 +1456,15 @@ int main() {
 
   @no_wasm_backend('long doubles are f128s in wasm backend')
   def test_pystruct(self):
-      def test():
-        self.do_run_in_out_file_test('tests', 'test_pystruct')
+    def test():
+      self.do_run_in_out_file_test('tests', 'test_pystruct')
 
-      test()
+    test()
 
-      print 'relocatable' # this tests recursive global structs => nontrivial postSets for relocation
-      assert Settings.RELOCATABLE == Settings.EMULATED_FUNCTION_POINTERS == 0
-      Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 1
-      test()
-      Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 0
+    print 'relocatable' # this tests recursive global structs => nontrivial postSets for relocation
+    assert Settings.RELOCATABLE == Settings.EMULATED_FUNCTION_POINTERS == 0
+    Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 1
+    test()
 
   def test_ptrtoint(self):
       runner = self
@@ -2258,7 +2258,7 @@ The current type of b is: 9
 
   def can_dlfcn(self):
     if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no dlfcn with memory growth yet')
-    if self.is_wasm(): return self.skip('no shared modules in wasm')
+    if self.is_wasm_backend(): return self.skip('no shared modules in wasm backend')
     return True
 
   def prep_dlfcn_lib(self):
@@ -2273,10 +2273,19 @@ The current type of b is: 9
 def process(filename):
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
+    "FS.createDataFile('/', 'liblib.so', " + str(map(ord, open('liblib.so', 'rb').read())) + ", true, false, false);"
   )
   open(filename, 'w').write(src)
 '''
+
+  def build_dlfcn_lib(self, lib_src, dirname, filename):
+    if Settings.BINARYEN:
+      # emcc emits a wasm in this case
+      self.build(lib_src, dirname, filename, js_outfile=False)
+      shutil.move(filename + '.o.wasm', os.path.join(dirname, 'liblib.so'))
+    else:
+      self.build(lib_src, dirname, filename)
+      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
   def test_dlfcn_basic(self):
     if not self.can_dlfcn(): return
@@ -2288,7 +2297,7 @@ def process(filename):
       class Foo {
       public:
         Foo() {
-          printf("Constructing lib object.\\n");
+          puts("Constructing lib object.");
         }
       };
 
@@ -2296,8 +2305,7 @@ def process(filename):
       '''
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.cpp')
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     src = '''
@@ -2307,7 +2315,7 @@ def process(filename):
       class Bar {
       public:
         Bar() {
-          printf("Constructing main object.\\n");
+          puts("Constructing main object.");
         }
       };
 
@@ -2322,6 +2330,7 @@ def process(filename):
                 post_build=self.dlfcn_post_build)
 
   def test_dlfcn_i64(self):
+    Settings.BINARYEN_IMPRECISE = 1 # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     if not self.can_dlfcn(): return
 
     self.prep_dlfcn_lib()
@@ -2333,8 +2342,7 @@ def process(filename):
       '''
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.c')
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     Settings.EXPORTED_FUNCTIONS = ['_main']
@@ -2350,6 +2358,10 @@ def process(filename):
       int main() {
         p = malloc(1024);
         void *lib_handle = dlopen("liblib.so", 0);
+        if (!lib_handle) {
+          puts(dlerror());
+          abort();
+        }
         printf("load %p\n", lib_handle);
         intfunc x = (intfunc)dlsym(lib_handle, "foo");
         printf("foo func %p\n", x);
@@ -2360,6 +2372,7 @@ def process(filename):
       '''
     self.do_run(src, '|65830|', post_build=self.dlfcn_post_build)
 
+  @no_wasm # TODO: EM_ASM in shared wasm modules, stored inside the wasm somehow
   def test_dlfcn_em_asm(self):
     if not self.can_dlfcn(): return
 
@@ -2375,8 +2388,7 @@ def process(filename):
       Foo global;
       '''
     filename = 'liblib.cpp'
-    self.build(lib_src, self.get_dir(), filename)
-    shutil.move(filename + '.o.js', 'liblib.so')
+    self.build_dlfcn_lib(lib_src, self.get_dir(), filename)
 
     self.prep_dlfcn_main()
     src = '''
@@ -2420,8 +2432,7 @@ def process(filename):
       '''
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.cpp')
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
@@ -2478,7 +2489,7 @@ def process(filename):
                 output_nicerizer=lambda x, err: x.replace('\n', '*'),
                 post_build=self.dlfcn_post_build)
 
-    if Settings.ASM_JS and SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]):
+    if Settings.ASM_JS and SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]) and not self.is_wasm():
       out = run_js('liblib.so', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=STDOUT)
       if 'asm' in out:
         self.validate_asmjs(out)
@@ -2514,8 +2525,7 @@ def process(filename):
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.cpp')
     Settings.EXPORTED_FUNCTIONS = ['_func']
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     Settings.LINKABLE = 1
@@ -2593,8 +2603,7 @@ def process(filename):
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.cpp')
     Settings.EXPORTED_FUNCTIONS = ['_func']
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     src = r'''
@@ -2630,6 +2639,7 @@ def process(filename):
     self.do_run(src, '100\n200\n13\n42\n',
                 post_build=self.dlfcn_post_build)
 
+  @no_wasm # TODO: this needs to add JS functions to a wasm Table, need to figure that out
   def test_dlfcn_self(self):
     if not self.can_dlfcn(): return
     self.prep_dlfcn_main()
@@ -2665,8 +2675,7 @@ def process(filename):
     Settings.EXPORTED_FUNCTIONS = ['_myfunc']
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.c')
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     src = '''
@@ -2717,8 +2726,7 @@ def process(filename):
     Settings.EXPORTED_FUNCTIONS = ['_myfunc']
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.c')
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     src = '''
@@ -2793,8 +2801,7 @@ def process(filename):
     Settings.EXPORTED_FUNCTIONS = ['_callvoid', '_callint', '_getvoid', '_getint']
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.c')
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     src = r'''
@@ -2873,8 +2880,7 @@ ok
     Settings.EXPORTED_FUNCTIONS = ['_mallocproxy', '_freeproxy']
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.c')
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     src = open(path_from_root('tests', 'dlmalloc_proxy.c')).read()
@@ -2899,8 +2905,7 @@ ok
     Settings.EXPORTED_FUNCTIONS = ['_jumpy']
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.c')
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     src = r'''
@@ -2965,8 +2970,7 @@ out!
     Settings.EXPORTED_FUNCTIONS = ['_ok', '_fail']
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.cpp')
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+    self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
     src = r'''
@@ -3030,21 +3034,22 @@ ok
       # side settings
       Settings.MAIN_MODULE = 0
       Settings.SIDE_MODULE = 1
+      side_suffix = 'js' if not self.is_wasm() else 'wasm'
       if type(side) == str:
         base = 'liblib.cpp' if not force_c else 'liblib.c'
-        try_delete(base + '.o.js')
-        self.build(side, self.get_dir(), base)
+        try_delete(base + '.o.' + side_suffix)
+        self.build(side, self.get_dir(), base, js_outfile=(side_suffix == 'js'))
         if force_c:
-          shutil.move(base + '.o.js', 'liblib.cpp.o.js')
+          shutil.move(base + '.o.' + side_suffix, 'liblib.cpp.o.' + side_suffix)
       else:
         # side is just a library
-        try_delete('liblib.cpp.o.js')
-        Popen([PYTHON, EMCC] + side + self.emcc_args + Settings.serialize() + ['-o', os.path.join(self.get_dir(), 'liblib.cpp.o.js')]).communicate()
-      if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]):
+        try_delete('liblib.cpp.o.' + side_suffix)
+        Popen([PYTHON, EMCC] + side + self.emcc_args + Settings.serialize() + ['-o', os.path.join(self.get_dir(), 'liblib.cpp.o.' + side_suffix)]).communicate()
+      if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]) and not self.is_wasm():
         out = run_js('liblib.cpp.o.js', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=STDOUT)
         if 'asm' in out:
           self.validate_asmjs(out)
-      shutil.move('liblib.cpp.o.js', 'liblib.so')
+      shutil.move('liblib.cpp.o.' + side_suffix, 'liblib.so')
 
       # main settings
       Settings.MAIN_MODULE = 1
@@ -3143,6 +3148,7 @@ var Module = {
       int sidey(voidfunc f) { if (f) f(); return 1; }
     ''', 'hello 1\n', header='typedef void (*voidfunc)();')
 
+  @no_wasm # uses function tables in an asm.js specific way
   def test_dylink_funcpointers2(self):
     self.dylink_test(r'''
       #include "header.h"
@@ -3227,6 +3233,7 @@ var Module = {
     ''')
 
   def test_dylink_funcpointers_float(self):
+    Settings.BINARYEN_IMPRECISE = 1 # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     self.dylink_test(r'''
       #include <stdio.h>
       #include "header.h"
@@ -3278,7 +3285,7 @@ var Module = {
       ''', expected=['new main\nnew side\n', 'new side\nnew main\n'])
     test()
 
-    if Settings.ASSERTIONS == 1:
+    if Settings.ASSERTIONS == 1 and not self.is_wasm(): # TODO: this in wasm
       print 'check warnings'
       Settings.ASSERTIONS = 2
       test()
@@ -3405,6 +3412,7 @@ var Module = {
     ''', expected=['hello through side\n'])
 
   def test_dylink_jslib(self):
+    Settings.BINARYEN_IMPRECISE = 1 # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     open('lib.js', 'w').write(r'''
       mergeInto(LibraryManager.library, {
         test_lib_func: function(x) {
@@ -3492,6 +3500,7 @@ var Module = {
       }
     ''', expected=['simple.\nsimple.\nsimple.\nsimple.\n'])
 
+  @no_wasm # todo
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
     if not self.can_dlfcn(): return
 
@@ -3602,6 +3611,7 @@ var Module = {
       }
     ''', expected=['starting main\nBase\nDerived\nOK'])
 
+  @no_wasm # TODO
   def test_dylink_hyper_dupe(self):
     if not self.can_dlfcn(): return
 
@@ -3700,6 +3710,7 @@ var Module = {
                    'main init sees -524, -534, 72.\nside init sees 82, 72, -534.\nmain main sees -524, -534, 72.'])
 
   def test_dylink_zlib(self):
+    Settings.BINARYEN_IMPRECISE = 1 # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'zlib')]
 
     Popen([PYTHON, path_from_root('embuilder.py'), 'build' ,'zlib']).communicate()
@@ -4941,11 +4952,12 @@ return malloc(size);
       main = main[:main.find('\n}')]
       assert main.count('\n') <= 7, ('must not emit too many postSets: %d' % main.count('\n')) + ' : ' + main
 
-    print 'relocatable'
-    assert Settings.RELOCATABLE == Settings.EMULATED_FUNCTION_POINTERS == 0
-    Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 1
-    test()
-    Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 0
+    if not self.is_wasm(): # TODO: wrappers for wasm modules
+      print 'relocatable'
+      assert Settings.RELOCATABLE == Settings.EMULATED_FUNCTION_POINTERS == 0
+      Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 1
+      test()
+      Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 0
 
     if self.is_emterpreter():
       print 'emterpreter/async/assertions' # extra coverage
@@ -6043,10 +6055,11 @@ def process(filename):
       self.emcc_args += ['--closure', '1']
       self.do_run_from_file(src, expected)
 
-    print 'function pointer emulation'
-    Settings.RESERVED_FUNCTION_POINTERS = 0
-    Settings.EMULATED_FUNCTION_POINTERS = 1 # with emulation, we don't need to reserve
-    self.do_run_from_file(src, expected)
+    if not self.is_wasm(): # when emulating, we use a wasm Table, but we can't just assign a JS function to it, TODO: wrap the JS in wasm, see settings.js
+      print 'function pointer emulation'
+      Settings.RESERVED_FUNCTION_POINTERS = 0
+      Settings.EMULATED_FUNCTION_POINTERS = 1 # with emulation, we don't need to reserve
+      self.do_run_from_file(src, expected)
 
   @no_wasm_backend('requires EM_ASM args support in wasm backend')
   def test_getFuncWrapper_sig_alias(self):
@@ -6141,7 +6154,7 @@ def process(filename):
 
     self.do_run_in_out_file_test('tests', 'core', 'test_tracing')
 
-  @no_wasm_backend()
+  @no_wasm # TODO: ctor evaller in binaryen
   def test_eval_ctors(self):
     if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args): return self.skip('need js optimizations')
 

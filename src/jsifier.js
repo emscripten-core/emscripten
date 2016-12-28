@@ -68,6 +68,10 @@ function JSify(data, functionsOnly) {
           libFuncsToInclude.push(key);
         }
       }
+      // mark implemented functions as already added (so if memcpy is in the forced full JS library, but also done in C, we just need the C)
+      for (var added in IMPLEMENTED_FUNCTIONS) {
+        addedLibraryItems[added.substr(1)] = true;
+      }
     } else {
       libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
     }

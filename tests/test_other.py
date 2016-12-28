@@ -7162,12 +7162,12 @@ int main() {
             (['-O2'], False, True),
             (['-O2', '--js-opts', '1'], True, False), # user asked
             (['-O2', '-s', 'EMTERPRETIFY=1'], True, False), # option forced
-            (['-O2', '-s', 'EVAL_CTORS=1'], False, False), # ctor evaller uses js opts, but is not a js opt, and doesn't force other js opts
+            (['-O2', '-s', 'EVAL_CTORS=1'], False, True), # ctor evaller turned off since only-wasm
             (['-O2', '-s', 'OUTLINING_LIMIT=1000'], True, False), # option forced
             (['-O2', '-s', "BINARYEN_METHOD='interpret-s-expr,asmjs'"], True, False), # asmjs in methods means we need good asm.js
             (['-O3'], False, True),
             (['-Os'], False, True),
-            (['-Oz'], False, False), # even though we run ctor evaller, don't run js opts, but we can't only-wasm due to ctor-evaller running js opts internally
+            (['-Oz'], False, True), # ctor evaller turned off since only-wasm
           ]:
           for option in ['BINARYEN', 'WASM']: # the two should be identical
             try_delete('a.out.js')
@@ -7292,13 +7292,45 @@ int main() {
           else:
             assert parts[6] == str(expect_max)
 
+  def test_binaryen_ctors(self):
+    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey')
+    # ctor order must be identical to js builds, deterministically
+    open('src.cpp', 'w').write(r'''
+      #include <stdio.h>
+      struct A {
+        A() { puts("constructing A!"); }
+      };
+      A a;
+      struct B {
+        B() { puts("constructing B!"); }
+      };
+      B b;
+      int main() {}
+    ''')
+    subprocess.check_call([PYTHON, EMCC, 'src.cpp'])
+    correct = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE)
+    for args in [[], ['-s', 'RELOCATABLE=1'], ['-s', 'MAIN_MODULE=1']]:
+      print args
+      subprocess.check_call([PYTHON, EMCC, 'src.cpp', '-s', 'WASM=1', '-o', 'b.out.js'] + args)
+      seen = run_js('b.out.js', engine=SPIDERMONKEY_ENGINE)
+      assert correct == seen, correct + '\n vs \n' + seen
+
   def test_wasm_targets(self):
     for f in ['a.wasm', 'a.wast']:
       process = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', f], stdout=PIPE, stderr=PIPE)
       out, err = process.communicate()
       print err
       assert process.returncode is not 0, 'wasm suffix is an error'
-      self.assertContained('''output file "%s" has a wasm suffix, but we cannot emit wasm by itself''' % f, err)
+      self.assertContained('''output file "%s" has a wasm suffix, but we cannot emit wasm by itself, except as a dynamic library''' % f, err)
+    # side modules do allow a wasm target
+    for opts, target in [([], 'a.out.wasm'), (['-o', 'lib.wasm'], 'lib.wasm')]:
+      # specified target
+      print target
+      self.clear()
+      subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-s', 'SIDE_MODULE=1'] + opts)
+      assert 'dylink' in open(target).read()
+      for x in os.listdir('.'):
+        assert not x.endswith('.js'), 'we should not emit js when making a wasm side module'
 
   def test_check_engine(self):
     compiler_engine = COMPILER_ENGINE
