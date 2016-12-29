@@ -2772,6 +2772,7 @@ window.close = function() {
           if (typeof Module !== "undefined") throw "what?!"; // do not pollute the global scope, we are modularized!
           HelloWorld.noInitialRun = true; // errorneous module capture will load this and cause timeout
           HelloWorld();
+          if (HelloWorld.Pointer_stringify !== undefined) throw "Unexpected member is detected!"; // module constructor should not be polluted
         '''), # use EXPORT_NAME
         (['-s', 'EXPORT_NAME="HelloWorld"'], '''
           var hello = HelloWorld({ noInitialRun: true, onRuntimeInitialized: function() {
