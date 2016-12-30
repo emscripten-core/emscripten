@@ -695,7 +695,10 @@ function _emscripten_asm_const_%s(%s) {
         basic_vars += ['cttz_i8']
 
     if settings['RELOCATABLE']:
-      basic_vars += ['gb', 'fb']
+      if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
+        basic_vars += ['gb', 'fb']
+      else:
+        basic_vars += ['memoryBase', 'tableBase'] # wasm side modules have a specific convention for these
       if not settings['SIDE_MODULE']:
         asm_setup += 'var gb = Runtime.GLOBAL_BASE, fb = 0;\n'
 
