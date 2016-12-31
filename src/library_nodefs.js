@@ -4,7 +4,7 @@ mergeInto(LibraryManager.library, {
   $NODEFS: {
     isWindows: false,
     staticInit: function() {
-      NODEFS.isWindows = !!process.platform.match(/^win/);
+      NODEFS.isWindows = process.platform && !!process.platform.match(/^win/);
     },
     mount: function (mount) {
       assert(ENVIRONMENT_IS_NODE);
