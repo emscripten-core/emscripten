@@ -1,5 +1,24 @@
 #include "Fetch.js"
 
+if (typeof Atomics === 'undefined') {
+  // Polyfill singlethreaded atomics ops from http://lars-t-hansen.github.io/ecmascript_sharedmem/shmem.html#Atomics.add
+  // No thread-safety needed since we don't have multithreading support.
+  Atomics = {};
+  Atomics['add'] = function(t, i, v) { var w = t[i]; t[i] += v; return w; }
+  Atomics['and'] = function(t, i, v) { var w = t[i]; t[i] &= v; return w; }
+  Atomics['compareExchange'] = function(t, i, e, r) { var w = t[i]; if (w == e) t[i] = r; return w; }
+  Atomics['exchange'] = function(t, i, v) { var w = t[i]; t[i] = v; return w; }
+  Atomics['wait'] = function(t, i, v, o) { if (t[i] != v) return 'not-equal'; else return 'timed-out'; }
+  Atomics['wake'] = function(t, i, c) { return 0; }
+  Atomics['wakeOrRequeue'] = function(t, i1, c, i2, v) { return 0; }
+  Atomics['isLockFree'] = function(s) { return true; }
+  Atomics['load'] = function(t, i) { return t[i]; }
+  Atomics['or'] = function(t, i, v) { var w = t[i]; t[i] |= v; return w; }
+  Atomics['store'] = function(t, i, v) { t[i] = v; return v; }
+  Atomics['sub'] = function(t, i, v) { var w = t[i]; t[i] -= v; return w; }
+  Atomics['xor'] = function(t, i, v) { var w = t[i]; t[i] ^= v; return w; }
+}
+
 var Atomics_add = Atomics.add;
 var Atomics_and = Atomics.and;
 var Atomics_compareExchange = Atomics.compareExchange;

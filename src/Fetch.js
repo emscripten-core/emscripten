@@ -83,7 +83,7 @@ var Fetch = {
 
 #if USE_PTHREADS
       if (isMainThread) {
-        Fetch.initFetchWorker();
+        if (typeof SharedArrayBuffer !== 'undefined') Fetch.initFetchWorker();
         removeRunDependency('library_fetch_init');
       }
 #else
@@ -98,7 +98,7 @@ var Fetch = {
 
 #if USE_PTHREADS
       if (isMainThread) {
-        Fetch.initFetchWorker();
+        if (typeof SharedArrayBuffer !== 'undefined') Fetch.initFetchWorker();
         removeRunDependency('library_fetch_init');
       }
 #endif

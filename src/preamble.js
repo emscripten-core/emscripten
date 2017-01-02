@@ -1181,7 +1181,7 @@ if (typeof Atomics === 'undefined') {
   Atomics['and'] = function(t, i, v) { var w = t[i]; t[i] &= v; return w; }
   Atomics['compareExchange'] = function(t, i, e, r) { var w = t[i]; if (w == e) t[i] = r; return w; }
   Atomics['exchange'] = function(t, i, v) { var w = t[i]; t[i] = v; return w; }
-  Atomics['wait'] = function(t, i, v, o) { if (t[i] != v) abort('Multithreading is not supported, cannot sleep to wait for futex!'); }
+  Atomics['wait'] = function(t, i, v, o) { if (t[i] != v) return 'not-equal'; else return 'timed-out'; }
   Atomics['wake'] = function(t, i, c) { return 0; }
   Atomics['wakeOrRequeue'] = function(t, i1, c, i2, v) { return 0; }
   Atomics['isLockFree'] = function(s) { return true; }
@@ -1190,22 +1190,6 @@ if (typeof Atomics === 'undefined') {
   Atomics['store'] = function(t, i, v) { t[i] = v; return v; }
   Atomics['sub'] = function(t, i, v) { var w = t[i]; t[i] -= v; return w; }
   Atomics['xor'] = function(t, i, v) { var w = t[i]; t[i] ^= v; return w; }
-}
-
-// In old Atomics spec, Atomics.OK/.TIMEDOUT/.NOTEQUAL were integers. In new spec, Atomics functions return strings, so if we are in the new spec,
-// assign the strings to the place where the integers would have been to keep implementation of emscripten_futex_wait straightforward without dynamic checks for both.
-// See https://github.com/tc39/ecmascript_sharedmem/issues/69 for details.
-if (typeof Atomics['OK'] === 'undefined') {
-  Atomics['OK'] = 'ok';
-  Atomics['TIMEDOUT'] = 'timed-out';
-  Atomics['NOTEQUAL'] = 'not-equal';
-}
-
-// If running browser with old API names, account for function renames. See https://bugzilla.mozilla.org/show_bug.cgi?id=1260910.
-if (typeof Atomics['wait'] === 'undefined') {
-  Atomics['wait'] = Atomics['futexWait'];
-  Atomics['wake'] = Atomics['futexWake'];
-  Atomics['wakeOrRequeue'] = Atomics['futexWakeOrRequeue'];
 }
 
 #else // USE_PTHREADS

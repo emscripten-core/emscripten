@@ -980,7 +980,7 @@ for (var named in NAMED_GLOBALS) {
       receiving += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in metadata['aliases'].iteritems()])
 
     if settings['USE_PTHREADS']:
-      shared_array_buffer = "if (typeof SharedArrayBuffer !== 'undefined') Module.asmGlobalArg['Atomics'] = Atomics;"
+      shared_array_buffer = "Module.asmGlobalArg['Atomics'] = Atomics;"
     else:
       shared_array_buffer = ''
 
