@@ -281,17 +281,24 @@ var LibraryEGL = {
       }
       contextAttribs += 8;
     }
-    if (glesContextVersion != 2) {
+    if (glesContextVersion != 2 && glesContextVersion != 3) {
 #if GL_ASSERTIONS
-      Module.printErr('When initializing GLES2/WebGL1 via EGL, one must pass EGL_CONTEXT_CLIENT_VERSION = 2 to GL context attributes! GLES version ' + glesContextVersion + ' is not supported!');
+      Module.printErr('When initializing GLES2/WebGL1 via EGL, one must pass EGL_CONTEXT_CLIENT_VERSION = 2 or 3 to GL context attributes! GLES version ' + glesContextVersion + ' is not supported!');
 #endif
       EGL.setErrorCode(0x3005 /* EGL_BAD_CONFIG */);
       return 0; /* EGL_NO_CONTEXT */
     }
 
     _glutInitDisplayMode(0xB2 /* GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE | GLUT_STENCIL */);
+
     EGL.windowID = _glutCreateWindow();
     if (EGL.windowID != 0) {
+      if (glesContextVersion == 3 && (typeof WebGL2RenderingContext === 'undefined'
+          || !(Module.ctx instanceof WebGL2RenderingContext))) {
+        EGL.setErrorCode(0x3005 /* EGL_BAD_CONFIG */);
+        return 0;
+      }
+
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
       // Note: This function only creates a context, but it shall not make it active.
       return 62004; // Magic ID for Emscripten EGLContext
@@ -428,7 +435,12 @@ var LibraryEGL = {
         {{{ makeSetValue('value', '0', '0x30A0' /* EGL_OPENGL_ES_API */, 'i32') }}};
         return 1;
       case 0x3098: // EGL_CONTEXT_CLIENT_VERSION
-        {{{ makeSetValue('value', '0', '2' /* GLES2 context */, 'i32') }}}; // We always report the context to be a GLES2 context (and not a GLES1 context)
+	if (typeof WebGL2RenderingContext !== 'undefined'
+            && Module.ctx instanceof WebGL2RenderingContext) {
+          {{{ makeSetValue('value', '0', '3' /* GLES3 context */, 'i32') }}};
+	} else {
+          {{{ makeSetValue('value', '0', '2' /* GLES2 context */, 'i32') }}};
+        }
         return 1;
       case 0x3086: // EGL_RENDER_BUFFER
         // The context is bound to the visible canvas window - it's always backbuffered. 
