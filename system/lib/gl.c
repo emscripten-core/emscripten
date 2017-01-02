@@ -7,6 +7,7 @@
 #define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>
 #include <GL/glext.h>
+#include <EGL/egl.h>
 
 // Define emscripten_ versions of gl functions, to avoid name collisions
 
@@ -1596,7 +1597,34 @@ void* emscripten_GetProcAddress(const char *name_) {
   else if (!strcmp(name, "glAttachObject")) name = "glAttachShader";
   else if (!strcmp(name, "glDetachObject")) name = "glDetachShader";
   // main list
-  if (!strcmp(name, "glActiveTexture")) return emscripten_glActiveTexture;
+  if (!strcmp(name, "eglGetError")) return eglGetError;
+  else if (!strcmp(name, "eglGetDisplay")) return eglGetDisplay;
+  else if (!strcmp(name, "eglInitialize")) return eglInitialize;
+  else if (!strcmp(name, "eglTerminate")) return eglTerminate;
+  else if (!strcmp(name, "eglQueryString")) return eglQueryString;
+  else if (!strcmp(name, "eglGetConfigs")) return eglGetConfigs;
+  else if (!strcmp(name, "eglChooseConfig")) return eglChooseConfig;
+  else if (!strcmp(name, "eglGetConfigAttrib")) return eglGetConfigAttrib;
+  else if (!strcmp(name, "eglCreateWindowSurface")) return eglCreateWindowSurface;
+  else if (!strcmp(name, "eglDestroySurface")) return eglDestroySurface;
+  else if (!strcmp(name, "eglQuerySurface")) return eglQuerySurface;
+  else if (!strcmp(name, "eglBindAPI")) return eglBindAPI;
+  else if (!strcmp(name, "eglQueryAPI")) return eglQueryAPI;
+  else if (!strcmp(name, "eglWaitClient")) return eglWaitClient;
+  else if (!strcmp(name, "eglReleaseThread")) return eglReleaseThread;
+  else if (!strcmp(name, "eglSwapInterval")) return eglSwapInterval;
+  else if (!strcmp(name, "eglCreateContext")) return eglCreateContext;
+  else if (!strcmp(name, "eglDestroyContext")) return eglDestroyContext;
+  else if (!strcmp(name, "eglMakeCurrent")) return eglMakeCurrent;
+  else if (!strcmp(name, "eglGetCurrentContext")) return eglGetCurrentContext;
+  else if (!strcmp(name, "eglGetCurrentSurface")) return eglGetCurrentSurface;
+  else if (!strcmp(name, "eglGetCurrentDisplay")) return eglGetCurrentDisplay;
+  else if (!strcmp(name, "eglQueryContext")) return eglQueryContext;
+  else if (!strcmp(name, "eglWaitGL")) return eglWaitGL;
+  else if (!strcmp(name, "eglWaitNative")) return eglWaitNative;
+  else if (!strcmp(name, "eglSwapBuffers")) return eglSwapBuffers;
+  else if (!strcmp(name, "eglGetProcAddress")) return emscripten_GetProcAddress;
+  else if (!strcmp(name, "glActiveTexture")) return emscripten_glActiveTexture;
   else if (!strcmp(name, "glAttachShader")) return emscripten_glAttachShader;
   else if (!strcmp(name, "glBeginQuery")) return emscripten_glBeginQuery;
   else if (!strcmp(name, "glBeginTransformFeedback")) return emscripten_glBeginTransformFeedback;
