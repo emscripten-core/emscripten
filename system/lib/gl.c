@@ -1767,7 +1767,7 @@ void* emscripten_GetProcAddress(const char *name_) {
   else if (!strcmp(name, "glVertexAttribPointer")) return emscripten_glVertexAttribPointer;
   else if (!strcmp(name, "glViewport")) return emscripten_glViewport; 
 
-#ifdef USE_WEBGL2
+#if USE_WEBGL2
   EGLint version = -1;
   if (eglQueryContext(eglGetCurrentDisplay(), eglGetCurrentContext(), EGL_CONTEXT_CLIENT_VERSION, &version) == EGL_TRUE && version >= 3) {
     if (!strcmp(name, "glBeginQuery")) return emscripten_glBeginQuery;

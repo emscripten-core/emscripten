@@ -294,9 +294,17 @@ var LibraryEGL = {
       }
       contextAttribs += 8;
     }
-    if (glesContextVersion != 2 && glesContextVersion != 3) {
+    if (glesContextVersion != 2
+#if USE_WEBGL2
+        && glesContextVersion != 3
+#endif
+       ) {
 #if GL_ASSERTIONS
+#if USE_WEBGL2
       Module.printErr('When initializing GLES2/3 or WebGL1/2 via EGL, one must pass EGL_CONTEXT_CLIENT_VERSION = 2 or 3 to GL context attributes! GLES version ' + glesContextVersion + ' is not supported!');
+#else
+      Module.printErr('When initializing GLES2/WebGL1 via EGL, one must pass EGL_CONTEXT_CLIENT_VERSION = 2 to GL context attributes! GLES version ' + glesContextVersion + ' is not supported!');
+#endif
 #endif
       EGL.setErrorCode(0x3005 /* EGL_BAD_CONFIG */);
       return 0; /* EGL_NO_CONTEXT */
