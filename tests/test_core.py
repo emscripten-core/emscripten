@@ -4274,7 +4274,6 @@ main( int argv, char ** argc ) {
     self.do_run(src, '3\n')
 
   def test_readdir(self):
-    self.banned_js_engines = [V8_ENGINE] # stderr printing limitations in v8
     src = open(path_from_root('tests', 'dirent', 'test_readdir.c'), 'r').read()
     self.do_run(src, '''SIGILL: Illegal instruction
 success
