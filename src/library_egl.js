@@ -2,7 +2,6 @@
  The EGL implementation supports only one EGLNativeDisplayType, the EGL_DEFAULT_DISPLAY.
  This native display type returns the only supported EGLDisplay handle with the magic value 62000.
  There is only a single EGLConfig configuration supported, that has the magic value 62002.
- The implementation only allows a single EGLContext to be created, that has the magic value of 62004. (multiple creations silently return this same context)
  The implementation only creates a single EGLSurface, a handle with the magic value of 62006. (multiple creations silently return the same surface)
 */ 
  
@@ -12,6 +11,7 @@ var LibraryEGL = {
     // This variable tracks the success status of the most recently invoked EGL function call.
     errorCode: 0x3000 /* EGL_SUCCESS */,
     defaultDisplayInitialized: false,
+    validContexts: {},
     currentContext: 0 /* EGL_NO_CONTEXT */,
     currentReadSurface: 0 /* EGL_NO_SURFACE */,
     currentDrawSurface: 0 /* EGL_NO_SURFACE */,
@@ -42,6 +42,19 @@ var LibraryEGL = {
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
       return 1;
     },
+
+    registerContext: function(ctx) {
+      EGL.validContexts[ctx] = true;
+    },
+    isValidContext: function(ctx) {
+      return EGL.validContexts[ctx] === true && !!GL.getContext(ctx);
+    },
+    deleteContext: function(ctx) {
+      if (EGL.isValidContext(ctx)) {
+        GL.deleteContext(ctx);
+        delete EGL.validContexts[ctx];
+      }
+    }
   },
 
   // EGLAPI EGLDisplay EGLAPIENTRY eglGetDisplay(EGLNativeDisplayType display_id);
@@ -256,7 +269,7 @@ var LibraryEGL = {
     return 1; /* Magic ID for Emscripten 'default surface' */
   },
 
-  eglCreateContext__deps: ['glutInitDisplayMode', 'glutCreateWindow', '$GL'],
+  eglCreateContext__deps: ['$GL'],
   
   // EGLAPI EGLContext EGLAPIENTRY eglCreateContext(EGLDisplay dpy, EGLConfig config, EGLContext share_context, const EGLint *attrib_list);
   eglCreateContext: function(display, config, hmm, contextAttribs) {
@@ -283,32 +296,35 @@ var LibraryEGL = {
     }
     if (glesContextVersion != 2 && glesContextVersion != 3) {
 #if GL_ASSERTIONS
-      Module.printErr('When initializing GLES2/WebGL1 via EGL, one must pass EGL_CONTEXT_CLIENT_VERSION = 2 or 3 to GL context attributes! GLES version ' + glesContextVersion + ' is not supported!');
+      Module.printErr('When initializing GLES2/3 or WebGL1/2 via EGL, one must pass EGL_CONTEXT_CLIENT_VERSION = 2 or 3 to GL context attributes! GLES version ' + glesContextVersion + ' is not supported!');
 #endif
       EGL.setErrorCode(0x3005 /* EGL_BAD_CONFIG */);
       return 0; /* EGL_NO_CONTEXT */
     }
 
-    _glutInitDisplayMode(0xB2 /* GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE | GLUT_STENCIL */);
+    var attributes = {
+      majorVersion: glesContextVersion === 3 ? 2 : 1,
+      minorVersion: 0,
 
-    EGL.windowID = _glutCreateWindow();
-    if (EGL.windowID != 0) {
-      if (glesContextVersion == 3 && (typeof WebGL2RenderingContext === 'undefined'
-          || !(Module.ctx instanceof WebGL2RenderingContext))) {
-        EGL.setErrorCode(0x3005 /* EGL_BAD_CONFIG */);
-        return 0;
-      }
+      antialias: true,
+      depth: true,
+      stencil: true,
+      alpha: true
+    };
 
+    var contextHandle = GL.createContext(Module['canvas'], attributes);
+    if (contextHandle !== 0) {
+      EGL.registerContext(contextHandle);
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
       // Note: This function only creates a context, but it shall not make it active.
-      return 62004; // Magic ID for Emscripten EGLContext
+      return contextHandle;
     } else {
       EGL.setErrorCode(0x3009 /* EGL_BAD_MATCH */); // By the EGL 1.4 spec, an implementation that does not support GLES2 (WebGL in this case), this error code is set.
       return 0; /* EGL_NO_CONTEXT */
     }
   },
 
-  eglDestroyContext__deps: ['glutDestroyWindow', '$GL'],
+  eglDestroyContext__deps: ['$GL'],
   
   // EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext context);
   eglDestroyContext: function(display, context) {
@@ -316,34 +332,18 @@ var LibraryEGL = {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
-    if (context != 62004 /* Magic ID for Emscripten EGLContext */) {
+    if (!EGL.isValidContext(context)) {
       EGL.setErrorCode(0x3006 /* EGL_BAD_CONTEXT */);
       return 0;
     }
 
-    _glutDestroyWindow(EGL.windowID);
+    EGL.deleteContext(context);
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     if (EGL.currentContext == context) {
       EGL.currentContext = 0;
     }
     return 1 /* EGL_TRUE */;
   },
-
-  // EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext ctx);
-  eglDestroyContext: function(display, context) {
-    if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
-      EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
-      return 0;
-    }
-
-    if (context != 62004 /* Magic ID for Emscripten EGLContext */) {
-      EGL.setErrorCode(0x3006 /* EGL_BAD_CONTEXT */);
-      return 0;
-    }
-
-    EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
-    return 1;
-  }, 
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface, EGLint attribute, EGLint *value);
   eglQuerySurface: function(display, surface, attribute, value) { 
@@ -410,6 +410,8 @@ var LibraryEGL = {
     }
   },
 
+  eglQueryContext__deps: ['$GL'],
+
   // EGLAPI EGLBoolean EGLAPIENTRY eglQueryContext(EGLDisplay dpy, EGLContext ctx, EGLint attribute, EGLint *value);
   eglQueryContext: function(display, context, attribute, value) {
     if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
@@ -417,7 +419,7 @@ var LibraryEGL = {
       return 0;
     }
     //\todo An EGL_NOT_INITIALIZED error is generated if EGL is not initialized for dpy. 
-    if (context != 62004 /* Magic ID for Emscripten EGLContext */) {
+    if (!EGL.isValidContext(context)) {
       EGL.setErrorCode(0x3006 /* EGL_BAD_CONTEXT */);
       return 0;
     }
@@ -435,11 +437,10 @@ var LibraryEGL = {
         {{{ makeSetValue('value', '0', '0x30A0' /* EGL_OPENGL_ES_API */, 'i32') }}};
         return 1;
       case 0x3098: // EGL_CONTEXT_CLIENT_VERSION
-	if (typeof WebGL2RenderingContext !== 'undefined'
-            && Module.ctx instanceof WebGL2RenderingContext) {
-          {{{ makeSetValue('value', '0', '3' /* GLES3 context */, 'i32') }}};
-	} else {
-          {{{ makeSetValue('value', '0', '2' /* GLES2 context */, 'i32') }}};
+        if (GL.getContext(context).version === 2) {
+          {{{ makeSetValue('value', '0', '3', 'i32') }}};
+        } else {
+          {{{ makeSetValue('value', '0', '2', 'i32') }}};
         }
         return 1;
       case 0x3086: // EGL_RENDER_BUFFER
@@ -535,12 +536,19 @@ var LibraryEGL = {
       return 0 /* EGL_FALSE */;
     }
     //\todo An EGL_NOT_INITIALIZED error is generated if EGL is not initialized for dpy. 
-    if (context != 0 && context != 62004 /* Magic ID for Emscripten EGLContext */) {
+    if (context != 0 && !EGL.isValidContext(context)) {
       EGL.setErrorCode(0x3006 /* EGL_BAD_CONTEXT */);
       return 0;
     }
     if ((read != 0 && read != 62006) || (draw != 0 && draw != 62006 /* Magic ID for Emscripten 'default surface' */)) {
       EGL.setErrorCode(0x300D /* EGL_BAD_SURFACE */);
+      return 0;
+    }
+
+    if (context === 0) {
+      GL.currentContext = null;
+    } else if (!GL.makeContextCurrent(context)) {
+      EGL.setErrorCode(0x3006 /* EGL_BAD_CONTEXT */);
       return 0;
     }
     EGL.currentContext = context;
