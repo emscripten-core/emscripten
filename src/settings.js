@@ -191,7 +191,8 @@ var ALIASING_FUNCTION_POINTERS = 0; // Whether to allow function pointers to ali
                                     // a different type. This can greatly decrease table sizes
                                     // in asm.js, but can break code that compares function
                                     // pointers across different types.
-var EMULATED_FUNCTION_POINTERS = 0; // By default we implement function pointers using asm.js
+var EMULATED_FUNCTION_POINTERS = 0; // asm.js:
+                                    // By default we implement function pointers using asm.js
                                     // function tables, which is very fast. With this option,
                                     // we implement them more flexibly by emulating them: we
                                     // call out into JS, which handles the function tables.
@@ -205,6 +206,16 @@ var EMULATED_FUNCTION_POINTERS = 0; // By default we implement function pointers
                                     //     if the fp is in the right range. Shared modules
                                     //     (MAIN_MODULE, SIDE_MODULE) do this by default.
                                     //     This requires RELOCATABLE to be set.
+                                    // wasm:
+                                    // By default we use a wasm Table for function pointers,
+                                    // which is fast and efficient. When enabling emulation,
+                                    // we also use the Table *outside* the wasm module,
+                                    // exactly as when emulating in asm.js, just replacing
+                                    // the plain JS array with a Table. However, Tables have
+                                    // some limitations currently, like not being able to
+                                    // assign an arbitrary JS method to them, which we have
+                                    // yet to work around. Another limitation is that this
+                                    // cannot yet mix with EMULATE_FUNCTION_POINTER_CASTS.
 var EMULATE_FUNCTION_POINTER_CASTS = 0; // Allows function pointers to be cast, wraps each
                                         // call of an incorrect type with a runtime correction.
                                         // This adds overhead and should not be used normally.
@@ -795,8 +806,15 @@ var BUNDLED_CD_DEBUG_FILE = ""; // Path to the CyberDWARF debug file passed to t
 
 var TEXTDECODER = 1; // Is enabled, use the JavaScript TextDecoder API for string marshalling.
                      // Enabled by default, set this to 0 to disable.
+
 var OFFSCREENCANVAS_SUPPORT = 0; // If set to 1, enables support for transferring canvases to pthreads and creating WebGL contexts in them,
                                  // as well as explicit swap control for GL contexts. This needs browser support for the OffscreenCanvas
                                  // specification.
+
+var FETCH_DEBUG = 0; // If nonzero, prints out debugging information in library_fetch.js
+
+var FETCH = 0; // If nonzero, enables emscripten_fetch API.
+
+var ASMFS = 0; // If set to 1, uses the multithreaded filesystem that is implemented within the asm.js module, using emscripten_fetch. Implies -s FETCH=1.
 
 // Reserved: variables containing POINTER_MASKING.

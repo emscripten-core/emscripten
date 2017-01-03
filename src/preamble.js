@@ -590,7 +590,7 @@ function UTF8ToString(ptr) {
 
 // Copies the given Javascript String object 'str' to the given byte array at address 'outIdx',
 // encoded in UTF8 form and null-terminated. The copy will require at most str.length*4+1 bytes of space in the HEAP.
-// Use the function lengthBytesUTF8() to compute the exact number of bytes (excluding null terminator) that this function will write.
+// Use the function lengthBytesUTF8 to compute the exact number of bytes (excluding null terminator) that this function will write.
 // Parameters:
 //   str: the Javascript string to copy.
 //   outU8Array: the array to copy to. Each index in this array is assumed to be one 8-byte element.
@@ -655,7 +655,7 @@ function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
 
 // Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
 // null-terminated and encoded in UTF8 form. The copy will require at most str.length*4+1 bytes of space in the HEAP.
-// Use the function lengthBytesUTF8() to compute the exact number of bytes (excluding null terminator) that this function will write.
+// Use the function lengthBytesUTF8 to compute the exact number of bytes (excluding null terminator) that this function will write.
 // Returns the number of bytes written, EXCLUDING the null terminator.
 
 function stringToUTF8(str, outPtr, maxBytesToWrite) {
@@ -1180,7 +1180,8 @@ if (typeof Atomics === 'undefined') {
   Atomics['add'] = function(t, i, v) { var w = t[i]; t[i] += v; return w; }
   Atomics['and'] = function(t, i, v) { var w = t[i]; t[i] &= v; return w; }
   Atomics['compareExchange'] = function(t, i, e, r) { var w = t[i]; if (w == e) t[i] = r; return w; }
-  Atomics['wait'] = function(t, i, v, o) { if (t[i] != v) abort('Multithreading is not supported, cannot sleep to wait for futex!'); }
+  Atomics['exchange'] = function(t, i, v) { var w = t[i]; t[i] = v; return w; }
+  Atomics['wait'] = function(t, i, v, o) { if (t[i] != v) return 'not-equal'; else return 'timed-out'; }
   Atomics['wake'] = function(t, i, c) { return 0; }
   Atomics['wakeOrRequeue'] = function(t, i1, c, i2, v) { return 0; }
   Atomics['isLockFree'] = function(s) { return true; }
@@ -1189,22 +1190,6 @@ if (typeof Atomics === 'undefined') {
   Atomics['store'] = function(t, i, v) { t[i] = v; return v; }
   Atomics['sub'] = function(t, i, v) { var w = t[i]; t[i] -= v; return w; }
   Atomics['xor'] = function(t, i, v) { var w = t[i]; t[i] ^= v; return w; }
-}
-
-// In old Atomics spec, Atomics.OK/.TIMEDOUT/.NOTEQUAL were integers. In new spec, Atomics functions return strings, so if we are in the new spec,
-// assign the strings to the place where the integers would have been to keep implementation of emscripten_futex_wait straightforward without dynamic checks for both.
-// See https://github.com/tc39/ecmascript_sharedmem/issues/69 for details.
-if (typeof Atomics['OK'] === 'undefined') {
-  Atomics['OK'] = 'ok';
-  Atomics['TIMEDOUT'] = 'timed-out';
-  Atomics['NOTEQUAL'] = 'not-equal';
-}
-
-// If running browser with old API names, account for function renames. See https://bugzilla.mozilla.org/show_bug.cgi?id=1260910.
-if (typeof Atomics['wait'] === 'undefined') {
-  Atomics['wait'] = Atomics['futexWait'];
-  Atomics['wake'] = Atomics['futexWake'];
-  Atomics['wakeOrRequeue'] = Atomics['futexWakeOrRequeue'];
 }
 
 #else // USE_PTHREADS
@@ -1713,7 +1698,10 @@ function writeStringToMemory(string, buffer, dontAddNull) {
 {{{ maybeExport('writeStringToMemory') }}}
 
 function writeArrayToMemory(array, buffer) {
-  HEAP8.set(array, buffer);    
+#if ASSERTIONS
+  assert(array.length >= 0, 'writeArrayToMemory array must have a length (should be an array or typed array)')
+#endif
+  HEAP8.set(array, buffer);
 }
 {{{ maybeExport('writeArrayToMemory') }}}
 

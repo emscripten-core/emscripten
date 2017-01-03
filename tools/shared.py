@@ -2039,7 +2039,7 @@ def reconfigure_cache():
   Cache = cache.Cache(debug=DEBUG_CACHE)
 
 class JS:
-  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+Runtime\.GLOBAL_BASEH]+)\);'
+  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+Runtime\.GLOBAL_BASEHgb]+)\);'
   no_memory_initializer_pattern = '/\* no memory initializer \*/'
 
   memory_staticbump_pattern = 'STATICTOP = STATIC_BASE \+ (\d+);'
@@ -2264,6 +2264,49 @@ class JS:
   def is_function_table(name):
     return name.startswith('FUNCTION_TABLE_')
 
+class WebAssembly:
+  @staticmethod
+  def lebify(x):
+    assert x >= 0, 'TODO: signed'
+    ret = []
+    while 1:
+      byte = x & 127
+      x >>= 7
+      more = x != 0
+      if more:
+        byte = byte | 128
+      ret.append(chr(byte))
+      if not more:
+        break
+    return ret
+
+  @staticmethod
+  def make_shared_library(js_file, wasm_file):
+    # a wasm shared library has a special "dylink" section, see tools-conventions repo
+    js = open(js_file).read()
+    m = re.search("var STATIC_BUMP = (\d+);", js)
+    mem_size = int(m.group(1))
+    m = re.search("Module\['wasmTableSize'\] = (\d+);", js)
+    table_size = int(m.group(1))
+    logging.debug('creating wasm dynamic library with mem size %d, table size %d' % (mem_size, table_size))
+    wso = js_file + '.wso'
+    # write the binary
+    wasm = open(wasm_file, 'rb').read()
+    f = open(wso, 'wb')
+    f.write(wasm[0:8]) # copy magic number and version
+    # write the special section
+    f.write('\0') # user section is code 0
+    # need to find the size of this section
+    name = "\06dylink" # section name, including prefixed size
+    contents = WebAssembly.lebify(mem_size) + WebAssembly.lebify(table_size)
+    size = len(name) + len(contents)
+    f.write(''.join(WebAssembly.lebify(size)))
+    f.write(name)
+    f.write(''.join(contents))
+    f.write(wasm[8:]) # copy rest of binary
+    f.close()
+    return wso
+
 def execute(cmd, *args, **kw):
   try:
     return Popen(cmd, *args, **kw).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
@@ -2322,6 +2365,10 @@ def safe_copy(src, dst):
   if dst == '/dev/null': return
   shutil.copyfile(src, dst)
 
+def clang_preprocess(filename):
+  # TODO: REMOVE HACK AND PASS PREPROCESSOR FLAGS TO CLANG.
+  return subprocess.check_output([CLANG_CC, '-DFETCH_DEBUG=1', '-E', '-P', '-C', '-x', 'c', filename])
+
 def read_and_preprocess(filename):
   f = open(filename, 'r').read()
   pos = 0
@@ -2333,5 +2380,37 @@ def read_and_preprocess(filename):
     included_file = open(os.path.join(os.path.dirname(filename), m.groups(0)[0]), 'r').read()
 
     f = f[:m.start(0)] + included_file + f[m.end(0):]
+
+# Generates a suitable fetch-worker.js script from the given input source JS file (which is an asm.js build output),
+# and writes it out to location output_file. fetch-worker.js is the root entry point for a dedicated filesystem web
+# worker in -s ASMFS=1 mode.
+def make_fetch_worker(source_file, output_file):
+  src = open(source_file, 'r').read()
+  funcs_to_import = ['alignMemoryPage', 'getTotalMemory', 'stringToUTF8', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_runtime_thread', '_emscripten_futex_wait']
+  asm_funcs_to_import = ['_malloc', '_free', '_sbrk', '_pthread_mutex_lock', '_pthread_mutex_unlock']
+  function_prologue = '''this.onerror = function(e) {
+  console.error(e);
+}
+
+'''
+  asm_start = src.find('// EMSCRIPTEN_START_ASM')
+  for func in funcs_to_import + asm_funcs_to_import:
+    loc = src.find('function ' + func + '(', asm_start if func in asm_funcs_to_import else 0)
+    if loc == -1:
+      logging.fatal('failed to find function ' + func + '!')
+      sys.exit(1)
+    end_loc = src.find('{', loc) + 1
+    nesting_level = 1
+    while nesting_level > 0:
+      if src[end_loc] == '{': nesting_level += 1
+      if src[end_loc] == '}': nesting_level -= 1
+      end_loc += 1
+
+    func_code = src[loc:end_loc]
+    function_prologue = function_prologue + '\n' + func_code
+
+  fetch_worker_src = function_prologue + '\n' + clang_preprocess(path_from_root('src', 'fetch-worker.js'))
+  open(output_file, 'w').write(fetch_worker_src)
+
 
 import js_optimizer

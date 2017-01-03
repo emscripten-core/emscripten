@@ -56,6 +56,7 @@ SUPPORTED_LINKER_FLAGS = ('--start-group', '-(', '--end-group', '-)')
 LIB_PREFIXES = ('', 'lib')
 
 JS_CONTAINING_SUFFIXES = ('js', 'html')
+EXECUTABLE_SUFFIXES = JS_CONTAINING_SUFFIXES + ('wasm',)
 
 DEFERRED_REPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST')
 
@@ -353,10 +354,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       target = sys.argv[i+1]
       sys.argv = sys.argv[:i] + sys.argv[i+2:]
       break
-
-  if target and target.endswith(WASM_ENDINGS):
-    logging.warning('output file "%s" has a wasm suffix, but we cannot emit wasm by itself. specify an output file with suffix .js or .html, and a wasm file will be created on the side' % target)
-    sys.exit(1)
 
   specified_target = target
   target = specified_target if specified_target is not None else 'a.out.js' # specified_target is the user-specified one, target is what we will generate
@@ -1098,7 +1095,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.Settings.INCLUDE_FULL_LIBRARY = 1
       elif shared.Settings.SIDE_MODULE:
         assert not shared.Settings.MAIN_MODULE
-        memory_init_file = False # memory init file is not supported with side modules, must be executable synchronously (for dlopen)
+        memory_init_file = False # memory init file is not supported with asm.js side modules, must be executable synchronously (for dlopen)
 
       if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
         assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
@@ -1137,6 +1134,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
         # stb_image 2.x need to have STB_IMAGE_IMPLEMENTATION defined to include the implementation when compiling
         newargs.append('-DSTB_IMAGE_IMPLEMENTATION')
+
+      if shared.Settings.ASMFS and final_suffix in JS_CONTAINING_SUFFIXES:
+        input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'fetch', 'asmfs.cpp')))
+        newargs.append('-D__EMSCRIPTEN_ASMFS__=1')
+        next_arg_index += 1
+        shared.Settings.NO_FILESYSTEM = 1
+        shared.Settings.FETCH = 1
+        if not shared.Settings.USE_PTHREADS:
+          logging.error('-s ASMFS=1 requires either -s USE_PTHREADS=1 or -s USE_PTHREADS=2 to be set!')
+          sys.exit(1)
+
+      if shared.Settings.FETCH and final_suffix in JS_CONTAINING_SUFFIXES:
+        input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'fetch', 'emscripten_fetch.cpp')))
+        next_arg_index += 1
+        js_libraries.append(shared.path_from_root('src', 'library_fetch.js'))
 
       forced_stdlibs = []
       if shared.Settings.DEMANGLE_SUPPORT:
@@ -1226,11 +1238,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           js_opts = True
         force_js_opts = True
 
-      if shared.Settings.EVAL_CTORS:
-        # this option is not a js optimizer pass, but does run the js optimizer internally, so
-        # we need to generate proper code for that
-        shared.Settings.RUNNING_JS_OPTS = 1
-
       if shared.Settings.WASM:
         shared.Settings.BINARYEN = 1 # these are synonyms
 
@@ -1251,7 +1258,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         debug_level = max(1, debug_level) # keep whitespace readable, for asm.js parser simplicity
         shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
         assert not shared.Settings.SPLIT_MEMORY, 'WebAssembly does not support split memory'
-        assert not shared.Settings.INCLUDE_FULL_LIBRARY, 'The WebAssembly libc overlaps with JS libs, so INCLUDE_FULL_LIBRARY does not just work (FIXME)'
         # if root was not specified in -s, it might be fixed in ~/.emscripten, copy from there
         if not shared.Settings.BINARYEN_ROOT:
           try:
@@ -1271,6 +1277,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         #  * if we also supported js mem inits we'd have 4 modes
         #  * and js mem inits are useful for avoiding a side file, but the wasm module avoids that anyhow
         memory_init_file = True
+        if shared.Building.is_wasm_only() and shared.Settings.EVAL_CTORS:
+          logging.debug('disabling EVAL_CTORS, as in wasm-only mode it hurts more than it helps. TODO: a wasm version of it')
+          shared.Settings.EVAL_CTORS = 0
+
+      # wasm outputs are only possible with a side wasm
+      if target.endswith(WASM_ENDINGS):
+        if not (shared.Settings.BINARYEN and shared.Settings.SIDE_MODULE):
+          logging.warning('output file "%s" has a wasm suffix, but we cannot emit wasm by itself, except as a dynamic library (see SIDE_MODULE option). specify an output file with suffix .js or .html, and a wasm file will be created on the side' % target)
+          sys.exit(1)
+
+      if shared.Settings.EVAL_CTORS:
+        # this option is not a js optimizer pass, but does run the js optimizer internally, so
+        # we need to generate proper code for that
+        shared.Settings.RUNNING_JS_OPTS = 1
 
       if shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.ASM_JS == 1:
         # this is an issue in asm.js, but not wasm
@@ -1437,7 +1457,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       linker_inputs = [val for _, val in sorted(temp_files + link_flags)]
 
       # If we were just asked to generate bitcode, stop there
-      if final_suffix not in JS_CONTAINING_SUFFIXES:
+      if final_suffix not in EXECUTABLE_SUFFIXES:
         if not specified_target:
           assert len(temp_files) == len(input_files)
           for i in range(len(input_files)):
@@ -1753,6 +1773,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.USE_PTHREADS:
         shutil.copyfile(shared.path_from_root('src', 'pthread-main.js'), os.path.join(os.path.dirname(os.path.abspath(target)), 'pthread-main.js'))
+
+      # Generate the fetch-worker.js script for multithreaded emscripten_fetch() support if targeting pthreads.
+      if shared.Settings.FETCH and shared.Settings.USE_PTHREADS:
+        shared.make_fetch_worker(final, os.path.join(os.path.dirname(os.path.abspath(target)), 'fetch-worker.js'))
 
       if shared.Settings.BINARYEN:
         # Insert a call to integrate with wasm.js
@@ -2090,18 +2114,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             cmd += ['--mem-init=' + memfile]
             if not shared.Settings.RELOCATABLE:
               cmd += ['--mem-base=' + str(shared.Settings.GLOBAL_BASE)]
-          if shared.Settings.BINARYEN_MEM_MAX >= 0:
+          # various options imply that the imported table may not be the exact size as the wasm module's own table segments
+          if shared.Settings.RELOCATABLE or shared.Settings.RESERVED_FUNCTION_POINTERS > 0 or shared.Settings.EMULATED_FUNCTION_POINTERS:
+            cmd += ['--table-max=-1']
+          if shared.Settings.SIDE_MODULE:
+            cmd += ['--mem-max=-1']
+          elif shared.Settings.BINARYEN_MEM_MAX >= 0:
             cmd += ['--mem-max=' + str(shared.Settings.BINARYEN_MEM_MAX)]
           if shared.Building.is_wasm_only():
             cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, an can contain special fastcomp-wasm support
           logging.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
           TimeLogger.update()
           subprocess.check_call(cmd, stdout=open(wasm_text_target, 'w'))
-          log_time('asm2wasm')
           if import_mem_init:
             # remove and forget about the mem init file in later processing; it does not need to be prefetched in the html, etc.
             os.unlink(memfile)
             memory_init_file = False
+          log_time('asm2wasm')
         if shared.Settings.BINARYEN_PASSES:
           shutil.move(wasm_text_target, wasm_text_target + '.pre')
           cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_text_target + '.pre', '-o', wasm_text_target] + map(lambda p: '--' + p, shared.Settings.BINARYEN_PASSES.split(','))
@@ -2126,6 +2155,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           for script in shared.Settings.BINARYEN_SCRIPTS.split(','):
             logging.debug('running binaryen script: ' + script)
             subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), js_target, wasm_text_target], env=script_env)
+        # after generating the wasm, do some final operations
+        if not shared.Settings.WASM_BACKEND:
+          if shared.Settings.SIDE_MODULE:
+            wso = shared.WebAssembly.make_shared_library(js_target, wasm_binary_target)
+            # replace the wasm binary output with the dynamic library. TODO: use a specific suffix for such files?
+            shutil.move(wso, wasm_binary_target)
+            if not DEBUG:
+              os.unlink(js_target) # we don't need the js, it can just confuse
+              os.unlink(asm_target) # we don't need the asm.js, it can just confuse
+            sys.exit(0) # and we are done.
 
       # If we were asked to also generate HTML, do that
       if final_suffix == 'html':
