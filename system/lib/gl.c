@@ -1877,9 +1877,11 @@ void* emscripten_GetProcAddress(const char *name_) {
   }
 #endif
   
+#if GL_ASSERTIONS
   EM_ASM_({
     Module.printErr('bad name in getProcAddress: ' + [Pointer_stringify($0), Pointer_stringify($1)]);
   }, name_, name);
+#endif
   return 0;
 }
 
