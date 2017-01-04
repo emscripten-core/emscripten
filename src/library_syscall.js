@@ -227,7 +227,7 @@ var SyscallsLibrary = {
   },
   __syscall5: function(which, varargs) { // open
     var pathname = SYSCALLS.getStr(), flags = SYSCALLS.get(), mode = SYSCALLS.get() // optional TODO
-    var stream = FS.open(pathname, flags | {{{ cDefine('O_LARGEFILE') }}}, mode);
+    var stream = FS.open(pathname, flags, mode);
     return stream.fd;
   },
   __syscall6: function(which, varargs) { // close
