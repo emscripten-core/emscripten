@@ -710,8 +710,12 @@ function _emscripten_asm_const_%s(%s) {
 
     if settings['BINARYEN']:
       def table_size(table):
-        s = table.count(',')
-        return s + 1 if s > 0 else 0
+        t = table[table.index('[') + 1: table.index(']')].split(',')
+        size = len(t)
+        if size == 1:
+          # Could be empty or 1-element
+          return 0 if len(t[0]) == 0 else size
+        return size
       table_total_size = sum(map(table_size, last_forwarded_json['Functions']['tables'].values()))
       asm_setup += "\nModule['wasmTableSize'] = %d;\n" % table_total_size
       if not settings['EMULATED_FUNCTION_POINTERS']:
