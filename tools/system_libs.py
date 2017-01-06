@@ -601,7 +601,7 @@ class Ports:
       # Make variants support '-jX' for number of cores to build, MSBuild does /maxcpucount:X
       num_cores = os.environ.get('EMCC_CORES') or str(multiprocessing.cpu_count())
       make_args = []
-      if 'Makefiles' in generator: make_args = ['--', '-j', num_cores]
+      if 'Makefiles' in generator and not 'NMake' in generator: make_args = ['--', '-j', num_cores]
       elif 'Visual Studio' in generator: make_args = ['--config', cmake_build_type, '--', '/maxcpucount:' + num_cores]
 
       # Kick off the build.
