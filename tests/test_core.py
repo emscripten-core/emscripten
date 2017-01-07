@@ -2259,6 +2259,7 @@ The current type of b is: 9
   def can_dlfcn(self):
     if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no dlfcn with memory growth yet')
     if self.is_wasm_backend(): return self.skip('no shared modules in wasm backend')
+    self.banned_js_engines = [V8_ENGINE, NODE_JS] # V8 doesn't support mismatch between table import decl initial size and imported table runtime size
     return True
 
   def prep_dlfcn_lib(self):
