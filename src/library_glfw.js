@@ -137,6 +137,8 @@ var LibraryGLFW = {
         case 0xAD:return 45; // DOM_VK_HYPHEN_MINUS -> GLFW_KEY_MINUS
         case 0xBE:return 46; // DOM_VK_PERIOD -> GLFW_KEY_PERIOD
         case 0xBF:return 47; // DOM_VK_SLASH -> GLFW_KEY_SLASH
+        case 0xBD:return 45; // Opera, IE, Safari, Chrome DOM_VK_MINUS -> GLFW_KEY_MINUS
+        case 0xBB:return 61; // Opera, IE, Safari, Chrome DOM_VK_EQUALS -> GLFW_KEY_EQUAL
         case 0x30:return 48; // DOM_VK_0 -> GLFW_KEY_0
         case 0x31:return 49; // DOM_VK_1 -> GLFW_KEY_1
         case 0x32:return 50; // DOM_VK_2 -> GLFW_KEY_2
