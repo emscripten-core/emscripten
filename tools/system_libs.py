@@ -239,7 +239,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   def create_wasm_compiler_rt(libname):
     srcdir = shared.path_from_root('system', 'lib', 'compiler-rt', 'lib', 'builtins')
-    filenames = ['addtf3.c', 'ashlti3.c', 'ashrti3.c', 'comparetf2.c', 'divtf3.c', 'divti3.c', 'udivmodti4.c',
+    filenames = ['addtf3.c', 'ashlti3.c', 'ashrti3.c', 'atomic.c', 'comparetf2.c',
+                 'divtf3.c', 'divti3.c', 'udivmodti4.c',
                  'extenddftf2.c', 'extendsftf2.c',
                  'fixdfti.c', 'fixsfti.c', 'fixtfdi.c', 'fixtfsi.c', 'fixtfti.c',
                  'fixunsdfti.c', 'fixunssfti.c', 'fixunstfdi.c', 'fixunstfsi.c', 'fixunstfti.c',
@@ -256,7 +257,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       o = in_temp(os.path.basename(src) + '.o')
       # Use clang directly instead of emcc. Since emcc's intermediate format (produced by -S) is LLVM IR, there's no way to
       # get emcc to output wasm .s files, which is what we archive in compiler_rt.
-      commands.append([shared.CLANG_CC, '--target=wasm32', '-S', shared.path_from_root('system', 'lib', src), '-O2', '-o', o] + shared.EMSDK_OPTS)
+      commands.append([shared.CLANG_CC, '--target=wasm32', '-mthread-model', 'single', '-S', shared.path_from_root('system', 'lib', src), '-O2', '-o', o] + shared.EMSDK_OPTS)
       o_s.append(o)
     run_commands(commands)
     lib = in_temp(libname)
