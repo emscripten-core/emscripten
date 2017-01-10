@@ -1023,6 +1023,13 @@ var LibraryGL = {
 
   glCompressedTexImage2D__sig: 'viiiiiiii',
   glCompressedTexImage2D: function(target, level, internalFormat, width, height, border, imageSize, data) {
+#if USE_WEBGL2
+    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      GLctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, HEAPU8, data, imageSize);
+      return;
+    }
+#endif
+
     var heapView;
     if (data) {
       heapView = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
@@ -1035,18 +1042,19 @@ var LibraryGL = {
 #if USE_WEBGL2
   glCompressedTexImage3D__sig: 'viiiiiiiii',
   glCompressedTexImage3D: function(target, level, internalFormat, width, height, depth, border, imageSize, data) {
-    var heapView;
-    if (data) {
-      heapView = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
-    } else {
-      heapView = null;
-    }
-    GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, heapView);
+    GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, HEAPU8, data, imageSize);
   },
 #endif
 
   glCompressedTexSubImage2D__sig: 'viiiiiiiii',
   glCompressedTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, imageSize, data) {
+#if USE_WEBGL2
+    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, format, HEAPU8, data, imageSize);
+      return;
+    }
+#endif
+
     var heapView;
     if (data) {
       heapView = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
@@ -1059,13 +1067,7 @@ var LibraryGL = {
 #if USE_WEBGL2
   glCompressedTexSubImage3D__sig: 'viiiiiiiiiii',
   glCompressedTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, imageSize, data) {
-    var heapView;
-    if (data) {
-      heapView = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
-    } else {
-      heapView = null;
-    }
-    GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, heapView);
+    GLctx['compressedTexSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, HEAPU8, data, imageSize);
   },
 #endif
 
@@ -1400,6 +1402,12 @@ var LibraryGL = {
 
   glBufferSubData__sig: 'viiii',
   glBufferSubData: function(target, offset, size, data) {
+#if USE_WEBGL2
+    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      GLctx.bufferSubData(target, offset, HEAPU8, data, size);
+      return;
+    }
+#endif
     GLctx.bufferSubData(target, offset, HEAPU8.subarray(data, data+size));
   },
 
@@ -2210,12 +2218,8 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert((value & 3) == 0, 'Pointer to integer data passed to glClearBufferiv must be aligned to four bytes!');
 #endif
-    var view = {{{ makeHEAPView('32', 'value', 'value+16') }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast a shared Int32Array to a non-shared Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-    view = new Int32Array(view);
-#endif
-    GLctx['clearBufferiv'](buffer, drawbuffer, view);
+
+    GLctx['clearBufferiv'](buffer, drawbuffer, HEAP32, value>>2);
   },
 
   glClearBufferuiv__sig: 'viii',
@@ -2223,22 +2227,17 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert((value & 3) == 0, 'Pointer to integer data passed to glClearBufferuiv must be aligned to four bytes!');
 #endif
-    var view = {{{ makeHEAPView('U32', 'value', 'value+16') }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast a shared Uint32Array to a non-shared Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-    view = new Uint32Array(view);
-#endif
-    GLctx['clearBufferuiv'](buffer, drawbuffer, view);
+
+    GLctx['clearBufferuiv'](buffer, drawbuffer, HEAPU32, value>>2);
   },
 
   glClearBufferfv__sig: 'viii',
   glClearBufferfv: function(buffer, drawbuffer, value) {
-    view = GL.miniTempBufferViews[3];
-    view[0] = {{{ makeGetValue('value', '0', 'float') }}};
-    view[1] = {{{ makeGetValue('value', '4', 'float') }}};
-    view[2] = {{{ makeGetValue('value', '8', 'float') }}};
-    view[3] = {{{ makeGetValue('value', '12', 'float') }}};
-    GLctx['clearBufferfv'](buffer, drawbuffer, view);
+#if GL_ASSERTIONS
+    assert((value & 3) == 0, 'Pointer to float data passed to glClearBufferfv must be aligned to four bytes!');
+#endif
+
+    GLctx['clearBufferfv'](buffer, drawbuffer, HEAPF32, value>>2);
   },
 
   glFenceSync__sig: 'iii',
@@ -2622,8 +2621,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform1f', 'location');
 #endif
-    location = GL.uniforms[location];
-    GLctx.uniform1f(location, v0);
+    GLctx.uniform1f(GL.uniforms[location], v0);
   },
 
   glUniform2f__sig: 'viff',
@@ -2631,8 +2629,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform2f', 'location');
 #endif
-    location = GL.uniforms[location];
-    GLctx.uniform2f(location, v0, v1);
+    GLctx.uniform2f(GL.uniforms[location], v0, v1);
   },
 
   glUniform3f__sig: 'vifff',
@@ -2640,8 +2637,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform3f', 'location');
 #endif
-    location = GL.uniforms[location];
-    GLctx.uniform3f(location, v0, v1, v2);
+    GLctx.uniform3f(GL.uniforms[location], v0, v1, v2);
   },
 
   glUniform4f__sig: 'viffff',
@@ -2649,8 +2645,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform4f', 'location');
 #endif
-    location = GL.uniforms[location];
-    GLctx.uniform4f(location, v0, v1, v2, v3);
+    GLctx.uniform4f(GL.uniforms[location], v0, v1, v2, v3);
   },
 
   glUniform1i__sig: 'vii',
@@ -2658,8 +2653,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform1i', 'location');
 #endif
-    location = GL.uniforms[location];
-    GLctx.uniform1i(location, v0);
+    GLctx.uniform1i(GL.uniforms[location], v0);
   },
 
   glUniform2i__sig: 'viii',
@@ -2667,8 +2661,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform2i', 'location');
 #endif
-    location = GL.uniforms[location];
-    GLctx.uniform2i(location, v0, v1);
+    GLctx.uniform2i(GL.uniforms[location], v0, v1);
   },
 
   glUniform3i__sig: 'viiii',
@@ -2676,8 +2669,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform3i', 'location');
 #endif
-    location = GL.uniforms[location];
-    GLctx.uniform3i(location, v0, v1, v2);
+    GLctx.uniform3i(GL.uniforms[location], v0, v1, v2);
   },
 
   glUniform4i__sig: 'viiiii',
@@ -2685,8 +2677,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform4i', 'location');
 #endif
-    location = GL.uniforms[location];
-    GLctx.uniform4i(location, v0, v1, v2, v3);
+    GLctx.uniform4i(GL.uniforms[location], v0, v1, v2, v3);
   },
 
   glUniform1iv__sig: 'viii',
@@ -2695,13 +2686,15 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform1iv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform1iv must be aligned to four bytes!');
 #endif
-    location = GL.uniforms[location];
-    value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast a shared Int32Array to a non-shared Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-    value = new Int32Array(value);
+
+#if USE_WEBGL2
+    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      GLctx.uniform1iv(GL.uniforms[location], HEAP32, value>>2, count);
+      return;
+    }
 #endif
-    GLctx.uniform1iv(location, value);
+
+    GLctx.uniform1iv(GL.uniforms[location], {{{ makeHEAPView('32', 'value', 'value+count*4') }}});
   },
 
   glUniform2iv__sig: 'viii',
@@ -2710,14 +2703,15 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform2iv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform2iv must be aligned to four bytes!');
 #endif
-    location = GL.uniforms[location];
-    count *= 2;
-    value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast a shared Int32Array to a non-shared Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-    value = new Int32Array(value);
+
+#if USE_WEBGL2
+    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      GLctx.uniform2iv(GL.uniforms[location], HEAP32, value>>2, count*2);
+      return;
+    }
 #endif
-    GLctx.uniform2iv(location, value);
+
+    GLctx.uniform2iv(GL.uniforms[location], {{{ makeHEAPView('32', 'value', 'value+count*8') }}});
   },
 
   glUniform3iv__sig: 'viii',
@@ -2726,14 +2720,15 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform3iv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform3iv must be aligned to four bytes!');
 #endif
-    location = GL.uniforms[location];
-    count *= 3;
-    value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast a shared Int32Array to a non-shared Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-    value = new Int32Array(value);
+
+#if USE_WEBGL2
+    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      GLctx.uniform3iv(GL.uniforms[location], HEAP32, value>>2, count*3);
+      return;
+    }
 #endif
-    GLctx.uniform3iv(location, value);
+
+    GLctx.uniform3iv(GL.uniforms[location], {{{ makeHEAPView('32', 'value', 'value+count*12') }}});
   },
 
   glUniform4iv__sig: 'viii',
@@ -2742,14 +2737,15 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform4iv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform4iv must be aligned to four bytes!');
 #endif
-    location = GL.uniforms[location];
-    count *= 4;
-    value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast a shared Int32Array to a non-shared Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-    value = new Int32Array(value);
+
+#if USE_WEBGL2
+    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      GLctx.uniform3iv(GL.uniforms[location], HEAP32, value>>2, count*4);
+      return;
+    }
 #endif
-    GLctx.uniform4iv(location, value);
+
+    GLctx.uniform4iv(GL.uniforms[location], {{{ makeHEAPView('32', 'value', 'value+count*16') }}});
   },
 
   glUniform1fv__sig: 'viii',
@@ -2758,7 +2754,14 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform1fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniform1fv must be aligned to four bytes!');
 #endif
-    location = GL.uniforms[location];
+
+#if USE_WEBGL2
+    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      GLctx.uniform1fv(GL.uniforms[location], HEAPF32, value>>2, count);
+      return;
+    }
+#endif
+
     var view;
     if (count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
@@ -2768,12 +2771,8 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
-#if USE_PTHREADS
-      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-      view = new Float32Array(view);
-#endif
     }
-    GLctx.uniform1fv(location, view);
+    GLctx.uniform1fv(GL.uniforms[location], view);
   },
 
   glUniform2fv__sig: 'viii',
@@ -2782,7 +2781,14 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform2fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniform2fv must be aligned to four bytes!');
 #endif
-    location = GL.uniforms[location];
+
+#if USE_WEBGL2
+    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      GLctx.uniform2fv(GL.uniforms[location], HEAPF32, value>>2, count*2);
+      return;
+    }
+#endif
+
     var view;
     if (2*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
@@ -2793,12 +2799,8 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*8') }}};
-#if USE_PTHREADS
-      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-      view = new Float32Array(view);
-#endif
     }
-    GLctx.uniform2fv(location, view);
+    GLctx.uniform2fv(GL.uniforms[location], view);
   },
 
   glUniform3fv__sig: 'viii',
@@ -2807,7 +2809,14 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform3fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniform3fv must be aligned to four bytes!' + value);
 #endif
-    location = GL.uniforms[location];
+
+#if USE_WEBGL2
+    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      GLctx.uniform3fv(GL.uniforms[location], HEAPF32, value>>2, count*3);
+      return;
+    }
+#endif
+
     var view;
     if (3*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
@@ -2819,12 +2828,8 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*12') }}};
-#if USE_PTHREADS
-      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-      view = new Float32Array(view);
-#endif
     }
-    GLctx.uniform3fv(location, view);
+    GLctx.uniform3fv(GL.uniforms[location], view);
   },
 
   glUniform4fv__sig: 'viii',
@@ -2833,7 +2838,14 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform4fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniform4fv must be aligned to four bytes!');
 #endif
-    location = GL.uniforms[location];
+
+#if USE_WEBGL2
+    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      GLctx.uniform4fv(GL.uniforms[location], HEAPF32, value>>2, count*4);
+      return;
+    }
+#endif
+
     var view;
     if (4*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
@@ -2846,12 +2858,8 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
-#if USE_PTHREADS
-      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-      view = new Float32Array(view);
-#endif
     }
-    GLctx.uniform4fv(location, view);
+    GLctx.uniform4fv(GL.uniforms[location], view);
   },
 
 #if USE_WEBGL2
@@ -2860,8 +2868,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform1ui', 'location');
 #endif
-    location = GL.uniforms[location];
-    GLctx.uniform1ui(location, v0);
+    GLctx.uniform1ui(GL.uniforms[location], v0);
   },
 
   glUniform2ui__sig: 'viii',
@@ -2869,8 +2876,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform2ui', 'location');
 #endif
-    location = GL.uniforms[location];
-    GLctx.uniform2ui(location, v0, v1);
+    GLctx.uniform2ui(GL.uniforms[location], v0, v1);
   },
 
   glUniform3ui__sig: 'viiii',
@@ -2878,8 +2884,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform3ui', 'location');
 #endif
-    location = GL.uniforms[location];
-    GLctx.uniform3ui(location, v0, v1, v2);
+    GLctx.uniform3ui(GL.uniforms[location], v0, v1, v2);
   },
 
   glUniform4ui__sig: 'viiiii',
@@ -2887,8 +2892,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform4ui', 'location');
 #endif
-    location = GL.uniforms[location];
-    GLctx.uniform4ui(location, v0, v1, v2, v3);
+    GLctx.uniform4ui(GL.uniforms[location], v0, v1, v2, v3);
   },
 
   glUniform1uiv__sig: 'viii',
@@ -2897,13 +2901,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform1uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform1uiv must be aligned to four bytes!');
 #endif
-    location = GL.uniforms[location];
-    value = {{{ makeHEAPView('U32', 'value', 'value+count*4') }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast a shared Uint32Array to a non-shared Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-    value = new Uint32Array(value);
-#endif
-    GLctx.uniform1uiv(location, value);
+    GLctx.uniform1uiv(GL.uniforms[location], HEAPU32, value>>2, count);
   },
 
   glUniform2uiv__sig: 'viii',
@@ -2912,14 +2910,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform2uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform2uiv must be aligned to four bytes!');
 #endif
-    location = GL.uniforms[location];
-    count *= 2;
-    value = {{{ makeHEAPView('U32', 'value', 'value+count*4') }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast a shared Uint32Array to a non-shared Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-    value = new Uint32Array(value);
-#endif
-    GLctx.uniform2uiv(location, value);
+    GLctx.uniform2uiv(GL.uniforms[location], HEAPU32, value>>2, count*2);
   },
 
   glUniform3uiv__sig: 'viii',
@@ -2928,14 +2919,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform3uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform3uiv must be aligned to four bytes!');
 #endif
-    location = GL.uniforms[location];
-    count *= 3;
-    value = {{{ makeHEAPView('U32', 'value', 'value+count*4') }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast a shared Uint32Array to a non-shared Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-    value = new Uint32Array(value);
-#endif
-    GLctx.uniform3uiv(location, value);
+    GLctx.uniform3uiv(GL.uniforms[location], HEAPU32, value>>2, count*3);
   },
 
   glUniform4uiv__sig: 'viii',
@@ -2944,14 +2928,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform4uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform4uiv must be aligned to four bytes!');
 #endif
-    location = GL.uniforms[location];
-    count *= 4;
-    value = {{{ makeHEAPView('U32', 'value', 'value+count*4') }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast a shared Uint32Array to a non-shared Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-    value = new Uint32Array(value);
-#endif
-    GLctx.uniform4uiv(location, value);
+    GLctx.uniform4uiv(GL.uniforms[location], HEAPU32, value>>2, count*4);
   },
 #endif
 
@@ -2961,7 +2938,14 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix2fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2fv must be aligned to four bytes!');
 #endif
-    location = GL.uniforms[location];
+
+#if USE_WEBGL2
+    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      GLctx.uniformMatrix2fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*4);
+      return;
+    }
+#endif
+
     var view;
     if (4*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
@@ -2974,12 +2958,8 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
-#if USE_PTHREADS
-      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-      view = new Float32Array(view);
-#endif
     }
-    GLctx.uniformMatrix2fv(location, !!transpose, view);
+    GLctx.uniformMatrix2fv(GL.uniforms[location], !!transpose, view);
   },
 
   glUniformMatrix3fv__sig: 'viiii',
@@ -2988,7 +2968,14 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix3fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3fv must be aligned to four bytes!');
 #endif
-    location = GL.uniforms[location];
+
+#if USE_WEBGL2
+    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      GLctx.uniformMatrix3fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*9);
+      return;
+    }
+#endif
+
     var view;
     if (9*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
@@ -3006,12 +2993,8 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*36') }}};
-#if USE_PTHREADS
-      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-      view = new Float32Array(view);
-#endif
     }
-    GLctx.uniformMatrix3fv(location, !!transpose, view);
+    GLctx.uniformMatrix3fv(GL.uniforms[location], !!transpose, view);
   },
 
   glUniformMatrix4fv__sig: 'viiii',
@@ -3020,7 +3003,14 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4fv must be aligned to four bytes!');
 #endif
-    location = GL.uniforms[location];
+
+#if USE_WEBGL2
+    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      GLctx.uniformMatrix4fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*16);
+      return;
+    }
+#endif
+
     var view;
     if (16*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
@@ -3045,12 +3035,8 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*64') }}};
-#if USE_PTHREADS
-      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-      view = new Float32Array(view);
-#endif
     }
-    GLctx.uniformMatrix4fv(location, !!transpose, view);
+    GLctx.uniformMatrix4fv(GL.uniforms[location], !!transpose, view);
   },
 
 #if USE_WEBGL2
@@ -3060,27 +3046,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix2x3fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x3fv must be aligned to four bytes!');
 #endif
-    location = GL.uniforms[location];
-    var view;
-    if (6*count <= GL.MINI_TEMP_BUFFER_SIZE) {
-      // avoid allocation when uploading few enough uniforms
-      view = GL.miniTempBufferViews[6*count-1];
-      for (var i = 0; i < 6*count; i += 6) {
-        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
-        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
-        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
-        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
-        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
-        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
-      }
-    } else {
-      view = {{{ makeHEAPView('F32', 'value', 'value+count*24') }}};
-#if USE_PTHREADS
-      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-      view = new Float32Array(view);
-#endif
-    }
-    GLctx.uniformMatrix2x3fv(location, transpose, view);
+    GLctx.uniformMatrix2x3fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*6);
   },
 
   glUniformMatrix3x2fv__sig: 'viiii',
@@ -3089,27 +3055,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix3x2fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x2fv must be aligned to four bytes!');
 #endif
-    location = GL.uniforms[location];
-    var view;
-    if (6*count <= GL.MINI_TEMP_BUFFER_SIZE) {
-      // avoid allocation when uploading few enough uniforms
-      view = GL.miniTempBufferViews[6*count-1];
-      for (var i = 0; i < 6*count; i += 6) {
-        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
-        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
-        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
-        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
-        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
-        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
-      }
-    } else {
-      view = {{{ makeHEAPView('F32', 'value', 'value+count*24') }}};
-#if USE_PTHREADS
-      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-      view = new Float32Array(view);
-#endif
-    }
-    GLctx.uniformMatrix3x2fv(location, transpose, view);
+    GLctx.uniformMatrix3x2fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*6);
   },
 
   glUniformMatrix2x4fv__sig: 'viiii',
@@ -3118,29 +3064,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix2x4fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x4fv must be aligned to four bytes!');
 #endif
-    location = GL.uniforms[location];
-    var view;
-    if (8*count <= GL.MINI_TEMP_BUFFER_SIZE) {
-      // avoid allocation when uploading few enough uniforms
-      view = GL.miniTempBufferViews[8*count-1];
-      for (var i = 0; i < 8*count; i += 8) {
-        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
-        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
-        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
-        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
-        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
-        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
-        view[i+6] = {{{ makeGetValue('value', '4*i+24', 'float') }}};
-        view[i+7] = {{{ makeGetValue('value', '4*i+28', 'float') }}};
-      }
-    } else {
-      view = {{{ makeHEAPView('F32', 'value', 'value+count*32') }}};
-#if USE_PTHREADS
-      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-      view = new Float32Array(view);
-#endif
-    }
-    GLctx.uniformMatrix2x4fv(location, transpose, view);
+    GLctx.uniformMatrix2x4fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*8);
   },
 
   glUniformMatrix4x2fv__sig: 'viiii',
@@ -3149,29 +3073,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4x2fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x2fv must be aligned to four bytes!');
 #endif
-    location = GL.uniforms[location];
-    var view;
-    if (8*count <= GL.MINI_TEMP_BUFFER_SIZE) {
-      // avoid allocation when uploading few enough uniforms
-      view = GL.miniTempBufferViews[8*count-1];
-      for (var i = 0; i < 8*count; i += 8) {
-        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
-        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
-        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
-        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
-        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
-        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
-        view[i+6] = {{{ makeGetValue('value', '4*i+24', 'float') }}};
-        view[i+7] = {{{ makeGetValue('value', '4*i+28', 'float') }}};
-      }
-    } else {
-      view = {{{ makeHEAPView('F32', 'value', 'value+count*32') }}};
-#if USE_PTHREADS
-      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-      view = new Float32Array(view);
-#endif
-    }
-    GLctx.uniformMatrix4x2fv(location, transpose, view);
+    GLctx.uniformMatrix4x2fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*8);
   },
 
   glUniformMatrix3x4fv__sig: 'viiii',
@@ -3180,33 +3082,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix3x4fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x4fv must be aligned to four bytes!');
 #endif
-    location = GL.uniforms[location];
-    var view;
-    if (12*count <= GL.MINI_TEMP_BUFFER_SIZE) {
-      // avoid allocation when uploading few enough uniforms
-      view = GL.miniTempBufferViews[12*count-1];
-      for (var i = 0; i < 12*count; i += 12) {
-        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
-        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
-        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
-        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
-        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
-        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
-        view[i+6] = {{{ makeGetValue('value', '4*i+24', 'float') }}};
-        view[i+7] = {{{ makeGetValue('value', '4*i+28', 'float') }}};
-        view[i+8] = {{{ makeGetValue('value', '4*i+32', 'float') }}};
-        view[i+9] = {{{ makeGetValue('value', '4*i+36', 'float') }}};
-        view[i+10] = {{{ makeGetValue('value', '4*i+40', 'float') }}};
-        view[i+11] = {{{ makeGetValue('value', '4*i+44', 'float') }}};
-      }
-    } else {
-      view = {{{ makeHEAPView('F32', 'value', 'value+count*48') }}};
-#if USE_PTHREADS
-      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-      view = new Float32Array(view);
-#endif
-    }
-    GLctx.uniformMatrix3x4fv(location, transpose, view);
+    GLctx.uniformMatrix3x4fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*12);
   },
 
   glUniformMatrix4x3fv__sig: 'viiii',
@@ -3215,33 +3091,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4x3fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x3fv must be aligned to four bytes!');
 #endif
-    location = GL.uniforms[location];
-    var view;
-    if (12*count <= GL.MINI_TEMP_BUFFER_SIZE) {
-      // avoid allocation when uploading few enough uniforms
-      view = GL.miniTempBufferViews[12*count-1];
-      for (var i = 0; i < 12*count; i += 12) {
-        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
-        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
-        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
-        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
-        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
-        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
-        view[i+6] = {{{ makeGetValue('value', '4*i+24', 'float') }}};
-        view[i+7] = {{{ makeGetValue('value', '4*i+28', 'float') }}};
-        view[i+8] = {{{ makeGetValue('value', '4*i+32', 'float') }}};
-        view[i+9] = {{{ makeGetValue('value', '4*i+36', 'float') }}};
-        view[i+10] = {{{ makeGetValue('value', '4*i+40', 'float') }}};
-        view[i+11] = {{{ makeGetValue('value', '4*i+44', 'float') }}};
-      }
-    } else {
-      view = {{{ makeHEAPView('F32', 'value', 'value+count*48') }}};
-#if USE_PTHREADS
-      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-      view = new Float32Array(view);
-#endif
-    }
-    GLctx.uniformMatrix4x3fv(location, transpose, view);
+    GLctx.uniformMatrix4x3fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*12);
   },
 #endif
 
@@ -3270,46 +3120,40 @@ var LibraryGL = {
   glVertexAttrib1fv: function(index, v) {
 #if GL_ASSERTIONS
     assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib1fv must be aligned to four bytes!');
+    assert(v != 0, 'Null pointer passed to glVertexAttrib1fv!');
 #endif
-    var view = GL.miniTempBufferViews[0];
-    view[0] = HEAPF32[v >> 2];
-    GLctx.vertexAttrib1fv(index, view);
+
+    GLctx.vertexAttrib1f(index, HEAPF32[v>>2]);
   },
 
   glVertexAttrib2fv__sig: 'vii',
   glVertexAttrib2fv: function(index, v) {
 #if GL_ASSERTIONS
     assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib2fv must be aligned to four bytes!');
+    assert(v != 0, 'Null pointer passed to glVertexAttrib2fv!');
 #endif
-    var view = GL.miniTempBufferViews[1];
-    view[0] = HEAPF32[v >> 2];
-    view[1] = HEAPF32[v + 4 >> 2];
-    GLctx.vertexAttrib2fv(index, view);
+
+    GLctx.vertexAttrib2f(index, HEAPF32[v>>2], HEAPF32[v+4>>2]);
   },
 
   glVertexAttrib3fv__sig: 'vii',
   glVertexAttrib3fv: function(index, v) {
 #if GL_ASSERTIONS
     assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib3fv must be aligned to four bytes!');
+    assert(v != 0, 'Null pointer passed to glVertexAttrib3fv!');
 #endif
-    var view = GL.miniTempBufferViews[2];
-    view[0] = HEAPF32[v >> 2];
-    view[1] = HEAPF32[v + 4 >> 2];
-    view[2] = HEAPF32[v + 8 >> 2];
-    GLctx.vertexAttrib3fv(index, view);
+
+    GLctx.vertexAttrib3f(index, HEAPF32[v>>2], HEAPF32[v+4>>2], HEAPF32[v+8>>2]);
   },
 
   glVertexAttrib4fv__sig: 'vii',
   glVertexAttrib4fv: function(index, v) {
 #if GL_ASSERTIONS
     assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib4fv must be aligned to four bytes!');
+    assert(v != 0, 'Null pointer passed to glVertexAttrib4fv!');
 #endif
-    var view = GL.miniTempBufferViews[3];
-    view[0] = HEAPF32[v >> 2];
-    view[1] = HEAPF32[v + 4 >> 2];
-    view[2] = HEAPF32[v + 8 >> 2];
-    view[3] = HEAPF32[v + 12 >> 2];
-    GLctx.vertexAttrib4fv(index, view);
+
+    GLctx.vertexAttrib4f(index, HEAPF32[v>>2], HEAPF32[v+4>>2], HEAPF32[v+8>>2], HEAPF32[v+12>>2]);
   },
 
 #if USE_WEBGL2
@@ -3317,26 +3161,18 @@ var LibraryGL = {
   glVertexAttribI4iv: function(index, v) {
 #if GL_ASSERTIONS
     assert((v & 3) == 0, 'Pointer to integer data passed to glVertexAttribI4iv must be aligned to four bytes!');
+    assert(v != 0, 'Null pointer passed to glVertexAttribI4iv!');
 #endif
-    v = {{{ makeHEAPView('32', 'v', 'v+' + (4*4)) }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast a shared Int32Array to a non-shared Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-    v = new Int32Array(v);
-#endif
-    GLctx.vertexAttribI4iv(index, v);
+    GLctx.vertexAttribI4i(index, HEAP32[v>>2], HEAP32[v+4>>2], HEAP32[v+8>>2], HEAP32[v+12>>2]);
   },
 
   glVertexAttribI4uiv__sig: 'vii',
   glVertexAttribI4uiv: function(index, v) {
 #if GL_ASSERTIONS
     assert((v & 3) == 0, 'Pointer to integer data passed to glVertexAttribI4uiv must be aligned to four bytes!');
+    assert(v != 0, 'Null pointer passed to glVertexAttribI4uiv!');
 #endif
-    v = {{{ makeHEAPView('U32', 'v', 'v+' + (4*4)) }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast a shared Uint32Array to a non-shared Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-    v = new Uint32Array(v);
-#endif
-    GLctx.vertexAttribI4uiv(index, v);
+    GLctx.vertexAttribI4ui(index, HEAPU32[v>>2], HEAPU32[v+4>>2], HEAPU32[v+8>>2], HEAPU32[v+12>>2]);
   },
 #endif
 
