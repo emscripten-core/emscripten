@@ -1258,6 +1258,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         debug_level = max(1, debug_level) # keep whitespace readable, for asm.js parser simplicity
         shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
         assert not shared.Settings.SPLIT_MEMORY, 'WebAssembly does not support split memory'
+        assert not shared.Settings.USE_PTHREADS, 'WebAssembly does not support pthreads'
         # if root was not specified in -s, it might be fixed in ~/.emscripten, copy from there
         if not shared.Settings.BINARYEN_ROOT:
           try:
