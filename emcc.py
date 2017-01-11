@@ -437,8 +437,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
       use_closure_compiler = None
       js_transform = None
-      pre_js = ''
-      post_js = ''
+      pre_js = '' # before all js
+      post_module = '' # in js, after Module exists
+      post_js = '' # after all js
       preload_files = []
       embed_files = []
       exclude_files = []
@@ -1695,12 +1696,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           wasm_js_glue = wasm_js_glue.replace('{{{ wasmJSMethod }}}', 'null')
         wasm_js_glue = wasm_js_glue.replace('{{{ WASM_BACKEND }}}', str(shared.Settings.WASM_BACKEND)) # if wasm backend, wasm contains memory segments
-        pre_js = wasm_js_glue + '\n' + pre_js
+        wasm_js_glue += '\nintegrateWasmJS(Module);\n' # add a call
+        post_module += wasm_js_glue # we can set up the glue once we have the module
 
       # Apply pre and postjs files
-      if pre_js or post_js:
+      if pre_js or post_module or post_js:
         logging.debug('applying pre/postjses')
         src = open(final).read()
+        if post_module:
+          src = src.replace('// {{PREAMBLE_ADDITIONS}}', post_module + '\n// {{PREAMBLE_ADDITIONS}}')
         final += '.pp.js'
         if WINDOWS: # Avoid duplicating \r\n to \r\r\n when writing out.
           if pre_js: pre_js = pre_js.replace('\r\n', '\n')
@@ -1778,13 +1782,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Generate the fetch-worker.js script for multithreaded emscripten_fetch() support if targeting pthreads.
       if shared.Settings.FETCH and shared.Settings.USE_PTHREADS:
         shared.make_fetch_worker(final, os.path.join(os.path.dirname(os.path.abspath(target)), 'fetch-worker.js'))
-
-      if shared.Settings.BINARYEN:
-        # Insert a call to integrate with wasm.js
-        js = open(final).read()
-        js = js.replace('// {{PREAMBLE_ADDITIONS}}', 'integrateWasmJS(Module);\n// {{PREAMBLE_ADDITIONS}}')
-        final += '.binaryen.js'
-        open(final, 'w').write(js)
 
     # exit block 'memory initializer'
     log_time('memory initializer')
