@@ -4,6 +4,7 @@
 namespace NameSpace {
 class Class {
  public:
+  __attribute__((noinline))
   void Aborter(double x, char y, int *z) {
     int addr = x + y + (int)z;
     void *p = (void *)addr;

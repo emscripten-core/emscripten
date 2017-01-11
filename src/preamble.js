@@ -858,15 +858,20 @@ function lengthBytesUTF32(str) {
 {{{ maybeExport('lengthBytesUTF32') }}}
 
 function demangle(func) {
-  var hasLibcxxabi = !!Module['___cxa_demangle'];
-  if (hasLibcxxabi) {
+  var __cxa_demangle_func = Module['___cxa_demangle'] || Module['__cxa_demangle'];
+  if (__cxa_demangle_func) {
     try {
-      var s = func.substr(1);
+      var s =
+#if WASM_BACKEND
+        func;
+#else
+        func.substr(1);
+#endif
       var len = lengthBytesUTF8(s)+1;
       var buf = _malloc(len);
       stringToUTF8(s, buf, len);
       var status = _malloc(4);
-      var ret = Module['___cxa_demangle'](buf, 0, 0, status);
+      var ret = __cxa_demangle_func(buf, 0, 0, status);
       if (getValue(status, 'i32') === 0 && ret) {
         return Pointer_stringify(ret);
       }
@@ -886,7 +891,17 @@ function demangle(func) {
 }
 
 function demangleAll(text) {
-  return text.replace(/__Z[\w\d_]+/g, function(x) { var y = demangle(x); return x === y ? x : (x + ' [' + y + ']') });
+  var regex =
+#if WASM_BACKEND
+    /_Z[\w\d_]+/g;
+#else
+    /__Z[\w\d_]+/g;
+#endif
+  return text.replace(regex,
+    function(x) {
+      var y = demangle(x);
+      return x === y ? x : (x + ' [' + y + ']');
+    });
 }
 
 function jsStackTrace() {
