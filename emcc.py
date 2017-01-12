@@ -1697,7 +1697,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           wasm_js_glue = wasm_js_glue.replace('{{{ wasmJSMethod }}}', 'null')
         wasm_js_glue = wasm_js_glue.replace('{{{ WASM_BACKEND }}}', str(shared.Settings.WASM_BACKEND)) # if wasm backend, wasm contains memory segments
         wasm_js_glue += '\nintegrateWasmJS(Module);\n' # add a call
-        post_module += wasm_js_glue # we can set up the glue once we have the module
+        post_module += str(wasm_js_glue) # we can set up the glue once we have the module
 
       # Apply pre and postjs files
       if pre_js or post_module or post_js:
