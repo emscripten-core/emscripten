@@ -1495,7 +1495,6 @@ int main() {
 
     self.do_run_in_out_file_test('tests', 'core', 'test_set_align')
 
-  @no_wasm_backend('printf is incorrectly handling float values')
   def test_emscripten_api(self):
       check = '''
 def process(filename):
@@ -5258,7 +5257,6 @@ return malloc(size);
     return self.get_library('freetype',
                             os.path.join('objs', '.libs', 'libfreetype.a'))
 
-  @no_wasm_backend()
   def test_freetype(self):
     if WINDOWS: return self.skip('test_freetype uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
     assert 'asm2g' in test_modes
@@ -5402,7 +5400,6 @@ def process(filename):
         assert old.count('tempBigInt') > new.count('tempBigInt')
 
   @sync
-  @no_wasm_backend()
   def test_poppler(self):
     if WINDOWS: return self.skip('test_poppler depends on freetype, which uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
 
