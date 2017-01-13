@@ -1255,6 +1255,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
 
       if shared.Settings.BINARYEN:
+        # set file locations, so that JS glue can find what it needs
+        shared.Settings.WASM_TEXT_FILE = os.path.basename(wasm_text_target)
+        shared.Settings.WASM_BINARY_FILE = os.path.basename(wasm_binary_target)
+        shared.Settings.ASMJS_CODE_FILE = os.path.basename(asm_target)
+
         shared.Settings.ASM_JS = 2 # when targeting wasm, we use a wasm Memory, but that is not compatible with asm.js opts
         debug_level = max(1, debug_level) # keep whitespace readable, for asm.js parser simplicity
         shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
@@ -1684,20 +1689,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           file_args.append('--use-preload-plugins')
         file_code = execute([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
         pre_js = file_code + pre_js
-
-      if shared.Settings.BINARYEN:
-        # add in the glue integration code as a pre-js, so it is optimized together with everything else
-        wasm_js_glue = open(os.path.join(shared.Settings.BINARYEN_ROOT, 'src', 'js', 'wasm.js-post.js')).read()
-        wasm_js_glue = wasm_js_glue.replace('{{{ asmjsCodeFile }}}', '"' + os.path.basename(asm_target) + '"')
-        wasm_js_glue = wasm_js_glue.replace('{{{ wasmTextFile }}}', '"' + os.path.basename(wasm_text_target) + '"')
-        wasm_js_glue = wasm_js_glue.replace('{{{ wasmBinaryFile }}}', '"' + os.path.basename(wasm_binary_target) + '"')
-        if shared.Settings.BINARYEN_METHOD:
-          wasm_js_glue = wasm_js_glue.replace('{{{ wasmJSMethod }}}', '(Module[\'wasmJSMethod\'] || "' + shared.Settings.BINARYEN_METHOD + '")')
-        else:
-          wasm_js_glue = wasm_js_glue.replace('{{{ wasmJSMethod }}}', 'null')
-        wasm_js_glue = wasm_js_glue.replace('{{{ WASM_BACKEND }}}', str(shared.Settings.WASM_BACKEND)) # if wasm backend, wasm contains memory segments
-        wasm_js_glue += '\nintegrateWasmJS(Module);\n' # add a call
-        post_module += str(wasm_js_glue) # we can set up the glue once we have the module
 
       # Apply pre and postjs files
       if pre_js or post_module or post_js:

@@ -817,4 +817,7 @@ var FETCH = 0; // If nonzero, enables emscripten_fetch API.
 
 var ASMFS = 0; // If set to 1, uses the multithreaded filesystem that is implemented within the asm.js module, using emscripten_fetch. Implies -s FETCH=1.
 
-// Reserved: variables containing POINTER_MASKING.
+var WASM_TEXT_FILE = ''; // name of the file containing wasm text, if relevant
+var WASM_BINARY_FILE = ''; // name of the file containing wasm binary, if relevant
+var ASMJS_CODE_FILE = ''; // name of the file containing asm.js, if relevant
+
