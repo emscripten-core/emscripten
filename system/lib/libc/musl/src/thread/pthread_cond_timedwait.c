@@ -1,6 +1,6 @@
 #include "pthread_impl.h"
 
-void __pthread_testcancel(void);
+void pthread_testcancel(void);
 int __pthread_mutex_lock(pthread_mutex_t *);
 int __pthread_mutex_unlock(pthread_mutex_t *);
 int pthread_setcancelstate(int, int *);
@@ -85,7 +85,7 @@ int __pthread_cond_timedwait(pthread_cond_t *restrict c, pthread_mutex_t *restri
 	if (ts && ts->tv_nsec >= 1000000000UL)
 		return EINVAL;
 
-	__pthread_testcancel();
+	pthread_testcancel();
 
 	if (c->_c_shared) {
 		shared = 1;
@@ -176,7 +176,7 @@ done:
 	pthread_setcancelstate(cs, 0);
 
 	if (e == ECANCELED) {
-		__pthread_testcancel();
+		pthread_testcancel();
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, 0);
 	}
 
