@@ -84,7 +84,7 @@ typedef long suseconds_t;
 
 #if defined(__NEED_pthread_attr_t) && !defined(__DEFINED_pthread_attr_t)
 #ifdef __EMSCRIPTEN__
-// For canvas transfer implementation in Emscripten, use an extra 10th control field
+// For canvas transfer implementation in Emscripten, use an extra 11th control field
 // to pass a pointer to a string denoting the WebGL canvases to transfer.
 typedef struct { union { int __i[11]; volatile int __vi[11]; unsigned __s[11]; } __u; } pthread_attr_t;
 #else
@@ -95,7 +95,7 @@ typedef struct { union { int __i[10]; volatile int __vi[10]; unsigned __s[10]; }
 
 #if defined(__NEED_pthread_mutex_t) && !defined(__DEFINED_pthread_mutex_t)
 #ifdef __EMSCRIPTEN__
-// For mutex implementation in Emscripten, need to use an extra seventh control field
+// For mutex implementation in Emscripten, need to use an extra eighth control field
 // to hold a temporary futex wait & wake location, designated as mutex->_m_addr.
 typedef struct { union { int __i[8]; volatile int __vi[8]; volatile void *__p[8]; } __u; } pthread_mutex_t;
 #else
