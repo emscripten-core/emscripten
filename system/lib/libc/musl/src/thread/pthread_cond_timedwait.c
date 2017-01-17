@@ -3,7 +3,7 @@
 void __pthread_testcancel(void);
 int __pthread_mutex_lock(pthread_mutex_t *);
 int __pthread_mutex_unlock(pthread_mutex_t *);
-int __pthread_setcancelstate(int, int *);
+int pthread_setcancelstate(int, int *);
 
 /*
  * struct waiter
@@ -108,8 +108,8 @@ int __pthread_cond_timedwait(pthread_cond_t *restrict c, pthread_mutex_t *restri
 
 	__pthread_mutex_unlock(m);
 
-	__pthread_setcancelstate(PTHREAD_CANCEL_MASKED, &cs);
-	if (cs == PTHREAD_CANCEL_DISABLE) __pthread_setcancelstate(cs, 0);
+	pthread_setcancelstate(PTHREAD_CANCEL_MASKED, &cs);
+	if (cs == PTHREAD_CANCEL_DISABLE) pthread_setcancelstate(cs, 0);
 
 	do e = __timedwait_cp(fut, seq, clock, ts, !shared);
 	while (*fut==seq && (!e || e==EINTR));
@@ -173,11 +173,11 @@ relock:
 	if (e == ECANCELED) e = 0;
 
 done:
-	__pthread_setcancelstate(cs, 0);
+	pthread_setcancelstate(cs, 0);
 
 	if (e == ECANCELED) {
 		__pthread_testcancel();
-		__pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, 0);
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, 0);
 	}
 
 #ifdef __EMSCRIPTEN__
