@@ -2607,7 +2607,7 @@ def read_and_preprocess(filename):
 def make_fetch_worker(source_file, output_file):
   src = open(source_file, 'r').read()
   funcs_to_import = ['alignUp', 'getTotalMemory', 'stringToUTF8', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_runtime_thread', '_emscripten_futex_wait']
-  asm_funcs_to_import = ['_malloc', '_free', '_sbrk', '_pthread_mutex_lock', '_pthread_mutex_unlock']
+  asm_funcs_to_import = ['_malloc', '_free', '_sbrk', '___pthread_mutex_lock', '___pthread_mutex_unlock']
   function_prologue = '''this.onerror = function(e) {
   console.error(e);
 }
