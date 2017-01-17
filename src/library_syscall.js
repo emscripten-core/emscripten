@@ -1002,6 +1002,12 @@ var SyscallsLibrary = {
   },
   __syscall221__deps: ['__setErrNo'],
   __syscall221: function(which, varargs) { // fcntl64
+#if NO_FILESYSTEM
+#if SYSCALL_DEBUG
+    Module.printErr('no-op in fcntl64 syscall due to NO_FILESYSTEM');
+#endif
+    return 0;
+#else
     var stream = SYSCALLS.getStreamFromFD(), cmd = SYSCALLS.get();
     switch (cmd) {
       case {{{ cDefine('F_DUPFD') }}}: {
@@ -1050,6 +1056,7 @@ var SyscallsLibrary = {
         return -ERRNO_CODES.EINVAL;
       }
     }
+#endif // NO_FILESYSTEM
   },
   __syscall265: function(which, varargs) { // clock_nanosleep
 #if SYSCALL_DEBUG
