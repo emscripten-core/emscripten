@@ -3274,6 +3274,43 @@ window.close = function() {
     self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
     self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"', '-O2'])
 
+  def test_binaryen_native(self):
+    for opts in [[], ['-O1'], ['-O2'], ['-O3']]:
+      print opts
+      self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1'] + opts)
+
+  def test_binaryen_async(self):
+    # notice when we use async compilation
+    open('shell.html', 'w').write(open(path_from_root('src', 'shell.html')).read().replace(
+      '''{{{ SCRIPT }}}''',
+      '''
+    <script>
+      // note if we do async compilation
+      var real_wasm_instantiate = WebAssembly.instantiate;
+      WebAssembly.instantiate = function(a, b) {
+        Module.sawAsyncCompilation = true;
+        return real_wasm_instantiate(a, b);
+      };
+      // show stderr for the viewer's fun
+      Module.printErr = function(x) {
+        Module.print('<<< ' + x + ' >>>');
+        console.log(x);
+      };
+    </script>
+    {{{ SCRIPT }}}
+''',
+    ))
+    for opts, expect in [
+      ([], 0),
+      (['-O1'], 1),
+      (['-O2'], 1),
+      (['-O3'], 1),
+      (['-s', 'BINARYEN_ASYNC_COMPILATION=1'], 1), # force it on
+      (['-O1', '-s', 'BINARYEN_ASYNC_COMPILATION=0'], 0), # force it off
+    ]:
+      print opts, expect
+      self.btest('binaryen_async.c', expected=str(expect), args=['-s', 'BINARYEN=1', '--shell-file', 'shell.html'] + opts)
+
   def test_utf8_textdecoder(self):
     self.btest('benchmark_utf8.cpp', expected='0', args=['--embed-file', path_from_root('tests/utf8_corpus.txt') + '@/utf8_corpus.txt'])
 
