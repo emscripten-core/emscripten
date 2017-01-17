@@ -951,7 +951,7 @@ LibraryManager.library = {
   llvm_ctlz_i8: function(x, isZeroUndef) {
     x = x | 0;
     isZeroUndef = isZeroUndef | 0;
-    return (Math_clz32(x) | 0) - 24 | 0;
+    return (Math_clz32(x & 0xff) | 0) - 24 | 0;
   },
 
   llvm_ctlz_i16__asm: true,
@@ -959,7 +959,7 @@ LibraryManager.library = {
   llvm_ctlz_i16: function(x, isZeroUndef) {
     x = x | 0;
     isZeroUndef = isZeroUndef | 0;
-    return (Math_clz32(x) | 0) - 16 | 0
+    return (Math_clz32(x & 0xffff) | 0) - 16 | 0
   },
 
   llvm_ctlz_i64__asm: true,
