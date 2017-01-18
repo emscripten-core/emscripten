@@ -1250,6 +1250,12 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get(), offset = SYSCALLS.get();
     return SYSCALLS.doWritev(stream, iov, iovcnt, offset);
   },
+  __syscall337: function(which, varargs) { // recvmmsg
+#if SYSCALL_DEBUG
+    Module.printErr('warning: ignoring SYS_recvmmsg');
+#endif
+    return 0;
+  },
   __syscall340: function(which, varargs) { // prlimit64
     var pid = SYSCALLS.get(), resource = SYSCALLS.get(), new_limit = SYSCALLS.get(), old_limit = SYSCALLS.get();
     if (old_limit) { // just report no limits
@@ -1602,6 +1608,7 @@ if (SYSCALL_DEBUG) {
     SYS_inotify_init1: 332,
     SYS_preadv: 333,
     SYS_pwritev: 334,
+    SYS_recvmmsg: 337,
     SYS_prlimit64: 340,
     SYS_name_to_handle_at: 341,
     SYS_open_by_handle_at: 342,

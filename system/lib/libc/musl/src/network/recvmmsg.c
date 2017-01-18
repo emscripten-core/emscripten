@@ -11,9 +11,5 @@ int recvmmsg(int fd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int fla
 	for (i = vlen; i; i--, mh++)
 		mh->msg_hdr.__pad1 = mh->msg_hdr.__pad2 = 0;
 #endif
-#ifndef __EMSCRIPTEN__
 	return syscall_cp(SYS_recvmmsg, fd, msgvec, vlen, flags, timeout);
-#else
-    return -1;
-#endif
 }
