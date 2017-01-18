@@ -1260,6 +1260,12 @@ var SyscallsLibrary = {
     }
     return 0;
   },
+  __syscall345: function(which, varargs) { // sendmmsg
+#if SYSCALL_DEBUG
+    Module.printErr('warning: ignoring SYS_sendmmsg');
+#endif
+    return 0;
+  },
 };
 
 if (SYSCALL_DEBUG) {

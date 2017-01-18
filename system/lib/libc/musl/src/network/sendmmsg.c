@@ -25,10 +25,6 @@ int sendmmsg(int fd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int fla
 error:
 	return i ? i : -1;
 #else
-#ifndef __EMSCRIPTEN__
 	return syscall_cp(SYS_sendmmsg, fd, msgvec, vlen, flags);
-#else
-	return -1;
-#endif
 #endif
 }
