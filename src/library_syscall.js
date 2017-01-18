@@ -839,6 +839,12 @@ var SyscallsLibrary = {
     }
     return nonzero;
   },
+  __syscall178: function(which, varargs) { // rt_sigqueueinfo
+#if SYSCALL_DEBUG
+    Module.printErr('warning: ignoring SYS_rt_sigqueueinfo');
+#endif
+    return 0;
+  },
   __syscall180: function(which, varargs) { // pread64
     var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get(), zero = SYSCALLS.getZero(), offset = SYSCALLS.get64();
     return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count, offset);
