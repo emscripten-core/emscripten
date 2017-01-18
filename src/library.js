@@ -4288,7 +4288,7 @@ LibraryManager.library = {
   _pthread_cleanup_push: function(){},
   _pthread_cleanup_pop: function(){},
   __pthread_self: function() { abort() },
-  pthread_setcancelstate: function() { return 0 },
+  __pthread_setcancelstate: function() { return 0 },
 
   // libunwind
 
