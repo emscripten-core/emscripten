@@ -1241,7 +1241,7 @@ class Building:
     if fpath:
       if is_exe(program): return program
     else:
-      paths = os.envrion["PATH"].split(os.pathsep) + (extra_paths or [])
+      paths = os.environ["PATH"].split(os.pathsep) + (extra_paths or [])
       for path in paths:
         path = path.strip('"')
         exe_file = os.path.join(path, program)
@@ -1278,8 +1278,10 @@ class Building:
 
     # On Windows specify MinGW Makefiles if we have MinGW and no other toolchain was specified, to avoid CMake
     # pulling in a native Visual Studio, or Unix Makefiles.
-    if WINDOWS and not '-G' in args and Building.which('mingw32-make', extra_paths=[LLVM_ROOT]):
-      args += ['-G', 'MinGW Makefiles']
+    if WINDOWS and not '-G' in args:
+      mingw_make = Building.which('mingw32-make', extra_paths=[LLVM_ROOT])
+      if mingw_make:
+        args += ['-G', 'MinGW Makefiles', '-DCMAKE_MAKE_PROGRAM=%s' % mingw_make]
 
     # CMake has a requirement that it wants sh.exe off PATH if MinGW Makefiles is being used. This happens quite often,
     # so do this automatically on behalf of the user. See http://www.cmake.org/Wiki/CMake_MinGW_Compiler_Issues
