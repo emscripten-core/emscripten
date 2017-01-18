@@ -1223,8 +1223,9 @@ class Building:
       sys.exit(1)
 
   # Finds the given executable 'program' in PATH. Operates like the Unix tool 'which'.
+  # If extra_paths is a list, its elements are appended to the search paths
   @staticmethod
-  def which(program):
+  def which(program, extra_paths=None):
     import os
     def is_exe(fpath):
       return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
@@ -1240,7 +1241,8 @@ class Building:
     if fpath:
       if is_exe(program): return program
     else:
-      for path in os.environ["PATH"].split(os.pathsep):
+      paths = os.envrion["PATH"].split(os.pathsep) + (extra_paths or [])
+      for path in paths:
         path = path.strip('"')
         exe_file = os.path.join(path, program)
         if is_exe(exe_file): return exe_file
@@ -1276,7 +1278,7 @@ class Building:
 
     # On Windows specify MinGW Makefiles if we have MinGW and no other toolchain was specified, to avoid CMake
     # pulling in a native Visual Studio, or Unix Makefiles.
-    if WINDOWS and not '-G' in args and Building.which('mingw32-make'):
+    if WINDOWS and not '-G' in args and Building.which('mingw32-make', extra_paths=[LLVM_ROOT]):
       args += ['-G', 'MinGW Makefiles']
 
     # CMake has a requirement that it wants sh.exe off PATH if MinGW Makefiles is being used. This happens quite often,
@@ -1324,7 +1326,7 @@ class Building:
     # On Windows prefer building with mingw32-make instead of make, if it exists.
     if WINDOWS:
       if args[0] == 'make':
-        mingw32_make = Building.which('mingw32-make')
+        mingw32_make = Building.which('mingw32-make', extra_paths=[LLVM_ROOT])
         if mingw32_make:
           args[0] = mingw32_make
 
