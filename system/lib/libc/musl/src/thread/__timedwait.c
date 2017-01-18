@@ -12,7 +12,7 @@
 #include "syscall.h"
 #include "pthread_impl.h"
 
-int pthread_setcancelstate(int, int *);
+int __pthread_setcancelstate(int, int *);
 int __clock_gettime(clockid_t, struct timespec *);
 
 
@@ -81,7 +81,7 @@ int __timedwait(volatile int *addr, int val,
 	clockid_t clk, const struct timespec *at, int priv)
 {
 	int cs, r;
-	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
+	__pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
 #ifdef __EMSCRIPTEN__
 	emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_WAITMUTEX);
 #endif
@@ -89,7 +89,7 @@ int __timedwait(volatile int *addr, int val,
 #ifdef __EMSCRIPTEN__
 	emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITMUTEX, EM_THREAD_STATUS_RUNNING);
 #endif
-	pthread_setcancelstate(cs, 0);
+	__pthread_setcancelstate(cs, 0);
 
 	return r;
 }
