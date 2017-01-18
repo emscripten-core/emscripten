@@ -2,18 +2,18 @@
 #include <sys/mman.h>
 
 int __munmap(void *, size_t);
-void pthread_testcancel(void);
-int pthread_setcancelstate(int, int *);
+void __pthread_testcancel(void);
+int __pthread_setcancelstate(int, int *);
 
 int __pthread_timedjoin_np(pthread_t t, void **res, const struct timespec *at)
 {
 	int tmp, cs, r = 0;
-	pthread_testcancel();
-	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
-	if (cs == PTHREAD_CANCEL_ENABLE) pthread_setcancelstate(cs, 0);
+	__pthread_testcancel();
+	__pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
+	if (cs == PTHREAD_CANCEL_ENABLE) __pthread_setcancelstate(cs, 0);
 	while ((tmp = t->tid) && r != ETIMEDOUT && r != EINVAL)
 		r = __timedwait_cp(&t->tid, tmp, CLOCK_REALTIME, at, 0);
-	pthread_setcancelstate(cs, 0);
+	__pthread_setcancelstate(cs, 0);
 	if (r == ETIMEDOUT || r == EINVAL) return r;
 	a_barrier();
 	if (res) *res = t->result;
