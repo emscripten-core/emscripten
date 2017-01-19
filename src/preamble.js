@@ -2200,6 +2200,8 @@ function integrateWasmJS(Module) {
     };
     info['global.Math'] = global.Math;
     info['env'] = env;
+    // handle a generated wasm instance, receiving its exports and
+    // performing other necessary setup
     function receiveInstance(instance) {
       exports = instance.exports;
       if (exports.memory) mergeMemory(exports.memory);
@@ -2207,10 +2209,10 @@ function integrateWasmJS(Module) {
     }
 #if BINARYEN_ASYNC_COMPILATION
     Module['printErr']('asynchronously preparing wasm');
-    addRunDependency('wasm-instantiate');
+    addRunDependency('wasm-instantiate'); // we can't run yet
     WebAssembly.instantiate(getBinary(), info).then(function(output) {
       receiveInstance(output.instance);
-      Module['asm'] = exports;
+      Module['asm'] = exports; // swap in the exports so they can be called
       removeRunDependency('wasm-instantiate');
     });
     return {}; // no exports yet; we'll fill them in later
