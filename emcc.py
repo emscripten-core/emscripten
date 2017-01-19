@@ -1291,9 +1291,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if opt_level > 0:
           if 'BINARYEN_ASYNC_COMPILATION=0' not in settings_changes:
             shared.Settings.BINARYEN_ASYNC_COMPILATION = 1
-        # async compilation requires a swappable module - we swap it in when it's ready
         if shared.Settings.BINARYEN_ASYNC_COMPILATION == 1:
-          shared.Settings.SWAPPABLE_ASM_MODULE = 1
+          if shared.Building.is_wasm_only():
+            # async compilation requires a swappable module - we swap it in when it's ready
+            shared.Settings.SWAPPABLE_ASM_MODULE = 1
+          else:
+            # if not wasm-only, we can't do async compilation as the build can run in other
+            # modes than wasm (like asm.js) which may not support an async step
+            shared.Settings.BINARYEN_ASYNC_COMPILATION = 0
+            if 'BINARYEN_ASYNC_COMPILATION=1' in settings_changes:
+              logging.warning('BINARYEN_ASYNC_COMPILATION requested, but disabled since not in wasm-only mode')
 
       # wasm outputs are only possible with a side wasm
       if target.endswith(WASM_ENDINGS):
