@@ -1226,6 +1226,8 @@ class Building:
   # If extra_paths is a list, its elements are appended to the search paths
   @staticmethod
   def which(program, extra_paths=None):
+    if not extra_paths:
+      extra_paths = []
     import os
     def is_exe(fpath):
       return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
@@ -1241,7 +1243,7 @@ class Building:
     if fpath:
       if is_exe(program): return program
     else:
-      paths = os.environ["PATH"].split(os.pathsep) + (extra_paths or [])
+      paths = os.environ["PATH"].split(os.pathsep) + extra_paths
       for path in paths:
         path = path.strip('"')
         exe_file = os.path.join(path, program)
