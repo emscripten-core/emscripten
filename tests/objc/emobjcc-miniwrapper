@@ -1,0 +1,21 @@
+#!/bin/bash
+
+#clang $1 -emit-llvm -S -o ${1%.m}.ll
+#./emcc ${1%.m}.ll $2 $3 $4 $5 $6 $7 $8
+
+if clang -arch i386 $1 -rewrite-objc -o $1.c; then
+  echo " ** .c produced"
+else
+  echo " ** Producing .c failed"
+  exit 1
+fi
+
+if clang $1.c -include 'objc-prefix.h'  -emit-llvm -S -o ${1%.m}.ll ; then
+  echo " ** .ll produced"
+else
+  echo " ** Producing .ll failed"
+  exit 2
+fi
+
+../../emcc --pre-js dummy-runtime-prefix.js ${1%.m}.ll  $2 $3 $4 $5 $6 $7 $8
+
