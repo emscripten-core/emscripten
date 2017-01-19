@@ -56,10 +56,6 @@ extern FILE *const stdin;
 extern FILE *const stdout;
 extern FILE *const stderr;
 
-#define stdin  (stdin)
-#define stdout (stdout)
-#define stderr (stderr)
-
 FILE *fopen(const char *__restrict, const char *__restrict);
 FILE *freopen(const char *__restrict, const char *__restrict, FILE *__restrict);
 int fclose(FILE *);
