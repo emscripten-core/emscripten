@@ -1,9 +1,21 @@
+if (!window["SearchArgs"]) {
+  var SearchArgs = {};
+  (function() {
+    var searchArgs = window.location.search.split("&");
+    for (var i = 0; i < searchArgs.length; ++i) {
+      var eqsplit = searchArgs[i].split("=");
+      if (eqsplit.length == 1) {
+        SearchArgs[eqsplit[0]] = true;
+      } else {
+        SearchArgs[eqsplit[0]] = eqsplit[1];
+      }
+    }
+  })();
+}
 
 var Recorder = (function() {
   var recorder;
-  var init = 'reproduce=';
-  var initLocation = window.location.search.indexOf(init);
-  var replaying = initLocation >= 0;
+  var replaying = SearchArgs["reproduce"] != null;
   var raf = window['requestAnimationFrame'] ||
             window['mozRequestAnimationFrame'] ||
             window['webkitRequestAnimationFrame'] ||
@@ -109,11 +121,12 @@ var Recorder = (function() {
     };
   } else {
     // Load recording
-    var dataPath = window.location.search.substring(initLocation + init.length);
-    var baseURL = window.location.toString().replace('://', 'cheez999').split('?')[0].split('/').slice(0, -1).join('/').replace('cheez999', '://');
-    if (baseURL[baseURL.length-1] != '/') baseURL += '/';
+    var dataPath = SearchArgs["reproduce"];
+    var reproduceMode = SearchArgs["reproduceMode"];
+    var baseURL = window.location.toString();
+    baseURL = baseURL.substring(0, baseURL.lastIndexOf("/", baseURL.indexOf("?") == -1 ? baseURL.length : baseURL.indexOf("?")) + 1);
     var path = baseURL + dataPath;
-    alert('Loading replay from ' + path);
+    console.log('Loading replay from ' + path);
     var request = new XMLHttpRequest();
     request.open('GET', path, false);
     request.send();
@@ -122,10 +135,61 @@ var Recorder = (function() {
     recorder = JSON.parse(raw);
     // prepare to replay
     // Start
+    var totalFrames = recorder.frameCounter;
     recorder.frameCounter = 0; // the frame counter is used to know when to replay events
     recorder.start = function() {
+      if (reproduceMode == "speed") {
+        // patch Module.requestAnimationFrame to use postMessage if we're going for speed
+        Module._raf = Module.requestAnimationFrame;
+        Module._rafCallbacks = [];
+        Module._rafScheduled = false;
+        Module._rafMessageHandler = function(evt) {
+          if (evt.data != "raf")
+            return;
+
+          var cbs = Module._rafCallbacks;
+          if (cbs == null)
+            return;
+
+          var now = Recorder.pnow();
+
+          Module._rafCallbacks = [];
+          Module._rafScheduled = false;
+          for (var i = 0; i < cbs.length; ++i) {
+            cbs[i].call(window, now);
+          }
+        };
+        window.addEventListener("message", Module._rafMessageHandler, false);
+
+        Module.requestAnimationFrame = function(cb) {
+          Module._rafCallbacks.push(cb);
+          if (!Module._rafScheduled) {
+            window.postMessage("raf", "*");
+            Module._rafScheduled = true;
+          }
+        };
+        window.mozRequestAnimationFrame = Module.requestAnimationFrame;
+        window.requestAnimationFrame = Module.requestAnimationFrame;
+
+        Module.requestAnimationFrameNoTrigger = function(cb) {
+          Module._rafCallbacks.push(cb);
+        };
+      } else {
+        Module.requestAnimationFrameNoTrigger = Module.requestAnimationFrame;
+      }
+
+      // set 'raf' to our monkeypatched raf
+      raf = Module.requestAnimationFrameNoTrigger;
       function count() {
+        // check if we're done, and abort (via exception) if so
+        if (recorder.frameCounter > totalFrames) {
+          recorder.finish();
+          console.log("played back " + recorder.frameCounter + " frames");
+          throw 'recording playback done';
+        }
+
         recorder.frameCounter++;
+
         raf(count);
         // replay relevant events for this frame
         while (recorder.devents.length && recorder.devents[recorder.devents.length-1].frameCounter <= recorder.frameCounter) {
