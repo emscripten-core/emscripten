@@ -1278,8 +1278,6 @@ def main():
       options.browser = 'start'
     elif LINUX:
       options.browser = which('xdg-open')
-      if not options.browser:
-        options.browser = 'firefox'
     elif OSX:
       options.browser = 'safari'
 
