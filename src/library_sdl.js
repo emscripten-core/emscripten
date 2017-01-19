@@ -3261,6 +3261,62 @@ var LibrarySDL = {
 
   SDL_putenv: 'putenv',
 
+  // SDL 2
+
+  SDL_GL_ExtensionSupported: function(extension) {
+    return Module.ctx.getExtension(extension);
+  },
+
+  SDL_DestroyWindow: function(window) {},
+
+  SDL_DestroyRenderer: function(renderer) {},
+
+  SDL_GetWindowFlags: function(x, y) {
+    if (Browser.isFullScreen) {
+       return 1;
+    }
+
+    return 0;
+  },
+
+  SDL_GL_SwapWindow: function(window) {},
+
+  SDL_GL_MakeCurrent: function(window, context) {},
+
+  SDL_GL_DeleteContext: function(context) {},
+
+  SDL_GL_SetSwapInterval: function(state) {},
+
+  SDL_SetWindowTitle: function(window, title) {
+    title = title && Pointer_stringify(title);
+  },
+
+  SDL_GetWindowSize: function(window, width, height){
+    var w = Module['canvas'].width;
+    var h = Module['canvas'].height;
+    if (width) {{{ makeSetValue('width', '0', 'w', 'i32') }}};
+    if (height) {{{ makeSetValue('height', '0', 'h', 'i32') }}};
+  },
+
+  SDL_LogSetOutputFunction: function(callback, userdata) {},
+
+  SDL_SetWindowFullscreen: function(window, fullscreen) {
+    if (Browser.isFullScreen) {
+      Module['canvas'].cancelFullScreen();
+      return 1;
+    } else {
+      return 0;
+    }
+  },
+
+  SDL_GetWindowFlags: function() {},
+
+  SDL_ClearError: function() {},
+
+  SDL_getenv: function(variable) {
+    return "";
+  },
+
   // TODO
 
   SDL_SetGamma: function(r, g, b) {
