@@ -10,7 +10,7 @@
   "realloc": ["malloc", "free"],
   "getlogin": ["malloc"],
   "tmpnam": ["malloc"],
-  "mmap": ["malloc"],
+  "mmap": ["memalign"],
   "realpath": ["malloc"],
   "strerror": ["malloc"],
   "__ctype_b_loc": ["malloc"],
