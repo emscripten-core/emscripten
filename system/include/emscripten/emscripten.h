@@ -60,6 +60,16 @@ typedef void (*em_str_callback_func)(const char *);
 #define EM_ASM_INT_V(code) emscripten_asm_const_int(#code)
 #define EM_ASM_DOUBLE_V(code) emscripten_asm_const_double(#code)
 
+#define EM_ASM_STRING_MALLOC_INTERNAL(code, ...) emscripten_asm_const_string_malloc(#code, __VA_ARGS__)
+#define EM_ASM_STRING_SHARED_INTERNAL(code, ...) emscripten_asm_const_string_shared(#code, __VA_ARGS__)
+#define EM_ASM_STRING_MALLOC_V_INTERNAL(code) emscripten_asm_const_string_malloc(#code)
+#define EM_ASM_STRING_SHARED_V_INTERNAL(code) emscripten_asm_const_string_shared(#code)
+
+#define EM_ASM_STRING_MALLOC(code, ...) EM_ASM_STRING_MALLOC_INTERNAL({ return __emscripten_string_malloc( function(){code}() ); }, __VA_ARGS__)
+#define EM_ASM_STRING_SHARED(code, ...) EM_ASM_STRING_SHARED_INTERNAL({ return __emscripten_string_shared( function(){code}() ); }, __VA_ARGS__)
+#define EM_ASM_STRING_MALLOC_V(code) EM_ASM_STRING_MALLOC_V_INTERNAL( return __emscripten_string_malloc( function(){code}() ); )
+#define EM_ASM_STRING_SHARED_V(code) EM_ASM_STRING_MALLOC_V_INTERNAL( return __emscripten_string_shared( function(){code}() ); )
+
 
 #define EMSCRIPTEN_KEEPALIVE __attribute__((used))
 
@@ -258,6 +268,8 @@ int emscripten_print_double(double x, char *to, signed max);
 void emscripten_asm_const(const char *code);
 int emscripten_asm_const_int(const char *code, ...);
 double emscripten_asm_const_double(const char *code, ...);
+char *emscripten_asm_const_string_malloc(const char *code, ...)
+char *emscripten_asm_const_string_shared(const char *code, ...)
 
 #if __EMSCRIPTEN__
 void emscripten_sleep(unsigned int ms);

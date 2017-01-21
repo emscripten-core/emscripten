@@ -3850,6 +3850,22 @@ LibraryManager.library = {
     stringToUTF8(s, me.buffer, me.bufferSize);
     return me.buffer;
   },
+  
+  _emscripten_string_malloc: function(str) {
+    return allocate(intArrayFromString(str), 'i8', ALLOC_NORMAL);
+  },
+  
+  _emscripten_string_shared: function(str) {
+    var me = __emscripten_string_shared;
+    var len = lengthBytesUTF8(str);
+    if (!me.bufferSize || me.bufferSize < len+1) {
+      if (me.bufferSize) _free(me.buffer);
+      me.bufferSize = len+1;
+      me.buffer = _malloc(me.bufferSize);
+    }
+    stringToUTF8(str, me.buffer, me.bufferSize);
+    return me.buffer;
+  },
 
   emscripten_random: function() {
     return Math.random();
@@ -4267,6 +4283,10 @@ LibraryManager.library = {
   emscripten_asm_const: true,
   emscripten_asm_const_int: true,
   emscripten_asm_const_double: true,
+  emscripten_asm_const_string_malloc__deps: ['_emscripten_string_malloc'],
+  emscripten_asm_const_string_malloc = true,
+  emscripten_asm_const_string_shared__deps: ['_emscripten_string_shared'],
+  emscripten_asm_const_string_shared = true,
 
   // ======== compiled code from system/lib/compiler-rt , see readme therein
   __muldsi3__asm: true,
