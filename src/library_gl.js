@@ -690,16 +690,18 @@ var LibraryGL = {
         // only store the string 'colors' in utable, and 'colors[0]', 'colors[1]' and 'colors[2]' will be parsed as 'colors'+i.
         // Note that for the GL.uniforms table, we still need to fetch the all WebGLUniformLocations for all the indices.
         var loc = GLctx.getUniformLocation(p, name);
-        var id = GL.getNewId(GL.uniforms);
-        utable[name] = [u.size, id];
-        GL.uniforms[id] = loc;
+        if (loc) {
+         var id = GL.getNewId(GL.uniforms);
+         utable[name] = [u.size, id];
+         GL.uniforms[id] = loc;
 
-        for (var j = 1; j < u.size; ++j) {
+         for (var j = 1; j < u.size; ++j) {
           var n = name + '['+j+']';
           loc = GLctx.getUniformLocation(p, n);
           id = GL.getNewId(GL.uniforms);
 
           GL.uniforms[id] = loc;
+         }
         }
       }
     }
