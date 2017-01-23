@@ -866,7 +866,7 @@ var SyscallsLibrary = {
     var ptr;
     var allocated = false;
     if (fd === -1) {
-      ptr = _malloc(len);
+      ptr = _memalign(PAGE_SIZE, len);
       if (!ptr) return -ERRNO_CODES.ENOMEM;
       _memset(ptr, 0, len);
       allocated = true;
