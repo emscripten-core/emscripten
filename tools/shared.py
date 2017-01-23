@@ -226,7 +226,7 @@ else:
     config_file = config_file.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(__rootpath__))
     llvm_root = os.path.dirname(find_executable('llvm-dis') or '/usr/bin/llvm-dis')
     config_file = config_file.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
-    binaryen_root = os.path.dirname(find_executable('asm2wasm') or '/usr/bin/asm2wasm')
+    binaryen_root = os.path.dirname(find_executable('asm2wasm') or '') # if we don't find it, we'll use the port
     config_file = config_file.replace('\'{{{ BINARYEN_ROOT }}}\'', repr(binaryen_root))
 
     node = find_executable('nodejs') or find_executable('node') or 'node'
