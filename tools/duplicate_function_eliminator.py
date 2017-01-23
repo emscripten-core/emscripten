@@ -247,16 +247,8 @@ EMSCRIPTEN_FUNCS();
     if len(chunks) > 1 and cores >= 2:
       # We can parallelize
       if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size/(1024*1024.))
-      pool = multiprocessing.Pool(processes=cores)
+      pool = shared.Building.get_multiprocessing_pool()
       filenames = pool.map(run_on_chunk, commands, chunksize=1)
-      try:
-        # Shut down the pool, since otherwise processes are left alive and would only be lazily terminated,
-        # and in other parts of the toolchain we also build up multiprocessing pools.
-        pool.terminate()
-        pool.join()
-      except Exception, e:
-        # On Windows we get occassional "Access is denied" errors when attempting to tear down the pool, ignore these.
-        logging.debug('Attempting to tear down multiprocessing pool failed with an exception: ' + str(e))
     else:
       # We can't parallize, but still break into chunks to avoid uglify/node memory issues
       if len(chunks) > 1 and DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks' % (len(chunks))
