@@ -132,9 +132,9 @@ def get_and_parse_backend(infile, settings, temp_files, DEBUG):
       backend_args += ['-emscripten-stack-size=%d' % settings['TOTAL_STACK']]
       backend_args += ['-O' + str(settings['OPT_LEVEL'])]
       if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
-        backend_args += ['-enable-emscripten-cxx-exceptions']
+        backend_args += ['-enable-emscripten-cpp-exceptions']
         if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
-          backend_args += ['-emscripten-cxx-exceptions-whitelist=' + ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['fake'])]
+          backend_args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['fake'])]
       if settings['ASYNCIFY']:
         backend_args += ['-emscripten-asyncify']
         backend_args += ['-emscripten-asyncify-functions=' + ','.join(settings['ASYNCIFY_FUNCTIONS'])]
