@@ -2130,7 +2130,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           subprocess.check_call(cmd)
         if 'interpret-s-expr' in shared.Settings.BINARYEN_METHOD:
           cmd = [os.path.join(binaryen_bin, 'wasm-dis'), wasm_binary_target, '-o', wasm_text_target]
-          logging.debug('wasm-dis (binary => binary): ' + ' '.join(cmd))
+          logging.debug('wasm-dis (binary => text): ' + ' '.join(cmd))
           subprocess.check_call(cmd)
         if shared.Settings.BINARYEN_SCRIPTS:
           binaryen_scripts = os.path.join(shared.Settings.BINARYEN_ROOT, 'scripts')
