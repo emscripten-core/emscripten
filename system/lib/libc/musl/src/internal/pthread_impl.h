@@ -102,9 +102,9 @@ struct __timer {
 // _rw_wr_owner to record which thread owns the write lock in order to avoid hangs.
 // Points to the pthread that currently has the write lock.
 #define _rw_wr_owner __u.__vi[3]
+#endif
 #define _b_lock __u.__vi[0]
 #define _b_waiters __u.__vi[1]
-#endif
 #define _b_limit __u.__i[2]
 #define _b_count __u.__vi[3]
 #define _b_waiters2 __u.__vi[4]
