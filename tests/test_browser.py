@@ -2188,6 +2188,7 @@ Module["preRun"].push(function () {
     self.btest(path_from_root('tests', 'webgl2_ubos.cpp'), args=['-s', 'USE_WEBGL2=1', '-lGL'], expected='0')
 
   def test_webgl2_garbage_free_entrypoints(self):
+    return self.skip('TODO juj: Missing webgl2_garbage_free_entrypoints.cpp')
     self.btest(path_from_root('tests', 'webgl2_garbage_free_entrypoints.cpp'), args=['-s', 'USE_WEBGL2=1', '-DTEST_WEBGL2=1'], expected='1')
     self.btest(path_from_root('tests', 'webgl2_garbage_free_entrypoints.cpp'), expected='1')
 
