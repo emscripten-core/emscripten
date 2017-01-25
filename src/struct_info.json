@@ -1487,7 +1487,8 @@
               "tid",
               "pid",
               "canceldisable",
-              "cancelasync"
+              "cancelasync",
+              "locale"
             ]
         },
         "defines": []

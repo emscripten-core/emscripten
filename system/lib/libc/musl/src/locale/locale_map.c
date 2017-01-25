@@ -116,13 +116,11 @@ const struct __locale_map *__get_locale(int cat, const char *val)
 }
 
 #ifdef __EMSCRIPTEN__
-void __emscripten_init_pthread(pthread_t thread) {
-	thread->locale = &libc.global_locale;
+void __emscripten_setup_pthread_data(void*);
+
+__attribute__((constructor))
+void __emscripten_pthread_data_constructor(void) {
+	__emscripten_setup_pthread_data(&libc.global_locale);
+	pthread_self()->locale = &libc.global_locale;
 }
-#if !__EMSCRIPTEN_PTHREADS__
-static struct __pthread __stub_pthread;
-pthread_t __emscripten_pthread_stub(void) {
-	return &__stub_pthread;
-}
-#endif
 #endif

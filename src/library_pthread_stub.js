@@ -79,12 +79,14 @@ var LibraryPThreadStub = {
     return 0;
   },
 
+  _pthread_ptr: '{{{ makeStaticAlloc(C_STRUCTS.pthread.__size__) }}}',
   pthread_self__sig: 'i',
   pthread_self__asm: true,
-  pthread_self__postset: '__ATINIT__.push(function(){___emscripten_init_pthread(_pthread_self());});',
+  pthread_self__deps: ['_pthread_ptr'],
   pthread_self: function() {
-    return ___emscripten_pthread_stub() | 0;
+    return __pthread_ptr | 0;
   },
+  __emscripten_setup_pthread_data: function() {},
 
   pthread_attr_init: function(attr) {
     /* int pthread_attr_init(pthread_attr_t *attr); */

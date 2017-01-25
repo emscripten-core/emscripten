@@ -3429,4 +3429,4 @@ window.close = function() {
         ['-s', 'USE_PTHREADS=1', '--proxy-to-worker', '-s', 'PTHREAD_POOL_SIZE=2'],
     ]:
       print "Testing with: ", args
-      self.btest('pthread/test_pthread_locale.c', expected='0', args=args)
+      self.btest('pthread/test_pthread_locale.c', expected='1', args=args)
