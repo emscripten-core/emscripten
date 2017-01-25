@@ -81,7 +81,7 @@ var LibraryPThreadStub = {
 
   pthread_self__sig: 'i',
   pthread_self__asm: true,
-  pthread_self__postset: '__ATINIT__.push(function(){___emscripten_init_pthread_stub();});',
+  pthread_self__postset: '__ATINIT__.push(function(){___emscripten_init_pthread(_pthread_self());});',
   pthread_self: function() {
     return ___emscripten_pthread_stub() | 0;
   },

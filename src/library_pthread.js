@@ -1,5 +1,5 @@
 var LibraryPThread = {
-  $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
+  $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();__ATINIT__.push(function(){___emscripten_init_pthread(_pthread_self());});',
   $PThread__deps: ['$PROCINFO', '_register_pthread_ptr', 'emscripten_main_thread_process_queued_calls'],
   $PThread: {
     MAIN_THREAD_ID: 1, // A special constant that identifies the main JS thread ID.
@@ -399,6 +399,7 @@ var LibraryPThread = {
       thread: threadParams.pthread_ptr,
       threadInfoStruct: threadParams.pthread_ptr // Info area for this thread in Emscripten HEAP (shared)
     };
+    ___emscripten_init_pthread(threadParams.pthread_ptr);
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0); // threadStatus <- 0, meaning not yet exited.
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, 0); // threadExitCode <- 0.
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, 0); // profilerBlock <- 0.

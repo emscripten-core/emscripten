@@ -173,9 +173,10 @@ void __restore_sigs(void *);
 
 #define __ATTRP_C11_THREAD ((void*)(uintptr_t)-1)
 
+#ifdef __EMSCRIPTEN__
+void __emscripten_init_pthread(pthread_t thread);
 #if !__EMSCRIPTEN_PTHREADS__
-void __emscripten_init_pthread_stub(void);
 pthread_t __emscripten_pthread_stub(void);
 #endif
-
+#endif
 #endif
