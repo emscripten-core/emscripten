@@ -50,7 +50,7 @@ this.onmessage = function(e) {
 
     // Initialize the global "process"-wide fields:
     buffer = e.data.buffer;
-    TOTAL_MEMORY = e.data.TOTAL_MEMORY;
+    Module['TOTAL_MEMORY'] = TOTAL_MEMORY = e.data.TOTAL_MEMORY;
     STATICTOP = e.data.STATICTOP;
     DYNAMIC_BASE = e.data.DYNAMIC_BASE;
     DYNAMICTOP_PTR = e.data.DYNAMICTOP_PTR;
