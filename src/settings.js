@@ -582,10 +582,11 @@ var FINALIZE_ASM_JS = 1; // If 1, will finalize the final emitted code, includin
                          // that prevent later js optimizer passes from running, like
                          // converting +5 into 5.0 (the js optimizer sees 5.0 as just 5).
 
-var SWAPPABLE_ASM_MODULE = 0; // If 1, then all exports from the asm.js module will be accessed
-                              // indirectly, which allow the asm module to be swapped later.
-                              // Note: It is very important to build the two modules that
-                              // are to be swapped with the same optimizations and so forth,
+var SWAPPABLE_ASM_MODULE = 0; // If 1, then all exports from the asm/wasm module will be accessed
+                              // indirectly, which allow the module to be swapped later,
+                              // simply by replacing Module['asm'].
+                              // Note: It is very important that the replacement module be
+                              // built with the same optimizations and so forth,
                               // as we depend on them being a drop-in replacement for each
                               // other (same globals on the heap at the same locations, etc.)
 
@@ -687,6 +688,9 @@ var BINARYEN_PASSES = ""; // A comma-separated list of passes to run in the bina
 var BINARYEN_MEM_MAX = -1; // Set the maximum size of memory in the wasm module (in bytes).
                            // Without this, TOTAL_MEMORY is used (as it is used for the initial value),
                            // or if memory growth is enabled, no limit is set. This overrides both of those.
+var BINARYEN_ASYNC_COMPILATION = 0; // Whether to compile the wasm asynchronously, which is more
+                                    // efficient. This is off by default in unoptimized builds and
+                                    // on by default in optimized ones.
 var BINARYEN_ROOT = ""; // Directory where we can find Binaryen. Will be automatically set for you,
                         // but you can set it to override if you are a Binaryen developer.
 
