@@ -2124,26 +2124,27 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             cmd += ['--mem-max=' + str(shared.Settings.BINARYEN_MEM_MAX)]
           if shared.Building.is_wasm_only():
             cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, an can contain special fastcomp-wasm support
+          if debug_level >= 2 or profiling_funcs:
+            cmd += ['-g']
+          if emit_symbol_map or shared.Settings.CYBERDWARF:
+            cmd += ['--symbolmap=' + target + '.symbols']
+          cmd += ['-o', wasm_binary_target]
           logging.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
           TimeLogger.update()
-          subprocess.check_call(cmd, stdout=open(wasm_text_target, 'w'))
+          subprocess.check_call(cmd)
           if import_mem_init:
             # remove and forget about the mem init file in later processing; it does not need to be prefetched in the html, etc.
             os.unlink(memfile)
             memory_init_file = False
           log_time('asm2wasm')
         if shared.Settings.BINARYEN_PASSES:
-          shutil.move(wasm_text_target, wasm_text_target + '.pre')
-          cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_text_target + '.pre', '-o', wasm_text_target] + map(lambda p: '--' + p, shared.Settings.BINARYEN_PASSES.split(','))
+          shutil.move(wasm_binary_target, wasm_binary_target + '.pre')
+          cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target + '.pre', '-o', wasm_binary_target] + map(lambda p: '--' + p, shared.Settings.BINARYEN_PASSES.split(','))
           logging.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))
           subprocess.check_call(cmd)
-        if 'native-wasm' in shared.Settings.BINARYEN_METHOD or 'interpret-binary' in shared.Settings.BINARYEN_METHOD:
-          cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
-          if debug_level >= 2 or profiling_funcs:
-            cmd += ['-g']
-          if emit_symbol_map or shared.Settings.CYBERDWARF:
-            cmd += ['--symbolmap=' + target + '.symbols']
-          logging.debug('wasm-as (text => binary): ' + ' '.join(cmd))
+        if 'interpret-s-expr' in shared.Settings.BINARYEN_METHOD:
+          cmd = [os.path.join(binaryen_bin, 'wasm-dis'), wasm_binary_target, '-o', wasm_text_target]
+          logging.debug('wasm-dis (binary => text): ' + ' '.join(cmd))
           subprocess.check_call(cmd)
         if shared.Settings.BINARYEN_SCRIPTS:
           binaryen_scripts = os.path.join(shared.Settings.BINARYEN_ROOT, 'scripts')
