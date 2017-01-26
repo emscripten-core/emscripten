@@ -755,7 +755,6 @@ var LibraryPThread = {
   },
 
   // Public pthread_self() function which returns a unique ID for the thread.
-  pthread_self__asm: true,
   pthread_self__deps: ['_pthread_ptr'],
   pthread_self: function() {
     return __pthread_ptr|0;

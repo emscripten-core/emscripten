@@ -80,8 +80,6 @@ var LibraryPThreadStub = {
   },
 
   _pthread_ptr: '{{{ makeStaticAlloc(C_STRUCTS.pthread.__size__) }}}',
-  pthread_self__sig: 'i',
-  pthread_self__asm: true,
   pthread_self__deps: ['_pthread_ptr'],
   pthread_self: function() {
     return __pthread_ptr | 0;
