@@ -2,9 +2,9 @@
 #include "pthread_impl.h"
 
 #if !__EMSCRIPTEN_PTHREADS__
-static pthread_t __main_pthread;
+static struct pthread __main_pthread;
 pthread_t pthread_self(void) {
-    return __main_pthread;
+    return &__main_pthread;
 }
 #endif
 
