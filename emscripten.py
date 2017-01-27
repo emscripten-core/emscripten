@@ -1423,7 +1423,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
     # Also convert wasm text to binary
     wasm_as_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-as'),
                     wast, '-o', basename + '.wasm']
-    logging.debug('  emscript: binaryen wasm-as:' + ' '.join(wasm_as_args))
+    logging.debug('  emscript: binaryen wasm-as: ' + ' '.join(wasm_as_args))
     shared.check_call(wasm_as_args)
 
   if DEBUG:
