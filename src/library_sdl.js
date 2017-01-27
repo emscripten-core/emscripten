@@ -850,7 +850,7 @@ var LibrarySDL = {
       if (!SDL.eventHandler) return;
 
       while (SDL.pollEvent(SDL.eventHandlerTemp)) {
-        Runtime.dynCall('iii', SDL.eventHandler, [SDL.eventHandlerContext, SDL.eventHandlerTemp]);
+        Module['dynCall_iii'](SDL.eventHandler, SDL.eventHandlerContext, SDL.eventHandlerTemp);
       }
     },
 
@@ -2338,7 +2338,7 @@ var LibrarySDL = {
           if (secsUntilNextPlayStart >= SDL.audio.bufferingDelay + SDL.audio.bufferDurationSecs*SDL.audio.numSimultaneouslyQueuedBuffers) return;
 
           // Ask SDL audio data from the user code.
-          Runtime.dynCall('viii', SDL.audio.callback, [SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize]);
+          Module['dynCall_viii'](SDL.audio.callback, SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize);
           // And queue it to be played after the currently playing audio stream.
           SDL.audio.pushAudio(SDL.audio.buffer, SDL.audio.bufferSize);
         }
@@ -2875,7 +2875,7 @@ var LibrarySDL = {
     }
     SDL.music.audio = null;
     if (SDL.hookMusicFinished) {
-      Runtime.dynCall('v', SDL.hookMusicFinished);
+      Module['dynCall_v'](SDL.hookMusicFinished);
     }
     return 0;
   },
@@ -3412,7 +3412,7 @@ var LibrarySDL = {
 
   SDL_AddTimer: function(interval, callback, param) {
     return window.setTimeout(function() {
-      Runtime.dynCall('iii', callback, [interval, param]);
+      Module['dynCall_iii'](callback, interval, param);
     }, interval);
   },
   SDL_RemoveTimer: function(id) {

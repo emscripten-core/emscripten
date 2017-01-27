@@ -1092,10 +1092,10 @@ LibraryManager.library = {
       if (info.refcount === 0 && !info.rethrown) {
         if (info.destructor) {
 #if WASM_BACKEND == 0
-          Runtime.dynCall('vi', info.destructor, [ptr]);
+          Module['dynCall_vi'](info.destructor, ptr);
 #else
           // In Wasm, destructors return 'this' as in ARM
-          Runtime.dynCall('ii', info.destructor, [ptr]);
+          Module['dynCall_ii'](info.destructor, ptr);
 #endif
         }
         delete EXCEPTIONS.infos[ptr];
@@ -4192,7 +4192,7 @@ LibraryManager.library = {
     var trace = _emscripten_get_callstack_js();
     var parts = trace.split('\n');
     for (var i = 0; i < parts.length; i++) {
-      var ret = Runtime.dynCall('iii', [0, arg]);
+      var ret = Module['dynCall_iii'](func, 0, arg);
       if (ret !== 0) return;
     }
   },
