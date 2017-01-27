@@ -1662,9 +1662,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if DEBUG: save_intermediate('original')
 
       if shared.Settings.WASM_BACKEND:
-        # we also received wasm at this stage
-        wasm_temp = final[:-3] + '.wast'
-        shutil.move(wasm_temp, wasm_text_target)
+        # we also received wast and wasm at this stage
+        temp_basename = final[:-3]
+        wast_temp = temp_basename + '.wast'
+        shutil.move(wast_temp, wasm_text_target)
+        shutil.move(temp_basename + '.wasm', wasm_binary_target)
         open(wasm_text_target + '.mappedGlobals', 'w').write('{}') # no need for mapped globals for now, but perhaps some day
 
       if shared.Settings.CYBERDWARF:

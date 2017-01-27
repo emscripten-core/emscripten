@@ -1405,7 +1405,8 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
       shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
 
     assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
-    wasm = outfile.name[:-3] + '.wast'
+    basename = outfile.name[:-3]
+    wast = basename + '.wast'
     s2wasm_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 's2wasm'), temp_s]
     s2wasm_args += ['--emscripten-glue']
     s2wasm_args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
@@ -1418,13 +1419,18 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
       logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
       t = time.time()
       #s2wasm_args += ['--debug']
-    shared.check_call(s2wasm_args, stdout=open(wasm, 'w'))
+    shared.check_call(s2wasm_args, stdout=open(wast, 'w'))
+    # Also convert wasm text to binary
+    wasm_as_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-as'),
+                    wast, '-o', basename + '.wasm']
+    logging.debug('  emscript: binaryen wasm-as: ' + ' '.join(wasm_as_args))
+    shared.check_call(wasm_as_args)
 
   if DEBUG:
     logging.debug('  emscript: binaryen s2wasm took %s seconds' % (time.time() - t))
     t = time.time()
     import shutil
-    shutil.copyfile(wasm, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-s2wasm-output.wast'))
+    shutil.copyfile(wast, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-s2wasm-output.wast'))
 
   # js compiler
 
@@ -1432,7 +1438,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
 
   # Integrate info from backend
 
-  output = open(wasm).read()
+  output = open(wast).read()
   parts = output.split('\n;; METADATA:')
   assert len(parts) == 2
   metadata_raw = parts[1]
@@ -1468,7 +1474,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   metadata['initializers'] = [asmjs_mangle(i) for i in metadata['initializers']]
 
   # TODO: emit it from s2wasm; for now, we parse it right here
-  for line in open(wasm).readlines():
+  for line in open(wast).readlines():
     if line.startswith('  (import '):
       parts = line.split()
       # Don't include Invoke wrapper names (for asm.js-style exception handling)
@@ -1635,7 +1641,7 @@ return ASM_CONSTS[code](%s);
 
   # Asm.js-style exception handling: invoke wrapper generation
   invoke_wrappers = ''
-  with open(wasm) as f:
+  with open(wast) as f:
     for line in f:
       if line.startswith('  (import '):
         parts = line.split()
