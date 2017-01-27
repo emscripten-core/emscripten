@@ -962,7 +962,7 @@ class IDLInterface(IDLObjectWithScope):
                     newMethod = self.parentScope.lookupIdentifier(method.identifier)
                     if newMethod == method:
                         self.namedConstructors.append(method)
-                    elif not newMethod in self.namedConstructors:
+                    elif newMethod not in self.namedConstructors:
                         raise WebIDLError("NamedConstructor conflicts with a NamedConstructor of a different interface",
                                           [method.location, newMethod.location])
             elif (identifier == "ArrayClass"):
