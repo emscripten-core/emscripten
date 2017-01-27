@@ -79,11 +79,6 @@ var LibraryPThreadStub = {
     return 0;
   },
 
-  _pthread_ptr: '{{{ makeStaticAlloc(C_STRUCTS.pthread.__size__) }}}',
-  pthread_self__deps: ['_pthread_ptr'],
-  pthread_self: function() {
-    return __pthread_ptr | 0;
-  },
   __emscripten_setup_pthread_data: function() {},
 
   pthread_attr_init: function(attr) {
