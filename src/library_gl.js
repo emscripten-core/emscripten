@@ -1233,25 +1233,120 @@ var LibraryGL = {
     }
   },
 
+#if USE_WEBGL2
+  $emscriptenWebGLGetHeapForType: function(type) {
+    switch(type) {
+      case 0x1400 /* GL_BYTE */:
+        return HEAP8;
+      case 0x1401 /* GL_UNSIGNED_BYTE */:
+        return HEAPU8;
+      case 0x1402 /* GL_SHORT */:
+        return HEAP16;
+      case 0x1403 /* GL_UNSIGNED_SHORT */:
+      case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
+      case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
+      case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
+      case 0x8D61 /* GL_HALF_FLOAT_OES */:
+      case 0x140B /* GL_HALF_FLOAT */:
+        return HEAPU16;
+      case 0x1404 /* GL_INT */:
+        return HEAP32;
+      case 0x1405 /* GL_UNSIGNED_INT */:
+      case 0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */:
+      case 0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */:
+      case 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */:
+      case 0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */:
+      case 0x84FA /* GL_UNSIGNED_INT_24_8 */:
+        return HEAPU32;
+      case 0x1406 /* GL_FLOAT */:
+        return HEAPF32;
+      default:
+        return null;
+    }
+  },
+
+  $emscriptenWebGLGetShiftForType: function(type) {
+    switch(type) {
+      case 0x1400 /* GL_BYTE */:
+      case 0x1401 /* GL_UNSIGNED_BYTE */:
+        return 0;
+      case 0x1402 /* GL_SHORT */:
+      case 0x1403 /* GL_UNSIGNED_SHORT */:
+      case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
+      case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
+      case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
+      case 0x8D61 /* GL_HALF_FLOAT_OES */:
+      case 0x140B /* GL_HALF_FLOAT */:
+        return 1;
+      case 0x1404 /* GL_INT */:
+      case 0x1406 /* GL_FLOAT */:
+      case 0x1405 /* GL_UNSIGNED_INT */:
+      case 0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */:
+      case 0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */:
+      case 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */:
+      case 0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */:
+      case 0x84FA /* GL_UNSIGNED_INT_24_8 */:
+        return 2;
+      default:
+        return 0;
+    }
+  },
+#endif
+
   glTexImage2D__sig: 'viiiiiiiii',
-  glTexImage2D__deps: ['$emscriptenWebGLGetTexPixelData'],
+  glTexImage2D__deps: ['$emscriptenWebGLGetTexPixelData', '$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'],
   glTexImage2D: function(target, level, internalFormat, width, height, border, format, type, pixels) {
+#if USE_WEBGL2
+    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      if (GLctx.currentPixelUnpackBufferBinding) {
+        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
+      } else if (pixels != 0) {
+        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, emscriptenWebGLGetHeapForType(type), pixels >> emscriptenWebGLGetShiftForType(type));
+      } else {
+        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, null);
+      }
+      return;
+    }
+#endif
+
     var pixelData = null;
     if (pixels) pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat);
     GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixelData);
   },
 
   glTexSubImage2D__sig: 'viiiiiiiii',
-  glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData'],
+  glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData', '$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'],
   glTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, type, pixels) {
+#if USE_WEBGL2
+    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      if (GLctx.currentPixelUnpackBufferBinding) {
+        GLctx.texSubImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
+      } else if (pixels != 0) {
+        GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, emscriptenWebGLGetHeapForType(type), pixels >> emscriptenWebGLGetShiftForType(type));
+      } else {
+        GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, null);
+      }
+      return;
+    }
+#endif
     var pixelData = null;
     if (pixels) pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, 0);
     GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixelData);
   },
 
   glReadPixels__sig: 'viiiiiii',
-  glReadPixels__deps: ['$emscriptenWebGLGetTexPixelData'],
+  glReadPixels__deps: ['$emscriptenWebGLGetTexPixelData', '$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'],
   glReadPixels: function(x, y, width, height, format, type, pixels) {
+#if USE_WEBGL2
+    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+      if (GLctx.currentPixelPackBufferBinding) {
+        GLctx.readPixels(x, y, width, height, format, type, pixels);
+      } else {
+        GLctx.readPixels(x, y, width, height, format, type, emscriptenWebGLGetHeapForType(type), pixels >> emscriptenWebGLGetShiftForType(type));
+      }
+      return;
+    }
+#endif
     var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, format);
     if (!pixelData) {
       GL.recordError(0x0500/*GL_INVALID_ENUM*/);
@@ -1708,15 +1803,27 @@ var LibraryGL = {
   },
 
   glTexImage3D__sig: 'viiiiiiiiii',
-  glTexImage3D: function(target, level, internalFormat, width, height, depth, border, format, type, data) {
-    GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type,
-                     HEAPU8.subarray(data));
+  glTexImage3D__deps: ['$emscriptenWebGLGetTexPixelData', '$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'],
+  glTexImage3D: function(target, level, internalFormat, width, height, depth, border, format, type, pixels) {
+    if (GLctx.currentPixelUnpackBufferBinding) {
+      GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, pixels);
+    } else if (pixels != 0) {
+      GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, emscriptenWebGLGetHeapForType(type), pixels >> emscriptenWebGLGetShiftForType(type));
+    } else {
+      GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, null);
+    }
   },
 
   glTexSubImage3D__sig: 'viiiiiiiiiii',
-  glTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, data) {
-    GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type,
-                        HEAPU8.subarray(data));
+  glTexSubImage3D__deps: ['$emscriptenWebGLGetTexPixelData', '$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'],
+  glTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels) {
+    if (GLctx.currentPixelUnpackBufferBinding) {
+      GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
+    } else if (pixels != 0) {
+      GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, emscriptenWebGLGetHeapForType(type), pixels >> emscriptenWebGLGetShiftForType(type));
+    } else {
+      GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, null);
+    }
   },
 
   // Queries
@@ -3130,6 +3237,19 @@ var LibraryGL = {
     }
 #endif
 
+#if USE_WEBGL2
+    if (target == 0x88EB /*GL_PIXEL_PACK_BUFFER*/) {
+      // In WebGL 2 glReadPixels entry point, we need to use a different WebGL 2 API function call when a buffer is bound to
+      // GL_PIXEL_PACK_BUFFER_BINDING point, so must keep track whether that binding point is non-null to know what is
+      // the proper API function to call.
+      GLctx.currentPixelPackBufferBinding = buffer;
+    } else if (target == 0x88EC /*GL_PIXEL_UNPACK_BUFFER*/) {
+      // In WebGL 2 glTexImage2D, glTexSubImage2D, glTexImage3D and glTexSubImage3D entry points, we need to use a different WebGL 2 API function
+      // call when a buffer is bound to GL_PIXEL_UNPACK_BUFFER_BINDING point, so must keep track whether that binding point is non-null to know what
+      // is the proper API function to call.
+      GLctx.currentPixelUnpackBufferBinding = buffer;
+    }
+#endif
     GLctx.bindBuffer(target, bufferObj);
   },
 
