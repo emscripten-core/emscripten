@@ -114,20 +114,3 @@ const struct __locale_map *__get_locale(int cat, const char *val)
 	UNLOCK(lock);
 	return new;
 }
-
-#ifdef __EMSCRIPTEN__
-void __emscripten_setup_pthread_data(void*);
-
-#if !__EMSCRIPTEN_PTHREADS__
-static pthread_t __main_pthread;
-pthread_t pthread_self(void) {
-	return __main_pthread;
-}
-#endif
-
-__attribute__((constructor))
-void __emscripten_pthread_data_constructor(void) {
-	__emscripten_setup_pthread_data(&libc.global_locale);
-	pthread_self()->locale = &libc.global_locale;
-}
-#endif
