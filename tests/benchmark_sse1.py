@@ -120,11 +120,11 @@ charts_native = {}
 charts_html = {}
 for result in native_results['results']:
 	ch = result['chart']
-	if not ch in charts_native: charts_native[ch] = []
+	if ch not in charts_native: charts_native[ch] = []
 	charts_native[ch] += [result]
 for result in html_results['results']:
 	ch = result['chart']
-	if not ch in charts_html: charts_html[ch] = []
+	if ch not in charts_html: charts_html[ch] = []
 	charts_html[ch] += [result]
 
 def find_result_in_category(results, category):

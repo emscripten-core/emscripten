@@ -203,7 +203,7 @@ except:
 if EM_CONFIG and not os.path.isfile(EM_CONFIG):
   if EM_CONFIG.startswith('-'):
     raise Exception('Passed --em-config without an argument. Usage: --em-config /path/to/.emscripten or --em-config EMSCRIPTEN_ROOT=/path/;LLVM_ROOT=/path;...')
-  if not '=' in EM_CONFIG:
+  if '=' not in EM_CONFIG:
     raise Exception('File ' + EM_CONFIG + ' passed to --em-config does not exist!')
   else:
     EM_CONFIG = EM_CONFIG.replace(';', '\n') + '\n'
@@ -684,14 +684,14 @@ def get_clang_native_env():
     if not os.path.isdir(windows10_sdk_dir):
       raise Exception('Windows 10 SDK was not found in "' + windows10_sdk_dir + '"! Run in Visual Studio command prompt to avoid the need to autoguess this location.')
 
-    if not 'VSINSTALLDIR' in env: env['VSINSTALLDIR'] = visual_studio_path
-    if not 'VCINSTALLDIR' in env: env['VCINSTALLDIR'] = os.path.join(visual_studio_path, 'VC')
+    env.setdefault('VSINSTALLDIR', visual_studio_path)
+    env.setdefault('VCINSTALLDIR', os.path.join(visual_studio_path, 'VC'))
 
     windows10sdk_kits_include_dir = os.path.join(windows10_sdk_dir, 'Include')
     windows10sdk_kit_version_name = [x for x in os.listdir(windows10sdk_kits_include_dir) if os.path.isdir(os.path.join(windows10sdk_kits_include_dir, x))][0] # e.g. "10.0.10150.0" or "10.0.10240.0"
 
     def append_item(key, item):
-      if not key in env or len(env[key].strip()) == 0: env[key] = item
+      if key not in env or len(env[key].strip()) == 0: env[key] = item
       else: env[key] = env[key] + ';' + item
 
     append_item('INCLUDE', os.path.join(env['VCINSTALLDIR'], 'INCLUDE'))
@@ -1196,7 +1196,7 @@ class Settings2(type):
         raise AttributeError
 
     def __setattr__(self, attr, value):
-      if not attr in self.attrs:
+      if attr not in self.attrs:
         import difflib
         logging.warning('''Assigning a non-existent settings attribute "%s"''' % attr)
         suggestions = ', '.join(difflib.get_close_matches(attr, self.attrs.keys()))
