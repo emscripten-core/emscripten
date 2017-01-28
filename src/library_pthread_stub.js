@@ -117,43 +117,6 @@ var LibraryPThreadStub = {
     _pthread_once.seen[ptr] = 1;
   },
 
-  $PTHREAD_SPECIFIC: {},
-  $PTHREAD_SPECIFIC_NEXT_KEY: 1,
-  pthread_key_create__deps: ['$PTHREAD_SPECIFIC', '$PTHREAD_SPECIFIC_NEXT_KEY', '$ERRNO_CODES'],
-  pthread_key_create: function(key, destructor) {
-    if (key == 0) {
-      return ERRNO_CODES.EINVAL;
-    }
-    {{{ makeSetValue('key', '0', 'PTHREAD_SPECIFIC_NEXT_KEY', 'i32*') }}};
-    // values start at 0
-    PTHREAD_SPECIFIC[PTHREAD_SPECIFIC_NEXT_KEY] = 0;
-    PTHREAD_SPECIFIC_NEXT_KEY++;
-    return 0;
-  },
-
-  pthread_getspecific__deps: ['$PTHREAD_SPECIFIC'],
-  pthread_getspecific: function(key) {
-    return PTHREAD_SPECIFIC[key] || 0;
-  },
-
-  pthread_setspecific__deps: ['$PTHREAD_SPECIFIC', '$ERRNO_CODES'],
-  pthread_setspecific: function(key, value) {
-    if (!(key in PTHREAD_SPECIFIC)) {
-      return ERRNO_CODES.EINVAL;
-    }
-    PTHREAD_SPECIFIC[key] = value;
-    return 0;
-  },
-
-  pthread_key_delete__deps: ['$PTHREAD_SPECIFIC', '$ERRNO_CODES'],
-  pthread_key_delete: function(key) {
-    if (key in PTHREAD_SPECIFIC) {
-      delete PTHREAD_SPECIFIC[key];
-      return 0;
-    }
-    return ERRNO_CODES.EINVAL;
-  },
-
   pthread_cleanup_push: function(routine, arg) {
     __ATEXIT__.push(function() { Module['dynCall_vi'](routine, arg) })
     _pthread_cleanup_push.level = __ATEXIT__.length;
