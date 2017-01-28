@@ -196,6 +196,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'gl.c'), '-o', o])
     return o
 
+  def create_gl_cache(libname): # libname is ignored, this is just one .o file
+    o = in_temp('gl_cache.o')
+    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'gl_cache.c'), '-o', o])
+    return o
+
   def create_compiler_rt(libname):
     srcdir = shared.path_from_root('system', 'lib', 'compiler-rt', 'lib', 'builtins')
     filenames = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
@@ -355,6 +360,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       else:
         system_libs += [('dlmalloc', 'bc', create_dlmalloc_singlethreaded, [], [], False)]
         force.add('dlmalloc')
+
+  if shared.Settings.GL_STATE_CACHE:
+    system_libs += [('gl_cache',    'bc', create_gl_cache,    [],            [],   False)]
+    force.add('gl_cache')
 
   # if building to wasm, we need more math code, since we have less builtins
   if shared.Settings.BINARYEN:

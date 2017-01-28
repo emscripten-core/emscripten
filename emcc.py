@@ -1149,6 +1149,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         next_arg_index += 1
         js_libraries.append(shared.path_from_root('src', 'library_fetch.js'))
 
+      # If using GL state cache, compile in the C/C++ side caching mechanism.
+      if shared.Settings.GL_STATE_CACHE and shared.Settings.LEGACY_GL_EMULATION:
+          logging.error('-s GL_STATE_CACHE=1 cannot be applied when -s LEGACY_GL_EMULATION=1 is set!')
+          sys.exit(1)
+
       forced_stdlibs = []
       if shared.Settings.DEMANGLE_SUPPORT:
         shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']

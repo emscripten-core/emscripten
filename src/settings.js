@@ -261,6 +261,9 @@ var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you 
 var GL_TESTING = 0; // When enabled, sets preserveDrawingBuffer in the context, to allow tests to work (but adds overhead)
 var GL_MAX_TEMP_BUFFER_SIZE = 2097152; // How large GL emulation temp buffers are
 var GL_UNSAFE_OPTS = 1; // Enables some potentially-unsafe optimizations in GL emulation code
+var GL_STATE_CACHE = 0; // Enables a client side GL state cache, which can improve performance by optimizing out redundant state sets.
+                        // If the GL application commonly sets GL state redundantly, this can be a big performance win. However if the
+                        // application is already efficient in avoiding redundant GL state calls, this can even degrade performance.
 var FULL_ES2 = 0;   // Forces support for all GLES2 features, not just the WebGL-friendly subset.
 var USE_WEBGL2 = 0; // Enables WebGL2 native functions. This mode will also create a WebGL2
                     // context by default if no version is specified.

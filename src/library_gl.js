@@ -1310,6 +1310,27 @@ var LibraryGL = {
 #endif
   ],
   glTexImage2D: function(target, level, internalFormat, width, height, border, format, type, pixels) {
+#if GL_STATE_CACHE
+    if (target == 0x0de1 /* GL_TEXTURE_2D */) {
+      var e = GL.textures[GL.currentlyBoundTexture[GL.currentlyActiveTexture]];
+      if (e !== undefined) {
+        var l = e[level];
+        if (typeof l !== 'undefined' && l.width == width && l.height == height && l.internalFormat == internalFormat && l.format == format && l.type == type && pixels) {
+          _glTexSubImage2D(target, level, 0, 0, width, height, format, type, pixels);
+          return;
+        }
+      }
+
+      if (typeof GL.textures[GL.currentlyBoundTexture[GL.currentlyActiveTexture]] === 'undefined') {
+        GL.textures[GL.currentlyBoundTexture[GL.currentlyActiveTexture]] = {};
+      }
+
+      GL.textures[GL.currentlyBoundTexture[GL.currentlyActiveTexture]][level] = {
+        width: width, height: height, internalFormat: internalFormat, format: format, type: type
+      };
+    }
+#endif
+
 #if USE_WEBGL2
 #if WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION
     if (GL.currentContext.version >= 2) {
@@ -1408,11 +1429,29 @@ var LibraryGL = {
     GLctx.readPixels(x, y, width, height, format, type, pixelData);
   },
 
+  glActiveTexture: function(unit) {
+#if GL_STATE_CACHE
+    GL.currentlyActiveTexture = unit;
+#endif
+    GLctx.activeTexture(unit);
+  },
+
   glBindTexture__sig: 'vii',
   glBindTexture: function(target, texture) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.textures, texture, 'glBindTexture', 'texture');
 #endif
+
+#if GL_STATE_CACHE
+    if (typeof GL.currentlyBoundTexture === 'undefined') {
+      GL.currentlyBoundTexture = {};
+    }
+
+    if (target == 0x0de1 /* GL_TEXTURE_2D */) {
+      GL.currentlyBoundTexture[GL.currentlyActiveTexture] = texture;
+    }
+#endif
+
     GLctx.bindTexture(target, texture ? GL.textures[texture] : null);
   },
 
@@ -3961,6 +4000,30 @@ var LibraryGL = {
     return GLctx['isVertexArray'](vao);
 #endif
   },
+
+#if GL_STATE_CACHE
+  _emscripten_glBindBuffer: 'glBindBuffer',
+  _emscripten_glVertexAttribDivisor: 'glVertexAttribDivisor',
+  _emscripten_glEnableVertexAttribArray: 'glEnableVertexAttribArray',
+  _emscripten_glDisableVertexAttribArray: 'glDisableVertexAttribArray',
+  _emscripten_glVertexAttribPointer: 'glVertexAttribPointer',
+  _emscripten_glUseProgram: 'glUseProgram',
+  _emscripten_glActiveTexture: 'glActiveTexture',
+  _emscripten_glDrawArrays: 'glDrawArrays',
+  _emscripten_glDrawElements: 'glDrawElements',
+  _emscripten_glDrawRangeElements: 'glDrawRangeElements',
+  _emscripten_glDrawArraysInstanced: 'glDrawArraysInstanced',
+  _emscripten_glDrawElementsInstanced: 'glDrawElementsInstanced',
+  _emscripten_glBindTexture: 'glBindTexture',
+  _emscripten_glTexImage2D: 'glTexImage2D',
+  _emscripten_glTexSubImage2D: 'glTexSubImage2D',
+  _emscripten_glTexStorage2D: 'glTexStorage2D',
+  _emscripten_glTexParameterf: 'glTexParameterf',
+  _emscripten_glTexParameterfv: 'glTexParameterfv',
+  _emscripten_glTexParameteri: 'glTexParameteri',
+  _emscripten_glTexParameteriv: 'glTexParameteriv',
+  _emscripten_glGenerateMipmap: 'glGenerateMipmap',
+#endif
 
 #if LEGACY_GL_EMULATION
 
@@ -7642,7 +7705,7 @@ var LibraryGL = {
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
 var glFuncs = [[0, 'finish flush'],
- [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation isEnabled*'],
+ [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil stencilMask checkFramebufferStatus* generateMipmap blendEquation isEnabled*'],
  [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset vertexAttrib1f'],
  [3, 'texParameteri texParameterf vertexAttrib2f stencilFunc stencilOp'],
  [4, 'viewport clearColor scissor vertexAttrib3f renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
