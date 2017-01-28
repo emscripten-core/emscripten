@@ -478,7 +478,7 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
 #if FETCH_DEBUG
     console.log('fetch: operation success. e: ' + e);
 #endif
-    if (onsuccess && Runtime.dynCall) Runtime.dynCall('vi', onsuccess, [fetch]);
+    if (onsuccess && Runtime.dynCall) Module['dynCall_vi'](onsuccess, fetch);
     else if (successcb) successcb(fetch);
   };
 
@@ -497,12 +497,12 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
 #endif
     };
     __emscripten_fetch_cache_data(Fetch.dbInstance, fetch, xhr.response, storeSuccess, storeError);
-    if (onsuccess && Runtime.dynCall) Runtime.dynCall('vi', onsuccess, [fetch]);
+    if (onsuccess && Runtime.dynCall) Module['dynCall_vi'](onsuccess, fetch);
     else if (successcb) successcb(fetch);
   };
 
   var reportProgress = function(fetch, xhr, e) {
-    if (onprogress && Runtime.dynCall) Runtime.dynCall('vi', onprogress, [fetch]);      
+    if (onprogress && Runtime.dynCall) Module['dynCall_vi'](onprogress, fetch);
     else if (progresscb) progresscb(fetch);
   };
 
@@ -510,7 +510,7 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
 #if FETCH_DEBUG
     console.error('fetch: operation failed: ' + e);
 #endif
-    if (onerror && Runtime.dynCall) Runtime.dynCall('vi', onerror, [fetch]);
+    if (onerror && Runtime.dynCall) Module['dynCall_vi'](onerror, fetch);
     else if (errorcb) errorcb(fetch);
   };
 

@@ -868,7 +868,7 @@ var LibraryPThread = {
         __ATEXIT__.push(function() { PThread.runExitHandlers(); });
       }
     }
-    PThread.exitHandlers.push(function() { Runtime.dynCall('vi', routine, [arg]) });
+    PThread.exitHandlers.push(function() { Module['dynCall_vi'](routine, arg) });
   },
 
   pthread_cleanup_pop: function(execute) {

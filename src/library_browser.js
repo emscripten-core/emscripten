@@ -746,7 +746,7 @@ var LibraryBrowser = {
     function doCallback(callback) {
       if (callback) {
         var stack = Runtime.stackSave();
-        Runtime.dynCall('vi', callback, [allocate(intArrayFromString(_file), 'i8', ALLOC_STACK)]);
+        Module['dynCall_vi'](callback, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK));
         Runtime.stackRestore(stack);
       }
     }
@@ -778,10 +778,10 @@ var LibraryBrowser = {
     Browser.asyncLoad(Pointer_stringify(url), function(byteArray) {
       var buffer = _malloc(byteArray.length);
       HEAPU8.set(byteArray, buffer);
-      Runtime.dynCall('viii', onload, [arg, buffer, byteArray.length]);
+      Module['dynCall_viii'](onload, arg, buffer, byteArray.length);
       _free(buffer);
     }, function() {
-      if (onerror) Runtime.dynCall('vi', onerror, [arg]);
+      if (onerror) Module['dynCall_vi'](onerror, arg);
     }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
   },
 
@@ -816,11 +816,11 @@ var LibraryBrowser = {
         FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true, false);
         if (onload) {
           var stack = Runtime.stackSave();
-          Runtime.dynCall('viii', onload, [handle, arg, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK)]);
+          Module['dynCall_viii'](onload, handle, arg, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK));
           Runtime.stackRestore(stack);
         }
       } else {
-        if (onerror) Runtime.dynCall('viii', onerror, [handle, arg, http.status]);
+        if (onerror) Module['dynCall_viii'](onerror, handle, arg, http.status);
       }
 
       delete Browser.wgetRequests[handle];
@@ -828,7 +828,7 @@ var LibraryBrowser = {
 
     // ERROR
     http.onerror = function http_onerror(e) {
-      if (onerror) Runtime.dynCall('viii', onerror, [handle, arg, http.status]);
+      if (onerror) Module['dynCall_viii'](onerror, handle, arg, http.status);
       delete Browser.wgetRequests[handle];
     };
 
@@ -836,7 +836,7 @@ var LibraryBrowser = {
     http.onprogress = function http_onprogress(e) {
       if (e.lengthComputable || (e.lengthComputable === undefined && e.total != 0)) {
         var percentComplete = (e.loaded / e.total)*100;
-        if (onprogress) Runtime.dynCall('viii', onprogress, [handle, arg, percentComplete]);
+        if (onprogress) Module['dynCall_viii'](onprogress, handle, arg, percentComplete);
       }
     };
 
@@ -881,10 +881,10 @@ var LibraryBrowser = {
         var byteArray = new Uint8Array(http.response);
         var buffer = _malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);
-        if (onload) Runtime.dynCall('viiii', onload, [handle, arg, buffer, byteArray.length]);
+        if (onload) Module['dynCall_viiii'](onload, handle, arg, buffer, byteArray.length);
         if (free) _free(buffer);
       } else {
-        if (onerror) Runtime.dynCall('viiii', onerror, [handle, arg, http.status, http.statusText]);
+        if (onerror) Module['dynCall_viiii'](onerror, handle, arg, http.status, http.statusText);
       }
       delete Browser.wgetRequests[handle];
     };
@@ -892,14 +892,14 @@ var LibraryBrowser = {
     // ERROR
     http.onerror = function http_onerror(e) {
       if (onerror) {
-        Runtime.dynCall('viiii', onerror, [handle, arg, http.status, http.statusText]);
+        Module['dynCall_viiii'](onerror, handle, arg, http.status, http.statusText);
       }
       delete Browser.wgetRequests[handle];
     };
 
     // PROGRESS
     http.onprogress = function http_onprogress(e) {
-      if (onprogress) Runtime.dynCall('viiii', onprogress, [handle, arg, e.loaded, e.lengthComputable || e.lengthComputable === undefined ? e.total : 0]);
+      if (onprogress) Module['dynCall_viiii'](onprogress, handle, arg, e.loaded, e.lengthComputable || e.lengthComputable === undefined ? e.total : 0);
     };
 
     // ABORT
@@ -945,10 +945,10 @@ var LibraryBrowser = {
       PATH.basename(_file),
       new Uint8Array(data.object.contents), true, true,
       function() {
-        if (onload) Runtime.dynCall('vi', onload, [file]);
+        if (onload) Module['dynCall_vi'](onload, file);
       },
       function() {
-        if (onerror) Runtime.dynCall('vi', onerror, [file]);
+        if (onerror) Module['dynCall_vi'](onerror, file);
       },
       true // don'tCreateFile - it's already there
     );
@@ -970,10 +970,10 @@ var LibraryBrowser = {
       {{{ makeHEAPView('U8', 'data', 'data + size') }}},
       true, true,
       function() {
-        if (onload) Runtime.dynCall('vii', onload, [arg, cname]);
+        if (onload) Module['dynCall_vii'](onload, arg, cname);
       },
       function() {
-        if (onerror) Runtime.dynCall('vi', onerror, [arg]);
+        if (onerror) Module['dynCall_vi'](onerror, arg);
       },
       true // don'tCreateFile - it's already there
     );
@@ -1076,13 +1076,12 @@ var LibraryBrowser = {
 
     var browserIterationFunc;
     if (typeof arg !== 'undefined') {
-      var argArray = [arg];
       browserIterationFunc = function() {
-        Runtime.dynCall('vi', func, argArray);
+        Module['dynCall_vi'](func, arg);
       };
     } else {
       browserIterationFunc = function() {
-        Runtime.dynCall('v', func);
+        Module['dynCall_v'](func);
       };
     }
 
@@ -1197,14 +1196,14 @@ var LibraryBrowser = {
 
   _emscripten_push_main_loop_blocker: function(func, arg, name) {
     Browser.mainLoop.queue.push({ func: function() {
-      Runtime.dynCall('vi', func, [arg]);
+      Module['dynCall_vi'](func, arg);
     }, name: Pointer_stringify(name), counted: true });
     Browser.mainLoop.updateStatus();
   },
 
   _emscripten_push_uncounted_main_loop_blocker: function(func, arg, name) {
     Browser.mainLoop.queue.push({ func: function() {
-      Runtime.dynCall('vi', func, [arg]);
+      Module['dynCall_vi'](func, arg);
     }, name: Pointer_stringify(name), counted: false });
     Browser.mainLoop.updateStatus();
   },
