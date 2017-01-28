@@ -1,6 +1,8 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+Module['asm'] = asm;
+
 {{{ maybeExport('FS') }}}
 
 #if MEM_INIT_METHOD == 2
@@ -142,7 +144,7 @@ Module['callMain'] = Module.callMain = function callMain(args) {
   argv = allocate(argv, 'i32', ALLOC_NORMAL);
 
 #if EMTERPRETIFY_ASYNC
-  var initialEmtStackTop = asm.emtStackSave();
+  var initialEmtStackTop = Module['asm'].emtStackSave();
 #endif
 
   try {
@@ -169,7 +171,7 @@ Module['callMain'] = Module.callMain = function callMain(args) {
       Module['noExitRuntime'] = true;
 #if EMTERPRETIFY_ASYNC
       // an infinite loop keeps the C stack around, but the emterpreter stack must be unwound - we do not want to restore the call stack at infinite loop
-      asm.emtStackRestore(initialEmtStackTop);
+      Module['asm'].emtStackRestore(initialEmtStackTop);
 #endif
       return;
     } else {
