@@ -3368,7 +3368,7 @@ var LibraryGL = {
         ptable.maxUniformBlockNameLength = 0;
         for (var i = 0; i < numBlocks; ++i) {
           var activeBlockName = GLctx.getActiveUniformBlockName(program, i);
-          ptable.maxUniformBlockNameLength = Math.max(ptable.maxAttributeLength, activeBlockName.length+1);
+          ptable.maxUniformBlockNameLength = Math.max(ptable.maxUniformBlockNameLength, activeBlockName.length+1);
         }
       }
       {{{ makeSetValue('p', '0', 'ptable.maxUniformBlockNameLength', 'i32') }}};
