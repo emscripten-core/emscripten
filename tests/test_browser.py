@@ -3068,6 +3068,9 @@ window.close = function() {
 
   # Test that the main thread is able to use pthread_set/getspecific.
   def test_pthread_setspecific_mainthread(self):
+    # Singlethreaded pthread_get/setspecific().
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_setspecific_mainthread.cpp'), expected='0', args=['-O3', '-s'], timeout=30)
+
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_setspecific_mainthread.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm'], timeout=30)
 
     self.prep_no_SAB()

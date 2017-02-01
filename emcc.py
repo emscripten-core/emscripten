@@ -1219,7 +1219,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       else:
         if final_suffix in JS_CONTAINING_SUFFIXES:
           js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
-          input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.cpp')))
           next_arg_index += 1
 
       if shared.Settings.USE_PTHREADS:
