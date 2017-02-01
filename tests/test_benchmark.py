@@ -583,12 +583,12 @@ class benchmark(RunnerCore):
       return 100.0/float(re.search('Unrolled Single  Precision +([\d\.]+) Mflops', output).group(1))
     self.do_benchmark('linpack_float', open(path_from_root('tests', 'linpack.c')).read(), '''Unrolled Single  Precision''', force_c=True, output_parser=output_parser, shared_args=['-DSP'])
 
-  def test_memcpy_128b(self):
+  def zzz_test_memcpy_128b(self):
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_128b', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMAX_COPY=128', '-DBUILD_FOR_SHELL'])
 
-  def test_memcpy_4k(self):
+  def zzz_test_memcpy_4k(self):
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_4k', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=128', '-DMAX_COPY=4096', '-DBUILD_FOR_SHELL'])
@@ -598,12 +598,12 @@ class benchmark(RunnerCore):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_16k', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=4096', '-DMAX_COPY=16384', '-DBUILD_FOR_SHELL'])
 
-  def test_memcpy_1mb(self):
+  def zzz_test_memcpy_1mb(self):
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_1mb', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=16384', '-DMAX_COPY=1048576', '-DBUILD_FOR_SHELL'])
 
-  def test_memcpy_16mb(self):
+  def zzz_test_memcpy_16mb(self):
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_16mb', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL'])

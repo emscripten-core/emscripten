@@ -2130,7 +2130,7 @@ The current type of b is: 9
     self.do_run_in_out_file_test('tests', 'core', 'test_memcpy3')
 
   def test_memcpy_alignment(self):
-    self.do_run(open(path_from_root('tests', 'test_memcpy.cpp'), 'r').read(), 'OK.')
+    self.do_run(open(path_from_root('tests', 'test_memcpy_alignment.cpp'), 'r').read(), 'OK.')
 
   def test_memset(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_memset')
