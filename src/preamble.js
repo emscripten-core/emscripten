@@ -2205,14 +2205,15 @@ function integrateWasmJS(Module) {
     function receiveInstance(instance) {
       exports = instance.exports;
       if (exports.memory) mergeMemory(exports.memory);
+      Module['asm'] = exports;
       Module["usingWasm"] = true;
     }
 #if BINARYEN_ASYNC_COMPILATION
     Module['printErr']('asynchronously preparing wasm');
     addRunDependency('wasm-instantiate'); // we can't run yet
     WebAssembly.instantiate(getBinary(), info).then(function(output) {
+      // receiveInstance() will swap in the exports (to Module.asm) so they can be called
       receiveInstance(output.instance);
-      Module['asm'] = exports; // swap in the exports so they can be called
       removeRunDependency('wasm-instantiate');
     });
     return {}; // no exports yet; we'll fill them in later

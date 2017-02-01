@@ -7135,8 +7135,16 @@ int main(int argc, char **argv) {
     return 0;
 }
 '''
-    Settings.ASYNCIFY = 1;
-    self.do_run(src, '*0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*');
+    Settings.ASYNCIFY = 1
+    self.do_run(src, '*0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
+
+  @no_emterpreter
+  def test_emterpretify(self):
+    Settings.EMTERPRETIFY = 1
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+    print 'async'
+    Settings.EMTERPRETIFY_ASYNC = 1
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
   def test_cxx_self_assign(self):
     # See https://github.com/kripken/emscripten/pull/2688 and http://llvm.org/bugs/show_bug.cgi?id=18735
