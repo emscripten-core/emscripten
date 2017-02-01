@@ -2336,14 +2336,10 @@ def check_call(cmd, *args, **kw):
     raise
 
 def suffix(name):
-  parts = name.split('.')
-  if len(parts) > 1:
-    return parts[-1]
-  else:
-    return None
+  return os.path.splitext(name)[1]
 
 def unsuffixed(name):
-  return '.'.join(name.split('.')[:-1])
+  return os.path.splitext(name)[0]
 
 def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
