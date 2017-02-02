@@ -69,7 +69,7 @@ if EM_PROFILE_TOOLCHAIN:
     def kill(self):
       return self.process.kill()
 
-  sys.exit = profiled_sys_exit
+  exit = sys.exit = profiled_sys_exit
   subprocess.call = profiled_call
   subprocess.check_call = profiled_check_call
   subprocess.check_output = profiled_check_output
@@ -106,10 +106,6 @@ if EM_PROFILE_TOOLCHAIN:
 
     @staticmethod
     def record_process_start(write_log_entry=True):
-      if ToolchainProfiler.process_start_recorded: return
-      ToolchainProfiler.process_start_recorded = True
-
-      ToolchainProfiler.block_stack = []
       # For subprocessing.Pool.map() child processes, this points to the PID of the parent process that spawned
       # the subprocesses. This makes the subprocesses look as if the parent had called the functions.
       ToolchainProfiler.mypid_str = str(os.getpid())
@@ -118,6 +114,11 @@ if EM_PROFILE_TOOLCHAIN:
         os.makedirs(ToolchainProfiler.profiler_logs_path)
       except:
         pass
+
+      if ToolchainProfiler.process_start_recorded: return
+      ToolchainProfiler.process_start_recorded = True
+      ToolchainProfiler.block_stack = []
+
       if write_log_entry:
         with ToolchainProfiler.log_access() as f:
           f.write('[\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"start","time":' + ToolchainProfiler.timestamp() + ',"cmdLine":["' + '","'.join(sys.argv).replace('\\', '\\\\') + '"]}')
