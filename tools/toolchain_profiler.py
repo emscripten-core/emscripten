@@ -80,6 +80,13 @@ if EM_PROFILE_TOOLCHAIN:
     imaginary_pid_ = 0
     profiler_logs_path = None # Log file not opened yet
 
+    block_stack = []
+
+    # Because process spawns are tracked from multiple entry points, it is possible that record_process_start() and/or record_process_exit()
+    # are called multiple times. Prevent recording multiple entries to the logs to keep them clean.
+    process_start_recorded = False
+    process_exit_recorded = False
+
     @staticmethod
     def timestamp():
       return '{0:.3f}'.format(time.time())
@@ -99,6 +106,9 @@ if EM_PROFILE_TOOLCHAIN:
 
     @staticmethod
     def record_process_start(write_log_entry=True):
+      if ToolchainProfiler.process_start_recorded: return
+      ToolchainProfiler.process_start_recorded = True
+
       ToolchainProfiler.block_stack = []
       # For subprocessing.Pool.map() child processes, this points to the PID of the parent process that spawned
       # the subprocesses. This makes the subprocesses look as if the parent had called the functions.
@@ -110,15 +120,16 @@ if EM_PROFILE_TOOLCHAIN:
         pass
       if write_log_entry:
         with ToolchainProfiler.log_access() as f:
-          f.write('[\n')
-          f.write('{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"start","time":' + ToolchainProfiler.timestamp() + ',"cmdLine":["' + '","'.join(sys.argv).replace('\\', '\\\\') + '"]}')
+          f.write('[\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"start","time":' + ToolchainProfiler.timestamp() + ',"cmdLine":["' + '","'.join(sys.argv).replace('\\', '\\\\') + '"]}')
 
     @staticmethod
     def record_process_exit(returncode):
+      if ToolchainProfiler.process_exit_recorded: return
+      ToolchainProfiler.process_exit_recorded = True
+
       ToolchainProfiler.exit_all_blocks()
       with ToolchainProfiler.log_access() as f:
-        f.write(',\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"exit","time":' + ToolchainProfiler.timestamp() + ',"returncode":' + str(returncode) + '}')
-        f.write('\n]\n')
+        f.write(',\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"exit","time":' + ToolchainProfiler.timestamp() + ',"returncode":' + str(returncode) + '}\n]\n')
 
     @staticmethod
     def record_subprocess_spawn(process_pid, process_cmdline):
@@ -134,8 +145,6 @@ if EM_PROFILE_TOOLCHAIN:
     def record_subprocess_finish(process_pid, returncode):
       with ToolchainProfiler.log_access() as f:
         f.write(',\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"finish","targetPid":' + str(process_pid) + ',"time":' + ToolchainProfiler.timestamp() + ',"returncode":' + str(returncode) + '}')
-
-    block_stack = []
 
     @staticmethod
     def enter_block(block_name):

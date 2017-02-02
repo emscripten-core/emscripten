@@ -7,9 +7,9 @@ from tools.toolchain_profiler import ToolchainProfiler
 import sys
 
 if sys.version_info.major == 2:
-  import emar
   if __name__ == '__main__':
     ToolchainProfiler.record_process_start()
+    import emar
     emar.run()
     sys.exit(0)
 else:
