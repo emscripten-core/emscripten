@@ -1294,7 +1294,11 @@ var LibraryGL = {
 #endif
 
   glTexImage2D__sig: 'viiiiiiiii',
-  glTexImage2D__deps: ['$emscriptenWebGLGetTexPixelData', '$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'],
+  glTexImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
+#if USE_WEBGL2
+                       , '$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'
+#endif
+  ],
   glTexImage2D: function(target, level, internalFormat, width, height, border, format, type, pixels) {
 #if USE_WEBGL2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
@@ -1315,7 +1319,11 @@ var LibraryGL = {
   },
 
   glTexSubImage2D__sig: 'viiiiiiiii',
-  glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData', '$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'],
+  glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
+#if USE_WEBGL2
+                          , '$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'
+#endif
+  ],
   glTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, type, pixels) {
 #if USE_WEBGL2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
@@ -1335,7 +1343,11 @@ var LibraryGL = {
   },
 
   glReadPixels__sig: 'viiiiiii',
-  glReadPixels__deps: ['$emscriptenWebGLGetTexPixelData', '$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'],
+  glReadPixels__deps: ['$emscriptenWebGLGetTexPixelData'
+#if USE_WEBGL2
+                       , '$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'
+#endif
+  ],
   glReadPixels: function(x, y, width, height, format, type, pixels) {
 #if USE_WEBGL2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
