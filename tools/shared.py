@@ -2336,7 +2336,8 @@ def check_call(cmd, *args, **kw):
     raise
 
 def suffix(name):
-  return os.path.splitext(name)[1]
+  """Return the file extension *not* including the '.'."""
+  return os.path.splitext(name)[1][1:]
 
 def unsuffixed(name):
   return os.path.splitext(name)[0]
