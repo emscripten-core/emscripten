@@ -2132,6 +2132,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             cmd += ['-g']
           if emit_symbol_map or shared.Settings.CYBERDWARF:
             cmd += ['--symbolmap=' + target + '.symbols']
+          # we prefer to emit a binary, as it is more efficient. however, when we
+          # want full debug info support (not just function names), then we must
+          # emit text (at least until wasm gains support for debug info in binaries)
           target_binary = debug_level < 3
           if target_binary:
             cmd += ['-o', wasm_binary_target]
