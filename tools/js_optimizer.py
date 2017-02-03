@@ -384,6 +384,12 @@ EMSCRIPTEN_FUNCS();
       post = end_funcs_marker + asm_shell_post + post
 
       minify_info = minifier.serialize()
+
+      if extra_info:
+        for key, value in extra_info.iteritems():
+          assert key not in minify_info or value == minify_info[key], [key, value, minify_info[key]]
+          minify_info[key] = value
+
       #if DEBUG: print >> sys.stderr, 'minify info:', minify_info
 
   with ToolchainProfiler.profile_block('js_optimizer.remove_suffix_and_split'):
@@ -415,24 +421,20 @@ EMSCRIPTEN_FUNCS();
     funcs = None
 
     if len(chunks) > 0:
-      def write_chunk(chunk, i):
-        temp_file = temp_files.get('.jsfunc_%d.js' % i).name
-        f = open(temp_file, 'w')
-        f.write(chunk)
-        f.write(suffix_marker)
-        if minify_globals:
-          if extra_info:
-            for key, value in extra_info.iteritems():
-              assert key not in minify_info or value == minify_info[key], [key, value, minify_info[key]]
-              minify_info[key] = value
-          f.write('\n')
-          f.write('// EXTRA_INFO:' + json.dumps(minify_info))
-        elif extra_info:
-          f.write('\n')
-          f.write('// EXTRA_INFO:' + json.dumps(extra_info))
-        f.close()
-        return temp_file
-      filenames = [write_chunk(chunks[i], i) for i in range(len(chunks))]
+      serialized_extra_info = suffix_marker + '\n'
+      if minify_globals:
+        serialized_extra_info += '// EXTRA_INFO:' + json.dumps(minify_info)
+      elif extra_info:
+        serialized_extra_info += '// EXTRA_INFO:' + json.dumps(extra_info)
+      with ToolchainProfiler.profile_block('js_optimizer.write_chunks'):
+        def write_chunk(chunk, i):
+          temp_file = temp_files.get('.jsfunc_%d.js' % i).name
+          f = open(temp_file, 'w')
+          f.write(chunk)
+          f.write(serialized_extra_info)
+          f.close()
+          return temp_file
+        filenames = [write_chunk(chunks[i], i) for i in range(len(chunks))]
     else:
       filenames = []
 

@@ -1,3 +1,4 @@
+from toolchain_profiler import ToolchainProfiler
 import os.path, sys, shutil, time, logging
 import tempfiles, filelock
 
