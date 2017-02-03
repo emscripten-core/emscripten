@@ -1,5 +1,4 @@
-import tempfile, os, sys, shlex, logging
-import shared
+import os, logging
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 if DEBUG == "0":
@@ -8,9 +7,10 @@ if DEBUG == "0":
 # Routes the given cmdline param list in args into a new response file and returns the filename to it.
 # The returned filename has a suffix '.rsp'.
 def create_response_file(args, directory):
+  import tempfile, shared
   (response_fd, response_filename) = tempfile.mkstemp(prefix='emscripten_', suffix='.rsp', dir=directory, text=True)
   response_fd = os.fdopen(response_fd, "w")
-  #print >> sys.stderr, "Creating response file '%s'" % response_filename
+
   args = map(lambda p: p.replace('\\', '\\\\').replace('"', '\\"'), args)
   contents = '"' + '" "'.join(args) + '"'
   if DEBUG:
@@ -27,6 +27,7 @@ def create_response_file(args, directory):
 # Reads a response file, and returns the list of cmdline params found in the file.
 # The parameter response_filename may start with '@'.
 def read_response_file(response_filename):
+  import shlex
   if response_filename.startswith('@'):
     response_filename = response_filename[1:]
 

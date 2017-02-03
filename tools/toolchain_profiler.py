@@ -1,4 +1,5 @@
 import subprocess, os, time, sys, tempfile
+import response_file
 
 EM_PROFILE_TOOLCHAIN = int(os.getenv('EM_PROFILE_TOOLCHAIN')) if os.getenv('EM_PROFILE_TOOLCHAIN') != None else 0
 
@@ -134,8 +135,13 @@ if EM_PROFILE_TOOLCHAIN:
 
     @staticmethod
     def record_subprocess_spawn(process_pid, process_cmdline):
+      response_cmdline = []
+      for item in process_cmdline:
+        if item.startswith('@'):
+          response_cmdline += response_file.read_response_file(item)
+
       with ToolchainProfiler.log_access() as f:
-        f.write(',\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"spawn","targetPid":' + str(process_pid) + ',"time":' + ToolchainProfiler.timestamp() + ',"cmdLine":["' + '","'.join(process_cmdline).replace('\\', '\\\\') + '"]}')
+        f.write(',\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"spawn","targetPid":' + str(process_pid) + ',"time":' + ToolchainProfiler.timestamp() + ',"cmdLine":["' + '","'.join(process_cmdline + response_cmdline).replace('\\', '\\\\') + '"]}')
 
     @staticmethod
     def record_subprocess_wait(process_pid):
