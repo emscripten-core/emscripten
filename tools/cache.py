@@ -36,7 +36,7 @@ class Cache:
 
   def acquire_cache_lock(self):
     if not self.EM_EXCLUSIVE_CACHE_ACCESS:
-      logging.debug('Cache: acquiring multiprocess file lock to Emscripten cache')
+      logging.debug('Cache: PID %s acquiring multiprocess file lock to Emscripten cache' % str(os.getpid()))
       try:
         self.filelock.acquire(60)
       except filelock.Timeout:
@@ -54,7 +54,7 @@ class Cache:
       if self.prev_EM_EXCLUSIVE_CACHE_ACCESS: os.environ['EM_EXCLUSIVE_CACHE_ACCESS'] = self.prev_EM_EXCLUSIVE_CACHE_ACCESS
       else: del os.environ['EM_EXCLUSIVE_CACHE_ACCESS']
       self.filelock.release()
-      logging.debug('Cache: released multiprocess file lock to Emscripten cache')
+      logging.debug('Cache: PID %s released multiprocess file lock to Emscripten cache' % str(os.getpid()))
 
   def ensure(self):
     self.acquire_cache_lock()
