@@ -7324,20 +7324,24 @@ int main() {
           (['-O0'], False, False),
           (['-O0', '-g1'], False, False),
           (['-O0', '-g2'], True, False), # in -g2+, we emit -g to asm2wasm so function names are saved
-          (['-O0', '-g3'], True, True), # in -g/g3+, we also emit text so that debuginfo is carried
-          (['-O0', '-g4'], True, True),
           (['-O0', '-g'], True, True),
           (['-O0', '--profiling-funcs'], True, False),
           (['-O1'], False, False),
         ]:
         print args, expect_dash_g, expect_emit_text
-        with clean_write_access_to_canonical_temp_dir():
-          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1'] + args, stdout=PIPE, stderr=PIPE).communicate()
+        try_delete('a.out.wast')
+        cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1'] + args
+        print ' '.join(cmd)
+        output, err = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
         asm2wasm_line = filter(lambda x: 'asm2wasm' in x, err.split('\n'))[0]
         asm2wasm_line = asm2wasm_line.strip() + ' ' # ensure it ends with a space, for simpler searches below
         print '|' + asm2wasm_line + '|'
         assert expect_dash_g == (' -g ' in asm2wasm_line)
         assert expect_emit_text == (' -S ' in asm2wasm_line)
+        if expect_emit_text:
+          text = open('a.out.wast').read()
+          assert ';;' in text, 'must see debug info comment'
+          assert 'hello_world.cpp:6' in text, 'must be file:line info'
     finally:
       del os.environ['EMCC_DEBUG']
 
