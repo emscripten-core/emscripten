@@ -1080,12 +1080,13 @@ function enlargeMemory() {
 #endif
 
   var replacement = Module['reallocBuffer'](TOTAL_MEMORY);
-  if (!replacement) {
+  if (!replacement || replacement.byteLength < TOTAL_MEMORY) {
 #if ASSERTIONS
     Module.printErr('Failed to grow the heap from ' + OLD_TOTAL_MEMORY + ' bytes to ' + TOTAL_MEMORY + ' bytes, not enough memory!');
 #endif
     return false;
   }
+  TOTAL_MEMORY = replacement.byteLength;
 
   // everything worked
 
