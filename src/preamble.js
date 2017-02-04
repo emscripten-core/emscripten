@@ -930,11 +930,11 @@ function stackTrace() {
 
 // Memory management
 
-var PAGE_SIZE = 4096;
+var PAGE_SIZE = 65536; // Wasm pages are fixed to 64k.
 
 function alignMemoryPage(x) {
-  if (x % 4096 > 0) {
-    x += (4096 - (x % 4096));
+  if (x % PAGE_SIZE > 0) {
+    x += PAGE_SIZE - (x % PAGE_SIZE);
   }
   return x;
 }
@@ -1044,50 +1044,48 @@ function enlargeMemory() {
   // TOTAL_MEMORY is the current size of the actual array, and DYNAMICTOP is the new top.
 #if ASSERTIONS
   assert(HEAP32[DYNAMICTOP_PTR>>2] > TOTAL_MEMORY); // This function should only ever be called after the ceiling of the dynamic heap has already been bumped to exceed the current total size of the asm.js heap.
-  assert(TOTAL_MEMORY > 4); // So the loop below will not be infinite
 #endif
-
-  var OLD_TOTAL_MEMORY = TOTAL_MEMORY;
 
 #if EMSCRIPTEN_TRACING
   // Report old layout one last time
   _emscripten_trace_report_memory_layout();
 #endif
 
-  var LIMIT = Math.pow(2, 31); // 2GB is a practical maximum, as we use signed ints as pointers
-                               // and JS engines seem unhappy to give us 2GB arrays currently
-  if (HEAP32[DYNAMICTOP_PTR>>2] >= LIMIT) return false;
-
-  while (TOTAL_MEMORY < HEAP32[DYNAMICTOP_PTR>>2]) { // Keep incrementing the heap size as long as it's less than what is requested.
-    if (TOTAL_MEMORY < LIMIT/2) {
-      TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY); // // Simple heuristic: double until 1GB...
-    } else {
-      var last = TOTAL_MEMORY;
-      TOTAL_MEMORY = alignMemoryPage((3*TOTAL_MEMORY + LIMIT)/4); // ..., but after that, add smaller increments towards 2GB, which we cannot reach
-      if (TOTAL_MEMORY <= last) return false;
-    }
+  if (Module["usingWasm"]) {
+    var LIMIT = 2147483648-PAGE_SIZE; // In Wasm, we can do one 64KB page short of 2GB as theoretical maximum.
+  } else {
+    var LIMIT = 2147483648-16777216; // In asm.js, the theoretical maximum is 16MB short of 2GB.
   }
 
-  TOTAL_MEMORY = Math.max(TOTAL_MEMORY, 16*1024*1024);
-
-  if (TOTAL_MEMORY >= LIMIT) return false;
-
+  if (HEAP32[DYNAMICTOP_PTR>>2] > LIMIT) {
 #if ASSERTIONS
-  Module.printErr('Warning: Enlarging memory arrays, this is not fast! ' + [OLD_TOTAL_MEMORY, TOTAL_MEMORY]);
+    Module.printErr('Cannot enlarge memory, asked to go up to ' + HEAP32[DYNAMICTOP_PTR>>2] + ' bytes, but the limit is ' + LIMIT + ' bytes!');
 #endif
+    return false;
+  }
 
-#if EMSCRIPTEN_TRACING
-  _emscripten_trace_js_log_message("Emscripten", "Enlarging memory arrays from " + OLD_TOTAL_MEMORY + " to " + TOTAL_MEMORY);
-  // And now report the new layout
-  _emscripten_trace_report_memory_layout();
-#endif
+  var OLD_TOTAL_MEMORY = TOTAL_MEMORY;
+  TOTAL_MEMORY = Math.max(TOTAL_MEMORY, 16*1024*1024); // So the loop below will not be infinite, and minimum asm.js memory size is 16MB.
+
+  while (TOTAL_MEMORY < HEAP32[DYNAMICTOP_PTR>>2]) { // Keep incrementing the heap size as long as it's less than what is requested.
+    if (TOTAL_MEMORY <= 536870912) {
+      TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY); // // Simple heuristic: double until 1GB...
+    } else {
+      TOTAL_MEMORY = Math.min(alignMemoryPage((3*TOTAL_MEMORY + 2147483648)/4), LIMIT); // ..., but after that, add smaller increments towards 2GB, which we cannot reach
+    }
+  }
 
 #if ASSERTIONS
   var start = Date.now();
 #endif
 
   var replacement = Module['reallocBuffer'](TOTAL_MEMORY);
-  if (!replacement) return false;
+  if (!replacement) {
+#if ASSERTIONS
+    Module.printErr('Failed to grow the heap from ' + OLD_TOTAL_MEMORY + ' bytes to ' + TOTAL_MEMORY + ' bytes, not enough memory!');
+#endif
+    return false;
+  }
 
   // everything worked
 
@@ -1096,6 +1094,18 @@ function enlargeMemory() {
 
 #if ASSERTIONS
   Module.printErr('enlarged memory arrays from ' + OLD_TOTAL_MEMORY + ' to ' + TOTAL_MEMORY + ', took ' + (Date.now() - start) + ' ms (has ArrayBuffer.transfer? ' + (!!ArrayBuffer.transfer) + ')');
+#endif
+
+#if ASSERTIONS
+  if (!Module["usingWasm"]) {
+    Module.printErr('Warning: Enlarging memory arrays, this is not fast! ' + [OLD_TOTAL_MEMORY, TOTAL_MEMORY]);
+  }
+#endif
+
+#if EMSCRIPTEN_TRACING
+  _emscripten_trace_js_log_message("Emscripten", "Enlarging memory arrays from " + OLD_TOTAL_MEMORY + " to " + TOTAL_MEMORY);
+  // And now report the new layout
+  _emscripten_trace_report_memory_layout();
 #endif
 
   return true;
@@ -1116,9 +1126,7 @@ try {
 var TOTAL_STACK = Module['TOTAL_STACK'] || {{{ TOTAL_STACK }}};
 var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
 
-var WASM_PAGE_SIZE = 64 * 1024;
-
-var totalMemory = WASM_PAGE_SIZE;
+var totalMemory = PAGE_SIZE;
 while (totalMemory < TOTAL_MEMORY || totalMemory < 2*TOTAL_STACK) {
   if (totalMemory < 16*1024*1024) {
     totalMemory *= 2;
@@ -1221,12 +1229,16 @@ if (Module['buffer']) {
 #if BINARYEN
   if (typeof WebAssembly === 'object' && typeof WebAssembly.Memory === 'function') {
 #if ASSERTIONS
-    assert(TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
+    assert(TOTAL_MEMORY % PAGE_SIZE === 0);
 #endif
 #if ALLOW_MEMORY_GROWTH
-    Module['wasmMemory'] = new WebAssembly.Memory({ initial: TOTAL_MEMORY / WASM_PAGE_SIZE });
+#if BINARYEN_MEM_MAX
+    Module['wasmMemory'] = new WebAssembly.Memory({ initial: TOTAL_MEMORY / PAGE_SIZE, maximum: {{{ BINARYEN_MEM_MAX }}} / PAGE_SIZE });
 #else
-    Module['wasmMemory'] = new WebAssembly.Memory({ initial: TOTAL_MEMORY / WASM_PAGE_SIZE, maximum: TOTAL_MEMORY / WASM_PAGE_SIZE });
+    Module['wasmMemory'] = new WebAssembly.Memory({ initial: TOTAL_MEMORY / PAGE_SIZE });
+#endif
+#else
+    Module['wasmMemory'] = new WebAssembly.Memory({ initial: TOTAL_MEMORY / PAGE_SIZE, maximum: TOTAL_MEMORY / PAGE_SIZE });
 #endif
     buffer = Module['wasmMemory'].buffer;
   } else
@@ -2305,10 +2317,10 @@ function integrateWasmJS(Module) {
 
   // Memory growth integration code
   Module['reallocBuffer'] = function(size) {
-    size = Math.ceil(size / wasmPageSize) * wasmPageSize; // round up to wasm page size
+    size = alignMemoryPage(size); // round up to wasm page size
     var old = Module['buffer'];
-    var result = exports['__growWasmMemory'](size / wasmPageSize); // tiny wasm method that just does grow_memory
     if (Module["usingWasm"]) {
+      var result = exports['__growWasmMemory'](size / wasmPageSize); // tiny wasm method that just does grow_memory
       if (result !== (-1 | 0)) {
         // success in native wasm memory growth, get the buffer from the memory
         return Module['buffer'] = Module['wasmMemory'].buffer;
