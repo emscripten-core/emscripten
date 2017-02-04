@@ -2320,12 +2320,20 @@ function integrateWasmJS(Module) {
   Module['reallocBuffer'] = function(size) {
     size = alignMemoryPage(size); // round up to wasm page size
     var old = Module['buffer'];
+    var oldSize = old.byteLength;
     if (Module["usingWasm"]) {
-      var result = exports['__growWasmMemory'](size / wasmPageSize); // tiny wasm method that just does grow_memory
-      if (result !== (-1 | 0)) {
-        // success in native wasm memory growth, get the buffer from the memory
-        return Module['buffer'] = Module['wasmMemory'].buffer;
-      } else {
+      try {
+        var result = Module['wasmMemory'].grow(size / wasmPageSize); // tiny wasm method that just does grow_memory
+        if (result !== (-1 | 0)) {
+          // success in native wasm memory growth, get the buffer from the memory
+          return Module['buffer'] = Module['wasmMemory'].buffer;
+        } else {
+          return null;
+        }
+      } catch(e) {
+#if ASSERTIONS
+        console.error('Module.reallocBuffer: Attempted to grow from ' + oldSize  + ' bytes to ' + size + ' bytes, but got error: ' + e);
+#endif
         return null;
       }
     } else {
