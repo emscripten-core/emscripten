@@ -1080,13 +1080,15 @@ function enlargeMemory() {
 #endif
 
   var replacement = Module['reallocBuffer'](TOTAL_MEMORY);
-  if (!replacement || replacement.byteLength < TOTAL_MEMORY) {
+  if (!replacement || replacement.byteLength != TOTAL_MEMORY) {
 #if ASSERTIONS
     Module.printErr('Failed to grow the heap from ' + OLD_TOTAL_MEMORY + ' bytes to ' + TOTAL_MEMORY + ' bytes, not enough memory!');
+    if (replacement) {
+      Module.printErr('Expected to get back a buffer of size ' + TOTAL_MEMORY + ' bytes, but instead got back a buffer of size ' + replacement.byteLength);
+    }
 #endif
     return false;
   }
-  TOTAL_MEMORY = replacement.byteLength;
 
   // everything worked
 
@@ -2323,7 +2325,7 @@ function integrateWasmJS(Module) {
     var oldSize = old.byteLength;
     if (Module["usingWasm"]) {
       try {
-        var result = Module['wasmMemory'].grow(size / wasmPageSize); // tiny wasm method that just does grow_memory
+        var result = Module['wasmMemory'].grow((size - oldSize) / wasmPageSize); // .grow() takes a delta compared to the previous size
         if (result !== (-1 | 0)) {
           // success in native wasm memory growth, get the buffer from the memory
           return Module['buffer'] = Module['wasmMemory'].buffer;
