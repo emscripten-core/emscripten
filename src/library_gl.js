@@ -2876,7 +2876,7 @@ var LibraryGL = {
 
 #if USE_WEBGL2
     if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniform3iv(GL.uniforms[location], HEAP32, value>>2, count*4);
+      GLctx.uniform4iv(GL.uniforms[location], HEAP32, value>>2, count*4);
       return;
     }
 #endif
