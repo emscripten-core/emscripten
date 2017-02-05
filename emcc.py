@@ -2110,6 +2110,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
           if shared.Settings.BINARYEN_IMPRECISE:
             cmd += ['--imprecise']
+          if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
+            cmd += ['--ignore-implicit-traps']
           # pass optimization level to asm2wasm (if not optimizing, or which passes we should run was overridden, do not optimize)
           if opt_level > 0 and not shared.Settings.BINARYEN_PASSES:
             cmd.append(shared.Building.opt_level_to_str(opt_level, shrink_level))

@@ -687,6 +687,11 @@ var BINARYEN_SCRIPTS = ""; // An optional comma-separated list of script hooks t
 var BINARYEN_IMPRECISE = 0; // Whether to apply imprecise/unsafe binaryen optimizations. If enabled,
                             // code will run faster, but some types of undefined behavior might
                             // trap in wasm.
+var BINARYEN_IGNORE_IMPLICIT_TRAPS = 0; // Whether to ignore implicit traps when optimizing in binaryen.
+                                        // Implicit traps are the unlikely traps that happen in a load that
+                                        // is out of bounds, or div/rem of 0, etc. We can reorder them,
+                                        // but we can't ignore that they have side effects, so turning on
+                                        // this flag lets us do a little more to reduce code size.
 var BINARYEN_PASSES = ""; // A comma-separated list of passes to run in the binaryen optimizer,
                           // for example, "dce,precompute,vacuum".
                           // When set, this overrides the default passes we would normally run.
