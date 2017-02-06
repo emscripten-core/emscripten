@@ -77,13 +77,11 @@ var LibraryGL = {
         GL.miniTempBufferViews[i] = GL.miniTempBuffer.subarray(0, i+1);
       }
 
-#if USE_WEBGL2
-      // For glInvalidateFramebuffer and glInvalidateSubFramebuffer, create a set of short fixed-length arrays to avoid
-      // having to generate any garbage in those functions.
+      // For functions such as glDrawBuffers, glInvalidateFramebuffer and glInvalidateSubFramebuffer that need to pass a short array to the WebGL API,
+      // create a set of short fixed-length arrays to avoid having to generate any garbage when calling those functions.
       for (var i = 0; i < 32; i++) {
         GL.tempFixedLengthArray.push(new Array(i).fill(0));
       }
-#endif
     },
 
     // Records a GL error condition that occurred, stored until user calls glGetError() to fetch it. As per GLES2 spec, only the first error 
@@ -7422,9 +7420,14 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert(GLctx['drawBuffers'], 'Must have WebGL2 or WEBGL_draw_buffers extension to use drawBuffers');
 #endif
-    var bufArray = [];
-    for (var i = 0; i < n; i++)
-      bufArray.push({{{ makeGetValue('bufs', 'i*4', 'i32') }}});
+#if GL_ASSERTIONS
+    assert(n < GL.tempFixedLengthArray.length, 'Invalid count of numBuffers=' + n + ' passed to glDrawBuffers (that many draw buffer points do not exist in GL)');
+#endif
+
+    var bufArray = GL.tempFixedLengthArray[n];
+    for (var i = 0; i < n; i++) {
+      bufArray[i] = {{{ makeGetValue('bufs', 'i*4', 'i32') }}};
+    }
 
     GLctx['drawBuffers'](bufArray);
   },
