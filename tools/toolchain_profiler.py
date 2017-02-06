@@ -199,6 +199,8 @@ if EM_PROFILE_TOOLCHAIN:
       return ToolchainProfiler.imaginary_pid_
 
 else:
+  exit = sys.exit
+
   class ToolchainProfiler:
     @staticmethod
     def record_process_start():
