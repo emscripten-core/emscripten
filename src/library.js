@@ -924,31 +924,64 @@ LibraryManager.library = {
   memset__asm: true,
   memset: function(ptr, value, num) {
     ptr = ptr|0; value = value|0; num = num|0;
-    var stop = 0, value4 = 0, stop4 = 0, unaligned = 0;
-    stop = (ptr + num)|0;
-    if ((num|0) >= {{{ Math.round(2.5*UNROLL_LOOP_MAX) }}}) {
-      // This is unaligned, but quite large, so work hard to get to aligned settings
-      value = value & 0xff;
-      unaligned = ptr & 3;
-      value4 = value | (value << 8) | (value << 16) | (value << 24);
-      stop4 = stop & ~3;
-      if (unaligned) {
-        unaligned = (ptr + 4 - unaligned)|0;
-        while ((ptr|0) < (unaligned|0)) { // no need to check for stop, since we have large num
-          {{{ makeSetValueAsm('ptr', 0, 'value', 'i8') }}};
-          ptr = (ptr+1)|0;
-        }
+    var end = 0, aligned_end = 0, block_aligned_end = 0, value4 = 0;
+#if SIMD
+    var value16 = SIMD_Int32x4(0,0,0,0);
+#endif
+    end = (ptr + num)|0;
+
+    value = value & 0xff;
+    if ((num|0) >= 67 /* 64 bytes for an unrolled loop + 3 bytes for unaligned head*/) {
+      while ((ptr&3) != 0) {
+        {{{ makeSetValueAsm('ptr', 0, 'value', 'i8') }}};
+        ptr = (ptr+1)|0;
       }
-      while ((ptr|0) < (stop4|0)) {
+
+      aligned_end = (end & -4)|0;
+      block_aligned_end = (aligned_end - 64)|0;
+      value4 = value | (value << 8) | (value << 16) | (value << 24);
+#if SIMD
+      value16 = SIMD_Int32x4_splat(value4);
+#endif
+
+      while((ptr|0) <= (block_aligned_end|0)) {
+#if SIMD
+        SIMD_Int32x4_store(HEAPU8, ptr, value16);
+        SIMD_Int32x4_store(HEAPU8, ptr+16, value16);
+        SIMD_Int32x4_store(HEAPU8, ptr+32, value16);
+        SIMD_Int32x4_store(HEAPU8, ptr+48, value16);
+#else
+        {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 4, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 8, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 12, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 16, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 20, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 24, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 28, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 32, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 36, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 40, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 44, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 48, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 52, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 56, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 60, 'value4', 'i32') }}};
+#endif
+        ptr = (ptr + 64)|0;
+      }
+
+      while ((ptr|0) < (aligned_end|0) ) {
         {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};
         ptr = (ptr+4)|0;
       }
     }
-    while ((ptr|0) < (stop|0)) {
+    // The remaining bytes.
+    while ((ptr|0) < (end|0)) {
       {{{ makeSetValueAsm('ptr', 0, 'value', 'i8') }}};
       ptr = (ptr+1)|0;
     }
-    return (ptr-num)|0;
+    return (end-num)|0;
   },
   llvm_memset_i32: 'memset',
   llvm_memset_p0i8_i32: 'memset',
