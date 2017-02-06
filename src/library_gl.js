@@ -415,7 +415,11 @@ var LibraryGL = {
     createContext: function(canvas, webGLContextAttributes) {
       if (typeof webGLContextAttributes['majorVersion'] === 'undefined' && typeof webGLContextAttributes['minorVersion'] === 'undefined') {
 #if USE_WEBGL2
-        webGLContextAttributes['majorVersion'] = 2;
+        // If caller did not specify a context, initialize the best one that is possibly available.
+        // To explicitly create a WebGL 1 or a WebGL 2 context, call this function with a specific
+        // majorVersion set.
+        if (typeof WebGL2RenderingContext !== 'undefined') webGLContextAttributes['majorVersion'] = 2;
+        else webGLContextAttributes['majorVersion'] = 1;
 #else
         webGLContextAttributes['majorVersion'] = 1;
 #endif
