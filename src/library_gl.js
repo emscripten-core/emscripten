@@ -3440,6 +3440,7 @@ var LibraryGL = {
       // the corresponding vertex shader, we would not know if that needed to
       // be compiled with or without the patch, so we must patch all shaders.
       if (source.indexOf('#version 100') != -1) {
+        source = source.replace(/#extension GL_OES_standard_derivatives : enable/g, "");
         source = source.replace(/#extension GL_EXT_shader_texture_lod : enable/g, '');
         var prelude = '';
         if (source.indexOf('gl_FragColor') != -1) {
