@@ -10,28 +10,78 @@
         postRun: [],
       };
 
-      // For best stability on 32-bit browsers, allocate asm.js/WebAssembly heap up front before proceeding
-      // to load any other page content. This mitigates the chances that loading up page assets first would
-      // fragment the memory area of the browser process.
-      var supportsWasm = (typeof WebAssembly === 'object' && typeof WebAssembly.Memory === 'function');
-      var page_size = supportsWasm ? 64 * 1024 : 16 * 1024 * 1024;
-      var TOTAL_MEMORY = page_size * Math.ceil({{{ TOTAL_MEMORY }}} / page_size);
-      var MAX_MEMORY = Math.max(TOTAL_MEMORY, page_size * Math.ceil({{{ BINARYEN_MEM_MAX }}} / page_size));
-
-      if (supportsWasm) {
-        Module['wasmMemory'] = new WebAssembly.Memory({ initial: TOTAL_MEMORY / page_size, maximum: MAX_MEMORY / page_size });
-        Module['buffer'] = Module['wasmMemory'].buffer;
-      } else { // asm.js:
-        for(var mem = MAX_MEMORY; mem >= TOTAL_MEMORY; mem -= multiple) {
-          try {
-            Module['buffer'] = new ArrayBuffer(mem);
-            if (Module['buffer'].byteLength != TOTAL_MEMORY) throw 'Out of memory';
-            TOTAL_MEMORY = mem;
-          } catch(e) {}
-        }
-        if (Module['buffer'].byteLength != TOTAL_MEMORY) throw 'Out of memory';
+      function heuristicIsBrowser64Bit() {
+        function contains(str, substrList) { for(var i in substrList) if (str.indexOf(substrList[i]) != -1) return true; return false; }
+        var ua = (navigator.userAgent + ' ' + navigator.oscpu + ' ' + navigator.platform).toLowerCase();
+        if (contains(ua, ['wow64'])) return false; // 32bit browser on 64bit OS
+        if (contains(ua, ['x86_64', 'amd64', 'ia64', 'win64', 'x64', 'arm64', 'irix64', 'mips64', 'ppc64', 'sparc64'])) return true;
+        if (contains(ua, ['i386', 'i486', 'i586', 'i686', 'x86', 'arm7', 'android', 'mobile', 'win32'])) return false;
+        if (contains(ua, ['intel mac os'])) return true;
+        return false;
       }
-      Module['TOTAL_MEMORY'] = TOTAL_MEMORY;
+
+      // For best stability on 32-bit browsers, allocate asm.js/WebAssembly heap up front before proceeding
+      // to load any other page content. This mitigates the chances that loading up any page assets later
+      // could fragment the memory area of the browser process so that the heap allocation could not be
+      // satisfied.
+      var supportsWasm = (typeof WebAssembly === 'object' && typeof WebAssembly.Memory === 'function');
+      var pageSize = supportsWasm ? 64 * 1024 : 16 * 1024 * 1024;
+      var heuristicIs64Bit = heuristicIsBrowser64Bit();
+      function alignPageUp(size) { return pageSize * Math.ceil(size / pageSize); }
+
+      // MAX_MEMORY: Specify a strict upper bound to how large the application heap can grow. If the
+      // application attempts to allocate any more, it will fail. Specifying a limit here has two
+      // useful applications:
+      //  1) defensively impose a strict limit to an application to keep it from going rogue with its
+      //     memory usage beyond some undesired limit. Especially useful when porting code you are not
+      //     first hand familiar with, and the web page has other memory allocations so that the Wasm
+      //     code can't hog all of it.
+      //  2) if the page has large memory allocations outside the main heap and you are running out of
+      //     address space in 32-bit environments, try specifying a maximum limit specifically to
+      //     32-bit environments.
+
+      // The absolute maximum memory that is available to compiled code is currently one memory page
+      // short of 2GB. Pass in Infinity to not specify a max size.
+      var MAX_MEMORY = Math.min(alignPageUp(heuristicIs64Bit ? {{{ MAX_MEMORY_64BIT }}} : {{{ MAX_MEMORY_32BIT }}}), 2048 * 1024 * 1024 - pageSize);
+
+      // MIN_MEMORY: Specify a lower limit of how much memory the application needs at minimum to run.
+      // If the browser can't provide this, the page startup should abort to an out-of-memory
+      // exception.
+      var MIN_MEMORY = Math.min(alignPageUp(32 * 1024 * 1024), MAX_MEMORY);
+
+      // INITIAL_MEMORY: Specify the initial amount of reserved address space for the application.
+      // Note that this is only a hint, and this much memory may not actually be acquired. If this is
+      // not possible, the page will start up with anything as close to this INITIAL amount as
+      // possible, but at least MIN bytes.
+      var INITIAL_MEMORY = Math.min(Math.max(alignPageUp({{{ TOTAL_MEMORY }}}), MIN_MEMORY), MAX_MEMORY);
+
+      // RESERVE_MAX: If true, pass the max memory request over to WebAssembly Memory allocation to
+      // eagerly reserve the maximum amount of address space, if possible. If false, run without a
+      // specified maximum reserve.
+      var RESERVE_MAX = {{{ RESERVE_MAX }}};
+
+      // Try to get as much memory close to INITIAL, but at least MIN. For asm.js, we can't actually
+      // resize, so attempt to reserve up to MAX memory, but only on detected 64-bit browsers.
+      for (var mem = (heuristicIs64Bit && !supportsWasm) ? MAX_MEMORY : INITIAL_MEMORY; mem >= MIN_MEMORY; mem -= pageSize) {
+        try {
+          if (supportsWasm) {
+            if (RESERVE_MAX) Module['wasmMemory'] = new WebAssembly.Memory({ initial: mem / pageSize, maximum: MAX_MEMORY / pageSize });
+            else Module['wasmMemory'] = new WebAssembly.Memory({ initial: mem / pageSize });
+            Module['buffer'] = Module['wasmMemory'].buffer;
+          } else {
+            Module['buffer'] = new ArrayBuffer(mem);
+          }
+          if (Module['buffer'].byteLength != mem) throw 'Out of memory for heap';
+          break; // Success!
+        } catch(e) { /*nop*/ }
+      }
+      if (!Module['buffer'] || !(Module['buffer'].byteLength >= MIN_MEMORY)) throw 'Out of memory for heap';
+      Module['TOTAL_MEMORY'] = Module['buffer'].byteLength;
+      Module['MAX_MEMORY'] = MAX_MEMORY;
+      function MB(x) { return (x/1024/1024) + 'MB'; }
+#if ASSERTIONS
+      console.log('Initial memory size: ' + MB(Module['TOTAL_MEMORY']) + ' (MIN_MEMORY: ' + MB(MIN_MEMORY) + ', INITIAL_MEMORY: ' + MB(INITIAL_MEMORY) + ', MAX_MEMORY: ' + MB(MAX_MEMORY) + ', heuristicIs64Bit: ' + heuristicIs64Bit + ')');
+#endif
     </script>
 
     <title>Emscripten-Generated Code</title>
