@@ -7316,34 +7316,34 @@ int main() {
       assert correct == seen, correct + '\n vs \n' + seen
 
   def test_binaryen_debuginfo(self):
-    if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
-
-    try:
-      os.environ['EMCC_DEBUG'] = '1'
-      for args, expect_dash_g, expect_emit_text in [
-          (['-O0'], False, False),
-          (['-O0', '-g1'], False, False),
-          (['-O0', '-g2'], True, False), # in -g2+, we emit -g to asm2wasm so function names are saved
-          (['-O0', '-g'], True, True),
-          (['-O0', '--profiling-funcs'], True, False),
-          (['-O1'], False, False),
-        ]:
-        print args, expect_dash_g, expect_emit_text
-        try_delete('a.out.wast')
-        cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1'] + args
-        print ' '.join(cmd)
-        output, err = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
-        asm2wasm_line = filter(lambda x: 'asm2wasm' in x, err.split('\n'))[0]
-        asm2wasm_line = asm2wasm_line.strip() + ' ' # ensure it ends with a space, for simpler searches below
-        print '|' + asm2wasm_line + '|'
-        assert expect_dash_g == (' -g ' in asm2wasm_line)
-        assert expect_emit_text == (' -S ' in asm2wasm_line)
-        if expect_emit_text:
-          text = open('a.out.wast').read()
-          assert ';;' in text, 'must see debug info comment'
-          assert 'hello_world.cpp:6' in text, 'must be file:line info'
-    finally:
-      del os.environ['EMCC_DEBUG']
+    with clean_write_access_to_canonical_temp_dir():
+      if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+      try:
+        os.environ['EMCC_DEBUG'] = '1'
+        for args, expect_dash_g, expect_emit_text in [
+            (['-O0'], False, False),
+            (['-O0', '-g1'], False, False),
+            (['-O0', '-g2'], True, False), # in -g2+, we emit -g to asm2wasm so function names are saved
+            (['-O0', '-g'], True, True),
+            (['-O0', '--profiling-funcs'], True, False),
+            (['-O1'], False, False),
+          ]:
+          print args, expect_dash_g, expect_emit_text
+          try_delete('a.out.wast')
+          cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1'] + args
+          print ' '.join(cmd)
+          output, err = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
+          asm2wasm_line = filter(lambda x: 'asm2wasm' in x, err.split('\n'))[0]
+          asm2wasm_line = asm2wasm_line.strip() + ' ' # ensure it ends with a space, for simpler searches below
+          print '|' + asm2wasm_line + '|'
+          assert expect_dash_g == (' -g ' in asm2wasm_line)
+          assert expect_emit_text == (' -S ' in asm2wasm_line)
+          if expect_emit_text:
+            text = open('a.out.wast').read()
+            assert ';;' in text, 'must see debug info comment'
+            assert 'hello_world.cpp:6' in text, 'must be file:line info'
+      finally:
+        del os.environ['EMCC_DEBUG']
 
   def test_wasm_targets(self):
     for f in ['a.wasm', 'a.wast']:
