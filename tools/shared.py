@@ -1265,6 +1265,19 @@ class Building:
           'EMCC_CORES=1' # Multiprocessing pool children can't spawn their own linear number of children, that could cause a quadratic amount of spawned processes.
         ]
         Building.multiprocessing_pool = multiprocessing.Pool(processes=cores, initializer=g_multiprocessing_initializer, initargs=child_env)
+
+        def close_multiprocessing_pool():
+          try:
+            # Shut down the pool explicitly, because leaving that for Python to do at process shutdown is buggy and can generate
+            # noisy "WindowsError: [Error 5] Access is denied" spam which is not fatal.
+            Building.multiprocessing_pool.terminate()
+            Building.multiprocessing_pool.join()
+            Building.multiprocessing_pool = None
+          except WindowsError, e:
+            # Mute the "WindowsError: [Error 5] Access is denied" errors, raise all others through
+            if e.winerror != 5: raise
+        atexit.register(close_multiprocessing_pool)
+
     return Building.multiprocessing_pool
 
   @staticmethod
