@@ -511,7 +511,6 @@ int main()
       expected = open(path_from_root('tests', 'hyperbolic', 'output.txt'), 'r').read()
       self.do_run(src, expected)
 
-  @no_wasm_backend()
   def test_math_lgamma(self):
       test_path = path_from_root('tests', 'math', 'lgamma')
       src, output = (test_path + s for s in ('.c', '.out'))
