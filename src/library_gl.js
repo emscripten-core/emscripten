@@ -62,8 +62,8 @@ var LibraryGL = {
     stringCache: {},
 #if USE_WEBGL2
     stringiCache: {},
-    tempFixedLengthArray: [],
 #endif
+    tempFixedLengthArray: [],
 
     packAlignment: 4,   // default alignment is 4 bytes
     unpackAlignment: 4, // default alignment is 4 bytes
