@@ -79,8 +79,7 @@ mergeInto(LibraryManager.library, {
         });
 
         assert(buffer instanceof ArrayBuffer || ArrayBuffer.isView(buffer));
-        var data = new Uint8Array(buffer);
-        data = buffer.subarray(offset, offset + length);
+        var data = buffer.subarray(offset, offset + length);
 
         var toRead = Math.min(currentLength, length);
         if (toRead == 0) {
@@ -123,8 +122,7 @@ mergeInto(LibraryManager.library, {
         var pipe = stream.node.pipe;
 
         assert(buffer instanceof ArrayBuffer || ArrayBuffer.isView(buffer));
-        var data = new Uint8Array(buffer);
-        data = buffer.subarray(offset, offset + length);
+        var data = buffer.subarray(offset, offset + length);
 
         var dataLen = data.byteLength;
         if (dataLen <= 0) {
