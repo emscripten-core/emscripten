@@ -7,7 +7,7 @@
 #include <string.h>
 #include <stdio.h>
 
-unsigned char buf[512];
+unsigned char buf[1 << 16];
 
 #define FALSE 0
 #define TRUE 1
@@ -105,6 +105,15 @@ int main()
         test_read (fd[0], &rchar, sizeof buf);
         bytes_to_write -= sizeof buf;
     }
+
+    // Write large chunks of data (supposed to be larger than one internal buffer)
+    test_write(fd[1], &wchar, 123);
+    test_write(fd[1], &wchar, (1 << 15) + 321);
+    test_write(fd[1], &wchar, 456);
+    test_read(fd[0], &rchar, 456);
+    test_read(fd[0], &rchar, (1 << 15) + 123);
+    test_read(fd[0], &rchar, 321);
+
 
     // Test non-blocking read from empty pipe
 
