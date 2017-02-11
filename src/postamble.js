@@ -43,6 +43,8 @@ if (memoryInitializer) {
     memoryInitializer = Module['locateFile'](memoryInitializer);
   } else if (Module['memoryInitializerPrefixURL']) {
     memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
+  } else if (ENVIRONMENT_IS_NODE) {
+    memoryInitializer = __dirname + '/' + memoryInitializer;
   }
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
     var data = Module['readBinary'](memoryInitializer);
