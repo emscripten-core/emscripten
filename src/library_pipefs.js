@@ -81,10 +81,14 @@ mergeInto(LibraryManager.library, {
         assert(buffer instanceof ArrayBuffer || ArrayBuffer.isView(buffer));
         var data = buffer.subarray(offset, offset + length);
 
-        var toRead = Math.min(currentLength, length);
-        if (toRead == 0) {
+        if(length <= 0) {
           return 0;
         }
+        if (currentLength == 0) {
+          // Behave as if the read end is always non-blocking
+          throw new FS.ErrnoError(ERRNO_CODES.EAGAIN);
+        }
+        var toRead = Math.min(currentLength, length);
 
         var totalRead = toRead;
         var toRemove = 0;
