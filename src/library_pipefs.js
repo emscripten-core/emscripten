@@ -116,6 +116,14 @@ mergeInto(LibraryManager.library, {
           }
         }
 
+        if (toRemove && toRemove == pipe.buckets.length) {
+          // Do not generate excessive garbage in use cases such as
+          // write several bytes, read everything, write several bytes, read everything...
+          toRemove--;
+          pipe.buckets[toRemove].offset = 0;
+          pipe.buckets[toRemove].roffset = 0;
+        }
+
         while (toRemove--) {
           pipe.buckets.shift();
         }
