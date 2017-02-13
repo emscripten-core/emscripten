@@ -2215,6 +2215,8 @@ function integrateWasmJS(Module) {
       // receiveInstance() will swap in the exports (to Module.asm) so they can be called
       receiveInstance(output.instance);
       removeRunDependency('wasm-instantiate');
+    }).catch(function(reason) {
+      Module['printErr']('failed to asynchronously prepare wasm:\n  ' + reason);
     });
     return {}; // no exports yet; we'll fill them in later
 #endif
