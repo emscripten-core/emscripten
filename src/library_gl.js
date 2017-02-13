@@ -4912,7 +4912,7 @@ var LibraryGL = {
           case GL_BLEND: {
             /* RGBA:
              * Cv = Cp(1 - Cs) + CcCs
-             * Av = As
+             * Av = Ap * As
              */
             var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + texUnitID + "_";
             var texVar = prefix + "tex";
@@ -4928,7 +4928,7 @@ var LibraryGL = {
                   PRIM_COLOR_VARYING + ".rgb * " + texVar + ".rgb",
                 ";"
               ].join(""),
-              "float " + alphaVar + " = " + texVar + ".a;",
+              "float " + alphaVar + " = " + passInputVar + ".a * " + texVar + ".a;",
               "vec4 " + passOutputVar + " = vec4(" + colorVar + ", " + alphaVar + ");",
             ];
           }
