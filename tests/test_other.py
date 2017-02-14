@@ -7292,6 +7292,7 @@ int main() {
         print ' '.join(cmd)
         subprocess.check_call(cmd)
         assert os.path.exists(os.path.join(temp_dir, 'a.asm.js')) == output_asmjs
+        assert not os.path.exists(os.path.join(temp_dir, 'a.temp.asm.js'))
 
     # Test that outputting to .wasm does not nuke an existing .asm.js file, if user wants to manually dual-deploy both to same directory.
     with temp_directory() as temp_dir:
@@ -7305,6 +7306,8 @@ int main() {
       subprocess.check_call(cmd)
       assert os.path.exists(os.path.join(temp_dir, 'a.asm.js'))
       assert os.path.exists(os.path.join(temp_dir, 'a.wasm'))
+
+      assert not os.path.exists(os.path.join(temp_dir, 'a.temp.asm.js'))
 
   def test_binaryen_mem(self):
     for args, expect_initial, expect_max in [
