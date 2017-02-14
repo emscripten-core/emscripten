@@ -11,22 +11,6 @@
 #define ARG_N(_1, _2, _3, _4, _5, _6, _7, N, ...) N
 #define RSEQ_N() 7, 6, 5, 4, 3, 2, 1, 0
 
-#define CHECK_N(x, n, ...) n
-#define CHECK(...) CHECK_N(__VA_ARGS__, 0,)
-#define PROBE(x) x, 1,
-
-#define NOT(x) CHECK(CONCAT(NOT_, x))
-#define NOT_0 PROBE(~)
-
-#define COMPL(b) CONCAT(COMPL_, b)
-#define COMPL_0 1
-#define COMPL_1 0
-
-#define IIF(b) CONCAT(IIF_, b)
-#define IIF_0(t, ...) __VA_ARGS__
-#define IIF_1(t, ...) t
-#define IF(cond) IIF(COMPL(NOT(cond)))
-
 #ifdef __cplusplus
 #define EM_DECL_REC_0(base, ...) \
     base(const char* code);
@@ -63,11 +47,7 @@
     extern int emscripten_asm_const_int_##N(); \
     extern double emscripten_asm_const_double_##N();
 #endif
-#define EM_ASM_IMPL_1(base, code, ...) CONCAT3(base, _, NARG(__VA_ARGS__))(#code, __VA_ARGS__)
-#define EM_ASM_IMPL_0(base, code) CONCAT(base, _0)(#code)
-#define EM_ASM_IMPL(base, code, ...) IF(CHECK(__VA_ARGS__))(\
-    EM_ASM_IMPL_1(base, code, __VA_ARGS__),\
-    EM_ASM_IMPL_0(base, code))
+#define EM_ASM_IMPL(base, code, ...) CONCAT3(base, _, NARG(__VA_ARGS__))(#code, __VA_ARGS__)
 extern void emscripten_asm_const(const char* code);
 
 #define EM_ASM(...) emscripten_asm_const(#__VA_ARGS__)
@@ -75,8 +55,8 @@ extern void emscripten_asm_const(const char* code);
 #define EM_ASM_ARGS(...) EM_ASM_IMPL(emscripten_asm_const_int, __VA_ARGS__)
 #define EM_ASM_INT(...) EM_ASM_IMPL(emscripten_asm_const_int, __VA_ARGS__)
 #define EM_ASM_DOUBLE(...) EM_ASM_IMPL(emscripten_asm_const_double, __VA_ARGS__)
-#define EM_ASM_INT_V(code) EM_ASM_IMPL(emscripten_asm_const_int, code)
-#define EM_ASM_DOUBLE_V(code) EM_ASM_IMPL(emscripten_asm_const_double, code)
+#define EM_ASM_INT_V(code) emscripten_asm_const_int_0(#code)
+#define EM_ASM_DOUBLE_V(code) emscripten_asm_const_double_0(#code)
 
 EM_DECL(0); EM_DECL(1); EM_DECL(2); EM_DECL(3);
 EM_DECL(4); EM_DECL(5); EM_DECL(6); EM_DECL(7);
