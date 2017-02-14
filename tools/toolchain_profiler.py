@@ -1,5 +1,8 @@
 import subprocess, os, time, sys, tempfile
-from tools import response_file
+if sys.version_info.major == 2:
+  import response_file
+else:
+  from tools import response_file
 
 EM_PROFILE_TOOLCHAIN = int(os.getenv('EM_PROFILE_TOOLCHAIN')) if os.getenv('EM_PROFILE_TOOLCHAIN') != None else 0
 
