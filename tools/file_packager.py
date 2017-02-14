@@ -60,6 +60,10 @@ TODO:        You can also provide .crn files yourself, pre-crunched. With this o
              to dds files in the browser, exactly the same as if this tool compressed them.
 '''
 
+from toolchain_profiler import ToolchainProfiler
+if __name__ == '__main__':
+  ToolchainProfiler.record_process_start()
+
 import os, sys, shutil, random, uuid, ctypes
 import posixpath
 import shared
@@ -864,3 +868,6 @@ if force or len(data_files) > 0:
       f = open(jsoutput + '.metadata', 'w')
       json.dump(metadata, f, separators=(',', ':'))
       f.close()
+
+if __name__ == '__main__':
+  sys.exit(0)

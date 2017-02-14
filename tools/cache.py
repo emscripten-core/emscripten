@@ -1,3 +1,4 @@
+from toolchain_profiler import ToolchainProfiler
 import os.path, sys, shutil, time, logging
 import tempfiles, filelock
 
@@ -104,23 +105,24 @@ class Cache:
 # Given a set of functions of form (ident, text), and a preferred chunk size,
 # generates a set of chunks for parallel processing and caching.
 def chunkify(funcs, chunk_size, DEBUG=False):
-  chunks = []
-  # initialize reasonably, the rest of the funcs we need to split out
-  curr = []
-  total_size = 0
-  for i in range(len(funcs)):
-    func = funcs[i]
-    curr_size = len(func[1])
-    if total_size + curr_size < chunk_size:
-      curr.append(func)
-      total_size += curr_size
-    else:
+  with ToolchainProfiler.profile_block('chunkify'):
+    chunks = []
+    # initialize reasonably, the rest of the funcs we need to split out
+    curr = []
+    total_size = 0
+    for i in range(len(funcs)):
+      func = funcs[i]
+      curr_size = len(func[1])
+      if total_size + curr_size < chunk_size:
+        curr.append(func)
+        total_size += curr_size
+      else:
+        chunks.append(curr)
+        curr = [func]
+        total_size = curr_size
+    if curr:
       chunks.append(curr)
-      curr = [func]
-      total_size = curr_size
-  if curr:
-    chunks.append(curr)
-    curr = None
-  return [''.join([func[1] for func in chunk]) for chunk in chunks] # remove function names
+      curr = None
+    return [''.join([func[1] for func in chunk]) for chunk in chunks] # remove function names
 
 import shared

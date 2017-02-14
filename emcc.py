@@ -23,7 +23,7 @@ emcc can be influenced by a few environment variables:
   EMMAKEN_COMPILER - The compiler to be used, if you don't want the default clang.
 '''
 
-from tools.toolchain_profiler import ToolchainProfiler
+from tools.toolchain_profiler import ToolchainProfiler, exit
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
