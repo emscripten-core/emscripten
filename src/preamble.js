@@ -930,11 +930,11 @@ function stackTrace() {
 
 // Memory management
 
-var PAGE_SIZE = 65536; // Wasm pages are fixed to 64k.
+var PAGE_SIZE = 16384;
 
-function alignMemoryPage(x) {
-  if (x % PAGE_SIZE > 0) {
-    x += PAGE_SIZE - (x % PAGE_SIZE);
+function alignUp(x, multiple) {
+  if (x % multiple > 0) {
+    x += multiple - (x % multiple);
   }
   return x;
 }
@@ -1051,11 +1051,8 @@ function enlargeMemory() {
   _emscripten_trace_report_memory_layout();
 #endif
 
-  if (Module["usingWasm"]) {
-    var LIMIT = 2147483648 - PAGE_SIZE; // In Wasm, we can do one 64KB page short of 2GB as theoretical maximum.
-  } else {
-    var LIMIT = 2147483648 - 16777216; // In asm.js, the theoretical maximum is 16MB short of 2GB.
-  }
+  var PAGE_MULTIPLE = Module["usingWasm"] ? 65536 : 16777216; // In wasm, heap size must be a multiple of 64KB. In asm.js, they need to be multiples of 16MB.
+  var LIMIT = 2147483648 - PAGE_MULTIPLE; // We can do one page short of 2GB as theoretical maximum.
 
   if (HEAP32[DYNAMICTOP_PTR>>2] > LIMIT) {
 #if ASSERTIONS
@@ -1069,9 +1066,9 @@ function enlargeMemory() {
 
   while (TOTAL_MEMORY < HEAP32[DYNAMICTOP_PTR>>2]) { // Keep incrementing the heap size as long as it's less than what is requested.
     if (TOTAL_MEMORY <= 536870912) {
-      TOTAL_MEMORY = alignMemoryPage(2 * TOTAL_MEMORY); // Simple heuristic: double until 1GB...
+      TOTAL_MEMORY = alignUp(2 * TOTAL_MEMORY, PAGE_MULTIPLE); // Simple heuristic: double until 1GB...
     } else {
-      TOTAL_MEMORY = Math.min(alignMemoryPage((3 * TOTAL_MEMORY + 2147483648) / 4), LIMIT); // ..., but after that, add smaller increments towards 2GB, which we cannot reach
+      TOTAL_MEMORY = Math.min(alignUp((3 * TOTAL_MEMORY + 2147483648) / 4, PAGE_MULTIPLE), LIMIT); // ..., but after that, add smaller increments towards 2GB, which we cannot reach
     }
   }
 
@@ -1221,19 +1218,19 @@ if (Module['buffer']) {
 #if BINARYEN
   if (typeof WebAssembly === 'object' && typeof WebAssembly.Memory === 'function') {
 #if ASSERTIONS
-    assert(TOTAL_MEMORY % PAGE_SIZE === 0);
+    assert(TOTAL_MEMORY % 65536 === 0);
 #endif
 #if ALLOW_MEMORY_GROWTH
 #if BINARYEN_MEM_MAX
 #if ASSERTIONS
-    assert({{{ BINARYEN_MEM_MAX }}} % PAGE_SIZE == 0);
+    assert({{{ BINARYEN_MEM_MAX }}} % 65536 == 0);
 #endif
-    Module['wasmMemory'] = new WebAssembly.Memory({ initial: TOTAL_MEMORY / PAGE_SIZE, maximum: {{{ BINARYEN_MEM_MAX }}} / PAGE_SIZE });
+    Module['wasmMemory'] = new WebAssembly.Memory({ initial: TOTAL_MEMORY / 65536, maximum: {{{ BINARYEN_MEM_MAX }}} / 65536 });
 #else
-    Module['wasmMemory'] = new WebAssembly.Memory({ initial: TOTAL_MEMORY / PAGE_SIZE });
+    Module['wasmMemory'] = new WebAssembly.Memory({ initial: TOTAL_MEMORY / 65536 });
 #endif
 #else
-    Module['wasmMemory'] = new WebAssembly.Memory({ initial: TOTAL_MEMORY / PAGE_SIZE, maximum: TOTAL_MEMORY / PAGE_SIZE });
+    Module['wasmMemory'] = new WebAssembly.Memory({ initial: TOTAL_MEMORY / 65536, maximum: TOTAL_MEMORY / 65536 });
 #endif
     buffer = Module['wasmMemory'].buffer;
   } else
@@ -2312,7 +2309,8 @@ function integrateWasmJS(Module) {
 
   // Memory growth integration code
   Module['reallocBuffer'] = function(size) {
-    size = alignMemoryPage(size); // round up to wasm page size
+    var PAGE_MULTIPLE = Module["usingWasm"] ? 65536 : 16777216; // In wasm, heap size must be a multiple of 64KB. In asm.js, they need to be multiples of 16MB.
+    size = alignUp(size, PAGE_MULTIPLE); // round up to wasm page size
     var old = Module['buffer'];
     var oldSize = old.byteLength;
     if (Module["usingWasm"]) {

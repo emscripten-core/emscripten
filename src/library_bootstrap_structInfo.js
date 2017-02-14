@@ -20,7 +20,7 @@ LibraryManager.library = {
     // We control the "dynamic" memory - DYNAMIC_BASE to DYNAMICTOP
     var self = _sbrk;
     if (!self.called) {
-      HEAP32[DYNAMICTOP_PTR>>2] = alignMemoryPage(HEAP32[DYNAMICTOP_PTR>>2]); // make sure we start out aligned
+      HEAP32[DYNAMICTOP_PTR>>2] = alignUp(HEAP32[DYNAMICTOP_PTR>>2], 16777216); // make sure we start out aligned
       self.called = true;
       assert(Runtime.dynamicAlloc);
       self.alloc = Runtime.dynamicAlloc;
