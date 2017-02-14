@@ -1101,6 +1101,7 @@ var LibrarySDL = {
         audio.webAudioNode['onended'] = function() { audio['onended'](); } // For <media> element compatibility, route the onended signal to the instance.
 
         audio.webAudioPannerNode = SDL.audioContext['createPanner']();
+        audio.webAudioPannerNode["setPosition"](0, 0, -.5);
         audio.webAudioPannerNode['panningModel'] = 'equalpower';
 
         // Add an intermediate gain node to control volume.
