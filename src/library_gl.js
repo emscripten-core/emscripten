@@ -415,7 +415,11 @@ var LibraryGL = {
     createContext: function(canvas, webGLContextAttributes) {
       if (typeof webGLContextAttributes['majorVersion'] === 'undefined' && typeof webGLContextAttributes['minorVersion'] === 'undefined') {
 #if USE_WEBGL2
-        webGLContextAttributes['majorVersion'] = 2;
+        // If caller did not specify a context, initialize the best one that is possibly available.
+        // To explicitly create a WebGL 1 or a WebGL 2 context, call this function with a specific
+        // majorVersion set.
+        if (typeof WebGL2RenderingContext !== 'undefined') webGLContextAttributes['majorVersion'] = 2;
+        else webGLContextAttributes['majorVersion'] = 1;
 #else
         webGLContextAttributes['majorVersion'] = 1;
 #endif
@@ -1299,7 +1303,26 @@ var LibraryGL = {
   ],
   glTexImage2D: function(target, level, internalFormat, width, height, border, format, type, pixels) {
 #if USE_WEBGL2
-    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+
+    if (GL.currentContext.version >= 2) {
+#if WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION
+      // WebGL 1 unsized texture internalFormats are no longer supported in WebGL 2, so patch those format
+      // enums to the ones that are present in WebGL 2.
+      if (format == 0x1902/*GL_DEPTH_COMPONENT*/ && internalFormat == 0x1902/*GL_DEPTH_COMPONENT*/ && type == 0x1405/*GL_UNSIGNED_INT*/) {
+        internalFormat = 0x81A6 /*GL_DEPTH_COMPONENT24*/;
+      }
+      if (type == 0x8d61/*GL_HALF_FLOAT_OES*/) {
+        type = 0x140B /*GL_HALF_FLOAT*/;
+        if (format == 0x1908/*GL_RGBA*/ && internalFormat == 0x1908/*GL_RGBA*/) {
+          internalFormat = 0x881A/*GL_RGBA16F*/;
+        }
+      }
+      if (internalFormat == 0x84f9 /*GL_DEPTH_STENCIL*/) {
+        internalFormat = 0x88F0 /*GL_DEPTH24_STENCIL8*/;
+      }
+#endif
+
+      // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
       } else if (pixels != 0) {
@@ -1324,7 +1347,16 @@ var LibraryGL = {
   ],
   glTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, type, pixels) {
 #if USE_WEBGL2
-    if (GL.currentContext.version >= 2) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+
+    if (GL.currentContext.version >= 2) {
+#if WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION
+      // In WebGL 1 to do half float textures, one uses the type enum GL_HALF_FLOAT_OES, but in
+      // WebGL 2 when half float textures were adopted to the core spec, the enum changed value
+      // which breaks backwards compatibility. Route old enum number to the new one.
+      if (type == 0x8d61/*GL_HALF_FLOAT_OES*/) type = 0x140B /*GL_HALF_FLOAT*/;
+#endif
+
+      // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx.texSubImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
       } else if (pixels != 0) {
@@ -3395,6 +3427,49 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.shaders, shader, 'glShaderSource', 'shader');
 #endif
     var source = GL.getSource(shader, count, string, length);
+
+#if WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION
+    if (GL.currentContext.version >= 2) {
+      // If a WebGL 1 shader happens to use GL_EXT_shader_texture_lod extension,
+      // it will not compile on WebGL 2, because WebGL 2 no longer supports that
+      // extension for WebGL 1 shaders. Therefore upgrade shaders to WebGL 2
+      // by doing a bunch of dirty hacks. Not guaranteed to work on all shaders.
+      // One might consider doing this for only the shaders that actually use
+      // the GL_EXT_shader_texture_lod extension, but the problem is that
+      // vertex and fragment shader versions need to match, and when compiling
+      // the corresponding vertex shader, we would not know if that needed to
+      // be compiled with or without the patch, so we must patch all shaders.
+      if (source.indexOf('#version 100') != -1) {
+        source = source.replace(/#extension GL_OES_standard_derivatives : enable/g, "");
+        source = source.replace(/#extension GL_EXT_shader_texture_lod : enable/g, '');
+        var prelude = '';
+        if (source.indexOf('gl_FragColor') != -1) {
+          prelude += 'out mediump vec4 GL_FragColor;\n';
+          source = source.replace(/gl_FragColor/g, 'GL_FragColor');
+        }
+        if (source.indexOf('attribute') != -1) {
+          source = source.replace(/attribute/g, 'in');
+          source = source.replace(/varying/g, 'out');
+        } else {
+          source = source.replace(/varying/g, 'in');
+        }
+
+        source = source.replace(/textureCubeLodEXT/g, 'textureCubeLod');
+        source = source.replace(/texture2DLodEXT/g, 'texture2DLod');
+        source = source.replace(/texture2DProjLodEXT/g, 'texture2DProjLod');
+        source = source.replace(/texture2DGradEXT/g, 'texture2DGrad');
+        source = source.replace(/texture2DProjGradEXT/g, 'texture2DProjGrad');
+        source = source.replace(/textureCubeGradEXT/g, 'textureCubeGrad');
+
+        source = source.replace(/textureCube/g, 'texture');
+        source = source.replace(/texture1D/g, 'texture');
+        source = source.replace(/texture2D/g, 'texture');
+        source = source.replace(/texture3D/g, 'texture');
+        source = source.replace(/#version 100/g, '#version 300 es\n' + prelude);
+      }
+    }
+#endif
+
     GLctx.shaderSource(GL.shaders[shader], source);
   },
 

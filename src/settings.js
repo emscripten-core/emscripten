@@ -264,6 +264,11 @@ var GL_UNSAFE_OPTS = 1; // Enables some potentially-unsafe optimizations in GL e
 var FULL_ES2 = 0;   // Forces support for all GLES2 features, not just the WebGL-friendly subset.
 var USE_WEBGL2 = 0; // Enables WebGL2 native functions. This mode will also create a WebGL2
                     // context by default if no version is specified.
+var WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION = 0; // If true, emulates some WebGL 1 features on WebGL 2 contexts, meaning that applications that
+                                                  // use WebGL 1/GLES 2 can initialize a WebGL 2/GLES3 context, but still keep using WebGL1/GLES 2
+                                                  // functionality that no longer is supported in WebGL2/GLES3. Currently this emulates
+                                                  // GL_EXT_shader_texture_lod extension in GLSLES 1.00 shaders, support for unsized internal
+                                                  // texture formats, and the GL_HALF_FLOAT_OES != GL_HALF_FLOAT mixup.
 var FULL_ES3 = 0;   // Forces support for all GLES3 features, not just the WebGL2-friendly subset.
 var LEGACY_GL_EMULATION = 0; // Includes code to emulate various desktop GL features. Incomplete but useful
                              // in some cases, see http://kripken.github.io/emscripten-site/docs/porting/multimedia_and_graphics/OpenGL-support.html
