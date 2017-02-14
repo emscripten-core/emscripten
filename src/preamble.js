@@ -1236,6 +1236,9 @@ if (Module['buffer']) {
 #endif
 #if ALLOW_MEMORY_GROWTH
 #if BINARYEN_MEM_MAX
+#if ASSERTIONS
+    assert({{{ BINARYEN_MEM_MAX }}} % PAGE_SIZE == 0);
+#endif
     Module['wasmMemory'] = new WebAssembly.Memory({ initial: TOTAL_MEMORY / PAGE_SIZE, maximum: {{{ BINARYEN_MEM_MAX }}} / PAGE_SIZE });
 #else
     Module['wasmMemory'] = new WebAssembly.Memory({ initial: TOTAL_MEMORY / PAGE_SIZE });
