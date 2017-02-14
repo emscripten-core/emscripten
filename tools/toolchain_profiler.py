@@ -1,5 +1,5 @@
 import subprocess, os, time, sys, tempfile
-import response_file
+from tools import response_file
 
 EM_PROFILE_TOOLCHAIN = int(os.getenv('EM_PROFILE_TOOLCHAIN')) if os.getenv('EM_PROFILE_TOOLCHAIN') != None else 0
 
