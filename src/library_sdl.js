@@ -1213,7 +1213,7 @@ var LibrarySDL = {
       if (typeof button === 'object') {
         // Current gamepad API editor's draft (Firefox Nightly)
         // https://dvcs.w3.org/hg/gamepad/raw-file/default/gamepad.html#idl-def-GamepadButton
-        return button.pressed;
+        return button['pressed'];
       } else {
         // Current gamepad API working draft (Firefox / Chrome Stable)
         // http://www.w3.org/TR/2012/WD-gamepad-20120529/#gamepad-interface
