@@ -1052,9 +1052,9 @@ function enlargeMemory() {
 #endif
 
   if (Module["usingWasm"]) {
-    var LIMIT = 2147483648-PAGE_SIZE; // In Wasm, we can do one 64KB page short of 2GB as theoretical maximum.
+    var LIMIT = 2147483648 - PAGE_SIZE; // In Wasm, we can do one 64KB page short of 2GB as theoretical maximum.
   } else {
-    var LIMIT = 2147483648-16777216; // In asm.js, the theoretical maximum is 16MB short of 2GB.
+    var LIMIT = 2147483648 - 16777216; // In asm.js, the theoretical maximum is 16MB short of 2GB.
   }
 
   if (HEAP32[DYNAMICTOP_PTR>>2] > LIMIT) {
@@ -1065,13 +1065,13 @@ function enlargeMemory() {
   }
 
   var OLD_TOTAL_MEMORY = TOTAL_MEMORY;
-  TOTAL_MEMORY = Math.max(TOTAL_MEMORY, 16*1024*1024); // So the loop below will not be infinite, and minimum asm.js memory size is 16MB.
+  TOTAL_MEMORY = Math.max(TOTAL_MEMORY, 16 * 1024 * 1024); // So the loop below will not be infinite, and minimum asm.js memory size is 16MB.
 
   while (TOTAL_MEMORY < HEAP32[DYNAMICTOP_PTR>>2]) { // Keep incrementing the heap size as long as it's less than what is requested.
     if (TOTAL_MEMORY <= 536870912) {
-      TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY); // // Simple heuristic: double until 1GB...
+      TOTAL_MEMORY = alignMemoryPage(2 * TOTAL_MEMORY); // Simple heuristic: double until 1GB...
     } else {
-      TOTAL_MEMORY = Math.min(alignMemoryPage((3*TOTAL_MEMORY + 2147483648)/4), LIMIT); // ..., but after that, add smaller increments towards 2GB, which we cannot reach
+      TOTAL_MEMORY = Math.min(alignMemoryPage((3 * TOTAL_MEMORY + 2147483648) / 4), LIMIT); // ..., but after that, add smaller increments towards 2GB, which we cannot reach
     }
   }
 
