@@ -1585,6 +1585,10 @@ int main(int argc, char **argv) {
 }
 ''', 'false')
 
+  def test_em_asm(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm', force_c=True)
+
   def test_em_asm_unicode(self):
     self.do_run(r'''
 #include <emscripten.h>
