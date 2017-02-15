@@ -1101,6 +1101,9 @@ var LibrarySDL = {
         audio.webAudioNode['onended'] = function() { audio['onended'](); } // For <media> element compatibility, route the onended signal to the instance.
 
         audio.webAudioPannerNode = SDL.audioContext['createPanner']();
+        // avoid Chrome bug
+        // If posz = 0, the sound will come from only the right.
+        // By posz = -0.5 (slightly ahead), the sound will come from right and left correctly.
         audio.webAudioPannerNode["setPosition"](0, 0, -.5);
         audio.webAudioPannerNode['panningModel'] = 'equalpower';
 
