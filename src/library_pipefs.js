@@ -74,9 +74,10 @@ mergeInto(LibraryManager.library, {
         var pipe = stream.node.pipe;
         var currentLength = 0;
 
-        pipe.buckets.forEach(function (bucket) {
+        for (var i = 0; i < pipe.buckets.length; i++) {
+          var bucket = pipe.buckets[i];
           currentLength += bucket.offset - bucket.roffset;
-        });
+        }
 
         assert(buffer instanceof ArrayBuffer || ArrayBuffer.isView(buffer));
         var data = buffer.subarray(offset, offset + length);
@@ -124,9 +125,7 @@ mergeInto(LibraryManager.library, {
           pipe.buckets[toRemove].roffset = 0;
         }
 
-        while (toRemove--) {
-          pipe.buckets.shift();
-        }
+        pipe.buckets.splice(0, toRemove);
 
         return totalRead;
       },
