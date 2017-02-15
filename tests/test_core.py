@@ -1617,27 +1617,7 @@ int main() {
   @no_wasm_backend('requires EM_ASM args support in wasm backend')
   def test_em_asm_parameter_pack(self):
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
-    src = r'''
-      #include <emscripten.h>
-
-      template <typename... Args>
-      int call(Args... args) {
-        return(EM_ASM_INT(
-          {
-            Module.print(Array.prototype.join.call(arguments, ','));
-          },
-          args...
-        ));
-      }
-
-      int main(int argc, char **argv) {
-        call(1);
-        call(1, 2);
-        call(1, 2, 3);
-        return 0;
-      }
-    '''
-    self.do_run(src, '''1\n1,2\n1,2,3''')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_parameter_pack')
 
   def test_memorygrowth(self):
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
