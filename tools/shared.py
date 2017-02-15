@@ -1236,6 +1236,7 @@ class Building:
   LLVM_OPTS = False
   COMPILER_TEST_OPTS = [] # For use of the test runner
   JS_ENGINE_OVERRIDE = None # Used to pass the JS engine override from runner.py -> test_benchmark.py
+  IN_TEST_RUNNER = False
   multiprocessing_pool = None
 
   # Multiprocessing pools are very slow to build up and tear down, and having several pools throughout
@@ -1245,6 +1246,10 @@ class Building:
   def get_multiprocessing_pool():
     if not Building.multiprocessing_pool:
       cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+      # don't use multiple CPU cores in the pool in the test runner itself - it hits
+      # https://github.com/kripken/emscripten/issues/4941
+      if Building.IN_TEST_RUNNER:
+        cores = 1
 
       # If running with one core only, create a mock instance of a pool that does not
       # actually spawn any new subprocesses. Very useful for internal debugging.

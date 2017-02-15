@@ -22,6 +22,8 @@ import tools.shared
 from tools.shared import *
 from tools.line_endings import check_line_endings
 
+Building.IN_TEST_RUNNER = True
+
 # Sanity check for config
 
 try:
