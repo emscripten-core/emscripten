@@ -1,14 +1,22 @@
 #ifndef __em_asm_h__
 #define __em_asm_h__
 
-#ifdef __cplusplus
+#ifndef __cplusplus
+void emscripten_asm_const();
+int emscripten_asm_const_int();
+double emscripten_asm_const_double();
+#else
+#ifdef __asmjs
+extern "C" {
+    void emscripten_asm_const(const char* code);
+    int emscripten_asm_const_int(const char* code, ...);
+    double emscripten_asm_const_double(const char* code, ...);
+}
+#else
 template <typename... Args> void emscripten_asm_const(const char* code, Args...);
 template <typename... Args> int emscripten_asm_const_int(const char* code, Args...);
 template <typename... Args> double emscripten_asm_const_double(const char* code, Args...);
-#else
-void emscripten_asm_const(); \
-int emscripten_asm_const_int(); \
-double emscripten_asm_const_double();
+#endif
 #endif
 
 void emscripten_asm_const(const char* code);
