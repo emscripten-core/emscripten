@@ -1585,6 +1585,10 @@ int main(int argc, char **argv) {
 }
 ''', 'false')
 
+  def test_em_asm(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm', force_c=True)
+
   def test_em_asm_unicode(self):
     self.do_run(r'''
 #include <emscripten.h>
@@ -1594,7 +1598,6 @@ int main() {
 }
 ''', 'hello world…')
 
-  @no_wasm_backend('requires EM_ASM args support in wasm backend')
   def test_em_asm_unused_arguments(self):
     src = r'''
       #include <stdio.h>
@@ -1614,30 +1617,9 @@ int main() {
   # Maybe tests will later be joined into larger compilation units?
   # Then this must still be compiled separately from other code using EM_ASM
   # macros with arities 1-3. Otherwise this may incorrectly report a success.
-  @no_wasm_backend('requires EM_ASM args support in wasm backend')
   def test_em_asm_parameter_pack(self):
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
-    src = r'''
-      #include <emscripten.h>
-
-      template <typename... Args>
-      int call(Args... args) {
-        return(EM_ASM_INT(
-          {
-            Module.print(Array.prototype.join.call(arguments, ','));
-          },
-          args...
-        ));
-      }
-
-      int main(int argc, char **argv) {
-        call(1);
-        call(1, 2);
-        call(1, 2, 3);
-        return 0;
-      }
-    '''
-    self.do_run(src, '''1\n1,2\n1,2,3''')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_parameter_pack')
 
   def test_memorygrowth(self):
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
@@ -4368,23 +4350,19 @@ def process(filename):
 
     self.do_run_in_out_file_test('tests', 'core', 'test_utf')
 
-  @no_wasm_backend('requires EM_ASM args support in wasm backend')
   def test_utf32(self):
     Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['UTF32ToString', 'stringToUTF32', 'lengthBytesUTF32']
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.')
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.', args=['-fshort-wchar'])
 
-  @no_wasm_backend('requires EM_ASM args support in wasm backend')
   def test_utf8(self):
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
     self.do_run(open(path_from_root('tests', 'utf8.cpp')).read(), 'OK.')
 
-  @no_wasm_backend('requires EM_ASM args support in wasm backend')
   def test_utf8_textdecoder(self):
     Building.COMPILER_TEST_OPTS += ['--embed-file', path_from_root('tests/utf8_corpus.txt')+ '@/utf8_corpus.txt']
     self.do_run(open(path_from_root('tests', 'benchmark_utf8.cpp')).read(), 'OK.')
 
-  @no_wasm_backend('requires EM_ASM args support in wasm backend')
   def test_utf16_textdecoder(self):
     Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['UTF16ToString', 'stringToUTF16', 'lengthBytesUTF16']
     Building.COMPILER_TEST_OPTS += ['--embed-file', path_from_root('tests/utf16_corpus.txt')+ '@/utf16_corpus.txt']
@@ -4888,7 +4866,6 @@ return malloc(size);
 '''
     self.do_run(src, 'new 4!\n*1,0*')
 
-  @no_wasm_backend('requires EM_ASM args support in wasm backend')
   def test_dlmalloc_partial_2(self):
     if 'SAFE_HEAP' in str(self.emcc_args): return self.skip('we do unsafe stuff here')
     # present part of the symbols of dlmalloc, not all. malloc is harder to link than new which is weak.
@@ -6040,7 +6017,7 @@ def process(filename):
     self.do_run(src, '''waka 4999!''')
     assert '_exported_func_from_response_file_1' in open('src.cpp.o.js').read()
 
-  @no_wasm_backend('requires EM_ASM args support in wasm backend')
+  @no_wasm_backend('RuntimeError: function signature mismatch')
   def test_add_function(self):
     Settings.INVOKE_RUN = 0
     Settings.RESERVED_FUNCTION_POINTERS = 1
@@ -6075,7 +6052,6 @@ def process(filename):
       Settings.EMULATED_FUNCTION_POINTERS = 1 # with emulation, we don't need to reserve
       self.do_run_from_file(src, expected)
 
-  @no_wasm_backend('requires EM_ASM args support in wasm backend')
   def test_getFuncWrapper_sig_alias(self):
     src = r'''
     #include <stdio.h>
@@ -7247,7 +7223,6 @@ int main(int argc, char **argv) {
     self.do_run(open(path_from_root('tests', 'sbrk_brk.cpp')).read(), 'OK.')
 
   # Tests that we can use the dlmalloc mallinfo() function to obtain information about malloc()ed blocks and compute how much memory is used/freed.
-  @no_wasm_backend('requires EM_ASM args support in wasm backend')
   def test_mallinfo(self):
     self.do_run(open(path_from_root('tests', 'mallinfo.cpp')).read(), 'OK.')
 
