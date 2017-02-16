@@ -2258,7 +2258,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           })();
 ''' % os.path.basename(memfile)) + script_inline
 
-        if separate_asm:
+        # Download .asm.js if --separate-asm was passed in an asm.js build, or if 'asmjs' is one
+        # of the wasm run methods.
+        if separate_asm and (not shared.Settings.BINARYEN or 'asmjs' in shared.Settings.BINARYEN_METHOD):
           un_src()
           if len(asm_mods) == 0:
             # just load the asm, then load the rest
