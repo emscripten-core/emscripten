@@ -1072,13 +1072,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logging.error('Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
         raise e
 
-      assert shared.Settings.TOTAL_MEMORY >= 16*1024*1024, 'TOTAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.TOTAL_MEMORY)
-      if shared.Settings.WASM or shared.Settings.BINARYEN:
-        assert shared.Settings.TOTAL_MEMORY % 65536 == 0, 'For wasm, TOTAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.TOTAL_MEMORY)
-      else:
-        assert shared.Settings.TOTAL_MEMORY % (16*1024*1024) == 0, 'For asm.js, TOTAL_MEMORY must be a multiple of 16MB, was ' + str(shared.Settings.TOTAL_MEMORY)
-      assert shared.Settings.TOTAL_MEMORY >= shared.Settings.TOTAL_STACK, 'TOTAL_MEMORY must be larger than TOTAL_STACK, was ' + str(shared.Settings.TOTAL_MEMORY) + ' (TOTAL_STACK=' + str(shared.Settings.TOTAL_STACK) + ')'
-
       assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
 
       if shared.Settings.SAFE_HEAP:
@@ -1253,6 +1246,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.WASM:
         shared.Settings.BINARYEN = 1 # these are synonyms
+
+      assert shared.Settings.TOTAL_MEMORY >= 16*1024*1024, 'TOTAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.TOTAL_MEMORY)
+      if shared.Settings.BINARYEN:
+        assert shared.Settings.TOTAL_MEMORY % 65536 == 0, 'For wasm, TOTAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.TOTAL_MEMORY)
+      else:
+        assert shared.Settings.TOTAL_MEMORY % (16*1024*1024) == 0, 'For asm.js, TOTAL_MEMORY must be a multiple of 16MB, was ' + str(shared.Settings.TOTAL_MEMORY)
+      assert shared.Settings.TOTAL_MEMORY >= shared.Settings.TOTAL_STACK, 'TOTAL_MEMORY must be larger than TOTAL_STACK, was ' + str(shared.Settings.TOTAL_MEMORY) + ' (TOTAL_STACK=' + str(shared.Settings.TOTAL_STACK) + ')'
 
       if shared.Settings.WASM_BACKEND:
         js_opts = None
