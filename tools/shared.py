@@ -1244,12 +1244,11 @@ class Building:
   @staticmethod
   def get_multiprocessing_pool():
     if not Building.multiprocessing_pool:
-      pool = Building.get_new_multiprocessing_pool()
-      Building.multiprocessing_pool = pool
+      Building.multiprocessing_pool = Building.create_multiprocessing_pool()
     return Building.multiprocessing_pool
 
   @staticmethod
-  def get_new_multiprocessing_pool():
+  def create_multiprocessing_pool():
     cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
 
     # If running with one core only, create a mock instance of a pool that does not
@@ -1570,7 +1569,7 @@ class Building:
 
       # Archives contain objects, so process all archives first in parallel to obtain the object files in them.
       # new_pool is a workaround for https://github.com/kripken/emscripten/issues/4941 TODO: a better fix
-      pool = Building.get_new_multiprocessing_pool()
+      pool = Building.create_multiprocessing_pool()
       object_names_in_archives = pool.map(extract_archive_contents, archive_names)
 
       for n in range(len(archive_names)):
