@@ -2721,6 +2721,10 @@ window.close = function() {
       message='You should see colorful "hello" and "world" in the window',
       timeout=30)
 
+  def test_sdl2_custom_cursor(self):
+    shutil.copyfile(path_from_root('tests', 'cursor.bmp'), os.path.join(self.get_dir(), 'cursor.bmp'))
+    self.btest('sdl2_custom_cursor.c', expected='1', args=['--preload-file', 'cursor.bmp', '-s', 'USE_SDL=2'])
+
   def test_emterpreter_async(self):
     for opts in [0, 1, 2, 3]:
       print opts
