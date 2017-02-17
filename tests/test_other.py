@@ -7345,6 +7345,30 @@ int main() {
       finally:
         del os.environ['EMCC_DEBUG']
 
+  def test_binaryen_ignore_implicit_traps(self):
+    with clean_write_access_to_canonical_temp_dir():
+      if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+      sizes = []
+      try:
+        os.environ['EMCC_DEBUG'] = '1'
+        for args, expect in [
+            ([], False),
+            (['-s', 'BINARYEN_IGNORE_IMPLICIT_TRAPS=1'], True),
+          ]:
+          print args, expect
+          cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-O3'] + args
+          print ' '.join(cmd)
+          output, err = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
+          asm2wasm_line = filter(lambda x: 'asm2wasm' in x, err.split('\n'))[0]
+          asm2wasm_line = asm2wasm_line.strip() + ' ' # ensure it ends with a space, for simpler searches below
+          print '|' + asm2wasm_line + '|'
+          assert expect == (' --ignore-implicit-traps ' in asm2wasm_line)
+          sizes.append(os.stat('a.out.wasm').st_size)
+      finally:
+        del os.environ['EMCC_DEBUG']
+      print 'sizes:', sizes
+      assert sizes[1] < sizes[0], 'ignoring implicit traps must reduce code size'
+
   def test_wasm_targets(self):
     for f in ['a.wasm', 'a.wast']:
       process = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', f], stdout=PIPE, stderr=PIPE)
