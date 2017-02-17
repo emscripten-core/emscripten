@@ -1072,6 +1072,11 @@ def expand_response(data):
     return json.loads(open(data[1:]).read())
   return data
 
+# Given a string with arithmetic and/or KB/MB size suffixes, such as "1024*1024" or "32MB", computes how many bytes that is and returns it as an integer.
+def expand_byte_size_suffixes(value):
+  value = value.lower().replace('tb', '*1024*1024*1024*1024').replace('gb', '*1024*1024*1024').replace('mb', '*1024*1024').replace('kb', '*1024').replace('b', '')
+  return eval(value)
+
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 
 class Settings2(type):
