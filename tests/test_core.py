@@ -3079,6 +3079,19 @@ var Module = {
         try_delete('src.cpp.o.js')
         Popen([PYTHON, EMCC] + main + self.emcc_args + Settings.serialize() + ['-o', os.path.join(self.get_dir(), 'src.cpp.o.js')]).communicate()
         self.do_run(None, expected, no_build=True)
+
+      if self.is_wasm() and auto_load:
+        # this is wasm, and we control loading, so do static linking too
+        print 'static wasm linking'
+        # get rid of the loading code
+        src = open('src.cpp.o.js').read()
+        open('src.cpp.o.js', 'w').write(src.replace("'liblib.so'", ''))
+        # link the wasms
+        shutil.move('src.cpp.o.wasm', 'src.wasm')
+        import tools.shared as shared
+        Popen([os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-merge'), 'src.wasm', 'liblib.so', '-o', 'src.cpp.o.wasm']).communicate()
+        self.do_run(None, expected, no_build=True)
+
     finally:
       self.emcc_args = emcc_args[:]
 
