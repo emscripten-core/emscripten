@@ -1244,41 +1244,49 @@ class Building:
   @staticmethod
   def get_multiprocessing_pool():
     if not Building.multiprocessing_pool:
-      cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+      Building.multiprocessing_pool = Building.create_multiprocessing_pool()
+    return Building.multiprocessing_pool
 
-      # If running with one core only, create a mock instance of a pool that does not
-      # actually spawn any new subprocesses. Very useful for internal debugging.
-      if cores == 1:
-        class FakeMultiprocessor:
-          def map(self, func, tasks):
-            results = []
-            for t in tasks:
-              results += [func(t)]
-            return results
-        Building.multiprocessing_pool = FakeMultiprocessor()
-      else:
-        child_env = [
+  @staticmethod
+  def create_multiprocessing_pool():
+    cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+
+    # If running with one core only, create a mock instance of a pool that does not
+    # actually spawn any new subprocesses. Very useful for internal debugging.
+    if cores == 1:
+      class FakeMultiprocessor:
+        def map(self, func, tasks):
+          results = []
+          for t in tasks:
+            results += [func(t)]
+          return results
+      pool = FakeMultiprocessor()
+    else:
+      child_env = [
           # Multiprocessing pool children need to avoid all calling check_vanilla() again and again,
           # otherwise the compiler can deadlock when building system libs, because the multiprocess parent can have the Emscripten cache directory locked for write
           # access, and the EMCC_WASM_BACKEND check also requires locked access to the cache, which the multiprocess children would not get.
           'EMCC_WASM_BACKEND='+os.getenv('EMCC_WASM_BACKEND', '0'),
           'EMCC_CORES=1' # Multiprocessing pool children can't spawn their own linear number of children, that could cause a quadratic amount of spawned processes.
-        ]
-        Building.multiprocessing_pool = multiprocessing.Pool(processes=cores, initializer=g_multiprocessing_initializer, initargs=child_env)
+      ]
+      pool = multiprocessing.Pool(processes=cores, initializer=g_multiprocessing_initializer, initargs=child_env)
 
-        def close_multiprocessing_pool():
-          try:
-            # Shut down the pool explicitly, because leaving that for Python to do at process shutdown is buggy and can generate
-            # noisy "WindowsError: [Error 5] Access is denied" spam which is not fatal.
-            Building.multiprocessing_pool.terminate()
-            Building.multiprocessing_pool.join()
+      def close_multiprocessing_pool():
+        try:
+          # Shut down the pool explicitly, because leaving that for Python to do at process shutdown is buggy and can generate
+          # noisy "WindowsError: [Error 5] Access is denied" spam which is not fatal.
+          pool.terminate()
+          pool.join()
+          if pool == Building.multiprocessing_pool:
             Building.multiprocessing_pool = None
-          except WindowsError, e:
-            # Mute the "WindowsError: [Error 5] Access is denied" errors, raise all others through
-            if e.winerror != 5: raise
-        atexit.register(close_multiprocessing_pool)
+        except WindowsError, e:
+          # Mute the "WindowsError: [Error 5] Access is denied" errors, raise all others through
+          if e.winerror != 5: raise
+      atexit.register(close_multiprocessing_pool)
 
-    return Building.multiprocessing_pool
+    return pool
+
+
 
   @staticmethod
   def get_building_env(native=False):
@@ -1560,7 +1568,8 @@ class Building:
           object_names.append(absolute_path_f)
 
       # Archives contain objects, so process all archives first in parallel to obtain the object files in them.
-      pool = Building.get_multiprocessing_pool()
+      # new_pool is a workaround for https://github.com/kripken/emscripten/issues/4941 TODO: a better fix
+      pool = Building.create_multiprocessing_pool()
       object_names_in_archives = pool.map(extract_archive_contents, archive_names)
 
       for n in range(len(archive_names)):
