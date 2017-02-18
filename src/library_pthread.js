@@ -743,7 +743,6 @@ var LibraryPThread = {
   _pthread_is_main_runtime_thread: 0,
   _pthread_is_main_browser_thread: 0,
 
-  _register_pthread_ptr__asm: true,
   _register_pthread_ptr__deps: ['_pthread_ptr', '_pthread_is_main_runtime_thread', '_pthread_is_main_browser_thread'],
   _register_pthread_ptr: function(pthreadPtr, isMainBrowserThread, isMainRuntimeThread) {
     pthreadPtr = pthreadPtr|0;
