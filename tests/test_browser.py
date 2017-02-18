@@ -3424,7 +3424,6 @@ window.close = function() {
   def test_pthread_locale(self):
     for args in [
         [],
-        # ['-s', 'USE_PTHREADS=1'],
         ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'],
         ['-s', 'USE_PTHREADS=1', '--proxy-to-worker', '-s', 'PTHREAD_POOL_SIZE=2'],
     ]:
