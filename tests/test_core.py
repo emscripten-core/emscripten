@@ -3087,9 +3087,9 @@ var Module = {
         src = open('src.cpp.o.js').read()
         open('src.cpp.o.js', 'w').write(src.replace("'liblib.so'", ''))
         # link the wasms
-        shutil.move('src.cpp.o.wasm', 'src.wasm')
+        shutil.move('src.cpp.o.wasm', 'src.cpp.o.wasm.pre')
         import tools.shared as shared
-        Popen([os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-merge'), 'src.wasm', 'liblib.so', '-o', 'src.cpp.o.wasm']).communicate()
+        Popen([os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-merge'), 'src.cpp.o.wasm.pre', 'liblib.so', '-o', 'src.cpp.o.wasm']).communicate()
         self.do_run(None, expected, no_build=True)
 
     finally:
