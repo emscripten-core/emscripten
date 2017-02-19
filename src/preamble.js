@@ -1599,6 +1599,12 @@ function ensureInitRuntime() {
   if (runtimeInitialized) return;
   runtimeInitialized = true;
   callRuntimeCallbacks(__ATINIT__);
+#if BINARYEN
+  // a wasm dynamic library may have an init. when loaded as a dylib, it would be
+  // called, but if the main program has linked-in dynamic libraries, we do that here
+  var init = Module['__post_instantiate'];
+  if (init) init();
+#endif
 }
 
 function preMain() {
