@@ -6311,7 +6311,7 @@ int main() {
 ''')
     for opts in [0, 1, 2]:
       print opts
-      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=64MB', '-O' + str(opts)])
       self.assertContained('success.', run_js('a.out.js'))
 
   def test_split_memory_2(self): # make allocation starts in the first chunk, and moves forward properly
@@ -6355,7 +6355,7 @@ int main() {
 ''')
     for opts in [0, 1, 2]:
       print opts
-      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=64MB', '-O' + str(opts)])
       self.assertContained('success.', run_js('a.out.js'))
 
   def test_split_memory_sbrk(self):
@@ -6393,7 +6393,7 @@ int main() {
 ''')
     for opts in [0, 1, 2]:
       print opts
-      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=64MB', '-O' + str(opts)])
       self.assertContained('success.', run_js('a.out.js'))
 
   def test_split_memory_faking(self): # fake HEAP8 etc. objects have some faked fake method. they are fake
@@ -6492,7 +6492,7 @@ int main() {
 ''')
     for opts in [0, 1, 2]:
       print opts
-      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts), '-s', 'ASSERTIONS=1'])
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=64MB', '-O' + str(opts), '-s', 'ASSERTIONS=1'])
       self.assertContained('success.', run_js('a.out.js', stderr=PIPE, assert_returncode=None))
 
   def test_split_memory_release(self):
@@ -6538,7 +6538,7 @@ int main() {
 ''')
     for opts in [0, 1, 2]:
       print opts
-      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=64MB', '-O' + str(opts)])
       self.assertContained('success.', run_js('a.out.js'))
 
   def test_split_memory_use_existing(self):
@@ -6579,7 +6579,7 @@ int main() {
 ''')
     for opts in [0, 1, 2]:
       print opts
-      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=64MB', '-O' + str(opts)])
       self.assertContained('success.', run_js('a.out.js'))
 
   def test_sixtyfour_bit_return_value(self):
