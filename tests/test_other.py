@@ -7303,6 +7303,12 @@ int main() {
       ret = subprocess.Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=33MB'], stderr=subprocess.PIPE).communicate()[1]
       assert 'TOTAL_MEMORY must be a multiple of 16MB' in ret, ret
 
+      ret = subprocess.Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'BINARYEN_MEM_MAX=33MB'], stderr=subprocess.PIPE).communicate()[1]
+      assert 'BINARYEN_MEM_MAX must be a multiple of 64KB' not in ret, ret
+
+      ret = subprocess.Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'BINARYEN_MEM_MAX=33MB+1'], stderr=subprocess.PIPE).communicate()[1]
+      assert 'BINARYEN_MEM_MAX must be a multiple of 64KB' in ret, ret
+
   def test_binaryen_ctors(self):
     if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey')
     # ctor order must be identical to js builds, deterministically
