@@ -36,8 +36,10 @@ var LibraryJSEvents = {
     removeEventListenersRegistered: false, 
 
     staticInit: function() {
-      window.addEventListener("gamepadconnected", function() { ++JSEvents.numGamepadsConnected; });
-      window.addEventListener("gamepaddisconnected", function() { --JSEvents.numGamepadsConnected; });
+      if (typeof window !== 'undefined') {
+        window.addEventListener("gamepadconnected", function() { ++JSEvents.numGamepadsConnected; });
+        window.addEventListener("gamepaddisconnected", function() { --JSEvents.numGamepadsConnected; });
+      }
     },
 
     registerRemoveEventListeners: function() {
