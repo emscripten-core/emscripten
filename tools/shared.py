@@ -1187,8 +1187,8 @@ def warn_if_duplicate_entries(archive_contents, archive_filename_hint=''):
         warned.add(curr)
 
 def extract_archive_contents(f):
-  cwd = os.getcwd()
   try:
+    cwd = os.getcwd()
     temp_dir = os.path.join(tempfile.gettempdir(), f.replace('/', '_').replace('\\', '_').replace(':', '_') + '.archive_contents') # TODO: Make sure this is nice and sane
     safe_ensure_dirs(temp_dir)
     os.chdir(temp_dir)
@@ -1214,8 +1214,15 @@ def extract_archive_contents(f):
       'dir': temp_dir,
       'files': contents
     }
+  except Exception, e:
+    print >> sys.stderr, 'extract archive contents('+str(f)+') failed with error: ' + str(e)
   finally:
     os.chdir(cwd)
+
+  return {
+    'dir': None,
+    'files': []
+  }
 
 class ObjectFileInfo:
   def __init__(self, defs, undefs, commons):
@@ -1231,7 +1238,10 @@ def g_llvm_nm_uncached(filename):
 def g_multiprocessing_initializer(*args):
   for item in args:
     (key, value) = item.split('=')
-    os.environ[key] = value
+    if key == 'CWD':
+      os.chdir(value)
+    else:
+      os.environ[key] = value
 
 # Building
 
@@ -1262,6 +1272,9 @@ class Building:
         Building.multiprocessing_pool = FakeMultiprocessor()
       else:
         child_env = [
+          # Multiprocessing pool children must have their current working directory set to a safe path that is guaranteed not to die in between of
+          # executing commands, or otherwise the pool children will have trouble spawning subprocesses of their own.
+          'CWD='+configuration.TEMP_DIR,
           # Multiprocessing pool children need to avoid all calling check_vanilla() again and again,
           # otherwise the compiler can deadlock when building system libs, because the multiprocess parent can have the Emscripten cache directory locked for write
           # access, and the EMCC_WASM_BACKEND check also requires locked access to the cache, which the multiprocess children would not get.
