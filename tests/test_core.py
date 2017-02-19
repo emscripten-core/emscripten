@@ -3089,7 +3089,8 @@ var Module = {
         # link the wasms
         shutil.move('src.cpp.o.wasm', 'src.cpp.o.wasm.pre')
         import tools.shared as shared
-        Popen([os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-merge'), 'src.cpp.o.wasm.pre', 'liblib.so', '-o', 'src.cpp.o.wasm']).communicate()
+        # finalize to the standard wasm global base of 1024 (if that changes, this will break)
+        Popen([os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-merge'), 'src.cpp.o.wasm.pre', 'liblib.so', '-o', 'src.cpp.o.wasm', '--finalize-memory-base=1024', '--finalize-table-base=0']).communicate()
         self.do_run(None, expected, no_build=True)
 
     finally:
@@ -7336,7 +7337,7 @@ asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTI
 asm2i = make_run("asm2i", compiler=CLANG, emcc_args=["-O2", '-s', 'EMTERPRETIFY=1'])
 #asm2m = make_run("asm2m", compiler=CLANG, emcc_args=["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"])
 
-binaryen0 = make_run("binaryen0", compiler=CLANG, emcc_args=['-O0', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
+binaryen0 = make_run("binaryen0", compiler=CLANG, emcc_args=['-O0', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-g'])
 binaryen1 = make_run("binaryen1", compiler=CLANG, emcc_args=['-O1', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
 binaryen2 = make_run("binaryen2", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
 binaryen3 = make_run("binaryen3", compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'ASSERTIONS=1', "-s", "PRECISE_F32=1"])
