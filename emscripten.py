@@ -684,8 +684,7 @@ function _emscripten_asm_const_%s(%s) {
         asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig) + 'abort(x) }\n'
 
     basic_vars = ['DYNAMICTOP_PTR', 'tempDoublePtr', 'ABORT']
-    if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
-      basic_vars += ['STACKTOP', 'STACK_MAX']
+    basic_vars += ['STACKTOP', 'STACK_MAX']
     basic_float_vars = []
 
     if metadata.get('preciseI64MathUsed'):
@@ -908,9 +907,6 @@ function ftCall_%s(%s) {%s
     if settings['USE_PTHREADS']:
       asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
     asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in basic_vars + global_vars])
-
-    if settings['BINARYEN'] and settings['SIDE_MODULE']:
-      asm_global_vars += '\n  var STACKTOP = 0, STACK_MAX = 0;\n' # wasm side modules internally define their stack, these are set at module startup time
 
     # sent data
     the_global = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'

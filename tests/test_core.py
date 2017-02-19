@@ -3044,6 +3044,7 @@ ok
       # side settings
       Settings.MAIN_MODULE = 0
       Settings.SIDE_MODULE = 1
+      Settings.ONLY_MY_CODE = 1
       side_suffix = 'js' if not self.is_wasm() else 'wasm'
       if type(side) == str:
         base = 'liblib.cpp' if not force_c else 'liblib.c'
@@ -3064,6 +3065,7 @@ ok
       # main settings
       Settings.MAIN_MODULE = 1
       Settings.SIDE_MODULE = 0
+      Settings.ONLY_MY_CODE = 0
       if auto_load:
         open('pre.js', 'w').write('''
 var Module = {
@@ -7337,7 +7339,7 @@ asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTI
 asm2i = make_run("asm2i", compiler=CLANG, emcc_args=["-O2", '-s', 'EMTERPRETIFY=1'])
 #asm2m = make_run("asm2m", compiler=CLANG, emcc_args=["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"])
 
-binaryen0 = make_run("binaryen0", compiler=CLANG, emcc_args=['-O0', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-g'])
+binaryen0 = make_run("binaryen0", compiler=CLANG, emcc_args=['-O0', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
 binaryen1 = make_run("binaryen1", compiler=CLANG, emcc_args=['-O1', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
 binaryen2 = make_run("binaryen2", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
 binaryen3 = make_run("binaryen3", compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'ASSERTIONS=1', "-s", "PRECISE_F32=1"])

@@ -1604,6 +1604,10 @@ function ensureInitRuntime() {
   // called, but if the main program has linked-in dynamic libraries, we do that here
   var init = Module['__post_instantiate'];
   if (init) init();
+  // export the module's contents FIXME: just a temporary hack
+  for (var x in Module['asm']) {
+    Module[x] = Module['asm'][x];
+  }
 #endif
 }
 
