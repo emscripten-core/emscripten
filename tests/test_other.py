@@ -6311,7 +6311,7 @@ int main() {
 ''')
     for opts in [0, 1, 2]:
       print opts
-      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=64MB', '-O' + str(opts)])
       self.assertContained('success.', run_js('a.out.js'))
 
   def test_split_memory_2(self): # make allocation starts in the first chunk, and moves forward properly
@@ -6355,7 +6355,7 @@ int main() {
 ''')
     for opts in [0, 1, 2]:
       print opts
-      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=64MB', '-O' + str(opts)])
       self.assertContained('success.', run_js('a.out.js'))
 
   def test_split_memory_sbrk(self):
@@ -6393,7 +6393,7 @@ int main() {
 ''')
     for opts in [0, 1, 2]:
       print opts
-      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=64MB', '-O' + str(opts)])
       self.assertContained('success.', run_js('a.out.js'))
 
   def test_split_memory_faking(self): # fake HEAP8 etc. objects have some faked fake method. they are fake
@@ -6492,7 +6492,7 @@ int main() {
 ''')
     for opts in [0, 1, 2]:
       print opts
-      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts), '-s', 'ASSERTIONS=1'])
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=64MB', '-O' + str(opts), '-s', 'ASSERTIONS=1'])
       self.assertContained('success.', run_js('a.out.js', stderr=PIPE, assert_returncode=None))
 
   def test_split_memory_release(self):
@@ -6538,7 +6538,7 @@ int main() {
 ''')
     for opts in [0, 1, 2]:
       print opts
-      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=64MB', '-O' + str(opts)])
       self.assertContained('success.', run_js('a.out.js'))
 
   def test_split_memory_use_existing(self):
@@ -6579,7 +6579,7 @@ int main() {
 ''')
     for opts in [0, 1, 2]:
       print opts
-      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=64MB', '-O' + str(opts)])
       self.assertContained('success.', run_js('a.out.js'))
 
   def test_sixtyfour_bit_return_value(self):
@@ -7291,6 +7291,23 @@ int main() {
             assert len(parts) == 6
           else:
             assert parts[6] == str(expect_max)
+
+  def test_binaryen_invalid_mem(self):
+      ret = subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-s', 'TOTAL_MEMORY=33MB'])
+
+      ret = subprocess.Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-s', 'TOTAL_MEMORY=32MB+1'], stderr=subprocess.PIPE).communicate()[1]
+      assert 'TOTAL_MEMORY must be a multiple of 64KB' in ret, ret
+
+      ret = subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=32MB'])
+
+      ret = subprocess.Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=33MB'], stderr=subprocess.PIPE).communicate()[1]
+      assert 'TOTAL_MEMORY must be a multiple of 16MB' in ret, ret
+
+      ret = subprocess.Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'BINARYEN_MEM_MAX=33MB'], stderr=subprocess.PIPE).communicate()[1]
+      assert 'BINARYEN_MEM_MAX must be a multiple of 64KB' not in ret, ret
+
+      ret = subprocess.Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'BINARYEN_MEM_MAX=33MB+1'], stderr=subprocess.PIPE).communicate()[1]
+      assert 'BINARYEN_MEM_MAX must be a multiple of 64KB' in ret, ret
 
   def test_binaryen_ctors(self):
     if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey')

@@ -1021,6 +1021,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Apply -s settings in newargs here (after optimization levels, so they can override them)
       for change in settings_changes:
         key, value = change.split('=')
+
+        # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
+        if key in ['TOTAL_STACK', 'TOTAL_MEMORY', 'GL_MAX_TEMP_BUFFER_SIZE', 'SPLIT_MEMORY', 'BINARYEN_MEM_MAX']:
+          value = str(shared.expand_byte_size_suffixes(value))
+
         original_exported_response = False
 
         if value[0] == '@':
@@ -1241,6 +1246,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.WASM:
         shared.Settings.BINARYEN = 1 # these are synonyms
+
+      assert shared.Settings.TOTAL_MEMORY >= 16*1024*1024, 'TOTAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.TOTAL_MEMORY)
+      if shared.Settings.BINARYEN:
+        assert shared.Settings.TOTAL_MEMORY % 65536 == 0, 'For wasm, TOTAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.TOTAL_MEMORY)
+      else:
+        assert shared.Settings.TOTAL_MEMORY % (16*1024*1024) == 0, 'For asm.js, TOTAL_MEMORY must be a multiple of 16MB, was ' + str(shared.Settings.TOTAL_MEMORY)
+      assert shared.Settings.TOTAL_MEMORY >= shared.Settings.TOTAL_STACK, 'TOTAL_MEMORY must be larger than TOTAL_STACK, was ' + str(shared.Settings.TOTAL_MEMORY) + ' (TOTAL_STACK=' + str(shared.Settings.TOTAL_STACK) + ')'
+      assert shared.Settings.BINARYEN_MEM_MAX == -1 or shared.Settings.BINARYEN_MEM_MAX % 65536 == 0, 'BINARYEN_MEM_MAX must be a multiple of 64KB, was ' + str(shared.Settings.BINARYEN_MEM_MAX)
 
       if shared.Settings.WASM_BACKEND:
         js_opts = None

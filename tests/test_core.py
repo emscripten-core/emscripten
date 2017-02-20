@@ -4857,7 +4857,7 @@ int main(void) {
       # emcc should build in dlmalloc automatically, and do all the sign correction etc. for it
 
       try_delete(os.path.join(self.get_dir(), 'src.cpp.o.js'))
-      output = Popen([PYTHON, EMCC, path_from_root('tests', 'dlmalloc_test.c'), '-s', 'TOTAL_MEMORY=' + str(128*1024*1024),
+      output = Popen([PYTHON, EMCC, path_from_root('tests', 'dlmalloc_test.c'), '-s', 'TOTAL_MEMORY=128MB',
                       '-o', os.path.join(self.get_dir(), 'src.cpp.o.js')], stdout=PIPE, stderr=self.stderr_redirect).communicate()
 
       self.do_run('x', '*1,0*', ['200', '1'], no_build=True)

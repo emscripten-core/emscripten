@@ -1072,6 +1072,11 @@ def expand_response(data):
     return json.loads(open(data[1:]).read())
   return data
 
+# Given a string with arithmetic and/or KB/MB size suffixes, such as "1024*1024" or "32MB", computes how many bytes that is and returns it as an integer.
+def expand_byte_size_suffixes(value):
+  value = value.lower().replace('tb', '*1024*1024*1024*1024').replace('gb', '*1024*1024*1024').replace('mb', '*1024*1024').replace('kb', '*1024').replace('b', '')
+  return eval(value)
+
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 
 class Settings2(type):
@@ -2512,7 +2517,7 @@ def read_and_preprocess(filename):
 # worker in -s ASMFS=1 mode.
 def make_fetch_worker(source_file, output_file):
   src = open(source_file, 'r').read()
-  funcs_to_import = ['alignMemoryPage', 'getTotalMemory', 'stringToUTF8', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_runtime_thread', '_emscripten_futex_wait']
+  funcs_to_import = ['alignUp', 'getTotalMemory', 'stringToUTF8', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_runtime_thread', '_emscripten_futex_wait']
   asm_funcs_to_import = ['_malloc', '_free', '_sbrk', '_pthread_mutex_lock', '_pthread_mutex_unlock']
   function_prologue = '''this.onerror = function(e) {
   console.error(e);
