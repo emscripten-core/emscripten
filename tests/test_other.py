@@ -16,6 +16,16 @@ def multiprocess_task(c_file, cache_dir_name):
     print '------'
   sys.exit(1 if 'generating system library: libc.bc' in output else 0)
 
+class temp_directory:
+  def __enter__(self):
+    self.directory = tempfile.mkdtemp(prefix='emsripten_temp_', dir=TEMP_DIR)
+    self.prev_cwd = os.getcwd()
+    return self.directory
+
+  def __exit__(self, type, value, traceback):
+      os.chdir(self.prev_cwd) # On Windows, we can't have CWD in the directory we're deleting
+      try_delete(self.directory)
+
 class clean_write_access_to_canonical_temp_dir:
   def clean_emcc_files_in_temp_dir(self):
     for x in os.listdir(CANONICAL_TEMP_DIR):
@@ -7269,6 +7279,35 @@ int main() {
     out = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=PIPE, assert_returncode=None)
     self.assertContained('trying binaryen method: native-wasm', out) # native is the default
     assert out.count('trying binaryen method') == 1, 'must not try any other method'
+
+  def test_binaryen_asmjs_outputs(self):
+    # Test that an .asm.js file is outputted exactly when it is requested.
+    for args, output_asmjs in [
+      ([], False),
+      (['-s', 'BINARYEN_METHOD="native-wasm"'], False),
+      (['-s', 'BINARYEN_METHOD="native-wasm,asmjs"'], True)
+    ]:
+      with temp_directory() as temp_dir:
+        cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-o', os.path.join(temp_dir, 'a.js')] + args
+        print ' '.join(cmd)
+        subprocess.check_call(cmd)
+        assert os.path.exists(os.path.join(temp_dir, 'a.asm.js')) == output_asmjs
+        assert not os.path.exists(os.path.join(temp_dir, 'a.temp.asm.js'))
+
+    # Test that outputting to .wasm does not nuke an existing .asm.js file, if user wants to manually dual-deploy both to same directory.
+    with temp_directory() as temp_dir:
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join(temp_dir, 'a.js'), '--separate-asm']
+      print ' '.join(cmd)
+      subprocess.check_call(cmd)
+      assert os.path.exists(os.path.join(temp_dir, 'a.asm.js'))
+
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join(temp_dir, 'a.js'), '-s', 'WASM=1']
+      print ' '.join(cmd)
+      subprocess.check_call(cmd)
+      assert os.path.exists(os.path.join(temp_dir, 'a.asm.js'))
+      assert os.path.exists(os.path.join(temp_dir, 'a.wasm'))
+
+      assert not os.path.exists(os.path.join(temp_dir, 'a.temp.asm.js'))
 
   def test_binaryen_mem(self):
     for args, expect_initial, expect_max in [

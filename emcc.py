@@ -1247,6 +1247,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.WASM:
         shared.Settings.BINARYEN = 1 # these are synonyms
 
+        # When only targeting wasm, the .asm.js file is not executable, so is treated as an intermediate build file that can be cleaned up.
+        if shared.Building.is_wasm_only():
+          asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
+          if not DEBUG:
+            misc_temp_files.note(asm_target)
+
       assert shared.Settings.TOTAL_MEMORY >= 16*1024*1024, 'TOTAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.TOTAL_MEMORY)
       if shared.Settings.BINARYEN:
         assert shared.Settings.TOTAL_MEMORY % 65536 == 0, 'For wasm, TOTAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.TOTAL_MEMORY)
@@ -2159,6 +2165,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           logging.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
           TimeLogger.update()
           subprocess.check_call(cmd)
+
           if not target_binary:
             cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
             if debug_level >= 2 or profiling_funcs:
