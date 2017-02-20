@@ -1238,7 +1238,7 @@ def g_llvm_nm_uncached(filename):
 def g_multiprocessing_initializer(*args):
   for item in args:
     (key, value) = item.split('=')
-    if key == 'CWD':
+    if key == 'EMCC_POOL_CWD':
       os.chdir(value)
     else:
       os.environ[key] = value
@@ -1274,11 +1274,11 @@ class Building:
         child_env = [
           # Multiprocessing pool children must have their current working directory set to a safe path that is guaranteed not to die in between of
           # executing commands, or otherwise the pool children will have trouble spawning subprocesses of their own.
-          'CWD='+configuration.TEMP_DIR,
+          'EMCC_POOL_CWD=' + path_from_root(),
           # Multiprocessing pool children need to avoid all calling check_vanilla() again and again,
           # otherwise the compiler can deadlock when building system libs, because the multiprocess parent can have the Emscripten cache directory locked for write
           # access, and the EMCC_WASM_BACKEND check also requires locked access to the cache, which the multiprocess children would not get.
-          'EMCC_WASM_BACKEND='+os.getenv('EMCC_WASM_BACKEND', '0'),
+          'EMCC_WASM_BACKEND=' + os.getenv('EMCC_WASM_BACKEND', '0'),
           'EMCC_CORES=1' # Multiprocessing pool children can't spawn their own linear number of children, that could cause a quadratic amount of spawned processes.
         ]
         Building.multiprocessing_pool = multiprocessing.Pool(processes=cores, initializer=g_multiprocessing_initializer, initargs=child_env)
