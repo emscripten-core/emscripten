@@ -3103,6 +3103,48 @@ var Module = {
       print 'flip'
       self.dylink_test(side, main, expected, header, main_emcc_args, force_c, need_reverse=False)
 
+  def test_dylink_autodebug(self): # does not even use printf!
+    self.dylink_test('''
+      #include <stdio.h>
+      extern int sidey();
+      extern "C" void emscripten_autodebug_i32(int x, int y);
+      int main() {
+        emscripten_autodebug_i32(1337, sidey());
+        return 0;
+      }
+    ''', '''
+      int sidey() { return 11; }
+    ''', 'AD:1337,11\n')
+
+  def test_dylink_autodebug_global(self): # does not even use printf!
+    self.dylink_test('''
+      #include <stdio.h>
+      extern int sidey();
+      extern "C" void emscripten_autodebug_i32(int x, int y);
+      int main() {
+        emscripten_autodebug_i32(1337, sidey());
+        return 0;
+      }
+    ''', '''
+      static int value = 123;
+      int sidey() { value++; return value; }
+    ''', 'AD:1337,124\n')
+
+  def test_dylink_autodebug_global_cross(self): # does not even use printf!
+    self.dylink_test('''
+      #include <stdio.h>
+      extern int sidey();
+      extern "C" void emscripten_autodebug_i32(int x, int y);
+      int value = 123;
+      int main() {
+        emscripten_autodebug_i32(1337, sidey());
+        return 0;
+      }
+    ''', '''
+      extern int value;
+      int sidey() { value++; return value; }
+    ''', 'AD:1337,124\n')
+
   def test_dylink_basics(self):
     self.dylink_test('''
       #include <stdio.h>
