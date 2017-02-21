@@ -1218,7 +1218,7 @@ function getTempRet0() {
       for k, v in metadata['namedGlobals'].iteritems():
         runtime_funcs += ['''
 function g$_%s() {
-  return %s;
+  return gb + %s | 0;
 }''' % (k, v)]
 
     funcs_js = ['''
