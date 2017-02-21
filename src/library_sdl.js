@@ -1229,7 +1229,7 @@ var LibrarySDL = {
       for (var joystick in SDL.lastJoystickState) {
         var state = SDL.getGamepad(joystick - 1);
         var prevState = SDL.lastJoystickState[joystick];
-        // PATCHED: If joystick was removed, state returns null.
+        // If joystick was removed, state returns null.
         if (typeof state === 'undefined') return;
         // Check only if the timestamp has differed.
         // NOTE: Timestamp is not available in Firefox.
