@@ -3145,6 +3145,8 @@ var Module = {
       int sidey() { value++; return value; }
     ''', 'AD:1337,124\n')
 
+  # TODO: the following fail. likely because we don't set static_bump. we should link wasm, get that info, then use it
+
   def test_dylink_basics(self):
     self.dylink_test('''
       #include <stdio.h>
