@@ -737,6 +737,11 @@ function _emscripten_asm_const_%s(%s) {
     if settings['SAFE_HEAP']:
       asm_runtime_funcs += ['setDynamicTop']
 
+    if settings['RELOCATABLE'] and settings['BINARYEN']:
+      # export the globals as g$ functions TODO: export them as globals
+      for k, v in metadata['namedGlobals'].iteritems():
+        asm_runtime_funcs += ['g$_' + k]
+
     if settings['ONLY_MY_CODE']:
       asm_runtime_funcs = []
 
@@ -1207,6 +1212,14 @@ function getTempRet0() {
   return tempRet0|0;
 }
 ''' if not settings['RELOCATABLE'] else '']
+
+    if settings['RELOCATABLE'] and settings['BINARYEN']:
+      # export the globals as g$ functions TODO: export them as globals
+      for k, v in metadata['namedGlobals'].iteritems():
+        runtime_funcs += ['''
+function g$_%s() {
+  return %s;
+}''' % (k, v)]
 
     funcs_js = ['''
 %s
