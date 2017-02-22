@@ -7,6 +7,7 @@
 // signature and arguments has been lost as part of the vararg buffer.
 // Therefore, we declare EM_ASM's implementing functions as non-variadic.
 
+#ifndef __asmjs
 #ifndef __cplusplus
 // In C, declare these as non-prototype declarations. This is obsolete K&R C
 // (that is still supported) that causes the C frontend to consider any calls
@@ -15,7 +16,6 @@ void emscripten_asm_const();
 int emscripten_asm_const_int();
 double emscripten_asm_const_double();
 #else
-#ifndef __asmjs
 // C++ interprets an empty parameter list as a function taking no arguments,
 // instead of a K&R C function declaration. Variadic templates are lowered as
 // non-vararg calls to the instantiated templated function, which we then
@@ -23,16 +23,19 @@ double emscripten_asm_const_double();
 template <typename... Args> void emscripten_asm_const(const char* code, Args...);
 template <typename... Args> int emscripten_asm_const_int(const char* code, Args...);
 template <typename... Args> double emscripten_asm_const_double(const char* code, Args...);
-#else
-// asmjs has no problem handling these when they're vararg, but doesn't handle
-// mangled C++ names, so let them be vararg when we don't use the wasm backend.
-extern "C" {
-    void emscripten_asm_const(const char* code);
-    int emscripten_asm_const_int(const char* code, ...);
-    double emscripten_asm_const_double(const char* code, ...);
-}
-#endif // __asmjs
 #endif // __cplusplus
+#else // __asmjs
+// asmjs expects these to be vararg, so let them be vararg.
+#ifdef __cplusplus
+extern "C" {
+#endif
+void emscripten_asm_const(const char* code);
+int emscripten_asm_const_int(const char* code, ...);
+double emscripten_asm_const_double(const char* code, ...);
+#ifdef __cplusplus
+}
+#endif
+#endif // __asmjs
 
 void emscripten_asm_const(const char* code);
 
