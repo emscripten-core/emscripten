@@ -829,6 +829,8 @@ function ftCall_%s(%s) {%s
       exported_implemented_functions += ['setDynamicTop']
     if not settings['RELOCATABLE']:
       exported_implemented_functions += ['setTempRet0', 'getTempRet0']
+    if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
+      exported_implemented_functions += ['setThrew']
 
     all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables
     exported_implemented_functions = list(set(exported_implemented_functions))
