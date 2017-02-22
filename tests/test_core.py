@@ -4122,6 +4122,7 @@ def process(filename):
       if self.uses_memory_init_file():
         assert os.path.exists(mem_file), 'File %s does not exist' % mem_file
 
+  @sync
   def test_files_m(self):
     # Test for Module.stdin etc.
 
