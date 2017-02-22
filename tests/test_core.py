@@ -6927,6 +6927,7 @@ Success!
   def test_float_literals(self):
     self.do_run_in_out_file_test('tests', 'test_float_literals')
 
+  @sync
   def test_exit_status(self):
     src = r'''
       #include <stdio.h>
