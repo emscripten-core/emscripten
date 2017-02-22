@@ -1639,6 +1639,20 @@ int main() {
     '''
     self.do_run(src, '''1\n1,2\n1,2,3''')
 
+  def test_runtime_stacksave(self):
+    Settings.BINARYEN_ASYNC_COMPILATION = 1
+    self.do_run(r'''
+#include <emscripten.h>
+#include <assert.h>
+
+int main() {
+  int x = EM_ASM_INT_V({ return Runtime.stackSave(); });
+  int y = EM_ASM_INT_V({ return Runtime.stackSave(); });
+  assert(x == y);
+  EM_ASM({ Module.print('success'); });
+}
+''', 'success')
+
   def test_memorygrowth(self):
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
 
@@ -6044,6 +6058,7 @@ def process(filename):
   def test_add_function(self):
     Settings.INVOKE_RUN = 0
     Settings.RESERVED_FUNCTION_POINTERS = 1
+    self.emcc_args += ['-s', 'BINARYEN_ASYNC_COMPILATION=0'] # test is set up synchronously
 
     test_path = path_from_root('tests', 'interop')
     src, expected = (os.path.join(test_path, s) for s in ('test_add_function.cpp', 'test_add_function.out'))
@@ -7325,7 +7340,7 @@ asm2i = make_run("asm2i", compiler=CLANG, emcc_args=["-O2", '-s', 'EMTERPRETIFY=
 
 binaryen0 = make_run("binaryen0", compiler=CLANG, emcc_args=['-O0', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
 binaryen1 = make_run("binaryen1", compiler=CLANG, emcc_args=['-O1', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
-binaryen2 = make_run("binaryen2", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
+binaryen2 = make_run("binaryen2", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'BINARYEN_ASYNC_COMPILATION=1'])
 binaryen3 = make_run("binaryen3", compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'ASSERTIONS=1', "-s", "PRECISE_F32=1"])
 
 binaryen2jo = make_run("binaryen2jo", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'])
