@@ -4116,7 +4116,7 @@ def process(filename):
       try_delete(mem_file)
 
       def clean(out, err):
-        return '\n'.join(filter(lambda line: 'binaryen' not in line, (out + err).split('\n')))
+        return '\n'.join(filter(lambda line: 'binaryen' not in line and 'wasm' not in line, (out + err).split('\n')))
 
       self.do_run(src, map(lambda x: x if 'SYSCALL_DEBUG=1' not in mode else ('syscall! 146,SYS_writev' if self.run_name == 'default' else 'syscall! 146'), ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n')),
                   post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'], output_nicerizer=clean)
