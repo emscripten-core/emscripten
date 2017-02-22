@@ -1311,7 +1311,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if 'BINARYEN_ASYNC_COMPILATION=0' not in settings_changes:
             shared.Settings.BINARYEN_ASYNC_COMPILATION = 1
         if shared.Settings.BINARYEN_ASYNC_COMPILATION == 1:
-          if shared.Building.is_wasm_only():
+          if bind:
+            shared.Settings.BINARYEN_ASYNC_COMPILATION = 0
+            if 'BINARYEN_ASYNC_COMPILATION=1' in settings_changes:
+              logging.warning('BINARYEN_ASYNC_COMPILATION requested, but disabled since embind is not compatible with it yet')
+          elif shared.Building.is_wasm_only():
             # async compilation requires a swappable module - we swap it in when it's ready
             shared.Settings.SWAPPABLE_ASM_MODULE = 1
           else:
