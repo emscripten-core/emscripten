@@ -2185,6 +2185,7 @@ The current type of b is: 9
   def test_bsearch(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_bsearch')
 
+  @sync
   @no_wasm_backend("wasm backend has no support for fastcomp's -emscripten-assertions flag")
   def test_stack_overflow(self):
     Settings.ASSERTIONS = 1
@@ -5418,6 +5419,7 @@ def process(filename):
         assert len(old) > len(new)
         assert old.count('tempBigInt') > new.count('tempBigInt')
 
+  @sync
   @no_wasm_backend()
   def test_poppler(self):
     if WINDOWS: return self.skip('test_poppler depends on freetype, which uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
@@ -5490,6 +5492,7 @@ def process(filename):
           assert (num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
         break
 
+  @sync
   def test_openjpeg(self):
     Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS) # remove -g, so we have one test without it by default
 
@@ -6364,6 +6367,7 @@ def process(filename):
     '''
     self.do_run(src, '107')
 
+  @sync
   @no_wasm_backend()
   def test_scriptaclass(self):
       Settings.EXPORT_BINDINGS = 1
@@ -6611,6 +6615,7 @@ Child2:9
 *ok*
 ''', post_build=(post2, post3))
 
+  @sync
   @no_wasm_backend()
   def test_scriptaclass_2(self):
       Settings.EXPORT_BINDINGS = 1
@@ -6656,6 +6661,7 @@ def process(filename):
 '''
       self.do_run(src, '|hello|43|world|41|', post_build=post)
 
+  @sync
   @no_wasm_backend()
   def test_webidl(self):
     assert 'asm2' in test_modes
@@ -7246,6 +7252,7 @@ int main(int argc, char **argv) {
       self.emcc_args += ['--pre-js', 'pre.js']
       self.do_run('', 'object\nobject\nobject')
 
+  @sync
   @no_wasm_backend("wasm backend has no support for fastcomp's -emscripten-assertions flag")
   def test_stack_overflow_check(self):
     args = self.emcc_args + ['-s', 'TOTAL_STACK=1048576']
