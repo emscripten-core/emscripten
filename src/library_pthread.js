@@ -377,12 +377,6 @@ var LibraryPThread = {
     pthread.worker.postMessage({ cmd: 'cancel' });
   },
 
-  _global_locale_ptr: 0,
-  __emscripten_setup_pthread_data__deps: ['_global_locale_ptr'],
-  __emscripten_setup_pthread_data: function(global_locale_ptr){
-    __global_locale_ptr = global_locale_ptr|0;
-  },
-
   _spawn_thread: function(threadParams) {
     if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _spawn_thread() can only ever be called from main application thread!';
 
@@ -422,7 +416,7 @@ var LibraryPThread = {
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 20) >> 2, threadParams.schedPolicy);
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 24) >> 2, threadParams.schedPrio);
 
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.locale }}}) >> 2, __global_locale_ptr);
+    Module['_emscripten_setup_pthread'](pthread.threadInfoStruct);
 
 #if PTHREADS_PROFILING
     PThread.createProfilerBlock(pthread.threadInfoStruct);
