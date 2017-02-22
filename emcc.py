@@ -478,18 +478,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       def check_bad_eq(arg):
         assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
 
-      # Defaults to not showing absolute path warnings
-      absolute_warning_shown = True
+      # Scan and strip emscripten specific cmdline warning flags
+      # This needs to run before other cmdline flags have been parsed, so that warnings are properly printed during arg parse
+      newargs = shared.WarningManager.capture_warnings(newargs)
 
       for i in range(len(newargs)):
-        # Scan for path warning flag in advance from other cmdline flags, so that it works even if -I or -L directives are present before this.
-        if newargs[i] == '-Wwarn-absolute-paths':
-          newargs[i] = ''
-          absolute_warning_shown = False
-        elif newargs[i] == '-Wno-warn-absolute-paths':
-          newargs[i] = ''
-          absolute_warning_shown = True
-        elif newargs[i] in ['-l', '-L', '-I']:
+        if newargs[i] in ['-l', '-L', '-I']:
           # Scan for individual -l/-L/-I arguments and concatenate the next arg on if there is no suffix
           newargs[i] += newargs[i+1]
           newargs[i+1] = ''
@@ -703,9 +697,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           newargs[i] = ''
         elif newargs[i].startswith(('-I', '-L')):
           path_name = newargs[i][2:]
-          if not absolute_warning_shown and os.path.isabs(path_name) and not is_valid_abspath(path_name):
-            logging.warning('-I or -L of an absolute path "' + newargs[i] + '" encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript).') # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
-            absolute_warning_shown = True
+          if os.path.isabs(path_name) and not is_valid_abspath(path_name):
+            shared.WarningManager.warn('ABSOLUTE_PATHS', '-I or -L of an absolute path "' + newargs[i] + '" encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript).') # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
         elif newargs[i] == '--emrun':
           emrun = True
           newargs[i] = ''
@@ -1001,7 +994,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       newargs = CC_ADDITIONAL_ARGS + newargs
 
       if separate_asm and final_suffix != 'html':
-        logging.warning("--separate-asm works best when compiling to HTML. otherwise, you must yourself load the '.asm.js' file that is emitted separately, and must do so before loading the main '.js` file")
+        shared.WarningManager.warn('SEPARATE_ASM')
 
       # If we are using embind and generating JS, now is the time to link in bind.cpp
       if bind and final_suffix in JS_CONTAINING_SUFFIXES:
@@ -1092,7 +1085,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           logging.error('fatal: closure compiler is not configured correctly')
           sys.exit(1)
         if use_closure_compiler == 2 and shared.Settings.ASM_JS == 1:
-          logging.warning('not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
+          shared.WarningManager.warn('ALMOST_ASM', 'not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
           shared.Settings.ASM_JS = 2
 
       if shared.Settings.MAIN_MODULE:
@@ -1119,7 +1112,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         assert shared.Settings.SPLIT_MEMORY > shared.Settings.TOTAL_STACK, 'SPLIT_MEMORY must be at least TOTAL_STACK (stack must fit in first chunk)'
         assert shared.Settings.SPLIT_MEMORY & (shared.Settings.SPLIT_MEMORY-1) == 0, 'SPLIT_MEMORY must be a power of 2'
         if shared.Settings.ASM_JS == 1:
-          logging.warning('not all asm.js optimizations are possible with SPLIT_MEMORY, disabling those')
+          shared.WarningManager.warn('ALMOST_ASM', "not all asm.js optimizations are possible with SPLIT_MEMORY, disabling those.")
           shared.Settings.ASM_JS = 2
         if shared.Settings.SAFE_HEAP:
           shared.Settings.SAFE_HEAP = 0
@@ -1335,7 +1328,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.ASM_JS == 1:
         # this is an issue in asm.js, but not wasm
         if not shared.Settings.WASM or 'asmjs' in shared.Settings.BINARYEN_METHOD:
-          logging.warning('not all asm.js optimizations are possible with ALLOW_MEMORY_GROWTH, disabling those')
+          shared.WarningManager.warn('ALMOST_ASM')
           shared.Settings.ASM_JS = 2 # memory growth does not validate as asm.js http://discourse.wicg.io/t/request-for-comments-switching-resizing-heaps-in-asm-js/641/23
 
       if js_opts:
