@@ -823,6 +823,15 @@ function ftCall_%s(%s) {%s
       exported_implemented_functions.append('runPostSets')
     if settings['ALLOW_MEMORY_GROWTH']:
       exported_implemented_functions.append('_emscripten_replace_memory')
+    if not settings.get('SIDE_MODULE'):
+      exported_implemented_functions += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
+    if settings['SAFE_HEAP']:
+      exported_implemented_functions += ['setDynamicTop']
+    if not settings['RELOCATABLE']:
+      exported_implemented_functions += ['setTempRet0', 'getTempRet0']
+    if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
+      exported_implemented_functions += ['setThrew']
+
     all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables
     exported_implemented_functions = list(set(exported_implemented_functions))
     if settings['EMULATED_FUNCTION_POINTERS']:
@@ -1313,20 +1322,20 @@ function _emscripten_replace_memory(newBuffer) {
 
     if not settings.get('SIDE_MODULE'):
       funcs_js.append('''
-Runtime.stackAlloc = asm['stackAlloc'];
-Runtime.stackSave = asm['stackSave'];
-Runtime.stackRestore = asm['stackRestore'];
-Runtime.establishStackSpace = asm['establishStackSpace'];
+Runtime.stackAlloc = Module['stackAlloc'];
+Runtime.stackSave = Module['stackSave'];
+Runtime.stackRestore = Module['stackRestore'];
+Runtime.establishStackSpace = Module['establishStackSpace'];
 ''')
       if settings['SAFE_HEAP']:
         funcs_js.append('''
-Runtime.setDynamicTop = asm['setDynamicTop'];
+Runtime.setDynamicTop = Module['setDynamicTop'];
 ''')
 
     if not settings['RELOCATABLE']:
       funcs_js.append('''
-Runtime.setTempRet0 = asm['setTempRet0'];
-Runtime.getTempRet0 = asm['getTempRet0'];
+Runtime.setTempRet0 = Module['setTempRet0'];
+Runtime.getTempRet0 = Module['getTempRet0'];
 ''')
 
     # Set function table masks

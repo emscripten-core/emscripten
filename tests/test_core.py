@@ -38,6 +38,12 @@ def no_wasm_backend(note=''):
     return skip_if(f, 'is_wasm_backend', note)
   return decorated
 
+# Async wasm compilation can't work in some tests, they are set up synchronously
+def sync(f):
+  def decorated(self):
+    self.emcc_args += ['-s', 'BINARYEN_ASYNC_COMPILATION=0'] # test is set up synchronously
+    f(self)
+  return decorated
 
 class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
   def is_emterpreter(self):
@@ -1621,6 +1627,20 @@ int main() {
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_parameter_pack')
 
+  def test_runtime_stacksave(self):
+    Settings.BINARYEN_ASYNC_COMPILATION = 1
+    self.do_run(r'''
+#include <emscripten.h>
+#include <assert.h>
+
+int main() {
+  int x = EM_ASM_INT_V({ return Runtime.stackSave(); });
+  int y = EM_ASM_INT_V({ return Runtime.stackSave(); });
+  assert(x == y);
+  EM_ASM({ Module.print('success'); });
+}
+''', 'success')
+
   def test_memorygrowth(self):
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
 
@@ -2147,6 +2167,7 @@ The current type of b is: 9
   def test_bsearch(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_bsearch')
 
+  @sync
   @no_wasm_backend("wasm backend has no support for fastcomp's -emscripten-assertions flag")
   def test_stack_overflow(self):
     Settings.ASSERTIONS = 1
@@ -4077,13 +4098,14 @@ def process(filename):
       try_delete(mem_file)
 
       def clean(out, err):
-        return '\n'.join(filter(lambda line: 'binaryen' not in line, (out + err).split('\n')))
+        return '\n'.join(filter(lambda line: 'binaryen' not in line and 'wasm' not in line, (out + err).split('\n')))
 
       self.do_run(src, map(lambda x: x if 'SYSCALL_DEBUG=1' not in mode else ('syscall! 146,SYS_writev' if self.run_name == 'default' else 'syscall! 146'), ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n')),
                   post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'], output_nicerizer=clean)
       if self.uses_memory_init_file():
         assert os.path.exists(mem_file), 'File %s does not exist' % mem_file
 
+  @sync
   def test_files_m(self):
     # Test for Module.stdin etc.
 
@@ -5374,6 +5396,7 @@ def process(filename):
         assert len(old) > len(new)
         assert old.count('tempBigInt') > new.count('tempBigInt')
 
+  @sync
   @no_wasm_backend()
   def test_poppler(self):
     if WINDOWS: return self.skip('test_poppler depends on freetype, which uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
@@ -5446,6 +5469,7 @@ def process(filename):
           assert (num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
         break
 
+  @sync
   def test_openjpeg(self):
     Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS) # remove -g, so we have one test without it by default
 
@@ -5756,6 +5780,7 @@ def process(filename):
 
   ### Integration tests
 
+  @sync
   @no_wasm_backend()
   def test_ccall(self):
     post = '''
@@ -6017,6 +6042,7 @@ def process(filename):
     self.do_run(src, '''waka 4999!''')
     assert '_exported_func_from_response_file_1' in open('src.cpp.o.js').read()
 
+  @sync
   @no_wasm_backend('RuntimeError: function signature mismatch')
   def test_add_function(self):
     Settings.INVOKE_RUN = 0
@@ -6317,6 +6343,7 @@ def process(filename):
     '''
     self.do_run(src, '107')
 
+  @sync
   @no_wasm_backend()
   def test_scriptaclass(self):
       Settings.EXPORT_BINDINGS = 1
@@ -6564,6 +6591,7 @@ Child2:9
 *ok*
 ''', post_build=(post2, post3))
 
+  @sync
   @no_wasm_backend()
   def test_scriptaclass_2(self):
       Settings.EXPORT_BINDINGS = 1
@@ -6609,6 +6637,7 @@ def process(filename):
 '''
       self.do_run(src, '|hello|43|world|41|', post_build=post)
 
+  @sync
   @no_wasm_backend()
   def test_webidl(self):
     assert 'asm2' in test_modes
@@ -6880,6 +6909,7 @@ Success!
   def test_float_literals(self):
     self.do_run_in_out_file_test('tests', 'test_float_literals')
 
+  @sync
   def test_exit_status(self):
     src = r'''
       #include <stdio.h>
@@ -7198,6 +7228,7 @@ int main(int argc, char **argv) {
       self.emcc_args += ['--pre-js', 'pre.js']
       self.do_run('', 'object\nobject\nobject')
 
+  @sync
   @no_wasm_backend("wasm backend has no support for fastcomp's -emscripten-assertions flag")
   def test_stack_overflow_check(self):
     args = self.emcc_args + ['-s', 'TOTAL_STACK=1048576']
@@ -7300,7 +7331,7 @@ asm2i = make_run("asm2i", compiler=CLANG, emcc_args=["-O2", '-s', 'EMTERPRETIFY=
 
 binaryen0 = make_run("binaryen0", compiler=CLANG, emcc_args=['-O0', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
 binaryen1 = make_run("binaryen1", compiler=CLANG, emcc_args=['-O1', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
-binaryen2 = make_run("binaryen2", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
+binaryen2 = make_run("binaryen2", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'BINARYEN_ASYNC_COMPILATION=1'])
 binaryen3 = make_run("binaryen3", compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'ASSERTIONS=1', "-s", "PRECISE_F32=1"])
 
 binaryen2jo = make_run("binaryen2jo", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'])
