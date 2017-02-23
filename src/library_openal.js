@@ -86,7 +86,7 @@ var LibraryOpenAL = {
           entry.src = AL.currentContext.ctx.createBufferSource();
           entry.src.buffer = entry.buffer;
           entry.src.connect(src.gain);
-          entry.src.playbackRate.value = src.playbackRate;
+          if (src.playbackRate != 1.0) entry.src.playbackRate.value = src.playbackRate;
           entry.src.duration = entry.buffer.duration / src.playbackRate;
           if (typeof(entry.src.start) !== 'undefined') {
             entry.src.start(startTime, offset);
@@ -580,7 +580,7 @@ var LibraryOpenAL = {
         // entry.src.duration is expressed after factoring in playbackRate, so when changing playback rate, need
         // to recompute/rescale the rate to the new playback speed.
         entry.src.duration = (entry.src.duration - offset) * oldrate / src.playbackRate;
-        entry.src.playbackRate.value = src.playbackRate;
+        if (entry.src.playbackRate.value != src.playbackRate) entry.src.playbackRate.value = src.playbackRate;
         src.bufferPosition = currentTime;
 
         // stop other buffers
@@ -596,7 +596,7 @@ var LibraryOpenAL = {
       }
       break;
     case 0x100A /* AL_GAIN */:
-      src.gain.gain.value = value;
+      if (src.gain.gain.value != value) src.gain.gain.value = value;
       break;
     // case 0x100D /* AL_MIN_GAIN */:
     //   break;
@@ -1336,7 +1336,7 @@ var LibraryOpenAL = {
     }
     switch (param) {
     case 0x100A /* AL_GAIN */:
-      AL.currentContext.gain.gain.value = value;
+      if (AL.currentContext.gain.gain.value != value) AL.currentContext.gain.gain.value = value;
       break;
     default:
 #if OPENAL_DEBUG
