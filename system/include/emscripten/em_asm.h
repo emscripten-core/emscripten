@@ -39,7 +39,7 @@ double emscripten_asm_const_double(const char* code, ...);
 
 void emscripten_asm_const(const char* code);
 
-#define EM_ASM(code) emscripten_asm_const(#code)
+#define EM_ASM(...) emscripten_asm_const(#__VA_ARGS__)
 #define EM_ASM_(code, ...) emscripten_asm_const_int(#code, __VA_ARGS__)
 #define EM_ASM_ARGS(code, ...) emscripten_asm_const_int(#code, __VA_ARGS__)
 #define EM_ASM_INT(code, ...) emscripten_asm_const_int(#code, __VA_ARGS__)
