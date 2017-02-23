@@ -6048,6 +6048,23 @@ int main() {
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["alGetError"]', '-s', 'EXPORTED_FUNCTIONS=["_main", "_alGetError"]'], stdout=PIPE, stderr=PIPE).communicate()
     self.assertNotContained('''function requested to be exported, but not implemented: "_alGetError"''', err)
 
+  def test_almost_asm_warning(self):
+    warning = "[-Walmost-asm]"
+    for args, expected in [(['-O1', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=' + str(16*1024*1024)], True),  # default
+                           # suppress almost-asm warning when building with ALLOW_MEMORY_GROWTH
+                           (['-O1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-Wno-almost-asm'], False),
+                           # suppress almost-asm warning when building with SPLIT_MEMORY
+                           (['-O1', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=' + str(16*1024*1024), '-Wno-almost-asm'], False),
+                           # last warning flag should "win"
+                           (['-O1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-Wno-almost-asm', '-Walmost-asm'], True)]:
+      print args, expected
+      proc = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')] + args, stderr=PIPE)
+      err = proc.communicate()[1]
+      assert proc.returncode is 0
+      assert (warning in err) == expected, err
+      if not expected:
+        assert err == '', err
+
   def test_static_syscalls(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')]).communicate()
     src = open('a.out.js').read()
@@ -6670,6 +6687,10 @@ int main() {
     stdout, stderr = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--separate-asm'], stderr=PIPE).communicate()
     self.assertContained(warning, stderr)
     stdout, stderr = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--separate-asm', '-o', 'a.html'], stderr=PIPE).communicate()
+    self.assertNotContained(warning, stderr)
+
+    # test that the warning can be suppressed
+    stdout, stderr = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--separate-asm', '-Wno-separate-asm'], stderr=PIPE).communicate()
     self.assertNotContained(warning, stderr)
 
   def test_canonicalize_nan_warning(self):

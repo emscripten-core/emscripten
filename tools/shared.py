@@ -772,6 +772,56 @@ def get_emscripten_temp_dir():
     prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR) # this global var might change later
   return EMSCRIPTEN_TEMP_DIR
 
+class WarningManager:
+  warnings = {
+    'ABSOLUTE_PATHS': {
+      'enabled': False,  # warning about absolute-paths is disabled by default
+      'printed': False,
+      'message': '-I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript).',
+    },
+    'SEPARATE_ASM': {
+      'enabled': True,
+      'printed': False,
+      'message': "--separate-asm works best when compiling to HTML. Otherwise, you must yourself load the '.asm.js' file that is emitted separately, and must do so before loading the main '.js' file.",
+    },
+    'ALMOST_ASM': {
+      'enabled': True,
+      'printed': False,
+      'message': 'not all asm.js optimizations are possible with ALLOW_MEMORY_GROWTH, disabling those.',
+    },
+  }
+
+  @staticmethod
+  def capture_warnings(cmd_args):
+    for i in range(len(cmd_args)):
+      if not cmd_args[i].startswith('-W'):
+        continue
+
+      # special case pre-existing warn-absolute-paths
+      if cmd_args[i] == '-Wwarn-absolute-paths':
+        cmd_args[i] = ''
+        WarningManager.warnings['ABSOLUTE_PATHS']['enabled'] = True
+      elif cmd_args[i] == '-Wno-warn-absolute-paths':
+        cmd_args[i] = ''
+        WarningManager.warnings['ABSOLUTE_PATHS']['enabled'] = False
+      else:
+        # convert to string representation of Warning
+        warning_enum = cmd_args[i].replace('-Wno-', '').replace('-W', '')
+        warning_enum = warning_enum.upper().replace('-', '_')
+
+        if warning_enum in WarningManager.warnings:
+          WarningManager.warnings[warning_enum]['enabled'] = not cmd_args[i].startswith('-Wno-')
+          cmd_args[i] = ''
+
+    return cmd_args
+
+  @staticmethod
+  def warn(warning_type, message=None):
+    warning = WarningManager.warnings[warning_type]
+    if warning['enabled'] and not warning['printed']:
+      warning['printed'] = True
+      logging.warning((message or warning['message']) + ' [-W' + warning_type.lower().replace('_', '-') + ']')
+
 class Configuration:
   def __init__(self, environ=os.environ):
     self.DEBUG = environ.get('EMCC_DEBUG')
@@ -1187,8 +1237,8 @@ def warn_if_duplicate_entries(archive_contents, archive_filename_hint=''):
         warned.add(curr)
 
 def extract_archive_contents(f):
-  cwd = os.getcwd()
   try:
+    cwd = os.getcwd()
     temp_dir = os.path.join(tempfile.gettempdir(), f.replace('/', '_').replace('\\', '_').replace(':', '_') + '.archive_contents') # TODO: Make sure this is nice and sane
     safe_ensure_dirs(temp_dir)
     os.chdir(temp_dir)
@@ -1214,8 +1264,15 @@ def extract_archive_contents(f):
       'dir': temp_dir,
       'files': contents
     }
+  except Exception, e:
+    print >> sys.stderr, 'extract archive contents('+str(f)+') failed with error: ' + str(e)
   finally:
     os.chdir(cwd)
+
+  return {
+    'dir': None,
+    'files': []
+  }
 
 class ObjectFileInfo:
   def __init__(self, defs, undefs, commons):
@@ -1231,7 +1288,10 @@ def g_llvm_nm_uncached(filename):
 def g_multiprocessing_initializer(*args):
   for item in args:
     (key, value) = item.split('=')
-    os.environ[key] = value
+    if key == 'EMCC_POOL_CWD':
+      os.chdir(value)
+    else:
+      os.environ[key] = value
 
 # Building
 
@@ -1248,49 +1308,44 @@ class Building:
   @staticmethod
   def get_multiprocessing_pool():
     if not Building.multiprocessing_pool:
-      Building.multiprocessing_pool = Building.create_multiprocessing_pool()
-    return Building.multiprocessing_pool
+      cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
 
-  @staticmethod
-  def create_multiprocessing_pool():
-    cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
-
-    # If running with one core only, create a mock instance of a pool that does not
-    # actually spawn any new subprocesses. Very useful for internal debugging.
-    if cores == 1:
-      class FakeMultiprocessor:
-        def map(self, func, tasks):
-          results = []
-          for t in tasks:
-            results += [func(t)]
-          return results
-      pool = FakeMultiprocessor()
-    else:
-      child_env = [
+      # If running with one core only, create a mock instance of a pool that does not
+      # actually spawn any new subprocesses. Very useful for internal debugging.
+      if cores == 1:
+        class FakeMultiprocessor:
+          def map(self, func, tasks):
+            results = []
+            for t in tasks:
+              results += [func(t)]
+            return results
+        Building.multiprocessing_pool = FakeMultiprocessor()
+      else:
+        child_env = [
+          # Multiprocessing pool children must have their current working directory set to a safe path that is guaranteed not to die in between of
+          # executing commands, or otherwise the pool children will have trouble spawning subprocesses of their own.
+          'EMCC_POOL_CWD=' + path_from_root(),
           # Multiprocessing pool children need to avoid all calling check_vanilla() again and again,
           # otherwise the compiler can deadlock when building system libs, because the multiprocess parent can have the Emscripten cache directory locked for write
           # access, and the EMCC_WASM_BACKEND check also requires locked access to the cache, which the multiprocess children would not get.
-          'EMCC_WASM_BACKEND='+os.getenv('EMCC_WASM_BACKEND', '0'),
+          'EMCC_WASM_BACKEND=' + os.getenv('EMCC_WASM_BACKEND', '0'),
           'EMCC_CORES=1' # Multiprocessing pool children can't spawn their own linear number of children, that could cause a quadratic amount of spawned processes.
-      ]
-      pool = multiprocessing.Pool(processes=cores, initializer=g_multiprocessing_initializer, initargs=child_env)
+        ]
+        Building.multiprocessing_pool = multiprocessing.Pool(processes=cores, initializer=g_multiprocessing_initializer, initargs=child_env)
 
-      def close_multiprocessing_pool():
-        try:
-          # Shut down the pool explicitly, because leaving that for Python to do at process shutdown is buggy and can generate
-          # noisy "WindowsError: [Error 5] Access is denied" spam which is not fatal.
-          pool.terminate()
-          pool.join()
-          if pool == Building.multiprocessing_pool:
+        def close_multiprocessing_pool():
+          try:
+            # Shut down the pool explicitly, because leaving that for Python to do at process shutdown is buggy and can generate
+            # noisy "WindowsError: [Error 5] Access is denied" spam which is not fatal.
+            Building.multiprocessing_pool.terminate()
+            Building.multiprocessing_pool.join()
             Building.multiprocessing_pool = None
-        except WindowsError, e:
-          # Mute the "WindowsError: [Error 5] Access is denied" errors, raise all others through
-          if e.winerror != 5: raise
-      atexit.register(close_multiprocessing_pool)
+          except WindowsError, e:
+            # Mute the "WindowsError: [Error 5] Access is denied" errors, raise all others through
+            if e.winerror != 5: raise
+        atexit.register(close_multiprocessing_pool)
 
-    return pool
-
-
+    return Building.multiprocessing_pool
 
   @staticmethod
   def get_building_env(native=False):
@@ -1572,8 +1627,7 @@ class Building:
           object_names.append(absolute_path_f)
 
       # Archives contain objects, so process all archives first in parallel to obtain the object files in them.
-      # new_pool is a workaround for https://github.com/kripken/emscripten/issues/4941 TODO: a better fix
-      pool = Building.create_multiprocessing_pool()
+      pool = Building.get_multiprocessing_pool()
       object_names_in_archives = pool.map(extract_archive_contents, archive_names)
 
       for n in range(len(archive_names)):
