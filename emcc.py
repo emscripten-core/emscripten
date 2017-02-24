@@ -1299,9 +1299,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Building.is_wasm_only() and shared.Settings.EVAL_CTORS:
           logging.debug('disabling EVAL_CTORS, as in wasm-only mode it hurts more than it helps. TODO: a wasm version of it')
           shared.Settings.EVAL_CTORS = 0
-        # enable async compilation if optimizing and not turned off manually
-        if opt_level > 0:
-          if 'BINARYEN_ASYNC_COMPILATION=0' not in settings_changes:
+        # enable async compilation if not turned off manually
+        if 'BINARYEN_ASYNC_COMPILATION=0' not in settings_changes:
             shared.Settings.BINARYEN_ASYNC_COMPILATION = 1
         if shared.Settings.BINARYEN_ASYNC_COMPILATION == 1:
           if bind:
