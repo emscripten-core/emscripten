@@ -698,9 +698,9 @@ var BINARYEN_PASSES = ""; // A comma-separated list of passes to run in the bina
 var BINARYEN_MEM_MAX = -1; // Set the maximum size of memory in the wasm module (in bytes).
                            // Without this, TOTAL_MEMORY is used (as it is used for the initial value),
                            // or if memory growth is enabled, no limit is set. This overrides both of those.
-var BINARYEN_ASYNC_COMPILATION = 0; // Whether to compile the wasm asynchronously, which is more
-                                    // efficient. This is off by default in unoptimized builds and
-                                    // on by default in optimized ones.
+var BINARYEN_ASYNC_COMPILATION = 1; // Whether to compile the wasm asynchronously, which is more
+                                    // efficient and does not block the main thread. This is currently
+                                    // required for all but the smallest modules to run in V8
 var BINARYEN_ROOT = ""; // Directory where we can find Binaryen. Will be automatically set for you,
                         // but you can set it to override if you are a Binaryen developer.
 
@@ -834,4 +834,3 @@ var ASMFS = 0; // If set to 1, uses the multithreaded filesystem that is impleme
 var WASM_TEXT_FILE = ''; // name of the file containing wasm text, if relevant
 var WASM_BINARY_FILE = ''; // name of the file containing wasm binary, if relevant
 var ASMJS_CODE_FILE = ''; // name of the file containing asm.js, if relevant
-

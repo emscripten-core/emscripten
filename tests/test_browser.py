@@ -3314,7 +3314,7 @@ window.close = function() {
 ''',
     ))
     for opts, expect in [
-      ([], 0),
+      ([], 1),
       (['-O1'], 1),
       (['-O2'], 1),
       (['-O3'], 1),
