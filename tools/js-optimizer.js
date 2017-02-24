@@ -7769,6 +7769,8 @@ function eliminateDeadGlobals(ast) {
 // it goes away.
 function JSDCE(ast) {
   var scopes = [{}]; // begin with empty toplevel scope
+  var isVarNameOrObjectKey;
+  var isVarNameOrObjectKeys = [];
   function DUMP() {
     printErr('vvvvvvvvvvvvvv');
     for (var i = 0; i < scopes.length; i++) {
@@ -7801,13 +7803,24 @@ function JSDCE(ast) {
     return ast;
   }
   traverse(ast, function(node, type) {
+    isVarNameOrObjectKey = isVarNameOrObjectKeys[isVarNameOrObjectKeys.length - 1];
+    if (isVarNameOrObjectKey) {
+      isVarNameOrObjectKeys.push(false);
+      return;
+    }
     if (type === 'var') {
       node[1].forEach(function(varItem, j) {
         var name = varItem[0];
         ensureData(scopes[scopes.length-1], name).def = 1;
       });
+      isVarNameOrObjectKeys.push(true);
       return;
     }
+    if (type === 'object') {
+      isVarNameOrObjectKeys.push(true);
+      return;
+    }
+    isVarNameOrObjectKeys.push(false);
     if (type === 'defun' || type === 'function') {
       if (node[1]) ensureData(scopes[scopes.length-1], node[1]).def = 1;
       var scope = {};
@@ -7822,6 +7835,9 @@ function JSDCE(ast) {
       ensureData(scopes[scopes.length-1], node[1]).use = 1;
     }
   }, function(node, type) {
+    isVarNameOrObjectKeys.pop();
+    isVarNameOrObjectKey = isVarNameOrObjectKeys[isVarNameOrObjectKeys.length - 1];
+    if (isVarNameOrObjectKey) { return; }
     if (type === 'defun' || type === 'function') {
       var scope = scopes.pop();
       var names = set();
