@@ -289,7 +289,7 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/sysconf.html
     switch(name) {
       case {{{ cDefine('_SC_PAGE_SIZE') }}}: return PAGE_SIZE;
-      case {{{ cDefine('_SC_PHYS_PAGES') }}}: return totalMemory / PAGE_SIZE;
+      case {{{ cDefine('_SC_PHYS_PAGES') }}}: return getTotalMemory() / PAGE_SIZE;
       case {{{ cDefine('_SC_ADVISORY_INFO') }}}:
       case {{{ cDefine('_SC_BARRIERS') }}}:
       case {{{ cDefine('_SC_ASYNCHRONOUS_IO') }}}:
