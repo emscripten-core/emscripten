@@ -4540,6 +4540,12 @@ def process(filename):
     expected = open(path_from_root('tests', 'unistd', 'sysconf.out'), 'r').read()
     self.do_run(src, expected)
 
+  def test_unistd_sysconf_phys_pages(self):
+    src = open(path_from_root('tests', 'unistd', 'sysconf_phys_pages.c'), 'r').read()
+    if Settings.ALLOW_MEMORY_GROWTH: expected = (2*1024*1024*1024-16777216) / 16384
+    else: expected = 16*1024*1024 / 16384
+    self.do_run(src, str(expected) + ', errno: 0')
+
   def test_unistd_login(self):
     src = open(path_from_root('tests', 'unistd', 'login.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'login.out'), 'r').read()

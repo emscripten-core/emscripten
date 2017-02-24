@@ -7446,6 +7446,22 @@ int main() {
       print 'sizes:', sizes
       assert sizes[1] < sizes[0], 'ignoring implicit traps must reduce code size'
 
+  def test_sysconf_phys_pages(self):
+    for args, expected in [
+        ([], 1024),
+        (['-s', 'TOTAL_MEMORY=32MB'], 2048),
+        (['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1'], (2*1024*1024*1024 - 16777216) / 16384),
+        (['-s', 'TOTAL_MEMORY=32MB', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-asm2wasm"'], 2048),
+        (['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-asm2wasm"'], (2*1024*1024*1024 - 65536) / 16384),
+        (['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-asm2wasm"', '-s', 'BINARYEN_MEM_MAX=128MB'], 2048*4)
+      ]:
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'unistd', 'sysconf_phys_pages.c')] + args
+      print str(cmd)
+      subprocess.check_call(cmd)
+      result = run_js('a.out.js').strip()
+      print result
+      assert result == str(expected) + ', errno: 0', expected
+
   def test_wasm_targets(self):
     for f in ['a.wasm', 'a.wast']:
       process = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', f], stdout=PIPE, stderr=PIPE)
