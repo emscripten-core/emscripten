@@ -148,42 +148,42 @@ var ensureCache = {
   needed: 0, // the total size we need next time
 
   prepare: function() {
-    if (this.needed) {
+    if (ensureCache.needed) {
       // clear the temps
-      for (var i = 0; i < this.temps.length; i++) {
-        Module['_free'](this.temps[i]);
+      for (var i = 0; i < ensureCache.temps.length; i++) {
+        Module['_free'](ensureCache.temps[i]);
       }
-      this.temps.length = 0;
+      ensureCache.temps.length = 0;
       // prepare to allocate a bigger buffer
-      Module['_free'](this.buffer);
-      this.buffer = 0;
-      this.size += this.needed;
+      Module['_free'](ensureCache.buffer);
+      ensureCache.buffer = 0;
+      ensureCache.size += ensureCache.needed;
       // clean up
-      this.needed = 0;
+      ensureCache.needed = 0;
     }
-    if (!this.buffer) { // happens first time, or when we need to grow
-      this.size += 128; // heuristic, avoid many small grow events
-      this.buffer = Module['_malloc'](this.size);
-      assert(this.buffer);
+    if (!ensureCache.buffer) { // happens first time, or when we need to grow
+      ensureCache.size += 128; // heuristic, avoid many small grow events
+      ensureCache.buffer = Module['_malloc'](ensureCache.size);
+      assert(ensureCache.buffer);
     }
-    this.pos = 0;
+    ensureCache.pos = 0;
   },
   alloc: function(array, view) {
-    assert(this.buffer);
+    assert(ensureCache.buffer);
     var bytes = view.BYTES_PER_ELEMENT;
     var len = array.length * bytes;
     len = (len + 7) & -8; // keep things aligned to 8 byte boundaries
     var ret;
-    if (this.pos + len >= this.size) {
-      // we failed to allocate in the buffer, this time around :(
+    if (ensureCache.pos + len >= ensureCache.size) {
+      // we failed to allocate in the buffer, ensureCache time around :(
       assert(len > 0); // null terminator, at least
-      this.needed += len;
+      ensureCache.needed += len;
       ret = Module['_malloc'](len);
-      this.temps.push(ret);
+      ensureCache.temps.push(ret);
     } else {
       // we can allocate in the buffer
-      ret = this.buffer + this.pos;
-      this.pos += len;
+      ret = ensureCache.buffer + ensureCache.pos;
+      ensureCache.pos += len;
     }
     var retShifted = ret;
     switch (bytes) {
