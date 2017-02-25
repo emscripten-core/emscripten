@@ -184,13 +184,17 @@ def run_on_js(filename, gen_hash_info=False):
     # We need to split out the asm shell as well, for minification
     pre = js[:start_asm + len(start_asm_marker)]
     post = js[end_asm:]
-    asm_shell = js[start_asm + len(start_asm_marker):start_funcs + len(start_funcs_marker)] + '''
-EMSCRIPTEN_FUNCS();
-''' + js[end_funcs + len(end_funcs_marker):end_asm + len(end_asm_marker)]
+    asm_shell_pre = js[start_asm + len(start_asm_marker):start_funcs + len(start_funcs_marker)]
+    # Prevent "uglify" from turning 0.0 into 0 in variables' initialization. To do this we first replace 0.0 with
+    # ZERO$DOT$ZERO and then replace it back.
+    asm_shell_pre = re.sub(r'(\S+\s*=\s*)0\.0', r'\1ZERO$DOT$ZERO', asm_shell_pre)
+    asm_shell_post = js[end_funcs + len(end_funcs_marker):end_asm + len(end_asm_marker)]
+    asm_shell = asm_shell_pre + '\nEMSCRIPTEN_FUNCS();\n' + asm_shell_post
     js = js[start_funcs + len(start_funcs_marker):end_funcs]
 
     # we assume there is a maximum of one new name per line
     asm_shell_pre, asm_shell_post = process_shell(js, js_engine, asm_shell, equivalentfn_hash_info).split('EMSCRIPTEN_FUNCS();');
+    asm_shell_pre = re.sub(r'(\S+\s*=\s*)ZERO\$DOT\$ZERO', r'\g<1>0.0', asm_shell_pre)
     asm_shell_post = asm_shell_post.replace('});', '})');
     pre += asm_shell_pre + '\n' + start_funcs_marker
     post = end_funcs_marker + asm_shell_post + post
