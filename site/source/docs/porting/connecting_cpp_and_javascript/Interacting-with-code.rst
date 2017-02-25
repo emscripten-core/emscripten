@@ -59,24 +59,22 @@ function and returns a JavaScript function you can call normally.
 :js:func:`cwrap` is therefore more useful if you plan to call a compiled
 function a number of times.
 
-Consider the **tests/hello_function.cpp** file shown below. The
+Consider the **tests/hello_function_export.cpp** file shown below. The
 ``int_sqrt()`` function to be compiled is wrapped in ``extern "C"``
 to prevent C++ name mangling.
 
-.. include:: ../../../../../tests/hello_function.cpp
+.. include:: ../../../../../tests/hello_function_export.cpp
    :literal:
+
+.. note::
+
+   `EMSCRIPTEN_EXPORT` (provided by the ``emscripten.h`` header) ensures that the
+   function isn't removed by optimization, and is exported so that it can be called from JS later.
 
 To compile this code run the following command in the Emscripten
 home directory::
 
-    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS="['_int_sqrt']"
-
-.. note::
-
-   `EXPORTED_FUNCTIONS` affects compilation to JavaScript. If you first compile to an object file,
-   then compile the object to JavaScript, you need that option on the second command. If you do
-   it all together as in the example here (source straight to JavaScript) then this just works,
-   of course.
+    ./emcc tests/hello_function_export.cpp -o function.html
 
 After compiling, you can call this function with :js:func:`cwrap` using the
 following JavaScript::
@@ -100,6 +98,17 @@ and enter the above commands as three separate commands, pressing
 **Enter** after each one. You should get the results ``3`` and
 ``5`` — the expected output for these inputs using C++ integer
 mathematics.
+
+.. note::
+
+   We used `EMSCRIPTEN_EXPORT` in the source code of this example, as mentioned before, so that
+   the function isn't removed by optimization, and is exported so that it can be found by ``cwrap``. Another
+   option, instead of marking functions you want to export in the source code, is to add a commandline
+   flag to ``emcc``: by adding ``-s EXPORTED_FUNCTIONS="['_int_sqrt']"`` (note ``_`` prefix) we will export that function. Note that
+   `EXPORTED_FUNCTIONS` affects compilation to JavaScript, so if you first compile to an object file,
+   then compile the object to JavaScript, you need that option on the second command. (If you do
+   it all together as in the example here (source straight to JavaScript) then this just works,
+   of course.)
 
 :js:func:`ccall` is similar, but receives another parameter with the
 parameters to pass to the function:

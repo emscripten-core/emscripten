@@ -4,6 +4,8 @@
 
 extern "C" {
 void save_me_aimee() { printf("mann\n"); }
+EMSCRIPTEN_KEEPALIVE void keep_alive() { printf("keep-alive\n"); }
+EMSCRIPTEN_EXPORT void em_export() { printf("em-export\n"); }
 }
 
 int main() {
@@ -12,6 +14,8 @@ int main() {
   printf("*%d*\n", emscripten_run_script_int("5*20"));
   printf("*%s*\n", emscripten_run_script_string("'five'+'six'"));
   emscripten_run_script("Module['_save_me_aimee']()");
+  emscripten_run_script("Module['_keep_alive']()");
+  emscripten_run_script("Module['_em_export']()");
   //
   double d = 0.1234567891231219886553;
   int len = emscripten_print_double(d, NULL, -1);
