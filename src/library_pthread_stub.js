@@ -79,8 +79,6 @@ var LibraryPThreadStub = {
     return 0;
   },
 
-  __emscripten_setup_pthread_data: function() {},
-
   pthread_attr_init: function(attr) {
     /* int pthread_attr_init(pthread_attr_t *attr); */
     //FIXME: should allocate a pthread_attr_t
