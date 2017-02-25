@@ -7769,8 +7769,6 @@ function eliminateDeadGlobals(ast) {
 // it goes away.
 function JSDCE(ast) {
   var scopes = [{}]; // begin with empty toplevel scope
-  var isVarNameOrObjectKey;
-  var isVarNameOrObjectKeys = [];
   function DUMP() {
     printErr('vvvvvvvvvvvvvv');
     for (var i = 0; i < scopes.length; i++) {
@@ -7802,10 +7800,16 @@ function JSDCE(ast) {
     });
     return ast;
   }
+  var isVarNameOrObjectKeys = [];
+  // isVarNameOrObjectKeys is a stack which saves the state the node is defining a variable or in an object literal.
+  // the second argument `type` passed into the callback function called by traverse() could be a variable name or object key name.
+  // You cannot distinguish the `type` is a real type or not without isVarNameOrObjectKeys.
+  // ex.) var name = true;          // `type` can be 'name'
+  //      var obj = { defun: true } // `type` can be 'defun'
   traverse(ast, function(node, type) {
-    isVarNameOrObjectKey = isVarNameOrObjectKeys[isVarNameOrObjectKeys.length - 1];
-    if (isVarNameOrObjectKey) {
-      isVarNameOrObjectKeys.push(false);
+    if (isVarNameOrObjectKeys[isVarNameOrObjectKeys.length - 1]) { // check parent node defines a variable or is an object literal
+      // `type` is a variable name or an object key name
+      isVarNameOrObjectKeys.push(false); // doesn't define a variable nor be an object literal
       return;
     }
     if (type === 'var') {
@@ -7813,14 +7817,14 @@ function JSDCE(ast) {
         var name = varItem[0];
         ensureData(scopes[scopes.length-1], name).def = 1;
       });
-      isVarNameOrObjectKeys.push(true);
+      isVarNameOrObjectKeys.push(true); // this `node` defines a varible
       return;
     }
     if (type === 'object') {
-      isVarNameOrObjectKeys.push(true);
+      isVarNameOrObjectKeys.push(true); // this `node` is an object literal
       return;
     }
-    isVarNameOrObjectKeys.push(false);
+    isVarNameOrObjectKeys.push(false); // doesn't define a variable nor be an object literal
     if (type === 'defun' || type === 'function') {
       if (node[1]) ensureData(scopes[scopes.length-1], node[1]).def = 1;
       var scope = {};
@@ -7836,8 +7840,7 @@ function JSDCE(ast) {
     }
   }, function(node, type) {
     isVarNameOrObjectKeys.pop();
-    isVarNameOrObjectKey = isVarNameOrObjectKeys[isVarNameOrObjectKeys.length - 1];
-    if (isVarNameOrObjectKey) { return; }
+    if (isVarNameOrObjectKeys[isVarNameOrObjectKeys.length - 1]) return; // `type` is a variable name or an object key name
     if (type === 'defun' || type === 'function') {
       var scope = scopes.pop();
       var names = set();
