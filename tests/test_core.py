@@ -1628,7 +1628,6 @@ int main() {
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_parameter_pack')
 
   def test_runtime_stacksave(self):
-    Settings.BINARYEN_ASYNC_COMPILATION = 1
     self.do_run(r'''
 #include <emscripten.h>
 #include <assert.h>
@@ -4540,6 +4539,12 @@ def process(filename):
     expected = open(path_from_root('tests', 'unistd', 'sysconf.out'), 'r').read()
     self.do_run(src, expected)
 
+  def test_unistd_sysconf_phys_pages(self):
+    src = open(path_from_root('tests', 'unistd', 'sysconf_phys_pages.c'), 'r').read()
+    if Settings.ALLOW_MEMORY_GROWTH: expected = (2*1024*1024*1024-16777216) / 16384
+    else: expected = 16*1024*1024 / 16384
+    self.do_run(src, str(expected) + ', errno: 0')
+
   def test_unistd_login(self):
     src = open(path_from_root('tests', 'unistd', 'login.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'login.out'), 'r').read()
@@ -7331,7 +7336,7 @@ asm2i = make_run("asm2i", compiler=CLANG, emcc_args=["-O2", '-s', 'EMTERPRETIFY=
 
 binaryen0 = make_run("binaryen0", compiler=CLANG, emcc_args=['-O0', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
 binaryen1 = make_run("binaryen1", compiler=CLANG, emcc_args=['-O1', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
-binaryen2 = make_run("binaryen2", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'BINARYEN_ASYNC_COMPILATION=1'])
+binaryen2 = make_run("binaryen2", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
 binaryen3 = make_run("binaryen3", compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'ASSERTIONS=1', "-s", "PRECISE_F32=1"])
 
 binaryen2jo = make_run("binaryen2jo", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'])

@@ -2326,6 +2326,7 @@ function integrateWasmJS(Module) {
         return null;
       }
     } else {
+      exports['__growWasmMemory']((size - oldSize) / wasmPageSize); // tiny wasm method that just does grow_memory
       // in interpreter, we replace Module.buffer if we allocate
       return Module['buffer'] !== old ? Module['buffer'] : null; // if it was reallocated, it changed
     }

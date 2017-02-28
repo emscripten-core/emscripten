@@ -1783,7 +1783,7 @@ void *getBindBuffer() {
     self.btest('sdl_canvas_palette_2.c', reference='sdl_canvas_palette_b.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-b.js', '-lSDL', '-lGL'])
 
   def test_sdl_alloctext(self):
-    self.btest('sdl_alloctext.c', expected='1', args=['-O2', '-s', 'TOTAL_MEMORY=8MB', '-lSDL', '-lGL'])
+    self.btest('sdl_alloctext.c', expected='1', args=['-O2', '-s', 'TOTAL_MEMORY=16MB', '-lSDL', '-lGL'])
 
   def test_sdl_surface_refcount(self):
     self.btest('sdl_surface_refcount.c', args=['-lSDL'], expected='1')
@@ -3314,7 +3314,7 @@ window.close = function() {
 ''',
     ))
     for opts, expect in [
-      ([], 0),
+      ([], 1),
       (['-O1'], 1),
       (['-O2'], 1),
       (['-O3'], 1),

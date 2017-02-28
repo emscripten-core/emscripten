@@ -7074,7 +7074,7 @@ int main() {
 
       # Compare
       expected_file_contents = self.get_file_contents(path_from_root('tests', 'optimizer', 'test-function-eliminator-double-parsed-correctly-output.js'))
-      self.assertIdentical(output_file_contents, expected_file_contents)
+      self.assertIdentical(expected_file_contents, output_file_contents)
     finally:
       tools.tempfiles.try_delete(output_file)
 
@@ -7447,6 +7447,22 @@ int main() {
         del os.environ['EMCC_DEBUG']
       print 'sizes:', sizes
       assert sizes[1] < sizes[0], 'ignoring implicit traps must reduce code size'
+
+  def test_sysconf_phys_pages(self):
+    for args, expected in [
+        ([], 1024),
+        (['-s', 'TOTAL_MEMORY=32MB'], 2048),
+        (['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1'], (2*1024*1024*1024 - 16777216) / 16384),
+        (['-s', 'TOTAL_MEMORY=32MB', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-asm2wasm"'], 2048),
+        (['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-asm2wasm"'], (2*1024*1024*1024 - 65536) / 16384),
+        (['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-asm2wasm"', '-s', 'BINARYEN_MEM_MAX=128MB'], 2048*4)
+      ]:
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'unistd', 'sysconf_phys_pages.c')] + args
+      print str(cmd)
+      subprocess.check_call(cmd)
+      result = run_js('a.out.js').strip()
+      print result
+      assert result == str(expected) + ', errno: 0', expected
 
   def test_wasm_targets(self):
     for f in ['a.wasm', 'a.wast']:
