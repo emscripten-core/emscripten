@@ -2075,6 +2075,8 @@ int f() {
        ['splitMemory']),
       (path_from_root('tests', 'optimizer', 'JSDCE.js'), open(path_from_root('tests', 'optimizer', 'JSDCE-output.js')).read(),
        ['JSDCE']),
+      (path_from_root('tests', 'optimizer', 'JSDCE-uglifyjsNodeTypes.js'), open(path_from_root('tests', 'optimizer', 'JSDCE-uglifyjsNodeTypes-output.js')).read(),
+       ['JSDCE']),
     ]:
       print input, passes
 
