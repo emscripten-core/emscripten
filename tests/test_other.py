@@ -7411,6 +7411,7 @@ int main() {
             (['-O2', '-g'],  True,  True,  False, True, False),
             (['-O2', '--closure', '1'],         False, False, True, False, True),
             (['-O2', '--closure', '1', '-g1'],  False, False, True, True,  True),
+            (['-O2', '--js-opts', '1'], False, False, True,  False, False),
           ]:
           print args, expect_dash_g, expect_emit_text
           try_delete('a.out.wast')
