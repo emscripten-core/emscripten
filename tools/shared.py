@@ -2018,6 +2018,13 @@ class Building:
       ret = output_filename
     return ret
 
+  # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
+  @staticmethod
+  def js_optimizer_no_asmjs(filename, passes):
+    next = filename + '.jso.js'
+    subprocess.check_call(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
+    return next
+
   @staticmethod
   def eval_ctors(js_file, mem_init_file):
     subprocess.check_call([PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, mem_init_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE)])

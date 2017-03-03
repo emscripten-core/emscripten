@@ -1273,7 +1273,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.ASMJS_CODE_FILE = os.path.basename(asm_target)
 
         shared.Settings.ASM_JS = 2 # when targeting wasm, we use a wasm Memory, but that is not compatible with asm.js opts
-        debug_level = max(1, debug_level) # keep whitespace readable, for asm.js parser simplicity
         shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
         assert not shared.Settings.SPLIT_MEMORY, 'WebAssembly does not support split memory'
         assert not shared.Settings.USE_PTHREADS, 'WebAssembly does not support pthreads'
@@ -2200,6 +2199,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               os.unlink(js_target) # we don't need the js, it can just confuse
               os.unlink(asm_target) # we don't need the asm.js, it can just confuse
             sys.exit(0) # and we are done.
+        if opt_level >= 2:
+          # minify the JS
+          do_minify() # calculate how to minify
+          if JSOptimizer.cleanup_shell or JSOptimizer.minify_whitespace or use_closure_compiler:
+            misc_temp_files.note(final)
+            shutil.move(js_target, final)
+            if DEBUG: save_intermediate('preclean', 'js')
+            if use_closure_compiler:
+              if DEBUG: print >> sys.stderr, 'running closure on shell code'
+              final = shared.Building.closure_compiler(final, pretty=not JSOptimizer.minify_whitespace)
+            else:
+              assert JSOptimizer.cleanup_shell
+              if DEBUG: print >> sys.stderr, 'running cleanup on shell code'
+              final = shared.Building.js_optimizer_no_asmjs(final, ['noPrintMetadata', 'JSDCE', 'last'] + (['minifyWhitespace'] if JSOptimizer.minify_whitespace else []))
+            shutil.move(final, js_target)
 
       # If we were asked to also generate HTML, do that
       if final_suffix == 'html':

@@ -7394,18 +7394,21 @@ int main() {
       seen = run_js('b.out.js', engine=SPIDERMONKEY_ENGINE)
       assert correct == seen, correct + '\n vs \n' + seen
 
-  def test_binaryen_debuginfo(self):
-    with clean_write_access_to_canonical_temp_dir():
+  # test debug info and debuggability of JS output
+  def test_binaryen_debug(self):
       if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
       try:
         os.environ['EMCC_DEBUG'] = '1'
-        for args, expect_dash_g, expect_emit_text in [
-            (['-O0'], False, False),
-            (['-O0', '-g1'], False, False),
-            (['-O0', '-g2'], True, False), # in -g2+, we emit -g to asm2wasm so function names are saved
-            (['-O0', '-g'], True, True),
-            (['-O0', '--profiling-funcs'], True, False),
-            (['-O1'], False, False),
+        for args, expect_dash_g, expect_emit_text, expect_clean_js, expect_whitespace_js in [
+            (['-O0'], False, False, False, True),
+            (['-O0', '-g1'], False, False, False, True),
+            (['-O0', '-g2'], True, False, False, True), # in -g2+, we emit -g to asm2wasm so function names are saved
+            (['-O0', '-g'], True, True, False, True),
+            (['-O0', '--profiling-funcs'], True, False, False, True),
+            (['-O1'],        False, False, False, True),
+            (['-O2'],        False, False, True,  False),
+            (['-O2', '-g1'], False, False, True,  True),
+            (['-O2', '-g'],  True,  True,  False, True),
           ]:
           print args, expect_dash_g, expect_emit_text
           try_delete('a.out.wast')
@@ -7421,6 +7424,9 @@ int main() {
             text = open('a.out.wast').read()
             assert ';;' in text, 'must see debug info comment'
             assert 'hello_world.cpp:6' in text, 'must be file:line info'
+          js = open('a.out.js').read()
+          assert expect_clean_js == ('// ' not in js), 'cleaned-up js must not have comments'
+          assert expect_whitespace_js == ('{\n  ' in js), 'whitespace-minified js must not have excess spacing'
       finally:
         del os.environ['EMCC_DEBUG']
 
