@@ -7399,16 +7399,18 @@ int main() {
       if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
       try:
         os.environ['EMCC_DEBUG'] = '1'
-        for args, expect_dash_g, expect_emit_text, expect_clean_js, expect_whitespace_js in [
-            (['-O0'], False, False, False, True),
-            (['-O0', '-g1'], False, False, False, True),
-            (['-O0', '-g2'], True, False, False, True), # in -g2+, we emit -g to asm2wasm so function names are saved
-            (['-O0', '-g'], True, True, False, True),
-            (['-O0', '--profiling-funcs'], True, False, False, True),
-            (['-O1'],        False, False, False, True),
-            (['-O2'],        False, False, True,  False),
-            (['-O2', '-g1'], False, False, True,  True),
-            (['-O2', '-g'],  True,  True,  False, True),
+        for args, expect_dash_g, expect_emit_text, expect_clean_js, expect_whitespace_js, expect_closured in [
+            (['-O0'], False, False, False, True, False),
+            (['-O0', '-g1'], False, False, False, True, False),
+            (['-O0', '-g2'], True, False, False, True, False), # in -g2+, we emit -g to asm2wasm so function names are saved
+            (['-O0', '-g'], True, True, False, True, False),
+            (['-O0', '--profiling-funcs'], True, False, False, True, False),
+            (['-O1'],        False, False, False, True, False),
+            (['-O2'],        False, False, True,  False, False),
+            (['-O2', '-g1'], False, False, True,  True, False),
+            (['-O2', '-g'],  True,  True,  False, True, False),
+            (['-O2', '--closure', '1'],         False, False, True, False, True),
+            (['-O2', '--closure', '1', '-g1'],  False, False, True, True,  True),
           ]:
           print args, expect_dash_g, expect_emit_text
           try_delete('a.out.wast')
@@ -7427,6 +7429,7 @@ int main() {
           js = open('a.out.js').read()
           assert expect_clean_js == ('// ' not in js), 'cleaned-up js must not have comments'
           assert expect_whitespace_js == ('{\n  ' in js), 'whitespace-minified js must not have excess spacing'
+          assert expect_closured == ('var a;' in js), 'closured js must have tiny variable names'
       finally:
         del os.environ['EMCC_DEBUG']
 
