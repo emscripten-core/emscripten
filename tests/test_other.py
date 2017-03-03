@@ -7416,7 +7416,9 @@ int main() {
           try_delete('a.out.wast')
           cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1'] + args
           print ' '.join(cmd)
-          output, err = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
+          proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
+          output, err = proc.communicate()
+          assert proc.returncode == 0
           asm2wasm_line = filter(lambda x: 'asm2wasm' in x, err.split('\n'))[0]
           asm2wasm_line = asm2wasm_line.strip() + ' ' # ensure it ends with a space, for simpler searches below
           print '|' + asm2wasm_line + '|'
