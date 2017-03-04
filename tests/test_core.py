@@ -6268,10 +6268,13 @@ def process(filename):
     Settings.NO_EXIT_RUNTIME = 1 # we emit some post.js that we need to see
     Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
     open('post.js', 'w').write('''
-      Module.print('lerp ' + Module.lerp(100, 200, 66) + '.');
+      function printLerp() {
+          Module.print('lerp ' + Module.lerp(100, 200, 66) + '.');
+      }
     ''')
     src = r'''
       #include <stdio.h>
+      #include <emscripten.h>
       #include <emscripten/bind.h>
       using namespace emscripten;
       int lerp(int a, int b, int t) {
@@ -6281,6 +6284,7 @@ def process(filename):
           function("lerp", &lerp);
       }
       int main(int argc, char **argv) {
+          EM_ASM(printLerp());
           return 0;
       }
     '''
