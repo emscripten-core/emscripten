@@ -989,23 +989,33 @@ def get_bullet_library(runner_core, use_cmake):
 
 
 def main(args):
-  global JS_ENGINES
+  print_help_if_args_empty(args)
+  args = get_default_args(args)
+  print_js_engine_message()
+  sanity_checks()
+  rest_of_work(args)
+
+def print_help_if_args_empty(args):
   if len(args) == 2 and args[1] in ['--help', '-h']:
     print HELP_TEXT
     sys.exit(0)
 
+def get_default_args(args):
   # If no tests were specified, run the core suite
   if len(args) == 1:
     args = [args[0]] + map(lambda mode: mode, test_modes)
     print HELP_TEXT
     time.sleep(2)
+  return args
 
+def print_js_engine_message():
   if use_all_engines:
     print '(using ALL js engines)'
   else:
     logging.warning('use EM_ALL_ENGINES=1 in the env to run against all JS engines, which is slower but provides more coverage')
 
-  # Sanity checks
+def sanity_checks():
+  global JS_ENGINES
   total_engines = len(JS_ENGINES)
   JS_ENGINES = filter(jsrun.check_engine, JS_ENGINES)
   if len(JS_ENGINES) == 0:
@@ -1013,6 +1023,7 @@ def main(args):
   elif len(JS_ENGINES) < total_engines:
     print 'WARNING: Not all the JS engines in JS_ENGINES appears to work, ignoring those.'
 
+def rest_of_work(args):
   # Extract the JS engine override from the arguments (used by benchmarks)
   for i in range(1, len(args)):
     arg = args[i]
