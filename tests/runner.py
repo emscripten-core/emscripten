@@ -1089,7 +1089,7 @@ def main(args):
         print >> sys.stderr, 'will skip "%s"' % test
         for m in modules:
           try:
-            exec('m.' + test + ' = RunnerCore("skipme")')
+            setattr(m, test, RunnerCore("skipme"))
             break
           except:
             pass
