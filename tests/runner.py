@@ -987,14 +987,16 @@ def get_bullet_library(runner_core, use_cmake):
                                  configure_args=configure_args,
                                  cache_name_extra=configure_commands[0])
 
-if __name__ == '__main__':
-  if len(sys.argv) == 2 and sys.argv[1] in ['--help', '-h']:
+
+def main(args):
+  global JS_ENGINES
+  if len(args) == 2 and args[1] in ['--help', '-h']:
     print HELP_TEXT
     sys.exit(0)
 
   # If no tests were specified, run the core suite
-  if len(sys.argv) == 1:
-    sys.argv = [sys.argv[0]] + map(lambda mode: mode, test_modes)
+  if len(args) == 1:
+    args = [args[0]] + map(lambda mode: mode, test_modes)
     print HELP_TEXT
     time.sleep(2)
 
@@ -1020,28 +1022,28 @@ if __name__ == '__main__':
     modules.append(sys.modules[module_name])
 
   # Extract the JS engine override from the arguments (used by benchmarks)
-  for i in range(1, len(sys.argv)):
-    arg = sys.argv[i]
+  for i in range(1, len(args)):
+    arg = args[i]
     if arg.isupper():
       print 'Interpreting all capital argument "%s" as JS_ENGINE override' % arg
       Building.JS_ENGINE_OVERRIDE = eval(arg)
-      sys.argv[i] = None
-  sys.argv = filter(lambda arg: arg is not None, sys.argv)
+      args[i] = None
+  args = filter(lambda arg: arg is not None, args)
 
   # If an argument comes in as test_*, treat it as a test of the default suite
-  sys.argv = map(lambda arg: arg if not arg.startswith('test_') else 'default.' + arg, sys.argv)
+  args = map(lambda arg: arg if not arg.startswith('test_') else 'default.' + arg, args)
 
   # If a test (e.g. test_html) is specified as ALL.test_html, add an entry for each test_mode
-  new_args = [sys.argv[0]]
-  for i in range(1, len(sys.argv)):
-    arg = sys.argv[i]
+  new_args = [args[0]]
+  for i in range(1, len(args)):
+    arg = args[i]
     if arg.startswith('ALL.'):
       ignore, test = arg.split('.')
       print 'Running all test modes on test "%s"' % test
       new_args += map(lambda mode: mode+'.'+test, test_modes)
     else:
       new_args += [arg]
-  sys.argv = new_args
+  args = new_args
 
   # Create a list of all known tests so that we can choose from them based on a wildcard search
   all_tests = []
@@ -1054,9 +1056,9 @@ if __name__ == '__main__':
         all_tests += map(lambda t: s + '.' + t, tests)
 
   # Process wildcards, e.g. "browser.test_pthread_*" should expand to list all pthread tests
-  new_args = [sys.argv[0]]
-  for i in range(1, len(sys.argv)):
-    arg = sys.argv[i]
+  new_args = [args[0]]
+  for i in range(1, len(args)):
+    arg = args[i]
     if '*' in arg:
       if arg.startswith('skip:'):
         arg = arg[5:]
@@ -1066,14 +1068,14 @@ if __name__ == '__main__':
         new_args += fnmatch.filter(all_tests, arg)
     else:
       new_args += [arg]
-  if len(new_args) == 1 and len(sys.argv) > 1:
-    print 'No tests found to run in set ' + str(sys.argv[1:])
+  if len(new_args) == 1 and len(args) > 1:
+    print 'No tests found to run in set ' + str(args[1:])
     sys.exit(0)
-  sys.argv = new_args
+  args = new_args
 
   # Skip requested tests
-  for i in range(len(sys.argv)):
-    arg = sys.argv[i]
+  for i in range(len(args)):
+    arg = args[i]
     if arg.startswith('skip:'):
       which = arg.split('skip:')[1]
       if which.startswith('ALL.'):
@@ -1091,11 +1093,11 @@ if __name__ == '__main__':
             break
           except:
             pass
-      sys.argv[i] = None
-  sys.argv = filter(lambda arg: arg is not None, sys.argv)
+      args[i] = None
+  args = filter(lambda arg: arg is not None, args)
 
   # If we were asked to run random tests, do that
-  first = sys.argv[1]
+  first = args[1]
   if first.startswith('random'):
     num = 1
     first = first[6:]
@@ -1113,7 +1115,7 @@ if __name__ == '__main__':
       num = int(first)
     for m in modules:
       if hasattr(m, base_module):
-        sys.argv = [sys.argv[0]]
+        args = [args[0]]
         tests = filter(lambda t: t.startswith('test_'), dir(getattr(m, base_module)))
         print
         chosen = set()
@@ -1130,7 +1132,7 @@ if __name__ == '__main__':
             if len(chosen) == len(tests)*len(relevant_modes):
               print '(all possible tests chosen! %d = %d*%d)' % (len(chosen), len(tests), len(relevant_modes))
               break
-        sys.argv += list(chosen)
+        args += list(chosen)
         std = 0.5/math.sqrt(num)
         print
         print 'running those %d randomly-selected tests. if they all pass, then there is a greater than 95%% chance that at least %.2f%% of the test suite will pass' % (num, 100.0-100.0*std)
@@ -1143,7 +1145,7 @@ if __name__ == '__main__':
 
   # Filter and load tests from the discovered modules
   loader = unittest.TestLoader()
-  names = set(sys.argv[1:])
+  names = set(args[1:])
   suites = []
   for m in modules:
     mnames = []
@@ -1188,3 +1190,7 @@ if __name__ == '__main__':
   # Return the number of failures as the process exit code for automating success/failure reporting.
   exitcode = min(numFailures, 255)
   sys.exit(exitcode)
+
+
+if __name__ == '__main__':
+  main(sys.argv)
