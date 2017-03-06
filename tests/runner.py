@@ -617,14 +617,23 @@ class RunnerCore(unittest.TestCase):
       js_engines = filter(lambda engine: engine == SPIDERMONKEY_ENGINE or engine == V8_ENGINE, js_engines)
     return js_engines
 
-  def do_run_from_file(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[]):
+  def do_run_from_file(self, src, expected_output,
+                       args=[], output_nicerizer=None, output_processor=None,
+                       no_build=False, main_file=None, additional_files=[],
+                       js_engines=None, post_build=None, basename='src.cpp',
+                       libraries=[], includes=[], force_c=False, build_ll_hook=None,
+                       extra_emscripten_args=[]):
     self.do_run(open(src).read(), open(expected_output).read(),
                 args, output_nicerizer, output_processor, no_build, main_file,
                 additional_files, js_engines, post_build, basename, libraries,
                 includes, force_c, build_ll_hook, extra_emscripten_args)
 
   ## Does a complete test - builds, runs, checks output, etc.
-  def do_run(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[], assert_returncode=None):
+  def do_run(self, src, expected_output, args=[], output_nicerizer=None,
+             output_processor=None, no_build=False, main_file=None, additional_files=[],
+             js_engines=None, post_build=None, basename='src.cpp', libraries=[],
+             includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[],
+             assert_returncode=None):
     if Settings.ASYNCIFY == 1 and self.is_wasm_backend():
       return self.skip("wasm backend doesn't support ASYNCIFY yet")
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
@@ -664,7 +673,9 @@ class RunnerCore(unittest.TestCase):
       test_index += 1
 
   # No building - just process an existing .ll file (or .bc, which we turn into .ll)
-  def do_ll_run(self, ll_file, expected_output=None, args=[], js_engines=None, output_nicerizer=None, post_build=None, force_recompile=False, build_ll_hook=None, extra_emscripten_args=[], assert_returncode=None):
+  def do_ll_run(self, ll_file, expected_output=None, args=[], js_engines=None,
+                output_nicerizer=None, post_build=None, force_recompile=False,
+                build_ll_hook=None, extra_emscripten_args=[], assert_returncode=None):
     filename = os.path.join(self.get_dir(), 'src.cpp')
 
     self.prep_ll_run(filename, ll_file, force_recompile, build_ll_hook)
@@ -938,13 +949,18 @@ class BrowserCore(RunnerCore):
         assert not post_build
         post_build = self.post_manual_reftest
       # run proxied
-      self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build, original_args + ['--proxy-to-worker', '-s', 'GL_TESTING=1'], outfile, message, timeout=timeout)
+      self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
+                 original_args + ['--proxy-to-worker', '-s', 'GL_TESTING=1'], outfile, message, timeout=timeout)
 
 ###################################################################################################
 
 def get_zlib_library(runner_core):
   if WINDOWS:
-    return runner_core.get_library('zlib', os.path.join('libz.a'), configure=[path_from_root('emconfigure.bat')], configure_args=['cmake', '.', '-DBUILD_SHARED_LIBS=OFF'], make=['mingw32-make'], make_args=[])
+    return runner_core.get_library('zlib', os.path.join('libz.a'),
+                                   configure=[path_from_root('emconfigure.bat')],
+                                   configure_args=['cmake', '.', '-DBUILD_SHARED_LIBS=OFF'],
+                                   make=['mingw32-make'],
+                                   make_args=[])
   else:
     return runner_core.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])
 
@@ -966,7 +982,10 @@ def get_bullet_library(runner_core, use_cmake):
                       os.path.join('src', '.libs', 'libBulletCollision.a'),
                       os.path.join('src', '.libs', 'libLinearMath.a')]
 
-  return runner_core.get_library('bullet', generated_libs, configure=configure_commands, configure_args=configure_args, cache_name_extra=configure_commands[0])
+  return runner_core.get_library('bullet', generated_libs,
+                                 configure=configure_commands,
+                                 configure_args=configure_args,
+                                 cache_name_extra=configure_commands[0])
 
 if __name__ == '__main__':
   if len(sys.argv) == 2 and sys.argv[1] in ['--help', '-h']:
