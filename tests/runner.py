@@ -1013,14 +1013,6 @@ def main(args):
   elif len(JS_ENGINES) < total_engines:
     print 'WARNING: Not all the JS engines in JS_ENGINES appears to work, ignoring those.'
 
-  # Create a list of modules to load tests from
-  modules = []
-  for filename in glob.glob(os.path.join(os.path.dirname(__file__), 'test*.py')):
-    module_dir, module_file = os.path.split(filename)
-    module_name, module_ext = os.path.splitext(module_file)
-    __import__(module_name)
-    modules.append(sys.modules[module_name])
-
   # Extract the JS engine override from the arguments (used by benchmarks)
   for i in range(1, len(args)):
     arg = args[i]
@@ -1044,6 +1036,14 @@ def main(args):
     else:
       new_args += [arg]
   args = new_args
+
+  # Create a list of modules to load tests from
+  modules = []
+  for filename in glob.glob(os.path.join(os.path.dirname(__file__), 'test*.py')):
+    module_dir, module_file = os.path.split(filename)
+    module_name, module_ext = os.path.splitext(module_file)
+    __import__(module_name)
+    modules.append(sys.modules[module_name])
 
   # Create a list of all known tests so that we can choose from them based on a wildcard search
   all_tests = []
