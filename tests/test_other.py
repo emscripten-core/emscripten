@@ -7394,24 +7394,32 @@ int main() {
       seen = run_js('b.out.js', engine=SPIDERMONKEY_ENGINE)
       assert correct == seen, correct + '\n vs \n' + seen
 
-  def test_binaryen_debuginfo(self):
-    with clean_write_access_to_canonical_temp_dir():
+  # test debug info and debuggability of JS output
+  def test_binaryen_debug(self):
       if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
       try:
         os.environ['EMCC_DEBUG'] = '1'
-        for args, expect_dash_g, expect_emit_text in [
-            (['-O0'], False, False),
-            (['-O0', '-g1'], False, False),
-            (['-O0', '-g2'], True, False), # in -g2+, we emit -g to asm2wasm so function names are saved
-            (['-O0', '-g'], True, True),
-            (['-O0', '--profiling-funcs'], True, False),
-            (['-O1'], False, False),
+        for args, expect_dash_g, expect_emit_text, expect_clean_js, expect_whitespace_js, expect_closured in [
+            (['-O0'], False, False, False, True, False),
+            (['-O0', '-g1'], False, False, False, True, False),
+            (['-O0', '-g2'], True, False, False, True, False), # in -g2+, we emit -g to asm2wasm so function names are saved
+            (['-O0', '-g'], True, True, False, True, False),
+            (['-O0', '--profiling-funcs'], True, False, False, True, False),
+            (['-O1'],        False, False, False, True, False),
+            (['-O2'],        False, False, True,  False, False),
+            (['-O2', '-g1'], False, False, True,  True, False),
+            (['-O2', '-g'],  True,  True,  False, True, False),
+            (['-O2', '--closure', '1'],         False, False, True, False, True),
+            (['-O2', '--closure', '1', '-g1'],  False, False, True, True,  True),
+            (['-O2', '--js-opts', '1'], False, False, True,  False, False),
           ]:
           print args, expect_dash_g, expect_emit_text
           try_delete('a.out.wast')
           cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1'] + args
           print ' '.join(cmd)
-          output, err = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
+          proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
+          output, err = proc.communicate()
+          assert proc.returncode == 0
           asm2wasm_line = filter(lambda x: 'asm2wasm' in x, err.split('\n'))[0]
           asm2wasm_line = asm2wasm_line.strip() + ' ' # ensure it ends with a space, for simpler searches below
           print '|' + asm2wasm_line + '|'
@@ -7421,6 +7429,10 @@ int main() {
             text = open('a.out.wast').read()
             assert ';;' in text, 'must see debug info comment'
             assert 'hello_world.cpp:6' in text, 'must be file:line info'
+          js = open('a.out.js').read()
+          assert expect_clean_js == ('// ' not in js), 'cleaned-up js must not have comments'
+          assert expect_whitespace_js == ('{\n  ' in js), 'whitespace-minified js must not have excess spacing'
+          assert expect_closured == ('var a;' in js), 'closured js must have tiny variable names'
       finally:
         del os.environ['EMCC_DEBUG']
 
