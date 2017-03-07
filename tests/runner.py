@@ -9,7 +9,9 @@ Simple test runner. Consider using parallel_test_core.py for faster iteration ti
 
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string, random, operator, fnmatch, httplib
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib
+import webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer
+import multiprocessing, functools, stat, string, random, operator, fnmatch, httplib
 from urllib import unquote
 
 # Setup
