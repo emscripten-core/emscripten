@@ -690,7 +690,7 @@ var BINARYEN_IGNORE_IMPLICIT_TRAPS = 0; // Whether to ignore implicit traps when
                                         // but we can't ignore that they have side effects, so turning on
                                         // this flag lets us do a little more to reduce code size.
 var BINARYEN_TRAP_MODE = "js"; // How we handle wasm operations that may trap, which includes integer
-                               // div/rem of 0 and float-to-int of values to large to fit in an int.
+                               // div/rem of 0 and float-to-int of values too large to fit in an int.
                                //   js: do exactly what js does. this can be slower.
                                //   clamp: avoid traps by clamping to a reasonable value. this can be
                                //          faster than "js".
