@@ -993,7 +993,13 @@ def main(args):
   args = get_default_args(args)
   print_js_engine_message()
   sanity_checks()
-  rest_of_work(args)
+  args = args_with_extracted_js_engine_override(args)
+  args = args_with_default_suite_prepended(args)
+  args = args_with_expanded_all_suite(args)
+  modules = get_and_import_modules()
+  all_tests = get_all_tests(modules)
+  args = args_with_expanded_wildcards(args, all_tests)
+  rest_of_work(args, modules, all_tests)
 
 def print_help_if_args_empty(args):
   if len(args) == 2 and args[1] in ['--help', '-h']:
@@ -1003,9 +1009,9 @@ def print_help_if_args_empty(args):
 def get_default_args(args):
   # If no tests were specified, run the core suite
   if len(args) == 1:
-    args = [args[0]] + map(lambda mode: mode, test_modes)
     print HELP_TEXT
     time.sleep(2)
+    return [args[0]] + map(lambda mode: mode, test_modes)
   return args
 
 def print_js_engine_message():
@@ -1023,19 +1029,24 @@ def sanity_checks():
   elif len(JS_ENGINES) < total_engines:
     print 'WARNING: Not all the JS engines in JS_ENGINES appears to work, ignoring those.'
 
-def rest_of_work(args):
-  # Extract the JS engine override from the arguments (used by benchmarks)
+def args_with_extracted_js_engine_override(args):
+  # used by benchmarks
   for i in range(1, len(args)):
     arg = args[i]
     if arg.isupper():
       print 'Interpreting all capital argument "%s" as JS_ENGINE override' % arg
       Building.JS_ENGINE_OVERRIDE = eval(arg)
       args[i] = None
-  args = filter(lambda arg: arg is not None, args)
+  return filter(lambda arg: arg is not None, args)
 
-  # If an argument comes in as test_*, treat it as a test of the default suite
-  args = map(lambda arg: arg if not arg.startswith('test_') else 'default.' + arg, args)
+def args_with_default_suite_prepended(args):
+  def prepend_default(arg):
+    if arg.startswith('test_'):
+      return 'default.' + arg
+    return arg
+  return map(prepend_default, args)
 
+def args_with_expanded_all_suite(args):
   # If a test (e.g. test_html) is specified as ALL.test_html, add an entry for each test_mode
   new_args = [args[0]]
   for i in range(1, len(args)):
@@ -1046,16 +1057,18 @@ def rest_of_work(args):
       new_args += map(lambda mode: mode+'.'+test, test_modes)
     else:
       new_args += [arg]
-  args = new_args
+  return new_args
 
-  # Create a list of modules to load tests from
+def get_and_import_modules():
   modules = []
   for filename in glob.glob(os.path.join(os.path.dirname(__file__), 'test*.py')):
     module_dir, module_file = os.path.split(filename)
     module_name, module_ext = os.path.splitext(module_file)
     __import__(module_name)
     modules.append(sys.modules[module_name])
+  return modules
 
+def get_all_tests(modules):
   # Create a list of all known tests so that we can choose from them based on a wildcard search
   all_tests = []
   suites = test_modes + nondefault_test_modes + \
@@ -1065,7 +1078,9 @@ def rest_of_work(args):
       if hasattr(m, s):
         tests = filter(lambda t: t.startswith('test_'), dir(getattr(m, s)))
         all_tests += map(lambda t: s + '.' + t, tests)
+  return all_tests
 
+def args_with_expanded_wildcards(args, all_tests):
   # Process wildcards, e.g. "browser.test_pthread_*" should expand to list all pthread tests
   new_args = [args[0]]
   for i in range(1, len(args)):
@@ -1082,8 +1097,9 @@ def rest_of_work(args):
   if len(new_args) == 1 and len(args) > 1:
     print 'No tests found to run in set ' + str(args[1:])
     sys.exit(0)
-  args = new_args
+  return new_args
 
+def rest_of_work(args, modules, all_tests):
   # Skip requested tests
   for i in range(len(args)):
     arg = args[i]
