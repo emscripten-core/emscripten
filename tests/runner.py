@@ -11,7 +11,7 @@ Simple test runner. Consider using parallel_test_core.py for faster iteration ti
 from subprocess import Popen, PIPE, STDOUT
 import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib
 import webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer
-import multiprocessing, functools, stat, string, random, operator, fnmatch, httplib
+import multiprocessing, functools, stat, string, random, fnmatch, httplib
 from urllib import unquote
 
 # Setup
@@ -1003,7 +1003,8 @@ def main(args):
   args = args_with_expanded_wildcards(args, all_tests)
   args = skip_requested_tests(args)
   args = args_for_random_tests(args, modules)
-  rest_of_work(args, modules, all_tests)
+  suites, unmatched_tests = load_test_suites(args, modules)
+  run_tests(suites, unmatched_tests)
 
 def print_help_if_args_empty(args):
   if len(args) == 2 and args[1] in ['--help', '-h']:
@@ -1191,30 +1192,32 @@ def print_random_test_statistics(num_tests):
            % (expected))
   atexit.register(show)
 
-def rest_of_work(args, modules, all_tests):
-  # Filter and load tests from the discovered modules
+def load_test_suites(args, modules):
+  import operator
   loader = unittest.TestLoader()
-  names = set(args[1:])
+  unmatched_test_names = set(args[1:])
   suites = []
   for m in modules:
-    mnames = []
-    for name in list(names):
+    names_in_module = []
+    for name in list(unmatched_test_names):
       try:
         operator.attrgetter(name)(m)
-        mnames.append(name)
-        names.remove(name)
+        names_in_module.append(name)
+        unmatched_test_names.remove(name)
       except AttributeError:
         pass
-    if len(mnames) > 0:
-      suites.append((m.__name__, loader.loadTestsFromNames(sorted(mnames), m)))
+    if len(names_in_module) > 0:
+      suites.append((m.__name__, loader.loadTestsFromNames(sorted(names_in_module), m)))
+  return suites, unmatched_test_names
 
+def run_tests(suites, unmatched_test_names):
   resultMessages = []
   numFailures = 0
 
-  if len(names) > 0:
-    print 'WARNING: could not find the following tests: ' + ' '.join(names)
-    numFailures += len(names)
-    resultMessages.append('Could not find %s tests' % (len(names),))
+  if len(unmatched_test_names) > 0:
+    print 'WARNING: could not find the following tests: ' + ' '.join(unmatched_test_names)
+    numFailures += len(unmatched_test_names)
+    resultMessages.append('Could not find %s tests' % (len(unmatched_test_names),))
 
   print 'Test suites:'
   print [s[0] for s in suites]
