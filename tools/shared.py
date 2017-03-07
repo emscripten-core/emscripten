@@ -1236,10 +1236,12 @@ def warn_if_duplicate_entries(archive_contents, archive_filename_hint=''):
         logging.warning('   duplicate: %s' % curr)
         warned.add(curr)
 
+# N.B. This function creates a temporary directory specified by the 'dir' field in the returned dictionary. Caller
+# is responsible for cleaning up those files after done.
 def extract_archive_contents(f):
   try:
     cwd = os.getcwd()
-    temp_dir = os.path.join(tempfile.gettempdir(), f.replace('/', '_').replace('\\', '_').replace(':', '_') + '.archive_contents') # TODO: Make sure this is nice and sane
+    temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
     safe_ensure_dirs(temp_dir)
     os.chdir(temp_dir)
     contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n'))
@@ -1247,6 +1249,7 @@ def extract_archive_contents(f):
     if len(contents) == 0:
       logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
       return {
+        'returncode': 0,
         'dir': temp_dir,
         'files': []
       }
@@ -1257,10 +1260,15 @@ def extract_archive_contents(f):
       dirname = os.path.dirname(content)
       if dirname:
         safe_ensure_dirs(dirname)
-    Popen([LLVM_AR, 'xo', f], stdout=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
-    contents = filter(os.path.exists, map(os.path.abspath, contents))
-    contents = filter(Building.is_bitcode, contents)
+    proc = Popen([LLVM_AR, 'xo', f], stdout=PIPE, stderr=PIPE)
+    stdout, stderr = proc.communicate() # if absolute paths, files will appear there. otherwise, in this directory
+    contents = map(os.path.abspath, contents)
+    nonexisting_contents = filter(lambda x: not os.path.exists(x), contents)
+    if len(nonexisting_contents) != 0:
+      raise Exception('llvm-ar failed to extract file(s) ' + str(nonexisting_contents) + ' from archive file ' + f + '! Error:' + str(stdout) + str(stderr))
+
     return {
+      'returncode': proc.returncode,
       'dir': temp_dir,
       'files': contents
     }
@@ -1270,12 +1278,15 @@ def extract_archive_contents(f):
     os.chdir(cwd)
 
   return {
+    'returncode': 1,
     'dir': None,
     'files': []
   }
 
 class ObjectFileInfo:
-  def __init__(self, defs, undefs, commons):
+  def __init__(self, returncode, output, defs=set(), undefs=set(), commons=set()):
+    self.returncode = returncode
+    self.output = output
     self.defs = defs
     self.undefs = undefs
     self.commons = commons
@@ -1283,7 +1294,7 @@ class ObjectFileInfo:
 # Due to a python pickling issue, the following two functions must be at top level, or multiprocessing pool spawn won't find them.
 
 def g_llvm_nm_uncached(filename):
-  return Building.llvm_nm_uncached(filename, stdout=PIPE, stderr=None)
+  return Building.llvm_nm_uncached(filename)
 
 def g_multiprocessing_initializer(*args):
   for item in args:
@@ -1608,6 +1619,8 @@ class Building:
       object_contents = pool.map(g_llvm_nm_uncached, files)
 
       for i in range(len(files)):
+        if object_contents[i].returncode != 0:
+          raise Exception('llvm-nm failed on file ' + files[i] + ': return code ' + str(object_contents[i].returncode) + ', error: ' + object_contents[i].output)
         Building.uninternal_nm_cache[files[i]] = object_contents[i]
       return object_contents
 
@@ -1629,9 +1642,16 @@ class Building:
       # Archives contain objects, so process all archives first in parallel to obtain the object files in them.
       pool = Building.get_multiprocessing_pool()
       object_names_in_archives = pool.map(extract_archive_contents, archive_names)
+      def clean_temporary_archive_contents_directory(directory):
+        def clean_at_exit():
+          try_delete(directory)
+        if directory: atexit.register(clean_at_exit)
 
       for n in range(len(archive_names)):
+        if object_names_in_archives[n]['returncode'] != 0:
+          raise Exception('llvm-ar failed on archive ' + archive_names[n] + '!')
         Building.ar_contents[archive_names[n]] = object_names_in_archives[n]['files']
+        clean_temporary_archive_contents_directory(object_names_in_archives[n]['dir'])
 
       for o in object_names_in_archives:
         for f in o['files']:
@@ -1873,26 +1893,33 @@ class Building:
              (    include_internal and status in ['W', 't', 'T', 'd', 'D']): # FIXME: using WTD in the previous line fails due to llvm-nm behavior on OS X,
                                                                              #        so for now we assume all uppercase are normally defined external symbols
           defs.append(symbol)
-    return ObjectFileInfo(set(defs), set(undefs), set(commons))
+    return ObjectFileInfo(0, None, set(defs), set(undefs), set(commons))
 
   internal_nm_cache = {} # cache results of nm - it can be slow to run
   uninternal_nm_cache = {}
   ar_contents = {} # Stores the object files contained in different archive files passed as input
 
   @staticmethod
-  def llvm_nm_uncached(filename, stdout=PIPE, stderr=None, include_internal=False):
+  def llvm_nm_uncached(filename, stdout=PIPE, stderr=PIPE, include_internal=False):
     # LLVM binary ==> list of symbols
-    output = Popen([LLVM_NM, filename], stdout=stdout, stderr=stderr).communicate()[0]
-    return Building.parse_symbols(output, include_internal)
+    proc = Popen([LLVM_NM, filename], stdout=stdout, stderr=stderr)
+    stdout, stderr = proc.communicate()
+    if proc.returncode == 0:
+      return Building.parse_symbols(stdout, include_internal)
+    else:
+      return ObjectFileInfo(proc.returncode, str(stdout) + str(stderr))
 
   @staticmethod
-  def llvm_nm(filename, stdout=PIPE, stderr=None, include_internal=False):
+  def llvm_nm(filename, stdout=PIPE, stderr=PIPE, include_internal=False):
     if include_internal and filename in Building.internal_nm_cache:
       return Building.internal_nm_cache[filename]
     elif not include_internal and filename in Building.uninternal_nm_cache:
       return Building.uninternal_nm_cache[filename]
 
     ret = Building.llvm_nm_uncached(filename, stdout, stderr, include_internal)
+
+    if ret.returncode != 0:
+      raise Exception('llvm-nm failed on file ' + filename + ': return code ' + str(ret.returncode) + ', error: ' + ret.output)
 
     if include_internal: Building.internal_nm_cache[filename] = ret
     else: Building.uninternal_nm_cache[filename] = ret
