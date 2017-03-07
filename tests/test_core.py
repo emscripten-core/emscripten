@@ -2342,7 +2342,7 @@ def process(filename):
                 post_build=self.dlfcn_post_build)
 
   def test_dlfcn_i64(self):
-    Settings.BINARYEN_IMPRECISE = 1 # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
+    Settings.BINARYEN_TRAP_MODE = 'clamp' # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     if not self.can_dlfcn(): return
 
     self.prep_dlfcn_lib()
@@ -3245,7 +3245,7 @@ var Module = {
     ''')
 
   def test_dylink_funcpointers_float(self):
-    Settings.BINARYEN_IMPRECISE = 1 # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
+    Settings.BINARYEN_TRAP_MODE = 'clamp' # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     self.dylink_test(r'''
       #include <stdio.h>
       #include "header.h"
@@ -3424,7 +3424,7 @@ var Module = {
     ''', expected=['hello through side\n'])
 
   def test_dylink_jslib(self):
-    Settings.BINARYEN_IMPRECISE = 1 # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
+    Settings.BINARYEN_TRAP_MODE = 'clamp' # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     open('lib.js', 'w').write(r'''
       mergeInto(LibraryManager.library, {
         test_lib_func: function(x) {
@@ -3722,7 +3722,7 @@ var Module = {
                    'main init sees -524, -534, 72.\nside init sees 82, 72, -534.\nmain main sees -524, -534, 72.'])
 
   def test_dylink_zlib(self):
-    Settings.BINARYEN_IMPRECISE = 1 # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
+    Settings.BINARYEN_TRAP_MODE = 'clamp' # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'zlib')]
 
     Popen([PYTHON, path_from_root('embuilder.py'), 'build' ,'zlib']).communicate()
@@ -5700,7 +5700,7 @@ def process(filename):
 
   def test_fuzz(self):
     Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'fuzz', 'include'), '-w']
-    Settings.BINARYEN_IMPRECISE = 0 # some of these tests - 2.c', '9.c', '19.c', '21.c', '20.cpp' - div or rem i32 by 0, which traps in wasm
+    Settings.BINARYEN_TRAP_MODE = 'clamp' # some of these tests - 2.c', '9.c', '19.c', '21.c', '20.cpp' - div or rem i32 by 0, which traps in wasm
 
     def run_all(x):
       print x
