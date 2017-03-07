@@ -1001,7 +1001,7 @@ def main(args):
   modules = get_and_import_modules()
   all_tests = get_all_tests(modules)
   args = args_with_expanded_wildcards(args, all_tests)
-  args = skip_requested_tests(args)
+  args = skip_requested_tests(args, modules)
   args = args_for_random_tests(args, modules)
   suites, unmatched_tests = load_test_suites(args, modules)
   run_tests(suites, unmatched_tests)
@@ -1104,7 +1104,7 @@ def args_with_expanded_wildcards(args, all_tests):
     sys.exit(0)
   return new_args
 
-def skip_requested_tests(args):
+def skip_requested_tests(args, modules):
   for i in range(len(args)):
     arg = args[i]
     if arg.startswith('skip:'):
