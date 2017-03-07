@@ -2207,11 +2207,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             shutil.move(js_target, final)
             if DEBUG: save_intermediate('preclean', 'js')
             if use_closure_compiler:
-              if DEBUG: print >> sys.stderr, 'running closure on shell code'
+              logging.debug('running closure on shell code')
               final = shared.Building.closure_compiler(final, pretty=not JSOptimizer.minify_whitespace)
             else:
               assert JSOptimizer.cleanup_shell
-              if DEBUG: print >> sys.stderr, 'running cleanup on shell code'
+              logging.debug('running cleanup on shell code')
               final = shared.Building.js_optimizer_no_asmjs(final, ['noPrintMetadata', 'JSDCE', 'last'] + (['minifyWhitespace'] if JSOptimizer.minify_whitespace else []))
             shutil.move(final, js_target)
 
