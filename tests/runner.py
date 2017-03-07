@@ -999,6 +999,8 @@ def main(args):
   modules = get_and_import_modules()
   all_tests = get_all_tests(modules)
   args = args_with_expanded_wildcards(args, all_tests)
+  args = skip_requested_tests(args)
+  args = args_for_random_tests(args, modules)
   rest_of_work(args, modules, all_tests)
 
 def print_help_if_args_empty(args):
@@ -1099,8 +1101,7 @@ def args_with_expanded_wildcards(args, all_tests):
     sys.exit(0)
   return new_args
 
-def rest_of_work(args, modules, all_tests):
-  # Skip requested tests
+def skip_requested_tests(args):
   for i in range(len(args)):
     arg = args[i]
     if arg.startswith('skip:'):
@@ -1121,55 +1122,74 @@ def rest_of_work(args, modules, all_tests):
           except:
             pass
       args[i] = None
-  args = filter(lambda arg: arg is not None, args)
+  return filter(lambda arg: arg is not None, args)
 
-  # If we were asked to run random tests, do that
+def args_for_random_tests(args, modules):
   first = args[1]
   if first.startswith('random'):
-    num = 1
-    first = first[6:]
-    base_module = 'default'
-    relevant_modes = test_modes
-    if len(first) > 0:
-      if first.startswith('other'):
-        base_module = 'other'
-        relevant_modes = ['other']
-        first = first.replace('other', '')
-      elif first.startswith('browser'):
-        base_module = 'browser'
-        relevant_modes = ['browser']
-        first = first.replace('browser', '')
-      num = int(first)
+    random_arg = first[6:]
+    num_tests, base_module, relevant_modes = get_random_test_parameters(random_arg)
     for m in modules:
       if hasattr(m, base_module):
-        args = [args[0]]
-        tests = filter(lambda t: t.startswith('test_'), dir(getattr(m, base_module)))
-        print
-        chosen = set()
-        while len(chosen) < num:
-          test = random.choice(tests)
-          mode = random.choice(relevant_modes)
-          new_test = mode + '.' + test
-          before = len(chosen)
-          chosen.add(new_test)
-          if len(chosen) > before:
-            print '* ' + new_test
-          else:
-            # we may have hit the limit
-            if len(chosen) == len(tests)*len(relevant_modes):
-              print '(all possible tests chosen! %d = %d*%d)' % (len(chosen), len(tests), len(relevant_modes))
-              break
-        args += list(chosen)
-        std = 0.5/math.sqrt(num)
-        print
-        print 'running those %d randomly-selected tests. if they all pass, then there is a greater than 95%% chance that at least %.2f%% of the test suite will pass' % (num, 100.0-100.0*std)
-        print
+        base = getattr(m, base_module)
+        new_args = [args[0]] + choose_random_tests(base, num_tests, relevant_modes)
+        print_random_test_statistics(num_tests)
+        return new_args
+  return args
 
-        import atexit
-        def show():
-          print 'if all tests passed then there is a greater than 95%% chance that at least %.2f%% of the test suite will pass' % (100.0-100.0*std)
-        atexit.register(show)
+def get_random_test_parameters(arg):
+  num_tests = 1
+  base_module = 'default'
+  relevant_modes = test_modes
+  if len(arg) > 0:
+    num_str = arg
+    if arg.startswith('other'):
+      base_module = 'other'
+      relevant_modes = ['other']
+      num_str = arg.replace('other', '')
+    elif arg.startswith('browser'):
+      base_module = 'browser'
+      relevant_modes = ['browser']
+      num_str = arg.replace('browser', '')
+    num_tests = int(num_str)
+  return num_tests, base_module, relevant_modes
 
+def choose_random_tests(base, num_tests, relevant_modes):
+  tests = filter(lambda t: t.startswith('test_'), dir(base))
+  print
+  chosen = set()
+  while len(chosen) < num_tests:
+    test = random.choice(tests)
+    mode = random.choice(relevant_modes)
+    new_test = mode + '.' + test
+    before = len(chosen)
+    chosen.add(new_test)
+    if len(chosen) > before:
+      print '* ' + new_test
+    else:
+      # we may have hit the limit
+      if len(chosen) == len(tests)*len(relevant_modes):
+        print '(all possible tests chosen! %d = %d*%d)' % (len(chosen), len(tests), len(relevant_modes))
+        break
+  return list(chosen)
+
+def print_random_test_statistics(num_tests):
+  std = 0.5/math.sqrt(num_tests)
+  expected = 100.0 * (1.0 - std)
+  print
+  print ('running those %d randomly-selected tests. if they all pass, then there is a '
+         'greater than 95%% chance that at least %.2f%% of the test suite will pass'
+         % (num_tests, expected))
+  print
+
+  import atexit
+  def show():
+    print ('if all tests passed then there is a greater than 95%% chance that at least '
+           '%.2f%% of the test suite will pass'
+           % (expected))
+  atexit.register(show)
+
+def rest_of_work(args, modules, all_tests):
   # Filter and load tests from the discovered modules
   loader = unittest.TestLoader()
   names = set(args[1:])
