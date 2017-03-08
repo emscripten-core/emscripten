@@ -1118,9 +1118,11 @@ def skip_requested_tests(args, modules):
       print >> sys.stderr, ','.join(which)
       for test in which:
         print >> sys.stderr, 'will skip "%s"' % test
+        suite_name, test_name = test.split('.')
         for m in modules:
           try:
-            setattr(m, test, RunnerCore("skipme"))
+            suite = getattr(m, suite_name)
+            setattr(suite, test_name, RunnerCore("skipme"))
             break
           except:
             pass
