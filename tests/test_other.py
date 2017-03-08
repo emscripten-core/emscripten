@@ -7396,6 +7396,7 @@ int main() {
 
   # test debug info and debuggability of JS output
   def test_binaryen_debug(self):
+    with clean_write_access_to_canonical_temp_dir():
       if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
       try:
         os.environ['EMCC_DEBUG'] = '1'
