@@ -1620,7 +1620,7 @@ class Building:
 
       for i in range(len(files)):
         if object_contents[i].returncode != 0:
-          raise Exception('llvm-nm failed on file ' + files[i] + ': return code ' + str(object_contents[i].returncode) + ', error: ' + object_contents[i].output)
+          logging.debug('llvm-nm failed on file ' + files[i] + ': return code ' + str(object_contents[i].returncode) + ', error: ' + object_contents[i].output)
         Building.uninternal_nm_cache[files[i]] = object_contents[i]
       return object_contents
 
@@ -1919,8 +1919,9 @@ class Building:
     ret = Building.llvm_nm_uncached(filename, stdout, stderr, include_internal)
 
     if ret.returncode != 0:
-      raise Exception('llvm-nm failed on file ' + filename + ': return code ' + str(ret.returncode) + ', error: ' + ret.output)
+      logging.debug('llvm-nm failed on file ' + filename + ': return code ' + str(ret.returncode) + ', error: ' + ret.output)
 
+    # Even if we fail, write the results to the NM cache so that we don't keep trying to llvm-nm the failing file again later.
     if include_internal: Building.internal_nm_cache[filename] = ret
     else: Building.uninternal_nm_cache[filename] = ret
 
