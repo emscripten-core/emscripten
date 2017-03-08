@@ -52,7 +52,7 @@ var LibraryOpenAL = {
         return;
       }
 
-      var currentTime = AL.currentContext.ctx.currentTime;
+      var currentTime = src.context.ctx.currentTime;
       var startTime = src.bufferPosition;
 
       for (var i = src.buffersPlayed; i < src.queue.length; i++) {
@@ -83,7 +83,7 @@ var LibraryOpenAL = {
           // If the start offset is negative, we need to offset the actual buffer.
           var offset = Math.abs(Math.min(startOffset, 0));
 
-          entry.src = AL.currentContext.ctx.createBufferSource();
+          entry.src = src.context.ctx.createBufferSource();
           entry.src.buffer = entry.buffer;
           entry.src.connect(src.gain);
           if (src.playbackRate != 1.0) entry.src.playbackRate.value = src.playbackRate;
@@ -372,6 +372,7 @@ var LibraryOpenAL = {
       var gain = AL.currentContext.ctx.createGain();
       gain.connect(AL.currentContext.gain);
       AL.currentContext.src[AL.newSrcId] = {
+        context: AL.currentContext,
         state: 0x1011 /* AL_INITIAL */,
         queue: [],
         loop: false,
