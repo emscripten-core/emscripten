@@ -19,6 +19,7 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include "../internal/libc.h"
+#include "../internal/pthread_impl.h"
 #include <assert.h>
 
 // With LLVM 3.6, C11 is the default compilation mode.
