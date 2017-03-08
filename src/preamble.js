@@ -2153,14 +2153,26 @@ function integrateWasmJS(Module) {
 
   function getBinary() {
     var binary;
-    if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
+    if (Module['wasmBinary']) {
       binary = Module['wasmBinary'];
-      assert(binary, "on the web, we need the wasm binary to be preloaded and set on Module['wasmBinary']. emcc.py will do that for you when generating HTML (but not JS)");
       binary = new Uint8Array(binary);
-    } else {
+    } else if (Module['readBinary']) {
       binary = Module['readBinary'](wasmBinaryFile);
+    } else {
+      throw "on the web, we need the wasm binary to be preloaded and set on Module['wasmBinary']. emcc.py will do that for you when generating HTML (but not JS)";
     }
     return binary;
+  }
+
+  function getBinaryPromise() {
+    // if we don't have the binary yet, and have the Fetch api, use that
+    if (!Module['wasmBinary'] && typeof fetch === 'function') {
+      return fetch('simple.wasm').then(function(response) { return response.arrayBuffer() });
+    }
+    // Otherwise, getBinary should be able to get it synchronously
+    return new Promise(function(resolve, reject) {
+      resolve(getBinary());
+    });
   }
 
   // do-method functions
@@ -2212,7 +2224,9 @@ function integrateWasmJS(Module) {
 #if BINARYEN_ASYNC_COMPILATION
     Module['printErr']('asynchronously preparing wasm');
     addRunDependency('wasm-instantiate'); // we can't run yet
-    WebAssembly.instantiate(getBinary(), info).then(function(output) {
+    getBinaryPromise().then(function(binary) {
+      return WebAssembly.instantiate(getBinary(), info)
+    }).then(function(output) {
       // receiveInstance() will swap in the exports (to Module.asm) so they can be called
       receiveInstance(output.instance);
       removeRunDependency('wasm-instantiate');

@@ -1374,14 +1374,14 @@ keydown(100);keyup(100); // trigger the end
     ''')
     html_file.close()
 
-    # no file data
     for file_data in [0, 1]:
-      print 'file data', file_data
-      output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'] + (['--preload-file', 'file.dat'] if file_data else []) , stdout=PIPE, stderr=PIPE).communicate()
-      assert len(output[0]) == 0, output[0]
-      assert os.path.exists('worker.js'), output
-      if not file_data: self.assertContained('you should not see this text when in a worker!', run_js('worker.js')) # code should run standalone
-      self.run_browser('main.html', '', '/report_result?hello%20from%20worker,%20and%20|' + ('data%20for%20w' if file_data else '') + '|')
+      for wasm in [0, 1]:
+        print 'file data', file_data, 'wasm', wasm
+        output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'] + (['--preload-file', 'file.dat'] if file_data else []) + (['-s', 'WASM=1'] if wasm else []), stdout=PIPE, stderr=PIPE).communicate()
+        assert len(output[0]) == 0, output[0]
+        assert os.path.exists('worker.js'), output
+        if not file_data and not wasm: self.assertContained('you should not see this text when in a worker!', run_js('worker.js')) # code should run standalone
+        self.run_browser('main.html', '', '/report_result?hello%20from%20worker,%20and%20|' + ('data%20for%20w' if file_data else '') + '|')
 
   def test_chunked_synchronous_xhr(self):
     main = 'chunked_sync_xhr.html'
