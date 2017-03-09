@@ -1958,7 +1958,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if DEBUG: save_intermediate('eval-ctors', 'js')
 
       if js_opts:
-        if not shared.Settings.EMTERPRETIFY:
+        # some compilation modes require us to minify later or not at all
+        if not shared.Settings.EMTERPRETIFY and not shared.Settings.BINARYEN:
           do_minify()
 
         if opt_level >= 2:
