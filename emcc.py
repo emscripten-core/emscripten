@@ -1926,13 +1926,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if opt_level >= 2:
           if debug_level < 2 and not use_closure_compiler == 2:
             JSOptimizer.queue += ['minifyNames']
-          # can minify whitespace when there is no debug level, but when
-          # building to wasm together with js opts, the opts must leave it
-          # properly formatted for the asm2wasm parser. (as this is a
-          # compromise build, not a fully optimized wasm-only one, this isn't
-          # too bad even if we keep the asm.js; if we don't, then it doesn't
-          # matter at all)
-          if debug_level == 0 and not (shared.Settings.BINARYEN and js_opts):
+          if debug_level == 0:
             JSOptimizer.minify_whitespace = True
 
         if use_closure_compiler == 1:
@@ -1964,7 +1958,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if DEBUG: save_intermediate('eval-ctors', 'js')
 
       if js_opts:
-        if not shared.Settings.EMTERPRETIFY:
+        # some compilation modes require us to minify later or not at all
+        if not shared.Settings.EMTERPRETIFY and not shared.Settings.BINARYEN:
           do_minify()
 
         if opt_level >= 2:
