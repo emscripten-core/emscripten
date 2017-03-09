@@ -2114,8 +2114,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
         if not shared.Settings.WASM_BACKEND:
           cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
-          if shared.Settings.BINARYEN_IMPRECISE:
-            cmd += ['--imprecise']
+          if shared.Settings.BINARYEN_TRAP_MODE == 'js':
+            cmd += ['--emit-jsified-potential-traps']
+          elif shared.Settings.BINARYEN_TRAP_MODE == 'clamp':
+            cmd += ['--emit-clamped-potential-traps']
+          elif shared.Settings.BINARYEN_TRAP_MODE == 'allow':
+            cmd += ['--emit-potential-traps']
+          else:
+            logging.error('invalid BINARYEN_TRAP_MODE value: ' + shared.Settings.BINARYEN_TRAP_MODE + ' (should be js/clamp/allow)')
+            sys.exit(1)
           if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
             cmd += ['--ignore-implicit-traps']
           # pass optimization level to asm2wasm (if not optimizing, or which passes we should run was overridden, do not optimize)
