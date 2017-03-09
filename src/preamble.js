@@ -2234,7 +2234,7 @@ function integrateWasmJS(Module) {
       Module['printErr']('failed to asynchronously prepare wasm:\n  ' + reason);
     });
     return {}; // no exports yet; we'll fill them in later
-#endif
+#else
     var instance;
     try {
       instance = new WebAssembly.Instance(new WebAssembly.Module(getBinary()), info)
@@ -2247,6 +2247,7 @@ function integrateWasmJS(Module) {
     }
     receiveInstance(instance);
     return exports;
+#endif
   }
 
   function doWasmPolyfill(global, env, providedBuffer, method) {
