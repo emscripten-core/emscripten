@@ -80,7 +80,7 @@ var LibraryGL = {
       // For functions such as glDrawBuffers, glInvalidateFramebuffer and glInvalidateSubFramebuffer that need to pass a short array to the WebGL API,
       // create a set of short fixed-length arrays to avoid having to generate any garbage when calling those functions.
       for (var i = 0; i < 32; i++) {
-        GL.tempFixedLengthArray.push(new Array(i).fill(0));
+        GL.tempFixedLengthArray.push(new Array(i));
       }
     },
 
