@@ -2032,7 +2032,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # minify (if requested) after emterpreter processing, and finalize output
         logging.debug('finalizing emterpreted code')
         shared.Settings.FINALIZE_ASM_JS = 1
-        do_minify()
+        if not shared.Settings.BINARYEN:
+          do_minify()
         JSOptimizer.queue += ['last']
         JSOptimizer.flush()
 
@@ -2042,7 +2043,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           original = js_target + '.orig.js' # the emterpretify tool saves the original here
           final = original
           logging.debug('finalizing original (non-emterpreted) code at ' + final)
-          do_minify()
+          if not shared.Settings.BINARYEN:
+            do_minify()
           JSOptimizer.queue += ['last']
           JSOptimizer.flush()
           safe_move(final, original)

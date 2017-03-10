@@ -7195,6 +7195,7 @@ int main() {
             (['-O2'], False, True),
             (['-O2', '--js-opts', '1'], True, False), # user asked
             (['-O2', '-s', 'EMTERPRETIFY=1'], True, False), # option forced
+            (['-O2', '-s', 'EMTERPRETIFY=1', '-s', 'ALLOW_MEMORY_GROWTH=1'], True, False), # option forced, and also check growth does not interfere
             (['-O2', '-s', 'EVAL_CTORS=1'], False, True), # ctor evaller turned off since only-wasm
             (['-O2', '-s', 'OUTLINING_LIMIT=1000'], True, False), # option forced
             (['-O2', '-s', 'OUTLINING_LIMIT=1000', '-s', 'ALLOW_MEMORY_GROWTH=1'], True, False), # option forced, and also check growth does not interfere
