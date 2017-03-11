@@ -1209,7 +1209,12 @@ def load_test_suites(args, modules):
       except AttributeError:
         pass
     if len(names_in_module) > 0:
-      suites.append((m.__name__, loader.loadTestsFromNames(sorted(names_in_module), m)))
+      tests = loader.loadTestsFromNames(sorted(names_in_module), m)
+      suite = unittest.TestSuite()
+      for subsuite in tests:
+        for test in subsuite:
+          suite.addTest(test)
+      suites.append((m.__name__, suite))
   return suites, unmatched_test_names
 
 def run_tests(suites, unmatched_test_names):
