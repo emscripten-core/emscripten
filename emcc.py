@@ -1603,6 +1603,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         link_opts = [] if debug_level >= 4 or shared.Settings.CYBERDWARF else ['-strip-debug'] # remove LLVM debug if we are not asked for it
         if not shared.Settings.ASSERTIONS:
           link_opts += ['-disable-verify']
+        else:
+          # when verifying, LLVM debug info has some tricky linking aspects, and llvm-link will
+          # disable the type map in that case. we added linking to opt, so we need to do
+          # something similar, which we can do with a param to opt
+          link_opts += ['-disable-debug-info-type-map']
 
         if llvm_lto >= 2 and llvm_opts > 0:
           logging.debug('running LLVM opts as pre-LTO')
