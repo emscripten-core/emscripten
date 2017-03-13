@@ -79,12 +79,6 @@ var LibraryPThreadStub = {
     return 0;
   },
 
-  pthread_self__asm: true,
-  pthread_self__sig: 'i',
-  pthread_self: function() {
-    return 0;
-  },
-
   pthread_attr_init: function(attr) {
     /* int pthread_attr_init(pthread_attr_t *attr); */
     //FIXME: should allocate a pthread_attr_t
@@ -194,7 +188,10 @@ var LibraryPThreadStub = {
     return {{{ cDefine('EAGAIN') }}};
   },
   pthread_cancel: function() {},
-  pthread_exit: function() {},
+  pthread_exit__deps: ['exit'],
+  pthread_exit: function(status) {
+    _exit(status);
+  },
 
   pthread_equal: function() {},
   pthread_join: function() {},

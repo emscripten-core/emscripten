@@ -1,6 +1,11 @@
 #ifndef _ARPA_NAMESER_H
 #define _ARPA_NAMESER_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stddef.h>
 #include <stdint.h>
 
 #define __NAMESER	19991006
@@ -48,6 +53,8 @@ extern const struct _ns_flagdata _ns_flagdata[];
 #define ns_msg_end(handle) ((handle)._eom + 0)
 #define ns_msg_size(handle) ((handle)._eom - (handle)._msg)
 #define ns_msg_count(handle, section) ((handle)._counts[section] + 0)
+#define ns_msg_getflag(handle, flag) \
+	(((handle)._flags & _ns_flagdata[flag].mask) >> _ns_flagdata[flag].shift)
 
 typedef	struct __ns_rr {
 	char		name[NS_MAXDNAME];
@@ -296,43 +303,20 @@ typedef enum __ns_cert_types {
 #define NS_OPT_DNSSEC_OK        0x8000U
 #define NS_OPT_NSID		3
 
-#define NS_GET16(s, cp) do { \
-	register const unsigned char *t_cp = (const unsigned char *)(cp); \
-	(s) = ((uint16_t)t_cp[0] << 8) \
-	    | ((uint16_t)t_cp[1]) \
-	    ; \
-	(cp) += NS_INT16SZ; \
-} while (0)
+#define NS_GET16(s, cp) (void)((s) = ns_get16(((cp)+=2)-2))
+#define NS_GET32(l, cp) (void)((l) = ns_get32(((cp)+=4)-4))
+#define NS_PUT16(s, cp) ns_put16((s), ((cp)+=2)-2)
+#define NS_PUT32(l, cp) ns_put32((l), ((cp)+=4)-4)
 
-#define NS_GET32(l, cp) do { \
-	register const unsigned char *t_cp = (const unsigned char *)(cp); \
-	(l) = ((uint32_t)t_cp[0] << 24) \
-	    | ((uint32_t)t_cp[1] << 16) \
-	    | ((uint32_t)t_cp[2] << 8) \
-	    | ((uint32_t)t_cp[3]) \
-	    ; \
-	(cp) += NS_INT32SZ; \
-} while (0)
+unsigned ns_get16(const unsigned char *);
+unsigned long ns_get32(const unsigned char *);
+void ns_put16(unsigned, unsigned char *);
+void ns_put32(unsigned long, unsigned char *);
 
-#define NS_PUT16(s, cp) do { \
-	register uint16_t t_s = (uint16_t)(s); \
-	register unsigned char *t_cp = (unsigned char *)(cp); \
-	*t_cp++ = t_s >> 8; \
-	*t_cp   = t_s; \
-	(cp) += NS_INT16SZ; \
-} while (0)
-
-#define NS_PUT32(l, cp) do { \
-	register uint32_t t_l = (uint32_t)(l); \
-	register unsigned char *t_cp = (unsigned char *)(cp); \
-	*t_cp++ = t_l >> 24; \
-	*t_cp++ = t_l >> 16; \
-	*t_cp++ = t_l >> 8; \
-	*t_cp   = t_l; \
-	(cp) += NS_INT32SZ; \
-} while (0)
-
-
+int ns_initparse(const unsigned char *, int, ns_msg *);
+int ns_parserr(ns_msg *, ns_sect, int, ns_rr *);
+int ns_skiprr(const unsigned char *, const unsigned char *, ns_sect, int);
+int ns_name_uncompress(const unsigned char *, const unsigned char *, const unsigned char *, char *, size_t);
 
 
 #define	__BIND		19950621
@@ -463,5 +447,9 @@ typedef struct {
 #define	GETLONG			NS_GET32
 #define	PUTSHORT		NS_PUT16
 #define	PUTLONG			NS_PUT32
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

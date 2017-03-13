@@ -3420,3 +3420,12 @@ window.close = function() {
 
   def test_asmfs_relative_paths(self):
     self.btest('asmfs/relative_paths.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '--proxy-to-worker'])
+
+  def test_pthread_locale(self):
+    for args in [
+        [],
+        ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'],
+        ['-s', 'USE_PTHREADS=1', '--proxy-to-worker', '-s', 'PTHREAD_POOL_SIZE=2'],
+    ]:
+      print "Testing with: ", args
+      self.btest('pthread/test_pthread_locale.c', expected='1', args=args)

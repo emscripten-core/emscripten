@@ -4616,7 +4616,6 @@ main()
     assert 'callback post()' not in output
 
   def test_bad_locale(self):
-    logging.warning('TODO: check with upstream musl if this is correct behavior or not')
     open('src.cpp', 'w').write(r'''
 
 #include <locale.h>
@@ -4639,8 +4638,10 @@ main(const int argc, const char * const * const argv)
     ''')
     Popen([PYTHON, EMCC, 'src.cpp']).communicate()
 
-    self.assertContained('locale set to C: C', run_js('a.out.js', args=['C']))
-    self.assertContained('locale set to waka: C.UTF-8', run_js('a.out.js', args=['waka'])) # the call still succeeds in musl, even if the locale requested was not selected
+    self.assertContained('locale set to C: C;C;C;C;C;C',
+                         run_js('a.out.js', args=['C']))
+    self.assertContained('locale set to waka: waka;waka;waka;waka;waka;waka',
+                         run_js('a.out.js', args=['waka']))
 
   def test_js_malloc(self):
     open('src.cpp', 'w').write(r'''
@@ -6271,16 +6272,23 @@ Resolved: "/" => "/"
 
   def test_llvm_lto(self):
     sizes = {}
-    for lto in [0, 1, 2, 3]:
+    lto_levels = [0, 1, 2, 3]
+    for lto in lto_levels:
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O2', '--llvm-lto', str(lto)]
       print cmd
       check_execute(cmd)
       self.assertContained('hello, world!', run_js('a.out.js'))
       sizes[lto] = os.stat('a.out.js').st_size
     print sizes
-    assert sizes[1] < sizes[0] # lto reduces size
-    assert sizes[2] > sizes[0] # fake lto is aggressive at increasing code size
-    assert sizes[3] not in set([sizes[0], sizes[1], sizes[2]]) # mode 3 is different (deterministic builds means this tests an actual change)
+
+    # LTO sizes should be distinct
+    for i in lto_levels:
+      assert sizes[i] not in set(sizes).difference(set([sizes[i]]))
+
+    # LTO should reduce code size
+    # Skip mode 2 because it has historically increased code size, but not always
+    assert sizes[1] < sizes[0]
+    assert sizes[3] < sizes[0]
 
   def test_split_memory(self): # make sure multiple split memory chunks get used
     open('src.c', 'w').write(r'''

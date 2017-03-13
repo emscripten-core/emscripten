@@ -224,7 +224,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     # No other configuration is supported, so always run this.
     self.do_run(open(path_from_root('tests', 'asmjs-unknown-emscripten.c')).read(), '')
 
-  @no_wasm_backend('printf is incorrectly handling float values')
   def test_cube2md5(self):
     self.emcc_args += ['--embed-file', 'cube2md5.txt']
     shutil.copyfile(path_from_root('tests', 'cube2md5.txt'), os.path.join(self.get_dir(), 'cube2md5.txt'))
@@ -381,8 +380,8 @@ int main()
     printf("Alignment: %d addr: 0x%x\n", ((int)&v) % 16, (int)&v);
     printf("Alignment: %d addr: 0x%x\n", ((int)&m) % 16, (int)&m);
 }
-    ''', ('Alignment: 0 addr: 0xa20\nAlignment: 0 addr: 0xa60\n',   # asmjs
-          'Alignment: 0 addr: 0xe10\nAlignment: 0 addr: 0xe50\n',   # asm2wasm
+    ''', ('Alignment: 0 addr: 0xb20\nAlignment: 0 addr: 0xb60\n',   # asmjs
+          'Alignment: 0 addr: 0xf10\nAlignment: 0 addr: 0xf50\n',   # asm2wasm
           'Alignment: 0 addr: 0x410\nAlignment: 0 addr: 0x450\n',)) # wasm_backend
 
     test()
@@ -1658,7 +1657,14 @@ int main() {
 
     if '-O2' in self.emcc_args:
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
-      code_start = 'var TOTAL_MEMORY'
+      possible_starts = ['// EMSCRIPTEN_START_FUNCS', 'var TOTAL_MEMORY']
+      code_start = None
+      for s in possible_starts:
+        if fail.find(s) >= 0:
+          code_start = s
+          break
+      assert code_start is not None, 'Generated code must contain one of ' + str(possible_starts)
+
       fail = fail[fail.find(code_start):]
       win = win[win.find(code_start):]
       assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
@@ -2666,7 +2672,7 @@ def process(filename):
           raise Exception('Could not find symbol table!')
       table = table[table.find('{'):table.find('}')+1]
       # ensure there aren't too many globals; we don't want unnamed_addr
-      assert table.count(',') <= 23, table.count(',')
+      assert table.count(',') <= 27, table.count(',')
 
     test_path = path_from_root('tests', 'core', 'test_dlfcn_self')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -3951,11 +3957,9 @@ Have even and odd!
       print 'flip assertions off'
     self.do_run_in_out_file_test('tests', 'core', 'fnmatch')
 
-  @no_wasm_backend('sscanf seems to be misreading float values')
   def test_sscanf(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf')
 
-  @no_wasm_backend('sscanf seems to be misreading float values')
   def test_sscanf_2(self):
     # doubles
     for ftype in ['float', 'double']:
@@ -4037,14 +4041,12 @@ Pass: 0.000012 0.000012''')
   def test_sscanf_skip(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_skip')
 
-  @no_wasm_backend('sscanf seems to be misreading float values')
   def test_sscanf_caps(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_caps')
 
   def test_sscanf_hex(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_hex')
 
-  @no_wasm_backend('sscanf seems to be misreading float values')
   def test_sscanf_float(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_float')
 
@@ -4201,7 +4203,6 @@ def process(filename):
     self.emcc_args += ['--embed-file', 'eol.txt']
     self.do_run(src, 'SUCCESS\n')
 
-  @no_wasm_backend('printf is incorrectly handling float values')
   def test_fscanf(self):
     open(os.path.join(self.get_dir(), 'three_numbers.txt'), 'w').write('''-1 0.1 -.1''')
     src = r'''
@@ -4273,7 +4274,6 @@ main( int argv, char ** argc ) {
     self.do_run(src, '3\n')
 
   def test_readdir(self):
-    self.banned_js_engines = [V8_ENGINE] # stderr printing limitations in v8
     src = open(path_from_root('tests', 'dirent', 'test_readdir.c'), 'r').read()
     self.do_run(src, '''SIGILL: Illegal instruction
 success
@@ -4392,7 +4392,7 @@ def process(filename):
   @no_wasm_backend('printf is incorrectly handling float values')
   def test_wprintf(self):
     test_path = path_from_root('tests', 'core', 'test_wprintf')
-    src, output = (test_path + s for s in ('.c', '.out'))
+    src, output = (test_path + s for s in ('.cpp', '.out'))
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
       self.emcc_args = orig_args + mode
@@ -6140,6 +6140,7 @@ def process(filename):
     self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks')
 
   @no_emterpreter
+  @no_wasm_backend('Need support for -g in wasm backend')
   def test_demangle_stacks_symbol_map(self):
     Settings.DEMANGLE_SUPPORT = 1
     if '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args and '-O1' not in self.emcc_args and '-g' not in self.emcc_args:

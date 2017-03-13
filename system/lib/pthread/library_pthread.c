@@ -18,6 +18,7 @@
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include "../internal/libc.h"
 #include "../internal/pthread_impl.h"
 #include <assert.h>
 
@@ -30,6 +31,8 @@ char *gets(char *);
 
 // Extra pthread_attr_t field:
 #define _a_transferredcanvases __u.__s[9]
+
+void __pthread_testcancel();
 
 int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t *a, const char **str)
 {
@@ -54,7 +57,7 @@ static void inline __pthread_mutex_locked(pthread_mutex_t *mutex)
 	assert(mutex);
 	assert(mutex->_m_lock == 0);
 	mutex->_m_lock = pthread_self()->tid;
-	if (_pthread_getcanceltype() == PTHREAD_CANCEL_ASYNCHRONOUS) pthread_testcancel();
+	if (_pthread_getcanceltype() == PTHREAD_CANCEL_ASYNCHRONOUS) __pthread_testcancel();
 }
 
 double _pthread_msecs_until(const struct timespec *restrict at)
@@ -93,7 +96,7 @@ int pthread_mutex_lock(pthread_mutex_t *mutex)
 				double msecs = INFINITY;
 				if (threadCancelType == PTHREAD_CANCEL_ASYNCHRONOUS) {
 					// Sleep in small slices so that we can test cancellation to honor PTHREAD_CANCEL_ASYNCHRONOUS.
-					pthread_testcancel();
+					__pthread_testcancel();
 					msecs = 100;
 				}
 				emscripten_futex_wait(&mutex->_m_addr, 2, msecs);
@@ -174,7 +177,7 @@ int pthread_mutex_timedlock(pthread_mutex_t *restrict mutex, const struct timesp
 				// Sleep in small slices if thread type is PTHREAD_CANCEL_ASYNCHRONOUS
 				// so that we can honor PTHREAD_CANCEL_ASYNCHRONOUS requests.
 				if (threadCancelType == PTHREAD_CANCEL_ASYNCHRONOUS) {
-					pthread_testcancel();
+					__pthread_testcancel();
 					if (msecs > 100) msecs = 100;
 				}
 				int ret = emscripten_futex_wait(&mutex->_m_addr, 2, msecs);
@@ -227,7 +230,7 @@ int _pthread_isduecanceled(struct pthread *pthread_ptr)
 	return pthread_ptr->threadStatus == 2/*canceled*/;
 }
 
-void pthread_testcancel()
+void __pthread_testcancel()
 {
 	struct pthread *self = pthread_self();
 	if (self->canceldisable) return;
@@ -257,7 +260,7 @@ static void do_sleep(double msecs)
 #endif
 	while(now < target) {
 		if (is_main_thread) emscripten_main_thread_process_queued_calls(); // Assist other threads by executing proxied operations that are effectively singlethreaded.
-		pthread_testcancel(); // pthreads spec: usleep is a cancellation point, so it must test if this thread is cancelled during the sleep.
+		__pthread_testcancel(); // pthreads spec: usleep is a cancellation point, so it must test if this thread is cancelled during the sleep.
 		now = emscripten_get_now();
 		double msecsToSleep = target - now;
 		if (msecsToSleep > 1.0) {
@@ -884,3 +887,5 @@ uint64_t __atomic_fetch_xor_8(void *ptr, uint64_t value, int memmodel)
 {
 	return _emscripten_atomic_fetch_and_xor_u64(ptr, value);
 }
+
+weak_alias(__pthread_testcancel, pthread_testcancel);

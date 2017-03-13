@@ -416,6 +416,10 @@ var LibraryPThread = {
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 20) >> 2, threadParams.schedPolicy);
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 24) >> 2, threadParams.schedPrio);
 
+    var global_libc = _emscripten_get_global_libc();
+    var global_locale = global_libc + {{{ C_STRUCTS.libc.global_locale }}};
+    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.locale }}}) >> 2, global_locale);
+
 #if PTHREADS_PROFILING
     PThread.createProfilerBlock(pthread.threadInfoStruct);
 #endif
@@ -735,7 +739,6 @@ var LibraryPThread = {
   _pthread_is_main_runtime_thread: 0,
   _pthread_is_main_browser_thread: 0,
 
-  _register_pthread_ptr__asm: true,
   _register_pthread_ptr__deps: ['_pthread_ptr', '_pthread_is_main_runtime_thread', '_pthread_is_main_browser_thread'],
   _register_pthread_ptr: function(pthreadPtr, isMainBrowserThread, isMainRuntimeThread) {
     pthreadPtr = pthreadPtr|0;
@@ -747,7 +750,6 @@ var LibraryPThread = {
   },
 
   // Public pthread_self() function which returns a unique ID for the thread.
-  pthread_self__asm: true,
   pthread_self__deps: ['_pthread_ptr'],
   pthread_self: function() {
     return __pthread_ptr|0;

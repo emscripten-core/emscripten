@@ -20,16 +20,24 @@ extern "C" {
 #include <bits/socket.h>
 
 #ifdef _GNU_SOURCE
-struct ucred
-{
+struct ucred {
 	pid_t pid;
 	uid_t uid;
 	gid_t gid;
 };
+
+struct mmsghdr {
+	struct msghdr msg_hdr;
+	unsigned int  msg_len;
+};
+
+struct timespec;
+
+int sendmmsg (int, struct mmsghdr *, unsigned int, unsigned int);
+int recvmmsg (int, struct mmsghdr *, unsigned int, unsigned int, struct timespec *);
 #endif
 
-struct linger
-{
+struct linger {
 	int l_onoff;
 	int l_linger;
 };
@@ -85,6 +93,7 @@ struct linger
 #define PF_WANPIPE      25
 #define PF_LLC          26
 #define PF_IB           27
+#define PF_MPLS         28
 #define PF_CAN          29
 #define PF_TIPC         30
 #define PF_BLUETOOTH    31
@@ -97,7 +106,8 @@ struct linger
 #define PF_ALG          38
 #define PF_NFC          39
 #define PF_VSOCK        40
-#define PF_MAX          41
+#define PF_KCM          41
+#define PF_MAX          42
 
 #define AF_UNSPEC       PF_UNSPEC
 #define AF_LOCAL        PF_LOCAL
@@ -130,6 +140,7 @@ struct linger
 #define AF_WANPIPE      PF_WANPIPE
 #define AF_LLC          PF_LLC
 #define AF_IB           PF_IB
+#define AF_MPLS         PF_MPLS
 #define AF_CAN          PF_CAN
 #define AF_TIPC         PF_TIPC
 #define AF_BLUETOOTH    PF_BLUETOOTH
@@ -142,6 +153,7 @@ struct linger
 #define AF_ALG          PF_ALG
 #define AF_NFC          PF_NFC
 #define AF_VSOCK        PF_VSOCK
+#define AF_KCM          PF_KCM
 #define AF_MAX          PF_MAX
 
 #ifndef SO_DEBUG
@@ -166,8 +178,11 @@ struct linger
 #define SO_SNDLOWAT     19
 #define SO_RCVTIMEO     20
 #define SO_SNDTIMEO     21
+#define SO_ACCEPTCONN   30
 #define SO_SNDBUFFORCE  32
 #define SO_RCVBUFFORCE  33
+#define SO_PROTOCOL     38
+#define SO_DOMAIN       39
 #endif
 
 #define SO_SECURITY_AUTHENTICATION              22
@@ -184,7 +199,6 @@ struct linger
 #define SO_TIMESTAMP            29
 #define SCM_TIMESTAMP           SO_TIMESTAMP
 
-#define SO_ACCEPTCONN           30
 #define SO_PEERSEC              31
 #define SO_PASSSEC              34
 #define SO_TIMESTAMPNS          35
@@ -192,8 +206,6 @@ struct linger
 #define SO_MARK                 36
 #define SO_TIMESTAMPING         37
 #define SCM_TIMESTAMPING        SO_TIMESTAMPING
-#define SO_PROTOCOL             38
-#define SO_DOMAIN               39
 #define SO_RXQ_OVFL             40
 #define SO_WIFI_STATUS          41
 #define SCM_WIFI_STATUS         SO_WIFI_STATUS
@@ -203,6 +215,13 @@ struct linger
 #define SO_SELECT_ERR_QUEUE     45
 #define SO_BUSY_POLL            46
 #define SO_MAX_PACING_RATE      47
+#define SO_BPF_EXTENSIONS       48
+#define SO_INCOMING_CPU         49
+#define SO_ATTACH_BPF           50
+#define SO_DETACH_BPF           SO_DETACH_FILTER
+#define SO_ATTACH_REUSEPORT_CBPF 51
+#define SO_ATTACH_REUSEPORT_EBPF 52
+#define SO_CNX_ADVICE           53
 
 #ifndef SOL_SOCKET
 #define SOL_SOCKET      1
@@ -219,6 +238,21 @@ struct linger
 #define SOL_ATM         264
 #define SOL_AAL         265
 #define SOL_IRDA        266
+#define SOL_NETBEUI     267
+#define SOL_LLC         268
+#define SOL_DCCP        269
+#define SOL_NETLINK     270
+#define SOL_TIPC        271
+#define SOL_RXRPC       272
+#define SOL_PPPOL2TP    273
+#define SOL_BLUETOOTH   274
+#define SOL_PNPIPE      275
+#define SOL_RDS         276
+#define SOL_IUCV        277
+#define SOL_CAIF        278
+#define SOL_ALG         279
+#define SOL_NFC         280
+#define SOL_KCM         281
 
 #define SOMAXCONN       128
 
@@ -239,6 +273,8 @@ struct linger
 #define MSG_NOSIGNAL  0x4000
 #define MSG_MORE      0x8000
 #define MSG_WAITFORONE 0x10000
+#define MSG_BATCH     0x40000
+#define MSG_FASTOPEN  0x20000000
 #define MSG_CMSG_CLOEXEC 0x40000000
 
 #define __CMSG_LEN(cmsg) (((cmsg)->cmsg_len + sizeof(long) - 1) & ~(long)(sizeof(long) - 1))
@@ -246,9 +282,9 @@ struct linger
 #define __MHDR_END(mhdr) ((unsigned char *)(mhdr)->msg_control + (mhdr)->msg_controllen)
 
 #define CMSG_DATA(cmsg) ((unsigned char *) (((struct cmsghdr *)(cmsg)) + 1))
-#define CMSG_NXTHDR(mhdr, cmsg) ((cmsg)->cmsg_len < sizeof (struct cmsghdr) ? (struct cmsghdr *)0 : \
-        (__CMSG_NEXT(cmsg) + sizeof (struct cmsghdr) >= __MHDR_END(mhdr) ? (struct cmsghdr *)0 : \
-        ((struct cmsghdr *)__CMSG_NEXT(cmsg))))
+#define CMSG_NXTHDR(mhdr, cmsg) ((cmsg)->cmsg_len < sizeof (struct cmsghdr) || \
+	__CMSG_LEN(cmsg) + sizeof(struct cmsghdr) >= __MHDR_END(mhdr) - (unsigned char *)(cmsg) \
+	? 0 : (struct cmsghdr *)__CMSG_NEXT(cmsg))
 #define CMSG_FIRSTHDR(mhdr) ((size_t) (mhdr)->msg_controllen >= sizeof (struct cmsghdr) ? (struct cmsghdr *) (mhdr)->msg_control : (struct cmsghdr *) 0)
 
 #define CMSG_ALIGN(len) (((len) + sizeof (size_t) - 1) & (size_t) ~(sizeof (size_t) - 1))
@@ -258,17 +294,15 @@ struct linger
 #define SCM_RIGHTS      0x01
 #define SCM_CREDENTIALS 0x02
 
-struct sockaddr
-{
+struct sockaddr {
 	sa_family_t sa_family;
 	char sa_data[14];
 };
 
-struct sockaddr_storage
-{
+struct sockaddr_storage {
 	sa_family_t ss_family;
+	char __ss_padding[128-sizeof(long)-sizeof(sa_family_t)];
 	unsigned long __ss_align;
-	char __ss_padding[128-2*sizeof(unsigned long)];
 };
 
 int socket (int, int, int);

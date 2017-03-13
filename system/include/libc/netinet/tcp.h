@@ -27,6 +27,9 @@
 #define TCP_FASTOPEN     23
 #define TCP_TIMESTAMP    24
 #define TCP_NOTSENT_LOWAT 25
+#define TCP_CC_INFO      26
+#define TCP_SAVE_SYN     27
+#define TCP_SAVED_SYN    28
 
 #define TCP_ESTABLISHED  1
 #define TCP_SYN_SENT     2
@@ -41,7 +44,20 @@
 #define TCP_CLOSING      11
 
 #if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
+#define TCPOPT_EOL              0
+#define TCPOPT_NOP              1
+#define TCPOPT_MAXSEG           2
+#define TCPOPT_WINDOW           3
+#define TCPOPT_SACK_PERMITTED   4
+#define TCPOPT_SACK             5
+#define TCPOPT_TIMESTAMP        8
+#define TCPOLEN_SACK_PERMITTED  2
+#define TCPOLEN_WINDOW          3
+#define TCPOLEN_MAXSEG          4
+#define TCPOLEN_TIMESTAMP       10
+
 #define SOL_TCP 6
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdint.h>
@@ -129,8 +145,7 @@ struct tcphdr {
 #define TCP_CA_Recovery		3
 #define TCP_CA_Loss		4
 
-struct tcp_info
-{
+struct tcp_info {
 	uint8_t tcpi_state;
 	uint8_t tcpi_ca_state;
 	uint8_t tcpi_retransmits;
@@ -162,12 +177,21 @@ struct tcp_info
 	uint32_t tcpi_rcv_rtt;
 	uint32_t tcpi_rcv_space;
 	uint32_t tcpi_total_retrans;
+	uint64_t tcpi_pacing_rate;
+	uint64_t tcpi_max_pacing_rate;
+	uint64_t tcpi_bytes_acked;
+	uint64_t tcpi_bytes_received;
+	uint32_t tcpi_segs_out;
+	uint32_t tcpi_segs_in;
+	uint32_t tcpi_notsent_bytes;
+	uint32_t tcpi_min_rtt;
+	uint32_t tcpi_data_segs_in;
+	uint32_t tcpi_data_segs_out;
 };
 
 #define TCP_MD5SIG_MAXKEYLEN    80
 
-struct tcp_md5sig
-{
+struct tcp_md5sig {
 	struct sockaddr_storage tcpm_addr;
 	uint16_t __tcpm_pad1;
 	uint16_t tcpm_keylen;
