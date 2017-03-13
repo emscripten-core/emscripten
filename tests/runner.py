@@ -1194,6 +1194,38 @@ def print_random_test_statistics(num_tests):
            % (expected))
   atexit.register(show)
 
+def run_test(foo):
+  test, result = foo
+  print "RUNNING TEST", test
+  test(result)
+
+class MyTextTestResult(unittest.TextTestResult):
+  def startTest(self, test):
+    pass
+  def stopTest(self, test):
+    pass
+
+  def addSuccess(self, test):
+    print 'adding success'
+    # super(MyTextTestResult, self).addSuccess(test)
+  def addFailure(self, test):
+    print 'adding failure'
+    # super(MyTextTestResult, self).addFailure(test)
+  def addError(self, test):
+    print 'adding error'
+    # super(MyTextTestResult, self).addError(test)
+
+class MyTestSuite(unittest.BaseTestSuite):
+  def run(self, result):
+    import multiprocessing
+    tests = [(test, result) for test in self]
+    pool = multiprocessing.Pool(4)
+    pool.map(run_test, tests)
+    # for test in tests:
+    #   run_test(test)
+    print 'done testing'
+    return result
+
 def load_test_suites(args, modules):
   import operator
   loader = unittest.TestLoader()
@@ -1210,7 +1242,7 @@ def load_test_suites(args, modules):
         pass
     if len(names_in_module) > 0:
       tests = loader.loadTestsFromNames(sorted(names_in_module), m)
-      suite = unittest.TestSuite()
+      suite = MyTestSuite()
       for subsuite in tests:
         for test in subsuite:
           suite.addTest(test)
@@ -1229,7 +1261,7 @@ def run_tests(suites, unmatched_test_names):
   print 'Test suites:'
   print [s[0] for s in suites]
   # Run the discovered tests
-  testRunner = unittest.TextTestRunner(verbosity=2)
+  testRunner = unittest.TextTestRunner(verbosity=2, resultclass=MyTextTestResult)
   for mod_name, suite in suites:
     print 'Running %s: (%s tests)' % (mod_name, suite.countTestCases())
     res = testRunner.run(suite)
