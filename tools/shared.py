@@ -1911,6 +1911,9 @@ class Building:
 
   @staticmethod
   def llvm_nm(filename, stdout=PIPE, stderr=PIPE, include_internal=False):
+    # Always use absolute paths to maximize cache usage
+    filename = os.path.abspath(filename)
+
     if include_internal and filename in Building.internal_nm_cache:
       return Building.internal_nm_cache[filename]
     elif not include_internal and filename in Building.uninternal_nm_cache:
