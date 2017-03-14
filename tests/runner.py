@@ -1200,32 +1200,31 @@ class TestResultType(enum.Enum):
   Failure = 2
   Error = 3
 
-class MyTextTestResult(unittest.TestResult):
+class ParallelTextTestResult(unittest.TestResult):
   def __init__(self):
-    super(MyTextTestResult, self).__init__()
+    super(ParallelTextTestResult, self).__init__()
     self.resultType = None
     self.resultTest = None
 
   def addSuccess(self, test):
-    print 'adding success'
     self.resultType = TestResultType.Success
     self.resultTest = test
+
   def addFailure(self, test):
-    print 'adding failure'
     self.resultType = TestResultType.Failure
     self.resultTest = test
+
   def addError(self, test):
-    print 'adding error'
     self.resultType = TestResultType.Error
     self.resultTest = test
 
-class MyTestSuite(unittest.BaseTestSuite):
+class ParallelTestSuite(unittest.BaseTestSuite):
   def run(self, result):
     import multiprocessing
+    end_of_queue = 'STOP'
     def worker(work_queue, result_queue):
-      for test in iter(work_queue.get, 'STOP'):
-        print 'RUNNING TEST: ', test
-        result = MyTextTestResult()
+      for test in iter(work_queue.get, end_of_queue):
+        result = ParallelTextTestResult()
         test(result)
         result_queue.put(result)
 
@@ -1240,11 +1239,11 @@ class MyTestSuite(unittest.BaseTestSuite):
       p = multiprocessing.Process(target=worker, args=(test_queue, result_queue))
       p.start()
       processes.append(p)
-      test_queue.put('STOP')
+      test_queue.put(end_of_queue)
     for p in processes:
       p.join()
-    result_queue.put('STOP')
-    for r in iter(result_queue.get, 'STOP'):
+    result_queue.put(end_of_queue)
+    for r in iter(result_queue.get, end_of_queue):
       s = r.resultTest
       result.startTest(s)
       if r.resultType == TestResultType.Success:
@@ -1254,7 +1253,6 @@ class MyTestSuite(unittest.BaseTestSuite):
       elif r.resultType == TestResultType.Error:
         result.addError(s)
       result.stopTest(s)
-    print 'done testing'
     return result
 
 def load_test_suites(args, modules):
@@ -1274,7 +1272,7 @@ def load_test_suites(args, modules):
     if len(names_in_module) > 0:
       tests = loader.loadTestsFromNames(sorted(names_in_module), m)
       module_name = m.__name__
-      suite = MyTestSuite() if module_name == 'test_core' else unittest.TestSuite()
+      suite = ParallelTestSuite() if module_name == 'test_core' else unittest.TestSuite()
       for subsuite in tests:
         for test in subsuite:
           suite.addTest(test)
