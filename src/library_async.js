@@ -54,7 +54,7 @@ mergeInto(LibraryManager.library, {
 
   emscripten_sleep__deps: ['emscripten_async_resume', '$Browser'],
   emscripten_sleep: function(ms) {
-    asm.setAsync(); // tell the scheduler that we have a callback on hold
+    Module['asm'].setAsync(); // tell the scheduler that we have a callback on hold
     Browser.safeSetTimeout(_emscripten_async_resume, ms);
   },
 
@@ -189,7 +189,31 @@ mergeInto(LibraryManager.library, {
   emscripten_yield__asm: true,
   emscripten_yield: function() {
     ___async = 1;
-  }
+  },
+
+  emscripten_wget__deps: ['emscripten_async_resume', '$PATH', '$Browser'],
+  emscripten_wget: function(url, file) {
+    var _url = Pointer_stringify(url);
+    var _file = Pointer_stringify(file);
+    _file = PATH.resolve(FS.cwd(), _file);
+    Module['asm'].setAsync();
+    Module['noExitRuntime'] = true;
+    var destinationDirectory = PATH.dirname(_file);
+    FS.createPreloadedFile(
+      destinationDirectory,
+      PATH.basename(_file),
+      _url, true, true,
+      _emscripten_async_resume,
+      _emscripten_async_resume,
+      undefined, // dontCreateFile
+      undefined, // canOwn
+      function() { // preFinish
+        // if the destination directory does not yet exist, create it
+        FS.mkdirTree(destinationDirectory);
+      }
+    );
+  },
+
 #else // ASYNCIFY
 
 #if EMTERPRETIFY_ASYNC
@@ -231,15 +255,15 @@ mergeInto(LibraryManager.library, {
     setState: function(s) {
       this.ensureInit();
       this.state = s;
-      asm.setAsyncState(s);
+      Module['asm'].setAsyncState(s);
     },
     handle: function(doAsyncOp, yieldDuring) {
       Module['noExitRuntime'] = true;
       if (EmterpreterAsync.state === 0) {
         // save the stack we want to resume. this lets other code run in between
         // XXX this assumes that this stack top never ever leak! exceptions might violate that
-        var stack = new Int32Array(HEAP32.subarray(EMTSTACKTOP>>2, asm.emtStackSave()>>2));
-        var stacktop = asm.stackSave();
+        var stack = new Int32Array(HEAP32.subarray(EMTSTACKTOP>>2, Module['asm'].emtStackSave()>>2));
+        var stacktop = Module['asm'].stackSave();
 
         var resumedCallbacksForYield = false;
         function resumeCallbacksForYield() {
@@ -273,7 +297,7 @@ mergeInto(LibraryManager.library, {
           // copy the stack back in and resume
           HEAP32.set(stack, EMTSTACKTOP>>2);
 #if ASSERTIONS
-          assert(stacktop === asm.stackSave()); // nothing should have modified the stack meanwhile
+          assert(stacktop === Module['asm'].stackSave()); // nothing should have modified the stack meanwhile
 #endif
           EmterpreterAsync.setState(2);
           // Resume the main loop
@@ -282,7 +306,7 @@ mergeInto(LibraryManager.library, {
           }
           assert(!EmterpreterAsync.postAsync);
           EmterpreterAsync.postAsync = post || null;
-          asm.emterpret(stack[0]); // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
+          Module['asm'].emterpret(stack[0]); // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
           if (!yieldDuring && EmterpreterAsync.state === 0) {
             // if we did *not* do another async operation, then we know that nothing is conceptually on the stack now, and we can re-allow async callbacks as well as run the queued ones right now
             Browser.resumeAsyncCallbacks();
@@ -344,12 +368,53 @@ mergeInto(LibraryManager.library, {
     }, true);
   },
 
-#else
+  emscripten_wget__deps: ['$EmterpreterAsync', '$PATH', '$FS', '$Browser'],
+  emscripten_wget: function(url, file) {
+    EmterpreterAsync.handle(function(resume) {
+      var _url = Pointer_stringify(url);
+      var _file = Pointer_stringify(file);
+      _file = PATH.resolve(FS.cwd(), _file);
+      var destinationDirectory = PATH.dirname(_file);
+      FS.createPreloadedFile(
+        destinationDirectory,
+        PATH.basename(_file),
+        _url, true, true,
+        resume,
+        resume,
+        undefined, // dontCreateFile
+        undefined, // canOwn
+        function() { // preFinish
+          // if the destination directory does not yet exist, create it
+          FS.mkdirTree(destinationDirectory);
+        }
+      );
+    });
+  },
+
+  emscripten_wget_data__deps: ['$EmterpreterAsync', '$Browser'],
+  emscripten_wget_data: function(url, pbuffer, pnum, perror) {
+    EmterpreterAsync.handle(function(resume) {
+      Browser.asyncLoad(Pointer_stringify(url), function(byteArray) {
+        resume(function() {
+          // can only allocate the buffer after the resume, not during an asyncing
+          var buffer = _malloc(byteArray.length); // must be freed by caller!
+          HEAPU8.set(byteArray, buffer);
+          {{{ makeSetValueAsm('pbuffer', 0, 'buffer', 'i32') }}};
+          {{{ makeSetValueAsm('pnum',  0, 'byteArray.length', 'i32') }}};
+          {{{ makeSetValueAsm('perror',  0, '0', 'i32') }}};
+        });
+      }, function() {
+        {{{ makeSetValueAsm('perror',  0, '1', 'i32') }}};
+        resume();
+      }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
+    });
+  },
+
+#else // EMTERPRETIFY_ASYNC
+
   emscripten_sleep: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
   },
-#endif
-
   emscripten_coroutine_create: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_coroutine_create';
   },
@@ -358,7 +423,14 @@ mergeInto(LibraryManager.library, {
   },
   emscripten_yield: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_yield';
-  }
-#endif
+  },
+  emscripten_wget: function(url, file) {
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget';
+  },
+  emscripten_wget_data: function(url, file) {
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget_data';
+  },
+#endif // EMTERPRETIFY_ASYNC
+#endif // ASYNCIFY
 });
 

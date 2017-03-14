@@ -467,7 +467,8 @@
             "F_GETOWN_EX",
             "F_SETFD", 
             "O_EXCL", 
-            "F_GETFL"
+            "F_GETFL",
+            "O_LARGEFILE"
         ],
         "structs": {}
     }, 
@@ -491,7 +492,8 @@
             "TCGETS",
             "TCSETS",
             "TIOCGPGRP",
-            "TIOCSPGRP"
+            "TIOCSPGRP",
+            "TIOCGWINSZ"
         ],
         "structs": {}
     }, 
@@ -1485,7 +1487,17 @@
               "tid",
               "pid",
               "canceldisable",
-              "cancelasync"
+              "cancelasync",
+              "locale"
+            ]
+        },
+        "defines": []
+    },
+    {
+        "file": "../lib/libc/musl/src/internal/libc.h",
+        "structs": {
+            "libc": [
+              "global_locale"
             ]
         },
         "defines": []

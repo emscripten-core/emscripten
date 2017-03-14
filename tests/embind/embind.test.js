@@ -478,6 +478,17 @@ module({
             assert.equal(3, cm.const_ref_adder(1, 2));
         });
 
+        test("get instance pointer as value", function() {
+            var v = cm.emval_test_instance_pointer();
+            assert.instanceof(v, cm.DummyForPointer);
+        });
+
+        test("cast value to instance pointer using as<T*>", function() {
+            var v = cm.emval_test_instance_pointer();
+            var p_value = cm.emval_test_value_from_instance_pointer(v);
+            assert.equal(42, p_value);
+        });
+
         test("passthrough", function() {
             var a = {foo: 'bar'};
             var b = cm.emval_test_passthrough(a);
@@ -876,6 +887,34 @@ module({
             p.delete();
         });
 */
+
+        test("no undefined entry in overload table when depending on already bound types", function() {
+            var dummy_overloads = cm.MultipleOverloadsDependingOnDummy.prototype.dummy;
+            // check if the overloadTable is correctly named
+            // it can be minimized if using closure compiler
+            if (dummy_overloads.hasOwnProperty('overloadTable')) {
+                assert.false(dummy_overloads.overloadTable.hasOwnProperty('undefined'));
+            }
+
+            // this part should fail anyway if there is no overloadTable
+            var dependOnDummy = new cm.MultipleOverloadsDependingOnDummy();
+            var dummy = dependOnDummy.dummy();
+            dependOnDummy.dummy(dummy);
+            dummy.delete();
+            dependOnDummy.delete();
+        });
+
+        test("no undefined entry in overload table for free functions", function() {
+            var dummy_free_func = cm.getDummy;
+            console.log(dummy_free_func);
+
+            if (dummy_free_func.hasOwnProperty('overloadTable')) {
+                assert.false(dummy_free_func.overloadTable.hasOwnProperty('undefined'));
+            }
+
+            var dummy = cm.getDummy();
+            cm.getDummy(dummy);
+        });
     });
 
     BaseFixture.extend("vector", function() {

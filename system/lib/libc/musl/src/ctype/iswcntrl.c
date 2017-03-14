@@ -1,5 +1,5 @@
-#include <wchar.h>
 #include <wctype.h>
+#include "libc.h"
 
 int iswcntrl(wint_t wc)
 {
@@ -8,3 +8,10 @@ int iswcntrl(wint_t wc)
 	    || (unsigned)(wc-0x2028) < 2
 	    || (unsigned)(wc-0xfff9) < 3;
 }
+
+int __iswcntrl_l(wint_t c, locale_t l)
+{
+	return iswcntrl(c);
+}
+
+weak_alias(__iswcntrl_l, iswcntrl_l);

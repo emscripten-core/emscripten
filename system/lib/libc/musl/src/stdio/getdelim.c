@@ -13,29 +13,32 @@ ssize_t getdelim(char **restrict s, size_t *restrict n, int delim, FILE *restric
 	size_t i=0;
 	int c;
 
+	FLOCK(f);
+
 	if (!n || !s) {
+		f->flags |= F_ERR;
+		FUNLOCK(f);
 		errno = EINVAL;
 		return -1;
 	}
 
 	if (!*s) *n=0;
 
-	FLOCK(f);
-
 	for (;;) {
 		z = memchr(f->rpos, delim, f->rend - f->rpos);
 		k = z ? z - f->rpos + 1 : f->rend - f->rpos;
-		if (i+k >= *n) {
+		if (i+k+1 >= *n) {
 			if (k >= SIZE_MAX/2-i) goto oom;
-			*n = i+k+2;
-			if (*n < SIZE_MAX/4) *n *= 2;
-			tmp = realloc(*s, *n);
+			size_t m = i+k+2;
+			if (!z && m < SIZE_MAX/4) m += m/2;
+			tmp = realloc(*s, m);
 			if (!tmp) {
-				*n = i+k+2;
-				tmp = realloc(*s, *n);
+				m = i+k+2;
+				tmp = realloc(*s, m);
 				if (!tmp) goto oom;
 			}
 			*s = tmp;
+			*n = m;
 		}
 		memcpy(*s+i, f->rpos, k);
 		f->rpos += k;
@@ -56,6 +59,7 @@ ssize_t getdelim(char **restrict s, size_t *restrict n, int delim, FILE *restric
 
 	return i;
 oom:
+	f->flags |= F_ERR;
 	FUNLOCK(f);
 	errno = ENOMEM;
 	return -1;

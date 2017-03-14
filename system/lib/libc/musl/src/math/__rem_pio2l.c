@@ -20,10 +20,11 @@
  * use __rem_pio2_large() for large x
  */
 
+static const long double toint = 1.5/LDBL_EPSILON;
+
 #if LDBL_MANT_DIG == 64
 /* u ~< 0x1p25*pi/2 */
 #define SMALL(u) (((u.i.se & 0x7fffU)<<16 | u.i.m>>48) < ((0x3fff + 25)<<16 | 0x921f>>1 | 0x8000))
-#define TOINT 0x1.8p63
 #define QUOBITS(x) ((uint32_t)(int32_t)x & 0x7fffffff)
 #define ROUND1 22
 #define ROUND2 61
@@ -50,7 +51,6 @@ pio2_3t = -2.75299651904407171810e-37L; /* -0xbb5bf6c7ddd660ce.0p-185 */
 #elif LDBL_MANT_DIG == 113
 /* u ~< 0x1p45*pi/2 */
 #define SMALL(u) (((u.i.se & 0x7fffU)<<16 | u.i.top) < ((0x3fff + 45)<<16 | 0x921f))
-#define TOINT 0x1.8p112
 #define QUOBITS(x) ((uint32_t)(int64_t)x & 0x7fffffff)
 #define ROUND1 51
 #define ROUND2 119
@@ -77,7 +77,7 @@ int __rem_pio2l(long double x, long double *y)
 	ex = u.i.se & 0x7fff;
 	if (SMALL(u)) {
 		/* rint(x/(pi/2)), Assume round-to-nearest. */
-		fn = x*invpio2 + TOINT - TOINT;
+		fn = x*invpio2 + toint - toint;
 		n = QUOBITS(fn);
 		r = x-fn*pio2_1;
 		w = fn*pio2_1t;  /* 1st round good to 102/180 bits (ld80/ld128) */

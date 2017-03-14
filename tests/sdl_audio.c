@@ -42,8 +42,12 @@ int main(int argc, char **argv) {
   int ret = Mix_OpenAudio(0, 0, 0, 0); // we ignore all these..
   assert(ret == 0);
 
-  sound = Mix_LoadWAV("sound.ogg");
-  assert(sound);
+  {
+      SDL_RWops * ops = SDL_RWFromFile("sound.ogg", "r");
+      sound = Mix_LoadWAV_RW(ops, 0);
+      SDL_FreeRW(ops);
+      assert(sound);
+  }
 
   {
       struct stat info;

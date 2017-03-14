@@ -144,6 +144,7 @@ var LibraryEmbind = {
     }
     else {
         Module[name] = value;
+        Module[name].argCount = numArguments;
     }
   },
 
@@ -945,13 +946,13 @@ var LibraryEmbind = {
         // This has three main penalties:
         // - dynCall is another function call in the path from JavaScript to C++.
         // - JITs may not predict through the function table indirection at runtime.
-        var dc = asm['dynCall_' + signature];
+        var dc = Module["asm"]['dynCall_' + signature];
         if (dc === undefined) {
             // We will always enter this branch if the signature
             // contains 'f' and PRECISE_F32 is not enabled.
             //
             // Try again, replacing 'f' with 'd'.
-            dc = asm['dynCall_' + signature.replace(/f/g, 'd')];
+            dc = Module["asm"]['dynCall_' + signature.replace(/f/g, 'd')];
             if (dc === undefined) {
                 throwBindingError("No dynCall invoker for signature: " + signature);
             }
@@ -1949,6 +1950,8 @@ var LibraryEmbind = {
             // Replace the initial unbound-handler-stub function with the appropriate member function, now that all types
             // are resolved. If multiple overloads are registered for this function, the function goes into an overload table.
             if (undefined === proto[methodName].overloadTable) {
+                // Set argCount in case an overload is registered later
+                memberFunction.argCount = argCount - 2;
                 proto[methodName] = memberFunction;
             } else {
                 proto[methodName].overloadTable[argCount - 2] = memberFunction;

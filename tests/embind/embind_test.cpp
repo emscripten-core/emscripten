@@ -39,6 +39,23 @@ val emval_test_new_object() {
     return rv;
 }
 
+struct DummyForPointer {
+    int value;
+    DummyForPointer(const int v) : value(v) {}
+};
+
+static DummyForPointer emval_pointer_dummy(42);
+
+val emval_test_instance_pointer() {
+    DummyForPointer* p = &emval_pointer_dummy;
+    return val(p);
+}
+
+int emval_test_value_from_instance_pointer(val v) {
+    DummyForPointer * p = v.as<DummyForPointer *>(allow_raw_pointers());
+    return p->value;
+}
+
 unsigned emval_test_passthrough_unsigned(unsigned v) {
     return v;
 }
@@ -1653,11 +1670,15 @@ EMSCRIPTEN_BINDINGS(tests) {
     register_vector<float>("FloatVector");
     register_vector<std::vector<int>>("IntegerVectorVector");
 
+    class_<DummyForPointer>("DummyForPointer");
+
     function("mallinfo", &emval_test_mallinfo);
     function("emval_test_new_integer", &emval_test_new_integer);
     function("emval_test_new_string", &emval_test_new_string);
     function("emval_test_get_string_from_val", &emval_test_get_string_from_val);
     function("emval_test_new_object", &emval_test_new_object);
+    function("emval_test_instance_pointer", &emval_test_instance_pointer);
+    function("emval_test_value_from_instance_pointer", &emval_test_value_from_instance_pointer);
     function("emval_test_passthrough_unsigned", &emval_test_passthrough_unsigned);
     function("emval_test_passthrough", &emval_test_passthrough);
     function("emval_test_return_void", &emval_test_return_void);
@@ -2294,6 +2315,27 @@ struct ConstAndNonConst {
     }
 };
 
+class DummyForOverloads {};
+
+class MultipleOverloadsDependingOnDummy {
+public:
+    DummyForOverloads dummy() {
+        return DummyForOverloads();
+    }
+
+    DummyForOverloads dummy(DummyForOverloads d) {
+        return d;
+    }
+};
+
+DummyForOverloads getDummy() {
+    return DummyForOverloads();
+}
+
+DummyForOverloads getDummy(DummyForOverloads d) {
+    return d;
+}
+
 EMSCRIPTEN_BINDINGS(overloads) {
     function("overloaded_function", select_overload<int(int)>(&overloaded_function));
     function("overloaded_function", select_overload<int(int, int)>(&overloaded_function));
@@ -2337,6 +2379,17 @@ EMSCRIPTEN_BINDINGS(overloads) {
     class_<ConstAndNonConst>("ConstAndNonConst")
         .function("method", select_const(&ConstAndNonConst::method))
         ;
+
+    class_<DummyForOverloads>("DummyForOverloads").constructor();
+
+    class_<MultipleOverloadsDependingOnDummy>("MultipleOverloadsDependingOnDummy")
+        .constructor()
+        .function("dummy", select_overload<DummyForOverloads()>(&MultipleOverloadsDependingOnDummy::dummy))
+        .function("dummy", select_overload<DummyForOverloads(DummyForOverloads)>(&MultipleOverloadsDependingOnDummy::dummy))
+        ;
+
+    function("getDummy", select_overload<DummyForOverloads(void)>(&getDummy));
+    function("getDummy", select_overload<DummyForOverloads(DummyForOverloads)>(&getDummy));
 }
 
 // tests for out-of-order registration

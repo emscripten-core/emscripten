@@ -11,12 +11,12 @@ var LibraryIDBStore = {
   emscripten_idb_async_load: function(db, id, arg, onload, onerror) {
     IDBStore.getFile(Pointer_stringify(db), Pointer_stringify(id), function(error, byteArray) {
       if (error) {
-        if (onerror) Runtime.dynCall('vi', onerror, [arg]);
+        if (onerror) Module['dynCall_vi'](onerror, arg);
         return;
       }
       var buffer = _malloc(byteArray.length);
       HEAPU8.set(byteArray, buffer);
-      Runtime.dynCall('viii', onload, [arg, buffer, byteArray.length]);
+      Module['dynCall_viii'](onload, arg, buffer, byteArray.length);
       _free(buffer);
     });
   },
@@ -24,28 +24,28 @@ var LibraryIDBStore = {
     // note that we copy the data here, as these are async operatins - changes to HEAPU8 meanwhile should not affect us!
     IDBStore.setFile(Pointer_stringify(db), Pointer_stringify(id), new Uint8Array(HEAPU8.subarray(ptr, ptr+num)), function(error) {
       if (error) {
-        if (onerror) Runtime.dynCall('vi', onerror, [arg]);
+        if (onerror) Module['dynCall_vi'](onerror, arg);
         return;
       }
-      if (onstore) Runtime.dynCall('vi', onstore, [arg]);
+      if (onstore) Module['dynCall_vi'](onstore, arg);
     });
   },
   emscripten_idb_async_delete: function(db, id, arg, ondelete, onerror) {
     IDBStore.deleteFile(Pointer_stringify(db), Pointer_stringify(id), function(error) {
       if (error) {
-        if (onerror) Runtime.dynCall('vi', onerror, [arg]);
+        if (onerror) Module['dynCall_vi'](onerror, arg);
         return;
       }
-      if (ondelete) Runtime.dynCall('vi', ondelete, [arg]);
+      if (ondelete) Module['dynCall_vi'](ondelete, arg);
     });
   },
   emscripten_idb_async_exists: function(db, id, arg, oncheck, onerror) {
     IDBStore.existsFile(Pointer_stringify(db), Pointer_stringify(id), function(error, exists) {
       if (error) {
-        if (onerror) Runtime.dynCall('vi', onerror, [arg]);
+        if (onerror) Module['dynCall_vi'](onerror, arg);
         return;
       }
-      if (oncheck) Runtime.dynCall('vii', oncheck, [arg, exists]);
+      if (oncheck) Module['dynCall_vii'](oncheck, arg, exists);
     });
   },
 

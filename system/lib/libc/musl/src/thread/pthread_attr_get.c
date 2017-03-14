@@ -79,7 +79,7 @@ int pthread_mutexattr_getprotocol(const pthread_mutexattr_t *restrict a, int *re
 }
 int pthread_mutexattr_getpshared(const pthread_mutexattr_t *restrict a, int *restrict pshared)
 {
-	*pshared = a->__attr>>31;
+	*pshared = a->__attr / 128U % 2;
 	return 0;
 }
 

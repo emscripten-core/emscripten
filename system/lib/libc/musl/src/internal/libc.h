@@ -5,31 +5,35 @@
 #include <stdio.h>
 #include <limits.h>
 
-struct __libc {
-	void *main_thread;
-	int threaded;
-	int secure;
-	size_t *auxv;
-	volatile int threads_minus_1;
-	int canceldisable;
-	FILE *ofl_head;
-	int ofl_lock[2];
-	size_t tls_size;
-	size_t page_size;
+struct __locale_map;
+
+struct __locale_struct {
+	const struct __locale_map *volatile cat[6];
 };
 
-extern size_t __hwcap;
+struct tls_module {
+	struct tls_module *next;
+	void *image;
+	size_t len, size, align, offset;
+};
+
+struct __libc {
+	int can_do_threads;
+	int threaded;
+	int secure;
+	volatile int threads_minus_1;
+	size_t *auxv;
+	struct tls_module *tls_head;
+	size_t tls_size, tls_align, tls_cnt;
+	size_t page_size;
+	struct __locale_struct global_locale;
+};
 
 #ifndef PAGE_SIZE
 #define PAGE_SIZE libc.page_size
 #endif
 
-#if !defined(__PIC__) || (100*__GNUC__+__GNUC_MINOR__ >= 303 && !defined(__PCC__))
-
 #ifdef __PIC__
-#if __GNUC__ < 4
-#define BROKEN_VISIBILITY 1
-#endif
 #define ATTR_LIBC_VISIBILITY __attribute__((visibility("hidden")))
 #else
 #define ATTR_LIBC_VISIBILITY
@@ -38,15 +42,9 @@ extern size_t __hwcap;
 extern struct __libc __libc ATTR_LIBC_VISIBILITY;
 #define libc __libc
 
-#else
-
-#define USE_LIBC_ACCESSOR
-#define ATTR_LIBC_VISIBILITY
-extern struct __libc *__libc_loc(void) __attribute__((const));
-#define libc (*__libc_loc())
-
-#endif
-
+extern size_t __hwcap ATTR_LIBC_VISIBILITY;
+extern size_t __sysinfo ATTR_LIBC_VISIBILITY;
+extern char *__progname, *__progname_full;
 
 /* Designed to avoid any overhead in non-threaded processes */
 void __lock(volatile int *) ATTR_LIBC_VISIBILITY;

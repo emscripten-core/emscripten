@@ -96,41 +96,68 @@ var LibraryManager = {
   load: function() {
     if (this.library) return;
 
+    // Core system libraries (always linked against)
     var libraries = [
       'library.js',
       'library_browser.js',
       'library_formatString.js',
       'library_path.js',
-      'library_syscall.js'
+      'library_signals.js',
+      'library_syscall.js',
+      'library_html5.js'
     ];
+
     if (!NO_FILESYSTEM) {
+      // Core filesystem libraries (always linked against, unless -s NO_FILESYSTEM=1 is specified)
       libraries = libraries.concat([
         'library_fs.js',
-        'library_idbfs.js',
         'library_memfs.js',
-        'library_nodefs.js',
-        'library_sockfs.js',
-        'library_workerfs.js',
         'library_tty.js',
-        'library_lz4.js',
+      ]);
+
+      // Additional filesystem libraries (in strict mode, link to these explicitly via -lxxx.js)
+      if (!STRICT) {
+        libraries = libraries.concat([
+          'library_idbfs.js',
+          'library_nodefs.js',
+          'library_proxyfs.js',
+          'library_sockfs.js',
+          'library_workerfs.js',
+          'library_lz4.js',
+        ]);
+      }
+    }
+
+    // Additional JS libraries (in strict mode, link to these explicitly via -lxxx.js)
+    if (!STRICT) {
+      libraries = libraries.concat([
+        'library_sdl.js',
+        'library_gl.js',
+        'library_glut.js',
+        'library_xlib.js',
+        'library_egl.js',
+        'library_openal.js',
+        'library_glfw.js',
+        'library_uuid.js',
+        'library_glew.js',
+        'library_idbstore.js',
+        'library_async.js',
+        'library_vr.js'
       ]);
     }
-    libraries = libraries.concat([
-      'library_sdl.js',
-      'library_gl.js',
-      'library_glut.js',
-      'library_xlib.js',
-      'library_egl.js',
-      'library_openal.js',
-      'library_glfw.js',
-      'library_uuid.js',
-      'library_glew.js',
-      'library_html5.js',
-      'library_signals.js',
-      'library_idbstore.js',
-      'library_async.js',
-      'library_vr.js'
-    ]).concat(additionalLibraries);
+
+    // If there are any explicitly specified system JS libraries to link to, add those to link.
+    if (SYSTEM_JS_LIBRARIES) {
+      libraries = libraries.concat(SYSTEM_JS_LIBRARIES.split(','));
+    }
+
+    libraries = libraries.concat(additionalLibraries);
+
+    // For each JS library library_xxx.js, add a preprocessor token __EMSCRIPTEN_HAS_xxx_js__ so that code can conditionally dead code eliminate out
+    // if a particular feature is not being linked in.
+    for (var i = 0; i < libraries.length; ++i) {
+      global['__EMSCRIPTEN_HAS_' + libraries[i].replace('.', '_').replace('library_', '') + '__'] = 1
+    }
 
     if (BOOTSTRAPPING_STRUCT_INFO) libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
     if (ONLY_MY_CODE) {

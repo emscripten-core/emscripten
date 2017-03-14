@@ -1,9 +1,3 @@
-/* 
- * This code was written by Rich Felker in 2010; no copyright is claimed.
- * This code is in the public domain. Attribution is appreciated but
- * unnecessary.
- */
-
 #include "internal.h"
 
 #define C(x) ( x<2 ? -1 : ( R(0x80,0xc0) | x ) )
@@ -30,7 +24,3 @@ const uint32_t bittab[] = {
 	E(0x8),E(0x9),E(0xa),E(0xb),E(0xc),E(0xd),E(0xe),E(0xf),
 	F(0x0),F(0x1),F(0x2),F(0x3),F(0x4)
 };
-
-#ifdef BROKEN_VISIBILITY
-__asm__(".hidden __fsmu8");
-#endif
