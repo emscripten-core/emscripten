@@ -486,19 +486,21 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
 #if FETCH_DEBUG
     console.log('fetch: operation success. Caching result.. e: ' + e);
 #endif
-    var storeSuccess = function() {
+    var storeSuccess = function(fetch, xhr, e) {
 #if FETCH_DEBUG
       console.log('fetch: IndexedDB store succeeded.');
 #endif
+      if (onsuccess && Runtime.dynCall) Module['dynCall_vi'](onsuccess, fetch);
+      else if (successcb) successcb(fetch);
     };
-    var storeError = function() {
+    var storeError = function(fetch, xhr, e) {
 #if FETCH_DEBUG
       console.error('fetch: IndexedDB store failed.');
 #endif
+      if (onsuccess && Runtime.dynCall) Module['dynCall_vi'](onsuccess, fetch);
+      else if (successcb) successcb(fetch);
     };
     __emscripten_fetch_cache_data(Fetch.dbInstance, fetch, xhr.response, storeSuccess, storeError);
-    if (onsuccess && Runtime.dynCall) Module['dynCall_vi'](onsuccess, fetch);
-    else if (successcb) successcb(fetch);
   };
 
   var reportProgress = function(fetch, xhr, e) {
