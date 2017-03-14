@@ -3827,80 +3827,20 @@ Have even and odd!
 '''
     self.do_run(src, expected)
 
-  @no_wasm_backend('printf is incorrectly handling float values')
   def test_strtod(self):
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
+    src = open(path_from_root('tests', 'core', 'test_strtod.c'), 'r').read()
+    expected = open(path_from_root('tests', 'core', 'test_strtod.out'), 'r').read()
+    self.do_run(src, expected)
 
-      int main() {
-        char* endptr;
-
-        printf("\n");
-        printf("%g\n", strtod("0", &endptr));
-        printf("%g\n", strtod("0.", &endptr));
-        printf("%g\n", strtod("0.0", &endptr));
-        printf("%g\n", strtod("-0.0", &endptr));
-        printf("%g\n", strtod("1", &endptr));
-        printf("%g\n", strtod("1.", &endptr));
-        printf("%g\n", strtod("1.0", &endptr));
-        printf("%g\n", strtod("z1.0", &endptr));
-        printf("%g\n", strtod("0.5", &endptr));
-        printf("%g\n", strtod(".5", &endptr));
-        printf("%g\n", strtod(".a5", &endptr));
-        printf("%g\n", strtod("123", &endptr));
-        printf("%g\n", strtod("123.456", &endptr));
-        printf("%g\n", strtod("-123.456", &endptr));
-        printf("%g\n", strtod("1234567891234567890", &endptr));
-        printf("%g\n", strtod("1234567891234567890e+50", &endptr));
-        printf("%g\n", strtod("84e+220", &endptr));
-        printf("%g\n", strtod("123e-50", &endptr));
-        printf("%g\n", strtod("123e-250", &endptr));
-        printf("%g\n", strtod("123e-450", &endptr));
-        printf("%g\n", strtod("0x6", &endptr));
-        printf("%g\n", strtod("-0x0p+0", &endptr));
-
-        char str[] = "  12.34e56end";
-        printf("%g\n", strtod(str, &endptr));
-        printf("%d\n", endptr - str);
-        printf("%g\n", strtod("84e+420", &endptr));
-
-        printf("%.12f\n", strtod("1.2345678900000000e+08", NULL));
-
-        return 0;
-      }
-      '''
-    expected = '''
-      0
-      0
-      0
-      -0
-      1
-      1
-      1
-      0
-      0.5
-      0.5
-      0
-      123
-      123.456
-      -123.456
-      1.23457e+18
-      1.23457e+68
-      8.4e+221
-      1.23e-48
-      1.23e-248
-      0
-      6
-      -0
-      1.234e+57
-      10
-      inf
-      123456789.000000000000
-      '''
-
-    self.do_run(src, re.sub(r'\n\s+', '\n', expected))
-    self.do_run(src.replace('strtod', 'strtold'), re.sub(r'\n\s+', '\n', expected)) # XXX add real support for long double
+  def test_strtold(self):
+    if not self.is_wasm_backend():
+      # XXX add real support for long double
+      expected_file = 'test_strtod.out'
+    else:
+      expected_file = 'test_strtold.out'
+    src = open(path_from_root('tests', 'core', 'test_strtold.c'), 'r').read()
+    expected = open(path_from_root('tests', 'core', expected_file), 'r').read()
+    self.do_run(src, expected)
 
   def test_strtok(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strtok')
