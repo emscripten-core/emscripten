@@ -4,9 +4,6 @@
 
 #include "pthread_impl.h"
 
-void __vm_lock_impl(int);
-void __vm_unlock_impl(void);
-
 static int pshared_barrier_wait(pthread_barrier_t *b)
 {
 	int limit = (b->_b_limit & INT_MAX) + 1;
@@ -30,7 +27,7 @@ static int pshared_barrier_wait(pthread_barrier_t *b)
 			__wait(&b->_b_count, &b->_b_waiters2, v, 0);
 	}
 
-	__vm_lock_impl(+1);
+	__vm_lock();
 
 	/* Ensure all threads have a vm lock before proceeding */
 	if (a_fetch_add(&b->_b_count, -1)==1-limit) {
@@ -51,17 +48,17 @@ static int pshared_barrier_wait(pthread_barrier_t *b)
 	if (v==INT_MIN+1 || (v==1 && w))
 		__wake(&b->_b_lock, 1, 0);
 
-	__vm_unlock_impl();
+	__vm_unlock();
 
 	return ret;
 }
 
 struct instance
 {
-	int count;
-	int last;
-	int waiters;
-	int finished;
+	volatile int count;
+	volatile int last;
+	volatile int waiters;
+	volatile int finished;
 };
 
 int pthread_barrier_wait(pthread_barrier_t *b)
@@ -83,7 +80,7 @@ int pthread_barrier_wait(pthread_barrier_t *b)
 	/* First thread to enter the barrier becomes the "instance owner" */
 	if (!inst) {
 		struct instance new_inst = { 0 };
-		int spins = 10000;
+		int spins = 200;
 		b->_b_inst = inst = &new_inst;
 		a_store(&b->_b_lock, 0);
 		if (b->_b_waiters) __wake(&b->_b_lock, 1, 1);
@@ -94,7 +91,8 @@ int pthread_barrier_wait(pthread_barrier_t *b)
 #ifdef __EMSCRIPTEN__
 			emscripten_futex_wait(&inst->finished, 1, INFINITY);
 #else
-			__syscall(SYS_futex, &inst->finished, FUTEX_WAIT,1,0);
+			__syscall(SYS_futex,&inst->finished,FUTEX_WAIT|128,1,0) != -ENOSYS
+			|| __syscall(SYS_futex,&inst->finished,FUTEX_WAIT,1,0);
 #endif
 		}
 		return PTHREAD_BARRIER_SERIAL_THREAD;

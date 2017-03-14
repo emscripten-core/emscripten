@@ -21,7 +21,7 @@ struct aiocb {
 	struct sigevent aio_sigevent;
 	void *__td;
 	int __lock[2];
-	int __err;
+	volatile int __err;
 	ssize_t __ret;
 	off_t aio_offset;
 	void *__next, *__prev;

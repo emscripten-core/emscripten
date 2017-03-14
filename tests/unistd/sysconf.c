@@ -125,8 +125,7 @@ int main() {
     _SC_AIO_PRIO_DELTA_MAX,
     _SC_STREAM_MAX,
     _SC_TZNAME_MAX,
-    _SC_THREAD_DESTRUCTOR_ITERATIONS,
-    _SC_PHYS_PAGES
+    _SC_THREAD_DESTRUCTOR_ITERATIONS
   };
   char* names[] = {
     "_SC_PAGE_SIZE",
@@ -250,8 +249,7 @@ int main() {
     "_SC_AIO_PRIO_DELTA_MAX",
     "_SC_STREAM_MAX",
     "_SC_TZNAME_MAX",
-    "_SC_THREAD_DESTRUCTOR_ITERATIONS",
-    "_SC_PHYS_PAGES"
+    "_SC_THREAD_DESTRUCTOR_ITERATIONS"
   };
   char buffer[256];
 

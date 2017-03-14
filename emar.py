@@ -8,6 +8,8 @@ This script acts as a frontend replacement for ar. See emcc.
 '''
 
 from tools.toolchain_profiler import ToolchainProfiler
+if __name__ == '__main__':
+  ToolchainProfiler.record_process_start()
 
 import os, subprocess, sys
 from tools import shared
@@ -61,6 +63,5 @@ def run():
       shared.try_delete(d)
 
 if __name__ == '__main__':
-  ToolchainProfiler.record_process_start()
   run()
   sys.exit(0)

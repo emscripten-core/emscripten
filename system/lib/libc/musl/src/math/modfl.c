@@ -11,11 +11,9 @@ long double modfl(long double x, long double *iptr)
 	return r;
 }
 #elif (LDBL_MANT_DIG == 64 || LDBL_MANT_DIG == 113) && LDBL_MAX_EXP == 16384
-#if LDBL_MANT_DIG == 64
-#define TOINT 0x1p63
-#elif LDBL_MANT_DIG == 113
-#define TOINT 0x1p112
-#endif
+
+static const long double toint = 1/LDBL_EPSILON;
+
 long double modfl(long double x, long double *iptr)
 {
 	union ldshape u = {x};
@@ -40,7 +38,7 @@ long double modfl(long double x, long double *iptr)
 
 	/* raises spurious inexact */
 	absx = s ? -x : x;
-	y = absx + TOINT - TOINT - absx;
+	y = absx + toint - toint - absx;
 	if (y == 0) {
 		*iptr = x;
 		return s ? -0.0 : 0.0;

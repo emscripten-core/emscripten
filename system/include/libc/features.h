@@ -1,8 +1,12 @@
 #ifndef _FEATURES_H
 #define _FEATURES_H
 
-#ifdef _ALL_SOURCE
+#if defined(_ALL_SOURCE) && !defined(_GNU_SOURCE)
 #define _GNU_SOURCE 1
+#endif
+
+#if defined(_DEFAULT_SOURCE) && !defined(_BSD_SOURCE)
+#define _BSD_SOURCE 1
 #endif
 
 #if !defined(_POSIX_SOURCE) && !defined(_POSIX_C_SOURCE) \

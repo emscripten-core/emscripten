@@ -191,7 +191,8 @@ var ALIASING_FUNCTION_POINTERS = 0; // Whether to allow function pointers to ali
                                     // a different type. This can greatly decrease table sizes
                                     // in asm.js, but can break code that compares function
                                     // pointers across different types.
-var EMULATED_FUNCTION_POINTERS = 0; // By default we implement function pointers using asm.js
+var EMULATED_FUNCTION_POINTERS = 0; // asm.js:
+                                    // By default we implement function pointers using asm.js
                                     // function tables, which is very fast. With this option,
                                     // we implement them more flexibly by emulating them: we
                                     // call out into JS, which handles the function tables.
@@ -205,6 +206,16 @@ var EMULATED_FUNCTION_POINTERS = 0; // By default we implement function pointers
                                     //     if the fp is in the right range. Shared modules
                                     //     (MAIN_MODULE, SIDE_MODULE) do this by default.
                                     //     This requires RELOCATABLE to be set.
+                                    // wasm:
+                                    // By default we use a wasm Table for function pointers,
+                                    // which is fast and efficient. When enabling emulation,
+                                    // we also use the Table *outside* the wasm module,
+                                    // exactly as when emulating in asm.js, just replacing
+                                    // the plain JS array with a Table. However, Tables have
+                                    // some limitations currently, like not being able to
+                                    // assign an arbitrary JS method to them, which we have
+                                    // yet to work around. Another limitation is that this
+                                    // cannot yet mix with EMULATE_FUNCTION_POINTER_CASTS.
 var EMULATE_FUNCTION_POINTER_CASTS = 0; // Allows function pointers to be cast, wraps each
                                         // call of an incorrect type with a runtime correction.
                                         // This adds overhead and should not be used normally.
@@ -253,6 +264,11 @@ var GL_UNSAFE_OPTS = 1; // Enables some potentially-unsafe optimizations in GL e
 var FULL_ES2 = 0;   // Forces support for all GLES2 features, not just the WebGL-friendly subset.
 var USE_WEBGL2 = 0; // Enables WebGL2 native functions. This mode will also create a WebGL2
                     // context by default if no version is specified.
+var WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION = 0; // If true, emulates some WebGL 1 features on WebGL 2 contexts, meaning that applications that
+                                                  // use WebGL 1/GLES 2 can initialize a WebGL 2/GLES3 context, but still keep using WebGL1/GLES 2
+                                                  // functionality that no longer is supported in WebGL2/GLES3. Currently this emulates
+                                                  // GL_EXT_shader_texture_lod extension in GLSLES 1.00 shaders, support for unsized internal
+                                                  // texture formats, and the GL_HALF_FLOAT_OES != GL_HALF_FLOAT mixup.
 var FULL_ES3 = 0;   // Forces support for all GLES3 features, not just the WebGL2-friendly subset.
 var LEGACY_GL_EMULATION = 0; // Includes code to emulate various desktop GL features. Incomplete but useful
                              // in some cases, see http://kripken.github.io/emscripten-site/docs/porting/multimedia_and_graphics/OpenGL-support.html
@@ -571,10 +587,11 @@ var FINALIZE_ASM_JS = 1; // If 1, will finalize the final emitted code, includin
                          // that prevent later js optimizer passes from running, like
                          // converting +5 into 5.0 (the js optimizer sees 5.0 as just 5).
 
-var SWAPPABLE_ASM_MODULE = 0; // If 1, then all exports from the asm.js module will be accessed
-                              // indirectly, which allow the asm module to be swapped later.
-                              // Note: It is very important to build the two modules that
-                              // are to be swapped with the same optimizations and so forth,
+var SWAPPABLE_ASM_MODULE = 0; // If 1, then all exports from the asm/wasm module will be accessed
+                              // indirectly, which allow the module to be swapped later,
+                              // simply by replacing Module['asm'].
+                              // Note: It is very important that the replacement module be
+                              // built with the same optimizations and so forth,
                               // as we depend on them being a drop-in replacement for each
                               // other (same globals on the heap at the same locations, etc.)
 
@@ -667,15 +684,28 @@ var BINARYEN_METHOD = "native-wasm"; // How we should run WebAssembly code. By d
                                      // See binaryen's src/js/wasm.js-post.js for more details and options.
 var BINARYEN_SCRIPTS = ""; // An optional comma-separated list of script hooks to run after binaryen,
                            // in binaryen's /scripts dir.
-var BINARYEN_IMPRECISE = 0; // Whether to apply imprecise/unsafe binaryen optimizations. If enabled,
-                            // code will run faster, but some types of undefined behavior might
-                            // trap in wasm.
+var BINARYEN_IGNORE_IMPLICIT_TRAPS = 0; // Whether to ignore implicit traps when optimizing in binaryen.
+                                        // Implicit traps are the unlikely traps that happen in a load that
+                                        // is out of bounds, or div/rem of 0, etc. We can reorder them,
+                                        // but we can't ignore that they have side effects, so turning on
+                                        // this flag lets us do a little more to reduce code size.
+var BINARYEN_TRAP_MODE = "js"; // How we handle wasm operations that may trap, which includes integer
+                               // div/rem of 0 and float-to-int of values too large to fit in an int.
+                               //   js: do exactly what js does. this can be slower.
+                               //   clamp: avoid traps by clamping to a reasonable value. this can be
+                               //          faster than "js".
+                               //   allow: allow creating operations that can trap. this is the most
+                               //          compact, as we just emit a single wasm operation, with no
+                               //          guards to trapping values, and also often the fastest.
 var BINARYEN_PASSES = ""; // A comma-separated list of passes to run in the binaryen optimizer,
                           // for example, "dce,precompute,vacuum".
                           // When set, this overrides the default passes we would normally run.
 var BINARYEN_MEM_MAX = -1; // Set the maximum size of memory in the wasm module (in bytes).
                            // Without this, TOTAL_MEMORY is used (as it is used for the initial value),
                            // or if memory growth is enabled, no limit is set. This overrides both of those.
+var BINARYEN_ASYNC_COMPILATION = 1; // Whether to compile the wasm asynchronously, which is more
+                                    // efficient and does not block the main thread. This is currently
+                                    // required for all but the smallest modules to run in V8
 var BINARYEN_ROOT = ""; // Directory where we can find Binaryen. Will be automatically set for you,
                         // but you can set it to override if you are a Binaryen developer.
 
@@ -795,8 +825,17 @@ var BUNDLED_CD_DEBUG_FILE = ""; // Path to the CyberDWARF debug file passed to t
 
 var TEXTDECODER = 1; // Is enabled, use the JavaScript TextDecoder API for string marshalling.
                      // Enabled by default, set this to 0 to disable.
+
 var OFFSCREENCANVAS_SUPPORT = 0; // If set to 1, enables support for transferring canvases to pthreads and creating WebGL contexts in them,
                                  // as well as explicit swap control for GL contexts. This needs browser support for the OffscreenCanvas
                                  // specification.
 
-// Reserved: variables containing POINTER_MASKING.
+var FETCH_DEBUG = 0; // If nonzero, prints out debugging information in library_fetch.js
+
+var FETCH = 0; // If nonzero, enables emscripten_fetch API.
+
+var ASMFS = 0; // If set to 1, uses the multithreaded filesystem that is implemented within the asm.js module, using emscripten_fetch. Implies -s FETCH=1.
+
+var WASM_TEXT_FILE = ''; // name of the file containing wasm text, if relevant
+var WASM_BINARY_FILE = ''; // name of the file containing wasm binary, if relevant
+var ASMJS_CODE_FILE = ''; // name of the file containing asm.js, if relevant
