@@ -1194,35 +1194,66 @@ def print_random_test_statistics(num_tests):
            % (expected))
   atexit.register(show)
 
-def run_test(foo):
-  test, result = foo
-  print "RUNNING TEST", test
-  test(result)
+import enum
+class TestResultType(enum.Enum):
+  Success = 1
+  Failure = 2
+  Error = 3
 
-class MyTextTestResult(unittest.TextTestResult):
-  def startTest(self, test):
-    pass
-  def stopTest(self, test):
-    pass
+class MyTextTestResult(unittest.TestResult):
+  def __init__(self):
+    super(MyTextTestResult, self).__init__()
+    self.resultType = None
+    self.resultTest = None
 
   def addSuccess(self, test):
     print 'adding success'
-    # super(MyTextTestResult, self).addSuccess(test)
+    self.resultType = TestResultType.Success
+    self.resultTest = test
   def addFailure(self, test):
     print 'adding failure'
-    # super(MyTextTestResult, self).addFailure(test)
+    self.resultType = TestResultType.Failure
+    self.resultTest = test
   def addError(self, test):
     print 'adding error'
-    # super(MyTextTestResult, self).addError(test)
+    self.resultType = TestResultType.Error
+    self.resultTest = test
 
 class MyTestSuite(unittest.BaseTestSuite):
   def run(self, result):
     import multiprocessing
-    tests = [(test, result) for test in self]
-    pool = multiprocessing.Pool(4)
-    pool.map(run_test, tests)
-    # for test in tests:
-    #   run_test(test)
+    def worker(work_queue, result_queue):
+      for test in iter(work_queue.get, 'STOP'):
+        print 'RUNNING TEST: ', test
+        result = MyTextTestResult()
+        test(result)
+        result_queue.put(result)
+
+    num_workers = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+    print 'num cores: ', num_workers
+    processes = []
+    test_queue = multiprocessing.Queue()
+    result_queue = multiprocessing.Queue()
+    for test in self:
+      test_queue.put(test)
+    for w in xrange(num_workers):
+      p = multiprocessing.Process(target=worker, args=(test_queue, result_queue))
+      p.start()
+      processes.append(p)
+      test_queue.put('STOP')
+    for p in processes:
+      p.join()
+    result_queue.put('STOP')
+    for r in iter(result_queue.get, 'STOP'):
+      s = r.resultTest
+      result.startTest(s)
+      if r.resultType == TestResultType.Success:
+        result.addSuccess(s)
+      elif r.resultType == TestResultType.Failure:
+        result.addFailure(s)
+      elif r.resultType == TestResultType.Error:
+        result.addError(s)
+      result.stopTest(s)
     print 'done testing'
     return result
 
@@ -1242,7 +1273,8 @@ def load_test_suites(args, modules):
         pass
     if len(names_in_module) > 0:
       tests = loader.loadTestsFromNames(sorted(names_in_module), m)
-      suite = MyTestSuite()
+      module_name = m.__name__
+      suite = MyTestSuite() if module_name == 'test_core' else unittest.TestSuite()
       for subsuite in tests:
         for test in subsuite:
           suite.addTest(test)
@@ -1261,7 +1293,7 @@ def run_tests(suites, unmatched_test_names):
   print 'Test suites:'
   print [s[0] for s in suites]
   # Run the discovered tests
-  testRunner = unittest.TextTestRunner(verbosity=2, resultclass=MyTextTestResult)
+  testRunner = unittest.TextTestRunner(verbosity=2)
   for mod_name, suite in suites:
     print 'Running %s: (%s tests)' % (mod_name, suite.countTestCases())
     res = testRunner.run(suite)
