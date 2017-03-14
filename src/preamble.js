@@ -2033,6 +2033,15 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
 #endif
 
+function quitIfShell(status, message) {
+  if (ENVIRONMENT_IS_SHELL && typeof quit === 'function') {
+    if (message !== undefined) {
+      Module.printErr(message);
+    }
+    quit(status);
+  }
+}
+
 #if BINARYEN
 function integrateWasmJS(Module) {
   // wasm.js has several methods for creating the compiled code module here:
@@ -2217,7 +2226,9 @@ function integrateWasmJS(Module) {
       receiveInstance(output.instance);
       removeRunDependency('wasm-instantiate');
     }).catch(function(reason) {
-      Module['printErr']('failed to asynchronously prepare wasm:\n  ' + reason);
+      Module['printErr']('failed to asynchronously prepare wasm: ' + reason);
+      quitIfShell(1);
+      throw reason;
     });
     return {}; // no exports yet; we'll fill them in later
 #endif

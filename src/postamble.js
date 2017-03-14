@@ -176,6 +176,9 @@ Module['callMain'] = Module.callMain = function callMain(args) {
       return;
     } else {
       if (e && typeof e === 'object' && e.stack) Module.printErr('exception thrown: ' + [e, e.stack]);
+      // In a shell environment, callMain is ran from a promise context. Exceptions thrown from
+      // promises don't set the shell's exit code, so call quit here to force it to be non-zero.
+      quitIfShell(1, 'exception thrown: ' + e);
       throw e;
     }
   } finally {
@@ -274,8 +277,8 @@ function exit(status, implicit) {
 
   if (ENVIRONMENT_IS_NODE) {
     process['exit'](status);
-  } else if (ENVIRONMENT_IS_SHELL && typeof quit === 'function') {
-    quit(status);
+  } else {
+    quitIfShell(status);
   }
   // if we reach here, we must throw an exception to halt the current execution
   throw new ExitStatus(status);
