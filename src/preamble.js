@@ -2035,7 +2035,7 @@ var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
 
 function quitIfShell(status, message) {
   if (ENVIRONMENT_IS_SHELL && typeof quit === 'function') {
-    if (message !== undefined) {
+    if (message) {
       Module.printErr(message);
     }
     quit(status);

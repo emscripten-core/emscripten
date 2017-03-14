@@ -175,10 +175,11 @@ Module['callMain'] = Module.callMain = function callMain(args) {
 #endif
       return;
     } else {
-      if (e && typeof e === 'object' && e.stack) Module.printErr('exception thrown: ' + [e, e.stack]);
+      var hasStack = e && typeof e === 'object' && e.stack;
+      if (hasStack) Module.printErr('exception thrown: ' + [e, e.stack]);
       // In a shell environment, callMain is ran from a promise context. Exceptions thrown from
       // promises don't set the shell's exit code, so call quit here to force it to be non-zero.
-      quitIfShell(1, 'exception thrown: ' + e);
+      quitIfShell(1, hasStack ? '' : ('exception thrown: ' + e));
       throw e;
     }
   } finally {
