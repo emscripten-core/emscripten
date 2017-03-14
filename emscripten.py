@@ -1503,7 +1503,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
     elif line.startswith('  (func '):
       parts = line.split()
       func_name = parts[1][1:]
-      metadata['implementedFunctions'].append(func_name)
+      metadata['implementedFunctions'].append('_' + func_name)
     elif line.startswith('  (export '):
       parts = line.split()
       export_name = parts[1][1:-1]
