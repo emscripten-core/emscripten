@@ -109,14 +109,14 @@ mergeInto(LibraryManager.library, {
         throw new FS.ErrnoError(ERRNO_CODES.EPERM);
       },
       readdir: function(node) {
-         var entries = ['.', '..']
-          for (var key in node.contents) {
-            if (!node.contents.hasOwnProperty(key)) {
-              continue;
-            }
-            entries.push(key);
+        var entries = ['.', '..'];
+        for (var key in node.contents) {
+          if (!node.contents.hasOwnProperty(key)) {
+            continue;
           }
-          return entries;
+          entries.push(key);
+        }
+        return entries;
       },
       symlink: function(parent, newName, oldPath) {
         throw new FS.ErrnoError(ERRNO_CODES.EPERM);
