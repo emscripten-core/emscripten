@@ -46,12 +46,33 @@ function getSafeHeapType(bytes, isFloat) {
 var SAFE_HEAP_COUNTER = 0;
 #endif
 
+var safe_heap_warn_set = new Set();
+
 function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
 #if SAFE_HEAP_LOG
   Module.print('SAFE_HEAP store: ' + [dest, value, bytes, isFloat, SAFE_HEAP_COUNTER++]);
 #endif
   if (dest <= 0) abort('segmentation fault storing ' + bytes + ' bytes to address ' + dest);
-  if (dest % bytes !== 0) abort('alignment error storing to address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
+  if (dest % bytes !== 0)
+  {
+    var trace = jsStackTrace().split('\n');
+    var funcname;
+    for(i=2;trace[i];i++)
+    {
+      var func = trace[i].split('@')[0];
+      if( !(func.startsWith("SAFE_HEAP")) )
+      {
+        funcname = func;
+        break;
+      }
+    }
+    if( !safe_heap_warn_set.has(func) )
+    {
+      Module.print('alignment error: '+func)
+      Module.print('storing to address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
+      safe_heap_warn_set.add(func);
+    }
+  }
   if (staticSealed) {
     if (dest + bytes > HEAP32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when storing ' + bytes + ' bytes to address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
     assert(DYNAMICTOP_PTR);
@@ -64,10 +85,30 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
 function SAFE_HEAP_STORE_D(dest, value, bytes) {
   SAFE_HEAP_STORE(dest, value, bytes, true);
 }
-
 function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
   if (dest <= 0) abort('segmentation fault loading ' + bytes + ' bytes from address ' + dest);
-  if (dest % bytes !== 0) abort('alignment error loading from address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
+  if (dest % bytes !== 0)
+  {
+    var trace = jsStackTrace().split('\n');
+    var funcname;
+    for(i=2;trace[i];i++)
+    {
+      var func = trace[i].split('@')[0];
+      if( !(func.startsWith("SAFE_HEAP")) )
+      {
+        funcname = func;
+        break;
+      }
+    }
+    // warn on first alignment error
+    if( !safe_heap_warn_set.has(func) )
+    {
+      Module.print('alignment error: '+func)
+      Module.print('loading from address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
+
+      safe_heap_warn_set.add(func);
+    }
+  }
   if (staticSealed) {
     if (dest + bytes > HEAP32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when loading ' + bytes + ' bytes from address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
     assert(DYNAMICTOP_PTR);
