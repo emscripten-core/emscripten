@@ -119,7 +119,7 @@ var LibraryEmbind = {
         // We are exposing a function with the same name as an existing function. Create an overload table and a function selector
         // that routes between the two.
         ensureOverloadTable(Module, name, name);
-        if (Module.hasOwnProperty(numArguments)) {
+        if (Module[name].overloadTable.hasOwnProperty(numArguments)) {
             throwBindingError("Cannot register multiple overloads of a function with the same number of arguments (" + numArguments + ")!");
         }
         // Add the new function into the overload table.
@@ -128,7 +128,7 @@ var LibraryEmbind = {
     else {
         Module[name] = value;
         if (undefined !== numArguments) {
-            Module[name].numArguments = numArguments;
+            Module[name].argCount = numArguments;
         }
     }
   },
@@ -144,7 +144,9 @@ var LibraryEmbind = {
     }
     else {
         Module[name] = value;
-        Module[name].argCount = numArguments;
+        if (undefined !== numArguments) {
+            Module[name].argCount = numArguments;
+        }
     }
   },
 
@@ -2077,6 +2079,8 @@ var LibraryEmbind = {
             var invokerArgsArray = [argTypes[0] /* return value */, null /* no class 'this'*/].concat(argTypes.slice(1) /* actual params */);
             var func = craftInvokerFunction(humanName, invokerArgsArray, null /* no class 'this'*/, rawInvoker, fn);
             if (undefined === proto[methodName].overloadTable) {
+                // Set argCount in case an overload is registered later
+                func.argCount = argCount - 1;
                 proto[methodName] = func;
             } else {
                 proto[methodName].overloadTable[argCount-1] = func;
