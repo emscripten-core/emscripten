@@ -271,7 +271,9 @@ namespace emscripten {
     struct allow_raw_pointer : public allow_raw_pointers {
     };
 
-    struct references_as_pointers {
+    struct invoker_policy {};
+
+    struct references_as_pointers : invoker_policy {
         template<typename InputType, int Index>
         struct Transform {
             typedef typename std::conditional<
@@ -330,13 +332,13 @@ namespace emscripten {
     ////////////////////////////////////////////////////////////////////////////////
 
     namespace internal {
-        template<typename ReturnType, typename... Args>
+        template<typename ReturnType, typename ReturnTypeToBind, typename... Args>
         struct Invoker {
-            static typename internal::BindingType<ReturnType>::WireType invoke(
+            static typename internal::BindingType<ReturnTypeToBind>::WireType invoke(
                 ReturnType (*fn)(Args...),
                 typename internal::BindingType<Args>::WireType... args
             ) {
-                return internal::BindingType<ReturnType>::toWireType(
+                return internal::BindingType<ReturnTypeToBind>::toWireType(
                     fn(
                         internal::BindingType<Args>::fromWireType(args)...
                     )
@@ -345,7 +347,7 @@ namespace emscripten {
         };
 
         template<typename... Args>
-        struct Invoker<void, Args...> {
+        struct Invoker<void, void, Args...> {
             static void invoke(
                 void (*fn)(Args...),
                 typename internal::BindingType<Args>::WireType... args
@@ -426,8 +428,15 @@ namespace emscripten {
     template<typename ReturnType, typename... Args, typename... Policies>
     void function(const char* name, ReturnType (*fn)(Args...), Policies...) {
         using namespace internal;
-        typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-        auto invoker = &Invoker<ReturnType, Args...>::invoke;
+        using PoliciedTypes = typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...>;
+        using InvokerPolicies = typename FilterSubTypes<invoker_policy, Policies...>::type;
+        using PoliciedInvokerTypes = typename Apply<WithPolicies,InvokerPolicies>::type::template ArgTypeList<ReturnType>::type;
+        using InvokerTypesWithCleanReturn = typename Cons<ReturnType, typename Cons<PoliciedInvokerTypes, TypeList<Args...>>::type>::type;
+        using PoliciedInvoker = typename Apply<Invoker, InvokerTypesWithCleanReturn>::type;
+        PoliciedTypes args;
+        InvokerPolicies ivok;
+        std::cout << typeid(ivok).name() << std::endl;
+        auto invoker = &PoliciedInvoker::invoke;
         _embind_register_function(
             name,
             args.getCount(),
@@ -1194,7 +1203,7 @@ namespace emscripten {
 
             // TODO: allows all raw pointers... policies need a rethink
             typename WithPolicies<allow_raw_pointers, Policies...>::template ArgTypeList<ReturnType, Args...> args;
-            auto invoke = &Invoker<ReturnType, Args...>::invoke;
+            auto invoke = &Invoker<ReturnType, ReturnType, Args...>::invoke;
             _embind_register_class_constructor(
                 TypeID<ClassType>::get(),
                 args.getCount(),

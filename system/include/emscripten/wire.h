@@ -151,6 +151,11 @@ namespace emscripten {
             typedef TypeList<First, Rest...> type;
         };
 
+        template<typename... First, typename... Rest>
+        struct Cons<TypeList<First...>, TypeList<Rest...>> {
+            typedef TypeList<First..., Rest...> type;
+        };
+
         // Apply :: T, TypeList<types...> -> T<types...>
 
         template<template<typename...> class Output, typename TypeList>
@@ -187,6 +192,22 @@ namespace emscripten {
             >::type type;
         };
 
+        template<typename TypeToFilter, typename... Types>
+        struct FilterSubTypes;
+
+        template<typename TypeToFilter>
+        struct FilterSubTypes<TypeToFilter> {
+            typedef TypeList<> type;
+        };
+
+        template<typename TypeToFilter, typename Type>
+        struct FilterSubTypes<TypeToFilter, Type> {
+            typedef typename std::conditional<
+                std::is_base_of<TypeToFilter, Type>::value,
+                TypeList<Type>,
+                TypeList<>
+            >::type type;
+        };
 
         template<typename ArgList>
         struct ArgArrayGetter;
@@ -214,9 +235,11 @@ namespace emscripten {
                     return sizeof...(Args);
                 }
 
+                typedef typename MapWithIndex<TypeList, MapWithPolicies, Args...>::type type;
+
                 const TYPEID* getTypes() const {
                     return ArgArrayGetter<
-                        typename MapWithIndex<TypeList, MapWithPolicies, Args...>::type
+                        type
                     >::get();
                 }
             };
@@ -341,7 +364,7 @@ namespace emscripten {
             static WireType toWireType(const T& p) {
                 return &p;
             }
-            static T& fromWireType(WireType wt) {
+            static const T& fromWireType(WireType wt) {
                 return *wt;
             }
         };
