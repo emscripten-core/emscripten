@@ -1257,7 +1257,12 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.textures, texture, 'glBindTexture', 'texture');
 #endif
-    GLctx.bindTexture(target, texture ? GL.textures[texture] : null);
+    if( texture >= 0 )
+    {
+    if( GL.textures[texture] == undefined )
+        GL.textures[texture] = GLctx.createTexture();
+    GLctx.bindTexture(target, GL.textures[texture] );
+    }
   },
 
   glGetTexParameterfv__sig: 'viii',
