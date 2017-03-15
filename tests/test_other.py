@@ -953,8 +953,8 @@ int main() {
     for test_opts, expected_ranges in [
       ([], {
          100: (150, 500),
-         250: (150, 600),
-         500: (150, 700),
+         250: (150, 800),
+         500: (150, 900),
         1000: (200, 1000),
         2000: (250, 2000),
         5000: (500, 5000),
@@ -6495,7 +6495,7 @@ int main() {
     if (!buffers[2]) allocateSplitChunk(2); // we will slice into this
     TOP:
     for (var i = 0; i < SPLIT_MEMORY*3; i++) {
-      HEAPU8.subarray(i);
+      HEA<<<<PU8.subarray(i);
       if ((i&3) === 0) HEAPU32.subarray(i >> 2);
       for (var j = 1; j < SPLIT_MEMORY*3; j++) {
         //printErr([i, j]);

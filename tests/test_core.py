@@ -5774,7 +5774,8 @@ def process(filename):
       #include <stdio.h>
       extern "C" {
       __attribute__((noinline)) int unused(int x) {
-        return x;
+        volatile int y = x;
+        return y;
       }
       }
       int main(int argc, char **argv) {
