@@ -36,7 +36,7 @@ namespace emscripten {
         // We don't need the full std::type_info implementation.  We
         // just need a unique identifier per type and polymorphic type
         // identification.
-        
+
         template<typename T>
         struct CanonicalizedID {
             static char c;
@@ -100,7 +100,18 @@ namespace emscripten {
                 return LightTypeID<T*>::get();
             }
         };
-        
+
+        template<typename T>
+        struct RefAsPointer{
+        };
+
+        template<typename T>
+        struct TypeID<RefAsPointer<T>> {
+            static constexpr TYPEID get() {
+                return LightTypeID<T*>::get();
+            }
+        };
+
         // ExecutePolicies<>
 
         template<typename... Policies>
@@ -113,7 +124,7 @@ namespace emscripten {
                 typedef T type;
             };
         };
-        
+
         template<typename Policy, typename... Remaining>
         struct ExecutePolicies<Policy, Remaining...> {
             template<typename T, int Index>
@@ -322,6 +333,22 @@ namespace emscripten {
             static T* fromWireType(WireType wt) {
                 return wt;
             }
+        };
+
+        template<typename T>
+        struct BindingType<RefAsPointer<T>> {
+            typedef const T* WireType;
+            static WireType toWireType(const T& p) {
+                return &p;
+            }
+            static T& fromWireType(WireType wt) {
+                return *wt;
+            }
+        };
+
+        template<typename T>
+        struct BindingType<AllowedRawPointer<T>> : BindingType<T*> {
+
         };
 
         template<typename T>

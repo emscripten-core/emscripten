@@ -271,6 +271,17 @@ namespace emscripten {
     struct allow_raw_pointer : public allow_raw_pointers {
     };
 
+    struct references_as_pointers {
+        template<typename InputType, int Index>
+        struct Transform {
+            typedef typename std::conditional<
+                std::is_reference<InputType>::value,
+                internal::RefAsPointer<typename std::remove_reference<InputType>::type>,
+                InputType
+            >::type type;
+        };
+    };
+
     ////////////////////////////////////////////////////////////////////////////////
     // select_overload and select_const
     ////////////////////////////////////////////////////////////////////////////////
