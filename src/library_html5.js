@@ -264,6 +264,7 @@ var LibraryJSEvents = {
       }
       // wheel and mousewheel events contain wrong screenX/screenY on chrome/opera
       // https://github.com/kripken/emscripten/pull/4997
+      // https://bugs.chromium.org/p/chromium/issues/detail?id=699956
       if (e.type !== 'wheel' && e.type !== 'mousewheel') {
         JSEvents.previousScreenX = e.screenX;
         JSEvents.previousScreenY = e.screenY;
