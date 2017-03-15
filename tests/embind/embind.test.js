@@ -478,6 +478,17 @@ module({
             assert.equal(3, cm.const_ref_adder(1, 2));
         });
 
+        test("get instance pointer as value", function() {
+            var v = cm.emval_test_instance_pointer();
+            assert.instanceof(v, cm.DummyForPointer);
+        });
+
+        test("cast value to instance pointer using as<T*>", function() {
+            var v = cm.emval_test_instance_pointer();
+            var p_value = cm.emval_test_value_from_instance_pointer(v);
+            assert.equal(42, p_value);
+        });
+
         test("passthrough", function() {
             var a = {foo: 'bar'};
             var b = cm.emval_test_passthrough(a);

@@ -1698,6 +1698,12 @@ Functions
 	
 	.. note:: A gamepad does not show up as connected until a button on it is pressed.
 
+	.. note:: Gamepad API uses an array of gamepad state objects to return the state of each device. The devices are identified via the index they are present in in
+	this array. Because of that, if one first connects gamepad A, then gamepad B, and then disconnects gamepad A, the gamepad B shall not take the place of gamepad A,
+	so in this scenario, this function will still keep returning two for the count of connected gamepads, even though gamepad A is no longer present. To find the actual
+	number of connected gamepads, listen for the gamepadconnected and gamepaddisconnected events.
+	Consider the return value of this function as the largest value (-1) that can be passed to the function emscripten_get_gamepad_status().
+
 	:returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
 	:rtype: int
 

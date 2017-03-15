@@ -132,6 +132,7 @@ var Runtime = {
   // word is placed in tempRet0. This provides an accessor for that value.
   setTempRet0: function(value) {
     tempRet0 = value;
+    return value;
   },
   getTempRet0: function() {
     return tempRet0;
@@ -565,6 +566,7 @@ if (MAIN_MODULE || SIDE_MODULE) {
   };
   Runtime.setTempRet0 = function(x) {
     Runtime.tempRet0 = x;
+    return x;
   };
 }
 

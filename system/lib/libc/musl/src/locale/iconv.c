@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <stdint.h>
+#include "locale_impl.h"
 
 #define UTF_32BE    0300
 #define UTF_16LE    0301
@@ -23,19 +24,13 @@
 #define BIG5        0340
 #define EUC_KR      0350
 
-/* FIXME: these are not implemented yet
- * EUC:   A1-FE A1-FE
- * GBK:   81-FE 40-7E,80-FE
- * Big5:  A1-FE 40-7E,A1-FE
- */
-
 /* Definitions of charmaps. Each charmap consists of:
  * 1. Empty-string-terminated list of null-terminated aliases.
  * 2. Special type code or number of elided entries.
  * 3. Character table (size determined by field 2). */
 
 static const unsigned char charmaps[] =
-"utf8\0\0\310"
+"utf8\0char\0\0\310"
 "wchart\0\0\306"
 "ucs2\0ucs2be\0\0\304"
 "ucs2le\0\0\305"
@@ -90,6 +85,7 @@ static int fuzzycmp(const unsigned char *a, const unsigned char *b)
 static size_t find_charmap(const void *name)
 {
 	const unsigned char *s;
+	if (!*(char *)name) name=charmaps; /* "utf8" */
 	for (s=charmaps; *s; ) {
 		if (!fuzzycmp(name, s)) {
 			for (; *s; s+=strlen((void *)s)+1);
@@ -170,8 +166,11 @@ size_t iconv(iconv_t cd0, char **restrict in, size_t *restrict inb, char **restr
 	int err;
 	unsigned char type = map[-1];
 	unsigned char totype = tomap[-1];
+	locale_t *ploc = &CURRENT_LOCALE, loc = *ploc;
 
 	if (!in || !*in || !*inb) return 0;
+
+	*ploc = UTF8_LOCALE;
 
 	for (; *inb; *in+=l, *inb-=l) {
 		c = *(unsigned char *)*in;
@@ -436,6 +435,7 @@ size_t iconv(iconv_t cd0, char **restrict in, size_t *restrict inb, char **restr
 			break;
 		}
 	}
+	*ploc = loc;
 	return x;
 ilseq:
 	err = EILSEQ;
@@ -450,5 +450,6 @@ starved:
 	x = -1;
 end:
 	errno = err;
+	*ploc = loc;
 	return x;
 }

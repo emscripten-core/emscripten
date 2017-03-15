@@ -599,7 +599,7 @@ function _emscripten_asm_const_%s(%s) {
     if metadata['simdUint32x4']:
       simdinttypes += ['Uint32x4']
       simdintfloatfuncs += ['fromUint32x4Bits']
-    if metadata['simdInt32x4']:
+    if metadata['simdInt32x4'] or settings['SIMD']: # Always import Int32x4 when building with -s SIMD=1, since memcpy is SIMD optimized.
       simdinttypes += ['Int32x4']
       simdintfloatfuncs += ['fromInt32x4Bits']
     if metadata['simdFloat32x4']:
@@ -626,7 +626,7 @@ function _emscripten_asm_const_%s(%s) {
     fundamentals = ['Math']
     fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
     fundamentals += ['NaN', 'Infinity']
-    if metadata['simd']:
+    if metadata['simd'] or settings['SIMD']: # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
         fundamentals += ['SIMD']
     if settings['ALLOW_MEMORY_GROWTH']: fundamentals.append('byteLength')
     math_envs = []
@@ -821,8 +821,17 @@ function ftCall_%s(%s) {%s
     exported_implemented_functions = list(exported_implemented_functions) + metadata['initializers']
     if not settings['ONLY_MY_CODE']:
       exported_implemented_functions.append('runPostSets')
-    if settings['ALLOW_MEMORY_GROWTH']:
-      exported_implemented_functions.append('_emscripten_replace_memory')
+      if settings['ALLOW_MEMORY_GROWTH']:
+        exported_implemented_functions.append('_emscripten_replace_memory')
+      if not settings['SIDE_MODULE']:
+        exported_implemented_functions += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
+      if settings['SAFE_HEAP']:
+        exported_implemented_functions += ['setDynamicTop']
+      if not settings['RELOCATABLE']:
+        exported_implemented_functions += ['setTempRet0', 'getTempRet0']
+      if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
+        exported_implemented_functions += ['setThrew']
+
     all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables
     exported_implemented_functions = list(set(exported_implemented_functions))
     if settings['EMULATED_FUNCTION_POINTERS']:
@@ -860,7 +869,7 @@ function ftCall_%s(%s) {%s
       return g if not g.startswith('Math_') else g.split('_')[1]
     asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global' + access_quote(g) + ';\n' for g in maths])
     asm_global_funcs += ''.join(['  var ' + g + '=env' + access_quote(math_fix(g)) + ';\n' for g in basic_funcs + global_funcs])
-    if metadata['simd']:
+    if metadata['simd'] or settings['SIMD']: # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
       def string_contains_any(s, str_list):
         for sub in str_list:
           if sub in s:
@@ -1313,20 +1322,20 @@ function _emscripten_replace_memory(newBuffer) {
 
     if not settings.get('SIDE_MODULE'):
       funcs_js.append('''
-Runtime.stackAlloc = asm['stackAlloc'];
-Runtime.stackSave = asm['stackSave'];
-Runtime.stackRestore = asm['stackRestore'];
-Runtime.establishStackSpace = asm['establishStackSpace'];
+Runtime.stackAlloc = Module['stackAlloc'];
+Runtime.stackSave = Module['stackSave'];
+Runtime.stackRestore = Module['stackRestore'];
+Runtime.establishStackSpace = Module['establishStackSpace'];
 ''')
       if settings['SAFE_HEAP']:
         funcs_js.append('''
-Runtime.setDynamicTop = asm['setDynamicTop'];
+Runtime.setDynamicTop = Module['setDynamicTop'];
 ''')
 
     if not settings['RELOCATABLE']:
       funcs_js.append('''
-Runtime.setTempRet0 = asm['setTempRet0'];
-Runtime.getTempRet0 = asm['getTempRet0'];
+Runtime.setTempRet0 = Module['setTempRet0'];
+Runtime.getTempRet0 = Module['getTempRet0'];
 ''')
 
     # Set function table masks
@@ -1405,7 +1414,8 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
       shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
 
     assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
-    wasm = outfile.name[:-3] + '.wast'
+    basename = outfile.name[:-3]
+    wast = basename + '.wast'
     s2wasm_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 's2wasm'), temp_s]
     s2wasm_args += ['--emscripten-glue']
     s2wasm_args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
@@ -1418,13 +1428,18 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
       logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
       t = time.time()
       #s2wasm_args += ['--debug']
-    shared.check_call(s2wasm_args, stdout=open(wasm, 'w'))
+    shared.check_call(s2wasm_args, stdout=open(wast, 'w'))
+    # Also convert wasm text to binary
+    wasm_as_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-as'),
+                    wast, '-o', basename + '.wasm']
+    logging.debug('  emscript: binaryen wasm-as: ' + ' '.join(wasm_as_args))
+    shared.check_call(wasm_as_args)
 
   if DEBUG:
     logging.debug('  emscript: binaryen s2wasm took %s seconds' % (time.time() - t))
     t = time.time()
     import shutil
-    shutil.copyfile(wasm, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-s2wasm-output.wast'))
+    shutil.copyfile(wast, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-s2wasm-output.wast'))
 
   # js compiler
 
@@ -1432,7 +1447,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
 
   # Integrate info from backend
 
-  output = open(wasm).read()
+  output = open(wast).read()
   parts = output.split('\n;; METADATA:')
   assert len(parts) == 2
   metadata_raw = parts[1]
@@ -1468,8 +1483,9 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   metadata['initializers'] = [asmjs_mangle(i) for i in metadata['initializers']]
 
   # TODO: emit it from s2wasm; for now, we parse it right here
-  for line in open(wasm).readlines():
-    if line.startswith('  (import '):
+  for line in open(wast).readlines():
+    line = line.strip()
+    if line.startswith('(import '):
       parts = line.split()
       # Don't include Invoke wrapper names (for asm.js-style exception handling)
       # in metadata[declares], the invoke wrappers will be generated in
@@ -1485,11 +1501,11 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
         metadata['externs'].append('_' + import_name)
       else:
         assert False, 'Unhandled import type "%s"' % import_type
-    elif line.startswith('  (func '):
+    elif line.startswith('(func '):
       parts = line.split()
       func_name = parts[1][1:]
-      metadata['implementedFunctions'].append(func_name)
-    elif line.startswith('  (export '):
+      metadata['implementedFunctions'].append('_' + func_name)
+    elif line.startswith('(export '):
       parts = line.split()
       export_name = parts[1][1:-1]
       export_type = parts[2][1:]
@@ -1635,7 +1651,7 @@ return ASM_CONSTS[code](%s);
 
   # Asm.js-style exception handling: invoke wrapper generation
   invoke_wrappers = ''
-  with open(wasm) as f:
+  with open(wast) as f:
     for line in f:
       if line.startswith('  (import '):
         parts = line.split()

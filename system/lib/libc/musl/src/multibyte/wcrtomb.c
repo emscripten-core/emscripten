@@ -1,16 +1,19 @@
-/* 
- * This code was written by Rich Felker in 2010; no copyright is claimed.
- * This code is in the public domain. Attribution is appreciated but
- * unnecessary.
- */
-
+#include <stdlib.h>
 #include <wchar.h>
 #include <errno.h>
+#include "internal.h"
 
 size_t wcrtomb(char *restrict s, wchar_t wc, mbstate_t *restrict st)
 {
 	if (!s) return 1;
 	if ((unsigned)wc < 0x80) {
+		*s = wc;
+		return 1;
+	} else if (MB_CUR_MAX == 1) {
+		if (!IS_CODEUNIT(wc)) {
+			errno = EILSEQ;
+			return -1;
+		}
 		*s = wc;
 		return 1;
 	} else if ((unsigned)wc < 0x800) {

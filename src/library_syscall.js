@@ -332,6 +332,12 @@ var SyscallsLibrary = {
         var argp = SYSCALLS.get();
         return FS.ioctl(stream, op, argp);
       }
+      case {{{ cDefine('TIOCGWINSZ') }}}: {
+        // TODO: in theory we should write to the winsize struct that gets
+        // passed in, but for now musl doesn't read anything on it
+        if (!stream.tty) return -ERRNO_CODES.ENOTTY;
+        return 0;
+      }
       default: abort('bad ioctl syscall ' + op);
     }
 #endif // NO_FILESYSTEM
@@ -833,6 +839,12 @@ var SyscallsLibrary = {
     }
     return nonzero;
   },
+  __syscall178: function(which, varargs) { // rt_sigqueueinfo
+#if SYSCALL_DEBUG
+    Module.printErr('warning: ignoring SYS_rt_sigqueueinfo');
+#endif
+    return 0;
+  },
   __syscall180: function(which, varargs) { // pread64
     var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get(), zero = SYSCALLS.getZero(), offset = SYSCALLS.get64();
     return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count, offset);
@@ -996,6 +1008,12 @@ var SyscallsLibrary = {
   },
   __syscall221__deps: ['__setErrNo'],
   __syscall221: function(which, varargs) { // fcntl64
+#if NO_FILESYSTEM
+#if SYSCALL_DEBUG
+    Module.printErr('no-op in fcntl64 syscall due to NO_FILESYSTEM');
+#endif
+    return 0;
+#else
     var stream = SYSCALLS.getStreamFromFD(), cmd = SYSCALLS.get();
     switch (cmd) {
       case {{{ cDefine('F_DUPFD') }}}: {
@@ -1044,6 +1062,7 @@ var SyscallsLibrary = {
         return -ERRNO_CODES.EINVAL;
       }
     }
+#endif // NO_FILESYSTEM
   },
   __syscall265: function(which, varargs) { // clock_nanosleep
 #if SYSCALL_DEBUG
@@ -1231,6 +1250,12 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get(), offset = SYSCALLS.get();
     return SYSCALLS.doWritev(stream, iov, iovcnt, offset);
   },
+  __syscall337: function(which, varargs) { // recvmmsg
+#if SYSCALL_DEBUG
+    Module.printErr('warning: ignoring SYS_recvmmsg');
+#endif
+    return 0;
+  },
   __syscall340: function(which, varargs) { // prlimit64
     var pid = SYSCALLS.get(), resource = SYSCALLS.get(), new_limit = SYSCALLS.get(), old_limit = SYSCALLS.get();
     if (old_limit) { // just report no limits
@@ -1239,6 +1264,12 @@ var SyscallsLibrary = {
       {{{ makeSetValue('old_limit', C_STRUCTS.rlimit.rlim_max, '-1', 'i32') }}};  // RLIM_INFINITY
       {{{ makeSetValue('old_limit', C_STRUCTS.rlimit.rlim_max + 4, '-1', 'i32') }}};  // RLIM_INFINITY
     }
+    return 0;
+  },
+  __syscall345: function(which, varargs) { // sendmmsg
+#if SYSCALL_DEBUG
+    Module.printErr('warning: ignoring SYS_sendmmsg');
+#endif
     return 0;
   },
 };
@@ -1577,6 +1608,7 @@ if (SYSCALL_DEBUG) {
     SYS_inotify_init1: 332,
     SYS_preadv: 333,
     SYS_pwritev: 334,
+    SYS_recvmmsg: 337,
     SYS_prlimit64: 340,
     SYS_name_to_handle_at: 341,
     SYS_open_by_handle_at: 342,

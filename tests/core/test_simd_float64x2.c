@@ -5,9 +5,21 @@
 #include <math.h>
 #include <assert.h>
 
+void printFloat(double n) {
+    if (isnan(n)) {
+        printf("nan");
+    } else {
+        printf("%f", n);
+    }
+}
+
 void dump(const char *name, float64x2 vec)
 {
-    printf("%s: %f %f\n", name, emscripten_float64x2_extractLane(vec, 0), emscripten_float64x2_extractLane(vec, 1));
+    printf("%s: ", name);
+    printFloat(emscripten_float64x2_extractLane(vec, 0));
+    printf(" ");
+    printFloat(emscripten_float64x2_extractLane(vec, 1));
+    printf("\n");
 }
 #define DUMP(V) dump(#V, (V))
 

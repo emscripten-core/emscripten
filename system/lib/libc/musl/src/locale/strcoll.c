@@ -1,5 +1,6 @@
 #include <string.h>
 #include <locale.h>
+#include "locale_impl.h"
 #include "libc.h"
 
 int __strcoll_l(const char *l, const char *r, locale_t loc)
@@ -9,7 +10,7 @@ int __strcoll_l(const char *l, const char *r, locale_t loc)
 
 int strcoll(const char *l, const char *r)
 {
-	return __strcoll_l(l, r, 0);
+	return __strcoll_l(l, r, CURRENT_LOCALE);
 }
 
 weak_alias(__strcoll_l, strcoll_l);

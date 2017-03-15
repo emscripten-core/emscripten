@@ -7,6 +7,9 @@ void test(int result, const char* comment, const char* parsed = "") {
   printf("%s: %d\n", comment, result);
   if (!result) {
     printf("\nERROR: %s (\"%s\")\n", comment, parsed);
+#ifdef REPORT_RESULT
+    abort();
+#endif
   }
 }
 
@@ -171,4 +174,8 @@ int main() {
   size = strftime(s, 10, "%I %M %p", &tm);
   test(!cmp(s, "12 01 PM"), "strftime test #35", s);
 
+#ifdef REPORT_RESULT
+  int result = 0;
+  REPORT_RESULT();
+#endif
 }

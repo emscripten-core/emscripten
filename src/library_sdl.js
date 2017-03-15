@@ -850,7 +850,7 @@ var LibrarySDL = {
       if (!SDL.eventHandler) return;
 
       while (SDL.pollEvent(SDL.eventHandlerTemp)) {
-        Runtime.dynCall('iii', SDL.eventHandler, [SDL.eventHandlerContext, SDL.eventHandlerTemp]);
+        Module['dynCall_iii'](SDL.eventHandler, SDL.eventHandlerContext, SDL.eventHandlerTemp);
       }
     },
 
@@ -1101,6 +1101,10 @@ var LibrarySDL = {
         audio.webAudioNode['onended'] = function() { audio['onended'](); } // For <media> element compatibility, route the onended signal to the instance.
 
         audio.webAudioPannerNode = SDL.audioContext['createPanner']();
+        // avoid Chrome bug
+        // If posz = 0, the sound will come from only the right.
+        // By posz = -0.5 (slightly ahead), the sound will come from right and left correctly.
+        audio.webAudioPannerNode["setPosition"](0, 0, -.5);
         audio.webAudioPannerNode['panningModel'] = 'equalpower';
 
         // Add an intermediate gain node to control volume.
@@ -1213,7 +1217,7 @@ var LibrarySDL = {
       if (typeof button === 'object') {
         // Current gamepad API editor's draft (Firefox Nightly)
         // https://dvcs.w3.org/hg/gamepad/raw-file/default/gamepad.html#idl-def-GamepadButton
-        return button.pressed;
+        return button['pressed'];
       } else {
         // Current gamepad API working draft (Firefox / Chrome Stable)
         // http://www.w3.org/TR/2012/WD-gamepad-20120529/#gamepad-interface
@@ -1225,6 +1229,8 @@ var LibrarySDL = {
       for (var joystick in SDL.lastJoystickState) {
         var state = SDL.getGamepad(joystick - 1);
         var prevState = SDL.lastJoystickState[joystick];
+        // If joystick was removed, state returns null.
+        if (typeof state === 'undefined') return;
         // Check only if the timestamp has differed.
         // NOTE: Timestamp is not available in Firefox.
         if (typeof state.timestamp !== 'number' || state.timestamp !== prevState.timestamp) {
@@ -2338,7 +2344,7 @@ var LibrarySDL = {
           if (secsUntilNextPlayStart >= SDL.audio.bufferingDelay + SDL.audio.bufferDurationSecs*SDL.audio.numSimultaneouslyQueuedBuffers) return;
 
           // Ask SDL audio data from the user code.
-          Runtime.dynCall('viii', SDL.audio.callback, [SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize]);
+          Module['dynCall_viii'](SDL.audio.callback, SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize);
           // And queue it to be played after the currently playing audio stream.
           SDL.audio.pushAudio(SDL.audio.buffer, SDL.audio.bufferSize);
         }
@@ -2875,7 +2881,7 @@ var LibrarySDL = {
     }
     SDL.music.audio = null;
     if (SDL.hookMusicFinished) {
-      Runtime.dynCall('v', SDL.hookMusicFinished);
+      Module['dynCall_v'](SDL.hookMusicFinished);
     }
     return 0;
   },
@@ -3412,7 +3418,7 @@ var LibrarySDL = {
 
   SDL_AddTimer: function(interval, callback, param) {
     return window.setTimeout(function() {
-      Runtime.dynCall('iii', callback, [interval, param]);
+      Module['dynCall_iii'](callback, interval, param);
     }, interval);
   },
   SDL_RemoveTimer: function(id) {
