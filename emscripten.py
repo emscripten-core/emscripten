@@ -144,6 +144,8 @@ def get_and_parse_backend(infile, settings, temp_files, DEBUG):
           backend_args += ['-emscripten-only-wasm']
       if settings['CYBERDWARF']:
         backend_args += ['-enable-cyberdwarf']
+      if settings['UNALIGNED_ACCESS_FUNCTION_LIST']:
+        backend_args += ['-emscripten-unaligned-functions-list-file='+settings['UNALIGNED_ACCESS_FUNCTION_LIST']]
 
       if DEBUG:
         logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))

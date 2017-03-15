@@ -798,5 +798,5 @@ var TEXTDECODER = 1; // Is enabled, use the JavaScript TextDecoder API for strin
 var OFFSCREENCANVAS_SUPPORT = 0; // If set to 1, enables support for transferring canvases to pthreads and creating WebGL contexts in them,
                                  // as well as explicit swap control for GL contexts. This needs browser support for the OffscreenCanvas
                                  // specification.
-
+var UNALIGNED_ACCESS_FUNCTION_LIST = "";
 // Reserved: variables containing POINTER_MASKING.
