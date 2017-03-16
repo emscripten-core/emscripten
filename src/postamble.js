@@ -180,8 +180,6 @@ Module['callMain'] = Module.callMain = function callMain(args) {
         toLog = [e, e.stack];
       }
       Module.printErr('exception thrown: ' + toLog);
-      // In a shell environment, callMain is ran from a promise context. Exceptions thrown from
-      // promises don't set the shell's exit code, so call quit here to force it to be non-zero.
       Module['quit'](1, e);
     }
   } finally {
