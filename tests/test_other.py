@@ -2637,6 +2637,37 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.assertContained(reference_error_text,
                          run_js ('index.js', engine=NODE_JS, stderr=STDOUT, assert_returncode=None))
 
+  def test_extra_exported_methods(self):
+    # Test with node.js that the EXTRA_EXPORTED_RUNTIME_METHODS setting is considered by libraries
+    if NODE_JS not in JS_ENGINES:
+      return
+
+    open(os.path.join(self.get_dir(), 'count.c'), 'w').write('''
+      #include <string.h>
+      int count(const char *str) {
+          return (int)strlen(str);
+      }
+    ''')
+
+    open(os.path.join(self.get_dir(), 'index.js'), 'w').write('''
+      const count = require('./count.js');
+
+      console.log(count.FS_writeFile);
+    ''')
+
+    reference_error_text = 'undefined';
+
+    subprocess.check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'count.c'), '-s', 'FORCE_FILESYSTEM=1', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["FS_writeFile"]','-o', 'count.js'])
+
+    # Check that the Module.FS_writeFile exists
+    self.assertNotContained(reference_error_text,
+                            run_js ('index.js', engine=NODE_JS, stderr=STDOUT, assert_returncode=None))
+
+    subprocess.check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'count.c'), '-s', 'FORCE_FILESYSTEM=1', '-o', 'count.js'])
+
+    # Check that the Module.FS_writeFile is not exported
+    self.assertContained(reference_error_text,
+                         run_js ('index.js', engine=NODE_JS, stderr=STDOUT, assert_returncode=None))
 
   def test_fs_stream_proto(self):
     open('src.cpp', 'wb').write(r'''
