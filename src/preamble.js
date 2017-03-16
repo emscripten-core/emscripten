@@ -2033,9 +2033,11 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
 #endif
 
-function quitIfShell(status) {
+Module['quit'] = function(status, toThrow) {
   if (ENVIRONMENT_IS_SHELL && typeof quit === 'function') {
     quit(status);
+  } else {
+    throw toThrow;
   }
 }
 
@@ -2224,8 +2226,7 @@ function integrateWasmJS(Module) {
       removeRunDependency('wasm-instantiate');
     }).catch(function(reason) {
       Module['printErr']('failed to asynchronously prepare wasm: ' + reason);
-      quitIfShell(1);
-      throw reason;
+      Module['quit'](1, reason);
     });
     return {}; // no exports yet; we'll fill them in later
 #endif

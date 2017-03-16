@@ -182,8 +182,7 @@ Module['callMain'] = Module.callMain = function callMain(args) {
       Module.printErr('exception thrown: ' + toLog);
       // In a shell environment, callMain is ran from a promise context. Exceptions thrown from
       // promises don't set the shell's exit code, so call quit here to force it to be non-zero.
-      quitIfShell(1);
-      throw e;
+      Module['quit'](1, e);
     }
   } finally {
     calledMain = true;
@@ -281,11 +280,8 @@ function exit(status, implicit) {
 
   if (ENVIRONMENT_IS_NODE) {
     process['exit'](status);
-  } else {
-    quitIfShell(status);
   }
-  // if we reach here, we must throw an exception to halt the current execution
-  throw new ExitStatus(status);
+  Module['quit'](status, new ExitStatus(status));
 }
 Module['exit'] = Module.exit = exit;
 
