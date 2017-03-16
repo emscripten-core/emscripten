@@ -2033,14 +2033,6 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
 #endif
 
-Module['quit'] = function(status, toThrow) {
-  if (ENVIRONMENT_IS_SHELL && typeof quit === 'function') {
-    quit(status);
-  } else {
-    throw toThrow;
-  }
-}
-
 #if BINARYEN
 function integrateWasmJS(Module) {
   // wasm.js has several methods for creating the compiled code module here:
