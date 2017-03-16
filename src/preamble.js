@@ -2033,11 +2033,8 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
 #endif
 
-function quitIfShell(status, message) {
+function quitIfShell(status) {
   if (ENVIRONMENT_IS_SHELL && typeof quit === 'function') {
-    if (message) {
-      Module.printErr(message);
-    }
     quit(status);
   }
 }
