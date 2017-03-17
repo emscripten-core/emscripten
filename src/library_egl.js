@@ -42,11 +42,11 @@ var LibraryEGL = {
     chooseConfig: function(display, attribList, config, config_size, numConfigs) { 
       if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
         EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
-        return 0;
+        return 0; // EGL_FALSE
       }
       if ((!config || !config_size) && !numConfigs) {
         EGL.setErrorCode(0x300C /* EGL_BAD_PARAMETER */);
-        return 0;
+        return 0; // EGL_FALSE
       }
 
       // config variables to compare against
@@ -61,6 +61,10 @@ var LibraryEGL = {
           var param = {{{ makeGetValue('attribList', '0', 'i32') }}};
           if (param == 0x3038) { // EGL_NONE
             break;
+          // Check that the attribute ID is within range
+          } else if ((param < 0x3020) || (param > 0x3042)) {
+            EGL.setErrorCode(0x3004 /* EGL_BAD_ATTRIBUTE */);
+            return 0; // EGL_FALSE            
           }
 
           var value = {{{ makeGetValue('attribList', '4', 'i32') }}};
@@ -89,7 +93,7 @@ var LibraryEGL = {
         }
       }
       var configCount = 0;
-      for (var i=0; i<EGL.configAttribs.length; i++) {
+      for (var i = 0; i < EGL.configAttribs.length; i++) {
         if (EGL.configAttribs[i].alpha >= alpha &&
           EGL.configAttribs[i].samples >= samples &&
           EGL.configAttribs[i].buffers >= buffers &&
@@ -110,7 +114,7 @@ var LibraryEGL = {
       }
       
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
-      return 1;
+      return 1; // EGL_TRUE
     },
   },
 
