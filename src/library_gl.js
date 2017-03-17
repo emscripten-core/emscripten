@@ -766,7 +766,7 @@ var LibraryGL = {
       case 0x1F03 /* GL_EXTENSIONS */:
         var exts = GLctx.getSupportedExtensions();
         var gl_exts = [];
-        for (var i in exts) {
+        for (var i = 0; i < exts.length; ++i) {
           gl_exts.push(exts[i]);
           gl_exts.push("GL_" + exts[i]);
         }
@@ -968,7 +968,7 @@ var LibraryGL = {
         var exts = GLctx.getSupportedExtensions();
         var gl_exts = [];
         // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
-        for (var i in exts) {
+        for (var i = 0; i < exts.length; ++i) {
           gl_exts.push(allocate(intArrayFromString(exts[i]), 'i8', ALLOC_NORMAL));
           gl_exts.push(allocate(intArrayFromString("GL_" + exts[i]), 'i8', ALLOC_NORMAL));
         }
