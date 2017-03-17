@@ -346,8 +346,34 @@ namespace emscripten {
             }
         };
 
+        template<typename ReturnType, typename ReturnTypeToBind, typename... Args, typename... ArgsBinding>
+        struct Invoker<ReturnType, ReturnTypeToBind, TypeList<Args...>, TypeList<ArgsBinding...>> {
+            static typename internal::BindingType<ReturnTypeToBind>::WireType invoke(
+                ReturnType (*fn)(Args...),
+                typename internal::BindingType<ArgsBinding>::WireType... args
+            ) {
+                return internal::BindingType<ReturnTypeToBind>::toWireType(
+                    fn(
+                        internal::BindingType<ArgsBinding>::fromWireType(args)...
+                    )
+                );
+            }
+        };
+
         template<typename... Args>
         struct Invoker<void, void, Args...> {
+            static void invoke(
+                void (*fn)(Args...),
+                typename internal::BindingType<Args>::WireType... args
+            ) {
+                return fn(
+                    internal::BindingType<Args>::fromWireType(args)...
+                );
+            }
+        };
+
+        template<typename... Args, typename... ArgsBinding>
+        struct Invoker<void, void, TypeList<Args...>, TypeList<ArgsBinding...>> {
             static void invoke(
                 void (*fn)(Args...),
                 typename internal::BindingType<Args>::WireType... args
@@ -430,12 +456,11 @@ namespace emscripten {
         using namespace internal;
         using PoliciedTypes = typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...>;
         using InvokerPolicies = typename FilterSubTypes<invoker_policy, Policies...>::type;
-        using PoliciedInvokerTypes = typename Apply<WithPolicies,InvokerPolicies>::type::template ArgTypeList<ReturnType>::type;
-        using InvokerTypesWithCleanReturn = typename Cons<ReturnType, typename Cons<PoliciedInvokerTypes, TypeList<Args...>>::type>::type;
+        using PoliciedInvokerReturnList = typename Apply<WithPolicies,InvokerPolicies>::type::template ArgTypeList<ReturnType>::type;
+        using PoliciedInvokerArgsList = typename Apply<WithPolicies,InvokerPolicies>::type::template ArgTypeList<Args...>::type;
+        using InvokerTypesWithCleanReturn = typename Cons<ReturnType, typename Cons<PoliciedInvokerReturnList, TypeList<TypeList<Args...>,PoliciedInvokerArgsList>>::type>::type;
         using PoliciedInvoker = typename Apply<Invoker, InvokerTypesWithCleanReturn>::type;
         PoliciedTypes args;
-        InvokerPolicies ivok;
-        std::cout << typeid(ivok).name() << std::endl;
         auto invoker = &PoliciedInvoker::invoke;
         _embind_register_function(
             name,
@@ -1221,7 +1246,7 @@ namespace emscripten {
             smart_ptr<SmartPtr>(smartPtrName);
 
             typename WithPolicies<Policies...>::template ArgTypeList<SmartPtr, Args...> args;
-            auto invoke = &Invoker<SmartPtr, Args...>::invoke;
+            auto invoke = &Invoker<SmartPtr, SmartPtr, Args...>::invoke;
             _embind_register_class_constructor(
                 TypeID<ClassType>::get(),
                 args.getCount(),
@@ -1424,7 +1449,7 @@ namespace emscripten {
             using namespace internal;
 
             typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-            auto invoke = &internal::Invoker<ReturnType, Args...>::invoke;
+            auto invoke = &internal::Invoker<ReturnType, ReturnType, Args...>::invoke;
             _embind_register_class_class_function(
                 TypeID<ClassType>::get(),
                 methodName,

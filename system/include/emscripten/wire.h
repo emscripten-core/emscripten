@@ -360,11 +360,12 @@ namespace emscripten {
 
         template<typename T>
         struct BindingType<RefAsPointer<T>> {
-            typedef const T* WireType;
-            static WireType toWireType(const T& p) {
+            typedef T* WireType;
+            static WireType toWireType(T& p) {
                 return &p;
             }
-            static const T& fromWireType(WireType wt) {
+
+            static T& fromWireType(WireType wt) {
                 return *wt;
             }
         };
