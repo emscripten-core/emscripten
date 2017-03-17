@@ -2217,7 +2217,8 @@ function integrateWasmJS(Module) {
       receiveInstance(output.instance);
       removeRunDependency('wasm-instantiate');
     }).catch(function(reason) {
-      Module['printErr']('failed to asynchronously prepare wasm:\n  ' + reason);
+      Module['printErr']('failed to asynchronously prepare wasm: ' + reason);
+      Module['quit'](1, reason);
     });
     return {}; // no exports yet; we'll fill them in later
 #endif
