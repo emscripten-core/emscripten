@@ -579,6 +579,10 @@ var LibraryPThread = {
     // structure is 'alive'.
     {{{ makeSetValue('threadInfoStruct', C_STRUCTS.pthread.self, 'threadInfoStruct', 'i32') }}};
 
+    // pthread struct robust_list head should point to itself.
+    var headPtr = threadInfoStruct + {{{ C_STRUCTS.pthread.robust_list }}};
+    {{{ makeSetValue('headPtr', 0, 'headPtr', 'i32') }}};
+
     var threadParams = {
       stackBase: stackBase,
       stackSize: stackSize,

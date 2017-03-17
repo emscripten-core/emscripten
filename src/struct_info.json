@@ -1484,6 +1484,7 @@
               "stack",
               "stack_size",
               "attr",
+              "robust_list",
               "tid",
               "pid",
               "canceldisable",
