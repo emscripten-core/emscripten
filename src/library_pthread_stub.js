@@ -104,6 +104,8 @@ var LibraryPThreadStub = {
     return 0;
   },
 
+  pthread_setcancelstate: function() { return 0; },
+
   pthread_once: function(ptr, func) {
     if (!_pthread_once.seen) _pthread_once.seen = {};
     if (ptr in _pthread_once.seen) return;
