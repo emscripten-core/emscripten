@@ -1104,31 +1104,6 @@ def args_with_expanded_wildcards(args, all_tests):
     sys.exit(0)
   return new_args
 
-def skip_requested_tests(args, modules):
-  for i in range(len(args)):
-    arg = args[i]
-    if arg.startswith('skip:'):
-      which = arg.split('skip:')[1]
-      if which.startswith('ALL.'):
-        ignore, test = which.split('.')
-        which = map(lambda mode: mode+'.'+test, test_modes)
-      else:
-        which = [which]
-
-      print >> sys.stderr, ','.join(which)
-      for test in which:
-        print >> sys.stderr, 'will skip "%s"' % test
-        suite_name, test_name = test.split('.')
-        for m in modules:
-          try:
-            suite = getattr(m, suite_name)
-            setattr(suite, test_name, RunnerCore("skipme"))
-            break
-          except:
-            pass
-      args[i] = None
-  return filter(lambda arg: arg is not None, args)
-
 def args_for_random_tests(args, modules):
   first = args[1]
   if first.startswith('random'):
@@ -1194,66 +1169,173 @@ def print_random_test_statistics(num_tests):
            % (expected))
   atexit.register(show)
 
+
 import enum
 class TestResultType(enum.Enum):
   Success = 1
   Failure = 2
   Error = 3
 
-class ParallelTextTestResult(unittest.TestResult):
+
+# class ParallelTextTestResult(unittest.TestResult):
+class ParallelTextTestResult(object):
   def __init__(self):
-    super(ParallelTextTestResult, self).__init__()
     self.resultType = None
     self.resultTest = None
+    self.resultErr = None
+
+  def startTest(self, test):
+    pass
+  def stopTest(self, test):
+    pass
 
   def addSuccess(self, test):
     self.resultType = TestResultType.Success
     self.resultTest = test
 
-  def addFailure(self, test):
+  def addFailure(self, test, err):
+    print 'adding failure:', err
     self.resultType = TestResultType.Failure
     self.resultTest = test
+    a, b, c = err
+    print 'c =', str(c)
+    self.resultErr = (a, b, str(c))
 
-  def addError(self, test):
+  def addError(self, test, err):
+    print 'adding error:', err
     self.resultType = TestResultType.Error
     self.resultTest = test
+    a, b, c = err
+    print 'c =', str(c)
+    self.resultErr = (a, b, str(c))
+
 
 class ParallelTestSuite(unittest.BaseTestSuite):
   def run(self, result):
-    import multiprocessing
+    import Queue
     end_of_queue = 'STOP'
-    def worker(work_queue, result_queue):
+    def worker(worker_id, work_queue, result_queue, execution_queue):
       for test in iter(work_queue.get, end_of_queue):
+        execution_queue.put((worker_id, test, 'START'))
         result = ParallelTextTestResult()
-        test(result)
+        started = time.time()
+        try:
+          test(result)
+        except Exception as e:
+          print 'hold up wait', e
+          result.addError(test, "wo dang something went fucky")
+        elapsed = time.time() - started
+        if elapsed > 30:
+          print 'SLOW TEST:', test, '; t=', elapsed
         result_queue.put(result)
+        execution_queue.put((worker_id, test, 'END'))
+      print "finishing thread", worker_id
 
     num_workers = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
-    print 'num cores: ', num_workers
     processes = []
     test_queue = multiprocessing.Queue()
     result_queue = multiprocessing.Queue()
+    execution_queue = multiprocessing.Queue()
+    print 'tests to run:'
     for test in self:
+      print "  '" + str(test) + "'"
       test_queue.put(test)
-    for w in xrange(num_workers):
-      p = multiprocessing.Process(target=worker, args=(test_queue, result_queue))
+    for worker_id in xrange(num_workers):
+      p = multiprocessing.Process(target=worker, args=(worker_id, test_queue, result_queue, execution_queue))
       p.start()
       processes.append(p)
       test_queue.put(end_of_queue)
-    for p in processes:
-      p.join()
-    result_queue.put(end_of_queue)
-    for r in iter(result_queue.get, end_of_queue):
+
+    worker_status = {}
+    started = time.time()
+    num_started = 0
+    num_ended = 0
+    def elapsed():
+      return time.time() - started
+    def print_status():
+      print 'Worker state at t =', elapsed(), ':'
+      print '   tests started:', num_started
+      print '   tests ended:', num_ended
+      for i in xrange(num_workers):
+        print '  ', i, ': ', worker_status.get(i)
+    buffered_results = []
+    while len(processes) > 0:
+      try:
+        res = result_queue.get(True, 0.1)
+        buffered_results.append(res)
+      except Queue.Empty:
+        processes = filter(lambda p: p.is_alive(), processes)
+      except TypeError as e:
+        print 'oh damn got a s.CPE A', e
+      try:
+        res = execution_queue.get(True, 0.1)
+        w, t, s = res
+        status = str(t) + ': ' + s
+        print 'got event: #', w, ':', status
+        worker_status[w] = status
+        if s == 'START': num_started += 1
+        if s == 'END': num_ended += 1
+        print_status()
+      except Queue.Empty:
+        pass
+      except TypeError as e:
+        print 'oh damn got a s.CPE B', e
+    print 'trying to join threads'
+    sys.stdout.flush()
+    # for p in processes:
+    #   p.join()
+    # print 'actually joined threads!'
+    # sys.stdout.flush()
+
+    # result_queue.put(end_of_queue)
+    # for r in iter(result_queue.get, end_of_queue):
+    for r in buffered_results:
       s = r.resultTest
       result.startTest(s)
+      err = None
+      if r.resultErr is not None:
+        tb = None
+        try:
+          1/0
+        except Exception as e:
+          tb = sys.exc_info()[2]
+        a, b, c = r.resultErr
+        err = (a, b, tb)
       if r.resultType == TestResultType.Success:
         result.addSuccess(s)
       elif r.resultType == TestResultType.Failure:
-        result.addFailure(s)
+        result.addFailure(s, err)
       elif r.resultType == TestResultType.Error:
-        result.addError(s)
+        result.addError(s, err)
       result.stopTest(s)
+
+
     return result
+
+def skip_requested_tests(args, modules):
+  for i in range(len(args)):
+    arg = args[i]
+    if arg.startswith('skip:'):
+      which = arg.split('skip:')[1]
+      if which.startswith('ALL.'):
+        ignore, test = which.split('.')
+        which = map(lambda mode: mode+'.'+test, test_modes)
+      else:
+        which = [which]
+
+      print >> sys.stderr, ','.join(which)
+      for test in which:
+        print >> sys.stderr, 'will skip "%s"' % test
+        suite_name, test_name = test.split('.')
+        for m in modules:
+          try:
+            suite = getattr(m, suite_name)
+            setattr(suite, test_name, RunnerCore("skipme"))
+            break
+          except:
+            pass
+      args[i] = None
+  return filter(lambda arg: arg is not None, args)
 
 def load_test_suites(args, modules):
   import operator
