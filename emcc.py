@@ -2269,14 +2269,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # We need to load the emterpreter file before anything else, it has to be synchronously ready
           un_src()
           script_inline = '''
-          var xhr = new XMLHttpRequest();
-          xhr.open('GET', '%s', true);
-          xhr.responseType = 'arraybuffer';
-          xhr.onload = function() {
-            Module.emterpreterFile = xhr.response;
+          var emterpretXHR = new XMLHttpRequest();
+          emterpretXHR.open('GET', '%s', true);
+          emterpretXHR.responseType = 'arraybuffer';
+          emterpretXHR.onload = function() {
+            Module.emterpreterFile = emterpretXHR.response;
 %s
           };
-          xhr.send(null);
+          emterpretXHR.send(null);
 ''' % (shared.Settings.EMTERPRETIFY_FILE, script_inline)
 
         if memory_init_file:
@@ -2290,10 +2290,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             } else if (Module['memoryInitializerPrefixURL']) {
               memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
             }
-            var xhr = Module['memoryInitializerRequest'] = new XMLHttpRequest();
-            xhr.open('GET', memoryInitializer, true);
-            xhr.responseType = 'arraybuffer';
-            xhr.send(null);
+            var meminitXHR = Module['memoryInitializerRequest'] = new XMLHttpRequest();
+            meminitXHR.open('GET', memoryInitializer, true);
+            meminitXHR.responseType = 'arraybuffer';
+            meminitXHR.send(null);
           })();
 ''' % os.path.basename(memfile)) + script_inline
 
@@ -2343,14 +2343,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize
           un_src()
           script_inline = '''
-          var xhr = new XMLHttpRequest();
-          xhr.open('GET', '%s', true);
-          xhr.responseType = 'arraybuffer';
-          xhr.onload = function() {
-            Module.wasmBinary = xhr.response;
+          var wasmXHR = new XMLHttpRequest();
+          wasmXHR.open('GET', '%s', true);
+          wasmXHR.responseType = 'arraybuffer';
+          wasmXHR.onload = function() {
+            Module.wasmBinary = wasmXHR.response;
 %s
           };
-          xhr.send(null);
+          wasmXHR.send(null);
 ''' % (os.path.basename(wasm_binary_target), script_inline)
 
         html = open(target, 'wb')
