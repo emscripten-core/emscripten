@@ -1,18 +1,14 @@
 #define _GNU_SOURCE
 #include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
+#include <sys/sysinfo.h>
 
 int getloadavg(double *a, int n)
 {
-	int i;
-	double b[3];
-	FILE *f = fopen("/proc/loadavg", "rbe");
-	if (!f) return -1;
-	i = fscanf(f, "%lf %lf %lf", b, b+1, b+2);
-	fclose(f);
-	if (n > i) n = i;
-	if (n < 0) return -1;
-	memcpy(a, b, n * sizeof *a);
+	struct sysinfo si;
+	if (n <= 0) return n ? -1 : 0;
+	sysinfo(&si);
+	if (n > 3) n = 3;
+	for (int i=0; i<n; i++)
+		a[i] = 1.0/(1<<SI_LOAD_SHIFT) * si.loads[i];
 	return n;
 }

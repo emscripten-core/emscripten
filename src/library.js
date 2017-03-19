@@ -2107,6 +2107,12 @@ LibraryManager.library = {
     return -1;
   },
 
+  __map_file__deps: ['$ERRNO_CODES', '__setErrNo'],
+  __map_file: function(pathname, size) {
+    ___setErrNo(ERRNO_CODES.EPERM);
+    return -1;
+  },
+
   _MONTH_DAYS_REGULAR: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
   _MONTH_DAYS_LEAP: [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
 
@@ -4282,7 +4288,7 @@ LibraryManager.library = {
   _pthread_cleanup_push: function(){},
   _pthread_cleanup_pop: function(){},
   __pthread_self: function() { abort() },
-  pthread_setcancelstate: function() { return 0 },
+  __pthread_setcancelstate: function() { return 0 },
 
   // libunwind
 

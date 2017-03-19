@@ -132,9 +132,9 @@ def get_and_parse_backend(infile, settings, temp_files, DEBUG):
       backend_args += ['-emscripten-stack-size=%d' % settings['TOTAL_STACK']]
       backend_args += ['-O' + str(settings['OPT_LEVEL'])]
       if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
-        backend_args += ['-enable-emscripten-cxx-exceptions']
+        backend_args += ['-enable-emscripten-cpp-exceptions']
         if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
-          backend_args += ['-emscripten-cxx-exceptions-whitelist=' + ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['fake'])]
+          backend_args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['fake'])]
       if settings['ASYNCIFY']:
         backend_args += ['-emscripten-asyncify']
         backend_args += ['-emscripten-asyncify-functions=' + ','.join(settings['ASYNCIFY_FUNCTIONS'])]
@@ -821,16 +821,16 @@ function ftCall_%s(%s) {%s
     exported_implemented_functions = list(exported_implemented_functions) + metadata['initializers']
     if not settings['ONLY_MY_CODE']:
       exported_implemented_functions.append('runPostSets')
-    if settings['ALLOW_MEMORY_GROWTH']:
-      exported_implemented_functions.append('_emscripten_replace_memory')
-    if not settings.get('SIDE_MODULE'):
-      exported_implemented_functions += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
-    if settings['SAFE_HEAP']:
-      exported_implemented_functions += ['setDynamicTop']
-    if not settings['RELOCATABLE']:
-      exported_implemented_functions += ['setTempRet0', 'getTempRet0']
-    if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
-      exported_implemented_functions += ['setThrew']
+      if settings['ALLOW_MEMORY_GROWTH']:
+        exported_implemented_functions.append('_emscripten_replace_memory')
+      if not settings['SIDE_MODULE']:
+        exported_implemented_functions += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
+      if settings['SAFE_HEAP']:
+        exported_implemented_functions += ['setDynamicTop']
+      if not settings['RELOCATABLE']:
+        exported_implemented_functions += ['setTempRet0', 'getTempRet0']
+      if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
+        exported_implemented_functions += ['setThrew']
 
     all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables
     exported_implemented_functions = list(set(exported_implemented_functions))
@@ -1484,7 +1484,8 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
 
   # TODO: emit it from s2wasm; for now, we parse it right here
   for line in open(wast).readlines():
-    if line.startswith('  (import '):
+    line = line.strip()
+    if line.startswith('(import '):
       parts = line.split()
       # Don't include Invoke wrapper names (for asm.js-style exception handling)
       # in metadata[declares], the invoke wrappers will be generated in
@@ -1500,11 +1501,11 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
         metadata['externs'].append('_' + import_name)
       else:
         assert False, 'Unhandled import type "%s"' % import_type
-    elif line.startswith('  (func '):
+    elif line.startswith('(func '):
       parts = line.split()
       func_name = parts[1][1:]
-      metadata['implementedFunctions'].append(func_name)
-    elif line.startswith('  (export '):
+      metadata['implementedFunctions'].append('_' + func_name)
+    elif line.startswith('(export '):
       parts = line.split()
       export_name = parts[1][1:-1]
       export_type = parts[2][1:]

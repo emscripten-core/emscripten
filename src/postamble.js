@@ -175,8 +175,12 @@ Module['callMain'] = Module.callMain = function callMain(args) {
 #endif
       return;
     } else {
-      if (e && typeof e === 'object' && e.stack) Module.printErr('exception thrown: ' + [e, e.stack]);
-      throw e;
+      var toLog = e;
+      if (e && typeof e === 'object' && e.stack) {
+        toLog = [e, e.stack];
+      }
+      Module.printErr('exception thrown: ' + toLog);
+      Module['quit'](1, e);
     }
   } finally {
     calledMain = true;
@@ -274,11 +278,8 @@ function exit(status, implicit) {
 
   if (ENVIRONMENT_IS_NODE) {
     process['exit'](status);
-  } else if (ENVIRONMENT_IS_SHELL && typeof quit === 'function') {
-    quit(status);
   }
-  // if we reach here, we must throw an exception to halt the current execution
-  throw new ExitStatus(status);
+  Module['quit'](status, new ExitStatus(status));
 }
 Module['exit'] = Module.exit = exit;
 

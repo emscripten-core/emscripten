@@ -1604,6 +1604,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         link_opts = [] if debug_level >= 4 or shared.Settings.CYBERDWARF else ['-strip-debug'] # remove LLVM debug if we are not asked for it
         if not shared.Settings.ASSERTIONS:
           link_opts += ['-disable-verify']
+        else:
+          # when verifying, LLVM debug info has some tricky linking aspects, and llvm-link will
+          # disable the type map in that case. we added linking to opt, so we need to do
+          # something similar, which we can do with a param to opt
+          link_opts += ['-disable-debug-info-type-map']
 
         if llvm_lto >= 2 and llvm_opts > 0:
           logging.debug('running LLVM opts as pre-LTO')
@@ -1959,7 +1964,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if DEBUG: save_intermediate('eval-ctors', 'js')
 
       if js_opts:
-        if not shared.Settings.EMTERPRETIFY:
+        # some compilation modes require us to minify later or not at all
+        if not shared.Settings.EMTERPRETIFY and not shared.Settings.BINARYEN:
           do_minify()
 
         if opt_level >= 2:
@@ -2032,7 +2038,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # minify (if requested) after emterpreter processing, and finalize output
         logging.debug('finalizing emterpreted code')
         shared.Settings.FINALIZE_ASM_JS = 1
-        do_minify()
+        if not shared.Settings.BINARYEN:
+          do_minify()
         JSOptimizer.queue += ['last']
         JSOptimizer.flush()
 
@@ -2042,7 +2049,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           original = js_target + '.orig.js' # the emterpretify tool saves the original here
           final = original
           logging.debug('finalizing original (non-emterpreted) code at ' + final)
-          do_minify()
+          if not shared.Settings.BINARYEN:
+            do_minify()
           JSOptimizer.queue += ['last']
           JSOptimizer.flush()
           safe_move(final, original)
@@ -2115,8 +2123,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
         if not shared.Settings.WASM_BACKEND:
           cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
-          if shared.Settings.BINARYEN_IMPRECISE:
-            cmd += ['--imprecise']
+          if shared.Settings.BINARYEN_TRAP_MODE == 'js':
+            cmd += ['--emit-jsified-potential-traps']
+          elif shared.Settings.BINARYEN_TRAP_MODE == 'clamp':
+            cmd += ['--emit-clamped-potential-traps']
+          elif shared.Settings.BINARYEN_TRAP_MODE == 'allow':
+            cmd += ['--emit-potential-traps']
+          else:
+            logging.error('invalid BINARYEN_TRAP_MODE value: ' + shared.Settings.BINARYEN_TRAP_MODE + ' (should be js/clamp/allow)')
+            sys.exit(1)
           if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
             cmd += ['--ignore-implicit-traps']
           # pass optimization level to asm2wasm (if not optimizing, or which passes we should run was overridden, do not optimize)
@@ -2255,14 +2270,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # We need to load the emterpreter file before anything else, it has to be synchronously ready
           un_src()
           script_inline = '''
-          var xhr = new XMLHttpRequest();
-          xhr.open('GET', '%s', true);
-          xhr.responseType = 'arraybuffer';
-          xhr.onload = function() {
-            Module.emterpreterFile = xhr.response;
+          var emterpretXHR = new XMLHttpRequest();
+          emterpretXHR.open('GET', '%s', true);
+          emterpretXHR.responseType = 'arraybuffer';
+          emterpretXHR.onload = function() {
+            Module.emterpreterFile = emterpretXHR.response;
 %s
           };
-          xhr.send(null);
+          emterpretXHR.send(null);
 ''' % (shared.Settings.EMTERPRETIFY_FILE, script_inline)
 
         if memory_init_file:
@@ -2276,10 +2291,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             } else if (Module['memoryInitializerPrefixURL']) {
               memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
             }
-            var xhr = Module['memoryInitializerRequest'] = new XMLHttpRequest();
-            xhr.open('GET', memoryInitializer, true);
-            xhr.responseType = 'arraybuffer';
-            xhr.send(null);
+            var meminitXHR = Module['memoryInitializerRequest'] = new XMLHttpRequest();
+            meminitXHR.open('GET', memoryInitializer, true);
+            meminitXHR.responseType = 'arraybuffer';
+            meminitXHR.send(null);
           })();
 ''' % os.path.basename(memfile)) + script_inline
 
@@ -2329,14 +2344,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize
           un_src()
           script_inline = '''
-          var xhr = new XMLHttpRequest();
-          xhr.open('GET', '%s', true);
-          xhr.responseType = 'arraybuffer';
-          xhr.onload = function() {
-            Module.wasmBinary = xhr.response;
+          var wasmXHR = new XMLHttpRequest();
+          wasmXHR.open('GET', '%s', true);
+          wasmXHR.responseType = 'arraybuffer';
+          wasmXHR.onload = function() {
+            Module.wasmBinary = wasmXHR.response;
 %s
           };
-          xhr.send(null);
+          wasmXHR.send(null);
 ''' % (os.path.basename(wasm_binary_target), script_inline)
 
         html = open(target, 'wb')

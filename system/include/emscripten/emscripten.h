@@ -223,7 +223,7 @@ int emscripten_get_worker_queue_size(worker_handle worker);
 
 int emscripten_get_compiler_setting(const char *name);
 
-void emscripten_debugger();
+void emscripten_debugger(void);
 
 char *emscripten_get_preloaded_image_data(const char *path, int *w, int *h);
 char *emscripten_get_preloaded_image_data_from_FILE(FILE *file, int *w, int *h);

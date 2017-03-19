@@ -186,7 +186,11 @@ class sanity(RunnerCore):
         for y in range(-2, 3):
           f = open(path_from_root('tests', 'fake', 'clang'), 'w')
           f.write('#!/bin/sh\n')
-          f.write('echo "clang version %d.%d" 1>&2\n' % (EXPECTED_LLVM_VERSION[0] + x, EXPECTED_LLVM_VERSION[1] + y))
+          expected_x = EXPECTED_LLVM_VERSION[0] + x
+          expected_y = EXPECTED_LLVM_VERSION[1] + y
+          if expected_x < 0 or expected_y < 0: continue # must be a valid llvm version
+          print EXPECTED_LLVM_VERSION, x, y, expected_x, expected_y
+          f.write('echo "clang version %d.%d" 1>&2\n' % (expected_x, expected_y))
           f.close()
           shutil.copyfile(path_from_root('tests', 'fake', 'clang'), path_from_root('tests', 'fake', 'clang++'))
           os.chmod(path_from_root('tests', 'fake', 'clang'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)

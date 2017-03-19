@@ -39,11 +39,11 @@
 #define ETH_P_PAUSE	0x8808
 #define ETH_P_SLOW	0x8809
 #define ETH_P_WCCP	0x883E
-#define ETH_P_PPP_DISC	0x8863
-#define ETH_P_PPP_SES	0x8864
 #define ETH_P_MPLS_UC	0x8847
 #define ETH_P_MPLS_MC	0x8848
 #define ETH_P_ATMMPOA	0x884c
+#define ETH_P_PPP_DISC	0x8863
+#define ETH_P_PPP_SES	0x8864
 #define ETH_P_LINK_CTL	0x886c
 #define ETH_P_ATMFATE	0x8884
 #define ETH_P_PAE	0x888E
@@ -51,6 +51,7 @@
 #define ETH_P_8021AD	0x88A8
 #define ETH_P_802_EX1	0x88B5
 #define ETH_P_TIPC	0x88CA
+#define ETH_P_MACSEC	0x88E5
 #define ETH_P_8021AH	0x88E7
 #define ETH_P_MVRP	0x88F5
 #define ETH_P_1588	0x88F7
@@ -58,6 +59,8 @@
 #define ETH_P_FCOE	0x8906
 #define ETH_P_TDLS	0x890D
 #define ETH_P_FIP	0x8914
+#define ETH_P_80221	0x8917
+#define ETH_P_LOOPBACK	0x9000
 #define ETH_P_QINQ1	0x9100
 #define ETH_P_QINQ2	0x9200
 #define ETH_P_QINQ3	0x9300

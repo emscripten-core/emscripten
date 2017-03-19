@@ -38,6 +38,7 @@ int     sched_yield(void);
 #define SCHED_RR 2
 #define SCHED_BATCH 3
 #define SCHED_IDLE 5
+#define SCHED_DEADLINE 6
 #define SCHED_RESET_ON_FORK 0x40000000
 
 #ifdef _GNU_SOURCE
@@ -58,6 +59,7 @@ int     sched_yield(void);
 #define CLONE_DETACHED	0x00400000
 #define CLONE_UNTRACED	0x00800000
 #define CLONE_CHILD_SETTID	0x01000000
+#define CLONE_NEWCGROUP	0x02000000
 #define CLONE_NEWUTS	0x04000000
 #define CLONE_NEWIPC	0x08000000
 #define CLONE_NEWUSER	0x10000000
@@ -75,6 +77,7 @@ void free(void *);
 
 typedef struct cpu_set_t { unsigned long __bits[128/sizeof(long)]; } cpu_set_t;
 int __sched_cpucount(size_t, const cpu_set_t *);
+int sched_getcpu(void);
 int sched_getaffinity(pid_t, size_t, cpu_set_t *);
 int sched_setaffinity(pid_t, size_t, const cpu_set_t *);
 

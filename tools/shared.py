@@ -320,7 +320,7 @@ EM_BUILD_VERBOSE_LEVEL = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUI
 
 # Expectations
 
-EXPECTED_LLVM_VERSION = (3, 9)
+EXPECTED_LLVM_VERSION = (4, 0)
 
 actual_clang_version = None
 
@@ -1911,6 +1911,9 @@ class Building:
 
   @staticmethod
   def llvm_nm(filename, stdout=PIPE, stderr=PIPE, include_internal=False):
+    # Always use absolute paths to maximize cache usage
+    filename = os.path.abspath(filename)
+
     if include_internal and filename in Building.internal_nm_cache:
       return Building.internal_nm_cache[filename]
     elif not include_internal and filename in Building.uninternal_nm_cache:
@@ -2607,7 +2610,7 @@ def read_and_preprocess(filename):
 def make_fetch_worker(source_file, output_file):
   src = open(source_file, 'r').read()
   funcs_to_import = ['alignUp', 'getTotalMemory', 'stringToUTF8', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_runtime_thread', '_emscripten_futex_wait']
-  asm_funcs_to_import = ['_malloc', '_free', '_sbrk', '_pthread_mutex_lock', '_pthread_mutex_unlock']
+  asm_funcs_to_import = ['_malloc', '_free', '_sbrk', '___pthread_mutex_lock', '___pthread_mutex_unlock']
   function_prologue = '''this.onerror = function(e) {
   console.error(e);
 }
