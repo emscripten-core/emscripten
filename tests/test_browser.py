@@ -3288,7 +3288,19 @@ window.close = function() {
     self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"', '-O2'])
 
   def test_binaryen_native(self):
-    for opts in [[], ['-O1'], ['-O2'], ['-O3']]:
+    for opts in [
+        [],
+        ['-O1'],
+        ['-O2'],
+        ['-O3'],
+        ['-Os'],
+        ['-Oz'],
+        ['-O2', '--js-opts', '1'],
+        ['-O2', '-s', 'EMTERPRETIFY=1'],
+        ['-O2', '-s', 'ALLOW_MEMORY_GROWTH=1'],
+        ['-O2', '-s', 'EMTERPRETIFY=1', '-s', 'ALLOW_MEMORY_GROWTH=1'],
+        ['-O2', '-s', 'OUTLINING_LIMIT=1000']
+      ]:
       print opts
       self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1'] + opts)
 
