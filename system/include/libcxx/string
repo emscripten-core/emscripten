@@ -454,6 +454,8 @@ basic_string<char32_t> operator "" s( const char32_t *str, size_t len ); // C++1
 #include <cassert>
 #endif
 
+#include <__trace>
+
 #include <__undef_min_max>
 
 #include <__debug>
@@ -2023,6 +2025,7 @@ basic_string<_CharT, _Traits, _Allocator>::__init(const value_type* __s, size_ty
     {
         size_type __cap = __recommend(__reserve);
         __p = __alloc_traits::allocate(__alloc(), __cap+1);
+        _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__p, "std::basic_string storage");
         __set_long_pointer(__p);
         __set_long_cap(__cap+1);
         __set_long_size(__sz);
@@ -2047,6 +2050,7 @@ basic_string<_CharT, _Traits, _Allocator>::__init(const value_type* __s, size_ty
     {
         size_type __cap = __recommend(__sz);
         __p = __alloc_traits::allocate(__alloc(), __cap+1);
+        _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__p, "std::basic_string storage");
         __set_long_pointer(__p);
         __set_long_cap(__cap+1);
         __set_long_size(__sz);
@@ -2184,6 +2188,7 @@ basic_string<_CharT, _Traits, _Allocator>::__init(size_type __n, value_type __c)
     {
         size_type __cap = __recommend(__n);
         __p = __alloc_traits::allocate(__alloc(), __cap+1);
+        _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__p, "std::basic_string storage");
         __set_long_pointer(__p);
         __set_long_cap(__cap+1);
         __set_long_size(__n);
@@ -2291,6 +2296,7 @@ basic_string<_CharT, _Traits, _Allocator>::__init(_ForwardIterator __first, _For
     {
         size_type __cap = __recommend(__sz);
         __p = __alloc_traits::allocate(__alloc(), __cap+1);
+        _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__p, "std::basic_string storage");
         __set_long_pointer(__p);
         __set_long_cap(__cap+1);
         __set_long_size(__sz);
@@ -2373,6 +2379,7 @@ basic_string<_CharT, _Traits, _Allocator>::__grow_by_and_replace
                           __recommend(_VSTD::max(__old_cap + __delta_cap, 2 * __old_cap)) :
                           __ms - 1;
     pointer __p = __alloc_traits::allocate(__alloc(), __cap+1);
+    _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__p, "std::basic_string storage");
     __invalidate_all_iterators();
     if (__n_copy != 0)
         traits_type::copy(_VSTD::__to_raw_pointer(__p),
@@ -2405,6 +2412,7 @@ basic_string<_CharT, _Traits, _Allocator>::__grow_by(size_type __old_cap, size_t
                           __recommend(_VSTD::max(__old_cap + __delta_cap, 2 * __old_cap)) :
                           __ms - 1;
     pointer __p = __alloc_traits::allocate(__alloc(), __cap+1);
+    _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__p, "std::basic_string storage");
     __invalidate_all_iterators();
     if (__n_copy != 0)
         traits_type::copy(_VSTD::__to_raw_pointer(__p),
@@ -3288,6 +3296,7 @@ basic_string<_CharT, _Traits, _Allocator>::reserve(size_type __res_arg)
                     return;
             #endif  // _LIBCPP_NO_EXCEPTIONS
             }
+            _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__new_data, "std::basic_string storage");
             __now_long = true;
             __was_long = __is_long();
             __p = __get_pointer();

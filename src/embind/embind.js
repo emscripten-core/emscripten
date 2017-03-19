@@ -862,6 +862,11 @@ var LibraryEmbind = {
     args2.push(Module);
 #endif
 
+#if EMSCRIPTEN_TRACING
+    args1.push("Module");
+    args2.push(Module);
+#endif
+
     if (isClassMethodFunc) {
         invokerFnBody += "var thisWired = classParam.toWireType("+dtorStack+", this);\n";
     }
