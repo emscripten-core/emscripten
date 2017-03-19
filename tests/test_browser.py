@@ -1352,7 +1352,7 @@ keydown(100);keyup(100); // trigger the end
     Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'test_egl_width_height.c'), '-o', 'page.html', '-lEGL', '-lGL']).communicate()
     self.run_browser('page.html', 'Should print "(300, 150)" -- the size of the canvas in pixels', '/report_result?1')
 
-  def test_worker(self):
+  def do_test_worker(self, args=[]):
     # Test running in a web worker
     open('file.dat', 'w').write('data for worker')
     html_file = open('main.html', 'w')
@@ -1374,14 +1374,16 @@ keydown(100);keyup(100); // trigger the end
     ''')
     html_file.close()
 
-    for file_data in [0, 1]:
-      for wasm in [0, 1]:
-        print 'file data', file_data, 'wasm', wasm
-        output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'] + (['--preload-file', 'file.dat'] if file_data else []) + (['-s', 'WASM=1'] if wasm else []), stdout=PIPE, stderr=PIPE).communicate()
-        assert len(output[0]) == 0, output[0]
-        assert os.path.exists('worker.js'), output
-        if not file_data and not wasm: self.assertContained('you should not see this text when in a worker!', run_js('worker.js')) # code should run standalone
-        self.run_browser('main.html', '', '/report_result?hello%20from%20worker,%20and%20|' + ('data%20for%20w' if file_data else '') + '|')
+    for file_data in [1, 0]:
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'] + (['--preload-file', 'file.dat'] if file_data else []) + args
+      print cmd
+      subprocess.check_call(cmd)
+      assert os.path.exists('worker.js')
+      self.run_browser('main.html', '', '/report_result?hello%20from%20worker,%20and%20|' + ('data%20for%20w' if file_data else '') + '|')
+
+  def test_worker(self):
+    self.do_test_worker()
+    self.assertContained('you should not see this text when in a worker!', run_js('worker.js')) # code should run standalone too
 
   def test_chunked_synchronous_xhr(self):
     main = 'chunked_sync_xhr.html'
@@ -3336,6 +3338,9 @@ window.close = function() {
     ]:
       print opts, expect
       self.btest('binaryen_async.c', expected=str(expect), args=['-s', 'BINARYEN=1', '--shell-file', 'shell.html'] + opts)
+
+  def test_binaryen_worker(self):
+    self.do_test_worker(['-s', 'WASM=1'])
 
   def test_utf8_textdecoder(self):
     self.btest('benchmark_utf8.cpp', expected='0', args=['--embed-file', path_from_root('tests/utf8_corpus.txt') + '@/utf8_corpus.txt'])
