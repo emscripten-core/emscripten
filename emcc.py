@@ -1298,7 +1298,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Building.is_wasm_only() and shared.Settings.EVAL_CTORS:
           logging.debug('disabling EVAL_CTORS, as in wasm-only mode it hurts more than it helps. TODO: a wasm version of it')
           shared.Settings.EVAL_CTORS = 0
-        if shared.Settings.BINARYEN_ASYNC_COMPILATION == 1 and shared.Building.is_wasm_only():
+        # async compilation requires wasm-only mode, and also not interpreting (the interpreter needs sync input)
+        if shared.Settings.BINARYEN_ASYNC_COMPILATION == 1 and shared.Building.is_wasm_only() and 'interpret' not in shared.Settings.BINARYEN_METHOD:
           # async compilation requires a swappable module - we swap it in when it's ready
           shared.Settings.SWAPPABLE_ASM_MODULE = 1
         else:
@@ -2339,7 +2340,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           assert len(asm_mods) == 0, 'no --separate-asm means no client code mods are possible'
 
-        if shared.Settings.BINARYEN:
+        if shared.Settings.BINARYEN and not shared.Settings.BINARYEN_ASYNC_COMPILATION:
           # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize
           un_src()
           script_inline = '''

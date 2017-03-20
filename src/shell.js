@@ -169,6 +169,16 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     return xhr.responseText;
   };
 
+  if (ENVIRONMENT_IS_WORKER) {
+    Module['readBinary'] = function read(url) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, false);
+      xhr.responseType = 'arraybuffer';
+      xhr.send(null);
+      return xhr.response;
+    };
+  }
+
   Module['readAsync'] = function readAsync(url, onload, onerror) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
