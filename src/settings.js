@@ -276,7 +276,8 @@ var GL_FFP_ONLY = 0; // If you specified LEGACY_GL_EMULATION = 1 and only use fi
                      // you can also set this to 1 to signal the GL emulation layer that it can perform extra
                      // optimizations by knowing that the user code does not use shaders at all. If
                      // LEGACY_GL_EMULATION = 0, this setting has no effect.
-
+var GL_PREINITIALIZED_CONTEXT = 0; // If you want to create the WebGL context up front in JS code, set this to 1 and set Module['preinitializedWebGLContext']
+                                   // to a precreated WebGL context. WebGL initialization afterwards will use this GL context to render.
 var STB_IMAGE = 0; // Enables building of stb-image, a tiny public-domain library for decoding images, allowing
                    // decoding of images without using the browser's built-in decoders. The benefit is that this
                    // can be done synchronously, however, it will not be as fast as the browser itself.
