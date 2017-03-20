@@ -45,6 +45,7 @@ Available operations and tasks:
         sdl2-net
         vorbis
         zlib
+        cocos2d
 
 Issuing 'embuilder.py build ALL' causes each task to be built.
 
@@ -174,6 +175,8 @@ if operation == 'build':
       build_port('sdl2-ttf', 'libsdl2_ttf.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '-s', 'USE_FREETYPE=1'])
     elif what == 'binaryen':
       build_port('binaryen', None, ['-s', 'BINARYEN=1'])
+    elif what == 'cocos2d':
+      build_port('cocos2d', None, ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
     else:
       shared.logging.error('unfamiliar build target: ' + what)
       sys.exit(1)

@@ -2725,6 +2725,15 @@ window.close = function() {
     shutil.copyfile(path_from_root('tests', 'cursor.bmp'), os.path.join(self.get_dir(), 'cursor.bmp'))
     self.btest('sdl2_custom_cursor.c', expected='1', args=['--preload-file', 'cursor.bmp', '-s', 'USE_SDL=2'])
 
+  def test_cocos2d_hello(self):
+    from tools import system_libs
+    cocos2d_root = os.path.join(system_libs.Ports.get_build_dir(), 'Cocos2d')
+    preload_file = os.path.join(cocos2d_root, 'samples', 'HelloCpp', 'Resources') + '@'
+    self.btest('cocos2d_hello.cpp', reference='cocos2d_hello.png', reference_slack=1,
+      args=['-s', 'USE_COCOS2D=3', '--std=c++11', '--preload-file', preload_file, '--use-preload-plugins'],
+      message='You should see Cocos2d logo',
+      timeout=30)
+
   def test_emterpreter_async(self):
     for opts in [0, 1, 2, 3]:
       print opts
