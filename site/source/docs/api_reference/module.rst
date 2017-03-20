@@ -93,7 +93,10 @@ The following ``Module`` attributes affect code execution.
 
 	If set, :js:attr:`Module.printErr` will log when any file is read.
 
-	
+.. js:attribute:: Module.preinitializedWebGLContext
+
+	If building with -s GL_PREINITIALIZED_CONTEXT=1 set, you can set ``Module.preinitializedWebGLContext`` to a precreated instance of a WebGL context, which will be used later when initializing WebGL in C/C++ side. Precreating the GL context is useful if doing GL side loading (shader compilation, texture loading etc.) parallel to other page startup actions, and/or for detecting WebGL feature support, such as GL version or compressed texture support up front on a page before or in parallel to loading up any compiled code.
+
 Other methods
 =============
 
