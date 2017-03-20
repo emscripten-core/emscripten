@@ -278,6 +278,18 @@ If manually bisecting:
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '-o', 'page.html', '--use-preload-plugins']).communicate()
     self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
+  # Tests that user .html shell files can manually download .data files created with --preload-file cmdline.
+  def test_preload_file_with_manual_data_download(self):
+    src = os.path.join(self.get_dir(), 'src.cpp')
+    open(src, 'w').write(self.with_report_result(open(os.path.join(path_from_root('tests/manual_download_data.cpp'))).read()))
+
+    data = os.path.join(self.get_dir(), 'file.txt')
+    open(data, 'w').write('''Hello!''')
+
+    Popen([PYTHON, EMCC, 'src.cpp', '-o', 'manual_download_data.js', '--preload-file', data + '@/file.txt']).communicate()
+    shutil.copyfile(path_from_root('tests', 'manual_download_data.html'), os.path.join(self.get_dir(), 'manual_download_data.html'))
+    self.run_browser('manual_download_data.html', 'Hello!', '/report_result?1')
+
   # Tests that if the output files have single or double quotes in them, that it will be handled by correctly escaping the names.
   def test_output_file_escaping(self):
     tricky_part = '\'' if WINDOWS else '\' and \"' # On Windows, files/directories may not contain a double quote character. On non-Windowses they can, so test that.
