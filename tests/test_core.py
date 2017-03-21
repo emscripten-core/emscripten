@@ -6633,7 +6633,7 @@ def process(filename):
 // test purposes: remove printErr output, whose order is unpredictable when compared to print
 Module.printErr = Module['printErr'] = function(){};
 ''')
-      self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=["_malloc"]', '--post-js', 'glue.js', '--post-js', 'export.js']
+      self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=["_malloc"]', '-s', 'ALLOW_MEMORY_GROWTH=1', '--post-js', 'glue.js', '--post-js', 'export.js']
       shutil.copyfile(path_from_root('tests', 'webidl', 'test.h'), self.in_dir('test.h'))
       shutil.copyfile(path_from_root('tests', 'webidl', 'test.cpp'), self.in_dir('test.cpp'))
       src = open('test.cpp').read()

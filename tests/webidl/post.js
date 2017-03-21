@@ -237,6 +237,32 @@ for (var i = 0; i < 1000000; i++) {
   if (Date.now() - before >= 1000) break;
 }
 
+// Check for HEAP reallocation when using large arrays
+var numArrayEntries = 100000;
+var intArray = new Array(numArrayEntries);
+for (var i = 0; i < numArrayEntries; i++) {
+  intArray[i] = i;
+}
+
+for (var i = 0; i < 100; i++) {
+  var originalHeap = HEAP32;
+  var offset = ensureInt32(intArray) / 4;
+  if (HEAP32 !== originalHeap) {
+    // Make sure the memory was copied to the HEAP correctly (even if it was reallocated).
+    var numCopiedEntries = 0;
+    for (var j = 0; j < numArrayEntries; j++) {
+      if (HEAP32[offset + j] !== intArray[j]) {
+        break;
+      }
+      numCopiedEntries += 1;
+    }
+  }
+}
+
+if (numArrayEntries !== numCopiedEntries) {
+  TheModule.print('ERROR: An array was not copied to HEAP32 after memory reallocation');
+}
+
 //
 
 TheModule.print('\ndone.')
