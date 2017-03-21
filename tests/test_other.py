@@ -6495,7 +6495,7 @@ int main() {
     if (!buffers[2]) allocateSplitChunk(2); // we will slice into this
     TOP:
     for (var i = 0; i < SPLIT_MEMORY*3; i++) {
-      HEA<<<<PU8.subarray(i);
+      HEAPU8.subarray(i);
       if ((i&3) === 0) HEAPU32.subarray(i >> 2);
       for (var j = 1; j < SPLIT_MEMORY*3; j++) {
         //printErr([i, j]);
