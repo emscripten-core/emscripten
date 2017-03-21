@@ -532,6 +532,13 @@ int main()
 
         self.do_run_in_out_file_test('tests', 'core', 'test_rounding')
 
+  def test_stof(self):
+      if self.run_name.startswith('s_'): 
+          return self.skip('Requires libc++')
+
+      Settings.OUTLINING_LIMIT = 5000
+      self.do_run(open(path_from_root('tests', 'test_stof.cpp'), 'r').read(), '0.5')
+
   def test_fcvt(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_fcvt')
 
