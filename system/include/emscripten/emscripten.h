@@ -14,6 +14,8 @@
  *    is up at http://kripken.github.io/emscripten-site/docs/api_reference/emscripten.h.html
  */
 
+#include "em_asm.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -50,15 +52,6 @@ typedef double __attribute__((aligned(1))) emscripten_align1_double;
 typedef void (*em_callback_func)(void);
 typedef void (*em_arg_callback_func)(void*);
 typedef void (*em_str_callback_func)(const char *);
-
-
-#define EM_ASM(...) emscripten_asm_const(#__VA_ARGS__)
-#define EM_ASM_(code, ...) emscripten_asm_const_int(#code, __VA_ARGS__)
-#define EM_ASM_ARGS(code, ...) emscripten_asm_const_int(#code, __VA_ARGS__)
-#define EM_ASM_INT(code, ...) emscripten_asm_const_int(#code, __VA_ARGS__)
-#define EM_ASM_DOUBLE(code, ...) emscripten_asm_const_double(#code, __VA_ARGS__)
-#define EM_ASM_INT_V(code) emscripten_asm_const_int(#code)
-#define EM_ASM_DOUBLE_V(code) emscripten_asm_const_double(#code)
 
 
 #define EMSCRIPTEN_KEEPALIVE __attribute__((used))
@@ -230,7 +223,7 @@ int emscripten_get_worker_queue_size(worker_handle worker);
 
 int emscripten_get_compiler_setting(const char *name);
 
-void emscripten_debugger();
+void emscripten_debugger(void);
 
 char *emscripten_get_preloaded_image_data(const char *path, int *w, int *h);
 char *emscripten_get_preloaded_image_data_from_FILE(FILE *file, int *w, int *h);
@@ -253,11 +246,6 @@ int emscripten_print_double(double x, char *to, signed max);
 /* ===================================== */
 /* Internal APIs. Be careful with these. */
 /* ===================================== */
-
-/* Helper API for EM_ASM - do not call this yourself */
-void emscripten_asm_const(const char *code);
-int emscripten_asm_const_int(const char *code, ...);
-double emscripten_asm_const_double(const char *code, ...);
 
 #if __EMSCRIPTEN__
 void emscripten_sleep(unsigned int ms);

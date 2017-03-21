@@ -52,7 +52,7 @@ var LibraryOpenAL = {
         return;
       }
 
-      var currentTime = AL.currentContext.ctx.currentTime;
+      var currentTime = src.context.ctx.currentTime;
       var startTime = src.bufferPosition;
 
       for (var i = src.buffersPlayed; i < src.queue.length; i++) {
@@ -83,10 +83,10 @@ var LibraryOpenAL = {
           // If the start offset is negative, we need to offset the actual buffer.
           var offset = Math.abs(Math.min(startOffset, 0));
 
-          entry.src = AL.currentContext.ctx.createBufferSource();
+          entry.src = src.context.ctx.createBufferSource();
           entry.src.buffer = entry.buffer;
           entry.src.connect(src.gain);
-          entry.src.playbackRate.value = src.playbackRate;
+          if (src.playbackRate != 1.0) entry.src.playbackRate.value = src.playbackRate;
           entry.src.duration = entry.buffer.duration / src.playbackRate;
           if (typeof(entry.src.start) !== 'undefined') {
             entry.src.start(startTime, offset);
@@ -372,6 +372,7 @@ var LibraryOpenAL = {
       var gain = AL.currentContext.ctx.createGain();
       gain.connect(AL.currentContext.gain);
       AL.currentContext.src[AL.newSrcId] = {
+        context: AL.currentContext,
         state: 0x1011 /* AL_INITIAL */,
         queue: [],
         loop: false,
@@ -573,13 +574,14 @@ var LibraryOpenAL = {
       if (src.state === 0x1012 /* AL_PLAYING */) {
         // update currently playing entry
         var entry = src.queue[src.buffersPlayed];
+        if (!entry || !entry.src) return; // It is possible that AL.updateSources() has not yet fed the next buffer, if so, skip.
         var currentTime = AL.currentContext.ctx.currentTime;
         var oldrate = entry.src.playbackRate.value;
         var offset = currentTime - src.bufferPosition;
         // entry.src.duration is expressed after factoring in playbackRate, so when changing playback rate, need
         // to recompute/rescale the rate to the new playback speed.
         entry.src.duration = (entry.src.duration - offset) * oldrate / src.playbackRate;
-        entry.src.playbackRate.value = src.playbackRate;
+        if (entry.src.playbackRate.value != src.playbackRate) entry.src.playbackRate.value = src.playbackRate;
         src.bufferPosition = currentTime;
 
         // stop other buffers
@@ -595,7 +597,7 @@ var LibraryOpenAL = {
       }
       break;
     case 0x100A /* AL_GAIN */:
-      src.gain.gain.value = value;
+      if (src.gain.gain.value != value) src.gain.gain.value = value;
       break;
     // case 0x100D /* AL_MIN_GAIN */:
     //   break;
@@ -838,65 +840,74 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    var channels, bytes;
-    switch (format) {
-    case 0x1100 /* AL_FORMAT_MONO8 */:
-      bytes = 1;
-      channels = 1;
-      break;
-    case 0x1101 /* AL_FORMAT_MONO16 */:
-      bytes = 2;
-      channels = 1;
-      break;
-    case 0x1102 /* AL_FORMAT_STEREO8 */:
-      bytes = 1;
-      channels = 2;
-      break;
-    case 0x1103 /* AL_FORMAT_STEREO16 */:
-      bytes = 2;
-      channels = 2;
-      break;
-    case 0x10010 /* AL_FORMAT_MONO_FLOAT32 */:
-      bytes = 4;
-      channels = 1;
-      break;
-    case 0x10011 /* AL_FORMAT_STEREO_FLOAT32 */:
-      bytes = 4;
-      channels = 2;
-      break;
-    default:
-#if OPENAL_DEBUG
-      console.error("alBufferData called with invalid format " + format);
-#endif
-      return;
-    }
+
     try {
-      AL.currentContext.buf[buffer - 1] = AL.currentContext.ctx.createBuffer(channels, size / (bytes * channels), freq);
-      AL.currentContext.buf[buffer - 1].bytesPerSample =  bytes;
-    } catch (e) {
-      AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
-      return;
-    }
-    var buf = new Array(channels);
-    for (var i = 0; i < channels; ++i) {
-      buf[i] = AL.currentContext.buf[buffer - 1].getChannelData(i);
-    }
-    for (var i = 0; i < size / (bytes * channels); ++i) {
-      for (var j = 0; j < channels; ++j) {
-        switch (bytes) {
-        case 1:
-          var val = {{{ makeGetValue('data', 'i*channels+j', 'i8') }}} & 0xff;  // unsigned
-          buf[j][i] = -1.0 + val * (2/256);
-          break;
-        case 2:
-          var val = {{{ makeGetValue('data', '2*(i*channels+j)', 'i16') }}};
-          buf[j][i] = val/32768;
-          break;
-        case 4:
-          buf[j][i] = {{{ makeGetValue('data', '4*(i*channels+j)', 'float') }}};
-          break;
+      switch (format) {
+      case 0x1100 /* AL_FORMAT_MONO8 */:
+        var buf = AL.currentContext.ctx.createBuffer(1, size, freq);
+        buf.bytesPerSample = 1;
+        var channel0 = buf.getChannelData(0);
+        for (var i = 0; i < size; ++i) channel0[i] = HEAPU8[data++] * 0.0078125 /* 1/128 */ - 1.0;
+        break;
+      case 0x1101 /* AL_FORMAT_MONO16 */:
+        var buf = AL.currentContext.ctx.createBuffer(1, size>>1, freq);
+        buf.bytesPerSample = 2;
+        var channel0 = buf.getChannelData(0);
+        data >>= 1;
+        for (var i = 0; i < size>>1; ++i) channel0[i] = HEAP16[data++] * 0.000030517578125 /* 1/32768 */;
+        break;
+      case 0x1102 /* AL_FORMAT_STEREO8 */:
+        var buf = AL.currentContext.ctx.createBuffer(2, size>>1, freq);
+        buf.bytesPerSample = 1;
+        var channel0 = buf.getChannelData(0);
+        var channel1 = buf.getChannelData(1);
+        for (var i = 0; i < size>>1; ++i) {
+          channel0[i] = HEAPU8[data++] * 0.0078125 /* 1/128 */ - 1.0;
+          channel1[i] = HEAPU8[data++] * 0.0078125 /* 1/128 */ - 1.0;
         }
+        break;
+      case 0x1103 /* AL_FORMAT_STEREO16 */:
+        var buf = AL.currentContext.ctx.createBuffer(2, size>>2, freq);
+        buf.bytesPerSample = 2;
+        var channel0 = buf.getChannelData(0);
+        var channel1 = buf.getChannelData(1);
+        data >>= 1;
+        for (var i = 0; i < size>>2; ++i) {
+          channel0[i] = HEAP16[data++] * 0.000030517578125 /* 1/32768 */;
+          channel1[i] = HEAP16[data++] * 0.000030517578125 /* 1/32768 */;
+        }
+        break;
+      case 0x10010 /* AL_FORMAT_MONO_FLOAT32 */:
+        var buf = AL.currentContext.ctx.createBuffer(1, size>>2, freq);
+        buf.bytesPerSample = 4;
+        var channel0 = buf.getChannelData(0);
+        data >>= 2;
+        for (var i = 0; i < size>>2; ++i) channel0[i] = HEAPF32[data++];
+        break;
+      case 0x10011 /* AL_FORMAT_STEREO_FLOAT32 */:
+        var buf = AL.currentContext.ctx.createBuffer(2, size>>3, freq);
+        buf.bytesPerSample = 4;
+        var channel0 = buf.getChannelData(0);
+        var channel1 = buf.getChannelData(1);
+        data >>= 2;
+        for (var i = 0; i < size>>2; ++i) {
+          channel0[i] = HEAPF32[data++];
+          channel1[i] = HEAPF32[data++];
+        }
+        break;
+      default:
+#if OPENAL_DEBUG
+        console.error("alBufferData called with invalid format " + format);
+#endif
+        AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+        break;
       }
+      AL.currentContext.buf[buffer - 1] = buf;
+    } catch (e) {
+#if OPENAL_DEBUG
+      console.error("alBufferData upload failed with an exception " + e);
+#endif
+      AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
     }
   },
 
@@ -1326,7 +1337,7 @@ var LibraryOpenAL = {
     }
     switch (param) {
     case 0x100A /* AL_GAIN */:
-      AL.currentContext.gain.gain.value = value;
+      if (AL.currentContext.gain.gain.value != value) AL.currentContext.gain.gain.value = value;
       break;
     default:
 #if OPENAL_DEBUG

@@ -175,5 +175,10 @@ int main() {
   setup();
   test();
   test_scandir();
+
+#ifdef REPORT_RESULT
+  int result = 0;
+  REPORT_RESULT();
+#endif
   return EXIT_SUCCESS;
 }

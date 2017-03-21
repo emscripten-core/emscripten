@@ -10,9 +10,9 @@ import sys
 sys.argv += ['--emscripten-cxx']
 
 if sys.version_info.major == 2:
-  import emcc
   if __name__ == '__main__':
     ToolchainProfiler.record_process_start()
+    import emcc
     emcc.run()
     sys.exit(0)
 else:
