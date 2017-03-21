@@ -63,7 +63,7 @@ long double fmodl(long double x, long double y)
 	xhi = (ux.i2.hi & -1ULL>>16) | 1ULL<<48;
 	yhi = (uy.i2.hi & -1ULL>>16) | 1ULL<<48;
 	xlo = ux.i2.lo;
-	ylo = ux.i2.lo;
+	ylo = uy.i2.lo;
 	for (; ex > ey; ex--) {
 		hi = xhi - yhi;
 		lo = xlo - ylo;

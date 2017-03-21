@@ -20,8 +20,7 @@ extern "C" {
 #define MNTOPT_NOSUID	"nosuid"
 #define MNTOPT_NOAUTO	"noauto"
 
-struct mntent
-{
+struct mntent {
 	char *mnt_fsname;
 	char *mnt_dir;
 	char *mnt_type;

@@ -23,7 +23,7 @@ def run_commands(commands):
     for command in commands:
       call_process(command)
   else:
-    pool = multiprocessing.Pool(processes=cores)
+    pool = shared.Building.get_multiprocessing_pool()
     # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool, https://bugs.python.org/issue8296
     pool.map_async(call_process, commands, chunksize=1).get(maxint)
 
@@ -301,7 +301,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       add_back_deps(need) # recurse to get deps of deps
 
   # Scan symbols
-  symbolses = map(lambda temp_file: shared.Building.llvm_nm(temp_file), temp_files)
+  symbolses = shared.Building.parallel_llvm_nm(map(os.path.abspath, temp_files))
 
   if len(symbolses) == 0:
     class Dummy:
@@ -601,7 +601,7 @@ class Ports:
       # Make variants support '-jX' for number of cores to build, MSBuild does /maxcpucount:X
       num_cores = os.environ.get('EMCC_CORES') or str(multiprocessing.cpu_count())
       make_args = []
-      if 'Makefiles' in generator: make_args = ['--', '-j', num_cores]
+      if 'Makefiles' in generator and not 'NMake' in generator: make_args = ['--', '-j', num_cores]
       elif 'Visual Studio' in generator: make_args = ['--config', cmake_build_type, '--', '/maxcpucount:' + num_cores]
 
       # Kick off the build.

@@ -209,9 +209,11 @@ typedef struct {
 #define EM_MN10300	89
 #define EM_MN10200	90
 #define EM_PJ		91
+#define EM_OR1K		92
 #define EM_OPENRISC	92
 #define EM_ARC_A5	93
 #define EM_XTENSA	94
+#define EM_ALTERA_NIOS2 113
 #define EM_AARCH64	183
 #define EM_TILEPRO	188
 #define EM_MICROBLAZE	189
@@ -316,10 +318,31 @@ typedef struct {
 
 #define SHF_GROUP	     (1 << 9)
 #define SHF_TLS		     (1 << 10)
+#define SHF_COMPRESSED	     (1 << 11)
 #define SHF_MASKOS	     0x0ff00000
 #define SHF_MASKPROC	     0xf0000000
 #define SHF_ORDERED	     (1 << 30)
-#define SHF_EXCLUDE	     (1 << 31)
+#define SHF_EXCLUDE	     (1U << 31)
+
+typedef struct {
+  Elf32_Word	ch_type;
+  Elf32_Word	ch_size;
+  Elf32_Word	ch_addralign;
+} Elf32_Chdr;
+
+typedef struct {
+  Elf64_Word	ch_type;
+  Elf64_Word	ch_reserved;
+  Elf64_Xword	ch_size;
+  Elf64_Xword	ch_addralign;
+} Elf64_Chdr;
+
+#define ELFCOMPRESS_ZLIB	1
+#define ELFCOMPRESS_LOOS	0x60000000
+#define ELFCOMPRESS_HIOS	0x6fffffff
+#define ELFCOMPRESS_LOPROC	0x70000000
+#define ELFCOMPRESS_HIPROC	0x7fffffff
+
 
 #define GRP_COMDAT	0x1
 
@@ -409,8 +432,7 @@ typedef struct {
 
 
 
-typedef struct
-{
+typedef struct {
   Elf32_Addr	r_offset;
   Elf32_Word	r_info;
 } Elf32_Rel;
@@ -541,6 +563,7 @@ typedef struct {
 #define NT_ARM_TLS	0x401
 #define NT_ARM_HW_BREAK	0x402
 #define NT_ARM_HW_WATCH	0x403
+#define NT_ARM_SYSTEM_CALL	0x404
 #define NT_METAG_CBUF	0x500
 #define NT_METAG_RPIPE	0x501
 #define NT_METAG_TLS	0x502
@@ -1020,7 +1043,8 @@ typedef struct {
 #define R_386_TLS_DESC_CALL 40
 #define R_386_TLS_DESC     41
 #define R_386_IRELATIVE	   42
-#define R_386_NUM	   43
+#define R_386_GOT32X	   43
+#define R_386_NUM	   44
 
 
 
@@ -1153,6 +1177,7 @@ typedef struct {
 #define EF_MIPS_64BIT_WHIRL 16
 #define EF_MIPS_ABI2	    32
 #define EF_MIPS_ABI_ON32    64
+#define EF_MIPS_FP64	    512
 #define EF_MIPS_NAN2008     1024
 #define EF_MIPS_ARCH	    0xf0000000
 
@@ -1397,6 +1422,7 @@ typedef struct {
 #define PT_MIPS_REGINFO	0x70000000
 #define PT_MIPS_RTPROC  0x70000001
 #define PT_MIPS_OPTIONS 0x70000002
+#define PT_MIPS_ABIFLAGS 0x70000003
 
 
 
@@ -1460,7 +1486,8 @@ typedef struct {
 #define DT_MIPS_PLTGOT	     0x70000032
 
 #define DT_MIPS_RWPLT        0x70000034
-#define DT_MIPS_NUM	     0x35
+#define DT_MIPS_RLD_MAP_REL  0x70000035
+#define DT_MIPS_NUM	     0x36
 
 
 
@@ -1483,8 +1510,7 @@ typedef struct {
 
 
 
-typedef struct
-{
+typedef struct {
   Elf32_Word l_name;
   Elf32_Word l_time_stamp;
   Elf32_Word l_checksum;
@@ -1492,8 +1518,7 @@ typedef struct
   Elf32_Word l_flags;
 } Elf32_Lib;
 
-typedef struct
-{
+typedef struct {
   Elf64_Word l_name;
   Elf64_Word l_time_stamp;
   Elf64_Word l_checksum;
@@ -1516,7 +1541,73 @@ typedef struct
 
 typedef Elf32_Addr Elf32_Conflict;
 
+typedef struct {
+  Elf32_Half version;
+  unsigned char isa_level;
+  unsigned char isa_rev;
+  unsigned char gpr_size;
+  unsigned char cpr1_size;
+  unsigned char cpr2_size;
+  unsigned char fp_abi;
+  Elf32_Word isa_ext;
+  Elf32_Word ases;
+  Elf32_Word flags1;
+  Elf32_Word flags2;
+} Elf_MIPS_ABIFlags_v0;
 
+#define MIPS_AFL_REG_NONE	0x00
+#define MIPS_AFL_REG_32		0x01
+#define MIPS_AFL_REG_64		0x02
+#define MIPS_AFL_REG_128	0x03
+
+#define MIPS_AFL_ASE_DSP	0x00000001
+#define MIPS_AFL_ASE_DSPR2	0x00000002
+#define MIPS_AFL_ASE_EVA	0x00000004
+#define MIPS_AFL_ASE_MCU	0x00000008
+#define MIPS_AFL_ASE_MDMX	0x00000010
+#define MIPS_AFL_ASE_MIPS3D	0x00000020
+#define MIPS_AFL_ASE_MT		0x00000040
+#define MIPS_AFL_ASE_SMARTMIPS	0x00000080
+#define MIPS_AFL_ASE_VIRT	0x00000100
+#define MIPS_AFL_ASE_MSA	0x00000200
+#define MIPS_AFL_ASE_MIPS16	0x00000400
+#define MIPS_AFL_ASE_MICROMIPS	0x00000800
+#define MIPS_AFL_ASE_XPA	0x00001000
+#define MIPS_AFL_ASE_MASK	0x00001fff
+
+#define MIPS_AFL_EXT_XLR	  1
+#define MIPS_AFL_EXT_OCTEON2	  2
+#define MIPS_AFL_EXT_OCTEONP	  3
+#define MIPS_AFL_EXT_LOONGSON_3A  4
+#define MIPS_AFL_EXT_OCTEON	  5
+#define MIPS_AFL_EXT_5900	  6
+#define MIPS_AFL_EXT_4650	  7
+#define MIPS_AFL_EXT_4010	  8
+#define MIPS_AFL_EXT_4100	  9
+#define MIPS_AFL_EXT_3900	  10
+#define MIPS_AFL_EXT_10000	  11
+#define MIPS_AFL_EXT_SB1	  12
+#define MIPS_AFL_EXT_4111	  13
+#define MIPS_AFL_EXT_4120	  14
+#define MIPS_AFL_EXT_5400	  15
+#define MIPS_AFL_EXT_5500	  16
+#define MIPS_AFL_EXT_LOONGSON_2E  17
+#define MIPS_AFL_EXT_LOONGSON_2F  18
+
+#define MIPS_AFL_FLAGS1_ODDSPREG  1
+
+enum
+{
+  Val_GNU_MIPS_ABI_FP_ANY = 0,
+  Val_GNU_MIPS_ABI_FP_DOUBLE = 1,
+  Val_GNU_MIPS_ABI_FP_SINGLE = 2,
+  Val_GNU_MIPS_ABI_FP_SOFT = 3,
+  Val_GNU_MIPS_ABI_FP_OLD_64 = 4,
+  Val_GNU_MIPS_ABI_FP_XX = 5,
+  Val_GNU_MIPS_ABI_FP_64 = 6,
+  Val_GNU_MIPS_ABI_FP_64A = 7,
+  Val_GNU_MIPS_ABI_FP_MAX = 7
+};
 
 
 
@@ -1857,7 +1948,8 @@ typedef Elf32_Addr Elf32_Conflict;
 #define R_PPC_GOT_DTPREL16_LO	92
 #define R_PPC_GOT_DTPREL16_HI	93
 #define R_PPC_GOT_DTPREL16_HA	94
-
+#define R_PPC_TLSGD		95
+#define R_PPC_TLSLD		96
 
 
 #define R_PPC_EMB_NADDR32	101
@@ -1900,7 +1992,10 @@ typedef Elf32_Addr Elf32_Conflict;
 
 
 #define DT_PPC_GOT		(DT_LOPROC + 0)
-#define DT_PPC_NUM		1
+#define DT_PPC_OPT		(DT_LOPROC + 1)
+#define DT_PPC_NUM		2
+
+#define PPC_OPT_TLS		1
 
 
 #define R_PPC64_NONE		R_PPC_NONE
@@ -2013,6 +2108,15 @@ typedef Elf32_Addr Elf32_Conflict;
 #define R_PPC64_DTPREL16_HIGHERA 104
 #define R_PPC64_DTPREL16_HIGHEST 105
 #define R_PPC64_DTPREL16_HIGHESTA 106
+#define R_PPC64_TLSGD		107
+#define R_PPC64_TLSLD		108
+#define R_PPC64_TOCSAVE		109
+#define R_PPC64_ADDR16_HIGH	110
+#define R_PPC64_ADDR16_HIGHA	111
+#define R_PPC64_TPREL16_HIGH	112
+#define R_PPC64_TPREL16_HIGHA	113
+#define R_PPC64_DTPREL16_HIGH	114
+#define R_PPC64_DTPREL16_HIGHA	115
 
 
 #define R_PPC64_JMP_IREL	247
@@ -2022,14 +2126,20 @@ typedef Elf32_Addr Elf32_Conflict;
 #define R_PPC64_REL16_HI	251
 #define R_PPC64_REL16_HA	252
 
+#define EF_PPC64_ABI	3
 
 #define DT_PPC64_GLINK  (DT_LOPROC + 0)
 #define DT_PPC64_OPD	(DT_LOPROC + 1)
 #define DT_PPC64_OPDSZ	(DT_LOPROC + 2)
-#define DT_PPC64_NUM    3
+#define DT_PPC64_OPT	(DT_LOPROC + 3)
+#define DT_PPC64_NUM	4
 
+#define PPC64_OPT_TLS		1
+#define PPC64_OPT_MULTI_TOC	2
 
-
+#define STO_PPC64_LOCAL_BIT	5
+#define STO_PPC64_LOCAL_MASK	0xe0
+#define PPC64_LOCAL_ENTRY_OFFSET(x) (1 << (((x)&0xe0)>>5) & 0xfc)
 
 
 #define EF_ARM_RELEXEC		0x01
@@ -2089,8 +2199,17 @@ typedef Elf32_Addr Elf32_Conflict;
 #define SHT_ARM_PREEMPTMAP	(SHT_LOPROC + 2)
 #define SHT_ARM_ATTRIBUTES	(SHT_LOPROC + 3)
 
-
 #define R_AARCH64_NONE            0
+#define R_AARCH64_P32_ABS32	1
+#define R_AARCH64_P32_COPY	180
+#define R_AARCH64_P32_GLOB_DAT	181
+#define R_AARCH64_P32_JUMP_SLOT	182
+#define R_AARCH64_P32_RELATIVE	183
+#define R_AARCH64_P32_TLS_DTPMOD 184
+#define R_AARCH64_P32_TLS_DTPREL 185
+#define R_AARCH64_P32_TLS_TPREL	186
+#define R_AARCH64_P32_TLSDESC	187
+#define R_AARCH64_P32_IRELATIVE	188
 #define R_AARCH64_ABS64         257
 #define R_AARCH64_ABS32         258
 #define R_AARCH64_ABS16		259
@@ -2208,8 +2327,11 @@ typedef Elf32_Addr Elf32_Conflict;
 #define R_AARCH64_GLOB_DAT     1025
 #define R_AARCH64_JUMP_SLOT    1026
 #define R_AARCH64_RELATIVE     1027
+#define R_AARCH64_TLS_DTPMOD   1028
 #define R_AARCH64_TLS_DTPMOD64 1028
+#define R_AARCH64_TLS_DTPREL   1029
 #define R_AARCH64_TLS_DTPREL64 1029
+#define R_AARCH64_TLS_TPREL    1030
 #define R_AARCH64_TLS_TPREL64  1030
 #define R_AARCH64_TLSDESC      1031
 
@@ -2459,7 +2581,28 @@ typedef Elf32_Addr Elf32_Conflict;
 #define R_IA64_LTOFF_DTPREL22	0xba
 
 
-
+#define EF_SH_MACH_MASK		0x1f
+#define EF_SH_UNKNOWN		0x0
+#define EF_SH1			0x1
+#define EF_SH2			0x2
+#define EF_SH3			0x3
+#define EF_SH_DSP		0x4
+#define EF_SH3_DSP		0x5
+#define EF_SH4AL_DSP		0x6
+#define EF_SH3E			0x8
+#define EF_SH4			0x9
+#define EF_SH2E			0xb
+#define EF_SH4A			0xc
+#define EF_SH2A			0xd
+#define EF_SH4_NOFPU		0x10
+#define EF_SH4A_NOFPU		0x11
+#define EF_SH4_NOMMU_NOFPU	0x12
+#define EF_SH2A_NOFPU		0x13
+#define EF_SH3_NOMMU		0x14
+#define EF_SH2A_SH4_NOFPU	0x15
+#define EF_SH2A_SH3_NOFPU	0x16
+#define EF_SH2A_SH4		0x17
+#define EF_SH2A_SH3E		0x18
 
 #define	R_SH_NONE		0
 #define	R_SH_DIR32		1
@@ -2498,6 +2641,14 @@ typedef Elf32_Addr Elf32_Conflict;
 #define	R_SH_RELATIVE		165
 #define	R_SH_GOTOFF		166
 #define	R_SH_GOTPC		167
+#define	R_SH_GOT20		201
+#define	R_SH_GOTOFF20		202
+#define	R_SH_GOTFUNCDESC	203
+#define	R_SH_GOTFUNCDEST20	204
+#define	R_SH_GOTOFFFUNCDESC	205
+#define	R_SH_GOTOFFFUNCDEST20	206
+#define	R_SH_FUNCDESC		207
+#define	R_SH_FUNCDESC_VALUE	208
 
 #define	R_SH_NUM		256
 
@@ -2657,7 +2808,9 @@ typedef Elf32_Addr Elf32_Conflict;
 #define R_X86_64_TLSDESC        36
 #define R_X86_64_IRELATIVE	37
 #define R_X86_64_RELATIVE64	38
-#define R_X86_64_NUM		39
+#define R_X86_64_GOTPCRELX	41
+#define R_X86_64_REX_GOTPCRELX	42
+#define R_X86_64_NUM		43
 
 
 
@@ -2774,6 +2927,91 @@ typedef Elf32_Addr Elf32_Conflict;
 #define R_MICROBLAZE_TLSDTPREL64 27
 #define R_MICROBLAZE_TLSGOTTPREL32 28
 #define R_MICROBLAZE_TLSTPREL32	 29
+
+#define DT_NIOS2_GP             0x70000002
+
+#define R_NIOS2_NONE		0
+#define R_NIOS2_S16		1
+#define R_NIOS2_U16		2
+#define R_NIOS2_PCREL16		3
+#define R_NIOS2_CALL26		4
+#define R_NIOS2_IMM5		5
+#define R_NIOS2_CACHE_OPX	6
+#define R_NIOS2_IMM6		7
+#define R_NIOS2_IMM8		8
+#define R_NIOS2_HI16		9
+#define R_NIOS2_LO16		10
+#define R_NIOS2_HIADJ16		11
+#define R_NIOS2_BFD_RELOC_32	12
+#define R_NIOS2_BFD_RELOC_16	13
+#define R_NIOS2_BFD_RELOC_8	14
+#define R_NIOS2_GPREL		15
+#define R_NIOS2_GNU_VTINHERIT	16
+#define R_NIOS2_GNU_VTENTRY	17
+#define R_NIOS2_UJMP		18
+#define R_NIOS2_CJMP		19
+#define R_NIOS2_CALLR		20
+#define R_NIOS2_ALIGN		21
+#define R_NIOS2_GOT16		22
+#define R_NIOS2_CALL16		23
+#define R_NIOS2_GOTOFF_LO	24
+#define R_NIOS2_GOTOFF_HA	25
+#define R_NIOS2_PCREL_LO	26
+#define R_NIOS2_PCREL_HA	27
+#define R_NIOS2_TLS_GD16	28
+#define R_NIOS2_TLS_LDM16	29
+#define R_NIOS2_TLS_LDO16	30
+#define R_NIOS2_TLS_IE16	31
+#define R_NIOS2_TLS_LE16	32
+#define R_NIOS2_TLS_DTPMOD	33
+#define R_NIOS2_TLS_DTPREL	34
+#define R_NIOS2_TLS_TPREL	35
+#define R_NIOS2_COPY		36
+#define R_NIOS2_GLOB_DAT	37
+#define R_NIOS2_JUMP_SLOT	38
+#define R_NIOS2_RELATIVE	39
+#define R_NIOS2_GOTOFF		40
+#define R_NIOS2_CALL26_NOAT	41
+#define R_NIOS2_GOT_LO		42
+#define R_NIOS2_GOT_HA		43
+#define R_NIOS2_CALL_LO		44
+#define R_NIOS2_CALL_HA		45
+
+#define R_OR1K_NONE		0
+#define R_OR1K_32		1
+#define R_OR1K_16		2
+#define R_OR1K_8		3
+#define R_OR1K_LO_16_IN_INSN	4
+#define R_OR1K_HI_16_IN_INSN	5
+#define R_OR1K_INSN_REL_26	6
+#define R_OR1K_GNU_VTENTRY	7
+#define R_OR1K_GNU_VTINHERIT	8
+#define R_OR1K_32_PCREL		9
+#define R_OR1K_16_PCREL		10
+#define R_OR1K_8_PCREL		11
+#define R_OR1K_GOTPC_HI16	12
+#define R_OR1K_GOTPC_LO16	13
+#define R_OR1K_GOT16		14
+#define R_OR1K_PLT26		15
+#define R_OR1K_GOTOFF_HI16	16
+#define R_OR1K_GOTOFF_LO16	17
+#define R_OR1K_COPY		18
+#define R_OR1K_GLOB_DAT		19
+#define R_OR1K_JMP_SLOT		20
+#define R_OR1K_RELATIVE		21
+#define R_OR1K_TLS_GD_HI16	22
+#define R_OR1K_TLS_GD_LO16	23
+#define R_OR1K_TLS_LDM_HI16	24
+#define R_OR1K_TLS_LDM_LO16	25
+#define R_OR1K_TLS_LDO_HI16	26
+#define R_OR1K_TLS_LDO_LO16	27
+#define R_OR1K_TLS_IE_HI16	28
+#define R_OR1K_TLS_IE_LO16	29
+#define R_OR1K_TLS_LE_HI16	30
+#define R_OR1K_TLS_LE_LO16	31
+#define R_OR1K_TLS_TPOFF	32
+#define R_OR1K_TLS_DTPOFF	33
+#define R_OR1K_TLS_DTPMOD	34
 
 #ifdef __cplusplus
 }

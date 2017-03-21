@@ -1,12 +1,10 @@
-#ifndef SHARED
-
 #include <elf.h>
 #include <link.h>
 #include "libc.h"
 
 #define AUX_CNT 38
 
-int dl_iterate_phdr(int(*callback)(struct dl_phdr_info *info, size_t size, void *data), void *data)
+static int static_dl_iterate_phdr(int(*callback)(struct dl_phdr_info *info, size_t size, void *data), void *data)
 {
 	unsigned char *p;
 	ElfW(Phdr) *phdr, *tls_phdr=0;
@@ -40,4 +38,5 @@ int dl_iterate_phdr(int(*callback)(struct dl_phdr_info *info, size_t size, void 
 	}
 	return (callback)(&info, sizeof (info), data);
 }
-#endif
+
+weak_alias(static_dl_iterate_phdr, dl_iterate_phdr);

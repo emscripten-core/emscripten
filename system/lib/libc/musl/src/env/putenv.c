@@ -30,6 +30,7 @@ int __putenv(char *s, int a)
 				}
 			} else {
 				free(__env_map[j]);
+				__env_map[j] = s;
 			}
 		}
 	}

@@ -93,7 +93,10 @@ The following ``Module`` attributes affect code execution.
 
 	If set, :js:attr:`Module.printErr` will log when any file is read.
 
-	
+.. js:attribute:: Module.preinitializedWebGLContext
+
+	If building with -s GL_PREINITIALIZED_CONTEXT=1 set, you can set ``Module.preinitializedWebGLContext`` to a precreated instance of a WebGL context, which will be used later when initializing WebGL in C/C++ side. Precreating the GL context is useful if doing GL side loading (shader compilation, texture loading etc.) parallel to other page startup actions, and/or for detecting WebGL feature support, such as GL version or compressed texture support up front on a page before or in parallel to loading up any compiled code.
+
 Other methods
 =============
 
@@ -106,6 +109,10 @@ Other methods
 .. js:function:: Module.onCustomMessage
 
 	When compiled with ``PROXY_TO_WORKER = 1`` (see `settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_), this callback (which should be implemented on both the client and worker's ``Module`` object) allows sending custom messages and data between the web worker and the main thread (using the ``postCustomMessage`` function defined in `proxyClient.js <https://github.com/kripken/emscripten/blob/master/src/proxyClient.js>`_ and `proxyWorker.js <https://github.com/kripken/emscripten/blob/master/src/proxyWorker.js>`_).
+
+.. js:function:: Module.getPreloadedPackage
+
+	If you want to manually manage the download of .data file packages for custom caching, progress reporting and error handling behavior, you can implement the ``Module.getPreloadedPackage = function(remotePackageName, remotePackageSize)`` callback to provide the contents of the data files back to the file loading scripts. The return value of this callback should be an Arraybuffer with the contents of the downloade file data. See file ``tests/manual_download_data.html`` and the test ``browser.test_preload_file_with_manual_data_download`` for an example.
 
 Overriding execution environment
 ================================

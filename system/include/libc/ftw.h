@@ -21,8 +21,7 @@ extern "C" {
 #define FTW_CHDIR 4
 #define FTW_DEPTH 8
 
-struct FTW
-{
+struct FTW {
 	int base;
 	int level;
 };

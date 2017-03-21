@@ -1,6 +1,8 @@
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <string.h>
 #include <search.h>
+#include "libc.h"
 
 /*
 open addressing hash table with 2^n table size
@@ -14,14 +16,17 @@ with the posix api items cannot be iterated and length cannot be queried
 #define MINSIZE 8
 #define MAXSIZE ((size_t)-1/2 + 1)
 
-struct elem {
-	ENTRY item;
-	size_t hash;
+struct __tab {
+	ENTRY *entries;
+	size_t mask;
+	size_t used;
 };
 
-static size_t mask;
-static size_t used;
-static struct elem *tab;
+static struct hsearch_data htab;
+
+int __hcreate_r(size_t, struct hsearch_data *);
+void __hdestroy_r(struct hsearch_data *);
+int __hsearch_r(ENTRY, ACTION, ENTRY **, struct hsearch_data *);
 
 static size_t keyhash(char *k)
 {
@@ -33,30 +38,30 @@ static size_t keyhash(char *k)
 	return h;
 }
 
-static int resize(size_t nel)
+static int resize(size_t nel, struct hsearch_data *htab)
 {
 	size_t newsize;
 	size_t i, j;
-	struct elem *e, *newe;
-	struct elem *oldtab = tab;
-	struct elem *oldend = tab + mask + 1;
+	ENTRY *e, *newe;
+	ENTRY *oldtab = htab->__tab->entries;
+	ENTRY *oldend = htab->__tab->entries + htab->__tab->mask + 1;
 
 	if (nel > MAXSIZE)
 		nel = MAXSIZE;
 	for (newsize = MINSIZE; newsize < nel; newsize *= 2);
-	tab = calloc(newsize, sizeof *tab);
-	if (!tab) {
-		tab = oldtab;
+	htab->__tab->entries = calloc(newsize, sizeof *htab->__tab->entries);
+	if (!htab->__tab->entries) {
+		htab->__tab->entries = oldtab;
 		return 0;
 	}
-	mask = newsize - 1;
+	htab->__tab->mask = newsize - 1;
 	if (!oldtab)
 		return 1;
 	for (e = oldtab; e < oldend; e++)
-		if (e->item.key) {
-			for (i=e->hash,j=1; ; i+=j++) {
-				newe = tab + (i & mask);
-				if (!newe->item.key)
+		if (e->key) {
+			for (i=keyhash(e->key),j=1; ; i+=j++) {
+				newe = htab->__tab->entries + (i & htab->__tab->mask);
+				if (!newe->key)
 					break;
 			}
 			*newe = *e;
@@ -67,29 +72,22 @@ static int resize(size_t nel)
 
 int hcreate(size_t nel)
 {
-	mask = 0;
-	used = 0;
-	tab = 0;
-	return resize(nel);
+	return __hcreate_r(nel, &htab);
 }
 
 void hdestroy(void)
 {
-	free(tab);
-	tab = 0;
-	mask = 0;
-	used = 0;
+	__hdestroy_r(&htab);
 }
 
-static struct elem *lookup(char *key, size_t hash)
+static ENTRY *lookup(char *key, size_t hash, struct hsearch_data *htab)
 {
 	size_t i, j;
-	struct elem *e;
+	ENTRY *e;
 
 	for (i=hash,j=1; ; i+=j++) {
-		e = tab + (i & mask);
-		if (!e->item.key ||
-		    (e->hash==hash && strcmp(e->item.key, key)==0))
+		e = htab->__tab->entries + (i & htab->__tab->mask);
+		if (!e->key || strcmp(e->key, key) == 0)
 			break;
 	}
 	return e;
@@ -97,22 +95,60 @@ static struct elem *lookup(char *key, size_t hash)
 
 ENTRY *hsearch(ENTRY item, ACTION action)
 {
-	size_t hash = keyhash(item.key);
-	struct elem *e = lookup(item.key, hash);
+	ENTRY *e;
 
-	if (e->item.key)
-		return &e->item;
-	if (action == FIND)
+	__hsearch_r(item, action, &e, &htab);
+	return e;
+}
+
+int __hcreate_r(size_t nel, struct hsearch_data *htab)
+{
+	int r;
+
+	htab->__tab = calloc(1, sizeof *htab->__tab);
+	if (!htab->__tab)
 		return 0;
-	e->item = item;
-	e->hash = hash;
-	if (++used > mask - mask/4) {
-		if (!resize(2*used)) {
-			used--;
-			e->item.key = 0;
+	r = resize(nel, htab);
+	if (r == 0) {
+		free(htab->__tab);
+		htab->__tab = 0;
+	}
+	return r;
+}
+weak_alias(__hcreate_r, hcreate_r);
+
+void __hdestroy_r(struct hsearch_data *htab)
+{
+	if (htab->__tab) free(htab->__tab->entries);
+	free(htab->__tab);
+	htab->__tab = 0;
+}
+weak_alias(__hdestroy_r, hdestroy_r);
+
+int __hsearch_r(ENTRY item, ACTION action, ENTRY **retval, struct hsearch_data *htab)
+{
+	size_t hash = keyhash(item.key);
+	ENTRY *e = lookup(item.key, hash, htab);
+
+	if (e->key) {
+		*retval = e;
+		return 1;
+	}
+	if (action == FIND) {
+		*retval = 0;
+		return 0;
+	}
+	*e = item;
+	if (++htab->__tab->used > htab->__tab->mask - htab->__tab->mask/4) {
+		if (!resize(2*htab->__tab->used, htab)) {
+			htab->__tab->used--;
+			e->key = 0;
+			*retval = 0;
 			return 0;
 		}
-		e = lookup(item.key, hash);
+		e = lookup(item.key, hash, htab);
 	}
-	return &e->item;
+	*retval = e;
+	return 1;
 }
+weak_alias(__hsearch_r, hsearch_r);

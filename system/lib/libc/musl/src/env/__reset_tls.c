@@ -1,22 +1,16 @@
-#ifndef SHARED
-
 #include <string.h>
 #include "pthread_impl.h"
 #include "libc.h"
 
-extern struct tls_image {
-	void *image;
-	size_t len, size, align;
-} __static_tls ATTR_LIBC_VISIBILITY;
-
-#define T __static_tls
-
 void __reset_tls()
 {
-	if (!T.size) return;
 	pthread_t self = __pthread_self();
-	memcpy(self->dtv[1], T.image, T.len);
-	memset((char *)self->dtv[1]+T.len, 0, T.size-T.len);
+	struct tls_module *p;
+	size_t i, n = (size_t)self->dtv[0];
+	if (n) for (p=libc.tls_head, i=1; i<=n; i++, p=p->next) {
+		if (!self->dtv[i]) continue;
+		memcpy(self->dtv[i], p->image, p->len);
+		memset((char *)self->dtv[i]+p->len, 0,
+			p->size - p->len);
+	}
 }
-
-#endif

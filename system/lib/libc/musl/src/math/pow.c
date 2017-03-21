@@ -143,7 +143,7 @@ double pow(double x, double y)
 				return 1.0;
 			else if (ix >= 0x3ff00000) /* (|x|>1)**+-inf = inf,0 */
 				return hy >= 0 ? y : 0.0;
-			else if ((ix|lx) != 0)     /* (|x|<1)**+-inf = 0,inf if x!=0 */
+			else                       /* (|x|<1)**+-inf = 0,inf */
 				return hy >= 0 ? 0.0 : -y;
 		}
 		if (iy == 0x3ff00000) {    /* y is +-1 */

@@ -278,6 +278,18 @@ If manually bisecting:
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '-o', 'page.html', '--use-preload-plugins']).communicate()
     self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
+  # Tests that user .html shell files can manually download .data files created with --preload-file cmdline.
+  def test_preload_file_with_manual_data_download(self):
+    src = os.path.join(self.get_dir(), 'src.cpp')
+    open(src, 'w').write(self.with_report_result(open(os.path.join(path_from_root('tests/manual_download_data.cpp'))).read()))
+
+    data = os.path.join(self.get_dir(), 'file.txt')
+    open(data, 'w').write('''Hello!''')
+
+    Popen([PYTHON, EMCC, 'src.cpp', '-o', 'manual_download_data.js', '--preload-file', data + '@/file.txt']).communicate()
+    shutil.copyfile(path_from_root('tests', 'manual_download_data.html'), os.path.join(self.get_dir(), 'manual_download_data.html'))
+    self.run_browser('manual_download_data.html', 'Hello!', '/report_result?1')
+
   # Tests that if the output files have single or double quotes in them, that it will be handled by correctly escaping the names.
   def test_output_file_escaping(self):
     tricky_part = '\'' if WINDOWS else '\' and \"' # On Windows, files/directories may not contain a double quote character. On non-Windowses they can, so test that.
@@ -1107,7 +1119,11 @@ keydown(100);keyup(100); // trigger the end
     self.btest('test_webgl_context_attributes_glut.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lglut', '-lGLEW'])
     self.btest('test_webgl_context_attributes_sdl.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lSDL', '-lGLEW'])
     self.btest('test_webgl_context_attributes_glfw.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lglfw', '-lGLEW'])
-    
+
+  # Test that -s GL_PREINITIALIZED_CONTEXT=1 works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
+  def test_preinitialized_webgl_context(self):
+    self.btest('preinitialized_webgl_context.cpp', '5', args=['-s', 'GL_PREINITIALIZED_CONTEXT=1', '--shell-file', path_from_root('tests/preinitialized_webgl_context.html')])
+
   def test_emscripten_get_now(self):
     self.btest('emscripten_get_now.cpp', '1')
 
@@ -1246,7 +1262,7 @@ keydown(100);keyup(100); // trigger the end
   def test_idbstore_sync_worker(self):
     secret = str(time.time())
     self.clear()
-    self.btest(path_from_root('tests', 'idbstore_sync_worker.c'), '6', force_c=True, args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '--memory-init-file', '1', '-O3', '-g2', '--proxy-to-worker', '-s', 'TOTAL_MEMORY=75000000'])
+    self.btest(path_from_root('tests', 'idbstore_sync_worker.c'), '6', force_c=True, args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '--memory-init-file', '1', '-O3', '-g2', '--proxy-to-worker', '-s', 'TOTAL_MEMORY=80MB'])
 
   def test_force_exit(self):
     self.btest('force_exit.c', force_c=True, expected='17')
@@ -1352,7 +1368,7 @@ keydown(100);keyup(100); // trigger the end
     Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'test_egl_width_height.c'), '-o', 'page.html', '-lEGL', '-lGL']).communicate()
     self.run_browser('page.html', 'Should print "(300, 150)" -- the size of the canvas in pixels', '/report_result?1')
 
-  def test_worker(self):
+  def do_test_worker(self, args=[]):
     # Test running in a web worker
     open('file.dat', 'w').write('data for worker')
     html_file = open('main.html', 'w')
@@ -1374,14 +1390,16 @@ keydown(100);keyup(100); // trigger the end
     ''')
     html_file.close()
 
-    # no file data
-    for file_data in [0, 1]:
-      print 'file data', file_data
-      output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'] + (['--preload-file', 'file.dat'] if file_data else []) , stdout=PIPE, stderr=PIPE).communicate()
-      assert len(output[0]) == 0, output[0]
-      assert os.path.exists('worker.js'), output
-      if not file_data: self.assertContained('you should not see this text when in a worker!', run_js('worker.js')) # code should run standalone
+    for file_data in [1, 0]:
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'] + (['--preload-file', 'file.dat'] if file_data else []) + args
+      print cmd
+      subprocess.check_call(cmd)
+      assert os.path.exists('worker.js')
       self.run_browser('main.html', '', '/report_result?hello%20from%20worker,%20and%20|' + ('data%20for%20w' if file_data else '') + '|')
+
+  def test_worker(self):
+    self.do_test_worker()
+    self.assertContained('you should not see this text when in a worker!', run_js('worker.js')) # code should run standalone too
 
   def test_chunked_synchronous_xhr(self):
     main = 'chunked_sync_xhr.html'
@@ -1783,7 +1801,7 @@ void *getBindBuffer() {
     self.btest('sdl_canvas_palette_2.c', reference='sdl_canvas_palette_b.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-b.js', '-lSDL', '-lGL'])
 
   def test_sdl_alloctext(self):
-    self.btest('sdl_alloctext.c', expected='1', args=['-O2', '-s', 'TOTAL_MEMORY=' + str(1024*1024*8), '-lSDL', '-lGL'])
+    self.btest('sdl_alloctext.c', expected='1', args=['-O2', '-s', 'TOTAL_MEMORY=16MB', '-lSDL', '-lGL'])
 
   def test_sdl_surface_refcount(self):
     self.btest('sdl_surface_refcount.c', args=['-lSDL'], expected='1')
@@ -2187,6 +2205,13 @@ Module["preRun"].push(function () {
   def test_webgl2_ubos(self):
     self.btest(path_from_root('tests', 'webgl2_ubos.cpp'), args=['-s', 'USE_WEBGL2=1', '-lGL'], expected='0')
 
+  def test_webgl2_garbage_free_entrypoints(self):
+    self.btest(path_from_root('tests', 'webgl2_garbage_free_entrypoints.cpp'), args=['-s', 'USE_WEBGL2=1', '-DTEST_WEBGL2=1'], expected='1')
+    self.btest(path_from_root('tests', 'webgl2_garbage_free_entrypoints.cpp'), expected='1')
+
+  def test_webgl2_backwards_compatibility_emulation(self):
+    self.btest(path_from_root('tests', 'webgl2_backwards_compatibility_emulation.cpp'), args=['-s', 'USE_WEBGL2=1', '-s', 'WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION=1'], expected='0')
+
   def test_webgl_with_closure(self):
     self.btest(path_from_root('tests', 'webgl_with_closure.cpp'), args=['-O2', '-s', 'USE_WEBGL2=1', '--closure', '1', '-lGL'], expected='0')
 
@@ -2243,6 +2268,8 @@ open(filename, 'w').write(replaced)
     self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1'])
     print 'asyncify+emterpreter'
     self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1', '-s', 'EMTERPRETIFY=1'])
+    print 'emterpreter by itself'
+    self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'])
 
   def test_wget_data(self):
     with open(os.path.join(self.get_dir(), 'test.txt'), 'w') as f:
@@ -2712,6 +2739,10 @@ window.close = function() {
       message='You should see colorful "hello" and "world" in the window',
       timeout=30)
 
+  def test_sdl2_custom_cursor(self):
+    shutil.copyfile(path_from_root('tests', 'cursor.bmp'), os.path.join(self.get_dir(), 'cursor.bmp'))
+    self.btest('sdl2_custom_cursor.c', expected='1', args=['--preload-file', 'cursor.bmp', '-s', 'USE_SDL=2'])
+
   def test_emterpreter_async(self):
     for opts in [0, 1, 2, 3]:
       print opts
@@ -2917,7 +2948,7 @@ window.close = function() {
 
   def test_memory_growth_during_startup(self):
     open('data.dat', 'w').write('X' * (30*1024*1024))
-    self.btest('browser_test_hello_world.c', '0', args=['-s', 'ASSERTIONS=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_MEMORY=10000', '-s', 'TOTAL_STACK=5000', '--preload-file', 'data.dat'])
+    self.btest('browser_test_hello_world.c', '0', args=['-s', 'ASSERTIONS=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_MEMORY=16MB', '-s', 'TOTAL_STACK=5000', '--preload-file', 'data.dat'])
 
   # pthreads tests
 
@@ -2935,7 +2966,7 @@ window.close = function() {
 
   # Test 64-bit atomics.
   def test_pthread_64bit_atomics(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=90)
 
   # Test 64-bit C++11 atomics.
   def test_pthread_64bit_cxx11_atomics(self):
@@ -3013,7 +3044,7 @@ window.close = function() {
   # Tests the pthread mutex api.
   def test_pthread_mutex(self):
     for arg in [[], ['-DSPINLOCK_TEST']]:
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, timeout=20)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, timeout=30)
 
   # Test that memory allocation is thread-safe.
   def test_pthread_malloc(self):
@@ -3021,7 +3052,7 @@ window.close = function() {
 
   # Stress test pthreads allocating memory that will call to sbrk(), and main thread has to free up the data.
   def test_pthread_malloc_free(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc_free.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'TOTAL_MEMORY=268435456'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc_free.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'TOTAL_MEMORY=256MB'], timeout=30)
 
   # Test that the pthread_barrier API works ok.
   def test_pthread_barrier(self):
@@ -3132,7 +3163,7 @@ window.close = function() {
       print 'aborting malloc=' + str(aborting_malloc)
       # With aborting malloc = 1, test allocating memory in threads
       # With aborting malloc = 0, allocate so much memory in threads that some of the allocations fail.
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_sbrk.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--separate-asm', '-s', 'ABORTING_MALLOC=' + str(aborting_malloc), '-DABORTING_MALLOC=' + str(aborting_malloc), '-s', 'TOTAL_MEMORY=134217728'], timeout=30)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_sbrk.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--separate-asm', '-s', 'ABORTING_MALLOC=' + str(aborting_malloc), '-DABORTING_MALLOC=' + str(aborting_malloc), '-s', 'TOTAL_MEMORY=128MB'], timeout=30)
 
   # Test that -s ABORTING_MALLOC=0 works in both pthreads and non-pthreads builds. (sbrk fails gracefully)
   def test_pthread_gauge_available_memory(self):
@@ -3268,11 +3299,64 @@ window.close = function() {
   def test_split_memory_large_file(self):
     size = 2*1024*1024
     open('huge.dat', 'w').write(''.join([chr((x*x)&255) for x in range(size*2)])) # larger than a memory chunk
-    self.btest('split_memory_large_file.cpp', expected='1', args=['-s', 'SPLIT_MEMORY=' + str(size), '-s', 'TOTAL_MEMORY=100000000', '-s', 'TOTAL_STACK=10240', '--preload-file', 'huge.dat'], timeout=60)
+    self.btest('split_memory_large_file.cpp', expected='1', args=['-s', 'SPLIT_MEMORY=' + str(size), '-s', 'TOTAL_MEMORY=128MB', '-s', 'TOTAL_STACK=10240', '--preload-file', 'huge.dat'], timeout=60)
 
   def test_binaryen(self):
     self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
     self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"', '-O2'])
+
+  def test_binaryen_native(self):
+    for opts in [
+        [],
+        ['-O1'],
+        ['-O2'],
+        ['-O3'],
+        ['-Os'],
+        ['-Oz'],
+        ['-O2', '--js-opts', '1'],
+        ['-O2', '-s', 'EMTERPRETIFY=1'],
+        ['-O2', '-s', 'ALLOW_MEMORY_GROWTH=1'],
+        ['-O2', '-s', 'EMTERPRETIFY=1', '-s', 'ALLOW_MEMORY_GROWTH=1'],
+        ['-O2', '-s', 'OUTLINING_LIMIT=1000']
+      ]:
+      print opts
+      self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1'] + opts)
+
+  def test_binaryen_async(self):
+    # notice when we use async compilation
+    open('shell.html', 'w').write(open(path_from_root('src', 'shell.html')).read().replace(
+      '''{{{ SCRIPT }}}''',
+      '''
+    <script>
+      // note if we do async compilation
+      var real_wasm_instantiate = WebAssembly.instantiate;
+      WebAssembly.instantiate = function(a, b) {
+        Module.sawAsyncCompilation = true;
+        return real_wasm_instantiate(a, b);
+      };
+      // show stderr for the viewer's fun
+      Module.printErr = function(x) {
+        Module.print('<<< ' + x + ' >>>');
+        console.log(x);
+      };
+    </script>
+    {{{ SCRIPT }}}
+''',
+    ))
+    for opts, expect in [
+      ([], 1),
+      (['-O1'], 1),
+      (['-O2'], 1),
+      (['-O3'], 1),
+      (['-s', 'BINARYEN_ASYNC_COMPILATION=1'], 1), # force it on
+      (['-O1', '-s', 'BINARYEN_ASYNC_COMPILATION=0'], 0), # force it off
+      (['-s', 'BINARYEN_ASYNC_COMPILATION=1', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'], 0), # try to force it on, but have it disabled
+    ]:
+      print opts, expect
+      self.btest('binaryen_async.c', expected=str(expect), args=['-s', 'BINARYEN=1', '--shell-file', 'shell.html'] + opts)
+
+  def test_binaryen_worker(self):
+    self.do_test_worker(['-s', 'WASM=1'])
 
   def test_utf8_textdecoder(self):
     self.btest('benchmark_utf8.cpp', expected='0', args=['--embed-file', path_from_root('tests/utf8_corpus.txt') + '@/utf8_corpus.txt'])
@@ -3291,4 +3375,90 @@ window.close = function() {
   # Tests the feature that shell html page can preallocate the typed array and place it to Module.buffer before loading the script page.
   # In this build mode, the -s TOTAL_MEMORY=xxx option will be ignored.
   def test_preallocated_heap(self):
-    self.btest('test_preallocated_heap.cpp', expected='1', args=['-s', 'TOTAL_MEMORY='+str(16*1024*1024), '-s', 'ABORTING_MALLOC=0', '--shell-file', path_from_root('tests', 'test_preallocated_heap_shell.html')])
+    self.btest('test_preallocated_heap.cpp', expected='1', args=['-s', 'TOTAL_MEMORY=16MB', '-s', 'ABORTING_MALLOC=0', '--shell-file', path_from_root('tests', 'test_preallocated_heap_shell.html')])
+
+  # Tests emscripten_fetch() usage to XHR data directly to memory without persisting results to IndexedDB.
+  def test_fetch_to_memory(self):
+    # Test error reporting in the negative case when the file URL doesn't exist. (http 404)
+    self.btest('fetch/to_memory.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-DFILE_DOES_NOT_EXIST'])
+
+    # Test the positive case when the file URL exists. (http 200)
+    shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
+    self.btest('fetch/to_memory.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1'])
+
+  # Tests emscripten_fetch() usage to persist an XHR into IndexedDB and subsequently load up from there.
+  def test_fetch_cached_xhr(self):
+    shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
+    self.btest('fetch/cached_xhr.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1'])
+
+  # Test emscripten_fetch() usage to stream a XHR in to memory without storing the full file in memory
+  def test_fetch_stream_file(self):
+    # Strategy: create a large 128MB file, and compile with a small 16MB Emscripten heap, so that the tested file
+    # won't fully fit in the heap. This verifies that streaming works properly.
+    f = open('largefile.txt', 'w')
+    s = '12345678'
+    for i in xrange(14):
+      s = s[::-1] + s # length of str will be 2^17=128KB
+    for i in xrange(1024):
+      f.write(s)
+    f.close()
+    self.btest('fetch/stream_file.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'TOTAL_MEMORY=536870912'])
+
+  # Tests emscripten_fetch() usage in synchronous mode.
+  def test_fetch_sync_xhr(self):
+    shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
+    self.btest('fetch/sync_xhr.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '--proxy-to-worker', '-s', 'USE_PTHREADS=1'])
+
+  def test_fetch_idb_store(self):
+    self.btest('fetch/idb_store.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '--proxy-to-worker'])
+
+  def test_fetch_idb_delete(self):
+    shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
+    self.btest('fetch/idb_delete.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '--proxy-to-worker'])
+
+  def test_asmfs_hello_file(self):
+    # Test basic file loading and the valid character set for files.
+    os.mkdir(os.path.join(self.get_dir(), 'dirrey'))
+    shutil.copyfile(path_from_root('tests', 'asmfs', 'hello_file.txt'), os.path.join(self.get_dir(), 'dirrey', 'hello file !#$%&\'()+,-.;=@[]^_`{}~ %%.txt'))
+    self.btest('asmfs/hello_file.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '--proxy-to-worker'])
+
+  def test_asmfs_read_file_twice(self):
+    shutil.copyfile(path_from_root('tests', 'asmfs', 'hello_file.txt'), os.path.join(self.get_dir(), 'hello_file.txt'))
+    self.btest('asmfs/read_file_twice.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '--proxy-to-worker'])
+
+  def test_asmfs_fopen_write(self):
+    self.btest('asmfs/fopen_write.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '--proxy-to-worker'])
+
+  def test_asmfs_mkdir_create_unlink_rmdir(self):
+    self.btest('cstdio/test_remove.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '--proxy-to-worker'])
+
+  def test_asmfs_dirent_test_readdir(self):
+    self.btest('dirent/test_readdir.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '--proxy-to-worker'])
+
+  def test_asmfs_dirent_test_readdir_empty(self):
+    self.btest('dirent/test_readdir_empty.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '--proxy-to-worker'])
+
+  def test_asmfs_unistd_close(self):
+    self.btest('unistd/close.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '--proxy-to-worker'])
+
+  def test_asmfs_unistd_access(self):
+    self.btest('unistd/access.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '--proxy-to-worker'])
+
+  def test_asmfs_unistd_unlink(self):
+    # TODO: Once symlinks are supported, remove -DNO_SYMLINK=1
+    self.btest('unistd/unlink.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '--proxy-to-worker', '-DNO_SYMLINK=1'])
+
+  def test_asmfs_test_fcntl_open(self):
+    self.btest('fcntl-open/src.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '--proxy-to-worker'])
+
+  def test_asmfs_relative_paths(self):
+    self.btest('asmfs/relative_paths.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '--proxy-to-worker'])
+
+  def test_pthread_locale(self):
+    for args in [
+        [],
+        ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'],
+        ['-s', 'USE_PTHREADS=1', '--proxy-to-worker', '-s', 'PTHREAD_POOL_SIZE=2'],
+    ]:
+      print "Testing with: ", args
+      self.btest('pthread/test_pthread_locale.c', expected='1', args=args)
