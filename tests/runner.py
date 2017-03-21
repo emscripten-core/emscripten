@@ -1194,8 +1194,14 @@ def skip_requested_tests(args, modules):
       args[i] = None
   return filter(lambda arg: arg is not None, args)
 
+def suite_for_module(module):
+  import parallel_runner
+  if module.__name__ == 'test_core':
+    return parallel_runner.ParallelTestSuite()
+  return unittest.TestSuite()
+
 def load_test_suites(args, modules):
-  import operator, parallel_runner
+  import operator
   loader = unittest.TestLoader()
   unmatched_test_names = set(args[1:])
   suites = []
@@ -1210,8 +1216,7 @@ def load_test_suites(args, modules):
         pass
     if len(names_in_module) > 0:
       tests = loader.loadTestsFromNames(sorted(names_in_module), m)
-      module_name = m.__name__
-      suite = parallel_runner.ParallelTestSuite() if module_name == 'test_core' else unittest.TestSuite()
+      suite = suite_for_module(m)
       for subsuite in tests:
         for test in subsuite:
           suite.addTest(test)

@@ -16,7 +16,7 @@ class ParallelTextTestResult(object):
   def __init__(self):
     self.resultType = None
     self.resultTest = None
-    self.resultErr = None
+    self.resultError = None
 
   def startTest(self, test):
     pass
@@ -24,25 +24,27 @@ class ParallelTextTestResult(object):
     pass
 
   def addSuccess(self, test):
-    print 'Test', test, 'OK'
+    print test, '... ok'
     self.resultType = TestResultType.Success
     self.resultTest = test
 
   def addFailure(self, test, err):
-    print 'Test', test, 'FAIL with:', err
+    print test, '... FAIL:'
+    print err
     self.resultType = TestResultType.Failure
     self.resultTest = test
     self._setError(err)
 
   def addError(self, test, err):
-    print 'Test', test, 'ERROR with:', err
+    print test, '... ERROR:'
+    print err
     self.resultType = TestResultType.Error
     self.resultTest = test
     self._setError(err)
 
   def _setError(self, err):
     a, b, _ = err
-    self.resultErr = (a, b, None)
+    self.resultError = (a, b, None)
 
 
 class ParallelTestSuite(unittest.BaseTestSuite):
@@ -86,14 +88,14 @@ class ParallelTestSuite(unittest.BaseTestSuite):
       s = r.resultTest
       result.startTest(s)
       err = None
-      if r.resultErr is not None:
+      if r.resultError is not None:
         tb = None
         try:
           # We need to reconstruct some traceback and this is a hacky way to do that
           1/0
         except Exception as e:
           tb = sys.exc_info()[2]
-        a, b, c = r.resultErr
+        a, b, c = r.resultError
         err = (a, b, tb)
       if r.resultType == TestResultType.Success:
         result.addSuccess(s)
