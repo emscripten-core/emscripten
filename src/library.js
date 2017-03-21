@@ -3931,6 +3931,16 @@ LibraryManager.library = {
   getpwent: function() { throw 'getpwent: TODO' },
   endpwent: function() { throw 'endpwent: TODO' },
 
+  // crt_externs.h
+
+  _NSGetEnviron__deps: ['$ENV', 'environ'],
+  _NSGetEnviron: function() {
+    // extern char ***_NSGetEnviron(void);
+    // https://developer.apple.com/library/mac/#documentation/Darwin/Reference/ManPages/man7/environ.7.html
+    var envPtr = {{{ makeGetValue(makeGlobalUse('_environ'), '0', 'i8**') }}};
+    return allocate([envPtr], 'i8**', ALLOC_NORMAL);
+  },
+
   // ==========================================================================
   // emscripten.h
   // ==========================================================================
