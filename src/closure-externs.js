@@ -850,3 +850,14 @@ SIMD.Bool32x4.xor = function() {};
 SIMD.Bool64x2.xor = function() {};
 
 var GLctx = {};
+
+// WebAssembly
+
+var WebAssembly = {
+  Module: function() {},
+  Instance: function() {},
+  Memory: function() {},
+  Table: function() {},
+  instantiate: function() {},
+};
+

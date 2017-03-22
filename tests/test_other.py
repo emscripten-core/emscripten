@@ -6495,7 +6495,7 @@ int main() {
     if (!buffers[2]) allocateSplitChunk(2); // we will slice into this
     TOP:
     for (var i = 0; i < SPLIT_MEMORY*3; i++) {
-      HEA<<<<PU8.subarray(i);
+      HEAPU8.subarray(i);
       if ((i&3) === 0) HEAPU32.subarray(i >> 2);
       for (var j = 1; j < SPLIT_MEMORY*3; j++) {
         //printErr([i, j]);
@@ -6772,7 +6772,10 @@ int main() {
 
     link_args = Building.link([main_object_file_name], os.path.join(self.get_dir(), 'all.bc'), just_calculate=True)
 
+    # Move away from the created temp directory and remove it
     os.chdir(current_directory)
+    time.sleep(0.2) # Wait for Windows FS to release access to the directory
+    shutil.rmtree(os.path.join(current_directory, with_space))
 
     # We want only the relative path to be in the linker args, it should not be converted to an absolute path.
     self.assertItemsEqual(link_args, [main_object_file_name])
