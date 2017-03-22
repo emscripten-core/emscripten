@@ -12,11 +12,23 @@ class TestResultType(enum.Enum):
   Error = 3
 
 
-class ParallelTextTestResult(object):
+class BufferedParallelTestResult(object):
   def __init__(self):
-    self.resultType = None
-    self.resultTest = None
-    self.resultError = None
+    self.result_type = None
+    self.result_test = None
+    self.result_error = None
+
+  def updateResult(self, result):
+    result.startTest(self.result_test)
+
+    if self.result_type == TestResultType.Success:
+      result.addSuccess(self.result_test)
+    elif self.result_type == TestResultType.Failure:
+      result.addFailure(self.result_test, self._get_error())
+    elif self.result_type == TestResultType.Error:
+      result.addError(self.result_test, self._get_error())
+
+    result.stopTest(self.result_test)
 
   def startTest(self, test):
     pass
@@ -25,87 +37,81 @@ class ParallelTextTestResult(object):
 
   def addSuccess(self, test):
     print test, '... ok'
-    self.resultType = TestResultType.Success
-    self.resultTest = test
+    self.result_type = TestResultType.Success
+    self.result_test = test
 
   def addFailure(self, test, err):
     print test, '... FAIL:'
     print err
-    self.resultType = TestResultType.Failure
-    self.resultTest = test
-    self._setError(err)
+    self.result_type = TestResultType.Failure
+    self.result_test = test
+    self._set_error(err)
 
   def addError(self, test, err):
     print test, '... ERROR:'
     print err
-    self.resultType = TestResultType.Error
-    self.resultTest = test
-    self._setError(err)
+    self.result_type = TestResultType.Error
+    self.result_test = test
+    self._set_error(err)
 
-  def _setError(self, err):
+  def _set_error(self, err):
     a, b, _ = err
-    self.resultError = (a, b, None)
+    self.result_error = (a, b, None)
+
+  def _get_error(self):
+    if self.result_error is None:
+      return None
+
+    a, b, tb = self.result_error
+    fake_tb = self.fake_traceback(tb)
+    return (a, b, fake_tb)
+
+  @staticmethod
+  def fake_traceback(real_traceback):
+    # TODO: create a fake traceback object that mirrors the string info of the real one
+    try:
+      # We need to construct a traceback object and this is a hacky way to do that
+      1/0
+    except Exception as e:
+      return sys.exc_info()[2]
 
 
 class ParallelTestSuite(unittest.BaseTestSuite):
-  def run(self, result):
-    import Queue
-    end_of_queue = 'STOP'
-    def worker(work_queue, result_queue):
-      for test in iter(work_queue.get, end_of_queue):
-        result = ParallelTextTestResult()
-        try:
-          test(result)
-        except Exception as e:
-          result.addError(test, e)
-        result_queue.put(result)
+  def __init__(self):
+    super(ParallelTestSuite, self).__init__()
+    self.processes = None
+    self.result_queue = None
 
-    num_workers = ParallelTestSuite.num_cores()
-    processes = []
+  def run(self, result):
+    test_queue = self.create_test_queue()
+    self.init_processes(test_queue)
+    results = self.collect_results()
+    return self.combine_results(result, results)
+
+  def create_test_queue(self):
     test_queue = multiprocessing.Queue()
-    result_queue = multiprocessing.Queue()
     for test in self:
       test_queue.put(test)
-    for i in xrange(num_workers):
-      p = multiprocessing.Process(target=worker, args=(test_queue, result_queue))
+    return test_queue
+
+  def init_processes(self, test_queue):
+    self.processes = []
+    self.result_queue = multiprocessing.Queue()
+    for i in xrange(self.num_cores()):
+      p = multiprocessing.Process(target=self.testing_thread,
+                                  args=(test_queue, self.result_queue))
       p.start()
-      processes.append(p)
-      test_queue.put(end_of_queue)
+      self.processes.append(p)
 
-    worker_status = {}
-    buffered_results = []
-    while len(processes) > 0:
+  @staticmethod
+  def testing_thread(work_queue, result_queue):
+    for test in iter(lambda: get_from_queue(work_queue), None):
+      result = BufferedParallelTestResult()
       try:
-        res = result_queue.get(True, 0.1)
-        buffered_results.append(res)
-      except Queue.Empty:
-        processes = filter(lambda p: p.is_alive(), processes)
-      except TypeError as e:
-        # Quirk of python 2.7 (marked WNF) : https://bugs.python.org/issue9400
-        print 'hopefully got a subprocess.CalledProcessError:', e
-
-    for r in buffered_results:
-      s = r.resultTest
-      result.startTest(s)
-      err = None
-      if r.resultError is not None:
-        tb = None
-        try:
-          # We need to reconstruct some traceback and this is a hacky way to do that
-          1/0
-        except Exception as e:
-          tb = sys.exc_info()[2]
-        a, b, c = r.resultError
-        err = (a, b, tb)
-      if r.resultType == TestResultType.Success:
-        result.addSuccess(s)
-      elif r.resultType == TestResultType.Failure:
-        result.addFailure(s, err)
-      elif r.resultType == TestResultType.Error:
-        result.addError(s, err)
-      result.stopTest(s)
-
-    return result
+        test(result)
+      except Exception as e:
+        result.addError(test, e)
+      result_queue.put(result)
 
   @staticmethod
   def num_cores():
@@ -113,3 +119,31 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     if emcc_cores:
       return int(emcc_cores)
     return multiprocessing.cpu_count()
+
+  def collect_results(self):
+    buffered_results = []
+    while len(self.processes) > 0:
+      res = get_from_queue(self.result_queue)
+      if res is None:
+        self.processes = filter(lambda p: p.is_alive(), self.processes)
+      else:
+        buffered_results.append(res)
+    return buffered_results
+
+  def combine_results(self, result, buffered_results):
+    for r in buffered_results:
+      r.updateResult(result)
+    return result
+
+
+def get_from_queue(queue):
+  import Queue
+  try:
+    return queue.get(True, 0.1)
+  except Queue.Empty:
+    return None
+  except TypeError as e:
+    print ('multiprocess.Queue.get threw a TypeError. This is a bug in '
+           'python 2.7 (https://bugs.python.org/issue9400)')
+    print e
+    return None
