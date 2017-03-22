@@ -168,7 +168,6 @@
       // should contain the exports object of the instantiated Module, or an empty dictionary object {} if the
       // instantiation is performed asynchronously, or false if instantiation failed.
       Module.instantiateWasm = function(imports, successCallback) {
-        addRunDependency('wasm-instantiate');
         console.log('instantiateWasm: instantiating asynchronously');
         wasm.then(function(wasmBinary) {
           console.log('wasm download finished, begin instantiating');
@@ -176,7 +175,6 @@
             console.log('wasm instantiation succeeded');
             Module.testWasmInstantiationSucceeded = 1;
             successCallback(output.instance);
-            removeRunDependency("wasm-instantiate");
           }).catch(function(e) {
             console.log('wasm instantiation failed! ' + e);
           });
