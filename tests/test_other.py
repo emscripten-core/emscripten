@@ -6772,7 +6772,10 @@ int main() {
 
     link_args = Building.link([main_object_file_name], os.path.join(self.get_dir(), 'all.bc'), just_calculate=True)
 
+    # Move away from the created temp directory and remove it
     os.chdir(current_directory)
+    time.sleep(0.2) # Wait for Windows FS to release access to the directory
+    shutil.rmtree(os.path.join(current_directory, with_space))
 
     # We want only the relative path to be in the linker args, it should not be converted to an absolute path.
     self.assertItemsEqual(link_args, [main_object_file_name])
