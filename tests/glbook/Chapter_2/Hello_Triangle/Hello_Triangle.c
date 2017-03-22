@@ -77,8 +77,6 @@ GLuint LoadShader ( GLenum type, const char *shaderSrc )
 //
 int Init ( ESContext *esContext )
 {
-   esContext->userData = malloc(sizeof(UserData));
-
    UserData *userData = esContext->userData;
    GLbyte vShaderStr[] =  
       "attribute vec4 vPosition;    \n"
