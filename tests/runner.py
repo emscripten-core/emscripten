@@ -1104,6 +1104,31 @@ def args_with_expanded_wildcards(args, all_tests):
     sys.exit(0)
   return new_args
 
+def skip_requested_tests(args, modules):
+  for i in range(len(args)):
+    arg = args[i]
+    if arg.startswith('skip:'):
+      which = arg.split('skip:')[1]
+      if which.startswith('ALL.'):
+        ignore, test = which.split('.')
+        which = map(lambda mode: mode+'.'+test, test_modes)
+      else:
+        which = [which]
+
+      print >> sys.stderr, ','.join(which)
+      for test in which:
+        print >> sys.stderr, 'will skip "%s"' % test
+        suite_name, test_name = test.split('.')
+        for m in modules:
+          try:
+            suite = getattr(m, suite_name)
+            setattr(suite, test_name, RunnerCore("skipme"))
+            break
+          except:
+            pass
+      args[i] = None
+  return filter(lambda arg: arg is not None, args)
+
 def args_for_random_tests(args, modules):
   first = args[1]
   if first.startswith('random'):
@@ -1168,31 +1193,6 @@ def print_random_test_statistics(num_tests):
            '%.2f%% of the test suite will pass'
            % (expected))
   atexit.register(show)
-
-def skip_requested_tests(args, modules):
-  for i in range(len(args)):
-    arg = args[i]
-    if arg.startswith('skip:'):
-      which = arg.split('skip:')[1]
-      if which.startswith('ALL.'):
-        ignore, test = which.split('.')
-        which = map(lambda mode: mode+'.'+test, test_modes)
-      else:
-        which = [which]
-
-      print >> sys.stderr, ','.join(which)
-      for test in which:
-        print >> sys.stderr, 'will skip "%s"' % test
-        suite_name, test_name = test.split('.')
-        for m in modules:
-          try:
-            suite = getattr(m, suite_name)
-            setattr(suite, test_name, RunnerCore("skipme"))
-            break
-          except:
-            pass
-      args[i] = None
-  return filter(lambda arg: arg is not None, args)
 
 def suite_for_module(module):
   import parallel_runner
