@@ -3355,6 +3355,14 @@ window.close = function() {
       print opts, expect
       self.btest('binaryen_async.c', expected=str(expect), args=['-s', 'BINARYEN=1', '--shell-file', 'shell.html'] + opts)
 
+  # Test that implementing Module.instantiateWasm() callback works.
+  def test_manual_wasm_instantiate(self):
+    src = os.path.join(self.get_dir(), 'src.cpp')
+    open(src, 'w').write(self.with_report_result(open(os.path.join(path_from_root('tests/manual_wasm_instantiate.cpp'))).read()))
+    Popen([PYTHON, EMCC, 'src.cpp', '-o', 'manual_wasm_instantiate.js', '-s', 'BINARYEN=1']).communicate()
+    shutil.copyfile(path_from_root('tests', 'manual_wasm_instantiate.html'), os.path.join(self.get_dir(), 'manual_wasm_instantiate.html'))
+    self.run_browser('manual_wasm_instantiate.html', 'wasm instantiation succeeded', '/report_result?1')
+
   def test_binaryen_worker(self):
     self.do_test_worker(['-s', 'WASM=1'])
 
