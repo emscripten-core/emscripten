@@ -9,74 +9,6 @@ import traceback
 import sys
 
 
-class TestResultType(enum.Enum):
-  Success = 1
-  Failure = 2
-  Error = 3
-
-
-class FakeTraceback(object):
-  def __init__(self, tb):
-    self.tb_frame = FakeFrame(tb.tb_frame)
-    self.tb_lineno = tb.tb_lineno
-    self.tb_next = FakeTraceback(tb.tb_next) if tb.tb_next is not None else None
-class FakeFrame(object):
-  def __init__(self, f):
-    self.f_code = FakeCode(f.f_code)
-    self.f_globals = [] # f.f_globals
-class FakeCode(object):
-  def __init__(self, co):
-    self.co_filename = co.co_filename
-    self.co_name = co.co_name
-
-
-class BufferedParallelTestResult(object):
-  def __init__(self):
-    self.result_type = None
-    self.result_test = None
-    self.result_error = None
-
-  def updateResult(self, result):
-    result.startTest(self.result_test)
-
-    if self.result_type == TestResultType.Success:
-      result.addSuccess(self.result_test)
-    elif self.result_type == TestResultType.Failure:
-      result.addFailure(self.result_test, self.result_error)
-    elif self.result_type == TestResultType.Error:
-      result.addError(self.result_test, self.result_error)
-
-    result.stopTest(self.result_test)
-
-  def startTest(self, test):
-    pass
-  def stopTest(self, test):
-    pass
-
-  def addSuccess(self, test):
-    print test, '... ok'
-    self.result_type = TestResultType.Success
-    self.result_test = test
-
-  def addFailure(self, test, err):
-    print test, '... FAIL:'
-    print err
-    self.result_type = TestResultType.Failure
-    self.result_test = test
-    self._set_error(err)
-
-  def addError(self, test, err):
-    print test, '... ERROR:'
-    print err
-    self.result_type = TestResultType.Error
-    self.result_test = test
-    self._set_error(err)
-
-  def _set_error(self, err):
-    a, b, tb = err
-    self.result_error = (a, b, FakeTraceback(tb))
-
-
 class ParallelTestSuite(unittest.BaseTestSuite):
   def __init__(self):
     super(ParallelTestSuite, self).__init__()
@@ -143,6 +75,74 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     return result
 
 
+class BufferedParallelTestResult(object):
+  def __init__(self):
+    self.result_type = None
+    self.result_test = None
+    self.result_error = None
+
+  def updateResult(self, result):
+    result.startTest(self.result_test)
+
+    if self.result_type == TestResultType.Success:
+      result.addSuccess(self.result_test)
+    elif self.result_type == TestResultType.Failure:
+      result.addFailure(self.result_test, self.result_error)
+    elif self.result_type == TestResultType.Error:
+      result.addError(self.result_test, self.result_error)
+
+    result.stopTest(self.result_test)
+
+  def startTest(self, test):
+    pass
+  def stopTest(self, test):
+    pass
+
+  def addSuccess(self, test):
+    print test, '... ok'
+    self.result_type = TestResultType.Success
+    self.result_test = test
+
+  def addFailure(self, test, err):
+    print test, '... FAIL:'
+    print err
+    self.result_type = TestResultType.Failure
+    self.result_test = test
+    self._set_error(err)
+
+  def addError(self, test, err):
+    print test, '... ERROR:'
+    print err
+    self.result_type = TestResultType.Error
+    self.result_test = test
+    self._set_error(err)
+
+  def _set_error(self, err):
+    a, b, tb = err
+    self.result_error = (a, b, FakeTraceback(tb))
+
+
+class TestResultType(enum.Enum):
+  Success = 1
+  Failure = 2
+  Error = 3
+
+
+class FakeTraceback(object):
+  def __init__(self, tb):
+    self.tb_frame = FakeFrame(tb.tb_frame)
+    self.tb_lineno = tb.tb_lineno
+    self.tb_next = FakeTraceback(tb.tb_next) if tb.tb_next is not None else None
+class FakeFrame(object):
+  def __init__(self, f):
+    self.f_code = FakeCode(f.f_code)
+    self.f_globals = [] # f.f_globals
+class FakeCode(object):
+  def __init__(self, co):
+    self.co_filename = co.co_filename
+    self.co_name = co.co_name
+
+
 def num_cores():
   emcc_cores = os.environ.get('PARALLEL_SUITE_EMCC_CORES') or os.environ.get('EMCC_CORES')
   if emcc_cores:
@@ -154,9 +154,9 @@ def get_from_queue(queue):
   try:
     return queue.get(True, 0.1)
   except Queue.Empty:
-    return None
+    pass
   except TypeError as e:
     print ('multiprocess.Queue.get threw a TypeError. This is a bug in '
            'python 2.7 (https://bugs.python.org/issue9400)')
     print e
-    return None
+  return None
