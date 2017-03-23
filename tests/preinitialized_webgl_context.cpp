@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <emscripten/html5.h>
-#include <gles2/gl2.h>
+#include <GLES2/gl2.h>
 
 int main()
 {
