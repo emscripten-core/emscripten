@@ -916,14 +916,19 @@ function ftCall_%s(%s) {%s
         asm_global_funcs += '  var SIMD_Int32x4_fromBool64x2Bits = global.SIMD.Int32x4.fromBool64x2Bits;\n'
     if settings['USE_PTHREADS']:
       asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
-    asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in basic_vars + global_vars])
+
+    # if a basic var is a string, we use the same name for inside asm.js and out. otherwise if it's a pair, it's out, in (in order of appearance)
+    basic_vars = map(lambda x: (x, x) if type(x) is str else x, basic_vars)
+
+    # global vars
+    asm_global_vars = ''.join(['  var ' + g[1] + '=env' + access_quote(g[0]) + '|0;\n' for g in basic_vars + global_vars])
 
     if settings['BINARYEN'] and settings['SIDE_MODULE']:
       asm_global_vars += '\n  var STACKTOP = 0, STACK_MAX = 0;\n' # wasm side modules internally define their stack, these are set at module startup time
 
     # sent data
     the_global = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
-    sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
+    sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + map(lambda x: x[0], basic_vars) + basic_float_vars + global_vars]) + ' }'
     # received
     receiving = ''
     if settings['ASSERTIONS']:
