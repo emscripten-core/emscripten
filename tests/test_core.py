@@ -1625,18 +1625,10 @@ int main() {
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_parameter_pack')
 
+  @no_wasm_backend('stackSave/stackRestore is only generated in asmjs')
   def test_runtime_stacksave(self):
-    self.do_run(r'''
-#include <emscripten.h>
-#include <assert.h>
-
-int main() {
-  int x = EM_ASM_INT_V({ return Runtime.stackSave(); });
-  int y = EM_ASM_INT_V({ return Runtime.stackSave(); });
-  assert(x == y);
-  EM_ASM({ Module.print('success'); });
-}
-''', 'success')
+    src = open(path_from_root('tests', 'core', 'test_runtime_stacksave.c')).read()
+    self.do_run(src, 'success')
 
   def test_memorygrowth(self):
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
