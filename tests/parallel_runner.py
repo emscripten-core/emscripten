@@ -236,7 +236,11 @@ class ParallelTestSuite(unittest.BaseTestSuite):
 
   def create_test_queue(self):
     test_queue = multiprocessing.Queue()
+    tests = []
     for test in self:
+      tests.append(test)
+    tests.sort(key=lambda test: str(test))
+    for test in tests[::-1]:
       test_queue.put(test)
     return test_queue
 
@@ -270,14 +274,18 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     buffered_results = []
     while len(self.processes) > 0:
       res = get_from_queue(self.result_queue)
-      if res is None:
-        self.processes = filter(lambda p: p.is_alive(), self.processes)
-      else:
+      if res is not None:
         buffered_results.append(res)
+      else:
+        self.clear_finished_processes()
     return buffered_results
 
+  def clear_finished_processes(self):
+    self.processes = filter(lambda p: p.is_alive(), self.processes)
+
   def combine_results(self, result, buffered_results):
-    for r in buffered_results:
+    print 'DONE: combining results'
+    for r in sorted(buffered_results, key=lambda res:str(res.result_test)):
       r.updateResult(result)
     return result
 
