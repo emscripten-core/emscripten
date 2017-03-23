@@ -247,21 +247,24 @@ if (isMemoryGrowthAllowed) {
 
   var startHeapLength = TheModule['HEAP8'].length;
   var offset;
+  var storeArray = new TheModule.StoreArray();
+  storeArray.setArray(intArray);
   // Add more data until the heap is reallocated
   while (TheModule['HEAP8'].length === startHeapLength) {
-    offset = ensureInt32(intArray) / 4;
+    intArray = intArray.concat(intArray);
+    storeArray.setArray(intArray);
   }
   
   // Make sure the array was copied to the newly allocated HEAP
   var numCopiedEntries = 0;
-  for (var i = 0; i < numArrayEntries; i++) {
-    if (HEAP32[offset + i] !== intArray[i]) {
+  for (var i = 0; i < intArray.length; i++) {
+    if (storeArray.getArrayValue(i) !== intArray[i]) {
       break;
     }
     numCopiedEntries += 1;
   }
 
-  if (numArrayEntries !== numCopiedEntries) {
+  if (intArray.length !== numCopiedEntries) {
     TheModule.print('ERROR: An array was not copied to HEAP32 after memory reallocation');
   }
 }
