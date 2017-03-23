@@ -6593,8 +6593,8 @@ def process(filename):
       self.emcc_args += ['--closure', '1', '-g1'] # extra testing
       Settings.MODULARIZE = 1 # avoid closure minified names competing with our test code in the global name space
 
-    def do_test_in_mode(mode):
-      print 'testing mode', mode
+    def do_test_in_mode(mode, allow_memory_growth):
+      print 'testing mode', mode, ', memory growth =', allow_memory_growth
       # Force IDL checks mode
       os.environ['IDL_CHECKS'] = mode
 
@@ -6611,6 +6611,8 @@ def process(filename):
 Module.printErr = Module['printErr'] = function(){};
 ''')
       self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=["_malloc"]', '--post-js', 'glue.js', '--post-js', 'export.js']
+      if allow_memory_growth:
+        self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
       shutil.copyfile(path_from_root('tests', 'webidl', 'test.h'), self.in_dir('test.h'))
       shutil.copyfile(path_from_root('tests', 'webidl', 'test.cpp'), self.in_dir('test.cpp'))
       src = open('test.cpp').read()
@@ -6622,15 +6624,20 @@ Module.printErr = Module['printErr'] = function(){};
         else:
           src.write('var TheModule = Module;\n')
         src.write('\n\n')
+        if allow_memory_growth:
+          src.write("var isMemoryGrowthAllowed = true;")
+        else:
+          src.write("var isMemoryGrowthAllowed = false;")
         src.write(open(path_from_root('tests', 'webidl', 'post.js')).read())
         src.write('\n\n')
         src.close()
       self.do_run(src, open(path_from_root('tests', 'webidl', "output_%s.txt" % mode)).read(), post_build=(None, post),
         output_nicerizer=(lambda out, err: out))
 
-    do_test_in_mode('ALL')
-    do_test_in_mode('FAST')
-    do_test_in_mode('DEFAULT')
+    do_test_in_mode('ALL', False)
+    do_test_in_mode('FAST', False)
+    do_test_in_mode('DEFAULT', False)
+    do_test_in_mode('ALL', True)
 
   ### Tests for tools
 

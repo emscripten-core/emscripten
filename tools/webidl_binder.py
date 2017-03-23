@@ -185,41 +185,69 @@ var ensureCache = {
       ret = ensureCache.buffer + ensureCache.pos;
       ensureCache.pos += len;
     }
-    var retShifted = ret;
+    return ret;
+  },  
+  copy: function(array, view, offset) {
+    var offsetShifted = offset;
+    var bytes = view.BYTES_PER_ELEMENT;
     switch (bytes) {
-      case 2: retShifted >>= 1; break;
-      case 4: retShifted >>= 2; break;
-      case 8: retShifted >>= 3; break;
+      case 2: offsetShifted >>= 1; break;
+      case 4: offsetShifted >>= 2; break;
+      case 8: offsetShifted >>= 3; break;
     }
     for (var i = 0; i < array.length; i++) {
-      view[retShifted + i] = array[i];
-    }
-    return ret;
+      view[offsetShifted + i] = array[i];
+    }   
   },
 };
 
 function ensureString(value) {
-  if (typeof value === 'string') return ensureCache.alloc(intArrayFromString(value), HEAP8);
+  if (typeof value === 'string') {
+    var intArray = intArrayFromString(value);
+    var offset = ensureCache.alloc(intArray, HEAP8);
+    ensureCache.copy(intArray, HEAP8, offset);
+    return offset;
+  }
   return value;
 }
 function ensureInt8(value) {
-  if (typeof value === 'object') return ensureCache.alloc(value, HEAP8);
+  if (typeof value === 'object') {
+    var offset = ensureCache.alloc(value, HEAP8);
+    ensureCache.copy(value, HEAP8, offset);
+    return offset;
+  }
   return value;
 }
 function ensureInt16(value) {
-  if (typeof value === 'object') return ensureCache.alloc(value, HEAP16);
+  if (typeof value === 'object') {
+    var offset = ensureCache.alloc(value, HEAP16);
+    ensureCache.copy(value, HEAP16, offset);
+    return offset;
+  }
   return value;
 }
 function ensureInt32(value) {
-  if (typeof value === 'object') return ensureCache.alloc(value, HEAP32);
+  if (typeof value === 'object') {
+    var offset = ensureCache.alloc(value, HEAP32);
+    ensureCache.copy(value, HEAP32, offset);
+    return offset;
+  }
   return value;
 }
 function ensureFloat32(value) {
-  if (typeof value === 'object') return ensureCache.alloc(value, HEAPF32);
+  if (typeof value === 'object') {
+    var offset = ensureCache.alloc(value, HEAPF32);
+    ensureCache.copy(value, HEAPF32, offset);
+    return offset;
+  }
   return value;
 }
 function ensureFloat64(value) {
-  if (typeof value === 'object') return ensureCache.alloc(value, HEAPF64);
+  if (typeof value === 'object') {
+    var offset = ensureCache.alloc(value, HEAPF64);
+    ensureCache.copy(value, HEAPF64, offset);
+    return offset;
+  }
   return value;
 }
 
