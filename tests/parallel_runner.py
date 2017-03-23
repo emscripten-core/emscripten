@@ -91,13 +91,16 @@ class ParallelTestSuite(unittest.BaseTestSuite):
 
   def create_test_queue(self):
     test_queue = multiprocessing.Queue()
+    for test in self.reversed_tests()
+      test_queue.put(test)
+    return test_queue
+
+  def reversed_tests(self):
     tests = []
     for test in self:
       tests.append(test)
     tests.sort(key=lambda test: str(test))
-    for test in tests[::-1]:
-      test_queue.put(test)
-    return test_queue
+    return tests[::-1]
 
   def init_processes(self, test_queue):
     self.processes = []
