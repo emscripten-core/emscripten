@@ -70,28 +70,28 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     print
     print 'DONE: combining results on main thread'
     print
-    for r in sorted(buffered_results, key=lambda res:str(res.result_test)):
+    for r in sorted(buffered_results, key=lambda res:str(res.test)):
       r.updateResult(result)
     return result
 
 
 class BufferedParallelTestResult(object):
   def __init__(self):
-    self.result_type = None
-    self.result_test = None
-    self.result_error = None
+    self.kind = None
+    self.test = None
+    self.error = None
 
   def updateResult(self, result):
-    result.startTest(self.result_test)
+    result.startTest(self.test)
 
-    if self.result_type == TestResultType.Success:
-      result.addSuccess(self.result_test)
-    elif self.result_type == TestResultType.Failure:
-      result.addFailure(self.result_test, self.result_error)
-    elif self.result_type == TestResultType.Error:
-      result.addError(self.result_test, self.result_error)
+    if self.kind == TestResultType.Success:
+      result.addSuccess(self.test)
+    elif self.kind == TestResultType.Failure:
+      result.addFailure(self.test, self.error)
+    elif self.kind == TestResultType.Error:
+      result.addError(self.test, self.error)
 
-    result.stopTest(self.result_test)
+    result.stopTest(self.test)
 
   def startTest(self, test):
     pass
@@ -100,26 +100,26 @@ class BufferedParallelTestResult(object):
 
   def addSuccess(self, test):
     print test, '... ok'
-    self.result_type = TestResultType.Success
-    self.result_test = test
+    self.kind = TestResultType.Success
+    self.test = test
 
   def addFailure(self, test, err):
     print test, '... FAIL:'
     print err
-    self.result_type = TestResultType.Failure
-    self.result_test = test
+    self.kind = TestResultType.Failure
+    self.test = test
     self._set_error(err)
 
   def addError(self, test, err):
     print test, '... ERROR:'
     print err
-    self.result_type = TestResultType.Error
-    self.result_test = test
+    self.kind = TestResultType.Error
+    self.test = test
     self._set_error(err)
 
   def _set_error(self, err):
     a, b, tb = err
-    self.result_error = (a, b, FakeTraceback(tb))
+    self.error = (a, b, FakeTraceback(tb))
 
 
 class TestResultType(enum.Enum):
