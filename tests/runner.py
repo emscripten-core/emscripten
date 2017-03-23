@@ -1196,7 +1196,8 @@ def skip_requested_tests(args, modules):
 
 def suite_for_module(module):
   import parallel_runner
-  if module.__name__ == 'test_core':
+  has_multiple_cores = parallel_runner.num_cores() > 1
+  if module.__name__ == 'test_core' and has_multiple_cores:
     return parallel_runner.ParallelTestSuite()
   return unittest.TestSuite()
 

@@ -91,7 +91,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
 
   def create_test_queue(self):
     test_queue = multiprocessing.Queue()
-    for test in self.reversed_tests()
+    for test in self.reversed_tests():
       test_queue.put(test)
     return test_queue
 
@@ -105,7 +105,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
   def init_processes(self, test_queue):
     self.processes = []
     self.result_queue = multiprocessing.Queue()
-    for i in xrange(self.num_cores()):
+    for i in xrange(num_cores()):
       p = multiprocessing.Process(target=self.testing_thread,
                                   args=(test_queue, self.result_queue))
       p.start()
@@ -121,13 +121,6 @@ class ParallelTestSuite(unittest.BaseTestSuite):
         result.addError(test, e)
       result_queue.put(result)
 
-  @staticmethod
-  def num_cores():
-    emcc_cores = os.environ.get('EMCC_CORES')
-    if emcc_cores:
-      return int(emcc_cores)
-    return multiprocessing.cpu_count()
-
   def collect_results(self):
     buffered_results = []
     while len(self.processes) > 0:
@@ -142,10 +135,19 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     self.processes = filter(lambda p: p.is_alive(), self.processes)
 
   def combine_results(self, result, buffered_results):
-    print 'DONE: combining results'
+    print
+    print 'DONE: combining results on main thread'
+    print
     for r in sorted(buffered_results, key=lambda res:str(res.result_test)):
       r.updateResult(result)
     return result
+
+
+def num_cores():
+  emcc_cores = os.environ.get('PARALLEL_SUITE_EMCC_CORES') or os.environ.get('EMCC_CORES')
+  if emcc_cores:
+    return int(emcc_cores)
+  return multiprocessing.cpu_count()
 
 
 def get_from_queue(queue):
