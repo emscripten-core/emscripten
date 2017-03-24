@@ -10,6 +10,11 @@ import sys
 
 
 class ParallelTestSuite(unittest.BaseTestSuite):
+  """Runs a suite of tests in parallel.
+
+  Creates worker threads, manages the task queue, and combines the results.
+  """
+
   def __init__(self):
     super(ParallelTestSuite, self).__init__()
     self.processes = None
@@ -28,6 +33,15 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     return test_queue
 
   def reversed_tests(self):
+    """A list of this suite's tests in reverse order.
+
+    Many of the tests in test_core are intentionally named so that long tests
+    fall toward the end of the alphabet (e.g. test_the_bullet). Tests are
+    loaded in alphabetical order, so here we reverse that in order to start
+    running longer tasks earlier, which should lead to better core utilization.
+
+    Future work: measure slowness of tests and sort accordingly.
+    """
     tests = []
     for test in self:
       tests.append(test)
@@ -70,12 +84,19 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     print
     print 'DONE: combining results on main thread'
     print
-    for r in sorted(buffered_results, key=lambda res:str(res.test)):
+    # Sort the results back into alphabetical order. Running the tests in
+    # parallel causes mis-orderings, this makes the results more readable.
+    results = sorted(buffered_results, key=lambda res:str(res.test))
+    for r in results:
       r.updateResult(result)
     return result
 
 
 class BufferedParallelTestResult(object):
+  """A picklable struct used to communicate test results across processes
+
+  Fulfills the interface for unittest.TestResult
+  """
   def __init__(self):
     self.kind = None
     self.test = None
@@ -104,13 +125,13 @@ class BufferedParallelTestResult(object):
     self.test = test
 
   def addFailure(self, test, err):
-    print test, '... FAIL:'
+    print test, '... FAIL'
     self.kind = TestResultType.Failure
     self.test = test
     self._set_error(err)
 
   def addError(self, test, err):
-    print test, '... ERROR:'
+    print test, '... ERROR'
     self.kind = TestResultType.Error
     self.test = test
     self._set_error(err)
@@ -127,6 +148,17 @@ class TestResultType(enum.Enum):
 
 
 class FakeTraceback(object):
+  """A fake version of a trackeback object that is picklable across processes.
+
+  Python's traceback objects contain hidden stack information that isn't able
+  to be pickled. Further, traceback objects aren't constructable from Python,
+  so we need a dummy object that fulfils its interface.
+
+  The fields we expose are exactly those which are used by
+  unittest.TextTestResult to show a text representation of a traceback. Any
+  other use is not intended.
+  """
+
   def __init__(self, tb):
     self.tb_frame = FakeFrame(tb.tb_frame)
     self.tb_lineno = tb.tb_lineno
@@ -134,7 +166,8 @@ class FakeTraceback(object):
 class FakeFrame(object):
   def __init__(self, f):
     self.f_code = FakeCode(f.f_code)
-    self.f_globals = [] # f.f_globals
+    # f.f_globals is not picklable, not used in stack traces, and needs to be iterable
+    self.f_globals = []
 class FakeCode(object):
   def __init__(self, co):
     self.co_filename = co.co_filename
