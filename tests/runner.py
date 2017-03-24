@@ -1194,13 +1194,6 @@ def print_random_test_statistics(num_tests):
            % (expected))
   atexit.register(show)
 
-def suite_for_module(module):
-  import parallel_runner
-  has_multiple_cores = parallel_runner.num_cores() > 1
-  if module.__name__ == 'test_core' and has_multiple_cores:
-    return parallel_runner.ParallelTestSuite()
-  return unittest.TestSuite()
-
 def load_test_suites(args, modules):
   import operator
   loader = unittest.TestLoader()
@@ -1216,13 +1209,29 @@ def load_test_suites(args, modules):
       except AttributeError:
         pass
     if len(names_in_module) > 0:
-      tests = loader.loadTestsFromNames(sorted(names_in_module), m)
-      suite = suite_for_module(m)
-      for subsuite in tests:
-        for test in subsuite:
-          suite.addTest(test)
+      loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
+      tests = flattened_tests(loaded_tests)
+      suite = suite_for_module(m, tests)
+      for test in tests:
+        suite.addTest(test)
       suites.append((m.__name__, suite))
   return suites, unmatched_test_names
+
+def flattened_tests(loaded_tests):
+  tests = []
+  for subsuite in loaded_tests:
+    for test in subsuite:
+      tests.append(test)
+  return tests
+
+def suite_for_module(module, tests):
+  import parallel_runner
+  suite_supported = module.__name__ == 'test_core'
+  has_multiple_tests = len(tests) > 1
+  has_multiple_cores = parallel_runner.num_cores() > 1
+  if suite_supported and has_multiple_tests and has_multiple_cores:
+    return parallel_runner.ParallelTestSuite()
+  return unittest.TestSuite()
 
 def run_tests(suites, unmatched_test_names):
   resultMessages = []
