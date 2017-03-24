@@ -289,7 +289,19 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/sysconf.html
     switch(name) {
       case {{{ cDefine('_SC_PAGE_SIZE') }}}: return PAGE_SIZE;
-      case {{{ cDefine('_SC_PHYS_PAGES') }}}: return totalMemory / PAGE_SIZE;
+      case {{{ cDefine('_SC_PHYS_PAGES') }}}:
+#if BINARYEN
+        var maxHeapSize = 2*1024*1024*1024 - 65536;
+#else
+        var maxHeapSize = 2*1024*1024*1024 - 16777216;
+#endif
+#if BINARYEN_MEM_MAX != -1
+        maxHeapSize = {{{ BINARYEN_MEM_MAX }}};
+#endif
+#if !ALLOW_MEMORY_GROWTH
+        maxHeapSize = HEAPU8.length;
+#endif
+        return maxHeapSize / PAGE_SIZE;
       case {{{ cDefine('_SC_ADVISORY_INFO') }}}:
       case {{{ cDefine('_SC_BARRIERS') }}}:
       case {{{ cDefine('_SC_ASYNCHRONOUS_IO') }}}:
@@ -1302,7 +1314,7 @@ LibraryManager.library = {
   __cxa_end_catch__deps: ['__cxa_free_exception', '$EXCEPTIONS'],
   __cxa_end_catch: function() {
     // Clear state flag.
-    asm['setThrew'](0);
+    Module['setThrew'](0);
     // Call destructor if one is registered then clear it.
     var ptr = EXCEPTIONS.caught.pop();
 #if EXCEPTION_DEBUG
@@ -2095,6 +2107,12 @@ LibraryManager.library = {
     return -1;
   },
 
+  __map_file__deps: ['$ERRNO_CODES', '__setErrNo'],
+  __map_file: function(pathname, size) {
+    ___setErrNo(ERRNO_CODES.EPERM);
+    return -1;
+  },
+
   _MONTH_DAYS_REGULAR: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
   _MONTH_DAYS_LEAP: [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
 
@@ -2875,7 +2893,7 @@ LibraryManager.library = {
 
   longjmp__deps: ['saveSetjmp', 'testSetjmp'],
   longjmp: function(env, value) {
-    asm['setThrew'](env, value || 1);
+    Module['setThrew'](env, value || 1);
     throw 'longjmp';
   },
   emscripten_longjmp__deps: ['longjmp'],
@@ -4270,7 +4288,7 @@ LibraryManager.library = {
   _pthread_cleanup_push: function(){},
   _pthread_cleanup_pop: function(){},
   __pthread_self: function() { abort() },
-  pthread_setcancelstate: function() { return 0 },
+  __pthread_setcancelstate: function() { return 0 },
 
   // libunwind
 

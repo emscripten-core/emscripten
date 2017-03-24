@@ -103,6 +103,8 @@ while 1:
     js_args = [shared.PYTHON, shared.EMCC, fullname, '-o', filename + '.js'] + [opts] + llvm_opts + CSMITH_CFLAGS + args + ['-w']
     if TEST_BINARYEN:
       js_args += ['-s', 'BINARYEN=1']
+      if random.random() < 0.5:
+        js_args += ['-s', 'BINARYEN_IGNORE_IMPLICIT_TRAPS=1']
       if random.random() < 0.1:
         if random.random() < 0.5:
           js_args += ['--js-opts', '0']
@@ -116,7 +118,9 @@ while 1:
           "dce",
           "remove-unused-brs",
           "remove-unused-names",
+          "local-cse",
           "optimize-instructions",
+          "post-emscripten",
           "precompute",
           "simplify-locals",
           "simplify-locals-nostructure",
@@ -139,7 +143,7 @@ while 1:
       js_args += ['-s', 'MAIN_MODULE=1']
     if random.random() < 0.25:
       js_args += ['-s', 'INLINING_LIMIT=1'] # inline nothing, for more call interaction
-    if random.random() < 0.1:
+    if random.random() < 0.01:
       js_args += ['-s', 'EMTERPRETIFY=1']
       if random.random() < 0.5:
         if random.random() < 0.5:

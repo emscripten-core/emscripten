@@ -7,20 +7,22 @@
 volatile size_t __pthread_tsd_size = sizeof(void *) * PTHREAD_KEYS_MAX;
 void *__pthread_tsd_main[PTHREAD_KEYS_MAX] = { 0 };
 
-static void (*keys[PTHREAD_KEYS_MAX])(void *);
+static void (*volatile keys[PTHREAD_KEYS_MAX])(void *);
 
 static void nodtor(void *dummy)
 {
 }
 
-int pthread_key_create(pthread_key_t *k, void (*dtor)(void *))
+int __pthread_key_create(pthread_key_t *k, void (*dtor)(void *))
 {
 	unsigned i = (uintptr_t)&k / 16 % PTHREAD_KEYS_MAX;
 	unsigned j = i;
+	pthread_t self = __pthread_self();
 
-#ifndef __EMSCRIPTEN__ // XXX Emscripten does not need specific initialization for threads, the runtime has initialized everything prior to running.
-	__pthread_self_init();
-#endif
+	/* This can only happen in the main thread before
+	 * pthread_create has been called. */
+	if (!self->tsd) self->tsd = __pthread_tsd_main;
+
 	if (!dtor) dtor = nodtor;
 	do {
 		if (!a_cas_p(keys+j, 0, (void *)dtor)) {
@@ -31,7 +33,7 @@ int pthread_key_create(pthread_key_t *k, void (*dtor)(void *))
 	return EAGAIN;
 }
 
-int pthread_key_delete(pthread_key_t k)
+int __pthread_key_delete(pthread_key_t k)
 {
 	keys[k] = 0;
 	return 0;
@@ -43,7 +45,7 @@ void EMSCRIPTEN_KEEPALIVE __pthread_tsd_run_dtors()
 void __pthread_tsd_run_dtors()
 #endif
 {
-	pthread_t self = pthread_self();
+	pthread_t self = __pthread_self();
 	int i, j, not_finished = self->tsd_used;
 	for (j=0; not_finished && j<PTHREAD_DESTRUCTOR_ITERATIONS; j++) {
 		not_finished = 0;
@@ -57,3 +59,6 @@ void __pthread_tsd_run_dtors()
 		}
 	}
 }
+
+weak_alias(__pthread_key_delete, pthread_key_delete);
+weak_alias(__pthread_key_create, pthread_key_create);

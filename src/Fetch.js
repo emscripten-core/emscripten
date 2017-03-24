@@ -158,7 +158,7 @@ function __emscripten_fetch_delete_cached_data(db, fetch, onsuccess, onerror) {
       Fetch.setu64(fetch + Fetch.fetch_t_offset_dataOffset, 0);
       HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
       HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 200; // Mimic XHR HTTP status code 200 "OK"
-
+      stringToUTF8("OK", fetch + Fetch.fetch_t_offset_statusText, 64);
       onsuccess(fetch, 0, value);
     };
     request.onerror = function(error) {
@@ -167,6 +167,7 @@ function __emscripten_fetch_delete_cached_data(db, fetch, onsuccess, onerror) {
 #endif
       HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
       HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 404; // Mimic XHR HTTP status code 404 "Not Found"
+      stringToUTF8("Not Found", fetch + Fetch.fetch_t_offset_statusText, 64);
       onerror(fetch, 0, error);
     };
   } catch(e) {
@@ -213,7 +214,7 @@ function __emscripten_fetch_load_cached_data(db, fetch, onsuccess, onerror) {
         Fetch.setu64(fetch + Fetch.fetch_t_offset_totalBytes, len);
         HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
         HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 200; // Mimic XHR HTTP status code 200 "OK"
-
+        stringToUTF8("OK", fetch + Fetch.fetch_t_offset_statusText, 64);
         onsuccess(fetch, 0, value);
       } else {
         // Succeeded to load, but the load came back with the value of undefined, treat that as an error since we never store undefined in db.
@@ -222,6 +223,7 @@ function __emscripten_fetch_load_cached_data(db, fetch, onsuccess, onerror) {
 #endif
         HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
         HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 404; // Mimic XHR HTTP status code 404 "Not Found"
+        stringToUTF8("Not Found", fetch + Fetch.fetch_t_offset_statusText, 64);
         onerror(fetch, 0, 'no data');
       }
     };
@@ -231,6 +233,7 @@ function __emscripten_fetch_load_cached_data(db, fetch, onsuccess, onerror) {
 #endif
       HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
       HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 404; // Mimic XHR HTTP status code 404 "Not Found"
+      stringToUTF8("Not Found", fetch + Fetch.fetch_t_offset_statusText, 64);
       onerror(fetch, 0, error);
     };
   } catch(e) {
@@ -265,6 +268,7 @@ function __emscripten_fetch_cache_data(db, fetch, data, onsuccess, onerror) {
 #endif
       HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
       HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 200; // Mimic XHR HTTP status code 200 "OK"
+      stringToUTF8("OK", fetch + Fetch.fetch_t_offset_statusText, 64);
       onsuccess(fetch, 0, destinationPathStr);
     };
     putRequest.onerror = function(error) {
@@ -276,6 +280,7 @@ function __emscripten_fetch_cache_data(db, fetch, data, onsuccess, onerror) {
       // to more HTTP status codes for more information?
       HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
       HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 413; // Mimic XHR HTTP status code 413 "Payload Too Large"
+      stringToUTF8("Payload Too Large", fetch + Fetch.fetch_t_offset_statusText, 64);
       onerror(fetch, 0, error);
     };
   } catch(e) {
@@ -390,7 +395,7 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
       else xhr.status = 404; // Conversely, no data bytes is 404.
     }
     HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = xhr.status;
-//    if (xhr.statusText) stringToUTF8(fetch + Fetch.fetch_t_offset_statusText, xhr.statusText, 64);
+    if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + Fetch.fetch_t_offset_statusText, 64);
     if (xhr.status == 200) {
 #if FETCH_DEBUG
       console.log('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" succeeded with status 200');
@@ -442,7 +447,7 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
     HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = xhr.readyState;
     if (xhr.readyState >= 3 && xhr.status === 0 && e.loaded > 0) xhr.status = 200; // If loading files from a source that does not give HTTP status code, assume success if we get data bytes
     HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = xhr.status;
-    if (xhr.statusText) stringToUTF8(fetch + Fetch.fetch_t_offset_statusText, xhr.statusText, 64);
+    if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + Fetch.fetch_t_offset_statusText, 64);
     if (onprogress) onprogress(fetch, xhr, e);
   }
 #if FETCH_DEBUG
@@ -486,19 +491,21 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
 #if FETCH_DEBUG
     console.log('fetch: operation success. Caching result.. e: ' + e);
 #endif
-    var storeSuccess = function() {
+    var storeSuccess = function(fetch, xhr, e) {
 #if FETCH_DEBUG
       console.log('fetch: IndexedDB store succeeded.');
 #endif
+      if (onsuccess && Runtime.dynCall) Module['dynCall_vi'](onsuccess, fetch);
+      else if (successcb) successcb(fetch);
     };
-    var storeError = function() {
+    var storeError = function(fetch, xhr, e) {
 #if FETCH_DEBUG
       console.error('fetch: IndexedDB store failed.');
 #endif
+      if (onsuccess && Runtime.dynCall) Module['dynCall_vi'](onsuccess, fetch);
+      else if (successcb) successcb(fetch);
     };
     __emscripten_fetch_cache_data(Fetch.dbInstance, fetch, xhr.response, storeSuccess, storeError);
-    if (onsuccess && Runtime.dynCall) Module['dynCall_vi'](onsuccess, fetch);
-    else if (successcb) successcb(fetch);
   };
 
   var reportProgress = function(fetch, xhr, e) {

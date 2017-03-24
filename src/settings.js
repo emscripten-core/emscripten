@@ -276,7 +276,8 @@ var GL_FFP_ONLY = 0; // If you specified LEGACY_GL_EMULATION = 1 and only use fi
                      // you can also set this to 1 to signal the GL emulation layer that it can perform extra
                      // optimizations by knowing that the user code does not use shaders at all. If
                      // LEGACY_GL_EMULATION = 0, this setting has no effect.
-
+var GL_PREINITIALIZED_CONTEXT = 0; // If you want to create the WebGL context up front in JS code, set this to 1 and set Module['preinitializedWebGLContext']
+                                   // to a precreated WebGL context. WebGL initialization afterwards will use this GL context to render.
 var STB_IMAGE = 0; // Enables building of stb-image, a tiny public-domain library for decoding images, allowing
                    // decoding of images without using the browser's built-in decoders. The benefit is that this
                    // can be done synchronously, however, it will not be as fast as the browser itself.
@@ -684,23 +685,28 @@ var BINARYEN_METHOD = "native-wasm"; // How we should run WebAssembly code. By d
                                      // See binaryen's src/js/wasm.js-post.js for more details and options.
 var BINARYEN_SCRIPTS = ""; // An optional comma-separated list of script hooks to run after binaryen,
                            // in binaryen's /scripts dir.
-var BINARYEN_IMPRECISE = 0; // Whether to apply imprecise/unsafe binaryen optimizations. If enabled,
-                            // code will run faster, but some types of undefined behavior might
-                            // trap in wasm.
 var BINARYEN_IGNORE_IMPLICIT_TRAPS = 0; // Whether to ignore implicit traps when optimizing in binaryen.
                                         // Implicit traps are the unlikely traps that happen in a load that
                                         // is out of bounds, or div/rem of 0, etc. We can reorder them,
                                         // but we can't ignore that they have side effects, so turning on
                                         // this flag lets us do a little more to reduce code size.
+var BINARYEN_TRAP_MODE = "js"; // How we handle wasm operations that may trap, which includes integer
+                               // div/rem of 0 and float-to-int of values too large to fit in an int.
+                               //   js: do exactly what js does. this can be slower.
+                               //   clamp: avoid traps by clamping to a reasonable value. this can be
+                               //          faster than "js".
+                               //   allow: allow creating operations that can trap. this is the most
+                               //          compact, as we just emit a single wasm operation, with no
+                               //          guards to trapping values, and also often the fastest.
 var BINARYEN_PASSES = ""; // A comma-separated list of passes to run in the binaryen optimizer,
                           // for example, "dce,precompute,vacuum".
                           // When set, this overrides the default passes we would normally run.
 var BINARYEN_MEM_MAX = -1; // Set the maximum size of memory in the wasm module (in bytes).
                            // Without this, TOTAL_MEMORY is used (as it is used for the initial value),
                            // or if memory growth is enabled, no limit is set. This overrides both of those.
-var BINARYEN_ASYNC_COMPILATION = 0; // Whether to compile the wasm asynchronously, which is more
-                                    // efficient. This is off by default in unoptimized builds and
-                                    // on by default in optimized ones.
+var BINARYEN_ASYNC_COMPILATION = 1; // Whether to compile the wasm asynchronously, which is more
+                                    // efficient and does not block the main thread. This is currently
+                                    // required for all but the smallest modules to run in V8
 var BINARYEN_ROOT = ""; // Directory where we can find Binaryen. Will be automatically set for you,
                         // but you can set it to override if you are a Binaryen developer.
 
@@ -834,4 +840,3 @@ var ASMFS = 0; // If set to 1, uses the multithreaded filesystem that is impleme
 var WASM_TEXT_FILE = ''; // name of the file containing wasm text, if relevant
 var WASM_BINARY_FILE = ''; // name of the file containing wasm binary, if relevant
 var ASMJS_CODE_FILE = ''; // name of the file containing asm.js, if relevant
-

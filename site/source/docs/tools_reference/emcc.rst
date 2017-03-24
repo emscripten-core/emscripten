@@ -447,8 +447,8 @@ Options that are modified or new in *emcc* are listed below:
 ``--separate-asm``
 	Emits asm.js in one file, and the rest of the code in another, and emits HTML that loads the asm.js first, in order to reduce memory load during startup. See :ref:`optimizing-code-separating_asm`.
 
-``--output-eol windows|linux``
-	Specifies the line ending to generate for the text files that are outputted. If "--output-eol windows" is passed, the final output files will have Windows \r\n line endings in them. With "--output-eol linux", the final generated files will be written with Unix \n line endings.
+``--output_eol windows|linux``
+	Specifies the line ending to generate for the text files that are outputted. If "--output_eol windows" is passed, the final output files will have Windows \r\n line endings in them. With "--output_eol linux", the final generated files will be written with Unix \n line endings.
 
 ``--cflags``
 	Prints out the flags ``emcc`` would pass to ``clang`` to compile source code to object/bitcode form. You can use this to invoke clang yourself, and then run ``emcc`` on those outputs just for the final linking+conversion to JS.

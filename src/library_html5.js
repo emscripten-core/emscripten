@@ -262,8 +262,13 @@ var LibraryJSEvents = {
         {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, '0', 'i32') }}};
         {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, '0', 'i32') }}};
       }
-      JSEvents.previousScreenX = e.screenX;
-      JSEvents.previousScreenY = e.screenY;
+      // wheel and mousewheel events contain wrong screenX/screenY on chrome/opera
+      // https://github.com/kripken/emscripten/pull/4997
+      // https://bugs.chromium.org/p/chromium/issues/detail?id=699956
+      if (e.type !== 'wheel' && e.type !== 'mousewheel') {
+        JSEvents.previousScreenX = e.screenX;
+        JSEvents.previousScreenY = e.screenY;
+      }
     },
     
     registerMouseEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
