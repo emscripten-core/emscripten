@@ -105,14 +105,12 @@ class BufferedParallelTestResult(object):
 
   def addFailure(self, test, err):
     print test, '... FAIL:'
-    print err
     self.kind = TestResultType.Failure
     self.test = test
     self._set_error(err)
 
   def addError(self, test, err):
     print test, '... ERROR:'
-    print err
     self.kind = TestResultType.Error
     self.test = test
     self._set_error(err)
