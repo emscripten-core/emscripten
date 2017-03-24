@@ -5540,6 +5540,32 @@ function outline(ast) {
     return ret;
   }
 
+  // if we add stack usage, we must pop it too
+  function addStackPopping(func) {
+    function makePop() {
+      return ['stat', makeAssign(['name', 'STACKTOP'], ['name', 'sp'])];
+    }
+    traverse(func, function(node, type) {
+      var stats = getStatements(node);
+      if (!stats) return;
+      for (var i = 0; i < stats.length; i++) {
+        var subNode = stats[i];
+        if (subNode[0] === 'stat') subNode = subNode[1];
+        if (subNode[0] == 'return') {
+          stats.splice(i, 0, makePop());
+          i++;
+        }
+      }
+    });
+    // pop the stack at the end if there is not a return
+    var stats = getStatements(func);
+    var last = stats[stats.length-1];
+    if (last[0] === 'stat') last = last[1];
+    if (last[0] !== 'return') {
+      stats.push(makePop());
+    }
+  }
+
   //
 
   if (ast[0] !== 'toplevel') {
@@ -5599,6 +5625,8 @@ function outline(ast) {
                 }
               }
               assert(found);
+              // we also need to restore STACKTOP in each return, otherwise we leak stack
+              addStackPopping(func);
             }
           } else if (!('sp' in asmData.params)) { // if sp is a param, then we are an outlined function, no need to add stack support for us
             // add sp variable and stack bump
@@ -5609,27 +5637,7 @@ function outline(ast) {
             );
             asmData.vars.sp = ASM_INT; // no need to add to vars, we are about to denormalize anyhow
             // we added sp, so we must add stack popping
-            function makePop() {
-              return ['stat', makeAssign(['name', 'STACKTOP'], ['name', 'sp'])];
-            }
-            traverse(func, function(node, type) {
-              var stats = getStatements(node);
-              if (!stats) return;
-              for (var i = 0; i < stats.length; i++) {
-                var subNode = stats[i];
-                if (subNode[0] === 'stat') subNode = subNode[1];
-                if (subNode[0] == 'return') {
-                  stats.splice(i, 0, makePop());
-                  i++;
-                }
-              }
-            });
-            // pop the stack at the end if there is not a return
-            var last = stats[stats.length-1];
-            if (last[0] === 'stat') last = last[1];
-            if (last[0] !== 'return') {
-              stats.push(makePop());
-            }
+            addStackPopping(func);
           }
         }
         if (ret) {

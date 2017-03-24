@@ -977,6 +977,30 @@ int main() {
                    expected_ranges,
                    args=['-I' + path_from_root('tests', 'zlib')], suffix='c')
 
+  def test_outline_stack(self):
+    open('src.c', 'w').write(r'''
+#include <stdio.h>
+#include <stdlib.h>
+
+void *p = NULL;
+
+void foo() {
+  int * x = alloca(1);
+};
+
+int main() {
+  printf("Hello, world!\n");
+  for (int i=0; i<100000; i++) {
+    free(p);
+    foo();
+  }
+}
+''')
+    for limit in [0, 1000, 2500, 5000]:
+      print limit
+      subprocess.check_call([PYTHON, EMCC, 'src.c', '-s', 'ASSERTIONS=2', '-s', 'OUTLINING_LIMIT=%d' % limit, '-s', 'TOTAL_STACK=10000'])
+      assert 'Hello, world!' in run_js('a.out.js')
+
   def test_symlink(self):
     self.clear()
     if os.name == 'nt':
