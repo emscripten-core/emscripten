@@ -3,7 +3,6 @@
 
 Module['asm'] = asm;
 
-
 {{{ maybeExport('FS') }}}
 
 #if MEM_INIT_METHOD == 2
