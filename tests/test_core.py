@@ -4623,6 +4623,12 @@ PORT: 3979
     expected = open(path_from_root('tests', 'netinet', 'in.out'), 'r').read()
     self.do_run(src, expected)
 
+  @no_wasm_backend()
+  def test_main_module_static_align(self):
+    if Settings.ALLOW_MEMORY_GROWTH: return self.skip('no shared modules with memory growth')
+    Settings.MAIN_MODULE = 1
+    self.do_run_in_out_file_test('tests', 'core', 'test_main_module_static_align')
+
   # libc++ tests
 
   def test_iostream_and_determinism(self):
