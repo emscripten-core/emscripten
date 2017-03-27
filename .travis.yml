@@ -8,13 +8,13 @@ install:
   - tar -xvf emsdk-portable.tar.gz
   - cd emsdk-portable
   - ./emsdk update
-  - ./emsdk install latest
+  - ./emsdk install latest | head # very large output
   - ./emsdk activate latest
   - cd ..
 #  - source ./emsdk_env.sh
 
 script:
-  - python tests/runner.py test_hello_world || ls -al
+  - python tests/runner.py test_hello_world
 
 notifications:
   email: false
