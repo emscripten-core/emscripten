@@ -53,13 +53,13 @@ class Cache:
     self.acquired_count += 1
 
   def release_cache_lock(self):
-    if not self.EM_EXCLUSIVE_CACHE_ACCESS and self.acquired_count == 1:
+    self.acquired_count -= 1
+    assert self.acquired_count >= 0, "Called release more times than acquire"
+    if not self.EM_EXCLUSIVE_CACHE_ACCESS and self.acquired_count == 0:
       if self.prev_EM_EXCLUSIVE_CACHE_ACCESS: os.environ['EM_EXCLUSIVE_CACHE_ACCESS'] = self.prev_EM_EXCLUSIVE_CACHE_ACCESS
       else: del os.environ['EM_EXCLUSIVE_CACHE_ACCESS']
       self.filelock.release()
       logging.debug('Cache: PID %s released multiprocess file lock to Emscripten cache' % str(os.getpid()))
-    self.acquired_count -= 1
-    assert self.acquired_count >= 0, "Called release more times than acquire"
 
   def ensure(self):
     self.acquire_cache_lock()
