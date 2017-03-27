@@ -3,6 +3,7 @@
 
 Module['asm'] = asm;
 
+
 {{{ maybeExport('FS') }}}
 
 #if MEM_INIT_METHOD == 2
@@ -98,6 +99,28 @@ if (memoryInitializer) {
 
 #if CYBERDWARF
   Module['cyberdwarf'] = _cyberdwarf_Debugger(cyberDWARFFile);
+#endif
+
+#if MODULARIZE
+// Modularize mode returns a function, which can be called to
+// create instances. The instances provide a then() method,
+// must like a Promise, that receives a callback. The callback
+// is called when the module is ready to run, with the module
+// as a parameter. (Like a Promise, it also returns the module
+// so you can use the output of .then(..)).
+Module['then'] = function(func) {
+  // We may already be ready to run code at this time. if
+  // so, just queue a call to the callback. otherwise, add
+  // a preMain.
+  if (Module['calledRun']) {
+    func(Module);
+  } else {
+    addOnPreMain(function() {
+      func(Module);
+    });
+  }
+  return Module;
+};
 #endif
 
 function ExitStatus(status) {
