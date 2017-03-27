@@ -11,7 +11,7 @@ install:
   - ./emsdk activate latest
 
 script:
-  - ./check.py
+  - what_to_do
 
 notifications:
   email: false
