@@ -18,12 +18,14 @@ install:
   - tar -xvf emsdk-portable.tar.gz
   - cd emsdk-portable
   - ./emsdk update
-  - ./emsdk install latest | head # very large output
+  - ./emsdk install latest
   - ./emsdk activate latest
   - cd ..
 #  - source ./emsdk_env.sh
 
 script:
+  - ./emcc # first use
+  - ./emcc -v # check s tuff
   - python tests/runner.py test_hello_world
 
 notifications:
