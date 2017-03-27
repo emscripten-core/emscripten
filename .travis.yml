@@ -10,10 +10,11 @@ install:
   - ./emsdk update
   - ./emsdk install latest
   - ./emsdk activate latest
+  - cd ..
 #  - source ./emsdk_env.sh
 
 script:
-  - python tests/runner.py test_hello_world
+  - python tests/runner.py test_hello_world || ls -al
 
 notifications:
   email: false
