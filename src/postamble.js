@@ -109,14 +109,17 @@ if (memoryInitializer) {
 // so you can use the output of .then(..)).
 Module['then'] = function(func) {
   // We may already be ready to run code at this time. if
-  // so, just queue a call to the callback. otherwise, add
-  // a preMain.
+  // so, just queue a call to the callback.
   if (Module['calledRun']) {
     func(Module);
   } else {
-    addOnPreMain(function() {
+    // we are not ready to call then() yet. we must call it
+    // at the same time we would call onRuntimeInitialized.
+    var old = Module['onRuntimeInitialized'];
+    Module['onRuntimeInitialized'] = function() {
       func(Module);
-    });
+      if (old) old();
+    };
   }
   return Module;
 };
