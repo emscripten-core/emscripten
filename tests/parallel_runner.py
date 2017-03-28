@@ -1,4 +1,3 @@
-import enum
 import multiprocessing
 import os
 import pickle
@@ -98,20 +97,15 @@ class BufferedParallelTestResult(object):
   Fulfills the interface for unittest.TestResult
   """
   def __init__(self):
-    self.kind = None
-    self.test = None
-    self.error = None
+    self.buffered_result = None
+
+  @property
+  def test(self):
+    return self.buffered_result.test
 
   def updateResult(self, result):
     result.startTest(self.test)
-
-    if self.kind == TestResultType.Success:
-      result.addSuccess(self.test)
-    elif self.kind == TestResultType.Failure:
-      result.addFailure(self.test, self.error)
-    elif self.kind == TestResultType.Error:
-      result.addError(self.test, self.error)
-
+    self.buffered_result.updateResult(result)
     result.stopTest(self.test)
 
   def startTest(self, test):
@@ -121,30 +115,42 @@ class BufferedParallelTestResult(object):
 
   def addSuccess(self, test):
     print test, '... ok'
-    self.kind = TestResultType.Success
-    self.test = test
+    self.buffered_result = BufferedTestSuccess(test)
 
   def addFailure(self, test, err):
     print test, '... FAIL'
-    self.kind = TestResultType.Failure
-    self.test = test
-    self._set_error(err)
+    self.buffered_result = BufferedTestFailure(test, err)
 
   def addError(self, test, err):
     print test, '... ERROR'
-    self.kind = TestResultType.Error
+    self.buffered_result = BufferedTestError(test, err)
+
+
+class BufferedTestBase(object):
+  """Abstract class that holds test result data, split by type of result."""
+  def __init__(self, test, err = None):
     self.test = test
-    self._set_error(err)
+    if err:
+      exctype, value, tb = err
+      self.error = exctype, value, FakeTraceback(tb)
 
-  def _set_error(self, err):
-    a, b, tb = err
-    self.error = (a, b, FakeTraceback(tb))
+  def updateResult(self, result):
+    assert False, 'Base class should not be used directly'
 
 
-class TestResultType(enum.Enum):
-  Success = 1
-  Failure = 2
-  Error = 3
+class BufferedTestSuccess(BufferedTestBase):
+  def updateResult(self, result):
+    result.addSuccess(self.test)
+
+
+class BufferedTestFailure(BufferedTestBase):
+  def updateResult(self, result):
+    result.addFailure(self.test, self.error)
+
+
+class BufferedTestError(BufferedTestBase):
+  def updateResult(self, result):
+    result.addError(self.test, self.error)
 
 
 class FakeTraceback(object):
