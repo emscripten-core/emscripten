@@ -1988,22 +1988,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # exit block 'js opts'
 
     with ToolchainProfiler.profile_block('final emitting'):
-      if shared.Settings.MODULARIZE:
-        logging.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
-        src = open(final).read()
-        final = final + '.modular.js'
-        f = open(final, 'w')
-        f.write('var ' + shared.Settings.EXPORT_NAME + ' = function(' + shared.Settings.EXPORT_NAME + ') {\n')
-        f.write('  ' + shared.Settings.EXPORT_NAME + ' = ' + shared.Settings.EXPORT_NAME + ' || {};\n')
-        f.write('  var Module = ' + shared.Settings.EXPORT_NAME + ';\n') # included code may refer to Module (e.g. from file packager), so alias it
-        f.write('\n')
-        f.write(src)
-        f.write('\n')
-        f.write('  return ' + shared.Settings.EXPORT_NAME + ';\n')
-        f.write('};\n')
-        f.close()
-        src = None
-
       if shared.Settings.EMTERPRETIFY:
         JSOptimizer.flush()
         logging.debug('emterpretifying')
@@ -2074,15 +2058,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
              '--mapFileBaseName', target,
              '--offset', str(0)])
 
-      # Move final output to the js target
-      shutil.move(final, js_target)
-
-      generated_text_files_with_native_eols = [js_target]
+      generated_text_files_with_native_eols = [final]
 
       # Separate out the asm.js code, if asked. Or, if necessary for another option
       if (separate_asm or shared.Settings.BINARYEN) and not shared.Settings.WASM_BACKEND:
         logging.debug('separating asm')
-        subprocess.check_call([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), js_target, asm_target, js_target])
+        subprocess.check_call([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), final, asm_target, final])
         generated_text_files_with_native_eols += [asm_target]
 
         # extra only-my-code logic
@@ -2112,8 +2093,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           logging.debug('integrating wasm.js polyfill interpreter')
           wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
           wasm_js = wasm_js.replace('EMSCRIPTEN_', 'emscripten_') # do not confuse the markers
-          js = open(js_target).read()
-          combined = open(js_target, 'w')
+          js = open(final).read()
+          combined = open(final, 'w')
           combined.write(wasm_js)
           combined.write('\n//^wasm.js\n')
           combined.write(js)
@@ -2199,15 +2180,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             script_env['PYTHONPATH'] = root_dir
           for script in shared.Settings.BINARYEN_SCRIPTS.split(','):
             logging.debug('running binaryen script: ' + script)
-            subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), js_target, wasm_text_target], env=script_env)
+            subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), final, wasm_text_target], env=script_env)
         # after generating the wasm, do some final operations
         if not shared.Settings.WASM_BACKEND:
           if shared.Settings.SIDE_MODULE:
-            wso = shared.WebAssembly.make_shared_library(js_target, wasm_binary_target)
+            wso = shared.WebAssembly.make_shared_library(final, wasm_binary_target)
             # replace the wasm binary output with the dynamic library. TODO: use a specific suffix for such files?
             shutil.move(wso, wasm_binary_target)
             if not DEBUG:
-              os.unlink(js_target) # we don't need the js, it can just confuse
               os.unlink(asm_target) # we don't need the asm.js, it can just confuse
             sys.exit(0) # and we are done.
         if opt_level >= 2:
@@ -2215,7 +2195,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           do_minify() # calculate how to minify
           if JSOptimizer.cleanup_shell or JSOptimizer.minify_whitespace or use_closure_compiler:
             misc_temp_files.note(final)
-            shutil.move(js_target, final)
             if DEBUG: save_intermediate('preclean', 'js')
             if use_closure_compiler:
               logging.debug('running closure on shell code')
@@ -2224,7 +2203,27 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               assert JSOptimizer.cleanup_shell
               logging.debug('running cleanup on shell code')
               final = shared.Building.js_optimizer_no_asmjs(final, ['noPrintMetadata', 'JSDCE', 'last'] + (['minifyWhitespace'] if JSOptimizer.minify_whitespace else []))
-            shutil.move(final, js_target)
+            if DEBUG: save_intermediate('postclean', 'js') # waka
+
+      if shared.Settings.MODULARIZE: # waka
+        logging.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
+        src = open(final).read()
+        final = final + '.modular.js'
+        f = open(final, 'w')
+        f.write('var ' + shared.Settings.EXPORT_NAME + ' = function(' + shared.Settings.EXPORT_NAME + ') {\n')
+        f.write('  ' + shared.Settings.EXPORT_NAME + ' = ' + shared.Settings.EXPORT_NAME + ' || {};\n')
+        f.write('  var Module = ' + shared.Settings.EXPORT_NAME + ';\n') # included code may refer to Module (e.g. from file packager), so alias it
+        f.write('\n')
+        f.write(src)
+        f.write('\n')
+        f.write('  return ' + shared.Settings.EXPORT_NAME + ';\n')
+        f.write('};\n')
+        f.close()
+        src = None
+        if DEBUG: save_intermediate('modularized', 'js') # waka
+
+      # The JS is now final. Move it to its final location
+      shutil.move(final, js_target)
 
       # If we were asked to also generate HTML, do that
       if final_suffix == 'html':
