@@ -12,6 +12,9 @@ from subprocess import Popen, PIPE, STDOUT
 import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib
 import webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer
 import multiprocessing, functools, stat, string, random, fnmatch, httplib
+import atexit
+import operator
+import parallel_runner
 from urllib import unquote
 
 # Setup
@@ -1187,7 +1190,6 @@ def print_random_test_statistics(num_tests):
          % (num_tests, expected))
   print
 
-  import atexit
   def show():
     print ('if all tests passed then there is a greater than 95%% chance that at least '
            '%.2f%% of the test suite will pass'
@@ -1195,7 +1197,6 @@ def print_random_test_statistics(num_tests):
   atexit.register(show)
 
 def load_test_suites(args, modules):
-  import operator
   loader = unittest.TestLoader()
   unmatched_test_names = set(args[1:])
   suites = []
@@ -1209,8 +1210,28 @@ def load_test_suites(args, modules):
       except AttributeError:
         pass
     if len(names_in_module) > 0:
-      suites.append((m.__name__, loader.loadTestsFromNames(sorted(names_in_module), m)))
+      loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
+      tests = flattened_tests(loaded_tests)
+      suite = suite_for_module(m, tests)
+      for test in tests:
+        suite.addTest(test)
+      suites.append((m.__name__, suite))
   return suites, unmatched_test_names
+
+def flattened_tests(loaded_tests):
+  tests = []
+  for subsuite in loaded_tests:
+    for test in subsuite:
+      tests.append(test)
+  return tests
+
+def suite_for_module(module, tests):
+  suite_supported = module.__name__ == 'test_core'
+  has_multiple_tests = len(tests) > 1
+  has_multiple_cores = parallel_runner.num_cores() > 1
+  if suite_supported and has_multiple_tests and has_multiple_cores:
+    return parallel_runner.ParallelTestSuite()
+  return unittest.TestSuite()
 
 def run_tests(suites, unmatched_test_names):
   resultMessages = []

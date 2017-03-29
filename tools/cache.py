@@ -34,9 +34,10 @@ class Cache:
         dirname = os.path.join(dirname, 'asmjs')
     self.dirname = dirname
     self.debug = debug
+    self.acquired_count = 0
 
   def acquire_cache_lock(self):
-    if not self.EM_EXCLUSIVE_CACHE_ACCESS:
+    if not self.EM_EXCLUSIVE_CACHE_ACCESS and self.acquired_count == 0:
       logging.debug('Cache: PID %s acquiring multiprocess file lock to Emscripten cache' % str(os.getpid()))
       try:
         self.filelock.acquire(60)
@@ -49,9 +50,12 @@ class Cache:
       self.prev_EM_EXCLUSIVE_CACHE_ACCESS = os.environ.get('EM_EXCLUSIVE_CACHE_ACCESS')
       os.environ['EM_EXCLUSIVE_CACHE_ACCESS'] = '1'
       logging.debug('Cache: done')
+    self.acquired_count += 1
 
   def release_cache_lock(self):
-    if not self.EM_EXCLUSIVE_CACHE_ACCESS:
+    self.acquired_count -= 1
+    assert self.acquired_count >= 0, "Called release more times than acquire"
+    if not self.EM_EXCLUSIVE_CACHE_ACCESS and self.acquired_count == 0:
       if self.prev_EM_EXCLUSIVE_CACHE_ACCESS: os.environ['EM_EXCLUSIVE_CACHE_ACCESS'] = self.prev_EM_EXCLUSIVE_CACHE_ACCESS
       else: del os.environ['EM_EXCLUSIVE_CACHE_ACCESS']
       self.filelock.release()
