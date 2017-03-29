@@ -1707,8 +1707,11 @@ var asm = Module['asm'](%s, %s, buffer);
 STACKTOP = STACK_BASE + TOTAL_STACK;
 STACK_MAX = STACK_BASE;
 HEAP32[%d >> 2] = STACKTOP;
-__ATINIT__.unshift(function() {
-  asm = Module['asm'];
+''' % shared.Settings.GLOBAL_BASE)
+  if settings['BINARYEN_ASYNC_COMPILATION']:
+    funcs_js.append("__ATINIT__.unshift(function() {\n"
+                    "asm = Module['asm'];\n")
+  funcs_js.append('''
   Runtime.stackAlloc = asm['stackAlloc'];
   Runtime.stackSave = asm['stackSave'];
   Runtime.stackRestore = asm['stackRestore'];
@@ -1716,8 +1719,9 @@ __ATINIT__.unshift(function() {
 
   Runtime.setTempRet0 = asm['setTempRet0'];
   Runtime.getTempRet0 = asm['getTempRet0'];
-});
-''' % shared.Settings.GLOBAL_BASE)
+''')
+  if settings['BINARYEN_ASYNC_COMPILATION']:
+    funcs_js.append('});\n')
 
   funcs_js.append(invoke_wrappers)
 
