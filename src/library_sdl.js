@@ -2122,17 +2122,17 @@ var LibrarySDL = {
   IMG_Load_RW: function(rwopsID, freeSrc) {
     try {
       // stb_image integration support
-      function cleanup() {
+      var cleanup = function() {
         if (rwops && freeSrc) _SDL_FreeRW(rwopsID);
-      };
-      function addCleanup(func) {
+      }
+      var addCleanup = function(func) {
         var old = cleanup;
         cleanup = function added_cleanup() {
           old();
           func();
         }
       }
-      function callStbImage(func, params) {
+      var callStbImage = function(func, params) {
         var x = Module['_malloc']({{{ QUANTUM_SIZE }}});
         var y = Module['_malloc']({{{ QUANTUM_SIZE }}});
         var comp = Module['_malloc']({{{ QUANTUM_SIZE }}});
