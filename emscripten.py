@@ -1707,16 +1707,17 @@ var asm = Module['asm'](%s, %s, buffer);
 STACKTOP = STACK_BASE + TOTAL_STACK;
 STACK_MAX = STACK_BASE;
 HEAP32[%d >> 2] = STACKTOP;
-Runtime.stackAlloc = asm['stackAlloc'];
-Runtime.stackSave = asm['stackSave'];
-Runtime.stackRestore = asm['stackRestore'];
-Runtime.establishStackSpace = asm['establishStackSpace'];
-''' % shared.Settings.GLOBAL_BASE)
+__ATINIT__.unshift(function() {
+  asm = Module['asm'];
+  Runtime.stackAlloc = asm['stackAlloc'];
+  Runtime.stackSave = asm['stackSave'];
+  Runtime.stackRestore = asm['stackRestore'];
+  Runtime.establishStackSpace = asm['establishStackSpace'];
 
-  funcs_js.append('''
-Runtime.setTempRet0 = asm['setTempRet0'];
-Runtime.getTempRet0 = asm['getTempRet0'];
-''')
+  Runtime.setTempRet0 = asm['setTempRet0'];
+  Runtime.getTempRet0 = asm['getTempRet0'];
+});
+''' % shared.Settings.GLOBAL_BASE)
 
   funcs_js.append(invoke_wrappers)
 
