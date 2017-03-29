@@ -3321,7 +3321,8 @@ window.close = function() {
         ['-O2', '-s', 'EMTERPRETIFY=1'],
         ['-O2', '-s', 'ALLOW_MEMORY_GROWTH=1'],
         ['-O2', '-s', 'EMTERPRETIFY=1', '-s', 'ALLOW_MEMORY_GROWTH=1'],
-        ['-O2', '-s', 'OUTLINING_LIMIT=1000']
+        ['-O2', '-s', 'OUTLINING_LIMIT=1000'],
+        ['-O2', '--closure', '1'],
       ]:
       print opts
       self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1'] + opts)
