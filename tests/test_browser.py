@@ -632,6 +632,10 @@ If manually bisecting:
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
     self.btest('sdl_stb_image_data.c', reference='screenshot.jpg', args=['-s', 'STB_IMAGE=1', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
+  def test_sdl_stb_image_cleanup(self):
+    shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
+    self.btest('sdl_stb_image_cleanup.c', expected='0', args=['-s', 'STB_IMAGE=1', '--preload-file', 'screenshot.not', '-lSDL', '-lGL', '--memoryprofiler'])
+
   def test_sdl_canvas(self):
     self.clear()
     self.btest('sdl_canvas.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION=1', '-lSDL', '-lGL'])
