@@ -1653,7 +1653,7 @@ return ASM_CONSTS[code](%s);
   invoke_wrappers = ''
   with open(wast) as f:
     for line in f:
-      if line.startswith('  (import '):
+      if line.strip().startswith('(import '):
         parts = line.split()
         func_name = parts[2][1:-1]
         if func_name.startswith('invoke_'):
