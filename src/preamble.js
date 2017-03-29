@@ -2171,7 +2171,7 @@ function integrateWasmJS(Module) {
   function getBinaryPromise() {
     // if we don't have the binary yet, and have the Fetch api, use that
     if (!Module['wasmBinary'] && typeof fetch === 'function') {
-      return fetch(wasmBinaryFile).then(function(response) { return response.arrayBuffer() });
+      return fetch(wasmBinaryFile).then(function(response) { return response['arrayBuffer']() });
     }
     // Otherwise, getBinary should be able to get it synchronously
     return new Promise(function(resolve, reject) {
@@ -2247,7 +2247,7 @@ function integrateWasmJS(Module) {
       return WebAssembly.instantiate(binary, info)
     }).then(function(output) {
       // receiveInstance() will swap in the exports (to Module.asm) so they can be called
-      receiveInstance(output.instance);
+      receiveInstance(output['instance']);
     }).catch(function(reason) {
       Module['printErr']('failed to asynchronously prepare wasm: ' + reason);
       Module['quit'](1, reason);
