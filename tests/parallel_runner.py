@@ -114,15 +114,15 @@ class BufferedParallelTestResult(object):
     pass
 
   def addSuccess(self, test):
-    print test, '... ok'
+    print >> sys.stderr, test, '... ok'
     self.buffered_result = BufferedTestSuccess(test)
 
   def addFailure(self, test, err):
-    print test, '... FAIL'
+    print >> sys.stderr, test, '... FAIL'
     self.buffered_result = BufferedTestFailure(test, err)
 
   def addError(self, test, err):
-    print test, '... ERROR'
+    print >> sys.stderr, test, '... ERROR'
     self.buffered_result = BufferedTestError(test, err)
 
 
