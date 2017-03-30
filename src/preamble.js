@@ -2223,6 +2223,7 @@ function integrateWasmJS(Module) {
       exports = instance.exports;
       if (exports.memory) mergeMemory(exports.memory);
       Module['asm'] = exports;
+      asm = exports;
       Module["usingWasm"] = true;
       removeRunDependency('wasm-instantiate');
     }
