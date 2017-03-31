@@ -977,12 +977,14 @@ var SyscallsLibrary = {
     if (!stream.getdents) {
       stream.getdents = FS.readdir(stream.path);
     }
+    var buf = new Uint8Array(1024);
     var pos = 0;
     while (stream.getdents.length > 0 && pos + {{{ C_STRUCTS.dirent.__size__ }}} <= count) {
       var id;
       var type;
       var name = stream.getdents.pop();
       assert(name.length < 256); // limit of dirent struct
+      var nameLength = stringToUTF8Array(name, buf, 0, 1024);
       if (name[0] === '.') {
         id = 1;
         type = 4; // DT_DIR
@@ -998,8 +1000,8 @@ var SyscallsLibrary = {
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_off, 'stream.position', 'i32') }}};
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_reclen, C_STRUCTS.dirent.__size__, 'i16') }}};
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_type, 'type', 'i8') }}};
-      for (var i = 0; i < name.length; i++) {
-        {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_name + ' + i', 'name.charCodeAt(i)', 'i8') }}};
+      for (var i = 0; i < nameLength; i++) {
+        {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_name + ' + i', 'buf[i]', 'i8') }}};
       }
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_name + ' + i', '0', 'i8') }}};
       pos += {{{ C_STRUCTS.dirent.__size__ }}};
