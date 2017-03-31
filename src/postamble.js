@@ -117,8 +117,8 @@ Module['then'] = function(func) {
     // at the same time we would call onRuntimeInitialized.
     var old = Module['onRuntimeInitialized'];
     Module['onRuntimeInitialized'] = function() {
-      func(Module);
       if (old) old();
+      func(Module);
     };
   }
   return Module;
