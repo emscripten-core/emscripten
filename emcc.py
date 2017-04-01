@@ -2058,7 +2058,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
              '--mapFileBaseName', target,
              '--offset', str(0)])
 
-      generated_text_files_with_native_eols = [final]
+      # track files that will need native eols
+      generated_text_files_with_native_eols = []
 
       # Separate out the asm.js code, if asked. Or, if necessary for another option
       if (separate_asm or shared.Settings.BINARYEN) and not shared.Settings.WASM_BACKEND:
@@ -2224,6 +2225,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # The JS is now final. Move it to its final location
       shutil.move(final, js_target)
+
+      generated_text_files_with_native_eols += [js_target]
 
       # If we were asked to also generate HTML, do that
       if final_suffix == 'html':
