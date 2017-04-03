@@ -296,7 +296,7 @@ function JSify(data, functionsOnly) {
         Variables.generatedGlobalBase = true;
         // Globals are done, here is the rest of static memory
         if (!SIDE_MODULE) {
-          print('STATIC_BASE = ' + Runtime.GLOBAL_BASE + ';\n');
+          print('STATIC_BASE = Runtime.GLOBAL_BASE;\n');
           print('STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
         } else {
           print('gb = Runtime.alignMemory(getMemory({{{ STATIC_BUMP }}}, ' + MAX_GLOBAL_ALIGN + ' || 1));\n');
