@@ -1671,18 +1671,21 @@ return ASM_CONSTS[code](%s);
   if settings['ASSERTIONS']:
     # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
     # some support code
-    receiving = '\n'.join(['var real_' + asmjs_mangle(s) + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
+    receiving = '\n'.join(['var real_' + asmjs_mangle(s) + ' = Module["asm"]["' + s + '"]; Module["asm"]["' + s + '''"] = function() {
 assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
 assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
 return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
 };
 ''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory', '__start_module']])
 
-  if not settings['SWAPPABLE_ASM_MODULE']:
-    receiving += ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"]' for s in exported_implemented_functions])
-  else:
-    receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions])
-  receiving += ';\n'
+  for s in exported_implemented_functions:
+    receiving += 'var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = '
+    if not settings['SWAPPABLE_ASM_MODULE']:
+      receiving += 'Module["asm"]["' + s + '"]'
+    else:
+      receiving += 'function() { return Module["asm"]["' + s + '"].apply(null, arguments) }'
+    receiving += ';\n'
+
 
   # finalize
 
@@ -1698,7 +1701,7 @@ Module%s = %s;
 ''' % (access_quote('asmGlobalArg'), the_global,
      shared_array_buffer,
      access_quote('asmLibraryArg'), sending) + '''
-var asm = Module['asm'](%s, %s, buffer);
+Module['asm'] = Module['asm'](%s, %s, buffer);
 %s;
 ''' % ('Module' + access_quote('asmGlobalArg'),
      'Module' + access_quote('asmLibraryArg'),
