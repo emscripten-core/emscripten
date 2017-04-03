@@ -2204,9 +2204,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               assert JSOptimizer.cleanup_shell
               logging.debug('running cleanup on shell code')
               final = shared.Building.js_optimizer_no_asmjs(final, ['noPrintMetadata', 'JSDCE', 'last'] + (['minifyWhitespace'] if JSOptimizer.minify_whitespace else []))
-            if DEBUG: save_intermediate('postclean', 'js') # waka
+            if DEBUG: save_intermediate('postclean', 'js')
 
-      if shared.Settings.MODULARIZE: # waka
+      if shared.Settings.MODULARIZE:
         logging.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
         src = open(final).read()
         final = final + '.modular.js'
@@ -2221,7 +2221,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         f.write('};\n')
         f.close()
         src = None
-        if DEBUG: save_intermediate('modularized', 'js') # waka
+        if DEBUG: save_intermediate('modularized', 'js')
 
       # The JS is now final. Move it to its final location
       shutil.move(final, js_target)
