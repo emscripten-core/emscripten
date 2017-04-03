@@ -1,9 +1,7 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
-#if WASM_BACKEND == 0
 Module['asm'] = asm;
-#endif
 
 {{{ maybeExport('FS') }}}
 
