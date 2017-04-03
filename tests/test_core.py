@@ -6067,6 +6067,7 @@ def process(filename):
     '''
     self.do_run(src, '|1.266,1|\n')
 
+  @no_wasm_backend('Need support for -g in wasm backend')
   def test_demangle_stacks(self):
     Settings.DEMANGLE_SUPPORT = 1
     if '-O' in str(self.emcc_args):
