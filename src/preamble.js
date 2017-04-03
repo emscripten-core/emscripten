@@ -1002,7 +1002,7 @@ function checkStackCookie() {
 }
 
 function abortStackOverflow(allocSize) {
-  abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - asm.stackSave() + allocSize) + ' bytes available!');
+  abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - Module['asm'].stackSave() + allocSize) + ' bytes available!');
 }
 #endif
 
@@ -1948,8 +1948,8 @@ addOnPreRun(function() {
       Runtime.loadDynamicLibrary(lib);
     });
   }
-  if (asm['runPostSets']) {
-    asm['runPostSets']();
+  if (Module['asm']['runPostSets']) {
+    Module['asm']['runPostSets']();
   }
 });
 
@@ -2223,7 +2223,6 @@ function integrateWasmJS(Module) {
       exports = instance.exports;
       if (exports.memory) mergeMemory(exports.memory);
       Module['asm'] = exports;
-      asm = exports;
       Module["usingWasm"] = true;
       removeRunDependency('wasm-instantiate');
     }
