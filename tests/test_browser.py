@@ -2812,20 +2812,38 @@ window.close = function() {
     for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2'], ['-O2', '--closure', '1']]:
       for args, code in [
         ([], 'Module();'), # defaults
+        # use EXPORT_NAME
         (['-s', 'EXPORT_NAME="HelloWorld"'], '''
           if (typeof Module !== "undefined") throw "what?!"; // do not pollute the global scope, we are modularized!
           HelloWorld.noInitialRun = true; // errorneous module capture will load this and cause timeout
           HelloWorld();
-        '''), # use EXPORT_NAME
+        '''),
+        # pass in a Module option (which prevents main(), which we then invoke ourselves)
         (['-s', 'EXPORT_NAME="HelloWorld"'], '''
           var hello = HelloWorld({ noInitialRun: true, onRuntimeInitialized: function() {
             setTimeout(function() { hello._main(); }); // must be async, because onRuntimeInitialized may be called synchronously, so |hello| is not yet set!
           } });
-        '''), # pass in a Module option (which prevents main(), which we then invoke ourselves)
+        '''),
+        # similar, but without a mem init file, everything is sync and simple
         (['-s', 'EXPORT_NAME="HelloWorld"', '--memory-init-file', '0'], '''
           var hello = HelloWorld({ noInitialRun: true});
           hello._main();
-        '''), # similar, but without a mem init file, everything is sync and simple
+        '''),
+        # use the then() API
+        (['-s', 'EXPORT_NAME="HelloWorld"'], '''
+          HelloWorld({ noInitialRun: true }).then(function(hello) {
+            hello._main();
+          });
+        '''),
+        # then() API, also note the returned value
+        (['-s', 'EXPORT_NAME="HelloWorld"'], '''
+          var helloOutside = HelloWorld({ noInitialRun: true }).then(function(hello) {
+            setTimeout(function() {
+              hello._main();
+              assert(hello === helloOutside); // as we are async, helloOutside must have been set
+            });
+          });
+        '''),
       ]:
         print 'test on', opts, args, code
         src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
