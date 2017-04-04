@@ -7207,6 +7207,7 @@ int main() {
           if '--separate-asm' in params: files += ['a.asm.js']
           if output_suffix == 'html': files += ['a.html']
           cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a.' + output_suffix, '--output_eol', eol] + params
+          print cmd
           Popen(cmd).communicate()
           for f in files:
             print str(cmd) + ' ' + str(params) + ' ' + eol + ' ' + f
