@@ -26,11 +26,13 @@ void setup() {
   err = mkdir("foobar", 0777);
   assert(!err);
   create_file("foobar/file.txt", "ride into the danger zone", 0666);
+  create_file("foobar/中文.txt", "something", 0666);
 }
 
 void cleanup() {
   rmdir("nocanread");
   unlink("foobar/file.txt");
+  unlink("foobar/中文.txt");
   rmdir("foobar");
 }
 
@@ -72,8 +74,8 @@ void test() {
   //
   dir = opendir("foobar");
   assert(dir);
-  int seen[3] = { 0, 0, 0 };
-  for (i = 0; i < 3; i++) {
+  int seen[4] = { 0, 0, 0, 0 };
+  for (i = 0; i < 4; i++) {
     errno = 0;
     ent = readdir(dir);
     //printf("ent, errno: %p, %d\n", ent, errno);
@@ -95,6 +97,11 @@ void test() {
       seen[2] = 1;
       continue;
     }
+    if (!seen[3] && !strcmp(ent->d_name, "中文.txt")) {
+        assert(ent->d_type & DT_REG);
+        seen[3] = 1;
+        continue;
+    }
     assert(0 && "odd filename");
   }
   ent = readdir(dir);
@@ -104,21 +111,21 @@ void test() {
   // test rewinddir
   rewinddir(dir);
   ent = readdir(dir);
-  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
+  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt") || !strcmp(ent->d_name, "中文.txt"));
 
   // test seek / tell
   rewinddir(dir);
   ent = readdir(dir);
-  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
+  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt") || !strcmp(ent->d_name, "中文.txt"));
   char first[1024];
   //printf("first: %s\n", ent->d_name);
   strcpy(first, ent->d_name);
   loc = telldir(dir);
   assert(loc >= 0);
   ent = readdir(dir);
-  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
+  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt") || !strcmp(ent->d_name, "中文.txt"));
   ent = readdir(dir);
-  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
+  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt") || !strcmp(ent->d_name, "中文.txt"));
   seekdir(dir, loc);
   ent = readdir(dir);
   assert(ent);
@@ -132,15 +139,19 @@ void test() {
   err = readdir_r(dir, &ent_r, &result);
   assert(!err);
   assert(&ent_r == result);
-  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
+  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt") || !strcmp(ent->d_name, "中文.txt"));
   err = readdir_r(dir, &ent_r, &result);
   assert(!err);
   assert(&ent_r == result);
-  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
+  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt") || !strcmp(ent->d_name, "中文.txt"));
   err = readdir_r(dir, &ent_r, &result);
   assert(!err);
   assert(&ent_r == result);
-  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
+  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt") || !strcmp(ent->d_name, "中文.txt"));
+  err = readdir_r(dir, &ent_r, &result);
+  assert(!err);
+  assert(&ent_r == result);
+  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt") || !strcmp(ent->d_name, "中文.txt"));
   err = readdir_r(dir, &ent_r, &result);
   assert(!err);
   assert(!result);
