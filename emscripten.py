@@ -1476,7 +1476,9 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   def asmjs_mangle(name):
     # Mangle a name the way asm.js/JSBackend globals are mangled (i.e. prepend
     # '_' and replace non-alphanumerics with '_')
+    library_functions_in_module = ('setThrew', 'setTempRet0', 'getTempRet0')
     if name.startswith('dynCall_'): return name
+    if name in library_functions_in_module: return name
     return '_' + ''.join(['_' if not c.isalnum() else c for c in name])
 
   # Initializers call the global var version of the export, so they get the mangled name.
@@ -1653,7 +1655,7 @@ return ASM_CONSTS[code](%s);
   invoke_wrappers = ''
   with open(wast) as f:
     for line in f:
-      if line.startswith('  (import '):
+      if line.strip().startswith('(import '):
         parts = line.split()
         func_name = parts[2][1:-1]
         if func_name.startswith('invoke_'):
@@ -1707,15 +1709,15 @@ var asm = Module['asm'](%s, %s, buffer);
 STACKTOP = STACK_BASE + TOTAL_STACK;
 STACK_MAX = STACK_BASE;
 HEAP32[%d >> 2] = STACKTOP;
-Runtime.stackAlloc = asm['stackAlloc'];
-Runtime.stackSave = asm['stackSave'];
-Runtime.stackRestore = asm['stackRestore'];
-Runtime.establishStackSpace = asm['establishStackSpace'];
+Runtime.stackAlloc = Module['stackAlloc'];
+Runtime.stackSave = Module['stackSave'];
+Runtime.stackRestore = Module['stackRestore'];
+Runtime.establishStackSpace = Module['establishStackSpace'];
 ''' % shared.Settings.GLOBAL_BASE)
 
   funcs_js.append('''
-Runtime.setTempRet0 = asm['setTempRet0'];
-Runtime.getTempRet0 = asm['getTempRet0'];
+Runtime.setTempRet0 = Module['setTempRet0'];
+Runtime.getTempRet0 = Module['getTempRet0'];
 ''')
 
   funcs_js.append(invoke_wrappers)
