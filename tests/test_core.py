@@ -6289,6 +6289,10 @@ def process(filename):
     '''
     self.do_run(src, '107')
 
+  def test_embind_5(self):
+    Building.COMPILER_TEST_OPTS += ['--bind']
+    self.do_run_in_out_file_test('tests', 'core', 'test_embind_5')
+
   @sync
   @no_wasm_backend()
   def test_scriptaclass(self):
