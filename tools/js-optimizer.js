@@ -1848,6 +1848,7 @@ function detectType(node, asmInfo, inVarDef) {
         if (ret !== ASM_NONE) return ret;
       }
       if (!inVarDef) {
+        if (ASM_FLOAT_ZERO && ASM_FLOAT_ZERO === node[1]) return ASM_FLOAT;
         switch (node[1]) {
           case 'inf': case 'nan': return ASM_DOUBLE; // TODO: when minified
           case 'tempRet0': return ASM_INT;
