@@ -851,76 +851,100 @@ SIMD.Bool64x2.xor = function() {};
 
 var GLctx = {};
 
-// WebAssembly
+/**
+ * @const
+ */
 var WebAssembly = {};
 
 /**
  * @constructor
- * @params {BufferSource} bytes
+ * @param {!BufferSource} bytes
  */
 WebAssembly.Module = function(bytes) {};
 /** 
  * @constructor
- * @params {WebAssembly.Module} moduleObject
- * @params {object=} importObject
+ * @param {!WebAssembly.Module} moduleObject
+ * @param {Object=} importObject
  */
 WebAssembly.Instance = function(moduleObject, importObject) {};
+/** @typedef {{initial:number, maximum:(number|undefined)}} */
+var MemoryDescriptor;
 /**
  * @constructor
- * @params {object} memoryDescriptor
+ * @param {MemoryDescriptor} memoryDescriptor
  */
 WebAssembly.Memory = function(memoryDescriptor) {};
+/** @typedef {{element:string, initial:number, maximum:(number|undefined)}} */
+var TableDescriptor;
 /**
  * @constructor
- * @params {object} tableDescriptor
+ * @param {TableDescriptor} tableDescriptor
  */
 WebAssembly.Table = function(tableDescriptor) {};
-/** @constructor */
-WebAssembly.CompileError = function() {};
-/** @constructor */
-WebAssembly.LinkError = function() {};
-/** @constructor */
-WebAssembly.RuntimeError = function() {};
-
-WebAssembly.instantiate = function(bytesOrModuleObject, importObject) {};
 /**
- * @params {BufferSource} bytes
- * @return {Promise<WebAssembly.Module>}
+ * @constructor
+ * @extends {Error}
+ */
+WebAssembly.CompileError = function() {};
+/**
+ * @constructor
+ * @extends {Error}
+ */
+WebAssembly.LinkError = function() {};
+/**
+ * @constructor
+ * @extends {Error}
+ */
+WebAssembly.RuntimeError = function() {};
+/**
+ * @param {!BufferSource} bytes
+ * @param {Object=} importObject
+ * @retrun {!Promise<{module:WebAssembly.Module, instance:WebAssembly.Instance}>}
+ */
+WebAssembly.instantiate = function(bytes, importObject) {};
+/**
+ * @param {!WebAssembly.Module} moduleObject
+ * @param {Object=} importObject
+ * @return {!Promise<!WebAssembly.Instance>}
+ */
+WebAssembly.instantiate = function(moduleObject, importObject) {};
+/**
+ * @param {!BufferSource} bytes
+ * @return {!Promise<!WebAssembly.Module>}
  */
 WebAssembly.compile = function(bytes) {};
 /**
- * @params {BufferSource} bytes
+ * @param {!BufferSource} bytes
  * @return {boolean}
  */
 WebAssembly.validate = function(bytes) {};
-
-/** 
- * @params {WebAssembly.Module} moduleObject
+/**
+ * @param {!WebAssembly.Module} moduleObject
  * @return {Array}
  */
 WebAssembly.Module.exports = function(moduleObject) {};
 /** 
- * @params {WebAssembly.Module} moduleObject
+ * @param {!WebAssembly.Module} moduleObject
  * @return {Array}
  */
 WebAssembly.Module.imports = function(moduleObject) {};
-/** 
- * @params {WebAssembly.Module} moduleObject
- * @params {string} sectionName
+/**
+ * @param {!WebAssembly.Module} moduleObject
+ * @param {string} sectionName
  * @return {Array}
  */
 WebAssembly.Module.customSections = function(moduleObject, sectionName) {};
 /** 
- * @params {number} delta
+ * @param {number} delta
  * @return {number}
  */
 WebAssembly.Memory.prototype.grow = function(delta) {};
 /**
- * @type {ArrayBuffer}
+ * @type {!ArrayBuffer}
  */
 WebAssembly.Memory.prototype.buffer;
-/** 
- * @params {number} delta
+/**
+ * @param {number} delta
  * @return {number}
  */
 WebAssembly.Table.prototype.grow = function(delta) {};
@@ -928,8 +952,13 @@ WebAssembly.Table.prototype.grow = function(delta) {};
  * @type {number}
  */
 WebAssembly.Table.prototype.length;
-/** 
- * @params {number} index
+/**
+ * @param {number} index
+ * @return {function(...)}
  */
 WebAssembly.Table.prototype.get = function(index) {};
+/**
+ * @param {number} index
+ * @param {?function(...)} value
+ */
 WebAssembly.Table.prototype.set = function(index, value) {};
