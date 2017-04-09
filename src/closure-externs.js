@@ -920,18 +920,18 @@ WebAssembly.compile = function(bytes) {};
 WebAssembly.validate = function(bytes) {};
 /**
  * @param {!WebAssembly.Module} moduleObject
- * @return {Array}
+ * @return {!Array<{name:string, kind:string}>}
  */
 WebAssembly.Module.exports = function(moduleObject) {};
 /** 
  * @param {!WebAssembly.Module} moduleObject
- * @return {Array}
+ * @return {!Array<{module:string, name:string, kind:string}>}
  */
 WebAssembly.Module.imports = function(moduleObject) {};
 /**
  * @param {!WebAssembly.Module} moduleObject
  * @param {string} sectionName
- * @return {Array}
+ * @return {!Array<!ArrayBuffer>}
  */
 WebAssembly.Module.customSections = function(moduleObject, sectionName) {};
 /** @dict */
