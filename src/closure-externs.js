@@ -934,6 +934,8 @@ WebAssembly.Module.imports = function(moduleObject) {};
  * @return {Array}
  */
 WebAssembly.Module.customSections = function(moduleObject, sectionName) {};
+/** @dict */
+WebAssembly.Instance.prototype.exports;
 /** 
  * @param {number} delta
  * @return {number}
