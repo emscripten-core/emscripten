@@ -897,11 +897,9 @@ WebAssembly.LinkError = function() {};
  */
 WebAssembly.RuntimeError = function() {};
 /**
- * @param {!BufferSource} bytes
- * @param {Object=} importObject
- * @retrun {!Promise<{module:WebAssembly.Module, instance:WebAssembly.Instance}>}
+ * Note: Closure compiler does not support function overloading, omit this overload for now.
+ * {function(!BufferSource, Object=):!Promise<{module:WebAssembly.Module, instance:WebAssembly.Instance}>}
  */
-WebAssembly.instantiate = function(bytes, importObject) {};
 /**
  * @param {!WebAssembly.Module} moduleObject
  * @param {Object=} importObject
