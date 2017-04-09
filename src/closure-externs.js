@@ -852,12 +852,84 @@ SIMD.Bool64x2.xor = function() {};
 var GLctx = {};
 
 // WebAssembly
+var WebAssembly = {};
 
-var WebAssembly = {
-  Module: function() {},
-  Instance: function() {},
-  Memory: function() {},
-  Table: function() {},
-  instantiate: function() {},
-};
+/**
+ * @constructor
+ * @params {BufferSource} bytes
+ */
+WebAssembly.Module = function(bytes) {};
+/** 
+ * @constructor
+ * @params {WebAssembly.Module} moduleObject
+ * @params {object=} importObject
+ */
+WebAssembly.Instance = function(moduleObject, importObject) {};
+/**
+ * @constructor
+ * @params {object} memoryDescriptor
+ */
+WebAssembly.Memory = function(memoryDescriptor) {};
+/**
+ * @constructor
+ * @params {object} tableDescriptor
+ */
+WebAssembly.Table = function(tableDescriptor) {};
+/** @constructor */
+WebAssembly.CompileError = function() {};
+/** @constructor */
+WebAssembly.LinkError = function() {};
+/** @constructor */
+WebAssembly.RuntimeError = function() {};
 
+WebAssembly.instantiate = function(bytesOrModuleObject, importObject) {};
+/**
+ * @params {BufferSource} bytes
+ * @return {Promise<WebAssembly.Module>}
+ */
+WebAssembly.compile = function(bytes) {};
+/**
+ * @params {BufferSource} bytes
+ * @return {boolean}
+ */
+WebAssembly.validate = function(bytes) {};
+
+/** 
+ * @params {WebAssembly.Module} moduleObject
+ * @return {Array}
+ */
+WebAssembly.Module.exports = function(moduleObject) {};
+/** 
+ * @params {WebAssembly.Module} moduleObject
+ * @return {Array}
+ */
+WebAssembly.Module.imports = function(moduleObject) {};
+/** 
+ * @params {WebAssembly.Module} moduleObject
+ * @params {string} sectionName
+ * @return {Array}
+ */
+WebAssembly.Module.customSections = function(moduleObject, sectionName) {};
+/** 
+ * @params {number} delta
+ * @return {number}
+ */
+WebAssembly.Memory.prototype.grow = function(delta) {};
+/**
+ * @type {ArrayBuffer}
+ */
+WebAssembly.Memory.prototype.buffer;
+/** 
+ * @params {number} delta
+ * @return {number}
+ */
+WebAssembly.Table.prototype.grow = function(delta) {};
+/**
+ * @type {number}
+ */
+WebAssembly.Table.prototype.length;
+/** 
+ * @params {number} index
+ */
+WebAssembly.Table.prototype.get = function(index) {};
+WebAssembly.Table.prototype.set = function(index, value) {};
