@@ -243,86 +243,92 @@ def fixup_functions(funcs, metadata, settings):
 
 
 def compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DEBUG):
-    # js compiler
+  if DEBUG:
+    logging.debug('emscript: js compiler glue')
+    t = time.time()
 
-    if DEBUG:
-      logging.debug('emscript: js compiler glue')
-      t = time.time()
+  # Settings changes
+  i64_funcs = ['i64Add', 'i64Subtract', '__muldi3', '__divdi3', '__udivdi3', '__remdi3', '__uremdi3']
+  for i64_func in i64_funcs:
+    if i64_func in metadata['declares']:
+      settings['PRECISE_I64_MATH'] = 2
+      break
 
-    # Settings changes
-    i64_funcs = ['i64Add', 'i64Subtract', '__muldi3', '__divdi3', '__udivdi3', '__remdi3', '__uremdi3']
-    for i64_func in i64_funcs:
-      if i64_func in metadata['declares']:
-        settings['PRECISE_I64_MATH'] = 2
-        break
+  metadata['declares'] = filter(lambda i64_func: i64_func not in ['getHigh32', 'setHigh32'], metadata['declares']) # FIXME: do these one by one as normal js lib funcs
 
-    metadata['declares'] = filter(lambda i64_func: i64_func not in ['getHigh32', 'setHigh32'], metadata['declares']) # FIXME: do these one by one as normal js lib funcs
+  optimize_syscalls(metadata['declares'], settings, DEBUG)
 
-    # Syscalls optimization. Our syscalls are static, and so if we see a very limited set of them - in particular,
-    # no open() syscall and just simple writing - then we don't need full filesystem support.
-    # If FORCE_FILESYSTEM is set, we can't do this. We also don't do it if INCLUDE_FULL_LIBRARY, since
-    # not including the filesystem would mean not including the full JS libraries, and the same for
-    # MAIN_MODULE since a side module might need the filesystem.
-    if not settings['NO_FILESYSTEM'] and not settings['FORCE_FILESYSTEM'] and not settings['INCLUDE_FULL_LIBRARY'] and not settings['MAIN_MODULE']:
-      syscall_prefix = '__syscall'
-      syscalls = filter(lambda declare: declare.startswith(syscall_prefix), metadata['declares'])
-      def is_int(x):
-        try:
-          int(x)
-          return True
-        except:
-          return False
-      syscalls = filter(lambda declare: is_int(declare[len(syscall_prefix):]), syscalls)
-      syscalls = map(lambda declare: int(declare[len(syscall_prefix):]), syscalls)
-      if set(syscalls).issubset(set([6, 54, 140, 146])): # close, ioctl, llseek, writev
-        if DEBUG: logging.debug('very limited syscalls (%s) so disabling full filesystem support' % ', '.join(map(str, syscalls)))
-        settings['NO_FILESYSTEM'] = 1
+  if settings['CYBERDWARF']:
+    settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'].append("cyberdwarf_Debugger")
+    settings['EXPORTED_FUNCTIONS'].append("cyberdwarf_Debugger")
 
-    if settings['CYBERDWARF']:
-      settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'].append("cyberdwarf_Debugger")
-      settings['EXPORTED_FUNCTIONS'].append("cyberdwarf_Debugger")
+  # Integrate info from backend
+  if settings['SIDE_MODULE']:
+    settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = [] # we don't need any JS library contents in side modules
+  settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
+    set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
+      map(lambda x: x[1:], metadata['implementedFunctions'])
+    )
+  ) + map(lambda x: x[1:], metadata['externs'])
+  if metadata['simd']:
+    settings['SIMD'] = 1
+  if metadata['cantValidate'] and settings['ASM_JS'] != 2:
+    logging.warning('disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
+    settings['ASM_JS'] = 2
 
-    # Integrate info from backend
-    if settings['SIDE_MODULE']:
-      settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = [] # we don't need any JS library contents in side modules
-    settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
-      set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
-        map(lambda x: x[1:], metadata['implementedFunctions'])
-      )
-    ) + map(lambda x: x[1:], metadata['externs'])
-    if metadata['simd']:
-      settings['SIMD'] = 1
-    if metadata['cantValidate'] and settings['ASM_JS'] != 2:
-      logging.warning('disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
-      settings['ASM_JS'] = 2
+  settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
 
-    settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
+  settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
 
-    settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
+  assert not (metadata['simd'] and settings['SPLIT_MEMORY']), 'SIMD is used, but not supported in SPLIT_MEMORY'
 
-    assert not (metadata['simd'] and settings['SPLIT_MEMORY']), 'SIMD is used, but not supported in SPLIT_MEMORY'
+  # Save settings to a file to work around v8 issue 1579
+  with temp_files.get_file('.txt') as settings_file:
+    def save_settings():
+      global settings_text
+      settings_text = json.dumps(settings, sort_keys=True)
+      s = open(settings_file, 'w')
+      s.write(settings_text)
+      s.close()
+    save_settings()
 
-    # Save settings to a file to work around v8 issue 1579
-    with temp_files.get_file('.txt') as settings_file:
-      def save_settings():
-        global settings_text
-        settings_text = json.dumps(settings, sort_keys=True)
-        s = open(settings_file, 'w')
-        s.write(settings_text)
-        s.close()
-      save_settings()
+    # Call js compiler
+    out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
+                       [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                       cwd=path_from_root('src'), error_limit=300)
+  assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
+  glue, forwarded_data = out.split('//FORWARDED_DATA:')
 
-      # Call js compiler
-      out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
-                         [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
-                         cwd=path_from_root('src'), error_limit=300)
-    assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
-    glue, forwarded_data = out.split('//FORWARDED_DATA:')
+  if DEBUG:
+    logging.debug('  emscript: glue took %s seconds' % (time.time() - t))
 
-    if DEBUG:
-      logging.debug('  emscript: glue took %s seconds' % (time.time() - t))
+  return glue, forwarded_data
 
-    return glue, forwarded_data
+
+def optimize_syscalls(declares, settings, DEBUG):
+  """Our syscalls are static, and so if we see a very limited set of them - in particular,
+  no open() syscall and just simple writing - then we don't need full filesystem support.
+  If FORCE_FILESYSTEM is set, we can't do this. We also don't do it if INCLUDE_FULL_LIBRARY, since
+  not including the filesystem would mean not including the full JS libraries, and the same for
+  MAIN_MODULE since a side module might need the filesystem.
+  """
+  relevant_settings = ['NO_FILESYSTEM', 'FORCE_FILESYSTEM', 'INCLUDE_FULL_LIBRARY', 'MAIN_MODULE']
+  if all([not settings[s] for s in relevant_settings]):
+    syscall_prefix = '__syscall'
+    syscall_numbers = [d[len(syscall_prefix):] for d in declares if d.startswith(syscall_prefix)]
+    syscalls = [int(s) for s in syscall_numbers if is_int(s)]
+    if set(syscalls).issubset(set([6, 54, 140, 146])): # close, ioctl, llseek, writev
+      if DEBUG: logging.debug('very limited syscalls (%s) so disabling full filesystem support' % ', '.join(map(str, syscalls)))
+      settings['NO_FILESYSTEM'] = 1
+
+
+def is_int(x):
+  try:
+    int(x)
+    return True
+  except:
+    return False
+
 
 def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG):
 
