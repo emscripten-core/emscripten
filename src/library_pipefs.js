@@ -166,7 +166,7 @@ mergeInto(LibraryManager.library, {
           data = data.subarray(freeBytesInCurrBuffer, data.byteLength);
         }
 
-        var numBuckets = ~~(data.byteLength / PIPEFS.BUCKET_BUFFER_SIZE);
+        var numBuckets = (data.byteLength / PIPEFS.BUCKET_BUFFER_SIZE) | 0;
         var remElements = data.byteLength % PIPEFS.BUCKET_BUFFER_SIZE;
 
         for (var i = 0; i < numBuckets; i++) {
