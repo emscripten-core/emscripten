@@ -357,98 +357,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
     #print >> sys.stderr, 'glue:', pre, '\n\n||||||||||||||||\n\n', post, '...............'
 
-    # memory and global initializers
-
-    global_initializers = str(', '.join(map(lambda i: '{ func: function() { %s() } }' % i, metadata['initializers'])))
-
-    if settings['SIMD'] == 1:
-      pre = open(path_from_root(os.path.join('src', 'ecmascript_simd.js'))).read() + '\n\n' + pre
-
-    staticbump = metadata['staticBump']
-    while staticbump % 16 != 0: staticbump += 1
-    pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;%s
-  /* global initializers */ %s __ATINIT__.push(%s);
-  %s''' % (staticbump,
-           'assert(STATICTOP < SPLIT_MEMORY, "SPLIT_MEMORY size must be big enough so the entire static memory, need " + STATICTOP);' if settings['SPLIT_MEMORY'] else '',
-           'if (!ENVIRONMENT_IS_PTHREAD)' if settings['USE_PTHREADS'] else '',
-           global_initializers,
-           mem_init))
-
-    if settings['SIDE_MODULE']:
-      pre = pre.replace('Runtime.GLOBAL_BASE', 'gb')
-    if settings['SIDE_MODULE'] or settings['BINARYEN']:
-      pre = pre.replace('{{{ STATIC_BUMP }}}', str(staticbump))
-
-    funcs_js = [funcs]
-    parts = pre.split('// ASM_LIBRARY FUNCTIONS\n')
-    if len(parts) > 1:
-      pre = parts[0]
-      funcs_js.append(parts[1])
-
-    # merge forwarded data
-    settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
-    all_exported_functions = set(shared.expand_response(settings['EXPORTED_FUNCTIONS'])) # both asm.js and otherwise
-
-    for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
-      all_exported_functions.add('_' + additional_export)
-    if settings['EXPORT_FUNCTION_TABLES']:
-      for table in forwarded_json['Functions']['tables'].values():
-        for func in table.split('[')[1].split(']')[0].split(','):
-          if func[0] == '_':
-            all_exported_functions.add(func)
-    exported_implemented_functions = set(metadata['exports'])
-    export_bindings = settings['EXPORT_BINDINGS']
-    export_all = settings['EXPORT_ALL']
-    all_implemented = metadata['implementedFunctions'] + forwarded_json['Functions']['implementedFunctions'].keys() # XXX perf?
-    for key in all_implemented:
-      if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
-        exported_implemented_functions.add(key)
-    implemented_functions = set(metadata['implementedFunctions'])
-    if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
-      original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
-      if original_exports[0] == '@': original_exports = json.loads(open(original_exports[1:]).read())
-      for requested in original_exports:
-        # check if already implemented
-        # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS \
-        if requested not in all_implemented and \
-           requested != '_malloc' and \
-           (('function ' + requested.encode('utf-8')) not in pre): # could be a js library func
-          logging.warning('function requested to be exported, but not implemented: "%s"', requested)
-
-    if settings['BINARYEN'] and settings['SIDE_MODULE']:
-      assert len(metadata['asmConsts']) == 0, 'EM_ASM is not yet supported in shared wasm module (it cannot be stored in the wasm itself, need some solution)'
-
-    asm_consts = [0]*len(metadata['asmConsts'])
-    all_sigs = []
-    for k, v in metadata['asmConsts'].iteritems():
-      const = v[0].encode('utf-8')
-      sigs = v[1]
-      if len(const) > 1 and const[0] == '"' and const[-1] == '"':
-        const = const[1:-1]
-      const = '{ ' + const + ' }'
-      args = []
-      arity = max(map(len, sigs)) - 1
-      for i in range(arity):
-        args.append('$' + str(i))
-      const = 'function(' + ', '.join(args) + ') ' + const
-      asm_consts[int(k)] = const
-      all_sigs += sigs
-
-    asm_const_funcs = []
-    for sig in set(all_sigs):
-      forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
-      args = ['a%d' % i for i in range(len(sig)-1)]
-      all_args = ['code'] + args
-      asm_const_funcs.append(r'''
-function _emscripten_asm_const_%s(%s) {
- return ASM_CONSTS[code](%s);
-}''' % (sig.encode('utf-8'), ', '.join(all_args), ', '.join(args)))
-
-    pre = pre.replace('// === Body ===', '// === Body ===\n' + '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
-
-    #if DEBUG: outfile.write('// pre\n')
-    outfile.write(pre)
-    pre = None
+    funcs_js, implemented_functions, exported_implemented_functions = memory_and_global_initializers(pre, funcs, metadata, mem_init, forwarded_json, settings, outfile, DEBUG)
 
     #if DEBUG: outfile.write('// funcs\n')
 
@@ -1002,6 +911,100 @@ return real_''' + s + '''.apply(null, arguments);
       logging.debug('  emscript: python processing: function tables and exports took %s seconds' % (time.time() - t))
 
     return post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, forwarded_json
+
+
+def memory_and_global_initializers(pre, funcs, metadata, mem_init, forwarded_json, settings, outfile, DEBUG):
+  global_initializers = str(', '.join(map(lambda i: '{ func: function() { %s() } }' % i, metadata['initializers'])))
+
+  if settings['SIMD'] == 1:
+    pre = open(path_from_root(os.path.join('src', 'ecmascript_simd.js'))).read() + '\n\n' + pre
+
+  staticbump = metadata['staticBump']
+  while staticbump % 16 != 0: staticbump += 1
+  pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;%s
+/* global initializers */ %s __ATINIT__.push(%s);
+%s''' % (staticbump,
+         'assert(STATICTOP < SPLIT_MEMORY, "SPLIT_MEMORY size must be big enough so the entire static memory, need " + STATICTOP);' if settings['SPLIT_MEMORY'] else '',
+         'if (!ENVIRONMENT_IS_PTHREAD)' if settings['USE_PTHREADS'] else '',
+         global_initializers,
+         mem_init))
+
+  if settings['SIDE_MODULE']:
+    pre = pre.replace('Runtime.GLOBAL_BASE', 'gb')
+  if settings['SIDE_MODULE'] or settings['BINARYEN']:
+    pre = pre.replace('{{{ STATIC_BUMP }}}', str(staticbump))
+
+  funcs_js = [funcs]
+  parts = pre.split('// ASM_LIBRARY FUNCTIONS\n')
+  if len(parts) > 1:
+    pre = parts[0]
+    funcs_js.append(parts[1])
+
+  # merge forwarded data
+  settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
+  all_exported_functions = set(shared.expand_response(settings['EXPORTED_FUNCTIONS'])) # both asm.js and otherwise
+
+  for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
+    all_exported_functions.add('_' + additional_export)
+  if settings['EXPORT_FUNCTION_TABLES']:
+    for table in forwarded_json['Functions']['tables'].values():
+      for func in table.split('[')[1].split(']')[0].split(','):
+        if func[0] == '_':
+          all_exported_functions.add(func)
+  exported_implemented_functions = set(metadata['exports'])
+  export_bindings = settings['EXPORT_BINDINGS']
+  export_all = settings['EXPORT_ALL']
+  all_implemented = metadata['implementedFunctions'] + forwarded_json['Functions']['implementedFunctions'].keys() # XXX perf?
+  for key in all_implemented:
+    if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
+      exported_implemented_functions.add(key)
+  implemented_functions = set(metadata['implementedFunctions'])
+  if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
+    original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
+    if original_exports[0] == '@': original_exports = json.loads(open(original_exports[1:]).read())
+    for requested in original_exports:
+      # check if already implemented
+      # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS \
+      if requested not in all_implemented and \
+         requested != '_malloc' and \
+         (('function ' + requested.encode('utf-8')) not in pre): # could be a js library func
+        logging.warning('function requested to be exported, but not implemented: "%s"', requested)
+
+  if settings['BINARYEN'] and settings['SIDE_MODULE']:
+    assert len(metadata['asmConsts']) == 0, 'EM_ASM is not yet supported in shared wasm module (it cannot be stored in the wasm itself, need some solution)'
+
+  asm_consts = [0]*len(metadata['asmConsts'])
+  all_sigs = []
+  for k, v in metadata['asmConsts'].iteritems():
+    const = v[0].encode('utf-8')
+    sigs = v[1]
+    if len(const) > 1 and const[0] == '"' and const[-1] == '"':
+      const = const[1:-1]
+    const = '{ ' + const + ' }'
+    args = []
+    arity = max(map(len, sigs)) - 1
+    for i in range(arity):
+      args.append('$' + str(i))
+    const = 'function(' + ', '.join(args) + ') ' + const
+    asm_consts[int(k)] = const
+    all_sigs += sigs
+
+  asm_const_funcs = []
+  for sig in set(all_sigs):
+    forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
+    args = ['a%d' % i for i in range(len(sig)-1)]
+    all_args = ['code'] + args
+    asm_const_funcs.append(r'''
+function _emscripten_asm_const_%s(%s) {
+  return ASM_CONSTS[code](%s);
+}''' % (sig.encode('utf-8'), ', '.join(all_args), ', '.join(args)))
+
+  pre = pre.replace('// === Body ===', '// === Body ===\n' + '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
+
+  #if DEBUG: outfile.write('// pre\n')
+  outfile.write(pre)
+
+  return funcs_js, implemented_functions, exported_implemented_functions
 
 
 def finalize_output(metadata, post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, forwarded_json, settings, outfile, DEBUG):
