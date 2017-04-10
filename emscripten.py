@@ -96,9 +96,9 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
       glue, forwarded_data = compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DEBUG)
 
     with ToolchainProfiler.profile_block('function_tables_and_exports'):
-      post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, last_forwarded_json = function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG)
+      post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, forwarded_json = function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG)
     with ToolchainProfiler.profile_block('finalize_output'):
-      finalize_output(metadata, post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, last_forwarded_json, settings, outfile, DEBUG)
+      finalize_output(metadata, post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, forwarded_json, settings, outfile, DEBUG)
 
     success = True
 
@@ -347,11 +347,11 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     access_quote = access_quoter(settings)
     quote = quoter(settings)
 
-    last_forwarded_json = forwarded_json = json.loads(forwarded_data)
+    forwarded_json = json.loads(forwarded_data)
 
     # merge in information from llvm backend
 
-    last_forwarded_json['Functions']['tables'] = metadata['tables']
+    forwarded_json['Functions']['tables'] = metadata['tables']
 
     pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 
@@ -392,7 +392,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
       all_exported_functions.add('_' + additional_export)
     if settings['EXPORT_FUNCTION_TABLES']:
-      for table in last_forwarded_json['Functions']['tables'].values():
+      for table in forwarded_json['Functions']['tables'].values():
         for func in table.split('[')[1].split(']')[0].split(','):
           if func[0] == '_':
             all_exported_functions.add(func)
@@ -455,7 +455,7 @@ function _emscripten_asm_const_%s(%s) {
     # when emulating function pointer casts, we need to know what is the target of each pointer
     if settings['EMULATE_FUNCTION_POINTER_CASTS']:
       function_pointer_targets = {}
-      for sig, table in last_forwarded_json['Functions']['tables'].iteritems():
+      for sig, table in forwarded_json['Functions']['tables'].iteritems():
         start = table.index('[')
         end = table.rindex(']')
         body = table[start+1:end].split(',')
@@ -476,9 +476,9 @@ function _emscripten_asm_const_%s(%s) {
     class Counter:
       i = 0
       j = 0
-    if 'pre' in last_forwarded_json['Functions']['tables']:
-      pre_tables = last_forwarded_json['Functions']['tables']['pre']
-      del last_forwarded_json['Functions']['tables']['pre']
+    if 'pre' in forwarded_json['Functions']['tables']:
+      pre_tables = forwarded_json['Functions']['tables']['pre']
+      del forwarded_json['Functions']['tables']['pre']
     else:
       pre_tables = ''
 
@@ -596,7 +596,7 @@ function _emscripten_asm_const_%s(%s) {
       body = ','.join(map(fix_item, body))
       return ('\n'.join(Counter.pre), ''.join([raw[:start+1], body, raw[end:]]))
 
-    infos = [make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()]
+    infos = [make_table(sig, raw) for sig, raw in forwarded_json['Functions']['tables'].iteritems()]
     Counter.pre = []
 
     function_tables_defs = '\n'.join([info[0] for info in infos]) + '\n'
@@ -606,7 +606,7 @@ function _emscripten_asm_const_%s(%s) {
     asm_setup = ''
 
     if settings['ASSERTIONS'] >= 2:
-      for sig in last_forwarded_json['Functions']['tables']:
+      for sig in forwarded_json['Functions']['tables']:
         asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
 
     maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'max', 'clz32']]
@@ -679,7 +679,7 @@ function _emscripten_asm_const_%s(%s) {
         pointer = ' \'" + x + "\' '
         extra = ' Module["printErr"]("This pointer might make sense in another type signature: '
         # sort signatures, attempting to show most likely related ones first
-        sigs = last_forwarded_json['Functions']['tables'].keys()
+        sigs = forwarded_json['Functions']['tables'].keys()
         def keyfunc(other):
           ret = 0
           minlen = min(len(other), len(sig))
@@ -715,7 +715,7 @@ function _emscripten_asm_const_%s(%s) {
         basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_LOAD_D', 'SAFE_HEAP_STORE', 'SAFE_HEAP_STORE_D', 'SAFE_FT_MASK']
     if settings['ASSERTIONS']:
       if settings['ASSERTIONS'] >= 2: import difflib
-      for sig in last_forwarded_json['Functions']['tables'].iterkeys():
+      for sig in forwarded_json['Functions']['tables'].iterkeys():
         basic_funcs += ['nullFunc_' + sig]
         asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig) + 'abort(x) }\n'
 
@@ -754,7 +754,7 @@ function _emscripten_asm_const_%s(%s) {
           return 0
         return table_contents.count(',') + 1
 
-      table_total_size = sum(map(table_size, last_forwarded_json['Functions']['tables'].values()))
+      table_total_size = sum(map(table_size, forwarded_json['Functions']['tables'].values()))
       asm_setup += "\nModule['wasmTableSize'] = %d;\n" % table_total_size
       if not settings['EMULATED_FUNCTION_POINTERS']:
         asm_setup += "\nModule['wasmMaxTableSize'] = %d;\n" % table_total_size
@@ -779,12 +779,12 @@ function _emscripten_asm_const_%s(%s) {
 
     # function tables
     if not settings['EMULATED_FUNCTION_POINTERS']:
-      function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
+      function_tables = ['dynCall_' + table for table in forwarded_json['Functions']['tables']]
     else:
       function_tables = []
     function_tables_impls = []
 
-    for sig in last_forwarded_json['Functions']['tables'].iterkeys():
+    for sig in forwarded_json['Functions']['tables'].iterkeys():
       args = ','.join(['a' + str(i) for i in range(1, len(sig))])
       arg_coercions = ' '.join(['a' + str(i) + '=' + shared.JS.make_coercion('a' + str(i), sig[i], settings) + ';' for i in range(1, len(sig))])
       coerced_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings) for i in range(1, len(sig))])
@@ -979,7 +979,7 @@ return real_''' + s + '''.apply(null, arguments);
     receiving += ';\n'
 
     if settings['EXPORT_FUNCTION_TABLES'] and not settings['BINARYEN']:
-      for table in last_forwarded_json['Functions']['tables'].values():
+      for table in forwarded_json['Functions']['tables'].values():
         tableName = table.split()[1]
         table = table.replace('var ' + tableName, 'var ' + tableName + ' = Module["' + tableName + '"]')
         receiving += table + '\n'
@@ -989,9 +989,9 @@ return real_''' + s + '''.apply(null, arguments);
     final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
     if settings.get('EMULATED_FUNCTION_POINTERS'):
       asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
-      receiving += '\n' + function_tables_defs.replace('// EMSCRIPTEN_END_FUNCS\n', '') + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in last_forwarded_json['Functions']['tables']])
+      receiving += '\n' + function_tables_defs.replace('// EMSCRIPTEN_END_FUNCS\n', '') + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in forwarded_json['Functions']['tables']])
       if not settings['BINARYEN']:
-        for sig in last_forwarded_json['Functions']['tables'].keys():
+        for sig in forwarded_json['Functions']['tables'].keys():
           name = 'FUNCTION_TABLE_' + sig
           fullname = name if not settings['SIDE_MODULE'] else ('SIDE_' + name)
           receiving += 'Module["' + name + '"] = ' + fullname + ';\n'
@@ -1001,9 +1001,10 @@ return real_''' + s + '''.apply(null, arguments);
     if DEBUG:
       logging.debug('  emscript: python processing: function tables and exports took %s seconds' % (time.time() - t))
 
-    return post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, last_forwarded_json
+    return post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, forwarded_json
 
-def finalize_output(metadata, post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, last_forwarded_json, settings, outfile, DEBUG):
+
+def finalize_output(metadata, post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, forwarded_json, settings, outfile, DEBUG):
 
     if DEBUG:
       logging.debug('emscript: python processing: finalize')
@@ -1377,7 +1378,7 @@ Runtime.getTempRet0 = Module['getTempRet0'];
     # Set function table masks
     masks = {}
     max_mask = 0
-    for sig, table in last_forwarded_json['Functions']['tables'].iteritems():
+    for sig, table in forwarded_json['Functions']['tables'].iteritems():
       mask = table.count(',')
       masks[sig] = str(mask)
       max_mask = max(mask, max_mask)
@@ -1392,7 +1393,7 @@ Runtime.getTempRet0 = Module['getTempRet0'];
     if settings['SIDE_MODULE']:
       funcs_js.append('''
 Runtime.registerFunctions(%(sigs)s, Module);
-''' % { 'sigs': str(map(str, last_forwarded_json['Functions']['tables'].keys())) })
+''' % { 'sigs': str(map(str, forwarded_json['Functions']['tables'].keys())) })
 
     for i in range(len(funcs_js)): # do this loop carefully to save memory
       if WINDOWS: funcs_js[i] = funcs_js[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
