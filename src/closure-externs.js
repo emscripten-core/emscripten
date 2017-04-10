@@ -855,7 +855,6 @@ var GLctx = {};
  * @const
  */
 var WebAssembly = {};
-
 /**
  * @constructor
  * @param {!BufferSource} bytes
@@ -898,12 +897,12 @@ WebAssembly.LinkError = function() {};
 WebAssembly.RuntimeError = function() {};
 /**
  * Note: Closure compiler does not support function overloading, omit this overload for now.
- * {function(!BufferSource, Object=):!Promise<{module:WebAssembly.Module, instance:WebAssembly.Instance}>}
+ * {function(!WebAssembly.Module, Object=):!Promise<!WebAssembly.Instance>}
  */
 /**
- * @param {!WebAssembly.Module} moduleObject
+ * @param {!BufferSource} moduleObject
  * @param {Object=} importObject
- * @return {!Promise<!WebAssembly.Instance>}
+ * @return {!Promise<{module:WebAssembly.Module, instance:WebAssembly.Instance}>}
  */
 WebAssembly.instantiate = function(moduleObject, importObject) {};
 /**
