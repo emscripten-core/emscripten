@@ -108,45 +108,7 @@ def get_and_parse_backend(infile, settings, temp_files, DEBUG):
     with temp_files.get_file('.4.js') as temp_js:
       backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
       backend_args = [backend_compiler, infile, '-march=js', '-filetype=asm', '-o', temp_js]
-      if settings['PRECISE_F32']:
-        backend_args += ['-emscripten-precise-f32']
-      if settings['USE_PTHREADS']:
-        backend_args += ['-emscripten-enable-pthreads']
-      if settings['WARN_UNALIGNED']:
-        backend_args += ['-emscripten-warn-unaligned']
-      if settings['RESERVED_FUNCTION_POINTERS'] > 0:
-        backend_args += ['-emscripten-reserved-function-pointers=%d' % settings['RESERVED_FUNCTION_POINTERS']]
-      if settings['ASSERTIONS'] > 0:
-        backend_args += ['-emscripten-assertions=%d' % settings['ASSERTIONS']]
-      if settings['ALIASING_FUNCTION_POINTERS'] == 0:
-        backend_args += ['-emscripten-no-aliasing-function-pointers']
-      if settings['EMULATED_FUNCTION_POINTERS']:
-        backend_args += ['-emscripten-emulated-function-pointers']
-      if settings['RELOCATABLE']:
-        backend_args += ['-emscripten-relocatable']
-        backend_args += ['-emscripten-global-base=0']
-      elif settings['GLOBAL_BASE'] >= 0:
-        backend_args += ['-emscripten-global-base=%d' % settings['GLOBAL_BASE']]
-      if settings['SIDE_MODULE']:
-        backend_args += ['-emscripten-side-module']
-      backend_args += ['-emscripten-stack-size=%d' % settings['TOTAL_STACK']]
-      backend_args += ['-O' + str(settings['OPT_LEVEL'])]
-      if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
-        backend_args += ['-enable-emscripten-cpp-exceptions']
-        if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
-          backend_args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['fake'])]
-      if settings['ASYNCIFY']:
-        backend_args += ['-emscripten-asyncify']
-        backend_args += ['-emscripten-asyncify-functions=' + ','.join(settings['ASYNCIFY_FUNCTIONS'])]
-        backend_args += ['-emscripten-asyncify-whitelist=' + ','.join(settings['ASYNCIFY_WHITELIST'])]
-      if settings['NO_EXIT_RUNTIME']:
-        backend_args += ['-emscripten-no-exit-runtime']
-      if settings['BINARYEN']:
-        backend_args += ['-emscripten-wasm']
-        if shared.Building.is_wasm_only():
-          backend_args += ['-emscripten-only-wasm']
-      if settings['CYBERDWARF']:
-        backend_args += ['-enable-cyberdwarf']
+      backend_args += backend_args_for_settings(settings)
 
       if DEBUG:
         logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
@@ -219,6 +181,51 @@ def get_and_parse_backend(infile, settings, temp_files, DEBUG):
       funcs = re.sub(r'([(=,+\-*/%<>:?] *)\+(-?)((0x)?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)', fix_dot_zero, funcs)
 
     return funcs, metadata, mem_init
+
+def backend_args_for_settings(settings):
+  """Create args for asm.js backend from settings dict"""
+  args = [
+    '-emscripten-stack-size=%d' % settings['TOTAL_STACK'],
+    '-O' + str(settings['OPT_LEVEL']),
+  ]
+  if settings['PRECISE_F32']:
+    args += ['-emscripten-precise-f32']
+  if settings['USE_PTHREADS']:
+    args += ['-emscripten-enable-pthreads']
+  if settings['WARN_UNALIGNED']:
+    args += ['-emscripten-warn-unaligned']
+  if settings['RESERVED_FUNCTION_POINTERS'] > 0:
+    args += ['-emscripten-reserved-function-pointers=%d' % settings['RESERVED_FUNCTION_POINTERS']]
+  if settings['ASSERTIONS'] > 0:
+    args += ['-emscripten-assertions=%d' % settings['ASSERTIONS']]
+  if settings['ALIASING_FUNCTION_POINTERS'] == 0:
+    args += ['-emscripten-no-aliasing-function-pointers']
+  if settings['EMULATED_FUNCTION_POINTERS']:
+    args += ['-emscripten-emulated-function-pointers']
+  if settings['RELOCATABLE']:
+    args += ['-emscripten-relocatable']
+    args += ['-emscripten-global-base=0']
+  elif settings['GLOBAL_BASE'] >= 0:
+    args += ['-emscripten-global-base=%d' % settings['GLOBAL_BASE']]
+  if settings['SIDE_MODULE']:
+    args += ['-emscripten-side-module']
+  if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
+    args += ['-enable-emscripten-cpp-exceptions']
+    if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
+      args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['fake'])]
+  if settings['ASYNCIFY']:
+    args += ['-emscripten-asyncify']
+    args += ['-emscripten-asyncify-functions=' + ','.join(settings['ASYNCIFY_FUNCTIONS'])]
+    args += ['-emscripten-asyncify-whitelist=' + ','.join(settings['ASYNCIFY_WHITELIST'])]
+  if settings['NO_EXIT_RUNTIME']:
+    args += ['-emscripten-no-exit-runtime']
+  if settings['BINARYEN']:
+    args += ['-emscripten-wasm']
+    if shared.Building.is_wasm_only():
+      args += ['-emscripten-only-wasm']
+  if settings['CYBERDWARF']:
+    args += ['-enable-cyberdwarf']
+  return args
 
 def compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DEBUG):
     # js compiler
