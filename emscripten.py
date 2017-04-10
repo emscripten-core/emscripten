@@ -254,48 +254,14 @@ def compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DE
       settings['PRECISE_I64_MATH'] = 2
       break
 
-  metadata['declares'] = filter(lambda i64_func: i64_func not in ['getHigh32', 'setHigh32'], metadata['declares']) # FIXME: do these one by one as normal js lib funcs
+  # FIXME: do these one by one as normal js lib funcs
+  metadata['declares'] = filter(lambda i64_func: i64_func not in ['getHigh32', 'setHigh32'], metadata['declares'])
 
   optimize_syscalls(metadata['declares'], settings, DEBUG)
-
-  if settings['CYBERDWARF']:
-    settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'].append("cyberdwarf_Debugger")
-    settings['EXPORTED_FUNCTIONS'].append("cyberdwarf_Debugger")
-
-  # Integrate info from backend
-  if settings['SIDE_MODULE']:
-    settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = [] # we don't need any JS library contents in side modules
-  settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
-    set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
-      map(lambda x: x[1:], metadata['implementedFunctions'])
-    )
-  ) + map(lambda x: x[1:], metadata['externs'])
-  if metadata['simd']:
-    settings['SIMD'] = 1
-  if metadata['cantValidate'] and settings['ASM_JS'] != 2:
-    logging.warning('disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
-    settings['ASM_JS'] = 2
-
-  settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
-
-  settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
-
+  update_settings_glue(settings, metadata)
   assert not (metadata['simd'] and settings['SPLIT_MEMORY']), 'SIMD is used, but not supported in SPLIT_MEMORY'
 
-  # Save settings to a file to work around v8 issue 1579
-  with temp_files.get_file('.txt') as settings_file:
-    def save_settings():
-      global settings_text
-      settings_text = json.dumps(settings, sort_keys=True)
-      s = open(settings_file, 'w')
-      s.write(settings_text)
-      s.close()
-    save_settings()
-
-    # Call js compiler
-    out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
-                       [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
-                       cwd=path_from_root('src'), error_limit=300)
+  out = compile_settings(compiler_engine, settings, libraries, temp_files)
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
   glue, forwarded_data = out.split('//FORWARDED_DATA:')
 
@@ -306,7 +272,9 @@ def compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DE
 
 
 def optimize_syscalls(declares, settings, DEBUG):
-  """Our syscalls are static, and so if we see a very limited set of them - in particular,
+  """Disables filesystem if only a limited subset of syscalls is used.
+
+  Our syscalls are static, and so if we see a very limited set of them - in particular,
   no open() syscall and just simple writing - then we don't need full filesystem support.
   If FORCE_FILESYSTEM is set, we can't do this. We also don't do it if INCLUDE_FULL_LIBRARY, since
   not including the filesystem would mean not including the full JS libraries, and the same for
@@ -330,8 +298,48 @@ def is_int(x):
     return False
 
 
-def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG):
+def update_settings_glue(settings, metadata):
+  if settings['CYBERDWARF']:
+    settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'].append("cyberdwarf_Debugger")
+    settings['EXPORTED_FUNCTIONS'].append("cyberdwarf_Debugger")
 
+  # Integrate info from backend
+  if settings['SIDE_MODULE']:
+    settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = [] # we don't need any JS library contents in side modules
+  settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
+    set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
+      map(lambda x: x[1:], metadata['implementedFunctions'])
+    )
+  ) + map(lambda x: x[1:], metadata['externs'])
+  if metadata['simd']:
+    settings['SIMD'] = 1
+  if metadata['cantValidate'] and settings['ASM_JS'] != 2:
+    logging.warning('disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
+    settings['ASM_JS'] = 2
+
+  settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
+
+  settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
+
+
+def compile_settings(compiler_engine, settings, libraries, temp_files):
+  # Save settings to a file to work around v8 issue 1579
+  with temp_files.get_file('.txt') as settings_file:
+    def save_settings():
+      global settings_text
+      settings_text = json.dumps(settings, sort_keys=True)
+      s = open(settings_file, 'w')
+      s.write(settings_text)
+      s.close()
+    save_settings()
+
+    # Call js compiler
+    return jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
+                        [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                        cwd=path_from_root('src'), error_limit=300)
+
+
+def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG):
     if DEBUG:
       logging.debug('emscript: python processing: function tables and exports')
       t = time.time()
