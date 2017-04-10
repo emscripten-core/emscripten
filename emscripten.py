@@ -89,7 +89,9 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
 
     with ToolchainProfiler.profile_block('get_and_parse_backend'):
       backend_output = compile_js(infile, settings, temp_files, DEBUG)
-      funcs, metadata, mem_init = get_and_parse_backend(backend_output, settings, DEBUG)
+      funcs, metadata, mem_init = parse_backend_output(backend_output, DEBUG)
+      fixup_metadata_tables(metadata, settings)
+      funcs = fixup_functions(funcs, metadata, settings)
     with ToolchainProfiler.profile_block('compiler_glue'):
       glue, forwarded_data = compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DEBUG)
 
@@ -104,68 +106,6 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
     outfile.close()
     if not success:
       shared.try_delete(outfile.name) # remove partial output
-
-def get_and_parse_backend(backend_output, settings, DEBUG):
-    start_funcs_marker = '// EMSCRIPTEN_START_FUNCTIONS'
-    end_funcs_marker = '// EMSCRIPTEN_END_FUNCTIONS'
-    metadata_split_marker = '// EMSCRIPTEN_METADATA'
-
-    start_funcs = backend_output.index(start_funcs_marker)
-    end_funcs = backend_output.rindex(end_funcs_marker)
-    metadata_split = backend_output.rindex(metadata_split_marker)
-
-    funcs = backend_output[start_funcs+len(start_funcs_marker):end_funcs]
-    metadata_raw = backend_output[metadata_split+len(metadata_split_marker):]
-    #if DEBUG: print >> sys.stderr, "METAraw", metadata_raw
-    try:
-      metadata = json.loads(metadata_raw)
-    except Exception, e:
-      logging.error('emscript: failure to parse metadata output from compiler backend. raw output is: \n' + metadata_raw)
-      raise e
-    mem_init = backend_output[end_funcs+len(end_funcs_marker):metadata_split]
-    #if DEBUG: print >> sys.stderr, "FUNCS", funcs
-    #if DEBUG: print >> sys.stderr, "META", metadata
-    #if DEBUG: print >> sys.stderr, "meminit", mem_init
-
-    # if emulating pointer casts, force all tables to the size of the largest
-    if settings['EMULATE_FUNCTION_POINTER_CASTS']:
-      max_size = 0
-      for k, v in metadata['tables'].iteritems():
-        max_size = max(max_size, v.count(',')+1)
-      for k, v in metadata['tables'].iteritems():
-        curr = v.count(',')+1
-        if curr < max_size:
-          metadata['tables'][k] = v.replace(']', (',0'*(max_size - curr)) + ']')
-
-    if settings['SIDE_MODULE']:
-      for k in metadata['tables'].keys():
-        metadata['tables'][k] = metadata['tables'][k].replace('var FUNCTION_TABLE_', 'var SIDE_FUNCTION_TABLE_')
-
-    # function table masks
-
-    table_sizes = {}
-    for k, v in metadata['tables'].iteritems():
-      table_sizes[k] = str(v.count(',')) # undercounts by one, but that is what we want
-      #if settings['ASSERTIONS'] >= 2 and table_sizes[k] == 0:
-      #  print >> sys.stderr, 'warning: no function pointers with signature ' + k + ', but there is a call, which will abort if it occurs (this can result from undefined behavior, check for compiler warnings on your source files and consider -Werror)'
-    funcs = re.sub(r"#FM_(\w+)#", lambda m: table_sizes[m.groups(0)[0]], funcs)
-
-    # fix +float into float.0, if not running js opts
-    if not settings['RUNNING_JS_OPTS']:
-      def fix_dot_zero(m):
-        num = m.group(3)
-        # TODO: handle 0x floats?
-        if num.find('.') < 0:
-          e = num.find('e')
-          if e < 0:
-            num += '.0'
-          else:
-            num = num[:e] + '.0' + num[e:]
-        return m.group(1) + m.group(2) + num
-      funcs = re.sub(r'([(=,+\-*/%<>:?] *)\+(-?)((0x)?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)', fix_dot_zero, funcs)
-
-    return funcs, metadata, mem_init
-
 
 def compile_js(infile, settings, temp_files, DEBUG):
   """Compile infile with asm.js backend, return the contents of the compiled js"""
@@ -232,6 +172,74 @@ def backend_args_for_settings(settings):
   if settings['CYBERDWARF']:
     args += ['-enable-cyberdwarf']
   return args
+
+
+def parse_backend_output(backend_output, DEBUG):
+  start_funcs_marker = '// EMSCRIPTEN_START_FUNCTIONS'
+  end_funcs_marker = '// EMSCRIPTEN_END_FUNCTIONS'
+  metadata_split_marker = '// EMSCRIPTEN_METADATA'
+
+  start_funcs = backend_output.index(start_funcs_marker)
+  end_funcs = backend_output.rindex(end_funcs_marker)
+  metadata_split = backend_output.rindex(metadata_split_marker)
+
+  funcs = backend_output[start_funcs+len(start_funcs_marker):end_funcs]
+  metadata_raw = backend_output[metadata_split+len(metadata_split_marker):]
+  mem_init = backend_output[end_funcs+len(end_funcs_marker):metadata_split]
+
+  try:
+    #if DEBUG: print >> sys.stderr, "METAraw", metadata_raw
+    metadata = json.loads(metadata_raw)
+  except Exception, e:
+    logging.error('emscript: failure to parse metadata output from compiler backend. raw output is: \n' + metadata_raw)
+    raise e
+
+  #if DEBUG: print >> sys.stderr, "FUNCS", funcs
+  #if DEBUG: print >> sys.stderr, "META", metadata
+  #if DEBUG: print >> sys.stderr, "meminit", mem_init
+  return funcs, metadata, mem_init
+
+
+def fixup_metadata_tables(metadata, settings):
+  # if emulating pointer casts, force all tables to the size of the largest
+  if settings['EMULATE_FUNCTION_POINTER_CASTS']:
+    max_size = 0
+    for k, v in metadata['tables'].iteritems():
+      max_size = max(max_size, v.count(',')+1)
+    for k, v in metadata['tables'].iteritems():
+      curr = v.count(',')+1
+      if curr < max_size:
+        metadata['tables'][k] = v.replace(']', (',0'*(max_size - curr)) + ']')
+
+  if settings['SIDE_MODULE']:
+    for k in metadata['tables'].keys():
+      metadata['tables'][k] = metadata['tables'][k].replace('var FUNCTION_TABLE_', 'var SIDE_FUNCTION_TABLE_')
+
+
+def fixup_functions(funcs, metadata, settings):
+  # function table masks
+  table_sizes = {}
+  for k, v in metadata['tables'].iteritems():
+    table_sizes[k] = str(v.count(',')) # undercounts by one, but that is what we want
+    #if settings['ASSERTIONS'] >= 2 and table_sizes[k] == 0:
+    #  print >> sys.stderr, 'warning: no function pointers with signature ' + k + ', but there is a call, which will abort if it occurs (this can result from undefined behavior, check for compiler warnings on your source files and consider -Werror)'
+  funcs = re.sub(r"#FM_(\w+)#", lambda m: table_sizes[m.groups(0)[0]], funcs)
+
+  # fix +float into float.0, if not running js opts
+  if not settings['RUNNING_JS_OPTS']:
+    def fix_dot_zero(m):
+      num = m.group(3)
+      # TODO: handle 0x floats?
+      if num.find('.') < 0:
+        e = num.find('e')
+        if e < 0:
+          num += '.0'
+        else:
+          num = num[:e] + '.0' + num[e:]
+      return m.group(1) + m.group(2) + num
+    funcs = re.sub(r'([(=,+\-*/%<>:?] *)\+(-?)((0x)?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)', fix_dot_zero, funcs)
+
+  return funcs
 
 
 def compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DEBUG):
