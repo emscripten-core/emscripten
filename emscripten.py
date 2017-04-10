@@ -88,7 +88,8 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
     # memory to be reclaimed
 
     with ToolchainProfiler.profile_block('get_and_parse_backend'):
-      funcs, metadata, mem_init = get_and_parse_backend(infile, settings, temp_files, DEBUG)
+      backend_output = compile_js(infile, settings, temp_files, DEBUG)
+      funcs, metadata, mem_init = get_and_parse_backend(backend_output, settings, DEBUG)
     with ToolchainProfiler.profile_block('compiler_glue'):
       glue, forwarded_data = compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DEBUG)
 
@@ -104,24 +105,7 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
     if not success:
       shared.try_delete(outfile.name) # remove partial output
 
-def get_and_parse_backend(infile, settings, temp_files, DEBUG):
-    with temp_files.get_file('.4.js') as temp_js:
-      backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
-      backend_args = [backend_compiler, infile, '-march=js', '-filetype=asm', '-o', temp_js]
-      backend_args += backend_args_for_settings(settings)
-
-      if DEBUG:
-        logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
-        t = time.time()
-      with ToolchainProfiler.profile_block('emscript_llvm_backend'):
-        shared.jsrun.timeout_run(subprocess.Popen(backend_args, stdout=subprocess.PIPE))
-      if DEBUG:
-        logging.debug('  emscript: llvm backend took %s seconds' % (time.time() - t))
-
-      # Split up output
-      backend_output = open(temp_js).read()
-      #if DEBUG: print >> sys.stderr, backend_output
-
+def get_and_parse_backend(backend_output, settings, DEBUG):
     start_funcs_marker = '// EMSCRIPTEN_START_FUNCTIONS'
     end_funcs_marker = '// EMSCRIPTEN_END_FUNCTIONS'
     metadata_split_marker = '// EMSCRIPTEN_METADATA'
@@ -182,6 +166,28 @@ def get_and_parse_backend(infile, settings, temp_files, DEBUG):
 
     return funcs, metadata, mem_init
 
+
+def compile_js(infile, settings, temp_files, DEBUG):
+  """Compile infile with asm.js backend, return the contents of the compiled js"""
+  with temp_files.get_file('.4.js') as temp_js:
+    backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
+    backend_args = [backend_compiler, infile, '-march=js', '-filetype=asm', '-o', temp_js]
+    backend_args += backend_args_for_settings(settings)
+
+    if DEBUG:
+      logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
+      t = time.time()
+    with ToolchainProfiler.profile_block('emscript_llvm_backend'):
+      shared.jsrun.timeout_run(subprocess.Popen(backend_args, stdout=subprocess.PIPE))
+    if DEBUG:
+      logging.debug('  emscript: llvm backend took %s seconds' % (time.time() - t))
+
+    # Split up output
+    backend_output = open(temp_js).read()
+    #if DEBUG: print >> sys.stderr, backend_output
+  return backend_output
+
+
 def backend_args_for_settings(settings):
   """Create args for asm.js backend from settings dict"""
   args = [
@@ -226,6 +232,7 @@ def backend_args_for_settings(settings):
   if settings['CYBERDWARF']:
     args += ['-enable-cyberdwarf']
   return args
+
 
 def compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DEBUG):
     # js compiler
