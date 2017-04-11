@@ -944,27 +944,24 @@ def global_simd_funcs(access_quote, metadata, settings):
         return True
     return False
 
-  simd = make_simd_types(metadata, settings)
-
   nonexisting_simd_symbols = ['Int8x16_fromInt8x16', 'Uint8x16_fromUint8x16', 'Int16x8_fromInt16x8', 'Uint16x8_fromUint16x8', 'Int32x4_fromInt32x4', 'Uint32x4_fromUint32x4', 'Float32x4_fromFloat32x4', 'Float64x2_fromFloat64x2']
   nonexisting_simd_symbols += ['Int32x4_addSaturate', 'Int32x4_subSaturate', 'Uint32x4_addSaturate', 'Uint32x4_subSaturate']
   nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8', 'Float64x2'] for y in ['load2', 'store2']]
   nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8'] for y in ['load1', 'store1']]
 
+  simd = make_simd_types(metadata, settings)
+
   func_js = ''
   func_js += ''.join(['  var SIMD_' + ty + '=global' + access_quote('SIMD') + access_quote(ty) + ';\n' for ty in simd['types']])
 
-  simd_int_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simd['int_types'] for g in simd['int_funcs']]
-  simd_int_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_int_symbols)
-  func_js += ''.join(simd_int_symbols)
+  def generate_symbols(types, funcs):
+    symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in types for g in funcs]
+    symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), symbols)
+    return ''.join(symbols)
 
-  simd_float_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simd['float_types'] for g in simd['float_funcs']]
-  simd_float_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_float_symbols)
-  func_js += ''.join(simd_float_symbols)
-
-  simd_bool_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simd['bool_types'] for g in simd['bool_funcs']]
-  simd_bool_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_bool_symbols)
-  func_js += ''.join(simd_bool_symbols)
+  func_js += generate_symbols(simd['int_types'], simd['int_funcs'])
+  func_js += generate_symbols(simd['float_types'], simd['float_funcs'])
+  func_js += generate_symbols(simd['bool_types'], simd['bool_funcs'])
 
   # SIMD conversions (not bitcasts) between same lane sizes:
   def add_simd_cast(dst, src):
