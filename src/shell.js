@@ -80,7 +80,7 @@ if (ENVIRONMENT_IS_NODE) {
   var nodeFS;
   var nodePath;
 
-  Module['read'] = function read(filename, binary) {
+  Module['read'] = function(filename, binary) {
     if (!nodeFS) nodeFS = require('fs');
     if (!nodePath) nodePath = require('path');
     filename = nodePath['normalize'](filename);
@@ -88,7 +88,7 @@ if (ENVIRONMENT_IS_NODE) {
     return binary ? ret : ret.toString();
   };
 
-  Module['readBinary'] = function readBinary(filename) {
+  Module['readBinary'] = function(filename) {
     var ret = Module['read'](filename, true);
     if (!ret.buffer) {
       ret = new Uint8Array(ret);
@@ -97,7 +97,7 @@ if (ENVIRONMENT_IS_NODE) {
     return ret;
   };
 
-  Module['load'] = function load(f) {
+  Module['load'] = function(f) {
     globalEval(read(f));
   };
 
@@ -133,10 +133,10 @@ else if (ENVIRONMENT_IS_SHELL) {
   if (typeof read != 'undefined') {
     Module['read'] = read;
   } else {
-    Module['read'] = function read() { throw 'no read() available' };
+    Module['read'] = function() { throw 'no read() available' };
   }
 
-  Module['readBinary'] = function readBinary(f) {
+  Module['readBinary'] = function(f) {
     if (typeof readbuffer === 'function') {
       return new Uint8Array(readbuffer(f));
     }
@@ -162,7 +162,7 @@ else if (ENVIRONMENT_IS_SHELL) {
 #endif
 }
 else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
-  Module['read'] = function read(url) {
+  Module['read'] = function(url) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, false);
     xhr.send(null);
@@ -170,7 +170,7 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   };
 
   if (ENVIRONMENT_IS_WORKER) {
-    Module['readBinary'] = function read(url) {
+    Module['readBinary'] = function(url) {
       var xhr = new XMLHttpRequest();
       xhr.open('GET', url, false);
       xhr.responseType = 'arraybuffer';
@@ -179,7 +179,7 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     };
   }
 
-  Module['readAsync'] = function readAsync(url, onload, onerror) {
+  Module['readAsync'] = function(url, onload, onerror) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.responseType = 'arraybuffer';
@@ -199,10 +199,10 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   }
 
   if (typeof console !== 'undefined') {
-    if (!Module['print']) Module['print'] = function print(x) {
+    if (!Module['print']) Module['print'] = function(x) {
       console.log(x);
     };
-    if (!Module['printErr']) Module['printErr'] = function printErr(x) {
+    if (!Module['printErr']) Module['printErr'] = function(x) {
       console.warn(x);
     };
   } else {

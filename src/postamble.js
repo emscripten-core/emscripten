@@ -125,6 +125,10 @@ Module['then'] = function(func) {
 };
 #endif
 
+/**
+ * @constructor
+ * @extends {Error}
+ */
 function ExitStatus(status) {
   this.name = "ExitStatus";
   this.message = "Program terminated with exit(" + status + ")";
@@ -214,6 +218,7 @@ Module['callMain'] = Module.callMain = function callMain(args) {
 
 {{GLOBAL_VARS}}
 
+/** @type {function(Array=)} */
 function run(args) {
   args = args || Module['arguments'];
 
