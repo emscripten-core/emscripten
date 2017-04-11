@@ -384,10 +384,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     else:
       pre_tables = ''
 
-    in_table = set()
-    debug_tables = {}
-
-    function_tables_defs = make_function_tables_defs(in_table, debug_tables, implemented_functions, all_implemented, forwarded_json, settings, metadata)
+    in_table, debug_tables, function_tables_defs = make_function_tables_defs(implemented_functions, all_implemented, forwarded_json, settings, metadata)
 
     asm_setup = ''
 
@@ -811,7 +808,10 @@ class Counter:
   j = 0
 
 
-def make_function_tables_defs(in_table, debug_tables, implemented_functions, all_implemented, forwarded_json, settings, metadata):
+def make_function_tables_defs(implemented_functions, all_implemented, forwarded_json, settings, metadata):
+  in_table = set()
+  debug_tables = {}
+
   def make_params(sig): return ','.join(['p%d' % p for p in range(len(sig)-1)])
   def make_coerced_params(sig): return ','.join([shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
   def make_coercions(sig): return ';'.join(['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, sig[p+1], settings)) for p in range(len(sig)-1)]) + ';'
@@ -936,7 +936,7 @@ def make_function_tables_defs(in_table, debug_tables, implemented_functions, all
   function_tables_defs = '\n'.join([info[0] for info in infos]) + '\n'
   function_tables_defs += '\n// EMSCRIPTEN_END_FUNCS\n'
   function_tables_defs += '\n'.join([info[1] for info in infos])
-  return function_tables_defs
+  return in_table, debug_tables, function_tables_defs
 
 
 def make_func(name, code, params, coercions):
