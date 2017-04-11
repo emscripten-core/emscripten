@@ -528,7 +528,6 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
         asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
 
     maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'max', 'clz32']]
-    simd = make_simd_types(metadata, settings)
 
     fundamentals = ['Math']
     fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
@@ -776,51 +775,9 @@ function ftCall_%s(%s) {%s
       return g if not g.startswith('Math_') else g.split('_')[1]
     asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global' + access_quote(g) + ';\n' for g in maths])
     asm_global_funcs += ''.join(['  var ' + g + '=env' + access_quote(math_fix(g)) + ';\n' for g in basic_funcs + global_funcs])
-    if metadata['simd'] or settings['SIMD']: # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
-      def string_contains_any(s, str_list):
-        for sub in str_list:
-          if sub in s:
-            return True
-        return False
-      nonexisting_simd_symbols = ['Int8x16_fromInt8x16', 'Uint8x16_fromUint8x16', 'Int16x8_fromInt16x8', 'Uint16x8_fromUint16x8', 'Int32x4_fromInt32x4', 'Uint32x4_fromUint32x4', 'Float32x4_fromFloat32x4', 'Float64x2_fromFloat64x2']
-      nonexisting_simd_symbols += ['Int32x4_addSaturate', 'Int32x4_subSaturate', 'Uint32x4_addSaturate', 'Uint32x4_subSaturate']
-      nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8', 'Float64x2'] for y in ['load2', 'store2']]
-      nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8'] for y in ['load1', 'store1']]
 
-      asm_global_funcs += ''.join(['  var SIMD_' + ty + '=global' + access_quote('SIMD') + access_quote(ty) + ';\n' for ty in simd['types']])
+    asm_global_funcs += global_simd_funcs(access_quote, metadata, settings)
 
-      simd_int_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simd['int_types'] for g in simd['int_funcs']]
-      simd_int_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_int_symbols)
-      asm_global_funcs += ''.join(simd_int_symbols)
-
-      simd_float_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simd['float_types'] for g in simd['float_funcs']]
-      simd_float_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_float_symbols)
-      asm_global_funcs += ''.join(simd_float_symbols)
-
-      simd_bool_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simd['bool_types'] for g in simd['bool_funcs']]
-      simd_bool_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_bool_symbols)
-      asm_global_funcs += ''.join(simd_bool_symbols)
-
-      # SIMD conversions (not bitcasts) between same lane sizes:
-      def add_simd_cast(dst, src):
-        return '  var SIMD_' + dst + '_from' + src + '=SIMD_' + dst + '.from' + src + ';\n'
-      def add_simd_casts(t1, t2):
-        return add_simd_cast(t1, t2) + add_simd_cast(t2, t1)
-
-      # Bug: Skip importing conversions for int<->uint for now, they don't validate as asm.js. https://bugzilla.mozilla.org/show_bug.cgi?id=1313512
-      # This is not an issue when building SSEx code, because it doesn't use these. (but it will be an issue if using SIMD.js intrinsics from vector.h to explicitly call these)
-#      if metadata['simdInt8x16'] and metadata['simdUint8x16']: asm_global_funcs += add_simd_casts('Int8x16', 'Uint8x16')
-#      if metadata['simdInt16x8'] and metadata['simdUint16x8']: asm_global_funcs += add_simd_casts('Int16x8', 'Uint16x8')
-#      if metadata['simdInt32x4'] and metadata['simdUint32x4']: asm_global_funcs += add_simd_casts('Int32x4', 'Uint32x4')
-
-      if metadata['simdInt32x4'] and metadata['simdFloat32x4']: asm_global_funcs += add_simd_casts('Int32x4', 'Float32x4')
-      if metadata['simdUint32x4'] and metadata['simdFloat32x4']: asm_global_funcs += add_simd_casts('Uint32x4', 'Float32x4')
-      if metadata['simdInt32x4'] and metadata['simdFloat64x2']: asm_global_funcs += add_simd_cast('Int32x4', 'Float64x2') # Unofficial, needed for emscripten_int32x4_fromFloat64x2
-      if metadata['simdUint32x4'] and metadata['simdFloat64x2']: asm_global_funcs += add_simd_cast('Uint32x4', 'Float64x2') # Unofficial, needed for emscripten_uint32x4_fromFloat64x2
-
-      # Unofficial, Bool64x2 does not yet exist, but needed for Float64x2 comparisons.
-      if metadata['simdFloat64x2']:
-        asm_global_funcs += '  var SIMD_Int32x4_fromBool64x2Bits = global.SIMD.Int32x4.fromBool64x2Bits;\n'
     if settings['USE_PTHREADS']:
       asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
     asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in basic_vars + global_vars])
@@ -974,6 +931,62 @@ function _emscripten_asm_const_%s(%s) {
 }''' % (sig.encode('utf-8'), ', '.join(all_args), ', '.join(args)))
 
   return pre.replace('// === Body ===', '// === Body ===\n\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
+
+
+def global_simd_funcs(access_quote, metadata, settings):
+  # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
+  if not (metadata['simd'] or settings['SIMD']):
+    return ''
+
+  def string_contains_any(s, str_list):
+    for sub in str_list:
+      if sub in s:
+        return True
+    return False
+
+  simd = make_simd_types(metadata, settings)
+
+  nonexisting_simd_symbols = ['Int8x16_fromInt8x16', 'Uint8x16_fromUint8x16', 'Int16x8_fromInt16x8', 'Uint16x8_fromUint16x8', 'Int32x4_fromInt32x4', 'Uint32x4_fromUint32x4', 'Float32x4_fromFloat32x4', 'Float64x2_fromFloat64x2']
+  nonexisting_simd_symbols += ['Int32x4_addSaturate', 'Int32x4_subSaturate', 'Uint32x4_addSaturate', 'Uint32x4_subSaturate']
+  nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8', 'Float64x2'] for y in ['load2', 'store2']]
+  nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8'] for y in ['load1', 'store1']]
+
+  func_js = ''
+  func_js += ''.join(['  var SIMD_' + ty + '=global' + access_quote('SIMD') + access_quote(ty) + ';\n' for ty in simd['types']])
+
+  simd_int_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simd['int_types'] for g in simd['int_funcs']]
+  simd_int_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_int_symbols)
+  func_js += ''.join(simd_int_symbols)
+
+  simd_float_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simd['float_types'] for g in simd['float_funcs']]
+  simd_float_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_float_symbols)
+  func_js += ''.join(simd_float_symbols)
+
+  simd_bool_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simd['bool_types'] for g in simd['bool_funcs']]
+  simd_bool_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_bool_symbols)
+  func_js += ''.join(simd_bool_symbols)
+
+  # SIMD conversions (not bitcasts) between same lane sizes:
+  def add_simd_cast(dst, src):
+    return '  var SIMD_' + dst + '_from' + src + '=SIMD_' + dst + '.from' + src + ';\n'
+  def add_simd_casts(t1, t2):
+    return add_simd_cast(t1, t2) + add_simd_cast(t2, t1)
+
+  # Bug: Skip importing conversions for int<->uint for now, they don't validate as asm.js. https://bugzilla.mozilla.org/show_bug.cgi?id=1313512
+  # This is not an issue when building SSEx code, because it doesn't use these. (but it will be an issue if using SIMD.js intrinsics from vector.h to explicitly call these)
+#      if metadata['simdInt8x16'] and metadata['simdUint8x16']: func_js += add_simd_casts('Int8x16', 'Uint8x16')
+#      if metadata['simdInt16x8'] and metadata['simdUint16x8']: func_js += add_simd_casts('Int16x8', 'Uint16x8')
+#      if metadata['simdInt32x4'] and metadata['simdUint32x4']: func_js += add_simd_casts('Int32x4', 'Uint32x4')
+
+  if metadata['simdInt32x4'] and metadata['simdFloat32x4']: func_js += add_simd_casts('Int32x4', 'Float32x4')
+  if metadata['simdUint32x4'] and metadata['simdFloat32x4']: func_js += add_simd_casts('Uint32x4', 'Float32x4')
+  if metadata['simdInt32x4'] and metadata['simdFloat64x2']: func_js += add_simd_cast('Int32x4', 'Float64x2') # Unofficial, needed for emscripten_int32x4_fromFloat64x2
+  if metadata['simdUint32x4'] and metadata['simdFloat64x2']: func_js += add_simd_cast('Uint32x4', 'Float64x2') # Unofficial, needed for emscripten_uint32x4_fromFloat64x2
+
+  # Unofficial, Bool64x2 does not yet exist, but needed for Float64x2 comparisons.
+  if metadata['simdFloat64x2']:
+    func_js += '  var SIMD_Int32x4_fromBool64x2Bits = global.SIMD.Int32x4.fromBool64x2Bits;\n'
+  return func_js
 
 
 def make_simd_types(metadata, settings):
