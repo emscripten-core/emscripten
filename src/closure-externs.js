@@ -851,13 +851,113 @@ SIMD.Bool64x2.xor = function() {};
 
 var GLctx = {};
 
-// WebAssembly
-
-var WebAssembly = {
-  Module: function() {},
-  Instance: function() {},
-  Memory: function() {},
-  Table: function() {},
-  instantiate: function() {},
-};
-
+/**
+ * @const
+ */
+var WebAssembly = {};
+/**
+ * @constructor
+ * @param {!BufferSource} bytes
+ */
+WebAssembly.Module = function(bytes) {};
+/** 
+ * @constructor
+ * @param {!WebAssembly.Module} moduleObject
+ * @param {Object=} importObject
+ */
+WebAssembly.Instance = function(moduleObject, importObject) {};
+/** @typedef {{initial:number, maximum:(number|undefined)}} */
+var MemoryDescriptor;
+/**
+ * @constructor
+ * @param {MemoryDescriptor} memoryDescriptor
+ */
+WebAssembly.Memory = function(memoryDescriptor) {};
+/** @typedef {{element:string, initial:number, maximum:(number|undefined)}} */
+var TableDescriptor;
+/**
+ * @constructor
+ * @param {TableDescriptor} tableDescriptor
+ */
+WebAssembly.Table = function(tableDescriptor) {};
+/**
+ * @constructor
+ * @extends {Error}
+ */
+WebAssembly.CompileError = function() {};
+/**
+ * @constructor
+ * @extends {Error}
+ */
+WebAssembly.LinkError = function() {};
+/**
+ * @constructor
+ * @extends {Error}
+ */
+WebAssembly.RuntimeError = function() {};
+/**
+ * Note: Closure compiler does not support function overloading, omit this overload for now.
+ * {function(!WebAssembly.Module, Object=):!Promise<!WebAssembly.Instance>}
+ */
+/**
+ * @param {!BufferSource} moduleObject
+ * @param {Object=} importObject
+ * @return {!Promise<{module:WebAssembly.Module, instance:WebAssembly.Instance}>}
+ */
+WebAssembly.instantiate = function(moduleObject, importObject) {};
+/**
+ * @param {!BufferSource} bytes
+ * @return {!Promise<!WebAssembly.Module>}
+ */
+WebAssembly.compile = function(bytes) {};
+/**
+ * @param {!BufferSource} bytes
+ * @return {boolean}
+ */
+WebAssembly.validate = function(bytes) {};
+/**
+ * @param {!WebAssembly.Module} moduleObject
+ * @return {!Array<{name:string, kind:string}>}
+ */
+WebAssembly.Module.exports = function(moduleObject) {};
+/** 
+ * @param {!WebAssembly.Module} moduleObject
+ * @return {!Array<{module:string, name:string, kind:string}>}
+ */
+WebAssembly.Module.imports = function(moduleObject) {};
+/**
+ * @param {!WebAssembly.Module} moduleObject
+ * @param {string} sectionName
+ * @return {!Array<!ArrayBuffer>}
+ */
+WebAssembly.Module.customSections = function(moduleObject, sectionName) {};
+/** @dict */
+WebAssembly.Instance.prototype.exports;
+/** 
+ * @param {number} delta
+ * @return {number}
+ */
+WebAssembly.Memory.prototype.grow = function(delta) {};
+/**
+ * @type {!ArrayBuffer}
+ */
+WebAssembly.Memory.prototype.buffer;
+/**
+ * @param {number} delta
+ * @return {number}
+ */
+WebAssembly.Table.prototype.grow = function(delta) {};
+/**
+ * @type {number}
+ */
+WebAssembly.Table.prototype.length;
+/**
+ * @param {number} index
+ * @return {function(...)}
+ */
+WebAssembly.Table.prototype.get = function(index) {};
+/**
+ * @param {number} index
+ * @param {?function(...)} value
+ */
+WebAssembly.Table.prototype.set = function(index, value) {};
