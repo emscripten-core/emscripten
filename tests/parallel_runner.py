@@ -2,10 +2,11 @@ import multiprocessing
 import os
 import pickle
 import Queue
-import unittest
+import subprocess
+import sys
 import time
 import traceback
-import sys
+import unittest
 
 
 class ParallelTestSuite(unittest.BaseTestSuite):
@@ -132,6 +133,11 @@ class BufferedTestBase(object):
     self.test = test
     if err:
       exctype, value, tb = err
+      if exctype == subprocess.CalledProcessError:
+        # multiprocess.Queue can't serialize a subprocess.CalledProcessError.
+        # This is a bug in python 2.7 (https://bugs.python.org/issue9400)
+        exctype = Exception
+        value = Exception(str(value))
       self.error = exctype, value, FakeTraceback(tb)
 
   def updateResult(self, result):
@@ -192,8 +198,4 @@ def get_from_queue(queue):
     return queue.get(True, 0.1)
   except Queue.Empty:
     pass
-  except TypeError as e:
-    print ('multiprocess.Queue.get threw a TypeError. This is a bug in '
-           'python 2.7 (https://bugs.python.org/issue9400)')
-    print e
   return None
