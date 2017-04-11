@@ -4913,6 +4913,12 @@ return malloc(size);
       test()
       Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 0
 
+    if not self.is_wasm():
+      print 'split memory'
+      Settings.SPLIT_MEMORY = 8*1024*1024
+      test()
+      Settings.SPLIT_MEMORY = 0
+
     if self.is_emterpreter():
       print 'emterpreter/async/assertions' # extra coverage
       self.emcc_args += ['-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'ASSERTIONS=1']
@@ -4920,12 +4926,6 @@ return malloc(size);
       print 'emterpreter/async/assertions/whitelist'
       self.emcc_args += ['-s', 'EMTERPRETIFY_WHITELIST=["_frexpl"]'] # test double call assertions
       test()
-
-    if not self.is_wasm():
-      print 'split memory'
-      Settings.SPLIT_MEMORY = 8*1024*1024
-      test()
-      Settings.SPLIT_MEMORY = 0
 
   def test_relocatable_void_function(self):
     Settings.RELOCATABLE = 1

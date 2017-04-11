@@ -434,3 +434,6 @@ mergeInto(LibraryManager.library, {
 #endif // ASYNCIFY
 });
 
+if (EMTERPRETIFY_ASYNC && !EMTERPRETIFY) {
+  error('You must enable EMTERPRETIFY to use EMTERPRETIFY_ASYNC');
+}
