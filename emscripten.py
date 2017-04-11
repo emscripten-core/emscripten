@@ -757,12 +757,12 @@ def unfloat(s):
   return 'd' if s == 'f' else s
 
 
-class Counter:
-  i = 0
-  j = 0
-
-
 def make_function_tables_defs(implemented_functions, all_implemented, forwarded_json, settings, metadata):
+  class Counter:
+    next_bad_item = 0
+    next_item = 0
+    pre = []
+
   in_table = set()
   debug_tables = {}
 
@@ -789,8 +789,8 @@ def make_function_tables_defs(implemented_functions, all_implemented, forwarded_
     coerced_params = make_coerced_params(sig)
     coercions = make_coercions(sig)
     def make_bad(target=None):
-      i = Counter.i
-      Counter.i += 1
+      i = Counter.next_bad_item
+      Counter.next_bad_item += 1
       if target is None: target = i
       name = 'b' + str(i)
       if not settings['ASSERTIONS']:
@@ -812,22 +812,21 @@ def make_function_tables_defs(implemented_functions, all_implemented, forwarded_
       def receive(item):
         if item == '0':
           return item
-        else:
-          if item in all_implemented:
-            in_table.add(item)
-            return "asm['" + item + "']"
-          else:
-            return item # this is not implemented; it would normally be wrapped, but with emulation, we just use it directly outside
+        if item not in all_implemented:
+          # this is not implemented; it would normally be wrapped, but with emulation, we just use it directly outside
+          return item
+        in_table.add(item)
+        return "asm['" + item + "']"
       body = map(receive, body)
     for j in range(settings['RESERVED_FUNCTION_POINTERS']):
       curr = 'jsCall_%s_%s' % (sig, j)
       body[settings['FUNCTION_POINTER_ALIGNMENT'] * (1 + j)] = curr
       implemented_functions.add(curr)
-    Counter.j = 0
+    Counter.next_item = 0
     def fix_item(item):
-      j = Counter.j
-      Counter.j += 1
-      newline = Counter.j % 30 == 29
+      j = Counter.next_item
+      Counter.next_item += 1
+      newline = Counter.next_item % 30 == 29
       if item == '0':
         if j > 0 and settings['EMULATE_FUNCTION_POINTER_CASTS'] and j in function_pointer_targets: # emulate all non-null pointer calls, if asked to
           proper_sig, proper_target = function_pointer_targets[j]
