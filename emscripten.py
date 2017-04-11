@@ -392,12 +392,6 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
       for sig in forwarded_json['Functions']['tables']:
         asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
 
-    fundamentals = ['Math']
-    fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
-    fundamentals += ['NaN', 'Infinity']
-    if metadata['simd'] or settings['SIMD']: # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
-        fundamentals += ['SIMD']
-    if settings['ALLOW_MEMORY_GROWTH']: fundamentals.append('byteLength')
     math_envs = []
 
     def get_function_pointer_error(sig):
@@ -637,8 +631,7 @@ function ftCall_%s(%s) {%s
     bg_vars = basic_vars + global_vars
     asm_global_funcs, asm_global_vars = create_asm_globals(provide_fround, bg_funcs, bg_vars, access_quote, metadata, settings)
 
-    # sent data
-    the_global = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
+    the_global = create_the_global(metadata, settings)
     sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
 
     receiving, asm_setup, final_function_tables = create_receiving(asm_setup, function_tables, function_tables_defs, function_tables_impls, exported_implemented_functions, forwarded_json, settings)
@@ -1033,6 +1026,18 @@ def make_simd_types(metadata, settings):
     'intfloat_funcs': simd_intfloat_funcs,
     'intbool_funcs': simd_intbool_funcs,
   }
+
+
+def create_the_global(metadata, settings):
+  fundamentals = ['Math']
+  fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
+  fundamentals += ['NaN', 'Infinity']
+  if metadata['simd'] or settings['SIMD']:
+    # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
+    fundamentals += ['SIMD']
+  if settings['ALLOW_MEMORY_GROWTH']:
+    fundamentals.append('byteLength')
+  return '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
 
 
 def create_receiving(asm_setup, function_tables, function_tables_defs, function_tables_impls, exported_implemented_functions, forwarded_json, settings):
