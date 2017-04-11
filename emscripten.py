@@ -653,43 +653,10 @@ function ftCall_%s(%s) {%s
     # sent data
     the_global = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
     sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
-    # received
-    receiving = ''
-    if settings['ASSERTIONS']:
-      # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
-      # some support code
-      receiving = '\n'.join(['var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
-assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-return real_''' + s + '''.apply(null, arguments);
-};
-''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory', '__start_module']])
 
-    if not settings['SWAPPABLE_ASM_MODULE']:
-      receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables])
-    else:
-      receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions + function_tables])
-    receiving += ';\n'
-
-    if settings['EXPORT_FUNCTION_TABLES'] and not settings['BINARYEN']:
-      for table in forwarded_json['Functions']['tables'].values():
-        tableName = table.split()[1]
-        table = table.replace('var ' + tableName, 'var ' + tableName + ' = Module["' + tableName + '"]')
-        receiving += table + '\n'
+    receiving, asm_setup, final_function_tables = create_receiving(asm_setup, function_tables, function_tables_defs, function_tables_impls, exported_implemented_functions, forwarded_json, settings)
 
     if DEBUG: logging.debug('asm text sizes' + str([map(len, funcs_js), len(asm_setup), len(asm_global_vars), len(asm_global_funcs), len(pre_tables), len('\n'.join(function_tables_impls)), len(function_tables_defs) + (function_tables_defs.count('\n') * len('  ')), len(exports), len(the_global), len(sending), len(receiving)]))
-
-    final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
-    if settings.get('EMULATED_FUNCTION_POINTERS'):
-      asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
-      receiving += '\n' + function_tables_defs.replace('// EMSCRIPTEN_END_FUNCS\n', '') + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in forwarded_json['Functions']['tables']])
-      if not settings['BINARYEN']:
-        for sig in forwarded_json['Functions']['tables'].keys():
-          name = 'FUNCTION_TABLE_' + sig
-          fullname = name if not settings['SIDE_MODULE'] else ('SIDE_' + name)
-          receiving += 'Module["' + name + '"] = ' + fullname + ';\n'
-
-      final_function_tables = final_function_tables.replace("asm['", '').replace("']", '').replace('var SIDE_FUNCTION_TABLE_', 'var FUNCTION_TABLE_').replace('var dynCall_', '//')
 
     if DEBUG:
       logging.debug('  emscript: python processing: function tables and exports took %s seconds' % (time.time() - t))
@@ -1058,6 +1025,45 @@ def make_simd_types(metadata, settings):
     'intfloat_funcs': simd_intfloat_funcs,
     'intbool_funcs': simd_intbool_funcs,
   }
+
+
+def create_receiving(asm_setup, function_tables, function_tables_defs, function_tables_impls, exported_implemented_functions, forwarded_json, settings):
+  receiving = ''
+  if settings['ASSERTIONS']:
+    # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
+    # some support code
+    receiving = '\n'.join(['var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
+assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+return real_''' + s + '''.apply(null, arguments);
+};
+''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory', '__start_module']])
+
+  if not settings['SWAPPABLE_ASM_MODULE']:
+    receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables])
+  else:
+    receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions + function_tables])
+  receiving += ';\n'
+
+  if settings['EXPORT_FUNCTION_TABLES'] and not settings['BINARYEN']:
+    for table in forwarded_json['Functions']['tables'].values():
+      tableName = table.split()[1]
+      table = table.replace('var ' + tableName, 'var ' + tableName + ' = Module["' + tableName + '"]')
+      receiving += table + '\n'
+
+  final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
+  if settings.get('EMULATED_FUNCTION_POINTERS'):
+    asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
+    receiving += '\n' + function_tables_defs.replace('// EMSCRIPTEN_END_FUNCS\n', '') + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in forwarded_json['Functions']['tables']])
+    if not settings['BINARYEN']:
+      for sig in forwarded_json['Functions']['tables'].keys():
+        name = 'FUNCTION_TABLE_' + sig
+        fullname = name if not settings['SIDE_MODULE'] else ('SIDE_' + name)
+        receiving += 'Module["' + name + '"] = ' + fullname + ';\n'
+
+    final_function_tables = final_function_tables.replace("asm['", '').replace("']", '').replace('var SIDE_FUNCTION_TABLE_', 'var FUNCTION_TABLE_').replace('var dynCall_', '//')
+  return receiving, asm_setup, final_function_tables
+
 
 def finalize_output(metadata, post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, forwarded_json, settings, outfile, DEBUG):
 
