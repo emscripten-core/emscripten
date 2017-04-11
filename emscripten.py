@@ -370,19 +370,6 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
     #if DEBUG: outfile.write('// funcs\n')
 
-    # when emulating function pointer casts, we need to know what is the target of each pointer
-    if settings['EMULATE_FUNCTION_POINTER_CASTS']:
-      function_pointer_targets = {}
-      for sig, table in forwarded_json['Functions']['tables'].iteritems():
-        start = table.index('[')
-        end = table.rindex(']')
-        body = table[start+1:end].split(',')
-        parsed = map(lambda x: x.strip(), body)
-        for i in range(len(parsed)):
-          if parsed[i] != '0':
-            assert i not in function_pointer_targets
-            function_pointer_targets[i] = [sig, str(parsed[i])]
-
     # Move preAsms to their right place
     def move_preasm(m):
       contents = m.groups(0)[0]
@@ -391,135 +378,16 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     if not settings['BOOTSTRAPPING_STRUCT_INFO'] and len(funcs_js) > 1:
       funcs_js[1] = re.sub(r'/\* PRE_ASM \*/(.*)\n', move_preasm, funcs_js[1])
 
-    class Counter:
-      i = 0
-      j = 0
     if 'pre' in forwarded_json['Functions']['tables']:
       pre_tables = forwarded_json['Functions']['tables']['pre']
       del forwarded_json['Functions']['tables']['pre']
     else:
       pre_tables = ''
 
-    def unfloat(s):
-      return 'd' if s == 'f' else s # lower float to double for ffis
-
-    if settings['ASSERTIONS'] >= 2:
-      debug_tables = {}
-
-    def make_params(sig): return ','.join(['p%d' % p for p in range(len(sig)-1)])
-    def make_coerced_params(sig): return ','.join([shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
-    def make_coercions(sig): return ';'.join(['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, sig[p+1], settings)) for p in range(len(sig)-1)]) + ';'
-    def make_func(name, code, params, coercions): return 'function %s(%s) {\n %s %s\n}' % (name, params, coercions, code)
-
     in_table = set()
+    debug_tables = {}
 
-    def make_table(sig, raw):
-      if '[]' in raw: return ('', '') # empty table
-      params = make_params(sig)
-      coerced_params = make_coerced_params(sig)
-      coercions = make_coercions(sig)
-      def make_bad(target=None):
-        i = Counter.i
-        Counter.i += 1
-        if target is None: target = i
-        name = 'b' + str(i)
-        if not settings['ASSERTIONS']:
-          code = 'abort(%s);' % target
-        else:
-          code = 'nullFunc_' + sig + '(%d);' % target
-        if sig[0] != 'v':
-          code += 'return %s' % shared.JS.make_initializer(sig[0], settings) + ';'
-        return name, make_func(name, code, params, coercions)
-      bad, bad_func = make_bad() # the default bad func
-      if settings['ASSERTIONS'] <= 1:
-        Counter.pre = [bad_func]
-      else:
-        Counter.pre = []
-      start = raw.index('[')
-      end = raw.rindex(']')
-      body = raw[start+1:end].split(',')
-      if settings['EMULATED_FUNCTION_POINTERS']:
-        def receive(item):
-          if item == '0':
-            return item
-          else:
-            if item in all_implemented:
-              in_table.add(item)
-              return "asm['" + item + "']"
-            else:
-              return item # this is not implemented; it would normally be wrapped, but with emulation, we just use it directly outside
-        body = map(receive, body)
-      for j in range(settings['RESERVED_FUNCTION_POINTERS']):
-        curr = 'jsCall_%s_%s' % (sig, j)
-        body[settings['FUNCTION_POINTER_ALIGNMENT'] * (1 + j)] = curr
-        implemented_functions.add(curr)
-      Counter.j = 0
-      def fix_item(item):
-        j = Counter.j
-        Counter.j += 1
-        newline = Counter.j % 30 == 29
-        if item == '0':
-          if j > 0 and settings['EMULATE_FUNCTION_POINTER_CASTS'] and j in function_pointer_targets: # emulate all non-null pointer calls, if asked to
-            proper_sig, proper_target = function_pointer_targets[j]
-            if settings['EMULATED_FUNCTION_POINTERS']:
-              if proper_target in all_implemented:
-                proper_target = "asm['" + proper_target + "']"
-            def make_emulated_param(i):
-              if i >= len(sig): return shared.JS.make_initializer(proper_sig[i], settings) # extra param, just send a zero
-              return shared.JS.make_coercion('p%d' % (i-1), proper_sig[i], settings, convert_from=sig[i])
-            proper_code = proper_target + '(' + ','.join(map(lambda i: make_emulated_param(i+1), range(len(proper_sig)-1))) + ')'
-            if proper_sig[0] != 'v':
-              # proper sig has a return, which the wrapper may or may not use
-              proper_code = shared.JS.make_coercion(proper_code, proper_sig[0], settings)
-              if proper_sig[0] != sig[0]:
-                # first coercion ensured we call the target ok; this one ensures we return the right type in the wrapper
-                proper_code = shared.JS.make_coercion(proper_code, sig[0], settings, convert_from=proper_sig[0])
-              if sig[0] != 'v':
-                proper_code = 'return ' + proper_code
-            else:
-              # proper sig has no return, we may need a fake return
-              if sig[0] != 'v':
-                proper_code = 'return ' + shared.JS.make_initializer(sig[0], settings)
-            name = 'fpemu_%s_%d' % (sig, j)
-            wrapper = make_func(name, proper_code, params, coercions)
-            Counter.pre.append(wrapper)
-            return name if not newline else (name + '\n')
-          if settings['ASSERTIONS'] <= 1:
-            return bad if not newline else (bad + '\n')
-          else:
-            specific_bad, specific_bad_func = make_bad(j)
-            Counter.pre.append(specific_bad_func)
-            return specific_bad if not newline else (specific_bad + '\n')
-        clean_item = item.replace("asm['", '').replace("']", '')
-        # when emulating function pointers, we don't need wrappers
-        # but if relocating, then we also have the copies in-module, and do
-        # in wasm we never need wrappers though
-        if clean_item not in implemented_functions and not (settings['EMULATED_FUNCTION_POINTERS'] and not settings['RELOCATABLE']) and not settings['BINARYEN']:
-          # this is imported into asm, we must wrap it
-          call_ident = clean_item
-          if call_ident in metadata['redirects']: call_ident = metadata['redirects'][call_ident]
-          if not call_ident.startswith('_') and not call_ident.startswith('Math_'): call_ident = '_' + call_ident
-          code = call_ident + '(' + coerced_params + ')'
-          if sig[0] != 'v':
-            # ffis cannot return float
-            if sig[0] == 'f': code = '+' + code
-            code = 'return ' + shared.JS.make_coercion(code, sig[0], settings)
-          code += ';'
-          Counter.pre.append(make_func(clean_item + '__wrapper', code, params, coercions))
-          assert not sig == 'X', 'must know the signature in order to create a wrapper for "%s" (TODO for shared wasm modules)' % item
-          return clean_item + '__wrapper'
-        return item if not newline else (item + '\n')
-      if settings['ASSERTIONS'] >= 2:
-        debug_tables[sig] = body
-      body = ','.join(map(fix_item, body))
-      return ('\n'.join(Counter.pre), ''.join([raw[:start+1], body, raw[end:]]))
-
-    infos = [make_table(sig, raw) for sig, raw in forwarded_json['Functions']['tables'].iteritems()]
-    Counter.pre = []
-
-    function_tables_defs = '\n'.join([info[0] for info in infos]) + '\n'
-    function_tables_defs += '\n// EMSCRIPTEN_END_FUNCS\n'
-    function_tables_defs += '\n'.join([info[1] for info in infos])
+    function_tables_defs = make_function_tables_defs(in_table, debug_tables, implemented_functions, all_implemented, forwarded_json, settings, metadata)
 
     asm_setup = ''
 
@@ -931,6 +799,148 @@ function _emscripten_asm_const_%s(%s) {
 }''' % (sig.encode('utf-8'), ', '.join(all_args), ', '.join(args)))
 
   return pre.replace('// === Body ===', '// === Body ===\n\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
+
+
+def unfloat(s):
+  """lower float to double for ffis"""
+  return 'd' if s == 'f' else s
+
+
+class Counter:
+  i = 0
+  j = 0
+
+
+def make_function_tables_defs(in_table, debug_tables, implemented_functions, all_implemented, forwarded_json, settings, metadata):
+  def make_params(sig): return ','.join(['p%d' % p for p in range(len(sig)-1)])
+  def make_coerced_params(sig): return ','.join([shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
+  def make_coercions(sig): return ';'.join(['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, sig[p+1], settings)) for p in range(len(sig)-1)]) + ';'
+
+  # when emulating function pointer casts, we need to know what is the target of each pointer
+  if settings['EMULATE_FUNCTION_POINTER_CASTS']:
+    function_pointer_targets = {}
+    for sig, table in forwarded_json['Functions']['tables'].iteritems():
+      start = table.index('[')
+      end = table.rindex(']')
+      body = table[start+1:end].split(',')
+      parsed = map(lambda x: x.strip(), body)
+      for i in range(len(parsed)):
+        if parsed[i] != '0':
+          assert i not in function_pointer_targets
+          function_pointer_targets[i] = [sig, str(parsed[i])]
+
+  def make_table(sig, raw):
+    if '[]' in raw: return ('', '') # empty table
+    params = make_params(sig)
+    coerced_params = make_coerced_params(sig)
+    coercions = make_coercions(sig)
+    def make_bad(target=None):
+      i = Counter.i
+      Counter.i += 1
+      if target is None: target = i
+      name = 'b' + str(i)
+      if not settings['ASSERTIONS']:
+        code = 'abort(%s);' % target
+      else:
+        code = 'nullFunc_' + sig + '(%d);' % target
+      if sig[0] != 'v':
+        code += 'return %s' % shared.JS.make_initializer(sig[0], settings) + ';'
+      return name, make_func(name, code, params, coercions)
+    bad, bad_func = make_bad() # the default bad func
+    if settings['ASSERTIONS'] <= 1:
+      Counter.pre = [bad_func]
+    else:
+      Counter.pre = []
+    start = raw.index('[')
+    end = raw.rindex(']')
+    body = raw[start+1:end].split(',')
+    if settings['EMULATED_FUNCTION_POINTERS']:
+      def receive(item):
+        if item == '0':
+          return item
+        else:
+          if item in all_implemented:
+            in_table.add(item)
+            return "asm['" + item + "']"
+          else:
+            return item # this is not implemented; it would normally be wrapped, but with emulation, we just use it directly outside
+      body = map(receive, body)
+    for j in range(settings['RESERVED_FUNCTION_POINTERS']):
+      curr = 'jsCall_%s_%s' % (sig, j)
+      body[settings['FUNCTION_POINTER_ALIGNMENT'] * (1 + j)] = curr
+      implemented_functions.add(curr)
+    Counter.j = 0
+    def fix_item(item):
+      j = Counter.j
+      Counter.j += 1
+      newline = Counter.j % 30 == 29
+      if item == '0':
+        if j > 0 and settings['EMULATE_FUNCTION_POINTER_CASTS'] and j in function_pointer_targets: # emulate all non-null pointer calls, if asked to
+          proper_sig, proper_target = function_pointer_targets[j]
+          if settings['EMULATED_FUNCTION_POINTERS']:
+            if proper_target in all_implemented:
+              proper_target = "asm['" + proper_target + "']"
+          def make_emulated_param(i):
+            if i >= len(sig): return shared.JS.make_initializer(proper_sig[i], settings) # extra param, just send a zero
+            return shared.JS.make_coercion('p%d' % (i-1), proper_sig[i], settings, convert_from=sig[i])
+          proper_code = proper_target + '(' + ','.join(map(lambda i: make_emulated_param(i+1), range(len(proper_sig)-1))) + ')'
+          if proper_sig[0] != 'v':
+            # proper sig has a return, which the wrapper may or may not use
+            proper_code = shared.JS.make_coercion(proper_code, proper_sig[0], settings)
+            if proper_sig[0] != sig[0]:
+              # first coercion ensured we call the target ok; this one ensures we return the right type in the wrapper
+              proper_code = shared.JS.make_coercion(proper_code, sig[0], settings, convert_from=proper_sig[0])
+            if sig[0] != 'v':
+              proper_code = 'return ' + proper_code
+          else:
+            # proper sig has no return, we may need a fake return
+            if sig[0] != 'v':
+              proper_code = 'return ' + shared.JS.make_initializer(sig[0], settings)
+          name = 'fpemu_%s_%d' % (sig, j)
+          wrapper = make_func(name, proper_code, params, coercions)
+          Counter.pre.append(wrapper)
+          return name if not newline else (name + '\n')
+        if settings['ASSERTIONS'] <= 1:
+          return bad if not newline else (bad + '\n')
+        else:
+          specific_bad, specific_bad_func = make_bad(j)
+          Counter.pre.append(specific_bad_func)
+          return specific_bad if not newline else (specific_bad + '\n')
+      clean_item = item.replace("asm['", '').replace("']", '')
+      # when emulating function pointers, we don't need wrappers
+      # but if relocating, then we also have the copies in-module, and do
+      # in wasm we never need wrappers though
+      if clean_item not in implemented_functions and not (settings['EMULATED_FUNCTION_POINTERS'] and not settings['RELOCATABLE']) and not settings['BINARYEN']:
+        # this is imported into asm, we must wrap it
+        call_ident = clean_item
+        if call_ident in metadata['redirects']: call_ident = metadata['redirects'][call_ident]
+        if not call_ident.startswith('_') and not call_ident.startswith('Math_'): call_ident = '_' + call_ident
+        code = call_ident + '(' + coerced_params + ')'
+        if sig[0] != 'v':
+          # ffis cannot return float
+          if sig[0] == 'f': code = '+' + code
+          code = 'return ' + shared.JS.make_coercion(code, sig[0], settings)
+        code += ';'
+        Counter.pre.append(make_func(clean_item + '__wrapper', code, params, coercions))
+        assert not sig == 'X', 'must know the signature in order to create a wrapper for "%s" (TODO for shared wasm modules)' % item
+        return clean_item + '__wrapper'
+      return item if not newline else (item + '\n')
+    if settings['ASSERTIONS'] >= 2:
+      debug_tables[sig] = body
+    body = ','.join(map(fix_item, body))
+    return ('\n'.join(Counter.pre), ''.join([raw[:start+1], body, raw[end:]]))
+
+  infos = [make_table(sig, raw) for sig, raw in forwarded_json['Functions']['tables'].iteritems()]
+  Counter.pre = []
+
+  function_tables_defs = '\n'.join([info[0] for info in infos]) + '\n'
+  function_tables_defs += '\n// EMSCRIPTEN_END_FUNCS\n'
+  function_tables_defs += '\n'.join([info[1] for info in infos])
+  return function_tables_defs
+
+
+def make_func(name, code, params, coercions):
+  return 'function %s(%s) {\n %s %s\n}' % (name, params, coercions, code)
 
 
 def global_simd_funcs(access_quote, metadata, settings):
