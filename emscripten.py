@@ -461,12 +461,6 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
       if not settings['SIDE_MODULE']:
         asm_setup += 'var gb = Runtime.GLOBAL_BASE, fb = 0;\n'
 
-    asm_runtime_funcs = []
-    if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
-      asm_runtime_funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', 'setThrew']
-    if not settings['RELOCATABLE']:
-      asm_runtime_funcs += ['setTempRet0', 'getTempRet0']
-    else:
       basic_funcs += ['setTempRet0', 'getTempRet0']
       asm_setup += 'var setTempRet0 = Runtime.setTempRet0, getTempRet0 = Runtime.getTempRet0;\n'
 
@@ -487,18 +481,6 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     need_asyncify = '_emscripten_alloc_async_context' in exported_implemented_functions
     if need_asyncify:
       basic_vars += ['___async', '___async_unwind', '___async_retval', '___async_cur_frame']
-      asm_runtime_funcs += ['setAsync']
-
-    if settings.get('EMTERPRETIFY'):
-      asm_runtime_funcs += ['emterpret']
-      if settings.get('EMTERPRETIFY_ASYNC'):
-        asm_runtime_funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore']
-
-    if settings['SAFE_HEAP']:
-      asm_runtime_funcs += ['setDynamicTop']
-
-    if settings['ONLY_MY_CODE']:
-      asm_runtime_funcs = []
 
     # function tables
     if not settings['EMULATED_FUNCTION_POINTERS']:
@@ -590,6 +572,8 @@ function ftCall_%s(%s) {%s
         exported_implemented_functions += ['setTempRet0', 'getTempRet0']
       if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
         exported_implemented_functions += ['setThrew']
+
+    asm_runtime_funcs = create_asm_runtime_funcs(need_asyncify, settings)
 
     all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables
     exported_implemented_functions = list(set(exported_implemented_functions))
@@ -1026,6 +1010,25 @@ def make_simd_types(metadata, settings):
     'intfloat_funcs': simd_intfloat_funcs,
     'intbool_funcs': simd_intbool_funcs,
   }
+
+
+def create_asm_runtime_funcs(need_asyncify, settings):
+  funcs = []
+  if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
+    funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', 'setThrew']
+  if not settings['RELOCATABLE']:
+    funcs += ['setTempRet0', 'getTempRet0']
+  if settings['SAFE_HEAP']:
+    funcs += ['setDynamicTop']
+  if settings['ONLY_MY_CODE']:
+    funcs = []
+  if settings.get('EMTERPRETIFY'):
+    funcs += ['emterpret']
+    if settings.get('EMTERPRETIFY_ASYNC'):
+      funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore']
+  if need_asyncify:
+    funcs += ['setAsync']
+  return funcs
 
 
 def create_the_global(metadata, settings):
