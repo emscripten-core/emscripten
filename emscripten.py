@@ -392,8 +392,6 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
       for sig in forwarded_json['Functions']['tables']:
         asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
 
-    maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'max', 'clz32']]
-
     fundamentals = ['Math']
     fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
     fundamentals += ['NaN', 'Infinity']
@@ -401,10 +399,6 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
         fundamentals += ['SIMD']
     if settings['ALLOW_MEMORY_GROWTH']: fundamentals.append('byteLength')
     math_envs = []
-
-    provide_fround = settings['PRECISE_F32'] or settings['SIMD']
-
-    if provide_fround: maths += ['Math.fround']
 
     def get_function_pointer_error(sig):
       if settings['ASSERTIONS'] <= 1:
@@ -636,19 +630,12 @@ function ftCall_%s(%s) {%s
         return ''
       for extern in metadata['externs']:
         asm_setup += 'var g$' + extern + ' = function() { ' + check(extern) + ' return ' + side + 'Module["' + extern + '"] };\n'
-    def math_fix(g):
-      return g if not g.startswith('Math_') else g.split('_')[1]
-    asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global' + access_quote(g) + ';\n' for g in maths])
-    asm_global_funcs += ''.join(['  var ' + g + '=env' + access_quote(math_fix(g)) + ';\n' for g in basic_funcs + global_funcs])
 
-    asm_global_funcs += global_simd_funcs(access_quote, metadata, settings)
+    provide_fround = settings['PRECISE_F32'] or settings['SIMD']
 
-    if settings['USE_PTHREADS']:
-      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
-    asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in basic_vars + global_vars])
-
-    if settings['BINARYEN'] and settings['SIDE_MODULE']:
-      asm_global_vars += '\n  var STACKTOP = 0, STACK_MAX = 0;\n' # wasm side modules internally define their stack, these are set at module startup time
+    bg_funcs = basic_funcs + global_funcs
+    bg_vars = basic_vars + global_vars
+    asm_global_funcs, asm_global_vars = create_asm_globals(provide_fround, bg_funcs, bg_vars, access_quote, metadata, settings)
 
     # sent data
     the_global = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
@@ -908,6 +895,28 @@ def make_function_tables_defs(implemented_functions, all_implemented, forwarded_
 
 def make_func(name, code, params, coercions):
   return 'function %s(%s) {\n %s %s\n}' % (name, params, coercions, code)
+
+
+def math_fix(g):
+  return g if not g.startswith('Math_') else g.split('_')[1]
+
+
+def create_asm_globals(provide_fround, bg_funcs, bg_vars, access_quote, metadata, settings):
+  maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'max', 'clz32']]
+  if provide_fround:
+    maths += ['Math.fround']
+
+  asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global' + access_quote(g) + ';\n' for g in maths])
+  asm_global_funcs += ''.join(['  var ' + g + '=env' + access_quote(math_fix(g)) + ';\n' for g in bg_funcs])
+  asm_global_funcs += global_simd_funcs(access_quote, metadata, settings)
+  if settings['USE_PTHREADS']:
+    asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
+
+  asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in bg_vars])
+  if settings['BINARYEN'] and settings['SIDE_MODULE']:
+    asm_global_vars += '\n  var STACKTOP = 0, STACK_MAX = 0;\n' # wasm side modules internally define their stack, these are set at module startup time
+
+  return asm_global_funcs, asm_global_vars
 
 
 def global_simd_funcs(access_quote, metadata, settings):
