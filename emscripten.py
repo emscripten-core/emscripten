@@ -528,54 +528,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
         asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
 
     maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'max', 'clz32']]
-    simdfloattypes = []
-    simdinttypes = []
-    simdbooltypes = []
-    simdfuncs = ['splat', 'check', 'extractLane', 'replaceLane']
-    simdintfloatfuncs = ['add', 'sub', 'neg', 'mul',
-                         'equal', 'lessThan', 'greaterThan',
-                         'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
-                         'select', 'swizzle', 'shuffle',
-                         'load', 'store', 'load1', 'store1', 'load2', 'store2']
-    simdintboolfuncs = ['and', 'xor', 'or', 'not']
-    if metadata['simdUint8x16']:
-      simdinttypes += ['Uint8x16']
-      simdintfloatfuncs += ['fromUint8x16Bits']
-    if metadata['simdInt8x16']:
-      simdinttypes += ['Int8x16']
-      simdintfloatfuncs += ['fromInt8x16Bits']
-    if metadata['simdUint16x8']:
-      simdinttypes += ['Uint16x8']
-      simdintfloatfuncs += ['fromUint16x8Bits']
-    if metadata['simdInt16x8']:
-      simdinttypes += ['Int16x8']
-      simdintfloatfuncs += ['fromInt16x8Bits']
-    if metadata['simdUint32x4']:
-      simdinttypes += ['Uint32x4']
-      simdintfloatfuncs += ['fromUint32x4Bits']
-    if metadata['simdInt32x4'] or settings['SIMD']: # Always import Int32x4 when building with -s SIMD=1, since memcpy is SIMD optimized.
-      simdinttypes += ['Int32x4']
-      simdintfloatfuncs += ['fromInt32x4Bits']
-    if metadata['simdFloat32x4']:
-      simdfloattypes += ['Float32x4']
-      simdintfloatfuncs += ['fromFloat32x4Bits']
-    if metadata['simdFloat64x2']:
-      simdfloattypes += ['Float64x2']
-      simdintfloatfuncs += ['fromFloat64x2Bits']
-    if metadata['simdBool8x16']:
-      simdbooltypes += ['Bool8x16']
-    if metadata['simdBool16x8']:
-      simdbooltypes += ['Bool16x8']
-    if metadata['simdBool32x4']:
-      simdbooltypes += ['Bool32x4']
-    if metadata['simdBool64x2']:
-      simdbooltypes += ['Bool64x2']
-
-    simdfloatfuncs = simdfuncs + simdintfloatfuncs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
-                                  'abs', 'reciprocalApproximation', 'reciprocalSqrtApproximation']
-    simdintfuncs = simdfuncs + simdintfloatfuncs + simdintboolfuncs + ['shiftLeftByScalar', 'shiftRightByScalar', 'addSaturate', 'subSaturate']
-    simdboolfuncs = simdfuncs + simdintboolfuncs + ['anyTrue', 'allTrue']
-    simdtypes = simdfloattypes + simdinttypes + simdbooltypes
+    simd = make_simd_types(metadata, settings)
 
     fundamentals = ['Math']
     fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
@@ -834,17 +787,17 @@ function ftCall_%s(%s) {%s
       nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8', 'Float64x2'] for y in ['load2', 'store2']]
       nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8'] for y in ['load1', 'store1']]
 
-      asm_global_funcs += ''.join(['  var SIMD_' + ty + '=global' + access_quote('SIMD') + access_quote(ty) + ';\n' for ty in simdtypes])
+      asm_global_funcs += ''.join(['  var SIMD_' + ty + '=global' + access_quote('SIMD') + access_quote(ty) + ';\n' for ty in simd['types']])
 
-      simd_int_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdinttypes for g in simdintfuncs]
+      simd_int_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simd['int_types'] for g in simd['int_funcs']]
       simd_int_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_int_symbols)
       asm_global_funcs += ''.join(simd_int_symbols)
 
-      simd_float_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdfloattypes for g in simdfloatfuncs]
+      simd_float_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simd['float_types'] for g in simd['float_funcs']]
       simd_float_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_float_symbols)
       asm_global_funcs += ''.join(simd_float_symbols)
 
-      simd_bool_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdbooltypes for g in simdboolfuncs]
+      simd_bool_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simd['bool_types'] for g in simd['bool_funcs']]
       simd_bool_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_bool_symbols)
       asm_global_funcs += ''.join(simd_bool_symbols)
 
@@ -1022,6 +975,69 @@ function _emscripten_asm_const_%s(%s) {
 
   return pre.replace('// === Body ===', '// === Body ===\n\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
 
+
+def make_simd_types(metadata, settings):
+  simd_float_types = []
+  simd_int_types = []
+  simd_bool_types = []
+  simd_funcs = ['splat', 'check', 'extractLane', 'replaceLane']
+  simd_intfloat_funcs = ['add', 'sub', 'neg', 'mul',
+                         'equal', 'lessThan', 'greaterThan',
+                         'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
+                         'select', 'swizzle', 'shuffle',
+                         'load', 'store', 'load1', 'store1', 'load2', 'store2']
+  simd_intbool_funcs = ['and', 'xor', 'or', 'not']
+  if metadata['simdUint8x16']:
+    simd_int_types += ['Uint8x16']
+    simd_intfloat_funcs += ['fromUint8x16Bits']
+  if metadata['simdInt8x16']:
+    simd_int_types += ['Int8x16']
+    simd_intfloat_funcs += ['fromInt8x16Bits']
+  if metadata['simdUint16x8']:
+    simd_int_types += ['Uint16x8']
+    simd_intfloat_funcs += ['fromUint16x8Bits']
+  if metadata['simdInt16x8']:
+    simd_int_types += ['Int16x8']
+    simd_intfloat_funcs += ['fromInt16x8Bits']
+  if metadata['simdUint32x4']:
+    simd_int_types += ['Uint32x4']
+    simd_intfloat_funcs += ['fromUint32x4Bits']
+  if metadata['simdInt32x4'] or settings['SIMD']:
+    # Always import Int32x4 when building with -s SIMD=1, since memcpy is SIMD optimized.
+    simd_int_types += ['Int32x4']
+    simd_intfloat_funcs += ['fromInt32x4Bits']
+  if metadata['simdFloat32x4']:
+    simd_float_types += ['Float32x4']
+    simd_intfloat_funcs += ['fromFloat32x4Bits']
+  if metadata['simdFloat64x2']:
+    simd_float_types += ['Float64x2']
+    simd_intfloat_funcs += ['fromFloat64x2Bits']
+  if metadata['simdBool8x16']:
+    simd_bool_types += ['Bool8x16']
+  if metadata['simdBool16x8']:
+    simd_bool_types += ['Bool16x8']
+  if metadata['simdBool32x4']:
+    simd_bool_types += ['Bool32x4']
+  if metadata['simdBool64x2']:
+    simd_bool_types += ['Bool64x2']
+
+  simd_float_funcs = simd_funcs + simd_intfloat_funcs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
+                                'abs', 'reciprocalApproximation', 'reciprocalSqrtApproximation']
+  simd_int_funcs = simd_funcs + simd_intfloat_funcs + simd_intbool_funcs + ['shiftLeftByScalar', 'shiftRightByScalar', 'addSaturate', 'subSaturate']
+  simd_bool_funcs = simd_funcs + simd_intbool_funcs + ['anyTrue', 'allTrue']
+  simd_types = simd_float_types + simd_int_types + simd_bool_types
+  return {
+    'types': simd_types,
+    'float_types': simd_float_types,
+    'int_types': simd_int_types,
+    'bool_types': simd_bool_types,
+    'funcs': simd_funcs,
+    'float_funcs': simd_float_funcs,
+    'int_funcs': simd_int_funcs,
+    'bool_funcs': simd_bool_funcs,
+    'intfloat_funcs': simd_intfloat_funcs,
+    'intbool_funcs': simd_intbool_funcs,
+  }
 
 def finalize_output(metadata, post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, forwarded_json, settings, outfile, DEBUG):
 
