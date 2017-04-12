@@ -13,6 +13,7 @@ from tools.toolchain_profiler import ToolchainProfiler
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
+import difflib
 import os, sys, json, optparse, subprocess, re, time, logging
 
 from tools import shared
@@ -392,36 +393,6 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
     math_envs = []
 
-    def get_function_pointer_error(sig):
-      if settings['ASSERTIONS'] <= 1:
-        extra = ' Module["printErr"]("Build with ASSERTIONS=2 for more info.");'
-        pointer = ' '
-      else:
-        pointer = ' \'" + x + "\' '
-        extra = ' Module["printErr"]("This pointer might make sense in another type signature: '
-        # sort signatures, attempting to show most likely related ones first
-        sigs = function_table_data.keys()
-        def keyfunc(other):
-          ret = 0
-          minlen = min(len(other), len(sig))
-          maxlen = min(len(other), len(sig))
-          if other.startswith(sig) or sig.startswith(other): ret -= 1000 # prioritize prefixes, could be dropped params
-          ret -= 133*difflib.SequenceMatcher(a=other, b=sig).ratio() # prioritize on diff similarity
-          ret += 15*abs(len(other) - len(sig))/float(maxlen) # deprioritize the bigger the length difference is
-          for i in range(minlen):
-            if other[i] == sig[i]: ret -= 5/float(maxlen) # prioritize on identically-placed params
-          ret += 20*len(other) # deprioritize on length
-          return ret
-        sigs.sort(key=keyfunc)
-        for other in sigs:
-          if other != sig:
-            extra += other + ': " + debug_table_' + other + '[x] + "  '
-        extra += '"); '
-      return 'Module["printErr"]("Invalid function pointer' + pointer + 'called with signature \'' + sig + '\'. ' + \
-             'Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? ' + \
-             'Or calling a function with an incorrect type, which will fail? ' + \
-             '(it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)' + \
-             '"); ' + extra
 
     basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory'] + [m.replace('.', '_') for m in math_envs]
     if settings['ABORTING_MALLOC']: basic_funcs += ['abortOnCannotGrowMemory']
@@ -435,10 +406,9 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
       else:
         basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_LOAD_D', 'SAFE_HEAP_STORE', 'SAFE_HEAP_STORE_D', 'SAFE_FT_MASK']
     if settings['ASSERTIONS']:
-      if settings['ASSERTIONS'] >= 2: import difflib
       for sig in function_table_data.iterkeys():
         basic_funcs += ['nullFunc_' + sig]
-        asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig) + 'abort(x) }\n'
+        asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig, function_table_data, settings) + 'abort(x) }\n'
 
     basic_vars = ['DYNAMICTOP_PTR', 'tempDoublePtr', 'ABORT']
     if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
@@ -534,7 +504,7 @@ function jsCall_%s_%s(%s) {
         else:
           table_read = table_access + '[x]'
         prelude = '''
-  if (x < 0 || x >= %s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig))
+  if (x < 0 || x >= %s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig, function_table_data, settings))
         asm_setup += '''
 function ftCall_%s(%s) {%s
   return %s(%s);
@@ -884,6 +854,42 @@ def make_func(name, code, params, coercions):
 
 def math_fix(g):
   return g if not g.startswith('Math_') else g.split('_')[1]
+
+
+def get_function_pointer_error(sig, function_table_data, settings):
+  if settings['ASSERTIONS'] <= 1:
+    extra = ' Module["printErr"]("Build with ASSERTIONS=2 for more info.");'
+    pointer = ' '
+  else:
+    pointer = ' \'" + x + "\' '
+    extra = ' Module["printErr"]("This pointer might make sense in another type signature: '
+    # sort signatures, attempting to show most likely related ones first
+    sigs = function_table_data.keys()
+    sigs.sort(key=signature_sort_key(sig))
+    for other in sigs:
+      if other != sig:
+        extra += other + ': " + debug_table_' + other + '[x] + "  '
+    extra += '"); '
+  return 'Module["printErr"]("Invalid function pointer' + pointer + 'called with signature \'' + sig + '\'. ' + \
+          'Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? ' + \
+          'Or calling a function with an incorrect type, which will fail? ' + \
+          '(it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)' + \
+          '"); ' + extra
+
+
+def signature_sort_key(sig):
+  def closure(other):
+    ret = 0
+    minlen = min(len(other), len(sig))
+    maxlen = min(len(other), len(sig))
+    if other.startswith(sig) or sig.startswith(other): ret -= 1000 # prioritize prefixes, could be dropped params
+    ret -= 133*difflib.SequenceMatcher(a=other, b=sig).ratio() # prioritize on diff similarity
+    ret += 15*abs(len(other) - len(sig))/float(maxlen) # deprioritize the bigger the length difference is
+    for i in range(minlen):
+      if other[i] == sig[i]: ret -= 5/float(maxlen) # prioritize on identically-placed params
+    ret += 20*len(other) # deprioritize on length
+    return ret
+  return closure
 
 
 def create_asm_globals(provide_fround, bg_funcs, bg_vars, access_quote, metadata, settings):
