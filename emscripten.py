@@ -361,9 +361,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     pre, funcs_js = get_js_funcs(pre, funcs)
     exported_implemented_functions, all_implemented = get_exported_implemented_functions(metadata, forwarded_json, settings)
     implemented_functions = get_implemented_functions(pre, metadata, settings, all_implemented)
-    if settings['BINARYEN'] and settings['SIDE_MODULE']:
-      assert len(metadata['asmConsts']) == 0, 'EM_ASM is not yet supported in shared wasm module (it cannot be stored in the wasm itself, need some solution)'
-    pre = include_asm_consts(pre, metadata, forwarded_json)
+    pre = include_asm_consts(pre, forwarded_json, metadata, settings)
     #if DEBUG: outfile.write('// pre\n')
     outfile.write(pre)
     pre = None
@@ -699,7 +697,29 @@ def get_implemented_functions(pre, metadata, settings, all_implemented):
   return implemented_functions
 
 
-def include_asm_consts(pre, metadata, forwarded_json):
+def include_asm_consts(pre, forwarded_json, metadata, settings):
+  if settings['BINARYEN'] and settings['SIDE_MODULE']:
+    assert len(metadata['asmConsts']) == 0, 'EM_ASM is not yet supported in shared wasm module (it cannot be stored in the wasm itself, need some solution)'
+
+  asm_consts, all_sigs = all_asm_consts(metadata)
+  asm_const_funcs = []
+  for sig in set(all_sigs):
+    forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
+    args = ['a%d' % i for i in range(len(sig)-1)]
+    all_args = ['code'] + args
+    asm_const_funcs.append(r'''
+function _emscripten_asm_const_%s(%s) {
+  return ASM_CONSTS[code](%s);
+}''' % (sig.encode('utf-8'), ', '.join(all_args), ', '.join(args)))
+
+  asm_consts_text = '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n'
+  asm_funcs_text = '\n'.join(asm_const_funcs) + '\n'
+
+  body_marker = '// === Body ==='
+  return pre.replace(body_marker, body_marker + '\n' + asm_consts_text + asm_funcs_text)
+
+
+def all_asm_consts(metadata):
   asm_consts = [0]*len(metadata['asmConsts'])
   all_sigs = []
   for k, v in metadata['asmConsts'].iteritems():
@@ -715,18 +735,7 @@ def include_asm_consts(pre, metadata, forwarded_json):
     const = 'function(' + ', '.join(args) + ') ' + const
     asm_consts[int(k)] = const
     all_sigs += sigs
-
-  asm_const_funcs = []
-  for sig in set(all_sigs):
-    forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
-    args = ['a%d' % i for i in range(len(sig)-1)]
-    all_args = ['code'] + args
-    asm_const_funcs.append(r'''
-function _emscripten_asm_const_%s(%s) {
-  return ASM_CONSTS[code](%s);
-}''' % (sig.encode('utf-8'), ', '.join(all_args), ', '.join(args)))
-
-  return pre.replace('// === Body ===', '// === Body ===\n\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
+  return asm_consts, all_sigs
 
 
 def unfloat(s):
