@@ -578,6 +578,15 @@ var MODULARIZE = 0; // By default we emit all code in a straightforward way into
                     // Note the parentheses - we are calling EXPORT_NAME in order to instantiate
                     // the module. (This allows, in particular, for you to create multiple
                     // instantiations, etc.)
+                    //
+                    // Modularize also provides a promise-like API,
+                    //
+                    //   var instance = EXPORT_NAME().then(function(Module) { .. });
+                    //
+                    // The callback is called when it is safe to run compiled code, similar
+                    // to the onRuntimeInitialized callback (i.e., it waits for all
+                    // necessary async events). It receives the instance as a parameter,
+                    // for convenience.
 
 var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
                    // print out anything at all whatsoever. This is useful for benchmarking.
