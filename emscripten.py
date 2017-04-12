@@ -360,7 +360,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     pre = memory_and_global_initializers(pre, metadata, mem_init, settings)
     pre, funcs_js = get_js_funcs(pre, funcs)
     exported_implemented_functions, all_implemented = get_exported_implemented_functions(metadata, forwarded_json, settings)
-    implemented_functions = get_implemented_functions(pre, metadata, forwarded_json, settings, all_implemented)
+    implemented_functions = get_implemented_functions(pre, metadata, settings, all_implemented)
     if settings['BINARYEN'] and settings['SIDE_MODULE']:
       assert len(metadata['asmConsts']) == 0, 'EM_ASM is not yet supported in shared wasm module (it cannot be stored in the wasm itself, need some solution)'
     pre = include_asm_consts(pre, metadata, forwarded_json)
@@ -683,7 +683,7 @@ def get_exported_implemented_functions(metadata, forwarded_json, settings):
   return exported_implemented_functions, all_implemented
 
 
-def get_implemented_functions(pre, metadata, forwarded_json, settings, all_implemented):
+def get_implemented_functions(pre, metadata, settings, all_implemented):
   implemented_functions = set(metadata['implementedFunctions'])
   if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
     original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
