@@ -586,7 +586,12 @@ function ftCall_%s(%s) {%s
     the_global = create_the_global(metadata, settings)
     sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
 
-    receiving, asm_setup, final_function_tables = create_receiving(asm_setup, function_table_data, function_tables, function_tables_defs, function_tables_impls, exported_implemented_functions, settings)
+    receiving = create_receiving(function_table_data, function_tables, function_tables_defs, exported_implemented_functions, settings)
+
+    final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
+    if settings.get('EMULATED_FUNCTION_POINTERS'):
+      asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
+      final_function_tables = final_function_tables.replace("asm['", '').replace("']", '').replace('var SIDE_FUNCTION_TABLE_', 'var FUNCTION_TABLE_').replace('var dynCall_', '//')
 
     if DEBUG: logging.debug('asm text sizes' + str([map(len, funcs_js), len(asm_setup), len(asm_global_vars), len(asm_global_funcs), len(pre_tables), len('\n'.join(function_tables_impls)), len(function_tables_defs) + (function_tables_defs.count('\n') * len('  ')), len(exports), len(the_global), len(sending), len(receiving)]))
 
@@ -1058,7 +1063,7 @@ def create_the_global(metadata, settings):
   return '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
 
 
-def create_receiving(asm_setup, function_table_data, function_tables, function_tables_defs, function_tables_impls, exported_implemented_functions, settings):
+def create_receiving(function_table_data, function_tables, function_tables_defs, exported_implemented_functions, settings):
   receiving = ''
   if settings['ASSERTIONS']:
     # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
@@ -1082,9 +1087,7 @@ return real_''' + s + '''.apply(null, arguments);
       table = table.replace('var ' + tableName, 'var ' + tableName + ' = Module["' + tableName + '"]')
       receiving += table + '\n'
 
-  final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
   if settings.get('EMULATED_FUNCTION_POINTERS'):
-    asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
     receiving += '\n' + function_tables_defs.replace('// EMSCRIPTEN_END_FUNCS\n', '') + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in function_table_data])
     if not settings['BINARYEN']:
       for sig in function_table_data.keys():
@@ -1092,8 +1095,7 @@ return real_''' + s + '''.apply(null, arguments);
         fullname = name if not settings['SIDE_MODULE'] else ('SIDE_' + name)
         receiving += 'Module["' + name + '"] = ' + fullname + ';\n'
 
-    final_function_tables = final_function_tables.replace("asm['", '').replace("']", '').replace('var SIDE_FUNCTION_TABLE_', 'var FUNCTION_TABLE_').replace('var dynCall_', '//')
-  return receiving, asm_setup, final_function_tables
+  return receiving
 
 
 def finalize_output(metadata, post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, function_table_data, forwarded_json, settings, outfile, DEBUG):
