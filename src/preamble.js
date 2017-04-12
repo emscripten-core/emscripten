@@ -113,6 +113,7 @@ function ftfault() {
 var ABORT = 0; // whether we are quitting the application. no code should run after this. set in exit() and abort()
 var EXITSTATUS = 0;
 
+/** @type {function(*, string=)} */
 function assert(condition, text) {
   if (!condition) {
     abort('Assertion failed: ' + text);
@@ -291,6 +292,7 @@ var cwrap, ccall;
 {{{ maybeExport("ccall") }}}
 {{{ maybeExport("cwrap") }}}
 
+/** @type {function(number, number, string, boolean=)} */
 function setValue(ptr, value, type, noSafe) {
   type = type || 'i8';
   if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
@@ -324,7 +326,7 @@ function setValue(ptr, value, type, noSafe) {
 }
 {{{ maybeExport("setValue") }}}
 
-
+/** @type {function(number, string, boolean=)} */
 function getValue(ptr, type, noSafe) {
   type = type || 'i8';
   if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
@@ -383,6 +385,7 @@ var ALLOC_NONE = 4; // Do not allocate
 //         is initial data - if @slab is a number, then this does not matter at all and is
 //         ignored.
 // @allocator: How to allocate memory, see ALLOC_*
+/** @type {function((TypedArray|Array<number>|number), string, number, number=)} */
 function allocate(slab, types, allocator, ptr) {
   var zeroinit, size;
   if (typeof slab === 'number') {
@@ -418,7 +421,7 @@ function allocate(slab, types, allocator, ptr) {
 
   if (singleType === 'i8') {
     if (slab.subarray || slab.slice) {
-      HEAPU8.set(slab, ret);
+      HEAPU8.set(/** @type {!Uint8Array} */ (slab), ret);
     } else {
       HEAPU8.set(new Uint8Array(slab), ret);
     }
@@ -466,7 +469,8 @@ function getMemory(size) {
 }
 {{{ maybeExport('getMemory') }}}
 
-function Pointer_stringify(ptr, /* optional */ length) {
+/** @type {function(number, number=)} */
+function Pointer_stringify(ptr, length) {
   if (length === 0 || !ptr) return '';
   // TODO: use TextDecoder
   // Find the length, and check for UTF while doing so
@@ -942,9 +946,25 @@ function alignUp(x, multiple) {
   return x;
 }
 
-var HEAP;
-var buffer;
-var HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64;
+var HEAP,
+/** @type {ArrayBuffer} */
+  buffer,
+/** @type {Int8Array} */
+  HEAP8,
+/** @type {Uint8Array} */
+  HEAPU8,
+/** @type {Int16Array} */
+  HEAP16,
+/** @type {Uint16Array} */
+  HEAPU16,
+/** @type {Int32Array} */
+  HEAP32,
+/** @type {Uint32Array} */
+  HEAPU32,
+/** @type {Float32Array} */
+  HEAPF32,
+/** @type {Float64Array} */
+  HEAPF64;
 
 function updateGlobalBuffer(buf) {
   Module['buffer'] = buffer = buf;
@@ -1137,7 +1157,7 @@ if (TOTAL_MEMORY < TOTAL_STACK) Module.printErr('TOTAL_MEMORY should be larger t
 // Initialize the runtime's memory
 #if ASSERTIONS
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
-assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
+assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray !== undefined && Int32Array.prototype.set !== undefined,
        'JS engine does not provide full typed array support');
 #endif
 
@@ -1671,8 +1691,8 @@ function addOnPostRun(cb) {
 
 // Tools
 
-
-function intArrayFromString(stringy, dontAddNull, length /* optional */) {
+/** @type {function(string, boolean=, number=)} */
+function intArrayFromString(stringy, dontAddNull, length) {
   var len = length > 0 ? length : lengthBytesUTF8(stringy)+1;
   var u8array = new Array(len);
   var numBytesWritten = stringToUTF8Array(stringy, u8array, 0, u8array.length);
@@ -1701,10 +1721,11 @@ function intArrayToString(array) {
 // a maximum length limit of how many bytes it is allowed to write. Prefer calling the
 // function stringToUTF8Array() instead, which takes in a maximum length that can be used
 // to be secure from out of bounds writes.
+/** @deprecated */
 function writeStringToMemory(string, buffer, dontAddNull) {
   Runtime.warnOnce('writeStringToMemory is deprecated and should not be called! Use stringToUTF8() instead!');
 
-  var lastChar, end;
+  var /** @type {number} */ lastChar, /** @type {number} */ end;
   if (dontAddNull) {
     // stringToUTF8Array always appends null. If we don't want to do that, remember the
     // character that existed at the location where the null will be placed, and restore
