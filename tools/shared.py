@@ -13,7 +13,7 @@ from tempfiles import try_delete
 # On Windows python suffers from a particularly nasty bug if python is spawning new processes while python itself is spawned from some other non-console process.
 # Use a custom replacement for Popen on Windows to avoid the "WindowsError: [Error 6] The handle is invalid" errors when emcc is driven through cmake or mingw32-make.
 # See http://bugs.python.org/issue3905
-class WindowsPopen:
+class WindowsPopen(object):
   def __init__(self, args, bufsize=0, executable=None, stdin=None, stdout=None, stderr=None, preexec_fn=None, close_fds=False,
                shell=False, cwd=None, env=None, universal_newlines=False, startupinfo=None, creationflags=0):
     self.stdin = stdin
@@ -772,7 +772,7 @@ def get_emscripten_temp_dir():
     prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR) # this global var might change later
   return EMSCRIPTEN_TEMP_DIR
 
-class WarningManager:
+class WarningManager(object):
   warnings = {
     'ABSOLUTE_PATHS': {
       'enabled': False,  # warning about absolute-paths is disabled by default
@@ -822,7 +822,7 @@ class WarningManager:
       warning['printed'] = True
       logging.warning((message or warning['message']) + ' [-W' + warning_type.lower().replace('_', '-') + ']')
 
-class Configuration:
+class Configuration(object):
   def __init__(self, environ=os.environ):
     self.DEBUG = environ.get('EMCC_DEBUG')
     if self.DEBUG == "0":
@@ -1130,7 +1130,7 @@ def expand_byte_size_suffixes(value):
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 
 class Settings2(type):
-  class __impl:
+  class __impl(object):
     attrs = {}
 
     def __init__(self):
@@ -1283,7 +1283,7 @@ def extract_archive_contents(f):
     'files': []
   }
 
-class ObjectFileInfo:
+class ObjectFileInfo(object):
   def __init__(self, returncode, output, defs=set(), undefs=set(), commons=set()):
     self.returncode = returncode
     self.output = output
@@ -1306,7 +1306,7 @@ def g_multiprocessing_initializer(*args):
 
 # Building
 
-class Building:
+class Building(object):
   COMPILER = CLANG
   LLVM_OPTS = False
   COMPILER_TEST_OPTS = [] # For use of the test runner
@@ -1324,7 +1324,7 @@ class Building:
       # If running with one core only, create a mock instance of a pool that does not
       # actually spawn any new subprocesses. Very useful for internal debugging.
       if cores == 1:
-        class FakeMultiprocessor:
+        class FakeMultiprocessor(object):
           def map(self, func, tasks):
             results = []
             for t in tasks:
@@ -2265,7 +2265,7 @@ def reconfigure_cache():
   global Cache
   Cache = cache.Cache(debug=DEBUG_CACHE)
 
-class JS:
+class JS(object):
   memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+Runtime\.GLOBAL_BASEHgb]+)\);'
   no_memory_initializer_pattern = '/\* no memory initializer \*/'
 
@@ -2432,7 +2432,7 @@ class JS:
 
   @staticmethod
   def replace_initializers(src, inits):
-    class State:
+    class State(object):
       first = True
     def rep(m):
       if not State.first: return ''
@@ -2491,7 +2491,7 @@ class JS:
   def is_function_table(name):
     return name.startswith('FUNCTION_TABLE_')
 
-class WebAssembly:
+class WebAssembly(object):
   @staticmethod
   def lebify(x):
     assert x >= 0, 'TODO: signed'

@@ -29,7 +29,7 @@ def make_relay_server(port1, port2):
   proc = Popen([PYTHON, path_from_root('tests', 'sockets', 'socket_relay.py'), str(port1), str(port2)])
   return proc
 
-class WebsockifyServerHarness:
+class WebsockifyServerHarness(object):
   def __init__(self, filename, args, listen_port, do_server_check=True):
     self.processes = []
     self.filename = filename
@@ -85,7 +85,7 @@ class WebsockifyServerHarness:
     clean_processes(self.processes)
 
 
-class CompiledServerHarness:
+class CompiledServerHarness(object):
   def __init__(self, filename, args, listen_port):
     self.processes = []
     self.filename = filename

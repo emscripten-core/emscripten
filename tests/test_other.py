@@ -16,7 +16,7 @@ def multiprocess_task(c_file, cache_dir_name):
     print '------'
   sys.exit(1 if 'generating system library: libc.bc' in output else 0)
 
-class temp_directory:
+class temp_directory(object):
   def __enter__(self):
     self.directory = tempfile.mkdtemp(prefix='emsripten_temp_', dir=TEMP_DIR)
     self.prev_cwd = os.getcwd()
@@ -26,7 +26,7 @@ class temp_directory:
       os.chdir(self.prev_cwd) # On Windows, we can't have CWD in the directory we're deleting
       try_delete(self.directory)
 
-class clean_write_access_to_canonical_temp_dir:
+class clean_write_access_to_canonical_temp_dir(object):
   def clean_emcc_files_in_temp_dir(self):
     for x in os.listdir(CANONICAL_TEMP_DIR):
       if x.startswith('emcc-') or x.startswith('a.out'):
