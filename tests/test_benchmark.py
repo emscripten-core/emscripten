@@ -132,16 +132,19 @@ process(sys.argv[1])
 # Benchmarkers
 try:
   benchmarkers_error = ''
-  benchmarkers = [NativeBenchmarker('clang', CLANG_CC, CLANG)]
+  benchmarkers = [
+    NativeBenchmarker('clang', CLANG_CC, CLANG),
+    NativeBenchmarker('gcc',   'gcc',    'g++')
+  ]
   if SPIDERMONKEY_ENGINE and Building.which(SPIDERMONKEY_ENGINE[0]):
     benchmarkers += [
       JSBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
       JSBenchmarker('sm-simd',  SPIDERMONKEY_ENGINE, ['-s', 'SIMD=1']),
-      JSBenchmarker('sm-wasm',  SPIDERMONKEY_ENGINE, ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'BINARYEN_TRAP_MODE="allow"'])
+      JSBenchmarker('sm-wasm',  SPIDERMONKEY_ENGINE, ['-s', 'WASM=1']),
     ]
   if V8_ENGINE and Building.which(V8_ENGINE[0]):
     benchmarkers += [
-      JSBenchmarker('v8-wasm',  V8_ENGINE,           ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'BINARYEN_TRAP_MODE="allow"'])
+      JSBenchmarker('v8-wasm',  V8_ENGINE,           ['-s', 'WASM=1']),
     ]
 except Exception, e:
   benchmarkers_error = str(e)
