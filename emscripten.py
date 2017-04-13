@@ -97,12 +97,12 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
       glue, forwarded_data = compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DEBUG)
 
     with ToolchainProfiler.profile_block('function_tables_and_exports'):
-      (post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global,
+      (post, funcs_js, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global,
        asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, function_table_data,
        forwarded_json) = function_tables_and_exports(funcs, metadata, mem_init, glue,
                                                      forwarded_data, settings, outfile, DEBUG)
     with ToolchainProfiler.profile_block('finalize_output'):
-      finalize_output(metadata, post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending,
+      finalize_output(metadata, post, funcs_js, provide_fround, asm_safe_heap, sending,
                       receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables,
                       final_function_tables, exports, function_table_data, forwarded_json, settings, outfile, DEBUG)
 
@@ -455,8 +455,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
     # See if we need ASYNCIFY functions
     # We might not need them even if ASYNCIFY is enabled
-    need_asyncify = '_emscripten_alloc_async_context' in exported_implemented_functions
-    if need_asyncify:
+    if need_asyncify(exported_implemented_functions):
       basic_vars += ['___async', '___async_unwind', '___async_retval', '___async_cur_frame']
 
     # function tables
@@ -484,24 +483,9 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
         exported_implemented_functions += ['setTempRet0', 'getTempRet0']
       if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
         exported_implemented_functions += ['setThrew']
-
-    asm_runtime_funcs = create_asm_runtime_funcs(need_asyncify, settings)
-
-    all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables
     exported_implemented_functions = list(set(exported_implemented_functions))
-    if settings['EMULATED_FUNCTION_POINTERS']:
-      all_exported = list(set(all_exported).union(in_table))
-    exports = []
-    for export in all_exported:
-      exports.append(quote(export) + ": " + export)
-    if settings['BINARYEN'] and settings['SIDE_MODULE']:
-      # named globals in side wasm modules are exported globals from asm/wasm
-      for k, v in metadata['namedGlobals'].iteritems():
-        exports.append(quote('_' + str(k)) + ': ' + str(v))
-      # aliases become additional exports
-      for k, v in metadata['aliases'].iteritems():
-        exports.append(quote(str(k)) + ': ' + str(v))
-    exports = '{ ' + ', '.join(exports) + ' }'
+
+    exports = create_exports(exported_implemented_functions, in_table, function_tables, settings)
     # calculate globals
     try:
       del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
@@ -551,7 +535,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
         len(exports), len(the_global), len(sending), len(receiving)]))
       logging.debug('  emscript: python processing: function tables and exports took %s seconds' % (time.time() - t))
 
-    return (post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving,
+    return (post, funcs_js, provide_fround, asm_safe_heap, sending, receiving,
             asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables,
             exports, function_table_data, forwarded_json)
 
@@ -1086,7 +1070,32 @@ def make_simd_types(metadata, settings):
   }
 
 
-def create_asm_runtime_funcs(need_asyncify, settings):
+def need_asyncify(exported_implemented_functions):
+  return '_emscripten_alloc_async_context' in exported_implemented_functions
+
+
+def create_exports(exported_implemented_functions, in_table, function_tables, settings):
+  quote = quoter(settings)
+  asm_runtime_funcs = create_asm_runtime_funcs(settings)
+  if need_asyncify(exported_implemented_functions):
+    asm_runtime_funcs.append('setAsync')
+  all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables
+  if settings['EMULATED_FUNCTION_POINTERS']:
+    all_exported = list(set(all_exported).union(in_table))
+  exports = []
+  for export in all_exported:
+    exports.append(quote(export) + ": " + export)
+  if settings['BINARYEN'] and settings['SIDE_MODULE']:
+    # named globals in side wasm modules are exported globals from asm/wasm
+    for k, v in metadata['namedGlobals'].iteritems():
+      exports.append(quote('_' + str(k)) + ': ' + str(v))
+    # aliases become additional exports
+    for k, v in metadata['aliases'].iteritems():
+      exports.append(quote(str(k)) + ': ' + str(v))
+  return '{ ' + ', '.join(exports) + ' }'
+
+
+def create_asm_runtime_funcs(settings):
   funcs = []
   if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
     funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', 'setThrew']
@@ -1100,8 +1109,6 @@ def create_asm_runtime_funcs(need_asyncify, settings):
     funcs += ['emterpret']
     if settings.get('EMTERPRETIFY_ASYNC'):
       funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore']
-  if need_asyncify:
-    funcs += ['setAsync']
   return funcs
 
 
@@ -1152,7 +1159,7 @@ return real_''' + s + '''.apply(null, arguments);
   return receiving
 
 
-def finalize_output(metadata, post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving,
+def finalize_output(metadata, post, funcs_js, provide_fround, asm_safe_heap, sending, receiving,
   asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports,
   function_table_data, forwarded_json, settings, outfile, DEBUG):
     if DEBUG:
@@ -1295,7 +1302,7 @@ function establishStackSpace(stackBase, stackMax) {
 ''' + ('''
 function setAsync() {
   ___async = 1;
-}''' if need_asyncify else '') + ('''
+}''' if need_asyncify(exports) else '') + ('''
 function emterpret(pc) { // this will be replaced when the emterpreter code is generated; adding it here allows validation until then
   pc = pc | 0;
   assert(0);
