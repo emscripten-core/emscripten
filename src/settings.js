@@ -690,14 +690,14 @@ var BINARYEN_IGNORE_IMPLICIT_TRAPS = 0; // Whether to ignore implicit traps when
                                         // is out of bounds, or div/rem of 0, etc. We can reorder them,
                                         // but we can't ignore that they have side effects, so turning on
                                         // this flag lets us do a little more to reduce code size.
-var BINARYEN_TRAP_MODE = "js"; // How we handle wasm operations that may trap, which includes integer
-                               // div/rem of 0 and float-to-int of values too large to fit in an int.
-                               //   js: do exactly what js does. this can be slower.
-                               //   clamp: avoid traps by clamping to a reasonable value. this can be
-                               //          faster than "js".
-                               //   allow: allow creating operations that can trap. this is the most
-                               //          compact, as we just emit a single wasm operation, with no
-                               //          guards to trapping values, and also often the fastest.
+var BINARYEN_TRAP_MODE = "allow"; // How we handle wasm operations that may trap, which includes integer
+                                  // div/rem of 0 and float-to-int of values too large to fit in an int.
+                                  //   js: do exactly what js does. this can be slower.
+                                  //   clamp: avoid traps by clamping to a reasonable value. this can be
+                                  //          faster than "js".
+                                  //   allow: allow creating operations that can trap. this is the most
+                                  //          compact, as we just emit a single wasm operation, with no
+                                  //          guards to trapping values, and also often the fastest.
 var BINARYEN_PASSES = ""; // A comma-separated list of passes to run in the binaryen optimizer,
                           // for example, "dce,precompute,vacuum".
                           // When set, this overrides the default passes we would normally run.
