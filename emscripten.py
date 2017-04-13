@@ -485,7 +485,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
         exported_implemented_functions += ['setThrew']
     exported_implemented_functions = list(set(exported_implemented_functions))
 
-    exports = create_exports(exported_implemented_functions, in_table, function_tables, settings)
+    exports = create_exports(exported_implemented_functions, in_table, function_tables, metadata, settings)
     # calculate globals
     try:
       del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
@@ -1074,7 +1074,7 @@ def need_asyncify(exported_implemented_functions):
   return '_emscripten_alloc_async_context' in exported_implemented_functions
 
 
-def create_exports(exported_implemented_functions, in_table, function_tables, settings):
+def create_exports(exported_implemented_functions, in_table, function_tables, metadata, settings):
   quote = quoter(settings)
   asm_runtime_funcs = create_asm_runtime_funcs(settings)
   if need_asyncify(exported_implemented_functions):
