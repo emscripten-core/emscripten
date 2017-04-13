@@ -462,79 +462,8 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
       function_tables = ['dynCall_' + table for table in function_table_data]
     else:
       function_tables = []
-    function_tables_impls = []
 
-    for sig in function_table_data.iterkeys():
-      args = ','.join(['a' + str(i) for i in range(1, len(sig))])
-      arg_coercions = ' '.join(['a' + str(i) + '=' + shared.JS.make_coercion('a' + str(i), sig[i], settings) + ';' for i in range(1, len(sig))])
-      coerced_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings) for i in range(1, len(sig))])
-      ret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('FUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s)' % (sig, sig, coerced_args), sig[0], settings)
-      if not settings['EMULATED_FUNCTION_POINTERS']:
-        function_tables_impls.append('''
-function dynCall_%s(index%s%s) {
-  index = index|0;
-  %s
-  %s;
-}
-''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
-      else:
-        function_tables_impls.append('''
-var dynCall_%s = ftCall_%s;
-''' % (sig, sig))
-
-      ffi_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings, ffi_arg=True) for i in range(1, len(sig))])
-      for i in range(settings['RESERVED_FUNCTION_POINTERS']):
-        jsret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('jsCall_%s(%d%s%s)' % (sig, i, ',' if ffi_args else '', ffi_args), sig[0], settings, ffi_result=True)
-        function_tables_impls.append('''
-function jsCall_%s_%s(%s) {
-  %s
-  %s;
-}
-
-''' % (sig, i, args, arg_coercions, jsret))
-      shared.Settings.copy(settings)
-      asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
-      basic_funcs.append('invoke_%s' % sig)
-      if settings.get('RESERVED_FUNCTION_POINTERS'):
-        asm_setup += '\n' + shared.JS.make_jscall(sig) + '\n'
-        basic_funcs.append('jsCall_%s' % sig)
-      if settings.get('EMULATED_FUNCTION_POINTERS'):
-        args = ['a%d' % i for i in range(len(sig)-1)]
-        full_args = ['x'] + args
-        table_access = 'FUNCTION_TABLE_' + sig
-        if settings['SIDE_MODULE']:
-          table_access = 'parentModule["' + table_access + '"]' # side module tables were merged into the parent, we need to access the global one
-        if settings['BINARYEN']:
-          # wasm uses a Table, which means we have function pointer emulation capabilities all the time, at no cost. just call the table
-          table_access = "Module['wasmTable']"
-          table_read = table_access + '.get(x)'
-        else:
-          table_read = table_access + '[x]'
-        prelude = '''
-  if (x < 0 || x >= %s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig, function_table_data, settings))
-        asm_setup += '''
-function ftCall_%s(%s) {%s
-  return %s(%s);
-}
-''' % (sig, ', '.join(full_args), prelude, table_read, ', '.join(args))
-        if not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
-          basic_funcs.append('ftCall_%s' % sig)
-
-        if settings.get('RELOCATABLE') and not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
-          params = ','.join(['ptr'] + ['p%d' % p for p in range(len(sig)-1)])
-          coerced_params = ','.join([shared.JS.make_coercion('ptr', 'i', settings)] + [shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
-          coercions = ';'.join(['ptr = ptr | 0'] + ['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, unfloat(sig[p+1]), settings)) for p in range(len(sig)-1)]) + ';'
-          mini_coerced_params = ','.join([shared.JS.make_coercion('p%d', sig[p+1], settings) % p for p in range(len(sig)-1)])
-          maybe_return = '' if sig[0] == 'v' else 'return'
-          final_return = maybe_return + ' ' + shared.JS.make_coercion('ftCall_' + sig + '(' + coerced_params + ')', unfloat(sig[0]), settings) + ';'
-          if settings['EMULATED_FUNCTION_POINTERS'] == 1:
-            body = final_return
-          else:
-            body = ('if (((ptr|0) >= (fb|0)) & ((ptr|0) < (fb + {{{ FTM_' + sig + ' }}} | 0))) { ' + maybe_return + ' ' +
-                    shared.JS.make_coercion('FUNCTION_TABLE_' + sig + '[(ptr-fb)&{{{ FTM_' + sig + ' }}}](' +
-                    mini_coerced_params + ')', sig[0], settings, ffi_arg=True) + '; ' +
-                    ('return;' if sig[0] == 'v' else '') + ' }' + final_return)
-          funcs_js.append(make_func('mftCall_' + sig, body, params, coercions) + '\n')
+    function_tables_impls, asm_setup = make_function_tables_impls(asm_setup, basic_funcs, funcs_js, function_table_data, settings)
 
     # calculate exports
     exported_implemented_functions = list(exported_implemented_functions) + metadata['initializers']
@@ -881,6 +810,81 @@ def make_func(name, code, params, coercions):
 def math_fix(g):
   return g if not g.startswith('Math_') else g.split('_')[1]
 
+
+def make_function_tables_impls(asm_setup, basic_funcs, funcs_js, function_table_data, settings):
+    function_tables_impls = []
+    for sig in function_table_data.iterkeys():
+      args = ','.join(['a' + str(i) for i in range(1, len(sig))])
+      arg_coercions = ' '.join(['a' + str(i) + '=' + shared.JS.make_coercion('a' + str(i), sig[i], settings) + ';' for i in range(1, len(sig))])
+      coerced_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings) for i in range(1, len(sig))])
+      ret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('FUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s)' % (sig, sig, coerced_args), sig[0], settings)
+      if not settings['EMULATED_FUNCTION_POINTERS']:
+        function_tables_impls.append('''
+function dynCall_%s(index%s%s) {
+  index = index|0;
+  %s
+  %s;
+}
+''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
+      else:
+        function_tables_impls.append('''
+var dynCall_%s = ftCall_%s;
+''' % (sig, sig))
+
+      ffi_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings, ffi_arg=True) for i in range(1, len(sig))])
+      for i in range(settings['RESERVED_FUNCTION_POINTERS']):
+        jsret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('jsCall_%s(%d%s%s)' % (sig, i, ',' if ffi_args else '', ffi_args), sig[0], settings, ffi_result=True)
+        function_tables_impls.append('''
+function jsCall_%s_%s(%s) {
+  %s
+  %s;
+}
+
+''' % (sig, i, args, arg_coercions, jsret))
+      shared.Settings.copy(settings)
+      asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
+      basic_funcs.append('invoke_%s' % sig)
+      if settings.get('RESERVED_FUNCTION_POINTERS'):
+        asm_setup += '\n' + shared.JS.make_jscall(sig) + '\n'
+        basic_funcs.append('jsCall_%s' % sig)
+      if settings.get('EMULATED_FUNCTION_POINTERS'):
+        args = ['a%d' % i for i in range(len(sig)-1)]
+        full_args = ['x'] + args
+        table_access = 'FUNCTION_TABLE_' + sig
+        if settings['SIDE_MODULE']:
+          table_access = 'parentModule["' + table_access + '"]' # side module tables were merged into the parent, we need to access the global one
+        if settings['BINARYEN']:
+          # wasm uses a Table, which means we have function pointer emulation capabilities all the time, at no cost. just call the table
+          table_access = "Module['wasmTable']"
+          table_read = table_access + '.get(x)'
+        else:
+          table_read = table_access + '[x]'
+        prelude = '''
+  if (x < 0 || x >= %s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig, function_table_data, settings))
+        asm_setup += '''
+function ftCall_%s(%s) {%s
+  return %s(%s);
+}
+''' % (sig, ', '.join(full_args), prelude, table_read, ', '.join(args))
+        if not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
+          basic_funcs.append('ftCall_%s' % sig)
+
+        if settings.get('RELOCATABLE') and not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
+          params = ','.join(['ptr'] + ['p%d' % p for p in range(len(sig)-1)])
+          coerced_params = ','.join([shared.JS.make_coercion('ptr', 'i', settings)] + [shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
+          coercions = ';'.join(['ptr = ptr | 0'] + ['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, unfloat(sig[p+1]), settings)) for p in range(len(sig)-1)]) + ';'
+          mini_coerced_params = ','.join([shared.JS.make_coercion('p%d', sig[p+1], settings) % p for p in range(len(sig)-1)])
+          maybe_return = '' if sig[0] == 'v' else 'return'
+          final_return = maybe_return + ' ' + shared.JS.make_coercion('ftCall_' + sig + '(' + coerced_params + ')', unfloat(sig[0]), settings) + ';'
+          if settings['EMULATED_FUNCTION_POINTERS'] == 1:
+            body = final_return
+          else:
+            body = ('if (((ptr|0) >= (fb|0)) & ((ptr|0) < (fb + {{{ FTM_' + sig + ' }}} | 0))) { ' + maybe_return + ' ' +
+                    shared.JS.make_coercion('FUNCTION_TABLE_' + sig + '[(ptr-fb)&{{{ FTM_' + sig + ' }}}](' +
+                    mini_coerced_params + ')', sig[0], settings, ffi_arg=True) + '; ' +
+                    ('return;' if sig[0] == 'v' else '') + ' }' + final_return)
+          funcs_js.append(make_func('mftCall_' + sig, body, params, coercions) + '\n')
+    return function_tables_impls, asm_setup
 
 def get_function_pointer_error(sig, function_table_data, settings):
   if settings['ASSERTIONS'] <= 1:
