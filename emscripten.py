@@ -370,8 +370,6 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     pre, funcs_js = get_js_funcs(pre, funcs)
     all_exported_functions = get_all_exported_functions(function_table_data, settings)
     all_implemented = get_all_implemented(forwarded_json, metadata)
-    exported_implemented_functions = get_exported_implemented_functions(
-      all_exported_functions, all_implemented, metadata, settings)
     implemented_functions = get_implemented_functions(pre, metadata, settings, all_implemented)
     pre = include_asm_consts(pre, forwarded_json, metadata, settings)
     #if DEBUG: outfile.write('// pre\n')
@@ -455,6 +453,9 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
       if not settings['EMULATED_FUNCTION_POINTERS']:
         asm_setup += "\nModule['wasmMaxTableSize'] = %d;\n" % table_total_size
 
+    exported_implemented_functions = get_exported_implemented_functions(
+      all_exported_functions, all_implemented, metadata, settings)
+
     # See if we need ASYNCIFY functions
     # We might not need them even if ASYNCIFY is enabled
     if need_asyncify(exported_implemented_functions):
@@ -472,21 +473,6 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     funcs_js += setup_funcs_js(function_table_sigs, settings)
 
     # calculate exports
-    exported_implemented_functions = list(exported_implemented_functions) + metadata['initializers']
-    if not settings['ONLY_MY_CODE']:
-      exported_implemented_functions.append('runPostSets')
-      if settings['ALLOW_MEMORY_GROWTH']:
-        exported_implemented_functions.append('_emscripten_replace_memory')
-      if not settings['SIDE_MODULE']:
-        exported_implemented_functions += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
-      if settings['SAFE_HEAP']:
-        exported_implemented_functions += ['setDynamicTop']
-      if not settings['RELOCATABLE']:
-        exported_implemented_functions += ['setTempRet0', 'getTempRet0']
-      if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
-        exported_implemented_functions += ['setThrew']
-    exported_implemented_functions = list(set(exported_implemented_functions))
-
     exports = create_exports(exported_implemented_functions, in_table, function_tables, metadata, settings)
     # calculate globals
     try:
@@ -599,6 +585,21 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
   for key in all_implemented:
     if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
       exported_implemented_functions.add(key)
+
+  exported_implemented_functions = list(exported_implemented_functions) + metadata['initializers']
+  if not settings['ONLY_MY_CODE']:
+    exported_implemented_functions.append('runPostSets')
+    if settings['ALLOW_MEMORY_GROWTH']:
+      exported_implemented_functions.append('_emscripten_replace_memory')
+    if not settings['SIDE_MODULE']:
+      exported_implemented_functions += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
+    if settings['SAFE_HEAP']:
+      exported_implemented_functions += ['setDynamicTop']
+    if not settings['RELOCATABLE']:
+      exported_implemented_functions += ['setTempRet0', 'getTempRet0']
+    if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
+      exported_implemented_functions += ['setThrew']
+  exported_implemented_functions = list(set(exported_implemented_functions))
   return exported_implemented_functions
 
 
