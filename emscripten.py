@@ -389,6 +389,8 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     else:
       pre_tables = ''
 
+    function_table_sigs = function_table_data.keys()
+
     in_table, debug_tables, function_tables_defs = make_function_tables_defs(
       implemented_functions, all_implemented, function_table_data, settings, metadata)
 
@@ -413,9 +415,9 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
       else:
         basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_LOAD_D', 'SAFE_HEAP_STORE', 'SAFE_HEAP_STORE_D', 'SAFE_FT_MASK']
     if settings['ASSERTIONS']:
-      for sig in function_table_data.iterkeys():
+      for sig in function_table_sigs:
         basic_funcs += ['nullFunc_' + sig]
-        asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig, function_table_data, settings) + 'abort(x) }\n'
+        asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig, function_table_sigs, settings) + 'abort(x) }\n'
 
     basic_vars = ['DYNAMICTOP_PTR', 'tempDoublePtr', 'ABORT']
     if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
@@ -463,7 +465,10 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     else:
       function_tables = []
 
-    function_tables_impls, asm_setup = make_function_tables_impls(asm_setup, basic_funcs, funcs_js, function_table_data, settings)
+    function_tables_impls = make_function_tables_impls(function_table_sigs, settings)
+    asm_setup += setup_function_pointers(function_table_sigs, settings)
+    basic_funcs += setup_basic_funcs(function_table_sigs, settings)
+    funcs_js += setup_funcs_js(function_table_sigs, settings)
 
     # calculate exports
     exported_implemented_functions = list(exported_implemented_functions) + metadata['initializers']
@@ -811,9 +816,9 @@ def math_fix(g):
   return g if not g.startswith('Math_') else g.split('_')[1]
 
 
-def make_function_tables_impls(asm_setup, basic_funcs, funcs_js, function_table_data, settings):
+def make_function_tables_impls(function_table_sigs, settings):
     function_tables_impls = []
-    for sig in function_table_data.iterkeys():
+    for sig in function_table_sigs:
       args = ','.join(['a' + str(i) for i in range(1, len(sig))])
       arg_coercions = ' '.join(['a' + str(i) + '=' + shared.JS.make_coercion('a' + str(i), sig[i], settings) + ';' for i in range(1, len(sig))])
       coerced_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings) for i in range(1, len(sig))])
@@ -841,12 +846,16 @@ function jsCall_%s_%s(%s) {
 }
 
 ''' % (sig, i, args, arg_coercions, jsret))
+    return function_tables_impls
+
+
+def setup_function_pointers(function_table_sigs, settings):
+    asm_setup = ''
+    for sig in function_table_sigs:
       shared.Settings.copy(settings)
       asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
-      basic_funcs.append('invoke_%s' % sig)
       if settings.get('RESERVED_FUNCTION_POINTERS'):
         asm_setup += '\n' + shared.JS.make_jscall(sig) + '\n'
-        basic_funcs.append('jsCall_%s' % sig)
       if settings.get('EMULATED_FUNCTION_POINTERS'):
         args = ['a%d' % i for i in range(len(sig)-1)]
         full_args = ['x'] + args
@@ -860,15 +869,33 @@ function jsCall_%s_%s(%s) {
         else:
           table_read = table_access + '[x]'
         prelude = '''
-  if (x < 0 || x >= %s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig, function_table_data, settings))
+  if (x < 0 || x >= %s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig, function_table_sigs, settings))
         asm_setup += '''
 function ftCall_%s(%s) {%s
   return %s(%s);
 }
 ''' % (sig, ', '.join(full_args), prelude, table_read, ', '.join(args))
+    return asm_setup
+
+
+def setup_basic_funcs(function_table_sigs, settings):
+    basic_funcs = []
+    for sig in function_table_sigs:
+      shared.Settings.copy(settings)
+      basic_funcs.append('invoke_%s' % sig)
+      if settings.get('RESERVED_FUNCTION_POINTERS'):
+        basic_funcs.append('jsCall_%s' % sig)
+      if settings.get('EMULATED_FUNCTION_POINTERS'):
         if not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
           basic_funcs.append('ftCall_%s' % sig)
+    return basic_funcs
 
+
+def setup_funcs_js(function_table_sigs, settings):
+    funcs_js = []
+    for sig in function_table_sigs:
+      shared.Settings.copy(settings)
+      if settings.get('EMULATED_FUNCTION_POINTERS'):
         if settings.get('RELOCATABLE') and not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
           params = ','.join(['ptr'] + ['p%d' % p for p in range(len(sig)-1)])
           coerced_params = ','.join([shared.JS.make_coercion('ptr', 'i', settings)] + [shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
@@ -880,13 +907,15 @@ function ftCall_%s(%s) {%s
             body = final_return
           else:
             body = ('if (((ptr|0) >= (fb|0)) & ((ptr|0) < (fb + {{{ FTM_' + sig + ' }}} | 0))) { ' + maybe_return + ' ' +
-                    shared.JS.make_coercion('FUNCTION_TABLE_' + sig + '[(ptr-fb)&{{{ FTM_' + sig + ' }}}](' +
-                    mini_coerced_params + ')', sig[0], settings, ffi_arg=True) + '; ' +
-                    ('return;' if sig[0] == 'v' else '') + ' }' + final_return)
+                    shared.JS.make_coercion(
+                      'FUNCTION_TABLE_' + sig + '[(ptr-fb)&{{{ FTM_' + sig + ' }}}](' +
+                      mini_coerced_params + ')', sig[0], settings, ffi_arg=True
+                    ) + '; ' + ('return;' if sig[0] == 'v' else '') + ' }' + final_return)
           funcs_js.append(make_func('mftCall_' + sig, body, params, coercions) + '\n')
-    return function_tables_impls, asm_setup
+    return funcs_js
 
-def get_function_pointer_error(sig, function_table_data, settings):
+
+def get_function_pointer_error(sig, function_table_sigs, settings):
   if settings['ASSERTIONS'] <= 1:
     extra = ' Module["printErr"]("Build with ASSERTIONS=2 for more info.");'
     pointer = ' '
@@ -894,7 +923,7 @@ def get_function_pointer_error(sig, function_table_data, settings):
     pointer = ' \'" + x + "\' '
     extra = ' Module["printErr"]("This pointer might make sense in another type signature: '
     # sort signatures, attempting to show most likely related ones first
-    sigs = function_table_data.keys()
+    sigs = list(function_table_sigs)
     sigs.sort(key=signature_sort_key(sig))
     for other in sigs:
       if other != sig:
