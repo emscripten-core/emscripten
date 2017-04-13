@@ -461,19 +461,13 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     if need_asyncify(exported_implemented_functions):
       basic_vars += ['___async', '___async_unwind', '___async_retval', '___async_cur_frame']
 
-    # function tables
-    if not settings['EMULATED_FUNCTION_POINTERS']:
-      function_tables = ['dynCall_' + table for table in function_table_data]
-    else:
-      function_tables = []
-
     function_tables_impls = make_function_tables_impls(function_table_sigs, settings)
     asm_setup += setup_function_pointers(function_table_sigs, settings)
     basic_funcs += setup_basic_funcs(function_table_sigs, settings)
     funcs_js += setup_funcs_js(function_table_sigs, settings)
 
-    # calculate exports
-    exports = create_exports(exported_implemented_functions, in_table, function_tables, metadata, settings)
+    exports = create_exports(exported_implemented_functions, in_table, function_table_data, metadata, settings)
+
     # calculate globals
     try:
       del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
@@ -508,7 +502,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     sending_vars = basic_funcs + global_funcs + basic_vars + global_vars
     sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in sending_vars]) + ' }'
 
-    receiving = create_receiving(function_table_data, function_tables, function_tables_defs,
+    receiving = create_receiving(function_table_data, function_tables_defs,
                                  exported_implemented_functions, settings)
 
     final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
@@ -1087,12 +1081,12 @@ def asm_safe_heap(settings):
   settings['SAFE_HEAP'] and not settings['SAFE_HEAP_LOG'] and not settings['RELOCATABLE']
 
 
-def create_exports(exported_implemented_functions, in_table, function_tables, metadata, settings):
+def create_exports(exported_implemented_functions, in_table, function_table_data, metadata, settings):
   quote = quoter(settings)
   asm_runtime_funcs = create_asm_runtime_funcs(settings)
   if need_asyncify(exported_implemented_functions):
     asm_runtime_funcs.append('setAsync')
-  all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables
+  all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables(function_table_data, settings)
   if settings['EMULATED_FUNCTION_POINTERS']:
     all_exported = list(set(all_exported).union(in_table))
   exports = []
@@ -1125,6 +1119,13 @@ def create_asm_runtime_funcs(settings):
   return funcs
 
 
+def function_tables(function_table_data, settings):
+  if not settings['EMULATED_FUNCTION_POINTERS']:
+    return ['dynCall_' + table for table in function_table_data]
+  else:
+    return []
+
+
 def create_the_global(metadata, settings):
   fundamentals = ['Math']
   fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
@@ -1137,7 +1138,7 @@ def create_the_global(metadata, settings):
   return '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
 
 
-def create_receiving(function_table_data, function_tables, function_tables_defs, exported_implemented_functions, settings):
+def create_receiving(function_table_data, function_tables_defs, exported_implemented_functions, settings):
   receiving = ''
   if settings['ASSERTIONS']:
     # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
@@ -1150,7 +1151,7 @@ return real_''' + s + '''.apply(null, arguments);
 ''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory', '__start_module']])
 
   if not settings['SWAPPABLE_ASM_MODULE']:
-    receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables])
+    receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables(function_table_data, settings)])
   else:
     receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions + function_tables])
   receiving += ';\n'
