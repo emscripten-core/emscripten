@@ -97,12 +97,12 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
       glue, forwarded_data = compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DEBUG)
 
     with ToolchainProfiler.profile_block('function_tables_and_exports'):
-      (post, funcs_js, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global,
+      (post, funcs_js, provide_fround, sending, receiving, asm_setup, the_global,
        asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, function_table_data,
        forwarded_json) = function_tables_and_exports(funcs, metadata, mem_init, glue,
                                                      forwarded_data, settings, outfile, DEBUG)
     with ToolchainProfiler.profile_block('finalize_output'):
-      finalize_output(metadata, post, funcs_js, provide_fround, asm_safe_heap, sending,
+      finalize_output(metadata, post, funcs_js, provide_fround, sending,
                       receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables,
                       final_function_tables, exports, function_table_data, forwarded_json, settings, outfile, DEBUG)
 
@@ -407,10 +407,8 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     if settings['ABORTING_MALLOC']: basic_funcs += ['abortOnCannotGrowMemory']
     if settings['STACK_OVERFLOW_CHECK']: basic_funcs += ['abortStackOverflow']
 
-    asm_safe_heap = settings['SAFE_HEAP'] and not settings['SAFE_HEAP_LOG'] and not settings['RELOCATABLE'] # optimized safe heap in asm, when we can
-
     if settings['SAFE_HEAP']:
-      if asm_safe_heap:
+      if asm_safe_heap(settings):
         basic_funcs += ['segfault', 'alignfault', 'ftfault']
       else:
         basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_LOAD_D', 'SAFE_HEAP_STORE', 'SAFE_HEAP_STORE_D', 'SAFE_FT_MASK']
@@ -535,7 +533,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
         len(exports), len(the_global), len(sending), len(receiving)]))
       logging.debug('  emscript: python processing: function tables and exports took %s seconds' % (time.time() - t))
 
-    return (post, funcs_js, provide_fround, asm_safe_heap, sending, receiving,
+    return (post, funcs_js, provide_fround, sending, receiving,
             asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables,
             exports, function_table_data, forwarded_json)
 
@@ -1074,6 +1072,11 @@ def need_asyncify(exported_implemented_functions):
   return '_emscripten_alloc_async_context' in exported_implemented_functions
 
 
+def asm_safe_heap(settings):
+  """optimized safe heap in asm, when we can"""
+  settings['SAFE_HEAP'] and not settings['SAFE_HEAP_LOG'] and not settings['RELOCATABLE']
+
+
 def create_exports(exported_implemented_functions, in_table, function_tables, metadata, settings):
   quote = quoter(settings)
   asm_runtime_funcs = create_asm_runtime_funcs(settings)
@@ -1159,7 +1162,7 @@ return real_''' + s + '''.apply(null, arguments);
   return receiving
 
 
-def finalize_output(metadata, post, funcs_js, provide_fround, asm_safe_heap, sending, receiving,
+def finalize_output(metadata, post, funcs_js, provide_fround, sending, receiving,
   asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports,
   function_table_data, forwarded_json, settings, outfile, DEBUG):
     if DEBUG:
@@ -1333,7 +1336,7 @@ function setDynamicTop(value) {
   value = value | 0;
   HEAP32[DYNAMICTOP_PTR>>2] = value;
 }
-'''] + ['' if not asm_safe_heap else '''
+'''] + ['' if not asm_safe_heap(settings) else '''
 function SAFE_HEAP_STORE(dest, value, bytes) {
   dest = dest | 0;
   value = value | 0;
