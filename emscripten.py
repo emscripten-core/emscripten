@@ -420,7 +420,6 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     basic_vars = ['DYNAMICTOP_PTR', 'tempDoublePtr', 'ABORT']
     if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
       basic_vars += ['STACKTOP', 'STACK_MAX']
-    basic_float_vars = []
 
     if metadata.get('preciseI64MathUsed'):
       basic_vars += ['cttz_i8']
@@ -515,7 +514,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
       provide_fround, bg_funcs, bg_vars, access_quote, metadata, settings)
 
     the_global = create_the_global(metadata, settings)
-    sending_vars = basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars
+    sending_vars = basic_funcs + global_funcs + basic_vars + global_vars
     sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in sending_vars]) + ' }'
 
     receiving = create_receiving(function_table_data, function_tables, function_tables_defs,
@@ -1845,7 +1844,6 @@ return ASM_CONSTS[code](%s);
     return g if not g.startswith('Math_') else g.split('_')[1]
 
   basic_vars = ['STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR', 'ABORT']
-  basic_float_vars = []
 
   # Asm.js-style exception handling: invoke wrapper generation
   invoke_wrappers = ''
@@ -1861,7 +1859,7 @@ return ASM_CONSTS[code](%s);
 
   # sent data
   the_global = '{}'
-  sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
+  sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + global_vars]) + ' }'
   # received
   receiving = ''
   if settings['ASSERTIONS']:
