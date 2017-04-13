@@ -359,14 +359,19 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
     function_table_data = metadata['tables']
 
+    # merge forwarded data
+    settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
+
     pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 
     #print >> sys.stderr, 'glue:', pre, '\n\n||||||||||||||||\n\n', post, '...............'
 
     pre = memory_and_global_initializers(pre, metadata, mem_init, settings)
     pre, funcs_js = get_js_funcs(pre, funcs)
-    exported_implemented_functions, all_implemented = get_exported_implemented_functions(
-      metadata, function_table_data, forwarded_json, settings)
+    all_exported_functions = get_all_exported_functions(function_table_data, settings)
+    all_implemented = get_all_implemented(forwarded_json, metadata)
+    exported_implemented_functions = get_exported_implemented_functions(
+      all_exported_functions, all_implemented, metadata, settings)
     implemented_functions = get_implemented_functions(pre, metadata, settings, all_implemented)
     pre = include_asm_consts(pre, forwarded_json, metadata, settings)
     #if DEBUG: outfile.write('// pre\n')
@@ -570,9 +575,7 @@ def get_js_funcs(pre, funcs):
   return pre, funcs_js
 
 
-def get_exported_implemented_functions(metadata, function_table_data, forwarded_json, settings):
-  # merge forwarded data
-  settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
+def get_all_exported_functions(function_table_data, settings):
   all_exported_functions = set(shared.expand_response(settings['EXPORTED_FUNCTIONS'])) # both asm.js and otherwise
 
   for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
@@ -582,14 +585,21 @@ def get_exported_implemented_functions(metadata, function_table_data, forwarded_
       for func in table.split('[')[1].split(']')[0].split(','):
         if func[0] == '_':
           all_exported_functions.add(func)
+  return all_exported_functions
+
+
+def get_all_implemented(forwarded_json, metadata):
+  return metadata['implementedFunctions'] + forwarded_json['Functions']['implementedFunctions'].keys() # XXX perf?
+
+
+def get_exported_implemented_functions(all_exported_functions, all_implemented, metadata, settings):
   exported_implemented_functions = set(metadata['exports'])
   export_bindings = settings['EXPORT_BINDINGS']
   export_all = settings['EXPORT_ALL']
-  all_implemented = metadata['implementedFunctions'] + forwarded_json['Functions']['implementedFunctions'].keys() # XXX perf?
   for key in all_implemented:
     if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
       exported_implemented_functions.add(key)
-  return exported_implemented_functions, all_implemented
+  return exported_implemented_functions
 
 
 def get_implemented_functions(pre, metadata, settings, all_implemented):
