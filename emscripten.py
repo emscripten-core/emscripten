@@ -451,9 +451,9 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
         len(exports), len(the_global), len(sending), len(receiving)]))
       logging.debug('  emscript: python processing: function tables and exports took %s seconds' % (time.time() - t))
 
-    return (post, funcs_js, sending, receiving,
-            asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables,
-            exports, function_table_data, forwarded_json)
+    return (post, funcs_js, sending, receiving, asm_setup, the_global, asm_global_vars,
+            asm_global_funcs, pre_tables, final_function_tables, exports,
+            function_table_data, forwarded_json)
 
 
 def memory_and_global_initializers(pre, metadata, mem_init, settings):
