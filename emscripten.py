@@ -401,7 +401,8 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     basic_funcs = create_basic_funcs(function_table_sigs, settings)
     basic_vars = create_basic_vars(exported_implemented_functions, forwarded_json, metadata, settings)
 
-    function_tables_impls = make_function_tables_impls(function_table_sigs, settings)
+    shared.Settings.copy(settings)
+
     asm_setup += setup_function_pointers(function_table_sigs, settings)
     basic_funcs += setup_basic_funcs(function_table_sigs, settings)
     funcs_js += setup_funcs_js(function_table_sigs, settings)
@@ -434,6 +435,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     receiving = create_receiving(function_table_data, function_tables_defs,
                                  exported_implemented_functions, settings)
 
+    function_tables_impls = make_function_tables_impls(function_table_sigs, settings)
     final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
     if settings.get('EMULATED_FUNCTION_POINTERS'):
       asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
