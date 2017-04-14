@@ -3398,6 +3398,16 @@ window.close = function() {
   def test_binaryen_worker(self):
     self.do_test_worker(['-s', 'WASM=1'])
 
+  def test_wasm_locate_file(self):
+    # Test that it is possible to define "Module.locateFile(foo)" function to locate where pthread-main.js will be loaded from.
+    self.clear()
+    os.makedirs(os.path.join(self.get_dir(), 'cdn'))
+    open('shell2.html', 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.wasm") return "cdn/test.wasm"; else return filename; }, '))
+    open('src.cpp', 'w').write(self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
+    subprocess.check_call([PYTHON, EMCC, 'src.cpp', '--shell-file', 'shell2.html', '-s', 'WASM=1', '-o', 'test.html'])
+    shutil.move('test.wasm', os.path.join('cdn', 'test.wasm'))
+    self.run_browser('test.html', '', '/report_result?0')
+
   def test_utf8_textdecoder(self):
     self.btest('benchmark_utf8.cpp', expected='0', args=['--embed-file', path_from_root('tests/utf8_corpus.txt') + '@/utf8_corpus.txt'])
 

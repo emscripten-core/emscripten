@@ -2080,6 +2080,12 @@ function integrateWasmJS(Module) {
   var wasmBinaryFile = Module['wasmBinaryFile'] || '{{{ WASM_BINARY_FILE }}}';
   var asmjsCodeFile = Module['asmjsCodeFile'] || '{{{ ASMJS_CODE_FILE }}}';
 
+  if (typeof Module['locateFile'] === 'function') {
+    wasmTextFile = Module['locateFile'](wasmTextFile);
+    wasmBinaryFile = Module['locateFile'](wasmBinaryFile);
+    asmjsCodeFile = Module['locateFile'](asmjsCodeFile);
+  }
+
   // utilities
 
   var wasmPageSize = 64*1024;
