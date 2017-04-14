@@ -1237,68 +1237,68 @@ function get8(ptr) {
   ptr = ptr | 0;
   return HEAP8s[ptr >> SPLIT_MEMORY_BITS][ptr & SPLIT_MEMORY_MASK] | 0;
 }
-function get16(ptr) {
-  ptr = ptr | 0;
-  return HEAP16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] | 0;
-}
-function get32(ptr) {
-  ptr = ptr | 0;
-  return HEAP32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] | 0;
-}
-function getU8(ptr) {
-  ptr = ptr | 0;
-  return HEAPU8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] | 0;
-}
-function getU16(ptr) {
-  ptr = ptr | 0;
-  return HEAPU16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] | 0;
-}
-function getU32(ptr) {
-  ptr = ptr | 0;
-  return HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] | 0;
-}
-function getF32(ptr) {
-  ptr = ptr | 0;
-  return +HEAPF32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2]; // TODO: fround when present
-}
-function getF64(ptr) {
-  ptr = ptr | 0;
-  return +HEAPF64s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 3];
-}
 function set8(ptr, value) {
   ptr = ptr | 0;
   value = value | 0;
   HEAP8s[ptr >> SPLIT_MEMORY_BITS][ptr & SPLIT_MEMORY_MASK] = value;
+}
+function get16(ptr) {
+  ptr = ptr | 0;
+  return HEAP16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] | 0;
 }
 function set16(ptr, value) {
   ptr = ptr | 0;
   value = value | 0;
   HEAP16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] = value;
 }
+function get32(ptr) {
+  ptr = ptr | 0;
+  return HEAP32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] | 0;
+}
 function set32(ptr, value) {
   ptr = ptr | 0;
   value = value | 0;
   HEAP32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
+}
+function getU8(ptr) {
+  ptr = ptr | 0;
+  return HEAPU8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] | 0;
 }
 function setU8(ptr, value) {
   ptr = ptr | 0;
   value = value | 0;
   HEAPU8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] = value;
 }
+function getU16(ptr) {
+  ptr = ptr | 0;
+  return HEAPU16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] | 0;
+}
 function setU16(ptr, value) {
   ptr = ptr | 0;
   value = value | 0;
   HEAPU16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] = value;
+}
+function getU32(ptr) {
+  ptr = ptr | 0;
+  return HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] | 0;
 }
 function setU32(ptr, value) {
   ptr = ptr | 0;
   value = value | 0;
   HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
 }
+function getF32(ptr) {
+  ptr = ptr | 0;
+  return +HEAPF32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2]; // TODO: fround when present
+}
 function setF32(ptr, value) {
   ptr = ptr | 0;
   value = +value;
   HEAPF32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
+}
+function getF64(ptr) {
+  ptr = ptr | 0;
+  return +HEAPF64s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 3];
 }
 function setF64(ptr, value) {
   ptr = ptr | 0;
