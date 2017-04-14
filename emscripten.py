@@ -1075,7 +1075,7 @@ def need_asyncify(exported_implemented_functions):
 
 def asm_safe_heap(settings):
   """optimized safe heap in asm, when we can"""
-  settings['SAFE_HEAP'] and not settings['SAFE_HEAP_LOG'] and not settings['RELOCATABLE']
+  return settings['SAFE_HEAP'] and not settings['SAFE_HEAP_LOG'] and not settings['RELOCATABLE']
 
 
 def create_exports(exported_implemented_functions, in_table, function_table_data, metadata, settings):
