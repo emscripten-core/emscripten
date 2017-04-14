@@ -696,10 +696,7 @@ fi
   def test_embuilder(self):
     restore()
 
-    tests = []
-    if get_llvm_target() == WASM_TARGET:
-      tests.append(([PYTHON, 'embuilder.py', 'build', 'wasm_compiler_rt'], ['building and verifying wasm_compiler_rt', 'success'], True, ['wasm_compiler_rt.a']),)
-    for command, expected, success, result_libs in tests + [
+    tests = [
       ([PYTHON, 'embuilder.py'], ['Emscripten System Builder Tool', 'build libc', 'native_optimizer'], True, []),
       ([PYTHON, 'embuilder.py', 'build', 'waka'], 'ERROR', False, []),
       ([PYTHON, 'embuilder.py', 'build', 'libc'], ['building and verifying libc', 'success'], True, ['libc.bc']),
@@ -724,7 +721,12 @@ fi
       ([PYTHON, 'embuilder.py', 'build', 'sdl2-net'], ['building and verifying sdl2-net', 'success'], True, [os.path.join('ports-builds', 'sdl2-net', 'libsdl2_net.bc')]),
       ([PYTHON, 'embuilder.py', 'build', 'binaryen'], ['building and verifying binaryen', 'success'], True, []),
       ([PYTHON, 'embuilder.py', 'build', 'cocos2d'], ['building and verifying cocos2d', 'success'], True, [os.path.join('ports-builds', 'Cocos2d', 'libCocos2d.bc')]),
-    ]:
+      ([PYTHON, 'embuilder.py', 'build', 'wasm-libc'], ['building and verifying wasm-libc', 'success'], True, ['wasm-libc.bc']),
+    ]
+    if get_llvm_target() == WASM_TARGET:
+      tests.append(([PYTHON, 'embuilder.py', 'build', 'wasm_compiler_rt'], ['building and verifying wasm_compiler_rt', 'success'], True, ['wasm_compiler_rt.a']),)
+
+    for command, expected, success, result_libs in tests:
       print command
       Cache.erase()
 
