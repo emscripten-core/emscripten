@@ -403,7 +403,6 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
     shared.Settings.copy(settings)
 
-    basic_funcs += setup_basic_funcs(function_table_sigs, settings)
     funcs_js += setup_funcs_js(function_table_sigs, settings)
 
     exports = create_exports(exported_implemented_functions, in_table, function_table_data, metadata, settings)
@@ -770,18 +769,6 @@ function jsCall_%s_%s(%s) {
   return function_tables_impls
 
 
-def setup_basic_funcs(function_table_sigs, settings):
-  basic_funcs = []
-  for sig in function_table_sigs:
-    basic_funcs.append('invoke_%s' % sig)
-    if settings.get('RESERVED_FUNCTION_POINTERS'):
-      basic_funcs.append('jsCall_%s' % sig)
-    if settings.get('EMULATED_FUNCTION_POINTERS'):
-      if not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
-        basic_funcs.append('ftCall_%s' % sig)
-  return basic_funcs
-
-
 def setup_funcs_js(function_table_sigs, settings):
   funcs_js = []
   for sig in function_table_sigs:
@@ -1083,6 +1070,14 @@ def create_basic_funcs(function_table_sigs, settings):
       basic_funcs += ['nullFunc_' + sig]
   if settings['RELOCATABLE']:
     basic_funcs += ['setTempRet0', 'getTempRet0']
+
+  for sig in function_table_sigs:
+    basic_funcs.append('invoke_%s' % sig)
+    if settings.get('RESERVED_FUNCTION_POINTERS'):
+      basic_funcs.append('jsCall_%s' % sig)
+    if settings.get('EMULATED_FUNCTION_POINTERS'):
+      if not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
+        basic_funcs.append('ftCall_%s' % sig)
   return basic_funcs
 
 def create_basic_vars(exported_implemented_functions, forwarded_json, metadata, settings):
