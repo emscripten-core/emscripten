@@ -367,7 +367,8 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     pre, funcs_js = get_js_funcs(pre, funcs)
     all_exported_functions = get_all_exported_functions(function_table_data, settings)
     all_implemented = get_all_implemented(forwarded_json, metadata)
-    implemented_functions = get_implemented_functions(pre, metadata, settings, all_implemented)
+    implemented_functions = get_implemented_functions(metadata)
+    check_implemented_functions(implemented_functions, pre, settings, all_implemented)
     pre = include_asm_consts(pre, forwarded_json, metadata, settings)
     #if DEBUG: outfile.write('// pre\n')
     outfile.write(pre)
@@ -530,8 +531,11 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
   return list(set(funcs))
 
 
-def get_implemented_functions(pre, metadata, settings, all_implemented):
-  implemented_functions = set(metadata['implementedFunctions'])
+def get_implemented_functions(metadata):
+  return set(metadata['implementedFunctions'])
+
+
+def check_implemented_functions(implemented_functions, pre, settings, all_implemented):
   if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
     original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
     if original_exports[0] == '@': original_exports = json.loads(open(original_exports[1:]).read())
@@ -542,8 +546,6 @@ def get_implemented_functions(pre, metadata, settings, all_implemented):
          requested != '_malloc' and \
          (('function ' + requested.encode('utf-8')) not in pre): # could be a js library func
         logging.warning('function requested to be exported, but not implemented: "%s"', requested)
-
-  return implemented_functions
 
 
 def include_asm_consts(pre, forwarded_json, metadata, settings):
