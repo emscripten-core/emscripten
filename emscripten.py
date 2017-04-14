@@ -403,10 +403,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
       for sig in function_table_data:
         asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
 
-    math_envs = []
-
-
-    basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory'] + [m.replace('.', '_') for m in math_envs]
+    basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory']
     if settings['ABORTING_MALLOC']: basic_funcs += ['abortOnCannotGrowMemory']
     if settings['STACK_OVERFLOW_CHECK']: basic_funcs += ['abortStackOverflow']
 
