@@ -397,7 +397,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     exported_implemented_functions = get_exported_implemented_functions(
       all_exported_functions, all_implemented, metadata, settings)
 
-    asm_setup = create_asm_setup(debug_tables, function_table_data, settings)
+    asm_setup = create_asm_setup(debug_tables, function_table_data, metadata, settings)
     basic_funcs = create_basic_funcs(function_table_sigs, settings)
     basic_vars = create_basic_vars(exported_implemented_functions, forwarded_json, metadata, settings)
 
@@ -421,15 +421,6 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
                         .difference(set(global_vars)).difference(implemented_functions))
     if settings['RELOCATABLE']:
       global_funcs += ['g$' + extern for extern in metadata['externs']]
-      side = 'parent' if settings['SIDE_MODULE'] else ''
-      def check(extern):
-        if settings['ASSERTIONS']:
-          return ('assert(' + side + 'Module["' + extern + '"], "external function \'' + extern +
-                  '\' is missing. perhaps a side module was not linked in? if this symbol was expected to arrive '
-                  'from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");')
-        return ''
-      for extern in metadata['externs']:
-        asm_setup += 'var g$' + extern + ' = function() { ' + check(extern) + ' return ' + side + 'Module["' + extern + '"] };\n'
 
     bg_funcs = basic_funcs + global_funcs
     bg_vars = basic_vars + global_vars
@@ -1029,7 +1020,7 @@ def provide_fround(settings):
   return settings['PRECISE_F32'] or settings['SIMD']
 
 
-def create_asm_setup(debug_tables, function_table_data, settings):
+def create_asm_setup(debug_tables, function_table_data, metadata, settings):
   asm_setup = ''
   if settings['ASSERTIONS'] >= 2:
     for sig in function_table_data:
@@ -1038,10 +1029,6 @@ def create_asm_setup(debug_tables, function_table_data, settings):
     function_table_sigs = function_table_data.keys()
     for sig in function_table_sigs:
       asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig, function_table_sigs, settings) + 'abort(x) }\n'
-  if settings['RELOCATABLE']:
-    asm_setup += 'var setTempRet0 = Runtime.setTempRet0, getTempRet0 = Runtime.getTempRet0;\n'
-    if not settings['SIDE_MODULE']:
-      asm_setup += 'var gb = Runtime.GLOBAL_BASE, fb = 0;\n'
   if settings['BINARYEN']:
     def table_size(table):
       table_contents = table[table.index('[') + 1: table.index(']')]
@@ -1053,6 +1040,19 @@ def create_asm_setup(debug_tables, function_table_data, settings):
     asm_setup += "\nModule['wasmTableSize'] = %d;\n" % table_total_size
     if not settings['EMULATED_FUNCTION_POINTERS']:
       asm_setup += "\nModule['wasmMaxTableSize'] = %d;\n" % table_total_size
+  if settings['RELOCATABLE']:
+    asm_setup += 'var setTempRet0 = Runtime.setTempRet0, getTempRet0 = Runtime.getTempRet0;\n'
+    if not settings['SIDE_MODULE']:
+      asm_setup += 'var gb = Runtime.GLOBAL_BASE, fb = 0;\n'
+    side = 'parent' if settings['SIDE_MODULE'] else ''
+    def check(extern):
+      if settings['ASSERTIONS']:
+        return ('assert(' + side + 'Module["' + extern + '"], "external function \'' + extern +
+                '\' is missing. perhaps a side module was not linked in? if this symbol was expected to arrive '
+                'from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");')
+      return ''
+    for extern in metadata['externs']:
+      asm_setup += 'var g$' + extern + ' = function() { ' + check(extern) + ' return ' + side + 'Module["' + extern + '"] };\n'
   return asm_setup
 
 
