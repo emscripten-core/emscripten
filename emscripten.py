@@ -97,14 +97,14 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
       glue, forwarded_data = compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DEBUG)
 
     with ToolchainProfiler.profile_block('function_tables_and_exports'):
-      (post, funcs_js, sending, receiving, asm_setup, the_global,
-       asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, function_table_data,
+      (post, funcs_js, sending, receiving, asm_setup, the_global, asm_global_vars,
+       asm_global_funcs, pre_tables, final_function_tables, exports, function_table_data,
        forwarded_json) = function_tables_and_exports(funcs, metadata, mem_init, glue,
                                                      forwarded_data, settings, outfile, DEBUG)
     with ToolchainProfiler.profile_block('finalize_output'):
-      finalize_output(metadata, post, funcs_js, sending,
-                      receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables,
-                      final_function_tables, exports, function_table_data, forwarded_json, settings, outfile, DEBUG)
+      finalize_output(metadata, post, funcs_js, sending, receiving, asm_setup, the_global,
+                      asm_global_vars, asm_global_funcs, pre_tables, final_function_tables,
+                      exports, function_table_data, forwarded_json, settings, outfile, DEBUG)
 
     success = True
 
@@ -1187,9 +1187,9 @@ return real_''' + s + '''.apply(null, arguments);
   return receiving
 
 
-def finalize_output(metadata, post, funcs_js, sending, receiving,
-  asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports,
-  function_table_data, forwarded_json, settings, outfile, DEBUG):
+def finalize_output(metadata, post, funcs_js, sending, receiving, asm_setup, the_global,
+                    asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports,
+                    function_table_data, forwarded_json, settings, outfile, DEBUG):
     if DEBUG:
       logging.debug('emscript: python processing: finalize')
       t = time.time()
