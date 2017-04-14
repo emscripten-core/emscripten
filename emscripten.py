@@ -350,9 +350,6 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
       logging.debug('emscript: python processing: function tables and exports')
       t = time.time()
 
-    access_quote = access_quoter(settings)
-    quote = quoter(settings)
-
     forwarded_json = json.loads(forwarded_data)
 
     # merge in information from llvm backend
@@ -402,12 +399,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
     asm_setup = create_asm_setup(debug_tables, function_table_data, settings)
     basic_funcs = create_basic_funcs(function_table_sigs, settings)
-    basic_vars = create_basic_vars(forwarded_json, metadata, settings)
-
-    # See if we need ASYNCIFY functions
-    # We might not need them even if ASYNCIFY is enabled
-    if need_asyncify(exported_implemented_functions):
-      basic_vars += ['___async', '___async_unwind', '___async_retval', '___async_cur_frame']
+    basic_vars = create_basic_vars(exported_implemented_functions, forwarded_json, metadata, settings)
 
     function_tables_impls = make_function_tables_impls(function_table_sigs, settings)
     asm_setup += setup_function_pointers(function_table_sigs, settings)
@@ -441,8 +433,8 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
     bg_funcs = basic_funcs + global_funcs
     bg_vars = basic_vars + global_vars
-    asm_global_funcs, asm_global_vars = create_asm_globals(
-      bg_funcs, bg_vars, access_quote, metadata, settings)
+    asm_global_funcs= create_asm_global_funcs(bg_funcs, metadata, settings)
+    asm_global_vars = create_asm_global_vars(bg_vars, settings)
 
     the_global = create_the_global(metadata, settings)
     sending_vars = basic_funcs + global_funcs + basic_vars + global_vars
@@ -883,7 +875,8 @@ def signature_sort_key(sig):
   return closure
 
 
-def create_asm_globals(bg_funcs, bg_vars, access_quote, metadata, settings):
+def create_asm_global_funcs(bg_funcs, metadata, settings):
+  access_quote = access_quoter(settings)
   maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'max', 'clz32']]
   if provide_fround(settings):
     maths += ['Math.fround']
@@ -893,12 +886,17 @@ def create_asm_globals(bg_funcs, bg_vars, access_quote, metadata, settings):
   asm_global_funcs += global_simd_funcs(access_quote, metadata, settings)
   if settings['USE_PTHREADS']:
     asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
+  return asm_global_funcs
 
+
+def create_asm_global_vars(bg_vars, settings):
+  access_quote = access_quoter(settings)
   asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in bg_vars])
   if settings['BINARYEN'] and settings['SIDE_MODULE']:
-    asm_global_vars += '\n  var STACKTOP = 0, STACK_MAX = 0;\n' # wasm side modules internally define their stack, these are set at module startup time
+    # wasm side modules internally define their stack, these are set at module startup time
+    asm_global_vars += '\n  var STACKTOP = 0, STACK_MAX = 0;\n'
 
-  return asm_global_funcs, asm_global_vars
+  return asm_global_vars
 
 
 def global_simd_funcs(access_quote, metadata, settings):
@@ -1076,7 +1074,7 @@ def create_basic_funcs(function_table_sigs, settings):
     basic_funcs += ['setTempRet0', 'getTempRet0']
   return basic_funcs
 
-def create_basic_vars(forwarded_json, metadata, settings):
+def create_basic_vars(exported_implemented_functions, forwarded_json, metadata, settings):
   basic_vars = ['DYNAMICTOP_PTR', 'tempDoublePtr', 'ABORT']
   if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
     basic_vars += ['STACKTOP', 'STACK_MAX']
@@ -1090,6 +1088,11 @@ def create_basic_vars(forwarded_json, metadata, settings):
       basic_vars += ['gb', 'fb']
     else:
       basic_vars += ['memoryBase', 'tableBase'] # wasm side modules have a specific convention for these
+
+  # See if we need ASYNCIFY functions
+  # We might not need them even if ASYNCIFY is enabled
+  if need_asyncify(exported_implemented_functions):
+    basic_vars += ['___async', '___async_unwind', '___async_retval', '___async_cur_frame']
   return basic_vars
 
 def create_exports(exported_implemented_functions, in_table, function_table_data, metadata, settings):
