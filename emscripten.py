@@ -507,28 +507,27 @@ def get_all_implemented(forwarded_json, metadata):
 
 
 def get_exported_implemented_functions(all_exported_functions, all_implemented, metadata, settings):
-  exported_implemented_functions = set(metadata['exports'])
+  funcs = set(metadata['exports'])
   export_bindings = settings['EXPORT_BINDINGS']
   export_all = settings['EXPORT_ALL']
   for key in all_implemented:
     if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
-      exported_implemented_functions.add(key)
+      funcs.add(key)
 
-  exported_implemented_functions = list(exported_implemented_functions) + metadata['initializers']
+  funcs = list(funcs) + metadata['initializers']
   if not settings['ONLY_MY_CODE']:
-    exported_implemented_functions.append('runPostSets')
+    funcs.append('runPostSets')
     if settings['ALLOW_MEMORY_GROWTH']:
-      exported_implemented_functions.append('_emscripten_replace_memory')
+      funcs.append('_emscripten_replace_memory')
     if not settings['SIDE_MODULE']:
-      exported_implemented_functions += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
+      funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
     if settings['SAFE_HEAP']:
-      exported_implemented_functions += ['setDynamicTop']
+      funcs += ['setDynamicTop']
     if not settings['RELOCATABLE']:
-      exported_implemented_functions += ['setTempRet0', 'getTempRet0']
+      funcs += ['setTempRet0', 'getTempRet0']
     if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
-      exported_implemented_functions += ['setThrew']
-  exported_implemented_functions = list(set(exported_implemented_functions))
-  return exported_implemented_functions
+      funcs += ['setThrew']
+  return list(set(funcs))
 
 
 def get_implemented_functions(pre, metadata, settings, all_implemented):
