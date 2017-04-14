@@ -400,59 +400,9 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     exported_implemented_functions = get_exported_implemented_functions(
       all_exported_functions, all_implemented, metadata, settings)
 
-    asm_setup = ''
-    if settings['ASSERTIONS'] >= 2:
-      for sig in function_table_data:
-        asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
-    if settings['ASSERTIONS']:
-      for sig in function_table_sigs:
-        asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig, function_table_sigs, settings) + 'abort(x) }\n'
-    if settings['RELOCATABLE']:
-      asm_setup += 'var setTempRet0 = Runtime.setTempRet0, getTempRet0 = Runtime.getTempRet0;\n'
-      if not settings['SIDE_MODULE']:
-        asm_setup += 'var gb = Runtime.GLOBAL_BASE, fb = 0;\n'
-    if settings['BINARYEN']:
-      def table_size(table):
-        table_contents = table[table.index('[') + 1: table.index(']')]
-        if len(table_contents) == 0: # empty table
-          return 0
-        return table_contents.count(',') + 1
-
-      table_total_size = sum(map(table_size, function_table_data.values()))
-      asm_setup += "\nModule['wasmTableSize'] = %d;\n" % table_total_size
-      if not settings['EMULATED_FUNCTION_POINTERS']:
-        asm_setup += "\nModule['wasmMaxTableSize'] = %d;\n" % table_total_size
-
-
-    basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory']
-    if settings['ABORTING_MALLOC']:
-      basic_funcs += ['abortOnCannotGrowMemory']
-    if settings['STACK_OVERFLOW_CHECK']:
-      basic_funcs += ['abortStackOverflow']
-    if settings['SAFE_HEAP']:
-      if asm_safe_heap(settings):
-        basic_funcs += ['segfault', 'alignfault', 'ftfault']
-      else:
-        basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_LOAD_D', 'SAFE_HEAP_STORE', 'SAFE_HEAP_STORE_D', 'SAFE_FT_MASK']
-    if settings['ASSERTIONS']:
-      for sig in function_table_sigs:
-        basic_funcs += ['nullFunc_' + sig]
-    if settings['RELOCATABLE']:
-      basic_funcs += ['setTempRet0', 'getTempRet0']
-
-    basic_vars = ['DYNAMICTOP_PTR', 'tempDoublePtr', 'ABORT']
-    if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
-      basic_vars += ['STACKTOP', 'STACK_MAX']
-    if metadata.get('preciseI64MathUsed'):
-      basic_vars += ['cttz_i8']
-    else:
-      if forwarded_json['Functions']['libraryFunctions'].get('_llvm_cttz_i32'):
-        basic_vars += ['cttz_i8']
-    if settings['RELOCATABLE']:
-      if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
-        basic_vars += ['gb', 'fb']
-      else:
-        basic_vars += ['memoryBase', 'tableBase'] # wasm side modules have a specific convention for these
+    asm_setup = create_asm_setup(debug_tables, function_table_data, settings)
+    basic_funcs = create_basic_funcs(function_table_sigs, settings)
+    basic_vars = create_basic_vars(forwarded_json, metadata, settings)
 
     # See if we need ASYNCIFY functions
     # We might not need them even if ASYNCIFY is enabled
@@ -1080,6 +1030,67 @@ def asm_safe_heap(settings):
 def provide_fround(settings):
   return settings['PRECISE_F32'] or settings['SIMD']
 
+
+def create_asm_setup(debug_tables, function_table_data, settings):
+  asm_setup = ''
+  if settings['ASSERTIONS'] >= 2:
+    for sig in function_table_data:
+      asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
+  if settings['ASSERTIONS']:
+    function_table_sigs = function_table_data.keys()
+    for sig in function_table_sigs:
+      asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig, function_table_sigs, settings) + 'abort(x) }\n'
+  if settings['RELOCATABLE']:
+    asm_setup += 'var setTempRet0 = Runtime.setTempRet0, getTempRet0 = Runtime.getTempRet0;\n'
+    if not settings['SIDE_MODULE']:
+      asm_setup += 'var gb = Runtime.GLOBAL_BASE, fb = 0;\n'
+  if settings['BINARYEN']:
+    def table_size(table):
+      table_contents = table[table.index('[') + 1: table.index(']')]
+      if len(table_contents) == 0: # empty table
+        return 0
+      return table_contents.count(',') + 1
+
+    table_total_size = sum(map(table_size, function_table_data.values()))
+    asm_setup += "\nModule['wasmTableSize'] = %d;\n" % table_total_size
+    if not settings['EMULATED_FUNCTION_POINTERS']:
+      asm_setup += "\nModule['wasmMaxTableSize'] = %d;\n" % table_total_size
+  return asm_setup
+
+
+def create_basic_funcs(function_table_sigs, settings):
+  basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory']
+  if settings['ABORTING_MALLOC']:
+    basic_funcs += ['abortOnCannotGrowMemory']
+  if settings['STACK_OVERFLOW_CHECK']:
+    basic_funcs += ['abortStackOverflow']
+  if settings['SAFE_HEAP']:
+    if asm_safe_heap(settings):
+      basic_funcs += ['segfault', 'alignfault', 'ftfault']
+    else:
+      basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_LOAD_D', 'SAFE_HEAP_STORE', 'SAFE_HEAP_STORE_D', 'SAFE_FT_MASK']
+  if settings['ASSERTIONS']:
+    for sig in function_table_sigs:
+      basic_funcs += ['nullFunc_' + sig]
+  if settings['RELOCATABLE']:
+    basic_funcs += ['setTempRet0', 'getTempRet0']
+  return basic_funcs
+
+def create_basic_vars(forwarded_json, metadata, settings):
+  basic_vars = ['DYNAMICTOP_PTR', 'tempDoublePtr', 'ABORT']
+  if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
+    basic_vars += ['STACKTOP', 'STACK_MAX']
+  if metadata.get('preciseI64MathUsed'):
+    basic_vars += ['cttz_i8']
+  else:
+    if forwarded_json['Functions']['libraryFunctions'].get('_llvm_cttz_i32'):
+      basic_vars += ['cttz_i8']
+  if settings['RELOCATABLE']:
+    if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
+      basic_vars += ['gb', 'fb']
+    else:
+      basic_vars += ['memoryBase', 'tableBase'] # wasm side modules have a specific convention for these
+  return basic_vars
 
 def create_exports(exported_implemented_functions, in_table, function_table_data, metadata, settings):
   quote = quoter(settings)
