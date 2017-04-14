@@ -1232,80 +1232,41 @@ for (var named in NAMED_GLOBALS) {
     first_in_asm = ''
     if settings['SPLIT_MEMORY']:
       if not settings['SAFE_SPLIT_MEMORY']:
-        first_in_asm += '''
-function get8(ptr) {
+        def make_get_set(name, coercer, shift):
+          access = 'HEAP{name}s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> {shift}]'.format(name=name, shift=shift)
+          format_data = {
+            'name': name,
+            'coerced_value': coercer('value'),
+            'access': access,
+            'coerced_access': coercer(access),
+          }
+          getter = '''
+function get{name}(ptr) {{
   ptr = ptr | 0;
-  return HEAP8s[ptr >> SPLIT_MEMORY_BITS][ptr & SPLIT_MEMORY_MASK] | 0;
-}
-function set8(ptr, value) {
+  return {coerced_access};
+}}'''.format(**format_data)
+          setter = '''
+function set{name}(ptr, value) {{
   ptr = ptr | 0;
-  value = value | 0;
-  HEAP8s[ptr >> SPLIT_MEMORY_BITS][ptr & SPLIT_MEMORY_MASK] = value;
-}
-function get16(ptr) {
-  ptr = ptr | 0;
-  return HEAP16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] | 0;
-}
-function set16(ptr, value) {
-  ptr = ptr | 0;
-  value = value | 0;
-  HEAP16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] = value;
-}
-function get32(ptr) {
-  ptr = ptr | 0;
-  return HEAP32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] | 0;
-}
-function set32(ptr, value) {
-  ptr = ptr | 0;
-  value = value | 0;
-  HEAP32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
-}
-function getU8(ptr) {
-  ptr = ptr | 0;
-  return HEAPU8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] | 0;
-}
-function setU8(ptr, value) {
-  ptr = ptr | 0;
-  value = value | 0;
-  HEAPU8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] = value;
-}
-function getU16(ptr) {
-  ptr = ptr | 0;
-  return HEAPU16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] | 0;
-}
-function setU16(ptr, value) {
-  ptr = ptr | 0;
-  value = value | 0;
-  HEAPU16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] = value;
-}
-function getU32(ptr) {
-  ptr = ptr | 0;
-  return HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] | 0;
-}
-function setU32(ptr, value) {
-  ptr = ptr | 0;
-  value = value | 0;
-  HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
-}
-function getF32(ptr) {
-  ptr = ptr | 0;
-  return +HEAPF32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2]; // TODO: fround when present
-}
-function setF32(ptr, value) {
-  ptr = ptr | 0;
-  value = +value;
-  HEAPF32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
-}
-function getF64(ptr) {
-  ptr = ptr | 0;
-  return +HEAPF64s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 3];
-}
-function setF64(ptr, value) {
-  ptr = ptr | 0;
-  value = +value;
-  HEAPF64s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 3] = value;
-}
-'''
+  value = {coerced_value};
+  {access} = value;
+}}'''.format(**format_data)
+          return getter + setter
+        def int_coerce(s):
+          return s + ' | 0'
+        def float_coerce(s):
+          return '+' + s
+        get_set_types = [
+          ('8', int_coerce, 0),
+          ('16', int_coerce, 1),
+          ('32', int_coerce, 2),
+          ('U8', int_coerce, 0),
+          ('U16', int_coerce, 1),
+          ('U32', int_coerce, 2),
+          ('F32', float_coerce, 2), # TODO: fround when present
+          ('F64', float_coerce, 3),
+        ]
+        first_in_asm += ''.join([make_get_set(*args) for args in get_set_types]) + '\n'
       first_in_asm += 'buffer = new ArrayBuffer(32); // fake\n'
 
     runtime_funcs = []
