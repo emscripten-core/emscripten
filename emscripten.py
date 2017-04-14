@@ -97,12 +97,12 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
       glue, forwarded_data = compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DEBUG)
 
     with ToolchainProfiler.profile_block('function_tables_and_exports'):
-      (post, funcs_js, provide_fround, sending, receiving, asm_setup, the_global,
+      (post, funcs_js, sending, receiving, asm_setup, the_global,
        asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, function_table_data,
        forwarded_json) = function_tables_and_exports(funcs, metadata, mem_init, glue,
                                                      forwarded_data, settings, outfile, DEBUG)
     with ToolchainProfiler.profile_block('finalize_output'):
-      finalize_output(metadata, post, funcs_js, provide_fround, sending,
+      finalize_output(metadata, post, funcs_js, sending,
                       receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables,
                       final_function_tables, exports, function_table_data, forwarded_json, settings, outfile, DEBUG)
 
@@ -488,12 +488,10 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
       for extern in metadata['externs']:
         asm_setup += 'var g$' + extern + ' = function() { ' + check(extern) + ' return ' + side + 'Module["' + extern + '"] };\n'
 
-    provide_fround = settings['PRECISE_F32'] or settings['SIMD']
-
     bg_funcs = basic_funcs + global_funcs
     bg_vars = basic_vars + global_vars
     asm_global_funcs, asm_global_vars = create_asm_globals(
-      provide_fround, bg_funcs, bg_vars, access_quote, metadata, settings)
+      bg_funcs, bg_vars, access_quote, metadata, settings)
 
     the_global = create_the_global(metadata, settings)
     sending_vars = basic_funcs + global_funcs + basic_vars + global_vars
@@ -514,7 +512,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
         len(exports), len(the_global), len(sending), len(receiving)]))
       logging.debug('  emscript: python processing: function tables and exports took %s seconds' % (time.time() - t))
 
-    return (post, funcs_js, provide_fround, sending, receiving,
+    return (post, funcs_js, sending, receiving,
             asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables,
             exports, function_table_data, forwarded_json)
 
@@ -934,9 +932,9 @@ def signature_sort_key(sig):
   return closure
 
 
-def create_asm_globals(provide_fround, bg_funcs, bg_vars, access_quote, metadata, settings):
+def create_asm_globals(bg_funcs, bg_vars, access_quote, metadata, settings):
   maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'max', 'clz32']]
-  if provide_fround:
+  if provide_fround(settings):
     maths += ['Math.fround']
 
   asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global' + access_quote(g) + ';\n' for g in maths])
@@ -1078,6 +1076,9 @@ def asm_safe_heap(settings):
   return settings['SAFE_HEAP'] and not settings['SAFE_HEAP_LOG'] and not settings['RELOCATABLE']
 
 
+def provide_fround(settings):
+  return settings['PRECISE_F32'] or settings['SIMD']
+
 def create_exports(exported_implemented_functions, in_table, function_table_data, metadata, settings):
   quote = quoter(settings)
   asm_runtime_funcs = create_asm_runtime_funcs(settings)
@@ -1170,7 +1171,7 @@ return real_''' + s + '''.apply(null, arguments);
   return receiving
 
 
-def finalize_output(metadata, post, funcs_js, provide_fround, sending, receiving,
+def finalize_output(metadata, post, funcs_js, sending, receiving,
   asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports,
   function_table_data, forwarded_json, settings, outfile, DEBUG):
     if DEBUG:
@@ -1492,9 +1493,9 @@ var asm = (function(global, env, buffer) {
   var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
   var tempRet0 = 0;
 ''' % (access_quote('NaN'), access_quote('Infinity'))) + '\n' + asm_global_funcs] + \
-  ['  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround else '0.0')] + \
+  ['  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround(settings) else '0.0')] + \
   ['  var asyncState = 0;\n' if settings.get('EMTERPRETIFY_ASYNC') else ''] + \
-  (['  const f0 = Math_fround(0);\n'] if provide_fround else []) + \
+  (['  const f0 = Math_fround(0);\n'] if provide_fround(settings) else []) + \
   ['' if not settings['ALLOW_MEMORY_GROWTH'] else '''
 function _emscripten_replace_memory(newBuffer) {
   if ((byteLength(newBuffer) & 0xffffff || byteLength(newBuffer) <= 0xffffff) || byteLength(newBuffer) > 0x80000000) return false;
