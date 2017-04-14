@@ -1240,18 +1240,16 @@ for (var named in NAMED_GLOBALS) {
             'access': access,
             'coerced_access': coercer(access),
           }
-          getter = '''
+          return '''
 function get{name}(ptr) {{
   ptr = ptr | 0;
   return {coerced_access};
-}}'''.format(**format_data)
-          setter = '''
+}}
 function set{name}(ptr, value) {{
   ptr = ptr | 0;
   value = {coerced_value};
   {access} = value;
 }}'''.format(**format_data)
-          return getter + setter
         def int_coerce(s):
           return s + ' | 0'
         def float_coerce(s):
