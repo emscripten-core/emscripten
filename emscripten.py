@@ -367,8 +367,8 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     pre, funcs_js = get_js_funcs(pre, funcs)
     all_exported_functions = get_all_exported_functions(function_table_data, settings)
     all_implemented = get_all_implemented(forwarded_json, metadata)
+    check_all_implemented(all_implemented, pre, settings)
     implemented_functions = get_implemented_functions(metadata)
-    check_implemented_functions(implemented_functions, pre, settings, all_implemented)
     pre = include_asm_consts(pre, forwarded_json, metadata, settings)
     #if DEBUG: outfile.write('// pre\n')
     outfile.write(pre)
@@ -507,6 +507,24 @@ def get_all_implemented(forwarded_json, metadata):
   return metadata['implementedFunctions'] + forwarded_json['Functions']['implementedFunctions'].keys() # XXX perf?
 
 
+def check_all_implemented(all_implemented, pre, settings):
+  if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
+    original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
+    if original_exports[0] == '@':
+      original_exports = json.loads(open(original_exports[1:]).read())
+    for requested in original_exports:
+      if not is_already_implemented(requested, pre, all_implemented):
+        # could be a js library func
+        logging.warning('function requested to be exported, but not implemented: "%s"', requested)
+
+
+def is_already_implemented(requested, pre, all_implemented):
+  is_implemented = requested in all_implemented
+  # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS
+  is_exception = requested == '_malloc'
+  in_pre = ('function ' + requested.encode('utf-8')) in pre
+  return is_implemented or is_exception or in_pre
+
 def get_exported_implemented_functions(all_exported_functions, all_implemented, metadata, settings):
   funcs = set(metadata['exports'])
   export_bindings = settings['EXPORT_BINDINGS']
@@ -533,19 +551,6 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
 
 def get_implemented_functions(metadata):
   return set(metadata['implementedFunctions'])
-
-
-def check_implemented_functions(implemented_functions, pre, settings, all_implemented):
-  if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
-    original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
-    if original_exports[0] == '@': original_exports = json.loads(open(original_exports[1:]).read())
-    for requested in original_exports:
-      # check if already implemented
-      # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS \
-      if requested not in all_implemented and \
-         requested != '_malloc' and \
-         (('function ' + requested.encode('utf-8')) not in pre): # could be a js library func
-        logging.warning('function requested to be exported, but not implemented: "%s"', requested)
 
 
 def include_asm_consts(pre, forwarded_json, metadata, settings):
