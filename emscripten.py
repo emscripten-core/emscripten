@@ -734,36 +734,36 @@ def math_fix(g):
 
 
 def make_function_tables_impls(function_table_sigs, settings):
-    function_tables_impls = []
-    for sig in function_table_sigs:
-      args = ','.join(['a' + str(i) for i in range(1, len(sig))])
-      arg_coercions = ' '.join(['a' + str(i) + '=' + shared.JS.make_coercion('a' + str(i), sig[i], settings) + ';' for i in range(1, len(sig))])
-      coerced_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings) for i in range(1, len(sig))])
-      ret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('FUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s)' % (sig, sig, coerced_args), sig[0], settings)
-      if not settings['EMULATED_FUNCTION_POINTERS']:
-        function_tables_impls.append('''
+  function_tables_impls = []
+  for sig in function_table_sigs:
+    args = ','.join(['a' + str(i) for i in range(1, len(sig))])
+    arg_coercions = ' '.join(['a' + str(i) + '=' + shared.JS.make_coercion('a' + str(i), sig[i], settings) + ';' for i in range(1, len(sig))])
+    coerced_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings) for i in range(1, len(sig))])
+    ret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('FUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s)' % (sig, sig, coerced_args), sig[0], settings)
+    if not settings['EMULATED_FUNCTION_POINTERS']:
+      function_tables_impls.append('''
 function dynCall_%s(index%s%s) {
   index = index|0;
   %s
   %s;
 }
 ''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
-      else:
-        function_tables_impls.append('''
+    else:
+      function_tables_impls.append('''
 var dynCall_%s = ftCall_%s;
 ''' % (sig, sig))
 
-      ffi_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings, ffi_arg=True) for i in range(1, len(sig))])
-      for i in range(settings['RESERVED_FUNCTION_POINTERS']):
-        jsret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('jsCall_%s(%d%s%s)' % (sig, i, ',' if ffi_args else '', ffi_args), sig[0], settings, ffi_result=True)
-        function_tables_impls.append('''
+    ffi_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings, ffi_arg=True) for i in range(1, len(sig))])
+    for i in range(settings['RESERVED_FUNCTION_POINTERS']):
+      jsret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('jsCall_%s(%d%s%s)' % (sig, i, ',' if ffi_args else '', ffi_args), sig[0], settings, ffi_result=True)
+      function_tables_impls.append('''
 function jsCall_%s_%s(%s) {
   %s
   %s;
 }
 
 ''' % (sig, i, args, arg_coercions, jsret))
-    return function_tables_impls
+  return function_tables_impls
 
 
 def setup_function_pointers(function_table_sigs, settings):
