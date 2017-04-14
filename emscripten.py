@@ -403,7 +403,6 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
     shared.Settings.copy(settings)
 
-    asm_setup += setup_function_pointers(function_table_sigs, settings)
     basic_funcs += setup_basic_funcs(function_table_sigs, settings)
     funcs_js += setup_funcs_js(function_table_sigs, settings)
 
@@ -438,8 +437,13 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     function_tables_impls = make_function_tables_impls(function_table_sigs, settings)
     final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
     if settings.get('EMULATED_FUNCTION_POINTERS'):
-      asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
-      final_function_tables = final_function_tables.replace("asm['", '').replace("']", '').replace('var SIDE_FUNCTION_TABLE_', 'var FUNCTION_TABLE_').replace('var dynCall_', '//')
+      final_function_tables = (
+        final_function_tables
+        .replace("asm['", '')
+        .replace("']", '')
+        .replace('var SIDE_FUNCTION_TABLE_', 'var FUNCTION_TABLE_')
+        .replace('var dynCall_', '//')
+      )
 
     if DEBUG:
       logging.debug('asm text sizes' + str([
@@ -766,34 +770,6 @@ function jsCall_%s_%s(%s) {
   return function_tables_impls
 
 
-def setup_function_pointers(function_table_sigs, settings):
-  asm_setup = ''
-  for sig in function_table_sigs:
-    asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
-    if settings.get('RESERVED_FUNCTION_POINTERS'):
-      asm_setup += '\n' + shared.JS.make_jscall(sig) + '\n'
-    if settings.get('EMULATED_FUNCTION_POINTERS'):
-      args = ['a%d' % i for i in range(len(sig)-1)]
-      full_args = ['x'] + args
-      table_access = 'FUNCTION_TABLE_' + sig
-      if settings['SIDE_MODULE']:
-        table_access = 'parentModule["' + table_access + '"]' # side module tables were merged into the parent, we need to access the global one
-      if settings['BINARYEN']:
-        # wasm uses a Table, which means we have function pointer emulation capabilities all the time, at no cost. just call the table
-        table_access = "Module['wasmTable']"
-        table_read = table_access + '.get(x)'
-      else:
-        table_read = table_access + '[x]'
-      prelude = '''
-  if (x < 0 || x >= %s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig, function_table_sigs, settings))
-      asm_setup += '''
-function ftCall_%s(%s) {%s
-  return %s(%s);
-}
-''' % (sig, ', '.join(full_args), prelude, table_read, ', '.join(args))
-  return asm_setup
-
-
 def setup_basic_funcs(function_table_sigs, settings):
   basic_funcs = []
   for sig in function_table_sigs:
@@ -1020,12 +996,13 @@ def provide_fround(settings):
 
 
 def create_asm_setup(debug_tables, function_table_data, metadata, settings):
+  function_table_sigs = function_table_data.keys()
+
   asm_setup = ''
   if settings['ASSERTIONS'] >= 2:
     for sig in function_table_data:
       asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
   if settings['ASSERTIONS']:
-    function_table_sigs = function_table_data.keys()
     for sig in function_table_sigs:
       asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig, function_table_sigs, settings) + 'abort(x) }\n'
   if settings['BINARYEN']:
@@ -1052,6 +1029,41 @@ def create_asm_setup(debug_tables, function_table_data, metadata, settings):
       return ''
     for extern in metadata['externs']:
       asm_setup += 'var g$' + extern + ' = function() { ' + check(extern) + ' return ' + side + 'Module["' + extern + '"] };\n'
+
+  asm_setup += setup_function_pointers(function_table_sigs, settings)
+
+  if settings.get('EMULATED_FUNCTION_POINTERS'):
+    function_tables_impls = make_function_tables_impls(function_table_sigs, settings)
+    asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
+
+  return asm_setup
+
+
+def setup_function_pointers(function_table_sigs, settings):
+  asm_setup = ''
+  for sig in function_table_sigs:
+    asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
+    if settings.get('RESERVED_FUNCTION_POINTERS'):
+      asm_setup += '\n' + shared.JS.make_jscall(sig) + '\n'
+    if settings.get('EMULATED_FUNCTION_POINTERS'):
+      args = ['a%d' % i for i in range(len(sig)-1)]
+      full_args = ['x'] + args
+      table_access = 'FUNCTION_TABLE_' + sig
+      if settings['SIDE_MODULE']:
+        table_access = 'parentModule["' + table_access + '"]' # side module tables were merged into the parent, we need to access the global one
+      if settings['BINARYEN']:
+        # wasm uses a Table, which means we have function pointer emulation capabilities all the time, at no cost. just call the table
+        table_access = "Module['wasmTable']"
+        table_read = table_access + '.get(x)'
+      else:
+        table_read = table_access + '[x]'
+      prelude = '''
+  if (x < 0 || x >= %s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig, function_table_sigs, settings))
+      asm_setup += '''
+function ftCall_%s(%s) {%s
+  return %s(%s);
+}
+''' % (sig, ', '.join(full_args), prelude, table_read, ', '.join(args))
   return asm_setup
 
 
