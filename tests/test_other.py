@@ -670,6 +670,12 @@ f.close()
       assert process.returncode is not 0, 'Trying to compile a nonexisting file should return with a nonzero error code!'
       assert os.path.exists('this_output_file_should_never_exist.js') == False, 'Emcc should not produce an output file when build fails!'
 
+  def test_use_cxx(self):
+    dash_xc = Popen([PYTHON, EMCC, '-v', '-xc', '/dev/null'], stdout=PIPE, stderr=PIPE).communicate()[1]
+    self.assertNotContained('-std=c++03', dash_xc)
+    dash_xcpp = Popen([PYTHON, EMCC, '-v', '-xc++', '/dev/null'], stdout=PIPE, stderr=PIPE).communicate()[1]
+    self.assertContained('-std=c++03', dash_xcpp)
+
   def test_cxx03(self):
     for compiler in [EMCC, EMXX]:
       process = Popen([PYTHON, compiler, path_from_root('tests', 'hello_cxx03.cpp')], stdout=PIPE, stderr=PIPE)

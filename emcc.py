@@ -760,7 +760,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       for i in range(0, len(newargs)):
         arg = newargs[i]
-        if not arg.startswith('-'):
+        if arg == '-xc':
+          use_cxx = False
+          break
+        elif arg == '-xc++':
+          use_cxx = True
+          break
+        elif not arg.startswith('-'):
           if arg.endswith(C_ENDINGS + OBJC_ENDINGS):
             use_cxx = False
 
