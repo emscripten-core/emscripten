@@ -1362,7 +1362,7 @@ def main():
         url = url.replace('&', '\\&')
       browser = [ADB, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-n', browser_app, '-d', url]
       processname_killed_atexit = browser_app[:browser_app.find('/')]
-  else: #Launching a web page on local system.
+  elif not options.no_browser: #Launching a web page on local system.
     if options.browser:
       # Be resilient to quotes and whitespace
       options.browser = options.browser.strip()
