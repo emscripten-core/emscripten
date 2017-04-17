@@ -13,6 +13,7 @@ from tools.toolchain_profiler import ToolchainProfiler
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
+import difflib
 import os, sys, json, optparse, subprocess, re, time, logging
 
 from tools import shared
@@ -88,14 +89,22 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
     # memory to be reclaimed
 
     with ToolchainProfiler.profile_block('get_and_parse_backend'):
-      funcs, metadata, mem_init = get_and_parse_backend(infile, settings, temp_files, DEBUG)
+      backend_output = compile_js(infile, settings, temp_files, DEBUG)
+      funcs, metadata, mem_init = parse_backend_output(backend_output, DEBUG)
+      fixup_metadata_tables(metadata, settings)
+      funcs = fixup_functions(funcs, metadata, settings)
     with ToolchainProfiler.profile_block('compiler_glue'):
       glue, forwarded_data = compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DEBUG)
 
     with ToolchainProfiler.profile_block('function_tables_and_exports'):
-      post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, last_forwarded_json = function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG)
+      (post, funcs_js, sending, receiving, asm_setup, the_global, asm_global_vars,
+       asm_global_funcs, pre_tables, final_function_tables, exports, function_table_data,
+       forwarded_json) = function_tables_and_exports(funcs, metadata, mem_init, glue,
+                                                     forwarded_data, settings, outfile, DEBUG)
     with ToolchainProfiler.profile_block('finalize_output'):
-      finalize_output(metadata, post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, last_forwarded_json, settings, outfile, DEBUG)
+      finalize_output(metadata, post, funcs_js, sending, receiving, asm_setup, the_global,
+                      asm_global_vars, asm_global_funcs, pre_tables, final_function_tables,
+                      exports, function_table_data, forwarded_json, settings, outfile, DEBUG)
 
     success = True
 
@@ -104,330 +113,267 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
     if not success:
       shared.try_delete(outfile.name) # remove partial output
 
-def get_and_parse_backend(infile, settings, temp_files, DEBUG):
-    with temp_files.get_file('.4.js') as temp_js:
-      backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
-      backend_args = [backend_compiler, infile, '-march=js', '-filetype=asm', '-o', temp_js]
-      if settings['PRECISE_F32']:
-        backend_args += ['-emscripten-precise-f32']
-      if settings['USE_PTHREADS']:
-        backend_args += ['-emscripten-enable-pthreads']
-      if settings['WARN_UNALIGNED']:
-        backend_args += ['-emscripten-warn-unaligned']
-      if settings['RESERVED_FUNCTION_POINTERS'] > 0:
-        backend_args += ['-emscripten-reserved-function-pointers=%d' % settings['RESERVED_FUNCTION_POINTERS']]
-      if settings['ASSERTIONS'] > 0:
-        backend_args += ['-emscripten-assertions=%d' % settings['ASSERTIONS']]
-      if settings['ALIASING_FUNCTION_POINTERS'] == 0:
-        backend_args += ['-emscripten-no-aliasing-function-pointers']
-      if settings['EMULATED_FUNCTION_POINTERS']:
-        backend_args += ['-emscripten-emulated-function-pointers']
-      if settings['RELOCATABLE']:
-        backend_args += ['-emscripten-relocatable']
-        backend_args += ['-emscripten-global-base=0']
-      elif settings['GLOBAL_BASE'] >= 0:
-        backend_args += ['-emscripten-global-base=%d' % settings['GLOBAL_BASE']]
-      if settings['SIDE_MODULE']:
-        backend_args += ['-emscripten-side-module']
-      backend_args += ['-emscripten-stack-size=%d' % settings['TOTAL_STACK']]
-      backend_args += ['-O' + str(settings['OPT_LEVEL'])]
-      if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
-        backend_args += ['-enable-emscripten-cpp-exceptions']
-        if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
-          backend_args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['fake'])]
-      if settings['ASYNCIFY']:
-        backend_args += ['-emscripten-asyncify']
-        backend_args += ['-emscripten-asyncify-functions=' + ','.join(settings['ASYNCIFY_FUNCTIONS'])]
-        backend_args += ['-emscripten-asyncify-whitelist=' + ','.join(settings['ASYNCIFY_WHITELIST'])]
-      if settings['NO_EXIT_RUNTIME']:
-        backend_args += ['-emscripten-no-exit-runtime']
-      if settings['BINARYEN']:
-        backend_args += ['-emscripten-wasm']
-        if shared.Building.is_wasm_only():
-          backend_args += ['-emscripten-only-wasm']
-      if settings['CYBERDWARF']:
-        backend_args += ['-enable-cyberdwarf']
+def compile_js(infile, settings, temp_files, DEBUG):
+  """Compile infile with asm.js backend, return the contents of the compiled js"""
+  with temp_files.get_file('.4.js') as temp_js:
+    backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
+    backend_args = [backend_compiler, infile, '-march=js', '-filetype=asm', '-o', temp_js]
+    backend_args += backend_args_for_settings(settings)
 
-      if DEBUG:
-        logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
-        t = time.time()
-      with ToolchainProfiler.profile_block('emscript_llvm_backend'):
-        shared.jsrun.timeout_run(subprocess.Popen(backend_args, stdout=subprocess.PIPE))
-      if DEBUG:
-        logging.debug('  emscript: llvm backend took %s seconds' % (time.time() - t))
+    if DEBUG:
+      logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
+      t = time.time()
+    with ToolchainProfiler.profile_block('emscript_llvm_backend'):
+      shared.jsrun.timeout_run(subprocess.Popen(backend_args, stdout=subprocess.PIPE))
+    if DEBUG:
+      logging.debug('  emscript: llvm backend took %s seconds' % (time.time() - t))
 
-      # Split up output
-      backend_output = open(temp_js).read()
-      #if DEBUG: print >> sys.stderr, backend_output
+    # Split up output
+    backend_output = open(temp_js).read()
+    #if DEBUG: print >> sys.stderr, backend_output
+  return backend_output
 
-    start_funcs_marker = '// EMSCRIPTEN_START_FUNCTIONS'
-    end_funcs_marker = '// EMSCRIPTEN_END_FUNCTIONS'
-    metadata_split_marker = '// EMSCRIPTEN_METADATA'
 
-    start_funcs = backend_output.index(start_funcs_marker)
-    end_funcs = backend_output.rindex(end_funcs_marker)
-    metadata_split = backend_output.rindex(metadata_split_marker)
+def backend_args_for_settings(settings):
+  """Create args for asm.js backend from settings dict"""
+  args = [
+    '-emscripten-stack-size=%d' % settings['TOTAL_STACK'],
+    '-O' + str(settings['OPT_LEVEL']),
+  ]
+  if settings['PRECISE_F32']:
+    args += ['-emscripten-precise-f32']
+  if settings['USE_PTHREADS']:
+    args += ['-emscripten-enable-pthreads']
+  if settings['WARN_UNALIGNED']:
+    args += ['-emscripten-warn-unaligned']
+  if settings['RESERVED_FUNCTION_POINTERS'] > 0:
+    args += ['-emscripten-reserved-function-pointers=%d' % settings['RESERVED_FUNCTION_POINTERS']]
+  if settings['ASSERTIONS'] > 0:
+    args += ['-emscripten-assertions=%d' % settings['ASSERTIONS']]
+  if settings['ALIASING_FUNCTION_POINTERS'] == 0:
+    args += ['-emscripten-no-aliasing-function-pointers']
+  if settings['EMULATED_FUNCTION_POINTERS']:
+    args += ['-emscripten-emulated-function-pointers']
+  if settings['RELOCATABLE']:
+    args += ['-emscripten-relocatable']
+    args += ['-emscripten-global-base=0']
+  elif settings['GLOBAL_BASE'] >= 0:
+    args += ['-emscripten-global-base=%d' % settings['GLOBAL_BASE']]
+  if settings['SIDE_MODULE']:
+    args += ['-emscripten-side-module']
+  if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
+    args += ['-enable-emscripten-cpp-exceptions']
+    if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
+      args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['fake'])]
+  if settings['ASYNCIFY']:
+    args += ['-emscripten-asyncify']
+    args += ['-emscripten-asyncify-functions=' + ','.join(settings['ASYNCIFY_FUNCTIONS'])]
+    args += ['-emscripten-asyncify-whitelist=' + ','.join(settings['ASYNCIFY_WHITELIST'])]
+  if settings['NO_EXIT_RUNTIME']:
+    args += ['-emscripten-no-exit-runtime']
+  if settings['BINARYEN']:
+    args += ['-emscripten-wasm']
+    if shared.Building.is_wasm_only():
+      args += ['-emscripten-only-wasm']
+  if settings['CYBERDWARF']:
+    args += ['-enable-cyberdwarf']
+  return args
 
-    funcs = backend_output[start_funcs+len(start_funcs_marker):end_funcs]
-    metadata_raw = backend_output[metadata_split+len(metadata_split_marker):]
+
+def parse_backend_output(backend_output, DEBUG):
+  start_funcs_marker = '// EMSCRIPTEN_START_FUNCTIONS'
+  end_funcs_marker = '// EMSCRIPTEN_END_FUNCTIONS'
+  metadata_split_marker = '// EMSCRIPTEN_METADATA'
+
+  start_funcs = backend_output.index(start_funcs_marker)
+  end_funcs = backend_output.rindex(end_funcs_marker)
+  metadata_split = backend_output.rindex(metadata_split_marker)
+
+  funcs = backend_output[start_funcs+len(start_funcs_marker):end_funcs]
+  metadata_raw = backend_output[metadata_split+len(metadata_split_marker):]
+  mem_init = backend_output[end_funcs+len(end_funcs_marker):metadata_split]
+
+  try:
     #if DEBUG: print >> sys.stderr, "METAraw", metadata_raw
-    try:
-      metadata = json.loads(metadata_raw)
-    except Exception, e:
-      logging.error('emscript: failure to parse metadata output from compiler backend. raw output is: \n' + metadata_raw)
-      raise e
-    mem_init = backend_output[end_funcs+len(end_funcs_marker):metadata_split]
-    #if DEBUG: print >> sys.stderr, "FUNCS", funcs
-    #if DEBUG: print >> sys.stderr, "META", metadata
-    #if DEBUG: print >> sys.stderr, "meminit", mem_init
+    metadata = json.loads(metadata_raw)
+  except Exception, e:
+    logging.error('emscript: failure to parse metadata output from compiler backend. raw output is: \n' + metadata_raw)
+    raise e
 
-    # if emulating pointer casts, force all tables to the size of the largest
-    if settings['EMULATE_FUNCTION_POINTER_CASTS']:
-      max_size = 0
-      for k, v in metadata['tables'].iteritems():
-        max_size = max(max_size, v.count(',')+1)
-      for k, v in metadata['tables'].iteritems():
-        curr = v.count(',')+1
-        if curr < max_size:
-          metadata['tables'][k] = v.replace(']', (',0'*(max_size - curr)) + ']')
+  #if DEBUG: print >> sys.stderr, "FUNCS", funcs
+  #if DEBUG: print >> sys.stderr, "META", metadata
+  #if DEBUG: print >> sys.stderr, "meminit", mem_init
+  return funcs, metadata, mem_init
 
-    if settings['SIDE_MODULE']:
-      for k in metadata['tables'].keys():
-        metadata['tables'][k] = metadata['tables'][k].replace('var FUNCTION_TABLE_', 'var SIDE_FUNCTION_TABLE_')
 
-    # function table masks
-
-    table_sizes = {}
+def fixup_metadata_tables(metadata, settings):
+  # if emulating pointer casts, force all tables to the size of the largest
+  if settings['EMULATE_FUNCTION_POINTER_CASTS']:
+    max_size = 0
     for k, v in metadata['tables'].iteritems():
-      table_sizes[k] = str(v.count(',')) # undercounts by one, but that is what we want
-      #if settings['ASSERTIONS'] >= 2 and table_sizes[k] == 0:
-      #  print >> sys.stderr, 'warning: no function pointers with signature ' + k + ', but there is a call, which will abort if it occurs (this can result from undefined behavior, check for compiler warnings on your source files and consider -Werror)'
-    funcs = re.sub(r"#FM_(\w+)#", lambda m: table_sizes[m.groups(0)[0]], funcs)
+      max_size = max(max_size, v.count(',')+1)
+    for k, v in metadata['tables'].iteritems():
+      curr = v.count(',')+1
+      if curr < max_size:
+        metadata['tables'][k] = v.replace(']', (',0'*(max_size - curr)) + ']')
 
-    # fix +float into float.0, if not running js opts
-    if not settings['RUNNING_JS_OPTS']:
-      def fix_dot_zero(m):
-        num = m.group(3)
-        # TODO: handle 0x floats?
-        if num.find('.') < 0:
-          e = num.find('e')
-          if e < 0:
-            num += '.0'
-          else:
-            num = num[:e] + '.0' + num[e:]
-        return m.group(1) + m.group(2) + num
-      funcs = re.sub(r'([(=,+\-*/%<>:?] *)\+(-?)((0x)?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)', fix_dot_zero, funcs)
+  if settings['SIDE_MODULE']:
+    for k in metadata['tables'].keys():
+      metadata['tables'][k] = metadata['tables'][k].replace('var FUNCTION_TABLE_', 'var SIDE_FUNCTION_TABLE_')
 
-    return funcs, metadata, mem_init
+
+def fixup_functions(funcs, metadata, settings):
+  # function table masks
+  table_sizes = {}
+  for k, v in metadata['tables'].iteritems():
+    table_sizes[k] = str(v.count(',')) # undercounts by one, but that is what we want
+    #if settings['ASSERTIONS'] >= 2 and table_sizes[k] == 0:
+    #  print >> sys.stderr, 'warning: no function pointers with signature ' + k + ', but there is a call, which will abort if it occurs (this can result from undefined behavior, check for compiler warnings on your source files and consider -Werror)'
+  funcs = re.sub(r"#FM_(\w+)#", lambda m: table_sizes[m.groups(0)[0]], funcs)
+
+  # fix +float into float.0, if not running js opts
+  if not settings['RUNNING_JS_OPTS']:
+    def fix_dot_zero(m):
+      num = m.group(3)
+      # TODO: handle 0x floats?
+      if num.find('.') < 0:
+        e = num.find('e')
+        if e < 0:
+          num += '.0'
+        else:
+          num = num[:e] + '.0' + num[e:]
+      return m.group(1) + m.group(2) + num
+    funcs = re.sub(r'([(=,+\-*/%<>:?] *)\+(-?)((0x)?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)', fix_dot_zero, funcs)
+
+  return funcs
+
 
 def compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DEBUG):
-    # js compiler
+  if DEBUG:
+    logging.debug('emscript: js compiler glue')
+    t = time.time()
 
-    if DEBUG:
-      logging.debug('emscript: js compiler glue')
-      t = time.time()
+  # Settings changes
+  i64_funcs = ['i64Add', 'i64Subtract', '__muldi3', '__divdi3', '__udivdi3', '__remdi3', '__uremdi3']
+  for i64_func in i64_funcs:
+    if i64_func in metadata['declares']:
+      settings['PRECISE_I64_MATH'] = 2
+      break
 
-    # Settings changes
-    i64_funcs = ['i64Add', 'i64Subtract', '__muldi3', '__divdi3', '__udivdi3', '__remdi3', '__uremdi3']
-    for i64_func in i64_funcs:
-      if i64_func in metadata['declares']:
-        settings['PRECISE_I64_MATH'] = 2
-        break
+  # FIXME: do these one by one as normal js lib funcs
+  metadata['declares'] = filter(lambda i64_func: i64_func not in ['getHigh32', 'setHigh32'], metadata['declares'])
 
-    metadata['declares'] = filter(lambda i64_func: i64_func not in ['getHigh32', 'setHigh32'], metadata['declares']) # FIXME: do these one by one as normal js lib funcs
+  optimize_syscalls(metadata['declares'], settings, DEBUG)
+  update_settings_glue(settings, metadata)
+  assert not (metadata['simd'] and settings['SPLIT_MEMORY']), 'SIMD is used, but not supported in SPLIT_MEMORY'
 
-    # Syscalls optimization. Our syscalls are static, and so if we see a very limited set of them - in particular,
-    # no open() syscall and just simple writing - then we don't need full filesystem support.
-    # If FORCE_FILESYSTEM is set, we can't do this. We also don't do it if INCLUDE_FULL_LIBRARY, since
-    # not including the filesystem would mean not including the full JS libraries, and the same for
-    # MAIN_MODULE since a side module might need the filesystem.
-    if not settings['NO_FILESYSTEM'] and not settings['FORCE_FILESYSTEM'] and not settings['INCLUDE_FULL_LIBRARY'] and not settings['MAIN_MODULE']:
-      syscall_prefix = '__syscall'
-      syscalls = filter(lambda declare: declare.startswith(syscall_prefix), metadata['declares'])
-      def is_int(x):
-        try:
-          int(x)
-          return True
-        except:
-          return False
-      syscalls = filter(lambda declare: is_int(declare[len(syscall_prefix):]), syscalls)
-      syscalls = map(lambda declare: int(declare[len(syscall_prefix):]), syscalls)
-      if set(syscalls).issubset(set([6, 54, 140, 146])): # close, ioctl, llseek, writev
-        if DEBUG: logging.debug('very limited syscalls (%s) so disabling full filesystem support' % ', '.join(map(str, syscalls)))
-        settings['NO_FILESYSTEM'] = 1
+  out = compile_settings(compiler_engine, settings, libraries, temp_files)
+  assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
+  glue, forwarded_data = out.split('//FORWARDED_DATA:')
 
-    if settings['CYBERDWARF']:
-      settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'].append("cyberdwarf_Debugger")
-      settings['EXPORTED_FUNCTIONS'].append("cyberdwarf_Debugger")
+  if DEBUG:
+    logging.debug('  emscript: glue took %s seconds' % (time.time() - t))
 
-    # Integrate info from backend
-    if settings['SIDE_MODULE']:
-      settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = [] # we don't need any JS library contents in side modules
-    settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
-      set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
-        map(lambda x: x[1:], metadata['implementedFunctions'])
-      )
-    ) + map(lambda x: x[1:], metadata['externs'])
-    if metadata['simd']:
-      settings['SIMD'] = 1
-    if metadata['cantValidate'] and settings['ASM_JS'] != 2:
-      logging.warning('disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
-      settings['ASM_JS'] = 2
+  return glue, forwarded_data
 
-    settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
 
-    settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
+def optimize_syscalls(declares, settings, DEBUG):
+  """Disables filesystem if only a limited subset of syscalls is used.
 
-    assert not (metadata['simd'] and settings['SPLIT_MEMORY']), 'SIMD is used, but not supported in SPLIT_MEMORY'
+  Our syscalls are static, and so if we see a very limited set of them - in particular,
+  no open() syscall and just simple writing - then we don't need full filesystem support.
+  If FORCE_FILESYSTEM is set, we can't do this. We also don't do it if INCLUDE_FULL_LIBRARY, since
+  not including the filesystem would mean not including the full JS libraries, and the same for
+  MAIN_MODULE since a side module might need the filesystem.
+  """
+  relevant_settings = ['NO_FILESYSTEM', 'FORCE_FILESYSTEM', 'INCLUDE_FULL_LIBRARY', 'MAIN_MODULE']
+  if all([not settings[s] for s in relevant_settings]):
+    syscall_prefix = '__syscall'
+    syscall_numbers = [d[len(syscall_prefix):] for d in declares if d.startswith(syscall_prefix)]
+    syscalls = [int(s) for s in syscall_numbers if is_int(s)]
+    if set(syscalls).issubset(set([6, 54, 140, 146])): # close, ioctl, llseek, writev
+      if DEBUG: logging.debug('very limited syscalls (%s) so disabling full filesystem support' % ', '.join(map(str, syscalls)))
+      settings['NO_FILESYSTEM'] = 1
 
-    # Save settings to a file to work around v8 issue 1579
-    with temp_files.get_file('.txt') as settings_file:
-      def save_settings():
-        global settings_text
-        settings_text = json.dumps(settings, sort_keys=True)
-        s = open(settings_file, 'w')
-        s.write(settings_text)
-        s.close()
-      save_settings()
 
-      # Call js compiler
-      out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
-                         [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
-                         cwd=path_from_root('src'), error_limit=300)
-    assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
-    glue, forwarded_data = out.split('//FORWARDED_DATA:')
+def is_int(x):
+  try:
+    int(x)
+    return True
+  except:
+    return False
 
-    if DEBUG:
-      logging.debug('  emscript: glue took %s seconds' % (time.time() - t))
 
-    return glue, forwarded_data
+def update_settings_glue(settings, metadata):
+  if settings['CYBERDWARF']:
+    settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'].append("cyberdwarf_Debugger")
+    settings['EXPORTED_FUNCTIONS'].append("cyberdwarf_Debugger")
+
+  # Integrate info from backend
+  if settings['SIDE_MODULE']:
+    settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = [] # we don't need any JS library contents in side modules
+  settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
+    set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
+      map(lambda x: x[1:], metadata['implementedFunctions'])
+    )
+  ) + map(lambda x: x[1:], metadata['externs'])
+  if metadata['simd']:
+    settings['SIMD'] = 1
+  if metadata['cantValidate'] and settings['ASM_JS'] != 2:
+    logging.warning('disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
+    settings['ASM_JS'] = 2
+
+  settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
+
+  settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
+
+
+def compile_settings(compiler_engine, settings, libraries, temp_files):
+  # Save settings to a file to work around v8 issue 1579
+  with temp_files.get_file('.txt') as settings_file:
+    def save_settings():
+      global settings_text
+      settings_text = json.dumps(settings, sort_keys=True)
+      s = open(settings_file, 'w')
+      s.write(settings_text)
+      s.close()
+    save_settings()
+
+    # Call js compiler
+    return jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
+                        [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                        cwd=path_from_root('src'), error_limit=300)
+
 
 def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG):
-
     if DEBUG:
       logging.debug('emscript: python processing: function tables and exports')
       t = time.time()
 
-    access_quote = access_quoter(settings)
-    quote = quoter(settings)
-
-    last_forwarded_json = forwarded_json = json.loads(forwarded_data)
+    forwarded_json = json.loads(forwarded_data)
 
     # merge in information from llvm backend
 
-    last_forwarded_json['Functions']['tables'] = metadata['tables']
+    function_table_data = metadata['tables']
+
+    # merge forwarded data
+    settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
 
     pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 
     #print >> sys.stderr, 'glue:', pre, '\n\n||||||||||||||||\n\n', post, '...............'
 
-    # memory and global initializers
-
-    global_initializers = str(', '.join(map(lambda i: '{ func: function() { %s() } }' % i, metadata['initializers'])))
-
-    if settings['SIMD'] == 1:
-      pre = open(path_from_root(os.path.join('src', 'ecmascript_simd.js'))).read() + '\n\n' + pre
-
-    staticbump = metadata['staticBump']
-    while staticbump % 16 != 0: staticbump += 1
-    pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;%s
-  /* global initializers */ %s __ATINIT__.push(%s);
-  %s''' % (staticbump,
-           'assert(STATICTOP < SPLIT_MEMORY, "SPLIT_MEMORY size must be big enough so the entire static memory, need " + STATICTOP);' if settings['SPLIT_MEMORY'] else '',
-           'if (!ENVIRONMENT_IS_PTHREAD)' if settings['USE_PTHREADS'] else '',
-           global_initializers,
-           mem_init))
-
-    if settings['SIDE_MODULE']:
-      pre = pre.replace('Runtime.GLOBAL_BASE', 'gb')
-    if settings['SIDE_MODULE'] or settings['BINARYEN']:
-      pre = pre.replace('{{{ STATIC_BUMP }}}', str(staticbump))
-
-    funcs_js = [funcs]
-    parts = pre.split('// ASM_LIBRARY FUNCTIONS\n')
-    if len(parts) > 1:
-      pre = parts[0]
-      funcs_js.append(parts[1])
-
-    # merge forwarded data
-    settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
-    all_exported_functions = set(shared.expand_response(settings['EXPORTED_FUNCTIONS'])) # both asm.js and otherwise
-
-    for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
-      all_exported_functions.add('_' + additional_export)
-    if settings['EXPORT_FUNCTION_TABLES']:
-      for table in last_forwarded_json['Functions']['tables'].values():
-        for func in table.split('[')[1].split(']')[0].split(','):
-          if func[0] == '_':
-            all_exported_functions.add(func)
-    exported_implemented_functions = set(metadata['exports'])
-    export_bindings = settings['EXPORT_BINDINGS']
-    export_all = settings['EXPORT_ALL']
-    all_implemented = metadata['implementedFunctions'] + forwarded_json['Functions']['implementedFunctions'].keys() # XXX perf?
-    for key in all_implemented:
-      if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
-        exported_implemented_functions.add(key)
-    implemented_functions = set(metadata['implementedFunctions'])
-    if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
-      original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
-      if original_exports[0] == '@': original_exports = json.loads(open(original_exports[1:]).read())
-      for requested in original_exports:
-        # check if already implemented
-        # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS \
-        if requested not in all_implemented and \
-           requested != '_malloc' and \
-           (('function ' + requested.encode('utf-8')) not in pre): # could be a js library func
-          logging.warning('function requested to be exported, but not implemented: "%s"', requested)
-
-    if settings['BINARYEN'] and settings['SIDE_MODULE']:
-      assert len(metadata['asmConsts']) == 0, 'EM_ASM is not yet supported in shared wasm module (it cannot be stored in the wasm itself, need some solution)'
-
-    asm_consts = [0]*len(metadata['asmConsts'])
-    all_sigs = []
-    for k, v in metadata['asmConsts'].iteritems():
-      const = v[0].encode('utf-8')
-      sigs = v[1]
-      if len(const) > 1 and const[0] == '"' and const[-1] == '"':
-        const = const[1:-1]
-      const = '{ ' + const + ' }'
-      args = []
-      arity = max(map(len, sigs)) - 1
-      for i in range(arity):
-        args.append('$' + str(i))
-      const = 'function(' + ', '.join(args) + ') ' + const
-      asm_consts[int(k)] = const
-      all_sigs += sigs
-
-    asm_const_funcs = []
-    for sig in set(all_sigs):
-      forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
-      args = ['a%d' % i for i in range(len(sig)-1)]
-      all_args = ['code'] + args
-      asm_const_funcs.append(r'''
-function _emscripten_asm_const_%s(%s) {
- return ASM_CONSTS[code](%s);
-}''' % (sig.encode('utf-8'), ', '.join(all_args), ', '.join(args)))
-
-    pre = pre.replace('// === Body ===', '// === Body ===\n' + '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
-
+    pre = memory_and_global_initializers(pre, metadata, mem_init, settings)
+    pre, funcs_js = get_js_funcs(pre, funcs)
+    all_exported_functions = get_all_exported_functions(function_table_data, settings)
+    all_implemented = get_all_implemented(forwarded_json, metadata)
+    implemented_functions = get_implemented_functions(pre, metadata, settings, all_implemented)
+    pre = include_asm_consts(pre, forwarded_json, metadata, settings)
     #if DEBUG: outfile.write('// pre\n')
     outfile.write(pre)
     pre = None
 
     #if DEBUG: outfile.write('// funcs\n')
-
-    # when emulating function pointer casts, we need to know what is the target of each pointer
-    if settings['EMULATE_FUNCTION_POINTER_CASTS']:
-      function_pointer_targets = {}
-      for sig, table in last_forwarded_json['Functions']['tables'].iteritems():
-        start = table.index('[')
-        end = table.rindex(']')
-        body = table[start+1:end].split(',')
-        parsed = map(lambda x: x.strip(), body)
-        for i in range(len(parsed)):
-          if parsed[i] != '0':
-            assert i not in function_pointer_targets
-            function_pointer_targets[i] = [sig, str(parsed[i])]
 
     # Move preAsms to their right place
     def move_preasm(m):
@@ -437,416 +383,30 @@ function _emscripten_asm_const_%s(%s) {
     if not settings['BOOTSTRAPPING_STRUCT_INFO'] and len(funcs_js) > 1:
       funcs_js[1] = re.sub(r'/\* PRE_ASM \*/(.*)\n', move_preasm, funcs_js[1])
 
-    class Counter:
-      i = 0
-      j = 0
-    if 'pre' in last_forwarded_json['Functions']['tables']:
-      pre_tables = last_forwarded_json['Functions']['tables']['pre']
-      del last_forwarded_json['Functions']['tables']['pre']
+    if 'pre' in function_table_data:
+      pre_tables = function_table_data['pre']
+      del function_table_data['pre']
     else:
       pre_tables = ''
 
-    def unfloat(s):
-      return 'd' if s == 'f' else s # lower float to double for ffis
+    function_table_sigs = function_table_data.keys()
 
-    if settings['ASSERTIONS'] >= 2:
-      debug_tables = {}
+    in_table, debug_tables, function_tables_defs = make_function_tables_defs(
+      implemented_functions, all_implemented, function_table_data, settings, metadata)
 
-    def make_params(sig): return ','.join(['p%d' % p for p in range(len(sig)-1)])
-    def make_coerced_params(sig): return ','.join([shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
-    def make_coercions(sig): return ';'.join(['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, sig[p+1], settings)) for p in range(len(sig)-1)]) + ';'
-    def make_func(name, code, params, coercions): return 'function %s(%s) {\n %s %s\n}' % (name, params, coercions, code)
+    exported_implemented_functions = get_exported_implemented_functions(
+      all_exported_functions, all_implemented, metadata, settings)
 
-    in_table = set()
+    asm_setup = create_asm_setup(debug_tables, function_table_data, metadata, settings)
+    basic_funcs = create_basic_funcs(function_table_sigs, settings)
+    basic_vars = create_basic_vars(exported_implemented_functions, forwarded_json, metadata, settings)
 
-    def make_table(sig, raw):
-      if '[]' in raw: return ('', '') # empty table
-      params = make_params(sig)
-      coerced_params = make_coerced_params(sig)
-      coercions = make_coercions(sig)
-      def make_bad(target=None):
-        i = Counter.i
-        Counter.i += 1
-        if target is None: target = i
-        name = 'b' + str(i)
-        if not settings['ASSERTIONS']:
-          code = 'abort(%s);' % target
-        else:
-          code = 'nullFunc_' + sig + '(%d);' % target
-        if sig[0] != 'v':
-          code += 'return %s' % shared.JS.make_initializer(sig[0], settings) + ';'
-        return name, make_func(name, code, params, coercions)
-      bad, bad_func = make_bad() # the default bad func
-      if settings['ASSERTIONS'] <= 1:
-        Counter.pre = [bad_func]
-      else:
-        Counter.pre = []
-      start = raw.index('[')
-      end = raw.rindex(']')
-      body = raw[start+1:end].split(',')
-      if settings['EMULATED_FUNCTION_POINTERS']:
-        def receive(item):
-          if item == '0':
-            return item
-          else:
-            if item in all_implemented:
-              in_table.add(item)
-              return "asm['" + item + "']"
-            else:
-              return item # this is not implemented; it would normally be wrapped, but with emulation, we just use it directly outside
-        body = map(receive, body)
-      for j in range(settings['RESERVED_FUNCTION_POINTERS']):
-        curr = 'jsCall_%s_%s' % (sig, j)
-        body[settings['FUNCTION_POINTER_ALIGNMENT'] * (1 + j)] = curr
-        implemented_functions.add(curr)
-      Counter.j = 0
-      def fix_item(item):
-        j = Counter.j
-        Counter.j += 1
-        newline = Counter.j % 30 == 29
-        if item == '0':
-          if j > 0 and settings['EMULATE_FUNCTION_POINTER_CASTS'] and j in function_pointer_targets: # emulate all non-null pointer calls, if asked to
-            proper_sig, proper_target = function_pointer_targets[j]
-            if settings['EMULATED_FUNCTION_POINTERS']:
-              if proper_target in all_implemented:
-                proper_target = "asm['" + proper_target + "']"
-            def make_emulated_param(i):
-              if i >= len(sig): return shared.JS.make_initializer(proper_sig[i], settings) # extra param, just send a zero
-              return shared.JS.make_coercion('p%d' % (i-1), proper_sig[i], settings, convert_from=sig[i])
-            proper_code = proper_target + '(' + ','.join(map(lambda i: make_emulated_param(i+1), range(len(proper_sig)-1))) + ')'
-            if proper_sig[0] != 'v':
-              # proper sig has a return, which the wrapper may or may not use
-              proper_code = shared.JS.make_coercion(proper_code, proper_sig[0], settings)
-              if proper_sig[0] != sig[0]:
-                # first coercion ensured we call the target ok; this one ensures we return the right type in the wrapper
-                proper_code = shared.JS.make_coercion(proper_code, sig[0], settings, convert_from=proper_sig[0])
-              if sig[0] != 'v':
-                proper_code = 'return ' + proper_code
-            else:
-              # proper sig has no return, we may need a fake return
-              if sig[0] != 'v':
-                proper_code = 'return ' + shared.JS.make_initializer(sig[0], settings)
-            name = 'fpemu_%s_%d' % (sig, j)
-            wrapper = make_func(name, proper_code, params, coercions)
-            Counter.pre.append(wrapper)
-            return name if not newline else (name + '\n')
-          if settings['ASSERTIONS'] <= 1:
-            return bad if not newline else (bad + '\n')
-          else:
-            specific_bad, specific_bad_func = make_bad(j)
-            Counter.pre.append(specific_bad_func)
-            return specific_bad if not newline else (specific_bad + '\n')
-        clean_item = item.replace("asm['", '').replace("']", '')
-        # when emulating function pointers, we don't need wrappers
-        # but if relocating, then we also have the copies in-module, and do
-        # in wasm we never need wrappers though
-        if clean_item not in implemented_functions and not (settings['EMULATED_FUNCTION_POINTERS'] and not settings['RELOCATABLE']) and not settings['BINARYEN']:
-          # this is imported into asm, we must wrap it
-          call_ident = clean_item
-          if call_ident in metadata['redirects']: call_ident = metadata['redirects'][call_ident]
-          if not call_ident.startswith('_') and not call_ident.startswith('Math_'): call_ident = '_' + call_ident
-          code = call_ident + '(' + coerced_params + ')'
-          if sig[0] != 'v':
-            # ffis cannot return float
-            if sig[0] == 'f': code = '+' + code
-            code = 'return ' + shared.JS.make_coercion(code, sig[0], settings)
-          code += ';'
-          Counter.pre.append(make_func(clean_item + '__wrapper', code, params, coercions))
-          assert not sig == 'X', 'must know the signature in order to create a wrapper for "%s" (TODO for shared wasm modules)' % item
-          return clean_item + '__wrapper'
-        return item if not newline else (item + '\n')
-      if settings['ASSERTIONS'] >= 2:
-        debug_tables[sig] = body
-      body = ','.join(map(fix_item, body))
-      return ('\n'.join(Counter.pre), ''.join([raw[:start+1], body, raw[end:]]))
+    shared.Settings.copy(settings)
 
-    infos = [make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()]
-    Counter.pre = []
+    funcs_js += setup_funcs_js(function_table_sigs, settings)
 
-    function_tables_defs = '\n'.join([info[0] for info in infos]) + '\n'
-    function_tables_defs += '\n// EMSCRIPTEN_END_FUNCS\n'
-    function_tables_defs += '\n'.join([info[1] for info in infos])
+    exports = create_exports(exported_implemented_functions, in_table, function_table_data, metadata, settings)
 
-    asm_setup = ''
-
-    if settings['ASSERTIONS'] >= 2:
-      for sig in last_forwarded_json['Functions']['tables']:
-        asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
-
-    maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'max', 'clz32']]
-    simdfloattypes = []
-    simdinttypes = []
-    simdbooltypes = []
-    simdfuncs = ['splat', 'check', 'extractLane', 'replaceLane']
-    simdintfloatfuncs = ['add', 'sub', 'neg', 'mul',
-                         'equal', 'lessThan', 'greaterThan',
-                         'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
-                         'select', 'swizzle', 'shuffle',
-                         'load', 'store', 'load1', 'store1', 'load2', 'store2']
-    simdintboolfuncs = ['and', 'xor', 'or', 'not']
-    if metadata['simdUint8x16']:
-      simdinttypes += ['Uint8x16']
-      simdintfloatfuncs += ['fromUint8x16Bits']
-    if metadata['simdInt8x16']:
-      simdinttypes += ['Int8x16']
-      simdintfloatfuncs += ['fromInt8x16Bits']
-    if metadata['simdUint16x8']:
-      simdinttypes += ['Uint16x8']
-      simdintfloatfuncs += ['fromUint16x8Bits']
-    if metadata['simdInt16x8']:
-      simdinttypes += ['Int16x8']
-      simdintfloatfuncs += ['fromInt16x8Bits']
-    if metadata['simdUint32x4']:
-      simdinttypes += ['Uint32x4']
-      simdintfloatfuncs += ['fromUint32x4Bits']
-    if metadata['simdInt32x4'] or settings['SIMD']: # Always import Int32x4 when building with -s SIMD=1, since memcpy is SIMD optimized.
-      simdinttypes += ['Int32x4']
-      simdintfloatfuncs += ['fromInt32x4Bits']
-    if metadata['simdFloat32x4']:
-      simdfloattypes += ['Float32x4']
-      simdintfloatfuncs += ['fromFloat32x4Bits']
-    if metadata['simdFloat64x2']:
-      simdfloattypes += ['Float64x2']
-      simdintfloatfuncs += ['fromFloat64x2Bits']
-    if metadata['simdBool8x16']:
-      simdbooltypes += ['Bool8x16']
-    if metadata['simdBool16x8']:
-      simdbooltypes += ['Bool16x8']
-    if metadata['simdBool32x4']:
-      simdbooltypes += ['Bool32x4']
-    if metadata['simdBool64x2']:
-      simdbooltypes += ['Bool64x2']
-
-    simdfloatfuncs = simdfuncs + simdintfloatfuncs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
-                                  'abs', 'reciprocalApproximation', 'reciprocalSqrtApproximation']
-    simdintfuncs = simdfuncs + simdintfloatfuncs + simdintboolfuncs + ['shiftLeftByScalar', 'shiftRightByScalar', 'addSaturate', 'subSaturate']
-    simdboolfuncs = simdfuncs + simdintboolfuncs + ['anyTrue', 'allTrue']
-    simdtypes = simdfloattypes + simdinttypes + simdbooltypes
-
-    fundamentals = ['Math']
-    fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
-    fundamentals += ['NaN', 'Infinity']
-    if metadata['simd'] or settings['SIMD']: # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
-        fundamentals += ['SIMD']
-    if settings['ALLOW_MEMORY_GROWTH']: fundamentals.append('byteLength')
-    math_envs = []
-
-    provide_fround = settings['PRECISE_F32'] or settings['SIMD']
-
-    if provide_fround: maths += ['Math.fround']
-
-    def get_function_pointer_error(sig):
-      if settings['ASSERTIONS'] <= 1:
-        extra = ' Module["printErr"]("Build with ASSERTIONS=2 for more info.");'
-        pointer = ' '
-      else:
-        pointer = ' \'" + x + "\' '
-        extra = ' Module["printErr"]("This pointer might make sense in another type signature: '
-        # sort signatures, attempting to show most likely related ones first
-        sigs = last_forwarded_json['Functions']['tables'].keys()
-        def keyfunc(other):
-          ret = 0
-          minlen = min(len(other), len(sig))
-          maxlen = min(len(other), len(sig))
-          if other.startswith(sig) or sig.startswith(other): ret -= 1000 # prioritize prefixes, could be dropped params
-          ret -= 133*difflib.SequenceMatcher(a=other, b=sig).ratio() # prioritize on diff similarity
-          ret += 15*abs(len(other) - len(sig))/float(maxlen) # deprioritize the bigger the length difference is
-          for i in range(minlen):
-            if other[i] == sig[i]: ret -= 5/float(maxlen) # prioritize on identically-placed params
-          ret += 20*len(other) # deprioritize on length
-          return ret
-        sigs.sort(key=keyfunc)
-        for other in sigs:
-          if other != sig:
-            extra += other + ': " + debug_table_' + other + '[x] + "  '
-        extra += '"); '
-      return 'Module["printErr"]("Invalid function pointer' + pointer + 'called with signature \'' + sig + '\'. ' + \
-             'Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? ' + \
-             'Or calling a function with an incorrect type, which will fail? ' + \
-             '(it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)' + \
-             '"); ' + extra
-
-    basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory'] + [m.replace('.', '_') for m in math_envs]
-    if settings['ABORTING_MALLOC']: basic_funcs += ['abortOnCannotGrowMemory']
-    if settings['STACK_OVERFLOW_CHECK']: basic_funcs += ['abortStackOverflow']
-
-    asm_safe_heap = settings['SAFE_HEAP'] and not settings['SAFE_HEAP_LOG'] and not settings['RELOCATABLE'] # optimized safe heap in asm, when we can
-
-    if settings['SAFE_HEAP']:
-      if asm_safe_heap:
-        basic_funcs += ['segfault', 'alignfault', 'ftfault']
-      else:
-        basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_LOAD_D', 'SAFE_HEAP_STORE', 'SAFE_HEAP_STORE_D', 'SAFE_FT_MASK']
-    if settings['ASSERTIONS']:
-      if settings['ASSERTIONS'] >= 2: import difflib
-      for sig in last_forwarded_json['Functions']['tables'].iterkeys():
-        basic_funcs += ['nullFunc_' + sig]
-        asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig) + 'abort(x) }\n'
-
-    basic_vars = ['DYNAMICTOP_PTR', 'tempDoublePtr', 'ABORT']
-    if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
-      basic_vars += ['STACKTOP', 'STACK_MAX']
-    basic_float_vars = []
-
-    if metadata.get('preciseI64MathUsed'):
-      basic_vars += ['cttz_i8']
-    else:
-      if forwarded_json['Functions']['libraryFunctions'].get('_llvm_cttz_i32'):
-        basic_vars += ['cttz_i8']
-
-    if settings['RELOCATABLE']:
-      if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
-        basic_vars += ['gb', 'fb']
-      else:
-        basic_vars += ['memoryBase', 'tableBase'] # wasm side modules have a specific convention for these
-      if not settings['SIDE_MODULE']:
-        asm_setup += 'var gb = Runtime.GLOBAL_BASE, fb = 0;\n'
-
-    asm_runtime_funcs = []
-    if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
-      asm_runtime_funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', 'setThrew']
-    if not settings['RELOCATABLE']:
-      asm_runtime_funcs += ['setTempRet0', 'getTempRet0']
-    else:
-      basic_funcs += ['setTempRet0', 'getTempRet0']
-      asm_setup += 'var setTempRet0 = Runtime.setTempRet0, getTempRet0 = Runtime.getTempRet0;\n'
-
-    if settings['BINARYEN']:
-      def table_size(table):
-        table_contents = table[table.index('[') + 1: table.index(']')]
-        if len(table_contents) == 0: # empty table
-          return 0
-        return table_contents.count(',') + 1
-
-      table_total_size = sum(map(table_size, last_forwarded_json['Functions']['tables'].values()))
-      asm_setup += "\nModule['wasmTableSize'] = %d;\n" % table_total_size
-      if not settings['EMULATED_FUNCTION_POINTERS']:
-        asm_setup += "\nModule['wasmMaxTableSize'] = %d;\n" % table_total_size
-
-    # See if we need ASYNCIFY functions
-    # We might not need them even if ASYNCIFY is enabled
-    need_asyncify = '_emscripten_alloc_async_context' in exported_implemented_functions
-    if need_asyncify:
-      basic_vars += ['___async', '___async_unwind', '___async_retval', '___async_cur_frame']
-      asm_runtime_funcs += ['setAsync']
-
-    if settings.get('EMTERPRETIFY'):
-      asm_runtime_funcs += ['emterpret']
-      if settings.get('EMTERPRETIFY_ASYNC'):
-        asm_runtime_funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore']
-
-    if settings['SAFE_HEAP']:
-      asm_runtime_funcs += ['setDynamicTop']
-
-    if settings['ONLY_MY_CODE']:
-      asm_runtime_funcs = []
-
-    # function tables
-    if not settings['EMULATED_FUNCTION_POINTERS']:
-      function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
-    else:
-      function_tables = []
-    function_tables_impls = []
-
-    for sig in last_forwarded_json['Functions']['tables'].iterkeys():
-      args = ','.join(['a' + str(i) for i in range(1, len(sig))])
-      arg_coercions = ' '.join(['a' + str(i) + '=' + shared.JS.make_coercion('a' + str(i), sig[i], settings) + ';' for i in range(1, len(sig))])
-      coerced_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings) for i in range(1, len(sig))])
-      ret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('FUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s)' % (sig, sig, coerced_args), sig[0], settings)
-      if not settings['EMULATED_FUNCTION_POINTERS']:
-        function_tables_impls.append('''
-function dynCall_%s(index%s%s) {
-  index = index|0;
-  %s
-  %s;
-}
-''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
-      else:
-        function_tables_impls.append('''
-var dynCall_%s = ftCall_%s;
-''' % (sig, sig))
-
-      ffi_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings, ffi_arg=True) for i in range(1, len(sig))])
-      for i in range(settings['RESERVED_FUNCTION_POINTERS']):
-        jsret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('jsCall_%s(%d%s%s)' % (sig, i, ',' if ffi_args else '', ffi_args), sig[0], settings, ffi_result=True)
-        function_tables_impls.append('''
-function jsCall_%s_%s(%s) {
-  %s
-  %s;
-}
-
-''' % (sig, i, args, arg_coercions, jsret))
-      shared.Settings.copy(settings)
-      asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
-      basic_funcs.append('invoke_%s' % sig)
-      if settings.get('RESERVED_FUNCTION_POINTERS'):
-        asm_setup += '\n' + shared.JS.make_jscall(sig) + '\n'
-        basic_funcs.append('jsCall_%s' % sig)
-      if settings.get('EMULATED_FUNCTION_POINTERS'):
-        args = ['a%d' % i for i in range(len(sig)-1)]
-        full_args = ['x'] + args
-        table_access = 'FUNCTION_TABLE_' + sig
-        if settings['SIDE_MODULE']:
-          table_access = 'parentModule["' + table_access + '"]' # side module tables were merged into the parent, we need to access the global one
-        if settings['BINARYEN']:
-          # wasm uses a Table, which means we have function pointer emulation capabilities all the time, at no cost. just call the table
-          table_access = "Module['wasmTable']"
-          table_read = table_access + '.get(x)'
-        else:
-          table_read = table_access + '[x]'
-        prelude = '''
-  if (x < 0 || x >= %s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig))
-        asm_setup += '''
-function ftCall_%s(%s) {%s
-  return %s(%s);
-}
-''' % (sig, ', '.join(full_args), prelude, table_read, ', '.join(args))
-        if not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
-          basic_funcs.append('ftCall_%s' % sig)
-
-        if settings.get('RELOCATABLE') and not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
-          params = ','.join(['ptr'] + ['p%d' % p for p in range(len(sig)-1)])
-          coerced_params = ','.join([shared.JS.make_coercion('ptr', 'i', settings)] + [shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
-          coercions = ';'.join(['ptr = ptr | 0'] + ['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, unfloat(sig[p+1]), settings)) for p in range(len(sig)-1)]) + ';'
-          mini_coerced_params = ','.join([shared.JS.make_coercion('p%d', sig[p+1], settings) % p for p in range(len(sig)-1)])
-          maybe_return = '' if sig[0] == 'v' else 'return'
-          final_return = maybe_return + ' ' + shared.JS.make_coercion('ftCall_' + sig + '(' + coerced_params + ')', unfloat(sig[0]), settings) + ';'
-          if settings['EMULATED_FUNCTION_POINTERS'] == 1:
-            body = final_return
-          else:
-            body = 'if (((ptr|0) >= (fb|0)) & ((ptr|0) < (fb + {{{ FTM_' + sig + ' }}} | 0))) { ' + maybe_return + ' ' + shared.JS.make_coercion('FUNCTION_TABLE_' + sig + '[(ptr-fb)&{{{ FTM_' + sig + ' }}}](' + mini_coerced_params + ')', sig[0], settings, ffi_arg=True) + '; ' + ('return;' if sig[0] == 'v' else '') + ' }' + final_return
-          funcs_js.append(make_func('mftCall_' + sig, body, params, coercions) + '\n')
-
-    # calculate exports
-    exported_implemented_functions = list(exported_implemented_functions) + metadata['initializers']
-    if not settings['ONLY_MY_CODE']:
-      exported_implemented_functions.append('runPostSets')
-      if settings['ALLOW_MEMORY_GROWTH']:
-        exported_implemented_functions.append('_emscripten_replace_memory')
-      if not settings['SIDE_MODULE']:
-        exported_implemented_functions += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
-      if settings['SAFE_HEAP']:
-        exported_implemented_functions += ['setDynamicTop']
-      if not settings['RELOCATABLE']:
-        exported_implemented_functions += ['setTempRet0', 'getTempRet0']
-      if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
-        exported_implemented_functions += ['setThrew']
-
-    all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables
-    exported_implemented_functions = list(set(exported_implemented_functions))
-    if settings['EMULATED_FUNCTION_POINTERS']:
-      all_exported = list(set(all_exported).union(in_table))
-    exports = []
-    for export in all_exported:
-      exports.append(quote(export) + ": " + export)
-    if settings['BINARYEN'] and settings['SIDE_MODULE']:
-      # named globals in side wasm modules are exported globals from asm/wasm
-      for k, v in metadata['namedGlobals'].iteritems():
-        exports.append(quote('_' + str(k)) + ': ' + str(v))
-      # aliases become additional exports
-      for k, v in metadata['aliases'].iteritems():
-        exports.append(quote(str(k)) + ': ' + str(v))
-    exports = '{ ' + ', '.join(exports) + ' }'
     # calculate globals
     try:
       del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
@@ -856,119 +416,786 @@ function ftCall_%s(%s) {%s
       global_vars = metadata['externs']
     else:
       global_vars = [] # linkable code accesses globals through function calls
-    global_funcs = list(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]).difference(set(global_vars)).difference(implemented_functions))
+    global_funcs = list(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2])
+                        .difference(set(global_vars)).difference(implemented_functions))
     if settings['RELOCATABLE']:
       global_funcs += ['g$' + extern for extern in metadata['externs']]
-      side = 'parent' if settings['SIDE_MODULE'] else ''
-      def check(extern):
-        if settings['ASSERTIONS']: return 'assert(' + side + 'Module["' + extern + '"], "external function \'' + extern + '\' is missing. perhaps a side module was not linked in? if this symbol was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");'
-        return ''
-      for extern in metadata['externs']:
-        asm_setup += 'var g$' + extern + ' = function() { ' + check(extern) + ' return ' + side + 'Module["' + extern + '"] };\n'
-    def math_fix(g):
-      return g if not g.startswith('Math_') else g.split('_')[1]
-    asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global' + access_quote(g) + ';\n' for g in maths])
-    asm_global_funcs += ''.join(['  var ' + g + '=env' + access_quote(math_fix(g)) + ';\n' for g in basic_funcs + global_funcs])
-    if metadata['simd'] or settings['SIMD']: # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
-      def string_contains_any(s, str_list):
-        for sub in str_list:
-          if sub in s:
-            return True
-        return False
-      nonexisting_simd_symbols = ['Int8x16_fromInt8x16', 'Uint8x16_fromUint8x16', 'Int16x8_fromInt16x8', 'Uint16x8_fromUint16x8', 'Int32x4_fromInt32x4', 'Uint32x4_fromUint32x4', 'Float32x4_fromFloat32x4', 'Float64x2_fromFloat64x2']
-      nonexisting_simd_symbols += ['Int32x4_addSaturate', 'Int32x4_subSaturate', 'Uint32x4_addSaturate', 'Uint32x4_subSaturate']
-      nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8', 'Float64x2'] for y in ['load2', 'store2']]
-      nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8'] for y in ['load1', 'store1']]
 
-      asm_global_funcs += ''.join(['  var SIMD_' + ty + '=global' + access_quote('SIMD') + access_quote(ty) + ';\n' for ty in simdtypes])
+    bg_funcs = basic_funcs + global_funcs
+    bg_vars = basic_vars + global_vars
+    asm_global_funcs= create_asm_global_funcs(bg_funcs, metadata, settings)
+    asm_global_vars = create_asm_global_vars(bg_vars, settings)
 
-      simd_int_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdinttypes for g in simdintfuncs]
-      simd_int_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_int_symbols)
-      asm_global_funcs += ''.join(simd_int_symbols)
+    the_global = create_the_global(metadata, settings)
+    sending_vars = basic_funcs + global_funcs + basic_vars + global_vars
+    sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in sending_vars]) + ' }'
 
-      simd_float_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdfloattypes for g in simdfloatfuncs]
-      simd_float_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_float_symbols)
-      asm_global_funcs += ''.join(simd_float_symbols)
+    receiving = create_receiving(function_table_data, function_tables_defs,
+                                 exported_implemented_functions, settings)
 
-      simd_bool_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdbooltypes for g in simdboolfuncs]
-      simd_bool_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_bool_symbols)
-      asm_global_funcs += ''.join(simd_bool_symbols)
+    function_tables_impls = make_function_tables_impls(function_table_sigs, settings)
+    final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
+    if settings.get('EMULATED_FUNCTION_POINTERS'):
+      final_function_tables = (
+        final_function_tables
+        .replace("asm['", '')
+        .replace("']", '')
+        .replace('var SIDE_FUNCTION_TABLE_', 'var FUNCTION_TABLE_')
+        .replace('var dynCall_', '//')
+      )
 
-      # SIMD conversions (not bitcasts) between same lane sizes:
-      def add_simd_cast(dst, src):
-        return '  var SIMD_' + dst + '_from' + src + '=SIMD_' + dst + '.from' + src + ';\n'
-      def add_simd_casts(t1, t2):
-        return add_simd_cast(t1, t2) + add_simd_cast(t2, t1)
+    if DEBUG:
+      logging.debug('asm text sizes' + str([
+        map(len, funcs_js), len(asm_setup), len(asm_global_vars), len(asm_global_funcs), len(pre_tables),
+        len('\n'.join(function_tables_impls)), len(function_tables_defs) + (function_tables_defs.count('\n') * len('  ')),
+        len(exports), len(the_global), len(sending), len(receiving)]))
+      logging.debug('  emscript: python processing: function tables and exports took %s seconds' % (time.time() - t))
 
-      # Bug: Skip importing conversions for int<->uint for now, they don't validate as asm.js. https://bugzilla.mozilla.org/show_bug.cgi?id=1313512
-      # This is not an issue when building SSEx code, because it doesn't use these. (but it will be an issue if using SIMD.js intrinsics from vector.h to explicitly call these)
-#      if metadata['simdInt8x16'] and metadata['simdUint8x16']: asm_global_funcs += add_simd_casts('Int8x16', 'Uint8x16')
-#      if metadata['simdInt16x8'] and metadata['simdUint16x8']: asm_global_funcs += add_simd_casts('Int16x8', 'Uint16x8')
-#      if metadata['simdInt32x4'] and metadata['simdUint32x4']: asm_global_funcs += add_simd_casts('Int32x4', 'Uint32x4')
+    return (post, funcs_js, sending, receiving, asm_setup, the_global, asm_global_vars,
+            asm_global_funcs, pre_tables, final_function_tables, exports,
+            function_table_data, forwarded_json)
 
-      if metadata['simdInt32x4'] and metadata['simdFloat32x4']: asm_global_funcs += add_simd_casts('Int32x4', 'Float32x4')
-      if metadata['simdUint32x4'] and metadata['simdFloat32x4']: asm_global_funcs += add_simd_casts('Uint32x4', 'Float32x4')
-      if metadata['simdInt32x4'] and metadata['simdFloat64x2']: asm_global_funcs += add_simd_cast('Int32x4', 'Float64x2') # Unofficial, needed for emscripten_int32x4_fromFloat64x2
-      if metadata['simdUint32x4'] and metadata['simdFloat64x2']: asm_global_funcs += add_simd_cast('Uint32x4', 'Float64x2') # Unofficial, needed for emscripten_uint32x4_fromFloat64x2
 
-      # Unofficial, Bool64x2 does not yet exist, but needed for Float64x2 comparisons.
-      if metadata['simdFloat64x2']:
-        asm_global_funcs += '  var SIMD_Int32x4_fromBool64x2Bits = global.SIMD.Int32x4.fromBool64x2Bits;\n'
-    if settings['USE_PTHREADS']:
-      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
-    asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in basic_vars + global_vars])
+def memory_and_global_initializers(pre, metadata, mem_init, settings):
+  global_initializers = str(', '.join(map(lambda i: '{ func: function() { %s() } }' % i, metadata['initializers'])))
 
-    if settings['BINARYEN'] and settings['SIDE_MODULE']:
-      asm_global_vars += '\n  var STACKTOP = 0, STACK_MAX = 0;\n' # wasm side modules internally define their stack, these are set at module startup time
+  if settings['SIMD'] == 1:
+    pre = open(path_from_root(os.path.join('src', 'ecmascript_simd.js'))).read() + '\n\n' + pre
 
-    # sent data
-    the_global = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
-    sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
-    # received
-    receiving = ''
-    if settings['ASSERTIONS']:
-      # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
-      # some support code
-      receiving = '\n'.join(['var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
+  staticbump = metadata['staticBump']
+  while staticbump % 16 != 0: staticbump += 1
+  pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;%s
+/* global initializers */ %s __ATINIT__.push(%s);
+%s''' % (staticbump,
+         'assert(STATICTOP < SPLIT_MEMORY, "SPLIT_MEMORY size must be big enough so the entire static memory, need " + STATICTOP);' if settings['SPLIT_MEMORY'] else '',
+         'if (!ENVIRONMENT_IS_PTHREAD)' if settings['USE_PTHREADS'] else '',
+         global_initializers,
+         mem_init))
+
+  if settings['SIDE_MODULE']:
+    pre = pre.replace('Runtime.GLOBAL_BASE', 'gb')
+  if settings['SIDE_MODULE'] or settings['BINARYEN']:
+    pre = pre.replace('{{{ STATIC_BUMP }}}', str(staticbump))
+
+  return pre
+
+
+def get_js_funcs(pre, funcs):
+  funcs_js = [funcs]
+  parts = pre.split('// ASM_LIBRARY FUNCTIONS\n')
+  if len(parts) > 1:
+    pre = parts[0]
+    funcs_js.append(parts[1])
+  return pre, funcs_js
+
+
+def get_all_exported_functions(function_table_data, settings):
+  all_exported_functions = set(shared.expand_response(settings['EXPORTED_FUNCTIONS'])) # both asm.js and otherwise
+
+  for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
+    all_exported_functions.add('_' + additional_export)
+  if settings['EXPORT_FUNCTION_TABLES']:
+    for table in function_table_data.values():
+      for func in table.split('[')[1].split(']')[0].split(','):
+        if func[0] == '_':
+          all_exported_functions.add(func)
+  return all_exported_functions
+
+
+def get_all_implemented(forwarded_json, metadata):
+  return metadata['implementedFunctions'] + forwarded_json['Functions']['implementedFunctions'].keys() # XXX perf?
+
+
+def get_exported_implemented_functions(all_exported_functions, all_implemented, metadata, settings):
+  exported_implemented_functions = set(metadata['exports'])
+  export_bindings = settings['EXPORT_BINDINGS']
+  export_all = settings['EXPORT_ALL']
+  for key in all_implemented:
+    if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
+      exported_implemented_functions.add(key)
+
+  exported_implemented_functions = list(exported_implemented_functions) + metadata['initializers']
+  if not settings['ONLY_MY_CODE']:
+    exported_implemented_functions.append('runPostSets')
+    if settings['ALLOW_MEMORY_GROWTH']:
+      exported_implemented_functions.append('_emscripten_replace_memory')
+    if not settings['SIDE_MODULE']:
+      exported_implemented_functions += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
+    if settings['SAFE_HEAP']:
+      exported_implemented_functions += ['setDynamicTop']
+    if not settings['RELOCATABLE']:
+      exported_implemented_functions += ['setTempRet0', 'getTempRet0']
+    if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
+      exported_implemented_functions += ['setThrew']
+  exported_implemented_functions = list(set(exported_implemented_functions))
+  return exported_implemented_functions
+
+
+def get_implemented_functions(pre, metadata, settings, all_implemented):
+  implemented_functions = set(metadata['implementedFunctions'])
+  if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
+    original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
+    if original_exports[0] == '@': original_exports = json.loads(open(original_exports[1:]).read())
+    for requested in original_exports:
+      # check if already implemented
+      # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS \
+      if requested not in all_implemented and \
+         requested != '_malloc' and \
+         (('function ' + requested.encode('utf-8')) not in pre): # could be a js library func
+        logging.warning('function requested to be exported, but not implemented: "%s"', requested)
+
+  return implemented_functions
+
+
+def include_asm_consts(pre, forwarded_json, metadata, settings):
+  if settings['BINARYEN'] and settings['SIDE_MODULE']:
+    assert len(metadata['asmConsts']) == 0, 'EM_ASM is not yet supported in shared wasm module (it cannot be stored in the wasm itself, need some solution)'
+
+  asm_consts, all_sigs = all_asm_consts(metadata)
+  asm_const_funcs = []
+  for sig in set(all_sigs):
+    forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
+    args = ['a%d' % i for i in range(len(sig)-1)]
+    all_args = ['code'] + args
+    asm_const_funcs.append(r'''
+function _emscripten_asm_const_%s(%s) {
+  return ASM_CONSTS[code](%s);
+}''' % (sig.encode('utf-8'), ', '.join(all_args), ', '.join(args)))
+
+  asm_consts_text = '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n'
+  asm_funcs_text = '\n'.join(asm_const_funcs) + '\n'
+
+  body_marker = '// === Body ==='
+  return pre.replace(body_marker, body_marker + '\n' + asm_consts_text + asm_funcs_text)
+
+
+def all_asm_consts(metadata):
+  asm_consts = [0]*len(metadata['asmConsts'])
+  all_sigs = []
+  for k, v in metadata['asmConsts'].iteritems():
+    const = v[0].encode('utf-8')
+    sigs = v[1]
+    if len(const) > 1 and const[0] == '"' and const[-1] == '"':
+      const = const[1:-1]
+    const = '{ ' + const + ' }'
+    args = []
+    arity = max(map(len, sigs)) - 1
+    for i in range(arity):
+      args.append('$' + str(i))
+    const = 'function(' + ', '.join(args) + ') ' + const
+    asm_consts[int(k)] = const
+    all_sigs += sigs
+  return asm_consts, all_sigs
+
+
+def unfloat(s):
+  """lower float to double for ffis"""
+  return 'd' if s == 'f' else s
+
+
+def make_function_tables_defs(implemented_functions, all_implemented, function_table_data, settings, metadata):
+  class Counter:
+    next_bad_item = 0
+    next_item = 0
+    pre = []
+
+  in_table = set()
+  debug_tables = {}
+
+  def make_params(sig): return ','.join(['p%d' % p for p in range(len(sig)-1)])
+  def make_coerced_params(sig): return ','.join([shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
+  def make_coercions(sig): return ';'.join(['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, sig[p+1], settings)) for p in range(len(sig)-1)]) + ';'
+
+  # when emulating function pointer casts, we need to know what is the target of each pointer
+  if settings['EMULATE_FUNCTION_POINTER_CASTS']:
+    function_pointer_targets = {}
+    for sig, table in function_table_data.iteritems():
+      start = table.index('[')
+      end = table.rindex(']')
+      body = table[start+1:end].split(',')
+      parsed = map(lambda x: x.strip(), body)
+      for i in range(len(parsed)):
+        if parsed[i] != '0':
+          assert i not in function_pointer_targets
+          function_pointer_targets[i] = [sig, str(parsed[i])]
+
+  def make_table(sig, raw):
+    if '[]' in raw: return ('', '') # empty table
+    params = make_params(sig)
+    coerced_params = make_coerced_params(sig)
+    coercions = make_coercions(sig)
+    def make_bad(target=None):
+      i = Counter.next_bad_item
+      Counter.next_bad_item += 1
+      if target is None: target = i
+      name = 'b' + str(i)
+      if not settings['ASSERTIONS']:
+        code = 'abort(%s);' % target
+      else:
+        code = 'nullFunc_' + sig + '(%d);' % target
+      if sig[0] != 'v':
+        code += 'return %s' % shared.JS.make_initializer(sig[0], settings) + ';'
+      return name, make_func(name, code, params, coercions)
+    bad, bad_func = make_bad() # the default bad func
+    if settings['ASSERTIONS'] <= 1:
+      Counter.pre = [bad_func]
+    else:
+      Counter.pre = []
+    start = raw.index('[')
+    end = raw.rindex(']')
+    body = raw[start+1:end].split(',')
+    if settings['EMULATED_FUNCTION_POINTERS']:
+      def receive(item):
+        if item == '0':
+          return item
+        if item not in all_implemented:
+          # this is not implemented; it would normally be wrapped, but with emulation, we just use it directly outside
+          return item
+        in_table.add(item)
+        return "asm['" + item + "']"
+      body = map(receive, body)
+    for j in range(settings['RESERVED_FUNCTION_POINTERS']):
+      curr = 'jsCall_%s_%s' % (sig, j)
+      body[settings['FUNCTION_POINTER_ALIGNMENT'] * (1 + j)] = curr
+      implemented_functions.add(curr)
+    Counter.next_item = 0
+    def fix_item(item):
+      j = Counter.next_item
+      Counter.next_item += 1
+      newline = Counter.next_item % 30 == 29
+      if item == '0':
+        if j > 0 and settings['EMULATE_FUNCTION_POINTER_CASTS'] and j in function_pointer_targets: # emulate all non-null pointer calls, if asked to
+          proper_sig, proper_target = function_pointer_targets[j]
+          if settings['EMULATED_FUNCTION_POINTERS']:
+            if proper_target in all_implemented:
+              proper_target = "asm['" + proper_target + "']"
+          def make_emulated_param(i):
+            if i >= len(sig): return shared.JS.make_initializer(proper_sig[i], settings) # extra param, just send a zero
+            return shared.JS.make_coercion('p%d' % (i-1), proper_sig[i], settings, convert_from=sig[i])
+          proper_code = proper_target + '(' + ','.join(map(lambda i: make_emulated_param(i+1), range(len(proper_sig)-1))) + ')'
+          if proper_sig[0] != 'v':
+            # proper sig has a return, which the wrapper may or may not use
+            proper_code = shared.JS.make_coercion(proper_code, proper_sig[0], settings)
+            if proper_sig[0] != sig[0]:
+              # first coercion ensured we call the target ok; this one ensures we return the right type in the wrapper
+              proper_code = shared.JS.make_coercion(proper_code, sig[0], settings, convert_from=proper_sig[0])
+            if sig[0] != 'v':
+              proper_code = 'return ' + proper_code
+          else:
+            # proper sig has no return, we may need a fake return
+            if sig[0] != 'v':
+              proper_code = 'return ' + shared.JS.make_initializer(sig[0], settings)
+          name = 'fpemu_%s_%d' % (sig, j)
+          wrapper = make_func(name, proper_code, params, coercions)
+          Counter.pre.append(wrapper)
+          return name if not newline else (name + '\n')
+        if settings['ASSERTIONS'] <= 1:
+          return bad if not newline else (bad + '\n')
+        else:
+          specific_bad, specific_bad_func = make_bad(j)
+          Counter.pre.append(specific_bad_func)
+          return specific_bad if not newline else (specific_bad + '\n')
+      clean_item = item.replace("asm['", '').replace("']", '')
+      # when emulating function pointers, we don't need wrappers
+      # but if relocating, then we also have the copies in-module, and do
+      # in wasm we never need wrappers though
+      if clean_item not in implemented_functions and not (settings['EMULATED_FUNCTION_POINTERS'] and not settings['RELOCATABLE']) and not settings['BINARYEN']:
+        # this is imported into asm, we must wrap it
+        call_ident = clean_item
+        if call_ident in metadata['redirects']: call_ident = metadata['redirects'][call_ident]
+        if not call_ident.startswith('_') and not call_ident.startswith('Math_'): call_ident = '_' + call_ident
+        code = call_ident + '(' + coerced_params + ')'
+        if sig[0] != 'v':
+          # ffis cannot return float
+          if sig[0] == 'f': code = '+' + code
+          code = 'return ' + shared.JS.make_coercion(code, sig[0], settings)
+        code += ';'
+        Counter.pre.append(make_func(clean_item + '__wrapper', code, params, coercions))
+        assert not sig == 'X', 'must know the signature in order to create a wrapper for "%s" (TODO for shared wasm modules)' % item
+        return clean_item + '__wrapper'
+      return item if not newline else (item + '\n')
+    if settings['ASSERTIONS'] >= 2:
+      debug_tables[sig] = body
+    body = ','.join(map(fix_item, body))
+    return ('\n'.join(Counter.pre), ''.join([raw[:start+1], body, raw[end:]]))
+
+  infos = [make_table(sig, raw) for sig, raw in function_table_data.iteritems()]
+  Counter.pre = []
+
+  function_tables_defs = '\n'.join([info[0] for info in infos]) + '\n'
+  function_tables_defs += '\n// EMSCRIPTEN_END_FUNCS\n'
+  function_tables_defs += '\n'.join([info[1] for info in infos])
+  return in_table, debug_tables, function_tables_defs
+
+
+def make_func(name, code, params, coercions):
+  return 'function %s(%s) {\n %s %s\n}' % (name, params, coercions, code)
+
+
+def math_fix(g):
+  return g if not g.startswith('Math_') else g.split('_')[1]
+
+
+def make_function_tables_impls(function_table_sigs, settings):
+  function_tables_impls = []
+  for sig in function_table_sigs:
+    args = ','.join(['a' + str(i) for i in range(1, len(sig))])
+    arg_coercions = ' '.join(['a' + str(i) + '=' + shared.JS.make_coercion('a' + str(i), sig[i], settings) + ';' for i in range(1, len(sig))])
+    coerced_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings) for i in range(1, len(sig))])
+    ret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('FUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s)' % (sig, sig, coerced_args), sig[0], settings)
+    if not settings['EMULATED_FUNCTION_POINTERS']:
+      function_tables_impls.append('''
+function dynCall_%s(index%s%s) {
+  index = index|0;
+  %s
+  %s;
+}
+''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
+    else:
+      function_tables_impls.append('''
+var dynCall_%s = ftCall_%s;
+''' % (sig, sig))
+
+    ffi_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings, ffi_arg=True) for i in range(1, len(sig))])
+    for i in range(settings['RESERVED_FUNCTION_POINTERS']):
+      jsret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('jsCall_%s(%d%s%s)' % (sig, i, ',' if ffi_args else '', ffi_args), sig[0], settings, ffi_result=True)
+      function_tables_impls.append('''
+function jsCall_%s_%s(%s) {
+  %s
+  %s;
+}
+
+''' % (sig, i, args, arg_coercions, jsret))
+  return function_tables_impls
+
+
+def setup_funcs_js(function_table_sigs, settings):
+  funcs_js = []
+  for sig in function_table_sigs:
+    if settings.get('EMULATED_FUNCTION_POINTERS'):
+      if settings.get('RELOCATABLE') and not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
+        params = ','.join(['ptr'] + ['p%d' % p for p in range(len(sig)-1)])
+        coerced_params = ','.join([shared.JS.make_coercion('ptr', 'i', settings)] + [shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
+        coercions = ';'.join(['ptr = ptr | 0'] + ['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, unfloat(sig[p+1]), settings)) for p in range(len(sig)-1)]) + ';'
+        mini_coerced_params = ','.join([shared.JS.make_coercion('p%d', sig[p+1], settings) % p for p in range(len(sig)-1)])
+        maybe_return = '' if sig[0] == 'v' else 'return'
+        final_return = maybe_return + ' ' + shared.JS.make_coercion('ftCall_' + sig + '(' + coerced_params + ')', unfloat(sig[0]), settings) + ';'
+        if settings['EMULATED_FUNCTION_POINTERS'] == 1:
+          body = final_return
+        else:
+          body = ('if (((ptr|0) >= (fb|0)) & ((ptr|0) < (fb + {{{ FTM_' + sig + ' }}} | 0))) { ' + maybe_return + ' ' +
+                  shared.JS.make_coercion(
+                    'FUNCTION_TABLE_' + sig + '[(ptr-fb)&{{{ FTM_' + sig + ' }}}](' +
+                    mini_coerced_params + ')', sig[0], settings, ffi_arg=True
+                  ) + '; ' + ('return;' if sig[0] == 'v' else '') + ' }' + final_return)
+        funcs_js.append(make_func('mftCall_' + sig, body, params, coercions) + '\n')
+  return funcs_js
+
+
+def get_function_pointer_error(sig, function_table_sigs, settings):
+  if settings['ASSERTIONS'] <= 1:
+    extra = ' Module["printErr"]("Build with ASSERTIONS=2 for more info.");'
+    pointer = ' '
+  else:
+    pointer = ' \'" + x + "\' '
+    extra = ' Module["printErr"]("This pointer might make sense in another type signature: '
+    # sort signatures, attempting to show most likely related ones first
+    sigs = list(function_table_sigs)
+    sigs.sort(key=signature_sort_key(sig))
+    for other in sigs:
+      if other != sig:
+        extra += other + ': " + debug_table_' + other + '[x] + "  '
+    extra += '"); '
+  return 'Module["printErr"]("Invalid function pointer' + pointer + 'called with signature \'' + sig + '\'. ' + \
+          'Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? ' + \
+          'Or calling a function with an incorrect type, which will fail? ' + \
+          '(it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)' + \
+          '"); ' + extra
+
+
+def signature_sort_key(sig):
+  def closure(other):
+    ret = 0
+    minlen = min(len(other), len(sig))
+    maxlen = min(len(other), len(sig))
+    if other.startswith(sig) or sig.startswith(other): ret -= 1000 # prioritize prefixes, could be dropped params
+    ret -= 133*difflib.SequenceMatcher(a=other, b=sig).ratio() # prioritize on diff similarity
+    ret += 15*abs(len(other) - len(sig))/float(maxlen) # deprioritize the bigger the length difference is
+    for i in range(minlen):
+      if other[i] == sig[i]: ret -= 5/float(maxlen) # prioritize on identically-placed params
+    ret += 20*len(other) # deprioritize on length
+    return ret
+  return closure
+
+
+def create_asm_global_funcs(bg_funcs, metadata, settings):
+  access_quote = access_quoter(settings)
+  maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'max', 'clz32']]
+  if provide_fround(settings):
+    maths += ['Math.fround']
+
+  asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global' + access_quote(g) + ';\n' for g in maths])
+  asm_global_funcs += ''.join(['  var ' + g + '=env' + access_quote(math_fix(g)) + ';\n' for g in bg_funcs])
+  asm_global_funcs += global_simd_funcs(access_quote, metadata, settings)
+  if settings['USE_PTHREADS']:
+    asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
+  return asm_global_funcs
+
+
+def create_asm_global_vars(bg_vars, settings):
+  access_quote = access_quoter(settings)
+  asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in bg_vars])
+  if settings['BINARYEN'] and settings['SIDE_MODULE']:
+    # wasm side modules internally define their stack, these are set at module startup time
+    asm_global_vars += '\n  var STACKTOP = 0, STACK_MAX = 0;\n'
+
+  return asm_global_vars
+
+
+def global_simd_funcs(access_quote, metadata, settings):
+  # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
+  if not (metadata['simd'] or settings['SIMD']):
+    return ''
+
+  def string_contains_any(s, str_list):
+    for sub in str_list:
+      if sub in s:
+        return True
+    return False
+
+  nonexisting_simd_symbols = ['Int8x16_fromInt8x16', 'Uint8x16_fromUint8x16', 'Int16x8_fromInt16x8', 'Uint16x8_fromUint16x8', 'Int32x4_fromInt32x4', 'Uint32x4_fromUint32x4', 'Float32x4_fromFloat32x4', 'Float64x2_fromFloat64x2']
+  nonexisting_simd_symbols += ['Int32x4_addSaturate', 'Int32x4_subSaturate', 'Uint32x4_addSaturate', 'Uint32x4_subSaturate']
+  nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8', 'Float64x2'] for y in ['load2', 'store2']]
+  nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8'] for y in ['load1', 'store1']]
+
+  simd = make_simd_types(metadata, settings)
+
+  simd_func_text = ''
+  simd_func_text += ''.join(['  var SIMD_' + ty + '=global' + access_quote('SIMD') + access_quote(ty) + ';\n' for ty in simd['types']])
+
+  def generate_symbols(types, funcs):
+    symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in types for g in funcs]
+    symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), symbols)
+    return ''.join(symbols)
+
+  simd_func_text += generate_symbols(simd['int_types'], simd['int_funcs'])
+  simd_func_text += generate_symbols(simd['float_types'], simd['float_funcs'])
+  simd_func_text += generate_symbols(simd['bool_types'], simd['bool_funcs'])
+
+  # SIMD conversions (not bitcasts) between same lane sizes:
+  def add_simd_cast(dst, src):
+    return '  var SIMD_' + dst + '_from' + src + '=SIMD_' + dst + '.from' + src + ';\n'
+  def add_simd_casts(t1, t2):
+    return add_simd_cast(t1, t2) + add_simd_cast(t2, t1)
+
+  # Bug: Skip importing conversions for int<->uint for now, they don't validate as asm.js. https://bugzilla.mozilla.org/show_bug.cgi?id=1313512
+  # This is not an issue when building SSEx code, because it doesn't use these. (but it will be an issue if using SIMD.js intrinsics from vector.h to explicitly call these)
+#      if metadata['simdInt8x16'] and metadata['simdUint8x16']: simd_func_text += add_simd_casts('Int8x16', 'Uint8x16')
+#      if metadata['simdInt16x8'] and metadata['simdUint16x8']: simd_func_text += add_simd_casts('Int16x8', 'Uint16x8')
+#      if metadata['simdInt32x4'] and metadata['simdUint32x4']: simd_func_text += add_simd_casts('Int32x4', 'Uint32x4')
+
+  if metadata['simdInt32x4'] and metadata['simdFloat32x4']: simd_func_text += add_simd_casts('Int32x4', 'Float32x4')
+  if metadata['simdUint32x4'] and metadata['simdFloat32x4']: simd_func_text += add_simd_casts('Uint32x4', 'Float32x4')
+  if metadata['simdInt32x4'] and metadata['simdFloat64x2']: simd_func_text += add_simd_cast('Int32x4', 'Float64x2') # Unofficial, needed for emscripten_int32x4_fromFloat64x2
+  if metadata['simdUint32x4'] and metadata['simdFloat64x2']: simd_func_text += add_simd_cast('Uint32x4', 'Float64x2') # Unofficial, needed for emscripten_uint32x4_fromFloat64x2
+
+  # Unofficial, Bool64x2 does not yet exist, but needed for Float64x2 comparisons.
+  if metadata['simdFloat64x2']:
+    simd_func_text += '  var SIMD_Int32x4_fromBool64x2Bits = global.SIMD.Int32x4.fromBool64x2Bits;\n'
+  return simd_func_text
+
+
+def make_simd_types(metadata, settings):
+  simd_float_types = []
+  simd_int_types = []
+  simd_bool_types = []
+  simd_funcs = ['splat', 'check', 'extractLane', 'replaceLane']
+  simd_intfloat_funcs = ['add', 'sub', 'neg', 'mul',
+                         'equal', 'lessThan', 'greaterThan',
+                         'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
+                         'select', 'swizzle', 'shuffle',
+                         'load', 'store', 'load1', 'store1', 'load2', 'store2']
+  simd_intbool_funcs = ['and', 'xor', 'or', 'not']
+  if metadata['simdUint8x16']:
+    simd_int_types += ['Uint8x16']
+    simd_intfloat_funcs += ['fromUint8x16Bits']
+  if metadata['simdInt8x16']:
+    simd_int_types += ['Int8x16']
+    simd_intfloat_funcs += ['fromInt8x16Bits']
+  if metadata['simdUint16x8']:
+    simd_int_types += ['Uint16x8']
+    simd_intfloat_funcs += ['fromUint16x8Bits']
+  if metadata['simdInt16x8']:
+    simd_int_types += ['Int16x8']
+    simd_intfloat_funcs += ['fromInt16x8Bits']
+  if metadata['simdUint32x4']:
+    simd_int_types += ['Uint32x4']
+    simd_intfloat_funcs += ['fromUint32x4Bits']
+  if metadata['simdInt32x4'] or settings['SIMD']:
+    # Always import Int32x4 when building with -s SIMD=1, since memcpy is SIMD optimized.
+    simd_int_types += ['Int32x4']
+    simd_intfloat_funcs += ['fromInt32x4Bits']
+  if metadata['simdFloat32x4']:
+    simd_float_types += ['Float32x4']
+    simd_intfloat_funcs += ['fromFloat32x4Bits']
+  if metadata['simdFloat64x2']:
+    simd_float_types += ['Float64x2']
+    simd_intfloat_funcs += ['fromFloat64x2Bits']
+  if metadata['simdBool8x16']:
+    simd_bool_types += ['Bool8x16']
+  if metadata['simdBool16x8']:
+    simd_bool_types += ['Bool16x8']
+  if metadata['simdBool32x4']:
+    simd_bool_types += ['Bool32x4']
+  if metadata['simdBool64x2']:
+    simd_bool_types += ['Bool64x2']
+
+  simd_float_funcs = simd_funcs + simd_intfloat_funcs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
+                                'abs', 'reciprocalApproximation', 'reciprocalSqrtApproximation']
+  simd_int_funcs = simd_funcs + simd_intfloat_funcs + simd_intbool_funcs + ['shiftLeftByScalar', 'shiftRightByScalar', 'addSaturate', 'subSaturate']
+  simd_bool_funcs = simd_funcs + simd_intbool_funcs + ['anyTrue', 'allTrue']
+  simd_types = simd_float_types + simd_int_types + simd_bool_types
+  return {
+    'types': simd_types,
+    'float_types': simd_float_types,
+    'int_types': simd_int_types,
+    'bool_types': simd_bool_types,
+    'funcs': simd_funcs,
+    'float_funcs': simd_float_funcs,
+    'int_funcs': simd_int_funcs,
+    'bool_funcs': simd_bool_funcs,
+    'intfloat_funcs': simd_intfloat_funcs,
+    'intbool_funcs': simd_intbool_funcs,
+  }
+
+
+def need_asyncify(exported_implemented_functions):
+  return '_emscripten_alloc_async_context' in exported_implemented_functions
+
+
+def asm_safe_heap(settings):
+  """optimized safe heap in asm, when we can"""
+  return settings['SAFE_HEAP'] and not settings['SAFE_HEAP_LOG'] and not settings['RELOCATABLE']
+
+
+def provide_fround(settings):
+  return settings['PRECISE_F32'] or settings['SIMD']
+
+
+def create_asm_setup(debug_tables, function_table_data, metadata, settings):
+  function_table_sigs = function_table_data.keys()
+
+  asm_setup = ''
+  if settings['ASSERTIONS'] >= 2:
+    for sig in function_table_data:
+      asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
+  if settings['ASSERTIONS']:
+    for sig in function_table_sigs:
+      asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig, function_table_sigs, settings) + 'abort(x) }\n'
+  if settings['BINARYEN']:
+    def table_size(table):
+      table_contents = table[table.index('[') + 1: table.index(']')]
+      if len(table_contents) == 0: # empty table
+        return 0
+      return table_contents.count(',') + 1
+
+    table_total_size = sum(map(table_size, function_table_data.values()))
+    asm_setup += "\nModule['wasmTableSize'] = %d;\n" % table_total_size
+    if not settings['EMULATED_FUNCTION_POINTERS']:
+      asm_setup += "\nModule['wasmMaxTableSize'] = %d;\n" % table_total_size
+  if settings['RELOCATABLE']:
+    asm_setup += 'var setTempRet0 = Runtime.setTempRet0, getTempRet0 = Runtime.getTempRet0;\n'
+    if not settings['SIDE_MODULE']:
+      asm_setup += 'var gb = Runtime.GLOBAL_BASE, fb = 0;\n'
+    side = 'parent' if settings['SIDE_MODULE'] else ''
+    def check(extern):
+      if settings['ASSERTIONS']:
+        return ('assert(' + side + 'Module["' + extern + '"], "external function \'' + extern +
+                '\' is missing. perhaps a side module was not linked in? if this symbol was expected to arrive '
+                'from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");')
+      return ''
+    for extern in metadata['externs']:
+      asm_setup += 'var g$' + extern + ' = function() { ' + check(extern) + ' return ' + side + 'Module["' + extern + '"] };\n'
+
+  asm_setup += setup_function_pointers(function_table_sigs, settings)
+
+  if settings.get('EMULATED_FUNCTION_POINTERS'):
+    function_tables_impls = make_function_tables_impls(function_table_sigs, settings)
+    asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
+
+  return asm_setup
+
+
+def setup_function_pointers(function_table_sigs, settings):
+  asm_setup = ''
+  for sig in function_table_sigs:
+    asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
+    if settings.get('RESERVED_FUNCTION_POINTERS'):
+      asm_setup += '\n' + shared.JS.make_jscall(sig) + '\n'
+    if settings.get('EMULATED_FUNCTION_POINTERS'):
+      args = ['a%d' % i for i in range(len(sig)-1)]
+      full_args = ['x'] + args
+      table_access = 'FUNCTION_TABLE_' + sig
+      if settings['SIDE_MODULE']:
+        table_access = 'parentModule["' + table_access + '"]' # side module tables were merged into the parent, we need to access the global one
+      if settings['BINARYEN']:
+        # wasm uses a Table, which means we have function pointer emulation capabilities all the time, at no cost. just call the table
+        table_access = "Module['wasmTable']"
+        table_read = table_access + '.get(x)'
+      else:
+        table_read = table_access + '[x]'
+      prelude = '''
+  if (x < 0 || x >= %s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig, function_table_sigs, settings))
+      asm_setup += '''
+function ftCall_%s(%s) {%s
+  return %s(%s);
+}
+''' % (sig, ', '.join(full_args), prelude, table_read, ', '.join(args))
+  return asm_setup
+
+
+def create_basic_funcs(function_table_sigs, settings):
+  basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory']
+  if settings['ABORTING_MALLOC']:
+    basic_funcs += ['abortOnCannotGrowMemory']
+  if settings['STACK_OVERFLOW_CHECK']:
+    basic_funcs += ['abortStackOverflow']
+  if settings['SAFE_HEAP']:
+    if asm_safe_heap(settings):
+      basic_funcs += ['segfault', 'alignfault', 'ftfault']
+    else:
+      basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_LOAD_D', 'SAFE_HEAP_STORE', 'SAFE_HEAP_STORE_D', 'SAFE_FT_MASK']
+  if settings['ASSERTIONS']:
+    for sig in function_table_sigs:
+      basic_funcs += ['nullFunc_' + sig]
+  if settings['RELOCATABLE']:
+    basic_funcs += ['setTempRet0', 'getTempRet0']
+
+  for sig in function_table_sigs:
+    basic_funcs.append('invoke_%s' % sig)
+    if settings.get('RESERVED_FUNCTION_POINTERS'):
+      basic_funcs.append('jsCall_%s' % sig)
+    if settings.get('EMULATED_FUNCTION_POINTERS'):
+      if not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
+        basic_funcs.append('ftCall_%s' % sig)
+  return basic_funcs
+
+def create_basic_vars(exported_implemented_functions, forwarded_json, metadata, settings):
+  basic_vars = ['DYNAMICTOP_PTR', 'tempDoublePtr', 'ABORT']
+  if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
+    basic_vars += ['STACKTOP', 'STACK_MAX']
+  if metadata.get('preciseI64MathUsed'):
+    basic_vars += ['cttz_i8']
+  else:
+    if forwarded_json['Functions']['libraryFunctions'].get('_llvm_cttz_i32'):
+      basic_vars += ['cttz_i8']
+  if settings['RELOCATABLE']:
+    if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
+      basic_vars += ['gb', 'fb']
+    else:
+      basic_vars += ['memoryBase', 'tableBase'] # wasm side modules have a specific convention for these
+
+  # See if we need ASYNCIFY functions
+  # We might not need them even if ASYNCIFY is enabled
+  if need_asyncify(exported_implemented_functions):
+    basic_vars += ['___async', '___async_unwind', '___async_retval', '___async_cur_frame']
+  return basic_vars
+
+def create_exports(exported_implemented_functions, in_table, function_table_data, metadata, settings):
+  quote = quoter(settings)
+  asm_runtime_funcs = create_asm_runtime_funcs(settings)
+  if need_asyncify(exported_implemented_functions):
+    asm_runtime_funcs.append('setAsync')
+  all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables(function_table_data, settings)
+  if settings['EMULATED_FUNCTION_POINTERS']:
+    all_exported = list(set(all_exported).union(in_table))
+  exports = []
+  for export in all_exported:
+    exports.append(quote(export) + ": " + export)
+  if settings['BINARYEN'] and settings['SIDE_MODULE']:
+    # named globals in side wasm modules are exported globals from asm/wasm
+    for k, v in metadata['namedGlobals'].iteritems():
+      exports.append(quote('_' + str(k)) + ': ' + str(v))
+    # aliases become additional exports
+    for k, v in metadata['aliases'].iteritems():
+      exports.append(quote(str(k)) + ': ' + str(v))
+  return '{ ' + ', '.join(exports) + ' }'
+
+
+def create_asm_runtime_funcs(settings):
+  funcs = []
+  if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
+    funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', 'setThrew']
+  if not settings['RELOCATABLE']:
+    funcs += ['setTempRet0', 'getTempRet0']
+  if settings['SAFE_HEAP']:
+    funcs += ['setDynamicTop']
+  if settings['ONLY_MY_CODE']:
+    funcs = []
+  if settings.get('EMTERPRETIFY'):
+    funcs += ['emterpret']
+    if settings.get('EMTERPRETIFY_ASYNC'):
+      funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore']
+  return funcs
+
+
+def function_tables(function_table_data, settings):
+  if not settings['EMULATED_FUNCTION_POINTERS']:
+    return ['dynCall_' + table for table in function_table_data]
+  else:
+    return []
+
+
+def create_the_global(metadata, settings):
+  fundamentals = ['Math']
+  fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
+  fundamentals += ['NaN', 'Infinity']
+  if metadata['simd'] or settings['SIMD']:
+    # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
+    fundamentals += ['SIMD']
+  if settings['ALLOW_MEMORY_GROWTH']:
+    fundamentals.append('byteLength')
+  return '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
+
+
+def create_receiving(function_table_data, function_tables_defs, exported_implemented_functions, settings):
+  receiving = ''
+  if settings['ASSERTIONS']:
+    # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
+    # some support code
+    receiving = '\n'.join(['var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
 assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
 assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
 return real_''' + s + '''.apply(null, arguments);
 };
 ''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory', '__start_module']])
 
-    if not settings['SWAPPABLE_ASM_MODULE']:
-      receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables])
-    else:
-      receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions + function_tables])
-    receiving += ';\n'
+  if not settings['SWAPPABLE_ASM_MODULE']:
+    receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables(function_table_data, settings)])
+  else:
+    receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions + function_tables(function_table_data, settings)])
+  receiving += ';\n'
 
-    if settings['EXPORT_FUNCTION_TABLES'] and not settings['BINARYEN']:
-      for table in last_forwarded_json['Functions']['tables'].values():
-        tableName = table.split()[1]
-        table = table.replace('var ' + tableName, 'var ' + tableName + ' = Module["' + tableName + '"]')
-        receiving += table + '\n'
+  if settings['EXPORT_FUNCTION_TABLES'] and not settings['BINARYEN']:
+    for table in function_table_data.values():
+      tableName = table.split()[1]
+      table = table.replace('var ' + tableName, 'var ' + tableName + ' = Module["' + tableName + '"]')
+      receiving += table + '\n'
 
-    if DEBUG: logging.debug('asm text sizes' + str([map(len, funcs_js), len(asm_setup), len(asm_global_vars), len(asm_global_funcs), len(pre_tables), len('\n'.join(function_tables_impls)), len(function_tables_defs) + (function_tables_defs.count('\n') * len('  ')), len(exports), len(the_global), len(sending), len(receiving)]))
+  if settings.get('EMULATED_FUNCTION_POINTERS'):
+    receiving += '\n' + function_tables_defs.replace('// EMSCRIPTEN_END_FUNCS\n', '') + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in function_table_data])
+    if not settings['BINARYEN']:
+      for sig in function_table_data.keys():
+        name = 'FUNCTION_TABLE_' + sig
+        fullname = name if not settings['SIDE_MODULE'] else ('SIDE_' + name)
+        receiving += 'Module["' + name + '"] = ' + fullname + ';\n'
 
-    final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
-    if settings.get('EMULATED_FUNCTION_POINTERS'):
-      asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
-      receiving += '\n' + function_tables_defs.replace('// EMSCRIPTEN_END_FUNCS\n', '') + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in last_forwarded_json['Functions']['tables']])
-      if not settings['BINARYEN']:
-        for sig in last_forwarded_json['Functions']['tables'].keys():
-          name = 'FUNCTION_TABLE_' + sig
-          fullname = name if not settings['SIDE_MODULE'] else ('SIDE_' + name)
-          receiving += 'Module["' + name + '"] = ' + fullname + ';\n'
+  return receiving
 
-      final_function_tables = final_function_tables.replace("asm['", '').replace("']", '').replace('var SIDE_FUNCTION_TABLE_', 'var FUNCTION_TABLE_').replace('var dynCall_', '//')
 
-    if DEBUG:
-      logging.debug('  emscript: python processing: function tables and exports took %s seconds' % (time.time() - t))
-
-    return post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, last_forwarded_json
-
-def finalize_output(metadata, post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, last_forwarded_json, settings, outfile, DEBUG):
-
+def finalize_output(metadata, post, funcs_js, sending, receiving, asm_setup, the_global,
+                    asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports,
+                    function_table_data, forwarded_json, settings, outfile, DEBUG):
     if DEBUG:
       logging.debug('emscript: python processing: finalize')
       t = time.time()
@@ -1005,80 +1232,39 @@ for (var named in NAMED_GLOBALS) {
     first_in_asm = ''
     if settings['SPLIT_MEMORY']:
       if not settings['SAFE_SPLIT_MEMORY']:
-        first_in_asm += '''
-function get8(ptr) {
+        def make_get_set(name, coercer, shift):
+          access = 'HEAP{name}s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> {shift}]'.format(name=name, shift=shift)
+          format_data = {
+            'name': name,
+            'coerced_value': coercer('value'),
+            'access': access,
+            'coerced_access': coercer(access),
+          }
+          return '''
+function get{name}(ptr) {{
   ptr = ptr | 0;
-  return HEAP8s[ptr >> SPLIT_MEMORY_BITS][ptr & SPLIT_MEMORY_MASK] | 0;
-}
-function get16(ptr) {
+  return {coerced_access};
+}}
+function set{name}(ptr, value) {{
   ptr = ptr | 0;
-  return HEAP16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] | 0;
-}
-function get32(ptr) {
-  ptr = ptr | 0;
-  return HEAP32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] | 0;
-}
-function getU8(ptr) {
-  ptr = ptr | 0;
-  return HEAPU8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] | 0;
-}
-function getU16(ptr) {
-  ptr = ptr | 0;
-  return HEAPU16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] | 0;
-}
-function getU32(ptr) {
-  ptr = ptr | 0;
-  return HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] | 0;
-}
-function getF32(ptr) {
-  ptr = ptr | 0;
-  return +HEAPF32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2]; // TODO: fround when present
-}
-function getF64(ptr) {
-  ptr = ptr | 0;
-  return +HEAPF64s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 3];
-}
-function set8(ptr, value) {
-  ptr = ptr | 0;
-  value = value | 0;
-  HEAP8s[ptr >> SPLIT_MEMORY_BITS][ptr & SPLIT_MEMORY_MASK] = value;
-}
-function set16(ptr, value) {
-  ptr = ptr | 0;
-  value = value | 0;
-  HEAP16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] = value;
-}
-function set32(ptr, value) {
-  ptr = ptr | 0;
-  value = value | 0;
-  HEAP32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
-}
-function setU8(ptr, value) {
-  ptr = ptr | 0;
-  value = value | 0;
-  HEAPU8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] = value;
-}
-function setU16(ptr, value) {
-  ptr = ptr | 0;
-  value = value | 0;
-  HEAPU16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] = value;
-}
-function setU32(ptr, value) {
-  ptr = ptr | 0;
-  value = value | 0;
-  HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
-}
-function setF32(ptr, value) {
-  ptr = ptr | 0;
-  value = +value;
-  HEAPF32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
-}
-function setF64(ptr, value) {
-  ptr = ptr | 0;
-  value = +value;
-  HEAPF64s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 3] = value;
-}
-'''
+  value = {coerced_value};
+  {access} = value;
+}}'''.format(**format_data)
+        def int_coerce(s):
+          return s + ' | 0'
+        def float_coerce(s):
+          return '+' + s
+        get_set_types = [
+          ('8', int_coerce, 0),
+          ('16', int_coerce, 1),
+          ('32', int_coerce, 2),
+          ('U8', int_coerce, 0),
+          ('U16', int_coerce, 1),
+          ('U32', int_coerce, 2),
+          ('F32', float_coerce, 2), # TODO: fround when present
+          ('F64', float_coerce, 3),
+        ]
+        first_in_asm += ''.join([make_get_set(*args) for args in get_set_types]) + '\n'
       first_in_asm += 'buffer = new ArrayBuffer(32); // fake\n'
 
     runtime_funcs = []
@@ -1109,7 +1295,7 @@ function establishStackSpace(stackBase, stackMax) {
 ''' + ('''
 function setAsync() {
   ___async = 1;
-}''' if need_asyncify else '') + ('''
+}''' if need_asyncify(exports) else '') + ('''
 function emterpret(pc) { // this will be replaced when the emterpreter code is generated; adding it here allows validation until then
   pc = pc | 0;
   assert(0);
@@ -1140,7 +1326,7 @@ function setDynamicTop(value) {
   value = value | 0;
   HEAP32[DYNAMICTOP_PTR>>2] = value;
 }
-'''] + ['' if not asm_safe_heap else '''
+'''] + ['' if not asm_safe_heap(settings) else '''
 function SAFE_HEAP_STORE(dest, value, bytes) {
   dest = dest | 0;
   value = value | 0;
@@ -1288,9 +1474,9 @@ var asm = (function(global, env, buffer) {
   var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
   var tempRet0 = 0;
 ''' % (access_quote('NaN'), access_quote('Infinity'))) + '\n' + asm_global_funcs] + \
-  ['  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround else '0.0')] + \
+  ['  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround(settings) else '0.0')] + \
   ['  var asyncState = 0;\n' if settings.get('EMTERPRETIFY_ASYNC') else ''] + \
-  (['  const f0 = Math_fround(0);\n'] if provide_fround else []) + \
+  (['  const f0 = Math_fround(0);\n'] if provide_fround(settings) else []) + \
   ['' if not settings['ALLOW_MEMORY_GROWTH'] else '''
 function _emscripten_replace_memory(newBuffer) {
   if ((byteLength(newBuffer) & 0xffffff || byteLength(newBuffer) <= 0xffffff) || byteLength(newBuffer) > 0x80000000) return false;
@@ -1341,7 +1527,7 @@ Runtime.getTempRet0 = Module['getTempRet0'];
     # Set function table masks
     masks = {}
     max_mask = 0
-    for sig, table in last_forwarded_json['Functions']['tables'].iteritems():
+    for sig, table in function_table_data.iteritems():
       mask = table.count(',')
       masks[sig] = str(mask)
       max_mask = max(mask, max_mask)
@@ -1356,7 +1542,7 @@ Runtime.getTempRet0 = Module['getTempRet0'];
     if settings['SIDE_MODULE']:
       funcs_js.append('''
 Runtime.registerFunctions(%(sigs)s, Module);
-''' % { 'sigs': str(map(str, last_forwarded_json['Functions']['tables'].keys())) })
+''' % { 'sigs': str(map(str, function_table_data.keys())) })
 
     for i in range(len(funcs_js)): # do this loop carefully to save memory
       if WINDOWS: funcs_js[i] = funcs_js[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
@@ -1649,7 +1835,6 @@ return ASM_CONSTS[code](%s);
     return g if not g.startswith('Math_') else g.split('_')[1]
 
   basic_vars = ['STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR', 'ABORT']
-  basic_float_vars = []
 
   # Asm.js-style exception handling: invoke wrapper generation
   invoke_wrappers = ''
@@ -1665,7 +1850,7 @@ return ASM_CONSTS[code](%s);
 
   # sent data
   the_global = '{}'
-  sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
+  sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + global_vars]) + ' }'
   # received
   receiving = ''
   if settings['ASSERTIONS']:
