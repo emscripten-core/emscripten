@@ -2080,6 +2080,12 @@ function integrateWasmJS(Module) {
   var wasmBinaryFile = Module['wasmBinaryFile'] || '{{{ WASM_BINARY_FILE }}}';
   var asmjsCodeFile = Module['asmjsCodeFile'] || '{{{ ASMJS_CODE_FILE }}}';
 
+  if (typeof Module['locateFile'] === 'function') {
+    wasmTextFile = Module['locateFile'](wasmTextFile);
+    wasmBinaryFile = Module['locateFile'](wasmBinaryFile);
+    asmjsCodeFile = Module['locateFile'](asmjsCodeFile);
+  }
+
   // utilities
 
   var wasmPageSize = 64*1024;
@@ -2192,7 +2198,12 @@ function integrateWasmJS(Module) {
   function getBinaryPromise() {
     // if we don't have the binary yet, and have the Fetch api, use that
     if (!Module['wasmBinary'] && typeof fetch === 'function') {
-      return fetch(wasmBinaryFile).then(function(response) { return response['arrayBuffer']() });
+      return fetch(wasmBinaryFile).then(function(response) {
+        if (!response['ok']) {
+          throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
+        }
+        return response['arrayBuffer']()
+      });
     }
     // Otherwise, getBinary should be able to get it synchronously
     return new Promise(function(resolve, reject) {
