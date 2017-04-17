@@ -1235,44 +1235,6 @@ for (var named in NAMED_GLOBALS) {
     else:
       shared_array_buffer = ''
 
-    first_in_asm = ''
-    if settings['SPLIT_MEMORY']:
-      if not settings['SAFE_SPLIT_MEMORY']:
-        def make_get_set(name, coercer, shift):
-          access = 'HEAP{name}s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> {shift}]'.format(name=name, shift=shift)
-          format_data = {
-            'name': name,
-            'coerced_value': coercer('value'),
-            'access': access,
-            'coerced_access': coercer(access),
-          }
-          return '''
-function get{name}(ptr) {{
-  ptr = ptr | 0;
-  return {coerced_access};
-}}
-function set{name}(ptr, value) {{
-  ptr = ptr | 0;
-  value = {coerced_value};
-  {access} = value;
-}}'''.format(**format_data)
-        def int_coerce(s):
-          return s + ' | 0'
-        def float_coerce(s):
-          return '+' + s
-        get_set_types = [
-          ('8', int_coerce, 0),
-          ('16', int_coerce, 1),
-          ('32', int_coerce, 2),
-          ('U8', int_coerce, 0),
-          ('U16', int_coerce, 1),
-          ('U32', int_coerce, 2),
-          ('F32', float_coerce, 2), # TODO: fround when present
-          ('F64', float_coerce, 3),
-        ]
-        first_in_asm += ''.join([make_get_set(*args) for args in get_set_types]) + '\n'
-      first_in_asm += 'buffer = new ArrayBuffer(32); // fake\n'
-
     runtime_funcs = []
     if not settings['ONLY_MY_CODE']:
       runtime_funcs = ['''
@@ -1428,7 +1390,7 @@ var asm = (function(global, env, buffer) {
        shared_array_buffer,
        access_quote('asmLibraryArg'), sending,
        "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 else "'almost asm';",
-       first_in_asm,
+       create_first_in_asm(settings),
        '''
   var HEAP8 = new global%s(buffer);
   var HEAP16 = new global%s(buffer);
@@ -1566,6 +1528,50 @@ Runtime.registerFunctions(%(sigs)s, Module);
       cd_file_name = outfile.name + ".cd"
       with open(cd_file_name, "w") as cd_file:
         json.dump({ 'cyberdwarf': metadata['cyberdwarf_data'] }, cd_file)
+
+
+def create_first_in_asm(settings):
+  first_in_asm = ''
+  if settings['SPLIT_MEMORY']:
+    if not settings['SAFE_SPLIT_MEMORY']:
+      def int_coerce(s):
+        return s + ' | 0'
+      def float_coerce(s):
+        return '+' + s
+      get_set_types = [
+        ('8', int_coerce, 0),
+        ('16', int_coerce, 1),
+        ('32', int_coerce, 2),
+        ('U8', int_coerce, 0),
+        ('U16', int_coerce, 1),
+        ('U32', int_coerce, 2),
+        ('F32', float_coerce, 2), # TODO: fround when present
+        ('F64', float_coerce, 3),
+      ]
+      first_in_asm += ''.join([make_get_set(*args) for args in get_set_types]) + '\n'
+    first_in_asm += 'buffer = new ArrayBuffer(32); // fake\n'
+  return first_in_asm
+
+
+def make_get_set(name, coercer, shift):
+  access = 'HEAP{name}s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> {shift}]'.format(name=name, shift=shift)
+  format_data = {
+    'name': name,
+    'coerced_value': coercer('value'),
+    'access': access,
+    'coerced_access': coercer(access),
+  }
+  return '''
+function get{name}(ptr) {{
+  ptr = ptr | 0;
+  return {coerced_access};
+}}
+function set{name}(ptr, value) {{
+  ptr = ptr | 0;
+  value = {coerced_value};
+  {access} = value;
+}}'''.format(**format_data)
+
 
 def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_engine=None,
                           temp_files=None, DEBUG=None):
