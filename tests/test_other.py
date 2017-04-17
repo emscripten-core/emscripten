@@ -6308,7 +6308,6 @@ Resolved: "/" => "/"
       self.assertContained('hello, world!', run_js('a.out.js'))
       sizes[lto] = os.stat('a.out.js').st_size
     print sizes
-
     # LTO sizes should be distinct
     for i in lto_levels:
       assert sizes[i] not in set(sizes).difference(set([sizes[i]]))
