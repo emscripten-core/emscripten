@@ -205,7 +205,7 @@ For robust fetch management, there are several fields available to track the sta
 
 The onprogress callback is called whenever new data has been received. This allows one to measure the download speed and compute an ETA for completion. Additionally, the emscripten_fetch_t structure passes the XHR object fields readyState, status and statusText, which give information about the HTTP loading state of the request.
 
-The emscripten_fetch_attr_t object has a timeoutMsecs field which allows specifying a timeout duration for the transfer. Additionally, emscripten_fetch_close() can be called at any time for asynchronous and waitable fetches to abort the download. The following example illustrates these fields and the onprogress handler.
+The emscripten_fetch_attr_t object has a timeoutMSecs field which allows specifying a timeout duration for the transfer. Additionally, emscripten_fetch_close() can be called at any time for asynchronous and waitable fetches to abort the download. The following example illustrates these fields and the onprogress handler.
 
 	.. code-block:: cpp
 
@@ -269,7 +269,7 @@ If the application does not need random seek access to the file, but is able to 
 		  attr.onsuccess = downloadSucceeded;
 		  attr.onprogress = downloadProgress;
 		  attr.onerror = downloadFailed;
-		  attr.timeoutMsecs = 2*60;
+		  attr.timeoutMSecs = 2*60;
 		  emscripten_fetch(&attr, "myfile.dat");
 		}
 
