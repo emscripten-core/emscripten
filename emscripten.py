@@ -98,9 +98,8 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
 
     with ToolchainProfiler.profile_block('function_tables_and_exports'):
       (post, funcs_js, sending, receiving, asm_setup, the_global, asm_global_vars,
-       asm_global_funcs, pre_tables, final_function_tables, exports, function_table_data,
-       forwarded_json) = function_tables_and_exports(funcs, metadata, mem_init, glue,
-                                                     forwarded_data, settings, outfile, DEBUG)
+       asm_global_funcs, pre_tables, final_function_tables, exports, function_table_data) = (
+          function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG))
     with ToolchainProfiler.profile_block('finalize_output'):
       funcs_js = finalize_funcs_js(funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
                                    asm_global_funcs, pre_tables, final_function_tables,
@@ -454,8 +453,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
       logging.debug('  emscript: python processing: function tables and exports took %s seconds' % (time.time() - t))
 
     return (post, funcs_js, sending, receiving, asm_setup, the_global, asm_global_vars,
-            asm_global_funcs, pre_tables, final_function_tables, exports,
-            function_table_data, forwarded_json)
+            asm_global_funcs, pre_tables, final_function_tables, exports, function_table_data)
 
 
 def memory_and_global_initializers(pre, metadata, mem_init, settings):
