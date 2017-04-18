@@ -1215,145 +1215,7 @@ def finalize_output(metadata, post, funcs_js, sending, receiving, asm_setup, the
     else:
       shared_array_buffer = ''
 
-    runtime_funcs = []
-    if not settings['ONLY_MY_CODE']:
-      runtime_funcs = ['''
-function stackAlloc(size) {
-  size = size|0;
-  var ret = 0;
-  ret = STACKTOP;
-  STACKTOP = (STACKTOP + size)|0;
-  STACKTOP = (STACKTOP + 15)&-16;
-''' + ('  if ((STACKTOP|0) >= (STACK_MAX|0)) abortStackOverflow(size|0);\n' if (settings['ASSERTIONS'] or settings['STACK_OVERFLOW_CHECK'] >= 2) else '') + '''
-  return ret|0;
-}
-function stackSave() {
-  return STACKTOP|0;
-}
-function stackRestore(top) {
-  top = top|0;
-  STACKTOP = top;
-}
-function establishStackSpace(stackBase, stackMax) {
-  stackBase = stackBase|0;
-  stackMax = stackMax|0;
-  STACKTOP = stackBase;
-  STACK_MAX = stackMax;
-}
-''' + ('''
-function setAsync() {
-  ___async = 1;
-}''' if need_asyncify(exports) else '') + ('''
-function emterpret(pc) { // this will be replaced when the emterpreter code is generated; adding it here allows validation until then
-  pc = pc | 0;
-  assert(0);
-}
-''' if settings['EMTERPRETIFY'] else '') + ('''
-function setAsyncState(x) {
-  x = x | 0;
-  asyncState = x;
-}
-function emtStackSave() {
-  return EMTSTACKTOP|0;
-}
-function emtStackRestore(x) {
-  x = x | 0;
-  EMTSTACKTOP = x;
-}
-''' if settings['EMTERPRETIFY_ASYNC'] else '') + '''
-function setThrew(threw, value) {
-  threw = threw|0;
-  value = value|0;
-  if ((__THREW__|0) == 0) {
-    __THREW__ = threw;
-    threwValue = value;
-  }
-}
-'''] + ['' if not settings['SAFE_HEAP'] else '''
-function setDynamicTop(value) {
-  value = value | 0;
-  HEAP32[DYNAMICTOP_PTR>>2] = value;
-}
-'''] + ['' if not asm_safe_heap(settings) else '''
-function SAFE_HEAP_STORE(dest, value, bytes) {
-  dest = dest | 0;
-  value = value | 0;
-  bytes = bytes | 0;
-  if ((dest|0) <= 0) segfault();
-  if (((dest + bytes)|0) > (HEAP32[DYNAMICTOP_PTR>>2]|0)) segfault();
-  if ((bytes|0) == 4) {
-    if ((dest&3)) alignfault();
-    HEAP32[dest>>2] = value;
-  } else if ((bytes|0) == 1) {
-    HEAP8[dest>>0] = value;
-  } else {
-    if ((dest&1)) alignfault();
-    HEAP16[dest>>1] = value;
-  }
-}
-function SAFE_HEAP_STORE_D(dest, value, bytes) {
-  dest = dest | 0;
-  value = +value;
-  bytes = bytes | 0;
-  if ((dest|0) <= 0) segfault();
-  if (((dest + bytes)|0) > (HEAP32[DYNAMICTOP_PTR>>2]|0)) segfault();
-  if ((bytes|0) == 8) {
-    if ((dest&7)) alignfault();
-    HEAPF64[dest>>3] = value;
-  } else {
-    if ((dest&3)) alignfault();
-    HEAPF32[dest>>2] = value;
-  }
-}
-function SAFE_HEAP_LOAD(dest, bytes, unsigned) {
-  dest = dest | 0;
-  bytes = bytes | 0;
-  unsigned = unsigned | 0;
-  if ((dest|0) <= 0) segfault();
-  if ((dest + bytes|0) > (HEAP32[DYNAMICTOP_PTR>>2]|0)) segfault();
-  if ((bytes|0) == 4) {
-    if ((dest&3)) alignfault();
-    return HEAP32[dest>>2] | 0;
-  } else if ((bytes|0) == 1) {
-    if (unsigned) {
-      return HEAPU8[dest>>0] | 0;
-    } else {
-      return HEAP8[dest>>0] | 0;
-    }
-  }
-  if ((dest&1)) alignfault();
-  if (unsigned) return HEAPU16[dest>>1] | 0;
-  return HEAP16[dest>>1] | 0;
-}
-function SAFE_HEAP_LOAD_D(dest, bytes) {
-  dest = dest | 0;
-  bytes = bytes | 0;
-  if ((dest|0) <= 0) segfault();
-  if ((dest + bytes|0) > (HEAP32[DYNAMICTOP_PTR>>2]|0)) segfault();
-  if ((bytes|0) == 8) {
-    if ((dest&7)) alignfault();
-    return +HEAPF64[dest>>3];
-  }
-  if ((dest&3)) alignfault();
-  return +HEAPF32[dest>>2];
-}
-function SAFE_FT_MASK(value, mask) {
-  value = value | 0;
-  mask = mask | 0;
-  var ret = 0;
-  ret = value & mask;
-  if ((ret|0) != (value|0)) ftfault();
-  return ret | 0;
-}
-'''] + ['''
-function setTempRet0(value) {
-  value = value|0;
-  tempRet0 = value;
-}
-function getTempRet0() {
-  return tempRet0|0;
-}
-''' if not settings['RELOCATABLE'] else '']
+    runtime_funcs = create_runtime_funcs(exports, settings)
 
     funcs_js = ['''
 %s
@@ -1534,6 +1396,148 @@ for (var named in NAMED_GLOBALS) {
 '''
     named_globals += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in metadata['aliases'].iteritems()])
   return named_globals
+
+
+def create_runtime_funcs(exports, settings):
+  if settings['ONLY_MY_CODE']:
+    return []
+  return ['''
+function stackAlloc(size) {
+  size = size|0;
+  var ret = 0;
+  ret = STACKTOP;
+  STACKTOP = (STACKTOP + size)|0;
+  STACKTOP = (STACKTOP + 15)&-16;
+''' + ('  if ((STACKTOP|0) >= (STACK_MAX|0)) abortStackOverflow(size|0);\n' if (settings['ASSERTIONS'] or settings['STACK_OVERFLOW_CHECK'] >= 2) else '') + '''
+  return ret|0;
+}
+function stackSave() {
+  return STACKTOP|0;
+}
+function stackRestore(top) {
+  top = top|0;
+  STACKTOP = top;
+}
+function establishStackSpace(stackBase, stackMax) {
+  stackBase = stackBase|0;
+  stackMax = stackMax|0;
+  STACKTOP = stackBase;
+  STACK_MAX = stackMax;
+}
+''' + ('''
+function setAsync() {
+  ___async = 1;
+}''' if need_asyncify(exports) else '') + ('''
+function emterpret(pc) { // this will be replaced when the emterpreter code is generated; adding it here allows validation until then
+  pc = pc | 0;
+  assert(0);
+}
+''' if settings['EMTERPRETIFY'] else '') + ('''
+function setAsyncState(x) {
+  x = x | 0;
+  asyncState = x;
+}
+function emtStackSave() {
+  return EMTSTACKTOP|0;
+}
+function emtStackRestore(x) {
+  x = x | 0;
+  EMTSTACKTOP = x;
+}
+''' if settings['EMTERPRETIFY_ASYNC'] else '') + '''
+function setThrew(threw, value) {
+  threw = threw|0;
+  value = value|0;
+  if ((__THREW__|0) == 0) {
+    __THREW__ = threw;
+    threwValue = value;
+  }
+}
+'''] + ['' if not settings['SAFE_HEAP'] else '''
+function setDynamicTop(value) {
+  value = value | 0;
+  HEAP32[DYNAMICTOP_PTR>>2] = value;
+}
+'''] + ['' if not asm_safe_heap(settings) else '''
+function SAFE_HEAP_STORE(dest, value, bytes) {
+  dest = dest | 0;
+  value = value | 0;
+  bytes = bytes | 0;
+  if ((dest|0) <= 0) segfault();
+  if (((dest + bytes)|0) > (HEAP32[DYNAMICTOP_PTR>>2]|0)) segfault();
+  if ((bytes|0) == 4) {
+    if ((dest&3)) alignfault();
+    HEAP32[dest>>2] = value;
+  } else if ((bytes|0) == 1) {
+    HEAP8[dest>>0] = value;
+  } else {
+    if ((dest&1)) alignfault();
+    HEAP16[dest>>1] = value;
+  }
+}
+function SAFE_HEAP_STORE_D(dest, value, bytes) {
+  dest = dest | 0;
+  value = +value;
+  bytes = bytes | 0;
+  if ((dest|0) <= 0) segfault();
+  if (((dest + bytes)|0) > (HEAP32[DYNAMICTOP_PTR>>2]|0)) segfault();
+  if ((bytes|0) == 8) {
+    if ((dest&7)) alignfault();
+    HEAPF64[dest>>3] = value;
+  } else {
+    if ((dest&3)) alignfault();
+    HEAPF32[dest>>2] = value;
+  }
+}
+function SAFE_HEAP_LOAD(dest, bytes, unsigned) {
+  dest = dest | 0;
+  bytes = bytes | 0;
+  unsigned = unsigned | 0;
+  if ((dest|0) <= 0) segfault();
+  if ((dest + bytes|0) > (HEAP32[DYNAMICTOP_PTR>>2]|0)) segfault();
+  if ((bytes|0) == 4) {
+    if ((dest&3)) alignfault();
+    return HEAP32[dest>>2] | 0;
+  } else if ((bytes|0) == 1) {
+    if (unsigned) {
+      return HEAPU8[dest>>0] | 0;
+    } else {
+      return HEAP8[dest>>0] | 0;
+    }
+  }
+  if ((dest&1)) alignfault();
+  if (unsigned) return HEAPU16[dest>>1] | 0;
+  return HEAP16[dest>>1] | 0;
+}
+function SAFE_HEAP_LOAD_D(dest, bytes) {
+  dest = dest | 0;
+  bytes = bytes | 0;
+  if ((dest|0) <= 0) segfault();
+  if ((dest + bytes|0) > (HEAP32[DYNAMICTOP_PTR>>2]|0)) segfault();
+  if ((bytes|0) == 8) {
+    if ((dest&7)) alignfault();
+    return +HEAPF64[dest>>3];
+  }
+  if ((dest&3)) alignfault();
+  return +HEAPF32[dest>>2];
+}
+function SAFE_FT_MASK(value, mask) {
+  value = value | 0;
+  mask = mask | 0;
+  var ret = 0;
+  ret = value & mask;
+  if ((ret|0) != (value|0)) ftfault();
+  return ret | 0;
+}
+'''] + ['''
+function setTempRet0(value) {
+  value = value|0;
+  tempRet0 = value;
+}
+function getTempRet0() {
+  return tempRet0|0;
+}
+''' if not settings['RELOCATABLE'] else '']
 
 
 def create_first_in_asm(settings):
