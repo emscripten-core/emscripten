@@ -1208,27 +1208,7 @@ def finalize_output(metadata, post, funcs_js, sending, receiving, asm_setup, the
 
     access_quote = access_quoter(settings)
 
-    if settings['RELOCATABLE']:
-      receiving += '''
-var NAMED_GLOBALS = { %s };
-for (var named in NAMED_GLOBALS) {
-  Module['_' + named] = gb + NAMED_GLOBALS[named];
-}
-Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
-''' % ', '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].iteritems())
-      if settings['BINARYEN']:
-        # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
-        # TODO: this works if we are the main module, but if the supplying module is later, it won't, so
-        #       we'll need another solution for that. one option is to scan the module imports, if/when
-        #       wasm supports that, then the loader can do this.
-        receiving += '''
-for (var named in NAMED_GLOBALS) {
-  (function(named) {
-    Module['g$_' + named] = function() { return Module['_' + named] };
-  })(named);
-}
-'''
-      receiving += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in metadata['aliases'].iteritems()])
+    receiving += create_named_globals(metadata, settings)
 
     if settings['USE_PTHREADS']:
       shared_array_buffer = "Module.asmGlobalArg['Atomics'] = Atomics;"
@@ -1528,6 +1508,32 @@ Runtime.registerFunctions(%(sigs)s, Module);
       cd_file_name = outfile.name + ".cd"
       with open(cd_file_name, "w") as cd_file:
         json.dump({ 'cyberdwarf': metadata['cyberdwarf_data'] }, cd_file)
+
+
+def create_named_globals(metadata, settings):
+  named_globals = ''
+  if settings['RELOCATABLE']:
+    named_globals += '''
+var NAMED_GLOBALS = { %s };
+for (var named in NAMED_GLOBALS) {
+  Module['_' + named] = gb + NAMED_GLOBALS[named];
+}
+Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
+''' % ', '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].iteritems())
+    if settings['BINARYEN']:
+      # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
+      # TODO: this works if we are the main module, but if the supplying module is later, it won't, so
+      #       we'll need another solution for that. one option is to scan the module imports, if/when
+      #       wasm supports that, then the loader can do this.
+      named_globals += '''
+for (var named in NAMED_GLOBALS) {
+  (function(named) {
+    Module['g$_' + named] = function() { return Module['_' + named] };
+  })(named);
+}
+'''
+    named_globals += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in metadata['aliases'].iteritems()])
+  return named_globals
 
 
 def create_first_in_asm(settings):
