@@ -1502,44 +1502,41 @@ def create_first_in_asm(settings):
   first_in_asm = ''
   if settings['SPLIT_MEMORY']:
     if not settings['SAFE_SPLIT_MEMORY']:
-      def int_coerce(s):
-        return s + ' | 0'
-      def float_coerce(s):
-        return '+' + s
-      get_set_types = [
-        ('8', int_coerce, 0),
-        ('16', int_coerce, 1),
-        ('32', int_coerce, 2),
-        ('U8', int_coerce, 0),
-        ('U16', int_coerce, 1),
-        ('U32', int_coerce, 2),
-        ('F32', float_coerce, 2), # TODO: fround when present
-        ('F64', float_coerce, 3),
-      ]
-      first_in_asm += ''.join([make_get_set(*args) for args in get_set_types]) + '\n'
+      first_in_asm += ''.join([make_get_set(info) for info in HEAP_TYPE_INFOS]) + '\n'
     first_in_asm += 'buffer = new ArrayBuffer(32); // fake\n'
   return first_in_asm
 
 
+def make_get_set(info):
+  access = 'HEAP{name}s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> {shift}]'.format(name=info.short_name, shift=info.shift_amount)
+  format_data = {
+    'name': info.short_name,
+    'coerced_value': info.coerce('value'),
+    'access': access,
+    'coerced_access': info.coerce(access),
+  }
+  # TODO: fround when present for Float32
+  return '''
+function get{name}(ptr) {{
+  ptr = ptr | 0;
+  return {coerced_access};
+}}
+function set{name}(ptr, value) {{
+  ptr = ptr | 0;
+  value = {coerced_value};
+  {access} = value;
+}}'''.format(**format_data)
+
+
 def create_memory_views(settings):
   access_quote = access_quoter(settings)
-  type_infos = [
-    ('8', 'Int8'),
-    ('16', 'Int16'),
-    ('32', 'Int32'),
-    ('U8', 'Uint8'),
-    ('U16', 'Uint16'),
-    ('U32', 'Uint32'),
-    ('F32', 'Float32'),
-    ('F64', 'Float64'),
-  ]
   ret = '\n'
   grow_memory = settings['ALLOW_MEMORY_GROWTH']
-  for short_name, long_name in type_infos:
-    access = access_quote('{}Array'.format(long_name))
+  for info in HEAP_TYPE_INFOS:
+    access = access_quote('{}Array'.format(info.long_name))
     format_args = {
-      'short': short_name,
-      'long': long_name,
+      'short': info.short_name,
+      'long': info.long_name,
       'access': access,
     }
     if grow_memory:
@@ -1552,24 +1549,35 @@ def create_memory_views(settings):
   return ret
 
 
-def make_get_set(name, coercer, shift):
-  access = 'HEAP{name}s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> {shift}]'.format(name=name, shift=shift)
-  format_data = {
-    'name': name,
-    'coerced_value': coercer('value'),
-    'access': access,
-    'coerced_access': coercer(access),
-  }
-  return '''
-function get{name}(ptr) {{
-  ptr = ptr | 0;
-  return {coerced_access};
-}}
-function set{name}(ptr, value) {{
-  ptr = ptr | 0;
-  value = {coerced_value};
-  {access} = value;
-}}'''.format(**format_data)
+class HeapTypeInfo(object):
+  """Struct that holds data for a type of HEAP* views."""
+  def __init__(self, short_name, long_name, shift_amount):
+    self.short_name = short_name
+    self.long_name = long_name
+    self.shift_amount = shift_amount
+
+  def is_int(self):
+    """Whether this heap type is an integer type or not."""
+    return self.short_name[0] != 'F'
+
+  def coerce(self, expression):
+    """Adds asm.js type coercion to a string expression."""
+    if self.is_int():
+      return expression + '| 0'
+    else:
+      return '+' + expression
+
+
+HEAP_TYPE_INFOS = [
+  HeapTypeInfo(short_name='8',   long_name='Int8',    shift_amount=0),
+  HeapTypeInfo(short_name='16',  long_name='Int16',   shift_amount=1),
+  HeapTypeInfo(short_name='32',  long_name='Int32',   shift_amount=2),
+  HeapTypeInfo(short_name='U8',  long_name='Uint8',   shift_amount=0),
+  HeapTypeInfo(short_name='U16', long_name='Uint16',  shift_amount=1),
+  HeapTypeInfo(short_name='U32', long_name='Uint32',  shift_amount=2),
+  HeapTypeInfo(short_name='F32', long_name='Float32', shift_amount=2),
+  HeapTypeInfo(short_name='F64', long_name='Float64', shift_amount=3),
+]
 
 
 def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_engine=None,
