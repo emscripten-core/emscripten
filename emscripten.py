@@ -1523,51 +1523,33 @@ def create_first_in_asm(settings):
 
 def create_memory_views(settings):
   access_quote = access_quoter(settings)
-  if settings['ALLOW_MEMORY_GROWTH']:
-    return '''
-  var Int8View = global%s;
-  var Int16View = global%s;
-  var Int32View = global%s;
-  var Uint8View = global%s;
-  var Uint16View = global%s;
-  var Uint32View = global%s;
-  var Float32View = global%s;
-  var Float64View = global%s;
-  var HEAP8 = new Int8View(buffer);
-  var HEAP16 = new Int16View(buffer);
-  var HEAP32 = new Int32View(buffer);
-  var HEAPU8 = new Uint8View(buffer);
-  var HEAPU16 = new Uint16View(buffer);
-  var HEAPU32 = new Uint32View(buffer);
-  var HEAPF32 = new Float32View(buffer);
-  var HEAPF64 = new Float64View(buffer);
-  var byteLength = global.byteLength;
-''' % (access_quote('Int8Array'),
-     access_quote('Int16Array'),
-     access_quote('Int32Array'),
-     access_quote('Uint8Array'),
-     access_quote('Uint16Array'),
-     access_quote('Uint32Array'),
-     access_quote('Float32Array'),
-     access_quote('Float64Array'))
-  else:
-    return '''
-  var HEAP8 = new global%s(buffer);
-  var HEAP16 = new global%s(buffer);
-  var HEAP32 = new global%s(buffer);
-  var HEAPU8 = new global%s(buffer);
-  var HEAPU16 = new global%s(buffer);
-  var HEAPU32 = new global%s(buffer);
-  var HEAPF32 = new global%s(buffer);
-  var HEAPF64 = new global%s(buffer);
-''' % (access_quote('Int8Array'),
-     access_quote('Int16Array'),
-     access_quote('Int32Array'),
-     access_quote('Uint8Array'),
-     access_quote('Uint16Array'),
-     access_quote('Uint32Array'),
-     access_quote('Float32Array'),
-     access_quote('Float64Array'))
+  type_infos = [
+    ('8', 'Int8'),
+    ('16', 'Int16'),
+    ('32', 'Int32'),
+    ('U8', 'Uint8'),
+    ('U16', 'Uint16'),
+    ('U32', 'Uint32'),
+    ('F32', 'Float32'),
+    ('F64', 'Float64'),
+  ]
+  ret = '\n'
+  grow_memory = settings['ALLOW_MEMORY_GROWTH']
+  for short_name, long_name in type_infos:
+    access = access_quote('{}Array'.format(long_name))
+    format_args = {
+      'short': short_name,
+      'long': long_name,
+      'access': access,
+    }
+    if grow_memory:
+      ret += ('  var {long}View = global{access};\n'
+              '  var HEAP{short} = new {long}View(buffer);\n').format(**format_args)
+    else:
+      ret += '  var HEAP{short} = new global{access}(buffer);\n'.format(**format_args)
+  if grow_memory:
+    ret += '  var byteLength = global.byteLength;\n'
+  return ret
 
 
 def make_get_set(name, coercer, shift):
