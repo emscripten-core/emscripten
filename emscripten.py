@@ -1437,49 +1437,7 @@ var asm = (function(global, env, buffer) {
        access_quote('asmLibraryArg'), sending,
        "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 else "'almost asm';",
        create_first_in_asm(settings),
-       '''
-  var HEAP8 = new global%s(buffer);
-  var HEAP16 = new global%s(buffer);
-  var HEAP32 = new global%s(buffer);
-  var HEAPU8 = new global%s(buffer);
-  var HEAPU16 = new global%s(buffer);
-  var HEAPU32 = new global%s(buffer);
-  var HEAPF32 = new global%s(buffer);
-  var HEAPF64 = new global%s(buffer);
-''' % (access_quote('Int8Array'),
-     access_quote('Int16Array'),
-     access_quote('Int32Array'),
-     access_quote('Uint8Array'),
-     access_quote('Uint16Array'),
-     access_quote('Uint32Array'),
-     access_quote('Float32Array'),
-     access_quote('Float64Array'))
-     if not settings['ALLOW_MEMORY_GROWTH'] else '''
-  var Int8View = global%s;
-  var Int16View = global%s;
-  var Int32View = global%s;
-  var Uint8View = global%s;
-  var Uint16View = global%s;
-  var Uint32View = global%s;
-  var Float32View = global%s;
-  var Float64View = global%s;
-  var HEAP8 = new Int8View(buffer);
-  var HEAP16 = new Int16View(buffer);
-  var HEAP32 = new Int32View(buffer);
-  var HEAPU8 = new Uint8View(buffer);
-  var HEAPU16 = new Uint16View(buffer);
-  var HEAPU32 = new Uint32View(buffer);
-  var HEAPF32 = new Float32View(buffer);
-  var HEAPF64 = new Float64View(buffer);
-  var byteLength = global.byteLength;
-''' % (access_quote('Int8Array'),
-     access_quote('Int16Array'),
-     access_quote('Int32Array'),
-     access_quote('Uint8Array'),
-     access_quote('Uint16Array'),
-     access_quote('Uint32Array'),
-     access_quote('Float32Array'),
-     access_quote('Float64Array'))) + '\n' + asm_global_vars + ('''
+       create_memory_views(settings)) + '\n' + asm_global_vars + ('''
   var __THREW__ = 0;
   var threwValue = 0;
   var setjmpId = 0;
@@ -1561,6 +1519,55 @@ def create_first_in_asm(settings):
       first_in_asm += ''.join([make_get_set(*args) for args in get_set_types]) + '\n'
     first_in_asm += 'buffer = new ArrayBuffer(32); // fake\n'
   return first_in_asm
+
+
+def create_memory_views(settings):
+  access_quote = access_quoter(settings)
+  if settings['ALLOW_MEMORY_GROWTH']:
+    return '''
+  var Int8View = global%s;
+  var Int16View = global%s;
+  var Int32View = global%s;
+  var Uint8View = global%s;
+  var Uint16View = global%s;
+  var Uint32View = global%s;
+  var Float32View = global%s;
+  var Float64View = global%s;
+  var HEAP8 = new Int8View(buffer);
+  var HEAP16 = new Int16View(buffer);
+  var HEAP32 = new Int32View(buffer);
+  var HEAPU8 = new Uint8View(buffer);
+  var HEAPU16 = new Uint16View(buffer);
+  var HEAPU32 = new Uint32View(buffer);
+  var HEAPF32 = new Float32View(buffer);
+  var HEAPF64 = new Float64View(buffer);
+  var byteLength = global.byteLength;
+''' % (access_quote('Int8Array'),
+     access_quote('Int16Array'),
+     access_quote('Int32Array'),
+     access_quote('Uint8Array'),
+     access_quote('Uint16Array'),
+     access_quote('Uint32Array'),
+     access_quote('Float32Array'),
+     access_quote('Float64Array'))
+  else:
+    return '''
+  var HEAP8 = new global%s(buffer);
+  var HEAP16 = new global%s(buffer);
+  var HEAP32 = new global%s(buffer);
+  var HEAPU8 = new global%s(buffer);
+  var HEAPU16 = new global%s(buffer);
+  var HEAPU32 = new global%s(buffer);
+  var HEAPF32 = new global%s(buffer);
+  var HEAPF64 = new global%s(buffer);
+''' % (access_quote('Int8Array'),
+     access_quote('Int16Array'),
+     access_quote('Int32Array'),
+     access_quote('Uint8Array'),
+     access_quote('Uint16Array'),
+     access_quote('Uint32Array'),
+     access_quote('Float32Array'),
+     access_quote('Float64Array'))
 
 
 def make_get_set(name, coercer, shift):
