@@ -1206,133 +1206,12 @@ def finalize_output(metadata, post, funcs_js, sending, receiving, asm_setup, the
       logging.debug('emscript: python processing: finalize')
       t = time.time()
 
-    access_quote = access_quoter(settings)
-
     receiving += create_named_globals(metadata, settings)
 
-    if settings['USE_PTHREADS']:
-      shared_array_buffer = "Module.asmGlobalArg['Atomics'] = Atomics;"
-    else:
-      shared_array_buffer = ''
-
     runtime_funcs = create_runtime_funcs(exports, settings)
-
-    funcs_js = ['''
-%s
-Module%s = %s;
-%s
-Module%s = %s;
-// EMSCRIPTEN_START_ASM
-var asm = (function(global, env, buffer) {
-  %s
-  %s
-  %s
-''' % (asm_setup,
-       access_quote('asmGlobalArg'), the_global,
-       shared_array_buffer,
-       access_quote('asmLibraryArg'), sending,
-       "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 else "'almost asm';",
-       create_first_in_asm(settings),
-       '''
-  var HEAP8 = new global%s(buffer);
-  var HEAP16 = new global%s(buffer);
-  var HEAP32 = new global%s(buffer);
-  var HEAPU8 = new global%s(buffer);
-  var HEAPU16 = new global%s(buffer);
-  var HEAPU32 = new global%s(buffer);
-  var HEAPF32 = new global%s(buffer);
-  var HEAPF64 = new global%s(buffer);
-''' % (access_quote('Int8Array'),
-     access_quote('Int16Array'),
-     access_quote('Int32Array'),
-     access_quote('Uint8Array'),
-     access_quote('Uint16Array'),
-     access_quote('Uint32Array'),
-     access_quote('Float32Array'),
-     access_quote('Float64Array'))
-     if not settings['ALLOW_MEMORY_GROWTH'] else '''
-  var Int8View = global%s;
-  var Int16View = global%s;
-  var Int32View = global%s;
-  var Uint8View = global%s;
-  var Uint16View = global%s;
-  var Uint32View = global%s;
-  var Float32View = global%s;
-  var Float64View = global%s;
-  var HEAP8 = new Int8View(buffer);
-  var HEAP16 = new Int16View(buffer);
-  var HEAP32 = new Int32View(buffer);
-  var HEAPU8 = new Uint8View(buffer);
-  var HEAPU16 = new Uint16View(buffer);
-  var HEAPU32 = new Uint32View(buffer);
-  var HEAPF32 = new Float32View(buffer);
-  var HEAPF64 = new Float64View(buffer);
-  var byteLength = global.byteLength;
-''' % (access_quote('Int8Array'),
-     access_quote('Int16Array'),
-     access_quote('Int32Array'),
-     access_quote('Uint8Array'),
-     access_quote('Uint16Array'),
-     access_quote('Uint32Array'),
-     access_quote('Float32Array'),
-     access_quote('Float64Array'))) + '\n' + asm_global_vars + ('''
-  var __THREW__ = 0;
-  var threwValue = 0;
-  var setjmpId = 0;
-  var undef = 0;
-  var nan = global%s, inf = global%s;
-  var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
-  var tempRet0 = 0;
-''' % (access_quote('NaN'), access_quote('Infinity'))) + '\n' + asm_global_funcs] + \
-  ['  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround(settings) else '0.0')] + \
-  ['  var asyncState = 0;\n' if settings.get('EMTERPRETIFY_ASYNC') else ''] + \
-  (['  const f0 = Math_fround(0);\n'] if provide_fround(settings) else []) + \
-  ['' if not settings['ALLOW_MEMORY_GROWTH'] else '''
-function _emscripten_replace_memory(newBuffer) {
-  if ((byteLength(newBuffer) & 0xffffff || byteLength(newBuffer) <= 0xffffff) || byteLength(newBuffer) > 0x80000000) return false;
-  HEAP8 = new Int8View(newBuffer);
-  HEAP16 = new Int16View(newBuffer);
-  HEAP32 = new Int32View(newBuffer);
-  HEAPU8 = new Uint8View(newBuffer);
-  HEAPU16 = new Uint16View(newBuffer);
-  HEAPU32 = new Uint32View(newBuffer);
-  HEAPF32 = new Float32View(newBuffer);
-  HEAPF64 = new Float64View(newBuffer);
-  buffer = newBuffer;
-  return true;
-}
-'''] + ['''
-// EMSCRIPTEN_START_FUNCS
-'''] + runtime_funcs + funcs_js + ['''
-  ''', pre_tables, final_function_tables, '''
-
-  return %s;
-})
-// EMSCRIPTEN_END_ASM
-(%s, %s, buffer);
-''' % (exports,
-       'Module' + access_quote('asmGlobalArg'),
-       'Module' + access_quote('asmLibraryArg')), '''
-''', receiving, ''';
-''']
-
-    if not settings.get('SIDE_MODULE'):
-      funcs_js.append('''
-Runtime.stackAlloc = Module['stackAlloc'];
-Runtime.stackSave = Module['stackSave'];
-Runtime.stackRestore = Module['stackRestore'];
-Runtime.establishStackSpace = Module['establishStackSpace'];
-''')
-      if settings['SAFE_HEAP']:
-        funcs_js.append('''
-Runtime.setDynamicTop = Module['setDynamicTop'];
-''')
-
-    if not settings['RELOCATABLE']:
-      funcs_js.append('''
-Runtime.setTempRet0 = Module['setTempRet0'];
-Runtime.getTempRet0 = Module['getTempRet0'];
-''')
+    funcs_js = finalize_funcs_js(funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
+                                 asm_global_funcs, runtime_funcs, pre_tables, final_function_tables,
+                                 exports, metadata, settings)
 
     # Set function table masks
     masks = {}
@@ -1538,6 +1417,134 @@ function getTempRet0() {
   return tempRet0|0;
 }
 ''' if not settings['RELOCATABLE'] else '']
+
+
+def finalize_funcs_js(base_funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
+                      asm_global_funcs, runtime_funcs, pre_tables, final_function_tables,
+                      exports, metadata, settings):
+  access_quote = access_quoter(settings)
+  if settings['USE_PTHREADS']:
+    shared_array_buffer = "Module.asmGlobalArg['Atomics'] = Atomics;"
+  else:
+    shared_array_buffer = ''
+
+  funcs_js = ['''
+%s
+Module%s = %s;
+%s
+Module%s = %s;
+// EMSCRIPTEN_START_ASM
+var asm = (function(global, env, buffer) {
+  %s
+  %s
+  %s
+''' % (asm_setup,
+       access_quote('asmGlobalArg'), the_global,
+       shared_array_buffer,
+       access_quote('asmLibraryArg'), sending,
+       "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 else "'almost asm';",
+       create_first_in_asm(settings),
+       '''
+  var HEAP8 = new global%s(buffer);
+  var HEAP16 = new global%s(buffer);
+  var HEAP32 = new global%s(buffer);
+  var HEAPU8 = new global%s(buffer);
+  var HEAPU16 = new global%s(buffer);
+  var HEAPU32 = new global%s(buffer);
+  var HEAPF32 = new global%s(buffer);
+  var HEAPF64 = new global%s(buffer);
+''' % (access_quote('Int8Array'),
+     access_quote('Int16Array'),
+     access_quote('Int32Array'),
+     access_quote('Uint8Array'),
+     access_quote('Uint16Array'),
+     access_quote('Uint32Array'),
+     access_quote('Float32Array'),
+     access_quote('Float64Array'))
+     if not settings['ALLOW_MEMORY_GROWTH'] else '''
+  var Int8View = global%s;
+  var Int16View = global%s;
+  var Int32View = global%s;
+  var Uint8View = global%s;
+  var Uint16View = global%s;
+  var Uint32View = global%s;
+  var Float32View = global%s;
+  var Float64View = global%s;
+  var HEAP8 = new Int8View(buffer);
+  var HEAP16 = new Int16View(buffer);
+  var HEAP32 = new Int32View(buffer);
+  var HEAPU8 = new Uint8View(buffer);
+  var HEAPU16 = new Uint16View(buffer);
+  var HEAPU32 = new Uint32View(buffer);
+  var HEAPF32 = new Float32View(buffer);
+  var HEAPF64 = new Float64View(buffer);
+  var byteLength = global.byteLength;
+''' % (access_quote('Int8Array'),
+     access_quote('Int16Array'),
+     access_quote('Int32Array'),
+     access_quote('Uint8Array'),
+     access_quote('Uint16Array'),
+     access_quote('Uint32Array'),
+     access_quote('Float32Array'),
+     access_quote('Float64Array'))) + '\n' + asm_global_vars + ('''
+  var __THREW__ = 0;
+  var threwValue = 0;
+  var setjmpId = 0;
+  var undef = 0;
+  var nan = global%s, inf = global%s;
+  var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
+  var tempRet0 = 0;
+''' % (access_quote('NaN'), access_quote('Infinity'))) + '\n' + asm_global_funcs] + \
+  ['  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround(settings) else '0.0')] + \
+  ['  var asyncState = 0;\n' if settings.get('EMTERPRETIFY_ASYNC') else ''] + \
+  (['  const f0 = Math_fround(0);\n'] if provide_fround(settings) else []) + \
+  ['' if not settings['ALLOW_MEMORY_GROWTH'] else '''
+function _emscripten_replace_memory(newBuffer) {
+  if ((byteLength(newBuffer) & 0xffffff || byteLength(newBuffer) <= 0xffffff) || byteLength(newBuffer) > 0x80000000) return false;
+  HEAP8 = new Int8View(newBuffer);
+  HEAP16 = new Int16View(newBuffer);
+  HEAP32 = new Int32View(newBuffer);
+  HEAPU8 = new Uint8View(newBuffer);
+  HEAPU16 = new Uint16View(newBuffer);
+  HEAPU32 = new Uint32View(newBuffer);
+  HEAPF32 = new Float32View(newBuffer);
+  HEAPF64 = new Float64View(newBuffer);
+  buffer = newBuffer;
+  return true;
+}
+'''] + ['''
+// EMSCRIPTEN_START_FUNCS
+'''] + runtime_funcs + base_funcs_js + ['''
+  ''', pre_tables, final_function_tables, '''
+
+  return %s;
+})
+// EMSCRIPTEN_END_ASM
+(%s, %s, buffer);
+''' % (exports,
+       'Module' + access_quote('asmGlobalArg'),
+       'Module' + access_quote('asmLibraryArg')), '''
+''', receiving, ''';
+''']
+
+  if not settings.get('SIDE_MODULE'):
+    funcs_js.append('''
+Runtime.stackAlloc = Module['stackAlloc'];
+Runtime.stackSave = Module['stackSave'];
+Runtime.stackRestore = Module['stackRestore'];
+Runtime.establishStackSpace = Module['establishStackSpace'];
+''')
+    if settings['SAFE_HEAP']:
+      funcs_js.append('''
+Runtime.setDynamicTop = Module['setDynamicTop'];
+''')
+
+  if not settings['RELOCATABLE']:
+    funcs_js.append('''
+Runtime.setTempRet0 = Module['setTempRet0'];
+Runtime.getTempRet0 = Module['getTempRet0'];
+''')
+  return funcs_js
 
 
 def create_first_in_asm(settings):
