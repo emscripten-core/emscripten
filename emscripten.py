@@ -1508,24 +1508,23 @@ def create_first_in_asm(settings):
 
 
 def make_get_set(info):
-  access = 'HEAP{name}s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> {shift}]'.format(name=info.short_name, shift=info.shift_amount)
-  format_data = {
-    'name': info.short_name,
-    'coerced_value': info.coerce('value'),
-    'access': access,
-    'coerced_access': info.coerce(access),
-  }
+  access = ('HEAP{name}s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> {shift}]'
+            .format(name=info.short_name, shift=info.shift_amount))
   # TODO: fround when present for Float32
   return '''
-function get{name}(ptr) {{
+function get{short}(ptr) {{
   ptr = ptr | 0;
   return {coerced_access};
 }}
-function set{name}(ptr, value) {{
+function set{short}(ptr, value) {{
   ptr = ptr | 0;
   value = {coerced_value};
   {access} = value;
-}}'''.format(**format_data)
+}}'''.format(
+    short=info.short_name,
+    coerced_value=info.coerce('value'),
+    access=access,
+    coerced_access=info.coerce(access))
 
 
 def create_memory_views(settings):
