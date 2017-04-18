@@ -991,6 +991,10 @@ if LLVM_TARGET == WASM_TARGET:
 #   -Wno-implicit-function-declaration
 COMPILER_OPTS += ['-Werror=implicit-function-declaration']
 
+# Emscripten doesn't support assembly code, so implicit 'return eax' from functions that return an int
+# cannot be supported.
+COMPILER_OPTS += ['-Werror=return-type']
+
 USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 
 if USE_EMSDK:
