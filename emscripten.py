@@ -1445,11 +1445,11 @@ var asm = (function(global, env, buffer) {
   var nan = global%s, inf = global%s;
   var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
   var tempRet0 = 0;
-''' % (access_quote('NaN'), access_quote('Infinity'))) + '\n' + asm_global_funcs] + \
-  ['  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround(settings) else '0.0')] + \
-  ['  var asyncState = 0;\n' if settings.get('EMTERPRETIFY_ASYNC') else ''] + \
-  (['  const f0 = Math_fround(0);\n'] if provide_fround(settings) else []) + \
-  ['' if not settings['ALLOW_MEMORY_GROWTH'] else '''
+''' % (access_quote('NaN'), access_quote('Infinity'))) + '\n' + asm_global_funcs,
+  '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround(settings) else '0.0'),
+  '  var asyncState = 0;\n' if settings.get('EMTERPRETIFY_ASYNC') else '',
+  '  const f0 = Math_fround(0);\n' if provide_fround(settings) else '',
+  '' if not settings['ALLOW_MEMORY_GROWTH'] else '''
 function _emscripten_replace_memory(newBuffer) {
   if ((byteLength(newBuffer) & 0xffffff || byteLength(newBuffer) <= 0xffffff) || byteLength(newBuffer) > 0x80000000) return false;
   HEAP8 = new Int8View(newBuffer);
@@ -1463,7 +1463,7 @@ function _emscripten_replace_memory(newBuffer) {
   buffer = newBuffer;
   return true;
 }
-'''] + ['''
+''', '''
 // EMSCRIPTEN_START_FUNCS
 '''] + runtime_funcs + base_funcs_js + ['''
   ''', pre_tables, final_function_tables, '''
