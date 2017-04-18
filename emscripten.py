@@ -102,9 +102,10 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
        forwarded_json) = function_tables_and_exports(funcs, metadata, mem_init, glue,
                                                      forwarded_data, settings, outfile, DEBUG)
     with ToolchainProfiler.profile_block('finalize_output'):
-      finalize_output(metadata, post, funcs_js, sending, receiving, asm_setup, the_global,
-                      asm_global_vars, asm_global_funcs, pre_tables, final_function_tables,
-                      exports, function_table_data, forwarded_json, settings, outfile, DEBUG)
+      funcs_js = finalize_funcs_js(funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
+                                   asm_global_funcs, pre_tables, final_function_tables,
+                                   exports, metadata, settings)
+      finalize_output(metadata, post, funcs_js, function_table_data, settings, outfile, DEBUG)
 
     success = True
 
@@ -1199,19 +1200,10 @@ return real_''' + s + '''.apply(null, arguments);
   return receiving
 
 
-def finalize_output(metadata, post, funcs_js, sending, receiving, asm_setup, the_global,
-                    asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports,
-                    function_table_data, forwarded_json, settings, outfile, DEBUG):
+def finalize_output(metadata, post, funcs_js, function_table_data, settings, outfile, DEBUG):
     if DEBUG:
       logging.debug('emscript: python processing: finalize')
       t = time.time()
-
-    receiving += create_named_globals(metadata, settings)
-
-    runtime_funcs = create_runtime_funcs(exports, settings)
-    funcs_js = finalize_funcs_js(funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
-                                 asm_global_funcs, runtime_funcs, pre_tables, final_function_tables,
-                                 exports, metadata, settings)
 
     # Set function table masks
     masks = {}
@@ -1420,13 +1412,16 @@ function getTempRet0() {
 
 
 def finalize_funcs_js(base_funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
-                      asm_global_funcs, runtime_funcs, pre_tables, final_function_tables,
+                      asm_global_funcs, pre_tables, final_function_tables,
                       exports, metadata, settings):
   access_quote = access_quoter(settings)
   if settings['USE_PTHREADS']:
     shared_array_buffer = "Module.asmGlobalArg['Atomics'] = Atomics;"
   else:
     shared_array_buffer = ''
+
+  receiving += create_named_globals(metadata, settings)
+  runtime_funcs = create_runtime_funcs(exports, settings)
 
   funcs_js = ['''
 %s
