@@ -7339,14 +7339,6 @@ int main() {
     proc.communicate()
     assert proc.returncode != 0
 
-  def test_binaryen_default_method(self):
-    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey')
-    subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1'])
-    # might or might not fail, we don't care, just check which method is tried
-    out = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=PIPE, assert_returncode=None)
-    self.assertContained('trying binaryen method: native-wasm', out) # native is the default
-    assert out.count('trying binaryen method') == 1, 'must not try any other method'
-
   def test_binaryen_asmjs_outputs(self):
     # Test that an .asm.js file is outputted exactly when it is requested.
     for args, output_asmjs in [
