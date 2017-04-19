@@ -1413,31 +1413,11 @@ def finalize_funcs_js(base_funcs_js, asm_setup, the_global, sending, receiving, 
                       asm_global_funcs, pre_tables, final_function_tables,
                       exports, metadata, settings):
   access_quote = access_quoter(settings)
-  if settings['USE_PTHREADS']:
-    shared_array_buffer = "Module.asmGlobalArg['Atomics'] = Atomics;"
-  else:
-    shared_array_buffer = ''
 
   receiving += create_named_globals(metadata, settings)
   runtime_funcs = create_runtime_funcs(exports, settings)
 
-  asm_start_pre = '''
-%s
-Module%s = %s;
-%s
-Module%s = %s;
-// EMSCRIPTEN_START_ASM
-var asm = (function(global, env, buffer) {
-  %s
-  %s
-  %s
-''' % (asm_setup,
-       access_quote('asmGlobalArg'), the_global,
-       shared_array_buffer,
-       access_quote('asmLibraryArg'), sending,
-       "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 else "'almost asm';",
-       create_first_in_asm(settings),
-       create_memory_views(settings))
+  asm_start_pre = create_asm_start_pre(asm_setup, the_global, sending, metadata, settings)
 
   asm_temp_vars = '''
   var __THREW__ = 0;
@@ -1514,6 +1494,37 @@ Runtime.setTempRet0 = Module['setTempRet0'];
 Runtime.getTempRet0 = Module['getTempRet0'];
 ''')
   return funcs_js
+
+
+def create_asm_start_pre(asm_setup, the_global, sending, metadata, settings):
+  access_quote = access_quoter(settings)
+
+  shared_array_buffer = ''
+  if settings['USE_PTHREADS']:
+    shared_array_buffer = "Module.asmGlobalArg['Atomics'] = Atomics;"
+
+  module_get = 'Module{access} = {val};'
+  module_global = module_get.format(access=access_quote('asmGlobalArg'), val=the_global)
+  module_library = module_get.format(access=access_quote('asmLibraryArg'), val=sending)
+
+  asm_function_top = ('// EMSCRIPTEN_START_ASM\n'
+                      'var asm = (function(global, env, buffer) {')
+
+  use_asm = "'almost asm';"
+  if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1:
+    use_asm = "'use asm';"
+
+  lines = [
+    asm_setup,
+    module_global,
+    shared_array_buffer,
+    module_library,
+    asm_function_top,
+    use_asm,
+    create_first_in_asm(settings),
+    create_memory_views(settings),
+  ]
+  return '\n'.join(lines)
 
 
 def create_first_in_asm(settings):
