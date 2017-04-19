@@ -1421,7 +1421,7 @@ def finalize_funcs_js(base_funcs_js, asm_setup, the_global, sending, receiving, 
   receiving += create_named_globals(metadata, settings)
   runtime_funcs = create_runtime_funcs(exports, settings)
 
-  funcs_js = ['''
+  asm_start_pre = '''
 %s
 Module%s = %s;
 %s
@@ -1437,7 +1437,9 @@ var asm = (function(global, env, buffer) {
        access_quote('asmLibraryArg'), sending,
        "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 else "'almost asm';",
        create_first_in_asm(settings),
-       create_memory_views(settings)) + '\n' + asm_global_vars + ('''
+       create_memory_views(settings))
+
+  asm_temp_vars = '''
   var __THREW__ = 0;
   var threwValue = 0;
   var setjmpId = 0;
@@ -1445,11 +1447,17 @@ var asm = (function(global, env, buffer) {
   var nan = global%s, inf = global%s;
   var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
   var tempRet0 = 0;
-''' % (access_quote('NaN'), access_quote('Infinity'))) + '\n' + asm_global_funcs,
-  '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround(settings) else '0.0'),
-  '  var asyncState = 0;\n' if settings.get('EMTERPRETIFY_ASYNC') else '',
-  '  const f0 = Math_fround(0);\n' if provide_fround(settings) else '',
-  '' if not settings['ALLOW_MEMORY_GROWTH'] else '''
+''' % (access_quote('NaN'), access_quote('Infinity'))
+
+  asm_start = asm_start_pre + '\n' + asm_global_vars + asm_temp_vars + '\n' + asm_global_funcs
+
+  temp_float = '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround(settings) else '0.0')
+  async_state = '  var asyncState = 0;\n' if settings.get('EMTERPRETIFY_ASYNC') else ''
+  f0_fround = '  const f0 = Math_fround(0);\n' if provide_fround(settings) else ''
+
+  replace_memory = ''
+  if settings['ALLOW_MEMORY_GROWTH']:
+    replace_memory = '''
 function _emscripten_replace_memory(newBuffer) {
   if ((byteLength(newBuffer) & 0xffffff || byteLength(newBuffer) <= 0xffffff) || byteLength(newBuffer) > 0x80000000) return false;
   HEAP8 = new Int8View(newBuffer);
@@ -1463,10 +1471,11 @@ function _emscripten_replace_memory(newBuffer) {
   buffer = newBuffer;
   return true;
 }
-''', '''
-// EMSCRIPTEN_START_FUNCS
-'''] + runtime_funcs + base_funcs_js + ['''
-  ''', pre_tables, final_function_tables, '''
+'''
+
+  start_funcs_marker = '\n// EMSCRIPTEN_START_FUNCS\n'
+
+  asm_end = '''
 
   return %s;
 })
@@ -1474,9 +1483,18 @@ function _emscripten_replace_memory(newBuffer) {
 (%s, %s, buffer);
 ''' % (exports,
        'Module' + access_quote('asmGlobalArg'),
-       'Module' + access_quote('asmLibraryArg')), '''
-''', receiving, ''';
-''']
+       'Module' + access_quote('asmLibraryArg'))
+
+  funcs_js = [
+    asm_start,
+    temp_float,
+    async_state,
+    f0_fround,
+    replace_memory,
+    start_funcs_marker
+  ] + runtime_funcs + base_funcs_js + ['\n  ',
+    pre_tables, final_function_tables, asm_end,
+    '\n', receiving, ';\n']
 
   if not settings.get('SIDE_MODULE'):
     funcs_js.append('''
