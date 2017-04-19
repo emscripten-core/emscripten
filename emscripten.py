@@ -1199,46 +1199,46 @@ return real_''' + s + '''.apply(null, arguments);
 
 
 def finalize_output(metadata, post, funcs_js, function_table_data, settings, outfile, DEBUG):
-    if DEBUG:
-      logging.debug('emscript: python processing: finalize')
-      t = time.time()
+  if DEBUG:
+    logging.debug('emscript: python processing: finalize')
+    t = time.time()
 
-    # Set function table masks
-    masks = {}
-    max_mask = 0
-    for sig, table in function_table_data.iteritems():
-      mask = table.count(',')
-      masks[sig] = str(mask)
-      max_mask = max(mask, max_mask)
-    def function_table_maskize(js, masks):
-      def fix(m):
-        sig = m.groups(0)[0]
-        return masks[sig]
-      return re.sub(r'{{{ FTM_([\w\d_$]+) }}}', fix, js) # masks[m.groups(0)[0]]
-    for i in range(len(funcs_js)): # in-place as this can be large
-      funcs_js[i] = function_table_maskize(funcs_js[i], masks)
+  # Set function table masks
+  masks = {}
+  max_mask = 0
+  for sig, table in function_table_data.iteritems():
+    mask = table.count(',')
+    masks[sig] = str(mask)
+    max_mask = max(mask, max_mask)
+  def function_table_maskize(js, masks):
+    def fix(m):
+      sig = m.groups(0)[0]
+      return masks[sig]
+    return re.sub(r'{{{ FTM_([\w\d_$]+) }}}', fix, js) # masks[m.groups(0)[0]]
+  for i in range(len(funcs_js)): # in-place as this can be large
+    funcs_js[i] = function_table_maskize(funcs_js[i], masks)
 
-    if settings['SIDE_MODULE']:
-      funcs_js.append('''
+  if settings['SIDE_MODULE']:
+    funcs_js.append('''
 Runtime.registerFunctions(%(sigs)s, Module);
 ''' % { 'sigs': str(map(str, function_table_data.keys())) })
 
-    for i in range(len(funcs_js)): # do this loop carefully to save memory
-      if WINDOWS: funcs_js[i] = funcs_js[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
-      outfile.write(funcs_js[i])
-    funcs_js = None
+  for i in range(len(funcs_js)): # do this loop carefully to save memory
+    if WINDOWS: funcs_js[i] = funcs_js[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
+    outfile.write(funcs_js[i])
+  funcs_js = None
 
-    if WINDOWS: post = post.replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
-    outfile.write(post)
+  if WINDOWS: post = post.replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
+  outfile.write(post)
 
-    if DEBUG:
-      logging.debug('  emscript: python processing: finalize took %s seconds' % (time.time() - t))
+  if DEBUG:
+    logging.debug('  emscript: python processing: finalize took %s seconds' % (time.time() - t))
 
-    if settings['CYBERDWARF']:
-      assert('cyberdwarf_data' in metadata)
-      cd_file_name = outfile.name + ".cd"
-      with open(cd_file_name, "w") as cd_file:
-        json.dump({ 'cyberdwarf': metadata['cyberdwarf_data'] }, cd_file)
+  if settings['CYBERDWARF']:
+    assert('cyberdwarf_data' in metadata)
+    cd_file_name = outfile.name + ".cd"
+    with open(cd_file_name, "w") as cd_file:
+      json.dump({ 'cyberdwarf': metadata['cyberdwarf_data'] }, cd_file)
 
 
 def create_named_globals(metadata, settings):
