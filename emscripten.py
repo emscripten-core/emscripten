@@ -1465,6 +1465,8 @@ function _emscripten_replace_memory(newBuffer) {
        'Module' + access_quote('asmGlobalArg'),
        'Module' + access_quote('asmLibraryArg'))
 
+  runtime_library_overrides = create_runtime_library_overrides(settings)
+
   funcs_js = [
     asm_start,
     temp_float,
@@ -1474,25 +1476,8 @@ function _emscripten_replace_memory(newBuffer) {
     start_funcs_marker
   ] + runtime_funcs + base_funcs_js + ['\n  ',
     pre_tables, final_function_tables, asm_end,
-    '\n', receiving, ';\n']
+    '\n', receiving, ';\n', runtime_library_overrides]
 
-  if not settings.get('SIDE_MODULE'):
-    funcs_js.append('''
-Runtime.stackAlloc = Module['stackAlloc'];
-Runtime.stackSave = Module['stackSave'];
-Runtime.stackRestore = Module['stackRestore'];
-Runtime.establishStackSpace = Module['establishStackSpace'];
-''')
-    if settings['SAFE_HEAP']:
-      funcs_js.append('''
-Runtime.setDynamicTop = Module['setDynamicTop'];
-''')
-
-  if not settings['RELOCATABLE']:
-    funcs_js.append('''
-Runtime.setTempRet0 = Module['setTempRet0'];
-Runtime.getTempRet0 = Module['getTempRet0'];
-''')
   return funcs_js
 
 
@@ -1524,6 +1509,25 @@ def create_asm_start_pre(asm_setup, the_global, sending, metadata, settings):
     create_first_in_asm(settings),
     create_memory_views(settings),
   ]
+  return '\n'.join(lines)
+
+
+def create_runtime_library_overrides(settings):
+  overrides = []
+  if not settings.get('SIDE_MODULE'):
+    overrides += [
+      'stackAlloc',
+      'stackSave',
+      'stackRestore',
+      'establishStackSpace',
+    ]
+    if settings['SAFE_HEAP']:
+      overrides.append('setDynamicTop')
+
+  if not settings['RELOCATABLE']:
+    overrides += ['setTempRet0', 'getTempRet0']
+
+  lines = ["Runtime.{0} = Module['{0}'];".format(func) for func in overrides]
   return '\n'.join(lines)
 
 
