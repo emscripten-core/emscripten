@@ -2274,7 +2274,9 @@ function integrateWasmJS(Module) {
     }
 
 #if BINARYEN_ASYNC_COMPILATION
+#if RUNTIME_LOGGING
     Module['printErr']('asynchronously preparing wasm');
+#endif
     getBinaryPromise().then(function(binary) {
       return WebAssembly.instantiate(binary, info)
     }).then(function(output) {
@@ -2438,7 +2440,9 @@ function integrateWasmJS(Module) {
     for (var i = 0; i < methods.length; i++) {
       var curr = methods[i];
 
+#if RUNTIME_LOGGING
       Module['printErr']('trying binaryen method: ' + curr);
+#endif
 
       if (curr === 'native-wasm') {
         if (exports = doNativeWasm(global, env, providedBuffer)) break;
@@ -2453,7 +2457,9 @@ function integrateWasmJS(Module) {
 
     if (!exports) throw 'no binaryen method succeeded. consider enabling more options, like interpreting, if you want that: https://github.com/kripken/emscripten/wiki/WebAssembly#binaryen-methods';
 
+#if RUNTIME_LOGGING
     Module['printErr']('binaryen method succeeded.');
+#endif
 
     return exports;
   };
