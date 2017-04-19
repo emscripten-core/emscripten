@@ -113,6 +113,7 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
     if not success:
       shared.try_delete(outfile.name) # remove partial output
 
+
 def compile_js(infile, settings, temp_files, DEBUG):
   """Compile infile with asm.js backend, return the contents of the compiled js"""
   with temp_files.get_file('.4.js') as temp_js:
@@ -132,52 +133,6 @@ def compile_js(infile, settings, temp_files, DEBUG):
     backend_output = open(temp_js).read()
     #if DEBUG: print >> sys.stderr, backend_output
   return backend_output
-
-
-def backend_args_for_settings(settings):
-  """Create args for asm.js backend from settings dict"""
-  args = [
-    '-emscripten-stack-size=%d' % settings['TOTAL_STACK'],
-    '-O' + str(settings['OPT_LEVEL']),
-  ]
-  if settings['PRECISE_F32']:
-    args += ['-emscripten-precise-f32']
-  if settings['USE_PTHREADS']:
-    args += ['-emscripten-enable-pthreads']
-  if settings['WARN_UNALIGNED']:
-    args += ['-emscripten-warn-unaligned']
-  if settings['RESERVED_FUNCTION_POINTERS'] > 0:
-    args += ['-emscripten-reserved-function-pointers=%d' % settings['RESERVED_FUNCTION_POINTERS']]
-  if settings['ASSERTIONS'] > 0:
-    args += ['-emscripten-assertions=%d' % settings['ASSERTIONS']]
-  if settings['ALIASING_FUNCTION_POINTERS'] == 0:
-    args += ['-emscripten-no-aliasing-function-pointers']
-  if settings['EMULATED_FUNCTION_POINTERS']:
-    args += ['-emscripten-emulated-function-pointers']
-  if settings['RELOCATABLE']:
-    args += ['-emscripten-relocatable']
-    args += ['-emscripten-global-base=0']
-  elif settings['GLOBAL_BASE'] >= 0:
-    args += ['-emscripten-global-base=%d' % settings['GLOBAL_BASE']]
-  if settings['SIDE_MODULE']:
-    args += ['-emscripten-side-module']
-  if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
-    args += ['-enable-emscripten-cpp-exceptions']
-    if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
-      args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['fake'])]
-  if settings['ASYNCIFY']:
-    args += ['-emscripten-asyncify']
-    args += ['-emscripten-asyncify-functions=' + ','.join(settings['ASYNCIFY_FUNCTIONS'])]
-    args += ['-emscripten-asyncify-whitelist=' + ','.join(settings['ASYNCIFY_WHITELIST'])]
-  if settings['NO_EXIT_RUNTIME']:
-    args += ['-emscripten-no-exit-runtime']
-  if settings['BINARYEN']:
-    args += ['-emscripten-wasm']
-    if shared.Building.is_wasm_only():
-      args += ['-emscripten-only-wasm']
-  if settings['CYBERDWARF']:
-    args += ['-enable-cyberdwarf']
-  return args
 
 
 def parse_backend_output(backend_output, DEBUG):
@@ -275,74 +230,6 @@ def compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DE
     logging.debug('  emscript: glue took %s seconds' % (time.time() - t))
 
   return glue, forwarded_data
-
-
-def optimize_syscalls(declares, settings, DEBUG):
-  """Disables filesystem if only a limited subset of syscalls is used.
-
-  Our syscalls are static, and so if we see a very limited set of them - in particular,
-  no open() syscall and just simple writing - then we don't need full filesystem support.
-  If FORCE_FILESYSTEM is set, we can't do this. We also don't do it if INCLUDE_FULL_LIBRARY, since
-  not including the filesystem would mean not including the full JS libraries, and the same for
-  MAIN_MODULE since a side module might need the filesystem.
-  """
-  relevant_settings = ['NO_FILESYSTEM', 'FORCE_FILESYSTEM', 'INCLUDE_FULL_LIBRARY', 'MAIN_MODULE']
-  if all([not settings[s] for s in relevant_settings]):
-    syscall_prefix = '__syscall'
-    syscall_numbers = [d[len(syscall_prefix):] for d in declares if d.startswith(syscall_prefix)]
-    syscalls = [int(s) for s in syscall_numbers if is_int(s)]
-    if set(syscalls).issubset(set([6, 54, 140, 146])): # close, ioctl, llseek, writev
-      if DEBUG: logging.debug('very limited syscalls (%s) so disabling full filesystem support' % ', '.join(map(str, syscalls)))
-      settings['NO_FILESYSTEM'] = 1
-
-
-def is_int(x):
-  try:
-    int(x)
-    return True
-  except:
-    return False
-
-
-def update_settings_glue(settings, metadata):
-  if settings['CYBERDWARF']:
-    settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'].append("cyberdwarf_Debugger")
-    settings['EXPORTED_FUNCTIONS'].append("cyberdwarf_Debugger")
-
-  # Integrate info from backend
-  if settings['SIDE_MODULE']:
-    settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = [] # we don't need any JS library contents in side modules
-  settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
-    set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
-      map(lambda x: x[1:], metadata['implementedFunctions'])
-    )
-  ) + map(lambda x: x[1:], metadata['externs'])
-  if metadata['simd']:
-    settings['SIMD'] = 1
-  if metadata['cantValidate'] and settings['ASM_JS'] != 2:
-    logging.warning('disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
-    settings['ASM_JS'] = 2
-
-  settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
-
-  settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
-
-
-def compile_settings(compiler_engine, settings, libraries, temp_files):
-  # Save settings to a file to work around v8 issue 1579
-  with temp_files.get_file('.txt') as settings_file:
-    def save_settings():
-      global settings_text
-      settings_text = json.dumps(settings, sort_keys=True)
-      s = open(settings_file, 'w')
-      s.write(settings_text)
-      s.close()
-    save_settings()
-
-    # Call js compiler
-    return jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
-                        [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
-                        cwd=path_from_root('src'), error_limit=300)
 
 
 def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG):
@@ -454,6 +341,235 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
     return (post, funcs_js, sending, receiving, asm_setup, the_global, asm_global_vars,
             asm_global_funcs, pre_tables, final_function_tables, exports, function_table_data)
+
+
+def finalize_funcs_js(base_funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
+                      asm_global_funcs, pre_tables, final_function_tables,
+                      exports, metadata, settings):
+  access_quote = access_quoter(settings)
+
+  receiving += create_named_globals(metadata, settings)
+  runtime_funcs = create_runtime_funcs(exports, settings)
+
+  asm_start_pre = create_asm_start_pre(asm_setup, the_global, sending, metadata, settings)
+
+  asm_temp_vars = '''
+  var __THREW__ = 0;
+  var threwValue = 0;
+  var setjmpId = 0;
+  var undef = 0;
+  var nan = global%s, inf = global%s;
+  var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
+  var tempRet0 = 0;
+''' % (access_quote('NaN'), access_quote('Infinity'))
+
+  asm_start = asm_start_pre + '\n' + asm_global_vars + asm_temp_vars + '\n' + asm_global_funcs
+
+  temp_float = '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround(settings) else '0.0')
+  async_state = '  var asyncState = 0;\n' if settings.get('EMTERPRETIFY_ASYNC') else ''
+  f0_fround = '  const f0 = Math_fround(0);\n' if provide_fround(settings) else ''
+
+  replace_memory = ''
+  if settings['ALLOW_MEMORY_GROWTH']:
+    replace_memory = '''
+function _emscripten_replace_memory(newBuffer) {
+  if ((byteLength(newBuffer) & 0xffffff || byteLength(newBuffer) <= 0xffffff) || byteLength(newBuffer) > 0x80000000) return false;
+  HEAP8 = new Int8View(newBuffer);
+  HEAP16 = new Int16View(newBuffer);
+  HEAP32 = new Int32View(newBuffer);
+  HEAPU8 = new Uint8View(newBuffer);
+  HEAPU16 = new Uint16View(newBuffer);
+  HEAPU32 = new Uint32View(newBuffer);
+  HEAPF32 = new Float32View(newBuffer);
+  HEAPF64 = new Float64View(newBuffer);
+  buffer = newBuffer;
+  return true;
+}
+'''
+
+  start_funcs_marker = '\n// EMSCRIPTEN_START_FUNCS\n'
+
+  asm_end = '''
+
+  return %s;
+})
+// EMSCRIPTEN_END_ASM
+(%s, %s, buffer);
+''' % (exports,
+       'Module' + access_quote('asmGlobalArg'),
+       'Module' + access_quote('asmLibraryArg'))
+
+  runtime_library_overrides = create_runtime_library_overrides(settings)
+
+  funcs_js = [
+    asm_start,
+    temp_float,
+    async_state,
+    f0_fround,
+    replace_memory,
+    start_funcs_marker
+  ] + runtime_funcs + base_funcs_js + ['\n  ',
+    pre_tables, final_function_tables, asm_end,
+    '\n', receiving, ';\n', runtime_library_overrides]
+
+  return funcs_js
+
+
+def finalize_output(metadata, post, funcs_js, function_table_data, settings, outfile, DEBUG):
+  if DEBUG:
+    logging.debug('emscript: python processing: finalize')
+    t = time.time()
+
+  # Set function table masks
+  masks = {}
+  max_mask = 0
+  for sig, table in function_table_data.iteritems():
+    mask = table.count(',')
+    masks[sig] = str(mask)
+    max_mask = max(mask, max_mask)
+  def function_table_maskize(js, masks):
+    def fix(m):
+      sig = m.groups(0)[0]
+      return masks[sig]
+    return re.sub(r'{{{ FTM_([\w\d_$]+) }}}', fix, js) # masks[m.groups(0)[0]]
+  for i in range(len(funcs_js)): # in-place as this can be large
+    funcs_js[i] = function_table_maskize(funcs_js[i], masks)
+
+  if settings['SIDE_MODULE']:
+    funcs_js.append('''
+Runtime.registerFunctions(%(sigs)s, Module);
+''' % { 'sigs': str(map(str, function_table_data.keys())) })
+
+  for i in range(len(funcs_js)): # do this loop carefully to save memory
+    if WINDOWS: funcs_js[i] = funcs_js[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
+    outfile.write(funcs_js[i])
+  funcs_js = None
+
+  if WINDOWS: post = post.replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
+  outfile.write(post)
+
+  if DEBUG:
+    logging.debug('  emscript: python processing: finalize took %s seconds' % (time.time() - t))
+
+  if settings['CYBERDWARF']:
+    assert('cyberdwarf_data' in metadata)
+    cd_file_name = outfile.name + ".cd"
+    with open(cd_file_name, "w") as cd_file:
+      json.dump({ 'cyberdwarf': metadata['cyberdwarf_data'] }, cd_file)
+
+
+def backend_args_for_settings(settings):
+  """Create args for asm.js backend from settings dict"""
+  args = [
+    '-emscripten-stack-size=%d' % settings['TOTAL_STACK'],
+    '-O' + str(settings['OPT_LEVEL']),
+  ]
+  if settings['PRECISE_F32']:
+    args += ['-emscripten-precise-f32']
+  if settings['USE_PTHREADS']:
+    args += ['-emscripten-enable-pthreads']
+  if settings['WARN_UNALIGNED']:
+    args += ['-emscripten-warn-unaligned']
+  if settings['RESERVED_FUNCTION_POINTERS'] > 0:
+    args += ['-emscripten-reserved-function-pointers=%d' % settings['RESERVED_FUNCTION_POINTERS']]
+  if settings['ASSERTIONS'] > 0:
+    args += ['-emscripten-assertions=%d' % settings['ASSERTIONS']]
+  if settings['ALIASING_FUNCTION_POINTERS'] == 0:
+    args += ['-emscripten-no-aliasing-function-pointers']
+  if settings['EMULATED_FUNCTION_POINTERS']:
+    args += ['-emscripten-emulated-function-pointers']
+  if settings['RELOCATABLE']:
+    args += ['-emscripten-relocatable']
+    args += ['-emscripten-global-base=0']
+  elif settings['GLOBAL_BASE'] >= 0:
+    args += ['-emscripten-global-base=%d' % settings['GLOBAL_BASE']]
+  if settings['SIDE_MODULE']:
+    args += ['-emscripten-side-module']
+  if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
+    args += ['-enable-emscripten-cpp-exceptions']
+    if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
+      args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['fake'])]
+  if settings['ASYNCIFY']:
+    args += ['-emscripten-asyncify']
+    args += ['-emscripten-asyncify-functions=' + ','.join(settings['ASYNCIFY_FUNCTIONS'])]
+    args += ['-emscripten-asyncify-whitelist=' + ','.join(settings['ASYNCIFY_WHITELIST'])]
+  if settings['NO_EXIT_RUNTIME']:
+    args += ['-emscripten-no-exit-runtime']
+  if settings['BINARYEN']:
+    args += ['-emscripten-wasm']
+    if shared.Building.is_wasm_only():
+      args += ['-emscripten-only-wasm']
+  if settings['CYBERDWARF']:
+    args += ['-enable-cyberdwarf']
+  return args
+
+
+def optimize_syscalls(declares, settings, DEBUG):
+  """Disables filesystem if only a limited subset of syscalls is used.
+
+  Our syscalls are static, and so if we see a very limited set of them - in particular,
+  no open() syscall and just simple writing - then we don't need full filesystem support.
+  If FORCE_FILESYSTEM is set, we can't do this. We also don't do it if INCLUDE_FULL_LIBRARY, since
+  not including the filesystem would mean not including the full JS libraries, and the same for
+  MAIN_MODULE since a side module might need the filesystem.
+  """
+  relevant_settings = ['NO_FILESYSTEM', 'FORCE_FILESYSTEM', 'INCLUDE_FULL_LIBRARY', 'MAIN_MODULE']
+  if all([not settings[s] for s in relevant_settings]):
+    syscall_prefix = '__syscall'
+    syscall_numbers = [d[len(syscall_prefix):] for d in declares if d.startswith(syscall_prefix)]
+    syscalls = [int(s) for s in syscall_numbers if is_int(s)]
+    if set(syscalls).issubset(set([6, 54, 140, 146])): # close, ioctl, llseek, writev
+      if DEBUG: logging.debug('very limited syscalls (%s) so disabling full filesystem support' % ', '.join(map(str, syscalls)))
+      settings['NO_FILESYSTEM'] = 1
+
+
+def is_int(x):
+  try:
+    int(x)
+    return True
+  except:
+    return False
+
+
+def update_settings_glue(settings, metadata):
+  if settings['CYBERDWARF']:
+    settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'].append("cyberdwarf_Debugger")
+    settings['EXPORTED_FUNCTIONS'].append("cyberdwarf_Debugger")
+
+  # Integrate info from backend
+  if settings['SIDE_MODULE']:
+    settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = [] # we don't need any JS library contents in side modules
+  settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
+    set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
+      map(lambda x: x[1:], metadata['implementedFunctions'])
+    )
+  ) + map(lambda x: x[1:], metadata['externs'])
+  if metadata['simd']:
+    settings['SIMD'] = 1
+  if metadata['cantValidate'] and settings['ASM_JS'] != 2:
+    logging.warning('disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
+    settings['ASM_JS'] = 2
+
+  settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
+
+  settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
+
+
+def compile_settings(compiler_engine, settings, libraries, temp_files):
+  # Save settings to a file to work around v8 issue 1579
+  with temp_files.get_file('.txt') as settings_file:
+    def save_settings():
+      global settings_text
+      settings_text = json.dumps(settings, sort_keys=True)
+      s = open(settings_file, 'w')
+      s.write(settings_text)
+      s.close()
+    save_settings()
+
+    # Call js compiler
+    return jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
+                        [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                        cwd=path_from_root('src'), error_limit=300)
 
 
 def memory_and_global_initializers(pre, metadata, mem_init, settings):
@@ -1198,49 +1314,6 @@ return real_''' + s + '''.apply(null, arguments);
   return receiving
 
 
-def finalize_output(metadata, post, funcs_js, function_table_data, settings, outfile, DEBUG):
-  if DEBUG:
-    logging.debug('emscript: python processing: finalize')
-    t = time.time()
-
-  # Set function table masks
-  masks = {}
-  max_mask = 0
-  for sig, table in function_table_data.iteritems():
-    mask = table.count(',')
-    masks[sig] = str(mask)
-    max_mask = max(mask, max_mask)
-  def function_table_maskize(js, masks):
-    def fix(m):
-      sig = m.groups(0)[0]
-      return masks[sig]
-    return re.sub(r'{{{ FTM_([\w\d_$]+) }}}', fix, js) # masks[m.groups(0)[0]]
-  for i in range(len(funcs_js)): # in-place as this can be large
-    funcs_js[i] = function_table_maskize(funcs_js[i], masks)
-
-  if settings['SIDE_MODULE']:
-    funcs_js.append('''
-Runtime.registerFunctions(%(sigs)s, Module);
-''' % { 'sigs': str(map(str, function_table_data.keys())) })
-
-  for i in range(len(funcs_js)): # do this loop carefully to save memory
-    if WINDOWS: funcs_js[i] = funcs_js[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
-    outfile.write(funcs_js[i])
-  funcs_js = None
-
-  if WINDOWS: post = post.replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
-  outfile.write(post)
-
-  if DEBUG:
-    logging.debug('  emscript: python processing: finalize took %s seconds' % (time.time() - t))
-
-  if settings['CYBERDWARF']:
-    assert('cyberdwarf_data' in metadata)
-    cd_file_name = outfile.name + ".cd"
-    with open(cd_file_name, "w") as cd_file:
-      json.dump({ 'cyberdwarf': metadata['cyberdwarf_data'] }, cd_file)
-
-
 def create_named_globals(metadata, settings):
   named_globals = ''
   if settings['RELOCATABLE']:
@@ -1407,78 +1480,6 @@ function getTempRet0() {
   return tempRet0|0;
 }
 ''' if not settings['RELOCATABLE'] else '']
-
-
-def finalize_funcs_js(base_funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
-                      asm_global_funcs, pre_tables, final_function_tables,
-                      exports, metadata, settings):
-  access_quote = access_quoter(settings)
-
-  receiving += create_named_globals(metadata, settings)
-  runtime_funcs = create_runtime_funcs(exports, settings)
-
-  asm_start_pre = create_asm_start_pre(asm_setup, the_global, sending, metadata, settings)
-
-  asm_temp_vars = '''
-  var __THREW__ = 0;
-  var threwValue = 0;
-  var setjmpId = 0;
-  var undef = 0;
-  var nan = global%s, inf = global%s;
-  var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
-  var tempRet0 = 0;
-''' % (access_quote('NaN'), access_quote('Infinity'))
-
-  asm_start = asm_start_pre + '\n' + asm_global_vars + asm_temp_vars + '\n' + asm_global_funcs
-
-  temp_float = '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround(settings) else '0.0')
-  async_state = '  var asyncState = 0;\n' if settings.get('EMTERPRETIFY_ASYNC') else ''
-  f0_fround = '  const f0 = Math_fround(0);\n' if provide_fround(settings) else ''
-
-  replace_memory = ''
-  if settings['ALLOW_MEMORY_GROWTH']:
-    replace_memory = '''
-function _emscripten_replace_memory(newBuffer) {
-  if ((byteLength(newBuffer) & 0xffffff || byteLength(newBuffer) <= 0xffffff) || byteLength(newBuffer) > 0x80000000) return false;
-  HEAP8 = new Int8View(newBuffer);
-  HEAP16 = new Int16View(newBuffer);
-  HEAP32 = new Int32View(newBuffer);
-  HEAPU8 = new Uint8View(newBuffer);
-  HEAPU16 = new Uint16View(newBuffer);
-  HEAPU32 = new Uint32View(newBuffer);
-  HEAPF32 = new Float32View(newBuffer);
-  HEAPF64 = new Float64View(newBuffer);
-  buffer = newBuffer;
-  return true;
-}
-'''
-
-  start_funcs_marker = '\n// EMSCRIPTEN_START_FUNCS\n'
-
-  asm_end = '''
-
-  return %s;
-})
-// EMSCRIPTEN_END_ASM
-(%s, %s, buffer);
-''' % (exports,
-       'Module' + access_quote('asmGlobalArg'),
-       'Module' + access_quote('asmLibraryArg'))
-
-  runtime_library_overrides = create_runtime_library_overrides(settings)
-
-  funcs_js = [
-    asm_start,
-    temp_float,
-    async_state,
-    f0_fround,
-    replace_memory,
-    start_funcs_marker
-  ] + runtime_funcs + base_funcs_js + ['\n  ',
-    pre_tables, final_function_tables, asm_end,
-    '\n', receiving, ';\n', runtime_library_overrides]
-
-  return funcs_js
 
 
 def create_asm_start_pre(asm_setup, the_global, sending, metadata, settings):
