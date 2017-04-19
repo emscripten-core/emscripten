@@ -225,7 +225,7 @@ function run(args) {
   if (preloadStartTime === null) preloadStartTime = Date.now();
 
   if (runDependencies > 0) {
-#if ASSERTIONS && !BINARYEN_ASYNC_COMPILATION
+#if RUNTIME_LOGGING
     Module.printErr('run() called, but dependencies remain, so not running');
 #endif
     return;

@@ -32,6 +32,8 @@ var ASSERTIONS = 1; // Whether we should add runtime assertions, for example to
                     // of positive size, etc., whether we should throw if we encounter a bad __label__, i.e.,
                     // if code flow runs into a fault
                     // ASSERTIONS == 2 gives even more runtime checks
+var RUNTIME_LOGGING = 0; // Whether extra logging should be enabled.
+                         // This logging isn't quite assertion-quality in that it isn't necessarily a symptom that something is wrong.
 var STACK_OVERFLOW_CHECK = 0; // Chooses what kind of stack smash checks to emit to generated code:
                               // 0: Stack overflows are not checked.
                               // 1: Adds a security cookie at the top of the stack, which is checked at end of each tick and at exit (practically zero performance overhead)
