@@ -346,58 +346,22 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 def finalize_funcs_js(base_funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
                       asm_global_funcs, pre_tables, final_function_tables,
                       exports, metadata, settings):
-  access_quote = access_quoter(settings)
-
   receiving += create_named_globals(metadata, settings)
   runtime_funcs = create_runtime_funcs(exports, settings)
 
   asm_start_pre = create_asm_start_pre(asm_setup, the_global, sending, metadata, settings)
-
-  asm_temp_vars = '''
-  var __THREW__ = 0;
-  var threwValue = 0;
-  var setjmpId = 0;
-  var undef = 0;
-  var nan = global%s, inf = global%s;
-  var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
-  var tempRet0 = 0;
-''' % (access_quote('NaN'), access_quote('Infinity'))
-
+  asm_temp_vars = create_asm_temp_vars(settings)
   asm_start = asm_start_pre + '\n' + asm_global_vars + asm_temp_vars + '\n' + asm_global_funcs
 
   temp_float = '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround(settings) else '0.0')
   async_state = '  var asyncState = 0;\n' if settings.get('EMTERPRETIFY_ASYNC') else ''
   f0_fround = '  const f0 = Math_fround(0);\n' if provide_fround(settings) else ''
 
-  replace_memory = ''
-  if settings['ALLOW_MEMORY_GROWTH']:
-    replace_memory = '''
-function _emscripten_replace_memory(newBuffer) {
-  if ((byteLength(newBuffer) & 0xffffff || byteLength(newBuffer) <= 0xffffff) || byteLength(newBuffer) > 0x80000000) return false;
-  HEAP8 = new Int8View(newBuffer);
-  HEAP16 = new Int16View(newBuffer);
-  HEAP32 = new Int32View(newBuffer);
-  HEAPU8 = new Uint8View(newBuffer);
-  HEAPU16 = new Uint16View(newBuffer);
-  HEAPU32 = new Uint32View(newBuffer);
-  HEAPF32 = new Float32View(newBuffer);
-  HEAPF64 = new Float64View(newBuffer);
-  buffer = newBuffer;
-  return true;
-}
-'''
+  replace_memory = create_replace_memory(settings)
 
   start_funcs_marker = '\n// EMSCRIPTEN_START_FUNCS\n'
 
-  asm_end = '''
-
-  return %s;
-})
-// EMSCRIPTEN_END_ASM
-(%s, %s, buffer);
-''' % (exports,
-       'Module' + access_quote('asmGlobalArg'),
-       'Module' + access_quote('asmLibraryArg'))
+  asm_end = create_asm_end(exports, settings)
 
   runtime_library_overrides = create_runtime_library_overrides(settings)
 
@@ -1511,6 +1475,52 @@ def create_asm_start_pre(asm_setup, the_global, sending, metadata, settings):
     create_memory_views(settings),
   ]
   return '\n'.join(lines)
+
+
+def create_asm_temp_vars(settings):
+  access_quote = access_quoter(settings)
+  return '''
+  var __THREW__ = 0;
+  var threwValue = 0;
+  var setjmpId = 0;
+  var undef = 0;
+  var nan = global%s, inf = global%s;
+  var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
+  var tempRet0 = 0;
+''' % (access_quote('NaN'), access_quote('Infinity'))
+
+
+def create_replace_memory(settings):
+  if not settings['ALLOW_MEMORY_GROWTH']:
+    return ''
+  return '''
+function _emscripten_replace_memory(newBuffer) {
+  if ((byteLength(newBuffer) & 0xffffff || byteLength(newBuffer) <= 0xffffff) || byteLength(newBuffer) > 0x80000000) return false;
+  HEAP8 = new Int8View(newBuffer);
+  HEAP16 = new Int16View(newBuffer);
+  HEAP32 = new Int32View(newBuffer);
+  HEAPU8 = new Uint8View(newBuffer);
+  HEAPU16 = new Uint16View(newBuffer);
+  HEAPU32 = new Uint32View(newBuffer);
+  HEAPF32 = new Float32View(newBuffer);
+  HEAPF64 = new Float64View(newBuffer);
+  buffer = newBuffer;
+  return true;
+}
+'''
+
+
+def create_asm_end(exports, settings):
+  access_quote = access_quoter(settings)
+  return '''
+
+  return %s;
+})
+// EMSCRIPTEN_END_ASM
+(%s, %s, buffer);
+''' % (exports,
+       'Module' + access_quote('asmGlobalArg'),
+       'Module' + access_quote('asmLibraryArg'))
 
 
 def create_runtime_library_overrides(settings):
