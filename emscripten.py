@@ -1571,23 +1571,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   if libraries is None: libraries = []
 
   with temp_files.get_file('.wb.s') as temp_s:
-    backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
-    backend_args = [backend_compiler, infile, '-march=wasm32', '-filetype=asm',
-                    '-asm-verbose=false',
-                    '-o', temp_s]
-    backend_args += ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
-    # disable slow and relatively unimportant optimization passes
-    backend_args += ['-combiner-global-alias-analysis=false']
-
-    # asm.js-style exception handling
-    if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
-      backend_args += ['-enable-emscripten-cxx-exceptions']
-    if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
-      whitelist = ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['__fake'])
-      backend_args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
-
-    # asm.js-style setjmp/longjmp handling
-    backend_args += ['-enable-emscripten-sjlj']
+    backend_args = create_backend_args_wasm(infile, temp_s, settings)
 
     if DEBUG:
       logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
@@ -1917,9 +1901,31 @@ Runtime.getTempRet0 = Module['getTempRet0'];
 
   outfile.close()
 
+
+def create_backend_args_wasm(infile, temp_s, settings):
+  backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
+  args = [backend_compiler, infile, '-march=wasm32', '-filetype=asm',
+                  '-asm-verbose=false',
+                  '-o', temp_s]
+  args += ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
+  # disable slow and relatively unimportant optimization passes
+  args += ['-combiner-global-alias-analysis=false']
+
+  # asm.js-style exception handling
+  if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
+    args += ['-enable-emscripten-cxx-exceptions']
+  if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
+    whitelist = ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['__fake'])
+    args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
+
+  # asm.js-style setjmp/longjmp handling
+  args += ['-enable-emscripten-sjlj']
+  return args
+
 if os.environ.get('EMCC_FAST_COMPILER') == '0':
   logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
   sys.exit(1)
+
 
 def main(args, compiler_engine, cache, temp_files, DEBUG):
   # Prepare settings for serialization to JSON.
@@ -1943,6 +1949,7 @@ def main(args, compiler_engine, cache, temp_files, DEBUG):
 
   emscripter(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
              temp_files=temp_files, DEBUG=DEBUG)
+
 
 def _main(args=None):
   if args is None:
