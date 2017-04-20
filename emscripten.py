@@ -1165,6 +1165,7 @@ def create_basic_funcs(function_table_sigs, settings):
         basic_funcs.append('ftCall_%s' % sig)
   return basic_funcs
 
+
 def create_basic_vars(exported_implemented_functions, forwarded_json, metadata, settings):
   basic_vars = ['DYNAMICTOP_PTR', 'tempDoublePtr', 'ABORT']
   if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
@@ -1185,6 +1186,7 @@ def create_basic_vars(exported_implemented_functions, forwarded_json, metadata, 
   if need_asyncify(exported_implemented_functions):
     basic_vars += ['___async', '___async_unwind', '___async_retval', '___async_cur_frame']
   return basic_vars
+
 
 def create_exports(exported_implemented_functions, in_table, function_table_data, metadata, settings):
   quote = quoter(settings)
