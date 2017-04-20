@@ -7490,7 +7490,7 @@ int main() {
             (['-s', 'BINARYEN_IGNORE_IMPLICIT_TRAPS=1'], True),
           ]:
           print args, expect
-          cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-O3'] + args
+          cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WASM=1', '-O3'] + args
           print ' '.join(cmd)
           output, err = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
           asm2wasm_line = filter(lambda x: 'asm2wasm' in x, err.split('\n'))[0]
