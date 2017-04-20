@@ -117,7 +117,7 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
 def compile_js(infile, settings, temp_files, DEBUG):
   """Compile infile with asm.js backend, return the contents of the compiled js"""
   with temp_files.get_file('.4.js') as temp_js:
-    backend_args = backend_args_for_settings(infile, temp_js, settings)
+    backend_args = create_backend_args(infile, temp_js, settings)
 
     if DEBUG:
       logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
@@ -420,7 +420,7 @@ Runtime.registerFunctions(%(sigs)s, Module);
       json.dump({ 'cyberdwarf': metadata['cyberdwarf_data'] }, cd_file)
 
 
-def backend_args_for_settings(infile, temp_js, settings):
+def create_backend_args(infile, temp_js, settings):
   """Create args for asm.js backend from settings dict"""
   backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
   args = [
