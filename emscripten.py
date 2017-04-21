@@ -1475,7 +1475,7 @@ def create_asm_temp_vars(settings):
   var setjmpId = 0;
   var undef = 0;
   var nan = global%s, inf = global%s;
-  var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
+  var tempInt = 0, tempBigInt = 0, tempBigIntS = 0, tempValue = 0, tempDouble = 0.0;
   var tempRet0 = 0;
 ''' % (access_quote('NaN'), access_quote('Infinity'))
 
