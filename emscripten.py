@@ -231,114 +231,114 @@ def compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DE
 
 
 def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG):
-    if DEBUG:
-      logging.debug('emscript: python processing: function tables and exports')
-      t = time.time()
+  if DEBUG:
+    logging.debug('emscript: python processing: function tables and exports')
+    t = time.time()
 
-    forwarded_json = json.loads(forwarded_data)
+  forwarded_json = json.loads(forwarded_data)
 
-    # merge in information from llvm backend
+  # merge in information from llvm backend
 
-    function_table_data = metadata['tables']
+  function_table_data = metadata['tables']
 
-    # merge forwarded data
-    settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
+  # merge forwarded data
+  settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
 
-    pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
+  pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 
-    #print >> sys.stderr, 'glue:', pre, '\n\n||||||||||||||||\n\n', post, '...............'
+  #print >> sys.stderr, 'glue:', pre, '\n\n||||||||||||||||\n\n', post, '...............'
 
-    pre = memory_and_global_initializers(pre, metadata, mem_init, settings)
-    pre, funcs_js = get_js_funcs(pre, funcs)
-    all_exported_functions = get_all_exported_functions(function_table_data, settings)
-    all_implemented = get_all_implemented(forwarded_json, metadata)
-    check_all_implemented(all_implemented, pre, settings)
-    implemented_functions = get_implemented_functions(metadata)
-    pre = include_asm_consts(pre, forwarded_json, metadata, settings)
-    #if DEBUG: outfile.write('// pre\n')
-    outfile.write(pre)
-    pre = None
+  pre = memory_and_global_initializers(pre, metadata, mem_init, settings)
+  pre, funcs_js = get_js_funcs(pre, funcs)
+  all_exported_functions = get_all_exported_functions(function_table_data, settings)
+  all_implemented = get_all_implemented(forwarded_json, metadata)
+  check_all_implemented(all_implemented, pre, settings)
+  implemented_functions = get_implemented_functions(metadata)
+  pre = include_asm_consts(pre, forwarded_json, metadata, settings)
+  #if DEBUG: outfile.write('// pre\n')
+  outfile.write(pre)
+  pre = None
 
-    #if DEBUG: outfile.write('// funcs\n')
+  #if DEBUG: outfile.write('// funcs\n')
 
-    # Move preAsms to their right place
-    def move_preasm(m):
-      contents = m.groups(0)[0]
-      outfile.write(contents + '\n')
-      return ''
-    if not settings['BOOTSTRAPPING_STRUCT_INFO'] and len(funcs_js) > 1:
-      funcs_js[1] = re.sub(r'/\* PRE_ASM \*/(.*)\n', move_preasm, funcs_js[1])
+  # Move preAsms to their right place
+  def move_preasm(m):
+    contents = m.groups(0)[0]
+    outfile.write(contents + '\n')
+    return ''
+  if not settings['BOOTSTRAPPING_STRUCT_INFO'] and len(funcs_js) > 1:
+    funcs_js[1] = re.sub(r'/\* PRE_ASM \*/(.*)\n', move_preasm, funcs_js[1])
 
-    if 'pre' in function_table_data:
-      pre_tables = function_table_data['pre']
-      del function_table_data['pre']
-    else:
-      pre_tables = ''
+  if 'pre' in function_table_data:
+    pre_tables = function_table_data['pre']
+    del function_table_data['pre']
+  else:
+    pre_tables = ''
 
-    function_table_sigs = function_table_data.keys()
+  function_table_sigs = function_table_data.keys()
 
-    in_table, debug_tables, function_tables_defs = make_function_tables_defs(
-      implemented_functions, all_implemented, function_table_data, settings, metadata)
+  in_table, debug_tables, function_tables_defs = make_function_tables_defs(
+    implemented_functions, all_implemented, function_table_data, settings, metadata)
 
-    exported_implemented_functions = get_exported_implemented_functions(
-      all_exported_functions, all_implemented, metadata, settings)
+  exported_implemented_functions = get_exported_implemented_functions(
+    all_exported_functions, all_implemented, metadata, settings)
 
-    asm_setup = create_asm_setup(debug_tables, function_table_data, metadata, settings)
-    basic_funcs = create_basic_funcs(function_table_sigs, settings)
-    basic_vars = create_basic_vars(exported_implemented_functions, forwarded_json, metadata, settings)
+  asm_setup = create_asm_setup(debug_tables, function_table_data, metadata, settings)
+  basic_funcs = create_basic_funcs(function_table_sigs, settings)
+  basic_vars = create_basic_vars(exported_implemented_functions, forwarded_json, metadata, settings)
 
-    shared.Settings.copy(settings)
+  shared.Settings.copy(settings)
 
-    funcs_js += create_mftCall_funcs(function_table_sigs, settings)
+  funcs_js += create_mftCall_funcs(function_table_sigs, settings)
 
-    exports = create_exports(exported_implemented_functions, in_table, function_table_data, metadata, settings)
+  exports = create_exports(exported_implemented_functions, in_table, function_table_data, metadata, settings)
 
-    # calculate globals
-    try:
-      del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
-    except:
-      pass
-    if not settings['RELOCATABLE']:
-      global_vars = metadata['externs']
-    else:
-      global_vars = [] # linkable code accesses globals through function calls
-    global_funcs = list(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2])
-                        .difference(set(global_vars)).difference(implemented_functions))
-    if settings['RELOCATABLE']:
-      global_funcs += ['g$' + extern for extern in metadata['externs']]
+  # calculate globals
+  try:
+    del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
+  except:
+    pass
+  if not settings['RELOCATABLE']:
+    global_vars = metadata['externs']
+  else:
+    global_vars = [] # linkable code accesses globals through function calls
+  global_funcs = list(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2])
+                      .difference(set(global_vars)).difference(implemented_functions))
+  if settings['RELOCATABLE']:
+    global_funcs += ['g$' + extern for extern in metadata['externs']]
 
-    bg_funcs = basic_funcs + global_funcs
-    bg_vars = basic_vars + global_vars
-    asm_global_funcs= create_asm_global_funcs(bg_funcs, metadata, settings)
-    asm_global_vars = create_asm_global_vars(bg_vars, settings)
+  bg_funcs = basic_funcs + global_funcs
+  bg_vars = basic_vars + global_vars
+  asm_global_funcs= create_asm_global_funcs(bg_funcs, metadata, settings)
+  asm_global_vars = create_asm_global_vars(bg_vars, settings)
 
-    the_global = create_the_global(metadata, settings)
-    sending_vars = basic_funcs + global_funcs + basic_vars + global_vars
-    sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in sending_vars]) + ' }'
+  the_global = create_the_global(metadata, settings)
+  sending_vars = basic_funcs + global_funcs + basic_vars + global_vars
+  sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in sending_vars]) + ' }'
 
-    receiving = create_receiving(function_table_data, function_tables_defs,
-                                 exported_implemented_functions, settings)
+  receiving = create_receiving(function_table_data, function_tables_defs,
+                               exported_implemented_functions, settings)
 
-    function_tables_impls = make_function_tables_impls(function_table_sigs, settings)
-    final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
-    if settings.get('EMULATED_FUNCTION_POINTERS'):
-      final_function_tables = (
-        final_function_tables
-        .replace("asm['", '')
-        .replace("']", '')
-        .replace('var SIDE_FUNCTION_TABLE_', 'var FUNCTION_TABLE_')
-        .replace('var dynCall_', '//')
-      )
+  function_tables_impls = make_function_tables_impls(function_table_sigs, settings)
+  final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
+  if settings.get('EMULATED_FUNCTION_POINTERS'):
+    final_function_tables = (
+      final_function_tables
+      .replace("asm['", '')
+      .replace("']", '')
+      .replace('var SIDE_FUNCTION_TABLE_', 'var FUNCTION_TABLE_')
+      .replace('var dynCall_', '//')
+    )
 
-    if DEBUG:
-      logging.debug('asm text sizes' + str([
-        map(len, funcs_js), len(asm_setup), len(asm_global_vars), len(asm_global_funcs), len(pre_tables),
-        len('\n'.join(function_tables_impls)), len(function_tables_defs) + (function_tables_defs.count('\n') * len('  ')),
-        len(exports), len(the_global), len(sending), len(receiving)]))
-      logging.debug('  emscript: python processing: function tables and exports took %s seconds' % (time.time() - t))
+  if DEBUG:
+    logging.debug('asm text sizes' + str([
+      map(len, funcs_js), len(asm_setup), len(asm_global_vars), len(asm_global_funcs), len(pre_tables),
+      len('\n'.join(function_tables_impls)), len(function_tables_defs) + (function_tables_defs.count('\n') * len('  ')),
+      len(exports), len(the_global), len(sending), len(receiving)]))
+    logging.debug('  emscript: python processing: function tables and exports took %s seconds' % (time.time() - t))
 
-    return (post, funcs_js, sending, receiving, asm_setup, the_global, asm_global_vars,
-            asm_global_funcs, pre_tables, final_function_tables, exports, function_table_data)
+  return (post, funcs_js, sending, receiving, asm_setup, the_global, asm_global_vars,
+          asm_global_funcs, pre_tables, final_function_tables, exports, function_table_data)
 
 
 def finalize_module(funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
