@@ -289,7 +289,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
   shared.Settings.copy(settings)
 
-  funcs_js += create_mftCall_funcs(function_table_sigs, settings)
+  funcs_js += create_mftCall_funcs(function_table_data, settings)
 
   exports = create_exports(exported_implemented_functions, in_table, function_table_data, metadata, settings)
 
@@ -319,7 +319,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   receiving = create_receiving(function_table_data, function_tables_defs,
                                exported_implemented_functions, settings)
 
-  function_tables_impls = make_function_tables_impls(function_table_sigs, settings)
+  function_tables_impls = make_function_tables_impls(function_table_data, settings)
   final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
   if settings.get('EMULATED_FUNCTION_POINTERS'):
     final_function_tables = (
@@ -381,21 +381,6 @@ def finalize_output(metadata, post, module, function_table_data, settings, outfi
   if DEBUG:
     logging.debug('emscript: python processing: finalize')
     t = time.time()
-
-  # Set function table masks
-  masks = {}
-  max_mask = 0
-  for sig, table in function_table_data.iteritems():
-    mask = table.count(',')
-    masks[sig] = str(mask)
-    max_mask = max(mask, max_mask)
-  def function_table_maskize(js, masks):
-    def fix(m):
-      sig = m.groups(0)[0]
-      return masks[sig]
-    return re.sub(r'{{{ FTM_([\w\d_$]+) }}}', fix, js) # masks[m.groups(0)[0]]
-  for i in range(len(module)): # in-place as this can be large
-    module[i] = function_table_maskize(module[i], masks)
 
   if settings['SIDE_MODULE']:
     module.append('''
@@ -821,13 +806,14 @@ def math_fix(g):
   return g if not g.startswith('Math_') else g.split('_')[1]
 
 
-def make_function_tables_impls(function_table_sigs, settings):
+def make_function_tables_impls(function_table_data, settings):
   function_tables_impls = []
-  for sig in function_table_sigs:
+  for sig, table in function_table_data.iteritems():
     args = ','.join(['a' + str(i) for i in range(1, len(sig))])
     arg_coercions = ' '.join(['a' + str(i) + '=' + shared.JS.make_coercion('a' + str(i), sig[i], settings) + ';' for i in range(1, len(sig))])
     coerced_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings) for i in range(1, len(sig))])
-    ret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('FUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s)' % (sig, sig, coerced_args), sig[0], settings)
+    sig_mask = str(table.count(','))
+    ret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('FUNCTION_TABLE_%s[index&%s](%s)' % (sig, sig_mask, coerced_args), sig[0], settings)
     if not settings['EMULATED_FUNCTION_POINTERS']:
       function_tables_impls.append('''
 function dynCall_%s(index%s%s) {
@@ -854,11 +840,11 @@ function jsCall_%s_%s(%s) {
   return function_tables_impls
 
 
-def create_mftCall_funcs(function_table_sigs, settings):
+def create_mftCall_funcs(function_table_data, settings):
   mftCall_funcs = []
   if settings.get('EMULATED_FUNCTION_POINTERS'):
     if settings.get('RELOCATABLE') and not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
-      for sig in function_table_sigs:
+      for sig, table in function_table_data.iteritems():
         params = ','.join(['ptr'] + ['p%d' % p for p in range(len(sig)-1)])
         coerced_params = ','.join([shared.JS.make_coercion('ptr', 'i', settings)] + [shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
         coercions = ';'.join(['ptr = ptr | 0'] + ['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, unfloat(sig[p+1]), settings)) for p in range(len(sig)-1)]) + ';'
@@ -868,9 +854,10 @@ def create_mftCall_funcs(function_table_sigs, settings):
         if settings['EMULATED_FUNCTION_POINTERS'] == 1:
           body = final_return
         else:
-          body = ('if (((ptr|0) >= (fb|0)) & ((ptr|0) < (fb + {{{ FTM_' + sig + ' }}} | 0))) { ' + maybe_return + ' ' +
+          sig_mask = str(table.count(','))
+          body = ('if (((ptr|0) >= (fb|0)) & ((ptr|0) < (fb + ' + sig_mask + ' | 0))) { ' + maybe_return + ' ' +
                   shared.JS.make_coercion(
-                    'FUNCTION_TABLE_' + sig + '[(ptr-fb)&{{{ FTM_' + sig + ' }}}](' +
+                    'FUNCTION_TABLE_' + sig + '[(ptr-fb)&' + sig_mask + '](' +
                     mini_coerced_params + ')', sig[0], settings, ffi_arg=True
                   ) + '; ' + ('return;' if sig[0] == 'v' else '') + ' }' + final_return)
         mftCall_funcs.append(make_func('mftCall_' + sig, body, params, coercions) + '\n')
@@ -1105,7 +1092,7 @@ def create_asm_setup(debug_tables, function_table_data, metadata, settings):
   asm_setup += setup_function_pointers(function_table_sigs, settings)
 
   if settings.get('EMULATED_FUNCTION_POINTERS'):
-    function_tables_impls = make_function_tables_impls(function_table_sigs, settings)
+    function_tables_impls = make_function_tables_impls(function_table_data, settings)
     asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
 
   return asm_setup
