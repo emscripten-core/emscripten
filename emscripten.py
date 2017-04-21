@@ -101,10 +101,10 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
        asm_global_funcs, pre_tables, final_function_tables, exports, function_table_data) = (
           function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG))
     with ToolchainProfiler.profile_block('finalize_output'):
-      funcs_js = finalize_funcs_js(funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
-                                   asm_global_funcs, pre_tables, final_function_tables,
-                                   exports, metadata, settings)
-      finalize_output(metadata, post, funcs_js, function_table_data, settings, outfile, DEBUG)
+      module = finalize_module(funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
+                               asm_global_funcs, pre_tables, final_function_tables,
+                               exports, metadata, settings)
+      finalize_output(metadata, post, module, function_table_data, settings, outfile, DEBUG)
 
     success = True
 
@@ -289,7 +289,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
     shared.Settings.copy(settings)
 
-    funcs_js += setup_funcs_js(function_table_sigs, settings)
+    funcs_js += create_mftCall_funcs(function_table_sigs, settings)
 
     exports = create_exports(exported_implemented_functions, in_table, function_table_data, metadata, settings)
 
@@ -341,9 +341,9 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
             asm_global_funcs, pre_tables, final_function_tables, exports, function_table_data)
 
 
-def finalize_funcs_js(base_funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
-                      asm_global_funcs, pre_tables, final_function_tables,
-                      exports, metadata, settings):
+def finalize_module(funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
+                    asm_global_funcs, pre_tables, final_function_tables,
+                    exports, metadata, settings):
   receiving += create_named_globals(metadata, settings)
   runtime_funcs = create_runtime_funcs(exports, settings)
 
@@ -363,21 +363,21 @@ def finalize_funcs_js(base_funcs_js, asm_setup, the_global, sending, receiving, 
 
   runtime_library_overrides = create_runtime_library_overrides(settings)
 
-  funcs_js = [
+  module = [
     asm_start,
     temp_float,
     async_state,
     f0_fround,
     replace_memory,
     start_funcs_marker
-  ] + runtime_funcs + base_funcs_js + ['\n  ',
+  ] + runtime_funcs + funcs_js + ['\n  ',
     pre_tables, final_function_tables, asm_end,
     '\n', receiving, ';\n', runtime_library_overrides]
 
-  return funcs_js
+  return module
 
 
-def finalize_output(metadata, post, funcs_js, function_table_data, settings, outfile, DEBUG):
+def finalize_output(metadata, post, module, function_table_data, settings, outfile, DEBUG):
   if DEBUG:
     logging.debug('emscript: python processing: finalize')
     t = time.time()
@@ -394,18 +394,18 @@ def finalize_output(metadata, post, funcs_js, function_table_data, settings, out
       sig = m.groups(0)[0]
       return masks[sig]
     return re.sub(r'{{{ FTM_([\w\d_$]+) }}}', fix, js) # masks[m.groups(0)[0]]
-  for i in range(len(funcs_js)): # in-place as this can be large
-    funcs_js[i] = function_table_maskize(funcs_js[i], masks)
+  for i in range(len(module)): # in-place as this can be large
+    module[i] = function_table_maskize(module[i], masks)
 
   if settings['SIDE_MODULE']:
-    funcs_js.append('''
+    module.append('''
 Runtime.registerFunctions(%(sigs)s, Module);
 ''' % { 'sigs': str(map(str, function_table_data.keys())) })
 
-  for i in range(len(funcs_js)): # do this loop carefully to save memory
-    if WINDOWS: funcs_js[i] = funcs_js[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
-    outfile.write(funcs_js[i])
-  funcs_js = None
+  for i in range(len(module)): # do this loop carefully to save memory
+    if WINDOWS: module[i] = module[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
+    outfile.write(module[i])
+  module = None
 
   if WINDOWS: post = post.replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
   outfile.write(post)
@@ -854,11 +854,11 @@ function jsCall_%s_%s(%s) {
   return function_tables_impls
 
 
-def setup_funcs_js(function_table_sigs, settings):
-  funcs_js = []
-  for sig in function_table_sigs:
-    if settings.get('EMULATED_FUNCTION_POINTERS'):
-      if settings.get('RELOCATABLE') and not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
+def create_mftCall_funcs(function_table_sigs, settings):
+  mftCall_funcs = []
+  if settings.get('EMULATED_FUNCTION_POINTERS'):
+    if settings.get('RELOCATABLE') and not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
+      for sig in function_table_sigs:
         params = ','.join(['ptr'] + ['p%d' % p for p in range(len(sig)-1)])
         coerced_params = ','.join([shared.JS.make_coercion('ptr', 'i', settings)] + [shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
         coercions = ';'.join(['ptr = ptr | 0'] + ['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, unfloat(sig[p+1]), settings)) for p in range(len(sig)-1)]) + ';'
@@ -873,8 +873,8 @@ def setup_funcs_js(function_table_sigs, settings):
                     'FUNCTION_TABLE_' + sig + '[(ptr-fb)&{{{ FTM_' + sig + ' }}}](' +
                     mini_coerced_params + ')', sig[0], settings, ffi_arg=True
                   ) + '; ' + ('return;' if sig[0] == 'v' else '') + ' }' + final_return)
-        funcs_js.append(make_func('mftCall_' + sig, body, params, coercions) + '\n')
-  return funcs_js
+        mftCall_funcs.append(make_func('mftCall_' + sig, body, params, coercions) + '\n')
+  return mftCall_funcs
 
 
 def get_function_pointer_error(sig, function_table_sigs, settings):
@@ -892,10 +892,10 @@ def get_function_pointer_error(sig, function_table_sigs, settings):
         extra += other + ': " + debug_table_' + other + '[x] + "  '
     extra += '"); '
   return 'Module["printErr"]("Invalid function pointer' + pointer + 'called with signature \'' + sig + '\'. ' + \
-          'Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? ' + \
-          'Or calling a function with an incorrect type, which will fail? ' + \
-          '(it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)' + \
-          '"); ' + extra
+         'Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? ' + \
+         'Or calling a function with an incorrect type, which will fail? ' + \
+         '(it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)' + \
+         '"); ' + extra
 
 
 def signature_sort_key(sig):
