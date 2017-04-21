@@ -1586,14 +1586,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
     assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
     basename = outfile.name[:-3]
     wast = basename + '.wast'
-    s2wasm_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 's2wasm'), temp_s]
-    s2wasm_args += ['--emscripten-glue']
-    s2wasm_args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
-    s2wasm_args += ['--initial-memory=%d' % shared.Settings.TOTAL_MEMORY]
-    s2wasm_args += ['--allow-memory-growth'] if shared.Settings.ALLOW_MEMORY_GROWTH else []
-    def compiler_rt_fail(): raise Exception('Expected wasm_compiler_rt.a to already be built')
-    compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', lambda: compiler_rt_fail(), 'a')
-    s2wasm_args += ['-l', compiler_rt_lib]
+    s2wasm_args = create_s2wasm_args(temp_s)
     if DEBUG:
       logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
       t = time.time()
@@ -1921,6 +1914,22 @@ def create_backend_args_wasm(infile, temp_s, settings):
   # asm.js-style setjmp/longjmp handling
   args += ['-enable-emscripten-sjlj']
   return args
+
+
+def create_s2wasm_args(temp_s):
+  def compiler_rt_fail():
+    raise Exception('Expected wasm_compiler_rt.a to already be built')
+  compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', compiler_rt_fail, 'a')
+
+  s2wasm_path = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 's2wasm')
+
+  args = [s2wasm_path, temp_s, '--emscripten-glue']
+  args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
+  args += ['--initial-memory=%d' % shared.Settings.TOTAL_MEMORY]
+  args += ['--allow-memory-growth'] if shared.Settings.ALLOW_MEMORY_GROWTH else []
+  args += ['-l', compiler_rt_lib]
+  return args
+
 
 if os.environ.get('EMCC_FAST_COMPILER') == '0':
   logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
