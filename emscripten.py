@@ -102,9 +102,9 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
           function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG))
     with ToolchainProfiler.profile_block('write_output_file'):
       function_table_sigs = function_table_data.keys()
-      module = finalize_module(funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
-                               asm_global_funcs, pre_tables, final_function_tables, function_table_sigs,
-                               exports, metadata, settings)
+      module = create_module(funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
+                             asm_global_funcs, pre_tables, final_function_tables, function_table_sigs,
+                             exports, metadata, settings)
       write_output_file(metadata, post, module, function_table_data, settings, outfile, DEBUG)
 
     success = True
@@ -342,9 +342,9 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
           asm_global_funcs, pre_tables, final_function_tables, exports, function_table_data)
 
 
-def finalize_module(funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
-                    asm_global_funcs, pre_tables, final_function_tables, function_table_sigs,
-                    exports, metadata, settings):
+def create_module(funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
+                  asm_global_funcs, pre_tables, final_function_tables, function_table_sigs,
+                  exports, metadata, settings):
   receiving += create_named_globals(metadata, settings)
   runtime_funcs = create_runtime_funcs(exports, settings)
 
