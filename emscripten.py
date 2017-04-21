@@ -100,11 +100,12 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
       (post, funcs_js, sending, receiving, asm_setup, the_global, asm_global_vars,
        asm_global_funcs, pre_tables, final_function_tables, exports, function_table_data) = (
           function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG))
-    with ToolchainProfiler.profile_block('finalize_output'):
+    with ToolchainProfiler.profile_block('write_output_file'):
+      function_table_sigs = function_table_data.keys()
       module = finalize_module(funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
-                               asm_global_funcs, pre_tables, final_function_tables,
+                               asm_global_funcs, pre_tables, final_function_tables, function_table_sigs,
                                exports, metadata, settings)
-      finalize_output(metadata, post, module, function_table_data, settings, outfile, DEBUG)
+      write_output_file(metadata, post, module, function_table_data, settings, outfile, DEBUG)
 
     success = True
 
@@ -342,7 +343,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
 
 def finalize_module(funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
-                    asm_global_funcs, pre_tables, final_function_tables,
+                    asm_global_funcs, pre_tables, final_function_tables, function_table_sigs,
                     exports, metadata, settings):
   receiving += create_named_globals(metadata, settings)
   runtime_funcs = create_runtime_funcs(exports, settings)
@@ -374,18 +375,18 @@ def finalize_module(funcs_js, asm_setup, the_global, sending, receiving, asm_glo
     pre_tables, final_function_tables, asm_end,
     '\n', receiving, ';\n', runtime_library_overrides]
 
-  return module
-
-
-def finalize_output(metadata, post, module, function_table_data, settings, outfile, DEBUG):
-  if DEBUG:
-    logging.debug('emscript: python processing: finalize')
-    t = time.time()
-
   if settings['SIDE_MODULE']:
     module.append('''
 Runtime.registerFunctions(%(sigs)s, Module);
-''' % { 'sigs': str(map(str, function_table_data.keys())) })
+''' % { 'sigs': str(map(str, function_table_sigs)) })
+
+  return module
+
+
+def write_output_file(metadata, post, module, function_table_data, settings, outfile, DEBUG):
+  if DEBUG:
+    logging.debug('emscript: python processing: finalize')
+    t = time.time()
 
   for i in range(len(module)): # do this loop carefully to save memory
     if WINDOWS: module[i] = module[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
