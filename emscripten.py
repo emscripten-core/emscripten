@@ -1700,8 +1700,6 @@ return ASM_CONSTS[code](%s);
   basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory']
   if settings['ABORTING_MALLOC']: basic_funcs += ['abortOnCannotGrowMemory']
 
-  access_quote = access_quoter(settings)
-
   # calculate globals
   try:
     del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
@@ -1751,47 +1749,12 @@ return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
   receiving += ';\n'
 
   # finalize
+  module = create_module_wasm(the_global, sending, receiving, invoke_wrappers, settings)
 
-  if settings['USE_PTHREADS']:
-    shared_array_buffer = "if (typeof SharedArrayBuffer !== 'undefined') Module.asmGlobalArg['Atomics'] = Atomics;"
-  else:
-    shared_array_buffer = ''
-
-  funcs_js = ['''
-Module%s = %s;
-%s
-Module%s = %s;
-''' % (access_quote('asmGlobalArg'), the_global,
-     shared_array_buffer,
-     access_quote('asmLibraryArg'), sending) + '''
-var asm = Module['asm'](%s, %s, buffer);
-%s;
-''' % ('Module' + access_quote('asmGlobalArg'),
-     'Module' + access_quote('asmLibraryArg'),
-     receiving)]
-
-  # wasm backend stack goes down, and is stored in the first global var location
-  funcs_js.append('''
-STACKTOP = STACK_BASE + TOTAL_STACK;
-STACK_MAX = STACK_BASE;
-HEAP32[%d >> 2] = STACKTOP;
-Runtime.stackAlloc = Module['stackAlloc'];
-Runtime.stackSave = Module['stackSave'];
-Runtime.stackRestore = Module['stackRestore'];
-Runtime.establishStackSpace = Module['establishStackSpace'];
-''' % shared.Settings.GLOBAL_BASE)
-
-  funcs_js.append('''
-Runtime.setTempRet0 = Module['setTempRet0'];
-Runtime.getTempRet0 = Module['getTempRet0'];
-''')
-
-  funcs_js.append(invoke_wrappers)
-
-  for i in range(len(funcs_js)): # do this loop carefully to save memory
-    if WINDOWS: funcs_js[i] = funcs_js[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
-    outfile.write(funcs_js[i])
-  funcs_js = None
+  for i in range(len(module)): # do this loop carefully to save memory
+    if WINDOWS: module[i] = module[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
+    outfile.write(module[i])
+  module = None
 
   if WINDOWS: post = post.replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
   outfile.write(post)
@@ -1841,6 +1804,46 @@ def create_metadata_wasm(metadata_raw, wast):
   add_metadata_from_wast(metadata, wast)
   return metadata
 
+
+def create_module_wasm(the_global, sending, receiving, invoke_wrappers, settings):
+  access_quote = access_quoter(settings)
+
+  if settings['USE_PTHREADS']:
+    shared_array_buffer = "if (typeof SharedArrayBuffer !== 'undefined') Module.asmGlobalArg['Atomics'] = Atomics;"
+  else:
+    shared_array_buffer = ''
+
+  module = ['''
+Module%s = %s;
+%s
+Module%s = %s;
+''' % (access_quote('asmGlobalArg'), the_global,
+     shared_array_buffer,
+     access_quote('asmLibraryArg'), sending) + '''
+var asm = Module['asm'](%s, %s, buffer);
+%s;
+''' % ('Module' + access_quote('asmGlobalArg'),
+     'Module' + access_quote('asmLibraryArg'),
+     receiving)]
+
+  # wasm backend stack goes down, and is stored in the first global var location
+  module.append('''
+STACKTOP = STACK_BASE + TOTAL_STACK;
+STACK_MAX = STACK_BASE;
+HEAP32[%d >> 2] = STACKTOP;
+Runtime.stackAlloc = Module['stackAlloc'];
+Runtime.stackSave = Module['stackSave'];
+Runtime.stackRestore = Module['stackRestore'];
+Runtime.establishStackSpace = Module['establishStackSpace'];
+''' % shared.Settings.GLOBAL_BASE)
+
+  module.append('''
+Runtime.setTempRet0 = Module['setTempRet0'];
+Runtime.getTempRet0 = Module['getTempRet0'];
+''')
+
+  module.append(invoke_wrappers)
+  return module
 
 def create_backend_args_wasm(infile, temp_s, settings):
   backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
