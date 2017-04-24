@@ -1697,8 +1697,12 @@ return ASM_CONSTS[code](%s);
   outfile.write(pre)
   pre = None
 
+  invoke_funcs = read_wast_invoke_imports(wast)
+
   basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory']
   if settings['ABORTING_MALLOC']: basic_funcs += ['abortOnCannotGrowMemory']
+  for invoke in invoke_funcs:
+    basic_funcs.append(invoke)
 
   # calculate globals
   try:
@@ -1715,25 +1719,13 @@ return ASM_CONSTS[code](%s);
 
   basic_vars = ['STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR', 'ABORT']
 
-  # Asm.js-style exception handling: invoke wrapper generation
-  invoke_wrappers = ''
-  with open(wast) as f:
-    for line in f:
-      if line.strip().startswith('(import '):
-        parts = line.split()
-        func_name = parts[2][1:-1]
-        if func_name.startswith('invoke_'):
-          sig = func_name[len('invoke_'):]
-          invoke_wrappers += '\n' + shared.JS.make_invoke(sig) + '\n'
-          basic_funcs.append(func_name)
-
   # sent data
   the_global = '{}'
   sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + global_vars]) + ' }'
   receiving = create_receiving_wasm(exported_implemented_functions, settings)
 
   # finalize
-  module = create_module_wasm(the_global, sending, receiving, invoke_wrappers, settings)
+  module = create_module_wasm(the_global, sending, receiving, invoke_funcs, settings)
 
   for i in range(len(module)): # do this loop carefully to save memory
     if WINDOWS: module[i] = module[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
@@ -1789,6 +1781,18 @@ def create_metadata_wasm(metadata_raw, wast):
   return metadata
 
 
+def read_wast_invoke_imports(wast):
+  invoke_funcs = []
+  with open(wast) as f:
+    for line in f:
+      if line.strip().startswith('(import '):
+        parts = line.split()
+        func_name = parts[2][1:-1]
+        if func_name.startswith('invoke_'):
+          invoke_funcs.append(func_name)
+  return invoke_funcs
+
+
 def create_receiving_wasm(exported_implemented_functions, settings):
   receiving = ''
   if settings['ASSERTIONS']:
@@ -1809,8 +1813,9 @@ return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
   return receiving
 
 
-def create_module_wasm(the_global, sending, receiving, invoke_wrappers, settings):
+def create_module_wasm(the_global, sending, receiving, invoke_funcs, settings):
   access_quote = access_quoter(settings)
+  invoke_wrappers = create_invoke_wrappers(invoke_funcs)
 
   if settings['USE_PTHREADS']:
     shared_array_buffer = "if (typeof SharedArrayBuffer !== 'undefined') Module.asmGlobalArg['Atomics'] = Atomics;"
@@ -1950,6 +1955,15 @@ def add_metadata_from_wast(metadata, wast):
 
   # we emit those ourselves
   metadata['declares'] = filter(lambda x: not x.startswith('emscripten_asm_const'), metadata['declares'])
+
+
+def create_invoke_wrappers(invoke_funcs):
+  """Asm.js-style exception handling: invoke wrapper generation."""
+  invoke_wrappers = ''
+  for invoke in invoke_funcs:
+    sig = invoke[len('invoke_'):]
+    invoke_wrappers += '\n' + shared.JS.make_invoke(sig) + '\n'
+  return invoke_wrappers
 
 
 def asmjs_mangle(name):
