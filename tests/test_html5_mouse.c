@@ -130,8 +130,21 @@ int main()
       for(var d in data) event[d] = data[d];
       window.dispatchEvent(event);
     }
-    sendEvent('click', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 1 });
+    sendEvent('click', { screenX: 123, screenY: 456, clientX: 123, clientY: 456, button: 0, buttons: 1 });
   );
+
+  // get_mouse_status should contain the results of the last event
+  EmscriptenMouseEvent mouseEvent;
+  ret = emscripten_get_mouse_status(&mouseEvent);
+  TEST_RESULT(emscripten_get_mouse_status);
+
+  if (mouseEvent.screenX != 123 || mouseEvent.screenY != 456
+    || mouseEvent.clientX != 123 || mouseEvent.clientY != 456)
+  {
+    printf("ERROR! Incorrect mouse status\n");
+    report_result(1);
+  }
+
   // Test that unregistering a callback works. Clicks should no longer be received.
   ret = emscripten_set_click_callback(0, 0, 1, 0);
   TEST_RESULT(emscripten_set_click_callback);
