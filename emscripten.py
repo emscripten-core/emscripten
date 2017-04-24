@@ -1654,7 +1654,6 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   for key in all_implemented:
     if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
       exported_implemented_functions.add(key)
-  implemented_functions = set(metadata['implementedFunctions'])
   if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
     original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
     if original_exports[0] == '@': original_exports = json.loads(open(original_exports[1:]).read())
@@ -1699,29 +1698,15 @@ return ASM_CONSTS[code](%s);
 
   invoke_funcs = read_wast_invoke_imports(wast)
 
-  basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory']
-  if settings['ABORTING_MALLOC']: basic_funcs += ['abortOnCannotGrowMemory']
-  for invoke in invoke_funcs:
-    basic_funcs.append(invoke)
-
   # calculate globals
   try:
     del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
   except:
     pass
-  if not settings['RELOCATABLE']:
-    global_vars = metadata['externs']
-  else:
-    global_vars = [] # linkable code accesses globals through function calls
-  global_funcs = list(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]).difference(set(global_vars)).difference(implemented_functions))
-  def math_fix(g):
-    return g if not g.startswith('Math_') else g.split('_')[1]
-
-  basic_vars = ['STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR', 'ABORT']
 
   # sent data
   the_global = '{}'
-  sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + global_vars]) + ' }'
+  sending = create_sending_wasm(invoke_funcs, forwarded_json, metadata, settings)
   receiving = create_receiving_wasm(exported_implemented_functions, settings)
 
   # finalize
@@ -1790,6 +1775,27 @@ def read_wast_invoke_imports(wast):
       if func_name.startswith('invoke_'):
         invoke_funcs.append(func_name)
   return invoke_funcs
+
+
+def create_sending_wasm(invoke_funcs, forwarded_json, metadata, settings):
+  basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory']
+  if settings['ABORTING_MALLOC']:
+    basic_funcs += ['abortOnCannotGrowMemory']
+
+  basic_vars = ['STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR', 'ABORT']
+
+  if not settings['RELOCATABLE']:
+    global_vars = metadata['externs']
+  else:
+    global_vars = [] # linkable code accesses globals through function calls
+
+  implemented_functions = set(metadata['implementedFunctions'])
+  global_funcs = list(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]).difference(set(global_vars)).difference(implemented_functions))
+
+  send_items = basic_funcs + invoke_funcs + global_funcs + basic_vars + global_vars
+  def math_fix(g):
+    return g if not g.startswith('Math_') else g.split('_')[1]
+  return '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in send_items]) + ' }'
 
 
 def create_receiving_wasm(exported_implemented_functions, settings):
