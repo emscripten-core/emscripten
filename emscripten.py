@@ -1674,19 +1674,17 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
 
   invoke_funcs = read_wast_invoke_imports(wast)
 
-  # calculate globals
   try:
     del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
   except:
     pass
 
   # sent data
-  the_global = '{}'
   sending = create_sending_wasm(invoke_funcs, forwarded_json, metadata, settings)
   receiving = create_receiving_wasm(exported_implemented_functions, settings)
 
   # finalize
-  module = create_module_wasm(the_global, sending, receiving, invoke_funcs, settings)
+  module = create_module_wasm(sending, receiving, invoke_funcs, settings)
 
   for i in range(len(module)): # do this loop carefully to save memory
     if WINDOWS: module[i] = module[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
@@ -1824,9 +1822,11 @@ return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
   return receiving
 
 
-def create_module_wasm(the_global, sending, receiving, invoke_funcs, settings):
+def create_module_wasm(sending, receiving, invoke_funcs, settings):
   access_quote = access_quoter(settings)
   invoke_wrappers = create_invoke_wrappers(invoke_funcs)
+
+  the_global = '{}'
 
   if settings['USE_PTHREADS']:
     shared_array_buffer = "if (typeof SharedArrayBuffer !== 'undefined') Module.asmGlobalArg['Atomics'] = Atomics;"
