@@ -337,6 +337,8 @@ var LibraryPThreadStub = {
   _emscripten_atomic_fetch_and_and_u64: '__atomic_fetch_and_8',
   _emscripten_atomic_fetch_and_or_u64: '__atomic_fetch_or_8',
   _emscripten_atomic_fetch_and_xor_u64: '__atomic_fetch_xor_8',
+
+  __wait: function() {},
 };
 
 mergeInto(LibraryManager.library, LibraryPThreadStub);
