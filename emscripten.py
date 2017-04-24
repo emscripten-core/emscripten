@@ -1665,31 +1665,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
          (('function ' + requested.encode('utf-8')) not in pre): # could be a js library func
         logging.warning('function requested to be exported, but not implemented: "%s"', requested)
 
-  asm_consts = [0]*len(metadata['asmConsts'])
-  all_sigs = []
-  for k, v in metadata['asmConsts'].iteritems():
-    const = v[0].encode('utf-8')
-    sigs = v[1]
-    if len(const) > 1 and const[0] == '"' and const[-1] == '"':
-      const = const[1:-1]
-    const = '{ ' + const + ' }'
-    args = []
-    arity = max(map(len, sigs)) - 1
-    for i in range(arity):
-      args.append('$' + str(i))
-    const = 'function(' + ', '.join(args) + ') ' + const
-    asm_consts[int(k)] = const
-    all_sigs += sigs
-
-  asm_const_funcs = []
-  for sig in set(all_sigs):
-    forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
-    args = ['a%d' % i for i in range(len(sig)-1)]
-    all_args = ['code'] + args
-    asm_const_funcs.append(r'''
-function _emscripten_asm_const_%s(%s) {
-return ASM_CONSTS[code](%s);
-}''' % (sig.encode('utf-8'), ', '.join(all_args), ', '.join(args)))
+  asm_consts, asm_const_funcs = create_asm_consts_wasm(forwarded_json, metadata)
 
   pre = pre.replace('// === Body ===', '// === Body ===\n' + '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
 
@@ -1764,6 +1740,36 @@ def create_metadata_wasm(metadata_raw, wast):
   metadata = load_metadata(metadata_raw)
   add_metadata_from_wast(metadata, wast)
   return metadata
+
+
+def create_asm_consts_wasm(forwarded_json, metadata):
+  asm_consts = [0]*len(metadata['asmConsts'])
+  all_sigs = []
+  for k, v in metadata['asmConsts'].iteritems():
+    const = v[0].encode('utf-8')
+    sigs = v[1]
+    if len(const) > 1 and const[0] == '"' and const[-1] == '"':
+      const = const[1:-1]
+    const = '{ ' + const + ' }'
+    args = []
+    arity = max(map(len, sigs)) - 1
+    for i in range(arity):
+      args.append('$' + str(i))
+    const = 'function(' + ', '.join(args) + ') ' + const
+    asm_consts[int(k)] = const
+    all_sigs += sigs
+
+  asm_const_funcs = []
+  for sig in set(all_sigs):
+    forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
+    args = ['a%d' % i for i in range(len(sig)-1)]
+    all_args = ['code'] + args
+    asm_const_funcs.append(r'''
+function _emscripten_asm_const_%s(%s) {
+return ASM_CONSTS[code](%s);
+}''' % (sig.encode('utf-8'), ', '.join(all_args), ', '.join(args)))
+
+  return asm_consts, asm_const_funcs
 
 
 def read_wast_invoke_imports(wast):
