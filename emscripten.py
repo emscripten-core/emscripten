@@ -1570,39 +1570,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
 
   if libraries is None: libraries = []
 
-  with temp_files.get_file('.wb.s') as temp_s:
-    backend_args = create_backend_args_wasm(infile, temp_s, settings)
-
-    if DEBUG:
-      logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
-      t = time.time()
-    shared.check_call(backend_args)
-    if DEBUG:
-      logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
-      t = time.time()
-      import shutil
-      shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
-
-    assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
-    basename = outfile.name[:-3]
-    wast = basename + '.wast'
-    s2wasm_args = create_s2wasm_args(temp_s)
-    if DEBUG:
-      logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
-      t = time.time()
-      #s2wasm_args += ['--debug']
-    shared.check_call(s2wasm_args, stdout=open(wast, 'w'))
-    # Also convert wasm text to binary
-    wasm_as_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-as'),
-                    wast, '-o', basename + '.wasm']
-    logging.debug('  emscript: binaryen wasm-as: ' + ' '.join(wasm_as_args))
-    shared.check_call(wasm_as_args)
-
-  if DEBUG:
-    logging.debug('  emscript: binaryen s2wasm took %s seconds' % (time.time() - t))
-    t = time.time()
-    import shutil
-    shutil.copyfile(wast, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-s2wasm-output.wast'))
+  wast = build_wasm(temp_files, infile, outfile, settings, DEBUG)
 
   # js compiler
 
@@ -1893,6 +1861,42 @@ Runtime.getTempRet0 = Module['getTempRet0'];
   outfile.write(post)
 
   outfile.close()
+
+
+def build_wasm(temp_files, infile, outfile, settings, DEBUG):
+  with temp_files.get_file('.wb.s') as temp_s:
+    backend_args = create_backend_args_wasm(infile, temp_s, settings)
+    if DEBUG:
+      logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
+      t = time.time()
+    shared.check_call(backend_args)
+    if DEBUG:
+      logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
+      t = time.time()
+      import shutil
+      shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
+
+    assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
+    basename = outfile.name[:-3]
+    wast = basename + '.wast'
+    s2wasm_args = create_s2wasm_args(temp_s)
+    if DEBUG:
+      logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
+      t = time.time()
+      #s2wasm_args += ['--debug']
+    shared.check_call(s2wasm_args, stdout=open(wast, 'w'))
+    # Also convert wasm text to binary
+    wasm_as_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-as'),
+                    wast, '-o', basename + '.wasm']
+    logging.debug('  emscript: binaryen wasm-as: ' + ' '.join(wasm_as_args))
+    shared.check_call(wasm_as_args)
+
+  if DEBUG:
+    logging.debug('  emscript: binaryen s2wasm took %s seconds' % (time.time() - t))
+    t = time.time()
+    import shutil
+    shutil.copyfile(wast, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-s2wasm-output.wast'))
+  return wast
 
 
 def create_backend_args_wasm(infile, temp_s, settings):
