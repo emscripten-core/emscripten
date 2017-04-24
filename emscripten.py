@@ -1585,63 +1585,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   parts = output = None
 
   if DEBUG: logging.debug("METAraw %s", metadata_raw)
-  try:
-    metadata_json = json.loads(metadata_raw)
-  except Exception, e:
-    logging.error('emscript: failure to parse metadata output from s2wasm. raw output is: \n' + metadata_raw)
-    raise e
-
-  metadata = {
-    'declares': [],
-    'implementedFunctions': [],
-    'externs': [],
-    'simd': False,
-    'maxGlobalAlign': 0,
-    'initializers': [],
-    'exports': [],
-  }
-
-  for k, v in metadata_json.iteritems():
-    metadata[k] = v
-
-  # Initializers call the global var version of the export, so they get the mangled name.
-  metadata['initializers'] = [asmjs_mangle(i) for i in metadata['initializers']]
-
-  # TODO: emit it from s2wasm; for now, we parse it right here
-  for line in open(wast).readlines():
-    line = line.strip()
-    if line.startswith('(import '):
-      parts = line.split()
-      # Don't include Invoke wrapper names (for asm.js-style exception handling)
-      # in metadata[declares], the invoke wrappers will be generated in
-      # this script later.
-      import_type = parts[3][1:]
-      import_name = parts[2][1:-1]
-      if import_type == 'memory':
-        continue
-      elif import_type == 'func':
-        if not import_name.startswith('invoke_'):
-          metadata['declares'].append(import_name)
-      elif import_type == 'global':
-        metadata['externs'].append('_' + import_name)
-      else:
-        assert False, 'Unhandled import type "%s"' % import_type
-    elif line.startswith('(func '):
-      parts = line.split()
-      func_name = parts[1][1:]
-      metadata['implementedFunctions'].append('_' + func_name)
-    elif line.startswith('(export '):
-      parts = line.split()
-      export_name = parts[1][1:-1]
-      export_type = parts[2][1:]
-      if export_type == 'func':
-        assert asmjs_mangle(export_name) not in metadata['exports']
-        metadata['exports'].append(export_name)
-      else:
-        assert False, 'Unhandled export type "%s"' % export_type
-
-  metadata['declares'] = filter(lambda x: not x.startswith('emscripten_asm_const'), metadata['declares']) # we emit those ourselves
-
+  metadata = create_metadata_wasm(metadata_raw, wast)
   if DEBUG: logging.debug(repr(metadata))
 
   settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
@@ -1891,6 +1835,13 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
   return wast
 
 
+
+def create_metadata_wasm(metadata_raw, wast):
+  metadata = load_metadata(metadata_raw)
+  add_metadata_from_wast(metadata, wast)
+  return metadata
+
+
 def create_backend_args_wasm(infile, temp_s, settings):
   backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
   args = [backend_compiler, infile, '-march=wasm32', '-filetype=asm',
@@ -1925,6 +1876,73 @@ def create_s2wasm_args(temp_s):
   args += ['--allow-memory-growth'] if shared.Settings.ALLOW_MEMORY_GROWTH else []
   args += ['-l', compiler_rt_lib]
   return args
+
+
+def load_metadata(metadata_raw):
+  try:
+    metadata_json = json.loads(metadata_raw)
+  except Exception, e:
+    logging.error('emscript: failure to parse metadata output from s2wasm. raw output is: \n' + metadata_raw)
+    raise e
+
+  metadata = {
+    'declares': [],
+    'implementedFunctions': [],
+    'externs': [],
+    'simd': False,
+    'maxGlobalAlign': 0,
+    'initializers': [],
+    'exports': [],
+  }
+
+  for k, v in metadata_json.iteritems():
+    metadata[k] = v
+
+  # Initializers call the global var version of the export, so they get the mangled name.
+  metadata['initializers'] = map(asmjs_mangle, metadata['initializers'])
+
+  return metadata
+
+
+def add_metadata_from_wast(metadata, wast):
+  """Reads .wast file and adds metadata we can read from the code.
+
+  TODO: emit this metadata directly from s2wasm.
+  """
+  for line in open(wast).readlines():
+    line = line.strip()
+    if line.startswith('(import '):
+      parts = line.split()
+      # Don't include Invoke wrapper names (for asm.js-style exception handling)
+      # in metadata[declares], the invoke wrappers will be generated in
+      # this script later.
+      import_type = parts[3][1:]
+      import_name = parts[2][1:-1]
+      if import_type == 'memory':
+        continue
+      elif import_type == 'func':
+        if not import_name.startswith('invoke_'):
+          metadata['declares'].append(import_name)
+      elif import_type == 'global':
+        metadata['externs'].append('_' + import_name)
+      else:
+        assert False, 'Unhandled import type "%s"' % import_type
+    elif line.startswith('(func '):
+      parts = line.split()
+      func_name = parts[1][1:]
+      metadata['implementedFunctions'].append('_' + func_name)
+    elif line.startswith('(export '):
+      parts = line.split()
+      export_name = parts[1][1:-1]
+      export_type = parts[2][1:]
+      if export_type == 'func':
+        assert asmjs_mangle(export_name) not in metadata['exports']
+        metadata['exports'].append(export_name)
+      else:
+        assert False, 'Unhandled export type "%s"' % export_type
+
+  # we emit those ourselves
+  metadata['declares'] = filter(lambda x: not x.startswith('emscripten_asm_const'), metadata['declares'])
 
 
 def asmjs_mangle(name):
