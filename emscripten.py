@@ -1604,14 +1604,6 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   for k, v in metadata_json.iteritems():
     metadata[k] = v
 
-  def asmjs_mangle(name):
-    # Mangle a name the way asm.js/JSBackend globals are mangled (i.e. prepend
-    # '_' and replace non-alphanumerics with '_')
-    library_functions_in_module = ('setThrew', 'setTempRet0', 'getTempRet0')
-    if name.startswith('dynCall_'): return name
-    if name in library_functions_in_module: return name
-    return '_' + ''.join(['_' if not c.isalnum() else c for c in name])
-
   # Initializers call the global var version of the export, so they get the mangled name.
   metadata['initializers'] = [asmjs_mangle(i) for i in metadata['initializers']]
 
@@ -1933,6 +1925,18 @@ def create_s2wasm_args(temp_s):
   args += ['--allow-memory-growth'] if shared.Settings.ALLOW_MEMORY_GROWTH else []
   args += ['-l', compiler_rt_lib]
   return args
+
+
+def asmjs_mangle(name):
+  """Mangle a name the way asm.js/JSBackend globals are mangled.
+
+  Prepends '_' and replaces non-alphanumerics with '_'.
+  Used by wasm backend for JS library consistency with asm.js.
+  """
+  library_functions_in_module = ('setThrew', 'setTempRet0', 'getTempRet0')
+  if name.startswith('dynCall_'): return name
+  if name in library_functions_in_module: return name
+  return '_' + ''.join(['_' if not c.isalnum() else c for c in name])
 
 
 if os.environ.get('EMCC_FAST_COMPILER') == '0':
