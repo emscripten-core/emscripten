@@ -343,6 +343,7 @@ var LibraryGLFW = {
 
     onKeyPress: function(event) {
       if (!GLFW.active || !GLFW.active.charFunc) return;
+      if (event.ctrlKey || event.metaKey) return;
 
       // correct unicode charCode is only available with onKeyPress event
       var charCode = event.charCode;
