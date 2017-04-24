@@ -312,19 +312,26 @@ def update_settings_glue(settings, metadata):
   # Integrate info from backend
   if settings['SIDE_MODULE']:
     settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = [] # we don't need any JS library contents in side modules
+
+  if metadata['cantValidate'] and settings['ASM_JS'] != 2:
+    logging.warning('disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
+    settings['ASM_JS'] = 2
+
+  update_settings_common(settings, metadata)
+
+
+def update_settings_common(settings, metadata):
+  """Update settings shared between asm.js and wasm backends."""
   settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
     set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
       map(lambda x: x[1:], metadata['implementedFunctions'])
     )
   ) + map(lambda x: x[1:], metadata['externs'])
+
   if metadata['simd']:
     settings['SIMD'] = 1
-  if metadata['cantValidate'] and settings['ASM_JS'] != 2:
-    logging.warning('disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
-    settings['ASM_JS'] = 2
 
   settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
-
   settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
 
 
@@ -1588,17 +1595,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   metadata = create_metadata_wasm(metadata_raw, wast)
   if DEBUG: logging.debug(repr(metadata))
 
-  settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
-    set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
-      map(lambda x: x[1:], metadata['implementedFunctions'])
-    )
-  ) + map(lambda x: x[1:], metadata['externs'])
-  if metadata['simd']:
-    settings['SIMD'] = 1
-
-  settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
-
-  settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
+  update_settings_common(settings, metadata)
 
   # Save settings to a file to work around v8 issue 1579
   with temp_files.get_file('.txt') as settings_file:
@@ -1711,7 +1708,6 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
     import shutil
     shutil.copyfile(wast, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-s2wasm-output.wast'))
   return wast
-
 
 
 def create_metadata_wasm(metadata_raw, wast):
