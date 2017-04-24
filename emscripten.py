@@ -1730,23 +1730,7 @@ return ASM_CONSTS[code](%s);
   # sent data
   the_global = '{}'
   sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + global_vars]) + ' }'
-  # received
-  receiving = ''
-  if settings['ASSERTIONS']:
-    # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
-    # some support code
-    receiving = '\n'.join(['var real_' + asmjs_mangle(s) + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
-assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
-};
-''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory', '__start_module']])
-
-  if not settings['SWAPPABLE_ASM_MODULE']:
-    receiving += ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"]' for s in exported_implemented_functions])
-  else:
-    receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions])
-  receiving += ';\n'
+  receiving = create_receiving_wasm(exported_implemented_functions, settings)
 
   # finalize
   module = create_module_wasm(the_global, sending, receiving, invoke_wrappers, settings)
@@ -1803,6 +1787,26 @@ def create_metadata_wasm(metadata_raw, wast):
   metadata = load_metadata(metadata_raw)
   add_metadata_from_wast(metadata, wast)
   return metadata
+
+
+def create_receiving_wasm(exported_implemented_functions, settings):
+  receiving = ''
+  if settings['ASSERTIONS']:
+    # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
+    # some support code
+    receiving = '\n'.join(['var real_' + asmjs_mangle(s) + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
+assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
+};
+''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory', '__start_module']])
+
+  if not settings['SWAPPABLE_ASM_MODULE']:
+    receiving += ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"]' for s in exported_implemented_functions])
+  else:
+    receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions])
+  receiving += ';\n'
+  return receiving
 
 
 def create_module_wasm(the_global, sending, receiving, invoke_wrappers, settings):
