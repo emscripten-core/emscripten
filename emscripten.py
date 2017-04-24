@@ -1643,30 +1643,10 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
 
   # merge forwarded data
   settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
-  all_exported_functions = set(shared.expand_response(settings['EXPORTED_FUNCTIONS'])) # both asm.js and otherwise
 
-  for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
-    all_exported_functions.add('_' + additional_export)
-  exported_implemented_functions = set(metadata['exports'])
-  export_bindings = settings['EXPORT_BINDINGS']
-  export_all = settings['EXPORT_ALL']
-  all_implemented = metadata['implementedFunctions'] + forwarded_json['Functions']['implementedFunctions'].keys() # XXX perf?
-  for key in all_implemented:
-    if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
-      exported_implemented_functions.add(key)
-  if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
-    original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
-    if original_exports[0] == '@': original_exports = json.loads(open(original_exports[1:]).read())
-    for requested in original_exports:
-      # check if already implemented
-      # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS \
-      if requested not in all_implemented and \
-         requested != '_malloc' and \
-         (('function ' + requested.encode('utf-8')) not in pre): # could be a js library func
-        logging.warning('function requested to be exported, but not implemented: "%s"', requested)
+  exported_implemented_functions = create_exported_implemented_functions_wasm(pre, forwarded_json, metadata, settings)
 
   asm_consts, asm_const_funcs = create_asm_consts_wasm(forwarded_json, metadata)
-
   pre = pre.replace('// === Body ===', '// === Body ===\n' + '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
 
   outfile.write(pre)
@@ -1739,6 +1719,33 @@ def create_metadata_wasm(metadata_raw, wast):
   add_metadata_from_wast(metadata, wast)
   return metadata
 
+
+def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata, settings):
+  exported_implemented_functions = set(metadata['exports'])
+
+  all_exported_functions = set(shared.expand_response(settings['EXPORTED_FUNCTIONS'])) # both asm.js and otherwise
+  for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
+    all_exported_functions.add('_' + additional_export)
+  all_implemented = metadata['implementedFunctions'] + forwarded_json['Functions']['implementedFunctions'].keys() # XXX perf?
+
+  export_bindings = settings['EXPORT_BINDINGS']
+  export_all = settings['EXPORT_ALL']
+  for key in all_implemented:
+    if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
+      exported_implemented_functions.add(key)
+
+  if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
+    original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
+    if original_exports[0] == '@': original_exports = json.loads(open(original_exports[1:]).read())
+    for requested in original_exports:
+      # check if already implemented
+      # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS \
+      if requested not in all_implemented and \
+         requested != '_malloc' and \
+         (('function ' + requested.encode('utf-8')) not in pre): # could be a js library func
+        logging.warning('function requested to be exported, but not implemented: "%s"', requested)
+
+  return exported_implemented_functions
 
 def create_asm_consts_wasm(forwarded_json, metadata):
   asm_consts = [0]*len(metadata['asmConsts'])
