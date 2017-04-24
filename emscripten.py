@@ -1783,13 +1783,12 @@ def create_metadata_wasm(metadata_raw, wast):
 
 def read_wast_invoke_imports(wast):
   invoke_funcs = []
-  with open(wast) as f:
-    for line in f:
-      if line.strip().startswith('(import '):
-        parts = line.split()
-        func_name = parts[2][1:-1]
-        if func_name.startswith('invoke_'):
-          invoke_funcs.append(func_name)
+  for line in open(wast).readlines():
+    if line.strip().startswith('(import '):
+      parts = line.split()
+      func_name = parts[2][1:-1]
+      if func_name.startswith('invoke_'):
+        invoke_funcs.append(func_name)
   return invoke_funcs
 
 
