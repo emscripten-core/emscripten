@@ -267,9 +267,7 @@ def compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DE
   update_settings_glue(settings, metadata)
   assert not (metadata['simd'] and settings['SPLIT_MEMORY']), 'SIMD is used, but not supported in SPLIT_MEMORY'
 
-  out = compile_settings(compiler_engine, settings, libraries, temp_files)
-  assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
-  glue, forwarded_data = out.split('//FORWARDED_DATA:')
+  glue, forwarded_data = compile_settings(compiler_engine, settings, libraries, temp_files)
 
   if DEBUG:
     logging.debug('  emscript: glue took %s seconds' % (time.time() - t))
@@ -347,9 +345,12 @@ def compile_settings(compiler_engine, settings, libraries, temp_files):
     save_settings()
 
     # Call js compiler
-    return jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
-                        [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
-                        cwd=path_from_root('src'), error_limit=300)
+    out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
+                       [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                       cwd=path_from_root('src'), error_limit=300)
+  assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
+  glue, forwarded_data = out.split('//FORWARDED_DATA:')
+  return glue, forwarded_data
 
 
 def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG):
@@ -1597,24 +1598,8 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
 
   update_settings_common(settings, metadata)
 
-  # Save settings to a file to work around v8 issue 1579
-  with temp_files.get_file('.txt') as settings_file:
-    def save_settings():
-      global settings_text
-      settings_text = json.dumps(settings, sort_keys=True)
-      s = open(settings_file, 'w')
-      s.write(settings_text)
-      s.close()
-    save_settings()
-
-    # Call js compiler
-    if DEBUG: t = time.time()
-    out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
-                       [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
-                       cwd=path_from_root('src'), error_limit=300)
-  assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
-  glue, forwarded_data = out.split('//FORWARDED_DATA:')
-
+  if DEBUG: t = time.time()
+  glue, forwarded_data = compile_settings(compiler_engine, settings, libraries, temp_files)
   if DEBUG:
     logging.debug('  emscript: glue took %s seconds' % (time.time() - t))
     t = time.time()
