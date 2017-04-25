@@ -103,6 +103,8 @@ while 1:
     js_args = [shared.PYTHON, shared.EMCC, fullname, '-o', filename + '.js'] + [opts] + llvm_opts + CSMITH_CFLAGS + args + ['-w']
     if TEST_BINARYEN:
       js_args += ['-s', 'BINARYEN=1', '-s', 'BINARYEN_TRAP_MODE="js"']
+      if random.random() < 0.5:
+        js_args += ['-g']
       if random.random() < 0.1:
         if random.random() < 0.5:
           js_args += ['--js-opts', '0']
