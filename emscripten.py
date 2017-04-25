@@ -1542,8 +1542,14 @@ def create_first_in_asm(settings):
 
 
 def make_get_set(info):
-  access = ('HEAP{name}s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> {shift}]'
-            .format(name=info.short_name, shift=info.shift_amount))
+  """Generates get*/set* functions for the different heap types.
+
+  Generated symbols:
+    get8 get16 get32 getU8 getU16 getU32 getF32 getF64
+    set8 set16 set32 setU8 setU16 setU32 setF32 setF64
+  """
+  access = ('{name}s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> {shift}]'
+            .format(name=info.heap_name, shift=info.shift_amount))
   # TODO: fround when present for Float32
   return '''
 function get{short}(ptr) {{
@@ -1555,28 +1561,35 @@ function set{short}(ptr, value) {{
   value = {coerced_value};
   {access} = value;
 }}'''.format(
-    short=info.short_name,
+    short=info.short_name(),
     coerced_value=info.coerce('value'),
     access=access,
     coerced_access=info.coerce(access))
 
 
 def create_memory_views(settings):
+  """Generates memory views for the different heap types.
+
+  Generated symbols:
+    Int8View    Int16View   Int32View
+    Uint8View   Uint16View  Uint32View
+    Float32View Float64View
+  """
   access_quote = access_quoter(settings)
   ret = '\n'
   grow_memory = settings['ALLOW_MEMORY_GROWTH']
   for info in HEAP_TYPE_INFOS:
     access = access_quote('{}Array'.format(info.long_name))
     format_args = {
-      'short': info.short_name,
+      'heap': info.heap_name,
       'long': info.long_name,
       'access': access,
     }
     if grow_memory:
       ret += ('  var {long}View = global{access};\n'
-              '  var HEAP{short} = new {long}View(buffer);\n').format(**format_args)
+              '  var {heap} = new {long}View(buffer);\n').format(**format_args)
     else:
-      ret += '  var HEAP{short} = new global{access}(buffer);\n'.format(**format_args)
+      ret += '  var {heap} = new global{access}(buffer);\n'.format(**format_args)
   if grow_memory:
     ret += '  var byteLength = global.byteLength;\n'
   return ret
@@ -1584,14 +1597,23 @@ def create_memory_views(settings):
 
 class HeapTypeInfo(object):
   """Struct that holds data for a type of HEAP* views."""
-  def __init__(self, short_name, long_name, shift_amount):
-    self.short_name = short_name
+  def __init__(self, heap_name, long_name, shift_amount):
+    assert heap_name.startswith('HEAP')
+    self.heap_name = heap_name
     self.long_name = long_name
     self.shift_amount = shift_amount
 
+  def short_name(self):
+    """The unique part of the heap name for this type.
+
+    Derive this from heap_name instead of the other way around so that searching,
+    e.g. for HEAP8, from the generated JS code leads back here.
+    """
+    return self.heap_name[len('HEAP'):]
+
   def is_int(self):
     """Whether this heap type is an integer type or not."""
-    return self.short_name[0] != 'F'
+    return self.short_name()[0] != 'F'
 
   def coerce(self, expression):
     """Adds asm.js type coercion to a string expression."""
@@ -1602,14 +1624,14 @@ class HeapTypeInfo(object):
 
 
 HEAP_TYPE_INFOS = [
-  HeapTypeInfo(short_name='8',   long_name='Int8',    shift_amount=0),
-  HeapTypeInfo(short_name='16',  long_name='Int16',   shift_amount=1),
-  HeapTypeInfo(short_name='32',  long_name='Int32',   shift_amount=2),
-  HeapTypeInfo(short_name='U8',  long_name='Uint8',   shift_amount=0),
-  HeapTypeInfo(short_name='U16', long_name='Uint16',  shift_amount=1),
-  HeapTypeInfo(short_name='U32', long_name='Uint32',  shift_amount=2),
-  HeapTypeInfo(short_name='F32', long_name='Float32', shift_amount=2),
-  HeapTypeInfo(short_name='F64', long_name='Float64', shift_amount=3),
+  HeapTypeInfo(heap_name='HEAP8',   long_name='Int8',    shift_amount=0),
+  HeapTypeInfo(heap_name='HEAP16',  long_name='Int16',   shift_amount=1),
+  HeapTypeInfo(heap_name='HEAP32',  long_name='Int32',   shift_amount=2),
+  HeapTypeInfo(heap_name='HEAPU8',  long_name='Uint8',   shift_amount=0),
+  HeapTypeInfo(heap_name='HEAPU16', long_name='Uint16',  shift_amount=1),
+  HeapTypeInfo(heap_name='HEAPU32', long_name='Uint32',  shift_amount=2),
+  HeapTypeInfo(heap_name='HEAPF32', long_name='Float32', shift_amount=2),
+  HeapTypeInfo(heap_name='HEAPF64', long_name='Float64', shift_amount=3),
 ]
 
 
