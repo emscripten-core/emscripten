@@ -15,6 +15,7 @@ if __name__ == '__main__':
 
 import difflib
 import os, sys, json, optparse, subprocess, re, time, logging
+import shutil
 
 from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
@@ -1669,7 +1670,6 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
     if DEBUG:
       logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
       t = time.time()
-      import shutil
       shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
 
     assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
@@ -1690,7 +1690,6 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
   if DEBUG:
     logging.debug('  emscript: binaryen s2wasm took %s seconds' % (time.time() - t))
     t = time.time()
-    import shutil
     shutil.copyfile(wast, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-s2wasm-output.wast'))
   return wast
 
