@@ -191,20 +191,6 @@ var SyscallsLibrary = {
       return info;
     },
 #endif // NO_FILESYSTEM == 0
-    get64: function() {
-      var low = SYSCALLS.get(), high = SYSCALLS.get();
-      SYSCALLS.assert64(low, high);
-#if SYSCALL_DEBUG
-      Module.printErr('    (i64: "' + low + '")');
-#endif
-      return low;
-    },
-    getZero: function() {
-      SYSCALLS.assertZero(SYSCALLS.get());
-    },
-    assertZero: function(zero) {
-      assert(zero === 0);
-    },
     assert64: function(low, high) {
       if (low >= 0) assert(high === 0);
       else assert(high === -1);
@@ -829,13 +815,13 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall180: function(fd, buf, count, zero, offset, offset_high) { // pread64
-    SYSCALLS.assertZero(zero);
+    assert(zero === 0);
     SYSCALLS.assert64(offset, offset_high);
     var stream = SYSCALLS.getStreamFromFD(fd);
     return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count, offset);
   },
   __syscall181: function(fd, buf, count, zero, offset, offset_high) { // pwrite64
-    SYSCALLS.assertZero(zero);
+    assert(zero === 0);
     SYSCALLS.assert64(offset, offset_high);
     var stream = SYSCALLS.getStreamFromFD(fd);
     return FS.write(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count, offset);
@@ -877,14 +863,14 @@ var SyscallsLibrary = {
     return ptr;
   },
   __syscall193: function(pathPtr, zero, length, length_high) { // truncate64
-    SYSCALLS.assertZero(zero);
+    assert(zero === 0);
     SYSCALLS.assert64(length, length_high);
     var path = Pointer_stringify(pathPtr);
     FS.truncate(path, length);
     return 0;
   },
   __syscall194: function(fd, zero, length, length_high) { // ftruncate64
-    SYSCALLS.assertZero(zero);
+    assert(zero === 0);
     SYSCALLS.assert64(length, length_high);
     FS.ftruncate(fd, length);
     return 0;
