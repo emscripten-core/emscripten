@@ -131,6 +131,9 @@ class interactive(BrowserCore):
   def test_vr(self):
     self.btest(path_from_root('tests', 'test_vr.c'), expected='0')
 
+  def test_glfw_cursor_disabled(self):
+    self.btest('test_glfw_cursor_disabled.c', expected='1', args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'])
+
   def test_glfw_fullscreen(self):
     self.btest('test_glfw_fullscreen.c', expected='1', args=['-s', 'NO_EXIT_RUNTIME=1', '-s', 'USE_GLFW=3'])
 
