@@ -312,15 +312,10 @@ def update_settings_glue(settings, metadata):
   if settings['SIDE_MODULE']:
     settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = [] # we don't need any JS library contents in side modules
 
-  if metadata['cantValidate'] and settings['ASM_JS'] != 2:
+  if metadata.get('cantValidate') and settings['ASM_JS'] != 2:
     logging.warning('disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
     settings['ASM_JS'] = 2
 
-  update_settings_common(settings, metadata)
-
-
-def update_settings_common(settings, metadata):
-  """Update settings shared between asm.js and wasm backends."""
   settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
     set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
       map(lambda x: x[1:], metadata['implementedFunctions'])
@@ -1597,7 +1592,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   metadata = create_metadata_wasm(metadata_raw, wast)
   if DEBUG: logging.debug(repr(metadata))
 
-  update_settings_common(settings, metadata)
+  update_settings_glue(settings, metadata)
 
   if DEBUG: t = time.time()
   glue, forwarded_data = compile_settings(compiler_engine, settings, libraries, temp_files)
