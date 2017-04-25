@@ -1618,7 +1618,6 @@ for (var x in SyscallsLibrary) {
 #if USE_PTHREADS
   pre += 'if (ENVIRONMENT_IS_PTHREAD) { return _emscripten_sync_run_in_main_thread_2({{{ cDefine("EM_PROXIED_SYSCALL") }}}, ' + which + ', varargs) }\n';
 #endif
-  // pre += 'SYSCALLS.varargs = varargs;\n';
 #if SYSCALL_DEBUG
   pre += "Module.printErr('syscall! ' + [" + which + ", '" + SYSCALL_CODE_TO_NAME[which] + "']);\n";
   pre += "var canWarn = true;\n";
