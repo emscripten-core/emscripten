@@ -33,7 +33,9 @@ def make_command(filename, engine=None, args=[]):
   # label a path to nodejs containing a 'd8' as spidermonkey instead.
   jsengine = os.path.split(engine[0])[-1]
   # Use "'d8' in" because the name can vary, e.g. d8_g, d8, etc.
-  return engine + [filename] + (['--expose-wasm', '--'] if 'd8' in jsengine or 'jsc' in jsengine else []) + args
+  # Disable true async compilation (async apis will in fact be synchronous) for now
+  # due to https://bugs.chromium.org/p/v8/issues/detail?id=6263
+  return engine + [filename] + (['--no-wasm-async-compilation', '--'] if 'd8' in jsengine or 'jsc' in jsengine else []) + args
 
 
 def check_engine(engine):
