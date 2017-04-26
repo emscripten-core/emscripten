@@ -38,7 +38,7 @@ def make_command(filename, engine=None, args=[]):
   # due to https://bugs.chromium.org/p/v8/issues/detail?id=6263
   shell_option_flags = ['--no-wasm-async-compilation'] if is_d8 else []
   # Separates engine flags from script flags
-  flag_separateor = ['--'] if is_d8 or 'jsc' in jsengine else []
+  flag_separator = ['--'] if is_d8 or 'jsc' in jsengine else []
   return engine + [filename] + shell_option_flags + flag_separator + args
 
 
