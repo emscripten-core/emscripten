@@ -137,6 +137,9 @@ class interactive(BrowserCore):
   def test_glfw_fullscreen(self):
     self.btest('test_glfw_fullscreen.c', expected='1', args=['-s', 'NO_EXIT_RUNTIME=1', '-s', 'USE_GLFW=3'])
 
+  def test_glfw_get_key_stuck(self):
+    self.btest('test_glfw_get_key_stuck.c', expected='1', args=['-s', 'NO_EXIT_RUNTIME=1', '-s', 'USE_GLFW=3'])
+
   def test_glfw_pointerlock(self):
     self.btest('test_glfw_pointerlock.c', expected='1', args=['-s', 'NO_EXIT_RUNTIME=1', '-s', 'USE_GLFW=3'])
 
