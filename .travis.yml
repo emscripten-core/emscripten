@@ -1,0 +1,33 @@
+sudo: false
+language: cpp
+python:
+  - "2.7"
+
+matrix:
+  include:
+
+    - env:
+      dist: trusty
+      compiler: clang
+      addons: &gcc5
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['cmake', 'nodejs', 'g++-5']
+
+install:
+  - wget https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz
+  - tar -xvf emsdk-portable.tar.gz
+  - cd emsdk-portable
+  - ./emsdk update
+  - ./emsdk install latest
+  - ./emsdk activate latest
+  - cd ..
+#  - source ./emsdk_env.sh
+
+script:
+  - ./emcc # first use
+  - ./emcc -v # check s tuff
+  - python tests/runner.py test_hello_world
+
+notifications:
+  email: false
