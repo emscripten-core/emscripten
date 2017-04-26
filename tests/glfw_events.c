@@ -59,6 +59,10 @@
             { "Module.injectKeyEvent('keydown', 65)", { 0, 0.0, 0.0, 'A', GLFW_PRESS, -1, 'A' } },
             { "Module.injectKeyEvent('keypress', 65, {charCode: 65})", { 0, 0.0, 0.0, -1, -1, -1, 'A' } },
             { "Module.injectKeyEvent('keyup', 65)", { 0, 0.0, 0.0, 'A', GLFW_RELEASE, -1, 'A' } },
+
+            { "Module.injectKeyEvent('keydown', 65, {ctrlKey: true})", { 0, 0.0, 0.0, 'A', GLFW_PRESS, -1, 'A' } },
+            { "Module.injectKeyEvent('keypress', 65, {ctrlKey: true, charCode: 65})", { 0, 0.0, 0.0, -1, -1, -1, -1 } },
+            { "Module.injectKeyEvent('keyup', 65, {ctrlKey: true})", { 0, 0.0, 0.0, 'A', GLFW_RELEASE, -1, 'A' } },
         #else
             { "Module.injectKeyEvent('keydown', 27)", { 0, 0.0, 0.0, GLFW_KEY_ESCAPE, GLFW_PRESS, -1 } },
             { "Module.injectKeyEvent('keyup', 27)", { 0, 0.0, 0.0, GLFW_KEY_ESCAPE, GLFW_RELEASE, -1 } },
@@ -66,6 +70,10 @@
             { "Module.injectKeyEvent('keydown', 65)", { 0, 0.0, 0.0, GLFW_KEY_A, GLFW_PRESS, -1 } },
             { "Module.injectKeyEvent('keypress', 65, {charCode: 65})", { 0, 0.0, 0.0, -1, -1, -1, 'A' } },
             { "Module.injectKeyEvent('keyup', 65)", { 0, 0.0, 0.0, GLFW_KEY_A, GLFW_RELEASE, -1 } },
+
+            { "Module.injectKeyEvent('keydown', 65, {ctrlKey: true})", { 0, 0.0, 0.0, GLFW_KEY_A, GLFW_PRESS, -1, 'A' } },
+            { "Module.injectKeyEvent('keypress', 65, {ctrlKey: true, charCode: 65})", { 0, 0.0, 0.0, -1, -1, -1, -1 } },
+            { "Module.injectKeyEvent('keyup', 65, {ctrlKey: true})", { 0, 0.0, 0.0, GLFW_KEY_A, GLFW_RELEASE, -1, 'A' } },
         #endif
     };
 
@@ -131,7 +139,7 @@
     #endif
     {
         test_args_t args = g_tests[g_test_actual].args;
-        if (args.character == character)
+        if (args.character != -1 && args.character == character)
         {
             g_state |= 1 << g_test_actual;
         }
@@ -232,6 +240,11 @@
             {
                 g_test_actual = i;
                 test_t test = g_tests[g_test_actual];
+
+                if (test.args.character == -1) {
+                     g_state |= 1 << g_test_actual;
+                }
+
                 emscripten_run_script(test.cmd);
 
                 if (test.args.mouse) {
