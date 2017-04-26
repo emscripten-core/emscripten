@@ -197,7 +197,14 @@
             };
 
             Module.injectKeyEvent = function(type, keyCode, options) {
-                var keyboardEvent = new KeyboardEvent(type, Object.assign({ keyCode: keyCode}, options));
+                // KeyboardEvent constructor always returns 0 keyCode on Chrome, so use generic events
+                //var keyboardEvent = new KeyboardEvent(type, Object.assign({ keyCode: keyCode}, options));
+                var keyboardEvent = document.createEventObject ?
+                        document.createEventObject() : document.createEvent('Events');
+                keyboardEvent.initEvent(type, true, true);
+                keyboardEvent.keyCode = keyCode;
+                keyboardEvent = Object.assign(keyboardEvent,  options);
+
                 canvas.dispatchEvent(keyboardEvent);
             };
         ));
