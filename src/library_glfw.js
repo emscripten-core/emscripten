@@ -1230,6 +1230,17 @@ var LibraryGLFW = {
   glfwGetInputMode: function(winid, mode) {
     var win = GLFW.WindowFromId(winid);
     if (!win) return;
+
+    switch (mode) {
+      case 0x00033001: { // GLFW_CURSOR
+        if (Browser.pointerLock) {
+          win.inputModes[mode] = 0x00034003; // GLFW_CURSOR_DISABLED
+        } else {
+          win.inputModes[mode] = 0x00034001; // GLFW_CURSOR_NORMAL
+        }
+      }
+    }
+
     return win.inputModes[mode];
   },
 
