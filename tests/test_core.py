@@ -5138,6 +5138,11 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'test_simd16')
 
   @SIMD
+  def test_simd_set_epi64x(self):
+    self.emcc_args = self.emcc_args + ['-msse2']
+    self.do_run_in_out_file_test('tests', 'core', 'test_simd_set_epi64x')
+
+  @SIMD
   def test_simd_float64x2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_float64x2')
 
