@@ -1027,7 +1027,7 @@ var LibraryGLFW = {
 #if USE_GLFW == 3
   glfwGetVersionString: function() {
     if (!GLFW.versionString) {
-      GLFW.versionString = allocate(intArrayFromString("3.0.0 JS WebGL Emscripten"), 'i8', ALLOC_NORMAL);
+      GLFW.versionString = allocate(intArrayFromString("3.2.1 JS WebGL Emscripten"), 'i8', ALLOC_NORMAL);
     }
     return GLFW.versionString;
   },
