@@ -1036,6 +1036,10 @@ var LibraryGLFW = {
     GLFW.errorFunc = cbfun;
   },
 
+  glfwWaitEventsTimeout: function(timeout) {},
+
+  glfwPostEmptyEvent: function() {},
+
   glfwGetMonitors: function(count) {
     setValue(count, 1, 'i32');
     if (!GLFW.monitors) {
@@ -1221,6 +1225,28 @@ var LibraryGLFW = {
     win.windowIconifyFunc = cbfun;
   },
 
+  glfwSetWindowIcon: function(winid, count, images) {},
+
+  glfwSetWindowSizeLimits: function(winid, minwidth, minheight, maxwidth, maxheight) {},
+
+  glfwSetWindowAspectRatio: function(winid, numer, denom) {},
+
+  glfwGetWindowFrameSize: function(winid, left, top, right, bottom) { throw "glfwGetWindowFrameSize not implemented."; },
+
+  glfwMaximizeWindow: function(winid) {},
+
+  glfwFocusWindow: function(winid) {},
+
+  glfwSetWindowMonitor: function(winid, monitor, xpos, ypos, width, height, refreshRate) { throw "glfwSetWindowMonitor not implemented."; },
+
+  glfwCreateCursor: function(image, xhot, yhot) {},
+
+  glfwCreateStandardCursor: function(shape) {},
+
+  glfwDestroyCursor: function(cursor) {},
+
+  glfwSetCursor: function(winid, cursor) {},
+
   glfwSetFramebufferSizeCallback: function(winid, cbfun) {
     var win = GLFW.WindowFromId(winid);
     if (!win) return;
@@ -1252,6 +1278,8 @@ var LibraryGLFW = {
     return GLFW.getKey(winid, key);
   },
 
+  glfwGetKeyName: function(key, scancode) { throw "glfwGetKeyName not implemented."; },
+
   glfwGetMouseButton: function(winid, button) {
     return GLFW.getMouseButton(winid, button);
   },
@@ -1273,6 +1301,8 @@ var LibraryGLFW = {
     GLFW.setCharCallback(winid, cbfun);
   },
 
+  glfwSetCharModsCallback: function(winid, cbfun) { throw "glfwSetCharModsCallback not implemented."; },
+
   glfwSetMouseButtonCallback: function(winid, cbfun) {
     GLFW.setMouseButtonCallback(winid, cbfun);
   },
@@ -1290,6 +1320,26 @@ var LibraryGLFW = {
   glfwSetScrollCallback: function(winid, cbfun) {
     GLFW.setScrollCallback(winid, cbfun);
   },
+
+  glfwVulkanSupported: function() {
+    return 0;
+  },
+
+  glfwSetDropCallback: function(winid, cbfun) { throw "glfwSetDropCallback is not implemented."; },
+
+  glfwGetTimerValue: function() { throw "glfwGetTimerValue is not implemented."; },
+
+  glfwGetTimerFrequency: function() { throw "glfwGetTimerFrequency is not implemented."; },
+
+  glfwGetRequiredInstanceExtensions: function(count) { throw "glfwGetRequiredInstanceExtensions is not implemented."; },
+
+  glfwGetInstanceProcAddress: function(instance, procname) { throw "glfwGetInstanceProcAddress is not implemented."; },
+
+  glfwGetPhysicalDevicePresentationSupport: function(instance, device, queuefamily) { throw "glfwGetPhysicalDevicePresentationSupport is not implemented"; },
+
+  glfwCreateWindowSurface: function(instance, winid, allocator, surface) { throw "glfwCreateWindowSurface is not implemented."; },
+
+  glfwSetJoystickCallback: function(cbfun) { throw "glfwSetJoystickCallback is not implemented."; },
 
   glfwJoystickPresent: function(joy) { throw "glfwJoystickPresent is not implemented."; },
 
