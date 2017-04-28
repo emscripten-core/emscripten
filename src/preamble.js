@@ -2381,12 +2381,8 @@ function integrateWasmJS(Module) {
     if (Module["usingWasm"]) {
       try {
         var result = Module['wasmMemory'].grow((size - oldSize) / wasmPageSize); // .grow() takes a delta compared to the previous size
-        if (result !== (-1 | 0)) {
-          // success in native wasm memory growth, get the buffer from the memory
-          return Module['buffer'] = Module['wasmMemory'].buffer;
-        } else {
-          return null;
-        }
+        // success in native wasm memory growth, get the buffer from the memory
+        return Module['buffer'] = Module['wasmMemory'].buffer;
       } catch(e) {
 #if ASSERTIONS
         console.error('Module.reallocBuffer: Attempted to grow from ' + oldSize  + ' bytes to ' + size + ' bytes, but got error: ' + e);
@@ -2394,9 +2390,20 @@ function integrateWasmJS(Module) {
         return null;
       }
     } else {
-      exports['__growWasmMemory']((size - oldSize) / wasmPageSize); // tiny wasm method that just does grow_memory
-      // in interpreter, we replace Module.buffer if we allocate
-      return Module['buffer'] !== old ? Module['buffer'] : null; // if it was reallocated, it changed
+      // This path is only used by the polyfill interpreter.
+      // Resizes the interpreter's internal representation of the wasm memory
+      exports['__growWasmMemory']((size - oldSize) / wasmPageSize);
+      var buffer;
+      try {
+        buffer = new ArrayBuffer(size);
+      } catch (e) {
+        return null;
+      }
+      var oldHEAP8 = Module['HEAP8'];
+      var temp = new Int8Array(buffer);
+      temp.set(oldHEAP8);
+      Module['buffer'] = buffer;
+      return buffer;
     }
   };
 
