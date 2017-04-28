@@ -39,6 +39,11 @@ var LibraryJSEvents = {
       if (typeof window !== 'undefined') {
         window.addEventListener("gamepadconnected", function() { ++JSEvents.numGamepadsConnected; });
         window.addEventListener("gamepaddisconnected", function() { --JSEvents.numGamepadsConnected; });
+        
+        var firstState = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : null);
+        if (firstState) {
+          JSEvents.numGamepadsConnected = firstState.length;
+        }
       }
     },
 
