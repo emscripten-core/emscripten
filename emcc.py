@@ -2110,6 +2110,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         wrote_wasm_text = False
         # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
         if not shared.Settings.WASM_BACKEND:
+          if DEBUG:
+            # save the asm.js input
+            shutil.copyfile(asm_target, os.path.join(emscripten_temp_dir, os.path.basename(asm_target)))
           cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
           if shared.Settings.BINARYEN_TRAP_MODE == 'js':
             cmd += ['--emit-jsified-potential-traps']
