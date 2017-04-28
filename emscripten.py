@@ -15,6 +15,7 @@ if __name__ == '__main__':
 
 import difflib
 import os, sys, json, optparse, subprocess, re, time, logging
+import shutil
 
 from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
@@ -221,9 +222,7 @@ def compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DE
   update_settings_glue(settings, metadata)
   assert not (metadata['simd'] and settings['SPLIT_MEMORY']), 'SIMD is used, but not supported in SPLIT_MEMORY'
 
-  out = compile_settings(compiler_engine, settings, libraries, temp_files)
-  assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
-  glue, forwarded_data = out.split('//FORWARDED_DATA:')
+  glue, forwarded_data = compile_settings(compiler_engine, settings, libraries, temp_files)
 
   if DEBUG:
     logging.debug('  emscript: glue took %s seconds' % (time.time() - t))
@@ -489,19 +488,21 @@ def update_settings_glue(settings, metadata):
   # Integrate info from backend
   if settings['SIDE_MODULE']:
     settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = [] # we don't need any JS library contents in side modules
+
+  if metadata.get('cantValidate') and settings['ASM_JS'] != 2:
+    logging.warning('disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
+    settings['ASM_JS'] = 2
+
   settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
     set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
       map(lambda x: x[1:], metadata['implementedFunctions'])
     )
   ) + map(lambda x: x[1:], metadata['externs'])
+
   if metadata['simd']:
     settings['SIMD'] = 1
-  if metadata['cantValidate'] and settings['ASM_JS'] != 2:
-    logging.warning('disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
-    settings['ASM_JS'] = 2
 
   settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
-
   settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
 
 
@@ -517,9 +518,12 @@ def compile_settings(compiler_engine, settings, libraries, temp_files):
     save_settings()
 
     # Call js compiler
-    return jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
-                        [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
-                        cwd=path_from_root('src'), error_limit=300)
+    out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
+                       [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                       cwd=path_from_root('src'), error_limit=300)
+  assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
+  glue, forwarded_data = out.split('//FORWARDED_DATA:')
+  return glue, forwarded_data
 
 
 def memory_and_global_initializers(pre, metadata, mem_init, settings):
@@ -1644,62 +1648,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
 
   if libraries is None: libraries = []
 
-  with temp_files.get_file('.wb.s') as temp_s:
-    backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
-    backend_args = [backend_compiler, infile, '-march=wasm32', '-filetype=asm',
-                    '-asm-verbose=false',
-                    '-o', temp_s]
-    backend_args += ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
-    # disable slow and relatively unimportant optimization passes
-    backend_args += ['-combiner-global-alias-analysis=false']
-
-    # asm.js-style exception handling
-    if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
-      backend_args += ['-enable-emscripten-cxx-exceptions']
-    if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
-      whitelist = ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['__fake'])
-      backend_args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
-
-    # asm.js-style setjmp/longjmp handling
-    backend_args += ['-enable-emscripten-sjlj']
-
-    if DEBUG:
-      logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
-      t = time.time()
-    shared.check_call(backend_args)
-    if DEBUG:
-      logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
-      t = time.time()
-      import shutil
-      shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
-
-    assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
-    basename = outfile.name[:-3]
-    wast = basename + '.wast'
-    s2wasm_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 's2wasm'), temp_s]
-    s2wasm_args += ['--emscripten-glue']
-    s2wasm_args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
-    s2wasm_args += ['--initial-memory=%d' % shared.Settings.TOTAL_MEMORY]
-    s2wasm_args += ['--allow-memory-growth'] if shared.Settings.ALLOW_MEMORY_GROWTH else []
-    def compiler_rt_fail(): raise Exception('Expected wasm_compiler_rt.a to already be built')
-    compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', lambda: compiler_rt_fail(), 'a')
-    s2wasm_args += ['-l', compiler_rt_lib]
-    if DEBUG:
-      logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
-      t = time.time()
-      #s2wasm_args += ['--debug']
-    shared.check_call(s2wasm_args, stdout=open(wast, 'w'))
-    # Also convert wasm text to binary
-    wasm_as_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-as'),
-                    wast, '-o', basename + '.wasm']
-    logging.debug('  emscript: binaryen wasm-as: ' + ' '.join(wasm_as_args))
-    shared.check_call(wasm_as_args)
-
-  if DEBUG:
-    logging.debug('  emscript: binaryen s2wasm took %s seconds' % (time.time() - t))
-    t = time.time()
-    import shutil
-    shutil.copyfile(wast, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-s2wasm-output.wast'))
+  wast = build_wasm(temp_files, infile, outfile, settings, DEBUG)
 
   # js compiler
 
@@ -1714,6 +1663,301 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   parts = output = None
 
   if DEBUG: logging.debug("METAraw %s", metadata_raw)
+  metadata = create_metadata_wasm(metadata_raw, wast)
+  if DEBUG: logging.debug(repr(metadata))
+
+  update_settings_glue(settings, metadata)
+
+  if DEBUG: t = time.time()
+  glue, forwarded_data = compile_settings(compiler_engine, settings, libraries, temp_files)
+  if DEBUG:
+    logging.debug('  emscript: glue took %s seconds' % (time.time() - t))
+    t = time.time()
+
+  forwarded_json = json.loads(forwarded_data)
+
+  pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
+
+  # memory and global initializers
+
+  global_initializers = str(', '.join(map(lambda i: '{ func: function() { %s() } }' % i, metadata['initializers'])))
+
+  staticbump = metadata['staticBump']
+  while staticbump % 16 != 0: staticbump += 1
+  pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;%s
+/* global initializers */ %s __ATINIT__.push(%s);
+''' % (staticbump,
+         'assert(STATICTOP < SPLIT_MEMORY, "SPLIT_MEMORY size must be big enough so the entire static memory, need " + STATICTOP);' if settings['SPLIT_MEMORY'] else '',
+         'if (!ENVIRONMENT_IS_PTHREAD)' if settings['USE_PTHREADS'] else '',
+         global_initializers))
+
+  pre = pre.replace('{{{ STATIC_BUMP }}}', str(staticbump))
+
+  # merge forwarded data
+  settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
+
+  exported_implemented_functions = create_exported_implemented_functions_wasm(pre, forwarded_json, metadata, settings)
+
+  asm_consts, asm_const_funcs = create_asm_consts_wasm(forwarded_json, metadata)
+  pre = pre.replace('// === Body ===', '// === Body ===\n' + '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
+
+  outfile.write(pre)
+  pre = None
+
+  invoke_funcs = read_wast_invoke_imports(wast)
+
+  try:
+    del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
+  except:
+    pass
+
+  # sent data
+  sending = create_sending_wasm(invoke_funcs, forwarded_json, metadata, settings)
+  receiving = create_receiving_wasm(exported_implemented_functions, settings)
+
+  # finalize
+  module = create_module_wasm(sending, receiving, invoke_funcs, settings)
+
+  for i in range(len(module)): # do this loop carefully to save memory
+    if WINDOWS: module[i] = module[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
+    outfile.write(module[i])
+  module = None
+
+  if WINDOWS: post = post.replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
+  outfile.write(post)
+
+  outfile.close()
+
+
+def build_wasm(temp_files, infile, outfile, settings, DEBUG):
+  with temp_files.get_file('.wb.s') as temp_s:
+    backend_args = create_backend_args_wasm(infile, temp_s, settings)
+    if DEBUG:
+      logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
+      t = time.time()
+    shared.check_call(backend_args)
+    if DEBUG:
+      logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
+      t = time.time()
+      shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
+
+    assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
+    basename = outfile.name[:-3]
+    wast = basename + '.wast'
+    s2wasm_args = create_s2wasm_args(temp_s)
+    if DEBUG:
+      logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
+      t = time.time()
+      #s2wasm_args += ['--debug']
+    shared.check_call(s2wasm_args, stdout=open(wast, 'w'))
+    # Also convert wasm text to binary
+    wasm_as_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-as'),
+                    wast, '-o', basename + '.wasm']
+    logging.debug('  emscript: binaryen wasm-as: ' + ' '.join(wasm_as_args))
+    shared.check_call(wasm_as_args)
+
+  if DEBUG:
+    logging.debug('  emscript: binaryen s2wasm took %s seconds' % (time.time() - t))
+    t = time.time()
+    shutil.copyfile(wast, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-s2wasm-output.wast'))
+  return wast
+
+
+def create_metadata_wasm(metadata_raw, wast):
+  metadata = load_metadata(metadata_raw)
+  add_metadata_from_wast(metadata, wast)
+  return metadata
+
+
+def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata, settings):
+  exported_implemented_functions = set(metadata['exports'])
+
+  all_exported_functions = set(shared.expand_response(settings['EXPORTED_FUNCTIONS'])) # both asm.js and otherwise
+  for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
+    all_exported_functions.add('_' + additional_export)
+  all_implemented = metadata['implementedFunctions'] + forwarded_json['Functions']['implementedFunctions'].keys() # XXX perf?
+
+  export_bindings = settings['EXPORT_BINDINGS']
+  export_all = settings['EXPORT_ALL']
+  for key in all_implemented:
+    if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
+      exported_implemented_functions.add(key)
+
+  if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
+    original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
+    if original_exports[0] == '@': original_exports = json.loads(open(original_exports[1:]).read())
+    for requested in original_exports:
+      # check if already implemented
+      # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS \
+      if requested not in all_implemented and \
+         requested != '_malloc' and \
+         (('function ' + requested.encode('utf-8')) not in pre): # could be a js library func
+        logging.warning('function requested to be exported, but not implemented: "%s"', requested)
+
+  return exported_implemented_functions
+
+def create_asm_consts_wasm(forwarded_json, metadata):
+  asm_consts = [0]*len(metadata['asmConsts'])
+  all_sigs = []
+  for k, v in metadata['asmConsts'].iteritems():
+    const = v[0].encode('utf-8')
+    sigs = v[1]
+    if len(const) > 1 and const[0] == '"' and const[-1] == '"':
+      const = const[1:-1]
+    const = '{ ' + const + ' }'
+    args = []
+    arity = max(map(len, sigs)) - 1
+    for i in range(arity):
+      args.append('$' + str(i))
+    const = 'function(' + ', '.join(args) + ') ' + const
+    asm_consts[int(k)] = const
+    all_sigs += sigs
+
+  asm_const_funcs = []
+  for sig in set(all_sigs):
+    forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
+    args = ['a%d' % i for i in range(len(sig)-1)]
+    all_args = ['code'] + args
+    asm_const_funcs.append(r'''
+function _emscripten_asm_const_%s(%s) {
+return ASM_CONSTS[code](%s);
+}''' % (sig.encode('utf-8'), ', '.join(all_args), ', '.join(args)))
+
+  return asm_consts, asm_const_funcs
+
+
+def read_wast_invoke_imports(wast):
+  invoke_funcs = []
+  for line in open(wast).readlines():
+    if line.strip().startswith('(import '):
+      parts = line.split()
+      func_name = parts[2][1:-1]
+      if func_name.startswith('invoke_'):
+        invoke_funcs.append(func_name)
+  return invoke_funcs
+
+
+def create_sending_wasm(invoke_funcs, forwarded_json, metadata, settings):
+  basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory']
+  if settings['ABORTING_MALLOC']:
+    basic_funcs += ['abortOnCannotGrowMemory']
+
+  basic_vars = ['STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR', 'ABORT']
+
+  if not settings['RELOCATABLE']:
+    global_vars = metadata['externs']
+  else:
+    global_vars = [] # linkable code accesses globals through function calls
+
+  implemented_functions = set(metadata['implementedFunctions'])
+  global_funcs = list(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]).difference(set(global_vars)).difference(implemented_functions))
+
+  send_items = basic_funcs + invoke_funcs + global_funcs + basic_vars + global_vars
+  def math_fix(g):
+    return g if not g.startswith('Math_') else g.split('_')[1]
+  return '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in send_items]) + ' }'
+
+
+def create_receiving_wasm(exported_implemented_functions, settings):
+  receiving = ''
+  if settings['ASSERTIONS']:
+    # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
+    # some support code
+    receiving = '\n'.join(['var real_' + asmjs_mangle(s) + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
+assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
+};
+''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory', '__start_module']])
+
+  if not settings['SWAPPABLE_ASM_MODULE']:
+    receiving += ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"]' for s in exported_implemented_functions])
+  else:
+    receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions])
+  receiving += ';\n'
+  return receiving
+
+
+def create_module_wasm(sending, receiving, invoke_funcs, settings):
+  access_quote = access_quoter(settings)
+  invoke_wrappers = create_invoke_wrappers(invoke_funcs)
+
+  the_global = '{}'
+
+  if settings['USE_PTHREADS']:
+    shared_array_buffer = "if (typeof SharedArrayBuffer !== 'undefined') Module.asmGlobalArg['Atomics'] = Atomics;"
+  else:
+    shared_array_buffer = ''
+
+  module = ['''
+Module%s = %s;
+%s
+Module%s = %s;
+''' % (access_quote('asmGlobalArg'), the_global,
+     shared_array_buffer,
+     access_quote('asmLibraryArg'), sending) + '''
+var asm = Module['asm'](%s, %s, buffer);
+%s;
+''' % ('Module' + access_quote('asmGlobalArg'),
+     'Module' + access_quote('asmLibraryArg'),
+     receiving)]
+
+  # wasm backend stack goes down, and is stored in the first global var location
+  module.append('''
+STACKTOP = STACK_BASE + TOTAL_STACK;
+STACK_MAX = STACK_BASE;
+HEAP32[%d >> 2] = STACKTOP;
+Runtime.stackAlloc = Module['stackAlloc'];
+Runtime.stackSave = Module['stackSave'];
+Runtime.stackRestore = Module['stackRestore'];
+Runtime.establishStackSpace = Module['establishStackSpace'];
+''' % shared.Settings.GLOBAL_BASE)
+
+  module.append('''
+Runtime.setTempRet0 = Module['setTempRet0'];
+Runtime.getTempRet0 = Module['getTempRet0'];
+''')
+
+  module.append(invoke_wrappers)
+  return module
+
+def create_backend_args_wasm(infile, temp_s, settings):
+  backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
+  args = [backend_compiler, infile, '-march=wasm32', '-filetype=asm',
+                  '-asm-verbose=false',
+                  '-o', temp_s]
+  args += ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
+  # disable slow and relatively unimportant optimization passes
+  args += ['-combiner-global-alias-analysis=false']
+
+  # asm.js-style exception handling
+  if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
+    args += ['-enable-emscripten-cxx-exceptions']
+  if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
+    whitelist = ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['__fake'])
+    args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
+
+  # asm.js-style setjmp/longjmp handling
+  args += ['-enable-emscripten-sjlj']
+  return args
+
+
+def create_s2wasm_args(temp_s):
+  def compiler_rt_fail():
+    raise Exception('Expected wasm_compiler_rt.a to already be built')
+  compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', compiler_rt_fail, 'a')
+
+  s2wasm_path = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 's2wasm')
+
+  args = [s2wasm_path, temp_s, '--emscripten-glue']
+  args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
+  args += ['--initial-memory=%d' % shared.Settings.TOTAL_MEMORY]
+  args += ['--allow-memory-growth'] if shared.Settings.ALLOW_MEMORY_GROWTH else []
+  args += ['-l', compiler_rt_lib]
+  return args
+
+
+def load_metadata(metadata_raw):
   try:
     metadata_json = json.loads(metadata_raw)
   except Exception, e:
@@ -1733,18 +1977,17 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   for k, v in metadata_json.iteritems():
     metadata[k] = v
 
-  def asmjs_mangle(name):
-    # Mangle a name the way asm.js/JSBackend globals are mangled (i.e. prepend
-    # '_' and replace non-alphanumerics with '_')
-    library_functions_in_module = ('setThrew', 'setTempRet0', 'getTempRet0')
-    if name.startswith('dynCall_'): return name
-    if name in library_functions_in_module: return name
-    return '_' + ''.join(['_' if not c.isalnum() else c for c in name])
-
   # Initializers call the global var version of the export, so they get the mangled name.
-  metadata['initializers'] = [asmjs_mangle(i) for i in metadata['initializers']]
+  metadata['initializers'] = map(asmjs_mangle, metadata['initializers'])
 
-  # TODO: emit it from s2wasm; for now, we parse it right here
+  return metadata
+
+
+def add_metadata_from_wast(metadata, wast):
+  """Reads .wast file and adds metadata we can read from the code.
+
+  TODO: emit this metadata directly from s2wasm.
+  """
   for line in open(wast).readlines():
     line = line.strip()
     if line.startswith('(import '):
@@ -1777,223 +2020,35 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
       else:
         assert False, 'Unhandled export type "%s"' % export_type
 
-  metadata['declares'] = filter(lambda x: not x.startswith('emscripten_asm_const'), metadata['declares']) # we emit those ourselves
+  # we emit those ourselves
+  metadata['declares'] = filter(lambda x: not x.startswith('emscripten_asm_const'), metadata['declares'])
 
-  if DEBUG: logging.debug(repr(metadata))
 
-  settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
-    set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
-      map(lambda x: x[1:], metadata['implementedFunctions'])
-    )
-  ) + map(lambda x: x[1:], metadata['externs'])
-  if metadata['simd']:
-    settings['SIMD'] = 1
-
-  settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
-
-  settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
-
-  # Save settings to a file to work around v8 issue 1579
-  with temp_files.get_file('.txt') as settings_file:
-    def save_settings():
-      global settings_text
-      settings_text = json.dumps(settings, sort_keys=True)
-      s = open(settings_file, 'w')
-      s.write(settings_text)
-      s.close()
-    save_settings()
-
-    # Call js compiler
-    if DEBUG: t = time.time()
-    out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
-                       [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
-                       cwd=path_from_root('src'), error_limit=300)
-  assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
-  glue, forwarded_data = out.split('//FORWARDED_DATA:')
-
-  if DEBUG:
-    logging.debug('  emscript: glue took %s seconds' % (time.time() - t))
-    t = time.time()
-
-  forwarded_json = json.loads(forwarded_data)
-
-  pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
-
-  # memory and global initializers
-
-  global_initializers = str(', '.join(map(lambda i: '{ func: function() { %s() } }' % i, metadata['initializers'])))
-
-  staticbump = metadata['staticBump']
-  while staticbump % 16 != 0: staticbump += 1
-  pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;%s
-/* global initializers */ %s __ATINIT__.push(%s);
-''' % (staticbump,
-         'assert(STATICTOP < SPLIT_MEMORY, "SPLIT_MEMORY size must be big enough so the entire static memory, need " + STATICTOP);' if settings['SPLIT_MEMORY'] else '',
-         'if (!ENVIRONMENT_IS_PTHREAD)' if settings['USE_PTHREADS'] else '',
-         global_initializers))
-
-  pre = pre.replace('{{{ STATIC_BUMP }}}', str(staticbump))
-
-  # merge forwarded data
-  settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
-  all_exported_functions = set(shared.expand_response(settings['EXPORTED_FUNCTIONS'])) # both asm.js and otherwise
-
-  for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
-    all_exported_functions.add('_' + additional_export)
-  exported_implemented_functions = set(metadata['exports'])
-  export_bindings = settings['EXPORT_BINDINGS']
-  export_all = settings['EXPORT_ALL']
-  all_implemented = metadata['implementedFunctions'] + forwarded_json['Functions']['implementedFunctions'].keys() # XXX perf?
-  for key in all_implemented:
-    if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
-      exported_implemented_functions.add(key)
-  implemented_functions = set(metadata['implementedFunctions'])
-  if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
-    original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
-    if original_exports[0] == '@': original_exports = json.loads(open(original_exports[1:]).read())
-    for requested in original_exports:
-      # check if already implemented
-      # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS \
-      if requested not in all_implemented and \
-         requested != '_malloc' and \
-         (('function ' + requested.encode('utf-8')) not in pre): # could be a js library func
-        logging.warning('function requested to be exported, but not implemented: "%s"', requested)
-
-  asm_consts = [0]*len(metadata['asmConsts'])
-  all_sigs = []
-  for k, v in metadata['asmConsts'].iteritems():
-    const = v[0].encode('utf-8')
-    sigs = v[1]
-    if len(const) > 1 and const[0] == '"' and const[-1] == '"':
-      const = const[1:-1]
-    const = '{ ' + const + ' }'
-    args = []
-    arity = max(map(len, sigs)) - 1
-    for i in range(arity):
-      args.append('$' + str(i))
-    const = 'function(' + ', '.join(args) + ') ' + const
-    asm_consts[int(k)] = const
-    all_sigs += sigs
-
-  asm_const_funcs = []
-  for sig in set(all_sigs):
-    forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
-    args = ['a%d' % i for i in range(len(sig)-1)]
-    all_args = ['code'] + args
-    asm_const_funcs.append(r'''
-function _emscripten_asm_const_%s(%s) {
-return ASM_CONSTS[code](%s);
-}''' % (sig.encode('utf-8'), ', '.join(all_args), ', '.join(args)))
-
-  pre = pre.replace('// === Body ===', '// === Body ===\n' + '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
-
-  outfile.write(pre)
-  pre = None
-
-  basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory']
-  if settings['ABORTING_MALLOC']: basic_funcs += ['abortOnCannotGrowMemory']
-
-  access_quote = access_quoter(settings)
-
-  # calculate globals
-  try:
-    del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
-  except:
-    pass
-  if not settings['RELOCATABLE']:
-    global_vars = metadata['externs']
-  else:
-    global_vars = [] # linkable code accesses globals through function calls
-  global_funcs = list(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]).difference(set(global_vars)).difference(implemented_functions))
-  def math_fix(g):
-    return g if not g.startswith('Math_') else g.split('_')[1]
-
-  basic_vars = ['STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR', 'ABORT']
-
-  # Asm.js-style exception handling: invoke wrapper generation
+def create_invoke_wrappers(invoke_funcs):
+  """Asm.js-style exception handling: invoke wrapper generation."""
   invoke_wrappers = ''
-  with open(wast) as f:
-    for line in f:
-      if line.strip().startswith('(import '):
-        parts = line.split()
-        func_name = parts[2][1:-1]
-        if func_name.startswith('invoke_'):
-          sig = func_name[len('invoke_'):]
-          invoke_wrappers += '\n' + shared.JS.make_invoke(sig) + '\n'
-          basic_funcs.append(func_name)
+  for invoke in invoke_funcs:
+    sig = invoke[len('invoke_'):]
+    invoke_wrappers += '\n' + shared.JS.make_invoke(sig) + '\n'
+  return invoke_wrappers
 
-  # sent data
-  the_global = '{}'
-  sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + global_vars]) + ' }'
-  # received
-  receiving = ''
-  if settings['ASSERTIONS']:
-    # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
-    # some support code
-    receiving = '\n'.join(['var real_' + asmjs_mangle(s) + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
-assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
-};
-''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory', '__start_module']])
 
-  if not settings['SWAPPABLE_ASM_MODULE']:
-    receiving += ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"]' for s in exported_implemented_functions])
-  else:
-    receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions])
-  receiving += ';\n'
+def asmjs_mangle(name):
+  """Mangle a name the way asm.js/JSBackend globals are mangled.
 
-  # finalize
+  Prepends '_' and replaces non-alphanumerics with '_'.
+  Used by wasm backend for JS library consistency with asm.js.
+  """
+  library_functions_in_module = ('setThrew', 'setTempRet0', 'getTempRet0')
+  if name.startswith('dynCall_'): return name
+  if name in library_functions_in_module: return name
+  return '_' + ''.join(['_' if not c.isalnum() else c for c in name])
 
-  if settings['USE_PTHREADS']:
-    shared_array_buffer = "if (typeof SharedArrayBuffer !== 'undefined') Module.asmGlobalArg['Atomics'] = Atomics;"
-  else:
-    shared_array_buffer = ''
-
-  funcs_js = ['''
-Module%s = %s;
-%s
-Module%s = %s;
-''' % (access_quote('asmGlobalArg'), the_global,
-     shared_array_buffer,
-     access_quote('asmLibraryArg'), sending) + '''
-var asm = Module['asm'](%s, %s, buffer);
-%s;
-''' % ('Module' + access_quote('asmGlobalArg'),
-     'Module' + access_quote('asmLibraryArg'),
-     receiving)]
-
-  # wasm backend stack goes down, and is stored in the first global var location
-  funcs_js.append('''
-STACKTOP = STACK_BASE + TOTAL_STACK;
-STACK_MAX = STACK_BASE;
-HEAP32[%d >> 2] = STACKTOP;
-Runtime.stackAlloc = Module['stackAlloc'];
-Runtime.stackSave = Module['stackSave'];
-Runtime.stackRestore = Module['stackRestore'];
-Runtime.establishStackSpace = Module['establishStackSpace'];
-''' % shared.Settings.GLOBAL_BASE)
-
-  funcs_js.append('''
-Runtime.setTempRet0 = Module['setTempRet0'];
-Runtime.getTempRet0 = Module['getTempRet0'];
-''')
-
-  funcs_js.append(invoke_wrappers)
-
-  for i in range(len(funcs_js)): # do this loop carefully to save memory
-    if WINDOWS: funcs_js[i] = funcs_js[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
-    outfile.write(funcs_js[i])
-  funcs_js = None
-
-  if WINDOWS: post = post.replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
-  outfile.write(post)
-
-  outfile.close()
 
 if os.environ.get('EMCC_FAST_COMPILER') == '0':
   logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
   sys.exit(1)
+
 
 def main(args, compiler_engine, cache, temp_files, DEBUG):
   # Prepare settings for serialization to JSON.
@@ -2017,6 +2072,7 @@ def main(args, compiler_engine, cache, temp_files, DEBUG):
 
   emscripter(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
              temp_files=temp_files, DEBUG=DEBUG)
+
 
 def _main(args=None):
   if args is None:
