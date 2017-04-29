@@ -36,8 +36,8 @@ int main()
         int major, minor, rev;
         glfwGetVersion(&major, &minor, &rev);
         assert(major == 3);
-        assert(minor == 0);
-        assert(rev == 0);
+        assert(minor == 2);
+        assert(rev == 1);
     }
 
     {
