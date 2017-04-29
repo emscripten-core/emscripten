@@ -39,6 +39,13 @@ var LibraryJSEvents = {
       if (typeof window !== 'undefined') {
         window.addEventListener("gamepadconnected", function() { ++JSEvents.numGamepadsConnected; });
         window.addEventListener("gamepaddisconnected", function() { --JSEvents.numGamepadsConnected; });
+        
+        // Chromium does not fire the gamepadconnected event on reload, so we need to get the number of gamepads here as a workaround.
+        // See https://bugs.chromium.org/p/chromium/issues/detail?id=502824
+        var firstState = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : null);
+        if (firstState) {
+          JSEvents.numGamepadsConnected = firstState.length;
+        }
       }
     },
 
