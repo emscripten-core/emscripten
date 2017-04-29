@@ -983,8 +983,8 @@ var LibraryGLFW = {
 
 #if USE_GLFW == 3
     setValue(major, 3, 'i32');
-    setValue(minor, 0, 'i32');
-    setValue(rev, 0, 'i32');
+    setValue(minor, 2, 'i32');
+    setValue(rev, 1, 'i32');
 #endif
   },
 
