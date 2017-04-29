@@ -13,7 +13,6 @@
  * What it does not but should probably do:
  * - Transmit events when glfwPollEvents, glfwWaitEvents or glfwSwapBuffers is
  *    called. Events callbacks are called as soon as event are received.
- * - Joystick support.
  * - Input modes.
  * - Gamma ramps.
  * - Video modes.
@@ -57,6 +56,9 @@ var LibraryGLFW = {
       };
       this.buttons = 0;
       this.keys = new Array();
+      this.joyLast = 0; // GLFW_JOYSTICK_1
+      this.joys = {};
+      this.index2joy = {};
       this.domKeys = new Array();
       this.shouldClose = 0;
       this.title = null;
@@ -71,6 +73,7 @@ var LibraryGLFW = {
       this.cursorPosFunc = null; // GLFWcursorposfun
       this.cursorEnterFunc = null; // GLFWcursorenterfun
       this.scrollFunc = null; // GLFWscrollfun
+      this.joystickFunc = null; // GLFWjoystickfun
       this.keyFunc = null; // GLFWkeyfun
       this.charFunc = null; // GLFWcharfun
       this.userptr = null;
@@ -382,6 +385,38 @@ var LibraryGLFW = {
 #endif
     },
 
+    onGamepadConnected: function(event) {
+      if (!GLFW.active.joystickFunc) return;
+
+      // HTML5 Gamepad API reuses indexes
+      // glfw joystick API spreads them out
+      // http://www.glfw.org/docs/latest/input_guide.html#joystick
+      // "Once a joystick is detected, it keeps its assigned index until it is disconnected,
+      // so as joysticks are connected and disconnected, they will become spread out."
+      var joy = GLFW.active.joyLast++;
+      GLFW.active.joys[joy] = {
+        index: event.gamepad.index,
+        id: allocate(intArrayFromString(event.gamepad.id), 'i8', ALLOC_NORMAL),
+        buttons: allocate(new Array(event.gamepad.buttons.length), 'float', ALLOC_NORMAL),
+        axes: allocate(event.gamepad.axes, 'float', ALLOC_NORMAL)
+      };
+      GLFW.active.index2joy[event.gamepad.index] = joy;
+      Module['dynCall_vii'](GLFW.active.joystickFunc, joy, 0x00040001); // GLFW_CONNECTED
+    },
+
+    onGamepadDisconnected: function(event) {
+      if (!GLFW.active.joystickFunc) return;
+
+      var joy = GLFW.active.index2joy[event.gamepad.index];
+
+      Module['dynCall_vii'](GLFW.active.joystickFunc, joy, 0x00040002); // GLFW_DISCONNECTED
+
+      // TODO: free memory .axes, .buttons
+
+      delete GLFW.active.index2joy[event.gamepad.index];
+      delete GLFW.active.joys[joy];
+    },
+
     onKeydown: function(event) {
       GLFW.onKeyChanged(event.keyCode, 1); // GLFW_PRESS or GLFW_REPEAT
 
@@ -638,6 +673,30 @@ var LibraryGLFW = {
       win.title = Pointer_stringify(title);
       if (GLFW.active.id == win.id) {
         document.title = win.title;
+      }
+    },
+
+    setJoystickCallback: function(winid, cbfun) {
+      var win = GLFW.WindowFromId(winid);
+      if (!win) return;
+      win.joystickFunc = cbfun;
+    },
+
+    refreshJoystick: function(joy) {
+      // TODO: refresh all joysticks, and call from render loop?
+      var j = GLFW.active.joys[joy];
+
+      var gamepad = navigator.getGamepads()[j.index];
+      if (!gamepad) return;
+
+      j.buttonsCount = gamepad.buttons.length;
+      for (var i = 0; i < gamepad.buttons.length; ++i) {
+        setValue(j.buttons + i, gamepad.buttons[i].pressed, 'i8');
+      }
+
+      j.axesCount = gamepad.axes.length;
+      for (var i = 0; i < gamepad.axes.length; ++i) {
+        setValue(j.axes + i*4, gamepad.axes[i], 'float');
       }
     },
 
@@ -954,6 +1013,8 @@ var LibraryGLFW = {
     GLFW.windows = new Array()
     GLFW.active = null;
 
+    window.addEventListener("gamepadconnected", GLFW.onGamepadConnected, true);
+    window.addEventListener("gamepaddisconnected", GLFW.onGamepadDisconnected, true);
     window.addEventListener("keydown", GLFW.onKeydown, true);
     window.addEventListener("keypress", GLFW.onKeyPress, true);
     window.addEventListener("keyup", GLFW.onKeyup, true);
@@ -973,6 +1034,8 @@ var LibraryGLFW = {
   },
 
   glfwTerminate: function() {
+    window.removeEventListener("gamepadconnected", GLFW.onGamepadConnected, true);
+    window.removeEventListener("gamepaddisconnected", GLFW.onGamepadDisconnected, true);
     window.removeEventListener("keydown", GLFW.onKeydown, true);
     window.removeEventListener("keypress", GLFW.onKeyPress, true);
     window.removeEventListener("keyup", GLFW.onKeyup, true);
@@ -1354,15 +1417,43 @@ var LibraryGLFW = {
 
   glfwCreateWindowSurface: function(instance, winid, allocator, surface) { throw "glfwCreateWindowSurface is not implemented."; },
 
-  glfwSetJoystickCallback: function(cbfun) { throw "glfwSetJoystickCallback is not implemented."; },
+  glfwJoystickPresent: function(joy) {
+    return GLFW.active.joys[joy] !== undefined;
+  },
 
-  glfwJoystickPresent: function(joy) { throw "glfwJoystickPresent is not implemented."; },
+  glfwGetJoystickAxes: function(joy, count) {
+    GLFW.refreshJoystick(joy);
 
-  glfwGetJoystickAxes: function(joy, count) { throw "glfwGetJoystickAxes is not implemented."; },
+    var state = GLFW.active.joys[joy];
+    if (!state || !state.axes) {
+      setValue(count, 0, 'i32');
+      return;
+    }
 
-  glfwGetJoystickButtons: function(joy, count) { throw "glfwGetJoystickButtons is not implemented."; },
+    setValue(count, state.axesCount, 'i32');
+    return state.axes;
+  },
 
-  glfwGetJoystickName: function(joy) { throw "glfwGetJoystickName is not implemented."; },
+  glfwGetJoystickButtons: function(joy, count) {
+    GLFW.refreshJoystick(joy);
+
+    var state = GLFW.active.joys[joy];
+    if (!state || !state.buttons) {
+      setValue(count, 0, 'i32');
+      return;
+    }
+
+    setValue(count, state.buttonsCount, 'i32');
+    return state.buttons;
+  },
+
+  glfwGetJoystickName: function(joy) {
+    return GLFW.active.joys[joy].id;
+  },
+
+  glfwSetJoystickCallback: function(cbfun) {
+    GLFW.setJoystickCallback(GLFW.active.id, cbfun);
+  },
 
   glfwSetClipboardString: function(win, string) {},
 
