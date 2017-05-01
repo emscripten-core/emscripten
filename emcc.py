@@ -2253,21 +2253,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             if DEBUG: save_intermediate('postclean', 'js')
 
       if shared.Settings.MODULARIZE:
-        logging.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
-        src = open(final).read()
-        final = final + '.modular.js'
-        f = open(final, 'w')
-        f.write('var ' + shared.Settings.EXPORT_NAME + ' = function(' + shared.Settings.EXPORT_NAME + ') {\n')
-        f.write('  ' + shared.Settings.EXPORT_NAME + ' = ' + shared.Settings.EXPORT_NAME + ' || {};\n')
-        f.write('  var Module = ' + shared.Settings.EXPORT_NAME + ';\n') # included code may refer to Module (e.g. from file packager), so alias it
-        f.write('\n')
-        f.write(src)
-        f.write('\n')
-        f.write('  return ' + shared.Settings.EXPORT_NAME + ';\n')
-        f.write('};\n')
-        f.close()
-        src = None
-        if DEBUG: save_intermediate('modularized', 'js')
+        final = modularize(final)
 
       # The JS is now final. Move it to its final location
       shutil.move(final, js_target)
@@ -2297,6 +2283,24 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         pass
     else:
       logging.info('emcc saved files are in:' + temp_dir)
+
+
+def modularize(final):
+  logging.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
+  src = open(final).read()
+  final = final + '.modular.js'
+  f = open(final, 'w')
+  f.write('var ' + shared.Settings.EXPORT_NAME + ' = function(' + shared.Settings.EXPORT_NAME + ') {\n')
+  f.write('  ' + shared.Settings.EXPORT_NAME + ' = ' + shared.Settings.EXPORT_NAME + ' || {};\n')
+  f.write('  var Module = ' + shared.Settings.EXPORT_NAME + ';\n') # included code may refer to Module (e.g. from file packager), so alias it
+  f.write('\n')
+  f.write(src)
+  f.write('\n')
+  f.write('  return ' + shared.Settings.EXPORT_NAME + ';\n')
+  f.write('};\n')
+  f.close()
+  if DEBUG: save_intermediate('modularized', 'js')
+  return final
 
 
 def generate_html(target, shell_path, js_target, target_basename, proxy_to_worker,
