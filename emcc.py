@@ -2443,7 +2443,16 @@ def generate_html(target, shell_path, js_target, target_basename, proxy_to_worke
 def generate_worker_js(target, js_target, target_basename):
   shutil.move(js_target, js_target[:-3] + '.worker.js') # compiler output goes in .worker.js file
   worker_target_basename = target_basename + '.worker'
-  target_contents = open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read())
+  proxy_worker_filename = shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename
+  web_gl_client_src = open(shared.path_from_root('src', 'webGLClient.js')).read()
+  idb_store_src = open(shared.path_from_root('src', 'IDBStore.js')).read()
+  proxy_client_src = (
+    open(shared.path_from_root('src', 'proxyClient.js')).read()
+    .replace('{{{ filename }}}', proxy_worker_filename)
+    .replace('{{{ IDBStore.js }}}', idb_store_src)
+  )
+
+  target_contents = web_gl_client_src + '\n' + proxy_client_src
   open(target, 'w').write(target_contents)
 
 
