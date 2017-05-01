@@ -2280,10 +2280,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                       separate_asm, memory_init_file, wasm_binary_target, output_eol)
       else: # final_suffix != html
         if proxy_to_worker:
-          shutil.move(js_target, js_target[:-3] + '.worker.js') # compiler output goes in .worker.js file
-          worker_target_basename = target_basename + '.worker'
-          target_contents = open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read())
-          open(target, 'w').write(target_contents)
+          generate_worker_js(target, js_target, target_basename)
 
       for f in generated_text_files_with_native_eols:
         tools.line_endings.convert_line_endings_in_file(f, os.linesep, output_eol)
@@ -2441,6 +2438,13 @@ def generate_html(target, shell_path, js_target, target_basename, proxy_to_worke
         html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', output_eol)
         html.write(html_contents)
         html.close()
+
+
+def generate_worker_js(target, js_target, target_basename):
+  shutil.move(js_target, js_target[:-3] + '.worker.js') # compiler output goes in .worker.js file
+  worker_target_basename = target_basename + '.worker'
+  target_contents = open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read())
+  open(target, 'w').write(target_contents)
 
 
 if __name__ == '__main__':
