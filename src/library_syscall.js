@@ -665,8 +665,8 @@ var SyscallsLibrary = {
   },
   __syscall140: function(which, varargs) { // llseek
     var stream = SYSCALLS.getStreamFromFD(), offset_high = SYSCALLS.get(), offset_low = SYSCALLS.get(), result = SYSCALLS.get(), whence = SYSCALLS.get();
+    // NOTE: offset_high is unused - Emscripten's off_t is 32-bit
     var offset = offset_low;
-    assert(offset_high === 0);
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('result', '0', 'stream.position', 'i32') }}};
     if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
