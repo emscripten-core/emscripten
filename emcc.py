@@ -2278,7 +2278,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if final_suffix == 'html':
         generate_html(target, shell_path, js_target, target_basename, proxy_to_worker,
                       separate_asm, memory_init_file, wasm_binary_target, output_eol)
-      else: # final_suffix != html
+      else:
         if proxy_to_worker:
           generate_worker_js(target, js_target, target_basename)
 
