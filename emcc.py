@@ -90,11 +90,24 @@ AUTODEBUG = os.environ.get('EMCC_AUTODEBUG') # If set to 1, we will run the auto
                                              # dlmalloc makes it hard to compare native and js builds
 EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS') # Additional compiler flags that we treat as if they were passed to us on the commandline
 
+emscripten_temp_dir = shared.get_emscripten_temp_dir()
+
 # Target options
 final = None
 target = None
 script_src = None # if set, we have a script to load with a src attribute
 script_inline = None # if set, we have the contents of a script to write inline in a script
+
+
+class Intermediate:
+  counter = 0
+def save_intermediate(name=None, suffix='js'):
+  name = os.path.join(emscripten_temp_dir, 'emcc-%d%s.%s' % (Intermediate.counter, '' if name is None else '-' + name, suffix))
+  if type(final) != str:
+    logging.debug('(not saving intermediate %s because deferring linking)' % name)
+    return
+  shutil.copyfile(final, name)
+  Intermediate.counter += 1
 
 
 class JSOptimizer:
@@ -104,6 +117,12 @@ class JSOptimizer:
   blacklist = (os.environ.get('EMCC_JSOPT_BLACKLIST') or '').split(',')
   minify_whitespace = False
   cleanup_shell = False
+
+  debug_level = 0
+  emit_symbol_map = False
+  profiling_funcs = False
+  misc_temp_files = None
+  js_transform_tempfiles = None
 
   @staticmethod
   def flush(title='js_opts'):
@@ -115,27 +134,6 @@ class JSOptimizer:
       JSOptimizer.extra_info = None
 
     if len(JSOptimizer.queue) > 0 and not(not shared.Settings.ASM_JS and len(JSOptimizer.queue) == 1 and JSOptimizer.queue[0] == 'last'):
-
-      def run_passes(passes, title, just_split, just_concat):
-        global final, target
-        passes = ['asm'] + passes
-        if shared.Settings.PRECISE_F32:
-          passes = ['asmPreciseF32'] + passes
-        if (emit_symbol_map or shared.Settings.CYBERDWARF) and 'minifyNames' in passes:
-          passes += ['symbolMap=' + target + '.symbols']
-        if profiling_funcs and 'minifyNames' in passes:
-          passes += ['profilingFuncs']
-        if JSOptimizer.minify_whitespace and 'last' in passes:
-          passes += ['minifyWhitespace']
-        if JSOptimizer.cleanup_shell and 'last' in passes:
-          passes += ['cleanup']
-        logging.debug('applying js optimization passes: %s', ' '.join(passes))
-        misc_temp_files.note(final)
-        final = shared.Building.js_optimizer(final, passes, debug_level >= 4, JSOptimizer.extra_info, just_split=just_split, just_concat=just_concat)
-        misc_temp_files.note(final)
-        js_transform_tempfiles.append(final)
-        if DEBUG: save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
-
       passes = JSOptimizer.queue[:]
 
       if DEBUG != '2' or len(passes) < 2:
@@ -147,8 +145,8 @@ class JSOptimizer:
           if len(curr) == 0:
             curr.append(p)
           else:
-            native = shared.js_optimizer.use_native(p, source_map=debug_level >= 4)
-            last_native = shared.js_optimizer.use_native(curr[-1], source_map=debug_level >= 4)
+            native = shared.js_optimizer.use_native(p, source_map=JSOptimizer.debug_level >= 4)
+            last_native = shared.js_optimizer.use_native(curr[-1], source_map=JSOptimizer.debug_level >= 4)
             if native == last_native:
               curr.append(p)
             else:
@@ -158,10 +156,10 @@ class JSOptimizer:
         if len(curr) > 0:
           chunks.append(curr)
         if len(chunks) == 1:
-          run_passes(chunks[0], title, just_split=False, just_concat=False)
+          JSOptimizer.run_passes(chunks[0], title, just_split=False, just_concat=False)
         else:
           for i in range(len(chunks)):
-            run_passes(chunks[i], 'js_opts_' + str(i), just_split='receiveJSON' in chunks[i], just_concat='emitJSON' in chunks[i])
+            JSOptimizer.run_passes(chunks[i], 'js_opts_' + str(i), just_split='receiveJSON' in chunks[i], just_concat='emitJSON' in chunks[i])
       else:
         # DEBUG 2, run each pass separately
         extra_info = JSOptimizer.extra_info
@@ -173,6 +171,27 @@ class JSOptimizer:
       JSOptimizer.queue_history += JSOptimizer.queue
       JSOptimizer.queue = []
     JSOptimizer.extra_info = {}
+
+  @staticmethod
+  def run_passes(passes, title, just_split, just_concat):
+    global final, target
+    passes = ['asm'] + passes
+    if shared.Settings.PRECISE_F32:
+      passes = ['asmPreciseF32'] + passes
+    if (JSOptimizer.emit_symbol_map or shared.Settings.CYBERDWARF) and 'minifyNames' in passes:
+      passes += ['symbolMap=' + target + '.symbols']
+    if JSOptimizer.profiling_funcs and 'minifyNames' in passes:
+      passes += ['profilingFuncs']
+    if JSOptimizer.minify_whitespace and 'last' in passes:
+      passes += ['minifyWhitespace']
+    if JSOptimizer.cleanup_shell and 'last' in passes:
+      passes += ['cleanup']
+    logging.debug('applying js optimization passes: %s', ' '.join(passes))
+    JSOptimizer.misc_temp_files.note(final)
+    final = shared.Building.js_optimizer(final, passes, JSOptimizer.debug_level >= 4, JSOptimizer.extra_info, just_split=just_split, just_concat=just_concat)
+    JSOptimizer.misc_temp_files.note(final)
+    JSOptimizer.js_transform_tempfiles.append(final)
+    if DEBUG: save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
 
 
 #
@@ -1682,19 +1701,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('post-link'):
       if DEBUG:
-        emscripten_temp_dir = shared.get_emscripten_temp_dir()
         logging.debug('saving intermediate processing steps to %s', emscripten_temp_dir)
-
-        class Intermediate:
-          counter = 0
-        def save_intermediate(name=None, suffix='js'):
-          name = os.path.join(emscripten_temp_dir, 'emcc-%d%s.%s' % (Intermediate.counter, '' if name is None else '-' + name, suffix))
-          if type(final) != str:
-            logging.debug('(not saving intermediate %s because deferring linking)' % name)
-            return
-          shutil.copyfile(final, name)
-          Intermediate.counter += 1
-
         if not LEAVE_INPUTS_RAW: save_intermediate('basebc', 'bc')
 
       # Optimize, if asked to
@@ -1905,6 +1912,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('js opts'):
       # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
+      JSOptimizer.debug_level = debug_level
+      JSOptimizer.emit_symbol_map = emit_symbol_map
+      JSOptimizer.profiling_funcs = profiling_funcs
+      JSOptimizer.misc_temp_files = misc_temp_files
+      JSOptimizer.js_transform_tempfiles = js_transform_tempfiles
+
       if shared.Settings.DEAD_FUNCTIONS:
         JSOptimizer.queue += ['eliminateDeadFuncs']
         JSOptimizer.extra_info['dead_functions'] = shared.Settings.DEAD_FUNCTIONS
