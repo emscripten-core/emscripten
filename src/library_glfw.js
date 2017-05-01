@@ -685,6 +685,7 @@ var LibraryGLFW = {
     refreshJoystick: function(joy) {
       // TODO: refresh all joysticks, and call from render loop?
       var j = GLFW.active.joys[joy];
+      if (!j) return;
 
       var gamepad = navigator.getGamepads()[j.index];
       if (!gamepad) return;
