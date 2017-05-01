@@ -110,6 +110,21 @@ def save_intermediate(name=None, suffix='js'):
   Intermediate.counter += 1
 
 
+class TimeLogger:
+  last = time.time()
+
+  @staticmethod
+  def update():
+    TimeLogger.last = time.time()
+
+def log_time(name):
+  """Log out times for emcc stages"""
+  if DEBUG:
+    now = time.time()
+    logging.debug('emcc step "%s" took %.2f seconds', name, now - TimeLogger.last)
+    TimeLogger.update()
+
+
 class JSOptimizer:
   queue = []
   extra_info = {}
@@ -118,9 +133,12 @@ class JSOptimizer:
   minify_whitespace = False
   cleanup_shell = False
 
+  # Temp : figure out better way to pass this data to relevant functions
+  opt_level = 0
   debug_level = 0
   emit_symbol_map = False
   profiling_funcs = False
+  use_closure_compiler = False
   misc_temp_files = None
   js_transform_tempfiles = None
 
@@ -192,6 +210,27 @@ class JSOptimizer:
     JSOptimizer.misc_temp_files.note(final)
     JSOptimizer.js_transform_tempfiles.append(final)
     if DEBUG: save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
+
+  @staticmethod
+  def do_minify():
+    """minifies the code.
+
+    this is also when we do certain optimizations that must be done right before or after minification
+    """
+    if shared.Settings.SPLIT_MEMORY:
+      # must be done before minification
+      JSOptimizer.queue += ['splitMemory', 'simplifyExpressions']
+
+    if JSOptimizer.opt_level >= 2:
+      if JSOptimizer.debug_level < 2 and not JSOptimizer.use_closure_compiler == 2:
+        JSOptimizer.queue += ['minifyNames']
+      if JSOptimizer.debug_level == 0:
+        JSOptimizer.minify_whitespace = True
+
+    if JSOptimizer.use_closure_compiler == 1:
+      JSOptimizer.queue += ['closure']
+    elif JSOptimizer.debug_level <= 2 and shared.Settings.FINALIZE_ASM_JS and not JSOptimizer.use_closure_compiler:
+      JSOptimizer.cleanup_shell = True
 
 
 #
@@ -499,20 +538,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       return filename
     suffix = filename_type_suffix(filename)
     return '' if not suffix else ('.' + suffix)
-
-  # Log out times for emcc stages
-  class TimeLogger:
-    last = time.time()
-
-    @staticmethod
-    def update():
-      TimeLogger.last = time.time()
-
-  def log_time(name):
-    if DEBUG:
-      now = time.time()
-      logging.debug('emcc step "%s" took %.2f seconds', name, now - TimeLogger.last)
-      TimeLogger.update()
 
   use_cxx = True
 
@@ -1912,9 +1937,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('js opts'):
       # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
+      JSOptimizer.opt_level = opt_level
       JSOptimizer.debug_level = debug_level
       JSOptimizer.emit_symbol_map = emit_symbol_map
       JSOptimizer.profiling_funcs = profiling_funcs
+      JSOptimizer.use_closure_compiler = use_closure_compiler
       JSOptimizer.misc_temp_files = misc_temp_files
       JSOptimizer.js_transform_tempfiles = js_transform_tempfiles
 
@@ -1962,20 +1989,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
           if shared.Settings.PRECISE_F32: JSOptimizer.queue += ['optimizeFrounds']
 
-      def do_minify(): # minifies the code. this is also when we do certain optimizations that must be done right before or after minification
-        if shared.Settings.SPLIT_MEMORY: JSOptimizer.queue += ['splitMemory', 'simplifyExpressions'] # must be done before minification
-
-        if opt_level >= 2:
-          if debug_level < 2 and not use_closure_compiler == 2:
-            JSOptimizer.queue += ['minifyNames']
-          if debug_level == 0:
-            JSOptimizer.minify_whitespace = True
-
-        if use_closure_compiler == 1:
-          JSOptimizer.queue += ['closure']
-        elif debug_level <= 2 and shared.Settings.FINALIZE_ASM_JS and not use_closure_compiler:
-          JSOptimizer.cleanup_shell = True
-
       if js_opts:
         if shared.Settings.SAFE_HEAP: JSOptimizer.queue += ['safeHeap']
 
@@ -2002,7 +2015,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if js_opts:
         # some compilation modes require us to minify later or not at all
         if not shared.Settings.EMTERPRETIFY and not shared.Settings.BINARYEN:
-          do_minify()
+          JSOptimizer.do_minify()
 
         if opt_level >= 2:
           JSOptimizer.queue += ['asmLastOpts']
@@ -2059,7 +2072,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logging.debug('finalizing emterpreted code')
         shared.Settings.FINALIZE_ASM_JS = 1
         if not shared.Settings.BINARYEN:
-          do_minify()
+          JSOptimizer.do_minify()
         JSOptimizer.queue += ['last']
         JSOptimizer.flush()
 
@@ -2070,7 +2083,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           final = original
           logging.debug('finalizing original (non-emterpreted) code at ' + final)
           if not shared.Settings.BINARYEN:
-            do_minify()
+            JSOptimizer.do_minify()
           JSOptimizer.queue += ['last']
           JSOptimizer.flush()
           safe_move(final, original)
@@ -2118,139 +2131,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             sys.exit(1)
 
       if shared.Settings.BINARYEN:
-        logging.debug('using binaryen, with method: ' + shared.Settings.BINARYEN_METHOD)
-        binaryen_bin = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin')
-        # Emit wasm.js at the top of the js. This is *not* optimized with the rest of the code, since
-        # (1) it contains asm.js, whose validation would be broken, and (2) it's very large so it would
-        # be slow in cleanup/JSDCE etc.
-        # TODO: for html, it could be a separate script tag
-        # We need wasm.js if there is a chance the polyfill will be used. If the user sets
-        # BINARYEN_METHOD with something that doesn't use the polyfill, then we don't need it.
-        if not shared.Settings.BINARYEN_METHOD or 'interpret' in shared.Settings.BINARYEN_METHOD:
-          logging.debug('integrating wasm.js polyfill interpreter')
-          wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
-          wasm_js = wasm_js.replace('EMSCRIPTEN_', 'emscripten_') # do not confuse the markers
-          js = open(final).read()
-          combined = open(final, 'w')
-          combined.write(wasm_js)
-          combined.write('\n//^wasm.js\n')
-          combined.write(js)
-          combined.close()
-        # normally we emit binary, but for debug info, we might emit text first
-        wrote_wasm_text = False
-        # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
-        if not shared.Settings.WASM_BACKEND:
-          if DEBUG:
-            # save the asm.js input
-            shared.safe_copy(asm_target, os.path.join(emscripten_temp_dir, os.path.basename(asm_target)))
-          cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
-          if shared.Settings.BINARYEN_TRAP_MODE == 'js':
-            cmd += ['--emit-jsified-potential-traps']
-          elif shared.Settings.BINARYEN_TRAP_MODE == 'clamp':
-            cmd += ['--emit-clamped-potential-traps']
-          elif shared.Settings.BINARYEN_TRAP_MODE == 'allow':
-            cmd += ['--emit-potential-traps']
-          else:
-            logging.error('invalid BINARYEN_TRAP_MODE value: ' + shared.Settings.BINARYEN_TRAP_MODE + ' (should be js/clamp/allow)')
-            sys.exit(1)
-          if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
-            cmd += ['--ignore-implicit-traps']
-          # pass optimization level to asm2wasm (if not optimizing, or which passes we should run was overridden, do not optimize)
-          if opt_level > 0 and not shared.Settings.BINARYEN_PASSES:
-            cmd.append(shared.Building.opt_level_to_str(opt_level, shrink_level))
-          # import mem init file if it exists, and if we will not be using asm.js as a binaryen method (as it needs the mem init file, of course)
-          import_mem_init = memory_init_file and os.path.exists(memfile) and 'asmjs' not in shared.Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD
-          if import_mem_init:
-            cmd += ['--mem-init=' + memfile]
-            if not shared.Settings.RELOCATABLE:
-              cmd += ['--mem-base=' + str(shared.Settings.GLOBAL_BASE)]
-          # various options imply that the imported table may not be the exact size as the wasm module's own table segments
-          if shared.Settings.RELOCATABLE or shared.Settings.RESERVED_FUNCTION_POINTERS > 0 or shared.Settings.EMULATED_FUNCTION_POINTERS:
-            cmd += ['--table-max=-1']
-          if shared.Settings.SIDE_MODULE:
-            cmd += ['--mem-max=-1']
-          elif shared.Settings.BINARYEN_MEM_MAX >= 0:
-            cmd += ['--mem-max=' + str(shared.Settings.BINARYEN_MEM_MAX)]
-          if shared.Settings.LEGALIZE_JS_FFI != 1:
-            cmd += ['--no-legalize-javascript-ffi']
-          if shared.Building.is_wasm_only():
-            cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, an can contain special fastcomp-wasm support
-          if debug_level >= 2 or profiling_funcs:
-            cmd += ['-g']
-          if emit_symbol_map or shared.Settings.CYBERDWARF:
-            cmd += ['--symbolmap=' + target + '.symbols']
-          # we prefer to emit a binary, as it is more efficient. however, when we
-          # want full debug info support (not just function names), then we must
-          # emit text (at least until wasm gains support for debug info in binaries)
-          target_binary = debug_level < 3
-          if target_binary:
-            cmd += ['-o', wasm_binary_target]
-          else:
-            cmd += ['-o', wasm_text_target, '-S']
-            wrote_wasm_text = True
-          logging.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
-          TimeLogger.update()
-          subprocess.check_call(cmd)
-
-          if not target_binary:
-            cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
-            if debug_level >= 2 or profiling_funcs:
-              cmd += ['-g']
-            logging.debug('wasm-as (text => binary): ' + ' '.join(cmd))
-            subprocess.check_call(cmd)
-          if import_mem_init:
-            # remove and forget about the mem init file in later processing; it does not need to be prefetched in the html, etc.
-            if DEBUG:
-              safe_move(memfile, os.path.join(emscripten_temp_dir, os.path.basename(memfile)))
-            else:
-              os.unlink(memfile)
-            memory_init_file = False
-          log_time('asm2wasm')
-        if shared.Settings.BINARYEN_PASSES:
-          shutil.move(wasm_binary_target, wasm_binary_target + '.pre')
-          cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target + '.pre', '-o', wasm_binary_target] + map(lambda p: '--' + p, shared.Settings.BINARYEN_PASSES.split(','))
-          logging.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))
-          subprocess.check_call(cmd)
-        if not wrote_wasm_text and 'interpret-s-expr' in shared.Settings.BINARYEN_METHOD:
-          cmd = [os.path.join(binaryen_bin, 'wasm-dis'), wasm_binary_target, '-o', wasm_text_target]
-          logging.debug('wasm-dis (binary => text): ' + ' '.join(cmd))
-          subprocess.check_call(cmd)
-        if shared.Settings.BINARYEN_SCRIPTS:
-          binaryen_scripts = os.path.join(shared.Settings.BINARYEN_ROOT, 'scripts')
-          script_env = os.environ.copy()
-          root_dir = os.path.abspath(os.path.dirname(__file__))
-          if script_env.get('PYTHONPATH'):
-            script_env['PYTHONPATH'] += ':' + root_dir
-          else:
-            script_env['PYTHONPATH'] = root_dir
-          for script in shared.Settings.BINARYEN_SCRIPTS.split(','):
-            logging.debug('running binaryen script: ' + script)
-            subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), final, wasm_text_target], env=script_env)
-        if shared.Settings.EVAL_CTORS:
-          shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin)
-        # after generating the wasm, do some final operations
-        if not shared.Settings.WASM_BACKEND:
-          if shared.Settings.SIDE_MODULE:
-            wso = shared.WebAssembly.make_shared_library(final, wasm_binary_target)
-            # replace the wasm binary output with the dynamic library. TODO: use a specific suffix for such files?
-            shutil.move(wso, wasm_binary_target)
-            if not DEBUG:
-              os.unlink(asm_target) # we don't need the asm.js, it can just confuse
-            sys.exit(0) # and we are done.
-        if opt_level >= 2:
-          # minify the JS
-          do_minify() # calculate how to minify
-          if JSOptimizer.cleanup_shell or JSOptimizer.minify_whitespace or use_closure_compiler:
-            misc_temp_files.note(final)
-            if DEBUG: save_intermediate('preclean', 'js')
-            if use_closure_compiler:
-              logging.debug('running closure on shell code')
-              final = shared.Building.closure_compiler(final, pretty=not JSOptimizer.minify_whitespace)
-            else:
-              assert JSOptimizer.cleanup_shell
-              logging.debug('running cleanup on shell code')
-              final = shared.Building.js_optimizer_no_asmjs(final, ['noPrintMetadata', 'JSDCE', 'last'] + (['minifyWhitespace'] if JSOptimizer.minify_whitespace else []))
-            if DEBUG: save_intermediate('postclean', 'js')
+        (final, memory_init_file) = do_binaryen(
+          final, asm_target, opt_level, shrink_level, memory_init_file, memfile,
+          debug_level, profiling_funcs, emit_symbol_map, wasm_binary_target,
+          wasm_text_target, misc_temp_files, use_closure_compiler
+        )
 
       if shared.Settings.MODULARIZE:
         final = modularize(final)
@@ -2283,6 +2168,143 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         pass
     else:
       logging.info('emcc saved files are in:' + temp_dir)
+
+
+def do_binaryen(final, asm_target, opt_level, shrink_level, memory_init_file, memfile,
+                debug_level, profiling_funcs, emit_symbol_map, wasm_binary_target,
+                wasm_text_target, misc_temp_files, use_closure_compiler):
+  logging.debug('using binaryen, with method: ' + shared.Settings.BINARYEN_METHOD)
+  binaryen_bin = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin')
+  # Emit wasm.js at the top of the js. This is *not* optimized with the rest of the code, since
+  # (1) it contains asm.js, whose validation would be broken, and (2) it's very large so it would
+  # be slow in cleanup/JSDCE etc.
+  # TODO: for html, it could be a separate script tag
+  # We need wasm.js if there is a chance the polyfill will be used. If the user sets
+  # BINARYEN_METHOD with something that doesn't use the polyfill, then we don't need it.
+  if not shared.Settings.BINARYEN_METHOD or 'interpret' in shared.Settings.BINARYEN_METHOD:
+    logging.debug('integrating wasm.js polyfill interpreter')
+    wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
+    wasm_js = wasm_js.replace('EMSCRIPTEN_', 'emscripten_') # do not confuse the markers
+    js = open(final).read()
+    combined = open(final, 'w')
+    combined.write(wasm_js)
+    combined.write('\n//^wasm.js\n')
+    combined.write(js)
+    combined.close()
+  # normally we emit binary, but for debug info, we might emit text first
+  wrote_wasm_text = False
+  # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
+  if not shared.Settings.WASM_BACKEND:
+    if DEBUG:
+      # save the asm.js input
+      shutil.copyfile(asm_target, os.path.join(emscripten_temp_dir, os.path.basename(asm_target)))
+    cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
+    if shared.Settings.BINARYEN_TRAP_MODE == 'js':
+      cmd += ['--emit-jsified-potential-traps']
+    elif shared.Settings.BINARYEN_TRAP_MODE == 'clamp':
+      cmd += ['--emit-clamped-potential-traps']
+    elif shared.Settings.BINARYEN_TRAP_MODE == 'allow':
+      cmd += ['--emit-potential-traps']
+    else:
+      logging.error('invalid BINARYEN_TRAP_MODE value: ' + shared.Settings.BINARYEN_TRAP_MODE + ' (should be js/clamp/allow)')
+      sys.exit(1)
+    if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
+      cmd += ['--ignore-implicit-traps']
+    # pass optimization level to asm2wasm (if not optimizing, or which passes we should run was overridden, do not optimize)
+    if opt_level > 0 and not shared.Settings.BINARYEN_PASSES:
+      cmd.append(shared.Building.opt_level_to_str(opt_level, shrink_level))
+    # import mem init file if it exists, and if we will not be using asm.js as a binaryen method (as it needs the mem init file, of course)
+    import_mem_init = memory_init_file and os.path.exists(memfile) and 'asmjs' not in shared.Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD
+    if import_mem_init:
+      cmd += ['--mem-init=' + memfile]
+      if not shared.Settings.RELOCATABLE:
+        cmd += ['--mem-base=' + str(shared.Settings.GLOBAL_BASE)]
+    # various options imply that the imported table may not be the exact size as the wasm module's own table segments
+    if shared.Settings.RELOCATABLE or shared.Settings.RESERVED_FUNCTION_POINTERS > 0 or shared.Settings.EMULATED_FUNCTION_POINTERS:
+      cmd += ['--table-max=-1']
+    if shared.Settings.SIDE_MODULE:
+      cmd += ['--mem-max=-1']
+    elif shared.Settings.BINARYEN_MEM_MAX >= 0:
+      cmd += ['--mem-max=' + str(shared.Settings.BINARYEN_MEM_MAX)]
+    if shared.Building.is_wasm_only():
+      cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, an can contain special fastcomp-wasm support
+    if debug_level >= 2 or profiling_funcs:
+      cmd += ['-g']
+    if emit_symbol_map or shared.Settings.CYBERDWARF:
+      cmd += ['--symbolmap=' + target + '.symbols']
+    # we prefer to emit a binary, as it is more efficient. however, when we
+    # want full debug info support (not just function names), then we must
+    # emit text (at least until wasm gains support for debug info in binaries)
+    target_binary = debug_level < 3
+    if target_binary:
+      cmd += ['-o', wasm_binary_target]
+    else:
+      cmd += ['-o', wasm_text_target, '-S']
+      wrote_wasm_text = True
+    logging.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
+    TimeLogger.update()
+    subprocess.check_call(cmd)
+
+    if not target_binary:
+      cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
+      if debug_level >= 2 or profiling_funcs:
+        cmd += ['-g']
+      logging.debug('wasm-as (text => binary): ' + ' '.join(cmd))
+      subprocess.check_call(cmd)
+    if import_mem_init:
+      # remove and forget about the mem init file in later processing; it does not need to be prefetched in the html, etc.
+      if DEBUG:
+        safe_move(memfile, os.path.join(emscripten_temp_dir, os.path.basename(memfile)))
+      else:
+        os.unlink(memfile)
+      memory_init_file = False
+    log_time('asm2wasm')
+  if shared.Settings.BINARYEN_PASSES:
+    shutil.move(wasm_binary_target, wasm_binary_target + '.pre')
+    cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target + '.pre', '-o', wasm_binary_target] + map(lambda p: '--' + p, shared.Settings.BINARYEN_PASSES.split(','))
+    logging.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))
+    subprocess.check_call(cmd)
+  if not wrote_wasm_text and 'interpret-s-expr' in shared.Settings.BINARYEN_METHOD:
+    cmd = [os.path.join(binaryen_bin, 'wasm-dis'), wasm_binary_target, '-o', wasm_text_target]
+    logging.debug('wasm-dis (binary => text): ' + ' '.join(cmd))
+    subprocess.check_call(cmd)
+  if shared.Settings.BINARYEN_SCRIPTS:
+    binaryen_scripts = os.path.join(shared.Settings.BINARYEN_ROOT, 'scripts')
+    script_env = os.environ.copy()
+    root_dir = os.path.abspath(os.path.dirname(__file__))
+    if script_env.get('PYTHONPATH'):
+      script_env['PYTHONPATH'] += ':' + root_dir
+    else:
+      script_env['PYTHONPATH'] = root_dir
+    for script in shared.Settings.BINARYEN_SCRIPTS.split(','):
+      logging.debug('running binaryen script: ' + script)
+      subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), final, wasm_text_target], env=script_env)
+  if shared.Settings.EVAL_CTORS:
+    shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin)
+  # after generating the wasm, do some final operations
+  if not shared.Settings.WASM_BACKEND:
+    if shared.Settings.SIDE_MODULE:
+      wso = shared.WebAssembly.make_shared_library(final, wasm_binary_target)
+      # replace the wasm binary output with the dynamic library. TODO: use a specific suffix for such files?
+      shutil.move(wso, wasm_binary_target)
+      if not DEBUG:
+        os.unlink(asm_target) # we don't need the asm.js, it can just confuse
+      sys.exit(0) # and we are done.
+  if opt_level >= 2:
+    # minify the JS
+    JSOptimizer.do_minify() # calculate how to minify
+    if JSOptimizer.cleanup_shell or JSOptimizer.minify_whitespace or use_closure_compiler:
+      misc_temp_files.note(final)
+      if DEBUG: save_intermediate('preclean', 'js')
+      if use_closure_compiler:
+        logging.debug('running closure on shell code')
+        final = shared.Building.closure_compiler(final, pretty=not JSOptimizer.minify_whitespace)
+      else:
+        assert JSOptimizer.cleanup_shell
+        logging.debug('running cleanup on shell code')
+        final = shared.Building.js_optimizer_no_asmjs(final, ['noPrintMetadata', 'JSDCE', 'last'] + (['minifyWhitespace'] if JSOptimizer.minify_whitespace else []))
+      if DEBUG: save_intermediate('postclean', 'js')
+  return (final, memory_init_file)
 
 
 def modularize(final):
