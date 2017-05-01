@@ -1059,6 +1059,10 @@ def list_android_browsers():
       browsers += ['chrome']
     if line.endswith('=com.chrome.beta'):
       browsers += ['chrome_beta']
+    if line.endswith('=com.chrome.dev'):
+      browsers += ['chrome_dev']
+    if line.endswith('=com.chrome.canary'):
+      browsers += ['chrome_canary']
     if line.endswith('=com.opera.browser'):
       browsers += ['opera']
     if line.endswith('=com.opera.mini.android'):
@@ -1339,9 +1343,13 @@ def main():
       elif options.browser == 'firefox_nightly' or options.browser == 'fennec':
         browser_app = 'org.mozilla.fennec/.App'
       elif options.browser == 'chrome':
-        browser_app = 'com.android.chrome/.Main'
-      elif options.browser == 'chrome_beta' or options.browser == 'chrome_canary': # There is no Chrome Canary for Android, but Play store has 'Chrome Beta' instead.
-        browser_app = 'com.chrome.beta/com.android.chrome.Main'
+        browser_app = 'com.android.chrome/com.google.android.apps.chrome.Main'
+      elif options.browser == 'chrome_beta':
+        browser_app = 'com.chrome.beta/com.google.android.apps.chrome.Main'
+      elif options.browser == 'chrome_dev':
+        browser_app = 'com.chrome.dev/com.google.android.apps.chrome.Main'
+      elif options.browser == 'chrome_canary':
+        browser_app = 'com.chrome.canary/com.google.android.apps.chrome.Main'
       elif options.browser == 'opera':
         browser_app = 'com.opera.browser/com.opera.Opera'
       elif options.browser == 'opera_mini': # Launching the URL works, but page seems to never load (Fails with 'Network problem' even when other browsers work)
