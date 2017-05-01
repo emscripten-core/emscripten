@@ -96,6 +96,85 @@ target = None
 script_src = None # if set, we have a script to load with a src attribute
 script_inline = None # if set, we have the contents of a script to write inline in a script
 
+
+class JSOptimizer:
+  queue = []
+  extra_info = {}
+  queue_history = []
+  blacklist = (os.environ.get('EMCC_JSOPT_BLACKLIST') or '').split(',')
+  minify_whitespace = False
+  cleanup_shell = False
+
+  @staticmethod
+  def flush(title='js_opts'):
+    JSOptimizer.queue = filter(lambda p: p not in JSOptimizer.blacklist, JSOptimizer.queue)
+
+    assert not shared.Settings.WASM_BACKEND, 'JSOptimizer should not run with pure wasm output'
+
+    if JSOptimizer.extra_info is not None and len(JSOptimizer.extra_info) == 0:
+      JSOptimizer.extra_info = None
+
+    if len(JSOptimizer.queue) > 0 and not(not shared.Settings.ASM_JS and len(JSOptimizer.queue) == 1 and JSOptimizer.queue[0] == 'last'):
+
+      def run_passes(passes, title, just_split, just_concat):
+        global final, target
+        passes = ['asm'] + passes
+        if shared.Settings.PRECISE_F32:
+          passes = ['asmPreciseF32'] + passes
+        if (emit_symbol_map or shared.Settings.CYBERDWARF) and 'minifyNames' in passes:
+          passes += ['symbolMap=' + target + '.symbols']
+        if profiling_funcs and 'minifyNames' in passes:
+          passes += ['profilingFuncs']
+        if JSOptimizer.minify_whitespace and 'last' in passes:
+          passes += ['minifyWhitespace']
+        if JSOptimizer.cleanup_shell and 'last' in passes:
+          passes += ['cleanup']
+        logging.debug('applying js optimization passes: %s', ' '.join(passes))
+        misc_temp_files.note(final)
+        final = shared.Building.js_optimizer(final, passes, debug_level >= 4, JSOptimizer.extra_info, just_split=just_split, just_concat=just_concat)
+        misc_temp_files.note(final)
+        js_transform_tempfiles.append(final)
+        if DEBUG: save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
+
+      passes = JSOptimizer.queue[:]
+
+      if DEBUG != '2' or len(passes) < 2:
+        # by assumption, our input is JS, and our output is JS. If a pass is going to run in the native optimizer in C++, then we
+        # must give it JSON and receive from it JSON
+        chunks = []
+        curr = []
+        for p in passes:
+          if len(curr) == 0:
+            curr.append(p)
+          else:
+            native = shared.js_optimizer.use_native(p, source_map=debug_level >= 4)
+            last_native = shared.js_optimizer.use_native(curr[-1], source_map=debug_level >= 4)
+            if native == last_native:
+              curr.append(p)
+            else:
+              curr.append('emitJSON')
+              chunks.append(curr)
+              curr = ['receiveJSON', p]
+        if len(curr) > 0:
+          chunks.append(curr)
+        if len(chunks) == 1:
+          run_passes(chunks[0], title, just_split=False, just_concat=False)
+        else:
+          for i in range(len(chunks)):
+            run_passes(chunks[i], 'js_opts_' + str(i), just_split='receiveJSON' in chunks[i], just_concat='emitJSON' in chunks[i])
+      else:
+        # DEBUG 2, run each pass separately
+        extra_info = JSOptimizer.extra_info
+        for p in passes:
+          JSOptimizer.queue = [p]
+          JSOptimizer.flush(p)
+          JSOptimizer.extra_info = extra_info # flush wipes it
+          log_time('part of js opts')
+      JSOptimizer.queue_history += JSOptimizer.queue
+      JSOptimizer.queue = []
+    JSOptimizer.extra_info = {}
+
+
 #
 # Main run() function
 #
@@ -1826,83 +1905,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('js opts'):
       # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
-      class JSOptimizer:
-        queue = []
-        extra_info = {}
-        queue_history = []
-        blacklist = (os.environ.get('EMCC_JSOPT_BLACKLIST') or '').split(',')
-        minify_whitespace = False
-        cleanup_shell = False
-
-        @staticmethod
-        def flush(title='js_opts'):
-          JSOptimizer.queue = filter(lambda p: p not in JSOptimizer.blacklist, JSOptimizer.queue)
-
-          assert not shared.Settings.WASM_BACKEND, 'JSOptimizer should not run with pure wasm output'
-
-          if JSOptimizer.extra_info is not None and len(JSOptimizer.extra_info) == 0:
-            JSOptimizer.extra_info = None
-
-          if len(JSOptimizer.queue) > 0 and not(not shared.Settings.ASM_JS and len(JSOptimizer.queue) == 1 and JSOptimizer.queue[0] == 'last'):
-
-            def run_passes(passes, title, just_split, just_concat):
-              global final, target
-              passes = ['asm'] + passes
-              if shared.Settings.PRECISE_F32:
-                passes = ['asmPreciseF32'] + passes
-              if (emit_symbol_map or shared.Settings.CYBERDWARF) and 'minifyNames' in passes:
-                passes += ['symbolMap=' + target + '.symbols']
-              if profiling_funcs and 'minifyNames' in passes:
-                passes += ['profilingFuncs']
-              if JSOptimizer.minify_whitespace and 'last' in passes:
-                passes += ['minifyWhitespace']
-              if JSOptimizer.cleanup_shell and 'last' in passes:
-                passes += ['cleanup']
-              logging.debug('applying js optimization passes: %s', ' '.join(passes))
-              misc_temp_files.note(final)
-              final = shared.Building.js_optimizer(final, passes, debug_level >= 4, JSOptimizer.extra_info, just_split=just_split, just_concat=just_concat)
-              misc_temp_files.note(final)
-              js_transform_tempfiles.append(final)
-              if DEBUG: save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
-
-            passes = JSOptimizer.queue[:]
-
-            if DEBUG != '2' or len(passes) < 2:
-              # by assumption, our input is JS, and our output is JS. If a pass is going to run in the native optimizer in C++, then we
-              # must give it JSON and receive from it JSON
-              chunks = []
-              curr = []
-              for p in passes:
-                if len(curr) == 0:
-                  curr.append(p)
-                else:
-                  native = shared.js_optimizer.use_native(p, source_map=debug_level >= 4)
-                  last_native = shared.js_optimizer.use_native(curr[-1], source_map=debug_level >= 4)
-                  if native == last_native:
-                    curr.append(p)
-                  else:
-                    curr.append('emitJSON')
-                    chunks.append(curr)
-                    curr = ['receiveJSON', p]
-              if len(curr) > 0:
-                chunks.append(curr)
-              if len(chunks) == 1:
-                run_passes(chunks[0], title, just_split=False, just_concat=False)
-              else:
-                for i in range(len(chunks)):
-                  run_passes(chunks[i], 'js_opts_' + str(i), just_split='receiveJSON' in chunks[i], just_concat='emitJSON' in chunks[i])
-            else:
-              # DEBUG 2, run each pass separately
-              extra_info = JSOptimizer.extra_info
-              for p in passes:
-                JSOptimizer.queue = [p]
-                JSOptimizer.flush(p)
-                JSOptimizer.extra_info = extra_info # flush wipes it
-                log_time('part of js opts')
-            JSOptimizer.queue_history += JSOptimizer.queue
-            JSOptimizer.queue = []
-          JSOptimizer.extra_info = {}
-
       if shared.Settings.DEAD_FUNCTIONS:
         JSOptimizer.queue += ['eliminateDeadFuncs']
         JSOptimizer.extra_info['dead_functions'] = shared.Settings.DEAD_FUNCTIONS
@@ -2261,6 +2263,35 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # If we were asked to also generate HTML, do that
       if final_suffix == 'html':
+        generate_html(target, shell_path, js_target, target_basename, proxy_to_worker,
+                      separate_asm, memory_init_file, wasm_binary_target, output_eol)
+      else: # final_suffix != html
+        if proxy_to_worker:
+          shutil.move(js_target, js_target[:-3] + '.worker.js') # compiler output goes in .worker.js file
+          worker_target_basename = target_basename + '.worker'
+          target_contents = open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read())
+          open(target, 'w').write(target_contents)
+
+      for f in generated_text_files_with_native_eols:
+        tools.line_endings.convert_line_endings_in_file(f, os.linesep, output_eol)
+    log_time('final emitting')
+    # exit block 'final emitting'
+
+    if DEBUG: logging.debug('total time: %.2f seconds', (time.time() - start_time))
+
+  finally:
+    if not TEMP_DIR:
+      try:
+        shutil.rmtree(temp_dir)
+      except:
+        pass
+    else:
+      logging.info('emcc saved files are in:' + temp_dir)
+
+
+def generate_html(target, shell_path, js_target, target_basename, proxy_to_worker,
+                  separate_asm, memory_init_file, wasm_binary_target, output_eol):
+        global script_src, script_inline
         logging.debug('generating HTML')
         shell = open(shell_path).read()
         assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
@@ -2397,28 +2428,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', output_eol)
         html.write(html_contents)
         html.close()
-      else: # final_suffix != html
-        if proxy_to_worker:
-          shutil.move(js_target, js_target[:-3] + '.worker.js') # compiler output goes in .worker.js file
-          worker_target_basename = target_basename + '.worker'
-          target_contents = open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read())
-          open(target, 'w').write(target_contents)
 
-      for f in generated_text_files_with_native_eols:
-        tools.line_endings.convert_line_endings_in_file(f, os.linesep, output_eol)
-    log_time('final emitting')
-    # exit block 'final emitting'
-
-    if DEBUG: logging.debug('total time: %.2f seconds', (time.time() - start_time))
-
-  finally:
-    if not TEMP_DIR:
-      try:
-        shutil.rmtree(temp_dir)
-      except:
-        pass
-    else:
-      logging.info('emcc saved files are in:' + temp_dir)
 
 if __name__ == '__main__':
   run()
