@@ -262,6 +262,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           continue
         if not use_js and el == '-s' and is_minus_s_for_emcc(argv, idx): # skip -s X=Y if not using js for configure
           skip_next = True
+        if not use_js and el == '--tracing':
+          pass
         else:
           yield el
         idx += 1
