@@ -2301,27 +2301,27 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
 def generate_html(target, shell_path, js_target, target_basename, proxy_to_worker,
                   separate_asm, memory_init_file, wasm_binary_target, output_eol):
-        global script_src, script_inline
-        logging.debug('generating HTML')
-        shell = open(shell_path).read()
-        assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
-        base_js_target = os.path.basename(js_target)
+  global script_src, script_inline
+  logging.debug('generating HTML')
+  shell = open(shell_path).read()
+  assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
+  base_js_target = os.path.basename(js_target)
 
-        def un_src(): # use this if you want to modify the script and need it to be inline
-          global script_src, script_inline
-          if script_src is None: return
-          script_inline = '''
+  def un_src(): # use this if you want to modify the script and need it to be inline
+    global script_src, script_inline
+    if script_src is None: return
+    script_inline = '''
           var script = document.createElement('script');
           script.src = "%s";
           document.body.appendChild(script);
 ''' % script_src
-          script_src = None
+    script_src = None
 
-        asm_mods = []
+  asm_mods = []
 
-        if proxy_to_worker:
-          child_js = shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename
-          script_inline = '''
+  if proxy_to_worker:
+    child_js = shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename
+    script_inline = '''
   if ((',' + window.location.search.substr(1) + ',').indexOf(',noProxy,') < 0) {
     console.log('running code in a web worker');
 ''' + open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + shared.read_and_preprocess(shared.path_from_root('src', 'proxyClient.js')).replace('{{{ filename }}}', child_js).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read()) + '''
@@ -2333,17 +2333,17 @@ def generate_html(target, shell_path, js_target, target_basename, proxy_to_worke
     document.body.appendChild(script);
   }
 ''' % child_js
-        else:
-          # Normal code generation path
-          script_src = base_js_target
+  else:
+    # Normal code generation path
+    script_src = base_js_target
 
-          from tools import client_mods
-          asm_mods = client_mods.get_mods(shared.Settings, minified = 'minifyNames' in JSOptimizer.queue_history, separate_asm = separate_asm)
+    from tools import client_mods
+    asm_mods = client_mods.get_mods(shared.Settings, minified = 'minifyNames' in JSOptimizer.queue_history, separate_asm = separate_asm)
 
-        if shared.Settings.EMTERPRETIFY_FILE:
-          # We need to load the emterpreter file before anything else, it has to be synchronously ready
-          un_src()
-          script_inline = '''
+  if shared.Settings.EMTERPRETIFY_FILE:
+    # We need to load the emterpreter file before anything else, it has to be synchronously ready
+    un_src()
+    script_inline = '''
           var emterpretXHR = new XMLHttpRequest();
           emterpretXHR.open('GET', '%s', true);
           emterpretXHR.responseType = 'arraybuffer';
@@ -2354,10 +2354,10 @@ def generate_html(target, shell_path, js_target, target_basename, proxy_to_worke
           emterpretXHR.send(null);
 ''' % (shared.Settings.EMTERPRETIFY_FILE, script_inline)
 
-        if memory_init_file:
-          # start to load the memory init file in the HTML, in parallel with the JS
-          un_src()
-          script_inline = ('''
+  if memory_init_file:
+    # start to load the memory init file in the HTML, in parallel with the JS
+    un_src()
+    script_inline = ('''
           (function() {
             var memoryInitializer = '%s';
             if (typeof Module['locateFile'] === 'function') {
@@ -2372,13 +2372,13 @@ def generate_html(target, shell_path, js_target, target_basename, proxy_to_worke
           })();
 ''' % os.path.basename(memfile)) + script_inline
 
-        # Download .asm.js if --separate-asm was passed in an asm.js build, or if 'asmjs' is one
-        # of the wasm run methods.
-        if separate_asm and (not shared.Settings.BINARYEN or 'asmjs' in shared.Settings.BINARYEN_METHOD):
-          un_src()
-          if len(asm_mods) == 0:
-            # just load the asm, then load the rest
-            script_inline = '''
+  # Download .asm.js if --separate-asm was passed in an asm.js build, or if 'asmjs' is one
+  # of the wasm run methods.
+  if separate_asm and (not shared.Settings.BINARYEN or 'asmjs' in shared.Settings.BINARYEN_METHOD):
+    un_src()
+    if len(asm_mods) == 0:
+      # just load the asm, then load the rest
+      script_inline = '''
     var script = document.createElement('script');
     script.src = "%s";
     script.onload = function() {
@@ -2388,9 +2388,9 @@ def generate_html(target, shell_path, js_target, target_basename, proxy_to_worke
     };
     document.body.appendChild(script);
 ''' % (os.path.basename(asm_target), script_inline)
-          else:
-            # may need to modify the asm code, load it as text, modify, and load asynchronously
-            script_inline = '''
+    else:
+      # may need to modify the asm code, load it as text, modify, and load asynchronously
+      script_inline = '''
     var codeXHR = new XMLHttpRequest();
     codeXHR.open('GET', '%s', true);
     codeXHR.onload = function() {
@@ -2411,13 +2411,13 @@ def generate_html(target, shell_path, js_target, target_basename, proxy_to_worke
     };
     codeXHR.send(null);
 ''' % (os.path.basename(asm_target), '\n'.join(asm_mods), script_inline)
-        else:
-          assert len(asm_mods) == 0, 'no --separate-asm means no client code mods are possible'
+  else:
+    assert len(asm_mods) == 0, 'no --separate-asm means no client code mods are possible'
 
-        if shared.Settings.BINARYEN and not shared.Settings.BINARYEN_ASYNC_COMPILATION:
-          # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize
-          un_src()
-          script_inline = '''
+  if shared.Settings.BINARYEN and not shared.Settings.BINARYEN_ASYNC_COMPILATION:
+    # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize
+    un_src()
+    script_inline = '''
           var wasmXHR = new XMLHttpRequest();
           wasmXHR.open('GET', '%s', true);
           wasmXHR.responseType = 'arraybuffer';
@@ -2428,16 +2428,16 @@ def generate_html(target, shell_path, js_target, target_basename, proxy_to_worke
           wasmXHR.send(null);
 ''' % (os.path.basename(wasm_binary_target), script_inline)
 
-        html = open(target, 'wb')
-        assert (script_src or script_inline) and not (script_src and script_inline)
-        if script_src:
-          script_replacement = '<script async type="text/javascript" src="%s"></script>' % urllib.quote(script_src)
-        else:
-          script_replacement = '<script>\n%s\n</script>' % script_inline
-        html_contents = shell.replace('{{{ SCRIPT }}}', script_replacement)
-        html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', output_eol)
-        html.write(html_contents)
-        html.close()
+  html = open(target, 'wb')
+  assert (script_src or script_inline) and not (script_src and script_inline)
+  if script_src:
+    script_replacement = '<script async type="text/javascript" src="%s"></script>' % urllib.quote(script_src)
+  else:
+    script_replacement = '<script>\n%s\n</script>' % script_inline
+  html_contents = shell.replace('{{{ SCRIPT }}}', script_replacement)
+  html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', output_eol)
+  html.write(html_contents)
+  html.close()
 
 
 def generate_worker_js(target, js_target, target_basename):
