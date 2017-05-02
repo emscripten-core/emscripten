@@ -2038,56 +2038,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('final emitting'):
       if shared.Settings.EMTERPRETIFY:
-        optimizer.flush()
-        logging.debug('emterpretifying')
-        import json
-        try:
-          # move temp js to final position, alongside its mem init file
-          shutil.move(final, js_target)
-          args = [shared.PYTHON, shared.path_from_root('tools', 'emterpretify.py'), js_target, final + '.em.js', json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST), json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST), '', str(shared.Settings.SWAPPABLE_ASM_MODULE)]
-          if shared.Settings.EMTERPRETIFY_ASYNC:
-            args += ['ASYNC=1']
-          if shared.Settings.EMTERPRETIFY_ADVISE:
-            args += ['ADVISE=1']
-          if profiling or profiling_funcs:
-            args += ['PROFILING=1']
-          if shared.Settings.ASSERTIONS:
-            args += ['ASSERTIONS=1']
-          if shared.Settings.PRECISE_F32:
-            args += ['FROUND=1']
-          if shared.Settings.ALLOW_MEMORY_GROWTH:
-            args += ['MEMORY_SAFE=1']
-          if shared.Settings.EMTERPRETIFY_FILE:
-            args += ['FILE="' + shared.Settings.EMTERPRETIFY_FILE + '"']
-          execute(args)
-          final = final + '.em.js'
-        finally:
-          shared.try_delete(js_target)
-
-        if shared.Settings.EMTERPRETIFY_ADVISE:
-          logging.warning('halting compilation due to EMTERPRETIFY_ADVISE')
-          sys.exit(0)
-
-        # minify (if requested) after emterpreter processing, and finalize output
-        logging.debug('finalizing emterpreted code')
-        shared.Settings.FINALIZE_ASM_JS = 1
-        if not shared.Settings.BINARYEN:
-          optimizer.do_minify()
-        optimizer.queue += ['last']
-        optimizer.flush()
-
-        # finalize the original as well, if we will be swapping it in (TODO: add specific option for this)
-        if shared.Settings.SWAPPABLE_ASM_MODULE:
-          real = final
-          original = js_target + '.orig.js' # the emterpretify tool saves the original here
-          final = original
-          logging.debug('finalizing original (non-emterpreted) code at ' + final)
-          if not shared.Settings.BINARYEN:
-            optimizer.do_minify()
-          optimizer.queue += ['last']
-          optimizer.flush()
-          safe_move(final, original)
-          final = real
+        emterpretify(js_target, optimizer, profiling, profiling_funcs)
 
       # Remove some trivial whitespace # TODO: do not run when compress has already been done on all parts of the code
       #src = open(final).read()
@@ -2147,6 +2098,60 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         pass
     else:
       logging.info('emcc saved files are in:' + temp_dir)
+
+
+def emterpretify(js_target, optimizer, profiling, profiling_funcs):
+  global final
+  optimizer.flush()
+  logging.debug('emterpretifying')
+  import json
+  try:
+    # move temp js to final position, alongside its mem init file
+    shutil.move(final, js_target)
+    args = [shared.PYTHON, shared.path_from_root('tools', 'emterpretify.py'), js_target, final + '.em.js', json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST), json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST), '', str(shared.Settings.SWAPPABLE_ASM_MODULE)]
+    if shared.Settings.EMTERPRETIFY_ASYNC:
+      args += ['ASYNC=1']
+    if shared.Settings.EMTERPRETIFY_ADVISE:
+      args += ['ADVISE=1']
+    if profiling or profiling_funcs:
+      args += ['PROFILING=1']
+    if shared.Settings.ASSERTIONS:
+      args += ['ASSERTIONS=1']
+    if shared.Settings.PRECISE_F32:
+      args += ['FROUND=1']
+    if shared.Settings.ALLOW_MEMORY_GROWTH:
+      args += ['MEMORY_SAFE=1']
+    if shared.Settings.EMTERPRETIFY_FILE:
+      args += ['FILE="' + shared.Settings.EMTERPRETIFY_FILE + '"']
+    execute(args)
+    final = final + '.em.js'
+  finally:
+    shared.try_delete(js_target)
+
+  if shared.Settings.EMTERPRETIFY_ADVISE:
+    logging.warning('halting compilation due to EMTERPRETIFY_ADVISE')
+    sys.exit(0)
+
+  # minify (if requested) after emterpreter processing, and finalize output
+  logging.debug('finalizing emterpreted code')
+  shared.Settings.FINALIZE_ASM_JS = 1
+  if not shared.Settings.BINARYEN:
+    optimizer.do_minify()
+  optimizer.queue += ['last']
+  optimizer.flush()
+
+  # finalize the original as well, if we will be swapping it in (TODO: add specific option for this)
+  if shared.Settings.SWAPPABLE_ASM_MODULE:
+    real = final
+    original = js_target + '.orig.js' # the emterpretify tool saves the original here
+    final = original
+    logging.debug('finalizing original (non-emterpreted) code at ' + final)
+    if not shared.Settings.BINARYEN:
+      optimizer.do_minify()
+    optimizer.queue += ['last']
+    optimizer.flush()
+    safe_move(final, original)
+    final = real
 
 
 def emit_source_maps(target, js_transform_tempfiles):
