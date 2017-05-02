@@ -1284,6 +1284,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
         assert not shared.Settings.SPLIT_MEMORY, 'WebAssembly does not support split memory'
         assert not shared.Settings.USE_PTHREADS, 'WebAssembly does not support pthreads'
+        if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS:
+          logging.warning('for wasm there is no need to set ELIMINATE_DUPLICATE_FUNCTIONS, the binaryen optimizer does it automatically')
+          shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 0
         # if root was not specified in -s, it might be fixed in ~/.emscripten, copy from there
         if not shared.Settings.BINARYEN_ROOT:
           try:

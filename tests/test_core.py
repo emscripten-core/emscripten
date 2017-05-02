@@ -41,7 +41,8 @@ def no_wasm_backend(note=''):
 # Async wasm compilation can't work in some tests, they are set up synchronously
 def sync(f):
   def decorated(self):
-    self.emcc_args += ['-s', 'BINARYEN_ASYNC_COMPILATION=0'] # test is set up synchronously
+    if self.is_wasm():
+      self.emcc_args += ['-s', 'BINARYEN_ASYNC_COMPILATION=0'] # test is set up synchronously
     f(self)
   return decorated
 
@@ -5399,19 +5400,20 @@ def process(filename):
     test()
     num_original_funcs = self.count_funcs('src.cpp.o.js')
 
-    # Run with duplicate function elimination turned on
-    dfe_supported_opt_levels = ['-O2', '-O3', '-Oz', '-Os']
+    if not self.is_wasm(): # wasm does this all the time
+      # Run with duplicate function elimination turned on
+      dfe_supported_opt_levels = ['-O2', '-O3', '-Oz', '-Os']
 
-    for opt_level in dfe_supported_opt_levels:
-      if opt_level in self.emcc_args:
-        print >> sys.stderr, "Testing poppler with ELIMINATE_DUPLICATE_FUNCTIONS set to 1"
-        Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 1
-        test()
+      for opt_level in dfe_supported_opt_levels:
+        if opt_level in self.emcc_args:
+          print >> sys.stderr, "Testing poppler with ELIMINATE_DUPLICATE_FUNCTIONS set to 1"
+          Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 1
+          test()
 
-        # Make sure that DFE ends up eliminating more than 200 functions (if we can view source)
-        if not self.is_wasm():
-          assert (num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
-        break
+          # Make sure that DFE ends up eliminating more than 200 functions (if we can view source)
+          if not self.is_wasm():
+            assert (num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
+          break
 
   @sync
   def test_openjpeg(self):
