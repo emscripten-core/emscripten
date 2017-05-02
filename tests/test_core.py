@@ -5398,7 +5398,6 @@ def process(filename):
                      #, build_ll_hook=self.do_autodebug)
 
     test()
-    num_original_funcs = self.count_funcs('src.cpp.o.js')
 
     if not self.is_wasm(): # wasm does this all the time
       # Run with duplicate function elimination turned on
@@ -5407,12 +5406,11 @@ def process(filename):
       for opt_level in dfe_supported_opt_levels:
         if opt_level in self.emcc_args:
           print >> sys.stderr, "Testing poppler with ELIMINATE_DUPLICATE_FUNCTIONS set to 1"
+          num_original_funcs = self.count_funcs('src.cpp.o.js')
           Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 1
           test()
-
           # Make sure that DFE ends up eliminating more than 200 functions (if we can view source)
-          if not self.is_wasm():
-            assert (num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
+          assert (num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
           break
 
   @sync
