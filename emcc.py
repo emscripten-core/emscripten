@@ -2110,17 +2110,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # track files that will need native eols
       generated_text_files_with_native_eols = []
 
-      # Separate out the asm.js code, if asked. Or, if necessary for another option
       if (separate_asm or shared.Settings.BINARYEN) and not shared.Settings.WASM_BACKEND:
-        logging.debug('separating asm')
-        subprocess.check_call([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), final, asm_target, final])
+        separate_asm_js(final, asm_target)
         generated_text_files_with_native_eols += [asm_target]
-
-        # extra only-my-code logic
-        if shared.Settings.ONLY_MY_CODE:
-          temp = asm_target + '.only.js'
-          print jsrun.run_js(shared.path_from_root('tools', 'js-optimizer.js'), shared.NODE_JS, args=[asm_target, 'eliminateDeadGlobals', 'last', 'asm'], stdout=open(temp, 'w'))
-          shutil.move(temp, asm_target)
 
       binaryen_method_sanity_check()
       if shared.Settings.BINARYEN:
@@ -2161,6 +2153,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         pass
     else:
       logging.info('emcc saved files are in:' + temp_dir)
+
+
+def separate_asm_js(final, asm_target):
+  """Separate out the asm.js code, if asked. Or, if necessary for another option"""
+  logging.debug('separating asm')
+  subprocess.check_call([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), final, asm_target, final])
+
+  # extra only-my-code logic
+  if shared.Settings.ONLY_MY_CODE:
+    temp = asm_target + '.only.js'
+    print jsrun.run_js(shared.path_from_root('tools', 'js-optimizer.js'), shared.NODE_JS, args=[asm_target, 'eliminateDeadGlobals', 'last', 'asm'], stdout=open(temp, 'w'))
+    shutil.move(temp, asm_target)
 
 
 def binaryen_method_sanity_check():
