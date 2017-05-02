@@ -126,33 +126,33 @@ def log_time(name):
 
 
 class JSOptimizer:
-  queue = []
-  extra_info = {}
-  queue_history = []
-  blacklist = (os.environ.get('EMCC_JSOPT_BLACKLIST') or '').split(',')
-  minify_whitespace = False
-  cleanup_shell = False
+  def __init__(self):
+    self.queue = []
+    self.extra_info = {}
+    self.queue_history = []
+    self.blacklist = (os.environ.get('EMCC_JSOPT_BLACKLIST') or '').split(',')
+    self.minify_whitespace = False
+    self.cleanup_shell = False
 
-  # Temp : figure out better way to pass this data to relevant functions
-  opt_level = 0
-  debug_level = 0
-  emit_symbol_map = False
-  profiling_funcs = False
-  use_closure_compiler = False
-  misc_temp_files = None
-  js_transform_tempfiles = None
+    # Temp : figure out better way to pass this data to relevant functions
+    self.opt_level = 0
+    self.debug_level = 0
+    self.emit_symbol_map = False
+    self.profiling_funcs = False
+    self.use_closure_compiler = False
+    self.misc_temp_files = None
+    self.js_transform_tempfiles = None
 
-  @staticmethod
-  def flush(title='js_opts'):
-    JSOptimizer.queue = filter(lambda p: p not in JSOptimizer.blacklist, JSOptimizer.queue)
+  def flush(self, title='js_opts'):
+    self.queue = filter(lambda p: p not in self.blacklist, self.queue)
 
     assert not shared.Settings.WASM_BACKEND, 'JSOptimizer should not run with pure wasm output'
 
-    if JSOptimizer.extra_info is not None and len(JSOptimizer.extra_info) == 0:
-      JSOptimizer.extra_info = None
+    if self.extra_info is not None and len(self.extra_info) == 0:
+      self.extra_info = None
 
-    if len(JSOptimizer.queue) > 0 and not(not shared.Settings.ASM_JS and len(JSOptimizer.queue) == 1 and JSOptimizer.queue[0] == 'last'):
-      passes = JSOptimizer.queue[:]
+    if len(self.queue) > 0 and not(not shared.Settings.ASM_JS and len(self.queue) == 1 and self.queue[0] == 'last'):
+      passes = self.queue[:]
 
       if DEBUG != '2' or len(passes) < 2:
         # by assumption, our input is JS, and our output is JS. If a pass is going to run in the native optimizer in C++, then we
@@ -163,8 +163,8 @@ class JSOptimizer:
           if len(curr) == 0:
             curr.append(p)
           else:
-            native = shared.js_optimizer.use_native(p, source_map=JSOptimizer.debug_level >= 4)
-            last_native = shared.js_optimizer.use_native(curr[-1], source_map=JSOptimizer.debug_level >= 4)
+            native = shared.js_optimizer.use_native(p, source_map=self.debug_level >= 4)
+            last_native = shared.js_optimizer.use_native(curr[-1], source_map=self.debug_level >= 4)
             if native == last_native:
               curr.append(p)
             else:
@@ -174,63 +174,61 @@ class JSOptimizer:
         if len(curr) > 0:
           chunks.append(curr)
         if len(chunks) == 1:
-          JSOptimizer.run_passes(chunks[0], title, just_split=False, just_concat=False)
+          self.run_passes(chunks[0], title, just_split=False, just_concat=False)
         else:
           for i in range(len(chunks)):
-            JSOptimizer.run_passes(chunks[i], 'js_opts_' + str(i), just_split='receiveJSON' in chunks[i], just_concat='emitJSON' in chunks[i])
+            self.run_passes(chunks[i], 'js_opts_' + str(i), just_split='receiveJSON' in chunks[i], just_concat='emitJSON' in chunks[i])
       else:
         # DEBUG 2, run each pass separately
-        extra_info = JSOptimizer.extra_info
+        extra_info = self.extra_info
         for p in passes:
-          JSOptimizer.queue = [p]
-          JSOptimizer.flush(p)
-          JSOptimizer.extra_info = extra_info # flush wipes it
+          self.queue = [p]
+          self.flush(p)
+          self.extra_info = extra_info # flush wipes it
           log_time('part of js opts')
-      JSOptimizer.queue_history += JSOptimizer.queue
-      JSOptimizer.queue = []
-    JSOptimizer.extra_info = {}
+      self.queue_history += self.queue
+      self.queue = []
+    self.extra_info = {}
 
-  @staticmethod
-  def run_passes(passes, title, just_split, just_concat):
+  def run_passes(self, passes, title, just_split, just_concat):
     global final, target
     passes = ['asm'] + passes
     if shared.Settings.PRECISE_F32:
       passes = ['asmPreciseF32'] + passes
-    if (JSOptimizer.emit_symbol_map or shared.Settings.CYBERDWARF) and 'minifyNames' in passes:
+    if (self.emit_symbol_map or shared.Settings.CYBERDWARF) and 'minifyNames' in passes:
       passes += ['symbolMap=' + target + '.symbols']
-    if JSOptimizer.profiling_funcs and 'minifyNames' in passes:
+    if self.profiling_funcs and 'minifyNames' in passes:
       passes += ['profilingFuncs']
-    if JSOptimizer.minify_whitespace and 'last' in passes:
+    if self.minify_whitespace and 'last' in passes:
       passes += ['minifyWhitespace']
-    if JSOptimizer.cleanup_shell and 'last' in passes:
+    if self.cleanup_shell and 'last' in passes:
       passes += ['cleanup']
     logging.debug('applying js optimization passes: %s', ' '.join(passes))
-    JSOptimizer.misc_temp_files.note(final)
-    final = shared.Building.js_optimizer(final, passes, JSOptimizer.debug_level >= 4, JSOptimizer.extra_info, just_split=just_split, just_concat=just_concat)
-    JSOptimizer.misc_temp_files.note(final)
-    JSOptimizer.js_transform_tempfiles.append(final)
+    self.misc_temp_files.note(final)
+    final = shared.Building.js_optimizer(final, passes, self.debug_level >= 4, self.extra_info, just_split=just_split, just_concat=just_concat)
+    self.misc_temp_files.note(final)
+    self.js_transform_tempfiles.append(final)
     if DEBUG: save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
 
-  @staticmethod
-  def do_minify():
+  def do_minify(self):
     """minifies the code.
 
     this is also when we do certain optimizations that must be done right before or after minification
     """
     if shared.Settings.SPLIT_MEMORY:
       # must be done before minification
-      JSOptimizer.queue += ['splitMemory', 'simplifyExpressions']
+      self.queue += ['splitMemory', 'simplifyExpressions']
 
-    if JSOptimizer.opt_level >= 2:
-      if JSOptimizer.debug_level < 2 and not JSOptimizer.use_closure_compiler == 2:
-        JSOptimizer.queue += ['minifyNames']
-      if JSOptimizer.debug_level == 0:
-        JSOptimizer.minify_whitespace = True
+    if self.opt_level >= 2:
+      if self.debug_level < 2 and not self.use_closure_compiler == 2:
+        self.queue += ['minifyNames']
+      if self.debug_level == 0:
+        self.minify_whitespace = True
 
-    if JSOptimizer.use_closure_compiler == 1:
-      JSOptimizer.queue += ['closure']
-    elif JSOptimizer.debug_level <= 2 and shared.Settings.FINALIZE_ASM_JS and not JSOptimizer.use_closure_compiler:
-      JSOptimizer.cleanup_shell = True
+    if self.use_closure_compiler == 1:
+      self.queue += ['closure']
+    elif self.debug_level <= 2 and shared.Settings.FINALIZE_ASM_JS and not self.use_closure_compiler:
+      self.cleanup_shell = True
 
 
 #
@@ -1935,26 +1933,27 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # exit block 'memory initializer'
     log_time('memory initializer')
 
+    optimizer = JSOptimizer()
     with ToolchainProfiler.profile_block('js opts'):
       # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
-      JSOptimizer.opt_level = opt_level
-      JSOptimizer.debug_level = debug_level
-      JSOptimizer.emit_symbol_map = emit_symbol_map
-      JSOptimizer.profiling_funcs = profiling_funcs
-      JSOptimizer.use_closure_compiler = use_closure_compiler
-      JSOptimizer.misc_temp_files = misc_temp_files
-      JSOptimizer.js_transform_tempfiles = js_transform_tempfiles
+      optimizer.opt_level = opt_level
+      optimizer.debug_level = debug_level
+      optimizer.emit_symbol_map = emit_symbol_map
+      optimizer.profiling_funcs = profiling_funcs
+      optimizer.use_closure_compiler = use_closure_compiler
+      optimizer.misc_temp_files = misc_temp_files
+      optimizer.js_transform_tempfiles = js_transform_tempfiles
 
       if shared.Settings.DEAD_FUNCTIONS:
-        JSOptimizer.queue += ['eliminateDeadFuncs']
-        JSOptimizer.extra_info['dead_functions'] = shared.Settings.DEAD_FUNCTIONS
+        optimizer.queue += ['eliminateDeadFuncs']
+        optimizer.extra_info['dead_functions'] = shared.Settings.DEAD_FUNCTIONS
 
       if opt_level >= 1 and js_opts:
         logging.debug('running js post-opts')
 
         if DEBUG == '2':
           # Clean up the syntax a bit
-          JSOptimizer.queue += ['noop']
+          optimizer.queue += ['noop']
 
         def get_eliminate():
           if shared.Settings.ALLOW_MEMORY_GROWTH:
@@ -1963,21 +1962,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             return 'eliminate'
 
         if opt_level >= 2:
-          JSOptimizer.queue += [get_eliminate()]
+          optimizer.queue += [get_eliminate()]
 
           if shared.Settings.AGGRESSIVE_VARIABLE_ELIMINATION:
             # note that this happens before registerize/minification, which can obfuscate the name of 'label', which is tricky
-            JSOptimizer.queue += ['aggressiveVariableElimination']
+            optimizer.queue += ['aggressiveVariableElimination']
 
-          JSOptimizer.queue += ['simplifyExpressions']
+          optimizer.queue += ['simplifyExpressions']
 
           if shared.Settings.EMTERPRETIFY:
             # emterpreter code will not run through a JS optimizing JIT, do more work ourselves
-            JSOptimizer.queue += ['localCSE']
+            optimizer.queue += ['localCSE']
 
       if shared.Settings.EMTERPRETIFY:
         # add explicit label setting, as we will run aggressiveVariableElimination late, *after* 'label' is no longer notable by name
-        JSOptimizer.queue += ['safeLabelSetting']
+        optimizer.queue += ['safeLabelSetting']
 
       if opt_level >= 1 and js_opts:
         if opt_level >= 2:
@@ -1985,47 +1984,47 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # with commaified code breaks late aggressive variable elimination)
           # do not do this with binaryen, as commaifying confuses binaryen call type detection (FIXME, in theory, but unimportant)
           if shared.Settings.SIMPLIFY_IFS and (debug_level == 0 or profiling) and shared.Settings.OUTLINING_LIMIT == 0 and not shared.Settings.BINARYEN:
-            JSOptimizer.queue += ['simplifyIfs']
+            optimizer.queue += ['simplifyIfs']
 
-          if shared.Settings.PRECISE_F32: JSOptimizer.queue += ['optimizeFrounds']
+          if shared.Settings.PRECISE_F32: optimizer.queue += ['optimizeFrounds']
 
       if js_opts:
-        if shared.Settings.SAFE_HEAP: JSOptimizer.queue += ['safeHeap']
+        if shared.Settings.SAFE_HEAP: optimizer.queue += ['safeHeap']
 
         if shared.Settings.OUTLINING_LIMIT > 0:
-          JSOptimizer.queue += ['outline']
-          JSOptimizer.extra_info['sizeToOutline'] = shared.Settings.OUTLINING_LIMIT
+          optimizer.queue += ['outline']
+          optimizer.extra_info['sizeToOutline'] = shared.Settings.OUTLINING_LIMIT
 
         if opt_level >= 2 and debug_level < 3:
           if opt_level >= 3 or shrink_level > 0:
-            JSOptimizer.queue += ['registerizeHarder']
+            optimizer.queue += ['registerizeHarder']
           else:
-            JSOptimizer.queue += ['registerize']
+            optimizer.queue += ['registerize']
 
         # NOTE: Important that this comes after registerize/registerizeHarder
         if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS and opt_level >= 2:
-          JSOptimizer.flush()
+          optimizer.flush()
           shared.Building.eliminate_duplicate_funcs(final)
 
       if shared.Settings.EVAL_CTORS and memory_init_file and debug_level < 4 and not shared.Settings.BINARYEN:
-        JSOptimizer.flush()
+        optimizer.flush()
         shared.Building.eval_ctors(final, memfile)
         if DEBUG: save_intermediate('eval-ctors', 'js')
 
       if js_opts:
         # some compilation modes require us to minify later or not at all
         if not shared.Settings.EMTERPRETIFY and not shared.Settings.BINARYEN:
-          JSOptimizer.do_minify()
+          optimizer.do_minify()
 
         if opt_level >= 2:
-          JSOptimizer.queue += ['asmLastOpts']
+          optimizer.queue += ['asmLastOpts']
 
-        if shared.Settings.FINALIZE_ASM_JS: JSOptimizer.queue += ['last']
+        if shared.Settings.FINALIZE_ASM_JS: optimizer.queue += ['last']
 
-        JSOptimizer.flush()
+        optimizer.flush()
 
       if use_closure_compiler == 2:
-        JSOptimizer.flush()
+        optimizer.flush()
 
         logging.debug('running closure')
         # no need to add this to js_transform_tempfiles, because closure and
@@ -2038,7 +2037,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('final emitting'):
       if shared.Settings.EMTERPRETIFY:
-        JSOptimizer.flush()
+        optimizer.flush()
         logging.debug('emterpretifying')
         import json
         try:
@@ -2072,9 +2071,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logging.debug('finalizing emterpreted code')
         shared.Settings.FINALIZE_ASM_JS = 1
         if not shared.Settings.BINARYEN:
-          JSOptimizer.do_minify()
-        JSOptimizer.queue += ['last']
-        JSOptimizer.flush()
+          optimizer.do_minify()
+        optimizer.queue += ['last']
+        optimizer.flush()
 
         # finalize the original as well, if we will be swapping it in (TODO: add specific option for this)
         if shared.Settings.SWAPPABLE_ASM_MODULE:
@@ -2083,9 +2082,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           final = original
           logging.debug('finalizing original (non-emterpreted) code at ' + final)
           if not shared.Settings.BINARYEN:
-            JSOptimizer.do_minify()
-          JSOptimizer.queue += ['last']
-          JSOptimizer.flush()
+            optimizer.do_minify()
+          optimizer.queue += ['last']
+          optimizer.flush()
           safe_move(final, original)
           final = real
 
@@ -2127,7 +2126,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         (final, memory_init_file) = do_binaryen(
           final, asm_target, opt_level, shrink_level, memory_init_file, memfile,
           debug_level, profiling_funcs, emit_symbol_map, wasm_binary_target,
-          wasm_text_target, misc_temp_files, use_closure_compiler
+          wasm_text_target, misc_temp_files, use_closure_compiler, optimizer
         )
 
       if shared.Settings.MODULARIZE:
@@ -2175,7 +2174,7 @@ def binaryen_method_sanity_check():
 
 def do_binaryen(final, asm_target, opt_level, shrink_level, memory_init_file, memfile,
                 debug_level, profiling_funcs, emit_symbol_map, wasm_binary_target,
-                wasm_text_target, misc_temp_files, use_closure_compiler):
+                wasm_text_target, misc_temp_files, use_closure_compiler, optimizer):
   logging.debug('using binaryen, with method: ' + shared.Settings.BINARYEN_METHOD)
   binaryen_bin = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin')
   # Emit wasm.js at the top of the js. This is *not* optimized with the rest of the code, since
@@ -2295,17 +2294,17 @@ def do_binaryen(final, asm_target, opt_level, shrink_level, memory_init_file, me
       sys.exit(0) # and we are done.
   if opt_level >= 2:
     # minify the JS
-    JSOptimizer.do_minify() # calculate how to minify
-    if JSOptimizer.cleanup_shell or JSOptimizer.minify_whitespace or use_closure_compiler:
+    optimizer.do_minify() # calculate how to minify
+    if optimizer.cleanup_shell or optimizer.minify_whitespace or use_closure_compiler:
       misc_temp_files.note(final)
       if DEBUG: save_intermediate('preclean', 'js')
       if use_closure_compiler:
         logging.debug('running closure on shell code')
-        final = shared.Building.closure_compiler(final, pretty=not JSOptimizer.minify_whitespace)
+        final = shared.Building.closure_compiler(final, pretty=not optimizer.minify_whitespace)
       else:
-        assert JSOptimizer.cleanup_shell
+        assert optimizer.cleanup_shell
         logging.debug('running cleanup on shell code')
-        final = shared.Building.js_optimizer_no_asmjs(final, ['noPrintMetadata', 'JSDCE', 'last'] + (['minifyWhitespace'] if JSOptimizer.minify_whitespace else []))
+        final = shared.Building.js_optimizer_no_asmjs(final, ['noPrintMetadata', 'JSDCE', 'last'] + (['minifyWhitespace'] if optimizer.minify_whitespace else []))
       if DEBUG: save_intermediate('postclean', 'js')
   return (final, memory_init_file)
 
@@ -2329,7 +2328,7 @@ def modularize(final):
 
 
 def generate_html(target, shell_path, js_target, target_basename, proxy_to_worker,
-                  separate_asm, memory_init_file, wasm_binary_target, output_eol):
+                  separate_asm, memory_init_file, wasm_binary_target, output_eol, optimizer):
   global script_src, script_inline
   logging.debug('generating HTML')
   shell = open(shell_path).read()
@@ -2367,7 +2366,7 @@ def generate_html(target, shell_path, js_target, target_basename, proxy_to_worke
     script_src = base_js_target
 
     from tools import client_mods
-    asm_mods = client_mods.get_mods(shared.Settings, minified = 'minifyNames' in JSOptimizer.queue_history, separate_asm = separate_asm)
+    asm_mods = client_mods.get_mods(shared.Settings, minified = 'minifyNames' in optimizer.queue_history, separate_asm = separate_asm)
 
   if shared.Settings.EMTERPRETIFY_FILE:
     # We need to load the emterpreter file before anything else, it has to be synchronously ready
