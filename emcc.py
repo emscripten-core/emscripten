@@ -2098,14 +2098,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.CYBERDWARF:
           execute([shared.PYTHON, shared.path_from_root('tools', 'emdebug_cd_merger.py'), target + '.cd', target+'.symbols'])
 
-      # Emit source maps, if needed
       if debug_level >= 4:
-        logging.debug('generating source maps')
-        jsrun.run_js(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),
-          shared.NODE_JS, js_transform_tempfiles +
-            ['--sourceRoot', os.getcwd(),
-             '--mapFileBaseName', target,
-             '--offset', str(0)])
+        emit_source_maps(target, js_transform_tempfiles)
 
       # track files that will need native eols
       generated_text_files_with_native_eols = []
@@ -2153,6 +2147,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         pass
     else:
       logging.info('emcc saved files are in:' + temp_dir)
+
+
+def emit_source_maps(target, js_transform_tempfiles):
+  logging.debug('generating source maps')
+  jsrun.run_js(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),
+    shared.NODE_JS, js_transform_tempfiles +
+      ['--sourceRoot', os.getcwd(),
+        '--mapFileBaseName', target,
+        '--offset', str(0)])
 
 
 def separate_asm_js(final, asm_target):
