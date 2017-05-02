@@ -2122,14 +2122,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           print jsrun.run_js(shared.path_from_root('tools', 'js-optimizer.js'), shared.NODE_JS, args=[asm_target, 'eliminateDeadGlobals', 'last', 'asm'], stdout=open(temp, 'w'))
           shutil.move(temp, asm_target)
 
-      if shared.Settings.BINARYEN_METHOD:
-        methods = shared.Settings.BINARYEN_METHOD.split(',')
-        valid_methods = ['asmjs', 'native-wasm', 'interpret-s-expr', 'interpret-binary', 'interpret-asm2wasm']
-        for m in methods:
-          if not m.strip() in valid_methods:
-            logging.error('Unrecognized BINARYEN_METHOD "' + m.strip() + '" specified! Please pass a comma-delimited list containing one or more of: ' + ','.join(valid_methods))
-            sys.exit(1)
-
+      binaryen_method_sanity_check()
       if shared.Settings.BINARYEN:
         (final, memory_init_file) = do_binaryen(
           final, asm_target, opt_level, shrink_level, memory_init_file, memfile,
@@ -2168,6 +2161,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         pass
     else:
       logging.info('emcc saved files are in:' + temp_dir)
+
+
+def binaryen_method_sanity_check():
+  if shared.Settings.BINARYEN_METHOD:
+    methods = shared.Settings.BINARYEN_METHOD.split(',')
+    valid_methods = ['asmjs', 'native-wasm', 'interpret-s-expr', 'interpret-binary', 'interpret-asm2wasm']
+    for m in methods:
+      if not m.strip() in valid_methods:
+        logging.error('Unrecognized BINARYEN_METHOD "' + m.strip() + '" specified! Please pass a comma-delimited list containing one or more of: ' + ','.join(valid_methods))
+        sys.exit(1)
 
 
 def do_binaryen(final, asm_target, opt_level, shrink_level, memory_init_file, memfile,
