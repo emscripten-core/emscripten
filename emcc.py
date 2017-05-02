@@ -126,7 +126,8 @@ def log_time(name):
 
 
 class JSOptimizer:
-  def __init__(self):
+  def __init__(self, opt_level, debug_level, emit_symbol_map, profiling_funcs,
+               use_closure_compiler, misc_temp_files, js_transform_tempfiles):
     self.queue = []
     self.extra_info = {}
     self.queue_history = []
@@ -134,14 +135,13 @@ class JSOptimizer:
     self.minify_whitespace = False
     self.cleanup_shell = False
 
-    # Temp : figure out better way to pass this data to relevant functions
-    self.opt_level = 0
-    self.debug_level = 0
-    self.emit_symbol_map = False
-    self.profiling_funcs = False
-    self.use_closure_compiler = False
-    self.misc_temp_files = None
-    self.js_transform_tempfiles = None
+    self.opt_level = opt_level
+    self.debug_level = debug_level
+    self.emit_symbol_map = emit_symbol_map
+    self.profiling_funcs = profiling_funcs
+    self.use_closure_compiler = use_closure_compiler
+    self.misc_temp_files = misc_temp_files
+    self.js_transform_tempfiles = js_transform_tempfiles
 
   def flush(self, title='js_opts'):
     self.queue = filter(lambda p: p not in self.blacklist, self.queue)
@@ -1933,16 +1933,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # exit block 'memory initializer'
     log_time('memory initializer')
 
-    optimizer = JSOptimizer()
+    optimizer = JSOptimizer(
+      opt_level=opt_level,
+      debug_level=debug_level,
+      emit_symbol_map=emit_symbol_map,
+      profiling_funcs=profiling_funcs,
+      use_closure_compiler=use_closure_compiler,
+      misc_temp_files=misc_temp_files,
+      js_transform_tempfiles=js_transform_tempfiles,
+    )
     with ToolchainProfiler.profile_block('js opts'):
       # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
-      optimizer.opt_level = opt_level
-      optimizer.debug_level = debug_level
-      optimizer.emit_symbol_map = emit_symbol_map
-      optimizer.profiling_funcs = profiling_funcs
-      optimizer.use_closure_compiler = use_closure_compiler
-      optimizer.misc_temp_files = misc_temp_files
-      optimizer.js_transform_tempfiles = js_transform_tempfiles
 
       if shared.Settings.DEAD_FUNCTIONS:
         optimizer.queue += ['eliminateDeadFuncs']
