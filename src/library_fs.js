@@ -1165,7 +1165,7 @@ mergeInto(LibraryManager.library, {
       }
       stream.stream_ops.allocate(stream, offset, length);
     },
-    mmap: function(stream, buffer, offset, length, position, prot, flags) {
+    mmap: function(stream, offset, length, position, prot, flags) {
       // TODO if PROT is PROT_WRITE, make sure we have write access
       if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_WRONLY')}}}) {
         throw new FS.ErrnoError(ERRNO_CODES.EACCES);
@@ -1173,7 +1173,7 @@ mergeInto(LibraryManager.library, {
       if (!stream.stream_ops.mmap) {
         throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
       }
-      return stream.stream_ops.mmap(stream, buffer, offset, length, position, prot, flags);
+      return stream.stream_ops.mmap(stream, offset, length, position, prot, flags);
     },
     msync: function(stream, buffer, offset, length, mmapFlags) {
       if (!stream || !stream.stream_ops.msync) {
