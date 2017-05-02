@@ -7503,6 +7503,52 @@ int main() {
       print 'sizes:', sizes
       assert sizes[1] < sizes[0], 'ignoring implicit traps must reduce code size'
 
+  # test disabling of JS FFI legalization
+  def test_legalize_js_ffi(self):
+    with clean_write_access_to_canonical_temp_dir():
+      for (args,js_ffi) in [
+          (['-s', 'LEGALIZE_JS_FFI=1', '-s', 'SIDE_MODULE=1', '-O2', ], True),
+          (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'SIDE_MODULE=1', '-O2', ], False),
+          (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'SIDE_MODULE=1', '-O0', ], False),
+          (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'SIDE_MODULE=0', '-O0'], False),
+        ]:
+        print args
+        try_delete('a.out.wasm')
+        try_delete('a.out.wast')
+        cmd = [PYTHON, EMCC, path_from_root('tests', 'other', 'ffi.c'), '-s', 'WASM=1', '-g', '-o', 'a.out.js'] + args
+        print ' '.join(cmd)
+        proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
+        output, err = proc.communicate()
+        assert proc.returncode == 0
+        text = open('a.out.wast').read()
+        #print "text: %s" % text
+        e_add_f32 = re.search('func \$_add_f \(param \$*. f32\) \(param \$*. f32\) \(result f32\)', text)
+        i_i64_i32 = re.search('import .*"_import_ll" .*\(param i32 i32\) \(result i32\)', text)
+        i_f32_f64 = re.search('import .*"_import_f" .*\(param f64\) \(result f64\)', text)
+        i_i64_i64 = re.search('import .*"_import_ll" .*\(param i64\) \(result i64\)', text)
+        i_f32_f32 = re.search('import .*"_import_f" .*\(param f32\) \(result f32\)', text)
+        e_i64_i32 = re.search('func \$_add_ll \(param \$*. i32\) \(param \$*. i32\) \(param \$*. i32\) \(param \$*. i32\) \(result i32\)', text)
+        e_f32_f64 = re.search('func \$legalstub\$_add_f \(param \$*. f64\) \(param \$*. f64\) \(result f64\)', text)
+        e_i64_i64 = re.search('func \$_add_ll \(param \$*. i64\) \(param \$*. i64\) \(result i64\)', text)
+        #print e_add_f32, i_i64_i32, i_f32_f64, i_i64_i64, i_f32_f32, e_i64_i32, e_f32_f64, e_i64_i64
+        assert e_add_f32, 'add_f export missing'
+        if js_ffi:
+          assert i_i64_i32,     'i64 not converted to i32 in imports'
+          assert i_f32_f64,     'f32 not converted to f64 in imports'
+          assert not i_i64_i64, 'i64 not converted to i32 in imports'
+          assert not i_f32_f32, 'f32 not converted to f64 in imports'
+          assert e_i64_i32,     'i64 not converted to i32 in exports'
+          assert e_f32_f64,     'f32 not converted to f64 in exports'
+          assert not e_i64_i64, 'i64 not converted to i32 in exports'
+        else:
+          assert not i_i64_i32, 'i64 converted to i32 in imports'
+          assert not i_f32_f64, 'f32 converted to f64 in imports'
+          assert i_i64_i64,     'i64 converted to i32 in imports'
+          assert i_f32_f32,     'f32 converted to f64 in imports'
+          assert not e_i64_i32, 'i64 converted to i32 in exports'
+          assert not e_f32_f64, 'f32 converted to f64 in exports'
+          assert e_i64_i64,     'i64 converted to i32 in exports'
+
   def test_sysconf_phys_pages(self):
     for args, expected in [
         ([], 1024),
