@@ -285,7 +285,7 @@ def eval_ctors_wasm(js, wasm_file, num):
   shared.logging.debug('wasm ctor cmd: ' + str(cmd))
   out, err = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
   num_successful = err.count('success on')
-
+  shared.logging.debug(err)
   if len(ctors) == len(all_ctors):
     new_ctors = ''
   else:
