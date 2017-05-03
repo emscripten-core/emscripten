@@ -1306,9 +1306,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         #  * if we also supported js mem inits we'd have 4 modes
         #  * and js mem inits are useful for avoiding a side file, but the wasm module avoids that anyhow
         memory_init_file = True
-        if shared.Building.is_wasm_only() and shared.Settings.EVAL_CTORS:
-          logging.debug('disabling EVAL_CTORS, as in wasm-only mode it hurts more than it helps. TODO: a wasm version of it')
-          shared.Settings.EVAL_CTORS = 0
         # async compilation requires wasm-only mode, and also not interpreting (the interpreter needs sync input)
         if shared.Settings.BINARYEN_ASYNC_COMPILATION == 1 and shared.Building.is_wasm_only() and 'interpret' not in shared.Settings.BINARYEN_METHOD:
           # async compilation requires a swappable module - we swap it in when it's ready
@@ -1327,9 +1324,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           sys.exit(1)
 
       if shared.Settings.EVAL_CTORS:
-        # this option is not a js optimizer pass, but does run the js optimizer internally, so
-        # we need to generate proper code for that
-        shared.Settings.RUNNING_JS_OPTS = 1
+        if not shared.Settings.BINARYEN:
+          # for asm.js: this option is not a js optimizer pass, but does run the js optimizer internally, so
+          # we need to generate proper code for that (for wasm, we run a binaryen tool for this)
+          shared.Settings.RUNNING_JS_OPTS = 1
+        else:
+          # for wasm, we really want no-exit-runtime, so that atexits don't stop us
+          if not shared.Settings.NO_EXIT_RUNTIME:
+            logging.warning('you should enable  -s NO_EXIT_RUNTIME=1  so that EVAL_CTORS can work at full efficiency (it gets rid of atexit calls which might disrupt EVAL_CTORS)')
 
       if shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.ASM_JS == 1:
         # this is an issue in asm.js, but not wasm
@@ -1969,7 +1971,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           JSOptimizer.flush()
           shared.Building.eliminate_duplicate_funcs(final)
 
-      if shared.Settings.EVAL_CTORS and memory_init_file and debug_level < 4:
+      if shared.Settings.EVAL_CTORS and memory_init_file and debug_level < 4 and not shared.Settings.BINARYEN:
         JSOptimizer.flush()
         shared.Building.eval_ctors(final, memfile)
         if DEBUG: save_intermediate('eval-ctors', 'js')
@@ -2196,6 +2198,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           for script in shared.Settings.BINARYEN_SCRIPTS.split(','):
             logging.debug('running binaryen script: ' + script)
             subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), final, wasm_text_target], env=script_env)
+        if shared.Settings.EVAL_CTORS:
+          shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin)
         # after generating the wasm, do some final operations
         if not shared.Settings.WASM_BACKEND:
           if shared.Settings.SIDE_MODULE:
