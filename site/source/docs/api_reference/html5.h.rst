@@ -2044,6 +2044,16 @@ Functions
 	:rtype: |EMSCRIPTEN_WEBGL_CONTEXT_HANDLE|
 	
 	
+	
+.. c:function:: void emscripten_webgl_get_drawing_buffer_size(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context, int *width, int *height)
+
+	Gets the drawingBufferWidth/drawingBufferHeight of the specified WebGL context.
+
+	:param EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context: The WebGL context to get width/height of.
+	:param int* width: The context's drawingBufferWidth.
+	:param int* height: The context's drawingBufferHeight.
+	
+
 .. c:function:: EMSCRIPTEN_RESULT emscripten_webgl_destroy_context(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context)
 
 	Deletes the given WebGL context. If that context was active, then the no context is set to active.

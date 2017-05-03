@@ -1865,6 +1865,12 @@ var LibraryJSEvents = {
     return GL.currentContext ? GL.currentContext.handle : 0;
   },
 
+  emscripten_webgl_get_drawing_buffer_size: function(contextHandle, width, height) {
+    var GLContext = GL.getContext(contextHandle).GLctx;
+    {{{ makeSetValue('width', '0', 'GLContext.drawingBufferWidth', 'i32') }}};
+    {{{ makeSetValue('height', '0', 'GLContext.drawingBufferHeight', 'i32') }}};
+  },
+
   emscripten_webgl_commit_frame: function() {
     if (!GL.currentContext || !GL.currentContext.GLctx) {
 #if GL_DEBUG
