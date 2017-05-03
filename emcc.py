@@ -2185,6 +2185,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           cmd = [os.path.join(binaryen_bin, 'wasm-dis'), wasm_binary_target, '-o', wasm_text_target]
           logging.debug('wasm-dis (binary => text): ' + ' '.join(cmd))
           subprocess.check_call(cmd)
+
+          # The .wast file is only needed when targeting output mode that interprets it. Otherwise clean it up.
+          if not 'interpret-s-expr' in shared.Settings.BINARYEN_METHOD and not DEBUG:
+            shared.try_delete(wasm_text_target)
+
         if shared.Settings.BINARYEN_SCRIPTS:
           binaryen_scripts = os.path.join(shared.Settings.BINARYEN_ROOT, 'scripts')
           script_env = os.environ.copy()
