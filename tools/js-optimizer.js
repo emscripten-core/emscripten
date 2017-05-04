@@ -2606,6 +2606,10 @@ function registerizeHarder(ast) {
     });
     if (abort) return;
 
+    // Do not process the dceable helper function for wasm, which declares
+    // types, we need to alive for asm2wasm
+    if (fun[1] == '__emscripten_dceable_type_decls') return;
+
     var asmData = normalizeAsm(fun);
 
     var localVars = asmData.vars;
