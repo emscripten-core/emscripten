@@ -1300,8 +1300,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if js_opts and not force_js_opts and 'asmjs' not in shared.Settings.BINARYEN_METHOD:
           js_opts = None
           logging.debug('asm.js opts not forced by user or an option that depends them, and we do not intend to run the asm.js, so disabling and leaving opts to the binaryen optimizer')
-        if use_closure_compiler:
-          logging.warning('closure compiler is known to have issues with binaryen (FIXME)')
+        assert not use_closure_compiler == 2, 'closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm'
         # for simplicity, we always have a mem init file, which may also be imported into the wasm module.
         #  * if we also supported js mem inits we'd have 4 modes
         #  * and js mem inits are useful for avoiding a side file, but the wasm module avoids that anyhow
