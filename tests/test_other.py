@@ -5342,49 +5342,50 @@ int main(void) {
           del os.environ['EMCONFIGURE_JS']
 
   def test_emcc_c_multi(self):
-    def test(args, llvm_opts=None):
-      print args
-      lib = r'''
-        int mult() { return 1; }
-      '''
+    with clean_write_access_to_canonical_temp_dir():
+      def test(args, llvm_opts=None):
+        print args
+        lib = r'''
+          int mult() { return 1; }
+        '''
 
-      lib_name = 'libA.c'
-      open(lib_name, 'w').write(lib)
-      main = r'''
-        #include <stdio.h>
-        int mult();
-        int main() {
-          printf("result: %d\n", mult());
-          return 0;
-        }
-      '''
-      main_name = 'main.c'
-      open(main_name, 'w').write(main)
+        lib_name = 'libA.c'
+        open(lib_name, 'w').write(lib)
+        main = r'''
+          #include <stdio.h>
+          int mult();
+          int main() {
+            printf("result: %d\n", mult());
+            return 0;
+          }
+        '''
+        main_name = 'main.c'
+        open(main_name, 'w').write(main)
 
-      if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
-      try:
-        os.environ['EMCC_DEBUG'] = '1'
-        out, err = Popen([PYTHON, EMCC, '-c', main_name, lib_name] + args, stderr=PIPE).communicate()
-      finally:
-        del os.environ['EMCC_DEBUG']
+        if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+        try:
+          os.environ['EMCC_DEBUG'] = '1'
+          out, err = Popen([PYTHON, EMCC, '-c', main_name, lib_name] + args, stderr=PIPE).communicate()
+        finally:
+          del os.environ['EMCC_DEBUG']
 
-      VECTORIZE = '-disable-loop-vectorization'
+        VECTORIZE = '-disable-loop-vectorization'
 
-      if args:
-        assert err.count(VECTORIZE) == 2, err # specified twice, once per file
+        if args:
+          assert err.count(VECTORIZE) == 2, err # specified twice, once per file
 
-        assert err.count('emcc: LLVM opts: ' + llvm_opts + ' ' + VECTORIZE) == 2, err # exactly once per invocation of optimizer
-      else:
-        assert err.count(VECTORIZE) == 0, err # no optimizations
+          assert err.count('emcc: LLVM opts: ' + llvm_opts + ' ' + VECTORIZE) == 2, err # exactly once per invocation of optimizer
+        else:
+          assert err.count(VECTORIZE) == 0, err # no optimizations
 
-      Popen([PYTHON, EMCC, main_name.replace('.c', '.o'), lib_name.replace('.c', '.o')]).communicate()
+        Popen([PYTHON, EMCC, main_name.replace('.c', '.o'), lib_name.replace('.c', '.o')]).communicate()
 
-      self.assertContained('result: 1', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+        self.assertContained('result: 1', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
-    test([])
-    test(['-O2'], '-O3')
-    test(['-Oz'], '-Oz')
-    test(['-Os'], '-Os')
+      test([])
+      test(['-O2'], '-O3')
+      test(['-Oz'], '-Oz')
+      test(['-Os'], '-Os')
 
   def test_export_all_3142(self):
     open('src.cpp', 'w').write(r'''
