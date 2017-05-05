@@ -395,6 +395,8 @@ var LibraryGLFW = {
       GLFW.active.joys[joy] = {
         index: event.gamepad.index,
         id: allocate(intArrayFromString(event.gamepad.id), 'i8', ALLOC_NORMAL),
+        buttonsCount: event.gamepad.buttons.length,
+        axesCount: event.gamepad.axes.length,
         buttons: allocate(new Array(event.gamepad.buttons.length), 'i8', ALLOC_NORMAL),
         axes: allocate(new Array(event.gamepad.axes.length), 'float', ALLOC_NORMAL)
       };
@@ -412,7 +414,9 @@ var LibraryGLFW = {
         Module['dynCall_vii'](GLFW.active.joystickFunc, joy, 0x00040002); // GLFW_DISCONNECTED
       }
 
-      // TODO: free memory .axes, .buttons
+      _free(GLFW.active.joys[joy].id);
+      _free(GLFW.active.joys[joy].buttons);
+      //_free(GLFW.active.joys[joy].axes); // TODO: fix abort, corrupted memory?
 
       delete GLFW.active.gamepad2joy[event.gamepad.index];
       delete GLFW.active.joys[joy];
@@ -691,13 +695,13 @@ var LibraryGLFW = {
       var gamepad = navigator.getGamepads()[j.index];
       if (!gamepad) return;
 
-      j.buttonsCount = gamepad.buttons.length;
-      for (var i = 0; i < gamepad.buttons.length; ++i) {
+      assert(gamepad.buttons.length === j.buttonsCount);
+      for (var i = 0; i < j.buttonsCount;  ++i) {
         setValue(j.buttons + i, gamepad.buttons[i].pressed, 'i8');
       }
 
-      j.axesCount = gamepad.axes.length;
-      for (var i = 0; i < gamepad.axes.length; ++i) {
+      assert(gamepad.axes.length === j.axesCount);
+      for (var i = 0; i < j.axesCount; ++i) {
         setValue(j.axes + i*4, gamepad.axes[i], 'float');
       }
     },
