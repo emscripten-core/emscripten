@@ -520,8 +520,12 @@ f.close()
           # Run Cmake
           cmd = [emconfigure, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
 
+          env = os.environ.copy()
+          # https://github.com/kripken/emscripten/pull/5145: Check that CMake works even if EMCC_SKIP_SANITY_CHECK=1 is passed.
+          if test_dir == 'target_html':
+            env['EMCC_SKIP_SANITY_CHECK'] = '1'
           print str(cmd)
-          ret = Popen(cmd, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else PIPE).communicate()
+          ret = Popen(cmd, env=env, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else PIPE).communicate()
           if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
             logging.error(ret[1]) # If there were any errors, print them directly to console for diagnostics.
           if len(ret) > 1 and ret[1] != None and 'error' in ret[1].lower():
