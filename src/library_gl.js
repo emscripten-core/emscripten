@@ -445,7 +445,7 @@ var LibraryGL = {
           if (webGLContextAttributes['majorVersion'] == 1 && webGLContextAttributes['minorVersion'] == 0) {
             ctx = canvas.getContext("webgl", webGLContextAttributes) || canvas.getContext("experimental-webgl", webGLContextAttributes);
           } else if (webGLContextAttributes['majorVersion'] == 2 && webGLContextAttributes['minorVersion'] == 0) {
-            ctx = canvas.getContext("webgl2", webGLContextAttributes) || canvas.getContext("experimental-webgl2", webGLContextAttributes);
+            ctx = canvas.getContext("webgl2", webGLContextAttributes);
           } else {
             throw 'Unsupported WebGL context version ' + majorVersion + '.' + minorVersion + '!'
           }
