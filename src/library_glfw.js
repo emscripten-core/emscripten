@@ -386,8 +386,6 @@ var LibraryGLFW = {
     },
 
     onGamepadConnected: function(event) {
-      if (!GLFW.active.joystickFunc) return;
-
       // HTML5 Gamepad API reuses indexes
       // glfw joystick API spreads them out
       // http://www.glfw.org/docs/latest/input_guide.html#joystick
@@ -401,15 +399,18 @@ var LibraryGLFW = {
         axes: allocate(event.gamepad.axes, 'float', ALLOC_NORMAL)
       };
       GLFW.active.gamepad2joy[event.gamepad.index] = joy;
-      Module['dynCall_vii'](GLFW.active.joystickFunc, joy, 0x00040001); // GLFW_CONNECTED
+
+      if (GLFW.active.joystickFunc) {
+        Module['dynCall_vii'](GLFW.active.joystickFunc, joy, 0x00040001); // GLFW_CONNECTED
+      }
     },
 
     onGamepadDisconnected: function(event) {
-      if (!GLFW.active.joystickFunc) return;
-
       var joy = GLFW.active.gamepad2joy[event.gamepad.index];
 
-      Module['dynCall_vii'](GLFW.active.joystickFunc, joy, 0x00040002); // GLFW_DISCONNECTED
+      if (GLFW.active.joystickFunc) {
+        Module['dynCall_vii'](GLFW.active.joystickFunc, joy, 0x00040002); // GLFW_DISCONNECTED
+      }
 
       _free(joy.id);
       _free(joy.buttons);
