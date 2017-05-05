@@ -395,8 +395,8 @@ var LibraryGLFW = {
       GLFW.active.joys[joy] = {
         index: event.gamepad.index,
         id: allocate(intArrayFromString(event.gamepad.id), 'i8', ALLOC_NORMAL),
-        buttons: allocate(new Array(event.gamepad.buttons.length), 'float', ALLOC_NORMAL),
-        axes: allocate(event.gamepad.axes, 'float', ALLOC_NORMAL)
+        buttons: allocate(new Array(event.gamepad.buttons.length), 'i8', ALLOC_NORMAL),
+        axes: allocate(new Array(event.gamepad.axes.length), 'float', ALLOC_NORMAL)
       };
       GLFW.active.gamepad2joy[event.gamepad.index] = joy;
 
