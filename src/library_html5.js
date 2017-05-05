@@ -1866,9 +1866,14 @@ var LibraryJSEvents = {
   },
 
   emscripten_webgl_get_drawing_buffer_size: function(contextHandle, width, height) {
-    var GLContext = GL.getContext(contextHandle).GLctx;
-    {{{ makeSetValue('width', '0', 'GLContext.drawingBufferWidth', 'i32') }}};
-    {{{ makeSetValue('height', '0', 'GLContext.drawingBufferHeight', 'i32') }}};
+    var GLContext = GL.getContext(contextHandle);
+
+    if(!GLContext || !GLContext.GLctx || !width || !height) {
+      return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
+    }
+    {{{ makeSetValue('width', '0', 'GLContext.GLctx.drawingBufferWidth', 'i32') }}};
+    {{{ makeSetValue('height', '0', 'GLContext.GLctx.drawingBufferHeight', 'i32') }}};
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
   emscripten_webgl_commit_frame: function() {
