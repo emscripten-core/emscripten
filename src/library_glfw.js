@@ -1454,7 +1454,11 @@ var LibraryGLFW = {
   },
 
   glfwGetJoystickName: function(joy) {
-    return GLFW.active.joys[joy].id;
+    if (GLFW.active.joys[joy]) {
+      return GLFW.active.joys[joy].id;
+    } else {
+      return 0;
+    }
   },
 
   glfwSetJoystickCallback: function(cbfun) {
