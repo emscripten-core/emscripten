@@ -411,7 +411,9 @@ var LibraryGLFW = {
 
       Module['dynCall_vii'](GLFW.active.joystickFunc, joy, 0x00040002); // GLFW_DISCONNECTED
 
-      // TODO: free memory .axes, .buttons
+      _free(joy.id);
+      _free(joy.buttons);
+      _free(joy.axes);
 
       delete GLFW.active.index2joy[event.gamepad.index];
       delete GLFW.active.joys[joy];
