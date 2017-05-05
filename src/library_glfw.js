@@ -56,9 +56,9 @@ var LibraryGLFW = {
       };
       this.buttons = 0;
       this.keys = new Array();
-      this.joyLast = 0; // GLFW_JOYSTICK_1
-      this.joys = {};
-      this.index2joy = {};
+      this.joyLast = 0; // next available: GLFW_JOYSTICK_1, 2, ...
+      this.joys = {}; // glfw joystick data, indexed by glfw joy id
+      this.gamepad2joy = {}; // HTML5 Gamepad API index to glfw joy id
       this.domKeys = new Array();
       this.shouldClose = 0;
       this.title = null;
@@ -400,14 +400,14 @@ var LibraryGLFW = {
         buttons: allocate(new Array(event.gamepad.buttons.length), 'float', ALLOC_NORMAL),
         axes: allocate(event.gamepad.axes, 'float', ALLOC_NORMAL)
       };
-      GLFW.active.index2joy[event.gamepad.index] = joy;
+      GLFW.active.gamepad2joy[event.gamepad.index] = joy;
       Module['dynCall_vii'](GLFW.active.joystickFunc, joy, 0x00040001); // GLFW_CONNECTED
     },
 
     onGamepadDisconnected: function(event) {
       if (!GLFW.active.joystickFunc) return;
 
-      var joy = GLFW.active.index2joy[event.gamepad.index];
+      var joy = GLFW.active.gamepad2joy[event.gamepad.index];
 
       Module['dynCall_vii'](GLFW.active.joystickFunc, joy, 0x00040002); // GLFW_DISCONNECTED
 
@@ -415,7 +415,7 @@ var LibraryGLFW = {
       _free(joy.buttons);
       _free(joy.axes);
 
-      delete GLFW.active.index2joy[event.gamepad.index];
+      delete GLFW.active.gamepad2joy[event.gamepad.index];
       delete GLFW.active.joys[joy];
     },
 
