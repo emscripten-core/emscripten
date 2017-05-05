@@ -434,6 +434,8 @@ def create_backend_args(infile, temp_js, settings):
     args += ['-emscripten-global-base=%d' % settings['GLOBAL_BASE']]
   if settings['SIDE_MODULE']:
     args += ['-emscripten-side-module']
+  if settings['LEGALIZE_JS_FFI'] != 1:
+    args += ['-emscripten-legalize-javascript-ffi=0']
   if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
     args += ['-enable-emscripten-cpp-exceptions']
     if settings['DISABLE_EXCEPTION_CATCHING'] == 2:

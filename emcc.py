@@ -1368,6 +1368,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           newargs.append('-mllvm')
           newargs.append('-disable-llvm-optzns')
 
+      if not shared.Settings.LEGALIZE_JS_FFI:
+        assert shared.Building.is_wasm_only(), 'LEGALIZE_JS_FFI incompatible with RUNNING_JS_OPTS and non-wasm BINARYEN_METHOD.'
+
       shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
       shared.Settings.OPT_LEVEL = opt_level
       shared.Settings.DEBUG_LEVEL = debug_level
@@ -2145,6 +2148,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             cmd += ['--mem-max=-1']
           elif shared.Settings.BINARYEN_MEM_MAX >= 0:
             cmd += ['--mem-max=' + str(shared.Settings.BINARYEN_MEM_MAX)]
+          if shared.Settings.LEGALIZE_JS_FFI != 1:
+            cmd += ['--no-legalize-javascript-ffi']
           if shared.Building.is_wasm_only():
             cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, an can contain special fastcomp-wasm support
           if debug_level >= 2 or profiling_funcs:
