@@ -166,9 +166,7 @@ int main() {
 
   emscripten_async_call(main_2, NULL, 3000); // avoid startup delays and intermittent errors
 
-#ifdef __EMSCRIPTEN__
-  emscripten_set_main_loop(render, 0, 1);
-#else
+#ifndef __EMSCRIPTEN__
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
   }
