@@ -69,6 +69,13 @@ int main() {
   assert(modes_count == 1);
   assert(modes == mode);
 
+  GLFWmonitor *window_monitor = glfwGetWindowMonitor(g_window);
+  printf("glfwGetWindowMonitor = %p\n", window_monitor);
+  // http://www.glfw.org/docs/latest/window_guide.html#window_monitor
+  // "For windowed mode windows, this function returns NULL. This is
+  // how to tell full screen windows from windowed mode windows."
+  assert(!window_monitor);
+
 #ifdef REPORT_RESULT
   REPORT_RESULT();
 #endif
