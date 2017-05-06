@@ -19,8 +19,8 @@ void render() {
 int inFullscreen = 0;
 int wasFullscreen = 0;
 void windowSizeCallback(GLFWwindow* window, int width, int height) {
-#ifdef __EMSCRIPTEN__
-  int isInFullscreen = EM_ASM_INT_V(return !!(document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement));
+  int isInFullscreen = !!glfwGetWindowMonitor(window);
+
   if (isInFullscreen && !wasFullscreen) {
     printf("Successfully transitioned to fullscreen mode!\n");
     wasFullscreen = isInFullscreen;
@@ -33,12 +33,11 @@ void windowSizeCallback(GLFWwindow* window, int width, int height) {
     REPORT_RESULT();
 #endif
     wasFullscreen = isInFullscreen;
+#ifdef __EMSCRIPTEN__
     emscripten_cancel_main_loop();
+#endif
     return;
   }
-#else
-  // TODO
-#endif
 }
 
 void on_key(GLFWwindow *window, int key, int scancode, int action, int mods) {
@@ -131,6 +130,17 @@ int main() {
   // "For windowed mode windows, this function returns NULL. This is
   // how to tell full screen windows from windowed mode windows."
   assert(!window_monitor);
+
+  // Web browsers require a user gesture to enter fullscreen
+  // so this call is expected to fail (difference from the native glfw)
+  printf("calling glfwSetWindowMonitor() without user action\n");
+  glfwSetWindowMonitor(g_window, monitor, 0, 0, mode->width, mode->height, GLFW_DONT_CARE);
+  int isInFullscreen = !!glfwGetWindowMonitor(g_window);
+#ifdef __EMSCRIPTEN__
+  assert(!isInFullscreen);
+#else
+  assert(isInFullscreen);
+#endif
 
   printf("Press the F key to enter fullscreen, then press it again to exit\n");
 
