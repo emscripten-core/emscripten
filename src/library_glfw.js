@@ -651,6 +651,7 @@ var LibraryGLFW = {
 
     setJoystickCallback: function(cbfun) {
       GLFW.joystickFunc = cbfun;
+      GLFW.refreshJoysticks();
     },
 
     joys: {}, // glfw joystick data
