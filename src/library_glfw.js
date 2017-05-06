@@ -1212,6 +1212,7 @@ var LibraryGLFW = {
   glfwGetWindowMonitor: function(winid) {
     var win = GLFW.WindowFromId(winid);
     if (!win) return 0;
+
     return win.monitor;
   },
 

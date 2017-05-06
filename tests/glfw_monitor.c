@@ -19,6 +19,7 @@ void render() {
 int inFullscreen = 0;
 int wasFullscreen = 0;
 void windowSizeCallback(GLFWwindow* window, int width, int height) {
+#ifdef __EMSCRIPTEN__
   int isInFullscreen = EM_ASM_INT_V(return !!(document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement));
   if (isInFullscreen && !wasFullscreen) {
     printf("Successfully transitioned to fullscreen mode!\n");
@@ -35,6 +36,9 @@ void windowSizeCallback(GLFWwindow* window, int width, int height) {
     emscripten_cancel_main_loop();
     return;
   }
+#else
+  // TODO
+#endif
 }
 
 void on_key(GLFWwindow *window, int key, int scancode, int action, int mods) {
@@ -107,7 +111,7 @@ int main() {
     mode->redBits, mode->greenBits, mode->blueBits);
   assert(mode->width > 0);
   assert(mode->height > 0);
-  assert(mode->refreshRate == 60);
+  assert(mode->refreshRate > 0);
   assert(mode->redBits == 8);
   assert(mode->greenBits == 8);
   assert(mode->blueBits == 8);
@@ -116,8 +120,10 @@ int main() {
   const GLFWvidmode *modes = glfwGetVideoModes(monitor, &modes_count);
   printf("glfwGetVideoModes count = %d\n", modes_count);
   assert(modes);
+#ifdef __EMSCRIPTEN__
   assert(modes_count == 1);
   assert(modes == mode);
+#endif
 
   GLFWmonitor *window_monitor = glfwGetWindowMonitor(g_window);
   printf("glfwGetWindowMonitor = %p\n", window_monitor);
@@ -131,7 +137,8 @@ int main() {
 #ifdef __EMSCRIPTEN__
     emscripten_set_main_loop(render, 0, 1);
 #else
-  while (!glfwWindowShouldClose(window)) {
+  while (!glfwWindowShouldClose(g_window)) {
+    render();
     glfwPollEvents();
   }
 #endif
