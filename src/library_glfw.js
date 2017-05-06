@@ -1098,8 +1098,25 @@ var LibraryGLFW = {
     return 0;
   },
 
-  // TODO: implement
-  glfwGetVideoMode: function(monitor) { return 0; },
+  glfwGetVideoMode: function(monitor) {
+    if (!GLFW.videoMode) {
+      GLFW.videoMode = allocate([0, 0, 0, 0, 0, 0], 'i32', ALLOC_NORMAL);
+    }
+    setValue(GLFW.videoMode + 0*4, window.screen.width, 'i32');
+    setValue(GLFW.videoMode + 1*4, window.screen.height, 'i32');
+
+    var redBits = window.screen.colorDepth / 3;
+    var greenBits = window.screen.colorDepth / 3;
+    var blueBits = window.screen.colorDepth / 3;
+    setValue(GLFW.videoMode + 2*4, redBits, 'i32');
+    setValue(GLFW.videoMode + 3*4, greenBits, 'i32');
+    setValue(GLFW.videoMode + 4*4, blueBits, 'i32');
+
+    var refreshRate = 60; // TODO: estimate from requestAnimationFrame?
+    setValue(GLFW.videoMode + 5*4, refreshRate, 'i32');
+
+    return GLFW.videoMode;
+  },
 
   // TODO: implement
   glfwSetGamma: function(monitor, gamma) { },

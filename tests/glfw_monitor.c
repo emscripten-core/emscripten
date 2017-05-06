@@ -50,7 +50,21 @@ int main() {
   assert(monitor_count == 1);
   assert(monitors[0] == monitor);
 
+  const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+  assert(mode);
+  printf("video mode: %d x %d @ %d Hz, bits: %d/%d/%d\n",
+    mode->width, mode->height, mode->refreshRate,
+    mode->redBits, mode->greenBits, mode->blueBits);
+  assert(mode->width > 0);
+  assert(mode->height > 0);
+  assert(mode->refreshRate == 60);
+  assert(mode->redBits == 8);
+  assert(mode->greenBits == 8);
+  assert(mode->blueBits == 8);
+
+#ifdef REPORT_RESULT
   REPORT_RESULT();
+#endif
 
 #ifdef __EMSCRIPTEN__
     emscripten_set_main_loop(render, 0, 1);
