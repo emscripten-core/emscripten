@@ -670,7 +670,7 @@ var LibraryGLFW = {
             if (!GLFW.joys[joy]) {
               console.log('glfw joystick connected:',joy);
               GLFW.joys[joy] = {
-                id: allocate(intArrayFromString(event.gamepad.id), 'i8', ALLOC_NORMAL),
+                id: allocate(intArrayFromString(gamepad.id), 'i8', ALLOC_NORMAL),
                 buttonsCount: gamepad.buttons.length,
                 axesCount: gamepad.axes.length,
                 buttons: allocate(new Array(gamepad.buttons.length), 'i8', ALLOC_NORMAL),
