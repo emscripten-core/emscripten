@@ -10,6 +10,8 @@
 int result = 1;
 
 GLFWwindow* g_window;
+int window_width, window_height;
+int window_xpos, window_ypos;
 
 void render() {
   glClearColor(0.7f, 0.7f, 0.7f, 1.0f);
@@ -20,6 +22,12 @@ int inFullscreen = 0;
 int wasFullscreen = 0;
 void windowSizeCallback(GLFWwindow* window, int width, int height) {
   int isInFullscreen = !!glfwGetWindowMonitor(window);
+
+  if (!isInFullscreen) {
+    // Save windowed mode window size for restoration on fullscreen exit
+    window_width = width;
+    window_height = height;
+  }
 
   if (isInFullscreen && !wasFullscreen) {
     printf("Successfully transitioned to fullscreen mode!\n");
@@ -43,21 +51,13 @@ void windowSizeCallback(GLFWwindow* window, int width, int height) {
 void on_key(GLFWwindow *window, int key, int scancode, int action, int mods) {
   //printf("on_key %d\n", key);
 
+  if (action != GLFW_PRESS) return;
   if (key != GLFW_KEY_F) return;
 
   if (glfwGetWindowMonitor(window)) {
     printf("exiting fullscreen\n");
 
-    GLFWmonitor *monitor = NULL;
-
-    // TODO: set to previous values
-    int xpos = 0;
-    int ypos = 0;
-    int width = 0;
-    int height = 0;
-
-    glfwSetWindowMonitor(window, NULL, xpos, ypos, width, height, GLFW_DONT_CARE);
-
+    glfwSetWindowMonitor(window, NULL, window_xpos, window_ypos, window_width, window_height, GLFW_DONT_CARE);
   } else {
     printf("entering fullscreen\n");
     GLFWmonitor *monitor = glfwGetPrimaryMonitor();
@@ -90,8 +90,9 @@ int main() {
     return -1;
   }
   glfwMakeContextCurrent(g_window);
+  glfwGetWindowSize(g_window, &window_width, &window_height);
+  glfwGetWindowPos(g_window, &window_xpos, &window_ypos);
   glfwSetKeyCallback(g_window, on_key);
-  glfwSetWindowSizeCallback(g_window, windowSizeCallback);
 
   GLFWmonitor *monitor = glfwGetPrimaryMonitor();
   assert(monitor);
@@ -140,8 +141,10 @@ int main() {
   assert(!isInFullscreen);
 #else
   assert(isInFullscreen);
+  glfwSetWindowMonitor(g_window, NULL, window_xpos, window_ypos, window_width, window_height, GLFW_DONT_CARE);
 #endif
 
+  glfwSetWindowSizeCallback(g_window, windowSizeCallback);
   printf("Press the F key to enter fullscreen, then press it again to exit\n");
 
 #ifdef __EMSCRIPTEN__
@@ -149,6 +152,7 @@ int main() {
 #else
   while (!glfwWindowShouldClose(g_window)) {
     render();
+    glfwSwapBuffers(g_window);
     glfwPollEvents();
   }
 #endif
