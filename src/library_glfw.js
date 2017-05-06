@@ -17,7 +17,6 @@
  * - Input modes.
  * - Gamma ramps.
  * - Video modes.
- * - Monitors.
  * - Clipboard (not possible from javascript?).
  * - Multiple windows.
  * - Error codes && messages through callback.
