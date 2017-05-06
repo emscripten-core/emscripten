@@ -56,9 +56,7 @@ var LibraryGLFW = {
       };
       this.buttons = 0;
       this.keys = new Array();
-      this.joyLast = 0; // next available: GLFW_JOYSTICK_1, 2, ...
-      this.joys = {}; // glfw joystick data, indexed by glfw joy id
-      this.gamepad2joy = {}; // HTML5 Gamepad API index to glfw joy id
+      this.joys = {}; // glfw joystick data
       this.domKeys = new Array();
       this.shouldClose = 0;
       this.title = null;
@@ -386,12 +384,8 @@ var LibraryGLFW = {
     },
 
     onGamepadConnected: function(event) {
-      // HTML5 Gamepad API reuses indexes
-      // glfw joystick API spreads them out
-      // http://www.glfw.org/docs/latest/input_guide.html#joystick
-      // "Once a joystick is detected, it keeps its assigned index until it is disconnected,
-      // so as joysticks are connected and disconnected, they will become spread out."
-      var joy = GLFW.active.joyLast++;
+      var joy = event.gamepad.index;
+
       GLFW.active.joys[joy] = {
         index: event.gamepad.index,
         id: allocate(intArrayFromString(event.gamepad.id), 'i8', ALLOC_NORMAL),
@@ -400,7 +394,6 @@ var LibraryGLFW = {
         buttons: allocate(new Array(event.gamepad.buttons.length), 'i8', ALLOC_NORMAL),
         axes: allocate(new Array(event.gamepad.axes.length), 'float', ALLOC_NORMAL)
       };
-      GLFW.active.gamepad2joy[event.gamepad.index] = joy;
 
       if (GLFW.active.joystickFunc) {
         Module['dynCall_vii'](GLFW.active.joystickFunc, joy, 0x00040001); // GLFW_CONNECTED
@@ -408,7 +401,7 @@ var LibraryGLFW = {
     },
 
     onGamepadDisconnected: function(event) {
-      var joy = GLFW.active.gamepad2joy[event.gamepad.index];
+      var joy = event.gamepad.index;
 
       if (GLFW.active.joystickFunc) {
         Module['dynCall_vii'](GLFW.active.joystickFunc, joy, 0x00040002); // GLFW_DISCONNECTED
@@ -418,7 +411,6 @@ var LibraryGLFW = {
       _free(GLFW.active.joys[joy].buttons);
       //_free(GLFW.active.joys[joy].axes); // TODO: fix abort, corrupted memory?
 
-      delete GLFW.active.gamepad2joy[event.gamepad.index];
       delete GLFW.active.joys[joy];
     },
 
