@@ -1275,7 +1275,28 @@ var LibraryGLFW = {
 
   glfwFocusWindow: function(winid) {},
 
-  glfwSetWindowMonitor: function(winid, monitor, xpos, ypos, width, height, refreshRate) { throw "glfwSetWindowMonitor not implemented."; },
+  glfwSetWindowMonitor: function(winid, monitor, xpos, ypos, width, height, refreshRate) {
+    GLFW.active.monitor = monitor; // TODO: mask on whether actually in fullscreen
+    if (monitor) {
+      // TODO: use emscripten_request_fullscreen_strategy()
+      Module.requestFullscreen(1, 1);
+    } else {
+      // Null monitor exits fullscreen
+      // TODO: resize and reposition to given dimensions
+      // TODO: use emscripten_exit_fullscreen()
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      } else if (document.mozCancelFullScreen) {
+        document.mozCancelFullScreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else {
+        return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+      }
+    }
+  },
 
   glfwCreateCursor: function(image, xhot, yhot) {},
 
