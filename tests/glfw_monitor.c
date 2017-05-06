@@ -62,6 +62,13 @@ int main() {
   assert(mode->greenBits == 8);
   assert(mode->blueBits == 8);
 
+  int modes_count;
+  const GLFWvidmode *modes = glfwGetVideoModes(monitor, &modes_count);
+  printf("glfwGetVideoModes count = %d\n", modes_count);
+  assert(modes);
+  assert(modes_count == 1);
+  assert(modes == mode);
+
 #ifdef REPORT_RESULT
   REPORT_RESULT();
 #endif

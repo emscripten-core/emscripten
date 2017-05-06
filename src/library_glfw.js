@@ -87,6 +87,7 @@ var LibraryGLFW = {
     windows: null,
     monitors: null,
     monitorString: null,
+    videoMode: null,
     versionString: null,
     initialTime: null,
     extensions: null,
@@ -902,6 +903,27 @@ var LibraryGLFW = {
       Module.ctx = Browser.destroyContext(Module['canvas'], true, true);
     },
 
+    getScreenVideoMode: function() {
+      if (!GLFW.videoMode) {
+        GLFW.videoMode = allocate([0, 0, 0, 0, 0, 0], 'i32', ALLOC_NORMAL);
+      }
+
+      setValue(GLFW.videoMode + 0*4, window.screen.width, 'i32');
+      setValue(GLFW.videoMode + 1*4, window.screen.height, 'i32');
+
+      var redBits = window.screen.colorDepth / 3;
+      var greenBits = window.screen.colorDepth / 3;
+      var blueBits = window.screen.colorDepth / 3;
+      setValue(GLFW.videoMode + 2*4, redBits, 'i32');
+      setValue(GLFW.videoMode + 3*4, greenBits, 'i32');
+      setValue(GLFW.videoMode + 4*4, blueBits, 'i32');
+
+      var refreshRate = 60; // TODO: estimate from requestAnimationFrame?
+      setValue(GLFW.videoMode + 5*4, refreshRate, 'i32');
+
+      return GLFW.videoMode;
+    },
+
     swapBuffers: function(winid) {
     },
 
@@ -1092,30 +1114,14 @@ var LibraryGLFW = {
     GLFW.monitorFunc = cbfun;
   },
 
-  // TODO: implement
   glfwGetVideoModes: function(monitor, count) {
-    setValue(count, 0, 'i32');
-    return 0;
+    setValue(count, 1, 'i32');
+
+    return GLFW.getScreenVideoMode();
   },
 
   glfwGetVideoMode: function(monitor) {
-    if (!GLFW.videoMode) {
-      GLFW.videoMode = allocate([0, 0, 0, 0, 0, 0], 'i32', ALLOC_NORMAL);
-    }
-    setValue(GLFW.videoMode + 0*4, window.screen.width, 'i32');
-    setValue(GLFW.videoMode + 1*4, window.screen.height, 'i32');
-
-    var redBits = window.screen.colorDepth / 3;
-    var greenBits = window.screen.colorDepth / 3;
-    var blueBits = window.screen.colorDepth / 3;
-    setValue(GLFW.videoMode + 2*4, redBits, 'i32');
-    setValue(GLFW.videoMode + 3*4, greenBits, 'i32');
-    setValue(GLFW.videoMode + 4*4, blueBits, 'i32');
-
-    var refreshRate = 60; // TODO: estimate from requestAnimationFrame?
-    setValue(GLFW.videoMode + 5*4, refreshRate, 'i32');
-
-    return GLFW.videoMode;
+    return GLFW.getScreenVideoMode();
   },
 
   // TODO: implement
