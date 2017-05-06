@@ -674,7 +674,7 @@ var LibraryGLFW = {
                 buttonsCount: gamepad.buttons.length,
                 axesCount: gamepad.axes.length,
                 buttons: allocate(new Array(gamepad.buttons.length), 'i8', ALLOC_NORMAL),
-                axes: allocate(new Array(gamepad.axes.length), 'float', ALLOC_NORMAL)
+                axes: allocate(new Array(gamepad.axes.length*4), 'float', ALLOC_NORMAL)
               };
 
               if (GLFW.joystickFunc) {
@@ -701,7 +701,7 @@ var LibraryGLFW = {
 
               _free(GLFW.joys[joy].id);
               _free(GLFW.joys[joy].buttons);
-              //_free(GLFW.joys[joy].axes); // TODO: fix abort, corrupted memory?
+              _free(GLFW.joys[joy].axes);
 
               delete GLFW.joys[joy];
             }
