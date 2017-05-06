@@ -11,49 +11,9 @@ int result = 1;
 
 GLFWwindow* g_window;
 
-void render();
 void error_callback(int error, const char* description);
 
 int joy_connected = -1;
-
-void render() {
-  glClearColor(0.7f, 0.7f, 0.7f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT);
-
-  if (joy_connected == -1) return;
-
-  static struct {
-    int axes_count;
-    float axes[16];
-    int button_count;
-    unsigned char buttons[16];
-  } last_gamepad_state = {0};
-
-
-  int axes_count = 0;
-  const float *axes = glfwGetJoystickAxes(joy_connected, &axes_count);
-
-  int button_count = 0;
-  const unsigned char *buttons = glfwGetJoystickButtons(joy_connected, &button_count);
-
-  last_gamepad_state.axes_count = axes_count;
-  for (int i = 0; i < axes_count; ++i) {
-    if (last_gamepad_state.axes[i] != axes[i]) {
-      printf("axes %d = %f\n", i, axes[i]);
-    }
-
-    last_gamepad_state.axes[i] = axes[i];
-  }
-
-  last_gamepad_state.button_count =  button_count;
-  for (int i = 0; i < button_count; ++i) {
-    if (last_gamepad_state.buttons[i] != buttons[i]) {
-      printf("button %d = %d\n", i, buttons[i]);
-    }
-
-    last_gamepad_state.buttons[i] = buttons[i];
-  }
-}
 
 void joystick_callback(int joy, int event)
 {
