@@ -57,6 +57,8 @@ var LibraryGLFW = {
       this.buttons = 0;
       this.keys = new Array();
       this.joys = {}; // glfw joystick data
+      this.lastGamepadState = null;
+      this.lastGamepadStateFrame = null; // The integer value of Browser.mainLoop.currentFrameNumber of when the last gamepad state was produced.
       this.domKeys = new Array();
       this.shouldClose = 0;
       this.title = null;
@@ -384,34 +386,11 @@ var LibraryGLFW = {
     },
 
     onGamepadConnected: function(event) {
-      var joy = event.gamepad.index;
-
-      GLFW.active.joys[joy] = {
-        index: event.gamepad.index,
-        id: allocate(intArrayFromString(event.gamepad.id), 'i8', ALLOC_NORMAL),
-        buttonsCount: event.gamepad.buttons.length,
-        axesCount: event.gamepad.axes.length,
-        buttons: allocate(new Array(event.gamepad.buttons.length), 'i8', ALLOC_NORMAL),
-        axes: allocate(new Array(event.gamepad.axes.length), 'float', ALLOC_NORMAL)
-      };
-
-      if (GLFW.active.joystickFunc) {
-        Module['dynCall_vii'](GLFW.active.joystickFunc, joy, 0x00040001); // GLFW_CONNECTED
-      }
+      GLFW.refreshJoysticks();
     },
 
     onGamepadDisconnected: function(event) {
-      var joy = event.gamepad.index;
-
-      if (GLFW.active.joystickFunc) {
-        Module['dynCall_vii'](GLFW.active.joystickFunc, joy, 0x00040002); // GLFW_DISCONNECTED
-      }
-
-      _free(GLFW.active.joys[joy].id);
-      _free(GLFW.active.joys[joy].buttons);
-      //_free(GLFW.active.joys[joy].axes); // TODO: fix abort, corrupted memory?
-
-      delete GLFW.active.joys[joy];
+      GLFW.refreshJoysticks();
     },
 
     onKeydown: function(event) {
@@ -679,22 +658,56 @@ var LibraryGLFW = {
       win.joystickFunc = cbfun;
     },
 
-    refreshJoystick: function(joy) {
-      // TODO: refresh all joysticks, and call from render loop?
-      var j = GLFW.active.joys[joy];
-      if (!j) return;
+    refreshJoysticks: function() {
+      // Produce a new Gamepad API sample if we are ticking a new game frame, or if not using emscripten_set_main_loop() at all to drive animation.
+      if (Browser.mainLoop.currentFrameNumber !== GLFW.active.lastGamepadStateFrame || !Browser.mainLoop.currentFrameNumber) {
+        GLFW.active.lastGamepadState = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads : null);
+        GLFW.active.lastGamepadStateFrame = Browser.mainLoop.currentFrameNumber;
 
-      var gamepad = navigator.getGamepads()[j.index];
-      if (!gamepad) return;
+        for (var joy = 0; joy < GLFW.active.lastGamepadState.length; ++joy) {
+          var gamepad = GLFW.active.lastGamepadState[joy];
 
-      assert(gamepad.buttons.length === j.buttonsCount);
-      for (var i = 0; i < j.buttonsCount;  ++i) {
-        setValue(j.buttons + i, gamepad.buttons[i].pressed, 'i8');
-      }
+          if (gamepad) {
+            if (!GLFW.active.joys[joy]) {
+              console.log('glfw joystick connected:',joy);
+              GLFW.active.joys[joy] = {
+                id: allocate(intArrayFromString(event.gamepad.id), 'i8', ALLOC_NORMAL),
+                buttonsCount: gamepad.buttons.length,
+                axesCount: gamepad.axes.length,
+                buttons: allocate(new Array(gamepad.buttons.length), 'i8', ALLOC_NORMAL),
+                axes: allocate(new Array(gamepad.axes.length), 'float', ALLOC_NORMAL)
+              };
 
-      assert(gamepad.axes.length === j.axesCount);
-      for (var i = 0; i < j.axesCount; ++i) {
-        setValue(j.axes + i*4, gamepad.axes[i], 'float');
+              if (GLFW.active.joystickFunc) {
+                Module['dynCall_vii'](GLFW.active.joystickFunc, joy, 0x00040001); // GLFW_CONNECTED
+              }
+            }
+
+            var data = GLFW.active.joys[joy];
+
+            for (var i = 0; i < gamepad.buttons.length;  ++i) {
+              setValue(data.buttons + i, gamepad.buttons[i].pressed, 'i8');
+            }
+
+            for (var i = 0; i < gamepad.axes.length; ++i) {
+              setValue(data.axes + i*4, gamepad.axes[i], 'float');
+            }
+          } else {
+            if (GLFW.active.joys[joy]) {
+              console.log('glfw joystick disconnected',joy);
+
+              if (GLFW.active.joystickFunc) {
+                Module['dynCall_vii'](GLFW.active.joystickFunc, joy, 0x00040002); // GLFW_DISCONNECTED
+              }
+
+              _free(GLFW.active.joys[joy].id);
+              _free(GLFW.active.joys[joy].buttons);
+              //_free(GLFW.active.joys[joy].axes); // TODO: fix abort, corrupted memory?
+
+              delete GLFW.active.joys[joy];
+            }
+          }
+        }
       }
     },
 
@@ -1420,7 +1433,7 @@ var LibraryGLFW = {
   },
 
   glfwGetJoystickAxes: function(joy, count) {
-    GLFW.refreshJoystick(joy);
+    GLFW.refreshJoysticks();
 
     var state = GLFW.active.joys[joy];
     if (!state || !state.axes) {
@@ -1433,7 +1446,7 @@ var LibraryGLFW = {
   },
 
   glfwGetJoystickButtons: function(joy, count) {
-    GLFW.refreshJoystick(joy);
+    GLFW.refreshJoysticks();
 
     var state = GLFW.active.joys[joy];
     if (!state || !state.buttons) {
