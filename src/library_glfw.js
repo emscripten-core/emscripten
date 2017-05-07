@@ -679,7 +679,6 @@ var LibraryGLFW = {
     },
 
     onDrop: function(event) {
-      console.log('ondrop',event,GLFW.active.dropFunc);
       if (!GLFW.active.dropFunc) return;
 
       event.preventDefault();
@@ -688,32 +687,32 @@ var LibraryGLFW = {
       var filenamesArray = [];
       var count = event.dataTransfer.files.length;
 
+      // Read and save the files to emscripten's FS
+      // TODO: lazily load?
+      var written = 0;
       for (var i = 0; i < count; ++i) {
-        var file = event.dataTransfer.files[i];
+        (function(file) {
+          var reader = new FileReader();
+          reader.onload = function(e) {
+            var data = e.target.result;
+            var path = file.name; // TODO: to a new directory?
+            FS.writeFile(path, new Uint8Array(data), { encoding: 'binary' });
+            //console.log('wrote '+path+', size '+data.byteLength+', count '+written+' of '+count);
+            if (++written === count) {
+              console.log('calling callback');
+              Module['dynCall_viii'](GLFW.active.dropFunc, GLFW.active.id, count, filenames);
 
-        console.log('ondrop',file);
+              for (var i = 0; i < filenamesArray.length; ++i) _free(filenamesArray[i]);
+              _free(filenames);
+            }
+          };
+          reader.readAsArrayBuffer(file);
 
-        /* TODO: write to temporary filesystem?
-        var reader = new FileReader();
-        reader.onload = function(e) {
-          var dataURL = e.target.result;
-          // TODO: write data
-
-        };
-        reader.readAsDataURL(file);
-        */
-
-        var filename = allocate(intArrayFromString(file.name), 'i8', ALLOC_NORMAL);
-        filenamesArray.push(filename);
-        setValue(filenames + i*4, filename, 'i8*');
+          var filename = allocate(intArrayFromString(file.name), 'i8', ALLOC_NORMAL);
+          filenamesArray.push(filename);
+          setValue(filenames + i*4, filename, 'i8*');
+        })(event.dataTransfer.files[i]);
       }
-
-      Module['dynCall_viii'](GLFW.active.dropFunc, GLFW.active.id, count, filenames);
-
-      for (var i = 0; i < filenamesArray.length; ++i) {
-        _free(filenamesArray[i]);
-      }
-      _free(filenames);
 
       return false;
     },

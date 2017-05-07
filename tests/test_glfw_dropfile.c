@@ -19,8 +19,25 @@ void on_file_drop(GLFWwindow *window, int count, const char **paths) {
   for (int i = 0; i < count; ++i) {
     printf("dropped file %s\n", paths[i]);
 
-    // TODO: read file
+    FILE *fp = fopen(paths[i], "rb");
+    if (!fp) {
+        printf("failed to open %s\n", paths[i]);
+        perror("fopen");
+        result = 0;
+        continue;
+    }
+    int c;
+    long size = 0;
+    while ((c = fgetc(fp) != -1)) {
+        ++size;
+    }
+    printf("read %ld bytes from %s\n", size, paths[i]);
+
+    fclose(fp);
   }
+#ifdef REPORT_RESULT
+  REPORT_RESULT();
+#endif
 }
 
 int main() {
