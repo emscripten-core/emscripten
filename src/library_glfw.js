@@ -684,7 +684,7 @@ var LibraryGLFW = {
 
       event.preventDefault();
 
-      var filenames = allocate(new Array(event.dataTransfer.files.length), 'i8*', ALLOC_NORMAL);
+      var filenames = allocate(new Array(event.dataTransfer.files.length*4), 'i8*', ALLOC_NORMAL);
       var filenamesArray = [];
       var count = event.dataTransfer.files.length;
 
@@ -705,7 +705,7 @@ var LibraryGLFW = {
 
         var filename = allocate(intArrayFromString(file.name), 'i8', ALLOC_NORMAL);
         filenamesArray.push(filename);
-        setValue(filenames + i, filename, 'i8*');
+        setValue(filenames + i*4, filename, 'i8*');
       }
 
       Module['dynCall_viii'](GLFW.active.dropFunc, GLFW.active.id, count, filenames);
