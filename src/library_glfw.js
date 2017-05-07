@@ -71,6 +71,7 @@ var LibraryGLFW = {
       this.cursorPosFunc = null; // GLFWcursorposfun
       this.cursorEnterFunc = null; // GLFWcursorenterfun
       this.scrollFunc = null; // GLFWscrollfun
+      this.dropFunc = null; // GLFWdropfun
       this.keyFunc = null; // GLFWkeyfun
       this.charFunc = null; // GLFWcharfun
       this.userptr = null;
@@ -671,6 +672,65 @@ var LibraryGLFW = {
       win.scrollFunc = cbfun;
     },
 
+    setDropCallback: function(winid, cbfun) {
+      var win = GLFW.WindowFromId(winid);
+      if (!win) return;
+      win.dropFunc = cbfun;
+    },
+
+    onDrop: function(event) {
+      console.log('ondrop',event,GLFW.active.dropFunc);
+      if (!GLFW.active.dropFunc) return;
+
+      event.preventDefault();
+
+      var filenames = allocate(new Array(event.dataTransfer.files.length), 'i8*', ALLOC_NORMAL);
+      var filenamesArray = [];
+      var count = event.dataTransfer.files.length;
+
+      for (var i = 0; i < count; ++i) {
+        var file = event.dataTransfer.files[i];
+
+        console.log('ondrop',file);
+
+        /* TODO: write to temporary filesystem?
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          var dataURL = e.target.result;
+          // TODO: write data
+
+        };
+        reader.readAsDataURL(file);
+        */
+
+        var filename = allocate(intArrayFromString(file.name), 'i8', ALLOC_NORMAL);
+        filenamesArray.push(filename);
+        setValue(filenames + i, filename, 'i8*');
+      }
+
+      Module['dynCall_viii'](GLFW.active.dropFunc, GLFW.active.id, count, filenames);
+
+      for (var i = 0; i < filenamesArray.length; ++i) {
+        _free(filenamesArray[i]);
+      }
+      _free(filenames);
+
+      return false;
+    },
+
+    onDragover: function(event) {
+      if (!GLFW.active.dropFunc) return;
+
+      event.preventDefault();
+      return false;
+    },
+
+    onDragend: function(event) {
+      if (!GLFW.active.dropFunc) return;
+
+      return false;
+    },
+
     setWindowSizeCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
@@ -965,6 +1025,9 @@ var LibraryGLFW = {
     Module["canvas"].addEventListener('mousewheel', GLFW.onMouseWheel, true);
     Module["canvas"].addEventListener('mouseenter', GLFW.onMouseenter, true);
     Module["canvas"].addEventListener('mouseleave', GLFW.onMouseleave, true);
+    Module["canvas"].addEventListener('drop', GLFW.onDrop, true);
+    Module["canvas"].addEventListener('dragover', GLFW.onDragover, true);
+    Module["canvas"].addEventListener('dragend', GLFW.onDragend, true);
 
     Browser.resizeListeners.push(function(width, height) {
        GLFW.onCanvasResize(width, height);
@@ -984,6 +1047,11 @@ var LibraryGLFW = {
     Module["canvas"].removeEventListener('mousewheel', GLFW.onMouseWheel, true);
     Module["canvas"].removeEventListener('mouseenter', GLFW.onMouseenter, true);
     Module["canvas"].removeEventListener('mouseleave', GLFW.onMouseleave, true);
+    Module["canvas"].removeEventListener('drop', GLFW.onDrop, true);
+    Module["canvas"].removeEventListener('dragover', GLFW.onDragover, true);
+    Module["canvas"].removeEventListener('dragend', GLFW.onDragend, true);
+
+
     Module["canvas"].width = Module["canvas"].height = 1;
     GLFW.windows = null;
     GLFW.active = null;
@@ -1340,7 +1408,9 @@ var LibraryGLFW = {
     return 0;
   },
 
-  glfwSetDropCallback: function(winid, cbfun) { throw "glfwSetDropCallback is not implemented."; },
+  glfwSetDropCallback: function(winid, cbfun) {
+    GLFW.setDropCallback(winid, cbfun);
+  },
 
   glfwGetTimerValue: function() { throw "glfwGetTimerValue is not implemented."; },
 
