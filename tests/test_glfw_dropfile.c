@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <assert.h>
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+#endif
 #define GLFW_INCLUDE_ES2
 #include <GLFW/glfw3.h>
 
@@ -69,7 +71,15 @@ int main() {
 
   // Main loop
   printf("Drag and drop a file from your desktop onto the green canvas.\n");
+#ifdef __EMSCRIPTEN__
   emscripten_set_main_loop(render, 0, 1);
+#else
+  while (!glfwWindowShouldClose(g_window)) {
+    render();
+    glfwSwapBuffers(g_window);
+    glfwPollEvents();
+  }
+#endif
 
   glfwTerminate();
 
