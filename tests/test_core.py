@@ -3510,6 +3510,39 @@ var Module = {
       }
     ''', expected=['simple.\nsimple.\nsimple.\nsimple.\n'])
 
+  def test_dylink_postSets_chunking(self):
+    self.dylink_test(header=r'''
+      extern int global_var;
+    ''', main=r'''
+      #include <stdio.h>
+      #include "header.h"
+
+      // prepare 99 global variable with local initializer
+      static int p = 1;
+      #define P(x) __attribute__((used)) int *padding##x = &p;
+      P(01) P(02) P(03) P(04) P(05) P(06) P(07) P(08) P(09) P(10)
+      P(11) P(12) P(13) P(14) P(15) P(16) P(17) P(18) P(19) P(20)
+      P(21) P(22) P(23) P(24) P(25) P(26) P(27) P(28) P(29) P(30)
+      P(31) P(32) P(33) P(34) P(35) P(36) P(37) P(38) P(39) P(40)
+      P(41) P(42) P(43) P(44) P(45) P(46) P(47) P(48) P(49) P(50)
+      P(51) P(52) P(53) P(54) P(55) P(56) P(57) P(58) P(59) P(60)
+      P(61) P(62) P(63) P(64) P(65) P(66) P(67) P(68) P(69) P(70)
+      P(71) P(72) P(73) P(74) P(75) P(76) P(77) P(78) P(79) P(80)
+      P(81) P(82) P(83) P(84) P(85) P(86) P(87) P(88) P(89) P(90)
+      P(91) P(92) P(93) P(94) P(95) P(96) P(97) P(98) P(99)
+
+      // prepare global variable with global initializer
+      int *ptr = &global_var;
+
+      int main(int argc, char *argv[]) {
+        printf("%d\n", *ptr);
+      }
+    ''', side=r'''
+      #include "header.h"
+
+      int global_var = 12345;
+    ''', expected=['12345\n'])
+
   @no_wasm # todo
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
     if not self.can_dlfcn(): return
