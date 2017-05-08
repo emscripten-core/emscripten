@@ -849,6 +849,64 @@ SIMD.Bool16x8.xor = function() {};
 SIMD.Bool32x4.xor = function() {};
 SIMD.Bool64x2.xor = function() {};
 
+SIMD.Float32x4.load1 = function() {};
+SIMD.Float32x4.load2 = function() {};
+SIMD.Float32x4.load3 = function() {};
+SIMD.Float32x4.load4 = function() {};
+SIMD.Float32x4.store1 = function() {};
+SIMD.Float32x4.store2 = function() {};
+SIMD.Float32x4.store3 = function() {};
+SIMD.Float32x4.store4 = function() {};
+
+SIMD.Int32x4.load1 = function() {};
+SIMD.Int32x4.load2 = function() {};
+SIMD.Int32x4.load3 = function() {};
+SIMD.Int32x4.load4 = function() {};
+SIMD.Int32x4.store1 = function() {};
+SIMD.Int32x4.store2 = function() {};
+SIMD.Int32x4.store3 = function() {};
+SIMD.Int32x4.store4 = function() {};
+
+SIMD.Uint32x4.load1 = function() {};
+SIMD.Uint32x4.load2 = function() {};
+SIMD.Uint32x4.load3 = function() {};
+SIMD.Uint32x4.load4 = function() {};
+SIMD.Uint32x4.store1 = function() {};
+SIMD.Uint32x4.store2 = function() {};
+SIMD.Uint32x4.store3 = function() {};
+SIMD.Uint32x4.store4 = function() {};
+
+SIMD.bool64x2.anyTrue = function() {};
+SIMD.bool32x4.anyTrue = function() {};
+SIMD.bool16x8.anyTrue = function() {};
+SIMD.bool8x16.anyTrue = function() {};
+
+SIMD.Float32x4.fromBool64x2Bits = function() {};
+SIMD.Float64x2.fromBool64x2Bits = function() {};
+SIMD.Int8x16.fromBool64x2Bits = function() {};
+SIMD.Int16x8.fromBool64x2Bits = function() {};
+SIMD.Int32x4.fromBool64x2Bits = function() {};
+SIMD.Uint8x16.fromBool64x2Bits = function() {};
+SIMD.Uint16x8.fromBool64x2Bits = function() {};
+SIMD.Uint32x4.fromBool64x2Bits = function() {};
+SIMD.Bool8x16.fromBool64x2Bits = function() {};
+SIMD.Bool16x8.fromBool64x2Bits = function() {};
+SIMD.Bool32x4.fromBool64x2Bits = function() {};
+SIMD.Bool64x2.fromBool64x2Bits = function() {};
+
+SIMD.Float32x4.fromFloat64x2 = function() {};
+SIMD.Float64x2.fromFloat64x2 = function() {};
+SIMD.Int8x16.fromFloat64x2 = function() {};
+SIMD.Int16x8.fromFloat64x2 = function() {};
+SIMD.Int32x4.fromFloat64x2 = function() {};
+SIMD.Uint8x16.fromFloat64x2 = function() {};
+SIMD.Uint16x8.fromFloat64x2 = function() {};
+SIMD.Uint32x4.fromFloat64x2 = function() {};
+SIMD.Bool8x16.fromFloat64x2 = function() {};
+SIMD.Bool16x8.fromFloat64x2 = function() {};
+SIMD.Bool32x4.fromFloat64x2 = function() {};
+SIMD.Bool64x2.fromFloat64x2 = function() {};
+
 var GLctx = {};
 
 /**

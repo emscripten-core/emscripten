@@ -4975,6 +4975,9 @@ return malloc(size);
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
       self.emcc_args = orig_args + mode + ['-msse']
+      if '-O2' in self.emcc_args:
+        self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+
       self.do_run(open(path_from_root('tests', 'test_sse1.cpp'), 'r').read(), 'Success!')
 
   # ignore nans in some simd tests due to an LLVM regression still being investigated,
@@ -4995,6 +4998,9 @@ return malloc(size);
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
       self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse']
+      if '-O2' in self.emcc_args:
+        self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+
       self.do_run(open(path_from_root('tests', 'test_sse1_full.cpp'), 'r').read(), self.ignore_nans(native_result), output_nicerizer=self.ignore_nans)
 
   # Tests the full SSE2 API.
@@ -5015,6 +5021,9 @@ return malloc(size);
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
       self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse2'] + args
+      if '-O2' in self.emcc_args:
+        self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+
       self.do_run(open(path_from_root('tests', 'test_sse2_full.cpp'), 'r').read(), self.ignore_nans(native_result), output_nicerizer=self.ignore_nans)
 
   # Tests the full SSE3 API.
