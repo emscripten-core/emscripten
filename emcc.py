@@ -1939,7 +1939,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if opt_level >= 2:
           # simplify ifs if it is ok to make the code somewhat unreadable, and unless outlining (simplified ifs
           # with commaified code breaks late aggressive variable elimination)
-          if shared.Settings.SIMPLIFY_IFS and (debug_level == 0 or profiling) and shared.Settings.OUTLINING_LIMIT == 0: JSOptimizer.queue += ['simplifyIfs']
+          # do not do this with binaryen, as commaifying confuses binaryen call type detection (FIXME, in theory, but unimportant)
+          if shared.Settings.SIMPLIFY_IFS and (debug_level == 0 or profiling) and shared.Settings.OUTLINING_LIMIT == 0 and not shared.Settings.BINARYEN:
+            JSOptimizer.queue += ['simplifyIfs']
 
           if shared.Settings.PRECISE_F32: JSOptimizer.queue += ['optimizeFrounds']
 
@@ -2179,7 +2181,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             subprocess.check_call(cmd)
           if import_mem_init:
             # remove and forget about the mem init file in later processing; it does not need to be prefetched in the html, etc.
-            os.unlink(memfile)
+            if DEBUG:
+              safe_move(memfile, os.path.join(emscripten_temp_dir, os.path.basename(memfile)))
+            else:
+              os.unlink(memfile)
             memory_init_file = False
           log_time('asm2wasm')
         if shared.Settings.BINARYEN_PASSES:
