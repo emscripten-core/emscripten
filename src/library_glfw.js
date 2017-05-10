@@ -680,6 +680,7 @@ var LibraryGLFW = {
 
     onDrop: function(event) {
       if (!GLFW.active || !GLFW.active.dropFunc) return;
+      if (!event.dataTransfer || !event.dataTransfer.files || event.dataTransfer.files.length == 0) return;
 
       event.preventDefault();
 
