@@ -692,28 +692,31 @@ var LibraryGLFW = {
       var written = 0;
       var drop_dir = '.glfw_dropped_files';
       FS.createPath('/', drop_dir);
-      for (var i = 0; i < count; ++i) {
-        (function(file) {
-          var path = '/' + drop_dir + '/' + file.name.replace(/\//g, '_');
-          var reader = new FileReader();
-          reader.onload = function(e) {
-            var data = e.target.result;
-            FS.writeFile(path, new Uint8Array(data), { encoding: 'binary' });
-            //console.log('wrote '+path+', size '+data.byteLength+', count '+written+' of '+count);
-            if (++written === count) {
-              console.log('calling callback');
-              Module['dynCall_viii'](GLFW.active.dropFunc, GLFW.active.id, count, filenames);
 
-              for (var i = 0; i < filenamesArray.length; ++i) _free(filenamesArray[i]);
-              _free(filenames);
+      function save(file) {
+        var path = '/' + drop_dir + '/' + file.name.replace(/\//g, '_');
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          var data = e.target.result;
+          FS.writeFile(path, new Uint8Array(data), { encoding: 'binary' });
+          if (++written === count) {
+            Module['dynCall_viii'](GLFW.active.dropFunc, GLFW.active.id, count, filenames);
+
+            for (var i = 0; i < filenamesArray.length; ++i) {
+              _free(filenamesArray[i]);
             }
-          };
-          reader.readAsArrayBuffer(file);
+            _free(filenames);
+          }
+        };
+        reader.readAsArrayBuffer(file);
 
-          var filename = allocate(intArrayFromString(path), 'i8', ALLOC_NORMAL);
-          filenamesArray.push(filename);
-          setValue(filenames + i*4, filename, 'i8*');
-        })(event.dataTransfer.files[i]);
+        var filename = allocate(intArrayFromString(path), 'i8', ALLOC_NORMAL);
+        filenamesArray.push(filename);
+        setValue(filenames + i*4, filename, 'i8*');
+      }
+
+      for (var i = 0; i < count; ++i) {
+        save(event.dataTransfer.files[i]);
       }
 
       return false;
