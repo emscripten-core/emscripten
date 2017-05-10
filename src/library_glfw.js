@@ -735,12 +735,6 @@ var LibraryGLFW = {
       return false;
     },
 
-    onDragend: function(event) {
-      if (!GLFW.active || !GLFW.active.dropFunc) return;
-
-      return false;
-    },
-
     setWindowSizeCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
@@ -1037,7 +1031,6 @@ var LibraryGLFW = {
     Module["canvas"].addEventListener('mouseleave', GLFW.onMouseleave, true);
     Module["canvas"].addEventListener('drop', GLFW.onDrop, true);
     Module["canvas"].addEventListener('dragover', GLFW.onDragover, true);
-    Module["canvas"].addEventListener('dragend', GLFW.onDragend, true);
 
     Browser.resizeListeners.push(function(width, height) {
        GLFW.onCanvasResize(width, height);
@@ -1059,7 +1052,6 @@ var LibraryGLFW = {
     Module["canvas"].removeEventListener('mouseleave', GLFW.onMouseleave, true);
     Module["canvas"].removeEventListener('drop', GLFW.onDrop, true);
     Module["canvas"].removeEventListener('dragover', GLFW.onDragover, true);
-    Module["canvas"].removeEventListener('dragend', GLFW.onDragend, true);
 
 
     Module["canvas"].width = Module["canvas"].height = 1;
