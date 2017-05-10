@@ -679,7 +679,7 @@ var LibraryGLFW = {
     },
 
     onDrop: function(event) {
-      if (!GLFW.active.dropFunc) return;
+      if (!GLFW.active || !GLFW.active.dropFunc) return;
 
       event.preventDefault();
 
@@ -718,14 +718,14 @@ var LibraryGLFW = {
     },
 
     onDragover: function(event) {
-      if (!GLFW.active.dropFunc) return;
+      if (!GLFW.active || !GLFW.active.dropFunc) return;
 
       event.preventDefault();
       return false;
     },
 
     onDragend: function(event) {
-      if (!GLFW.active.dropFunc) return;
+      if (!GLFW.active || !GLFW.active.dropFunc) return;
 
       return false;
     },
