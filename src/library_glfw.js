@@ -696,7 +696,13 @@ var LibraryGLFW = {
       function save(file) {
         var path = '/' + drop_dir + '/' + file.name.replace(/\//g, '_');
         var reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onloadend = function(e) {
+          if (reader.readyState != 2) { // not DONE
+            ++written;
+            console.log('failed to read dropped file: '+file.name+': '+reader.error);
+            return;
+          }
+
           var data = e.target.result;
           FS.writeFile(path, new Uint8Array(data), { encoding: 'binary' });
           if (++written === count) {
