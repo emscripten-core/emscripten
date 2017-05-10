@@ -689,14 +689,15 @@ var LibraryGLFW = {
       var count = event.dataTransfer.files.length;
 
       // Read and save the files to emscripten's FS
-      // TODO: lazily load?
       var written = 0;
+      var drop_dir = '.glfw_dropped_files';
+      FS.createPath('/', drop_dir);
       for (var i = 0; i < count; ++i) {
         (function(file) {
+          var path = '/' + drop_dir + '/' + file.name.replace(/\//g, '_');
           var reader = new FileReader();
           reader.onload = function(e) {
             var data = e.target.result;
-            var path = file.name; // TODO: to a new directory?
             FS.writeFile(path, new Uint8Array(data), { encoding: 'binary' });
             //console.log('wrote '+path+', size '+data.byteLength+', count '+written+' of '+count);
             if (++written === count) {
@@ -709,7 +710,7 @@ var LibraryGLFW = {
           };
           reader.readAsArrayBuffer(file);
 
-          var filename = allocate(intArrayFromString(file.name), 'i8', ALLOC_NORMAL);
+          var filename = allocate(intArrayFromString(path), 'i8', ALLOC_NORMAL);
           filenamesArray.push(filename);
           setValue(filenames + i*4, filename, 'i8*');
         })(event.dataTransfer.files[i]);
