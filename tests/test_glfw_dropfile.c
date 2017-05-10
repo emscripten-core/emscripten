@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <assert.h>
+#include <unistd.h>
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
@@ -42,6 +43,14 @@ void on_file_drop(GLFWwindow *window, int count, const char **paths) {
     printf("read %ld bytes from %s\n", size, paths[i]);
 
     fclose(fp);
+
+#ifdef __EMSCRIPTEN__
+    // Emscripten copies the contents of the dropped file into the
+    // in-browser filesystem. Delete after usage to free up memory.
+    printf("unlinking %s\n", paths[i]);
+    unlink(paths[i]);
+#endif
+
   }
 #ifdef REPORT_RESULT
   REPORT_RESULT();
