@@ -1879,6 +1879,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     log_time('source transforms')
 
     with ToolchainProfiler.profile_block('memory initializer'):
+      memfile = None
       if shared.Settings.MEM_INIT_METHOD > 0:
         memfile = target + '.mem'
         shared.try_delete(memfile)
@@ -2078,7 +2079,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # If we were asked to also generate HTML, do that
       if final_suffix == 'html':
         generate_html(target, shell_path, js_target, target_basename, proxy_to_worker,
-                      separate_asm, memory_init_file, wasm_binary_target, output_eol, optimizer)
+                      separate_asm, memory_init_file, asm_target, wasm_binary_target,
+                      output_eol, memfile, optimizer)
       else:
         if proxy_to_worker:
           generate_worker_js(target, js_target, target_basename)
@@ -2341,7 +2343,8 @@ def modularize(final):
 
 
 def generate_html(target, shell_path, js_target, target_basename, proxy_to_worker,
-                  separate_asm, memory_init_file, wasm_binary_target, output_eol, optimizer):
+                  separate_asm, memory_init_file, asm_target, wasm_binary_target,
+                  output_eol, memfile, optimizer):
   global script_src, script_inline
   logging.debug('generating HTML')
   shell = open(shell_path).read()
