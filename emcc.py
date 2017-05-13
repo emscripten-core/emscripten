@@ -125,9 +125,65 @@ def log_time(name):
     TimeLogger.update()
 
 
+class EmccOptions:
+  def __init__(self):
+    self.opt_level = 0
+    self.debug_level = 0
+    self.shrink_level = 0
+    self.requested_debug = ''
+    self.profiling = False
+    self.profiling_funcs = False
+    self.tracing = False
+    self.emit_symbol_map = False
+    self.js_opts = None
+    self.force_js_opts = False
+    self.llvm_opts = None
+    self.llvm_lto = None
+    self.default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
+    self.use_closure_compiler = None
+    self.js_transform = None
+    self.pre_js = '' # before all js
+    self.post_module = '' # in js, after Module exists
+    self.post_js = '' # after all js
+    self.preload_files = []
+    self.embed_files = []
+    self.exclude_files = []
+    self.ignore_dynamic_linking = False
+    self.shell_path = shared.path_from_root('src', 'shell.html')
+    self.js_libraries = []
+    self.bind = False
+    self.emrun = False
+    self.cpu_profiler = False
+    self.thread_profiler = False
+    self.memory_profiler = False
+    self.save_bc = False
+    self.memory_init_file = None
+    self.use_preload_cache = False
+    self.no_heap_copy = False
+    self.use_preload_plugins = False
+    self.proxy_to_worker = False
+    self.default_object_extension = '.o'
+    self.valid_abspaths = []
+    self.separate_asm = False
+    self.cfi = False
+    # Specifies the line ending format to use for all generated text files.
+    # Defaults to using the native EOL on each platform (\r\n on Windows, \n on Linux&OSX)
+    self.output_eol = os.linesep
+
+  # TODO(jgravelle) move to inside parse_args
+  def is_valid_abspath(self, path_name):
+    # Any path that is underneath the emscripten repository root must be ok.
+    if shared.path_from_root().replace('\\', '/') in path_name.replace('\\', '/'):
+      return True
+
+    for valid_abspath in self.valid_abspaths:
+      if in_directory(valid_abspath, path_name):
+        return True
+    return False
+
+
 class JSOptimizer:
-  def __init__(self, opt_level, debug_level, emit_symbol_map, profiling_funcs,
-               use_closure_compiler, misc_temp_files, js_transform_tempfiles):
+  def __init__(self, options, misc_temp_files, js_transform_tempfiles):
     self.queue = []
     self.extra_info = {}
     self.queue_history = []
@@ -135,11 +191,12 @@ class JSOptimizer:
     self.minify_whitespace = False
     self.cleanup_shell = False
 
-    self.opt_level = opt_level
-    self.debug_level = debug_level
-    self.emit_symbol_map = emit_symbol_map
-    self.profiling_funcs = profiling_funcs
-    self.use_closure_compiler = use_closure_compiler
+    self.opt_level = options.opt_level
+    self.debug_level = options.debug_level
+    self.emit_symbol_map = options.emit_symbol_map
+    self.profiling_funcs = options.profiling_funcs
+    self.use_closure_compiler = options.use_closure_compiler
+
     self.misc_temp_files = misc_temp_files
     self.js_transform_tempfiles = js_transform_tempfiles
 
@@ -205,7 +262,9 @@ class JSOptimizer:
       passes += ['cleanup']
     logging.debug('applying js optimization passes: %s', ' '.join(passes))
     self.misc_temp_files.note(final)
-    final = shared.Building.js_optimizer(final, passes, self.debug_level >= 4, self.extra_info, just_split=just_split, just_concat=just_concat)
+    final = shared.Building.js_optimizer(final, passes, self.debug_level >= 4,
+                                         self.extra_info, just_split=just_split,
+                                         just_concat=just_concat)
     self.misc_temp_files.note(final)
     self.js_transform_tempfiles.append(final)
     if DEBUG: save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
@@ -545,62 +604,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       newargs = sys.argv[1:]
 
-      opt_level = 0
-      debug_level = 0
-      shrink_level = 0
-      requested_debug = ''
-      profiling = False
-      profiling_funcs = False
-      tracing = False
-      emit_symbol_map = False
-      js_opts = None
-      force_js_opts = False
-      llvm_opts = None
-      llvm_lto = None
-      default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
-      use_closure_compiler = None
-      js_transform = None
-      pre_js = '' # before all js
-      post_module = '' # in js, after Module exists
-      post_js = '' # after all js
-      preload_files = []
-      embed_files = []
-      exclude_files = []
-      ignore_dynamic_linking = False
-      shell_path = shared.path_from_root('src', 'shell.html')
-      js_libraries = []
-      bind = False
-      emrun = False
-      cpu_profiler = False
-      thread_profiler = False
-      memory_profiler = False
-      save_bc = False
-      memory_init_file = None
-      use_preload_cache = False
-      no_heap_copy = False
-      use_preload_plugins = False
-      proxy_to_worker = False
-      default_object_extension = '.o'
-      valid_abspaths = []
-      separate_asm = False
-      cfi = False
-      # Specifies the line ending format to use for all generated text files.
-      # Defaults to using the native EOL on each platform (\r\n on Windows, \n on Linux&OSX)
-      output_eol = os.linesep
-
-      def is_valid_abspath(path_name):
-        # Any path that is underneath the emscripten repository root must be ok.
-        if shared.path_from_root().replace('\\', '/') in path_name.replace('\\', '/'):
-          return True
-
-        for valid_abspath in valid_abspaths:
-          if in_directory(valid_abspath, path_name):
-            return True
-        return False
-
-      def check_bad_eq(arg):
-        assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
-
       # Scan and strip emscripten specific cmdline warning flags
       # This needs to run before other cmdline flags have been parsed, so that warnings are properly printed during arg parse
       newargs = shared.WarningManager.capture_warnings(newargs)
@@ -610,16 +613,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # Scan for individual -l/-L/-I arguments and concatenate the next arg on if there is no suffix
           newargs[i] += newargs[i+1]
           newargs[i+1] = ''
-
-      settings_changes = []
-
-      def validate_arg_level(level_string, max_level, err_msg):
-        try:
-          level = int(level_string)
-          assert 0 <= level <= max_level
-        except:
-          raise Exception(err_msg)
-        return level
 
       def detect_fixed_language_mode(args):
         check_next = False
@@ -639,247 +632,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return False
 
       has_fixed_language_mode = detect_fixed_language_mode(newargs)
-      should_exit = False
 
-      for i in range(len(newargs)):
-        newargs[i] = newargs[i].strip() # On Windows Vista (and possibly others), excessive spaces in the command line leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
-        if newargs[i].startswith('-O'):
-          # Let -O default to -O2, which is what gcc does.
-          requested_level = newargs[i][2:] or '2'
-          if requested_level == 's':
-            llvm_opts = ['-Os']
-            requested_level = 2
-            shrink_level = 1
-            settings_changes.append('INLINING_LIMIT=50')
-          elif requested_level == 'z':
-            llvm_opts = ['-Oz']
-            requested_level = 2
-            shrink_level = 2
-            settings_changes.append('INLINING_LIMIT=25')
-          opt_level = validate_arg_level(requested_level, 3, 'Invalid optimization level: ' + newargs[i])
-        elif newargs[i].startswith('--js-opts'):
-          check_bad_eq(newargs[i])
-          js_opts = eval(newargs[i+1])
-          if js_opts: force_js_opts = True
-          newargs[i] = ''
-          newargs[i+1] = ''
-        elif newargs[i].startswith('--llvm-opts'):
-          check_bad_eq(newargs[i])
-          llvm_opts = eval(newargs[i+1])
-          newargs[i] = ''
-          newargs[i+1] = ''
-        elif newargs[i].startswith('--llvm-lto'):
-          check_bad_eq(newargs[i])
-          llvm_lto = eval(newargs[i+1])
-          newargs[i] = ''
-          newargs[i+1] = ''
-        elif newargs[i].startswith('--closure'):
-          check_bad_eq(newargs[i])
-          use_closure_compiler = int(newargs[i+1])
-          newargs[i] = ''
-          newargs[i+1] = ''
-        elif newargs[i].startswith('--js-transform'):
-          check_bad_eq(newargs[i])
-          js_transform = newargs[i+1]
-          newargs[i] = ''
-          newargs[i+1] = ''
-        elif newargs[i].startswith('--pre-js'):
-          check_bad_eq(newargs[i])
-          pre_js += open(newargs[i+1]).read() + '\n'
-          newargs[i] = ''
-          newargs[i+1] = ''
-        elif newargs[i].startswith('--post-js'):
-          check_bad_eq(newargs[i])
-          post_js += open(newargs[i+1]).read() + '\n'
-          newargs[i] = ''
-          newargs[i+1] = ''
-        elif newargs[i].startswith('--minify'):
-          check_bad_eq(newargs[i])
-          assert newargs[i+1] == '0', '0 is the only supported option for --minify; 1 has been deprecated'
-          debug_level = max(1, debug_level)
-          newargs[i] = ''
-          newargs[i+1] = ''
-        elif newargs[i].startswith('-g'):
-          requested_level = newargs[i][2:] or '3'
-          debug_level = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + newargs[i])
-          requested_debug = newargs[i]
-          newargs[i] = ''
-        elif newargs[i] == '-profiling' or newargs[i] == '--profiling':
-          debug_level = 2
-          profiling = True
-          newargs[i] = ''
-        elif newargs[i] == '-profiling-funcs' or newargs[i] == '--profiling-funcs':
-          profiling_funcs = True
-          newargs[i] = ''
-        elif newargs[i] == '--tracing' or newargs[i] == '--memoryprofiler':
-          if newargs[i] == '--memoryprofiler':
-            memory_profiler = True
-          tracing = True
-          newargs[i] = ''
-          newargs.append('-D__EMSCRIPTEN_TRACING__=1')
-          settings_changes.append("EMSCRIPTEN_TRACING=1")
-          js_libraries.append(shared.path_from_root('src', 'library_trace.js'))
-        elif newargs[i] == '--emit-symbol-map':
-          emit_symbol_map = True
-          newargs[i] = ''
-        elif newargs[i] == '--bind':
-          bind = True
-          newargs[i] = ''
-          js_libraries.append(shared.path_from_root('src', 'embind', 'emval.js'))
-          js_libraries.append(shared.path_from_root('src', 'embind', 'embind.js'))
-          if default_cxx_std:
-            default_cxx_std = '-std=c++11' # Force C++11 for embind code, but only if user has not explicitly overridden a standard.
-        elif newargs[i].startswith('-std=') or newargs[i].startswith('--std='):
-          default_cxx_std = '' # User specified a standard to use, clear Emscripten from specifying it.
-        elif newargs[i].startswith('--embed-file'):
-          check_bad_eq(newargs[i])
-          embed_files.append(newargs[i+1])
-          newargs[i] = ''
-          newargs[i+1] = ''
-        elif newargs[i].startswith('--preload-file'):
-          check_bad_eq(newargs[i])
-          preload_files.append(newargs[i+1])
-          newargs[i] = ''
-          newargs[i+1] = ''
-        elif newargs[i].startswith('--exclude-file'):
-          check_bad_eq(newargs[i])
-          exclude_files.append(newargs[i+1])
-          newargs[i] = ''
-          newargs[i+1] = ''
-        elif newargs[i].startswith('--use-preload-cache'):
-          use_preload_cache = True
-          newargs[i] = ''
-        elif newargs[i].startswith('--no-heap-copy'):
-          no_heap_copy = True
-          newargs[i] = ''
-        elif newargs[i].startswith('--use-preload-plugins'):
-          use_preload_plugins = True
-          newargs[i] = ''
-        elif newargs[i] == '--ignore-dynamic-linking':
-          ignore_dynamic_linking = True
-          newargs[i] = ''
-        elif newargs[i] == '-v':
-          shared.COMPILER_OPTS += ['-v']
-          shared.check_sanity(force=True)
-          newargs[i] = ''
-        elif newargs[i].startswith('--shell-file'):
-          check_bad_eq(newargs[i])
-          shell_path = newargs[i+1]
-          newargs[i] = ''
-          newargs[i+1] = ''
-        elif newargs[i].startswith('--js-library'):
-          check_bad_eq(newargs[i])
-          js_libraries.append(newargs[i+1])
-          newargs[i] = ''
-          newargs[i+1] = ''
-        elif newargs[i] == '--remove-duplicates':
-          logging.warning('--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase')
-          newargs[i] = ''
-        elif newargs[i] == '--jcache':
-          logging.error('jcache is no longer supported')
-          newargs[i] = ''
-        elif newargs[i] == '--cache':
-          check_bad_eq(newargs[i])
-          os.environ['EM_CACHE'] = newargs[i+1]
-          shared.reconfigure_cache()
-          newargs[i] = ''
-          newargs[i+1] = ''
-        elif newargs[i] == '--clear-cache':
-          logging.info('clearing cache as requested by --clear-cache')
-          shared.Cache.erase()
-          shared.check_sanity(force=True) # this is a good time for a sanity check
-          should_exit = True
-        elif newargs[i] == '--clear-ports':
-          logging.info('clearing ports and cache as requested by --clear-ports')
-          system_libs.Ports.erase()
-          shared.Cache.erase()
-          shared.check_sanity(force=True) # this is a good time for a sanity check
-          should_exit = True
-        elif newargs[i] == '--show-ports':
-          system_libs.show_ports()
-          should_exit = True
-        elif newargs[i] == '--save-bc':
-          check_bad_eq(newargs[i])
-          save_bc = newargs[i+1]
-          newargs[i] = ''
-          newargs[i+1] = ''
-        elif newargs[i] == '--memory-init-file':
-          check_bad_eq(newargs[i])
-          memory_init_file = int(newargs[i+1])
-          newargs[i] = ''
-          newargs[i+1] = ''
-        elif newargs[i] == '--proxy-to-worker':
-          proxy_to_worker = True
-          newargs[i] = ''
-        elif newargs[i] == '--valid-abspath':
-          valid_abspaths.append(newargs[i+1])
-          newargs[i] = ''
-          newargs[i+1] = ''
-        elif newargs[i] == '--separate-asm':
-          separate_asm = True
-          newargs[i] = ''
-        elif newargs[i].startswith(('-I', '-L')):
-          path_name = newargs[i][2:]
-          if os.path.isabs(path_name) and not is_valid_abspath(path_name):
-            shared.WarningManager.warn('ABSOLUTE_PATHS', '-I or -L of an absolute path "' + newargs[i] + '" encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript).') # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
-        elif newargs[i] == '--emrun':
-          emrun = True
-          newargs[i] = ''
-        elif newargs[i] == '--cpuprofiler':
-          cpu_profiler = True
-          newargs[i] = ''
-        elif newargs[i] == '--threadprofiler':
-          thread_profiler = True
-          settings_changes.append('PTHREADS_PROFILING=1')
-          newargs[i] = ''
-        elif newargs[i] == '--default-obj-ext':
-          newargs[i] = ''
-          default_object_extension = newargs[i+1]
-          if not default_object_extension.startswith('.'):
-            default_object_extension = '.' + default_object_extension
-          newargs[i+1] = ''
-        elif newargs[i] == '-msse':
-          newargs.append('-D__SSE__=1')
-          newargs[i] = ''
-        elif newargs[i] == '-msse2':
-          newargs.append('-D__SSE__=1')
-          newargs.append('-D__SSE2__=1')
-          newargs[i] = ''
-        elif newargs[i] == '-msse3':
-          newargs.append('-D__SSE__=1')
-          newargs.append('-D__SSE2__=1')
-          newargs.append('-D__SSE3__=1')
-          newargs[i] = ''
-        elif newargs[i] == '-mssse3':
-          newargs.append('-D__SSE__=1')
-          newargs.append('-D__SSE2__=1')
-          newargs.append('-D__SSE3__=1')
-          newargs.append('-D__SSSE3__=1')
-          newargs[i] = ''
-        elif newargs[i] == '-msse4.1':
-          newargs.append('-D__SSE__=1')
-          newargs.append('-D__SSE2__=1')
-          newargs.append('-D__SSE3__=1')
-          newargs.append('-D__SSSE3__=1')
-          newargs.append('-D__SSE4_1__=1')
-          newargs[i] = ''
-        elif newargs[i].startswith("-fsanitize=cfi"):
-          cfi = True
-        elif newargs[i] == "--output_eol":
-          if newargs[i+1].lower() == 'windows':
-            output_eol = '\r\n'
-          elif newargs[i+1].lower() == 'linux':
-            output_eol = '\n'
-          else:
-            logging.error('Invalid value "' + newargs[i+1] + '" to --output_eol!')
-            exit(1)
-          newargs[i] = ''
-          newargs[i+1] = ''
-
-      if should_exit:
-        sys.exit(0)
-
-      newargs = [arg for arg in newargs if arg is not '']
+      options, settings_changes, newargs = parse_args(newargs)
 
       for i in range(0, len(newargs)):
         arg = newargs[i]
@@ -894,35 +648,38 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             use_cxx = False
 
       if not use_cxx:
-        default_cxx_std = '' # Compiling C code with .c files, don't enforce a default C++ std.
+        options.default_cxx_std = '' # Compiling C code with .c files, don't enforce a default C++ std.
 
       call = CXX if use_cxx else CC
 
       # If user did not specify a default -std for C++ code, specify the emscripten default.
-      if default_cxx_std:
-        newargs = newargs + [default_cxx_std]
+      if options.default_cxx_std:
+        newargs = newargs + [options.default_cxx_std]
 
-      if emrun:
-        pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
-        post_js += open(shared.path_from_root('src', 'emrun_postjs.js')).read() + '\n'
+      if options.emrun:
+        options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
+        options.post_js += open(shared.path_from_root('src', 'emrun_postjs.js')).read() + '\n'
 
-      if cpu_profiler:
-        post_js += open(shared.path_from_root('src', 'cpuprofiler.js')).read() + '\n'
+      if options.cpu_profiler:
+        options.post_js += open(shared.path_from_root('src', 'cpuprofiler.js')).read() + '\n'
 
-      if memory_profiler:
-        post_js += open(shared.path_from_root('src', 'memoryprofiler.js')).read() + '\n'
+      if options.memory_profiler:
+        options.post_js += open(shared.path_from_root('src', 'memoryprofiler.js')).read() + '\n'
 
-      if thread_profiler:
-        post_js += open(shared.path_from_root('src', 'threadprofiler.js')).read() + '\n'
+      if options.thread_profiler:
+        options.post_js += open(shared.path_from_root('src', 'threadprofiler.js')).read() + '\n'
 
-      if js_opts is None: js_opts = opt_level >= 2
-      if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
-      if memory_init_file is None: memory_init_file = opt_level >= 2
+      if options.js_opts is None:
+        options.js_opts = options.opt_level >= 2
+      if options.llvm_opts is None:
+        options.llvm_opts = LLVM_OPT_LEVEL[options.opt_level]
+      if options.memory_init_file is None:
+        options.memory_init_file = options.opt_level >= 2
 
       # TODO: support source maps with js_transform
-      if js_transform and debug_level >= 4:
+      if options.js_transform and options.debug_level >= 4:
         logging.warning('disabling source maps because a js transform is being done')
-        debug_level = 3
+        options.debug_level = 3
 
       if DEBUG: start_time = time.time() # done after parsing arguments, which might affect debug state
 
@@ -1052,10 +809,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       wasm_text_target = asm_target.replace('.asm.js', '.wast') # ditto, might not be used
       wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
 
-      if final_suffix == 'html' and not separate_asm and ('PRECISE_F32=2' in settings_changes or 'USE_PTHREADS=2' in settings_changes):
-        separate_asm = True
+      if final_suffix == 'html' and not options.separate_asm and ('PRECISE_F32=2' in settings_changes or 'USE_PTHREADS=2' in settings_changes):
+        options.separate_asm = True
         logging.warning('forcing separate asm output (--separate-asm), because -s PRECISE_F32=2 or -s USE_PTHREADS=2 was passed.')
-      if separate_asm:
+      if options.separate_asm:
         shared.Settings.SEPARATE_ASM = os.path.basename(asm_target)
 
       if 'EMCC_STRICT' in os.environ:
@@ -1079,6 +836,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if error_on_missing_libraries_cmdline:
         shared.Settings.ERROR_ON_MISSING_LIBRARIES = int(error_on_missing_libraries_cmdline[len('ERROR_ON_MISSING_LIBRARIES='):])
 
+      # TODO(jgravelle) : extract system_js_libraries
       system_js_libraries = []
 
       # Find library files
@@ -1107,10 +865,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
       # ignore dynamic linking, since multiple dynamic linkings can interfere with each other
-      if not filename_type_suffix(target) in JS_CONTAINING_SUFFIXES or ignore_dynamic_linking:
+      if not filename_type_suffix(target) in JS_CONTAINING_SUFFIXES or options.ignore_dynamic_linking:
         def check(input_file):
           if filename_type_ending(input_file) in DYNAMICLIB_ENDINGS:
-            if not ignore_dynamic_linking: logging.warning('ignoring dynamic library %s because not compiling to JS or HTML, remember to link it when compiling to JS or HTML at the end', os.path.basename(input_file))
+            if not options.ignore_dynamic_linking: logging.warning('ignoring dynamic library %s because not compiling to JS or HTML, remember to link it when compiling to JS or HTML at the end', os.path.basename(input_file))
             return False
           else:
             return True
@@ -1122,23 +880,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       newargs = CC_ADDITIONAL_ARGS + newargs
 
-      if separate_asm and final_suffix != 'html':
+      if options.separate_asm and final_suffix != 'html':
         shared.WarningManager.warn('SEPARATE_ASM')
 
       # If we are using embind and generating JS, now is the time to link in bind.cpp
-      if bind and final_suffix in JS_CONTAINING_SUFFIXES:
+      if options.bind and final_suffix in JS_CONTAINING_SUFFIXES:
         input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')))
         next_arg_index += 1
 
       # Apply optimization level settings
-      shared.Settings.apply_opt_level(opt_level=opt_level, shrink_level=shrink_level, noisy=True)
+      shared.Settings.apply_opt_level(opt_level=options.opt_level, shrink_level=options.shrink_level, noisy=True)
 
       if os.environ.get('EMCC_FAST_COMPILER') == '0':
         logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
         sys.exit(1)
 
       # Set ASM_JS default here so that we can override it from the command line.
-      shared.Settings.ASM_JS = 1 if opt_level > 0 else 2
+      shared.Settings.ASM_JS = 1 if options.opt_level > 0 else 2
 
       # Apply -s settings in newargs here (after optimization levels, so they can override them)
       for change in settings_changes:
@@ -1197,23 +955,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
 
       if shared.Settings.SAFE_HEAP:
-        if not js_opts:
+        if not options.js_opts:
           logging.debug('enabling js opts for SAFE_HEAP')
-          js_opts = True
-        force_js_opts = True
+          options.js_opts = True
+        options.force_js_opts = True
 
-      if debug_level > 1 and use_closure_compiler:
+      if options.debug_level > 1 and options.use_closure_compiler:
         logging.warning('disabling closure because debug info was requested')
-        use_closure_compiler = False
+        options.use_closure_compiler = False
 
-      assert not (shared.Settings.NO_DYNAMIC_EXECUTION and use_closure_compiler), 'cannot have both NO_DYNAMIC_EXECUTION and closure compiler enabled at the same time'
+      assert not (shared.Settings.NO_DYNAMIC_EXECUTION and options.use_closure_compiler), 'cannot have both NO_DYNAMIC_EXECUTION and closure compiler enabled at the same time'
 
-      if use_closure_compiler:
-        shared.Settings.USE_CLOSURE_COMPILER = use_closure_compiler
+      if options.use_closure_compiler:
+        shared.Settings.USE_CLOSURE_COMPILER = options.use_closure_compiler
         if not shared.check_closure_compiler():
           logging.error('fatal: closure compiler is not configured correctly')
           sys.exit(1)
-        if use_closure_compiler == 2 and shared.Settings.ASM_JS == 1:
+        if options.use_closure_compiler == 2 and shared.Settings.ASM_JS == 1:
           shared.WarningManager.warn('ALMOST_ASM', 'not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
           shared.Settings.ASM_JS = 2
 
@@ -1223,7 +981,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.Settings.INCLUDE_FULL_LIBRARY = 1
       elif shared.Settings.SIDE_MODULE:
         assert not shared.Settings.MAIN_MODULE
-        memory_init_file = False # memory init file is not supported with asm.js side modules, must be executable synchronously (for dlopen)
+        options.memory_init_file = False # memory init file is not supported with asm.js side modules, must be executable synchronously (for dlopen)
 
       if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
         assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
@@ -1231,7 +989,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.Settings.LINKABLE = 1
         shared.Settings.RELOCATABLE = 1
         shared.Settings.PRECISE_I64_MATH = 1 # other might use precise math, we need to be able to print it
-        assert not use_closure_compiler, 'cannot use closure compiler on shared modules'
+        assert not options.use_closure_compiler, 'cannot use closure compiler on shared modules'
         assert not shared.Settings.ALLOW_MEMORY_GROWTH, 'memory growth is not supported with shared modules yet'
 
       if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
@@ -1248,12 +1006,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.Settings.SAFE_SPLIT_MEMORY = 1 # we use our own infrastructure
         assert not shared.Settings.RELOCATABLE, 'no SPLIT_MEMORY with RELOCATABLE'
         assert not shared.Settings.USE_PTHREADS, 'no SPLIT_MEMORY with pthreads'
-        if not js_opts:
-          js_opts = True
+        if not options.js_opts:
+          options.js_opts = True
           logging.debug('enabling js opts for SPLIT_MEMORY')
-        force_js_opts = True
-        if use_closure_compiler:
-          use_closure_compiler = False
+        options.force_js_opts = True
+        if options.use_closure_compiler:
+          options.use_closure_compiler = False
           logging.warning('cannot use closure compiler on split memory, for now, disabling')
 
       if shared.Settings.STB_IMAGE and final_suffix in JS_CONTAINING_SUFFIXES:
@@ -1276,7 +1034,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.FETCH and final_suffix in JS_CONTAINING_SUFFIXES:
         input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'fetch', 'emscripten_fetch.cpp')))
         next_arg_index += 1
-        js_libraries.append(shared.path_from_root('src', 'library_fetch.js'))
+        options.js_libraries.append(shared.path_from_root('src', 'library_fetch.js'))
 
       forced_stdlibs = []
       if shared.Settings.DEMANGLE_SUPPORT:
@@ -1292,7 +1050,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           logging.debug('using response file for EXPORTED_FUNCTIONS, make sure it includes _malloc and _free')
 
-      assert not (bind and shared.Settings.NO_DYNAMIC_EXECUTION), 'NO_DYNAMIC_EXECUTION disallows embind'
+      assert not (options.bind and shared.Settings.NO_DYNAMIC_EXECUTION), 'NO_DYNAMIC_EXECUTION disallows embind'
 
       assert not (shared.Settings.NO_DYNAMIC_EXECUTION and shared.Settings.RELOCATABLE), 'cannot have both NO_DYNAMIC_EXECUTION and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()'
 
@@ -1309,26 +1067,26 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         #shared.Settings.GLOBAL_BASE = 8*256 # keep enough space at the bottom for a full stack frame, for z-interpreter
         shared.Settings.SIMPLIFY_IFS = 0 # this is just harmful for emterpreting
         shared.Settings.EXPORTED_FUNCTIONS += ['emterpret']
-        if not js_opts:
+        if not options.js_opts:
           logging.debug('enabling js opts for EMTERPRETIFY')
-          js_opts = True
-        force_js_opts = True
-        assert use_closure_compiler is not 2, 'EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that'
+          options.js_opts = True
+        options.force_js_opts = True
+        assert options.use_closure_compiler is not 2, 'EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that'
 
       if shared.Settings.DEAD_FUNCTIONS:
-        if not js_opts:
+        if not options.js_opts:
           logging.debug('enabling js opts for DEAD_FUNCTIONS')
-          js_opts = True
-        force_js_opts = True
+          options.js_opts = True
+        options.force_js_opts = True
 
-      if proxy_to_worker:
+      if options.proxy_to_worker:
         shared.Settings.PROXY_TO_WORKER = 1
 
-      if use_preload_plugins or len(preload_files) > 0 or len(embed_files) > 0:
+      if options.use_preload_plugins or len(options.preload_files) > 0 or len(options.embed_files) > 0:
         # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
         shared.Settings.FORCE_FILESYSTEM = 1
 
-      if proxy_to_worker or use_preload_plugins:
+      if options.proxy_to_worker or options.use_preload_plugins:
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
 
       if not shared.Settings.NO_FILESYSTEM and not shared.Settings.ONLY_MY_CODE:
@@ -1340,11 +1098,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.USE_PTHREADS:
         if not any(s.startswith('PTHREAD_POOL_SIZE=') for s in settings_changes):
           settings_changes.append('PTHREAD_POOL_SIZE=0')
-        js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
+        options.js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
         newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
         shared.Settings.FORCE_FILESYSTEM = 1 # proxying of utime requires the filesystem
       else:
-        js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
+        options.js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
 
       if shared.Settings.USE_PTHREADS:
         if shared.Settings.LINKABLE:
@@ -1361,10 +1119,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           exit(1)
 
       if shared.Settings.OUTLINING_LIMIT:
-        if not js_opts:
+        if not options.js_opts:
           logging.debug('enabling js opts as optional functionality implemented as a js opt was requested')
-          js_opts = True
-        force_js_opts = True
+          options.js_opts = True
+        options.force_js_opts = True
 
       if shared.Settings.WASM:
         shared.Settings.BINARYEN = 1 # these are synonyms
@@ -1384,7 +1142,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       assert shared.Settings.BINARYEN_MEM_MAX == -1 or shared.Settings.BINARYEN_MEM_MAX % 65536 == 0, 'BINARYEN_MEM_MAX must be a multiple of 64KB, was ' + str(shared.Settings.BINARYEN_MEM_MAX)
 
       if shared.Settings.WASM_BACKEND:
-        js_opts = None
+        options.js_opts = None
         shared.Settings.BINARYEN = 1
         # Static linking is tricky with LLVM, since e.g. memset might not be used from libc,
         # but be used as an intrinsic, and codegen will generate a libc call from that intrinsic
@@ -1418,14 +1176,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # also always use f32s when asm.js is not in the picture
         if ('PRECISE_F32=0' not in settings_changes and 'PRECISE_F32=2' not in settings_changes) or 'asmjs' not in shared.Settings.BINARYEN_METHOD:
           shared.Settings.PRECISE_F32 = 1
-        if js_opts and not force_js_opts and 'asmjs' not in shared.Settings.BINARYEN_METHOD:
-          js_opts = None
+        if options.js_opts and not options.force_js_opts and 'asmjs' not in shared.Settings.BINARYEN_METHOD:
+          options.js_opts = None
           logging.debug('asm.js opts not forced by user or an option that depends them, and we do not intend to run the asm.js, so disabling and leaving opts to the binaryen optimizer')
-        assert not use_closure_compiler == 2, 'closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm'
+        assert not options.use_closure_compiler == 2, 'closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm'
         # for simplicity, we always have a mem init file, which may also be imported into the wasm module.
         #  * if we also supported js mem inits we'd have 4 modes
         #  * and js mem inits are useful for avoiding a side file, but the wasm module avoids that anyhow
-        memory_init_file = True
+        options.memory_init_file = True
         # async compilation requires wasm-only mode, and also not interpreting (the interpreter needs sync input)
         if shared.Settings.BINARYEN_ASYNC_COMPILATION == 1 and shared.Building.is_wasm_only() and 'interpret' not in shared.Settings.BINARYEN_METHOD:
           # async compilation requires a swappable module - we swap it in when it's ready
@@ -1463,22 +1221,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.WarningManager.warn('ALMOST_ASM')
           shared.Settings.ASM_JS = 2 # memory growth does not validate as asm.js http://discourse.wicg.io/t/request-for-comments-switching-resizing-heaps-in-asm-js/641/23
 
-      if js_opts:
+      if options.js_opts:
         shared.Settings.RUNNING_JS_OPTS = 1
 
       if shared.Settings.CYBERDWARF:
         newargs.append('-g')
         shared.Settings.BUNDLED_CD_DEBUG_FILE = target + ".cd"
-        js_libraries.append(shared.path_from_root('src', 'library_cyberdwarf.js'))
-        js_libraries.append(shared.path_from_root('src', 'library_debugger_toolkit.js'))
+        options.js_libraries.append(shared.path_from_root('src', 'library_cyberdwarf.js'))
+        options.js_libraries.append(shared.path_from_root('src', 'library_debugger_toolkit.js'))
 
-      if tracing:
+      if options.tracing:
         if shared.Settings.ALLOW_MEMORY_GROWTH:
           shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
 
       if shared.Settings.ONLY_MY_CODE:
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
-        separate_asm = True
+        options.separate_asm = True
         shared.Settings.FINALIZE_ASM_JS = False
 
       if shared.Settings.GLOBAL_BASE < 0:
@@ -1491,7 +1249,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # We leave the -O option in place so that the clang front-end runs in that
         # optimization mode, but we disable the actual optimization passes, as we'll
         # run them separately.
-        if opt_level > 0:
+        if options.opt_level > 0:
           newargs.append('-mllvm')
           newargs.append('-disable-llvm-optzns')
 
@@ -1499,8 +1257,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         assert shared.Building.is_wasm_only(), 'LEGALIZE_JS_FFI incompatible with RUNNING_JS_OPTS and non-wasm BINARYEN_METHOD.'
 
       shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
-      shared.Settings.OPT_LEVEL = opt_level
-      shared.Settings.DEBUG_LEVEL = debug_level
+      shared.Settings.OPT_LEVEL = options.opt_level
+      shared.Settings.DEBUG_LEVEL = options.debug_level
 
       ## Compile source code to bitcode
 
@@ -1532,18 +1290,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             # can just emit directly to the target
             if specified_target:
               if specified_target.endswith('/') or specified_target.endswith('\\') or os.path.isdir(specified_target):
-                return os.path.join(specified_target, os.path.basename(unsuffixed(input_file))) + default_object_extension
+                return os.path.join(specified_target, os.path.basename(unsuffixed(input_file))) + options.default_object_extension
               return specified_target
             return unsuffixed(input_file) + final_ending
           else:
-            if has_dash_c: return unsuffixed(input_file) + default_object_extension
-        return in_temp(unsuffixed(uniquename(input_file)) + default_object_extension)
+            if has_dash_c: return unsuffixed(input_file) + options.default_object_extension
+        return in_temp(unsuffixed(uniquename(input_file)) + options.default_object_extension)
 
       # Request LLVM debug info if explicitly specified, or building bitcode with -g, or if building a source all the way to JS with -g
-      if debug_level >= 4 or ((final_suffix not in JS_CONTAINING_SUFFIXES or (has_source_inputs and final_suffix in JS_CONTAINING_SUFFIXES)) and requested_debug == '-g'):
-        if debug_level == 4 or not (final_suffix in JS_CONTAINING_SUFFIXES and js_opts): # do not save llvm debug info if js optimizer will wipe it out anyhow (but if source maps are used, keep it)
+      if options.debug_level >= 4 or ((final_suffix not in JS_CONTAINING_SUFFIXES or (has_source_inputs and final_suffix in JS_CONTAINING_SUFFIXES)) and options.requested_debug == '-g'):
+        if options.debug_level == 4 or not (final_suffix in JS_CONTAINING_SUFFIXES and options.js_opts): # do not save llvm debug info if js optimizer will wipe it out anyhow (but if source maps are used, keep it)
           newargs.append('-g') # preserve LLVM debug info
-          debug_level = 4
+          options.debug_level = 4
 
       # Bitcode args generation code
       def get_bitcode_args(input_files):
@@ -1610,7 +1368,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         assert len(temp_files) == len(input_files)
 
         # Optimize source files
-        if llvm_opts > 0:
+        if options.llvm_opts > 0:
           for pos, (_, input_file) in enumerate(input_files):
             file_ending = filename_type_ending(input_file)
             if file_ending.endswith(SOURCE_ENDINGS):
@@ -1618,7 +1376,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               logging.debug('optimizing %s', input_file)
               #if DEBUG: shutil.copyfile(temp_file, os.path.join(shared.configuration.CANONICAL_TEMP_DIR, 'to_opt.bc')) # useful when LLVM opt aborts
               new_temp_file = in_temp(unsuffixed(uniquename(temp_file)) + '.o')
-              shared.Building.llvm_opt(temp_file, llvm_opts, new_temp_file)
+              shared.Building.llvm_opt(temp_file, options.llvm_opts, new_temp_file)
               temp_files[pos] = (temp_files[pos][0], new_temp_file)
 
       # Decide what we will link
@@ -1645,7 +1403,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               # adjusting the target name away from the temporary file name to the specified target.
               # It will be deleted with the rest of the temporary directory.
               deps = open(temp_output_base + '.d').read()
-              deps = deps.replace(temp_output_base + default_object_extension, specified_target)
+              deps = deps.replace(temp_output_base + options.default_object_extension, specified_target)
               with open(os.path.join(os.path.dirname(specified_target), os.path.basename(unsuffixed(input_file) + '.d')), "w") as out_dep:
                 out_dep.write(deps)
           else:
@@ -1729,7 +1487,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Optimize, if asked to
       if not LEAVE_INPUTS_RAW:
-        link_opts = [] if debug_level >= 4 or shared.Settings.CYBERDWARF else ['-strip-debug'] # remove LLVM debug if we are not asked for it
+        link_opts = [] if options.debug_level >= 4 or shared.Settings.CYBERDWARF else ['-strip-debug'] # remove LLVM debug if we are not asked for it
         if not shared.Settings.ASSERTIONS:
           link_opts += ['-disable-verify']
         else:
@@ -1738,13 +1496,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # something similar, which we can do with a param to opt
           link_opts += ['-disable-debug-info-type-map']
 
-        if llvm_lto >= 2 and llvm_opts > 0:
+        if options.llvm_lto >= 2 and options.llvm_opts > 0:
           logging.debug('running LLVM opts as pre-LTO')
-          final = shared.Building.llvm_opt(final, llvm_opts, DEFAULT_FINAL)
+          final = shared.Building.llvm_opt(final, options.llvm_opts, DEFAULT_FINAL)
           if DEBUG: save_intermediate('opt', 'bc')
 
         # If we can LTO, do it before dce, since it opens up dce opportunities
-        if shared.Building.can_build_standalone() and llvm_lto and llvm_lto != 2:
+        if shared.Building.can_build_standalone() and options.llvm_lto and options.llvm_lto != 2:
           if not shared.Building.can_inline(): link_opts.append('-disable-inlining')
           # add a manual internalize with the proper things we need to be kept alive during lto
           link_opts += shared.Building.get_safe_internalize() + ['-std-link-opts']
@@ -1756,7 +1514,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
           link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
 
-        if cfi:
+        if options.cfi:
           if use_cxx:
              link_opts.append("-wholeprogramdevirt")
           link_opts.append("-lowertypetests")
@@ -1770,13 +1528,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if len(link_opts) > 0:
             final = shared.Building.llvm_opt(final, link_opts, DEFAULT_FINAL)
             if DEBUG: save_intermediate('linktime', 'bc')
-          if save_bc:
-            shutil.copyfile(final, save_bc)
+          if options.save_bc:
+            shutil.copyfile(final, options.save_bc)
 
       # Prepare .ll for Emscripten
       if LEAVE_INPUTS_RAW:
         assert len(input_files) == 1
-      if DEBUG and save_bc: save_intermediate('ll', 'll')
+      if DEBUG and options.save_bc: save_intermediate('ll', 'll')
 
       if AUTODEBUG:
         logging.debug('autodebug')
@@ -1793,8 +1551,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     with ToolchainProfiler.profile_block('emscript'):
       # Emscripten
       logging.debug('LLVM => JS')
-      extra_args = [] if not js_libraries else ['--libraries', ','.join(map(os.path.abspath, js_libraries))]
-      if memory_init_file:
+      extra_args = []
+      if options.js_libraries:
+        extra_args = ['--libraries', ','.join(map(os.path.abspath, options.js_libraries))]
+      if options.memory_init_file:
         shared.Settings.MEM_INIT_METHOD = 1
       else:
         assert shared.Settings.MEM_INIT_METHOD != 1
@@ -1819,58 +1579,60 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     with ToolchainProfiler.profile_block('source transforms'):
       # Embed and preload files
       if shared.Settings.SPLIT_MEMORY:
-        no_heap_copy = True # copying into the heap is risky when split - the chunks might be too small for the file package!
+        options.no_heap_copy = True # copying into the heap is risky when split - the chunks might be too small for the file package!
 
-      if len(preload_files) + len(embed_files) > 0:
+      if len(options.preload_files) + len(options.embed_files) > 0:
         logging.debug('setting up files')
         file_args = []
-        if len(preload_files) > 0:
+        if len(options.preload_files) > 0:
           file_args.append('--preload')
-          file_args += preload_files
-        if len(embed_files) > 0:
+          file_args += options.preload_files
+        if len(options.embed_files) > 0:
           file_args.append('--embed')
-          file_args += embed_files
-        if len(exclude_files) > 0:
+          file_args += options.embed_files
+        if len(options.exclude_files) > 0:
           file_args.append('--exclude')
-          file_args += exclude_files
-        if use_preload_cache:
+          file_args += options.exclude_files
+        if options.use_preload_cache:
           file_args.append('--use-preload-cache')
-        if no_heap_copy:
+        if options.no_heap_copy:
           file_args.append('--no-heap-copy')
-        if not use_closure_compiler:
+        if not options.use_closure_compiler:
           file_args.append('--no-closure')
         if shared.Settings.LZ4:
           file_args.append('--lz4')
-        if use_preload_plugins:
+        if options.use_preload_plugins:
           file_args.append('--use-preload-plugins')
         file_code = execute([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
-        pre_js = file_code + pre_js
+        options.pre_js = file_code + options.pre_js
 
       # Apply pre and postjs files
-      if pre_js or post_module or post_js:
+      if options.pre_js or options.post_module or options.post_js:
         logging.debug('applying pre/postjses')
         src = open(final).read()
-        if post_module:
-          src = src.replace('// {{PREAMBLE_ADDITIONS}}', post_module + '\n// {{PREAMBLE_ADDITIONS}}')
+        if options.post_module:
+          src = src.replace('// {{PREAMBLE_ADDITIONS}}', options.post_module + '\n// {{PREAMBLE_ADDITIONS}}')
         final += '.pp.js'
         if WINDOWS: # Avoid duplicating \r\n to \r\r\n when writing out.
-          if pre_js: pre_js = pre_js.replace('\r\n', '\n')
-          if post_js: post_js = post_js.replace('\r\n', '\n')
+          if options.pre_js:
+            options.pre_js = options.pre_js.replace('\r\n', '\n')
+          if options.post_js:
+            options.post_js = options.post_js.replace('\r\n', '\n')
         outfile = open(final, 'w')
-        outfile.write(pre_js)
+        outfile.write(options.pre_js)
         outfile.write(src) # this may be large, don't join it to others
-        outfile.write(post_js)
+        outfile.write(options.post_js)
         outfile.close()
-        pre_js = src = post_js = None
+        options.pre_js = src = options.post_js = None
         if DEBUG: save_intermediate('pre-post')
 
       # Apply a source code transformation, if requested
-      if js_transform:
+      if options.js_transform:
         shutil.copyfile(final, final + '.tr.js')
         final += '.tr.js'
         posix = True if not shared.WINDOWS else False
-        logging.debug('applying transform: %s', js_transform)
-        subprocess.check_call(shlex.split(js_transform, posix=posix) + [os.path.abspath(final)])
+        logging.debug('applying transform: %s', options.js_transform)
+        subprocess.check_call(shlex.split(options.js_transform, posix=posix) + [os.path.abspath(final)])
         if DEBUG: save_intermediate('transformed')
 
       js_transform_tempfiles = [final]
@@ -1891,7 +1653,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           while membytes and membytes[-1] == 0:
             membytes.pop()
           if not membytes: return ''
-          if not memory_init_file:
+          if not options.memory_init_file:
             # memory initializer in a string literal
             return "memoryInitializer = '%s';" % shared.JS.generate_string_initializer(list(membytes))
           open(memfile, 'wb').write(''.join(map(chr, membytes)))
@@ -1914,7 +1676,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             logging.debug('wrote memory initialization to %s', memfile)
           else:
             logging.debug('did not see memory initialization')
-      elif not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and debug_level < 4:
+      elif not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and options.debug_level < 4:
         # not writing a binary init, but we can at least optimize them by splitting them up
         src = open(final).read()
         src = shared.JS.optimize_initializer(src)
@@ -1935,11 +1697,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     log_time('memory initializer')
 
     optimizer = JSOptimizer(
-      opt_level=opt_level,
-      debug_level=debug_level,
-      emit_symbol_map=emit_symbol_map,
-      profiling_funcs=profiling_funcs,
-      use_closure_compiler=use_closure_compiler,
+      options=options,
       misc_temp_files=misc_temp_files,
       js_transform_tempfiles=js_transform_tempfiles,
     )
@@ -1950,7 +1708,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         optimizer.queue += ['eliminateDeadFuncs']
         optimizer.extra_info['dead_functions'] = shared.Settings.DEAD_FUNCTIONS
 
-      if opt_level >= 1 and js_opts:
+      if options.opt_level >= 1 and options.js_opts:
         logging.debug('running js post-opts')
 
         if DEBUG == '2':
@@ -1963,7 +1721,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           else:
             return 'eliminate'
 
-        if opt_level >= 2:
+        if options.opt_level >= 2:
           optimizer.queue += [get_eliminate()]
 
           if shared.Settings.AGGRESSIVE_VARIABLE_ELIMINATION:
@@ -1980,58 +1738,58 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # add explicit label setting, as we will run aggressiveVariableElimination late, *after* 'label' is no longer notable by name
         optimizer.queue += ['safeLabelSetting']
 
-      if opt_level >= 1 and js_opts:
-        if opt_level >= 2:
+      if options.opt_level >= 1 and options.js_opts:
+        if options.opt_level >= 2:
           # simplify ifs if it is ok to make the code somewhat unreadable, and unless outlining (simplified ifs
           # with commaified code breaks late aggressive variable elimination)
           # do not do this with binaryen, as commaifying confuses binaryen call type detection (FIXME, in theory, but unimportant)
-          if shared.Settings.SIMPLIFY_IFS and (debug_level == 0 or profiling) and shared.Settings.OUTLINING_LIMIT == 0 and not shared.Settings.BINARYEN:
+          if shared.Settings.SIMPLIFY_IFS and (options.debug_level == 0 or options.profiling) and shared.Settings.OUTLINING_LIMIT == 0 and not shared.Settings.BINARYEN:
             optimizer.queue += ['simplifyIfs']
 
           if shared.Settings.PRECISE_F32: optimizer.queue += ['optimizeFrounds']
 
-      if js_opts:
+      if options.js_opts:
         if shared.Settings.SAFE_HEAP: optimizer.queue += ['safeHeap']
 
         if shared.Settings.OUTLINING_LIMIT > 0:
           optimizer.queue += ['outline']
           optimizer.extra_info['sizeToOutline'] = shared.Settings.OUTLINING_LIMIT
 
-        if opt_level >= 2 and debug_level < 3:
-          if opt_level >= 3 or shrink_level > 0:
+        if options.opt_level >= 2 and options.debug_level < 3:
+          if options.opt_level >= 3 or options.shrink_level > 0:
             optimizer.queue += ['registerizeHarder']
           else:
             optimizer.queue += ['registerize']
 
         # NOTE: Important that this comes after registerize/registerizeHarder
-        if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS and opt_level >= 2:
+        if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS and options.opt_level >= 2:
           optimizer.flush()
           shared.Building.eliminate_duplicate_funcs(final)
 
-      if shared.Settings.EVAL_CTORS and memory_init_file and debug_level < 4 and not shared.Settings.BINARYEN:
+      if shared.Settings.EVAL_CTORS and options.memory_init_file and options.debug_level < 4 and not shared.Settings.BINARYEN:
         optimizer.flush()
         shared.Building.eval_ctors(final, memfile)
         if DEBUG: save_intermediate('eval-ctors', 'js')
 
-      if js_opts:
+      if options.js_opts:
         # some compilation modes require us to minify later or not at all
         if not shared.Settings.EMTERPRETIFY and not shared.Settings.BINARYEN:
           optimizer.do_minify()
 
-        if opt_level >= 2:
+        if options.opt_level >= 2:
           optimizer.queue += ['asmLastOpts']
 
         if shared.Settings.FINALIZE_ASM_JS: optimizer.queue += ['last']
 
         optimizer.flush()
 
-      if use_closure_compiler == 2:
+      if options.use_closure_compiler == 2:
         optimizer.flush()
 
         logging.debug('running closure')
         # no need to add this to js_transform_tempfiles, because closure and
         # debug_level > 0 are never simultaneously true
-        final = shared.Building.closure_compiler(final, pretty=debug_level >= 1)
+        final = shared.Building.closure_compiler(final, pretty=options.debug_level >= 1)
         if DEBUG: save_intermediate('closure')
 
     log_time('js opts')
@@ -2039,7 +1797,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('final emitting'):
       if shared.Settings.EMTERPRETIFY:
-        emterpretify(js_target, optimizer, profiling, profiling_funcs)
+        emterpretify(js_target, optimizer, options)
 
       # Remove some trivial whitespace # TODO: do not run when compress has already been done on all parts of the code
       #src = open(final).read()
@@ -2050,23 +1808,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.CYBERDWARF:
           execute([shared.PYTHON, shared.path_from_root('tools', 'emdebug_cd_merger.py'), target + '.cd', target+'.symbols'])
 
-      if debug_level >= 4:
+      if options.debug_level >= 4:
         emit_source_maps(target, js_transform_tempfiles)
 
       # track files that will need native eols
       generated_text_files_with_native_eols = []
 
-      if (separate_asm or shared.Settings.BINARYEN) and not shared.Settings.WASM_BACKEND:
+      if (options.separate_asm or shared.Settings.BINARYEN) and not shared.Settings.WASM_BACKEND:
         separate_asm_js(final, asm_target)
         generated_text_files_with_native_eols += [asm_target]
 
       binaryen_method_sanity_check()
       if shared.Settings.BINARYEN:
-        (final, memory_init_file) = do_binaryen(
-          final, asm_target, opt_level, shrink_level, memory_init_file, memfile,
-          debug_level, profiling_funcs, emit_symbol_map, wasm_binary_target,
-          wasm_text_target, misc_temp_files, use_closure_compiler, optimizer
-        )
+        final = do_binaryen(final, asm_target, options, memfile, wasm_binary_target,
+                            wasm_text_target, misc_temp_files, optimizer)
 
       if shared.Settings.MODULARIZE:
         final = modularize(final)
@@ -2078,15 +1833,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # If we were asked to also generate HTML, do that
       if final_suffix == 'html':
-        generate_html(target, shell_path, js_target, target_basename, proxy_to_worker,
-                      separate_asm, memory_init_file, asm_target, wasm_binary_target,
-                      output_eol, memfile, optimizer)
+        generate_html(target, options, js_target, target_basename,
+                      asm_target, wasm_binary_target,
+                      memfile, optimizer)
       else:
-        if proxy_to_worker:
+        if options.proxy_to_worker:
           generate_worker_js(target, js_target, target_basename)
 
       for f in generated_text_files_with_native_eols:
-        tools.line_endings.convert_line_endings_in_file(f, os.linesep, output_eol)
+        tools.line_endings.convert_line_endings_in_file(f, os.linesep, options.output_eol)
     log_time('final emitting')
     # exit block 'final emitting'
 
@@ -2102,7 +1857,273 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       logging.info('emcc saved files are in:' + temp_dir)
 
 
-def emterpretify(js_target, optimizer, profiling, profiling_funcs):
+def parse_args(newargs):
+  options = EmccOptions()
+  settings_changes = []
+  should_exit = False
+
+  def check_bad_eq(arg):
+    assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
+
+  def validate_arg_level(level_string, max_level, err_msg):
+    try:
+      level = int(level_string)
+      assert 0 <= level <= max_level
+    except:
+      raise Exception(err_msg)
+    return level
+
+  for i in range(len(newargs)):
+    newargs[i] = newargs[i].strip() # On Windows Vista (and possibly others), excessive spaces in the command line leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
+    if newargs[i].startswith('-O'):
+      # Let -O default to -O2, which is what gcc does.
+      requested_level = newargs[i][2:] or '2'
+      if requested_level == 's':
+        options.llvm_opts = ['-Os']
+        options.requested_level = 2
+        options.shrink_level = 1
+        settings_changes.append('INLINING_LIMIT=50')
+      elif requested_level == 'z':
+        options.llvm_opts = ['-Oz']
+        options.requested_level = 2
+        options.shrink_level = 2
+        settings_changes.append('INLINING_LIMIT=25')
+      options.opt_level = validate_arg_level(requested_level, 3, 'Invalid optimization level: ' + newargs[i])
+    elif newargs[i].startswith('--js-opts'):
+      check_bad_eq(newargs[i])
+      options.js_opts = eval(newargs[i+1])
+      if options.js_opts:
+        options.force_js_opts = True
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--llvm-opts'):
+      check_bad_eq(newargs[i])
+      options.llvm_opts = eval(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--llvm-lto'):
+      check_bad_eq(newargs[i])
+      options.llvm_lto = eval(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--closure'):
+      check_bad_eq(newargs[i])
+      options.use_closure_compiler = int(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--js-transform'):
+      check_bad_eq(newargs[i])
+      options.js_transform = newargs[i+1]
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--pre-js'):
+      check_bad_eq(newargs[i])
+      options.pre_js += open(newargs[i+1]).read() + '\n'
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--post-js'):
+      check_bad_eq(newargs[i])
+      options.post_js += open(newargs[i+1]).read() + '\n'
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--minify'):
+      check_bad_eq(newargs[i])
+      assert newargs[i+1] == '0', '0 is the only supported option for --minify; 1 has been deprecated'
+      options.debug_level = max(1, options.debug_level)
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('-g'):
+      requested_level = newargs[i][2:] or '3'
+      options.debug_level = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + newargs[i])
+      options.requested_debug = newargs[i]
+      newargs[i] = ''
+    elif newargs[i] == '-profiling' or newargs[i] == '--profiling':
+      options.debug_level = 2
+      options.profiling = True
+      newargs[i] = ''
+    elif newargs[i] == '-profiling-funcs' or newargs[i] == '--profiling-funcs':
+      options.profiling_funcs = True
+      newargs[i] = ''
+    elif newargs[i] == '--tracing' or newargs[i] == '--memoryprofiler':
+      if newargs[i] == '--memoryprofiler':
+        options.memory_profiler = True
+      options.tracing = True
+      newargs[i] = ''
+      newargs.append('-D__EMSCRIPTEN_TRACING__=1')
+      settings_changes.append("EMSCRIPTEN_TRACING=1")
+      options.js_libraries.append(shared.path_from_root('src', 'library_trace.js'))
+    elif newargs[i] == '--emit-symbol-map':
+      options.emit_symbol_map = True
+      newargs[i] = ''
+    elif newargs[i] == '--bind':
+      options.bind = True
+      newargs[i] = ''
+      options.js_libraries.append(shared.path_from_root('src', 'embind', 'emval.js'))
+      options.js_libraries.append(shared.path_from_root('src', 'embind', 'embind.js'))
+      if options.default_cxx_std:
+        options.default_cxx_std = '-std=c++11' # Force C++11 for embind code, but only if user has not explicitly overridden a standard.
+    elif newargs[i].startswith('-std=') or newargs[i].startswith('--std='):
+      options.default_cxx_std = '' # User specified a standard to use, clear Emscripten from specifying it.
+    elif newargs[i].startswith('--embed-file'):
+      check_bad_eq(newargs[i])
+      options.embed_files.append(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--preload-file'):
+      check_bad_eq(newargs[i])
+      options.preload_files.append(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--exclude-file'):
+      check_bad_eq(newargs[i])
+      options.exclude_files.append(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--use-preload-cache'):
+      options.use_preload_cache = True
+      newargs[i] = ''
+    elif newargs[i].startswith('--no-heap-copy'):
+      options.no_heap_copy = True
+      newargs[i] = ''
+    elif newargs[i].startswith('--use-preload-plugins'):
+      options.use_preload_plugins = True
+      newargs[i] = ''
+    elif newargs[i] == '--ignore-dynamic-linking':
+      options.ignore_dynamic_linking = True
+      newargs[i] = ''
+    elif newargs[i] == '-v':
+      shared.COMPILER_OPTS += ['-v']
+      shared.check_sanity(force=True)
+      newargs[i] = ''
+    elif newargs[i].startswith('--shell-file'):
+      check_bad_eq(newargs[i])
+      options.shell_path = newargs[i+1]
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--js-library'):
+      check_bad_eq(newargs[i])
+      options.js_libraries.append(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i] == '--remove-duplicates':
+      logging.warning('--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase')
+      newargs[i] = ''
+    elif newargs[i] == '--jcache':
+      logging.error('jcache is no longer supported')
+      newargs[i] = ''
+    elif newargs[i] == '--cache':
+      check_bad_eq(newargs[i])
+      os.environ['EM_CACHE'] = newargs[i+1]
+      shared.reconfigure_cache()
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i] == '--clear-cache':
+      logging.info('clearing cache as requested by --clear-cache')
+      shared.Cache.erase()
+      shared.check_sanity(force=True) # this is a good time for a sanity check
+      should_exit = True
+    elif newargs[i] == '--clear-ports':
+      logging.info('clearing ports and cache as requested by --clear-ports')
+      options.system_libs.Ports.erase()
+      shared.Cache.erase()
+      shared.check_sanity(force=True) # this is a good time for a sanity check
+      should_exit = True
+    elif newargs[i] == '--show-ports':
+      system_libs.show_ports()
+      should_exit = True
+    elif newargs[i] == '--save-bc':
+      check_bad_eq(newargs[i])
+      options.save_bc = newargs[i+1]
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i] == '--memory-init-file':
+      check_bad_eq(newargs[i])
+      options.memory_init_file = int(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i] == '--proxy-to-worker':
+      options.proxy_to_worker = True
+      newargs[i] = ''
+    elif newargs[i] == '--valid-abspath':
+      options.valid_abspaths.append(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i] == '--separate-asm':
+      options.separate_asm = True
+      newargs[i] = ''
+    elif newargs[i].startswith(('-I', '-L')):
+      options.path_name = newargs[i][2:]
+      if os.path.isabs(options.path_name) and not options.is_valid_abspath(options.path_name):
+        # Of course an absolute path to a non-system-specific library or header
+        # is fine, and you can ignore this warning. The danger are system headers
+        # that are e.g. x86 specific and nonportable. The emscripten bundled
+        # headers are modified to be portable, local system ones are generally not.
+        shared.WarningManager.warn(
+          'ABSOLUTE_PATHS', '-I or -L of an absolute path "' + newargs[i] +
+          '" encountered. If this is to a local system header/library, it may '
+          'cause problems (local system files make sense for compiling natively '
+          'on your system, but not necessarily to JavaScript).')
+    elif newargs[i] == '--emrun':
+      options.emrun = True
+      newargs[i] = ''
+    elif newargs[i] == '--cpuprofiler':
+      options.cpu_profiler = True
+      newargs[i] = ''
+    elif newargs[i] == '--threadprofiler':
+      options.thread_profiler = True
+      settings_changes.append('PTHREADS_PROFILING=1')
+      newargs[i] = ''
+    elif newargs[i] == '--default-obj-ext':
+      newargs[i] = ''
+      options.default_object_extension = newargs[i+1]
+      if not options.default_object_extension.startswith('.'):
+        options.default_object_extension = '.' + options.default_object_extension
+      newargs[i+1] = ''
+    elif newargs[i] == '-msse':
+      newargs.append('-D__SSE__=1')
+      newargs[i] = ''
+    elif newargs[i] == '-msse2':
+      newargs.append('-D__SSE__=1')
+      newargs.append('-D__SSE2__=1')
+      newargs[i] = ''
+    elif newargs[i] == '-msse3':
+      newargs.append('-D__SSE__=1')
+      newargs.append('-D__SSE2__=1')
+      newargs.append('-D__SSE3__=1')
+      newargs[i] = ''
+    elif newargs[i] == '-mssse3':
+      newargs.append('-D__SSE__=1')
+      newargs.append('-D__SSE2__=1')
+      newargs.append('-D__SSE3__=1')
+      newargs.append('-D__SSSE3__=1')
+      newargs[i] = ''
+    elif newargs[i] == '-msse4.1':
+      newargs.append('-D__SSE__=1')
+      newargs.append('-D__SSE2__=1')
+      newargs.append('-D__SSE3__=1')
+      newargs.append('-D__SSSE3__=1')
+      newargs.append('-D__SSE4_1__=1')
+      newargs[i] = ''
+    elif newargs[i].startswith("-fsanitize=cfi"):
+      options.cfi = True
+    elif newargs[i] == "--output_eol":
+      if newargs[i+1].lower() == 'windows':
+        options.output_eol = '\r\n'
+      elif newargs[i+1].lower() == 'linux':
+        options.output_eol = '\n'
+      else:
+        logging.error('Invalid value "' + newargs[i+1] + '" to --output_eol!')
+        exit(1)
+      newargs[i] = ''
+      newargs[i+1] = ''
+
+  if should_exit:
+    sys.exit(0)
+
+  newargs = [arg for arg in newargs if arg is not '']
+  return options, settings_changes, newargs
+
+def emterpretify(js_target, optimizer, options):
   global final
   optimizer.flush()
   logging.debug('emterpretifying')
@@ -2115,7 +2136,7 @@ def emterpretify(js_target, optimizer, profiling, profiling_funcs):
       args += ['ASYNC=1']
     if shared.Settings.EMTERPRETIFY_ADVISE:
       args += ['ADVISE=1']
-    if profiling or profiling_funcs:
+    if options.profiling or options.profiling_funcs:
       args += ['PROFILING=1']
     if shared.Settings.ASSERTIONS:
       args += ['ASSERTIONS=1']
@@ -2187,9 +2208,8 @@ def binaryen_method_sanity_check():
         sys.exit(1)
 
 
-def do_binaryen(final, asm_target, opt_level, shrink_level, memory_init_file, memfile,
-                debug_level, profiling_funcs, emit_symbol_map, wasm_binary_target,
-                wasm_text_target, misc_temp_files, use_closure_compiler, optimizer):
+def do_binaryen(final, asm_target, options, memfile, wasm_binary_target,
+                wasm_text_target, misc_temp_files, optimizer):
   logging.debug('using binaryen, with method: ' + shared.Settings.BINARYEN_METHOD)
   binaryen_bin = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin')
   # Emit wasm.js at the top of the js. This is *not* optimized with the rest of the code, since
@@ -2228,10 +2248,10 @@ def do_binaryen(final, asm_target, opt_level, shrink_level, memory_init_file, me
     if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
       cmd += ['--ignore-implicit-traps']
     # pass optimization level to asm2wasm (if not optimizing, or which passes we should run was overridden, do not optimize)
-    if opt_level > 0 and not shared.Settings.BINARYEN_PASSES:
-      cmd.append(shared.Building.opt_level_to_str(opt_level, shrink_level))
+    if options.opt_level > 0 and not shared.Settings.BINARYEN_PASSES:
+      cmd.append(shared.Building.opt_level_to_str(options.opt_level, options.shrink_level))
     # import mem init file if it exists, and if we will not be using asm.js as a binaryen method (as it needs the mem init file, of course)
-    import_mem_init = memory_init_file and os.path.exists(memfile) and 'asmjs' not in shared.Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD
+    import_mem_init = options.memory_init_file and os.path.exists(memfile) and 'asmjs' not in shared.Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD
     if import_mem_init:
       cmd += ['--mem-init=' + memfile]
       if not shared.Settings.RELOCATABLE:
@@ -2245,14 +2265,14 @@ def do_binaryen(final, asm_target, opt_level, shrink_level, memory_init_file, me
       cmd += ['--mem-max=' + str(shared.Settings.BINARYEN_MEM_MAX)]
     if shared.Building.is_wasm_only():
       cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, an can contain special fastcomp-wasm support
-    if debug_level >= 2 or profiling_funcs:
+    if options.debug_level >= 2 or options.profiling_funcs:
       cmd += ['-g']
-    if emit_symbol_map or shared.Settings.CYBERDWARF:
+    if options.emit_symbol_map or shared.Settings.CYBERDWARF:
       cmd += ['--symbolmap=' + target + '.symbols']
     # we prefer to emit a binary, as it is more efficient. however, when we
     # want full debug info support (not just function names), then we must
     # emit text (at least until wasm gains support for debug info in binaries)
-    target_binary = debug_level < 3
+    target_binary = options.debug_level < 3
     if target_binary:
       cmd += ['-o', wasm_binary_target]
     else:
@@ -2264,7 +2284,7 @@ def do_binaryen(final, asm_target, opt_level, shrink_level, memory_init_file, me
 
     if not target_binary:
       cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
-      if debug_level >= 2 or profiling_funcs:
+      if options.debug_level >= 2 or options.profiling_funcs:
         cmd += ['-g']
       logging.debug('wasm-as (text => binary): ' + ' '.join(cmd))
       subprocess.check_call(cmd)
@@ -2274,7 +2294,7 @@ def do_binaryen(final, asm_target, opt_level, shrink_level, memory_init_file, me
         safe_move(memfile, os.path.join(emscripten_temp_dir, os.path.basename(memfile)))
       else:
         os.unlink(memfile)
-      memory_init_file = False
+      options.memory_init_file = False
     log_time('asm2wasm')
   if shared.Settings.BINARYEN_PASSES:
     shutil.move(wasm_binary_target, wasm_binary_target + '.pre')
@@ -2307,13 +2327,13 @@ def do_binaryen(final, asm_target, opt_level, shrink_level, memory_init_file, me
       if not DEBUG:
         os.unlink(asm_target) # we don't need the asm.js, it can just confuse
       sys.exit(0) # and we are done.
-  if opt_level >= 2:
+  if options.opt_level >= 2:
     # minify the JS
     optimizer.do_minify() # calculate how to minify
-    if optimizer.cleanup_shell or optimizer.minify_whitespace or use_closure_compiler:
+    if optimizer.cleanup_shell or optimizer.minify_whitespace or options.use_closure_compiler:
       misc_temp_files.note(final)
       if DEBUG: save_intermediate('preclean', 'js')
-      if use_closure_compiler:
+      if options.use_closure_compiler:
         logging.debug('running closure on shell code')
         final = shared.Building.closure_compiler(final, pretty=not optimizer.minify_whitespace)
       else:
@@ -2321,7 +2341,7 @@ def do_binaryen(final, asm_target, opt_level, shrink_level, memory_init_file, me
         logging.debug('running cleanup on shell code')
         final = shared.Building.js_optimizer_no_asmjs(final, ['noPrintMetadata', 'JSDCE', 'last'] + (['minifyWhitespace'] if optimizer.minify_whitespace else []))
       if DEBUG: save_intermediate('postclean', 'js')
-  return (final, memory_init_file)
+  return final
 
 
 def modularize(final):
@@ -2342,12 +2362,12 @@ def modularize(final):
   return final
 
 
-def generate_html(target, shell_path, js_target, target_basename, proxy_to_worker,
-                  separate_asm, memory_init_file, asm_target, wasm_binary_target,
-                  output_eol, memfile, optimizer):
+def generate_html(target, options, js_target, target_basename,
+                  asm_target, wasm_binary_target,
+                  memfile, optimizer):
   global script_src, script_inline
   logging.debug('generating HTML')
-  shell = open(shell_path).read()
+  shell = open(options.shell_path).read()
   assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
   base_js_target = os.path.basename(js_target)
 
@@ -2363,7 +2383,7 @@ def generate_html(target, shell_path, js_target, target_basename, proxy_to_worke
 
   asm_mods = []
 
-  if proxy_to_worker:
+  if options.proxy_to_worker:
     child_js = shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename
     script_inline = '''
   if ((',' + window.location.search.substr(1) + ',').indexOf(',noProxy,') < 0) {
@@ -2382,7 +2402,9 @@ def generate_html(target, shell_path, js_target, target_basename, proxy_to_worke
     script_src = base_js_target
 
     from tools import client_mods
-    asm_mods = client_mods.get_mods(shared.Settings, minified = 'minifyNames' in optimizer.queue_history, separate_asm = separate_asm)
+    asm_mods = client_mods.get_mods(shared.Settings,
+                                    minified = 'minifyNames' in optimizer.queue_history,
+                                    separate_asm = options.separate_asm)
 
   if shared.Settings.EMTERPRETIFY_FILE:
     # We need to load the emterpreter file before anything else, it has to be synchronously ready
@@ -2398,7 +2420,7 @@ def generate_html(target, shell_path, js_target, target_basename, proxy_to_worke
           emterpretXHR.send(null);
 ''' % (shared.Settings.EMTERPRETIFY_FILE, script_inline)
 
-  if memory_init_file:
+  if options.memory_init_file:
     # start to load the memory init file in the HTML, in parallel with the JS
     un_src()
     script_inline = ('''
@@ -2418,7 +2440,7 @@ def generate_html(target, shell_path, js_target, target_basename, proxy_to_worke
 
   # Download .asm.js if --separate-asm was passed in an asm.js build, or if 'asmjs' is one
   # of the wasm run methods.
-  if separate_asm and (not shared.Settings.BINARYEN or 'asmjs' in shared.Settings.BINARYEN_METHOD):
+  if options.separate_asm and (not shared.Settings.BINARYEN or 'asmjs' in shared.Settings.BINARYEN_METHOD):
     un_src()
     if len(asm_mods) == 0:
       # just load the asm, then load the rest
@@ -2479,7 +2501,7 @@ def generate_html(target, shell_path, js_target, target_basename, proxy_to_worke
   else:
     script_replacement = '<script>\n%s\n</script>' % script_inline
   html_contents = shell.replace('{{{ SCRIPT }}}', script_replacement)
-  html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', output_eol)
+  html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', options.output_eol)
   html.write(html_contents)
   html.close()
 
