@@ -1886,18 +1886,18 @@ def parse_args(newargs):
     newargs[i] = newargs[i].strip()
     if newargs[i].startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
-      requested_level = newargs[i][2:] or '2'
-      if requested_level == 's':
+      options.requested_level = newargs[i][2:] or '2'
+      if options.requested_level == 's':
         options.llvm_opts = ['-Os']
         options.requested_level = 2
         options.shrink_level = 1
         settings_changes.append('INLINING_LIMIT=50')
-      elif requested_level == 'z':
+      elif options.requested_level == 'z':
         options.llvm_opts = ['-Oz']
         options.requested_level = 2
         options.shrink_level = 2
         settings_changes.append('INLINING_LIMIT=25')
-      options.opt_level = validate_arg_level(requested_level, 3, 'Invalid optimization level: ' + newargs[i])
+      options.opt_level = validate_arg_level(options.requested_level, 3, 'Invalid optimization level: ' + newargs[i])
     elif newargs[i].startswith('--js-opts'):
       check_bad_eq(newargs[i])
       options.js_opts = eval(newargs[i+1])
