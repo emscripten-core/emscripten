@@ -98,14 +98,11 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
       glue, forwarded_data = compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DEBUG)
 
     with ToolchainProfiler.profile_block('function_tables_and_exports'):
-      (post, funcs_js, sending, receiving, asm_setup, the_global, asm_global_vars,
-       asm_global_funcs, pre_tables, final_function_tables, exports, function_table_data) = (
+      (post, function_table_data, bundled_args) = (
           function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG))
     with ToolchainProfiler.profile_block('write_output_file'):
       function_table_sigs = function_table_data.keys()
-      module = create_module(funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
-                             asm_global_funcs, pre_tables, final_function_tables, function_table_sigs,
-                             exports, metadata, settings)
+      module = create_module(function_table_sigs, metadata, settings, *bundled_args)
       write_output_file(metadata, post, module, function_table_data, settings, outfile, DEBUG)
 
     success = True
@@ -337,13 +334,14 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
       len(exports), len(the_global), len(sending), len(receiving)]))
     logging.debug('  emscript: python processing: function tables and exports took %s seconds' % (time.time() - t))
 
-  return (post, funcs_js, sending, receiving, asm_setup, the_global, asm_global_vars,
-          asm_global_funcs, pre_tables, final_function_tables, exports, function_table_data)
+  bundled_args = (funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
+                  asm_global_funcs, pre_tables, final_function_tables, exports)
+  return (post, function_table_data, bundled_args)
 
 
-def create_module(funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
-                  asm_global_funcs, pre_tables, final_function_tables, function_table_sigs,
-                  exports, metadata, settings):
+def create_module(function_table_sigs, metadata, settings,
+                  funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
+                  asm_global_funcs, pre_tables, final_function_tables, exports):
   receiving += create_named_globals(metadata, settings)
   runtime_funcs = create_runtime_funcs(exports, settings)
 
