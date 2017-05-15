@@ -1299,7 +1299,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Request LLVM debug info if explicitly specified, or building bitcode with -g, or if building a source all the way to JS with -g
       if options.debug_level >= 4 or ((final_suffix not in JS_CONTAINING_SUFFIXES or (has_source_inputs and final_suffix in JS_CONTAINING_SUFFIXES)) and options.requested_debug == '-g'):
-        if options.debug_level == 4 or not (final_suffix in JS_CONTAINING_SUFFIXES and options.js_opts): # do not save llvm debug info if js optimizer will wipe it out anyhow (but if source maps are used, keep it)
+        # do not save llvm debug info if js optimizer will wipe it out anyhow (but if source maps are used, keep it)
+        if options.debug_level == 4 or not (final_suffix in JS_CONTAINING_SUFFIXES and options.js_opts):
           newargs.append('-g') # preserve LLVM debug info
           options.debug_level = 4
 
@@ -1487,7 +1488,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Optimize, if asked to
       if not LEAVE_INPUTS_RAW:
-        link_opts = [] if options.debug_level >= 4 or shared.Settings.CYBERDWARF else ['-strip-debug'] # remove LLVM debug if we are not asked for it
+        # remove LLVM debug if we are not asked for it
+        link_opts = [] if options.debug_level >= 4 or shared.Settings.CYBERDWARF else ['-strip-debug']
         if not shared.Settings.ASSERTIONS:
           link_opts += ['-disable-verify']
         else:
@@ -1664,7 +1666,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             return 'memoryInitializer = "%s";' % os.path.basename(memfile)
           else:
             # with wasm, we may have the mem init file in the wasm binary already
-            return 'memoryInitializer = Module["wasmJSMethod"].indexOf("asmjs") >= 0 || Module["wasmJSMethod"].indexOf("interpret-asm2wasm") >= 0 ? "%s" : null;' % os.path.basename(memfile)
+            return ('memoryInitializer = Module["wasmJSMethod"].indexOf("asmjs") >= 0 || '
+                    'Module["wasmJSMethod"].indexOf("interpret-asm2wasm") >= 0 ? "%s" : null;'
+                    % os.path.basename(memfile))
         src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
         open(final + '.mem.js', 'w').write(src)
         final += '.mem.js'
@@ -1687,7 +1691,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           src = None
 
       if shared.Settings.USE_PTHREADS:
-        shutil.copyfile(shared.path_from_root('src', 'pthread-main.js'), os.path.join(os.path.dirname(os.path.abspath(target)), 'pthread-main.js'))
+        target_dir = os.path.dirname(os.path.abspath(target))
+        shutil.copyfile(shared.path_from_root('src', 'pthread-main.js'),
+                        os.path.join(target_dir, 'pthread-main.js'))
 
       # Generate the fetch-worker.js script for multithreaded emscripten_fetch() support if targeting pthreads.
       if shared.Settings.FETCH and shared.Settings.USE_PTHREADS:
@@ -1743,7 +1749,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # simplify ifs if it is ok to make the code somewhat unreadable, and unless outlining (simplified ifs
           # with commaified code breaks late aggressive variable elimination)
           # do not do this with binaryen, as commaifying confuses binaryen call type detection (FIXME, in theory, but unimportant)
-          if shared.Settings.SIMPLIFY_IFS and (options.debug_level == 0 or options.profiling) and shared.Settings.OUTLINING_LIMIT == 0 and not shared.Settings.BINARYEN:
+          debugging = options.debug_level == 0 or options.profiling
+          if shared.Settings.SIMPLIFY_IFS and debugging and shared.Settings.OUTLINING_LIMIT == 0 and not shared.Settings.BINARYEN:
             optimizer.queue += ['simplifyIfs']
 
           if shared.Settings.PRECISE_F32: optimizer.queue += ['optimizeFrounds']
@@ -1874,7 +1881,9 @@ def parse_args(newargs):
     return level
 
   for i in range(len(newargs)):
-    newargs[i] = newargs[i].strip() # On Windows Vista (and possibly others), excessive spaces in the command line leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
+    # On Windows Vista (and possibly others), excessive spaces in the command line 
+    # leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
+    newargs[i] = newargs[i].strip()
     if newargs[i].startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
       requested_level = newargs[i][2:] or '2'
@@ -1961,9 +1970,11 @@ def parse_args(newargs):
       options.js_libraries.append(shared.path_from_root('src', 'embind', 'emval.js'))
       options.js_libraries.append(shared.path_from_root('src', 'embind', 'embind.js'))
       if options.default_cxx_std:
-        options.default_cxx_std = '-std=c++11' # Force C++11 for embind code, but only if user has not explicitly overridden a standard.
+        # Force C++11 for embind code, but only if user has not explicitly overridden a standard.
+        options.default_cxx_std = '-std=c++11'
     elif newargs[i].startswith('-std=') or newargs[i].startswith('--std='):
-      options.default_cxx_std = '' # User specified a standard to use, clear Emscripten from specifying it.
+      # User specified a standard to use, clear Emscripten from specifying it.
+      options.default_cxx_std = ''
     elif newargs[i].startswith('--embed-file'):
       check_bad_eq(newargs[i])
       options.embed_files.append(newargs[i+1])
@@ -2251,8 +2262,9 @@ def do_binaryen(final, asm_target, options, memfile, wasm_binary_target,
     if options.opt_level > 0 and not shared.Settings.BINARYEN_PASSES:
       cmd.append(shared.Building.opt_level_to_str(options.opt_level, options.shrink_level))
     # import mem init file if it exists, and if we will not be using asm.js as a binaryen method (as it needs the mem init file, of course)
-    import_mem_init = options.memory_init_file and os.path.exists(memfile) and 'asmjs' not in shared.Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD
-    if import_mem_init:
+    import_mem_init = options.memory_init_file and os.path.exists(memfile)
+    ok_binaryen_method = 'asmjs' not in shared.Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD
+    if import_mem_init and ok_binaryen_method:
       cmd += ['--mem-init=' + memfile]
       if not shared.Settings.RELOCATABLE:
         cmd += ['--mem-base=' + str(shared.Settings.GLOBAL_BASE)]
@@ -2339,7 +2351,10 @@ def do_binaryen(final, asm_target, options, memfile, wasm_binary_target,
       else:
         assert optimizer.cleanup_shell
         logging.debug('running cleanup on shell code')
-        final = shared.Building.js_optimizer_no_asmjs(final, ['noPrintMetadata', 'JSDCE', 'last'] + (['minifyWhitespace'] if optimizer.minify_whitespace else []))
+        passes = ['noPrintMetadata', 'JSDCE', 'last']
+        if optimizer.minify_whitespace:
+          passes.append('minifyWhitespace')
+        final = shared.Building.js_optimizer_no_asmjs(final, passes)
       if DEBUG: save_intermediate('postclean', 'js')
   return final
 
@@ -2385,6 +2400,7 @@ def generate_html(target, options, js_target, target_basename,
 
   if options.proxy_to_worker:
     child_js = shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename
+    # TODO(jgravelle): un-inline file reading
     script_inline = '''
   if ((',' + window.location.search.substr(1) + ',').indexOf(',noProxy,') < 0) {
     console.log('running code in a web worker');
