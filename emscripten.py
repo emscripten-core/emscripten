@@ -101,10 +101,7 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
       (post, function_table_data, bundled_args) = (
           function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG))
     with ToolchainProfiler.profile_block('write_output_file'):
-      function_table_sigs = function_table_data.keys()
-      module = create_module(function_table_sigs, metadata, settings, *bundled_args)
-      write_output_file(metadata, post, module, function_table_data, settings, outfile, DEBUG)
-
+      finalize_output(outfile, post, function_table_data, bundled_args, metadata, settings, DEBUG)
     success = True
 
   finally:
@@ -339,6 +336,23 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   return (post, function_table_data, bundled_args)
 
 
+def finalize_output(outfile, post, function_table_data, bundled_args, metadata, settings, DEBUG):
+  function_table_sigs = function_table_data.keys()
+  module = create_module(function_table_sigs, metadata, settings, *bundled_args)
+
+  if DEBUG:
+    logging.debug('emscript: python processing: finalize')
+    t = time.time()
+
+  write_output_file(outfile, post, module)
+  module = None
+
+  if DEBUG:
+    logging.debug('  emscript: python processing: finalize took %s seconds' % (time.time() - t))
+
+  write_cyberdwarf_data(outfile, metadata, settings)
+
+
 def create_module(function_table_sigs, metadata, settings,
                   funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
                   asm_global_funcs, pre_tables, final_function_tables, exports):
@@ -380,22 +394,16 @@ Runtime.registerFunctions(%(sigs)s, Module);
   return module
 
 
-def write_output_file(metadata, post, module, function_table_data, settings, outfile, DEBUG):
-  if DEBUG:
-    logging.debug('emscript: python processing: finalize')
-    t = time.time()
-
+def write_output_file(outfile, post, module):
   for i in range(len(module)): # do this loop carefully to save memory
     module[i] = normalize_line_endings(module[i])
     outfile.write(module[i])
-  module = None
 
   post = normalize_line_endings(post)
   outfile.write(post)
 
-  if DEBUG:
-    logging.debug('  emscript: python processing: finalize took %s seconds' % (time.time() - t))
 
+def write_cyberdwarf_data(outfile, metadata, settings):
   if settings['CYBERDWARF']:
     assert('cyberdwarf_data' in metadata)
     cd_file_name = outfile.name + ".cd"
@@ -1726,13 +1734,8 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   # finalize
   module = create_module_wasm(sending, receiving, invoke_funcs, settings)
 
-  for i in range(len(module)): # do this loop carefully to save memory
-    module[i] = normalize_line_endings(module[i])
-    outfile.write(module[i])
+  write_output_file(outfile, post, module)
   module = None
-
-  post = normalize_line_endings(post)
-  outfile.write(post)
 
   outfile.close()
 
