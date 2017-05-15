@@ -388,11 +388,11 @@ def write_output_file(metadata, post, module, function_table_data, settings, out
     t = time.time()
 
   for i in range(len(module)): # do this loop carefully to save memory
-    if WINDOWS: module[i] = module[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
+    module[i] = normalize_line_endings(module[i])
     outfile.write(module[i])
   module = None
 
-  if WINDOWS: post = post.replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
+  post = normalize_line_endings(post)
   outfile.write(post)
 
   if DEBUG:
@@ -1729,11 +1729,11 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   module = create_module_wasm(sending, receiving, invoke_funcs, settings)
 
   for i in range(len(module)): # do this loop carefully to save memory
-    if WINDOWS: module[i] = module[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
+    module[i] = normalize_line_endings(module[i])
     outfile.write(module[i])
   module = None
 
-  if WINDOWS: post = post.replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
+  post = normalize_line_endings(post)
   outfile.write(post)
 
   outfile.close()
@@ -2058,6 +2058,16 @@ def asmjs_mangle(name):
 if os.environ.get('EMCC_FAST_COMPILER') == '0':
   logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
   sys.exit(1)
+
+
+def normalize_line_endings(text):
+  """Normalize to UNIX line endings.
+
+  On Windows, writing to text file will duplicate \r\n to \r\r\n otherwise.
+  """
+  if WINDOWS:
+    return text.replace('\r\n', '\n')
+  return text
 
 
 def main(args, compiler_engine, cache, temp_files, DEBUG):
