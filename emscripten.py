@@ -536,13 +536,21 @@ def memory_and_global_initializers(pre, metadata, mem_init, settings):
 
   staticbump = metadata['staticBump']
   while staticbump % 16 != 0: staticbump += 1
-  pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;%s
-/* global initializers */ %s __ATINIT__.push(%s);
-%s''' % (staticbump,
-         'assert(STATICTOP < SPLIT_MEMORY, "SPLIT_MEMORY size must be big enough so the entire static memory, need " + STATICTOP);' if settings['SPLIT_MEMORY'] else '',
-         'if (!ENVIRONMENT_IS_PTHREAD)' if settings['USE_PTHREADS'] else '',
-         global_initializers,
-         mem_init))
+  split_memory = ''
+  if settings['SPLIT_MEMORY']:
+    split_memory = ('assert(STATICTOP < SPLIT_MEMORY, "SPLIT_MEMORY size must be big enough so the '
+                    'entire static memory, need " + STATICTOP);')
+  pthread = ''
+  if settings['USE_PTHREADS']:
+    pthread = 'if (!ENVIRONMENT_IS_PTHREAD)'
+  pre = pre.replace('STATICTOP = STATIC_BASE + 0;',
+    '''STATICTOP = STATIC_BASE + {staticbump};{split_memory}
+/* global initializers */ {pthread} __ATINIT__.push({global_initializers});
+{mem_init}'''.format(staticbump=staticbump,
+                     split_memory=split_memory,
+                     pthread=pthread,
+                     global_initializers=global_initializers,
+                     mem_init=mem_init))
 
   if settings['SIDE_MODULE']:
     pre = pre.replace('Runtime.GLOBAL_BASE', 'gb')
