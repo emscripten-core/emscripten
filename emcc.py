@@ -170,17 +170,6 @@ class EmccOptions:
     # Defaults to using the native EOL on each platform (\r\n on Windows, \n on Linux&OSX)
     self.output_eol = os.linesep
 
-  # TODO(jgravelle) move to inside parse_args
-  def is_valid_abspath(self, path_name):
-    # Any path that is underneath the emscripten repository root must be ok.
-    if shared.path_from_root().replace('\\', '/') in path_name.replace('\\', '/'):
-      return True
-
-    for valid_abspath in self.valid_abspaths:
-      if in_directory(valid_abspath, path_name):
-        return True
-    return False
-
 
 class JSOptimizer:
   def __init__(self, options, misc_temp_files, js_transform_tempfiles):
@@ -1869,17 +1858,6 @@ def parse_args(newargs):
   settings_changes = []
   should_exit = False
 
-  def check_bad_eq(arg):
-    assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
-
-  def validate_arg_level(level_string, max_level, err_msg):
-    try:
-      level = int(level_string)
-      assert 0 <= level <= max_level
-    except:
-      raise Exception(err_msg)
-    return level
-
   for i in range(len(newargs)):
     # On Windows Vista (and possibly others), excessive spaces in the command line 
     # leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
@@ -2064,7 +2042,7 @@ def parse_args(newargs):
       newargs[i] = ''
     elif newargs[i].startswith(('-I', '-L')):
       options.path_name = newargs[i][2:]
-      if os.path.isabs(options.path_name) and not options.is_valid_abspath(options.path_name):
+      if os.path.isabs(options.path_name) and not is_valid_abspath(options, options.path_name):
         # Of course an absolute path to a non-system-specific library or header
         # is fine, and you can ignore this warning. The danger are system headers
         # that are e.g. x86 specific and nonportable. The emscripten bundled
@@ -2133,6 +2111,7 @@ def parse_args(newargs):
 
   newargs = [arg for arg in newargs if arg is not '']
   return options, settings_changes, newargs
+
 
 def emterpretify(js_target, optimizer, options):
   global final
@@ -2536,6 +2515,30 @@ def generate_worker_js(target, js_target, target_basename):
 
   target_contents = web_gl_client_src + '\n' + proxy_client_src
   open(target, 'w').write(target_contents)
+
+
+def is_valid_abspath(options, path_name):
+  # Any path that is underneath the emscripten repository root must be ok.
+  if shared.path_from_root().replace('\\', '/') in path_name.replace('\\', '/'):
+    return True
+
+  for valid_abspath in options.valid_abspaths:
+    if in_directory(valid_abspath, path_name):
+      return True
+  return False
+
+
+def check_bad_eq(arg):
+  assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
+
+
+def validate_arg_level(level_string, max_level, err_msg):
+  try:
+    level = int(level_string)
+    assert 0 <= level <= max_level
+  except:
+    raise Exception(err_msg)
+  return level
 
 
 if __name__ == '__main__':
