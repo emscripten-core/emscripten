@@ -7128,6 +7128,10 @@ var LibraryGL = {
   },
 
   glPopMatrix: function() {
+    if (GLImmediate.matrixStack[GLImmediate.currentMatrix].length == 0) {
+      GL.recordError(0x0504/*GL_STACK_UNDERFLOW*/);
+      return;
+    }
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
     GLImmediate.matrix[GLImmediate.currentMatrix] = GLImmediate.matrixStack[GLImmediate.currentMatrix].pop();
