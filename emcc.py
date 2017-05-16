@@ -95,8 +95,6 @@ emscripten_temp_dir = shared.get_emscripten_temp_dir()
 # Target options
 final = None
 target = None
-script_src = None # if set, we have a script to load with a src attribute
-script_inline = None # if set, we have the contents of a script to write inline in a script
 
 
 class Intermediate:
@@ -2359,21 +2357,24 @@ def modularize(final):
 def generate_html(target, options, js_target, target_basename,
                   asm_target, wasm_binary_target,
                   memfile, optimizer):
-  global script_src, script_inline
+  # TODO(jgravelle): encapsulate script src/inline in a class
+  script_src = None # if set, we have a script to load with a src attribute
+  script_inline = None # if set, we have the contents of a script to write inline in a script
+
   logging.debug('generating HTML')
   shell = open(options.shell_path).read()
   assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
   base_js_target = os.path.basename(js_target)
 
   def un_src(): # use this if you want to modify the script and need it to be inline
-    global script_src, script_inline
     if script_src is None: return
-    script_inline = '''
+    inline = '''
           var script = document.createElement('script');
           script.src = "%s";
           document.body.appendChild(script);
 ''' % script_src
-    script_src = None
+    src = None
+    return src, inline
 
   asm_mods = []
 
@@ -2403,7 +2404,7 @@ def generate_html(target, options, js_target, target_basename,
 
   if shared.Settings.EMTERPRETIFY_FILE:
     # We need to load the emterpreter file before anything else, it has to be synchronously ready
-    un_src()
+    script_src, script_inline = un_src()
     script_inline = '''
           var emterpretXHR = new XMLHttpRequest();
           emterpretXHR.open('GET', '%s', true);
@@ -2417,7 +2418,7 @@ def generate_html(target, options, js_target, target_basename,
 
   if options.memory_init_file:
     # start to load the memory init file in the HTML, in parallel with the JS
-    un_src()
+    script_src, script_inline = un_src()
     script_inline = ('''
           (function() {
             var memoryInitializer = '%s';
@@ -2436,7 +2437,7 @@ def generate_html(target, options, js_target, target_basename,
   # Download .asm.js if --separate-asm was passed in an asm.js build, or if 'asmjs' is one
   # of the wasm run methods.
   if options.separate_asm and (not shared.Settings.BINARYEN or 'asmjs' in shared.Settings.BINARYEN_METHOD):
-    un_src()
+    script_src, script_inline = un_src()
     if len(asm_mods) == 0:
       # just load the asm, then load the rest
       script_inline = '''
@@ -2477,7 +2478,7 @@ def generate_html(target, options, js_target, target_basename,
 
   if shared.Settings.BINARYEN and not shared.Settings.BINARYEN_ASYNC_COMPILATION:
     # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize
-    un_src()
+    script_src, script_inline = un_src()
     script_inline = '''
           var wasmXHR = new XMLHttpRequest();
           wasmXHR.open('GET', '%s', true);
