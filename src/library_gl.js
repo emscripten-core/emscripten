@@ -7128,7 +7128,7 @@ var LibraryGL = {
   },
 
   glPopMatrix: function() {
-    if(GLImmediate.matrixStack[GLImmediate.currentMatrix].length == 0) {
+    if (GLImmediate.matrixStack[GLImmediate.currentMatrix].length == 0) {
       GL.recordError(0x0504/*GL_STACK_UNDERFLOW*/);
       return;
     }
