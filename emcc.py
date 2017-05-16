@@ -2357,31 +2357,19 @@ def modularize(final):
 def generate_html(target, options, js_target, target_basename,
                   asm_target, wasm_binary_target,
                   memfile, optimizer):
-  # TODO(jgravelle): encapsulate script src/inline in a class
-  script_src = None # if set, we have a script to load with a src attribute
-  script_inline = None # if set, we have the contents of a script to write inline in a script
+  script = ScriptSource()
 
   logging.debug('generating HTML')
   shell = open(options.shell_path).read()
   assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
   base_js_target = os.path.basename(js_target)
 
-  def un_src(): # use this if you want to modify the script and need it to be inline
-    if script_src is None: return
-    inline = '''
-          var script = document.createElement('script');
-          script.src = "%s";
-          document.body.appendChild(script);
-''' % script_src
-    src = None
-    return src, inline
-
   asm_mods = []
 
   if options.proxy_to_worker:
     child_js = shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename
     # TODO(jgravelle): un-inline file reading
-    script_inline = '''
+    script.inline = '''
   if ((',' + window.location.search.substr(1) + ',').indexOf(',noProxy,') < 0) {
     console.log('running code in a web worker');
 ''' + open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + shared.read_and_preprocess(shared.path_from_root('src', 'proxyClient.js')).replace('{{{ filename }}}', child_js).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read()) + '''
@@ -2395,7 +2383,7 @@ def generate_html(target, options, js_target, target_basename,
 ''' % child_js
   else:
     # Normal code generation path
-    script_src = base_js_target
+    script.src = base_js_target
 
     from tools import client_mods
     asm_mods = client_mods.get_mods(shared.Settings,
@@ -2404,8 +2392,8 @@ def generate_html(target, options, js_target, target_basename,
 
   if shared.Settings.EMTERPRETIFY_FILE:
     # We need to load the emterpreter file before anything else, it has to be synchronously ready
-    script_src, script_inline = un_src()
-    script_inline = '''
+    script.un_src()
+    script.inline = '''
           var emterpretXHR = new XMLHttpRequest();
           emterpretXHR.open('GET', '%s', true);
           emterpretXHR.responseType = 'arraybuffer';
@@ -2414,12 +2402,12 @@ def generate_html(target, options, js_target, target_basename,
 %s
           };
           emterpretXHR.send(null);
-''' % (shared.Settings.EMTERPRETIFY_FILE, script_inline)
+''' % (shared.Settings.EMTERPRETIFY_FILE, script.inline)
 
   if options.memory_init_file:
     # start to load the memory init file in the HTML, in parallel with the JS
-    script_src, script_inline = un_src()
-    script_inline = ('''
+    script.un_src()
+    script.inline = ('''
           (function() {
             var memoryInitializer = '%s';
             if (typeof Module['locateFile'] === 'function') {
@@ -2432,15 +2420,15 @@ def generate_html(target, options, js_target, target_basename,
             meminitXHR.responseType = 'arraybuffer';
             meminitXHR.send(null);
           })();
-''' % os.path.basename(memfile)) + script_inline
+''' % os.path.basename(memfile)) + script.inline
 
   # Download .asm.js if --separate-asm was passed in an asm.js build, or if 'asmjs' is one
   # of the wasm run methods.
   if options.separate_asm and (not shared.Settings.BINARYEN or 'asmjs' in shared.Settings.BINARYEN_METHOD):
-    script_src, script_inline = un_src()
+    script.un_src()
     if len(asm_mods) == 0:
       # just load the asm, then load the rest
-      script_inline = '''
+      script.inline = '''
     var script = document.createElement('script');
     script.src = "%s";
     script.onload = function() {
@@ -2449,10 +2437,10 @@ def generate_html(target, options, js_target, target_basename,
       }, 1); // delaying even 1ms is enough to allow compilation memory to be reclaimed
     };
     document.body.appendChild(script);
-''' % (os.path.basename(asm_target), script_inline)
+''' % (os.path.basename(asm_target), script.inline)
     else:
       # may need to modify the asm code, load it as text, modify, and load asynchronously
-      script_inline = '''
+      script.inline = '''
     var codeXHR = new XMLHttpRequest();
     codeXHR.open('GET', '%s', true);
     codeXHR.onload = function() {
@@ -2472,14 +2460,14 @@ def generate_html(target, options, js_target, target_basename,
       document.body.appendChild(script);
     };
     codeXHR.send(null);
-''' % (os.path.basename(asm_target), '\n'.join(asm_mods), script_inline)
+''' % (os.path.basename(asm_target), '\n'.join(asm_mods), script.inline)
   else:
     assert len(asm_mods) == 0, 'no --separate-asm means no client code mods are possible'
 
   if shared.Settings.BINARYEN and not shared.Settings.BINARYEN_ASYNC_COMPILATION:
     # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize
-    script_src, script_inline = un_src()
-    script_inline = '''
+    script.un_src()
+    script.inline = '''
           var wasmXHR = new XMLHttpRequest();
           wasmXHR.open('GET', '%s', true);
           wasmXHR.responseType = 'arraybuffer';
@@ -2488,15 +2476,10 @@ def generate_html(target, options, js_target, target_basename,
 %s
           };
           wasmXHR.send(null);
-''' % (os.path.basename(wasm_binary_target), script_inline)
+''' % (os.path.basename(wasm_binary_target), script.inline)
 
   html = open(target, 'wb')
-  assert (script_src or script_inline) and not (script_src and script_inline)
-  if script_src:
-    script_replacement = '<script async type="text/javascript" src="%s"></script>' % urllib.quote(script_src)
-  else:
-    script_replacement = '<script>\n%s\n</script>' % script_inline
-  html_contents = shell.replace('{{{ SCRIPT }}}', script_replacement)
+  html_contents = shell.replace('{{{ SCRIPT }}}', script.replacement())
   html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', options.output_eol)
   html.write(html_contents)
   html.close()
@@ -2516,6 +2499,31 @@ def generate_worker_js(target, js_target, target_basename):
 
   target_contents = web_gl_client_src + '\n' + proxy_client_src
   open(target, 'w').write(target_contents)
+
+
+class ScriptSource:
+  def __init__(self):
+    self.src = None # if set, we have a script to load with a src attribute
+    self.inline = None # if set, we have the contents of a script to write inline in a script
+
+  def un_src(self):
+    """Use this if you want to modify the script and need it to be inline."""
+    if self.src is None:
+      return
+    self.inline = '''
+          var script = document.createElement('script');
+          script.src = "%s";
+          document.body.appendChild(script);
+''' % self.src
+    self.src = None
+
+  def replacement(self):
+    """Returns the script tag to replace the {{{ SCRIPT }}} tag in the target"""
+    assert (self.src or self.inline) and not (self.src and self.inline)
+    if self.src:
+      return '<script async type="text/javascript" src="%s"></script>' % urllib.quote(self.src)
+    else:
+      return '<script>\n%s\n</script>' % self.inline
 
 
 def is_valid_abspath(options, path_name):
