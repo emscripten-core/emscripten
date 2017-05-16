@@ -1883,6 +1883,9 @@ void *getBindBuffer() {
   def test_perspective(self):
     self.btest('perspective.c', reference='perspective.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
+  def test_glerror(self):
+    self.btest('gl_error.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL'])
+
   def test_runtimelink(self):
     main, supp = self.setup_runtimelink_test()
     open('supp.cpp', 'w').write(supp)
