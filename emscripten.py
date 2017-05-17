@@ -1934,10 +1934,10 @@ def create_backend_args_wasm(infile, temp_s, settings):
 
   # asm.js-style exception handling
   if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
-    args += ['-enable-emscripten-cxx-exceptions']
+    args += ['-enable-emscripten-cpp-exceptions']
   if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
     whitelist = ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['__fake'])
-    args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
+    args += ['-emscripten-cpp-exceptions-whitelist=' + whitelist]
 
   # asm.js-style setjmp/longjmp handling
   args += ['-enable-emscripten-sjlj']
