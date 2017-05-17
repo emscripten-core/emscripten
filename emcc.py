@@ -2352,12 +2352,19 @@ def generate_html(target, options, js_target, target_basename,
   asm_mods = []
 
   if options.proxy_to_worker:
-    child_js = shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename
-    # TODO(jgravelle): un-inline file reading
+    proxy_worker_filename = shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename
+    gl_src = open(shared.path_from_root('src', 'webGLClient.js')).read()
+    web_gl_client_src = open(shared.path_from_root('src', 'webGLClient.js')).read()
+    idb_store_src = open(shared.path_from_root('src', 'IDBStore.js')).read()
+    proxy_client_src = (
+      open(shared.path_from_root('src', 'proxyClient.js')).read()
+      .replace('{{{ filename }}}', proxy_worker_filename)
+      .replace('{{{ IDBStore.js }}}', idb_store_src)
+    )
     script.inline = '''
   if ((',' + window.location.search.substr(1) + ',').indexOf(',noProxy,') < 0) {
     console.log('running code in a web worker');
-''' + open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + shared.read_and_preprocess(shared.path_from_root('src', 'proxyClient.js')).replace('{{{ filename }}}', child_js).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read()) + '''
+''' + web_gl_client_src + '\n' + proxy_client_src + '''
   } else {
     // note: no support for code mods (PRECISE_F32==2)
     console.log('running code on the main thread');
@@ -2365,7 +2372,7 @@ def generate_html(target, options, js_target, target_basename,
     script.src = "%s.js";
     document.body.appendChild(script);
   }
-''' % child_js
+''' % proxy_worker_filename
   else:
     # Normal code generation path
     script.src = base_js_target
