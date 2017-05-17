@@ -2121,7 +2121,15 @@ def emterpretify(js_target, optimizer, options):
   try:
     # move temp js to final position, alongside its mem init file
     shutil.move(final, js_target)
-    args = [shared.PYTHON, shared.path_from_root('tools', 'emterpretify.py'), js_target, final + '.em.js', json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST), json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST), '', str(shared.Settings.SWAPPABLE_ASM_MODULE)]
+    args = [shared.PYTHON,
+            shared.path_from_root('tools', 'emterpretify.py'),
+            js_target,
+            final + '.em.js',
+            json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST),
+            json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST),
+            '',
+            str(shared.Settings.SWAPPABLE_ASM_MODULE),
+           ]
     if shared.Settings.EMTERPRETIFY_ASYNC:
       args += ['ASYNC=1']
     if shared.Settings.EMTERPRETIFY_ADVISE:
