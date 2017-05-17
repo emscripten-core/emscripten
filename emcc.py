@@ -824,32 +824,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if error_on_missing_libraries_cmdline:
         shared.Settings.ERROR_ON_MISSING_LIBRARIES = int(error_on_missing_libraries_cmdline[len('ERROR_ON_MISSING_LIBRARIES='):])
 
-      # TODO(jgravelle) : extract system_js_libraries
-      system_js_libraries = []
-
-      # Find library files
-      for i, lib in libs:
-        logging.debug('looking for library "%s"', lib)
-        found = False
-        for prefix in LIB_PREFIXES:
-          for suff in STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS:
-            name = prefix + lib + suff
-            for lib_dir in lib_dirs:
-              path = os.path.join(lib_dir, name)
-              if os.path.exists(path):
-                logging.debug('found library "%s" at %s', lib, path)
-                input_files.append((i, path))
-                found = True
-                break
-            if found: break
-          if found: break
-        if not found:
-          system_js_libraries += shared.Building.path_to_system_js_libraries(lib)
-
-      # Certain linker flags imply some link libraries to be pulled in by default.
-      system_js_libraries += shared.Building.path_to_system_js_libraries_for_settings(settings_changes)
-
-      settings_changes.append('SYSTEM_JS_LIBRARIES="' + ','.join(system_js_libraries) + '"')
+      settings_changes.append(system_js_libraries_setting_str(libs, lib_dirs, settings_changes))
 
       # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
       # ignore dynamic linking, since multiple dynamic linkings can interfere with each other
@@ -2509,6 +2484,33 @@ def generate_worker_js(target, js_target, target_basename):
 
   target_contents = web_gl_client_src + '\n' + proxy_client_src
   open(target, 'w').write(target_contents)
+
+
+def system_js_libraries_setting_str(libs, lib_dirs, settings_changes):
+  libraries = []
+
+  # Find library files
+  for i, lib in libs:
+    logging.debug('looking for library "%s"', lib)
+    found = False
+    for prefix in LIB_PREFIXES:
+      for suff in STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS:
+        name = prefix + lib + suff
+        for lib_dir in lib_dirs:
+          path = os.path.join(lib_dir, name)
+          if os.path.exists(path):
+            logging.debug('found library "%s" at %s', lib, path)
+            input_files.append((i, path))
+            found = True
+            break
+        if found: break
+      if found: break
+    if not found:
+      libraries += shared.Building.path_to_system_js_libraries(lib)
+
+  # Certain linker flags imply some link libraries to be pulled in by default.
+  libraries += shared.Building.path_to_system_js_libraries_for_settings(settings_changes)
+  return 'SYSTEM_JS_LIBRARIES="' + ','.join(libraries) + '"'
 
 
 class ScriptSource:
