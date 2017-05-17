@@ -2353,18 +2353,11 @@ def generate_html(target, options, js_target, target_basename,
 
   if options.proxy_to_worker:
     proxy_worker_filename = shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename
-    gl_src = open(shared.path_from_root('src', 'webGLClient.js')).read()
-    web_gl_client_src = open(shared.path_from_root('src', 'webGLClient.js')).read()
-    idb_store_src = open(shared.path_from_root('src', 'IDBStore.js')).read()
-    proxy_client_src = (
-      open(shared.path_from_root('src', 'proxyClient.js')).read()
-      .replace('{{{ filename }}}', proxy_worker_filename)
-      .replace('{{{ IDBStore.js }}}', idb_store_src)
-    )
+    worker_js = worker_js_script(proxy_worker_filename)
     script.inline = '''
   if ((',' + window.location.search.substr(1) + ',').indexOf(',noProxy,') < 0) {
     console.log('running code in a web worker');
-''' + web_gl_client_src + '\n' + proxy_client_src + '''
+''' + worker_js + '''
   } else {
     // note: no support for code mods (PRECISE_F32==2)
     console.log('running code on the main thread');
@@ -2481,6 +2474,11 @@ def generate_worker_js(target, js_target, target_basename):
   shutil.move(js_target, js_target[:-3] + '.worker.js') # compiler output goes in .worker.js file
   worker_target_basename = target_basename + '.worker'
   proxy_worker_filename = shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename
+  target_contents = worker_js_script(proxy_worker_filename)
+  open(target, 'w').write(target_contents)
+
+
+def worker_js_script(proxy_worker_filename):
   web_gl_client_src = open(shared.path_from_root('src', 'webGLClient.js')).read()
   idb_store_src = open(shared.path_from_root('src', 'IDBStore.js')).read()
   proxy_client_src = (
@@ -2489,8 +2487,7 @@ def generate_worker_js(target, js_target, target_basename):
     .replace('{{{ IDBStore.js }}}', idb_store_src)
   )
 
-  target_contents = web_gl_client_src + '\n' + proxy_client_src
-  open(target, 'w').write(target_contents)
+  return web_gl_client_src + '\n' + proxy_client_src
 
 
 def system_js_libraries_setting_str(libs, lib_dirs, settings_changes):
