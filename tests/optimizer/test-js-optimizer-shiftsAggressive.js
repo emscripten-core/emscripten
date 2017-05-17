@@ -9,5 +9,6 @@ function __ZNSt3__111__call_onceERVmPvPFvS2_E($flag,$arg,$func){
  whee1($3);
  whee2($3);
  whee3($3);
+ whee4(1 + $1);
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["__ZNSt3__111__call_onceERVmPvPFvS2_E"]

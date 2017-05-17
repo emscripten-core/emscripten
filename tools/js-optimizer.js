@@ -4847,6 +4847,11 @@ function aggressiveVariableEliminationInternal(func, asmData) {
       }
       values[name] = node;
     }
+    // 'def' is non-null only if the variable was explicitly re-assigned after its definition.
+    // If it wasn't, the initial value should be used, which is supposed to always be zero.
+    else if (name in asmData.vars) {
+      values[name] = makeAsmCoercedZero(asmData.vars[name])
+    }
     return node;
   }
 
