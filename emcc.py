@@ -94,7 +94,6 @@ emscripten_temp_dir = shared.get_emscripten_temp_dir()
 
 # Target options
 final = None
-target = None
 
 
 class Intermediate:
@@ -170,7 +169,7 @@ class EmccOptions:
 
 
 class JSOptimizer:
-  def __init__(self, options, misc_temp_files, js_transform_tempfiles):
+  def __init__(self, target, options, misc_temp_files, js_transform_tempfiles):
     self.queue = []
     self.extra_info = {}
     self.queue_history = []
@@ -178,6 +177,7 @@ class JSOptimizer:
     self.minify_whitespace = False
     self.cleanup_shell = False
 
+    self.target = target
     self.opt_level = options.opt_level
     self.debug_level = options.debug_level
     self.emit_symbol_map = options.emit_symbol_map
@@ -235,12 +235,12 @@ class JSOptimizer:
     self.extra_info = {}
 
   def run_passes(self, passes, title, just_split, just_concat):
-    global final, target
+    global final
     passes = ['asm'] + passes
     if shared.Settings.PRECISE_F32:
       passes = ['asmPreciseF32'] + passes
     if (self.emit_symbol_map or shared.Settings.CYBERDWARF) and 'minifyNames' in passes:
-      passes += ['symbolMap=' + target + '.symbols']
+      passes += ['symbolMap=' + self.target + '.symbols']
     if self.profiling_funcs and 'minifyNames' in passes:
       passes += ['profilingFuncs']
     if self.minify_whitespace and 'last' in passes:
@@ -281,7 +281,8 @@ class JSOptimizer:
 # Main run() function
 #
 def run():
-  global final, target, script_src, script_inline
+  global final
+  target = None
 
   if DEBUG: logging.warning('invocation: ' + ' '.join(sys.argv) + (' + ' + EMCC_CFLAGS if EMCC_CFLAGS else '') + '  (in ' + os.getcwd() + ')')
   if EMCC_CFLAGS: sys.argv.extend(shlex.split(EMCC_CFLAGS))
@@ -1690,6 +1691,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     log_time('memory initializer')
 
     optimizer = JSOptimizer(
+      target=target,
       options=options,
       misc_temp_files=misc_temp_files,
       js_transform_tempfiles=js_transform_tempfiles,
@@ -1814,7 +1816,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       binaryen_method_sanity_check()
       if shared.Settings.BINARYEN:
-        final = do_binaryen(final, asm_target, options, memfile, wasm_binary_target,
+        final = do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
                             wasm_text_target, misc_temp_files, optimizer)
 
       if shared.Settings.MODULARIZE:
@@ -2196,7 +2198,7 @@ def binaryen_method_sanity_check():
         sys.exit(1)
 
 
-def do_binaryen(final, asm_target, options, memfile, wasm_binary_target,
+def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
                 wasm_text_target, misc_temp_files, optimizer):
   logging.debug('using binaryen, with method: ' + shared.Settings.BINARYEN_METHOD)
   binaryen_bin = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin')
