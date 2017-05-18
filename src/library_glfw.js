@@ -13,7 +13,6 @@
  * What it does not but should probably do:
  * - Transmit events when glfwPollEvents, glfwWaitEvents or glfwSwapBuffers is
  *    called. Events callbacks are called as soon as event are received.
- * - Joystick support.
  * - Input modes.
  * - Gamma ramps.
  * - Video modes.
@@ -81,6 +80,7 @@ var LibraryGLFW = {
       return GLFW.windows[id - 1];
     },
 
+    joystickFunc: null, // GLFWjoystickfun
     errorFunc: null, // GLFWerrorfun
     monitorFunc: null, // GLFWmonitorfun
     active: null, // active window
@@ -382,6 +382,14 @@ var LibraryGLFW = {
 #endif
     },
 
+    onGamepadConnected: function(event) {
+      GLFW.refreshJoysticks();
+    },
+
+    onGamepadDisconnected: function(event) {
+      GLFW.refreshJoysticks();
+    },
+
     onKeydown: function(event) {
       GLFW.onKeyChanged(event.keyCode, 1); // GLFW_PRESS or GLFW_REPEAT
 
@@ -638,6 +646,68 @@ var LibraryGLFW = {
       win.title = Pointer_stringify(title);
       if (GLFW.active.id == win.id) {
         document.title = win.title;
+      }
+    },
+
+    setJoystickCallback: function(cbfun) {
+      GLFW.joystickFunc = cbfun;
+      GLFW.refreshJoysticks();
+    },
+
+    joys: {}, // glfw joystick data
+    lastGamepadState: null,
+    lastGamepadStateFrame: null, // The integer value of Browser.mainLoop.currentFrameNumber of when the last gamepad state was produced.
+
+    refreshJoysticks: function() {
+      // Produce a new Gamepad API sample if we are ticking a new game frame, or if not using emscripten_set_main_loop() at all to drive animation.
+      if (Browser.mainLoop.currentFrameNumber !== GLFW.lastGamepadStateFrame || !Browser.mainLoop.currentFrameNumber) {
+        GLFW.lastGamepadState = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads : null);
+        GLFW.lastGamepadStateFrame = Browser.mainLoop.currentFrameNumber;
+
+        for (var joy = 0; joy < GLFW.lastGamepadState.length; ++joy) {
+          var gamepad = GLFW.lastGamepadState[joy];
+
+          if (gamepad) {
+            if (!GLFW.joys[joy]) {
+              console.log('glfw joystick connected:',joy);
+              GLFW.joys[joy] = {
+                id: allocate(intArrayFromString(gamepad.id), 'i8', ALLOC_NORMAL),
+                buttonsCount: gamepad.buttons.length,
+                axesCount: gamepad.axes.length,
+                buttons: allocate(new Array(gamepad.buttons.length), 'i8', ALLOC_NORMAL),
+                axes: allocate(new Array(gamepad.axes.length*4), 'float', ALLOC_NORMAL)
+              };
+
+              if (GLFW.joystickFunc) {
+                Module['dynCall_vii'](GLFW.joystickFunc, joy, 0x00040001); // GLFW_CONNECTED
+              }
+            }
+
+            var data = GLFW.joys[joy];
+
+            for (var i = 0; i < gamepad.buttons.length;  ++i) {
+              setValue(data.buttons + i, gamepad.buttons[i].pressed, 'i8');
+            }
+
+            for (var i = 0; i < gamepad.axes.length; ++i) {
+              setValue(data.axes + i*4, gamepad.axes[i], 'float');
+            }
+          } else {
+            if (GLFW.joys[joy]) {
+              console.log('glfw joystick disconnected',joy);
+
+              if (GLFW.joystickFunc) {
+                Module['dynCall_vii'](GLFW.joystickFunc, joy, 0x00040002); // GLFW_DISCONNECTED
+              }
+
+              _free(GLFW.joys[joy].id);
+              _free(GLFW.joys[joy].buttons);
+              _free(GLFW.joys[joy].axes);
+
+              delete GLFW.joys[joy];
+            }
+          }
+        }
       }
     },
 
@@ -954,6 +1024,8 @@ var LibraryGLFW = {
     GLFW.windows = new Array()
     GLFW.active = null;
 
+    window.addEventListener("gamepadconnected", GLFW.onGamepadConnected, true);
+    window.addEventListener("gamepaddisconnected", GLFW.onGamepadDisconnected, true);
     window.addEventListener("keydown", GLFW.onKeydown, true);
     window.addEventListener("keypress", GLFW.onKeyPress, true);
     window.addEventListener("keyup", GLFW.onKeyup, true);
@@ -973,6 +1045,8 @@ var LibraryGLFW = {
   },
 
   glfwTerminate: function() {
+    window.removeEventListener("gamepadconnected", GLFW.onGamepadConnected, true);
+    window.removeEventListener("gamepaddisconnected", GLFW.onGamepadDisconnected, true);
     window.removeEventListener("keydown", GLFW.onKeydown, true);
     window.removeEventListener("keypress", GLFW.onKeyPress, true);
     window.removeEventListener("keyup", GLFW.onKeyup, true);
@@ -1354,15 +1428,49 @@ var LibraryGLFW = {
 
   glfwCreateWindowSurface: function(instance, winid, allocator, surface) { throw "glfwCreateWindowSurface is not implemented."; },
 
-  glfwSetJoystickCallback: function(cbfun) { throw "glfwSetJoystickCallback is not implemented."; },
+  glfwJoystickPresent: function(joy) {
+    GLFW.refreshJoysticks();
 
-  glfwJoystickPresent: function(joy) { throw "glfwJoystickPresent is not implemented."; },
+    return GLFW.joys[joy] !== undefined;
+  },
 
-  glfwGetJoystickAxes: function(joy, count) { throw "glfwGetJoystickAxes is not implemented."; },
+  glfwGetJoystickAxes: function(joy, count) {
+    GLFW.refreshJoysticks();
 
-  glfwGetJoystickButtons: function(joy, count) { throw "glfwGetJoystickButtons is not implemented."; },
+    var state = GLFW.joys[joy];
+    if (!state || !state.axes) {
+      setValue(count, 0, 'i32');
+      return;
+    }
 
-  glfwGetJoystickName: function(joy) { throw "glfwGetJoystickName is not implemented."; },
+    setValue(count, state.axesCount, 'i32');
+    return state.axes;
+  },
+
+  glfwGetJoystickButtons: function(joy, count) {
+    GLFW.refreshJoysticks();
+
+    var state = GLFW.joys[joy];
+    if (!state || !state.buttons) {
+      setValue(count, 0, 'i32');
+      return;
+    }
+
+    setValue(count, state.buttonsCount, 'i32');
+    return state.buttons;
+  },
+
+  glfwGetJoystickName: function(joy) {
+    if (GLFW.joys[joy]) {
+      return GLFW.joys[joy].id;
+    } else {
+      return 0;
+    }
+  },
+
+  glfwSetJoystickCallback: function(cbfun) {
+    GLFW.setJoystickCallback(cbfun);
+  },
 
   glfwSetClipboardString: function(win, string) {},
 
