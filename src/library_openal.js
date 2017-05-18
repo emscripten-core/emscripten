@@ -1614,7 +1614,252 @@ var LibraryOpenAL = {
 
   alDopplerVelocity: function(value) {
     Runtime.warnOnce('alDopplerVelocity() is not yet implemented! Ignoring all calls to it.');
+  },
+
+
+
+
+
+
+
+
+  alcGetEnumValue: function(device, name) {
+    // TODO(yoanlcq)
+    AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
+    return 0;
+  },
+
+  alcCaptureOpenDevice: function(deviceName, freq, format, bufferSize) {
+      // From the programmer's guide, ALC_OUT_OF_MEMORY here means:
+      // "The specified device is invalid, or can not capture audio."
+    AL.alcErr = 0xA005 /* ALC_OUT_OF_MEMORY */;
+    return 0; // NULL device pointer
+  },
+
+  alcCaptureCloseDevice: function(device) {
+    AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+    return 0 /* ALC_FALSE */;
+  },
+
+  alcCaptureStart: function(device) {
+    AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+  },
+
+  alcCaptureStop: function(device) {
+    AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+  },
+
+  alcCaptureSamples: function(device, buffer, num_samples) {
+    AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+  },
+
+  alIsEnabled: function(capability) {
+    // TODO(yoanlcq)
+    // returns ALboolean
+    // AL_INVALID_OPERATION if there's no context
+    // AL_INVALID_ENUM if capability is not valid
+    Runtime.warnOnce('alIsEnabled() is not yet implemented! Ignoring all calls to it.');
+    return 0;
+  },
+
+  // In this section, all alget*() functions
+  // return the current value of either :
+  // AL_DOPPLER_FACTOR
+  // AL_SPEED_OF_SOUND
+  // AL_DISTANCE_MODEL
+  // All of them can be implemented by casting the
+  // return value of alGetDouble().
+  // IMO that's a poor API design, but we have to support it.
+  alGetDouble: function(param) {
+    // TODO(yoanlcq)
+    switch (param) {
+    case TODO /* AL_DOPPLER_FACTOR */: return TODO;
+    case TODO /* AL_SPEED_OF_SOUND */: return TODO;
+    case TODO /* AL_DISTANCE_MODEL */: return TODO;
+    }
+    AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+
+    Runtime.warnOnce('alGetDouble() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alGetDoublev: function(param, data) {
+    // TODO(yoanlcq)
+    Runtime.warnOnce('alGetDoublev() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alGetFloat: function(param) {
+    // TODO(yoanlcq)
+    Runtime.warnOnce('alGetFloat() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alGetFloatv: function(param, data) {
+    // TODO(yoanlcq)
+    Runtime.warnOnce('alGetFloatv() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alGetInteger: function(param) {
+    // TODO(yoanlcq)
+    Runtime.warnOnce('alGetInteger() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alGetIntegerv: function(param, data) {
+    // TODO(yoanlcq)
+    Runtime.warnOnce('alGetIntegerv() is not yet implemented! Ignoring all calls to it.');
   }
+
+  alGetBoolean: function(param) {
+    // TODO(yoanlcq)
+    Runtime.warnOnce('alGetBoolean() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alGetBooleanv: function(param, data) {
+    // TODO(yoanlcq)
+    Runtime.warnOnce('alGetBooleanv() is not yet implemented! Ignoring all calls to it.');
+  },
+
+
+
+  alListeneri: function(param, value) {
+    // TODO(yoanlcq)
+    // AL_INVALID_VALUE
+    // AL_INVALID_ENUM
+    // Quoting the programmer's guide:
+    // There are no integer listener attributes defined for OpanAL 1.1,
+    // but this function may be used by an extension.
+    AL.currentContext.err = AL_INVALID_ENUM
+  },
+
+  alListener3i: function(param, v1, v2, v3) {
+    // TODO(yoanlcq)
+    // AL_POSITION
+    // AL_VELOCITY
+    Runtime.warnOnce('alListener3i() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alListeneriv: function(param, values) {
+    // TODO(yoanlcq)
+    // AL_POSITION
+    // AL_VELOCITY
+    // AL_ORIENTATION
+    Runtime.warnOnce('alListeneriv() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alGetListener3f: function(param, v1, v2, v3) {
+    // TODO(yoanlcq)
+    Runtime.warnOnce('alGetListener3f() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alGetListener3i: function(param, v1, v2, v3) {
+    // TODO(yoanlcq)
+    Runtime.warnOnce('alGetListener3i() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alGetListeneriv: function(param, data) {
+    // TODO(yoanlcq)
+    Runtime.warnOnce('alGetListeneriv() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alSourceiv: function(value) {
+    // TODO(yoanlcq)
+    Runtime.warnOnce('alSourceiv() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alGetSource3f: function(value) {
+    // TODO(yoanlcq)
+    Runtime.warnOnce('alGetSource3f() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alGetSource3i: function(value) {
+    // TODO(yoanlcq)
+    Runtime.warnOnce('alGetSource3i() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alSourcePlayv: function(n, sources) {
+    // TODO(yoanlcq)
+    Runtime.warnOnce('alSourcePlayv() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alSourceStopv: function(n, sources) {
+    // TODO(yoanlcq)
+    Runtime.warnOnce('alSourceStopv() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alSourceRewindv: function(n, sources) {
+    // TODO(yoanlcq)
+    Runtime.warnOnce('alSourceRewindv() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alSourcePausev: function(n, sources) {
+    // TODO(yoanlcq)
+    Runtime.warnOnce('alSourcePausev() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alBufferf: function(buffer, param, value) {
+    // TODO(yoanlcq)
+      // only used by extensions
+    Runtime.warnOnce('alBufferf() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alBuffer3f: function(buffer, param, v1, v2, v3) {
+    // TODO(yoanlcq)
+      // only used by extensions
+    Runtime.warnOnce('alBuffer3f() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alBufferfv: function(buffer, param, values) {
+    // TODO(yoanlcq)
+      // only used by extensions
+    Runtime.warnOnce('alBufferfv() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alBufferi: function(buffer, param, value) {
+    // TODO(yoanlcq)
+      // only used by extensions
+    Runtime.warnOnce('alBufferi() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alBuffer3i: function(buffer, param, v1, v2, v3) {
+    // TODO(yoanlcq)
+      // only used by extensions
+    Runtime.warnOnce('alBuffer3i() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alBufferiv: function(buffer, params, values) {
+    // TODO(yoanlcq)
+      // only used by extensions
+    Runtime.warnOnce('alBufferiv() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alGetBufferf: function(buffer, pname, value) {
+    // TODO(yoanlcq)
+      // only used by extensions
+    Runtime.warnOnce('alGetBufferf() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alGetBuffer3f: function(buffer, pname, v1, v2, v3) {
+    // TODO(yoanlcq)
+      // only used by extensions
+    Runtime.warnOnce('alGetBuffer3f() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alGetBufferfv: function(buffer, pname, values) {
+    // TODO(yoanlcq)
+      // only used by extensions
+    Runtime.warnOnce('alGetBufferfv() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alGetBuffer3i: function(buffer, pname, v1, v2, v3) {
+    // TODO(yoanlcq)
+      // only used by extensions
+    Runtime.warnOnce('alGetBuffer3i() is not yet implemented! Ignoring all calls to it.');
+  },
+
+  alGetBufferiv: function(buffer, pname, values) {
+    // TODO(yoanlcq)
+      // See alGetBufferi().
+    Runtime.warnOnce('alGetBufferiv() is not yet implemented! Ignoring all calls to it.');
+  }
+
 };
 
 autoAddDeps(LibraryOpenAL, '$AL');
