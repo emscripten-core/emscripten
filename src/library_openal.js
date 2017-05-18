@@ -1619,4 +1619,3 @@ var LibraryOpenAL = {
 
 autoAddDeps(LibraryOpenAL, '$AL');
 mergeInto(LibraryManager.library, LibraryOpenAL);
-
