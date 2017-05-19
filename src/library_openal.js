@@ -1604,16 +1604,29 @@ var LibraryOpenAL = {
     return 0;
   },
 
-  alSpeedOfSound: function(value) {
-    Runtime.warnOnce('alSpeedOfSound() is not yet implemented! Ignoring all calls to it.');
-  },
-
   alDopplerFactor: function(value) {
     Runtime.warnOnce('alDopplerFactor() is not yet implemented! Ignoring all calls to it.');
+    if(value < 0) { // Strictly negative values are disallowed
+        AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+        return;
+    }
   },
 
   alDopplerVelocity: function(value) {
-    Runtime.warnOnce('alDopplerVelocity() is not yet implemented! Ignoring all calls to it.');
+    Runtime.warnOnce('alDopplerVelocity() is deprecated, and only kept for binary compatibility with OpenAL 1.0. Use alSpeedOfSound() instead.');
+    AL.setSpeedOfSound(value);
+  },
+  alSpeedOfSound: function(value) {
+    Runtime.warnOnce('alSpeedOfSound() is not yet implemented! Ignoring all calls to it.');
+    AL.setSpeedOfSound(value);
+  },
+
+  setSpeedOfSound: function doSetSpeedOfSound(value) {
+    if(value <= 0) { // Negative or zero values are disallowed
+        AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+        return;
+    }
+    // TODO
   },
 
 
@@ -1630,8 +1643,11 @@ var LibraryOpenAL = {
   },
 
   alcCaptureOpenDevice: function(deviceName, freq, format, bufferSize) {
-      // From the programmer's guide, ALC_OUT_OF_MEMORY here means:
-      // "The specified device is invalid, or can not capture audio."
+    Runtime.warnOnce('alcCapture*() functions don\'t do anything yet.');
+    // From the programmer's guide, ALC_OUT_OF_MEMORY's meaning is
+    // overloaded here, to mean:
+    // "The specified device is invalid, or can not capture audio."
+    // This may be misleading to API users.
     AL.alcErr = 0xA005 /* ALC_OUT_OF_MEMORY */;
     return 0; // NULL device pointer
   },
