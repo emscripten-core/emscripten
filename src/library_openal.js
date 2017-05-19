@@ -1842,23 +1842,19 @@ var LibraryOpenAL = {
 
 
   alListeneri: function(param, value) {
-    // TODO(yoanlcq)
-    // AL_INVALID_VALUE
-    // AL_INVALID_ENUM
     // Quoting the programmer's guide:
     // There are no integer listener attributes defined for OpenAL 1.1,
     // but this function may be used by an extension.
-    AL.currentContext.err = AL_INVALID_ENUM
+    AL.currentContext.err = AL_INVALID_ENUM;
   },
 
   alListener3i: function(param, v1, v2, v3) {
-    // TODO(yoanlcq)
-    // AL_POSITION
-    // AL_VELOCITY
-    Runtime.warnOnce('alListener3i() is not yet implemented! Ignoring all calls to it.');
+    // FIXME: Potential error message will mention alListener3f instead
+    AL.alListener3f(param, v1, v2, v3);
   },
 
   alListeneriv: function(param, values) {
+    // HARD
     // TODO(yoanlcq)
     // AL_POSITION
     // AL_VELOCITY
@@ -1867,8 +1863,35 @@ var LibraryOpenAL = {
   },
 
   alGetListener3f: function(param, v1, v2, v3) {
-    // TODO(yoanlcq)
-    Runtime.warnOnce('alGetListener3f() is not yet implemented! Ignoring all calls to it.');
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alGetListener3f called without a valid context");
+#endif
+      return;
+    }
+
+    var x, y, z;
+    switch (param) {
+    case 0x1004 /* AL_POSITION */:
+      x = AL.currentContext.ctx.listener._position[0];
+      y = AL.currentContext.ctx.listener._position[1];
+      z = AL.currentContext.ctx.listener._position[2];
+      break;
+    case 0x1006 /* AL_VELOCITY */:
+      x = AL.currentContext.ctx.listener._velocity[0];
+      y = AL.currentContext.ctx.listener._velocity[1];
+      z = AL.currentContext.ctx.listener._velocity[2];
+      break;
+    default:
+#if OPENAL_DEBUG
+      console.error("alGetListener3f with param " + param + " not implemented yet");
+#endif
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      return;
+    }
+    {{{ makeSetValue('v1', '0', 'x', 'float') }}};
+    {{{ makeSetValue('v2', '0', 'y', 'float') }}};
+    {{{ makeSetValue('v3', '0', 'z', 'float') }}};
   },
 
   alGetListener3i: function(param, v1, v2, v3) {
