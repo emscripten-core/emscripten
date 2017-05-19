@@ -1612,12 +1612,14 @@ var LibraryOpenAL = {
     }
   },
 
+  // http://openal.996291.n3.nabble.com/alSpeedOfSound-or-alDopperVelocity-tp1960.html
   alDopplerVelocity: function(value) {
     Runtime.warnOnce('alDopplerVelocity() is deprecated, and only kept for binary compatibility with OpenAL 1.0. Use alSpeedOfSound() instead.');
     AL.setSpeedOfSound(value);
   },
+
   alSpeedOfSound: function(value) {
-    Runtime.warnOnce('alSpeedOfSound() is not yet implemented! Ignoring all calls to it.');
+    Runtime.warnOnce('alSpeedOfSound() is not yet implemented!');
     AL.setSpeedOfSound(value);
   },
 
@@ -1626,7 +1628,7 @@ var LibraryOpenAL = {
         AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
         return;
     }
-    // TODO
+    // TODO implement the rest
   },
 
 
@@ -1637,7 +1639,33 @@ var LibraryOpenAL = {
 
 
   alcGetEnumValue: function(device, name) {
-    // TODO(yoanlcq)
+    if (device != 1) {
+      return 0;
+    }
+    name = Pointer_stringify(name);
+    switch(name) {
+    case "ALC_NO_ERROR": return 0;
+    case "ALC_INVALID_DEVICE": return 0xA001;
+    case "ALC_INVALID_CONTEXT": return 0xA002;
+    case "ALC_INVALID_ENUM": return 0xA003;
+    case "ALC_INVALID_VALUE": return 0xA004;
+    case "ALC_OUT_OF_MEMORY": return 0xA005;
+    case "ALC_MAJOR_VERSION": return 0x1000;
+    case "ALC_MINOR_VERSION": return 0x1001;
+    case "ALC_ATTRIBUTES_SIZE": return 0x1002;
+    case "ALC_ALL_ATTRIBUTES": return 0x1003;
+    case "ALC_DEFAULT_DEVICE_SPECIFIER": return 0x1004;
+    case "ALC_DEVICE_SPECIFIER": return 0x1005;
+    case "ALC_EXTENSIONS": return 0x1006;
+    case "ALC_FREQUENCY": return 0x1007;
+    case "ALC_REFRESH": return 0x1008;
+    case "ALC_SYNC": return 0x1009;
+    case "ALC_MONO_SOURCES": return 0x1010;
+    case "ALC_STEREO_SOURCES": return 0x1011;
+    case "ALC_CAPTURE_DEVICE_SPECIFIER": return 0x310;
+    case "ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER": return 0x311;
+    case "ALC_CAPTURE_SAMPLES": return 0x312;
+    }
     AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
     return 0;
   },
@@ -1721,7 +1749,7 @@ var LibraryOpenAL = {
   alGetIntegerv: function(param, data) {
     // TODO(yoanlcq)
     Runtime.warnOnce('alGetIntegerv() is not yet implemented! Ignoring all calls to it.');
-  }
+  },
 
   alGetBoolean: function(param) {
     // TODO(yoanlcq)
