@@ -58,7 +58,7 @@ void main_tick(void *arg)
 int main() {
   int major, minor;
   alcGetIntegerv(NULL, ALC_MAJOR_VERSION, 1, &major);
-  alcGetIntegerv(NULL, ALC_MAJOR_VERSION, 1, &minor);
+  alcGetIntegerv(NULL, ALC_MINOR_VERSION, 1, &minor);
 
   assert(major == 1);
 
