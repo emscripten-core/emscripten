@@ -1597,10 +1597,82 @@ var LibraryOpenAL = {
   alGetEnumValue: function(name) {
     name = Pointer_stringify(name);
 
-    if (name == "AL_FORMAT_MONO_FLOAT32") return 0x10010;
-    if (name == "AL_FORMAT_STEREO_FLOAT32") return 0x10011;
+    switch(name) {
+     case "AL_FORMAT_MONO_FLOAT32": return 0x10010;
+     case "AL_FORMAT_STEREO_FLOAT32": return 0x10011;
+
+     case "AL_BITS": return 0x2002;
+     case "AL_BUFFER": return 0x1009;
+     case "AL_BUFFERS_PROCESSED": return 0x1016;
+     case "AL_BUFFERS_QUEUED": return 0x1015;
+     case "AL_BYTE_OFFSET": return 0x1026;
+     case "AL_CHANNELS": return 0x2003;
+     case "AL_CONE_INNER_ANGLE": return 0x1001;
+     case "AL_CONE_OUTER_ANGLE": return 0x1002;
+     case "AL_CONE_OUTER_GAIN": return 0x1022;
+     case "AL_DIRECTION": return 0x1005;
+     case "AL_DISTANCE_MODEL": return 0xD000;
+     case "AL_DOPPLER_FACTOR": return 0xC000;
+     case "AL_DOPPLER_VELOCITY": return 0xC001;
+     case "AL_EXPONENT_DISTANCE": return 0xD005;
+     case "AL_EXPONENT_DISTANCE_CLAMPED": return 0xD006;
+     case "AL_EXTENSIONS": return 0xB004;
+     case "AL_FORMAT_MONO16": return 0x1101;
+     case "AL_FORMAT_MONO8": return 0x1100;
+     case "AL_FORMAT_STEREO16": return 0x1103;
+     case "AL_FORMAT_STEREO8": return 0x1102;
+     case "AL_FREQUENCY": return 0x2001;
+     case "AL_GAIN": return 0x100A;
+     case "AL_INITIAL": return 0x1011;
+     case "AL_INVALID": return -1;
+     case "AL_ILLEGAL_ENUM": // fallthrough
+     case "AL_INVALID_ENUM": return 0xA002;
+     case "AL_INVALID_NAME": return 0xA001;
+     case "AL_ILLEGAL_COMMAND": // fallthrough
+     case "AL_INVALID_OPERATION": return 0xA004;
+     case "AL_INVALID_VALUE": return 0xA003;
+     case "AL_INVERSE_DISTANCE": return 0xD001;
+     case "AL_INVERSE_DISTANCE_CLAMPED": return 0xD002;
+     case "AL_LINEAR_DISTANCE": return 0xD003;
+     case "AL_LINEAR_DISTANCE_CLAMPED": return 0xD004;
+     case "AL_LOOPING": return 0x1007;
+     case "AL_MAX_DISTANCE": return 0x1023;
+     case "AL_MAX_GAIN": return 0x100E;
+     case "AL_MIN_GAIN": return 0x100D;
+     case "AL_NONE": return 0;
+     case "AL_NO_ERROR": return 0;
+     case "AL_ORIENTATION": return 0x100F;
+     case "AL_OUT_OF_MEMORY": return 0xA005;
+     case "AL_PAUSED": return 0x1013;
+     case "AL_PENDING": return 0x2011;
+     case "AL_PITCH": return 0x1003;
+     case "AL_PLAYING": return 0x1012;
+     case "AL_POSITION": return 0x1004;
+     case "AL_PROCESSED": return 0x2012;
+     case "AL_REFERENCE_DISTANCE": return 0x1020;
+     case "AL_RENDERER": return 0xB003;
+     case "AL_ROLLOFF_FACTOR": return 0x1021;
+     case "AL_SAMPLE_OFFSET": return 0x1025;
+     case "AL_SEC_OFFSET": return 0x1024;
+     case "AL_SIZE": return 0x2004;
+     case "AL_SOURCE_RELATIVE": return 0x202;
+     case "AL_SOURCE_STATE": return 0x1010;
+     case "AL_SOURCE_TYPE": return 0x1027;
+     case "AL_SPEED_OF_SOUND": return 0xC003;
+     case "AL_STATIC": return 0x1028;
+     case "AL_STOPPED": return 0x1014;
+     case "AL_STREAMING": return 0x1029;
+     case "AL_UNDETERMINED": return 0x1030;
+     case "AL_UNUSED": return 0x2010;
+     case "AL_VELOCITY": return 0x1006;
+     case "AL_VENDOR": return 0xB001;
+     case "AL_VERSION": return 0xB002;
+    }
 
     AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+#if OPENAL_DEBUG
+    console.error(name + " cannot be queried with alGetEnumValue()");
+#endif
     return 0;
   },
 
@@ -1670,6 +1742,9 @@ var LibraryOpenAL = {
     case "ALC_CAPTURE_SAMPLES": return 0x312;
     }
     AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
+#if OPENAL_DEBUG
+    console.error(name + " cannot be queried with alcGetEnumValue()");
+#endif
     return 0;
   },
 
