@@ -1670,19 +1670,20 @@ var LibraryOpenAL = {
     return 0;
   },
 
+
   alcCaptureOpenDevice: function(deviceName, freq, format, bufferSize) {
     Runtime.warnOnce('alcCapture*() functions don\'t do anything yet.');
     // From the programmer's guide, ALC_OUT_OF_MEMORY's meaning is
     // overloaded here, to mean:
     // "The specified device is invalid, or can not capture audio."
-    // This may be misleading to API users.
+    // This may be misleading to API users, but well.
     AL.alcErr = 0xA005 /* ALC_OUT_OF_MEMORY */;
     return 0; // NULL device pointer
   },
 
   alcCaptureCloseDevice: function(device) {
     AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
-    return 0 /* ALC_FALSE */;
+    return false;
   },
 
   alcCaptureStart: function(device) {
@@ -1697,14 +1698,25 @@ var LibraryOpenAL = {
     AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
   },
 
+
+
+
+
   alIsEnabled: function(capability) {
-    // TODO(yoanlcq)
-    // returns ALboolean
-    // AL_INVALID_OPERATION if there's no context
-    // AL_INVALID_ENUM if capability is not valid
-    Runtime.warnOnce('alIsEnabled() is not yet implemented! Ignoring all calls to it.');
-    return 0;
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alIsEnabled() called without a valid context");
+#endif
+      return false;
+    }
+    // There's no capability yet
+    AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+    return false;
   },
+
+
+
+
 
   // In this section, all alget*() functions
   // return the current value of either :
