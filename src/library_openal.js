@@ -1787,7 +1787,8 @@ var LibraryOpenAL = {
 #endif
       return false;
     }
-    // There's no defined capability yet
+    // There's no defined capability for this yet - but extensions may want
+    // to use it.
     AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
     return false;
   },
@@ -1835,7 +1836,7 @@ var LibraryOpenAL = {
   },
 
   alGetBooleanv: function(param, data) {
-    {{{ makeSetValue('data', '0', 'AL.alGetBoolean(param)', 'u8') }}};
+    {{{ makeSetValue('data', '0', 'AL.alGetBoolean(param)', 'i8') }}};
   },
 
 
@@ -1845,7 +1846,7 @@ var LibraryOpenAL = {
     // AL_INVALID_VALUE
     // AL_INVALID_ENUM
     // Quoting the programmer's guide:
-    // There are no integer listener attributes defined for OpanAL 1.1,
+    // There are no integer listener attributes defined for OpenAL 1.1,
     // but this function may be used by an extension.
     AL.currentContext.err = AL_INVALID_ENUM
   },
