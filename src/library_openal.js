@@ -1613,6 +1613,9 @@ var LibraryOpenAL = {
   },
 
   // http://openal.996291.n3.nabble.com/alSpeedOfSound-or-alDopperVelocity-tp1960.html
+  // alDopplerVelocity() sets a multiplier for the speed of sound.
+  // It's deprecated since it's equivalent to directly call alSpeedOfSound()
+  // with an appropriately premultiplied value.
   alDopplerVelocity: function(value) {
     Runtime.warnOnce('alDopplerVelocity() is deprecated, and only kept for binary compatibility with OpenAL 1.0. Use alSpeedOfSound() instead.');
     AL.setSpeedOfSound(value);
@@ -1709,68 +1712,55 @@ var LibraryOpenAL = {
 #endif
       return false;
     }
-    // There's no capability yet
+    // There's no defined capability yet
     AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
     return false;
   },
 
 
 
-
-
-  // In this section, all alget*() functions
-  // return the current value of either :
-  // AL_DOPPLER_FACTOR
-  // AL_SPEED_OF_SOUND
-  // AL_DISTANCE_MODEL
-  // All of them can be implemented by casting the
+  // In this section, all alGet*() functions can be implemented by casting the
   // return value of alGetDouble().
   // IMO that's a poor API design, but we have to support it.
   alGetDouble: function(param) {
-    // TODO(yoanlcq)
     switch (param) {
-    case TODO /* AL_DOPPLER_FACTOR */: return TODO;
-    case TODO /* AL_SPEED_OF_SOUND */: return TODO;
-    case TODO /* AL_DISTANCE_MODEL */: return TODO;
+    case 0xC000 /* AL_DOPPLER_FACTOR */: return 1;
+    case 0xC003 /* AL_SPEED_OF_SOUND */: return 343.3;
+    case 0xD000 /* AL_DISTANCE_MODEL */: return 0 /* AL_NONE */;
+    case 0xC001 /* AL_DOPPLER_VELOCITY */:
+        Runtime.warnOnce('Getting the value for AL_DOPPLER_VELOCITY is deprecated!');
+        return 1;
     }
     AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
-
-    Runtime.warnOnce('alGetDouble() is not yet implemented! Ignoring all calls to it.');
+    return 0;
   },
 
   alGetDoublev: function(param, data) {
-    // TODO(yoanlcq)
-    Runtime.warnOnce('alGetDoublev() is not yet implemented! Ignoring all calls to it.');
+    {{{ makeSetValue('data', '0', 'AL.alGetDouble(param)', 'double') }}};
   },
 
   alGetFloat: function(param) {
-    // TODO(yoanlcq)
-    Runtime.warnOnce('alGetFloat() is not yet implemented! Ignoring all calls to it.');
+    return AL.alGetDouble(param);
   },
 
   alGetFloatv: function(param, data) {
-    // TODO(yoanlcq)
-    Runtime.warnOnce('alGetFloatv() is not yet implemented! Ignoring all calls to it.');
+    {{{ makeSetValue('data', '0', 'AL.alGetFloat(param)', 'float') }}};
   },
 
   alGetInteger: function(param) {
-    // TODO(yoanlcq)
-    Runtime.warnOnce('alGetInteger() is not yet implemented! Ignoring all calls to it.');
+    return AL.alGetDouble(param);
   },
 
   alGetIntegerv: function(param, data) {
-    // TODO(yoanlcq)
-    Runtime.warnOnce('alGetIntegerv() is not yet implemented! Ignoring all calls to it.');
+    {{{ makeSetValue('data', '0', 'AL.alGetInteger(param)', 'i32') }}};
   },
 
   alGetBoolean: function(param) {
-    // TODO(yoanlcq)
-    Runtime.warnOnce('alGetBoolean() is not yet implemented! Ignoring all calls to it.');
+    return !!AL.alGetInteger(param);
   },
 
   alGetBooleanv: function(param, data) {
-    // TODO(yoanlcq)
-    Runtime.warnOnce('alGetBooleanv() is not yet implemented! Ignoring all calls to it.');
+    {{{ makeSetValue('data', '0', 'AL.alGetBoolean(param)', 'u8') }}};
   },
 
 
