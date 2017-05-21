@@ -1786,9 +1786,6 @@ var LibraryOpenAL = {
   },
 
 
-
-
-
   alIsEnabled: function(capability) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -1804,56 +1801,70 @@ var LibraryOpenAL = {
 
 
 
+
+
   // In this section, all alGet*() functions can be implemented by casting the
   // return value of alGetDouble().
-  // The spec requires that NULL destination pointers be quietly ignored.
+  // For v-suffixed variants, the spec requires that NULL destination 
+  // pointers be quietly ignored.
   alGetDouble: function(param) {
     switch (param) {
     case 0xC000 /* AL_DOPPLER_FACTOR */: return 1;
     case 0xC003 /* AL_SPEED_OF_SOUND */: return 343.3;
     case 0xD000 /* AL_DISTANCE_MODEL */: return 0 /* AL_NONE */;
     case 0xC001 /* AL_DOPPLER_VELOCITY */:
-        Runtime.warnOnce('Getting the value for AL_DOPPLER_VELOCITY is deprecated!');
+        Runtime.warnOnce('Getting the value for AL_DOPPLER_VELOCITY is deprecated as of OpenAL 1.1!');
         return 1;
     }
     AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
     return 0;
   },
 
+  alGetDoublev__deps: ['alGetDouble'],
   alGetDoublev: function(param, data) {
-    if(data == 0)
+    if(data === 0)
         return;
-    {{{ makeSetValue('data', '0', 'AL.alGetDouble(param)', 'double') }}};
+    var val = _alGetDouble(param);
+    {{{ makeSetValue('data', '0', 'val', 'double') }}};
   },
 
+  alGetFloat__deps: ['alGetDouble'],
   alGetFloat: function(param) {
-    return AL.alGetDouble(param);
+    return _alGetDouble(param);
   },
 
+  alGetFloatv__deps: ['alGetFloat'],
   alGetFloatv: function(param, data) {
-    if(data == 0)
+    if(data === 0)
         return;
-    {{{ makeSetValue('data', '0', 'AL.alGetFloat(param)', 'float') }}};
+    var val = _alGetFloat(param);
+    {{{ makeSetValue('data', '0', 'val', 'float') }}};
   },
 
+  alGetInteger__deps: ['alGetDouble'],
   alGetInteger: function(param) {
-    return AL.alGetDouble(param);
+    return _alGetDouble(param);
   },
 
+  alGetIntegerv__deps: ['alGetInteger'],
   alGetIntegerv: function(param, data) {
-    if(data == 0)
+    if(data === 0)
         return;
-    {{{ makeSetValue('data', '0', 'AL.alGetInteger(param)', 'i32') }}};
+    var val = _alGetInteger(param);
+    {{{ makeSetValue('data', '0', 'val', 'i32') }}};
   },
 
+  alGetBoolean__deps: ['alGetInteger'],
   alGetBoolean: function(param) {
-    return !!AL.alGetInteger(param);
+    return !!_alGetInteger(param);
   },
 
+  alGetBooleanv__deps: ['alGetBoolean'],
   alGetBooleanv: function(param, data) {
-    if(data == 0)
+    if(data === 0)
         return;
-    {{{ makeSetValue('data', '0', 'AL.alGetBoolean(param)', 'i8') }}};
+    var val = _alGetBoolean(param);
+    {{{ makeSetValue('data', '0', 'val', 'i8') }}};
   },
 
 
