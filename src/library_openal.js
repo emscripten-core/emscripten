@@ -1876,6 +1876,7 @@ var LibraryOpenAL = {
     AL.currentContext.err = AL_INVALID_ENUM;
   },
 
+  alListener3i__deps: ['alListener3f'],
   alListener3i: function(param, v1, v2, v3) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -1884,73 +1885,125 @@ var LibraryOpenAL = {
       return;
     }
 
-    AL.alListener3f(param, v1, v2, v3);
+    _alListener3f(param, v1, v2, v3);
   },
 
+  // Would have liked to leverage alListenerfv(), but saw no "nice enough" way
+  // to do it. Copy pasta.
   alListeneriv: function(param, values) {
-    // HARD
-    // TODO(yoanlcq)
-    // AL_POSITION
-    // AL_VELOCITY
-    // AL_ORIENTATION
-    Runtime.warnOnce('alListeneriv() is not yet implemented! Ignoring all calls to it.');
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alListeneriv called without a valid context");
+#endif
+      return;
+    }
+    switch (param) {
+    case 0x1004 /* AL_POSITION */:
+      var x = {{{ makeGetValue('values', '0', 'i32') }}};
+      var y = {{{ makeGetValue('values', '4', 'i32') }}};
+      var z = {{{ makeGetValue('values', '8', 'i32') }}};
+      AL.currentContext.ctx.listener._position[0] = x;
+      AL.currentContext.ctx.listener._position[1] = y;
+      AL.currentContext.ctx.listener._position[2] = z;
+      AL.currentContext.ctx.listener.setPosition(x, y, z);
+      break;
+    case 0x1006 /* AL_VELOCITY */:
+      var x = {{{ makeGetValue('values', '0', 'i32') }}};
+      var y = {{{ makeGetValue('values', '4', 'i32') }}};
+      var z = {{{ makeGetValue('values', '8', 'i32') }}};
+      AL.currentContext.ctx.listener._velocity[0] = x;
+      AL.currentContext.ctx.listener._velocity[1] = y;
+      AL.currentContext.ctx.listener._velocity[2] = z;
+      // TODO: The velocity values are not currently used to implement a doppler effect.
+      // If support for doppler effect is reintroduced, compute the doppler
+      // speed pitch factor and apply it here.
+      break;
+    case 0x100F /* AL_ORIENTATION */:
+      var x  = {{{ makeGetValue('values',  '0', 'i32') }}};
+      var y  = {{{ makeGetValue('values',  '4', 'i32') }}};
+      var z  = {{{ makeGetValue('values',  '8', 'i32') }}};
+      var x2 = {{{ makeGetValue('values', '12', 'i32') }}};
+      var y2 = {{{ makeGetValue('values', '16', 'i32') }}};
+      var z2 = {{{ makeGetValue('values', '20', 'i32') }}};
+      AL.currentContext.ctx.listener._orientation[0] = x;
+      AL.currentContext.ctx.listener._orientation[1] = y;
+      AL.currentContext.ctx.listener._orientation[2] = z;
+      AL.currentContext.ctx.listener._orientation[3] = x2;
+      AL.currentContext.ctx.listener._orientation[4] = y2;
+      AL.currentContext.ctx.listener._orientation[5] = z2;
+      AL.currentContext.ctx.listener.setOrientation(x, y, z, x2, y2, z2);
+      break;
+    default:
+#if OPENAL_DEBUG
+      console.error("alListeneriv with param " + param + " not implemented yet");
+#endif
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      break;
+    }
+
   },
 
+  // Helper for getting listener attributes as an array of numbers
   getListenerXxx: function getListenerXxx(funcname, param) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
       console.error(funcname + " called without a valid context");
 #endif
-      return {};
+      return null;
     }
-    var ret = {};
     switch (param) {
     case 0x1004 /* AL_POSITION */:
-      ret.x = AL.currentContext.ctx.listener._position[0];
-      ret.y = AL.currentContext.ctx.listener._position[1];
-      ret.z = AL.currentContext.ctx.listener._position[2];
-      break;
+      return AL.currentContext.ctx.listener._position;
     case 0x1006 /* AL_VELOCITY */:
-      ret.x = AL.currentContext.ctx.listener._velocity[0];
-      ret.y = AL.currentContext.ctx.listener._velocity[1];
-      ret.z = AL.currentContext.ctx.listener._velocity[2];
-      break;
+      return AL.currentContext.ctx.listener._velocity;
     case 0x100F /* AL_ORIENTATION */:
-      ret.x = AL.currentContext.ctx.listener._orientation[0];
-      ret.y = AL.currentContext.ctx.listener._orientation[1];
-      ret.z = AL.currentContext.ctx.listener._orientation[2];
-      ret.x2 = AL.currentContext.ctx.listener._orientation[3];
-      ret.y2 = AL.currentContext.ctx.listener._orientation[4];
-      ret.z2 = AL.currentContext.ctx.listener._orientation[5];
-      break;
+      return AL.currentContext.ctx.listener._orientation;
     default:
 #if OPENAL_DEBUG
       console.error(funcname + " with param " + param + " not implemented yet");
 #endif
       AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
-      ret.failed = true;
     }
-    return ret;
+    return null;
   },
 
   alGetListener3f: function(param, v1, v2, v3) {
     var v = AL.getListenerXxx("alGetListener3f", param);
-    if(v.failed)
+    if(!v)
       return;
-    {{{ makeSetValue('v1', '0', 'v.x', 'float') }}};
-    {{{ makeSetValue('v2', '0', 'v.y', 'float') }}};
-    {{{ makeSetValue('v3', '0', 'v.z', 'float') }}};
-  },
+    {{{ makeSetValue('v1', '0', 'v[0]', 'float') }}};
+    {{{ makeSetValue('v2', '0', 'v[1]', 'float') }}};
+    {{{ makeSetValue('v3', '0', 'v[2]', 'float') }}};
+  }
 
   alGetListener3i: function(param, v1, v2, v3) {
-    // TODO(yoanlcq)
-    Runtime.warnOnce('alGetListener3i() is not yet implemented! Ignoring all calls to it.');
+    var v = AL.getListenerXxx("alGetListener3i", param);
+    if(!v)
+      return;
+    {{{ makeSetValue('v1', '0', 'v[0]', 'i32') }}};
+    {{{ makeSetValue('v2', '0', 'v[1]', 'i32') }}};
+    {{{ makeSetValue('v3', '0', 'v[2]', 'i32') }}};
   },
 
   alGetListeneriv: function(param, data) {
-    // TODO(yoanlcq)
-    Runtime.warnOnce('alGetListeneriv() is not yet implemented! Ignoring all calls to it.');
+    var v = AL.getListenerXxx("alGetListeneriv", param);
+    if(!v)
+      return;
+
+    {{{ makeSetValue('data',  '0', 'v[0]', 'i32') }}};
+    {{{ makeSetValue('data',  '4', 'v[1]', 'i32') }}};
+    {{{ makeSetValue('data',  '8', 'v[2]', 'i32') }}};
+
+    if(param == 0x100F /* AL_ORIENTATION */) {
+      {{{ makeSetValue('data', '12', 'v[3]', 'i32') }}};
+      {{{ makeSetValue('data', '16', 'v[4]', 'i32') }}};
+      {{{ makeSetValue('data', '20', 'v[5]', 'i32') }}};
+    }
   },
+
+
+
+
 
   alSourceiv: function(value) {
     // TODO(yoanlcq)
