@@ -1594,84 +1594,91 @@ var LibraryOpenAL = {
     return 0;
   },
 
+
+
+
+
+
+
+
   alGetEnumValue: function(name) {
     name = Pointer_stringify(name);
 
     switch(name) {
-     case "AL_FORMAT_MONO_FLOAT32": return 0x10010;
-     case "AL_FORMAT_STEREO_FLOAT32": return 0x10011;
+    case "AL_FORMAT_MONO_FLOAT32": return 0x10010;
+    case "AL_FORMAT_STEREO_FLOAT32": return 0x10011;
 
-     // Spec doesn't clearly state that alGetEnumValue() is required to
-     // support _only_ extension tokens.
-     // We should probably follow OpenAL-Soft's example and support all
-     // of the names we know.
-     // See http://repo.or.cz/openal-soft.git/blob/HEAD:/Alc/ALc.c
-     case "AL_BITS": return 0x2002;
-     case "AL_BUFFER": return 0x1009;
-     case "AL_BUFFERS_PROCESSED": return 0x1016;
-     case "AL_BUFFERS_QUEUED": return 0x1015;
-     case "AL_BYTE_OFFSET": return 0x1026;
-     case "AL_CHANNELS": return 0x2003;
-     case "AL_CONE_INNER_ANGLE": return 0x1001;
-     case "AL_CONE_OUTER_ANGLE": return 0x1002;
-     case "AL_CONE_OUTER_GAIN": return 0x1022;
-     case "AL_DIRECTION": return 0x1005;
-     case "AL_DISTANCE_MODEL": return 0xD000;
-     case "AL_DOPPLER_FACTOR": return 0xC000;
-     case "AL_DOPPLER_VELOCITY": return 0xC001;
-     case "AL_EXPONENT_DISTANCE": return 0xD005;
-     case "AL_EXPONENT_DISTANCE_CLAMPED": return 0xD006;
-     case "AL_EXTENSIONS": return 0xB004;
-     case "AL_FORMAT_MONO16": return 0x1101;
-     case "AL_FORMAT_MONO8": return 0x1100;
-     case "AL_FORMAT_STEREO16": return 0x1103;
-     case "AL_FORMAT_STEREO8": return 0x1102;
-     case "AL_FREQUENCY": return 0x2001;
-     case "AL_GAIN": return 0x100A;
-     case "AL_INITIAL": return 0x1011;
-     case "AL_INVALID": return -1;
-     case "AL_ILLEGAL_ENUM": // fallthrough
-     case "AL_INVALID_ENUM": return 0xA002;
-     case "AL_INVALID_NAME": return 0xA001;
-     case "AL_ILLEGAL_COMMAND": // fallthrough
-     case "AL_INVALID_OPERATION": return 0xA004;
-     case "AL_INVALID_VALUE": return 0xA003;
-     case "AL_INVERSE_DISTANCE": return 0xD001;
-     case "AL_INVERSE_DISTANCE_CLAMPED": return 0xD002;
-     case "AL_LINEAR_DISTANCE": return 0xD003;
-     case "AL_LINEAR_DISTANCE_CLAMPED": return 0xD004;
-     case "AL_LOOPING": return 0x1007;
-     case "AL_MAX_DISTANCE": return 0x1023;
-     case "AL_MAX_GAIN": return 0x100E;
-     case "AL_MIN_GAIN": return 0x100D;
-     case "AL_NONE": return 0;
-     case "AL_NO_ERROR": return 0;
-     case "AL_ORIENTATION": return 0x100F;
-     case "AL_OUT_OF_MEMORY": return 0xA005;
-     case "AL_PAUSED": return 0x1013;
-     case "AL_PENDING": return 0x2011;
-     case "AL_PITCH": return 0x1003;
-     case "AL_PLAYING": return 0x1012;
-     case "AL_POSITION": return 0x1004;
-     case "AL_PROCESSED": return 0x2012;
-     case "AL_REFERENCE_DISTANCE": return 0x1020;
-     case "AL_RENDERER": return 0xB003;
-     case "AL_ROLLOFF_FACTOR": return 0x1021;
-     case "AL_SAMPLE_OFFSET": return 0x1025;
-     case "AL_SEC_OFFSET": return 0x1024;
-     case "AL_SIZE": return 0x2004;
-     case "AL_SOURCE_RELATIVE": return 0x202;
-     case "AL_SOURCE_STATE": return 0x1010;
-     case "AL_SOURCE_TYPE": return 0x1027;
-     case "AL_SPEED_OF_SOUND": return 0xC003;
-     case "AL_STATIC": return 0x1028;
-     case "AL_STOPPED": return 0x1014;
-     case "AL_STREAMING": return 0x1029;
-     case "AL_UNDETERMINED": return 0x1030;
-     case "AL_UNUSED": return 0x2010;
-     case "AL_VELOCITY": return 0x1006;
-     case "AL_VENDOR": return 0xB001;
-     case "AL_VERSION": return 0xB002;
+    // Spec doesn't clearly state that alGetEnumValue() is required to
+    // support _only_ extension tokens.
+    // We should probably follow OpenAL-Soft's example and support all
+    // of the names we know.
+    // See http://repo.or.cz/openal-soft.git/blob/HEAD:/Alc/ALc.c
+    case "AL_BITS": return 0x2002;
+    case "AL_BUFFER": return 0x1009;
+    case "AL_BUFFERS_PROCESSED": return 0x1016;
+    case "AL_BUFFERS_QUEUED": return 0x1015;
+    case "AL_BYTE_OFFSET": return 0x1026;
+    case "AL_CHANNELS": return 0x2003;
+    case "AL_CONE_INNER_ANGLE": return 0x1001;
+    case "AL_CONE_OUTER_ANGLE": return 0x1002;
+    case "AL_CONE_OUTER_GAIN": return 0x1022;
+    case "AL_DIRECTION": return 0x1005;
+    case "AL_DISTANCE_MODEL": return 0xD000;
+    case "AL_DOPPLER_FACTOR": return 0xC000;
+    case "AL_DOPPLER_VELOCITY": return 0xC001;
+    case "AL_EXPONENT_DISTANCE": return 0xD005;
+    case "AL_EXPONENT_DISTANCE_CLAMPED": return 0xD006;
+    case "AL_EXTENSIONS": return 0xB004;
+    case "AL_FORMAT_MONO16": return 0x1101;
+    case "AL_FORMAT_MONO8": return 0x1100;
+    case "AL_FORMAT_STEREO16": return 0x1103;
+    case "AL_FORMAT_STEREO8": return 0x1102;
+    case "AL_FREQUENCY": return 0x2001;
+    case "AL_GAIN": return 0x100A;
+    case "AL_INITIAL": return 0x1011;
+    case "AL_INVALID": return -1;
+    case "AL_ILLEGAL_ENUM": // fallthrough
+    case "AL_INVALID_ENUM": return 0xA002;
+    case "AL_INVALID_NAME": return 0xA001;
+    case "AL_ILLEGAL_COMMAND": // fallthrough
+    case "AL_INVALID_OPERATION": return 0xA004;
+    case "AL_INVALID_VALUE": return 0xA003;
+    case "AL_INVERSE_DISTANCE": return 0xD001;
+    case "AL_INVERSE_DISTANCE_CLAMPED": return 0xD002;
+    case "AL_LINEAR_DISTANCE": return 0xD003;
+    case "AL_LINEAR_DISTANCE_CLAMPED": return 0xD004;
+    case "AL_LOOPING": return 0x1007;
+    case "AL_MAX_DISTANCE": return 0x1023;
+    case "AL_MAX_GAIN": return 0x100E;
+    case "AL_MIN_GAIN": return 0x100D;
+    case "AL_NONE": return 0;
+    case "AL_NO_ERROR": return 0;
+    case "AL_ORIENTATION": return 0x100F;
+    case "AL_OUT_OF_MEMORY": return 0xA005;
+    case "AL_PAUSED": return 0x1013;
+    case "AL_PENDING": return 0x2011;
+    case "AL_PITCH": return 0x1003;
+    case "AL_PLAYING": return 0x1012;
+    case "AL_POSITION": return 0x1004;
+    case "AL_PROCESSED": return 0x2012;
+    case "AL_REFERENCE_DISTANCE": return 0x1020;
+    case "AL_RENDERER": return 0xB003;
+    case "AL_ROLLOFF_FACTOR": return 0x1021;
+    case "AL_SAMPLE_OFFSET": return 0x1025;
+    case "AL_SEC_OFFSET": return 0x1024;
+    case "AL_SIZE": return 0x2004;
+    case "AL_SOURCE_RELATIVE": return 0x202;
+    case "AL_SOURCE_STATE": return 0x1010;
+    case "AL_SOURCE_TYPE": return 0x1027;
+    case "AL_SPEED_OF_SOUND": return 0xC003;
+    case "AL_STATIC": return 0x1028;
+    case "AL_STOPPED": return 0x1014;
+    case "AL_STREAMING": return 0x1029;
+    case "AL_UNDETERMINED": return 0x1030;
+    case "AL_UNUSED": return 0x2010;
+    case "AL_VELOCITY": return 0x1006;
+    case "AL_VENDOR": return 0xB001;
+    case "AL_VERSION": return 0xB002;
     }
 
     AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
@@ -1682,10 +1689,10 @@ var LibraryOpenAL = {
   },
 
   alDopplerFactor: function(value) {
-    Runtime.warnOnce('alDopplerFactor() is not yet implemented! Ignoring all calls to it.');
+    Runtime.warnOnce('alDopplerFactor() is not yet implemented!');
     if(value < 0) { // Strictly negative values are disallowed
-        AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
-        return;
+      AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+      return;
     }
     // TODO actual impl here
   },
@@ -1706,13 +1713,6 @@ var LibraryOpenAL = {
     }
     // TODO actual impl here
   },
-
-
-
-
-
-
-
 
   alcGetEnumValue: function(device, name) {
     // Spec says :
@@ -1813,8 +1813,8 @@ var LibraryOpenAL = {
     case 0xC003 /* AL_SPEED_OF_SOUND */: return 343.3;
     case 0xD000 /* AL_DISTANCE_MODEL */: return 0 /* AL_NONE */;
     case 0xC001 /* AL_DOPPLER_VELOCITY */:
-        Runtime.warnOnce('Getting the value for AL_DOPPLER_VELOCITY is deprecated as of OpenAL 1.1!');
-        return 1;
+      Runtime.warnOnce('Getting the value for AL_DOPPLER_VELOCITY is deprecated as of OpenAL 1.1!');
+      return 1;
     }
     AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
     return 0;
@@ -1823,7 +1823,7 @@ var LibraryOpenAL = {
   alGetDoublev__deps: ['alGetDouble'],
   alGetDoublev: function(param, data) {
     if(data === 0)
-        return;
+      return;
     var val = _alGetDouble(param);
     {{{ makeSetValue('data', '0', 'val', 'double') }}};
   },
@@ -1836,7 +1836,7 @@ var LibraryOpenAL = {
   alGetFloatv__deps: ['alGetFloat'],
   alGetFloatv: function(param, data) {
     if(data === 0)
-        return;
+      return;
     var val = _alGetFloat(param);
     {{{ makeSetValue('data', '0', 'val', 'float') }}};
   },
@@ -1849,7 +1849,7 @@ var LibraryOpenAL = {
   alGetIntegerv__deps: ['alGetInteger'],
   alGetIntegerv: function(param, data) {
     if(data === 0)
-        return;
+      return;
     var val = _alGetInteger(param);
     {{{ makeSetValue('data', '0', 'val', 'i32') }}};
   },
@@ -1862,7 +1862,7 @@ var LibraryOpenAL = {
   alGetBooleanv__deps: ['alGetBoolean'],
   alGetBooleanv: function(param, data) {
     if(data === 0)
-        return;
+      return;
     var val = _alGetBoolean(param);
     {{{ makeSetValue('data', '0', 'val', 'i8') }}};
   },
@@ -1951,6 +1951,7 @@ var LibraryOpenAL = {
 #endif
       return null;
     }
+
     switch (param) {
     case 0x1004 /* AL_POSITION */:
       return AL.currentContext.ctx.listener._position;
@@ -1958,12 +1959,12 @@ var LibraryOpenAL = {
       return AL.currentContext.ctx.listener._velocity;
     case 0x100F /* AL_ORIENTATION */:
       return AL.currentContext.ctx.listener._orientation;
-    default:
-#if OPENAL_DEBUG
-      console.error(funcname + " with param " + param + " not implemented yet");
-#endif
-      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
     }
+
+#if OPENAL_DEBUG
+    console.error(funcname + " with param " + param + " not implemented yet");
+#endif
+    AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
     return null;
   },
 
@@ -1989,7 +1990,6 @@ var LibraryOpenAL = {
     var v = AL.getListenerXxx("alGetListeneriv", param);
     if(!v)
       return;
-
     {{{ makeSetValue('data',  '0', 'v[0]', 'i32') }}};
     {{{ makeSetValue('data',  '4', 'v[1]', 'i32') }}};
     {{{ makeSetValue('data',  '8', 'v[2]', 'i32') }}};
@@ -2001,10 +2001,6 @@ var LibraryOpenAL = {
     }
   },
 
-
-
-
-
   alSourceiv__deps: ['alSource3i'],
   alSourceiv: function(source, param, values) {
     _alSource3i(source, param,
@@ -2014,6 +2010,7 @@ var LibraryOpenAL = {
   },
 
 
+  // Another helper
   getSource3Xxx: function getSource3Xxx(funcname, source, param) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -2038,7 +2035,6 @@ var LibraryOpenAL = {
     console.error(funcname + " with param " + param + " not implemented yet");
 #endif
     AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
-
   },
 
   alGetSource3f: function(source, param, v1, v2, v3) {
@@ -2069,34 +2065,34 @@ var LibraryOpenAL = {
   alSourcePlayv__deps: ['alSourcePlay'],
   alSourcePlayv: function(n, sources) {
     for(var i=0 ; i<n ; ++i) {
-        _alSourcePlay({{{ makeGetValue('sources', 'i*4', 'i32') }}});
+      _alSourcePlay({{{ makeGetValue('sources', 'i*4', 'i32') }}});
     }
   },
 
   alSourceStopv__deps: ['alSourceStop'],
   alSourceStopv: function(n, sources) {
     for(var i=0 ; i<n ; ++i) {
-        _alSourceStop({{{ makeGetValue('sources', 'i*4', 'i32') }}});
+      _alSourceStop({{{ makeGetValue('sources', 'i*4', 'i32') }}});
     }
   },
 
   alSourceRewindv__deps: ['alSourceRewind'],
   alSourceRewindv: function(n, sources) {
     for(var i=0 ; i<n ; ++i) {
-        _alSourceRewind({{{ makeGetValue('sources', 'i*4', 'i32') }}});
+      _alSourceRewind({{{ makeGetValue('sources', 'i*4', 'i32') }}});
     }
   },
 
   alSourcePausev__deps: ['alSourcePause'],
   alSourcePausev: function(n, sources) {
     for(var i=0 ; i<n ; ++i) {
-        _alSourcePause({{{ makeGetValue('sources', 'i*4', 'i32') }}});
+      _alSourcePause({{{ makeGetValue('sources', 'i*4', 'i32') }}});
     }
   },
 
   alGetBufferiv__deps: ['alGetBufferi'],
   alGetBufferiv: function(buffer, pname, values) {
-      _alGetBufferi(buffer, pname, values);
+    _alGetBufferi(buffer, pname, values);
   }
 
   // All of the remaining alBuffer* setters and getters are only of interest
@@ -2181,7 +2177,7 @@ var LibraryOpenAL = {
       return;
     }
     AL.bufferDummyAccessor("alGetBuffer3i", buffer);
-  },
+  }
 
 };
 
