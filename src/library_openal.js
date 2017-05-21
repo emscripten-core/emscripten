@@ -2094,72 +2094,94 @@ var LibraryOpenAL = {
     }
   },
 
+  alGetBufferiv__deps: ['alGetBufferi'],
+  alGetBufferiv: function(buffer, pname, values) {
+      _alGetBufferi(buffer, pname, values);
+  }
+
+  // All of the remaining alBuffer* setters and getters are only of interest
+  // to extensions which need them. Core OpenAL alone defines no valid
+  // property for these.
+
+  // For lack of a better name...
+  bufferDummyAccessor: function bufferDummyAccessor(funcname, buffer) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error(funcname + " called without a valid context");
+#endif
+      return;
+    }
+    var buf = AL.currentContext.buf[buffer - 1];
+    if (!buf) {
+#if OPENAL_DEBUG
+      console.error(funcname + " called with an invalid buffer");
+#endif
+      AL.currentContext.err = 0xA001 /* AL_INVALID_NAME */;
+      return;
+    }
+
+    AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+  }
 
   alBufferf: function(buffer, param, value) {
-    // TODO(yoanlcq)
-      // only used by extensions
-    Runtime.warnOnce('alBufferf() is not yet implemented! Ignoring all calls to it.');
+    AL.bufferDummyAccessor("alBufferf", buffer);
   },
 
   alBuffer3f: function(buffer, param, v1, v2, v3) {
-    // TODO(yoanlcq)
-      // only used by extensions
-    Runtime.warnOnce('alBuffer3f() is not yet implemented! Ignoring all calls to it.');
+    AL.bufferDummyAccessor("alBuffer3f", buffer);
   },
 
   alBufferfv: function(buffer, param, values) {
-    // TODO(yoanlcq)
-      // only used by extensions
-    Runtime.warnOnce('alBufferfv() is not yet implemented! Ignoring all calls to it.');
+    AL.bufferDummyAccessor("alBufferfv", buffer);
   },
 
   alBufferi: function(buffer, param, value) {
-    // TODO(yoanlcq)
-      // only used by extensions
-    Runtime.warnOnce('alBufferi() is not yet implemented! Ignoring all calls to it.');
+    AL.bufferDummyAccessor("alBufferi", buffer);
   },
 
   alBuffer3i: function(buffer, param, v1, v2, v3) {
-    // TODO(yoanlcq)
-      // only used by extensions
-    Runtime.warnOnce('alBuffer3i() is not yet implemented! Ignoring all calls to it.');
+    AL.bufferDummyAccessor("alBuffer3i", buffer);
   },
 
   alBufferiv: function(buffer, params, values) {
-    // TODO(yoanlcq)
-      // only used by extensions
-    Runtime.warnOnce('alBufferiv() is not yet implemented! Ignoring all calls to it.');
+    AL.bufferDummyAccessor("alBufferiv", buffer);
   },
 
+  // These in particular can error with AL_INVALID_VALUE
+  // if "the destination pointer is not valid"
+  // (from the programming guide)
+
   alGetBufferf: function(buffer, pname, value) {
-    // TODO(yoanlcq)
-      // only used by extensions
-    Runtime.warnOnce('alGetBufferf() is not yet implemented! Ignoring all calls to it.');
+    if(value == 0) {
+      AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+      return;
+    }
+    AL.bufferDummyAccessor("alGetBufferf", buffer);
   },
 
   alGetBuffer3f: function(buffer, pname, v1, v2, v3) {
-    // TODO(yoanlcq)
-      // only used by extensions
-    Runtime.warnOnce('alGetBuffer3f() is not yet implemented! Ignoring all calls to it.');
+    if(v1 == 0 || v2 == 0 || v3 == 0) {
+      AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+      return;
+    }
+    AL.bufferDummyAccessor("alGetBuffer3f", buffer);
   },
 
   alGetBufferfv: function(buffer, pname, values) {
-    // TODO(yoanlcq)
-      // only used by extensions
-    Runtime.warnOnce('alGetBufferfv() is not yet implemented! Ignoring all calls to it.');
+    if(values == 0) {
+      AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+      return;
+    }
+    AL.bufferDummyAccessor("alGetBufferfv", buffer);
   },
 
   alGetBuffer3i: function(buffer, pname, v1, v2, v3) {
-    // TODO(yoanlcq)
-      // only used by extensions
-    Runtime.warnOnce('alGetBuffer3i() is not yet implemented! Ignoring all calls to it.');
+    if(v1 == 0 || v2 == 0 || v3 == 0) {
+      AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+      return;
+    }
+    AL.bufferDummyAccessor("alGetBuffer3i", buffer);
   },
-
-  alGetBufferiv: function(buffer, pname, values) {
-    // TODO(yoanlcq)
-      // See alGetBufferi().
-    Runtime.warnOnce('alGetBufferiv() is not yet implemented! Ignoring all calls to it.');
-  }
 
 };
 
