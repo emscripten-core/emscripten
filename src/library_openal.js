@@ -2061,25 +2061,39 @@ var LibraryOpenAL = {
 
 
 
+  // It would probably be more correct to implement 
+  // alSourceXxx(src) as alSourceXxxv(1, src)
+  // instead of the other way around (with for loops), but right now
+  // it's less error-prone.
+
+  alSourcePlayv__deps: ['alSourcePlay'],
   alSourcePlayv: function(n, sources) {
-    // TODO(yoanlcq)
-    Runtime.warnOnce('alSourcePlayv() is not yet implemented! Ignoring all calls to it.');
+    for(var i=0 ; i<n ; ++i) {
+        _alSourcePlay({{{ makeGetValue('sources', 'i*4', 'i32') }}});
+    }
   },
 
+  alSourceStopv__deps: ['alSourceStop'],
   alSourceStopv: function(n, sources) {
-    // TODO(yoanlcq)
-    Runtime.warnOnce('alSourceStopv() is not yet implemented! Ignoring all calls to it.');
+    for(var i=0 ; i<n ; ++i) {
+        _alSourceStop({{{ makeGetValue('sources', 'i*4', 'i32') }}});
+    }
   },
 
+  alSourceRewindv__deps: ['alSourceRewind'],
   alSourceRewindv: function(n, sources) {
-    // TODO(yoanlcq)
-    Runtime.warnOnce('alSourceRewindv() is not yet implemented! Ignoring all calls to it.');
+    for(var i=0 ; i<n ; ++i) {
+        _alSourceRewind({{{ makeGetValue('sources', 'i*4', 'i32') }}});
+    }
   },
 
+  alSourcePausev__deps: ['alSourcePause'],
   alSourcePausev: function(n, sources) {
-    // TODO(yoanlcq)
-    Runtime.warnOnce('alSourcePausev() is not yet implemented! Ignoring all calls to it.');
+    for(var i=0 ; i<n ; ++i) {
+        _alSourcePause({{{ makeGetValue('sources', 'i*4', 'i32') }}});
+    }
   },
+
 
   alBufferf: function(buffer, param, value) {
     // TODO(yoanlcq)
