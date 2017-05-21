@@ -2114,10 +2114,6 @@ var LibraryOpenAL = {
   // instead of the other way around (with for loops), but right now
   // it's less error-prone.
 
-  // TODO(yoanlcq)
-  // Check context validity;
-  // Better error messages;
-
   alSourcePlayv__deps: ['alSourcePlay'],
   alSourcePlayv: function(count, sources) {
     if (!AL.currentContext) {
