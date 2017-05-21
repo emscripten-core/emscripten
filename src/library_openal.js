@@ -1601,6 +1601,11 @@ var LibraryOpenAL = {
      case "AL_FORMAT_MONO_FLOAT32": return 0x10010;
      case "AL_FORMAT_STEREO_FLOAT32": return 0x10011;
 
+     // Spec doesn't clearly state that alGetEnumValue() is required to
+     // support _only_ extension tokens.
+     // We should probably follow OpenAL-Soft's example and support all
+     // of the names we know.
+     // See http://repo.or.cz/openal-soft.git/blob/HEAD:/Alc/ALc.c
      case "AL_BITS": return 0x2002;
      case "AL_BUFFER": return 0x1009;
      case "AL_BUFFERS_PROCESSED": return 0x1016;
@@ -1710,15 +1715,15 @@ var LibraryOpenAL = {
 
 
   alcGetEnumValue: function(device, name) {
-    // Actually, ALC_INVALID_DEVICE is not a possible error state for
-    // this function.
-    // The spec says that the NULL device is legal here, but only for
-    // querying ALC enums that are not device-specific extensions, 
-    // and so far we have none.
-    if(device!=0 && device!=1) {
+    // Spec says :
+    //   Using a NULL handle is legal, but only the
+    //   tokens defined by the AL core are guaranteed.
+    if(device!==0 && device!==1) {
 #if OPENAL_DEBUG
       console.error("alcGetEnumValue called with an invalid device");
 #endif
+      // ALC_INVALID_DEVICE is not listed as a possible error state for
+      // this function, sadly.
       return 0 /* AL_NONE */;
     }
     name = Pointer_stringify(name);
