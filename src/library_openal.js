@@ -2005,20 +2005,61 @@ var LibraryOpenAL = {
 
 
 
-  alSourceiv: function(value) {
-    // TODO(yoanlcq)
-    Runtime.warnOnce('alSourceiv() is not yet implemented! Ignoring all calls to it.');
+  alSourceiv__deps: ['alSource3i'],
+  alSourceiv: function(source, param, values) {
+    _alSource3i(source, param,
+      {{{ makeGetValue('values', '0', 'i32') }}},
+      {{{ makeGetValue('values', '4', 'i32') }}},
+      {{{ makeGetValue('values', '8', 'i32') }}});
   },
 
-  alGetSource3f: function(value) {
-    // TODO(yoanlcq)
-    Runtime.warnOnce('alGetSource3f() is not yet implemented! Ignoring all calls to it.');
+
+  getSource3Xxx: function getSource3Xxx(funcname, source, param) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error(funcname + " called without a valid context");
+#endif
+      return null;
+    }
+    var src = AL.currentContext.src[source];
+    if (!src) {
+#if OPENAL_DEBUG
+      console.error(funcname + " called with an invalid source");
+#endif
+      AL.currentContext.err = 0xA001 /* AL_INVALID_NAME */;
+      return null;
+    }
+    switch (param) {
+    case 0x1004 /* AL_POSITION */:  return src.position;
+    case 0x1005 /* AL_DIRECTION */: return src.direction;
+    case 0x1006 /* AL_VELOCITY */:  return src.velocity;
+    }
+ #if OPENAL_DEBUG
+    console.error(funcname + " with param " + param + " not implemented yet");
+#endif
+    AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+
   },
 
-  alGetSource3i: function(value) {
-    // TODO(yoanlcq)
-    Runtime.warnOnce('alGetSource3i() is not yet implemented! Ignoring all calls to it.');
+  alGetSource3f: function(source, param, v1, v2, v3) {
+    var v = AL.getSource3Xxx("alGetSource3f", source, param);
+    if(!v)
+        return;
+    {{{ makeSetValue('v1', '0', 'v[0]', 'float') }}};
+    {{{ makeSetValue('v2', '0', 'v[1]', 'float') }}};
+    {{{ makeSetValue('v3', '0', 'v[2]', 'float') }}};
   },
+
+  alGetSource3i: function(source, param, v1, v2, v3) {
+    var v = AL.getSource3Xxx("alGetSource3i", source, param);
+    if(!v)
+        return;
+    {{{ makeSetValue('v1', '0', 'v[0]', 'i32') }}};
+    {{{ makeSetValue('v2', '0', 'v[1]', 'i32') }}};
+    {{{ makeSetValue('v3', '0', 'v[2]', 'i32') }}};
+  },
+
+
 
   alSourcePlayv: function(n, sources) {
     // TODO(yoanlcq)
