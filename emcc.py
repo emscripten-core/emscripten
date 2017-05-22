@@ -47,6 +47,7 @@ C_ENDINGS = C_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES # consider the special endi
 BITCODE_ENDINGS = ('.bc', '.o', '.obj', '.lo')
 DYNAMICLIB_ENDINGS = ('.dylib', '.so') # Windows .dll suffix is not included in this list, since those are never linked to directly on the command line.
 STATICLIB_ENDINGS = ('.a',)
+JSLIB_ENDINGS = ('.emlib.js',)
 ASSEMBLY_ENDINGS = ('.ll',)
 HEADER_ENDINGS = ('.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH')
 WASM_ENDINGS = ('.wasm', '.wast')
@@ -965,13 +966,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logging.debug('looking for library "%s"', lib)
         found = False
         for prefix in LIB_PREFIXES:
-          for suff in STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS:
+          for suff in STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS + JSLIB_ENDINGS:
             name = prefix + lib + suff
             for lib_dir in lib_dirs:
               path = os.path.join(lib_dir, name)
               if os.path.exists(path):
                 logging.debug('found library "%s" at %s', lib, path)
-                input_files.append((i, path))
+                if suff in JSLIB_ENDINGS:
+                  js_libraries.append(path)
+                else:
+                  input_files.append((i, path))
                 found = True
                 break
             if found: break
@@ -996,7 +1000,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         input_files = [(i, input_file) for (i, input_file) in input_files if check(input_file)]
 
       if len(input_files) == 0:
-        logging.error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + STATICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS))
+        logging.error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + STATICLIB_ENDINGS + JSLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS))
         exit(1)
 
       newargs = CC_ADDITIONAL_ARGS + newargs

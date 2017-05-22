@@ -327,10 +327,10 @@ libraries for relevant external symbols.
 By default, the implementation is added to **library.js** (and this is
 where you'll find parts of Emscripten's *libc*). You can put
 the JavaScript implementation in your own library file and add it using
-the :ref:`emcc option <emcc-js-library>` ``--js-library``. See
-`test_js_libraries`_ in **tests/test_other.py** for a complete working
-example, including the syntax you should use inside the JavaScript library
-file.
+the :ref:`emcc option <emcc-js-library>` ``--js-library`` or linking to
+it by using the ``-L`` and `-l`` arguments. See `test_js_libraries`_ in
+**tests/test_other.py** for a complete working example, including the
+syntax you should use inside the JavaScript library file.
 
 As a simple example, consider the case where you have some C code like this:
 
