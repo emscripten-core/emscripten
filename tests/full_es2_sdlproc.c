@@ -48,6 +48,7 @@
 #include <unistd.h>
 #include <GL/gl.h>
 #include <GL/glut.h>
+#include <assert.h>
 
 #ifndef HAVE_BUILTIN_SINCOS
 #include "sincos.h"
@@ -697,6 +698,14 @@ gears_init(void)
 
    /* Set the LightSourcePosition uniform which is constant throught the program */
    glUniform4fv(LightSourcePosition_location, 1, LightSourcePosition);
+
+   {
+      GLfloat LightSourcePosition_copy[4];
+      glGetUniformfv(program, LightSourcePosition_location, LightSourcePosition_copy);
+      for (uint32_t i = 0; i < 4; ++i) {
+        assert(LightSourcePosition[i] == LightSourcePosition_copy[i]);
+      }
+   }
 
    /* make the gears */
    gear1 = create_gear(1.0, 4.0, 1.0, 20, 0.7);
