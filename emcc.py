@@ -2409,7 +2409,9 @@ def generate_html(target, options, js_target, target_basename,
 
   # Download .asm.js if --separate-asm was passed in an asm.js build, or if 'asmjs' is one
   # of the wasm run methods.
-  if options.separate_asm and (not shared.Settings.BINARYEN or 'asmjs' in shared.Settings.BINARYEN_METHOD):
+  if not options.separate_asm or (shared.Settings.BINARYEN and 'asmjs' not in shared.Settings.BINARYEN_METHOD):
+    assert len(asm_mods) == 0, 'no --separate-asm means no client code mods are possible'
+  else:
     script.un_src()
     if len(asm_mods) == 0:
       # just load the asm, then load the rest
@@ -2446,8 +2448,6 @@ def generate_html(target, options, js_target, target_basename,
     };
     codeXHR.send(null);
 ''' % (os.path.basename(asm_target), '\n'.join(asm_mods), script.inline)
-  else:
-    assert len(asm_mods) == 0, 'no --separate-asm means no client code mods are possible'
 
   if shared.Settings.BINARYEN and not shared.Settings.BINARYEN_ASYNC_COMPILATION:
     # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize
