@@ -1864,8 +1864,8 @@ var LibraryOpenAL = {
   },
 
   alGetDoublev: function(param, data) {
-    if (!data) return;
     var val = AL.getDoubleHelper("alGetDoublev", param);
+    if (!data) return;
     {{{ makeSetValue('data', '0', 'val', 'double') }}};
   },
 
@@ -1874,8 +1874,8 @@ var LibraryOpenAL = {
   },
 
   alGetFloatv: function(param, data) {
-    if (!data) return;
     var val = AL.getDoubleHelper("alGetFloatv", param);
+    if (!data) return;
     {{{ makeSetValue('data', '0', 'val', 'float') }}};
   },
 
@@ -1884,8 +1884,8 @@ var LibraryOpenAL = {
   },
 
   alGetIntegerv: function(param, data) {
-    if (!data) return;
     var val = AL.getDoubleHelper("alGetIntegerv", param);
+    if (!data) return;
     {{{ makeSetValue('data', '0', 'val', 'i32') }}};
   },
 
@@ -1894,8 +1894,8 @@ var LibraryOpenAL = {
   },
 
   alGetBooleanv: function(param, data) {
-    if (!data) return;
     var val = !!AL.getDoubleHelper("alGetBooleanv", param);
+    if (!data) return;
     {{{ makeSetValue('data', '0', 'val', 'i8') }}};
   },
 
