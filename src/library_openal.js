@@ -1711,8 +1711,8 @@ var LibraryOpenAL = {
       return;
     }
     if (value <= 0) { // Negative or zero values are disallowed
-        AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
-        return;
+      AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+      return;
     }
   },
 
