@@ -2237,6 +2237,8 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--mem-max=-1']
     elif shared.Settings.BINARYEN_MEM_MAX >= 0:
       cmd += ['--mem-max=' + str(shared.Settings.BINARYEN_MEM_MAX)]
+    if shared.Settings.LEGALIZE_JS_FFI != 1:
+      cmd += ['--no-legalize-javascript-ffi']
     if shared.Building.is_wasm_only():
       cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, an can contain special fastcomp-wasm support
     if options.debug_level >= 2 or options.profiling_funcs:
