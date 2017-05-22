@@ -824,7 +824,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if error_on_missing_libraries_cmdline:
         shared.Settings.ERROR_ON_MISSING_LIBRARIES = int(error_on_missing_libraries_cmdline[len('ERROR_ON_MISSING_LIBRARIES='):])
 
-      settings_changes.append(system_js_libraries_setting_str(libs, lib_dirs, settings_changes))
+      settings_changes.append(system_js_libraries_setting_str(libs, lib_dirs, settings_changes, input_files))
 
       # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
       # ignore dynamic linking, since multiple dynamic linkings can interfere with each other
@@ -2490,7 +2490,7 @@ def worker_js_script(proxy_worker_filename):
   return web_gl_client_src + '\n' + proxy_client_src
 
 
-def system_js_libraries_setting_str(libs, lib_dirs, settings_changes):
+def system_js_libraries_setting_str(libs, lib_dirs, settings_changes, input_files):
   libraries = []
 
   # Find library files
