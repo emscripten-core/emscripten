@@ -1594,13 +1594,6 @@ var LibraryOpenAL = {
     return 0;
   },
 
-
-
-
-
-
-
-
   alGetEnumValue: function(name) {
     // alGetEnumValue() doesn't require a valid context
 
@@ -1732,8 +1725,8 @@ var LibraryOpenAL = {
       return;
     }
     if (value <= 0) { // Negative or zero values are disallowed
-        AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
-        return;
+      AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+      return;
     }
     // TODO actual impl here
   },
@@ -1840,10 +1833,6 @@ var LibraryOpenAL = {
     return false;
   },
 
-
-
-
-
   // In this section, all alGet*() functions can be implemented by casting the
   // return value of alGetDouble().
   // For v-suffixed variants, the spec requires that NULL destination 
@@ -1875,8 +1864,7 @@ var LibraryOpenAL = {
   },
 
   alGetDoublev: function(param, data) {
-    if (!data)
-      return;
+    if (!data) return;
     var val = AL.getDoubleHelper("alGetDoublev", param);
     {{{ makeSetValue('data', '0', 'val', 'double') }}};
   },
@@ -1886,8 +1874,7 @@ var LibraryOpenAL = {
   },
 
   alGetFloatv: function(param, data) {
-    if (!data)
-      return;
+    if (!data) return;
     var val = AL.getDoubleHelper("alGetFloatv", param);
     {{{ makeSetValue('data', '0', 'val', 'float') }}};
   },
@@ -1897,8 +1884,7 @@ var LibraryOpenAL = {
   },
 
   alGetIntegerv: function(param, data) {
-    if (!data)
-      return;
+    if (!data) return;
     var val = AL.getDoubleHelper("alGetIntegerv", param);
     {{{ makeSetValue('data', '0', 'val', 'i32') }}};
   },
@@ -1908,13 +1894,10 @@ var LibraryOpenAL = {
   },
 
   alGetBooleanv: function(param, data) {
-    if (!data)
-      return;
+    if (!data) return;
     var val = !!AL.getDoubleHelper("alGetBooleanv", param);
     {{{ makeSetValue('data', '0', 'val', 'i8') }}};
   },
-
-
 
   alListeneri: function(param, value) {
     // Quoting the programmer's guide:
@@ -2016,8 +1999,7 @@ var LibraryOpenAL = {
 
   alGetListener3f: function(param, v1, v2, v3) {
     var v = AL.getListenerHelper("alGetListener3f", param);
-    if (!v)
-      return;
+    if (!v) return;
     {{{ makeSetValue('v1', '0', 'v[0]', 'float') }}};
     {{{ makeSetValue('v2', '0', 'v[1]', 'float') }}};
     {{{ makeSetValue('v3', '0', 'v[2]', 'float') }}};
@@ -2025,8 +2007,7 @@ var LibraryOpenAL = {
 
   alGetListener3i: function(param, v1, v2, v3) {
     var v = AL.getListenerHelper("alGetListener3i", param);
-    if (!v)
-      return;
+    if (!v) return;
     {{{ makeSetValue('v1', '0', 'v[0]', 'i32') }}};
     {{{ makeSetValue('v2', '0', 'v[1]', 'i32') }}};
     {{{ makeSetValue('v3', '0', 'v[2]', 'i32') }}};
@@ -2034,8 +2015,7 @@ var LibraryOpenAL = {
 
   alGetListeneriv: function(param, data) {
     var v = AL.getListenerHelper("alGetListeneriv", param);
-    if (!v)
-      return;
+    if (!v) return;
     {{{ makeSetValue('data',  '0', 'v[0]', 'i32') }}};
     {{{ makeSetValue('data',  '4', 'v[1]', 'i32') }}};
     {{{ makeSetValue('data',  '8', 'v[2]', 'i32') }}};
@@ -2061,8 +2041,6 @@ var LibraryOpenAL = {
       {{{ makeGetValue('values', '8', 'i32') }}});
   },
 
-
-  // Another helper
   getSource3Helper: function getSource3Helper(funcname, source, param) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -2091,8 +2069,7 @@ var LibraryOpenAL = {
 
   alGetSource3f: function(source, param, v1, v2, v3) {
     var v = AL.getSource3Helper("alGetSource3f", source, param);
-    if (!v)
-        return;
+    if (!v) return;
     {{{ makeSetValue('v1', '0', 'v[0]', 'float') }}};
     {{{ makeSetValue('v2', '0', 'v[1]', 'float') }}};
     {{{ makeSetValue('v3', '0', 'v[2]', 'float') }}};
@@ -2100,14 +2077,11 @@ var LibraryOpenAL = {
 
   alGetSource3i: function(source, param, v1, v2, v3) {
     var v = AL.getSource3Helper("alGetSource3i", source, param);
-    if (!v)
-        return;
+    if (!v) return;
     {{{ makeSetValue('v1', '0', 'v[0]', 'i32') }}};
     {{{ makeSetValue('v2', '0', 'v[1]', 'i32') }}};
     {{{ makeSetValue('v3', '0', 'v[2]', 'i32') }}};
   },
-
-
 
   // It would probably be more correct to implement 
   // alSourceXxx(src) as alSourceXxxv(1, src)
