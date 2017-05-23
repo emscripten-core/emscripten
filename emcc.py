@@ -2224,9 +2224,10 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
     if options.opt_level > 0 and not shared.Settings.BINARYEN_PASSES:
       cmd.append(shared.Building.opt_level_to_str(options.opt_level, options.shrink_level))
     # import mem init file if it exists, and if we will not be using asm.js as a binaryen method (as it needs the mem init file, of course)
-    import_mem_init = options.memory_init_file and os.path.exists(memfile)
+    mem_file_exists = options.memory_init_file and os.path.exists(memfile)
     ok_binaryen_method = 'asmjs' not in shared.Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD
-    if import_mem_init and ok_binaryen_method:
+    import_mem_init = mem_file_exists and ok_binaryen_method
+    if import_mem_init:
       cmd += ['--mem-init=' + memfile]
       if not shared.Settings.RELOCATABLE:
         cmd += ['--mem-base=' + str(shared.Settings.GLOBAL_BASE)]
