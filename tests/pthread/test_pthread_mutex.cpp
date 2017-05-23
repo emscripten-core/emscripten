@@ -95,6 +95,9 @@ int main()
 	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&lock, &attr);
 
+	pthread_mutex_lock(&lock);
+	pthread_mutex_unlock(&lock);
+
 	if (emscripten_has_threading_support()) {
 		// Create new threads in parallel.
 		for(int i = 0; i < NUM_THREADS; ++i)
@@ -102,8 +105,6 @@ int main()
 
 		emscripten_set_main_loop(WaitToJoin, 0, 0);
 	} else {
-		pthread_mutex_lock(&lock);
-		pthread_mutex_unlock(&lock);
 #ifdef REPORT_RESULT
 		int result = 50;
 		REPORT_RESULT();
