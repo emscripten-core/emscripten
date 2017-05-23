@@ -318,7 +318,7 @@ WebGLClient.prefetch = function() {
   var ctx = canvas.getContext('webgl-experimental') || canvas.getContext('webgl');
   if (!ctx) {
     //remove run dependency created in proxyWorker
-    worker.postMessage({ target: 'gl', op: 'removeRunDependency', preMain: true });
+    worker.postMessage({ target: 'gl', op: 'setPrefetched', preMain: true });
     return;
   } 
 
