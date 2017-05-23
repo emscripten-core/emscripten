@@ -2207,7 +2207,7 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
   if not shared.Settings.WASM_BACKEND:
     if DEBUG:
       # save the asm.js input
-      shutil.copyfile(asm_target, os.path.join(emscripten_temp_dir, os.path.basename(asm_target)))
+      shared.safe_copy(asm_target, os.path.join(emscripten_temp_dir, os.path.basename(asm_target)))
     cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
     if shared.Settings.BINARYEN_TRAP_MODE == 'js':
       cmd += ['--emit-jsified-potential-traps']
@@ -2275,7 +2275,7 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
     log_time('asm2wasm')
   if shared.Settings.BINARYEN_PASSES:
     shutil.move(wasm_binary_target, wasm_binary_target + '.pre')
-    cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target + '.pre', '-o', wasm_binary_target] + map(lambda p: '--' + p, shared.Settings.BINARYEN_PASSES.split(','))
+    cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target + '.pre', '-o', wasm_binary_target] + map(lambda p: ('--' + p) if p[0] != '-' else p, shared.Settings.BINARYEN_PASSES.split(','))
     logging.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))
     subprocess.check_call(cmd)
   if not wrote_wasm_text and 'interpret-s-expr' in shared.Settings.BINARYEN_METHOD:
