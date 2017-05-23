@@ -316,7 +316,11 @@ WebGLClient.prefetch = function() {
   // Create a fake temporary GL context
   var canvas = document.createElement('canvas');
   var ctx = canvas.getContext('webgl-experimental') || canvas.getContext('webgl');
-  if (!ctx) return;
+  if (!ctx) {
+    //remove run dependency created in proxyWorker
+    worker.postMessage({ target: 'gl', op: 'removeRunDependency', preMain: true });
+    return;
+  } 
 
   // Fetch the parameters and proxy them
   var parameters = {};

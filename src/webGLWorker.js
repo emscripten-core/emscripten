@@ -500,6 +500,10 @@ function WebGLWorker() {
         removeRunDependency('gl-prefetch');
         break;
       }
+      case 'removeRunDependency': {
+        removeRunDependency('gl-prefetch');
+        break;
+      }
       default: throw 'weird gl onmessage ' + JSON.stringify(msg);
     }
   };
