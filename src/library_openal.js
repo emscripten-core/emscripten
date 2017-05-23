@@ -635,6 +635,20 @@ var LibraryOpenAL = {
     _alSource3f(source, param, v1, v2, v3);
   },
 
+  alSourceiv__deps: ['alSource3i'],
+  alSourceiv: function(source, param, values) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alSourceiv called without a valid context");
+#endif
+      return;
+    }
+    _alSource3i(source, param,
+      {{{ makeGetValue('values', '0', 'i32') }}},
+      {{{ makeGetValue('values', '4', 'i32') }}},
+      {{{ makeGetValue('values', '8', 'i32') }}});
+  },
+
   alSource3f: function(source, param, v1, v2, v3) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -946,6 +960,102 @@ var LibraryOpenAL = {
     }
   },
 
+  alGetBufferiv__deps: ['alGetBufferi'],
+  alGetBufferiv: function(buffer, pname, values) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alGetBufferiv called without a valid context");
+#endif
+      return;
+    }
+    _alGetBufferi(buffer, pname, values);
+  },
+
+  // All of the remaining alBuffer* setters and getters are only of interest
+  // to extensions which need them. Core OpenAL alone defines no valid
+  // property for these.
+
+  // For lack of a better name...
+  bufferDummyAccessor: function bufferDummyAccessor(funcname, buffer) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error(funcname + " called without a valid context");
+#endif
+      return;
+    }
+    var buf = AL.currentContext.buf[buffer - 1];
+    if (!buf) {
+#if OPENAL_DEBUG
+      console.error(funcname + " called with an invalid buffer");
+#endif
+      AL.currentContext.err = 0xA001 /* AL_INVALID_NAME */;
+      return;
+    }
+
+    AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+  },
+
+  alBufferf: function(buffer, param, value) {
+    AL.bufferDummyAccessor("alBufferf", buffer);
+  },
+
+  alBuffer3f: function(buffer, param, v1, v2, v3) {
+    AL.bufferDummyAccessor("alBuffer3f", buffer);
+  },
+
+  alBufferfv: function(buffer, param, values) {
+    AL.bufferDummyAccessor("alBufferfv", buffer);
+  },
+
+  alBufferi: function(buffer, param, value) {
+    AL.bufferDummyAccessor("alBufferi", buffer);
+  },
+
+  alBuffer3i: function(buffer, param, v1, v2, v3) {
+    AL.bufferDummyAccessor("alBuffer3i", buffer);
+  },
+
+  alBufferiv: function(buffer, params, values) {
+    AL.bufferDummyAccessor("alBufferiv", buffer);
+  },
+
+  // These in particular can error with AL_INVALID_VALUE
+  // "if the destination pointer is not valid"
+  // (from the programming guide)
+
+  alGetBufferf: function(buffer, pname, value) {
+    if (!value) {
+      AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+      return;
+    }
+    AL.bufferDummyAccessor("alGetBufferf", buffer);
+  },
+
+  alGetBuffer3f: function(buffer, pname, v1, v2, v3) {
+    if (!v1 || !v2 || !v3) {
+      AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+      return;
+    }
+    AL.bufferDummyAccessor("alGetBuffer3f", buffer);
+  },
+
+  alGetBufferfv: function(buffer, pname, values) {
+    if (!values) {
+      AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+      return;
+    }
+    AL.bufferDummyAccessor("alGetBufferfv", buffer);
+  },
+
+  alGetBuffer3i: function(buffer, pname, v1, v2, v3) {
+    if (!v1 || !v2 || !v3) {
+      AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+      return;
+    }
+    AL.bufferDummyAccessor("alGetBuffer3i", buffer);
+  },
+
+
   alSourcePlay: function(source) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -1020,6 +1130,64 @@ var LibraryOpenAL = {
     }
     AL.setSourceState(src, 0x1013 /* AL_PAUSED */);
   },
+
+  // It would probably be more correct to implement 
+  // alSourceXxx(src) as alSourceXxxv(1, src)
+  // instead of the other way around (with for loops), but right now
+  // it's less error-prone.
+
+  alSourcePlayv__deps: ['alSourcePlay'],
+  alSourcePlayv: function(count, sources) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alSourcePlayv called without a valid context");
+#endif
+      return;
+    }
+    for (var i = 0; i < count; ++i) {
+      _alSourcePlay({{{ makeGetValue('sources', 'i*4', 'i32') }}});
+    }
+  },
+
+  alSourceStopv__deps: ['alSourceStop'],
+  alSourceStopv: function(count, sources) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alSourceStopv called without a valid context");
+#endif
+      return;
+    }
+    for (var i = 0; i < count; ++i) {
+      _alSourceStop({{{ makeGetValue('sources', 'i*4', 'i32') }}});
+    }
+  },
+
+  alSourceRewindv__deps: ['alSourceRewind'],
+  alSourceRewindv: function(count, sources) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alSourceRewindv called without a valid context");
+#endif
+      return;
+    }
+    for (var i = 0; i < count; ++i) {
+      _alSourceRewind({{{ makeGetValue('sources', 'i*4', 'i32') }}});
+    }
+  },
+
+  alSourcePausev__deps: ['alSourcePause'],
+  alSourcePausev: function(count, sources) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alSourcePausev called without a valid context");
+#endif
+      return;
+    }
+    for (var i = 0; i < count; ++i) {
+      _alSourcePause({{{ makeGetValue('sources', 'i*4', 'i32') }}});
+    }
+  },
+
 
   alGetSourcei: function(source, param, value) {
     if (!AL.currentContext) {
@@ -1244,13 +1412,48 @@ var LibraryOpenAL = {
     }
   },
 
-  alDistanceModel: function(model) {
-    if (model !== 0 /* AL_NONE */) {
+  getSource3Helper: function getSource3Helper(funcname, source, param) {
+    if (!AL.currentContext) {
 #if OPENAL_DEBUG
-      console.log("Only alDistanceModel(AL_NONE) is currently supported");
+      console.error(funcname + " called without a valid context");
 #endif
+      return null;
     }
+    var src = AL.currentContext.src[source];
+    if (!src) {
+#if OPENAL_DEBUG
+      console.error(funcname + " called with an invalid source");
+#endif
+      AL.currentContext.err = 0xA001 /* AL_INVALID_NAME */;
+      return null;
+    }
+    switch (param) {
+    case 0x1004 /* AL_POSITION */:  return src.position;
+    case 0x1005 /* AL_DIRECTION */: return src.direction;
+    case 0x1006 /* AL_VELOCITY */:  return src.velocity;
+    }
+#if OPENAL_DEBUG
+    console.error(funcname + " with param " + param + " not implemented yet");
+#endif
+    AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
   },
+
+  alGetSource3f: function(source, param, v1, v2, v3) {
+    var v = AL.getSource3Helper("alGetSource3f", source, param);
+    if (!v) return;
+    {{{ makeSetValue('v1', '0', 'v[0]', 'float') }}};
+    {{{ makeSetValue('v2', '0', 'v[1]', 'float') }}};
+    {{{ makeSetValue('v3', '0', 'v[2]', 'float') }}};
+  },
+
+  alGetSource3i: function(source, param, v1, v2, v3) {
+    var v = AL.getSource3Helper("alGetSource3i", source, param);
+    if (!v) return;
+    {{{ makeSetValue('v1', '0', 'v[0]', 'i32') }}};
+    {{{ makeSetValue('v2', '0', 'v[1]', 'i32') }}};
+    {{{ makeSetValue('v3', '0', 'v[2]', 'i32') }}};
+  },
+
 
   alGetListenerf: function(pname, value) {
     if (!AL.currentContext) {
@@ -1311,6 +1514,8 @@ var LibraryOpenAL = {
     }
   },
 
+
+
   alGetListeneri: function(pname, value) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -1348,6 +1553,82 @@ var LibraryOpenAL = {
     }
   },
 
+  alListeneri: function(param, value) {
+    // Quoting the programmer's guide:
+    // There are no integer listener attributes defined for OpenAL 1.1,
+    // but this function may be used by an extension.
+    AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+  },
+
+  alListener3i__deps: ['alListener3f'],
+  alListener3i: function(param, v1, v2, v3) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alListener3i called without a valid context");
+#endif
+      return;
+    }
+
+    _alListener3f(param, v1, v2, v3);
+  },
+
+  // Helper for getting listener attributes as an array of numbers
+  getListenerHelper: function getListenerHelper(funcname, param) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error(funcname + " called without a valid context");
+#endif
+      return null;
+    }
+
+    switch (param) {
+    case 0x1004 /* AL_POSITION */:
+      return AL.currentContext.ctx.listener._position;
+    case 0x1006 /* AL_VELOCITY */:
+      return AL.currentContext.ctx.listener._velocity;
+    case 0x100F /* AL_ORIENTATION */:
+      return AL.currentContext.ctx.listener._orientation;
+    }
+
+#if OPENAL_DEBUG
+    console.error(funcname + " with param " + param + " not implemented yet");
+#endif
+    AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+    return null;
+  },
+
+  alGetListener3f: function(param, v1, v2, v3) {
+    var v = AL.getListenerHelper("alGetListener3f", param);
+    if (!v) return;
+    {{{ makeSetValue('v1', '0', 'v[0]', 'float') }}};
+    {{{ makeSetValue('v2', '0', 'v[1]', 'float') }}};
+    {{{ makeSetValue('v3', '0', 'v[2]', 'float') }}};
+  },
+
+  alGetListener3i: function(param, v1, v2, v3) {
+    var v = AL.getListenerHelper("alGetListener3i", param);
+    if (!v) return;
+    {{{ makeSetValue('v1', '0', 'v[0]', 'i32') }}};
+    {{{ makeSetValue('v2', '0', 'v[1]', 'i32') }}};
+    {{{ makeSetValue('v3', '0', 'v[2]', 'i32') }}};
+  },
+
+  alGetListeneriv: function(param, data) {
+    var v = AL.getListenerHelper("alGetListeneriv", param);
+    if (!v) return;
+    {{{ makeSetValue('data',  '0', 'v[0]', 'i32') }}};
+    {{{ makeSetValue('data',  '4', 'v[1]', 'i32') }}};
+    {{{ makeSetValue('data',  '8', 'v[2]', 'i32') }}};
+
+    if (param == 0x100F /* AL_ORIENTATION */) {
+      {{{ makeSetValue('data', '12', 'v[3]', 'i32') }}};
+      {{{ makeSetValue('data', '16', 'v[4]', 'i32') }}};
+      {{{ makeSetValue('data', '20', 'v[5]', 'i32') }}};
+    }
+  },
+
+
+
   alEnable: function(param) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -1381,6 +1662,20 @@ var LibraryOpenAL = {
       break;
     }
   },
+
+  alIsEnabled: function(capability) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alIsEnabled called without a valid context");
+#endif
+      return false;
+    }
+    // There's no defined capability for this yet - but extensions may want
+    // to use it.
+    AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+    return false;
+  },
+
 
   alListener3f: function(param, v1, v2, v3) {
     if (!AL.currentContext) {
@@ -1465,6 +1760,61 @@ var LibraryOpenAL = {
     }
   },
 
+  // Would have liked to leverage alListenerfv(), but saw no "nice enough" way
+  // to do it. Copy pasta.
+  alListeneriv: function(param, values) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alListeneriv called without a valid context");
+#endif
+      return;
+    }
+    switch (param) {
+    case 0x1004 /* AL_POSITION */:
+      var x = {{{ makeGetValue('values', '0', 'i32') }}};
+      var y = {{{ makeGetValue('values', '4', 'i32') }}};
+      var z = {{{ makeGetValue('values', '8', 'i32') }}};
+      AL.currentContext.ctx.listener._position[0] = x;
+      AL.currentContext.ctx.listener._position[1] = y;
+      AL.currentContext.ctx.listener._position[2] = z;
+      AL.currentContext.ctx.listener.setPosition(x, y, z);
+      break;
+    case 0x1006 /* AL_VELOCITY */:
+      var x = {{{ makeGetValue('values', '0', 'i32') }}};
+      var y = {{{ makeGetValue('values', '4', 'i32') }}};
+      var z = {{{ makeGetValue('values', '8', 'i32') }}};
+      AL.currentContext.ctx.listener._velocity[0] = x;
+      AL.currentContext.ctx.listener._velocity[1] = y;
+      AL.currentContext.ctx.listener._velocity[2] = z;
+      // TODO: The velocity values are not currently used to implement a doppler effect.
+      // If support for doppler effect is reintroduced, compute the doppler
+      // speed pitch factor and apply it here.
+      break;
+    case 0x100F /* AL_ORIENTATION */:
+      var x  = {{{ makeGetValue('values',  '0', 'i32') }}};
+      var y  = {{{ makeGetValue('values',  '4', 'i32') }}};
+      var z  = {{{ makeGetValue('values',  '8', 'i32') }}};
+      var x2 = {{{ makeGetValue('values', '12', 'i32') }}};
+      var y2 = {{{ makeGetValue('values', '16', 'i32') }}};
+      var z2 = {{{ makeGetValue('values', '20', 'i32') }}};
+      AL.currentContext.ctx.listener._orientation[0] = x;
+      AL.currentContext.ctx.listener._orientation[1] = y;
+      AL.currentContext.ctx.listener._orientation[2] = z;
+      AL.currentContext.ctx.listener._orientation[3] = x2;
+      AL.currentContext.ctx.listener._orientation[4] = y2;
+      AL.currentContext.ctx.listener._orientation[5] = z2;
+      AL.currentContext.ctx.listener.setOrientation(x, y, z, x2, y2, z2);
+      break;
+    default:
+#if OPENAL_DEBUG
+      console.error("alListeneriv with param " + param + " not implemented yet");
+#endif
+      AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+      break;
+    }
+  },
+
+
   alIsExtensionPresent: function(extName) {
     extName = Pointer_stringify(extName);
 
@@ -1526,6 +1876,96 @@ var LibraryOpenAL = {
   alGetProcAddress: function(fname) {
     return 0;
   },
+
+  alGetEnumValue: function(name) {
+    // alGetEnumValue() doesn't require a valid context
+
+    name = Pointer_stringify(name);
+
+    switch(name) {
+    case "AL_FORMAT_MONO_FLOAT32": return 0x10010;
+    case "AL_FORMAT_STEREO_FLOAT32": return 0x10011;
+
+    // Spec doesn't clearly state that alGetEnumValue() is required to
+    // support _only_ extension tokens.
+    // We should probably follow OpenAL-Soft's example and support all
+    // of the names we know.
+    // See http://repo.or.cz/openal-soft.git/blob/HEAD:/Alc/ALc.c
+    case "AL_BITS": return 0x2002;
+    case "AL_BUFFER": return 0x1009;
+    case "AL_BUFFERS_PROCESSED": return 0x1016;
+    case "AL_BUFFERS_QUEUED": return 0x1015;
+    case "AL_BYTE_OFFSET": return 0x1026;
+    case "AL_CHANNELS": return 0x2003;
+    case "AL_CONE_INNER_ANGLE": return 0x1001;
+    case "AL_CONE_OUTER_ANGLE": return 0x1002;
+    case "AL_CONE_OUTER_GAIN": return 0x1022;
+    case "AL_DIRECTION": return 0x1005;
+    case "AL_DISTANCE_MODEL": return 0xD000;
+    case "AL_DOPPLER_FACTOR": return 0xC000;
+    case "AL_DOPPLER_VELOCITY": return 0xC001;
+    case "AL_EXPONENT_DISTANCE": return 0xD005;
+    case "AL_EXPONENT_DISTANCE_CLAMPED": return 0xD006;
+    case "AL_EXTENSIONS": return 0xB004;
+    case "AL_FORMAT_MONO16": return 0x1101;
+    case "AL_FORMAT_MONO8": return 0x1100;
+    case "AL_FORMAT_STEREO16": return 0x1103;
+    case "AL_FORMAT_STEREO8": return 0x1102;
+    case "AL_FREQUENCY": return 0x2001;
+    case "AL_GAIN": return 0x100A;
+    case "AL_INITIAL": return 0x1011;
+    case "AL_INVALID": return -1;
+    case "AL_ILLEGAL_ENUM": // fallthrough
+    case "AL_INVALID_ENUM": return 0xA002;
+    case "AL_INVALID_NAME": return 0xA001;
+    case "AL_ILLEGAL_COMMAND": // fallthrough
+    case "AL_INVALID_OPERATION": return 0xA004;
+    case "AL_INVALID_VALUE": return 0xA003;
+    case "AL_INVERSE_DISTANCE": return 0xD001;
+    case "AL_INVERSE_DISTANCE_CLAMPED": return 0xD002;
+    case "AL_LINEAR_DISTANCE": return 0xD003;
+    case "AL_LINEAR_DISTANCE_CLAMPED": return 0xD004;
+    case "AL_LOOPING": return 0x1007;
+    case "AL_MAX_DISTANCE": return 0x1023;
+    case "AL_MAX_GAIN": return 0x100E;
+    case "AL_MIN_GAIN": return 0x100D;
+    case "AL_NONE": return 0;
+    case "AL_NO_ERROR": return 0;
+    case "AL_ORIENTATION": return 0x100F;
+    case "AL_OUT_OF_MEMORY": return 0xA005;
+    case "AL_PAUSED": return 0x1013;
+    case "AL_PENDING": return 0x2011;
+    case "AL_PITCH": return 0x1003;
+    case "AL_PLAYING": return 0x1012;
+    case "AL_POSITION": return 0x1004;
+    case "AL_PROCESSED": return 0x2012;
+    case "AL_REFERENCE_DISTANCE": return 0x1020;
+    case "AL_RENDERER": return 0xB003;
+    case "AL_ROLLOFF_FACTOR": return 0x1021;
+    case "AL_SAMPLE_OFFSET": return 0x1025;
+    case "AL_SEC_OFFSET": return 0x1024;
+    case "AL_SIZE": return 0x2004;
+    case "AL_SOURCE_RELATIVE": return 0x202;
+    case "AL_SOURCE_STATE": return 0x1010;
+    case "AL_SOURCE_TYPE": return 0x1027;
+    case "AL_SPEED_OF_SOUND": return 0xC003;
+    case "AL_STATIC": return 0x1028;
+    case "AL_STOPPED": return 0x1014;
+    case "AL_STREAMING": return 0x1029;
+    case "AL_UNDETERMINED": return 0x1030;
+    case "AL_UNUSED": return 0x2010;
+    case "AL_VELOCITY": return 0x1006;
+    case "AL_VENDOR": return 0xB001;
+    case "AL_VERSION": return 0xB002;
+    }
+
+    AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+#if OPENAL_DEBUG
+    console.error("No value for `" + name + "`` is known by alGetEnumValue()");
+#endif
+    return 0;
+  },
+
 
   alcGetString: function(device, param) {
     if (AL.alcStringCache[param]) return AL.alcStringCache[param];
@@ -1594,26 +2034,214 @@ var LibraryOpenAL = {
     return 0;
   },
 
-  alGetEnumValue: function(name) {
+  alcGetEnumValue: function(device, name) {
+    // Spec says :
+    //   Using a NULL handle is legal, but only the
+    //   tokens defined by the AL core are guaranteed.
+    if (device != 0 && device != 1) {
+#if OPENAL_DEBUG
+      console.error("alcGetEnumValue called with an invalid device");
+#endif
+      // ALC_INVALID_DEVICE is not listed as a possible error state for
+      // this function, sadly.
+      return 0 /* AL_NONE */;
+    }
     name = Pointer_stringify(name);
-
-    if (name == "AL_FORMAT_MONO_FLOAT32") return 0x10010;
-    if (name == "AL_FORMAT_STEREO_FLOAT32") return 0x10011;
-
-    AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
-    return 0;
+    // See alGetEnumValue(), but basically behave the same as OpenAL-Soft
+    switch(name) {
+    case "ALC_NO_ERROR": return 0;
+    case "ALC_INVALID_DEVICE": return 0xA001;
+    case "ALC_INVALID_CONTEXT": return 0xA002;
+    case "ALC_INVALID_ENUM": return 0xA003;
+    case "ALC_INVALID_VALUE": return 0xA004;
+    case "ALC_OUT_OF_MEMORY": return 0xA005;
+    case "ALC_MAJOR_VERSION": return 0x1000;
+    case "ALC_MINOR_VERSION": return 0x1001;
+    case "ALC_ATTRIBUTES_SIZE": return 0x1002;
+    case "ALC_ALL_ATTRIBUTES": return 0x1003;
+    case "ALC_DEFAULT_DEVICE_SPECIFIER": return 0x1004;
+    case "ALC_DEVICE_SPECIFIER": return 0x1005;
+    case "ALC_EXTENSIONS": return 0x1006;
+    case "ALC_FREQUENCY": return 0x1007;
+    case "ALC_REFRESH": return 0x1008;
+    case "ALC_SYNC": return 0x1009;
+    case "ALC_MONO_SOURCES": return 0x1010;
+    case "ALC_STEREO_SOURCES": return 0x1011;
+    case "ALC_CAPTURE_DEVICE_SPECIFIER": return 0x310;
+    case "ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER": return 0x311;
+    case "ALC_CAPTURE_SAMPLES": return 0x312;
+    }
+    AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
+#if OPENAL_DEBUG
+    console.error("No value for `" + name + "`` is known by alcGetEnumValue()");
+#endif
+    return 0 /* AL_NONE */;
   },
 
-  alSpeedOfSound: function(value) {
-    Runtime.warnOnce('alSpeedOfSound() is not yet implemented! Ignoring all calls to it.');
+  alDistanceModel: function(model) {
+    if (model !== 0 /* AL_NONE */) {
+#if OPENAL_DEBUG
+      console.log("Only alDistanceModel(AL_NONE) is currently supported");
+#endif
+    }
   },
 
   alDopplerFactor: function(value) {
-    Runtime.warnOnce('alDopplerFactor() is not yet implemented! Ignoring all calls to it.');
+    Runtime.warnOnce('alDopplerFactor() is not yet implemented!');
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alDopplerFactor called without a valid context");
+#endif
+      return;
+    }
+    if (value < 0) { // Strictly negative values are disallowed
+      AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+      return;
+    }
+    // TODO actual impl here
   },
 
+  // http://openal.996291.n3.nabble.com/alSpeedOfSound-or-alDopperVelocity-tp1960.html
+  // alDopplerVelocity() sets a multiplier for the speed of sound.
+  // It's deprecated since it's equivalent to directly calling
+  // alSpeedOfSound() with an appropriately premultiplied value.
   alDopplerVelocity: function(value) {
-    Runtime.warnOnce('alDopplerVelocity() is not yet implemented! Ignoring all calls to it.');
+    Runtime.warnOnce('alDopplerVelocity() is deprecated, and only kept for compatibility with OpenAL 1.0. Use alSpeedOfSound() instead.');
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alSpeedOfSound called without a valid context");
+#endif
+      return;
+    }
+    if (value <= 0) { // Negative or zero values are disallowed
+      AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+      return;
+    }
+  },
+
+  alSpeedOfSound: function(value) {
+    Runtime.warnOnce('alSpeedOfSound() is not yet implemented!');
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alSpeedOfSound called without a valid context");
+#endif
+      return;
+    }
+    if (value <= 0) { // Negative or zero values are disallowed
+      AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
+      return;
+    }
+    // TODO actual impl here
+  },
+
+  // Might be very interesting to implement that !
+  alcCaptureOpenDevice: function(deviceName, freq, format, bufferSize) {
+    Runtime.warnOnce('alcCapture*() functions are not supported yet.');
+#if OPENAL_DEBUG
+    console.error("alcCaptureOpenDevice() is not supported yet");
+#endif
+    // From the programmer's guide, ALC_OUT_OF_MEMORY's meaning is
+    // overloaded here, to mean:
+    // "The specified device is invalid, or can not capture audio."
+    // This may be misleading to API users, but well...
+    AL.alcErr = 0xA005 /* ALC_OUT_OF_MEMORY */;
+    return 0; // NULL device pointer
+  },
+
+  alcCaptureCloseDevice: function(device) {
+#if OPENAL_DEBUG
+    console.error("alcCaptureCloseDevice() is not supported yet");
+#endif
+    AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+    return false;
+  },
+
+  alcCaptureStart: function(device) {
+#if OPENAL_DEBUG
+    console.error("alcCaptureStart() is not supported yet");
+#endif
+    AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+  },
+
+  alcCaptureStop: function(device) {
+#if OPENAL_DEBUG
+    console.error("alcCaptureStop() is not supported yet");
+#endif
+    AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+  },
+
+  alcCaptureSamples: function(device, buffer, num_samples) {
+#if OPENAL_DEBUG
+    console.error("alcCaptureSamples() is not supported yet");
+#endif
+    AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
+  },
+
+
+  // In this section, all alGet*() functions can be implemented by casting the
+  // return value of alGetDouble().
+  // For v-suffixed variants, the spec requires that NULL destination 
+  // pointers be quietly ignored.
+  
+  getDoubleHelper: function getDoubleHelper(funcname, param) {
+     if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error(funcname + " called without a valid context");
+#endif
+      return 0;
+    }
+    // Right now, none of these can be set, so we directly return
+    // the values we support.
+    switch (param) {
+    case 0xC000 /* AL_DOPPLER_FACTOR */: return 1;
+    case 0xC003 /* AL_SPEED_OF_SOUND */: return 343.3;
+    case 0xD000 /* AL_DISTANCE_MODEL */: return 0 /* AL_NONE */;
+    case 0xC001 /* AL_DOPPLER_VELOCITY */:
+      Runtime.warnOnce('Getting the value for AL_DOPPLER_VELOCITY is deprecated as of OpenAL 1.1!');
+      return 1;
+    }
+    AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
+    return 0;
+  },
+
+  alGetDouble: function(param) {
+    return AL.getDoubleHelper("alGetDouble", param);
+  },
+
+  alGetDoublev: function(param, data) {
+    var val = AL.getDoubleHelper("alGetDoublev", param);
+    if (!data) return;
+    {{{ makeSetValue('data', '0', 'val', 'double') }}};
+  },
+
+  alGetFloat: function(param) {
+    return AL.getDoubleHelper("alGetFloat", param);
+  },
+
+  alGetFloatv: function(param, data) {
+    var val = AL.getDoubleHelper("alGetFloatv", param);
+    if (!data) return;
+    {{{ makeSetValue('data', '0', 'val', 'float') }}};
+  },
+
+  alGetInteger: function(param) {
+    return AL.getDoubleHelper("alGetInteger", param);
+  },
+
+  alGetIntegerv: function(param, data) {
+    var val = AL.getDoubleHelper("alGetIntegerv", param);
+    if (!data) return;
+    {{{ makeSetValue('data', '0', 'val', 'i32') }}};
+  },
+
+  alGetBoolean: function(param) {
+    return !!AL.getDoubleHelper("alGetBoolean", param);
+  },
+
+  alGetBooleanv: function(param, data) {
+    var val = !!AL.getDoubleHelper("alGetBooleanv", param);
+    if (!data) return;
+    {{{ makeSetValue('data', '0', 'val', 'i8') }}};
   }
 };
 
