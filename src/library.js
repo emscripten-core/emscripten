@@ -824,7 +824,11 @@ LibraryManager.library = {
 #if SIMD
       196608
 #else
+#if WASM_ONLY
+      16384
+#else
       8192
+#endif
 #endif
     ) {
       return _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
@@ -850,6 +854,16 @@ LibraryManager.library = {
         SIMD_Int32x4_store(HEAPU8, dest+32, SIMD_Int32x4_load(HEAPU8, src+32));
         SIMD_Int32x4_store(HEAPU8, dest+48, SIMD_Int32x4_load(HEAPU8, src+48));
 #else
+#if WASM_ONLY
+        store8(dest, load8(src, 4), 4);
+        store8(dest +  8 | 0, load8(src +  8 | 0, 4), 4);
+        store8(dest + 16 | 0, load8(src + 16 | 0, 4), 4);
+        store8(dest + 24 | 0, load8(src + 24 | 0, 4), 4);
+        store8(dest + 32 | 0, load8(src + 32 | 0, 4), 4);
+        store8(dest + 40 | 0, load8(src + 40 | 0, 4), 4);
+        store8(dest + 48 | 0, load8(src + 48 | 0, 4), 4);
+        store8(dest + 56 | 0, load8(src + 56 | 0, 4), 4);
+#else
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
         {{{ makeSetValueAsm('dest', 4, makeGetValueAsm('src', 4, 'i32'), 'i32') }}};
         {{{ makeSetValueAsm('dest', 8, makeGetValueAsm('src', 8, 'i32'), 'i32') }}};
@@ -866,6 +880,7 @@ LibraryManager.library = {
         {{{ makeSetValueAsm('dest', 52, makeGetValueAsm('src', 52, 'i32'), 'i32') }}};
         {{{ makeSetValueAsm('dest', 56, makeGetValueAsm('src', 56, 'i32'), 'i32') }}};
         {{{ makeSetValueAsm('dest', 60, makeGetValueAsm('src', 60, 'i32'), 'i32') }}};
+#endif
 #endif
         dest = (dest+64)|0;
         src = (src+64)|0;
@@ -972,14 +987,14 @@ LibraryManager.library = {
         SIMD_Int32x4_store(HEAPU8, ptr+48, value16);
 #else
 #if WASM_ONLY
-        store8(ptr         , value8, 0);
-        store8(ptr +  8 | 0, value8, 0);
-        store8(ptr + 16 | 0, value8, 0);
-        store8(ptr + 24 | 0, value8, 0);
-        store8(ptr + 32 | 0, value8, 0);
-        store8(ptr + 40 | 0, value8, 0);
-        store8(ptr + 48 | 0, value8, 0);
-        store8(ptr + 56 | 0, value8, 0);
+        store8(ptr         , value8, 4);
+        store8(ptr +  8 | 0, value8, 4);
+        store8(ptr + 16 | 0, value8, 4);
+        store8(ptr + 24 | 0, value8, 4);
+        store8(ptr + 32 | 0, value8, 4);
+        store8(ptr + 40 | 0, value8, 4);
+        store8(ptr + 48 | 0, value8, 4);
+        store8(ptr + 56 | 0, value8, 4);
 #else
         {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};
         {{{ makeSetValueAsm('ptr', 4, 'value4', 'i32') }}};
