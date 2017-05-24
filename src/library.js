@@ -841,7 +841,7 @@ LibraryManager.library = {
       // The initial unaligned < 8-byte front.
       while (dest & 7) {
         if ((num|0) == 0) return ret|0;
-        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
+        store1(dest, load1(src, 1), 1);
         dest = (dest+1)|0;
         src = (src+1)|0;
         num = (num-1)|0;
