@@ -2275,7 +2275,9 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
     log_time('asm2wasm')
   if shared.Settings.BINARYEN_PASSES:
     shutil.move(wasm_binary_target, wasm_binary_target + '.pre')
-    cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target + '.pre', '-o', wasm_binary_target] + map(lambda p: ('--' + p) if p[0] != '-' else p, shared.Settings.BINARYEN_PASSES.split(','))
+    # BINARYEN_PASSES is comma-separated, and we support both '-'-prefixed and unprefixed pass names
+    passes = map(lambda p: ('--' + p) if p[0] != '-' else p, shared.Settings.BINARYEN_PASSES.split(','))
+    cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target + '.pre', '-o', wasm_binary_target] + passes
     logging.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))
     subprocess.check_call(cmd)
   if not wrote_wasm_text and 'interpret-s-expr' in shared.Settings.BINARYEN_METHOD:
