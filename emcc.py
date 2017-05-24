@@ -1090,8 +1090,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.WASM:
         shared.Settings.BINARYEN = 1 # these are synonyms
 
+      if shared.Settings.BINARYEN:
+        shared.Settings.WASM_ONLY = shared.Building.is_wasm_only()
+
         # When only targeting wasm, the .asm.js file is not executable, so is treated as an intermediate build file that can be cleaned up.
-        if shared.Building.is_wasm_only():
+        if shared.Settings.WASM_ONLY:
           asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
           if not DEBUG:
             misc_temp_files.note(asm_target)
@@ -1148,7 +1151,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         #  * and js mem inits are useful for avoiding a side file, but the wasm module avoids that anyhow
         options.memory_init_file = True
         # async compilation requires wasm-only mode, and also not interpreting (the interpreter needs sync input)
-        if shared.Settings.BINARYEN_ASYNC_COMPILATION == 1 and shared.Building.is_wasm_only() and 'interpret' not in shared.Settings.BINARYEN_METHOD:
+        if shared.Settings.BINARYEN_ASYNC_COMPILATION == 1 and shared.Settings.WASM_ONLY and 'interpret' not in shared.Settings.BINARYEN_METHOD:
           # async compilation requires a swappable module - we swap it in when it's ready
           shared.Settings.SWAPPABLE_ASM_MODULE = 1
         else:
@@ -1217,7 +1220,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           newargs.append('-disable-llvm-optzns')
 
       if not shared.Settings.LEGALIZE_JS_FFI:
-        assert shared.Building.is_wasm_only(), 'LEGALIZE_JS_FFI incompatible with RUNNING_JS_OPTS and non-wasm BINARYEN_METHOD.'
+        assert shared.Settings.WASM_ONLY, 'LEGALIZE_JS_FFI incompatible with RUNNING_JS_OPTS and non-wasm BINARYEN_METHOD.'
 
       shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
       shared.Settings.OPT_LEVEL = options.opt_level
@@ -2240,7 +2243,7 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--mem-max=' + str(shared.Settings.BINARYEN_MEM_MAX)]
     if shared.Settings.LEGALIZE_JS_FFI != 1:
       cmd += ['--no-legalize-javascript-ffi']
-    if shared.Building.is_wasm_only():
+    if shared.Settings.WASM_ONLY:
       cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, an can contain special fastcomp-wasm support
     if options.debug_level >= 2 or options.profiling_funcs:
       cmd += ['-g']

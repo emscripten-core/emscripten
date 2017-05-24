@@ -736,6 +736,8 @@ var WASM_BACKEND = 0; // Whether to use the WebAssembly backend that is in devel
                       // You should not set this yourself, instead set EMCC_WASM_BACKEND=1 in the
                       // environment.
 
+var WASM_ONLY = 0; // Whether we are only targeting wasm (i.e., there is no fallback to asm.js)
+
 // Ports
 
 var USE_SDL = 1; // Specify the SDL version that is being linked against.

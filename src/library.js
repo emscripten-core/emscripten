@@ -939,6 +939,10 @@ LibraryManager.library = {
     var end = 0, aligned_end = 0, block_aligned_end = 0, value4 = 0;
 #if SIMD
     var value16 = SIMD_Int32x4(0,0,0,0);
+#else
+#if WASM_ONLY
+    var value8 = i64();
+#endif
 #endif
     end = (ptr + num)|0;
 
@@ -954,6 +958,10 @@ LibraryManager.library = {
       value4 = value | (value << 8) | (value << 16) | (value << 24);
 #if SIMD
       value16 = SIMD_Int32x4_splat(value4);
+#else
+#if WASM_ONLY
+      value8 = i64_or(i64_zext(value4), i64_shl(i64_zext(value4), i64(32)));
+#endif
 #endif
 
       while((ptr|0) <= (block_aligned_end|0)) {
@@ -962,6 +970,16 @@ LibraryManager.library = {
         SIMD_Int32x4_store(HEAPU8, ptr+16, value16);
         SIMD_Int32x4_store(HEAPU8, ptr+32, value16);
         SIMD_Int32x4_store(HEAPU8, ptr+48, value16);
+#else
+#if WASM_ONLY
+        store8(ptr         , value8, 0);
+        store8(ptr +  8 | 0, value8, 0);
+        store8(ptr + 16 | 0, value8, 0);
+        store8(ptr + 24 | 0, value8, 0);
+        store8(ptr + 32 | 0, value8, 0);
+        store8(ptr + 40 | 0, value8, 0);
+        store8(ptr + 48 | 0, value8, 0);
+        store8(ptr + 56 | 0, value8, 0);
 #else
         {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};
         {{{ makeSetValueAsm('ptr', 4, 'value4', 'i32') }}};
@@ -979,6 +997,7 @@ LibraryManager.library = {
         {{{ makeSetValueAsm('ptr', 52, 'value4', 'i32') }}};
         {{{ makeSetValueAsm('ptr', 56, 'value4', 'i32') }}};
         {{{ makeSetValueAsm('ptr', 60, 'value4', 'i32') }}};
+#endif
 #endif
         ptr = (ptr + 64)|0;
       }
