@@ -1200,9 +1200,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           newargs.append('-mllvm')
           newargs.append('-disable-llvm-optzns')
 
-      if not shared.Settings.LEGALIZE_JS_FFI:
-        assert shared.Settings.WASM_ONLY, 'LEGALIZE_JS_FFI incompatible with RUNNING_JS_OPTS and non-wasm BINARYEN_METHOD.'
-
       if shared.Settings.BINARYEN:
         # determine wasm-only mode, now that all settings are settled on
         shared.Settings.WASM_ONLY = shared.Building.is_wasm_only()
@@ -1223,6 +1220,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.Settings.BINARYEN_ASYNC_COMPILATION = 0
           if 'BINARYEN_ASYNC_COMPILATION=1' in settings_changes:
             logging.warning('BINARYEN_ASYNC_COMPILATION requested, but disabled since not in wasm-only mode')
+
+      if not shared.Settings.LEGALIZE_JS_FFI:
+        assert shared.Settings.WASM_ONLY, 'LEGALIZE_JS_FFI incompatible with RUNNING_JS_OPTS and non-wasm BINARYEN_METHOD.'
 
       shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
       shared.Settings.OPT_LEVEL = options.opt_level
