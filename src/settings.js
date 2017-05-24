@@ -678,9 +678,6 @@ var SPLIT_MEMORY = 0; // If > 0, we split memory into chunks, of the size given 
                       // TODO: add malloc-split to embuilder
 var SAFE_SPLIT_MEMORY = 0; // Similar to SAFE_HEAP, but for SPLIT_MEMORY.
 
-var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
-var BOOTSTRAPPING_STRUCT_INFO = 0; // whether we are in the generate struct_info bootstrap phase
-
 var EMSCRIPTEN_TRACING = 0; // Add some calls to emscripten tracing APIs
 
 var USE_GLFW = 2; // Specify the GLFW version that is being linked against.
@@ -735,8 +732,6 @@ var WASM_BACKEND = 0; // Whether to use the WebAssembly backend that is in devel
                       // translate the backend output.
                       // You should not set this yourself, instead set EMCC_WASM_BACKEND=1 in the
                       // environment.
-
-var WASM_ONLY = 0; // Whether we are only targeting wasm (i.e., there is no fallback to asm.js)
 
 // Ports
 
@@ -858,6 +853,13 @@ var FETCH = 0; // If nonzero, enables emscripten_fetch API.
 
 var ASMFS = 0; // If set to 1, uses the multithreaded filesystem that is implemented within the asm.js module, using emscripten_fetch. Implies -s FETCH=1.
 
+// Internal use only, users should not set there
+
+var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
+var BOOTSTRAPPING_STRUCT_INFO = 0; // whether we are in the generate struct_info bootstrap phase
+
 var WASM_TEXT_FILE = ''; // name of the file containing wasm text, if relevant
 var WASM_BINARY_FILE = ''; // name of the file containing wasm binary, if relevant
 var ASMJS_CODE_FILE = ''; // name of the file containing asm.js, if relevant
+var WASM_ONLY = 0; // Whether we are only targeting wasm (i.e., there is no fallback to asm.js)
+
