@@ -834,6 +834,54 @@ LibraryManager.library = {
       return _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
     }
 
+#if WASM_ONLY
+    ret = dest|0;
+    dest_end = (dest + num)|0;
+    if ((dest&7) == (src&7)) {
+      // The initial unaligned < 8-byte front.
+      while (dest & 7) {
+        if ((num|0) == 0) return ret|0;
+        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
+        dest = (dest+1)|0;
+        src = (src+1)|0;
+        num = (num-1)|0;
+      }
+      aligned_dest_end = (dest_end & -8)|0;
+      block_aligned_dest_end = (aligned_dest_end - 64)|0;
+      while ((dest|0) <= (block_aligned_dest_end|0) ) {
+        store8(dest,          load8(src,          8), 8);
+        store8(dest +  8 | 0, load8(src +  8 | 0, 8), 8);
+        store8(dest + 16 | 0, load8(src + 16 | 0, 8), 8);
+        store8(dest + 24 | 0, load8(src + 24 | 0, 8), 8);
+        store8(dest + 32 | 0, load8(src + 32 | 0, 8), 8);
+        store8(dest + 40 | 0, load8(src + 40 | 0, 8), 8);
+        store8(dest + 48 | 0, load8(src + 48 | 0, 8), 8);
+        store8(dest + 56 | 0, load8(src + 56 | 0, 8), 8);
+        dest = (dest+64)|0;
+        src = (src+64)|0;
+      }
+      while ((dest|0) < (aligned_dest_end|0) ) {
+        store8(dest, load8(src, 8), 8);
+        dest = (dest+8)|0;
+        src = (src+8)|0;
+      }
+    } else {
+      // In the unaligned copy case, unroll a bit as well.
+      aligned_dest_end = (dest_end - 4)|0;
+      while ((dest|0) < (aligned_dest_end|0) ) {
+        store4(dest, load4(src, 1), 1); // unaligned
+        dest = (dest+4)|0;
+        src = (src+4)|0;
+      }
+    }
+    // The remaining unaligned < 8 byte tail.
+    while ((dest|0) < (dest_end|0)) {
+      store1(dest, load1(src, 1), 1);
+      dest = (dest+1)|0;
+      src = (src+1)|0;
+    }
+    return ret|0;
+#else
     ret = dest|0;
     dest_end = (dest + num)|0;
     if ((dest&3) == (src&3)) {
@@ -854,16 +902,6 @@ LibraryManager.library = {
         SIMD_Int32x4_store(HEAPU8, dest+32, SIMD_Int32x4_load(HEAPU8, src+32));
         SIMD_Int32x4_store(HEAPU8, dest+48, SIMD_Int32x4_load(HEAPU8, src+48));
 #else
-#if WASM_ONLY
-        store8(dest, load8(src, 4), 4);
-        store8(dest +  8 | 0, load8(src +  8 | 0, 4), 4);
-        store8(dest + 16 | 0, load8(src + 16 | 0, 4), 4);
-        store8(dest + 24 | 0, load8(src + 24 | 0, 4), 4);
-        store8(dest + 32 | 0, load8(src + 32 | 0, 4), 4);
-        store8(dest + 40 | 0, load8(src + 40 | 0, 4), 4);
-        store8(dest + 48 | 0, load8(src + 48 | 0, 4), 4);
-        store8(dest + 56 | 0, load8(src + 56 | 0, 4), 4);
-#else
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
         {{{ makeSetValueAsm('dest', 4, makeGetValueAsm('src', 4, 'i32'), 'i32') }}};
         {{{ makeSetValueAsm('dest', 8, makeGetValueAsm('src', 8, 'i32'), 'i32') }}};
@@ -880,7 +918,6 @@ LibraryManager.library = {
         {{{ makeSetValueAsm('dest', 52, makeGetValueAsm('src', 52, 'i32'), 'i32') }}};
         {{{ makeSetValueAsm('dest', 56, makeGetValueAsm('src', 56, 'i32'), 'i32') }}};
         {{{ makeSetValueAsm('dest', 60, makeGetValueAsm('src', 60, 'i32'), 'i32') }}};
-#endif
 #endif
         dest = (dest+64)|0;
         src = (src+64)|0;
@@ -909,6 +946,7 @@ LibraryManager.library = {
       src = (src+1)|0;
     }
     return ret|0;
+#endif
   },
 
   llvm_memcpy_i32: 'memcpy',
@@ -961,6 +999,47 @@ LibraryManager.library = {
 #endif
     end = (ptr + num)|0;
 
+#if WASM_ONLY
+    value = value & 0xff;
+    if ((num|0) >= 71 /* 64 bytes for an unrolled loop + 7 bytes for unaligned head*/) {
+      value4 = value | (value << 8) | (value << 16) | (value << 24);
+      while ((ptr&3) != 0) {
+        store1(ptr, value, 1);
+        ptr = (ptr+1)|0;
+      }
+      if (ptr&4) {
+        store4(ptr, value4, 4);
+        ptr = (ptr+4)|0;
+      }
+
+      aligned_end = (end & -8)|0;
+      block_aligned_end = (aligned_end - 64)|0;
+      value8 = i64_or(i64_zext(value4), i64_shl(i64_zext(value4), i64(32)));
+
+      while ((ptr|0) <= (block_aligned_end|0)) {
+        store8(ptr         , value8, 8);
+        store8(ptr +  8 | 0, value8, 8);
+        store8(ptr + 16 | 0, value8, 8);
+        store8(ptr + 24 | 0, value8, 8);
+        store8(ptr + 32 | 0, value8, 8);
+        store8(ptr + 40 | 0, value8, 8);
+        store8(ptr + 48 | 0, value8, 8);
+        store8(ptr + 56 | 0, value8, 8);
+        ptr = (ptr + 64)|0;
+      }
+
+      while ((ptr|0) < (aligned_end|0) ) {
+        store8(ptr, value8, 8);
+        ptr = (ptr+8)|0;
+      }
+    }
+    // The remaining bytes.
+    while ((ptr|0) < (end|0)) {
+      store1(ptr, value, 1);
+      ptr = (ptr+1)|0;
+    }
+    return (end-num)|0;
+#else
     value = value & 0xff;
     if ((num|0) >= 67 /* 64 bytes for an unrolled loop + 3 bytes for unaligned head*/) {
       while ((ptr&3) != 0) {
@@ -973,28 +1052,14 @@ LibraryManager.library = {
       value4 = value | (value << 8) | (value << 16) | (value << 24);
 #if SIMD
       value16 = SIMD_Int32x4_splat(value4);
-#else
-#if WASM_ONLY
-      value8 = i64_or(i64_zext(value4), i64_shl(i64_zext(value4), i64(32)));
-#endif
 #endif
 
-      while((ptr|0) <= (block_aligned_end|0)) {
+      while ((ptr|0) <= (block_aligned_end|0)) {
 #if SIMD
         SIMD_Int32x4_store(HEAPU8, ptr, value16);
         SIMD_Int32x4_store(HEAPU8, ptr+16, value16);
         SIMD_Int32x4_store(HEAPU8, ptr+32, value16);
         SIMD_Int32x4_store(HEAPU8, ptr+48, value16);
-#else
-#if WASM_ONLY
-        store8(ptr         , value8, 4);
-        store8(ptr +  8 | 0, value8, 4);
-        store8(ptr + 16 | 0, value8, 4);
-        store8(ptr + 24 | 0, value8, 4);
-        store8(ptr + 32 | 0, value8, 4);
-        store8(ptr + 40 | 0, value8, 4);
-        store8(ptr + 48 | 0, value8, 4);
-        store8(ptr + 56 | 0, value8, 4);
 #else
         {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};
         {{{ makeSetValueAsm('ptr', 4, 'value4', 'i32') }}};
@@ -1013,7 +1078,6 @@ LibraryManager.library = {
         {{{ makeSetValueAsm('ptr', 56, 'value4', 'i32') }}};
         {{{ makeSetValueAsm('ptr', 60, 'value4', 'i32') }}};
 #endif
-#endif
         ptr = (ptr + 64)|0;
       }
 
@@ -1028,6 +1092,7 @@ LibraryManager.library = {
       ptr = (ptr+1)|0;
     }
     return (end-num)|0;
+#endif
   },
   llvm_memset_i32: 'memset',
   llvm_memset_p0i8_i32: 'memset',
