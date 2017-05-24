@@ -1090,15 +1090,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.WASM:
         shared.Settings.BINARYEN = 1 # these are synonyms
 
-      if shared.Settings.BINARYEN:
-        shared.Settings.WASM_ONLY = shared.Building.is_wasm_only()
-
-        # When only targeting wasm, the .asm.js file is not executable, so is treated as an intermediate build file that can be cleaned up.
-        if shared.Settings.WASM_ONLY:
-          asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
-          if not DEBUG:
-            misc_temp_files.note(asm_target)
-
       assert shared.Settings.TOTAL_MEMORY >= 16*1024*1024, 'TOTAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.TOTAL_MEMORY)
       if shared.Settings.BINARYEN:
         assert shared.Settings.TOTAL_MEMORY % 65536 == 0, 'For wasm, TOTAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.TOTAL_MEMORY)
@@ -1150,16 +1141,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         #  * if we also supported js mem inits we'd have 4 modes
         #  * and js mem inits are useful for avoiding a side file, but the wasm module avoids that anyhow
         options.memory_init_file = True
-        # async compilation requires wasm-only mode, and also not interpreting (the interpreter needs sync input)
-        if shared.Settings.BINARYEN_ASYNC_COMPILATION == 1 and shared.Settings.WASM_ONLY and 'interpret' not in shared.Settings.BINARYEN_METHOD:
-          # async compilation requires a swappable module - we swap it in when it's ready
-          shared.Settings.SWAPPABLE_ASM_MODULE = 1
-        else:
-          # if not wasm-only, we can't do async compilation as the build can run in other
-          # modes than wasm (like asm.js) which may not support an async step
-          shared.Settings.BINARYEN_ASYNC_COMPILATION = 0
-          if 'BINARYEN_ASYNC_COMPILATION=1' in settings_changes:
-            logging.warning('BINARYEN_ASYNC_COMPILATION requested, but disabled since not in wasm-only mode')
 
       # wasm outputs are only possible with a side wasm
       if target.endswith(WASM_ENDINGS):
@@ -1221,6 +1202,27 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if not shared.Settings.LEGALIZE_JS_FFI:
         assert shared.Settings.WASM_ONLY, 'LEGALIZE_JS_FFI incompatible with RUNNING_JS_OPTS and non-wasm BINARYEN_METHOD.'
+
+      if shared.Settings.BINARYEN:
+        # determine wasm-only mode, now that all settings are settled on
+        shared.Settings.WASM_ONLY = shared.Building.is_wasm_only()
+
+        # When only targeting wasm, the .asm.js file is not executable, so is treated as an intermediate build file that can be cleaned up.
+        if shared.Settings.WASM_ONLY:
+          asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
+          if not DEBUG:
+            misc_temp_files.note(asm_target)
+
+        # async compilation requires wasm-only mode, and also not interpreting (the interpreter needs sync input)
+        if shared.Settings.BINARYEN_ASYNC_COMPILATION == 1 and shared.Settings.WASM_ONLY and 'interpret' not in shared.Settings.BINARYEN_METHOD:
+          # async compilation requires a swappable module - we swap it in when it's ready
+          shared.Settings.SWAPPABLE_ASM_MODULE = 1
+        else:
+          # if not wasm-only, we can't do async compilation as the build can run in other
+          # modes than wasm (like asm.js) which may not support an async step
+          shared.Settings.BINARYEN_ASYNC_COMPILATION = 0
+          if 'BINARYEN_ASYNC_COMPILATION=1' in settings_changes:
+            logging.warning('BINARYEN_ASYNC_COMPILATION requested, but disabled since not in wasm-only mode')
 
       shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
       shared.Settings.OPT_LEVEL = options.opt_level
