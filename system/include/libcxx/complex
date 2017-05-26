@@ -671,11 +671,12 @@ template<class _Tp>
 complex<_Tp>
 operator/(const complex<_Tp>& __z, const complex<_Tp>& __w)
 {
-    int __ilogbw = 0;
     _Tp __a = __z.real();
     _Tp __b = __z.imag();
     _Tp __c = __w.real();
     _Tp __d = __w.imag();
+#ifdef HAVE_LOGB
+    int __ilogbw = 0;
     _Tp __logbw = logb(fmax(fabs(__c), fabs(__d)));
     if (isfinite(__logbw))
     {
@@ -686,6 +687,11 @@ operator/(const complex<_Tp>& __z, const complex<_Tp>& __w)
     _Tp __denom = __c * __c + __d * __d;
     _Tp __x = scalbn((__a * __c + __b * __d) / __denom, -__ilogbw);
     _Tp __y = scalbn((__b * __c - __a * __d) / __denom, -__ilogbw);
+#else
+    _Tp __denom = __c * __c + __d * __d;
+    _Tp __x = (__a * __c + __b * __d) / __denom;
+    _Tp __y = (__b * __c - __a * __d) / __denom;
+#endif
     if (isnan(__x) && isnan(__y))
     {
         if ((__denom == _Tp(0)) && (!isnan(__a) || !isnan(__b)))
@@ -700,7 +706,11 @@ operator/(const complex<_Tp>& __z, const complex<_Tp>& __w)
             __x = _Tp(INFINITY) * (__a * __c + __b * __d);
             __y = _Tp(INFINITY) * (__b * __c - __a * __d);
         }
+#ifdef HAVE_LOGB
         else if (isinf(__logbw) && __logbw > _Tp(0) && isfinite(__a) && isfinite(__b))
+#else
+        else if ((isinf(__c) || isinf(__d)) && isfinite(__a) && isfinite(__b))
+#endif
         {
             __c = copysign(isinf(__c) ? _Tp(1) : _Tp(0), __c);
             __d = copysign(isinf(__d) ? _Tp(1) : _Tp(0), __d);
