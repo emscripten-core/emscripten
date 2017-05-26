@@ -2339,8 +2339,8 @@ def modularize(final):
   f.write('\n')
   f.write('  return ' + shared.Settings.EXPORT_NAME + ';\n')
   f.write('};\n')
-  # Export the function if this is for Node otherwise it is lost.
-  f.write('if (typeof module === \'object\' && module.exports) {\n')
+  # Export the function if this is for Node (or similar UMD-style exporting), otherwise it is lost.
+  f.write('if (typeof module === "object" && module.exports) {\n')
   f.write("  module['exports'] = " + shared.Settings.EXPORT_NAME + ';\n')
   f.write('};\n')
   f.close()
