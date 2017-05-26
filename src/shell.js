@@ -53,6 +53,9 @@ if (Module['ENVIRONMENT']) {
     ENVIRONMENT_IS_NODE = true;
   } else if (Module['ENVIRONMENT'] === 'SHELL') {
     ENVIRONMENT_IS_SHELL = true;
+  } else if (Module['ENVIRONMENT'] === 'PTHREAD') {
+    ENVIRONMENT_IS_WORKER = true;
+    ENVIRONMENT_IS_PTHREAD = true;
   } else {
     throw new Error('The provided Module[\'ENVIRONMENT\'] value is not valid. It must be one of: WEB|WORKER|NODE|SHELL.');
   }
@@ -66,9 +69,9 @@ if (Module['ENVIRONMENT']) {
 #if USE_PTHREADS
 var ENVIRONMENT_IS_PTHREAD;
 if (!ENVIRONMENT_IS_PTHREAD) ENVIRONMENT_IS_PTHREAD = false; // ENVIRONMENT_IS_PTHREAD=true will have been preset in pthread-main.js. Make it false in the main runtime thread.
-var PthreadWorkerInit; // Collects together variables that are needed at initialization time for the web workers that host pthreads.
+var PthreadWorkerInit = Module['pthreadWorkerInit'] || undefined; // Collects together variables that are needed at initialization time for the web workers that host pthreads.
 if (!ENVIRONMENT_IS_PTHREAD) PthreadWorkerInit = {};
-var currentScriptUrl = ENVIRONMENT_IS_WORKER ? undefined : document.currentScript.src;
+var currentScriptUrl = Module['currentScriptUrl'] || (ENVIRONMENT_IS_WORKER ? undefined : document.currentScript.src);
 #endif
 
 if (ENVIRONMENT_IS_NODE) {

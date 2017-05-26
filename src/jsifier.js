@@ -347,7 +347,11 @@ function JSify(data, functionsOnly) {
       if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
         if (USE_PTHREADS) {
           print('var tempDoublePtr;\n');
-          print('if (!ENVIRONMENT_IS_PTHREAD) tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
+          print('if (ENVIRONMENT_IS_PTHREAD) {\n');
+          print('  tempDoublePtr = Module[\'tempDoublePtr\'];\n');
+          print('} else {\n');
+          print('  tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
+          print('}\n');
         } else {
           print('var tempDoublePtr = ' + makeStaticAlloc(8) + '\n');
         }

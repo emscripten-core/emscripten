@@ -1,5 +1,5 @@
 var LibraryPThread = {
-  $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
+  $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) { PThread.initMainThreadBlock(); } else { Module.PThread=PThread; }',
   $PThread__deps: ['$PROCINFO', '_register_pthread_ptr', 'emscripten_main_thread_process_queued_calls'],
   $PThread: {
     MAIN_THREAD_ID: 1, // A special constant that identifies the main JS thread ID.
@@ -325,7 +325,9 @@ var LibraryPThread = {
             STATICTOP: STATICTOP,
             DYNAMIC_BASE: DYNAMIC_BASE,
             DYNAMICTOP_PTR: DYNAMICTOP_PTR,
-            PthreadWorkerInit: PthreadWorkerInit
+            PthreadWorkerInit: PthreadWorkerInit,
+            modularize: {{{ MODULARIZE }}},
+            moduleExportName: '{{{ EXPORT_NAME }}}'
           });
         PThread.unusedWorkerPool.push(worker);
       }
@@ -341,6 +343,35 @@ var LibraryPThread = {
       var t = performance.now() + msecs;
       while(performance.now() < t) {
         ;
+      }
+    },
+
+    setStackSpace: function(stackBase, stackMax) {
+      // TODO: Emscripten runtime has these variables twice(!), once outside the asm.js module, and a second time inside the asm.js module.
+      //       Review why that is? Can those get out of sync?
+      STACK_BASE = STACKTOP = stackBase;
+      STACK_MAX = stackMax;
+      assert(STACK_BASE != 0);
+      assert(STACK_MAX > STACK_BASE);
+      Module.Runtime.establishStackSpace(stackBase, stackMax);
+    },
+
+    registerPthreadPtr: function(pthreadPtr, isMainBrowserThread, isMainRuntimeThread) {
+      __register_pthread_ptr(pthreadPtr, isMainBrowserThread, isMainRuntimeThread);
+    },
+
+    wakeAllThreads: function() {
+      var tb = _pthread_self();
+      _emscripten_futex_wake(tb + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}});
+    },
+
+    runThreadFunc: function(funcPtr, arg) {
+      // HACK: Some code in the wild has instead signatures of form 'void *ThreadMain()', which seems to be ok in native code.
+      // To emulate supporting both in test suites, use the following form. This is brittle!
+      if (typeof asm['dynCall_ii'] !== 'undefined') {
+        result = asm.dynCall_ii(funcPtr, arg); // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
+      } else {
+        result = asm.dynCall_i(funcPtr); // as a hack, try signature 'i' as fallback.
       }
     }
   },

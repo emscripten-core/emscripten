@@ -986,7 +986,12 @@ var STACK_BASE, STACKTOP, STACK_MAX; // stack area
 var DYNAMIC_BASE, DYNAMICTOP_PTR; // dynamic area handled by sbrk
 
 #if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/pthread-main.js, where they were passed to the thread worker at startup time
+if (ENVIRONMENT_IS_PTHREAD) { // Pthreads have passed these variables in from src/pthread-main.js, where they were passed to the thread worker at startup time
+  STATIC_BASE = Module['STATIC_BASE'] || 0;
+  STATICTOP = Module['STATICTOP'] || 0;
+  DYNAMIC_BASE = Module['DYNAMIC_BASE'] || 0;
+  DYNAMICTOP_PTR = Module['DYNAMICTOP_PTR'] || 0;
+} else {
 #endif
   STATIC_BASE = STATICTOP = STACK_BASE = STACKTOP = STACK_MAX = DYNAMIC_BASE = DYNAMICTOP_PTR = 0;
   staticSealed = false;
@@ -1174,7 +1179,11 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
 
 #if USE_PTHREADS
 if (typeof SharedArrayBuffer !== 'undefined') {
-  if (!ENVIRONMENT_IS_PTHREAD) buffer = new SharedArrayBuffer(TOTAL_MEMORY);
+  if (ENVIRONMENT_IS_PTHREAD) {
+    buffer = Module.buffer;
+  } else {
+    buffer = new SharedArrayBuffer(TOTAL_MEMORY);
+  }
   // Currently SharedArrayBuffer does not have a slice() operation, so polyfill it in.
   // Adapted from https://github.com/ttaubert/node-arraybuffer-slice, (c) 2014 Tim Taubert <tim@timtaubert.de>
   // arraybuffer-slice may be freely distributed under the MIT license.
