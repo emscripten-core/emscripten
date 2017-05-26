@@ -1988,7 +1988,7 @@ def parse_args(newargs):
       should_exit = True
     elif newargs[i] == '--clear-ports':
       logging.info('clearing ports and cache as requested by --clear-ports')
-      options.system_libs.Ports.erase()
+      system_libs.Ports.erase()
       shared.Cache.erase()
       shared.check_sanity(force=True) # this is a good time for a sanity check
       should_exit = True
