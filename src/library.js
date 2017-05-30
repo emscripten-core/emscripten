@@ -607,7 +607,9 @@ LibraryManager.library = {
   },
   __cxa_atexit: 'atexit',
 
-  __cxa_thread_atexit_impl: 'atexit', // used in rust
+  // used in rust, clang when doing thread_local statics
+  __cxa_thread_atexit: 'atexit',
+  __cxa_thread_atexit_impl: 'atexit',
 
   abort: function() {
     Module['abort']();
