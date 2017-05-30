@@ -561,21 +561,23 @@ var LibrarySDL = {
           }
           
           var firstTouch = touches[0];
-          if (event.type == 'touchstart') {
-            SDL.DOMButtons[0] = 1;
+          if (firstTouch) {
+            if (event.type == 'touchstart') {
+              SDL.DOMButtons[0] = 1;
+            }
+            var mouseEventType;
+            switch(event.type) {
+              case 'touchstart': mouseEventType = 'mousedown'; break;
+              case 'touchmove': mouseEventType = 'mousemove'; break;
+            }
+            var mouseEvent = {
+              type: mouseEventType,
+              button: 0,
+              pageX: firstTouch.clientX,
+              pageY: firstTouch.clientY
+            };
+            SDL.events.push(mouseEvent);
           }
-          var mouseEventType;
-          switch(event.type) {
-            case 'touchstart': mouseEventType = 'mousedown'; break;
-            case 'touchmove': mouseEventType = 'mousemove'; break;
-          }
-          var mouseEvent = {
-            type: mouseEventType,
-            button: 0,
-            pageX: firstTouch.clientX,
-            pageY: firstTouch.clientY
-          };
-          SDL.events.push(mouseEvent);
 
           for (var i = 0; i < touches.length; i++) {
             var touch = touches[i];
