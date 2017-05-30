@@ -1868,7 +1868,7 @@ var LibraryJSEvents = {
   emscripten_webgl_get_drawing_buffer_size: function(contextHandle, width, height) {
     var GLContext = GL.getContext(contextHandle);
 
-    if(!GLContext || !GLContext.GLctx || !width || !height) {
+    if (!GLContext || !GLContext.GLctx || !width || !height) {
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
     }
     {{{ makeSetValue('width', '0', 'GLContext.GLctx.drawingBufferWidth', 'i32') }}};
