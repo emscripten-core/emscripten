@@ -3014,8 +3014,16 @@ window.close = function() {
       }
     ''')
     Popen([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.js']).communicate()
-
     self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js'])
+
+    print 'wasm'
+    # note that we must proxy-to-worker, as there we can ready binary data synchronously, which is what dynamicLibraries requires
+
+    open('pre.js', 'w').write('''
+      var Module = { dynamicLibraries: ['side.wasm'] };
+  ''')
+    Popen([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.js', '-s', 'WASM=1']).communicate()
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'WASM=1', '-g', '--proxy-to-worker'])
 
   def test_dynamic_link_glemu(self):
     open('pre.js', 'w').write('''
