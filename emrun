@@ -610,8 +610,12 @@ def get_cpu_info():
       sockets = int(re.search('Socket\(s\): (.*)', lscpu).group(1).strip())
       physical_cores = sockets * int(re.search('Core\(s\) per socket: (.*)', lscpu).group(1).strip())
       logical_cores = physical_cores * int(re.search('Thread\(s\) per core: (.*)', lscpu).group(1).strip())
-  except:
-    return "Unknown"
+  except Exception, e:
+    return { 'model': 'Unknown ("' + str(e) + '")',
+      'physicalCores': 1,
+      'logicalCores': 1,
+      'frequency': 0
+    }
 
   return { 'model': platform.machine() + ', ' + cpu_name,
     'physicalCores': physical_cores,
