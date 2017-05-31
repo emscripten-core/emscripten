@@ -90,8 +90,6 @@ AUTODEBUG = os.environ.get('EMCC_AUTODEBUG') # If set to 1, we will run the auto
                                              # dlmalloc makes it hard to compare native and js builds
 EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS') # Additional compiler flags that we treat as if they were passed to us on the commandline
 
-emscripten_temp_dir = shared.get_emscripten_temp_dir()
-
 # Target options
 final = None
 
@@ -99,7 +97,7 @@ final = None
 class Intermediate:
   counter = 0
 def save_intermediate(name=None, suffix='js'):
-  name = os.path.join(emscripten_temp_dir, 'emcc-%d%s.%s' % (Intermediate.counter, '' if name is None else '-' + name, suffix))
+  name = os.path.join(shared.get_emscripten_temp_dir(), 'emcc-%d%s.%s' % (Intermediate.counter, '' if name is None else '-' + name, suffix))
   if type(final) != str:
     logging.debug('(not saving intermediate %s because deferring linking)' % name)
     return
@@ -1446,7 +1444,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('post-link'):
       if DEBUG:
-        logging.debug('saving intermediate processing steps to %s', emscripten_temp_dir)
+        logging.debug('saving intermediate processing steps to %s', shared.get_emscripten_temp_dir())
         if not LEAVE_INPUTS_RAW: save_intermediate('basebc', 'bc')
 
       # Optimize, if asked to
@@ -2207,7 +2205,7 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
   if not shared.Settings.WASM_BACKEND:
     if DEBUG:
       # save the asm.js input
-      shared.safe_copy(asm_target, os.path.join(emscripten_temp_dir, os.path.basename(asm_target)))
+      shared.safe_copy(asm_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(asm_target)))
     cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
     if shared.Settings.BINARYEN_TRAP_MODE == 'js':
       cmd += ['--emit-jsified-potential-traps']
@@ -2268,7 +2266,7 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
     if import_mem_init:
       # remove and forget about the mem init file in later processing; it does not need to be prefetched in the html, etc.
       if DEBUG:
-        safe_move(memfile, os.path.join(emscripten_temp_dir, os.path.basename(memfile)))
+        safe_move(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
       else:
         os.unlink(memfile)
       options.memory_init_file = False
