@@ -675,10 +675,14 @@ f.close()
       assert os.path.exists('this_output_file_should_never_exist.js') == False, 'Emcc should not produce an output file when build fails!'
 
   def test_use_cxx(self):
-    dash_xc = Popen([PYTHON, EMCC, '-v', '-xc', '/dev/null'], stdout=PIPE, stderr=PIPE).communicate()[1]
-    self.assertNotContained('-std=c++03', dash_xc)
-    dash_xcpp = Popen([PYTHON, EMCC, '-v', '-xc++', '/dev/null'], stdout=PIPE, stderr=PIPE).communicate()[1]
-    self.assertContained('-std=c++03', dash_xcpp)
+    open('empty_file', 'w').write(' ')
+    try:
+      dash_xc = Popen([PYTHON, EMCC, '-v', '-xc', 'empty_file'], stdout=PIPE, stderr=PIPE).communicate()[1]
+      self.assertNotContained('-std=c++03', dash_xc)
+      dash_xcpp = Popen([PYTHON, EMCC, '-v', '-xc++', 'empty_file'], stdout=PIPE, stderr=PIPE).communicate()[1]
+      self.assertContained('-std=c++03', dash_xcpp)
+    finally:
+      try_delete('empty_file')
 
   def test_cxx03(self):
     for compiler in [EMCC, EMXX]:
