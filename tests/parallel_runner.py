@@ -8,6 +8,14 @@ import time
 import traceback
 import unittest
 
+def g_testing_thread(work_queue, result_queue):
+  for test in iter(lambda: get_from_queue(work_queue), None):
+    result = BufferedParallelTestResult()
+    try:
+      test(result)
+    except Exception as e:
+      result.addError(test, e)
+    result_queue.put(result)
 
 class ParallelTestSuite(unittest.BaseTestSuite):
   """Runs a suite of tests in parallel.
@@ -52,20 +60,10 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     self.processes = []
     self.result_queue = multiprocessing.Queue()
     for i in xrange(num_cores()):
-      p = multiprocessing.Process(target=self.testing_thread,
+      p = multiprocessing.Process(target=g_testing_thread,
                                   args=(test_queue, self.result_queue))
       p.start()
       self.processes.append(p)
-
-  @staticmethod
-  def testing_thread(work_queue, result_queue):
-    for test in iter(lambda: get_from_queue(work_queue), None):
-      result = BufferedParallelTestResult()
-      try:
-        test(result)
-      except Exception as e:
-        result.addError(test, e)
-      result_queue.put(result)
 
   def collect_results(self):
     buffered_results = []
