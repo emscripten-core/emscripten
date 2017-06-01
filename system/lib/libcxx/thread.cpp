@@ -118,7 +118,9 @@ sleep_for(const chrono::nanoseconds& ns)
         seconds s = duration_cast<seconds>(ns);
         timespec ts;
         typedef decltype(ts.tv_sec) ts_sec;
-        _LIBCPP_CONSTEXPR ts_sec ts_sec_max = numeric_limits<ts_sec>::max();
+//  XXX Emscripten: Removed the constexpr qualifier due to compilation problems on Clang 3.2 on Windows.
+//  See https://github.com/kripken/emscripten/issues/1019 and http://llvm.org/bugs/show_bug.cgi?id=15651
+        /*_LIBCPP_CONSTEXPR*/ ts_sec ts_sec_max = numeric_limits<ts_sec>::max();
         if (s.count() < ts_sec_max)
         {
             ts.tv_sec = static_cast<ts_sec>(s.count());
