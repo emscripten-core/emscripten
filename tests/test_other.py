@@ -410,7 +410,8 @@ f.close()
 
   def test_emcc_cflags(self):
     # see we print them out
-    output = Popen([PYTHON, EMCC, '--cflags'], stdout=PIPE, stderr=PIPE).communicate()
+    with clean_write_access_to_canonical_temp_dir(): # --cflags needs to set EMCC_DEBUG=1, which needs to create canonical temp directory.
+      output = Popen([PYTHON, EMCC, '--cflags'], stdout=PIPE, stderr=PIPE).communicate()
     flags = output[0].strip()
     self.assertContained(' '.join(COMPILER_OPTS), flags)
     # check they work
