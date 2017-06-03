@@ -80,7 +80,7 @@ if (ENVIRONMENT_IS_NODE) {
   var nodeFS;
   var nodePath;
 
-  Module['read'] = function read(filename, binary) {
+  Module['read'] = function shell_read(filename, binary) {
     if (!nodeFS) nodeFS = require('fs');
     if (!nodePath) nodePath = require('path');
     filename = nodePath['normalize'](filename);
@@ -133,7 +133,7 @@ else if (ENVIRONMENT_IS_SHELL) {
   if (typeof read != 'undefined') {
     Module['read'] = read;
   } else {
-    Module['read'] = function read() { throw 'no read() available' };
+    Module['read'] = function shell_read() { throw 'no read() available' };
   }
 
   Module['readBinary'] = function readBinary(f) {
@@ -151,17 +151,33 @@ else if (ENVIRONMENT_IS_SHELL) {
     Module['arguments'] = arguments;
   }
 
+  if (typeof quit === 'function') {
+    Module['quit'] = function(status, toThrow) {
+      quit(status);
+    }
+  }
+
 #if USE_CLOSURE_COMPILER
   eval("if (typeof gc === 'function' && gc.toString().indexOf('[native code]') > 0) var gc = undefined"); // wipe out the SpiderMonkey shell 'gc' function, which can confuse closure (uses it as a minified name, and it is then initted to a non-falsey value unexpectedly)
 #endif
 }
 else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
-  Module['read'] = function read(url) {
+  Module['read'] = function shell_read(url) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, false);
     xhr.send(null);
     return xhr.responseText;
   };
+
+  if (ENVIRONMENT_IS_WORKER) {
+    Module['readBinary'] = function readBinary(url) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, false);
+      xhr.responseType = 'arraybuffer';
+      xhr.send(null);
+      return xhr.response;
+    };
+  }
 
   Module['readAsync'] = function readAsync(url, onload, onerror) {
     var xhr = new XMLHttpRequest();
@@ -183,10 +199,10 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   }
 
   if (typeof console !== 'undefined') {
-    if (!Module['print']) Module['print'] = function print(x) {
+    if (!Module['print']) Module['print'] = function shell_print(x) {
       console.log(x);
     };
-    if (!Module['printErr']) Module['printErr'] = function printErr(x) {
+    if (!Module['printErr']) Module['printErr'] = function shell_printErr(x) {
       console.warn(x);
     };
   } else {
@@ -231,6 +247,11 @@ if (!Module['arguments']) {
 }
 if (!Module['thisProgram']) {
   Module['thisProgram'] = './this.program';
+}
+if (!Module['quit']) {
+  Module['quit'] = function(status, toThrow) {
+    throw toThrow;
+  }
 }
 
 // *** Environment setup code ***

@@ -10,21 +10,28 @@
 #include "futex.h"
 #endif
 #include "syscall.h"
+#include "pthread_impl.h"
+
+int __pthread_setcancelstate(int, int *);
+int __clock_gettime(clockid_t, struct timespec *);
+
 
 #ifdef __EMSCRIPTEN__
 double _pthread_msecs_until(const struct timespec *restrict at);
 int _pthread_isduecanceled(struct pthread *pthread_ptr);
 #endif
 
-static int do_wait(volatile int *addr, int val,
+int __timedwait_cp(volatile int *addr, int val,
 	clockid_t clk, const struct timespec *at, int priv)
 {
 	int r;
 	struct timespec to, *top=0;
 
+	if (priv) priv = 128;
+
 	if (at) {
 		if (at->tv_nsec >= 1000000000UL) return EINVAL;
-		if (clock_gettime(clk, &to)) return EINVAL;
+		if (__clock_gettime(clk, &to)) return EINVAL;
 		to.tv_sec = at->tv_sec - to.tv_sec;
 		if ((to.tv_nsec = at->tv_nsec - to.tv_nsec) < 0) {
 			to.tv_sec--;
@@ -62,31 +69,27 @@ static int do_wait(volatile int *addr, int val,
 		r = -emscripten_futex_wait((void*)addr, val, waitMsecs);
 	}
 #else
-	r = -__syscall_cp(SYS_futex, addr, FUTEX_WAIT, val, top);
+	r = -__syscall_cp(SYS_futex, addr, FUTEX_WAIT|priv, val, top);
+	if (r == ENOSYS) r = -__syscall_cp(SYS_futex, addr, FUTEX_WAIT, val, top);
 #endif
-	if (r == EINTR || r == EINVAL || r == ETIMEDOUT) return r;
-	return 0;
+	if (r != EINTR && r != ETIMEDOUT && r != ECANCELED) r = 0;
+
+	return r;
 }
 
 int __timedwait(volatile int *addr, int val,
-	clockid_t clk, const struct timespec *at,
-	void (*cleanup)(void *), void *arg, int priv)
+	clockid_t clk, const struct timespec *at, int priv)
 {
-	int r, cs;
-
-	if (!cleanup) pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
-	pthread_cleanup_push(cleanup, arg);
-
+	int cs, r;
+	__pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
 #ifdef __EMSCRIPTEN__
 	emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_WAITMUTEX);
 #endif
-	r = do_wait(addr, val, clk, at, priv);
+	r = __timedwait_cp(addr, val, clk, at, priv);
 #ifdef __EMSCRIPTEN__
 	emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITMUTEX, EM_THREAD_STATUS_RUNNING);
 #endif
-
-	pthread_cleanup_pop(0);
-	if (!cleanup) pthread_setcancelstate(cs, 0);
+	__pthread_setcancelstate(cs, 0);
 
 	return r;
 }

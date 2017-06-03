@@ -45,6 +45,9 @@ Available operations and tasks:
         sdl2-net
         vorbis
         zlib
+        cocos2d
+        wasm-libc
+        wasm_compiler_rt
 
 Issuing 'embuilder.py build ALL' causes each task to be built.
 
@@ -84,6 +87,10 @@ if operation == 'build':
   tasks = sys.argv[2:]
   if 'ALL' in tasks:
     tasks = ['libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'gl', 'binaryen', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
+    if os.environ.get('EMCC_WASM_BACKEND') == '1':
+      skip_tasks = {'libc-mt', 'dlmalloc_threadsafe', 'pthreads'}
+      print('Skipping building of %s, because WebAssembly does not support pthreads.' % ', '.join(skip_tasks))
+      tasks = [x for x in tasks if x not in skip_tasks]
     if os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER'):
       print 'Skipping building of native-optimizer since environment variable EMSCRIPTEN_NATIVE_OPTIMIZER is present and set to point to a prebuilt native optimizer path.'
     elif hasattr(shared, 'EMSCRIPTEN_NATIVE_OPTIMIZER'):
@@ -100,6 +107,13 @@ if operation == 'build':
           return int(malloc(10)) + int(strchr("str", 'c'));
         }
       ''', ['libc.bc', 'dlmalloc.bc'])
+    elif what in 'wasm-libc':
+      build('''
+        #include <string.h>
+        int main() {
+          return int(strchr("str", 'c'));
+        }
+      ''', ['wasm-libc.bc'], ['-s', 'WASM=1'])
     elif what in ('libc-mt', 'pthreads', 'dlmalloc_threadsafe'):
       build('''
         #include <string.h>
@@ -149,7 +163,7 @@ if operation == 'build':
       if shared.get_llvm_target() == shared.WASM_TARGET:
         build('''
           int main() {}
-        ''', ['wasm_compiler_rt.a'], ['-s', 'BINARYEN=1'])
+        ''', ['wasm_compiler_rt.a'], ['-s', 'WASM=1'])
       else:
         shared.logging.warning('wasm_compiler_rt not built when using JSBackend')
     elif what == 'zlib':
@@ -173,7 +187,9 @@ if operation == 'build':
     elif what == 'sdl2-ttf':
       build_port('sdl2-ttf', 'libsdl2_ttf.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '-s', 'USE_FREETYPE=1'])
     elif what == 'binaryen':
-      build_port('binaryen', None, ['-s', 'BINARYEN=1'])
+      build_port('binaryen', None, ['-s', 'WASM=1'])
+    elif what == 'cocos2d':
+      build_port('cocos2d', None, ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
     else:
       shared.logging.error('unfamiliar build target: ' + what)
       sys.exit(1)

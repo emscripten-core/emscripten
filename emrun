@@ -4,7 +4,7 @@
 # Usage: emrun <options> filename.html <args to program>
 # See emrun --help for more information
 
-import os, platform, optparse, logging, re, pprint, atexit, urlparse, subprocess, sys, SocketServer, BaseHTTPServer, SimpleHTTPServer, time, string, struct, socket, cgi, tempfile, stat, shutil, json, uuid
+import os, platform, optparse, logging, re, pprint, atexit, urlparse, subprocess, sys, SocketServer, BaseHTTPServer, SimpleHTTPServer, time, string, struct, socket, cgi, tempfile, stat, shutil, json, uuid, shlex
 from operator import itemgetter
 from urllib import unquote
 from Queue import PriorityQueue
@@ -51,16 +51,6 @@ LINUX = False
 OSX = False
 if os.name == 'nt':
   WINDOWS = True
-  try:
-    import shlex
-    import win32api, _winreg
-    from win32com.client import GetObject
-    from win32api import GetFileVersionInfo, LOWORD, HIWORD
-    from _winreg import HKEY_CURRENT_USER, OpenKey, QueryValue
-  except Exception, e:
-    print >> sys.stderr, str(e)
-    print >> sys.stderr, "Importing Python win32 modules failed! This most likely occurs if you do not have PyWin32 installed! Get it from http://sourceforge.net/projects/pywin32/"
-    sys.exit(1)
 elif platform.system() == 'Linux':
   LINUX = True
 elif platform.mac_ver()[0] != '':
@@ -71,6 +61,21 @@ elif platform.mac_ver()[0] != '':
 # If you are running on an OS that is not any of these, must add explicit support for it.
 if not WINDOWS and not LINUX and not OSX:
   raise Exception("Unknown OS!")
+
+import_win32api_modules_warned_once = False
+
+def import_win32api_modules():
+  try:
+    global win32api, _winreg, GetObject
+    import win32api, _winreg
+    from win32com.client import GetObject
+  except Exception, e:
+    global import_win32api_modules_warned_once
+    if not import_win32api_modules_warned_once:
+      print >> sys.stderr, str(e)
+      print >> sys.stderr, "Importing Python win32 modules failed! This most likely occurs if you do not have PyWin32 installed! Get it from http://sourceforge.net/projects/pywin32/"
+      import_win32api_modules_warned_once = True
+    raise
 
 # Returns wallclock time in seconds.
 def tick():
@@ -253,11 +258,13 @@ user_pref("toolkit.telemetry.enabled", false);
 user_pref("toolkit.telemetry.unified", false);
 user_pref("datareporting.policy.dataSubmissionEnabled", false);
 user_pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
-// Allow window.dump("foo\n") to print directly to console
+// Allow window.dump() to print directly to console
 user_pref("browser.dom.window.dump.enabled", true);
 // Disable background add-ons related update & information check pings
 user_pref("extensions.update.enabled", false);
 user_pref("extensions.getAddons.cache.enabled", false);
+// Enable wasm
+user_pref("javascript.options.wasm", true);
 ''')
   f.close()
   logv('create_emrun_safe_firefox_profile: Created new Firefox profile "' + temp_firefox_profile_dir + '"')
@@ -518,7 +525,10 @@ class HTTPHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
       have_received_messages = True
     elif path == '/system_info':
       system_info = json.loads(get_system_info(format_json=True))
-      browser_info = json.loads(get_browser_info(browser_exe, format_json=True))
+      try:
+        browser_info = json.loads(get_browser_info(browser_exe, format_json=True))
+      except:
+        browser_info = ''
       data = { 'system': system_info, 'browser': browser_info }
       self.send_response(200)
       self.send_header("Content-type", "application/json")
@@ -578,6 +588,7 @@ def get_cpu_info():
   frequency = 0
   try:
     if WINDOWS:
+      import_win32api_modules()
       root_winmgmts = GetObject("winmgmts:root\cimv2")
       cpus = root_winmgmts.ExecQuery("Select * from Win32_Processor")
       cpu_name = cpus[0].Name + ', ' + platform.processor()
@@ -599,8 +610,12 @@ def get_cpu_info():
       sockets = int(re.search('Socket\(s\): (.*)', lscpu).group(1).strip())
       physical_cores = sockets * int(re.search('Core\(s\) per socket: (.*)', lscpu).group(1).strip())
       logical_cores = physical_cores * int(re.search('Thread\(s\) per core: (.*)', lscpu).group(1).strip())
-  except:
-    return "Unknown"
+  except Exception, e:
+    return { 'model': 'Unknown ("' + str(e) + '")',
+      'physicalCores': 1,
+      'logicalCores': 1,
+      'frequency': 0
+    }
 
   return { 'model': platform.machine() + ', ' + cpu_name,
     'physicalCores': physical_cores,
@@ -628,6 +643,11 @@ def win_get_gpu_info():
     for gpu in gpus:
       if gpu['model'] == model: return gpu
     return None
+
+  try:
+    import_win32api_modules()
+  except:
+    return []
 
   for i in range(0, 16):
     try:
@@ -728,10 +748,10 @@ def get_gpu_info():
 def get_executable_version(filename):
   try:
     if WINDOWS:
-      info = GetFileVersionInfo(filename, "\\")
+      info = win32api.GetFileVersionInfo(filename, "\\")
       ms = info['FileVersionMS']
       ls = info['FileVersionLS']
-      version = HIWORD (ms), LOWORD (ms), HIWORD (ls), LOWORD (ls)
+      version = win32api.HIWORD(ms), win32api.LOWORD(ms), win32api.HIWORD(ls), win32api.LOWORD(ls)
       return '.'.join(map(str, version))
     elif OSX:
       plistfile = filename[0:filename.find('MacOS')] + 'Info.plist'
@@ -794,6 +814,7 @@ def win_get_file_properties(fname):
   props = {'FixedFileInfo': None, 'StringFileInfo': None, 'FileVersion': None}
 
   try:
+    import win32api
     # backslash as parm returns dictionary of numeric info corresponding to VS_FIXEDFILEINFO struc
     fixedInfo = win32api.GetFileVersionInfo(fname, '\\')
     props['FixedFileInfo'] = fixedInfo
@@ -869,6 +890,7 @@ def get_os_version():
   bitness = ' (64bit)' if platform.machine() in ['AMD64', 'x86_64'] else ' (32bit)'
   try:
     if WINDOWS:
+      import_win32api_modules()
       versionHandle = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion")
       productName = _winreg.QueryValueEx(versionHandle, "ProductName")
 
@@ -935,11 +957,12 @@ def which(program):
   return None
 
 def win_get_default_browser():
+  import_win32api_modules()
   # Look in the registry for the default system browser on Windows without relying on
   # 'start %1' since that method has an issue, see comment below.
   try:
-    with OpenKey(HKEY_CURRENT_USER, r"Software\Classes\http\shell\open\command") as key:
-      cmd = QueryValue(key, None)
+    with _winreg.OpenKey(_winreg.HKEY_CURRENT_USER, r"Software\Classes\http\shell\open\command") as key:
+      cmd = _winreg.QueryValue(key, None)
       if cmd:
         parts = shlex.split(cmd)
         if len(parts) > 0:
@@ -1059,6 +1082,10 @@ def list_android_browsers():
       browsers += ['chrome']
     if line.endswith('=com.chrome.beta'):
       browsers += ['chrome_beta']
+    if line.endswith('=com.chrome.dev'):
+      browsers += ['chrome_dev']
+    if line.endswith('=com.chrome.canary'):
+      browsers += ['chrome_canary']
     if line.endswith('=com.opera.browser'):
       browsers += ['opera']
     if line.endswith('=com.opera.mini.android'):
@@ -1093,11 +1120,13 @@ def browser_display_name(browser):
     return 'Google Chrome'
   if 'firefox' in b:
     # Try to identify firefox flavor explicitly, to help show issues where emrun would launch the wrong browser.
-    product_name = win_get_file_properties(browser)['StringFileInfo']['ProductName'] if WINDOWS else 'firefox'
-    if product_name.lower() != 'firefox':
-      return 'Mozilla Firefox ' + product_name
-    else:
-      return 'Mozilla Firefox'
+    try:
+      product_name = win_get_file_properties(browser)['StringFileInfo']['ProductName'] if WINDOWS else 'firefox'
+      if product_name.lower() != 'firefox':
+        return 'Mozilla Firefox ' + product_name
+    except Exception, e:
+      pass
+    return 'Mozilla Firefox'
   if 'opera' in b:
     return 'Opera'
   if 'safari' in b:
@@ -1109,6 +1138,7 @@ def subprocess_env():
   # https://bugzilla.mozilla.org/show_bug.cgi?id=745154
   e['MOZ_DISABLE_AUTO_SAFE_MODE'] = '1'
   e['MOZ_DISABLE_SAFE_MODE_KEY'] = '1' # https://bugzilla.mozilla.org/show_bug.cgi?id=653410#c9
+  e['JIT_OPTION_asmJSAtomicsEnable'] = 'true' # https://bugzilla.mozilla.org/show_bug.cgi?id=1299359#c0
   return e
 
 # Removes a directory tree even if it was readonly, and doesn't throw exception on failure.
@@ -1326,7 +1356,7 @@ def main():
       logv('Web server root directory: ' + os.path.abspath('.'))
 
   if options.android:
-    if not options.no_browser:
+    if not options.no_browser or options.browser_info:
       if not options.browser:
         loge("Running on Android requires that you explicitly specify the browser to run with --browser <id>. Run emrun --android --list_browsers to obtain a list of installed browsers you can use.")
         return 1
@@ -1339,9 +1369,13 @@ def main():
       elif options.browser == 'firefox_nightly' or options.browser == 'fennec':
         browser_app = 'org.mozilla.fennec/.App'
       elif options.browser == 'chrome':
-        browser_app = 'com.android.chrome/.Main'
-      elif options.browser == 'chrome_beta' or options.browser == 'chrome_canary': # There is no Chrome Canary for Android, but Play store has 'Chrome Beta' instead.
-        browser_app = 'com.chrome.beta/com.android.chrome.Main'
+        browser_app = 'com.android.chrome/com.google.android.apps.chrome.Main'
+      elif options.browser == 'chrome_beta':
+        browser_app = 'com.chrome.beta/com.google.android.apps.chrome.Main'
+      elif options.browser == 'chrome_dev':
+        browser_app = 'com.chrome.dev/com.google.android.apps.chrome.Main'
+      elif options.browser == 'chrome_canary':
+        browser_app = 'com.chrome.canary/com.google.android.apps.chrome.Main'
       elif options.browser == 'opera':
         browser_app = 'com.opera.browser/com.opera.Opera'
       elif options.browser == 'opera_mini': # Launching the URL works, but page seems to never load (Fails with 'Network problem' even when other browsers work)
@@ -1358,9 +1392,9 @@ def main():
       # 4. Type 'aapt d xmltree <packagename>.apk AndroidManifest.xml > manifest.txt' to extract the manifest from the package.
       # 5. Locate the name of the main activity for the browser in manifest.txt and add an entry to above list in form 'appname/mainactivityname'
 
-      if WINDOWS:
-        url = url.replace('&', '\\&')
+      url = url.replace('&', '\\&')
       browser = [ADB, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-n', browser_app, '-d', url]
+      print(str(browser))
       processname_killed_atexit = browser_app[:browser_app.find('/')]
   else: #Launching a web page on local system.
     if options.browser:
@@ -1368,48 +1402,64 @@ def main():
       options.browser = options.browser.strip()
       if (options.browser.startswith('"') and options.browser.endswith('"')) or (options.browser.startswith("'") and options.browser.endswith("'")):
         options.browser = options.browser[1:-1].strip()
-    browser = find_browser(str(options.browser))
-    if not browser:
-      loge('Unable to find browser "' + str(options.browser) + '"! Check the correctness of the passed --browser=xxx parameter!')
-      return 1
-    browser_exe = browser[0]
-    browser_args = []
 
-    if 'safari' in browser_exe.lower():
-      # Safari has a bug that a command line 'Safari http://page.com' does not launch that page,
-      # but instead launches 'file:///http://page.com'. To remedy this, must use the open -a command
-      # to run Safari, but unfortunately this will end up spawning Safari process detached from emrun.
-      if OSX:
-        browser = ['open', '-a', 'Safari'] + (browser[1:] if len(browser) > 1 else [])
+    if not options.no_browser or options.browser_info:
+      browser = find_browser(str(options.browser))
+      if not browser:
+        loge('Unable to find browser "' + str(options.browser) + '"! Check the correctness of the passed --browser=xxx parameter!')
+        return 1
+      browser_exe = browser[0]
+      browser_args = []
 
-      processname_killed_atexit = 'Safari'
-    elif 'chrome' in browser_exe.lower():
-      processname_killed_atexit = 'chrome'
-      browser_args = ['--incognito', '--enable-nacl', '--enable-pnacl', '--disable-restore-session-state', '--enable-webgl', '--no-default-browser-check', '--no-first-run', '--allow-file-access-from-files']
-  #    if options.no_server:
-  #      browser_args += ['--disable-web-security']
-    elif 'firefox' in browser_exe.lower():
-      processname_killed_atexit = 'firefox'
-    elif 'iexplore' in browser_exe.lower():
-      processname_killed_atexit = 'iexplore'
-      browser_args = ['-private']
-    elif 'opera' in browser_exe.lower():
-      processname_killed_atexit = 'opera'
+      if 'safari' in browser_exe.lower():
+        # Safari has a bug that a command line 'Safari http://page.com' does not launch that page,
+        # but instead launches 'file:///http://page.com'. To remedy this, must use the open -a command
+        # to run Safari, but unfortunately this will end up spawning Safari process detached from emrun.
+        if OSX:
+          browser = ['open', '-a', 'Safari'] + (browser[1:] if len(browser) > 1 else [])
 
-    # In Windows cmdline, & character delimits multiple commmands, so must use ^ to escape them.
-    if browser_exe == 'cmd':
-      url = url.replace('&', '^&')
-    browser += browser_args + [url]
+        processname_killed_atexit = 'Safari'
+      elif 'chrome' in browser_exe.lower():
+        processname_killed_atexit = 'chrome'
+        browser_args = ['--incognito', '--enable-nacl', '--enable-pnacl', '--disable-restore-session-state', '--enable-webgl', '--no-default-browser-check', '--no-first-run', '--allow-file-access-from-files']
+    #    if options.no_server:
+    #      browser_args += ['--disable-web-security']
+      elif 'firefox' in browser_exe.lower():
+        processname_killed_atexit = 'firefox'
+      elif 'iexplore' in browser_exe.lower():
+        processname_killed_atexit = 'iexplore'
+        browser_args = ['-private']
+      elif 'opera' in browser_exe.lower():
+        processname_killed_atexit = 'opera'
+
+      # In Windows cmdline, & character delimits multiple commmands, so must use ^ to escape them.
+      if browser_exe == 'cmd':
+        url = url.replace('&', '^&')
+      browser += browser_args + [url]
 
   if options.kill_on_start:
     pname = processname_killed_atexit
     kill_browser_process()
     processname_killed_atexit = pname
 
+
+  # Copy the profile over to Android.
+  if options.android and options.safe_firefox_profile:
+    profile_dir = create_emrun_safe_firefox_profile()
+    def run(cmd):
+      print str(cmd)
+      subprocess.call(cmd)
+
+    run(['adb', 'shell', 'rm', '-rf', '/mnt/sdcard/safe_firefox_profile'])
+    run(['adb', 'shell', 'mkdir', '/mnt/sdcard/safe_firefox_profile'])
+    run(['adb', 'push', os.path.join(profile_dir, 'prefs.js'), '/mnt/sdcard/safe_firefox_profile/prefs.js'])
+    browser += ['--es', 'args', '"--profile /mnt/sdcard/safe_firefox_profile"']
+
   # Create temporary Firefox profile to run the page with. This is important to run after kill_browser_process()/kill_on_start op above, since that
   # cleans up the temporary profile if one exists.
-  if processname_killed_atexit == 'firefox' and options.safe_firefox_profile and not options.no_browser:
+  if processname_killed_atexit == 'firefox' and options.safe_firefox_profile and not options.no_browser and not options.android:
     profile_dir = create_emrun_safe_firefox_profile()
+
     browser += ['-no-remote', '-profile', profile_dir.replace('\\', '/')]
 
   if options.system_info:
@@ -1418,7 +1468,7 @@ def main():
 
   if options.browser_info:
     if options.android:
-      if option.json:
+      if options.json:
         print json.dumps({
           'browser': 'Android ' + browser_app
           }, indent=2)
@@ -1445,7 +1495,7 @@ def main():
     httpd = HTTPWebServer(('', options.port), HTTPHandler)
 
   if not options.no_browser:
-    logv("Executing %s" % ' '.join(browser))
+    logi("Executing %s" % ' '.join(browser))
     if browser[0] == 'cmd':
       serve_forever = True # Workaround an issue where passing 'cmd /C start' is not able to detect when the user closes the page.
     browser_process = subprocess.Popen(browser, env=subprocess_env())

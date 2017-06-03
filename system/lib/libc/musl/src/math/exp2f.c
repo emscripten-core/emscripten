@@ -91,6 +91,8 @@ float exp2f(float x)
 	/* Filter out exceptional cases. */
 	ix = u.i & 0x7fffffff;
 	if (ix > 0x42fc0000) {  /* |x| > 126 */
+		if (ix > 0x7f800000) /* NaN */
+			return x;
 		if (u.i >= 0x43000000 && u.i < 0x80000000) {  /* x >= 128 */
 			x *= 0x1p127f;
 			return x;

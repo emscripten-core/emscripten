@@ -109,6 +109,14 @@ int main()
       assert(supported);
     }
 
+    int drawingBufferWidth = -1;
+    int drawingBufferHeight = -1;
+    res = emscripten_webgl_get_drawing_buffer_size(context, &drawingBufferWidth, &drawingBufferHeight);
+    assert(res == EMSCRIPTEN_RESULT_SUCCESS);
+    printf("drawingBufferWidth x Height: %dx%d\n", drawingBufferWidth, drawingBufferHeight);
+    assert(drawingBufferWidth == 300);
+    assert(drawingBufferHeight == 150);
+
     // Try with a simple glClear() that we got a context.
     glClearColor(1.f, 0.f, 0.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT);

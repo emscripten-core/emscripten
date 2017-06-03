@@ -33,7 +33,6 @@ int setjmp (jmp_buf);
 _Noreturn void longjmp (jmp_buf, int);
 
 #define setjmp setjmp
-#define longjmp longjmp
 
 #ifdef __cplusplus
 }

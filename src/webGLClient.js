@@ -150,8 +150,16 @@ function WebGLClient() {
     ctx.uniform1f(objects[buffer[i]], buffer[i+1]);
     i += 2;
   }
+  function uniform1fv() {
+    ctx.uniform1fv(objects[buffer[i]], buffer[i+1]);
+    i += 2;
+  }
   function uniform2fv() {
     ctx.uniform2fv(objects[buffer[i]], buffer[i+1]);
+    i += 2;
+  }
+  function uniform1iv() {
+    ctx.uniform1iv(objects[buffer[i]], buffer[i+1]);
     i += 2;
   }
   function uniform3f() {
@@ -253,6 +261,8 @@ function WebGLClient() {
     78: { name: 'stencilFuncSeparate', func: func4 },
     79: { name: 'stencilOpSeparate', func: func4 },
     80: { name: 'drawBuffersWEBGL', func: func1 },
+    81: { name: 'uniform1iv', func: uniform1iv },
+    82: { name: 'uniform1fv', func: uniform1fv },
   };
 
   function renderCommands(buf) {
@@ -306,7 +316,11 @@ WebGLClient.prefetch = function() {
   // Create a fake temporary GL context
   var canvas = document.createElement('canvas');
   var ctx = canvas.getContext('webgl-experimental') || canvas.getContext('webgl');
-  if (!ctx) return;
+  if (!ctx) {
+    // If we have no webGL support, we still notify that prefetching is done, as the app blocks on that
+    worker.postMessage({ target: 'gl', op: 'setPrefetched', preMain: true });
+    return;
+  } 
 
   // Fetch the parameters and proxy them
   var parameters = {};

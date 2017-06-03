@@ -148,78 +148,106 @@ var ensureCache = {
   needed: 0, // the total size we need next time
 
   prepare: function() {
-    if (this.needed) {
+    if (ensureCache.needed) {
       // clear the temps
-      for (var i = 0; i < this.temps.length; i++) {
-        Module['_free'](this.temps[i]);
+      for (var i = 0; i < ensureCache.temps.length; i++) {
+        Module['_free'](ensureCache.temps[i]);
       }
-      this.temps.length = 0;
+      ensureCache.temps.length = 0;
       // prepare to allocate a bigger buffer
-      Module['_free'](this.buffer);
-      this.buffer = 0;
-      this.size += this.needed;
+      Module['_free'](ensureCache.buffer);
+      ensureCache.buffer = 0;
+      ensureCache.size += ensureCache.needed;
       // clean up
-      this.needed = 0;
+      ensureCache.needed = 0;
     }
-    if (!this.buffer) { // happens first time, or when we need to grow
-      this.size += 128; // heuristic, avoid many small grow events
-      this.buffer = Module['_malloc'](this.size);
-      assert(this.buffer);
+    if (!ensureCache.buffer) { // happens first time, or when we need to grow
+      ensureCache.size += 128; // heuristic, avoid many small grow events
+      ensureCache.buffer = Module['_malloc'](ensureCache.size);
+      assert(ensureCache.buffer);
     }
-    this.pos = 0;
+    ensureCache.pos = 0;
   },
   alloc: function(array, view) {
-    assert(this.buffer);
+    assert(ensureCache.buffer);
     var bytes = view.BYTES_PER_ELEMENT;
     var len = array.length * bytes;
     len = (len + 7) & -8; // keep things aligned to 8 byte boundaries
     var ret;
-    if (this.pos + len >= this.size) {
-      // we failed to allocate in the buffer, this time around :(
+    if (ensureCache.pos + len >= ensureCache.size) {
+      // we failed to allocate in the buffer, ensureCache time around :(
       assert(len > 0); // null terminator, at least
-      this.needed += len;
+      ensureCache.needed += len;
       ret = Module['_malloc'](len);
-      this.temps.push(ret);
+      ensureCache.temps.push(ret);
     } else {
       // we can allocate in the buffer
-      ret = this.buffer + this.pos;
-      this.pos += len;
-    }
-    var retShifted = ret;
-    switch (bytes) {
-      case 2: retShifted >>= 1; break;
-      case 4: retShifted >>= 2; break;
-      case 8: retShifted >>= 3; break;
-    }
-    for (var i = 0; i < array.length; i++) {
-      view[retShifted + i] = array[i];
+      ret = ensureCache.buffer + ensureCache.pos;
+      ensureCache.pos += len;
     }
     return ret;
+  },  
+  copy: function(array, view, offset) {
+    var offsetShifted = offset;
+    var bytes = view.BYTES_PER_ELEMENT;
+    switch (bytes) {
+      case 2: offsetShifted >>= 1; break;
+      case 4: offsetShifted >>= 2; break;
+      case 8: offsetShifted >>= 3; break;
+    }
+    for (var i = 0; i < array.length; i++) {
+      view[offsetShifted + i] = array[i];
+    }   
   },
 };
 
 function ensureString(value) {
-  if (typeof value === 'string') return ensureCache.alloc(intArrayFromString(value), HEAP8);
+  if (typeof value === 'string') {
+    var intArray = intArrayFromString(value);
+    var offset = ensureCache.alloc(intArray, HEAP8);
+    ensureCache.copy(intArray, HEAP8, offset);
+    return offset;
+  }
   return value;
 }
 function ensureInt8(value) {
-  if (typeof value === 'object') return ensureCache.alloc(value, HEAP8);
+  if (typeof value === 'object') {
+    var offset = ensureCache.alloc(value, HEAP8);
+    ensureCache.copy(value, HEAP8, offset);
+    return offset;
+  }
   return value;
 }
 function ensureInt16(value) {
-  if (typeof value === 'object') return ensureCache.alloc(value, HEAP16);
+  if (typeof value === 'object') {
+    var offset = ensureCache.alloc(value, HEAP16);
+    ensureCache.copy(value, HEAP16, offset);
+    return offset;
+  }
   return value;
 }
 function ensureInt32(value) {
-  if (typeof value === 'object') return ensureCache.alloc(value, HEAP32);
+  if (typeof value === 'object') {
+    var offset = ensureCache.alloc(value, HEAP32);
+    ensureCache.copy(value, HEAP32, offset);
+    return offset;
+  }
   return value;
 }
 function ensureFloat32(value) {
-  if (typeof value === 'object') return ensureCache.alloc(value, HEAPF32);
+  if (typeof value === 'object') {
+    var offset = ensureCache.alloc(value, HEAPF32);
+    ensureCache.copy(value, HEAPF32, offset);
+    return offset;
+  }
   return value;
 }
 function ensureFloat64(value) {
-  if (typeof value === 'object') return ensureCache.alloc(value, HEAPF64);
+  if (typeof value === 'object') {
+    var offset = ensureCache.alloc(value, HEAPF64);
+    ensureCache.copy(value, HEAPF64, offset);
+    return offset;
+  }
   return value;
 }
 

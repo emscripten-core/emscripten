@@ -20,4 +20,10 @@ long double acoshl(long double x)
 		return logl(2*x - 1/(x+sqrtl(x*x-1)));
 	return logl(x) + 0.693147180559945309417232121458176568L;
 }
+#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384
+// TODO: broken implementation to make things compile
+long double acoshl(long double x)
+{
+	return acosh(x);
+}
 #endif

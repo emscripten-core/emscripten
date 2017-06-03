@@ -1,5 +1,14 @@
 #include "libm.h"
 
+#if FLT_EVAL_METHOD==0
+#define EPS FLT_EPSILON
+#elif FLT_EVAL_METHOD==1
+#define EPS DBL_EPSILON
+#elif FLT_EVAL_METHOD==2
+#define EPS LDBL_EPSILON
+#endif
+static const float_t toint = 1/EPS;
+
 float roundf(float x)
 {
 	union {float f; uint32_t i;} u = {x};
@@ -11,10 +20,10 @@ float roundf(float x)
 	if (u.i >> 31)
 		x = -x;
 	if (e < 0x7f-1) {
-		FORCE_EVAL(x + 0x1p23f);
+		FORCE_EVAL(x + toint);
 		return 0*u.f;
 	}
-	y = (float)(x + 0x1p23f) - 0x1p23f - x;
+	y = x + toint - toint - x;
 	if (y > 0.5f)
 		y = y + x - 1;
 	else if (y <= -0.5f)

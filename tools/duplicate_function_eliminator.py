@@ -184,13 +184,17 @@ def run_on_js(filename, gen_hash_info=False):
     # We need to split out the asm shell as well, for minification
     pre = js[:start_asm + len(start_asm_marker)]
     post = js[end_asm:]
-    asm_shell = js[start_asm + len(start_asm_marker):start_funcs + len(start_funcs_marker)] + '''
-EMSCRIPTEN_FUNCS();
-''' + js[end_funcs + len(end_funcs_marker):end_asm + len(end_asm_marker)]
+    asm_shell_pre = js[start_asm + len(start_asm_marker):start_funcs + len(start_funcs_marker)]
+    # Prevent "uglify" from turning 0.0 into 0 in variables' initialization. To do this we first replace 0.0 with
+    # ZERO$DOT$ZERO and then replace it back.
+    asm_shell_pre = re.sub(r'(\S+\s*=\s*)0\.0', r'\1ZERO$DOT$ZERO', asm_shell_pre)
+    asm_shell_post = js[end_funcs + len(end_funcs_marker):end_asm + len(end_asm_marker)]
+    asm_shell = asm_shell_pre + '\nEMSCRIPTEN_FUNCS();\n' + asm_shell_post
     js = js[start_funcs + len(start_funcs_marker):end_funcs]
 
     # we assume there is a maximum of one new name per line
     asm_shell_pre, asm_shell_post = process_shell(js, js_engine, asm_shell, equivalentfn_hash_info).split('EMSCRIPTEN_FUNCS();');
+    asm_shell_pre = re.sub(r'(\S+\s*=\s*)ZERO\$DOT\$ZERO', r'\g<1>0.0', asm_shell_pre)
     asm_shell_post = asm_shell_post.replace('});', '})');
     pre += asm_shell_pre + '\n' + start_funcs_marker
     post = end_funcs_marker + asm_shell_post + post
@@ -247,16 +251,8 @@ EMSCRIPTEN_FUNCS();
     if len(chunks) > 1 and cores >= 2:
       # We can parallelize
       if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size/(1024*1024.))
-      pool = multiprocessing.Pool(processes=cores)
+      pool = shared.Building.get_multiprocessing_pool()
       filenames = pool.map(run_on_chunk, commands, chunksize=1)
-      try:
-        # Shut down the pool, since otherwise processes are left alive and would only be lazily terminated,
-        # and in other parts of the toolchain we also build up multiprocessing pools.
-        pool.terminate()
-        pool.join()
-      except Exception, e:
-        # On Windows we get occassional "Access is denied" errors when attempting to tear down the pool, ignore these.
-        logging.debug('Attempting to tear down multiprocessing pool failed with an exception: ' + str(e))
     else:
       # We can't parallize, but still break into chunks to avoid uglify/node memory issues
       if len(chunks) > 1 and DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks' % (len(chunks))

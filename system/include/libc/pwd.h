@@ -17,8 +17,7 @@ extern "C" {
 
 #include <bits/alltypes.h>
 
-struct passwd
-{
+struct passwd {
 	char *pw_name;
 	char *pw_passwd;
 	uid_t pw_uid;
