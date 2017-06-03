@@ -548,6 +548,12 @@ var LibraryGLFW = {
         Browser.setCanvasSize(GLFW.active.width, GLFW.active.height, true);
         // TODO: Client dimensions (clientWidth/clientHeight) vs pixel dimensions (width/height) of
         // the canvas should drive window and framebuffer size respectfully.
+
+        // Browser may adjust canvas size to force aspect ratio, so read back actual size set
+        var actualSize = Browser.getCanvasSize();
+        GLFW.active.width = actualSize.width;
+        GLFW.active.height = actualSize.height;
+
         GLFW.onWindowSizeChanged();
         GLFW.onFramebufferSizeChanged();
       }
