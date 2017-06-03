@@ -586,6 +586,24 @@ class benchmark(RunnerCore):
       return 100.0/float(re.search('Unrolled Single  Precision +([\d\.]+) Mflops', output).group(1))
     self.do_benchmark('linpack_float', open(path_from_root('tests', 'linpack.c')).read(), '''Unrolled Single  Precision''', force_c=True, output_parser=output_parser, shared_args=['-DSP'])
 
+  # Benchmarks the synthetic performance of calling native functions.
+  def test_native_functions(self):
+    def output_parser(output):
+      return float(re.search('Total time: ([\d\.]+)', output).group(1))
+    self.do_benchmark('native_functions', open(path_from_root('tests', 'benchmark_ffis.cpp')).read(), '''Total time:''', output_parser=output_parser)
+
+  # Benchmarks the synthetic performance of calling function pointers.
+  def test_native_function_pointers(self):
+    def output_parser(output):
+      return float(re.search('Total time: ([\d\.]+)', output).group(1))
+    self.do_benchmark('native_functions', open(path_from_root('tests', 'benchmark_ffis.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DBENCHMARK_FUNCTION_POINTER=1'])
+
+  # Benchmarks the synthetic performance of calling "foreign" JavaScript functions.
+  def test_foreign_functions(self):
+    def output_parser(output):
+      return float(re.search('Total time: ([\d\.]+)', output).group(1))
+    self.do_benchmark('foreign_functions', open(path_from_root('tests', 'benchmark_ffis.cpp')).read(), '''Total time:''', output_parser=output_parser, emcc_args=['--js-library', path_from_root('tests/benchmark_ffis.js')], shared_args=['-DBENCHMARK_FOREIGN_FUNCTION=1'])
+
   def zzz_test_memcpy_128b(self):
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
