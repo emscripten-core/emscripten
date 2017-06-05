@@ -1918,9 +1918,9 @@ var asm = Module['asm'](%s, %s, buffer);
 STACKTOP = STACK_BASE + TOTAL_STACK;
 STACK_MAX = STACK_BASE;
 HEAP32[%d >> 2] = STACKTOP;
-Runtime.stackAlloc = Module['stackAlloc'];
-Runtime.stackSave = Module['stackSave'];
-Runtime.stackRestore = Module['stackRestore'];
+Runtime.stackAlloc = Module['_stackAlloc'];
+Runtime.stackSave = Module['_stackSave'];
+Runtime.stackRestore = Module['_stackRestore'];
 Runtime.establishStackSpace = Module['establishStackSpace'];
 ''' % shared.Settings.GLOBAL_BASE)
 
