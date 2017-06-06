@@ -11,6 +11,7 @@ mergeInto(LibraryManager.library, {
 #endif
     'stdin', 'stdout', 'stderr'],
   $FS__postset: 'FS.staticInit();' +
+                'Module["FS"] = FS;' +
                 '__ATINIT__.unshift(function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() });' +
                 '__ATMAIN__.push(function() { FS.ignorePermissions = false });' +
                 '__ATEXIT__.push(function() { FS.quit() });' +
