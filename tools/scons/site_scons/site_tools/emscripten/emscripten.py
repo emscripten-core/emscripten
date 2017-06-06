@@ -57,7 +57,7 @@ def generate(env, emscripten_path=None, **kw):
 
  	env.Replace(OBJSUFFIX  = [".js", ".bc", ".o"][2])
  	env.Replace(LIBSUFFIX  = [".js", ".bc", ".o"][2])
- 	env.Replace(PROGSUFFIX = [".html", ".js"    ][1])
+ 	env.Replace(PROGSUFFIX = [".html", ".js"    ][0])
 
 def exists(env):
 	""" NOOP method required by SCons """
