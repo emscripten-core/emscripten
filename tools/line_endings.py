@@ -61,7 +61,7 @@ def check_line_endings(filename, expect_only_specific_line_endings=None, print_e
       print >> sys.stderr, "Content around a DOS line ending location: '" + dos_line_ending_example + "'"
       print >> sys.stderr, "Content around an UNIX line ending location: '" + unix_line_ending_example + "'"
     return 1 # Mixed line endings
-  else:
+  elif print_info:
     if has_dos_line_endings: print 'File \'' + filename + '\' contains DOS "\\r\\n" line endings.'
     if has_unix_line_endings: print 'File \'' + filename +'\' contains UNIX "\\n" line endings.'
   if expect_only_specific_line_endings == '\n' and has_dos_line_endings:
