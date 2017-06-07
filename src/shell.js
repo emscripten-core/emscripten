@@ -175,7 +175,7 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
       xhr.open('GET', url, false);
       xhr.responseType = 'arraybuffer';
       xhr.send(null);
-      return xhr.response;
+      return new Uint8Array(xhr.response);
     };
   }
 

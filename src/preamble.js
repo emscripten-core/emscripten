@@ -1964,14 +1964,42 @@ addOnPreRun(function() { addRunDependency('pgo') });
 }}}
 
 addOnPreRun(function() {
-  if (Module['dynamicLibraries']) {
+  function loadDynamicLibraries(libs) {
+    if (libs) {
+      libs.forEach(function(lib) {
+        Runtime.loadDynamicLibrary(lib);
+      });
+    }
+    if (Module['asm']['runPostSets']) {
+      Module['asm']['runPostSets']();
+    }
+  }
+  // if we can load dynamic libraries synchronously, do so, otherwise, preload
+#if BINARYEN
+  if (Module['dynamicLibraries'] && Module['dynamicLibraries'].length > 0 && !Module['readBinary']) {
+    // we can't read binary data synchronously, so preload
+    addRunDependency('preload_dynamicLibraries');
+    var binaries = [];
     Module['dynamicLibraries'].forEach(function(lib) {
-      Runtime.loadDynamicLibrary(lib);
+      fetch(lib).then(function(response) {
+        if (!response['ok']) {
+          throw "failed to load wasm binary file at '" + lib + "'";
+        }
+        return response['arrayBuffer']();
+      }).then(function(buffer) {
+        var binary = new Uint8Array(buffer);
+        binaries.push(binary);
+        if (binaries.length === Module['dynamicLibraries'].length) {
+          // we got them all, wonderful
+          loadDynamicLibraries(binaries);
+          removeRunDependency('preload_dynamicLibraries');
+        }
+      });
     });
+    return;
   }
-  if (Module['asm']['runPostSets']) {
-    Module['asm']['runPostSets']();
-  }
+#endif
+  loadDynamicLibraries(Module['dynamicLibraries']);
 });
 
 #if ASSERTIONS
@@ -2202,7 +2230,7 @@ function integrateWasmJS(Module) {
         if (!response['ok']) {
           throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
         }
-        return response['arrayBuffer']()
+        return response['arrayBuffer']();
       });
     }
     // Otherwise, getBinary should be able to get it synchronously
