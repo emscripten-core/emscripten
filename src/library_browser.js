@@ -657,6 +657,14 @@ var LibraryBrowser = {
       if (!noUpdates) Browser.updateResizeListeners();
     },
 
+    getCanvasSize: function() {
+      var canvas = Module['canvas'];
+      return {
+        width: canvas.width,
+        height: canvas.height
+      };
+    },
+
     windowedWidth: 0,
     windowedHeight: 0,
     setFullscreenCanvasSize: function() {
