@@ -196,19 +196,22 @@ function JSify(data, functionsOnly) {
         Functions.libraryFunctions[finalName] = 1;
       }
 
+      if (redirectedIdent) {
+        deps = deps.concat(LibraryManager.library[redirectedIdent + '__deps'] || []);
+      }
+
       var postsetId = ident + '__postset';
       var postset = LibraryManager.library[postsetId];
       if (postset && !addedLibraryItems[postsetId] && !SIDE_MODULE) {
         addedLibraryItems[postsetId] = true;
         itemsDict.GlobalVariablePostSet.push({
           intertype: 'GlobalVariablePostSet',
-          JS: postset + ';'
+          JS: postset + ';',
+          ident: ident,
+          dependencies: deps
         });
       }
 
-      if (redirectedIdent) {
-        deps = deps.concat(LibraryManager.library[redirectedIdent + '__deps'] || []);
-      }
       // In asm, dependencies implemented in C might be needed by JS library functions.
       // We don't know yet if they are implemented in C or not. To be safe, export such
       // special cases.
@@ -275,7 +278,7 @@ function JSify(data, functionsOnly) {
     var limit = orderedPostSets.length * orderedPostSets.length;
     for (var i = 0; i < orderedPostSets.length; i++) {
       for (var j = i+1; j < orderedPostSets.length; j++) {
-        if (orderedPostSets[j].ident in orderedPostSets[i].dependencies) {
+        if (orderedPostSets[i].dependencies.indexOf(orderedPostSets[j].ident) >= 0) {
           var temp = orderedPostSets[i];
           orderedPostSets[i] = orderedPostSets[j];
           orderedPostSets[j] = temp;
