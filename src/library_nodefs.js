@@ -1,5 +1,5 @@
 mergeInto(LibraryManager.library, {
-  $NODEFS__deps: ['$FS', '$PATH'],
+  $NODEFS__deps: ['$PATH'],
   $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { var fs = require("fs"); var NODEJS_PATH = require("path"); NODEFS.staticInit(); }',
   $NODEFS: {
     isWindows: false,

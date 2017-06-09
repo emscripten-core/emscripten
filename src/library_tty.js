@@ -1,5 +1,4 @@
 mergeInto(LibraryManager.library, {
-  $TTY__deps: ['$FS'],
   $TTY__postset: '__ATINIT__.unshift(function() { TTY.init() });' +
                  '__ATEXIT__.push(function() { TTY.shutdown() });',
   $TTY: {
