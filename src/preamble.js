@@ -1981,7 +1981,7 @@ addOnPreRun(function() {
     addRunDependency('preload_dynamicLibraries');
     var binaries = [];
     Module['dynamicLibraries'].forEach(function(lib) {
-      fetch(lib).then(function(response) {
+      fetch(lib, { credentials: 'include' }).then(function(response) {
         if (!response['ok']) {
           throw "failed to load wasm binary file at '" + lib + "'";
         }
@@ -2226,7 +2226,7 @@ function integrateWasmJS(Module) {
   function getBinaryPromise() {
     // if we don't have the binary yet, and have the Fetch api, use that
     if (!Module['wasmBinary'] && typeof fetch === 'function') {
-      return fetch(wasmBinaryFile).then(function(response) {
+      return fetch(wasmBinaryFile, { credentials: 'include' }).then(function(response) {
         if (!response['ok']) {
           throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
         }
