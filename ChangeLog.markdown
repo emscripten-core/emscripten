@@ -15,8 +15,8 @@ Current trunk code
     - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.37.13...incoming
     - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.37.13...incoming
 
-v1.37.13:
-------------------
+v1.37.13: 5/26/2017
+-------------------
  - Improved Android support for emrun.
  - Duplicate function elimination fixes (#5186)
  - Fix problem with embinding derived classes (#5193)
@@ -29,7 +29,7 @@ v1.37.13:
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
-v1.37.12:
+v1.37.12: 5/1/2017
 ------------------
  - Added emscripten-legalize-javascript-ffi option to LLVM to allow disabling JS FFI mangling
  - Full list of changes:
@@ -37,7 +37,7 @@ v1.37.12:
     - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.37.11...1.37.12
     - Emscripten-Clang: no changes.
 
-v1.37.11:
+v1.37.11: 5/1/2017
 ------------------
  - Added missing SIGSTKSZ define after musl 1.1.15 update (#5149)
  - Fix emscripten_get_mouse_status (#5152)
@@ -48,8 +48,8 @@ v1.37.11:
     - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.37.10...1.37.11
     - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.37.10...1.37.11
 
-v1.37.10:
-------------------
+v1.37.10: 4/20/2017
+-------------------
  - Added stub for pthread_setcancelstate for singlethreaded runs.
  - Fixed an outlining bug on function returns (#5080)
  - Implemented new parallel test runner architecture (#5074)
