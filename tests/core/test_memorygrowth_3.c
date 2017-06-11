@@ -18,7 +18,11 @@ int main(int argc, char **argv)
   volatile voidStar alloc;
 #ifdef FAIL_REALLOC_BUFFER
   EM_ASM({
-    Module['reallocBuffer'] = function() { return null };
+    Module.seenOurReallocBuffer = false;
+    Module['reallocBuffer'] = function() {
+      Module.seenOurReallocBuffer = true;
+      return null;
+    };
   });
 #endif
   for (int i = 0; i < (totalMemory/chunk)+2; i++) {
@@ -33,6 +37,11 @@ int main(int argc, char **argv)
     }
   }
   assert(alloc == NULL);
+#ifdef FAIL_REALLOC_BUFFER
+  EM_ASM({
+    assert(Module.seenOurReallocBuffer, 'our override should have been called');
+  });
+#endif
   puts("ok.");
   return 0;
 }
