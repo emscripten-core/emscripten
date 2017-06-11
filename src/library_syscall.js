@@ -296,8 +296,13 @@ var SyscallsLibrary = {
   },
   __syscall42__deps: ['$PIPEFS'],
   __syscall42: function(which, varargs) { // pipe
-    var res = PIPEFS.createPipe();
     var fdPtr = SYSCALLS.get();
+
+    if (fdPtr == 0) {
+        throw new FS.ErrnoError(ERRNO_CODES.EFAULT);
+    }
+
+    var res = PIPEFS.createPipe();
 
     {{{ makeSetValue('fdPtr', 0, 'res.readable_fd', 'i32') }}};
     {{{ makeSetValue('fdPtr', 4, 'res.writable_fd', 'i32') }}};
