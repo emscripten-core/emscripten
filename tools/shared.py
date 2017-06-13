@@ -2279,8 +2279,8 @@ class JS:
 
   # Returns the subresource location for run-time access
   @staticmethod
-  def get_subresource_location(path):
-    if Settings.SINGLE_FILE:
+  def get_subresource_location(path, force_data_uri=False):
+    if Settings.SINGLE_FILE or force_data_uri:
       f = open(path, 'rb')
       data = base64.b64encode(f.read())
       f.close()
@@ -2399,75 +2399,6 @@ class JS:
   def align(x, by):
     while x % by != 0: x += 1
     return x
-
-  INITIALIZER_CHUNK_SIZE = 10240
-
-  @staticmethod
-  def collect_initializers(src):
-    ret = []
-    max_offset = -1
-    for init in re.finditer(JS.memory_initializer_pattern, src):
-      contents = init.group(1).split(',')
-      offset = sum([int(x) if x[0] != 'R' else 0 for x in init.group(2).split('+')])
-      ret.append((offset, contents))
-      assert offset > max_offset
-      max_offset = offset
-    return ret
-
-  @staticmethod
-  def split_initializer(contents):
-    # given a memory initializer (see memory_initializer_pattern), split it up into multiple initializers to avoid long runs of zeros or a single overly-large allocator
-    ret = []
-    l = len(contents)
-    maxx = JS.INITIALIZER_CHUNK_SIZE
-    i = 0
-    start = 0
-    while 1:
-      if i - start >= maxx or (i > start and i == l):
-        #print >> sys.stderr, 'new', start, i-start
-        ret.append((start, contents[start:i]))
-        start = i
-      if i == l: break
-      if contents[i] != '0':
-        i += 1
-      else:
-        # look for a sequence of zeros
-        j = i + 1
-        while j < l and contents[j] == '0': j += 1
-        if j-i > maxx/10 or j-start >= maxx:
-          #print >> sys.stderr, 'skip', start, i-start, j-start
-          ret.append((start, contents[start:i])) # skip over the zeros starting at i and ending at j
-          start = j
-        i = j
-    return ret
-
-  @staticmethod
-  def replace_initializers(src, inits):
-    class State:
-      first = True
-    def rep(m):
-      if not State.first: return ''
-      # write out all the new initializers in place of the first old one
-      State.first = False
-      def gen_init(init):
-        offset, contents = init
-        return '/* memory initializer */ allocate([%s], "i8", ALLOC_NONE, Runtime.GLOBAL_BASE%s);' % (
-          ','.join(contents),
-          '' if offset == 0 else ('+%d' % offset)
-        )
-      return '\n'.join(map(gen_init, inits))
-    return re.sub(JS.memory_initializer_pattern, rep, src)
-
-  @staticmethod
-  def optimize_initializer(src):
-    inits = JS.collect_initializers(src)
-    if len(inits) == 0: return None
-    assert len(inits) == 1
-    init = inits[0]
-    offset, contents = init
-    assert offset == 0 # offset 0, singleton
-    if len(contents) <= JS.INITIALIZER_CHUNK_SIZE: return None
-    return JS.replace_initializers(src, JS.split_initializer(contents))
 
   @staticmethod
   def generate_string_initializer(s):

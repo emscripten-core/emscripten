@@ -33,7 +33,6 @@ if (memoryInitializer) (function(s) {
   }
 })(memoryInitializer);
 #else
-#if MEM_INIT_METHOD == 1
 #if USE_PTHREADS
 if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) {
 #else
@@ -93,7 +92,6 @@ if (memoryInitializer) {
     }
   }
 }
-#endif
 #endif
 
 #if CYBERDWARF
