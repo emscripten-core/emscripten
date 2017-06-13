@@ -3001,14 +3001,17 @@ var LibrarySDL = {
     var w = SDL.estimateTextWidth(fontData, text);
     var h = fontData.size;
     var color = SDL.loadColorToCSSRGB(color); // XXX alpha breaks fonts?
-    var fontString = h + 'px ' + fontData.name;
+    var fontString = h + 'px ' + fontData.name + ', serif';
     var surf = SDL.makeSurface(w, h, 0, false, 'text:' + text); // bogus numbers..
     var surfData = SDL.surfaces[surf];
     surfData.ctx.save();
     surfData.ctx.fillStyle = color;
     surfData.ctx.font = fontString;
-    surfData.ctx.textBaseline = 'top';
-    surfData.ctx.fillText(text, 0, 0);
+    // use bottom alligment, because it works 
+    // same in all browsers, more info here:
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=737852
+    surfData.ctx.textBaseline = 'bottom';
+    surfData.ctx.fillText(text, 0, h|0);
     surfData.ctx.restore();
     return surf;
   },
