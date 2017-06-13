@@ -27,7 +27,7 @@ from tools.toolchain_profiler import ToolchainProfiler, exit
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
-import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging, urllib
+import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging, urllib, base64
 from subprocess import PIPE
 from tools import shared, jsrun, system_libs
 from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move
@@ -513,6 +513,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # ---------------- Utilities ---------------
 
+  # Returns the subresource location for run-time access
+  def get_subresource_location(path):
+    if shared.Settings.SINGLE_FILE:
+      f = open(path, 'rb')
+      data = base64.b64encode(f.read())
+      f.close()
+      return 'data:application/octet-stream;base64,' + data
+    else:
+      return os.path.basename(path)
+
   seen_names = {}
   def uniquename(name):
     if name not in seen_names:
@@ -799,7 +809,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         options.separate_asm = True
         logging.warning('forcing separate asm output (--separate-asm), because -s PRECISE_F32=2 or -s USE_PTHREADS=2 was passed.')
       if options.separate_asm:
-        shared.Settings.SEPARATE_ASM = os.path.basename(asm_target)
+        shared.Settings.SEPARATE_ASM = get_subresource_location(asm_target)
 
       if 'EMCC_STRICT' in os.environ:
         shared.Settings.STRICT = os.environ.get('EMCC_STRICT') != '0'
@@ -1116,9 +1126,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.BINARYEN:
         # set file locations, so that JS glue can find what it needs
-        shared.Settings.WASM_TEXT_FILE = os.path.basename(wasm_text_target)
-        shared.Settings.WASM_BINARY_FILE = os.path.basename(wasm_binary_target)
-        shared.Settings.ASMJS_CODE_FILE = os.path.basename(asm_target)
+        shared.Settings.WASM_TEXT_FILE = get_subresource_location(wasm_text_target)
+        shared.Settings.WASM_BINARY_FILE = get_subresource_location(wasm_binary_target)
+        shared.Settings.ASMJS_CODE_FILE = get_subresource_location(asm_target)
 
         shared.Settings.ASM_JS = 2 # when targeting wasm, we use a wasm Memory, but that is not compatible with asm.js opts
         shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
@@ -1624,12 +1634,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             # Copy into temp dir as well, so can be run there too
             shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
           if not shared.Settings.BINARYEN:
-            return 'memoryInitializer = "%s";' % os.path.basename(memfile)
+            return 'memoryInitializer = "%s";' % get_subresource_location(memfile)
           else:
             # with wasm, we may have the mem init file in the wasm binary already
             return ('memoryInitializer = Module["wasmJSMethod"].indexOf("asmjs") >= 0 || '
                     'Module["wasmJSMethod"].indexOf("interpret-asm2wasm") >= 0 ? "%s" : null;'
-                    % os.path.basename(memfile))
+                    % get_subresource_location(memfile))
         src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
         open(final + '.mem.js', 'w').write(src)
         final += '.mem.js'
@@ -2412,7 +2422,7 @@ def generate_html(target, options, js_target, target_basename,
             meminitXHR.responseType = 'arraybuffer';
             meminitXHR.send(null);
           })();
-''' % os.path.basename(memfile)) + script.inline
+''' % get_subresource_location(memfile)) + script.inline
 
   # Download .asm.js if --separate-asm was passed in an asm.js build, or if 'asmjs' is one
   # of the wasm run methods.
@@ -2431,7 +2441,7 @@ def generate_html(target, options, js_target, target_basename,
       }, 1); // delaying even 1ms is enough to allow compilation memory to be reclaimed
     };
     document.body.appendChild(script);
-''' % (os.path.basename(asm_target), script.inline)
+''' % (get_subresource_location(asm_target), script.inline)
     else:
       # may need to modify the asm code, load it as text, modify, and load asynchronously
       script.inline = '''
@@ -2454,7 +2464,7 @@ def generate_html(target, options, js_target, target_basename,
       document.body.appendChild(script);
     };
     codeXHR.send(null);
-''' % (os.path.basename(asm_target), '\n'.join(asm_mods), script.inline)
+''' % (get_subresource_location(asm_target), '\n'.join(asm_mods), script.inline)
 
   if shared.Settings.BINARYEN and not shared.Settings.BINARYEN_ASYNC_COMPILATION:
     # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize
@@ -2468,7 +2478,7 @@ def generate_html(target, options, js_target, target_basename,
 %s
           };
           wasmXHR.send(null);
-''' % (os.path.basename(wasm_binary_target), script.inline)
+''' % (get_subresource_location(wasm_binary_target), script.inline)
 
   html = open(target, 'wb')
   html_contents = shell.replace('{{{ SCRIPT }}}', script.replacement())
