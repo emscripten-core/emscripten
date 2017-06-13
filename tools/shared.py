@@ -1,5 +1,5 @@
 from toolchain_profiler import ToolchainProfiler
-import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, hashlib, cPickle, re, errno
+import shutil, time, os, sys, base64, json, tempfile, copy, shlex, atexit, subprocess, hashlib, cPickle, re, errno
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 from distutils.spawn import find_executable
@@ -2276,6 +2276,17 @@ class JS:
   @staticmethod
   def to_nice_ident(ident): # limited version of the JS function toNiceIdent
     return ident.replace('%', '$').replace('@', '_').replace('.', '_')
+
+  # Returns the subresource location for run-time access
+  @staticmethod
+  def get_subresource_location(path):
+    if Settings.SINGLE_FILE:
+      f = open(path, 'rb')
+      data = base64.b64encode(f.read())
+      f.close()
+      return 'data:application/octet-stream;base64,' + data
+    else:
+      return os.path.basename(path)
 
   @staticmethod
   def make_initializer(sig, settings=None):

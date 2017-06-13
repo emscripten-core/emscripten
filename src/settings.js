@@ -857,7 +857,9 @@ var FETCH = 0; // If nonzero, enables emscripten_fetch API.
 var ASMFS = 0; // If set to 1, uses the multithreaded filesystem that is implemented within the asm.js module, using emscripten_fetch. Implies -s FETCH=1.
 
 var SINGLE_FILE = 0; // If set to 1, embeds all subresources in the emitted JS file
-                     // by converting their file names into base64 data URIs.
+                     // by converting their file names into base64 data URIs. Embedded
+                     // subresources may include (but aren't limited to) wasm, asm.js,
+                     // and static memory initialization code.
                      //
                      // Note that using this option may require a change to consuming
                      // pages' Content Security Policies -- specifically, adding data:
