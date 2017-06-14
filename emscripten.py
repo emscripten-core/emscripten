@@ -2076,7 +2076,10 @@ def main(args, compiler_engine, cache, temp_files, DEBUG):
   settings = {}
   for setting in args.settings:
     name, value = setting.strip().split('=', 1)
-    settings[name] = json.loads(value)
+    value = json.loads(value)
+    if isinstance(value, unicode):
+      value = value.encode('utf8')
+    settings[name] = value
 
   # libraries
   libraries = args.libraries[0].split(',') if len(args.libraries) > 0 else []
