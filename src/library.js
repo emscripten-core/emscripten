@@ -496,8 +496,8 @@ LibraryManager.library = {
     totalMemory = getTotalMemory()|0;
     if ((newDynamicTop|0) > (totalMemory|0)) {
       if ((enlargeMemory()|0) == 0) {
-        ___setErrNo({{{ cDefine('ENOMEM') }}});
         HEAP32[DYNAMICTOP_PTR>>2] = oldDynamicTop;
+        ___setErrNo({{{ cDefine('ENOMEM') }}});
         return -1;
       }
     }

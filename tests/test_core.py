@@ -1701,6 +1701,15 @@ int main() {
       test()
       Settings.SPLIT_MEMORY = 0
 
+  def test_memorygrowth_3(self):
+    # checks handling of malloc failure properly
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0', '-s', 'ABORTING_MALLOC=0', '-s', 'SAFE_HEAP=1']
+    self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
+
+  def test_memorygrowth_3_force_fail_reallocBuffer(self):
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-DFAIL_REALLOC_BUFFER']
+    self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
+
   def test_ssr(self): # struct self-ref
       src = '''
         #include <stdio.h>
