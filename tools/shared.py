@@ -2279,8 +2279,8 @@ class JS:
 
   # Returns the subresource location for run-time access
   @staticmethod
-  def get_subresource_location(path, force_data_uri=False):
-    if Settings.SINGLE_FILE or force_data_uri:
+  def get_subresource_location(path, data_uri=Settings.SINGLE_FILE):
+    if data_uri:
       f = open(path, 'rb')
       data = base64.b64encode(f.read())
       f.close()

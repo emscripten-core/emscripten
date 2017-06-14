@@ -83,7 +83,7 @@ if (ENVIRONMENT_IS_NODE) {
   var nodePath;
 
   Module['read'] = function shell_read(filename, binary) {
-    var ret = parseDataURI(filename);
+    var ret = tryParseAsDataURI(filename);
     if (!ret) {
       if (!nodeFS) nodeFS = require('fs');
       if (!nodePath) nodePath = require('path');
@@ -137,7 +137,7 @@ else if (ENVIRONMENT_IS_SHELL) {
 
   if (typeof read != 'undefined') {
     Module['read'] = function shell_read(f) {
-      var data = parseDataURI(f);
+      var data = tryParseAsDataURI(f);
       if (data) {
         return sodiumUtil.to_string(data);
       }
@@ -148,7 +148,7 @@ else if (ENVIRONMENT_IS_SHELL) {
   }
 
   Module['readBinary'] = function readBinary(f) {
-    var data = parseDataURI(f);
+    var data = tryParseAsDataURI(f);
     if (data) {
       return data;
     }
@@ -178,7 +178,7 @@ else if (ENVIRONMENT_IS_SHELL) {
 }
 else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   Module['read'] = function shell_read(url) {
-    var data = parseDataURI(url);
+    var data = tryParseAsDataURI(url);
     if (data) {
       return sodiumUtil.to_string(data);
     }
@@ -190,7 +190,7 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 
   if (ENVIRONMENT_IS_WORKER) {
     Module['readBinary'] = function readBinary(url) {
-      var data = parseDataURI(f);
+      var data = tryParseAsDataURI(f);
       if (data) {
         return data;
       }
@@ -204,7 +204,7 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 
   Module['readAsync'] = function readAsync(url, onload, onerror) {
     try {
-      var data = parseDataURI(url);
+      var data = tryParseAsDataURI(url);
       if (data) {
         setTimeout(function () { onload(data.buffer); }, 0);
         return;
@@ -264,7 +264,7 @@ else {
 
 // If filename is a base64 data URI, parses and returns data (Buffer on node,
 // Uint8Array otherwise). If filename is not a base64 data URI, returns undefined.
-function parseDataURI(filename) {
+function tryParseAsDataURI(filename) {
   var dataURIPrefix = 'data:application/octet-stream;base64,';
 
   if (!(
