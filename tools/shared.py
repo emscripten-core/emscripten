@@ -1834,8 +1834,16 @@ class Building:
 
     logging.debug('emcc: LLVM opts: ' + ' '.join(opts) + '  [num inputs: ' + str(len(inputs)) + ']')
     target = out or (filename + '.opt.bc')
-    output = Popen([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE).communicate()[0]
-    assert os.path.exists(target), 'Failed to run llvm optimizations: ' + output
+    proc = Popen([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE)
+    output = proc.communicate()[0]
+    if proc.returncode != 0 or not os.path.exists(target):
+      logging.error('Failed to run llvm optimizations: ' + output)
+      for i in inputs:
+        if not os.path.exists(i):
+          logging.warning('Note: Input file "' + i + '" did not exist.')
+        elif not Building.is_bitcode(i):
+          logging.warning('Note: Input file "' + i + '" exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?')
+      sys.exit(1)
     if not out:
       shutil.move(filename + '.opt.bc', filename)
     return target
