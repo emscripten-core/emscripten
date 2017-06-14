@@ -7,7 +7,7 @@ anywhere else JavaScript can run).
 
 Links to **demos**, **tutorial**, **FAQ**, etc: <https://github.com/kripken/emscripten/wiki>
 
-Main project page: <http://emscripten.org>
+Main project page: <http://kripken.github.io/emscripten-site/>
 
 License
 -------
