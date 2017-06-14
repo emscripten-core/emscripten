@@ -2389,7 +2389,7 @@ def generate_html(target, options, js_target, target_basename,
 %s
           };
           emterpretXHR.send(null);
-''' % (shared.Settings.EMTERPRETIFY_FILE, script.inline)
+''' % (shared.JS.get_subresource_location(shared.Settings.EMTERPRETIFY_FILE), script.inline)
 
   if options.memory_init_file:
     # start to load the memory init file in the HTML, in parallel with the JS
