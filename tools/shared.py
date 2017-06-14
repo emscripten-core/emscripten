@@ -1361,14 +1361,21 @@ class Building:
   # When creating environment variables for Makefiles to execute, we need to doublequote the commands if they have spaces in them..
   @staticmethod
   def doublequote_spaces(arg):
-    if not (arg.startswith('"') and arg.endswith('"')):
+    arg = arg[:] # Operate on a copy of the input string/list
+    if isinstance(arg, list):
+      for i in range(len(arg)):
+        arg[i] = Building.doublequote_spaces(arg[i])
+      return arg
+
+    if ' ' in arg and not (arg.startswith('"') and arg.endswith('"')):
       return '"' + arg.replace('"', '\\"') + '"'
-    else:
-      return
+
+    return arg
 
   # .. but for Popen, we cannot have doublequotes, so provide functionality to remove them when needed.
   @staticmethod
   def remove_doublequotes(arg):
+    arg = arg[:] # Operate on a copy of the input string/list
     if arg.startswith('"') and arg.endswith('"'):
       return arg[1:-1].replace('\\"', '"')
     else:

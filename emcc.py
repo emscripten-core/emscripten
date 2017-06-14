@@ -373,11 +373,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       input_file = 'hello_world.c'
       out, err = subprocess.Popen([shared.PYTHON] + args + [shared.path_from_root('tests', input_file), '-c', '-o', temp_target], stderr=subprocess.PIPE, env=debug_env).communicate()
       lines = filter(lambda x: shared.CLANG_CC in x and input_file in x, err.split(os.linesep))
-      line = lines[0]
-      assert 'running:' in line
-      parts = line.split(' ')[2:]
+      line = re.search('running: (.*)', lines[0]).group(1)
+      parts = shlex.split(line)
       parts = filter(lambda x: x != '-c' and x != '-o' and input_file not in x and temp_target not in x and '-emit-llvm' not in x, parts)
-      print ' '.join(parts)
+      print ' '.join(shared.Building.doublequote_spaces(parts))
     exit(0)
 
   def is_minus_s_for_emcc(newargs, i):
@@ -1291,7 +1290,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         output_file = get_bitcode_file(input_file)
         temp_files.append((i, output_file))
         args = get_bitcode_args([input_file]) + ['-emit-llvm', '-c', '-o', output_file]
-        logging.debug("running: " + ' '.join(args))
+        logging.debug("running: " + ' '.join(shared.Building.doublequote_spaces(args))) # NOTE: Printing this line here in this specific format is important, it is parsed to implement the "emcc --cflags" command
         execute(args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
         if not os.path.exists(output_file):
           logging.error('compiler frontend failed to generate LLVM bitcode, halting')
