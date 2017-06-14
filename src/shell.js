@@ -71,6 +71,8 @@ if (!ENVIRONMENT_IS_PTHREAD) PthreadWorkerInit = {};
 var currentScriptUrl = ENVIRONMENT_IS_WORKER ? undefined : document.currentScript.src;
 #endif
 
+{{THIRD_PARTY}}
+
 if (ENVIRONMENT_IS_NODE) {
   // Expose functionality in the same simple way that the shells work
   // Note that we pollute the global namespace here, otherwise we break in node
@@ -81,10 +83,13 @@ if (ENVIRONMENT_IS_NODE) {
   var nodePath;
 
   Module['read'] = function shell_read(filename, binary) {
-    if (!nodeFS) nodeFS = require('fs');
-    if (!nodePath) nodePath = require('path');
-    filename = nodePath['normalize'](filename);
-    var ret = nodeFS['readFileSync'](filename);
+    var ret = parseDataURI(filename);
+    if (!ret) {
+      if (!nodeFS) nodeFS = require('fs');
+      if (!nodePath) nodePath = require('path');
+      filename = nodePath['normalize'](filename);
+      ret = nodeFS['readFileSync'](filename);
+    }
     return binary ? ret : ret.toString();
   };
 
@@ -131,16 +136,26 @@ else if (ENVIRONMENT_IS_SHELL) {
   if (typeof printErr != 'undefined') Module['printErr'] = printErr; // not present in v8 or older sm
 
   if (typeof read != 'undefined') {
-    Module['read'] = read;
+    Module['read'] = function shell_read(f) {
+      var data = parseDataURI(f);
+      if (data) {
+        return sodiumUtil.to_string(data);
+      }
+      return read(f);
+    };
   } else {
     Module['read'] = function shell_read() { throw 'no read() available' };
   }
 
   Module['readBinary'] = function readBinary(f) {
+    var data = parseDataURI(f);
+    if (data) {
+      return data;
+    }
     if (typeof readbuffer === 'function') {
       return new Uint8Array(readbuffer(f));
     }
-    var data = read(f, 'binary');
+    data = read(f, 'binary');
     assert(typeof data === 'object');
     return data;
   };
@@ -163,6 +178,10 @@ else if (ENVIRONMENT_IS_SHELL) {
 }
 else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   Module['read'] = function shell_read(url) {
+    var data = parseDataURI(url);
+    if (data) {
+      return sodiumUtil.to_string(data);
+    }
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, false);
     xhr.send(null);
@@ -171,6 +190,10 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 
   if (ENVIRONMENT_IS_WORKER) {
     Module['readBinary'] = function readBinary(url) {
+      var data = parseDataURI(f);
+      if (data) {
+        return data;
+      }
       var xhr = new XMLHttpRequest();
       xhr.open('GET', url, false);
       xhr.responseType = 'arraybuffer';
@@ -180,6 +203,17 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   }
 
   Module['readAsync'] = function readAsync(url, onload, onerror) {
+    try {
+      var data = parseDataURI(url);
+      if (data) {
+        setTimeout(function () { onload(data.buffer); }, 0);
+        return;
+      }
+    }
+    catch (err) {
+      setTimeout(function () { onerror(err); }, 0);
+      return;
+    }
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.responseType = 'arraybuffer';
@@ -226,6 +260,28 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 else {
   // Unreachable because SHELL is dependant on the others
   throw 'Unknown runtime environment. Where are we?';
+}
+
+// If filename is a base64 data URI, parses and returns data (Buffer on node,
+// Uint8Array otherwise). If filename is not a base64 data URI, returns undefined.
+function parseDataURI(filename) {
+  var dataURIPrefix = 'data:application/octet-stream;base64,';
+
+  if (!(
+    String.prototype.startsWith ?
+      filename.startsWith(dataURIPrefix) :
+      filename.indexOf(dataURIPrefix) === 0
+  )) {
+    return;
+  }
+
+  var data = filename.slice(dataURIPrefix.length);
+
+  if (ENVIRONMENT_IS_NODE) {
+    return Buffer.from(data, 'base64');
+  }
+
+  return sodiumUtil.from_base64(data);
 }
 
 function globalEval(x) {

@@ -860,10 +860,6 @@ var SINGLE_FILE = 0; // If set to 1, embeds all subresources in the emitted JS f
                      // by converting their file names into base64 data URIs. Embedded
                      // subresources may include (but aren't limited to) wasm, asm.js,
                      // and static memory initialization code.
-                     //
-                     // Note that using this option may require a change to consuming
-                     // pages' Content Security Policies -- specifically, adding data:
-                     // to their connect-src directives.
 
 var WASM_TEXT_FILE = ''; // name of the file containing wasm text, if relevant
 var WASM_BINARY_FILE = ''; // name of the file containing wasm binary, if relevant
