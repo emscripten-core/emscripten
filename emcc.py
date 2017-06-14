@@ -375,7 +375,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       lines = filter(lambda x: shared.CLANG_CC in x and input_file in x, err.split(os.linesep))
       line = re.search('running: (.*)', lines[0]).group(1)
       parts = shlex.split(line)
-      parts = filter(lambda x: x != '-c' and x != '-o' and input_file not in x and temp_target not in x and '-emit-llvm' not in x, parts)
+      parts = [p for p in parts if p not in ('-c', '-o', '-emit-llvm')]
+      parts = [p for p in parts if input_file not in p and temp_target not in p]
       print ' '.join(shared.Building.doublequote_spaces(parts))
     exit(0)
 
@@ -479,8 +480,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                                                # but then, we don't care about bitcode outputs anyhow, below, so
                                                # skipping to exit(ret) is fine
       if target.endswith('.js'):
-        shutil.copyfile(target, target[:-3])
-        target = target[:-3]
+        bare_target = os.path.splitext(target)[0]
+        shutil.copyfile(target, bare_target)
+        target = bare_target
       if not target.endswith(BITCODE_ENDINGS):
         src = open(target).read()
         full_node = ' '.join(shared.NODE_JS)
@@ -887,7 +889,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.ASSERTIONS:
         shared.Settings.STACK_OVERFLOW_CHECK = 2
 
-      if shared.get_llvm_target() == shared.WASM_TARGET:
+      if shared.get_llvm_target() in (shared.WASM_TARGET, shared.WASM_OBJ_TARGET):
         shared.Settings.WASM_BACKEND = 1
 
       if not shared.Settings.STRICT:
@@ -1221,8 +1223,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.DEBUG_LEVEL = options.debug_level
 
       ## Compile source code to bitcode
-
-      logging.debug('compiling to bitcode')
+      if shared.get_llvm_target() != shared.WASM_OBJ_TARGET:
+        logging.debug('compiling to wasm object')
+      else:
+        logging.debug('compiling to bitcode')
 
       temp_files = []
 
@@ -1277,7 +1281,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # -E preprocessor-only support
       if '-E' in newargs or '-M' in newargs or '-MM' in newargs:
-        input_files = map(lambda x: x[1], input_files)
+        input_files = [x[1] for x in input_files]
         cmd = get_bitcode_args(input_files)
         if specified_target:
           cmd += ['-o', specified_target]
@@ -1289,7 +1293,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logging.debug('compiling source file: ' + input_file)
         output_file = get_bitcode_file(input_file)
         temp_files.append((i, output_file))
-        args = get_bitcode_args([input_file]) + ['-emit-llvm', '-c', '-o', output_file]
+        args = get_bitcode_args([input_file]) + ['-c', '-o', output_file]
+        if shared.get_llvm_target() != shared.WASM_OBJ_TARGET:
+          args.append('-emit-llvm')
+
         logging.debug("running: " + ' '.join(shared.Building.doublequote_spaces(args))) # NOTE: Printing this line here in this specific format is important, it is parsed to implement the "emcc --cflags" command
         execute(args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
         if not os.path.exists(output_file):
@@ -1347,8 +1354,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if final_suffix not in EXECUTABLE_SUFFIXES:
         if not specified_target:
           assert len(temp_files) == len(input_files)
-          for i in range(len(input_files)):
-            safe_move(temp_files[i][1], unsuffixed_basename(input_files[i][1]) + final_ending)
+          for i, input_file in enumerate(input_files):
+            safe_move(temp_files[i][1], unsuffixed_basename(input_file[1]) + final_ending)
         else:
           if len(input_files) == 1:
             _, input_file = input_files[0]
@@ -1404,10 +1411,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('link'):
       # final will be an array if linking is deferred, otherwise a normal string.
-      DEFAULT_FINAL = in_temp(target_basename + '.bc')
+      DEFAULT_EXT = '.bc'
+      if shared.get_llvm_target() == shared.WASM_OBJ_TARGET:
+        DEFAULT_EXT = '.wasm'
+      DEFAULT_FINAL = in_temp(target_basename + DEFAULT_EXT)
       def get_final():
         global final
-        if type(final) != str:
+        if final is not None:
           final = DEFAULT_FINAL
         return final
 
@@ -1444,10 +1454,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     with ToolchainProfiler.profile_block('post-link'):
       if DEBUG:
         logging.debug('saving intermediate processing steps to %s', shared.get_emscripten_temp_dir())
-        if not LEAVE_INPUTS_RAW: save_intermediate('basebc', 'bc')
+        if not LEAVE_INPUTS_RAW and not shared.Settings.WASM_BACKEND:
+          save_intermediate('basebc', 'bc')
 
       # Optimize, if asked to
-      if not LEAVE_INPUTS_RAW:
+      if not LEAVE_INPUTS_RAW and not shared.Settings.WASM_BACKEND:
         # remove LLVM debug if we are not asked for it
         link_opts = [] if options.debug_level >= 4 or shared.Settings.CYBERDWARF else ['-strip-debug']
         if not shared.Settings.ASSERTIONS:
@@ -1525,10 +1536,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.WASM_BACKEND:
         # we also received wast and wasm at this stage
-        temp_basename = final[:-3]
+        temp_basename = os.path.splitext(final)[0]
         wast_temp = temp_basename + '.wast'
         shutil.move(wast_temp, wasm_text_target)
-        shutil.move(temp_basename + '.wasm', wasm_binary_target)
+        if shared.get_llvm_target() == shared.WASM_OBJ_TARGET:
+          wasm_temp = os.path.splitext(temp_basename)[0] + '.wasm'
+        else:
+          wasm_temp = temp_basename + '.wasm'
+        shutil.move(wasm_temp, wasm_binary_target)
         open(wasm_text_target + '.mappedGlobals', 'w').write('{}') # no need for mapped globals for now, but perhaps some day
 
       if shared.Settings.CYBERDWARF:

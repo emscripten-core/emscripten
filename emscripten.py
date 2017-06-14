@@ -75,39 +75,29 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
 
   assert settings['ASM_JS'], 'fastcomp is asm.js-only (mode 1 or 2)'
 
-  success = False
+  # Overview:
+  #   * Run LLVM backend to emit JS. JS includes function bodies, memory initializer,
+  #     and various metadata
+  #   * Run compiler.js on the metadata to emit the shell js code, pre/post-ambles,
+  #     JS library dependencies, etc.
 
-  try:
+  # metadata and settings are modified by reference in some of the below
+  # these functions are split up to force variables to go out of scope and allow
+  # memory to be reclaimed
 
-    # Overview:
-    #   * Run LLVM backend to emit JS. JS includes function bodies, memory initializer,
-    #     and various metadata
-    #   * Run compiler.js on the metadata to emit the shell js code, pre/post-ambles,
-    #     JS library dependencies, etc.
+  with ToolchainProfiler.profile_block('get_and_parse_backend'):
+    backend_output = compile_js(infile, settings, temp_files, DEBUG)
+    funcs, metadata, mem_init = parse_backend_output(backend_output, DEBUG)
+    fixup_metadata_tables(metadata, settings)
+    funcs = fixup_functions(funcs, metadata, settings)
+  with ToolchainProfiler.profile_block('compiler_glue'):
+    glue, forwarded_data = compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DEBUG)
 
-    # metadata and settings are modified by reference in some of the below
-    # these functions are split up to force variables to go out of scope and allow
-    # memory to be reclaimed
-
-    with ToolchainProfiler.profile_block('get_and_parse_backend'):
-      backend_output = compile_js(infile, settings, temp_files, DEBUG)
-      funcs, metadata, mem_init = parse_backend_output(backend_output, DEBUG)
-      fixup_metadata_tables(metadata, settings)
-      funcs = fixup_functions(funcs, metadata, settings)
-    with ToolchainProfiler.profile_block('compiler_glue'):
-      glue, forwarded_data = compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DEBUG)
-
-    with ToolchainProfiler.profile_block('function_tables_and_exports'):
-      (post, function_table_data, bundled_args) = (
-          function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG))
-    with ToolchainProfiler.profile_block('write_output_file'):
-      finalize_output(outfile, post, function_table_data, bundled_args, metadata, settings, DEBUG)
-    success = True
-
-  finally:
-    outfile.close()
-    if not success:
-      shared.try_delete(outfile.name) # remove partial output
+  with ToolchainProfiler.profile_block('function_tables_and_exports'):
+    (post, function_table_data, bundled_args) = (
+        function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG))
+  with ToolchainProfiler.profile_block('write_output_file'):
+    finalize_output(outfile, post, function_table_data, bundled_args, metadata, settings, DEBUG)
 
 
 def compile_js(infile, settings, temp_files, DEBUG):
@@ -345,7 +335,6 @@ def finalize_output(outfile, post, function_table_data, bundled_args, metadata, 
     t = time.time()
 
   write_output_file(outfile, post, module)
-  module = None
 
   if DEBUG:
     logging.debug('  emscript: python processing: finalize took %s seconds' % (time.time() - t))
@@ -395,9 +384,9 @@ Runtime.registerFunctions(%(sigs)s, Module);
 
 
 def write_output_file(outfile, post, module):
-  for i in range(len(module)): # do this loop carefully to save memory
-    module[i] = normalize_line_endings(module[i])
-    outfile.write(module[i])
+  for chunk in module:
+    chunk = normalize_line_endings(chunk)
+    outfile.write(chunk)
 
   post = normalize_line_endings(post)
   outfile.write(post)
@@ -1664,19 +1653,27 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
 
   if libraries is None: libraries = []
 
-  wast = build_wasm(temp_files, infile, outfile, settings, DEBUG)
+  def read_metadata(wast_file):
+    with open(wast_file) as f:
+      parts = f.read().split('\n;; METADATA:')
+    assert len(parts) == 2
+    return parts[1]
+
+  if shared.get_llvm_target() == shared.WASM_OBJ_TARGET:
+    wast = wasm_dis(infile)
+    sending = []
+    receiving = []
+    invoke_funcs = []
+    pre = ''
+    post = ''
+    metadata_raw = '{}'
+  else:
+    wast = build_wasm_s2wasm(temp_files, infile, outfile, settings, DEBUG)
+    # Integrate info from backend
+    metadata_raw = read_metadata(wast)
 
   # js compiler
-
   if DEBUG: logging.debug('emscript: js compiler glue')
-
-  # Integrate info from backend
-
-  output = open(wast).read()
-  parts = output.split('\n;; METADATA:')
-  assert len(parts) == 2
-  metadata_raw = parts[1]
-  parts = output = None
 
   if DEBUG: logging.debug("METAraw %s", metadata_raw)
   metadata = create_metadata_wasm(metadata_raw, wast)
@@ -1717,9 +1714,6 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   asm_consts, asm_const_funcs = create_asm_consts_wasm(forwarded_json, metadata)
   pre = pre.replace('// === Body ===', '// === Body ===\n' + '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
 
-  outfile.write(pre)
-  pre = None
-
   invoke_funcs = read_wast_invoke_imports(wast)
 
   try:
@@ -1734,13 +1728,19 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   # finalize
   module = create_module_wasm(sending, receiving, invoke_funcs, settings)
 
+  outfile.write(pre)
   write_output_file(outfile, post, module)
-  module = None
-
-  outfile.close()
 
 
-def build_wasm(temp_files, infile, outfile, settings, DEBUG):
+def wasm_dis(wasm_file):
+  wast = wasm_file + '.wast'
+  wasm_dis_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-dis'), wasm_file, '-o', wast]
+  logging.debug('emscript: wasm-dis: ' + ' '.join(wasm_dis_args))
+  shared.check_call(wasm_dis_args)
+  return wast
+
+
+def build_wasm_s2wasm(temp_files, infile, outfile, settings, DEBUG):
   with temp_files.get_file('.wb.s') as temp_s:
     backend_args = create_backend_args_wasm(infile, temp_s, settings)
     if DEBUG:
@@ -1753,14 +1753,13 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
       shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
 
     assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
-    basename = outfile.name[:-3]
+    basename = os.path.splitext(outfile.name)[0]
     wast = basename + '.wast'
-    s2wasm_args = create_s2wasm_args(temp_s)
+    s2wasm_args = create_s2wasm_args(temp_s, wast)
     if DEBUG:
       logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
       t = time.time()
-      #s2wasm_args += ['--debug']
-    shared.check_call(s2wasm_args, stdout=open(wast, 'w'))
+    shared.check_call(s2wasm_args)
     # Also convert wasm text to binary
     wasm_as_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-as'),
                     wast, '-o', basename + '.wasm']
@@ -1953,7 +1952,7 @@ def create_backend_args_wasm(infile, temp_s, settings):
   return args
 
 
-def create_s2wasm_args(temp_s):
+def create_s2wasm_args(temp_s, output):
   def compiler_rt_fail():
     raise Exception('Expected wasm_compiler_rt.a to already be built')
   compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', compiler_rt_fail, 'a')
@@ -1965,6 +1964,7 @@ def create_s2wasm_args(temp_s):
   args += ['--initial-memory=%d' % shared.Settings.TOTAL_MEMORY]
   args += ['--allow-memory-growth'] if shared.Settings.ALLOW_MEMORY_GROWTH else []
   args += ['-l', compiler_rt_lib]
+  args += ['-o', output]
   return args
 
 
@@ -2071,7 +2071,7 @@ def normalize_line_endings(text):
   return text
 
 
-def main(args, compiler_engine, cache, temp_files, DEBUG):
+def run(args, compiler_engine, cache, temp_files, DEBUG):
   # Prepare settings for serialization to JSON.
   settings = {}
   for setting in args.settings:
@@ -2094,11 +2094,17 @@ def main(args, compiler_engine, cache, temp_files, DEBUG):
 
   emscripter = emscript_wasm_backend if settings['WASM_BACKEND'] else emscript
 
-  emscripter(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
-             temp_files=temp_files, DEBUG=DEBUG)
+  try:
+    emscripter(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
+               temp_files=temp_files, DEBUG=DEBUG)
+    args.outfile.close()
+  except:
+    args.outfile.close()
+    shared.try_delete(args.outfile.name) # remove partial output
+    raise
 
 
-def _main(args=None):
+def main(args=None):
   if args is None:
     args = sys.argv[1:]
 
@@ -2190,14 +2196,14 @@ WARNING: You should normally never use this! Use emcc instead.
     DEBUG = keywords.verbose
 
   cache = cache_module.Cache()
-  temp_files.run_and_clean(lambda: main(
+  temp_files.run_and_clean(lambda: run(
     keywords,
     compiler_engine=keywords.compiler,
     cache=cache,
     temp_files=temp_files,
     DEBUG=DEBUG,
   ))
+  return 0
 
 if __name__ == '__main__':
-  _main()
-  sys.exit(0)
+  sys.exit(main())

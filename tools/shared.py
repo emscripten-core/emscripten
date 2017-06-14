@@ -320,8 +320,6 @@ EM_BUILD_VERBOSE_LEVEL = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUI
 
 # Expectations
 
-EXPECTED_LLVM_VERSION = (4, 0)
-
 actual_clang_version = None
 
 def get_clang_version():
@@ -333,7 +331,10 @@ def get_clang_version():
   return actual_clang_version
 
 def check_clang_version():
-  expected = '.'.join(map(str, EXPECTED_LLVM_VERSION))
+  if get_llvm_target() in (WASM_TARGET, WASM_OBJ_TARGET):
+    expected = "5.0"
+  else:
+    expected = "4.0"
   actual = get_clang_version()
   if expected in actual:
     return True
@@ -389,7 +390,7 @@ def check_fastcomp():
         logging.critical('you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
         return False
     else:
-      assert get_llvm_target() == WASM_TARGET
+      assert get_llvm_target() in (WASM_TARGET, WASM_OBJ_TARGET)
       if not has_wasm_target(targets):
         logging.critical('WebAssembly set as target, but LLVM has not been built with the WebAssembly backend, llc reports:')
         print >> sys.stderr, '==========================================================================='
@@ -559,7 +560,7 @@ def check_sanity(force=False):
 
     if not os.path.exists(PYTHON) and not os.path.exists(cmd + '.exe'):
       try:
-        subprocess.check_call([PYTHON, '--version'], stdout=PIPE, stderr=PIPE)
+        check_call([PYTHON, '--version'], stdout=PIPE, stderr=PIPE)
       except:
         logging.critical('Cannot find %s, check the paths in %s' % (PYTHON, EM_CONFIG))
         sys.exit(1)
@@ -723,6 +724,7 @@ CLANG_CC=os.path.expanduser(build_clang_tool_path('clang'))
 CLANG_CPP=os.path.expanduser(build_clang_tool_path('clang++'))
 CLANG=CLANG_CPP
 LLVM_LINK=build_llvm_tool_path('llvm-link')
+LLVM_LLD=build_llvm_tool_path('lld')
 LLVM_AR=build_llvm_tool_path('llvm-ar')
 LLVM_OPT=os.path.expanduser(build_llvm_tool_path('opt'))
 LLVM_AS=os.path.expanduser(build_llvm_tool_path('llvm-as'))
@@ -903,14 +905,18 @@ except:
 
 # Target choice.
 ASM_JS_TARGET = 'asmjs-unknown-emscripten'
-WASM_TARGET = 'wasm32-unknown-unknown'
+WASM_TARGET = 'wasm32-unknown-unknown-elf'
+WASM_OBJ_TARGET = 'wasm32-unknown-unknown-wasm'
 
 def check_vanilla():
   global LLVM_TARGET
   # if the env var tells us what to do, do that
   if 'EMCC_WASM_BACKEND' in os.environ:
-    if os.environ['EMCC_WASM_BACKEND'] != '0':
-      logging.debug('EMCC_WASM_BACKEND tells us to use wasm backend')
+    if os.environ['EMCC_WASM_BACKEND'] == '2':
+      logging.debug('EMCC_WASM_BACKEND tells us to use wasm backend (lld)')
+      LLVM_TARGET = WASM_OBJ_TARGET
+    elif os.environ['EMCC_WASM_BACKEND'] != '0':
+      logging.debug('EMCC_WASM_BACKEND tells us to use wasm backend (s2wasm)')
       LLVM_TARGET = WASM_TARGET
     else:
       logging.debug('EMCC_WASM_BACKEND tells us to use asm.js backend')
@@ -946,7 +952,7 @@ def check_vanilla():
       is_vanilla = check_vanilla()
     temp_cache = None
     if is_vanilla:
-      logging.debug('check tells us to use wasm backend')
+      logging.debug('check tells us to use wasm backend (s2wasm)')
       LLVM_TARGET = WASM_TARGET
       os.environ['EMCC_WASM_BACKEND'] = '1'
     else:
@@ -956,7 +962,6 @@ def check_vanilla():
 check_vanilla()
 
 def get_llvm_target():
-  global LLVM_TARGET
   assert LLVM_TARGET is not None
   return LLVM_TARGET
 
@@ -975,7 +980,7 @@ COMPILER_OPTS = COMPILER_OPTS + [#'-fno-threadsafe-statics', # disabled due to i
                                  '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY),
                                  '-D_LIBCPP_ABI_VERSION=2']
 
-if LLVM_TARGET == WASM_TARGET:
+if LLVM_TARGET != ASM_JS_TARGET:
   # wasm target does not automatically define emscripten stuff, so do it here.
   COMPILER_OPTS = COMPILER_OPTS + ['-D__EMSCRIPTEN__',
                                    '-Dunix',
@@ -1749,47 +1754,53 @@ class Building:
       logging.debug('done running loop of archive %s' % (f))
       return added_any_objects
 
-    Building.read_link_inputs(filter(lambda x: not x.startswith('-'), files))
+    if get_llvm_target() == WASM_OBJ_TARGET:
+      actual_files = files
+    else:
+      Building.read_link_inputs(filter(lambda x: not x.startswith('-'), files))
 
-    current_archive_group = None
-    for f in files:
-      absolute_path_f = Building.make_paths_absolute(f)
-      if f.startswith('-'):
-        if f in ['--start-group', '-(']:
-          assert current_archive_group is None, 'Nested --start-group, missing --end-group?'
-          current_archive_group = []
-        elif f in ['--end-group', '-)']:
-          assert current_archive_group is not None, '--end-group without --start-group'
-          # rescan the archives in the group until we don't find any more
-          # objects to link.
-          loop_again = True
-          logging.debug('starting archive group loop');
-          while loop_again:
-            loop_again = False
-            for archive in current_archive_group:
-              if consider_archive(archive):
-                loop_again = True
-          logging.debug('done with archive group loop');
-          current_archive_group = None
-        else:
-          logging.debug('Ignoring unsupported link flag: %s' % f)
-      elif not Building.is_ar(absolute_path_f):
-        if Building.is_bitcode(absolute_path_f):
-          if has_ar:
-            consider_object(absolute_path_f, force_add=True)
+      current_archive_group = None
+      for f in files:
+        absolute_path_f = Building.make_paths_absolute(f)
+        if f.startswith('-'):
+          if f in ['--start-group', '-(']:
+            assert current_archive_group is None, 'Nested --start-group, missing --end-group?'
+            current_archive_group = []
+          elif f in ['--end-group', '-)']:
+            assert current_archive_group is not None, '--end-group without --start-group'
+            # rescan the archives in the group until we don't find any more
+            # objects to link.
+            loop_again = True
+            logging.debug('starting archive group loop')
+            while loop_again:
+              loop_again = False
+              for archive in current_archive_group:
+                if consider_archive(archive):
+                  loop_again = True
+            logging.debug('done with archive group loop')
+            current_archive_group = None
           else:
-            # If there are no archives then we can simply link all valid bitcode
-            # files and skip the symbol table stuff.
-            actual_files.append(f)
-      else:
-        # Extract object files from ar archives, and link according to gnu ld semantics
-        # (link in an entire .o from the archive if it supplies symbols still unresolved)
-        consider_archive(absolute_path_f)
-        # If we're inside a --start-group/--end-group section, add to the list
-        # so we can loop back around later.
-        if current_archive_group is not None:
-          current_archive_group.append(absolute_path_f)
-    assert current_archive_group is None, '--start-group without matching --end-group'
+            logging.debug('Ignoring unsupported link flag: %s' % f)
+        elif not Building.is_ar(absolute_path_f):
+          if get_llvm_target() == WASM_OBJ_TARGET:
+            if Building.is_wasm(f):
+              actual_files.append(f)
+          elif Building.is_bitcode(absolute_path_f):
+            if has_ar:
+              consider_object(absolute_path_f, force_add=True)
+            else:
+              # If there are no archives then we can simply link all valid bitcode
+              # files and skip the symbol table stuff.
+              actual_files.append(f)
+        else:
+          # Extract object files from ar archives, and link according to gnu ld semantics
+          # (link in an entire .o from the archive if it supplies symbols still unresolved)
+          consider_archive(absolute_path_f)
+          # If we're inside a --start-group/--end-group section, add to the list
+          # so we can loop back around later.
+          if current_archive_group is not None:
+            current_archive_group.append(absolute_path_f)
+      assert current_archive_group is None, '--start-group without matching --end-group'
 
     try_delete(target)
 
@@ -1820,9 +1831,12 @@ class Building:
       response_fh.close()
 
     if not just_calculate:
-      logging.debug('emcc: llvm-linking: %s to %s', actual_files, target)
-      output = Popen([LLVM_LINK] + link_args + ['-o', target], stdout=PIPE).communicate()[0]
-      assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
+      link_args += ['-o', target]
+      if get_llvm_target() == WASM_OBJ_TARGET:
+        cmd = [LLVM_LLD, '-flavor', 'wasm', '--strip-debug', '-allow-undefined', '-entry', 'main'] + link_args
+      else:
+        cmd = [LLVM_LINK] + link_args
+      check_call(cmd)
       return target
     else:
       # just calculating; return the link arguments which is the final list of files to link
@@ -1986,20 +2000,21 @@ class Building:
 
     if path_from_root() not in sys.path:
       sys.path += [path_from_root()]
-    from emscripten import _main as call_emscripten
+    from emscripten import main as call_emscripten
     # Run Emscripten
     settings = Settings.serialize()
     args = settings + extra_args
-    cmdline = [filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + args
+    output_js = filename + '.js'
+    cmdline = [filename + ('.o.ll' if append_ext else ''), '-o', output_js] + args
     if jsrun.TRACK_PROCESS_SPAWNS:
       logging.info('Executing emscripten.py compiler with cmdline "' + ' '.join(cmdline) + '"')
     with ToolchainProfiler.profile_block('emscripten.py'):
       call_emscripten(cmdline)
 
     # Detect compilation crashes and errors
-    assert os.path.exists(filename + '.o.js'), 'Emscripten failed to generate .js'
+    assert os.path.exists(output_js), 'Emscripten failed to generate .js'
 
-    return filename + '.o.js'
+    return output_js
 
   @staticmethod
   def can_build_standalone():
@@ -2087,7 +2102,7 @@ class Building:
   @staticmethod
   def js_optimizer_no_asmjs(filename, passes):
     next = filename + '.jso.js'
-    subprocess.check_call(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
+    check_call(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
     return next
 
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
@@ -2210,6 +2225,12 @@ class Building:
     except Exception, e:
       logging.debug('Building.is_ar failed to test whether file \'%s\' is a llvm archive file! Failed on exception: %s' % (filename, e))
       return False
+
+  @staticmethod
+  def is_wasm(filename):
+    # look for magic signature
+    b = open(filename, 'rb').read(4)
+    return b == '\0asm'
 
   @staticmethod
   def is_bitcode(filename):
@@ -2582,13 +2603,14 @@ def check_execute(cmd, *args, **kw):
   # TODO: use in more places. execute doesn't actually check that return values
   # are nonzero
   try:
-    subprocess.check_output(cmd, *args, **kw)
+    return subprocess.check_output(cmd, *args, **kw)
     logging.debug("Successfuly executed %s" % " ".join(cmd))
   except subprocess.CalledProcessError as e:
     logging.error("'%s' failed with output:\n%s" % (" ".join(e.cmd), e.output))
     raise
 
 def check_call(cmd, *args, **kw):
+  logging.debug('check_call: ' + ' '.join(cmd))
   try:
     subprocess.check_call(cmd, *args, **kw)
     logging.debug("Successfully executed %s" % " ".join(cmd))
