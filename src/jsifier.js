@@ -26,7 +26,11 @@ function JSify(data, functionsOnly) {
   if (mainPass) {
     var shellFile = SHELL_FILE ? SHELL_FILE : (BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'shell_sharedlib.js' : 'shell.js');
 
-    var thirdPartyFiles = ['../third_party/sodiumutil/dist/sodiumutil.js'];
+    var thirdPartyFiles = [];
+    
+    if (INCLUDE_THIRD_PARTY_SODIUMUTIL) {
+      thirdPartyFiles.push('../third_party/sodiumutil/dist/sodiumutil.js');
+    }
 
     // We will start to print out the data, but must do so carefully - we are
     // dealing with potentially *huge* strings. Convenient replacements and

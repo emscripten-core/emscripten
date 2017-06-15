@@ -2281,6 +2281,7 @@ class JS:
   @staticmethod
   def get_subresource_location(path, data_uri=Settings.SINGLE_FILE):
     if data_uri:
+      Settings.INCLUDE_THIRD_PARTY_SODIUMUTIL = 1
       f = open(path, 'rb')
       data = base64.b64encode(f.read())
       f.close()
