@@ -825,7 +825,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
       # ignore dynamic linking, since multiple dynamic linkings can interfere with each other
-      if not filename_type_suffix(target) in JS_CONTAINING_SUFFIXES or options.ignore_dynamic_linking:
+      if filename_type_suffix(target) not in JS_CONTAINING_SUFFIXES or options.ignore_dynamic_linking:
         def check(input_file):
           if filename_type_ending(input_file) in DYNAMICLIB_ENDINGS:
             if not options.ignore_dynamic_linking: logging.warning('ignoring dynamic library %s because not compiling to JS or HTML, remember to link it when compiling to JS or HTML at the end', os.path.basename(input_file))
@@ -2172,7 +2172,7 @@ def binaryen_method_sanity_check():
     methods = shared.Settings.BINARYEN_METHOD.split(',')
     valid_methods = ['asmjs', 'native-wasm', 'interpret-s-expr', 'interpret-binary', 'interpret-asm2wasm']
     for m in methods:
-      if not m.strip() in valid_methods:
+      if m.strip() not in valid_methods:
         logging.error('Unrecognized BINARYEN_METHOD "' + m.strip() + '" specified! Please pass a comma-delimited list containing one or more of: ' + ','.join(valid_methods))
         sys.exit(1)
 

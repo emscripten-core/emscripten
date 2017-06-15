@@ -587,7 +587,7 @@ int main () {
   def test_nodejs_sockets_echo(self):
     # This test checks that sockets work when the client code is run in Node.js
     # Run with ./runner.py sockets.test_nodejs_sockets_echo
-    if not NODE_JS in JS_ENGINES:
+    if NODE_JS not in JS_ENGINES:
         return self.skip('node is not present')
 
     sockets_include = '-I'+path_from_root('tests', 'sockets')
