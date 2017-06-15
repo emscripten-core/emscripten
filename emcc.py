@@ -94,7 +94,7 @@ EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS') # Additional compiler flags that we 
 final = None
 
 
-class Intermediate:
+class Intermediate(object):
   counter = 0
 def save_intermediate(name=None, suffix='js'):
   name = os.path.join(shared.get_emscripten_temp_dir(), 'emcc-%d%s.%s' % (Intermediate.counter, '' if name is None else '-' + name, suffix))
@@ -105,7 +105,7 @@ def save_intermediate(name=None, suffix='js'):
   Intermediate.counter += 1
 
 
-class TimeLogger:
+class TimeLogger(object):
   last = time.time()
 
   @staticmethod
@@ -120,7 +120,7 @@ def log_time(name):
     TimeLogger.update()
 
 
-class EmccOptions:
+class EmccOptions(object):
   def __init__(self):
     self.opt_level = 0
     self.debug_level = 0
@@ -166,7 +166,7 @@ class EmccOptions:
     self.output_eol = os.linesep
 
 
-class JSOptimizer:
+class JSOptimizer(object):
   def __init__(self, target, options, misc_temp_files, js_transform_tempfiles):
     self.queue = []
     self.extra_info = {}
@@ -1670,7 +1670,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     )
     with ToolchainProfiler.profile_block('js opts'):
       # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
-
       if shared.Settings.DEAD_FUNCTIONS:
         optimizer.queue += ['eliminateDeadFuncs']
         optimizer.extra_info['dead_functions'] = shared.Settings.DEAD_FUNCTIONS
@@ -2523,7 +2522,7 @@ def system_js_libraries_setting_str(libs, lib_dirs, settings_changes, input_file
   return 'SYSTEM_JS_LIBRARIES="' + ','.join(libraries) + '"'
 
 
-class ScriptSource:
+class ScriptSource(object):
   def __init__(self):
     self.src = None # if set, we have a script to load with a src attribute
     self.inline = None # if set, we have the contents of a script to write inline in a script

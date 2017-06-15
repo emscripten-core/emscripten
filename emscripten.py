@@ -685,7 +685,7 @@ def unfloat(s):
 
 
 def make_function_tables_defs(implemented_functions, all_implemented, function_table_data, settings, metadata):
-  class Counter:
+  class Counter(object):
     next_bad_item = 0
     next_item = 0
     pre = []

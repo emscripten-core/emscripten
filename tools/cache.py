@@ -3,7 +3,7 @@ import os.path, sys, shutil, time, logging
 import tempfiles, filelock
 
 # Permanent cache for dlmalloc and stdlibc++
-class Cache:
+class Cache(object):
 
   # If EM_EXCLUSIVE_CACHE_ACCESS is true, this process is allowed to have direct access to
   # the Emscripten cache without having to obtain an interprocess lock for it. Generally this

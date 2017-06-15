@@ -3060,7 +3060,7 @@ class IDLCallbackType(IDLType, IDLObjectWithScope):
     def _getDependentObjects(self):
         return set([self._returnType] + self._arguments)
 
-class IDLMethodOverload:
+class IDLMethodOverload(object):
     """
     A class that represents a single overload of a WebIDL method.  This is not
     quite the same as an element of the "effective overload set" in the spec,

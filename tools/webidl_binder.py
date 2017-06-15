@@ -25,7 +25,7 @@ DEBUG = os.environ.get('IDL_VERBOSE') is '1'
 
 if DEBUG: print "Debug print ON, CHECKS=%s" % CHECKS
 
-class Dummy:
+class Dummy(object):
   def __init__(self, init):
     for k, v in init.iteritems():
       self.__dict__[k] = v
