@@ -42,7 +42,7 @@ This allows you to use functions `glDrawArrays <https://www.opengl.org/sdk/docs/
 
 To enable *OpenGL ES 2.0 emulation*, specify the :ref:`emcc <emcc-s-option-value>` option ``-s FULL_ES2=1`` when linking the final executable (.js/.html) of the project.
 
-To enable *OpenGL ES 3.0 emulation*, specify the :ref:`emcc <emcc-s-option-value>` option ``-s FULL_ES3=1`` when linking the final executable (.js/.html) of the project. This adds emulation for mapping memory blocks to client side memory.
+To enable *OpenGL ES 3.0 emulation*, specify the :ref:`emcc <emcc-s-option-value>` option ``-s FULL_ES3=1`` when linking the final executable (.js/.html) of the project. This adds emulation for mapping memory blocks to client side memory. The flags ``-s FULL_ES2=1`` and ``-s FULL_ES3=1`` are orthogonal, so either one or both can be specified to emulate different features.
 
 .. _opengl-support-legacy_and_mobile:
 
