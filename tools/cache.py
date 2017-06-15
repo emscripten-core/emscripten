@@ -1,3 +1,4 @@
+from toolchain_profiler import ToolchainProfiler
 import os.path, sys, shutil, time, logging
 import tempfiles, filelock
 
@@ -33,10 +34,11 @@ class Cache:
         dirname = os.path.join(dirname, 'asmjs')
     self.dirname = dirname
     self.debug = debug
+    self.acquired_count = 0
 
   def acquire_cache_lock(self):
-    if not self.EM_EXCLUSIVE_CACHE_ACCESS:
-      logging.debug('Cache: acquiring multiprocess file lock to Emscripten cache')
+    if not self.EM_EXCLUSIVE_CACHE_ACCESS and self.acquired_count == 0:
+      logging.debug('Cache: PID %s acquiring multiprocess file lock to Emscripten cache' % str(os.getpid()))
       try:
         self.filelock.acquire(60)
       except filelock.Timeout:
@@ -48,13 +50,16 @@ class Cache:
       self.prev_EM_EXCLUSIVE_CACHE_ACCESS = os.environ.get('EM_EXCLUSIVE_CACHE_ACCESS')
       os.environ['EM_EXCLUSIVE_CACHE_ACCESS'] = '1'
       logging.debug('Cache: done')
+    self.acquired_count += 1
 
   def release_cache_lock(self):
-    if not self.EM_EXCLUSIVE_CACHE_ACCESS:
+    self.acquired_count -= 1
+    assert self.acquired_count >= 0, "Called release more times than acquire"
+    if not self.EM_EXCLUSIVE_CACHE_ACCESS and self.acquired_count == 0:
       if self.prev_EM_EXCLUSIVE_CACHE_ACCESS: os.environ['EM_EXCLUSIVE_CACHE_ACCESS'] = self.prev_EM_EXCLUSIVE_CACHE_ACCESS
       else: del os.environ['EM_EXCLUSIVE_CACHE_ACCESS']
       self.filelock.release()
-      logging.debug('Cache: released multiprocess file lock to Emscripten cache')
+      logging.debug('Cache: PID %s released multiprocess file lock to Emscripten cache' % str(os.getpid()))
 
   def ensure(self):
     self.acquire_cache_lock()
@@ -104,23 +109,24 @@ class Cache:
 # Given a set of functions of form (ident, text), and a preferred chunk size,
 # generates a set of chunks for parallel processing and caching.
 def chunkify(funcs, chunk_size, DEBUG=False):
-  chunks = []
-  # initialize reasonably, the rest of the funcs we need to split out
-  curr = []
-  total_size = 0
-  for i in range(len(funcs)):
-    func = funcs[i]
-    curr_size = len(func[1])
-    if total_size + curr_size < chunk_size:
-      curr.append(func)
-      total_size += curr_size
-    else:
+  with ToolchainProfiler.profile_block('chunkify'):
+    chunks = []
+    # initialize reasonably, the rest of the funcs we need to split out
+    curr = []
+    total_size = 0
+    for i in range(len(funcs)):
+      func = funcs[i]
+      curr_size = len(func[1])
+      if total_size + curr_size < chunk_size:
+        curr.append(func)
+        total_size += curr_size
+      else:
+        chunks.append(curr)
+        curr = [func]
+        total_size = curr_size
+    if curr:
       chunks.append(curr)
-      curr = [func]
-      total_size = curr_size
-  if curr:
-    chunks.append(curr)
-    curr = None
-  return [''.join([func[1] for func in chunk]) for chunk in chunks] # remove function names
+      curr = None
+    return [''.join([func[1] for func in chunk]) for chunk in chunks] # remove function names
 
 import shared

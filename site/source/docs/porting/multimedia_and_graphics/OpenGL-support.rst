@@ -63,7 +63,7 @@ In this mode (``-s LEGACY_GL_EMULATION=1``), there are a few extra flags that ca
 What if my codebase depends on an desktop OpenGL feature that is currently unsupported?
 ---------------------------------------------------------------------------------------
 
-You can consider building the codebase against the `Regal <https://github.com/p3/regal>`_ Desktop OpenGL emulation library. That project offers a more complete set of emulated Desktop OpenGL features on top of OpenGL ES 2.0. If the built-in Desktop OpenGL emulation works but is too slow, it may also be possible to get better performance by using Regal.
+You can consider building the codebase against the `Regal <https://github.com/p3/regal>`_ Desktop OpenGL emulation library, which aims to support Desktop OpenGL features on top of OpenGL ES 2.0. This may work better or worse than Emscripten's GL emulation depending on the project.
 
 OpenGL ES extensions
 ====================

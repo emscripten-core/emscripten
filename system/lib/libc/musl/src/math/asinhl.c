@@ -32,4 +32,10 @@ long double asinhl(long double x)
 	}
 	return s ? -x : x;
 }
+#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384
+// TODO: broken implementation to make things compile
+long double asinhl(long double x)
+{
+	return asinh(x);
+}
 #endif

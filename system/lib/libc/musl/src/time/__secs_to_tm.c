@@ -10,10 +10,10 @@
 
 int __secs_to_tm(long long t, struct tm *tm)
 {
-	long long days, secs;
+	long long days, secs, years;
 	int remdays, remsecs, remyears;
 	int qc_cycles, c_cycles, q_cycles;
-	int years, months;
+	int months;
 	int wday, yday, leap;
 	static const char days_in_month[] = {31,30,31,30,31,31,30,31,30,31,31,29};
 
@@ -55,7 +55,7 @@ int __secs_to_tm(long long t, struct tm *tm)
 	yday = remdays + 31 + 28 + leap;
 	if (yday >= 365+leap) yday -= 365+leap;
 
-	years = remyears + 4*q_cycles + 100*c_cycles + 400*qc_cycles;
+	years = remyears + 4*q_cycles + 100*c_cycles + 400LL*qc_cycles;
 
 	for (months=0; days_in_month[months] <= remdays; months++)
 		remdays -= days_in_month[months];

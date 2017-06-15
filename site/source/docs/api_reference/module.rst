@@ -93,7 +93,10 @@ The following ``Module`` attributes affect code execution.
 
 	If set, :js:attr:`Module.printErr` will log when any file is read.
 
-	
+.. js:attribute:: Module.preinitializedWebGLContext
+
+	If building with -s GL_PREINITIALIZED_CONTEXT=1 set, you can set ``Module.preinitializedWebGLContext`` to a precreated instance of a WebGL context, which will be used later when initializing WebGL in C/C++ side. Precreating the GL context is useful if doing GL side loading (shader compilation, texture loading etc.) parallel to other page startup actions, and/or for detecting WebGL feature support, such as GL version or compressed texture support up front on a page before or in parallel to loading up any compiled code.
+
 Other methods
 =============
 
@@ -106,6 +109,18 @@ Other methods
 .. js:function:: Module.onCustomMessage
 
 	When compiled with ``PROXY_TO_WORKER = 1`` (see `settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_), this callback (which should be implemented on both the client and worker's ``Module`` object) allows sending custom messages and data between the web worker and the main thread (using the ``postCustomMessage`` function defined in `proxyClient.js <https://github.com/kripken/emscripten/blob/master/src/proxyClient.js>`_ and `proxyWorker.js <https://github.com/kripken/emscripten/blob/master/src/proxyWorker.js>`_).
+
+.. js:function:: Module.instantiateWasm
+
+	When targeting WebAssembly, Module.instantiateWasm is an optional user-implemented callback function that the Emscripten runtime calls to perform the WebAssembly instantiation action. The callback function will be called with two parameters, ``imports`` and ``successCallback``. ``imports`` is a JS object which contains all the function imports that need to be passed to the WebAssembly Module when instantiating, and once instantiated, this callback function should call ``successCallback()`` with the generated WebAssembly Instance object.
+
+	The instantiation can be performed either synchronously or asynchronously. The return value of this function should contain the ``exports`` object of the instantiated WebAssembly Module, or an empty dictionary object ``{}`` if the instantiation is performed asynchronously, or ``false`` if instantiation failed.
+
+	Overriding the WebAssembly instantiation procedure via this function is useful when you have other custom asynchronous startup actions or downloads that can be performed in parallel to WebAssembly compilation. Implementing this callback allows performing all of these in parallel. See the file ``tests/manual_wasm_instantiate.html`` and the test ``browser.test_manual_wasm_instantiate`` for an example of how this construct works in action.
+
+.. js:function:: Module.getPreloadedPackage
+
+	If you want to manually manage the download of .data file packages for custom caching, progress reporting and error handling behavior, you can implement the ``Module.getPreloadedPackage = function(remotePackageName, remotePackageSize)`` callback to provide the contents of the data files back to the file loading scripts. The return value of this callback should be an Arraybuffer with the contents of the downloade file data. See file ``tests/manual_download_data.html`` and the test ``browser.test_preload_file_with_manual_data_download`` for an example.
 
 Overriding execution environment
 ================================

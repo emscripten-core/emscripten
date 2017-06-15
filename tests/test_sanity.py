@@ -186,7 +186,11 @@ class sanity(RunnerCore):
         for y in range(-2, 3):
           f = open(path_from_root('tests', 'fake', 'clang'), 'w')
           f.write('#!/bin/sh\n')
-          f.write('echo "clang version %d.%d" 1>&2\n' % (EXPECTED_LLVM_VERSION[0] + x, EXPECTED_LLVM_VERSION[1] + y))
+          expected_x = EXPECTED_LLVM_VERSION[0] + x
+          expected_y = EXPECTED_LLVM_VERSION[1] + y
+          if expected_x < 0 or expected_y < 0: continue # must be a valid llvm version
+          print EXPECTED_LLVM_VERSION, x, y, expected_x, expected_y
+          f.write('echo "clang version %d.%d" 1>&2\n' % (expected_x, expected_y))
           f.close()
           shutil.copyfile(path_from_root('tests', 'fake', 'clang'), path_from_root('tests', 'fake', 'clang++'))
           os.chmod(path_from_root('tests', 'fake', 'clang'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
@@ -692,10 +696,7 @@ fi
   def test_embuilder(self):
     restore()
 
-    tests = []
-    if get_llvm_target() == WASM_TARGET:
-      tests.append(([PYTHON, 'embuilder.py', 'build', 'wasm_compiler_rt'], ['building and verifying wasm_compiler_rt', 'success'], True, ['wasm_compiler_rt.a']),)
-    for command, expected, success, result_libs in tests + [
+    tests = [
       ([PYTHON, 'embuilder.py'], ['Emscripten System Builder Tool', 'build libc', 'native_optimizer'], True, []),
       ([PYTHON, 'embuilder.py', 'build', 'waka'], 'ERROR', False, []),
       ([PYTHON, 'embuilder.py', 'build', 'libc'], ['building and verifying libc', 'success'], True, ['libc.bc']),
@@ -719,7 +720,13 @@ fi
       ([PYTHON, 'embuilder.py', 'build', 'sdl2-ttf'], ['building and verifying sdl2-ttf', 'success'], True, [os.path.join('ports-builds', 'sdl2-ttf', 'libsdl2_ttf.bc')]),
       ([PYTHON, 'embuilder.py', 'build', 'sdl2-net'], ['building and verifying sdl2-net', 'success'], True, [os.path.join('ports-builds', 'sdl2-net', 'libsdl2_net.bc')]),
       ([PYTHON, 'embuilder.py', 'build', 'binaryen'], ['building and verifying binaryen', 'success'], True, []),
-    ]:
+      ([PYTHON, 'embuilder.py', 'build', 'cocos2d'], ['building and verifying cocos2d', 'success'], True, [os.path.join('ports-builds', 'Cocos2d', 'libCocos2d.bc')]),
+      ([PYTHON, 'embuilder.py', 'build', 'wasm-libc'], ['building and verifying wasm-libc', 'success'], True, ['wasm-libc.bc']),
+    ]
+    if get_llvm_target() == WASM_TARGET:
+      tests.append(([PYTHON, 'embuilder.py', 'build', 'wasm_compiler_rt'], ['building and verifying wasm_compiler_rt', 'success'], True, ['wasm_compiler_rt.a']),)
+
+    for command, expected, success, result_libs in tests:
       print command
       Cache.erase()
 
@@ -956,28 +963,48 @@ fi
     import tools.ports.binaryen as binaryen
     tag_file = Cache.get_path('binaryen_tag_' + binaryen.TAG + '.txt')
 
-    def prep():
-      wipe()
-      self.do([PYTHON, EMCC, '--clear-ports'])
-      try_delete(tag_file)
-      # if BINARYEN_ROOT is set, we don't build the port. Check we do built it if not
-      restore()
-      config = open(CONFIG_FILE).read()
-      config = config.replace('BINARYEN_ROOT', '#')
-      open(CONFIG_FILE, 'w').write(config)
+    assert not os.environ.get('BINARYEN') # must not have binaryen env var set
 
-    print 'build using embuilder'
-    prep()
-    subprocess.check_call([PYTHON, 'embuilder.py', 'build', 'binaryen'])
-    assert os.path.exists(tag_file)
-    subprocess.check_call([PYTHON, 'emcc.py', 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
-    self.assertContained('hello, world!', run_js('a.out.js'))
+    # test in 2 modes - with BINARYEN_ROOT in the config file, set to '', and without it entirely
+    for binaryen_root_in_config in [1, 0]:
+      print 'binaryen_root_in_config:', binaryen_root_in_config
 
-    print 'see we show an error for emmake (we cannot build natively under emmake)'
-    prep()
-    try_delete('a.out.js')
-    out = self.do([PYTHON, 'emmake.py', EMCC, 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
-    assert not os.path.exists(tag_file)
-    assert not os.path.exists('a.out.js')
-    self.assertContained('For example, for binaryen, do "python embuilder.py build binaryen"', out)
+      def prep():
+        restore()
+        print 'clearing ports...'
+        print self.do([PYTHON, EMCC, '--clear-ports'])
+        wipe()
+        self.do([PYTHON, EMCC]) # first run stage
+        try_delete(tag_file)
+        # if BINARYEN_ROOT is set, we don't build the port. Check we do built it if not
+        if binaryen_root_in_config:
+          config = open(CONFIG_FILE).read()
+          assert '''BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN') or '')''' in config, config # setup created it to be ''
+          print 'created config:'
+          print config
+          restore()
+          config = open(CONFIG_FILE).read()
+          config = config.replace('BINARYEN_ROOT', '''BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN') or '') # ''')
+        else:
+          restore()
+          config = open(CONFIG_FILE).read()
+          config = config.replace('BINARYEN_ROOT', '#')
+        print 'modified config:'
+        print config
+        open(CONFIG_FILE, 'w').write(config)
+
+      print 'build using embuilder'
+      prep()
+      subprocess.check_call([PYTHON, 'embuilder.py', 'build', 'binaryen'])
+      assert os.path.exists(tag_file)
+      subprocess.check_call([PYTHON, 'emcc.py', 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
+      self.assertContained('hello, world!', run_js('a.out.js'))
+
+      print 'see we show an error for emmake (we cannot build natively under emmake)'
+      prep()
+      try_delete('a.out.js')
+      out = self.do([PYTHON, 'emmake.py', EMCC, 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
+      assert not os.path.exists(tag_file)
+      assert not os.path.exists('a.out.js')
+      self.assertContained('For example, for binaryen, do "python embuilder.py build binaryen"', out)
 

@@ -1,6 +1,15 @@
 #include <stdio.h>
 #include <math.h>
 
+// Canonicalize nan output: wasm and asm encode negative nans differently
+void printCanonicalizedNan(char* funcName, double value) {
+  if (!isnan(value)) {
+    printf("%s: %g\n", funcName, value);
+  } else {
+    printf("%s: nan\n", funcName);
+  }
+}
+
 int main() {
   double i;
   for (i = -10; i < 10; i += 0.125) {
@@ -8,9 +17,9 @@ int main() {
     printf("sinh: %g\n", sinh(i));
     printf("cosh: %g\n", cosh(i));
     printf("tanh: %g\n", tanh(i));
-    printf("asinh: %g\n", asinh(i));
-    printf("acosh: %g\n", acosh(i));
-    printf("atanh: %g\n", atanh(i));
+    printCanonicalizedNan("asinh", asinh(i));
+    printCanonicalizedNan("acosh", acosh(i));
+    printCanonicalizedNan("atanh", atanh(i));
     printf("\n");
   }
   return 0;

@@ -88,8 +88,9 @@ following JavaScript::
 The first parameter is the name of the function to be wrapped, the second is
 the return type of the function (or a JavaScript `null` value if there isn't one), and the third is an array of parameter
 types (which may be omitted if there are no parameters). The types are
-native JavaScript types, "number" (for a C integer, float, or general
-pointer) or "string" (for a C ``char*`` that represents a string).
+"number" (for a JavaScript number corresponding to a C integer, float, or general
+pointer), "string" (for a JavaScript string that corresponds to a C ``char*`` that represents a string) or
+"array" (for a JavaScript array or typed array that corresponds to a C array; for typed arrays, it must be a Uint8Array or Int8Array).
 
 You can run this yourself by first opening the generated page
 **function.html** in a web browser (nothing will happen on page

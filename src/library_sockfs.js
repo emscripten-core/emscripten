@@ -699,10 +699,10 @@ mergeInto(LibraryManager.library, {
         if (event === 'error') {
           var sp = Runtime.stackSave();
           var msg = allocate(intArrayFromString(data[2]), 'i8', ALLOC_STACK);
-          Runtime.dynCall('viiii', callback, [data[0], data[1], msg, userData]);
+          Module['dynCall_viiii'](callback, data[0], data[1], msg, userData);
           Runtime.stackRestore(sp);
         } else {
-          Runtime.dynCall('vii', callback, [data, userData]);
+          Module['dynCall_vii'](callback, data, userData);
         }
       } catch (e) {
         if (e instanceof ExitStatus) {

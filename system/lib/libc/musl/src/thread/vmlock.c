@@ -1,22 +1,21 @@
 #include "pthread_impl.h"
 
-static int vmlock[2];
+static volatile int vmlock[2];
 
-void __vm_lock(int inc)
+void __vm_wait()
 {
-	for (;;) {
-		int v = vmlock[0];
-		if (inc*v < 0) __wait(vmlock, vmlock+1, v, 1);
-		else if (a_cas(vmlock, v, v+inc)==v) break;
-	}
+	int tmp;
+	while ((tmp=vmlock[0]))
+		__wait(vmlock, vmlock+1, tmp, 1);
 }
 
-void __vm_unlock(void)
+void __vm_lock()
 {
-	int inc = vmlock[0]>0 ? -1 : 1;
-	if (a_fetch_add(vmlock, inc)==-inc && vmlock[1])
+	a_inc(vmlock);
+}
+
+void __vm_unlock()
+{
+	if (a_fetch_add(vmlock, -1)==1 && vmlock[1])
 		__wake(vmlock, -1, 1);
 }
-
-weak_alias(__vm_lock, __vm_lock_impl);
-weak_alias(__vm_unlock, __vm_unlock_impl);

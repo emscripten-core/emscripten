@@ -60,6 +60,10 @@ TODO:        You can also provide .crn files yourself, pre-crunched. With this o
              to dds files in the browser, exactly the same as if this tool compressed them.
 '''
 
+from toolchain_profiler import ToolchainProfiler
+if __name__ == '__main__':
+  ToolchainProfiler.record_process_start()
+
 import os, sys, shutil, random, uuid, ctypes
 import posixpath
 import shared
@@ -773,8 +777,10 @@ if has_preloaded:
     # Not using preload cache, so we might as well start the xhr ASAP, potentially before JS parsing of the main codebase if it's after us.
     # Only tricky bit is the fetch is async, but also when runWithFS is called is async, so we handle both orderings.
     ret += r'''
-      var fetched = null, fetchedCallback = null;
-      fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, function(data) {
+      var fetchedCallback = null;
+      var fetched = Module['getPreloadedPackage'] ? Module['getPreloadedPackage'](REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE) : null;
+
+      if (!fetched) fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, function(data) {
         if (fetchedCallback) {
           fetchedCallback(data);
           fetchedCallback = null;
@@ -864,3 +870,6 @@ if force or len(data_files) > 0:
       f = open(jsoutput + '.metadata', 'w')
       json.dump(metadata, f, separators=(',', ':'))
       f.close()
+
+if __name__ == '__main__':
+  sys.exit(0)

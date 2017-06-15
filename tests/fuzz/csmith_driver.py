@@ -14,10 +14,11 @@ sys.path += [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.pat
 import shared
 
 # can add flags like --no-threads --ion-offthread-compile=off
-engine1 = eval('shared.' + sys.argv[1]) if len(sys.argv) > 1 else shared.JS_ENGINES[0]
-engine2 = shared.SPIDERMONKEY_ENGINE if os.path.exists(shared.SPIDERMONKEY_ENGINE[0]) else None
+engine = eval('shared.' + sys.argv[1]) if len(sys.argv) > 1 else shared.JS_ENGINES[0]
 
-print 'testing js engines', engine1, engine2
+print 'testing js engine', engine
+
+TEST_BINARYEN = 1
 
 CSMITH = os.environ.get('CSMITH') or find_executable('csmith')
 assert CSMITH, 'Could not find CSmith on your PATH. Please set the environment variable CSMITH.'
@@ -58,11 +59,6 @@ while 1:
   if random.random() < 0.5: extra_args += ['--max-funcs', str(random.randint(10, 30))]
   suffix = '.c'
   COMP = shared.CLANG_CC
-  if random.random() < 0.5:
-    extra_args += ['--lang-cpp']
-    suffix += 'pp'
-    COMP = shared.CLANG
-  print COMP, extra_args
   fullname = filename + suffix
   check_call([CSMITH, '--no-volatiles', '--no-packed-struct'] + extra_args,
                  #['--max-block-depth', '2', '--max-block-size', '2', '--max-expr-complexity', '2', '--max-funcs', '2'],
@@ -105,19 +101,11 @@ while 1:
   def try_js(args=[]):
     shared.try_delete(filename + '.js')
     js_args = [shared.PYTHON, shared.EMCC, fullname, '-o', filename + '.js'] + [opts] + llvm_opts + CSMITH_CFLAGS + args + ['-w']
-    if 0: # binaryen testing, off by default for now
-      js_args += ['-s', 'BINARYEN=1']
-      r = random.random()
-      if r < 0.45:
-        js_args += ['-s', 'BINARYEN_METHOD="interpret-s-expr"']
-      elif r < 0.90:
-        js_args += ['-s', 'BINARYEN_METHOD="interpret-binary"']
-      else:
-        if random.random() < 0.5:
-          js_args += ['-s', 'BINARYEN_METHOD="interpret-binary,asmjs"']
-        else:
-          js_args += ['-s', 'BINARYEN_METHOD="interpret-s-expr,asmjs"']
+    if TEST_BINARYEN:
+      js_args += ['-s', 'BINARYEN=1', '-s', 'BINARYEN_TRAP_MODE="js"']
       if random.random() < 0.5:
+        js_args += ['-g']
+      if random.random() < 0.1:
         if random.random() < 0.5:
           js_args += ['--js-opts', '0']
         else:
@@ -125,18 +113,23 @@ while 1:
       if random.random() < 0.5:
         # pick random passes
         BINARYEN_PASSES = [
+          "code-pushing",
           "duplicate-function-elimination",
           "dce",
           "remove-unused-brs",
           "remove-unused-names",
+          "local-cse",
           "optimize-instructions",
+          "post-emscripten",
           "precompute",
           "simplify-locals",
+          "simplify-locals-nostructure",
           "vacuum",
           "coalesce-locals",
           "reorder-locals",
           "merge-blocks",
-          "remove-unused-functions",
+          "remove-unused-module-elements",
+          "memory-packing",
         ]
         passes = []
         while 1:
@@ -150,7 +143,7 @@ while 1:
       js_args += ['-s', 'MAIN_MODULE=1']
     if random.random() < 0.25:
       js_args += ['-s', 'INLINING_LIMIT=1'] # inline nothing, for more call interaction
-    if random.random() < 0.333:
+    if random.random() < 0.01:
       js_args += ['-s', 'EMTERPRETIFY=1']
       if random.random() < 0.5:
         if random.random() < 0.5:
@@ -195,26 +188,7 @@ while 1:
   if not js_args:
     fail()
     continue
-  if not execute_js(engine1):
+  if not execute_js(engine):
     fail()
     continue
-  if engine2 and not execute_js(engine2):
-    fail()
-    continue
-
-  # This is ok. Try validation in secondary JS engine
-  if opts != '-O0' and 'ALLOW_MEMORY_GROWTH=1' not in js_args and engine2 and 'BINARYEN=1' not in js_args:
-    try:
-      js2 = shared.run_js(filename + '.js', stderr=PIPE, engine=engine2 + ['-w'], full_output=True, check_timeout=True, assert_returncode=None)
-    except:
-      print 'failed to run in secondary'
-      break
-
-    # asm.js testing
-    if 'warning: Successfully compiled asm.js code' not in js2:
-      print "ODIN VALIDATION BUG"
-      notes['embug'] += 1
-      fail()
-      continue
-    print '[asm.js validation ok in %s]' % str(engine2)
 

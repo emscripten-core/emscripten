@@ -23,7 +23,7 @@ def run_commands(commands):
     for command in commands:
       call_process(command)
   else:
-    pool = multiprocessing.Pool(processes=cores)
+    pool = shared.Building.get_multiprocessing_pool()
     # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool, https://bugs.python.org/issue8296
     pool.map_async(call_process, commands, chunksize=1).get(maxint)
 
@@ -239,7 +239,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   def create_wasm_compiler_rt(libname):
     srcdir = shared.path_from_root('system', 'lib', 'compiler-rt', 'lib', 'builtins')
-    filenames = ['addtf3.c', 'ashlti3.c', 'ashrti3.c', 'comparetf2.c', 'divtf3.c', 'divti3.c', 'udivmodti4.c',
+    filenames = ['addtf3.c', 'ashlti3.c', 'ashrti3.c', 'atomic.c', 'comparetf2.c',
+                 'divtf3.c', 'divti3.c', 'udivmodti4.c',
                  'extenddftf2.c', 'extendsftf2.c',
                  'fixdfti.c', 'fixsfti.c', 'fixtfdi.c', 'fixtfsi.c', 'fixtfti.c',
                  'fixunsdfti.c', 'fixunssfti.c', 'fixunstfdi.c', 'fixunstfsi.c', 'fixunstfti.c',
@@ -256,7 +257,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       o = in_temp(os.path.basename(src) + '.o')
       # Use clang directly instead of emcc. Since emcc's intermediate format (produced by -S) is LLVM IR, there's no way to
       # get emcc to output wasm .s files, which is what we archive in compiler_rt.
-      commands.append([shared.CLANG_CC, '--target=wasm32', '-S', shared.path_from_root('system', 'lib', src), '-O2', '-o', o] + shared.EMSDK_OPTS)
+      commands.append([shared.CLANG_CC, '--target=wasm32', '-mthread-model', 'single', '-S', shared.path_from_root('system', 'lib', src), '-O2', '-o', o] + shared.EMSDK_OPTS)
       o_s.append(o)
     run_commands(commands)
     lib = in_temp(libname)
@@ -301,7 +302,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       add_back_deps(need) # recurse to get deps of deps
 
   # Scan symbols
-  symbolses = map(lambda temp_file: shared.Building.llvm_nm(temp_file), temp_files)
+  symbolses = shared.Building.parallel_llvm_nm(map(os.path.abspath, temp_files))
 
   if len(symbolses) == 0:
     class Dummy:
@@ -601,7 +602,7 @@ class Ports:
       # Make variants support '-jX' for number of cores to build, MSBuild does /maxcpucount:X
       num_cores = os.environ.get('EMCC_CORES') or str(multiprocessing.cpu_count())
       make_args = []
-      if 'Makefiles' in generator: make_args = ['--', '-j', num_cores]
+      if 'Makefiles' in generator and not 'NMake' in generator: make_args = ['--', '-j', num_cores]
       elif 'Visual Studio' in generator: make_args = ['--config', cmake_build_type, '--', '/maxcpucount:' + num_cores]
 
       # Kick off the build.

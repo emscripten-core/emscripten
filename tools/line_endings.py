@@ -15,7 +15,7 @@ def convert_line_endings_in_file(filename, from_eol, to_eol):
 # This function checks and prints out the detected line endings in the given file.
 # If the file only contains either Windows \r\n line endings or Unix \n line endings, it returns 0.
 # Otherwise, in the presence of old OSX or mixed/malformed line endings, a non-zero error code is returned.
-def check_line_endings(filename, expect_only_specific_line_endings=None, print_errors=True):
+def check_line_endings(filename, expect_only_specific_line_endings=None, print_errors=True, print_info=False):
   try:
     data = open(filename, 'rb').read()
   except Exception, e:
@@ -61,6 +61,9 @@ def check_line_endings(filename, expect_only_specific_line_endings=None, print_e
       print >> sys.stderr, "Content around a DOS line ending location: '" + dos_line_ending_example + "'"
       print >> sys.stderr, "Content around an UNIX line ending location: '" + unix_line_ending_example + "'"
     return 1 # Mixed line endings
+  elif print_info:
+    if has_dos_line_endings: print 'File \'' + filename + '\' contains DOS "\\r\\n" line endings.'
+    if has_unix_line_endings: print 'File \'' + filename +'\' contains UNIX "\\n" line endings.'
   if expect_only_specific_line_endings == '\n' and has_dos_line_endings:
     if print_errors:
       print >> sys.stderr, 'File \'' + filename + '\' contains DOS "\\r\\n" line endings! (' + str(dos_line_ending_count) + ' DOS line endings), but expected only UNIX line endings!'
@@ -78,4 +81,4 @@ if __name__ == '__main__':
     print >> sys.stderr, 'Unknown command line ' + str(sys.argv) + '!'
     print >> sys.stderr, 'Usage: ' + sys.argv[0] + ' <filename>'
     sys.exit(1)
-  sys.exit(check_line_endings(sys.argv[1]))
+  sys.exit(check_line_endings(sys.argv[1], print_info=True))

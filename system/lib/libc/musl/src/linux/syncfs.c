@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include "syscall.h"
 
-void syncfs(int fd)
+int syncfs(int fd)
 {
-	__syscall(SYS_syncfs, fd);
+	return syscall(SYS_syncfs, fd);
 }

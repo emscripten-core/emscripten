@@ -91,14 +91,19 @@ static void glut_draw_callback(void) {
     glDrawArrays(GL_POINTS, 0, nbNodes);
     glutSwapBuffers();
 }
+char *trimmed(char *str)
+{
+	while(*str && *str <= 0x20) ++str;
+	return str;
+}
 GLuint createShader(const char source[], int type) {
     char msg[512];
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, (const GLchar**)(&source), NULL);
     glCompileShader(shader);
     glGetShaderInfoLog(shader, sizeof msg, NULL, msg);
-    std::cout << "Shader info: " << msg << std::endl;
-    assert(msg[0] == '\0');
+    std::cout << "Shader info: \"" << msg << "\"" << std::endl;
+    assert(trimmed(msg)[0] == '\0');
     return shader;
 }
 static void gl_init(void) {
@@ -108,8 +113,8 @@ static void gl_init(void) {
     glLinkProgram(program);
     char msg[512];
     glGetProgramInfoLog(program, sizeof msg, NULL, msg);
-    std::cout << "info: " <<  msg << std::endl;
-    assert(msg[0] == '\0');
+    std::cout << "info: \"" <<  msg << "\"" << std::endl;
+    assert(trimmed(msg)[0] == '\0');
     glUseProgram(program);
     std::vector<float> elements(nbNodes);
     int count = 0;

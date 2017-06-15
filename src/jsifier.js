@@ -68,6 +68,10 @@ function JSify(data, functionsOnly) {
           libFuncsToInclude.push(key);
         }
       }
+      // mark implemented functions as already added (so if memcpy is in the forced full JS library, but also done in C, we just need the C)
+      for (var added in IMPLEMENTED_FUNCTIONS) {
+        addedLibraryItems[added.substr(1)] = true;
+      }
     } else {
       libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
     }
@@ -292,7 +296,7 @@ function JSify(data, functionsOnly) {
         Variables.generatedGlobalBase = true;
         // Globals are done, here is the rest of static memory
         if (!SIDE_MODULE) {
-          print('STATIC_BASE = ' + Runtime.GLOBAL_BASE + ';\n');
+          print('STATIC_BASE = Runtime.GLOBAL_BASE;\n');
           print('STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
         } else {
           print('gb = Runtime.alignMemory(getMemory({{{ STATIC_BUMP }}}, ' + MAX_GLOBAL_ALIGN + ' || 1));\n');

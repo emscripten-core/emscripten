@@ -135,3 +135,10 @@ interface ReceiveArrays {
   void giveMeArrays(float[] vertices, long[] triangles, long num);
 };
 
+interface StoreArray {
+  void StoreArray();
+
+  void setArray([Const] long[] array);
+  long getArrayValue(long index);
+};
+
