@@ -6811,14 +6811,29 @@ Module.printErr = Module['printErr'] = function(){};
       # objects when generating source maps, so we want to make sure the
       # optimizer can deal with both types.
       map_filename = out_filename + '.map'
-      data = json.load(open(map_filename, 'r'))
+
+      def encode_utf8(data):
+        if isinstance(data, dict):
+          for key in data:
+            data[key] = encode_utf8(data[key])
+          return data
+        elif isinstance(data, list):
+          for i in xrange(len(data)):
+            data[i] = encode_utf8(data[i])
+          return data
+        elif isinstance(data, unicode):
+          return data.encode('utf8')
+        else:
+          return data
+
+      data = encode_utf8(json.load(open(map_filename, 'r')))
       self.assertPathsIdentical(out_filename, data['file'])
       assert len(data['sources']) == 1, data['sources']
       self.assertPathsIdentical(src_filename, data['sources'][0])
       self.assertTextDataIdentical(src, data['sourcesContent'][0])
-      mappings = json.loads(jsrun.run_js(
+      mappings = encode_utf8(json.loads(jsrun.run_js(
         path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
-        tools.shared.NODE_JS, [map_filename]))
+        tools.shared.NODE_JS, [map_filename])))
       seen_lines = set()
       for m in mappings:
         self.assertPathsIdentical(src_filename, m['source'])

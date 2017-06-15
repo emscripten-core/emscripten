@@ -1358,13 +1358,39 @@ class Building:
 
     return Building.multiprocessing_pool
 
+  # When creating environment variables for Makefiles to execute, we need to doublequote the commands if they have spaces in them..
   @staticmethod
-  def get_building_env(native=False):
+  def doublequote_spaces(arg):
+    arg = arg[:] # Operate on a copy of the input string/list
+    if isinstance(arg, list):
+      for i in range(len(arg)):
+        arg[i] = Building.doublequote_spaces(arg[i])
+      return arg
+
+    if ' ' in arg and not (arg.startswith('"') and arg.endswith('"')):
+      return '"' + arg.replace('"', '\\"') + '"'
+
+    return arg
+
+  # .. but for Popen, we cannot have doublequotes, so provide functionality to remove them when needed.
+  @staticmethod
+  def remove_doublequotes(arg):
+    arg = arg[:] # Operate on a copy of the input string/list
+    if arg.startswith('"') and arg.endswith('"'):
+      return arg[1:-1].replace('\\"', '"')
+    else:
+      return arg
+
+  @staticmethod
+  def get_building_env(native=False, doublequote_commands=False):
+    def nop(arg):
+      return arg
+    quote = Building.doublequote_spaces if doublequote_commands else nop
     env = os.environ.copy()
     if native:
-      env['CC'] = CLANG_CC
-      env['CXX'] = CLANG_CPP
-      env['LD'] = CLANG
+      env['CC'] = quote(CLANG_CC)
+      env['CXX'] = quote(CLANG_CPP)
+      env['LD'] = quote(CLANG)
       env['CFLAGS'] = '-O2 -fno-math-errno'
       # get a non-native one, and see if we have some of its effects - remove them if so
       non_native = Building.get_building_env()
@@ -1374,18 +1400,18 @@ class Building:
         if env.get(dangerous) and env.get(dangerous) == non_native.get(dangerous):
           del env[dangerous] # better to delete it than leave it, as the non-native one is definitely wrong
       return env
-    env['CC'] = EMCC if not WINDOWS else 'python %r' % EMCC
-    env['CXX'] = EMXX if not WINDOWS else 'python %r' % EMXX
-    env['AR'] = EMAR if not WINDOWS else 'python %r' % EMAR
-    env['LD'] = EMCC if not WINDOWS else 'python %r' % EMCC
-    env['NM'] = LLVM_NM
-    env['LDSHARED'] = EMCC if not WINDOWS else 'python %r' % EMCC
-    env['RANLIB'] = EMRANLIB if not WINDOWS else 'python %r' % EMRANLIB
-    env['EMMAKEN_COMPILER'] = Building.COMPILER
+    env['CC'] = quote(EMCC if not WINDOWS else 'python %r' % EMCC)
+    env['CXX'] = quote(EMXX if not WINDOWS else 'python %r' % EMXX)
+    env['AR'] = quote(EMAR if not WINDOWS else 'python %r' % EMAR)
+    env['LD'] = quote(EMCC if not WINDOWS else 'python %r' % EMCC)
+    env['NM'] = quote(LLVM_NM)
+    env['LDSHARED'] = quote(EMCC if not WINDOWS else 'python %r' % EMCC)
+    env['RANLIB'] = quote(EMRANLIB if not WINDOWS else 'python %r' % EMRANLIB)
+    env['EMMAKEN_COMPILER'] = quote(Building.COMPILER)
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(Building.COMPILER_TEST_OPTS)
-    env['HOST_CC'] = CLANG_CC
-    env['HOST_CXX'] = CLANG_CPP
+    env['HOST_CC'] = quote(CLANG_CC)
+    env['HOST_CXX'] = quote(CLANG_CPP)
     env['HOST_CFLAGS'] = "-W" #if set to nothing, CFLAGS is used, which we don't want
     env['HOST_CXXFLAGS'] = "-W" #if set to nothing, CXXFLAGS is used, which we don't want
     env['PKG_CONFIG_LIBDIR'] = path_from_root('system', 'local', 'lib', 'pkgconfig') + os.path.pathsep + path_from_root('system', 'lib', 'pkgconfig')
@@ -1556,7 +1582,7 @@ class Building:
     #    os.unlink(lib) # make sure compilation completed successfully
     #  except:
     #    pass
-    env = Building.get_building_env(native)
+    env = Building.get_building_env(native, True)
     for k, v in env_init.iteritems():
       env[k] = v
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
@@ -2536,6 +2562,7 @@ class WebAssembly:
 
 def execute(cmd, *args, **kw):
   try:
+    cmd[0] = Building.remove_doublequotes(cmd[0])
     return Popen(cmd, *args, **kw).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
   except:
     if not isinstance(cmd, str):

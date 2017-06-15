@@ -413,9 +413,9 @@ f.close()
     with clean_write_access_to_canonical_temp_dir(): # --cflags needs to set EMCC_DEBUG=1, which needs to create canonical temp directory.
       output = Popen([PYTHON, EMCC, '--cflags'], stdout=PIPE, stderr=PIPE).communicate()
     flags = output[0].strip()
-    self.assertContained(' '.join(COMPILER_OPTS), flags)
+    self.assertContained(' '.join(Building.doublequote_spaces(COMPILER_OPTS)), flags)
     # check they work
-    cmd = [CLANG, path_from_root('tests', 'hello_world.cpp')] + flags.split(' ') + ['-c', '-emit-llvm', '-o', 'a.bc']
+    cmd = [CLANG, path_from_root('tests', 'hello_world.cpp')] + shlex.split(flags) + ['-c', '-emit-llvm', '-o', 'a.bc']
     subprocess.check_call(cmd)
     subprocess.check_call([PYTHON, EMCC, 'a.bc'])
     self.assertContained('hello, world!', run_js(self.in_dir('a.out.js')))
@@ -1275,9 +1275,9 @@ int f() {
         # (we'd use run_js() normally)
         try_delete('out.txt')
         if os.name == 'nt': # windows
-          os.system('type "in.txt" | {} >out.txt'.format(' '.join(make_js_command(os.path.normpath(exe), engine))))
+          os.system('type "in.txt" | {} >out.txt'.format(' '.join(Building.doublequote_spaces(make_js_command(os.path.normpath(exe), engine)))))
         else: # posix
-          os.system('cat in.txt | {} > out.txt'.format(' '.join(make_js_command(exe, engine))))
+          os.system('cat in.txt | {} > out.txt'.format(' '.join(Building.doublequote_spaces(make_js_command(exe, engine)))))
         self.assertContained('abcdef\nghijkl\neof', open('out.txt').read())
 
     Building.emcc(path_from_root('tests', 'module', 'test_stdin.c'), output_filename='a.out.js')
