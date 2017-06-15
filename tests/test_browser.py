@@ -1359,6 +1359,9 @@ keydown(100);keyup(100); // trigger the end
   def test_glfw_minimal(self):
     self.btest('glfw_minimal.c', '1', args=['-lglfw', '-lGL'])
     self.btest('glfw_minimal.c', '1', args=['-s', 'USE_GLFW=2', '-lglfw', '-lGL'])
+
+  def test_glfw_time(self):
+    self.btest('test_glfw_time.c', '1', args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'])
     
   def test_egl(self):
     open(os.path.join(self.get_dir(), 'test_egl.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'test_egl.c')).read()))
