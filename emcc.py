@@ -2364,10 +2364,10 @@ def generate_html(target, options, js_target, target_basename,
     // note: no support for code mods (PRECISE_F32==2)
     console.log('running code on the main thread');
     var script = document.createElement('script');
-    script.src = "%s.js";
+    script.src = "%s";
     document.body.appendChild(script);
   }
-''' % proxy_worker_filename
+''' % shared.JS.get_subresource_location(proxy_worker_filename + '.js')
   else:
     # Normal code generation path
     script.src = base_js_target
