@@ -2216,6 +2216,20 @@ var LibrarySDL = {
             data[destPtr++] = {{{ makeGetValue('sourcePtr++', 0, 'i8', null, 1) }}};
             data[destPtr++] = 255;
           }
+        } else if (raw.bpp == 2) {
+          // grayscale + alpha
+          var pixels = raw.size;
+          var data = imageData.data;
+          var sourcePtr = raw.data;
+          var destPtr = 0;
+          for (var i = 0; i < pixels; i++) {
+            var gray = {{{ makeGetValue('sourcePtr++', 0, 'i8', null, 1) }}};
+            var alpha = {{{ makeGetValue('sourcePtr++', 0, 'i8', null, 1) }}};
+            data[destPtr++] = gray;
+            data[destPtr++] = gray;
+            data[destPtr++] = gray;
+            data[destPtr++] = alpha;
+          }
         } else if (raw.bpp == 1) {
           // grayscale
           var pixels = raw.size;
@@ -2987,14 +3001,17 @@ var LibrarySDL = {
     var w = SDL.estimateTextWidth(fontData, text);
     var h = fontData.size;
     var color = SDL.loadColorToCSSRGB(color); // XXX alpha breaks fonts?
-    var fontString = h + 'px ' + fontData.name;
+    var fontString = h + 'px ' + fontData.name + ', serif';
     var surf = SDL.makeSurface(w, h, 0, false, 'text:' + text); // bogus numbers..
     var surfData = SDL.surfaces[surf];
     surfData.ctx.save();
     surfData.ctx.fillStyle = color;
     surfData.ctx.font = fontString;
-    surfData.ctx.textBaseline = 'top';
-    surfData.ctx.fillText(text, 0, 0);
+    // use bottom alligment, because it works 
+    // same in all browsers, more info here:
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=737852
+    surfData.ctx.textBaseline = 'bottom';
+    surfData.ctx.fillText(text, 0, h|0);
     surfData.ctx.restore();
     return surf;
   },

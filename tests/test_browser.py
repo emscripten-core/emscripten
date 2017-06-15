@@ -627,6 +627,27 @@ If manually bisecting:
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
     self.btest('sdl_stb_image.c', reference='screenshot.jpg', args=['-s', 'STB_IMAGE=1', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
+  def test_sdl_stb_image_bpp(self):
+    # load grayscale image without alpha
+    self.clear()
+    shutil.copyfile(path_from_root('tests', 'sdl-stb-bpp1.png'), os.path.join(self.get_dir(), 'screenshot.not'))
+    self.btest('sdl_stb_image.c', reference='sdl-stb-bpp1.png', args=['-s', 'STB_IMAGE=1', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
+
+    # load grayscale image with alpha
+    self.clear()
+    shutil.copyfile(path_from_root('tests', 'sdl-stb-bpp2.png'), os.path.join(self.get_dir(), 'screenshot.not'))
+    self.btest('sdl_stb_image.c', reference='sdl-stb-bpp2.png', args=['-s', 'STB_IMAGE=1', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
+
+    # load RGB image
+    self.clear()
+    shutil.copyfile(path_from_root('tests', 'sdl-stb-bpp3.png'), os.path.join(self.get_dir(), 'screenshot.not'))
+    self.btest('sdl_stb_image.c', reference='sdl-stb-bpp3.png', args=['-s', 'STB_IMAGE=1', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
+
+    # load RGBA image
+    self.clear()
+    shutil.copyfile(path_from_root('tests', 'sdl-stb-bpp4.png'), os.path.join(self.get_dir(), 'screenshot.not'))
+    self.btest('sdl_stb_image.c', reference='sdl-stb-bpp4.png', args=['-s', 'STB_IMAGE=1', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
+
   def test_sdl_stb_image_data(self):
     # load an image file, get pixel data.
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
@@ -1075,6 +1096,53 @@ keydown(100);keyup(100); // trigger the end
 
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_joystick.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-lSDL', '-lGL']).communicate()
     self.run_browser('page.html', '', '/report_result?2')
+
+  def test_glfw_joystick(self):
+    # Generates events corresponding to the Editor's Draft of the HTML5 Gamepad API.
+    # https://dvcs.w3.org/hg/gamepad/raw-file/default/gamepad.html#idl-def-Gamepad
+    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      var gamepads = [];
+      // Spoof this function.
+      navigator['getGamepads'] = function() {
+        return gamepads;
+      };
+      window['addNewGamepad'] = function(id, numAxes, numButtons) {
+        var index = gamepads.length;
+        var gamepad = {
+          axes: new Array(numAxes),
+          buttons: new Array(numButtons),
+          id: id,
+          index: index
+        };
+        gamepads.push(gamepad)
+        var i;
+        for (i = 0; i < numAxes; i++) gamepads[index].axes[i] = 0;
+        // Buttons are objects
+        for (i = 0; i < numButtons; i++) gamepads[index].buttons[i] = { pressed: false, value: 0 };
+
+        // Dispatch event (required for glfw joystick; note not used in SDL test)
+        var event = new Event('gamepadconnected');
+        event.gamepad = gamepad;
+        window.dispatchEvent(event);
+      };
+      // FF mutates the original objects.
+      window['simulateGamepadButtonDown'] = function (index, button) {
+        gamepads[index].buttons[button].pressed = true;
+        gamepads[index].buttons[button].value = 1;
+      };
+      window['simulateGamepadButtonUp'] = function (index, button) {
+        gamepads[index].buttons[button].pressed = false;
+        gamepads[index].buttons[button].value = 0;
+      };
+      window['simulateAxisMotion'] = function (index, axis, value) {
+        gamepads[index].axes[axis] = value;
+      };
+    ''')
+    open(os.path.join(self.get_dir(), 'test_glfw_joystick.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'test_glfw_joystick.c')).read()))
+
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'test_glfw_joystick.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-lGL', '-lglfw3', '-s', 'USE_GLFW=3']).communicate()
+    self.run_browser('page.html', '', '/report_result?2')
+
 
   def test_webgl_context_attributes(self):
     # Javascript code to check the attributes support we want to test in the WebGL implementation 
@@ -1804,6 +1872,9 @@ void *getBindBuffer() {
     self.btest('sdl_canvas_palette_2.c', reference='sdl_canvas_palette_g.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-g.js', '-lSDL', '-lGL'])
     self.btest('sdl_canvas_palette_2.c', reference='sdl_canvas_palette_b.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-b.js', '-lSDL', '-lGL'])
 
+  def test_sdl_ttf_render_text_solid(self):
+    self.btest('sdl_ttf_render_text_solid.c', reference='sdl_ttf_render_text_solid.png', args=['-O2', '-s', 'TOTAL_MEMORY=16MB', '-lSDL', '-lGL'])
+
   def test_sdl_alloctext(self):
     self.btest('sdl_alloctext.c', expected='1', args=['-O2', '-s', 'TOTAL_MEMORY=16MB', '-lSDL', '-lGL'])
 
@@ -1882,6 +1953,9 @@ void *getBindBuffer() {
 
   def test_perspective(self):
     self.btest('perspective.c', reference='perspective.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+
+  def test_glerror(self):
+    self.btest('gl_error.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL'])
 
   def test_runtimelink(self):
     main, supp = self.setup_runtimelink_test()
@@ -2943,8 +3017,23 @@ window.close = function() {
       }
     ''')
     Popen([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.js']).communicate()
-
     self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js'])
+
+    print 'wasm in worker (we can read binary data synchronously there)'
+
+    open('pre.js', 'w').write('''
+      var Module = { dynamicLibraries: ['side.wasm'] };
+  ''')
+    Popen([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.js', '-s', 'WASM=1']).communicate()
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'WASM=1', '--proxy-to-worker'])
+
+    print 'wasm (will auto-preload since no sync binary reading)'
+
+    open('pre.js', 'w').write('''
+      Module.dynamicLibraries = ['side.wasm'];
+  ''')
+    # same wasm side module works
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'WASM=1'])
 
   def test_dynamic_link_glemu(self):
     open('pre.js', 'w').write('''

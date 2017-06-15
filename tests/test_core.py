@@ -41,7 +41,8 @@ def no_wasm_backend(note=''):
 # Async wasm compilation can't work in some tests, they are set up synchronously
 def sync(f):
   def decorated(self):
-    self.emcc_args += ['-s', 'BINARYEN_ASYNC_COMPILATION=0'] # test is set up synchronously
+    if self.is_wasm():
+      self.emcc_args += ['-s', 'BINARYEN_ASYNC_COMPILATION=0'] # test is set up synchronously
     f(self)
   return decorated
 
@@ -874,7 +875,7 @@ int main() {
       Settings.EXCEPTION_DEBUG = 1
 
       Settings.DISABLE_EXCEPTION_CATCHING = 0
-      if '-O2' in self.emcc_args and not self.is_wasm():
+      if '-O2' in self.emcc_args:
         self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
       src = '''
@@ -1625,7 +1626,6 @@ int main() {
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_parameter_pack')
 
-  @no_wasm_backend('stackSave/stackRestore is only generated in asmjs')
   def test_runtime_stacksave(self):
     src = open(path_from_root('tests', 'core', 'test_runtime_stacksave.c')).read()
     self.do_run(src, 'success')
@@ -1700,6 +1700,15 @@ int main() {
       Settings.SPLIT_MEMORY = 16*1024*1024
       test()
       Settings.SPLIT_MEMORY = 0
+
+  def test_memorygrowth_3(self):
+    # checks handling of malloc failure properly
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0', '-s', 'ABORTING_MALLOC=0', '-s', 'SAFE_HEAP=1']
+    self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
+
+  def test_memorygrowth_3_force_fail_reallocBuffer(self):
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-DFAIL_REALLOC_BUFFER']
+    self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
   def test_ssr(self): # struct self-ref
       src = '''
@@ -2056,8 +2065,6 @@ The current type of b is: 9
     src = open(path_from_root('tests', 'termios', 'test_tcgetattr.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
-  @no_wasm_backend('ctime relies on stackSave/stackRestore that is only generated in asmjs; '
-                   'need to implement something similar in s2wasm')
   def test_time(self):
     src = open(path_from_root('tests', 'time', 'src.cpp'), 'r').read()
     expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
@@ -2067,8 +2074,6 @@ The current type of b is: 9
     # Confirms they are called in reverse order
     self.do_run_in_out_file_test('tests', 'core', 'test_timeb')
 
-  @no_wasm_backend('ctime relies on stackSave/stackRestore that is only generated in asmjs; '
-                   'need to implement something similar in s2wasm')
   def test_time_c(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_time_c')
 
@@ -3509,6 +3514,39 @@ var Module = {
       }
     ''', expected=['simple.\nsimple.\nsimple.\nsimple.\n'])
 
+  def test_dylink_postSets_chunking(self):
+    self.dylink_test(header=r'''
+      extern int global_var;
+    ''', main=r'''
+      #include <stdio.h>
+      #include "header.h"
+
+      // prepare 99 global variable with local initializer
+      static int p = 1;
+      #define P(x) __attribute__((used)) int *padding##x = &p;
+      P(01) P(02) P(03) P(04) P(05) P(06) P(07) P(08) P(09) P(10)
+      P(11) P(12) P(13) P(14) P(15) P(16) P(17) P(18) P(19) P(20)
+      P(21) P(22) P(23) P(24) P(25) P(26) P(27) P(28) P(29) P(30)
+      P(31) P(32) P(33) P(34) P(35) P(36) P(37) P(38) P(39) P(40)
+      P(41) P(42) P(43) P(44) P(45) P(46) P(47) P(48) P(49) P(50)
+      P(51) P(52) P(53) P(54) P(55) P(56) P(57) P(58) P(59) P(60)
+      P(61) P(62) P(63) P(64) P(65) P(66) P(67) P(68) P(69) P(70)
+      P(71) P(72) P(73) P(74) P(75) P(76) P(77) P(78) P(79) P(80)
+      P(81) P(82) P(83) P(84) P(85) P(86) P(87) P(88) P(89) P(90)
+      P(91) P(92) P(93) P(94) P(95) P(96) P(97) P(98) P(99)
+
+      // prepare global variable with global initializer
+      int *ptr = &global_var;
+
+      int main(int argc, char *argv[]) {
+        printf("%d\n", *ptr);
+      }
+    ''', side=r'''
+      #include "header.h"
+
+      int global_var = 12345;
+    ''', expected=['12345\n'])
+
   @no_wasm # todo
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
     if not self.can_dlfcn(): return
@@ -3988,7 +4026,7 @@ Pass: 0.000012 0.000012''')
 
   def test_files(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # closure can generate variables called 'gc', which pick up js shell stuff
-    if '-O2' in self.emcc_args and not self.is_wasm():
+    if '-O2' in self.emcc_args:
       self.emcc_args += ['--closure', '1'] # Use closure here, to test we don't break FS stuff
       self.emcc_args = filter(lambda x: x != '-g', self.emcc_args) # ensure we test --closure 1 --memory-init-file 1 (-g would disable closure)
     elif '-O3' in self.emcc_args and not self.is_wasm():
@@ -4603,6 +4641,7 @@ PORT: 3979
   def test_atomic(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_atomic')
 
+  @no_wasm_backend('wasm has 64bit lockfree atomics')
   def test_atomic_cxx(self):
     test_path = path_from_root('tests', 'core', 'test_atomic_cxx')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
@@ -4885,6 +4924,7 @@ return malloc(size);
       src = open(path_from_root('tests', 'mmap_file.c')).read()
       self.do_run(src, '*\n' + s[0:20] + '\n' + s[4096:4096+20] + '\n*\n')
 
+  @no_wasm_backend('FixFunctionBitcasts pass invalidates otherwise-ok function pointer casts')
   def test_cubescript(self):
     assert 'asm3' in test_modes
     if self.run_name == 'asm3':
@@ -4941,6 +4981,9 @@ return malloc(size);
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
       self.emcc_args = orig_args + mode + ['-msse']
+      if '-O2' in self.emcc_args:
+        self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+
       self.do_run(open(path_from_root('tests', 'test_sse1.cpp'), 'r').read(), 'Success!')
 
   # ignore nans in some simd tests due to an LLVM regression still being investigated,
@@ -4961,6 +5004,9 @@ return malloc(size);
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
       self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse']
+      if '-O2' in self.emcc_args:
+        self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+
       self.do_run(open(path_from_root('tests', 'test_sse1_full.cpp'), 'r').read(), self.ignore_nans(native_result), output_nicerizer=self.ignore_nans)
 
   # Tests the full SSE2 API.
@@ -4981,6 +5027,9 @@ return malloc(size);
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
       self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse2'] + args
+      if '-O2' in self.emcc_args:
+        self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+
       self.do_run(open(path_from_root('tests', 'test_sse2_full.cpp'), 'r').read(), self.ignore_nans(native_result), output_nicerizer=self.ignore_nans)
 
   # Tests the full SSE3 API.
@@ -5283,7 +5332,7 @@ def process(filename):
                  force_c=True)
 
   def test_zlib(self):
-    if '-O2' in self.emcc_args and 'ASM_JS=0' not in self.emcc_args and not self.is_wasm(): # without asm, closure minifies Math.imul badly
+    if '-O2' in self.emcc_args and 'ASM_JS=0' not in self.emcc_args: # without asm, closure minifies Math.imul badly
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
     assert 'asm2g' in test_modes
@@ -5397,21 +5446,20 @@ def process(filename):
                      #, build_ll_hook=self.do_autodebug)
 
     test()
-    num_original_funcs = self.count_funcs('src.cpp.o.js')
 
-    # Run with duplicate function elimination turned on
-    dfe_supported_opt_levels = ['-O2', '-O3', '-Oz', '-Os']
+    if not self.is_wasm(): # wasm does this all the time
+      # Run with duplicate function elimination turned on
+      dfe_supported_opt_levels = ['-O2', '-O3', '-Oz', '-Os']
 
-    for opt_level in dfe_supported_opt_levels:
-      if opt_level in self.emcc_args:
-        print >> sys.stderr, "Testing poppler with ELIMINATE_DUPLICATE_FUNCTIONS set to 1"
-        Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 1
-        test()
-
-        # Make sure that DFE ends up eliminating more than 200 functions (if we can view source)
-        if not self.is_wasm():
+      for opt_level in dfe_supported_opt_levels:
+        if opt_level in self.emcc_args:
+          print >> sys.stderr, "Testing poppler with ELIMINATE_DUPLICATE_FUNCTIONS set to 1"
+          num_original_funcs = self.count_funcs('src.cpp.o.js')
+          Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 1
+          test()
+          # Make sure that DFE ends up eliminating more than 200 functions (if we can view source)
           assert (num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
-        break
+          break
 
   @sync
   def test_openjpeg(self):
@@ -5926,7 +5974,6 @@ def process(filename):
     shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('pgoed2.js'))
     assert open('pgoed.js').read() == open('pgoed2.js').read()
 
-  @no_wasm_backend()
   def test_exported_response(self):
     src = r'''
       #include <stdio.h>
@@ -5950,7 +5997,6 @@ def process(filename):
     self.do_run(src, '''waka 5!''')
     assert 'other_function' in open('src.cpp.o.js').read()
 
-  @no_wasm_backend()
   def test_large_exported_response(self):
     src = r'''
       #include <stdio.h>
@@ -6113,9 +6159,11 @@ def process(filename):
 
     self.do_run_in_out_file_test('tests', 'core', 'test_tracing')
 
-  @no_wasm # TODO: ctor evaller in binaryen
   def test_eval_ctors(self):
     if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args): return self.skip('need js optimizations')
+
+    if self.is_wasm():
+      self.emcc_args += ['-s', 'NO_EXIT_RUNTIME=1']
 
     orig_args = self.emcc_args[:] + ['-s', 'EVAL_CTORS=0']
 
@@ -6143,13 +6191,15 @@ def process(filename):
       code_size = os.stat(code_file).st_size
       if self.uses_memory_init_file():
         mem_size = os.stat('src.cpp.o.js.mem').st_size
-      # if we are wasm, then eval-ctors disables wasm-only, losing i64 opts, increasing size
+      # if we are wasm, then the mem init is inside the wasm too, so the total change in code+data may grow *or* shrink
       code_size_should_shrink = not self.is_wasm()
       print code_size, ' => ', ec_code_size, ', are we testing code size?', code_size_should_shrink
       if self.uses_memory_init_file():
         print mem_size, ' => ', ec_mem_size
       if code_size_should_shrink:
         assert ec_code_size < code_size
+      else:
+        assert ec_code_size != code_size, 'should at least change'
       if self.uses_memory_init_file():
         assert ec_mem_size > mem_size
 
@@ -6348,7 +6398,7 @@ def process(filename):
 '''
       # XXX disable due to possible v8 bug -- self.do_run(src, '*166*\n*ok*', post_build=post)
 
-      if '-O2' in self.emcc_args and 'ASM_JS=0' not in self.emcc_args and not self.is_wasm(): # without asm, closure minifies Math.imul badly
+      if '-O2' in self.emcc_args and 'ASM_JS=0' not in self.emcc_args: # without asm, closure minifies Math.imul badly
         self.emcc_args += ['--closure', '1'] # Use closure here, to test we export things right
 
       # Way 2: use CppHeaderParser
@@ -7117,6 +7167,7 @@ int main(int argc, char **argv) {
     self.do_run(src, '*0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
   @no_emterpreter
+  @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is disallowed')
   def test_emterpretify(self):
     Settings.EMTERPRETIFY = 1
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')

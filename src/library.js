@@ -496,8 +496,8 @@ LibraryManager.library = {
     totalMemory = getTotalMemory()|0;
     if ((newDynamicTop|0) > (totalMemory|0)) {
       if ((enlargeMemory()|0) == 0) {
-        ___setErrNo({{{ cDefine('ENOMEM') }}});
         HEAP32[DYNAMICTOP_PTR>>2] = oldDynamicTop;
+        ___setErrNo({{{ cDefine('ENOMEM') }}});
         return -1;
       }
     }
@@ -607,7 +607,9 @@ LibraryManager.library = {
   },
   __cxa_atexit: 'atexit',
 
-  __cxa_thread_atexit_impl: 'atexit', // used in rust
+  // used in rust, clang when doing thread_local statics
+  __cxa_thread_atexit: 'atexit',
+  __cxa_thread_atexit_impl: 'atexit',
 
   abort: function() {
     Module['abort']();
@@ -3587,9 +3589,7 @@ LibraryManager.library = {
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_family, 'family', 'i32') }}};
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_socktype, 'type', 'i32') }}};
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_protocol, 'proto', 'i32') }}};
-      if (canon) {
-        {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_canonname, 'canon', 'i32') }}};
-      }
+      {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_canonname, 'canon', 'i32') }}};
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addr, 'sa', '*') }}};
       if (family === {{{ cDefine('AF_INET6') }}}) {
         {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addrlen, C_STRUCTS.sockaddr_in6.__size__, 'i32') }}};

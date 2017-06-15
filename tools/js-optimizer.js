@@ -2606,6 +2606,10 @@ function registerizeHarder(ast) {
     });
     if (abort) return;
 
+    // Do not process the dceable helper function for wasm, which declares
+    // types, we need to alive for asm2wasm
+    if (fun[1] == '__emscripten_dceable_type_decls') return;
+
     var asmData = normalizeAsm(fun);
 
     var localVars = asmData.vars;
@@ -4843,6 +4847,11 @@ function aggressiveVariableEliminationInternal(func, asmData) {
       }
       values[name] = node;
     }
+    // 'def' is non-null only if the variable was explicitly re-assigned after its definition.
+    // If it wasn't, the initial value should be used, which is supposed to always be zero.
+    else if (name in asmData.vars) {
+      values[name] = makeAsmCoercedZero(asmData.vars[name])
+    }
     return node;
   }
 
@@ -6649,7 +6658,9 @@ function emterpretify(ast) {
             if (type === ASM_INT) {
               opcode = 'ADD';
               tryNumSymmetrical();
-            } else if (type === ASM_DOUBLE) opcode = 'ADDD';
+            } else if (type === ASM_DOUBLE || type === ASM_FLOAT) {
+              opcode = 'ADDD';
+            }
             break;
           }
         }
@@ -6657,14 +6668,18 @@ function emterpretify(ast) {
           if (type === ASM_INT) {
             opcode = 'SUB';
             tryNumAsymmetrical();
-          } else if (type === ASM_DOUBLE) opcode = 'SUBD';
+          } else if (type === ASM_DOUBLE || type === ASM_FLOAT) {
+            opcode = 'SUBD';
+          }
           break;
         }
         case '*': {
           if (type === ASM_INT) {
             opcode = 'MUL';
             tryNumSymmetrical();
-          } else if (type === ASM_DOUBLE) opcode = 'MULD';
+          } else if (type === ASM_DOUBLE || type === ASM_FLOAT) {
+            opcode = 'MULD';
+          }
           break;
         }
         case '/': {
@@ -6673,8 +6688,9 @@ function emterpretify(ast) {
             if (sign === ASM_SIGNED) opcode = 'SDIV';
             else opcode = 'UDIV';
             tryNumAsymmetrical(sign === ASM_UNSIGNED);
+          } else if (type === ASM_DOUBLE || type === ASM_FLOAT) {
+            opcode = 'DIVD';
           }
-          else if (type === ASM_DOUBLE) opcode = 'DIVD';
           break;
         }
         case '%': {
@@ -6683,8 +6699,9 @@ function emterpretify(ast) {
             if (sign === ASM_SIGNED) opcode = 'SMOD';
             else opcode = 'UMOD';
             tryNumAsymmetrical(sign === ASM_UNSIGNED);
+          } else if (type === ASM_DOUBLE || type === ASM_FLOAT) {
+            opcode = 'MODD';
           }
-          else if (type === ASM_DOUBLE) opcode = 'MODD';
           break;
         }
         case '<': {
@@ -6693,8 +6710,9 @@ function emterpretify(ast) {
             if (sign === ASM_SIGNED) opcode = 'SLT';
             else opcode = 'ULT';
             tryNumAsymmetrical(sign === ASM_UNSIGNED);
+          } else if (type === ASM_DOUBLE || type === ASM_FLOAT) {
+            opcode = 'LTD';
           }
-          else if (type === ASM_DOUBLE) opcode = 'LTD';
           break;
         }
         case '<=': {
@@ -6703,17 +6721,18 @@ function emterpretify(ast) {
             if (sign === ASM_SIGNED) opcode = 'SLE';
             else opcode = 'ULE';
             tryNumAsymmetrical(sign === ASM_UNSIGNED);
+          } else if (type === ASM_DOUBLE || type === ASM_FLOAT) {
+            opcode = 'LED';
           }
-          else if (type === ASM_DOUBLE) opcode = 'LED';
           break;
         }
         case '>': {
-          assert(type === ASM_DOUBLE);
+          assert(type === ASM_DOUBLE || type === ASM_FLOAT);
           opcode = 'GTD';
           break;
         }
         case '>=': {
-          assert(type === ASM_DOUBLE);
+          assert(type === ASM_DOUBLE || type === ASM_FLOAT);
           opcode = 'GED';
           break;
         }
@@ -6721,14 +6740,18 @@ function emterpretify(ast) {
           if (type === ASM_INT) {
             opcode = 'EQ';
             tryNumSymmetrical();
-          } else if (type === ASM_DOUBLE) opcode = 'EQD';
+          } else if (type === ASM_DOUBLE || type === ASM_FLOAT) {
+            opcode = 'EQD';
+          }
           break;
         }
         case '!=': {
           if (type === ASM_INT) {
             opcode = 'NE';
             tryNumSymmetrical();
-          } else if (type === ASM_DOUBLE) opcode = 'NED';
+          } else if (type === ASM_DOUBLE || type === ASM_FLOAT) {
+            opcode = 'NED';
+          }
           break;
         }
         case '&': opcode = 'AND'; tryNumSymmetrical(); break;
@@ -6739,7 +6762,7 @@ function emterpretify(ast) {
         case '>>>': opcode = 'LSHR'; tryNumAsymmetrical(true); break;
         default: throw 'bad ' + node[1];
       }
-      if (!opcode) assert(0, JSON.stringify([node, type, sign]));
+      assert(opcode, 'failed to find the proper opcode in makeBinary: ' + JSON.stringify([node, type, sign]));
       var x, y, z;
       var usingNumValue = numValue !== null && ((!numValueUnsigned && ((numValue << 24 >> 24) === numValue)) ||
                                                 ( numValueUnsigned && ((numValue & 255) === numValue)));

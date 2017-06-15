@@ -320,12 +320,20 @@ var Runtime = {
   loadedDynamicLibraries: [],
 
   loadDynamicLibrary: function(lib) {
+    var libModule;
 #if BINARYEN
-    var bin = Module['readBinary'](lib);
-    var libModule = Runtime.loadWebAssemblyModule(bin);
+    var bin;
+    if (lib.buffer) {
+      // we were provided the binary, in a typed array
+      bin = lib;
+    } else {
+      // load the binary synchronously
+      bin = Module['readBinary'](lib);
+    }
+    libModule = Runtime.loadWebAssemblyModule(bin);
 #else
     var src = Module['read'](lib);
-    var libModule = eval(src)(
+    libModule = eval(src)(
       Runtime.alignFunctionTables(),
       Module
     );

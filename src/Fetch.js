@@ -314,6 +314,8 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
   var password = HEAPU32[fetch_attr + Fetch.attr_t_offset_password >> 2];
   var requestHeaders = HEAPU32[fetch_attr + Fetch.attr_t_offset_requestHeaders >> 2];
   var overriddenMimeType = HEAPU32[fetch_attr + Fetch.attr_t_offset_overriddenMimeType >> 2];
+  var dataPtr = HEAPU32[fetch_attr + Fetch.attr_t_offset_requestData >> 2];
+  var dataLength = HEAPU32[fetch_attr + Fetch.attr_t_offset_requestDataSize >> 2];
 
   var fetchAttrLoadToMemory = !!(fetchAttributes & 1/*EMSCRIPTEN_FETCH_LOAD_TO_MEMORY*/);
   var fetchAttrStreamData = !!(fetchAttributes & 2/*EMSCRIPTEN_FETCH_STREAM_DATA*/);
@@ -363,7 +365,7 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
   Fetch.xhrs.push(xhr);
   var id = Fetch.xhrs.length;
   HEAPU32[fetch + Fetch.fetch_t_offset_id >> 2] = id;
-  var data = null; // TODO: Support user to pass data to request.
+  var data = (dataPtr && dataLength) ? HEAPU8.slice(dataPtr, dataPtr + dataLength) : null;
   // TODO: Support specifying custom headers to the request.
 
   xhr.onload = function(e) {

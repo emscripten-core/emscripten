@@ -90,7 +90,7 @@ struct emscripten_fetch_attr_t
 	// Pass a custom MIME type here to force the browser to treat the received data with the given type.
 	const char *overriddenMimeType;
 
-	// If non-zero, specified a pointer to the data that is to be passed as the body (payload) of the request
+	// If non-zero, specifies a pointer to the data that is to be passed as the body (payload) of the request
 	// that is being performed. Leave as zero if no request body needs to be sent.
 	// The memory pointed to by this field is provided by the user, and needs to be valid only until the call to
 	// emscripten_fetch() returns.

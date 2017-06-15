@@ -54,7 +54,7 @@ NODEFS
 
 .. note:: This file system is only for use when running inside :term:`node.js`. 
 
-This file system lets a program in *node* directly access files on the local file system, as if the program were running normally. It uses node's synchronous `FS API <http://nodejs.org/api/fs.html>`_ to immediately persist any data written to the Emscripten file system to your local disk.
+This file system lets a program in *node* map directories (via a mount operation) on the host filesystem to directories in Emscripten's virtual filesystem. It uses node's synchronous `FS API <http://nodejs.org/api/fs.html>`_ to immediately persist any data written to the Emscripten file system to your local disk.
 
 See `this test <https://github.com/kripken/emscripten/blob/master/tests/fs/test_nodefs_rw.c>`_ for an example.
 

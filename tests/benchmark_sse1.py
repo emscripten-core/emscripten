@@ -70,9 +70,12 @@ print ' - The slow script dialog in Firefox is disabled.'
 print ' - Make sure that all Firefox debugging, profiling etc. add-ons that might impact performance are disabled (Firebug, Geckoprofiler, ...).'
 print ''
 print 'Once the test has finished, close the browser application to continue.'
-html_results = Popen([PYTHON, path_from_root('emrun'), '--browser=' + browser, out_file], stdout=PIPE, stderr=PIPE).communicate()
+cmd = [PYTHON, path_from_root('emrun'), '--safe_firefox_profile', '--browser=' + browser, out_file]
+print ' '.join(cmd)
+html_results = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
 
 if not html_results or not html_results[0].strip():
+    print html_results[1]
     print 'Running Firefox Nightly failed! Please rerun with the command line parameter --browser=/path/to/firefox/nightly/firefox'
     sys.exit(1)
 

@@ -1111,6 +1111,8 @@ function enlargeMemory() {
       Module.printErr('Expected to get back a buffer of size ' + TOTAL_MEMORY + ' bytes, but instead got back a buffer of size ' + replacement.byteLength);
     }
 #endif
+    // restore the state to before this call, we failed
+    TOTAL_MEMORY = OLD_TOTAL_MEMORY;
     return false;
   }
 
@@ -1964,14 +1966,42 @@ addOnPreRun(function() { addRunDependency('pgo') });
 }}}
 
 addOnPreRun(function() {
-  if (Module['dynamicLibraries']) {
+  function loadDynamicLibraries(libs) {
+    if (libs) {
+      libs.forEach(function(lib) {
+        Runtime.loadDynamicLibrary(lib);
+      });
+    }
+    if (Module['asm']['runPostSets']) {
+      Module['asm']['runPostSets']();
+    }
+  }
+  // if we can load dynamic libraries synchronously, do so, otherwise, preload
+#if BINARYEN
+  if (Module['dynamicLibraries'] && Module['dynamicLibraries'].length > 0 && !Module['readBinary']) {
+    // we can't read binary data synchronously, so preload
+    addRunDependency('preload_dynamicLibraries');
+    var binaries = [];
     Module['dynamicLibraries'].forEach(function(lib) {
-      Runtime.loadDynamicLibrary(lib);
+      fetch(lib, { credentials: 'same-origin' }).then(function(response) {
+        if (!response['ok']) {
+          throw "failed to load wasm binary file at '" + lib + "'";
+        }
+        return response['arrayBuffer']();
+      }).then(function(buffer) {
+        var binary = new Uint8Array(buffer);
+        binaries.push(binary);
+        if (binaries.length === Module['dynamicLibraries'].length) {
+          // we got them all, wonderful
+          loadDynamicLibraries(binaries);
+          removeRunDependency('preload_dynamicLibraries');
+        }
+      });
     });
+    return;
   }
-  if (Module['asm']['runPostSets']) {
-    Module['asm']['runPostSets']();
-  }
+#endif
+  loadDynamicLibraries(Module['dynamicLibraries']);
 });
 
 #if ASSERTIONS
@@ -2198,11 +2228,11 @@ function integrateWasmJS(Module) {
   function getBinaryPromise() {
     // if we don't have the binary yet, and have the Fetch api, use that
     if (!Module['wasmBinary'] && typeof fetch === 'function') {
-      return fetch(wasmBinaryFile).then(function(response) {
+      return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
         if (!response['ok']) {
           throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
         }
-        return response['arrayBuffer']()
+        return response['arrayBuffer']();
       });
     }
     // Otherwise, getBinary should be able to get it synchronously
@@ -2373,12 +2403,16 @@ function integrateWasmJS(Module) {
   Module['asmPreload'] = Module['asm'];
 
   // Memory growth integration code
-  Module['reallocBuffer'] = function(size) {
+
+  var asmjsReallocBuffer = Module['reallocBuffer'];
+
+  var wasmReallocBuffer = function(size) {
     var PAGE_MULTIPLE = Module["usingWasm"] ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE; // In wasm, heap size must be a multiple of 64KB. In asm.js, they need to be multiples of 16MB.
     size = alignUp(size, PAGE_MULTIPLE); // round up to wasm page size
     var old = Module['buffer'];
     var oldSize = old.byteLength;
     if (Module["usingWasm"]) {
+      // native wasm support
       try {
         var result = Module['wasmMemory'].grow((size - oldSize) / wasmPageSize); // .grow() takes a delta compared to the previous size
         if (result !== (-1 | 0)) {
@@ -2394,11 +2428,23 @@ function integrateWasmJS(Module) {
         return null;
       }
     } else {
+      // wasm interpreter support
       exports['__growWasmMemory']((size - oldSize) / wasmPageSize); // tiny wasm method that just does grow_memory
       // in interpreter, we replace Module.buffer if we allocate
       return Module['buffer'] !== old ? Module['buffer'] : null; // if it was reallocated, it changed
     }
   };
+
+  Module['reallocBuffer'] = function(size) {
+    if (finalMethod === 'asmjs') {
+      return asmjsReallocBuffer(size);
+    } else {
+      return wasmReallocBuffer(size);
+    }
+  };
+
+  // we may try more than one; this is the final one, that worked and we are using
+  var finalMethod = '';
 
   // Provide an "asm.js function" for the application, called to "link" the asm.js module. We instantiate
   // the wasm module at that time, and it receives imports and provides exports and so forth, the app
@@ -2443,6 +2489,8 @@ function integrateWasmJS(Module) {
 #if RUNTIME_LOGGING
       Module['printErr']('trying binaryen method: ' + curr);
 #endif
+
+      finalMethod = curr;
 
       if (curr === 'native-wasm') {
         if (exports = doNativeWasm(global, env, providedBuffer)) break;

@@ -1186,7 +1186,7 @@ class Settings2(type):
         self.attrs['ASSERTIONS'] = 0
         self.attrs['DISABLE_EXCEPTION_CATCHING'] = 1
         self.attrs['ALIASING_FUNCTION_POINTERS'] = 1
-      if shrink_level >= 2:
+      if shrink_level >= 2 and not self.attrs['BINARYEN']:
         self.attrs['EVAL_CTORS'] = 1
 
     def __getattr__(self, attr):
@@ -1981,7 +1981,7 @@ class Building:
     # fastcomp can emit wasm-only code.
     # also disable this mode if it depends on special optimizations that are not yet
     # compatible with it.
-    return 'asmjs' not in Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in Settings.BINARYEN_METHOD and not Settings.RUNNING_JS_OPTS and not Settings.EMULATED_FUNCTION_POINTERS and not Settings.EMULATE_FUNCTION_POINTER_CASTS
+    return ('asmjs' not in Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in Settings.BINARYEN_METHOD and not Settings.RUNNING_JS_OPTS and not Settings.EMULATED_FUNCTION_POINTERS and not Settings.EMULATE_FUNCTION_POINTER_CASTS) or not Settings.LEGALIZE_JS_FFI
 
   @staticmethod
   def get_safe_internalize():
@@ -2056,9 +2056,10 @@ class Building:
     subprocess.check_call(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
     return next
 
+  # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
   @staticmethod
-  def eval_ctors(js_file, mem_init_file):
-    subprocess.check_call([PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, mem_init_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE)])
+  def eval_ctors(js_file, binary_file, binaryen_bin=''):
+    subprocess.check_call([PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin])
 
   @staticmethod
   def eliminate_duplicate_funcs(filename):
