@@ -2265,6 +2265,12 @@ def reconfigure_cache():
   global Cache
   Cache = cache.Cache(debug=DEBUG_CACHE)
 
+# Placeholder strings used for SINGLE_FILE
+class FilenameReplacementStrings:
+  WASM_TEXT_FILE = 'FILENAME_REPLACEMENT_STRINGS_WASM_TEXT_FILE'
+  WASM_BINARY_FILE = 'FILENAME_REPLACEMENT_STRINGS_WASM_BINARY_FILE'
+  ASMJS_CODE_FILE = 'FILENAME_REPLACEMENT_STRINGS_ASMJS_CODE_FILE'
+
 class JS:
   memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+Runtime\.GLOBAL_BASEHgb]+)\);'
   no_memory_initializer_pattern = '/\* no memory initializer \*/'
@@ -2279,7 +2285,9 @@ class JS:
 
   # Returns the subresource location for run-time access
   @staticmethod
-  def get_subresource_location(path, data_uri=Settings.SINGLE_FILE):
+  def get_subresource_location(path, data_uri=None):
+    if data_uri is None:
+      data_uri = Settings.SINGLE_FILE
     if data_uri:
       Settings.INCLUDE_THIRD_PARTY_SODIUMUTIL = 1
       f = open(path, 'rb')

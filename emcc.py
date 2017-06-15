@@ -1115,10 +1115,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
 
       if shared.Settings.BINARYEN:
-        # set file locations, so that JS glue can find what it needs
-        shared.Settings.WASM_TEXT_FILE = shared.JS.get_subresource_location(wasm_text_target)
-        shared.Settings.WASM_BINARY_FILE = shared.JS.get_subresource_location(wasm_binary_target)
-        shared.Settings.ASMJS_CODE_FILE = shared.JS.get_subresource_location(asm_target)
+        # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
+        shared.Settings.WASM_TEXT_FILE = shared.FilenameReplacementStrings.WASM_TEXT_FILE
+        shared.Settings.WASM_BINARY_FILE = shared.FilenameReplacementStrings.WASM_BINARY_FILE
+        shared.Settings.ASMJS_CODE_FILE = shared.FilenameReplacementStrings.ASMJS_CODE_FILE
 
         shared.Settings.ASM_JS = 2 # when targeting wasm, we use a wasm Memory, but that is not compatible with asm.js opts
         shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
@@ -2316,6 +2316,23 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
           passes.append('minifyWhitespace')
         final = shared.Building.js_optimizer_no_asmjs(final, passes)
       if DEBUG: save_intermediate('postclean', 'js')
+  # replace placeholder strings with correct subresource locations
+  f = open(final, 'r')
+  js = f.read()
+  f.close()
+  f = open(final, 'w')
+  for tup in [
+    (wasm_text_target, shared.FilenameReplacementStrings.WASM_TEXT_FILE),
+    (wasm_binary_target, shared.FilenameReplacementStrings.WASM_BINARY_FILE),
+    (asm_target, shared.FilenameReplacementStrings.ASMJS_CODE_FILE)
+  ]:
+    if not os.path.isfile(tup[0]):
+      continue
+    js = js.replace(tup[1], shared.JS.get_subresource_location(tup[0]))
+    if shared.Settings.SINGLE_FILE:
+      os.remove(tup[0])
+  f.write(js)
+  f.close()
   return final
 
 
