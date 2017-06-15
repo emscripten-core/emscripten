@@ -6,8 +6,8 @@ OpenGL support in Emscripten
 
 Emscripten provides three OpenGL modes:
 
-- :ref:`opengl-support-webgl-subset` (default) — supports the set of OpenGL ES commands that map directly to WebGL.
-- :ref:`opengl-support-opengl-es2-0-emulation` — support for some emulated OpenGL ES 2.0 features that are not present in WebGL.
+- :ref:`opengl-support-webgl-subset` (default) — supports the set of OpenGL ES 2.0/3.0 commands that map directly to WebGL 1/2.
+- :ref:`opengl-support-opengl-es2-0-emulation` — support for some emulated OpenGL ES 2.0/3.0 features that are not present in WebGL.
 - :ref:`opengl-support-legacy_and_mobile` — support for a number of legacy GL 1.x features and commands.
 
 This topic provides information about the modes, and how they are enabled.
@@ -16,8 +16,8 @@ This topic provides information about the modes, and how they are enabled.
 
 .. _opengl-support-webgl-subset:
 
-WebGL-friendly subset of OpenGL ES
-==================================
+WebGL-friendly subset of OpenGL ES 2.0/3.0
+==========================================
 
 By default, Emscripten targets the WebGL-friendly subset of OpenGL ES 2.0. This is the set of GL ES commands that map directly to WebGL, so that each GL command has a roughly direct mapping to WebGL. It includes almost all of OpenGL ES 2.0, with the notable exception of client-side arrays, and some other features that are listed in `WebGL 1.0 Specification/Chapter 6 <https://www.khronos.org/registry/webgl/specs/1.0/#6>`_.
 
@@ -25,12 +25,14 @@ To program against the WebGL subset of OpenGL ES, one uses the GL ES 2.0 header 
 
 This mode is used by default because it best matches the WebGL features brovided by browsers.
 
+To target WebGL 2, pass the linker flag ``-s USE_WEBGL2=1``. Specifying this flag enables (and defaults to, unless otherwise specified at context creation time) the creation of WebGL 2 contexts at runtime, but it is still possible to create WebGL 1 contexts, so applications can choose whether to require WebGL 2 or whether to support a fallback to WebGL 1.
+
 .. _opengl-support-opengl-es2-0-emulation:
 
-OpenGL ES 2.0 emulation
-=======================
+OpenGL ES 2.0/3.0 emulation
+===========================
 
-This build mode emulates some features of OpenGL ES 2.0 that are not part of the core WebGL 1 specification.
+This build mode emulates some features of OpenGL ES 2.0/3.0 that are not part of the core WebGL 1 specification.
 
 In particular, this mode emulates client-side arrays that are missing [#f1]_ from the :ref:`opengl-support-webgl-subset`.
 
@@ -39,6 +41,8 @@ This allows you to use functions `glDrawArrays <https://www.opengl.org/sdk/docs/
 .. note:: This build mode has a limitation that the largest index in client-side index buffer must be smaller than the total number of indices in that buffer. See `issue #4214 <https://github.com/kripken/emscripten/issues/4214>`_ for more details.
 
 To enable *OpenGL ES 2.0 emulation*, specify the :ref:`emcc <emcc-s-option-value>` option ``-s FULL_ES2=1`` when linking the final executable (.js/.html) of the project.
+
+To enable *OpenGL ES 3.0 emulation*, specify the :ref:`emcc <emcc-s-option-value>` option ``-s FULL_ES3=1`` when linking the final executable (.js/.html) of the project. This adds emulation for mapping memory blocks to client side memory. The flags ``-s FULL_ES2=1`` and ``-s FULL_ES3=1`` are orthogonal, so either one or both can be specified to emulate different features.
 
 .. _opengl-support-legacy_and_mobile:
 
@@ -71,6 +75,8 @@ OpenGL ES extensions
 When porting code, it should be noted that desktop OpenGL, OpenGL ES and WebGL each have their own extension registries. This means that neither desktop OpenGL or OpenGL ES extensions are automatically also WebGL extensions, although some amount of parity does exist. See the `WebGL 1.0 extension registry <https://www.khronos.org/registry/webgl/extensions/>`_ for the full list of registered extensions.
 
 Additionally, in WebGL, unlike in desktop or mobile OpenGL, extensions must be activated first before the features they expose take effect. If you use one of the native APIs SDL, EGL, GLUT or GLFW to create your GL context, this will be done automatically for most extensions. If instead you use the HTML5 WebGL context creation API, you must explicitly choose whether to autoenable WebGL extensions. If an extension was not automatically enabled at context creation time, the HTML5 API function `emscripten_webgl_enable_extension` can be used to activate it. Debugging related extensions, draft extensions and vendor-prefixed extensions (MOZ_*, WEBKIT_*) are never enabled automatically at context creation time, but must always be activated manually.
+
+When migrating from WebGL 1 to WebGL 2, take note that some WebGL 1 extensions are migrated to core WebGL 2, and therefore their functionality is no longer advertised as GL extensions. This does not mean that the features would be missing, but that it is possible to utilize these features in WebGL 2 without needing to feature test the presence of a GL extension first.
 
 Test code/examples
 ==================
