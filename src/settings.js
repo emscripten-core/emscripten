@@ -47,7 +47,9 @@ var INVOKE_RUN = 1; // Whether we will run the main() function. Disable if you e
 var NO_EXIT_RUNTIME = 0; // If set, the runtime is not quit when main() completes (allowing code to
                          // run afterwards, for example from the browser main event loop).
 var MEM_INIT_METHOD = 0; // How to represent the initial memory content.
-                         // 0: keep array literal representing the initial memory data
+                         // 0: embed a base64 string literal representing the initial memory data;
+                         //    if using this in combination with HTML output, your Content Security
+                         //    Policy may need to be modified (see SINGLE_FILE for more details)
                          // 1: create a *.mem file containing the binary data of the initial memory;
                          //    use the --memory-init-file command line switch to select this method
                          // 2: embed a string literal representing that initial memory data
@@ -856,10 +858,25 @@ var FETCH = 0; // If nonzero, enables emscripten_fetch API.
 
 var ASMFS = 0; // If set to 1, uses the multithreaded filesystem that is implemented within the asm.js module, using emscripten_fetch. Implies -s FETCH=1.
 
-var SINGLE_FILE = 0; // If set to 1, embeds all subresources in the emitted JS file
+var SINGLE_FILE = 0; // If set to 1, embeds all subresources in the emitted file
                      // by converting their file names into base64 data URIs. Embedded
                      // subresources may include (but aren't limited to) wasm, asm.js,
                      // and static memory initialization code.
+                     //
+                     // MEM_INIT_METHOD 0 uses the same logic as SINGLE_FILE, so the following
+                     // information applies to that as well:
+                     //
+                     // If used when generating JavaScript output, the subresource data URIs
+                     // will be parsed directly in JavaScript for ensured compatibility
+                     // across runtime environments.
+                     //
+                     // If used when generating HTML output, <script> elements will be
+                     // inserted with data URI src attributes and other subresource data URIs
+                     // will be requested via XHR. This means that your Content Security Policy
+                     // may need to be updated to ensure that the script-src and/or connect-src
+                     // directives whitelist data:. If you aren't using Content Security Policy,
+                     // or your CSP header doesn't include either script-src or connect-src,
+                     // then you can safely ignore this warning.
 
 var WASM_TEXT_FILE = ''; // name of the file containing wasm text, if relevant
 var WASM_BINARY_FILE = ''; // name of the file containing wasm binary, if relevant
