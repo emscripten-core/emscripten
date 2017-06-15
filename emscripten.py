@@ -1764,6 +1764,8 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
     # Also convert wasm text to binary
     wasm_as_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-as'),
                     wast, '-o', basename + '.wasm']
+    if settings['DEBUG_LEVEL'] >= 2 or settings['PROFILING_FUNCS']:
+      wasm_as_args += ['-g']
     logging.debug('  emscript: binaryen wasm-as: ' + ' '.join(wasm_as_args))
     shared.check_call(wasm_as_args)
 

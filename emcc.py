@@ -1220,6 +1220,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
       shared.Settings.OPT_LEVEL = options.opt_level
       shared.Settings.DEBUG_LEVEL = options.debug_level
+      shared.Settings.PROFILING_FUNCS = options.profiling_funcs
 
       ## Compile source code to bitcode
 

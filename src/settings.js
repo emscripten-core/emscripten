@@ -435,6 +435,7 @@ var EMSCRIPTEN_VERSION = ''; // this will contain the emscripten version. you sh
                              // RETAIN_COMPILER_SETTINGS
 var OPT_LEVEL = 0;           // this will contain the optimization level (-Ox). you should not modify it.
 var DEBUG_LEVEL = 0;         // this will contain the debug level (-gx). you should not modify it.
+var PROFILING_FUNCS = 0;     // Whether we are profiling functions. you should not modify it.
 
 
 // JS library elements (C functions implemented in JS)
