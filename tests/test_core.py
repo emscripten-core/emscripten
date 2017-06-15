@@ -4641,6 +4641,7 @@ PORT: 3979
   def test_atomic(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_atomic')
 
+  @no_wasm_backend('wasm has 64bit lockfree atomics')
   def test_atomic_cxx(self):
     test_path = path_from_root('tests', 'core', 'test_atomic_cxx')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
@@ -4923,6 +4924,7 @@ return malloc(size);
       src = open(path_from_root('tests', 'mmap_file.c')).read()
       self.do_run(src, '*\n' + s[0:20] + '\n' + s[4096:4096+20] + '\n*\n')
 
+  @no_wasm_backend('FixFunctionBitcasts pass invalidates otherwise-ok function pointer casts')
   def test_cubescript(self):
     assert 'asm3' in test_modes
     if self.run_name == 'asm3':
@@ -7165,6 +7167,7 @@ int main(int argc, char **argv) {
     self.do_run(src, '*0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
   @no_emterpreter
+  @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is disallowed')
   def test_emterpretify(self):
     Settings.EMTERPRETIFY = 1
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
