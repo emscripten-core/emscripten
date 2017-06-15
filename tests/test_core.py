@@ -1701,6 +1701,15 @@ int main() {
       test()
       Settings.SPLIT_MEMORY = 0
 
+  def test_memorygrowth_3(self):
+    # checks handling of malloc failure properly
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0', '-s', 'ABORTING_MALLOC=0', '-s', 'SAFE_HEAP=1']
+    self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
+
+  def test_memorygrowth_3_force_fail_reallocBuffer(self):
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-DFAIL_REALLOC_BUFFER']
+    self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
+
   def test_ssr(self): # struct self-ref
       src = '''
         #include <stdio.h>
@@ -4632,6 +4641,7 @@ PORT: 3979
   def test_atomic(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_atomic')
 
+  @no_wasm_backend('wasm has 64bit lockfree atomics')
   def test_atomic_cxx(self):
     test_path = path_from_root('tests', 'core', 'test_atomic_cxx')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
@@ -4914,6 +4924,7 @@ return malloc(size);
       src = open(path_from_root('tests', 'mmap_file.c')).read()
       self.do_run(src, '*\n' + s[0:20] + '\n' + s[4096:4096+20] + '\n*\n')
 
+  @no_wasm_backend('FixFunctionBitcasts pass invalidates otherwise-ok function pointer casts')
   def test_cubescript(self):
     assert 'asm3' in test_modes
     if self.run_name == 'asm3':
@@ -6337,6 +6348,10 @@ def process(filename):
     Building.COMPILER_TEST_OPTS += ['--bind']
     self.do_run_in_out_file_test('tests', 'core', 'test_embind_5')
 
+  def test_embind_unsigned(self):
+    self.emcc_args += ['--bind', '--std=c++11']
+    self.do_run_from_file(path_from_root('tests', 'embind', 'test_unsigned.cpp'), path_from_root('tests', 'embind', 'test_unsigned.out'))
+
   @sync
   @no_wasm_backend()
   def test_scriptaclass(self):
@@ -6800,14 +6815,29 @@ Module.printErr = Module['printErr'] = function(){};
       # objects when generating source maps, so we want to make sure the
       # optimizer can deal with both types.
       map_filename = out_filename + '.map'
-      data = json.load(open(map_filename, 'r'))
+
+      def encode_utf8(data):
+        if isinstance(data, dict):
+          for key in data:
+            data[key] = encode_utf8(data[key])
+          return data
+        elif isinstance(data, list):
+          for i in xrange(len(data)):
+            data[i] = encode_utf8(data[i])
+          return data
+        elif isinstance(data, unicode):
+          return data.encode('utf8')
+        else:
+          return data
+
+      data = encode_utf8(json.load(open(map_filename, 'r')))
       self.assertPathsIdentical(out_filename, data['file'])
       assert len(data['sources']) == 1, data['sources']
       self.assertPathsIdentical(src_filename, data['sources'][0])
       self.assertTextDataIdentical(src, data['sourcesContent'][0])
-      mappings = json.loads(jsrun.run_js(
+      mappings = encode_utf8(json.loads(jsrun.run_js(
         path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
-        tools.shared.NODE_JS, [map_filename]))
+        tools.shared.NODE_JS, [map_filename])))
       seen_lines = set()
       for m in mappings:
         self.assertPathsIdentical(src_filename, m['source'])
@@ -7156,6 +7186,7 @@ int main(int argc, char **argv) {
     self.do_run(src, '*0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
   @no_emterpreter
+  @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is disallowed')
   def test_emterpretify(self):
     Settings.EMTERPRETIFY = 1
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')

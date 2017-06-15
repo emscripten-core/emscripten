@@ -685,7 +685,7 @@ def unfloat(s):
 
 
 def make_function_tables_defs(implemented_functions, all_implemented, function_table_data, settings, metadata):
-  class Counter:
+  class Counter(object):
     next_bad_item = 0
     next_item = 0
     pre = []
@@ -2076,7 +2076,10 @@ def main(args, compiler_engine, cache, temp_files, DEBUG):
   settings = {}
   for setting in args.settings:
     name, value = setting.strip().split('=', 1)
-    settings[name] = json.loads(value)
+    value = json.loads(value)
+    if isinstance(value, unicode):
+      value = value.encode('utf8')
+    settings[name] = value
 
   # libraries
   libraries = args.libraries[0].split(',') if len(args.libraries) > 0 else []

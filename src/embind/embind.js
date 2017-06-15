@@ -536,6 +536,8 @@ var LibraryEmbind = {
         };
     }
 
+    var isUnsignedType = (name.indexOf('unsigned') != -1);
+
     registerType(primitiveType, {
         name: name,
         'fromWireType': fromWireType,
@@ -548,7 +550,7 @@ var LibraryEmbind = {
             if (value < minRange || value > maxRange) {
                 throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
             }
-            return value | 0;
+            return isUnsignedType ? (value >>> 0) : (value | 0);
         },
         'argPackAdvance': 8,
         'readValueFromPointer': integerReadValueFromPointer(name, shift, minRange !== 0),

@@ -305,7 +305,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   symbolses = shared.Building.parallel_llvm_nm(map(os.path.abspath, temp_files))
 
   if len(symbolses) == 0:
-    class Dummy:
+    class Dummy(object):
       defs = set()
       undefs = set()
     symbolses.append(Dummy())
@@ -430,7 +430,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
 import ports
 
-class Ports:
+class Ports(object):
   @staticmethod
   def build_port(src_path, output_path, includes=[], flags=[], exclude_files=[], exclude_dirs=[]):
       srcs = []
@@ -483,7 +483,7 @@ class Ports:
       logging.debug('    (at ' + fullname + ')')
       Ports.name_cache.add(name)
 
-    class State:
+    class State(object):
       retrieved = False
       unpacked = False
 

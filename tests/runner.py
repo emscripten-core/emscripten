@@ -282,7 +282,7 @@ class RunnerCore(unittest.TestCase):
       transform.write(post1)
       transform.write('\nprocess(sys.argv[1])\n')
       transform.close()
-      transform_args = ['--js-transform', "%s %s" % (PYTHON, transform_filename)]
+      transform_args = ['--js-transform', "%s '%s'" % (PYTHON, transform_filename)]
     Building.emcc(filename + '.o', Settings.serialize() + emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
     if post2: post2(filename + '.o.js')
 

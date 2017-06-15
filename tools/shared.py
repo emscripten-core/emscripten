@@ -13,7 +13,7 @@ from tempfiles import try_delete
 # On Windows python suffers from a particularly nasty bug if python is spawning new processes while python itself is spawned from some other non-console process.
 # Use a custom replacement for Popen on Windows to avoid the "WindowsError: [Error 6] The handle is invalid" errors when emcc is driven through cmake or mingw32-make.
 # See http://bugs.python.org/issue3905
-class WindowsPopen:
+class WindowsPopen(object):
   def __init__(self, args, bufsize=0, executable=None, stdin=None, stdout=None, stderr=None, preexec_fn=None, close_fds=False,
                shell=False, cwd=None, env=None, universal_newlines=False, startupinfo=None, creationflags=0):
     self.stdin = stdin
@@ -772,7 +772,7 @@ def get_emscripten_temp_dir():
     prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR) # this global var might change later
   return EMSCRIPTEN_TEMP_DIR
 
-class WarningManager:
+class WarningManager(object):
   warnings = {
     'ABSOLUTE_PATHS': {
       'enabled': False,  # warning about absolute-paths is disabled by default
@@ -822,7 +822,7 @@ class WarningManager:
       warning['printed'] = True
       logging.warning((message or warning['message']) + ' [-W' + warning_type.lower().replace('_', '-') + ']')
 
-class Configuration:
+class Configuration(object):
   def __init__(self, environ=os.environ):
     self.DEBUG = environ.get('EMCC_DEBUG')
     if self.DEBUG == "0":
@@ -1130,7 +1130,7 @@ def expand_byte_size_suffixes(value):
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 
 class Settings2(type):
-  class __impl:
+  class __impl(object):
     attrs = {}
 
     def __init__(self):
@@ -1283,7 +1283,7 @@ def extract_archive_contents(f):
     'files': []
   }
 
-class ObjectFileInfo:
+class ObjectFileInfo(object):
   def __init__(self, returncode, output, defs=set(), undefs=set(), commons=set()):
     self.returncode = returncode
     self.output = output
@@ -1306,7 +1306,7 @@ def g_multiprocessing_initializer(*args):
 
 # Building
 
-class Building:
+class Building(object):
   COMPILER = CLANG
   LLVM_OPTS = False
   COMPILER_TEST_OPTS = [] # For use of the test runner
@@ -1324,7 +1324,7 @@ class Building:
       # If running with one core only, create a mock instance of a pool that does not
       # actually spawn any new subprocesses. Very useful for internal debugging.
       if cores == 1:
-        class FakeMultiprocessor:
+        class FakeMultiprocessor(object):
           def map(self, func, tasks):
             results = []
             for t in tasks:
@@ -1358,13 +1358,39 @@ class Building:
 
     return Building.multiprocessing_pool
 
+  # When creating environment variables for Makefiles to execute, we need to doublequote the commands if they have spaces in them..
   @staticmethod
-  def get_building_env(native=False):
+  def doublequote_spaces(arg):
+    arg = arg[:] # Operate on a copy of the input string/list
+    if isinstance(arg, list):
+      for i in range(len(arg)):
+        arg[i] = Building.doublequote_spaces(arg[i])
+      return arg
+
+    if ' ' in arg and not (arg.startswith('"') and arg.endswith('"')):
+      return '"' + arg.replace('"', '\\"') + '"'
+
+    return arg
+
+  # .. but for Popen, we cannot have doublequotes, so provide functionality to remove them when needed.
+  @staticmethod
+  def remove_doublequotes(arg):
+    arg = arg[:] # Operate on a copy of the input string/list
+    if arg.startswith('"') and arg.endswith('"'):
+      return arg[1:-1].replace('\\"', '"')
+    else:
+      return arg
+
+  @staticmethod
+  def get_building_env(native=False, doublequote_commands=False):
+    def nop(arg):
+      return arg
+    quote = Building.doublequote_spaces if doublequote_commands else nop
     env = os.environ.copy()
     if native:
-      env['CC'] = CLANG_CC
-      env['CXX'] = CLANG_CPP
-      env['LD'] = CLANG
+      env['CC'] = quote(CLANG_CC)
+      env['CXX'] = quote(CLANG_CPP)
+      env['LD'] = quote(CLANG)
       env['CFLAGS'] = '-O2 -fno-math-errno'
       # get a non-native one, and see if we have some of its effects - remove them if so
       non_native = Building.get_building_env()
@@ -1374,18 +1400,18 @@ class Building:
         if env.get(dangerous) and env.get(dangerous) == non_native.get(dangerous):
           del env[dangerous] # better to delete it than leave it, as the non-native one is definitely wrong
       return env
-    env['CC'] = EMCC if not WINDOWS else 'python %r' % EMCC
-    env['CXX'] = EMXX if not WINDOWS else 'python %r' % EMXX
-    env['AR'] = EMAR if not WINDOWS else 'python %r' % EMAR
-    env['LD'] = EMCC if not WINDOWS else 'python %r' % EMCC
-    env['NM'] = LLVM_NM
-    env['LDSHARED'] = EMCC if not WINDOWS else 'python %r' % EMCC
-    env['RANLIB'] = EMRANLIB if not WINDOWS else 'python %r' % EMRANLIB
-    env['EMMAKEN_COMPILER'] = Building.COMPILER
+    env['CC'] = quote(EMCC if not WINDOWS else 'python %r' % EMCC)
+    env['CXX'] = quote(EMXX if not WINDOWS else 'python %r' % EMXX)
+    env['AR'] = quote(EMAR if not WINDOWS else 'python %r' % EMAR)
+    env['LD'] = quote(EMCC if not WINDOWS else 'python %r' % EMCC)
+    env['NM'] = quote(LLVM_NM)
+    env['LDSHARED'] = quote(EMCC if not WINDOWS else 'python %r' % EMCC)
+    env['RANLIB'] = quote(EMRANLIB if not WINDOWS else 'python %r' % EMRANLIB)
+    env['EMMAKEN_COMPILER'] = quote(Building.COMPILER)
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(Building.COMPILER_TEST_OPTS)
-    env['HOST_CC'] = CLANG_CC
-    env['HOST_CXX'] = CLANG_CPP
+    env['HOST_CC'] = quote(CLANG_CC)
+    env['HOST_CXX'] = quote(CLANG_CPP)
     env['HOST_CFLAGS'] = "-W" #if set to nothing, CFLAGS is used, which we don't want
     env['HOST_CXXFLAGS'] = "-W" #if set to nothing, CXXFLAGS is used, which we don't want
     env['PKG_CONFIG_LIBDIR'] = path_from_root('system', 'local', 'lib', 'pkgconfig') + os.path.pathsep + path_from_root('system', 'lib', 'pkgconfig')
@@ -1556,7 +1582,7 @@ class Building:
     #    os.unlink(lib) # make sure compilation completed successfully
     #  except:
     #    pass
-    env = Building.get_building_env(native)
+    env = Building.get_building_env(native, True)
     for k, v in env_init.iteritems():
       env[k] = v
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
@@ -1834,8 +1860,16 @@ class Building:
 
     logging.debug('emcc: LLVM opts: ' + ' '.join(opts) + '  [num inputs: ' + str(len(inputs)) + ']')
     target = out or (filename + '.opt.bc')
-    output = Popen([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE).communicate()[0]
-    assert os.path.exists(target), 'Failed to run llvm optimizations: ' + output
+    proc = Popen([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE)
+    output = proc.communicate()[0]
+    if proc.returncode != 0 or not os.path.exists(target):
+      logging.error('Failed to run llvm optimizations: ' + output)
+      for i in inputs:
+        if not os.path.exists(i):
+          logging.warning('Note: Input file "' + i + '" did not exist.')
+        elif not Building.is_bitcode(i):
+          logging.warning('Note: Input file "' + i + '" exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?')
+      sys.exit(1)
     if not out:
       shutil.move(filename + '.opt.bc', filename)
     return target
@@ -2265,7 +2299,7 @@ def reconfigure_cache():
   global Cache
   Cache = cache.Cache(debug=DEBUG_CACHE)
 
-class JS:
+class JS(object):
   memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+Runtime\.GLOBAL_BASEHgb]+)\);'
   no_memory_initializer_pattern = '/\* no memory initializer \*/'
 
@@ -2432,7 +2466,7 @@ class JS:
 
   @staticmethod
   def replace_initializers(src, inits):
-    class State:
+    class State(object):
       first = True
     def rep(m):
       if not State.first: return ''
@@ -2491,7 +2525,7 @@ class JS:
   def is_function_table(name):
     return name.startswith('FUNCTION_TABLE_')
 
-class WebAssembly:
+class WebAssembly(object):
   @staticmethod
   def lebify(x):
     assert x >= 0, 'TODO: signed'
@@ -2536,6 +2570,7 @@ class WebAssembly:
 
 def execute(cmd, *args, **kw):
   try:
+    cmd[0] = Building.remove_doublequotes(cmd[0])
     return Popen(cmd, *args, **kw).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
   except:
     if not isinstance(cmd, str):

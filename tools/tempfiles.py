@@ -27,7 +27,7 @@ def try_delete(filename):
   except:
     pass
 
-class TempFiles:
+class TempFiles(object):
   def __init__(self, tmp, save_debug_files=False):
     self.tmp = tmp
     self.save_debug_files = save_debug_files
@@ -48,7 +48,7 @@ class TempFiles:
     """Returns an object representing a RAII-like access to a temp file, that has convenient pythonesque
     semantics for being used via a construct 'with TempFiles.get_file(..) as filename:'. The file will be
     deleted immediately once the 'with' block is exited."""
-    class TempFileObject:
+    class TempFileObject(object):
       def __enter__(self_):
         self_.file = tempfile.NamedTemporaryFile(dir=self.tmp, suffix=suffix, delete=False)
         self_.file.close() # NamedTemporaryFile passes out open file handles, but callers prefer filenames (and open their own handles manually if needed)

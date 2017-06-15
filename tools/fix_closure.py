@@ -15,7 +15,7 @@ import os, sys, re
 infile = open(sys.argv[1], 'r')
 outfile = open(sys.argv[2], 'w')
 
-class ObjectParser:
+class ObjectParser(object):
   def read(self, s, line):
     '''
       Read an element of the FUNCTION_TABLE until the end (a comma or the end of FUNCTION_TABLE), returning that location
