@@ -67,8 +67,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes + default_opts + c_opts + lib_opts)
       o_s.append(o)
     run_commands(commands)
-    shared.Building.link(o_s, in_temp(lib_filename))
-    return in_temp(lib_filename)
+    output = in_temp(lib_filename)
+    if shared.get_llvm_target() == shared.WASM_OBJ_TARGET:
+      shared.Building.emar('cr', output, o_s)
+    else:
+      shared.Building.link(o_s, output)
+    return output
 
   def build_libcxx(src_dirname, lib_filename, files, lib_opts, has_noexcept_version=False):
     o_s = []
@@ -326,40 +330,45 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       for dep in value:
         shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
 
+  if shared.get_llvm_target() == shared.WASM_OBJ_TARGET:
+    ext = 'a'
+  else:
+    ext = 'bc'
+
   system_libs = [('libcxx',      'a',  create_libcxx,      libcxx_symbols,      ['libcxxabi'], True),
-                 ('libcxxabi',   'bc', create_libcxxabi,   libcxxabi_symbols,   ['libc'],      False),
-                 ('gl',          'bc', create_gl,          gl_symbols,          ['libc'],      False),
+                 ('libcxxabi',    ext, create_libcxxabi,   libcxxabi_symbols,   ['libc'],      False),
+                 ('gl',           ext, create_gl,          gl_symbols,          ['libc'],      False),
                  ('compiler-rt', 'a',  create_compiler_rt, compiler_rt_symbols, ['libc'],      False)]
 
   # malloc dependency is force-added, so when using pthreads, it must be force-added
   # as well, since malloc needs to be thread-safe, so it depends on mutexes.
   if shared.Settings.USE_PTHREADS:
-    system_libs += [('libc-mt',                     'bc', create_libc,                           libc_symbols,     [],       False),
-                    ('pthreads',                    'bc', create_pthreads,                       pthreads_symbols, ['libc'], False),
-                    ('dlmalloc_threadsafe',         'bc', create_dlmalloc_multithreaded,         [],               [],       False),
-                    ('dlmalloc_threadsafe_tracing', 'bc', create_dlmalloc_multithreaded_tracing, [],               [],       False)]
+    system_libs += [('libc-mt',                      ext, create_libc,                           libc_symbols,     [],       False),
+                    ('pthreads',                     ext, create_pthreads,                       pthreads_symbols, ['libc'], False),
+                    ('dlmalloc_threadsafe',          ext, create_dlmalloc_multithreaded,         [],               [],       False),
+                    ('dlmalloc_threadsafe_tracing',  ext, create_dlmalloc_multithreaded_tracing, [],               [],       False)]
     force.add('pthreads')
     if shared.Settings.EMSCRIPTEN_TRACING:
       force.add('dlmalloc_threadsafe_tracing')
     else:
       force.add('dlmalloc_threadsafe')
   else:
-    system_libs += [('libc', 'bc', create_libc, libc_symbols, [], False)]
+    system_libs += [('libc', ext, create_libc, libc_symbols, [], False)]
 
     if shared.Settings.EMSCRIPTEN_TRACING:
-      system_libs += [('dlmalloc_tracing', 'bc', create_dlmalloc_singlethreaded_tracing, [], [], False)]
+      system_libs += [('dlmalloc_tracing', ext, create_dlmalloc_singlethreaded_tracing, [], [], False)]
       force.add('dlmalloc_tracing')
     else:
       if shared.Settings.SPLIT_MEMORY:
-        system_libs += [('dlmalloc_split', 'bc', create_dlmalloc_split, [], [], False)]
+        system_libs += [('dlmalloc_split', ext, create_dlmalloc_split, [], [], False)]
         force.add('dlmalloc_split')
       else:
-        system_libs += [('dlmalloc', 'bc', create_dlmalloc_singlethreaded, [], [], False)]
+        system_libs += [('dlmalloc', ext, create_dlmalloc_singlethreaded, [], [], False)]
         force.add('dlmalloc')
 
   # if building to wasm, we need more math code, since we have less builtins
   if shared.Settings.BINARYEN:
-    system_libs += [('wasm-libc', 'bc', create_wasm_libc, wasm_libc_symbols, [], False)]
+    system_libs += [('wasm-libc', ext, create_wasm_libc, wasm_libc_symbols, [], False)]
     # if libc is included, we definitely must be, as it might need us
     for data in system_libs:
       if data[3] == libc_symbols:
@@ -379,7 +388,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   for shortname, suffix, create, library_symbols, deps, can_noexcept in system_libs:
     force_this = force_all or shortname in force
     if can_noexcept: shortname = maybe_noexcept(shortname)
-    if force_this:
+    if force_this and shared.get_llvm_target() != shared.WASM_OBJ_TARGET:
       suffix = 'bc' # .a files do not always link in all their parts; don't use them when forced
     name = shortname + '.' + suffix
 
