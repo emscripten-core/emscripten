@@ -881,3 +881,6 @@ var SINGLE_FILE = 0; // If set to 1, embeds all subresources in the emitted file
 var WASM_TEXT_FILE = ''; // name of the file containing wasm text, if relevant
 var WASM_BINARY_FILE = ''; // name of the file containing wasm binary, if relevant
 var ASMJS_CODE_FILE = ''; // name of the file containing asm.js, if relevant
+
+var INCLUDE_THIRD_PARTY_SODIUMUTIL = 0; // If set to 1, sodiumutil will be included in the bundle.
+                                        // Automatically set as needed, specifically for SINGLE_FILE.

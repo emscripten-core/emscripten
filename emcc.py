@@ -1605,7 +1605,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('memory initializer'):
       memfile = None
-      embed_memfile = (Settings.SINGLE_FILE or shared.Settings.MEM_INIT_METHOD == 0) and (not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and options.debug_level < 4)
+      embed_memfile = (shared.Settings.SINGLE_FILE or shared.Settings.MEM_INIT_METHOD == 0) and (not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and options.debug_level < 4)
 
       if shared.Settings.MEM_INIT_METHOD > 0 or embed_memfile:
         memfile = target + '.mem'
