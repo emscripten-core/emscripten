@@ -819,9 +819,11 @@ class BrowserCore(RunnerCore):
   #define REPORT_RESULT_INTERNAL(sync) \
     EM_ASM_({ \
       var xhr = new XMLHttpRequest(); \
-      xhr.open('GET', 'http://localhost:8888/report_result?' + $0, !$1); \
+      var result = $0; \
+      if (Module['pageThrewException']) result = 12345; \
+      xhr.open('GET', 'http://localhost:8888/report_result?' + result, !$1); \
       xhr.send(); \
-      setTimeout(function() { window.close() }, 1000); \
+      if (!Module['pageThrewException'] /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000); \
     }, result, sync);
   #define REPORT_RESULT() REPORT_RESULT_INTERNAL(0)
 #endif
@@ -882,7 +884,7 @@ class BrowserCore(RunnerCore):
             xhr = new XMLHttpRequest();
             xhr.open('GET', 'http://localhost:8888/report_result?' + wrong);
             xhr.send();
-            setTimeout(function() { window.close() }, 1000);
+            if (wrong < 10 /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000);
           };
           actualImage.src = actualUrl;
         }
