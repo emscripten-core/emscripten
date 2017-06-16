@@ -4,18 +4,18 @@
 Deploying Emscripten Compiled Pages
 ===================================
 
-Emscripten compiled output can either be run directly in a JS shell from command line, or hosted on a web page. When hosting asm.js and WebAssembly compiled pages as .html for browsers to execute, Emscripten provides a default `HTML shell file` that serves as a launcher to run the code, simplified to get started with development. However when getting ready to release and host the content on a web site, a number of extra features and customizations are likely in order to polish the visitor experience. This guide highlights things to pay attention to when deploying sites to a CDN.
+Emscripten compiled output can either be run directly in a JS shell from command line, or hosted on a web page. When hosting asm.js and WebAssembly compiled pages as .html for browsers to execute, Emscripten provides a default `HTML shell file` that serves as a launcher to run the code, simplified to get started with development. However when getting ready to release and host the content on a web site, a number of extra features and customizations are likely needed to polish the visitor experience. This guide highlights things to pay attention to when deploying sites to the public.
 
 Build Files and Custom Shell
 ============================
 
-Emscripten build output consists of two essential parts: 1) the low level compiled code module and 2) the JavaScript runtime to interact with it. If targeting WebAssembly, the compiled code is stored in a file ``out.wasm`` and the runtime lives in a file ``out.js``. When targeting asm.js there exists an additional binary file ``out.mem`` that contains the static memory section of the compiled code. This part is embedded in the ``out.wasm`` file when targeting WebAssembly.
+Emscripten build output consists of two essential parts: 1) the low level compiled code module and 2) the JavaScript runtime to interact with it. If targeting WebAssembly which is done with linker flags ``-s WASM=1 -o out.html``, the compiled code is stored in a file ``out.wasm`` and the runtime lives in a file ``out.js``. When targeting asm.js there exists an additional binary file ``out.mem`` that contains the static memory section of the compiled code. This part is embedded in the ``out.wasm`` file when targeting WebAssembly.
 
 By default when targeting asm.js, the compiled code and the runtime are fused in the same ``out.js`` file. For moderately large asm.js projects, it is recommended to use the ``--separate-asm`` flag to separate the compiled code to its own ``out.asm.js`` file, which enables browsers to optimize memory usage for the compiled asm.js code.
 
 Additional build output files can also exist, depending on which features are used. If the Emscripten file packager is used, a binary ``out.data`` package is generated, along with an associated ``out.data.js`` loader file. Also Emscripten pthreads and Fetch APIs have their own associated Web Worker related script ``.js`` output files.
 
-Developers can choose to output either to JavaScript or HTML. If outputting JavaScript (``emcc -o out.js``), developer is expected to manually create the ``out.html`` main page in which the code is run in browsers. When targeting HTML with ``emcc -o out.html``, Emscripten will generate the HTML shell file automatically. This shell file can be customized by using the ``emcc -o out.html --shell-file path/to/custom_shell.html`` linker directive. Copy the `default minimal HTML shell file <https://github.com/kripken/emscripten/blob/master/src/shell_minimal.html>`_ from Emscripten repository to your project tree to get a good starting template for a customized shell file.
+Developers can choose to output either to JavaScript or HTML. If outputting JavaScript (``emcc -o out.js``), the developer is expected to manually create the ``out.html`` main page in which the code is run in browsers. When targeting HTML with ``emcc -o out.html`` (the recommended build mode), Emscripten will generate the HTML shell file automatically. This shell file can be customized by using the ``emcc -o out.html --shell-file path/to/custom_shell.html`` linker directive. Copy the `default minimal HTML shell file <https://github.com/kripken/emscripten/blob/master/src/shell_minimal.html>`_ from Emscripten repository to your project tree to get a good starting template for a customized shell file.
 
 The following sections offer tips for improving the site experience. 
 
@@ -26,7 +26,7 @@ The biggest slowdown to speedy page loading is most often the need to download l
 
 - To serve gzip-compressed assets on a CDN, use a gzip compression tool and precompress asset files offline before uploading to the CDN. Some web servers support compressing files on the fly, but for static asset content, that should be avoided since it can be costly for the server CPU to keep recompressing the files. Adjust the configuration of the web server to host the precompressed files with the HTTP response header ``Content-Encoding: gzip``. This instructs web browsers that the downloaded content should be transparently uncompressed before handing the data off to the page itself.
 
-- WebAssembly has now shipped in `Firefox 52 and Chrome 57 <http://caniuse.com/#feat=wasm>`_. Emscripten also supports targeting WebAssembly, by using the ``-s BINARYEN=1`` linker flag. WebAssembly is an evolution of asm.js, and if your project already successfully compiles to asm.js, it is likely to already work with WebAssembly as well. Compressed WebAssembly output files are on average 50-60% smaller than compressed asm.js files, so the benefit is large.
+- WebAssembly has now shipped in `Firefox 52 and Chrome 57 <http://caniuse.com/#feat=wasm>`_. Emscripten also supports targeting WebAssembly, by using the ``-s WASM=1`` linker flag. WebAssembly is an evolution of asm.js, and if your project already successfully compiles to asm.js, it is likely to already work with WebAssembly as well. Compressed WebAssembly output files can be around 20% smaller than compressed asm.js files, but for builds with debugging and profiling information, the difference can even be up to 50%, so the benefit is large.
 
 - Make sure that gzip compression does not confuse the MIME types that the assets are served with. All JavaScript files (precompressed or not) should be best served with the HTTP response header ``Content-Type: application/javascript``, and all asset files (``.data``, ``.mem``) should be served with the header ``Content-Type: application/octet-stream``. WebAssembly ``.wasm`` files should be served with ``Content-Type: application/wasm``.
 
@@ -73,9 +73,9 @@ Reserving Memory for Compiled Code
 
 An inherent property of asm.js and WebAssembly applications is that they need a linear block of memory to represent the application `heap`. This is often the single largest memory allocation that an Emscripten compiled page does, and therefore is the one that is at the biggest risk of failing if the user's system is low on memory.
 
-Because this memory allocation needs to be contiguous, it can happen that the user's browser process does have enough memory, but only the address space of the process is too fragmented, and there is not enough linear address space available to satisfy the allocation. To avoid this issue, the best practice is to allocate the ``WebAssembly.Memory`` object (``ArrayBuffer`` for asm.js) up front at the top of the main page, before any other allocations or page script load actions are done. This ensures that the allocation has best chances to succeed.
+Because this memory allocation needs to be contiguous, it can happen that the user's browser process does have enough memory, but only the address space of the process is too fragmented, and there is not enough linear address space available to satisfy the allocation. To avoid this issue, the best practice is to allocate the ``WebAssembly.Memory`` object (``ArrayBuffer`` for asm.js) up front at the top of the main page, before any other allocations or page script load actions are done. This ensures that the allocation has best chances to succeed. See the fields ``Module['buffer']`` and ``Module['wasmMemory']`` for more information.
 
-Additionally, it is possible to opt in to content process isolation specifically for a web page that needs this kind of a large allocation. To utilize this machinery, specify the HTTP response header ``Large-Allocation: <MBytes>`` when serving the main html page. This support is currently implemented in Firefox Nightly.
+Additionally, it is possible to opt in to content process isolation specifically for a web page that needs this kind of a large allocation. To utilize this machinery, specify the HTTP response header ``Large-Allocation: <MBytes>`` when serving the main html page. This support is currently implemented in Firefox 53.
 
 Last, it is easy to accidentally cling to large unneeded blocks of memory after the page has loaded. For example, in WebAssembly, once the WebAssembly Module has been instantiated to a ``WebAssembly.Instance`` object, the original ``WebAssembly.Module`` object is no longer needed in memory, and it is best to clear all references to it so that the garbage collector can reclaim it, because the Module object can be dozens of megabytes in size. Similar, make sure that all XHRed files, asset data and large scripts are not referenced anymore when not used. Check out the browser's memory profiling tool, and the ``about::memory`` page in Firefox to perform memory profiling to ensure that memory is not being wasted.
 
@@ -108,15 +108,17 @@ This way the page will be future compatible once support for the particular feat
 
 - Simulate download timeouts either intrusively by programmatically aborting XHR downloads, physically disconnecting network access, or by using external tools such as Fiddler. These types of tools can show up a lot of unexpected failure cases and help diagnose that the error handling path for such scenarios is as desired.
 
-- When developing the page locally, perform testing by using a local web server and not just via ``file://`` URLs. The script ``emrun.py`` in Emscripten source tree is designed to serve as an ad hoc web server for this purpose.
+- Use a network limiter tool to constrain download or upload bandwidth speeds to simulate slow network connections. This can uncover bugs related to timing dependencies for network transfers. For example, a small network transfer may be implicitly assumed to finish before a large one, but that might not always be the case.
+
+- When developing the page locally, perform testing by using a local web server and not just via ``file://`` URLs. The script ``emrun.py`` in Emscripten source tree is designed to serve as an ad hoc web server for this purpose. Emrun is preconfigured to handle serving gzip compressed files (with suffix ``.gz``), and enables support for the ``Large-Allocation`` header, and allows command line automation runs of compiled pages.
 
 - Catch all exceptions that come from within entry points that call to compiled asm.js and WebAssembly code. There are three distinct exception classes that compiled code can throw:
 
-    1. C++ exceptions that are represented by a thrown integer. This integer points to a memory location in the application heap that contains pointer to the thrown object.
+    1. C++ exceptions that are represented by a thrown integer and not caught by the C++ program. This integer points to a memory location in the application heap that contains pointer to the thrown object.
 
-    2. Exceptions caused by Emscripten runtime calling the ``abort()`` function. These correspond to a fatal error that execution of the compiled code cannot recover from.
+    2. Exceptions caused by Emscripten runtime calling the ``abort()`` function. These correspond to a fatal error that execution of the compiled code cannot recover from. For example, this can occur when calling an invalid function pointer.
 
-    3. Traps caused by compiled WebAssembly code. These correspond to fatal errors coming from the WebAssembly VM.
+    3. Traps caused by compiled WebAssembly code. These correspond to fatal errors coming from the WebAssembly VM. This can occur for example when performing an integer division by zero, or when converting a large floating point number to an integer when the float is out of range of the numbers representable by that integer type. See the linker flag ``-s BINARYEN_TRAP_MODE`` for more details.
 
 - Implement a final "catch all" error handler on the page by implementing a ``window.onerror`` script. This will be called as a last resort if no other source handled an exception that was raised on the page. See `window.onerror <https://developer.mozilla.org/en-US/docs/Web/API/GlobalEventHandlers/onerror#window.onerror>`_ documentaton on MDN.
 
@@ -159,4 +161,4 @@ When planning a testing matrix before pushing a site live, the following items c
 
 - Simulate lack of any special APIs that the page might need, e.g. Gamepad, Acceleration or Touch Events, and make sure that appropriate error flow is handled in those cases as well.
 
-Developing consistent experiences across all browsers can be quite a process, especially since all types of devices and form factors come with a web browser these days. Please help improve this guide by posting feedback to the `Emscripten bug tracker <https://github.com/kripken/emscripten/issues>`_ or the `emscripten-discuss <https://groups.google.com/forum/#!forum/emscripten-discuss>`_ mailing list.
+If you have good tips or suggestsions to share, please help improve this guide by posting feedback to the `Emscripten bug tracker <https://github.com/kripken/emscripten/issues>`_ or the `emscripten-discuss <https://groups.google.com/forum/#!forum/emscripten-discuss>`_ mailing list.
