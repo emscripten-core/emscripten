@@ -26,12 +26,6 @@ function JSify(data, functionsOnly) {
   if (mainPass) {
     var shellFile = SHELL_FILE ? SHELL_FILE : (BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'shell_sharedlib.js' : 'shell.js');
 
-    var thirdPartyFiles = [];
-    
-    if (INCLUDE_THIRD_PARTY_SODIUMUTIL) {
-      thirdPartyFiles.push('../third_party/sodiumutil/dist/sodiumutil.js');
-    }
-
     // We will start to print out the data, but must do so carefully - we are
     // dealing with potentially *huge* strings. Convenient replacements and
     // manipulations may create in-memory copies, and we may OOM.
@@ -51,8 +45,7 @@ function JSify(data, functionsOnly) {
     // else. This lets us not hold any strings in memory, we simply print
     // things out as they are ready.
 
-    var thirdParty = thirdPartyFiles.map(function(f) { return read(f) }).join('\n');
-    var shellParts = read(shellFile).replace('{{THIRD_PARTY}}', thirdParty).split('{{BODY}}');
+    var shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[0], shellFile)));
     var preFile = BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'preamble_sharedlib.js' : 'preamble.js';
     var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime()), preFile));

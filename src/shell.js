@@ -71,8 +71,6 @@ if (!ENVIRONMENT_IS_PTHREAD) PthreadWorkerInit = {};
 var currentScriptUrl = ENVIRONMENT_IS_WORKER ? undefined : document.currentScript.src;
 #endif
 
-{{THIRD_PARTY}}
-
 if (ENVIRONMENT_IS_NODE) {
   // Expose functionality in the same simple way that the shells work
   // Note that we pollute the global namespace here, otherwise we break in node
@@ -139,7 +137,7 @@ else if (ENVIRONMENT_IS_SHELL) {
     Module['read'] = function shell_read(f) {
       var data = tryParseAsDataURI(f);
       if (data) {
-        return sodiumUtil.to_string(data);
+        return bytesToString(data);
       }
       return read(f);
     };
@@ -180,7 +178,7 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   Module['read'] = function shell_read(url) {
     var data = tryParseAsDataURI(url);
     if (data) {
-      return sodiumUtil.to_string(data);
+      return bytesToString(data);
     }
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, false);
@@ -209,8 +207,7 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
         setTimeout(function () { onload(data.buffer); }, 0);
         return;
       }
-    }
-    catch (err) {
+    } catch (err) {
       setTimeout(function () { onerror(err); }, 0);
       return;
     }
@@ -258,8 +255,32 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   }
 }
 else {
-  // Unreachable because SHELL is dependant on the others
-  throw 'Unknown runtime environment. Where are we?';
+  // Unreachable because SHELL is dependent on the others
+  throw new Error('Unknown runtime environment. Where are we?');
+}
+
+function base64ToBytes(s) {
+  try {
+    var decoded = atob(s);
+    var bytes = new Uint8Array(decoded.length);
+    for (i = 0 ; i < decoded.length ; ++i) {
+      bytes[i] = decoded.charCodeAt(i);
+    }
+    return bytes;
+  } catch (_) {
+    throw new Error('Converting base64 string to bytes failed.');
+  }
+}
+
+function bytesToString(bytes) {
+  if (typeof TextDecoder !== 'undefined') {
+    return new TextDecoder('utf-8').decode(bytes);
+  }
+  var s = '';
+  for (var i = 0 ; i < bytes.length ; ++i) {
+      s += String.fromCharCode(bytes[i]);
+  }
+  return s;
 }
 
 // If filename is a base64 data URI, parses and returns data (Buffer on node,
@@ -281,7 +302,7 @@ function tryParseAsDataURI(filename) {
     return Buffer.from(data, 'base64');
   }
 
-  return sodiumUtil.from_base64(data);
+  return base64ToBytes(data);
 }
 
 function globalEval(x) {
