@@ -1374,10 +1374,17 @@ class Building(object):
 
   # .. but for Popen, we cannot have doublequotes, so provide functionality to remove them when needed.
   @staticmethod
-  def remove_doublequotes(arg):
+  def remove_quotes(arg):
     arg = arg[:] # Operate on a copy of the input string/list
+    if isinstance(arg, list):
+      for i in range(len(arg)):
+        arg[i] = Building.remove_quotes(arg[i])
+      return arg
+
     if arg.startswith('"') and arg.endswith('"'):
       return arg[1:-1].replace('\\"', '"')
+    elif arg.startswith("'") and arg.endswith("'"):
+      return arg[1:-1].replace("\\'", "'")
     else:
       return arg
 
@@ -2570,7 +2577,7 @@ class WebAssembly(object):
 
 def execute(cmd, *args, **kw):
   try:
-    cmd[0] = Building.remove_doublequotes(cmd[0])
+    cmd[0] = Building.remove_quotes(cmd[0])
     return Popen(cmd, *args, **kw).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
   except:
     if not isinstance(cmd, str):

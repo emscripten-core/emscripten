@@ -1595,7 +1595,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         final += '.tr.js'
         posix = True if not shared.WINDOWS else False
         logging.debug('applying transform: %s', options.js_transform)
-        subprocess.check_call(shlex.split(options.js_transform, posix=posix) + [os.path.abspath(final)])
+        subprocess.check_call(shared.Building.remove_quotes(shlex.split(options.js_transform, posix=posix) + [os.path.abspath(final)]))
         if DEBUG: save_intermediate('transformed')
 
       js_transform_tempfiles = [final]
