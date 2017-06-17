@@ -201,7 +201,7 @@ def use_native(x, source_map=False):
   if type(x) == str: return x in NATIVE_PASSES
   return len(NATIVE_PASSES.intersection(x)) == len(x) and 'asm' in x
 
-class Minifier:
+class Minifier(object):
   '''
     asm.js minification support. We calculate minification of
     globals here, then pass that into the parallel js-optimizer.js runners which
@@ -347,7 +347,7 @@ def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, ju
       post = js[end_funcs + len(end_funcs_marker):]
       js = js[start_funcs + len(start_funcs_marker):end_funcs]
       if 'asm' not in passes: # can have Module[..] and inlining prevention code, push those to post
-        class Finals:
+        class Finals(object):
           buf = []
         def process(line):
           if len(line) > 0 and (line.startswith(('Module[', 'if (globalScope)')) or line.endswith('["X"]=1;')):

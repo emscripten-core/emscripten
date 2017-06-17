@@ -1086,7 +1086,7 @@ var LibraryGLFW = {
   },
 
   glfwSetTime: function(time) {
-    GLFW.initialTime = GLFW.getTime() + time;
+    GLFW.initialTime = GLFW.getTime() - time;
   },
 
   glfwExtensionSupported: function(extension) {

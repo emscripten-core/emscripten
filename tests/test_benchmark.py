@@ -18,7 +18,7 @@ CORE_BENCHMARKS = True # core benchmarks vs full regression suite
 
 IGNORE_COMPILATION = 0
 
-class Benchmarker:
+class Benchmarker(object):
   def __init__(self, name):
     self.name = name
 
