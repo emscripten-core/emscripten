@@ -4751,6 +4751,38 @@ PORT: 3979
     self.emcc_args += ['--js-library', path_from_root('tests', 'unicode_library.js')]
     self.do_run(open(os.path.join(self.get_dir(), 'main.cpp'), 'r').read(), u'Unicode snowman \u2603 says hello!')
 
+  def test_js_lib_dep_memset(self):
+    open('lib.js', 'w').write(r'''
+mergeInto(LibraryManager.library, {
+  depper__deps: ['memset'],
+  depper: function(ptr) {
+    _memset(ptr, 'd'.charCodeAt(0), 10);
+  },
+});
+''')
+    src = r'''
+#include <string.h>
+#include <stdio.h>
+
+extern "C" {
+extern void depper(char*);
+}
+
+int main(int argc, char** argv) {
+  char buffer[11];
+  buffer[10] = '\0';
+  // call by a pointer, to force linking of memset, no llvm intrinsic here
+  volatile auto ptr = memset;
+  (*ptr)(buffer, 'a', 10);
+  depper(buffer);
+  puts(buffer);
+}
+'''
+    self.emcc_args += ['--js-library', 'lib.js']
+    self.do_run(src, 'dddddddddd')
+    Settings.INCLUDE_FULL_LIBRARY = 1
+    self.do_run(src, 'dddddddddd')
+
   def test_funcptr_import_type(self):
     self.emcc_args += ['--js-library', path_from_root('tests', 'core', 'test_funcptr_import_type.js'), '-std=c++11']
     self.do_run_in_out_file_test('tests', 'core', 'test_funcptr_import_type')

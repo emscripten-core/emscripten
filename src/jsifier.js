@@ -55,9 +55,8 @@ function JSify(data, functionsOnly) {
   if (mainPass) {
     // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
     // generateStructInfo in library.js)
-    //B.start('jsifier-libload');
+
     LibraryManager.load();
-    //B.stop('jsifier-libload');
 
     var libFuncsToInclude;
     if (INCLUDE_FULL_LIBRARY) {
@@ -67,10 +66,6 @@ function JSify(data, functionsOnly) {
         if (!key.match(/__(deps|postset|inline|asm|sig)$/)) {
           libFuncsToInclude.push(key);
         }
-      }
-      // mark implemented functions as already added (so if memcpy is in the forced full JS library, but also done in C, we just need the C)
-      for (var added in IMPLEMENTED_FUNCTIONS) {
-        addedLibraryItems[added.substr(1)] = true;
       }
     } else {
       libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
@@ -132,6 +127,13 @@ function JSify(data, functionsOnly) {
         var finalName = ident.substr(1);
       } else {
         var finalName = '_' + ident;
+      }
+
+      // if the function was implemented in compiled code, we just need to export it so we can reach it from JS
+      if (finalName in IMPLEMENTED_FUNCTIONS) {
+        EXPORTED_FUNCTIONS[finalName] = 1;
+        // stop here: we don't need to add anything from our js libraries, not even deps, compiled code is on it
+        return '';
       }
 
       // Don't replace implemented functions with library ones (which can happen when we add dependencies).
