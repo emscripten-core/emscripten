@@ -259,6 +259,8 @@ else {
   throw new Error('Unknown runtime environment. Where are we?');
 }
 
+// Converts a string of base64 into a byte array.
+// Throws error on invalid input.
 function base64ToBytes(s) {
   try {
     var decoded = atob(s);
@@ -272,6 +274,8 @@ function base64ToBytes(s) {
   }
 }
 
+// Converts a byte array into a string.
+// Returns invalid output on invalid input.
 function bytesToString(bytes) {
   if (typeof TextDecoder !== 'undefined') {
     return new TextDecoder('utf-8').decode(bytes);
