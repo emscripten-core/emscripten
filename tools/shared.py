@@ -719,17 +719,20 @@ def get_clang_native_env():
   CACHED_CLANG_NATIVE_ENV = env
   return env
 
-CLANG_CC=os.path.expanduser(build_clang_tool_path('clang'))
-CLANG_CPP=os.path.expanduser(build_clang_tool_path('clang++'))
+def exe_suffix(cmd):
+  return cmd + '.exe' if WINDOWS else cmd
+
+CLANG_CC=os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
+CLANG_CPP=os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
 CLANG=CLANG_CPP
-LLVM_LINK=build_llvm_tool_path('llvm-link')
-LLVM_AR=build_llvm_tool_path('llvm-ar')
-LLVM_OPT=os.path.expanduser(build_llvm_tool_path('opt'))
-LLVM_AS=os.path.expanduser(build_llvm_tool_path('llvm-as'))
-LLVM_DIS=os.path.expanduser(build_llvm_tool_path('llvm-dis'))
-LLVM_NM=os.path.expanduser(build_llvm_tool_path('llvm-nm'))
-LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path('lli'))
-LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path('llc'))
+LLVM_LINK=build_llvm_tool_path(exe_suffix('llvm-link'))
+LLVM_AR=build_llvm_tool_path(exe_suffix('llvm-ar'))
+LLVM_OPT=os.path.expanduser(build_llvm_tool_path(exe_suffix('opt')))
+LLVM_AS=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-as')))
+LLVM_DIS=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dis')))
+LLVM_NM=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
+LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
+LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
 
 EMSCRIPTEN = path_from_root('emscripten.py')
 DEMANGLER = path_from_root('third_party', 'demangler.py')

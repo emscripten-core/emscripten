@@ -374,9 +374,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       out, err = subprocess.Popen([shared.PYTHON] + args + [shared.path_from_root('tests', input_file), '-c', '-o', temp_target], stderr=subprocess.PIPE, env=debug_env).communicate()
       lines = filter(lambda x: shared.CLANG_CC in x and input_file in x, err.split(os.linesep))
       line = re.search('running: (.*)', lines[0]).group(1)
-      parts = shlex.split(line)
+      parts = shlex.split(line.replace('\\', '\\\\'))
       parts = filter(lambda x: x != '-c' and x != '-o' and input_file not in x and temp_target not in x and '-emit-llvm' not in x, parts)
-      print ' '.join(shared.Building.doublequote_spaces(parts))
+      print ' '.join(shared.Building.doublequote_spaces(parts[1:]))
     exit(0)
 
   def is_minus_s_for_emcc(newargs, i):
