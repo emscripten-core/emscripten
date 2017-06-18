@@ -1643,8 +1643,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         final += '.mem.js'
         src = None
         js_transform_tempfiles[-1] = final # simple text substitution preserves comment line number mappings
-        if embed_memfile:
-          os.remove(memfile)
         if DEBUG:
           if os.path.exists(memfile):
             save_intermediate('meminit')
@@ -1808,6 +1806,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       else:
         if options.proxy_to_worker:
           generate_worker_js(target, js_target, target_basename)
+
+      if embed_memfile:
+        shared.try_delete(memfile)
 
       for f in generated_text_files_with_native_eols:
         tools.line_endings.convert_line_endings_in_file(f, os.linesep, options.output_eol)
@@ -2335,7 +2336,7 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
       if not os.path.isfile(tup[0]):
         continue
       js = js.replace(tup[1], shared.JS.get_subresource_location(tup[0]))
-      os.remove(tup[0])
+      shared.try_delete(tup[0])
     f.write(js)
     f.close()
   return final
