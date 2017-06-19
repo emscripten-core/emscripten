@@ -2323,11 +2323,11 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
         final = shared.Building.js_optimizer_no_asmjs(final, passes)
       if DEBUG: save_intermediate('postclean', 'js')
   # replace placeholder strings with correct subresource locations
-  f = open(final, 'r')
-  js = f.read()
-  f.close()
-  f = open(final, 'w')
   if shared.Settings.SINGLE_FILE:
+    f = open(final, 'r')
+    js = f.read()
+    f.close()
+    f = open(final, 'w')
     for tup in [
       (wasm_text_target, shared.FilenameReplacementStrings.WASM_TEXT_FILE),
       (wasm_binary_target, shared.FilenameReplacementStrings.WASM_BINARY_FILE),
