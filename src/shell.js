@@ -137,7 +137,7 @@ else if (ENVIRONMENT_IS_SHELL) {
     Module['read'] = function shell_read(f) {
       var data = tryParseAsDataURI(f);
       if (data) {
-        return bytesToString(data);
+        return intArrayToString(data);
       }
       return read(f);
     };
@@ -178,7 +178,7 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   Module['read'] = function shell_read(url) {
     var data = tryParseAsDataURI(url);
     if (data) {
-      return bytesToString(data);
+      return intArrayToString(data);
     }
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, false);
@@ -272,19 +272,6 @@ function base64ToBytes(s) {
   } catch (_) {
     throw new Error('Converting base64 string to bytes failed.');
   }
-}
-
-// Converts a byte array into a string.
-// Returns invalid output on invalid input.
-function bytesToString(bytes) {
-  if (typeof TextDecoder !== 'undefined') {
-    return new TextDecoder('utf-8').decode(bytes);
-  }
-  var s = '';
-  for (var i = 0 ; i < bytes.length ; ++i) {
-      s += String.fromCharCode(bytes[i]);
-  }
-  return s;
 }
 
 // If filename is a base64 data URI, parses and returns data (Buffer on node,

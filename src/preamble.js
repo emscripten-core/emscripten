@@ -1714,6 +1714,12 @@ function intArrayFromString(stringy, dontAddNull, length) {
 {{{ maybeExport('intArrayFromString') }}}
 
 function intArrayToString(array) {
+  if (typeof TextDecoder !== 'undefined') {
+    return new TextDecoder('utf-8').decode(array);
+  }
+  else if (typeof Buffer !== 'undefined') {
+    return Buffer.from(array.buffer || array).toString();
+  }
   var ret = [];
   for (var i = 0; i < array.length; i++) {
     var chr = array[i];
