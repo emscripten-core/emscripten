@@ -43,8 +43,15 @@ if (memoryInitializer) {
   } else if (Module['memoryInitializerPrefixURL']) {
     memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
   }
-  if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
-    var data = Module['readBinary'](memoryInitializer);
+  var data = Module['memoryInitializerBytes'];
+  if (!data) {
+    if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
+      data = Module['readBinary'](memoryInitializer);
+    } else {
+      data = tryParseAsDataURI(memoryInitializer);
+    }
+  }
+  if (data) {
     HEAPU8.set(data, Runtime.GLOBAL_BASE);
   } else {
     addRunDependency('memory initializer');

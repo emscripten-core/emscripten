@@ -2386,8 +2386,14 @@ def generate_html(target, options, js_target, target_basename,
   } else {
     // note: no support for code mods (PRECISE_F32==2)
     console.log('running code on the main thread');
+    var filename = '%s';
+    var fileBytes = tryParseAsDataURI(filename);
     var script = document.createElement('script');
-    script.src = "%s";
+    if (fileBytes) {
+      script.innerHTML = intArrayToString(fileBytes);
+    } else {
+      script.src = filename;
+    }
     document.body.appendChild(script);
   }
 ''' % shared.JS.get_subresource_location(proxy_worker_filename + '.js')
@@ -2404,14 +2410,24 @@ def generate_html(target, options, js_target, target_basename,
     # We need to load the emterpreter file before anything else, it has to be synchronously ready
     script.un_src()
     script.inline = '''
-          var emterpretXHR = new XMLHttpRequest();
-          emterpretXHR.open('GET', '%s', true);
-          emterpretXHR.responseType = 'arraybuffer';
-          emterpretXHR.onload = function() {
-            Module.emterpreterFile = emterpretXHR.response;
+          var filename = '%s';
+          var fileBytes = tryParseAsDataURI(filename);
+          function onEmterpretFileLoad() {
 %s
-          };
-          emterpretXHR.send(null);
+          }
+          if (fileBytes) {
+            Module.emterpreterFile = fileBytes.buffer;
+            onEmterpretFileLoad();
+          } else {
+            var emterpretXHR = new XMLHttpRequest();
+            emterpretXHR.open('GET', filename, true);
+            emterpretXHR.responseType = 'arraybuffer';
+            emterpretXHR.onload = function() {
+              Module.emterpreterFile = emterpretXHR.response;
+              onEmterpretFileLoad();
+            };
+            emterpretXHR.send(null);
+          }
 ''' % (shared.JS.get_subresource_location(shared.Settings.EMTERPRETIFY_FILE), script.inline)
 
   if options.memory_init_file:
@@ -2420,6 +2436,10 @@ def generate_html(target, options, js_target, target_basename,
     script.inline = ('''
           (function() {
             var memoryInitializer = '%s';
+            Module['memoryInitializerBytes'] = tryParseAsDataURI(memoryInitializer);
+            if (Module['memoryInitializerBytes']) {
+              return;
+            }
             if (typeof Module['locateFile'] === 'function') {
               memoryInitializer = Module['locateFile'](memoryInitializer);
             } else if (Module['memoryInitializerPrefixURL']) {
@@ -2441,8 +2461,14 @@ def generate_html(target, options, js_target, target_basename,
     if len(asm_mods) == 0:
       # just load the asm, then load the rest
       script.inline = '''
+    var filename = '%s';
+    var fileBytes = tryParseAsDataURI(filename);
     var script = document.createElement('script');
-    script.src = "%s";
+    if (fileBytes) {
+      script.innerHTML = intArrayToString(fileBytes);
+    } else {
+      script.src = filename;
+    }
     script.onload = function() {
       setTimeout(function() {
         %s
@@ -2453,10 +2479,10 @@ def generate_html(target, options, js_target, target_basename,
     else:
       # may need to modify the asm code, load it as text, modify, and load asynchronously
       script.inline = '''
-    var codeXHR = new XMLHttpRequest();
-    codeXHR.open('GET', '%s', true);
-    codeXHR.onload = function() {
-      var code = codeXHR.responseText;
+    var codeXHR;
+    var filename = '%s';
+    var fileBytes = tryParseAsDataURI(filename);
+    function onCodeLoad(code) {
       %s
       var blob = new Blob([code], { type: 'text/javascript' });
       codeXHR = null;
@@ -2470,23 +2496,90 @@ def generate_html(target, options, js_target, target_basename,
         URL.revokeObjectURL(script.src);
       };
       document.body.appendChild(script);
-    };
-    codeXHR.send(null);
+    }
+    if (fileBytes) {
+      onCodeLoad(intArrayToString(fileBytes));
+    } else {
+      codeXHR = new XMLHttpRequest();
+      codeXHR.open('GET', filename, true);
+      codeXHR.onload = function() {
+        onCodeLoad(codeXHR.responseText);
+      };
+      codeXHR.send(null);
+    }
 ''' % (shared.JS.get_subresource_location(asm_target), '\n'.join(asm_mods), script.inline)
 
   if shared.Settings.BINARYEN and not shared.Settings.BINARYEN_ASYNC_COMPILATION:
     # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize
     script.un_src()
     script.inline = '''
-          var wasmXHR = new XMLHttpRequest();
-          wasmXHR.open('GET', '%s', true);
-          wasmXHR.responseType = 'arraybuffer';
-          wasmXHR.onload = function() {
-            Module.wasmBinary = wasmXHR.response;
+          var filename = '%s';
+          var fileBytes = tryParseAsDataURI(filename);
+          function onWasmLoad() {
 %s
-          };
-          wasmXHR.send(null);
+          }
+          if (fileBytes) {
+            Module.wasmBinary = fileBytes.buffer;
+            onWasmLoad();
+          } else {
+            var wasmXHR = new XMLHttpRequest();
+            wasmXHR.open('GET', filename, true);
+            wasmXHR.responseType = 'arraybuffer';
+            wasmXHR.onload = function() {
+              Module.wasmBinary = wasmXHR.response;
+              onWasmLoad();
+            };
+            wasmXHR.send(null);
+          }
 ''' % (shared.JS.get_subresource_location(wasm_binary_target), script.inline)
+
+  if script.inline:
+    # add functions copied from preamble.js and shell.js
+    script.inline += '''
+      function intArrayToString(array) {
+        if (typeof TextDecoder !== 'undefined') {
+          return new TextDecoder('utf-8').decode(array);
+        }
+        var ret = [];
+        for (var i = 0; i < array.length; i++) {
+          var chr = array[i];
+          if (chr > 0xFF) {
+            chr &= 0xFF;
+          }
+          ret.push(String.fromCharCode(chr));
+        }
+        return ret.join('');
+      }
+
+      function base64ToBytes(s) {
+        try {
+          var decoded = atob(s);
+          var bytes = new Uint8Array(decoded.length);
+          for (i = 0 ; i < decoded.length ; ++i) {
+            bytes[i] = decoded.charCodeAt(i);
+          }
+          return bytes;
+        } catch (_) {
+          throw new Error('Converting base64 string to bytes failed.');
+        }
+      }
+
+      function tryParseAsDataURI(filename) {
+        var dataURIPrefix = 'data:application/octet-stream;base64,';
+
+        if (!(
+          String.prototype.startsWith ?
+            filename.startsWith(dataURIPrefix) :
+            filename.indexOf(dataURIPrefix) === 0
+        )) {
+          return;
+        }
+
+        var data = filename.slice(dataURIPrefix.length);
+
+        return base64ToBytes(data);
+      }
+'''
 
   html = open(target, 'wb')
   html_contents = shell.replace('{{{ SCRIPT }}}', script.replacement())
