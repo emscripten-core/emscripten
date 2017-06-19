@@ -19,11 +19,7 @@ typedef struct __jmp_buf_tag {
  || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
  || defined(_BSD_SOURCE)
 
-#if !defined(_EMSCRIPTEN_SIGLONGJMP_STUB)
-typedef jmp_buf sigjmp_buf;
-int sigsetjmp (sigjmp_buf, int);
-_Noreturn void siglongjmp (sigjmp_buf, int);
-#else
+#if defined(_EMSCRIPTEN_SIGLONGJMP_STUB)
 typedef jmp_buf sigjmp_buf;
 #define sigsetjmp(buf, x) setjmp((buf))
 #define siglongjmp(buf, x) longjmp((buf), (x))
