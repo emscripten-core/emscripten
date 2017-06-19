@@ -51,7 +51,10 @@ var MEM_INIT_METHOD = 0; // How to represent the initial memory content.
                          // 1: create a *.mem file containing the binary data of the initial memory;
                          //    use the --memory-init-file command line switch to select this method
                          // 2: embed a string literal representing that initial memory data
-                         //    XXX this is known to have bugs on windows, see https://github.com/kripken/emscripten/pull/3326
+                         //    XXX this is known to have bugs on windows, see https://github.com/kripken/emscripten/pull/3326;
+                         //    due to mode 0's recent upgrade to space-efficient base64 encoding
+                         //    and the long-standing issues with this mode, this mode is now
+                         //    deprecated in favor of mode 0
 var TOTAL_STACK = 5*1024*1024; // The total stack size. There is no way to enlarge the stack, so this
                                // value must be large enough for the program's requirements. If
                                // assertions are on, we will assert on not exceeding this, otherwise,
