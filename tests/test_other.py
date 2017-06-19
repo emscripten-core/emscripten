@@ -415,7 +415,7 @@ f.close()
     flags = output[0].strip()
     self.assertContained(' '.join(Building.doublequote_spaces(COMPILER_OPTS)), flags)
     # check they work
-    cmd = [CLANG, path_from_root('tests', 'hello_world.cpp')] + shlex.split(flags) + ['-c', '-emit-llvm', '-o', 'a.bc']
+    cmd = [CLANG, path_from_root('tests', 'hello_world.cpp')] + shlex.split(flags.replace('\\', '\\\\')) + ['-c', '-emit-llvm', '-o', 'a.bc']
     subprocess.check_call(cmd)
     subprocess.check_call([PYTHON, EMCC, 'a.bc'])
     self.assertContained('hello, world!', run_js(self.in_dir('a.out.js')))
@@ -575,7 +575,9 @@ f.close()
     tempdirname_emscripten = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
     try:
       os.chdir(tempdirname_native)
-      native_features = Popen(['cmake', '-DCMAKE_C_COMPILER=' + CLANG_CC, '-DCMAKE_CXX_COMPILER=' + CLANG_CPP, path_from_root('tests', 'cmake', 'stdproperty')], stdout=PIPE).communicate()[0]
+      cmd = ['cmake', '-DCMAKE_C_COMPILER=' + CLANG_CC, '-DCMAKE_CXX_COMPILER=' + CLANG_CPP, path_from_root('tests', 'cmake', 'stdproperty')]
+      print str(cmd)
+      native_features = Popen(cmd, stdout=PIPE).communicate()[0]
     finally:
       os.chdir(tempdirname_emscripten)
       try:
@@ -588,7 +590,9 @@ f.close()
 
     try:
       os.chdir(tempdirname_emscripten)
-      emscripten_features = Popen([emconfigure, 'cmake', path_from_root('tests', 'cmake', 'stdproperty')], stdout=PIPE).communicate()[0]
+      cmd = [emconfigure, 'cmake', path_from_root('tests', 'cmake', 'stdproperty')]
+      print str(cmd)
+      emscripten_features = Popen(cmd, stdout=PIPE).communicate()[0]
     finally:
       os.chdir(path_from_root('tests'))
       try:

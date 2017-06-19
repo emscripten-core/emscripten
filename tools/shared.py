@@ -719,17 +719,20 @@ def get_clang_native_env():
   CACHED_CLANG_NATIVE_ENV = env
   return env
 
-CLANG_CC=os.path.expanduser(build_clang_tool_path('clang'))
-CLANG_CPP=os.path.expanduser(build_clang_tool_path('clang++'))
+def exe_suffix(cmd):
+  return cmd + '.exe' if WINDOWS else cmd
+
+CLANG_CC=os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
+CLANG_CPP=os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
 CLANG=CLANG_CPP
-LLVM_LINK=build_llvm_tool_path('llvm-link')
-LLVM_AR=build_llvm_tool_path('llvm-ar')
-LLVM_OPT=os.path.expanduser(build_llvm_tool_path('opt'))
-LLVM_AS=os.path.expanduser(build_llvm_tool_path('llvm-as'))
-LLVM_DIS=os.path.expanduser(build_llvm_tool_path('llvm-dis'))
-LLVM_NM=os.path.expanduser(build_llvm_tool_path('llvm-nm'))
-LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path('lli'))
-LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path('llc'))
+LLVM_LINK=build_llvm_tool_path(exe_suffix('llvm-link'))
+LLVM_AR=build_llvm_tool_path(exe_suffix('llvm-ar'))
+LLVM_OPT=os.path.expanduser(build_llvm_tool_path(exe_suffix('opt')))
+LLVM_AS=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-as')))
+LLVM_DIS=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dis')))
+LLVM_NM=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
+LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
+LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
 
 EMSCRIPTEN = path_from_root('emscripten.py')
 DEMANGLER = path_from_root('third_party', 'demangler.py')
@@ -1367,7 +1370,7 @@ class Building(object):
         arg[i] = Building.doublequote_spaces(arg[i])
       return arg
 
-    if ' ' in arg and not (arg.startswith('"') and arg.endswith('"')):
+    if ' ' in arg and (not (arg.startswith('"') and arg.endswith('"'))) and (not (arg.startswith("'") and arg.endswith("'"))):
       return '"' + arg.replace('"', '\\"') + '"'
 
     return arg
@@ -1407,13 +1410,13 @@ class Building(object):
         if env.get(dangerous) and env.get(dangerous) == non_native.get(dangerous):
           del env[dangerous] # better to delete it than leave it, as the non-native one is definitely wrong
       return env
-    env['CC'] = quote(EMCC if not WINDOWS else 'python %r' % EMCC)
-    env['CXX'] = quote(EMXX if not WINDOWS else 'python %r' % EMXX)
-    env['AR'] = quote(EMAR if not WINDOWS else 'python %r' % EMAR)
-    env['LD'] = quote(EMCC if not WINDOWS else 'python %r' % EMCC)
+    env['CC'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
+    env['CXX'] = quote(EMXX) if not WINDOWS else 'python %s' % quote(EMXX)
+    env['AR'] = quote(EMAR) if not WINDOWS else 'python %s' % quote(EMAR)
+    env['LD'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
     env['NM'] = quote(LLVM_NM)
-    env['LDSHARED'] = quote(EMCC if not WINDOWS else 'python %r' % EMCC)
-    env['RANLIB'] = quote(EMRANLIB if not WINDOWS else 'python %r' % EMRANLIB)
+    env['LDSHARED'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
+    env['RANLIB'] = quote(EMRANLIB) if not WINDOWS else 'python %s' % quote(EMRANLIB)
     env['EMMAKEN_COMPILER'] = quote(Building.COMPILER)
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(Building.COMPILER_TEST_OPTS)
