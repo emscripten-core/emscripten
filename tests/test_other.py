@@ -575,7 +575,9 @@ f.close()
     tempdirname_emscripten = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
     try:
       os.chdir(tempdirname_native)
-      native_features = Popen(['cmake', '-DCMAKE_C_COMPILER=' + CLANG_CC, '-DCMAKE_CXX_COMPILER=' + CLANG_CPP, path_from_root('tests', 'cmake', 'stdproperty')], stdout=PIPE).communicate()[0]
+      cmd = ['cmake', '-DCMAKE_C_COMPILER=' + CLANG_CC, '-DCMAKE_CXX_COMPILER=' + CLANG_CPP, path_from_root('tests', 'cmake', 'stdproperty')]
+      print str(cmd)
+      native_features = Popen(cmd, stdout=PIPE).communicate()[0]
     finally:
       os.chdir(tempdirname_emscripten)
       try:
@@ -588,7 +590,9 @@ f.close()
 
     try:
       os.chdir(tempdirname_emscripten)
-      emscripten_features = Popen([emconfigure, 'cmake', path_from_root('tests', 'cmake', 'stdproperty')], stdout=PIPE).communicate()[0]
+      cmd = [emconfigure, 'cmake', path_from_root('tests', 'cmake', 'stdproperty')]
+      print str(cmd)
+      emscripten_features = Popen(cmd, stdout=PIPE).communicate()[0]
     finally:
       os.chdir(path_from_root('tests'))
       try:
