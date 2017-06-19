@@ -2534,7 +2534,7 @@ def generate_html(target, options, js_target, target_basename,
 ''' % (shared.JS.get_subresource_location(wasm_binary_target), script.inline)
 
   if script.inline:
-    # add functions copied from preamble.js and shell.js
+    # add functions copied from preamble.js
     script.inline += '''
       function intArrayToString(array) {
         if (typeof TextDecoder !== 'undefined') {
@@ -2551,7 +2551,7 @@ def generate_html(target, options, js_target, target_basename,
         return ret.join('');
       }
 
-      function base64ToBytes(s) {
+      function intArrayFromBase64(s) {
         try {
           var decoded = atob(s);
           var bytes = new Uint8Array(decoded.length);
@@ -2577,7 +2577,7 @@ def generate_html(target, options, js_target, target_basename,
 
         var data = filename.slice(dataURIPrefix.length);
 
-        return base64ToBytes(data);
+        return intArrayFromBase64(data);
       }
 '''
 

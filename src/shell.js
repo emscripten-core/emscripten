@@ -259,43 +259,6 @@ else {
   throw new Error('Unknown runtime environment. Where are we?');
 }
 
-// Converts a string of base64 into a byte array.
-// Throws error on invalid input.
-function base64ToBytes(s) {
-  try {
-    var decoded = atob(s);
-    var bytes = new Uint8Array(decoded.length);
-    for (i = 0 ; i < decoded.length ; ++i) {
-      bytes[i] = decoded.charCodeAt(i);
-    }
-    return bytes;
-  } catch (_) {
-    throw new Error('Converting base64 string to bytes failed.');
-  }
-}
-
-// If filename is a base64 data URI, parses and returns data (Buffer on node,
-// Uint8Array otherwise). If filename is not a base64 data URI, returns undefined.
-function tryParseAsDataURI(filename) {
-  var dataURIPrefix = 'data:application/octet-stream;base64,';
-
-  if (!(
-    String.prototype.startsWith ?
-      filename.startsWith(dataURIPrefix) :
-      filename.indexOf(dataURIPrefix) === 0
-  )) {
-    return;
-  }
-
-  var data = filename.slice(dataURIPrefix.length);
-
-  if (ENVIRONMENT_IS_NODE) {
-    return Buffer.from(data, 'base64');
-  }
-
-  return base64ToBytes(data);
-}
-
 function globalEval(x) {
   {{{ makeEval('eval.call(null, x);') }}}
 }

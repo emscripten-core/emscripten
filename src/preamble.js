@@ -1735,6 +1735,45 @@ function intArrayToString(array) {
 }
 {{{ maybeExport('intArrayToString') }}}
 
+// Converts a string of base64 into a byte array.
+// Throws error on invalid input.
+function intArrayFromBase64(s) {
+  try {
+    var decoded = atob(s);
+    var bytes = new Uint8Array(decoded.length);
+    for (i = 0 ; i < decoded.length ; ++i) {
+      bytes[i] = decoded.charCodeAt(i);
+    }
+    return bytes;
+  } catch (_) {
+    throw new Error('Converting base64 string to bytes failed.');
+  }
+}
+{{{ maybeExport('intArrayFromBase64') }}}
+
+// If filename is a base64 data URI, parses and returns data (Buffer on node,
+// Uint8Array otherwise). If filename is not a base64 data URI, returns undefined.
+function tryParseAsDataURI(filename) {
+  var dataURIPrefix = 'data:application/octet-stream;base64,';
+
+  if (!(
+    String.prototype.startsWith ?
+      filename.startsWith(dataURIPrefix) :
+      filename.indexOf(dataURIPrefix) === 0
+  )) {
+    return;
+  }
+
+  var data = filename.slice(dataURIPrefix.length);
+
+  if (ENVIRONMENT_IS_NODE) {
+    return Buffer.from(data, 'base64');
+  }
+
+  return intArrayFromBase64(data);
+}
+{{{ maybeExport('tryParseAsDataURI') }}}
+
 // Deprecated: This function should not be called because it is unsafe and does not provide
 // a maximum length limit of how many bytes it is allowed to write. Prefer calling the
 // function stringToUTF8Array() instead, which takes in a maximum length that can be used
