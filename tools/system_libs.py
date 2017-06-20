@@ -131,9 +131,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   def create_wasm_libc(libname):
     # in asm.js we just use Math.sin etc., which is good for code size. But wasm doesn't have such builtins, so
     # we need to bundle in more code
-    # we also build in musl versions of things that we have hand-optimized asm.js for
-    files = ([shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'math', x) for x in ('cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c', 'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c', 'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c')] +
-             [shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'string', x) for x in ('memcpy.c', 'memset.c', 'memmove.c')])
+    files = [shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'math', x) for x in ('cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c', 'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c', 'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c')]
 
     return build_libc(libname, files, ['-O2'])
 
@@ -237,6 +235,21 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     shared.Building.link([dlmalloc_o, split_malloc_o], lib)
     return lib
 
+  def create_wasm_rt_lib(libname, files):
+    o_s = []
+    commands = []
+    for src in files:
+      print src
+      o = in_temp(os.path.basename(src) + '.o')
+      # Use clang directly instead of emcc. Since emcc's intermediate format (produced by -S) is LLVM IR, there's no way to
+      # get emcc to output wasm .s files, which is what we archive in compiler_rt.
+      commands.append([shared.CLANG_CC, '--target=wasm32', '-mthread-model', 'single', '-S', shared.path_from_root('system', 'lib', src), '-O2', '-o', o] + shared.EMSDK_OPTS)
+      o_s.append(o)
+    run_commands(commands)
+    lib = in_temp(libname)
+    run_commands([[shared.LLVM_AR, 'cr', '-format=gnu', lib] + o_s])
+    return lib
+
   def create_wasm_compiler_rt(libname):
     srcdir = shared.path_from_root('system', 'lib', 'compiler-rt', 'lib', 'builtins')
     filenames = ['addtf3.c', 'ashlti3.c', 'ashrti3.c', 'atomic.c', 'comparetf2.c',
@@ -250,20 +263,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  'ashldi3.c', 'fixdfdi.c', 'floatdidf.c', 'lshrdi3.c', 'moddi3.c',
                  'trunctfdf2.c', 'trunctfsf2.c', 'umoddi3.c', 'fixunsdfdi.c', 'muldi3.c',
                  'divdi3.c', 'divmoddi4.c', 'udivdi3.c', 'udivmoddi4.c']
-    files = (os.path.join(srcdir, f) for f in filenames)
-    o_s = []
-    commands = []
-    for src in files:
-      o = in_temp(os.path.basename(src) + '.o')
-      # Use clang directly instead of emcc. Since emcc's intermediate format (produced by -S) is LLVM IR, there's no way to
-      # get emcc to output wasm .s files, which is what we archive in compiler_rt.
-      commands.append([shared.CLANG_CC, '--target=wasm32', '-mthread-model', 'single', '-S', shared.path_from_root('system', 'lib', src), '-O2', '-o', o] + shared.EMSDK_OPTS)
-      o_s.append(o)
-    run_commands(commands)
-    lib = in_temp(libname)
-    run_commands([[shared.LLVM_AR, 'cr', '-format=gnu', lib] + o_s])
-    return lib
+    files = [os.path.join(srcdir, f) for f in filenames]
 
+    extra_math_dir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'math')
+    extra_math_filenames = ['fmaxf.c', 'fminf.c', 'fmax.c', 'fmin.c']
+    math_files = [os.path.join(extra_math_dir, f) for f in extra_math_filenames]
+    math_files += [shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'string', x) for x in ('memcpy.c', 'memset.c', 'memmove.c')]
+
+    return create_wasm_rt_lib(libname, files + math_files)
 
   # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
   # 1 means include everything; otherwise it can be the name of a lib (libcxx, etc.)
