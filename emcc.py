@@ -479,8 +479,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                                                # but then, we don't care about bitcode outputs anyhow, below, so
                                                # skipping to exit(ret) is fine
       if target.endswith('.js'):
-        shutil.copyfile(target, target[:-3])
-        target = target[:-3]
+        shutil.copyfile(target, unsuffixed(target))
+        target = unsuffixed(target)
       if not target.endswith(BITCODE_ENDINGS):
         src = open(target).read()
         full_node = ' '.join(shared.NODE_JS)
@@ -790,7 +790,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # target is now finalized, can finalize other _target s
       js_target = unsuffixed(target) + '.js'
 
-      asm_target = js_target[:-3] + '.asm.js' # might not be used, but if it is, this is the name
+      asm_target = unsuffixed(js_target) + '.asm.js' # might not be used, but if it is, this is the name
       wasm_text_target = asm_target.replace('.asm.js', '.wast') # ditto, might not be used
       wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
 
@@ -1526,7 +1526,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.WASM_BACKEND:
         # we also received wast and wasm at this stage
-        temp_basename = final[:-3]
+        temp_basename = unsuffixed(final)
         wast_temp = temp_basename + '.wast'
         shutil.move(wast_temp, wasm_text_target)
         shutil.move(temp_basename + '.wasm', wasm_binary_target)
@@ -2477,7 +2477,7 @@ def generate_html(target, options, js_target, target_basename,
 
 
 def generate_worker_js(target, js_target, target_basename):
-  shutil.move(js_target, js_target[:-3] + '.worker.js') # compiler output goes in .worker.js file
+  shutil.move(js_target, unsuffixed(js_target) + '.worker.js') # compiler output goes in .worker.js file
   worker_target_basename = target_basename + '.worker'
   proxy_worker_filename = shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename
   target_contents = worker_js_script(proxy_worker_filename)

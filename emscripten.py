@@ -1753,7 +1753,7 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
       shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
 
     assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
-    basename = outfile.name[:-3]
+    basename = shared.unsuffixed(outfile.name)
     wast = basename + '.wast'
     s2wasm_args = create_s2wasm_args(temp_s)
     if DEBUG:

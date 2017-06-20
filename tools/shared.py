@@ -2611,6 +2611,10 @@ def suffix(name):
   return os.path.splitext(name)[1][1:]
 
 def unsuffixed(name):
+  """Return the filename without the extention.
+
+  If there are multiple extensions this strips only the final one.
+  """
   return os.path.splitext(name)[0]
 
 def unsuffixed_basename(name):
