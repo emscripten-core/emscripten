@@ -951,7 +951,6 @@ def check_vanilla():
     if is_vanilla:
       logging.debug('check tells us to use wasm backend')
       LLVM_TARGET = WASM_TARGET
-      os.environ['EMCC_WASM_BACKEND'] = '1'
     else:
       logging.debug('check tells us to use asm.js backend')
       LLVM_TARGET = ASM_JS_TARGET
@@ -1336,14 +1335,21 @@ class Building(object):
         Building.multiprocessing_pool = FakeMultiprocessor()
       else:
         child_env = [
-          # Multiprocessing pool children must have their current working directory set to a safe path that is guaranteed not to die in between of
-          # executing commands, or otherwise the pool children will have trouble spawning subprocesses of their own.
+          # Multiprocessing pool children must have their current working
+          # directory set to a safe path that is guaranteed not to die in
+          # between of executing commands, or otherwise the pool children will
+          # have trouble spawning subprocesses of their own.
           'EMCC_POOL_CWD=' + path_from_root(),
-          # Multiprocessing pool children need to avoid all calling check_vanilla() again and again,
-          # otherwise the compiler can deadlock when building system libs, because the multiprocess parent can have the Emscripten cache directory locked for write
-          # access, and the EMCC_WASM_BACKEND check also requires locked access to the cache, which the multiprocess children would not get.
+          # Multiprocessing pool children need to avoid all calling
+          # check_vanilla() again and again, otherwise the compiler can deadlock
+          # when building system libs, because the multiprocess parent can have
+          # the Emscripten cache directory locked for write access, and the
+          # EMCC_WASM_BACKEND check also requires locked access to the cache,
+          # which the multiprocess children would not get.
           'EMCC_WASM_BACKEND=' + os.getenv('EMCC_WASM_BACKEND', '0'),
-          'EMCC_CORES=1' # Multiprocessing pool children can't spawn their own linear number of children, that could cause a quadratic amount of spawned processes.
+          # Multiprocessing pool children can't spawn their own linear number of
+          # children, that could cause a quadratic amount of spawned processes.
+          'EMCC_CORES=1'
         ]
         Building.multiprocessing_pool = multiprocessing.Pool(processes=cores, initializer=g_multiprocessing_initializer, initargs=child_env)
 
