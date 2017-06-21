@@ -239,7 +239,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     o_s = []
     commands = []
     for src in files:
-      print src
       o = in_temp(os.path.basename(src) + '.o')
       # Use clang directly instead of emcc. Since emcc's intermediate format (produced by -S) is LLVM IR, there's no way to
       # get emcc to output wasm .s files, which is what we archive in compiler_rt.
@@ -263,14 +262,21 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  'ashldi3.c', 'fixdfdi.c', 'floatdidf.c', 'lshrdi3.c', 'moddi3.c',
                  'trunctfdf2.c', 'trunctfsf2.c', 'umoddi3.c', 'fixunsdfdi.c', 'muldi3.c',
                  'divdi3.c', 'divmoddi4.c', 'udivdi3.c', 'udivmoddi4.c']
-    files = [os.path.join(srcdir, f) for f in filenames]
+    files = (os.path.join(srcdir, f) for f in filenames)
+    return create_wasm_rt_lib(libname, files)
 
-    extra_math_dir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'math')
-    extra_math_filenames = ['fmaxf.c', 'fminf.c', 'fmax.c', 'fmin.c']
-    math_files = [os.path.join(extra_math_dir, f) for f in extra_math_filenames]
-    math_files += [shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'string', x) for x in ('memcpy.c', 'memset.c', 'memmove.c')]
+  def create_wasm_libc_rt(libname):
+    # We've got these extra files that are part of libc, but are generated after
+    # bitcode in a similar way to compiler-rt. Add these as a separate lib
+    # because they aren't needed with wasm linking.
+    math_dir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'math')
+    math_filenames = ['fmaxf.c', 'fminf.c', 'fmax.c', 'fmin.c']
+    math_files = [os.path.join(math_dir, f) for f in math_filenames]
+    string_dir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'string')
+    string_filenames = ['memcpy.c', 'memset.c', 'memmove.c']
+    string_files = [os.path.join(string_dir, f) for f in string_filenames]
 
-    return create_wasm_rt_lib(libname, files + math_files)
+    return create_wasm_rt_lib(libname, math_files + string_files)
 
   # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
   # 1 means include everything; otherwise it can be the name of a lib (libcxx, etc.)
@@ -418,7 +424,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # Handle backend compiler_rt separately because it is not a bitcode system lib like the others.
   # Here, just ensure that it's in the cache.
   if shared.Settings.BINARYEN and shared.Settings.WASM_BACKEND:
-    crt_file = shared.Cache.get('wasm_compiler_rt.a', lambda: create_wasm_compiler_rt('wasm_compiler_rt.a'), extension='a')
+    shared.Cache.get('wasm_compiler_rt.a', lambda: create_wasm_compiler_rt('wasm_compiler_rt.a'), extension='a')
+    shared.Cache.get('wasm_libc_rt.a', lambda: create_wasm_libc_rt('wasm_libc_rt.a'), extension='a')
 
   for actual in ret:
     if os.path.basename(actual) == 'libcxxabi.bc':

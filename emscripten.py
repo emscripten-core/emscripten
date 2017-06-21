@@ -1956,9 +1956,12 @@ def create_backend_args_wasm(infile, temp_s, settings):
 
 
 def create_s2wasm_args(temp_s):
-  def compiler_rt_fail():
-    raise Exception('Expected wasm_compiler_rt.a to already be built')
-  compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', compiler_rt_fail, 'a')
+  def wasm_rt_fail(archive_file):
+    def wrapped():
+      raise Exception('Expected {} to already be built'.format(archive_file))
+    return wrapped
+  compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', wasm_rt_fail('wasm_compiler_rt.a'), 'a')
+  libc_rt_lib = shared.Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
 
   s2wasm_path = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 's2wasm')
 
@@ -1966,7 +1969,7 @@ def create_s2wasm_args(temp_s):
   args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
   args += ['--initial-memory=%d' % shared.Settings.TOTAL_MEMORY]
   args += ['--allow-memory-growth'] if shared.Settings.ALLOW_MEMORY_GROWTH else []
-  args += ['-l', compiler_rt_lib]
+  args += ['-l', compiler_rt_lib, '-l', libc_rt_lib]
   return args
 
 
