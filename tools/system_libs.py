@@ -27,6 +27,11 @@ def run_commands(commands):
     # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool, https://bugs.python.org/issue8296
     pool.map_async(call_process, commands, chunksize=1).get(maxint)
 
+def files_in_path(path_components=None, filenames=None):
+  assert path_components is not None and filenames is not None
+  srcdir = shared.path_from_root(*path_components)
+  return [os.path.join(srcdir, f) for f in filenames]
+
 def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   global stdout, stderr
   stdout = stdout_
@@ -124,14 +129,55 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   def create_pthreads(libname):
     # Add pthread files.
-    pthreads_files = [os.path.join('pthread', 'library_pthread.c')]
-    pthreads_files += [shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'thread', x) for x in ('pthread_attr_destroy.c', 'pthread_condattr_setpshared.c', 'pthread_mutex_lock.c', 'pthread_spin_destroy.c', 'pthread_attr_get.c', 'pthread_cond_broadcast.c', 'pthread_mutex_setprioceiling.c', 'pthread_spin_init.c', 'pthread_attr_init.c', 'pthread_cond_destroy.c', 'pthread_mutex_timedlock.c', 'pthread_spin_lock.c', 'pthread_attr_setdetachstate.c', 'pthread_cond_init.c', 'pthread_mutex_trylock.c', 'pthread_spin_trylock.c', 'pthread_attr_setguardsize.c', 'pthread_cond_signal.c', 'pthread_mutex_unlock.c', 'pthread_spin_unlock.c', 'pthread_attr_setinheritsched.c', 'pthread_cond_timedwait.c', 'pthread_once.c', 'sem_destroy.c', 'pthread_attr_setschedparam.c', 'pthread_cond_wait.c', 'pthread_rwlockattr_destroy.c', 'sem_getvalue.c', 'pthread_attr_setschedpolicy.c', 'pthread_equal.c', 'pthread_rwlockattr_init.c', 'sem_init.c', 'pthread_attr_setscope.c', 'pthread_getspecific.c', 'pthread_rwlockattr_setpshared.c', 'sem_open.c', 'pthread_attr_setstack.c', 'pthread_key_create.c', 'pthread_rwlock_destroy.c', 'sem_post.c', 'pthread_attr_setstacksize.c', 'pthread_mutexattr_destroy.c', 'pthread_rwlock_init.c', 'sem_timedwait.c', 'pthread_barrierattr_destroy.c', 'pthread_mutexattr_init.c', 'pthread_rwlock_rdlock.c', 'sem_trywait.c', 'pthread_barrierattr_init.c', 'pthread_mutexattr_setprotocol.c', 'pthread_rwlock_timedrdlock.c', 'sem_unlink.c', 'pthread_barrierattr_setpshared.c', 'pthread_mutexattr_setpshared.c', 'pthread_rwlock_timedwrlock.c', 'sem_wait.c', 'pthread_barrier_destroy.c', 'pthread_mutexattr_setrobust.c', 'pthread_rwlock_tryrdlock.c', '__timedwait.c', 'pthread_barrier_init.c', 'pthread_mutexattr_settype.c', 'pthread_rwlock_trywrlock.c', 'vmlock.c', 'pthread_barrier_wait.c', 'pthread_mutex_consistent.c', 'pthread_rwlock_unlock.c', '__wait.c', 'pthread_condattr_destroy.c', 'pthread_mutex_destroy.c', 'pthread_rwlock_wrlock.c', 'pthread_condattr_init.c', 'pthread_mutex_getprioceiling.c', 'pthread_setcanceltype.c', 'pthread_condattr_setclock.c', 'pthread_mutex_init.c', 'pthread_setspecific.c')]
+    pthreads_files = files_in_path(
+      path_components=['system', 'lib', 'libc', 'musl', 'src', 'thread'],
+      filenames=[
+        'pthread_attr_destroy.c', 'pthread_condattr_setpshared.c',
+        'pthread_mutex_lock.c', 'pthread_spin_destroy.c', 'pthread_attr_get.c',
+        'pthread_cond_broadcast.c', 'pthread_mutex_setprioceiling.c',
+        'pthread_spin_init.c', 'pthread_attr_init.c', 'pthread_cond_destroy.c',
+        'pthread_mutex_timedlock.c', 'pthread_spin_lock.c',
+        'pthread_attr_setdetachstate.c', 'pthread_cond_init.c',
+        'pthread_mutex_trylock.c', 'pthread_spin_trylock.c',
+        'pthread_attr_setguardsize.c', 'pthread_cond_signal.c',
+        'pthread_mutex_unlock.c', 'pthread_spin_unlock.c',
+        'pthread_attr_setinheritsched.c', 'pthread_cond_timedwait.c',
+        'pthread_once.c', 'sem_destroy.c', 'pthread_attr_setschedparam.c',
+        'pthread_cond_wait.c', 'pthread_rwlockattr_destroy.c', 'sem_getvalue.c',
+        'pthread_attr_setschedpolicy.c', 'pthread_equal.c', 'pthread_rwlockattr_init.c',
+        'sem_init.c', 'pthread_attr_setscope.c', 'pthread_getspecific.c',
+        'pthread_rwlockattr_setpshared.c', 'sem_open.c', 'pthread_attr_setstack.c',
+        'pthread_key_create.c', 'pthread_rwlock_destroy.c', 'sem_post.c',
+        'pthread_attr_setstacksize.c', 'pthread_mutexattr_destroy.c',
+        'pthread_rwlock_init.c', 'sem_timedwait.c', 'pthread_barrierattr_destroy.c',
+        'pthread_mutexattr_init.c', 'pthread_rwlock_rdlock.c', 'sem_trywait.c',
+        'pthread_barrierattr_init.c', 'pthread_mutexattr_setprotocol.c',
+        'pthread_rwlock_timedrdlock.c', 'sem_unlink.c',
+        'pthread_barrierattr_setpshared.c', 'pthread_mutexattr_setpshared.c',
+        'pthread_rwlock_timedwrlock.c', 'sem_wait.c', 'pthread_barrier_destroy.c',
+        'pthread_mutexattr_setrobust.c', 'pthread_rwlock_tryrdlock.c',
+        '__timedwait.c', 'pthread_barrier_init.c', 'pthread_mutexattr_settype.c',
+        'pthread_rwlock_trywrlock.c', 'vmlock.c', 'pthread_barrier_wait.c',
+        'pthread_mutex_consistent.c', 'pthread_rwlock_unlock.c', '__wait.c',
+        'pthread_condattr_destroy.c', 'pthread_mutex_destroy.c',
+        'pthread_rwlock_wrlock.c', 'pthread_condattr_init.c',
+        'pthread_mutex_getprioceiling.c', 'pthread_setcanceltype.c',
+        'pthread_condattr_setclock.c', 'pthread_mutex_init.c',
+        'pthread_setspecific.c'
+      ])
+    pthreads_files += [os.path.join('pthread', 'library_pthread.c')]
     return build_libc(libname, pthreads_files, ['-O2', '-s', 'USE_PTHREADS=1'])
 
   def create_wasm_libc(libname):
-    # in asm.js we just use Math.sin etc., which is good for code size. But wasm doesn't have such builtins, so
-    # we need to bundle in more code
-    files = [shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'math', x) for x in ('cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c', 'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c', 'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c')]
+    # in asm.js we just use Math.sin etc., which is good for code size. But
+    # wasm doesn't have such builtins, so we need to bundle in more code
+    files = files_in_path(
+      path_components=['system', 'lib', 'libc', 'musl', 'src', 'math'],
+      filenames=['cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c',
+                 'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c',
+                 'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c',
+                 'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c',
+                 'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c'])
 
     return build_libc(libname, files, ['-O2'])
 
@@ -167,7 +213,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'utility.cpp',
       'valarray.cpp'
     ]
-    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), libname, libcxx_files, ['-DLIBCXX_BUILDING_LIBCXXABI=1', '-Oz', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')], has_noexcept_version=True)
+    libcxxabi_include = shared.path_from_root('system', 'lib', 'libcxxabi', 'include')
+    return build_libcxx(
+      os.path.join('system', 'lib', 'libcxx'), libname, libcxx_files,
+      ['-DLIBCXX_BUILDING_LIBCXXABI=1', '-Oz', '-I' + libcxxabi_include],
+      has_noexcept_version=True)
 
   # libcxxabi - just for dynamic_cast for now
   def create_libcxxabi(libname):
@@ -186,7 +236,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'typeinfo.cpp',
       'private_typeinfo.cpp'
     ]
-    return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), libname, libcxxabi_files, ['-Oz', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
+    libcxxabi_include = shared.path_from_root('system', 'lib', 'libcxxabi', 'include')
+    return build_libcxx(
+      os.path.join('system', 'lib', 'libcxxabi', 'src'), libname, libcxxabi_files,
+      ['-Oz', '-I' + libcxxabi_include])
 
   # gl
   def create_gl(libname): # libname is ignored, this is just one .o file
@@ -195,9 +248,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     return o
 
   def create_compiler_rt(libname):
-    srcdir = shared.path_from_root('system', 'lib', 'compiler-rt', 'lib', 'builtins')
-    filenames = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
-    files = (os.path.join(srcdir, f) for f in filenames)
+    files = files_in_path(
+      path_components=['system', 'lib', 'compiler-rt', 'lib', 'builtins'],
+      filenames=['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c'])
 
     o_s = []
     commands = []
@@ -248,11 +301,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     lib = in_temp(libname)
     run_commands([[shared.LLVM_AR, 'cr', '-format=gnu', lib] + o_s])
     return lib
-
-  def files_in_path(path_components=None, filenames=None):
-    assert path_components is not None and filenames is not None
-    srcdir = shared.path_from_root(*path_components)
-    return [os.path.join(srcdir, f) for f in filenames]
 
   def create_wasm_compiler_rt(libname):
     files = files_in_path(
