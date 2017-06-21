@@ -320,9 +320,13 @@ EM_BUILD_VERBOSE_LEVEL = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUI
 
 # Expectations
 
-EXPECTED_LLVM_VERSION = (4, 0)
-
 actual_clang_version = None
+
+def expected_llvm_version():
+  if get_llvm_target() == WASM_TARGET:
+    return "5.0"
+  else:
+    return "4.0"
 
 def get_clang_version():
   global actual_clang_version
@@ -333,7 +337,7 @@ def get_clang_version():
   return actual_clang_version
 
 def check_clang_version():
-  expected = '.'.join(map(str, EXPECTED_LLVM_VERSION))
+  expected = expected_llvm_version()
   actual = get_clang_version()
   if expected in actual:
     return True
