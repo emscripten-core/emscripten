@@ -271,9 +271,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     return create_wasm_rt_lib(libname, files)
 
   def create_wasm_libc_rt(libname):
-    # We've got these extra files that are part of libc, but are generated after
-    # bitcode in a similar way to compiler-rt. Add these as a separate lib
-    # because they aren't needed with wasm linking.
+    # Static linking is tricky with LLVM, since e.g. memset might not be used from libc,
+    # but be used as an intrinsic, and codegen will generate a libc call from that intrinsic
+    # *after* static linking would have thought it is all in there. In asm.js this is not an
+    # issue as we do JS linking anyhow, and have asm.js-optimized versions of all the LLVM
+    # intrinsics. But for wasm, we need a better solution. For now, make another archive
+    # that gets included at the same time as compiler-rt.
     math_files = files_in_path(
       path_components=['system', 'lib', 'libc', 'musl', 'src', 'math'],
       filenames=['fmaxf.c', 'fminf.c', 'fmax.c', 'fmin.c'])
