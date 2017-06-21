@@ -2534,52 +2534,10 @@ def generate_html(target, options, js_target, target_basename,
 ''' % (shared.JS.get_subresource_location(wasm_binary_target), script.inline)
 
   if script.inline:
-    # add functions copied from preamble.js
-    script.inline += '''
-      function intArrayToString(array) {
-        if (typeof TextDecoder !== 'undefined') {
-          return new TextDecoder('utf-8').decode(array);
-        }
-        var ret = [];
-        for (var i = 0; i < array.length; i++) {
-          var chr = array[i];
-          if (chr > 0xFF) {
-            chr &= 0xFF;
-          }
-          ret.push(String.fromCharCode(chr));
-        }
-        return ret.join('');
-      }
-
-      function intArrayFromBase64(s) {
-        try {
-          var decoded = atob(s);
-          var bytes = new Uint8Array(decoded.length);
-          for (i = 0 ; i < decoded.length ; ++i) {
-            bytes[i] = decoded.charCodeAt(i);
-          }
-          return bytes;
-        } catch (_) {
-          throw new Error('Converting base64 string to bytes failed.');
-        }
-      }
-
-      function tryParseAsDataURI(filename) {
-        var dataURIPrefix = 'data:application/octet-stream;base64,';
-
-        if (!(
-          String.prototype.startsWith ?
-            filename.startsWith(dataURIPrefix) :
-            filename.indexOf(dataURIPrefix) === 0
-        )) {
-          return;
-        }
-
-        var data = filename.slice(dataURIPrefix.length);
-
-        return intArrayFromBase64(data);
-      }
-'''
+    # add functions needed for data URI parsing
+    f = open('src/arrayUtils.js', 'r')
+    script.inline += re.sub('#if .*?#endif', '', f.read(), flags=re.DOTALL)
+    f.close()
 
   html = open(target, 'wb')
   html_contents = shell.replace('{{{ SCRIPT }}}', script.replacement())
