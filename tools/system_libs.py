@@ -27,8 +27,7 @@ def run_commands(commands):
     # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool, https://bugs.python.org/issue8296
     pool.map_async(call_process, commands, chunksize=1).get(maxint)
 
-def files_in_path(path_components=None, filenames=None):
-  assert path_components is not None and filenames is not None
+def files_in_path(path_components, filenames):
   srcdir = shared.path_from_root(*path_components)
   return [os.path.join(srcdir, f) for f in filenames]
 
