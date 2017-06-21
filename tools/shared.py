@@ -2258,6 +2258,7 @@ class Building(object):
     # Some native libraries are implemented in Emscripten as system side JS libraries
     js_system_libraries = {
       'c': '',
+      'dl': '',
       'EGL': 'library_egl.js',
       'GL': 'library_gl.js',
       'GLESv2': 'library_gl.js',
