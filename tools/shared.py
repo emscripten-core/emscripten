@@ -380,7 +380,7 @@ def has_wasm_target(targets):
 def check_fastcomp():
   try:
     targets = get_llc_targets()
-    if get_llvm_target() == ASM_JS_TARGET:
+    if not Settings.WASM_BACKEND:
       if not has_asm_js_target(targets):
         logging.critical('fastcomp in use, but LLVM has not been built with the JavaScript backend as a target, llc reports:')
         print >> sys.stderr, '==========================================================================='
@@ -389,7 +389,6 @@ def check_fastcomp():
         logging.critical('you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
         return False
     else:
-      assert get_llvm_target() == WASM_TARGET
       if not has_wasm_target(targets):
         logging.critical('WebAssembly set as target, but LLVM has not been built with the WebAssembly backend, llc reports:')
         print >> sys.stderr, '==========================================================================='
@@ -397,7 +396,7 @@ def check_fastcomp():
         print >> sys.stderr, '==========================================================================='
         return False
 
-    if get_llvm_target() == ASM_JS_TARGET:
+    if not Settings.WASM_BACKEND:
       # check repo versions
       d = get_fastcomp_src_dir()
       shown_repo_version_error = False
@@ -497,7 +496,7 @@ except Exception, e:
   EMSCRIPTEN_VERSION = 'unknown'
 
 def generate_sanity():
-  return EMSCRIPTEN_VERSION + '|' + LLVM_ROOT + '|' + get_clang_version() + ('_wasm' if get_llvm_target() == WASM_TARGET else '')
+  return EMSCRIPTEN_VERSION + '|' + LLVM_ROOT + '|' + get_clang_version() + ('_wasm' if Settings.WASM_BACKEND else '')
 
 def check_sanity(force=False):
   ToolchainProfiler.enter_block('sanity')
@@ -510,7 +509,7 @@ def check_sanity(force=False):
     else:
       settings_mtime = os.stat(CONFIG_FILE).st_mtime
       sanity_file = CONFIG_FILE + '_sanity'
-      if get_llvm_target() == WASM_TARGET:
+      if Settings.WASM_BACKEND:
         sanity_file += '_wasm'
       if os.path.exists(sanity_file):
         try:
@@ -1166,6 +1165,9 @@ class Settings2(type):
           declare = re.sub(r'([\w\d]+)\s*=\s*(.+)', r'self.attrs["\1"]=\2;', args[i+1])
           exec declare
 
+      if get_llvm_target() == WASM_TARGET:
+        self.attrs['WASM_BACKEND'] = 1
+
     # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
     # the reverse of load_settings, except for -Ox which is relevant there but not here
     @classmethod
@@ -1346,7 +1348,7 @@ class Building(object):
           # the Emscripten cache directory locked for write access, and the
           # EMCC_WASM_BACKEND check also requires locked access to the cache,
           # which the multiprocess children would not get.
-          'EMCC_WASM_BACKEND=' + os.getenv('EMCC_WASM_BACKEND', '0'),
+          'EMCC_WASM_BACKEND=%s' % Settings.WASM_BACKEND,
           # Multiprocessing pool children can't spawn their own linear number of
           # children, that could cause a quadratic amount of spawned processes.
           'EMCC_CORES=1'

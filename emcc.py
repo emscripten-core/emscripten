@@ -887,9 +887,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.ASSERTIONS:
         shared.Settings.STACK_OVERFLOW_CHECK = 2
 
-      if shared.get_llvm_target() == shared.WASM_TARGET:
-        shared.Settings.WASM_BACKEND = 1
-
       if not shared.Settings.STRICT:
         # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code in strict mode. Code should use the define __EMSCRIPTEN__ instead.
         shared.COMPILER_OPTS += ['-DEMSCRIPTEN']
