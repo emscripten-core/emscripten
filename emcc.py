@@ -1104,12 +1104,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
         shared.Settings.BINARYEN = 1
-        # Static linking is tricky with LLVM, since e.g. memset might not be used from libc,
-        # but be used as an intrinsic, and codegen will generate a libc call from that intrinsic
-        # *after* static linking would have thought it is all in there. In asm.js this is not an
-        # issue as we do JS linking anyhow, and have asm.js-optimized versions of all the LLVM
-        # intrinsics. But for wasm, we need a better solution. For now, just pin stuff.
-        shared.Settings.EXPORTED_FUNCTIONS += ['_memcpy', '_memmove', '_memset']
+
         # to bootstrap struct_info, we need binaryen
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
 
