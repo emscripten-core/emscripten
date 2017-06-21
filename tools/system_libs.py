@@ -249,9 +249,15 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     run_commands([[shared.LLVM_AR, 'cr', '-format=gnu', lib] + o_s])
     return lib
 
+  def files_in_path(path_components=None, filenames=None):
+    assert path_components is not None and filenames is not None
+    srcdir = shared.path_from_root(*path_components)
+    return [os.path.join(srcdir, f) for f in filenames]
+
   def create_wasm_compiler_rt(libname):
-    srcdir = shared.path_from_root('system', 'lib', 'compiler-rt', 'lib', 'builtins')
-    filenames = ['addtf3.c', 'ashlti3.c', 'ashrti3.c', 'atomic.c', 'comparetf2.c',
+    files = files_in_path(
+      path_components=['system', 'lib', 'compiler-rt', 'lib', 'builtins'],
+      filenames=['addtf3.c', 'ashlti3.c', 'ashrti3.c', 'atomic.c', 'comparetf2.c',
                  'divtf3.c', 'divti3.c', 'udivmodti4.c',
                  'extenddftf2.c', 'extendsftf2.c',
                  'fixdfti.c', 'fixsfti.c', 'fixtfdi.c', 'fixtfsi.c', 'fixtfti.c',
@@ -261,21 +267,19 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  'modti3.c', 'multf3.c', 'multi3.c', 'subtf3.c', 'udivti3.c', 'umodti3.c', 'ashrdi3.c',
                  'ashldi3.c', 'fixdfdi.c', 'floatdidf.c', 'lshrdi3.c', 'moddi3.c',
                  'trunctfdf2.c', 'trunctfsf2.c', 'umoddi3.c', 'fixunsdfdi.c', 'muldi3.c',
-                 'divdi3.c', 'divmoddi4.c', 'udivdi3.c', 'udivmoddi4.c']
-    files = (os.path.join(srcdir, f) for f in filenames)
+                 'divdi3.c', 'divmoddi4.c', 'udivdi3.c', 'udivmoddi4.c'])
     return create_wasm_rt_lib(libname, files)
 
   def create_wasm_libc_rt(libname):
     # We've got these extra files that are part of libc, but are generated after
     # bitcode in a similar way to compiler-rt. Add these as a separate lib
     # because they aren't needed with wasm linking.
-    math_dir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'math')
-    math_filenames = ['fmaxf.c', 'fminf.c', 'fmax.c', 'fmin.c']
-    math_files = [os.path.join(math_dir, f) for f in math_filenames]
-    string_dir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'string')
-    string_filenames = ['memcpy.c', 'memset.c', 'memmove.c']
-    string_files = [os.path.join(string_dir, f) for f in string_filenames]
-
+    math_files = files_in_path(
+      path_components=['system', 'lib', 'libc', 'musl', 'src', 'math'],
+      filenames=['fmaxf.c', 'fminf.c', 'fmax.c', 'fmin.c'])
+    string_files = files_in_path(
+      path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
+      filenames=['memcpy.c', 'memset.c', 'memmove.c'])
     return create_wasm_rt_lib(libname, math_files + string_files)
 
   # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
