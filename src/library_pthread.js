@@ -25,6 +25,10 @@ var LibraryPThread = {
       // structure is 'alive'.
       {{{ makeSetValue('PThread.mainThreadBlock', C_STRUCTS.pthread.self, 'PThread.mainThreadBlock', 'i32') }}};
 
+      // pthread struct robust_list head should point to itself.
+      var headPtr = PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.robust_list }}};
+      {{{ makeSetValue('headPtr', 0, 'headPtr', 'i32') }}};
+
       // Allocate memory for thread-local storage.
       var tlsMemory = allocate({{{ cDefine('PTHREAD_KEYS_MAX') }}} * 4, "i32*", ALLOC_STATIC);
       for (var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i) HEAPU32[tlsMemory/4+i] = 0;
