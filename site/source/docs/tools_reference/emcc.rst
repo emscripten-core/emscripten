@@ -304,6 +304,11 @@ Options that are modified or new in *emcc* are listed below:
 	
 		- See `src/shell.html <https://github.com/kripken/emscripten/blob/master/src/shell.html>`_ and `src/shell_minimal.html <https://github.com/kripken/emscripten/blob/master/src/shell_minimal.html>`_ for examples.                  
 		- This argument is ignored if a target other than HTML is specified using the ``-o`` option.
+
+.. _emcc-source-map-base:
+
+``--source-map-base <base-url>``
+	The URL for the location where WebAssembly source maps will be published. When this option is provided, the **.wasm** file is updated to have a ``sourceMappingURL`` section. The resulting URL will have format: ``<base-url>`` + ``<wasm-file-name>`` + ``.map``.
 	
 .. _emcc-minify:
 						   
