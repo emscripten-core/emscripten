@@ -2265,8 +2265,9 @@ function integrateWasmJS(Module) {
       }
     }
     if (typeof Module['asm'] !== 'function') {
-      Module['printErr']('asm evalling did not set the module properly');
-      return false;
+      var errorMessage = 'asm evalling did not set the module properly';
+      Module['printErr'](errorMessage);
+      throw errorMessage;
     }
     return Module['asm'](global, env, providedBuffer);
   }
@@ -2308,8 +2309,9 @@ function integrateWasmJS(Module) {
       try {
         return Module['instantiateWasm'](info, receiveInstance);
       } catch(e) {
-        Module['printErr']('Module.instantiateWasm callback failed with error: ' + e);
-        return false;
+        var errorMessage = 'Module.instantiateWasm callback failed with error: ' + e;
+        Module['printErr'](errorMessage);
+        throw errorMessage;
       }
     }
 
@@ -2345,8 +2347,9 @@ function integrateWasmJS(Module) {
 
   function doWasmPolyfill(global, env, providedBuffer, method) {
     if (typeof WasmJS !== 'function') {
-      Module['printErr']('WasmJS not detected - polyfill not bundled?');
-      return false;
+      var errorMessage = 'WasmJS not detected - polyfill not bundled?';
+      Module['printErr'](errorMessage);
+      throw errorMessage;
     }
 
     // Use wasm.js to polyfill and execute code in a wasm interpreter.
@@ -2490,36 +2493,36 @@ function integrateWasmJS(Module) {
 
     // try the methods. each should return the exports if it succeeded
 
-    var exports;
-    var methods = method.split(',');
-
-    for (var i = 0; i < methods.length; i++) {
-      var curr = methods[i];
+    return method.split(',').reduce(function (promise, curr) {
+      return promise.catch(function () {
 
 #if RUNTIME_LOGGING
-      Module['printErr']('trying binaryen method: ' + curr);
+        Module['printErr']('trying binaryen method: ' + curr);
 #endif
 
-      finalMethod = curr;
+        finalMethod = curr;
 
-      if (curr === 'native-wasm') {
-        if (exports = doNativeWasm(global, env, providedBuffer)) break;
-      } else if (curr === 'asmjs') {
-        if (exports = doJustAsm(global, env, providedBuffer)) break;
-      } else if (curr === 'interpret-asm2wasm' || curr === 'interpret-s-expr' || curr === 'interpret-binary') {
-        if (exports = doWasmPolyfill(global, env, providedBuffer, curr)) break;
-      } else {
-        throw 'bad method: ' + curr;
+        if (curr === 'native-wasm') {
+          return doNativeWasm(global, env, providedBuffer);
+        } else if (curr === 'asmjs') {
+          return doJustAsm(global, env, providedBuffer);
+        } else if (curr === 'interpret-asm2wasm' || curr === 'interpret-s-expr' || curr === 'interpret-binary') {
+          return doWasmPolyfill(global, env, providedBuffer, curr);
+        }
+      });
+    }, Promise.reject()).catch(function () {
+      throw 'no binaryen method succeeded. consider enabling more options, like interpreting, if you want that: https://github.com/kripken/emscripten/wiki/WebAssembly#binaryen-methods';
+    }).then(function (exports) {
+      if (!exports) {
+        throw 'bad method: ' + finalMethod;
       }
-    }
-
-    if (!exports) throw 'no binaryen method succeeded. consider enabling more options, like interpreting, if you want that: https://github.com/kripken/emscripten/wiki/WebAssembly#binaryen-methods';
 
 #if RUNTIME_LOGGING
-    Module['printErr']('binaryen method succeeded.');
+      Module['printErr']('binaryen method succeeded.');
 #endif
 
-    return exports;
+      return exports;
+    });
   };
 
   var methodHandler = Module['asm']; // note our method handler, as we may modify Module['asm'] later
