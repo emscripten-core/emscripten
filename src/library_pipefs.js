@@ -4,6 +4,8 @@ mergeInto(LibraryManager.library, {
   $PIPEFS: {
     BUCKET_BUFFER_SIZE: 1024 * 8, // 8KiB Buffer
     mount: function (mount) {
+      // Do not pollute the real root directory or its child nodes with pipes
+      // Looks like it is OK to create another pseudo-root node not linked to the FS.root hierarchy this way
       return FS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */, 0);
     },
     createPipe: function () {
