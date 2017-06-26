@@ -145,6 +145,7 @@ class EmccOptions(object):
     self.exclude_files = []
     self.ignore_dynamic_linking = False
     self.shell_path = shared.path_from_root('src', 'shell.html')
+    self.source_map_base = None
     self.js_libraries = []
     self.bind = False
     self.emrun = False
@@ -1768,8 +1769,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.CYBERDWARF:
           execute([shared.PYTHON, shared.path_from_root('tools', 'emdebug_cd_merger.py'), target + '.cd', target+'.symbols'])
 
-      if options.debug_level >= 4:
-        emit_source_maps(target, optimizer.js_transform_tempfiles)
+      if options.debug_level >= 4 and not shared.Settings.BINARYEN:
+        emit_js_source_maps(target, optimizer.js_transform_tempfiles)
 
       # track files that will need native eols
       generated_text_files_with_native_eols = []
@@ -1951,6 +1952,11 @@ def parse_args(newargs):
     elif newargs[i].startswith('--shell-file'):
       check_bad_eq(newargs[i])
       options.shell_path = newargs[i+1]
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i].startswith('--source-map-base'):
+      check_bad_eq(newargs[i])
+      options.source_map_base = newargs[i+1]
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--js-library'):
@@ -2139,7 +2145,7 @@ def emterpretify(js_target, optimizer, options):
     final = real
 
 
-def emit_source_maps(target, js_transform_tempfiles):
+def emit_js_source_maps(target, js_transform_tempfiles):
   logging.debug('generating source maps')
   jsrun.run_js(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),
     shared.NODE_JS, js_transform_tempfiles +
@@ -2252,6 +2258,10 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
       cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
       if options.debug_level >= 2 or options.profiling_funcs:
         cmd += ['-g']
+        if options.debug_level >= 4:
+          cmd += ['--source-map=' + wasm_binary_target + '.map']
+          if options.source_map_base:
+            cmd += ['--source-map-url=' + options.source_map_base + wasm_binary_target + '.map']
       logging.debug('wasm-as (text => binary): ' + ' '.join(cmd))
       subprocess.check_call(cmd)
     if import_mem_init:
