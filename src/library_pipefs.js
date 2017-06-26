@@ -84,7 +84,7 @@ mergeInto(LibraryManager.library, {
         assert(buffer instanceof ArrayBuffer || ArrayBuffer.isView(buffer));
         var data = buffer.subarray(offset, offset + length);
 
-        if(length <= 0) {
+        if (length <= 0) {
           return 0;
         }
         if (currentLength == 0) {

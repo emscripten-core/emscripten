@@ -299,7 +299,7 @@ var SyscallsLibrary = {
     var fdPtr = SYSCALLS.get();
 
     if (fdPtr == 0) {
-        throw new FS.ErrnoError(ERRNO_CODES.EFAULT);
+      throw new FS.ErrnoError(ERRNO_CODES.EFAULT);
     }
 
     var res = PIPEFS.createPipe();
