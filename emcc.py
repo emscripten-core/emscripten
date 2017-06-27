@@ -1631,13 +1631,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if DEBUG:
             # Copy into temp dir as well, so can be run there too
             shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
-          if not shared.Settings.BINARYEN:
+          if not shared.Settings.BINARYEN or 'asmjs' in shared.Settings.BINARYEN_METHOD or 'interpret-asm2wasm' in shared.Settings.BINARYEN_METHOD:
             return 'memoryInitializer = "%s";' % shared.JS.get_subresource_location(memfile, embed_memfile)
           else:
-            # with wasm, we may have the mem init file in the wasm binary already
-            return ('memoryInitializer = Module["wasmJSMethod"].indexOf("asmjs") >= 0 || '
-                    'Module["wasmJSMethod"].indexOf("interpret-asm2wasm") >= 0 ? "%s" : null;'
-                    % shared.JS.get_subresource_location(memfile, embed_memfile))
+            return 'memoryInitializer = null;'
         src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
         open(final + '.mem.js', 'w').write(src)
         final += '.mem.js'
