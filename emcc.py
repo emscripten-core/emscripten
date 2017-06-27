@@ -1624,7 +1624,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           while membytes and membytes[-1] == 0:
             membytes.pop()
           if not membytes: return ''
-          if not options.memory_init_file:
+          if shared.Settings.MEM_INIT_METHOD == 2:
             # memory initializer in a string literal
             return "memoryInitializer = '%s';" % shared.JS.generate_string_initializer(list(membytes))
           open(memfile, 'wb').write(''.join(map(chr, membytes)))
