@@ -422,6 +422,7 @@ function JSify(data, functionsOnly) {
     // "Final shape that will be created").
     print('// EMSCRIPTEN_END_FUNCS\n');
 
+    if (ASSERTIONS) print('var ASSERTIONS = true;\n');
     print(read('arrayUtils.js'));
     if (HEADLESS) {
       print('if (!ENVIRONMENT_IS_WEB) {');

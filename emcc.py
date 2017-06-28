@@ -2534,7 +2534,7 @@ def generate_html(target, options, js_target, target_basename,
   if script.inline:
     # add functions needed for data URI parsing
     f = open('src/arrayUtils.js', 'r')
-    script.inline += re.sub('#if .*?#endif', '', f.read(), flags=re.DOTALL)
+    script.inline += f.read()
     f.close()
 
   html = open(target, 'wb')
