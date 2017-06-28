@@ -4664,7 +4664,7 @@ PORT: 3979
     expected = open(path_from_root('tests', 'netinet', 'in.out'), 'r').read()
     self.do_run(src, expected)
 
-  @no_wasm_backend()
+  @no_wasm_backend('No dynamic linking support in wasm backend path')
   def test_main_module_static_align(self):
     if Settings.ALLOW_MEMORY_GROWTH: return self.skip('no shared modules with memory growth')
     Settings.MAIN_MODULE = 1
@@ -5808,7 +5808,6 @@ def process(filename):
   ### Integration tests
 
   @sync
-  @no_wasm_backend()
   def test_ccall(self):
     post = '''
 def process(filename):
@@ -5853,7 +5852,7 @@ def process(filename):
       self.emcc_args += ['--closure', '1']
       self.do_run_in_out_file_test('tests', 'core', 'test_ccall', post_build=post)
 
-  @no_wasm_backend()
+  @no_wasm_backend('DEAD_FUNCTIONS elimination is done by the JSOptimizer')
   def test_dead_functions(self):
     src = r'''
       #include <stdio.h>
