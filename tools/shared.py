@@ -399,6 +399,12 @@ def check_fastcomp():
         print('===========================================================================', file=sys.stderr)
         return False
 
+    if Settings.WASM_BACKEND == 2:
+      if subprocess.call([LLVM_LLD, '-flavor', 'wasm', '--version'], stdout=PIPE, stderr=PIPE) != 0:
+        logging.critical('WASM_BACKEND=2 but lld not build with wasm support:')
+        logging.critical(LLVM_LLD)
+        return False
+
     if not Settings.WASM_BACKEND:
       # check repo versions
       d = get_fastcomp_src_dir()
@@ -728,11 +734,13 @@ CLANG_CC=os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
 CLANG_CPP=os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
 CLANG=CLANG_CPP
 LLVM_LINK=build_llvm_tool_path(exe_suffix('llvm-link'))
+LLVM_LLD=build_llvm_tool_path(exe_suffix('lld'))
 LLVM_AR=build_llvm_tool_path(exe_suffix('llvm-ar'))
 LLVM_OPT=os.path.expanduser(build_llvm_tool_path(exe_suffix('opt')))
 LLVM_AS=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-as')))
 LLVM_DIS=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dis')))
 LLVM_NM=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
+LLVM_READOBJ=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-readobj')))
 LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
 LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
 
@@ -915,7 +923,10 @@ def check_vanilla():
   # if the env var tells us what to do, do that
   if 'EMCC_WASM_BACKEND' in os.environ:
     if os.environ['EMCC_WASM_BACKEND'] != '0':
-      logging.debug('EMCC_WASM_BACKEND tells us to use wasm backend')
+      if os.environ['EMCC_WASM_BACKEND'] == '2':
+        logging.debug('EMCC_WASM_BACKEND tells us to use wasm backend (lld)')
+      else:
+        logging.debug('EMCC_WASM_BACKEND tells us to use wasm backend (s2wasm)')
       LLVM_TARGET = WASM_TARGET
     else:
       logging.debug('EMCC_WASM_BACKEND tells us to use asm.js backend')
@@ -951,7 +962,7 @@ def check_vanilla():
       is_vanilla = check_vanilla()
     temp_cache = None
     if is_vanilla:
-      logging.debug('check tells us to use wasm backend')
+      logging.debug('check tells us to use wasm backend (s2wasm)')
       LLVM_TARGET = WASM_TARGET
     else:
       logging.debug('check tells us to use asm.js backend')
@@ -1169,7 +1180,10 @@ class SettingsManager(object):
           exec(declare)
 
       if get_llvm_target() == WASM_TARGET:
-        self.attrs['WASM_BACKEND'] = 1
+        if os.environ.get('EMCC_WASM_BACKEND') == '2':
+          self.attrs['WASM_BACKEND'] = 2
+        else:
+          self.attrs['WASM_BACKEND'] = 1
 
     # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
     # the reverse of load_settings, except for -Ox which is relevant there but not here
@@ -2559,7 +2573,7 @@ def check_execute(cmd, *args, **kw):
   # TODO: use in more places. execute doesn't actually check that return values
   # are nonzero
   try:
-    subprocess.check_output(cmd, *args, **kw)
+    return subprocess.check_output(cmd, *args, **kw)
     logging.debug("Successfuly executed %s" % " ".join(cmd))
   except subprocess.CalledProcessError as e:
     logging.error("'%s' failed with output:\n%s" % (" ".join(e.cmd), e.output))
