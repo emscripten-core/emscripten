@@ -1,6 +1,4 @@
-if (typeof maybeExport === 'undefined') {
-	function maybeExport () {}
-}
+// All functions here should be maybeExported from jsifier.js
 
 /** @type {function(string, boolean=, number=)} */
 function intArrayFromString(stringy, dontAddNull, length) {
@@ -10,7 +8,6 @@ function intArrayFromString(stringy, dontAddNull, length) {
   if (dontAddNull) u8array.length = numBytesWritten;
   return u8array;
 }
-{{{ maybeExport('intArrayFromString') }}}
 
 function intArrayToString(array) {
   var ret = [];
@@ -26,7 +23,6 @@ function intArrayToString(array) {
   }
   return ret.join('');
 }
-{{{ maybeExport('intArrayToString') }}}
 
 // Converts a string of base64 into a byte array.
 // Throws error on invalid input.
@@ -42,7 +38,6 @@ function intArrayFromBase64(s) {
     throw new Error('Converting base64 string to bytes failed.');
   }
 }
-{{{ maybeExport('intArrayFromBase64') }}}
 
 // If filename is a base64 data URI, parses and returns data (Buffer on node,
 // Uint8Array otherwise). If filename is not a base64 data URI, returns undefined.
@@ -65,4 +60,3 @@ function tryParseAsDataURI(filename) {
 
   return intArrayFromBase64(data);
 }
-{{{ maybeExport('tryParseAsDataURI') }}}

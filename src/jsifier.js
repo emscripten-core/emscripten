@@ -423,7 +423,14 @@ function JSify(data, functionsOnly) {
     print('// EMSCRIPTEN_END_FUNCS\n');
 
     if (ASSERTIONS) print('var ASSERTIONS = true;\n');
+
     print(read('arrayUtils.js'));
+    // Export all arrayUtils.js functions
+    print(processMacros("{{{ maybeExport('intArrayFromString') }}}"))
+    print(processMacros("{{{ maybeExport('intArrayToString') }}}"))
+    print(processMacros("{{{ maybeExport('intArrayFromBase64') }}}"))
+    print(processMacros("{{{ maybeExport('tryParseAsDataURI') }}}"))
+
     if (HEADLESS) {
       print('if (!ENVIRONMENT_IS_WEB) {');
       print(read('headlessCanvas.js'));
