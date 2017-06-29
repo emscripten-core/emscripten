@@ -2531,8 +2531,8 @@ def generate_html(target, options, js_target, target_basename,
           }
 ''' % (shared.JS.get_subresource_location(wasm_binary_target), script.inline)
 
+  # when script.inline isn't empty, add required helper functions such as tryParseAsDataURI
   if script.inline:
-    # add functions needed for data URI parsing
     f = open('src/arrayUtils.js', 'r')
     script.inline += f.read()
     f.close()
