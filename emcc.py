@@ -2432,22 +2432,20 @@ def generate_html(target, options, js_target, target_basename,
     # start to load the memory init file in the HTML, in parallel with the JS
     script.un_src()
     script.inline = ('''
-          (function() {
-            var memoryInitializer = '%s';
-            Module['memoryInitializerBytes'] = tryParseAsDataURI(memoryInitializer);
-            if (Module['memoryInitializerBytes']) {
-              return;
-            }
-            if (typeof Module['locateFile'] === 'function') {
-              memoryInitializer = Module['locateFile'](memoryInitializer);
-            } else if (Module['memoryInitializerPrefixURL']) {
-              memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
-            }
-            var meminitXHR = Module['memoryInitializerRequest'] = new XMLHttpRequest();
-            meminitXHR.open('GET', memoryInitializer, true);
-            meminitXHR.responseType = 'arraybuffer';
-            meminitXHR.send(null);
-          })();
+          var memoryInitializer = '%s';
+          Module['memoryInitializerBytes'] = tryParseAsDataURI(memoryInitializer);
+          if (Module['memoryInitializerBytes']) {
+            return;
+          }
+          if (typeof Module['locateFile'] === 'function') {
+            memoryInitializer = Module['locateFile'](memoryInitializer);
+          } else if (Module['memoryInitializerPrefixURL']) {
+            memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
+          }
+          var meminitXHR = Module['memoryInitializerRequest'] = new XMLHttpRequest();
+          meminitXHR.open('GET', memoryInitializer, true);
+          meminitXHR.responseType = 'arraybuffer';
+          meminitXHR.send(null);
 ''' % shared.JS.get_subresource_location(memfile)) + script.inline
 
   # Download .asm.js if --separate-asm was passed in an asm.js build, or if 'asmjs' is one
@@ -2534,7 +2532,7 @@ def generate_html(target, options, js_target, target_basename,
   # when script.inline isn't empty, add required helper functions such as tryParseAsDataURI
   if script.inline:
     f = open('src/arrayUtils.js', 'r')
-    script.inline += f.read()
+    script.inline = '(function () {' + script.inline + f.read() + '})();'
     f.close()
 
   html = open(target, 'wb')
