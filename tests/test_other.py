@@ -7666,26 +7666,26 @@ int main() {
     assert 'exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?' in err
 
   def test_single_file(self):
-    for single_file_enabled in [True, False]:
-      for meminit0_enabled in [True, False]:
-        for debug_enabled in [True, False]:
-          for emterpreter_enabled in [True, False]:
-            for wasm_enabled in [True, False]:
-              for asmjs_fallback_enabled in [True, False]:
-                # skip unhelpful option combinations
-                if (
-                  (asmjs_fallback_enabled and not wasm_enabled)
-                ):
-                  continue
+    with clean_write_access_to_canonical_temp_dir():
+      for single_file_enabled in [True, False]:
+        for meminit1_enabled in [True, False]:
+          for debug_enabled in [True, False]:
+            for emterpreter_enabled in [False]:
+              for wasm_enabled in [True, False]:
+                for asmjs_fallback_enabled in [True, False]:
+                  # skip unhelpful option combinations
+                  if (
+                    (asmjs_fallback_enabled and not wasm_enabled)
+                  ):
+                    continue
 
-                with clean_write_access_to_canonical_temp_dir():
                   expect_asmjs_code = asmjs_fallback_enabled and wasm_enabled
                   expect_emterpretify_file = emterpreter_enabled
-                  expect_meminit = not meminit0_enabled
+                  expect_meminit = (meminit1_enabled and not wasm_enabled) or (wasm_enabled and asmjs_fallback_enabled)
                   expect_wasm = wasm_enabled
                   expect_wast = debug_enabled and wasm_enabled
 
-                  cmd = [PYTHON, EMCC, path_from_root('tests', 'core', 'test_i64.c')]
+                  cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c')]
 
                   if single_file_enabled:
                     expect_asmjs_code = False
@@ -7694,8 +7694,8 @@ int main() {
                     expect_wasm = False
                     expect_wast = False
                     cmd += ['-s', 'SINGLE_FILE=1']
-                  if meminit0_enabled:
-                    cmd += ['--memory-init-file', '0']
+                  if meminit1_enabled:
+                    cmd += ['--memory-init-file', '1']
                   if debug_enabled:
                     cmd += ['-g4']
                   if emterpreter_enabled:
@@ -7705,13 +7705,18 @@ int main() {
                   if asmjs_fallback_enabled:
                     cmd += ['-s', "BINARYEN_METHOD='native-wasm,asmjs'"]
 
+                  for x in os.listdir('.'):
+                    if x.startswith('emcc-') or x.startswith('a.out'):
+                      os.unlink(x)
+
                   print ' '.join(cmd)
                   proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
                   output, err = proc.communicate()
+                  print(os.listdir('.'))
                   assert proc.returncode == 0
                   assert expect_asmjs_code == os.path.exists('a.out.asm.js')
                   assert expect_emterpretify_file == os.path.exists('a.out.dat')
-                  assert expect_meminit == os.path.exists('a.out.js.mem')
+                  assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
                   assert expect_wasm == os.path.exists('a.out.wasm')
                   assert expect_wast == os.path.exists('a.out.wast')
                   self.assertContained('hello, world!', run_js('a.out.js'))
