@@ -2325,16 +2325,16 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
     js = f.read()
     f.close()
     f = open(final, 'w')
-    for tup in [
+    for target, replacement_string, should_embed in [
       (wasm_text_target, shared.FilenameReplacementStrings.WASM_TEXT_FILE, True),
       (wasm_binary_target, shared.FilenameReplacementStrings.WASM_BINARY_FILE, True),
       (asm_target, shared.FilenameReplacementStrings.ASMJS_CODE_FILE, not shared.Building.is_wasm_only())
     ]:
-      if tup[2] and os.path.isfile(tup[0]):
-        js = js.replace(tup[1], shared.JS.get_subresource_location(tup[0]))
+      if should_embed and os.path.isfile(target):
+        js = js.replace(replacement_string, shared.JS.get_subresource_location(target))
       else:
-        js = js.replace(tup[1], '')
-      shared.try_delete(tup[0])
+        js = js.replace(replacement_string, '')
+      shared.try_delete(target)
     f.write(js)
     f.close()
   return final
