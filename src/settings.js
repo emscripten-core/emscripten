@@ -591,6 +591,29 @@ var MODULARIZE = 0; // By default we emit all code in a straightforward way into
                     // necessary async events). It receives the instance as a parameter,
                     // for convenience.
 
+var PROMISIFY = 0; // If set to 1, will wrap the emitted code in a Promise. This is similar to the
+                   // MODULARIZE option, but the code looks like the following:
+                   //
+                   //   var EXPORT_NAME = Promise.resolve().then(function () {
+                   //     // .. all the emitted code from emscripten ..
+                   //     return runtimeInitializedPromise.then(function () { return Module; });
+                   //   });
+                   //
+                   // Because this option uses a real Promise, it can be reliably used for things
+                   // like error handling and async/await. In particular, the Promise is guaranteed
+                   // to reject if asynchronous WebAssembly compilation fails. Example usage:
+                   //
+                   //   const Module = await (async () => {
+                   //     try {
+                   //       // ... emcc -s WASM=1 -s PROMISIFY=1 -s "EXPORT_NAME='ModulePromise'" ...
+                   //       return await ModulePromise;
+                   //     }
+                   //     catch (_) {
+                   //       // ... emcc -s PROMISIFY=1 -s "EXPORT_NAME='ModulePromise'" ...
+                   //       return ModulePromise;
+                   //     }
+                   //   })();
+
 var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
                    // print out anything at all whatsoever. This is useful for benchmarking.
 

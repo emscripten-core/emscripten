@@ -1784,6 +1784,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         final = do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
                             wasm_text_target, misc_temp_files, optimizer)
 
+      if shared.Settings.PROMISIFY:
+        final = promisify(final)
+
       if shared.Settings.MODULARIZE:
         final = modularize(final)
 
@@ -2344,6 +2347,21 @@ def modularize(final):
   f.write('};\n')
   f.close()
   if DEBUG: save_intermediate('modularized', 'js')
+  return final
+
+
+def promisify(final):
+  logging.debug('Promisifying, assigning to var ' + shared.Settings.EXPORT_NAME)
+  src = open(final).read()
+  final = final + '.promise.js'
+  f = open(final, 'w')
+  f.write('var ' + shared.Settings.EXPORT_NAME + ' = Promise.resolve().then(function () {\n')
+  f.write(src)
+  f.write('\n')
+  f.write("  return Module['runtimeInitializedPromise'].then(function () { return Module; });\n")
+  f.write('});\n')
+  f.close()
+  if DEBUG: save_intermediate('promisified', 'js')
   return final
 
 

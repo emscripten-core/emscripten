@@ -122,6 +122,11 @@ function assert(condition, text) {
 
 var globalScope = this;
 
+Module['runtimeInitializedPromise'] = Promise.resolve();
+function deferRuntimeInitialization(f) {
+  Module['runtimeInitializedPromise'] = Module['runtimeInitializedPromise'].then(f);
+}
+
 // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
 function getCFunc(ident) {
   var func = Module['_' + ident]; // closure exported function
@@ -2317,14 +2322,16 @@ function integrateWasmJS(Module) {
 #if RUNTIME_LOGGING
     Module['printErr']('asynchronously preparing wasm');
 #endif
-    getBinaryPromise().then(function(binary) {
-      return WebAssembly.instantiate(binary, info)
-    }).then(function(output) {
-      // receiveInstance() will swap in the exports (to Module.asm) so they can be called
-      receiveInstance(output['instance']);
-    }).catch(function(reason) {
-      Module['printErr']('failed to asynchronously prepare wasm: ' + reason);
-      Module['quit'](1, reason);
+    deferRuntimeInitialization(function () {
+      return getBinaryPromise().then(function(binary) {
+        return WebAssembly.instantiate(binary, info)
+      }).then(function(output) {
+        // receiveInstance() will swap in the exports (to Module.asm) so they can be called
+        receiveInstance(output['instance']);
+      }).catch(function(reason) {
+        Module['printErr']('failed to asynchronously prepare wasm: ' + reason);
+        Module['quit'](1, reason);
+      });
     });
     return {}; // no exports yet; we'll fill them in later
 #else
