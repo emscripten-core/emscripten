@@ -256,11 +256,13 @@ function run(args) {
     }
 #endif
 
-    if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
+    Module['runtimeInitializedPromise'].then(function () {
+      if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
 
-    if (Module['_main'] && shouldRunNow) Module['callMain'](args);
+      if (Module['_main'] && shouldRunNow) Module['callMain'](args);
 
-    postRun();
+      postRun();
+    });
   }
 
   if (Module['setStatus']) {
