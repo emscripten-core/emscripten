@@ -2531,7 +2531,7 @@ def generate_html(target, options, js_target, target_basename,
 
   # when script.inline isn't empty, add required helper functions such as tryParseAsDataURI
   if script.inline:
-    f = open('src/arrayUtils.js', 'r')
+    f = open(shared.path_from_root('src/arrayUtils.js'), 'r')
     script.inline = '(function () {' + script.inline + f.read() + '})();'
     f.close()
 
