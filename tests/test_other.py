@@ -3195,6 +3195,24 @@ int main() {
     assert 'emcc: warning: unaligned store' in output[1], output[1]
     assert '@line 11 "src.cpp"' in output[1], output[1]
 
+  def test_runtime_initialize_failed(self):
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1']
+
+    self.clear()
+    proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
+    output, err = proc.communicate()
+
+    expectedOutput = 'runtime init failed'
+
+    os.remove('a.out.wasm')
+    f = open('a.out.js', 'a')
+    f.write("Module['onRuntimeInitializeFailed'] = function () { console.log('%s') }" % expectedOutput)
+    f.close()
+
+    devnull = open(os.devnull, 'w')
+    self.assertContained(expectedOutput, run_js('a.out.js', stderr=devnull))
+    devnull.close()
+
   def test_no_exit_runtime(self):
     open('code.cpp', 'w').write(r'''
 #include <stdio.h>
