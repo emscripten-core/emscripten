@@ -2324,7 +2324,7 @@ function integrateWasmJS(Module) {
       receiveInstance(output['instance']);
     }).catch(function(reason) {
       Module['printErr']('failed to asynchronously prepare wasm: ' + reason);
-      Module['quit'](1, reason);
+      abort(reason);
     });
     return {}; // no exports yet; we'll fill them in later
 #else
@@ -2509,7 +2509,7 @@ function integrateWasmJS(Module) {
       } else if (curr === 'interpret-asm2wasm' || curr === 'interpret-s-expr' || curr === 'interpret-binary') {
         if (exports = doWasmPolyfill(global, env, providedBuffer, curr)) break;
       } else {
-        throw 'bad method: ' + curr;
+        abort('bad method: ' + curr);
       }
     }
 
