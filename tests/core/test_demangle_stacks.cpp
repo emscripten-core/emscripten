@@ -6,10 +6,10 @@ class Class {
  public:
   __attribute__((noinline))
   void Aborter(double x, char y, int *z) {
-    int addr = x + y + (int)z;
-    void *p = (void *)addr;
-    for (int i = 0; i < 100; i++)
-      free(p);  // will abort, should show proper stack trace
+    volatile int w = 1;
+    if (w) {
+      abort();
+    }
   }
 };
 }
