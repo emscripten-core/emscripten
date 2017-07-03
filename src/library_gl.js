@@ -3951,8 +3951,10 @@ var LibraryGL = {
 #endif
     GLctx['bindVertexArray'](GL.vaos[vao]);
 #endif
+#if USES_GL_EMULATION
     var ibo = GLctx.getParameter(GLctx.ELEMENT_ARRAY_BUFFER_BINDING);
     GL.currElementArrayBuffer = ibo ? (ibo.name | 0) : 0;
+#endif
   },
 
 #if LEGACY_GL_EMULATION
