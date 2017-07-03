@@ -467,7 +467,7 @@ if has_preloaded:
         }
 ''', create_preloaded if use_preload_plugins else create_data, '''
         var files = metadata.files;
-        for (i = 0; i < files.length; ++i) {
+        for (var i = 0; i < files.length; ++i) {
           new DataRequest(files[i].start, files[i].end, files[i].crunched, files[i].audio).open('GET', files[i].filename);
         }
 ''' if not lz4 else '')
@@ -524,7 +524,7 @@ if has_preloaded:
   '''
     use_data += '''
           var files = metadata.files;
-          for (i = 0; i < files.length; ++i) {
+          for (var i = 0; i < files.length; ++i) {
             DataRequest.prototype.requests[files[i].filename].onload();
           }
     '''

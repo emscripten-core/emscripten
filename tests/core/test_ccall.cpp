@@ -26,6 +26,7 @@ struct test_struct {
   int arg1, arg2, arg3;
 };
 static int* stackChecker = 0;
+__attribute__((noinline))
 int get_stack() { int i; return (int)&i; }
 int uses_stack(test_struct* t1) {
   if (stackChecker == 0) stackChecker = (int*)malloc(sizeof(int));

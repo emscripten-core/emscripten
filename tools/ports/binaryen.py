@@ -1,6 +1,6 @@
 import os, shutil, logging
 
-TAG = 'version_33'
+TAG = 'version_34'
 
 def needed(settings, shared, ports):
   if not settings.BINARYEN: return False

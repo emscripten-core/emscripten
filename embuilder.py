@@ -87,7 +87,7 @@ if operation == 'build':
   tasks = sys.argv[2:]
   if 'ALL' in tasks:
     tasks = ['libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'gl', 'binaryen', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
-    if os.environ.get('EMCC_WASM_BACKEND') == '1':
+    if shared.Settings.WASM_BACKEND:
       skip_tasks = {'libc-mt', 'dlmalloc_threadsafe', 'pthreads'}
       print('Skipping building of %s, because WebAssembly does not support pthreads.' % ', '.join(skip_tasks))
       tasks = [x for x in tasks if x not in skip_tasks]
@@ -160,7 +160,7 @@ if operation == 'build':
         int main() {}
       ''', ['optimizer.2.exe'], ['-O2'])
     elif what == 'wasm_compiler_rt':
-      if shared.get_llvm_target() == shared.WASM_TARGET:
+      if shared.Settings.WASM_BACKEND:
         build('''
           int main() {}
         ''', ['wasm_compiler_rt.a'], ['-s', 'WASM=1'])
