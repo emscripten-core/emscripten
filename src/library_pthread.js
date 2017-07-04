@@ -760,17 +760,20 @@ var LibraryPThread = {
   // Public pthread_self() function which returns a unique ID for the thread.
   pthread_self__deps: ['_pthread_ptr'],
   pthread_self__asm: true,
+  pthread_self__sig: 'i',
   pthread_self: function() {
     return __pthread_ptr|0;
   },
 
   emscripten_is_main_runtime_thread__asm: true,
+  emscripten_is_main_runtime_thread__sig: 'i',
   emscripten_is_main_runtime_thread__deps: ['_pthread_is_main_runtime_thread'],
   emscripten_is_main_runtime_thread: function() {
     return __pthread_is_main_runtime_thread|0; // Semantically the same as testing "!ENVIRONMENT_IS_PTHREAD" outside the asm.js scope
   },
 
   emscripten_is_main_browser_thread__asm: true,
+  emscripten_is_main_browser_thread__sig: 'i',
   emscripten_is_main_browser_thread__deps: ['_pthread_is_main_browser_thread'],
   emscripten_is_main_browser_thread: function() {
     return __pthread_is_main_browser_thread|0; // Semantically the same as testing "!ENVIRONMENT_IS_WORKER" outside the asm.js scope
