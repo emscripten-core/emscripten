@@ -350,6 +350,12 @@ Options that are modified or new in *emcc* are listed below:
      * This argument is ignored if a target other than HTML is
        specified using the "-o" option.
 
+"--source-map-base <base-url>"
+   The URL for the location where WebAssembly source maps will be
+   published. When this option is provided, the **.wasm** file is
+   updated to have a "sourceMappingURL" section. The resulting URL
+   will have format: "<base-url>" + "<wasm-file-name>" + ".map".
+
 "--minify 0"
    Identical to "-g1".
 

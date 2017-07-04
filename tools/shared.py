@@ -327,9 +327,13 @@ EM_BUILD_VERBOSE_LEVEL = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUI
 
 # Expectations
 
-EXPECTED_LLVM_VERSION = (4, 0)
-
 actual_clang_version = None
+
+def expected_llvm_version():
+  if get_llvm_target() == WASM_TARGET:
+    return "5.0"
+  else:
+    return "4.0"
 
 def get_clang_version():
   global actual_clang_version
@@ -340,7 +344,7 @@ def get_clang_version():
   return actual_clang_version
 
 def check_clang_version():
-  expected = '.'.join(map(str, EXPECTED_LLVM_VERSION))
+  expected = expected_llvm_version()
   actual = get_clang_version()
   if expected in actual:
     return True
@@ -387,7 +391,7 @@ def has_wasm_target(targets):
 def check_fastcomp():
   try:
     targets = get_llc_targets()
-    if get_llvm_target() == ASM_JS_TARGET:
+    if not Settings.WASM_BACKEND:
       if not has_asm_js_target(targets):
         logging.critical('fastcomp in use, but LLVM has not been built with the JavaScript backend as a target, llc reports:')
         print >> sys.stderr, '==========================================================================='
@@ -396,7 +400,6 @@ def check_fastcomp():
         logging.critical('you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
         return False
     else:
-      assert get_llvm_target() == WASM_TARGET
       if not has_wasm_target(targets):
         logging.critical('WebAssembly set as target, but LLVM has not been built with the WebAssembly backend, llc reports:')
         print >> sys.stderr, '==========================================================================='
@@ -404,7 +407,7 @@ def check_fastcomp():
         print >> sys.stderr, '==========================================================================='
         return False
 
-    if get_llvm_target() == ASM_JS_TARGET:
+    if not Settings.WASM_BACKEND:
       # check repo versions
       d = get_fastcomp_src_dir()
       shown_repo_version_error = False
@@ -504,7 +507,7 @@ except Exception, e:
   EMSCRIPTEN_VERSION = 'unknown'
 
 def generate_sanity():
-  return EMSCRIPTEN_VERSION + '|' + LLVM_ROOT + '|' + get_clang_version() + ('_wasm' if get_llvm_target() == WASM_TARGET else '')
+  return EMSCRIPTEN_VERSION + '|' + LLVM_ROOT + '|' + get_clang_version() + ('_wasm' if Settings.WASM_BACKEND else '')
 
 def check_sanity(force=False):
   ToolchainProfiler.enter_block('sanity')
@@ -517,7 +520,7 @@ def check_sanity(force=False):
     else:
       settings_mtime = os.stat(CONFIG_FILE).st_mtime
       sanity_file = CONFIG_FILE + '_sanity'
-      if get_llvm_target() == WASM_TARGET:
+      if Settings.WASM_BACKEND:
         sanity_file += '_wasm'
       if os.path.exists(sanity_file):
         try:
@@ -958,7 +961,6 @@ def check_vanilla():
     if is_vanilla:
       logging.debug('check tells us to use wasm backend')
       LLVM_TARGET = WASM_TARGET
-      os.environ['EMCC_WASM_BACKEND'] = '1'
     else:
       logging.debug('check tells us to use asm.js backend')
       LLVM_TARGET = ASM_JS_TARGET
@@ -1174,6 +1176,9 @@ class Settings2(type):
           declare = re.sub(r'([\w\d]+)\s*=\s*(.+)', r'self.attrs["\1"]=\2;', args[i+1])
           exec declare
 
+      if get_llvm_target() == WASM_TARGET:
+        self.attrs['WASM_BACKEND'] = 1
+
     # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
     # the reverse of load_settings, except for -Ox which is relevant there but not here
     @classmethod
@@ -1343,14 +1348,21 @@ class Building(object):
         Building.multiprocessing_pool = FakeMultiprocessor()
       else:
         child_env = [
-          # Multiprocessing pool children must have their current working directory set to a safe path that is guaranteed not to die in between of
-          # executing commands, or otherwise the pool children will have trouble spawning subprocesses of their own.
+          # Multiprocessing pool children must have their current working
+          # directory set to a safe path that is guaranteed not to die in
+          # between of executing commands, or otherwise the pool children will
+          # have trouble spawning subprocesses of their own.
           'EMCC_POOL_CWD=' + path_from_root(),
-          # Multiprocessing pool children need to avoid all calling check_vanilla() again and again,
-          # otherwise the compiler can deadlock when building system libs, because the multiprocess parent can have the Emscripten cache directory locked for write
-          # access, and the EMCC_WASM_BACKEND check also requires locked access to the cache, which the multiprocess children would not get.
-          'EMCC_WASM_BACKEND=' + os.getenv('EMCC_WASM_BACKEND', '0'),
-          'EMCC_CORES=1' # Multiprocessing pool children can't spawn their own linear number of children, that could cause a quadratic amount of spawned processes.
+          # Multiprocessing pool children need to avoid all calling
+          # check_vanilla() again and again, otherwise the compiler can deadlock
+          # when building system libs, because the multiprocess parent can have
+          # the Emscripten cache directory locked for write access, and the
+          # EMCC_WASM_BACKEND check also requires locked access to the cache,
+          # which the multiprocess children would not get.
+          'EMCC_WASM_BACKEND=%s' % Settings.WASM_BACKEND,
+          # Multiprocessing pool children can't spawn their own linear number of
+          # children, that could cause a quadratic amount of spawned processes.
+          'EMCC_CORES=1'
         ]
         Building.multiprocessing_pool = multiprocessing.Pool(processes=cores, initializer=g_multiprocessing_initializer, initargs=child_env)
 
@@ -1871,7 +1883,10 @@ class Building(object):
     opts = opts[:]
     #opts += ['-debug-pass=Arguments']
     if not Settings.SIMD:
-      opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false', '-vectorize-slp-aggressive=false']
+      opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false']
+      if not Settings.WASM_BACKEND:
+        # This option have been removed in llvm ToT
+        opts += ['-vectorize-slp-aggressive=false']
     else:
       opts += ['-bb-vectorize-vector-bits=128']
 
@@ -2261,6 +2276,7 @@ class Building(object):
     # Some native libraries are implemented in Emscripten as system side JS libraries
     js_system_libraries = {
       'c': '',
+      'dl': '',
       'EGL': 'library_egl.js',
       'GL': 'library_gl.js',
       'GLESv2': 'library_gl.js',

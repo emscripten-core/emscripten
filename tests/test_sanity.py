@@ -186,10 +186,11 @@ class sanity(RunnerCore):
         for y in range(-2, 3):
           f = open(path_from_root('tests', 'fake', 'clang'), 'w')
           f.write('#!/bin/sh\n')
-          expected_x = EXPECTED_LLVM_VERSION[0] + x
-          expected_y = EXPECTED_LLVM_VERSION[1] + y
+          expected_x, expected_y = (int(x) for x in expected_llvm_version().split('.'))
+          expected_x += x
+          expected_y += y
           if expected_x < 0 or expected_y < 0: continue # must be a valid llvm version
-          print EXPECTED_LLVM_VERSION, x, y, expected_x, expected_y
+          print expected_llvm_version(), x, y, expected_x, expected_y
           f.write('echo "clang version %d.%d" 1>&2\n' % (expected_x, expected_y))
           f.close()
           shutil.copyfile(path_from_root('tests', 'fake', 'clang'), path_from_root('tests', 'fake', 'clang++'))
@@ -240,7 +241,7 @@ class sanity(RunnerCore):
     output = self.check_working(EMCC, WARNING)
     # make sure sanity checks notice there is no source dir with version #
     open(path_from_root('tests', 'fake', 'bin', 'llc'), 'w').write('#!/bin/sh\necho "Registered Targets: there IZ a js backend: JavaScript (asm.js, emscripten) backend"')
-    open(path_from_root('tests', 'fake', 'bin', 'clang++'), 'w').write('#!/bin/sh\necho "clang version %s (blah blah)" >&2\necho "..." >&2\n' % '.'.join(map(str, EXPECTED_LLVM_VERSION)))
+    open(path_from_root('tests', 'fake', 'bin', 'clang++'), 'w').write('#!/bin/sh\necho "clang version %s (blah blah)" >&2\necho "..." >&2\n' % expected_llvm_version())
     os.chmod(path_from_root('tests', 'fake', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
     os.chmod(path_from_root('tests', 'fake', 'bin', 'clang++'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
     try_delete(SANITY_FILE)
@@ -273,7 +274,7 @@ class sanity(RunnerCore):
     open(path_from_root('tests', 'fake', 'tools', 'clang', 'emscripten-version.txt'), 'w').write(EMSCRIPTEN_VERSION)
     output = self.check_working(EMCC)
     assert VERSION_WARNING not in output
-    fake = '#!/bin/sh\necho "clang version %s (blah blah) (emscripten waka : waka)"\necho "..."\n' % '.'.join(map(str, EXPECTED_LLVM_VERSION))
+    fake = '#!/bin/sh\necho "clang version %s (blah blah) (emscripten waka : waka)"\necho "..."\n' % expected_llvm_version()
     open(path_from_root('tests', 'fake', 'bin', 'clang'), 'w').write(fake)
     open(path_from_root('tests', 'fake', 'bin', 'clang++'), 'w').write(fake)
     os.chmod(path_from_root('tests', 'fake', 'bin', 'clang'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
@@ -723,7 +724,7 @@ fi
       ([PYTHON, 'embuilder.py', 'build', 'cocos2d'], ['building and verifying cocos2d', 'success'], True, [os.path.join('ports-builds', 'Cocos2d', 'libCocos2d.bc')]),
       ([PYTHON, 'embuilder.py', 'build', 'wasm-libc'], ['building and verifying wasm-libc', 'success'], True, ['wasm-libc.bc']),
     ]
-    if get_llvm_target() == WASM_TARGET:
+    if Settings.WASM_BACKEND:
       tests.append(([PYTHON, 'embuilder.py', 'build', 'wasm_compiler_rt'], ['building and verifying wasm_compiler_rt', 'success'], True, ['wasm_compiler_rt.a']),)
 
     for command, expected, success, result_libs in tests:
