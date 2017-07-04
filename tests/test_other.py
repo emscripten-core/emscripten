@@ -7673,3 +7673,10 @@ int main() {
     Popen([LLVM_AR, 'r', 'hello_world.a', 'hello_world.o'], env=get_clang_native_env(), stdout=PIPE, stderr=PIPE).communicate()
     out, err = Popen([PYTHON, EMCC, 'hello_world.a', '-o', 'hello_world.js'], stdout=PIPE, stderr=PIPE).communicate()
     assert 'exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?' in err
+
+  # Tests that the warning message about pairing WASM with EVAL_CTORS appropriately triggers the warning about NO_EXIT_RUNTIME.
+  def test_binaryen_no_exit_runtime_warn_message(self):
+    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'hello_world.js', '-s', 'WASM=1', '-Oz'], stdout=PIPE, stderr=PIPE).communicate()
+    assert 'you should enable  -s NO_EXIT_RUNTIME=1' in err
+    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'hello_world.bc', '-s', 'WASM=1', '-Oz'], stdout=PIPE, stderr=PIPE).communicate()
+    assert 'you should enable  -s NO_EXIT_RUNTIME=1' not in err

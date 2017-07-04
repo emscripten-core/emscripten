@@ -1165,7 +1165,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             shared.Settings.EVAL_CTORS = 0
           else:
             # for wasm, we really want no-exit-runtime, so that atexits don't stop us
-            if not shared.Settings.NO_EXIT_RUNTIME:
+            if final_suffix in JS_CONTAINING_SUFFIXES and not shared.Settings.NO_EXIT_RUNTIME:
               logging.warning('you should enable  -s NO_EXIT_RUNTIME=1  so that EVAL_CTORS can work at full efficiency (it gets rid of atexit calls which might disrupt EVAL_CTORS)')
 
       if shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.ASM_JS == 1:
