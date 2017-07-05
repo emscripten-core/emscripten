@@ -321,7 +321,7 @@ function abort(what) {
   if (Module['onRuntimeInitializeFailed']) {
     var onRuntimeInitializeFailed = Module['onRuntimeInitializeFailed'];
     Module['onRuntimeInitializeFailed'] = undefined;
-    setTimeout(function () { onRuntimeInitializeFailed(what); }, 0);
+    onRuntimeInitializeFailed(what);
   }
 
 #if USE_PTHREADS
