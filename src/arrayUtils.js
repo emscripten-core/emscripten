@@ -54,8 +54,8 @@ function tryParseAsDataURI(filename) {
 
   var data = filename.slice(dataURIPrefix.length);
 
-  if (typeof Buffer !== 'undefined') {
-    return Buffer.from(data, 'base64');
+  if (typeof ENVIRONMENT_IS_NODE === 'boolean' && ENVIRONMENT_IS_NODE) {
+    return Buffer.from ? Buffer.from(data, 'base64') : new Buffer(data, 'base64');
   }
 
   return intArrayFromBase64(data);
