@@ -256,8 +256,6 @@ function run(args) {
     }
 #endif
 
-    Module['onRuntimeInitializeFailed'] = undefined;
-
     if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
 
     if (Module['_main'] && shouldRunNow) Module['callMain'](args);
@@ -318,10 +316,8 @@ Module['exit'] = Module.exit = exit;
 var abortDecorators = [];
 
 function abort(what) {
-  if (Module['onRuntimeInitializeFailed']) {
-    var onRuntimeInitializeFailed = Module['onRuntimeInitializeFailed'];
-    Module['onRuntimeInitializeFailed'] = undefined;
-    onRuntimeInitializeFailed(what);
+  if (Module['onAbort']) {
+    Module['onAbort'](what);
   }
 
 #if USE_PTHREADS
