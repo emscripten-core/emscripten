@@ -3204,14 +3204,14 @@ int main() {
 
     expectedOutput = "Module['onAbort'] was called"
 
+    # trigger onAbort by intentionally causing startup to fail
     os.remove('a.out.wasm')
+
     f = open('a.out.js', 'a')
     f.write("Module['onAbort'] = function () { console.log('%s') }" % expectedOutput)
     f.close()
 
-    devnull = open(os.devnull, 'w')
-    self.assertContained(expectedOutput, run_js('a.out.js', stderr=devnull))
-    devnull.close()
+    self.assertContained(expectedOutput, run_js('a.out.js'))
 
   def test_no_exit_runtime(self):
     open('code.cpp', 'w').write(r'''
