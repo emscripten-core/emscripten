@@ -66,7 +66,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # -v, without input files
       output = Popen([PYTHON, compiler, '-v'], stdout=PIPE, stderr=PIPE).communicate()
-      self.assertContained('''clang version %s.0 ''' % '.'.join(map(str, EXPECTED_LLVM_VERSION)), output[1].replace('\r', ''), output[1].replace('\r', ''))
+      self.assertContained('''clang version %s.0 ''' % expected_llvm_version(), output[1].replace('\r', ''), output[1].replace('\r', ''))
       self.assertContained('''GNU''', output[0])
       self.assertNotContained('this is dangerous', output[0])
       self.assertNotContained('this is dangerous', output[1])
@@ -5547,6 +5547,15 @@ int main() {
     Popen([PYTHON, EMCC, 'src.cpp']).communicate()
     self.assertContained('exiting now, status 14', run_js('a.out.js', assert_returncode=14))
 
+  def test_underscore_exit(self):
+    open('src.cpp', 'w').write(r'''
+#include <unistd.h>
+int main() {
+  _exit(0); // should not end up in an infinite loop with non-underscore exit
+}    ''')
+    subprocess.check_call([PYTHON, EMCC, 'src.cpp'])
+    self.assertContained('', run_js('a.out.js', assert_returncode=0))
+
   def test_file_packager_huge(self):
     open('huge.dat', 'w').write('a'*(1024*1024*257))
     open('tiny.dat', 'w').write('a')
@@ -7664,6 +7673,13 @@ int main() {
     Popen([LLVM_AR, 'r', 'hello_world.a', 'hello_world.o'], env=get_clang_native_env(), stdout=PIPE, stderr=PIPE).communicate()
     out, err = Popen([PYTHON, EMCC, 'hello_world.a', '-o', 'hello_world.js'], stdout=PIPE, stderr=PIPE).communicate()
     assert 'exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?' in err
+
+  # Tests that the warning message about pairing WASM with EVAL_CTORS appropriately triggers the warning about NO_EXIT_RUNTIME.
+  def test_binaryen_no_exit_runtime_warn_message(self):
+    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'hello_world.js', '-s', 'WASM=1', '-Oz'], stdout=PIPE, stderr=PIPE).communicate()
+    assert 'you should enable  -s NO_EXIT_RUNTIME=1' in err
+    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'hello_world.bc', '-s', 'WASM=1', '-Oz'], stdout=PIPE, stderr=PIPE).communicate()
+    assert 'you should enable  -s NO_EXIT_RUNTIME=1' not in err
 
   def test_single_file(self):
     for single_file_enabled in [True, False]:

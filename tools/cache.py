@@ -28,7 +28,7 @@ class Cache(object):
     self.filelock = filelock.FileLock(self.filelock_name)
 
     if use_subdir:
-      if os.environ.get('EMCC_WASM_BACKEND') and os.environ.get('EMCC_WASM_BACKEND') != '0':
+      if shared.Settings.WASM_BACKEND:
         dirname = os.path.join(dirname, 'wasm')
       else:
         dirname = os.path.join(dirname, 'asmjs')
