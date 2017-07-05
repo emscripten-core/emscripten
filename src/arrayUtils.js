@@ -27,6 +27,13 @@ function intArrayToString(array) {
 // Converts a string of base64 into a byte array.
 // Throws error on invalid input.
 function intArrayFromBase64(s) {
+  if (typeof ENVIRONMENT_IS_NODE === 'boolean' && ENVIRONMENT_IS_NODE) {
+    try {
+      return new Uint8Array(Buffer.from(s, 'base64').buffer);
+    }
+    catch (_) {}
+  }
+
   try {
     var decoded = atob(s);
     var bytes = new Uint8Array(decoded.length);
@@ -52,11 +59,5 @@ function tryParseAsDataURI(filename) {
     return;
   }
 
-  var data = filename.slice(dataURIPrefix.length);
-
-  if (typeof ENVIRONMENT_IS_NODE === 'boolean' && ENVIRONMENT_IS_NODE) {
-    return Buffer.from ? Buffer.from(data, 'base64') : new Buffer(data, 'base64');
-  }
-
-  return intArrayFromBase64(data);
+  return intArrayFromBase64(filename.slice(dataURIPrefix.length));
 }
