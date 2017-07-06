@@ -316,6 +316,10 @@ Module['exit'] = Module.exit = exit;
 var abortDecorators = [];
 
 function abort(what) {
+  if (Module['onAbort']) {
+    Module['onAbort'](what);
+  }
+
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
 #endif
