@@ -17,7 +17,6 @@ var LibraryPThread = {
     initMainThreadBlock: function() {
       if (ENVIRONMENT_IS_PTHREAD) return undefined;
       PThread.mainThreadBlock = allocate({{{ C_STRUCTS.pthread.__size__ }}}, "i32*", ALLOC_STATIC);
-      __register_pthread_ptr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1); // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
 
       for (var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}}/4; ++i) HEAPU32[PThread.mainThreadBlock/4+i] = 0;
 
@@ -748,6 +747,8 @@ var LibraryPThread = {
   _pthread_is_main_browser_thread: 0,
 
   _register_pthread_ptr__deps: ['_pthread_ptr', '_pthread_is_main_runtime_thread', '_pthread_is_main_browser_thread'],
+  _register_pthread_ptr__asm: true,
+  _register_pthread_ptr__sig: 'viii',
   _register_pthread_ptr: function(pthreadPtr, isMainBrowserThread, isMainRuntimeThread) {
     pthreadPtr = pthreadPtr|0;
     isMainBrowserThread = isMainBrowserThread|0;
