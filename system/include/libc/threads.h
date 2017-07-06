@@ -17,8 +17,8 @@ typedef unsigned tss_t;
 typedef int (*thrd_start_t)(void *);
 typedef void (*tss_dtor_t)(void *);
 
-#define __NEED_cnd_t
-#define __NEED_mtx_t
+#define __NEED_pthread_cond_t
+#define __NEED_pthread_mutex_t
 
 #include <bits/alltypes.h>
 
