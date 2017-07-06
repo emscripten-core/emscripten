@@ -2195,16 +2195,21 @@ function integrateWasmJS(Module) {
   }
 
   function getBinary() {
-    if (Module['wasmBinary']) {
-      return new Uint8Array(Module['wasmBinary']);
+    try {
+      if (Module['wasmBinary']) {
+        return new Uint8Array(Module['wasmBinary']);
+      }
+      var binary = tryParseAsDataURI(wasmBinaryFile);
+      if (binary) {
+        return binary;
+      } else if (Module['readBinary']) {
+        return Module['readBinary'](wasmBinaryFile);
+      } else {
+        throw "on the web, we need the wasm binary to be preloaded and set on Module['wasmBinary']. emcc.py will do that for you when generating HTML (but not JS)";
+      }
     }
-    var binary = tryParseAsDataURI(wasmBinaryFile);
-    if (binary) {
-      return binary;
-    } else if (Module['readBinary']) {
-      return Module['readBinary'](wasmBinaryFile);
-    } else {
-      throw "on the web, we need the wasm binary to be preloaded and set on Module['wasmBinary']. emcc.py will do that for you when generating HTML (but not JS)";
+    catch (err) {
+      abort(err);
     }
   }
 
@@ -2297,7 +2302,7 @@ function integrateWasmJS(Module) {
       receiveInstance(output['instance']);
     }).catch(function(reason) {
       Module['printErr']('failed to asynchronously prepare wasm: ' + reason);
-      Module['quit'](1, reason);
+      abort(reason);
     });
     return {}; // no exports yet; we'll fill them in later
 #else
@@ -2482,7 +2487,7 @@ function integrateWasmJS(Module) {
       } else if (curr === 'interpret-asm2wasm' || curr === 'interpret-s-expr' || curr === 'interpret-binary') {
         if (exports = doWasmPolyfill(global, env, providedBuffer, curr)) break;
       } else {
-        throw 'bad method: ' + curr;
+        abort('bad method: ' + curr);
       }
     }
 
