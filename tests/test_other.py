@@ -3196,22 +3196,26 @@ int main() {
     assert '@line 11 "src.cpp"' in output[1], output[1]
 
   def test_on_abort(self):
-    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1']
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
 
     self.clear()
     proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
     output, err = proc.communicate()
 
-    expectedOutput = "Module['onAbort'] was called"
+    expectedOutput = 'Module.onAbort was called'
 
     # trigger onAbort by intentionally causing startup to fail
     os.remove('a.out.wasm')
 
-    f = open('a.out.js', 'a')
-    f.write("Module['onAbort'] = function () { console.log('%s') }" % expectedOutput)
+    f = open('a.out.js', 'r')
+    js = f.read()
+    f.close()
+    f = open('a.out.js', 'w')
+    f.write("var Module = {onAbort: function() { console.log('%s') }};\n" % expectedOutput)
+    f.write(js)
     f.close()
 
-    self.assertContained(expectedOutput, run_js('a.out.js'))
+    self.assertContained(expectedOutput, run_js('a.out.js', assert_returncode=None))
 
   def test_no_exit_runtime(self):
     open('code.cpp', 'w').write(r'''
