@@ -28,6 +28,7 @@ class Cache(object):
     self.filelock = filelock.FileLock(self.filelock_name)
 
     if use_subdir:
+      import shared
       if shared.Settings.WASM_BACKEND:
         dirname = os.path.join(dirname, 'wasm')
       else:
