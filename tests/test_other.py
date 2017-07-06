@@ -3206,7 +3206,8 @@ int main() {
         f.write(js)
       self.assertContained(expected_output, run_js('a.out.js', assert_returncode=None))
 
-    # test direct abort() call
+    # test direct abort() C call
+
     with open('src.c', 'w') as f:
       f.write('''
         #include <stdlib.h>
@@ -3216,6 +3217,49 @@ int main() {
       ''')
     subprocess.check_call([PYTHON, EMCC, 'src.c'])
     add_on_abort_and_verify()
+
+    # test direct abort() JS call
+
+    with open('src.c', 'w') as f:
+      f.write('''
+        #include <emscripten.h>
+        int main() {
+          EM_ASM({ abort() });
+        }
+      ''')
+    subprocess.check_call([PYTHON, EMCC, 'src.c'])
+    add_on_abort_and_verify()
+
+    # test throwing in an abort handler, and catching that
+
+    with open('src.c', 'w') as f:
+      f.write('''
+        #include <emscripten.h>
+        int main() {
+          EM_ASM({
+            try {
+              Module.print('first');
+              abort();
+            } catch (e) {
+              Module.print('second');
+              abort();
+              throw e;
+            }
+          });
+        }
+      ''')
+    subprocess.check_call([PYTHON, EMCC, 'src.c'])
+    with open('a.out.js') as f:
+      js = f.read()
+    with open('a.out.js', 'w') as f:
+      f.write("var Module = { onAbort: function() { console.log('%s'); throw 're-throw'; } };\n" % expected_output)
+      f.write(js)
+    out = run_js('a.out.js', stderr=subprocess.STDOUT, assert_returncode=None)
+    print out
+    self.assertContained(expected_output, out)
+    self.assertContained('re-throw', out)
+    self.assertContained('first', out)
+    self.assertContained('second', out)
 
     # test an abort during startup
 
