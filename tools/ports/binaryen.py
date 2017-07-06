@@ -29,9 +29,11 @@ def get(ports, settings, shared):
   return [shared.Cache.get('binaryen_tag_' + TAG, create, what='port', extension='.txt')]
 
 def process_args(ports, args, settings, shared):
-  if not needed(settings, shared, ports):
-    return args
-  get(ports, settings, shared)
+  # we don't need to do anything just for compile args; binaryen
+  # is used in the final link stage to wasm, not bitcode
+  # (otherwise, if we get binaryen while building to bitcode, we
+  # may be building system libraries, so this would be recursive.
+  # TODO: consider avoiding such recursion in a more direct way)
   return args
 
 def show():
