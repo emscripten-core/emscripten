@@ -3260,6 +3260,7 @@ int main() {
     self.assertContained('re-throw', out)
     self.assertContained('first', out)
     self.assertContained('second', out)
+    self.assertEqual(out.count(expected_output), 2)
 
     # test an abort during startup
 
