@@ -1366,9 +1366,9 @@ class Building(object):
             Building.multiprocessing_pool.terminate()
             Building.multiprocessing_pool.join()
             Building.multiprocessing_pool = None
-          except WindowsError, e:
+          except OSError, e:
             # Mute the "WindowsError: [Error 5] Access is denied" errors, raise all others through
-            if e.winerror != 5: raise
+            if not (sys.platform.startswith('win') and isinstance(e, WindowsError) and e.winerror == 5): raise
         atexit.register(close_multiprocessing_pool)
 
     return Building.multiprocessing_pool
