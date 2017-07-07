@@ -257,7 +257,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # al
   def create_al(libname): # libname is ignored, this is just one .o file
     o = in_temp('al.o')
-    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'al.c'), '-o', o])
+    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'al.c'), '-o', o, '-Os'])
     return o
 
   def create_html5(libname):
