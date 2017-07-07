@@ -83,7 +83,7 @@ The following ``Module`` attributes affect code execution.
 
 .. js:attribute:: Module.onRuntimeInitialized
 
-	If set, this function is called when the runtime is fully initialized, that is, when compiled code is safe to run. (An alternative to waiting for this to be called is to wait for ``main()`` to be called.)
+	If set, this function is called when the runtime is fully initialized, that is, when compiled code is safe to run, which is after any asynchronous startup operations have completed (such as asynchronous WebAssembly compilation, file preloading, etc.). (An alternative to waiting for this to be called is to wait for ``main()`` to be called.)
 
 .. js:attribute:: Module.onAbort
 
