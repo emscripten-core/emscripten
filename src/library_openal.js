@@ -376,8 +376,16 @@ var LibraryOpenAL = {
         return;
       }
 
+      // Find the first non-zero buffer in the queue to determine the proper format
+      var templateBuf = AL.buffers[0];
+      for (var i = 0; i < src.bufQueue.length; i++) {
+        if (src.bufQueue[i].id !== 0) {
+          templateBuf = src.bufQueue[i];
+          break;
+        }
+      }
       // Create a panner if AL_SOURCE_SPATIALIZE_SOFT is set to true, or alternatively if it's set to auto and the source is mono
-      if (src.spatialize === 1 /* AL_TRUE */ || (src.spatialize === 2 /* AL_AUTO_SOFT */ && src.bufQueue[0].channels === 1)) {
+      if (src.spatialize === 1 /* AL_TRUE */ || (src.spatialize === 2 /* AL_AUTO_SOFT */ && templateBuf.channels === 1)) {
         if (src.panner) {
           return;
         }
