@@ -1967,6 +1967,12 @@ void *getBindBuffer() {
   def test_glerror(self):
     self.btest('gl_error.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL'])
 
+  def test_openal_error(self):
+    self.btest('openal_error.c', expected='1')
+
+  def test_openal_capture_sanity(self):
+    self.btest('openal_capture_sanity.c', expected='0')
+
   def test_runtimelink(self):
     main, supp = self.setup_runtimelink_test()
     open('supp.cpp', 'w').write(supp)
