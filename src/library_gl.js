@@ -3598,6 +3598,10 @@ var LibraryGL = {
       var log = GLctx.getShaderInfoLog(GL.shaders[shader]);
       if (log === null) log = '(unknown error)';
       {{{ makeSetValue('p', '0', 'log.length + 1', 'i32') }}};
+    } else if (pname == 0x8B88) { // GL_SHADER_SOURCE_LENGTH
+      var source = GLctx.getShaderSource(GL.shaders[shader]);
+      if (source === null) source = '(unknown error)';
+      {{{ makeSetValue('p', '0', 'source.length + 1', 'i32') }}};
     } else {
       {{{ makeSetValue('p', '0', 'GLctx.getShaderParameter(GL.shaders[shader], pname)', 'i32') }}};
     }
