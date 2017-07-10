@@ -7734,7 +7734,7 @@ int main() {
                 if meminit1_enabled:
                   cmd += ['--memory-init-file', '1']
                 if debug_enabled:
-                  cmd += ['-g4']
+                  cmd += ['-g']
                 if emterpreter_enabled:
                   cmd += ['-s', 'EMTERPRETIFY=1', '-s', "EMTERPRETIFY_FILE='a.out.dat'"]
                 if wasm_enabled:
