@@ -68,6 +68,7 @@ var LibraryOpenAL = {
         length: 0
       }
     },
+    paramArray: [], // Used to prevent allocating a new array for each param call
 
     _nextId: 1,
     newId: function() {
@@ -3439,7 +3440,10 @@ var LibraryOpenAL = {
     switch (param) {
     case 0x1004 /* AL_POSITION */:
     case 0x1006 /* AL_VELOCITY */:
-      AL.setListenerParam("alListener3f", param, [value0, value1, value2]);
+      AL.paramArray[0] = value0;
+      AL.paramArray[1] = value1;
+      AL.paramArray[2] = value2;
+      AL.setListenerParam("alListener3f", param, AL.paramArray);
       break;
     default:
       AL.setListenerParam("alListener3f", param, null);
@@ -3459,19 +3463,19 @@ var LibraryOpenAL = {
     switch (param) {
     case 0x1004 /* AL_POSITION */:
     case 0x1006 /* AL_VELOCITY */:
-      var v0 = {{{ makeGetValue("pValues", "0", "float") }}};
-      var v1 = {{{ makeGetValue("pValues", "4", "float") }}};
-      var v2 = {{{ makeGetValue("pValues", "8", "float") }}};
-      AL.setListenerParam("alListenerfv", param, [v0, v1, v2]);
+      AL.paramArray[0] = {{{ makeGetValue("pValues", "0", "float") }}};
+      AL.paramArray[1] = {{{ makeGetValue("pValues", "4", "float") }}};
+      AL.paramArray[2] = {{{ makeGetValue("pValues", "8", "float") }}};
+      AL.setListenerParam("alListenerfv", param, AL.paramArray);
       break;
     case 0x100F /* AL_ORIENTATION */:
-      var v0 = {{{ makeGetValue("pValues", "0", "float") }}};
-      var v1 = {{{ makeGetValue("pValues", "4", "float") }}};
-      var v2 = {{{ makeGetValue("pValues", "8", "float") }}};
-      var v3 = {{{ makeGetValue("pValues", "12", "float") }}};
-      var v4 = {{{ makeGetValue("pValues", "16", "float") }}};
-      var v5 = {{{ makeGetValue("pValues", "20", "float") }}};
-      AL.setListenerParam("alListenerfv", param, [v0, v1, v2, v3, v4, v5]);
+      AL.paramArray[0] = {{{ makeGetValue("pValues", "0", "float") }}};
+      AL.paramArray[1] = {{{ makeGetValue("pValues", "4", "float") }}};
+      AL.paramArray[2] = {{{ makeGetValue("pValues", "8", "float") }}};
+      AL.paramArray[3] = {{{ makeGetValue("pValues", "12", "float") }}};
+      AL.paramArray[4] = {{{ makeGetValue("pValues", "16", "float") }}};
+      AL.paramArray[5] = {{{ makeGetValue("pValues", "20", "float") }}};
+      AL.setListenerParam("alListenerfv", param, AL.paramArray);
       break;
     default:
       AL.setListenerParam("alListenerfv", param, null);
@@ -3487,7 +3491,10 @@ var LibraryOpenAL = {
     switch (param) {
     case 0x1004 /* AL_POSITION */:
     case 0x1006 /* AL_VELOCITY */:
-      AL.setListenerParam("alListener3i", param, [value0, value1, value2]);
+      AL.paramArray[0] = value0;
+      AL.paramArray[1] = value1;
+      AL.paramArray[2] = value2;
+      AL.setListenerParam("alListener3i", param, AL.paramArray);
       break;
     default:
       AL.setListenerParam("alListener3i", param, null);
@@ -3507,19 +3514,19 @@ var LibraryOpenAL = {
     switch (param) {
     case 0x1004 /* AL_POSITION */:
     case 0x1006 /* AL_VELOCITY */:
-      var v0 = {{{ makeGetValue("pValues", "0", "i32") }}};
-      var v1 = {{{ makeGetValue("pValues", "4", "i32") }}};
-      var v2 = {{{ makeGetValue("pValues", "8", "i32") }}};
-      AL.setListenerParam("alListeneriv", param, [v0, v1, v2]);
+      AL.paramArray[0] = {{{ makeGetValue("pValues", "0", "i32") }}};
+      AL.paramArray[1] = {{{ makeGetValue("pValues", "4", "i32") }}};
+      AL.paramArray[2] = {{{ makeGetValue("pValues", "8", "i32") }}};
+      AL.setListenerParam("alListeneriv", param, AL.paramArray);
       break;
     case 0x100F /* AL_ORIENTATION */:
-      var v0 = {{{ makeGetValue("pValues", "0", "i32") }}};
-      var v1 = {{{ makeGetValue("pValues", "4", "i32") }}};
-      var v2 = {{{ makeGetValue("pValues", "8", "i32") }}};
-      var v3 = {{{ makeGetValue("pValues", "12", "i32") }}};
-      var v4 = {{{ makeGetValue("pValues", "16", "i32") }}};
-      var v5 = {{{ makeGetValue("pValues", "20", "i32") }}};
-      AL.setListenerParam("alListeneriv", param, [v0, v1, v2, v3, v4, v5]);
+      AL.paramArray[0] = {{{ makeGetValue("pValues", "0", "i32") }}};
+      AL.paramArray[1] = {{{ makeGetValue("pValues", "4", "i32") }}};
+      AL.paramArray[2] = {{{ makeGetValue("pValues", "8", "i32") }}};
+      AL.paramArray[3] = {{{ makeGetValue("pValues", "12", "i32") }}};
+      AL.paramArray[4] = {{{ makeGetValue("pValues", "16", "i32") }}};
+      AL.paramArray[5] = {{{ makeGetValue("pValues", "20", "i32") }}};
+      AL.setListenerParam("alListeneriv", param, AL.paramArray);
       break;
     default:
       AL.setListenerParam("alListeneriv", param, null);
@@ -3850,9 +3857,9 @@ var LibraryOpenAL = {
 
     switch (param) {
     case 0x2015 /* AL_LOOP_POINTS_SOFT */:
-      var v0 = {{{ makeGetValue("pValues", "0", "i32") }}};
-      var v1 = {{{ makeGetValue("pValues", "4", "i32") }}};
-      AL.setBufferParam("alBufferiv", bufferId, param, [v0, v1]);
+      AL.paramArray[0] = {{{ makeGetValue("pValues", "0", "i32") }}};
+      AL.paramArray[1] = {{{ makeGetValue("pValues", "4", "i32") }}};
+      AL.setBufferParam("alBufferiv", bufferId, param, AL.paramArray);
       break;
     default:
       AL.setBufferParam("alBufferiv", bufferId, param, null);
@@ -4455,7 +4462,10 @@ var LibraryOpenAL = {
     case 0x1004 /* AL_POSITION */:
     case 0x1005 /* AL_DIRECTION */:
     case 0x1006 /* AL_VELOCITY */:
-      AL.setSourceParam("alSource3f", sourceId, param, [value0, value1, value2]);
+      AL.paramArray[0] = value0;
+      AL.paramArray[1] = value1;
+      AL.paramArray[2] = value2;
+      AL.setSourceParam("alSource3f", sourceId, param, AL.paramArray);
       break;
     default:
       AL.setSourceParam("alSource3f", sourceId, param, null);
@@ -4485,10 +4495,10 @@ var LibraryOpenAL = {
     case 0x1004 /* AL_POSITION */:
     case 0x1005 /* AL_DIRECTION */:
     case 0x1006 /* AL_VELOCITY */:
-      var value0 = {{{ makeGetValue("pValues", "0", "float") }}};
-      var value1 = {{{ makeGetValue("pValues", "4", "float") }}};
-      var value2 = {{{ makeGetValue("pValues", "8", "float") }}};
-      AL.setSourceParam("alSourcefv", sourceId, param, [value0, value1, value2]);
+      AL.paramArray[0] = {{{ makeGetValue("pValues", "0", "float") }}};
+      AL.paramArray[1] = {{{ makeGetValue("pValues", "4", "float") }}};
+      AL.paramArray[2] = {{{ makeGetValue("pValues", "8", "float") }}};
+      AL.setSourceParam("alSourcefv", sourceId, param, AL.paramArray);
       break;
     default:
       AL.setSourceParam("alSourcefv", sourceId, param, null);
@@ -4526,7 +4536,10 @@ var LibraryOpenAL = {
     case 0x1004 /* AL_POSITION */:
     case 0x1005 /* AL_DIRECTION */:
     case 0x1006 /* AL_VELOCITY */:
-      AL.setSourceParam("alSource3i", sourceId, param, [value0, value1, value2]);
+      AL.paramArray[0] = value0;
+      AL.paramArray[1] = value1;
+      AL.paramArray[2] = value2;
+      AL.setSourceParam("alSource3i", sourceId, param, AL.paramArray);
       break;
     default:
       AL.setSourceParam("alSource3i", sourceId, param, null);
@@ -4557,10 +4570,10 @@ var LibraryOpenAL = {
     case 0x1004 /* AL_POSITION */:
     case 0x1005 /* AL_DIRECTION */:
     case 0x1006 /* AL_VELOCITY */:
-      var v0 = {{{ makeGetValue("pValues", "0", "i32") }}};
-      var v1 = {{{ makeGetValue("pValues", "4", "i32") }}};
-      var v2 = {{{ makeGetValue("pValues", "8", "i32") }}};
-      AL.setSourceParam("alSourceiv", sourceId, param, [value0, value1, value2]);
+      AL.paramArray[0] = {{{ makeGetValue("pValues", "0", "i32") }}};
+      AL.paramArray[1] = {{{ makeGetValue("pValues", "4", "i32") }}};
+      AL.paramArray[2] = {{{ makeGetValue("pValues", "8", "i32") }}};
+      AL.setSourceParam("alSourceiv", sourceId, param, AL.paramArray);
       break;
     default:
       AL.setSourceParam("alSourceiv", sourceId, param, null);
