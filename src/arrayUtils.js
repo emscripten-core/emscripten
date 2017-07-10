@@ -28,10 +28,8 @@ function intArrayToString(array) {
 // Throws error on invalid input.
 function intArrayFromBase64(s) {
   if (typeof ENVIRONMENT_IS_NODE === 'boolean' && ENVIRONMENT_IS_NODE) {
-    try {
-      return new Uint8Array(Buffer.from(s, 'base64').buffer);
-    }
-    catch (_) {}
+    var buf = Buffer.from ? Buffer.from(s, 'base64') : new Buffer(s, 'base64');
+    return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
   }
 
   try {
