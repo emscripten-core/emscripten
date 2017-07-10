@@ -1623,48 +1623,36 @@ var LibraryOpenAL = {
       return 0;
     }
 
-    function f32ToF32(x) { 
-      return x;
-    }
-    function f32ToI16(x) {
-       return Math.round(Math.min(Math.max(x*32768, -32768), 32767));
-    }
-    function f32ToU8(x) {
-       return Math.round(Math.min(Math.max((x+1)*128, 0), 255));
-    }
     function newF32Array(cap) { return new Float32Array(cap);}
     function newI16Array(cap) { return new Int16Array(cap);  }
     function newU8Array(cap)  { return new Uint8Array(cap);  }
 
     var requestedSampleType;
-    var f32ToSampleFormat;
     var newSampleArray;
 
     switch (format) {
     case 0x10010: /* AL_FORMAT_MONO_FLOAT32 */
     case 0x10011: /* AL_FORMAT_STEREO_FLOAT32 */
       requestedSampleType = "f32";
-      f32ToSampleFormat = f32ToF32;
       newSampleArray = newF32Array;
       break;
     case 0x1101:  /* AL_FORMAT_MONO16 */
     case 0x1103:  /* AL_FORMAT_STEREO16 */
       requestedSampleType = "i16";
-      f32ToSampleFormat = f32ToI16;
       newSampleArray = newI16Array;
       break;
     case 0x1100:  /* AL_FORMAT_MONO8 */
     case 0x1102:  /* AL_FORMAT_STEREO8 */
       requestedSampleType = "u8";
-      f32ToSampleFormat = f32ToU8;
       newSampleArray = newU8Array;
       break;
     }
 
     var buffers = [];
     try {
-      for (var chan=0; chan < outputChannelCount; ++chan)
+      for (var chan=0; chan < outputChannelCount; ++chan) {
         buffers[chan] = newSampleArray(bufferFrameCapacity);
+      }
     } catch(e) {
 #if OPENAL_DEBUG
       console.error("alcCaptureOpenDevice() failed to allocate internal buffers (is bufferSize low enough?): " + e);
@@ -1681,7 +1669,6 @@ var LibraryOpenAL = {
       deviceName: resolvedDeviceName,
       requestedSampleRate: requestedSampleRate,
       requestedSampleType: requestedSampleType,
-      f32ToSampleFormat: f32ToSampleFormat,
       outputChannelCount: outputChannelCount,
       inputChannelCount: null, // Not known until the getUserMedia() promise resolves
       mediaStreamError: null, // Used by other functions to return early and report an error.
@@ -1760,15 +1747,59 @@ var LibraryOpenAL = {
           return;
         }
 
-        var srcBuf = audioProcessingEvent.inputBuffer;
-        var c = newCapture;
-        for (var chan = 0; chan < srcBuf.numberOfChannels; ++chan) {
-          var srcArray = srcBuf.getChannelData(chan);
-          for (var i = 0 ; i < srcArray.length; ++i) {
+        // Actually just copy srcBuf's channel data into
+        // c.buffers, optimizing for each case.
+        switch (format) {
+        case 0x10010: /* AL_FORMAT_MONO_FLOAT32 */
+          var channel0 = srcBuf.getChannelData(0);
+          for (var i = 0 ; i < srcBuf.length; ++i) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
-            c.buffers[chan][wi] = c.f32ToSampleFormat(srcArray[i]);
+            c.buffers[0][wi] = channel0[i];
           }
+          break;
+        case 0x10011: /* AL_FORMAT_STEREO_FLOAT32 */
+          var channel0 = srcBuf.getChannelData(0);
+          var channel1 = srcBuf.getChannelData(1);
+          for (var i = 0 ; i < srcBuf.length; ++i) {
+            var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
+            c.buffers[0][wi] = channel0[i];
+            c.buffers[1][wi] = channel1[i];
+          }
+          break;
+        case 0x1101:  /* AL_FORMAT_MONO16 */
+          var channel0 = srcBuf.getChannelData(0);
+          for (var i = 0 ; i < srcBuf.length; ++i) {
+            var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
+            c.buffers[0][wi] = channel0[i] * 0.000030517578125 /* 1/32768 */;
+          }
+          break;
+        case 0x1103:  /* AL_FORMAT_STEREO16 */
+          var channel0 = srcBuf.getChannelData(0);
+          var channel1 = srcBuf.getChannelData(1);
+          for (var i = 0 ; i < srcBuf.length; ++i) {
+            var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
+            c.buffers[0][wi] = channel0[i] * 0.000030517578125 /* 1/32768 */;
+            c.buffers[1][wi] = channel1[i] * 0.000030517578125 /* 1/32768 */;
+          }
+          break;
+        case 0x1100:  /* AL_FORMAT_MONO8 */
+          var channel0 = srcBuf.getChannelData(0);
+          for (var i = 0 ; i < srcBuf.length; ++i) {
+            var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
+            c.buffers[0][wi] = (channel0[i] + 1.0) * 0.0078125 /* 1/128 */;
+          }
+          break;
+        case 0x1102:  /* AL_FORMAT_STEREO8 */
+          var channel0 = srcBuf.getChannelData(0);
+          var channel1 = srcBuf.getChannelData(1);
+          for (var i = 0 ; i < srcBuf.length; ++i) {
+            var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
+            c.buffers[0][wi] = (channel0[i] + 1.0) * 0.0078125 /* 1/128 */;
+            c.buffers[1][wi] = (channel1[i] + 1.0) * 0.0078125 /* 1/128 */;
+          }
+          break;
         }
+
         c.capturePlayhead += srcBuf.length;
         c.capturePlayhead %= c.bufferFrameCapacity;
         c.capturedFrameCount += srcBuf.length;
