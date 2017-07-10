@@ -854,8 +854,12 @@ var LibraryOpenAL = {
           return;
         }
 
-        listener._direction = value.slice(0, 3);
-        listener._up = value.slice(3, 6);
+        listener._direction[0] = value[0];
+        listener._direction[1] = value[1];
+        listener._direction[2] = value[2];
+        listener._up[0] = value[3];
+        listener._up[1] = value[4];
+        listener._up[2] = value[5];
         AL.updateListenerSpace(AL.currentCtx);
         break;
       default:
