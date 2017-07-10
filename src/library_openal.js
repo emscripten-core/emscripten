@@ -1771,7 +1771,7 @@ var LibraryOpenAL = {
           var channel0 = srcBuf.getChannelData(0);
           for (var i = 0 ; i < srcBuf.length; ++i) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
-            c.buffers[0][wi] = channel0[i] * 0.000030517578125 /* 1/32768 */;
+            c.buffers[0][wi] = channel0[i] * 32767;
           }
           break;
         case 0x1103:  /* AL_FORMAT_STEREO16 */
@@ -1779,15 +1779,15 @@ var LibraryOpenAL = {
           var channel1 = srcBuf.getChannelData(1);
           for (var i = 0 ; i < srcBuf.length; ++i) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
-            c.buffers[0][wi] = channel0[i] * 0.000030517578125 /* 1/32768 */;
-            c.buffers[1][wi] = channel1[i] * 0.000030517578125 /* 1/32768 */;
+            c.buffers[0][wi] = channel0[i] * 32767;
+            c.buffers[1][wi] = channel1[i] * 32767;
           }
           break;
         case 0x1100:  /* AL_FORMAT_MONO8 */
           var channel0 = srcBuf.getChannelData(0);
           for (var i = 0 ; i < srcBuf.length; ++i) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
-            c.buffers[0][wi] = (channel0[i] + 1.0) * 0.0078125 /* 1/128 */;
+            c.buffers[0][wi] = (channel0[i] + 1.0) * 127;
           }
           break;
         case 0x1102:  /* AL_FORMAT_STEREO8 */
@@ -1795,8 +1795,8 @@ var LibraryOpenAL = {
           var channel1 = srcBuf.getChannelData(1);
           for (var i = 0 ; i < srcBuf.length; ++i) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
-            c.buffers[0][wi] = (channel0[i] + 1.0) * 0.0078125 /* 1/128 */;
-            c.buffers[1][wi] = (channel1[i] + 1.0) * 0.0078125 /* 1/128 */;
+            c.buffers[0][wi] = (channel0[i] + 1.0) * 127;
+            c.buffers[1][wi] = (channel1[i] + 1.0) * 127;
           }
           break;
         }
