@@ -1659,7 +1659,7 @@ var LibraryOpenAL = {
 
     var buffers = [];
     try {
-      for (var chan=0 ; chan < outputChannelCount ; ++chan)
+      for (var chan=0; chan < outputChannelCount; ++chan)
         buffers[chan] = newSampleArray(bufferFrameCapacity);
     } catch(e) {
 #if OPENAL_DEBUG
@@ -1722,8 +1722,9 @@ var LibraryOpenAL = {
       newCapture.inputChannelCount = inputChannelCount;
 
 #if OPENAL_DEBUG
-      if (inputChannelCount > 2 || outputChannelCount > 2)
+      if (inputChannelCount > 2 || outputChannelCount > 2) {
         console.warn("The number of input or output channels is too high, capture might not work as expected!");
+      }
 #endif
 
       // Have to pick a size from 256, 512, 1024, 2048, 4096, 8192, 16384.
@@ -1751,14 +1752,15 @@ var LibraryOpenAL = {
 
       newCapture.scriptProcessorNode.onaudioprocess = function(audioProcessingEvent) {
 
-        if (!newCapture.isCapturing)
+        if (!newCapture.isCapturing) {
           return;
+        }
 
         var srcBuf = audioProcessingEvent.inputBuffer;
         var c = newCapture;
-        for (var chan=0 ; chan < srcBuf.numberOfChannels ; ++chan) {
+        for (var chan = 0; chan < srcBuf.numberOfChannels; ++chan) {
           var srcArray = srcBuf.getChannelData(chan);
-          for (var i=0 ; i<srcArray.length ; ++i) {
+          for (var i = 0 ; i < srcArray.length; ++i) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
             c.buffers[chan][wi] = c.f32ToSampleFormat(srcArray[i]);
           }
@@ -1787,8 +1789,7 @@ var LibraryOpenAL = {
 
   alcCaptureCloseDevice: function(deviceId) {
     var c = AL.requireValidCaptureDevice(deviceId, "alcCaptureCloseDevice");
-    if (!c)
-      return false;
+    if (!c) return false;
 
     delete AL.captures[deviceId];
     AL.freeIds.push(deviceId);
@@ -1796,15 +1797,11 @@ var LibraryOpenAL = {
     // This clean-up might be unnecessary (paranoid) ?
 
     // May happen if user hasn't decided to grant or deny input
-    if (c.mediaStreamSourceNode)
-      c.mediaStreamSourceNode.disconnect();
-    if (c.mergerNode)
-      c.mergerNode.disconnect();
-    if (c.splitterNode)
-      c.splitterNode.disconnect();
+    if (c.mediaStreamSourceNode) c.mediaStreamSourceNode.disconnect();
+    if (c.mergerNode) c.mergerNode.disconnect();
+    if (c.splitterNode) c.splitterNode.disconnect();
     // May happen if user hasn't decided to grant or deny input
-    if (c.scriptProcessorNode)
-      c.scriptProcessorNode.disconnect();
+    if (c.scriptProcessorNode) c.scriptProcessorNode.disconnect();
 
     delete c.buffers;
 
@@ -1816,8 +1813,7 @@ var LibraryOpenAL = {
 
   alcCaptureStart: function(deviceId) {
     var c = AL.requireValidCaptureDevice(deviceId, "alcCaptureStart");
-    if (!c)
-      return;
+    if (!c) return;
 
     if (c.isCapturing) {
 #if OPENAL_DEBUG
@@ -1836,12 +1832,12 @@ var LibraryOpenAL = {
 
   alcCaptureStop: function(deviceId) {
     var c = AL.requireValidCaptureDevice(deviceId, "alcCaptureStop");
-    if (!c)
-      return;
+    if (!c) return;
 
 #if OPENAL_DEBUG
-    if (!c.isCapturing)
+    if (!c.isCapturing) {
       console.warn("Redundant call to alcCaptureStop()");
+    }
 #endif
     c.isCapturing = false;
   },
@@ -1853,8 +1849,7 @@ var LibraryOpenAL = {
   // renamed accordingly here
   alcCaptureSamples: function(deviceId, pFrames, requestedFrameCount) {
     var c = AL.requireValidCaptureDevice(deviceId, "alcCaptureSamples");
-    if (!c)
-      return;
+    if (!c) return;
 
     // ALCsizei is actually 32-bit signed int, so could be negative
     // Also, spec says :
@@ -1897,8 +1892,8 @@ var LibraryOpenAL = {
     var srcfreq = c.audioCtx.sampleRate;
 
     if (srcfreq == dstfreq) {
-      for (var i=0, frame_i=0 ; frame_i < requestedFrameCount ; ++frame_i) {
-        for (var chan=0 ; chan < c.buffers.length ; ++chan, ++i) {
+      for (var i = 0, frame_i = 0; frame_i < requestedFrameCount; ++frame_i) {
+        for (var chan = 0; chan < c.buffers.length; ++chan, ++i) {
           var src_i = (frame_i + c.capturePlayhead) % c.capturedFrameCount;
           setSample(i, c.buffers[chan][src_i]);
         }
@@ -1915,14 +1910,14 @@ var LibraryOpenAL = {
         return (1 - progress) * from + progress * to;
       }
 
-      for (var i=0, frame_i=0 ; frame_i < requestedFrameCount ; ++frame_i) {
+      for (var i = 0, frame_i = 0; frame_i < requestedFrameCount; ++frame_i) {
 
         var t = frame_i / dstfreq; // Most exact time for the current output sample
         var src_i = (Math.floor(t*srcfreq) + c.capturePlayhead) % c.capturedFrameCount;
         var src_next_i = (src_i+1) % c.capturedFrameCount;
         var between = t*srcfreq - src_i; //(t - src_i/srcfreq) / ((src_i+1)/srcfreq - src_i/srcfreq);
 
-        for (var chan=0 ; chan < c.buffers.length ; ++chan, ++i) {
+        for (var chan = 0; chan < c.buffers.length; ++chan, ++i) {
           var cb = c.buffers[chan];
           var sample = lerp(cb[src_i], cb[src_next_i], between);
           setSample(i, sample);
@@ -2307,8 +2302,9 @@ var LibraryOpenAL = {
         ret = AL.CAPTURE_DEVICE_NAME.concat('\0');
         else {
         var c = AL.requireValidCaptureDevice(deviceId, "alcGetString");
-        if (!c)
+        if (!c) {
           return 0;
+        }
         ret = c.deviceName;
       }  
       break;
@@ -2431,8 +2427,9 @@ var LibraryOpenAL = {
       {{{ makeSetValue("pValues", "0", "1", "i32") }}};
     case 0x312 /* ALC_CAPTURE_SAMPLES */:
       var c = AL.requireValidCaptureDevice(deviceId, "alcGetIntegerv");
-      if (!c)
+      if (!c) {
         return;
+      }
       var n = c.capturedFrameCount;
       var dstfreq = c.requestedSampleRate;
       var srcfreq = c.audioCtx.sampleRate;
