@@ -7719,7 +7719,7 @@ int main() {
                     continue
 
                   expect_asmjs_code = asmjs_fallback_enabled and wasm_enabled
-                  expect_emterpretify_file = emterpreter_enabled
+                  expect_emterpretify_file = emterpreter_file_enabled
                   expect_meminit = (meminit1_enabled and not wasm_enabled) or (wasm_enabled and asmjs_fallback_enabled)
                   expect_success = not (emterpreter_file_enabled and single_file_enabled)
                   expect_wasm = wasm_enabled
