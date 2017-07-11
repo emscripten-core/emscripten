@@ -1026,9 +1026,19 @@ var LibrarySDL = {
       }
     },
 
+    makeFontString: function(height, fontName) {
+      if (fontName.charAt(0) != "'" && fontName.charAt(0) != '"') {
+        // https://developer.mozilla.org/ru/docs/Web/CSS/font-family
+        // Font family names containing whitespace should be quoted.
+        // BTW, quote all font names is easier than searching spaces
+        fontName = '"' + fontName + '"';
+      }
+      return height + 'px ' + fontName + ', serif';
+    },
+
     estimateTextWidth: function(fontData, text) {
       var h = fontData.size;
-      var fontString = h + 'px ' + fontData.name;
+      var fontString = SDL.makeFontString(h, fontData.name);
       var tempCtx = SDL.ttfContext;
 #if ASSERTIONS
       assert(tempCtx, 'TTF_Init must have been called');
@@ -3003,7 +3013,7 @@ var LibrarySDL = {
     var w = SDL.estimateTextWidth(fontData, text);
     var h = fontData.size;
     var color = SDL.loadColorToCSSRGB(color); // XXX alpha breaks fonts?
-    var fontString = h + 'px ' + fontData.name + ', serif';
+    var fontString = SDL.makeFontString(h, fontData.name);
     var surf = SDL.makeSurface(w, h, 0, false, 'text:' + text); // bogus numbers..
     var surfData = SDL.surfaces[surf];
     surfData.ctx.save();
