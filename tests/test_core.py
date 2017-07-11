@@ -198,7 +198,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_literal_negative_zero(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_literal_negative_zero')
 
-  @no_wasm_backend('todo')
+  @no_wasm_backend('test uses calls to expected js imports, rather than using llvm intrinsics directly')
   def test_llvm_intrinsics(self):
     Settings.PRECISE_I64_MATH = 2 # for bswap64
 
@@ -6068,7 +6068,7 @@ def process(filename):
     assert '_exported_func_from_response_file_1' in open('src.cpp.o.js').read()
 
   @sync
-  @no_wasm_backend('RuntimeError: function signature mismatch')
+  @no_wasm_backend('no jsCall function pointers are created for wasm backend')
   def test_add_function(self):
     Settings.INVOKE_RUN = 0
     Settings.RESERVED_FUNCTION_POINTERS = 1
