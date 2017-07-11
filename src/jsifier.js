@@ -426,10 +426,10 @@ function JSify(data, functionsOnly) {
 
     print(read('arrayUtils.js'));
     // Export all arrayUtils.js functions
-    print(processMacros("{{{ maybeExport('intArrayFromString') }}}"))
-    print(processMacros("{{{ maybeExport('intArrayToString') }}}"))
-    print(processMacros("{{{ maybeExport('intArrayFromBase64') }}}"))
-    print(processMacros("{{{ maybeExport('tryParseAsDataURI') }}}"))
+    print(maybeExport('intArrayFromString'));
+    print(maybeExport('intArrayToString'));
+    print(maybeExport('intArrayFromBase64'));
+    print(maybeExport('tryParseAsDataURI'));
 
     if (HEADLESS) {
       print('if (!ENVIRONMENT_IS_WEB) {');
