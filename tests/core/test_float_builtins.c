@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <math.h>
 
 #define TEST(op)                    \
     printf("%f : %f : %Lf\n",       \
