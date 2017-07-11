@@ -162,7 +162,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         'pthread_rwlock_wrlock.c', 'pthread_condattr_init.c',
         'pthread_mutex_getprioceiling.c', 'pthread_setcanceltype.c',
         'pthread_condattr_setclock.c', 'pthread_mutex_init.c',
-        'pthread_setspecific.c'
+        'pthread_setspecific.c', 'pthread_setcancelstate.c'
       ])
     pthreads_files += [os.path.join('pthread', 'library_pthread.c')]
     return build_libc(libname, pthreads_files, ['-O2', '-s', 'USE_PTHREADS=1'])
