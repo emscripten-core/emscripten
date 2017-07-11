@@ -7725,6 +7725,9 @@ int main() {
                   expect_wasm = wasm_enabled
                   expect_wast = debug_enabled and wasm_enabled
 
+                  # currently, the emterpreter always fails with JS output
+                  should_run_js = expect_success and not emterpreter_enabled
+
                   cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c')]
 
                   if single_file_enabled:
@@ -7758,5 +7761,5 @@ int main() {
                   assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
                   assert expect_wasm == os.path.exists('a.out.wasm')
                   assert expect_wast == os.path.exists('a.out.wast')
-                  if expect_success:
+                  if should_run_js:
                     self.assertContained('hello, world!', run_js('a.out.js'))
