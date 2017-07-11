@@ -2431,17 +2431,21 @@ var LibraryOpenAL = {
 
       {{{ makeSetValue("pValues", "0", "0x7FFFFFFF", "i32") }}};
       break;
+    case 0x1992 /* ALC_HRTF_SOFT */:
     case 0x1993 /* ALC_HRTF_STATUS_SOFT */:
       if (!deviceId in AL.deviceRefCounts) {
         AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
         return;
       }
+
+      var hrtfStatus = 0 /* ALC_HRTF_DISABLED_SOFT */;
       for (var ctxId in AL.contexts) {
         var ctx = AL.contexts[ctxId];
         if (ctx.deviceId === deviceId) {
-          return ctx.hrtf ? 1 /* ALC_HRTF_ENABLED_SOFT */ : 0 /* ALC_HRTF_DISABLED_SOFT */;
+          hrtfStatus = ctx.hrtf ? 1 /* ALC_HRTF_ENABLED_SOFT */ : 0 /* ALC_HRTF_DISABLED_SOFT */;
         }
       }
+      {{{ makeSetValue("pValues", "0", "hrtfStatus", "i32") }}};
       break;
     case 0x1994 /* ALC_NUM_HRTF_SPECIFIERS_SOFT */:
       if (!deviceId in AL.deviceRefCounts) {
