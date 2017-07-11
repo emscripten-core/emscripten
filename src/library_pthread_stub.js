@@ -27,6 +27,9 @@ var LibraryPThreadStub = {
     // We will never have any queued calls to process, so no-op.
   },
 
+  pthread_barrier_init: function() {},
+  pthread_barrier_wait: function() {},
+  pthread_barrier_destroy: function() {},
   pthread_mutex_init: function() {},
   pthread_mutex_destroy: function() {},
   pthread_mutexattr_init: function() {},
@@ -160,6 +163,9 @@ var LibraryPThreadStub = {
     __ATEXIT__.pop();
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
+
+  _pthread_cleanup_push: 'pthread_cleanup_push',
+  _pthread_cleanup_pop: 'pthread_cleanup_pop',
 
   pthread_rwlock_init: function() { return 0; },
   pthread_rwlock_destroy: function() { return 0; },

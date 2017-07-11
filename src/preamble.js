@@ -1635,6 +1635,10 @@ function ensureInitRuntime() {
 #endif
   if (runtimeInitialized) return;
   runtimeInitialized = true;
+#if USE_PTHREADS
+  // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
+  __register_pthread_ptr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
+#endif
   callRuntimeCallbacks(__ATINIT__);
 }
 
@@ -2496,6 +2500,12 @@ function integrateWasmJS(Module) {
     // try the methods. each should return the exports if it succeeded
 
     var exports;
+#if BINARYEN_METHOD == 'native-wasm'
+    exports = doNativeWasm(global, env, providedBuffer);
+#else
+#if BINARYEN_METHOD == 'asmjs'
+    exports = doJustAsm(global, env, providedBuffer);
+#else
     var methods = method.split(',');
 
     for (var i = 0; i < methods.length; i++) {
@@ -2519,6 +2529,8 @@ function integrateWasmJS(Module) {
     }
 
     if (!exports) throw 'no binaryen method succeeded. consider enabling more options, like interpreting, if you want that: https://github.com/kripken/emscripten/wiki/WebAssembly#binaryen-methods';
+#endif
+#endif
 
 #if RUNTIME_LOGGING
     Module['printErr']('binaryen method succeeded.');

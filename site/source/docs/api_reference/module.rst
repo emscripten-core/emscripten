@@ -81,6 +81,14 @@ The following ``Module`` attributes affect code execution.
 
 	If ``noExitRuntime`` is set to ``true``, the runtime is not shut down after ``run`` completes. Shutting down the runtime calls shutdown callbacks, for example ``atexit`` calls. If you want to continue using the code after ``run()`` finishes, it is necessary to set this. This is automatically set for you if you use an API command that implies that you want the runtime to not be shut down, for example ``emscripten_set_main_loop``.
 
+.. js:attribute:: Module.onRuntimeInitialized
+
+	If set, this function is called when the runtime is fully initialized, that is, when compiled code is safe to run, which is after any asynchronous startup operations have completed (such as asynchronous WebAssembly compilation, file preloading, etc.). (An alternative to waiting for this to be called is to wait for ``main()`` to be called.)
+
+.. js:attribute:: Module.onAbort
+
+	If set, this function is called when abnormal program termination occurs. That can happen due to the C method ``abort()`` being called directly, or called from JavaScript, or due to a fatal problem such as being unable to fetch a necessary file during startup (like the wasm binary when running wasm), etc. After calling this function, program termination occurs (i.e., you can't use this to try to do something else instead of stopping; there is no possibility of recovering here).
+
 .. js:attribute:: Module.filePackagePrefixURL
 
 	This is the "prefix" URL for a preloaded data file that is hosted separately from its JavaScript and HTML files (it includes the full path up to, but not including, the data file). See :ref:`packaging-files-data-file-location` for more information.

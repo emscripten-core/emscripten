@@ -4284,12 +4284,6 @@ LibraryManager.library = {
   // USE_FULL_LIBRARY hacks
   realloc: function() { throw 'bad' },
 
-  // internal musl requirements that we do, for now
-  _pthread_cleanup_push: function(){},
-  _pthread_cleanup_pop: function(){},
-  __pthread_self: function() { abort() },
-  __pthread_setcancelstate: function() { return 0 },
-
   // libunwind
 
   _Unwind_Backtrace__deps: ['emscripten_get_callstack_js'],

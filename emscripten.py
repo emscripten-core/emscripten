@@ -361,7 +361,8 @@ def create_module(function_table_sigs, metadata, settings,
 
   asm_start_pre = create_asm_start_pre(asm_setup, the_global, sending, metadata, settings)
   asm_temp_vars = create_asm_temp_vars(settings)
-  asm_start = asm_start_pre + '\n' + asm_global_vars + asm_temp_vars + '\n' + asm_global_funcs
+  asm_runtime_thread_local_vars = create_asm_runtime_thread_local_vars(settings)
+  asm_start = asm_start_pre + '\n' + asm_global_vars + asm_temp_vars + asm_runtime_thread_local_vars + '\n' + asm_global_funcs
 
   temp_float = '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround(settings) else '0.0')
   async_state = '  var asyncState = 0;\n' if settings.get('EMTERPRETIFY_ASYNC') else ''
@@ -1499,6 +1500,15 @@ def create_asm_temp_vars(settings):
   var tempRet0 = 0;
 ''' % (access_quote('NaN'), access_quote('Infinity'))
 
+def create_asm_runtime_thread_local_vars(settings):
+  if settings['USE_PTHREADS']:
+    return '''
+  var __pthread_ptr = 0;
+  var __pthread_is_main_runtime_thread = 0;
+  var __pthread_is_main_browser_thread = 0;
+'''
+  else:
+    return ''
 
 def create_replace_memory(settings):
   if not settings['ALLOW_MEMORY_GROWTH']:
