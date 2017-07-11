@@ -426,7 +426,7 @@ var LibraryOpenAL = {
       panner.maxDistance = src.maxDistance;
       panner.rolloffFactor = src.rolloffFactor;
 
-      panner.panningModel = src.context.hrtf ? "hrtf" : "equalpower";
+      panner.panningModel = src.context.hrtf ? "HRTF" : "equalpower";
 
       // Use the source's distance model if AL_SOURCE_DISTANCE_MODEL is enabled
       var distanceModel = src.context.sourceDistanceModel ? src.distanceModel : src.context.distanceModel;
