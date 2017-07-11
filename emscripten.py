@@ -1969,7 +1969,8 @@ def create_s2wasm_args(temp_s):
   args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
   args += ['--initial-memory=%d' % shared.Settings.TOTAL_MEMORY]
   args += ['--allow-memory-growth'] if shared.Settings.ALLOW_MEMORY_GROWTH else []
-  args += ['-l', compiler_rt_lib, '-l', libc_rt_lib]
+  args += ['-l', libc_rt_lib]
+  args += ['-l', compiler_rt_lib]
   return args
 
 

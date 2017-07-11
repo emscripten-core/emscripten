@@ -57,9 +57,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # XXX we should disable EMCC_DEBUG when building libs, just like in the relooper
 
+  def musl_internal_includes():
+    return [
+      '-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal'),
+      '-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'js'),
+    ]
+
   def build_libc(lib_filename, files, lib_opts):
     o_s = []
-    musl_internal_includes = ['-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal'), '-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'js')]
     commands = []
     # Hide several musl warnings that produce a lot of spam to unit test build server logs.
     # TODO: When updating musl the next time, feel free to recheck which of their warnings might have been fixed, and which ones of these could be cleaned up.
@@ -68,7 +73,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       c_opts.append('-Wno-error=absolute-value')
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
-      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes + default_opts + c_opts + lib_opts)
+      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes() + default_opts + c_opts + lib_opts)
       o_s.append(o)
     run_commands(commands)
     shared.Building.link(o_s, in_temp(lib_filename))
@@ -294,7 +299,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       o = in_temp(os.path.basename(src) + '.o')
       # Use clang directly instead of emcc. Since emcc's intermediate format (produced by -S) is LLVM IR, there's no way to
       # get emcc to output wasm .s files, which is what we archive in compiler_rt.
-      commands.append([shared.CLANG_CC, '--target=wasm32', '-mthread-model', 'single', '-S', shared.path_from_root('system', 'lib', src), '-O2', '-o', o] + shared.EMSDK_OPTS)
+      commands.append([
+        shared.CLANG_CC, '--target=wasm32', '-mthread-model', 'single',
+        '-S', shared.path_from_root('system', 'lib', src),
+        '-O2', '-o', o] + musl_internal_includes() + shared.EMSDK_OPTS)
       o_s.append(o)
     run_commands(commands)
     lib = in_temp(libname)
@@ -326,7 +334,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     # that gets included at the same time as compiler-rt.
     math_files = files_in_path(
       path_components=['system', 'lib', 'libc', 'musl', 'src', 'math'],
-      filenames=['fmaxf.c', 'fminf.c', 'fmax.c', 'fmin.c'])
+      filenames=[
+        'fmin.c', 'fminf.c', 'fminl.c',
+        'fmax.c', 'fmaxf.c', 'fmaxl.c',
+        'fmod.c', 'fmodf.c', 'fmodl.c',
+      ])
     string_files = files_in_path(
       path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
       filenames=['memcpy.c', 'memset.c', 'memmove.c'])
