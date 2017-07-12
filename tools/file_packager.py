@@ -164,12 +164,14 @@ for arg in sys.argv[2:]:
     leading = ''
   elif leading == 'preload' or leading == 'embed':
     mode = leading
-    uses_at_notation = '@' in arg.replace('@@', '') # '@@' in input string means there is an actual @ character, a single '@' means the 'src@dst' notation.
-    arg = arg.replace('@@', '@')
+    at_position = arg.replace('@@', '__').find('@') # position of @ if we're doing 'src@dst'. '__' is used to keep the index same with the original if they escaped with '@@'.
+    uses_at_notation = (at_position != -1) # '@@' in input string means there is an actual @ character, a single '@' means the 'src@dst' notation.
+    
     if uses_at_notation:
-      srcpath, dstpath = arg.split('@') # User is specifying destination filename explicitly.
+      srcpath = arg[0:at_position].replace('@@', '@') # split around the @
+      dstpath = arg[at_position+1:].replace('@@', '@')
     else:
-      srcpath = dstpath = arg # Use source path as destination path.
+      srcpath = dstpath = arg.replace('@@', '@') # Use source path as destination path.
     if os.path.isfile(srcpath) or os.path.isdir(srcpath):
       data_files.append({ 'srcpath': srcpath, 'dstpath': dstpath, 'mode': mode, 'explicit_dst_path': uses_at_notation })
     else:
