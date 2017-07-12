@@ -6434,6 +6434,29 @@ Resolved: "/" => "/"
     assert sizes[1] < sizes[0]
     assert sizes[3] < sizes[0]
 
+  def test_dlmalloc_modes(self):
+    open('src.cpp', 'w').write(r'''
+      #include <stdlib.h>
+      #include <stdio.h>
+      int main() {
+        void* c = malloc(1024);
+        free(c);
+        free(c);
+        printf("double-freed\n");
+      }
+    ''')
+    subprocess.check_call([PYTHON, EMCC, 'src.cpp'])
+    self.assertContained('double-freed', run_js('a.out.js'))
+    # in debug mode, the double-free is caught
+    subprocess.check_call([PYTHON, EMCC, 'src.cpp', '-g'])
+    seen_error = False
+    out = '?'
+    try:
+      out = run_js('a.out.js')
+    except:
+      seen_error = True
+    assert seen_error, out
+
   def test_split_memory(self): # make sure multiple split memory chunks get used
     open('src.c', 'w').write(r'''
 #include <emscripten.h>

@@ -1,4 +1,4 @@
-import os, json, logging, zipfile, glob
+import os, json, logging, zipfile, glob, shutil
 import shared
 from subprocess import Popen, CalledProcessError
 import subprocess, multiprocessing, re
@@ -261,31 +261,37 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     shared.Building.emar('cr', in_temp(libname), o_s)
     return in_temp(libname)
 
-  def create_dlmalloc(out_name, clflags):
+  def dlmalloc_name():
+    ret = 'dlmalloc'
+    if shared.Settings.USE_PTHREADS:
+      ret += '_threadsafe'
+    if shared.Settings.EMSCRIPTEN_TRACING:
+      ret += '_tracing'
+    if shared.Settings.SPLIT_MEMORY:
+      ret += '_split'
+    if shared.Settings.DEBUG_LEVEL:
+      ret += '_debug'
+    return ret
+
+  def create_dlmalloc(out_name):
     o = in_temp(out_name)
-    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-o', o] + clflags)
+    cflags = ['-O2']
+    if shared.Settings.USE_PTHREADS:
+      cflags += ['-s', 'USE_PTHREADS=1']
+    if shared.Settings.EMSCRIPTEN_TRACING:
+      cflags += ['--tracing']
+    if shared.Settings.SPLIT_MEMORY:
+      cflags += ['-DMSPACES', '-DONLY_MSPACES']
+    if shared.Settings.DEBUG_LEVEL:
+      cflags += ['-DDLMALLOC_DEBUG']
+    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-o', o] + cflags)
+    if shared.Settings.SPLIT_MEMORY:
+      split_malloc_o = in_temp('sm' + out_name)
+      check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'split_malloc.cpp'), '-o', split_malloc_o, '-O2'])
+      lib = in_temp('lib' + out_name)
+      shared.Building.link([o, split_malloc_o], lib)
+      shutil.move(lib, o)
     return o
-
-  def create_dlmalloc_singlethreaded(libname):
-    return create_dlmalloc(libname, ['-O2'])
-
-  def create_dlmalloc_singlethreaded_tracing(libname):
-    return create_dlmalloc(libname, ['-O2', '--tracing'])
-
-  def create_dlmalloc_multithreaded(libname):
-    return create_dlmalloc(libname, ['-O2', '-s', 'USE_PTHREADS=1'])
-
-  def create_dlmalloc_multithreaded_tracing(libname):
-    return create_dlmalloc(libname, ['-O2', '-s', 'USE_PTHREADS=1', '--tracing'])
-
-  def create_dlmalloc_split(libname):
-    dlmalloc_o = in_temp('dl' + libname)
-    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-o', dlmalloc_o, '-O2', '-DMSPACES', '-DONLY_MSPACES'])
-    split_malloc_o = in_temp('sm' + libname)
-    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'split_malloc.cpp'), '-o', split_malloc_o, '-O2'])
-    lib = in_temp(libname)
-    shared.Building.link([dlmalloc_o, split_malloc_o], lib)
-    return lib
 
   def create_wasm_rt_lib(libname, files):
     o_s = []
@@ -393,36 +399,20 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       for dep in value:
         shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
 
-  system_libs = [('libcxx',      'a',  create_libcxx,      libcxx_symbols,      ['libcxxabi'], True),
-                 ('libcxxabi',   'bc', create_libcxxabi,   libcxxabi_symbols,   ['libc'],      False),
-                 ('gl',          'bc', create_gl,          gl_symbols,          ['libc'],      False),
-                 ('compiler-rt', 'a',  create_compiler_rt, compiler_rt_symbols, ['libc'],      False)]
+  system_libs = [('libcxx',        'a',  create_libcxx,      libcxx_symbols,      ['libcxxabi'], True),
+                 ('libcxxabi',     'bc', create_libcxxabi,   libcxxabi_symbols,   ['libc'],      False),
+                 ('gl',            'bc', create_gl,          gl_symbols,          ['libc'],      False),
+                 ('compiler-rt',   'a',  create_compiler_rt, compiler_rt_symbols, ['libc'],      False),
+                 (dlmalloc_name(), 'bc', create_dlmalloc,    [],                  [],            False)]
 
-  # malloc dependency is force-added, so when using pthreads, it must be force-added
-  # as well, since malloc needs to be thread-safe, so it depends on mutexes.
   if shared.Settings.USE_PTHREADS:
-    system_libs += [('libc-mt',                     'bc', create_libc,                           libc_symbols,     [],       False),
-                    ('pthreads',                    'bc', create_pthreads,                       pthreads_symbols, ['libc'], False),
-                    ('dlmalloc_threadsafe',         'bc', create_dlmalloc_multithreaded,         [],               [],       False),
-                    ('dlmalloc_threadsafe_tracing', 'bc', create_dlmalloc_multithreaded_tracing, [],               [],       False)]
+    system_libs += [('libc-mt',       'bc', create_libc,       libc_symbols,     [],       False),
+                    ('pthreads',      'bc', create_pthreads,   pthreads_symbols, ['libc'], False)]
     force.add('pthreads')
-    if shared.Settings.EMSCRIPTEN_TRACING:
-      force.add('dlmalloc_threadsafe_tracing')
-    else:
-      force.add('dlmalloc_threadsafe')
   else:
     system_libs += [('libc', 'bc', create_libc, libc_symbols, [], False)]
 
-    if shared.Settings.EMSCRIPTEN_TRACING:
-      system_libs += [('dlmalloc_tracing', 'bc', create_dlmalloc_singlethreaded_tracing, [], [], False)]
-      force.add('dlmalloc_tracing')
-    else:
-      if shared.Settings.SPLIT_MEMORY:
-        system_libs += [('dlmalloc_split', 'bc', create_dlmalloc_split, [], [], False)]
-        force.add('dlmalloc_split')
-      else:
-        system_libs += [('dlmalloc', 'bc', create_dlmalloc_singlethreaded, [], [], False)]
-        force.add('dlmalloc')
+  force.add(dlmalloc_name())
 
   # if building to wasm, we need more math code, since we have less builtins
   if shared.Settings.BINARYEN:
