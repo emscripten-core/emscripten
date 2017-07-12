@@ -1,10 +1,12 @@
 #include <stdio.h>
 
-#define TEST(op)                    \
-    printf("%f : %f : %Lf\n",       \
-        __builtin_##op##f(f1, f2),  \
-        __builtin_##op(d1, d2),     \
-        __builtin_##op##l(l1, l2));
+// Prints the float/double/long double versions of the given function
+// e.g.: TEST(fmax) prints fmaxf : fmax : fmaxl
+#define TEST(func)                    \
+    printf("%f : %f : %Lf\n",         \
+        __builtin_##func##f(f1, f2),  \
+        __builtin_##func(d1, d2),     \
+        __builtin_##func##l(l1, l2));
 
 int main() {
     float f1 = 0.1234f;
