@@ -2278,6 +2278,12 @@ Module["preRun"].push(function () {
     if WINDOWS: return self.skip('SKIPPED due to bug https://bugzilla.mozilla.org/show_bug.cgi?id=1310005 - WebGL implementation advertises implementation defined GL_IMPLEMENTATION_COLOR_READ_TYPE/FORMAT pair that it cannot read with')
     self.btest(path_from_root('tests', 'webgl_color_buffer_readpixels.cpp'), args=['-lGL'], expected='0', timeout=20)
 
+  # Test for PR#5373 (https://github.com/kripken/emscripten/pull/5373)
+  def test_webgl_shader_source_length(self):
+    for opts in [[], ['-s', 'FULL_ES2=1']]:
+      print opts
+      self.btest(path_from_root('tests', 'webgl_shader_source_length.cpp'), args=opts + ['-lGL'], expected='0', timeout=20)
+
   def test_webgl2(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1']]:
       print opts
