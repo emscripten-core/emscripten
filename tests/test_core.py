@@ -6825,6 +6825,7 @@ Module.printErr = Module['printErr'] = function(){};
     dirname = self.get_dir()
     src_filename = os.path.join(dirname, 'src.cpp')
     out_filename = os.path.join(dirname, 'a.out.js')
+    wasm_filename = os.path.join(dirname, 'a.out.wasm')
     no_maps_filename = os.path.join(dirname, 'no-maps.out.js')
 
     with open(src_filename, 'w') as f: f.write(src)
@@ -6842,12 +6843,13 @@ Module.printErr = Module['printErr'] = function(){};
       import json
       Building.emcc(src_filename, Settings.serialize() + self.emcc_args +
           Building.COMPILER_TEST_OPTS, out_filename, stderr=PIPE)
+      map_referent = out_filename if not Settings.BINARYEN else wasm_filename
       # after removing the @line and @sourceMappingURL comments, the build
       # result should be identical to the non-source-mapped debug version.
       # this is worth checking because the parser AST swaps strings for token
       # objects when generating source maps, so we want to make sure the
       # optimizer can deal with both types.
-      map_filename = out_filename + '.map'
+      map_filename = map_referent + '.map'
 
       def encode_utf8(data):
         if isinstance(data, dict):
@@ -6864,10 +6866,16 @@ Module.printErr = Module['printErr'] = function(){};
           return data
 
       data = encode_utf8(json.load(open(map_filename, 'r')))
-      self.assertPathsIdentical(out_filename, data['file'])
+      if hasattr(data, 'file'):
+        # the file attribute is optional, but if it is present it needs to refer
+        # the output file.
+        self.assertPathsIdentical(map_referent, data['file'])
       assert len(data['sources']) == 1, data['sources']
       self.assertPathsIdentical(src_filename, data['sources'][0])
-      self.assertTextDataIdentical(src, data['sourcesContent'][0])
+      if hasattr(data, 'sourcesContent'):
+        # the sourcesContent attribute is optional, but if it is present it
+        # needs to containt valid source text.
+        self.assertTextDataIdentical(src, data['sourcesContent'][0])
       mappings = encode_utf8(json.loads(jsrun.run_js(
         path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
         tools.shared.NODE_JS, [map_filename])))
