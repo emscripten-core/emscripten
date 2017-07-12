@@ -2418,7 +2418,8 @@ open(filename, 'w').write(replaced)
     ''')
 
     def in_html(expected, args=[]):
-      Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html'] + args).communicate()
+      Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'SAFE_HEAP=1', '-s', 'ASSERTIONS=1'] + args).communicate()
+      shutil.move('page.html.mem', os.path.join('sub', 'page.html.mem'))
       self.run_browser('page.html', None, '/report_result?' + expected)
 
     in_html('1')
