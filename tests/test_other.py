@@ -7725,7 +7725,7 @@ int main() {
                   expect_wasm = wasm_enabled
                   expect_wast = debug_enabled and wasm_enabled
 
-                  # currently, the emterpreter always fails with JS output
+                  # currently, the emterpreter always fails with JS output since we do not preload the emterpreter file, which in non-HTML we would need to do manually
                   should_run_js = expect_success and not emterpreter_enabled
 
                   cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c')]
