@@ -1377,7 +1377,7 @@ function hasSideEffects(node) { // this is 99% incomplete!
       }
       return false;
     }
-    case 'conditional': return hasSideEffects(node[1]) || hasSideEffects(node[2]) || hasSideEffects(node[3]); 
+    case 'conditional': return hasSideEffects(node[1]) || hasSideEffects(node[2]) || hasSideEffects(node[3]);
     default: return true;
   }
 }
@@ -1398,7 +1398,7 @@ function triviallySafeToMove(node, asmData) {
         break;
       default:
         ok = false;
-    }  
+    }
   });
   return ok;
 }
@@ -2235,7 +2235,15 @@ function getStackBumpSize(ast) {
 
 // Name minification
 
-var RESERVED = set('do', 'if', 'in', 'for', 'new', 'try', 'var', 'env', 'let', 'case', 'else', 'enum', 'void', 'this', 'void', 'with');
+var RESERVED = set('abstract', 'arguments', 'await', 'boolean', 'break', 'byte',
+  'case', 'catch', 'char', 'class', 'const', 'continue', 'debugger', 'default',
+  'delete', 'do', 'double', 'else', 'enum', 'eval', 'export', 'extends', 'false',
+  'final', 'finally', 'float', 'for', 'function', 'goto', 'if', 'implements',
+  'import', 'in', 'instanceof', 'int', 'interface', 'let', 'long', 'native',
+  'new', 'null', 'package', 'private', 'protected', 'public', 'return', 'short',
+  'static', 'super', 'switch', 'synchronized', 'this', 'throw', 'throws',
+  'transient', 'true', 'try', 'typeof', 'var', 'void', 'volatile', 'while',
+  'with', 'yield');
 var VALID_MIN_INITS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$';
 var VALID_MIN_LATERS = VALID_MIN_INITS + '0123456789';
 
@@ -2701,7 +2709,7 @@ function registerizeHarder(ast) {
         junctions[currEntryJunction].outblocks[nextBasicBlock.id] = 1;
         junctions[id].inblocks[nextBasicBlock.id] = 1;
         blocks.push(nextBasicBlock);
-      } 
+      }
       nextBasicBlock = { id: null, entry: null, exit: null, labels: {}, nodes: [], isexpr: [], use: {}, kill: {} };
       setJunction(id, force);
       return id;
@@ -2826,14 +2834,14 @@ function registerizeHarder(ast) {
       // It walks the tree in execution order, calling the above state-management
       // functions at appropriate points in the traversal.
       var type = node[0];
-  
+
       // Any code traversed without an active entry junction must be dead,
       // as the resulting block could never be entered. Let's remove it.
       if (currEntryJunction === null && junctions.length > 0) {
         morphNode(node, ['block', []]);
         return;
       }
- 
+
       // Traverse each node type according to its particular control-flow semantics.
       switch (type) {
         case 'defun':
@@ -3157,7 +3165,7 @@ function registerizeHarder(ast) {
             break FINDLABELLEDBLOCKS;
           }
           labelledJumps.push([finalNode[3][1], block]);
-        } else { 
+        } else {
           // If label is assigned a non-zero value elsewhere in the block
           // then all bets are off.  This can happen e.g. due to outlining
           // saving/restoring label to the stack.
@@ -3631,7 +3639,7 @@ function registerizeHarder(ast) {
 
     // That's it!
     // Re-construct the function with appropriate variable definitions.
- 
+
     var finalAsmData = {
       params: {},
       vars: {},
@@ -3861,7 +3869,7 @@ function eliminate(ast, memSafe) {
         } else if (type === 'call') {
           usesGlobals = true;
           usesMemory = true;
-          doesCall = true;        
+          doesCall = true;
           ignoreName = true;
         } else {
           ignoreName = false;
@@ -4372,7 +4380,7 @@ function eliminate(ast, memSafe) {
                   // they overlap, we can still proceed with the loop optimization, but we must introduce a
                   // loop temp helper variable
                   var temp = looper + '$looptemp';
-                  assert(!(temp in asmData.vars)); 
+                  assert(!(temp in asmData.vars));
                   for (var i = firstLooperUsage; i <= lastLooperUsage; i++) {
                     var curr = i < stats.length-1 ? stats[i] : last[1]; // on the last line, just look in the condition
                     traverse(curr, function looperToLooptemp(node, type) {
@@ -5735,7 +5743,7 @@ function safeHeap(ast) {
           var heap = node[2][1][1];
           var ptr = fixPtr(node[2][2], heap);
           var value = node[3];
-          // SAFE_HEAP_STORE(ptr, value, bytes, isFloat) 
+          // SAFE_HEAP_STORE(ptr, value, bytes, isFloat)
           switch (heap) {
             case 'HEAP8':   case 'HEAPU8': {
               return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 1]]];
@@ -5761,7 +5769,7 @@ function safeHeap(ast) {
           // heap access
           var heap = target;
           var ptr = fixPtr(node[2], heap);
-          // SAFE_HEAP_LOAD(ptr, bytes, isFloat) 
+          // SAFE_HEAP_LOAD(ptr, bytes, isFloat)
           switch (heap) {
             case 'HEAP8': {
               return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 1], ['num', 0]]], ASM_INT);
@@ -6362,7 +6370,7 @@ function emterpretify(ast) {
                   } else {
                     // we can't trample this reg
                     var l = getFree();
-                    ret[1].push(opcode, l, ret[0], 0);                   
+                    ret[1].push(opcode, l, ret[0], 0);
                     ret[0] = l;
                   }
                 } else {
@@ -6483,7 +6491,7 @@ function emterpretify(ast) {
         case 'conditional': {
           // TODO: handle dropIt
           var type = detectType(node[2], asmData);
-          if ((node[2][0] === 'name' || getNum(node[2]) !== null) && 
+          if ((node[2][0] === 'name' || getNum(node[2]) !== null) &&
               (node[3][0] === 'name' || getNum(node[3]) !== null)) {
             // this is a simple choice between concrete values, no need for control flow here
             var out = assignTo >= 0 ? assignTo : getFree();
@@ -6499,7 +6507,7 @@ function emterpretify(ast) {
           assert(type !== ASM_NONE);
           var ret = makeBranchIfFalse(node[1], otherwise);
           var first = getReg(node[2]);
-          ret = ret.concat(first[1]).concat(makeSet(temp, releaseIfFree(first[0]), type)); 
+          ret = ret.concat(first[1]).concat(makeSet(temp, releaseIfFree(first[0]), type));
           ret.push('BR', 0, exit, 0);
           var second = getReg(node[3]);
           ret.push('marker', otherwise, 0, 0);
@@ -7234,7 +7242,7 @@ function emterpretify(ast) {
           }
         }
       }
-      // remove relative and absolute placeholders, after which every instruction is now in its absolute location, and we can write out absolutes 
+      // remove relative and absolute placeholders, after which every instruction is now in its absolute location, and we can write out absolutes
       for (var i = 0; i < code.length; i += 4) {
         if (code[i] === 'marker') {
           var obj = code[i+1];
@@ -7354,7 +7362,7 @@ function emterpretify(ast) {
           var node = stats[i];
           if (node[0] == 'stat') node = node[1];
           if (node[0] !== 'var' && node[0] !== 'assign') {
-            stats.splice(i, 0, ['stat', 
+            stats.splice(i, 0, ['stat',
               ['conditional', ['name', 'asyncState'], makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], ASM_INT), ['num', 0]]
             ]);
             break;
@@ -7879,7 +7887,7 @@ function JSDCE(ast) {
       for (name in scope) {
         var data = scope[name];
         if (data.use && !data.def) {
-          // this is used from a higher scope, propagate the use down 
+          // this is used from a higher scope, propagate the use down
           ensureData(scopes[scopes.length-1], name).use = 1;
           continue;
         }
@@ -8025,4 +8033,3 @@ if (emitAst) {
 } else {
   //print('/* not printing ast */');
 }
-
