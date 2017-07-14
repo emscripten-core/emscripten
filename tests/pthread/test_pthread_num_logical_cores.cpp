@@ -1,3 +1,6 @@
+// Also test issue #5343
+#include <threads.h>
+
 #include <emscripten/threading.h>
 #include <stdio.h>
 
