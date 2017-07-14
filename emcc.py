@@ -2412,24 +2412,22 @@ def generate_html(target, options, js_target, target_basename,
     # We need to load the emterpreter file before anything else, it has to be synchronously ready
     script.un_src()
     script.inline = '''
-          var filename = '%s';
-          var fileBytes = tryParseAsDataURI(filename);
-          function onEmterpretFileLoad() {
-%s
-          }
-          if (fileBytes) {
-            Module.emterpreterFile = fileBytes.buffer;
-            onEmterpretFileLoad();
-          } else {
-            var emterpretXHR = new XMLHttpRequest();
-            emterpretXHR.open('GET', filename, true);
-            emterpretXHR.responseType = 'arraybuffer';
-            emterpretXHR.onload = function() {
+          var emterpretURL = '%s';
+          var emterpretXHR = new XMLHttpRequest();
+          emterpretXHR.open('GET', emterpretURL, true);
+          emterpretXHR.responseType = 'arraybuffer';
+          emterpretXHR.onload = function() {
+            if (emterpretXHR.status === 200 || emterpretXHR.status === 0) {
               Module.emterpreterFile = emterpretXHR.response;
-              onEmterpretFileLoad();
-            };
-            emterpretXHR.send(null);
-          }
+            } else {
+              var emterpretURLBytes = tryParseAsDataURI(emterpretURL);
+              if (emterpretURLBytes) {
+                Module.emterpreterFile = emterpretURLBytes.buffer;
+              }
+            }
+%s
+          };
+          emterpretXHR.send(null);
 ''' % (shared.JS.get_subresource_location(shared.Settings.EMTERPRETIFY_FILE), script.inline)
 
   if options.memory_init_file:
@@ -2437,15 +2435,12 @@ def generate_html(target, options, js_target, target_basename,
     script.un_src()
     script.inline = ('''
           var memoryInitializer = '%s';
-          Module['memoryInitializerBytes'] = tryParseAsDataURI(memoryInitializer);
-          if (Module['memoryInitializerBytes']) {
-            return;
-          }
           if (typeof Module['locateFile'] === 'function') {
             memoryInitializer = Module['locateFile'](memoryInitializer);
           } else if (Module['memoryInitializerPrefixURL']) {
             memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
           }
+          Module['memoryInitializerRequestURL'] = memoryInitializer;
           var meminitXHR = Module['memoryInitializerRequest'] = new XMLHttpRequest();
           meminitXHR.open('GET', memoryInitializer, true);
           meminitXHR.responseType = 'arraybuffer';
@@ -2479,10 +2474,19 @@ def generate_html(target, options, js_target, target_basename,
     else:
       # may need to modify the asm code, load it as text, modify, and load asynchronously
       script.inline = '''
-    var codeXHR;
-    var filename = '%s';
-    var fileBytes = tryParseAsDataURI(filename);
-    function onCodeLoad(code) {
+    var codeURL = '%s';
+    var codeXHR = new XMLHttpRequest();
+    codeXHR.open('GET', codeURL, true);
+    codeXHR.onload = function() {
+      var code;
+      if (codeXHR.status === 200 || codeXHR.status === 0) {
+        code = codeXHR.responseText;
+      } else {
+        var codeURLBytes = tryParseAsDataURI(codeURL);
+        if (codeURLBytes) {
+          code = intArrayToString(codeURLBytes);
+        }
+      }
       %s
       var blob = new Blob([code], { type: 'text/javascript' });
       codeXHR = null;
@@ -2496,41 +2500,30 @@ def generate_html(target, options, js_target, target_basename,
         URL.revokeObjectURL(script.src);
       };
       document.body.appendChild(script);
-    }
-    if (fileBytes) {
-      onCodeLoad(intArrayToString(fileBytes));
-    } else {
-      codeXHR = new XMLHttpRequest();
-      codeXHR.open('GET', filename, true);
-      codeXHR.onload = function() {
-        onCodeLoad(codeXHR.responseText);
-      };
-      codeXHR.send(null);
-    }
+    };
+    codeXHR.send(null);
 ''' % (shared.JS.get_subresource_location(asm_target), '\n'.join(asm_mods), script.inline)
 
   if shared.Settings.BINARYEN and not shared.Settings.BINARYEN_ASYNC_COMPILATION:
     # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize
     script.un_src()
     script.inline = '''
-          var filename = '%s';
-          var fileBytes = tryParseAsDataURI(filename);
-          function onWasmLoad() {
-%s
-          }
-          if (fileBytes) {
-            Module.wasmBinary = fileBytes.buffer;
-            onWasmLoad();
-          } else {
-            var wasmXHR = new XMLHttpRequest();
-            wasmXHR.open('GET', filename, true);
-            wasmXHR.responseType = 'arraybuffer';
-            wasmXHR.onload = function() {
+          var wasmURL = '%s';
+          var wasmXHR = new XMLHttpRequest();
+          wasmXHR.open('GET', '%s', true);
+          wasmXHR.responseType = 'arraybuffer';
+          wasmXHR.onload = function() {
+            if (wasmXHR.status === 200 || wasmXHR.status === 0) {
               Module.wasmBinary = wasmXHR.response;
-              onWasmLoad();
-            };
-            wasmXHR.send(null);
-          }
+            } else {
+              var wasmURLBytes = tryParseAsDataURI(wasmURL);
+              if (wasmURLBytes) {
+                Module.wasmBinary = wasmURLBytes.buffer;
+              }
+            }
+%s
+          };
+          wasmXHR.send(null);
 ''' % (shared.JS.get_subresource_location(wasm_binary_target), script.inline)
 
   # when script.inline isn't empty, add required helper functions such as tryParseAsDataURI

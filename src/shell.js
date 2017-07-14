@@ -176,47 +176,50 @@ else if (ENVIRONMENT_IS_SHELL) {
 }
 else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   Module['read'] = function shell_read(url) {
-    var data = tryParseAsDataURI(url);
-    if (data) {
-      return intArrayToString(data);
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, false);
+      xhr.send(null);
+      return xhr.responseText;
+    } catch (err) {
+      var data = tryParseAsDataURI(url);
+      if (data) {
+        return intArrayToString(data);
+      }
+      throw err;
     }
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, false);
-    xhr.send(null);
-    return xhr.responseText;
   };
 
   if (ENVIRONMENT_IS_WORKER) {
     Module['readBinary'] = function readBinary(url) {
-      var data = tryParseAsDataURI(f);
-      if (data) {
-        return data;
+      try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, false);
+        xhr.responseType = 'arraybuffer';
+        xhr.send(null);
+        return new Uint8Array(xhr.response);
+      } catch (err) {
+        var data = tryParseAsDataURI(f);
+        if (data) {
+          return data;
+        }
+        throw err;
       }
-      var xhr = new XMLHttpRequest();
-      xhr.open('GET', url, false);
-      xhr.responseType = 'arraybuffer';
-      xhr.send(null);
-      return new Uint8Array(xhr.response);
     };
   }
 
   Module['readAsync'] = function readAsync(url, onload, onerror) {
-    try {
-      var data = tryParseAsDataURI(url);
-      if (data) {
-        setTimeout(function () { onload(data.buffer); }, 0);
-        return;
-      }
-    } catch (err) {
-      setTimeout(function () { onerror(err); }, 0);
-      return;
-    }
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.responseType = 'arraybuffer';
     xhr.onload = function xhr_onload() {
       if (xhr.status == 200 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
         onload(xhr.response);
+        return;
+      }
+      var data = tryParseAsDataURI(url);
+      if (data) {
+        onload(data.buffer);
       } else {
         onerror();
       }
