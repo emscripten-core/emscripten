@@ -221,6 +221,7 @@ var Runtime = {
   },
 
 #if EMULATED_FUNCTION_POINTERS
+#if WASM_ONLY == 0
   getFunctionTables: function(module) {
     if (!module) module = Module;
     var tables = {};
@@ -269,6 +270,7 @@ var Runtime = {
     assert(maxx === Runtime.alignFunctionTables()); // align the ones we didn't touch
   },
 #endif
+#endif
 
   functionPointers: new Array(RESERVED_FUNCTION_POINTERS),
 
@@ -283,7 +285,7 @@ var Runtime = {
     throw 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.';
 #else
 #if BINARYEN
-    // we can simply appent to the wasm table
+    // we can simply append to the wasm table TODO: recycle nulls?
     var table = Module['wasmTable'];
     var ret = table.length;
     table.grow(1);
@@ -308,11 +310,17 @@ var Runtime = {
 #if EMULATED_FUNCTION_POINTERS == 0
     Runtime.functionPointers[(index-{{{ FUNCTION_POINTER_ALIGNMENT }}})/{{{ FUNCTION_POINTER_ALIGNMENT }}}] = null;
 #else
+#if BINARYEN
+    // we can simply erase from the table
+    var table = Module['wasmTable'];
+    table.set(index, null);
+#else
     Runtime.alignFunctionTables(); // XXX we should rely on this being an invariant
     var tables = Runtime.getFunctionTables();
     for (var sig in tables) {
       tables[sig][index] = null;
     }
+#endif
 #endif
   },
 

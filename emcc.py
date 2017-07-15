@@ -1085,6 +1085,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.WASM:
         shared.Settings.BINARYEN = 1 # these are synonyms
 
+        shared.Settings.WASM_ONLY = shared.Building.is_wasm_only()
+
         # When only targeting wasm, the .asm.js file is not executable, so is treated as an intermediate build file that can be cleaned up.
         if shared.Building.is_wasm_only():
           asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
