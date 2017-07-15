@@ -1138,7 +1138,9 @@ def setup_function_pointers(function_table_sigs, settings):
         table_read = table_access + '.get(x)'
       else:
         table_read = table_access + '[x]'
-      prelude = '''
+      prelude = ''
+      if settings['ASSERTIONS']:
+        prelude = '''
   if (x < 0 || x >= %s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig, function_table_sigs, settings))
       asm_setup += '''
 function ftCall_%s(%s) {%s
