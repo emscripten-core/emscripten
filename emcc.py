@@ -1085,16 +1085,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.WASM:
         shared.Settings.BINARYEN = 1 # these are synonyms
 
-        shared.Settings.WASM_ONLY = shared.Building.is_wasm_only()
-
         # When only targeting wasm, the .asm.js file is not executable, so is treated as an intermediate build file that can be cleaned up.
         if shared.Building.is_wasm_only():
+          print >> sys.stderr, 'a2'
           asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
           if not DEBUG:
             misc_temp_files.note(asm_target)
 
       assert shared.Settings.TOTAL_MEMORY >= 16*1024*1024, 'TOTAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.TOTAL_MEMORY)
+
       if shared.Settings.BINARYEN:
+        shared.Settings.WASM_ONLY = shared.Building.is_wasm_only()
+        if shared.Settings.WASM_ONLY:
+          # in wasm-only mode, we can use emulated function pointers - no need for the asm.js shape tables
+          shared.Settings.EMULATED_FUNCTION_POINTERS = 1
         assert shared.Settings.TOTAL_MEMORY % 65536 == 0, 'For wasm, TOTAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.TOTAL_MEMORY)
       else:
         assert shared.Settings.TOTAL_MEMORY % (16*1024*1024) == 0, 'For asm.js, TOTAL_MEMORY must be a multiple of 16MB, was ' + str(shared.Settings.TOTAL_MEMORY)
