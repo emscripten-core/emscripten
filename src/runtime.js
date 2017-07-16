@@ -286,6 +286,9 @@ var Runtime = {
 #else
 #if BINARYEN
     // we can simply append to the wasm table TODO: recycle nulls?
+    // FIXME: actually we can't, only wasm functions can be, so we need to
+    //        (1) receive the type signature of the function
+    //        (2) create a tiny wasm module that imports it and exports a thunk
     var table = Module['wasmTable'];
     var ret = table.length;
     table.grow(1);
