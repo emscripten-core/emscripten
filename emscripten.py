@@ -1280,7 +1280,9 @@ return real_''' + s + '''.apply(null, arguments);
       table = table.replace('var ' + tableName, 'var ' + tableName + ' = Module["' + tableName + '"]')
       receiving += table + '\n'
 
-  if settings.get('EMULATED_FUNCTION_POINTERS'):
+  # emulated function pointers need the table to be received on the outside.
+  # however, in wasm-only mode, we use wasm to declare the (emulated/non-asm.js shaped) table in the inside
+  if settings.get('EMULATED_FUNCTION_POINTERS') and not settings['WASM_ONLY']:
     receiving += '\n' + function_tables_defs.replace('// EMSCRIPTEN_END_FUNCS\n', '') + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in function_table_data])
     if not settings['BINARYEN']:
       for sig in function_table_data.keys():
