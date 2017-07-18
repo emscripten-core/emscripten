@@ -12,6 +12,7 @@ def get(ports, settings, shared):
 
       shutil.copy2(sdl_ttf_h, build_inc_path)
       shutil.copy2(sdl_ttf_h, build_inc_sdl2_path)
+      shutil.copy2(sdl_ttf_h, build_inc_sdl2_path + '/SDL2')
 
       srcs = ['SDL_ttf.c']
       commands = []
