@@ -289,11 +289,11 @@ def eval_ctors_wasm(js, wasm_file, num):
   out, err = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
   num_successful = err.count('success on')
   shared.logging.debug(err)
-  if len(ctors) == len(all_ctors):
+  if len(ctors) == num_successful:
     new_ctors = ''
   else:
     elements = []
-    for ctor in all_ctors[num:]:
+    for ctor in all_ctors[num_successful:]:
       elements.append('{ func: function() { %s() } }' % ctor)
     new_ctors = '__ATINIT__.push(' + ', '.join(elements) + ');'
   js = js[:ctors_start] + new_ctors + js[ctors_end:]
