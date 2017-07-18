@@ -2115,8 +2115,8 @@ class Building(object):
 
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
   @staticmethod
-  def eval_ctors(js_file, binary_file, binaryen_bin=''):
-    subprocess.check_call([PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin])
+  def eval_ctors(js_file, binary_file, binaryen_bin='', debug_info=False):
+    subprocess.check_call([PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))])
 
   @staticmethod
   def eliminate_duplicate_funcs(filename):

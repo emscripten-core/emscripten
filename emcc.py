@@ -2222,6 +2222,7 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
     mem_file_exists = options.memory_init_file and os.path.exists(memfile)
     ok_binaryen_method = 'asmjs' not in shared.Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD
     import_mem_init = mem_file_exists and ok_binaryen_method
+    debug_info = options.debug_level >= 2 or options.profiling_funcs
     if import_mem_init:
       cmd += ['--mem-init=' + memfile]
       if not shared.Settings.RELOCATABLE:
@@ -2237,7 +2238,7 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--no-legalize-javascript-ffi']
     if shared.Building.is_wasm_only():
       cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, an can contain special fastcomp-wasm support
-    if options.debug_level >= 2 or options.profiling_funcs:
+    if debug_info:
       cmd += ['-g']
     if options.emit_symbol_map or shared.Settings.CYBERDWARF:
       cmd += ['--symbolmap=' + target + '.symbols']
@@ -2256,7 +2257,7 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
 
     if not target_binary:
       cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
-      if options.debug_level >= 2 or options.profiling_funcs:
+      if debug_info:
         cmd += ['-g']
         if options.debug_level >= 4:
           cmd += ['--source-map=' + wasm_binary_target + '.map']
@@ -2295,7 +2296,10 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
       logging.debug('running binaryen script: ' + script)
       subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), final, wasm_text_target], env=script_env)
   if shared.Settings.EVAL_CTORS:
-    shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin)
+    if DEBUG:
+      save_intermediate('pre-eval-ctors', 'js')
+      shutil.copyfile(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), 'pre-eval-ctors.wasm'))
+    shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=debug_info)
   # after generating the wasm, do some final operations
   if not shared.Settings.WASM_BACKEND:
     if shared.Settings.SIDE_MODULE:
