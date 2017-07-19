@@ -113,6 +113,7 @@ var LibraryManager = {
         'library_fs.js',
         'library_memfs.js',
         'library_tty.js',
+        'library_pipefs.js',
       ]);
 
       // Additional filesystem libraries (in strict mode, link to these explicitly via -lxxx.js)

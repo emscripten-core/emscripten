@@ -11,8 +11,8 @@ lockf(good): 0, errno: 0
 lockf(bad): -1, errno: 9
 nice: -1, errno: 1
 pause: -1, errno: 4
-pipe(good): -1, errno: 38
-pipe(bad): -1, errno: 38
+pipe(good): 0, errno: 0
+pipe(bad): -1, errno: 14
 execl: -1, errno: 8
 execle: -1, errno: 8
 execlp: -1, errno: 8

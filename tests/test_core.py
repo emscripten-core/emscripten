@@ -4478,6 +4478,10 @@ def process(filename):
     src = open(path_from_root('tests', 'unistd', 'ttyname.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
+  def test_unistd_pipe(self):
+    src = open(path_from_root('tests', 'unistd', 'pipe.c'), 'r').read()
+    self.do_run(src, 'success', force_c=True)
+
   def test_unistd_dup(self):
     src = open(path_from_root('tests', 'unistd', 'dup.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'dup.out'), 'r').read()
