@@ -428,9 +428,13 @@ function JSify(data, functionsOnly) {
     // Export all arrayUtils.js functions
     print(maybeExport('intArrayFromString'));
     print(maybeExport('intArrayToString'));
-    print(maybeExport('intArrayFromBase64'));
-    print(maybeExport('tryParseAsDataURI'));
 
+    if (INCLUDE_BASE64_UTILS) {
+      print(read('base64Utils.js'));
+      // Export all base64Utils.js functions
+      print(maybeExport('intArrayFromBase64'));
+      print(maybeExport('tryParseAsDataURI'));
+    }
     if (HEADLESS) {
       print('if (!ENVIRONMENT_IS_WEB) {');
       print(read('headlessCanvas.js'));

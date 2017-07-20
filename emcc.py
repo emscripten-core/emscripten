@@ -1522,6 +1522,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.MEM_INIT_METHOD = 1
       else:
         assert shared.Settings.MEM_INIT_METHOD != 1
+
+      global embed_memfile
+      embed_memfile = shared.Settings.SINGLE_FILE or (shared.Settings.MEM_INIT_METHOD == 0 and (not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and options.debug_level < 4))
+      if embed_memfile:
+        shared.Settings.INCLUDE_BASE64_UTILS = 1
+
       final = shared.Building.emscripten(final, append_ext=False, extra_args=extra_args)
       if DEBUG: save_intermediate('original')
 
@@ -1606,7 +1612,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('memory initializer'):
       memfile = None
-      embed_memfile = shared.Settings.SINGLE_FILE or (shared.Settings.MEM_INIT_METHOD == 0 and (not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and options.debug_level < 4))
 
       if shared.Settings.MEM_INIT_METHOD > 0 or embed_memfile:
         memfile = target + '.mem'
@@ -2528,9 +2533,10 @@ def generate_html(target, options, js_target, target_basename,
 
   # when script.inline isn't empty, add required helper functions such as tryParseAsDataURI
   if script.inline:
-    f = open(shared.path_from_root('src/arrayUtils.js'), 'r')
-    script.inline = '(function () {' + script.inline + f.read() + '})();'
-    f.close()
+    for file in ['src/arrayUtils.js', 'src/base64Utils.js']:
+      f = open(shared.path_from_root(file), 'r')
+      script.inline = '(function () {' + script.inline + f.read() + '})();'
+      f.close()
 
   html = open(target, 'wb')
   html_contents = shell.replace('{{{ SCRIPT }}}', script.replacement())

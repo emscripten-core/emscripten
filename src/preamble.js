@@ -2199,10 +2199,13 @@ function integrateWasmJS(Module) {
       if (Module['wasmBinary']) {
         return new Uint8Array(Module['wasmBinary']);
       }
+#if INCLUDE_BASE64_UTILS
       var binary = tryParseAsDataURI(wasmBinaryFile);
       if (binary) {
         return binary;
-      } else if (Module['readBinary']) {
+      } else
+#endif
+      if (Module['readBinary']) {
         return Module['readBinary'](wasmBinaryFile);
       } else {
         throw "on the web, we need the wasm binary to be preloaded and set on Module['wasmBinary']. emcc.py will do that for you when generating HTML (but not JS)";

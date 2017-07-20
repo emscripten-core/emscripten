@@ -98,13 +98,17 @@ var frameId = 0;
 // Worker
 
 var filename = '{{{ filename }}}.js';
+
+#if INCLUDE_BASE64_UTILS
 var workerURL = filename;
 var fileBytes = tryParseAsDataURI(filename);
 if (fileBytes) {
   workerURL = URL.createObjectURL(new Blob([fileBytes], {type: 'application/javascript'}));
 }
-
 var worker = new Worker(workerURL);
+#else
+var worker = new Worker(filename);
+#endif
 
 WebGLClient.prefetch();
 

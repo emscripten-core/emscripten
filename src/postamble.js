@@ -64,10 +64,13 @@ if (memoryInitializer) {
     }
     function doBrowserLoad() {
       Module['readAsync'](memoryInitializer, applyMemoryInitializer, function() {
+#if INCLUDE_BASE64_UTILS
         var memoryInitializerBytes = tryParseAsDataURI(memoryInitializer);
         if (memoryInitializerBytes) {
           applyMemoryInitializer(memoryInitializerBytes.buffer);
-        } else {
+        } else
+#endif
+        {
           throw 'could not load memory initializer ' + memoryInitializer;
         }
       });
@@ -78,10 +81,13 @@ if (memoryInitializer) {
         var request = Module['memoryInitializerRequest'];
         var response = request.response;
         if (request.status !== 200 && request.status !== 0) {
+#if INCLUDE_BASE64_UTILS
           var data = tryParseAsDataURI(Module['memoryInitializerRequestURL']);
           if (data) {
             response = data.buffer;
-          } else {
+          } else
+#endif
+          {
             // If you see this warning, the issue may be that you are using locateFile or memoryInitializerPrefixURL, and defining them in JS. That
             // means that the HTML file doesn't know about them, and when it tries to create the mem init request early, does it to the wrong place.
             // Look in your browser's devtools network console to see what's going on.

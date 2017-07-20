@@ -871,3 +871,5 @@ var SINGLE_FILE = 0; // If set to 1, embeds all subresources in the emitted file
 var WASM_TEXT_FILE = ''; // name of the file containing wasm text, if relevant
 var WASM_BINARY_FILE = ''; // name of the file containing wasm binary, if relevant
 var ASMJS_CODE_FILE = ''; // name of the file containing asm.js, if relevant
+
+var INCLUDE_BASE64_UTILS = 0; // If set to 1, src/base64Utils.js will be included in the bundle.
