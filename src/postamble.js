@@ -64,11 +64,10 @@ if (memoryInitializer) {
     }
     function doBrowserLoad() {
       Module['readAsync'](memoryInitializer, applyMemoryInitializer, function() {
-        var memoryInitializerBytes  = tryParseAsDataURI(memoryInitializer);
+        var memoryInitializerBytes = tryParseAsDataURI(memoryInitializer);
         if (memoryInitializerBytes) {
           applyMemoryInitializer(memoryInitializerBytes.buffer);
-        }
-        else {
+        } else {
           throw 'could not load memory initializer ' + memoryInitializer;
         }
       });
