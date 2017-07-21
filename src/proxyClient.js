@@ -130,7 +130,9 @@ worker.onmessage = function worker_onmessage(event) {
   if (!workerResponded) {
     workerResponded = true;
     if (Module.setStatus) Module.setStatus('');
+#if SUPPORT_BASE64_EMBEDDING
     if (workerURL !== filename) URL.revokeObjectURL(workerURL);
+#endif
   }
 
   var data = event.data;
