@@ -1008,7 +1008,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           logging.debug('using response file for EXPORTED_FUNCTIONS, make sure it includes _malloc and _free')
 
-      assert not (options.bind and shared.Settings.NO_DYNAMIC_EXECUTION), 'NO_DYNAMIC_EXECUTION disallows embind'
+      # Embind does not require dynamic execution when used with wasm, but otherwise does.
+      assert not (not shared.Settings.WASM and options.bind and shared.Settings.NO_DYNAMIC_EXECUTION), 'NO_DYNAMIC_EXECUTION disallows embind'
 
       assert not (shared.Settings.NO_DYNAMIC_EXECUTION and shared.Settings.RELOCATABLE), 'cannot have both NO_DYNAMIC_EXECUTION and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()'
 
