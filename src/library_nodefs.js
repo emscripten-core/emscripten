@@ -1,4 +1,5 @@
 mergeInto(LibraryManager.library, {
+  // implicitly relies on $FS being already available
   $NODEFS__deps: ['$PATH'],
   $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { var fs = require("fs"); var NODEJS_PATH = require("path"); NODEFS.staticInit(); }',
   $NODEFS: {

@@ -1,5 +1,6 @@
 mergeInto(LibraryManager.library, {
-  $IDBFS__deps: ['$FS', '$MEMFS', '$PATH'],
+  // implicitly relies on $FS being already available
+  $IDBFS__deps: ['$MEMFS', '$PATH'],
   $IDBFS: {
     dbs: {},
     indexedDB: function() {

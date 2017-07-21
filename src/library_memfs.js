@@ -1,5 +1,5 @@
 mergeInto(LibraryManager.library, {
-  $MEMFS__deps: ['$FS'],
+  // implicitly relies on $FS being already available
   $MEMFS: {
     ops_table: null,
     mount: function(mount) {
@@ -71,7 +71,7 @@ mergeInto(LibraryManager.library, {
         // When the byte data of the file is populated, this will point to either a typed array, or a normal JS array. Typed arrays are preferred
         // for performance, and used by default. However, typed arrays are not resizable like normal JS arrays are, so there is a small disk size
         // penalty involved for appending file writes that continuously grow a file similar to std::vector capacity vs used -scheme.
-        node.contents = null; 
+        node.contents = null;
       } else if (FS.isLink(node.mode)) {
         node.node_ops = MEMFS.ops_table.link.node;
         node.stream_ops = MEMFS.ops_table.link.stream;

@@ -1,5 +1,5 @@
 mergeInto(LibraryManager.library, {
-  $WORKERFS__deps: ['$FS'],
+  // implicitly relies on $FS being already available
   $WORKERFS: {
     DIR_MODE: {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */,
     FILE_MODE: {{{ cDefine('S_IFREG') }}} | 511 /* 0777 */,

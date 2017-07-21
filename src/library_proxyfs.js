@@ -1,5 +1,6 @@
 mergeInto(LibraryManager.library, {
-  $PROXYFS__deps: ['$FS', '$PATH'],
+  // implicitly relies on $FS being already available
+  $PROXYFS__deps: ['$PATH'],
   $PROXYFS: {
     mount: function (mount) {
       return PROXYFS.createNode(null, '/', mount.opts.fs.lstat(mount.opts.root).mode, 0);
