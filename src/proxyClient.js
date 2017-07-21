@@ -99,7 +99,7 @@ var frameId = 0;
 
 var filename = '{{{ filename }}}.js';
 
-#if INCLUDE_BASE64_UTILS
+#if SUPPORT_BASE64_EMBEDDING
 var workerURL = filename;
 var fileBytes = tryParseAsDataURI(filename);
 if (fileBytes) {

@@ -64,7 +64,7 @@ if (memoryInitializer) {
     }
     function doBrowserLoad() {
       Module['readAsync'](memoryInitializer, applyMemoryInitializer, function() {
-#if INCLUDE_BASE64_UTILS
+#if SUPPORT_BASE64_EMBEDDING
         var memoryInitializerBytes = tryParseAsDataURI(memoryInitializer);
         if (memoryInitializerBytes) {
           applyMemoryInitializer(memoryInitializerBytes.buffer);
@@ -81,7 +81,7 @@ if (memoryInitializer) {
         var request = Module['memoryInitializerRequest'];
         var response = request.response;
         if (request.status !== 200 && request.status !== 0) {
-#if INCLUDE_BASE64_UTILS
+#if SUPPORT_BASE64_EMBEDDING
           var data = tryParseAsDataURI(Module['memoryInitializerRequestURL']);
           if (data) {
             response = data.buffer;

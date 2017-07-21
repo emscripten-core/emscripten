@@ -2199,7 +2199,7 @@ function integrateWasmJS(Module) {
       if (Module['wasmBinary']) {
         return new Uint8Array(Module['wasmBinary']);
       }
-#if INCLUDE_BASE64_UTILS
+#if SUPPORT_BASE64_EMBEDDING
       var binary = tryParseAsDataURI(wasmBinaryFile);
       if (binary) {
         return binary;

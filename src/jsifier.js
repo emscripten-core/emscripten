@@ -429,7 +429,7 @@ function JSify(data, functionsOnly) {
     print(maybeExport('intArrayFromString'));
     print(maybeExport('intArrayToString'));
 
-    if (INCLUDE_BASE64_UTILS) {
+    if (SUPPORT_BASE64_EMBEDDING) {
       print(read('base64Utils.js'));
       // Export all base64Utils.js functions
       print(maybeExport('intArrayFromBase64'));

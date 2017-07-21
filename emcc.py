@@ -1526,7 +1526,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       global embed_memfile
       embed_memfile = shared.Settings.SINGLE_FILE or (shared.Settings.MEM_INIT_METHOD == 0 and (not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and options.debug_level < 4))
       if embed_memfile:
-        shared.Settings.INCLUDE_BASE64_UTILS = 1
+        shared.Settings.SUPPORT_BASE64_EMBEDDING = 1
 
       final = shared.Building.emscripten(final, append_ext=False, extra_args=extra_args)
       if DEBUG: save_intermediate('original')

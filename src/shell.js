@@ -81,7 +81,7 @@ if (ENVIRONMENT_IS_NODE) {
   var nodePath;
 
   Module['read'] = function shell_read(filename, binary) {
-#if !INCLUDE_BASE64_UTILS
+#if !SUPPORT_BASE64_EMBEDDING
     var ret;
 #else
     var ret = tryParseAsDataURI(filename);
@@ -140,7 +140,7 @@ else if (ENVIRONMENT_IS_SHELL) {
 
   if (typeof read != 'undefined') {
     Module['read'] = function shell_read(f) {
-#if INCLUDE_BASE64_UTILS
+#if SUPPORT_BASE64_EMBEDDING
       var data = tryParseAsDataURI(f);
       if (data) {
         return intArrayToString(data);
@@ -153,7 +153,7 @@ else if (ENVIRONMENT_IS_SHELL) {
   }
 
   Module['readBinary'] = function readBinary(f) {
-#if INCLUDE_BASE64_UTILS
+#if SUPPORT_BASE64_EMBEDDING
     var data = tryParseAsDataURI(f);
     if (data) {
       return data;
@@ -193,7 +193,7 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
       xhr.send(null);
       return xhr.responseText;
     } catch (err) {
-#if INCLUDE_BASE64_UTILS
+#if SUPPORT_BASE64_EMBEDDING
       var data = tryParseAsDataURI(url);
       if (data) {
         return intArrayToString(data);
@@ -212,7 +212,7 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
         xhr.send(null);
         return new Uint8Array(xhr.response);
       } catch (err) {
-#if INCLUDE_BASE64_UTILS
+#if SUPPORT_BASE64_EMBEDDING
         var data = tryParseAsDataURI(f);
         if (data) {
           return data;
@@ -232,7 +232,7 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
         onload(xhr.response);
         return;
       }
-#if INCLUDE_BASE64_UTILS
+#if SUPPORT_BASE64_EMBEDDING
       var data = tryParseAsDataURI(url);
       if (data) {
         onload(data.buffer);
