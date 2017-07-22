@@ -9,7 +9,7 @@ import os
 # this helps projects using emscripten find it
 EMSCRIPTEN_ROOT = os.path.expanduser(os.getenv('EMSCRIPTEN') or '{{{ EMSCRIPTEN_ROOT }}}') # directory
 LLVM_ROOT = os.path.expanduser(os.getenv('LLVM') or '{{{ LLVM_ROOT }}}') # directory
-BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN')) # if not set, we will use it from ports
+BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN') or '') # if not set, we will use it from ports
 
 # If not specified, defaults to sys.executable.
 #PYTHON = 'python'
