@@ -124,6 +124,22 @@ var funs = {
     ___setErrNo(ERRNO_CODES.EINTR);
     return -1;
   },
+#if ASSERTIONS
+  $siglongjmpWarningShown: false,
+  siglongjmp__deps: ['$siglongjmpWarningShown', 'longjmp'],
+  siglongjmp: function(env, value) {
+    // We cannot wrap the sigsetjmp, but I hope that
+    // in most cases siglongjmp will be called later.
+    if (!siglongjmpWarningShown) {
+      // siglongjmp can be called very many times, so don't flood the stderr.
+      Module.printErr("Calling longjmp() instead of siglongjmp()");
+      siglongjmpWarningShown = true;
+    }
+    _longjmp(env, value);
+  },
+#else
+  siglongjmp: 'longjmp',
+#endif
   sigpending: function(set) {
     {{{ makeSetValue('set', 0, 0, 'i32') }}};
     return 0;

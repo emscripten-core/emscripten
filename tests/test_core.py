@@ -779,6 +779,9 @@ base align: 0, 0, 0, 0'''])
       Settings.DISABLE_EXCEPTION_CATCHING = disable_throw
       self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_throw')
 
+  def test_siglongjmp(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_siglongjmp')
+
   def test_setjmp_many(self):
     src = r'''
       #include <stdio.h>
