@@ -215,12 +215,13 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'thread.cpp',
       'typeinfo.cpp',
       'utility.cpp',
-      'valarray.cpp'
+      'valarray.cpp',
+      'variant.cpp'
     ]
     libcxxabi_include = shared.path_from_root('system', 'lib', 'libcxxabi', 'include')
     return build_libcxx(
       os.path.join('system', 'lib', 'libcxx'), libname, libcxx_files,
-      ['-DLIBCXX_BUILDING_LIBCXXABI=1', '-Oz', '-I' + libcxxabi_include],
+      ['-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz', '-I' + libcxxabi_include],
       has_noexcept_version=True)
 
   # libcxxabi - just for dynamic_cast for now
