@@ -483,12 +483,24 @@ except Exception as e:
 def generate_sanity():
   return EMSCRIPTEN_VERSION + '|' + LLVM_ROOT + '|' + get_clang_version() + ('_wasm' if Settings.WASM_BACKEND else '')
 
+EMCC_SANITY_CHECK_CACHED_TAG_ENV = 'EMCC_SANITY_CHECK_CACHED_TAG'
+
 def check_sanity(force=False):
   ToolchainProfiler.enter_block('sanity')
   try:
     if os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
       return
     reason = None
+
+    tag = "tag"
+    if Settings.WASM_BACKEND:
+      tag += "_wasm"
+
+    if os.environ.get(EMCC_SANITY_CHECK_CACHED_TAG_ENV) == tag:
+      return
+    else:
+      os.environ[EMCC_SANITY_CHECK_CACHED_TAG_ENV] = tag
+
     if not CONFIG_FILE:
       return # config stored directly in EM_CONFIG => skip sanity checks
     else:
@@ -1497,6 +1509,9 @@ class Building(object):
 
   @staticmethod
   def configure(args, stdout=None, stderr=None, env=None):
+    # Check once and cache results
+    check_sanity()
+
     if not args:
       return
     if env is None:
@@ -1523,6 +1538,9 @@ class Building(object):
 
   @staticmethod
   def make(args, stdout=None, stderr=None, env=None):
+    # Check once and cache results
+    check_sanity()
+
     if env is None:
       env = Building.get_building_env()
     if not args:

@@ -12,6 +12,9 @@ def restore():
 def wipe():
   try_delete(CONFIG_FILE)
   try_delete(SANITY_FILE)
+  if EMCC_SANITY_CHECK_CACHED_TAG_ENV in os.environ:
+    del os.environ[EMCC_SANITY_CHECK_CACHED_TAG_ENV]
+
 
 def mtime(filename):
   return os.stat(filename).st_mtime
