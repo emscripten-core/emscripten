@@ -14,6 +14,7 @@ total_memory = int(sys.argv[3])
 total_stack = int(sys.argv[4])
 global_base = int(sys.argv[5])
 binaryen_bin = sys.argv[6]
+debug_info = int(sys.argv[7])
 
 wasm = not not binaryen_bin
 
@@ -282,15 +283,17 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
 def eval_ctors_wasm(js, wasm_file, num):
   ctors_start, ctors_end, all_ctors, ctors = find_ctors_data(js, num)
   cmd = [os.path.join(binaryen_bin, 'wasm-ctor-eval'), wasm_file, '-o', wasm_file, '--ctors=' + ','.join(ctors)]
+  if debug_info:
+    cmd += ['-g']
   shared.logging.debug('wasm ctor cmd: ' + str(cmd))
   out, err = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
   num_successful = err.count('success on')
   shared.logging.debug(err)
-  if len(ctors) == len(all_ctors):
+  if len(ctors) == num_successful:
     new_ctors = ''
   else:
     elements = []
-    for ctor in all_ctors[num:]:
+    for ctor in all_ctors[num_successful:]:
       elements.append('{ func: function() { %s() } }' % ctor)
     new_ctors = '__ATINIT__.push(' + ', '.join(elements) + ');'
   js = js[:ctors_start] + new_ctors + js[ctors_end:]
