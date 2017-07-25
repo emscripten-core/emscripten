@@ -2198,6 +2198,7 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
     combined.close()
   # normally we emit binary, but for debug info, we might emit text first
   wrote_wasm_text = False
+  debug_info = options.debug_level >= 2 or options.profiling_funcs
   # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
   if not shared.Settings.WASM_BACKEND:
     if DEBUG:
@@ -2222,7 +2223,6 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
     mem_file_exists = options.memory_init_file and os.path.exists(memfile)
     ok_binaryen_method = 'asmjs' not in shared.Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD
     import_mem_init = mem_file_exists and ok_binaryen_method
-    debug_info = options.debug_level >= 2 or options.profiling_funcs
     if import_mem_init:
       cmd += ['--mem-init=' + memfile]
       if not shared.Settings.RELOCATABLE:
