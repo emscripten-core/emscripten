@@ -7,6 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+// XXX EMSCRIPTEN: this file has been updated to the 4.0.1 release
+
 #include "__refstring"
 #include "stdexcept"
 #include "new"
