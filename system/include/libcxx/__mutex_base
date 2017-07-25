@@ -14,9 +14,7 @@
 #include <__config>
 #include <chrono>
 #include <system_error>
-#ifndef _LIBCPP_HAS_NO_THREADS
-#include <pthread.h>
-#endif
+#include <__threading_support>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
@@ -36,16 +34,20 @@ _LIBCPP_BEGIN_NAMESPACE_STD
 
 class _LIBCPP_TYPE_VIS _LIBCPP_THREAD_SAFETY_ANNOTATION(capability("mutex")) mutex
 {
-    pthread_mutex_t __m_;
+#ifndef _LIBCPP_HAS_NO_CONSTEXPR
+    __libcpp_mutex_t __m_ = _LIBCPP_MUTEX_INITIALIZER;
+#else
+    __libcpp_mutex_t __m_;
+#endif
 
 public:
     _LIBCPP_INLINE_VISIBILITY
 #ifndef _LIBCPP_HAS_NO_CONSTEXPR
-     constexpr mutex() _NOEXCEPT : __m_(PTHREAD_MUTEX_INITIALIZER) {}
+    constexpr mutex() _NOEXCEPT = default;
 #else
-     mutex() _NOEXCEPT {__m_ = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;}
+    mutex() _NOEXCEPT {__m_ = (__libcpp_mutex_t)_LIBCPP_MUTEX_INITIALIZER;}
 #endif
-     ~mutex();
+    ~mutex();
 
 private:
     mutex(const mutex&);// = delete;
@@ -56,7 +58,7 @@ public:
     bool try_lock() _NOEXCEPT _LIBCPP_THREAD_SAFETY_ANNOTATION(try_acquire_capability(true));
     void unlock() _NOEXCEPT _LIBCPP_THREAD_SAFETY_ANNOTATION(release_capability());
 
-    typedef pthread_mutex_t* native_handle_type;
+    typedef __libcpp_mutex_t* native_handle_type;
     _LIBCPP_INLINE_VISIBILITY native_handle_type native_handle() {return &__m_;}
 };
 
@@ -78,8 +80,21 @@ constexpr adopt_lock_t  adopt_lock  = adopt_lock_t();
 
 #endif
 
+
+// Forward declare lock_guard as a variadic template even in C++03 to keep
+// the mangling consistent between dialects.
+#if defined(_LIBCPP_ABI_VARIADIC_LOCK_GUARD)
+template <class ..._Mutexes>
+class _LIBCPP_TEMPLATE_VIS lock_guard;
+#endif
+
 template <class _Mutex>
-class _LIBCPP_TYPE_VIS_ONLY _LIBCPP_THREAD_SAFETY_ANNOTATION(scoped_lockable) lock_guard
+class _LIBCPP_TEMPLATE_VIS _LIBCPP_THREAD_SAFETY_ANNOTATION(scoped_lockable)
+#if !defined(_LIBCPP_ABI_VARIADIC_LOCK_GUARD)
+lock_guard
+#else
+lock_guard<_Mutex>
+#endif
 {
 public:
     typedef _Mutex mutex_type;
@@ -98,12 +113,12 @@ public:
     ~lock_guard() _LIBCPP_THREAD_SAFETY_ANNOTATION(release_capability()) {__m_.unlock();}
 
 private:
-    lock_guard(lock_guard const&);// = delete;
-    lock_guard& operator=(lock_guard const&);// = delete;
+    lock_guard(lock_guard const&) _LIBCPP_EQUAL_DELETE;
+    lock_guard& operator=(lock_guard const&) _LIBCPP_EQUAL_DELETE;
 };
 
 template <class _Mutex>
-class _LIBCPP_TYPE_VIS_ONLY unique_lock
+class _LIBCPP_TEMPLATE_VIS unique_lock
 {
 public:
     typedef _Mutex mutex_type;
@@ -276,13 +291,18 @@ _LIBCPP_DECLARE_STRONG_ENUM_EPILOG(cv_status)
 
 class _LIBCPP_TYPE_VIS condition_variable
 {
-    pthread_cond_t __cv_;
+#ifndef _LIBCPP_HAS_NO_CONSTEXPR
+    __libcpp_condvar_t __cv_ = _LIBCPP_CONDVAR_INITIALIZER;
+#else
+    __libcpp_condvar_t __cv_;
+#endif
+
 public:
     _LIBCPP_INLINE_VISIBILITY
 #ifndef _LIBCPP_HAS_NO_CONSTEXPR
-    constexpr condition_variable() : __cv_(PTHREAD_COND_INITIALIZER) {}
+    constexpr condition_variable() _NOEXCEPT = default;
 #else
-    condition_variable() {__cv_ = (pthread_cond_t)PTHREAD_COND_INITIALIZER;}
+    condition_variable() _NOEXCEPT {__cv_ = (__libcpp_condvar_t)_LIBCPP_CONDVAR_INITIALIZER;}
 #endif
     ~condition_variable();
 
@@ -321,7 +341,7 @@ public:
                  const chrono::duration<_Rep, _Period>& __d,
                  _Predicate __pred);
 
-    typedef pthread_cond_t* native_handle_type;
+    typedef __libcpp_condvar_t* native_handle_type;
     _LIBCPP_INLINE_VISIBILITY native_handle_type native_handle() {return &__cv_;}
 
 private:
@@ -390,8 +410,8 @@ condition_variable::wait_for(unique_lock<mutex>& __lk,
     typedef time_point<system_clock, duration<long double, nano> > __sys_tpf;
     typedef time_point<system_clock, nanoseconds> __sys_tpi;
     __sys_tpf _Max = __sys_tpi::max();
-    system_clock::time_point __s_now = system_clock::now();
     steady_clock::time_point __c_now = steady_clock::now();
+    system_clock::time_point __s_now = system_clock::now();
     if (_Max - __d > __s_now)
         __do_timed_wait(__lk, __s_now + __ceil<nanoseconds>(__d));
     else
