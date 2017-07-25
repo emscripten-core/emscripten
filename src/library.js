@@ -1624,6 +1624,27 @@ LibraryManager.library = {
     return f >= +0 ? +Math_floor(f + +0.5) : +Math_ceil(f - +0.5); // TODO: use fround?
   },
 
+  // TODO: fround?
+  llvm_rint_f32__asm: true,
+  llvm_rint_f32__sig: 'dd',
+  llvm_rint_f32: function(f) {
+    f = +f;
+    if (+Math_abs(+Math_floor(f + +1) - f) < +Math_abs(+Math_ceil(f - +1) - f)) {
+      return +Math_floor(f + +1);
+    }
+    return +Math_ceil(f - +1);
+  },
+
+  llvm_rint_f64__asm: true,
+  llvm_rint_f64__sig: 'dd',
+  llvm_rint_f64: function(f) {
+    f = +f;
+    if (+Math_abs(+Math_floor(f + +1) - f) < +Math_abs(+Math_ceil(f - +1) - f)) {
+      return +Math_floor(f + +1);
+    }
+    return +Math_ceil(f - +1);
+  },
+
   _reallyNegative: function(x) {
     return x < 0 || (x === 0 && (1/x) === -Infinity);
   },
