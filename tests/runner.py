@@ -116,7 +116,8 @@ nondefault_test_modes = [
   'binaryen1',
   'binaryen2',
   'binaryen3',
-  'binaryen_native'
+  'binaryens',
+  'binaryenz',
 ]
 test_index = 0
 
