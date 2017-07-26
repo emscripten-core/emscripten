@@ -16,9 +16,10 @@ This article explains how you can build Fastcomp's sources using a fully manual 
 What you'll need
 ================
 
-First follow the instructions for your platform showing how to :ref:`manually build Emscripten from source <installing-from-source>`.
+First verify you have :ref:`the compiler toolchain <compiler-toolchain>` for your platform, download and install it as necessary.
 
-Then :ref:`download and install the compiler toolchain <compiler-toolchain>` for your platform.
+Then follow the instructions for your platform showing how to :ref:`manually build Emscripten from source <installing-from-source>`. This page helps you with the specific task of building fastcomp (LLVM + clang).
+
 
 .. _building-fastcomp-from-source-building:
 
@@ -143,4 +144,5 @@ Backend code structure
 ----------------------
 
 The backend is in `emscripten-fastcomp <https://github.com/kripken/emscripten-fastcomp>`_. The main file is `JSBackend.cpp <https://github.com/kripken/emscripten-fastcomp/blob/incoming/lib/Target/JSBackend/JSBackend.cpp>`_ but the other files in that directory (`lib/Target/JSBackend/ <https://github.com/kripken/emscripten-fastcomp/tree/incoming/lib/Target/JSBackend>`_) are also important.
+
 

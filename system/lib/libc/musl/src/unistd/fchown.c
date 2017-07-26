@@ -13,5 +13,10 @@ int fchown(int fd, uid_t uid, gid_t gid)
 
 	char buf[15+3*sizeof(int)];
 	__procfdname(buf, fd);
+#ifdef SYS_chown
 	return syscall(SYS_chown, buf, uid, gid);
+#else
+	return syscall(SYS_fchownat, AT_FDCWD, buf, uid, gid);
+#endif
+
 }

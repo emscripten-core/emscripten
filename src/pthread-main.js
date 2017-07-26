@@ -50,7 +50,7 @@ this.onmessage = function(e) {
 
     // Initialize the global "process"-wide fields:
     buffer = e.data.buffer;
-    TOTAL_MEMORY = e.data.TOTAL_MEMORY;
+    Module['TOTAL_MEMORY'] = TOTAL_MEMORY = e.data.TOTAL_MEMORY;
     STATICTOP = e.data.STATICTOP;
     DYNAMIC_BASE = e.data.DYNAMIC_BASE;
     DYNAMICTOP_PTR = e.data.DYNAMICTOP_PTR;
@@ -85,10 +85,10 @@ this.onmessage = function(e) {
     try {
       // HACK: Some code in the wild has instead signatures of form 'void *ThreadMain()', which seems to be ok in native code.
       // To emulate supporting both in test suites, use the following form. This is brittle!
-      if (typeof asm['dynCall_ii'] !== 'undefined') {
-        result = asm.dynCall_ii(e.data.start_routine, e.data.arg); // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
+      if (typeof Module['asm']['dynCall_ii'] !== 'undefined') {
+        result = Module['asm'].dynCall_ii(e.data.start_routine, e.data.arg); // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
       } else {
-        result = asm.dynCall_i(e.data.start_routine); // as a hack, try signature 'i' as fallback.
+        result = Module['asm'].dynCall_i(e.data.start_routine); // as a hack, try signature 'i' as fallback.
       }
     } catch(e) {
       if (e === 'Canceled!') {

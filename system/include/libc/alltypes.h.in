@@ -28,6 +28,7 @@ TYPEDEF _Int64 blkcnt_t;
 TYPEDEF unsigned _Int64 fsblkcnt_t;
 TYPEDEF unsigned _Int64 fsfilcnt_t;
 
+TYPEDEF unsigned wint_t;
 TYPEDEF unsigned long wctype_t;
 
 TYPEDEF void * timer_t;
@@ -57,6 +58,8 @@ TYPEDEF struct { unsigned __attr; } pthread_barrierattr_t;
 TYPEDEF struct { unsigned __attr[2]; } pthread_rwlockattr_t;
 
 TYPEDEF struct _IO_FILE FILE;
+
+TYPEDEF struct __mbstate_t { unsigned __opaque1, __opaque2; } mbstate_t;
 
 TYPEDEF struct __locale_struct * locale_t;
 

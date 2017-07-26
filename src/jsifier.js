@@ -55,9 +55,8 @@ function JSify(data, functionsOnly) {
   if (mainPass) {
     // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
     // generateStructInfo in library.js)
-    //B.start('jsifier-libload');
+
     LibraryManager.load();
-    //B.stop('jsifier-libload');
 
     var libFuncsToInclude;
     if (INCLUDE_FULL_LIBRARY) {
@@ -128,6 +127,13 @@ function JSify(data, functionsOnly) {
         var finalName = ident.substr(1);
       } else {
         var finalName = '_' + ident;
+      }
+
+      // if the function was implemented in compiled code, we just need to export it so we can reach it from JS
+      if (finalName in IMPLEMENTED_FUNCTIONS) {
+        EXPORTED_FUNCTIONS[finalName] = 1;
+        // stop here: we don't need to add anything from our js libraries, not even deps, compiled code is on it
+        return '';
       }
 
       // Don't replace implemented functions with library ones (which can happen when we add dependencies).
@@ -292,7 +298,7 @@ function JSify(data, functionsOnly) {
         Variables.generatedGlobalBase = true;
         // Globals are done, here is the rest of static memory
         if (!SIDE_MODULE) {
-          print('STATIC_BASE = ' + Runtime.GLOBAL_BASE + ';\n');
+          print('STATIC_BASE = Runtime.GLOBAL_BASE;\n');
           print('STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
         } else {
           print('gb = Runtime.alignMemory(getMemory({{{ STATIC_BUMP }}}, ' + MAX_GLOBAL_ALIGN + ' || 1));\n');

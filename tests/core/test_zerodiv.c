@@ -1,4 +1,14 @@
+#include <math.h>
 #include <stdio.h>
+
+void printCanonicalizedNan(char* name, float value) {
+  if (!isnan(value)) {
+    printf("%s: %f\n", name, value);
+  } else {
+    printf("%s: nan\n", name);
+  }
+}
+
 int main(int argc, const char* argv[]) {
   float f1 = 1.0f;
   float f2 = 0.0f;
@@ -9,10 +19,10 @@ int main(int argc, const char* argv[]) {
   float f5 = f2 / f2;
   float f6 = f2 / f_zero;
 
-  printf("f3: %f\n", f3);
-  printf("f4: %f\n", f4);
-  printf("f5: %f\n", f5);
-  printf("f6: %f\n", f6);
+  printCanonicalizedNan("f3", f3);
+  printCanonicalizedNan("f4", f4);
+  printCanonicalizedNan("f5", f5);
+  printCanonicalizedNan("f6", f6);
 
   return 0;
 }

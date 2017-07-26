@@ -17,13 +17,16 @@ var LibraryPThread = {
     initMainThreadBlock: function() {
       if (ENVIRONMENT_IS_PTHREAD) return undefined;
       PThread.mainThreadBlock = allocate({{{ C_STRUCTS.pthread.__size__ }}}, "i32*", ALLOC_STATIC);
-      __register_pthread_ptr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1); // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
 
       for (var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}}/4; ++i) HEAPU32[PThread.mainThreadBlock/4+i] = 0;
 
       // The pthread struct has a field that points to itself - this is used as a magic ID to detect whether the pthread_t
       // structure is 'alive'.
       {{{ makeSetValue('PThread.mainThreadBlock', C_STRUCTS.pthread.self, 'PThread.mainThreadBlock', 'i32') }}};
+
+      // pthread struct robust_list head should point to itself.
+      var headPtr = PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.robust_list }}};
+      {{{ makeSetValue('headPtr', 0, 'headPtr', 'i32') }}};
 
       // Allocate memory for thread-local storage.
       var tlsMemory = allocate({{{ cDefine('PTHREAD_KEYS_MAX') }}} * 4, "i32*", ALLOC_STATIC);
@@ -308,7 +311,7 @@ var LibraryPThread = {
         };
 
         worker.onerror = function(e) {
-          Module['printErr']('pthread sent an error! ' + e.message);
+          Module['printErr']('pthread sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
         };
 
         // Allocate tempDoublePtr for the worker. This is done here on the worker's behalf, since we may need to do this statically
@@ -415,6 +418,10 @@ var LibraryPThread = {
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 12) >> 2, threadParams.detached);
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 20) >> 2, threadParams.schedPolicy);
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 24) >> 2, threadParams.schedPrio);
+
+    var global_libc = _emscripten_get_global_libc();
+    var global_locale = global_libc + {{{ C_STRUCTS.libc.global_locale }}};
+    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.locale }}}) >> 2, global_locale);
 
 #if PTHREADS_PROFILING
     PThread.createProfilerBlock(pthread.threadInfoStruct);
@@ -574,6 +581,10 @@ var LibraryPThread = {
     // The pthread struct has a field that points to itself - this is used as a magic ID to detect whether the pthread_t
     // structure is 'alive'.
     {{{ makeSetValue('threadInfoStruct', C_STRUCTS.pthread.self, 'threadInfoStruct', 'i32') }}};
+
+    // pthread struct robust_list head should point to itself.
+    var headPtr = threadInfoStruct + {{{ C_STRUCTS.pthread.robust_list }}};
+    {{{ makeSetValue('headPtr', 0, 'headPtr', 'i32') }}};
 
     var threadParams = {
       stackBase: stackBase,
@@ -735,8 +746,9 @@ var LibraryPThread = {
   _pthread_is_main_runtime_thread: 0,
   _pthread_is_main_browser_thread: 0,
 
-  _register_pthread_ptr__asm: true,
   _register_pthread_ptr__deps: ['_pthread_ptr', '_pthread_is_main_runtime_thread', '_pthread_is_main_browser_thread'],
+  _register_pthread_ptr__asm: true,
+  _register_pthread_ptr__sig: 'viii',
   _register_pthread_ptr: function(pthreadPtr, isMainBrowserThread, isMainRuntimeThread) {
     pthreadPtr = pthreadPtr|0;
     isMainBrowserThread = isMainBrowserThread|0;
@@ -747,19 +759,22 @@ var LibraryPThread = {
   },
 
   // Public pthread_self() function which returns a unique ID for the thread.
-  pthread_self__asm: true,
   pthread_self__deps: ['_pthread_ptr'],
+  pthread_self__asm: true,
+  pthread_self__sig: 'i',
   pthread_self: function() {
     return __pthread_ptr|0;
   },
 
   emscripten_is_main_runtime_thread__asm: true,
+  emscripten_is_main_runtime_thread__sig: 'i',
   emscripten_is_main_runtime_thread__deps: ['_pthread_is_main_runtime_thread'],
   emscripten_is_main_runtime_thread: function() {
     return __pthread_is_main_runtime_thread|0; // Semantically the same as testing "!ENVIRONMENT_IS_PTHREAD" outside the asm.js scope
   },
 
   emscripten_is_main_browser_thread__asm: true,
+  emscripten_is_main_browser_thread__sig: 'i',
   emscripten_is_main_browser_thread__deps: ['_pthread_is_main_browser_thread'],
   emscripten_is_main_browser_thread: function() {
     return __pthread_is_main_browser_thread|0; // Semantically the same as testing "!ENVIRONMENT_IS_WORKER" outside the asm.js scope
@@ -868,7 +883,7 @@ var LibraryPThread = {
         __ATEXIT__.push(function() { PThread.runExitHandlers(); });
       }
     }
-    PThread.exitHandlers.push(function() { Runtime.dynCall('vi', routine, [arg]) });
+    PThread.exitHandlers.push(function() { Module['dynCall_vi'](routine, arg) });
   },
 
   pthread_cleanup_pop: function(execute) {
@@ -904,9 +919,9 @@ var LibraryPThread = {
 #if PTHREADS_PROFILING
       PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}}, {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
 #endif
-      if (ret === Atomics.TIMEDOUT) return -{{{ cDefine('ETIMEDOUT') }}};
-      if (ret === Atomics.NOTEQUAL) return -{{{ cDefine('EWOULDBLOCK') }}};
-      if (ret === Atomics.OK) return 0;
+      if (ret === 'timed-out') return -{{{ cDefine('ETIMEDOUT') }}};
+      if (ret === 'not-equal') return -{{{ cDefine('EWOULDBLOCK') }}};
+      if (ret === 'ok') return 0;
       throw 'Atomics.wait returned an unexpected value ' + ret;
     } else {
       // Atomics.wait is not available in the main browser thread, so simulate it via busy spinning.

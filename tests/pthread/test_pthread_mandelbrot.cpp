@@ -18,6 +18,8 @@
 #include <xmmintrin.h>
 #endif
 
+int ENVIRONMENT_IS_WEB = 0;
+
 // h: 0,360
 // s: 0,1
 // v: 0,1
@@ -338,7 +340,7 @@ double prevT = 0;
 
 void register_tasks()
 {
-    numTasks = EM_ASM_INT_V(return parseInt(document.getElementById('num_threads').value));
+    numTasks = EM_ASM_INT_V(return (typeof document !== 'undefined' && document.getElementById('num_threads')) ? parseInt(document.getElementById('num_threads').value) : 1);
 
 #ifdef SINGLETHREADED
   // Single-threaded
@@ -357,7 +359,7 @@ void register_tasks()
 #else
   emscripten_atomic_fence();
 
-  numTasks = EM_ASM_INT_V(return parseInt(document.getElementById('num_threads').value));
+  numTasks = EM_ASM_INT_V(return (typeof document !== 'undefined' && document.getElementById('num_threads')) ? parseInt(document.getElementById('num_threads').value) : 1);
   if (numTasks < 1) numTasks = 1;
   if (numTasks > emscripten_num_logical_cores()) numTasks = emscripten_num_logical_cores();
 
@@ -409,29 +411,31 @@ void main_tick()
   double dt = t - prevT;
 
 #ifndef NO_SDL
-  SDL_Event event;
-  while (SDL_PollEvent(&event)) {
-    switch(event.type) {
-      case SDL_KEYDOWN:
-        switch (event.key.keysym.sym) {
-          case SDLK_RIGHT: hScroll = 1.f; break;
-          case SDLK_LEFT: hScroll = -1.f; break;
-          case SDLK_DOWN: vScroll = 1.f; break;
-          case SDLK_UP: vScroll = -1.f; break;
-          case SDLK_a: zoom = -1.f; break;
-          case SDLK_z: zoom = 1.f; break;
-          }
-        break;
-      case SDL_KEYUP:
-        switch (event.key.keysym.sym) {
-          case SDLK_RIGHT: 
-          case SDLK_LEFT: hScroll = 0.f; break;
-          case SDLK_DOWN: 
-          case SDLK_UP: vScroll = 0.f; break;
-          case SDLK_a:
-          case SDLK_z: zoom = 0.f; break;
-          }
-        break;
+  if (ENVIRONMENT_IS_WEB) {
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+      switch(event.type) {
+        case SDL_KEYDOWN:
+          switch (event.key.keysym.sym) {
+            case SDLK_RIGHT: hScroll = 1.f; break;
+            case SDLK_LEFT: hScroll = -1.f; break;
+            case SDLK_DOWN: vScroll = 1.f; break;
+            case SDLK_UP: vScroll = -1.f; break;
+            case SDLK_a: zoom = -1.f; break;
+            case SDLK_z: zoom = 1.f; break;
+            }
+          break;
+        case SDL_KEYUP:
+          switch (event.key.keysym.sym) {
+            case SDLK_RIGHT: 
+            case SDLK_LEFT: hScroll = 0.f; break;
+            case SDLK_DOWN: 
+            case SDLK_UP: vScroll = 0.f; break;
+            case SDLK_a:
+            case SDLK_z: zoom = 0.f; break;
+            }
+          break;
+      }
     }
   }
 #endif
@@ -463,7 +467,7 @@ void main_tick()
   }
 
 #ifndef NO_SDL
-  if (numItersDoneOnCanvas >= minItersBeforeDisplaying)
+  if (ENVIRONMENT_IS_WEB && numItersDoneOnCanvas >= minItersBeforeDisplaying)
   {
     if (SDL_MUSTLOCK(screen)) SDL_LockSurface(screen);
     memcpy(screen->pixels, outputImage, sizeof(outputImage));
@@ -472,7 +476,7 @@ void main_tick()
   }
 #endif
 
-  int new_use_sse = EM_ASM_INT_V(return document.getElementById('use_sse').checked);
+  int new_use_sse = EM_ASM_INT_V(return (typeof document !== 'undefined' && document.getElementById('use_sse')) ? document.getElementById('use_sse').checked : false);
 
   if (numItersDoneOnCanvas >= minItersBeforeDisplaying || new_use_sse != use_sse)
   {
@@ -488,7 +492,15 @@ void main_tick()
   }
   use_sse = new_use_sse;
 
-  numItersPerFrame = EM_ASM_INT_V(return parseInt(document.getElementById('updates_per_frame').value););
+  numItersPerFrame = EM_ASM_INT_V({
+    if (typeof location !== 'undefined') {
+      var updatesPerFrame = (new RegExp("[\\?&]updates=([^&#]*)")).exec(location.href);
+      if (updatesPerFrame) return updatesPerFrame[1];
+    }
+    if (typeof Module !== 'undefined' && Module.arguments && Module.arguments.length >= 1) return parseInt(Module.arguments[0]);
+    if (typeof document !== 'undefined' && document.getElementById('updates_per_frame')) return parseInt(document.getElementById('updates_per_frame').value);
+    return 50;
+  });
   if (numItersPerFrame < 10) numItersPerFrame = 10;
   if (numItersPerFrame > 50000) numItersPerFrame = 50000;
 
@@ -534,12 +546,15 @@ void main_tick()
     }
     double cpuUsageSeconds = mbTime/1000.0;
     double cpuUsageRatio = mbTime * 100.0 / (t-lastFPSPrint);
-    sprintf(str, "%.3f%s iterations/second. FPS: %.2f. CPU usage: %.2f%%", itersNum, suffix, fps, cpuUsageRatio);
+
+    if (ENVIRONMENT_IS_WEB) {
+      sprintf(str, "%.3f%s iterations/second. FPS: %.2f. CPU usage: %.2f%%", itersNum, suffix, fps, cpuUsageRatio);
 //    sprintf(str, "%.3f%s iterations/second. FPS: %.2f. Zoom: %f", itersNum, suffix, fps, 1.f / (incrX < incrY ? incrX : incrY));
-    char str2[256];
-    sprintf(str2, "document.getElementById('performance').innerHTML = '%s';", str);
-    emscripten_run_script_string(str2);
-    //EM_ASM({document.getElementById('performance').innerHTML = $0;}, str);
+      char str2[256];
+      sprintf(str2, "document.getElementById('performance').innerHTML = '%s';", str);
+      emscripten_run_script_string(str2);
+      //EM_ASM({document.getElementById('performance').innerHTML = $0;}, str);
+    }
     printf("%.2f msecs/frame, FPS: %.2f. %f iters/second. Time spent in Mandelbrot: %f secs. (%.2f%%)\n", msecsPerFrame, fps, itersPerSecond,
       cpuUsageSeconds, cpuUsageRatio);
     lastFPSPrint = t;
@@ -551,8 +566,14 @@ void main_tick()
 
 int main(int argc, char** argv)
 {
-  SDL_Init(SDL_INIT_VIDEO);
-  screen = SDL_SetVideoMode(W, H, 32, SDL_SWSURFACE);
+  ENVIRONMENT_IS_WEB = EM_ASM_INT_V(return ENVIRONMENT_IS_WEB);
+
+#ifndef NO_SDL
+  if (ENVIRONMENT_IS_WEB) {
+    SDL_Init(SDL_INIT_VIDEO);
+    screen = SDL_SetVideoMode(W, H, 32, SDL_SWSURFACE);
+  }
+#endif
   for(int i = 0; i < W*H; ++i)
     outputImage[i] = 0x00000000;
 
@@ -573,10 +594,24 @@ int main(int argc, char** argv)
   emscripten_set_thread_name(pthread_self(), "Mandelbrot main");
 #endif
 
+#ifndef NO_SDL
   EM_ASM("SDL.defaults.copyOnLock = false; SDL.defaults.discardOnLock = true; SDL.defaults.opaqueFrontBuffer = false;");
+#endif
 
   register_tasks();
-  emscripten_set_main_loop(main_tick, 0, 0);
+  if (ENVIRONMENT_IS_WEB) {
+    emscripten_set_main_loop(main_tick, 0, 0);
+  } else {
+    int numTotalFrames = EM_ASM_INT_V(return (typeof Module !== 'undefined' && Module.arguments && Module.arguments.length >= 2) ? parseInt(Module.arguments[1]) : 1000);
+    printf("Rendering %d frames of Mandelbrot. Invoke \"node|js mandelbrot.js numItersPerFrame numFrames\" to configure.\n", numTotalFrames);
+    double t0 = emscripten_get_now();
+    for(int i = 0; i < numTotalFrames; ++i) {
+      main_tick();
+    }
+    double t1 = emscripten_get_now();
+    printf("Rendered %d frames (%d total iterations) of Mandelbrot.\n", numTotalFrames, numItersDoneOnCanvas);
+    printf("Total time: %f seconds, or %f seconds/frame, or %f seconds/iteration.\n", (t1-t0)/1000.0, (t1-t0)/(1000.0*numTotalFrames), (t1-t0)/(1000.0*numItersDoneOnCanvas));
+  }
 
   return 0;
 }

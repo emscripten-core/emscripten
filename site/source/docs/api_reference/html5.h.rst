@@ -1698,6 +1698,12 @@ Functions
 	
 	.. note:: A gamepad does not show up as connected until a button on it is pressed.
 
+	.. note:: Gamepad API uses an array of gamepad state objects to return the state of each device. The devices are identified via the index they are present in in
+	this array. Because of that, if one first connects gamepad A, then gamepad B, and then disconnects gamepad A, the gamepad B shall not take the place of gamepad A,
+	so in this scenario, this function will still keep returning two for the count of connected gamepads, even though gamepad A is no longer present. To find the actual
+	number of connected gamepads, listen for the gamepadconnected and gamepaddisconnected events.
+	Consider the return value of this function as the largest value (-1) that can be passed to the function emscripten_get_gamepad_status().
+
 	:returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
 	:rtype: int
 
@@ -2038,6 +2044,18 @@ Functions
 	:rtype: |EMSCRIPTEN_WEBGL_CONTEXT_HANDLE|
 	
 	
+	
+.. c:function:: EMSCRIPTEN_RESULT emscripten_webgl_get_drawing_buffer_size(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context, int *width, int *height)
+
+	Gets the ``drawingBufferWidth`` and ``drawingBufferHeight`` of the specified WebGL context.
+
+	:param EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context: The WebGL context to get width/height of.
+	:param int *width: The context's ``drawingBufferWidth``.
+	:param int *height: The context's ``drawingBufferHeight``.
+	:returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
+	:rtype: |EMSCRIPTEN_RESULT|
+	
+
 .. c:function:: EMSCRIPTEN_RESULT emscripten_webgl_destroy_context(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context)
 
 	Deletes the given WebGL context. If that context was active, then the no context is set to active.
