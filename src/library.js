@@ -289,7 +289,19 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/sysconf.html
     switch(name) {
       case {{{ cDefine('_SC_PAGE_SIZE') }}}: return PAGE_SIZE;
-      case {{{ cDefine('_SC_PHYS_PAGES') }}}: return totalMemory / PAGE_SIZE;
+      case {{{ cDefine('_SC_PHYS_PAGES') }}}:
+#if BINARYEN
+        var maxHeapSize = 2*1024*1024*1024 - 65536;
+#else
+        var maxHeapSize = 2*1024*1024*1024 - 16777216;
+#endif
+#if BINARYEN_MEM_MAX != -1
+        maxHeapSize = {{{ BINARYEN_MEM_MAX }}};
+#endif
+#if !ALLOW_MEMORY_GROWTH
+        maxHeapSize = HEAPU8.length;
+#endif
+        return maxHeapSize / PAGE_SIZE;
       case {{{ cDefine('_SC_ADVISORY_INFO') }}}:
       case {{{ cDefine('_SC_BARRIERS') }}}:
       case {{{ cDefine('_SC_ASYNCHRONOUS_IO') }}}:
@@ -484,8 +496,8 @@ LibraryManager.library = {
     totalMemory = getTotalMemory()|0;
     if ((newDynamicTop|0) > (totalMemory|0)) {
       if ((enlargeMemory()|0) == 0) {
-        ___setErrNo({{{ cDefine('ENOMEM') }}});
         HEAP32[DYNAMICTOP_PTR>>2] = oldDynamicTop;
+        ___setErrNo({{{ cDefine('ENOMEM') }}});
         return -1;
       }
     }
@@ -595,7 +607,9 @@ LibraryManager.library = {
   },
   __cxa_atexit: 'atexit',
 
-  __cxa_thread_atexit_impl: 'atexit', // used in rust
+  // used in rust, clang when doing thread_local statics
+  __cxa_thread_atexit: 'atexit',
+  __cxa_thread_atexit_impl: 'atexit',
 
   abort: function() {
     Module['abort']();
@@ -804,9 +818,24 @@ LibraryManager.library = {
   memcpy: function(dest, src, num) {
     dest = dest|0; src = src|0; num = num|0;
     var ret = 0;
-    if ((num|0) >= 4096) return _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
+    var aligned_dest_end = 0;
+    var block_aligned_dest_end = 0;
+    var dest_end = 0;
+    // Test against a benchmarked cutoff limit for when HEAPU8.set() becomes faster to use.
+    if ((num|0) >=
+#if SIMD
+      196608
+#else
+      8192
+#endif
+    ) {
+      return _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
+    }
+
     ret = dest|0;
+    dest_end = (dest + num)|0;
     if ((dest&3) == (src&3)) {
+      // The initial unaligned < 4-byte front.
       while (dest & 3) {
         if ((num|0) == 0) return ret|0;
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
@@ -814,18 +843,57 @@ LibraryManager.library = {
         src = (src+1)|0;
         num = (num-1)|0;
       }
-      while ((num|0) >= 4) {
+      aligned_dest_end = (dest_end & -4)|0;
+      block_aligned_dest_end = (aligned_dest_end - 64)|0;
+      while ((dest|0) <= (block_aligned_dest_end|0) ) {
+#if SIMD
+        SIMD_Int32x4_store(HEAPU8, dest, SIMD_Int32x4_load(HEAPU8, src));
+        SIMD_Int32x4_store(HEAPU8, dest+16, SIMD_Int32x4_load(HEAPU8, src+16));
+        SIMD_Int32x4_store(HEAPU8, dest+32, SIMD_Int32x4_load(HEAPU8, src+32));
+        SIMD_Int32x4_store(HEAPU8, dest+48, SIMD_Int32x4_load(HEAPU8, src+48));
+#else
+        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 4, makeGetValueAsm('src', 4, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 8, makeGetValueAsm('src', 8, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 12, makeGetValueAsm('src', 12, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 16, makeGetValueAsm('src', 16, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 20, makeGetValueAsm('src', 20, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 24, makeGetValueAsm('src', 24, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 28, makeGetValueAsm('src', 28, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 32, makeGetValueAsm('src', 32, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 36, makeGetValueAsm('src', 36, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 40, makeGetValueAsm('src', 40, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 44, makeGetValueAsm('src', 44, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 48, makeGetValueAsm('src', 48, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 52, makeGetValueAsm('src', 52, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 56, makeGetValueAsm('src', 56, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 60, makeGetValueAsm('src', 60, 'i32'), 'i32') }}};
+#endif
+        dest = (dest+64)|0;
+        src = (src+64)|0;
+      }
+      while ((dest|0) < (aligned_dest_end|0) ) {
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
         dest = (dest+4)|0;
         src = (src+4)|0;
-        num = (num-4)|0;
+      }
+    } else {
+      // In the unaligned copy case, unroll a bit as well.
+      aligned_dest_end = (dest_end - 4)|0;
+      while ((dest|0) < (aligned_dest_end|0) ) {
+        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
+        {{{ makeSetValueAsm('dest', 1, makeGetValueAsm('src', 1, 'i8'), 'i8') }}};
+        {{{ makeSetValueAsm('dest', 2, makeGetValueAsm('src', 2, 'i8'), 'i8') }}};
+        {{{ makeSetValueAsm('dest', 3, makeGetValueAsm('src', 3, 'i8'), 'i8') }}};
+        dest = (dest+4)|0;
+        src = (src+4)|0;
       }
     }
-    while ((num|0) > 0) {
+    // The remaining unaligned < 4 byte tail.
+    while ((dest|0) < (dest_end|0)) {
       {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
       dest = (dest+1)|0;
       src = (src+1)|0;
-      num = (num-1)|0;
     }
     return ret|0;
   },
@@ -870,31 +938,64 @@ LibraryManager.library = {
   memset__asm: true,
   memset: function(ptr, value, num) {
     ptr = ptr|0; value = value|0; num = num|0;
-    var stop = 0, value4 = 0, stop4 = 0, unaligned = 0;
-    stop = (ptr + num)|0;
-    if ((num|0) >= {{{ Math.round(2.5*UNROLL_LOOP_MAX) }}}) {
-      // This is unaligned, but quite large, so work hard to get to aligned settings
-      value = value & 0xff;
-      unaligned = ptr & 3;
-      value4 = value | (value << 8) | (value << 16) | (value << 24);
-      stop4 = stop & ~3;
-      if (unaligned) {
-        unaligned = (ptr + 4 - unaligned)|0;
-        while ((ptr|0) < (unaligned|0)) { // no need to check for stop, since we have large num
-          {{{ makeSetValueAsm('ptr', 0, 'value', 'i8') }}};
-          ptr = (ptr+1)|0;
-        }
+    var end = 0, aligned_end = 0, block_aligned_end = 0, value4 = 0;
+#if SIMD
+    var value16 = SIMD_Int32x4(0,0,0,0);
+#endif
+    end = (ptr + num)|0;
+
+    value = value & 0xff;
+    if ((num|0) >= 67 /* 64 bytes for an unrolled loop + 3 bytes for unaligned head*/) {
+      while ((ptr&3) != 0) {
+        {{{ makeSetValueAsm('ptr', 0, 'value', 'i8') }}};
+        ptr = (ptr+1)|0;
       }
-      while ((ptr|0) < (stop4|0)) {
+
+      aligned_end = (end & -4)|0;
+      block_aligned_end = (aligned_end - 64)|0;
+      value4 = value | (value << 8) | (value << 16) | (value << 24);
+#if SIMD
+      value16 = SIMD_Int32x4_splat(value4);
+#endif
+
+      while((ptr|0) <= (block_aligned_end|0)) {
+#if SIMD
+        SIMD_Int32x4_store(HEAPU8, ptr, value16);
+        SIMD_Int32x4_store(HEAPU8, ptr+16, value16);
+        SIMD_Int32x4_store(HEAPU8, ptr+32, value16);
+        SIMD_Int32x4_store(HEAPU8, ptr+48, value16);
+#else
+        {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 4, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 8, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 12, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 16, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 20, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 24, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 28, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 32, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 36, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 40, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 44, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 48, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 52, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 56, 'value4', 'i32') }}};
+        {{{ makeSetValueAsm('ptr', 60, 'value4', 'i32') }}};
+#endif
+        ptr = (ptr + 64)|0;
+      }
+
+      while ((ptr|0) < (aligned_end|0) ) {
         {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};
         ptr = (ptr+4)|0;
       }
     }
-    while ((ptr|0) < (stop|0)) {
+    // The remaining bytes.
+    while ((ptr|0) < (end|0)) {
       {{{ makeSetValueAsm('ptr', 0, 'value', 'i8') }}};
       ptr = (ptr+1)|0;
     }
-    return (ptr-num)|0;
+    return (end-num)|0;
   },
   llvm_memset_i32: 'memset',
   llvm_memset_p0i8_i32: 'memset',
@@ -951,7 +1052,7 @@ LibraryManager.library = {
   llvm_ctlz_i8: function(x, isZeroUndef) {
     x = x | 0;
     isZeroUndef = isZeroUndef | 0;
-    return (Math_clz32(x) | 0) - 24 | 0;
+    return (Math_clz32(x & 0xff) | 0) - 24 | 0;
   },
 
   llvm_ctlz_i16__asm: true,
@@ -959,7 +1060,7 @@ LibraryManager.library = {
   llvm_ctlz_i16: function(x, isZeroUndef) {
     x = x | 0;
     isZeroUndef = isZeroUndef | 0;
-    return (Math_clz32(x) | 0) - 16 | 0
+    return (Math_clz32(x & 0xffff) | 0) - 16 | 0
   },
 
   llvm_ctlz_i64__asm: true,
@@ -1092,10 +1193,10 @@ LibraryManager.library = {
       if (info.refcount === 0 && !info.rethrown) {
         if (info.destructor) {
 #if WASM_BACKEND == 0
-          Runtime.dynCall('vi', info.destructor, [ptr]);
+          Module['dynCall_vi'](info.destructor, ptr);
 #else
           // In Wasm, destructors return 'this' as in ARM
-          Runtime.dynCall('ii', info.destructor, [ptr]);
+          Module['dynCall_ii'](info.destructor, ptr);
 #endif
         }
         delete EXCEPTIONS.infos[ptr];
@@ -1215,7 +1316,7 @@ LibraryManager.library = {
   __cxa_end_catch__deps: ['__cxa_free_exception', '$EXCEPTIONS'],
   __cxa_end_catch: function() {
     // Clear state flag.
-    asm['setThrew'](0);
+    Module['setThrew'](0);
     // Call destructor if one is registered then clear it.
     var ptr = EXCEPTIONS.caught.pop();
 #if EXCEPTION_DEBUG
@@ -1601,21 +1702,30 @@ LibraryManager.library = {
       if (!target || target.isFolder || target.isDevice) {
         DLFCN.errorMsg = 'Could not find dynamic lib: ' + filename;
         return 0;
-      } else {
-        FS.forceLoadFile(target);
-        var lib_data = FS.readFile(filename, { encoding: 'utf8' });
       }
+      FS.forceLoadFile(target);
 
+      var lib_module;
       try {
-        var lib_module = eval(lib_data)(
+#if BINARYEN
+        // the shared library is a shared wasm library (see tools/shared.py WebAssembly.make_shared_library)
+        var lib_data = FS.readFile(filename, { encoding: 'binary' });
+        if (!(lib_data instanceof Uint8Array)) lib_data = new Uint8Array(lib_data);
+        //Module.printErr('libfile ' + filename + ' size: ' + lib_data.length);
+        lib_module = Runtime.loadWebAssemblyModule(lib_data);
+#else
+        // the shared library is a JS file, which we eval
+        var lib_data = FS.readFile(filename, { encoding: 'utf8' });
+        lib_module = eval(lib_data)(
           Runtime.alignFunctionTables(),
           Module
         );
+#endif
       } catch (e) {
 #if ASSERTIONS
         Module.printErr('Error in loading dynamic library: ' + e);
 #endif
-        DLFCN.errorMsg = 'Could not evaluate dynamic lib: ' + filename;
+        DLFCN.errorMsg = 'Could not evaluate dynamic lib: ' + filename + '\n' + e;
         return 0;
       }
 
@@ -1705,6 +1815,7 @@ LibraryManager.library = {
         var result = lib.module[symbol];
         if (typeof result == 'function') {
           result = Runtime.addFunction(result);
+          //Module.printErr('adding function dlsym result for ' + symbol + ' => ' + result);
           lib.cached_functions = result;
         }
         return result;
@@ -1994,6 +2105,12 @@ LibraryManager.library = {
 
   stime__deps: ['$ERRNO_CODES', '__setErrNo'],
   stime: function(when) {
+    ___setErrNo(ERRNO_CODES.EPERM);
+    return -1;
+  },
+
+  __map_file__deps: ['$ERRNO_CODES', '__setErrNo'],
+  __map_file: function(pathname, size) {
     ___setErrNo(ERRNO_CODES.EPERM);
     return -1;
   },
@@ -2778,7 +2895,7 @@ LibraryManager.library = {
 
   longjmp__deps: ['saveSetjmp', 'testSetjmp'],
   longjmp: function(env, value) {
-    asm['setThrew'](env, value || 1);
+    Module['setThrew'](env, value || 1);
     throw 'longjmp';
   },
   emscripten_longjmp__deps: ['longjmp'],
@@ -3472,9 +3589,7 @@ LibraryManager.library = {
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_family, 'family', 'i32') }}};
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_socktype, 'type', 'i32') }}};
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_protocol, 'proto', 'i32') }}};
-      if (canon) {
-        {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_canonname, 'canon', 'i32') }}};
-      }
+      {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_canonname, 'canon', 'i32') }}};
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addr, 'sa', '*') }}};
       if (family === {{{ cDefine('AF_INET6') }}}) {
         {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addrlen, C_STRUCTS.sockaddr_in6.__size__, 'i32') }}};
@@ -4169,12 +4284,6 @@ LibraryManager.library = {
   // USE_FULL_LIBRARY hacks
   realloc: function() { throw 'bad' },
 
-  // internal musl requirements that we do, for now
-  _pthread_cleanup_push: function(){},
-  _pthread_cleanup_pop: function(){},
-  __pthread_self: function() { abort() },
-  pthread_setcancelstate: function() { return 0 },
-
   // libunwind
 
   _Unwind_Backtrace__deps: ['emscripten_get_callstack_js'],
@@ -4182,7 +4291,7 @@ LibraryManager.library = {
     var trace = _emscripten_get_callstack_js();
     var parts = trace.split('\n');
     for (var i = 0; i < parts.length; i++) {
-      var ret = Runtime.dynCall('iii', [0, arg]);
+      var ret = Module['dynCall_iii'](func, 0, arg);
       if (ret !== 0) return;
     }
   },

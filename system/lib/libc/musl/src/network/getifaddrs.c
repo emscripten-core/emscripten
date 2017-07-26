@@ -1,181 +1,216 @@
-/* (C) 2013 John Spencer. released under musl's standard MIT license. */
-#undef _GNU_SOURCE
 #define _GNU_SOURCE
-#include <ifaddrs.h>
-#include <stdlib.h>
-#include <net/if.h> /* IFNAMSIZ, ifreq, ifconf */
-#include <stdio.h>
-#include <ctype.h>
-#include <string.h>
 #include <errno.h>
-#include <arpa/inet.h> /* inet_pton */
+#include <string.h>
+#include <stdlib.h>
 #include <unistd.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
+#include <ifaddrs.h>
+#include <syscall.h>
+#include <net/if.h>
+#include <netinet/in.h>
+#include "netlink.h"
 
-typedef union {
-	struct sockaddr_in6 v6;
+#define IFADDRS_HASH_SIZE 64
+
+/* getifaddrs() reports hardware addresses with PF_PACKET that implies
+ * struct sockaddr_ll.  But e.g. Infiniband socket address length is
+ * longer than sockaddr_ll.ssl_addr[8] can hold. Use this hack struct
+ * to extend ssl_addr - callers should be able to still use it. */
+struct sockaddr_ll_hack {
+	unsigned short sll_family, sll_protocol;
+	int sll_ifindex;
+	unsigned short sll_hatype;
+	unsigned char sll_pkttype, sll_halen;
+	unsigned char sll_addr[24];
+};
+
+union sockany {
+	struct sockaddr sa;
+	struct sockaddr_ll_hack ll;
 	struct sockaddr_in v4;
-} soa;
+	struct sockaddr_in6 v6;
+};
 
-typedef struct ifaddrs_storage {
+struct ifaddrs_storage {
 	struct ifaddrs ifa;
-	soa addr;
-	soa netmask;
-	soa dst;
+	struct ifaddrs_storage *hash_next;
+	union sockany addr, netmask, ifu;
+	unsigned int index;
 	char name[IFNAMSIZ+1];
-} stor;
-#define next ifa.ifa_next
+};
 
-static stor* list_add(stor** list, stor** head, char* ifname)
-{
-	stor* curr = calloc(1, sizeof(stor));
-	if(curr) {
-		strcpy(curr->name, ifname);
-		curr->ifa.ifa_name = curr->name;
-		if(*head) (*head)->next = (struct ifaddrs*) curr;
-		*head = curr;
-		if(!*list) *list = curr;
-	}
-	return curr;
-}
+struct ifaddrs_ctx {
+	struct ifaddrs_storage *first;
+	struct ifaddrs_storage *last;
+	struct ifaddrs_storage *hash[IFADDRS_HASH_SIZE];
+};
 
 void freeifaddrs(struct ifaddrs *ifp)
 {
-	stor *head = (stor *) ifp;
-	while(head) {
-		void *p = head;
-		head = (stor *) head->next;
-		free(p);
+	struct ifaddrs *n;
+	while (ifp) {
+		n = ifp->ifa_next;
+		free(ifp);
+		ifp = n;
 	}
 }
 
-static void ipv6netmask(unsigned prefix_length, struct sockaddr_in6 *sa)
+static void copy_addr(struct sockaddr **r, int af, union sockany *sa, void *addr, size_t addrlen, int ifindex)
 {
-	unsigned char* hb = sa->sin6_addr.s6_addr;
-	unsigned onebytes = prefix_length / 8;
-	unsigned bits = prefix_length % 8;
-	unsigned nullbytes = 16 - onebytes;
-	memset(hb, -1, onebytes);
-	memset(hb+onebytes, 0, nullbytes);
-	if(bits) {
-		unsigned char x = -1;
-		x <<= 8 - bits;
-		hb[onebytes] = x;
+	uint8_t *dst;
+	int len;
+
+	switch (af) {
+	case AF_INET:
+		dst = (uint8_t*) &sa->v4.sin_addr;
+		len = 4;
+		break;
+	case AF_INET6:
+		dst = (uint8_t*) &sa->v6.sin6_addr;
+		len = 16;
+		if (IN6_IS_ADDR_LINKLOCAL(addr) || IN6_IS_ADDR_MC_LINKLOCAL(addr))
+			sa->v6.sin6_scope_id = ifindex;
+		break;
+	default:
+		return;
 	}
+	if (addrlen < len) return;
+	sa->sa.sa_family = af;
+	memcpy(dst, addr, len);
+	*r = &sa->sa;
 }
 
-static void dealwithipv6(stor **list, stor** head)
+static void gen_netmask(struct sockaddr **r, int af, union sockany *sa, int prefixlen)
 {
-	FILE* f = fopen("/proc/net/if_inet6", "rbe");
-	/* 00000000000000000000000000000001 01 80 10 80 lo
-	   A                                B  C  D  E  F
-	   all numbers in hex
-	   A = addr B=netlink device#, C=prefix length,
-	   D = scope value (ipv6.h) E = interface flags (rnetlink.h, addrconf.c)
-	   F = if name */
-	char v6conv[32 + 7 + 1], *v6;
-	char *line, linebuf[512];
-	if(!f) return;
-	while((line = fgets(linebuf, sizeof linebuf, f))) {
-		v6 = v6conv;
-		size_t i = 0;
-		for(; i < 8; i++) {
-			memcpy(v6, line, 4);
-			v6+=4;
-			*v6++=':';
-			line+=4;
+	uint8_t addr[16] = {0};
+	int i;
+
+	if (prefixlen > 8*sizeof(addr)) prefixlen = 8*sizeof(addr);
+	i = prefixlen / 8;
+	memset(addr, 0xff, i);
+	if (i < sizeof(addr)) addr[i++] = 0xff << (8 - (prefixlen % 8));
+	copy_addr(r, af, sa, addr, sizeof(addr), 0);
+}
+
+static void copy_lladdr(struct sockaddr **r, union sockany *sa, void *addr, size_t addrlen, int ifindex, unsigned short hatype)
+{
+	if (addrlen > sizeof(sa->ll.sll_addr)) return;
+	sa->ll.sll_family = AF_PACKET;
+	sa->ll.sll_ifindex = ifindex;
+	sa->ll.sll_hatype = hatype;
+	sa->ll.sll_halen = addrlen;
+	memcpy(sa->ll.sll_addr, addr, addrlen);
+	*r = &sa->sa;
+}
+
+static int netlink_msg_to_ifaddr(void *pctx, struct nlmsghdr *h)
+{
+	struct ifaddrs_ctx *ctx = pctx;
+	struct ifaddrs_storage *ifs, *ifs0;
+	struct ifinfomsg *ifi = NLMSG_DATA(h);
+	struct ifaddrmsg *ifa = NLMSG_DATA(h);
+	struct rtattr *rta;
+	int stats_len = 0;
+
+	if (h->nlmsg_type == RTM_NEWLINK) {
+		for (rta = NLMSG_RTA(h, sizeof(*ifi)); NLMSG_RTAOK(rta, h); rta = RTA_NEXT(rta)) {
+			if (rta->rta_type != IFLA_STATS) continue;
+			stats_len = RTA_DATALEN(rta);
+			break;
 		}
-		--v6; *v6 = 0;
-		line++;
-		unsigned b, c, d, e;
-		char name[IFNAMSIZ+1];
-		if(5 == sscanf(line, "%x %x %x %x %s", &b, &c, &d, &e, name)) {
-			struct sockaddr_in6 sa = {0};
-			if(1 == inet_pton(AF_INET6, v6conv, &sa.sin6_addr)) {
-				sa.sin6_family = AF_INET6;
-				stor* curr = list_add(list, head, name);
-				if(!curr) goto out;
-				curr->addr.v6 = sa;
-				curr->ifa.ifa_addr = (struct sockaddr*) &curr->addr;
-				ipv6netmask(c, &sa);
-				curr->netmask.v6 = sa;
-				curr->ifa.ifa_netmask = (struct sockaddr*) &curr->netmask;
-				/* find ipv4 struct with the same interface name to copy flags */
-				stor* scan = *list;
-				for(;scan && strcmp(name, scan->name);scan=(stor*)scan->next);
-				if(scan) curr->ifa.ifa_flags = scan->ifa.ifa_flags;
-				else curr->ifa.ifa_flags = 0;
-			} else errno = 0;
-		}
+	} else {
+		for (ifs0 = ctx->hash[ifa->ifa_index % IFADDRS_HASH_SIZE]; ifs0; ifs0 = ifs0->hash_next)
+			if (ifs0->index == ifa->ifa_index)
+				break;
+		if (!ifs0) return 0;
 	}
-	out:
-	fclose(f);
+
+	ifs = calloc(1, sizeof(struct ifaddrs_storage) + stats_len);
+	if (ifs == 0) return -1;
+
+	if (h->nlmsg_type == RTM_NEWLINK) {
+		ifs->index = ifi->ifi_index;
+		ifs->ifa.ifa_flags = ifi->ifi_flags;
+
+		for (rta = NLMSG_RTA(h, sizeof(*ifi)); NLMSG_RTAOK(rta, h); rta = RTA_NEXT(rta)) {
+			switch (rta->rta_type) {
+			case IFLA_IFNAME:
+				if (RTA_DATALEN(rta) < sizeof(ifs->name)) {
+					memcpy(ifs->name, RTA_DATA(rta), RTA_DATALEN(rta));
+					ifs->ifa.ifa_name = ifs->name;
+				}
+				break;
+			case IFLA_ADDRESS:
+				copy_lladdr(&ifs->ifa.ifa_addr, &ifs->addr, RTA_DATA(rta), RTA_DATALEN(rta), ifi->ifi_index, ifi->ifi_type);
+				break;
+			case IFLA_BROADCAST:
+				copy_lladdr(&ifs->ifa.ifa_broadaddr, &ifs->ifu, RTA_DATA(rta), RTA_DATALEN(rta), ifi->ifi_index, ifi->ifi_type);
+				break;
+			case IFLA_STATS:
+				ifs->ifa.ifa_data = (void*)(ifs+1);
+				memcpy(ifs->ifa.ifa_data, RTA_DATA(rta), RTA_DATALEN(rta));
+				break;
+			}
+		}
+		if (ifs->ifa.ifa_name) {
+			unsigned int bucket = ifs->index % IFADDRS_HASH_SIZE;
+			ifs->hash_next = ctx->hash[bucket];
+			ctx->hash[bucket] = ifs;
+		}
+	} else {
+		ifs->ifa.ifa_name = ifs0->ifa.ifa_name;
+		ifs->ifa.ifa_flags = ifs0->ifa.ifa_flags;
+		for (rta = NLMSG_RTA(h, sizeof(*ifa)); NLMSG_RTAOK(rta, h); rta = RTA_NEXT(rta)) {
+			switch (rta->rta_type) {
+			case IFA_ADDRESS:
+				/* If ifa_addr is already set we, received an IFA_LOCAL before
+				 * so treat this as destination address */
+				if (ifs->ifa.ifa_addr)
+					copy_addr(&ifs->ifa.ifa_dstaddr, ifa->ifa_family, &ifs->ifu, RTA_DATA(rta), RTA_DATALEN(rta), ifa->ifa_index);
+				else
+					copy_addr(&ifs->ifa.ifa_addr, ifa->ifa_family, &ifs->addr, RTA_DATA(rta), RTA_DATALEN(rta), ifa->ifa_index);
+				break;
+			case IFA_BROADCAST:
+				copy_addr(&ifs->ifa.ifa_broadaddr, ifa->ifa_family, &ifs->ifu, RTA_DATA(rta), RTA_DATALEN(rta), ifa->ifa_index);
+				break;
+			case IFA_LOCAL:
+				/* If ifa_addr is set and we get IFA_LOCAL, assume we have
+				 * a point-to-point network. Move address to correct field. */
+				if (ifs->ifa.ifa_addr) {
+					ifs->ifu = ifs->addr;
+					ifs->ifa.ifa_dstaddr = &ifs->ifu.sa;
+					memset(&ifs->addr, 0, sizeof(ifs->addr));
+				}
+				copy_addr(&ifs->ifa.ifa_addr, ifa->ifa_family, &ifs->addr, RTA_DATA(rta), RTA_DATALEN(rta), ifa->ifa_index);
+				break;
+			case IFA_LABEL:
+				if (RTA_DATALEN(rta) < sizeof(ifs->name)) {
+					memcpy(ifs->name, RTA_DATA(rta), RTA_DATALEN(rta));
+					ifs->ifa.ifa_name = ifs->name;
+				}
+				break;
+			}
+		}
+		if (ifs->ifa.ifa_addr)
+			gen_netmask(&ifs->ifa.ifa_netmask, ifa->ifa_family, &ifs->netmask, ifa->ifa_prefixlen);
+	}
+
+	if (ifs->ifa.ifa_name) {
+		if (!ctx->first) ctx->first = ifs;
+		if (ctx->last) ctx->last->ifa.ifa_next = &ifs->ifa;
+		ctx->last = ifs;
+	} else {
+		free(ifs);
+	}
+	return 0;
 }
 
 int getifaddrs(struct ifaddrs **ifap)
 {
-	stor *list = 0, *head = 0;
-	struct if_nameindex* ii = if_nameindex();
-	if(!ii) return -1;
-	size_t i;
-	for(i = 0; ii[i].if_index || ii[i].if_name; i++) {
-		stor* curr = list_add(&list, &head, ii[i].if_name);
-		if(!curr) {
-			if_freenameindex(ii);
-			goto err2;
-		}
-	}
-	if_freenameindex(ii);
-
-	int sock = socket(PF_INET, SOCK_DGRAM|SOCK_CLOEXEC, IPPROTO_IP);
-	if(sock == -1) goto err2;
-	struct ifreq reqs[32]; /* arbitrary chosen boundary */
-	struct ifconf conf = {.ifc_len = sizeof reqs, .ifc_req = reqs};
-	if(-1 == ioctl(sock, SIOCGIFCONF, &conf)) goto err;
-	size_t reqitems = conf.ifc_len / sizeof(struct ifreq);
-	for(head = list; head; head = (stor*)head->next) {
-		for(i = 0; i < reqitems; i++) {
-			// get SIOCGIFADDR of active interfaces.
-			if(!strcmp(reqs[i].ifr_name, head->name)) {
-				head->addr.v4 = *(struct sockaddr_in*)&reqs[i].ifr_addr;
-				head->ifa.ifa_addr = (struct sockaddr*) &head->addr;
-				break;
-			}
-		}
-		struct ifreq req;
-		snprintf(req.ifr_name, sizeof req.ifr_name, "%s", head->name);
-		if(-1 == ioctl(sock, SIOCGIFFLAGS, &req)) goto err;
-
-		head->ifa.ifa_flags = req.ifr_flags;
-		if(head->ifa.ifa_addr) {
-			/* or'ing flags with IFF_LOWER_UP on active interfaces to mimic glibc */
-			head->ifa.ifa_flags |= IFF_LOWER_UP; 
-			if(-1 == ioctl(sock, SIOCGIFNETMASK, &req)) goto err;
-			head->netmask.v4 = *(struct sockaddr_in*)&req.ifr_netmask;
-			head->ifa.ifa_netmask = (struct sockaddr*) &head->netmask;
-	
-			if(head->ifa.ifa_flags & IFF_POINTOPOINT) {
-				if(-1 == ioctl(sock, SIOCGIFDSTADDR, &req)) goto err;
-				head->dst.v4 = *(struct sockaddr_in*)&req.ifr_dstaddr;
-			} else {
-				if(-1 == ioctl(sock, SIOCGIFBRDADDR, &req)) goto err;
-				head->dst.v4 = *(struct sockaddr_in*)&req.ifr_broadaddr;
-			}
-			head->ifa.ifa_ifu.ifu_dstaddr = (struct sockaddr*) &head->dst;
-		}
-	}
-	close(sock);
-	void* last = 0;
-	for(head = list; head; head=(stor*)head->next) last=head;
-	head = last;
-	dealwithipv6(&list, &head);
-	*ifap = (struct ifaddrs*) list;
-	return 0;
-	err:
-	close(sock);
-	err2:
-	freeifaddrs((struct ifaddrs*) list);
-	return -1;
+	struct ifaddrs_ctx _ctx, *ctx = &_ctx;
+	int r;
+	memset(ctx, 0, sizeof *ctx);
+	r = __rtnetlink_enumerate(AF_UNSPEC, AF_UNSPEC, netlink_msg_to_ifaddr, ctx);
+	if (r == 0) *ifap = &ctx->first->ifa;
+	else freeifaddrs(&ctx->first->ifa);
+	return r;
 }
-

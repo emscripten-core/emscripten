@@ -29,7 +29,7 @@ def make_relay_server(port1, port2):
   proc = Popen([PYTHON, path_from_root('tests', 'sockets', 'socket_relay.py'), str(port1), str(port2)])
   return proc
 
-class WebsockifyServerHarness:
+class WebsockifyServerHarness(object):
   def __init__(self, filename, args, listen_port, do_server_check=True):
     self.processes = []
     self.filename = filename
@@ -85,7 +85,7 @@ class WebsockifyServerHarness:
     clean_processes(self.processes)
 
 
-class CompiledServerHarness:
+class CompiledServerHarness(object):
   def __init__(self, filename, args, listen_port):
     self.processes = []
     self.filename = filename
@@ -587,7 +587,7 @@ int main () {
   def test_nodejs_sockets_echo(self):
     # This test checks that sockets work when the client code is run in Node.js
     # Run with ./runner.py sockets.test_nodejs_sockets_echo
-    if not NODE_JS in JS_ENGINES:
+    if NODE_JS not in JS_ENGINES:
         return self.skip('node is not present')
 
     sockets_include = '-I'+path_from_root('tests', 'sockets')

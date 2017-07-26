@@ -561,21 +561,23 @@ var LibrarySDL = {
           }
           
           var firstTouch = touches[0];
-          if (event.type == 'touchstart') {
-            SDL.DOMButtons[0] = 1;
+          if (firstTouch) {
+            if (event.type == 'touchstart') {
+              SDL.DOMButtons[0] = 1;
+            }
+            var mouseEventType;
+            switch(event.type) {
+              case 'touchstart': mouseEventType = 'mousedown'; break;
+              case 'touchmove': mouseEventType = 'mousemove'; break;
+            }
+            var mouseEvent = {
+              type: mouseEventType,
+              button: 0,
+              pageX: firstTouch.clientX,
+              pageY: firstTouch.clientY
+            };
+            SDL.events.push(mouseEvent);
           }
-          var mouseEventType;
-          switch(event.type) {
-            case 'touchstart': mouseEventType = 'mousedown'; break;
-            case 'touchmove': mouseEventType = 'mousemove'; break;
-          }
-          var mouseEvent = {
-            type: mouseEventType,
-            button: 0,
-            pageX: firstTouch.clientX,
-            pageY: firstTouch.clientY
-          };
-          SDL.events.push(mouseEvent);
 
           for (var i = 0; i < touches.length; i++) {
             var touch = touches[i];
@@ -850,7 +852,7 @@ var LibrarySDL = {
       if (!SDL.eventHandler) return;
 
       while (SDL.pollEvent(SDL.eventHandlerTemp)) {
-        Runtime.dynCall('iii', SDL.eventHandler, [SDL.eventHandlerContext, SDL.eventHandlerTemp]);
+        Module['dynCall_iii'](SDL.eventHandler, SDL.eventHandlerContext, SDL.eventHandlerTemp);
       }
     },
 
@@ -1024,9 +1026,19 @@ var LibrarySDL = {
       }
     },
 
+    makeFontString: function(height, fontName) {
+      if (fontName.charAt(0) != "'" && fontName.charAt(0) != '"') {
+        // https://developer.mozilla.org/ru/docs/Web/CSS/font-family
+        // Font family names containing whitespace should be quoted.
+        // BTW, quote all font names is easier than searching spaces
+        fontName = '"' + fontName + '"';
+      }
+      return height + 'px ' + fontName + ', serif';
+    },
+
     estimateTextWidth: function(fontData, text) {
       var h = fontData.size;
-      var fontString = h + 'px ' + fontData.name;
+      var fontString = SDL.makeFontString(h, fontData.name);
       var tempCtx = SDL.ttfContext;
 #if ASSERTIONS
       assert(tempCtx, 'TTF_Init must have been called');
@@ -1101,6 +1113,10 @@ var LibrarySDL = {
         audio.webAudioNode['onended'] = function() { audio['onended'](); } // For <media> element compatibility, route the onended signal to the instance.
 
         audio.webAudioPannerNode = SDL.audioContext['createPanner']();
+        // avoid Chrome bug
+        // If posz = 0, the sound will come from only the right.
+        // By posz = -0.5 (slightly ahead), the sound will come from right and left correctly.
+        audio.webAudioPannerNode["setPosition"](0, 0, -.5);
         audio.webAudioPannerNode['panningModel'] = 'equalpower';
 
         // Add an intermediate gain node to control volume.
@@ -1213,7 +1229,7 @@ var LibrarySDL = {
       if (typeof button === 'object') {
         // Current gamepad API editor's draft (Firefox Nightly)
         // https://dvcs.w3.org/hg/gamepad/raw-file/default/gamepad.html#idl-def-GamepadButton
-        return button.pressed;
+        return button['pressed'];
       } else {
         // Current gamepad API working draft (Firefox / Chrome Stable)
         // http://www.w3.org/TR/2012/WD-gamepad-20120529/#gamepad-interface
@@ -1225,6 +1241,8 @@ var LibrarySDL = {
       for (var joystick in SDL.lastJoystickState) {
         var state = SDL.getGamepad(joystick - 1);
         var prevState = SDL.lastJoystickState[joystick];
+        // If joystick was removed, state returns null.
+        if (typeof state === 'undefined') return;
         // Check only if the timestamp has differed.
         // NOTE: Timestamp is not available in Firefox.
         if (typeof state.timestamp !== 'number' || state.timestamp !== prevState.timestamp) {
@@ -2116,17 +2134,17 @@ var LibrarySDL = {
   IMG_Load_RW: function(rwopsID, freeSrc) {
     try {
       // stb_image integration support
-      function cleanup() {
+      var cleanup = function() {
         if (rwops && freeSrc) _SDL_FreeRW(rwopsID);
-      };
-      function addCleanup(func) {
+      }
+      var addCleanup = function(func) {
         var old = cleanup;
         cleanup = function added_cleanup() {
           old();
           func();
         }
       }
-      function callStbImage(func, params) {
+      var callStbImage = function(func, params) {
         var x = Module['_malloc']({{{ QUANTUM_SIZE }}});
         var y = Module['_malloc']({{{ QUANTUM_SIZE }}});
         var comp = Module['_malloc']({{{ QUANTUM_SIZE }}});
@@ -2209,6 +2227,20 @@ var LibrarySDL = {
             data[destPtr++] = {{{ makeGetValue('sourcePtr++', 0, 'i8', null, 1) }}};
             data[destPtr++] = {{{ makeGetValue('sourcePtr++', 0, 'i8', null, 1) }}};
             data[destPtr++] = 255;
+          }
+        } else if (raw.bpp == 2) {
+          // grayscale + alpha
+          var pixels = raw.size;
+          var data = imageData.data;
+          var sourcePtr = raw.data;
+          var destPtr = 0;
+          for (var i = 0; i < pixels; i++) {
+            var gray = {{{ makeGetValue('sourcePtr++', 0, 'i8', null, 1) }}};
+            var alpha = {{{ makeGetValue('sourcePtr++', 0, 'i8', null, 1) }}};
+            data[destPtr++] = gray;
+            data[destPtr++] = gray;
+            data[destPtr++] = gray;
+            data[destPtr++] = alpha;
           }
         } else if (raw.bpp == 1) {
           // grayscale
@@ -2338,7 +2370,7 @@ var LibrarySDL = {
           if (secsUntilNextPlayStart >= SDL.audio.bufferingDelay + SDL.audio.bufferDurationSecs*SDL.audio.numSimultaneouslyQueuedBuffers) return;
 
           // Ask SDL audio data from the user code.
-          Runtime.dynCall('viii', SDL.audio.callback, [SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize]);
+          Module['dynCall_viii'](SDL.audio.callback, SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize);
           // And queue it to be played after the currently playing audio stream.
           SDL.audio.pushAudio(SDL.audio.buffer, SDL.audio.bufferSize);
         }
@@ -2586,7 +2618,7 @@ var LibrarySDL = {
 
       if (type === 2/*SDL_RWOPS_STDFILE*/) {
         var fp = {{{ makeGetValue('rwopsID + ' + 28 /*hidden.stdio.fp*/, '0', 'i32') }}};
-        var fd = Module['_fileno'](file);
+        var fd = Module['_fileno'](fp);
         var stream = FS.getStream(fd);
         if (stream) {
           rwops = { filename: stream.path };
@@ -2875,7 +2907,7 @@ var LibrarySDL = {
     }
     SDL.music.audio = null;
     if (SDL.hookMusicFinished) {
-      Runtime.dynCall('v', SDL.hookMusicFinished);
+      Module['dynCall_v'](SDL.hookMusicFinished);
     }
     return 0;
   },
@@ -2981,14 +3013,17 @@ var LibrarySDL = {
     var w = SDL.estimateTextWidth(fontData, text);
     var h = fontData.size;
     var color = SDL.loadColorToCSSRGB(color); // XXX alpha breaks fonts?
-    var fontString = h + 'px ' + fontData.name;
+    var fontString = SDL.makeFontString(h, fontData.name);
     var surf = SDL.makeSurface(w, h, 0, false, 'text:' + text); // bogus numbers..
     var surfData = SDL.surfaces[surf];
     surfData.ctx.save();
     surfData.ctx.fillStyle = color;
     surfData.ctx.font = fontString;
-    surfData.ctx.textBaseline = 'top';
-    surfData.ctx.fillText(text, 0, 0);
+    // use bottom alligment, because it works 
+    // same in all browsers, more info here:
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=737852
+    surfData.ctx.textBaseline = 'bottom';
+    surfData.ctx.fillText(text, 0, h|0);
     surfData.ctx.restore();
     return surf;
   },
@@ -3412,7 +3447,7 @@ var LibrarySDL = {
 
   SDL_AddTimer: function(interval, callback, param) {
     return window.setTimeout(function() {
-      Runtime.dynCall('iii', callback, [interval, param]);
+      Module['dynCall_iii'](callback, interval, param);
     }, interval);
   },
   SDL_RemoveTimer: function(id) {

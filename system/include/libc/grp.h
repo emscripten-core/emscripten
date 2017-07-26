@@ -16,8 +16,7 @@ extern "C" {
 
 #include <bits/alltypes.h>
 
-struct group
-{
+struct group {
 	char *gr_name;
 	char *gr_passwd;
 	gid_t gr_gid;

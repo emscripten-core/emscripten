@@ -60,6 +60,10 @@ TODO:        You can also provide .crn files yourself, pre-crunched. With this o
              to dds files in the browser, exactly the same as if this tool compressed them.
 '''
 
+from toolchain_profiler import ToolchainProfiler
+if __name__ == '__main__':
+  ToolchainProfiler.record_process_start()
+
 import os, sys, shutil, random, uuid, ctypes
 import posixpath
 import shared
@@ -160,12 +164,14 @@ for arg in sys.argv[2:]:
     leading = ''
   elif leading == 'preload' or leading == 'embed':
     mode = leading
-    uses_at_notation = '@' in arg.replace('@@', '') # '@@' in input string means there is an actual @ character, a single '@' means the 'src@dst' notation.
-    arg = arg.replace('@@', '@')
+    at_position = arg.replace('@@', '__').find('@') # position of @ if we're doing 'src@dst'. '__' is used to keep the index same with the original if they escaped with '@@'.
+    uses_at_notation = (at_position != -1) # '@@' in input string means there is an actual @ character, a single '@' means the 'src@dst' notation.
+    
     if uses_at_notation:
-      srcpath, dstpath = arg.split('@') # User is specifying destination filename explicitly.
+      srcpath = arg[0:at_position].replace('@@', '@') # split around the @
+      dstpath = arg[at_position+1:].replace('@@', '@')
     else:
-      srcpath = dstpath = arg # Use source path as destination path.
+      srcpath = dstpath = arg.replace('@@', '@') # Use source path as destination path.
     if os.path.isfile(srcpath) or os.path.isdir(srcpath):
       data_files.append({ 'srcpath': srcpath, 'dstpath': dstpath, 'mode': mode, 'explicit_dst_path': uses_at_notation })
     else:
@@ -463,7 +469,7 @@ if has_preloaded:
         }
 ''', create_preloaded if use_preload_plugins else create_data, '''
         var files = metadata.files;
-        for (i = 0; i < files.length; ++i) {
+        for (var i = 0; i < files.length; ++i) {
           new DataRequest(files[i].start, files[i].end, files[i].crunched, files[i].audio).open('GET', files[i].filename);
         }
 ''' if not lz4 else '')
@@ -520,7 +526,7 @@ if has_preloaded:
   '''
     use_data += '''
           var files = metadata.files;
-          for (i = 0; i < files.length; ++i) {
+          for (var i = 0; i < files.length; ++i) {
             DataRequest.prototype.requests[files[i].filename].onload();
           }
     '''
@@ -773,8 +779,10 @@ if has_preloaded:
     # Not using preload cache, so we might as well start the xhr ASAP, potentially before JS parsing of the main codebase if it's after us.
     # Only tricky bit is the fetch is async, but also when runWithFS is called is async, so we handle both orderings.
     ret += r'''
-      var fetched = null, fetchedCallback = null;
-      fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, function(data) {
+      var fetchedCallback = null;
+      var fetched = Module['getPreloadedPackage'] ? Module['getPreloadedPackage'](REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE) : null;
+
+      if (!fetched) fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, function(data) {
         if (fetchedCallback) {
           fetchedCallback(data);
           fetchedCallback = null;
@@ -864,3 +872,6 @@ if force or len(data_files) > 0:
       f = open(jsoutput + '.metadata', 'w')
       json.dump(metadata, f, separators=(',', ':'))
       f.close()
+
+if __name__ == '__main__':
+  sys.exit(0)

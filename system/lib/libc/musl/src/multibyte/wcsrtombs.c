@@ -1,9 +1,3 @@
-/* 
- * This code was written by Rich Felker in 2010; no copyright is claimed.
- * This code is in the public domain. Attribution is appreciated but
- * unnecessary.
- */
-
 #include <wchar.h>
 
 size_t wcsrtombs(char *restrict s, const wchar_t **restrict ws, size_t n, mbstate_t *restrict st)

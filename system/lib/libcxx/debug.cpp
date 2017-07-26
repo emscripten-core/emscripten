@@ -7,15 +7,78 @@
 //
 //===----------------------------------------------------------------------===//
 
-#define _LIBCPP_DEBUG 1
 #include "__config"
 #include "__debug"
 #include "functional"
 #include "algorithm"
+#include "string"
+#include "cstdio"
 #include "__hash_table"
 #include "mutex"
 
 _LIBCPP_BEGIN_NAMESPACE_STD
+
+static std::string make_what_str(__libcpp_debug_info const& info) {
+  string msg = info.__file_;
+  msg += ":" + to_string(info.__line_) + ": _LIBCPP_ASSERT '";
+  msg += info.__pred_;
+  msg += "' failed. ";
+  msg += info.__msg_;
+  return msg;
+}
+
+_LIBCPP_SAFE_STATIC __libcpp_debug_function_type
+    __libcpp_debug_function = __libcpp_abort_debug_function;
+
+bool __libcpp_set_debug_function(__libcpp_debug_function_type __func) {
+  __libcpp_debug_function = __func;
+  return true;
+}
+
+_LIBCPP_NORETURN void __libcpp_abort_debug_function(__libcpp_debug_info const& info) {
+  std::fprintf(stderr, "%s\n", make_what_str(info).c_str());
+  std::abort();
+}
+
+_LIBCPP_NORETURN void __libcpp_throw_debug_function(__libcpp_debug_info const& info) {
+#ifndef _LIBCPP_NO_EXCEPTIONS
+  throw __libcpp_debug_exception(info);
+#else
+  __libcpp_abort_debug_function(info);
+#endif
+}
+
+struct __libcpp_debug_exception::__libcpp_debug_exception_imp {
+  __libcpp_debug_info __info_;
+  std::string __what_str_;
+};
+
+__libcpp_debug_exception::__libcpp_debug_exception() _NOEXCEPT
+    : __imp_(nullptr) {
+}
+
+__libcpp_debug_exception::__libcpp_debug_exception(
+    __libcpp_debug_info const& info) : __imp_(new __libcpp_debug_exception_imp)
+{
+  __imp_->__info_ = info;
+  __imp_->__what_str_ = make_what_str(info);
+}
+__libcpp_debug_exception::__libcpp_debug_exception(
+    __libcpp_debug_exception const& other) : __imp_(nullptr) {
+  if (other.__imp_)
+    __imp_ = new __libcpp_debug_exception_imp(*other.__imp_);
+}
+
+__libcpp_debug_exception::~__libcpp_debug_exception() _NOEXCEPT {
+  if (__imp_)
+    delete __imp_;
+}
+
+const char* __libcpp_debug_exception::what() const _NOEXCEPT {
+  if (__imp_)
+    return __imp_->__what_str_.c_str();
+  return "__libcpp_debug_exception";
+}
 
 _LIBCPP_FUNC_VIS
 __libcpp_db*
@@ -152,11 +215,8 @@ __libcpp_db::__insert_c(void* __c)
         size_t nc = __next_prime(2*static_cast<size_t>(__cend_ - __cbeg_) + 1);
         __c_node** cbeg = static_cast<__c_node**>(calloc(nc, sizeof(void*)));
         if (cbeg == nullptr)
-#ifndef _LIBCPP_NO_EXCEPTIONS
-            throw bad_alloc();
-#else
-            abort();
-#endif
+            __throw_bad_alloc();
+
         for (__c_node** p = __cbeg_; p != __cend_; ++p)
         {
             __c_node* q = *p;
@@ -178,11 +238,8 @@ __libcpp_db::__insert_c(void* __c)
     __c_node* r = __cbeg_[hc] =
       static_cast<__c_node*>(malloc(sizeof(__c_node)));
     if (__cbeg_[hc] == nullptr)
-#ifndef _LIBCPP_NO_EXCEPTIONS
-        throw bad_alloc();
-#else
-        abort();
-#endif
+        __throw_bad_alloc();
+
     r->__c_ = __c;
     r->__next_ = p;
     ++__csz_;
@@ -475,11 +532,8 @@ __c_node::__add(__i_node* i)
         __i_node** beg =
            static_cast<__i_node**>(malloc(nc * sizeof(__i_node*)));
         if (beg == nullptr)
-#ifndef _LIBCPP_NO_EXCEPTIONS
-            throw bad_alloc();
-#else
-            abort();
-#endif
+            __throw_bad_alloc();
+
         if (nc > 1)
             memcpy(beg, beg_, nc/2*sizeof(__i_node*));
         free(beg_);
@@ -501,11 +555,8 @@ __libcpp_db::__insert_iterator(void* __i)
         size_t nc = __next_prime(2*static_cast<size_t>(__iend_ - __ibeg_) + 1);
         __i_node** ibeg = static_cast<__i_node**>(calloc(nc, sizeof(void*)));
         if (ibeg == nullptr)
-#ifndef _LIBCPP_NO_EXCEPTIONS
-            throw bad_alloc();
-#else
-            abort();
-#endif
+            __throw_bad_alloc();
+
         for (__i_node** p = __ibeg_; p != __iend_; ++p)
         {
             __i_node* q = *p;
@@ -527,11 +578,8 @@ __libcpp_db::__insert_iterator(void* __i)
     __i_node* r = __ibeg_[hi] =
       static_cast<__i_node*>(malloc(sizeof(__i_node)));
     if (r == nullptr)
-#ifndef _LIBCPP_NO_EXCEPTIONS
-        throw bad_alloc();
-#else
-        abort();
-#endif
+        __throw_bad_alloc();
+
     ::new(r) __i_node(__i, p, nullptr);
     ++__isz_;
     return r;

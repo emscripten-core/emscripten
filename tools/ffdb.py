@@ -292,7 +292,7 @@ def b2g_install(target_app_path):
   cur_time = time.time()
   secs_elapsed = cur_time - start_time
   print 'Upload of ' + sizeof_fmt(file_size) + ' finished. Total time elapsed: ' + str(int(secs_elapsed)) + ' seconds. Data rate: {:5.2f} KB/second.'.format(file_size / 1024.0 / secs_elapsed)
-  if not 'appId' in reply:
+  if 'appId' not in reply:
     print 'Error: Application install failed! ' + str(reply)
     sys.exit()
   return reply['appId']
@@ -591,7 +591,7 @@ def main():
   logv('Connected. Handshake: ' + str(handshake))
 
   data = send_b2g_cmd('root', 'listTabs')
-  if not 'deviceActor' in data:
+  if 'deviceActor' not in data:
     print 'Error! Debugging connection was not available. Make sure that the "Remote debugging" developer option on the device is set to "ADB and Devtools".'
     sys.exit(1)
   deviceActorName = data['deviceActor']
@@ -618,7 +618,7 @@ def main():
         print '   No applications running.'
       else:
         print '   No applications installed.'
-    if not '--all' in sys.argv and not print_only_running:
+    if '--all' not in sys.argv and not print_only_running:
       print 'Not showing built-in apps that cannot be uninstalled. Pass --all to include those in the listing.'
   elif sys.argv[1] == 'launch' or sys.argv[1] == 'close' or sys.argv[1] == 'uninstall' or sys.argv[1] == 'getAppActor':
     if len(sys.argv) < 3:

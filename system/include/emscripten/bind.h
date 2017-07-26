@@ -24,7 +24,8 @@ namespace emscripten {
     namespace internal {
         typedef long GenericEnumValue;
 
-        typedef void (*GenericFunction)();
+        typedef void* GenericFunction;
+        typedef void (*VoidFunctionPtr)(void);
 
         // Implemented in JavaScript.  Don't call these directly.
         extern "C" {
@@ -1012,12 +1013,12 @@ namespace emscripten {
             }
 
             template<typename ClassType>
-            static GenericFunction getUpcaster() {
+            static VoidFunctionPtr getUpcaster() {
                 return nullptr;
             }
 
             template<typename ClassType>
-            static GenericFunction getDowncaster() {
+            static VoidFunctionPtr getDowncaster() {
                 return nullptr;
             }
         };
@@ -1120,7 +1121,7 @@ namespace emscripten {
             BaseSpecifier::template verify<ClassType>();
 
             auto _getActualType = &getActualType<ClassType>;
-            auto upcast = BaseSpecifier::template getUpcaster<ClassType>();
+            auto upcast   = BaseSpecifier::template getUpcaster<ClassType>();
             auto downcast = BaseSpecifier::template getDowncaster<ClassType>();
             auto destructor = &raw_destructor<ClassType>;
 

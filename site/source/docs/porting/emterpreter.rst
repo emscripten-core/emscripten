@@ -24,6 +24,8 @@ You can optionally use ``-s 'EMTERPRETIFY_FILE="data.binary"'`` to store the emt
 
 As usual, you can grep the ``tests/`` folder for examples of emterpreter usage in the test suite (search for ``EMTERPRETIFY``).
 
+    .. note:: Setting ``EMTERPRETIFY=1`` forces ``js-opts=1``, because we convert to the emterpreter's binary format using a js-optimizer pass.
+
 Specific Use Cases
 ==================
 

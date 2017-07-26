@@ -9,7 +9,12 @@ Simple test runner. Consider using parallel_test_core.py for faster iteration ti
 
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string, random, operator, fnmatch, httplib
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib
+import webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer
+import multiprocessing, functools, stat, string, random, fnmatch, httplib
+import atexit
+import operator
+import parallel_runner
 from urllib import unquote
 
 # Setup
@@ -111,7 +116,8 @@ nondefault_test_modes = [
   'binaryen1',
   'binaryen2',
   'binaryen3',
-  'binaryen_native'
+  'binaryens',
+  'binaryenz',
 ]
 test_index = 0
 
@@ -277,12 +283,12 @@ class RunnerCore(unittest.TestCase):
       transform.write(post1)
       transform.write('\nprocess(sys.argv[1])\n')
       transform.close()
-      transform_args = ['--js-transform', "%s %s" % (PYTHON, transform_filename)]
+      transform_args = ['--js-transform', "%s '%s'" % (PYTHON, transform_filename)]
     Building.emcc(filename + '.o', Settings.serialize() + emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
     if post2: post2(filename + '.o.js')
 
   # Build JavaScript code from source code
-  def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, extra_emscripten_args=[], post_build=None):
+  def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, extra_emscripten_args=[], post_build=None, js_outfile=True):
 
     Building.pick_llvm_opts(3) # pick llvm opts here, so we include changes to Settings in the test case code
 
@@ -354,12 +360,13 @@ class RunnerCore(unittest.TestCase):
              all_files + \
              ['-o', filename + '.o.js']
       output = subprocess.check_call(args, stderr=self.stderr_redirect if not DEBUG else None)
-      assert os.path.exists(filename + '.o.js')
+      if js_outfile:
+        assert os.path.exists(filename + '.o.js')
 
     if output_processor is not None:
       output_processor(open(filename + '.o.js').read())
 
-    if self.emcc_args is not None:
+    if self.emcc_args is not None and js_outfile:
       src = open(filename + '.o.js').read()
       if self.uses_memory_init_file():
         # side memory init file, or an empty one in the js
@@ -616,14 +623,23 @@ class RunnerCore(unittest.TestCase):
       js_engines = filter(lambda engine: engine == SPIDERMONKEY_ENGINE or engine == V8_ENGINE, js_engines)
     return js_engines
 
-  def do_run_from_file(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[]):
+  def do_run_from_file(self, src, expected_output,
+                       args=[], output_nicerizer=None, output_processor=None,
+                       no_build=False, main_file=None, additional_files=[],
+                       js_engines=None, post_build=None, basename='src.cpp',
+                       libraries=[], includes=[], force_c=False, build_ll_hook=None,
+                       extra_emscripten_args=[]):
     self.do_run(open(src).read(), open(expected_output).read(),
                 args, output_nicerizer, output_processor, no_build, main_file,
                 additional_files, js_engines, post_build, basename, libraries,
                 includes, force_c, build_ll_hook, extra_emscripten_args)
 
   ## Does a complete test - builds, runs, checks output, etc.
-  def do_run(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[], assert_returncode=None):
+  def do_run(self, src, expected_output, args=[], output_nicerizer=None,
+             output_processor=None, no_build=False, main_file=None, additional_files=[],
+             js_engines=None, post_build=None, basename='src.cpp', libraries=[],
+             includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[],
+             assert_returncode=None):
     if Settings.ASYNCIFY == 1 and self.is_wasm_backend():
       return self.skip("wasm backend doesn't support ASYNCIFY yet")
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
@@ -663,7 +679,9 @@ class RunnerCore(unittest.TestCase):
       test_index += 1
 
   # No building - just process an existing .ll file (or .bc, which we turn into .ll)
-  def do_ll_run(self, ll_file, expected_output=None, args=[], js_engines=None, output_nicerizer=None, post_build=None, force_recompile=False, build_ll_hook=None, extra_emscripten_args=[], assert_returncode=None):
+  def do_ll_run(self, ll_file, expected_output=None, args=[], js_engines=None,
+                output_nicerizer=None, post_build=None, force_recompile=False,
+                build_ll_hook=None, extra_emscripten_args=[], assert_returncode=None):
     filename = os.path.join(self.get_dir(), 'src.cpp')
 
     self.prep_ll_run(filename, ll_file, force_recompile, build_ll_hook)
@@ -802,9 +820,11 @@ class BrowserCore(RunnerCore):
   #define REPORT_RESULT_INTERNAL(sync) \
     EM_ASM_({ \
       var xhr = new XMLHttpRequest(); \
-      xhr.open('GET', 'http://localhost:8888/report_result?' + $0, !$1); \
+      var result = $0; \
+      if (Module['pageThrewException']) result = 12345; \
+      xhr.open('GET', 'http://localhost:8888/report_result?' + result, !$1); \
       xhr.send(); \
-      setTimeout(function() { window.close() }, 1000); \
+      if (!Module['pageThrewException'] /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000); \
     }, result, sync);
   #define REPORT_RESULT() REPORT_RESULT_INTERNAL(0)
 #endif
@@ -865,7 +885,7 @@ class BrowserCore(RunnerCore):
             xhr = new XMLHttpRequest();
             xhr.open('GET', 'http://localhost:8888/report_result?' + wrong);
             xhr.send();
-            setTimeout(function() { window.close() }, 1000);
+            if (wrong < 10 /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000);
           };
           actualImage.src = actualUrl;
         }
@@ -937,13 +957,18 @@ class BrowserCore(RunnerCore):
         assert not post_build
         post_build = self.post_manual_reftest
       # run proxied
-      self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build, original_args + ['--proxy-to-worker', '-s', 'GL_TESTING=1'], outfile, message, timeout=timeout)
+      self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
+                 original_args + ['--proxy-to-worker', '-s', 'GL_TESTING=1'], outfile, message, timeout=timeout)
 
 ###################################################################################################
 
 def get_zlib_library(runner_core):
   if WINDOWS:
-    return runner_core.get_library('zlib', os.path.join('libz.a'), configure=[path_from_root('emconfigure.bat')], configure_args=['cmake', '.', '-DBUILD_SHARED_LIBS=OFF'], make=['mingw32-make'], make_args=[])
+    return runner_core.get_library('zlib', os.path.join('libz.a'),
+                                   configure=[path_from_root('emconfigure.bat')],
+                                   configure_args=['cmake', '.', '-DBUILD_SHARED_LIBS=OFF'],
+                                   make=['mingw32-make'],
+                                   make_args=[])
   else:
     return runner_core.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])
 
@@ -965,25 +990,49 @@ def get_bullet_library(runner_core, use_cmake):
                       os.path.join('src', '.libs', 'libBulletCollision.a'),
                       os.path.join('src', '.libs', 'libLinearMath.a')]
 
-  return runner_core.get_library('bullet', generated_libs, configure=configure_commands, configure_args=configure_args, cache_name_extra=configure_commands[0])
+  return runner_core.get_library('bullet', generated_libs,
+                                 configure=configure_commands,
+                                 configure_args=configure_args,
+                                 cache_name_extra=configure_commands[0])
 
-if __name__ == '__main__':
-  if len(sys.argv) == 2 and sys.argv[1] in ['--help', '-h']:
+
+def main(args):
+  print_help_if_args_empty(args)
+  args = get_default_args(args)
+  print_js_engine_message()
+  sanity_checks()
+  args = args_with_extracted_js_engine_override(args)
+  args = args_with_default_suite_prepended(args)
+  args = args_with_expanded_all_suite(args)
+  modules = get_and_import_modules()
+  all_tests = get_all_tests(modules)
+  args = args_with_expanded_wildcards(args, all_tests)
+  args = skip_requested_tests(args, modules)
+  args = args_for_random_tests(args, modules)
+  suites, unmatched_tests = load_test_suites(args, modules)
+  run_tests(suites, unmatched_tests)
+
+def print_help_if_args_empty(args):
+  if len(args) == 2 and args[1] in ['--help', '-h']:
     print HELP_TEXT
     sys.exit(0)
 
+def get_default_args(args):
   # If no tests were specified, run the core suite
-  if len(sys.argv) == 1:
-    sys.argv = [sys.argv[0]] + map(lambda mode: mode, test_modes)
+  if len(args) == 1:
     print HELP_TEXT
     time.sleep(2)
+    return [args[0]] + map(lambda mode: mode, test_modes)
+  return args
 
+def print_js_engine_message():
   if use_all_engines:
     print '(using ALL js engines)'
   else:
     logging.warning('use EM_ALL_ENGINES=1 in the env to run against all JS engines, which is slower but provides more coverage')
 
-  # Sanity checks
+def sanity_checks():
+  global JS_ENGINES
   total_engines = len(JS_ENGINES)
   JS_ENGINES = filter(jsrun.check_engine, JS_ENGINES)
   if len(JS_ENGINES) == 0:
@@ -991,38 +1040,46 @@ if __name__ == '__main__':
   elif len(JS_ENGINES) < total_engines:
     print 'WARNING: Not all the JS engines in JS_ENGINES appears to work, ignoring those.'
 
-  # Create a list of modules to load tests from
-  modules = []
-  for filename in glob.glob(os.path.join(os.path.dirname(__file__), 'test*.py')):
-    module_dir, module_file = os.path.split(filename)
-    module_name, module_ext = os.path.splitext(module_file)
-    __import__(module_name)
-    modules.append(sys.modules[module_name])
-
-  # Extract the JS engine override from the arguments (used by benchmarks)
-  for i in range(1, len(sys.argv)):
-    arg = sys.argv[i]
+def args_with_extracted_js_engine_override(args):
+  # used by benchmarks
+  for i in range(1, len(args)):
+    arg = args[i]
     if arg.isupper():
       print 'Interpreting all capital argument "%s" as JS_ENGINE override' % arg
       Building.JS_ENGINE_OVERRIDE = eval(arg)
-      sys.argv[i] = None
-  sys.argv = filter(lambda arg: arg is not None, sys.argv)
+      args[i] = None
+  return filter(lambda arg: arg is not None, args)
 
-  # If an argument comes in as test_*, treat it as a test of the default suite
-  sys.argv = map(lambda arg: arg if not arg.startswith('test_') else 'default.' + arg, sys.argv)
+def args_with_default_suite_prepended(args):
+  def prepend_default(arg):
+    if arg.startswith('test_'):
+      return 'default.' + arg
+    return arg
+  return map(prepend_default, args)
 
+def args_with_expanded_all_suite(args):
   # If a test (e.g. test_html) is specified as ALL.test_html, add an entry for each test_mode
-  new_args = [sys.argv[0]]
-  for i in range(1, len(sys.argv)):
-    arg = sys.argv[i]
+  new_args = [args[0]]
+  for i in range(1, len(args)):
+    arg = args[i]
     if arg.startswith('ALL.'):
       ignore, test = arg.split('.')
       print 'Running all test modes on test "%s"' % test
       new_args += map(lambda mode: mode+'.'+test, test_modes)
     else:
       new_args += [arg]
-  sys.argv = new_args
+  return new_args
 
+def get_and_import_modules():
+  modules = []
+  for filename in glob.glob(os.path.join(os.path.dirname(__file__), 'test*.py')):
+    module_dir, module_file = os.path.split(filename)
+    module_name, module_ext = os.path.splitext(module_file)
+    __import__(module_name)
+    modules.append(sys.modules[module_name])
+  return modules
+
+def get_all_tests(modules):
   # Create a list of all known tests so that we can choose from them based on a wildcard search
   all_tests = []
   suites = test_modes + nondefault_test_modes + \
@@ -1032,11 +1089,13 @@ if __name__ == '__main__':
       if hasattr(m, s):
         tests = filter(lambda t: t.startswith('test_'), dir(getattr(m, s)))
         all_tests += map(lambda t: s + '.' + t, tests)
+  return all_tests
 
+def args_with_expanded_wildcards(args, all_tests):
   # Process wildcards, e.g. "browser.test_pthread_*" should expand to list all pthread tests
-  new_args = [sys.argv[0]]
-  for i in range(1, len(sys.argv)):
-    arg = sys.argv[i]
+  new_args = [args[0]]
+  for i in range(1, len(args)):
+    arg = args[i]
     if '*' in arg:
       if arg.startswith('skip:'):
         arg = arg[5:]
@@ -1046,14 +1105,14 @@ if __name__ == '__main__':
         new_args += fnmatch.filter(all_tests, arg)
     else:
       new_args += [arg]
-  if len(new_args) == 1 and len(sys.argv) > 1:
-    print 'No tests found to run in set ' + str(sys.argv[1:])
+  if len(new_args) == 1 and len(args) > 1:
+    print 'No tests found to run in set ' + str(args[1:])
     sys.exit(0)
-  sys.argv = new_args
+  return new_args
 
-  # Skip requested tests
-  for i in range(len(sys.argv)):
-    arg = sys.argv[i]
+def skip_requested_tests(args, modules):
+  for i in range(len(args)):
+    arg = args[i]
     if arg.startswith('skip:'):
       which = arg.split('skip:')[1]
       if which.startswith('ALL.'):
@@ -1065,85 +1124,126 @@ if __name__ == '__main__':
       print >> sys.stderr, ','.join(which)
       for test in which:
         print >> sys.stderr, 'will skip "%s"' % test
+        suite_name, test_name = test.split('.')
         for m in modules:
           try:
-            exec('m.' + test + ' = RunnerCore("skipme")')
+            suite = getattr(m, suite_name)
+            setattr(suite, test_name, RunnerCore("skipme"))
             break
           except:
             pass
-      sys.argv[i] = None
-  sys.argv = filter(lambda arg: arg is not None, sys.argv)
+      args[i] = None
+  return filter(lambda arg: arg is not None, args)
 
-  # If we were asked to run random tests, do that
-  first = sys.argv[1]
+def args_for_random_tests(args, modules):
+  first = args[1]
   if first.startswith('random'):
-    num = 1
-    first = first[6:]
-    base_module = 'default'
-    relevant_modes = test_modes
-    if len(first) > 0:
-      if first.startswith('other'):
-        base_module = 'other'
-        relevant_modes = ['other']
-        first = first.replace('other', '')
-      elif first.startswith('browser'):
-        base_module = 'browser'
-        relevant_modes = ['browser']
-        first = first.replace('browser', '')
-      num = int(first)
+    random_arg = first[6:]
+    num_tests, base_module, relevant_modes = get_random_test_parameters(random_arg)
     for m in modules:
       if hasattr(m, base_module):
-        sys.argv = [sys.argv[0]]
-        tests = filter(lambda t: t.startswith('test_'), dir(getattr(m, base_module)))
-        print
-        chosen = set()
-        while len(chosen) < num:
-          test = random.choice(tests)
-          mode = random.choice(relevant_modes)
-          new_test = mode + '.' + test
-          before = len(chosen)
-          chosen.add(new_test)
-          if len(chosen) > before:
-            print '* ' + new_test
-          else:
-            # we may have hit the limit
-            if len(chosen) == len(tests)*len(relevant_modes):
-              print '(all possible tests chosen! %d = %d*%d)' % (len(chosen), len(tests), len(relevant_modes))
-              break
-        sys.argv += list(chosen)
-        std = 0.5/math.sqrt(num)
-        print
-        print 'running those %d randomly-selected tests. if they all pass, then there is a greater than 95%% chance that at least %.2f%% of the test suite will pass' % (num, 100.0-100.0*std)
-        print
+        base = getattr(m, base_module)
+        new_args = [args[0]] + choose_random_tests(base, num_tests, relevant_modes)
+        print_random_test_statistics(num_tests)
+        return new_args
+  return args
 
-        import atexit
-        def show():
-          print 'if all tests passed then there is a greater than 95%% chance that at least %.2f%% of the test suite will pass' % (100.0-100.0*std)
-        atexit.register(show)
+def get_random_test_parameters(arg):
+  num_tests = 1
+  base_module = 'default'
+  relevant_modes = test_modes
+  if len(arg) > 0:
+    num_str = arg
+    if arg.startswith('other'):
+      base_module = 'other'
+      relevant_modes = ['other']
+      num_str = arg.replace('other', '')
+    elif arg.startswith('browser'):
+      base_module = 'browser'
+      relevant_modes = ['browser']
+      num_str = arg.replace('browser', '')
+    num_tests = int(num_str)
+  return num_tests, base_module, relevant_modes
 
-  # Filter and load tests from the discovered modules
+def choose_random_tests(base, num_tests, relevant_modes):
+  tests = filter(lambda t: t.startswith('test_'), dir(base))
+  print
+  chosen = set()
+  while len(chosen) < num_tests:
+    test = random.choice(tests)
+    mode = random.choice(relevant_modes)
+    new_test = mode + '.' + test
+    before = len(chosen)
+    chosen.add(new_test)
+    if len(chosen) > before:
+      print '* ' + new_test
+    else:
+      # we may have hit the limit
+      if len(chosen) == len(tests)*len(relevant_modes):
+        print '(all possible tests chosen! %d = %d*%d)' % (len(chosen), len(tests), len(relevant_modes))
+        break
+  return list(chosen)
+
+def print_random_test_statistics(num_tests):
+  std = 0.5/math.sqrt(num_tests)
+  expected = 100.0 * (1.0 - std)
+  print
+  print ('running those %d randomly-selected tests. if they all pass, then there is a '
+         'greater than 95%% chance that at least %.2f%% of the test suite will pass'
+         % (num_tests, expected))
+  print
+
+  def show():
+    print ('if all tests passed then there is a greater than 95%% chance that at least '
+           '%.2f%% of the test suite will pass'
+           % (expected))
+  atexit.register(show)
+
+def load_test_suites(args, modules):
   loader = unittest.TestLoader()
-  names = set(sys.argv[1:])
+  unmatched_test_names = set(args[1:])
   suites = []
   for m in modules:
-    mnames = []
-    for name in list(names):
+    names_in_module = []
+    for name in list(unmatched_test_names):
       try:
         operator.attrgetter(name)(m)
-        mnames.append(name)
-        names.remove(name)
+        names_in_module.append(name)
+        unmatched_test_names.remove(name)
       except AttributeError:
         pass
-    if len(mnames) > 0:
-      suites.append((m.__name__, loader.loadTestsFromNames(sorted(mnames), m)))
+    if len(names_in_module) > 0:
+      loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
+      tests = flattened_tests(loaded_tests)
+      suite = suite_for_module(m, tests)
+      for test in tests:
+        suite.addTest(test)
+      suites.append((m.__name__, suite))
+  return suites, unmatched_test_names
 
+def flattened_tests(loaded_tests):
+  tests = []
+  for subsuite in loaded_tests:
+    for test in subsuite:
+      tests.append(test)
+  return tests
+
+def suite_for_module(module, tests):
+  suite_supported = module.__name__ == 'test_core'
+  has_multiple_tests = len(tests) > 1
+  has_multiple_cores = parallel_runner.num_cores() > 1
+  if suite_supported and has_multiple_tests and has_multiple_cores:
+    return parallel_runner.ParallelTestSuite()
+  return unittest.TestSuite()
+
+def run_tests(suites, unmatched_test_names):
   resultMessages = []
   numFailures = 0
 
-  if len(names) > 0:
-    print 'WARNING: could not find the following tests: ' + ' '.join(names)
-    numFailures += len(names)
-    resultMessages.append('Could not find %s tests' % (len(names),))
+  if len(unmatched_test_names) > 0:
+    print 'WARNING: could not find the following tests: ' + ' '.join(unmatched_test_names)
+    numFailures += len(unmatched_test_names)
+    resultMessages.append('Could not find %s tests' % (len(unmatched_test_names),))
 
   print 'Test suites:'
   print [s[0] for s in suites]
@@ -1168,3 +1268,7 @@ if __name__ == '__main__':
   # Return the number of failures as the process exit code for automating success/failure reporting.
   exitcode = min(numFailures, 255)
   sys.exit(exitcode)
+
+
+if __name__ == '__main__':
+  main(sys.argv)

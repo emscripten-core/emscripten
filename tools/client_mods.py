@@ -1,5 +1,5 @@
 
-class PreciseF32:
+class PreciseF32(object):
   name = 'PRECISE_F32 == 2'
 
   @staticmethod
@@ -36,7 +36,7 @@ try {
       return ['if (!Math.fround) { ' + mod + ' }']
     return []
 
-class Pthreads:
+class Pthreads(object):
   name = 'USE_PTHREADS == 2'
 
   @staticmethod

@@ -24,16 +24,17 @@
 # endif // defined(BSD)
 #endif // defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
 
-#if !defined(_WIN32)
+#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
 # include <unistd.h>
-#endif // !_WIN32
+#endif // defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
 
 #if defined(__NetBSD__)
 #pragma weak pthread_create // Do not create libpthread dependency
 #endif
-#if defined(_WIN32)
+
+#if defined(_LIBCPP_WIN32API)
 #include <windows.h>
-#endif
+#endif // defined(_LIBCPP_WIN32API)
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -46,14 +47,16 @@ thread::~thread()
 void
 thread::join()
 {
-    int ec = pthread_join(__t_, 0);
-#ifndef _LIBCPP_NO_EXCEPTIONS
+    int ec = EINVAL;
+    if (__t_ != 0)
+    {
+        ec = __libcpp_thread_join(&__t_);
+        if (ec == 0)
+            __t_ = 0;
+    }
+
     if (ec)
-        throw system_error(error_code(ec, system_category()), "thread::join failed");
-#else
-    (void)ec;
-#endif  // _LIBCPP_NO_EXCEPTIONS
-    __t_ = 0;
+        __throw_system_error(ec, "thread::join failed");
 }
 
 void
@@ -62,14 +65,13 @@ thread::detach()
     int ec = EINVAL;
     if (__t_ != 0)
     {
-        ec = pthread_detach(__t_);
+        ec = __libcpp_thread_detach(&__t_);
         if (ec == 0)
             __t_ = 0;
     }
-#ifndef _LIBCPP_NO_EXCEPTIONS
+
     if (ec)
-        throw system_error(error_code(ec, system_category()), "thread::detach failed");
-#endif  // _LIBCPP_NO_EXCEPTIONS
+        __throw_system_error(ec, "thread::detach failed");
 }
 
 unsigned
@@ -90,7 +92,7 @@ thread::hardware_concurrency() _NOEXCEPT
     if (result < 0)
         return 0;
     return static_cast<unsigned>(result);
-#elif defined(_WIN32)
+#elif defined(_LIBCPP_WIN32API)
     SYSTEM_INFO info;
     GetSystemInfo(&info);
     return info.dwNumberOfProcessors;
@@ -115,6 +117,12 @@ sleep_for(const chrono::nanoseconds& ns)
     using namespace chrono;
     if (ns > nanoseconds::zero())
     {
+#if defined(_LIBCPP_WIN32API)
+        milliseconds ms = duration_cast<milliseconds>(ns);
+        if (ms.count() == 0 || ns > duration_cast<nanoseconds>(ms))
+          ++ms;
+        Sleep(ms.count());
+#else
         seconds s = duration_cast<seconds>(ns);
         timespec ts;
         typedef decltype(ts.tv_sec) ts_sec;
@@ -132,6 +140,7 @@ sleep_for(const chrono::nanoseconds& ns)
 
         while (nanosleep(&ts, &ts) == -1 && errno == EINTR)
             ;
+#endif
     }
 }
 
