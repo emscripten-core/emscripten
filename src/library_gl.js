@@ -1257,11 +1257,12 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.textures, texture, 'glBindTexture', 'texture');
 #endif
-    if( texture >= 0 )
-    {
-    if( GL.textures[texture] == undefined )
+    if (texture >= 0) {
+#if LEGACY_GL_CREATE_RESOURCE_ON_BIND
+      if (GL.textures[texture] === undefined)
         GL.textures[texture] = GLctx.createTexture();
-    GLctx.bindTexture(target, GL.textures[texture] );
+#endif
+      GLctx.bindTexture(target, GL.textures[texture] );
     }
   },
 
