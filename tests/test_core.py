@@ -1411,36 +1411,36 @@ int main() {
     src = open(path_from_root('tests', 'life.c'), 'r').read()
     self.do_run(src, '''--------------------------------
 []                                    []                  [][][]
-                    []  []    []    [][]  []            []  []  
-[]                [][]  [][]              [][][]      []        
+                    []  []    []    [][]  []            []  []
+[]                [][]  [][]              [][][]      []
                   []    []      []      []  [][]    []        []
                   []  [][]    []        []    []  []    [][][][]
-                    [][]      [][]  []    [][][]  []        []  
-                                []  [][]  [][]    [][]  [][][]  
+                    [][]      [][]  []    [][][]  []        []
+                                []  [][]  [][]    [][]  [][][]
                                     [][]          [][][]  []  []
                                     [][]              [][]    []
                                                           [][][]
-                                                            []  
-                                                                
-                                                                
-                                                                
-                                                                
-                                        [][][]                  
-                                      []      [][]      [][]    
-                                      [][]      []  [][]  [][]  
-                                                    [][]  [][]  
-                                                      []        
-                  [][]                                          
+                                                            []
+
+
+
+
+                                        [][][]
+                                      []      [][]      [][]
+                                      [][]      []  [][]  [][]
+                                                    [][]  [][]
+                                                      []
+                  [][]
                   [][]                                        []
 []                                                      [][]  []
                                                   [][][]      []
-                                                []      [][]    
+                                                []      [][]
 []                                                    []      []
-                                                          []    
+                                                          []
 []                                                        []  []
-                                              [][][]            
-                                                                
-                                  []                            
+                                              [][][]
+
+                                  []
                               [][][]                          []
 --------------------------------
 ''', ['2'], force_c=True)
@@ -2024,35 +2024,35 @@ The current type of b is: 9
       self.do_run(src, '*1*', force_c=True)
 
   def test_strtoll_hex(self):
-    # tests strtoll for hex strings (0x...) 
+    # tests strtoll for hex strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtoll_hex')
 
   def test_strtoll_dec(self):
-    # tests strtoll for decimal strings (0x...) 
+    # tests strtoll for decimal strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtoll_dec')
 
   def test_strtoll_bin(self):
-    # tests strtoll for binary strings (0x...) 
+    # tests strtoll for binary strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtoll_bin')
 
   def test_strtoll_oct(self):
-    # tests strtoll for decimal strings (0x...) 
+    # tests strtoll for decimal strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtoll_oct')
 
   def test_strtol_hex(self):
-    # tests strtoll for hex strings (0x...) 
+    # tests strtoll for hex strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtol_hex')
 
   def test_strtol_dec(self):
-    # tests strtoll for decimal strings (0x...) 
+    # tests strtoll for decimal strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtol_dec')
 
   def test_strtol_bin(self):
-    # tests strtoll for binary strings (0x...) 
+    # tests strtoll for binary strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtol_bin')
 
   def test_strtol_oct(self):
-    # tests strtoll for decimal strings (0x...) 
+    # tests strtoll for decimal strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtol_oct')
 
   def test_atexit(self):
@@ -4218,7 +4218,7 @@ main( int argv, char ** argc ) {
     int normalIndex[4];
     int uvIndex[4];
 
-    int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex    [1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2], &vertexIndex[3], &uvIndex[3], &normalIndex[3]); 
+    int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex    [1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2], &vertexIndex[3], &uvIndex[3], &normalIndex[3]);
 
     cout << matches << endl;
 
@@ -5461,7 +5461,7 @@ def process(filename):
   )
   src.close()
 '''
- 
+
  #fontconfig = self.get_library('fontconfig', [os.path.join('src', '.libs', 'libfontconfig.a')]) # Used in file, but not needed, mostly
 
       freetype = self.get_freetype()
@@ -6136,7 +6136,7 @@ def process(filename):
     src = r'''
     #include <stdio.h>
     #include <math.h>
-    
+
     // We have to use a proxy function 'acos_test' here because the updated libc++ library provides a set of overloads to acos,
     // this has the result that we can't take the function pointer to acos anymore due to failed overload resolution.
     // This proxy function has no overloads so it's allowed to take the function pointer directly.
@@ -6298,7 +6298,7 @@ int main() {
   std::cout << txtTestString.data() << std::endl;
   return 0;
 }
-      ''', '''std_string(const char* s) 
+      ''', '''std_string(const char* s)
 someweirdtext
 212121
 212121
@@ -6991,7 +6991,7 @@ Module.printErr = Module['printErr'] = function(){};
       Building.COMPILER_TEST_OPTS += ['-DEMTERPRETER'] # even so, we get extra emterpret() calls on the stack
     if Settings.ASM_JS:
       # XXX Does not work in SpiderMonkey since callstacks cannot be captured when running in asm.js, see https://bugzilla.mozilla.org/show_bug.cgi?id=947996
-      self.banned_js_engines += [SPIDERMONKEY_ENGINE] 
+      self.banned_js_engines += [SPIDERMONKEY_ENGINE]
     if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
     Building.COMPILER_TEST_OPTS += ['-DRUN_FROM_JS_SHELL']
     self.do_run(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read(), '''test print 123
@@ -7395,6 +7395,9 @@ int main(int argc, char **argv) {
   def test_wrap_malloc(self):
     self.do_run(open(path_from_root('tests', 'wrap_malloc.cpp')).read(), 'OK.')
 
+  def test_stdlib_qsort(self):
+    self.do_run_in_out_file_test('tests', 'stdlib', 'test_qsort')
+
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
     typed_arrays=0, emcc_args=None, env=None):
@@ -7481,7 +7484,7 @@ binaryen2_interpret = make_run("binaryen2_interpret", compiler=CLANG, emcc_args=
 #normalyen = make_run("normalyen", compiler=CLANG, emcc_args=['-O0', '-s', 'GLOBAL_BASE=1024']) # useful comparison to binaryen
 #spidaryen = make_run("binaryen", compiler=CLANG, emcc_args=['-O0', '-s', 'BINARYEN=1', '-s', 'BINARYEN_SCRIPTS="spidermonkify.py"'])
 
-# Legacy test modes - 
+# Legacy test modes -
 asm2nn = make_run("asm2nn", compiler=CLANG, emcc_args=["-O2"], env={"EMCC_NATIVE_OPTIMIZER": "0"})
 
 del T # T is just a shape for the specific subclasses, we don't test it itself
