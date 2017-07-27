@@ -1424,7 +1424,7 @@ var LibraryGL = {
 #endif
     if (texture >= 0) {
 #if LEGACY_GL_CREATE_RESOURCE_ON_BIND
-      if (GL.textures[texture] === undefined)
+      if (GL.textures[texture] == undefined)
         GL.textures[texture] = GLctx.createTexture();
 #endif
       GLctx.bindTexture(target, GL.textures[texture] );
