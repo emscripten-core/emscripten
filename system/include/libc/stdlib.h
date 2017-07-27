@@ -54,6 +54,8 @@ int system (const char *);
 
 void *bsearch (const void *, const void *, size_t, size_t, int (*)(const void *, const void *));
 void qsort (void *, size_t, size_t, int (*)(const void *, const void *));
+void qsort_s (void *, size_t, size_t, int (*)(const void *, const void *, void *), void *);
+#define qsort_r qsort_s
 
 int abs (int);
 long labs (long);
