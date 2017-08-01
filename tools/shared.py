@@ -2356,6 +2356,11 @@ class JS(object):
     else:
       return os.path.basename(path)
 
+  # Strips all preprocessor directives from a string of JavaScript
+  @staticmethod
+  def strip_preprocessor_directives(s):
+    return re.sub('#if .*?\n.*?\n#endif', '', s, flags=re.DOTALL)
+
   @staticmethod
   def make_initializer(sig, settings=None):
     settings = settings or Settings

@@ -3,10 +3,10 @@
 // Converts a string of base64 into a byte array.
 // Throws error on invalid input.
 function intArrayFromBase64(s) {
-  if (typeof ENVIRONMENT_IS_NODE === 'boolean' && ENVIRONMENT_IS_NODE) {
-    var buf = Buffer.from ? Buffer.from(s, 'base64') : new Buffer(s, 'base64');
-    return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
-  }
+#if ENVIRONMENT_IS_NODE
+  var buf = Buffer.from ? Buffer.from(s, 'base64') : new Buffer(s, 'base64');
+  return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+#endif
 
   try {
     var decoded = atob(s);
