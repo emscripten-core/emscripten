@@ -125,16 +125,13 @@ var funs = {
     return -1;
   },
 #if ASSERTIONS
-  $siglongjmpWarningShown: false,
-  siglongjmp__deps: ['$siglongjmpWarningShown', 'longjmp'],
+  siglongjmp__deps: ['longjmp'],
   siglongjmp: function(env, value) {
     // We cannot wrap the sigsetjmp, but I hope that
     // in most cases siglongjmp will be called later.
-    if (!siglongjmpWarningShown) {
-      // siglongjmp can be called very many times, so don't flood the stderr.
-      Module.printErr("Calling longjmp() instead of siglongjmp()");
-      siglongjmpWarningShown = true;
-    }
+
+    // siglongjmp can be called very many times, so don't flood the stderr.
+    Runtime.warnOnce("Calling longjmp() instead of siglongjmp()");
     _longjmp(env, value);
   },
 #else
