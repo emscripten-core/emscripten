@@ -2356,10 +2356,19 @@ class JS(object):
     else:
       return os.path.basename(path)
 
-  # Strips all preprocessor directives from a string of JavaScript
+  # Runs the preprocessor on a string of JavaScript
+  # WARNING: Currently using a very simplified version that supports only a
+  # small subset of preprocessor directives. Replacing this with a hook into
+  # the real preprocessor is planned.
   @staticmethod
-  def strip_preprocessor_directives(s):
-    return re.sub('#if .*?\n.*?\n#endif', '', s, flags=re.DOTALL)
+  def preprocessor(s):
+    settings = settings or Settings
+    def repl(matchobj):
+      if settings.get(matchobj.group(1)):
+        return matchobj.group(2)
+      else:
+        return ''
+    return re.sub(r'#if (.*?)\n(.*?)\n#endif', repl, s, flags=re.DOTALL)
 
   @staticmethod
   def make_initializer(sig, settings=None):
