@@ -187,20 +187,22 @@ else if (ENVIRONMENT_IS_SHELL) {
 }
 else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   Module['read'] = function shell_read(url) {
+#if SUPPORT_BASE64_EMBEDDING
     try {
+#endif
       var xhr = new XMLHttpRequest();
       xhr.open('GET', url, false);
       xhr.send(null);
       return xhr.responseText;
-    } catch (err) {
 #if SUPPORT_BASE64_EMBEDDING
+    } catch (err) {
       var data = tryParseAsDataURI(url);
       if (data) {
         return intArrayToString(data);
       }
-#endif
       throw err;
     }
+#endif
   };
 
   if (ENVIRONMENT_IS_WORKER) {

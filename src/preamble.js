@@ -2203,7 +2203,7 @@ function integrateWasmJS(Module) {
       var binary = tryParseAsDataURI(wasmBinaryFile);
       if (binary) {
         return binary;
-      } else
+      }
 #endif
       if (Module['readBinary']) {
         return Module['readBinary'](wasmBinaryFile);

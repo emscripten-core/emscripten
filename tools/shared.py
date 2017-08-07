@@ -2357,9 +2357,13 @@ class JS(object):
       return os.path.basename(path)
 
   # Runs the preprocessor on a string of JavaScript
+  #
   # WARNING: Currently using a very simplified version that supports only a
-  # small subset of preprocessor directives. Replacing this with a hook into
-  # the real preprocessor is planned.
+  # small subset of preprocessor directives. Specifically, it will work with
+  # "#if NAME_OF_SETTING ... #endif". Anything other than that, including
+  # "#if !NAME_OF_SETTING ... #endif", is unsupported.
+  #
+  # TODO: Replace this with a hook into the real preprocessor.
   @staticmethod
   def preprocessor(s):
     settings = settings or Settings
