@@ -517,16 +517,6 @@ float EMSCRIPTEN_KEEPALIVE emscripten_atomic_load_f32(const void *addr)
 #define NUM_64BIT_LOCKS 256
 static int emulated64BitAtomicsLocks[NUM_64BIT_LOCKS] = {};
 
-uint32_t EMSCRIPTEN_KEEPALIVE emscripten_atomic_exchange_u32(void/*uint32_t*/ *addr, uint32_t newVal)
-{
-	uint32_t oldVal, oldVal2;
-	do {
-		oldVal = emscripten_atomic_load_u32(addr);
-		oldVal2 = emscripten_atomic_cas_u32(addr, oldVal, newVal);
-	} while (oldVal != oldVal2);
-	return oldVal;
-}
-
 #define SPINLOCK_ACQUIRE(addr) do { while(emscripten_atomic_exchange_u32((void*)(addr), 1)) /*nop*/; } while(0)
 #define SPINLOCK_RELEASE(addr) emscripten_atomic_store_u32((void*)(addr), 0)
 
