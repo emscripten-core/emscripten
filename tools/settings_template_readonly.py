@@ -7,9 +7,9 @@
 import os
 
 # this helps projects using emscripten find it
-EMSCRIPTEN_ROOT = os.path.expanduser(os.getenv('EMSCRIPTEN') or '{{{ EMSCRIPTEN_ROOT }}}') # directory
-LLVM_ROOT = os.path.expanduser(os.getenv('LLVM') or '{{{ LLVM_ROOT }}}') # directory
-BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN') or '') # if not set, we will use it from ports
+EMSCRIPTEN_ROOT = os.path.expanduser(os.getenv('EMSCRIPTEN', '{{{ EMSCRIPTEN_ROOT }}}')) # directory
+LLVM_ROOT = os.path.expanduser(os.getenv('LLVM', '{{{ LLVM_ROOT }}}')) # directory
+BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN', '')) # if not set, we will use it from ports
 
 # If not specified, defaults to sys.executable.
 #PYTHON = 'python'
@@ -19,15 +19,15 @@ BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN') or '') # if not set, we
 # EMSCRIPTEN_NATIVE_OPTIMIZER='/path/to/custom/optimizer(.exe)'
 
 # See below for notes on which JS engine(s) you need
-NODE_JS = os.path.expanduser(os.getenv('NODE') or '{{{ NODE }}}') # executable
-SPIDERMONKEY_ENGINE = [os.path.expanduser(os.getenv('SPIDERMONKEY') or 'js')] # executable
-V8_ENGINE = os.path.expanduser(os.getenv('V8') or 'd8') # executable
+NODE_JS = os.path.expanduser(os.getenv('NODE', '{{{ NODE }}}')) # executable
+SPIDERMONKEY_ENGINE = [os.path.expanduser(os.getenv('SPIDERMONKEY', 'js'))] # executable
+V8_ENGINE = os.path.expanduser(os.getenv('V8', 'd8')) # executable
 
 JAVA = 'java' # executable
 
 TEMP_DIR = '{{{ TEMP }}}'
 
-CRUNCH = os.path.expanduser(os.getenv('CRUNCH') or 'crunch') # executable
+CRUNCH = os.path.expanduser(os.getenv('CRUNCH', 'crunch')) # executable
 
 #CLOSURE_COMPILER = '..' # define this to not use the bundled version
 
