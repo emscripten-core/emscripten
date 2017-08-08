@@ -1,6 +1,8 @@
 #include <setjmp.h>
 #include <stdio.h>
 
+// TODO: Once signals are supported, improve this test to verify preservation of signals state
+
 int main() {
     sigjmp_buf env;
     volatile int flag = 0;
