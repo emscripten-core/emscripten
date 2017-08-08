@@ -39,6 +39,9 @@ page_exit_code = 0
 # So killing browser_process would just kill launcher.exe and not the opera browser itself.
 processname_killed_atexit = ""
 
+# If user does not specify a --hostname parameter, this hostname is used to launch the server.
+default_webserver_hostname = "localhost"
+
 # If user does not specify a --port parameter, this port is used to launch the server.
 default_webserver_port = 6931
 
@@ -433,7 +436,7 @@ class HTTPWebServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 
   def handle_error(self, request, client_address):
     err = sys.exc_info()[1][0]
-    # Filter out the useless '[Errno 10054] An existing connection was forcibly closed by the remote host' errors that occur when we 
+    # Filter out the useless '[Errno 10054] An existing connection was forcibly closed by the remote host' errors that occur when we
     # forcibly kill the client.
     if err != 10054:
       SocketServer.BaseServer.handle_error(self, request, client_address)
@@ -1237,6 +1240,9 @@ def main():
   parser.add_option('--verbose', dest='verbose', action='store_true', default=False,
     help='Enable verbose logging from emrun internal operation.')
 
+  parser.add_option('--hostname', dest='hostname', default=default_webserver_hostname,
+    help='Specifies the hostname the server runs in.')
+
   parser.add_option('--port', dest='port', default=default_webserver_port, type="int",
     help='Specifies the port the server runs in.')
 
@@ -1279,7 +1285,7 @@ def main():
   parser.add_option('--log_html', dest='log_html', action='store_true',
     help='If set, information lines are printed out an HTML-friendly format.')
 
-  opts_with_param = ['--browser', '--timeout_returncode', '--timeout', '--silence_timeout', '--log_stderr', '--log_stdout', '--port', '--serve_root']
+  opts_with_param = ['--browser', '--timeout_returncode', '--timeout', '--silence_timeout', '--log_stderr', '--log_stdout', '--hostname', '--port', '--serve_root']
 
   cmdlineparams = []
   # Split the startup arguments to two parts, delimited by the first (unbound) positional argument.
@@ -1343,11 +1349,9 @@ def main():
     url = os.path.relpath(os.path.abspath(file_to_serve), serve_dir)
     if len(cmdlineparams) > 0:
       url += '?' + '&'.join(cmdlineparams)
-    server_root = 'localhost'
-    if options.android:
-      server_root = socket.gethostbyname(socket.gethostname())
-    url = 'http://' + server_root + ':' + str(options.port)+'/'+url
-  
+    hostname = socket.gethostbyname(socket.gethostname()) if options.android else options.hostname
+    url = 'http://' + hostname + ':' + str(options.port)+'/'+url
+
   os.chdir(serve_dir)
   if not options.no_server:
     if options.no_browser:
@@ -1491,8 +1495,8 @@ def main():
       browser_stderr_handle = open(options.log_stderr, 'ab')
 
   if not options.no_server:
-    logv('Starting web server in port ' + str(options.port))
-    httpd = HTTPWebServer(('', options.port), HTTPHandler)
+    logv('Starting web server: http://%s:%i/' % (options.hostname, options.port))
+    httpd = HTTPWebServer((options.hostname, options.port), HTTPHandler)
 
   if not options.no_browser:
     logi("Executing %s" % ' '.join(browser))
@@ -1505,7 +1509,7 @@ def main():
     if options.android:
       browser_process = None
   elif not options.no_server:
-    logi('Now listening at http://localhost:' + str(options.port) + '/')
+    logi('Now listening at http://%s:%i/' % (options.hostname, options.port))
 
   if browser_process:
     premature_quit_code = browser_process.poll()
