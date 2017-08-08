@@ -96,6 +96,7 @@ The following command line flags control how *emrun* spawns the web server:
 - ``--port <number>``: Specify the web server TCP port. The default port is ``6931``. 
 - ``--silence_timeout <seconds>``: Specify the *emrun* silence timeout. If the application does not print anything to ``stdout`` or ``stderr`` in this many seconds, the page/browser is assumed to be hung, and *emrun* will quit. This is disabled by default. 
 - ``--timeout <seconds>``: Specify the *emrun* timeout. If the whole page run lasts longer than this many seconds, the page/browser is assumed to be hung, and *emrun* will quit. This is disabled by default. 
+- ``--hostname <name>``: Specify the web server TCP hostname. The default hostname is ``localhost``.
 - ``--timeout_returncode <code>``: Specifies the process return code that *emrun* quits with if a page run timeout occurs. By default this is ``99999``.
 
 
@@ -177,6 +178,8 @@ For this to work, you need to:
 To run on Android, add the ``--android`` command line flag and use the ``--browser <alias>`` command line flag to explicitly choose the correct browser to run. 
 
 .. note:: Omitting ``--browser`` (to launch a default Android browser) is not supported. 
+
+.. note:: Running on Android will omit the ``--hostname`` option
 
 The following browser aliases have been tested and shown to work: ``firefox, firefox_beta, firefox_aurora, firefox_nightly, chrome, chrome_beta, opera``.
 
