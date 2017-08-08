@@ -980,7 +980,7 @@ fi
         # if BINARYEN_ROOT is set, we don't build the port. Check we do build it if not
         if binaryen_root_in_config:
           config = open(CONFIG_FILE).read()
-          assert '''BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN'))''' in config, config # setup created it to be ''
+          assert '''BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN') or '')''' in config, config # setup created it to be ''
           print 'created config:'
           print config
           restore()
