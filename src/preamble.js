@@ -2500,10 +2500,10 @@ function integrateWasmJS(Module) {
     // try the methods. each should return the exports if it succeeded
 
     var exports;
-#if BINARYEN_METHOD == 'native-wasm'
+#if BINARYEN_METHOD == native-wasm
     exports = doNativeWasm(global, env, providedBuffer);
 #else
-#if BINARYEN_METHOD == 'asmjs'
+#if BINARYEN_METHOD == asmjs
     exports = doJustAsm(global, env, providedBuffer);
 #else
     var methods = method.split(',');
