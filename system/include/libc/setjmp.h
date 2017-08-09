@@ -19,7 +19,12 @@ typedef struct __jmp_buf_tag {
  || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
  || defined(_BSD_SOURCE)
 typedef jmp_buf sigjmp_buf;
+/* XXX EMSCRIPTEN: No signals support, alias sigsetjmp and siglongjmp to their non-signals counterparts. */
+#if __EMSCRIPTEN__
+#define sigsetjmp(buf, x) setjmp((buf))
+#else
 int sigsetjmp (sigjmp_buf, int);
+#endif
 _Noreturn void siglongjmp (sigjmp_buf, int);
 #endif
 
