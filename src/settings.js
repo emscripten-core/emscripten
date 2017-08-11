@@ -479,7 +479,7 @@ var MAIN_MODULE = 0; // A main module is a file compiled in a way that allows us
                      //  2: DCE'd main module. We eliminate dead code normally. If a side
                      //     module needs something from main, it is up to you to make sure
                      //     it is kept alive.
-var SIDE_MODULE = 0; // Corresponds to MAIN_MODULE
+var SIDE_MODULE = 0; // Corresponds to MAIN_MODULE (also supports modes 1 and 2)
 
 var RUNTIME_LINKED_LIBS = []; // If this is a main module (MAIN_MODULE == 1), then
                               // we will link these at runtime. They must have been built with

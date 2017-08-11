@@ -943,7 +943,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
         assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
-        if shared.Settings.MAIN_MODULE != 2:
+        if shared.Settings.MAIN_MODULE != 2 and shared.Settings.SIDE_MODULE != 2:
           shared.Settings.LINKABLE = 1
         shared.Settings.RELOCATABLE = 1
         shared.Settings.PRECISE_I64_MATH = 1 # other might use precise math, we need to be able to print it

@@ -5896,14 +5896,24 @@ int main(int argc, char** argv) {
           void *lib_handle = dlopen("library.js", 0);
           typedef void (*voidfunc)();
           voidfunc x = (voidfunc)dlsym(lib_handle, "library_func");
-          x();
+          if (!x) puts("cannot find side function");
+          else x();
         }
       ''')
       check_execute([PYTHON, EMCC, 'main.c', '-s', 'MAIN_MODULE=1', '--embed-file', 'library.js', '-O2'] + main_args)
       self.assertContained(expected, run_js('a.out.js', assert_returncode=None, stderr=subprocess.STDOUT))
       size = os.stat('a.out.js').st_size
-      print '  size:', size
-      return size
+      side_size = os.stat('library.js').st_size
+      print '  sizes:', size, side_size
+      return (size, side_size)
+
+    def percent_diff(x, y):
+      small = min(x, y)
+      large = max(x, y)
+      return float(100*large)/small - 100
+
+    # main module tests
+
     full     = test()
     printf   = test(                                   library_args=['-DUSE_PRINTF'])                       # printf is not used in main, but libc was linked in, so it's there
     dce      = test(main_args=['-s', 'MAIN_MODULE=2'])                                                      # dce in main, and side happens to be ok since it uses puts as well
@@ -5911,15 +5921,17 @@ int main(int argc, char** argv) {
     dce_save = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_printf"]'],
                                                        library_args=['-DUSE_PRINTF'])                       # exporting printf in main keeps it alive for the library
 
-    def percent_diff(x, y):
-      small = min(x, y)
-      large = max(x, y)
-      return float(100*large)/small - 100
+    assert percent_diff(full[0], printf[0]) < 4
+    assert percent_diff(dce[0], dce_fail[0]) < 4
+    assert dce[0] < 0.2*full[0] # big effect, 80%+ is gone
+    assert dce_save[0] > 1.1*dce[0] # save exported all of printf
 
-    assert percent_diff(full, printf) < 4
-    assert percent_diff(dce, dce_fail) < 4
-    assert dce < 0.2*full # big effect, 80%+ is gone
-    assert dce_save > 1.1*dce # save exported all of printf
+    # side module tests
+
+    side_dce_fail = test(library_args=['-s', 'SIDE_MODULE=2'], expected='cannot find side function') # mode 2, so dce in side, but library_func is not exported, so it is dce'd
+    side_dce_work = test(library_args=['-s', 'SIDE_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_library_func"]'], expected='hello from library') # mode 2, so dce in side, and library_func is not exported
+
+    assert side_dce_fail[1] < 0.95*side_dce_work[1] # removing that function saves a chunk
 
   def test_ld_library_path(self):
     open('hello1.c', 'w').write(r'''
