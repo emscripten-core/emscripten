@@ -46,7 +46,7 @@ function preprocess(text, filenameHint) {
               // we need to get rid of the quotes
               if (value[0] === '"' || value[0] === "'") {
                 assert(value[value.length - 1] == '"' || value[value.length - 1] == "'");
-                value = value.substr(1, value.length - 2);
+                value = value.substring(1, value.length - 1);
               }
             }
             if (op) {
