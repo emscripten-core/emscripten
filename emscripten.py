@@ -1295,7 +1295,7 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
   if not settings['SWAPPABLE_ASM_MODULE']:
     receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables(function_table_data, settings)])
   else:
-    receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() {' + runtime_assertions + '  return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions + function_tables(function_table_data, settings)])
+    receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() {' + runtime_assertions + '  return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions + function_tables(function_table_data, settings)])
   receiving += ';\n'
 
   if settings['EXPORT_FUNCTION_TABLES'] and not settings['BINARYEN']:
@@ -1930,7 +1930,7 @@ return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
   if not settings['SWAPPABLE_ASM_MODULE']:
     receiving += ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"]' for s in exported_implemented_functions])
   else:
-    receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions])
+    receiving += ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions])
   receiving += ';\n'
   return receiving
 
