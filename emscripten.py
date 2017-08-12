@@ -216,6 +216,9 @@ def compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DE
   update_settings_glue(settings, metadata)
   assert not (metadata['simd'] and settings['SPLIT_MEMORY']), 'SIMD is used, but not supported in SPLIT_MEMORY'
 
+  assert not (metadata['simd'] and settings['WASM']), 'SIMD is used, but not supported in WASM mode yet'
+  assert not (settings['SIMD'] and settings['WASM']), 'SIMD is requested, but not supported in WASM mode yet'
+
   glue, forwarded_data = compile_settings(compiler_engine, settings, libraries, temp_files)
 
   if DEBUG:
