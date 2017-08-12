@@ -2,6 +2,8 @@
 // === Auto-generated postamble setup entry stuff ===
 
 Module['asm'] = asm;
+// When `Module['asm']` is filed immediately, for other methods there are similar lines in `doJustAsm()` and `doNativeWasm()` functions
+Object.assign(Module, Module['asm']);
 
 {{{ maybeExport('FS') }}}
 
