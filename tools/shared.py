@@ -446,13 +446,8 @@ def check_node_version():
     return False
 
 def check_closure_compiler():
-  try:
-    subprocess.call([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
-  except:
-    logging.warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ' + hint_config_file_location() + ' if you want it)')
-    return False
   if not os.path.exists(CLOSURE_COMPILER):
-    logging.warning('Closure compiler (%s) does not exist, check the paths in %s' % (CLOSURE_COMPILER, EM_CONFIG))
+    logging.warning('Closure compiler (%s) does not exist, did you run `npm install`?' % (CLOSURE_COMPILER))
     return False
   return True
 
@@ -889,7 +884,7 @@ except:
 try:
   CLOSURE_COMPILER
 except:
-  CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
+  CLOSURE_COMPILER = path_from_root('node_modules', '.bin', 'google-closure-compiler-js')
 
 try:
   PYTHON
@@ -2194,15 +2189,12 @@ class Building(object):
                       if name.endswith('.js')]
 
       # Something like this (adjust memory as needed):
-      #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
-      args = [JAVA,
-              '-Xmx' + (os.environ.get('JAVA_HEAP_SIZE') or '1024m'), # if you need a larger Java heap, use this environment variable
-              '-jar', CLOSURE_COMPILER,
-              '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
-              '--language_in', 'ECMASCRIPT5',
-              '--externs', CLOSURE_EXTERNS,
-              #'--variable_map_output_file', filename + '.vars',
-              '--js', filename, '--js_output_file', filename + '.cc.js']
+      #   CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
+      args = [CLOSURE_COMPILER,
+              filename,
+              '--compilationLevel', 'ADVANCED_OPTIMIZATIONS',
+              '--languageIn', 'ECMASCRIPT5',
+              '--externs', CLOSURE_EXTERNS]
       for extern in NODE_EXTERNS:
           args.append('--externs')
           args.append(extern)
@@ -2210,12 +2202,18 @@ class Building(object):
       if os.environ.get('EMCC_CLOSURE_ARGS'):
         args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
       logging.debug('closure compiler: ' + ' '.join(args))
-      process = Popen(args, stdout=PIPE, stderr=STDOUT)
-      cc_output = process.communicate()[0]
-      if process.returncode != 0 or not os.path.exists(filename + '.cc.js'):
+      out_file_name = filename + '.cc.js'
+      out_file = open(out_file_name, "w")
+      process = Popen(args, stdout=out_file, stderr=PIPE)
+      process.wait()
+      out_file.flush()
+      os.fsync(out_file)
+      out_file.close()
+      cc_output = process.communicate()[1]
+      if process.returncode != 0 or not os.path.exists(out_file_name):
         raise Exception('closure compiler error: ' + cc_output + ' (rc: %d)' % process.returncode)
 
-      return filename + '.cc.js'
+      return out_file_name
 
   _is_ar_cache = {}
   @staticmethod

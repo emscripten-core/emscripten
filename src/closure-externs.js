@@ -6,31 +6,6 @@
  * The closure_compiler() method in tools/shared.py refers to this file when calling closure.
  */
 
-// Closure externs used by library_uuid.js
-
-/**
- * @param {Array} typedArray
- */
-crypto.getRandomValues = function(typedArray) {};
-
-/**
- BEGIN_NODE_INCLUDE
- var crypto = require('crypto');
- END_NODE_INCLUDE
- */
-
-/**
- * @type {Object.<string,*>}
- */
-var crypto = {};
-
-/**
- * @param {number} size
- * @param {function(Error, buffer.Buffer)} callback
- */
-crypto.randomBytes = function(size, callback) {};
-
-
 // Closure externs used by library_sockfs.js
 
 /**
@@ -106,68 +81,6 @@ var flags = {};
 * @type {boolean}
 */
 flags.binary;
-
-
-/**
- * @fileoverview Definitions for W3C's Gamepad specification.
- * @see http://www.w3.org/TR/gamepad/
- * @externs
- */
-
-/**
- * @typedef {{id: string, index: number, timestamp: number, axes: Array.<number>, buttons: Array.<number>}}
- */
-var Gamepad;
-
-/**
-* @type {Array.<number>}
-*/
-Gamepad.buttons;
-
-/**
-* @type {Array.<number>}
-*/
-Gamepad.axes;
-
-/**
-* @type {number}
-*/
-Gamepad.index;
-
-/**
-* @type {string}
-*/
-Gamepad.id;
-
-/**
-* @type {number}
-*/
-Gamepad.timestamp;
-
-/**
- * @return {Array.<Gamepad>}
- */
-navigator.getGamepads = function() {};
-
-/**
- * @return {Array.<Gamepad>}
- */
-navigator.webkitGetGamepads = function() {};
-
-/**
- * @return {Array.<Gamepad>}
- */
-navigator.webkitGamepads = function() {};
-
-/**
- * @return {Array.<Gamepad>}
- */
-navigator.mozGamepads = function() {};
-
-/**
- * @return {Array.<Gamepad>}
- */
-navigator.gamepads = function() {};
 
 /**
  * Backported from latest closure...
@@ -918,7 +831,7 @@ var WebAssembly = {};
  * @param {!BufferSource} bytes
  */
 WebAssembly.Module = function(bytes) {};
-/** 
+/**
  * @constructor
  * @param {!WebAssembly.Module} moduleObject
  * @param {Object=} importObject
@@ -978,7 +891,7 @@ WebAssembly.validate = function(bytes) {};
  * @return {!Array<{name:string, kind:string}>}
  */
 WebAssembly.Module.exports = function(moduleObject) {};
-/** 
+/**
  * @param {!WebAssembly.Module} moduleObject
  * @return {!Array<{module:string, name:string, kind:string}>}
  */
@@ -991,7 +904,7 @@ WebAssembly.Module.imports = function(moduleObject) {};
 WebAssembly.Module.customSections = function(moduleObject, sectionName) {};
 /** @dict */
 WebAssembly.Instance.prototype.exports;
-/** 
+/**
  * @param {number} delta
  * @return {number}
  */
@@ -1019,3 +932,40 @@ WebAssembly.Table.prototype.get = function(index) {};
  * @param {?function(...)} value
  */
 WebAssembly.Table.prototype.set = function(index, value) {};
+
+// Random SpiderMonkey/V8 externs
+
+/**
+ * @param {string} filename
+ * @param {string} type
+ * @return {string}
+ */
+var read = function(filename, type) {};
+/**
+ * @param {string} expression
+ */
+var print = function(expression) {};
+/**
+ * @param {string} expression
+ */
+var printErr = function(expression) {};
+/**
+ * @param {string} expression
+ * @return {ArrayBuffer}
+ */
+var readbuffer = function(filename) {};
+/**
+ * @const
+ */
+var scriptArgs = [];
+/**
+ * @const
+ */
+var quit = function() {};
+
+// Various Emscripten-specific global variables
+
+var tempRet0;
+var tempI64;
+var tempDouble;
+var WasmJS;

@@ -2,6 +2,7 @@
   "name": "emscripten",
   "version": "1.13.0",
   "dependencies": {
+    "google-closure-compiler-js": "^20170806.0.0",
     "ws": "~0.4.28"
   }
 }

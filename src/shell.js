@@ -26,7 +26,8 @@ if (!Module) Module = (typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_N
 // the current environment's defaults to avoid having to be so
 // defensive during initialization.
 var moduleOverrides = {};
-for (var key in Module) {
+var key;
+for (key in Module) {
   if (Module.hasOwnProperty(key)) {
     moduleOverrides[key] = Module[key];
   }
@@ -265,7 +266,7 @@ Module['preRun'] = [];
 Module['postRun'] = [];
 
 // Merge back in the overrides
-for (var key in moduleOverrides) {
+for (key in moduleOverrides) {
   if (moduleOverrides.hasOwnProperty(key)) {
     Module[key] = moduleOverrides[key];
   }
