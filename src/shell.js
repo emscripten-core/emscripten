@@ -278,6 +278,15 @@ for (var key in moduleOverrides) {
 // reclaim data used e.g. in memoryInitializerRequest, which is a large typed array.
 moduleOverrides = undefined;
 
+function onAsmLoaded (asm) {
+  // TODO: Use `Object.assign(Module, asm);` when IE and other old browsers do not need to be supported anymore
+  for (var functionName in asm) {
+    if (asm.hasOwnProperty(functionName)) {
+      Module[functionName] = asm[functionName];
+    }
+  }
+}
+
 {{BODY}}
 
 // {{MODULE_ADDITIONS}}

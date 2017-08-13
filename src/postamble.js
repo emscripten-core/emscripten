@@ -2,13 +2,7 @@
 // === Auto-generated postamble setup entry stuff ===
 
 Module['asm'] = asm;
-// When `Module['asm']` is filed immediately, for other methods there are similar lines in `doJustAsm()` and `doNativeWasm()` functions
-// TODO: Use `Object.assign(Module, Module['asm']);` when IE and other old browsers do not need to be supported anymore
-(function () {
-  for (var functionName in Module['asm']) {
-    Module[functionName] = Module['asm'][functionName];
-  }
-})();
+onAsmLoaded(Module['asm']);
 
 {{{ maybeExport('FS') }}}
 
