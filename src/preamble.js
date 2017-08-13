@@ -2256,7 +2256,12 @@ function integrateWasmJS(Module) {
         {{{ makeEval("eval(Module['read'](asmjsCodeFile));") }}} // set Module.asm
       } else {
         Module['asm'] = Module['asmPreload'];
-        Object.assign(Module, Module['asm']);
+        // TODO: Use `Object.assign(Module, Module['asm']);` when IE and other old browsers do not need to be supported anymore
+        (function () {
+            for (var functionName in Module['asm']) {
+                Module[functionName] = Module['asm'][functionName];
+            }
+        })();
       }
     }
     if (typeof Module['asm'] !== 'function') {
@@ -2290,7 +2295,12 @@ function integrateWasmJS(Module) {
       exports = instance.exports;
       if (exports.memory) mergeMemory(exports.memory);
       Module['asm'] = exports;
-      Object.assign(Module, Module['asm']);
+      // TODO: Use `Object.assign(Module, Module['asm']);` when IE and other old browsers do not need to be supported anymore
+      (function () {
+          for (var functionName in Module['asm']) {
+              Module[functionName] = Module['asm'][functionName];
+          }
+      })();
       Module["usingWasm"] = true;
       removeRunDependency('wasm-instantiate');
     }
