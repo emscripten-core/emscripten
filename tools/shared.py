@@ -892,12 +892,6 @@ except:
   logging.debug('PYTHON not defined in ' + hint_config_file_location() + ', using "%s"' % (sys.executable,))
   PYTHON = sys.executable
 
-try:
-  JAVA
-except:
-  logging.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
-  JAVA = 'java'
-
 # Additional compiler options
 
 # Target choice.

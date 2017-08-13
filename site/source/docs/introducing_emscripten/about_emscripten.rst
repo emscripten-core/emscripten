@@ -51,7 +51,7 @@ The :ref:`emsdk` is used to manage multiple SDKs and tools, and to specify the p
 
 *Emsdk* writes the "active" configuration to the :ref:`compiler-configuration-file`. This file is used by *emcc* to get the correct current toolchain for building.
 
-A number of other tools are not shown — for example, Java can optionally be used by *emcc* to run the :term:`closure compiler`, which can further decrease code size.
+A number of other tools are not shown.
 
 The whole toolchain is delivered in the :ref:`Emscripten SDK <sdk-download-and-install>`, and can be used on Linux, Windows or Mac OS X.
 

@@ -48,7 +48,7 @@ If you want to use the upstream stable branch ``master``, replace ``-incoming-``
 		
 		::
 			
-			emsdk install clang-incoming-64bit node-0.10.17-64bit python-2.7.5.3-64bit java-7.45-64bit emscripten-incoming git-1.8.3
+			emsdk install clang-incoming-64bit node-0.10.17-64bit python-2.7.5.3-64bit emscripten-incoming git-1.8.3
 		
 		Other ``sdk-`` targets are provided for the master branch and 32bit builds.
 	

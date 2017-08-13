@@ -60,14 +60,14 @@ You can also specify a target of ``latest`` to grab the most current SDK.
 SDK concepts
 ============
 
-The Emscripten toolchain includes a number of different tools, including *Clang*, *Emscripten*, *Java*, *Git*, *Node*, etc. *Emsdk* is a small package manager for controlling which tools are installed, and from the set of installed tools, which are active.
+The Emscripten toolchain includes a number of different tools, including *Clang*, *Emscripten*, *Git*, *Node*, etc. *Emsdk* is a small package manager for controlling which tools are installed, and from the set of installed tools, which are active.
 
-The current set of available :term:`tools <Tool>` and :term:`SDKs <SDK>` are listed using ``./emsdk list``. These can be installed individually (``./emsdk install node-0.10.17-64bit``) or as a group (``./emsdk install node-0.10.17-64bit java-7.45-64bit``).
+The current set of available :term:`tools <Tool>` and :term:`SDKs <SDK>` are listed using ``./emsdk list``. These can be installed individually (``./emsdk install node-0.10.17-64bit``) or as a group (``./emsdk install node-0.10.17-64bit clang-incoming-64bit``).
 
 The :term:`SDK` targets are a convenience mechanism for specifying the full set of tools used by a particular Emscripten release. For example, the two lines below are equivalent: ::
 
 	./emsdk install sdk-incoming-64bit
-	./emsdk install git-1.8.3 clang-incoming-64bit node-0.10.17-64bit python-2.7.5.3-64bit java-7.45-64bit emscripten-incoming
+	./emsdk install git-1.8.3 clang-incoming-64bit node-0.10.17-64bit python-2.7.5.3-64bit emscripten-incoming
 
 A particular installed SDK (or tool) can then be set as :term:`active <Active Tool/SDK>`, meaning that it will be used when Emscripten is run. The active "compiler configuration" is stored in a user-specific file (*~/.emscripten*), which is discussed in the next section.
 
@@ -98,7 +98,6 @@ Below are typical **.emscripten** files created by *emsdk*. Note the variable na
 	NODE_JS='C:/Program Files/Emscripten/node/0.10.17_64bit/node.exe'
 	PYTHON='C:/Program Files/Emscripten/python/2.7.5.3_64bit/python.exe'
 	EMSCRIPTEN_ROOT='C:/Program Files/Emscripten/emscripten/1.21.0'
-	JAVA='C:/Program Files/Emscripten/java/7.45_64bit/bin/java.exe'
 	V8_ENGINE = ''
 	TEMP_DIR = 'c:/users/hamis_~1/appdata/local/temp'
 	COMPILER_ENGINE = NODE_JS

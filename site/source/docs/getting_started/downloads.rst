@@ -107,7 +107,7 @@ Linux
 		# Install cmake
 		sudo apt-get install cmake
 		
-- *Python*, *node.js* or *Java* are not provided by *emsdk*. The user is expected to install these beforehand with the *system package manager*:
+- *Python* or *node.js* are not provided by *emsdk*. The user is expected to install these beforehand with the *system package manager*:
 
 	::
 	
@@ -117,9 +117,6 @@ Linux
 		# Install node.js
 		sudo apt-get install nodejs
 		
-		# Install Java (optional, only needed for Closure Compiler minification)
-		sudo apt-get install default-jre
-
 .. note:: Your system may provide Node.js as ``node`` instead of ``nodejs``. In that case, you may need to also update the ``NODE_JS`` attribute of your ``~/.emscripten`` file.
 		
 - *Git* is not installed automatically. Git is only needed if you want to use tools from one of the development branches **emscripten-incoming** or **emscripten-master**: 

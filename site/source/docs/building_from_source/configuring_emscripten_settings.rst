@@ -7,7 +7,7 @@ Configuring Emscripten Settings when Manually Building from Source
 .. note:: These instructions are only useful if you are building Emscripten **manually** from source! If you're using the :ref:`SDK <building-emscripten-from-source-using-the-sdk>` you should never manually update the settings, because the :ref:`emsdk` automatically overwrites the file with the appropriate compiler settings when you :term:`activate <Active Tool/SDK>` a tool or SDK.
 
 
-The compiler settings used by Emscripten are defined in the :ref:`compiler configuration file (~/.emscripten) <compiler-configuration-file>`. These settings include paths to the tools (LLVM, Clang, Java, etc.) and the compiler's temporary directory for intermediate build files.
+The compiler settings used by Emscripten are defined in the :ref:`compiler configuration file (~/.emscripten) <compiler-configuration-file>`. These settings include paths to the tools (LLVM, Clang, etc.) and the compiler's temporary directory for intermediate build files.
 
 This article explains how to create and update the file when you are building Emscripten :ref:`manually <installing-from-source>` from source.
 
@@ -27,7 +27,7 @@ The settings file is created the first time a user runs :ref:`emcc <emccdoc>` (o
 	You should get a ``Welcome to Emscripten!`` message. Behind the scenes, Emscripten generates a file called ``.emscripten`` in your home folder.
 	
 	
-Emscripten makes a "best guess" at the correct locations for tools and updates the file appropriately. Where possible it will look for "system" apps (like Python and Java) and infer the location of the ``EMSCRIPTEN_ROOT`` (where :ref:`emcc <emccdoc>` is located) from the location of the command prompt. 
+Emscripten makes a "best guess" at the correct locations for tools and updates the file appropriately. Where possible it will look for "system" apps (like Python) and infer the location of the ``EMSCRIPTEN_ROOT`` (where :ref:`emcc <emccdoc>` is located) from the location of the command prompt.
 
 The file will probably not include the link to :term:`Fastcomp` (``LLVM_ROOT``) as a manual source build can create this anywhere.
 
@@ -56,7 +56,7 @@ The file simply assigns paths to a number of *variables* representing the main t
 
 The default *emcc* configuration file often gets the paths from environment variables if defined. If no variable is defined the system will also attempt to find "system executables". For example:  ::
 
-	PYTHON = os.path.expanduser(os.getenv('PYTHON', 'C:\\Python27\\python2.exe'))
+	PYTHON = os.path.expanduser(os.getenv('PYTHON', C:\\Python27\\python2.exe'))
 
 You can find out the other variable names from the default *.emscripten* file or the :ref:`example here <compiler-configuration-file>`. 
 

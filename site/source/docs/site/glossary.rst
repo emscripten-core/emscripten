@@ -71,9 +71,6 @@ Emscripten tools and dependencies
 	Python
 		Python is a scripting language used to write many of Emscripten's tools. The required version is listed in the :ref:`toolchain requirements <central-list-of-emscripten-tools-and-dependencies>`.
 	
-	Java
-		`Java <http://www.java.com/en/download/faq/whatis_java.xml>`_ is a programming language and computing platform. It is used by Emscripten for the code that performs some advanced optimisations. The required version is listed in the :ref:`toolchain requirements <central-list-of-emscripten-tools-and-dependencies>`.
-
 	JavaScript
 		`JavaScript <http://en.wikipedia.org/wiki/JavaScript>`_ (`ECMAScript <http://en.wikipedia.org/wiki/ECMAScript>`_) is a programming language that is primarily used as part of a web browser, providing programmatic access to objects within a host environment. With :term:`node.js`, it is also being used in server-side network programming. 
 		
@@ -115,7 +112,7 @@ The following terms are used when referring to the SDK and :ref:`emsdk`:
 		The :ref:`emsdk` is used to perform all SDK maintenance and can install, update, add, remove and :term:`activate <Active Tool/SDK>` :term:`SDKs <SDK>` and :term:`tools <Tool>`. Most operations are of the form ``./emsdk command``. To access the *emsdk* script, launch the :term:`Emscripten Command Prompt`.
 
 	Tool
-		The basic unit of software bundled in the :term:`SDK`. A Tool has a name and a version. For example, **clang-3.2-32bit** is a tool that contains the 32-bit version of the *Clang* v3.2 compiler. Other tools used by *Emscripten* include :term:`Java`, :term:`Git`, :term:`node.js`, etc.
+		The basic unit of software bundled in the :term:`SDK`. A Tool has a name and a version. For example, **clang-3.2-32bit** is a tool that contains the 32-bit version of the *Clang* v3.2 compiler. Other tools used by *Emscripten* include :term:`Git`, :term:`node.js`, etc.
 		
 	SDK
 		A set of :term:`tools <Tool>`. For example, **sdk-1.5.6-32bit** is an SDK consisting of the tools: clang-3.2-32bit, node-0.10.17-32bit, python-2.7.5.1-32bit and emscripten-1.5.6. 

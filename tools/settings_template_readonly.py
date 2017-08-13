@@ -23,8 +23,6 @@ NODE_JS = os.path.expanduser(os.getenv('NODE', '{{{ NODE }}}')) # executable
 SPIDERMONKEY_ENGINE = [os.path.expanduser(os.getenv('SPIDERMONKEY', 'js'))] # executable
 V8_ENGINE = os.path.expanduser(os.getenv('V8', 'd8')) # executable
 
-JAVA = 'java' # executable
-
 TEMP_DIR = '{{{ TEMP }}}'
 
 CRUNCH = os.path.expanduser(os.getenv('CRUNCH', 'crunch')) # executable
