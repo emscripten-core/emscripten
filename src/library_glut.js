@@ -125,7 +125,7 @@ var LibraryGLUT = {
       if (65 <= keycode && keycode <= 90)
         return event['shiftKey'] ? keycode : keycode + 32;
       if (96 <= keycode && keycode <= 105)
-        return keycode - 48; // numpad numbers    
+        return keycode - 48; // numpad numbers
       if (106 <= keycode && keycode <= 111)
         return keycode - 106 + 42; // *,+-./  TODO handle shift?
 
@@ -216,9 +216,9 @@ var LibraryGLUT = {
       }
 
       var simulatedEvent = document.createEvent("MouseEvent");
-      simulatedEvent.initMouseEvent(type, true, true, window, 1, 
-                                    main.screenX, main.screenY, 
-                                    main.clientX, main.clientY, false, 
+      simulatedEvent.initMouseEvent(type, true, true, window, 1,
+                                    main.screenX, main.screenY,
+                                    main.clientX, main.clientY, false,
                                     false, false, false, 0/*main*/, null);
 
       main.target.dispatchEvent(simulatedEvent);
@@ -555,7 +555,7 @@ var LibraryGLUT = {
     }
     Module['canvas'].style.cursor = cursorStyle;
   },
-  
+
   glutCreateWindow__deps: ['$Browser'],
   glutCreateWindow: function(name) {
     var contextAttributes = {

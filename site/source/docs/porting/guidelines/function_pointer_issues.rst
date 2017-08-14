@@ -7,42 +7,42 @@ Function Pointer Issues
 There are three general issues with function pointers:
 
 
-#. 
+#.
   :ref:`Function pointer casts <Asm-pointer-casts>` can cause function pointer calls to fail.
 
-  Function pointers are stored in a specific table based on their signature when they are *declared*. When a function is called the code searches for it in the table associated with its *current* function pointer signature. If the function pointer used to call the function does not have the same signature as the original type, the calling code will look for it in the wrong table. 
-  
-  For example, consider a function declared as ``int (int)`` (return ``int``, receive ``int``) and hence added to the table ``FUNCTION_TABLE_ii``. If you cast a function pointer to it to ``void (int)`` (no return, receive ``int``), then the code will look for the function in ``FUNCTION_TABLE_vi``.
-  
-  You may see compilation warnings for this error: 
+  Function pointers are stored in a specific table based on their signature when they are *declared*. When a function is called the code searches for it in the table associated with its *current* function pointer signature. If the function pointer used to call the function does not have the same signature as the original type, the calling code will look for it in the wrong table.
 
-  :: 
-  
+  For example, consider a function declared as ``int (int)`` (return ``int``, receive ``int``) and hence added to the table ``FUNCTION_TABLE_ii``. If you cast a function pointer to it to ``void (int)`` (no return, receive ``int``), then the code will look for the function in ``FUNCTION_TABLE_vi``.
+
+  You may see compilation warnings for this error:
+
+  ::
+
     warning: implicit declaration of function
 
-  The recommended workaround is to refactor code to avoid this type of situation, as described in :ref:`Asm-pointer-casts` below. 
+  The recommended workaround is to refactor code to avoid this type of situation, as described in :ref:`Asm-pointer-casts` below.
 
 
-#. 
+#.
 
   When using optimisation :ref:`-O2 <emcc-O2>` and above, comparing function pointers of different types can give false positives, and bugs with incorrect function pointers are potentially more misleading. To check if this is the cause of problems with your code, you can compile with `ALIASING_FUNCTION_POINTERS <https://github.com/kripken/emscripten/blob/1.29.12/src/settings.js#L213>`_ unset (``-s ALIASING_FUNCTION_POINTERS=0``).
 
   .. note:: In **asm.js**, function pointers are stored within a function-type specific table (as in the ``FUNCTION_TABLE_ii`` example from before).
-  
+
     At lower levels of optimisation each function pointer has a unique index value across all the function-type tables (a function pointer will exist at a specific index in one table only, and there will be an empty slot at that index in all the other tables). As a result, comparing function pointers (indexes) gives an accurate result, and attempting to call a function pointer in the wrong table will throw an error as that index will be empty.
-    
-    At optimisation ``-O2`` and above, the tables are optimised so that all the function pointers are in sequential indexes. This is a useful optimisation because the tables are much more compact without all the empty slots, but it does mean that the  function index is no longer "globally" unique. Each function is now uniquely indexed using both its table and its index within that table. 
-    
+
+    At optimisation ``-O2`` and above, the tables are optimised so that all the function pointers are in sequential indexes. This is a useful optimisation because the tables are much more compact without all the empty slots, but it does mean that the  function index is no longer "globally" unique. Each function is now uniquely indexed using both its table and its index within that table.
+
     As a result, at higher optimisations:
-    
-      - Comparisons of the function pointers can give a false positive, because functions of different types can have the same index (albeit in different tables). 
-      - Mistakes in function pointer code can be more difficult to debug, because they result in the wrong code being called rather than an explicit error (as is raised in the case of a "hole" in the table). 
+
+      - Comparisons of the function pointers can give a false positive, because functions of different types can have the same index (albeit in different tables).
+      - Mistakes in function pointer code can be more difficult to debug, because they result in the wrong code being called rather than an explicit error (as is raised in the case of a "hole" in the table).
 
 
-#. 
+#.
   Older versions of :term:`clang` can generate different code for C and C++ calls when a structure is passed **by value** (for completeness, one convention is ``struct byval`` and the other is ``field a, field b``). The two formats are incompatible with each other, and you may get a warning.
-  
-  The workaround is to pass the structure by reference, or simply not mix C and C++ in that location (for example, rename the **.c** file to **.cpp**). 
+
+  The workaround is to pass the structure by reference, or simply not mix C and C++ in that location (for example, rename the **.c** file to **.cpp**).
 
   .. _function-pointer-issues-point-asmjs:
 
@@ -68,12 +68,12 @@ For a real-world example, consider the code below:
   #include <stdio.h>
 
   typedef void(*voidReturnType)(const char *);
-  
+
   void voidReturn(const char *message) {
     printf( "voidReturn: %s\n", message );
   }
-    
-    
+
+
   int intReturn(const char *message) {
     printf( "intReturn: %s\n", message );
     return 1;
@@ -97,7 +97,7 @@ For a real-world example, consider the code below:
     functionList[0] = voidReturn;
     functionList[1] = (voidReturnType)intReturn;         // Breaks in Emscripten.
     functionList[2] = (voidReturnType)voidReturnNoParam; // Breaks in Emscripten.
-    
+
     callFunctions(functionList, 3);
   }
 
@@ -159,10 +159,10 @@ The code fragment below shows how to make and use an adapter function that calls
 
   int main() {
     voidReturnType functionList[3];
-    
+
     functionList[0] = voidReturn;
     functionList[1] = (voidReturnType)intReturn; // Fixed in callFunctions
     functionList[2] = voidReturnNoParamAdapter; // Fixed by Adapter
-    
+
     callFunctions(functionList, 3);
   }

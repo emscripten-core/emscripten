@@ -17,11 +17,11 @@ def create_response_file(args, directory):
     logging.warning('Creating response file ' + response_filename + ': ' + contents)
   response_fd.write(contents)
   response_fd.close()
-  
+
   # Register the created .rsp file to be automatically cleaned up once this process finishes, so that
   # caller does not have to remember to do it.
   shared.configuration.get_temp_files().note(response_filename)
-  
+
   return response_filename
 
 # Reads a response file, and returns the list of cmdline params found in the file.

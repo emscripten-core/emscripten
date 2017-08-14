@@ -142,14 +142,14 @@ All types of Emscripten Fetch API operations (XHRs, IndexedDB accesses) can be p
 		    printf("Finished downloading %llu bytes from URL %s.\n", fetch->numBytes, fetch->url);
 		    // The data is now available at fetch->data[0] through fetch->data[fetch->numBytes-1];
 		  } else {
-		    printf("Downloading %s failed, HTTP failure status code: %d.\n", fetch->url, fetch->status);    
+		    printf("Downloading %s failed, HTTP failure status code: %d.\n", fetch->url, fetch->status);
 		  }
 		  emscripten_fetch_close(fetch);
 		}
 
 In the above code sample, the success and failure callback functions are not used. However, if specified, they will be synchronously called before emscripten_fetch() returns.
 
-.. note:: 
+.. note::
 
 	Synchronous Emscripten Fetch operations are subject to a number of restrictions, depending on which Emscripten build mode (linker flags) is used:
 
@@ -183,14 +183,14 @@ Emscripten Fetch operations can also run in a third mode, called a *waitable* fe
 		    printf("Finished downloading %llu bytes from URL %s.\n", fetch->numBytes, fetch->url);
 		    // The data is now available at fetch->data[0] through fetch->data[fetch->numBytes-1];
 		  } else {
-		    printf("Downloading %s failed, HTTP failure status code: %d.\n", fetch->url, fetch->status);    
+		    printf("Downloading %s failed, HTTP failure status code: %d.\n", fetch->url, fetch->status);
 		  }
 		  emscripten_fetch_close(fetch);
 		}
 
 Waitable fetches allow interleaving multiple tasks in one thread so that the issuing thread can perform some other work until the fetch completes.
 
-.. note:: 
+.. note::
 
 	Waitable fetches are available only in certain build modes:
 
@@ -249,7 +249,7 @@ If the application does not need random seek access to the file, but is able to 
 
 		void downloadProgress(emscripten_fetch_t *fetch) {
 		  printf("Downloading %s.. %.2f%%s complete. HTTP readyState: %d. HTTP status: %d.\n"
-		    "HTTP statusText: %s. Received chunk [%llu, %llu[\n", 
+		    "HTTP statusText: %s. Received chunk [%llu, %llu[\n",
 		    fetch->url, fetch->totalBytes > 0 ? (fetch->dataOffset + fetch->numBytes) * 100.0 / fetch->totalBytes : (fetch->dataOffset + fetch->numBytes),
 		    fetch->totalBytes > 0 ? "%" : " bytes",
 		    fetch->readyState, fetch->status, fetch->statusText,

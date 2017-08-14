@@ -16,7 +16,7 @@ This section lists APIs that are not suitable for general use, but which may be 
 settings.js
 ============
 
-`settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_ contains default values and options used in various places by the compiler. 
+`settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_ contains default values and options used in various places by the compiler.
 
 .. Warning :: Many **settings.js** options are highly brittle - certain combinations of options, and combinations of certain options used with some source code, can cause Emscripten to fail badly. This is intended for use by "advanced users", and possibly even only people developing Emscripten itself.
 
@@ -32,7 +32,7 @@ The small number of options that developers may have cause to change should be m
 
 	./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS="['_int_sqrt']"
 
-	
+
 preamble.js
 ===========
 
@@ -41,13 +41,13 @@ The following advanced APIs are documented in `preamble.js <https://github.com/k
 .. js:function:: allocate(slab, types, allocator, ptr)
 
 	This is marked as *internal* because it is difficult to use (it has been optimized for multiple syntaxes to save space in generated code). Normally developers should instead allocate memory using ``_malloc()``, initialize it with :js:func:`setValue`, etc., but this function may be useful for advanced developers in certain cases.
-	
-	:param slab: An array of data, or a number. If a number, then the size of the block to allocate, in *bytes*. 
+
+	:param slab: An array of data, or a number. If a number, then the size of the block to allocate, in *bytes*.
 	:param types: Either an array of types, one for each byte (or 0 if no type at that position), or a single type which is used for the entire block. This only matters if there is initial data - if ``slab`` is a number, then this value does not matter at all and is ignored.
 	:param allocator: How to allocate memory, see ALLOC_*
 
 
-	
+
 Module.Runtime
 ================
 
@@ -95,7 +95,7 @@ Advanced File System API
 	FS.DB_NAME()
 	FS.saveFilesToDB(paths, onload, onerror)
 	FS.loadFilesFromDB(paths, onload, onerror)
-	
+
 	For advanced users only.
 
 

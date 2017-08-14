@@ -9,7 +9,7 @@ Generally you should first compile and run your code without optimizations (the 
 How to optimize code
 ====================
 
-Code is optimized by specifying :ref:`optimization flags <emcc-compiler-optimization-options>` when running :ref:`emcc <emccdoc>`. The levels include: :ref:`-O0 <emcc-O0>` (no optimization), :ref:`-O1 <emcc-O1>`, :ref:`-O2 <emcc-O2>`, :ref:`-Os <emcc-Os>`, :ref:`-Oz <emcc-Oz>`, and :ref:`-O3 <emcc-O3>`. 
+Code is optimized by specifying :ref:`optimization flags <emcc-compiler-optimization-options>` when running :ref:`emcc <emccdoc>`. The levels include: :ref:`-O0 <emcc-O0>` (no optimization), :ref:`-O1 <emcc-O1>`, :ref:`-O2 <emcc-O2>`, :ref:`-Os <emcc-Os>`, :ref:`-Oz <emcc-Oz>`, and :ref:`-O3 <emcc-O3>`.
 
 For example, to compile with optimization level ``-O2``:
 
@@ -19,7 +19,7 @@ For example, to compile with optimization level ``-O2``:
 
 The higher optimization levels introduce progressively more aggressive optimization, resulting in improved performance and code size at the cost of increased compilation time. The levels can also highlight different issues related to undefined behavior in code.
 
-The optimization level you should use depends mostly on the current stage of development: 
+The optimization level you should use depends mostly on the current stage of development:
 
 - When first porting code, run *emcc* on your code using the default settings (without optimization). Check that your code works and :ref:`debug <Debugging>` and fix any issues before continuing.
 - Build with lower optimization levels during development for a shorter compile/test iteration cycle (``-O0`` or ``-O1``).
@@ -40,17 +40,17 @@ There are several flags you can :ref:`pass to the compiler <emcc-s-option-value>
 
 A few useful flags are:
 
-- 
+-
 	.. _optimizing-code-no-exit-runtime:
-	
+
 	``NO_EXIT_RUNTIME``: Building with ``-s NO_EXIT_RUNTIME=1`` lets the compiler know that you don't want to shut down the runtime environment after the ``main()`` function finishes. This allows it to discard the ``atexit`` and global destructor calls it would otherwise make, improving code size and startup speed.
 
-	This is useful if your ``main()`` function finishes but you still want to execute code, for example in an app that uses a :ref:`main loop function <emscripten-runtime-environment-main-loop>`. 
-	
+	This is useful if your ``main()`` function finishes but you still want to execute code, for example in an app that uses a :ref:`main loop function <emscripten-runtime-environment-main-loop>`.
+
 	.. note:: Emscripten will not shut down the runtime if it detects :c:func:`emscripten_set_main_loop`, but it is better to optimise away the unnecessary code.
 
 
-	
+
 Code size
 =========
 
@@ -61,18 +61,18 @@ This section describes optimisations and issues that are relevant to code size. 
 Memory initialization
 ---------------------
 
-By default Emscripten emits the static memory initialization code inside the **.js** file. This can cause the JavaScript file to be very large, which will slow down startup. It can also cause problems in JavaScript engines with limits on array sizes, resulting in errors like ``Array initializer too large`` or ``Too much recursion``. 
+By default Emscripten emits the static memory initialization code inside the **.js** file. This can cause the JavaScript file to be very large, which will slow down startup. It can also cause problems in JavaScript engines with limits on array sizes, resulting in errors like ``Array initializer too large`` or ``Too much recursion``.
 
-The ``--memory-init-file 1`` :ref:`emcc option <emcc-memory-init-file>` causes the compiler to emit this code in a separate binary file with suffix **.mem**. The **.mem** file is loaded (asynchronously) by the main **.js** file before ``main()`` is called and compiled code is able to run. 
+The ``--memory-init-file 1`` :ref:`emcc option <emcc-memory-init-file>` causes the compiler to emit this code in a separate binary file with suffix **.mem**. The **.mem** file is loaded (asynchronously) by the main **.js** file before ``main()`` is called and compiled code is able to run.
 
-  .. note:: From Emscripten 1.21.1 this setting is enabled by default for fully optimized builds, that is, ``-O2`` and above. 
+  .. note:: From Emscripten 1.21.1 this setting is enabled by default for fully optimized builds, that is, ``-O2`` and above.
 
 
 .. _optimizing-code-oz-os:
 
 Trading off code size and performance
 -------------------------------------
-You may wish to build the less performance-sensitive source files in your project using :ref:`-Os <emcc-Os>` or :ref:`-Oz <emcc-Oz>` and the remainder using :ref:`-O2 <emcc-O2>` (:ref:`-Os <emcc-Os>` and :ref:`-Oz <emcc-Oz>` are similar to :ref:`-O2 <emcc-O2>`, but reduce code size at the expense of performance. :ref:`-Oz <emcc-Oz>` reduces code size more than :ref:`-Os <emcc-Os>`.) 
+You may wish to build the less performance-sensitive source files in your project using :ref:`-Os <emcc-Os>` or :ref:`-Oz <emcc-Oz>` and the remainder using :ref:`-O2 <emcc-O2>` (:ref:`-Os <emcc-Os>` and :ref:`-Oz <emcc-Oz>` are similar to :ref:`-O2 <emcc-O2>`, but reduce code size at the expense of performance. :ref:`-Oz <emcc-Oz>` reduces code size more than :ref:`-Os <emcc-Os>`.)
 
 Note that ``-Oz`` may take longer to build. For example, it enables ``EVAL_CTORS`` which tries to optimize out C++ global constructors, which takes time.
 
@@ -133,7 +133,7 @@ If you hit memory limits in browsers, it can help to run your project by itself,
 Outlining
 ---------
 
-JavaScript engines will often compile very large functions slowly (relative to their size), and fail to optimize them effectively (or at all). One approach to this problem is to use "outlining": breaking them into smaller functions that can be compiled and optimized more effectively. 
+JavaScript engines will often compile very large functions slowly (relative to their size), and fail to optimize them effectively (or at all). One approach to this problem is to use "outlining": breaking them into smaller functions that can be compiled and optimized more effectively.
 
 Outlining increases overall code size, and can itself make some code less optimised. Despite this, outlining can sometimes improve both startup and runtime speed. For more information read `Outlining: a workaround for JITs and big functions <http://mozakai.blogspot.com/2013/08/outlining-workaround-for-jits-and-big.html>`_.
 
@@ -145,9 +145,9 @@ The ``OUTLINING_LIMIT`` setting defines the function size at which Emscripten wi
 Aggressive variable elimination
 -------------------------------
 
-Aggressive variable elimination attempts to remove variables whenever possible, even at the cost of increasing code size by duplicating expressions. This can improve speed in cases where you have extremely large functions. For example it can make sqlite (which has a huge interpreter loop with thousands of lines in it) 7% faster. 
+Aggressive variable elimination attempts to remove variables whenever possible, even at the cost of increasing code size by duplicating expressions. This can improve speed in cases where you have extremely large functions. For example it can make sqlite (which has a huge interpreter loop with thousands of lines in it) 7% faster.
 
-You can enable aggressive variable elimination with ``-s AGGRESSIVE_VARIABLE_ELIMINATION=1``. 
+You can enable aggressive variable elimination with ``-s AGGRESSIVE_VARIABLE_ELIMINATION=1``.
 
 .. note:: This setting can be harmful in some cases. Test before using it.
 
@@ -160,7 +160,7 @@ Other optimization issues
 C++ exceptions
 --------------
 
-C++ exceptions are turned off by default in ``-O1`` (and above). This prevents the generation of ``try-catch`` blocks, which lets the code run much faster, and also makes the code smaller. 
+C++ exceptions are turned off by default in ``-O1`` (and above). This prevents the generation of ``try-catch`` blocks, which lets the code run much faster, and also makes the code smaller.
 
 To re-enable exceptions in optimized code, run *emcc* with ``-s DISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_).
 
@@ -174,7 +174,7 @@ Building with ``-s ALLOW_MEMORY_GROWTH=1`` allows the total amount of memory use
 Inlining
 --------
 
-`Inlining <http://en.wikipedia.org/wiki/Inline_expansion>`_ often generates large functions, as these allow the compiler's optimizations to be more effective. Unfortunately large functions can be slower at runtime than multiple smaller functions because JavaScript engines often either don't optimize big functions (for fear of long JIT times), or they do optimize them resulting in noticeable pauses. 
+`Inlining <http://en.wikipedia.org/wiki/Inline_expansion>`_ often generates large functions, as these allow the compiler's optimizations to be more effective. Unfortunately large functions can be slower at runtime than multiple smaller functions because JavaScript engines often either don't optimize big functions (for fear of long JIT times), or they do optimize them resulting in noticeable pauses.
 
 .. note:: ``-O1`` and ``-O2`` inline functions by default. Ironically, this can actually decrease performance in some cases!
 
@@ -201,7 +201,7 @@ A few **UNSAFE** optimizations you might want to try are:
 Profiling
 =========
 
-Modern browsers have JavaScript profilers that can help find the slower parts in your code. As each browser's profiler has limitations, profiling in multiple browsers is highly recommended. 
+Modern browsers have JavaScript profilers that can help find the slower parts in your code. As each browser's profiler has limitations, profiling in multiple browsers is highly recommended.
 
 To ensure that compiled code contains enough information for profiling, build your project with :ref:`profiling <emcc-profiling>` as well as optimization and other flags:
 

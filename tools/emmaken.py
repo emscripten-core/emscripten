@@ -30,7 +30,7 @@ Example uses:
    with that command as an argument, for example
 
     emconfiguren.py ./configure [options]
-  
+
    emconfiguren.py is a tiny script that just sets some environment vars
    as a convenience. The command just shown is equivalent to
 
@@ -61,7 +61,7 @@ Example uses:
       return os.path.join(__rootpath__, *pathelems)
     sys.path += [path_from_root('')]
     from tools.shared import *
-    
+
    For using the Emscripten compilers/linkers/etc. you can do:
     env = Environment()
     ...
@@ -211,7 +211,7 @@ try:
     newargs = [ arg for arg in newargs if arg is not '' ] + CC_ADDITIONAL_ARGS
     newargs.append('-emit-llvm')
     if not use_linker:
-      newargs.append('-c') 
+      newargs.append('-c')
   else:
     print >> sys.stderr, 'Just copy.'
     shutil.copy(sys.argv[-1], sys.argv[-2])

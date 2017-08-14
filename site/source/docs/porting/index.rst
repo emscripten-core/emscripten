@@ -8,16 +8,16 @@ The topics in this section cover the main integration points that you need to co
 
 .. toctree::
 	:maxdepth: 1
-   
+
 	guidelines/index
 	emscripten-runtime-environment
 	connecting_cpp_and_javascript/index
 	files/index
-	multimedia_and_graphics/index	
+	multimedia_and_graphics/index
 	Debugging
 	pthreads
 	simd
 	asyncify
 	emterpreter
-	
-   
+
+

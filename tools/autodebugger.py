@@ -1,7 +1,7 @@
 '''
 Processes an LLVM assembly (.ll) file, adding debugging information.
 
-You can then run the .ll file in the LLVM interpreter (lli) and 
+You can then run the .ll file in the LLVM interpreter (lli) and
 compare that to the output when compiled using emscripten.
 
 Warning: You probably want to compile with SKIP_STACK_IN_SMALL=0! Otherwise

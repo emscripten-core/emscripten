@@ -33,7 +33,7 @@ logfilename='log-get-wiki.txt'
 # Add the directory containing your module to the Python path (wants absolute paths)
 #sys.path.append(os.path.abspath(scriptpath))
 from api_items import get_mapped_items
-# GetmMap of code items from api_items.py 
+# GetmMap of code items from api_items.py
 mapped_wiki_inline_code = get_mapped_items()
 #Add any additional mapped items that seem reasonable.
 mapped_wiki_inline_code['getValue(ptr, type)']=':js:func:`getValue(ptr, type) <getValue>`'
@@ -52,7 +52,7 @@ logfile=open(logfilename,'w')
 snapshot_version_information='.. note:: This article was migrated from the wiki (%s) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!\n\n' % strftime("%a, %d %b %Y %H:%M", gmtime())
 
 
-def CleanWiki():	
+def CleanWiki():
     """
     Delete the wiki clone directory and all contained files.
     """
@@ -70,11 +70,11 @@ def CleanWiki():
         print 'Old wiki clone removed'
     except:
         print 'No directory to clean found'
-        
 
 
 
-def CloneWiki():	
+
+def CloneWiki():
     """
     Clone the wiki into a temporary location (first cleaning)
     """
@@ -88,16 +88,16 @@ def CloneWiki():
         print 'Created directory'
     except:
         pass
-    
+
 
     # Clone
     git_clone_command = 'git clone %s %s' % (wiki_repo, wiki_temp_directory)
     #print git_clone_command
     os.system(git_clone_command)
- 
-    
 
-def ConvertFilesToRst():	
+
+
+def ConvertFilesToRst():
     """
     Add template to specified page object (wikitools)
     """
@@ -131,16 +131,16 @@ def ConvertFilesToRst():
             # Add titlebar to start of the file (from the filename)
             textinfile+=titlebar
             # Add wiki snapshot information
-            
+
             textinfile+=snapshot_version_information
-              
+
             infile=open(outputfilename,'r')
-            
+
             for line in infile:
                 textinfile+=line
             infile.close()
             #print textinfile
-            
+
             outfile=open(outputfilename,'w')
             outfile.write(textinfile)
             outfile.close()
@@ -150,7 +150,7 @@ def ConvertFilesToRst():
             outfile.close()
 
 
-def FixupConvertedRstFiles():	
+def FixupConvertedRstFiles():
     """
     Add template to specified page object (wikitools)
     """
@@ -183,21 +183,21 @@ def FixupConvertedRstFiles():
             temp_set_of_codemarkup.add(matchobj.group(0))
             linktext=matchobj.group(1)
             if linktext in mapped_wiki_inline_code:
-                logfile.write('Replace: %s \n' % mapped_wiki_inline_code[linktext]) 
-                return mapped_wiki_inline_code[linktext] 
+                logfile.write('Replace: %s \n' % mapped_wiki_inline_code[linktext])
+                return mapped_wiki_inline_code[linktext]
 
             return matchobj.group(0) #linktext
         #print 'fixing up code markup to code reference'
         return re.sub(r'``(.+?)``', fixcodemarkuplinks, aOldText)
 
 
-   
+
     for file in os.listdir(wiki_directory):
         if file.endswith(".rst"):
             input_file=wiki_directory+file
             #print input_file
             infile=open(input_file,'r')
-            
+
             textinfile=''
             for line in infile:
                 textinfile+=line
@@ -210,7 +210,7 @@ def FixupConvertedRstFiles():
             #convert codemarkup to links if possible
             textinfile=fixWikiCodeMarkupToCodeLinks(textinfile)
 
-            
+
             outfile=open(input_file,'w')
             outfile.write(textinfile)
             outfile.close()
@@ -232,10 +232,10 @@ parser.add_option("-c", "--clonewiki", dest="clonewiki", default=True, help="Cle
 print 'Clone wiki: %s' % options.clonewiki
 
 if options.clonewiki==True:
-    CloneWiki()   
+    CloneWiki()
     input= raw_input('CHECK ALL files were cloned! (look for "error: unable to create file" )\n')
-    
-ConvertFilesToRst()    
+
+ConvertFilesToRst()
 FixupConvertedRstFiles()
 print 'See LOG for details: %s ' % logfilename
 

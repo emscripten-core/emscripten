@@ -33,13 +33,13 @@ var LibraryJSEvents = {
 
     // When the C runtime exits via exit(), we unregister all event handlers added by this library to be nice and clean.
     // Track in this field whether we have yet registered that __ATEXIT__ handler.
-    removeEventListenersRegistered: false, 
+    removeEventListenersRegistered: false,
 
     staticInit: function() {
       if (typeof window !== 'undefined') {
         window.addEventListener("gamepadconnected", function() { ++JSEvents.numGamepadsConnected; });
         window.addEventListener("gamepaddisconnected", function() { --JSEvents.numGamepadsConnected; });
-        
+
         // Chromium does not fire the gamepadconnected event on reload, so we need to get the number of gamepads here as a workaround.
         // See https://bugs.chromium.org/p/chromium/issues/detail?id=502824
         var firstState = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : null);
@@ -83,7 +83,7 @@ var LibraryJSEvents = {
     deferredCalls: [],
 
     // Queues the given function call to occur the next time we enter an event handler.
-    // Existing implementations of pointerlock apis have required that 
+    // Existing implementations of pointerlock apis have required that
     // the target element is active in fullscreen mode first. Thefefore give
     // fullscreen mode request a precedence of 1 and pointer lock a precedence of 2
     // and sort by that to always request fullscreen before pointer lock.
@@ -111,7 +111,7 @@ var LibraryJSEvents = {
 
       JSEvents.deferredCalls.sort(function(x,y) { return x.precedence < y.precedence; });
     },
-    
+
     // Erases all deferred calls to the given target function from the queue list.
     removeDeferredCalls: function(targetFunction) {
       for(var i = 0; i < JSEvents.deferredCalls.length; ++i) {
@@ -121,11 +121,11 @@ var LibraryJSEvents = {
         }
       }
     },
-    
+
     canPerformEventHandlerRequests: function() {
       return JSEvents.inEventHandler && JSEvents.currentEventHandler.allowsDeferredCalls;
     },
-    
+
     runDeferredCalls: function() {
       if (!JSEvents.canPerformEventHandlerRequests()) {
         return;
@@ -151,7 +151,7 @@ var LibraryJSEvents = {
     // Removes all event handlers on the given DOM element of the given type. Pass in eventTypeString == undefined/null to remove all event handlers regardless of the type.
     removeAllHandlersOnTarget: function(target, eventTypeString) {
       for(var i = 0; i < JSEvents.eventHandlers.length; ++i) {
-        if (JSEvents.eventHandlers[i].target == target && 
+        if (JSEvents.eventHandlers[i].target == target &&
           (!eventTypeString || eventTypeString == JSEvents.eventHandlers[i].eventTypeString)) {
            JSEvents._removeHandler(i--);
          }
@@ -163,7 +163,7 @@ var LibraryJSEvents = {
       h.target.removeEventListener(h.eventTypeString, h.eventListenerFunc, h.useCapture);
       JSEvents.eventHandlers.splice(i, 1);
     },
-    
+
     registerOrRemoveHandler: function(eventHandler) {
       var jsEventHandler = function jsEventHandler(event) {
         // Increment nesting count for the event handler.
@@ -178,7 +178,7 @@ var LibraryJSEvents = {
         // Out of event handler - restore nesting count.
         --JSEvents.inEventHandler;
       }
-      
+
       if (eventHandler.callbackfunc) {
         eventHandler.eventListenerFunc = jsEventHandler;
         eventHandler.target.addEventListener(eventHandler.eventTypeString, jsEventHandler, eventHandler.useCapture);
@@ -264,7 +264,7 @@ var LibraryJSEvents = {
       if (target) {
         var rect = JSEvents.getBoundingClientRectOrZeros(target);
         {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, 'e.clientX - rect.left', 'i32') }}};
-        {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, 'e.clientY - rect.top', 'i32') }}};        
+        {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, 'e.clientY - rect.top', 'i32') }}};
       } else { // No specific target passed, return 0.
         {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, '0', 'i32') }}};
         {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, '0', 'i32') }}};
@@ -277,7 +277,7 @@ var LibraryJSEvents = {
         JSEvents.previousScreenY = e.screenY;
       }
     },
-    
+
     registerMouseEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
       if (!JSEvents.mouseEvent) {
         JSEvents.mouseEvent = _malloc( {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}} );
@@ -569,7 +569,7 @@ var LibraryJSEvents = {
     fullscreenEnabled: function() {
       return document.fullscreenEnabled || document.mozFullScreenEnabled || document.webkitFullscreenEnabled || document.msFullscreenEnabled;
     },
-    
+
     fillFullscreenChangeEventData: function(eventStruct, e) {
       var fullscreenElement = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
       var isFullscreen = !!fullscreenElement;
@@ -866,7 +866,7 @@ var LibraryJSEvents = {
           var touch = e.targetTouches[i];
           touches[touch.identifier].onTarget = true;
         }
-        
+
         var ptr = JSEvents.touchEvent;
         {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.ctrlKey, 'e.ctrlKey', 'i32') }}};
         {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.shiftKey, 'e.shiftKey', 'i32') }}};
@@ -892,11 +892,11 @@ var LibraryJSEvents = {
             {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasY, 't.clientY - canvasRect.top', 'i32') }}};
           } else {
             {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasX, '0', 'i32') }}};
-            {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasY, '0', 'i32') }}};            
+            {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasY, '0', 'i32') }}};
           }
           {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.targetX, 't.clientX - targetRect.left', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.targetY, 't.clientY - targetRect.top', 'i32') }}};
-          
+
           ptr += {{{ C_STRUCTS.EmscriptenTouchPoint.__size__ }}};
 
           if (++numTouches >= 32) {
@@ -981,7 +981,7 @@ var LibraryJSEvents = {
         var e = event || window.event;
 
         var confirmationMessage = Module['dynCall_iiii'](callbackfunc, eventTypeId, 0, userData);
-        
+
         if (confirmationMessage) {
           confirmationMessage = Pointer_stringify(confirmationMessage);
         }
@@ -1011,7 +1011,7 @@ var LibraryJSEvents = {
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.level, 'e.level', 'double') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.charging, 'e.charging', 'i32') }}};
     },
-    
+
     registerBatteryEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
       if (!JSEvents.batteryEvent) {
         JSEvents.batteryEvent = _malloc( {{{ C_STRUCTS.EmscriptenBatteryEvent.__size__ }}} );
@@ -1209,7 +1209,7 @@ var LibraryJSEvents = {
     JSEvents.registerOrientationChangeEventCallback(window.screen, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_ORIENTATIONCHANGE') }}}, "orientationchange");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
-  
+
   emscripten_get_orientation_status: function(orientationChangeEvent) {
     if (!JSEvents.screenOrientation() && typeof window.orientation === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     JSEvents.fillOrientationChangeEventData(orientationChangeEvent);
@@ -1240,7 +1240,7 @@ var LibraryJSEvents = {
       return {{{ cDefine('EMSCRIPTEN_RESULT_FAILED') }}};
     }
   },
-  
+
   emscripten_unlock_orientation: function() {
     if (window.screen.unlockOrientation) {
       window.screen.unlockOrientation();
@@ -1445,7 +1445,7 @@ var LibraryJSEvents = {
     }
   },
 
-  // https://developer.mozilla.org/en-US/docs/Web/Guide/API/DOM/Using_full_screen_mode  
+  // https://developer.mozilla.org/en-US/docs/Web/Guide/API/DOM/Using_full_screen_mode
   emscripten_do_request_fullscreen__deps: ['_setLetterbox'],
   emscripten_do_request_fullscreen: function(target, strategy) {
     if (typeof JSEvents.fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
@@ -1657,13 +1657,13 @@ var LibraryJSEvents = {
     }
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
-  
+
   emscripten_vibrate: function(msecs) {
-    if (!navigator.vibrate) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};    
+    if (!navigator.vibrate) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     navigator.vibrate(msecs);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
-  
+
   emscripten_vibrate_pattern: function(msecsArray, numEntries) {
     if (!navigator.vibrate) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
 
@@ -1685,42 +1685,42 @@ var LibraryJSEvents = {
     if (typeof document.visibilityState === 'undefined' && typeof document.hidden === 'undefined') {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
-    JSEvents.fillVisibilityChangeEventData(visibilityStatus);  
+    JSEvents.fillVisibilityChangeEventData(visibilityStatus);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
-  
+
   emscripten_set_touchstart_callback: function(target, userData, useCapture, callbackfunc) {
     JSEvents.registerTouchEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_TOUCHSTART') }}}, "touchstart");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
-  
+
   emscripten_set_touchend_callback: function(target, userData, useCapture, callbackfunc) {
     JSEvents.registerTouchEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_TOUCHEND') }}}, "touchend");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
-  
+
   emscripten_set_touchmove_callback: function(target, userData, useCapture, callbackfunc) {
     JSEvents.registerTouchEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_TOUCHMOVE') }}}, "touchmove");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
-  
+
   emscripten_set_touchcancel_callback: function(target, userData, useCapture, callbackfunc) {
     JSEvents.registerTouchEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_TOUCHCANCEL') }}}, "touchcancel");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
-  
+
   emscripten_set_gamepadconnected_callback: function(userData, useCapture, callbackfunc) {
     if (!navigator.getGamepads && !navigator.webkitGetGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     JSEvents.registerGamepadEventCallback(window, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_GAMEPADCONNECTED') }}}, "gamepadconnected");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
-  
+
   emscripten_set_gamepaddisconnected_callback: function(userData, useCapture, callbackfunc) {
     if (!navigator.getGamepads && !navigator.webkitGetGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     JSEvents.registerGamepadEventCallback(window, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_GAMEPADDISCONNECTED') }}}, "gamepaddisconnected");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
  },
-  
+
   _emscripten_sample_gamepad_data: function() {
     // Polling gamepads generates garbage, so don't do it when we know there are no gamepads connected.
     if (!JSEvents.numGamepadsConnected) return;
@@ -1741,7 +1741,7 @@ var LibraryJSEvents = {
     if (!JSEvents.lastGamepadState) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     return JSEvents.lastGamepadState.length;
   },
-  
+
   emscripten_get_gamepad_status__deps: ['_emscripten_sample_gamepad_data'],
   emscripten_get_gamepad_status: function(index, gamepadState) {
     __emscripten_sample_gamepad_data();
@@ -1759,31 +1759,31 @@ var LibraryJSEvents = {
     JSEvents.fillGamepadEventData(gamepadState, JSEvents.lastGamepadState[index]);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
-  
+
   emscripten_set_beforeunload_callback: function(userData, callbackfunc) {
     if (typeof window.onbeforeunload === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-    JSEvents.registerBeforeUnloadEventCallback(window, userData, true, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_BEFOREUNLOAD') }}}, "beforeunload"); 
+    JSEvents.registerBeforeUnloadEventCallback(window, userData, true, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_BEFOREUNLOAD') }}}, "beforeunload");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
-  
+
   emscripten_set_batterychargingchange_callback: function(userData, callbackfunc) {
-    if (!JSEvents.battery()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}}; 
+    if (!JSEvents.battery()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     JSEvents.registerBatteryEventCallback(JSEvents.battery(), userData, true, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE') }}}, "chargingchange");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
   emscripten_set_batterylevelchange_callback: function(userData, callbackfunc) {
-    if (!JSEvents.battery()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}}; 
+    if (!JSEvents.battery()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     JSEvents.registerBatteryEventCallback(JSEvents.battery(), userData, true, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_BATTERYLEVELCHANGE') }}}, "levelchange");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
-  
+
   emscripten_get_battery_status: function(batteryState) {
-    if (!JSEvents.battery()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}}; 
+    if (!JSEvents.battery()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     JSEvents.fillBatteryEventData(batteryState, JSEvents.battery());
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
-  
+
   emscripten_webgl_init_context_attributes: function(attributes) {
     {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.alpha, 1, 'i32') }}};
     {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.depth, 1, 'i32') }}};

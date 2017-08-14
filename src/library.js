@@ -1021,7 +1021,7 @@ LibraryManager.library = {
   llvm_va_copy: function(ppdest, ppsrc) {
     // copy the list start
     {{{ makeCopyValues('ppdest', 'ppsrc', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
-    
+
     // copy the list's current offset (will be advanced with each call to va_arg)
     {{{ makeCopyValues('(ppdest+'+Runtime.QUANTUM_SIZE+')', '(ppsrc+'+Runtime.QUANTUM_SIZE+')', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
   },
@@ -2147,7 +2147,7 @@ LibraryManager.library = {
           newDate.setFullYear(newDate.getFullYear()+1);
         }
       } else {
-        // we stay in current month 
+        // we stay in current month
         newDate.setDate(newDate.getDate()+days);
         return newDate;
       }
@@ -2259,7 +2259,7 @@ LibraryManager.library = {
           } else {
             return thisDate.getFullYear();
           }
-        } else { 
+        } else {
           return thisDate.getFullYear()-1;
         }
     };
@@ -2288,16 +2288,16 @@ LibraryManager.library = {
         return leadingSomething(date.tm_mday, 2, ' ');
       },
       '%g': function(date) {
-        // %g, %G, and %V give values according to the ISO 8601:2000 standard week-based year. 
-        // In this system, weeks begin on a Monday and week 1 of the year is the week that includes 
-        // January 4th, which is also the week that includes the first Thursday of the year, and 
-        // is also the first week that contains at least four days in the year. 
-        // If the first Monday of January is the 2nd, 3rd, or 4th, the preceding days are part of 
-        // the last week of the preceding year; thus, for Saturday 2nd January 1999, 
-        // %G is replaced by 1998 and %V is replaced by 53. If December 29th, 30th, 
-        // or 31st is a Monday, it and any following days are part of week 1 of the following year. 
+        // %g, %G, and %V give values according to the ISO 8601:2000 standard week-based year.
+        // In this system, weeks begin on a Monday and week 1 of the year is the week that includes
+        // January 4th, which is also the week that includes the first Thursday of the year, and
+        // is also the first week that contains at least four days in the year.
+        // If the first Monday of January is the 2nd, 3rd, or 4th, the preceding days are part of
+        // the last week of the preceding year; thus, for Saturday 2nd January 1999,
+        // %G is replaced by 1998 and %V is replaced by 53. If December 29th, 30th,
+        // or 31st is a Monday, it and any following days are part of week 1 of the following year.
         // Thus, for Tuesday 30th December 1997, %G is replaced by 1998 and %V is replaced by 01.
-        
+
         return getWeekBasedYear(date).toString().substring(2);
       },
       '%G': function(date) {
@@ -2343,13 +2343,13 @@ LibraryManager.library = {
         return day.getDay() || 7;
       },
       '%U': function(date) {
-        // Replaced by the week number of the year as a decimal number [00,53]. 
-        // The first Sunday of January is the first day of week 1; 
+        // Replaced by the week number of the year as a decimal number [00,53].
+        // The first Sunday of January is the first day of week 1;
         // days in the new year before this are in week 0. [ tm_year, tm_wday, tm_yday]
         var janFirst = new Date(date.tm_year+1900, 0, 1);
         var firstSunday = janFirst.getDay() === 0 ? janFirst : __addDays(janFirst, 7-janFirst.getDay());
         var endDate = new Date(date.tm_year+1900, date.tm_mon, date.tm_mday);
-        
+
         // is target date after the first Sunday?
         if (compareByDay(firstSunday, endDate) < 0) {
           // calculate difference in days between first Sunday and endDate
@@ -2362,10 +2362,10 @@ LibraryManager.library = {
         return compareByDay(firstSunday, janFirst) === 0 ? '01': '00';
       },
       '%V': function(date) {
-        // Replaced by the week number of the year (Monday as the first day of the week) 
-        // as a decimal number [01,53]. If the week containing 1 January has four 
-        // or more days in the new year, then it is considered week 1. 
-        // Otherwise, it is the last week of the previous year, and the next week is week 1. 
+        // Replaced by the week number of the year (Monday as the first day of the week)
+        // as a decimal number [01,53]. If the week containing 1 January has four
+        // or more days in the new year, then it is considered week 1.
+        // Otherwise, it is the last week of the previous year, and the next week is week 1.
         // Both January 4th and the first Thursday of January are always in week 1. [ tm_year, tm_wday, tm_yday]
         var janFourthThisYear = new Date(date.tm_year+1900, 0, 4);
         var janFourthNextYear = new Date(date.tm_year+1901, 0, 4);
@@ -2378,7 +2378,7 @@ LibraryManager.library = {
         if (compareByDay(endDate, firstWeekStartThisYear) < 0) {
           // if given date is before this years first week, then it belongs to the 53rd week of last year
           return '53';
-        } 
+        }
 
         if (compareByDay(firstWeekStartNextYear, endDate) <= 0) {
           // if given date is after next years first week, then it belongs to the 01th week of next year
@@ -2401,8 +2401,8 @@ LibraryManager.library = {
         return day.getDay();
       },
       '%W': function(date) {
-        // Replaced by the week number of the year as a decimal number [00,53]. 
-        // The first Monday of January is the first day of week 1; 
+        // Replaced by the week number of the year as a decimal number [00,53].
+        // The first Monday of January is the first day of week 1;
         // days in the new year before this are in week 0. [ tm_year, tm_wday, tm_yday]
         var janFirst = new Date(date.tm_year, 0, 1);
         var firstMonday = janFirst.getDay() === 1 ? janFirst : __addDays(janFirst, janFirst.getDay() === 0 ? 1 : 7-janFirst.getDay()+1);
@@ -2451,7 +2451,7 @@ LibraryManager.library = {
     var bytes = intArrayFromString(pattern, false);
     if (bytes.length > maxsize) {
       return 0;
-    } 
+    }
 
     writeArrayToMemory(bytes, s);
     return bytes.length-1;
@@ -2491,7 +2491,7 @@ LibraryManager.library = {
     for (var matcher in EQUIVALENT_MATCHERS) {
       pattern = pattern.replace(matcher, EQUIVALENT_MATCHERS[matcher]);
     }
-    
+
     // TODO: take care of locale
 
     var DATE_PATTERNS = {
@@ -2521,7 +2521,7 @@ LibraryManager.library = {
     var DAY_NUMBERS_MON_FIRST = {MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6};
 
     for (var datePattern in DATE_PATTERNS) {
-      pattern = pattern.replace(datePattern, '('+datePattern+DATE_PATTERNS[datePattern]+')');    
+      pattern = pattern.replace(datePattern, '('+datePattern+DATE_PATTERNS[datePattern]+')');
     }
 
     // take care of capturing groups
@@ -2609,7 +2609,7 @@ LibraryManager.library = {
       } else if ((value=getMatch('b'))) {
         // parse from month name
         date.month = MONTH_NUMBERS[value.substring(0,3).toUpperCase()] || 0;
-        // TODO: derive month from day in year+year, week number+day of week+year 
+        // TODO: derive month from day in year+year, week number+day of week+year
       }
 
       // day
@@ -2631,12 +2631,12 @@ LibraryManager.library = {
         var weekDay = value.substring(0,3).toUpperCase();
         if ((value=getMatch('U'))) {
           // ... and week number (Sunday being first day of week)
-          // Week number of the year (Sunday as the first day of the week) as a decimal number [00,53]. 
+          // Week number of the year (Sunday as the first day of the week) as a decimal number [00,53].
           // All days in a new year preceding the first Sunday are considered to be in week 0.
           var weekDayNumber = DAY_NUMBERS_SUN_FIRST[weekDay];
           var weekNumber = parseInt(value);
 
-          // January 1st 
+          // January 1st
           var janFirst = new Date(date.year, 0, 1);
           var endDate;
           if (janFirst.getDay() === 0) {
@@ -2650,12 +2650,12 @@ LibraryManager.library = {
           date.month = endDate.getMonth();
         } else if ((value=getMatch('W'))) {
           // ... and week number (Monday being first day of week)
-          // Week number of the year (Monday as the first day of the week) as a decimal number [00,53]. 
+          // Week number of the year (Monday as the first day of the week) as a decimal number [00,53].
           // All days in a new year preceding the first Monday are considered to be in week 0.
           var weekDayNumber = DAY_NUMBERS_MON_FIRST[weekDay];
           var weekNumber = parseInt(value);
 
-          // January 1st 
+          // January 1st
           var janFirst = new Date(date.year, 0, 1);
           var endDate;
           if (janFirst.getDay()===1) {
@@ -2677,10 +2677,10 @@ LibraryManager.library = {
       tm_hour int hours since midnight  0-23
       tm_mday int day of the month  1-31
       tm_mon  int months since January  0-11
-      tm_year int years since 1900  
+      tm_year int years since 1900
       tm_wday int days since Sunday 0-6
       tm_yday int days since January 1  0-365
-      tm_isdst  int Daylight Saving Time flag 
+      tm_isdst  int Daylight Saving Time flag
       */
 
       var fullDate = new Date(date.year, date.month, date.day, date.hour, date.min, date.sec, 0);
@@ -2697,7 +2697,7 @@ LibraryManager.library = {
       // we need to convert the matched sequence into an integer array to take care of UTF-8 characters > 0x7F
       // TODO: not sure that intArrayFromString handles all unicode characters correctly
       return buf+intArrayFromString(matches[0]).length-1;
-    } 
+    }
 
     return 0;
   },
@@ -2776,7 +2776,7 @@ LibraryManager.library = {
   // ==========================================================================
   // sys/timeb.h
   // ==========================================================================
-  
+
   ftime: function(p) {
     var millis = Date.now();
     {{{ makeSetValue('p', C_STRUCTS.timeb.time, '(millis/1000)|0', 'i32') }}};
@@ -3798,7 +3798,7 @@ LibraryManager.library = {
 
     if (val in GAI_ERRNO_MESSAGES) {
       if (GAI_ERRNO_MESSAGES[val].length > buflen - 1) {
-        msg = 'Message too long'; // EMSGSIZE message. This should never occur given the GAI_ERRNO_MESSAGES above. 
+        msg = 'Message too long'; // EMSGSIZE message. This should never occur given the GAI_ERRNO_MESSAGES above.
       } else {
         msg = GAI_ERRNO_MESSAGES[val];
       }
@@ -3872,7 +3872,7 @@ LibraryManager.library = {
     // struct protoent *getprotoent(void);
     // reads the  next  entry  from  the  protocols 'database' or return NULL if 'eof'
     if (_setprotoent.index === Protocols.list.length) {
-      return 0; 
+      return 0;
     } else {
       var result = Protocols.list[_setprotoent.index++];
       return result;
@@ -4049,14 +4049,14 @@ LibraryManager.library = {
       while (stack_args[1].indexOf('_emscripten_') >= 0)
         stack_args = __emscripten_traverse_stack(stack_args[0]);
     }
-    
+
     // Process all lines:
     lines = callstack.split('\n');
     callstack = '';
     var newFirefoxRe = new RegExp('\\s*(.*?)@(.*?):([0-9]+):([0-9]+)'); // New FF30 with column info: extract components of form '       Object._main@http://server.com:4324:12'
     var firefoxRe = new RegExp('\\s*(.*?)@(.*):(.*)(:(.*))?'); // Old FF without column info: extract components of form '       Object._main@http://server.com:4324'
     var chromeRe = new RegExp('\\s*at (.*?) \\\((.*):(.*):(.*)\\\)'); // Extract components of form '    at Object._main (http://server.com/file.html:4324:12)'
-    
+
     for(l in lines) {
       var line = lines[l];
 
@@ -4110,7 +4110,7 @@ LibraryManager.library = {
         }
         callstack += (haveSourceMap ? ('     = '+jsSymbolName) : ('    at '+cSymbolName)) + ' (' + file + ':' + lineno + ':' + column + ')\n';
       }
-      
+
       // If we are still keeping track with the callstack by traversing via 'arguments.callee', print the function parameters as well.
       if (flags & 128 /*EM_LOG_FUNC_PARAMS*/ && stack_args[0]) {
         if (stack_args[1] == jsSymbolName && stack_args[2].length > 0) {

@@ -268,7 +268,7 @@ function shouldPreventDefault(event) {
 ['keydown', 'keyup', 'keypress', 'blur', 'visibilitychange'].forEach(function(event) {
   document.addEventListener(event, function(event) {
     worker.postMessage({ target: 'document', event: cloneObject(event) });
-    
+
     if (shouldPreventDefault(event)) {
       event.preventDefault();
     }

@@ -36,7 +36,7 @@ This build mode emulates some features of OpenGL ES 2.0/3.0 that are not part of
 
 In particular, this mode emulates client-side arrays that are missing [#f1]_ from the :ref:`opengl-support-webgl-subset`.
 
-This allows you to use functions `glDrawArrays <https://www.opengl.org/sdk/docs/man3/xhtml/glDrawArrays.xml>`_ and `glDrawElements <https://www.opengl.org/sdk/docs/man/html/glDrawElements.xhtml>`_ etc. without a bound buffer, and Emscripten's GL bindings will set up the buffer automatically (WebGL requires that a buffer be bound). 
+This allows you to use functions `glDrawArrays <https://www.opengl.org/sdk/docs/man3/xhtml/glDrawArrays.xml>`_ and `glDrawElements <https://www.opengl.org/sdk/docs/man/html/glDrawElements.xhtml>`_ etc. without a bound buffer, and Emscripten's GL bindings will set up the buffer automatically (WebGL requires that a buffer be bound).
 
 .. note:: This build mode has a limitation that the largest index in client-side index buffer must be smaller than the total number of indices in that buffer. See `issue #4214 <https://github.com/kripken/emscripten/issues/4214>`_ for more details.
 
@@ -49,7 +49,7 @@ To enable *OpenGL ES 3.0 emulation*, specify the :ref:`emcc <emcc-s-option-value
 Emulation of older Desktop OpenGL API features
 ==============================================
 
-This OpenGL mode enables support for a number of legacy desktop OpenGL 1.x features and commands (for example "immediate mode" and `glNormalPointer <https://www.opengl.org/sdk/docs/man2/xhtml/glNormalPointer.xml>`_). 
+This OpenGL mode enables support for a number of legacy desktop OpenGL 1.x features and commands (for example "immediate mode" and `glNormalPointer <https://www.opengl.org/sdk/docs/man2/xhtml/glNormalPointer.xml>`_).
 
 While the emulation is by no means complete, it has been sufficient to port the Sauerbraten 3D game (`BananaBread <https://github.com/kripken/BananaBread>`_ project) and some other real-world codebases using Emscripten.
 

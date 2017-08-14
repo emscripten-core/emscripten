@@ -320,7 +320,7 @@ WebGLClient.prefetch = function() {
     // If we have no webGL support, we still notify that prefetching is done, as the app blocks on that
     worker.postMessage({ target: 'gl', op: 'setPrefetched', preMain: true });
     return;
-  } 
+  }
 
   // Fetch the parameters and proxy them
   var parameters = {};

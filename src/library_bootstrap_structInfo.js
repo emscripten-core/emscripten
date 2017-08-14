@@ -3,7 +3,7 @@
 assert(!LibraryManager.library);
 LibraryManager.library = {
   sysconf: function(name) {
-    assert(name == 30); 
+    assert(name == 30);
     return PAGE_SIZE;
   },
   time: function(ptr) {

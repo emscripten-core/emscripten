@@ -1,4 +1,4 @@
-# 
+#
 # This script gets all the API items defined in the emscripten documentation. These can then be used for automated adding of cross links in other scripts. It writes api_items.py which has function that is imported into get-wiki.py
 #
 
@@ -29,7 +29,7 @@ api_item_filename = 'api_items.py'
 api_reference_items = dict()
 
 
-def parseFiles():	
+def parseFiles():
     """
     Parse api-reference files to extract the code items.
 
@@ -62,9 +62,9 @@ def parseFiles():
         if data_type=='func': #Add additional index for functions declared as func() rather than just func
             api_item_index=api_item+'()'
             api_reference_items[api_item_index]=':%s:%s:`%s`' % (lang,data_type,api_item)
-            
+
         #print api_reference_items[api_item]
-        
+
 
     for file in os.listdir(api_reference_directory):
         if file.endswith(".rst"):
@@ -72,21 +72,21 @@ def parseFiles():
             print file
             #open file
             infile=open(filepath,'r')
-            
+
             for line in infile:
                 #parse line for API items
-                re.sub(r'^\.\.\s+((\w+)\:(\w+)\:\:(.*))', addapiitems, line)   
+                re.sub(r'^\.\.\s+((\w+)\:(\w+)\:\:(.*))', addapiitems, line)
             infile.close()
-            
 
-def exportItems():	
+
+def exportItems():
     """
     Export the API items into form for use in another script.
     """
     infile=open(api_item_filename,'w')
     #write function lead in
     infile.write("# Auto-generated file (see get-api_items.py)\n#\n\ndef get_mapped_items():\n\tmapped_wiki_inline_code = dict()\n" )
-            
+
     for item in api_reference_items:
         #Write out each API item to add
         infile.write("\tmapped_wiki_inline_code['%s']='%s'\n" % (item, api_reference_items[item]) )

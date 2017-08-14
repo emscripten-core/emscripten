@@ -1822,7 +1822,7 @@ def parse_args(newargs):
   should_exit = False
 
   for i in range(len(newargs)):
-    # On Windows Vista (and possibly others), excessive spaces in the command line 
+    # On Windows Vista (and possibly others), excessive spaces in the command line
     # leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
     newargs[i] = newargs[i].strip()
     if newargs[i].startswith('-O'):

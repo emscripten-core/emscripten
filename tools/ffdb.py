@@ -81,7 +81,7 @@ def read_b2g_response(print_errors_to_console = True):
     if semicolon+1+payload_len > len(read_queue):
       try:
         read_queue += b2g_socket.recv(4096)
-      except socket.timeout, e: 
+      except socket.timeout, e:
         pass # We simulate blocking sockets with looping over reads that time out, since on Windows, the user cannot press Ctrl-C to break on blocking sockets.
       except Exception, e:
         if e[0] == 57: # Socket is not connected
@@ -515,7 +515,7 @@ def main():
       --verbose: Enables verbose printing, mostly useful for debugging.
       --simulator: Signal that we will be connecting to a FFOS simulator and not a real device.
 
-  In the above, whenever a command requires an <app> to be specified, either the human-readable name, 
+  In the above, whenever a command requires an <app> to be specified, either the human-readable name,
   localId or manifestURL of the application can be used.'''
 
     sys.exit(0)

@@ -86,7 +86,7 @@ Examples
 
    for a shell build, or
 
-    emscripten/tools/reproduceriter.py bb bench js/game-setup.js 
+    emscripten/tools/reproduceriter.py bb bench js/game-setup.js
 
    for a browser build. Since only a browser build can do recording, you would normally
    make a browser build, record a trace, then make a shell build and copy the trace

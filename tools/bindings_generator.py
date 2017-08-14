@@ -78,7 +78,7 @@ We generate the following:
 
             ignored: A list of classes and class::methods not to generate code for.
                      Comma separated.
-            
+
             type_processor: Text that is eval()d into a lambda that is run on
                             all arguments. For example, you can use this to
                             change all arguments of type float& to float by
@@ -863,7 +863,7 @@ for classname, clazz in parsed.classes.items() + parsed.structs.items():
     if not clazz['abstract']:
       print 'zz no constructor for', classname, 'and not abstract, so ignoring'
       continue
-  
+
     #clazz['methods'] = [{
     #  'name': classname,
     #  'parameters': [],

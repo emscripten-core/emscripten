@@ -918,7 +918,7 @@ var WebAssembly = {};
  * @param {!BufferSource} bytes
  */
 WebAssembly.Module = function(bytes) {};
-/** 
+/**
  * @constructor
  * @param {!WebAssembly.Module} moduleObject
  * @param {Object=} importObject
@@ -978,7 +978,7 @@ WebAssembly.validate = function(bytes) {};
  * @return {!Array<{name:string, kind:string}>}
  */
 WebAssembly.Module.exports = function(moduleObject) {};
-/** 
+/**
  * @param {!WebAssembly.Module} moduleObject
  * @return {!Array<{module:string, name:string, kind:string}>}
  */
@@ -991,7 +991,7 @@ WebAssembly.Module.imports = function(moduleObject) {};
 WebAssembly.Module.customSections = function(moduleObject, sectionName) {};
 /** @dict */
 WebAssembly.Instance.prototype.exports;
-/** 
+/**
  * @param {number} delta
  * @return {number}
  */

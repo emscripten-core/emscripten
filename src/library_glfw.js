@@ -183,7 +183,7 @@ var LibraryGLFW = {
         case 0xDC:return 92; // DOM_VK_BACKSLASH -> GLFW_KEY_BACKSLASH
         case 0xDD:return 93; // DOM_VK_CLOSE_BRACKET -> GLFW_KEY_RIGHT_BRACKET
         case 0xC0:return 94; // DOM_VK_BACK_QUOTE -> GLFW_KEY_GRAVE_ACCENT
-        
+
 #if USE_GLFW == 2
         //#define GLFW_KEY_SPECIAL      256
         case 0x1B:return (256+1); // DOM_VK_ESCAPE -> GLFW_KEY_ESC
@@ -809,7 +809,7 @@ var LibraryGLFW = {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
       win.windowSizeFunc = cbfun;
-     
+
 #if USE_GLFW == 2
       // As documented in GLFW2 API (http://www.glfw.org/GLFWReference27.pdf#page=22), when size
       // callback function is set, it will be called with the current window size before this
@@ -994,7 +994,7 @@ var LibraryGLFW = {
           antialias: (GLFW.hints[0x0002100D] > 1), // GLFW_SAMPLES
           depth: (GLFW.hints[0x00021005] > 0),     // GLFW_DEPTH_BITS
           stencil: (GLFW.hints[0x00021006] > 0),   // GLFW_STENCIL_BITS
-          alpha: (GLFW.hints[0x00021004] > 0)      // GLFW_ALPHA_BITS 
+          alpha: (GLFW.hints[0x00021004] > 0)      // GLFW_ALPHA_BITS
         }
         Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
       }

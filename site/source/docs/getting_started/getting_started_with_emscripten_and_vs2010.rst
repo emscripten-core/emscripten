@@ -25,7 +25,7 @@ First select the **Emscripten** configuration from the *Configuration Manager* d
 How to launch a project in a web browser from Visual Studio
 ===========================================================
 
-To launch a project directly to a web browser from Visual Studio: 
+To launch a project directly to a web browser from Visual Studio:
 
 #. Create a new environment variable ``EMCC_WEBBROWSER_EXE`` and set it to point to an executable you want to use to browse web pages generated using Emscripten via Visual Studio. Any browser can be used — below we specify *Mozilla Firefox*:
 
@@ -34,7 +34,7 @@ To launch a project directly to a web browser from Visual Studio:
 		SETX EMCC_WEBBROWSER_EXE C:/Program Files (x86)/Mozilla Firefox/firefox.exe
 
 
-#. Right-click on the project to run, choose **Set as Startup Project**, and select **Start without Debugging** (**Ctrl+F5**). 
+#. Right-click on the project to run, choose **Set as Startup Project**, and select **Start without Debugging** (**Ctrl+F5**).
 
 This should launch the generated **.html** file to the browser you specified in ``EMCC_WEBBROWSER_EXE``.
 
@@ -57,7 +57,7 @@ To add Emscripten as a build option for an existing project:
 
 #. Open the *Configuration Manager* dialog for the solution.
 #. In the *Active Solution Platform* dropdown, choose **New**.
-#. In the *New* dialog, choose **Emscripten** as the platform name, and **Copy settings from Empty**. 
+#. In the *New* dialog, choose **Emscripten** as the platform name, and **Copy settings from Empty**.
 
 Now you should be able to switch between building the solution for Win32 and Emscripten by selecting the desired option from the *Configuration Manager* dropdown list.
 
@@ -66,4 +66,4 @@ Creating a new Visual Studio solution for Emscripten
 ====================================================
 
 To create a new Visual Studio project for Emscripten, first create a **Visual C++ Empty Project** (a new project for the Win32 platform). Then convert that project to also build for Emscripten as outlined in the previous section: :ref:`getting-started-emscripten-vs-existing-solution`.
- 
+

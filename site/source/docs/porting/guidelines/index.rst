@@ -8,12 +8,12 @@ Emscripten can be used to compile almost any *portable* C/C++ code to JavaScript
 
 .. toctree::
 	:maxdepth: 1
-   
+
 	portability_guidelines
 	api_limitations
 	function_pointer_issues
 	browser_limitations.rst
 
-	
-	
-   
+
+
+

@@ -9,7 +9,7 @@ mergeInto(LibraryManager.library, {
  *
  * ---------------------  <-- saved sp for the current function
  * <last normal stack frame>
- * --------------------- 
+ * ---------------------
  * pointer to the previous frame <-- __async_cur_frame
  * saved sp
  * callback function   <-- ctx, returned by alloc/reallloc, used by the program
@@ -74,7 +74,7 @@ mergeInto(LibraryManager.library, {
     ___async_cur_frame = new_frame;
     return (___async_cur_frame + 8)|0;
   },
-  
+
   emscripten_realloc_async_context__deps: ['__async_cur_frame'],
   emscripten_realloc_async_context__sig: 'ii',
   emscripten_realloc_async_context__asm: true,
@@ -132,7 +132,7 @@ mergeInto(LibraryManager.library, {
     if ((stack_size|0) <= 0) stack_size = 4096;
 
     coroutine = _malloc(stack_size)|0;
-    {{{ makeSetValueAsm('coroutine', 12, 0, 'i32') }}}; 
+    {{{ makeSetValueAsm('coroutine', 12, 0, 'i32') }}};
     {{{ makeSetValueAsm('coroutine', 16, '(coroutine+32)', 'i32') }}};
     {{{ makeSetValueAsm('coroutine', 20, 'stack_size', 'i32') }}};
     {{{ makeSetValueAsm('coroutine', 24, 'f', 'i32') }}};

@@ -73,7 +73,7 @@ var emscriptenCpuProfiler = {
       for (var i = 0; i < this.fpsCounterTicks.length-1; ++i) this.fpsCounterTicks[i] = this.fpsCounterTicks[i+1];
       this.fpsCounterTicks[this.fpsCounterTicks.length-1] = now;
     }
-  
+
     if (now - this.fpsCounterLastPrint > this.fpsCounterUpdateInterval) {
       var fps = ((this.fpsCounterTicks.length - 1) * 1000.0 / (this.fpsCounterTicks[this.fpsCounterTicks.length - 1] - this.fpsCounterTicks[0]));
       var totalDt = 0;
@@ -182,7 +182,7 @@ var emscriptenCpuProfiler = {
           fn = fn.trim();
           cs += '"' + fn + '"';
         }
-        
+
         console.error('Trace: at t=' + performance.realNow().toFixed(1) + ', section "' + sect.name + '" called via ' + cs + ' took ' + timeInSection.toFixed(2) + ' msecs!');
       }
       if (this.insideMainLoopRecursionCounter) sect.accumulatedTimeInsideMainLoop += timeInSection;
@@ -213,7 +213,7 @@ var emscriptenCpuProfiler = {
       sect.accumulatedTimeInsideMainLoop = 0;
       sect.accumulatedTimeOutsideMainLoop = 0;
     }
-    
+
     var t = performance.realNow();
     var cpuMainLoopDuration = t - this.currentFrameStartTime;
     var durationBetweenFrameUpdates = t - this.previousFrameEndTime;
@@ -310,7 +310,7 @@ var emscriptenCpuProfiler = {
 
       if (location.search.indexOf('expandhelp') != -1) this.toggleHelpTextVisible();
     }
-    
+
     this.canvas = document.getElementById('cpuprofiler_canvas');
     this.canvas.width = document.documentElement.clientWidth - 32;
     this.drawContext = this.canvas.getContext('2d');
@@ -327,7 +327,7 @@ var emscriptenCpuProfiler = {
     this.drawContext.fillRect(startX,this.canvas.height - height, endX - startX, pixelThickness);
   },
 
-  clearUi: function clearUi(startX, endX) {  
+  clearUi: function clearUi(startX, endX) {
     // Background clear
     this.drawContext.fillStyle = this.colorBackground;
     this.drawContext.fillRect(startX, 0, endX - startX, this.canvas.height);
@@ -379,7 +379,7 @@ var emscriptenCpuProfiler = {
 
   // Main UI update/redraw entry point. Drawing occurs incrementally to touch as few pixels as possible and to cause the least impact to the overall performance
   // while profiling.
-  updateUi: function updateUi(startX, endX) {  
+  updateUi: function updateUi(startX, endX) {
     // Poll whether user as changed the browser window, and if so, resize the profiler window and redraw it.
     if (this.canvas.width != document.documentElement.clientWidth - 32) {
       this.canvas.width = document.documentElement.clientWidth - 32;
@@ -553,19 +553,19 @@ var emscriptenCpuProfiler = {
     }
     var this_ = this;
     // The above injection won't work for texImage2D and texSubImage2D, which have multiple overloads.
-    glCtx['texImage2D'] = function(a1, a2, a3, a4, a5, a6, a7, a8, a9) { 
+    glCtx['texImage2D'] = function(a1, a2, a3, a4, a5, a6, a7, a8, a9) {
       this_.enterSection(1);
       var ret = (a7 !== undefined) ? glCtx['real_texImage2D'](a1, a2, a3, a4, a5, a6, a7, a8, a9) : glCtx['real_texImage2D'](a1, a2, a3, a4, a5, a6);
       this_.endSection(1);
       return ret;
     };
-    glCtx['texSubImage2D'] = function(a1, a2, a3, a4, a5, a6, a7, a8, a9) { 
+    glCtx['texSubImage2D'] = function(a1, a2, a3, a4, a5, a6, a7, a8, a9) {
       this_.enterSection(0);
       var ret = (a8 !== undefined) ? glCtx['real_texSubImage2D'](a1, a2, a3, a4, a5, a6, a7, a8, a9) : glCtx['real_texSubImage2D'](a1, a2, a3, a4, a5, a6, a7);
       this_.endSection(0);
       return ret;
     };
-    glCtx['texSubImage3D'] = function(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) { 
+    glCtx['texSubImage3D'] = function(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) {
       this_.enterSection(0);
       var ret = (a9 !== undefined) ? glCtx['real_texSubImage3D'](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) : glCtx['real_texSubImage2D'](a1, a2, a3, a4, a5, a6, a7, a8);
       this_.endSection(0);

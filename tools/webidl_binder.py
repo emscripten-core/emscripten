@@ -186,7 +186,7 @@ var ensureCache = {
       ensureCache.pos += len;
     }
     return ret;
-  },  
+  },
   copy: function(array, view, offset) {
     var offsetShifted = offset;
     var bytes = view.BYTES_PER_ELEMENT;
@@ -197,7 +197,7 @@ var ensureCache = {
     }
     for (var i = 0; i < array.length; i++) {
       view[offsetShifted + i] = array[i];
-    }   
+    }
   },
 };
 

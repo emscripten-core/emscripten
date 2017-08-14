@@ -4,7 +4,7 @@
 Manually Building Emscripten on Windows
 =======================================
 
-This page contains basic instructions on how to manually build and configure Emscripten from source on a clean Windows box. 
+This page contains basic instructions on how to manually build and configure Emscripten from source on a clean Windows box.
 
 .. note:: The instructions clone from the main Emscripten repository (https://github.com/kripken/emscripten). :ref:`Contributors <contributing>` should instead clone from their own Emscripten fork, and submit changes as pull requests.
 
@@ -27,12 +27,12 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 #. Install `Python 2.x <http://www.python.org/>`_ (not 3.x):
 
 	- For example `python-2.7.5.amd64.msi <http://python.org/ftp/python/2.7.5/python-2.7.5.amd64.msi>`_ (64-bit version) or `python-2.7.5.msi <http://python.org/ftp/python/2.7.5/python-2.7.5.msi>`_ (32-bit version).
-	- Add the path to the Python directory containing **Python.exe** to your PATH. 
-	
-		- Paths are set by opening **System Settings | Advanced system properties**, clicking **Environment Variables** and selecting **PATH**. 
+	- Add the path to the Python directory containing **Python.exe** to your PATH.
+
+		- Paths are set by opening **System Settings | Advanced system properties**, clicking **Environment Variables** and selecting **PATH**.
 		- Add the path to python, separated by semicolons: e.g. ``;C:/Python27/;`` or ``;C:/Python27/bin;`` (depending on the location of the exe).
-		
-		
+
+
 #. Install `node.js <http://nodejs.org/>`_:
 
 	- For example `node-v0.10.17-x64.msi <http://nodejs.org/dist/v0.10.17/x64/node-v0.10.17-x64.msi>`_ (64-bit version) or `node-v0.10.17-x86.msi <http://nodejs.org/dist/v0.10.17/node-v0.10.17-x86.msi>`_ (32-bit version).
@@ -46,24 +46,24 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 
 #. Install `Java <http://java.com/en/download/index.jsp>`_ (Java is optional, you only need it for Closure Compiler minification).
 
-#. Build :ref:`Fastcomp <LLVM-Backend>` (LLVM + Clang) from source using :ref:`these instructions <building-fastcomp-from-source>`. 
-	
+#. Build :ref:`Fastcomp <LLVM-Backend>` (LLVM + Clang) from source using :ref:`these instructions <building-fastcomp-from-source>`.
+
 #. Clone the `kripken/emscripten <https://github.com/kripken/emscripten>`_ repository from Github. This repository contains the main compiler tool for compiling C/C++ programs to JavaScript:
 
 	- Using *Github for Windows*:
 		-  Launch the *GitHub for Windows* client. Click **Skip Setup** if you don't have a Github account.
 		-  (optional) Select **Options** from the gear menu, and customize the default storage directory. Ensure the path has no spaces.
 		-  In your web browser, open https://github.com/kripken/emscripten and press the **Clone in Windows** button.
-	
+
 	- Using the command line:
-		-  Create a directory (with no spaces in the name) to contain the clone. 
+		-  Create a directory (with no spaces in the name) to contain the clone.
 		-  Enter the following command into the terminal: ::
-		
+
 			git clone https://github.com/kripken/emscripten.git
 
 
 
-   
+
 Configuring Emscripten settings
 ===============================
 
@@ -71,7 +71,7 @@ Almost all the compiler settings used by Emscripten are defined in the :ref:`com
 
 Instructions for creating and manually configuring this file are given in :ref:`configuring-emscripten-settings`.
 
-   
+
 
 Validating the environment
 ===============================
@@ -80,7 +80,7 @@ The best way to validate the environment is to build some code. Open the termina
 
 	./emcc tests/hello_world.cpp
 
-If this builds **a.out.js** in the current directory, and you don't see any build errors in the terminal, Emscripten is good to go! 
+If this builds **a.out.js** in the current directory, and you don't see any build errors in the terminal, Emscripten is good to go!
 
 There are additional validation and troubleshooting instructions in the topic :ref:`verifying-the-emscripten-environment`.
 

@@ -7,7 +7,7 @@ var emscriptenMemoryProfiler = {
   // Allocations of memory blocks larger than this threshold will get their detailed callstack captured and logged at runtime.
   // Warning: This can be extremely slow. Set to a very very large value like 1024*1024*1024*4 to disable.
   // Disabled if stack information is not available in this browser
-  trackedCallstackMinSizeBytes: (typeof new Error().stack === 'undefined') ? 1024*1024*1024*4 : 16*1024*1024, 
+  trackedCallstackMinSizeBytes: (typeof new Error().stack === 'undefined') ? 1024*1024*1024*4 : 16*1024*1024,
 
   // Controls whether all outstanding allocation are printed to html page by callstack.
   allocateStatistics: false,
@@ -26,7 +26,7 @@ var emscriptenMemoryProfiler = {
   allocationSiteStatistics: {},
   allocationSitePtrs: {},
 
-  // Stores an associative array of records HEAP ptr -> size so that we can retrieve how much memory was freed in calls to 
+  // Stores an associative array of records HEAP ptr -> size so that we can retrieve how much memory was freed in calls to
   // _free() and decrement the tracked usage accordingly.
   // E.g. allocatedPtrSizes[address] returns the size of the heap pointer starting at 'address'.
   allocatedPtrSizes: {},
@@ -38,7 +38,7 @@ var emscriptenMemoryProfiler = {
   // Once set to true, preRun is finished and the above array is not touched anymore.
   pagePreRunIsFinished: false,
 
-  // Stores an associative array of records HEAP ptr -> function string name so that we can identify each allocated pointer 
+  // Stores an associative array of records HEAP ptr -> function string name so that we can identify each allocated pointer
   // by the location in code the allocation occurred in.
   callstackOfAllocatedPtr: {},
 
@@ -84,7 +84,7 @@ var emscriptenMemoryProfiler = {
     this.totalMemoryAllocated += size;
     ++this.totalTimesMallocCalled;
     this.stackTopWatermark = Math.max(this.stackTopWatermark, STACKTOP);
-    
+
     // Remember the size of the allocated block to know how much will be _free()d later.
     this.allocatedPtrSizes[ptr] = size;
     // Also track if this was a _malloc performed at preRun time.
@@ -121,7 +121,7 @@ var emscriptenMemoryProfiler = {
     if (!isNaN(sz)) {
       this.totalMemoryAllocated -= sz;
     }
-    
+
     delete this.allocatedPtrSizes[ptr];
     delete this.preRunMallocs[ptr]; // Also free if this happened to be a _malloc performed at preRun time.
     this.stackTopWatermark = Math.max(this.stackTopWatermark, STACKTOP);
@@ -188,7 +188,7 @@ var emscriptenMemoryProfiler = {
       document.getElementById('memoryprofiler_clear_alloc_stats').addEventListener("click", function(e){self.allocationSiteStatistics = {}; self.allocationSitePtrs = {};});
       document.getElementById('memoryprofiler_enable_allocation_stats').addEventListener("change", function(e){self.allocateStatistics=this.checked;});
     }
-  
+
     this.canvas = document.getElementById('memoryprofiler_canvas');
     this.canvas.width = document.documentElement.clientWidth - 32;
     this.drawContext = this.canvas.getContext('2d');

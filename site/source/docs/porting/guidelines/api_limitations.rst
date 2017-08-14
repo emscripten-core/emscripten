@@ -14,9 +14,9 @@ Emscripten supports *libc* networking functions but you must limit yourself to a
 File Systems
 ============
 
-Emscripten supports *libc* file system functions and C/C++ code can be written in the normal way. 
+Emscripten supports *libc* file system functions and C/C++ code can be written in the normal way.
 
-Code run in a :ref:`browser environment <emscripten-runtime-environment>` is sandboxed, and does not have direct access to the local file system. Instead, Emscripten creates a virtual file system that may be preloaded with data or linked to URLs for lazy loading. This affects when synchronous file system functions can be called and how a project is compiled. See the :ref:`file-system-overview` for more information. 
+Code run in a :ref:`browser environment <emscripten-runtime-environment>` is sandboxed, and does not have direct access to the local file system. Instead, Emscripten creates a virtual file system that may be preloaded with data or linked to URLs for lazy loading. This affects when synchronous file system functions can be called and how a project is compiled. See the :ref:`file-system-overview` for more information.
 
 
 Application Main Loop
@@ -29,5 +29,5 @@ This can affect how an application using an infinite main loop is written. See :
 Other APIs
 ==========
 
-Support for other **portable** C/C++ code is :ref:`fairly comprehensive <about-emscripten-porting-code>`. 
+Support for other **portable** C/C++ code is :ref:`fairly comprehensive <about-emscripten-porting-code>`.
 

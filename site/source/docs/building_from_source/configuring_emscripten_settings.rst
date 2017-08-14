@@ -18,25 +18,25 @@ Creating the compiler configuration file
 The settings file is created the first time a user runs :ref:`emcc <emccdoc>` (or any of the other Emscripten tools):
 
 1. Navigate to the directory where you cloned the Emscripten repository.
-2. Enter the command: 
+2. Enter the command:
 
 	::
-	
+
 		./emcc --help
 
 	You should get a ``Welcome to Emscripten!`` message. Behind the scenes, Emscripten generates a file called ``.emscripten`` in your home folder.
-	
-	
-Emscripten makes a "best guess" at the correct locations for tools and updates the file appropriately. Where possible it will look for "system" apps (like Python and Java) and infer the location of the ``EMSCRIPTEN_ROOT`` (where :ref:`emcc <emccdoc>` is located) from the location of the command prompt. 
+
+
+Emscripten makes a "best guess" at the correct locations for tools and updates the file appropriately. Where possible it will look for "system" apps (like Python and Java) and infer the location of the ``EMSCRIPTEN_ROOT`` (where :ref:`emcc <emccdoc>` is located) from the location of the command prompt.
 
 The file will probably not include the link to :term:`Fastcomp` (``LLVM_ROOT``) as a manual source build can create this anywhere.
 
 Locating the compiler configuration file (.emscripten)
 =======================================================
 
-The settings file is created in the user's home directory: 
+The settings file is created in the user's home directory:
 
-	- On Linux and Mac OS X this file is named **~/.emscripten**, where ~ is the user's home directory. 
+	- On Linux and Mac OS X this file is named **~/.emscripten**, where ~ is the user's home directory.
 
 		.. note:: Files with the "." prefix are hidden by default. You may need to change your view settings to find the file.
 
@@ -52,24 +52,24 @@ Compiler configuration file-format
 The file simply assigns paths to a number of *variables* representing the main tools used by Emscripten. For example, if the user cloned Emscripten to the **C:/Users/username/Documents/GitHub/emscripten** directory, then the file would have the line: ::
 
 	EMSCRIPTEN_ROOT = 'C:/Users/username/Documents/GitHub/emscripten'
-	
+
 
 The default *emcc* configuration file often gets the paths from environment variables if defined. If no variable is defined the system will also attempt to find "system executables". For example:  ::
 
 	PYTHON = os.path.expanduser(os.getenv('PYTHON', 'C:\\Python27\\python2.exe'))
 
-You can find out the other variable names from the default *.emscripten* file or the :ref:`example here <compiler-configuration-file>`. 
+You can find out the other variable names from the default *.emscripten* file or the :ref:`example here <compiler-configuration-file>`.
 
 Editing the compiler configuration file
 =======================================
 
 The compiler configuration file can be edited with the text editor of your choice. As stated above, most default settings are likely to be correct. If you're building manually from source, you are most likely to have to update the variable ``LLVM_ROOT`` (for :term:`Fastcomp`).
 
-		
+
 #. Edit the variable ``LLVM_ROOT`` to point to the directory where you :ref:`built Fastcomp <llvm-update-compiler-configuration-file>`. This path is likely to be something like **<LLVM root>/build/Release/bin** or **<LLVM root>/build/bin**, where ``<LLVM root>`` is the path to the directory where you cloned LLVM:
-   
+
 	::
-   
+
 		LLVM_ROOT = 'os.path.expanduser(os.getenv('LLVM', '/home/ubuntu/a-path/emscripten-fastcomp/build/bin'))'
 
 	.. note:: Use forward slashes!
@@ -77,29 +77,29 @@ The compiler configuration file can be edited with the text editor of your choic
 #. Edit the variable ``TEMP_DIR`` to point to a valid path on your local system, e.g. ``TEMP_DIR = '/tmp'`` (``TEMP_DIR = 'c:/tmp'`` on Windows), and create that folder on the local filesystem if it doesn't exist.
 
 #. You *may* need to edit the variable ``EMSCRIPTEN_ROOT`` to point to the Emscripten root folder, e.g.:
-   
+
 	::
-   
+
 		EMSCRIPTEN_ROOT = os.path.expanduser(os.getenv('EMSCRIPTEN', '/home/ubuntu/yourpath/emscripten')) # directory
- 
+
 
 .. comment .. The settings are now correct in the configuration file, but the paths and environment variables are not set in the command prompt/terminal. **HamishW** Follow up with Jukka on this.
- 
+
 After setting those paths, run ``emcc`` again. It should again perform the sanity checks to test the specified paths. There are further validation tests available at :ref:`verifying-the-emscripten-environment`.
 
 
 
 
 
-	
-	
 
 
 
 
-	
 
 
- 
+
+
+
+
 
 

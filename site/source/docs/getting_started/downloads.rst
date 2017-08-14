@@ -26,8 +26,8 @@ Linux and Mac OS X
 ------------------
 
 .. _emscripten-sdk-linux-osx:
-	
-- `Emscripten SDK for Linux and OS X <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz>`_ (emsdk-portable.tar.gz) 
+
+- `Emscripten SDK for Linux and OS X <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz>`_ (emsdk-portable.tar.gz)
 		A tar.gz archive package of the SDK that does not require system installation privileges. To install, follow the :ref:`platform-specific notes <platform-notes-installation_instructions-SDK>` and the :ref:`general instructions <sdk-installation-instructions>`.
 
 .. _sdk-installation-instructions:
@@ -41,25 +41,25 @@ Install or update the SDK using the following steps:
 
 1. Download and unzip the SDK package to a directory of your choice. This directory will contain the Emscripten SDK.
 #. Open a command prompt inside the SDK directory and run the following :ref:`emsdk <emsdk>` commands to get the latest tools from Github and set them as :term:`active <Active Tool/SDK>`:
-	
+
 	::
 
 		# Fetch the latest registry of available tools.
 		./emsdk update
-		
+
 		# Download and install the latest SDK tools.
 		./emsdk install latest
 
 		# Make the "latest" SDK "active" for the current user. (writes ~/.emscripten file)
 		./emsdk activate latest
-		
+
 		# Activate PATH and other environment variables in the current terminal
 		source ./emsdk_env.sh
 
-	.. note:: On Windows, run ``emsdk`` instead of ``./emsdk``, and ``emsdk_env.bat`` instead of ``source ./emsdk_env.sh``. 
+	.. note:: On Windows, run ``emsdk`` instead of ``./emsdk``, and ``emsdk_env.bat`` instead of ``source ./emsdk_env.sh``.
 
-If you change the location of the SDK (e.g. take it to another computer on an USB), re-run the ``./emsdk activate latest`` and ``source ./emsdk_env.sh`` commands. 
-		
+If you change the location of the SDK (e.g. take it to another computer on an USB), re-run the ``./emsdk activate latest`` and ``source ./emsdk_env.sh`` commands.
+
 .. _platform-notes-installation_instructions-SDK:
 
 Platform-specific notes
@@ -79,13 +79,13 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 
 	- `Allow installation of unsigned packages <https://www.my-private-network.co.uk/knowledge-base/apple-related-questions/osx-unsigned-apps.html>`_, or installing the git package won't succeed.
 	- Install XCode and the XCode Command Line Tools (should already have been done). This will provide *git* to the system PATH (see `this stackoverflow post <http://stackoverflow.com/questions/9329243/xcode-4-4-command-line-tools>`_).
-	- Download and install git directly from http://git-scm.com/.	
+	- Download and install git directly from http://git-scm.com/.
 
 #. Install *cmake* if you do not have it yet:
 
 	-  Download and install latest CMake from `Kitware CMake downloads <http://www.cmake.org/download/>`_.
-	
-#. Install *node.js* from http://nodejs.org/ 
+
+#. Install *node.js* from http://nodejs.org/
 
 	.. _getting-started-on-osx-install-python2:
 
@@ -94,38 +94,38 @@ Linux
 
 .. note:: *Emsdk* does not install any tools to the system, or otherwise interact with Linux package managers. All file changes are done inside the **emsdk/** directory.
 
-- The system must have a working :ref:`compiler-toolchain` (because *emsdk* builds software from the source): 
+- The system must have a working :ref:`compiler-toolchain` (because *emsdk* builds software from the source):
 
-	::	
-	
+	::
+
 		#Update the package lists
 		sudo apt-get update
-		
+
 		# Install *gcc* (and related dependencies)
 		sudo apt-get install build-essential
-		
+
 		# Install cmake
 		sudo apt-get install cmake
-		
+
 - *Python*, *node.js* or *Java* are not provided by *emsdk*. The user is expected to install these beforehand with the *system package manager*:
 
 	::
-	
-		# Install Python 
+
+		# Install Python
 		sudo apt-get install python2.7
-		
+
 		# Install node.js
 		sudo apt-get install nodejs
-		
+
 		# Install Java (optional, only needed for Closure Compiler minification)
 		sudo apt-get install default-jre
 
 .. note:: Your system may provide Node.js as ``node`` instead of ``nodejs``. In that case, you may need to also update the ``NODE_JS`` attribute of your ``~/.emscripten`` file.
-		
-- *Git* is not installed automatically. Git is only needed if you want to use tools from one of the development branches **emscripten-incoming** or **emscripten-master**: 
+
+- *Git* is not installed automatically. Git is only needed if you want to use tools from one of the development branches **emscripten-incoming** or **emscripten-master**:
 
 	::
-	
+
 		# Install git
 		sudo apt-get install git-core
 
@@ -135,7 +135,7 @@ More detailed instructions on the toolchain are provided in: :ref:`building-emsc
 Verifying the installation
 ==========================
 
-The easiest way to verify the installation is to compile some code using Emscripten. 
+The easiest way to verify the installation is to compile some code using Emscripten.
 
 You can jump ahead to the :ref:`Tutorial`, but if you have any problems building you should run through the basic tests and troubleshooting instructions in :ref:`verifying-the-emscripten-environment`.
 
@@ -145,19 +145,19 @@ You can jump ahead to the :ref:`Tutorial`, but if you have any problems building
 Updating the SDK
 ================
 
-.. tip:: You only need to install the SDK once! After that you can update to the latest SDK at any time using :ref:`Emscripten SDK (emsdk) <emsdk>`. 
+.. tip:: You only need to install the SDK once! After that you can update to the latest SDK at any time using :ref:`Emscripten SDK (emsdk) <emsdk>`.
 
 Type the following in a command prompt ::
 
 	# Fetch the latest registry of available tools.
 	./emsdk update
-	
+
 	# Download and install the latest SDK tools.
 	./emsdk install latest
-	
+
 	# Set up the compiler configuration to point to the "latest" SDK.
 	./emsdk activate latest
-	
+
 	# Activate PATH and other environment variables in the current terminal
 	source ./emsdk_env.sh
 
@@ -177,7 +177,7 @@ It is also possible to :ref:`remove specific tools in the SDK using emsdk <emsdk
 
 Archived releases
 =================
- 
+
 You can always install old SDK and compiler toolchains using a *current SDK*. See :ref:`emsdk-install-old-tools` for more information.
 
 On Windows, you can also install one of the **old versions** via an offline NSIS installer. These NSIS installers are now deprecated, but still available for archived reference:
@@ -190,7 +190,7 @@ On Windows, you can also install one of the **old versions** via an offline NSIS
 - `emsdk-1.25.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.25.0-full-64bit.exe>`_
 - `emsdk-1.22.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.22.0-full-64bit.exe>`_
 - `emsdk-1.21.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.21.0-full-64bit.exe>`_
-- `emsdk-1.16.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.16.0-full-64bit.exe>`_ (first stable fastcomp release) 
+- `emsdk-1.16.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.16.0-full-64bit.exe>`_ (first stable fastcomp release)
 - `emsdk-1.13.0-full-32bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.13.0-full-64bit.exe>`_ (a unstable first fastcomp release with Clang 3.3)
 - `emsdk-1.12.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.12.0-full-64bit.exe>`_ (the last non-fastcomp version with Clang 3.2)
 - `emsdk-1.12.0-full-32bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.12.0-full-32bit.exe>`_
