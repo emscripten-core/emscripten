@@ -538,11 +538,11 @@ var LibraryEmbind = {
     }
 
     var shift = getShiftFromSize(size);
-    
+
     var fromWireType = function(value) {
         return value;
     };
-    
+
     if (minRange === 0) {
         var bitshift = 32 - 8*size;
         fromWireType = function(value) {
@@ -1050,7 +1050,7 @@ var LibraryEmbind = {
   _embind_register_function: function(name, argCount, rawArgTypesAddr, signature, rawInvoker, fn) {
     var argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = readLatin1String(name);
-    
+
     rawInvoker = requireFunction(signature, rawInvoker);
 
     exposePublicSymbol(name, function() {
@@ -1285,13 +1285,14 @@ var LibraryEmbind = {
 
   $genericPointerToWireType__deps: ['$throwBindingError', '$upcastPointer'],
   $genericPointerToWireType: function(destructors, handle) {
+    var ptr;
     if (handle === null) {
         if (this.isReference) {
             throwBindingError('null is not a valid ' + this.name);
         }
 
         if (this.isSmartPointer) {
-            var ptr = this.rawConstructor();
+            ptr = this.rawConstructor();
             if (destructors !== null) {
                 destructors.push(this.rawDestructor, ptr);
             }
@@ -1311,7 +1312,7 @@ var LibraryEmbind = {
         throwBindingError('Cannot convert argument of type ' + (handle.$$.smartPtrType ? handle.$$.smartPtrType.name : handle.$$.ptrType.name) + ' to parameter type ' + this.name);
     }
     var handleClass = handle.$$.ptrType.registeredClass;
-    var ptr = upcastPointer(handle.$$.ptr, handleClass, this.registeredClass);
+    ptr = upcastPointer(handle.$$.ptr, handleClass, this.registeredClass);
 
     if (this.isSmartPointer) {
         // TODO: this is not strictly true
