@@ -1206,7 +1206,7 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
   if settings['EMULATED_FUNCTION_POINTERS']:
     all_exported = list(set(all_exported).union(in_table))
   exports = []
-  for export in all_exported:
+  for export in set(all_exported):
     exports.append(quote(export) + ": " + export)
   if settings['BINARYEN'] and settings['SIDE_MODULE']:
     # named globals in side wasm modules are exported globals from asm/wasm
