@@ -901,7 +901,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       try:
         assert shared.Settings.ASM_JS > 0, 'ASM_JS must be enabled in fastcomp'
-        assert shared.Settings.SAFE_HEAP in [0, 1], 'safe heap must be 0 or 1 in fastcomp'
+        assert shared.Settings.SAFE_HEAP in [0, 1, 2], 'safe heap must be 0, 1 or 2 in fastcomp'
         assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
         assert shared.Settings.FORCE_ALIGNED_MEMORY == 0, 'forced aligned memory is not supported in fastcomp'
         assert shared.Settings.PGO == 0, 'pgo not supported in fastcomp'

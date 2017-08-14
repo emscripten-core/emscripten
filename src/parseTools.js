@@ -723,7 +723,7 @@ function indentify(text, indent) {
 // Correction tools
 
 function checkSafeHeap() {
-  return SAFE_HEAP === 1;
+  return SAFE_HEAP !== 0;
 }
 
 function getHeapOffset(offset, type) {

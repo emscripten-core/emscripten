@@ -48,6 +48,17 @@ var SAFE_HEAP_COUNTER = 0;
 
 var safe_heap_warn_set = new Set();
 
+function checkSafeHeapBounds(dest, bytes, store)
+{
+  if (staticSealed) {
+    if (dest + bytes > HEAP32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when ' + (store ? 'stor' : 'load') + 'ing ' + bytes + ' bytes ' + (store ? 'to' : 'from') + ' address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
+    assert(DYNAMICTOP_PTR);
+    assert(HEAP32[DYNAMICTOP_PTR>>2] <= TOTAL_MEMORY);
+  } else {
+    if (dest + bytes > STATICTOP) abort('segmentation fault, exceeded the top of the available static heap when ' + (store ? 'stor' : 'load') + 'ing ' + bytes + ' bytes '+ (store ? 'to' : 'from') + ' address ' + dest + '. STATICTOP=' + STATICTOP);
+  }
+}
+
 function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
 #if SAFE_HEAP_LOG
   Module.print('SAFE_HEAP store: ' + [dest, value, bytes, isFloat, SAFE_HEAP_COUNTER++]);
@@ -55,6 +66,7 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
   if (dest <= 0) abort('segmentation fault storing ' + bytes + ' bytes to address ' + dest);
   if (dest % bytes !== 0)
   {
+#if SAFE_HEAP == 2
     var trace = jsStackTrace().split('\n');
     var funcname;
     for(i=2;trace[i];i++)
@@ -72,14 +84,14 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
       Module.print('storing to address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
       safe_heap_warn_set.add(func);
     }
+    checkSafeHeapBounds(dest, bytes, 1);
+    setValueUnaligned(dest, value, getSafeHeapType(bytes, isFloat), 1);
+    return;
+#else
+    abort('alignment error storing to address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
+#endif
   }
-  if (staticSealed) {
-    if (dest + bytes > HEAP32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when storing ' + bytes + ' bytes to address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
-    assert(DYNAMICTOP_PTR);
-    assert(HEAP32[DYNAMICTOP_PTR>>2] <= TOTAL_MEMORY);
-  } else {
-    if (dest + bytes > STATICTOP) abort('segmentation fault, exceeded the top of the available static heap when storing ' + bytes + ' bytes to address ' + dest + '. STATICTOP=' + STATICTOP);
-  }
+  checkSafeHeapBounds(dest, bytes, 1);
   setValue(dest, value, getSafeHeapType(bytes, isFloat), 1);
 }
 function SAFE_HEAP_STORE_D(dest, value, bytes) {
@@ -89,6 +101,7 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
   if (dest <= 0) abort('segmentation fault loading ' + bytes + ' bytes from address ' + dest);
   if (dest % bytes !== 0)
   {
+#if SAFE_HEAP == 2
     var trace = jsStackTrace().split('\n');
     var funcname;
     for(i=2;trace[i];i++)
@@ -108,14 +121,16 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
 
       safe_heap_warn_set.add(func);
     }
+    checkSafeHeapBounds(dest, bytes, 1);
+    var type = getSafeHeapType(bytes, isFloat);
+    var ret = getValueUnaligned(dest, type, 1);
+    if (unsigned) ret = unSign(ret, parseInt(type.substr(1)), 1);
+    return ret;
+#else
+    abort('alignment error loading from address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
+#endif
   }
-  if (staticSealed) {
-    if (dest + bytes > HEAP32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when loading ' + bytes + ' bytes from address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
-    assert(DYNAMICTOP_PTR);
-    assert(HEAP32[DYNAMICTOP_PTR>>2] <= TOTAL_MEMORY);
-  } else {
-    if (dest + bytes > STATICTOP) abort('segmentation fault, exceeded the top of the available static heap when loading ' + bytes + ' bytes from address ' + dest + '. STATICTOP=' + STATICTOP);
-  }
+  checkSafeHeapBounds(dest, bytes, 1);
   var type = getSafeHeapType(bytes, isFloat);
   var ret = getValue(dest, type, 1);
   if (unsigned) ret = unSign(ret, parseInt(type.substr(1)), 1);
@@ -332,6 +347,40 @@ var cwrap, ccall;
 })();
 {{{ maybeExport("ccall") }}}
 {{{ maybeExport("cwrap") }}}
+
+#if SAFE_HEAP == 2
+function setValueUnaligned(ptr, value, type) {
+  type = type || 'i8';
+  if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
+  switch(type) {
+    case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1', undefined, undefined, '1', '1') }}}; break;
+    case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8', undefined, undefined, '1', '1') }}}; break;
+    case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16', undefined, undefined, '1', '1') }}}; break;
+    case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32', undefined, undefined, '1', '1') }}}; break;
+    case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64', undefined, undefined, '1', '1') }}}; break;
+    case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float', undefined, undefined, '1', '1') }}}; break;
+    case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double', undefined, undefined, '1', '1') }}}; break;
+    default: abort('invalid type for setValue: ' + type);
+  }
+}
+
+
+function getValueUnaligned(ptr, type) {
+  type = type || 'i8';
+  if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
+  switch(type) {
+    case 'i1': return {{{ makeGetValue('ptr', '0', 'i1', undefined, undefined, undefined, '1', '1') }}};
+    case 'i8': return {{{ makeGetValue('ptr', '0', 'i8', undefined, undefined, undefined, '1', '1') }}};
+    case 'i16': return {{{ makeGetValue('ptr', '0', 'i16', undefined, undefined, undefined, '1', '1') }}};
+    case 'i32': return {{{ makeGetValue('ptr', '0', 'i32', undefined, undefined, undefined, '1', '1') }}};
+    case 'i64': return {{{ makeGetValue('ptr', '0', 'i64', undefined, undefined, undefined, '1', '1') }}};
+    case 'float': return {{{ makeGetValue('ptr', '0', 'float', undefined, undefined, undefined, '1', '1') }}};
+    case 'double': return {{{ makeGetValue('ptr', '0', 'double', undefined, undefined, undefined, '1', '1') }}};
+    default: abort('invalid type for setValue: ' + type);
+  }
+  return null;
+}
+#endif
 
 /** @type {function(number, number, string, boolean=)} */
 function setValue(ptr, value, type, noSafe) {
