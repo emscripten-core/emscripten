@@ -1822,7 +1822,7 @@ def parse_args(newargs):
   should_exit = False
 
   for i in range(len(newargs)):
-    # On Windows Vista (and possibly others), excessive spaces in the command line 
+    # On Windows Vista (and possibly others), excessive spaces in the command line
     # leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
     newargs[i] = newargs[i].strip()
     if newargs[i].startswith('-O'):
@@ -2332,18 +2332,19 @@ def modularize(final):
   src = open(final).read()
   final = final + '.modular.js'
   f = open(final, 'w')
-  f.write('var ' + shared.Settings.EXPORT_NAME + ' = function(' + shared.Settings.EXPORT_NAME + ') {\n')
-  f.write('  ' + shared.Settings.EXPORT_NAME + ' = ' + shared.Settings.EXPORT_NAME + ' || {};\n')
-  f.write('  var Module = ' + shared.Settings.EXPORT_NAME + ';\n') # included code may refer to Module (e.g. from file packager), so alias it
-  f.write('\n')
-  f.write(src)
-  f.write('\n')
-  f.write('  return ' + shared.Settings.EXPORT_NAME + ';\n')
-  f.write('};\n')
-  # Export the function if this is for Node (or similar UMD-style exporting), otherwise it is lost.
-  f.write('if (typeof module === "object" && module.exports) {\n')
-  f.write("  module['exports'] = " + shared.Settings.EXPORT_NAME + ';\n')
-  f.write('};\n')
+  f.write('''var %(EXPORT_NAME)s = function(%(EXPORT_NAME)s) {
+  %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
+  var Module = %(EXPORT_NAME)s; // included code may refer to Module (e.g. from file packager), so alias it
+
+%(src)s
+
+  return %(EXPORT_NAME)s;
+};
+// Export the function if this is for Node (or similar UMD-style exporting), otherwise it is lost.
+if (typeof module === "object" && module.exports) {
+  module['exports'] = %(EXPORT_NAME)s;
+};
+''' % {"EXPORT_NAME": shared.Settings.EXPORT_NAME, "src": src})
   f.close()
   if DEBUG: save_intermediate('modularized', 'js')
   return final
