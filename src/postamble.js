@@ -128,6 +128,7 @@ Module['then'] = function(func) {
 /**
  * @constructor
  * @extends {Error}
+ * @this {ExitStatus}
  */
 function ExitStatus(status) {
   this.name = "ExitStatus";

@@ -408,7 +408,8 @@ function allocate(slab, types, allocator, ptr) {
   }
 
   if (zeroinit) {
-    var ptr = ret, stop;
+    var stop;
+    ptr = ret;
     assert((ret & 3) == 0);
     stop = ret + (size & ~3);
     for (; ptr < stop; ptr += 4) {

@@ -2181,6 +2181,10 @@ class Building(object):
       NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
       NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
                       if name.endswith('.js')]
+      BROWSER_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'browser-externs')
+      BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
+      BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
+                      if name.endswith('.js')]
 
       # Something like this (adjust memory as needed):
       #   CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
@@ -2190,6 +2194,9 @@ class Building(object):
               '--languageIn', 'ECMASCRIPT5',
               '--externs', CLOSURE_EXTERNS]
       for extern in NODE_EXTERNS:
+          args.append('--externs')
+          args.append(extern)
+      for extern in BROWSER_EXTERNS:
           args.append('--externs')
           args.append(extern)
       if pretty: args += ['--formatting', 'PRETTY_PRINT']

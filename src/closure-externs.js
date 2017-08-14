@@ -962,10 +962,17 @@ var scriptArgs = [];
  * @const
  */
 var quit = function() {};
+/**
+ * @return {number}
+ */
+var dateNow = function() {};
 
 // Various Emscripten-specific global variables
 
 var tempRet0;
 var tempI64;
 var tempDouble;
+/**
+ * @suppress {duplicate}
+ */
 var WasmJS;
