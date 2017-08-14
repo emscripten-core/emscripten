@@ -2090,6 +2090,10 @@ function integrateWasmJS() {
     wasmTextFile = Module['locateFile'](wasmTextFile);
     wasmBinaryFile = Module['locateFile'](wasmBinaryFile);
     asmjsCodeFile = Module['locateFile'](asmjsCodeFile);
+  } else {
+    wasmTextFile = Module['scriptDirectory'] + wasmTextFile;
+    wasmBinaryFile = Module['scriptDirectory'] + wasmBinaryFile;
+    asmjsCodeFile = Module['scriptDirectory'] + asmjsCodeFile;
   }
 
   // utilities
