@@ -1292,11 +1292,7 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
     receiving = '\n'.join(['var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {''' + runtime_assertions + '''  return real_''' + s + '''.apply(null, arguments);
 };
 ''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory', '__start_module']])
-  if not settings['SWAPPABLE_ASM_MODULE']:
-    receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables(function_table_data, settings)])
-  else:
-    receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() {' + runtime_assertions + '  return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions + function_tables(function_table_data, settings)])
-  receiving += ';\n'
+  receiving += onAsmLoaded_generator(exported_implemented_functions)
 
   if settings['EXPORT_FUNCTION_TABLES'] and not settings['BINARYEN']:
     for table in function_table_data.values():
@@ -1314,6 +1310,29 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
 
   return receiving
 
+
+def onAsmLoaded_generator(exported_implemented_functions):
+  sorted_functions = sorted(exported_implemented_functions)
+  functions_list = ','.join(sorted_functions)
+  functions_array = ','.join(["'" + function_name + "'" for function_name in sorted_functions])
+  assignments = ''.join(['  ' + function_name + ' = functions[' + str(index) + '];\n' for index, function_name in enumerate(sorted_functions)])
+  return '''var %s;
+function onAsmLoaded (asm) {
+  // TODO: Use `Object.assign(Module, asm);` when IE and other old browsers do not need to be supported anymore
+  for (var functionName in asm) {
+    if (Object.hasOwnProperty.call(asm, functionName)) {
+      Module[functionName] = asm[functionName];
+    }
+  }
+  var functions = [];
+  [%s].forEach(function (functionName) {
+    functions.push(asm[functionName]);
+  });
+  // TODO: With ES2015+ assignments can be eliminated by using array destructuring, but we are not there quite yet unfortunately
+%s
+}
+
+''' % (functions_list, functions_array, assignments)
 
 def create_named_globals(metadata, settings):
   named_globals = ''
@@ -1927,11 +1946,7 @@ return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
 };
 ''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory', '__start_module']])
 
-  if not settings['SWAPPABLE_ASM_MODULE']:
-    receiving += ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"]' for s in exported_implemented_functions])
-  else:
-    receiving += ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions])
-  receiving += ';\n'
+  receiving += onAsmLoaded_generator(map(asmjsm_mangle, exported_implemented_functions))
   return receiving
 
 
