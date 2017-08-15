@@ -3323,6 +3323,14 @@ window.close = function() {
     Popen([PYTHON, EMCC, path_from_root('tests', 'atomicrmw_i64.ll'), '-s', 'USE_PTHREADS=1', '-s', 'IN_TEST_HARNESS=1', '-o', 'test.html']).communicate()
     self.run_browser('test.html', None, '/report_result?0')
 
+  # Test std::async with deferred launch policy.
+  def test_async_deferred(self):
+    self.btest(path_from_root('tests', 'async', 'test_async.cpp'), expected='0', args=['-O3', '-std=c++11', "-DSTD_LAUNCH=std::launch::deferred", '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--separate-asm'], timeout=30)
+
+  # Test std::async with async launch policy.
+  def test_async_async(self):
+    self.btest(path_from_root('tests', 'async', 'test_async.cpp'), expected='0', args=['-O3', '-std=c++11', "-DSTD_LAUNCH=std::launch::async", '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--separate-asm'], timeout=30)
+
   # Test that it is possible to send a signal via calling alarm(timeout), which in turn calls to the signal handler set by signal(SIGALRM, func);
   def test_sigalrm(self):
     self.btest(path_from_root('tests', 'sigalrm.cpp'), expected='0', args=['-O3'], timeout=30)
