@@ -3624,3 +3624,7 @@ window.close = function() {
   # Tests the Emscripten HTML5 API emscripten_set_canvas_element_size() and emscripten_get_canvas_element_size() functionality in singlethreaded programs.
   def test_emscripten_set_canvas_element_size(self):
     self.btest('emscripten_set_canvas_element_size.c', expected='1')
+
+  # Tests the absolute minimum pthread-enabled application.
+  def test_hello_thread(self):
+    self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), expected='1', args=['-s', 'USE_PTHREADS=1'])
