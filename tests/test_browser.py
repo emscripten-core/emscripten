@@ -3628,3 +3628,12 @@ window.close = function() {
   # Tests the absolute minimum pthread-enabled application.
   def test_hello_thread(self):
     self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), expected='1', args=['-s', 'USE_PTHREADS=1'])
+
+  # Tests that it is possible to load the main .js file of the application manually via a Blob URL, and still use pthreads.
+  def test_load_js_from_blob_with_pthreads(self):
+    src = os.path.join(self.get_dir(), 'src.c')
+    open(src, 'w').write(self.with_report_result(open(path_from_root('tests', 'pthread', 'hello_thread.c')).read()))
+
+    Popen([PYTHON, EMCC, 'src.c', '-s', 'USE_PTHREADS=1', '-o', 'hello_thread_with_blob_url.js']).communicate()
+    shutil.copyfile(path_from_root('tests', 'pthread', 'main_js_as_blob_loader.html'), os.path.join(self.get_dir(), 'hello_thread_with_blob_url.html'))
+    self.run_browser('hello_thread_with_blob_url.html', 'hello from thread!', '/report_result?1')

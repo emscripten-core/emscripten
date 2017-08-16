@@ -56,7 +56,13 @@ this.onmessage = function(e) {
     DYNAMICTOP_PTR = e.data.DYNAMICTOP_PTR;
 
     PthreadWorkerInit = e.data.PthreadWorkerInit;
-    importScripts(e.data.url);
+    if (typeof e.data.urlOrBlob === 'string') {
+      importScripts(e.data.urlOrBlob);
+    } else {
+      var objectUrl = URL.createObjectURL(e.data.urlOrBlob);
+      importScripts(objectUrl);
+      URL.revokeObjectURL(objectUrl);
+    }
     if (typeof FS !== 'undefined') FS.createStandardStreams();
     postMessage({ cmd: 'loaded' });
   } else if (e.data.cmd === 'objectTransfer') {
