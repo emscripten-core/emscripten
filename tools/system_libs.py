@@ -569,7 +569,7 @@ class Ports(object):
       # note that tag **must** be the tag in sdl.py, it is where we store to (not where we load from, we just load the local dir)
       local_ports = os.environ.get('EMCC_LOCAL_PORTS')
       if local_ports:
-        local_ports = map(lambda pair: pair.split('='), local_ports.split(','))
+        local_ports = map(lambda pair: pair.split('=', 1), local_ports.split(','))
         for local in local_ports:
           if name == local[0]:
             path, subdir = local[1].split('|')

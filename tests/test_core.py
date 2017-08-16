@@ -7439,7 +7439,7 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
         Building.COMPILER_TEST_OPTS.append(arg) # so bitcode is optimized too, this is for cpp to ll
       else:
         try:
-          key, value = arg.split('=')
+          key, value = arg.split('=', 1)
           Settings[key] = value # forward  -s K=V
         except:
           pass

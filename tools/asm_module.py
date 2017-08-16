@@ -52,7 +52,7 @@ class AsmModule():
         for part in imp.split(','):
           assert part.count('(') == part.count(')') # we must not break ',' in func(x, y)!
           assert part.count('=') == 1
-          key, value = part.split('=')
+          key, value = part.split('=', 1)
           self.imports[key.strip()] = value.strip()
 
     #print >> sys.stderr, 'imports', self.imports
@@ -266,7 +266,7 @@ class AsmModule():
     for part in parts:
       if '=' not in part: continue
       part = part.split('var ')[1]
-      name, data = part.split('=')
+      name, data = part.split('=', 1)
       tables[name.strip()] = data.strip()
     return tables
 
