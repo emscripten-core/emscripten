@@ -167,8 +167,12 @@ int usleep(unsigned usec)
 static em_queued_call *em_queued_call_malloc()
 {
 	em_queued_call *call = (em_queued_call*)malloc(sizeof(em_queued_call));
-	call->operationDone = 0;
-	call->functionPtr = 0;
+	assert(call); // Not a programming error, but use assert() in debug builds to catch OOM scenarios.
+	if (call)
+	{
+		call->operationDone = 0;
+		call->functionPtr = 0;
+	}
 	return call;
 }
 static void em_queued_call_free(em_queued_call *call)
@@ -454,10 +458,11 @@ void EMSCRIPTEN_KEEPALIVE emscripten_main_thread_process_queued_calls()
 
 int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr, ...)
 {
-	va_list args;
-	va_start(args, func_ptr);
 	int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
 	em_queued_call q = { sig, func_ptr };
+
+	va_list args;
+	va_start(args, func_ptr);
 	for(int i = 0; i < numArguments; ++i)
 		q.args[i].i = va_arg(args, int);
 	va_end(args);
@@ -467,12 +472,14 @@ int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *fun
 
 void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr, ...)
 {
-	va_list args;
-	va_start(args, func_ptr);
 	int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
 	em_queued_call *q = em_queued_call_malloc();
+	if (!q) return;
 	q->functionEnum = sig;
 	q->functionPtr = func_ptr;
+
+	va_list args;
+	va_start(args, func_ptr);
 	for(int i = 0; i < numArguments; ++i)
 		q->args[i].i = va_arg(args, int);
 	va_end(args);
@@ -484,12 +491,14 @@ void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *f
 
 em_queued_call *emscripten_async_waitable_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr, ...)
 {
-	va_list args;
-	va_start(args, func_ptr);
 	int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
 	em_queued_call *q = em_queued_call_malloc();
+	if (!q) return;
 	q->functionEnum = sig;
 	q->functionPtr = func_ptr;
+
+	va_list args;
+	va_start(args, func_ptr);
 	for(int i = 0; i < numArguments; ++i)
 		q->args[i].i = va_arg(args, int);
 	va_end(args);
