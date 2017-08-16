@@ -9,9 +9,11 @@ static int gDevCount = -1;
 static int gPosDev = -1;
 static int gHmdDev = -1;
 
-void
-report_result(int result)
-{
+static bool renderLoopCalled = false;
+static bool renderLoopArgCalled = false;
+static void* renderLoopArgArg = NULL;
+
+void report_result(int result) {
     emscripten_cancel_main_loop();
     if (result == 0) {
         printf("Test successful!\n");
@@ -24,9 +26,21 @@ report_result(int result)
     exit(result);
 }
 
-static void
-mainloop()
-{
+static void renderLoopArg(void* arg) {
+    renderLoopArgCalled = true;
+    renderLoopArgArg = arg;
+
+    emscripten_vr_cancel_display_render_loop(gHmdDev);
+}
+
+static void renderLoop() {
+    renderLoopCalled = true;
+
+    emscripten_vr_cancel_display_render_loop(gHmdDev);
+    emscripten_vr_set_display_render_loop_arg(gHmdDev, renderLoopArg, (void*) 42);
+}
+
+static void mainloop() {
     static int loopcount = 0;
 
     if (!emscripten_vr_ready()) {
@@ -76,24 +90,36 @@ mainloop()
         WebVRFieldOfView leftFov = leftParams.currentFieldOfView, rightFov = rightParams.currentFieldOfView;
         printf("Left FOV: %f %f %f %f\n", leftFov.upDegrees, leftFov.downDegrees, leftFov.rightDegrees, leftFov.leftDegrees);
         printf("Right FOV: %f %f %f %f\n", rightFov.upDegrees, rightFov.downDegrees, rightFov.rightDegrees, rightFov.leftDegrees);
+
+        emscripten_vr_set_display_render_loop(gHmdDev, renderLoop);
     }
 
     WebVRPositionState state;
     emscripten_vr_sensor_get_state(gPosDev, false, &state);
-    printf("Timestamp: %f, hasPosition: %s , hasOrientation: %s\n", state.timeStamp, 
+    printf("Timestamp: %f, hasPosition: %s , hasOrientation: %s\n", state.timeStamp,
            state.hasPosition ? "true" : "false", state.hasOrientation ? "true" : "false");
     printf("State: orientation: [%f %f %f %f] position: [%f %f %f]\n",
            state.orientation.x, state.orientation.y, state.orientation.z, state.orientation.w,
            state.position.x, state.position.y, state.position.z);
 
     if (loopcount++ > 10) {
+        if (!renderLoopCalled) {
+            printf("Render loop was never called\n");
+            report_result(1);
+        }
+        if (!renderLoopArgCalled) {
+            printf("Render loop with argument was never called\n");
+            report_result(1);
+        }
+        if ((int)renderLoopArgArg != 42) {
+            printf("Argument to emscripten_vr_set_display_render_loop_arg was not passed on correctly\n");
+            report_result(1);
+        }
         report_result(0);
     }
 }
 
-int
-main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     emscripten_vr_init();
 
     /* 2fps -- no rAF */
