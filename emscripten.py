@@ -1331,6 +1331,7 @@ function onAsmLoaded (asm) {
   // TODO: With ES2015+ assignments can be eliminated by using array destructuring, but we are not there quite yet unfortunately
 %s
 }
+onAsmLoaded(asm);
 
 ''' % (functions_list, functions_array, assignments)
 

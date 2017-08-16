@@ -2,7 +2,6 @@
 // === Auto-generated postamble setup entry stuff ===
 
 Module['asm'] = asm;
-onAsmLoaded(Module['asm']);
 
 {{{ maybeExport('FS') }}}
 
