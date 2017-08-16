@@ -22,21 +22,16 @@ var LibraryWebVR = {
 
       WebVR.initialized = true;
 
-      if (!navigator.getVRDevices) {
+      if (!navigator.getVRDisplays) {
+        /* WebVR 1.1 required, but not supported. */
         WebVR.ready = true;
         WebVR.devices = [];
         return;
       }
 
-      navigator.getVRDevices().then(
-        function(devs) {
+      navigator.getVRDisplays().then(function(disps) {
           WebVR.ready = true;
-          WebVR.devices = devs;
-        },
-        function() {
-          console.log("Emscripten WebVR getVRDevices() hit error callback");
-          WebVR.ready = true;
-          WebVR.devices = [];
+          WebVR.displays = disps;
         }
       );
     },
@@ -231,6 +226,72 @@ var LibraryWebVR = {
     if (!dev) return 0;
     dev.resetSensor();
     return 1;
+  },
+
+  emscripten_vr_set_display_render_loop: function(deviceId, func, arg) {
+    var display = WebVR.getDeviceByID(deviceId);
+    if (!display) return 0;
+
+    assert(!display.mainLoop || !display.mainLoop.scheduler, 'emscripten_vr_set_device_main_loop: there can only be one render loop function per VRDisplay: call emscripten_vr_cancel_render_loop to cancel the previous one before setting a new one with different parameters.');
+
+    var displayIterationFunc;
+    if (typeof arg !== 'undefined') {
+      var argArray = [arg];
+      displayIterationFunc = function() {
+        Runtime.dynCall('vi', func, argArray);
+      };
+    } else {
+      displayIterationFunc = function() {
+        Runtime.dynCall('v', func);
+      };
+    }
+
+    display.mainLoop = {
+      sheduler: function() {
+        display.requestAnimationFrame(display.mainLoop.runner);
+      },
+      runner: function() {
+        if(ABORT) return;
+
+#if USES_GL_EMULATION
+        GL.newRenderingFrameStarted();
+#endif
+
+        try {
+          displayIterationFunc();
+        } catch (e) {
+          if (e instanceof ExitStatus) {
+            return;
+          } else {
+            if (e && typeof e === 'object' && e.stack) Module.printErr('exception thrown: ' + [e, e.stack]);
+            throw e;
+          }
+        }
+
+#if STACK_OVERFLOW_CHECK
+        checkStackCookie();
+#endif
+
+        display.mainLoop.sheduler();
+      },
+      pause: function() {
+        display.mainLoop.sheduler = null;
+      }
+    };
+
+    display.requestAnimationFrame(display.mainLoop.runner);
+  },
+
+  emscripten_vr_set_display_render_loop_arg__deps: ['emscripten_vr_set_display_render_loop'],
+  emscripten_vr_set_display_render_loop_arg: function(deviceId, func, arg) {
+    _emscripten_vr_set_display_main_loop(func, arg);
+  },
+
+  emscripten_vr_cancel_display_render_loop: function(deviceId) {
+    var display = WebVR.getDeviceByID(deviceId);
+    if (!display || !display.mainLoop) return 0;
+
+    display.mainLoop.pause();
   }
 };
 

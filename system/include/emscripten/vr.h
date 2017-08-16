@@ -18,6 +18,9 @@ extern "C" {
 typedef int32_t WebVRDeviceId;
 typedef int32_t WebVRHardwareUnitId;
 
+typedef void (*em_vr_callback_func)(void);
+typedef void (*em_vr_arg_callback_func)(void*);
+
 typedef enum {
     WebVREyeLeft = 0,
     WebVREyeRight = 1
@@ -71,6 +74,10 @@ typedef struct WebVREyeParameters {
 
 extern void emscripten_vr_init();
 extern int emscripten_vr_ready();
+
+extern void emscripten_vr_set_display_render_loop(WebVRDeviceId deviceId, em_vr_callback_func callback);
+extern void emscripten_vr_set_display_render_loop_arg(WebVRDeviceId deviceId, em_vr_arg_callback_func, void *arg);
+extern void emscripten_vr_cancel_display_render_loop(WebVRDeviceId deviceId);
 
 extern int emscripten_vr_count_devices();
 extern WebVRDeviceId emscripten_vr_get_device_id(int deviceIndex);
