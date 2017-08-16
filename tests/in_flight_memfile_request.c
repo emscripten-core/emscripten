@@ -6,7 +6,7 @@ int main() {
     return !!Module['memoryInitializerRequest'];
   });
   printf("memory init request: %d\n", result);
-  REPORT_RESULT();
+  REPORT_RESULT(result);
   return 0;
 }
 

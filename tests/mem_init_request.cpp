@@ -13,7 +13,7 @@ int main() {
   putc('o', stdout);
   putc('n', stdout);
   putc('e', stdout);
-  REPORT_RESULT();
+  REPORT_RESULT(result);
   return 0;
 }
 

@@ -16,7 +16,7 @@ void main_loop(void) {
       emscripten_cancel_main_loop();
       int result = rate > 600;
       printf("Final rate: %.2f, success: %d\n", rate, result);
-      REPORT_RESULT();
+      REPORT_RESULT(result);
       return;
     }
   }

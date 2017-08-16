@@ -12,7 +12,6 @@ int main()
 	assert(val == (void*)1);
 
 #ifdef REPORT_RESULT
-	int result = 0;
-	REPORT_RESULT();
+	REPORT_RESULT(0);
 #endif
 }

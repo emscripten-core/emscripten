@@ -23,7 +23,7 @@ static void exit_with_status(TestStatus code)
 {
 #ifdef REPORT_RESULT
     int result = (code == TEST_STATUS_SUCCESS) ? 1 : 0;
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
 
     exit(code);

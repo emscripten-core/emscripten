@@ -38,8 +38,7 @@ void argey(void* arg) {
   printf("argey: %d\n", counter);
   if (counter == 5) {
     emscripten_cancel_main_loop();
-    int result = 1;
-    REPORT_RESULT();
+    REPORT_RESULT(1);
   }
 }
 
@@ -86,8 +85,7 @@ void second(void *arg) {
 }
 
 void never() {
-  int result = 0;
-  REPORT_RESULT();
+  REPORT_RESULT(0);
 }
 
 int main() {

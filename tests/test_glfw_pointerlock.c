@@ -23,7 +23,7 @@ void OnMouseClick(GLFWwindow *window, int button, int action, int mods) {
   printf("mouse actions: %d / 4\n", actions);
   if (actions >= 4) {
     printf("done.\n");
-    REPORT_RESULT();
+    REPORT_RESULT(result);
     emscripten_cancel_main_loop();
   }
 }
@@ -33,10 +33,9 @@ int main() {
   glfwSetErrorCallback(error_callback);
   if (!glfwInit())
   {
-    result = 0;
     printf("Could not create window. Test failed.\n");      
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(0);
 #endif
     return -1;
   }
@@ -44,10 +43,9 @@ int main() {
   g_window = glfwCreateWindow(600, 450, "GLFW pointerlock test", NULL, NULL);
   if (!g_window)
   {
-    result = 0;
     printf("Could not create window. Test failed.\n");      
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
     glfwTerminate();
     return -1;

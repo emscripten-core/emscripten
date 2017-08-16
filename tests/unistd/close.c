@@ -36,8 +36,7 @@ int main() {
   errno = 0;
 
 #ifdef REPORT_RESULT
-  int result = 0;
-  REPORT_RESULT();
+  REPORT_RESULT(0);
 #endif
   return 0;
 }

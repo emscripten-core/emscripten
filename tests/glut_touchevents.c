@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
     printf("touchstarted: button:%d x:%d y:%d\n", touch_started_button, touch_started_x, touch_started_y);
     printf("touchended:   button:%d x:%d y:%d\n", touch_ended_button, touch_ended_x, touch_ended_y);
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
     return 0;
 }

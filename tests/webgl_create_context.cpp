@@ -36,10 +36,9 @@ GLint GetInt(GLenum param)
 }
 
 void final(void*) {
-  #ifdef REPORT_RESULT
-  int result = 0;
-  REPORT_RESULT();
-  #endif
+#ifdef REPORT_RESULT
+  REPORT_RESULT(0);
+#endif
 }
 
 EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context;

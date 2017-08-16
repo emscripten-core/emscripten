@@ -67,6 +67,6 @@ int main(void) {
     draw(window, surface);
 
     int result = verify();
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 }
 

@@ -35,7 +35,7 @@ int main()
   {
     printf("Skipped: WebGL 2 is not supported.\n");
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
     return 0;
   }
@@ -166,7 +166,7 @@ int main()
   }
 
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 #endif
   return 0;
 }

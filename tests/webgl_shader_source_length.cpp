@@ -33,7 +33,7 @@ int main()
   {
     printf("Skipped: WebGL is not supported.\n");
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
     return 0;
   }
@@ -64,7 +64,7 @@ int main()
   assert(res == EMSCRIPTEN_RESULT_SUCCESS);
 
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 #endif
   return 0;
 }

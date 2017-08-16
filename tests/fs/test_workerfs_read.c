@@ -98,5 +98,5 @@ int main() {
 
 
 exit:
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }

@@ -29,7 +29,6 @@ int main()
   read_file();
 
 #ifdef REPORT_RESULT
-  int result = 0;
-  REPORT_RESULT();
+  REPORT_RESULT(0);
 #endif
 }

@@ -69,8 +69,7 @@ int main()
    if (!emscripten_has_threading_support())
    {
 #ifdef REPORT_RESULT
-      result = 907640832;
-      REPORT_RESULT();
+      REPORT_RESULT(907640832);
 #endif
       printf("Skipped: Threading is not supported.\n");
       return 0;
@@ -97,8 +96,7 @@ int main()
    EM_ASM_INT( { console.log('Cleanup state variable: ' + $0); }, cleanupState);
 
 #ifdef REPORT_RESULT
-   result = cleanupState;
-   REPORT_RESULT();
+   REPORT_RESULT(cleanupState);
 #endif
 
    exit(EXIT_SUCCESS);

@@ -30,12 +30,10 @@ int main()
   struct timespec ts = { 1, 0 };
   nanosleep(&ts, 0);
 
-  int result = 0;
   if (!emscripten_has_threading_support())
   {
 #ifdef REPORT_RESULT
-    result = 6765;
-    REPORT_RESULT();
+    REPORT_RESULT(6765);
 #endif
     printf("Skipped: Threading is not supported.\n");
     return 0;
@@ -48,11 +46,12 @@ int main()
   int s = pthread_create(&thr, NULL, thread_start, (void*)n);
   assert(s == 0);
   EM_ASM(Module['print']('Main: Waiting for thread to join.'););
+  int result = 0;
   s = pthread_join(thr, (void**)&result);
   assert(s == 0);
   EM_ASM_INT( { Module['print']('Main: Thread joined with result: '+$0+'.'); }, result);
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 #endif
 }
 

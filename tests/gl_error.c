@@ -19,7 +19,6 @@ int main()
   glPopMatrix();
   assert(glGetError() == GL_STACK_UNDERFLOW);
 
-  int result = 1;
-  REPORT_RESULT();
+  REPORT_RESULT(1);
   return 0;
 }

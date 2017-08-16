@@ -58,12 +58,9 @@ int main() {
     assert(uuid_is_null(uuid) == 1);
 
     // The following lets the browser test exit cleanly.
-    int result = 1;
-    #if defined(__EMSCRIPTEN__)
-        #ifdef REPORT_RESULT
-            REPORT_RESULT();
-        #endif
-    #endif
+#ifdef REPORT_RESULT
+    REPORT_RESULT(1);
+#endif
     exit(0);
 }
 

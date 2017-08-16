@@ -47,7 +47,7 @@ int main (int argc, char *argv[])
 
 #ifdef REPORT_RESULT
   int result = (main_loc == child_loc);
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 #endif
 
   pthread_exit(NULL);

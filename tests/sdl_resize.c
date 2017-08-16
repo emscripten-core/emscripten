@@ -23,8 +23,7 @@ void loop() {
           case 1:
             assert(r->w == 123);
             assert(r->h == 246);
-            int result = 1;
-            REPORT_RESULT();
+            REPORT_RESULT(1);
             break;
         }
       }

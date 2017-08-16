@@ -21,7 +21,7 @@ int sockfd = -1;
 void finish(int result) {
   close(sockfd);
 #ifdef __EMSCRIPTEN__
-  REPORT_RESULT();
+  REPORT_RESULT(result);
   emscripten_force_exit(result);
 #else
   exit(result);

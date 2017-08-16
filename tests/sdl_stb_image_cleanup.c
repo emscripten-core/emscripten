@@ -22,7 +22,7 @@ int main() {
   });
 
   printf("Total memory allocated %d Mb\n", result);
-  REPORT_RESULT();
+  REPORT_RESULT(result);
   return 0;
 }
 

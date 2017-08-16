@@ -148,15 +148,13 @@ int main()
 	globalDouble = 5.0;
 	globalU64 = 5;
 
-	int result = 0;
-
 	emscripten_atomic_fence();
 	__sync_synchronize();
 
 	if (!emscripten_has_threading_support())
 	{
 #ifdef REPORT_RESULT
-		REPORT_RESULT();
+		REPORT_RESULT(0);
 #endif
 		printf("Skipped: Threading is not supported.\n");
 		return 0;
@@ -179,8 +177,8 @@ int main()
 	else
 		printf("32-bit CAS test failed! totalRead != totalWritten (%llu != %llu)\n", totalRead, totalWritten);
 #ifdef REPORT_RESULT
-	if (totalRead != totalWritten) result = 1;
-	REPORT_RESULT();
+	int result = (totalRead != totalWritten) ? 1 : 0;
+	REPORT_RESULT(result);
 #else
 	EM_ASM(Module['print']('Main: Test successfully finished.'));
 #endif

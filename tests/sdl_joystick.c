@@ -5,8 +5,6 @@
 #include <string.h>
 #include <emscripten.h>
 
-int result = 1;
-
 void assertJoystickEvent(int expectedGamepad, int expectedType, int expectedIndex, int expectedValue) {
   SDL_Event event;
   while(1) {
@@ -121,8 +119,7 @@ void main_2(void* arg) {
   assertNoJoystickEvent();
 
   // End test.
-  result = 2;
   printf("Test passed!\n");
-  REPORT_RESULT();
+  REPORT_RESULT(2);
 }
 
