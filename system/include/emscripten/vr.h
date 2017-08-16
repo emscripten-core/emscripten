@@ -9,6 +9,13 @@
 /*
  * This file provides some basic interfaces for interacting with WebVR from Emscripten.
  *
+ * Documentation for the public APIs defined in this file must be updated in:
+ *    site/source/docs/api_reference/vr.h.rst
+ * A prebuilt local version of the documentation is available at:
+ *    site/build/text/docs/api_reference/emscripten.h.txt
+ * You can also build docs locally as HTML or other formats in site/
+ * An online HTML version (which may be of a different version of Emscripten)
+ *    is up at http://kripken.github.io/emscripten-site/docs/api_reference/vr.h.html
  */
 
 #ifdef __cplusplus
