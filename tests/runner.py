@@ -604,8 +604,7 @@ class RunnerCore(unittest.TestCase):
         suppFunc(p);
         printf("main see: %d\nok.\n", suppInt);
         #ifdef BROWSER
-          int result = suppInt;
-          REPORT_RESULT();
+          REPORT_RESULT(suppInt);
         #endif
         return 0;
       }
@@ -816,17 +815,27 @@ class BrowserCore(RunnerCore):
   def with_report_result(self, code):
     return r'''
 #ifdef __EMSCRIPTEN__
+  #ifndef __REPORT_RESULT_DEFINED__
+  #define __REPORT_RESULT_DEFINED__
   #include <emscripten.h>
-  #define REPORT_RESULT_INTERNAL(sync) \
-    EM_ASM_({ \
-      var xhr = new XMLHttpRequest(); \
-      var result = $0; \
-      if (Module['pageThrewException']) result = 12345; \
-      xhr.open('GET', 'http://localhost:8888/report_result?' + result, !$1); \
-      xhr.send(); \
-      if (!Module['pageThrewException'] /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000); \
+
+  static void _ReportResult(int result, int sync)
+  {
+    EM_ASM_({
+      var xhr = new XMLHttpRequest();
+      var result = $0;
+      if (Module['pageThrewException']) result = 12345;
+      xhr.open('GET', 'http://localhost:8888/report_result?' + result, !$1);
+      xhr.send();
+      if (!Module['pageThrewException'] /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000);
     }, result, sync);
-  #define REPORT_RESULT() REPORT_RESULT_INTERNAL(0)
+  }
+
+  #define REPORT_RESULT(result) _ReportResult((result), 0)
+  #define REPORT_RESULT_SYNC(result) _ReportResult((result), 1)
+
+  #endif // ~__REPORT_RESULT_DEFINED__
+
 #endif
 ''' + code
 

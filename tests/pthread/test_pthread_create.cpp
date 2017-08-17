@@ -69,12 +69,10 @@ void CreateThread(int i)
 
 int main()
 {
-	int result = 0;
-
 	if (!emscripten_has_threading_support())
 	{
 #ifdef REPORT_RESULT
-		REPORT_RESULT();
+		REPORT_RESULT(0);
 #endif
 		printf("Skipped: Threading is not supported.\n");
 		return 0;
@@ -103,6 +101,6 @@ int main()
 		}
 	}
 #ifdef REPORT_RESULT
-	REPORT_RESULT();
+	REPORT_RESULT(0);
 #endif
 }

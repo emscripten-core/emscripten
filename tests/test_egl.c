@@ -134,6 +134,6 @@ int main(int argc, char *argv[])
     assert(eglGetProcAddress("glWakaWaka") == 0);
 
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
 }

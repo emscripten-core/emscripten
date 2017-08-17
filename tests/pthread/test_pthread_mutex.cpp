@@ -81,8 +81,7 @@ void WaitToJoin()
 		else
 			EM_ASM_INT( { console.error('All threads finished, but counter = ' + $0 + ' != ' + $1 + '!'); }, counter, numThreadsToCreateTotal);
 #ifdef REPORT_RESULT
-		int result = counter;
-		REPORT_RESULT();
+		REPORT_RESULT(counter);
 #endif
 		emscripten_cancel_main_loop();
 	}
@@ -106,8 +105,7 @@ int main()
 		emscripten_set_main_loop(WaitToJoin, 0, 0);
 	} else {
 #ifdef REPORT_RESULT
-		int result = 50;
-		REPORT_RESULT();
+		REPORT_RESULT(50);
 #endif
 	}
 }

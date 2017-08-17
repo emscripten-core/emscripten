@@ -22,6 +22,6 @@ int main()
 	printf("Total memory available: %llu\n", availableMemory);
 #ifdef REPORT_RESULT
 	int result = (availableMemory > 10*1024*1024);
-	REPORT_RESULT();
+	REPORT_RESULT(result);
 #endif
 }

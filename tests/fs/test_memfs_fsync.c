@@ -35,5 +35,5 @@ int main() {
       result = -5000 - errno;
   }
 
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }

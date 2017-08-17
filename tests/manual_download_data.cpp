@@ -13,6 +13,6 @@ int main()
 	printf("OK\n");
 #ifdef REPORT_RESULT
 	int result = EM_ASM_INT_V({return Module.manuallyDownloadedData;});
-	REPORT_RESULT();
+	REPORT_RESULT(result);
 #endif
 }

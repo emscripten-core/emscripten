@@ -43,8 +43,7 @@ static void main_loop(void)
     runs++;
     if (runs >= TOTAL_RUNS) {
         emscripten_cancel_main_loop();
-        int result = 1;
-        REPORT_RESULT();
+        REPORT_RESULT(1);
     }
 }
 

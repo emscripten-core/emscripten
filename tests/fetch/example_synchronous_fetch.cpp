@@ -16,6 +16,6 @@ int main()
     printf("emscripten_fetch() failed to run synchronously!\n");
   }
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
 }

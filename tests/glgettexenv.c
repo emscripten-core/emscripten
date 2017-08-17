@@ -64,8 +64,7 @@ int main(int argc, char *argv[])
     SDL_Quit();
     
 #ifdef REPORT_RESULT
-    int result = 1;
-    REPORT_RESULT();
+    REPORT_RESULT(1);
 #endif
     return 0;
 }

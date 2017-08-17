@@ -35,9 +35,8 @@ void mainloop() {
   
   if (wasFullscreen && !isInFullscreen) {
     printf("Exited fullscreen. Test succeeded.\n");
-    result = 1;
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(1);
 #endif
     wasFullscreen = isInFullscreen;
     finished = 1;
@@ -58,7 +57,7 @@ void mainloop() {
             printf("Exited fullscreen. Test failed, fullscreen transition did not happen!\n");
           }
 #ifdef REPORT_RESULT
-          REPORT_RESULT();
+          REPORT_RESULT(result);
 #endif
           finished = 1;
           return;

@@ -14,7 +14,7 @@ void report_result(int result)
     printf("Test failed!\n");
   }
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 #endif
 }
 

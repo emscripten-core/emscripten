@@ -35,7 +35,7 @@ void main_loop() {
 
       int result = strcmp("packetfoo", event.packet->data);
 #ifdef __EMSCRIPTEN__
-      REPORT_RESULT();
+      REPORT_RESULT(result);
 #else
       exit(EXIT_SUCCESS);
 #endif

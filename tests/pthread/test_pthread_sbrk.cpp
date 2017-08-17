@@ -74,7 +74,7 @@ int main()
   int result = 0;
   if (!emscripten_has_threading_support()) {
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(0);
 #endif
     printf("Skipped: threading support is not available!\n");
     return 0;
@@ -107,6 +107,6 @@ int main()
   printf("Test finished with result %d\n", result);
 
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 #endif
 }

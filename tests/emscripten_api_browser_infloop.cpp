@@ -14,8 +14,7 @@ struct Class {
     printf("waka %d\n", x++);
 
     if (x == 7 || x < 0) {
-      int result = x;
-      REPORT_RESULT();
+      REPORT_RESULT(x);
       emscripten_cancel_main_loop();
     }
   }

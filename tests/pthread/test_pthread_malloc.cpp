@@ -35,10 +35,9 @@ static void *thread_start(void *arg)
 
 int main()
 {
-  int result = 0;
   if (!emscripten_has_threading_support()) {
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(0);
 #endif
     printf("Skipped: threading support is not available!\n");
     return 0;
@@ -47,6 +46,7 @@ int main()
   pthread_t thr[NUM_THREADS];
   for(int i = 0; i < NUM_THREADS; ++i)
     pthread_create(&thr[i], NULL, thread_start, (void*)(i*N));
+  int result = 0;
   for(int i = 0; i < NUM_THREADS; ++i) {
     int res = 0;
     pthread_join(thr[i], (void**)&res);
@@ -55,6 +55,6 @@ int main()
   printf("Test finished with result %d\n", result);
 
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 #endif
 }

@@ -9,8 +9,6 @@
 #define GLFW_INCLUDE_ES2
 #include <GLFW/glfw3.h>
 
-int result = 1;
-
 GLFWwindow* g_window;
 
 void render();
@@ -28,8 +26,10 @@ void on_file_drop(GLFWwindow *window, int count, const char **paths) {
     if (!fp) {
         printf("failed to open %s\n", paths[i]);
         perror("fopen");
-        result = 0;
-        continue;
+#ifdef REPORT_RESULT
+        REPORT_RESULT(0);
+#endif
+        return;
     }
     int c;
     long size = 0;
@@ -53,17 +53,16 @@ void on_file_drop(GLFWwindow *window, int count, const char **paths) {
 
   }
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+  REPORT_RESULT(1);
 #endif
 }
 
 int main() {
   if (!glfwInit())
   {
-    result = 0;
     printf("Could not create window. Test failed.\n");      
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(0);
 #endif      
     return -1;
   }
@@ -71,10 +70,9 @@ int main() {
   g_window = glfwCreateWindow(600, 450, "GLFW drop file", NULL, NULL);
   if (!g_window)
   {
-    result = 0;
     printf("Could not create window. Test failed.\n");      
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(0);
 #endif           
     glfwTerminate();
     return -1;

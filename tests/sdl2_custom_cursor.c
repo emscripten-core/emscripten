@@ -43,8 +43,7 @@ int main(int argc, char *argv[])
 
     SDL_DestroyWindow(window);
     SDL_Quit();
-    result = 1;
-    REPORT_RESULT();
+    REPORT_RESULT(1);
 
     return 0;
 }

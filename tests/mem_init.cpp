@@ -10,8 +10,7 @@ char* EMSCRIPTEN_KEEPALIVE note(int n) {
   noted = noted | n;
   EM_ASM_({ Module.print(['noted is now', $0]) }, noted);
   if (noted == 3) {
-    int result = noted;
-    REPORT_RESULT();
+    REPORT_RESULT(noted);
   }
   return "silly-string";
 }

@@ -7,7 +7,7 @@ int main() {
   int result = EM_ASM_INT_V({
     return Module.sawAsyncCompilation | 0;
   });
-  REPORT_RESULT();
+  REPORT_RESULT(result);
   return 0;
 }
 

@@ -48,8 +48,7 @@ void waiter(void*) {
     assert(!global);
     if (freed == 5) {
       printf("Ok.\n");
-      int result = 1;
-      REPORT_RESULT();
+      REPORT_RESULT(1);
       return;
     }
     if (emscripten_get_now() - start > 2100) {

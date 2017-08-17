@@ -20,6 +20,6 @@ int main()
             result = 1;
         fclose(f);
     }
-    REPORT_RESULT();
+    REPORT_RESULT(result);
     return 0;
 }
