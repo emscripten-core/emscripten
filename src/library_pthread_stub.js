@@ -201,7 +201,7 @@ var LibraryPThreadStub = {
     _exit(status);
   },
 
-  pthread_equal: function() {},
+  pthread_equal: function(x, y) { return x == y },
   pthread_join: function() {},
   pthread_detach: function() {},
 

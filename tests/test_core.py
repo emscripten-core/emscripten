@@ -2067,6 +2067,9 @@ The current type of b is: 9
     expected = open(path_from_root('tests', 'pthread', 'specific.c.txt'), 'r').read()
     self.do_run(src, expected, force_c=True)
 
+  def test_pthread_equal(self):
+    self.do_run_in_out_file_test('tests', 'pthread', 'test_pthread_equal')
+
   def test_tcgetattr(self):
     src = open(path_from_root('tests', 'termios', 'test_tcgetattr.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
