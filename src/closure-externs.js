@@ -950,7 +950,7 @@ var print = function(expression) {};
  */
 var printErr = function(expression) {};
 /**
- * @param {string} expression
+ * @param {string} filename
  * @return {ArrayBuffer}
  */
 var readbuffer = function(filename) {};
@@ -1000,3 +1000,14 @@ var __read_sockaddr = function (addrp, addrlen) {};
  * @suppress {duplicate}
  */
 var DNS = {};
+
+// On top of node externs to avoid some `declared more than once` errors
+
+/**
+ * @suppress {duplicate}
+ */
+var assert;
+/**
+ * @suppress {duplicate}
+ */
+var buffer;
