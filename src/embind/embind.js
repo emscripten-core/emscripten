@@ -179,6 +179,12 @@ var LibraryEmbind = {
   $createNamedFunction__deps: ['$makeLegalFunctionName'],
   $createNamedFunction: function(name, body) {
     name = makeLegalFunctionName(name);
+#if NO_DYNAMIC_EXECUTION
+    return function() {
+      "use strict";
+      return body.apply(this, arguments);
+    };
+#else
     /*jshint evil:true*/
     return new Function(
         "body",
@@ -187,6 +193,7 @@ var LibraryEmbind = {
         "    return body.apply(this, arguments);\n" +
         "};\n"
     )(body);
+#endif
   },
 
   embind_repr: function(v) {
@@ -775,6 +782,11 @@ var LibraryEmbind = {
     if (!(constructor instanceof Function)) {
         throw new TypeError('new_ called with constructor type ' + typeof(constructor) + " which is not a function");
     }
+#if NO_DYNAMIC_EXECUTION
+    if (constructor === Function) {
+      throw new Error('new_ cannot create a new Function with NO_DYNAMIC_EXECUTION.');
+    }
+#endif
 
     /*
      * Previously, the following line was just:
@@ -822,6 +834,67 @@ var LibraryEmbind = {
 //       return FUNCTION_TABLE[fn];
 //    }
 
+
+    // Determine if we need to use a dynamic stack to store the destructors for the function parameters.
+    // TODO: Remove this completely once all function invokers are being dynamically generated.
+    var needsDestructorStack = false;
+
+    for(var i = 1; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here.
+        if (argTypes[i] !== null && argTypes[i].destructorFunction === undefined) { // The type does not define a destructor function - must use dynamic stack
+            needsDestructorStack = true;
+            break;
+        }
+    }
+
+    var returns = (argTypes[0].name !== "void");
+
+#if NO_DYNAMIC_EXECUTION
+    var argsWired = Array(argCount - 2);
+    return function() {
+      if (arguments.length !== argCount - 2) {
+        throwBindingError('function ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount - 2) + ' args!');
+      }
+      #if EMSCRIPTEN_TRACING
+      Module.emscripten_trace_enter_context('embind::' + humanName);
+      #endif
+      var destructors;
+      if (needsDestructorStack) {
+        destructors = [];
+      } else {
+        destructors = null;
+      }
+      if (isClassMethodFunc) {
+        var thisWired = argTypes[1].toWireType(destructors, this);
+      }
+      for (var i = 0; i < argCount - 2; ++i) {
+        argsWired[i] = argTypes[i + 2].toWireType(destructors, arguments[i]);
+      }
+
+      var invokerFuncArgs = isClassMethodFunc ?
+          [cppTargetFunc, thisWired] : [cppTargetFunc];
+
+      var rv = cppInvokerFunc.apply(null, invokerFuncArgs.concat(argsWired));
+
+      if (needsDestructorStack) {
+        runDestructors(destructors);
+      } else {
+        for (var i = isClassMethodFunc ? 1 : 2; i < argTypes.length; i++) {
+          var param = i === 1 ? thisWired : argsWired[i - 2];
+          if (argTypes[i].destructorFunction !== null) {
+            argTypes[i].destructorFunction(param);
+          }
+        }
+      }
+
+      #if EMSCRIPTEN_TRACING
+      Module.emscripten_trace_exit_context();
+      #endif
+
+      if (returns) {
+        return argTypes[0].fromWireType(rv);
+      }
+    };
+#else
     var argsList = "";
     var argsListWired = "";
     for(var i = 0; i < argCount - 2; ++i) {
@@ -838,17 +911,6 @@ var LibraryEmbind = {
 #if EMSCRIPTEN_TRACING
     invokerFnBody += "Module.emscripten_trace_enter_context('embind::" + humanName + "');\n";
 #endif
-
-    // Determine if we need to use a dynamic stack to store the destructors for the function parameters.
-    // TODO: Remove this completely once all function invokers are being dynamically generated.
-    var needsDestructorStack = false;
-
-    for(var i = 1; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here.
-        if (argTypes[i] !== null && argTypes[i].destructorFunction === undefined) { // The type does not define a destructor function - must use dynamic stack
-            needsDestructorStack = true;
-            break;
-        }
-    }
 
     if (needsDestructorStack) {
         invokerFnBody +=
@@ -877,8 +939,6 @@ var LibraryEmbind = {
     if (isClassMethodFunc) {
         argsListWired = "thisWired" + (argsListWired.length > 0 ? ", " : "") + argsListWired;
     }
-
-    var returns = (argTypes[0].name !== "void");
 
     invokerFnBody +=
         (returns?"var rv = ":"") + "invoker(fn"+(argsListWired.length>0?", ":"")+argsListWired+");\n";
@@ -913,6 +973,7 @@ var LibraryEmbind = {
 
     var invokerFunction = new_(Function, args1).apply(null, args2);
     return invokerFunction;
+#endif
   },
 
   $requireFunction__deps: ['$readLatin1String', '$throwBindingError'],
@@ -920,6 +981,12 @@ var LibraryEmbind = {
     signature = readLatin1String(signature);
 
     function makeDynCaller(dynCall) {
+#if NO_DYNAMIC_EXECUTION
+      return function() {
+        var args = Array.prototype.slice.call(arguments);
+        return dynCall.apply(null, [rawFunction].concat(args));
+      };
+#else
         var args = [];
         for (var i = 1; i < signature.length; ++i) {
             args.push('a' + i);
@@ -931,6 +998,7 @@ var LibraryEmbind = {
         body    += '};\n';
 
         return (new Function('dynCall', 'rawFunction', body))(dynCall, rawFunction);
+#endif
     }
 
     var fp;

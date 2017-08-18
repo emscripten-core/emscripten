@@ -146,7 +146,21 @@ var LibraryEmVal = {
         var obj = new constructor(arg0, arg1, arg2);
         return __emval_register(obj);
     } */
-
+#if NO_DYNAMIC_EXECUTION
+    var argsList = new Array(argCount);
+    return function() {
+      var constructor = arguments[0],
+      argTypes = arguments[1],
+      args = arguments[2];
+      for (var i = 0; i < argCount; ++i) {
+        var argType = requireRegisteredType(HEAP32[(argTypes >> 2) + i], 'parameter ' + i);
+        argsList[i] = argType.readValueFromPointer(args + (i << 3));
+        args += argType.argPackAdvance;
+      }
+      var obj = new (constructor.bind.apply(constructor, argsList));
+      return __emval_register(obj);
+    };
+#else
     var argsList = "";
     for(var i = 0; i < argCount; ++i) {
         argsList += (i!==0?", ":"")+"arg"+i; // 'arg0, arg1, ..., argn'
@@ -169,6 +183,7 @@ var LibraryEmVal = {
     /*jshint evil:true*/
     return (new Function("requireRegisteredType", "HEAP32", "__emval_register", functionBody))(
         requireRegisteredType, HEAP32, __emval_register);
+#endif
   },
 
   _emval_new__deps: ['$craftEmvalAllocator', '$emval_newers', '$requireHandle'],
@@ -291,6 +306,25 @@ var LibraryEmVal = {
     var types = __emval_lookupTypes(argCount, argTypes);
 
     var retType = types[0];
+#if NO_DYNAMIC_EXECUTION
+    var argN = new Array(argCount - 1);
+    var invokerFunction = function(handle, name, destructors, args) {
+      var offset = 0;
+      for (var i = 0; i < argCount - 1; ++i) {
+        argN[i] = types[i + 1].readValueFromPointer(args + offset);
+        offset += types[i + 1].argPackAdvance;
+      }
+      var rv = handle[name].apply(handle, argN);
+      for (var i = 0; i < argCount - 1; ++i) {
+        if (types[i + 1].deleteObject) {
+          types[i + 1].deleteObject(argN[i]);
+        }
+      }
+      if (!retType.isVoid) {
+        return retType.toWireType(destructors, rv);
+      }
+    };
+#else
     var signatureName = retType.name + "_$" + types.slice(1).map(function (t) { return t.name; }).join("_") + "$";
 
     var params = ["retType"];
@@ -325,11 +359,12 @@ var LibraryEmVal = {
         functionBody +=
         "    return retType.toWireType(destructors, rv);\n";
     }
-    functionBody += 
+    functionBody +=
         "};\n";
 
     params.push(functionBody);
     var invokerFunction = new_(Function, params).apply(null, args);
+#endif
     return __emval_addMethodCaller(invokerFunction);
   },
 
