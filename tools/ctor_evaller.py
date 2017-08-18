@@ -82,7 +82,7 @@ def eval_ctors_js(js, mem_init, num):
     part = part[4:] # skip 'var '
     bits = map(lambda x: x.strip(), part.split(','))
     for bit in bits:
-      name, value = map(lambda x: x.strip(), bit.split('='))
+      name, value = map(lambda x: x.strip(), bit.split('=', 1))
       if value in ['0', '+0', '0.0'] or name in [
         'STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR',
         'HEAP8', 'HEAP16', 'HEAP32',

@@ -44,8 +44,7 @@ int main(int argc, char** argv) {
   printf("success\n"); 
 
 #ifdef REPORT_RESULT
-  int result = 0;
-  REPORT_RESULT();
+  REPORT_RESULT(0);
 #endif
   return 0;
 }

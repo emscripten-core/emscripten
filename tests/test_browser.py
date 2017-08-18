@@ -157,7 +157,7 @@ If manually bisecting:
           printf("|%%s|\n", buf);
 
           int result = !strcmp("load me right before", buf);
-          REPORT_RESULT();
+          REPORT_RESULT(result);
           return 0;
         }
         ''' % path))
@@ -240,7 +240,7 @@ If manually bisecting:
           if (f != NULL)
             result = 0;
 
-          REPORT_RESULT();
+          REPORT_RESULT(result);
           return 0;
         }
       ''' % (path1, path2, nonexistingpath)))
@@ -322,7 +322,7 @@ If manually bisecting:
         fclose(f);
         printf("|%%s|\n", buf);
         int result = !strcmp("|load me right before|", buf);
-        REPORT_RESULT();
+        REPORT_RESULT(result);
         return 0;
       }
     ''' % (txt.replace('\'', '\\\'').replace('\"', '\\"'))))
@@ -361,7 +361,7 @@ If manually bisecting:
           result += !strcmp("load me right before", buf);
           result += checkPreloadResults();
 
-          REPORT_RESULT();
+          REPORT_RESULT(result);
           return 0;
         }
       ''' % path))
@@ -412,7 +412,7 @@ If manually bisecting:
           result += !strcmp("load me right before", buf);
           result += checkPreloadResults();
 
-          REPORT_RESULT();
+          REPORT_RESULT(result);
           return 0;
         }
       ''' % path))
@@ -466,7 +466,7 @@ If manually bisecting:
         printf("|%s|\n", buf);
         result = result && !strcmp("3.14159265358979", buf);
 
-        REPORT_RESULT();
+        REPORT_RESULT(result);
         return 0;
       }
     '''))
@@ -504,7 +504,7 @@ If manually bisecting:
         printf("|%s|\n", buf);
         int result = !strcmp("1214141516171819", buf);
 
-        REPORT_RESULT();
+        REPORT_RESULT(result);
         return 0;
       }
     '''))
@@ -526,8 +526,7 @@ If manually bisecting:
         #include <emscripten.h>
         int main() {
           // This code should never be executed in terms of missing required dependency file.
-          int result = 0;
-          REPORT_RESULT();
+          REPORT_RESULT(0);
           return 0;
         }
       '''))
@@ -2134,16 +2133,17 @@ void *getBindBuffer() {
       ('runtime_misuse_2.cpp', ['--pre-js', 'pre_main.js'], 600),
       ('runtime_misuse_2.cpp', ['--pre-js', 'pre_runtime.js'], 601) # 601, because no main means we *do* run another call after exit()
     ]:
-      print '\n', filename, extra_args
-      print 'mem init, so async, call too early'
-      open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + post_test + post_hook)
-      self.btest(filename, expected='600', args=['--post-js', 'post.js', '--memory-init-file', '1'] + extra_args)
-      print 'sync startup, call too late'
-      open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + 'Module.postRun.push(function() { ' + post_test + ' });' + post_hook);
-      self.btest(filename, expected=str(second_code), args=['--post-js', 'post.js', '--memory-init-file', '0'] + extra_args)
-      print 'sync, runtime still alive, so all good'
-      open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + 'expected_ok = true; Module.postRun.push(function() { ' + post_test + ' });' + post_hook);
-      self.btest(filename, expected='606', args=['--post-js', 'post.js', '--memory-init-file', '0', '-s', 'NO_EXIT_RUNTIME=1'] + extra_args)
+      for mode in [[], ['-s', 'WASM=1']]:
+        print '\n', filename, extra_args, mode
+        print 'mem init, so async, call too early'
+        open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + post_test + post_hook)
+        self.btest(filename, expected='600', args=['--post-js', 'post.js', '--memory-init-file', '1'] + extra_args + mode)
+        print 'sync startup, call too late'
+        open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + 'Module.postRun.push(function() { ' + post_test + ' });' + post_hook);
+        self.btest(filename, expected=str(second_code), args=['--post-js', 'post.js', '--memory-init-file', '0'] + extra_args + mode)
+        print 'sync, runtime still alive, so all good'
+        open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + 'expected_ok = true; Module.postRun.push(function() { ' + post_test + ' });' + post_hook);
+        self.btest(filename, expected='606', args=['--post-js', 'post.js', '--memory-init-file', '0', '-s', 'NO_EXIT_RUNTIME=1'] + extra_args + mode)
 
   def test_cwrap_early(self):
     self.btest(os.path.join('browser', 'cwrap_early.cpp'), args=['-O2', '-s', 'ASSERTIONS=1', '--pre-js', path_from_root('tests', 'browser', 'cwrap_early.js')], expected='0')
@@ -2194,7 +2194,7 @@ void *getBindBuffer() {
     # and the browser will not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to delete it. Therefore switch away from that directory
     # before launching.
     os.chdir(path_from_root())
-    args = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
+    args = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
     if emscripten_browser is not None:
       # If EMSCRIPTEN_BROWSER carried command line arguments to pass to the browser, (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun, so strip them out.
       browser_name = shlex.split(emscripten_browser)[0]
@@ -2388,7 +2388,7 @@ open(filename, 'w').write(replaced)
         fclose(f);
         int result = !strcmp("load me right before", buf);
         printf("|%s| : %d\n", buf, result);
-        REPORT_RESULT();
+        REPORT_RESULT(result);
         return 0;
       }
     '''))
@@ -2434,7 +2434,7 @@ int main() {
     return Module['memoryInitializerRequest'].status;
   });
   printf("memory init request: %d\n", result);
-  REPORT_RESULT();
+  REPORT_RESULT(result);
   return 0;
 }
     '''))
@@ -2965,8 +2965,7 @@ window.close = function() {
             var totalMemory = eval('Module.TOTAL_MEMORY');
             assert(totalMemory === %d, 'bad memory size');
           });
-          int result = 0;
-          REPORT_RESULT();
+          REPORT_RESULT(0);
           return 0;
         }
       ''' % totalMemory
@@ -3019,8 +3018,7 @@ window.close = function() {
         });
         puts(ret);
         EM_ASM({ assert(Module.printed === 'hello through side', ['expected', Module.printed]); });
-        int result = 2;
-        REPORT_RESULT();
+        REPORT_RESULT(2);
         return 0;
       }
     ''')
@@ -3066,8 +3064,7 @@ window.close = function() {
         const char *exts = side();
         puts(side());
         assert(strstr(exts, "GL_EXT_texture_env_combine"));
-        int result = 1;
-        REPORT_RESULT();
+        REPORT_RESULT(1);
         return 0;
       }
     ''')
@@ -3275,7 +3272,7 @@ window.close = function() {
         } else {
           result = 1;
         }
-        REPORT_RESULT();
+        REPORT_RESULT(result);
       }
     '''))
 

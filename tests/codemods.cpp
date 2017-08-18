@@ -16,6 +16,6 @@ int main() {
   int result;
   if (ok) result = 1;
   else result = diff+2; // add two to this >= number to avoid conflicts with 1
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }
 

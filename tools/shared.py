@@ -1304,7 +1304,7 @@ def g_llvm_nm_uncached(filename):
 
 def g_multiprocessing_initializer(*args):
   for item in args:
-    (key, value) = item.split('=')
+    (key, value) = item.split('=', 1)
     if key == 'EMCC_POOL_CWD':
       os.chdir(value)
     else:

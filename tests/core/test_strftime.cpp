@@ -175,7 +175,6 @@ int main() {
   test(!cmp(s, "12 01 PM"), "strftime test #35", s);
 
 #ifdef REPORT_RESULT
-  int result = 0;
-  REPORT_RESULT();
+  REPORT_RESULT(0);
 #endif
 }

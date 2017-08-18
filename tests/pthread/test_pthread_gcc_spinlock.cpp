@@ -45,8 +45,7 @@ int main()
 	if (!emscripten_has_threading_support())
 	{
 #ifdef REPORT_RESULT
-		result = 800;
-		REPORT_RESULT();
+		REPORT_RESULT(800);
 #endif
 		printf("Skipped: Threading is not supported.\n");
 		return 0;
@@ -73,7 +72,6 @@ int main()
 
 	printf("counter: %d\n", counter);
 #ifdef REPORT_RESULT
-	result = counter;
-	REPORT_RESULT();
+	REPORT_RESULT(counter);
 #endif
 }

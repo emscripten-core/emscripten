@@ -371,7 +371,7 @@ EMSCRIPTEN_FUNCS();
       minifier = Minifier(js, js_engine)
       def check_symbol_mapping(p):
         if p.startswith('symbolMap='):
-          minifier.symbols_file = p.split('=')[1]
+          minifier.symbols_file = p.split('=', 1)[1]
           return False
         if p == 'profilingFuncs':
           minifier.profiling_funcs = True

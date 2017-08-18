@@ -28,7 +28,7 @@ int main(void) {
   printf("Sleep:\n");
   emscripten_sleep(1000);
   printf("Done!\n");
-  REPORT_RESULT();
+  REPORT_RESULT(result);
   return 0;
 }
 

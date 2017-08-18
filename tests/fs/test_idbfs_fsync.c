@@ -10,7 +10,7 @@ int result = 1;
 
 void success()
 {
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }
 
 int main() {
@@ -42,7 +42,7 @@ int main() {
       result = -5000 - errno;
   }
 
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 
 #else
 

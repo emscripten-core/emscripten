@@ -109,7 +109,7 @@ static void mainloop() {
   case STATE_SUCCESS:
 #ifdef REPORT_RESULT
     {
-      REPORT_RESULT();
+      REPORT_RESULT(result);
     }
 #endif
     emscripten_cancel_main_loop();

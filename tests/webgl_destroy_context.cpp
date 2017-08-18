@@ -12,7 +12,7 @@ void report_result()
 {
   printf("Test finished with result %d\n", result);
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 #endif
 }
 

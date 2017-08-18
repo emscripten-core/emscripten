@@ -43,7 +43,7 @@ int main()
 #ifndef FILE_DOES_NOT_EXIST
     result = 1;
 #endif
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
   };
 
@@ -82,7 +82,7 @@ int main()
 #ifdef FILE_DOES_NOT_EXIST
     result = 1;
 #endif
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
   };
 

@@ -118,7 +118,7 @@ void EMSCRIPTEN_KEEPALIVE finish() {
 #else
   result = 2;
 #endif
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }
 
 }

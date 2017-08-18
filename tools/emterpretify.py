@@ -30,7 +30,7 @@ OUTPUT_FILE = None
 def handle_arg(arg):
   global ZERO, ASYNC, ASSERTIONS, PROFILING, FROUND, ADVISE, MEMORY_SAFE, OUTPUT_FILE
   if '=' in arg:
-    l, r = arg.split('=')
+    l, r = arg.split('=', 1)
     if l == 'ZERO': ZERO = int(r)
     elif l == 'ASYNC': ASYNC = int(r)
     elif l == 'ASSERTIONS': ASSERTIONS = int(r)

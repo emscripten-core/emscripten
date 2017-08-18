@@ -283,7 +283,7 @@
         glfwTerminate();
 
     #ifdef REPORT_RESULT
-        REPORT_RESULT();
+        REPORT_RESULT(result);
     #else
         printf("%d == %d = %d", g_state, success, g_state == success);
     #endif

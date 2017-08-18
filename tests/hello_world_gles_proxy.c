@@ -651,8 +651,7 @@ gears_idle(void)
       static runs = 0;
       runs++;
       if (runs == 4) {
-        int result = fps;
-        REPORT_RESULT();
+        REPORT_RESULT(fps);
       }
 #endif
    }

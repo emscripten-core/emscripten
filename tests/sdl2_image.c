@@ -65,7 +65,7 @@ int main() {
 
   SDL_Quit();
 
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 
   return 0;
 }

@@ -15,7 +15,7 @@ extern "C"
     }
     else
     {
-      REPORT_RESULT();
+      REPORT_RESULT(result);
       emscripten_run_script("throw 'done'");
     }
     return 0;

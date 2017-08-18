@@ -5,7 +5,7 @@
 extern "C" {
 
 void EMSCRIPTEN_KEEPALIVE finish(int result) {
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }
 
 int counter = 0;

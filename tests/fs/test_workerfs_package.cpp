@@ -31,8 +31,7 @@ void EMSCRIPTEN_KEEPALIVE finish() {
 
   // all done
   printf("success\n");
-  int result = 1;
-  REPORT_RESULT();
+  REPORT_RESULT(1);
 }
 
 }

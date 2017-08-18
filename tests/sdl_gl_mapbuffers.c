@@ -151,7 +151,7 @@ void Verify() {
     ok = ok && (data[x*4+1] == 0);
   }
   int result = seen && ok;
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }
 
 int main(int argc, char *argv[])

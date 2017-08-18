@@ -906,7 +906,7 @@ fi
     assert not os.environ.get('LLVM'), 'we need to modify LLVM env var for this'
 
     f = open(CONFIG_FILE, 'a')
-    f.write('LLVM_ROOT = os.getenv("LLVM") or "' + path_from_root('tests', 'fake1', 'bin') + '"\n')
+    f.write('LLVM_ROOT = os.getenv("LLVM", "' + path_from_root('tests', 'fake1', 'bin') + '")\n')
     f.close()
 
     safe_ensure_dirs(path_from_root('tests', 'fake1', 'bin'))
@@ -980,12 +980,12 @@ fi
         # if BINARYEN_ROOT is set, we don't build the port. Check we do build it if not
         if binaryen_root_in_config:
           config = open(CONFIG_FILE).read()
-          assert '''BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN'))''' in config, config # setup created it to be ''
+          assert '''BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN', ''))''' in config, config # setup created it to be ''
           print 'created config:'
           print config
           restore()
           config = open(CONFIG_FILE).read()
-          config = config.replace('BINARYEN_ROOT', '''BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN') or '') # ''')
+          config = config.replace('BINARYEN_ROOT', '''BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN', '')) # ''')
         else:
           restore()
           config = open(CONFIG_FILE).read()

@@ -779,6 +779,9 @@ base align: 0, 0, 0, 0'''])
       Settings.DISABLE_EXCEPTION_CATCHING = disable_throw
       self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_throw')
 
+  def test_siglongjmp(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_siglongjmp')
+
   def test_setjmp_many(self):
     src = r'''
       #include <stdio.h>
@@ -2063,6 +2066,9 @@ The current type of b is: 9
     src = open(path_from_root('tests', 'pthread', 'specific.c'), 'r').read()
     expected = open(path_from_root('tests', 'pthread', 'specific.c.txt'), 'r').read()
     self.do_run(src, expected, force_c=True)
+
+  def test_pthread_equal(self):
+    self.do_run_in_out_file_test('tests', 'pthread', 'test_pthread_equal')
 
   def test_tcgetattr(self):
     src = open(path_from_root('tests', 'termios', 'test_tcgetattr.c'), 'r').read()
@@ -6129,32 +6135,11 @@ def process(filename):
     '''
     self.do_run(src, 'func1\nfunc2\n')
 
-  @no_wasm_backend()
+  @no_wasm_backend('no implementation of emulated function pointer casts')
   def test_emulate_function_pointer_casts(self):
     Settings.EMULATE_FUNCTION_POINTER_CASTS = 1
 
-    src = r'''
-    #include <stdio.h>
-    #include <math.h>
-    
-    // We have to use a proxy function 'acos_test' here because the updated libc++ library provides a set of overloads to acos,
-    // this has the result that we can't take the function pointer to acos anymore due to failed overload resolution.
-    // This proxy function has no overloads so it's allowed to take the function pointer directly.
-    double acos_test(double x) {
-      return acos(x);
-    }
-
-    typedef double (*ddd)(double x, double unused);
-    typedef int    (*iii)(int x,    int unused);
-
-    int main() {
-      volatile ddd d = (ddd)acos_test;
-      volatile iii i = (iii)acos_test;
-      printf("|%.3f,%d|\n", d(0.3, 0.6), i(0, 0));
-      return 0;
-    }
-    '''
-    self.do_run(src, '|1.266,1|\n')
+    self.do_run_in_out_file_test('tests', 'core', 'test_emulate_function_pointer_casts')
 
   def test_demangle_stacks(self):
     Settings.DEMANGLE_SUPPORT = 1
@@ -6421,6 +6406,19 @@ someweirdtext
   def test_embind_unsigned(self):
     self.emcc_args += ['--bind', '--std=c++11']
     self.do_run_from_file(path_from_root('tests', 'embind', 'test_unsigned.cpp'), path_from_root('tests', 'embind', 'test_unsigned.out'))
+
+  def test_embind_f_no_rtti(self):
+    self.emcc_args += ['--bind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
+    src = r'''
+      #include<emscripten/val.h>
+      #include<stdio.h>
+
+      int main(int argc, char** argv){
+        printf("418");
+        return 0;
+      }
+    '''
+    self.do_run(src, '418')
 
   @sync
   @no_wasm_backend()
@@ -7444,7 +7442,7 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
         Building.COMPILER_TEST_OPTS.append(arg) # so bitcode is optimized too, this is for cpp to ll
       else:
         try:
-          key, value = arg.split('=')
+          key, value = arg.split('=', 1)
           Settings[key] = value # forward  -s K=V
         except:
           pass

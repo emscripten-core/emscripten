@@ -191,7 +191,7 @@ try:
         if arg == '-o':
           found_o = True
           continue
-        prefix = arg.split('=')[0]
+        prefix = arg.split('=', 1)[0]
         if prefix in ALLOWED_LINK_ARGS:
           newargs.append(arg)
         if arg in TWO_PART_DISALLOWED_LINK_ARGS:

@@ -40,7 +40,6 @@ int main(void) {
     Devices[0] = &con;
     DOS_Device dev;
     dev.Read(0,0);
-    int result = 1;
-    REPORT_RESULT();
+    REPORT_RESULT(1);
 }
 

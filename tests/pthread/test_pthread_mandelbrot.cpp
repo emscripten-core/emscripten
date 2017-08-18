@@ -402,8 +402,7 @@ void main_tick()
 #if defined(TEST_THREAD_PROFILING) && defined(REPORT_RESULT)
   if (numItersDoneOnCanvas > 50000)
   {
-    int result = 0;
-    REPORT_RESULT();
+    REPORT_RESULT(0);
   }
 #endif
 

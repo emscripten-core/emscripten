@@ -216,6 +216,9 @@ def compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DE
   update_settings_glue(settings, metadata)
   assert not (metadata['simd'] and settings['SPLIT_MEMORY']), 'SIMD is used, but not supported in SPLIT_MEMORY'
 
+  assert not (metadata['simd'] and settings['WASM']), 'SIMD is used, but not supported in WASM mode yet'
+  assert not (settings['SIMD'] and settings['WASM']), 'SIMD is requested, but not supported in WASM mode yet'
+
   glue, forwarded_data = compile_settings(compiler_engine, settings, libraries, temp_files)
 
   if DEBUG:
@@ -1206,7 +1209,7 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
   if settings['EMULATED_FUNCTION_POINTERS']:
     all_exported = list(set(all_exported).union(in_table))
   exports = []
-  for export in all_exported:
+  for export in set(all_exported):
     exports.append(quote(export) + ": " + export)
   if settings['BINARYEN'] and settings['SIDE_MODULE']:
     # named globals in side wasm modules are exported globals from asm/wasm
@@ -1256,20 +1259,22 @@ def create_the_global(metadata, settings):
 
 def create_receiving(function_table_data, function_tables_defs, exported_implemented_functions, settings):
   receiving = ''
-  if settings['ASSERTIONS']:
+  if not settings['ASSERTIONS']:
+    runtime_assertions = ''
+  else:
     # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
     # some support code
-    receiving = '\n'.join(['var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
-assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-return real_''' + s + '''.apply(null, arguments);
+    runtime_assertions = '''
+  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+'''
+    receiving = '\n'.join(['var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {''' + runtime_assertions + '''  return real_''' + s + '''.apply(null, arguments);
 };
 ''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory', '__start_module']])
-
   if not settings['SWAPPABLE_ASM_MODULE']:
     receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables(function_table_data, settings)])
   else:
-    receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions + function_tables(function_table_data, settings)])
+    receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() {' + runtime_assertions + '  return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions + function_tables(function_table_data, settings)])
   receiving += ';\n'
 
   if settings['EXPORT_FUNCTION_TABLES'] and not settings['BINARYEN']:

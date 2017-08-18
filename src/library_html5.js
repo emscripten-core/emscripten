@@ -913,9 +913,7 @@ var LibraryJSEvents = {
 
       var eventHandler = {
         target: target,
-        allowsDeferredCalls: false, // XXX Currently disabled, see bug https://bugzilla.mozilla.org/show_bug.cgi?id=966493
-        // Once the above bug is resolved, enable the following condition if possible:
-        // allowsDeferredCalls: eventTypeString == 'touchstart',
+        allowsDeferredCalls: eventTypeString == 'touchstart' || eventTypeString == 'touchend',
         eventTypeString: eventTypeString,
         callbackfunc: callbackfunc,
         handlerFunc: handlerFunc,

@@ -861,7 +861,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Apply -s settings in newargs here (after optimization levels, so they can override them)
       for change in settings_changes:
-        key, value = change.split('=')
+        key, value = change.split('=', 1)
 
         # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
         if key in ['TOTAL_STACK', 'TOTAL_MEMORY', 'GL_MAX_TEMP_BUFFER_SIZE', 'SPLIT_MEMORY', 'BINARYEN_MEM_MAX']:
@@ -943,7 +943,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
         assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
-        if shared.Settings.MAIN_MODULE != 2:
+        if shared.Settings.MAIN_MODULE != 2 and shared.Settings.SIDE_MODULE != 2:
           shared.Settings.LINKABLE = 1
         shared.Settings.RELOCATABLE = 1
         shared.Settings.PRECISE_I64_MATH = 1 # other might use precise math, we need to be able to print it

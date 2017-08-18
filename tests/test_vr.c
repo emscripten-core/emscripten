@@ -19,7 +19,7 @@ report_result(int result)
         printf("Test failed!\n");
     }
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
     exit(result);
 }
@@ -71,7 +71,7 @@ mainloop()
 
         WebVREyeParameters leftParams, rightParams;
         emscripten_vr_hmd_get_eye_parameters(gHmdDev, WebVREyeLeft, &leftParams);
-        emscripten_vr_hmd_get_eye_parameters(gHmdDev, WebVREyeLeft, &rightParams);
+        emscripten_vr_hmd_get_eye_parameters(gHmdDev, WebVREyeRight, &rightParams);
 
         WebVRFieldOfView leftFov = leftParams.currentFieldOfView, rightFov = rightParams.currentFieldOfView;
         printf("Left FOV: %f %f %f %f\n", leftFov.upDegrees, leftFov.downDegrees, leftFov.rightDegrees, leftFov.leftDegrees);

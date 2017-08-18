@@ -4,8 +4,6 @@
 #include <assert.h>
 #include <emscripten/fetch.h>
 
-int result = 0;
-
 int main()
 {
   emscripten_fetch_attr_t attr;
@@ -25,8 +23,7 @@ int main()
     emscripten_fetch_close(fetch);
 
 #ifdef REPORT_RESULT
-    result = 1;
-    REPORT_RESULT();
+    REPORT_RESULT(1);
 #endif
   };
 

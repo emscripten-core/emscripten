@@ -130,7 +130,7 @@ for arg in sys.argv[2:]:
     use_preload_cache = True
     leading = ''
   elif arg.startswith('--indexedDB-name'):
-    indexeddb_name = arg.split('=')[1] if '=' in arg else None
+    indexeddb_name = arg.split('=', 1)[1] if '=' in arg else None
     leading = ''
   elif arg == '--no-heap-copy':
     no_heap_copy = False
@@ -145,7 +145,7 @@ for arg in sys.argv[2:]:
     use_preload_plugins = True
     leading = ''
   elif arg.startswith('--js-output'):
-    jsoutput = arg.split('=')[1] if '=' in arg else None
+    jsoutput = arg.split('=', 1)[1] if '=' in arg else None
     leading = ''
   elif arg.startswith('--no-closure'):
     no_closure = True
@@ -156,10 +156,10 @@ for arg in sys.argv[2:]:
     except Exception, e:
       print >> sys.stderr, 'could not import CRUNCH (make sure it is defined properly in ' + shared.hint_config_file_location() + ')'
       raise e
-    crunch = arg.split('=')[1] if '=' in arg else '128'
+    crunch = arg.split('=', 1)[1] if '=' in arg else '128'
     leading = ''
   elif arg.startswith('--plugin'):
-    plugin = open(arg.split('=')[1], 'r').read()
+    plugin = open(arg.split('=', 1)[1], 'r').read()
     eval(plugin) # should append itself to plugins
     leading = ''
   elif leading == 'preload' or leading == 'embed':

@@ -9,8 +9,7 @@ int main(void) {
     printf("Again no yield:\n");
     emscripten_sleep(500);
     printf("Done!\n");
-    int result = 1;
-    REPORT_RESULT();
+    REPORT_RESULT(1);
     return 0;
 }
 
