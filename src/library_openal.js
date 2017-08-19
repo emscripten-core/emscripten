@@ -591,7 +591,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         Runtime.warnOnce('Panner position attributes are not present, falling back to setPosition()');
 #endif
-        panner.setPosition(src.position[0], src.position[1], src.position[2]);
+        panner.setPosition(posX, posY, posZ);
       }
       if (panner.orientationX) {
         panner.orientationX.value = dirX;
@@ -601,7 +601,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         Runtime.warnOnce('Panner orientation attributes are not present, falling back to setOrientation()');
 #endif
-        panner.setOrientation(val[0], val[1], val[2]);
+        panner.setOrientation(dirX, dirY, dirZ);
       }
 
       var oldShift = src.dopplerShift;
