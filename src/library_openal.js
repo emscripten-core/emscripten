@@ -547,6 +547,17 @@ var LibraryOpenAL = {
         var lRightY = (lUpZ * lBackX - lUpX * lBackZ);
         var lRightZ = (lUpX * lBackY - lUpY * lBackX);
 
+        // Back and Up might not be exactly perpendicular, so the cross product also needs normalization
+        var invMag = 1.0 / Math.sqrt(lRightX * lRightX + lRightY * lRightY + lRightZ * lRightZ);
+        lRightX *= invMag;
+        lRightY *= invMag;
+        lRightZ *= invMag;
+
+        // Recompute Up from the now orthonormal Right and Back vectors so we have a fully orthonormal basis
+        var lUpX = (lBackY * lRightZ - lBackZ * lRightY);
+        var lUpY = (lBackZ * lRightX - lBackX * lRightZ);
+        var lUpZ = (lBackX * lRightY - lBackY * lRightX);
+
         var oldX = dirX;
         var oldY = dirY;
         var oldZ = dirZ;
