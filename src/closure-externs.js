@@ -1099,3 +1099,7 @@ var assert;
  * @suppress {duplicate}
  */
 var buffer;
+/**
+ * @suppress {duplicate}
+ */
+var fs;
