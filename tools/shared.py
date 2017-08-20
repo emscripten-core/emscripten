@@ -2197,7 +2197,8 @@ class Building(object):
       for extern in BROWSER_EXTERNS:
           args.append('--externs')
           args.append(extern)
-      if pretty: args += ['--formatting', 'PRETTY_PRINT']
+      # PRETTY_PRINT not supported yet: https://github.com/google/closure-compiler-js/issues/34
+      #if pretty: args += ['--formatting', 'PRETTY_PRINT']
       if os.environ.get('EMCC_CLOSURE_ARGS'):
         args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
       logging.debug('closure compiler: ' + ' '.join(args))

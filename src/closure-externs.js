@@ -967,6 +967,74 @@ var quit = function() {};
  */
 var dateNow = function() {};
 
+// WebIDL
+
+/**
+ * @suppress {duplicate}
+ */
+var WrapperObject;
+/**
+ * @suppress {duplicate}
+ */
+var getCache;
+/**
+ * @suppress {duplicate}
+ */
+var wrapPointer;
+/**
+ * @suppress {duplicate}
+ */
+var castObject;
+/**
+ * @suppress {duplicate}
+ */
+var destroy;
+/**
+ * @suppress {duplicate}
+ */
+var compare;
+/**
+ * @suppress {duplicate}
+ */
+var getPointer;
+/**
+ * @suppress {duplicate}
+ */
+var getClass;
+/**
+ * @suppress {duplicate}
+ */
+var ensureCache;
+/**
+ * @suppress {duplicate}
+ */
+var ensureString;
+/**
+ * @suppress {duplicate}
+ */
+var ensureInt8;
+/**
+ * @suppress {duplicate}
+ */
+var ensureInt16;
+/**
+ * @suppress {duplicate}
+ */
+var ensureInt32;
+/**
+ * @suppress {duplicate}
+ */
+var ensureFloat32;
+/**
+ * @suppress {duplicate}
+ */
+var ensureFloat64;
+/**
+ * @suppress {duplicate}
+ */
+var VoidPtr;
+
+
 // Various Emscripten-specific global variables
 
 var tempRet0;
@@ -995,7 +1063,7 @@ var SOCKFS = {};
 /**
  * @suppress {duplicate}
  */
-var __read_sockaddr = function (addrp, addrlen) {};
+var __read_sockaddr = function(addrp, addrlen) {};
 /**
  * @suppress {duplicate}
  */
@@ -1004,12 +1072,22 @@ var DNS = {};
  * @suppress {duplicate}
  */
 var FS;
-var wakaUnknownAfter = function() {};
-var wakaUnknownBefore = function() {};
+/**
+ * @suppress {undefinedVars}
+ */
+var wakaUnknownAfter;
+/**
+ * @suppress {undefinedVars}
+ */
+var wakaUnknownBefore;
 /**
  * @suppress {duplicate}
  */
 var env;
+/**
+ * @suppress {duplicate}
+ */
+var ___cxa_free_exception = function() {};
 
 // On top of node externs to avoid some `declared more than once` errors
 
