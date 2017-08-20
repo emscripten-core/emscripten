@@ -2186,9 +2186,7 @@ class Building(object):
       BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
                       if name.endswith('.js')]
 
-      # Something like this (adjust memory as needed):
-      #   CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
-      args = [CLOSURE_COMPILER,
+      args = NODE_JS + [CLOSURE_COMPILER,
               filename,
               '--compilationLevel', 'ADVANCED_OPTIMIZATIONS',
               '--languageIn', 'ECMASCRIPT5',
