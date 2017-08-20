@@ -1000,6 +1000,16 @@ var __read_sockaddr = function (addrp, addrlen) {};
  * @suppress {duplicate}
  */
 var DNS = {};
+/**
+ * @suppress {duplicate}
+ */
+var FS;
+var wakaUnknownAfter = function() {};
+var wakaUnknownBefore = function() {};
+/**
+ * @suppress {duplicate}
+ */
+var env;
 
 // On top of node externs to avoid some `declared more than once` errors
 
