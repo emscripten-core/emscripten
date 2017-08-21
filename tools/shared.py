@@ -2366,9 +2366,8 @@ class JS(object):
   # TODO: Replace this with a hook into the real preprocessor.
   @staticmethod
   def preprocessor(s):
-    settings = settings or Settings
     def repl(matchobj):
-      if settings.get(matchobj.group(1)):
+      if Settings.get(matchobj.group(1)):
         return matchobj.group(2)
       else:
         return ''
