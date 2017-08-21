@@ -2652,21 +2652,44 @@ def safe_copy(src, dst):
   if dst == '/dev/null': return
   shutil.copyfile(src, dst)
 
-def clang_preprocess(filename):
-  # TODO: REMOVE HACK AND PASS PREPROCESSOR FLAGS TO CLANG.
-  return subprocess.check_output([CLANG_CC, '-DFETCH_DEBUG=1', '-E', '-P', '-C', '-x', 'c', filename])
+def find_lines_with_preprocessor_directives(file):
+  return filter(lambda x: '#if' in x or '#elif' in x, open(file, 'r').readlines())
 
-def read_and_preprocess(filename):
-  f = open(filename, 'r').read()
-  pos = 0
-  include_pattern = re.compile('^#include\s*["<](.*)[">]\s?$', re.MULTILINE)
-  while(1):
-    m = include_pattern.search(f, pos)
-    if not m:
-      return f
-    included_file = open(os.path.join(os.path.dirname(filename), m.groups(0)[0]), 'r').read()
+def run_c_preprocessor_on_file(src, dst):
+  # Run LLVM's C preprocessor on the given file, expanding #includes and variables found in src/setting.js.
+  # Historically, .js file preprocessing only expands variables found in #if etc. statements, and .js
+  # code uses some setting names as variables as well. For example, pthread-main.js has a variable
+  # TOTAL_MEMORY, which is also a Setting name. Therefore detect to only expand those Setting names that 
+  # are referred to if and #elif defines - but that expansion is done globally in the file, so it will
+  # preclude one from doing things like
+  #
+  # var TOTAL_MEMORY = {{{ TOTAL_MEMORY }}};
+  # if TOTAL_MEMORY > 65536
+  #
+  # Still, this should give a good balance to be compatible with existing behavior.
 
-    f = f[:m.start(0)] + included_file + f[m.end(0):]
+  # Find the #if lines that we'll allow expanding.
+  whitelisted_defines = find_lines_with_preprocessor_directives(src)
+
+  def any_string_contains(string_list, substr):
+    for s in string_list:
+      if substr in s:
+        return True
+    return False
+
+  defines = []
+  for s in Settings.attrs:
+    if any_string_contains(whitelisted_defines, s):
+      d = '-D' + s + '=' + str(Settings.attrs[s])
+      logging.debug('Expanding #define ' + d + ' when preprocessing file ' + src)
+      defines += [d]
+
+  response_filename = response_file.create_response_file(defines, TEMP_DIR)
+  preprocessed = subprocess.check_output([CLANG_CC, '-E', '-P', '-C', '-x', 'c', '@' + response_filename, src])
+  try_delete(response_filename)
+
+  if dst: open(dst, 'w').write(preprocessed)
+  return preprocessed
 
 # Generates a suitable fetch-worker.js script from the given input source JS file (which is an asm.js build output),
 # and writes it out to location output_file. fetch-worker.js is the root entry point for a dedicated filesystem web
@@ -2696,7 +2719,7 @@ def make_fetch_worker(source_file, output_file):
     func_code = src[loc:end_loc]
     function_prologue = function_prologue + '\n' + func_code
 
-  fetch_worker_src = function_prologue + '\n' + clang_preprocess(path_from_root('src', 'fetch-worker.js'))
+  fetch_worker_src = function_prologue + '\n' + run_c_preprocessor_on_file(path_from_root('src', 'fetch-worker.js'), dst=None)
   open(output_file, 'w').write(fetch_worker_src)
 
 

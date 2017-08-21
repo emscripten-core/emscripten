@@ -76,10 +76,12 @@ this.onmessage = function(e) {
     assert(STACK_BASE != 0);
     assert(STACK_MAX > STACK_BASE);
     Runtime.establishStackSpace(e.data.stackBase, e.data.stackBase + e.data.stackSize);
+
+#if STACK_OVERFLOW_CHECK
+    writeStackCookie();
+#endif
+
     var result = 0;
-//#if STACK_OVERFLOW_CHECK
-    if (typeof writeStackCookie === 'function') writeStackCookie();
-//#endif
 
     PThread.receiveObjectTransfer(e.data);
 
@@ -93,10 +95,9 @@ this.onmessage = function(e) {
       } else {
         result = Module['asm'].dynCall_i(e.data.start_routine); // as a hack, try signature 'i' as fallback.
       }
-//#if STACK_OVERFLOW_CHECK
-      if (typeof checkStackCookie === 'function') checkStackCookie();
-//#endif
-
+#if STACK_OVERFLOW_CHECK
+      checkStackCookie();
+#endif
     } catch(e) {
       if (e === 'Canceled!') {
         PThread.threadCancel();

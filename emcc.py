@@ -1647,8 +1647,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.USE_PTHREADS:
         target_dir = os.path.dirname(os.path.abspath(target))
-        shutil.copyfile(shared.path_from_root('src', 'pthread-main.js'),
-                        os.path.join(target_dir, 'pthread-main.js'))
+        shared.run_c_preprocessor_on_file(shared.path_from_root('src', 'pthread-main.js'),
+                                          os.path.join(target_dir, 'pthread-main.js'))
 
       # Generate the fetch-worker.js script for multithreaded emscripten_fetch() support if targeting pthreads.
       if shared.Settings.FETCH and shared.Settings.USE_PTHREADS:
