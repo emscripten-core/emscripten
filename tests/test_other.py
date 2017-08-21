@@ -7746,9 +7746,10 @@ int main() {
                   if emterpreter_file_enabled:
                     cmd += ['-s', "EMTERPRETIFY_FILE='a.out.dat'"]
                   if wasm_enabled:
-                    cmd += ['-s', 'WASM=1']
-                  if asmjs_fallback_enabled:
-                    cmd += ['-s', "BINARYEN_METHOD='native-wasm,asmjs'"]
+                    method = 'interpret-binary'
+                    if asmjs_fallback_enabled:
+                      method += ',asmjs'
+                    cmd += ['-s', 'WASM=1', '-s', "BINARYEN_METHOD='" + method + "'"]
 
                   print ' '.join(cmd)
                   self.clear()
