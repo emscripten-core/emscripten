@@ -1168,7 +1168,7 @@ assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' 
 // Test runs in browsers should always be free from uncaught exceptions. If an uncaught exception is thrown, we fail browser test execution in the REPORT_RESULT() macro to output an error value.
 if (ENVIRONMENT_IS_WEB) {
   window.addEventListener('error', function(e) {
-    if (e === 'SimulateInfiniteLoop' || e.message.indexOf('SimulateInfiniteLoop') != -1) return;
+    if (e.message.indexOf('SimulateInfiniteLoop') != -1) return;
     console.error('Page threw an exception ' + e);
     Module['pageThrewException'] = true;
   });
