@@ -40,6 +40,15 @@ function preprocess(text, filenameHint) {
             var ident = parts[1];
             var op = parts[2];
             var value = parts[3];
+            if (typeof value === 'string') {
+              // when writing
+              // #if option == 'stringValue'
+              // we need to get rid of the quotes
+              if (value[0] === '"' || value[0] === "'") {
+                assert(value[value.length - 1] == '"' || value[value.length - 1] == "'");
+                value = value.substring(1, value.length - 1);
+              }
+            }
             if (op) {
               if (op === '==') {
                 showStack.push(ident in this && this[ident] == value);
