@@ -276,6 +276,10 @@ class JSOptimizer(object):
       self.cleanup_shell = True
 
 
+def embed_memfile(options):
+  return shared.Settings.SINGLE_FILE or (shared.Settings.MEM_INIT_METHOD == 0 and (not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and options.debug_level < 4))
+
+
 #
 # Main run() function
 #
@@ -1523,9 +1527,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       else:
         assert shared.Settings.MEM_INIT_METHOD != 1
 
-      global embed_memfile
-      embed_memfile = shared.Settings.SINGLE_FILE or (shared.Settings.MEM_INIT_METHOD == 0 and (not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and options.debug_level < 4))
-      if embed_memfile:
+      if embed_memfile(options):
         shared.Settings.SUPPORT_BASE64_EMBEDDING = 1
 
       final = shared.Building.emscripten(final, append_ext=False, extra_args=extra_args)
@@ -1613,7 +1615,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     with ToolchainProfiler.profile_block('memory initializer'):
       memfile = None
 
-      if shared.Settings.MEM_INIT_METHOD > 0 or embed_memfile:
+      if shared.Settings.MEM_INIT_METHOD > 0 or embed_memfile(options):
         memfile = target + '.mem'
         shared.try_delete(memfile)
         def repl(m):
@@ -1632,7 +1634,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             # Copy into temp dir as well, so can be run there too
             shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
           if not shared.Settings.BINARYEN or 'asmjs' in shared.Settings.BINARYEN_METHOD or 'interpret-asm2wasm' in shared.Settings.BINARYEN_METHOD:
-            return 'memoryInitializer = "%s";' % shared.JS.get_subresource_location(memfile, embed_memfile)
+            return 'memoryInitializer = "%s";' % shared.JS.get_subresource_location(memfile, embed_memfile(options))
           else:
             return 'memoryInitializer = null;'
         src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
@@ -1804,7 +1806,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if options.proxy_to_worker:
           generate_worker_js(target, js_target, target_basename)
 
-      if embed_memfile:
+      if embed_memfile(options):
         shared.try_delete(memfile)
 
       for f in generated_text_files_with_native_eols:
