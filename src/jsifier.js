@@ -241,6 +241,9 @@ function JSify(data, functionsOnly) {
         EXPORTED_FUNCTIONS[finalName] = 1;
         Functions.libraryFunctions[finalName] = 2;
       }
+      // Normal exports are done in emscripten.py, after the asm module is ready. Here
+      // we also export all library methods when EXPORT_ALL, that would not be
+      // exported by the normal path.
       if (EXPORT_ALL && !(finalName in EXPORTED_FUNCTIONS) && !noExport) {
         contentText += '\nModule["' + finalName + '"] = ' + finalName + ';';
       }
