@@ -81,18 +81,18 @@ if (ENVIRONMENT_IS_NODE) {
   var nodePath;
 
   Module['read'] = function shell_read(filename, binary) {
-#if !SUPPORT_BASE64_EMBEDDING
     var ret;
-#else
-    var ret = tryParseAsDataURI(filename);
-    if (!ret)
+#if SUPPORT_BASE64_EMBEDDING
+    ret = tryParseAsDataURI(filename);
+    if (!ret) {
 #endif
-    {
       if (!nodeFS) nodeFS = require('fs');
       if (!nodePath) nodePath = require('path');
       filename = nodePath['normalize'](filename);
       ret = nodeFS['readFileSync'](filename);
+#if SUPPORT_BASE64_EMBEDDING
     }
+#endif
     return binary ? ret : ret.toString();
   };
 
@@ -153,13 +153,12 @@ else if (ENVIRONMENT_IS_SHELL) {
   }
 
   Module['readBinary'] = function readBinary(f) {
+    var data;
 #if SUPPORT_BASE64_EMBEDDING
-    var data = tryParseAsDataURI(f);
+    data = tryParseAsDataURI(f);
     if (data) {
       return data;
     }
-#else
-    var data;
 #endif
     if (typeof readbuffer === 'function') {
       return new Uint8Array(readbuffer(f));
@@ -207,21 +206,23 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 
   if (ENVIRONMENT_IS_WORKER) {
     Module['readBinary'] = function readBinary(url) {
+#if SUPPORT_BASE64_EMBEDDING
       try {
+#endif
         var xhr = new XMLHttpRequest();
         xhr.open('GET', url, false);
         xhr.responseType = 'arraybuffer';
         xhr.send(null);
         return new Uint8Array(xhr.response);
-      } catch (err) {
 #if SUPPORT_BASE64_EMBEDDING
+      } catch (err) {
         var data = tryParseAsDataURI(f);
         if (data) {
           return data;
         }
-#endif
         throw err;
       }
+#endif
     };
   }
 
@@ -238,11 +239,10 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
       var data = tryParseAsDataURI(url);
       if (data) {
         onload(data.buffer);
-      } else
-#endif
-      {
-        onerror();
+        return;
       }
+#endif
+      onerror();
     };
     xhr.onerror = onerror;
     xhr.send(null);

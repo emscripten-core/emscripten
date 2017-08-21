@@ -873,3 +873,4 @@ var WASM_BINARY_FILE = ''; // name of the file containing wasm binary, if releva
 var ASMJS_CODE_FILE = ''; // name of the file containing asm.js, if relevant
 
 var SUPPORT_BASE64_EMBEDDING = 0; // If set to 1, src/base64Utils.js will be included in the bundle.
+                                  // This is set internally when needed (SINGLE_FILE)
