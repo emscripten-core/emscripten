@@ -241,7 +241,7 @@ function JSify(data, functionsOnly) {
         EXPORTED_FUNCTIONS[finalName] = 1;
         Functions.libraryFunctions[finalName] = 2;
       }
-      if ((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) {
+      if (EXPORT_ALL && !(finalName in EXPORTED_FUNCTIONS) && !noExport) {
         contentText += '\nModule["' + finalName + '"] = ' + finalName + ';';
       }
       return depsText + contentText;
