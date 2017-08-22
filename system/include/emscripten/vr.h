@@ -22,6 +22,19 @@
 extern "C" {
 #endif
 
+/**
+ * Version of the emscripten vr API, assembled as follows:
+ * WebVR Version Major * 10000 + WebVR Version Minor * 100 + API version [0-99]
+ *
+ * The first two can be used to determine the for which WebVR version the API
+ * has been built while the last can be used to determine which functions are
+ * available with the current build.
+ *
+ * E.g. emscripten vr API version 1.1.0 implements some initial features for
+ * WebVR 1.1 and its version define will have the value 10100
+ */
+#define EMSCRIPTEN_VR_API_VERSION 10100
+
 typedef int32_t VRDisplayHandle;
 
 typedef void (*em_vr_callback_func)(void);
@@ -51,7 +64,7 @@ typedef struct VRDisplayCapabilities {
 } VRDisplayCapabilities;
 
 #define VR_LAYER_DEFAULT_LEFT_BOUNDS {0.0f, 0.0f, 0.5f, 1.0f}
-#define VR_LAYER_DEFAULT_RIGHT_BOUNDS {0.0f, 0.5f, 1.0f, 1.0f}
+#define VR_LAYER_DEFAULT_RIGHT_BOUNDS {0.5f, 0.0f, 0.5f, 1.0f}
 typedef struct VRLayerInit {
     const char* source;
 
@@ -116,12 +129,13 @@ extern int emscripten_vr_count_displays(void);
 extern VRDisplayHandle emscripten_vr_get_display_handle(int deviceIndex);
 
 extern int emscripten_vr_set_display_render_loop(VRDisplayHandle handle, em_vr_callback_func callback);
-extern int emscripten_vr_set_display_render_loop_arg(VRDisplayHandle handle, em_vr_arg_callback_func, void* arg);
+extern int emscripten_vr_set_display_render_loop_arg(VRDisplayHandle handle, em_vr_arg_callback_func callback, void* arg);
 extern void emscripten_vr_cancel_display_render_loop(VRDisplayHandle handle);
 
-extern int emscripten_vr_request_present(VRDisplayHandle handle, VRLayerInit* layerInit, int layerCount);
+extern int emscripten_vr_request_present(VRDisplayHandle handle, VRLayerInit* layerInit, int layerCount, em_vr_arg_callback_func callback, void* userData);
 extern int emscripten_vr_get_frame_data(VRDisplayHandle handle, VRFrameData* frameData);
 extern int emscripten_vr_submit_frame(VRDisplayHandle handle);
+extern int emscripten_vr_exit_present(VRDisplayHandle handle);
 
 extern char *emscripten_vr_get_display_name(VRDisplayHandle handle);
 extern int emscripten_vr_get_eye_parameters(VRDisplayHandle handle, VREye whichEye, VREyeParameters* eyeParams);
