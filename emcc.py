@@ -1143,8 +1143,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # if not wasm-only, we can't do async compilation as the build can run in other
           # modes than wasm (like asm.js) which may not support an async step
           shared.Settings.BINARYEN_ASYNC_COMPILATION = 0
+          warning = 'This will reduce performance and compatibility (some browsers limit synchronous compilation), see https://github.com/kripken/emscripten/wiki/WebAssembly#codegen-effects'
           if 'BINARYEN_ASYNC_COMPILATION=1' in settings_changes:
-            logging.warning('BINARYEN_ASYNC_COMPILATION requested, but disabled since not in wasm-only mode')
+            logging.warning('BINARYEN_ASYNC_COMPILATION requested, but disabled because of user options. ' + warning)
+          elif 'BINARYEN_ASYNC_COMPILATION=0' not in settings_changes:
+            logging.warning('BINARYEN_ASYNC_COMPILATION disabled due to user options. ' + warning)
 
       # wasm outputs are only possible with a side wasm
       if target.endswith(WASM_ENDINGS):

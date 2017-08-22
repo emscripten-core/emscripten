@@ -7485,6 +7485,23 @@ int main() {
     subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'TOTAL_MEMORY=' + str(16*1024*1024), '--pre-js', 'pre.js', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN_ASYNC_COMPILATION=0'])
     self.assertContained('hello, world!', run_js('a.out.js', engine=SPIDERMONKEY_ENGINE))
 
+  def test_binaryen_warn_sync(self):
+    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey')
+    # using a fallback to asm.js will disable async
+    for method in ['native-wasm,asmjs', 'native-wasm', None]:
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1']
+      if method is not None:
+        cmd += ['-s', 'BINARYEN_METHOD="' + method + '"']
+      print ' '.join(cmd)
+      proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
+      out, err = proc.communicate()
+      print err
+      warning = 'BINARYEN_ASYNC_COMPILATION disabled due to user options. This will reduce performance and compatibility'
+      if method and ',' in method:
+        self.assertContained(warning, err)
+      else:
+        self.assertNotContained(warning, err)
+
   def test_binaryen_invalid_method(self):
     proc = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'test.js', '-s', "BINARYEN_METHOD='invalid'"])
     proc.communicate()
