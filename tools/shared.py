@@ -2367,10 +2367,12 @@ class JS(object):
   @staticmethod
   def preprocessor(s):
     def repl(matchobj):
-      if Settings.get(matchobj.group(1)):
-        return matchobj.group(2)
-      else:
-        return ''
+      try:
+        if Settings.get(matchobj.group(1)):
+          return matchobj.group(2)
+      except:
+        pass
+      return ''
     return re.sub(r'#if (.*?)\n(.*?)\n#endif', repl, s, flags=re.DOTALL)
 
   @staticmethod

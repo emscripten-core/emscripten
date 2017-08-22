@@ -2517,7 +2517,7 @@ def generate_html(target, options, js_target, target_basename,
     script.inline = '''
           var wasmURL = '%s';
           var wasmXHR = new XMLHttpRequest();
-          wasmXHR.open('GET', '%s', true);
+          wasmXHR.open('GET', wasmURL, true);
           wasmXHR.responseType = 'arraybuffer';
           wasmXHR.onload = function() {
             if (wasmXHR.status === 200 || wasmXHR.status === 0) {
