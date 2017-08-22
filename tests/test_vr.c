@@ -62,6 +62,14 @@ static void renderLoop() {
             return;
         }
 
+        if(emscripten_vr_display_presenting(gDisplay)) {
+            /* request present needs to be called from a user gesture callback and
+             * should have failed to make the display present. */
+            printf("Error: Expected display not to be presenting.\n");
+            report_result(1);
+            return;
+        }
+
         VRFrameData data;
         if (!emscripten_vr_get_frame_data(gDisplay, &data)) {
             printf("Could not get frame data. (first iteration)\n");
@@ -202,7 +210,12 @@ static void mainloop() {
 
                 VRDisplayCapabilities caps;
                 if(!emscripten_vr_get_display_capabilities(handle, &caps)) {
-                    printf("Error: Failed to get display capabilities\n");
+                    printf("Error: failed to get display capabilities.\n");
+                    report_result(1);
+                    return;
+                }
+                if(!emscripten_vr_display_connected(gDisplay)) {
+                    printf("Error: expected display to be connected.\n");
                     report_result(1);
                     return;
                 }

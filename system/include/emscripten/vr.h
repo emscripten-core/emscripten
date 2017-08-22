@@ -126,6 +126,8 @@ extern int emscripten_vr_submit_frame(VRDisplayHandle handle);
 extern char *emscripten_vr_get_display_name(VRDisplayHandle handle);
 extern int emscripten_vr_get_eye_parameters(VRDisplayHandle handle, VREye whichEye, VREyeParameters* eyeParams);
 extern int emscripten_vr_get_display_capabilities(VRDisplayHandle handle, VRDisplayCapabilities* displayCaps);
+extern bool emscripten_vr_display_connected(VRDisplayHandle handle);
+extern bool emscripten_vr_display_presenting(VRDisplayHandle handle);
 
 extern int emscripten_vr_reset_pose(VRDisplayHandle handle);
 

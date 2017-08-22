@@ -131,6 +131,18 @@ var LibraryWebVR = {
     return 1;
   },
 
+  emscripten_vr_display_connected: function(displayHandle) {
+    var display = WebVR.dereferenceDisplayHandle(displayHandle);
+    if (!display || !display.isConnected) return 0;
+    return 1;
+  },
+
+  emscripten_vr_display_presenting: function(displayHandle) {
+    var display = WebVR.dereferenceDisplayHandle(displayHandle);
+    if (!display || !display.isPresenting) return 0;
+    return 1;
+  },
+
   emscripten_vr_reset_pose: function(displayHandle) {
     var display = WebVR.dereferenceDisplayHandle(displayHandle);
     if (!display) return 0;
