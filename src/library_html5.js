@@ -1925,6 +1925,26 @@ var LibraryJSEvents = {
     return Module['ctx'].isContextLost();
   },
 
+  emscripten_set_canvas_element_size: function(target, width, height) {
+    if (target) target = JSEvents.findEventTarget(target);
+    else target = Module['canvas'];
+    if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
+
+    target.width = width;
+    target.height = height;
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
+  emscripten_get_canvas_element_size: function(target, width, height) {
+    if (target) target = JSEvents.findEventTarget(target);
+    else target = Module['canvas'];
+    if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
+
+    {{{ makeSetValue('width', '0', 'target.width', 'i32') }}};
+    {{{ makeSetValue('height', '0', 'target.height', 'i32') }}};
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
   emscripten_set_element_css_size: function(target, width, height) {
     if (!target) {
       target = Module['canvas'];

@@ -3616,3 +3616,7 @@ window.close = function() {
     ]:
       print "Testing with: ", args
       self.btest('pthread/test_pthread_locale.c', expected='1', args=args)
+
+  # Tests the Emscripten HTML5 API emscripten_set_canvas_element_size() and emscripten_get_canvas_element_size() functionality in singlethreaded programs.
+  def test_emscripten_set_canvas_element_size(self):
+    self.btest('emscripten_set_canvas_element_size.c', expected='1')
