@@ -997,8 +997,6 @@ var SyscallsLibrary = {
       var id;
       var type;
       var name = stream.getdents.pop();
-      var nameLengthInBytes = lengthBytesUTF8(name);
-      assert(nameLengthInBytes < 256); // limit of dirent struct
       if (name[0] === '.') {
         id = 1;
         type = 4; // DT_DIR
