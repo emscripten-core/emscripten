@@ -274,6 +274,14 @@ var LibraryWebVR = {
     return 1;
   },
 
+  emscripten_vr_exit_present: function(displayHandle) {
+    var display = WebVR.dereferenceDisplayHandle(displayHandle);
+    if (!display) return 0;
+
+    display.exitPresent();
+    return 1;
+  },
+
   emscripten_vr_get_frame_data: function(displayHandle, frameDataPtr) {
     var display = WebVR.dereferenceDisplayHandle(displayHandle);
     if (!display || !display.mainLoop || !frameDataPtr) return 0;

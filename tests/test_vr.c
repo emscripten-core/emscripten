@@ -41,6 +41,8 @@ static void renderLoopArg(void* arg) {
     renderLoopArgCalled = true;
     renderLoopArgArg = arg;
 
+    emscripten_vr_exit_present(gDisplay);
+
     printf("Render loop with argument was called.\n");
 
     return;
