@@ -4122,6 +4122,18 @@ def process(filename):
     src = open(path_from_root('tests', 'fs', 'test_getdents64.cpp'), 'r').read()
     self.do_run(src, '..')
 
+  def test_getcwd_with_non_ascii_name(self):
+    src = path_from_root('tests', 'fs', 'test_getcwd_with_non_ascii_name.cpp')
+    out = path_from_root('tests', 'fs', 'test_getcwd_with_non_ascii_name.out')
+    Building.COMPILER_TEST_OPTS += ['-std=c++11']
+    self.do_run_from_file(src, out)
+
+  def test_getdents64_with_non_ascii_names(self):
+    Building.COMPILER_TEST_OPTS += ['-std=c++11']
+    src = path_from_root('tests', 'fs', 'test_getdents64_with_non_ascii_names.cpp')
+    out = path_from_root('tests', 'fs', 'test_getdents64_with_non_ascii_names.out')
+    self.do_run_from_file(src, out)
+
   def test_fwrite_0(self):
     test_path = path_from_root('tests', 'core', 'test_fwrite_0')
     src, output = (test_path + s for s in ('.c', '.out'))
