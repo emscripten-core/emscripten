@@ -3052,6 +3052,50 @@ mergeInto(LibraryManager.library, {
     Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '--js-library', 'lib.js']).communicate()
     self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+  def test_exported_js_lib(self):
+    open('lib.js', 'w').write(r'''
+mergeInto(LibraryManager.library, {
+ jslibfunc: function(x) { return 2*x }
+});
+''')
+    open('src.cpp', 'w').write(r'''
+#include <emscripten.h>
+extern "C" int jslibfunc(int x);
+int main() {
+  printf("c calling: %d\n", jslibfunc(6));
+  EM_ASM({
+    Module.print('js calling: ' + Module['_jslibfunc'](5) + '.');
+  });
+}
+''')
+    subprocess.check_call([PYTHON, EMCC, 'src.cpp', '--js-library', 'lib.js', '-s', 'EXPORTED_FUNCTIONS=["_main", "_jslibfunc"]'])
+    self.assertContained('c calling: 12\njs calling: 10.', run_js('a.out.js'))
+
+  def test_js_lib_using_asm_lib(self):
+    open('lib.js', 'w').write(r'''
+mergeInto(LibraryManager.library, {
+  jslibfunc__deps: ['asmlibfunc'],
+  jslibfunc: function(x) {
+    return 2 * _asmlibfunc(x);
+  },
+
+  asmlibfunc__asm: true,
+  asmlibfunc__sig: 'ii',
+  asmlibfunc: function(x) {
+    return x + 1;
+  }
+});
+''')
+    open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+extern "C" int jslibfunc(int x);
+int main() {
+  printf("c calling: %d\n", jslibfunc(6));
+}
+''')
+    subprocess.check_call([PYTHON, EMCC, 'src.cpp', '--js-library', 'lib.js'])
+    self.assertContained('c calling: 14\n', run_js('a.out.js'))
+
   def test_EMCC_BUILD_DIR(self):
     # EMCC_BUILD_DIR env var contains the dir we were building in, when running the js compiler (e.g. when
     # running a js library). We force the cwd to be src/ for technical reasons, so this lets you find out
