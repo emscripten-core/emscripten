@@ -227,7 +227,7 @@ var LibraryWebVR = {
     return 1;
   },
 
-  emscripten_vr_request_present: function(displayHandle, layerInitPtr, layerCount) {
+  emscripten_vr_request_present: function(displayHandle, layerInitPtr, layerCount, func, userData) {
     var display = WebVR.dereferenceDisplayHandle(displayHandle);
     if (!display) return 0;
 
@@ -236,12 +236,11 @@ var LibraryWebVR = {
         sourceStrPtr = {{{ makeGetValue('layerInitPtr', C_STRUCTS.VRLayerInit.source, 'void*') }}};
         sourceStr = UTF8ToString(sourceStrPtr);
 
-        console.log("Source: " + sourceStr);
         var source = null;
         if(sourceStr == '#canvas') {
             /* Default emscripten canvas */
             source = Module['canvas'];
-        } else if (sourceStr && sourceStr.length > 0 && sourceStr[0] == '#') {
+        } else if (sourceStr && sourceStr.length > 0) {
             /* Other canvas id */
             source = document.getElementById(sourceStr);
         }
@@ -254,8 +253,8 @@ var LibraryWebVR = {
         rightBounds = new Float32Array(4);
         var ptr = layerInitPtr;
         for (var j = 0; j < 4; ++j) {
-            leftBounds[i] = {{{ makeGetValue('layerInitPtr', C_STRUCTS.VRLayerInit.leftBounds, 'float') }}};
-            rightBounds[i] = {{{ makeGetValue('layerInitPtr', C_STRUCTS.VRLayerInit.rightBounds, 'float') }}};
+            leftBounds[j] = {{{ makeGetValue('layerInitPtr', C_STRUCTS.VRLayerInit.leftBounds + '+ 4*j', 'float') }}};
+            rightBounds[j] = {{{ makeGetValue('layerInitPtr', C_STRUCTS.VRLayerInit.rightBounds + '+ 4*j', 'float') }}};
             ptr += 4;
         }
 
@@ -267,7 +266,10 @@ var LibraryWebVR = {
         layerInitPtr += {{{ C_STRUCTS.VRLayerInit.__size__ }}};
     }
 
-    display.requestPresent(layerInit).then;
+    display.requestPresent(layerInit).then(function() {
+        if(!func) return;
+        Runtime.dynCall('vi', func, [userData]);
+    });
 
     return 1;
   },
@@ -350,11 +352,11 @@ var LibraryWebVR = {
     }
 
     for (var i = 0; i < 16; ++i) {
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.rightProjectionMatrix + ' + i*4', 'display.frameData.leftProjectionMatrix[i]', 'float') }}};
+        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.rightProjectionMatrix + ' + i*4', 'display.frameData.rightProjectionMatrix[i]', 'float') }}};
     }
 
     for (var i = 0; i < 16; ++i) {
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.rightViewMatrix + ' + i*4', 'display.frameData.leftViewMatrix[i]', 'float') }}};
+        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.rightViewMatrix + ' + i*4', 'display.frameData.rightViewMatrix[i]', 'float') }}};
     }
 
     return 1;

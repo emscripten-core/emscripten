@@ -46,6 +46,12 @@ static void renderLoopArg(void* arg) {
     return;
 }
 
+static void requestPresentCallback(void* userData) {
+    // Will likely never happen as the callback is not called
+    // from a user-gesture in this test.
+    printf("Request present callback called.\n");
+}
+
 /* Render loop without argument, set in `mainLoop()` */
 static void renderLoop() {
     renderLoopCalled++;
@@ -56,7 +62,7 @@ static void renderLoop() {
             VR_LAYER_DEFAULT_LEFT_BOUNDS,
             VR_LAYER_DEFAULT_RIGHT_BOUNDS
         };
-        if (!emscripten_vr_request_present(gDisplay, &init, 1)) {
+        if (!emscripten_vr_request_present(gDisplay, &init, 1, requestPresentCallback, NULL)) {
             printf("Request present with default canvas failed.\n");
             report_result(1);
             return;
