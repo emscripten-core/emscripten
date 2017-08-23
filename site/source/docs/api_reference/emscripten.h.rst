@@ -343,6 +343,8 @@ Functions
 	:param int width: New pixel width of canvas element.
 	:param int height: New pixel height of canvas element.
 
+    .. warning: This function is deprecated, you should use the method ``emscripten_set_canvas_element_size()`` instead.
+
 
 .. c:function:: void emscripten_get_canvas_size(int * width, int * height, int * isFullscreen)
 
@@ -351,6 +353,8 @@ Functions
 	:param int* width: Pixel width of canvas element.
 	:param int* height: New pixel height of canvas element.
 	:param int* isFullscreen: If True (``*int > 0``), ``<canvas>`` is full screen.
+
+    .. warning: This function is deprecated, you should use the methos ``emscripten_get_canvas_element_size()`` instead.
 
 
 .. c:function:: double emscripten_get_now(void)

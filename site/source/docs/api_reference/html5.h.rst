@@ -2084,6 +2084,29 @@ CSS
 Functions
 ---------
 
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_canvas_element_css_size(const char * target, double width, double height)
+
+	Resizes the CSS width and height of the canvas element specified by ``target`` on the Emscripten web page.
+
+	:param target: Element to resize. If 0 is passed, the element specified by ``Module.canvas`` will be used.
+	:type target: const char*
+	:param double width: New width of the element.
+	:param double height: New height of the element.
+	:returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
+	:rtype: |EMSCRIPTEN_RESULT|
+
+
+.. c:function:: EMSCRIPTEN_RESULT emscripten_get_canvas_element_css_size(const char * target, double * width, double * height)
+
+	Gets the current CSS width and height of the canvas element specified by ``target``.
+
+	:param target: Element to get size of. If 0 is passed, the element specified by ``Module.canvas`` will be used.
+	:type target: const char*
+	:param double* width: Width of the element.
+	:param double* height: Height of the element.
+	:returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
+	:rtype: |EMSCRIPTEN_RESULT|
+
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_set_element_css_size(const char * target, double width, double height)
 
