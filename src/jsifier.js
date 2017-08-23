@@ -239,6 +239,7 @@ function JSify(data, functionsOnly) {
         asmLibraryFunctions.push(contentText);
         contentText = ' ';
         Functions.libraryFunctions[finalName] = 2;
+        noExport = true; // if it needs to be exported, that will happen in emscripten.py
       }
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
