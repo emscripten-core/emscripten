@@ -238,14 +238,23 @@ function JSify(data, functionsOnly) {
         Functions.implementedFunctions[finalName] = sig;
         asmLibraryFunctions.push(contentText);
         contentText = ' ';
-        EXPORTED_FUNCTIONS[finalName] = 1;
         Functions.libraryFunctions[finalName] = 2;
+        noExport = true; // if it needs to be exported, that will happen in emscripten.py
       }
-      // Normal exports are done in emscripten.py, after the asm module is ready. Here
-      // we also export all library methods when EXPORT_ALL, that would not be
-      // exported by the normal path.
-      if (EXPORT_ALL && !(finalName in EXPORTED_FUNCTIONS) && !noExport) {
+      // asm module exports are done in emscripten.py, after the asm module is ready. Here
+      // we also export library methods as necessary.
+      if ((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) {
         contentText += '\nModule["' + finalName + '"] = ' + finalName + ';';
+      }
+      if (!LibraryManager.library[ident + '__asm']) {
+        // If we are not an asm library func, and we have a dep that is, then we need to call
+        // into the asm module to reach that dep. so it must be exported from the asm module.
+        // We set EXPORTED_FUNCTIONS here to tell emscripten.py to do that.
+        deps.forEach(function(dep) {
+          if (LibraryManager.library[dep + '__asm']) {
+            EXPORTED_FUNCTIONS['_' + dep] = 0;
+          }
+        });
       }
       return depsText + contentText;
     }
