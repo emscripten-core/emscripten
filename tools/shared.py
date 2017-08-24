@@ -322,7 +322,7 @@ actual_clang_version = None
 
 def expected_llvm_version():
   if get_llvm_target() == WASM_TARGET:
-    return "5.0"
+    return "6.0"
   else:
     return "4.0"
 
