@@ -11,6 +11,9 @@ This section lists Emscripten's public API, organised by header file. At a very 
 	
 - :ref:`html5-h`: 
 	Low level glue bindings for interfacing with HTML5 APIs from native code.
+
+- :ref:`threading-h`:
+    API to interract with threads.
 	
 - :ref:`preamble-js`: 
 	APIs for working with compiled code from JavaScript.
@@ -42,6 +45,7 @@ This section lists Emscripten's public API, organised by header file. At a very 
    
    emscripten.h
    html5.h
+   threading.h
    preamble.js
    Filesystem-API
    fetch
