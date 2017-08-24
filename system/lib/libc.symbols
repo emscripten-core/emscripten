@@ -207,6 +207,7 @@
          T acoshf
          T acoshl
          T addmntent
+         T aligned_alloc
          T alphasort
          W alphasort64
          T asinh

@@ -390,6 +390,9 @@ int main()
     Settings.RELOCATABLE = 1
     test()
 
+  def test_aligned_alloc(self):
+    self.do_run(open(path_from_root('tests', 'test_aligned_alloc.c')).read(), '', assert_returncode=0)
+
   def test_unsigned(self):
       src = '''
         #include <stdio.h>
