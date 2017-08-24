@@ -240,7 +240,14 @@ var LibraryOpenAL = {
         src.bufOffset = (currentTime - audioSrc._startTime) * src.playbackRate;
       } else {
         var skipCount = 0;
-        // In the absence of scheduled buffers, fast-forward playback state to the current time
+        // In the absence of scheduled buffers, fast-forward playback state to the current time.
+        // This loop will continue until one of the following conditions:
+        //   * `nextStartTime` has become greater than `currentTime`
+        //   * `skipCount` becomes equal to `src.bufQueue.length`
+        // This will eventually terminate since either skipCount will increase, or nextStartTime will increase,
+        // depending on which path is taken. skipCount can be reset to 0, but only if nextStartTime has
+        // increased, and nextStartTime can never decrease, so one of the two termination conditions
+        // will eventually happen.
         while (true) {
           if (src.bufsProcessed >= src.bufQueue.length) {
             if (src.looping) {
@@ -3609,6 +3616,14 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       console.error('alBufferData() called with an invalid buffer');
 #endif
+      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
+      return;
+    }
+    if (freq <= 0) {
+#if OPENAL_DEBUG
+      console.error('alBufferData() called with an invalid frequency');
+#endif
+      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
       return;
     }
 
