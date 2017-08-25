@@ -2331,7 +2331,7 @@ int f() {
     output = Popen([os.path.join(self.get_dir(), 'files.o.run')], stdin=open(os.path.join(self.get_dir(), 'stdin')), stdout=PIPE, stderr=PIPE).communicate()
     self.assertContained('''size: 37
 data: 119,97,107,97,32,119,97,107,97,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35
-loop: 119 97 107 97 32 119 97 107 97 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35
+loop: 119 97 107 97 32 119 97 107 97 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 
 input:inter-active
 texto
 $
@@ -7813,4 +7813,4 @@ int main() {
       out, err = Popen([PYTHON, EMCC, '-O' + str(level), path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE).communicate()
       assert os.path.exists('a.out.js'), '-O' + str(level) + ' should produce output'
       if level > 3:
-          self.assertContained("optimization level '-O" + str(level) + "' is not supported; using '-O3' instead", err)
+        self.assertContained("optimization level '-O" + str(level) + "' is not supported; using '-O3' instead", err)
