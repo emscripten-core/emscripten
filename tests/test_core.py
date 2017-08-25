@@ -1245,7 +1245,6 @@ int main() {
     if not self.is_wasm_backend(): return self.skip('no __builtin_fmin support in JSBackend')
     self.do_run_in_out_file_test('tests', 'core', 'test_float_builtins')
 
-  @no_wasm_backend("wasm backend doesn't add Runtime.setDynamicTop and crashes")
   def test_segfault(self):
     Settings.SAFE_HEAP = 1
 
