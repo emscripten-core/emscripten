@@ -2331,7 +2331,7 @@ int f() {
     output = Popen([os.path.join(self.get_dir(), 'files.o.run')], stdin=open(os.path.join(self.get_dir(), 'stdin')), stdout=PIPE, stderr=PIPE).communicate()
     self.assertContained('''size: 37
 data: 119,97,107,97,32,119,97,107,97,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35
-loop: 119 97 107 97 32 119 97 107 97 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 
+loop: 119 97 107 97 32 119 97 107 97 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35
 input:inter-active
 texto
 $
@@ -2734,7 +2734,7 @@ int main()
     # This test supposes that 3 different programs share the same directory and files.
     # The same JS object is not used for each of them
     # But 'require' function caches JS objects.
-    # If we just load same js-file multiple times like following code, 
+    # If we just load same js-file multiple times like following code,
     # these programs (m0,m1,m2) share the same JS object.
     #
     #   var m0 = require('./proxyfs_test.js');
@@ -5382,7 +5382,7 @@ int main(void) {
     Building.emcc(inname, output_filename='a.out.js')
     output = Popen(NODE_JS + ['-e', 'require("./a.out.js")'], stdout=PIPE, stderr=PIPE).communicate()
     assert output == ('hello, world!\n', ''), 'expected no output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % output
-  
+
   def test_require_modularize(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1']).communicate()
     src = open('a.out.js').read()
@@ -7324,7 +7324,7 @@ int main() {
     self.assertNotContained("Input file has an unknown suffix, don't know what to do with it!", stderr)
     self.assertNotContained("Unknown file suffix when compiling to LLVM bitcode", stderr)
     self.assertContained("Test_source_fixed_lang_hello", run_js('a.out.js'))
-    
+
     stdout, stderr = Popen([PYTHON, EMCC, '-Wall', '-std=c++14', 'src_tmp_fixed_lang'], stderr=PIPE).communicate()
     self.assertContained("Input file has an unknown suffix, don't know what to do with it!", stderr)
 
@@ -7375,7 +7375,7 @@ int main() {
 
   def test_binaryen_opts(self):
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
- 
+
     with clean_write_access_to_canonical_temp_dir():
       try:
         os.environ['EMCC_DEBUG'] = '1'
@@ -7807,3 +7807,10 @@ int main() {
     assert 'you should enable  -s NO_EXIT_RUNTIME=1' in err
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'hello_world.bc', '-s', 'WASM=1', '-Oz'], stdout=PIPE, stderr=PIPE).communicate()
     assert 'you should enable  -s NO_EXIT_RUNTIME=1' not in err
+
+  def test_o_level_clamp(self):
+    for level in [3, 4, 20]:
+      out, err = Popen([PYTHON, EMCC, '-O' + str(level), path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE).communicate()
+      assert os.path.exists('a.out.js'), '-O' + str(level) + ' should produce output'
+      if level > 3:
+          self.assertContained("optimization level '-O" + str(level) + "' is not supported; using '-O3' instead", err)
