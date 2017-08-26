@@ -140,7 +140,6 @@ var LibraryManager = {
         'library_gl.js',
         'library_glut.js',
         'library_xlib.js',
-        'library_egl.js',
         'library_openal.js',
         'library_glfw.js',
         'library_uuid.js',
