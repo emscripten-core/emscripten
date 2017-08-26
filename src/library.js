@@ -1653,6 +1653,8 @@ LibraryManager.library = {
   },
   // void* dlopen(const char* filename, int flag);
   dlopen__deps: ['$DLFCN', '$FS', '$ENV'],
+  dlopen__proxy: 'sync',
+  dlopen__sig: 'iii',
   dlopen: function(filename, flag) {
 #if MAIN_MODULE == 0
     abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/kripken/emscripten/wiki/Linking");
@@ -1773,6 +1775,8 @@ LibraryManager.library = {
   },
   // int dlclose(void* handle);
   dlclose__deps: ['$DLFCN'],
+  dlclose__proxy: 'sync',
+  dlclose__sig: 'ii',
   dlclose: function(handle) {
     // int dlclose(void *handle);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlclose.html
@@ -1793,6 +1797,8 @@ LibraryManager.library = {
   },
   // void* dlsym(void* handle, const char* symbol);
   dlsym__deps: ['$DLFCN'],
+  dlsym__proxy: 'sync',
+  dlsym__sig: 'iii',
   dlsym: function(handle, symbol) {
     // void *dlsym(void *restrict handle, const char *restrict name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlsym.html
@@ -1824,6 +1830,8 @@ LibraryManager.library = {
   },
   // char* dlerror(void);
   dlerror__deps: ['$DLFCN'],
+  dlerror__proxy: 'sync',
+  dlerror__sig: 'i',
   dlerror: function() {
     // char *dlerror(void);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlerror.html
@@ -1838,6 +1846,8 @@ LibraryManager.library = {
     }
   },
 
+  dladdr__proxy: 'sync',
+  dladdr__sig: 'iii',
   dladdr: function(addr, info) {
     // report all function pointers as coming from this program itself XXX not really correct in any way
     var fname = allocate(intArrayFromString(Module['thisProgram'] || './this.program'), 'i8', ALLOC_NORMAL); // XXX leak
@@ -3508,6 +3518,8 @@ LibraryManager.library = {
 
   // note: lots of leaking here!
   gethostbyaddr__deps: ['$DNS', 'gethostbyname', '_inet_ntop4_raw'],
+  gethostbyaddr__proxy: 'sync',
+  gethostbyaddr__sig: 'iiii',
   gethostbyaddr: function (addr, addrlen, type) {
     if (type !== {{{ cDefine('AF_INET') }}}) {
       ___setErrNo(ERRNO_CODES.EAFNOSUPPORT);
@@ -3525,6 +3537,8 @@ LibraryManager.library = {
   },
 
   gethostbyname__deps: ['$DNS', '_inet_pton4_raw'],
+  gethostbyname__proxy: 'sync',
+  gethostbyname__sig: 'ii',
   gethostbyname: function(name) {
     name = Pointer_stringify(name);
 
@@ -3548,6 +3562,8 @@ LibraryManager.library = {
   },
 
   gethostbyname_r__deps: ['gethostbyname'],
+  gethostbyname_r__proxy: 'sync',
+  gethostbyname_r__sig: 'iiiiiii',
   gethostbyname_r: function(name, ret, buf, buflen, out, err) {
     var data = _gethostbyname(name);
     _memcpy(ret, data, {{{ C_STRUCTS.hostent.__size__ }}});
@@ -3558,6 +3574,8 @@ LibraryManager.library = {
   },
 
   getaddrinfo__deps: ['$Sockets', '$DNS', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '_write_sockaddr'],
+  getaddrinfo__proxy: 'sync',
+  getaddrinfo__sig: 'iiiii',
   getaddrinfo: function(node, service, hint, out) {
     // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
     // hints are specified or ai_family set to AF_UNSPEC or ai_socktype or ai_protocol set to 0 then we
