@@ -45,6 +45,14 @@ static void create_context(void)
    g_egl_ctx = eglCreateContext(g_egl_dpy, g_config, EGL_NO_CONTEXT, context_attributes);
    if (!g_egl_ctx)
       die("failed to create context");
+
+    EGLNativeWindowType dummyWindow;
+    EGLSurface surface = eglCreateWindowSurface(g_egl_dpy, g_config, dummyWindow, NULL);
+    if (!surface)
+      die("failed to create window surface");
+
+   if (!eglMakeCurrent(g_egl_dpy, surface, surface, g_egl_ctx))
+      die("failed to activate context");
 }
 
 int main(int argc, char *argv[])
