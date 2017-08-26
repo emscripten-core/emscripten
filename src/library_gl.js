@@ -1795,25 +1795,25 @@ var LibraryGL = {
     if (!emscriptenWebGLValidateMapBufferTarget(target)) {
       GL.recordError(0x0500/*GL_INVALID_ENUM*/);
       Module.printErr('GL_INVALID_ENUM in glFlushMappedBufferRange');
-      return 0;
+      return;
     }
 
     var mapping = GL.mappedBuffers[emscriptenWebGLGetBufferBinding(target)];
     if (!mapping) {
       GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
       Module.printError('buffer was never mapped in glFlushMappedBufferRange');
-      return 0;
+      return;
     }
 
     if (!(mapping.access & 0x10)) {
       GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
       Module.printError('buffer was not mapped with GL_MAP_FLUSH_EXPLICIT_BIT in glFlushMappedBufferRange');
-      return 0;
+      return;
     }
     if (offset < 0 || length < 0 || offset + length > mapping.length) {
       GL.recordError(0x0501 /* GL_INVALID_VALUE */);
       Module.printError('invalid range in glFlushMappedBufferRange');
-      return 0;
+      return;
     }
 
     GLctx.bufferSubData(
