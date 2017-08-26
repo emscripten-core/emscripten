@@ -37,7 +37,7 @@ var LibraryPThread = {
 
 #if PTHREADS_PROFILING
       PThread.createProfilerBlock(PThread.mainThreadBlock);
-      PThread.setThreadName(PThread.mainThreadBlock, "main thread");
+      PThread.setThreadName(PThread.mainThreadBlock, "Browser main thread");
       PThread.setThreadStatus(PThread.mainThreadBlock, {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
 #endif
     },
