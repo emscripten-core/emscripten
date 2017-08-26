@@ -642,27 +642,44 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
 def get_implemented_functions(metadata):
   return set(metadata['implementedFunctions'])
 
+def proxy_debug_print(call_type, settings):
+  if shared.Settings.PTHREADS_DEBUG:
+    if call_type == 'sync_on_main_thread_': return 'Runtime.warnOnce("sync proxying function " + code);';
+    elif call_type == 'async_on_main_thread_': return 'Runtime.warnOnce("async proxying function " + code);';
+  return ''
 
 def include_asm_consts(pre, forwarded_json, metadata, settings):
   if settings['BINARYEN'] and settings['SIDE_MODULE']:
     assert len(metadata['asmConsts']) == 0, 'EM_ASM is not yet supported in shared wasm module (it cannot be stored in the wasm itself, need some solution)'
 
-  asm_consts, all_sigs = all_asm_consts(metadata)
+  asm_consts, all_sigs, call_types = all_asm_consts(metadata)
   asm_const_funcs = []
-  for sig in set(all_sigs):
-    forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
+  for s in range(len(all_sigs)):
+    sig = all_sigs[s]
+    call_type = call_types[s] if s < len(call_types) else ''
+    forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + call_type + sig] = 1
     args = ['a%d' % i for i in range(len(sig)-1)]
     all_args = ['code'] + args
+    proxy_function = ''
+    if shared.Settings.USE_PTHREADS:
+      if call_type == 'sync_on_main_thread_': proxy_function = '_emscripten_sync_run_in_browser_thread_' + sig
+      elif call_type == 'async_on_main_thread_': proxy_function = '_emscripten_async_run_in_browser_thread_' + sig
+
+    # In proxied function calls, positive integers 1, 2, 3, ... denote pointers to regular C compiled functions. Negative integers -1, -2, -3, ... denote indices to EM_ASM() blocks, so remap the EM_ASM() indices from 0, 1, 2, ... over to the negative integers starting at -1.
+    proxy_args = '-1 - ' + ','.join(all_args)
+
+    if proxy_function: proxy_to_main_thread = '  if (ENVIRONMENT_IS_PTHREAD) { ' + proxy_debug_print(call_type, settings) + 'return ' + proxy_function + '(' + proxy_args + '); } \n'
+    else: proxy_to_main_thread = ''
     asm_const_funcs.append(r'''
 function _emscripten_asm_const_%s(%s) {
-  return ASM_CONSTS[code](%s);
-}''' % (sig.encode('utf-8'), ', '.join(all_args), ', '.join(args)))
+%s  return ASM_CONSTS[code](%s);
+}''' % (call_type + sig.encode('utf-8'), ', '.join(all_args), proxy_to_main_thread, ', '.join(args)))
 
   asm_consts_text = '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n'
   asm_funcs_text = '\n'.join(asm_const_funcs) + '\n'
 
   body_marker = '// === Body ==='
-  return pre.replace(body_marker, body_marker + '\n' + asm_consts_text + asm_funcs_text)
+  return pre.replace(body_marker, body_marker + '\n' + asm_consts_text + asm_funcs_text.encode('utf-8'))
 
 # Test if the parentheses at body[openIdx] and body[closeIdx] are a match to each other.
 def parentheses_match(body, openIdx, closeIdx):
@@ -690,9 +707,11 @@ def trim_asm_const_body(body):
 def all_asm_consts(metadata):
   asm_consts = [0]*len(metadata['asmConsts'])
   all_sigs = []
+  all_call_types = []
   for k, v in metadata['asmConsts'].items():
     const = v[0].encode('utf-8')
     sigs = v[1]
+    call_types = v[2]
     const = trim_asm_const_body(const)
     const = '{ ' + const + ' }'
     args = []
@@ -702,7 +721,8 @@ def all_asm_consts(metadata):
     const = 'function(' + ', '.join(args) + ') ' + const
     asm_consts[int(k)] = const
     all_sigs += sigs
-  return asm_consts, all_sigs
+    all_call_types += call_types
+  return asm_consts, all_sigs, all_call_types
 
 
 def unfloat(s):
