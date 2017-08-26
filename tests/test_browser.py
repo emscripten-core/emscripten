@@ -3324,6 +3324,12 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', 'call_sync_on_main_thread.c'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-DPROXY_TO_PTHREAD=0', '--js-library', path_from_root('tests', 'pthread', 'call_sync_on_main_thread.js')])
     self.btest(path_from_root('tests', 'pthread', 'call_sync_on_main_thread.c'), expected='1', args=['-Oz', '-DPROXY_TO_PTHREAD=0', '--js-library', path_from_root('tests', 'pthread', 'call_sync_on_main_thread.js')])
 
+  # Test that it is possible to asynchronously call a JavaScript function on the main thread.
+  def test_pthread_call_async_on_main_thread(self):
+    self.btest(path_from_root('tests', 'pthread', 'call_async_on_main_thread.c'), expected='7', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-DPROXY_TO_PTHREAD=1', '--js-library', path_from_root('tests', 'pthread', 'call_async_on_main_thread.js')])
+    self.btest(path_from_root('tests', 'pthread', 'call_async_on_main_thread.c'), expected='7', args=['-O3', '-s', 'USE_PTHREADS=1', '-DPROXY_TO_PTHREAD=0', '--js-library', path_from_root('tests', 'pthread', 'call_async_on_main_thread.js')])
+    self.btest(path_from_root('tests', 'pthread', 'call_async_on_main_thread.c'), expected='7', args=['-Oz', '-DPROXY_TO_PTHREAD=0', '--js-library', path_from_root('tests', 'pthread', 'call_async_on_main_thread.js')])
+
   # test atomicrmw i64
   def test_atomicrmw_i64(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'atomicrmw_i64.ll'), '-s', 'USE_PTHREADS=1', '-s', 'IN_TEST_HARNESS=1', '-o', 'test.html']).communicate()
