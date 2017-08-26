@@ -262,6 +262,42 @@ var LibraryPThread = {
         var worker = new Worker(pthreadMainJs);
 
         worker.onmessage = function(e) {
+          // TODO: Move the proxied call mechanism into a queue inside heap.
+          if (e.data.proxiedCall) {
+            var returnValue;
+            var funcTable = (e.data.func >= 0) ? proxiedFunctionTable : ASM_CONSTS;
+            var funcIdx = (e.data.func >= 0) ? e.data.func : (-1 - e.data.func);
+            PThread.currentProxiedOperationCallerThread = worker.pthread.threadInfoStruct; // Sometimes we need to backproxy events to the calling thread (e.g. HTML5 DOM events handlers such as emscripten_set_mousemove_callback()), so keep track in a globally accessible variable about the thread that initiated the proxying.
+            switch(e.data.proxiedCall) {
+              case 1: case 21: returnValue = funcTable[funcIdx](); break;
+              case 2: returnValue = funcTable[funcIdx](e.data.p0); break;
+              case 3: returnValue = funcTable[funcIdx](e.data.p0, e.data.p1); break;
+              case 4: returnValue = funcTable[funcIdx](e.data.p0, e.data.p1, e.data.p2); break;
+              case 5: returnValue = funcTable[funcIdx](e.data.p0, e.data.p1, e.data.p2, e.data.p3); break;
+              case 6: returnValue = funcTable[funcIdx](e.data.p0, e.data.p1, e.data.p2, e.data.p3, e.data.p4); break;
+              case 7: returnValue = funcTable[funcIdx](e.data.p0, e.data.p1, e.data.p2, e.data.p3, e.data.p4, e.data.p5); break;
+              case 8: returnValue = funcTable[funcIdx](e.data.p0, e.data.p1, e.data.p2, e.data.p3, e.data.p4, e.data.p5, e.data.p6); break;
+              case 9: returnValue = funcTable[funcIdx](e.data.p0, e.data.p1, e.data.p2, e.data.p3, e.data.p4, e.data.p5, e.data.p6, e.data.p7); break;
+              case 10: returnValue = funcTable[funcIdx](e.data.p0, e.data.p1, e.data.p2, e.data.p3, e.data.p4, e.data.p5, e.data.p6, e.data.p7, e.data.p8); break;
+              default:
+                if (e.data.proxiedCall) {
+                  Module['printErr']("worker sent an unknown proxied call idx " + e.data.proxiedCall);
+                  console.error(e.data);
+                }
+                break;
+            }
+            if (e.data.returnValue) {
+              if (e.data.proxiedCall != 21) HEAP32[e.data.returnValue >> 2] = returnValue;
+              else HEAPF64[e.data.returnValue >> 3] = returnValue;
+            }
+            var waitAddress = e.data.waitAddress;
+            if (waitAddress) {
+              Atomics.store(HEAP32, waitAddress >> 2, 1);
+              Atomics.wake(HEAP32, waitAddress >> 2, 1);
+            }
+            return;
+          }
+
           // If this message is intended to a recipient that is not the main thread, forward it to the target thread.
           if (e.data.targetThread && e.data.targetThread != _pthread_self()) {
             var thread = PThread.pthreads[e.data.targetThread];
