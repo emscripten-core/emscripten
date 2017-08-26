@@ -973,7 +973,6 @@ var LibraryBrowser = {
       },
       true // don'tCreateFile - it's already there
     );
-    return 0;
   },
 
   emscripten_async_run_script__deps: ['emscripten_run_script'],
