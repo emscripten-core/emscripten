@@ -12,7 +12,7 @@ pthread_t thread[NUM_THREADS];
 
 int main()
 {
-	for(int x = 0; x < 1000; ++x)
+	for(int x = 0; x < 100; ++x)
 	{
 		for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_main, 0);
 		if (emscripten_has_threading_support())
