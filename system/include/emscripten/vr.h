@@ -126,11 +126,11 @@ extern int emscripten_vr_version_major(void);
 extern int emscripten_vr_version_minor(void);
 
 extern int emscripten_vr_count_displays(void);
-extern VRDisplayHandle emscripten_vr_get_display_handle(int deviceIndex);
+extern VRDisplayHandle emscripten_vr_get_display_handle(int displayIndex);
 
 extern int emscripten_vr_set_display_render_loop(VRDisplayHandle handle, em_vr_callback_func callback);
 extern int emscripten_vr_set_display_render_loop_arg(VRDisplayHandle handle, em_vr_arg_callback_func callback, void* arg);
-extern void emscripten_vr_cancel_display_render_loop(VRDisplayHandle handle);
+extern int emscripten_vr_cancel_display_render_loop(VRDisplayHandle handle);
 
 extern int emscripten_vr_request_present(VRDisplayHandle handle, VRLayerInit* layerInit, int layerCount, em_vr_arg_callback_func callback, void* userData);
 extern int emscripten_vr_get_frame_data(VRDisplayHandle handle, VRFrameData* frameData);
@@ -142,8 +142,6 @@ extern int emscripten_vr_get_eye_parameters(VRDisplayHandle handle, VREye whichE
 extern int emscripten_vr_get_display_capabilities(VRDisplayHandle handle, VRDisplayCapabilities* displayCaps);
 extern bool emscripten_vr_display_connected(VRDisplayHandle handle);
 extern bool emscripten_vr_display_presenting(VRDisplayHandle handle);
-
-extern int emscripten_vr_reset_pose(VRDisplayHandle handle);
 
 #ifdef __cplusplus
 } // ~extern "C"

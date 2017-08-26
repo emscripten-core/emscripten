@@ -228,7 +228,7 @@ static void mainloop() {
                     return;
                 }
                 printf("Display Capabilities:\n"
-                       "{hasPosition: %d, hasExternalDisplay: %d, canPreset: %d, maxLayers: %lu}\n",
+                       "{hasPosition: %d, hasExternalDisplay: %d, canPresent: %d, maxLayers: %lu}\n",
                        caps.hasPosition, caps.hasExternalDisplay, caps.canPresent, caps.maxLayers);
             }
         }

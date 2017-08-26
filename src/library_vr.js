@@ -12,7 +12,7 @@ var LibraryWebVR = {
 
     initialized: false,
     ready: false,
-    version: [0, 0],
+    version: [-1, -1],
     devices: [],
 
     init: function() {
@@ -60,10 +60,6 @@ var LibraryWebVR = {
 
   emscripten_vr_version_minor: function() {
     return WebVR.version[1];
-  },
-
-  emscripten_vr_supported: function() {
-    return WebVR.version == null ? 1 : 0;
   },
 
   emscripten_vr_ready: function() {
@@ -140,13 +136,6 @@ var LibraryWebVR = {
   emscripten_vr_display_presenting: function(displayHandle) {
     var display = WebVR.dereferenceDisplayHandle(displayHandle);
     if (!display || !display.isPresenting) return 0;
-    return 1;
-  },
-
-  emscripten_vr_reset_pose: function(displayHandle) {
-    var display = WebVR.dereferenceDisplayHandle(displayHandle);
-    if (!display) return 0;
-    display.resetPose();
     return 1;
   },
 
@@ -234,19 +223,20 @@ var LibraryWebVR = {
     layerInit = new Array(layerCount);
     for (var i = 0; i < layerCount; ++i) {
         sourceStrPtr = {{{ makeGetValue('layerInitPtr', C_STRUCTS.VRLayerInit.source, 'void*') }}};
-        sourceStr = UTF8ToString(sourceStrPtr);
 
         var source = null;
-        if(sourceStr == '#canvas') {
-            /* Default emscripten canvas */
+        if(sourceStrPtr == 0) {
             source = Module['canvas'];
-        } else if (sourceStr && sourceStr.length > 0) {
-            /* Other canvas id */
-            source = document.getElementById(sourceStr);
-        }
+        } else {
+            sourceStr = UTF8ToString(sourceStrPtr);
 
-        if (!source) {
-            return 0;
+            if (sourceStr && sourceStr.length > 0) {
+                source = document.getElementById(sourceStr);
+            }
+
+            if (!source) {
+                return 0;
+            }
         }
 
         leftBounds = new Float32Array(4);
