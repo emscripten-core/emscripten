@@ -985,21 +985,31 @@ var LibraryBrowser = {
     }, millis);
   },
 
+  // TODO: currently not callable from a pthread, but immediately calls onerror() if not on main thread.
   emscripten_async_load_script: function(url, onload, onerror) {
-    Module['noExitRuntime'] = true;
-
     onload = Runtime.getFuncWrapper(onload, 'v');
+    onerror = Runtime.getFuncWrapper(onerror, 'v');
+
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) {
+      console.error('emscripten_async_load_script("' + Pointer_stringify(url) + '") failed, emscripten_async_load_script is currently not available in pthreads!');
+      return onerror ? onerror() : undefined;
+    }
+#endif
+    Module['noExitRuntime'] = true;
 
     assert(runDependencies === 0, 'async_load_script must be run when no other dependencies are active');
     var script = document.createElement('script');
-    script.onload = function script_onload() {
-      if (runDependencies > 0) {
-        dependenciesFulfilled = onload;
-      } else {
-        onload();
-      }
-    };
-    script.onerror = onerror;
+    if (onload) {
+      script.onload = function script_onload() {
+        if (runDependencies > 0) {
+          dependenciesFulfilled = onload;
+        } else {
+          onload();
+        }
+      };
+    }
+    if (onerror) script.onerror = onerror;
     script.src = Pointer_stringify(url);
     document.body.appendChild(script);
   },
