@@ -9,6 +9,7 @@
 void *ThreadMain(void *arg)
 {
 	printf("Hello from thread, string: %s, int: %d, double: %g\n", "str", 5, 42.0);
+	return 0;
 }
 
 int numThreadsToCreate = 1000;
