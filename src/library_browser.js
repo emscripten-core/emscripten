@@ -283,9 +283,6 @@ var LibraryBrowser = {
             contextAttributes[attribute] = webGLContextAttributes[attribute];
           }
         }
-#if GL_TESTING
-        contextAttributes['preserveDrawingBuffer'] = true;
-#endif
 
         contextHandle = GL.createContext(canvas, contextAttributes);
         if (contextHandle) {

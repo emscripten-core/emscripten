@@ -425,6 +425,11 @@ var LibraryGL = {
 #endif
         webGLContextAttributes['minorVersion'] = 0;
       }
+
+#if GL_TESTING
+      webGLContextAttributes['preserveDrawingBuffer'] = true;
+#endif
+
       var ctx;
       var errorInfo = '?';
       function onContextCreationError(event) {
