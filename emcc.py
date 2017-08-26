@@ -1067,6 +1067,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.EMTERPRETIFY:
           logging.error('-s EMTERPRETIFY=1 is not supported with -s USE_PTHREADS>0!')
           exit(1)
+      else:
+        if shared.Settings.PROXY_TO_PTHREAD:
+          logging.error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
+          exit(1)
 
       if shared.Settings.OUTLINING_LIMIT:
         if not options.js_opts:
