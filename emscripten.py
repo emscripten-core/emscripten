@@ -663,6 +663,28 @@ function _emscripten_asm_const_%s(%s) {
   body_marker = '// === Body ==='
   return pre.replace(body_marker, body_marker + '\n' + asm_consts_text + asm_funcs_text)
 
+# Test if the parentheses at body[openIdx] and body[closeIdx] are a match to each other.
+def parentheses_match(body, openIdx, closeIdx):
+  if closeIdx < 0: closeIdx += len(body)
+  count = 1
+  for i in range(openIdx+1, closeIdx+1):
+    if body[i] == body[openIdx]:
+      count += 1
+    elif body[i] == body[closeIdx]:
+      count -= 1
+      if count <= 0:
+        return i == closeIdx
+  return False
+
+def trim_asm_const_body(body):
+  body = body.strip()
+  orig = None
+  while orig != body:
+    orig = body
+    if len(body) > 1 and body[0] == '"' and body[-1] == '"': body = body[1:-1].strip()
+    if len(body) > 1 and body[0] == '{' and body[-1] == '}' and parentheses_match(body, 0, -1): body = body[1:-1].strip()
+    if len(body) > 1 and body[0] == '(' and body[-1] == ')' and parentheses_match(body, 0, -1): body = body[1:-1].strip()
+  return body
 
 def all_asm_consts(metadata):
   asm_consts = [0]*len(metadata['asmConsts'])
@@ -670,8 +692,7 @@ def all_asm_consts(metadata):
   for k, v in metadata['asmConsts'].iteritems():
     const = v[0].encode('utf-8')
     sigs = v[1]
-    if len(const) > 1 and const[0] == '"' and const[-1] == '"':
-      const = const[1:-1]
+    const = trim_asm_const_body(const)
     const = '{ ' + const + ' }'
     args = []
     arity = max(map(len, sigs)) - 1
