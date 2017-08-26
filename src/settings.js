@@ -258,8 +258,8 @@ var WEBSOCKET_SUBPROTOCOL = 'binary'; // A string containing a comma separated l
 var OPENAL_DEBUG = 0; // Print out debugging information from our OpenAL implementation.
 
 var GL_ASSERTIONS = 0; // Adds extra checks for error situations in the GL library. Can impact performance.
-var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you can set a runtime
-                  // option, in this case GL.debug.
+var TRACE_WEBGL_CALLS = 0; // If enabled, prints out all API calls to WebGL contexts. (*very* verbose)
+var GL_DEBUG = 0; // Enables more verbose debug printing of WebGL related operations. As with LIBRARY_DEBUG, this is toggleable at runtime with option GL.debug.
 var GL_TESTING = 0; // When enabled, sets preserveDrawingBuffer in the context, to allow tests to work (but adds overhead)
 var GL_MAX_TEMP_BUFFER_SIZE = 2097152; // How large GL emulation temp buffers are
 var GL_UNSAFE_OPTS = 1; // Enables some potentially-unsafe optimizations in GL emulation code
