@@ -414,6 +414,7 @@ typedef struct EmscriptenWebGLContextAttributes {
 
   EM_BOOL enableExtensionsByDefault;
   EM_BOOL explicitSwapControl;
+  EM_BOOL renderViaOffscreenBackBuffer;
 } EmscriptenWebGLContextAttributes;
 
 extern void emscripten_webgl_init_context_attributes(EmscriptenWebGLContextAttributes *attributes);

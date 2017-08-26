@@ -1390,7 +1390,8 @@
               "majorVersion",
               "minorVersion",
               "enableExtensionsByDefault",
-              "explicitSwapControl"
+              "explicitSwapControl",
+              "renderViaOffscreenBackBuffer"
             ],
             "EmscriptenFullscreenStrategy": [
               "scaleMode",

@@ -905,6 +905,7 @@ var TEXTDECODER = 1; // Is enabled, use the JavaScript TextDecoder API for strin
 var OFFSCREENCANVAS_SUPPORT = 0; // If set to 1, enables support for transferring canvases to pthreads and creating WebGL contexts in them,
                                  // as well as explicit swap control for GL contexts. This needs browser support for the OffscreenCanvas
                                  // specification.
+var OFFSCREEN_FRAMEBUFFER = 0; // If set to 1, enables rendering to an offscreen render target first, and then finally flipping on to the screen.
 
 var FETCH_DEBUG = 0; // If nonzero, prints out debugging information in library_fetch.js
 

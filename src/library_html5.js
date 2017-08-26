@@ -1831,12 +1831,21 @@ var LibraryJSEvents = {
 #if OFFSCREENCANVAS_SUPPORT
     if (contextAttributes['explicitSwapControl']) {
       var supportsOffscreenCanvas = canvas.transferControlToOffscreen || (typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas);
+
       if (!supportsOffscreenCanvas) {
+#if OFFSCREEN_FRAMEBUFFER
+        if (!contextAttributes['renderViaOffscreenBackBuffer']) {
+          contextAttributes['renderViaOffscreenBackBuffer'] = true;
+          console.error('emscripten_webgl_create_context: Performance warning, OffscreenCanvas is not supported but explicitSwapControl was requested, so force-enabling renderViaOffscreenBackBuffer=true to allow explicit swapping!');
+        }
+#else
 #if GL_DEBUG
-        console.error('emscripten_webgl_create_context failed: OffscreenCanvas is not supported!');
+        console.error('emscripten_webgl_create_context failed: OffscreenCanvas is not supported but explicitSwapControl was requested!');
 #endif
         return 0;
+#endif
       }
+
       if (canvas.transferControlToOffscreen) {
         GL.offscreenCanvases[canvas.id] = canvas.transferControlToOffscreen();
         GL.offscreenCanvases[canvas.id].id = canvas.id;
@@ -1844,11 +1853,14 @@ var LibraryJSEvents = {
       }
     }
 #else
+#else // !OFFSCREENCANVAS_SUPPORT
+#if !OFFSCREEN_FRAMEBUFFER
     if (contextAttributes['explicitSwapControl']) {
-      console.error('emscripten_webgl_create_context failed: explicitSwapControl is not supported, please rebuild with -s OFFSCREENCANVAS_SUPPORT=1 to enable targeting the experimental OffscreenCanvas specification!');
+      console.error('emscripten_webgl_create_context failed: explicitSwapControl is not supported, please rebuild with -s OFFSCREENCANVAS_SUPPORT=1 to enable targeting the experimental OffscreenCanvas specification, or rebuild with -s OFFSCREEN_FRAMEBUFFER=1 to emulate explicitSwapControl in the absence of OffscreenCanvas support!');
       return 0;
     }
-#endif
+#endif // ~!OFFSCREEN_FRAMEBUFFER
+#endif // ~!OFFSCREENCANVAS_SUPPORT
 
     var contextHandle = GL.createContext(canvas, contextAttributes);
     return contextHandle;
@@ -1881,6 +1893,16 @@ var LibraryJSEvents = {
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     }
+
+#if OFFSCREEN_FRAMEBUFFER
+    if (GL.currentContext.defaultFbo) {
+      GL.blitOffscreenFramebuffer(GL.currentContext);
+#if GL_DEBUG
+      if (GL.currentContext.GLctx.commit) console.error('emscripten_webgl_commit_frame(): Offscreen framebuffer should never have gotten created when canvas is in OffscreenCanvas mode, since it is redundant and not necessary');
+#endif
+      return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+    }
+#endif
     if (!GL.currentContext.GLctx.commit) {
 #if GL_DEBUG
       console.error('emscripten_webgl_commit_frame() failed: OffscreenCanvas is not supported by the current GL context!');
