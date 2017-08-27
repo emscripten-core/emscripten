@@ -61,14 +61,7 @@ EM_ASM: Pass an integer and a double
 4. int and double 42 43.5
 5. int and double 42 43.5
 
-EM_ASM_VOID: Pass an integer and a double
-1. int and double in void 42 43.5
-2. int and double in void 42 43.5
-3. int and double in void 42 43.5
-4. int and double in void 42 43.5
-5. int and double in void 42 43.5
-
-EM_ASM: Pass an integer, return an integer back
+EM_ASM_INT: Pass an integer, return an integer back
 1. got int 42
 1. returned int 3
 2. got int 42
@@ -80,7 +73,7 @@ EM_ASM: Pass an integer, return an integer back
 5. got int 42
 5. returned int 7
 
-EM_ASM: Pass an integer, return an integer back, wrap code block in extra parentheses
+EM_ASM_INT: Pass an integer, return an integer back, wrap code block in extra parentheses
 1. got int, extra parentheses 42
 1. returned int, extra parentheses 3
 2. got int, extra parentheses 42
@@ -92,7 +85,7 @@ EM_ASM: Pass an integer, return an integer back, wrap code block in extra parent
 5. got int, extra parentheses 42
 5. returned int, extra parentheses 7
 
-EM_ASM: More imaginable ways for user to wrap in extra parentheses
+EM_ASM_INT: More imaginable ways for user to wrap in extra parentheses
 1. got int, extra extra parentheses 42
 1. returned int, extra extra parentheses 5
 2. got int, extra extra parentheses 42
@@ -112,7 +105,7 @@ EM_ASM_INT: Return an integer back.
 5. got int 42
 5. returned int 7
 
-EM_ASM: Return an integer in a single brief statement.
+EM_ASM_INT: Return an integer in a single brief statement.
 1. returned statement 16777216
 2. returned statement 16777217
 3. returned statement 16777218
@@ -155,7 +148,7 @@ EM_ASM_DOUBLE: Pass a double and an integer, return a double.
 5. got double and int 5.5 42
 5. returned double 7.500000
 
-EM_ASM: A comma character (,) inside the code block may need extra parentheses
+EM_ASM_INT: A comma character (,) inside the code block may need extra parentheses
 1. comma in em_asm
 1. returned 15
 2. comma in em_asm

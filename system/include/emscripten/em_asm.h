@@ -43,18 +43,18 @@ void emscripten_asm_const(const char* code);
 // then wrap the whole code block inside parentheses (). See tests/core/test_em_asm_2.cpp
 // for example code snippets.
 
-// Runs the given JavaScript code, and returns nothing back
-#define EM_ASM_VOID(code, ...) ((void)emscripten_asm_const_int(#code, ##__VA_ARGS__))
+// Runs the given JavaScript code, and returns nothing back.
+#define EM_ASM(code, ...) ((void)emscripten_asm_const_int(#code, ##__VA_ARGS__))
 
-// Runs the given JavaScript code, and returns an integer back. EM_ASM is a
-// convenient alias to EM_ASM_INT for brevity.
+// Runs the given JavaScript code, and returns an integer back.
 #define EM_ASM_INT(code, ...) emscripten_asm_const_int(#code, ##__VA_ARGS__)
-#define EM_ASM(code, ...) emscripten_asm_const_int(#code, ##__VA_ARGS__)
 
-// Runs the given JavaScript code, and returns a double back
+// Runs the given JavaScript code, and returns a double back.
 #define EM_ASM_DOUBLE(code, ...) emscripten_asm_const_double(#code, ##__VA_ARGS__)
 
 // Old forms for compatibility, no need to use these.
+// Replace EM_ASM_, EM_ASM_ARGS and EM_ASM_INT_V with EM_ASM_INT,
+// and EM_ASM_DOUBLE_V with EM_ASM_DOUBLE.
 #define EM_ASM_(code, ...) emscripten_asm_const_int(#code, __VA_ARGS__)
 #define EM_ASM_ARGS(code, ...) emscripten_asm_const_int(#code, __VA_ARGS__)
 #define EM_ASM_INT_V(code) emscripten_asm_const_int(#code)
