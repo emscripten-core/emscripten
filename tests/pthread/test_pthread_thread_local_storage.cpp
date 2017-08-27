@@ -20,7 +20,7 @@ void *ThreadMain(void *arg)
 		for(int i = 0; i < NUM_KEYS; ++i)
 		{
 			local_keys[i] = (uintptr_t)pthread_getspecific(keys[i]);
-//			EM_ASM_INT( { Module['printErr']('Thread ' + $0 + ': Read value ' + $1 + ' from TLS for key at index ' + $2); }, pthread_self(), (int)local_keys[i], i);
+//			EM_ASM(Module['printErr']('Thread ' + $0 + ': Read value ' + $1 + ' from TLS for key at index ' + $2), pthread_self(), (int)local_keys[i], i);
 		}
 
 		for(int i = 0; i < NUM_KEYS; ++i)
@@ -33,7 +33,7 @@ void *ThreadMain(void *arg)
 	for(int i = 0; i < NUM_KEYS; ++i)
 	{
 		local_keys[i] = (uintptr_t)pthread_getspecific(keys[i]);
-//		EM_ASM_INT( { Module['printErr']('Thread ' + $0 + ' final verify: Read value ' + $1 + ' from TLS for key at index ' + $2); }, pthread_self(), (int)local_keys[i], i);
+//		EM_ASM(Module['printErr']('Thread ' + $0 + ' final verify: Read value ' + $1 + ' from TLS for key at index ' + $2), pthread_self(), (int)local_keys[i], i);
 		if (local_keys[i] != NUM_ITERS)
 			pthread_exit((void*)1);
 	}
@@ -74,7 +74,7 @@ int main()
 				int status;
 				int rc = pthread_join(thread[i], (void**)&status);
 				assert(rc == 0);
-				EM_ASM_INT( { Module['printErr']('Main: Joined thread idx ' + $0 + ' with status ' + $1); }, i, (int)status);
+				EM_ASM(Module['printErr']('Main: Joined thread idx ' + $0 + ' with status ' + $1), i, (int)status);
 				assert(status == 0);
 				thread[i] = 0;
 				if (numThreadsToCreate > 0)

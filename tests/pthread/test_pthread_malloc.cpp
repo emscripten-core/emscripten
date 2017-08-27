@@ -22,14 +22,14 @@ static void *thread_start(void *arg)
     int k = *mem[i];
     if (k != n+i)
     {
-      EM_ASM_INT( { console.error('Memory corrupted! mem[i]: ' + $0 + ', i: ' + $1 + ', n: ' + $2); }, k, i, n);
+      EM_ASM(console.error('Memory corrupted! mem[i]: ' + $0 + ', i: ' + $1 + ', n: ' + $2), k, i, n);
       pthread_exit((void*)1);
     }
 
     assert(*mem[i] == n+i);
     free(mem[i]);
   }
-  EM_ASM_INT( { console.log('Worker with task number ' + $0 + ' finished.'); }, n);
+  EM_ASM(console.log('Worker with task number ' + $0 + ' finished.'), n);
   pthread_exit(0);
 }
 

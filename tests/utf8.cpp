@@ -9,7 +9,7 @@
 int main() {
   const char asciiString[] = "Hello world!";
   char asciiString2[128] = {};
-  EM_ASM_INT({
+  EM_ASM({
     var str = Module.AsciiToString($0);
     Module.print(str);
     Module.stringToAscii(str, $1);
@@ -17,7 +17,7 @@ int main() {
   assert(!strcmp(asciiString, asciiString2));
 
   char asciiString3[128] = {};
-  EM_ASM_INT({
+  EM_ASM({
     var str = Module.UTF8ToString($0);
     Module.print(str);
     var numBytesWritten = Module.stringToUTF8(str, $1, $2);
@@ -27,7 +27,7 @@ int main() {
 
   const char utf8String[] = u8"Hyv\u00E4\u00E4 p\u00E4iv\u00E4\u00E4! T\u00F6\u00F6\u00F6\u00F6t! abc\u2603\u20AC\U0002007C123 --- abc\u2603\u20AC\U0002007C123."; // U+2603 is snowman, U+20AC is the Euro sign, U+2007C is a Chinese Han character that looks like three raindrops.
   char utf8String2[128] = {};
-  EM_ASM_INT({
+  EM_ASM({
     var str = Module.UTF8ToString($0);
     Module.print(str);
     var numBytesWritten = Module.stringToUTF8(str, $1, $2);
@@ -40,7 +40,7 @@ int main() {
   assert(!strcmp(utf8String, utf8String2));
 
   // Test that text gets properly cut off if output buffer is too small.
-  EM_ASM_INT({
+  EM_ASM({
     var str = Module.UTF8ToString($0);
     Module.print(str);
     var numBytesWritten = Module.stringToUTF8(str, $1, $2);
@@ -49,7 +49,7 @@ int main() {
   assert(strlen(utf8String2) == 9);
 
   // Zero-length string.
-  EM_ASM_INT({
+  EM_ASM({
     var str = Module.UTF8ToString($0);
     Module.print(str);
     var numBytesWritten = Module.stringToUTF8(str, $1, $2);
@@ -59,7 +59,7 @@ int main() {
 
   // No bytes output.
   utf8String2[0] = 'X';
-  EM_ASM_INT({
+  EM_ASM({
     var str = Module.UTF8ToString($0);
     Module.print(str);
     var numBytesWritten = Module.stringToUTF8(str, $1, $2);

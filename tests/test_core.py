@@ -6133,7 +6133,7 @@ def process(filename):
     }
 
     int main() {
-      EM_ASM_INT({
+      EM_ASM({
         Runtime.getFuncWrapper($0, 'vi')(0);
         Runtime.getFuncWrapper($1, 'vii')(0, 0);
       }, func1, func2);

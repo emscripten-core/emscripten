@@ -45,14 +45,14 @@ int main()
   emscripten_set_webglcontextlost_callback(0, 0, 0, context_lost);
   emscripten_set_webglcontextrestored_callback(0, 0, 0, context_restored);
   // When we force a context loss, we should get an event, i.e. context_lost_desired() should get called.
-  EM_ASM_INT({
+  EM_ASM({
       // The GL object is accessed here in a closure unsafe manner, so this test should not be run with closure enabled.
       Module['firstGLContextExt'] = GL.contexts[$0].GLctx.getExtension('WEBGL_lose_context');
     }, context);
 
   emscripten_webgl_destroy_context(context);
 
-  EM_ASM_INT({
+  EM_ASM({
       Module['firstGLContextExt'].loseContext();
     }, context);
 
