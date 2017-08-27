@@ -38,6 +38,17 @@ Defines
 
 	Note the ``{`` and ``}``.
 
+    Null-terminated C strings can also be passed into ``EM_ASM`` blocks, but to operate on them, they need to be copied out from the heap to convert to high-level JavaScript strings. ::
+
+		EM_ASM(console.log('hello ' + UTF8ToString($0)), "world!");
+
+    In the same manner, pointers to any type (including ``void *``) can be passed inside ``EM_ASM`` code, where they appear as integers like ``char *`` pointers above did. Accessing the data can be managed by reading the heap directly. ::
+
+		int arr[2] = { 30, 45 };
+		EM_ASM({
+		  console.log('Data: ' + HEAP32[$0>>2] + ', ' + HEAP32[($0+4)>>2]);
+		}, arr);
+
 	.. note:: 
 		- As of Emscripten ``1.30.4``, the contents of ``EM_ASM`` code blocks appear inside the normal JS file, and as result, Closure compiler and other JavaScript minifiers will be able to operate on them. You may need to use safety quotes in some places (``a['b']`` instead of ``a.b``) to avoid minification fro occurring.
 		- The C preprocessor does not have an understanding of JavaScript tokens, and as a result, if the ``code`` block contains a comma character ``,``, it may be necessary to wrap the code block inside parentheses. For example, code ``EM_ASM(return [1,2,3].length);`` will not compile, but ``EM_ASM((return [1,2,3].length));`` does.
@@ -53,6 +64,18 @@ Defines
 		}, 100);
 
 		int y = EM_ASM_INT(return TOTAL_MEMORY);
+
+    Strings can be returned back to C from JavaScript, but one needs to be careful about memory management. ::
+
+		char *str = (char*)EM_ASM_INT({
+			var jsString = 'Hello with some exotic Unicode characters: Tässä on yksi lumiukko: ☃, ole hyvä.';
+			var lengthBytes = lengthBytesUTF8(jsString)+1; // 'jsString.length' would return the length of the string as UTF-16 units, but Emscripten C strings operate as UTF-8.
+			var stringOnWasmHeap = _malloc(lengthBytes);
+			stringToUTF8(jsString, stringOnWasmHeap, lengthBytes+1);
+			return stringOnWasmHeap;
+		});
+		printf("UTF8 string says: %s\n", str);
+		free(str); // Each call to _malloc() must be paired with free(), or heap memory will leak!
 
 
 Calling JavaScript From C/C++

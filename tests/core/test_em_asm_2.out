@@ -21,6 +21,13 @@ EM_ASM: Double quotes inside a string
 6. this is "double" "quotes" without esacping
 7. this is "double" "quotes"
 
+EM_ASM: Pass a string
+1. hello world!
+2. hello world!
+3. hello world!
+4. hello world!
+5. hello world!
+
 EM_ASM: Simple expression without trailing semicolon, wrap code block in extra parentheses
 1. expression without trailing semicolon, in parentheses
 2. expression without trailing semicolon, in parentheses

@@ -1,4 +1,5 @@
 #include <emscripten.h>
+#include <stdio.h>
 
 int main()
 {
@@ -24,6 +25,13 @@ int main()
   EM_ASM({console.log('5. this is \"double\" \"quotes\"')});
   EM_ASM({console.log('6. this is "double" "quotes" without esacping')});
   EM_ASM("{console.log('7. this is \"double\" \"quotes\"')}");
+
+  printf("\nEM_ASM: Pass a string\n");
+  EM_ASM(console.log('1. hello ' + UTF8ToString($0)), "world!");
+  EM_ASM("console.log('2. hello ' + UTF8ToString($0))", "world!");
+  EM_ASM({"console.log('3. hello ' + UTF8ToString($0))"}, "world!");
+  EM_ASM({console.log('4. hello ' + UTF8ToString($0))}, "world!");
+  EM_ASM("{console.log('5. hello ' + UTF8ToString($0))}", "world!");
 
   printf("\nEM_ASM: Simple expression without trailing semicolon, wrap code block in extra parentheses\n");
   EM_ASM((console.log('1. expression without trailing semicolon, in parentheses')));
