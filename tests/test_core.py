@@ -1603,9 +1603,29 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm', force_c=True)
 
+  # Tests various different ways to invoke the EM_ASM(), EM_ASM_INT() and EM_ASM_DOUBLE() macros.
   def test_em_asm_2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2', force_c=True)
+
+  # Tests various different ways to invoke the MAIN_THREAD_EM_ASM(), MAIN_THREAD_EM_ASM_INT() and MAIN_THREAD_EM_ASM_DOUBLE() macros.
+  # This test is identical to test_em_asm_2, just search-replaces EM_ASM to MAIN_THREAD_EM_ASM on the test file. That way if new
+  # test cases are added to test_em_asm_2.cpp for EM_ASM, they will also get tested in MAIN_THREAD_EM_ASM form.
+  def test_main_thread_em_asm(self):
+    src = open(path_from_root('tests', 'core', 'test_em_asm_2.cpp'), 'r').read()
+    test_file = 'src.cpp'
+    open(test_file, 'w').write(src.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
+
+    expected_result = open(path_from_root('tests', 'core', 'test_em_asm_2.out'), 'r').read()
+    expected_result_file = 'result.out'
+    open(expected_result_file, 'w').write(expected_result.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
+
+    self.do_run_from_file(test_file, expected_result_file)
+    self.do_run_from_file(test_file, expected_result_file, force_c=True)
+
+  def test_main_thread_async_em_asm(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm')
+    self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm', force_c=True)
 
   def test_em_asm_unicode(self):
     self.do_run(r'''
