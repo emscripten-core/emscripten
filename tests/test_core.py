@@ -6036,7 +6036,7 @@ def process(filename):
       }
 
       int main() {
-        int x = EM_ASM_INT_V({ return Module._other_function() });
+        int x = EM_ASM_INT({ return Module._other_function() });
         emscripten_run_script_string(""); // Add a reference to a symbol that exists in src/deps_info.json to uncover issue #2836 in the test suite.
         printf("waka %d!\n", x);
         return 0;
@@ -6069,7 +6069,7 @@ def process(filename):
       }
 
       int main() {
-        int x = EM_ASM_INT_V({ return Module._exported_func_from_response_file_4999() });
+        int x = EM_ASM_INT({ return Module._exported_func_from_response_file_4999() });
         emscripten_run_script_string(""); // Add a reference to a symbol that exists in src/deps_info.json to uncover issue #2836 in the test suite.
         printf("waka %d!\n", x);
         return 0;

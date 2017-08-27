@@ -35,7 +35,7 @@ int main(int argc, char **argv)
   assert(h == 200);
 
   // The following line will not work with OffscreenCanvas, that is covered in another test
-  int jsAgreesWithSize = EM_ASM_INT_V({return Module['canvas'].width == 100 && Module['canvas'].height == 200});
+  int jsAgreesWithSize = EM_ASM_INT({return Module['canvas'].width == 100 && Module['canvas'].height == 200});
   assert(jsAgreesWithSize);
 
   // Accessing NULL should also resize Module['canvas']

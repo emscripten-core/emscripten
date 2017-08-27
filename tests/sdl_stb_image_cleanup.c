@@ -17,7 +17,7 @@ int main() {
     loadImage("screenshot.jpg");
   }
 
-  int result = EM_ASM_INT_V({
+  int result = EM_ASM_INT({
     return Math.trunc(emscriptenMemoryProfiler.totalMemoryAllocated / 1024 / 1024);
   });
 

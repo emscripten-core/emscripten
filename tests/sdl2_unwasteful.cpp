@@ -27,7 +27,7 @@ static void main_loop(void)
             Module.print('set values');
         });
     } else if (runs > 1) {
-        EM_ASM_ARGS({
+        EM_ASM({
             assert(Module.the_ctx === Module.SDL2.ctx, 'ctx');
             assert(Module.the_image === Module.SDL2.image, 'image');
             Module.print('check ok ' + $0);

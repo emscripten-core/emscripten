@@ -12,7 +12,7 @@ int main()
 	assert(!strcmp(str, "Hello!"));
 	printf("OK\n");
 #ifdef REPORT_RESULT
-	int result = EM_ASM_INT_V({return Module.manuallyDownloadedData;});
+	int result = EM_ASM_INT({return Module.manuallyDownloadedData;});
 	REPORT_RESULT(result);
 #endif
 }

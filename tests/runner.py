@@ -821,7 +821,7 @@ class BrowserCore(RunnerCore):
 
   static void _ReportResult(int result, int sync)
   {
-    EM_ASM_({
+    EM_ASM({
       var xhr = new XMLHttpRequest();
       var result = $0;
       if (Module['pageThrewException']) result = 12345;

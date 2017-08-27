@@ -2,7 +2,7 @@
 #include <emscripten.h>
 
 int main() {
-  int result = EM_ASM_INT_V({
+  int result = EM_ASM_INT({
     return !!Module['memoryInitializerRequest'];
   });
   printf("memory init request: %d\n", result);

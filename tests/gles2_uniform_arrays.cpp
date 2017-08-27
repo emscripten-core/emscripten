@@ -98,7 +98,7 @@ void RunTest(int testVariant)
 
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
-    int in_worker = EM_ASM_INT_V({
+    int in_worker = EM_ASM_INT({
       return typeof importScripts !== 'undefined'
     });
 
