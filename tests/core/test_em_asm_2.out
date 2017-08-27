@@ -5,6 +5,22 @@ EM_ASM: Simple expression without trailing semicolon
 4. expression without trailing semicolon
 5. expression without trailing semicolon
 
+EM_ASM: Double quotes
+1. string in double quotes
+2. string in double quotes
+3. string in double quotes
+4. string in double quotes
+5. string in double quotes
+
+EM_ASM: Double quotes inside a string
+1. this is "double" "quotes"
+2. this is "double" "quotes" without escaping
+3. this is "double" "quotes"
+4. this is "double" "quotes"
+5. this is "double" "quotes"
+6. this is "double" "quotes" without esacping
+7. this is "double" "quotes"
+
 EM_ASM: Simple expression without trailing semicolon, wrap code block in extra parentheses
 1. expression without trailing semicolon, in parentheses
 2. expression without trailing semicolon, in parentheses

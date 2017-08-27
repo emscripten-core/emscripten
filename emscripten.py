@@ -681,7 +681,7 @@ def trim_asm_const_body(body):
   orig = None
   while orig != body:
     orig = body
-    if len(body) > 1 and body[0] == '"' and body[-1] == '"': body = body[1:-1].strip()
+    if len(body) > 1 and body[0] == '"' and body[-1] == '"': body = body[1:-1].replace('\\"', '"').strip()
     if len(body) > 1 and body[0] == '{' and body[-1] == '}' and parentheses_match(body, 0, -1): body = body[1:-1].strip()
     if len(body) > 1 and body[0] == '(' and body[-1] == ')' and parentheses_match(body, 0, -1): body = body[1:-1].strip()
   return body

@@ -9,6 +9,22 @@ int main()
   EM_ASM({console.log('4. expression without trailing semicolon')});
   EM_ASM("{console.log('5. expression without trailing semicolon')}");
 
+  printf("\nEM_ASM: Double quotes\n");
+  EM_ASM(console.log("1. string in double quotes"));
+  EM_ASM("console.log(\"2. string in double quotes\")");
+  EM_ASM({"console.log(\"3. string in double quotes\")"});
+  EM_ASM({console.log("4. string in double quotes")});
+  EM_ASM("{console.log(\"5. string in double quotes\")}");
+
+  printf("\nEM_ASM: Double quotes inside a string\n");
+  EM_ASM(console.log('1. this is \"double\" \"quotes\"'));
+  EM_ASM(console.log('2. this is "double" "quotes" without escaping'));
+  EM_ASM("console.log('3. this is \"double\" \"quotes\"')");
+  EM_ASM({"console.log('4. this is \"double\" \"quotes\"')"});
+  EM_ASM({console.log('5. this is \"double\" \"quotes\"')});
+  EM_ASM({console.log('6. this is "double" "quotes" without esacping')});
+  EM_ASM("{console.log('7. this is \"double\" \"quotes\"')}");
+
   printf("\nEM_ASM: Simple expression without trailing semicolon, wrap code block in extra parentheses\n");
   EM_ASM((console.log('1. expression without trailing semicolon, in parentheses')));
   EM_ASM(("console.log('2. expression without trailing semicolon, in parentheses')"));
