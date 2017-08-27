@@ -10,6 +10,20 @@ The C APIs in `vr.h <https://github.com/kripken/emscripten/blob/master/system/in
 	:local:
 	:depth: 1
 
+.. _test-example-code-vr-api:
+
+Test/Example code
+-----------------
+
+The vr test code demonstrates how to use this API:
+
+	- `test_vr.c <https://github.com/kripken/emscripten/blob/master/tests/test_vr.c>`_
+
+.. _functions-vr-api:
+
+Functions
+---------
+
 Initialization
 ==============
 
@@ -19,11 +33,11 @@ Initialization
 	<https://w3c.github.io/webvr/spec/1.1/#navigator-getvrdisplays-attribute>`_
 	and when completed, set the return of :c:func:`emscripten_vr_ready` to be `true`.
 
-.. tip:: This call succeeding is not sufficient for use of the rest of the API. Please
-	make sure to wait until the return value of :c:func:`emscripten_vr_ready` is true.
-
 	:returns: `1` on success, `0` if the browsers WebVR support is insufficient.
 	:rtype: int
+
+.. tip:: This call succeeding is not sufficient for use of the rest of the API. Please
+	make sure to wait until the return value of :c:func:`emscripten_vr_ready` is true.
 
 .. c:function:: int emscripten_vr_ready()
 
@@ -68,13 +82,13 @@ called the return value of :c:func:`emscripten_vr_ready` to be `true`.
 	:returns: Number of displays connected.
 	:rtype: int
 
-.. c:function: VRDisplayHandle emscripten_vr_get_display_handle(int displayIndex)
+.. c:function:: VRDisplayHandle emscripten_vr_get_display_handle(int displayIndex)
 
 	:param int displayIndex: index of display (inclusive 0 to exclusive :c:func:`emscripten_vr_count_displays`).
 	:returns: handle for a VR display.
 	:rtype: VRDisplayHandle
 
-.. c:function: char* emscripten_vr_get_display_name(VRDisplayHandle handle)
+.. c:function:: char* emscripten_vr_get_display_name(VRDisplayHandle handle)
 
 	Get a user-readable name which identifies the VR display.
 
@@ -82,14 +96,14 @@ called the return value of :c:func:`emscripten_vr_ready` to be `true`.
 	:returns: name of the VR display or `0 (NULL)` if the handle is invalid.
 	:rtype: char*
 
-.. c:function: bool emscripten_vr_get_display_connected(VRDisplayHandle handle)
+.. c:function:: bool emscripten_vr_get_display_connected(VRDisplayHandle handle)
 
 	:param VRDisplayHandle handle: |display-handle-parameter-doc|
 	:returns: `true` if the display is connected, `false` otherwise or when
 		the handle is invalid.
 	:rtype: bool
 
-.. c:function: bool emscripten_vr_get_display_presenting(VRDisplayHandle handle)
+.. c:function:: bool emscripten_vr_get_display_presenting(VRDisplayHandle handle)
 
 	See also :c:func:`emscripten_vr_request_present`.
 
@@ -98,14 +112,14 @@ called the return value of :c:func:`emscripten_vr_ready` to be `true`.
 		or when the handle is invalid.
 	:rtype: bool
 
-.. c:function: int emscripten_vr_get_display_capabilities(VRDisplayHandle handle, VRDisplayCapabilities* displayCaps)
+.. c:function:: int emscripten_vr_get_display_capabilities(VRDisplayHandle handle, VRDisplayCapabilities* displayCaps)
 
 	:param VRDisplayHandle handle: |display-handle-parameter-doc|
 	:param VRDisplayCapabilities displayCaps: receives capabilities of the VR display.
 	:returns: |display-function-return-doc|
 	:rtype: bool
 
-.. c:function: int emscripten_vr_get_eye_parameters(VRDisplayHandle handle, VREye whichEye, VREyeParameters* eyeParams)
+.. c:function:: int emscripten_vr_get_eye_parameters(VRDisplayHandle handle, VREye whichEye, VREyeParameters* eyeParams)
 
 	:param VRDisplayHandle handle: |display-handle-parameter-doc|
 	:param VREye whichEye: which eye to query parameters for.
@@ -116,7 +130,7 @@ called the return value of :c:func:`emscripten_vr_ready` to be `true`.
 Render Loop
 ===========
 
-In contrast to the usual emscripten main loop (see :ref:`_emscripten-h-browser-execution-environment`),
+In contrast to the usual emscripten main loop (see :ref:`emscripten-h-browser-execution-environment`),
 VR displays require their own rendering loop which is independent from the main loop. The rendering
 loop can be set per display and will act like a main loop with timing mode ``EM_TIMING_RAF`` until the
 display is requested to present, as of which it will run at the VR display's refresh rate.
@@ -125,11 +139,11 @@ display is requested to present, as of which it will run at the VR display's ref
 
 	Set a C function as the per frame rendering callback of a VR display.
 
-.. tip:: There can be only *one* render loop function per VR display. To change the render loop function, first :c:func:`cancel <emscripten_vr_cancel_display_render_loop>` the current loop, and then call this function to set another.
-
 	:param VRDisplayHandle handle: |display-handle-parameter-doc|: id of the display to set the render loop for.
 	:param em_vr_callback_func callback: C function to set as per frame rendering callback.
 	:rtype: |display-function-return-doc|
+
+.. tip:: There can be only *one* render loop function per VR display. To change the render loop function, first :c:func:`cancel <emscripten_vr_cancel_display_render_loop>` the current loop, and then call this function to set another.
 
 .. c:function:: void emscripten_vr_set_display_render_loop_arg(VRDisplayHandle handle, em_vr_callback_func callback, void* arg)
 
@@ -176,9 +190,9 @@ display is requested to present, as of which it will run at the VR display's ref
 	If the request is successful `callback` will be called with `userData` and the render
 	loop will continue rendering at the refresh rate of the VR display.
 
-	Must be called from a user callback (see :ref:`HTML5 API <_html5-h>`_).
+	Must be called from a user callback (see :ref:`HTML5 API <html5-h>`).
 
-	See the :ref:`specification of VRDisplay.requestPresent <https://w3c.github.io/webvr/spec/1.1/#dom-vrdisplay-requestpresent>` for detailed information.
+	See the specification of `VRDisplay.requestPresent <https://w3c.github.io/webvr/spec/1.1/#dom-vrdisplay-requestpresent>`_ for detailed information.
 
 	:param VRDisplayHandle handle: |display-handle-parameter-doc|
 	:param VRLayerInit layers: array of layers which will be rendered to.
@@ -193,6 +207,164 @@ display is requested to present, as of which it will run at the VR display's ref
 
 	:param VRDisplayHandle handle: |display-handle-parameter-doc|
 	:rtype: |display-function-return-doc|
+
+.. _defines-vr-api:
+
+Defines
+-------
+
+.. c:macro:: VR_EYE_LEFT
+	VR_EYE_RIGHT
+
+	Eye values for use with :c:func:`emscripten_vr_get_eye_parameters`.
+
+.. _vr-pose-defines-vr-api:
+
+.. c:macro:: VR_POSE_POSITION
+	VR_POSE_LINEAR_VELOCITY
+	VR_POSE_LINEAR_ACCELERATION
+	VR_POSE_ORIENTATION
+	VR_POSE_ANGULAR_VELOCITY
+	VR_POSE_ANGULAR_ACCELERATION
+
+	Flags which describe which properties of a :c:type:`VRPose` are valid.
+
+.. c:macro:: VR_LAYER_DEFAULT_LEFT_BOUNDS
+	VR_LAYER_DEFAULT_RIGHT_BOUNDS
+
+	Default values to pass to :c:type:`VRLayerInit`.
+
+.. _types-vr-api:
+
+Types
+-----
+
+.. c:type:: VRDisplayCapabilities
+
+	Structure passed to :c:func:`emscripten_vr_get_display_capabilities`, maps to the WebVR `VRDisplayCapabilities <https://w3c.github.io/webvr/spec/1.1/#interface-vrdisplaycapabilities>`__ interface.
+
+	.. c:member:: int32_t hasPosition
+
+	.. c:member:: int32_t hasExternalDisplay
+
+	.. c:member:: int32_t canPresent
+
+	.. c:member:: unsigned long maxLayers
+
+
+.. c:type:: VRLayerInit
+
+	Structure passed to :c:func:`emscripten_vr_request_present`, maps to the WebVR `VRLayerInit <https://w3c.github.io/webvr/spec/1.1/#interface-vrlayerinit>`__ interface.
+
+	.. c:member:: const char* source
+
+		Id of the source canvas which will be used to present to the VR display.
+
+		`0 (NULL)` is used to refer to ``Module.canvas``.
+
+	.. c:member:: float[4] leftBounds
+
+		Texture bounds of the left eye on the target canvas. Initialize with :c:macro:`VR_LAYER_DEFAULT_LEFT_BOUNDS` for default.
+
+	.. c:member:: float[4] rightBounds
+
+		Texture bounds of the right eye on the target canvas. Initialize with :c:macro:`VR_LAYER_DEFAULT_RIGHT_BOUNDS` for default.
+
+
+.. c:type:: VRPose
+
+	Substructure of :c:type:`VRFrameData`, maps to the WebVR
+	`VRPose <https://w3c.github.io/webvr/spec/1.1/#interface-vrpose>`__ interface.
+
+	VR Displays do not necessarily report all of the pose values (mobile VR devices usually
+	only report orientation, but not position for example). To check which values are valid,
+	the :c:member:`poseFlags <poseFlags>` member provides a bitmask of
+	:ref:`VR_POSE_* <vr-pose-defines-vr-api>` which has a bit set for every valid value.
+
+	.. c:member:: VRVector3 position
+
+		Position, valid only if ``poseFlags & VR_POSE_POSITION == 0``.
+
+	.. c:member:: VRVector3 linearVelocity
+
+		Linear velocity, valid only if ``poseFlags & VR_POSE_LINEAR_VELOCITY == 0``.
+
+	.. c:member:: VRVector3 linearAcceleration
+
+		Linear acceleration, valid only if ``poseFlags & VR_POSE_LINEAR_ACCELERATION == 0``.
+
+	.. c:member:: VRQuaternion orientation
+
+		Orientation quaternion, valid only if ``poseFlags & VR_POSE_ORIENTATION == 0``.
+
+	.. c:member:: VRVector3 angularVelocity
+
+		Angular velocity, valid only if ``poseFlags & VR_POSE_ANGULAR_VELOCITY == 0``.
+
+	.. c:member:: VRVector3 angularAcceleration
+
+		Angular acceleration, valid only if ``poseFlags & VR_POSE_ANGULAR_ACCELERATION == 0``.
+
+	.. c:member:: int poseFlags
+
+		Bitmask of :ref:`VR_POSE_* <vr-pose-defines-vr-api>` which determines whether the corresponding pose attributes are valid
+
+
+.. c:type:: VRFrameData
+
+	Structure passed to :c:func:`emscripten_vr_get_frame_data`, maps to the WebVR
+	`VRFrameData <https://w3c.github.io/webvr/spec/1.1/#interface-vrframedata>`__ interface.
+
+	.. c:member:: double timestamp
+
+	.. c:member:: float[16] leftProjectionMatrix
+
+	.. c:member:: float[16] leftViewMatrix
+
+	.. c:member:: float[16] rightProjectionMatrix
+
+	.. c:member:: float[16] rightViewMatrix
+
+	.. c:member:: VRPose pose
+
+
+.. c:type:: VREyeParameters
+
+	Structure passed to :c:func:`emscripten_vr_get_eye_parameters`, maps to the WebVR
+	`VREyeParameters <https://w3c.github.io/webvr/spec/1.1/#interface-vreyeparameters>`__ interface.
+
+	.. c:member:: VRVector3 offset
+
+	.. c:member:: unsigned long renderWidth
+
+	.. c:member:: unsigned long renderHeight
+
+Math
+====
+
+.. c:type:: VRVector3
+
+	A 3-dimensional vector.
+
+	.. c:member:: float x
+
+	.. c:member:: float y
+
+	.. c:member:: float z
+
+
+.. c:type:: VRQuaternion
+
+	A quaternion.
+
+	.. c:member:: float x
+
+	.. c:member:: float y
+
+	.. c:member:: float z
+
+	.. c:member:: float w
+
 
 
 .. COMMENT (not rendered): Following values are common to many functions, and currently only updated in one place (here).
