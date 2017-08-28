@@ -1214,7 +1214,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.OPT_LEVEL = options.opt_level
       shared.Settings.DEBUG_LEVEL = options.debug_level
       shared.Settings.PROFILING_FUNCS = options.profiling_funcs
-      shared.Settings.SOURCE_MAP_BASE = options.source_map_base
+      shared.Settings.SOURCE_MAP_BASE = options.source_map_base or ''
 
       ## Compile source code to bitcode
 
@@ -1259,6 +1259,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if options.debug_level == 4 or not (final_suffix in JS_CONTAINING_SUFFIXES and options.js_opts):
           newargs.append('-g') # preserve LLVM debug info
           options.debug_level = 4
+          shared.Settings.DEBUG_LEVEL = 4
 
       # Bitcode args generation code
       def get_bitcode_args(input_files):
