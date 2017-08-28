@@ -1869,6 +1869,8 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata, settings):
   basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory']
   if settings['ABORTING_MALLOC']:
     basic_funcs += ['abortOnCannotGrowMemory']
+  if settings['SAFE_HEAP']:
+    basic_funcs += ['segfault', 'alignfault']
 
   basic_vars = ['STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR', 'ABORT']
 

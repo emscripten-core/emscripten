@@ -912,12 +912,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
 
-      if shared.Settings.SAFE_HEAP:
-        if not options.js_opts:
-          logging.debug('enabling js opts for SAFE_HEAP')
-          options.js_opts = True
-        options.force_js_opts = True
-
       if options.debug_level > 1 and options.use_closure_compiler:
         logging.warning('disabling closure because debug info was requested')
         options.use_closure_compiler = False
@@ -1080,6 +1074,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           options.js_opts = True
         options.force_js_opts = True
 
+      if shared.Settings.BINARYEN:
+        shared.Settings.WASM = 1 # these are synonyms
+
       if shared.Settings.WASM:
         shared.Settings.BINARYEN = 1 # these are synonyms
 
@@ -1099,7 +1096,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
-        shared.Settings.BINARYEN = 1
+        shared.Settings.BINARYEN = shared.Settings.WASM = 1
 
         # to bootstrap struct_info, we need binaryen
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
@@ -1148,6 +1145,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             logging.warning('BINARYEN_ASYNC_COMPILATION requested, but disabled because of user options. ' + warning)
           elif 'BINARYEN_ASYNC_COMPILATION=0' not in settings_changes:
             logging.warning('BINARYEN_ASYNC_COMPILATION disabled due to user options. ' + warning)
+        # run safe-heap as a binaryen pass
+        if shared.Settings.SAFE_HEAP and shared.Building.is_wasm_only():
+          if shared.Settings.BINARYEN_PASSES:
+            shared.Settings.BINARYEN_PASSES += ','
+          shared.Settings.BINARYEN_PASSES += 'safe-heap'
 
       # wasm outputs are only possible with a side wasm
       if target.endswith(WASM_ENDINGS):
@@ -1174,6 +1176,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if not shared.Settings.WASM or 'asmjs' in shared.Settings.BINARYEN_METHOD:
           shared.WarningManager.warn('ALMOST_ASM')
           shared.Settings.ASM_JS = 2 # memory growth does not validate as asm.js http://discourse.wicg.io/t/request-for-comments-switching-resizing-heaps-in-asm-js/641/23
+
+      # safe heap in asm.js uses the js optimizer (in wasm-only mode we can use binaryen)
+      if shared.Settings.SAFE_HEAP and not shared.Building.is_wasm_only():
+        if not options.js_opts:
+          logging.debug('enabling js opts for SAFE_HEAP')
+          options.js_opts = True
+        options.force_js_opts = True
 
       if options.js_opts:
         shared.Settings.RUNNING_JS_OPTS = 1
@@ -1711,7 +1720,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.PRECISE_F32: optimizer.queue += ['optimizeFrounds']
 
       if options.js_opts:
-        if shared.Settings.SAFE_HEAP: optimizer.queue += ['safeHeap']
+        if shared.Settings.SAFE_HEAP and not shared.Building.is_wasm_only():
+          optimizer.queue += ['safeHeap']
 
         if shared.Settings.OUTLINING_LIMIT > 0:
           optimizer.queue += ['outline']
@@ -2218,7 +2228,7 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
     if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
       cmd += ['--ignore-implicit-traps']
     # pass optimization level to asm2wasm (if not optimizing, or which passes we should run was overridden, do not optimize)
-    if options.opt_level > 0 and not shared.Settings.BINARYEN_PASSES:
+    if options.opt_level > 0:
       cmd.append(shared.Building.opt_level_to_str(options.opt_level, options.shrink_level))
     # import mem init file if it exists, and if we will not be using asm.js as a binaryen method (as it needs the mem init file, of course)
     mem_file_exists = options.memory_init_file and os.path.exists(memfile)
@@ -2279,6 +2289,8 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
     # BINARYEN_PASSES is comma-separated, and we support both '-'-prefixed and unprefixed pass names
     passes = map(lambda p: ('--' + p) if p[0] != '-' else p, shared.Settings.BINARYEN_PASSES.split(','))
     cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target + '.pre', '-o', wasm_binary_target] + passes
+    if debug_info:
+      cmd += ['-g'] # preserve the debug info
     logging.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))
     subprocess.check_call(cmd)
   if not wrote_wasm_text and 'interpret-s-expr' in shared.Settings.BINARYEN_METHOD:
