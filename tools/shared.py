@@ -2034,6 +2034,8 @@ class Building(object):
 
   @staticmethod
   def is_wasm_only():
+    if not Settings.WASM:
+      return False # not even wasm, much less wasm-only
     # if the asm.js code will not run, and won't be run through the js optimizer, then
     # fastcomp can emit wasm-only code.
     # also disable this mode if it depends on special optimizations that are not yet
