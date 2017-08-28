@@ -1214,6 +1214,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.OPT_LEVEL = options.opt_level
       shared.Settings.DEBUG_LEVEL = options.debug_level
       shared.Settings.PROFILING_FUNCS = options.profiling_funcs
+      shared.Settings.SOURCE_MAP_BASE = options.source_map_base
 
       ## Compile source code to bitcode
 
@@ -1522,9 +1523,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # we also received wast and wasm at this stage
         temp_basename = unsuffixed(final)
         wast_temp = temp_basename + '.wast'
+        wasm_temp = temp_basename + '.wasm'
         shutil.move(wast_temp, wasm_text_target)
-        shutil.move(temp_basename + '.wasm', wasm_binary_target)
+        shutil.move(wasm_temp, wasm_binary_target)
         open(wasm_text_target + '.mappedGlobals', 'w').write('{}') # no need for mapped globals for now, but perhaps some day
+        if options.debug_level >= 4:
+          shutil.move(wasm_temp + '.map', wasm_binary_target + '.map')
 
       if shared.Settings.CYBERDWARF:
         cd_target = final + '.cd'
@@ -2263,7 +2267,7 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
         if options.debug_level >= 4:
           cmd += ['--source-map=' + wasm_binary_target + '.map']
           if options.source_map_base:
-            cmd += ['--source-map-url=' + options.source_map_base + wasm_binary_target + '.map']
+            cmd += ['--source-map-url=' + options.source_map_base + os.path.basename(wasm_binary_target) + '.map']
       logging.debug('wasm-as (text => binary): ' + ' '.join(cmd))
       subprocess.check_call(cmd)
     if import_mem_init:

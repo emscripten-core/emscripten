@@ -6842,7 +6842,7 @@ Module.printErr = Module['printErr'] = function(){};
 
   @no_emterpreter
   def test_source_map(self):
-    if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
+    #if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
     if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
 
     src = '''
