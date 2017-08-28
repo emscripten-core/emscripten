@@ -1825,7 +1825,7 @@ def parse_args(newargs):
   should_exit = False
 
   for i in range(len(newargs)):
-    # On Windows Vista (and possibly others), excessive spaces in the command line 
+    # On Windows Vista (and possibly others), excessive spaces in the command line
     # leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
     newargs[i] = newargs[i].strip()
     if newargs[i].startswith('-O'):
@@ -1841,7 +1841,7 @@ def parse_args(newargs):
         options.requested_level = 2
         options.shrink_level = 2
         settings_changes.append('INLINING_LIMIT=25')
-      options.opt_level = validate_arg_level(options.requested_level, 3, 'Invalid optimization level: ' + newargs[i])
+      options.opt_level = validate_arg_level(options.requested_level, 3, 'Invalid optimization level: ' + newargs[i], clamp=True)
     elif newargs[i].startswith('--js-opts'):
       check_bad_eq(newargs[i])
       options.js_opts = eval(newargs[i+1])
@@ -2570,9 +2570,13 @@ def check_bad_eq(arg):
   assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
 
 
-def validate_arg_level(level_string, max_level, err_msg):
+def validate_arg_level(level_string, max_level, err_msg, clamp=False):
   try:
     level = int(level_string)
+    if clamp:
+      if level > max_level:
+        logging.warning("optimization level '-O" + level_string + "' is not supported; using '-O" + str(max_level) + "' instead")
+        level = max_level
     assert 0 <= level <= max_level
   except:
     raise Exception(err_msg)
