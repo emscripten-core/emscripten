@@ -2472,8 +2472,8 @@ var LibraryGL = {
     // In JS, there's no 64-bit value types, so instead timeout is taken to be signed, and GL_TIMEOUT_IGNORED is given value -1.
     // Inherently the value accepted in the timeout is lossy, and can't take in arbitrary u64 bit pattern (but most likely doesn't matter)
     // See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.15
-    timeoutLo == timeoutLo >>> 0;
-    timeoutHi == timeoutHi >>> 0;
+    timeoutLo = timeoutLo >>> 0;
+    timeoutHi = timeoutHi >>> 0;
     var timeout = (timeoutLo == 0xFFFFFFFF && timeoutHi == 0xFFFFFFFF) ? -1 : Runtime.makeBigInt(timeoutLo, timeoutHi, true);
     return GLctx.clientWaitSync(GL.syncs[sync], flags, timeout);
   },
@@ -2481,8 +2481,8 @@ var LibraryGL = {
   glWaitSync__sig: 'viii',
   glWaitSync: function(sync, flags, timeoutLo, timeoutHi) {
     // See WebGL2 vs GLES3 difference on GL_TIMEOUT_IGNORED above (https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.15)
-    timeoutLo == timeoutLo >>> 0;
-    timeoutHi == timeoutHi >>> 0;
+    timeoutLo = timeoutLo >>> 0;
+    timeoutHi = timeoutHi >>> 0;
     var timeout = (timeoutLo == 0xFFFFFFFF && timeoutHi == 0xFFFFFFFF) ? -1 : Runtime.makeBigInt(timeoutLo, timeoutHi, true);
     GLctx.waitSync(GL.syncs[sync], flags, timeout);
   },
