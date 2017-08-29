@@ -313,6 +313,10 @@ if (!Module['quit']) {
   }
 }
 
+#if SIMPLE_ALLOCATION_API
+#include "simple_allocation_api.js"
+#endif
+
 // *** Environment setup code ***
 
 // Closure helpers
