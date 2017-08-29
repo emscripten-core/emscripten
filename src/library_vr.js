@@ -30,17 +30,16 @@ var LibraryWebVR = {
       WebVR.version = [1, 1];
 
       navigator.getVRDisplays().then(function(displays) {
-          WebVR.ready = true;
-          WebVR.displays = displays;
-        }
-      );
+        WebVR.ready = true;
+        WebVR.displays = displays;
+      });
 
       return 1;
     },
 
     dereferenceDisplayHandle: function(displayHandle) {
-        /* Display handles start as 1 as 0 will be interpreted as false or null-handle
-        * on errors */
+      /* Display handles start as 1 as 0 will be interpreted as false or null-handle
+       * on errors */
       if (displayHandle < 1 || displayHandle > WebVR.displays.length) {
         console.log("library_vr dereferenceDisplayHandle invalid display handle at: " + stackTrace());
         return null;
@@ -76,7 +75,7 @@ var LibraryWebVR = {
     }
 
     /* As displayHandle == 0 will be interpreted as NULL handle for errors,
-    * the handle is index + 1. */
+     * the handle is index + 1. */
     return displayIndex + 1;
   },
 
@@ -162,7 +161,7 @@ var LibraryWebVR = {
         display.requestAnimationFrame(display.mainLoop.runner);
       },
       runner: function() {
-        if(ABORT) return;
+        if (ABORT) return;
 
         /* Prevent scheduler being called twice when loop is changed */
         display.mainLoop.running = true;
@@ -222,43 +221,43 @@ var LibraryWebVR = {
 
     layerInit = new Array(layerCount);
     for (var i = 0; i < layerCount; ++i) {
-        sourceStrPtr = {{{ makeGetValue('layerInitPtr', C_STRUCTS.VRLayerInit.source, 'void*') }}};
+      sourceStrPtr = {{{ makeGetValue('layerInitPtr', C_STRUCTS.VRLayerInit.source, 'void*') }}};
 
-        var source = null;
-        if(sourceStrPtr == 0) {
-            source = Module['canvas'];
-        } else {
-            sourceStr = UTF8ToString(sourceStrPtr);
+      var source = null;
+      if (sourceStrPtr == 0) {
+        source = Module['canvas'];
+      } else {
+        sourceStr = UTF8ToString(sourceStrPtr);
 
-            if (sourceStr && sourceStr.length > 0) {
-                source = document.getElementById(sourceStr);
-            }
-
-            if (!source) {
-                return 0;
-            }
+        if (sourceStr && sourceStr.length > 0) {
+          source = document.getElementById(sourceStr);
         }
 
-        leftBounds = new Float32Array(4);
-        rightBounds = new Float32Array(4);
-        var ptr = layerInitPtr;
-        for (var j = 0; j < 4; ++j) {
-            leftBounds[j] = {{{ makeGetValue('layerInitPtr', C_STRUCTS.VRLayerInit.leftBounds + '+ 4*j', 'float') }}};
-            rightBounds[j] = {{{ makeGetValue('layerInitPtr', C_STRUCTS.VRLayerInit.rightBounds + '+ 4*j', 'float') }}};
-            ptr += 4;
+        if (!source) {
+          return 0;
         }
+      }
 
-        layerInit[i] = {
-            source: source,
-            leftBounds: leftBounds,
-            rightBounds: rightBounds
-        };
-        layerInitPtr += {{{ C_STRUCTS.VRLayerInit.__size__ }}};
+      leftBounds = new Float32Array(4);
+      rightBounds = new Float32Array(4);
+      var ptr = layerInitPtr;
+      for (var j = 0; j < 4; ++j) {
+        leftBounds[j] = {{{ makeGetValue('layerInitPtr', C_STRUCTS.VRLayerInit.leftBounds + '+ 4*j', 'float') }}};
+        rightBounds[j] = {{{ makeGetValue('layerInitPtr', C_STRUCTS.VRLayerInit.rightBounds + '+ 4*j', 'float') }}};
+        ptr += 4;
+      }
+
+      layerInit[i] = {
+        source: source,
+        leftBounds: leftBounds,
+        rightBounds: rightBounds
+      };
+      layerInitPtr += {{{ C_STRUCTS.VRLayerInit.__size__ }}};
     }
 
     display.requestPresent(layerInit).then(function() {
-        if(!func) return;
-        Runtime.dynCall('vi', func, [userData]);
+      if (!func) return;
+      Runtime.dynCall('vi', func, [userData]);
     });
 
     return 1;
@@ -276,7 +275,7 @@ var LibraryWebVR = {
     var display = WebVR.dereferenceDisplayHandle(displayHandle);
     if (!display || !display.mainLoop || !frameDataPtr) return 0;
 
-    if(!display.frameData) {
+    if (!display.frameData) {
       display.frameData = new VRFrameData();
     }
     display.getFrameData(display.frameData);
@@ -289,52 +288,52 @@ var LibraryWebVR = {
     {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.timestamp, 'display.frameData.timestamp', 'double') }}};
 
     if (display.frameData.pose.position !== null) {
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.position.x, 'display.frameData.pose.position[0]', 'float') }}};
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.position.y, 'display.frameData.pose.position[1]', 'float') }}};
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.position.z, 'display.frameData.pose.position[2]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.position.x, 'display.frameData.pose.position[0]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.position.y, 'display.frameData.pose.position[1]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.position.z, 'display.frameData.pose.position[2]', 'float') }}};
 
-        poseFlags |= WebVR.POSE_POSITION;
+      poseFlags |= WebVR.POSE_POSITION;
     }
 
     if (display.frameData.pose.linearVelocity !== null) {
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.linearVelocity.x, 'display.frameData.pose.linearVelocity[0]', 'float') }}};
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.linearVelocity.y, 'display.frameData.pose.linearVelocity[1]', 'float') }}};
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.linearVelocity.z, 'display.frameData.pose.linearVelocity[2]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.linearVelocity.x, 'display.frameData.pose.linearVelocity[0]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.linearVelocity.y, 'display.frameData.pose.linearVelocity[1]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.linearVelocity.z, 'display.frameData.pose.linearVelocity[2]', 'float') }}};
 
-        poseFlags |= WebVR.POSE_LINEAR_VELOCITY;
+      poseFlags |= WebVR.POSE_LINEAR_VELOCITY;
     }
 
     if (display.frameData.pose.linearAcceleration !== null) {
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.linearAcceleration.x, 'display.frameData.pose.linearAcceleration[0]', 'float') }}};
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.linearAcceleration.y, 'display.frameData.pose.linearAcceleration[1]', 'float') }}};
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.linearAcceleration.z, 'display.frameData.pose.linearAcceleration[2]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.linearAcceleration.x, 'display.frameData.pose.linearAcceleration[0]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.linearAcceleration.y, 'display.frameData.pose.linearAcceleration[1]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.linearAcceleration.z, 'display.frameData.pose.linearAcceleration[2]', 'float') }}};
 
-        poseFlags |= WebVR.POSE_LINEAR_ACCELERATION;
+      poseFlags |= WebVR.POSE_LINEAR_ACCELERATION;
     }
 
     if (display.frameData.pose.orientation !== null) {
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.orientation.x, 'display.frameData.pose.orientation[0]', 'float') }}};
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.orientation.y, 'display.frameData.pose.orientation[1]', 'float') }}};
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.orientation.z, 'display.frameData.pose.orientation[2]', 'float') }}};
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.orientation.w, 'display.frameData.pose.orientation[3]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.orientation.x, 'display.frameData.pose.orientation[0]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.orientation.y, 'display.frameData.pose.orientation[1]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.orientation.z, 'display.frameData.pose.orientation[2]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.orientation.w, 'display.frameData.pose.orientation[3]', 'float') }}};
 
         poseFlags |= WebVR.POSE_ORIENTATION;
     }
 
     if (display.frameData.pose.angularVelocity !== null) {
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.angularVelocity.x, 'display.frameData.pose.angularVelocity[0]', 'float') }}};
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.angularVelocity.y, 'display.frameData.pose.angularVelocity[1]', 'float') }}};
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.angularVelocity.z, 'display.frameData.pose.angularVelocity[2]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.angularVelocity.x, 'display.frameData.pose.angularVelocity[0]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.angularVelocity.y, 'display.frameData.pose.angularVelocity[1]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.angularVelocity.z, 'display.frameData.pose.angularVelocity[2]', 'float') }}};
 
-        poseFlags |= WebVR.POSE_ANGULAR_VELOCITY;
+      poseFlags |= WebVR.POSE_ANGULAR_VELOCITY;
     }
 
     if (display.frameData.pose.angularAcceleration !== null) {
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.angularAcceleration.x, 'display.frameData.pose.angularAcceleration[0]', 'float') }}};
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.angularAcceleration.y, 'display.frameData.pose.angularAcceleration[1]', 'float') }}};
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.angularAcceleration.z, 'display.frameData.pose.angularAcceleration[0]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.angularAcceleration.x, 'display.frameData.pose.angularAcceleration[0]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.angularAcceleration.y, 'display.frameData.pose.angularAcceleration[1]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.angularAcceleration.z, 'display.frameData.pose.angularAcceleration[0]', 'float') }}};
 
-        poseFlags |= WebVR.POSE_ANGULAR_ACCELERATION;
+      poseFlags |= WebVR.POSE_ANGULAR_ACCELERATION;
     }
 
     {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.poseFlags, 'poseFlags', 'i32') }}};
@@ -342,19 +341,19 @@ var LibraryWebVR = {
     /* Matrices */
 
     for (var i = 0; i < 16; ++i) {
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.leftProjectionMatrix + ' + i*4', 'display.frameData.leftProjectionMatrix[i]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.leftProjectionMatrix + ' + i*4', 'display.frameData.leftProjectionMatrix[i]', 'float') }}};
     }
 
     for (var i = 0; i < 16; ++i) {
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.leftViewMatrix + ' + i*4', 'display.frameData.leftViewMatrix[i]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.leftViewMatrix + ' + i*4', 'display.frameData.leftViewMatrix[i]', 'float') }}};
     }
 
     for (var i = 0; i < 16; ++i) {
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.rightProjectionMatrix + ' + i*4', 'display.frameData.rightProjectionMatrix[i]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.rightProjectionMatrix + ' + i*4', 'display.frameData.rightProjectionMatrix[i]', 'float') }}};
     }
 
     for (var i = 0; i < 16; ++i) {
-        {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.rightViewMatrix + ' + i*4', 'display.frameData.rightViewMatrix[i]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.rightViewMatrix + ' + i*4', 'display.frameData.rightViewMatrix[i]', 'float') }}};
     }
 
     return 1;
