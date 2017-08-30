@@ -849,22 +849,18 @@ var LibraryEmbind = {
     var returns = (argTypes[0].name !== "void");
 
 #if NO_DYNAMIC_EXECUTION
-    var argsWired = Array(argCount - 2);
+    var argsWired = new Array(argCount - 2);
     return function() {
       if (arguments.length !== argCount - 2) {
         throwBindingError('function ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount - 2) + ' args!');
       }
-      #if EMSCRIPTEN_TRACING
+#if EMSCRIPTEN_TRACING
       Module.emscripten_trace_enter_context('embind::' + humanName);
-      #endif
-      var destructors;
-      if (needsDestructorStack) {
-        destructors = [];
-      } else {
-        destructors = null;
-      }
+#endif
+      var destructors = needsDestructorStack ? [] : null;
+      var thisWired;
       if (isClassMethodFunc) {
-        var thisWired = argTypes[1].toWireType(destructors, this);
+        thisWired = argTypes[1].toWireType(destructors, this);
       }
       for (var i = 0; i < argCount - 2; ++i) {
         argsWired[i] = argTypes[i + 2].toWireType(destructors, arguments[i]);
@@ -886,9 +882,9 @@ var LibraryEmbind = {
         }
       }
 
-      #if EMSCRIPTEN_TRACING
+#if EMSCRIPTEN_TRACING
       Module.emscripten_trace_exit_context();
-      #endif
+#endif
 
       if (returns) {
         return argTypes[0].fromWireType(rv);
@@ -983,8 +979,12 @@ var LibraryEmbind = {
     function makeDynCaller(dynCall) {
 #if NO_DYNAMIC_EXECUTION
       return function() {
-        var args = Array.prototype.slice.call(arguments);
-        return dynCall.apply(null, [rawFunction].concat(args));
+          var args = new Array(arguments.length + 1);
+          args[0] = rawFunction;
+          for (var i = 0; i < arguments.length; i++) {
+            args[i + 1] = arguments[i];
+          }
+          return dynCall.apply(null, args);
       };
 #else
         var args = [];

@@ -147,14 +147,12 @@ var LibraryEmVal = {
         return __emval_register(obj);
     } */
 #if NO_DYNAMIC_EXECUTION
-    var argsList = new Array(argCount);
-    return function() {
-      var constructor = arguments[0],
-      argTypes = arguments[1],
-      args = arguments[2];
+    var argsList = new Array(argCount + 1);
+    return function(constructor, argTypes, args) {
+      argsList[0] = constructor;
       for (var i = 0; i < argCount; ++i) {
         var argType = requireRegisteredType(HEAP32[(argTypes >> 2) + i], 'parameter ' + i);
-        argsList[i] = argType.readValueFromPointer(args + (i << 3));
+        argsList[i + 1] = argType.readValueFromPointer(args);
         args += argType.argPackAdvance;
       }
       var obj = new (constructor.bind.apply(constructor, argsList));
