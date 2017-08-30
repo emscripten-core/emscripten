@@ -1851,8 +1851,7 @@ def create_asm_consts_wasm(forwarded_json, metadata):
   for k, v in metadata['asmConsts'].iteritems():
     const = v[0].encode('utf-8')
     sigs = v[1]
-    if len(const) > 1 and const[0] == '"' and const[-1] == '"':
-      const = const[1:-1]
+    const = trim_asm_const_body(const)
     const = '{ ' + const + ' }'
     args = []
     arity = max(map(len, sigs)) - 1
