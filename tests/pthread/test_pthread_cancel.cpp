@@ -11,7 +11,7 @@
 volatile int res = 43;
 static void cleanup_handler(void *arg)
 {
-  EM_ASM_INT( { Module['print']('Called clean-up handler with arg ' + $0); }, arg);
+  EM_ASM(Module['print']('Called clean-up handler with arg ' + $0), arg);
   int a = (int)arg;
   res -= a;
 }
@@ -19,7 +19,7 @@ static void cleanup_handler(void *arg)
 static void *thread_start(void *arg)
 {
   pthread_cleanup_push(cleanup_handler, (void*)42);
-  EM_ASM(Module['print']('Thread started!'););
+  EM_ASM(Module['print']('Thread started!'));
   for(;;)
   {
     pthread_testcancel();

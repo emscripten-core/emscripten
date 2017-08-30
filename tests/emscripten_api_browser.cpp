@@ -94,7 +94,7 @@ int main() {
   printf("frist! %d\n", last);
 
   double ratio = emscripten_get_device_pixel_ratio();
-  double ratio2 = EM_ASM_DOUBLE_V({
+  double ratio2 = EM_ASM_DOUBLE({
     return window.devicePixelRatio || 1.0;
   });
 

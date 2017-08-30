@@ -49,7 +49,7 @@ static void *thread_start(void *arg)
       {
         ++return_code; // Failed! (but run to completion so that the barriers will all properly proceed without hanging)
         if (!reported_once) {
-          EM_ASM_INT( { console.error('Memory corrupted! mem[i]: ' + $0 + ' != ' + $1 + ', i: ' + $2 + ', j: ' + $3); }, allocated_buffers[i][j], id, i, j);
+          EM_ASM(console.error('Memory corrupted! mem[i]: ' + $0 + ' != ' + $1 + ', i: ' + $2 + ', j: ' + $3), allocated_buffers[i][j], id, i, j);
           reported_once = 1; // Avoid print flood that makes debugging hard.
         }
       }

@@ -4,7 +4,7 @@
 
 void __attribute__((noinline)) InteropString(char *staticBuffer)
 {
-	char *string = (char*)EM_ASM_INT_V({
+	char *string = (char*)EM_ASM_INT({
 		var str = "hello, this is a string! ";
 		for(var i = 0; i < 15; ++i)
 			str = str + str;

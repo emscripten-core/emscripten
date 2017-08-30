@@ -111,7 +111,7 @@ void __pthread_testcancel()
 	struct pthread *self = pthread_self();
 	if (self->canceldisable) return;
 	if (_pthread_isduecanceled(self)) {
-		EM_ASM( throw 'Canceled!'; );
+		EM_ASM(throw 'Canceled!');
 	}
 }
 

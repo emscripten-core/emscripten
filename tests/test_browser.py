@@ -2430,7 +2430,7 @@ open(filename, 'w').write(replaced)
 #include <emscripten.h>
 
 int main() {
-  int result = EM_ASM_INT_V({
+  int result = EM_ASM_INT({
     return Module['memoryInitializerRequest'].status;
   });
   printf("memory init request: %d\n", result);

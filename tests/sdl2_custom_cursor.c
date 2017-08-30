@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 
     SDL_SetCursor(cursor);
 
-    int cursor_updated = EM_ASM_INT_V(
+    int cursor_updated = EM_ASM_INT(
         return Module['canvas'].style['cursor'].startsWith("url(");
     );
 

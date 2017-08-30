@@ -6519,7 +6519,7 @@ Resolved: "/" => "/"
 #include <stdlib.h>
 int main() {
   int x = 5;
-  EM_ASM_({
+  EM_ASM({
     var allocs = [];
     allocs.push([]);
     allocs.push([]);
@@ -6590,7 +6590,7 @@ int alloc_where_is_it() {
   return x / split_memory;
 }
 int main() {
-  split_memory = EM_ASM_INT_V({
+  split_memory = EM_ASM_INT({
     return SPLIT_MEMORY;
   });
   int counter = 0;
@@ -6629,7 +6629,7 @@ int where(int x) {
   return x / split_memory;
 }
 int main() {
-  split_memory = EM_ASM_INT_V({
+  split_memory = EM_ASM_INT({
     return SPLIT_MEMORY;
   });
   int sbrk_0 = (int)sbrk(0);
@@ -7014,7 +7014,7 @@ int main() {
 #include <emscripten.h>
 
 int main() {
-  EM_ASM_ARGS({
+  EM_ASM({
     Module.print('inputs: ' + $0 + ', ' + $1 + '.');
   }, int64_t(0x12345678ABCDEF1FLL));
 }

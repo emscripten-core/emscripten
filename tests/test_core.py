@@ -1602,6 +1602,10 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm', force_c=True)
 
+  def test_em_asm_2(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2', force_c=True)
+
   def test_em_asm_unicode(self):
     self.do_run(r'''
 #include <emscripten.h>
@@ -6031,7 +6035,7 @@ def process(filename):
       }
 
       int main() {
-        int x = EM_ASM_INT_V({ return Module._other_function() });
+        int x = EM_ASM_INT({ return Module._other_function() });
         emscripten_run_script_string(""); // Add a reference to a symbol that exists in src/deps_info.json to uncover issue #2836 in the test suite.
         printf("waka %d!\n", x);
         return 0;
@@ -6064,7 +6068,7 @@ def process(filename):
       }
 
       int main() {
-        int x = EM_ASM_INT_V({ return Module._exported_func_from_response_file_4999() });
+        int x = EM_ASM_INT({ return Module._exported_func_from_response_file_4999() });
         emscripten_run_script_string(""); // Add a reference to a symbol that exists in src/deps_info.json to uncover issue #2836 in the test suite.
         printf("waka %d!\n", x);
         return 0;
@@ -6128,7 +6132,7 @@ def process(filename):
     }
 
     int main() {
-      EM_ASM_INT({
+      EM_ASM({
         Runtime.getFuncWrapper($0, 'vi')(0);
         Runtime.getFuncWrapper($1, 'vii')(0, 0);
       }, func1, func2);

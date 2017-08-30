@@ -340,7 +340,7 @@ double prevT = 0;
 
 void register_tasks()
 {
-    numTasks = EM_ASM_INT_V(return (typeof document !== 'undefined' && document.getElementById('num_threads')) ? parseInt(document.getElementById('num_threads').value) : 1);
+    numTasks = EM_ASM_INT(return (typeof document !== 'undefined' && document.getElementById('num_threads')) ? parseInt(document.getElementById('num_threads').value) : 1);
 
 #ifdef SINGLETHREADED
   // Single-threaded
@@ -359,7 +359,7 @@ void register_tasks()
 #else
   emscripten_atomic_fence();
 
-  numTasks = EM_ASM_INT_V(return (typeof document !== 'undefined' && document.getElementById('num_threads')) ? parseInt(document.getElementById('num_threads').value) : 1);
+  numTasks = EM_ASM_INT(return (typeof document !== 'undefined' && document.getElementById('num_threads')) ? parseInt(document.getElementById('num_threads').value) : 1);
   if (numTasks < 1) numTasks = 1;
   if (numTasks > emscripten_num_logical_cores()) numTasks = emscripten_num_logical_cores();
 
@@ -475,7 +475,7 @@ void main_tick()
   }
 #endif
 
-  int new_use_sse = EM_ASM_INT_V(return (typeof document !== 'undefined' && document.getElementById('use_sse')) ? document.getElementById('use_sse').checked : false);
+  int new_use_sse = EM_ASM_INT(return (typeof document !== 'undefined' && document.getElementById('use_sse')) ? document.getElementById('use_sse').checked : false);
 
   if (numItersDoneOnCanvas >= minItersBeforeDisplaying || new_use_sse != use_sse)
   {
@@ -491,7 +491,7 @@ void main_tick()
   }
   use_sse = new_use_sse;
 
-  numItersPerFrame = EM_ASM_INT_V({
+  numItersPerFrame = EM_ASM_INT({
     if (typeof location !== 'undefined') {
       var updatesPerFrame = (new RegExp("[\\?&]updates=([^&#]*)")).exec(location.href);
       if (updatesPerFrame) return updatesPerFrame[1];
@@ -565,7 +565,7 @@ void main_tick()
 
 int main(int argc, char** argv)
 {
-  ENVIRONMENT_IS_WEB = EM_ASM_INT_V(return ENVIRONMENT_IS_WEB);
+  ENVIRONMENT_IS_WEB = EM_ASM_INT(return ENVIRONMENT_IS_WEB);
 
 #ifndef NO_SDL
   if (ENVIRONMENT_IS_WEB) {
@@ -601,7 +601,7 @@ int main(int argc, char** argv)
   if (ENVIRONMENT_IS_WEB) {
     emscripten_set_main_loop(main_tick, 0, 0);
   } else {
-    int numTotalFrames = EM_ASM_INT_V(return (typeof Module !== 'undefined' && Module.arguments && Module.arguments.length >= 2) ? parseInt(Module.arguments[1]) : 1000);
+    int numTotalFrames = EM_ASM_INT(return (typeof Module !== 'undefined' && Module.arguments && Module.arguments.length >= 2) ? parseInt(Module.arguments[1]) : 1000);
     printf("Rendering %d frames of Mandelbrot. Invoke \"node|js mandelbrot.js numItersPerFrame numFrames\" to configure.\n", numTotalFrames);
     double t0 = emscripten_get_now();
     for(int i = 0; i < numTotalFrames; ++i) {

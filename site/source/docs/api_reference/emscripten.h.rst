@@ -28,42 +28,54 @@ Defines
 	
 	This allows you to declare JavaScript in your C code "inline", which is then executed when your compiled code is run in the browser. For example, the following C code would display two alerts if it was compiled with Emscripten and run in the browser: ::
 
-		EM_ASM( alert(‘hai’)); 
-		alert(‘bai’)); )
-   
-	.. note:: 
-		- Double-quotes (") cannot be used in the inline assembly/JavaScript. Single-quotes (‘) can be used, as shown above.
-		- Newlines (\\n, \\r etc.) are supported in the inline JavaScript. Note that any platform-specific issues with line endings in normal JavaScript also apply to inline JavaScript declared using ``EM_ASM``.
-		- You can’t access C variables with :c:macro:`EM_ASM`, nor receive a value back. Instead use :c:macro:`EM_ASM_ARGS`, :c:macro:`EM_ASM_INT`, or :c:macro:`EM_ASM_DOUBLE`.
-		- As of ``1.30.4``, ``EM_ASM`` contents appear as normal JS, outside of the compiled code. Previously we had them as a string that was ``eval``ed. The newer approach avoids the overhead of ``eval``, and also allows for better optimization of ``EM_ASM`` contents by things like closure compiler, as their contents are now visible. Note that this means that closure compiler will optimize them as if they were written together with the rest of the codebase, which is a change from before - you may need to use safety quotes in some places (``a['b']`` instead of ``a.b``).
-   
-	
-.. c:macro:: EM_ASM_(code, ...)
-	EM_ASM_ARGS(code, ...) 
-	EM_ASM_INT(code, ...)
-	EM_ASM_DOUBLE(code, ...)
-	EM_ASM_INT_V(code) 
-	EM_ASM_DOUBLE_V(code) 
-	
-	Input-output versions of EM_ASM.
- 	
-	:c:macro:`EM_ASM_` (an extra "_" is added) or :c:macro:`EM_ASM_ARGS` allow values (``int`` or ``double``) to be sent into the code.
+		EM_ASM(alert('hai'); alert('bai'));
 
-	.. note:: The C preprocessor does not have a full understanding of JavaScript tokens, of course. An issue you might see is that it is not aware of nesting due to ``{`` or ``[``, it is only aware of ``,`` and ``(``. As a result, if you have a JavaScript array ``[1,2,3]`` then you might get an error, but can fix things with parentheses: ``([1,2,3])``.
+	Arguments can be passed inside the JavaScript code block, where they arrive as variables ``$0``, ``$1`` etc. These arguments can either be of type ``int32_t`` or ``double``. ::
 
-	If you also want a return value, :c:macro:`EM_ASM_INT` receives arguments (of ``int`` or ``double`` type) and returns an ``int``; :c:macro:`EM_ASM_DOUBLE` does the same and returns a ``double``.
-	
-	Arguments arrive as ``$0``, ``$1`` etc. The output value should be returned: ::
-
-		int x = EM_ASM_INT({
+		EM_ASM({
 		  console.log('I received: ' + [$0, $1]);
-		  return $0 + $1;
-		}, calc(), otherCalc());
+		}, 100, 35.5);
 
 	Note the ``{`` and ``}``.
-	
-	If you just want to receive an output value (``int`` or ``double``) but not pass any values, you can use :c:macro:`EM_ASM_INT_V` or :c:macro:`EM_ASM_DOUBLE_V`, respectively.
 
+    Null-terminated C strings can also be passed into ``EM_ASM`` blocks, but to operate on them, they need to be copied out from the heap to convert to high-level JavaScript strings. ::
+
+		EM_ASM(console.log('hello ' + UTF8ToString($0)), "world!");
+
+    In the same manner, pointers to any type (including ``void *``) can be passed inside ``EM_ASM`` code, where they appear as integers like ``char *`` pointers above did. Accessing the data can be managed by reading the heap directly. ::
+
+		int arr[2] = { 30, 45 };
+		EM_ASM({
+		  console.log('Data: ' + HEAP32[$0>>2] + ', ' + HEAP32[($0+4)>>2]);
+		}, arr);
+
+	.. note:: 
+		- As of Emscripten ``1.30.4``, the contents of ``EM_ASM`` code blocks appear inside the normal JS file, and as result, Closure compiler and other JavaScript minifiers will be able to operate on them. You may need to use safety quotes in some places (``a['b']`` instead of ``a.b``) to avoid minification fro occurring.
+		- The C preprocessor does not have an understanding of JavaScript tokens, and as a result, if the ``code`` block contains a comma character ``,``, it may be necessary to wrap the code block inside parentheses. For example, code ``EM_ASM(return [1,2,3].length);`` will not compile, but ``EM_ASM((return [1,2,3].length));`` does.
+
+
+.. c:macro:: EM_ASM_INT(code, ...)
+	EM_ASM_DOUBLE(code, ...)
+	
+	These two functions behave like EM_ASM, but in addition they also return a value back to C code. The output value is passed back with a ``return`` statement: ::
+
+		int x = EM_ASM_INT({
+		  return $0 + 42;
+		}, 100);
+
+		int y = EM_ASM_INT(return TOTAL_MEMORY);
+
+    Strings can be returned back to C from JavaScript, but one needs to be careful about memory management. ::
+
+		char *str = (char*)EM_ASM_INT({
+			var jsString = 'Hello with some exotic Unicode characters: Tässä on yksi lumiukko: ☃, ole hyvä.';
+			var lengthBytes = lengthBytesUTF8(jsString)+1; // 'jsString.length' would return the length of the string as UTF-16 units, but Emscripten C strings operate as UTF-8.
+			var stringOnWasmHeap = _malloc(lengthBytes);
+			stringToUTF8(jsString, stringOnWasmHeap, lengthBytes+1);
+			return stringOnWasmHeap;
+		});
+		printf("UTF8 string says: %s\n", str);
+		free(str); // Each call to _malloc() must be paired with free(), or heap memory will leak!
 
 
 Calling JavaScript From C/C++

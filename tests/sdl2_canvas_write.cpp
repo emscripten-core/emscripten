@@ -28,7 +28,7 @@ void draw(SDL_Window *window, SDL_Surface *surface) {
 }
 
 int verify(void) {
-    int res = EM_ASM_INT_V({
+    int res = EM_ASM_INT({
         var ctx = Module['canvas'].getContext('2d');
         var data = ctx.getImageData(0, 0, 256, 256).data;
         var idx = 0;
