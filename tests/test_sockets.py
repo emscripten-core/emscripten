@@ -603,7 +603,7 @@ int main () {
     # Basic test of node client against both a Websockified and compiled echo server.
     for harness, datagram in harnesses:
       with harness:
-        Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, '-DREPORT_RESULT=int dummy'], stdout=PIPE, stderr=PIPE).communicate()
+        Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram], stdout=PIPE, stderr=PIPE).communicate()
 
         out = run_js('client.js', engine=NODE_JS, full_output=True)
         self.assertContained('do_msg_read: read 14 bytes', out)
@@ -617,7 +617,7 @@ int main () {
         WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 59166)
       ]:
         with harness:
-          Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-s', 'SOCKET_DEBUG=1', '-s', 'WEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166', '-DREPORT_RESULT=int dummy'], stdout=PIPE, stderr=PIPE).communicate()
+          Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-s', 'SOCKET_DEBUG=1', '-s', 'WEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166'], stdout=PIPE, stderr=PIPE).communicate()
 
           out = run_js('client.js', engine=NODE_JS, full_output=True)
           self.assertContained('do_msg_read: read 14 bytes', out)
@@ -640,7 +640,7 @@ int main () {
           };
           ''')
 
-          Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js', 'websocket_pre.js', '-s', 'SOCKET_DEBUG=1', '-DSOCKK=12345', '-DREPORT_RESULT=int dummy'], stdout=PIPE, stderr=PIPE).communicate()
+          Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js', 'websocket_pre.js', '-s', 'SOCKET_DEBUG=1', '-DSOCKK=12345'], stdout=PIPE, stderr=PIPE).communicate()
 
           out = run_js('client.js', engine=NODE_JS, full_output=True)
           self.assertContained('do_msg_read: read 14 bytes', out)

@@ -43,7 +43,9 @@ void finish(int result) {
     server.fd = 0;
   }
 #ifdef __EMSCRIPTEN__
+#ifdef REPORT_RESULT
   REPORT_RESULT(result);
+#endif
   emscripten_force_exit(result);
 #else
   exit(result);
