@@ -3568,6 +3568,10 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.shaders, shader, 'glCompileShader', 'shader');
 #endif
     GLctx.compileShader(GL.shaders[shader]);
+#if GL_DEBUG
+    var log = (GLctx.getShaderInfoLog(GL.shaders[shader]) || '').trim();
+    if (log) console.error('glCompileShader: ' + log);
+#endif
   },
 
   glGetShaderInfoLog__sig: 'viiii',
@@ -3740,6 +3744,10 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.programs, program, 'glLinkProgram', 'program');
 #endif
     GLctx.linkProgram(GL.programs[program]);
+#if GL_DEBUG
+    var log = (GLctx.getProgramInfoLog(GL.programs[program]) || '').trim();
+    if (log) console.error('glLinkProgram: ' + log);
+#endif
     GL.programInfos[program] = null; // uniforms no longer keep the same names after linking
     GL.populateUniformTable(program);
   },
