@@ -4065,7 +4065,7 @@ var LibraryOpenAL = {
 
     /// If the queue is empty, put the zero buffer back in
     if (src.bufQueue.length === 0) {
-      src.bufQueue.push(AL.buffer[0]);
+      src.bufQueue.push(AL.buffers[0]);
     }
 
     AL.initSourcePanner(src);
