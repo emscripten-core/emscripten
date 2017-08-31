@@ -1023,6 +1023,10 @@ var LibraryPThread = {
     return size <= 4 && (size & (size-1)) == 0 && (ptr&(size-1)) == 0;
   },
 
+  __call_main: function(argc, argv) {
+    return _main(argc, argv);
+  },
+
   emscripten_conditional_set_current_thread_status_js: function(expectedStatus, newStatus) {
 #if PTHREADS_PROFILING
     PThread.setThreadStatusConditional(_pthread_self(), expectedStatus, newStatus);
