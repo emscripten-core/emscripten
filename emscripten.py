@@ -1315,23 +1315,30 @@ def onAsmLoaded_generator(exported_implemented_functions):
   sorted_functions = sorted(exported_implemented_functions)
   functions_list = ','.join(sorted_functions)
   functions_array = ','.join(["'" + function_name + "'" for function_name in sorted_functions])
-  assignments = ''.join(['  ' + function_name + ' = functions[' + str(index) + '];\n' for index, function_name in enumerate(sorted_functions)])
-  return '''var %s;
-function onAsmLoaded (asm) {
-  // TODO: Use `Object.assign(Module, asm);` when IE and other old browsers do not need to be supported anymore
-  for (var functionName in asm) {
-    if (Object.hasOwnProperty.call(asm, functionName)) {
-      Module[functionName] = asm[functionName];
+  assignments = ''.join(['      ' + function_name + ' = functions[' + str(index) + '];\n' for index, function_name in enumerate(sorted_functions)])
+  return '''var %s, storedAsm = Module['asm'];
+Object.defineProperty(Module, 'asm', {
+  get: function () {
+    return storedAsm;
+  },
+  set: function (asm) {
+    storedAsm = asm;
+    if (!(asm instanceof Function)) {
+      // TODO: Use `Object.assign(Module, asm);` when IE and other old browsers do not need to be supported anymore
+      for (var functionName in asm) {
+        if (Object.hasOwnProperty.call(asm, functionName)) {
+          Module[functionName] = asm[functionName];
+        }
+      }
+      var functions = [];
+      [%s].forEach(function (functionName) {
+        functions.push(asm[functionName]);
+      });
+      // TODO: With ES2015+ assignments can be eliminated by using array destructuring, but we are not there quite yet unfortunately
+%s
     }
   }
-  var functions = [];
-  [%s].forEach(function (functionName) {
-    functions.push(asm[functionName]);
-  });
-  // TODO: With ES2015+ assignments can be eliminated by using array destructuring, but we are not there quite yet unfortunately
-%s
-}
-onAsmLoaded(asm);
+});
 
 ''' % (functions_list, functions_array, assignments)
 

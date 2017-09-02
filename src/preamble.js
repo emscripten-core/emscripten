@@ -2256,7 +2256,6 @@ function integrateWasmJS(Module) {
         {{{ makeEval("eval(Module['read'](asmjsCodeFile));") }}} // set Module.asm
       } else {
         Module['asm'] = Module['asmPreload'];
-        onAsmLoaded(Module['asm']);
       }
     }
     if (typeof Module['asm'] !== 'function') {
@@ -2290,7 +2289,6 @@ function integrateWasmJS(Module) {
       exports = instance.exports;
       if (exports.memory) mergeMemory(exports.memory);
       Module['asm'] = exports;
-      onAsmLoaded(Module['asm']);
       Module["usingWasm"] = true;
       removeRunDependency('wasm-instantiate');
     }
