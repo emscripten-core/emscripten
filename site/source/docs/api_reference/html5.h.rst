@@ -2077,6 +2077,15 @@ Functions
  
 	.. comment : **HamishW** Are EM_TRUE, EM_FALSE defined?
 
+.. c:function:: EMSCRIPTEN_RESULT emscripten_webgl_commit_frame()
+
+    Commit the frame when using offscreencanvas.
+
+    :return: EM_TRUE if the operation succeed.
+    :rtype: |EM_BOOL|
+
+    .. note::
+        To transfer offscreencanvas, you have to do it during the creation of a thread.
 
 CSS
 ===
