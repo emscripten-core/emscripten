@@ -831,8 +831,14 @@ class BrowserCore(RunnerCore):
     }, result, sync);
   }
 
-  #define REPORT_RESULT(result) _ReportResult((result), 0)
-  #define REPORT_RESULT_SYNC(result) _ReportResult((result), 1)
+  #if __EMSCRIPTEN_PTHREADS__
+    #include <emscripten/threading.h>
+    #define REPORT_RESULT(result) emscripten_async_run_in_main_runtime_thread(EM_FUNC_SIG_VII, _ReportResult, (result), 0)
+    #define REPORT_RESULT_SYNC(result) emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VII, _ReportResult, (result), 1)
+  #else
+    #define REPORT_RESULT(result) _ReportResult((result), 0)
+    #define REPORT_RESULT_SYNC(result) _ReportResult((result), 1)
+  #endif
 
   #endif // ~__REPORT_RESULT_DEFINED__
 
