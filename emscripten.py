@@ -1791,6 +1791,7 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
     assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
     basename = shared.unsuffixed(outfile.name)
     wast = basename + '.wast'
+    wasm = basename + '.wasm'
     s2wasm_args = create_s2wasm_args(temp_s)
     if DEBUG:
       logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
@@ -1799,9 +1800,15 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
     shared.check_call(s2wasm_args, stdout=open(wast, 'w'))
     # Also convert wasm text to binary
     wasm_as_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-as'),
-                    wast, '-o', basename + '.wasm']
+                    wast, '-o', wasm]
     if settings['DEBUG_LEVEL'] >= 2 or settings['PROFILING_FUNCS']:
       wasm_as_args += ['-g']
+      if settings['DEBUG_LEVEL'] >= 4:
+        wasm_as_args += ['--source-map=' + wasm + '.map']
+        if not settings['SOURCE_MAP_BASE']:
+          logging.warn("Wasm source map won't be usable in a browser without --source-map-base")
+        else:
+          wasm_as_args += ['--source-map-url=' + settings['SOURCE_MAP_BASE'] + os.path.basename(settings['WASM_BINARY_FILE']) + '.map']
     logging.debug('  emscript: binaryen wasm-as: ' + ' '.join(wasm_as_args))
     shared.check_call(wasm_as_args)
 
