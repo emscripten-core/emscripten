@@ -873,7 +873,7 @@ var SyscallsLibrary = {
     var cwd = FS.cwd();
     var cwdLengthInBytes = lengthBytesUTF8(cwd);
     if (size < cwdLengthInBytes + 1) return -ERRNO_CODES.ERANGE;
-    stringToUTF8(cwd, buf, cwdLengthInBytes + 1);
+    stringToUTF8(cwd, buf, size);
     return buf;
   },
   __syscall191: function(which, varargs) { // ugetrlimit
