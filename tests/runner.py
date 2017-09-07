@@ -627,18 +627,19 @@ class RunnerCore(unittest.TestCase):
                        no_build=False, main_file=None, additional_files=[],
                        js_engines=None, post_build=None, basename='src.cpp',
                        libraries=[], includes=[], force_c=False, build_ll_hook=None,
-                       extra_emscripten_args=[]):
+                       extra_emscripten_args=[], assert_returncode=None, assert_identical=False):
     self.do_run(open(src).read(), open(expected_output).read(),
                 args, output_nicerizer, output_processor, no_build, main_file,
                 additional_files, js_engines, post_build, basename, libraries,
-                includes, force_c, build_ll_hook, extra_emscripten_args)
+                includes, force_c, build_ll_hook, extra_emscripten_args,
+                assert_returncode, assert_identical)
 
   ## Does a complete test - builds, runs, checks output, etc.
   def do_run(self, src, expected_output, args=[], output_nicerizer=None,
              output_processor=None, no_build=False, main_file=None, additional_files=[],
              js_engines=None, post_build=None, basename='src.cpp', libraries=[],
              includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[],
-             assert_returncode=None):
+             assert_returncode=None, assert_identical=False):
     if Settings.ASYNCIFY == 1 and self.is_wasm_backend():
       return self.skip("wasm backend doesn't support ASYNCIFY yet")
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
@@ -662,9 +663,13 @@ class RunnerCore(unittest.TestCase):
     for engine in js_engines:
       #print 'test in', engine
       js_output = self.run_generated_code(engine, filename + '.o.js', args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
+      js_output = js_output.replace('\r\n', '\n')
       try:
-        self.assertContained(expected_output, js_output.replace('\r\n', '\n'))
-        self.assertNotContained('ERROR', js_output)
+        if assert_identical:
+          self.assertIdentical(expected_output, js_output)
+        else:
+          self.assertContained(expected_output, js_output)
+          self.assertNotContained('ERROR', js_output)
       except Exception, e:
         print '(test did not pass in JS engine: %s)' % engine
         raise e
