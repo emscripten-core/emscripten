@@ -470,6 +470,7 @@ var Runtime = {
   funcWrappers: {},
 
   getFuncWrapper: function(func, sig) {
+    if (!func) return; // on null pointer, return undefined
     assert(sig);
     if (!Runtime.funcWrappers[sig]) {
       Runtime.funcWrappers[sig] = {};
