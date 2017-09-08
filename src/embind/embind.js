@@ -44,6 +44,9 @@ var LibraryEmbind = {
     Module['getLiveInheritedInstances'] = getLiveInheritedInstances;
     Module['flushPendingDeletes'] = flushPendingDeletes;
     Module['setDelayFunction'] = setDelayFunction;
+#if NO_DYNAMIC_EXECUTION
+    Module['NO_DYNAMIC_EXECUTION'] = true;
+#endif
   },
 
   $throwInternalError__deps: ['$InternalError'],
