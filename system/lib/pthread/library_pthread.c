@@ -189,19 +189,6 @@ static void _do_call(em_queued_call *q)
 {
 	switch(q->functionEnum)
 	{
-		case EM_PROXIED_UTIME: q->returnValue.i = utime(q->args[0].cp, (struct utimbuf*)q->args[1].vp); break;
-		case EM_PROXIED_UTIMES: q->returnValue.i = utimes(q->args[0].cp, (struct timeval*)q->args[1].vp); break;
-		case EM_PROXIED_CHROOT: q->returnValue.i = chroot(q->args[0].cp); break;
-		case EM_PROXIED_FPATHCONF: q->returnValue.i = fpathconf(q->args[0].i, q->args[1].i); break;
-		case EM_PROXIED_CONFSTR: q->returnValue.i = confstr(q->args[0].i, q->args[1].cp, q->args[2].i); break;
-		case EM_PROXIED_SYSCONF: q->returnValue.i = sysconf(q->args[0].i); break;
-		case EM_PROXIED_ATEXIT: q->returnValue.i = atexit(q->args[0].vp); break;
-		case EM_PROXIED_GETENV: q->returnValue.cp = getenv(q->args[0].cp); break;
-		case EM_PROXIED_CLEARENV: q->returnValue.i = clearenv(); break;
-		case EM_PROXIED_SETENV: q->returnValue.i = setenv(q->args[0].cp, q->args[1].cp, q->args[2].i); break;
-		case EM_PROXIED_UNSETENV: q->returnValue.i = unsetenv(q->args[0].cp); break;
-		case EM_PROXIED_PUTENV: q->returnValue.i = putenv(q->args[0].cp); break;
-		case EM_PROXIED_TZSET: tzset(); break;
 		case EM_PROXIED_PTHREAD_CREATE: q->returnValue.i = pthread_create(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp); break;
 		case EM_PROXIED_SYSCALL: q->returnValue.i = emscripten_syscall(q->args[0].i, q->args[1].vp); break;
 		case EM_FUNC_SIG_V: ((em_func_v)q->functionPtr)(); break;

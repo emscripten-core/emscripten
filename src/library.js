@@ -56,10 +56,9 @@ LibraryManager.library = {
   // ==========================================================================
 
   utime__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  utime__proxy: 'sync',
+  utime__sig: 'iii',
   utime: function(path, times) {
-#if USE_PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_UTIME') }}}, path, times);
-#endif
     // int utime(const char *path, const struct utimbuf *times);
     // http://pubs.opengroup.org/onlinepubs/009695399/basedefs/utime.h.html
     var time;
@@ -82,10 +81,9 @@ LibraryManager.library = {
   },
 
   utimes__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  utimes__proxy: 'sync',
+  utimes__sig: 'iii',
   utimes: function(path, times) {
-#if USE_PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_UTIMES') }}}, path, times);
-#endif
     var time;
     if (times) {
       var offset = {{{ C_STRUCTS.timeval.__size__ }}} + {{{ C_STRUCTS.timeval.tv_sec }}};
@@ -116,10 +114,9 @@ LibraryManager.library = {
   },
 
   chroot__deps: ['__setErrNo', '$ERRNO_CODES'],
+  chroot__proxy: 'sync',
+  chroot__sig: 'ii',
   chroot: function(path) {
-#if USE_PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_CHROOT') }}}, path);
-#endif
     // int chroot(const char *path);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/chroot.html
     ___setErrNo(ERRNO_CODES.EACCES);
@@ -127,10 +124,9 @@ LibraryManager.library = {
   },
 
   fpathconf__deps: ['__setErrNo', '$ERRNO_CODES'],
+  fpathconf__proxy: 'sync',
+  fpathconf__sig: 'iii',
   fpathconf: function(fildes, name) {
-#if USE_PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_FPATHCONF') }}}, fildes, name);
-#endif
     // long fpathconf(int fildes, int name);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/encrypt.html
     // NOTE: The first parameter is ignored, so pathconf == fpathconf.
@@ -171,10 +167,9 @@ LibraryManager.library = {
   pathconf: 'fpathconf',
 
   confstr__deps: ['__setErrNo', '$ERRNO_CODES', '$ENV'],
+  confstr__proxy: 'sync',
+  confstr__sig: 'iiii',
   confstr: function(name, buf, len) {
-#if USE_PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_CONFSTR') }}}, name, buf, len);
-#endif
     // size_t confstr(int name, char *buf, size_t len);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/confstr.html
     var value;
@@ -281,10 +276,9 @@ LibraryManager.library = {
   },
 
   sysconf__deps: ['__setErrNo', '$ERRNO_CODES'],
+  sysconf__proxy: 'sync',
+  sysconf__sig: 'ii',
   sysconf: function(name) {
-#if USE_PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_SYSCONF') }}}, name);
-#endif
     // long sysconf(int name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/sysconf.html
     switch(name) {
@@ -599,10 +593,9 @@ LibraryManager.library = {
     _exit(-1234);
   },
 
+  atexit__proxy: 'sync',
+  atexit__sig: 'ii',
   atexit: function(func, arg) {
-#if USE_PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_ATEXIT') }}}, func, arg);
-#endif
     __ATEXIT__.unshift({ func: func, arg: arg });
   },
   __cxa_atexit: 'atexit',
@@ -684,10 +677,9 @@ LibraryManager.library = {
 #endif
   $ENV: {},
   getenv__deps: ['$ENV'],
+  getenv__proxy: 'sync',
+  getenv__sig: 'ii',
   getenv: function(name) {
-#if USE_PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_GETENV') }}}, name);
-#endif
     // char *getenv(const char *name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/getenv.html
     if (name === 0) return 0;
@@ -699,10 +691,9 @@ LibraryManager.library = {
     return _getenv.ret;
   },
   clearenv__deps: ['$ENV', '__buildEnvironment'],
-  clearenv: function(name) {
-#if USE_PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_CLEARENV') }}}, name);
-#endif
+  clearenv__proxy: 'sync',
+  clearenv__sig: 'i',
+  clearenv: function() {
     // int clearenv (void);
     // http://www.gnu.org/s/hello/manual/libc/Environment-Access.html#index-clearenv-3107
     ENV = {};
@@ -710,10 +701,9 @@ LibraryManager.library = {
     return 0;
   },
   setenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
+  setenv__proxy: 'sync',
+  setenv__sig: 'iiii',
   setenv: function(envname, envval, overwrite) {
-#if USE_PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_SETENV') }}}, envname, envval, overwrite);
-#endif
     // int setenv(const char *envname, const char *envval, int overwrite);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/setenv.html
     if (envname === 0) {
@@ -732,10 +722,9 @@ LibraryManager.library = {
     return 0;
   },
   unsetenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
+  unsetenv__proxy: 'sync',
+  unsetenv__sig: 'ii',
   unsetenv: function(name) {
-#if USE_PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_UNSETENV') }}}, name);
-#endif
     // int unsetenv(const char *name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/unsetenv.html
     if (name === 0) {
@@ -754,10 +743,9 @@ LibraryManager.library = {
     return 0;
   },
   putenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
+  putenv__proxy: 'sync',
+  putenv__sig: 'ii',
   putenv: function(string) {
-#if USE_PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_PUTENV') }}}, string);
-#endif
     // int putenv(char *string);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/putenv.html
     // WARNING: According to the standard (and the glibc implementation), the
@@ -2082,10 +2070,9 @@ LibraryManager.library = {
   timezone: '{{{ makeStaticAlloc(1) }}}',
 #endif
   tzset__deps: ['tzname', 'daylight', 'timezone'],
+  tzset__proxy: 'sync',
+  tzset__sig: 'v',
   tzset: function() {
-#if USE_PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_0({{{ cDefine('EM_PROXIED_TZSET') }}});
-#endif
     // TODO: Use (malleable) environment variables instead of system settings.
     if (_tzset.called) return;
     _tzset.called = true;
