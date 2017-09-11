@@ -321,7 +321,12 @@ var LibraryPThread = {
         // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
         worker.postMessage({
             cmd: 'load',
-            url: currentScriptUrl,
+            // If the application main .js file was loaded from a Blob, then it is not possible
+            // to access the URL of the current script that could be passed to a Web Worker so that
+            // it could load up the same file. In that case, developer must either deliver the Blob
+            // object in Module['mainScriptUrlOrBlob'], or a URL to it, so that pthread Workers can
+            // independently load up the same main application file.
+            urlOrBlob: Module['mainScriptUrlOrBlob'] || currentScriptUrl,
             buffer: HEAPU8.buffer,
             tempDoublePtr: tempDoublePtr,
             TOTAL_MEMORY: TOTAL_MEMORY,
