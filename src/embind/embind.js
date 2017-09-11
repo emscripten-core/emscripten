@@ -45,6 +45,8 @@ var LibraryEmbind = {
     Module['flushPendingDeletes'] = flushPendingDeletes;
     Module['setDelayFunction'] = setDelayFunction;
 #if NO_DYNAMIC_EXECUTION
+    // Without dynamic execution, dynamically created functions will have no
+    // names. This lets the test suite know that.
     Module['NO_DYNAMIC_EXECUTION'] = true;
 #endif
   },
