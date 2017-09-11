@@ -405,7 +405,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   # If this is a configure-type thing, do not compile to JavaScript, instead use clang
   # to compile to a native binary (using our headers, so things make sense later)
   CONFIGURE_CONFIG = (os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in sys.argv) and not os.environ.get('EMMAKEN_JUST_CONFIGURE_RECURSE')
-  CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMakeCCompilerId' in ' '.join(sys.argv)
+  CMAKE_CONFIG = False if os.environ.get('EMMAKEN_JUST_CONFIGURE_RECURSE') else \
+                 re.search('CMakeFiles[/' + re.escape(os.sep) + ']cmTryCompileExec\d*\.dir', ' '.join(sys.argv)) \
+                 or re.search('CMakeFiles[/' + re.escape(os.sep) + ']cmTC_[\da-f]{5,5}\.dir', ' '.join(sys.argv)) \
+                 # or 'CMakeCCompilerId' in ' '.join(sys.argv)
   if CONFIGURE_CONFIG or CMAKE_CONFIG:
     debug_configure = 0 # XXX use this to debug configure stuff. ./configure's generally hide our normal output including stderr so we write to a file
 
