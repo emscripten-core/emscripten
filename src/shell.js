@@ -111,9 +111,11 @@ if (ENVIRONMENT_IS_NODE) {
 
   Module['arguments'] = process['argv'].slice(2);
 
+#if MODULARIZE == 0
   if (typeof module !== 'undefined') {
     module['exports'] = Module;
   }
+#endif
 
 #if NODEJS_CATCH_EXIT
   process['on']('uncaughtException', function(ex) {
