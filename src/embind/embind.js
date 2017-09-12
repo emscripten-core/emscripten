@@ -44,10 +44,12 @@ var LibraryEmbind = {
     Module['getLiveInheritedInstances'] = getLiveInheritedInstances;
     Module['flushPendingDeletes'] = flushPendingDeletes;
     Module['setDelayFunction'] = setDelayFunction;
+#if IN_TEST_HARNESS
 #if NO_DYNAMIC_EXECUTION
     // Without dynamic execution, dynamically created functions will have no
     // names. This lets the test suite know that.
     Module['NO_DYNAMIC_EXECUTION'] = true;
+#endif
 #endif
   },
 
