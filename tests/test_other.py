@@ -7864,3 +7864,21 @@ int main() {
     Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a.js', '-o', 'b.js']).communicate()
     assert os.path.isfile('b.js')
     assert not os.path.isfile('a.js')
+
+  # Tests that Emscripten-provided header files can be cleanly included in C code
+  def test_include_system_header_in_c(self):
+    for directory, headers in [
+      ('emscripten', ['dom_pk_codes.h', 'em_asm.h', 'emscripten.h', 'fetch.h', 'html5.h', 'key_codes.h', 'threading.h', 'trace.h', 'vector.h', 'vr.h']), # This directory has also bind.h, val.h and wire.h, which require C++11
+      ('AL', ['al.h', 'alc.h']),
+      ('EGL', ['egl.h', 'eglplatform.h']),
+      ('GL', ['freeglut_std.h', 'gl.h', 'glew.h', 'glfw.h', 'glu.h', 'glut.h']),
+      ('GLES', ['gl.h', 'glplatform.h']),
+      ('GLES2', ['gl2.h', 'gl2platform.h']),
+      ('GLES3', ['gl3.h', 'gl3platform.h', 'gl31.h', 'gl32.h']),
+      ('GLFW', ['glfw3.h']),
+      ('KHR', ['khrplatform.h'])]:
+      for h in headers:
+        inc = '#include <' + directory + '/' + h + '>'
+        print inc
+        open('a.c', 'w').write(inc)
+        subprocess.check_call([PYTHON, EMCC, 'a.c'])
