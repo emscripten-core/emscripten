@@ -83,20 +83,23 @@ int main()
 		CreateThread(i);
 
 	// Join all threads and create more.
-	for(int i = 0; i < NUM_THREADS; ++i)
-	{
-		if (thread[i])
+        while (numThreadsToCreate > 0)
+        {
+		for(int i = 0; i < NUM_THREADS; ++i)
 		{
-			int status;
-			int rc = pthread_join(thread[i], (void**)&status);
-			assert(rc == 0);
-			EM_ASM(Module['printErr']('Main: Joined thread idx ' + $0 + ' (param ' + $1 + ') with status ' + $2), i, global_shared_data[i], (int)status);
-			assert(status == N);
-			thread[i] = 0;
-			if (numThreadsToCreate > 0)
+			if (thread[i])
 			{
-				--numThreadsToCreate;
-				CreateThread(i);
+				int status;
+				int rc = pthread_join(thread[i], (void**)&status);
+				assert(rc == 0);
+				EM_ASM(Module['printErr']('Main: Joined thread idx ' + $0 + ' (param ' + $1 + ') with status ' + $2), i, global_shared_data[i], (int)status);
+				assert(status == N);
+				thread[i] = 0;
+				if (numThreadsToCreate > 0)
+				{
+					--numThreadsToCreate;
+					CreateThread(i);
+				}
 			}
 		}
 	}

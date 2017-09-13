@@ -12,8 +12,6 @@ void *ThreadMain(void *arg)
 	return 0;
 }
 
-int numThreadsToCreate = 1000;
-
 int main()
 {
 	pthread_t thread;
