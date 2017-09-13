@@ -2231,7 +2231,9 @@ function integrateWasmJS(Module) {
 
   function getBinaryPromise() {
     // if we don't have the binary yet, and have the Fetch api, use that
-    if (!Module['wasmBinary'] && typeof fetch === 'function') {
+    // if Module overridded its environment to Node in Electron's renderer process, do not use fetch
+    var electronNodeContext = Module["ENVIRONMENT"] === "NODE" && typeof(window) !== 'undefined' && !!window.process;
+    if (!Module['wasmBinary'] && typeof fetch === 'function' && !electronNodeContext) {
       return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
         if (!response['ok']) {
           throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
