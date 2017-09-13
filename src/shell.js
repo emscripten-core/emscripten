@@ -111,8 +111,9 @@ if (ENVIRONMENT_IS_NODE) {
 
   Module['arguments'] = process['argv'].slice(2);
 
-  // MODULARIZE == 1 will export the module in the proper place outside, we don't need to export here
-#if MODULARIZE == 0
+#if MODULARIZE
+  // MODULARIZE will export the module in the proper place outside, we don't need to export here
+#else
   if (typeof module !== 'undefined') {
     module['exports'] = Module;
   }
