@@ -1417,7 +1417,7 @@ long __syscall220(int which, ...) // getdents64 (get directory entries 64-bit)
 	dirent *de = va_arg(vl, dirent*);
 	unsigned int count = va_arg(vl, unsigned int);
 	va_end(vl);
-	unsigned int dirents_size = count / sizeof(de); // The number of dirent structures that can fit into the provided buffer.
+	unsigned int dirents_size = count / sizeof(dirent); // The number of dirent structures that can fit into the provided buffer.
 	dirent *de_end = de + dirents_size;
 	EM_ASM(Module['printErr']('getdents64(fd=' + $0 + ', de=0x' + ($1).toString(16) + ', count=' + $2 + ')'), fd, de, count);
 
