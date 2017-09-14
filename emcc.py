@@ -943,7 +943,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.RELOCATABLE = 1
         shared.Settings.PRECISE_I64_MATH = 1 # other might use precise math, we need to be able to print it
         assert not options.use_closure_compiler, 'cannot use closure compiler on shared modules'
-        assert not shared.Settings.ALLOW_MEMORY_GROWTH, 'memory growth is not supported with shared modules yet'
 
       if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
         shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -1178,6 +1177,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             # for wasm, we really want no-exit-runtime, so that atexits don't stop us
             if final_suffix in JS_CONTAINING_SUFFIXES and not shared.Settings.NO_EXIT_RUNTIME:
               logging.warning('you should enable  -s NO_EXIT_RUNTIME=1  so that EVAL_CTORS can work at full efficiency (it gets rid of atexit calls which might disrupt EVAL_CTORS)')
+
+      # memory growth does not work in dynamic linking, except for wasm
+      if not shared.Settings.WASM and (shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE):
+        assert not shared.Settings.ALLOW_MEMORY_GROWTH, 'memory growth is not supported with shared asm.js modules'
 
       if shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.ASM_JS == 1:
         # this is an issue in asm.js, but not wasm

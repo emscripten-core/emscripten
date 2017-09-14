@@ -2282,8 +2282,10 @@ The current type of b is: 9
     self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
 
   def can_dlfcn(self):
-    if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no dlfcn with memory growth yet')
-    if self.is_wasm_backend(): return self.skip('no shared modules in wasm backend')
+    if Settings.ALLOW_MEMORY_GROWTH == 1 and not self.is_wasm():
+      return self.skip('no dlfcn with memory growth (without wasm)')
+    if self.is_wasm_backend():
+      return self.skip('no shared modules in wasm backend')
     return True
 
   def prep_dlfcn_lib(self):
@@ -3103,16 +3105,23 @@ var Module = {
       self.dylink_test(side, main, expected, header, main_emcc_args, force_c, need_reverse=False)
 
   def test_dylink_basics(self):
-    self.dylink_test('''
-      #include <stdio.h>
-      extern int sidey();
-      int main() {
-        printf("other says %d.", sidey());
-        return 0;
-      }
-    ''', '''
-      int sidey() { return 11; }
-    ''', 'other says 11.')
+    def test():
+      self.dylink_test('''
+        #include <stdio.h>
+        extern int sidey();
+        int main() {
+          printf("other says %d.", sidey());
+          return 0;
+        }
+      ''', '''
+        int sidey() { return 11; }
+      ''', 'other says 11.')
+    test()
+
+    if self.is_wasm():
+      print 'test memory growth with dynamic linking, which works in wasm'
+      Settings.ALLOW_MEMORY_GROWTH = 1
+      test()
 
   def test_dylink_floats(self):
     self.dylink_test('''
