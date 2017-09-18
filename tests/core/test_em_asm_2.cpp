@@ -137,4 +137,11 @@ int main()
 // i = EM_ASM_INT({console.log('4. comma in em_asm'); var foo = { a: 5, b: $0 }; return foo.a + foo.b}, 10); printf("4. returned %d\n", i); // This would also not compile: use of undeclared identifier 'b'
   i = EM_ASM_INT(({console.log('4. comma in em_asm'); var foo = { a: 5, b: $0 }; return foo.a + foo.b}), 10); printf("4. returned %d\n", i); // Again by wrapping the code block inside parentheses, it will work
   i = EM_ASM_INT("{console.log('5. comma in em_asm'); var foo = { a: 5, b: $0 }; return foo.a + foo.b}", 10); printf("5. returned %d\n", i);
+
+  printf("\nEM_ASM: Expression contains a tab character\n");
+  EM_ASM(console.log('1. the following word is delimited by tab characters: H\tE\tL\tL\tO\tT\tA\tB\tS'));
+  EM_ASM("console.log('2. the following word is delimited by tab characters: H\tE\tL\tL\tO\tT\tA\tB\tS')");
+  EM_ASM({"console.log('3. the following word is delimited by tab characters: H\tE\tL\tL\tO\tT\tA\tB\tS')"});
+  EM_ASM({console.log('4. the following word is delimited by tab characters: H\tE\tL\tL\tO\tT\tA\tB\tS')});
+  EM_ASM("{console.log('5. the following word is delimited by tab characters: H\tE\tL\tL\tO\tT\tA\tB\tS')}");
 }
