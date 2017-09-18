@@ -2088,7 +2088,7 @@ var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
 #endif
 
 #if BINARYEN
-function integrateWasmJS(Module) {
+function integrateWasmJS() {
   // wasm.js has several methods for creating the compiled code module here:
   //  * 'native-wasm' : use native WebAssembly support in the browser
   //  * 'interpret-s-expr': load s-expression code from a .wast and interpret
@@ -2311,10 +2311,20 @@ function integrateWasmJS(Module) {
 #if RUNTIME_LOGGING
     Module['printErr']('asynchronously preparing wasm');
 #endif
+#if ASSERTIONS
+    // Async compilation can be confusing when an error on the page overwrites Module
+    // (for example, if the order of elements is wrong, and the one defining Module is
+    // later), so we save Module and check it later.
+    var trueModule = Module;
+#endif
     getBinaryPromise().then(function(binary) {
       return WebAssembly.instantiate(binary, info)
     }).then(function(output) {
       // receiveInstance() will swap in the exports (to Module.asm) so they can be called
+#if ASSERTIONS
+      assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
+      trueModule = null;
+#endif
       receiveInstance(output['instance']);
     }).catch(function(reason) {
       Module['printErr']('failed to asynchronously prepare wasm: ' + reason);
@@ -2527,7 +2537,7 @@ function integrateWasmJS(Module) {
   var methodHandler = Module['asm']; // note our method handler, as we may modify Module['asm'] later
 }
 
-integrateWasmJS(Module);
+integrateWasmJS();
 #endif
 
 // === Body ===
