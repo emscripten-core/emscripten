@@ -853,7 +853,9 @@ var LibraryOpenAL = {
           return;
         }
 
-        listener._position = value;
+        listener._position[0] = value[0];
+        listener._position[1] = value[1];
+        listener._position[2] = value[2];
         AL.updateListenerSpace(AL.currentCtx);
         break;
       case 0x1006 /* AL_VELOCITY */:
@@ -865,7 +867,9 @@ var LibraryOpenAL = {
           return;
         }
 
-        listener._velocity = value;
+        listener._velocity[0] = value[0];
+        listener._velocity[1] = value[1];
+        listener._velocity[2] = value[2];
         AL.updateListenerSpace(AL.currentCtx);
         break;
       case 0x100A /* AL_GAIN */:
@@ -1221,7 +1225,9 @@ var LibraryOpenAL = {
           return;
         }
 
-        src.position = value;
+        src.position[0] = value[0];
+        src.position[1] = value[1];
+        src.position[2] = value[2];
         AL.updateSourceSpace(src);
         break;
       case 0x1005 /* AL_DIRECTION */:
@@ -1233,7 +1239,9 @@ var LibraryOpenAL = {
           return;
         }
 
-        src.direction = value;
+        src.direction[0] = value[0];
+        src.direction[1] = value[1];
+        src.direction[2] = value[2];
         AL.updateSourceSpace(src);
         break;
       case 0x1006 /* AL_VELOCITY */:
@@ -1245,7 +1253,9 @@ var LibraryOpenAL = {
           return;
         }
 
-        src.velocity = value;
+        src.velocity[0] = value[0];
+        src.velocity[1] = value[1];
+        src.velocity[2] = value[2];
         AL.updateSourceSpace(src);
         break;
       case 0x1007 /* AL_LOOPING */:
