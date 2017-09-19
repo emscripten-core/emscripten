@@ -213,7 +213,10 @@ var LibraryOpenAL = {
         return currentTime;
       }
 
-      // if the start time is unset, determine it based on the current offset
+      // if the start time is unset, determine it based on the current offset.
+      // This will be the case when a source is resumed after being paused, and
+      // allows us to pretend that the source actually started playing some time
+      // in the past such that it would just now have reached the stored offset.
       if (!isFinite(src.bufStartTime)) {
         src.bufStartTime = currentTime - src.bufOffset / src.playbackRate;
         src.bufOffset = 0.0;
@@ -235,59 +238,11 @@ var LibraryOpenAL = {
         src.bufsProcessed++;
       }
 
-      var audioSrc = src.audioQueue[0];
-      if (audioSrc) {
-        src.bufOffset = (currentTime - audioSrc._startTime) * src.playbackRate;
-      } else {
-        var skipCount = 0;
-        // In the absence of scheduled buffers, fast-forward playback state to the current time.
-        // This loop will continue until one of the following conditions:
-        //   * `nextStartTime` has become greater than `currentTime`
-        //   * `skipCount` becomes equal to `src.bufQueue.length`
-        // This will eventually terminate since either skipCount will increase, or nextStartTime will increase,
-        // depending on which path is taken. skipCount can be reset to 0, but only if nextStartTime has
-        // increased, and nextStartTime can never decrease, so one of the two termination conditions
-        // will eventually happen.
-        while (true) {
-          if (src.bufsProcessed >= src.bufQueue.length) {
-            if (src.looping) {
-              src.bufsProcessed %= src.bufQueue.length;
-            } else {
-              AL.setSourceState(src, 0x1014 /* AL_STOPPED */);
-              return currentTime; // n.b. return immediately if the source is stopped to skip offset correction
-            }
-          }
-
-          var buf = src.bufQueue[src.bufsProcessed];
-          if (buf.length === 0) {
-            skipCount++;
-            // If we've gone through the whole queue and everything is 0 length, just give up
-            if (skipCount === src.bufQueue.length) {
-              break;
-            }
-          } else {
-            skipCount = 0;
-            if (src.type === 0x1028 /* AL_STATIC */ && src.looping) {
-              nextStartTime = Number.POSITIVE_INFINITY;
-            } else {
-              nextStartTime = src.bufStartTime + buf.audioBuf.duration / src.playbackRate;
-            }
-
-            if (currentTime < nextStartTime) {
-              src.bufOffset = (currentTime - src.bufStartTime) * src.playbackRate;
-              break;
-            }
-
-            src.bufStartTime = nextStartTime;
-          }
-
-          src.bufOffset = 0.0;
-          src.bufsProcessed++;
-        }
-      }
-
-      // If the source is a looping static buffer, adjust the buffer offset based on the loop points
-      if (src.type === 0x1028 /* AL_STATIC */ && src.looping) {
+      if (src.bufsProcessed >= src.bufQueue.length && !src.looping) {
+        // The source has played its entire queue and is non-looping, so just mark it as stopped.
+        AL.setSourceState(src, 0x1014 /* AL_STOPPED */);
+      } else if (src.type === 0x1028 /* AL_STATIC */ && src.looping) {
+        // If the source is a looping static buffer, determine the buffer offset based on the loop points
         var buf = src.bufQueue[0];
         if (buf.length === 0) {
           src.bufOffset = 0.0;
@@ -304,6 +259,53 @@ var LibraryOpenAL = {
           } else {
             src.bufOffset = loopStart + (delta - loopStart) % (loopEnd - loopStart);
           }
+        }
+      } else if (src.audioQueue[0]) {
+        // The source is still actively playing, so we just need to calculate where we are in the current buffer
+        // so it can be remembered if the source gets paused.
+        src.bufOffset = (currentTime - src.audioQueue[0]._startTime) * src.playbackRate;
+      } else {
+        // The source hasn't finished yet, but there is no scheduled audio left for it. This can be because
+        // the source has just been started/resumed, or due to an underrun caused by a long blocking operation.
+        // We need to determine what state we would be in by this point in time so that when we next schedule
+        // audio playback, it will be just as if no underrun occurred.
+
+        if (src.type !== 0x1028 /* AL_STATIC */ && src.looping) {
+          // if the source is a looping buffer queue, let's first calculate the queue duration, so we can
+          // quickly fast forward past any full loops of the queue and only worry about the remainder.
+          var srcDuration = AL.sourceDuration(src) / src.playbackRate;
+          if (srcDuration > 0.0) {
+            src.bufStartTime += Math.floor((currentTime - src.bufStartTime) / srcDuration) * srcDuration;
+          }
+        }
+
+        // Since we've already skipped any full-queue loops if there were any, we just need to find
+        // out where in the queue the remaining time puts us, which won't require stepping through the
+        // entire queue more than once.
+        for (var i = 0; i < src.bufQueue.length; i++) {
+          if (src.bufsProcessed >= src.bufQueue.length) {
+            if (src.looping) {
+              src.bufsProcessed %= src.bufQueue.length;
+            } else {
+              AL.setSourceState(src, 0x1014 /* AL_STOPPED */);
+              break;
+            }
+          }
+
+          var buf = src.bufQueue[src.bufsProcessed];
+          if (buf.length > 0) {
+            nextStartTime = src.bufStartTime + buf.audioBuf.duration / src.playbackRate;
+
+            if (currentTime < nextStartTime) {
+              src.bufOffset = (currentTime - src.bufStartTime) * src.playbackRate;
+              break;
+            }
+
+            src.bufStartTime = nextStartTime;
+          }
+
+          src.bufOffset = 0.0;
+          src.bufsProcessed++;
         }
       }
 
