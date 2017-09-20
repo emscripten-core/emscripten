@@ -34,7 +34,7 @@ static int result = EXIT_SUCCESS;
 
 static void end_test() {
 #ifdef __EMSCRIPTEN__
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
     exit(result);
 }

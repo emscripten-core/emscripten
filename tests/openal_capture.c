@@ -43,7 +43,7 @@ EMSCRIPTEN_KEEPALIVE
 #endif
 void end_test(int result) {
 #ifdef __EMSCRIPTEN__
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #else
     exit(result);
 #endif

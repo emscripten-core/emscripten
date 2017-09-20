@@ -1795,6 +1795,9 @@ var LibraryOpenAL = {
           return;
         }
 
+        var c = newCapture;
+        var srcBuf = audioProcessingEvent.inputBuffer;
+
         // Actually just copy srcBuf's channel data into
         // c.buffers, optimizing for each case.
         switch (format) {
