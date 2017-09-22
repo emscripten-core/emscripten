@@ -824,7 +824,7 @@ class BrowserCore(RunnerCore):
   #define __REPORT_RESULT_DEFINED__
   #include <emscripten.h>
 
-  static void _ReportResult(int result, int sync)
+  static void EMSCRIPTEN_KEEPALIVE _ReportResult(int result, int sync)
   {
     EM_ASM({
       var xhr = new XMLHttpRequest();

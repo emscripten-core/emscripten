@@ -262,51 +262,88 @@ var LibraryPThread = {
         var worker = new Worker(pthreadMainJs);
 
         worker.onmessage = function(e) {
-          // If this message is intended to a recipient that is not the main thread, forward it to the target thread.
-          if (e.data.targetThread && e.data.targetThread != _pthread_self()) {
-            var thread = PThread.pthreads[e.data.targetThread];
-            if (thread) {
-              thread.worker.postMessage(e.data, e.data.transferList);
-            } else {
-              console.error('Internal error! Worker sent a message "' + e.data.cmd + '" to target pthread ' + e.data.targetThread + ', but that thread no longer exists!');
+          var d = e.data;
+          // TODO: Move the proxied call mechanism into a queue inside heap.
+          if (d.proxiedCall) {
+            var returnValue;
+            var funcTable = (d.func >= 0) ? proxiedFunctionTable : ASM_CONSTS;
+            var funcIdx = (d.func >= 0) ? d.func : (-1 - d.func);
+            PThread.currentProxiedOperationCallerThread = worker.pthread.threadInfoStruct; // Sometimes we need to backproxy events to the calling thread (e.g. HTML5 DOM events handlers such as emscripten_set_mousemove_callback()), so keep track in a globally accessible variable about the thread that initiated the proxying.
+            switch(d.proxiedCall & 31) {
+              case 1: returnValue = funcTable[funcIdx](); break;
+              case 2: returnValue = funcTable[funcIdx](d.p0); break;
+              case 3: returnValue = funcTable[funcIdx](d.p0, d.p1); break;
+              case 4: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2); break;
+              case 5: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3); break;
+              case 6: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4); break;
+              case 7: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5); break;
+              case 8: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5, d.p6); break;
+              case 9: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5, d.p6, d.p7); break;
+              case 10: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5, d.p6, d.p7, d.p8); break;
+              default:
+                if (d.proxiedCall) {
+                  Module['printErr']("worker sent an unknown proxied call idx " + d.proxiedCall);
+                  console.error(e.data);
+                }
+                break;
+            }
+            if (d.returnValue) {
+              if (d.proxiedCall < 32) HEAP32[d.returnValue >> 2] = returnValue;
+              else HEAPF64[d.returnValue >> 3] = returnValue;
+            }
+            var waitAddress = d.waitAddress;
+            if (waitAddress) {
+              Atomics.store(HEAP32, waitAddress >> 2, 1);
+              Atomics.wake(HEAP32, waitAddress >> 2, 1);
             }
             return;
           }
 
-          if (e.data.cmd === 'processQueuedMainThreadWork') {
+          // If this message is intended to a recipient that is not the main thread, forward it to the target thread.
+          if (d.targetThread && d.targetThread != _pthread_self()) {
+            var thread = PThread.pthreads[d.targetThread];
+            if (thread) {
+              thread.worker.postMessage(e.data, d.transferList);
+            } else {
+              console.error('Internal error! Worker sent a message "' + d.cmd + '" to target pthread ' + d.targetThread + ', but that thread no longer exists!');
+            }
+            return;
+          }
+
+          if (d.cmd === 'processQueuedMainThreadWork') {
             // TODO: Must post message to main Emscripten thread in PROXY_TO_WORKER mode.
             _emscripten_main_thread_process_queued_calls();
-          } else if (e.data.cmd === 'spawnThread') {
+          } else if (d.cmd === 'spawnThread') {
             __spawn_thread(e.data);
-          } else if (e.data.cmd === 'cleanupThread') {
-            __cleanup_thread(e.data.thread);
-          } else if (e.data.cmd === 'killThread') {
-            __kill_thread(e.data.thread);
-          } else if (e.data.cmd === 'cancelThread') {
-            __cancel_thread(e.data.thread);
-          } else if (e.data.cmd === 'loaded') {
+          } else if (d.cmd === 'cleanupThread') {
+            __cleanup_thread(d.thread);
+          } else if (d.cmd === 'killThread') {
+            __kill_thread(d.thread);
+          } else if (d.cmd === 'cancelThread') {
+            __cancel_thread(d.thread);
+          } else if (d.cmd === 'loaded') {
             ++numWorkersLoaded;
             if (numWorkersLoaded === numWorkers && onFinishedLoading) {
               onFinishedLoading();
             }
-          } else if (e.data.cmd === 'print') {
-            Module['print']('Thread ' + e.data.threadId + ': ' + e.data.text);
-          } else if (e.data.cmd === 'printErr') {
-            Module['printErr']('Thread ' + e.data.threadId + ': ' + e.data.text);
-          } else if (e.data.cmd === 'alert') {
-            alert('Thread ' + e.data.threadId + ': ' + e.data.text);
-          } else if (e.data.cmd === 'exit') {
+          } else if (d.cmd === 'print') {
+            Module['print']('Thread ' + d.threadId + ': ' + d.text);
+          } else if (d.cmd === 'printErr') {
+            Module['printErr']('Thread ' + d.threadId + ': ' + d.text);
+          } else if (d.cmd === 'alert') {
+            alert('Thread ' + d.threadId + ': ' + d.text);
+          } else if (d.cmd === 'exit') {
             // currently no-op
-          } else if (e.data.cmd === 'cancelDone') {
+          } else if (d.cmd === 'cancelDone') {
             PThread.freeThreadData(worker.pthread);
             worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
             PThread.unusedWorkerPool.push(worker);
             // TODO: Free if detached.
             PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker.pthread), 1); // Not a running Worker anymore.
-          } else if (e.data.cmd === 'objectTransfer') {
+          } else if (d.cmd === 'objectTransfer') {
             PThread.receiveObjectTransfer(e.data);
           } else {
-            Module['printErr']("worker sent an unknown command " + e.data.cmd);
+            Module['printErr']("worker sent an unknown command " + d.cmd);
           }
         };
 

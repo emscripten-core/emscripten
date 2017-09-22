@@ -16,6 +16,15 @@ var INDENTATION = ' ';
 
 var functionStubSigs = {};
 
+// Some JS-implemented library functions are proxied to be called on the main browser thread, if the Emscripten runtime is executing in a Web Worker.
+// Each such proxied function is identified via an ordinal number (this is not the same namespace as function pointers in general).
+var proxiedFunctionTable = ["null" /* Reserve index 0 for an undefined function*/];
+
+// proxiedFunctionInvokers contains bodies of the functions that will perform the proxying. These
+// are generated in a map to keep track which ones have already been emitted, to avoid outputting duplicates.
+// map: pair(sig, syncOrAsync) -> function body
+var proxiedFunctionInvokers = {};
+
 // JSifier
 function JSify(data, functionsOnly) {
   //B.start('jsifier');
@@ -100,6 +109,67 @@ function JSify(data, functionsOnly) {
     return snippet;
   }
 
+  // Generates a function that invokes a proxied function call from the calling thread to the main browser thread.
+  function generateProxiedCallInvoker(sig, sync /*async if false*/) {
+    if (sig.length == 0) throw 'Function signature cannot be empty!';
+    function argsList(num) { // ", p0, p1, p2, p3, p4"
+      var s = '';
+      for(var i = 0; i < num; ++i) s += ', p' + i;
+      return s;
+    }
+
+    var func = "function _emscripten_" + (sync ? '' : 'a') + 'sync_run_in_browser_thread_' + sig + '(func' + argsList(sig.length-1) + ') {\n';
+    if (sync) func += '  var waitAddress = Runtime.stackSave();\n';
+
+    function sizeofType(t) {
+      switch(t) {
+        case 'd': return 8;
+//      case 'I': return 8; // int64 // TODO: For wasm, we'll have to have something like this
+        case 'i': return 4;
+        case 'f': return 4;
+        case 'v': return 0;
+        // TODO: Smaller sizes?
+        default: throw 'unsupported type in signature: ' + t;
+      }
+    }
+
+    var sizeofReturn = sizeofType(sig[0]);
+    if (sync) {
+      if (sizeofReturn == 4) func += '  var returnValue = waitAddress + 4;\n';
+      else if (sizeofReturn == 8) func += '  var returnValue = waitAddress + 8;\n'; // Retain alignment of each type
+    }
+
+    if (sync) func += '  Atomics.store(HEAP32, waitAddress >> 2, 0);\n';
+
+    function argsDict(num) { // ", p0: p0, p1: p1, p2: p2, p3: p3, p4: p4"
+      var s = '';
+      for(var i = 0; i < num; ++i) s += ', p' + i + ': p' + i;
+      return s;
+    }
+
+    // This is ad-hoc numbering scheme to map signatures to IDs, and must agree with call handler in src/library_pthread.js.
+    // Signatures with numbers 0-19 are for functions that return void, int or float, and ID numbers >= 32 are for functions that return a double.
+    // Once proxied function calls no longer go through postMessage()s but instead in the heap, this will need to change, since int vs float will matter.
+    const idForFunctionReturningDouble = 32;
+    var functionCallOrdinal = sig.length + (sig[0] == 'd' ? idForFunctionReturningDouble : 0);
+    if (sig.length > 10) throw 'Proxying functions with 10 or more function parameters is not supported!';
+
+    // next line generates a form: "postMessage({ proxiedCall: 9, func: func, waitAddress: waitAddress, returnValue: returnValue, p0: p0, p1: p1, p2: p2, p3: p3, p4: p4, p5: p5, p6: p6, p7: p7 });"
+    func += '  postMessage({ proxiedCall: ' + functionCallOrdinal + ', func: func' + (sync ? ', waitAddress: waitAddress' : '') + (sync && sizeofReturn > 0 ? ', returnValue: returnValue' : '') + argsDict(sig.length-1) + ' });\n';
+    if (sync) {
+      func += '  Atomics.wait(HEAP32, waitAddress >> 2, 0);\n';
+      switch(sig[0]) {
+        case 'i': func += '  return HEAP32[returnValue >> 2];\n'; break;
+        case 'f': func += '  return HEAPF32[returnValue >> 2];\n'; break;
+        case 'd': func += '  return HEAPF64[returnValue >> 3];\n'; break;
+        //case 'I': func += '  return HEAP64[returnValue >> 3];\n'; // TODO: For wasm
+        // TODO: Smaller sizes?
+      }
+    }
+    func += '}';
+    return func;
+  }
+
   // functionStub
   function functionStubHandler(item) {
     // special logic
@@ -121,6 +191,11 @@ function JSify(data, functionsOnly) {
 
       // dependencies can be JS functions, which we just run
       if (typeof ident == 'function') return ident();
+
+      // don't process any special identifiers. These are looked up when processing the base name of the identifier.
+      if (ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline') || ident.endsWith('__deps') || ident.endsWith('__postset')) {
+        return '';
+      }
 
       // $ident's are special, we do not prefix them with a '_'.
       if (ident[0] === '$') {
@@ -225,7 +300,32 @@ function JSify(data, functionsOnly) {
       var depsText = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
       var contentText;
       if (isFunction) {
-        contentText = snippet;
+        // Emit the body of a JS library function.
+        var proxyingMode = LibraryManager.library[ident + '__proxy'];
+        if (proxyingMode && proxyingMode !== 'sync' && proxyingMode !== 'async') {
+          throw 'Invalid proxyingMode ' + ident + '__proxy: \'' + proxyingMode + '\' specified!';
+        }
+
+        if (USE_PTHREADS && proxyingMode) {
+          var sig = LibraryManager.library[ident + '__sig'];
+          if (!sig) throw 'Missing function signature field "' + ident + '__sig"! (Using proxying mode requires specifying the signature of the function)';
+          sig = sig.replace(/f/g, 'i'); // TODO: Implement float signatures.
+          var synchronousCall = (proxyingMode === 'sync');
+          var invokerKey = sig + (synchronousCall ? '_sync' : '_async');
+          if (!proxiedFunctionInvokers[invokerKey]) proxiedFunctionInvokers[invokerKey] = generateProxiedCallInvoker(sig, synchronousCall);
+          var proxyingFunc = synchronousCall ? '_emscripten_sync_run_in_browser_thread_' : '_emscripten_async_run_in_browser_thread_';
+          if (sig.length > 1) {
+            // If the function takes parameters, forward those to the proxied function call
+            snippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1($2) {\nif (ENVIRONMENT_IS_PTHREAD) return ' + proxyingFunc + sig + '(' + proxiedFunctionTable.length + ', $2);');
+          } else {
+            // No parameters to the function
+            snippet = snippet.replace(/function (.*)? {/, 'function $1 {\nif (ENVIRONMENT_IS_PTHREAD) return ' + proxyingFunc + sig + '(' + proxiedFunctionTable.length + ');');
+          }
+          contentText = snippet;
+          proxiedFunctionTable.push(finalName);
+        } else {
+          contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.
+        }
       } else if (typeof snippet === 'string' && snippet.indexOf(';') == 0) {
         contentText = 'var ' + finalName + snippet;
         if (snippet[snippet.length-1] != ';' && snippet[snippet.length-1] != '}') contentText += ';';
@@ -402,7 +502,12 @@ function JSify(data, functionsOnly) {
     legalizedI64s = legalizedI64sDefault;
 
     if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
-      if (USE_PTHREADS) print('if (!ENVIRONMENT_IS_PTHREAD) {\n // Only main thread initializes these, pthreads copy them over at thread worker init time (in pthread-main.js)');
+      if (USE_PTHREADS) {
+        print('\n // proxiedFunctionTable specifies the list of functions that can be called either synchronously or asynchronously from other threads in postMessage()d or internally queued events. This way a pthread in a Worker can synchronously access e.g. the DOM on the main thread.')
+        print('\nvar proxiedFunctionTable = [' + proxiedFunctionTable.join() + '];\n');
+        for(i in proxiedFunctionInvokers) print(proxiedFunctionInvokers[i]+'\n');
+        print('if (!ENVIRONMENT_IS_PTHREAD) {\n // Only main thread initializes these, pthreads copy them over at thread worker init time (in pthread-main.js)');
+      }
       print('DYNAMICTOP_PTR = allocate(1, "i32", ALLOC_STATIC);\n');
       print('STACK_BASE = STACKTOP = Runtime.alignMemory(STATICTOP);\n');
       if (STACK_START > 0) print('if (STACKTOP < ' + STACK_START + ') STACK_BASE = STACKTOP = Runtime.alignMemory(' + STACK_START + ');\n');
