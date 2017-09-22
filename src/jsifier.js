@@ -152,8 +152,11 @@ function JSify(data, functionsOnly) {
     }
 
     // This is ad-hoc numbering scheme to map signatures to IDs, and must agree with call handler in src/library_pthread.js.
+    // Signatures with numbers 0-19 are for functions that return void, int or float, and ID numbers >= 32 are for functions that return a double.
     // Once proxied function calls no longer go through postMessage()s but instead in the heap, this will need to change, since int vs float will matter.
-    var functionCallOrdinal = sig.length + (sig[0] == 'd' ? 20 : 0);
+    const idForFunctionReturningDouble = 32;
+    var functionCallOrdinal = sig.length + (sig[0] == 'd' ? idForFunctionReturningDouble : 0);
+    if (sig.length > 10) throw 'Proxying functions with 10 or more function parameters is not supported!';
 
     // next line generates a form: "postMessage({ proxiedCall: 9, func: func, waitAddress: waitAddress, returnValue: returnValue, p0: p0, p1: p1, p2: p2, p3: p3, p4: p4, p5: p5, p6: p6, p7: p7 });"
     func += '  postMessage({ proxiedCall: ' + functionCallOrdinal + ', func: func' + (sync ? ', waitAddress: waitAddress' : '') + (sync && sizeofReturn > 0 ? ', returnValue: returnValue' : '') + argsDict(sig.length-1) + ' });\n';
