@@ -658,6 +658,11 @@ class benchmark(RunnerCore):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_16mb', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
+  def test_matrix_multiply(self):
+    def output_parser(output):
+      return float(re.search('Total elapsed: ([\d\.]+)', output).group(1))
+    self.do_benchmark('matrix_multiply', open(path_from_root('tests', 'matrix_multiply.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-I'+path_from_root('tests')])
+
   def test_zzz_java_nbody(self): # tests xmlvm compiled java, including bitcasts of doubles, i64 math, etc.
     if CORE_BENCHMARKS: return
     args = [path_from_root('tests', 'nbody-java', x) for x in os.listdir(path_from_root('tests', 'nbody-java')) if x.endswith('.c')] + \
