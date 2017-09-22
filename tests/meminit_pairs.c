@@ -14,5 +14,5 @@ int main() {
       }
     }
   }
-  REPORT_RESULT()
+  REPORT_RESULT(result);
 }

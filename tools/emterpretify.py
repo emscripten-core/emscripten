@@ -30,7 +30,7 @@ OUTPUT_FILE = None
 def handle_arg(arg):
   global ZERO, ASYNC, ASSERTIONS, PROFILING, FROUND, ADVISE, MEMORY_SAFE, OUTPUT_FILE
   if '=' in arg:
-    l, r = arg.split('=')
+    l, r = arg.split('=', 1)
     if l == 'ZERO': ZERO = int(r)
     elif l == 'ASYNC': ASYNC = int(r)
     elif l == 'ASSERTIONS': ASSERTIONS = int(r)
@@ -991,7 +991,7 @@ __ATPRERUN__.push(function() {
 
     js += ['''
   var bytecodeFile = Module['emterpreterFile'];
-  assert(bytecodeFile instanceof ArrayBuffer, 'bad emterpreter file');
+  assert(bytecodeFile instanceof ArrayBuffer, 'bad or missing emterpreter file. if you compiled to JS (and not HTML) make sure you set Module["emterpreterFile"]');
   var codeSize = %d;
   HEAPU8.set(new Uint8Array(bytecodeFile).subarray(0, codeSize), eb);
   assert(HEAPU8[eb] === %d);
@@ -1001,7 +1001,9 @@ __ATPRERUN__.push(function() {
   var relocationsStart = (codeSize+3) >> 2;
   var relocations = (new Uint32Array(bytecodeFile)).subarray(relocationsStart);
   assert(relocations.length === %d);
-  if (relocations.length > 0) assert(relocations[0] === %d);
+  if (relocations.length > 0) {
+    assert(relocations[0] === %d);
+  }
 ''' % (len(all_code), all_code[0], all_code[1], all_code[2], all_code[3], len(relocations), relocations[0])]
 
   else:

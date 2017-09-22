@@ -690,7 +690,7 @@ v1.34.10: 9/25/2015
  - Added wasm compressor/decompressor polyfill (#3766)
  - Added support for sRGB texture formats.
  - Removed the deprecated --compression option.
- - Fixed an issue with with asm.js validation for pthreads being broken since v1.34.7 (#3719)
+ - Fixed an issue with asm.js validation for pthreads being broken since v1.34.7 (#3719)
  - Added built-in cpu performance profiler, which is enabled with linker flag --cpuprofiler. (#3781)
  - Added build-in memory usage profiler, which is enabled with linker flag --memoryprofiler. (#3781)
  - Fixed multiple arities per EM_ASM block (#3804)
@@ -1010,7 +1010,7 @@ v1.30.3: 4/3/2015
     - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.30.2...1.30.3
     - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.30.2...1.30.3
 
-v1.30.2: 4/1/2025
+v1.30.2: 4/1/2015
 -----------------
  - Added support to writing to mmap()ed memory by implementing msync() (#3269).
  - Updated SDL2 port to version 7.
@@ -1055,7 +1055,7 @@ v1.29.12: 3/15/2015
 -------------------
  - Fix a bug where SDL_malloc and SDL_free were not available. (#3247)
  - Fix various issues with emrun usage. (#3234)
- - Fixed a off-by-one memory access in native optimizer.
+ - Fixed an off-by-one memory access in native optimizer.
  - Improve emterpreter support.
  - Full list of changes:
     - Emscripten: https://github.com/kripken/emscripten/compare/1.29.11...1.29.12
@@ -2203,7 +2203,7 @@ v1.7.6: 11/15/2013
  - Added regex implementation from musl libc.
  - The command line parameter -s DEAD_FUNCTIONS=[] can now be used to explicitly kill functions coming from built-in library_xx.js.
  - Improved EGL support and GLES2 spec conformance.
- - Reverted -s TOTAL_MEMORY=x to require pow2 values, instead of the relaxed 'multiples of 16MB'. This is because the relaxed rule is released only in Firefox 26 which which is currently in Beta and ships on the week of December 10th (currently in Beta). As of writing, current stable Firefox 25 does not yet support these.
+ - Reverted -s TOTAL_MEMORY=x to require pow2 values, instead of the relaxed 'multiples of 16MB'. This is because the relaxed rule is released only in Firefox 26 which is currently in Beta and ships on the week of December 10th (currently in Beta). As of writing, current stable Firefox 25 does not yet support these.
  - Adjusted the default linker behavior to warn about all missing symbols, instead of silently ignoring them. Use -s WARN_ON_UNDEFINED_SYMBOLS=0 to suppress these warnings if necessary.
  - Full list of changes: https://github.com/kripken/emscripten/compare/1.7.5...1.7.6
 
@@ -2355,7 +2355,7 @@ v1.5.6: 8/17/2013
  - Added touch events support to GLUT library.
  - Added new --js-opts=0/1 command line option to control whether JS optimizer is run or not.
  - Improved OpenAL support.
- - Added new command line tool tools/find_bigvars.py which can be used on a output file to detect large functions and needs for outlining.
+ - Added new command line tool tools/find_bigvars.py which can be used on an output file to detect large functions and needs for outlining.
  - Merged link flags -s FORCE_GL_EMULATION and -s DISABLE_GL_EMULATION to a single opt-in flag -s LEGACY_GL_EMULATION=0/1 to control whether GL emulation is active.
  - Improved SDL input support.
  - Several stability-related compiler fixes.

@@ -116,7 +116,8 @@ nondefault_test_modes = [
   'binaryen1',
   'binaryen2',
   'binaryen3',
-  'binaryen_native'
+  'binaryens',
+  'binaryenz',
 ]
 test_index = 0
 
@@ -603,8 +604,7 @@ class RunnerCore(unittest.TestCase):
         suppFunc(p);
         printf("main see: %d\nok.\n", suppInt);
         #ifdef BROWSER
-          int result = suppInt;
-          REPORT_RESULT();
+          REPORT_RESULT(suppInt);
         #endif
         return 0;
       }
@@ -627,18 +627,19 @@ class RunnerCore(unittest.TestCase):
                        no_build=False, main_file=None, additional_files=[],
                        js_engines=None, post_build=None, basename='src.cpp',
                        libraries=[], includes=[], force_c=False, build_ll_hook=None,
-                       extra_emscripten_args=[]):
+                       extra_emscripten_args=[], assert_returncode=None, assert_identical=False):
     self.do_run(open(src).read(), open(expected_output).read(),
                 args, output_nicerizer, output_processor, no_build, main_file,
                 additional_files, js_engines, post_build, basename, libraries,
-                includes, force_c, build_ll_hook, extra_emscripten_args)
+                includes, force_c, build_ll_hook, extra_emscripten_args,
+                assert_returncode, assert_identical)
 
   ## Does a complete test - builds, runs, checks output, etc.
   def do_run(self, src, expected_output, args=[], output_nicerizer=None,
              output_processor=None, no_build=False, main_file=None, additional_files=[],
              js_engines=None, post_build=None, basename='src.cpp', libraries=[],
              includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[],
-             assert_returncode=None):
+             assert_returncode=None, assert_identical=False):
     if Settings.ASYNCIFY == 1 and self.is_wasm_backend():
       return self.skip("wasm backend doesn't support ASYNCIFY yet")
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
@@ -662,9 +663,13 @@ class RunnerCore(unittest.TestCase):
     for engine in js_engines:
       #print 'test in', engine
       js_output = self.run_generated_code(engine, filename + '.o.js', args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
+      js_output = js_output.replace('\r\n', '\n')
       try:
-        self.assertContained(expected_output, js_output.replace('\r\n', '\n'))
-        self.assertNotContained('ERROR', js_output)
+        if assert_identical:
+          self.assertIdentical(expected_output, js_output)
+        else:
+          self.assertContained(expected_output, js_output)
+          self.assertNotContained('ERROR', js_output)
       except Exception, e:
         print '(test did not pass in JS engine: %s)' % engine
         raise e
@@ -815,17 +820,33 @@ class BrowserCore(RunnerCore):
   def with_report_result(self, code):
     return r'''
 #ifdef __EMSCRIPTEN__
+  #ifndef __REPORT_RESULT_DEFINED__
+  #define __REPORT_RESULT_DEFINED__
   #include <emscripten.h>
-  #define REPORT_RESULT_INTERNAL(sync) \
-    EM_ASM_({ \
-      var xhr = new XMLHttpRequest(); \
-      var result = $0; \
-      if (Module['pageThrewException']) result = 12345; \
-      xhr.open('GET', 'http://localhost:8888/report_result?' + result, !$1); \
-      xhr.send(); \
-      if (!Module['pageThrewException'] /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000); \
+
+  static void EMSCRIPTEN_KEEPALIVE _ReportResult(int result, int sync)
+  {
+    EM_ASM({
+      var xhr = new XMLHttpRequest();
+      var result = $0;
+      if (Module['pageThrewException']) result = 12345;
+      xhr.open('GET', 'http://localhost:8888/report_result?' + result, !$1);
+      xhr.send();
+      if (!Module['pageThrewException'] /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000);
     }, result, sync);
-  #define REPORT_RESULT() REPORT_RESULT_INTERNAL(0)
+  }
+
+  #if __EMSCRIPTEN_PTHREADS__
+    #include <emscripten/threading.h>
+    #define REPORT_RESULT(result) emscripten_async_run_in_main_runtime_thread(EM_FUNC_SIG_VII, _ReportResult, (result), 0)
+    #define REPORT_RESULT_SYNC(result) emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VII, _ReportResult, (result), 1)
+  #else
+    #define REPORT_RESULT(result) _ReportResult((result), 0)
+    #define REPORT_RESULT_SYNC(result) _ReportResult((result), 1)
+  #endif
+
+  #endif // ~__REPORT_RESULT_DEFINED__
+
 #endif
 ''' + code
 

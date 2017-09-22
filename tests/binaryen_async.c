@@ -4,10 +4,10 @@
 
 int main() {
   printf("hello, world!\n");
-  int result = EM_ASM_INT_V({
+  int result = EM_ASM_INT({
     return Module.sawAsyncCompilation | 0;
   });
-  REPORT_RESULT();
+  REPORT_RESULT(result);
   return 0;
 }
 

@@ -10,7 +10,7 @@ int result = 1;
 
 void success()
 {
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }
 
 void test() {

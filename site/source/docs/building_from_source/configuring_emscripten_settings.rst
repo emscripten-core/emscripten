@@ -56,7 +56,7 @@ The file simply assigns paths to a number of *variables* representing the main t
 
 The default *emcc* configuration file often gets the paths from environment variables if defined. If no variable is defined the system will also attempt to find "system executables". For example:  ::
 
-	PYTHON = os.path.expanduser(os.getenv('PYTHON') or 'C:\\Python27\\python2.exe')
+	PYTHON = os.path.expanduser(os.getenv('PYTHON', 'C:\\Python27\\python2.exe'))
 
 You can find out the other variable names from the default *.emscripten* file or the :ref:`example here <compiler-configuration-file>`. 
 
@@ -70,7 +70,7 @@ The compiler configuration file can be edited with the text editor of your choic
    
 	::
    
-		LLVM_ROOT = 'os.path.expanduser(os.getenv('LLVM') or '/home/ubuntu/a-path/emscripten-fastcomp/build/bin')'
+		LLVM_ROOT = 'os.path.expanduser(os.getenv('LLVM', '/home/ubuntu/a-path/emscripten-fastcomp/build/bin'))'
 
 	.. note:: Use forward slashes!
 
@@ -80,7 +80,7 @@ The compiler configuration file can be edited with the text editor of your choic
    
 	::
    
-		EMSCRIPTEN_ROOT = os.path.expanduser(os.getenv('EMSCRIPTEN') or '/home/ubuntu/yourpath/emscripten') # directory
+		EMSCRIPTEN_ROOT = os.path.expanduser(os.getenv('EMSCRIPTEN', '/home/ubuntu/yourpath/emscripten')) # directory
  
 
 .. comment .. The settings are now correct in the configuration file, but the paths and environment variables are not set in the command prompt/terminal. **HamishW** Follow up with Jukka on this.

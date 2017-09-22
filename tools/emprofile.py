@@ -10,7 +10,7 @@ DEBUG_EMPROFILE_PY = 0
 OUTFILE = 'toolchain_profiler.results_' + time.strftime('%Y%m%d_%H%M')
 for arg in sys.argv:
   if arg.startswith('--outfile='):
-    OUTFILE = arg.split('=')[1].strip().replace('.html', '')
+    OUTFILE = arg.split('=', 1)[1].strip().replace('.html', '')
 
 # Deletes all previously captured log files to make room for a new clean run.
 def delete_profiler_logs():

@@ -7809,7 +7809,7 @@ function JSDCE(ast) {
     printErr('^^^^^^^^^^^^^^');
   }
   function ensureData(scope, name) {
-    if (scope[name]) return scope[name];
+    if (Object.prototype.hasOwnProperty.call(scope, name)) return scope[name];
     scope[name] = {
       def: 0,
       use: 0,
@@ -7819,7 +7819,7 @@ function JSDCE(ast) {
   }
   function cleanUp(ast, names) {
     traverse(ast, function(node, type) {
-      if (type === 'defun' && node[1] in names) return emptyNode();
+      if (type === 'defun' && Object.prototype.hasOwnProperty.call(names, node[1])) return emptyNode();
       if (type === 'defun' || type === 'function') return null; // do not enter other scopes
       if (type === 'var') {
         node[1] = node[1].filter(function(varItem, j) {

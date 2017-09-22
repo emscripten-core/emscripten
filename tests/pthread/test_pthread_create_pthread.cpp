@@ -8,7 +8,7 @@ volatile int result = 0;
 
 static void *thread2_start(void *arg)
 {
-  EM_ASM(Module['print']('thread2_start!'););
+  EM_ASM(Module['print']('thread2_start!'));
   ++result;
 
   pthread_exit(0);
@@ -16,7 +16,7 @@ static void *thread2_start(void *arg)
 
 static void *thread1_start(void *arg)
 {
-  EM_ASM(Module['print']('thread1_start!'););
+  EM_ASM(Module['print']('thread1_start!'));
   pthread_t thr;
   pthread_create(&thr, NULL, thread2_start, 0);
   pthread_join(thr, 0);
@@ -28,8 +28,7 @@ int main()
   if (!emscripten_has_threading_support())
   {
 #ifdef REPORT_RESULT
-    result = 1;
-    REPORT_RESULT();
+    REPORT_RESULT(1);
 #endif
     printf("Skipped: Threading is not supported.\n");
     return 0;
@@ -50,6 +49,6 @@ int main()
   pthread_join(thr, 0);
 
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 #endif
 }

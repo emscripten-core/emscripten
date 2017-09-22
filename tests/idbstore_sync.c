@@ -49,8 +49,7 @@ void test() {
   assert(!exists);
   sum++;
 
-  int result = sum;
-  REPORT_RESULT();
+  REPORT_RESULT(sum);
 }
 
 void never() {

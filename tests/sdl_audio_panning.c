@@ -10,8 +10,7 @@
 Mix_Chunk *sound;
 
 void done() {
-  int result = 1;
-  REPORT_RESULT();
+  REPORT_RESULT(1);
 }
 
 void pan() {

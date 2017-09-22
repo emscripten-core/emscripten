@@ -132,8 +132,8 @@ extern void emscripten_force_exit(int status);
 double emscripten_get_device_pixel_ratio(void);
 
 void emscripten_hide_mouse(void);
-void emscripten_set_canvas_size(int width, int height);
-void emscripten_get_canvas_size(int *width, int *height, int *isFullscreen);
+void emscripten_set_canvas_size(int width, int height) __attribute__((deprecated("This variant does not allow specifying the target canvas", "Use emscripten_set_canvas_element_size() instead")));
+void emscripten_get_canvas_size(int *width, int *height, int *isFullscreen) __attribute__((deprecated("This variant does not allow specifying the target canvas", "Use emscripten_get_canvas_element_size() and emscripten_get_fullscreen_status() instead")));
 
 #if __EMSCRIPTEN__
 double emscripten_get_now(void);

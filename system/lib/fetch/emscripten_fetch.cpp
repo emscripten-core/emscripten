@@ -37,7 +37,7 @@ void emscripten_proxy_fetch(emscripten_fetch_t *fetch)
 	__emscripten_fetch_queue *queue = _emscripten_get_fetch_queue();
 //	TODO handle case when queue->numQueuedItems >= queue->queueSize
 	queue->queuedOperations[queue->numQueuedItems++] = fetch;
-	EM_ASM_INT( { console.log('Queued fetch to fetch-worker to process. There are now ' + $0 + ' operations in the queue.') }, 
+	EM_ASM(console.log('Queued fetch to fetch-worker to process. There are now ' + $0 + ' operations in the queue.'),
 		queue->numQueuedItems);
 	// TODO: mutex unlock
 }
@@ -61,7 +61,7 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 	const bool isMainBrowserThread = emscripten_is_main_browser_thread() != 0;
 	if (isMainBrowserThread && synchronous && (performXhr || readFromIndexedDB || writeToIndexedDB))
 	{
-		EM_ASM_INT( { Module['printErr']('emscripten_fetch("' + Pointer_stringify($0) + '") failed! Synchronous blocking XHRs and IndexedDB operations are not supported on the main browser thread. Try dropping the EMSCRIPTEN_FETCH_SYNCHRONOUS flag, or run with the linker flag --proxy-to-worker to decouple main C runtime thread from the main browser thread.') }, 
+		EM_ASM(Module['printErr']('emscripten_fetch("' + Pointer_stringify($0) + '") failed! Synchronous blocking XHRs and IndexedDB operations are not supported on the main browser thread. Try dropping the EMSCRIPTEN_FETCH_SYNCHRONOUS flag, or run with the linker flag --proxy-to-worker to decouple main C runtime thread from the main browser thread.'), 
 			url);
 		return 0;
 	}
@@ -105,7 +105,7 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeou
 	if (proxyState == 2) return EMSCRIPTEN_RESULT_SUCCESS; // already finished.
 	if (proxyState != 1) return EMSCRIPTEN_RESULT_INVALID_PARAM; // the fetch should be ongoing?
 // #ifdef FETCH_DEBUG
-	EM_ASM({ console.log('fetch: emscripten_fetch_wait..') });
+	EM_ASM(console.log('fetch: emscripten_fetch_wait..'));
 // #endif
 	// TODO: timeoutMsecs is currently ignored. Return EMSCRIPTEN_RESULT_TIMED_OUT on timeout.
 	while(proxyState == 1/*sent to proxy worker*/)
@@ -114,13 +114,13 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeou
 		proxyState = emscripten_atomic_load_u32(&fetch->__proxyState);
 	}
 // #ifdef FETCH_DEBUG
-	EM_ASM({ console.log('fetch: emscripten_fetch_wait done..') });
+	EM_ASM(console.log('fetch: emscripten_fetch_wait done..'));
 // #endif
 
 	if (proxyState == 2) return EMSCRIPTEN_RESULT_SUCCESS;
 	else return EMSCRIPTEN_RESULT_FAILED;
 #else
-	EM_ASM({ console.error('fetch: emscripten_fetch_wait is not available when building without pthreads!') });
+	EM_ASM(console.error('fetch: emscripten_fetch_wait is not available when building without pthreads!'));
 	return EMSCRIPTEN_RESULT_FAILED;
 #endif
 }

@@ -7,8 +7,6 @@
 #define GLFW_INCLUDE_ES2
 #include <GLFW/glfw3.h>
 
-int result = 1;
-
 GLFWwindow* g_window;
 
 void render();
@@ -69,10 +67,9 @@ void joystick_callback(int joy, int event)
 int main() {
   if (!glfwInit())
   {
-    result = 0;
     printf("Could not create window. Test failed.\n");
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(0);
 #endif
     return -1;
   }
@@ -80,10 +77,9 @@ int main() {
   g_window = glfwCreateWindow(600, 450, "GLFW joystick test", NULL, NULL);
   if (!g_window)
   {
-    result = 0;
     printf("Could not create window. Test failed.\n");
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(0);
 #endif
     glfwTerminate();
     return -1;

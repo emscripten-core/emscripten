@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
 
 #ifdef __EMSCRIPTEN__
   int result = (lastChannel == -1);
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 #endif
 
   assert(lastChannel == -1);

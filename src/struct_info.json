@@ -153,6 +153,7 @@
             "POLLHUP", 
             "POLLERR", 
             "POLLRDNORM", 
+            "POLLWRNORM", 
             "POLLPRI", 
             "POLLIN", 
             "POLLOUT", 

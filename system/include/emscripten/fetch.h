@@ -2,7 +2,8 @@
 #define __emscripten_fetch_h__
 
 #include <limits.h>
-#include <inttypes.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <emscripten/html5.h>
 
 #ifdef __cplusplus
@@ -45,7 +46,7 @@ extern "C" {
 struct emscripten_fetch_t;
 
 // Specifies the parameters for a newly initiated fetch operation.
-struct emscripten_fetch_attr_t
+typedef struct emscripten_fetch_attr_t
 {
 	// 'POST', 'GET', etc.
 	char requestMethod[32];
@@ -53,9 +54,9 @@ struct emscripten_fetch_attr_t
 	// Custom data that can be tagged along the process.
 	void *userData;
 
-	void (*onsuccess)(emscripten_fetch_t *fetch);
-	void (*onerror)(emscripten_fetch_t *fetch);
-	void (*onprogress)(emscripten_fetch_t *fetch);
+	void (*onsuccess)(struct emscripten_fetch_t *fetch);
+	void (*onerror)(struct emscripten_fetch_t *fetch);
+	void (*onprogress)(struct emscripten_fetch_t *fetch);
 
 	// EMSCRIPTEN_FETCH_* attributes
 	uint32_t attributes;
@@ -98,9 +99,9 @@ struct emscripten_fetch_attr_t
 
 	// Specifies the length of the buffer pointed by 'requestData'. Leave as 0 if no request body needs to be sent.
 	size_t requestDataSize;
-};
+} emscripten_fetch_attr_t;
 
-struct emscripten_fetch_t
+typedef struct emscripten_fetch_t
 {
 	// Unique identifier for this fetch in progress.
 	unsigned int id;
@@ -152,7 +153,7 @@ struct emscripten_fetch_t
 
 	// For internal use only.
 	emscripten_fetch_attr_t __attributes;
-};
+} emscripten_fetch_t;
 
 // Clears the fields of an emscripten_fetch_attr_t structure to their default values in a future-compatible manner.
 void emscripten_fetch_attr_init(emscripten_fetch_attr_t *fetch_attr);

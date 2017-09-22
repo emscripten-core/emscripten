@@ -39,12 +39,10 @@ int main(int argc, char *argv[])
       printf("In current environment, the GLES2 implementation IS NOT standard conforming! "
            "GL_SHADER_COMPILER == GL_FALSE and GL_NUM_SHADER_BINARY_FORMATS == 0! "
            "In GLES2 spec, either compiling shaders or binary shaders must be supported! (Section 2.10 - Vertex Shaders)\n");
-      int result = 0;
-      REPORT_RESULT();
+      REPORT_RESULT(0);
    } else {
       assert(numShaderBinaryFormats == 0);
-      int result = 1;
-      REPORT_RESULT();
+      REPORT_RESULT(1);
    }
    return 0;
 }

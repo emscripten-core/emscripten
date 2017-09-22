@@ -28,8 +28,7 @@ void render() {
 
             if (step == 5) {
                 printf("All tests passed.\n");
-                result = 1;
-                REPORT_RESULT();
+                REPORT_RESULT(1);
                 exit(0);
             }
 
@@ -37,7 +36,7 @@ void render() {
             else printf("Click again to enable Pointer Lock\n");
         } else {
             printf("FAIL: cursor_disabled(%d) != pointerlock_isActive(%d)\n", cursor_disabled, pointerlock_isActive);
-            REPORT_RESULT();
+            REPORT_RESULT(result);
             exit(1);
         }
     }
@@ -68,7 +67,7 @@ int main() {
     if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED) {
         // Browsers do not allow disabling the cursor (Pointer Lock) without a gesture.
         printf("FAIL: glfwGetInputMode returned GLFW_CURSOR_DISABLED prematurely\n");
-        REPORT_RESULT();
+        REPORT_RESULT(result);
         exit(1);
     }
     printf("Pass 1: glfwGetInputMode not prematurely returning cursor disabled\n");

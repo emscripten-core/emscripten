@@ -119,7 +119,7 @@ def compile_js(infile, settings, temp_files, DEBUG):
       logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
       t = time.time()
     with ToolchainProfiler.profile_block('emscript_llvm_backend'):
-      shared.jsrun.timeout_run(subprocess.Popen(backend_args, stdout=subprocess.PIPE))
+      shared.jsrun.timeout_run(subprocess.Popen(backend_args, stdout=subprocess.PIPE), note_args=backend_args)
     if DEBUG:
       logging.debug('  emscript: llvm backend took %s seconds' % (time.time() - t))
 
@@ -215,6 +215,9 @@ def compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DE
   optimize_syscalls(metadata['declares'], settings, DEBUG)
   update_settings_glue(settings, metadata)
   assert not (metadata['simd'] and settings['SPLIT_MEMORY']), 'SIMD is used, but not supported in SPLIT_MEMORY'
+
+  assert not (metadata['simd'] and settings['WASM']), 'SIMD is used, but not supported in WASM mode yet'
+  assert not (settings['SIMD'] and settings['WASM']), 'SIMD is requested, but not supported in WASM mode yet'
 
   glue, forwarded_data = compile_settings(compiler_engine, settings, libraries, temp_files)
 
@@ -361,7 +364,8 @@ def create_module(function_table_sigs, metadata, settings,
 
   asm_start_pre = create_asm_start_pre(asm_setup, the_global, sending, metadata, settings)
   asm_temp_vars = create_asm_temp_vars(settings)
-  asm_start = asm_start_pre + '\n' + asm_global_vars + asm_temp_vars + '\n' + asm_global_funcs
+  asm_runtime_thread_local_vars = create_asm_runtime_thread_local_vars(settings)
+  asm_start = asm_start_pre + '\n' + asm_global_vars + asm_temp_vars + asm_runtime_thread_local_vars + '\n' + asm_global_funcs
 
   temp_float = '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround(settings) else '0.0')
   async_state = '  var asyncState = 0;\n' if settings.get('EMTERPRETIFY_ASYNC') else ''
@@ -659,6 +663,28 @@ function _emscripten_asm_const_%s(%s) {
   body_marker = '// === Body ==='
   return pre.replace(body_marker, body_marker + '\n' + asm_consts_text + asm_funcs_text)
 
+# Test if the parentheses at body[openIdx] and body[closeIdx] are a match to each other.
+def parentheses_match(body, openIdx, closeIdx):
+  if closeIdx < 0: closeIdx += len(body)
+  count = 1
+  for i in range(openIdx+1, closeIdx+1):
+    if body[i] == body[openIdx]:
+      count += 1
+    elif body[i] == body[closeIdx]:
+      count -= 1
+      if count <= 0:
+        return i == closeIdx
+  return False
+
+def trim_asm_const_body(body):
+  body = body.strip()
+  orig = None
+  while orig != body:
+    orig = body
+    if len(body) > 1 and body[0] == '"' and body[-1] == '"': body = body[1:-1].replace('\\"', '"').strip()
+    if len(body) > 1 and body[0] == '{' and body[-1] == '}' and parentheses_match(body, 0, -1): body = body[1:-1].strip()
+    if len(body) > 1 and body[0] == '(' and body[-1] == ')' and parentheses_match(body, 0, -1): body = body[1:-1].strip()
+  return body
 
 def all_asm_consts(metadata):
   asm_consts = [0]*len(metadata['asmConsts'])
@@ -666,8 +692,7 @@ def all_asm_consts(metadata):
   for k, v in metadata['asmConsts'].iteritems():
     const = v[0].encode('utf-8')
     sigs = v[1]
-    if len(const) > 1 and const[0] == '"' and const[-1] == '"':
-      const = const[1:-1]
+    const = trim_asm_const_body(const)
     const = '{ ' + const + ' }'
     args = []
     arity = max(map(len, sigs)) - 1
@@ -1205,7 +1230,7 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
   if settings['EMULATED_FUNCTION_POINTERS']:
     all_exported = list(set(all_exported).union(in_table))
   exports = []
-  for export in all_exported:
+  for export in set(all_exported):
     exports.append(quote(export) + ": " + export)
   if settings['BINARYEN'] and settings['SIDE_MODULE']:
     # named globals in side wasm modules are exported globals from asm/wasm
@@ -1255,20 +1280,22 @@ def create_the_global(metadata, settings):
 
 def create_receiving(function_table_data, function_tables_defs, exported_implemented_functions, settings):
   receiving = ''
-  if settings['ASSERTIONS']:
+  if not settings['ASSERTIONS']:
+    runtime_assertions = ''
+  else:
     # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
     # some support code
-    receiving = '\n'.join(['var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
-assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-return real_''' + s + '''.apply(null, arguments);
+    runtime_assertions = '''
+  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+'''
+    receiving = '\n'.join(['var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {''' + runtime_assertions + '''  return real_''' + s + '''.apply(null, arguments);
 };
 ''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory', '__start_module']])
-
   if not settings['SWAPPABLE_ASM_MODULE']:
     receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables(function_table_data, settings)])
   else:
-    receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions + function_tables(function_table_data, settings)])
+    receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() {' + runtime_assertions + '  return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions + function_tables(function_table_data, settings)])
   receiving += ';\n'
 
   if settings['EXPORT_FUNCTION_TABLES'] and not settings['BINARYEN']:
@@ -1499,6 +1526,15 @@ def create_asm_temp_vars(settings):
   var tempRet0 = 0;
 ''' % (access_quote('NaN'), access_quote('Infinity'))
 
+def create_asm_runtime_thread_local_vars(settings):
+  if settings['USE_PTHREADS']:
+    return '''
+  var __pthread_ptr = 0;
+  var __pthread_is_main_runtime_thread = 0;
+  var __pthread_is_main_browser_thread = 0;
+'''
+  else:
+    return ''
 
 def create_replace_memory(settings):
   if not settings['ALLOW_MEMORY_GROWTH']:
@@ -1755,6 +1791,7 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
     assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
     basename = shared.unsuffixed(outfile.name)
     wast = basename + '.wast'
+    wasm = basename + '.wasm'
     s2wasm_args = create_s2wasm_args(temp_s)
     if DEBUG:
       logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
@@ -1763,9 +1800,15 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
     shared.check_call(s2wasm_args, stdout=open(wast, 'w'))
     # Also convert wasm text to binary
     wasm_as_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-as'),
-                    wast, '-o', basename + '.wasm']
+                    wast, '-o', wasm]
     if settings['DEBUG_LEVEL'] >= 2 or settings['PROFILING_FUNCS']:
       wasm_as_args += ['-g']
+      if settings['DEBUG_LEVEL'] >= 4:
+        wasm_as_args += ['--source-map=' + wasm + '.map']
+        if not settings['SOURCE_MAP_BASE']:
+          logging.warn("Wasm source map won't be usable in a browser without --source-map-base")
+        else:
+          wasm_as_args += ['--source-map-url=' + settings['SOURCE_MAP_BASE'] + os.path.basename(settings['WASM_BINARY_FILE']) + '.map']
     logging.debug('  emscript: binaryen wasm-as: ' + ' '.join(wasm_as_args))
     shared.check_call(wasm_as_args)
 
@@ -1815,8 +1858,7 @@ def create_asm_consts_wasm(forwarded_json, metadata):
   for k, v in metadata['asmConsts'].iteritems():
     const = v[0].encode('utf-8')
     sigs = v[1]
-    if len(const) > 1 and const[0] == '"' and const[-1] == '"':
-      const = const[1:-1]
+    const = trim_asm_const_body(const)
     const = '{ ' + const + ' }'
     args = []
     arity = max(map(len, sigs)) - 1
@@ -1854,6 +1896,8 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata, settings):
   basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory']
   if settings['ABORTING_MALLOC']:
     basic_funcs += ['abortOnCannotGrowMemory']
+  if settings['SAFE_HEAP']:
+    basic_funcs += ['segfault', 'alignfault']
 
   basic_vars = ['STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR', 'ABORT']
 
@@ -1969,7 +2013,8 @@ def create_s2wasm_args(temp_s):
   args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
   args += ['--initial-memory=%d' % shared.Settings.TOTAL_MEMORY]
   args += ['--allow-memory-growth'] if shared.Settings.ALLOW_MEMORY_GROWTH else []
-  args += ['-l', compiler_rt_lib, '-l', libc_rt_lib]
+  args += ['-l', libc_rt_lib]
+  args += ['-l', compiler_rt_lib]
   return args
 
 

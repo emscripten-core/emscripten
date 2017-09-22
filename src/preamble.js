@@ -1168,7 +1168,7 @@ assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' 
 // Test runs in browsers should always be free from uncaught exceptions. If an uncaught exception is thrown, we fail browser test execution in the REPORT_RESULT() macro to output an error value.
 if (ENVIRONMENT_IS_WEB) {
   window.addEventListener('error', function(e) {
-    if (e === 'SimulateInfiniteLoop' || e.message.indexOf('SimulateInfiniteLoop') != -1) return;
+    if (e.message.indexOf('SimulateInfiniteLoop') != -1) return;
     console.error('Page threw an exception ' + e);
     Module['pageThrewException'] = true;
   });
@@ -1635,6 +1635,10 @@ function ensureInitRuntime() {
 #endif
   if (runtimeInitialized) return;
   runtimeInitialized = true;
+#if USE_PTHREADS
+  // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
+  __register_pthread_ptr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
+#endif
   callRuntimeCallbacks(__ATINIT__);
 }
 
@@ -1744,21 +1748,6 @@ function writeAsciiToMemory(str, buffer, dontAddNull) {
 
 {{{ unSign }}}
 {{{ reSign }}}
-
-#if USE_PTHREADS
-// Atomics.exchange is not yet implemented in the spec, so polyfill that in via compareExchange in the meanwhile.
-// TODO: Keep an eye out for the opportunity to remove this once Atomics.exchange is available.
-if (typeof Atomics !== 'undefined' && !Atomics['exchange']) {
-  Atomics['exchange'] = function(heap, index, val) {
-    var oldVal, oldVal2;
-    do {
-      oldVal = Atomics['load'](heap, index);
-      oldVal2 = Atomics['compareExchange'](heap, index, oldVal, val);
-    } while(oldVal != oldVal2);
-    return oldVal;
-  }
-}
-#endif
 
 // check for imul support, and also for correctness ( https://bugs.webkit.org/show_bug.cgi?id=126345 )
 if (!Math['imul'] || Math['imul'](0xffffffff, 5) !== -5) Math['imul'] = function imul(a, b) {
@@ -2071,7 +2060,7 @@ var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
 #endif
 
 #if BINARYEN
-function integrateWasmJS(Module) {
+function integrateWasmJS() {
   // wasm.js has several methods for creating the compiled code module here:
   //  * 'native-wasm' : use native WebAssembly support in the browser
   //  * 'interpret-s-expr': load s-expression code from a .wast and interpret
@@ -2218,7 +2207,8 @@ function integrateWasmJS(Module) {
 
   function getBinaryPromise() {
     // if we don't have the binary yet, and have the Fetch api, use that
-    if (!Module['wasmBinary'] && typeof fetch === 'function') {
+    // in some environments, like Electron's render process, Fetch api may be present, but have a different context than expected, let's only use it on the Web
+    if (!Module['wasmBinary'] && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
       return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
         if (!response['ok']) {
           throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
@@ -2240,7 +2230,7 @@ function integrateWasmJS(Module) {
     if (typeof Module['asm'] !== 'function' || Module['asm'] === methodHandler) {
       if (!Module['asmPreload']) {
         // you can load the .asm.js file before this, to avoid this sync xhr and eval
-        eval(Module['read'](asmjsCodeFile)); // set Module.asm
+        {{{ makeEval("eval(Module['read'](asmjsCodeFile));") }}} // set Module.asm
       } else {
         Module['asm'] = Module['asmPreload'];
       }
@@ -2298,10 +2288,20 @@ function integrateWasmJS(Module) {
 #if RUNTIME_LOGGING
     Module['printErr']('asynchronously preparing wasm');
 #endif
+#if ASSERTIONS
+    // Async compilation can be confusing when an error on the page overwrites Module
+    // (for example, if the order of elements is wrong, and the one defining Module is
+    // later), so we save Module and check it later.
+    var trueModule = Module;
+#endif
     getBinaryPromise().then(function(binary) {
       return WebAssembly.instantiate(binary, info)
     }).then(function(output) {
       // receiveInstance() will swap in the exports (to Module.asm) so they can be called
+#if ASSERTIONS
+      assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
+      trueModule = null;
+#endif
       receiveInstance(output['instance']);
     }).catch(function(reason) {
       Module['printErr']('failed to asynchronously prepare wasm: ' + reason);
@@ -2472,6 +2472,12 @@ function integrateWasmJS(Module) {
     // try the methods. each should return the exports if it succeeded
 
     var exports;
+#if BINARYEN_METHOD == 'native-wasm'
+    exports = doNativeWasm(global, env, providedBuffer);
+#else
+#if BINARYEN_METHOD == 'asmjs'
+    exports = doJustAsm(global, env, providedBuffer);
+#else
     var methods = method.split(',');
 
     for (var i = 0; i < methods.length; i++) {
@@ -2495,6 +2501,8 @@ function integrateWasmJS(Module) {
     }
 
     if (!exports) throw 'no binaryen method succeeded. consider enabling more options, like interpreting, if you want that: https://github.com/kripken/emscripten/wiki/WebAssembly#binaryen-methods';
+#endif
+#endif
 
 #if RUNTIME_LOGGING
     Module['printErr']('binaryen method succeeded.');
@@ -2506,7 +2514,7 @@ function integrateWasmJS(Module) {
   var methodHandler = Module['asm']; // note our method handler, as we may modify Module['asm'] later
 }
 
-integrateWasmJS(Module);
+integrateWasmJS();
 #endif
 
 // === Body ===

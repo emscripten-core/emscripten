@@ -46,7 +46,7 @@ if (typeof window === "object" && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined'
   }
 
   // POSTs the given binary data represented as a (typed) array data back to the emrun-based web server.
-  // To use from C code, call e.g. EM_ASM_({emrun_file_dump("file.dat", HEAPU8.subarray($0, $0 + $1));}, my_data_pointer, my_data_pointer_byte_length);
+  // To use from C code, call e.g. EM_ASM({emrun_file_dump("file.dat", HEAPU8.subarray($0, $0 + $1));}, my_data_pointer, my_data_pointer_byte_length);
   function emrun_file_dump(filename, data) {
     var http = new XMLHttpRequest();
     Module['print']('Dumping out file "' + filename + '" with ' + data.length + ' bytes of data.');

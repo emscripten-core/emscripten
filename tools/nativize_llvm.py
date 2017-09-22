@@ -12,10 +12,11 @@ from exec_llvm) fails for some reason.
 import os, sys
 from subprocess import Popen, PIPE, STDOUT
 
+from shared import *
+
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
-exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
 filename = sys.argv[1]
 libs = sys.argv[2:] # e.g.: dl for dlopen/dlclose, util for openpty/forkpty

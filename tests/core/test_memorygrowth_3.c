@@ -6,7 +6,7 @@
 #include "emscripten.h"
 
 int get_TOTAL_MEMORY() {
-  return EM_ASM_INT_V({ return TOTAL_MEMORY });
+  return EM_ASM_INT({ return TOTAL_MEMORY });
 }
 
 typedef void* voidStar;

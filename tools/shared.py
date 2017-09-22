@@ -226,8 +226,6 @@ else:
     config_file = config_file.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(__rootpath__))
     llvm_root = os.path.dirname(find_executable('llvm-dis') or '/usr/bin/llvm-dis')
     config_file = config_file.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
-    binaryen_root = os.path.dirname(find_executable('asm2wasm') or '') # if we don't find it, we'll use the port
-    config_file = config_file.replace('\'{{{ BINARYEN_ROOT }}}\'', repr(binaryen_root))
 
     node = find_executable('nodejs') or find_executable('node') or 'node'
     config_file = config_file.replace('\'{{{ NODE }}}\'', repr(node))
@@ -324,7 +322,7 @@ actual_clang_version = None
 
 def expected_llvm_version():
   if get_llvm_target() == WASM_TARGET:
-    return "5.0"
+    return "6.0"
   else:
     return "4.0"
 
@@ -1306,7 +1304,7 @@ def g_llvm_nm_uncached(filename):
 
 def g_multiprocessing_initializer(*args):
   for item in args:
-    (key, value) = item.split('=')
+    (key, value) = item.split('=', 1)
     if key == 'EMCC_POOL_CWD':
       os.chdir(value)
     else:
@@ -1366,9 +1364,9 @@ class Building(object):
             Building.multiprocessing_pool.terminate()
             Building.multiprocessing_pool.join()
             Building.multiprocessing_pool = None
-          except WindowsError, e:
+          except OSError, e:
             # Mute the "WindowsError: [Error 5] Access is denied" errors, raise all others through
-            if e.winerror != 5: raise
+            if not (sys.platform.startswith('win') and isinstance(e, WindowsError) and e.winerror == 5): raise
         atexit.register(close_multiprocessing_pool)
 
     return Building.multiprocessing_pool
@@ -2036,6 +2034,8 @@ class Building(object):
 
   @staticmethod
   def is_wasm_only():
+    if not Settings.WASM:
+      return False # not even wasm, much less wasm-only
     # if the asm.js code will not run, and won't be run through the js optimizer, then
     # fastcomp can emit wasm-only code.
     # also disable this mode if it depends on special optimizations that are not yet
@@ -2117,8 +2117,8 @@ class Building(object):
 
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
   @staticmethod
-  def eval_ctors(js_file, binary_file, binaryen_bin=''):
-    subprocess.check_call([PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin])
+  def eval_ctors(js_file, binary_file, binaryen_bin='', debug_info=False):
+    subprocess.check_call([PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))])
 
   @staticmethod
   def eliminate_duplicate_funcs(filename):

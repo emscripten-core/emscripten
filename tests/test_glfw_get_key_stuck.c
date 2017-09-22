@@ -47,7 +47,7 @@ EM_BOOL on_focuspocus(int eventType, const EmscriptenFocusEvent *focusEvent, voi
             if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
                 printf("FAIL: glfwGetKey() is stuck after blur\n");
 #ifdef REPORT_RESULT
-                REPORT_RESULT();
+                REPORT_RESULT(result);
 #endif
             }
             break;
@@ -62,7 +62,7 @@ EM_BOOL on_focuspocus(int eventType, const EmscriptenFocusEvent *focusEvent, voi
                     result = 1;
                 }
 #ifdef REPORT_RESULT
-                REPORT_RESULT();
+                REPORT_RESULT(result);
 #endif
                 glfwTerminate();
             }

@@ -21,8 +21,7 @@ int play() {
 void done(int channel) {
   assert(channel == 1);
 
-  int result = 1;
-  REPORT_RESULT();
+  REPORT_RESULT(1);
 }
 
 int play2() {

@@ -258,8 +258,8 @@ var WEBSOCKET_SUBPROTOCOL = 'binary'; // A string containing a comma separated l
 var OPENAL_DEBUG = 0; // Print out debugging information from our OpenAL implementation.
 
 var GL_ASSERTIONS = 0; // Adds extra checks for error situations in the GL library. Can impact performance.
-var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you can set a runtime
-                  // option, in this case GL.debug.
+var TRACE_WEBGL_CALLS = 0; // If enabled, prints out all API calls to WebGL contexts. (*very* verbose)
+var GL_DEBUG = 0; // Enables more verbose debug printing of WebGL related operations. As with LIBRARY_DEBUG, this is toggleable at runtime with option GL.debug.
 var GL_TESTING = 0; // When enabled, sets preserveDrawingBuffer in the context, to allow tests to work (but adds overhead)
 var GL_MAX_TEMP_BUFFER_SIZE = 2097152; // How large GL emulation temp buffers are
 var GL_UNSAFE_OPTS = 1; // Enables some potentially-unsafe optimizations in GL emulation code
@@ -479,7 +479,7 @@ var MAIN_MODULE = 0; // A main module is a file compiled in a way that allows us
                      //  2: DCE'd main module. We eliminate dead code normally. If a side
                      //     module needs something from main, it is up to you to make sure
                      //     it is kept alive.
-var SIDE_MODULE = 0; // Corresponds to MAIN_MODULE
+var SIDE_MODULE = 0; // Corresponds to MAIN_MODULE (also supports modes 1 and 2)
 
 var RUNTIME_LINKED_LIBS = []; // If this is a main module (MAIN_MODULE == 1), then
                               // we will link these at runtime. They must have been built with
@@ -495,6 +495,11 @@ var PROXY_TO_WORKER = 0; // If set to 1, we build the project into a js file tha
 var PROXY_TO_WORKER_FILENAME = ''; // If set, the script file name the main thread loads.
                                    // Useful if your project doesn't run the main emscripten-
                                    // generated script immediately but does some setup before
+
+var PROXY_TO_PTHREAD = 0; // If set to 1, compiles in a small stub main() in between the real main()
+                          // which calls pthread_create() to run the application main() in a pthread.
+                          // This is something that applications can do manually as well if they wish,
+                          // this option is provided as convenience.
 
 var LINKABLE = 0; // If set to 1, this file can be linked with others, either as a shared
                   // library or as the main file that calls a shared library. To enable that,
@@ -871,6 +876,7 @@ var SINGLE_FILE = 0; // If set to 1, embeds all subresources in the emitted file
 var WASM_TEXT_FILE = ''; // name of the file containing wasm text, if relevant
 var WASM_BINARY_FILE = ''; // name of the file containing wasm binary, if relevant
 var ASMJS_CODE_FILE = ''; // name of the file containing asm.js, if relevant
+var SOURCE_MAP_BASE = ''; // Base URL the source mapfile, if relevant
 
 var SUPPORT_BASE64_EMBEDDING = 0; // If set to 1, src/base64Utils.js will be included in the bundle.
                                   // This is set internally when needed (SINGLE_FILE)

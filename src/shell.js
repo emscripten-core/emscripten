@@ -119,9 +119,13 @@ if (ENVIRONMENT_IS_NODE) {
 
   Module['arguments'] = process['argv'].slice(2);
 
+#if MODULARIZE
+  // MODULARIZE will export the module in the proper place outside, we don't need to export here
+#else
   if (typeof module !== 'undefined') {
     module['exports'] = Module;
   }
+#endif
 
 #if NODEJS_CATCH_EXIT
   process['on']('uncaughtException', function(ex) {

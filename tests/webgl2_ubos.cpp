@@ -35,7 +35,7 @@ int main()
   {
     printf("Skipped: WebGL 2 is not supported.\n");
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
     return 0;
   }
@@ -92,11 +92,11 @@ int main()
   if (!ok) {
     printf("Shader compilation error with fragment\n");
     GLint infoLen = 0;
-    glGetShaderiv (vs, GL_INFO_LOG_LENGTH, &infoLen);
+    glGetShaderiv (fs, GL_INFO_LOG_LENGTH, &infoLen);
     if (infoLen > 1)
     {
        char* infoLog = (char *)malloc(sizeof(char) * infoLen+1);
-       glGetShaderInfoLog(vs, infoLen, NULL, infoLog);
+       glGetShaderInfoLog(fs, infoLen, NULL, infoLog);
        printf("Error compiling shader:\n%s\n", infoLog);            
     }
   }
@@ -166,7 +166,7 @@ int main()
   }
 
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 #endif
   return 0;
 }

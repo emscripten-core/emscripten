@@ -39,8 +39,7 @@ void verify() {
     if (x % 4 != 3) sum += x * data[x];
   }
 #ifdef __EMSCRIPTEN__
-  int result = sum;
-  REPORT_RESULT();
+  REPORT_RESULT(sum);
 #endif
 }
 

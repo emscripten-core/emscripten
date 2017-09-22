@@ -17,12 +17,12 @@ int main() {
     loadImage("screenshot.jpg");
   }
 
-  int result = EM_ASM_INT_V({
+  int result = EM_ASM_INT({
     return Math.trunc(emscriptenMemoryProfiler.totalMemoryAllocated / 1024 / 1024);
   });
 
   printf("Total memory allocated %d Mb\n", result);
-  REPORT_RESULT();
+  REPORT_RESULT(result);
   return 0;
 }
 

@@ -18,7 +18,7 @@ void looper() {
     printf("Avg. msecs/frame: %f\n", msecsPerFrame);
 #ifdef REPORT_RESULT
     int result = (msecsPerFrame < 5); // Expecting to run extremely fast unthrottled, and certainly not bounded by vsync, so less than common 16.667 msecs per frame (this is assuming 60hz display)
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
     emscripten_cancel_main_loop();
   }

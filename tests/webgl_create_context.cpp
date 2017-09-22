@@ -36,10 +36,9 @@ GLint GetInt(GLenum param)
 }
 
 void final(void*) {
-  #ifdef REPORT_RESULT
-  int result = 0;
-  REPORT_RESULT();
-  #endif
+#ifdef REPORT_RESULT
+  REPORT_RESULT(0);
+#endif
 }
 
 EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context;
@@ -134,7 +133,7 @@ int main()
       GetInt(GL_RED_BITS), GetInt(GL_GREEN_BITS), GetInt(GL_BLUE_BITS), GetInt(GL_ALPHA_BITS),
       numDepthBits, numStencilBits, numSamples);
     
-    if (!depth && stencil && numDepthBits && numStencilBits && EM_ASM_INT_V(navigator.userAgent.toLowerCase().indexOf('firefox')) > -1)
+    if (!depth && stencil && numDepthBits && numStencilBits && EM_ASM_INT(navigator.userAgent.toLowerCase().indexOf('firefox')) > -1)
     {
       numDepthBits = 0;
       printf("Applying workaround to ignore Firefox bug https://bugzilla.mozilla.org/show_bug.cgi?id=982477\n");

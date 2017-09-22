@@ -16,6 +16,6 @@ int main()
   printf("GL_ACTIVE_TEXTURE: %d\n", activeTexture - GL_TEXTURE0);
 #ifdef REPORT_RESULT
   int result = activeTexture - GL_TEXTURE0;
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 #endif
 }

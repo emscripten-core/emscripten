@@ -198,7 +198,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_literal_negative_zero(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_literal_negative_zero')
 
-  @no_wasm_backend('todo')
+  @no_wasm_backend('test uses calls to expected js imports, rather than using llvm intrinsics directly')
   def test_llvm_intrinsics(self):
     Settings.PRECISE_I64_MATH = 2 # for bswap64
 
@@ -389,6 +389,9 @@ int main()
     print 'relocatable'
     Settings.RELOCATABLE = 1
     test()
+
+  def test_aligned_alloc(self):
+    self.do_run(open(path_from_root('tests', 'test_aligned_alloc.c')).read(), '', assert_returncode=0)
 
   def test_unsigned(self):
       src = '''
@@ -778,6 +781,9 @@ base align: 0, 0, 0, 0'''])
       print disable_throw
       Settings.DISABLE_EXCEPTION_CATCHING = disable_throw
       self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_throw')
+
+  def test_siglongjmp(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_siglongjmp')
 
   def test_setjmp_many(self):
     src = r'''
@@ -1242,7 +1248,6 @@ int main() {
     if not self.is_wasm_backend(): return self.skip('no __builtin_fmin support in JSBackend')
     self.do_run_in_out_file_test('tests', 'core', 'test_float_builtins')
 
-  @no_wasm_backend("wasm backend doesn't add Runtime.setDynamicTop and crashes")
   def test_segfault(self):
     Settings.SAFE_HEAP = 1
 
@@ -1596,6 +1601,10 @@ int main(int argc, char **argv) {
   def test_em_asm(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm', force_c=True)
+
+  def test_em_asm_2(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2', force_c=True)
 
   def test_em_asm_unicode(self):
     self.do_run(r'''
@@ -2064,6 +2073,9 @@ The current type of b is: 9
     expected = open(path_from_root('tests', 'pthread', 'specific.c.txt'), 'r').read()
     self.do_run(src, expected, force_c=True)
 
+  def test_pthread_equal(self):
+    self.do_run_in_out_file_test('tests', 'pthread', 'test_pthread_equal')
+
   def test_tcgetattr(self):
     src = open(path_from_root('tests', 'termios', 'test_tcgetattr.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
@@ -2270,12 +2282,10 @@ The current type of b is: 9
     self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
 
   def can_dlfcn(self):
-    if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no dlfcn with memory growth yet')
-    if self.is_wasm_backend(): return self.skip('no shared modules in wasm backend')
-    # V8 doesn't support mismatch between table import decl initial size and imported table runtime size.
-    # See https://bugs.chromium.org/p/v8/issues/detail?id=5795
-    if self.is_wasm():
-      self.banned_js_engines = [V8_ENGINE, NODE_JS]
+    if Settings.ALLOW_MEMORY_GROWTH == 1 and not self.is_wasm():
+      return self.skip('no dlfcn with memory growth (without wasm)')
+    if self.is_wasm_backend():
+      return self.skip('no shared modules in wasm backend')
     return True
 
   def prep_dlfcn_lib(self):
@@ -3095,16 +3105,23 @@ var Module = {
       self.dylink_test(side, main, expected, header, main_emcc_args, force_c, need_reverse=False)
 
   def test_dylink_basics(self):
-    self.dylink_test('''
-      #include <stdio.h>
-      extern int sidey();
-      int main() {
-        printf("other says %d.", sidey());
-        return 0;
-      }
-    ''', '''
-      int sidey() { return 11; }
-    ''', 'other says 11.')
+    def test():
+      self.dylink_test('''
+        #include <stdio.h>
+        extern int sidey();
+        int main() {
+          printf("other says %d.", sidey());
+          return 0;
+        }
+      ''', '''
+        int sidey() { return 11; }
+      ''', 'other says 11.')
+    test()
+
+    if self.is_wasm():
+      print 'test memory growth with dynamic linking, which works in wasm'
+      Settings.ALLOW_MEMORY_GROWTH = 1
+      test()
 
   def test_dylink_floats(self):
     self.dylink_test('''
@@ -4119,6 +4136,18 @@ def process(filename):
     src = open(path_from_root('tests', 'fs', 'test_getdents64.cpp'), 'r').read()
     self.do_run(src, '..')
 
+  def test_getdents64_special_cases(self):
+    Building.COMPILER_TEST_OPTS += ['-std=c++11']
+    src = path_from_root('tests', 'fs', 'test_getdents64_special_cases.cpp')
+    out = path_from_root('tests', 'fs', 'test_getdents64_special_cases.out')
+    self.do_run_from_file(src, out, assert_identical=True)
+
+  def test_getcwd_with_non_ascii_name(self):
+    src = path_from_root('tests', 'fs', 'test_getcwd_with_non_ascii_name.cpp')
+    out = path_from_root('tests', 'fs', 'test_getcwd_with_non_ascii_name.out')
+    Building.COMPILER_TEST_OPTS += ['-std=c++11']
+    self.do_run_from_file(src, out, assert_identical=True)
+
   def test_fwrite_0(self):
     test_path = path_from_root('tests', 'core', 'test_fwrite_0')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -4476,6 +4505,10 @@ def process(filename):
 
   def test_unistd_ttyname(self):
     src = open(path_from_root('tests', 'unistd', 'ttyname.c'), 'r').read()
+    self.do_run(src, 'success', force_c=True)
+
+  def test_unistd_pipe(self):
+    src = open(path_from_root('tests', 'unistd', 'pipe.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
   def test_unistd_dup(self):
@@ -6019,7 +6052,7 @@ def process(filename):
       }
 
       int main() {
-        int x = EM_ASM_INT_V({ return Module._other_function() });
+        int x = EM_ASM_INT({ return Module._other_function() });
         emscripten_run_script_string(""); // Add a reference to a symbol that exists in src/deps_info.json to uncover issue #2836 in the test suite.
         printf("waka %d!\n", x);
         return 0;
@@ -6052,7 +6085,7 @@ def process(filename):
       }
 
       int main() {
-        int x = EM_ASM_INT_V({ return Module._exported_func_from_response_file_4999() });
+        int x = EM_ASM_INT({ return Module._exported_func_from_response_file_4999() });
         emscripten_run_script_string(""); // Add a reference to a symbol that exists in src/deps_info.json to uncover issue #2836 in the test suite.
         printf("waka %d!\n", x);
         return 0;
@@ -6068,7 +6101,7 @@ def process(filename):
     assert '_exported_func_from_response_file_1' in open('src.cpp.o.js').read()
 
   @sync
-  @no_wasm_backend('RuntimeError: function signature mismatch')
+  @no_wasm_backend('no jsCall function pointers are created for wasm backend')
   def test_add_function(self):
     Settings.INVOKE_RUN = 0
     Settings.RESERVED_FUNCTION_POINTERS = 1
@@ -6116,7 +6149,7 @@ def process(filename):
     }
 
     int main() {
-      EM_ASM_INT({
+      EM_ASM({
         Runtime.getFuncWrapper($0, 'vi')(0);
         Runtime.getFuncWrapper($1, 'vii')(0, 0);
       }, func1, func2);
@@ -6125,32 +6158,11 @@ def process(filename):
     '''
     self.do_run(src, 'func1\nfunc2\n')
 
-  @no_wasm_backend()
+  @no_wasm_backend('no implementation of emulated function pointer casts')
   def test_emulate_function_pointer_casts(self):
     Settings.EMULATE_FUNCTION_POINTER_CASTS = 1
 
-    src = r'''
-    #include <stdio.h>
-    #include <math.h>
-    
-    // We have to use a proxy function 'acos_test' here because the updated libc++ library provides a set of overloads to acos,
-    // this has the result that we can't take the function pointer to acos anymore due to failed overload resolution.
-    // This proxy function has no overloads so it's allowed to take the function pointer directly.
-    double acos_test(double x) {
-      return acos(x);
-    }
-
-    typedef double (*ddd)(double x, double unused);
-    typedef int    (*iii)(int x,    int unused);
-
-    int main() {
-      volatile ddd d = (ddd)acos_test;
-      volatile iii i = (iii)acos_test;
-      printf("|%.3f,%d|\n", d(0.3, 0.6), i(0, 0));
-      return 0;
-    }
-    '''
-    self.do_run(src, '|1.266,1|\n')
+    self.do_run_in_out_file_test('tests', 'core', 'test_emulate_function_pointer_casts')
 
   def test_demangle_stacks(self):
     Settings.DEMANGLE_SUPPORT = 1
@@ -6267,6 +6279,39 @@ def process(filename):
     print 'assertions too'
     Settings.ASSERTIONS = 1
     self.do_run(src, output)
+    Settings.ASSERTIONS = 0
+
+    print 'remove just some, leave others'
+    def test3():
+      self.do_run(r'''
+#include <iostream>
+#include <string>
+
+class std_string {
+public:
+  std_string() { std::cout << "std_string()\n"; }
+  std_string(const char* s): ptr(s) { std::cout << "std_string(const char* s) " << std::endl; }
+  std_string(const std_string& s): ptr(s.ptr) { std::cout << "std_string(const std_string& s) " << std::endl; }
+  const char* data() const { return ptr; }
+private:
+  const char* ptr = nullptr;
+};
+
+const std_string txtTestString("212121\0");
+const std::string s2text("someweirdtext");
+
+int main() {
+  std::cout << s2text << std::endl;
+  std::cout << txtTestString.data() << std::endl;
+  std::cout << txtTestString.data() << std::endl;
+  return 0;
+}
+      ''', '''std_string(const char* s) 
+someweirdtext
+212121
+212121
+''')
+    do_test(test3)
 
   def test_embind(self):
     Building.COMPILER_TEST_OPTS += ['--bind']
@@ -6384,6 +6429,19 @@ def process(filename):
   def test_embind_unsigned(self):
     self.emcc_args += ['--bind', '--std=c++11']
     self.do_run_from_file(path_from_root('tests', 'embind', 'test_unsigned.cpp'), path_from_root('tests', 'embind', 'test_unsigned.out'))
+
+  def test_embind_f_no_rtti(self):
+    self.emcc_args += ['--bind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
+    src = r'''
+      #include<emscripten/val.h>
+      #include<stdio.h>
+
+      int main(int argc, char** argv){
+        printf("418");
+        return 0;
+      }
+    '''
+    self.do_run(src, '418')
 
   @sync
   @no_wasm_backend()
@@ -6804,7 +6862,7 @@ Module.printErr = Module['printErr'] = function(){};
 
   @no_emterpreter
   def test_source_map(self):
-    if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
+    if not jsrun.check_engine(NODE_JS): return self.skip('sourcemapper requires Node to run')
     if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
 
     src = '''
@@ -6825,6 +6883,7 @@ Module.printErr = Module['printErr'] = function(){};
     dirname = self.get_dir()
     src_filename = os.path.join(dirname, 'src.cpp')
     out_filename = os.path.join(dirname, 'a.out.js')
+    wasm_filename = os.path.join(dirname, 'a.out.wasm')
     no_maps_filename = os.path.join(dirname, 'no-maps.out.js')
 
     with open(src_filename, 'w') as f: f.write(src)
@@ -6842,12 +6901,13 @@ Module.printErr = Module['printErr'] = function(){};
       import json
       Building.emcc(src_filename, Settings.serialize() + self.emcc_args +
           Building.COMPILER_TEST_OPTS, out_filename, stderr=PIPE)
+      map_referent = out_filename if not Settings.BINARYEN else wasm_filename
       # after removing the @line and @sourceMappingURL comments, the build
       # result should be identical to the non-source-mapped debug version.
       # this is worth checking because the parser AST swaps strings for token
       # objects when generating source maps, so we want to make sure the
       # optimizer can deal with both types.
-      map_filename = out_filename + '.map'
+      map_filename = map_referent + '.map'
 
       def encode_utf8(data):
         if isinstance(data, dict):
@@ -6864,10 +6924,16 @@ Module.printErr = Module['printErr'] = function(){};
           return data
 
       data = encode_utf8(json.load(open(map_filename, 'r')))
-      self.assertPathsIdentical(out_filename, data['file'])
+      if hasattr(data, 'file'):
+        # the file attribute is optional, but if it is present it needs to refer
+        # the output file.
+        self.assertPathsIdentical(map_referent, data['file'])
       assert len(data['sources']) == 1, data['sources']
       self.assertPathsIdentical(src_filename, data['sources'][0])
-      self.assertTextDataIdentical(src, data['sourcesContent'][0])
+      if hasattr(data, 'sourcesContent'):
+        # the sourcesContent attribute is optional, but if it is present it
+        # needs to containt valid source text.
+        self.assertTextDataIdentical(src, data['sourcesContent'][0])
       mappings = encode_utf8(json.loads(jsrun.run_js(
         path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
         tools.shared.NODE_JS, [map_filename])))
@@ -6900,7 +6966,7 @@ Module.printErr = Module['printErr'] = function(){};
   def test_exception_source_map(self):
     if self.is_wasm(): return self.skip('wasmifying destroys debug info and stack tracability')
     if '-g4' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g4')
-    if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
+    if not jsrun.check_engine(NODE_JS): return self.skip('sourcemapper requires Node to run')
 
     src = '''
       #include <stdio.h>
@@ -7399,7 +7465,7 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
         Building.COMPILER_TEST_OPTS.append(arg) # so bitcode is optimized too, this is for cpp to ll
       else:
         try:
-          key, value = arg.split('=')
+          key, value = arg.split('=', 1)
           Settings[key] = value # forward  -s K=V
         except:
           pass
@@ -7409,7 +7475,7 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
 
   return TT
 
-# Main test modes
+# Main asm.js test modes
 default = make_run("default", compiler=CLANG, emcc_args=["-s", "ASM_JS=2"])
 asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1"])
 asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])
@@ -7419,13 +7485,18 @@ asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTI
 asm2i = make_run("asm2i", compiler=CLANG, emcc_args=["-O2", '-s', 'EMTERPRETIFY=1'])
 #asm2m = make_run("asm2m", compiler=CLANG, emcc_args=["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"])
 
+# Main wasm test modes
 binaryen0 = make_run("binaryen0", compiler=CLANG, emcc_args=['-O0', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
 binaryen1 = make_run("binaryen1", compiler=CLANG, emcc_args=['-O1', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
 binaryen2 = make_run("binaryen2", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
 binaryen3 = make_run("binaryen3", compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'ASSERTIONS=1', "-s", "PRECISE_F32=1"])
+binaryens = make_run("binaryens", compiler=CLANG, emcc_args=['-Os', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
+binaryenz = make_run("binaryenz", compiler=CLANG, emcc_args=['-Oz', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
 
+# Secondary wasm test modes
 binaryen2jo = make_run("binaryen2jo", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'])
 binaryen3jo = make_run("binaryen3jo", compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'])
+binaryen2s = make_run("binaryen2s", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'SAFE_HEAP=1'])
 
 # This tests the binaryen interpreter and its polyfill integration in the emscripten JS glue
 binaryen2_interpret = make_run("binaryen2_interpret", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])

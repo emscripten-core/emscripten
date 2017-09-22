@@ -469,7 +469,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit(subprocess.call(cmd))
     else:
       only_object = '-c' in cmd
-      for i in range(len(cmd)-1):
+      for i in reversed(range(len(cmd)-1)): # Last -o directive should take precedence, if multiple are specified
         if cmd[i] == '-o':
           if not only_object:
             cmd[i+1] += '.js'
@@ -532,10 +532,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # Check if a target is specified
   target = None
-  for i in range(len(sys.argv)-1):
+  for i in range(len(sys.argv)):
     if sys.argv[i].startswith('-o='):
       raise Exception('Invalid syntax: do not use -o=X, use -o X')
 
+  for i in reversed(range(len(sys.argv)-1)): # Last -o directive should take precedence, if multiple are specified
     if sys.argv[i] == '-o':
       target = sys.argv[i+1]
       sys.argv = sys.argv[:i] + sys.argv[i+2:]
@@ -865,7 +866,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Apply -s settings in newargs here (after optimization levels, so they can override them)
       for change in settings_changes:
-        key, value = change.split('=')
+        key, value = change.split('=', 1)
 
         # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
         if key in ['TOTAL_STACK', 'TOTAL_MEMORY', 'GL_MAX_TEMP_BUFFER_SIZE', 'SPLIT_MEMORY', 'BINARYEN_MEM_MAX']:
@@ -916,12 +917,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
 
-      if shared.Settings.SAFE_HEAP:
-        if not options.js_opts:
-          logging.debug('enabling js opts for SAFE_HEAP')
-          options.js_opts = True
-        options.force_js_opts = True
-
       if options.debug_level > 1 and options.use_closure_compiler:
         logging.warning('disabling closure because debug info was requested')
         options.use_closure_compiler = False
@@ -949,12 +944,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
         assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
-        if shared.Settings.MAIN_MODULE != 2:
+        if shared.Settings.MAIN_MODULE != 2 and shared.Settings.SIDE_MODULE != 2:
           shared.Settings.LINKABLE = 1
         shared.Settings.RELOCATABLE = 1
         shared.Settings.PRECISE_I64_MATH = 1 # other might use precise math, we need to be able to print it
         assert not options.use_closure_compiler, 'cannot use closure compiler on shared modules'
-        assert not shared.Settings.ALLOW_MEMORY_GROWTH, 'memory growth is not supported with shared modules yet'
 
       if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
         shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -1013,8 +1007,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               shared.Settings.EXPORTED_FUNCTIONS.append(required_export)
         else:
           logging.debug('using response file for EXPORTED_FUNCTIONS, make sure it includes _malloc and _free')
-
-      assert not (options.bind and shared.Settings.NO_DYNAMIC_EXECUTION), 'NO_DYNAMIC_EXECUTION disallows embind'
 
       assert not (shared.Settings.NO_DYNAMIC_EXECUTION and shared.Settings.RELOCATABLE), 'cannot have both NO_DYNAMIC_EXECUTION and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()'
 
@@ -1081,12 +1073,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.EMTERPRETIFY:
           logging.error('-s EMTERPRETIFY=1 is not supported with -s USE_PTHREADS>0!')
           exit(1)
+        if shared.Settings.PROXY_TO_WORKER:
+          logging.error('--proxy-to-worker is not supported with -s USE_PTHREADS>0! Use the option -s PROXY_TO_PTHREAD=1 if you want to run the main thread of a multithreaded application in a web worker.')
+          exit(1)
+      else:
+        if shared.Settings.PROXY_TO_PTHREAD:
+          logging.error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
+          exit(1)
 
       if shared.Settings.OUTLINING_LIMIT:
         if not options.js_opts:
           logging.debug('enabling js opts as optional functionality implemented as a js opt was requested')
           options.js_opts = True
         options.force_js_opts = True
+
+      if shared.Settings.BINARYEN:
+        shared.Settings.WASM = 1 # these are synonyms
 
       if shared.Settings.WASM:
         shared.Settings.BINARYEN = 1 # these are synonyms
@@ -1107,7 +1109,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
-        shared.Settings.BINARYEN = 1
+        shared.Settings.BINARYEN = shared.Settings.WASM = 1
 
         # to bootstrap struct_info, we need binaryen
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
@@ -1157,8 +1159,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # if not wasm-only, we can't do async compilation as the build can run in other
           # modes than wasm (like asm.js) which may not support an async step
           shared.Settings.BINARYEN_ASYNC_COMPILATION = 0
+          warning = 'This will reduce performance and compatibility (some browsers limit synchronous compilation), see https://github.com/kripken/emscripten/wiki/WebAssembly#codegen-effects'
           if 'BINARYEN_ASYNC_COMPILATION=1' in settings_changes:
-            logging.warning('BINARYEN_ASYNC_COMPILATION requested, but disabled since not in wasm-only mode')
+            logging.warning('BINARYEN_ASYNC_COMPILATION requested, but disabled because of user options. ' + warning)
+          elif 'BINARYEN_ASYNC_COMPILATION=0' not in settings_changes:
+            logging.warning('BINARYEN_ASYNC_COMPILATION disabled due to user options. ' + warning)
+        # run safe-heap as a binaryen pass
+        if shared.Settings.SAFE_HEAP and shared.Building.is_wasm_only():
+          if shared.Settings.BINARYEN_PASSES:
+            shared.Settings.BINARYEN_PASSES += ','
+          shared.Settings.BINARYEN_PASSES += 'safe-heap'
 
       # wasm outputs are only possible with a side wasm
       if target.endswith(WASM_ENDINGS):
@@ -1180,11 +1190,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             if final_suffix in JS_CONTAINING_SUFFIXES and not shared.Settings.NO_EXIT_RUNTIME:
               logging.warning('you should enable  -s NO_EXIT_RUNTIME=1  so that EVAL_CTORS can work at full efficiency (it gets rid of atexit calls which might disrupt EVAL_CTORS)')
 
+      # memory growth does not work in dynamic linking, except for wasm
+      if not shared.Settings.WASM and (shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE):
+        assert not shared.Settings.ALLOW_MEMORY_GROWTH, 'memory growth is not supported with shared asm.js modules'
+
       if shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.ASM_JS == 1:
         # this is an issue in asm.js, but not wasm
         if not shared.Settings.WASM or 'asmjs' in shared.Settings.BINARYEN_METHOD:
           shared.WarningManager.warn('ALMOST_ASM')
           shared.Settings.ASM_JS = 2 # memory growth does not validate as asm.js http://discourse.wicg.io/t/request-for-comments-switching-resizing-heaps-in-asm-js/641/23
+
+      # safe heap in asm.js uses the js optimizer (in wasm-only mode we can use binaryen)
+      if shared.Settings.SAFE_HEAP and not shared.Building.is_wasm_only():
+        if not options.js_opts:
+          logging.debug('enabling js opts for SAFE_HEAP')
+          options.js_opts = True
+        options.force_js_opts = True
 
       if options.js_opts:
         shared.Settings.RUNNING_JS_OPTS = 1
@@ -1225,6 +1246,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.OPT_LEVEL = options.opt_level
       shared.Settings.DEBUG_LEVEL = options.debug_level
       shared.Settings.PROFILING_FUNCS = options.profiling_funcs
+      shared.Settings.SOURCE_MAP_BASE = options.source_map_base or ''
 
       ## Compile source code to bitcode
 
@@ -1269,6 +1291,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if options.debug_level == 4 or not (final_suffix in JS_CONTAINING_SUFFIXES and options.js_opts):
           newargs.append('-g') # preserve LLVM debug info
           options.debug_level = 4
+          shared.Settings.DEBUG_LEVEL = 4
 
       # Bitcode args generation code
       def get_bitcode_args(input_files):
@@ -1537,9 +1560,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # we also received wast and wasm at this stage
         temp_basename = unsuffixed(final)
         wast_temp = temp_basename + '.wast'
+        wasm_temp = temp_basename + '.wasm'
         shutil.move(wast_temp, wasm_text_target)
-        shutil.move(temp_basename + '.wasm', wasm_binary_target)
+        shutil.move(wasm_temp, wasm_binary_target)
         open(wasm_text_target + '.mappedGlobals', 'w').write('{}') # no need for mapped globals for now, but perhaps some day
+        if options.debug_level >= 4:
+          shutil.move(wasm_temp + '.map', wasm_binary_target + '.map')
 
       if shared.Settings.CYBERDWARF:
         cd_target = final + '.cd'
@@ -1715,7 +1741,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.PRECISE_F32: optimizer.queue += ['optimizeFrounds']
 
       if options.js_opts:
-        if shared.Settings.SAFE_HEAP: optimizer.queue += ['safeHeap']
+        if shared.Settings.SAFE_HEAP and not shared.Building.is_wasm_only():
+          optimizer.queue += ['safeHeap']
 
         if shared.Settings.OUTLINING_LIMIT > 0:
           optimizer.queue += ['outline']
@@ -1832,7 +1859,7 @@ def parse_args(newargs):
   should_exit = False
 
   for i in range(len(newargs)):
-    # On Windows Vista (and possibly others), excessive spaces in the command line 
+    # On Windows Vista (and possibly others), excessive spaces in the command line
     # leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
     newargs[i] = newargs[i].strip()
     if newargs[i].startswith('-O'):
@@ -1848,7 +1875,7 @@ def parse_args(newargs):
         options.requested_level = 2
         options.shrink_level = 2
         settings_changes.append('INLINING_LIMIT=25')
-      options.opt_level = validate_arg_level(options.requested_level, 3, 'Invalid optimization level: ' + newargs[i])
+      options.opt_level = validate_arg_level(options.requested_level, 3, 'Invalid optimization level: ' + newargs[i], clamp=True)
     elif newargs[i].startswith('--js-opts'):
       check_bad_eq(newargs[i])
       options.js_opts = eval(newargs[i+1])
@@ -2206,6 +2233,7 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
     combined.close()
   # normally we emit binary, but for debug info, we might emit text first
   wrote_wasm_text = False
+  debug_info = options.debug_level >= 2 or options.profiling_funcs
   # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
   if not shared.Settings.WASM_BACKEND:
     if DEBUG:
@@ -2224,7 +2252,7 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
     if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
       cmd += ['--ignore-implicit-traps']
     # pass optimization level to asm2wasm (if not optimizing, or which passes we should run was overridden, do not optimize)
-    if options.opt_level > 0 and not shared.Settings.BINARYEN_PASSES:
+    if options.opt_level > 0:
       cmd.append(shared.Building.opt_level_to_str(options.opt_level, options.shrink_level))
     # import mem init file if it exists, and if we will not be using asm.js as a binaryen method (as it needs the mem init file, of course)
     mem_file_exists = options.memory_init_file and os.path.exists(memfile)
@@ -2245,7 +2273,7 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--no-legalize-javascript-ffi']
     if shared.Building.is_wasm_only():
       cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, an can contain special fastcomp-wasm support
-    if options.debug_level >= 2 or options.profiling_funcs:
+    if debug_info:
       cmd += ['-g']
     if options.emit_symbol_map or shared.Settings.CYBERDWARF:
       cmd += ['--symbolmap=' + target + '.symbols']
@@ -2264,12 +2292,12 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
 
     if not target_binary:
       cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
-      if options.debug_level >= 2 or options.profiling_funcs:
+      if debug_info:
         cmd += ['-g']
         if options.debug_level >= 4:
           cmd += ['--source-map=' + wasm_binary_target + '.map']
           if options.source_map_base:
-            cmd += ['--source-map-url=' + options.source_map_base + wasm_binary_target + '.map']
+            cmd += ['--source-map-url=' + options.source_map_base + os.path.basename(wasm_binary_target) + '.map']
       logging.debug('wasm-as (text => binary): ' + ' '.join(cmd))
       subprocess.check_call(cmd)
     if import_mem_init:
@@ -2285,6 +2313,8 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
     # BINARYEN_PASSES is comma-separated, and we support both '-'-prefixed and unprefixed pass names
     passes = map(lambda p: ('--' + p) if p[0] != '-' else p, shared.Settings.BINARYEN_PASSES.split(','))
     cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target + '.pre', '-o', wasm_binary_target] + passes
+    if debug_info:
+      cmd += ['-g'] # preserve the debug info
     logging.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))
     subprocess.check_call(cmd)
   if not wrote_wasm_text and 'interpret-s-expr' in shared.Settings.BINARYEN_METHOD:
@@ -2303,7 +2333,10 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
       logging.debug('running binaryen script: ' + script)
       subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), final, wasm_text_target], env=script_env)
   if shared.Settings.EVAL_CTORS:
-    shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin)
+    if DEBUG:
+      save_intermediate('pre-eval-ctors', 'js')
+      shutil.copyfile(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), 'pre-eval-ctors.wasm'))
+    shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=debug_info)
   # after generating the wasm, do some final operations
   if not shared.Settings.WASM_BACKEND:
     if shared.Settings.SIDE_MODULE:
@@ -2634,9 +2667,13 @@ def check_bad_eq(arg):
   assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
 
 
-def validate_arg_level(level_string, max_level, err_msg):
+def validate_arg_level(level_string, max_level, err_msg, clamp=False):
   try:
     level = int(level_string)
+    if clamp:
+      if level > max_level:
+        logging.warning("optimization level '-O" + level_string + "' is not supported; using '-O" + str(max_level) + "' instead")
+        level = max_level
     assert 0 <= level <= max_level
   except:
     raise Exception(err_msg)
