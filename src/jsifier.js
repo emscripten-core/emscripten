@@ -123,17 +123,13 @@ function JSify(data, functionsOnly) {
 
     function sizeofType(t) {
       switch(t) {
-        case 'd':
-//        case 'I': // int64  // TODO: For wasm, we'll have to have something like this
-          return 8;
-        case 'i':
-        case 'f':
-          return 4;
-        case 'v':
-          return 0;
+        case 'd': return 8;
+//      case 'I': return 8; // int64 // TODO: For wasm, we'll have to have something like this
+        case 'i': return 4;
+        case 'f': return 4;
+        case 'v': return 0;
         // TODO: Smaller sizes?
-        default:
-          throw 'unsupported type in signature: ' + t;
+        default: throw 'unsupported type in signature: ' + t;
       }
     }
 
