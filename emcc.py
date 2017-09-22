@@ -58,6 +58,8 @@ LIB_PREFIXES = ('', 'lib')
 JS_CONTAINING_SUFFIXES = ('js', 'html')
 EXECUTABLE_SUFFIXES = JS_CONTAINING_SUFFIXES + ('wasm',)
 
+EXPLICIT_OUTPUT_TYPES = ('js', 'html', 'bc')
+
 DEFERRED_REPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST')
 
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
@@ -165,6 +167,7 @@ class EmccOptions(object):
     # Specifies the line ending format to use for all generated text files.
     # Defaults to using the native EOL on each platform (\r\n on Windows, \n on Linux&OSX)
     self.output_eol = os.linesep
+    self.force_output_type = None
 
 
 class JSOptimizer(object):
@@ -542,11 +545,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   target = specified_target if specified_target is not None else 'a.out.js' # specified_target is the user-specified one, target is what we will generate
   target_basename = unsuffixed_basename(target)
 
-  if '.' in target:
-    final_suffix = target.split('.')[-1]
-  else:
-    final_suffix = ''
-
   if TEMP_DIR:
     temp_dir = TEMP_DIR
     if os.path.exists(temp_dir):
@@ -777,24 +775,37 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       newargs = [arg for arg in newargs if arg is not '']
 
+      final_suffix = None
       # -c means do not link in gcc, and for us, the parallel is to not go all the way to JS, but stop at bitcode
       has_dash_c = '-c' in newargs
       if has_dash_c:
         assert has_source_inputs or has_header_inputs, 'Must have source code or header inputs to use -c'
-        target = target_basename + '.o'
+        if specified_target == None:
+          target = target_basename + '.o'
         final_suffix = 'o'
       if '-E' in newargs:
         final_suffix = 'eout' # not bitcode, not js; but just result from preprocessing stage of the input file
       if '-M' in newargs or '-MM' in newargs:
         final_suffix = 'mout' # not bitcode, not js; but just dependency rule of the input file
+
+      if final_suffix == None:
+        if options.force_output_type != None:
+          final_suffix = options.force_output_type
+        else:
+          final_suffix = suffix(target)
+          if final_suffix == None:
+            final_suffix = '' # generate bitcode by default
+
       final_ending = ('.' + final_suffix) if len(final_suffix) > 0 else ''
 
-      # target is now finalized, can finalize other _target s
-      js_target = unsuffixed(target) + '.js'
+      target_unsuffixed = unsuffixed(target)
 
-      asm_target = unsuffixed(js_target) + '.asm.js' # might not be used, but if it is, this is the name
-      wasm_text_target = asm_target.replace('.asm.js', '.wast') # ditto, might not be used
-      wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
+      # target is now finalized, can finalize other _target s
+      js_target = target if options.force_output_type == 'js' else target_unsuffixed + '.js'
+
+      asm_target = target_unsuffixed + '.asm.js' # might not be used, but if it is, this is the name
+      wasm_text_target = target_unsuffixed + '.wast' # ditto, might not be used
+      wasm_binary_target = target_unsuffixed + '.wasm' # ditto, might not be used
 
       if final_suffix == 'html' and not options.separate_asm and ('PRECISE_F32=2' in settings_changes or 'USE_PTHREADS=2' in settings_changes):
         options.separate_asm = True
@@ -2099,6 +2110,14 @@ def parse_args(newargs):
         options.output_eol = '\n'
       else:
         logging.error('Invalid value "' + newargs[i+1] + '" to --output_eol!')
+        exit(1)
+      newargs[i] = ''
+      newargs[i+1] = ''
+    elif newargs[i] == '--force-output-type':
+      if newargs[i+1] in EXPLICIT_OUTPUT_TYPES:
+        options.force_output_type = newargs[i+1]
+      else:
+        logging.error('Invalid value "' + newargs[i+1] + '" to --force-output-type')
         exit(1)
       newargs[i] = ''
       newargs[i+1] = ''

@@ -7890,3 +7890,44 @@ int main() {
         print inc
         open('a.c', 'w').write(inc)
         subprocess.check_call([PYTHON, EMCC, 'a.c'])
+
+  def test_force_output_type(self):
+    test_file = os.path.join(self.get_dir(), 'test.cpp')
+    fout = open(test_file, 'w')
+    fout.write('int main() { return 0; }')
+    fout.close()
+
+    def assert_is_bc(filepath):
+      fin = open(filepath, 'rb')
+      try:
+        magic = fin.read(2)
+      finally:
+        fin.close()
+      assert magic[0] == 'B' and magic[1] == 'C'
+
+    def assert_is_js(filepath):
+      fin = open(filepath, 'r')
+      try:
+        content = fin.read()
+      finally:
+        fin.close()
+      self.assertContained('function', content)
+
+    def assert_is_html(filepath):
+      fin = open(filepath, 'r')
+      try:
+        content = fin.read()
+      finally:
+        fin.close()
+      assert content.lstrip().lower().startswith('<!doctype')
+
+    output_types = [ ('bc',   assert_is_bc),
+                     ('js',   assert_is_js),
+                     ('html', assert_is_html),
+    ]
+
+    for output_type, verifier in output_types:
+      for output_suffix in ['', '.o', '.js', '.html', '.somesuffix']:
+        output_path = os.path.join(self.get_dir(), 'output' + output_suffix)
+        subprocess.check_call([PYTHON, EMCC, '--force-output-type', output_type, test_file, '-o', output_path])
+        verifier(output_path)
