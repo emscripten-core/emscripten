@@ -144,7 +144,7 @@ When running web pages via ``emrun`` using Firefox, you may want to set one or m
   ; Don't bring up the modal "Start in Safe Mode" dialog after browser is killed, since
   ; that is an expected path for --kill_start and --kill_exit options.
   browser.sessionstore.max_resumed_crashes;-1
-  toolkip.startup.max_resumed_crashes;-1
+  toolkit.startup.max_resumed_crashes;-1
 
   ; Don't fail on long-running scripts, but have emrun instead control execution termination.
   dom.max_script_run_time;0

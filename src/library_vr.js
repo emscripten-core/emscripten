@@ -1,237 +1,373 @@
 var LibraryWebVR = {
   $WebVR: {
-    DEVICE_TYPE_UNKNOWN: 0,
-    DEVICE_TYPE_HMD: 1,
-    DEVICE_TYPE_SENSOR: 2,
+    EYE_LEFT: {{{ cDefine('VR_EYE_LEFT') }}},
+    EYE_RIGHT: {{{ cDefine('VR_EYE_RIGHT') }}},
 
-    EYE_LEFT: 0,
-    EYE_RIGHT: 1,
+    POSE_POSITION: {{{ cDefine('VR_POSE_POSITION') }}},
+    POSE_LINEAR_VELOCITY: {{{ cDefine('VR_POSE_LINEAR_VELOCITY') }}},
+    POSE_LINEAR_ACCELERATION: {{{ cDefine('VR_POSE_LINEAR_ACCELERATION') }}},
+    POSE_ORIENTATION: {{{ cDefine('VR_POSE_ORIENTATION') }}},
+    POSE_ANGULAR_VELOCITY: {{{ cDefine('VR_POSE_ANGULAR_VELOCITY') }}},
+    POSE_ANGULAR_ACCELERATION: {{{ cDefine('VR_POSE_ANGULAR_ACCELERATION') }}},
 
     initialized: false,
     ready: false,
+    version: [-1, -1],
     devices: [],
-    deviceHardwareIds: {},
-    nextHardwareDeviceId: 1,
-    getDevicesPromise: null,
-
-    selectedHMD: null,
-    selectedHMDId: 0,
 
     init: function() {
       if (WebVR.initialized) return;
 
       WebVR.initialized = true;
 
-      if (!navigator.getVRDevices) {
+      if (!navigator.getVRDisplays) {
+        /* WebVR 1.1 required, but not supported. */
         WebVR.ready = true;
-        WebVR.devices = [];
-        return;
+        WebVR.displays = [];
+        return 0;
       }
 
-      navigator.getVRDevices().then(
-        function(devs) {
-          WebVR.ready = true;
-          WebVR.devices = devs;
-        },
-        function() {
-          console.log("Emscripten WebVR getVRDevices() hit error callback");
-          WebVR.ready = true;
-          WebVR.devices = [];
-        }
-      );
+      WebVR.version = [1, 1];
+
+      navigator.getVRDisplays().then(function(displays) {
+        WebVR.ready = true;
+        WebVR.displays = displays;
+      });
+
+      return 1;
     },
 
-    getDeviceByID: function(deviceId) {
-      if (deviceId < 1 || deviceId > WebVR.devices.length) {
-        console.log("library_vr getDeviceByID invalid device id at: " + stackTrace());
+    dereferenceDisplayHandle: function(displayHandle) {
+      /* Display handles start as 1 as 0 will be interpreted as false or null-handle
+       * on errors */
+      if (displayHandle < 1 || displayHandle > WebVR.displays.length) {
+        console.log("library_vr dereferenceDisplayHandle invalid display handle at: " + stackTrace());
         return null;
       }
 
-      return WebVR.devices[deviceId-1];
+      return WebVR.displays[displayHandle-1];
     }
   },
 
   emscripten_vr_init: function() {
-    WebVR.init();
+    return WebVR.init();
+  },
+
+  emscripten_vr_version_major: function() {
+    return WebVR.version[0];
+  },
+
+  emscripten_vr_version_minor: function() {
+    return WebVR.version[1];
   },
 
   emscripten_vr_ready: function() {
     return WebVR.ready ? 1 : 0;
   },
 
-  emscripten_vr_count_devices: function() {
-    return WebVR.devices.length;
+  emscripten_vr_count_displays: function() {
+    return WebVR.displays.length;
   },
 
-  emscripten_vr_get_device_id: function(deviceIndex) {
-    if (deviceIndex < 0 || deviceIndex >= WebVR.devices.length) {
+  emscripten_vr_get_display_handle: function(displayIndex) {
+    if (displayIndex < 0 || displayIndex >= WebVR.displays.length) {
       return -1;
     }
 
-    // we're doing to treat the device ID the same as the index + 1
-    return deviceIndex + 1;
+    /* As displayHandle == 0 will be interpreted as NULL handle for errors,
+     * the handle is index + 1. */
+    return displayIndex + 1;
   },
 
-  emscripten_vr_get_device_hwid: function(deviceId) {
-    var dev = WebVR.getDeviceByID(deviceId);
-    if (!dev) return -1;
+  emscripten_vr_get_display_name: function(displayHandle) {
+    var display = WebVR.dereferenceDisplayHandle(displayHandle);
 
-    if (!WebVR.deviceHardwareIds[dev.hardwareUnitId]) {
-      WebVR.deviceHardwareIds[dev.hardwareUnitId] = WebVR.nextHardwareDeviceId++;
-    }
-    return WebVR.deviceHardwareIds[dev.hardwareUnitId];
+    var buffer, displayName;
+    displayName = display ? display.displayName : "";
+    var len = lengthBytesUTF8(displayName);
+    buffer = _malloc(len + 1);
+    stringToUTF8(displayName, buffer, len + 1);
+
+    return buffer;
   },
 
-  emscripten_vr_get_device_name: function(deviceId) {
-    var dev = WebVR.getDeviceByID(deviceId);
-    var buffer, devName;
-    devName = dev ? dev.deviceName : "";
-    var len = lengthBytesUTF8(devName);
-    buf = _malloc(len + 1);
-    stringToUTF8(devName, buf, len + 1);
-    return buf;
-  },
+  emscripten_vr_get_display_capabilities: function(displayHandle, capsPtr) {
+    if (!capsPtr) return 0;
 
-  emscripten_vr_get_device_type: function(deviceId) {
-    var dev = WebVR.getDeviceByID(deviceId);
-    if (!dev) return -1;
+    var display = WebVR.dereferenceDisplayHandle(displayHandle);
+    if (!display) return 0;
 
-    if (dev instanceof HMDVRDevice) {
-      return WebVR.DEVICE_TYPE_HMD;
-    }
-    if (dev instanceof PositionSensorVRDevice) {
-      return WebVR.DEVICE_TYPE_SENSOR;
-    }
-    return WebVR.DEVICE_TYPE_UNKNOWN;
-  },
+    var caps = display.capabilities;
 
-  emscripten_vr_select_hmd_device: function(deviceId) {
-    if (deviceId == 0) {
-      WebVR.selectedHMD = null;
-      WebVR.selectedHMDId = 0;
-      return 1;
-    }
+    {{{ makeSetValue('capsPtr', C_STRUCTS.VRDisplayCapabilities.hasPosition, 'caps.hasPosition ? 1 : 0', 'i32') }}};
+    {{{ makeSetValue('capsPtr', C_STRUCTS.VRDisplayCapabilities.hasExternalDisplay, 'caps.hasExternalDisplay ? 1 : 0', 'i32') }}};
+    {{{ makeSetValue('capsPtr', C_STRUCTS.VRDisplayCapabilities.canPresent, 'caps.canPresent ? 1 : 0', 'i32') }}};
 
-    var dev = WebVR.getDeviceByID(deviceId);
-    if (!dev || !(dev instanceof HMDVRDevice)) {
-      console.log("Trying to call emscripten_vr_select_hmd_device on invalid or non-HMD device ID!");
-      return 0;
-    }
-    WebVR.selectedHMD = dev;
-    WebVR.selectedHMDId = deviceId;
+    {{{ makeSetValue('capsPtr', C_STRUCTS.VRDisplayCapabilities.maxLayers, 'caps.maxLayers', 'i64') }}};
+
     return 1;
   },
 
-  emscripten_vr_get_selected_hmd_device: function() {
-    return WebVR.selectedHMDId;
-  },
-
-  emscripten_vr_hmd_get_eye_parameters: function(deviceId, whichEye, eyeParamsPtr) {
+  emscripten_vr_get_eye_parameters: function(displayHandle, whichEye, eyeParamsPtr) {
     if (!eyeParamsPtr) return 0;
-    var dev = WebVR.getDeviceByID(deviceId);
-    if (!dev) return 0;
-    var params = dev.getEyeParameters(whichEye == WebVR.EYE_LEFT ? "left" : "right");
 
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.minimumFieldOfView.upDegrees, 'params.minimumFieldOfView.upDegrees', 'double') }}};
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.minimumFieldOfView.downDegrees, 'params.minimumFieldOfView.downDegrees', 'double') }}};
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.minimumFieldOfView.leftDegrees, 'params.minimumFieldOfView.leftDegrees', 'double') }}};
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.minimumFieldOfView.rightDegrees, 'params.minimumFieldOfView.rightDegrees', 'double') }}};
+    var display = WebVR.dereferenceDisplayHandle(displayHandle);
+    if (!display) return 0;
 
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.maximumFieldOfView.upDegrees, 'params.maximumFieldOfView.upDegrees', 'double') }}};
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.maximumFieldOfView.downDegrees, 'params.maximumFieldOfView.downDegrees', 'double') }}};
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.maximumFieldOfView.leftDegrees, 'params.maximumFieldOfView.leftDegrees', 'double') }}};
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.maximumFieldOfView.rightDegrees, 'params.maximumFieldOfView.rightDegrees', 'double') }}};
+    var params = display.getEyeParameters(whichEye == WebVR.EYE_LEFT ? "left" : "right");
 
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.recommendedFieldOfView.upDegrees, 'params.recommendedFieldOfView.upDegrees', 'double') }}};
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.recommendedFieldOfView.downDegrees, 'params.recommendedFieldOfView.downDegrees', 'double') }}};
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.recommendedFieldOfView.leftDegrees, 'params.recommendedFieldOfView.leftDegrees', 'double') }}};
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.recommendedFieldOfView.rightDegrees, 'params.recommendedFieldOfView.rightDegrees', 'double') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.VREyeParameters.offset.x, 'params.offset[0]', 'float') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.VREyeParameters.offset.y, 'params.offset[1]', 'float') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.VREyeParameters.offset.z, 'params.offset[2]', 'float') }}};
 
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.eyeTranslation.x, 'params.eyeTranslation.x', 'double') }}};
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.eyeTranslation.y, 'params.eyeTranslation.y', 'double') }}};
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.eyeTranslation.z, 'params.eyeTranslation.z', 'double') }}};
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.eyeTranslation.w, 'params.eyeTranslation.w', 'double') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.VREyeParameters.renderWidth, 'params.renderWidth', 'i64') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.VREyeParameters.renderHeight, 'params.renderHeight', 'i64') }}};
 
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.currentFieldOfView.upDegrees, 'params.currentFieldOfView.upDegrees', 'double') }}};
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.currentFieldOfView.downDegrees, 'params.currentFieldOfView.downDegrees', 'double') }}};
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.currentFieldOfView.leftDegrees, 'params.currentFieldOfView.leftDegrees', 'double') }}};
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.currentFieldOfView.rightDegrees, 'params.currentFieldOfView.rightDegrees', 'double') }}};
-
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.renderRect.x, 'params.renderRect.x', 'i32') }}};
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.renderRect.y, 'params.renderRect.y', 'i32') }}};
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.renderRect.width, 'params.renderRect.width', 'i32') }}};
-    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.renderRect.height, 'params.renderRect.height', 'i32') }}};
-
-    return 1;
-
-  },
-
-  emscripten_vr_hmd_set_fov: function(deviceId, leftFovPtr, rightFovPtr, zNear, zFar) {
-    if (!leftFovPtr || !rightFovPtr) return 0;
-    var dev = WebVR.getDeviceByID(deviceId);
-    if (!dev) return 0;
-    var leftFov = {
-      upDegrees: {{{ makeGetValue('leftFovPtr', C_STRUCTS.WebVRFieldOfView.upDegrees, 'double') }}},
-      downDegrees: {{{ makeGetValue('leftFovPtr', C_STRUCTS.WebVRFieldOfView.downDegrees, 'double') }}},
-      leftDegrees: {{{ makeGetValue('leftFovPtr', C_STRUCTS.WebVRFieldOfView.leftDegrees, 'double') }}},
-      rightDegrees: {{{ makeGetValue('leftFovPtr', C_STRUCTS.WebVRFieldOfView.rightDegrees, 'double') }}}
-    };
-    var rightFov = {
-      upDegrees: {{{ makeGetValue('rightFovPtr', C_STRUCTS.WebVRFieldOfView.upDegrees, 'double') }}},
-      downDegrees: {{{ makeGetValue('rightFovPtr', C_STRUCTS.WebVRFieldOfView.downDegrees, 'double') }}},
-      leftDegrees: {{{ makeGetValue('rightFovPtr', C_STRUCTS.WebVRFieldOfView.leftDegrees, 'double') }}},
-      rightDegrees: {{{ makeGetValue('rightFovPtr', C_STRUCTS.WebVRFieldOfView.rightDegrees, 'double') }}}
-    };
-    dev.setFieldOfView(leftFov, rightFov, zNear, zFar);
     return 1;
   },
 
-  emscripten_vr_sensor_get_state: function(deviceId, immediate, statePtr) {
-    if (!statePtr) return 0;
-    var dev = WebVR.getDeviceByID(deviceId);
-    if (!dev) return 0;
-    var state = immediate ? dev.getImmediateState : dev.getState();
+  emscripten_vr_display_connected: function(displayHandle) {
+    var display = WebVR.dereferenceDisplayHandle(displayHandle);
+    if (!display || !display.isConnected) return 0;
+    return 1;
+  },
 
-    {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.timeStamp, 'state.timeStamp', 'double') }}};
+  emscripten_vr_display_presenting: function(displayHandle) {
+    var display = WebVR.dereferenceDisplayHandle(displayHandle);
+    if (!display || !display.isPresenting) return 0;
+    return 1;
+  },
 
-    {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.hasPosition, 'state.hasPosition ? 1 : 0', 'i32') }}};
-    if (state.hasPosition) {
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.position.x, 'state.position.x', 'double') }}};
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.position.y, 'state.position.y', 'double') }}};
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.position.z, 'state.position.z', 'double') }}};
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.linearVelocity.x, 'state.linearVelocity.x', 'double') }}};
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.linearVelocity.y, 'state.linearVelocity.y', 'double') }}};
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.linearVelocity.z, 'state.linearVelocity.z', 'double') }}};
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.linearAcceleration.x, 'state.linearAcceleration.x', 'double') }}};
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.linearAcceleration.y, 'state.linearAcceleration.y', 'double') }}};
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.linearAcceleration.z, 'state.linearAcceleration.z', 'double') }}};
+  emscripten_vr_set_display_render_loop: function(displayHandle, func, arg) {
+    var display = WebVR.dereferenceDisplayHandle(displayHandle);
+    if (!display) return 0;
+
+    assert(!display.mainLoop || !display.mainLoop.scheduler, "emscripten_vr_set_device_main_loop: there can only be one render loop function per VRDisplay: call emscripten_vr_cancel_render_loop to cancel the previous one before setting a new one with different parameters.");
+
+    var displayIterationFunc;
+    if (typeof arg !== 'undefined') {
+      displayIterationFunc = function() {
+        Runtime.dynCall('vi', func, [arg]);
+      };
+    } else {
+      displayIterationFunc = function() {
+        Runtime.dynCall('v', func);
+      };
     }
 
-    {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.hasOrientation, 'state.hasOrientation ? 1 : 0', 'i32') }}};
-    if (state.hasOrientation) {
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.orientation.x, 'state.orientation.x', 'double') }}};
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.orientation.y, 'state.orientation.y', 'double') }}};
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.orientation.z, 'state.orientation.z', 'double') }}};
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.orientation.w, 'state.orientation.w', 'double') }}};
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.angularVelocity.x, 'state.angularVelocity.x', 'double') }}};
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.angularVelocity.y, 'state.angularVelocity.y', 'double') }}};
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.angularVelocity.z, 'state.angularVelocity.z', 'double') }}};
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.angularVelocity.w, 'state.angularVelocity.w', 'double') }}};
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.angularAcceleration.x, 'state.angularAcceleration.x', 'double') }}};
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.angularAcceleration.y, 'state.angularAcceleration.y', 'double') }}};
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.angularAcceleration.z, 'state.angularAcceleration.z', 'double') }}};
-      {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.angularAcceleration.w, 'state.angularAcceleration.w', 'double') }}};
+    display.mainLoop = {
+      running: !display.mainLoop ? false : display.mainLoop.running,
+      scheduler: function() {
+        display.requestAnimationFrame(display.mainLoop.runner);
+      },
+      runner: function() {
+        if (ABORT) return;
+
+        /* Prevent scheduler being called twice when loop is changed */
+        display.mainLoop.running = true;
+
+#if USES_GL_EMULATION
+        GL.newRenderingFrameStarted();
+#endif
+
+        try {
+          displayIterationFunc();
+        } catch (e) {
+          if (e instanceof ExitStatus) {
+            return;
+          } else {
+            if (e && typeof e === 'object' && e.stack) Module.printErr('exception thrown in render loop of VR display ' + displayHandle.toString() + ': ' + [e, e.stack]);
+            throw e;
+          }
+        }
+
+#if STACK_OVERFLOW_CHECK
+        checkStackCookie();
+#endif
+
+        if (!display.mainLoop.scheduler) {
+          display.mainLoop.running = false;
+        } else {
+          display.mainLoop.scheduler();
+        }
+      },
+      pause: function() {
+        display.mainLoop.scheduler = null;
+      }
+    };
+
+    if (!display.mainLoop.running) {
+      display.mainLoop.scheduler();
+    } // otherwise called by display.mainLoop.runner()
+    return 1;
+  },
+
+  emscripten_vr_set_display_render_loop_arg__deps: ['emscripten_vr_set_display_render_loop'],
+  emscripten_vr_set_display_render_loop_arg: function(displayHandle, func, arg) {
+    return _emscripten_vr_set_display_render_loop(displayHandle, func, arg);
+  },
+
+  emscripten_vr_cancel_display_render_loop: function(displayHandle) {
+    var display = WebVR.dereferenceDisplayHandle(displayHandle);
+    if (!display || !display.mainLoop) return 0;
+
+    display.mainLoop.pause();
+    return 1;
+  },
+
+  emscripten_vr_request_present: function(displayHandle, layerInitPtr, layerCount, func, userData) {
+    var display = WebVR.dereferenceDisplayHandle(displayHandle);
+    if (!display) return 0;
+
+    layerInit = new Array(layerCount);
+    for (var i = 0; i < layerCount; ++i) {
+      sourceStrPtr = {{{ makeGetValue('layerInitPtr', C_STRUCTS.VRLayerInit.source, 'void*') }}};
+
+      var source = null;
+      if (sourceStrPtr == 0) {
+        source = Module['canvas'];
+      } else {
+        sourceStr = UTF8ToString(sourceStrPtr);
+
+        if (sourceStr && sourceStr.length > 0) {
+          source = document.getElementById(sourceStr);
+        }
+
+        if (!source) {
+          return 0;
+        }
+      }
+
+      leftBounds = new Float32Array(4);
+      rightBounds = new Float32Array(4);
+      var ptr = layerInitPtr;
+      for (var j = 0; j < 4; ++j) {
+        leftBounds[j] = {{{ makeGetValue('layerInitPtr', C_STRUCTS.VRLayerInit.leftBounds + '+ 4*j', 'float') }}};
+        rightBounds[j] = {{{ makeGetValue('layerInitPtr', C_STRUCTS.VRLayerInit.rightBounds + '+ 4*j', 'float') }}};
+        ptr += 4;
+      }
+
+      layerInit[i] = {
+        source: source,
+        leftBounds: leftBounds,
+        rightBounds: rightBounds
+      };
+      layerInitPtr += {{{ C_STRUCTS.VRLayerInit.__size__ }}};
+    }
+
+    display.requestPresent(layerInit).then(function() {
+      if (!func) return;
+      Runtime.dynCall('vi', func, [userData]);
+    });
+
+    return 1;
+  },
+
+  emscripten_vr_exit_present: function(displayHandle) {
+    var display = WebVR.dereferenceDisplayHandle(displayHandle);
+    if (!display) return 0;
+
+    display.exitPresent();
+    return 1;
+  },
+
+  emscripten_vr_get_frame_data: function(displayHandle, frameDataPtr) {
+    var display = WebVR.dereferenceDisplayHandle(displayHandle);
+    if (!display || !display.mainLoop || !frameDataPtr) return 0;
+
+    if (!display.frameData) {
+      display.frameData = new VRFrameData();
+    }
+    display.getFrameData(display.frameData);
+
+    /* Pose */
+
+    /* Used to expose to C which attributes are valid (!== null) */
+    var poseFlags = 0;
+
+    {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.timestamp, 'display.frameData.timestamp', 'double') }}};
+
+    if (display.frameData.pose.position !== null) {
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.position.x, 'display.frameData.pose.position[0]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.position.y, 'display.frameData.pose.position[1]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.position.z, 'display.frameData.pose.position[2]', 'float') }}};
+
+      poseFlags |= WebVR.POSE_POSITION;
+    }
+
+    if (display.frameData.pose.linearVelocity !== null) {
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.linearVelocity.x, 'display.frameData.pose.linearVelocity[0]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.linearVelocity.y, 'display.frameData.pose.linearVelocity[1]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.linearVelocity.z, 'display.frameData.pose.linearVelocity[2]', 'float') }}};
+
+      poseFlags |= WebVR.POSE_LINEAR_VELOCITY;
+    }
+
+    if (display.frameData.pose.linearAcceleration !== null) {
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.linearAcceleration.x, 'display.frameData.pose.linearAcceleration[0]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.linearAcceleration.y, 'display.frameData.pose.linearAcceleration[1]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.linearAcceleration.z, 'display.frameData.pose.linearAcceleration[2]', 'float') }}};
+
+      poseFlags |= WebVR.POSE_LINEAR_ACCELERATION;
+    }
+
+    if (display.frameData.pose.orientation !== null) {
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.orientation.x, 'display.frameData.pose.orientation[0]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.orientation.y, 'display.frameData.pose.orientation[1]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.orientation.z, 'display.frameData.pose.orientation[2]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.orientation.w, 'display.frameData.pose.orientation[3]', 'float') }}};
+
+        poseFlags |= WebVR.POSE_ORIENTATION;
+    }
+
+    if (display.frameData.pose.angularVelocity !== null) {
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.angularVelocity.x, 'display.frameData.pose.angularVelocity[0]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.angularVelocity.y, 'display.frameData.pose.angularVelocity[1]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.angularVelocity.z, 'display.frameData.pose.angularVelocity[2]', 'float') }}};
+
+      poseFlags |= WebVR.POSE_ANGULAR_VELOCITY;
+    }
+
+    if (display.frameData.pose.angularAcceleration !== null) {
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.angularAcceleration.x, 'display.frameData.pose.angularAcceleration[0]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.angularAcceleration.y, 'display.frameData.pose.angularAcceleration[1]', 'float') }}};
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.angularAcceleration.z, 'display.frameData.pose.angularAcceleration[0]', 'float') }}};
+
+      poseFlags |= WebVR.POSE_ANGULAR_ACCELERATION;
+    }
+
+    {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.pose.poseFlags, 'poseFlags', 'i32') }}};
+
+    /* Matrices */
+
+    for (var i = 0; i < 16; ++i) {
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.leftProjectionMatrix + ' + i*4', 'display.frameData.leftProjectionMatrix[i]', 'float') }}};
+    }
+
+    for (var i = 0; i < 16; ++i) {
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.leftViewMatrix + ' + i*4', 'display.frameData.leftViewMatrix[i]', 'float') }}};
+    }
+
+    for (var i = 0; i < 16; ++i) {
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.rightProjectionMatrix + ' + i*4', 'display.frameData.rightProjectionMatrix[i]', 'float') }}};
+    }
+
+    for (var i = 0; i < 16; ++i) {
+      {{{ makeSetValue('frameDataPtr', C_STRUCTS.VRFrameData.rightViewMatrix + ' + i*4', 'display.frameData.rightViewMatrix[i]', 'float') }}};
     }
 
     return 1;
   },
 
-  emscripten_vr_sensor_zero: function(deviceId) {
-    var dev = WebVR.getDeviceByID(deviceId);
-    if (!dev) return 0;
-    dev.resetSensor();
+  emscripten_vr_submit_frame: function(displayHandle) {
+    var display = WebVR.dereferenceDisplayHandle(displayHandle);
+    if (!display || !display.mainLoop) return 0;
+
+    display.submitFrame();
+
     return 1;
   }
+
 };
 
 autoAddDeps(LibraryWebVR, '$WebVR');
