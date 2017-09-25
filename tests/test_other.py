@@ -2640,7 +2640,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
   def test_extra_exported_methods(self):
     # Test with node.js that the EXTRA_EXPORTED_RUNTIME_METHODS setting is considered by libraries
     if NODE_JS not in JS_ENGINES:
-      return
+      return self.skip("node engine required for this test")
 
     open(os.path.join(self.get_dir(), 'count.c'), 'w').write('''
       #include <string.h>
