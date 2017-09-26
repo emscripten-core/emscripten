@@ -2356,25 +2356,6 @@ class JS(object):
     else:
       return os.path.basename(path)
 
-  # Runs the preprocessor on a string of JavaScript
-  #
-  # WARNING: Currently using a very simplified version that supports only a
-  # small subset of preprocessor directives. Specifically, it will work with
-  # "#if NAME_OF_SETTING ... #endif". Anything other than that, including
-  # "#if !NAME_OF_SETTING ... #endif", is unsupported.
-  #
-  # TODO: Replace this with a hook into the real preprocessor.
-  @staticmethod
-  def preprocessor(s):
-    def repl(matchobj):
-      try:
-        if Settings.get(matchobj.group(1)):
-          return matchobj.group(2)
-      except:
-        pass
-      return ''
-    return re.sub(r'#if (.*?)\n(.*?)\n#endif', repl, s, flags=re.DOTALL)
-
   @staticmethod
   def make_initializer(sig, settings=None):
     settings = settings or Settings

@@ -2570,7 +2570,7 @@ def generate_html(target, options, js_target, target_basename,
   if script.inline:
     for file in ['src/arrayUtils.js', 'src/base64Utils.js']:
       f = open(shared.path_from_root(file), 'r')
-      script.inline = '(function () {' + script.inline + shared.JS.preprocessor(f.read()) + '})();'
+      script.inline = '(function () {' + script.inline + f.read() + '})();'
       f.close()
 
   html = open(target, 'wb')

@@ -120,6 +120,13 @@ function assert(condition, text) {
   }
 }
 
+// Runs assert if ASSERTIONS is true
+function maybeAssert(condition, text) {
+#if ASSERTIONS
+  assert(condition, text);
+#endif
+}
+
 var globalScope = this;
 
 // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
