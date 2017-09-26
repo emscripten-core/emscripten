@@ -7413,8 +7413,8 @@ int main(int argc, char **argv) {
       print '  f2i'
       self.do_run(open(path_from_root('tests', 'wasm', 'trap-f2i.cpp')).read(),
                   {
-                    'js': '|1337|', # JS did an fmod 2^32
-                    'clamp': '|-2147483648|',
+                    'js': '|1337|\n|4294967295|', # JS did an fmod 2^32 | normal
+                    'clamp': '|-2147483648|\n|4294967295|',
                     'allow': TRAP_OUTPUTS
                   }[mode])
 
