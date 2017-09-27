@@ -2230,9 +2230,6 @@ function integrateWasmJS() {
   }
 
   function getBinaryPromise() {
-    //if (!Module['wasmbinary'] && typeof WebAssembly.instantiateStreaming === 'function') {
-    //  return fetch(wasmBinaryFile, { credentials: 'same-origin' })
-    //}
     // if we don't have the binary yet, and have the Fetch api, use that
     // in some environments, like Electron's render process, Fetch api may be present, but have a different context than expected, let's only use it on the Web
     if (!Module['wasmBinary'] && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
@@ -2340,7 +2337,6 @@ function integrateWasmJS() {
     }
     // Prefer streaming instantiation if available.
     if (!Module['wasmBinary'] && typeof WebAssembly.instantiateStreaming === 'function') {
-      console.log("Fetching");
       WebAssembly.instantiateStreaming(fetch(wasmBinaryFile, { credentials: 'same-origin' }), info)
           .then(receiveInstantiatedSource).catch(
               function(reason) {
