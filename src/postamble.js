@@ -2,6 +2,7 @@
 // === Auto-generated postamble setup entry stuff ===
 
 {{{ maybeExport('FS') }}}
+{{{ maybeExport('GL') }}}
 
 #if MEM_INIT_METHOD == 2
 #if USE_PTHREADS
