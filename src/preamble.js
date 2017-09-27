@@ -1185,6 +1185,7 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
 #endif
 
 #if USE_PTHREADS
+#if !BINARYEN
 if (typeof SharedArrayBuffer !== 'undefined') {
   if (!ENVIRONMENT_IS_PTHREAD) buffer = new SharedArrayBuffer(TOTAL_MEMORY);
   // Currently SharedArrayBuffer does not have a slice() operation, so polyfill it in.
@@ -1237,6 +1238,11 @@ if (typeof Atomics === 'undefined') {
   Atomics['xor'] = function(t, i, v) { var w = t[i]; t[i] ^= v; return w; }
 }
 
+#else
+Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE, 'shared': true});
+buffer = Module['wasmMemory'].buffer;
+updateGlobalBufferViews();
+#endif // !BINARYEN
 #else // USE_PTHREADS
 
 #if SPLIT_MEMORY == 0
@@ -1252,28 +1258,28 @@ if (Module['buffer']) {
   if (typeof WebAssembly === 'object' && typeof WebAssembly.Memory === 'function') {
 #if ASSERTIONS
     assert(TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
-#endif
+#endif // ASSERTIONS
 #if ALLOW_MEMORY_GROWTH
 #if BINARYEN_MEM_MAX
 #if ASSERTIONS
     assert({{{ BINARYEN_MEM_MAX }}} % WASM_PAGE_SIZE == 0);
 #endif
-    Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': {{{ BINARYEN_MEM_MAX }}} / WASM_PAGE_SIZE });
+    Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': {{{ BINARYEN_MEM_MAX }}} / WASM_PAGE_SIZE , 'shared': false});
 #else
-    Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE });
-#endif
+    Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'shared': false});
+#endif // BINARYEN_MEM_MAX
 #else
     Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE });
-#endif
+#endif // ALLOW_MEMORY_GROWTH
     buffer = Module['wasmMemory'].buffer;
   } else
-#endif
+#endif // BINARYEN
   {
     buffer = new ArrayBuffer(TOTAL_MEMORY);
   }
 #if ASSERTIONS
   assert(buffer.byteLength === TOTAL_MEMORY);
-#endif
+#endif // ASSERTIONS
 }
 updateGlobalBufferViews();
 #else // SPLIT_MEMORY
