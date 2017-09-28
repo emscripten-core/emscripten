@@ -748,7 +748,6 @@ def server_func(dir, q):
       pass
 
   SimpleHTTPServer.SimpleHTTPRequestHandler.extensions_map['.wasm'] = 'application/wasm'
-  print SimpleHTTPServer.SimpleHTTPRequestHandler.extensions_map
   os.chdir(dir)
   httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
   httpd.serve_forever() # test runner will kill us
