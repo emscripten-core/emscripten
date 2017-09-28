@@ -1059,7 +1059,7 @@ var LibraryOpenAL = {
       {{{ makeSetValue('value', '0', 'src.loop', 'i32') }}};
       break;
     case 0x1009 /* AL_BUFFER */:
-      if (!src.queue.length) {
+      if (src.queue.length <= src.buffersPlayed) {
         {{{ makeSetValue('value', '0', '0', 'i32') }}};
       } else {
         // Find the first unprocessed buffer.
