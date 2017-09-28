@@ -21,7 +21,6 @@ int main()
     assert(error);
 
     printf("ok!\n");
-    int result = 1;
-    REPORT_RESULT();
+    REPORT_RESULT(1);
     return 0;
 }

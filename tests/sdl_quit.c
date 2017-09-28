@@ -13,7 +13,7 @@ void one() {
       case SDL_QUIT: {
         if (!result) { // prevent infinite recursion since REPORT_RESULT does window.close too.
           result = 1;
-          REPORT_RESULT_INTERNAL(1);
+          REPORT_RESULT_SYNC(1);
         }
       }
     }

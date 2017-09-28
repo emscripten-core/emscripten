@@ -15,7 +15,6 @@ int main()
   assert(res == EMSCRIPTEN_RESULT_SUCCESS);
   assert(emscripten_webgl_get_current_context() == context);
 #ifdef REPORT_RESULT
-  int result = 0;
-  REPORT_RESULT();
+  REPORT_RESULT(0);
 #endif
 }

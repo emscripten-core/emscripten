@@ -87,7 +87,7 @@ namespace emscripten {
             EM_VAL _emval_typeof(EM_VAL value);
         }
 
-        template<const char* address> 
+        template<const char* address>
         struct symbol_registrar {
             symbol_registrar() {
                 internal::_emval_register_symbol(address);
@@ -419,16 +419,17 @@ namespace emscripten {
             return MethodCaller<ReturnValue, Args...>::call(handle, name, std::forward<Args>(args)...);
         }
 
-        template<typename T>
-        T as() const {
+        template<typename T, typename ...Policies>
+        T as(Policies...) const {
             using namespace internal;
 
             typedef BindingType<T> BT;
+            typename WithPolicies<Policies...>::template ArgTypeList<T> targetType;
 
             EM_DESTRUCTORS destructors;
             EM_GENERIC_WIRE_TYPE result = _emval_as(
                 handle,
-                TypeID<T>::get(),
+                targetType.getTypes()[0],
                 &destructors);
             DestructorsRunner dr(destructors);
             return fromGenericWireType<T>(result);

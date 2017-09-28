@@ -100,7 +100,7 @@ var funs = {
   alarm__deps: ['_sigalrm_handler'],
   alarm: function(seconds) {
     setTimeout(function() {
-      if (__sigalrm_handler) Runtime.dynCall('vi', __sigalrm_handler, [0]);
+      if (__sigalrm_handler) Module['dynCall_vi'](__sigalrm_handler, 0);
     }, seconds*1000);
   },
   ualarm: function() {
@@ -124,6 +124,19 @@ var funs = {
     ___setErrNo(ERRNO_CODES.EINTR);
     return -1;
   },
+#if ASSERTIONS
+  siglongjmp__deps: ['longjmp'],
+  siglongjmp: function(env, value) {
+    // We cannot wrap the sigsetjmp, but I hope that
+    // in most cases siglongjmp will be called later.
+
+    // siglongjmp can be called very many times, so don't flood the stderr.
+    Runtime.warnOnce("Calling longjmp() instead of siglongjmp()");
+    _longjmp(env, value);
+  },
+#else
+  siglongjmp: 'longjmp',
+#endif
   sigpending: function(set) {
     {{{ makeSetValue('set', 0, 0, 'i32') }}};
     return 0;

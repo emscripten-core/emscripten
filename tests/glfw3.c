@@ -30,14 +30,14 @@ int main()
 
     glfwSetErrorCallback(errorcb);
     assert(glfwInit() == GL_TRUE);
-    assert(!strcmp(glfwGetVersionString(), "3.0.0 JS WebGL Emscripten"));
+    assert(!strcmp(glfwGetVersionString(), "3.2.1 JS WebGL Emscripten"));
 
     {
         int major, minor, rev;
         glfwGetVersion(&major, &minor, &rev);
         assert(major == 3);
-        assert(minor == 0);
-        assert(rev == 0);
+        assert(minor == 2);
+        assert(rev == 1);
     }
 
     {
@@ -184,8 +184,7 @@ int main()
     glfwTerminate();
 
 #ifdef REPORT_RESULT
-    int result = 1;
-    REPORT_RESULT();
+    REPORT_RESULT(1);
 #endif
     return 0;
 }

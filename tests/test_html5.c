@@ -288,8 +288,7 @@ void mainloop()
 #ifdef REPORT_RESULT
 void report_result(void *arg)
 {
-  int result = 0;
-  REPORT_RESULT();
+  REPORT_RESULT(0);
 }
 #endif
 

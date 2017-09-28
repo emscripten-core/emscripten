@@ -631,6 +631,9 @@ StringSet BREAK_CAPTURERS("do while for switch"),
           CONTINUE_CAPTURERS("do while for"),
           FUNCTIONS_THAT_ALWAYS_THROW("abort ___resumeException ___cxa_throw ___cxa_rethrow");
 
+IString DCEABLE_TYPE_DECLS("__emscripten_dceable_type_decls");
+
+
 bool isFunctionTable(const char *name) {
   static const char *functionTable = "FUNCTION_TABLE";
   static unsigned size = strlen(functionTable);
@@ -2414,6 +2417,10 @@ void registerizeHarder(Ref ast) {
       if (node[0] == NEW) abort = true;
     });
     if (abort) return;
+
+    // Do not process the dceable helper function for wasm, which declares
+    // types, we need to alive for asm2wasm
+    if (fun[1] == DCEABLE_TYPE_DECLS) return;
 
     AsmData asmData(fun);
 

@@ -9,7 +9,7 @@ void EMSCRIPTEN_KEEPALIVE success() {
   printf("success? %d\n", result);
   assert(result == 10);
   result += 7;
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }
 
 void EMSCRIPTEN_KEEPALIVE later() {

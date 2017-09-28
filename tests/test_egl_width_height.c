@@ -35,6 +35,6 @@ int main(int argc, char *argv[])
     {
         result = 1;
     }
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
 }

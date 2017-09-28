@@ -42,7 +42,7 @@ void iter() {
        0 == strncmp((char*)hdr.msg_iov[0].iov_base, expected, strlen(expected))) {
       result = 1;
     }
-    REPORT_RESULT();
+    REPORT_RESULT(result);
     exit(EXIT_SUCCESS);
     emscripten_cancel_main_loop();
 #endif

@@ -34,4 +34,10 @@ long double sinhl(long double x)
 	t = expl(0.5*absx);
 	return h*t*t;
 }
+#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384
+// TODO: broken implementation to make things compile
+long double sinhl(long double x)
+{
+	return sinh(x);
+}
 #endif

@@ -22,12 +22,12 @@ public:
 
 bool device_CON::Read(unsigned char * data,unsigned short * size) {
     printf("device_CON::Read (this = %i) Sleep--> \n", (int)this);
-    EM_ASM_ARGS({
+    EM_ASM({
       Module.the_this = $0;
       Module.print('first this ' + Module.the_this);
     }, this);
     emscripten_sleep(1000);
-    EM_ASM_ARGS({
+    EM_ASM({
       Module.print('second this ' + $0);
       assert(Module.the_this === $0, 'this must be unchanged');
     }, this);
@@ -40,7 +40,6 @@ int main(void) {
     Devices[0] = &con;
     DOS_Device dev;
     dev.Read(0,0);
-    int result = 1;
-    REPORT_RESULT();
+    REPORT_RESULT(1);
 }
 

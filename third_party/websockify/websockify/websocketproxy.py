@@ -110,7 +110,7 @@ Traffic Legend:
         # Extract the token parameter from url
         args = parse_qs(urlparse(path)[4]) # 4 is the query from url
 
-        if not 'token' in args or not len(args['token']):
+        if 'token' not in args or not len(args['token']):
             raise self.server.EClose("Token not present")
 
         token = args['token'][0].rstrip('\n')

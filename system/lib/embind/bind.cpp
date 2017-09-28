@@ -96,7 +96,7 @@ EMSCRIPTEN_BINDINGS(native_and_builtin_types) {
     using namespace emscripten::internal;
 
     _embind_register_void(TypeID<void>::get(), "void");
-    
+
     _embind_register_bool(TypeID<bool>::get(), "bool", sizeof(bool), true, false);
 
     register_integer<char>("char");
@@ -108,10 +108,10 @@ EMSCRIPTEN_BINDINGS(native_and_builtin_types) {
     register_integer<unsigned int>("unsigned int");
     register_integer<signed long>("long");
     register_integer<unsigned long>("unsigned long");
-    
+
     register_float<float>("float");
     register_float<double>("double");
-    
+
     _embind_register_std_string(TypeID<std::string>::get(), "std::string");
     _embind_register_std_string(TypeID<std::basic_string<unsigned char> >::get(), "std::basic_string<unsigned char>");
     _embind_register_std_wstring(TypeID<std::wstring>::get(), sizeof(wchar_t), "std::wstring");

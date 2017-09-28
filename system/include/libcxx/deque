@@ -110,8 +110,8 @@ public:
     void push_front(value_type&& v);
     void push_back(const value_type& v);
     void push_back(value_type&& v);
-    template <class... Args> void emplace_front(Args&&... args);
-    template <class... Args> void emplace_back(Args&&... args);
+    template <class... Args> reference emplace_front(Args&&... args);  // reference in C++17
+    template <class... Args> reference emplace_back(Args&&... args);   // reference in C++17
     template <class... Args> iterator emplace(const_iterator p, Args&&... args);
     iterator insert(const_iterator p, const value_type& v);
     iterator insert(const_iterator p, value_type&& v);
@@ -167,11 +167,11 @@ template <class T, class Allocator>
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 template <class _Tp, class _Allocator> class __deque_base;
-template <class _Tp, class _Allocator = allocator<_Tp> > class _LIBCPP_TYPE_VIS_ONLY deque;
+template <class _Tp, class _Allocator = allocator<_Tp> > class _LIBCPP_TEMPLATE_VIS deque;
 
 template <class _ValueType, class _Pointer, class _Reference, class _MapPointer,
           class _DiffType, _DiffType _BlockSize>
-class _LIBCPP_TYPE_VIS_ONLY __deque_iterator;
+class _LIBCPP_TEMPLATE_VIS __deque_iterator;
 
 template <class _RAIter,
           class _V2, class _P2, class _R2, class _M2, class _D2, _D2 _B2>
@@ -276,7 +276,7 @@ template <class _ValueType, class _Pointer, class _Reference, class _MapPointer,
                                __deque_block_size<_ValueType, _DiffType>::value
 #endif
           >
-class _LIBCPP_TYPE_VIS_ONLY __deque_iterator
+class _LIBCPP_TEMPLATE_VIS __deque_iterator
 {
     typedef _MapPointer __map_iterator;
 public:
@@ -428,9 +428,9 @@ private:
         : __m_iter_(__m), __ptr_(__p) {}
 
     template <class _Tp, class _Ap> friend class __deque_base;
-    template <class _Tp, class _Ap> friend class _LIBCPP_TYPE_VIS_ONLY deque;
+    template <class _Tp, class _Ap> friend class _LIBCPP_TEMPLATE_VIS deque;
     template <class _Vp, class _Pp, class _Rp, class _MP, class _Dp, _Dp>
-        friend class _LIBCPP_TYPE_VIS_ONLY __deque_iterator;
+        friend class _LIBCPP_TEMPLATE_VIS __deque_iterator;
 
     template <class _RAIter,
               class _V2, class _P2, class _R2, class _M2, class _D2, _D2 _B2>
@@ -895,26 +895,22 @@ template <bool>
 class __deque_base_common
 {
 protected:
-    void __throw_length_error() const;
-    void __throw_out_of_range() const;
+    _LIBCPP_NORETURN void __throw_length_error() const;
+    _LIBCPP_NORETURN void __throw_out_of_range() const;
 };
 
 template <bool __b>
 void
 __deque_base_common<__b>::__throw_length_error() const
 {
-#ifndef _LIBCPP_NO_EXCEPTIONS
-    throw length_error("deque");
-#endif
+    _VSTD::__throw_length_error("deque");
 }
 
 template <bool __b>
 void
 __deque_base_common<__b>::__throw_out_of_range() const
 {
-#ifndef _LIBCPP_NO_EXCEPTIONS
-    throw out_of_range("deque");
-#endif
+    _VSTD::__throw_out_of_range("deque");
 }
 
 template <class _Tp, class _Allocator>
@@ -1187,7 +1183,7 @@ __deque_base<_Tp, _Allocator>::clear() _NOEXCEPT
 }
 
 template <class _Tp, class _Allocator /*= allocator<_Tp>*/>
-class _LIBCPP_TYPE_VIS_ONLY deque
+class _LIBCPP_TEMPLATE_VIS deque
     : private __deque_base<_Tp, _Allocator>
 {
 public:
@@ -1314,7 +1310,9 @@ public:
     size_type size() const _NOEXCEPT {return __base::size();}
     _LIBCPP_INLINE_VISIBILITY
     size_type max_size() const _NOEXCEPT
-        {return __alloc_traits::max_size(__base::__alloc());}
+        {return std::min<size_type>(
+            __alloc_traits::max_size(__base::__alloc()),
+            numeric_limits<difference_type>::max());}
     void resize(size_type __n);
     void resize(size_type __n, const value_type& __v);
     void shrink_to_fit() _NOEXCEPT;
@@ -1344,8 +1342,13 @@ public:
     void push_back(const value_type& __v);
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
 #ifndef _LIBCPP_HAS_NO_VARIADICS
-    template <class... _Args> void emplace_front(_Args&&... __args);
-    template <class... _Args> void emplace_back(_Args&&... __args);
+#if _LIBCPP_STD_VER > 14
+    template <class... _Args> reference emplace_front(_Args&&... __args);
+    template <class... _Args> reference emplace_back (_Args&&... __args);
+#else
+    template <class... _Args> void      emplace_front(_Args&&... __args);
+    template <class... _Args> void      emplace_back (_Args&&... __args);
+#endif
     template <class... _Args> iterator emplace(const_iterator __p, _Args&&... __args);
 #endif  // _LIBCPP_HAS_NO_VARIADICS
     void push_front(value_type&& __v);
@@ -1824,15 +1827,23 @@ deque<_Tp, _Allocator>::push_back(value_type&& __v)
 
 template <class _Tp, class _Allocator>
 template <class... _Args>
+#if _LIBCPP_STD_VER > 14
+typename deque<_Tp, _Allocator>::reference
+#else
 void
+#endif
 deque<_Tp, _Allocator>::emplace_back(_Args&&... __args)
 {
     allocator_type& __a = __base::__alloc();
     if (__back_spare() == 0)
         __add_back_capacity();
     // __back_spare() >= 1
-    __alloc_traits::construct(__a, _VSTD::addressof(*__base::end()), _VSTD::forward<_Args>(__args)...);
+    __alloc_traits::construct(__a, _VSTD::addressof(*__base::end()),
+                              _VSTD::forward<_Args>(__args)...);
     ++__base::size();
+#if _LIBCPP_STD_VER > 14
+    return *--__base::end();
+#endif
 }
 
 #endif  // _LIBCPP_HAS_NO_VARIADICS
@@ -1870,7 +1881,11 @@ deque<_Tp, _Allocator>::push_front(value_type&& __v)
 
 template <class _Tp, class _Allocator>
 template <class... _Args>
+#if _LIBCPP_STD_VER > 14
+typename deque<_Tp, _Allocator>::reference
+#else
 void
+#endif
 deque<_Tp, _Allocator>::emplace_front(_Args&&... __args)
 {
     allocator_type& __a = __base::__alloc();
@@ -1880,6 +1895,9 @@ deque<_Tp, _Allocator>::emplace_front(_Args&&... __args)
     __alloc_traits::construct(__a, _VSTD::addressof(*--__base::begin()), _VSTD::forward<_Args>(__args)...);
     --__base::__start_;
     ++__base::size();
+#if _LIBCPP_STD_VER > 14
+    return *__base::begin();
+#endif
 }
 
 #endif  // _LIBCPP_HAS_NO_VARIADICS
@@ -2026,7 +2044,7 @@ deque<_Tp, _Allocator>::emplace(const_iterator __p, _Args&&... __args)
         }
         else
         {
-            value_type __tmp(_VSTD::forward<_Args>(__args)...);
+            __temp_value<value_type, _Allocator> __tmp(this->__alloc(), _VSTD::forward<_Args>(__args)...);
             iterator __b = __base::begin();
             iterator __bm1 = _VSTD::prev(__b);
             __alloc_traits::construct(__a, _VSTD::addressof(*__bm1), _VSTD::move(*__b));
@@ -2034,7 +2052,7 @@ deque<_Tp, _Allocator>::emplace(const_iterator __p, _Args&&... __args)
             ++__base::size();
             if (__pos > 1)
                 __b = _VSTD::move(_VSTD::next(__b), __b + __pos, __b);
-            *__b = _VSTD::move(__tmp);
+            *__b = _VSTD::move(__tmp.get());
         }
     }
     else
@@ -2050,14 +2068,14 @@ deque<_Tp, _Allocator>::emplace(const_iterator __p, _Args&&... __args)
         }
         else
         {
-            value_type __tmp(_VSTD::forward<_Args>(__args)...);
+            __temp_value<value_type, _Allocator> __tmp(this->__alloc(), _VSTD::forward<_Args>(__args)...);
             iterator __e = __base::end();
             iterator __em1 = _VSTD::prev(__e);
             __alloc_traits::construct(__a, _VSTD::addressof(*__e), _VSTD::move(*__em1));
             ++__base::size();
             if (__de > 1)
                 __e = _VSTD::move_backward(__e - __de, __em1, __e);
-            *--__e = _VSTD::move(__tmp);
+            *--__e = _VSTD::move(__tmp.get());
         }
     }
     return __base::begin() + __pos;
@@ -2734,7 +2752,7 @@ deque<_Tp, _Allocator>::erase(const_iterator __f)
     difference_type __pos = __f - __b;
     iterator __p = __b + __pos;
     allocator_type& __a = __base::__alloc();
-    if (__pos <= (__base::size() - 1) / 2)
+    if (static_cast<size_t>(__pos) <= (__base::size() - 1) / 2)
     {   // erase from front
         _VSTD::move_backward(__b, __p, _VSTD::next(__p));
         __alloc_traits::destroy(__a, _VSTD::addressof(*__b));
@@ -2772,7 +2790,7 @@ deque<_Tp, _Allocator>::erase(const_iterator __f, const_iterator __l)
     if (__n > 0)
     {
         allocator_type& __a = __base::__alloc();
-        if (__pos <= (__base::size() - __n) / 2)
+        if (static_cast<size_t>(__pos) <= (__base::size() - __n) / 2)
         {   // erase from front
             iterator __i = _VSTD::move_backward(__b, __p, __p + __n);
             for (; __b != __i; ++__b)

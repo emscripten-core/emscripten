@@ -16,7 +16,7 @@ int main() {
 	if (sizeof(wchar_t) == 4) {
 		utf32 *memory = new utf32[wstr.length()+1];
 
-		EM_ASM_INT({
+		EM_ASM({
 			var str = Module.UTF32ToString($0);
 			Module.print(str);
 			var numBytesWritten = Module.stringToUTF32(str, $1, $2);
@@ -31,7 +31,7 @@ int main() {
 				break;
 		}
 
-		EM_ASM_INT({
+		EM_ASM({
 			var str = Module.UTF32ToString($0);
 			Module.print(str);
 			var numBytesWritten = Module.stringToUTF32(str, $1, $2);
@@ -43,7 +43,7 @@ int main() {
 	} else { // sizeof(wchar_t) == 2, and we're building with -fshort-wchar.
 		utf16 *memory = new utf16[2*wstr.length()+1];
 
-		EM_ASM_INT({
+		EM_ASM({
 			var str = Module.UTF16ToString($0);
 			Module.print(str);
 			var numBytesWritten = Module.stringToUTF16(str, $1, $2);
@@ -58,7 +58,7 @@ int main() {
 				break;
 		}
 
-		EM_ASM_INT({
+		EM_ASM({
 			var str = Module.UTF16ToString($0);
 			Module.print(str);
 			var numBytesWritten = Module.stringToUTF16(str, $1, $2);

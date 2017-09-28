@@ -11,7 +11,7 @@
 volatile int res = 43;
 static void cleanup_handler(void *arg)
 {
-  EM_ASM_INT( { Module['print']('Called clean-up handler with arg ' + $0); }, arg);
+  EM_ASM(Module['print']('Called clean-up handler with arg ' + $0), arg);
   int a = (int)arg;
   res -= a;
 }
@@ -19,7 +19,7 @@ static void cleanup_handler(void *arg)
 static void *thread_start(void *arg)
 {
   pthread_cleanup_push(cleanup_handler, (void*)42);
-  EM_ASM(Module['print']('Thread started!'););
+  EM_ASM(Module['print']('Thread started!'));
   for(;;)
   {
     pthread_testcancel();
@@ -32,12 +32,10 @@ pthread_t thr;
 
 int main()
 {
-  int result;
   if (!emscripten_has_threading_support())
   {
 #ifdef REPORT_RESULT
-    result = 1;
-    REPORT_RESULT();
+    REPORT_RESULT(1);
 #endif
     printf("Skipped: Threading is not supported.\n");
     return 0;
@@ -51,12 +49,12 @@ int main()
 
   for(;;)
   {
-    result = emscripten_atomic_load_u32((const void*)&res);
+    int result = emscripten_atomic_load_u32((const void*)&res);
     if (result == 1)
     {
       EM_ASM_INT( { Module['print']('After canceling, shared variable = ' + $0 + '.'); }, result);
 #ifdef REPORT_RESULT
-      REPORT_RESULT();
+      REPORT_RESULT(1);
 #endif
       return 0;
     }

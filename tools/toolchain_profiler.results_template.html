@@ -338,7 +338,10 @@ function createSwimlaneChart(data) {
     var parent = item.parent;
     var highestLaneAllowed = 0;
     // Child should never be drawn on the same or above lane as its parent.
-    if (parent) highestLaneAllowed = parent.visualBlock.lane+1;
+    if (parent && !parent.visualBlock) {
+      console.error('Item "' + item.cmd + '" will possibly show up detached from its parent chain, because its parent "' + parent.cmd + '" was hidden from view.');
+    }
+    if (parent && parent.visualBlock) highestLaneAllowed = parent.visualBlock.lane+1;
     for(var lane = highestLaneAllowed; lane < laneOccupancy.length; ++lane) {
       if (itemHierarchyFitsRootedOnLane(item, lane)) {
         laneOccupancy[lane] = item.visualEnd;

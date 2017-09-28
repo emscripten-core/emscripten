@@ -11,10 +11,10 @@ extern "C" {
 
 // Returns true if the current browser is able to spawn threads with pthread_create(), and the compiled page was built with
 // threading support enabled. If this returns 0, calls to pthread_create() will fail with return code EAGAIN.
-int emscripten_has_threading_support();
+int emscripten_has_threading_support(void);
 
 // Returns the number of logical cores on the system.
-int emscripten_num_logical_cores();
+int emscripten_num_logical_cores(void);
 
 // Configures the number of logical cores on the system. This can be called at startup
 // to specify the number of cores emscripten_num_logical_cores() reports. The
@@ -52,7 +52,7 @@ float emscripten_atomic_store_f32(void/*float*/ *addr, float val);
 uint64_t emscripten_atomic_store_u64(void/*uint64_t*/ *addr, uint64_t val); // Emulated with locks, very slow!!
 double emscripten_atomic_store_f64(void/*double*/ *addr, double val); // Emulated with locks, very slow!!
 
-void emscripten_atomic_fence();
+void emscripten_atomic_fence(void);
 
 // Each of the functions below (add, sub, and, or, xor) returns the value that was stored to memory after the operation occurred.
 uint8_t emscripten_atomic_add_u8(void/*uint8_t*/ *addr, uint8_t val);
@@ -80,9 +80,9 @@ uint16_t emscripten_atomic_xor_u16(void/*uint16_t*/ *addr, uint16_t val);
 uint32_t emscripten_atomic_xor_u32(void/*uint32_t*/ *addr, uint32_t val);
 uint64_t emscripten_atomic_xor_u64(void/*uint64_t*/ *addr, uint64_t val); // Emulated with locks, very slow!!
 
-int emscripten_futex_wait(void/*uint32_t*/ *addr, uint32_t val, double maxWaitMilliseconds);
-int emscripten_futex_wake(void/*uint32_t*/ *addr, int count);
-int emscripten_futex_wake_or_requeue(void/*uint32_t*/ *addr, int count, void/*uint32_t*/ *addr2, int cmpValue);
+int emscripten_futex_wait(volatile void/*uint32_t*/ *addr, uint32_t val, double maxWaitMilliseconds);
+int emscripten_futex_wake(volatile void/*uint32_t*/ *addr, int count);
+int emscripten_futex_wake_or_requeue(volatile void/*uint32_t*/ *addr, int count, volatile void/*uint32_t*/ *addr2, int cmpValue);
 
 typedef union em_variant_val
 {
@@ -181,7 +181,7 @@ int emscripten_is_main_browser_thread(void);
 // Call this in the body of all lock-free atomic (cas) loops that the main thread might enter
 // which don't otherwise call to any pthread api calls (mutexes) or C runtime functions
 // that are considered cancellation points.
-void emscripten_main_thread_process_queued_calls();
+void emscripten_main_thread_process_queued_calls(void);
 
 // Direct syscall access, second argument is a varargs pointer. used in proxying
 int emscripten_syscall(int, void*);

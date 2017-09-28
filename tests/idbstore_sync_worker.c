@@ -86,8 +86,7 @@ void test() {
 
   // finish up
 
-  int result = sum;
-  REPORT_RESULT();
+  REPORT_RESULT(sum);
 }
 
 void never() {

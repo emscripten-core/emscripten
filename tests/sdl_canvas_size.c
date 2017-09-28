@@ -8,8 +8,6 @@
 
 #include <emscripten.h>
 
-int result = 1;
-
 int main(int argc, char *argv[])
 {
     SDL_Surface *screen;
@@ -38,6 +36,6 @@ int main(int argc, char *argv[])
     assert(h == 480);
 
     SDL_Quit();
-    REPORT_RESULT();
+    REPORT_RESULT(1);
     return 0;
 }

@@ -77,6 +77,6 @@ int main(int argc, char *argv[])
     assert(f == 1.f);
     
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
 }

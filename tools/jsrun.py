@@ -6,7 +6,7 @@ TRACK_PROCESS_SPAWNS = True if (os.getenv('EM_BUILD_VERBOSE') and int(os.getenv(
 WORKING_ENGINES = {} # Holds all configured engines and whether they work: maps path -> True/False
 __rootpath__ = os.path.dirname(os.path.dirname(__file__))
 
-def timeout_run(proc, timeout=None, note='unnamed process', full_output=False):
+def timeout_run(proc, timeout=None, note='unnamed process', full_output=False, note_args=[], throw_on_failure=True):
   start = time.time()
   if timeout is not None:
     while time.time() - start < timeout and proc.poll() is None:
@@ -16,6 +16,8 @@ def timeout_run(proc, timeout=None, note='unnamed process', full_output=False):
       raise Exception("Timed out: " + note)
   out = proc.communicate()
   out = map(lambda o: '' if o is None else o, out)
+  if throw_on_failure and proc.returncode != 0:
+    raise Exception('Subprocess "' + ' '.join(note_args) + '" failed with exit code ' + str(proc.returncode) + '!')
   if TRACK_PROCESS_SPAWNS:
     logging.info('Process ' + str(proc.pid) + ' finished after ' + str(time.time() - start) + ' seconds. Exit code: ' + str(proc.returncode))
   return '\n'.join(out) if full_output else out[0]
@@ -33,7 +35,13 @@ def make_command(filename, engine=None, args=[]):
   # label a path to nodejs containing a 'd8' as spidermonkey instead.
   jsengine = os.path.split(engine[0])[-1]
   # Use "'d8' in" because the name can vary, e.g. d8_g, d8, etc.
-  return engine + [filename] + (['--expose-wasm', '--'] if 'd8' in jsengine or 'jsc' in jsengine else []) + args
+  is_d8 = 'd8' in jsengine
+  # Disable true async compilation (async apis will in fact be synchronous) for now
+  # due to https://bugs.chromium.org/p/v8/issues/detail?id=6263
+  shell_option_flags = ['--no-wasm-async-compilation'] if is_d8 else []
+  # Separates engine flags from script flags
+  flag_separator = ['--'] if is_d8 or 'jsc' in jsengine else []
+  return engine + [filename] + shell_option_flags + flag_separator + args
 
 
 def check_engine(engine):
@@ -110,7 +118,8 @@ def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdo
       proc,
       timeout,
       'Execution',
-      full_output=full_output)
+      full_output=full_output,
+      throw_on_failure=False)
   except Exception, e:
     # the failure may be because the engine does not work. show the proper
     # error in that case

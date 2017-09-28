@@ -962,7 +962,7 @@ class IDLInterface(IDLObjectWithScope):
                     newMethod = self.parentScope.lookupIdentifier(method.identifier)
                     if newMethod == method:
                         self.namedConstructors.append(method)
-                    elif not newMethod in self.namedConstructors:
+                    elif newMethod not in self.namedConstructors:
                         raise WebIDLError("NamedConstructor conflicts with a NamedConstructor of a different interface",
                                           [method.location, newMethod.location])
             elif (identifier == "ArrayClass"):
@@ -3060,7 +3060,7 @@ class IDLCallbackType(IDLType, IDLObjectWithScope):
     def _getDependentObjects(self):
         return set([self._returnType] + self._arguments)
 
-class IDLMethodOverload:
+class IDLMethodOverload(object):
     """
     A class that represents a single overload of a WebIDL method.  This is not
     quite the same as an element of the "effective overload set" in the spec,

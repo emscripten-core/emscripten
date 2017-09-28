@@ -1661,6 +1661,7 @@ void* emscripten_GetProcAddress(const char *name_) {
   else if (!strcmp(name, "glNormalPointer")) return emscripten_glNormalPointer;
   else if (!strcmp(name, "glColorPointer")) return emscripten_glColorPointer;
   else if (!strcmp(name, "glClientActiveTexture")) return emscripten_glClientActiveTexture;
+  else if (!strcmp(name, "glIsVertexArray")) return emscripten_glIsVertexArray;
   else if (!strcmp(name, "glGenVertexArrays")) return emscripten_glGenVertexArrays;
   else if (!strcmp(name, "glDeleteVertexArrays")) return emscripten_glDeleteVertexArrays;
   else if (!strcmp(name, "glBindVertexArray")) return emscripten_glBindVertexArray;
@@ -1728,9 +1729,7 @@ void* emscripten_GetProcAddress(const char *name_) {
   else if (!strcmp(name, "glCopyTexSubImage2D")) return emscripten_glCopyTexSubImage2D;
   else if (!strcmp(name, "glDrawBuffers")) return emscripten_glDrawBuffers;
 
-  EM_ASM_({
-    Module.printErr('bad name in getProcAddress: ' + [Pointer_stringify($0), Pointer_stringify($1)]);
-  }, name_, name);
+  EM_ASM(Module.printErr('bad name in getProcAddress: ' + [Pointer_stringify($0), Pointer_stringify($1)]), name_, name);
   return 0;
 }
 

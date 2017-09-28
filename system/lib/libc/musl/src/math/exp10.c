@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include <math.h>
+#include <stdint.h>
 #include "libc.h"
 
 double exp10(double x)
@@ -11,7 +12,9 @@ double exp10(double x)
 		1e10, 1e11, 1e12, 1e13, 1e14, 1e15
 	};
 	double n, y = modf(x, &n);
-	if (fabs(n) < 16) {
+	union {double f; uint64_t i;} u = {n};
+	/* fabs(n) < 16 without raising invalid on nan */
+	if ((u.i>>52 & 0x7ff) < 0x3ff+4) {
 		if (!y) return p10[(int)n+15];
 		y = exp2(3.32192809488736234787031942948939 * y);
 		return y * p10[(int)n+15];

@@ -18,6 +18,7 @@ var emscriptenThreadProfiler = {
   },
 
   updateUi: function updateUi() {
+    if (typeof PThread === 'undefined') return; // Likely running threadprofiler on a singlethreaded build, or not initialized yet, ignore updating.
     var str = '';
     var mainThread = PThread.mainThreadBlock;
 

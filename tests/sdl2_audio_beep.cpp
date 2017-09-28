@@ -173,8 +173,7 @@ void nextTest(void *unused = 0) {
 #ifdef __EMSCRIPTEN__
         emscripten_cancel_main_loop();
 #ifdef REPORT_RESULT
-        int result = 1;
-        REPORT_RESULT();
+        REPORT_RESULT(1);
 #endif
 #endif
         return;
