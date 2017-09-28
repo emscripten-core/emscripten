@@ -55,28 +55,6 @@ def split_funcs(js, just_split=False):
     funcs.append((ident, func))
   return funcs
 
-def find_msbuild(sln_file, make_env):
-  search_paths_vs2013 = [('ProgramFiles', 'MSBuild/12.0/Bin/amd64'),
-                         ('ProgramFiles(x86)', 'MSBuild/12.0/Bin/amd64'),
-                         ('ProgramFiles', 'MSBuild/12.0/Bin'),
-                         ('ProgramFiles(x86)', 'MSBuild/12.0/Bin'),]
-  search_paths_old = [("WINDIR", 'Microsoft.NET/Framework/v4.0.30319'),]
-  contents = open(sln_file, 'r').read()
-  if '# Visual Studio Express 2013' in contents or '# Visual Studio 2013' in contents:
-    search_paths = search_paths_vs2013 + search_paths_old
-    pf_path = os.environ.get('ProgramFiles(x86)')
-    if not pf_path:
-      pf_path = os.environ.get('ProgramFiles')
-    make_env['VCTargetsPath'] = os.path.join(pf_path, 'MSBuild/Microsoft.Cpp/v4.0/V120')
-  else:
-    search_paths = search_paths_old + search_paths_vs2013
-  for pf, path in search_paths:
-    pf_path = os.environ.get(pf)
-    if not pf_path: continue
-    p = os.path.join(pf_path, path, 'MSBuild.exe')
-    if os.path.isfile(p): return [p, make_env]
-  return [None, make_env]
-
 def get_native_optimizer():
   if os.environ.get('EMCC_FAST_COMPILER') == '0':
     logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
@@ -123,27 +101,41 @@ def get_native_optimizer():
         if WINDOWS:
           # Poor man's check for whether or not we should attempt 64 bit build
           if os.environ.get('ProgramFiles(x86)'):
-            cmake_generators = ['Visual Studio 12 Win64', 'Visual Studio 12', 'Visual Studio 11 Win64', 'Visual Studio 11', 'MinGW Makefiles', 'Unix Makefiles']
+            cmake_generators = [
+              'Visual Studio 15 2017 Win64',
+              'Visual Studio 15 2017',
+              'Visual Studio 14 2015 Win64',
+              'Visual Studio 14 2015',
+              'Visual Studio 12 Win64', # The year component is omitted for compatibility with older CMake.
+              'Visual Studio 12',
+              'Visual Studio 11 Win64',
+              'Visual Studio 11',
+              'MinGW Makefiles',
+              'Unix Makefiles',
+            ]
           else:
-            cmake_generators = ['Visual Studio 12', 'Visual Studio 11', 'MinGW Makefiles', 'Unix Makefiles']
+            cmake_generators = [
+              'Visual Studio 15 2017',
+              'Visual Studio 14 2015',
+              'Visual Studio 12',
+              'Visual Studio 11',
+              'MinGW Makefiles',
+              'Unix Makefiles',
+            ]
         else:
           cmake_generators = ['Unix Makefiles']
 
         for cmake_generator in cmake_generators:
+          # Delete CMakeCache.txt so that we can switch to a new CMake generator.
+          shared.try_delete(os.path.join(build_path, 'CMakeCache.txt'))
           proc = subprocess.Popen(['cmake', '-G', cmake_generator, '-DCMAKE_BUILD_TYPE='+cmake_build_type, shared.path_from_root('tools', 'optimizer')], cwd=build_path, stdin=log_output, stdout=log_output, stderr=log_output)
           proc.communicate()
-          make_env = os.environ.copy()
           if proc.returncode == 0:
+            make = ['cmake', '--build', build_path]
             if 'Visual Studio' in cmake_generator:
-              ret = find_msbuild(os.path.join(build_path, 'asmjs_optimizer.sln'), make_env)
-              make = [ret[0], '/t:Build', '/p:Configuration='+cmake_build_type, '/nologo', '/verbosity:minimal', 'asmjs_optimizer.sln']
-              make_env = ret[1]
-            elif 'MinGW' in cmake_generator:
-              make = ['mingw32-make']
-            else:
-              make = ['make']
+              make += ['--config', cmake_build_type, '--', '/nologo', '/verbosity:minimal']
 
-            proc = subprocess.Popen(make, cwd=build_path, stdin=log_output, stdout=log_output, stderr=log_output, env=make_env)
+            proc = subprocess.Popen(make, cwd=build_path, stdin=log_output, stdout=log_output, stderr=log_output)
             proc.communicate()
             if proc.returncode == 0:
               if WINDOWS and 'Visual Studio' in cmake_generator:
@@ -151,9 +143,6 @@ def get_native_optimizer():
               else:
                 shutil.copyfile(os.path.join(build_path, 'optimizer'), output)
               return output
-            else:
-              shared.try_delete(os.path.join(build_path, 'CMakeCache.txt'))
-              # Proceed to next iteration of the loop to try next possible CMake generator.
 
         raise NativeOptimizerCreationException()
 
