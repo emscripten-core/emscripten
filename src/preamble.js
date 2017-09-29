@@ -2221,6 +2221,8 @@ function integrateWasmJS() {
           throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
         }
         return response['arrayBuffer']();
+      }).catch(function () {
+        return getBinary();
       });
     }
     // Otherwise, getBinary should be able to get it synchronously
