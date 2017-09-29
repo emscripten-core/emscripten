@@ -51,6 +51,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'))
   libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'))
   gl_symbols = read_symbols(shared.path_from_root('system', 'lib', 'gl.symbols'))
+  al_symbols = read_symbols(shared.path_from_root('system', 'lib', 'al.symbols'))
   compiler_rt_symbols = read_symbols(shared.path_from_root('system', 'lib', 'compiler-rt.symbols'))
   pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
   wasm_libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'wasm-libc.symbols'))
@@ -253,6 +254,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'gl.c'), '-o', o])
     return o
 
+  # al
+  def create_al(libname): # libname is ignored, this is just one .o file
+    o = in_temp('al.o')
+    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'al.c'), '-o', o, '-Os'])
+    return o
+
   def create_html5(libname):
     src_dir = shared.path_from_root('system', 'lib', 'html5')
     files = []
@@ -423,6 +430,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   system_libs = [('libcxx',        'a',  create_libcxx,      libcxx_symbols,      ['libcxxabi'], True),
                  ('libcxxabi',     'bc', create_libcxxabi,   libcxxabi_symbols,   ['libc'],      False),
                  ('gl',            'bc', create_gl,          gl_symbols,          ['libc'],      False),
+                 ('al',            'bc', create_al,          al_symbols,          ['libc'],      False),
                  ('html5',         'bc', create_html5,       html5_symbols,       ['html5'],     False),
                  ('compiler-rt',   'a',  create_compiler_rt, compiler_rt_symbols, ['libc'],      False),
                  (dlmalloc_name(), 'bc', create_dlmalloc,    [],                  [],            False)]
