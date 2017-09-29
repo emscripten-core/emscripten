@@ -1,9 +1,5 @@
 // All functions here should be maybeExported from jsifier.js
 
-if (typeof maybeAssert !== 'function') {
-  function maybeAssert() {}
-}
-
 /** @type {function(string, boolean=, number=)} */
 function intArrayFromString(stringy, dontAddNull, length) {
   var len = length > 0 ? length : lengthBytesUTF8(stringy)+1;
@@ -13,15 +9,31 @@ function intArrayFromString(stringy, dontAddNull, length) {
   return u8array;
 }
 
-function intArrayToString(array) {
-  var ret = [];
-  for (var i = 0; i < array.length; i++) {
-    var chr = array[i];
-    if (chr > 0xFF) {
-      maybeAssert(false, 'Character code ' + chr + ' (' + String.fromCharCode(chr) + ')  at offset ' + i + ' not in 0x00-0xFF.');
-      chr &= 0xFF;
+// Temporarily duplicating function pending Python preprocessor support
+var ASSERTIONS;
+if (ASSERTIONS) {
+  function intArrayToString(array) {
+    var ret = [];
+    for (var i = 0; i < array.length; i++) {
+      var chr = array[i];
+      if (chr > 0xFF) {
+        assert(false, 'Character code ' + chr + ' (' + String.fromCharCode(chr) + ')  at offset ' + i + ' not in 0x00-0xFF.');
+        chr &= 0xFF;
+      }
+      ret.push(String.fromCharCode(chr));
     }
-    ret.push(String.fromCharCode(chr));
+    return ret.join('');
   }
-  return ret.join('');
+} else {
+  function intArrayToString(array) {
+    var ret = [];
+    for (var i = 0; i < array.length; i++) {
+      var chr = array[i];
+      if (chr > 0xFF) {
+        chr &= 0xFF;
+      }
+      ret.push(String.fromCharCode(chr));
+    }
+    return ret.join('');
+  }
 }
