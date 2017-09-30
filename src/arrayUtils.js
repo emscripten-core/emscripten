@@ -11,8 +11,8 @@ function intArrayFromString(stringy, dontAddNull, length) {
 
 // Temporarily duplicating function pending Python preprocessor support
 var ASSERTIONS;
-if (ASSERTIONS) {
-  function intArrayToString(array) {
+var intArrayToString = ASSERTIONS ?
+  function (array) {
     var ret = [];
     for (var i = 0; i < array.length; i++) {
       var chr = array[i];
@@ -23,9 +23,8 @@ if (ASSERTIONS) {
       ret.push(String.fromCharCode(chr));
     }
     return ret.join('');
-  }
-} else {
-  function intArrayToString(array) {
+  } :
+  function (array) {
     var ret = [];
     for (var i = 0; i < array.length; i++) {
       var chr = array[i];
@@ -36,4 +35,4 @@ if (ASSERTIONS) {
     }
     return ret.join('');
   }
-}
+;
