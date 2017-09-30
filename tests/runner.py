@@ -746,6 +746,8 @@ def server_func(dir, q):
     def log_request(code=0, size=0):
       # don't log; too noisy
       pass
+
+  SimpleHTTPServer.SimpleHTTPRequestHandler.extensions_map['.wasm'] = 'application/wasm'
   os.chdir(dir)
   httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
   httpd.serve_forever() # test runner will kill us

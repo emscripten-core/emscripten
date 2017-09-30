@@ -267,10 +267,11 @@ function cDefine(key) {
 	throw 'XXX missing C define ' + key + '!';
 }
 
-var EXPORTED_RUNTIME_METHODS_SET = null;
+var EXPORTED_RUNTIME_METHODS_SET = set(EXPORTED_RUNTIME_METHODS.concat(EXTRA_EXPORTED_RUNTIME_METHODS));
+EXPORTED_RUNTIME_METHODS = unset(EXPORTED_RUNTIME_METHODS_SET);
+EXTRA_EXPORTED_RUNTIME_METHODS = [];
 
 function maybeExport(name) {
-  if (!EXPORTED_RUNTIME_METHODS_SET) EXPORTED_RUNTIME_METHODS_SET = set(EXPORTED_RUNTIME_METHODS.concat(EXTRA_EXPORTED_RUNTIME_METHODS));
   if (name in EXPORTED_RUNTIME_METHODS_SET) {
     return 'Module["' + name + '"] = ' + name + ';';
   } else {

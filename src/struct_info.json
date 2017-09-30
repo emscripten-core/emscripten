@@ -1392,49 +1392,74 @@
         }
     },
     // ===========================================
-    // emscripten WebVR library
+    // emscripten VR library
     // ===========================================
     {
         "file": "emscripten/vr.h",
-        "defines": [],
+        "defines": [
+            "VR_EYE_LEFT",
+            "VR_EYE_RIGHT",
+
+            "VR_POSE_POSITION",
+            "VR_POSE_LINEAR_VELOCITY",
+            "VR_POSE_LINEAR_ACCELERATION",
+            "VR_POSE_ORIENTATION",
+            "VR_POSE_ANGULAR_VELOCITY",
+            "VR_POSE_ANGULAR_ACCELERATION"
+        ],
         "structs": {
-            "WebVRFieldOfView": [
-              "upDegrees",
-              "rightDegrees",
-              "downDegrees",
-              "leftDegrees"
+            "VRVector3": [
+              "x",
+              "y",
+              "z"
             ],
-            "WebVRPoint": [
+            "VRQuaternion": [
               "x",
               "y",
               "z",
               "w"
-	    ],
-            "WebVRIntRect": [
-              "x",
-              "y",
-              "width",
-              "height"
             ],
-	    "WebVRPositionState": [
-	      "timeStamp",
-	      "hasPosition",
-	      { "position": [ "x", "y", "z", "w" ] },
-	      { "linearVelocity": [ "x", "y", "z", "w" ] },
-	      { "linearAcceleration": [ "x", "y", "z", "w" ] },
-	      "hasOrientation",
-	      { "orientation": [ "x", "y", "z", "w" ] },
-	      { "angularVelocity": [ "x", "y", "z", "w" ] },
-	      { "angularAcceleration": [ "x", "y", "z", "w" ] }
-	    ],
-        "WebVREyeParameters": [
-          { "minimumFieldOfView": [ "upDegrees", "rightDegrees", "downDegrees", "leftDegrees" ] },
-          { "maximumFieldOfView": [ "upDegrees", "rightDegrees", "downDegrees", "leftDegrees" ] },
-          { "recommendedFieldOfView": [ "upDegrees", "rightDegrees", "downDegrees", "leftDegrees" ] },
-          { "eyeTranslation": [ "x", "y", "z", "w" ] },
-          { "currentFieldOfView": [ "upDegrees", "rightDegrees", "downDegrees", "leftDegrees" ] },
-          { "renderRect": [ "x", "y", "width", "height"] }
-	    ]
+            "VRPose": [
+                { "position": [ "x", "y", "z" ] },
+                { "linearVelocity": [ "x", "y", "z" ] },
+                { "linearAcceleration": [ "x", "y", "z" ] },
+                { "orientation": [ "x", "y", "z", "w" ] },
+                { "angularVelocity": [ "x", "y", "z" ] },
+                { "angularAcceleration": [ "x", "y", "z" ] },
+                "poseFlags"
+            ],
+            "VRFrameData": [
+                "leftProjectionMatrix",
+                "leftViewMatrix",
+                "rightProjectionMatrix",
+                "rightViewMatrix",
+                { "pose": [
+                    { "position": [ "x", "y", "z" ] },
+                    { "linearVelocity": [ "x", "y", "z" ] },
+                    { "linearAcceleration": [ "x", "y", "z" ] },
+                    { "orientation": [ "x", "y", "z", "w" ] },
+                    { "angularVelocity": [ "x", "y", "z" ] },
+                    { "angularAcceleration": [ "x", "y", "z" ] },
+                    "poseFlags"
+                ] },
+                "timestamp"
+            ],
+            "VREyeParameters": [
+                { "offset": [ "x", "y", "z" ] },
+                "renderWidth",
+                "renderHeight"
+            ],
+            "VRDisplayCapabilities": [
+                "hasPosition",
+                "hasExternalDisplay",
+                "canPresent",
+                "maxLayers"
+            ],
+            "VRLayerInit": [
+                "source",
+                "leftBounds",
+                "rightBounds"
+            ]
         }
     },
     {
