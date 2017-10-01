@@ -75,8 +75,23 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 	fetch->__attributes.destinationPath = fetch->__attributes.destinationPath ? strdup(fetch->__attributes.destinationPath) : 0; // TODO: free
 	fetch->__attributes.userName = fetch->__attributes.userName ? strdup(fetch->__attributes.userName) : 0; // TODO: free
 	fetch->__attributes.password = fetch->__attributes.password ? strdup(fetch->__attributes.password) : 0; // TODO: free
-	fetch->__attributes.requestHeaders = 0;// TODO:strdup(fetch->__attributes.requestHeaders);
+	if (fetch->__attributes.requestHeaders)
+	{
+		size_t headersCount;
+		for(headersCount = 0; fetch->__attributes.requestHeaders[headersCount]; ++headersCount);
+		const char** headers = (const char**)malloc((headersCount + 1) * sizeof(const char*));
+		for(size_t i = 0; i < headersCount; ++i)
+			headers[i] = strdup(fetch->__attributes.requestHeaders[i]);
+		headers[headersCount] = 0;
+		fetch->__attributes.requestHeaders = headers;
+	}
 	fetch->__attributes.overriddenMimeType = fetch->__attributes.overriddenMimeType ? strdup(fetch->__attributes.overriddenMimeType) : 0; // TODO: free
+	if (fetch->__attributes.requestData && fetch->__attributes.requestDataSize)
+	{
+		char* data = (char*)malloc(fetch->__attributes.requestDataSize);
+		memcpy(data, fetch->__attributes.requestData, fetch->__attributes.requestDataSize);
+		fetch->__attributes.requestData = data;
+	}
 
 #if __EMSCRIPTEN_PTHREADS__
 	// Depending on the type of fetch, we can either perform it in the same Worker/thread than the caller, or we might need
@@ -146,6 +161,13 @@ EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch)
 	}
 	fetch->id = 0;
 	free((void*)fetch->data);
+	if (fetch->__attributes.requestHeaders)
+	{
+		for(size_t i = 0; fetch->__attributes.requestHeaders[i]; ++i)
+			free((void*)fetch->__attributes.requestHeaders[i]);
+		free((void*)fetch->__attributes.requestHeaders);
+	}
+	free((void*)fetch->__attributes.requestData);
 	free(fetch);
 	return EMSCRIPTEN_RESULT_SUCCESS;
 }
