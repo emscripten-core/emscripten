@@ -97,7 +97,7 @@ if (memoryInitializer) {
           }
 #endif
         }
-        applyMemoryInitializer(request.response);
+        applyMemoryInitializer(response);
       }
       if (Module['memoryInitializerRequest'].response) {
         setTimeout(useRequest, 0); // it's already here; but, apply it asynchronously
