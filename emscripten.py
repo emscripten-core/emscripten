@@ -2015,6 +2015,9 @@ def create_s2wasm_args(temp_s):
   args += ['--allow-memory-growth'] if shared.Settings.ALLOW_MEMORY_GROWTH else []
   args += ['-l', libc_rt_lib]
   args += ['-l', compiler_rt_lib]
+
+  if shared.Settings.BINARYEN_TRAP_MODE:
+    args += ['--trap-mode=' + shared.Settings.BINARYEN_TRAP_MODE]
   return args
 
 

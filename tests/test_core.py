@@ -7368,13 +7368,15 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
     self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
 
-  @no_wasm_backend("trap mode support")
   def test_binaryen_trap_mode(self):
     if not self.is_wasm(): return self.skip('wasm test')
     TRAP_OUTPUTS = ('trap', 'RuntimeError')
     default = Settings.BINARYEN_TRAP_MODE
     print 'default is', default
     for mode in ['js', 'clamp', 'allow', '']:
+      if mode == 'js' and self.is_wasm_backend():
+        # wasm backend does not use asm2wasm imports, which js trap mode requires
+        continue
       print 'mode:', mode
       Settings.BINARYEN_TRAP_MODE = mode or default
       if not mode: mode = default
