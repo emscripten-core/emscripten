@@ -7920,4 +7920,4 @@ int main() {
         inc = '#include <' + directory + '/' + h + '>'
         print inc
         open('a.c', 'w').write(inc)
-        subprocess.check_call([PYTHON, EMCC, 'a.c'])
+        subprocess.check_call([PYTHON, EMCC, '-std=c89', 'a.c'])
