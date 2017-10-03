@@ -2,15 +2,41 @@ sudo: required
 
 language: python
 
+env:
+- TEST_TARGET=test_a*
+- TEST_TARGET=test_b*
+- TEST_TARGET=test_c*
+- TEST_TARGET=test_d*
+- TEST_TARGET=test_e*
+- TEST_TARGET=test_f*
+- TEST_TARGET=test_g*
+- TEST_TARGET=test_h*
+- TEST_TARGET=test_i*
+- TEST_TARGET=test_j*
+- TEST_TARGET=test_k*
+- TEST_TARGET=test_l*
+- TEST_TARGET=test_m*
+- TEST_TARGET=test_n*
+- TEST_TARGET=test_o*
+- TEST_TARGET=test_p*
+- TEST_TARGET=test_q*
+- TEST_TARGET=test_r*
+- TEST_TARGET=test_s*
+- TEST_TARGET=test_t*
+- TEST_TARGET=test_u*
+- TEST_TARGET=test_v*
+- TEST_TARGET=test_x*
+- TEST_TARGET=test_y*
+- TEST_TARGET=test_z*
+
 services:
-  - docker
+- docker
 
 before_install:
-  - docker pull ubuntu:16.04
+- docker pull ubuntu:16.04
 
 script:
-- docker build .
+- docker build --build-arg TEST_TARGET=$TEST_TARGET .
 
 notifications:
   email: false
-

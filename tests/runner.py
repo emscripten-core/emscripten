@@ -1150,7 +1150,7 @@ def skip_requested_tests(args, modules):
         for m in modules:
           try:
             suite = getattr(m, suite_name)
-            setattr(suite, test_name, RunnerCore("skipme"))
+            setattr(suite, test_name, lambda ignored:RunnerCore("skipme")())
             break
           except:
             pass
@@ -1158,6 +1158,8 @@ def skip_requested_tests(args, modules):
   return filter(lambda arg: arg is not None, args)
 
 def args_for_random_tests(args, modules):
+  if len(args) <= 1:
+    return args
   first = args[1]
   if first.startswith('random'):
     random_arg = first[6:]
