@@ -2083,7 +2083,17 @@ The current type of b is: 9
   def test_time(self):
     src = open(path_from_root('tests', 'time', 'src.cpp'), 'r').read()
     expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
-    self.do_run(src, expected);
+    self.do_run(src, expected)
+    try:
+      for tz in ['EST+05EDT', 'UTC+0']:
+        # Run the test with different time zone settings if
+        # possible. It seems that the TZ environment variable does not
+        # work all the time (at least it's not well respected by
+        # Node.js on Windows), but it does no harm either.
+        os.environ['TZ'] = tz
+        self.do_run(src, expected)
+    finally:
+      del os.environ['TZ']
 
   def test_timeb(self):
     # Confirms they are called in reverse order
