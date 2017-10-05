@@ -6702,7 +6702,7 @@ int main() {
 #include <unistd.h>
 #include <assert.h>
 int main() {
-  EM_ASM({
+  EM_ASM((
     var x = Module._malloc(1024);
     // set
     HEAPU8.set([1,2,3,4], x);
@@ -6786,7 +6786,7 @@ int main() {
     Module.printErr = e;
     if (fail) Module.print('FAIL. ' + fail);
     else Module.print('success.');
-  });
+  ));
 }
 ''')
     for opts in [0, 1, 2]:
@@ -7920,7 +7920,7 @@ int main() {
         inc = '#include <' + directory + '/' + h + '>'
         print inc
         open('a.c', 'w').write(inc)
-        subprocess.check_call([PYTHON, EMCC, 'a.c'])
+        subprocess.check_call([PYTHON, EMCC, '-std=c89', 'a.c'])
 
   def test_single_file(self):
     for single_file_enabled in [True, False]:

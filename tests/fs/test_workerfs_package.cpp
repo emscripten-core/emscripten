@@ -43,7 +43,7 @@ int main() {
   //   * Data loaded from IndexedDB
   // In all cases, including the one here of a network request, Blobs allow the browser to optimize them so that
   // a large file is not necessarily all in memory at once.
-  EM_ASM({
+  EM_ASM((
     var meta, blob;
     function maybeReady() {
       if (!(meta && blob)) return;
@@ -78,7 +78,7 @@ int main() {
       maybeReady();
     };
     data_xhr.send();
-  });
+  ));
 
   emscripten_exit_with_live_runtime();
 

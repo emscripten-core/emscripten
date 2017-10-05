@@ -4,11 +4,23 @@
 # Usage: emrun <options> filename.html <args to program>
 # See emrun --help for more information
 
-import os, platform, optparse, logging, re, pprint, atexit, urlparse, subprocess, sys, SocketServer, BaseHTTPServer, SimpleHTTPServer, time, string, struct, socket, cgi, tempfile, stat, shutil, json, uuid, shlex
+from __future__ import print_function
+import os, platform, optparse, logging, re, pprint, atexit, subprocess, sys, time, struct, socket, cgi, tempfile, stat, shutil, json, uuid, shlex
 from operator import itemgetter
-from urllib import unquote
-from Queue import PriorityQueue
 from threading import Thread, RLock
+
+if sys.version_info.major == 2:
+  import SocketServer as socketserver
+  from BaseHTTPServer import HTTPServer
+  from SimpleHTTPServer import SimpleHTTPRequestHandler
+  from urllib import unquote
+  from urlparse import urlsplit
+  from Queue import PriorityQueue
+else:
+  import socketserver
+  from http.server import HTTPServer, SimpleHTTPRequestHandler
+  from urllib.parse import unquote, urlsplit
+  from queue import PriorityQueue
 
 # Populated from cmdline params
 emrun_options = None
@@ -69,14 +81,19 @@ import_win32api_modules_warned_once = False
 
 def import_win32api_modules():
   try:
-    global win32api, _winreg, GetObject
-    import win32api, _winreg
+    global win32api, winreg, GetObject
+    import win32api
     from win32com.client import GetObject
-  except Exception, e:
+    try:
+      import winreg
+    except ImportError:
+      import _winreg as winreg
+
+  except Exception as e:
     global import_win32api_modules_warned_once
     if not import_win32api_modules_warned_once:
-      print >> sys.stderr, str(e)
-      print >> sys.stderr, "Importing Python win32 modules failed! This most likely occurs if you do not have PyWin32 installed! Get it from http://sourceforge.net/projects/pywin32/"
+      print(str(e), file=sys.stderr)
+      print("Importing Python win32 modules failed! This most likely occurs if you do not have PyWin32 installed! Get it from http://sourceforge.net/projects/pywin32/", file=sys.stderr)
       import_win32api_modules_warned_once = True
     raise
 
@@ -113,7 +130,7 @@ def logi(msg):
     if emrun_options.log_html:
       sys.stdout.write(format_html(msg))
     else:
-      print >> sys.stdout, msg
+      print(msg, file=sys.stdout)
     sys.stdout.flush()
     last_message_time = tick()
 
@@ -125,7 +142,7 @@ def logv(msg):
       if emrun_options.log_html:
         sys.stdout.write(format_html(msg))
       else:
-        print >> sys.stdout, msg
+        print(msg, file=sys.stdout)
       sys.stdout.flush()
       last_message_time = tick()
 
@@ -136,7 +153,7 @@ def loge(msg):
     if emrun_options.log_html:
       sys.stderr.write(format_html(msg))
     else:
-      print >> sys.stderr, msg
+      print(msg, file=sys.stderr)
     sys.stderr.flush()
     last_message_time = tick()
 
@@ -149,7 +166,7 @@ def format_eol(msg):
 def browser_logi(msg):
   global browser_stdout_handle, last_message_time
   msg = format_eol(msg)
-  print >> browser_stdout_handle, msg
+  print(msg, file=browser_stdout_handle)
   browser_stdout_handle.flush()
   last_message_time = tick()
 
@@ -157,7 +174,7 @@ def browser_logi(msg):
 def browser_loge(msg):
   global browser_stderr_handle, last_message_time
   msg = format_eol(msg)
-  print >> browser_stderr_handle, msg
+  print(msg, file=browser_stderr_handle)
   browser_stderr_handle.flush()
   last_message_time = tick()
   
@@ -288,7 +305,7 @@ def kill_browser_process():
       logv('Terminating browser process..')
       browser_process.kill()
       delete_emrun_safe_firefox_profile()
-    except Exception, e:
+    except Exception as e:
       logv('Failed with error ' + str(e) + '!')
     browser_process = None
     processname_killed_atexit = ''
@@ -306,10 +323,10 @@ def kill_browser_process():
       else:
         try:
           subprocess.call(['pkill', processname_killed_atexit])
-        except OSError, e:
+        except OSError as e:
           try:
             subprocess.call(['killall', processname_killed_atexit])
-          except OSError, e:
+          except OSError as e:
             loge('Both commands pkill and killall failed to clean up the spawned browser process. Perhaps neither of these utilities is available on your system?')
       delete_emrun_safe_firefox_profile()
     # Clear the process name to represent that the browser is now dead.
@@ -318,7 +335,7 @@ def kill_browser_process():
 # Our custom HTTP web server that will server the target page to run via .html.
 # This is used so that we can load the page via a http:// URL instead of a file:// URL, since those wouldn't work too well unless user allowed XHR without CORS rules.
 # Also, the target page will route its stdout and stderr back to here via HTTP requests.
-class HTTPWebServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
+class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
   # Log messaging arriving via HTTP can come in out of sequence. Implement a sequencing mechanism to enforce ordered transmission.
   expected_http_seq_num = -1
   # Stores messages that have arrived out of order, pending for a send as soon as the missing message arrives.
@@ -439,7 +456,7 @@ class HTTPWebServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
     # Filter out the useless '[Errno 10054] An existing connection was forcibly closed by the remote host' errors that occur when we
     # forcibly kill the client.
     if err != 10054:
-      SocketServer.BaseServer.handle_error(self, request, client_address)
+      socketserver.BaseServer.handle_error(self, request, client_address)
 
   def shutdown(self):
     self.is_running = False
@@ -447,7 +464,7 @@ class HTTPWebServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
     return 1
 
 # Processes HTTP request back to the browser.
-class HTTPHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+class HTTPHandler(SimpleHTTPRequestHandler):
   def send_head(self):
     global page_last_served_time
     path = self.translate_path(self.path)
@@ -480,7 +497,7 @@ class HTTPHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     #       so everything goes.
     # Note 2: If the JS application would like to receive the actual bits of a gzipped file, instead of having the browser decompress it immediately, then it can't use the suffix .gz when using emrun.
     #         To work around, one can use the suffix .gzip instead.
-    if self.headers.has_key('Accept-Encoding') and 'gzip' in self.headers['Accept-Encoding'] and path.lower().endswith('gz'):
+    if 'Accept-Encoding' in self.headers and 'gzip' in self.headers['Accept-Encoding'] and path.lower().endswith('gz'):
       self.send_header('Content-Encoding', 'gzip')
       logv('Serving ' + path + ' as gzip-compressed.')
       guess_file_type = guess_file_type[:-2]
@@ -502,7 +519,7 @@ class HTTPHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
   def log_request(self, code):
     # Filter out 200 OK messages to remove noise.
     if code is not 200:
-      SimpleHTTPServer.SimpleHTTPRequestHandler.log_request(self, code)
+      SimpleHTTPRequestHandler.log_request(self, code)
 
   def log_message(self, format, *args):
     msg = "%s - - [%s] %s\n" % (self.address_string(), self.log_date_time_string(), format%args)
@@ -512,7 +529,7 @@ class HTTPHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
   def do_POST(self):
     global page_exit_code, emrun_options, have_received_messages
 
-    (_, _, path, query, _) = urlparse.urlsplit(self.path)
+    (_, _, path, query, _) = urlsplit(self.path)
     logv('POST: "' + self.path + '" (path: "' + path + '", query: "' + query + '")')
     if query.startswith('file='): # Binary file dump/upload handling. Requests to "stdio.html?file=filename" will write binary data to the given file.
       data = self.rfile.read(int(self.headers['Content-Length']))
@@ -524,7 +541,7 @@ class HTTPHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         pass
       filename = os.path.join(dump_out_directory, os.path.normpath(filename))
       open(filename, 'wb').write(data)
-      print 'Wrote ' + str(len(data)) + ' bytes to file "' + filename + '".'
+      print('Wrote ' + str(len(data)) + ' bytes to file "' + filename + '".')
       have_received_messages = True
     elif path == '/system_info':
       system_info = json.loads(get_system_info(format_json=True))
@@ -595,9 +612,9 @@ def get_cpu_info():
       root_winmgmts = GetObject("winmgmts:root\cimv2")
       cpus = root_winmgmts.ExecQuery("Select * from Win32_Processor")
       cpu_name = cpus[0].Name + ', ' + platform.processor()
-      physical_cores = int(subprocess.check_output(['wmic', 'cpu', 'get', 'NumberOfCores']).split('\n')[1].strip())
-      logical_cores = int(subprocess.check_output(['wmic', 'cpu', 'get', 'NumberOfLogicalProcessors']).split('\n')[1].strip())
-      frequency = int(subprocess.check_output(['wmic', 'cpu', 'get', 'MaxClockSpeed']).split('\n')[1].strip())
+      physical_cores = int(subprocess.check_output(['wmic', 'cpu', 'get', 'NumberOfCores']).split(b'\n')[1].strip())
+      logical_cores = int(subprocess.check_output(['wmic', 'cpu', 'get', 'NumberOfLogicalProcessors']).split(b'\n')[1].strip())
+      frequency = int(subprocess.check_output(['wmic', 'cpu', 'get', 'MaxClockSpeed']).split(b'\n')[1].strip())
     elif OSX:
       cpu_name = subprocess.check_output(['sysctl', '-n', 'machdep.cpu.brand_string']).strip()
       physical_cores = int(subprocess.check_output(['sysctl', '-n', 'machdep.cpu.core_count']).strip())
@@ -613,7 +630,9 @@ def get_cpu_info():
       sockets = int(re.search('Socket\(s\): (.*)', lscpu).group(1).strip())
       physical_cores = sockets * int(re.search('Core\(s\) per socket: (.*)', lscpu).group(1).strip())
       logical_cores = physical_cores * int(re.search('Thread\(s\) per core: (.*)', lscpu).group(1).strip())
-  except Exception, e:
+  except Exception as e:
+    import traceback
+    print(traceback.format_exc())
     return { 'model': 'Unknown ("' + str(e) + '")',
       'physicalCores': 1,
       'logicalCores': 1,
@@ -654,38 +673,38 @@ def win_get_gpu_info():
 
   for i in range(0, 16):
     try:
-      hHardwareReg = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, "HARDWARE")
-      hDeviceMapReg = _winreg.OpenKey(hHardwareReg, "DEVICEMAP")
-      hVideoReg = _winreg.OpenKey(hDeviceMapReg, "VIDEO")
-      VideoCardString = _winreg.QueryValueEx(hVideoReg,"\Device\Video"+str(i))[0]
+      hHardwareReg = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, "HARDWARE")
+      hDeviceMapReg = winreg.OpenKey(hHardwareReg, "DEVICEMAP")
+      hVideoReg = winreg.OpenKey(hDeviceMapReg, "VIDEO")
+      VideoCardString = winreg.QueryValueEx(hVideoReg,"\Device\Video"+str(i))[0]
       #Get Rid of Registry/Machine from the string
       VideoCardStringSplit = VideoCardString.split("\\")
-      ClearnVideoCardString = string.join(VideoCardStringSplit[3:], "\\")
+      ClearnVideoCardString = "\\".join(VideoCardStringSplit[3:])
       #Go up one level for detailed
-      VideoCardStringRoot = string.join(VideoCardStringSplit[3:len(VideoCardStringSplit)-1], "\\")
+      VideoCardStringRoot = "\\".join(VideoCardStringSplit[3:len(VideoCardStringSplit)-1])
 
       #Get the graphics card information
-      hVideoCardReg = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, ClearnVideoCardString)
+      hVideoCardReg = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, ClearnVideoCardString)
       try:
-        VideoCardDescription  = _winreg.QueryValueEx(hVideoCardReg, "Device Description")[0]
+        VideoCardDescription  = winreg.QueryValueEx(hVideoCardReg, "Device Description")[0]
       except WindowsError:
-        VideoCardDescription  = _winreg.QueryValueEx(hVideoCardReg, "DriverDesc")[0]
+        VideoCardDescription  = winreg.QueryValueEx(hVideoCardReg, "DriverDesc")[0]
       
       try:
-        driverVersion = _winreg.QueryValueEx(hVideoCardReg, "DriverVersion")[0]
+        driverVersion = winreg.QueryValueEx(hVideoCardReg, "DriverVersion")[0]
         VideoCardDescription += ', driver version ' + driverVersion
       except:
         pass
 
       try:
-        driverDate = _winreg.QueryValueEx(hVideoCardReg, "DriverDate")[0]
+        driverDate = winreg.QueryValueEx(hVideoCardReg, "DriverDate")[0]
         VideoCardDescription += ' (' + driverDate + ')'
       except:
         pass
 
-      VideoCardMemorySize = _winreg.QueryValueEx(hVideoCardReg, "HardwareInformation.MemorySize")[0]
+      VideoCardMemorySize = winreg.QueryValueEx(hVideoCardReg, "HardwareInformation.MemorySize")[0]
       try:
-        vram = struct.unpack('l',VideoCardMemorySize)[0]
+        vram = struct.unpack('l',bytes(VideoCardMemorySize))[0]
       except struct.error:
         vram = int(VideoCardMemorySize)
       if not find_gpu_model(VideoCardDescription):
@@ -703,7 +722,7 @@ def linux_get_gpu_info():
       if "OpenGL version string:" in line: gl_version = line[len("OpenGL version string:"):].strip()
       if "OpenGL renderer string:" in line: gl_renderer = line[len("OpenGL renderer string:"):].strip()
     glinfo = gl_vendor + ' ' + gl_renderer + ', GL version ' + gl_version
-  except Exception, e:
+  except Exception as e:
     logv(e)
 
   adapterinfo = ''
@@ -714,14 +733,14 @@ def linux_get_gpu_info():
     description = re.search("description: (.*)", vgainfo).group(1).strip()
     clock = re.search("clock: (.*)", vgainfo).group(1).strip()
     adapterinfo = vendor + ' ' + product + ', ' + description + ' (' + clock + ')'
-  except Exception, e:
+  except Exception as e:
     logv(e)
 
   ram = 0
   try:
     vgainfo = subprocess.check_output('lspci -v -s $(lspci | grep VGA | cut -d " " -f 1)', shell=True, stderr=subprocess.PIPE)
     ram = int(re.search("\[size=([0-9]*)M\]", vgainfo).group(1)) * 1024 * 1024
-  except Exception, e:
+  except Exception as e:
     logv(e)
 
   model = (adapterinfo + ' ' + glinfo).strip()
@@ -773,7 +792,7 @@ def get_executable_version(filename):
         return version.strip()
       else:
         return ""
-  except Exception, e:
+  except Exception as e:
     logv(e)
     return ""
 
@@ -785,7 +804,7 @@ def get_browser_build_date(filename):
       # Data in Info.plists is a bit odd, this check combo gives best information on each browser.
       if 'firefox' in filename.lower():
         return '20' + '-'.join(map((lambda x: x.zfill(2)), info['CFBundleVersion'][2:].split('.')))
-  except Exception, e:
+  except Exception as e:
     logv(e)
 
   # No exact information about the build date, so take the last modified date of the file.
@@ -793,7 +812,7 @@ def get_browser_build_date(filename):
   # available, it's shooting close.
   try:
     return time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(os.path.getmtime(filename)))
-  except Exception, e:
+  except Exception as e:
     logv(e)
     return '(unknown)'
 
@@ -885,7 +904,7 @@ def get_computer_model():
       bios_version = subprocess.check_output(['cat', '/sys/devices/virtual/dmi/id/bios_version']).strip()
       bios_date = subprocess.check_output(['cat', '/sys/devices/virtual/dmi/id/bios_date']).strip()
       return board_vendor + ' ' + board_name + ' ' + board_version + ', ' + bios_vendor + ' ' + bios_version + ' (' + bios_date + ')'
-  except Exception, e:
+  except Exception as e:
     logv(str(e))
   return 'Generic'
 
@@ -894,8 +913,8 @@ def get_os_version():
   try:
     if WINDOWS:
       import_win32api_modules()
-      versionHandle = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion")
-      productName = _winreg.QueryValueEx(versionHandle, "ProductName")
+      versionHandle = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion")
+      productName = winreg.QueryValueEx(versionHandle, "ProductName")
 
       version = ''
       try:
@@ -964,8 +983,8 @@ def win_get_default_browser():
   # Look in the registry for the default system browser on Windows without relying on
   # 'start %1' since that method has an issue, see comment below.
   try:
-    with _winreg.OpenKey(_winreg.HKEY_CURRENT_USER, r"Software\Classes\http\shell\open\command") as key:
-      cmd = _winreg.QueryValue(key, None)
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\http\shell\open\command") as key:
+      cmd = winreg.QueryValue(key, None)
       if cmd:
         parts = shlex.split(cmd)
         if len(parts) > 0:
@@ -1127,7 +1146,7 @@ def browser_display_name(browser):
       product_name = win_get_file_properties(browser)['StringFileInfo']['ProductName'] if WINDOWS else 'firefox'
       if product_name.lower() != 'firefox':
         return 'Mozilla Firefox ' + product_name
-    except Exception, e:
+    except Exception as e:
       pass
     return 'Mozilla Firefox'
   if 'opera' in b:
@@ -1180,7 +1199,7 @@ def get_system_info(format_json):
       unique_system_id = str(uuid.uuid4())
       try:
         open(os.path.expanduser('~/.emrun.generated.guid'), 'w').write(unique_system_id)
-      except Exception, e:
+      except Exception as e:
         logv(e)
 
     if format_json:
@@ -1451,7 +1470,7 @@ def run():
   if options.android and options.safe_firefox_profile:
     profile_dir = create_emrun_safe_firefox_profile()
     def run(cmd):
-      print str(cmd)
+      print(str(cmd))
       subprocess.call(cmd)
 
     run(['adb', 'shell', 'rm', '-rf', '/mnt/sdcard/safe_firefox_profile'])
@@ -1468,18 +1487,18 @@ def run():
 
   if options.system_info:
     logi('Time of run: ' + time.strftime("%x %X"))
-    print get_system_info(format_json=options.json)
+    print(get_system_info(format_json=options.json))
 
   if options.browser_info:
     if options.android:
       if options.json:
-        print json.dumps({
+        print(json.dumps({
           'browser': 'Android ' + browser_app
-          }, indent=2)
+          }, indent=2))
       else:
         logi('Browser: Android ' + browser_app)
     else:
-      print get_browser_info(browser_exe, format_json=options.json)
+      print(get_browser_info(browser_exe, format_json=options.json))
 
   # Suppress run warning if requested.
   if options.no_emrun_detect:

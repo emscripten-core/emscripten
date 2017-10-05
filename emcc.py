@@ -2240,12 +2240,8 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
       # save the asm.js input
       shared.safe_copy(asm_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(asm_target)))
     cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
-    if shared.Settings.BINARYEN_TRAP_MODE == 'js':
-      cmd += ['--emit-jsified-potential-traps']
-    elif shared.Settings.BINARYEN_TRAP_MODE == 'clamp':
-      cmd += ['--emit-clamped-potential-traps']
-    elif shared.Settings.BINARYEN_TRAP_MODE == 'allow':
-      cmd += ['--emit-potential-traps']
+    if shared.Settings.BINARYEN_TRAP_MODE in ('js', 'clamp', 'allow'):
+      cmd += ['--trap-mode=' + shared.Settings.BINARYEN_TRAP_MODE]
     else:
       logging.error('invalid BINARYEN_TRAP_MODE value: ' + shared.Settings.BINARYEN_TRAP_MODE + ' (should be js/clamp/allow)')
       sys.exit(1)
