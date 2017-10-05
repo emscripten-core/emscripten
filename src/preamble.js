@@ -2541,10 +2541,10 @@ function integrateWasmJS() {
         abort('bad method: ' + curr);
       }
     }
+#endif
+#endif
 
-    if (!exports) throw 'no binaryen method succeeded. consider enabling more options, like interpreting, if you want that: https://github.com/kripken/emscripten/wiki/WebAssembly#binaryen-methods';
-#endif
-#endif
+    if (!exports) abort('no binaryen method succeeded. consider enabling more options, like interpreting, if you want that: https://github.com/kripken/emscripten/wiki/WebAssembly#binaryen-methods');
 
 #if RUNTIME_LOGGING
     Module['printErr']('binaryen method succeeded.');
