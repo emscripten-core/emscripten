@@ -3,31 +3,32 @@ sudo: required
 language: python
 
 env:
-- TEST_TARGET=test_a*
-- TEST_TARGET=test_b*
-- TEST_TARGET=test_c*
-- TEST_TARGET=test_d*
-- TEST_TARGET=test_e*
-- TEST_TARGET=test_f*
-- TEST_TARGET=test_g*
-- TEST_TARGET=test_h*
-- TEST_TARGET=test_i*
-- TEST_TARGET=test_j*
-- TEST_TARGET=test_k*
-- TEST_TARGET=test_l*
-- TEST_TARGET=test_m*
-- TEST_TARGET=test_n*
-- TEST_TARGET=test_o*
-- TEST_TARGET=test_p*
-- TEST_TARGET=test_q*
-- TEST_TARGET=test_r*
-- TEST_TARGET=test_s*
-- TEST_TARGET=test_t*
-- TEST_TARGET=test_u*
-- TEST_TARGET=test_v*
-- TEST_TARGET=test_x*
-- TEST_TARGET=test_y*
-- TEST_TARGET=test_z*
+- TEST_TARGET=ALL.test_a*
+- TEST_TARGET=ALL.test_b*
+- TEST_TARGET=ALL.test_c*
+- TEST_TARGET=ALL.test_d*
+- TEST_TARGET=ALL.test_e*
+- TEST_TARGET=ALL.test_f*
+- TEST_TARGET=ALL.test_g*
+- TEST_TARGET=ALL.test_h*
+- TEST_TARGET=ALL.test_i*
+- TEST_TARGET=ALL.test_j*
+- TEST_TARGET=ALL.test_k*
+- TEST_TARGET=ALL.test_l*
+- TEST_TARGET=ALL.test_m*
+- TEST_TARGET=ALL.test_n*
+- TEST_TARGET=ALL.test_o*
+- TEST_TARGET=ALL.test_p*
+- TEST_TARGET=ALL.test_q*
+- TEST_TARGET=ALL.test_r*
+- TEST_TARGET=ALL.test_s*
+- TEST_TARGET=ALL.test_t*
+- TEST_TARGET=ALL.test_u*
+- TEST_TARGET=ALL.test_v*
+- TEST_TARGET=ALL.test_x*
+- TEST_TARGET=ALL.test_y*
+- TEST_TARGET=ALL.test_z*
+- TEST_TARGET=other
 
 services:
 - docker
