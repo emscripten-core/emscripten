@@ -5,7 +5,9 @@ ENV DEBIAN_FRONTEND noninteractive
 COPY . /
 
 RUN apt-get update \
- && apt-get install -y python wget git cmake build-essential software-properties-common \
+ && apt-get install -y python python-pip wget git cmake build-essential software-properties-common \
+ && pip install --upgrade pip \
+ && pip install lit \
  && add-apt-repository ppa:webupd8team/java \
  && apt-get update \
  && echo debconf shared/accepted-oracle-license-v1-1 select true | debconf-set-selections \
