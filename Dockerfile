@@ -23,4 +23,4 @@ RUN apt-get update \
  && echo EMSCRIPTEN_ROOT="'/'" >> .emscripten
 
 ARG TEST_TARGET
-RUN python tests/runner.py $TEST_TARGET skip:ALL.test_time skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full skip:ALL.test_binaryen
+RUN python tests/runner.py $TEST_TARGET skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full skip:ALL.test_binaryen
