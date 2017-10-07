@@ -2,9 +2,11 @@
 FROM ubuntu:16.04
 SHELL ["/bin/bash", "-c"]
 ENV DEBIAN_FRONTEND noninteractive
-COPY . /
+RUN mkdir -p /root/emscripten/
+COPY . /root/emscripten/
 
-RUN apt-get update \
+RUN cd /root/ \
+ && apt-get update \
  && apt-get install -y python python-pip wget git cmake build-essential software-properties-common \
  && pip install --upgrade pip \
  && pip install lit \
@@ -20,7 +22,7 @@ RUN apt-get update \
  && ./emsdk install latest \
  && ./emsdk activate latest \
  && popd \
- && echo EMSCRIPTEN_ROOT="'/'" >> .emscripten
+ && echo EMSCRIPTEN_ROOT="'/root/emscripten/'" >> .emscripten
 
 ARG TEST_TARGET
 RUN python tests/runner.py $TEST_TARGET skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full skip:ALL.test_binaryen
