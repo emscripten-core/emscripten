@@ -52,6 +52,16 @@ Module['print'] = threadPrint;
 Module['printErr'] = threadPrintErr;
 this.alert = threadAlert;
 
+Module['instantiateWasm'] = function(info, receiveInstance) {
+  // Instantiate from the module posted from the main thread.
+  // We can just use sync instantiation in the worker.
+  console.log('pthread instantiating');
+  instance = new WebAssembly.Instance(Module['wasmModule'], info);
+  console.log(instance.exports);
+  receiveInstance(instance);
+  return instance.exports;
+}
+
 this.onmessage = function(e) {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
@@ -59,11 +69,21 @@ this.onmessage = function(e) {
       tempDoublePtr = e.data.tempDoublePtr;
 
       // Initialize the global "process"-wide fields:
-      buffer = e.data.buffer;
+
       Module['TOTAL_MEMORY'] = TOTAL_MEMORY = e.data.TOTAL_MEMORY;
       STATICTOP = e.data.STATICTOP;
       DYNAMIC_BASE = e.data.DYNAMIC_BASE;
       DYNAMICTOP_PTR = e.data.DYNAMICTOP_PTR;
+
+      if (e.data.wasmModule) {
+        // XXX https://bugs.chromium.org/p/v8/issues/detail?id=6895
+        //Module['wasmMemory'] = e.data.wasmMemory;
+        //buffer = e.data.wasmMemory.buffer;
+        Module['wasmModule'] = e.data.wasmModule;
+      } else {
+        buffer = e.data.buffer;
+      }
+
 
       PthreadWorkerInit = e.data.PthreadWorkerInit;
       if (typeof e.data.urlOrBlob === 'string') {

@@ -1239,8 +1239,12 @@ if (typeof Atomics === 'undefined') {
 }
 
 #else
-Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE, 'shared': true});
-buffer = Module['wasmMemory'].buffer;
+// XXX https://bugs.chromium.org/p/v8/issues/detail?id=6895
+if (!ENVIRONMENT_IS_PTHREAD || true) {
+  Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE, 'shared': true});
+  buffer = Module['wasmMemory'].buffer;
+}
+
 updateGlobalBufferViews();
 #endif // !BINARYEN
 #else // USE_PTHREADS
@@ -1567,11 +1571,13 @@ if (!ENVIRONMENT_IS_PTHREAD) {
   HEAP32[0] = 0x63736d65; /* 'emsc' */
 #if USE_PTHREADS
 } else {
-  if (HEAP32[0] !== 0x63736d65) throw 'Runtime error: The application has corrupted its heap memory area (address zero)!';
+  //https://bugs.chromium.org/p/v8/issues/detail?id=6895
+  //if (HEAP32[0] !== 0x63736d65) throw 'Runtime error: The application has corrupted its heap memory area (address zero)!';
 }
 #endif
 HEAP16[1] = 0x6373;
-if (HEAPU8[2] !== 0x73 || HEAPU8[3] !== 0x63) throw 'Runtime error: expected the system to be little-endian!';
+//https://bugs.chromium.org/p/v8/issues/detail?id=6895
+//if (HEAPU8[2] !== 0x73 || HEAPU8[3] !== 0x63) throw 'Runtime error: expected the system to be little-endian!';
 #endif
 
 Module['HEAP'] = HEAP;
@@ -1845,7 +1851,7 @@ function addRunDependency(id) {
 #if USE_PTHREADS
   // We should never get here in pthreads (could no-op this out if called in pthreads, but that might indicate a bug in caller side,
   // so good to be very explicit)
-  assert(!ENVIRONMENT_IS_PTHREAD);
+  //assert(!ENVIRONMENT_IS_PTHREAD);
 #endif
   runDependencies++;
   if (Module['monitorRunDependencies']) {
@@ -2308,6 +2314,10 @@ function integrateWasmJS() {
 #if ASSERTIONS
       assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
       trueModule = null;
+#endif
+#if USE_PTHREADS
+      // Keeep a reference to the compiled module so we can post it to the workers.
+      Module['wasmModule'] = output['module'];
 #endif
       receiveInstance(output['instance']);
     }

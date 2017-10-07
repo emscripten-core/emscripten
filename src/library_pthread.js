@@ -364,7 +364,12 @@ var LibraryPThread = {
             // object in Module['mainScriptUrlOrBlob'], or a URL to it, so that pthread Workers can
             // independently load up the same main application file.
             urlOrBlob: Module['mainScriptUrlOrBlob'] || currentScriptUrl,
-            buffer: HEAPU8.buffer,
+#if BINARYEN
+           //wasmMemory: Module['wasmMemory'],
+           wasmModule: Module['wasmModule'],
+#else
+           buffer: HEAPU8.buffer,
+#endif
             tempDoublePtr: tempDoublePtr,
             TOTAL_MEMORY: TOTAL_MEMORY,
             STATICTOP: STATICTOP,
