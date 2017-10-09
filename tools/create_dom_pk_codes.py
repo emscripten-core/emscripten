@@ -288,11 +288,17 @@ for s in input_strings:
   h_file.write('#define ' + pad_to_length(s[2], longest_dom_pk_code_length()) + ' 0x%04X /* "%s */' % (s[0], pad_to_length(s[1] + '"', longest_key_code_length()+1)) + '\n')
 
 h_file.write('''
+#ifdef __cplusplus
+extern "C" {
+#endif
 /* Maps the EmscriptenKeyboardEvent::code field from emscripten/html5.h to one of the DOM_PK codes above. */
 DOM_PK_CODE_TYPE emscripten_compute_dom_pk_code(const char *keyCodeString);
 
 /* Returns the string representation of the given key code ID. Useful for debug printing. */
 const char *emscripten_dom_pk_code_to_string(DOM_PK_CODE_TYPE code);
+#ifdef __cplusplus
+}
+#endif
 ''')
 
 c_file.write('''

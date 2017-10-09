@@ -63,6 +63,31 @@ and set up the location to the native optimizer in ~/.emscripten
 '''
   sys.exit(0)
 
+C_BARE = '''
+        int main() {}
+      '''
+C_WITH_STDLIB = '''
+        #include <string.h>
+        int main() {
+          return int(strchr("str", 'c'));
+        }
+      '''
+C_WITH_MALLOC = '''
+        #include <string.h>
+        #include <stdlib.h>
+        int main() {
+          return int(malloc(10)) + int(strchr("str", 'c'));
+        }
+      '''
+CXX_WITH_STDLIB = '''
+        #include <iostream>
+        int main() {
+          std::cout << "hello";
+          return 0;
+        }
+      '''
+
+
 temp_files = shared.configuration.get_temp_files()
 
 def build(src, result_libs, args=[]):
@@ -76,68 +101,60 @@ def build(src, result_libs, args=[]):
     for lib in result_libs:
       assert os.path.exists(shared.Cache.get_path(lib)), 'not seeing that requested library %s has been built because file %s does not exist' % (lib, shared.Cache.get_path(lib))
 
+
 def build_port(port_name, lib_name, params):
-  build('''
-    int main() {}
-  ''', [os.path.join('ports-builds', port_name, lib_name)] if lib_name else None, params)
+  build(C_BARE, [os.path.join('ports-builds', port_name, lib_name)] if lib_name else None, params)
+
+
+SYSTEM_TASKS = ['compiler-rt', 'libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'dlmalloc_debug', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'html5']
+USER_TASKS = ['al', 'gl', 'binaryen', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
 
 operation = sys.argv[1]
 
 if operation == 'build':
+  auto_tasks = False
   tasks = sys.argv[2:]
+  if 'SYSTEM' in tasks:
+    tasks = SYSTEM_TASKS
+    auto_tasks = True
   if 'ALL' in tasks:
-    tasks = ['libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'gl', 'binaryen', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
+    tasks = SYSTEM_TASKS + USER_TASKS
+    auto_tasks = True
+  if auto_tasks:
     if shared.Settings.WASM_BACKEND:
       skip_tasks = {'libc-mt', 'dlmalloc_threadsafe', 'pthreads'}
       print('Skipping building of %s, because WebAssembly does not support pthreads.' % ', '.join(skip_tasks))
       tasks = [x for x in tasks if x not in skip_tasks]
-    if os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER'):
-      print 'Skipping building of native-optimizer since environment variable EMSCRIPTEN_NATIVE_OPTIMIZER is present and set to point to a prebuilt native optimizer path.'
-    elif hasattr(shared, 'EMSCRIPTEN_NATIVE_OPTIMIZER'):
-      print 'Skipping building of native-optimizer since .emscripten config file has set EMSCRIPTEN_NATIVE_OPTIMIZER to point to a prebuilt native optimizer path.'
     else:
-      tasks += ['native_optimizer']
+      if os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER'):
+        print 'Skipping building of native-optimizer since environment variable EMSCRIPTEN_NATIVE_OPTIMIZER is present and set to point to a prebuilt native optimizer path.'
+      elif hasattr(shared, 'EMSCRIPTEN_NATIVE_OPTIMIZER'):
+        print 'Skipping building of native-optimizer since .emscripten config file has set EMSCRIPTEN_NATIVE_OPTIMIZER to point to a prebuilt native optimizer path.'
+      else:
+        tasks += ['native_optimizer']
+    print 'Building targets: %s' % ' '.join (tasks)
   for what in tasks:
     shared.logging.info('building and verifying ' + what)
-    if what in ('libc', 'dlmalloc'):
+    if what == 'compiler-rt':
       build('''
-        #include <string.h>
-        #include <stdlib.h>
         int main() {
-          return int(malloc(10)) + int(strchr("str", 'c'));
+          double _Complex a, b, c;
+          c = a / b;
+          return 0;
         }
-      ''', ['libc.bc', 'dlmalloc.bc'])
-    elif what in 'wasm-libc':
-      build('''
-        #include <string.h>
-        int main() {
-          return int(strchr("str", 'c'));
-        }
-      ''', ['wasm-libc.bc'], ['-s', 'WASM=1'])
+      ''', ['compiler-rt.a'])
+    elif what in ('libc', 'dlmalloc'):
+      build(C_WITH_MALLOC, ['libc.bc', 'dlmalloc.bc'])
+    elif what == 'wasm-libc':
+      build(C_WITH_STDLIB, ['wasm-libc.bc'], ['-s', 'WASM=1'])
     elif what in ('libc-mt', 'pthreads', 'dlmalloc_threadsafe'):
-      build('''
-        #include <string.h>
-        #include <stdlib.h>
-        int main() {
-          return int(malloc(10)) + int(strchr("str", 'c'));
-        }
-      ''', ['libc-mt.bc', 'dlmalloc_threadsafe.bc', 'pthreads.bc'], ['-s', 'USE_PTHREADS=1'])
+      build(C_WITH_MALLOC, ['libc-mt.bc', 'dlmalloc_threadsafe.bc', 'pthreads.bc'], ['-s', 'USE_PTHREADS=1'])
+    elif what == 'dlmalloc_debug':
+      build(C_WITH_MALLOC, ['dlmalloc_debug.bc'], ['-g'])
     elif what == 'libcxx':
-      build('''
-        #include <iostream>
-        int main() {
-          std::cout << "hello";
-          return 0;
-        }
-      ''', ['libcxx.a'])
+      build(CXX_WITH_STDLIB, ['libcxx.a'])
     elif what == 'libcxx_noexcept':
-      build('''
-        #include <iostream>
-        int main() {
-          std::cout << "hello";
-          return 0;
-        }
-      ''', ['libcxx_noexcept.a'], ['-s', 'DISABLE_EXCEPTION_CATCHING=1'])
+      build(CXX_WITH_STDLIB, ['libcxx_noexcept.a'], ['-s', 'DISABLE_EXCEPTION_CATCHING=1'])
     elif what == 'libcxxabi':
       build('''
         struct X { int x; virtual void a() {} };
@@ -156,16 +173,29 @@ if operation == 'build':
         }
       ''', ['gl.bc'])
     elif what == 'native_optimizer':
-      build('''
-        int main() {}
-      ''', ['optimizer.2.exe'], ['-O2'])
+      build(C_BARE, ['optimizer.2.exe'], ['-O2'])
     elif what == 'wasm_compiler_rt':
       if shared.Settings.WASM_BACKEND:
-        build('''
-          int main() {}
-        ''', ['wasm_compiler_rt.a'], ['-s', 'WASM=1'])
+        build(C_BARE, ['wasm_compiler_rt.a'], ['-s', 'WASM=1'])
       else:
         shared.logging.warning('wasm_compiler_rt not built when using JSBackend')
+    elif what == 'html5':
+      build('''
+        #include <stdlib.h>
+        #include "emscripten/key_codes.h"
+        int main() {
+          return emscripten_compute_dom_pk_code(NULL);
+        }
+
+      ''', ['html5.bc'])
+    elif what == 'al':
+      build('''
+        #include "AL/al.h"
+        int main() {
+          alGetProcAddress(0);
+          return 0;
+        }
+      ''', ['al.bc'])
     elif what == 'zlib':
       build_port('zlib', 'libz.a', ['-s', 'USE_ZLIB=1'])
     elif what == 'bullet':
