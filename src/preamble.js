@@ -1240,7 +1240,8 @@ if (typeof Atomics === 'undefined') {
 
 #else
 // XXX https://bugs.chromium.org/p/v8/issues/detail?id=6895
-if (!ENVIRONMENT_IS_PTHREAD || true) {
+if (!ENVIRONMENT_IS_PTHREAD) {
+  Module['memoryParams'] = { 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE, 'shared': true};
   Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE, 'shared': true});
   buffer = Module['wasmMemory'].buffer;
 }
@@ -1572,12 +1573,12 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 #if USE_PTHREADS
 } else {
   //https://bugs.chromium.org/p/v8/issues/detail?id=6895
-  //if (HEAP32[0] !== 0x63736d65) throw 'Runtime error: The application has corrupted its heap memory area (address zero)!';
+  if (HEAP32[0] !== 0x63736d65) throw 'Runtime error: The application has corrupted its heap memory area (address zero)!';
 }
 #endif
 HEAP16[1] = 0x6373;
 //https://bugs.chromium.org/p/v8/issues/detail?id=6895
-//if (HEAPU8[2] !== 0x73 || HEAPU8[3] !== 0x63) throw 'Runtime error: expected the system to be little-endian!';
+if (HEAPU8[2] !== 0x73 || HEAPU8[3] !== 0x63) throw 'Runtime error: expected the system to be little-endian!';
 #endif
 
 Module['HEAP'] = HEAP;

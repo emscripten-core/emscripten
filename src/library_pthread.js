@@ -367,6 +367,8 @@ var LibraryPThread = {
 #if BINARYEN
            //wasmMemory: Module['wasmMemory'],
            wasmModule: Module['wasmModule'],
+           buffer: Module['wasmMemory'].buffer,
+           memoryParams: Module['memoryParams'],
 #else
            buffer: HEAPU8.buffer,
 #endif
