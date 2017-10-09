@@ -106,8 +106,8 @@ def build_port(port_name, lib_name, params):
   build(C_BARE, [os.path.join('ports-builds', port_name, lib_name)] if lib_name else None, params)
 
 
-SYSTEM_TASKS = ['libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'libcxx', 'libcxx_noexcept', 'libcxxabi']
-USER_TASKS = ['gl', 'binaryen', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
+SYSTEM_TASKS = ['compiler-rt', 'libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'dlmalloc_debug', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'html5']
+USER_TASKS = ['al', 'gl', 'binaryen', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
 
 operation = sys.argv[1]
 
@@ -135,12 +135,22 @@ if operation == 'build':
     print 'Building targets: %s' % ' '.join (tasks)
   for what in tasks:
     shared.logging.info('building and verifying ' + what)
-    if what in ('libc', 'dlmalloc'):
+    if what == 'compiler-rt':
+      build('''
+        int main() {
+          double _Complex a, b, c;
+          c = a / b;
+          return 0;
+        }
+      ''', ['compiler-rt.a'])
+    elif what in ('libc', 'dlmalloc'):
       build(C_WITH_MALLOC, ['libc.bc', 'dlmalloc.bc'])
-    elif what in 'wasm-libc':
+    elif what == 'wasm-libc':
       build(C_WITH_STDLIB, ['wasm-libc.bc'], ['-s', 'WASM=1'])
     elif what in ('libc-mt', 'pthreads', 'dlmalloc_threadsafe'):
       build(C_WITH_MALLOC, ['libc-mt.bc', 'dlmalloc_threadsafe.bc', 'pthreads.bc'], ['-s', 'USE_PTHREADS=1'])
+    elif what == 'dlmalloc_debug':
+      build(C_WITH_MALLOC, ['dlmalloc_debug.bc'], ['-g'])
     elif what == 'libcxx':
       build(CXX_WITH_STDLIB, ['libcxx.a'])
     elif what == 'libcxx_noexcept':
@@ -169,6 +179,23 @@ if operation == 'build':
         build(C_BARE, ['wasm_compiler_rt.a'], ['-s', 'WASM=1'])
       else:
         shared.logging.warning('wasm_compiler_rt not built when using JSBackend')
+    elif what == 'html5':
+      build('''
+        #include <stdlib.h>
+        #include "emscripten/key_codes.h"
+        int main() {
+          return emscripten_compute_dom_pk_code(NULL);
+        }
+
+      ''', ['html5.bc'])
+    elif what == 'al':
+      build('''
+        #include "AL/al.h"
+        int main() {
+          alGetProcAddress(0);
+          return 0;
+        }
+      ''', ['al.bc'])
     elif what == 'zlib':
       build_port('zlib', 'libz.a', ['-s', 'USE_ZLIB=1'])
     elif what == 'bullet':
