@@ -15,7 +15,7 @@ var LibraryWebVR = {
     version: [-1, -1],
     devices: [],
 
-    init: function() {
+    init: function(callback) {
       if (WebVR.initialized) return;
 
       WebVR.initialized = true;
@@ -32,6 +32,8 @@ var LibraryWebVR = {
       navigator.getVRDisplays().then(function(displays) {
         WebVR.ready = true;
         WebVR.displays = displays;
+        WebVR.displayNames = new Array(displays.length);
+        callback();
       });
 
       return 1;
@@ -49,8 +51,10 @@ var LibraryWebVR = {
     }
   },
 
-  emscripten_vr_init: function() {
-    return WebVR.init();
+  emscripten_vr_init: function(func, userData) {
+    return WebVR.init(function() {
+      Runtime.dynCall('vi', func, [userData]);
+    });
   },
 
   emscripten_vr_version_major: function() {

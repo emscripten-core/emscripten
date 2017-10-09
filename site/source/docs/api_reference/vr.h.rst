@@ -27,17 +27,19 @@ Functions
 Initialization
 ==============
 
-.. c:function:: int emscripten_vr_init()
+.. c:function:: int emscripten_vr_init(em_vr_arg_callback_func callback, void* userData)
 
 	Initialize the emscripten VR API. This will `navigator.getVRDisplays()
 	<https://w3c.github.io/webvr/spec/1.1/#navigator-getvrdisplays-attribute>`_
 	and when completed, set the return of :c:func:`emscripten_vr_ready` to be `true`.
 
+	:param em_vr_callback_arg_func callback: C function to call when initialization is complete. The function signature must have a ``void*`` parameter for passing the ``arg`` value.
+	:param void* arg: User-defined data passed to the callback, untouched by the API itself.
 	:returns: `1` on success, `0` if the browsers WebVR support is insufficient.
 	:rtype: int
 
 .. tip:: This call succeeding is not sufficient for use of the rest of the API. Please
-	make sure to wait until the return value of :c:func:`emscripten_vr_ready` is true.
+	make sure to wait until the callback is executed.
 
 .. c:function:: int emscripten_vr_ready()
 
