@@ -50,6 +50,13 @@ Initialization
 	running browser.
 
 	:returns: `1` if ready, `0` otherwise.
+
+.. c:function:: int emscripten_vr_deinit()
+
+	Deinitialize the emscripten VR API. This will free all memory allocated for
+	display name strings.
+
+	:returns: `1` on success.
 	:rtype: int
 
 API Queries
@@ -90,9 +97,11 @@ called the return value of :c:func:`emscripten_vr_ready` to be `true`.
 	:returns: handle for a VR display.
 	:rtype: VRDisplayHandle
 
-.. c:function:: char* emscripten_vr_get_display_name(VRDisplayHandle handle)
+.. c:function:: const char* emscripten_vr_get_display_name(VRDisplayHandle handle)
 
-	Get a user-readable name which identifies the VR display.
+	Get a user-readable name which identifies the VR display. The memory for the
+	returned string is managed by the API and will be freed on
+	:c:func:`emscripten_vr_deinit`.
 
 	:param VRDisplayHandle handle: |display-handle-parameter-doc|
 	:returns: name of the VR display or `0 (NULL)` if the handle is invalid.

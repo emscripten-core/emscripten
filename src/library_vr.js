@@ -13,7 +13,8 @@ var LibraryWebVR = {
     initialized: false,
     ready: false,
     version: [-1, -1],
-    devices: [],
+    displays: [],
+    displayNames: [],
 
     init: function(callback) {
       if (WebVR.initialized) return;
@@ -39,6 +40,13 @@ var LibraryWebVR = {
       return 1;
     },
 
+    deinit: function() {
+      WebVR.displayNames.forEach(function(name) {
+          _free(name);
+      });
+      return 1
+    },
+
     dereferenceDisplayHandle: function(displayHandle) {
       /* Display handles start as 1 as 0 will be interpreted as false or null-handle
        * on errors */
@@ -55,6 +63,10 @@ var LibraryWebVR = {
     return WebVR.init(function() {
       Runtime.dynCall('vi', func, [userData]);
     });
+  },
+
+  emscripten_vr_deinit: function() {
+    return WebVR.deinit();
   },
 
   emscripten_vr_version_major: function() {
@@ -85,12 +97,20 @@ var LibraryWebVR = {
 
   emscripten_vr_get_display_name: function(displayHandle) {
     var display = WebVR.dereferenceDisplayHandle(displayHandle);
+    if (!display) return 0;
+
+    var name = WebVR.displayNames[displayHandle-1];
+    if (name) {
+        return name;
+    }
 
     var buffer, displayName;
     displayName = display ? display.displayName : "";
     var len = lengthBytesUTF8(displayName);
     buffer = _malloc(len + 1);
     stringToUTF8(displayName, buffer, len + 1);
+
+    WebVR.displayNames[displayHandle-1] = buffer;
 
     return buffer;
   },

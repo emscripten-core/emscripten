@@ -121,6 +121,7 @@ typedef struct VRFrameData {
 
 extern int emscripten_vr_ready(void);
 extern int emscripten_vr_init(em_vr_arg_callback_func callback, void* userData);
+extern int emscripten_vr_deinit();
 
 extern int emscripten_vr_version_major(void);
 extern int emscripten_vr_version_minor(void);
@@ -137,7 +138,7 @@ extern int emscripten_vr_get_frame_data(VRDisplayHandle handle, VRFrameData* fra
 extern int emscripten_vr_submit_frame(VRDisplayHandle handle);
 extern int emscripten_vr_exit_present(VRDisplayHandle handle);
 
-extern char *emscripten_vr_get_display_name(VRDisplayHandle handle);
+extern const char *emscripten_vr_get_display_name(VRDisplayHandle handle);
 extern int emscripten_vr_get_eye_parameters(VRDisplayHandle handle, VREye whichEye, VREyeParameters* eyeParams);
 extern int emscripten_vr_get_display_capabilities(VRDisplayHandle handle, VRDisplayCapabilities* displayCaps);
 extern bool emscripten_vr_display_connected(VRDisplayHandle handle);
