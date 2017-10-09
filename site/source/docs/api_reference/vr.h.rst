@@ -107,14 +107,14 @@ called the return value of :c:func:`emscripten_vr_ready` to be `true`.
 	:returns: name of the VR display or `0 (NULL)` if the handle is invalid.
 	:rtype: char*
 
-.. c:function:: bool emscripten_vr_get_display_connected(VRDisplayHandle handle)
+.. c:function:: bool emscripten_vr_display_connected(VRDisplayHandle handle)
 
 	:param VRDisplayHandle handle: |display-handle-parameter-doc|
 	:returns: `true` if the display is connected, `false` otherwise or when
 		the handle is invalid.
 	:rtype: bool
 
-.. c:function:: bool emscripten_vr_get_display_presenting(VRDisplayHandle handle)
+.. c:function:: bool emscripten_vr_display_presenting(VRDisplayHandle handle)
 
 	See also :c:func:`emscripten_vr_request_present`.
 
@@ -174,7 +174,7 @@ display is requested to present, as of which it will run at the VR display's ref
 	:param VRDisplayHandle handle: |display-handle-parameter-doc|
 	:rtype: |display-function-return-doc|
 
-.. c:function:: int emscripten_vr_get_frame_data(VRDisplayHandle handle)
+.. c:function:: int emscripten_vr_get_frame_data(VRDisplayHandle handle, VRFrameData* frameData)
 
 	Get view matrix, projection matrix, timestamp and head pose for current frame.
 	Only valid when called from within a render loop callback.
@@ -182,6 +182,7 @@ display is requested to present, as of which it will run at the VR display's ref
 	|render-loop-info|
 
 	:param VRDisplayHandle handle: |display-handle-parameter-doc|
+	:param VRFrameData* frameData: Will receive the new framedata values.
 	:rtype: |display-function-return-doc|
 
 .. c:function:: int emscripten_vr_submit_frame(VRDisplayHandle handle)
@@ -294,27 +295,27 @@ Types
 
 	.. c:member:: VRVector3 position
 
-		Position, valid only if ``poseFlags & VR_POSE_POSITION == 0``.
+		Position, valid only if ``poseFlags & VR_POSE_POSITION != 0``.
 
 	.. c:member:: VRVector3 linearVelocity
 
-		Linear velocity, valid only if ``poseFlags & VR_POSE_LINEAR_VELOCITY == 0``.
+		Linear velocity, valid only if ``poseFlags & VR_POSE_LINEAR_VELOCITY != 0``.
 
 	.. c:member:: VRVector3 linearAcceleration
 
-		Linear acceleration, valid only if ``poseFlags & VR_POSE_LINEAR_ACCELERATION == 0``.
+		Linear acceleration, valid only if ``poseFlags & VR_POSE_LINEAR_ACCELERATION != 0``.
 
 	.. c:member:: VRQuaternion orientation
 
-		Orientation quaternion, valid only if ``poseFlags & VR_POSE_ORIENTATION == 0``.
+		Orientation quaternion, valid only if ``poseFlags & VR_POSE_ORIENTATION != 0``.
 
 	.. c:member:: VRVector3 angularVelocity
 
-		Angular velocity, valid only if ``poseFlags & VR_POSE_ANGULAR_VELOCITY == 0``.
+		Angular velocity, valid only if ``poseFlags & VR_POSE_ANGULAR_VELOCITY != 0``.
 
 	.. c:member:: VRVector3 angularAcceleration
 
-		Angular acceleration, valid only if ``poseFlags & VR_POSE_ANGULAR_ACCELERATION == 0``.
+		Angular acceleration, valid only if ``poseFlags & VR_POSE_ANGULAR_ACCELERATION != 0``.
 
 	.. c:member:: int poseFlags
 
