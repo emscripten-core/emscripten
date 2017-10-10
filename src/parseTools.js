@@ -40,6 +40,15 @@ function preprocess(text, filenameHint) {
             var ident = parts[1];
             var op = parts[2];
             var value = parts[3];
+            if (typeof value === 'string') {
+              // when writing
+              // #if option == 'stringValue'
+              // we need to get rid of the quotes
+              if (value[0] === '"' || value[0] === "'") {
+                assert(value[value.length - 1] == '"' || value[value.length - 1] == "'");
+                value = value.substring(1, value.length - 1);
+              }
+            }
             if (op) {
               if (op === '==') {
                 showStack.push(ident in this && this[ident] == value);
@@ -1293,7 +1302,7 @@ function makeGetTempRet0() {
 
 function makeSetTempRet0(value) {
   if (WASM_BACKEND == 1) {
-    return 'asm["setTempRet0"](' + value + ')';
+    return 'Module["asm"]["setTempRet0"](' + value + ')';
   } else {
     return RELOCATABLE ? "setTempRet0((" + value + ") | 0)" : ("tempRet0 = " + value);
   }
@@ -1304,11 +1313,7 @@ function makeStructuralReturn(values, inAsm) {
   return 'return ' + asmCoercion(values.slice(1).map(function(value) {
     i++;
     if (!inAsm) {
-      if (!RELOCATABLE) {
-        return 'asm["setTempRet' + i + '"](' + value + ')';
-      } else {
-        return 'Runtime.setTempRet' + i + '(' + value + ')';
-      }
+      return 'Runtime.setTempRet' + i + '(' + value + ')';
     }
     if (i === 0) {
       return makeSetTempRet0(value)

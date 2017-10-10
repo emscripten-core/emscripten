@@ -96,6 +96,7 @@ The following command line flags control how *emrun* spawns the web server:
 - ``--port <number>``: Specify the web server TCP port. The default port is ``6931``. 
 - ``--silence_timeout <seconds>``: Specify the *emrun* silence timeout. If the application does not print anything to ``stdout`` or ``stderr`` in this many seconds, the page/browser is assumed to be hung, and *emrun* will quit. This is disabled by default. 
 - ``--timeout <seconds>``: Specify the *emrun* timeout. If the whole page run lasts longer than this many seconds, the page/browser is assumed to be hung, and *emrun* will quit. This is disabled by default. 
+- ``--hostname <name>``: Specify the web server TCP hostname. The default hostname is ``localhost``.
 - ``--timeout_returncode <code>``: Specifies the process return code that *emrun* quits with if a page run timeout occurs. By default this is ``99999``.
 
 
@@ -143,7 +144,7 @@ When running web pages via ``emrun`` using Firefox, you may want to set one or m
   ; Don't bring up the modal "Start in Safe Mode" dialog after browser is killed, since
   ; that is an expected path for --kill_start and --kill_exit options.
   browser.sessionstore.max_resumed_crashes;-1
-  toolkip.startup.max_resumed_crashes;-1
+  toolkit.startup.max_resumed_crashes;-1
 
   ; Don't fail on long-running scripts, but have emrun instead control execution termination.
   dom.max_script_run_time;0
@@ -177,6 +178,8 @@ For this to work, you need to:
 To run on Android, add the ``--android`` command line flag and use the ``--browser <alias>`` command line flag to explicitly choose the correct browser to run. 
 
 .. note:: Omitting ``--browser`` (to launch a default Android browser) is not supported. 
+
+.. note:: Running on Android will omit the ``--hostname`` option
 
 The following browser aliases have been tested and shown to work: ``firefox, firefox_beta, firefox_aurora, firefox_nightly, chrome, chrome_beta, opera``.
 

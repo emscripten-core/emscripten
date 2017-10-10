@@ -45,7 +45,7 @@ int main() {
   
     glfwTerminate();
   
-    REPORT_RESULT();
+    REPORT_RESULT(result);
   
     return 0;
 

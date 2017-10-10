@@ -7,7 +7,7 @@ int EMSCRIPTEN_KEEPALIVE func() {
 }
 
 void EMSCRIPTEN_KEEPALIVE report(int result) {
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }
 
 }

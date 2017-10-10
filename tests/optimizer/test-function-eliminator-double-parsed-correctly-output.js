@@ -1,6 +1,7 @@
 // EMSCRIPTEN_START_ASM
 var asm = (function(global, env, buffer) {
  "use asm";
+ var tempDouble = 0.0;
  var e = 0;
  
 // EMSCRIPTEN_START_FUNCS

@@ -35,7 +35,7 @@ int SDLCALL EventHandler(void *userdata, SDL_Event *event) {
             printf("b scancode\n"); result *= 23; break;
           }
           printf("unknown key: sym %d scancode %d\n", event->key.keysym.sym, event->key.keysym.scancode);
-          REPORT_RESULT();
+          REPORT_RESULT(result);
           emscripten_run_script("throw 'done'"); // comment this out to leave event handling active. Use the following to log DOM keys:
                                                  // addEventListener('keyup', function(event) { console.log(event->keyCode) }, true)
         }

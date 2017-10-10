@@ -53,7 +53,7 @@ int main() {
   SDL_Quit();
 
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 #endif
 
   return 0;

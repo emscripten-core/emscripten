@@ -76,7 +76,7 @@ static void render() {
 
 static void mainloop() {
   render();
-  int isInFullscreen = EM_ASM_INT_V(return !!(document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement));
+  int isInFullscreen = EM_ASM_INT(return !!(document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement));
 
   switch (state) {
   case STATE_INITIAL:
@@ -109,7 +109,7 @@ static void mainloop() {
   case STATE_SUCCESS:
 #ifdef REPORT_RESULT
     {
-      REPORT_RESULT();
+      REPORT_RESULT(result);
     }
 #endif
     emscripten_cancel_main_loop();

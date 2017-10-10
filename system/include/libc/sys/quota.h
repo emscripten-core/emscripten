@@ -57,8 +57,7 @@ extern "C" {
 #define QIF_TIMES	(QIF_BTIME | QIF_ITIME)
 #define QIF_ALL		(QIF_LIMITS | QIF_USAGE | QIF_TIMES)
 
-struct dqblk
-{
+struct dqblk {
 	uint64_t dqb_bhardlimit;
 	uint64_t dqb_bsoftlimit;
 	uint64_t dqb_curspace;
@@ -87,8 +86,7 @@ struct dqblk
 #define IIF_FLAGS	4
 #define IIF_ALL		(IIF_BGRACE | IIF_IGRACE | IIF_FLAGS)
 
-struct dqinfo
-{
+struct dqinfo {
 	uint64_t dqi_bgrace;
 	uint64_t dqi_igrace;
 	uint32_t dqi_flags;

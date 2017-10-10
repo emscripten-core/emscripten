@@ -1,37 +1,37 @@
 #include "pthread_impl.h"
 
-void __vm_lock_impl(int);
-void __vm_unlock_impl(void);
-
-int pthread_mutex_unlock(pthread_mutex_t *m)
+int __pthread_mutex_unlock(pthread_mutex_t *m)
 {
 	pthread_t self;
 	int waiters = m->_m_waiters;
 	int cont;
-	int robust = 0;
+	int type = m->_m_type & 15;
+	int priv = (m->_m_type & 128) ^ 128;
 
-	if (m->_m_type != PTHREAD_MUTEX_NORMAL) {
-		if (!m->_m_lock)
+	if (type != PTHREAD_MUTEX_NORMAL) {
+		self = __pthread_self();
+		if ((m->_m_lock&0x7fffffff) != self->tid)
 			return EPERM;
-		self = pthread_self();
-		if ((m->_m_lock&0x1fffffff) != self->tid)
-			return EPERM;
-		if ((m->_m_type&3) == PTHREAD_MUTEX_RECURSIVE && m->_m_count)
+		if ((type&3) == PTHREAD_MUTEX_RECURSIVE && m->_m_count)
 			return m->_m_count--, 0;
-		if (m->_m_type >= 4) {
-			robust = 1;
+		if (!priv) {
 			self->robust_list.pending = &m->_m_next;
-			*(void **)m->_m_prev = m->_m_next;
-			if (m->_m_next) ((void **)m->_m_next)[-1] = m->_m_prev;
-			__vm_lock_impl(+1);
+			__vm_lock();
 		}
+		volatile void *prev = m->_m_prev;
+		volatile void *next = m->_m_next;
+		*(volatile void *volatile *)prev = next;
+		if (next != &self->robust_list.head) *(volatile void *volatile *)
+			((char *)next - sizeof(void *)) = prev;
 	}
-	cont = a_swap(&m->_m_lock, 0);
-	if (robust) {
+	cont = a_swap(&m->_m_lock, (type & 8) ? 0x7fffffff : 0);
+	if (type != PTHREAD_MUTEX_NORMAL && !priv) {
 		self->robust_list.pending = 0;
-		__vm_unlock_impl();
+		__vm_unlock();
 	}
 	if (waiters || cont<0)
-		__wake(&m->_m_lock, 1, 0);
+		__wake(&m->_m_lock, 1, priv);
 	return 0;
 }
+
+weak_alias(__pthread_mutex_unlock, pthread_mutex_unlock);

@@ -10,6 +10,7 @@ You may want to run this with unbuffered output, python -u ...
 
 import os, sys, subprocess, multiprocessing, threading, time
 from runner import test_modes, PYTHON, path_from_root
+import parallel_runner
 
 assert not os.environ.get('EM_SAVE_DIR'), 'Need separate directories to avoid the parallel tests clashing'
 
@@ -97,7 +98,7 @@ def main():
   watcher.start()
 
   # run all modes
-  cores = int(os.environ.get('PARALLEL_SUITE_EMCC_CORES') or os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+  cores = parallel_runner.num_cores()
   pool = multiprocessing.Pool(processes=cores)
   args = [[x] + sys.argv[1:] for x in optimal_order]
   num_failures = pool.map(run_mode, args, chunksize=1)

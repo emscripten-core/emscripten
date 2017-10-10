@@ -6,6 +6,11 @@
 #define HAVE_MMAP 0
 /* we can only grow the heap up anyhow, so don't try to trim */
 #define MORECORE_CANNOT_TRIM 1
+#ifndef DLMALLOC_DEBUG
+/* dlmalloc has many checks, calls to abort() increase code size,
+   leave them only in debug builds */
+#define ABORT __builtin_unreachable()
+#endif
 /* XXX Emscripten Tracing API. This defines away the code if tracing is disabled. */
 #include <emscripten/trace.h>
 

@@ -17,13 +17,16 @@ var LibraryPThread = {
     initMainThreadBlock: function() {
       if (ENVIRONMENT_IS_PTHREAD) return undefined;
       PThread.mainThreadBlock = allocate({{{ C_STRUCTS.pthread.__size__ }}}, "i32*", ALLOC_STATIC);
-      __register_pthread_ptr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1); // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
 
       for (var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}}/4; ++i) HEAPU32[PThread.mainThreadBlock/4+i] = 0;
 
       // The pthread struct has a field that points to itself - this is used as a magic ID to detect whether the pthread_t
       // structure is 'alive'.
       {{{ makeSetValue('PThread.mainThreadBlock', C_STRUCTS.pthread.self, 'PThread.mainThreadBlock', 'i32') }}};
+
+      // pthread struct robust_list head should point to itself.
+      var headPtr = PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.robust_list }}};
+      {{{ makeSetValue('headPtr', 0, 'headPtr', 'i32') }}};
 
       // Allocate memory for thread-local storage.
       var tlsMemory = allocate({{{ cDefine('PTHREAD_KEYS_MAX') }}} * 4, "i32*", ALLOC_STATIC);
@@ -34,7 +37,7 @@ var LibraryPThread = {
 
 #if PTHREADS_PROFILING
       PThread.createProfilerBlock(PThread.mainThreadBlock);
-      PThread.setThreadName(PThread.mainThreadBlock, "main thread");
+      PThread.setThreadName(PThread.mainThreadBlock, "Browser main thread");
       PThread.setThreadStatus(PThread.mainThreadBlock, {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
 #endif
     },
@@ -130,8 +133,8 @@ var LibraryPThread = {
       var tb = _pthread_self();
       if (tb) { // If we haven't yet exited?
 #if PTHREADS_PROFILING
-        var profilerBlock = Atomics.load(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
-        Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, 0);
+        var profilerBlock = Atomics.load(HEAPU32, (threadInfoStruct + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
+        Atomics.store(HEAPU32, (threadInfoStruct + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, 0);
         _free(profilerBlock);
 #endif
         Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, exitCode);
@@ -259,56 +262,93 @@ var LibraryPThread = {
         var worker = new Worker(pthreadMainJs);
 
         worker.onmessage = function(e) {
-          // If this message is intended to a recipient that is not the main thread, forward it to the target thread.
-          if (e.data.targetThread && e.data.targetThread != _pthread_self()) {
-            var thread = PThread.pthreads[e.data.targetThread];
-            if (thread) {
-              thread.worker.postMessage(e.data, e.data.transferList);
-            } else {
-              console.error('Internal error! Worker sent a message "' + e.data.cmd + '" to target pthread ' + e.data.targetThread + ', but that thread no longer exists!');
+          var d = e.data;
+          // TODO: Move the proxied call mechanism into a queue inside heap.
+          if (d.proxiedCall) {
+            var returnValue;
+            var funcTable = (d.func >= 0) ? proxiedFunctionTable : ASM_CONSTS;
+            var funcIdx = (d.func >= 0) ? d.func : (-1 - d.func);
+            PThread.currentProxiedOperationCallerThread = worker.pthread.threadInfoStruct; // Sometimes we need to backproxy events to the calling thread (e.g. HTML5 DOM events handlers such as emscripten_set_mousemove_callback()), so keep track in a globally accessible variable about the thread that initiated the proxying.
+            switch(d.proxiedCall & 31) {
+              case 1: returnValue = funcTable[funcIdx](); break;
+              case 2: returnValue = funcTable[funcIdx](d.p0); break;
+              case 3: returnValue = funcTable[funcIdx](d.p0, d.p1); break;
+              case 4: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2); break;
+              case 5: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3); break;
+              case 6: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4); break;
+              case 7: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5); break;
+              case 8: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5, d.p6); break;
+              case 9: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5, d.p6, d.p7); break;
+              case 10: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5, d.p6, d.p7, d.p8); break;
+              default:
+                if (d.proxiedCall) {
+                  Module['printErr']("worker sent an unknown proxied call idx " + d.proxiedCall);
+                  console.error(e.data);
+                }
+                break;
+            }
+            if (d.returnValue) {
+              if (d.proxiedCall < 32) HEAP32[d.returnValue >> 2] = returnValue;
+              else HEAPF64[d.returnValue >> 3] = returnValue;
+            }
+            var waitAddress = d.waitAddress;
+            if (waitAddress) {
+              Atomics.store(HEAP32, waitAddress >> 2, 1);
+              Atomics.wake(HEAP32, waitAddress >> 2, 1);
             }
             return;
           }
 
-          if (e.data.cmd === 'processQueuedMainThreadWork') {
+          // If this message is intended to a recipient that is not the main thread, forward it to the target thread.
+          if (d.targetThread && d.targetThread != _pthread_self()) {
+            var thread = PThread.pthreads[d.targetThread];
+            if (thread) {
+              thread.worker.postMessage(e.data, d.transferList);
+            } else {
+              console.error('Internal error! Worker sent a message "' + d.cmd + '" to target pthread ' + d.targetThread + ', but that thread no longer exists!');
+            }
+            return;
+          }
+
+          if (d.cmd === 'processQueuedMainThreadWork') {
             // TODO: Must post message to main Emscripten thread in PROXY_TO_WORKER mode.
             _emscripten_main_thread_process_queued_calls();
-          } else if (e.data.cmd === 'spawnThread') {
+          } else if (d.cmd === 'spawnThread') {
             __spawn_thread(e.data);
-          } else if (e.data.cmd === 'cleanupThread') {
-            __cleanup_thread(e.data.thread);
-          } else if (e.data.cmd === 'killThread') {
-            __kill_thread(e.data.thread);
-          } else if (e.data.cmd === 'cancelThread') {
-            __cancel_thread(e.data.thread);
-          } else if (e.data.cmd === 'loaded') {
+          } else if (d.cmd === 'cleanupThread') {
+            __cleanup_thread(d.thread);
+          } else if (d.cmd === 'killThread') {
+            __kill_thread(d.thread);
+          } else if (d.cmd === 'cancelThread') {
+            __cancel_thread(d.thread);
+          } else if (d.cmd === 'loaded') {
             ++numWorkersLoaded;
             if (numWorkersLoaded === numWorkers && onFinishedLoading) {
               onFinishedLoading();
             }
-          } else if (e.data.cmd === 'print') {
-            Module['print']('Thread ' + e.data.threadId + ': ' + e.data.text);
-          } else if (e.data.cmd === 'printErr') {
-            Module['printErr']('Thread ' + e.data.threadId + ': ' + e.data.text);
-          } else if (e.data.cmd === 'alert') {
-            alert('Thread ' + e.data.threadId + ': ' + e.data.text);
-          } else if (e.data.cmd === 'exit') {
+          } else if (d.cmd === 'print') {
+            Module['print']('Thread ' + d.threadId + ': ' + d.text);
+          } else if (d.cmd === 'printErr') {
+            Module['printErr']('Thread ' + d.threadId + ': ' + d.text);
+          } else if (d.cmd === 'alert') {
+            alert('Thread ' + d.threadId + ': ' + d.text);
+          } else if (d.cmd === 'exit') {
             // currently no-op
-          } else if (e.data.cmd === 'cancelDone') {
+          } else if (d.cmd === 'cancelDone') {
             PThread.freeThreadData(worker.pthread);
             worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
             PThread.unusedWorkerPool.push(worker);
             // TODO: Free if detached.
             PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker.pthread), 1); // Not a running Worker anymore.
-          } else if (e.data.cmd === 'objectTransfer') {
+          } else if (d.cmd === 'objectTransfer') {
             PThread.receiveObjectTransfer(e.data);
           } else {
-            Module['printErr']("worker sent an unknown command " + e.data.cmd);
+            Module['printErr']("worker sent an unknown command " + d.cmd);
           }
         };
 
         worker.onerror = function(e) {
-          Module['printErr']('pthread sent an error! ' + e.message);
+          Module['printErr']('pthread sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
         };
 
         // Allocate tempDoublePtr for the worker. This is done here on the worker's behalf, since we may need to do this statically
@@ -318,7 +358,12 @@ var LibraryPThread = {
         // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
         worker.postMessage({
             cmd: 'load',
-            url: currentScriptUrl,
+            // If the application main .js file was loaded from a Blob, then it is not possible
+            // to access the URL of the current script that could be passed to a Web Worker so that
+            // it could load up the same file. In that case, developer must either deliver the Blob
+            // object in Module['mainScriptUrlOrBlob'], or a URL to it, so that pthread Workers can
+            // independently load up the same main application file.
+            urlOrBlob: Module['mainScriptUrlOrBlob'] || currentScriptUrl,
             buffer: HEAPU8.buffer,
             tempDoublePtr: tempDoublePtr,
             TOTAL_MEMORY: TOTAL_MEMORY,
@@ -415,6 +460,10 @@ var LibraryPThread = {
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 12) >> 2, threadParams.detached);
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 20) >> 2, threadParams.schedPolicy);
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 24) >> 2, threadParams.schedPrio);
+
+    var global_libc = _emscripten_get_global_libc();
+    var global_locale = global_libc + {{{ C_STRUCTS.libc.global_locale }}};
+    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.locale }}}) >> 2, global_locale);
 
 #if PTHREADS_PROFILING
     PThread.createProfilerBlock(pthread.threadInfoStruct);
@@ -574,6 +623,10 @@ var LibraryPThread = {
     // The pthread struct has a field that points to itself - this is used as a magic ID to detect whether the pthread_t
     // structure is 'alive'.
     {{{ makeSetValue('threadInfoStruct', C_STRUCTS.pthread.self, 'threadInfoStruct', 'i32') }}};
+
+    // pthread struct robust_list head should point to itself.
+    var headPtr = threadInfoStruct + {{{ C_STRUCTS.pthread.robust_list }}};
+    {{{ makeSetValue('headPtr', 0, 'headPtr', 'i32') }}};
 
     var threadParams = {
       stackBase: stackBase,
@@ -735,8 +788,9 @@ var LibraryPThread = {
   _pthread_is_main_runtime_thread: 0,
   _pthread_is_main_browser_thread: 0,
 
-  _register_pthread_ptr__asm: true,
   _register_pthread_ptr__deps: ['_pthread_ptr', '_pthread_is_main_runtime_thread', '_pthread_is_main_browser_thread'],
+  _register_pthread_ptr__asm: true,
+  _register_pthread_ptr__sig: 'viii',
   _register_pthread_ptr: function(pthreadPtr, isMainBrowserThread, isMainRuntimeThread) {
     pthreadPtr = pthreadPtr|0;
     isMainBrowserThread = isMainBrowserThread|0;
@@ -747,19 +801,22 @@ var LibraryPThread = {
   },
 
   // Public pthread_self() function which returns a unique ID for the thread.
-  pthread_self__asm: true,
   pthread_self__deps: ['_pthread_ptr'],
+  pthread_self__asm: true,
+  pthread_self__sig: 'i',
   pthread_self: function() {
     return __pthread_ptr|0;
   },
 
   emscripten_is_main_runtime_thread__asm: true,
+  emscripten_is_main_runtime_thread__sig: 'i',
   emscripten_is_main_runtime_thread__deps: ['_pthread_is_main_runtime_thread'],
   emscripten_is_main_runtime_thread: function() {
     return __pthread_is_main_runtime_thread|0; // Semantically the same as testing "!ENVIRONMENT_IS_PTHREAD" outside the asm.js scope
   },
 
   emscripten_is_main_browser_thread__asm: true,
+  emscripten_is_main_browser_thread__sig: 'i',
   emscripten_is_main_browser_thread__deps: ['_pthread_is_main_browser_thread'],
   emscripten_is_main_browser_thread: function() {
     return __pthread_is_main_browser_thread|0; // Semantically the same as testing "!ENVIRONMENT_IS_WORKER" outside the asm.js scope
@@ -868,7 +925,7 @@ var LibraryPThread = {
         __ATEXIT__.push(function() { PThread.runExitHandlers(); });
       }
     }
-    PThread.exitHandlers.push(function() { Runtime.dynCall('vi', routine, [arg]) });
+    PThread.exitHandlers.push(function() { Module['dynCall_vi'](routine, arg) });
   },
 
   pthread_cleanup_pop: function(execute) {
@@ -904,9 +961,9 @@ var LibraryPThread = {
 #if PTHREADS_PROFILING
       PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}}, {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
 #endif
-      if (ret === Atomics.TIMEDOUT) return -{{{ cDefine('ETIMEDOUT') }}};
-      if (ret === Atomics.NOTEQUAL) return -{{{ cDefine('EWOULDBLOCK') }}};
-      if (ret === Atomics.OK) return 0;
+      if (ret === 'timed-out') return -{{{ cDefine('ETIMEDOUT') }}};
+      if (ret === 'not-equal') return -{{{ cDefine('EWOULDBLOCK') }}};
+      if (ret === 'ok') return 0;
       throw 'Atomics.wait returned an unexpected value ' + ret;
     } else {
       // Atomics.wait is not available in the main browser thread, so simulate it via busy spinning.
@@ -1006,6 +1063,10 @@ var LibraryPThread = {
 
   __atomic_is_lock_free: function(size, ptr) {
     return size <= 4 && (size & (size-1)) == 0 && (ptr&(size-1)) == 0;
+  },
+
+  __call_main: function(argc, argv) {
+    return _main(argc, argv);
   },
 
   emscripten_conditional_set_current_thread_status_js: function(expectedStatus, newStatus) {

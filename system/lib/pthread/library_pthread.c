@@ -18,6 +18,7 @@
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include "../internal/libc.h"
 #include "../internal/pthread_impl.h"
 #include <assert.h>
 
@@ -30,6 +31,8 @@ char *gets(char *);
 
 // Extra pthread_attr_t field:
 #define _a_transferredcanvases __u.__s[9]
+
+void __pthread_testcancel();
 
 int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t *a, const char **str)
 {
@@ -54,7 +57,7 @@ static void inline __pthread_mutex_locked(pthread_mutex_t *mutex)
 	assert(mutex);
 	assert(mutex->_m_lock == 0);
 	mutex->_m_lock = pthread_self()->tid;
-	if (_pthread_getcanceltype() == PTHREAD_CANCEL_ASYNCHRONOUS) pthread_testcancel();
+	if (_pthread_getcanceltype() == PTHREAD_CANCEL_ASYNCHRONOUS) __pthread_testcancel();
 }
 
 double _pthread_msecs_until(const struct timespec *restrict at)
@@ -66,130 +69,6 @@ double _pthread_msecs_until(const struct timespec *restrict at)
 	double msecs = at_t - cur_t;
 	return msecs;
 }
-
-#if 0
-int pthread_mutex_lock(pthread_mutex_t *mutex)
-{
-	if (!mutex) return EINVAL;
-	assert(pthread_self() != 0);
-	assert(pthread_self()->tid != 0);
-
-	if (mutex->_m_lock == pthread_self()->tid) {
-		if ((mutex->_m_type&3) == PTHREAD_MUTEX_RECURSIVE) {
-			if ((unsigned)mutex->_m_count >= INT_MAX) return EAGAIN;
-			++mutex->_m_count;
-			return 0;
-		} else if ((mutex->_m_type&3) == PTHREAD_MUTEX_ERRORCHECK) {
-			return EDEADLK;
-		}
-	}
-
-	int threadCancelType = _pthread_getcanceltype();
-
-	int c = emscripten_atomic_cas_u32(&mutex->_m_addr, 0, 1);
-	if (c != 0) {
-		do {
-			if (c == 2 || emscripten_atomic_cas_u32(&mutex->_m_addr, 1, 2) != 0) {
-				double msecs = INFINITY;
-				if (threadCancelType == PTHREAD_CANCEL_ASYNCHRONOUS) {
-					// Sleep in small slices so that we can test cancellation to honor PTHREAD_CANCEL_ASYNCHRONOUS.
-					pthread_testcancel();
-					msecs = 100;
-				}
-				emscripten_futex_wait(&mutex->_m_addr, 2, msecs);
-			}
-		} while((c = emscripten_atomic_cas_u32(&mutex->_m_addr, 0, 2)));
-	}
-
-	__pthread_mutex_locked(mutex);
-	return 0;
-}
-
-int pthread_mutex_unlock(pthread_mutex_t *mutex)
-{
-	if (!mutex) return EINVAL;
-	assert(pthread_self() != 0);
-
-	if (mutex->_m_type != PTHREAD_MUTEX_NORMAL) {
-		if (mutex->_m_lock != pthread_self()->tid) return EPERM;
-		if ((mutex->_m_type&3) == PTHREAD_MUTEX_RECURSIVE && mutex->_m_count) {
-			--mutex->_m_count;
-			return 0;
-		}
-	}
-
-	mutex->_m_lock = 0;
-	if (emscripten_atomic_sub_u32((uint32_t*)&mutex->_m_addr, 1) != 1)
-	{
-		emscripten_atomic_store_u32((uint32_t*)&mutex->_m_addr, 0);
-		emscripten_futex_wake((uint32_t*)&mutex->_m_addr, 1);
-	}
-	return 0;
-}
-
-int pthread_mutex_trylock(pthread_mutex_t *mutex)
-{
-	if (!mutex) return EINVAL;
-	if (mutex->_m_lock == pthread_self()->tid) {
-		if ((mutex->_m_type&3) == PTHREAD_MUTEX_RECURSIVE) {
-			if ((unsigned)mutex->_m_count >= INT_MAX) return EAGAIN;
-			++mutex->_m_count;
-			return 0;
-		} else if ((mutex->_m_type&3) == PTHREAD_MUTEX_ERRORCHECK) {
-			return EDEADLK;
-		}
-	}
-
-	if (emscripten_atomic_cas_u32(&mutex->_m_addr, 0, 1) == 0) {
-		__pthread_mutex_locked(mutex);
-		return 0;
-	}
-	else
-		return EBUSY;
-}
-
-int pthread_mutex_timedlock(pthread_mutex_t *restrict mutex, const struct timespec *restrict at)
-{
-	if (!mutex || !at) return EINVAL;
-	if (mutex->_m_lock == pthread_self()->tid) {
-		if ((mutex->_m_type&3) == PTHREAD_MUTEX_RECURSIVE) {
-			if ((unsigned)mutex->_m_count >= INT_MAX) return EAGAIN;
-			++mutex->_m_count;
-			return 0;
-		} else if ((mutex->_m_type&3) == PTHREAD_MUTEX_ERRORCHECK) {
-			return EDEADLK;
-		}
-	}
-
-	int threadCancelType = _pthread_getcanceltype();
-	int c = emscripten_atomic_cas_u32(&mutex->_m_addr, 0, 1);
-	if (c != 0) {
-		do {
-			if (c == 2 || emscripten_atomic_cas_u32(&mutex->_m_addr, 1, 2) != 0)
-			{
-				if (at->tv_nsec < 0 || at->tv_nsec >= 1000000000) return EINVAL;
-				double msecs = _pthread_msecs_until(at);
-				if (msecs <= 0) return ETIMEDOUT;
-
-				// Sleep in small slices if thread type is PTHREAD_CANCEL_ASYNCHRONOUS
-				// so that we can honor PTHREAD_CANCEL_ASYNCHRONOUS requests.
-				if (threadCancelType == PTHREAD_CANCEL_ASYNCHRONOUS) {
-					pthread_testcancel();
-					if (msecs > 100) msecs = 100;
-				}
-				int ret = emscripten_futex_wait(&mutex->_m_addr, 2, msecs);
-				if (ret == 0) break;
-				else if (threadCancelType != PTHREAD_CANCEL_ASYNCHRONOUS || _pthread_msecs_until(at) <= 0) {
-					return ETIMEDOUT;
-				}
-			}
-		} while((c = emscripten_atomic_cas_u32(&mutex->_m_addr, 0, 2)));
-	}
-
-	__pthread_mutex_locked(mutex);
-	return 0;
-}
-#endif
 
 int sched_get_priority_max(int policy)
 {
@@ -227,12 +106,12 @@ int _pthread_isduecanceled(struct pthread *pthread_ptr)
 	return pthread_ptr->threadStatus == 2/*canceled*/;
 }
 
-void pthread_testcancel()
+void __pthread_testcancel()
 {
 	struct pthread *self = pthread_self();
 	if (self->canceldisable) return;
 	if (_pthread_isduecanceled(self)) {
-		EM_ASM( throw 'Canceled!'; );
+		EM_ASM(throw 'Canceled!');
 	}
 }
 
@@ -257,7 +136,7 @@ static void do_sleep(double msecs)
 #endif
 	while(now < target) {
 		if (is_main_thread) emscripten_main_thread_process_queued_calls(); // Assist other threads by executing proxied operations that are effectively singlethreaded.
-		pthread_testcancel(); // pthreads spec: usleep is a cancellation point, so it must test if this thread is cancelled during the sleep.
+		__pthread_testcancel(); // pthreads spec: usleep is a cancellation point, so it must test if this thread is cancelled during the sleep.
 		now = emscripten_get_now();
 		double msecsToSleep = target - now;
 		if (msecsToSleep > 1.0) {
@@ -288,8 +167,12 @@ int usleep(unsigned usec)
 static em_queued_call *em_queued_call_malloc()
 {
 	em_queued_call *call = (em_queued_call*)malloc(sizeof(em_queued_call));
-	call->operationDone = 0;
-	call->functionPtr = 0;
+	assert(call); // Not a programming error, but use assert() in debug builds to catch OOM scenarios.
+	if (call)
+	{
+		call->operationDone = 0;
+		call->functionPtr = 0;
+	}
 	return call;
 }
 static void em_queued_call_free(em_queued_call *call)
@@ -575,10 +458,11 @@ void EMSCRIPTEN_KEEPALIVE emscripten_main_thread_process_queued_calls()
 
 int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr, ...)
 {
-	va_list args;
-	va_start(args, func_ptr);
 	int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
 	em_queued_call q = { sig, func_ptr };
+
+	va_list args;
+	va_start(args, func_ptr);
 	for(int i = 0; i < numArguments; ++i)
 		q.args[i].i = va_arg(args, int);
 	va_end(args);
@@ -588,12 +472,14 @@ int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *fun
 
 void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr, ...)
 {
-	va_list args;
-	va_start(args, func_ptr);
 	int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
 	em_queued_call *q = em_queued_call_malloc();
+	if (!q) return;
 	q->functionEnum = sig;
 	q->functionPtr = func_ptr;
+
+	va_list args;
+	va_start(args, func_ptr);
 	for(int i = 0; i < numArguments; ++i)
 		q->args[i].i = va_arg(args, int);
 	va_end(args);
@@ -605,12 +491,14 @@ void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *f
 
 em_queued_call *emscripten_async_waitable_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr, ...)
 {
-	va_list args;
-	va_start(args, func_ptr);
 	int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
 	em_queued_call *q = em_queued_call_malloc();
+	if (!q) return;
 	q->functionEnum = sig;
 	q->functionPtr = func_ptr;
+
+	va_list args;
+	va_start(args, func_ptr);
 	for(int i = 0; i < numArguments; ++i)
 		q->args[i].i = va_arg(args, int);
 	va_end(args);
@@ -637,16 +525,6 @@ float EMSCRIPTEN_KEEPALIVE emscripten_atomic_load_f32(const void *addr)
 // which this emulation can be removed.
 #define NUM_64BIT_LOCKS 256
 static int emulated64BitAtomicsLocks[NUM_64BIT_LOCKS] = {};
-
-uint32_t EMSCRIPTEN_KEEPALIVE emscripten_atomic_exchange_u32(void/*uint32_t*/ *addr, uint32_t newVal)
-{
-	uint32_t oldVal, oldVal2;
-	do {
-		oldVal = emscripten_atomic_load_u32(addr);
-		oldVal2 = emscripten_atomic_cas_u32(addr, oldVal, newVal);
-	} while (oldVal != oldVal2);
-	return oldVal;
-}
 
 #define SPINLOCK_ACQUIRE(addr) do { while(emscripten_atomic_exchange_u32((void*)(addr), 1)) /*nop*/; } while(0)
 #define SPINLOCK_RELEASE(addr) emscripten_atomic_store_u32((void*)(addr), 0)
@@ -884,3 +762,62 @@ uint64_t __atomic_fetch_xor_8(void *ptr, uint64_t value, int memmodel)
 {
 	return _emscripten_atomic_fetch_and_xor_u64(ptr, value);
 }
+
+typedef struct main_args
+{
+  int argc;
+  char **argv;
+} main_args;
+
+extern int __call_main(int argc, char **argv);
+
+void *__emscripten_thread_main(void *param)
+{
+  emscripten_set_thread_name(pthread_self(), "Application main thread"); // This is the main runtime thread for the application.
+  main_args *args = (main_args*)param;
+  return (void*)__call_main(args->argc, args->argv);
+}
+
+static volatile main_args _main_arguments;
+
+// TODO: Create a separate library of this to be able to drop EMSCRIPTEN_KEEPALIVE from this definition.
+int EMSCRIPTEN_KEEPALIVE proxy_main(int argc, char **argv)
+{
+  if (emscripten_has_threading_support())
+  {
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+    // TODO: Read this from -s STACK_SIZE parameter, and make actual main browser thread stack something tiny, or create a -s PROXY_THREAD_STACK_SIZE parameter.
+#define EMSCRIPTEN_PTHREAD_STACK_SIZE (128*1024)
+
+    pthread_attr_setstacksize(&attr, (EMSCRIPTEN_PTHREAD_STACK_SIZE));
+    // TODO: Add a -s PROXY_CANVASES_TO_THREAD=parameter or similar to allow configuring this
+#ifdef EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES
+    // If user has defined EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES, then transfer those canvases over to the pthread.
+    emscripten_pthread_attr_settransferredcanvases(&attr, (EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES));
+#else
+    // Otherwise by default, transfer whatever is set to Module.canvas.
+    if (EM_ASM_INT_V({ return !!(Module['canvas']); })) emscripten_pthread_attr_settransferredcanvases(&attr, "#canvas");
+#endif
+    _main_arguments.argc = argc;
+    _main_arguments.argv = argv;
+    pthread_t thread;
+    int rc = pthread_create(&thread, &attr, __emscripten_thread_main, (void*)&_main_arguments);
+    pthread_attr_destroy(&attr);
+    if (rc)
+    {
+      // Proceed by running main() on the main browser thread as a fallback.
+      return __call_main(_main_arguments.argc, _main_arguments.argv);
+    }
+    EM_ASM(Module['noExitRuntime'] = true);
+    return 0;
+  }
+  else
+  {
+    return __call_main(_main_arguments.argc, _main_arguments.argv);
+  }
+}
+
+weak_alias(__pthread_testcancel, pthread_testcancel);

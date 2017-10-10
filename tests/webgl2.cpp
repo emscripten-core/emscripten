@@ -10,6 +10,12 @@ EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context;
 
 int main()
 {
+  EM_ASM({
+    Array.prototype.someExtensionFromThirdParty = {};
+    Array.prototype.someExtensionFromThirdParty.length = 42;
+    Array.prototype.someExtensionFromThirdParty.something = function() { return "Surprise!"; };
+  });
+
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);
   attrs.majorVersion = 2;
@@ -39,7 +45,7 @@ int main()
   }
 
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 #endif
   return 0;
 }

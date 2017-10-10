@@ -115,8 +115,35 @@ class interactive(BrowserCore):
   def test_openal_looped_pitched_playback(self):
     self.btest('openal_playback.cpp', '1', args=['-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
 
+  def test_openal_looped_seek_playback(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_LOOPED_SEEK_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
   def test_openal_animated_looped_pitched_playback(self):
     self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_PITCHED_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
+  def test_openal_animated_looped_distance_playback(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_DISTANCE_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
+  def test_openal_animated_looped_doppler_playback(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_DOPPLER_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
+  def test_openal_animated_looped_panned_playback(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_PANNED_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
+  def test_openal_animated_looped_relative_playback(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_RELATIVE_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
+  def test_openal_al_soft_loop_points(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_AL_SOFT_LOOP_POINTS=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
+  def test_openal_alc_soft_pause_device(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_ALC_SOFT_PAUSE_DEVICE=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
+  def test_openal_al_soft_source_spatialize(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_AL_SOFT_SOURCE_SPATIALIZE=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
+  def test_openal_capture(self):
+    self.btest('openal_capture.c', expected='0', args=['-s', 'NO_EXIT_RUNTIME=1'])
 
   def get_freealut_library(self):
     if WINDOWS and Building.which('cmake'):
@@ -131,8 +158,20 @@ class interactive(BrowserCore):
   def test_vr(self):
     self.btest(path_from_root('tests', 'test_vr.c'), expected='0')
 
+  def test_glfw_cursor_disabled(self):
+    self.btest('test_glfw_cursor_disabled.c', expected='1', args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'])
+
+  def test_glfw_dropfile(self):
+    self.btest('test_glfw_dropfile.c', expected='1', args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'])
+
   def test_glfw_fullscreen(self):
     self.btest('test_glfw_fullscreen.c', expected='1', args=['-s', 'NO_EXIT_RUNTIME=1', '-s', 'USE_GLFW=3'])
+
+  def test_glfw_get_key_stuck(self):
+    self.btest('test_glfw_get_key_stuck.c', expected='1', args=['-s', 'NO_EXIT_RUNTIME=1', '-s', 'USE_GLFW=3'])
+
+  def test_glfw_joystick(self):
+    self.btest('glfw_joystick.c', expected='1', args=['-s', 'NO_EXIT_RUNTIME=1', '-s', 'USE_GLFW=3'])
 
   def test_glfw_pointerlock(self):
     self.btest('test_glfw_pointerlock.c', expected='1', args=['-s', 'NO_EXIT_RUNTIME=1', '-s', 'USE_GLFW=3'])

@@ -9,12 +9,12 @@ import sys
 
 
 if sys.version_info.major == 2:
-  import emmake
   if __name__ == '__main__':
     ToolchainProfiler.record_process_start()
+    import emmake
     emmake.run()
     sys.exit(0)
 else:
   import os, subprocess
   if __name__ == '__main__':
-    sys.exit(subprocess.call(['python2', os.path.join(os.path.dirname(__file__), 'emmake.py')] + sys.argv[1:]))
+    sys.exit(subprocess.call(['python2', os.path.join(os.path.dirname(os.path.realpath(__file__)), 'emmake.py')] + sys.argv[1:]))

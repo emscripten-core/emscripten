@@ -28,7 +28,6 @@ int main() {
     if ((i & (1024*1024-1)) == 0) printf("%d of %d ..\n", i, TOTAL_SIZE);
   }
   printf("%d all ok.\n", i);
-  int result = 1;
-  REPORT_RESULT();
+  REPORT_RESULT(1);
 }
 

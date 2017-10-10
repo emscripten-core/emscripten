@@ -19,8 +19,7 @@ extern "C" {
 
 typedef unsigned long fd_mask;
 
-typedef struct
-{
+typedef struct {
 	unsigned long fds_bits[FD_SETSIZE / 8 / sizeof(long)];
 } fd_set;
 

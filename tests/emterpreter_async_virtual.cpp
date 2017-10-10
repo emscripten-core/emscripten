@@ -25,6 +25,6 @@ int main(void) {
     printf("main loop %i\n", ++cnt);
     result += bf->ReadLine(0);
   }
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }
 

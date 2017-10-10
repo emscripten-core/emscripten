@@ -1,0 +1,199 @@
+import multiprocessing
+import os
+import pickle
+import Queue
+import subprocess
+import sys
+import time
+import traceback
+import unittest
+
+def g_testing_thread(work_queue, result_queue):
+  for test in iter(lambda: get_from_queue(work_queue), None):
+    result = BufferedParallelTestResult()
+    try:
+      test(result)
+    except Exception as e:
+      result.addError(test, e)
+    result_queue.put(result)
+
+class ParallelTestSuite(unittest.BaseTestSuite):
+  """Runs a suite of tests in parallel.
+
+  Creates worker threads, manages the task queue, and combines the results.
+  """
+
+  def __init__(self):
+    super(ParallelTestSuite, self).__init__()
+    self.processes = None
+    self.result_queue = None
+
+  def run(self, result):
+    test_queue = self.create_test_queue()
+    self.init_processes(test_queue)
+    results = self.collect_results()
+    return self.combine_results(result, results)
+
+  def create_test_queue(self):
+    test_queue = multiprocessing.Queue()
+    for test in self.reversed_tests():
+      test_queue.put(test)
+    return test_queue
+
+  def reversed_tests(self):
+    """A list of this suite's tests in reverse order.
+
+    Many of the tests in test_core are intentionally named so that long tests
+    fall toward the end of the alphabet (e.g. test_the_bullet). Tests are
+    loaded in alphabetical order, so here we reverse that in order to start
+    running longer tasks earlier, which should lead to better core utilization.
+
+    Future work: measure slowness of tests and sort accordingly.
+    """
+    tests = []
+    for test in self:
+      tests.append(test)
+    tests.sort(key=lambda test: str(test))
+    return tests[::-1]
+
+  def init_processes(self, test_queue):
+    self.processes = []
+    self.result_queue = multiprocessing.Queue()
+    for i in xrange(num_cores()):
+      p = multiprocessing.Process(target=g_testing_thread,
+                                  args=(test_queue, self.result_queue))
+      p.start()
+      self.processes.append(p)
+
+  def collect_results(self):
+    buffered_results = []
+    while len(self.processes) > 0:
+      res = get_from_queue(self.result_queue)
+      if res is not None:
+        buffered_results.append(res)
+      else:
+        self.clear_finished_processes()
+    return buffered_results
+
+  def clear_finished_processes(self):
+    self.processes = filter(lambda p: p.is_alive(), self.processes)
+
+  def combine_results(self, result, buffered_results):
+    print
+    print 'DONE: combining results on main thread'
+    print
+    # Sort the results back into alphabetical order. Running the tests in
+    # parallel causes mis-orderings, this makes the results more readable.
+    results = sorted(buffered_results, key=lambda res:str(res.test))
+    for r in results:
+      r.updateResult(result)
+    return result
+
+
+class BufferedParallelTestResult(object):
+  """A picklable struct used to communicate test results across processes
+
+  Fulfills the interface for unittest.TestResult
+  """
+  def __init__(self):
+    self.buffered_result = None
+
+  @property
+  def test(self):
+    return self.buffered_result.test
+
+  def updateResult(self, result):
+    result.startTest(self.test)
+    self.buffered_result.updateResult(result)
+    result.stopTest(self.test)
+
+  def startTest(self, test):
+    pass
+  def stopTest(self, test):
+    pass
+
+  def addSuccess(self, test):
+    print >> sys.stderr, test, '... ok'
+    self.buffered_result = BufferedTestSuccess(test)
+
+  def addFailure(self, test, err):
+    print >> sys.stderr, test, '... FAIL'
+    self.buffered_result = BufferedTestFailure(test, err)
+
+  def addError(self, test, err):
+    print >> sys.stderr, test, '... ERROR'
+    self.buffered_result = BufferedTestError(test, err)
+
+
+class BufferedTestBase(object):
+  """Abstract class that holds test result data, split by type of result."""
+  def __init__(self, test, err = None):
+    self.test = test
+    if err:
+      exctype, value, tb = err
+      if exctype == subprocess.CalledProcessError:
+        # multiprocess.Queue can't serialize a subprocess.CalledProcessError.
+        # This is a bug in python 2.7 (https://bugs.python.org/issue9400)
+        exctype = Exception
+        value = Exception(str(value))
+      self.error = exctype, value, FakeTraceback(tb)
+
+  def updateResult(self, result):
+    assert False, 'Base class should not be used directly'
+
+
+class BufferedTestSuccess(BufferedTestBase):
+  def updateResult(self, result):
+    result.addSuccess(self.test)
+
+
+class BufferedTestFailure(BufferedTestBase):
+  def updateResult(self, result):
+    result.addFailure(self.test, self.error)
+
+
+class BufferedTestError(BufferedTestBase):
+  def updateResult(self, result):
+    result.addError(self.test, self.error)
+
+
+class FakeTraceback(object):
+  """A fake version of a trackeback object that is picklable across processes.
+
+  Python's traceback objects contain hidden stack information that isn't able
+  to be pickled. Further, traceback objects aren't constructable from Python,
+  so we need a dummy object that fulfils its interface.
+
+  The fields we expose are exactly those which are used by
+  unittest.TextTestResult to show a text representation of a traceback. Any
+  other use is not intended.
+  """
+
+  def __init__(self, tb):
+    self.tb_frame = FakeFrame(tb.tb_frame)
+    self.tb_lineno = tb.tb_lineno
+    self.tb_next = FakeTraceback(tb.tb_next) if tb.tb_next is not None else None
+class FakeFrame(object):
+  def __init__(self, f):
+    self.f_code = FakeCode(f.f_code)
+    # f.f_globals is not picklable, not used in stack traces, and needs to be iterable
+    self.f_globals = []
+class FakeCode(object):
+  def __init__(self, co):
+    self.co_filename = co.co_filename
+    self.co_name = co.co_name
+
+
+def num_cores():
+  emcc_cores = os.environ.get('PARALLEL_SUITE_EMCC_CORES') or os.environ.get('EMCC_CORES')
+  if emcc_cores:
+    return int(emcc_cores)
+  return multiprocessing.cpu_count()
+
+
+def get_from_queue(queue):
+  try:
+    return queue.get(True, 0.1)
+  except Queue.Empty:
+    pass
+  return None

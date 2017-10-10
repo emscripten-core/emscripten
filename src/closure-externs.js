@@ -849,4 +849,173 @@ SIMD.Bool16x8.xor = function() {};
 SIMD.Bool32x4.xor = function() {};
 SIMD.Bool64x2.xor = function() {};
 
+SIMD.Float32x4.load1 = function() {};
+SIMD.Float32x4.load2 = function() {};
+SIMD.Float32x4.load3 = function() {};
+SIMD.Float32x4.load4 = function() {};
+SIMD.Float32x4.store1 = function() {};
+SIMD.Float32x4.store2 = function() {};
+SIMD.Float32x4.store3 = function() {};
+SIMD.Float32x4.store4 = function() {};
+
+SIMD.Int32x4.load1 = function() {};
+SIMD.Int32x4.load2 = function() {};
+SIMD.Int32x4.load3 = function() {};
+SIMD.Int32x4.load4 = function() {};
+SIMD.Int32x4.store1 = function() {};
+SIMD.Int32x4.store2 = function() {};
+SIMD.Int32x4.store3 = function() {};
+SIMD.Int32x4.store4 = function() {};
+
+SIMD.Uint32x4.load1 = function() {};
+SIMD.Uint32x4.load2 = function() {};
+SIMD.Uint32x4.load3 = function() {};
+SIMD.Uint32x4.load4 = function() {};
+SIMD.Uint32x4.store1 = function() {};
+SIMD.Uint32x4.store2 = function() {};
+SIMD.Uint32x4.store3 = function() {};
+SIMD.Uint32x4.store4 = function() {};
+
+SIMD.bool64x2.anyTrue = function() {};
+SIMD.bool32x4.anyTrue = function() {};
+SIMD.bool16x8.anyTrue = function() {};
+SIMD.bool8x16.anyTrue = function() {};
+
+SIMD.Float32x4.fromBool64x2Bits = function() {};
+SIMD.Float64x2.fromBool64x2Bits = function() {};
+SIMD.Int8x16.fromBool64x2Bits = function() {};
+SIMD.Int16x8.fromBool64x2Bits = function() {};
+SIMD.Int32x4.fromBool64x2Bits = function() {};
+SIMD.Uint8x16.fromBool64x2Bits = function() {};
+SIMD.Uint16x8.fromBool64x2Bits = function() {};
+SIMD.Uint32x4.fromBool64x2Bits = function() {};
+SIMD.Bool8x16.fromBool64x2Bits = function() {};
+SIMD.Bool16x8.fromBool64x2Bits = function() {};
+SIMD.Bool32x4.fromBool64x2Bits = function() {};
+SIMD.Bool64x2.fromBool64x2Bits = function() {};
+
+SIMD.Float32x4.fromFloat64x2 = function() {};
+SIMD.Float64x2.fromFloat64x2 = function() {};
+SIMD.Int8x16.fromFloat64x2 = function() {};
+SIMD.Int16x8.fromFloat64x2 = function() {};
+SIMD.Int32x4.fromFloat64x2 = function() {};
+SIMD.Uint8x16.fromFloat64x2 = function() {};
+SIMD.Uint16x8.fromFloat64x2 = function() {};
+SIMD.Uint32x4.fromFloat64x2 = function() {};
+SIMD.Bool8x16.fromFloat64x2 = function() {};
+SIMD.Bool16x8.fromFloat64x2 = function() {};
+SIMD.Bool32x4.fromFloat64x2 = function() {};
+SIMD.Bool64x2.fromFloat64x2 = function() {};
+
 var GLctx = {};
+
+/**
+ * @const
+ */
+var WebAssembly = {};
+/**
+ * @constructor
+ * @param {!BufferSource} bytes
+ */
+WebAssembly.Module = function(bytes) {};
+/** 
+ * @constructor
+ * @param {!WebAssembly.Module} moduleObject
+ * @param {Object=} importObject
+ */
+WebAssembly.Instance = function(moduleObject, importObject) {};
+/** @typedef {{initial:number, maximum:(number|undefined)}} */
+var MemoryDescriptor;
+/**
+ * @constructor
+ * @param {MemoryDescriptor} memoryDescriptor
+ */
+WebAssembly.Memory = function(memoryDescriptor) {};
+/** @typedef {{element:string, initial:number, maximum:(number|undefined)}} */
+var TableDescriptor;
+/**
+ * @constructor
+ * @param {TableDescriptor} tableDescriptor
+ */
+WebAssembly.Table = function(tableDescriptor) {};
+/**
+ * @constructor
+ * @extends {Error}
+ */
+WebAssembly.CompileError = function() {};
+/**
+ * @constructor
+ * @extends {Error}
+ */
+WebAssembly.LinkError = function() {};
+/**
+ * @constructor
+ * @extends {Error}
+ */
+WebAssembly.RuntimeError = function() {};
+/**
+ * Note: Closure compiler does not support function overloading, omit this overload for now.
+ * {function(!WebAssembly.Module, Object=):!Promise<!WebAssembly.Instance>}
+ */
+/**
+ * @param {!BufferSource} moduleObject
+ * @param {Object=} importObject
+ * @return {!Promise<{module:WebAssembly.Module, instance:WebAssembly.Instance}>}
+ */
+WebAssembly.instantiate = function(moduleObject, importObject) {};
+/**
+ * @param {!BufferSource} bytes
+ * @return {!Promise<!WebAssembly.Module>}
+ */
+WebAssembly.compile = function(bytes) {};
+/**
+ * @param {!BufferSource} bytes
+ * @return {boolean}
+ */
+WebAssembly.validate = function(bytes) {};
+/**
+ * @param {!WebAssembly.Module} moduleObject
+ * @return {!Array<{name:string, kind:string}>}
+ */
+WebAssembly.Module.exports = function(moduleObject) {};
+/** 
+ * @param {!WebAssembly.Module} moduleObject
+ * @return {!Array<{module:string, name:string, kind:string}>}
+ */
+WebAssembly.Module.imports = function(moduleObject) {};
+/**
+ * @param {!WebAssembly.Module} moduleObject
+ * @param {string} sectionName
+ * @return {!Array<!ArrayBuffer>}
+ */
+WebAssembly.Module.customSections = function(moduleObject, sectionName) {};
+/** @dict */
+WebAssembly.Instance.prototype.exports;
+/** 
+ * @param {number} delta
+ * @return {number}
+ */
+WebAssembly.Memory.prototype.grow = function(delta) {};
+/**
+ * @type {!ArrayBuffer}
+ */
+WebAssembly.Memory.prototype.buffer;
+/**
+ * @param {number} delta
+ * @return {number}
+ */
+WebAssembly.Table.prototype.grow = function(delta) {};
+/**
+ * @type {number}
+ */
+WebAssembly.Table.prototype.length;
+/**
+ * @param {number} index
+ * @return {function(...)}
+ */
+WebAssembly.Table.prototype.get = function(index) {};
+/**
+ * @param {number} index
+ * @param {?function(...)} value
+ */
+WebAssembly.Table.prototype.set = function(index, value) {};

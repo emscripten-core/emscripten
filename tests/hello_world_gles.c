@@ -641,7 +641,7 @@ gears_idle(void)
 #ifdef TEST_MEMORYPROFILER_ALLOCATIONS_MAP
         result = 0;
 #endif
-        REPORT_RESULT();
+        REPORT_RESULT(result);
       }
 #endif
    }

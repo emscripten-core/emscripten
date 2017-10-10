@@ -98,7 +98,7 @@ extern ALboolean alIsExtensionPresent(const ALchar *extname);
 extern ALboolean alIsSource(ALuint source);
 extern ALdouble alGetDouble(ALenum param);
 extern ALenum alGetEnumValue(const ALchar *ename);
-extern ALenum alGetError();
+extern ALenum alGetError(void);
 extern ALfloat alGetFloat(ALenum param);
 extern ALint alGetInteger(ALenum param);
 extern const ALchar *alGetString(ALenum param);

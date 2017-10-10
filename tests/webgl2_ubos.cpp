@@ -35,7 +35,7 @@ int main()
   {
     printf("Skipped: WebGL 2 is not supported.\n");
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
     return 0;
   }
@@ -43,6 +43,7 @@ int main()
 
   const char *vertexShader =
     "#version 300 es\n"
+    "uniform mat4 a;\n"
     "uniform Block1a {\n"
     "  uniform mat4 var1;\n"
     "  uniform vec4 variable2;\n"
@@ -52,7 +53,7 @@ int main()
     "  uniform vec4 variable2;\n"
     "} block2dddd;\n"
     "void main() {\n"
-    "  gl_Position = block1bb.var1*block1bb.variable2 + block2dddd.var1*block2dddd.variable2;\n"
+    "  gl_Position = a * block1bb.var1*block1bb.variable2 + block2dddd.var1*block2dddd.variable2;\n"
     "}\n";
 
     const char *fragmentShader = 
@@ -91,11 +92,11 @@ int main()
   if (!ok) {
     printf("Shader compilation error with fragment\n");
     GLint infoLen = 0;
-    glGetShaderiv (vs, GL_INFO_LOG_LENGTH, &infoLen);
+    glGetShaderiv (fs, GL_INFO_LOG_LENGTH, &infoLen);
     if (infoLen > 1)
     {
        char* infoLog = (char *)malloc(sizeof(char) * infoLen+1);
-       glGetShaderInfoLog(vs, infoLen, NULL, infoLog);
+       glGetShaderInfoLog(fs, infoLen, NULL, infoLog);
        printf("Error compiling shader:\n%s\n", infoLog);            
     }
   }
@@ -112,6 +113,30 @@ int main()
   glGetProgramiv(program, GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH, &maxLength);
   printf("GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH: %d\n", maxLength);
   assert(maxLength == 12);
+  
+  GLint numActiveUniforms = -1;
+  glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &numActiveUniforms);
+  printf("GL_ACTIVE_UNIFORMS: %d\n", numActiveUniforms);
+  assert(numActiveUniforms == 7);
+
+  for(int i = 0; i < numActiveUniforms; ++i)
+  {
+    char str[256] = {};
+    GLsizei length = -1;
+    GLint size = -1;
+    GLenum type = -1;
+    glGetActiveUniform(program, i, 255, &length, &size, &type, str);
+    
+    GLint loc = glGetUniformLocation(program, str);
+    
+    GLint indx = -1;
+    glGetActiveUniformsiv(program, 1, (GLuint*)&i, GL_UNIFORM_BLOCK_INDEX, &indx);
+
+    printf("Active uniform at index %d: %s\n", i, str);
+    printf("glGetUniformLocation = %d \t GL_UNIFORM_BLOCK_INDEX = %d \t size = %d \t type = %d\n", loc, indx, size, type);
+
+    assert((loc == -1) != (indx == -1)); // one of them must be true
+  }
 
   GLint numActiveUniformBlocks = -1;
   glGetProgramiv(program, GL_ACTIVE_UNIFORM_BLOCKS, &numActiveUniformBlocks);
@@ -141,7 +166,7 @@ int main()
   }
 
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 #endif
   return 0;
 }

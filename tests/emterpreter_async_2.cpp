@@ -28,6 +28,6 @@ int main() {
   volatile int x = 100;
   volatile int result = calc(x);
   printf("calc(%d) = %d\n", x, result);
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }
 
