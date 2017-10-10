@@ -7033,7 +7033,7 @@ var LibraryGL = {
     GLImmediate.setClientAttribute(GLImmediate.NORMAL, 3, type, stride, pointer);
 #if GL_FFP_ONLY
     if (GL.currArrayBuffer) {
-      GLctx.vertexAttribPointer(GLImmediate.NORMAL, size, type, true, stride, pointer);
+      GLctx.vertexAttribPointer(GLImmediate.NORMAL, 3, type, true, stride, pointer);
     }
 #endif
   },
