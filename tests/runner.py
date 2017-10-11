@@ -108,8 +108,7 @@ test_modes = [
   'asm3',
   'asm2f',
   'asm2g',
-  'asm2i',
-  'asm2nn'
+  'asm2i'
 ]
 nondefault_test_modes = [
   'binaryen0',
