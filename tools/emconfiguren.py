@@ -1,7 +1,8 @@
 #!/usr/bin/env python2
 
+from __future__ import print_function
 import sys
-print >> sys.stderr, '\n\nemconfiguren.py is deprecated! use "emconfigure"\n\n'
+print('\n\nemconfiguren.py is deprecated! use "emconfigure"\n\n', file=sys.stderr)
 
 '''
 This is a helper script for emmaken.py. See docs in that file for more info.

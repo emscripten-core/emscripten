@@ -23,6 +23,7 @@ emcc can be influenced by a few environment variables:
   EMMAKEN_COMPILER - The compiler to be used, if you don't want the default clang.
 '''
 
+from __future__ import print_function
 from tools.toolchain_profiler import ToolchainProfiler, exit
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
@@ -328,13 +329,13 @@ def run():
     # An online HTML version (which may be of a different version of Emscripten)
     #    is up at http://kripken.github.io/emscripten-site/docs/tools_reference/emcc.html
 
-    print '''%s
+    print('''%s
 
 ------------------------------------------------------------------
 
 emcc: supported targets: llvm bitcode, javascript, NOT elf
 (autoconf likes to see elf above to enable shared object support)
-''' % (open(shared.path_from_root('site', 'build', 'text', 'docs', 'tools_reference', 'emcc.txt')).read())
+''' % (open(shared.path_from_root('site', 'build', 'text', 'docs', 'tools_reference', 'emcc.txt')).read()))
     exit(0)
 
   elif sys.argv[1] == '--version':
@@ -347,22 +348,22 @@ emcc: supported targets: llvm bitcode, javascript, NOT elf
       pass
     finally:
       os.chdir(here)
-    print '''emcc (Emscripten gcc/clang-like replacement) %s (%s)
+    print('''emcc (Emscripten gcc/clang-like replacement) %s (%s)
 Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  ''' % (shared.EMSCRIPTEN_VERSION, revision)
+  ''' % (shared.EMSCRIPTEN_VERSION, revision))
     exit(0)
 
   elif len(sys.argv) == 2 and sys.argv[1] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
-    print 'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION
+    print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION)
     code = subprocess.call([shared.CLANG, '-v'])
     shared.check_sanity(force=True)
     exit(code)
 
   elif '-dumpmachine' in sys.argv:
-    print shared.get_llvm_target()
+    print(shared.get_llvm_target())
     exit(0)
 
   elif '--cflags' in sys.argv:
@@ -377,7 +378,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       line = re.search('running: (.*)', lines[0]).group(1)
       parts = shlex.split(line.replace('\\', '\\\\'))
       parts = filter(lambda x: x != '-c' and x != '-o' and input_file not in x and temp_target not in x and '-emit-llvm' not in x, parts)
-      print ' '.join(shared.Building.doublequote_spaces(parts[1:]))
+      print(' '.join(shared.Building.doublequote_spaces(parts[1:])))
     exit(0)
 
   def is_minus_s_for_emcc(newargs, i):
@@ -879,7 +880,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             value = '"' + value + '"'
         else:
           value = value.replace('\\', '\\\\')
-        exec 'shared.Settings.' + key + ' = ' + value in globals(), locals()
+        exec('shared.Settings.' + key + ' = ' + value, globals(), locals())
         if key == 'EXPORTED_FUNCTIONS':
           # used for warnings in emscripten.py
           shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = original_exported_response or shared.Settings.EXPORTED_FUNCTIONS[:]
@@ -2189,7 +2190,7 @@ def separate_asm_js(final, asm_target):
   # extra only-my-code logic
   if shared.Settings.ONLY_MY_CODE:
     temp = asm_target + '.only.js'
-    print jsrun.run_js(shared.path_from_root('tools', 'js-optimizer.js'), shared.NODE_JS, args=[asm_target, 'eliminateDeadGlobals', 'last', 'asm'], stdout=open(temp, 'w'))
+    print(jsrun.run_js(shared.path_from_root('tools', 'js-optimizer.js'), shared.NODE_JS, args=[asm_target, 'eliminateDeadGlobals', 'last', 'asm'], stdout=open(temp, 'w')))
     shutil.move(temp, asm_target)
 
 

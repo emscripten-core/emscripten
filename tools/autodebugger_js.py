@@ -4,6 +4,7 @@ Processes a C source file, adding debugging information.
 Similar to autodebugger.py, but runs on .js files.
 '''
 
+from __future__ import print_function
 import os, sys, re
 
 filename = sys.argv[1]
@@ -41,7 +42,7 @@ for i in range(len(lines)):
       left, right = lines[i].split(' = ')
       lines[i] += ''' print("%s = " + %s);''' % (left, left)
 
-print '\n'.join(lines)
+print('\n'.join(lines))
 
-print >> sys.stderr, 'Success.'
+print('Success.', file=sys.stderr)
 

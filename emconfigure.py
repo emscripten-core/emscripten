@@ -17,6 +17,7 @@ Relevant defines:
   CONFIGURE_CC - see emcc
 '''
 
+from __future__ import print_function
 import os, sys
 from tools import shared
 from subprocess import CalledProcessError
@@ -26,7 +27,7 @@ from subprocess import CalledProcessError
 #
 def run():
   if len(sys.argv) < 2 or ('configure' not in sys.argv[1] and 'cmake' not in sys.argv[1]):
-    print >> sys.stderr, '''
+    print('''
   emconfigure is a helper for configure, setting various environment
   variables so that emcc etc. are used. Typical usage:
 
@@ -34,7 +35,7 @@ def run():
 
   (but you can run any command instead of configure)
 
-  '''
+  ''', file=sys.stderr)
   elif 'cmake' in sys.argv[1]:
     node_js = shared.NODE_JS
     if type(node_js) is list: node_js = node_js[0]

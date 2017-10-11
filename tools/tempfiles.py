@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import shutil
 import tempfile
@@ -67,7 +68,7 @@ class TempFiles(object):
   def clean(self):
     if self.save_debug_files:
       import sys
-      print >> sys.stderr, 'not cleaning up temp files since in debug-save mode, see them in %s' % (self.tmp,)
+      print('not cleaning up temp files since in debug-save mode, see them in %s' % (self.tmp,), file=sys.stderr)
       return
     for filename in self.to_clean:
       try_delete(filename)

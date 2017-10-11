@@ -1,4 +1,5 @@
 
+from __future__ import print_function
 import os, sys, subprocess, multiprocessing, re, string, json, shutil, logging, traceback
 import shared
 from js_optimizer import *
@@ -36,10 +37,10 @@ def run_on_chunk(command):
     if os.environ.get('EMCC_SAVE_OPT_TEMP') and os.environ.get('EMCC_SAVE_OPT_TEMP') != '0':
       saved = 'save_' + os.path.basename(filename)
       while os.path.exists(saved): saved = 'input' + str(int(saved.replace('input', '').replace('.txt', ''))+1) + '.txt'
-      print >> sys.stderr, 'running DFE command', ' '.join(map(lambda c: c if c != filename else saved, command))
+      print('running DFE command', ' '.join(map(lambda c: c if c != filename else saved, command)), file=sys.stderr)
       shutil.copyfile(filename, os.path.join(shared.get_emscripten_temp_dir(), saved))
 
-    if shared.EM_BUILD_VERBOSE_LEVEL >= 3: print >> sys.stderr, 'run_on_chunk: ' + str(command)
+    if shared.EM_BUILD_VERBOSE_LEVEL >= 3: print('run_on_chunk: ' + str(command), file=sys.stderr)
 
     proc = subprocess.Popen(command, stdout=subprocess.PIPE)
     output = proc.communicate()[0]
@@ -52,7 +53,7 @@ def run_on_chunk(command):
     f = open(filename, 'wb')
     f.write(output)
     f.close()
-    if DEBUG and not shared.WINDOWS: print >> sys.stderr, '.' # Skip debug progress indicator on Windows, since it doesn't buffer well with multiple threads printing to console.
+    if DEBUG and not shared.WINDOWS: print('.', file=sys.stderr) # Skip debug progress indicator on Windows, since it doesn't buffer well with multiple threads printing to console.
     return filename
   except KeyboardInterrupt:
     # avoid throwing keyboard interrupts from a child process
@@ -60,10 +61,10 @@ def run_on_chunk(command):
   except (TypeError, ValueError) as e:
     formatted_lines = traceback.format_exc().splitlines()
 
-    print >> sys.stderr, ">>>>>>>>>>>>>>>>>"
+    print(">>>>>>>>>>>>>>>>>", file=sys.stderr)
     for formatted_line in formatted_lines:
-        print >> sys.stderr, formatted_line
-    print >> sys.stderr, "<<<<<<<<<<<<<<<<<"
+        print(formatted_line, file=sys.stderr)
+    print("<<<<<<<<<<<<<<<<<", file=sys.stderr)
 
     raise
 
@@ -75,11 +76,11 @@ def dump_equivalent_functions(passed_in_filename, global_data):
   # If we are running more than one pass, then we want to merge
   # all the hash infos into one
   if os.path.isfile(equivalent_fn_json_file):
-    print >> sys.stderr, "Merging data from current pass for {} into {}".format(passed_in_filename, equivalent_fn_json_file)
+    print("Merging data from current pass for {} into {}".format(passed_in_filename, equivalent_fn_json_file), file=sys.stderr)
     with open(equivalent_fn_json_file) as data_file:
       equivalent_fn_info = json.load(data_file)
   else:
-    print >> sys.stderr, "Writing equivalent functions for {} to {}".format(passed_in_filename, equivalent_fn_json_file)
+    print("Writing equivalent functions for {} to {}".format(passed_in_filename, equivalent_fn_json_file), file=sys.stderr)
 
   # Merge the global data's fn_hash_to_fn_name structure into
   # the equivalent function info hash.
@@ -222,7 +223,7 @@ def run_on_js(filename, gen_hash_info=False):
   chunks = shared.chunkify(funcs, chunk_size)
 
   chunks = filter(lambda chunk: len(chunk) > 0, chunks)
-  if DEBUG and len(chunks) > 0: print >> sys.stderr, 'chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks))
+  if DEBUG and len(chunks) > 0: print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks)), file=sys.stderr)
   funcs = None
 
   if len(chunks) > 0:
@@ -245,17 +246,17 @@ def run_on_js(filename, gen_hash_info=False):
     commands = map(lambda filename: js_engine + [DUPLICATE_FUNCTION_ELIMINATOR, filename, '--gen-hash-info' if gen_hash_info else '--use-hash-info', '--no-minimize-whitespace'], filenames)
 
     if DEBUG and commands is not None:
-      print >> sys.stderr, [' '.join(command if command is not None else '(null)') for command in commands]
+      print([' '.join(command if command is not None else '(null)') for command in commands], file=sys.stderr)
 
     cores = min(cores, len(filenames))
     if len(chunks) > 1 and cores >= 2:
       # We can parallelize
-      if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size/(1024*1024.))
+      if DEBUG: print('splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size/(1024*1024.)), file=sys.stderr)
       pool = shared.Building.get_multiprocessing_pool()
       filenames = pool.map(run_on_chunk, commands, chunksize=1)
     else:
       # We can't parallize, but still break into chunks to avoid uglify/node memory issues
-      if len(chunks) > 1 and DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks' % (len(chunks))
+      if len(chunks) > 1 and DEBUG: print('splitting up js optimization into %d chunks' % (len(chunks)), file=sys.stderr)
       filenames = [run_on_chunk(command) for command in commands]
   else:
     filenames = []
@@ -316,7 +317,7 @@ def save_temp_file(file_to_process):
     if not os.path.exists(os.path.dirname(destinationFile)):
       os.makedirs(os.path.dirname(destinationFile))
 
-    print >> sys.stderr, "Copying {} to {}".format(file_to_process, destinationFile)
+    print("Copying {} to {}".format(file_to_process, destinationFile), file=sys.stderr)
     shutil.copyfile(file_to_process, destinationFile)
 
 def get_func_names(javascript_file):
@@ -342,13 +343,13 @@ def eliminate_duplicate_funcs(file_name):
     # Remove previous log file if it exists
     equivalent_fn_json_file = file_name + ".equivalent_functions.json"
     if os.path.isfile(equivalent_fn_json_file):
-      print >> sys.stderr, "Deleting old json: " + equivalent_fn_json_file
+      print("Deleting old json: " + equivalent_fn_json_file, file=sys.stderr)
       os.remove(equivalent_fn_json_file)
 
     old_funcs = get_func_names(file_name)
 
   for pass_num in range(shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS_PASSES):
-    if DEBUG: print >> sys.stderr, "[PASS {}]: eliminating duplicate functions in: {}.".format(pass_num, file_name)
+    if DEBUG: print("[PASS {}]: eliminating duplicate functions in: {}.".format(pass_num, file_name), file=sys.stderr)
 
     # Generate the JSON for the equivalent hash first
     processed_file = run_on_js(filename=file_name, gen_hash_info=True)
@@ -367,7 +368,7 @@ def eliminate_duplicate_funcs(file_name):
     new_funcs = get_func_names(file_name)
 
     eliminated_funcs_file = file_name + ".eliminated_functions.json"
-    print >> sys.stderr, "Writing eliminated functions to file: {}".format(eliminated_funcs_file)
+    print("Writing eliminated functions to file: {}".format(eliminated_funcs_file), file=sys.stderr)
 
     with open(eliminated_funcs_file, 'w') as fout:
       eliminated_functions = list(set(old_funcs)-set(new_funcs))

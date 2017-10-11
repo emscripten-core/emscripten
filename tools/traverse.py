@@ -4,6 +4,7 @@
 simple tool to run emcc and clang on C testcases each in a separate subdir of the current dir
 '''
 
+from __future__ import print_function
 import os, sys
 
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -16,7 +17,7 @@ from tools.shared import *
 curr = os.getcwd()
 
 for d in os.listdir(curr):
-  print '(' + d + ') ',
+  print('(' + d + ') ', end=' ')
   os.chdir(curr)
   if os.path.isdir(d):
     os.chdir(d)
@@ -35,16 +36,16 @@ for d in os.listdir(curr):
         n3 = execute(['./a.out'], stdout=PIPE)[0]
 
         if js == n1:
-          print 'ok'
+          print('ok')
         elif js == n2:
-          print 'emcc and clang -O2 both equally wrong'
+          print('emcc and clang -O2 both equally wrong')
         elif js == n3:
-          print 'emcc agrees with gcc, so probably ok'
+          print('emcc agrees with gcc, so probably ok')
         else:
-          print
-          print 'js  ', js,
-          print 'c0  ', n1,
-          print 'c2  ', n2,
-          print 'g   ', n3,
-          print 'fail!!!', d
+          print()
+          print('js  ', js, end=' ')
+          print('c0  ', n1, end=' ')
+          print('c2  ', n2, end=' ')
+          print('g   ', n3, end=' ')
+          print('fail!!!', d)
 

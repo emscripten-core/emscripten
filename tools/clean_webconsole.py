@@ -2,6 +2,7 @@
 Removes timestamp and line info from a webgl log
 '''
 
+from __future__ import print_function
 import os, sys, re
 
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -27,7 +28,7 @@ for line in lines:
     line = line[15:]
   line = line.split(' @ ')[0]
   line = re.sub('(0x[\dabcdef]+)', lambda hexx: reps[nice(hexx.group(0))] if nice(hexx.group(0)) in reps else nice(hexx.group(0)), line)
-  print line
+  print(line)
 
 #for i in range(100):
 #  print

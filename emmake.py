@@ -18,6 +18,7 @@ that configure tests pass. emmake uses Emscripten to
 generate JavaScript.
 '''
 
+from __future__ import print_function
 import os, sys
 from tools import shared
 from subprocess import CalledProcessError
@@ -27,7 +28,7 @@ from subprocess import CalledProcessError
 #
 def run():
   if len(sys.argv) < 2 or sys.argv[1] != 'make':
-    print >> sys.stderr, '''
+    print('''
   emmake is a helper for make, setting various environment
   variables so that emcc etc. are used. Typical usage:
 
@@ -35,7 +36,7 @@ def run():
 
   (but you can run any command instead of make)
 
-  '''
+  ''', file=sys.stderr)
 
   try:
     shared.Building.make(sys.argv[1:])

@@ -5,6 +5,7 @@ WebIDL binder
 http://kripken.github.io/emscripten-site/docs/porting/connecting_cpp_and_javascript/WebIDL-Binder.html
 '''
 
+from __future__ import print_function
 import os, sys
 
 import shared
@@ -23,7 +24,7 @@ CHECKS = os.environ.get('IDL_CHECKS') or 'DEFAULT'
 # DEBUG=1 will print debug info in render_function
 DEBUG = os.environ.get('IDL_VERBOSE') is '1'
 
-if DEBUG: print "Debug print ON, CHECKS=%s" % CHECKS
+if DEBUG: print("Debug print ON, CHECKS=%s" % CHECKS)
 
 class Dummy(object):
   def __init__(self, init):
@@ -340,13 +341,13 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
   all_args = sigs.get(max_args)
 
   if DEBUG:
-    print 'renderfunc', class_name, func_name, sigs.keys(), return_type, constructor
+    print('renderfunc', class_name, func_name, sigs.keys(), return_type, constructor)
     for i in range(max_args):
       a = all_args[i]
       if isinstance(a, WebIDL.IDLArgument):
-        print ("  arg%d" % i), a.identifier, a.type, a.optional
+        print(("  arg%d" % i), a.identifier, a.type, a.optional)
       else:
-        print "  arg%d" % i
+        print("  arg%d" % i)
 
   # JS
 
