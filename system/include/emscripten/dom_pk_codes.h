@@ -168,8 +168,14 @@ in Emscripten root directory to regenerate this file. */
 #define DOM_PK_LAUNCH_MEDIA_PLAYER  0xE06D /* "LaunchMediaPlayer"  */
 #define DOM_PK_MEDIA_SELECT         0xE06D /* "MediaSelect"        */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 /* Maps the EmscriptenKeyboardEvent::code field from emscripten/html5.h to one of the DOM_PK codes above. */
 DOM_PK_CODE_TYPE emscripten_compute_dom_pk_code(const char *keyCodeString);
 
 /* Returns the string representation of the given key code ID. Useful for debug printing. */
 const char *emscripten_dom_pk_code_to_string(DOM_PK_CODE_TYPE code);
+#ifdef __cplusplus
+}
+#endif

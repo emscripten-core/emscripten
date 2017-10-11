@@ -3279,11 +3279,12 @@ int main() {
   def test_on_abort(self):
     expected_output = 'Module.onAbort was called'
 
-    def add_on_abort_and_verify():
+    def add_on_abort_and_verify(extra=''):
       with open('a.out.js') as f:
         js = f.read()
       with open('a.out.js', 'w') as f:
         f.write("var Module = { onAbort: function() { console.log('%s') } };\n" % expected_output)
+        f.write(extra + '\n')
         f.write(js)
       self.assertContained(expected_output, run_js('a.out.js', assert_returncode=None))
 
@@ -3348,6 +3349,11 @@ int main() {
     subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
     os.remove('a.out.wasm') # trigger onAbort by intentionally causing startup to fail
     add_on_abort_and_verify()
+
+    # test an abort due to lack of a working binaryen method
+
+    subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-s', 'BINARYEN_METHOD="asmjs"'])
+    add_on_abort_and_verify(extra='Module.asm = "string-instead-of-code, asmjs method will fail";')
 
   def test_no_exit_runtime(self):
     open('code.cpp', 'w').write(r'''
