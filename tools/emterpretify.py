@@ -991,7 +991,9 @@ __ATPRERUN__.push(function() {
 
     js += ['''
   var bytecodeFile = Module['emterpreterFile'];
-  assert(bytecodeFile instanceof ArrayBuffer, 'bad or missing emterpreter file. if you compiled to JS (and not HTML) make sure you set Module["emterpreterFile"]');
+  if (!(bytecodeFile instanceof ArrayBuffer)) {
+    throw "bad or missing emterpreter file. If you compiled to JS (and not HTML) make sure you set Module['emterpreterFile']";
+  }
   var codeSize = %d;
   HEAPU8.set(new Uint8Array(bytecodeFile).subarray(0, codeSize), eb);
   assert(HEAPU8[eb] === %d);
