@@ -371,7 +371,7 @@ def get_llc_targets():
     pre, targets = llc_version_info.split('Registered Targets:')
     return targets
   except Exception, e:
-    return '(no targets could be identified: ' + str(e) + ')'
+    return '(no targets could be identified: ' + llc_version_info + ' : ' + str(e) + ')'
 
 def has_asm_js_target(targets):
   return 'js' in targets and 'JavaScript (asm.js, emscripten) backend' in targets
