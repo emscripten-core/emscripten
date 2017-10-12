@@ -497,6 +497,7 @@ namespace emscripten {
     std::vector<T> vecFromJSArray(val v) {
         auto l = v["length"].as<unsigned>();
         std::vector<T> rv;
+        rv.reserve(l);
 
         if (internal::typeSupportsMemoryView<T>()) {
             rv.resize(l);
