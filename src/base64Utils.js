@@ -8,7 +8,7 @@
 
 var keyStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
 
-var atob = atob || function (input) {
+var decodeBase64 = typeof atob === 'function' ? atob : function (input) {
   /**
    * Decodes a base64 string.
    * @param {String} input The string to decode.
@@ -55,7 +55,7 @@ function intArrayFromBase64(s) {
   }
 
   try {
-    var decoded = atob(s);
+    var decoded = decodeBase64(s);
     var bytes = new Uint8Array(decoded.length);
     for (var i = 0 ; i < decoded.length ; ++i) {
       bytes[i] = decoded.charCodeAt(i);
