@@ -56,6 +56,8 @@ Module['instantiateWasm'] = function(info, receiveInstance) {
   // Instantiate from the module posted from the main thread.
   // We can just use sync instantiation in the worker.
   console.log('pthread instantiating');
+  //XXX When https://crbug.com/v8/6895 is fixed, do this instead:
+  // instance = new WebAssembly.Instance(Module['wasmModule'], info);
   instance = new WebAssembly.Instance(Module['wasmModule'], info, buffer);
   receiveInstance(instance);
   return instance.exports;
@@ -74,17 +76,19 @@ this.onmessage = function(e) {
       DYNAMIC_BASE = e.data.DYNAMIC_BASE;
       DYNAMICTOP_PTR = e.data.DYNAMICTOP_PTR;
 
+
       if (e.data.wasmModule) {
-        // XXX https://bugs.chromium.org/p/v8/issues/detail?id=6895
+        // Module and memory were sent from main thread
+        Module['wasmModule'] = e.data.wasmModule;
+        // XXX When https://crbug.com/v8/6895 is fixed, do this instead:
         //Module['wasmMemory'] = e.data.wasmMemory;
+        //buffer = Module['wasmMemory'].buffer;
         buffer = e.data.buffer;
         console.log(e.data.memoryParams);
         Module['wasmMemory'] = new WebAssembly.Memory(e.data.memoryParams);
-        Module['wasmModule'] = e.data.wasmModule;
       } else {
         buffer = e.data.buffer;
       }
-
 
       PthreadWorkerInit = e.data.PthreadWorkerInit;
       if (typeof e.data.urlOrBlob === 'string') {

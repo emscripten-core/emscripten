@@ -1239,9 +1239,10 @@ if (typeof Atomics === 'undefined') {
 }
 
 #else
-// XXX https://bugs.chromium.org/p/v8/issues/detail?id=6895
+// TODO: Something smart about BINARYEN_MEM_MAX. Some default, also rename it.
+// XXX https://crbug.com/v8/6895
 if (!ENVIRONMENT_IS_PTHREAD) {
-  Module['memoryParams'] = { 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE, 'shared': true};
+  Module['memoryParams'] = { 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE, 'shared': true}; // TODO: Remove
   Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE, 'shared': true});
   buffer = Module['wasmMemory'].buffer;
 }
@@ -1269,9 +1270,9 @@ if (Module['buffer']) {
 #if ASSERTIONS
     assert({{{ BINARYEN_MEM_MAX }}} % WASM_PAGE_SIZE == 0);
 #endif
-    Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': {{{ BINARYEN_MEM_MAX }}} / WASM_PAGE_SIZE , 'shared': false});
+    Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': {{{ BINARYEN_MEM_MAX }}} / WASM_PAGE_SIZE});
 #else
-    Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'shared': false});
+    Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE});
 #endif // BINARYEN_MEM_MAX
 #else
     Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE });
@@ -1572,12 +1573,10 @@ if (!ENVIRONMENT_IS_PTHREAD) {
   HEAP32[0] = 0x63736d65; /* 'emsc' */
 #if USE_PTHREADS
 } else {
-  //https://bugs.chromium.org/p/v8/issues/detail?id=6895
   if (HEAP32[0] !== 0x63736d65) throw 'Runtime error: The application has corrupted its heap memory area (address zero)!';
 }
 #endif
 HEAP16[1] = 0x6373;
-//https://bugs.chromium.org/p/v8/issues/detail?id=6895
 if (HEAPU8[2] !== 0x73 || HEAPU8[3] !== 0x63) throw 'Runtime error: expected the system to be little-endian!';
 #endif
 
@@ -1852,7 +1851,7 @@ function addRunDependency(id) {
 #if USE_PTHREADS
   // We should never get here in pthreads (could no-op this out if called in pthreads, but that might indicate a bug in caller side,
   // so good to be very explicit)
-  //assert(!ENVIRONMENT_IS_PTHREAD);
+  assert(!ENVIRONMENT_IS_PTHREAD || id === 'wasm-instantiate');
 #endif
   runDependencies++;
   if (Module['monitorRunDependencies']) {
