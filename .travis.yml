@@ -18,12 +18,6 @@ env:
 - TEST_TARGET="asm3.test_p*"
 - TEST_TARGET="ALL.test_q* ALL.test_r* ALL.test_s*"
 - TEST_TARGET="ALL.test_t* ALL.test_u* ALL.test_v* ALL.test_x* ALL.test_y* ALL.test_z*"
-- TEST_TARGET=binaryen0
-- TEST_TARGET=binaryen1
-- TEST_TARGET=binaryen2
-- TEST_TARGET=binaryen3
-- TEST_TARGET=binaryens
-- TEST_TARGET=binaryenz
 - TEST_TARGET=other
 
 services:
