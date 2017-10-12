@@ -46,7 +46,7 @@ if STDERR_FILE:
 def quoter(settings):
   def quote(prop):
     if settings['USE_CLOSURE_COMPILER'] == 2:
-      return ''.join(map(lambda p: "'" + p + "'", prop.split('.')))
+      return ''.join("'" + p + "'" for p in prop.split('.'))
     else:
       return prop
   return quote
@@ -54,7 +54,7 @@ def quoter(settings):
 def access_quoter(settings):
   def access_quote(prop):
     if settings['USE_CLOSURE_COMPILER'] == 2:
-      return ''.join(map(lambda p: "['" + p + "']", prop.split('.')))
+      return ''.join("['" + p + "']" for p in prop.split('.'))
     else:
       return '.' + prop
   return access_quote
@@ -507,9 +507,9 @@ def update_settings_glue(settings, metadata):
 
   settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
     set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
-      map(lambda x: x[1:], metadata['implementedFunctions'])
+      [x[1:] for x in metadata['implementedFunctions']]
     )
-  ) + map(lambda x: x[1:], metadata['externs'])
+  ) + [x[1:] for x in metadata['externs']]
 
   if metadata['simd']:
     settings['SIMD'] = 1
@@ -539,7 +539,7 @@ def compile_settings(compiler_engine, settings, libraries, temp_files):
 
 
 def memory_and_global_initializers(pre, metadata, mem_init, settings):
-  global_initializers = str(', '.join(map(lambda i: '{ func: function() { %s() } }' % i, metadata['initializers'])))
+  global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
 
   if settings['SIMD'] == 1:
     pre = open(path_from_root(os.path.join('src', 'ecmascript_simd.js'))).read() + '\n\n' + pre
@@ -729,11 +729,10 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
       start = table.index('[')
       end = table.rindex(']')
       body = table[start+1:end].split(',')
-      parsed = map(lambda x: x.strip(), body)
-      for i in range(len(parsed)):
-        if parsed[i] != '0':
+      for i, parsed in enumerate(x.strip() for x in body):
+        if parsed != '0':
           assert i not in function_pointer_targets
-          function_pointer_targets[i] = [sig, str(parsed[i])]
+          function_pointer_targets[i] = [sig, str(parsed)]
 
   def make_table(sig, raw):
     if '[]' in raw: return ('', '') # empty table
@@ -788,7 +787,7 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
           def make_emulated_param(i):
             if i >= len(sig): return shared.JS.make_initializer(proper_sig[i], settings) # extra param, just send a zero
             return shared.JS.make_coercion('p%d' % (i-1), proper_sig[i], settings, convert_from=sig[i])
-          proper_code = proper_target + '(' + ','.join(map(lambda i: make_emulated_param(i+1), range(len(proper_sig)-1))) + ')'
+          proper_code = proper_target + '(' + ','.join([make_emulated_param(i+1) for i in range(len(proper_sig)-1)]) + ')'
           if proper_sig[0] != 'v':
             # proper sig has a return, which the wrapper may or may not use
             proper_code = shared.JS.make_coercion(proper_code, proper_sig[0], settings)
@@ -976,10 +975,7 @@ def global_simd_funcs(access_quote, metadata, settings):
     return ''
 
   def string_contains_any(s, str_list):
-    for sub in str_list:
-      if sub in s:
-        return True
-    return False
+    return any(sub in s for sub in str_list)
 
   nonexisting_simd_symbols = ['Int8x16_fromInt8x16', 'Uint8x16_fromUint8x16', 'Int16x8_fromInt16x8', 'Uint16x8_fromUint16x8', 'Int32x4_fromInt32x4', 'Uint32x4_fromUint32x4', 'Float32x4_fromFloat32x4', 'Float64x2_fromFloat64x2']
   nonexisting_simd_symbols += ['Int32x4_addSaturate', 'Int32x4_subSaturate', 'Uint32x4_addSaturate', 'Uint32x4_subSaturate']
@@ -993,7 +989,7 @@ def global_simd_funcs(access_quote, metadata, settings):
 
   def generate_symbols(types, funcs):
     symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in types for g in funcs]
-    symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), symbols)
+    symbols = [x for x in symbols if not string_contains_any(x, nonexisting_simd_symbols)]
     return ''.join(symbols)
 
   simd_func_text += generate_symbols(simd['int_types'], simd['int_funcs'])
@@ -1732,7 +1728,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
 
   # memory and global initializers
 
-  global_initializers = str(', '.join(map(lambda i: '{ func: function() { %s() } }' % i, metadata['initializers'])))
+  global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
 
   staticbump = metadata['staticBump']
   while staticbump % 16 != 0: staticbump += 1
@@ -2085,7 +2081,7 @@ def add_metadata_from_wast(metadata, wast):
         assert False, 'Unhandled export type "%s"' % export_type
 
   # we emit those ourselves
-  metadata['declares'] = filter(lambda x: not x.startswith('emscripten_asm_const'), metadata['declares'])
+  metadata['declares'] = [x for x in metadata['declares'] if not x.startswith('emscripten_asm_const')]
 
 
 def create_invoke_wrappers(invoke_funcs):
