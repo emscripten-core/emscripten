@@ -1498,7 +1498,7 @@ def create_asm_start_pre(asm_setup, the_global, sending, metadata, settings):
                       'var asm = (function(global, env, buffer) {')
 
   use_asm = "'almost asm';"
-  if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1:
+  if settings['ASM_JS'] == 1:
     use_asm = "'use asm';"
 
   lines = [
