@@ -532,7 +532,8 @@ namespace emscripten {
                     arrayType = "Float64Array";
                     break;
                 default:
-                    throw;
+                    //This should be never reached if the 'typeSupportsMemoryView' function returns true.
+                    throw std::logic_error("Unreachable");
             }
 
             val memory = val::module_property("buffer");
