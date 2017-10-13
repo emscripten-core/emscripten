@@ -56,7 +56,7 @@ def check_engine(engine):
     logging.debug('Checking JS engine %s' % engine)
     if 'hello, world!' in run_js(os.path.join(__rootpath__, 'src', 'hello_world.js'), engine, skip_check=True):
       WORKING_ENGINES[engine_path] = True
-  except Exception, e:
+  except Exception as e:
     logging.info('Checking JS engine %s failed. Check your config file. Details: %s' % (str(engine), str(e)))
     WORKING_ENGINES[engine_path] = False
   return WORKING_ENGINES[engine_path]
@@ -101,7 +101,7 @@ def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdo
         stdout=stdout,
         stderr=stderr,
         cwd=cwd)
-  except Exception, e:
+  except Exception as e:
     # the failure may be because the engine is not present. show the proper
     # error in that case
     if not skip_check:
@@ -120,7 +120,7 @@ def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdo
       'Execution',
       full_output=full_output,
       throw_on_failure=False)
-  except Exception, e:
+  except Exception as e:
     # the failure may be because the engine does not work. show the proper
     # error in that case
     if not skip_check:

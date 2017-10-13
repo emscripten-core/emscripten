@@ -40,7 +40,7 @@ def run():
 
   try:
     shared.Building.make(sys.argv[1:])
-  except CalledProcessError, e:
+  except CalledProcessError as e:
     sys.exit(e.returncode)
 
 if __name__ == '__main__':

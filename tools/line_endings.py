@@ -19,7 +19,7 @@ def convert_line_endings_in_file(filename, from_eol, to_eol):
 def check_line_endings(filename, expect_only_specific_line_endings=None, print_errors=True, print_info=False):
   try:
     data = open(filename, 'rb').read()
-  except Exception, e:
+  except Exception as e:
     if print_errors: print("Unable to read file '" + filename + "'! " + str(e), file=sys.stderr)
     return 1
   if len(data) == 0:

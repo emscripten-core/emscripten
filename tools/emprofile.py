@@ -47,7 +47,7 @@ def create_profiling_graph():
       lines[-1] = lines[-1][:-1]
       json_data = '[' + '\n'.join(lines) + ']'
       all_results += json.loads(json_data)
-    except Exception, e:
+    except Exception as e:
       print(str(e), file=sys.stderr)
       print('Failed to parse JSON file "' + f + '"!', file=sys.stderr)
       sys.exit(1)

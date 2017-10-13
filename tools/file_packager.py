@@ -154,7 +154,7 @@ for arg in sys.argv[2:]:
   elif arg.startswith('--crunch'):
     try:
       from shared import CRUNCH
-    except Exception, e:
+    except Exception as e:
       print('could not import CRUNCH (make sure it is defined properly in ' + shared.hint_config_file_location() + ')', file=sys.stderr)
       raise e
     crunch = arg.split('=', 1)[1] if '=' in arg else '128'
