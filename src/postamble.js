@@ -65,16 +65,15 @@ if (memoryInitializer) {
     }
     function doBrowserLoad() {
       Module['readAsync'](memoryInitializer, applyMemoryInitializer, function() {
-#if SUPPORT_BASE64_EMBEDDING
-        var memoryInitializerBytes = tryParseAsDataURI(memoryInitializer);
-        if (memoryInitializerBytes) {
-          applyMemoryInitializer(memoryInitializerBytes.buffer);
-          return;
-        }
-#endif
         throw 'could not load memory initializer ' + memoryInitializer;
       });
     }
+#if SUPPORT_BASE64_EMBEDDING
+    var memoryInitializerBytes = tryParseAsDataURI(memoryInitializer);
+    if (memoryInitializerBytes) {
+      applyMemoryInitializer(memoryInitializerBytes.buffer);
+    } else
+#endif
     if (Module['memoryInitializerRequest']) {
       // a network request has already been created, just use that
       function useRequest() {
