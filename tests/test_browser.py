@@ -2955,7 +2955,7 @@ window.close = function() {
           var helloOutside = HelloWorld({ noInitialRun: true }).then(function(hello) {
             setTimeout(function() {
               hello._main();
-              assert(hello === helloOutside); // as we are async, helloOutside must have been set
+              if (hello !== helloOutside) throw 'helloOutside has not been set!'; // as we are async, helloOutside must have been set
             });
           });
         '''),
