@@ -1,5 +1,5 @@
 # For travis
-FROM ubuntu:16.04
+FROM buildpack-deps:xenial
 SHELL ["/bin/bash", "-c"]
 ENV DEBIAN_FRONTEND noninteractive
 RUN mkdir -p /root/emscripten/
@@ -7,7 +7,7 @@ COPY . /root/emscripten/
 
 RUN cd /root/ \
  && apt-get update \
- && apt-get install -y python python-pip wget git cmake build-essential software-properties-common \
+ && apt-get install -y python python-pip cmake build-essential software-properties-common \
  && pip install --upgrade pip \
  && pip install lit \
  && add-apt-repository ppa:webupd8team/java \
