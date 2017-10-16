@@ -88,6 +88,8 @@ CXX_WITH_STDLIB = '''
         }
       '''
 
+SYSTEM_TASKS = ['compiler-rt', 'libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'dlmalloc_debug', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'html5']
+USER_TASKS = ['al', 'gl', 'binaryen', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
 
 temp_files = shared.configuration.get_temp_files()
 
@@ -100,11 +102,14 @@ def build(src, result_libs, args=[]):
     for result_lib in result_libs:
       if result_lib.endswith('.a'):
         short = result_lib[:-2]
-        need_forced.append(short.replace('_noexcept', ''))
-        with_forced.append(short + '.bc')
-      else:
-        with_forced.append(result_lib)
+        if short in SYSTEM_TASKS:
+          need_forced.append(short.replace('_noexcept', ''))
+          with_forced.append(short + '.bc')
+          continue
+      with_forced.append(result_lib)
+
     if need_forced:
+      print(str(need_forced))
       if os.environ.get('EMCC_FORCE_STDLIBS'):
         print('skipping forced (.bc) versions of .a libraries, since EMCC_FORCE_STDLIBS already set')
       else:
@@ -130,9 +135,6 @@ def build(src, result_libs, args=[]):
 def build_port(port_name, lib_name, params):
   build(C_BARE, [os.path.join('ports-builds', port_name, lib_name)] if lib_name else None, params)
 
-
-SYSTEM_TASKS = ['compiler-rt', 'libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'dlmalloc_debug', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'html5']
-USER_TASKS = ['al', 'gl', 'binaryen', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
 
 operation = sys.argv[1]
 
