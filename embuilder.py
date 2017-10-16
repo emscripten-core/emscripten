@@ -92,11 +92,36 @@ CXX_WITH_STDLIB = '''
 temp_files = shared.configuration.get_temp_files()
 
 def build(src, result_libs, args=[]):
+  # if a library is a .a, also build the .bc, as we need it when forcing a
+  # a system library - in that case, we always want all the code linked in
+  need_forced = []
+  with_forced = []
+  for result_lib in result_libs:
+    print(result_lib)
+    if result_lib.endswith('.a'):
+      print('append!')
+      short = result_lib[:-2]
+      need_forced.append(short)
+      with_forced.append(short + '.bc')
+    else:
+      with_forced.append(result_lib)
+  if need_forced:
+    if os.environ.get('EMCC_FORCE_STDLIBS'):
+      print('skipping forced (.bc) versions of .a libraries, since EMCC_FORCE_STDLIBS already set')
+    else:
+      os.environ['EMCC_FORCE_STDLIBS'] = ','.join(need_forced)
+      try:
+        build(src, with_forced, args)
+      finally:
+        del os.environ['EMCC_FORCE_STDLIBS']
+
+  # build in order to generate the libraries
   with temp_files.get_file('.cpp') as temp:
     open(temp, 'w').write(src)
     temp_js = temp_files.get('.js').name
     shared.Building.emcc(temp, args, output_filename=temp_js)
 
+  # verify
   assert os.path.exists(temp_js), 'failed to build file'
   if result_libs:
     for lib in result_libs:
