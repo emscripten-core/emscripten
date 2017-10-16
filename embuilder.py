@@ -98,11 +98,9 @@ def build(src, result_libs, args=[]):
     need_forced = []
     with_forced = []
     for result_lib in result_libs:
-      print(result_lib)
       if result_lib.endswith('.a'):
-        print('append!')
         short = result_lib[:-2]
-        need_forced.append(short)
+        need_forced.append(short.replace('_noexcept', ''))
         with_forced.append(short + '.bc')
       else:
         with_forced.append(result_lib)
