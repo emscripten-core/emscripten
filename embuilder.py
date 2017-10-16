@@ -4,11 +4,12 @@
 Tool to manage building of various useful things, such as libc, libc++, native optimizer, as well as fetch and build ports like zlib and sdl2
 '''
 
+from __future__ import print_function
 import os, sys
 import tools.shared as shared
 
 if len(sys.argv) < 2 or sys.argv[1] in ['-v', '-help', '--help', '-?', '?']:
-  print '''
+  print('''
 Emscripten System Builder Tool
 ==============================
 
@@ -60,7 +61,7 @@ do that, run
 
 and set up the location to the native optimizer in ~/.emscripten
 
-'''
+''')
   sys.exit(0)
 
 C_BARE = '''
@@ -127,12 +128,12 @@ if operation == 'build':
       tasks = [x for x in tasks if x not in skip_tasks]
     else:
       if os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER'):
-        print 'Skipping building of native-optimizer since environment variable EMSCRIPTEN_NATIVE_OPTIMIZER is present and set to point to a prebuilt native optimizer path.'
+        print('Skipping building of native-optimizer since environment variable EMSCRIPTEN_NATIVE_OPTIMIZER is present and set to point to a prebuilt native optimizer path.')
       elif hasattr(shared, 'EMSCRIPTEN_NATIVE_OPTIMIZER'):
-        print 'Skipping building of native-optimizer since .emscripten config file has set EMSCRIPTEN_NATIVE_OPTIMIZER to point to a prebuilt native optimizer path.'
+        print('Skipping building of native-optimizer since .emscripten config file has set EMSCRIPTEN_NATIVE_OPTIMIZER to point to a prebuilt native optimizer path.')
       else:
         tasks += ['native_optimizer']
-    print 'Building targets: %s' % ' '.join (tasks)
+    print('Building targets: %s' % ' '.join(tasks))
   for what in tasks:
     shared.logging.info('building and verifying ' + what)
     if what == 'compiler-rt':

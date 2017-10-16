@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os, json, logging, zipfile, glob, shutil
 import shared
 from subprocess import Popen, CalledProcessError
@@ -727,6 +728,6 @@ def process_args(args, settings):
   return args
 
 def show_ports():
-  print 'Available ports:'
+  print('Available ports:')
   for port in ports.ports:
-    print '   ', port.show()
+    print('   ', port.show())

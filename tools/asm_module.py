@@ -1,4 +1,5 @@
 
+from __future__ import print_function
 import sys, re, itertools
 
 import shared, js_optimizer
@@ -138,7 +139,7 @@ class AsmModule():
     def check_import(key, value):
       if value.startswith('+') or value.endswith('|0'): # ignore functions
         if key not in all_sendings:
-          print >> sys.stderr, 'warning: external variable %s is still not defined after linking' % key
+          print('warning: external variable %s is still not defined after linking' % key, file=sys.stderr)
           all_sendings[key] = '0'
     for key, value in all_imports.iteritems(): check_import(key, value)
 

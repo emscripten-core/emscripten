@@ -60,6 +60,7 @@ TODO:        You can also provide .crn files yourself, pre-crunched. With this o
              to dds files in the browser, exactly the same as if this tool compressed them.
 '''
 
+from __future__ import print_function
 from toolchain_profiler import ToolchainProfiler
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
@@ -74,8 +75,8 @@ import fnmatch
 import json
 
 if len(sys.argv) == 1:
-  print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--exclude C...] [--no-closure] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata]
-See the source for more details.'''
+  print('''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--exclude C...] [--no-closure] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata]
+See the source for more details.''')
   sys.exit(0)
 
 DEBUG = os.environ.get('EMCC_DEBUG')
@@ -154,7 +155,7 @@ for arg in sys.argv[2:]:
     try:
       from shared import CRUNCH
     except Exception, e:
-      print >> sys.stderr, 'could not import CRUNCH (make sure it is defined properly in ' + shared.hint_config_file_location() + ')'
+      print('could not import CRUNCH (make sure it is defined properly in ' + shared.hint_config_file_location() + ')', file=sys.stderr)
       raise e
     crunch = arg.split('=', 1)[1] if '=' in arg else '128'
     leading = ''
@@ -175,11 +176,11 @@ for arg in sys.argv[2:]:
     if os.path.isfile(srcpath) or os.path.isdir(srcpath):
       data_files.append({ 'srcpath': srcpath, 'dstpath': dstpath, 'mode': mode, 'explicit_dst_path': uses_at_notation })
     else:
-      print >> sys.stderr, 'Warning: ' + arg + ' does not exist, ignoring.'
+      print('Warning: ' + arg + ' does not exist, ignoring.', file=sys.stderr)
   elif leading == 'exclude':
     excluded_patterns.append(arg)
   else:
-    print >> sys.stderr, 'Unknown parameter:', arg
+    print('Unknown parameter:', arg, file=sys.stderr)
     sys.exit(1)
 
 if (not force) and len(data_files) == 0:
@@ -254,7 +255,7 @@ def add(arg, dirname, names):
     fullname = os.path.join(dirname, name)
     if should_ignore(fullname):
       if DEBUG:
-        print >> sys.stderr, 'Skipping file "' + fullname + '" from inclusion in the emscripten virtual file system.'
+        print('Skipping file "' + fullname + '" from inclusion in the emscripten virtual file system.', file=sys.stderr)
     else:
       new_names.append(name)
       if not os.path.isdir(fullname):
@@ -272,7 +273,7 @@ for file_ in data_files:
       new_data_files.append(file_)
 data_files = filter(lambda file_: not os.path.isdir(file_['srcpath']), new_data_files)
 if len(data_files) == 0:
-  print >> sys.stderr, 'Nothing to do!' 
+  print('Nothing to do!', file=sys.stderr) 
   sys.exit(1)
 
 # Absolutize paths, and check that they make sense
@@ -284,13 +285,13 @@ for file_ in data_files:
     # we require that the destination not be under the current location
     path = file_['dstpath']
     abspath = os.path.realpath(os.path.abspath(path)) # Use os.path.realpath to resolve any symbolic links to hard paths, to match the structure in curr_abspath.
-    if DEBUG: print >> sys.stderr, path, abspath, curr_abspath
+    if DEBUG: print(path, abspath, curr_abspath, file=sys.stderr)
     if not abspath.startswith(curr_abspath):
-      print >> sys.stderr, 'Error: Embedding "%s" which is below the current directory "%s". This is invalid since the current directory becomes the root that the generated code will see' % (path, curr_abspath)
+      print('Error: Embedding "%s" which is below the current directory "%s". This is invalid since the current directory becomes the root that the generated code will see' % (path, curr_abspath), file=sys.stderr)
       sys.exit(1)
     file_['dstpath'] = abspath[len(curr_abspath)+1:]
     if os.path.isabs(path):
-      print >> sys.stderr, 'Warning: Embedding an absolute file/directory name "' + path + '" to the virtual filesystem. The file will be made available in the relative path "' + file_['dstpath'] + '". You can use the explicit syntax --preload-file srcpath@dstpath to explicitly specify the target location the absolute source path should be directed to.'
+      print('Warning: Embedding an absolute file/directory name "' + path + '" to the virtual filesystem. The file will be made available in the relative path "' + file_['dstpath'] + '". You can use the explicit syntax --preload-file srcpath@dstpath to explicitly specify the target location the absolute source path should be directed to.', file=sys.stderr)
 
 for file_ in data_files:
   file_['dstpath'] = file_['dstpath'].replace(os.path.sep, '/') # name in the filesystem, native and emulated
@@ -299,7 +300,7 @@ for file_ in data_files:
   # make destination path always relative to the root
   file_['dstpath'] = posixpath.normpath(os.path.join('/', file_['dstpath']))
   if DEBUG:
-    print >> sys.stderr, 'Packaging file "' + file_['srcpath'] + '" to VFS in path "' + file_['dstpath'] + '".'
+    print('Packaging file "' + file_['srcpath'] + '" to VFS in path "' + file_['dstpath'] + '".', file=sys.stderr)
 
 # Remove duplicates (can occur naively, for example preload dir/, preload dir/subdir/)
 seen = {}
@@ -407,7 +408,7 @@ if has_preloaded:
   data.close()
   # TODO: sha256sum on data_target
   if start > 256*1024*1024:
-    print >> sys.stderr, 'warning: file packager is creating an asset bundle of %d MB. this is very large, and browsers might have trouble loading it. see https://hacks.mozilla.org/2015/02/synchronous-execution-and-filesystem-access-in-emscripten/' % (start/(1024*1024))
+    print('warning: file packager is creating an asset bundle of %d MB. this is very large, and browsers might have trouble loading it. see https://hacks.mozilla.org/2015/02/synchronous-execution-and-filesystem-access-in-emscripten/' % (start/(1024*1024)), file=sys.stderr)
 
   create_preloaded = '''
         Module['FS_createPreloadedFile'](this.name, null, byteArray, true, true, function() {
@@ -854,7 +855,7 @@ ret += '''%s
 
 if force or len(data_files) > 0:
   if jsoutput == None:
-    print ret
+    print(ret)
   else:
     # Overwrite the old jsoutput file (if exists) only when its content differs from the current generated one, otherwise leave the file untouched preserving its old timestamp
     if os.path.isfile(jsoutput):

@@ -25,6 +25,7 @@ Note that you need to send the |this| pointer yourself. TODO:
 a more OO boilerplate on top of that.
 '''
 
+from __future__ import print_function
 import os, sys, json
 
 js = open(sys.argv[1], 'r').read()
@@ -91,5 +92,5 @@ def finalize(line):
   except:
     return line
 
-print 'var ModuleNames = ' + '\n'.join(map(finalize, json.dumps(space, sort_keys=True, indent=2).split('\n')))
+print('var ModuleNames = ' + '\n'.join(map(finalize, json.dumps(space, sort_keys=True, indent=2).split('\n'))))
 

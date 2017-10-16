@@ -1,4 +1,5 @@
 
+from __future__ import print_function
 from toolchain_profiler import ToolchainProfiler
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
@@ -254,7 +255,7 @@ class Minifier(object):
       for key, value in self.globs.iteritems():
         mapfile.write(value + ':' + key + '\n')
       mapfile.close()
-      print >> sys.stderr, 'wrote symbol map file to', self.symbols_file
+      print('wrote symbol map file to', self.symbols_file, file=sys.stderr)
 
     return code.replace('13371337', '0.0')
 
@@ -279,9 +280,9 @@ def run_on_chunk(command):
     if os.environ.get('EMCC_SAVE_OPT_TEMP') and os.environ.get('EMCC_SAVE_OPT_TEMP') != '0':
       saved = 'save_' + os.path.basename(filename)
       while os.path.exists(saved): saved = 'input' + str(int(saved.replace('input', '').replace('.txt', ''))+1) + '.txt'
-      print >> sys.stderr, 'running js optimizer command', ' '.join(map(lambda c: c if c != filename else saved, command))
+      print('running js optimizer command', ' '.join(map(lambda c: c if c != filename else saved, command)), file=sys.stderr)
       shutil.copyfile(filename, os.path.join(shared.get_emscripten_temp_dir(), saved))
-    if shared.EM_BUILD_VERBOSE_LEVEL >= 3: print >> sys.stderr, 'run_on_chunk: ' + str(command)
+    if shared.EM_BUILD_VERBOSE_LEVEL >= 3: print('run_on_chunk: ' + str(command), file=sys.stderr)
     proc = subprocess.Popen(command, stdout=subprocess.PIPE)
     output = proc.communicate()[0]
     assert proc.returncode == 0, 'Error in optimizer (return code ' + str(proc.returncode) + '): ' + output
@@ -292,7 +293,7 @@ def run_on_chunk(command):
     f = open(filename, 'wb')
     f.write(output)
     f.close()
-    if DEBUG and not shared.WINDOWS: print >> sys.stderr, '.' # Skip debug progress indicator on Windows, since it doesn't buffer well with multiple threads printing to console.
+    if DEBUG and not shared.WINDOWS: print('.', file=sys.stderr) # Skip debug progress indicator on Windows, since it doesn't buffer well with multiple threads printing to console.
     return filename
   except KeyboardInterrupt:
     # avoid throwing keyboard interrupts from a child process
@@ -417,7 +418,7 @@ EMSCRIPTEN_FUNCS();
       chunks = map(lambda f: f[1], funcs)
 
     chunks = filter(lambda chunk: len(chunk) > 0, chunks)
-    if DEBUG and len(chunks) > 0: print >> sys.stderr, 'chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks))
+    if DEBUG and len(chunks) > 0: print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks)), file=sys.stderr)
     funcs = None
 
     if len(chunks) > 0:
@@ -454,13 +455,13 @@ EMSCRIPTEN_FUNCS();
       cores = min(cores, len(filenames))
       if len(chunks) > 1 and cores >= 2:
         # We can parallelize
-        if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size/(1024*1024.))
+        if DEBUG: print('splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size/(1024*1024.)), file=sys.stderr)
         with ToolchainProfiler.profile_block('optimizer_pool'):
           pool = shared.Building.get_multiprocessing_pool()
           filenames = pool.map(run_on_chunk, commands, chunksize=1)
       else:
         # We can't parallize, but still break into chunks to avoid uglify/node memory issues
-        if len(chunks) > 1 and DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks' % (len(chunks))
+        if len(chunks) > 1 and DEBUG: print('splitting up js optimization into %d chunks' % (len(chunks)), file=sys.stderr)
         filenames = [run_on_chunk(command) for command in commands]
     else:
       filenames = []
@@ -484,17 +485,17 @@ EMSCRIPTEN_FUNCS();
         c.close()
         cld = cle
         if split_memory:
-          if DEBUG: print >> sys.stderr, 'running splitMemory on shell code'
+          if DEBUG: print('running splitMemory on shell code', file=sys.stderr)
           cld = run_on_chunk(js_engine + [JS_OPTIMIZER, cld, 'splitMemoryShell'])
           f = open(cld, 'a')
           f.write(suffix_marker)
           f.close()
         if closure:
-          if DEBUG: print >> sys.stderr, 'running closure on shell code'
+          if DEBUG: print('running closure on shell code', file=sys.stderr)
           cld = shared.Building.closure_compiler(cld, pretty='minifyWhitespace' not in passes)
           temp_files.note(cld)
         elif cleanup:
-          if DEBUG: print >> sys.stderr, 'running cleanup on shell code'
+          if DEBUG: print('running cleanup on shell code', file=sys.stderr)
           next = cld + '.cl.js'
           temp_files.note(next)
           proc = subprocess.Popen(js_engine + [JS_OPTIMIZER, cld, 'noPrintMetadata', 'JSDCE'] + (['minifyWhitespace'] if 'minifyWhitespace' in passes else []), stdout=open(next, 'w'))
@@ -536,7 +537,7 @@ EMSCRIPTEN_FUNCS();
       if 'last' in passes and len(funcs) > 0:
         count = funcs[0][1].count('\n')
         if count > 3000:
-          print >> sys.stderr, 'warning: Output contains some very large functions (%s lines in %s), consider building source files with -Os or -Oz, and/or trying OUTLINING_LIMIT to break them up (see settings.js; note that the parameter there affects AST nodes, while we measure lines here, so the two may not match up)' % (count, funcs[0][0])
+          print('warning: Output contains some very large functions (%s lines in %s), consider building source files with -Os or -Oz, and/or trying OUTLINING_LIMIT to break them up (see settings.js; note that the parameter there affects AST nodes, while we measure lines here, so the two may not match up)' % (count, funcs[0][0]), file=sys.stderr)
 
       for func in funcs:
         f.write(func[1])

@@ -2,6 +2,7 @@
 Finds why an .ll file is large by printing functions by size
 '''
 
+from __future__ import print_function
 import os, sys
 
 funcs = []
@@ -14,5 +15,5 @@ for line in open(sys.argv[1]):
   elif line.startswith('}'):
     funcs.append((inside, i-start))
 
-print '\n'.join(map(lambda func: str(func[1]) + ':' + func[0], sorted(funcs, key=lambda func: -func[1])))
+print('\n'.join(map(lambda func: str(func[1]) + ':' + func[0], sorted(funcs, key=lambda func: -func[1]))))
 

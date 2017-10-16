@@ -1,5 +1,6 @@
 #!/usr/bin/env python2
 
+from __future__ import print_function
 import os
 
 def generate(env, emscripten_path=None, **kw):
@@ -17,7 +18,7 @@ def generate(env, emscripten_path=None, **kw):
 		try:
 			exec(open(CONFIG_FILE, 'r').read())
 		except Exception, e:
-			print >> sys.stderr, 'Error in evaluating %s (at %s): %s' % (EM_CONFIG, CONFIG_FILE, str(e))
+			print('Error in evaluating %s (at %s): %s' % (EM_CONFIG, CONFIG_FILE, str(e)), file=sys.stderr)
 			sys.exit(1)
 
 		emscripten_path = EMSCRIPTEN_ROOT

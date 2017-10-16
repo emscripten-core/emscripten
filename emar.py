@@ -7,6 +7,7 @@ emar - ar helper script
 This script acts as a frontend replacement for ar. See emcc.
 '''
 
+from __future__ import print_function
 from tools.toolchain_profiler import ToolchainProfiler
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
@@ -25,7 +26,7 @@ def run():
   newargs = [shared.LLVM_AR] + sys.argv[1:]
 
   if DEBUG:
-    print >> sys.stderr, 'emar:', sys.argv, '  ==>  ', newargs
+    print('emar:', sys.argv, '  ==>  ', newargs, file=sys.stderr)
 
   if len(newargs) > 2:
     to_delete = []
