@@ -277,6 +277,10 @@ class JSOptimizer(object):
       self.cleanup_shell = True
 
 
+def embed_memfile(options):
+  return shared.Settings.SINGLE_FILE or (shared.Settings.MEM_INIT_METHOD == 0 and (not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and options.debug_level < 4))
+
+
 #
 # Main run() function
 #
@@ -801,7 +805,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         options.separate_asm = True
         logging.warning('forcing separate asm output (--separate-asm), because -s PRECISE_F32=2 or -s USE_PTHREADS=2 was passed.')
       if options.separate_asm:
-        shared.Settings.SEPARATE_ASM = os.path.basename(asm_target)
+        shared.Settings.SEPARATE_ASM = shared.JS.get_subresource_location(asm_target)
 
       if 'EMCC_STRICT' in os.environ:
         shared.Settings.STRICT = os.environ.get('EMCC_STRICT') != '0'
@@ -917,6 +921,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.debug_level > 1 and options.use_closure_compiler:
         logging.warning('disabling closure because debug info was requested')
         options.use_closure_compiler = False
+
+      assert not (shared.Settings.EMTERPRETIFY_FILE and shared.Settings.SINGLE_FILE), 'cannot have both EMTERPRETIFY_FILE and SINGLE_FILE enabled at the same time'
 
       assert not (shared.Settings.NO_DYNAMIC_EXECUTION and options.use_closure_compiler), 'cannot have both NO_DYNAMIC_EXECUTION and closure compiler enabled at the same time'
 
@@ -1110,10 +1116,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
 
       if shared.Settings.BINARYEN:
-        # set file locations, so that JS glue can find what it needs
-        shared.Settings.WASM_TEXT_FILE = os.path.basename(wasm_text_target)
-        shared.Settings.WASM_BINARY_FILE = os.path.basename(wasm_binary_target)
-        shared.Settings.ASMJS_CODE_FILE = os.path.basename(asm_target)
+        if shared.Settings.SINGLE_FILE:
+          # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
+          shared.Settings.WASM_TEXT_FILE = shared.FilenameReplacementStrings.WASM_TEXT_FILE
+          shared.Settings.WASM_BINARY_FILE = shared.FilenameReplacementStrings.WASM_BINARY_FILE
+          shared.Settings.ASMJS_CODE_FILE = shared.FilenameReplacementStrings.ASMJS_CODE_FILE
+        else:
+          # set file locations, so that JS glue can find what it needs
+          shared.Settings.WASM_TEXT_FILE = shared.JS.get_subresource_location(wasm_text_target)
+          shared.Settings.WASM_BINARY_FILE = shared.JS.get_subresource_location(wasm_binary_target)
+          shared.Settings.ASMJS_CODE_FILE = shared.JS.get_subresource_location(asm_target)
 
         shared.Settings.ASM_JS = 2 # when targeting wasm, we use a wasm Memory, but that is not compatible with asm.js opts
         shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
@@ -1538,6 +1550,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.MEM_INIT_METHOD = 1
       else:
         assert shared.Settings.MEM_INIT_METHOD != 1
+
+      if embed_memfile(options):
+        shared.Settings.SUPPORT_BASE64_EMBEDDING = 1
+
       final = shared.Building.emscripten(final, append_ext=False, extra_args=extra_args)
       if DEBUG: save_intermediate('original')
 
@@ -1625,7 +1641,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('memory initializer'):
       memfile = None
-      if shared.Settings.MEM_INIT_METHOD > 0:
+
+      if shared.Settings.MEM_INIT_METHOD > 0 or embed_memfile(options):
         memfile = target + '.mem'
         shared.try_delete(memfile)
         def repl(m):
@@ -1636,20 +1653,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           while membytes and membytes[-1] == 0:
             membytes.pop()
           if not membytes: return ''
-          if not options.memory_init_file:
+          if shared.Settings.MEM_INIT_METHOD == 2:
             # memory initializer in a string literal
             return "memoryInitializer = '%s';" % shared.JS.generate_string_initializer(list(membytes))
           open(memfile, 'wb').write(''.join(map(chr, membytes)))
           if DEBUG:
             # Copy into temp dir as well, so can be run there too
             shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
-          if not shared.Settings.BINARYEN:
-            return 'memoryInitializer = "%s";' % os.path.basename(memfile)
+          if not shared.Settings.BINARYEN or 'asmjs' in shared.Settings.BINARYEN_METHOD or 'interpret-asm2wasm' in shared.Settings.BINARYEN_METHOD:
+            return 'memoryInitializer = "%s";' % shared.JS.get_subresource_location(memfile, embed_memfile(options))
           else:
-            # with wasm, we may have the mem init file in the wasm binary already
-            return ('memoryInitializer = Module["wasmJSMethod"].indexOf("asmjs") >= 0 || '
-                    'Module["wasmJSMethod"].indexOf("interpret-asm2wasm") >= 0 ? "%s" : null;'
-                    % os.path.basename(memfile))
+            return 'memoryInitializer = null;'
         src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
         open(final + '.mem.js', 'w').write(src)
         final += '.mem.js'
@@ -1661,15 +1675,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             logging.debug('wrote memory initialization to %s', memfile)
           else:
             logging.debug('did not see memory initialization')
-      elif not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and options.debug_level < 4:
-        # not writing a binary init, but we can at least optimize them by splitting them up
-        src = open(final).read()
-        src = shared.JS.optimize_initializer(src)
-        if src is not None:
-          logging.debug('optimizing memory initialization')
-          open(final + '.mem.js', 'w').write(src)
-          final += '.mem.js'
-          src = None
 
       if shared.Settings.USE_PTHREADS:
         target_dir = os.path.dirname(os.path.abspath(target))
@@ -1828,6 +1833,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       else:
         if options.proxy_to_worker:
           generate_worker_js(target, js_target, target_basename)
+
+      if embed_memfile(options):
+        shared.try_delete(memfile)
 
       for f in generated_text_files_with_native_eols:
         tools.line_endings.convert_line_endings_in_file(f, os.linesep, options.output_eol)
@@ -2352,6 +2360,24 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
           passes.append('minifyWhitespace')
         final = shared.Building.js_optimizer_no_asmjs(final, passes)
       if DEBUG: save_intermediate('postclean', 'js')
+  # replace placeholder strings with correct subresource locations
+  if shared.Settings.SINGLE_FILE:
+    f = open(final, 'rb')
+    js = f.read()
+    f.close()
+    f = open(final, 'wb')
+    for target, replacement_string, should_embed in [
+      (wasm_text_target, shared.FilenameReplacementStrings.WASM_TEXT_FILE, True),
+      (wasm_binary_target, shared.FilenameReplacementStrings.WASM_BINARY_FILE, True),
+      (asm_target, shared.FilenameReplacementStrings.ASMJS_CODE_FILE, not shared.Building.is_wasm_only())
+    ]:
+      if should_embed and os.path.isfile(target):
+        js = js.replace(replacement_string, shared.JS.get_subresource_location(target))
+      else:
+        js = js.replace(replacement_string, '')
+      shared.try_delete(target)
+    f.write(js)
+    f.close()
   return final
 
 
@@ -2399,11 +2425,17 @@ def generate_html(target, options, js_target, target_basename,
   } else {
     // note: no support for code mods (PRECISE_F32==2)
     console.log('running code on the main thread');
+    var filename = '%s';
+    var fileBytes = tryParseAsDataURI(filename);
     var script = document.createElement('script');
-    script.src = "%s.js";
+    if (fileBytes) {
+      script.innerHTML = intArrayToString(fileBytes);
+    } else {
+      script.src = filename;
+    }
     document.body.appendChild(script);
   }
-''' % proxy_worker_filename
+''' % shared.JS.get_subresource_location(proxy_worker_filename + '.js')
   else:
     # Normal code generation path
     script.src = base_js_target
@@ -2417,33 +2449,40 @@ def generate_html(target, options, js_target, target_basename,
     # We need to load the emterpreter file before anything else, it has to be synchronously ready
     script.un_src()
     script.inline = '''
+          var emterpretURL = '%s';
           var emterpretXHR = new XMLHttpRequest();
-          emterpretXHR.open('GET', '%s', true);
+          emterpretXHR.open('GET', emterpretURL, true);
           emterpretXHR.responseType = 'arraybuffer';
           emterpretXHR.onload = function() {
-            Module.emterpreterFile = emterpretXHR.response;
+            if (emterpretXHR.status === 200 || emterpretXHR.status === 0) {
+              Module.emterpreterFile = emterpretXHR.response;
+            } else {
+              var emterpretURLBytes = tryParseAsDataURI(emterpretURL);
+              if (emterpretURLBytes) {
+                Module.emterpreterFile = emterpretURLBytes.buffer;
+              }
+            }
 %s
           };
           emterpretXHR.send(null);
-''' % (shared.Settings.EMTERPRETIFY_FILE, script.inline)
+''' % (shared.JS.get_subresource_location(shared.Settings.EMTERPRETIFY_FILE), script.inline)
 
   if options.memory_init_file:
     # start to load the memory init file in the HTML, in parallel with the JS
     script.un_src()
     script.inline = ('''
-          (function() {
-            var memoryInitializer = '%s';
-            if (typeof Module['locateFile'] === 'function') {
-              memoryInitializer = Module['locateFile'](memoryInitializer);
-            } else if (Module['memoryInitializerPrefixURL']) {
-              memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
-            }
-            var meminitXHR = Module['memoryInitializerRequest'] = new XMLHttpRequest();
-            meminitXHR.open('GET', memoryInitializer, true);
-            meminitXHR.responseType = 'arraybuffer';
-            meminitXHR.send(null);
-          })();
-''' % os.path.basename(memfile)) + script.inline
+          var memoryInitializer = '%s';
+          if (typeof Module['locateFile'] === 'function') {
+            memoryInitializer = Module['locateFile'](memoryInitializer);
+          } else if (Module['memoryInitializerPrefixURL']) {
+            memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
+          }
+          Module['memoryInitializerRequestURL'] = memoryInitializer;
+          var meminitXHR = Module['memoryInitializerRequest'] = new XMLHttpRequest();
+          meminitXHR.open('GET', memoryInitializer, true);
+          meminitXHR.responseType = 'arraybuffer';
+          meminitXHR.send(null);
+''' % shared.JS.get_subresource_location(memfile)) + script.inline
 
   # Download .asm.js if --separate-asm was passed in an asm.js build, or if 'asmjs' is one
   # of the wasm run methods.
@@ -2454,22 +2493,37 @@ def generate_html(target, options, js_target, target_basename,
     if len(asm_mods) == 0:
       # just load the asm, then load the rest
       script.inline = '''
+    var filename = '%s';
+    var fileBytes = tryParseAsDataURI(filename);
     var script = document.createElement('script');
-    script.src = "%s";
+    if (fileBytes) {
+      script.innerHTML = intArrayToString(fileBytes);
+    } else {
+      script.src = filename;
+    }
     script.onload = function() {
       setTimeout(function() {
         %s
       }, 1); // delaying even 1ms is enough to allow compilation memory to be reclaimed
     };
     document.body.appendChild(script);
-''' % (os.path.basename(asm_target), script.inline)
+''' % (shared.JS.get_subresource_location(asm_target), script.inline)
     else:
       # may need to modify the asm code, load it as text, modify, and load asynchronously
       script.inline = '''
+    var codeURL = '%s';
     var codeXHR = new XMLHttpRequest();
-    codeXHR.open('GET', '%s', true);
+    codeXHR.open('GET', codeURL, true);
     codeXHR.onload = function() {
-      var code = codeXHR.responseText;
+      var code;
+      if (codeXHR.status === 200 || codeXHR.status === 0) {
+        code = codeXHR.responseText;
+      } else {
+        var codeURLBytes = tryParseAsDataURI(codeURL);
+        if (codeURLBytes) {
+          code = intArrayToString(codeURLBytes);
+        }
+      }
       %s
       var blob = new Blob([code], { type: 'text/javascript' });
       codeXHR = null;
@@ -2485,21 +2539,36 @@ def generate_html(target, options, js_target, target_basename,
       document.body.appendChild(script);
     };
     codeXHR.send(null);
-''' % (os.path.basename(asm_target), '\n'.join(asm_mods), script.inline)
+''' % (shared.JS.get_subresource_location(asm_target), '\n'.join(asm_mods), script.inline)
 
   if shared.Settings.BINARYEN and not shared.Settings.BINARYEN_ASYNC_COMPILATION:
     # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize
     script.un_src()
     script.inline = '''
+          var wasmURL = '%s';
           var wasmXHR = new XMLHttpRequest();
-          wasmXHR.open('GET', '%s', true);
+          wasmXHR.open('GET', wasmURL, true);
           wasmXHR.responseType = 'arraybuffer';
           wasmXHR.onload = function() {
-            Module.wasmBinary = wasmXHR.response;
+            if (wasmXHR.status === 200 || wasmXHR.status === 0) {
+              Module.wasmBinary = wasmXHR.response;
+            } else {
+              var wasmURLBytes = tryParseAsDataURI(wasmURL);
+              if (wasmURLBytes) {
+                Module.wasmBinary = wasmURLBytes.buffer;
+              }
+            }
 %s
           };
           wasmXHR.send(null);
-''' % (os.path.basename(wasm_binary_target), script.inline)
+''' % (shared.JS.get_subresource_location(wasm_binary_target), script.inline)
+
+  # when script.inline isn't empty, add required helper functions such as tryParseAsDataURI
+  if script.inline:
+    for file in ['src/arrayUtils.js', 'src/base64Utils.js']:
+      f = open(shared.path_from_root(file), 'r')
+      script.inline = f.read() + script.inline
+      f.close()
 
   html = open(target, 'wb')
   html_contents = shell.replace('{{{ SCRIPT }}}', script.replacement())

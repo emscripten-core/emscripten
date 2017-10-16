@@ -222,9 +222,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # emcc -s INLINING_LIMIT=0 src.cpp ==> should pass -s to emscripten.py.
       for params, test, text in [
-        (['-O2'], lambda generated: 'function intArrayToString' in generated, 'shell has unminified utilities'),
-        (['-O2', '--closure', '1'], lambda generated: 'function intArrayToString' not in generated and ';function' in generated, 'closure minifies the shell, removes whitespace'),
-        (['-O2', '--closure', '1', '-g1'], lambda generated: 'function intArrayToString' not in generated and ';function' not in generated, 'closure minifies the shell, -g1 makes it keep whitespace'),
+        (['-O2'], lambda generated: 'function addRunDependency' in generated, 'shell has unminified utilities'),
+        (['-O2', '--closure', '1'], lambda generated: 'function addRunDependency' not in generated and ';function' in generated, 'closure minifies the shell, removes whitespace'),
+        (['-O2', '--closure', '1', '-g1'], lambda generated: 'function addRunDependency' not in generated and ';function' not in generated, 'closure minifies the shell, -g1 makes it keep whitespace'),
         (['-O2'], lambda generated: 'var b=0' in generated and not 'function _main' in generated, 'registerize/minify is run by default in -O2'),
         (['-O2', '--minify', '0'], lambda generated: 'var b = 0' in generated and not 'function _main' in generated, 'minify is cancelled, but not registerize'),
         (['-O2', '--js-opts', '0'], lambda generated: 'var b=0' not in generated and 'var b = 0' not in generated and 'function _main' in generated, 'js opts are cancelled'),
@@ -7927,3 +7927,68 @@ int main() {
         print inc
         open('a.c', 'w').write(inc)
         subprocess.check_call([PYTHON, EMCC, '-std=c89', 'a.c'])
+
+  def test_single_file(self):
+    for single_file_enabled in [True, False]:
+      for meminit1_enabled in [True, False]:
+        for debug_enabled in [True, False]:
+          for emterpreter_enabled in [True, False]:
+            for emterpreter_file_enabled in [True, False]:
+              for closure_enabled in [True, False]:
+                for wasm_enabled in [True, False]:
+                  for asmjs_fallback_enabled in [True, False]:
+                    # skip unhelpful option combinations
+                    if (
+                      (asmjs_fallback_enabled and not wasm_enabled) or
+                      (emterpreter_file_enabled and not emterpreter_enabled)
+                    ):
+                      continue
+
+                    expect_asmjs_code = asmjs_fallback_enabled and wasm_enabled
+                    expect_emterpretify_file = emterpreter_file_enabled
+                    expect_meminit = (meminit1_enabled and not wasm_enabled) or (wasm_enabled and asmjs_fallback_enabled)
+                    expect_success = not (emterpreter_file_enabled and single_file_enabled)
+                    expect_wasm = wasm_enabled
+                    expect_wast = debug_enabled and wasm_enabled
+
+                    # currently, the emterpreter always fails with JS output since we do not preload the emterpreter file, which in non-HTML we would need to do manually
+                    should_run_js = expect_success and not emterpreter_enabled
+
+                    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c')]
+
+                    if single_file_enabled:
+                      expect_asmjs_code = False
+                      expect_emterpretify_file = False
+                      expect_meminit = False
+                      expect_wasm = False
+                      expect_wast = False
+                      cmd += ['-s', 'SINGLE_FILE=1']
+                    if meminit1_enabled:
+                      cmd += ['--memory-init-file', '1']
+                    if debug_enabled:
+                      cmd += ['-g']
+                    if emterpreter_enabled:
+                      cmd += ['-s', 'EMTERPRETIFY=1']
+                    if emterpreter_file_enabled:
+                      cmd += ['-s', "EMTERPRETIFY_FILE='a.out.dat'"]
+                    if closure_enabled:
+                      cmd += ['--closure', '1']
+                    if wasm_enabled:
+                      method = 'interpret-binary'
+                      if asmjs_fallback_enabled:
+                        method += ',asmjs'
+                      cmd += ['-s', 'WASM=1', '-s', "BINARYEN_METHOD='" + method + "'"]
+
+                    print ' '.join(cmd)
+                    self.clear()
+                    proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
+                    output, err = proc.communicate()
+                    print(os.listdir('.'))
+                    assert expect_success == (proc.returncode == 0)
+                    assert expect_asmjs_code == os.path.exists('a.out.asm.js')
+                    assert expect_emterpretify_file == os.path.exists('a.out.dat')
+                    assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
+                    assert expect_wasm == os.path.exists('a.out.wasm')
+                    assert expect_wast == os.path.exists('a.out.wast')
+                    if should_run_js:
+                      self.assertContained('hello, world!', run_js('a.out.js'))

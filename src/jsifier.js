@@ -522,6 +522,18 @@ function JSify(data, functionsOnly) {
       print('assert(STACK_MAX < SPLIT_MEMORY, "SPLIT_MEMORY size must be big enough so the entire static memory + stack can fit in one chunk, need " + STACK_MAX);\n');
     }
 
+    print(preprocess(read('arrayUtils.js')));
+    // Export all arrayUtils.js functions
+    print(maybeExport('intArrayFromString'));
+    print(maybeExport('intArrayToString'));
+
+    if (SUPPORT_BASE64_EMBEDDING) {
+      print(preprocess(read('base64Utils.js')));
+      // Export all base64Utils.js functions
+      print(maybeExport('intArrayFromBase64'));
+      print(maybeExport('tryParseAsDataURI'));
+    }
+
     if (asmLibraryFunctions.length > 0) {
       print('// ASM_LIBRARY FUNCTIONS');
       function fix(f) { // fix indenting to not confuse js optimizer
@@ -538,6 +550,8 @@ function JSify(data, functionsOnly) {
     // rest of the output that we started to print out earlier (see comment on the
     // "Final shape that will be created").
     print('// EMSCRIPTEN_END_FUNCS\n');
+
+    if (ASSERTIONS) print('var ASSERTIONS = true;\n');
 
     if (HEADLESS) {
       print('if (!ENVIRONMENT_IS_WEB) {');

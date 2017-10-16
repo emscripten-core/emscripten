@@ -3655,3 +3655,31 @@ window.close = function() {
     Popen([PYTHON, EMCC, 'src.c', '-s', 'USE_PTHREADS=1', '-o', 'hello_thread_with_blob_url.js']).communicate()
     shutil.copyfile(path_from_root('tests', 'pthread', 'main_js_as_blob_loader.html'), os.path.join(self.get_dir(), 'hello_thread_with_blob_url.html'))
     self.run_browser('hello_thread_with_blob_url.html', 'hello from thread!', '/report_result?1')
+
+  # Tests that base64 utils work in browser with no native atob function
+  def test_base64_atob_fallback(self):
+    opts = ['-s', 'SINGLE_FILE=1', '-s', 'WASM=1', '-s', "BINARYEN_METHOD='interpret-binary'"]
+    src = r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+      int main() {
+        REPORT_RESULT(0);
+        return 0;
+      }
+    '''
+    open('test.c', 'w').write(self.with_report_result(src))
+    # generate a dummy file
+    open('dummy_file', 'w').write('dummy')
+    # compile the code with the modularize feature and the preload-file option enabled
+    Popen([PYTHON, EMCC, 'test.c', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Foo"', '--preload-file', 'dummy_file'] + opts).communicate()
+    open('a.html', 'w').write('''
+      <script>
+        atob = undefined;
+        fetch = undefined;
+      </script>
+      <script src="a.out.js"></script>
+      <script>
+        var foo = Foo();
+      </script>
+    ''')
+    self.run_browser('a.html', '...', '/report_result?0')

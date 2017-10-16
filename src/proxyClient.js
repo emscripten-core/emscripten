@@ -95,9 +95,22 @@ var IDBStore = {{{ IDBStore.js }}};
 
 var frameId = 0;
 
+// Temporarily handling this at run-time pending Python preprocessor support
+
+var SUPPORT_BASE64_EMBEDDING;
+
 // Worker
 
-var worker = new Worker('{{{ filename }}}.js');
+var filename = '{{{ filename }}}.js';
+
+var workerURL = filename;
+if (SUPPORT_BASE64_EMBEDDING) {
+  var fileBytes = tryParseAsDataURI(filename);
+  if (fileBytes) {
+    workerURL = URL.createObjectURL(new Blob([fileBytes], {type: 'application/javascript'}));
+  }
+}
+var worker = new Worker(filename);
 
 WebGLClient.prefetch();
 
@@ -108,7 +121,7 @@ setTimeout(function() {
     height: Module.canvas.height,
     boundingClientRect: cloneObject(Module.canvas.getBoundingClientRect()),
     URL: document.URL,
-    currentScriptUrl: '{{{ filename }}}.js',
+    currentScriptUrl: filename,
     preMain: true });
 }, 0); // delay til next frame, to make sure html is ready
 
@@ -119,6 +132,7 @@ worker.onmessage = function worker_onmessage(event) {
   if (!workerResponded) {
     workerResponded = true;
     if (Module.setStatus) Module.setStatus('');
+    if (SUPPORT_BASE64_EMBEDDING && workerURL !== filename) URL.revokeObjectURL(workerURL);
   }
 
   var data = event.data;

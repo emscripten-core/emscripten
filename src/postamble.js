@@ -34,7 +34,6 @@ if (memoryInitializer) (function(s) {
   }
 })(memoryInitializer);
 #else
-#if MEM_INIT_METHOD == 1
 #if USE_PTHREADS
 if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) {
 #else
@@ -69,19 +68,35 @@ if (memoryInitializer) {
         throw 'could not load memory initializer ' + memoryInitializer;
       });
     }
+#if SUPPORT_BASE64_EMBEDDING
+    var memoryInitializerBytes = tryParseAsDataURI(memoryInitializer);
+    if (memoryInitializerBytes) {
+      applyMemoryInitializer(memoryInitializerBytes.buffer);
+    } else
+#endif
     if (Module['memoryInitializerRequest']) {
       // a network request has already been created, just use that
       function useRequest() {
         var request = Module['memoryInitializerRequest'];
+        var response = request.response;
         if (request.status !== 200 && request.status !== 0) {
-          // If you see this warning, the issue may be that you are using locateFile or memoryInitializerPrefixURL, and defining them in JS. That
-          // means that the HTML file doesn't know about them, and when it tries to create the mem init request early, does it to the wrong place.
-          // Look in your browser's devtools network console to see what's going on.
-          console.warn('a problem seems to have happened with Module.memoryInitializerRequest, status: ' + request.status + ', retrying ' + memoryInitializer);
-          doBrowserLoad();
-          return;
+#if SUPPORT_BASE64_EMBEDDING
+          var data = tryParseAsDataURI(Module['memoryInitializerRequestURL']);
+          if (data) {
+            response = data.buffer;
+          } else {
+#endif
+            // If you see this warning, the issue may be that you are using locateFile or memoryInitializerPrefixURL, and defining them in JS. That
+            // means that the HTML file doesn't know about them, and when it tries to create the mem init request early, does it to the wrong place.
+            // Look in your browser's devtools network console to see what's going on.
+            console.warn('a problem seems to have happened with Module.memoryInitializerRequest, status: ' + request.status + ', retrying ' + memoryInitializer);
+            doBrowserLoad();
+            return;
+#if SUPPORT_BASE64_EMBEDDING
+          }
+#endif
         }
-        applyMemoryInitializer(request.response);
+        applyMemoryInitializer(response);
       }
       if (Module['memoryInitializerRequest'].response) {
         setTimeout(useRequest, 0); // it's already here; but, apply it asynchronously
@@ -94,7 +109,6 @@ if (memoryInitializer) {
     }
   }
 }
-#endif
 #endif
 
 #if CYBERDWARF
