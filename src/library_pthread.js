@@ -365,10 +365,8 @@ var LibraryPThread = {
             // independently load up the same main application file.
             urlOrBlob: Module['mainScriptUrlOrBlob'] || currentScriptUrl,
 #if BINARYEN
-            //wasmMemory: Module['wasmMemory'], XXX restore after https://crbug.com/v8/6895
+            wasmMemory: Module['wasmMemory'],
             wasmModule: Module['wasmModule'],
-            buffer: Module['wasmMemory'].buffer, // XXX remove after https://crbug.com/v8/6895
-            memoryParams: Module['memoryParams'],
 #else
             buffer: HEAPU8.buffer,
 #endif

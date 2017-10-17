@@ -56,9 +56,7 @@ Module['instantiateWasm'] = function(info, receiveInstance) {
   // Instantiate from the module posted from the main thread.
   // We can just use sync instantiation in the worker.
   console.log('pthread instantiating');
-  //XXX When https://crbug.com/v8/6895 is fixed, do this instead:
-  // instance = new WebAssembly.Instance(Module['wasmModule'], info);
-  instance = new WebAssembly.Instance(Module['wasmModule'], info, buffer);
+  instance = new WebAssembly.Instance(Module['wasmModule'], info);
   receiveInstance(instance);
   return instance.exports;
 }
@@ -80,12 +78,8 @@ this.onmessage = function(e) {
       if (e.data.wasmModule) {
         // Module and memory were sent from main thread
         Module['wasmModule'] = e.data.wasmModule;
-        // XXX When https://crbug.com/v8/6895 is fixed, do this instead:
-        //Module['wasmMemory'] = e.data.wasmMemory;
-        //buffer = Module['wasmMemory'].buffer;
-        buffer = e.data.buffer;
-        console.log(e.data.memoryParams);
-        Module['wasmMemory'] = new WebAssembly.Memory(e.data.memoryParams);
+        Module['wasmMemory'] = e.data.wasmMemory;
+        buffer = Module['wasmMemory'].buffer;
       } else {
         buffer = e.data.buffer;
       }
