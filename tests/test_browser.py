@@ -3488,10 +3488,18 @@ window.close = function() {
     <script>
       // note if we do async compilation
       var real_wasm_instantiate = WebAssembly.instantiate;
-      WebAssembly.instantiate = function(a, b) {
-        Module.sawAsyncCompilation = true;
-        return real_wasm_instantiate(a, b);
-      };
+      var real_wasm_instantiateStreaming = WebAssembly.instantiateStreaming;
+      if (typeof real_wasm_instantiateStreaming === 'function') {
+        WebAssembly.instantiateStreaming = function(a, b) {
+          Module.sawAsyncCompilation = true;
+          return real_wasm_instantiateStreaming(a, b);
+        };
+      } else {
+        WebAssembly.instantiate = function(a, b) {
+          Module.sawAsyncCompilation = true;
+          return real_wasm_instantiate(a, b);
+        };
+      }
       // show stderr for the viewer's fun
       Module.printErr = function(x) {
         Module.print('<<< ' + x + ' >>>');
