@@ -884,7 +884,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             value = '"' + value + '"'
         else:
           value = value.replace('\\', '\\\\')
-        exec('shared.Settings.' + key + ' = ' + value, globals(), locals())
+        setattr(shared.Settings, key, eval(value))
         if key == 'EXPORTED_FUNCTIONS':
           # used for warnings in emscripten.py
           shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = original_exported_response or shared.Settings.EXPORTED_FUNCTIONS[:]
