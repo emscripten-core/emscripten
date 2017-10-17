@@ -2281,6 +2281,7 @@ class Building(object):
       'glut': 'library_glut.js',
       'm': '',
       'openal': 'library_openal.js',
+      'rt': '',
       'pthread': '',
       'X11': 'library_xlib.js',
       'SDL': 'library_sdl.js',
