@@ -6,14 +6,33 @@
 static EGLint eglError = EGL_SUCCESS;
 static EGLSurface eglCurrentReadSurface = 0;
 static EGLSurface eglCurrentDrawSurface = 0;
+static EGLConfig eglCurrentInitializedConfig = (EGLConfig)0; // TODO: This should not be a singleton
 
 // Process wide:
 static EGLint eglDefaultDisplayInitialized = 0;
 static EMSCRIPTEN_WEBGL_CONTEXT_HANDLE windowID = 0;
 
 #define EMSCRIPTEN_EGL_MAGIC_ID_FOR_DEFAULT_DISPLAY ((EGLDisplay)62000)
-#define EMSCRIPTEN_EGL_MAGIC_ID_FOR_DEFAULT_CONFIG ((EGLConfig)62002)
 #define EMSCRIPTEN_EGL_MAGIC_ID_FOR_DEFAULT_SURFACE ((EGLSurface)62006)
+
+// Currently there are few enough configuration options for creating a WebGL context
+// that all the permutations can fit in an uint32. Therefore use bit packing to represent
+// these combinations to avoid having to enumerate a list fo all combos, to save memory.
+// This is an internal implementation detail, and can be changed in the future if the number of options
+// increases to become too large to fit in an uint32/uint64.
+#define EM_EGL_ALPHA_BIT 0x1
+#define EM_EGL_DEPTH_BIT 0x2
+#define EM_EGL_STENCIL_BIT 0x4
+#define EM_EGL_ANTIALIAS_BIT 0x8
+#define EM_EGL_PREMULTIPLIED_ALPHA_BIT 0x10
+#define EM_EGL_PRESERVE_DRAWING_BUFFER_BIT 0x20
+#define EM_EGL_PREFER_LOW_POWER_TO_HIGH_PERFORMANCE_BIT 0x40
+#define EM_EGL_FAIL_IF_MAJOR_PERFORMANCE_CAVEAT_BIT 0x80
+#define EM_EGL_WEBGL2_BIT 0x100
+#define EM_EGL_ENABLE_EXTENSIONS_BY_DEFAULT_BIT 0x200
+#define EM_EGL_EXPLICIT_SWAP_CONTROL_BIT 0x400
+#define EM_EGL_PROXY_TO_MAIN_THREAD_BIT 0x800
+#define EM_EGL_RENDER_VIA_OFFSCREEN_BACK_BUFFER_BIT 0x1000
 
 EGLAPI EGLint EGLAPIENTRY eglGetError(void)
 {
@@ -89,6 +108,14 @@ EGLAPI const char * EGLAPIENTRY eglQueryString(EGLDisplay dpy, EGLint name)
   }
 }
 
+static EGLBoolean ConfigPassesFilter(EGLConfig config, const EGLint *attrib_list)
+{
+  if (!attrib_list) return EGL_TRUE;
+
+
+  return EGL_TRUE;
+}
+
 EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attrib_list, EGLConfig *configs, EGLint config_size, EGLint *num_config)
 {
   if (dpy != EMSCRIPTEN_EGL_MAGIC_ID_FOR_DEFAULT_DISPLAY)
@@ -101,9 +128,29 @@ EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attr
     eglError = EGL_BAD_PARAMETER;
     return EGL_FALSE;
   }
-  if (num_config) *num_config = 1;
-  if (configs && config_size > 0) configs[0] = EMSCRIPTEN_EGL_MAGIC_ID_FOR_DEFAULT_CONFIG;
 
+  const int baseConfig = EM_EGL_ENABLE_EXTENSIONS_BY_DEFAULT_BIT;
+  int numMatchingConfigs = 0;
+  if (!configs) config_size = 0x7FFFFFFF;
+
+  for(int a = 0; a <= EM_EGL_ALPHA_BIT; a += EM_EGL_ALPHA_BIT)
+    for(int d = 0; d <= EM_EGL_DEPTH_BIT; d += EM_EGL_DEPTH_BIT)
+      for(int s = 0; s <= EM_EGL_STENCIL_BIT; s += EM_EGL_STENCIL_BIT)
+        for(int aa = 0; aa <= EM_EGL_ANTIALIAS_BIT; aa += EM_EGL_ANTIALIAS_BIT)
+          for(int es3 = 0; es3 <= EM_EGL_WEBGL2_BIT; es3 += EM_EGL_WEBGL2_BIT)
+          {
+            if (numMatchingConfigs >= config_size)
+              break;
+
+            EGLConfig config = (EGLConfig)(baseConfig | a | d | s | aa | es3);
+            if (ConfigPassesFilter(config, attrib_list))
+            {
+              if (configs) configs[numMatchingConfigs] = config;
+              ++numMatchingConfigs;
+            }
+          }
+
+  *num_config = numMatchingConfigs;
   eglError = EGL_SUCCESS;
   return EGL_TRUE;
 }
@@ -113,18 +160,11 @@ EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigs(EGLDisplay dpy, EGLConfig *configs, 
   return eglChooseConfig(dpy, 0, configs, config_size, num_config);
 }
 
-
 EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig config, EGLint attribute, EGLint *value)
 {
   if (dpy != EMSCRIPTEN_EGL_MAGIC_ID_FOR_DEFAULT_DISPLAY)
   {
     eglError = EGL_BAD_DISPLAY;
-    return EGL_FALSE;
-  }
-
-  if (config != EMSCRIPTEN_EGL_MAGIC_ID_FOR_DEFAULT_CONFIG)
-  {
-    eglError = EGL_BAD_CONFIG;
     return EGL_FALSE;
   }
 
@@ -139,16 +179,16 @@ EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig confi
   switch(attribute)
   {
     case EGL_BUFFER_SIZE: *value = 32; return EGL_TRUE;
-    case EGL_ALPHA_SIZE: *value = 8; return EGL_TRUE; // TODO: This is hardcoded, add support for this
+    case EGL_ALPHA_SIZE: *value = ((EGLint)config & EM_EGL_ALPHA_BIT) ? 8 : 0; return EGL_TRUE;
     case EGL_BLUE_SIZE:
     case EGL_GREEN_SIZE:
     case EGL_RED_SIZE:
       *value = 8; return EGL_TRUE;
-    case EGL_DEPTH_SIZE: *value = 24; return EGL_TRUE; // TODO: This is hardcoded, add support for this
-    case EGL_STENCIL_SIZE: *value = 8; return EGL_TRUE; // TODO: This is hardcoded, add support for this
+    case EGL_DEPTH_SIZE: *value = ((EGLint)config & EM_EGL_DEPTH_BIT) ? 24 : 0; return EGL_TRUE;
+    case EGL_STENCIL_SIZE: *value = ((EGLint)config & EM_EGL_STENCIL_BIT) ? 8 : 0; return EGL_TRUE;
     // We can return here one of EGL_NONE (0x3038), EGL_SLOW_CONFIG (0x3050) or EGL_NON_CONFORMANT_CONFIG (0x3051).
     case EGL_CONFIG_CAVEAT: *value = EGL_NONE; return EGL_TRUE;
-    case EGL_CONFIG_ID: *value = (EGLint)EMSCRIPTEN_EGL_MAGIC_ID_FOR_DEFAULT_CONFIG; return EGL_TRUE;
+    case EGL_CONFIG_ID: *value = (EGLint)config; return EGL_TRUE;
     case EGL_LEVEL: *value = 0; return EGL_TRUE;
     case EGL_MAX_PBUFFER_HEIGHT: *value = 4096; return EGL_TRUE;
     case EGL_MAX_PBUFFER_PIXELS: *value = 4096 * 4096; return EGL_TRUE;
@@ -156,8 +196,8 @@ EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig confi
     case EGL_NATIVE_RENDERABLE: *value = 0; return EGL_TRUE;
     case EGL_NATIVE_VISUAL_ID: *value = 0; return EGL_TRUE;
     case EGL_NATIVE_VISUAL_TYPE: *value = EGL_NONE; return EGL_TRUE;
-    case EGL_SAMPLES: *value = 4; return EGL_TRUE;
-    case EGL_SAMPLE_BUFFERS: *value = 1; return EGL_TRUE;
+    case EGL_SAMPLES: *value = ((EGLint)config & EM_EGL_ANTIALIAS_BIT) ? 4 : 0; return EGL_TRUE;
+    case EGL_SAMPLE_BUFFERS: *value = ((EGLint)config & EM_EGL_ANTIALIAS_BIT) ? 1 : 0; return EGL_TRUE;
     case EGL_SURFACE_TYPE: *value = EGL_WINDOW_BIT; return EGL_TRUE;
     case EGL_TRANSPARENT_TYPE: *value = EGL_NONE; return EGL_TRUE;
     case EGL_TRANSPARENT_BLUE_VALUE:
@@ -189,12 +229,6 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy, EGLConfig c
     eglError = EGL_BAD_DISPLAY;
     return 0;
   }
-
-  if (config != EMSCRIPTEN_EGL_MAGIC_ID_FOR_DEFAULT_CONFIG)
-  {
-    eglError = EGL_BAD_CONFIG;
-    return 0;
-  }  
 
   eglError = EGL_SUCCESS;
   return EMSCRIPTEN_EGL_MAGIC_ID_FOR_DEFAULT_SURFACE;
@@ -257,7 +291,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface
 
   switch(attribute)
   {
-    case EGL_CONFIG_ID: *value = (EGLint)EMSCRIPTEN_EGL_MAGIC_ID_FOR_DEFAULT_CONFIG; return EGL_TRUE;
+    case EGL_CONFIG_ID: *value = (EGLint)eglCurrentInitializedConfig; return EGL_TRUE;
     case EGL_LARGEST_PBUFFER: 
       // Odd EGL API: If surface is not a pbuffer surface, 'value' should not be written to. It's not specified as an error, so true should(?) be returned.
       // Existing Android implementation seems to do so at least.
@@ -406,13 +440,26 @@ EGLAPI EGLContext EGLAPIENTRY eglCreateContext(EGLDisplay dpy, EGLConfig config,
 
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
-  attr.depth = 1;
-  attr.stencil = 1;
-  attr.alpha = 0;
-  // TODO: Make this the default
-//  attr.explicitSwapControl = 1;
+  attr.alpha = ((EGLint)config & EM_EGL_ALPHA_BIT) ? 1 : 0;
+  attr.depth = ((EGLint)config & EM_EGL_DEPTH_BIT) ? 1 : 0;
+  attr.stencil = ((EGLint)config & EM_EGL_STENCIL_BIT) ? 1 : 0;
+  attr.antialias = ((EGLint)config & EM_EGL_ANTIALIAS_BIT) ? 1 : 0;
+  attr.premultipliedAlpha = ((EGLint)config & EM_EGL_PREMULTIPLIED_ALPHA_BIT) ? 1 : 0;
+  attr.preserveDrawingBuffer = ((EGLint)config & EM_EGL_PRESERVE_DRAWING_BUFFER_BIT) ? 1 : 0;
+  attr.preferLowPowerToHighPerformance = ((EGLint)config & EM_EGL_PREFER_LOW_POWER_TO_HIGH_PERFORMANCE_BIT) ? 1 : 0;
+  attr.failIfMajorPerformanceCaveat = ((EGLint)config & EM_EGL_FAIL_IF_MAJOR_PERFORMANCE_CAVEAT_BIT) ? 1 : 0;
+  attr.majorVersion = ((EGLint)config & EM_EGL_WEBGL2_BIT) ? 2 : 1;
+  attr.minorVersion = 0;
+  attr.enableExtensionsByDefault = ((EGLint)config & EM_EGL_ENABLE_EXTENSIONS_BY_DEFAULT_BIT) ? 1 : 0;
+  attr.explicitSwapControl = ((EGLint)config & EM_EGL_EXPLICIT_SWAP_CONTROL_BIT) ? 1 : 0;
+  attr.proxyContextToMainThread = ((EGLint)config & EM_EGL_PROXY_TO_MAIN_THREAD_BIT) ? 1 : 0;
+  attr.renderViaOffscreenBackBuffer = ((EGLint)config & EM_EGL_RENDER_VIA_OFFSCREEN_BACK_BUFFER_BIT) ? 1 : 0;
   windowID = emscripten_webgl_create_context(0, &attr);
   eglError = windowID ? EGL_SUCCESS : EGL_BAD_MATCH;
+  if (EGL_SUCCESS)
+  {
+    eglCurrentInitializedConfig = config;
+  }
   return (EGLContext)windowID;
 }
 
@@ -432,6 +479,8 @@ EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext ctx)
     eglError = EGL_SUCCESS;
     return EGL_TRUE;
   }
+
+  eglCurrentInitializedConfig = (EGLConfig)0;
   return EGL_FALSE;
 }
 
@@ -504,7 +553,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQueryContext(EGLDisplay dpy, EGLContext ctx, EG
   eglError = EGL_SUCCESS;
   switch(attribute)
   {
-    case EGL_CONFIG_ID: *value = (EGLint)EMSCRIPTEN_EGL_MAGIC_ID_FOR_DEFAULT_CONFIG; return EGL_TRUE;
+    case EGL_CONFIG_ID: *value = (EGLint)eglCurrentInitializedConfig; return EGL_TRUE;
     case EGL_CONTEXT_CLIENT_TYPE: *value = EGL_OPENGL_ES_API; return EGL_TRUE;
     case EGL_CONTEXT_CLIENT_VERSION: *value = 2; return EGL_TRUE;
     case EGL_RENDER_BUFFER: *value = EGL_BACK_BUFFER; return EGL_TRUE;
@@ -547,6 +596,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
   }
 
   EMSCRIPTEN_RESULT res = emscripten_webgl_commit_frame();
+#if 0
   if (res >= 0)
   {
     eglError = EGL_SUCCESS;
@@ -554,6 +604,10 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
   }
   eglError = EGL_BAD_ACCESS;
   return EGL_FALSE;
+#else
+  eglError = EGL_SUCCESS;
+  return EGL_TRUE;
+#endif
 }
 
 EGLAPI EGLBoolean EGLAPIENTRY eglCopyBuffers(EGLDisplay dpy, EGLSurface surface, EGLNativePixmapType target)
