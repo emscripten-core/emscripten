@@ -9,92 +9,139 @@
 /*
  * This file provides some basic interfaces for interacting with WebVR from Emscripten.
  *
+ * Documentation for the public APIs defined in this file must be updated in:
+ *    site/source/docs/api_reference/vr.h.rst
+ * A prebuilt local version of the documentation is available at:
+ *    site/build/text/docs/api_reference/emscripten.h.txt
+ * You can also build docs locally as HTML or other formats in site/
+ * An online HTML version (which may be of a different version of Emscripten)
+ *    is up at http://kripken.github.io/emscripten-site/docs/api_reference/vr.h.html
  */
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef int32_t WebVRDeviceId;
-typedef int32_t WebVRHardwareUnitId;
+/**
+ * Version of the emscripten vr API, assembled as follows:
+ * WebVR Version Major * 10000 + WebVR Version Minor * 100 + API version [0-99]
+ *
+ * The first two can be used to determine the for which WebVR version the API
+ * has been built while the last can be used to determine which functions are
+ * available with the current build.
+ *
+ * E.g. emscripten vr API version 1.1.0 implements some initial features for
+ * WebVR 1.1 and its version define will have the value 10100
+ */
+#define EMSCRIPTEN_VR_API_VERSION 10100
+
+typedef int32_t VRDisplayHandle;
+
+typedef void (*em_vr_callback_func)(void);
+typedef void (*em_vr_arg_callback_func)(void*);
+
+#define VR_EYE_LEFT 0
+#define VR_EYE_RIGHT 1
 
 typedef enum {
-    WebVREyeLeft = 0,
-    WebVREyeRight = 1
-} WebVREye;
+    VREyeLeft = VR_EYE_LEFT,
+    VREyeRight = VR_EYE_RIGHT
+} VREye;
 
-typedef enum {
-    WebVRUnknownDevice = 0,
-    WebVRHMDDevice = 1,
-    WebVRPositionSensorDevice = 2
-} WebVRDeviceType;
+typedef struct VRVector3 {
+    float x, y, z;
+} VRVector3;
 
-typedef struct WebVRFieldOfView {
-    double upDegrees;
-    double rightDegrees;
-    double downDegrees;
-    double leftDegrees;
-} WebVRFieldOfView;
+typedef struct VRQuaternion {
+    float x, y, z, w;
+} VRQuaternion;
 
-typedef struct WebVRPoint {
-    double x, y, z, w;
-} WebVRPoint;
+typedef struct VRDisplayCapabilities {
+    int32_t hasPosition;
+    int32_t hasExternalDisplay;
+    int32_t canPresent;
+    unsigned long maxLayers;
+} VRDisplayCapabilities;
 
-typedef struct WebVRIntRect {
-    int32_t x, y;
-    uint32_t width, height;
-} WebVRIntRect;
+#define VR_LAYER_DEFAULT_LEFT_BOUNDS {0.0f, 0.0f, 0.5f, 1.0f}
+#define VR_LAYER_DEFAULT_RIGHT_BOUNDS {0.5f, 0.0f, 0.5f, 1.0f}
+typedef struct VRLayerInit {
+    const char* source;
 
-typedef struct WebVRPositionState {
-    double timeStamp;
+    float leftBounds[4];
+    float rightBounds[4];
+} VRLayerInit;
 
-    int hasPosition;
-    WebVRPoint position;
-    WebVRPoint linearVelocity;
-    WebVRPoint linearAcceleration;
+/* Defines for VRPose::poseFlags */
+#define VR_POSE_POSITION 0x1
+#define VR_POSE_LINEAR_VELOCITY 0x2
+#define VR_POSE_LINEAR_ACCELERATION 0x4
+#define VR_POSE_ORIENTATION 0x8
+#define VR_POSE_ANGULAR_VELOCITY 0x10
+#define VR_POSE_ANGULAR_ACCELERATION 0x20
 
-    int hasOrientation;
-    WebVRPoint orientation;
-    WebVRPoint angularVelocity;
-    WebVRPoint angularAcceleration;
-} WebVRPositionState;
+typedef struct VRPose {
+    /** Position, valid only if `poseFlags & VR_POSE_POSITION == 0` */
+    VRVector3 position;
+    /** Linear velocity, valid only if `poseFlags & VR_POSE_LINEAR_VELOCITY == 0` */
+    VRVector3 linearVelocity;
+    /** Linear acceleration, valid only if `poseFlags & VR_POSE_LINEAR_ACCELERATION == 0` */
+    VRVector3 linearAcceleration;
 
-typedef struct WebVREyeParameters {
-    WebVRFieldOfView minimumFieldOfView;
-    WebVRFieldOfView maximumFieldOfView;
-    WebVRFieldOfView recommendedFieldOfView;
-    WebVRPoint eyeTranslation;
+    /** Orientation quaternion, valid only if `poseFlags & VR_POSE_ORIENTATION == 0` */
+    VRQuaternion orientation;
+    /** Angular velocity, valid only if `poseFlags & VR_POSE_ANGULAR_VELOCITY == 0` */
+    VRVector3 angularVelocity;
+    /** Angular acceleration, valid only if `poseFlags & VR_POSE_ANGULAR_ACCELERATION == 0` */
+    VRVector3 angularAcceleration;
 
-    WebVRFieldOfView currentFieldOfView;
-    WebVRIntRect renderRect;
-} WebVREyeParameters;
+    /** Bitmask of VR_POSE_* which determines whether the corresponding pose
+     * attributes are valid */
+    int poseFlags;
+} VRPose;
 
-extern void emscripten_vr_init();
-extern int emscripten_vr_ready();
+typedef struct VREyeParameters {
+    VRVector3 offset;
 
-extern int emscripten_vr_count_devices();
-extern WebVRDeviceId emscripten_vr_get_device_id(int deviceIndex);
-extern WebVRDeviceType emscripten_vr_get_device_type(WebVRDeviceId deviceId);
-extern WebVRHardwareUnitId emscripten_vr_get_device_hwid(WebVRDeviceId deviceId);
-extern char *emscripten_vr_get_device_name(WebVRDeviceId deviceId);
+    unsigned long renderWidth;
+    unsigned long renderHeight;
+} VREyeParameters;
 
-// select the given device as the fullscreen HMD device
-extern int emscripten_vr_select_hmd_device(WebVRDeviceId deviceId);
-extern WebVRDeviceId emscripten_vr_get_selected_hmd_device();
+typedef struct VRFrameData {
+    double timestamp;
 
-// For HMD devices.
-// All of these return 1 on success, <= 0 on failure.
-extern int emscripten_vr_hmd_get_eye_parameters(WebVRDeviceId deviceId, WebVREye whichEye, WebVREyeParameters *eyeParams);
-extern int emscripten_vr_hmd_set_fov(WebVRDeviceId deviceId,
-                                     const WebVRFieldOfView *leftFov,
-                                     const WebVRFieldOfView *rightFov,
-                                     double zNear, double zFar);
+    float leftProjectionMatrix[16];
+    float leftViewMatrix[16];
 
+    float rightProjectionMatrix[16];
+    float rightViewMatrix[16];
 
-// for Position devices
-// All of these return 1 on success, <= 0 on failure.
-extern int emscripten_vr_sensor_get_state(WebVRDeviceId deviceId, bool immediate, WebVRPositionState *state);
-extern int emscripten_vr_sensor_zero(WebVRDeviceId deviceId);
+    VRPose pose;
+} VRFrameData;
+
+extern int emscripten_vr_init(void);
+extern int emscripten_vr_ready(void);
+
+extern int emscripten_vr_version_major(void);
+extern int emscripten_vr_version_minor(void);
+
+extern int emscripten_vr_count_displays(void);
+extern VRDisplayHandle emscripten_vr_get_display_handle(int displayIndex);
+
+extern int emscripten_vr_set_display_render_loop(VRDisplayHandle handle, em_vr_callback_func callback);
+extern int emscripten_vr_set_display_render_loop_arg(VRDisplayHandle handle, em_vr_arg_callback_func callback, void* arg);
+extern int emscripten_vr_cancel_display_render_loop(VRDisplayHandle handle);
+
+extern int emscripten_vr_request_present(VRDisplayHandle handle, VRLayerInit* layerInit, int layerCount, em_vr_arg_callback_func callback, void* userData);
+extern int emscripten_vr_get_frame_data(VRDisplayHandle handle, VRFrameData* frameData);
+extern int emscripten_vr_submit_frame(VRDisplayHandle handle);
+extern int emscripten_vr_exit_present(VRDisplayHandle handle);
+
+extern char *emscripten_vr_get_display_name(VRDisplayHandle handle);
+extern int emscripten_vr_get_eye_parameters(VRDisplayHandle handle, VREye whichEye, VREyeParameters* eyeParams);
+extern int emscripten_vr_get_display_capabilities(VRDisplayHandle handle, VRDisplayCapabilities* displayCaps);
+extern bool emscripten_vr_display_connected(VRDisplayHandle handle);
+extern bool emscripten_vr_display_presenting(VRDisplayHandle handle);
 
 #ifdef __cplusplus
 } // ~extern "C"

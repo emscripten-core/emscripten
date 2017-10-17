@@ -34,7 +34,7 @@ void onLoaded(const char* file) {
 
   if (get_count == 2) {
     emscripten_cancel_main_loop();
-    REPORT_RESULT();
+    REPORT_RESULT(result);
   }
 }
 

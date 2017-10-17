@@ -2,6 +2,7 @@
 #
 # profile file, js file
 
+from __future__ import print_function
 import sys, json
 
 used = json.loads(open(sys.argv[1]).read())
@@ -30,10 +31,10 @@ for orig in open(sys.argv[2]).readlines():
       end = line.index(']')
     contents = line[start:end]
     fixed = map(lambda name: '"' + name + '"' if not used.get(name) else name, contents.split(','))
-    print (line[:start] + ','.join(fixed) + line[end:]).replace('""', '')
+    print((line[:start] + ','.join(fixed) + line[end:]).replace('""', ''))
   else:
     if show:
-      print orig,
+      print(orig, end=' ')
 
   if orig.startswith('}'):
     show = True

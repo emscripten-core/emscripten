@@ -6,6 +6,7 @@ Processes asm.js code to make it run in an emterpreter.
 Currently this requires the asm.js code to have been built with -s FINALIZE_ASM_JS=0
 '''
 
+from __future__ import print_function
 import os, sys, re, json
 import asm_module, shared, shutil
 
@@ -30,7 +31,7 @@ OUTPUT_FILE = None
 def handle_arg(arg):
   global ZERO, ASYNC, ASSERTIONS, PROFILING, FROUND, ADVISE, MEMORY_SAFE, OUTPUT_FILE
   if '=' in arg:
-    l, r = arg.split('=')
+    l, r = arg.split('=', 1)
     if l == 'ZERO': ZERO = int(r)
     elif l == 'ASYNC': ASYNC = int(r)
     elif l == 'ASSERTIONS': ASSERTIONS = int(r)
@@ -48,7 +49,7 @@ config = shared.Configuration()
 temp_files = config.get_temp_files()
 
 if DEBUG:
-  print >> sys.stderr, 'running emterpretify on', sys.argv
+  print('running emterpretify on', sys.argv, file=sys.stderr)
 
 if FROUND:
   shared.Settings.PRECISE_F32 = 1
@@ -241,7 +242,7 @@ def randomize_opcodes():
   global OPCODES
   import random
   random.shuffle(opcodes)
-  print OPCODES
+  print(OPCODES)
 #randomize_opcodes()
 
 assert len(OPCODES) == len(set(OPCODES)) # no dupe names
@@ -724,9 +725,9 @@ if __name__ == '__main__':
     data = shared.Building.calculate_reachable_functions(infile, list(SYNC_FUNCS))
     advised = data['reachable']
     total_funcs = data['total_funcs']
-    print "Suggested list of functions to run in the emterpreter:"
-    print "  -s EMTERPRETIFY_WHITELIST='" + str(sorted(advised)).replace("'", '"') + "'"
-    print "(%d%% out of %d functions)" % (int((100.0*len(advised))/total_funcs), total_funcs)
+    print("Suggested list of functions to run in the emterpreter:")
+    print("  -s EMTERPRETIFY_WHITELIST='" + str(sorted(advised)).replace("'", '"') + "'")
+    print("(%d%% out of %d functions)" % (int((100.0*len(advised))/total_funcs), total_funcs))
     sys.exit(0)
 
   # final global functions
@@ -888,12 +889,12 @@ if __name__ == '__main__':
     elif line.startswith('// EMTERPRET_INFO '):
       try:
         func, curr, absolute_targets = json.loads(line[len('// EMTERPRET_INFO '):])
-      except Exception, e:
-        print >> sys.stderr, 'failed to parse code from', line
+      except Exception as e:
+        print('failed to parse code from', line, file=sys.stderr)
         raise e
       assert len(curr) % 4 == 0, len(curr)
       funcs[func] = len(all_code) # no operation here should change the length
-      if LOG_CODE: print >> sys.stderr, 'raw bytecode for %s:' % func, curr, 'insts:', len(curr)/4
+      if LOG_CODE: print('raw bytecode for %s:' % func, curr, 'insts:', len(curr)/4, file=sys.stderr)
       process_code(func, curr, absolute_targets)
       #print >> sys.stderr, 'processed bytecode for %s:' % func, curr
       all_code += curr
@@ -991,7 +992,9 @@ __ATPRERUN__.push(function() {
 
     js += ['''
   var bytecodeFile = Module['emterpreterFile'];
-  assert(bytecodeFile instanceof ArrayBuffer, 'bad emterpreter file');
+  if (!(bytecodeFile instanceof ArrayBuffer)) {
+    throw "bad or missing emterpreter file. If you compiled to JS (and not HTML) make sure you set Module['emterpreterFile']";
+  }
   var codeSize = %d;
   HEAPU8.set(new Uint8Array(bytecodeFile).subarray(0, codeSize), eb);
   assert(HEAPU8[eb] === %d);
@@ -1001,7 +1004,9 @@ __ATPRERUN__.push(function() {
   var relocationsStart = (codeSize+3) >> 2;
   var relocations = (new Uint32Array(bytecodeFile)).subarray(relocationsStart);
   assert(relocations.length === %d);
-  if (relocations.length > 0) assert(relocations[0] === %d);
+  if (relocations.length > 0) {
+    assert(relocations[0] === %d);
+  }
 ''' % (len(all_code), all_code[0], all_code[1], all_code[2], all_code[3], len(relocations), relocations[0])]
 
   else:

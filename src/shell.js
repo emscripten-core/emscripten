@@ -68,7 +68,7 @@ var ENVIRONMENT_IS_PTHREAD;
 if (!ENVIRONMENT_IS_PTHREAD) ENVIRONMENT_IS_PTHREAD = false; // ENVIRONMENT_IS_PTHREAD=true will have been preset in pthread-main.js. Make it false in the main runtime thread.
 var PthreadWorkerInit; // Collects together variables that are needed at initialization time for the web workers that host pthreads.
 if (!ENVIRONMENT_IS_PTHREAD) PthreadWorkerInit = {};
-var currentScriptUrl = ENVIRONMENT_IS_WORKER ? undefined : document.currentScript.src;
+var currentScriptUrl = (typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
 #endif
 
 if (ENVIRONMENT_IS_NODE) {
@@ -80,11 +80,19 @@ if (ENVIRONMENT_IS_NODE) {
   var nodeFS;
   var nodePath;
 
-  Module['read'] = function read(filename, binary) {
-    if (!nodeFS) nodeFS = require('fs');
-    if (!nodePath) nodePath = require('path');
-    filename = nodePath['normalize'](filename);
-    var ret = nodeFS['readFileSync'](filename);
+  Module['read'] = function shell_read(filename, binary) {
+    var ret;
+#if SUPPORT_BASE64_EMBEDDING
+    ret = tryParseAsDataURI(filename);
+    if (!ret) {
+#endif
+      if (!nodeFS) nodeFS = require('fs');
+      if (!nodePath) nodePath = require('path');
+      filename = nodePath['normalize'](filename);
+      ret = nodeFS['readFileSync'](filename);
+#if SUPPORT_BASE64_EMBEDDING
+    }
+#endif
     return binary ? ret : ret.toString();
   };
 
@@ -111,9 +119,13 @@ if (ENVIRONMENT_IS_NODE) {
 
   Module['arguments'] = process['argv'].slice(2);
 
+#if MODULARIZE
+  // MODULARIZE will export the module in the proper place outside, we don't need to export here
+#else
   if (typeof module !== 'undefined') {
     module['exports'] = Module;
   }
+#endif
 
 #if NODEJS_CATCH_EXIT
   process['on']('uncaughtException', function(ex) {
@@ -131,16 +143,31 @@ else if (ENVIRONMENT_IS_SHELL) {
   if (typeof printErr != 'undefined') Module['printErr'] = printErr; // not present in v8 or older sm
 
   if (typeof read != 'undefined') {
-    Module['read'] = read;
+    Module['read'] = function shell_read(f) {
+#if SUPPORT_BASE64_EMBEDDING
+      var data = tryParseAsDataURI(f);
+      if (data) {
+        return intArrayToString(data);
+      }
+#endif
+      return read(f);
+    };
   } else {
-    Module['read'] = function read() { throw 'no read() available' };
+    Module['read'] = function shell_read() { throw 'no read() available' };
   }
 
   Module['readBinary'] = function readBinary(f) {
+    var data;
+#if SUPPORT_BASE64_EMBEDDING
+    data = tryParseAsDataURI(f);
+    if (data) {
+      return data;
+    }
+#endif
     if (typeof readbuffer === 'function') {
       return new Uint8Array(readbuffer(f));
     }
-    var data = read(f, 'binary');
+    data = read(f, 'binary');
     assert(typeof data === 'object');
     return data;
   };
@@ -151,17 +178,57 @@ else if (ENVIRONMENT_IS_SHELL) {
     Module['arguments'] = arguments;
   }
 
+  if (typeof quit === 'function') {
+    Module['quit'] = function(status, toThrow) {
+      quit(status);
+    }
+  }
+
 #if USE_CLOSURE_COMPILER
   eval("if (typeof gc === 'function' && gc.toString().indexOf('[native code]') > 0) var gc = undefined"); // wipe out the SpiderMonkey shell 'gc' function, which can confuse closure (uses it as a minified name, and it is then initted to a non-falsey value unexpectedly)
 #endif
 }
 else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
-  Module['read'] = function read(url) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, false);
-    xhr.send(null);
-    return xhr.responseText;
+  Module['read'] = function shell_read(url) {
+#if SUPPORT_BASE64_EMBEDDING
+    try {
+#endif
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, false);
+      xhr.send(null);
+      return xhr.responseText;
+#if SUPPORT_BASE64_EMBEDDING
+    } catch (err) {
+      var data = tryParseAsDataURI(url);
+      if (data) {
+        return intArrayToString(data);
+      }
+      throw err;
+    }
+#endif
   };
+
+  if (ENVIRONMENT_IS_WORKER) {
+    Module['readBinary'] = function readBinary(url) {
+#if SUPPORT_BASE64_EMBEDDING
+      try {
+#endif
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, false);
+        xhr.responseType = 'arraybuffer';
+        xhr.send(null);
+        return new Uint8Array(xhr.response);
+#if SUPPORT_BASE64_EMBEDDING
+      } catch (err) {
+        var data = tryParseAsDataURI(f);
+        if (data) {
+          return data;
+        }
+        throw err;
+      }
+#endif
+    };
+  }
 
   Module['readAsync'] = function readAsync(url, onload, onerror) {
     var xhr = new XMLHttpRequest();
@@ -170,9 +237,16 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     xhr.onload = function xhr_onload() {
       if (xhr.status == 200 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
         onload(xhr.response);
-      } else {
-        onerror();
+        return;
       }
+#if SUPPORT_BASE64_EMBEDDING
+      var data = tryParseAsDataURI(url);
+      if (data) {
+        onload(data.buffer);
+        return;
+      }
+#endif
+      onerror();
     };
     xhr.onerror = onerror;
     xhr.send(null);
@@ -183,10 +257,10 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   }
 
   if (typeof console !== 'undefined') {
-    if (!Module['print']) Module['print'] = function print(x) {
+    if (!Module['print']) Module['print'] = function shell_print(x) {
       console.log(x);
     };
-    if (!Module['printErr']) Module['printErr'] = function printErr(x) {
+    if (!Module['printErr']) Module['printErr'] = function shell_printErr(x) {
       console.warn(x);
     };
   } else {
@@ -208,8 +282,8 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   }
 }
 else {
-  // Unreachable because SHELL is dependant on the others
-  throw 'Unknown runtime environment. Where are we?';
+  // Unreachable because SHELL is dependent on the others
+  throw new Error('Unknown runtime environment. Where are we?');
 }
 
 function globalEval(x) {
@@ -231,6 +305,11 @@ if (!Module['arguments']) {
 }
 if (!Module['thisProgram']) {
   Module['thisProgram'] = './this.program';
+}
+if (!Module['quit']) {
+  Module['quit'] = function(status, toThrow) {
+    throw toThrow;
+  }
 }
 
 // *** Environment setup code ***

@@ -24,14 +24,14 @@ extern "C" {
 
 unsigned int getTotalMemory()
 {
-	return EM_ASM_INT_V(return TOTAL_MEMORY);
+	return EM_ASM_INT(return TOTAL_MEMORY);
 }
 
 unsigned int getFreeMemory()
 {
 	s_mallinfo i = mallinfo();
 	unsigned int totalMemory = getTotalMemory();
-	unsigned int dynamicTop = EM_ASM_INT_V(return HEAPU32[DYNAMICTOP_PTR>>2]);
+	unsigned int dynamicTop = EM_ASM_INT(return HEAPU32[DYNAMICTOP_PTR>>2]);
 	return totalMemory - dynamicTop + i.fordblks;
 }
 

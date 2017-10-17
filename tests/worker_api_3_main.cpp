@@ -29,7 +29,7 @@ void c1(char *data, int size, void *arg) {
     int result = 1;  // Final call occurred.
     for (int i = 0; i < 4; ++i)
       if (sawCalls[i]) result++;
-    REPORT_RESULT();
+    REPORT_RESULT(result);
   }
 }
 

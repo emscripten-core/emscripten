@@ -13,7 +13,7 @@ var emscriptenMemoryProfiler = {
   allocateStatistics: false,
 
   // If allocateStatistics = true, then all callstacks that have recorded more than the following number of allocations will be printed to html page.
-  allocateStatisticsMinReported: 100,
+  allocateStatisticsNumcallsMinReported: 100,
 
   // If true, we hook into Runtime.stackAlloc to be able to catch better estimate of the maximum used STACK space.
   // You might only ever want to set this to false for performance reasons. Since stack allocations may occur often, this might impact performance.
@@ -93,8 +93,9 @@ var emscriptenMemoryProfiler = {
     if (this.allocateStatistics) {
       var loc = new Error().stack.toString();
       var str = loc;
-      if (!this.allocationSiteStatistics[str]) this.allocationSiteStatistics[str] = 1;
-      else ++this.allocationSiteStatistics[str];
+      if (!this.allocationSiteStatistics[str]) this.allocationSiteStatistics[str] = [0, 0];
+      this.allocationSiteStatistics[str][0] += 1;
+      this.allocationSiteStatistics[str][1] += size;
       this.allocationSitePtrs[ptr] = loc;
     }
 
@@ -129,7 +130,8 @@ var emscriptenMemoryProfiler = {
       var loc = this.allocationSitePtrs[ptr];
       if (loc) {
         var str = loc;
-        --this.allocationSiteStatistics[str];
+        this.allocationSiteStatistics[str][0] -= 1;
+        this.allocationSiteStatistics[str][1] -= sz;
       }
       this.allocationSitePtrs[ptr] = null;
     }
@@ -360,23 +362,26 @@ var emscriptenMemoryProfiler = {
     if (!isEmpty(this.allocationSiteStatistics)) {
       var calls = [];
       for (var i in this.allocationSiteStatistics) {
-        var numcalls = this.allocationSiteStatistics[i];
-        if (numcalls >= this.allocateStatisticsMinReported) calls.push(i);
+        var numcalls = this.allocationSiteStatistics[i][0];
+        var size = this.allocationSiteStatistics[i][1];
+        if (numcalls >= this.allocateStatisticsNumcallsMinReported ||
+            size >= this.trackedCallstackMinSizeBytes) calls.push(i);
       }
 
       var self = this;
-      calls.sort(function(a,b) { return self.allocationSiteStatistics[b] - self.allocationSiteStatistics[a]; });
+      calls.sort(function(a,b) { return self.allocationSiteStatistics[b][0] - self.allocationSiteStatistics[a][0]; });
       html += '<h4>Allocated pointers by call stack:<h4>';
       var ndemangled = 10;
       for (var i in calls) {
         var callstack = calls[i];
-        var numcalls = this.allocationSiteStatistics[callstack];
+        var numcalls = this.allocationSiteStatistics[callstack][0];
+        var size = this.allocationSiteStatistics[callstack][1];
         if (ndemangled > 0) {
           callstack = demangleAll(callstack);
           callstack = callstack.split('\n').join('<br />');
           --ndemangled;
         }
-        html += callstack + ': <b>' + numcalls + '</b><br /><br />';
+        html += callstack + ': <b> calls ' + numcalls + ', size ' + this.formatBytes(size)  + '</b><br /><br />';
       }
     }
     memoryprofiler.innerHTML = html;

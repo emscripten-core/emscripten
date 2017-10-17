@@ -10,7 +10,7 @@ void c1(char *data, int size, void *arg) {
   printf("c1: %d,%d\n", x[0], x[1]);
 
   int result = x[1] % x[0];
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }
 
 int main() {

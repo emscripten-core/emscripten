@@ -8,8 +8,7 @@ void alarm_handler(int dummy)
 {
 	printf("Received alarm!\n");
 #ifdef REPORT_RESULT
-	int result = 0;
-	REPORT_RESULT();
+	REPORT_RESULT(0);
 #endif
 	exit(0);
 }
@@ -20,8 +19,7 @@ int main()
 	{
 		printf("Error in signal()!\n");
 #ifdef REPORT_RESULT
-		int result = 1;
-		REPORT_RESULT();
+		REPORT_RESULT(1);
 #endif
 		exit(1);
 	}

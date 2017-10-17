@@ -1157,7 +1157,7 @@ mergeInto(LibraryManager.library, {
       if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_RDONLY')}}}) {
         throw new FS.ErrnoError(ERRNO_CODES.EBADF);
       }
-      if (!FS.isFile(stream.node.mode) && !FS.isDir(node.mode)) {
+      if (!FS.isFile(stream.node.mode) && !FS.isDir(stream.node.mode)) {
         throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
       }
       if (!stream.stream_ops.allocate) {

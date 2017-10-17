@@ -182,4 +182,10 @@ done:
 	z += e * (L102A);
 	return z;
 }
+#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384
+// TODO: broken implementation to make things compile
+long double log10l(long double x)
+{
+	return log10(x);
+}
 #endif

@@ -4,6 +4,7 @@ A semi-smart diff for autodebugger logs.
 Run it with filenames of two autodebugger logs as parameters
 '''
 
+from __future__ import print_function
 import os, sys
 
 
@@ -54,7 +55,7 @@ while max(ai, bi) < maxx:
   assert av[0] == bv[0]
   diff = abs(av[1] - bv[1])
   if diff > MIN:
-    print '<<%d %d>>  %d : %.5f' % (ai, bi, av[0], diff)
+    print('<<%d %d>>  %d : %.5f' % (ai, bi, av[0], diff))
   ai += 1
   bi += 1
 

@@ -154,3 +154,14 @@ struct ReceiveArrays {
   }
 };
 
+struct StoreArray {
+  StoreArray() : int_array(NULL) {}
+  void setArray(const int *array) {
+    int_array = array;
+  }
+  int getArrayValue(int index) const {
+    return int_array[index];
+  }
+  const int* int_array;
+};
+

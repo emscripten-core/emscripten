@@ -5,11 +5,12 @@ Similar to autodebugger.py, but runs on .c files. Will
 overwrite the files it is given!
 '''
 
+from __future__ import print_function
 import os, sys, re
 
 filenames = sys.argv[1:]
 for filename in filenames:
-  print '..%s..' % filename
+  print('..%s..' % filename)
 
   f = open(filename, 'r')
   data = f.read()
@@ -33,5 +34,5 @@ for filename in filenames:
   f.write('\n'.join(lines))
   f.close()
 
-print 'Success.'
+print('Success.')
 

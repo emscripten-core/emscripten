@@ -24,11 +24,14 @@
 #endif
 #include "clocale"
 #include "cstring"
+#if defined(_LIBCPP_MSVCRT)
+#define _CTYPE_DISABLE_MACROS
+#endif
 #include "cwctype"
 #include "__sso_allocator"
 #if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
 #include "support/win32/locale_win32.h"
-#elif !defined(__ANDROID__)
+#elif !defined(__BIONIC__)
 #include <langinfo.h>
 #endif
 #include <stdlib.h>
@@ -107,6 +110,16 @@ countof(const T * const begin, const T * const end)
     return static_cast<size_t>(end - begin);
 }
 
+_LIBCPP_NORETURN static void __throw_runtime_error(const string &msg)
+{
+#ifndef _LIBCPP_NO_EXCEPTIONS
+    throw runtime_error(msg);
+#else
+    (void)msg;
+    _VSTD::abort();
+#endif
+}
+
 }
 
 #if defined(_AIX)
@@ -127,7 +140,7 @@ class _LIBCPP_HIDDEN locale::__imp
     : public facet
 {
     enum {N = 28};
-#if defined(_LIBCPP_MSVC)
+#if defined(_LIBCPP_COMPILER_MSVC)
 // FIXME: MSVC doesn't support aligned parameters by value.
 // I can't get the __sso_allocator to work here
 // for MSVC I think for this reason.
@@ -646,22 +659,18 @@ collate_byname<char>::collate_byname(const char* n, size_t refs)
     : collate<char>(refs),
       __l(newlocale(LC_ALL_MASK, n, 0))
 {
-#ifndef _LIBCPP_NO_EXCEPTIONS
     if (__l == 0)
-        throw runtime_error("collate_byname<char>::collate_byname"
+        __throw_runtime_error("collate_byname<char>::collate_byname"
                             " failed to construct for " + string(n));
-#endif  // _LIBCPP_NO_EXCEPTIONS
 }
 
 collate_byname<char>::collate_byname(const string& name, size_t refs)
     : collate<char>(refs),
       __l(newlocale(LC_ALL_MASK, name.c_str(), 0))
 {
-#ifndef _LIBCPP_NO_EXCEPTIONS
     if (__l == 0)
-        throw runtime_error("collate_byname<char>::collate_byname"
+        __throw_runtime_error("collate_byname<char>::collate_byname"
                             " failed to construct for " + name);
-#endif  // _LIBCPP_NO_EXCEPTIONS
 }
 
 collate_byname<char>::~collate_byname()
@@ -698,22 +707,18 @@ collate_byname<wchar_t>::collate_byname(const char* n, size_t refs)
     : collate<wchar_t>(refs),
       __l(newlocale(LC_ALL_MASK, n, 0))
 {
-#ifndef _LIBCPP_NO_EXCEPTIONS
     if (__l == 0)
-        throw runtime_error("collate_byname<wchar_t>::collate_byname(size_t refs)"
+        __throw_runtime_error("collate_byname<wchar_t>::collate_byname(size_t refs)"
                             " failed to construct for " + string(n));
-#endif  // _LIBCPP_NO_EXCEPTIONS
 }
 
 collate_byname<wchar_t>::collate_byname(const string& name, size_t refs)
     : collate<wchar_t>(refs),
       __l(newlocale(LC_ALL_MASK, name.c_str(), 0))
 {
-#ifndef _LIBCPP_NO_EXCEPTIONS
     if (__l == 0)
-        throw runtime_error("collate_byname<wchar_t>::collate_byname(size_t refs)"
+        __throw_runtime_error("collate_byname<wchar_t>::collate_byname(size_t refs)"
                             " failed to construct for " + name);
-#endif  // _LIBCPP_NO_EXCEPTIONS
 }
 
 collate_byname<wchar_t>::~collate_byname()
@@ -1106,9 +1111,13 @@ ctype<char>::classic_table()  _NOEXCEPT
 #elif __sun__
     return __ctype_mask;
 #elif defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
+#if _VC_CRT_MAJOR_VERSION < 14
+    // This is assumed to be safe, which is a nonsense assumption because we're
+    // going to end up dereferencing it later...
     return _ctype+1; // internal ctype mask table defined in msvcrt.dll
-// This is assumed to be safe, which is a nonsense assumption because we're
-// going to end up dereferencing it later...
+#else
+    return __pctype_func();
+#endif
 #elif defined(__EMSCRIPTEN__)
     return *__ctype_b_loc();
 #elif defined(_NEWLIB_VERSION)
@@ -1172,22 +1181,18 @@ ctype_byname<char>::ctype_byname(const char* name, size_t refs)
     : ctype<char>(0, false, refs),
       __l(newlocale(LC_ALL_MASK, name, 0))
 {
-#ifndef _LIBCPP_NO_EXCEPTIONS
     if (__l == 0)
-        throw runtime_error("ctype_byname<char>::ctype_byname"
+        __throw_runtime_error("ctype_byname<char>::ctype_byname"
                             " failed to construct for " + string(name));
-#endif  // _LIBCPP_NO_EXCEPTIONS
 }
 
 ctype_byname<char>::ctype_byname(const string& name, size_t refs)
     : ctype<char>(0, false, refs),
       __l(newlocale(LC_ALL_MASK, name.c_str(), 0))
 {
-#ifndef _LIBCPP_NO_EXCEPTIONS
     if (__l == 0)
-        throw runtime_error("ctype_byname<char>::ctype_byname"
+        __throw_runtime_error("ctype_byname<char>::ctype_byname"
                             " failed to construct for " + name);
-#endif  // _LIBCPP_NO_EXCEPTIONS
 }
 
 ctype_byname<char>::~ctype_byname()
@@ -1229,22 +1234,18 @@ ctype_byname<wchar_t>::ctype_byname(const char* name, size_t refs)
     : ctype<wchar_t>(refs),
       __l(newlocale(LC_ALL_MASK, name, 0))
 {
-#ifndef _LIBCPP_NO_EXCEPTIONS
     if (__l == 0)
-        throw runtime_error("ctype_byname<wchar_t>::ctype_byname"
+        __throw_runtime_error("ctype_byname<wchar_t>::ctype_byname"
                             " failed to construct for " + string(name));
-#endif  // _LIBCPP_NO_EXCEPTIONS
 }
 
 ctype_byname<wchar_t>::ctype_byname(const string& name, size_t refs)
     : ctype<wchar_t>(refs),
       __l(newlocale(LC_ALL_MASK, name.c_str(), 0))
 {
-#ifndef _LIBCPP_NO_EXCEPTIONS
     if (__l == 0)
-        throw runtime_error("ctype_byname<wchar_t>::ctype_byname"
+        __throw_runtime_error("ctype_byname<wchar_t>::ctype_byname"
                             " failed to construct for " + name);
-#endif  // _LIBCPP_NO_EXCEPTIONS
 }
 
 ctype_byname<wchar_t>::~ctype_byname()
@@ -1504,11 +1505,9 @@ codecvt<wchar_t, char, mbstate_t>::codecvt(const char* nm, size_t refs)
     : locale::facet(refs),
       __l(newlocale(LC_ALL_MASK, nm, 0))
 {
-#ifndef _LIBCPP_NO_EXCEPTIONS
     if (__l == 0)
-        throw runtime_error("codecvt_byname<wchar_t, char, mbstate_t>::codecvt_byname"
+        __throw_runtime_error("codecvt_byname<wchar_t, char, mbstate_t>::codecvt_byname"
                             " failed to construct for " + string(nm));
-#endif  // _LIBCPP_NO_EXCEPTIONS
 }
 
 codecvt<wchar_t, char, mbstate_t>::~codecvt()
@@ -1660,10 +1659,8 @@ codecvt<wchar_t, char, mbstate_t>::do_unshift(state_type& st,
 int
 codecvt<wchar_t, char, mbstate_t>::do_encoding() const  _NOEXCEPT
 {
-#ifndef __CloudABI__
     if (__libcpp_mbtowc_l(nullptr, nullptr, MB_LEN_MAX, __l) != 0)
         return -1;
-#endif
 
     // stateless encoding
     if (__l == 0 || __libcpp_mb_cur_max_l(__l) == 1)  // there are no known constant length encodings
@@ -3257,7 +3254,7 @@ __codecvt_utf8<wchar_t>::do_out(state_type&,
     const intern_type* frm, const intern_type* frm_end, const intern_type*& frm_nxt,
     extern_type* to, extern_type* to_end, extern_type*& to_nxt) const
 {
-#if _WIN32
+#if defined(_LIBCPP_SHORT_WCHAR)
     const uint16_t* _frm = reinterpret_cast<const uint16_t*>(frm);
     const uint16_t* _frm_end = reinterpret_cast<const uint16_t*>(frm_end);
     const uint16_t* _frm_nxt = _frm;
@@ -3269,7 +3266,7 @@ __codecvt_utf8<wchar_t>::do_out(state_type&,
     uint8_t* _to = reinterpret_cast<uint8_t*>(to);
     uint8_t* _to_end = reinterpret_cast<uint8_t*>(to_end);
     uint8_t* _to_nxt = _to;
-#if _WIN32
+#if defined(_LIBCPP_SHORT_WCHAR)
     result r = ucs2_to_utf8(_frm, _frm_end, _frm_nxt, _to, _to_end, _to_nxt,
                             _Maxcode_, _Mode_);
 #else
@@ -3289,7 +3286,7 @@ __codecvt_utf8<wchar_t>::do_in(state_type&,
     const uint8_t* _frm = reinterpret_cast<const uint8_t*>(frm);
     const uint8_t* _frm_end = reinterpret_cast<const uint8_t*>(frm_end);
     const uint8_t* _frm_nxt = _frm;
-#if _WIN32
+#if defined(_LIBCPP_SHORT_WCHAR)
     uint16_t* _to = reinterpret_cast<uint16_t*>(to);
     uint16_t* _to_end = reinterpret_cast<uint16_t*>(to_end);
     uint16_t* _to_nxt = _to;
@@ -4193,6 +4190,54 @@ __widen_from_utf8<32>::~__widen_from_utf8()
 {
 }
 
+
+static bool checked_string_to_wchar_convert(wchar_t& dest,
+                                            const char* ptr,
+                                            __locale_struct* loc) {
+  if (*ptr == '\0')
+    return false;
+  mbstate_t mb = {};
+  wchar_t out;
+  size_t ret = __libcpp_mbrtowc_l(&out, ptr, strlen(ptr), &mb, loc);
+  if (ret == static_cast<size_t>(-1) || ret == static_cast<size_t>(-2)) {
+    return false;
+  }
+  dest = out;
+  return true;
+}
+
+static bool checked_string_to_char_convert(char& dest,
+                                           const char* ptr,
+                                           __locale_struct* __loc) {
+  if (*ptr == '\0')
+    return false;
+  if (!ptr[1]) {
+    dest = *ptr;
+    return true;
+  }
+  // First convert the MBS into a wide char then attempt to narrow it using
+  // wctob_l.
+  wchar_t wout;
+  if (!checked_string_to_wchar_convert(wout, ptr, __loc))
+    return false;
+  int res;
+  if ((res = __libcpp_wctob_l(wout, __loc)) != char_traits<char>::eof()) {
+    dest = res;
+    return true;
+  }
+  // FIXME: Work around specific multibyte sequences that we can reasonable
+  // translate into a different single byte.
+  switch (wout) {
+  case L'\u00A0': // non-breaking space
+    dest = ' ';
+    return true;
+  default:
+    return false;
+  }
+  _LIBCPP_UNREACHABLE();
+}
+
+
 // numpunct<char> && numpunct<wchar_t>
 
 locale::id numpunct< char  >::id;
@@ -4259,16 +4304,15 @@ numpunct_byname<char>::__init(const char* nm)
     if (strcmp(nm, "C") != 0)
     {
         __locale_unique_ptr loc(newlocale(LC_ALL_MASK, nm, 0), freelocale);
-#ifndef _LIBCPP_NO_EXCEPTIONS
         if (loc == nullptr)
-            throw runtime_error("numpunct_byname<char>::numpunct_byname"
+            __throw_runtime_error("numpunct_byname<char>::numpunct_byname"
                                 " failed to construct for " + string(nm));
-#endif  // _LIBCPP_NO_EXCEPTIONS
+
         lconv* lc = __libcpp_localeconv_l(loc.get());
-        if (*lc->decimal_point)
-            __decimal_point_ = *lc->decimal_point;
-        if (*lc->thousands_sep)
-            __thousands_sep_ = *lc->thousands_sep;
+        checked_string_to_char_convert(__decimal_point_, lc->decimal_point,
+                                       loc.get());
+        checked_string_to_char_convert(__thousands_sep_, lc->thousands_sep,
+                                       loc.get());
         __grouping_ = lc->grouping;
         // localization for truename and falsename is not available
     }
@@ -4298,18 +4342,17 @@ numpunct_byname<wchar_t>::__init(const char* nm)
     if (strcmp(nm, "C") != 0)
     {
         __locale_unique_ptr loc(newlocale(LC_ALL_MASK, nm, 0), freelocale);
-#ifndef _LIBCPP_NO_EXCEPTIONS
         if (loc == nullptr)
-            throw runtime_error("numpunct_byname<char>::numpunct_byname"
+            __throw_runtime_error("numpunct_byname<wchar_t>::numpunct_byname"
                                 " failed to construct for " + string(nm));
-#endif  // _LIBCPP_NO_EXCEPTIONS
+
         lconv* lc = __libcpp_localeconv_l(loc.get());
-        if (*lc->decimal_point)
-            __decimal_point_ = *lc->decimal_point;
-        if (*lc->thousands_sep)
-            __thousands_sep_ = *lc->thousands_sep;
+        checked_string_to_wchar_convert(__decimal_point_, lc->decimal_point,
+                                        loc.get());
+        checked_string_to_wchar_convert(__thousands_sep_, lc->thousands_sep,
+                                        loc.get());
         __grouping_ = lc->grouping;
-        // locallization for truename and falsename is not available
+        // localization for truename and falsename is not available
     }
 }
 
@@ -4705,21 +4748,17 @@ __time_get_c_storage<wchar_t>::__r() const
 __time_get::__time_get(const char* nm)
     : __loc_(newlocale(LC_ALL_MASK, nm, 0))
 {
-#ifndef _LIBCPP_NO_EXCEPTIONS
     if (__loc_ == 0)
-        throw runtime_error("time_get_byname"
+        __throw_runtime_error("time_get_byname"
                             " failed to construct for " + string(nm));
-#endif  // _LIBCPP_NO_EXCEPTIONS
 }
 
 __time_get::__time_get(const string& nm)
     : __loc_(newlocale(LC_ALL_MASK, nm.c_str(), 0))
 {
-#ifndef _LIBCPP_NO_EXCEPTIONS
     if (__loc_ == 0)
-        throw runtime_error("time_get_byname"
+        __throw_runtime_error("time_get_byname"
                             " failed to construct for " + nm);
-#endif  // _LIBCPP_NO_EXCEPTIONS
 }
 
 __time_get::~__time_get()
@@ -5365,21 +5404,17 @@ __time_get_storage<wchar_t>::__do_date_order() const
 __time_put::__time_put(const char* nm)
     : __loc_(newlocale(LC_ALL_MASK, nm, 0))
 {
-#ifndef _LIBCPP_NO_EXCEPTIONS
     if (__loc_ == 0)
-        throw runtime_error("time_put_byname"
+        __throw_runtime_error("time_put_byname"
                             " failed to construct for " + string(nm));
-#endif  // _LIBCPP_NO_EXCEPTIONS
 }
 
 __time_put::__time_put(const string& nm)
     : __loc_(newlocale(LC_ALL_MASK, nm.c_str(), 0))
 {
-#ifndef _LIBCPP_NO_EXCEPTIONS
     if (__loc_ == 0)
-        throw runtime_error("time_put_byname"
+        __throw_runtime_error("time_put_byname"
                             " failed to construct for " + nm);
-#endif  // _LIBCPP_NO_EXCEPTIONS
 }
 
 __time_put::~__time_put()
@@ -5794,20 +5829,20 @@ moneypunct_byname<char, false>::init(const char* nm)
 {
     typedef moneypunct<char, false> base;
     __locale_unique_ptr loc(newlocale(LC_ALL_MASK, nm, 0), freelocale);
-#ifndef _LIBCPP_NO_EXCEPTIONS
     if (loc == nullptr)
-        throw runtime_error("moneypunct_byname"
+        __throw_runtime_error("moneypunct_byname"
                             " failed to construct for " + string(nm));
-#endif  // _LIBCPP_NO_EXCEPTIONS
+
     lconv* lc = __libcpp_localeconv_l(loc.get());
-    if (*lc->mon_decimal_point)
-        __decimal_point_ = *lc->mon_decimal_point;
-    else
-        __decimal_point_ = base::do_decimal_point();
-    if (*lc->mon_thousands_sep)
-        __thousands_sep_ = *lc->mon_thousands_sep;
-    else
-        __thousands_sep_ = base::do_thousands_sep();
+    if (!checked_string_to_char_convert(__decimal_point_,
+                                        lc->mon_decimal_point,
+                                        loc.get()))
+      __decimal_point_ = base::do_decimal_point();
+    if (!checked_string_to_char_convert(__thousands_sep_,
+                                        lc->mon_thousands_sep,
+                                        loc.get()))
+      __thousands_sep_ = base::do_thousands_sep();
+
     __grouping_ = lc->mon_grouping;
     __curr_symbol_ = lc->currency_symbol;
     if (lc->frac_digits != CHAR_MAX)
@@ -5838,20 +5873,19 @@ moneypunct_byname<char, true>::init(const char* nm)
 {
     typedef moneypunct<char, true> base;
     __locale_unique_ptr loc(newlocale(LC_ALL_MASK, nm, 0), freelocale);
-#ifndef _LIBCPP_NO_EXCEPTIONS
     if (loc == nullptr)
-        throw runtime_error("moneypunct_byname"
+        __throw_runtime_error("moneypunct_byname"
                             " failed to construct for " + string(nm));
-#endif  // _LIBCPP_NO_EXCEPTIONS
+
     lconv* lc = __libcpp_localeconv_l(loc.get());
-    if (*lc->mon_decimal_point)
-        __decimal_point_ = *lc->mon_decimal_point;
-    else
-        __decimal_point_ = base::do_decimal_point();
-    if (*lc->mon_thousands_sep)
-        __thousands_sep_ = *lc->mon_thousands_sep;
-    else
-        __thousands_sep_ = base::do_thousands_sep();
+    if (!checked_string_to_char_convert(__decimal_point_,
+                                        lc->mon_decimal_point,
+                                        loc.get()))
+      __decimal_point_ = base::do_decimal_point();
+    if (!checked_string_to_char_convert(__thousands_sep_,
+                                        lc->mon_thousands_sep,
+                                        loc.get()))
+      __thousands_sep_ = base::do_thousands_sep();
     __grouping_ = lc->mon_grouping;
     __curr_symbol_ = lc->int_curr_symbol;
     if (lc->int_frac_digits != CHAR_MAX)
@@ -5899,20 +5933,18 @@ moneypunct_byname<wchar_t, false>::init(const char* nm)
 {
     typedef moneypunct<wchar_t, false> base;
     __locale_unique_ptr loc(newlocale(LC_ALL_MASK, nm, 0), freelocale);
-#ifndef _LIBCPP_NO_EXCEPTIONS
     if (loc == nullptr)
-        throw runtime_error("moneypunct_byname"
+        __throw_runtime_error("moneypunct_byname"
                             " failed to construct for " + string(nm));
-#endif  // _LIBCPP_NO_EXCEPTIONS
     lconv* lc = __libcpp_localeconv_l(loc.get());
-    if (*lc->mon_decimal_point)
-        __decimal_point_ = static_cast<wchar_t>(*lc->mon_decimal_point);
-    else
-        __decimal_point_ = base::do_decimal_point();
-    if (*lc->mon_thousands_sep)
-        __thousands_sep_ = static_cast<wchar_t>(*lc->mon_thousands_sep);
-    else
-        __thousands_sep_ = base::do_thousands_sep();
+    if (!checked_string_to_wchar_convert(__decimal_point_,
+                                         lc->mon_decimal_point,
+                                         loc.get()))
+      __decimal_point_ = base::do_decimal_point();
+    if (!checked_string_to_wchar_convert(__thousands_sep_,
+                                         lc->mon_thousands_sep,
+                                         loc.get()))
+      __thousands_sep_ = base::do_thousands_sep();
     __grouping_ = lc->mon_grouping;
     wchar_t wbuf[100];
     mbstate_t mb = {0};
@@ -5966,20 +5998,19 @@ moneypunct_byname<wchar_t, true>::init(const char* nm)
 {
     typedef moneypunct<wchar_t, true> base;
     __locale_unique_ptr loc(newlocale(LC_ALL_MASK, nm, 0), freelocale);
-#ifndef _LIBCPP_NO_EXCEPTIONS
     if (loc == nullptr)
-        throw runtime_error("moneypunct_byname"
+        __throw_runtime_error("moneypunct_byname"
                             " failed to construct for " + string(nm));
-#endif  // _LIBCPP_NO_EXCEPTIONS
+
     lconv* lc = __libcpp_localeconv_l(loc.get());
-    if (*lc->mon_decimal_point)
-        __decimal_point_ = static_cast<wchar_t>(*lc->mon_decimal_point);
-    else
-        __decimal_point_ = base::do_decimal_point();
-    if (*lc->mon_thousands_sep)
-        __thousands_sep_ = static_cast<wchar_t>(*lc->mon_thousands_sep);
-    else
-        __thousands_sep_ = base::do_thousands_sep();
+    if (!checked_string_to_wchar_convert(__decimal_point_,
+                                         lc->mon_decimal_point,
+                                         loc.get()))
+      __decimal_point_ = base::do_decimal_point();
+    if (!checked_string_to_wchar_convert(__thousands_sep_,
+                                         lc->mon_thousands_sep,
+                                         loc.get()))
+      __thousands_sep_ = base::do_thousands_sep();
     __grouping_ = lc->mon_grouping;
     wchar_t wbuf[100];
     mbstate_t mb = {0};
@@ -6052,69 +6083,70 @@ void __throw_runtime_error(const char* msg)
     throw runtime_error(msg);
 #else
     (void)msg;
+    _VSTD::abort();
 #endif
 }
 
-template class collate<char>;
-template class collate<wchar_t>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS collate<char>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS collate<wchar_t>;
 
-template class num_get<char>;
-template class num_get<wchar_t>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS num_get<char>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS num_get<wchar_t>;
 
-template struct __num_get<char>;
-template struct __num_get<wchar_t>;
+template struct _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS __num_get<char>;
+template struct _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS __num_get<wchar_t>;
 
-template class num_put<char>;
-template class num_put<wchar_t>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS num_put<char>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS num_put<wchar_t>;
 
-template struct __num_put<char>;
-template struct __num_put<wchar_t>;
+template struct _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS __num_put<char>;
+template struct _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS __num_put<wchar_t>;
 
-template class time_get<char>;
-template class time_get<wchar_t>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS time_get<char>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS time_get<wchar_t>;
 
-template class time_get_byname<char>;
-template class time_get_byname<wchar_t>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS time_get_byname<char>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS time_get_byname<wchar_t>;
 
-template class time_put<char>;
-template class time_put<wchar_t>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS time_put<char>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS time_put<wchar_t>;
 
-template class time_put_byname<char>;
-template class time_put_byname<wchar_t>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS time_put_byname<char>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS time_put_byname<wchar_t>;
 
-template class moneypunct<char, false>;
-template class moneypunct<char, true>;
-template class moneypunct<wchar_t, false>;
-template class moneypunct<wchar_t, true>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS moneypunct<char, false>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS moneypunct<char, true>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS moneypunct<wchar_t, false>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS moneypunct<wchar_t, true>;
 
-template class moneypunct_byname<char, false>;
-template class moneypunct_byname<char, true>;
-template class moneypunct_byname<wchar_t, false>;
-template class moneypunct_byname<wchar_t, true>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS moneypunct_byname<char, false>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS moneypunct_byname<char, true>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS moneypunct_byname<wchar_t, false>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS moneypunct_byname<wchar_t, true>;
 
-template class money_get<char>;
-template class money_get<wchar_t>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS money_get<char>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS money_get<wchar_t>;
 
-template class __money_get<char>;
-template class __money_get<wchar_t>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS __money_get<char>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS __money_get<wchar_t>;
 
-template class money_put<char>;
-template class money_put<wchar_t>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS money_put<char>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS money_put<wchar_t>;
 
-template class __money_put<char>;
-template class __money_put<wchar_t>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS __money_put<char>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS __money_put<wchar_t>;
 
-template class messages<char>;
-template class messages<wchar_t>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS messages<char>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS messages<wchar_t>;
 
-template class messages_byname<char>;
-template class messages_byname<wchar_t>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS messages_byname<char>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS messages_byname<wchar_t>;
 
-template class codecvt_byname<char, char, mbstate_t>;
-template class codecvt_byname<wchar_t, char, mbstate_t>;
-template class codecvt_byname<char16_t, char, mbstate_t>;
-template class codecvt_byname<char32_t, char, mbstate_t>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS codecvt_byname<char, char, mbstate_t>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS codecvt_byname<wchar_t, char, mbstate_t>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS codecvt_byname<char16_t, char, mbstate_t>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS codecvt_byname<char32_t, char, mbstate_t>;
 
-template class __vector_base_common<true>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS __vector_base_common<true>;
 
 _LIBCPP_END_NAMESPACE_STD

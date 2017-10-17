@@ -11,7 +11,6 @@ int main()
 	printf("ptr2: %p\n", ptr2);
 	assert(ptr2 == 0);
 #ifdef REPORT_RESULT
-	int result = 1;
-	REPORT_RESULT();
+	REPORT_RESULT(1);
 #endif
 }

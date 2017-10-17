@@ -7,7 +7,7 @@ Uint32 SDLCALL report_result(Uint32 interval, void *param) {
   SDL_Quit();
   int result = *(int *)param;
   printf("%p %d\n", param, result);
-  REPORT_RESULT();
+  REPORT_RESULT(result);
   return 0;
 }
 

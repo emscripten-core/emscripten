@@ -82,7 +82,6 @@ inline namespace fundamentals_v1 {
 #include <typeinfo>
 #include <type_traits>
 #include <cstdlib>
-#include <cassert>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
@@ -98,13 +97,13 @@ public:
 
 #if _LIBCPP_STD_VER > 11                                            // C++ > 11
 
-_LIBCPP_NORETURN _LIBCPP_INLINE_VISIBILITY
-inline void __throw_bad_any_cast()
+_LIBCPP_NORETURN inline _LIBCPP_ALWAYS_INLINE
+void __throw_bad_any_cast()
 {
 #ifndef _LIBCPP_NO_EXCEPTIONS
     throw bad_any_cast();
 #else
-    assert(!"bad_any_cast");
+    _VSTD::abort();
 #endif
 }
 
@@ -293,7 +292,7 @@ namespace __any_imp
 {
 
   template <class _Tp>
-  struct _LIBCPP_TYPE_VIS_ONLY _SmallHandler
+  struct _LIBCPP_TEMPLATE_VIS _SmallHandler
   {
      _LIBCPP_INLINE_VISIBILITY
      static void* __handle(_Action __act, any const * __this, any * __other,
@@ -374,7 +373,7 @@ namespace __any_imp
   };
 
   template <class _Tp>
-  struct _LIBCPP_TYPE_VIS_ONLY _LargeHandler
+  struct _LIBCPP_TEMPLATE_VIS _LargeHandler
   {
     _LIBCPP_INLINE_VISIBILITY
     static void* __handle(_Action __act, any const * __this, any * __other,

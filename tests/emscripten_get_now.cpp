@@ -3,7 +3,7 @@
 
 #ifndef REPORT_RESULT
 // To be able to run this test outside the browser harness in node.js/spidermonkey:
-#define REPORT_RESULT()
+#define REPORT_RESULT(result)
 #endif
 
 int result = 0;
@@ -41,6 +41,6 @@ int main() {
     printf("Error: Bad timer precision: Smallest timer delta: %f msecs\\n", smallest_delta);
     result = 0;
   }
-  REPORT_RESULT();
+  REPORT_RESULT(result);
   return 0;
 }

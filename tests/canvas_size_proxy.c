@@ -10,6 +10,6 @@ int main()
     {
         result = 1;
     }
-    REPORT_RESULT();
+    REPORT_RESULT(result);
     return 0;
 }

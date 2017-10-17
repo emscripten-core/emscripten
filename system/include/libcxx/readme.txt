@@ -1,1 +1,1 @@
-These files are from libc++, svn revision 268153, 2016-04-29.
+These files are from libc++, release 4.0.1.

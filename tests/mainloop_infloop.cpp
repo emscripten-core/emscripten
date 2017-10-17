@@ -15,8 +15,7 @@ void loop(void) {
     assert(mains == 1); // never re-enter main
     assert(inners == 1); // never re-enter inner
     assert(nevers == 0); // never reach never
-    int result = 1;
-    REPORT_RESULT();
+    REPORT_RESULT(1);
     return;
   }
 }

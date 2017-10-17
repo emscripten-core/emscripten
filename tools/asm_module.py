@@ -1,4 +1,5 @@
 
+from __future__ import print_function
 import sys, re, itertools
 
 import shared, js_optimizer
@@ -52,7 +53,7 @@ class AsmModule():
         for part in imp.split(','):
           assert part.count('(') == part.count(')') # we must not break ',' in func(x, y)!
           assert part.count('=') == 1
-          key, value = part.split('=')
+          key, value = part.split('=', 1)
           self.imports[key.strip()] = value.strip()
 
     #print >> sys.stderr, 'imports', self.imports
@@ -138,7 +139,7 @@ class AsmModule():
     def check_import(key, value):
       if value.startswith('+') or value.endswith('|0'): # ignore functions
         if key not in all_sendings:
-          print >> sys.stderr, 'warning: external variable %s is still not defined after linking' % key
+          print('warning: external variable %s is still not defined after linking' % key, file=sys.stderr)
           all_sendings[key] = '0'
     for key, value in all_imports.iteritems(): check_import(key, value)
 
@@ -266,7 +267,7 @@ class AsmModule():
     for part in parts:
       if '=' not in part: continue
       part = part.split('var ')[1]
-      name, data = part.split('=')
+      name, data = part.split('=', 1)
       tables[name.strip()] = data.strip()
     return tables
 

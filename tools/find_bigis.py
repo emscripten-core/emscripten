@@ -2,6 +2,7 @@
 Simple tool to find big i types in an .ll file. Anything over i64 is of interest.
 '''
 
+from __future__ import print_function
 import os, sys, re
 
 filename = sys.argv[1]
@@ -14,5 +15,5 @@ for iss in set_iss:
   if size > 64:
     bigs.append(size)
 bigs.sort()
-print bigs
+print(bigs)
 

@@ -57,9 +57,8 @@ void one_iter() {
     case 120:
       Mix_HaltChannel(soundChannel);
       Mix_HaltMusic();
-      int result = 1;
 #ifdef REPORT_RESULT
-      REPORT_RESULT();
+      REPORT_RESULT(1);
 #endif
       break;
   };

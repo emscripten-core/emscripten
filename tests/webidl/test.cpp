@@ -19,8 +19,7 @@ int main() {
     var got = sme.getVal();
     assert(got === 84, "got: " + got);
   });
-  int result = 1;
-  REPORT_RESULT();
+  REPORT_RESULT(1);
 }
 #endif
 

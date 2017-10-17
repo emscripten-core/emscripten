@@ -1,7 +1,10 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+Module['asm'] = asm;
+
 {{{ maybeExport('FS') }}}
+{{{ maybeExport('GL') }}}
 
 #if MEM_INIT_METHOD == 2
 #if USE_PTHREADS
@@ -31,7 +34,6 @@ if (memoryInitializer) (function(s) {
   }
 })(memoryInitializer);
 #else
-#if MEM_INIT_METHOD == 1
 #if USE_PTHREADS
 if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) {
 #else
@@ -66,19 +68,35 @@ if (memoryInitializer) {
         throw 'could not load memory initializer ' + memoryInitializer;
       });
     }
+#if SUPPORT_BASE64_EMBEDDING
+    var memoryInitializerBytes = tryParseAsDataURI(memoryInitializer);
+    if (memoryInitializerBytes) {
+      applyMemoryInitializer(memoryInitializerBytes.buffer);
+    } else
+#endif
     if (Module['memoryInitializerRequest']) {
       // a network request has already been created, just use that
       function useRequest() {
         var request = Module['memoryInitializerRequest'];
+        var response = request.response;
         if (request.status !== 200 && request.status !== 0) {
-          // If you see this warning, the issue may be that you are using locateFile or memoryInitializerPrefixURL, and defining them in JS. That
-          // means that the HTML file doesn't know about them, and when it tries to create the mem init request early, does it to the wrong place.
-          // Look in your browser's devtools network console to see what's going on.
-          console.warn('a problem seems to have happened with Module.memoryInitializerRequest, status: ' + request.status + ', retrying ' + memoryInitializer);
-          doBrowserLoad();
-          return;
+#if SUPPORT_BASE64_EMBEDDING
+          var data = tryParseAsDataURI(Module['memoryInitializerRequestURL']);
+          if (data) {
+            response = data.buffer;
+          } else {
+#endif
+            // If you see this warning, the issue may be that you are using locateFile or memoryInitializerPrefixURL, and defining them in JS. That
+            // means that the HTML file doesn't know about them, and when it tries to create the mem init request early, does it to the wrong place.
+            // Look in your browser's devtools network console to see what's going on.
+            console.warn('a problem seems to have happened with Module.memoryInitializerRequest, status: ' + request.status + ', retrying ' + memoryInitializer);
+            doBrowserLoad();
+            return;
+#if SUPPORT_BASE64_EMBEDDING
+          }
+#endif
         }
-        applyMemoryInitializer(request.response);
+        applyMemoryInitializer(response);
       }
       if (Module['memoryInitializerRequest'].response) {
         setTimeout(useRequest, 0); // it's already here; but, apply it asynchronously
@@ -92,12 +110,40 @@ if (memoryInitializer) {
   }
 }
 #endif
-#endif
 
 #if CYBERDWARF
   Module['cyberdwarf'] = _cyberdwarf_Debugger(cyberDWARFFile);
 #endif
 
+#if MODULARIZE
+// Modularize mode returns a function, which can be called to
+// create instances. The instances provide a then() method,
+// must like a Promise, that receives a callback. The callback
+// is called when the module is ready to run, with the module
+// as a parameter. (Like a Promise, it also returns the module
+// so you can use the output of .then(..)).
+Module['then'] = function(func) {
+  // We may already be ready to run code at this time. if
+  // so, just queue a call to the callback.
+  if (Module['calledRun']) {
+    func(Module);
+  } else {
+    // we are not ready to call then() yet. we must call it
+    // at the same time we would call onRuntimeInitialized.
+    var old = Module['onRuntimeInitialized'];
+    Module['onRuntimeInitialized'] = function() {
+      if (old) old();
+      func(Module);
+    };
+  }
+  return Module;
+};
+#endif
+
+/**
+ * @constructor
+ * @extends {Error}
+ */
 function ExitStatus(status) {
   this.name = "ExitStatus";
   this.message = "Program terminated with exit(" + status + ")";
@@ -142,7 +188,7 @@ Module['callMain'] = Module.callMain = function callMain(args) {
   argv = allocate(argv, 'i32', ALLOC_NORMAL);
 
 #if EMTERPRETIFY_ASYNC
-  var initialEmtStackTop = asm.emtStackSave();
+  var initialEmtStackTop = Module['asm'].emtStackSave();
 #endif
 
   try {
@@ -150,7 +196,13 @@ Module['callMain'] = Module.callMain = function callMain(args) {
     var start = Date.now();
 #endif
 
+#if PROXY_TO_PTHREAD
+    // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
+    // that will call the user's real main() for the application.
+    var ret = Module['_proxy_main'](argc, argv, 0);
+#else
     var ret = Module['_main'](argc, argv, 0);
+#endif
 
 #if BENCHMARK
     Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
@@ -169,12 +221,16 @@ Module['callMain'] = Module.callMain = function callMain(args) {
       Module['noExitRuntime'] = true;
 #if EMTERPRETIFY_ASYNC
       // an infinite loop keeps the C stack around, but the emterpreter stack must be unwound - we do not want to restore the call stack at infinite loop
-      asm.emtStackRestore(initialEmtStackTop);
+      Module['asm'].emtStackRestore(initialEmtStackTop);
 #endif
       return;
     } else {
-      if (e && typeof e === 'object' && e.stack) Module.printErr('exception thrown: ' + [e, e.stack]);
-      throw e;
+      var toLog = e;
+      if (e && typeof e === 'object' && e.stack) {
+        toLog = [e, e.stack];
+      }
+      Module.printErr('exception thrown: ' + toLog);
+      Module['quit'](1, e);
     }
   } finally {
     calledMain = true;
@@ -183,13 +239,14 @@ Module['callMain'] = Module.callMain = function callMain(args) {
 
 {{GLOBAL_VARS}}
 
+/** @type {function(Array=)} */
 function run(args) {
   args = args || Module['arguments'];
 
   if (preloadStartTime === null) preloadStartTime = Date.now();
 
   if (runDependencies > 0) {
-#if ASSERTIONS
+#if RUNTIME_LOGGING
     Module.printErr('run() called, but dependencies remain, so not running');
 #endif
     return;
@@ -272,17 +329,18 @@ function exit(status, implicit) {
 
   if (ENVIRONMENT_IS_NODE) {
     process['exit'](status);
-  } else if (ENVIRONMENT_IS_SHELL && typeof quit === 'function') {
-    quit(status);
   }
-  // if we reach here, we must throw an exception to halt the current execution
-  throw new ExitStatus(status);
+  Module['quit'](status, new ExitStatus(status));
 }
 Module['exit'] = Module.exit = exit;
 
 var abortDecorators = [];
 
 function abort(what) {
+  if (Module['onAbort']) {
+    Module['onAbort'](what);
+  }
+
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
 #endif

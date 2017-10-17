@@ -8,9 +8,9 @@ int frame = 0;
 
 void final(void*) {
   assert(frame == 100);
-  int result = 0;
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+  printf("Test passed.\n");
+  REPORT_RESULT(0);
 #endif
 }
 
@@ -22,9 +22,8 @@ void looper() {
   if (timeSincePrevious <= 1.0)
   {
     printf("Abort: main loop tick was called too quickly after the previous frame!\n");
-    int result = 1;
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(1);
 #endif
     emscripten_cancel_main_loop();
     exit(0);
@@ -32,9 +31,8 @@ void looper() {
   prevTime = curTime;
   if ((frame == 25 || frame == 45 || frame == 65) && timeSincePrevious < 30) {
     printf("Abort: With swap interval of 4, we should be running at most 15fps! (or 30fps on 120Hz displays) but seems like swap control is not working and we are running at 60fps!\n");
-    int result = 1;
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(1);
 #endif
     emscripten_cancel_main_loop();
     exit(0);

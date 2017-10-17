@@ -9,17 +9,15 @@ bool blockerExecuted = false;
 
 void final(void*) {
   assert(frame == 20);
-  int result = 0;
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+  REPORT_RESULT(0);
 #endif
 }
 
 void looper() {
   if (blockerExecuted == false) {
-    int result = 1;
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(1);
 #endif
   }
 
@@ -31,9 +29,8 @@ void looper() {
   if (frame > 1 && timeSincePrevious <= 14.5) // should be 16, but browser jitter
   {
     printf("Abort: main loop tick was called too quickly (%f ms > 16) after the previous frame!\n", timeSincePrevious);
-    int result = 1;
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(1);
 #endif
     emscripten_cancel_main_loop();
     exit(0);

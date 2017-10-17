@@ -156,6 +156,16 @@ int main() {
   printf("errno: %d\n\n", errno);
   errno = 0;
 
+  printf("pwrite to the middle of file: %d\n", pwrite(f, writeBuffer + 2, 3, 17));
+  printf("errno: %d\n", errno);
+  printf("seek: %d\n\n", lseek(f, 0, SEEK_CUR));
+  errno = 0;
+
+  printf("pwrite past end of file: %d\n", pwrite(f, writeBuffer, 5, 32));
+  printf("errno: %d\n", errno);
+  printf("seek: %d\n\n", lseek(f, 0, SEEK_CUR));
+  errno = 0;
+
   int bytesRead;
   printf("seek: %d\n", lseek(f, 0, SEEK_SET));
   printf("read after write: %d\n", bytesRead = read(f, readBuffer, sizeof readBuffer));

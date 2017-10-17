@@ -14,8 +14,7 @@ extern "C" {
 
 typedef uint16_t comp_t;
 
-struct acct
-{
+struct acct {
 	char ac_flag;
 	uint16_t ac_uid;
 	uint16_t ac_gid;
@@ -36,8 +35,7 @@ struct acct
 };
 
 
-struct acct_v3
-{
+struct acct_v3 {
 	char ac_flag;
 	char ac_version;
 	uint16_t ac_tty;

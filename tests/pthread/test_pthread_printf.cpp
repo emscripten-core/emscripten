@@ -9,9 +9,8 @@
 void *ThreadMain(void *arg)
 {
 	printf("Hello from thread, string: %s, int: %d, double: %g\n", "str", 5, 42.0);
+	return 0;
 }
-
-int numThreadsToCreate = 1000;
 
 int main()
 {
@@ -29,7 +28,6 @@ int main()
 	}
 
 #ifdef REPORT_RESULT
-	int result = 0;
-	REPORT_RESULT();
+	REPORT_RESULT(0);
 #endif
 }

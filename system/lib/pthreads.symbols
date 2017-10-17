@@ -60,7 +60,7 @@
          T emscripten_atomic_and_u64
          U emscripten_atomic_cas_u32
          T emscripten_atomic_cas_u64
-         T emscripten_atomic_exchange_u32
+         U emscripten_atomic_exchange_u32
          T emscripten_atomic_exchange_u64
          T emscripten_atomic_load_f32
          T emscripten_atomic_load_f64

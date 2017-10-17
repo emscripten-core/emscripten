@@ -55,8 +55,7 @@ int main(void)
     assert(c.load(std::memory_order_relaxed) == 0x0F0F0F0F0F0F0F0FULL);
 
 #ifdef REPORT_RESULT
-    int result = 0;
-    REPORT_RESULT();
+    REPORT_RESULT(0);
 #endif
 
     return 0;

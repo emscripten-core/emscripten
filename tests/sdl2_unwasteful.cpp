@@ -27,7 +27,7 @@ static void main_loop(void)
             Module.print('set values');
         });
     } else if (runs > 1) {
-        EM_ASM_ARGS({
+        EM_ASM({
             assert(Module.the_ctx === Module.SDL2.ctx, 'ctx');
             assert(Module.the_image === Module.SDL2.image, 'image');
             Module.print('check ok ' + $0);
@@ -43,8 +43,7 @@ static void main_loop(void)
     runs++;
     if (runs >= TOTAL_RUNS) {
         emscripten_cancel_main_loop();
-        int result = 1;
-        REPORT_RESULT();
+        REPORT_RESULT(1);
     }
 }
 

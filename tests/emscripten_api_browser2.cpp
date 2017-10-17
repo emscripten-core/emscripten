@@ -29,8 +29,7 @@ void load2() {
   fclose(f);
   assert(strcmp(buffer, "second") == 0);
 
-  int result = 1;
-  REPORT_RESULT();
+  REPORT_RESULT(1);
 }
 void error2() {
   printf("fail2\n");

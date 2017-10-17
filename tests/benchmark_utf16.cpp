@@ -60,7 +60,6 @@ int main() {
   printf("OK. Time: %f (%f).\n", t, t3-t2);
 
 #ifdef REPORT_RESULT
-  int result = 0;
-  REPORT_RESULT();
+  REPORT_RESULT(0);
 #endif
 }

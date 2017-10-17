@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include <math.h>
+#include <stdint.h>
 #include "libc.h"
 
 float exp10f(float x)
@@ -9,7 +10,9 @@ float exp10f(float x)
 		1, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7
 	};
 	float n, y = modff(x, &n);
-	if (fabsf(n) < 8) {
+	union {float f; uint32_t i;} u = {n};
+	/* fabsf(n) < 8 without raising invalid on nan */
+	if ((u.i>>23 & 0xff) < 0x7f+3) {
 		if (!y) return p10[(int)n+7];
 		y = exp2f(3.32192809488736234787031942948939f * y);
 		return y * p10[(int)n+7];
