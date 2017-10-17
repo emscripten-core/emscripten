@@ -112,7 +112,43 @@ static EGLBoolean ConfigPassesFilter(EGLConfig config, const EGLint *attrib_list
 {
   if (!attrib_list) return EGL_TRUE;
 
-
+  while(*attrib_list)
+  {
+    EGLint key = *attrib_list++;
+    EGLint value = *attrib_list++;
+    switch(key)
+    {
+      //case EGL_BUFFER_SIZE:
+      //case EGL_RED_SIZE:
+      //case EGL_GREEN_SIZE:
+      //case EGL_BLUE_SIZE:
+      //case EGL_LUMINANCE_SIZE:
+      case EGL_ALPHA_SIZE: if (value > 0 && ((EGLint)config & EM_EGL_ALPHA_BIT) == 0) return EGL_FALSE;
+      //case EGL_ALPHA_MASK_SIZE:
+      //case EGL_BIND_TO_TEXTURE_RGB:
+      //case EGL_BIND_TO_TEXTURE_RGBA:
+      //case EGL_COLOR_BUFFER_TYPE:
+      //case EGL_CONFIG_CAVEAT:
+      //case EGL_CONFIG_ID:
+      //case EGL_CONFORMANT:
+      case EGL_DEPTH_SIZE: if (value > 0 && ((EGLint)config & EM_EGL_DEPTH_BIT) == 0) return EGL_FALSE;
+      //case EGL_LEVEL:
+      //case EGL_MATCH_NATIVE_PIXMAP:
+      //case EGL_MAX_SWAP_INTERVAL:
+      //case EGL_MIN_SWAP_INTERVAL:
+      //case EGL_NATIVE_RENDERABLE:
+      //case EGL_NATIVE_VISUAL_TYPE:
+      //case EGL_RENDERABLE_TYPE:
+      case EGL_SAMPLE_BUFFERS: if (value > 0 && ((EGLint)config & EM_EGL_ANTIALIAS_BIT) == 0) return EGL_FALSE;
+      case EGL_SAMPLES: if (value > 0 && ((EGLint)config & EM_EGL_ANTIALIAS_BIT) == 0) return EGL_FALSE;
+      case EGL_STENCIL_SIZE: if (value > 0 && ((EGLint)config & EM_EGL_STENCIL_BIT) == 0) return EGL_FALSE;
+      //case EGL_SURFACE_TYPE:
+      //case EGL_TRANSPARENT_TYPE:
+      //case EGL_TRANSPARENT_RED_VALUE:
+      //case EGL_TRANSPARENT_GREEN_VALUE:
+      //case EGL_TRANSPARENT_BLUE_VALUE:
+    }
+  }
   return EGL_TRUE;
 }
 
