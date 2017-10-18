@@ -1307,7 +1307,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # -E preprocessor-only support
       if '-E' in newargs or '-M' in newargs or '-MM' in newargs:
-        input_files = map(lambda x: x[1], input_files)
+        input_files = [x[1] for x in input_files]
         cmd = get_bitcode_args(input_files)
         if specified_target:
           cmd += ['-o', specified_target]
@@ -2308,7 +2308,7 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
   if shared.Settings.BINARYEN_PASSES:
     shutil.move(wasm_binary_target, wasm_binary_target + '.pre')
     # BINARYEN_PASSES is comma-separated, and we support both '-'-prefixed and unprefixed pass names
-    passes = map(lambda p: ('--' + p) if p[0] != '-' else p, shared.Settings.BINARYEN_PASSES.split(','))
+    passes = [('--' + p) if p[0] != '-' else p for p in shared.Settings.BINARYEN_PASSES.split(',')]
     cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target + '.pre', '-o', wasm_binary_target] + passes
     if debug_info:
       cmd += ['-g'] # preserve the debug info

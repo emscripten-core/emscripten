@@ -46,7 +46,7 @@ if STDERR_FILE:
 def quoter(settings):
   def quote(prop):
     if settings['USE_CLOSURE_COMPILER'] == 2:
-      return ''.join(map(lambda p: "'" + p + "'", prop.split('.')))
+      return ''.join(["'" + p + "'" for p in prop.split('.')])
     else:
       return prop
   return quote
@@ -54,7 +54,7 @@ def quoter(settings):
 def access_quoter(settings):
   def access_quote(prop):
     if settings['USE_CLOSURE_COMPILER'] == 2:
-      return ''.join(map(lambda p: "['" + p + "']", prop.split('.')))
+      return ''.join(["['" + p + "']" for p in prop.split('.')])
     else:
       return '.' + prop
   return access_quote
@@ -329,7 +329,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
   if DEBUG:
     logging.debug('asm text sizes' + str([
-      map(len, funcs_js), len(asm_setup), len(asm_global_vars), len(asm_global_funcs), len(pre_tables),
+      list(map(len, funcs_js)), len(asm_setup), len(asm_global_vars), len(asm_global_funcs), len(pre_tables),
       len('\n'.join(function_tables_impls)), len(function_tables_defs) + (function_tables_defs.count('\n') * len('  ')),
       len(exports), len(the_global), len(sending), len(receiving)]))
     logging.debug('  emscript: python processing: function tables and exports took %s seconds' % (time.time() - t))
@@ -393,7 +393,7 @@ def create_module(function_table_sigs, metadata, settings,
   if settings['SIDE_MODULE']:
     module.append('''
 Runtime.registerFunctions(%(sigs)s, Module);
-''' % { 'sigs': str(map(str, function_table_sigs)) })
+''' % { 'sigs': str(list(map(str, function_table_sigs))) })
 
   return module
 
@@ -506,10 +506,10 @@ def update_settings_glue(settings, metadata):
     settings['ASM_JS'] = 2
 
   settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
-    set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
-      map(lambda x: x[1:], metadata['implementedFunctions'])
+    set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + list(map(shared.JS.to_nice_ident, metadata['declares']))).difference(
+      [x[1:] for x in metadata['implementedFunctions']]
     )
-  ) + map(lambda x: x[1:], metadata['externs'])
+  ) + [x[1:] for x in metadata['externs']]
 
   if metadata['simd']:
     settings['SIMD'] = 1
@@ -539,7 +539,7 @@ def compile_settings(compiler_engine, settings, libraries, temp_files):
 
 
 def memory_and_global_initializers(pre, metadata, mem_init, settings):
-  global_initializers = str(', '.join(map(lambda i: '{ func: function() { %s() } }' % i, metadata['initializers'])))
+  global_initializers = str(', '.join(['{ func: function() { %s() } }' % i for i in metadata['initializers']]))
 
   if settings['SIMD'] == 1:
     pre = open(path_from_root(os.path.join('src', 'ecmascript_simd.js'))).read() + '\n\n' + pre
@@ -695,7 +695,7 @@ def all_asm_consts(metadata):
     const = trim_asm_const_body(const)
     const = '{ ' + const + ' }'
     args = []
-    arity = max(map(len, sigs)) - 1
+    arity = max(list(map(len, sigs))) - 1
     for i in range(arity):
       args.append('$' + str(i))
     const = 'function(' + ', '.join(args) + ') ' + const
@@ -729,7 +729,7 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
       start = table.index('[')
       end = table.rindex(']')
       body = table[start+1:end].split(',')
-      parsed = map(lambda x: x.strip(), body)
+      parsed = [x.strip() for x in body]
       for i in range(len(parsed)):
         if parsed[i] != '0':
           assert i not in function_pointer_targets
@@ -769,7 +769,7 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
           return item
         in_table.add(item)
         return "asm['" + item + "']"
-      body = map(receive, body)
+      body = list(map(receive, body))
     for j in range(settings['RESERVED_FUNCTION_POINTERS']):
       curr = 'jsCall_%s_%s' % (sig, j)
       body[settings['FUNCTION_POINTER_ALIGNMENT'] * (1 + j)] = curr
@@ -788,7 +788,7 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
           def make_emulated_param(i):
             if i >= len(sig): return shared.JS.make_initializer(proper_sig[i], settings) # extra param, just send a zero
             return shared.JS.make_coercion('p%d' % (i-1), proper_sig[i], settings, convert_from=sig[i])
-          proper_code = proper_target + '(' + ','.join(map(lambda i: make_emulated_param(i+1), range(len(proper_sig)-1))) + ')'
+          proper_code = proper_target + '(' + ','.join([make_emulated_param(i+1) for i in range(len(proper_sig)-1)]) + ')'
           if proper_sig[0] != 'v':
             # proper sig has a return, which the wrapper may or may not use
             proper_code = shared.JS.make_coercion(proper_code, proper_sig[0], settings)
@@ -1732,7 +1732,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
 
   # memory and global initializers
 
-  global_initializers = str(', '.join(map(lambda i: '{ func: function() { %s() } }' % i, metadata['initializers'])))
+  global_initializers = str(', '.join(['{ func: function() { %s() } }' % i for i in metadata['initializers']]))
 
   staticbump = metadata['staticBump']
   while staticbump % 16 != 0: staticbump += 1
@@ -1861,7 +1861,7 @@ def create_asm_consts_wasm(forwarded_json, metadata):
     const = trim_asm_const_body(const)
     const = '{ ' + const + ' }'
     args = []
-    arity = max(map(len, sigs)) - 1
+    arity = max(list(map(len, sigs))) - 1
     for i in range(arity):
       args.append('$' + str(i))
     const = 'function(' + ', '.join(args) + ') ' + const
@@ -2042,7 +2042,7 @@ def load_metadata(metadata_raw):
     metadata[k] = v
 
   # Initializers call the global var version of the export, so they get the mangled name.
-  metadata['initializers'] = map(asmjs_mangle, metadata['initializers'])
+  metadata['initializers'] = list(map(asmjs_mangle, metadata['initializers']))
 
   return metadata
 

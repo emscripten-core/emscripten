@@ -178,7 +178,7 @@ def adb_devices():
   try:
     devices = subprocess.check_output([ADB, 'devices'])
     devices = devices.strip().split('\n')[1:]
-    devices = map(lambda x: x.strip().split('\t'), devices)
+    devices = [x.strip().split('\t') for x in devices]
     return devices
   except Exception as e:
     return []

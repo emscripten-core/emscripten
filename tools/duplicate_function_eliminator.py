@@ -37,7 +37,7 @@ def run_on_chunk(command):
     if os.environ.get('EMCC_SAVE_OPT_TEMP') and os.environ.get('EMCC_SAVE_OPT_TEMP') != '0':
       saved = 'save_' + os.path.basename(filename)
       while os.path.exists(saved): saved = 'input' + str(int(saved.replace('input', '').replace('.txt', ''))+1) + '.txt'
-      print('running DFE command', ' '.join(map(lambda c: c if c != filename else saved, command)), file=sys.stderr)
+      print('running DFE command', ' '.join([c if c != filename else saved for c in command]), file=sys.stderr)
       shutil.copyfile(filename, os.path.join(shared.get_emscripten_temp_dir(), saved))
 
     if shared.EM_BUILD_VERBOSE_LEVEL >= 3: print('run_on_chunk: ' + str(command), file=sys.stderr)
@@ -223,7 +223,7 @@ def run_on_js(filename, gen_hash_info=False):
   chunks = shared.chunkify(funcs, chunk_size)
 
   chunks = filter(lambda chunk: len(chunk) > 0, chunks)
-  if DEBUG and len(chunks) > 0: print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks)), file=sys.stderr)
+  if DEBUG and len(chunks) > 0: print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(list(map(len, chunks))), '-', min(list(map(len, chunks))), file=sys.stderr)
   funcs = None
 
   if len(chunks) > 0:
@@ -243,7 +243,7 @@ def run_on_js(filename, gen_hash_info=False):
 
   old_filenames = filenames[:]
   if len(filenames) > 0:
-    commands = map(lambda filename: js_engine + [DUPLICATE_FUNCTION_ELIMINATOR, filename, '--gen-hash-info' if gen_hash_info else '--use-hash-info', '--no-minimize-whitespace'], filenames)
+    commands = [js_engine + [DUPLICATE_FUNCTION_ELIMINATOR, filename, '--gen-hash-info' if gen_hash_info else '--use-hash-info', '--no-minimize-whitespace'] for filename in filenames]
 
     if DEBUG and commands is not None:
       print([' '.join(command if command is not None else '(null)') for command in commands], file=sys.stderr)

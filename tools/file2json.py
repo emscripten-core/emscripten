@@ -14,7 +14,7 @@ from __future__ import print_function
 import os, sys
 
 data = open(sys.argv[1], 'rb').read()
-sdata = map(lambda x: str(ord(x)) + ',', data)
+sdata = [str(ord(x)) + ',' for x in data]
 sdata[-1] = sdata[-1].replace(',', '')
 lined = []
 while len(sdata) > 0:

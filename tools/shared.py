@@ -278,7 +278,7 @@ def listify(x):
 
 def fix_js_engine(old, new):
   global JS_ENGINES
-  JS_ENGINES = map(lambda x: new if x == old else x, JS_ENGINES)
+  JS_ENGINES = [new if x == old else x for x in JS_ENGINES]
   return new
 
 try:
@@ -484,7 +484,7 @@ def get_emscripten_version(path):
 try:
   EMSCRIPTEN_VERSION = get_emscripten_version(path_from_root('emscripten-version.txt'))
   try:
-    parts = map(int, EMSCRIPTEN_VERSION.split('.'))
+    parts = list(map(int, EMSCRIPTEN_VERSION.split('.')))
     EMSCRIPTEN_VERSION_MAJOR = parts[0]
     EMSCRIPTEN_VERSION_MINOR = parts[1]
     EMSCRIPTEN_VERSION_TINY = parts[2]
@@ -1269,7 +1269,7 @@ def extract_archive_contents(f):
         safe_ensure_dirs(dirname)
     proc = Popen([LLVM_AR, 'xo', f], stdout=PIPE, stderr=PIPE)
     stdout, stderr = proc.communicate() # if absolute paths, files will appear there. otherwise, in this directory
-    contents = map(os.path.abspath, contents)
+    contents = list(map(os.path.abspath, contents))
     nonexisting_contents = filter(lambda x: not os.path.exists(x), contents)
     if len(nonexisting_contents) != 0:
       raise Exception('llvm-ar failed to extract file(s) ' + str(nonexisting_contents) + ' from archive file ' + f + '! Error:' + str(stdout) + str(stderr))
@@ -1597,7 +1597,7 @@ class Building(object):
     except:
       old_dir = None
     os.chdir(project_dir)
-    generated_libs = map(lambda lib: os.path.join(project_dir, lib), generated_libs)
+    generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
     #for lib in generated_libs:
     #  try:
     #    os.unlink(lib) # make sure compilation completed successfully
@@ -2049,14 +2049,14 @@ class Building(object):
 
     exps = expand_response(Settings.EXPORTED_FUNCTIONS)
     internalize_public_api = '-internalize-public-api-'
-    internalize_list = ','.join(map(lambda exp: exp[1:], exps))
+    internalize_list = ','.join([exp[1:] for exp in exps])
 
     # EXPORTED_FUNCTIONS can potentially be very large.
     # 8k is a bit of an arbitrary limit, but a reasonable one
     # for max command line size before we use a response file
     if len(internalize_list) > 8192:
       logging.debug('using response file for EXPORTED_FUNCTIONS in internalize')
-      finalized_exports = '\n'.join(map(lambda exp: exp[1:], exps))
+      finalized_exports = '\n'.join([exp[1:] for exp in exps])
       internalize_list_file = configuration.get_temp_files().get(suffix='.response').name
       internalize_list_fh = open(internalize_list_file, 'w')
       internalize_list_fh.write(finalized_exports)
@@ -2144,7 +2144,7 @@ class Building(object):
           can_call[func] = set(targets)
       # function tables too - treat a function all as a function that can call anything in it, which is effectively what it is
       for name, funcs in asm.tables.iteritems():
-        can_call[name] = set(map(lambda x: x.strip(), funcs[1:-1].split(',')))
+        can_call[name] = set([x.strip() for x in funcs[1:-1].split(',')])
       #print can_call
       # Note: We ignore calls in from outside the asm module, so you could do emterpreted => outside => emterpreted, and we would
       #       miss the first one there. But this is acceptable to do, because we can't save such a stack anyhow, due to the outside!
@@ -2316,7 +2316,7 @@ class Building(object):
     if 'LZ4=1' in link_settings: system_js_libraries += ['library_lz4.js']
     if 'USE_SDL=1' in link_settings: system_js_libraries += ['library_sdl.js']
     if 'USE_SDL=2' in link_settings: system_js_libraries += ['library_egl.js', 'library_glut.js', 'library_gl.js']
-    return map(lambda x: path_from_root('src', x), system_js_libraries)
+    return [path_from_root('src', x) for x in system_js_libraries]
 
 # compatibility with existing emcc, etc. scripts
 Cache = cache.Cache(debug=DEBUG_CACHE)

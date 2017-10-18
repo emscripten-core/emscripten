@@ -482,7 +482,7 @@ for file_ in data_files:
   basename = os.path.basename(filename)
   if file_['mode'] == 'embed':
     # Embed
-    data = map(ord, open(file_['srcpath'], 'rb').read())
+    data = list(map(ord, open(file_['srcpath'], 'rb').read()))
     code += '''var fileData%d = [];\n''' % counter
     if data:
       parts = []

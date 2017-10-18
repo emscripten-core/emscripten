@@ -41,7 +41,7 @@ def find_ctors_data(js, num):
   assert ctors_start > 0
   ctors_text = js[ctors_start:ctors_end]
   all_ctors = filter(lambda ctor: ctor.endswith('()') and not ctor == 'function()' and '.' not in ctor, ctors_text.split(' '))
-  all_ctors = map(lambda ctor: ctor.replace('()', ''), all_ctors)
+  all_ctors = [ctor.replace('()', '') for ctor in all_ctors]
   assert len(all_ctors) > 0
   ctors = all_ctors[:num]
   return ctors_start, ctors_end, all_ctors, ctors
@@ -75,14 +75,14 @@ def eval_ctors_js(js, mem_init, num):
   pre_funcs_end = asm.find('function ', pre_funcs_start)
   pre_funcs_end = asm.rfind(';', pre_funcs_start, pre_funcs_end) + 1
   pre_funcs = asm[pre_funcs_start:pre_funcs_end]
-  parts = filter(lambda x: x.startswith('var '), map(lambda x: x.strip(), pre_funcs.split(';')))
+  parts = filter(lambda x: x.startswith('var '), [x.strip() for x in pre_funcs.split(';')])
   global_vars = []
   new_globals = '\n'
   for part in parts:
     part = part[4:] # skip 'var '
-    bits = map(lambda x: x.strip(), part.split(','))
+    bits = [x.strip() for x in part.split(',')]
     for bit in bits:
-      name, value = map(lambda x: x.strip(), bit.split('=', 1))
+      name, value = [x.strip() for x in bit.split('=', 1)]
       if value in ['0', '+0', '0.0'] or name in [
         'STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR',
         'HEAP8', 'HEAP16', 'HEAP32',
@@ -273,7 +273,7 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
   else:
     elements = []
     if len(atexits) > 0:
-      elements.append('{ func: function() { %s } }' % '; '.join(map(lambda x: '_atexit(' + str(x[0]) + ',' + str(x[1]) + ')', atexits)))
+      elements.append('{ func: function() { %s } }' % '; '.join(['_atexit(' + str(x[0]) + ',' + str(x[1]) + ')' for x in atexits]))
     for ctor in all_ctors[num:]:
       elements.append('{ func: function() { %s() } }' % ctor)
     new_ctors = '__ATINIT__.push(' + ', '.join(elements) + ');'
@@ -319,7 +319,7 @@ if __name__ == '__main__':
     # js path
     mem_init_file = binary_file
     if os.path.exists(mem_init_file):
-      mem_init = json.dumps(map(ord, open(mem_init_file, 'rb').read()))
+      mem_init = json.dumps(list(map(ord, open(mem_init_file, 'rb').read())))
     else:
       mem_init = []
 
@@ -350,14 +350,14 @@ if __name__ == '__main__':
     exports_start = asm.find('return {')
     exports_end = asm.find('};', exports_start)
     exports_text = asm[asm.find('{', exports_start) + 1 : exports_end]
-    exports = map(lambda x: x.split(':')[1].strip(), exports_text.replace(' ', '').split(','))
+    exports = [x.split(':')[1].strip() for x in exports_text.replace(' ', '').split(',')]
     for r in removed:
       assert r in exports, 'global ctors were exported'
     exports = filter(lambda e: e not in removed, exports)
     # fix up the exports
     js = open(js_file).read()
     absolute_exports_start = js.find(exports_text)
-    js = js[:absolute_exports_start] + ', '.join(map(lambda e: e + ': ' + e, exports)) + js[absolute_exports_start + len(exports_text):]
+    js = js[:absolute_exports_start] + ', '.join([e + ': ' + e for e in exports]) + js[absolute_exports_start + len(exports_text):]
     open(js_file, 'w').write(js)
     # find unreachable methods and remove them
     reachable = shared.Building.calculate_reachable_functions(js_file, exports, can_reach=False)['reachable']

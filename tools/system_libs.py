@@ -265,7 +265,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     src_dir = shared.path_from_root('system', 'lib', 'html5')
     files = []
     for dirpath, dirnames, filenames in os.walk(src_dir):
-      files += map(lambda f: os.path.join(src_dir, f), filenames)
+      files += [os.path.join(src_dir, f) for f in filenames]
     return build_libc(libname, files, ['-Oz'])
 
   def create_compiler_rt(libname):
@@ -404,7 +404,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       add_back_deps(need) # recurse to get deps of deps
 
   # Scan symbols
-  symbolses = shared.Building.parallel_llvm_nm(map(os.path.abspath, temp_files))
+  symbolses = shared.Building.parallel_llvm_nm(list(map(os.path.abspath, temp_files)))
 
   if len(symbolses) == 0:
     class Dummy(object):
@@ -587,7 +587,7 @@ class Ports(object):
       # note that tag **must** be the tag in sdl.py, it is where we store to (not where we load from, we just load the local dir)
       local_ports = os.environ.get('EMCC_LOCAL_PORTS')
       if local_ports:
-        local_ports = map(lambda pair: pair.split('=', 1), local_ports.split(','))
+        local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
         for local in local_ports:
           if name == local[0]:
             path, subdir = local[1].split('|')

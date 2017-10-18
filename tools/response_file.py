@@ -11,7 +11,7 @@ def create_response_file(args, directory):
   (response_fd, response_filename) = tempfile.mkstemp(prefix='emscripten_', suffix='.rsp', dir=directory, text=True)
   response_fd = os.fdopen(response_fd, "w")
 
-  args = map(lambda p: p.replace('\\', '\\\\').replace('"', '\\"'), args)
+  args = [p.replace('\\', '\\\\').replace('"', '\\"') for p in args]
   contents = '"' + '" "'.join(args) + '"'
   if DEBUG:
     logging.warning('Creating response file ' + response_filename + ': ' + contents)

@@ -62,7 +62,7 @@ print('beginning bisection, %d chunks' % high)
 for mid in range(high):
   print('  current: %d' % mid, end=' ')
   # Take chunks from the middle and on. This is important because the eliminator removes variables, so starting from the beginning will add errors
-  curr_diff = '\n'.join(map(lambda parts: '\n'.join(parts), chunks[mid:])) + '\n'
+  curr_diff = '\n'.join(['\n'.join(parts) for parts in chunks[mid:]]) + '\n'
   difff = open('diff.diff', 'w')
   difff.write(curr_diff)
   difff.close()

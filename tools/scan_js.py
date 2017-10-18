@@ -17,5 +17,5 @@ for line in open(sys.argv[1]):
     funcs.append((inside, i-start))
     inside = None
 
-print('\n'.join(map(lambda func: str(func[1]) + ':' + func[0], sorted(funcs, key=lambda func: -func[1]))))
+print('\n'.join([str(func[1]) + ':' + func[0] for func in sorted(funcs, key=lambda func: -func[1])]))
 
