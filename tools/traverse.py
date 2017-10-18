@@ -24,7 +24,7 @@ for d in os.listdir(curr):
     for c in os.listdir('.'):
       if c.endswith('.c'):
         execute([EMCC, c, '-O2', '--embed-file', 'input.txt'])
-        js = jsrun.run_js('a.out.js', filter(lambda x: x != '-w', SPIDERMONKEY_ENGINE), stdout=PIPE)
+        js = jsrun.run_js('a.out.js', [x for x in SPIDERMONKEY_ENGINE if x != '-w'], stdout=PIPE)
 
         execute([CLANG_CC, '-m32', c])
         n1 = execute(['./a.out'], stdout=PIPE)[0]

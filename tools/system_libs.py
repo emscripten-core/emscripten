@@ -265,7 +265,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     src_dir = shared.path_from_root('system', 'lib', 'html5')
     files = []
     for dirpath, dirnames, filenames in os.walk(src_dir):
-      files += map(lambda f: os.path.join(src_dir, f), filenames)
+      files += [os.path.join(src_dir, f) for f in filenames]
     return build_libc(libname, files, ['-Oz'])
 
   def create_compiler_rt(libname):
@@ -404,7 +404,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       add_back_deps(need) # recurse to get deps of deps
 
   # Scan symbols
-  symbolses = shared.Building.parallel_llvm_nm(map(os.path.abspath, temp_files))
+  symbolses = shared.Building.parallel_llvm_nm(list(map(os.path.abspath, temp_files)))
 
   if len(symbolses) == 0:
     class Dummy(object):
@@ -509,7 +509,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       # we might have exception-supporting versions of them from elsewhere, and if libcxxabi
       # is first then it would "win", breaking exception throwing from those string
       # header methods. To avoid that, we link libcxxabi last.
-      ret = filter(lambda f: f != actual, ret) + [actual]
+      ret = [f for f in ret if f != actual] + [actual]
 
   return ret
 
@@ -587,7 +587,7 @@ class Ports(object):
       # note that tag **must** be the tag in sdl.py, it is where we store to (not where we load from, we just load the local dir)
       local_ports = os.environ.get('EMCC_LOCAL_PORTS')
       if local_ports:
-        local_ports = map(lambda pair: pair.split('=', 1), local_ports.split(','))
+        local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
         for local in local_ports:
           if name == local[0]:
             path, subdir = local[1].split('|')
@@ -707,7 +707,7 @@ def get_ports(settings):
     process_dependencies(settings)
     for port in ports.ports:
       # ports return their output files, which will be linked, or a txt file
-      ret += filter(lambda f: not f.endswith('.txt'), port.get(Ports, settings, shared))
+      ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
     ok = True
   finally:
     if not ok:

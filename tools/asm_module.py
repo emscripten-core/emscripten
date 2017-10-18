@@ -34,7 +34,7 @@ class AsmModule():
     global_inits = re.search(shared.JS.global_initializers_pattern, self.pre_js)
     if global_inits:
       self.global_inits_js = global_inits.group(0)
-      self.global_inits = map(lambda init: init.split('{')[2][1:].split('(')[0], global_inits.groups(0)[0].split(','))
+      self.global_inits = [init.split('{')[2][1:].split('(')[0] for init in global_inits.groups(0)[0].split(',')]
     else:
       self.global_inits_js = ''
       self.global_inits = []
@@ -213,8 +213,8 @@ class AsmModule():
 
     # global initializers
     if self.global_inits:
-      my_global_inits = map(lambda init: replacements[init] if init in replacements else init, self.global_inits)
-      all_global_inits = map(lambda init: 'function() { %s() }' % init, main.global_inits + my_global_inits)
+      my_global_inits = [replacements[init] if init in replacements else init for init in self.global_inits]
+      all_global_inits = ['function() { %s() }' % init for init in main.global_inits + my_global_inits]
       all_global_inits_js = '/* global initializers */ __ATINIT__.push(' + ','.join(all_global_inits) + ');'
       if main.global_inits:
         target = main.global_inits_js
@@ -230,7 +230,7 @@ class AsmModule():
         repped = replacements[key]
         return repped + ': ' + repped
       return export
-    my_exports = map(rep_exp, self.exports)
+    my_exports = list(map(rep_exp, self.exports))
     exports = main.exports.union(my_exports)
     main.exports_js = 'return {' + ','.join(list(exports)) + '};\n})\n'
 
@@ -241,7 +241,7 @@ class AsmModule():
         rep = replacements[key]
         return 'var %s = Module["%s"] = asm["%s"];\n' % (rep, rep, rep)
       return deff
-    my_module_defs = map(rep_def, self.module_defs)
+    my_module_defs = list(map(rep_def, self.module_defs))
     new_module_defs = set(my_module_defs).difference(main.module_defs)
     if len(new_module_defs) > 0:
       position = main.post_js.find('Runtime.') # Runtime is the start of the hardcoded ones
@@ -274,14 +274,14 @@ class AsmModule():
   def merge_tables(self, table, main, side, replacements, f_bases, f_sizes):
     sig = table.split('_')[-1]
     side = side[1:-1].split(',')
-    side = map(lambda s: s.strip(), side)
-    side = map(lambda f: replacements[f] if f in replacements else f, side)
+    side = [s.strip() for s in side]
+    side = [replacements[f] if f in replacements else f for f in side]
     if not main:
       f_bases[sig] = 0
       f_sizes[table] = len(side)
       return '[' + ','.join(side) + ']'
     main = main[1:-1].split(',')
-    main = map(lambda m: m.strip(), main)
+    main = [m.strip() for m in main]
     # TODO: handle non-aliasing case too
     assert len(main) % 2 == 0
     f_bases[sig] = len(main)
@@ -300,7 +300,7 @@ class AsmModule():
       self.tables_js += 'var %s = %s;\n' % (table, data)
 
   def get_table_funcs(self):
-    return set(itertools.chain.from_iterable(map(lambda x: map(lambda y: y.strip(), x[1:-1].split(',')), self.tables.values())))
+    return set(itertools.chain.from_iterable([[y.strip() for y in x[1:-1].split(',')] for x in self.tables.values()]))
 
   def get_funcs_map(self):
     funcs = js_optimizer.split_funcs(self.funcs_js)

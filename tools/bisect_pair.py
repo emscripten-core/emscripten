@@ -27,7 +27,7 @@ rightf.close()
 def run_code(name):
   ret = run_js(name, stderr=PIPE, full_output=True, assert_returncode=None, engine=SPIDERMONKEY_ENGINE)
   # fix stack traces
-  ret = filter(lambda line: not line.startswith('    at ') and not name in line, ret.split('\n'))
+  ret = [line for line in ret.split('\n') if not line.startswith('    at ') and not name in line]
   return '\n'.join(ret)
 
 print('running files')
@@ -61,7 +61,7 @@ print('beginning bisection, %d chunks' % high)
 for mid in range(high):
   print('  current: %d' % mid, end=' ')
   # Take chunks from the middle and on. This is important because the eliminator removes variables, so starting from the beginning will add errors
-  curr_diff = '\n'.join(map(lambda parts: '\n'.join(parts), chunks[mid:])) + '\n'
+  curr_diff = '\n'.join(['\n'.join(parts) for parts in chunks[mid:]]) + '\n'
   difff = open('diff.diff', 'w')
   difff.write(curr_diff)
   difff.close()

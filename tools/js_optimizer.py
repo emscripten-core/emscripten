@@ -33,8 +33,8 @@ import_sig = re.compile('(var|const) ([_\w$]+ *=[^;]+);')
 NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER') or '2' # use optimized native optimizer by default, unless disabled by EMCC_NATIVE_OPTIMIZER=0 in the env
 
 def split_funcs(js, just_split=False):
-  if just_split: return map(lambda line: ('(json)', line), js.split('\n'))
-  parts = map(lambda part: part, js.split('\n}\n'))
+  if just_split: return [('(json)', line) for line in js.split('\n')]
+  parts = [part for part in js.split('\n}\n')]
   funcs = []
   for i in range(len(parts)):
     func = parts[i]
@@ -280,7 +280,7 @@ def run_on_chunk(command):
     if os.environ.get('EMCC_SAVE_OPT_TEMP') and os.environ.get('EMCC_SAVE_OPT_TEMP') != '0':
       saved = 'save_' + os.path.basename(filename)
       while os.path.exists(saved): saved = 'input' + str(int(saved.replace('input', '').replace('.txt', ''))+1) + '.txt'
-      print('running js optimizer command', ' '.join(map(lambda c: c if c != filename else saved, command)), file=sys.stderr)
+      print('running js optimizer command', ' '.join([c if c != filename else saved for c in command]), file=sys.stderr)
       shutil.copyfile(filename, os.path.join(shared.get_emscripten_temp_dir(), saved))
     if shared.EM_BUILD_VERBOSE_LEVEL >= 3: print('run_on_chunk: ' + str(command), file=sys.stderr)
     proc = subprocess.Popen(command, stdout=subprocess.PIPE)
@@ -327,18 +327,18 @@ def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, ju
 
     minify_globals = 'minifyNames' in passes and 'asm' in passes
     if minify_globals:
-      passes = map(lambda p: p if p != 'minifyNames' else 'minifyLocals', passes)
+      passes = [p if p != 'minifyNames' else 'minifyLocals' for p in passes]
       start_asm = js.find(start_asm_marker)
       end_asm = js.rfind(end_asm_marker)
       assert (start_asm >= 0) == (end_asm >= 0)
 
     closure = 'closure' in passes
     if closure:
-      passes = filter(lambda p: p != 'closure', passes) # we will do it manually
+      passes = [p for p in passes if p != 'closure'] # we will do it manually
 
     cleanup = 'cleanup' in passes
     if cleanup:
-      passes = filter(lambda p: p != 'cleanup', passes) # we will do it manually
+      passes = [p for p in passes if p != 'cleanup'] # we will do it manually
 
     split_memory = 'splitMemory' in passes
 
@@ -378,7 +378,7 @@ EMSCRIPTEN_FUNCS();
           minifier.profiling_funcs = True
           return False
         return True
-      passes = filter(check_symbol_mapping, passes)
+      passes = list(filter(check_symbol_mapping, passes))
       asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'minifyWhitespace' in passes, source_map).split('EMSCRIPTEN_FUNCS();');
       asm_shell_post = asm_shell_post.replace('});', '})');
       pre += asm_shell_pre + '\n' + start_funcs_marker
@@ -415,10 +415,10 @@ EMSCRIPTEN_FUNCS();
       chunks = shared.chunkify(funcs, chunk_size)
     else:
       # keep same chunks as before
-      chunks = map(lambda f: f[1], funcs)
+      chunks = [f[1] for f in funcs]
 
-    chunks = filter(lambda chunk: len(chunk) > 0, chunks)
-    if DEBUG and len(chunks) > 0: print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks)), file=sys.stderr)
+    chunks = [chunk for chunk in chunks if len(chunk) > 0]
+    if DEBUG and len(chunks) > 0: print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(list(map(len, chunks))), '-', min(list(map(len, chunks))), file=sys.stderr)
     funcs = None
 
     if len(chunks) > 0:
@@ -442,14 +442,14 @@ EMSCRIPTEN_FUNCS();
   with ToolchainProfiler.profile_block('run_optimizer'):
     if len(filenames) > 0:
       if not use_native(passes, source_map) or not get_native_optimizer():
-        commands = map(lambda filename: js_engine +
+        commands = [js_engine +
             [JS_OPTIMIZER, filename, 'noPrintMetadata'] +
-            (['--debug'] if source_map else []) + passes, filenames)
+            (['--debug'] if source_map else []) + passes for filename in filenames]
       else:
         # use the native optimizer
         shared.logging.debug('js optimizer using native')
         assert not source_map # XXX need to use js optimizer
-        commands = map(lambda filename: [get_native_optimizer(), filename] + passes, filenames)
+        commands = [[get_native_optimizer(), filename] + passes for filename in filenames]
       #print [' '.join(command) for command in commands]
 
       cores = min(cores, len(filenames))

@@ -42,8 +42,8 @@ def create_profiling_graph():
     try:
       json_data = open(f, 'r').read()
       lines = json_data.split('\n')
-      lines = filter(lambda x: x != '[' and x != ']' and x != ',' and len(x.strip()) > 0, lines)
-      lines = map(lambda x: (x + ',') if not x.endswith(',') else x, lines)
+      lines = [x for x in lines if x != '[' and x != ']' and x != ',' and len(x.strip()) > 0]
+      lines = [(x + ',') if not x.endswith(',') else x for x in lines]
       lines[-1] = lines[-1][:-1]
       json_data = '[' + '\n'.join(lines) + ']'
       all_results += json.loads(json_data)

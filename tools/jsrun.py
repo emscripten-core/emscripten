@@ -15,7 +15,7 @@ def timeout_run(proc, timeout=None, note='unnamed process', full_output=False, n
       proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
       raise Exception("Timed out: " + note)
   out = proc.communicate()
-  out = map(lambda o: '' if o is None else o, out)
+  out = ['' if o is None else o for o in out]
   if throw_on_failure and proc.returncode != 0:
     raise Exception('Subprocess "' + ' '.join(note_args) + '" failed with exit code ' + str(proc.returncode) + '!')
   if TRACK_PROCESS_SPAWNS:

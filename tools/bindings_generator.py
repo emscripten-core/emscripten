@@ -355,7 +355,7 @@ for classname, clazz in parsed.classes.items() + parsed.structs.items():
       'parameters': [[]],
     })
 
-  clazz['methods'] = filter(lambda method: not method.get('ignore'), clazz['methods'])
+  clazz['methods'] = [method for method in clazz['methods'] if not method.get('ignore')]
 
 # Explore all functions we need to generate, including parent classes, handling of overloading, etc.
 
@@ -435,7 +435,7 @@ for classname, clazz in parsed.classes.items() + parsed.structs.items():
           continue
         # TODO: Other compatibility checks, if any?
 
-        curr['parameters'] += map(copy_args, method['parameters'])
+        curr['parameters'] += list(map(copy_args, method['parameters']))
 
         print('zz ', classname, 'has updated parameters of ', curr['parameters'])
 
@@ -662,13 +662,13 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
     need_self = not constructor and not static
 
     def typedargs(args):
-      return ([] if not need_self else [classname + ' * self']) + map(lambda i: args[i]['type'] + ' arg' + str(i), range(len(args)))
+      return ([] if not need_self else [classname + ' * self']) + [args[i]['type'] + ' arg' + str(i) for i in range(len(args))]
     def justargs(args):
-      return map(lambda i: 'arg' + str(i), range(len(args)))
+      return ['arg' + str(i) for i in range(len(args))]
     def justtypes(args): # note: this ignores 'self'
-      return map(lambda i: args[i]['type'], range(len(args)))
+      return [args[i]['type'] for i in range(len(args))]
     def dummyargs(args):
-      return ([] if not need_self else ['(%s*)argv[argc]' % classname]) + map(lambda i: '(%s)argv[argc]' % args[i]['type'], range(len(args)))
+      return ([] if not need_self else ['(%s*)argv[argc]' % classname]) + ['(%s)argv[argc]' % args[i]['type'] for i in range(len(args))]
 
     fullname = ('emscripten_bind_' + generating_classname + '__' + mname).replace('::', '__')
     generating_classname_suffixed = generating_classname
