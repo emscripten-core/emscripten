@@ -12,7 +12,7 @@ try:
   range_from = int(sys.argv[2])
   range_to = int(sys.argv[3])
   if range_from >= range_to:
-    raise "error"
+    raise Exception("error")
   file = open(sys.argv[1])
 except:
   print_usage()

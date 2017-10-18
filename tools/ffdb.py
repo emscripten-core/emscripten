@@ -82,9 +82,9 @@ def read_b2g_response(print_errors_to_console = True):
     if semicolon+1+payload_len > len(read_queue):
       try:
         read_queue += b2g_socket.recv(4096)
-      except socket.timeout, e: 
+      except socket.timeout as e: 
         pass # We simulate blocking sockets with looping over reads that time out, since on Windows, the user cannot press Ctrl-C to break on blocking sockets.
-      except Exception, e:
+      except Exception as e:
         if e[0] == 57: # Socket is not connected
           print('Error! Failed to receive data from the device: socket is not connected!')
           sys.exit(1)
@@ -180,7 +180,7 @@ def adb_devices():
     devices = devices.strip().split('\n')[1:]
     devices = map(lambda x: x.strip().split('\t'), devices)
     return devices
-  except Exception, e:
+  except Exception as e:
     return []
 
 def b2g_get_prefs_filename():
@@ -237,7 +237,7 @@ def get_packaged_app_manifest(target_app_path):
     try:
       z = zipfile.ZipFile(target_app_path, "r")
       bytes = z.read('manifest.webapp')
-    except Exception, e:
+    except Exception as e:
       print("Error: Failed to read FFOS packaged app manifest file 'manifest.webapp' in zip file '" + target_app_path + "'! Error: " + str(e))
       sys.exit(1)
       return None
@@ -562,7 +562,7 @@ def main():
     b2g_socket.settimeout(0.5)
   try:
     b2g_socket.connect((HOST, PORT))
-  except Exception, e:
+  except Exception as e:
     if e[0] == 61 or e[0] == 107 or e[0] == 111: # 61 == Connection refused and 107+111 == Transport endpoint is not connected
       if (HOST == 'localhost' or HOST == '127.0.0.1') and not connect_to_simulator:
         cmd = [ADB, 'forward', 'tcp:'+str(PORT), 'localfilesystem:/data/local/debugger-socket']
@@ -572,7 +572,7 @@ def main():
         sys.exit(1)
       try:
         retcode = subprocess.check_call(cmd)
-      except Exception, e:
+      except Exception as e:
         print('Error! Failed to execute adb: ' + str(e))
         print("Check that the device is connected properly, call 'adb devices' to list the detected devices.")
         sys.exit(1)
@@ -584,7 +584,7 @@ def main():
       try:
         b2g_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         b2g_socket.connect((HOST, PORT))
-      except Exception, e:
+      except Exception as e:
         print('Error! Failed to connect to B2G device debugger socket at address ' + HOST + ':' + str(PORT) + '!')
         sys.exit(1)
 

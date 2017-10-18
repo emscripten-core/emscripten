@@ -247,7 +247,7 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
     proc = subprocess.Popen(shared.NODE_JS + [temp_file], stdout=out_file_handle, stderr=err_file_handle)
     try:
       shared.jsrun.timeout_run(proc, timeout=10, full_output=True, throw_on_failure=False)
-    except Exception, e:
+    except Exception as e:
       if 'Timed out' not in str(e): raise e
       shared.logging.debug('ctors timed out\n')
       return (0, 0, 0, 0)

@@ -889,7 +889,7 @@ if __name__ == '__main__':
     elif line.startswith('// EMTERPRET_INFO '):
       try:
         func, curr, absolute_targets = json.loads(line[len('// EMTERPRET_INFO '):])
-      except Exception, e:
+      except Exception as e:
         print('failed to parse code from', line, file=sys.stderr)
         raise e
       assert len(curr) % 4 == 0, len(curr)

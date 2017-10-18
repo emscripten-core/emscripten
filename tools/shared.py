@@ -46,7 +46,7 @@ class WindowsPopen(object):
       # Call the process with fixed streams.
       self.process = subprocess.Popen(args, bufsize, executable, self.stdin_, self.stdout_, self.stderr_, preexec_fn, close_fds, shell, cwd, env, universal_newlines, startupinfo, creationflags)
       self.pid = self.process.pid
-    except Exception, e:
+    except Exception as e:
       logging.error('\nsubprocess.Popen(args=%s) failed! Exception %s\n' % (' '.join(args), str(e)))
       raise e
 
@@ -262,7 +262,7 @@ This command will now exit. When you are done editing those paths, re-run it.
 try:
   config_text = open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG
   exec(config_text)
-except Exception, e:
+except Exception as e:
   logging.error('Error in evaluating %s (at %s): %s, text: %s' % (EM_CONFIG, CONFIG_FILE, str(e), config_text))
   sys.exit(1)
 
@@ -346,7 +346,7 @@ def check_clang_version():
 def check_llvm_version():
   try:
     check_clang_version()
-  except Exception, e:
+  except Exception as e:
     logging.critical('Could not verify LLVM version: %s' % str(e))
 
 # look for emscripten-version.txt files under or alongside the llvm source dir
@@ -371,7 +371,7 @@ def get_llc_targets():
     llc_version_info = Popen([LLVM_COMPILER, '--version'], stdout=PIPE).communicate()[0]
     pre, targets = llc_version_info.split('Registered Targets:')
     return targets
-  except Exception, e:
+  except Exception as e:
     return '(no targets could be identified: ' + str(e) + ')'
 
 def has_asm_js_target(targets):
@@ -427,7 +427,7 @@ def check_fastcomp():
           logging.error('Make sure to rebuild llvm and clang after updating repos')
 
     return True
-  except Exception, e:
+  except Exception as e:
     logging.warning('could not check fastcomp: %s' % str(e))
     return True
 
@@ -442,7 +442,7 @@ def check_node_version():
       return True
     logging.warning('node version appears too old (seeing "%s", expected "%s")' % (actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION)))))
     return False
-  except Exception, e:
+  except Exception as e:
     logging.warning('cannot check node version: %s',  e)
     return False
 
@@ -488,13 +488,13 @@ try:
     EMSCRIPTEN_VERSION_MAJOR = parts[0]
     EMSCRIPTEN_VERSION_MINOR = parts[1]
     EMSCRIPTEN_VERSION_TINY = parts[2]
-  except Exception, e:
+  except Exception as e:
     logging.warning('emscripten version ' + EMSCRIPTEN_VERSION + ' lacks standard parts')
     EMSCRIPTEN_VERSION_MAJOR = 0
     EMSCRIPTEN_VERSION_MINOR = 0
     EMSCRIPTEN_VERSION_TINY = 0
     raise e
-except Exception, e:
+except Exception as e:
   logging.error('cannot find emscripten version ' + str(e))
   EMSCRIPTEN_VERSION = 'unknown'
 
@@ -525,7 +525,7 @@ def check_sanity(force=False):
               reason = 'system change: %s vs %s' % (generate_sanity(), sanity_data)
             else:
               if not force: return # all is well
-        except Exception, e:
+        except Exception as e:
           reason = 'unknown: ' + str(e)
     if reason:
       logging.warning('(Emscripten: %s, clearing cache)' % reason)
@@ -581,7 +581,7 @@ def check_sanity(force=False):
       f.write(generate_sanity())
       f.close()
 
-  except Exception, e:
+  except Exception as e:
     # Any error here is not worth failing on
     print('WARNING: sanity check failed to run', e)
   finally:
@@ -756,7 +756,7 @@ FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 def safe_ensure_dirs(dirname):
   try:
     os.makedirs(dirname)
-  except os.error, e:
+  except os.error as e:
     # Ignore error for already existing dirname
     if e.errno != errno.EEXIST:
       raise e
@@ -852,7 +852,7 @@ class Configuration(object):
       try:
         self.EMSCRIPTEN_TEMP_DIR = self.CANONICAL_TEMP_DIR
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
-      except Exception, e:
+      except Exception as e:
         logging.error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + hint_config_file_location())
 
   def get_temp_files(self):
@@ -883,7 +883,7 @@ try:
 except:
   try:
     JS_ENGINES = [JS_ENGINE]
-  except Exception, e:
+  except Exception as e:
     print('ERROR: %s does not seem to have JS_ENGINES or JS_ENGINE set up' % EM_CONFIG)
     raise
 
@@ -946,7 +946,7 @@ def check_vanilla():
         logging.debug('regenerating vanilla check since other llvm')
         temp_cache.get('is_vanilla', get_vanilla_file, extension='.txt', force=True)
         is_vanilla = check_vanilla()
-    except Exception, e:
+    except Exception as e:
       logging.debug('failed to use vanilla file, will re-check: ' + str(e))
       is_vanilla = check_vanilla()
     temp_cache = None
@@ -1279,7 +1279,7 @@ def extract_archive_contents(f):
       'dir': temp_dir,
       'files': contents
     }
-  except Exception, e:
+  except Exception as e:
     print('extract archive contents('+str(f)+') failed with error: ' + str(e), file=sys.stderr)
   finally:
     os.chdir(cwd)
@@ -1365,7 +1365,7 @@ class Building(object):
             Building.multiprocessing_pool.terminate()
             Building.multiprocessing_pool.join()
             Building.multiprocessing_pool = None
-          except OSError, e:
+          except OSError as e:
             # Mute the "WindowsError: [Error 5] Access is denied" errors, raise all others through
             if not (sys.platform.startswith('win') and isinstance(e, WindowsError) and e.winerror == 5): raise
         atexit.register(close_multiprocessing_pool)
@@ -1533,7 +1533,7 @@ class Building(object):
       if EM_BUILD_VERBOSE_LEVEL >= 3: print('configure: ' + str(args), file=sys.stderr)
       process = Popen(args, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else stdout, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else stderr, env=env)
       process.communicate()
-    except Exception, e:
+    except Exception as e:
       logging.error('Exception thrown when invoking Popen in configure with args: "%s"!' % ' '.join(args))
       raise
     if 'EMMAKEN_JUST_CONFIGURE' in env: del env['EMMAKEN_JUST_CONFIGURE']
@@ -1565,7 +1565,7 @@ class Building(object):
       if EM_BUILD_VERBOSE_LEVEL >= 3: print('make: ' + str(args), file=sys.stderr)
       process = Popen(args, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else stdout, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else stderr, env=env, shell=WINDOWS)
       process.communicate()
-    except Exception, e:
+    except Exception as e:
       logging.error('Exception thrown when invoking Popen in make with args: "%s"!' % ' '.join(args))
       raise
     if process.returncode is not 0:
@@ -1610,7 +1610,7 @@ class Building(object):
       try:
         Building.configure(configure + configure_args, env=env, stdout=open(os.path.join(project_dir, 'configure_'), 'w') if EM_BUILD_VERBOSE_LEVEL < 2 else None,
                                                                 stderr=open(os.path.join(project_dir, 'configure_err'), 'w') if EM_BUILD_VERBOSE_LEVEL < 1 else None)
-      except subprocess.CalledProcessError, e:
+      except subprocess.CalledProcessError as e:
         pass # Ignore exit code != 0
     def open_make_out(i, mode='r'):
       return open(os.path.join(project_dir, 'make_' + str(i)), mode)
@@ -1627,7 +1627,7 @@ class Building(object):
           try:
             Building.make(make + make_args, stdout=make_out if EM_BUILD_VERBOSE_LEVEL < 2 else None,
                                             stderr=make_err if EM_BUILD_VERBOSE_LEVEL < 1 else None, env=env)
-          except subprocess.CalledProcessError, e:
+          except subprocess.CalledProcessError as e:
             pass # Ignore exit code != 0
       try:
         if cache is not None:
@@ -1636,7 +1636,7 @@ class Building(object):
             basename = os.path.basename(f)
             cache[cache_name].append((basename, open(f, 'rb').read()))
         break
-      except Exception, e:
+      except Exception as e:
         if i > 0:
           if EM_BUILD_VERBOSE_LEVEL == 0:
             # Due to the ugly hack above our best guess is to output the first run
@@ -2233,7 +2233,7 @@ class Building(object):
                  b[6] == '>' and ord(b[7]) == 10
       Building._is_ar_cache[filename] = sigcheck
       return sigcheck
-    except Exception, e:
+    except Exception as e:
       logging.debug('Building.is_ar failed to test whether file \'%s\' is a llvm archive file! Failed on exception: %s' % (filename, e))
       return False
 

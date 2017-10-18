@@ -145,7 +145,7 @@ def parse_backend_output(backend_output, DEBUG):
   try:
     #if DEBUG: print >> sys.stderr, "METAraw", metadata_raw
     metadata = json.loads(metadata_raw)
-  except Exception, e:
+  except Exception as e:
     logging.error('emscript: failure to parse metadata output from compiler backend. raw output is: \n' + metadata_raw)
     raise e
 
@@ -2024,7 +2024,7 @@ def create_s2wasm_args(temp_s):
 def load_metadata(metadata_raw):
   try:
     metadata_json = json.loads(metadata_raw)
-  except Exception, e:
+  except Exception as e:
     logging.error('emscript: failure to parse metadata output from s2wasm. raw output is: \n' + metadata_raw)
     raise e
 

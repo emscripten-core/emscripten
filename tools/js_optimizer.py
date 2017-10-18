@@ -176,7 +176,7 @@ def get_native_optimizer():
         return shared.Cache.get(name, create_optimizer_cmake, extension='exe')
       else:
         return shared.Cache.get(name, create_optimizer, extension='exe')
-    except NativeOptimizerCreationException, e:
+    except NativeOptimizerCreationException as e:
       shared.logging.debug('failed to build native optimizer')
       handle_build_errors(outs, errs)
       open(FAIL_MARKER, 'w').write(':(')
@@ -574,7 +574,7 @@ if __name__ == '__main__':
       extra_info = None
     out = run(sys.argv[1], sys.argv[2:], extra_info=extra_info)
     shutil.copyfile(out, sys.argv[1] + '.jsopt.js')
-  except Exception, e:
+  except Exception as e:
     ToolchainProfiler.record_process_exit(1)
     raise e
   ToolchainProfiler.record_process_exit(0)

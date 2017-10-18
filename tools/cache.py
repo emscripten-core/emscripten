@@ -73,7 +73,7 @@ class Cache(object):
     tempfiles.try_delete(self.dirname)
     try:
       open(self.dirname + '__last_clear', 'w').write('last clear: ' + time.asctime() + '\n')
-    except Exception, e:
+    except Exception as e:
       print('failed to save last clear time: ', e, file=sys.stderr)
     self.filelock = None
     tempfiles.try_delete(self.filelock_name)
