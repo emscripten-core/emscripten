@@ -355,7 +355,7 @@ for classname, clazz in parsed.classes.items() + parsed.structs.items():
       'parameters': [[]],
     })
 
-  clazz['methods'] = filter(lambda method: not method.get('ignore'), clazz['methods'])
+  clazz['methods'] = [method for method in clazz['methods'] if not method.get('ignore')]
 
 # Explore all functions we need to generate, including parent classes, handling of overloading, etc.
 

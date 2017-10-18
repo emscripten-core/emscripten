@@ -544,7 +544,7 @@ def main():
     if sys.argv[i] in options: sys.argv[i] = ''
     if sys.argv[i] in options_with_value: sys.argv[i+1] = ''
 
-  sys.argv = filter(lambda x: len(x) > 0, sys.argv)
+  sys.argv = [x for x in sys.argv if len(x) > 0]
 
   # Double-check that the device is found via adb:
   if (HOST == 'localhost' or HOST == '127.0.0.1') and not connect_to_simulator:
@@ -610,7 +610,7 @@ def main():
     print_only_running = '--running' in sys.argv and not '--all' in sys.argv
     if print_only_running: # Print running apps only?
       print('Running applications by id:')
-      printed_apps = filter(lambda x: x['manifestURL'] in running_app_manifests, apps)
+      printed_apps = [x for x in apps if x['manifestURL'] in running_app_manifests]
     else:
       print('Installed applications by id:')
     num_printed = print_applist(printed_apps, running_app_manifests, '--all' in sys.argv or print_only_running)

@@ -17,7 +17,7 @@ repdata = open(path_from_root('system', 'include', 'GL', 'gl.h')).readlines() + 
 reps = {}
 for rep in repdata:
   rep = rep.replace('\t', ' ').replace('\n', '')
-  parts = filter(lambda part: part != '', rep.split(' '))
+  parts = [part for part in rep.split(' ') if part != '']
   if len(parts) == 3 and parts[0] == '#define':
     reps[nice(parts[2])] = '%s (%s)' % (parts[1], parts[2])
 

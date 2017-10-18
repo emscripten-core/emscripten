@@ -334,11 +334,11 @@ def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, ju
 
     closure = 'closure' in passes
     if closure:
-      passes = filter(lambda p: p != 'closure', passes) # we will do it manually
+      passes = [p for p in passes if p != 'closure'] # we will do it manually
 
     cleanup = 'cleanup' in passes
     if cleanup:
-      passes = filter(lambda p: p != 'cleanup', passes) # we will do it manually
+      passes = [p for p in passes if p != 'cleanup'] # we will do it manually
 
     split_memory = 'splitMemory' in passes
 
@@ -378,7 +378,7 @@ EMSCRIPTEN_FUNCS();
           minifier.profiling_funcs = True
           return False
         return True
-      passes = filter(check_symbol_mapping, passes)
+      passes = list(filter(check_symbol_mapping, passes))
       asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'minifyWhitespace' in passes, source_map).split('EMSCRIPTEN_FUNCS();');
       asm_shell_post = asm_shell_post.replace('});', '})');
       pre += asm_shell_pre + '\n' + start_funcs_marker
@@ -417,7 +417,7 @@ EMSCRIPTEN_FUNCS();
       # keep same chunks as before
       chunks = [f[1] for f in funcs]
 
-    chunks = filter(lambda chunk: len(chunk) > 0, chunks)
+    chunks = [chunk for chunk in chunks if len(chunk) > 0]
     if DEBUG and len(chunks) > 0: print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(list(map(len, chunks))), '-', min(list(map(len, chunks))), file=sys.stderr)
     funcs = None
 

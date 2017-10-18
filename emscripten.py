@@ -210,7 +210,7 @@ def compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DE
       break
 
   # FIXME: do these one by one as normal js lib funcs
-  metadata['declares'] = filter(lambda i64_func: i64_func not in ['getHigh32', 'setHigh32'], metadata['declares'])
+  metadata['declares'] = [i64_func for i64_func in metadata['declares'] if i64_func not in ['getHigh32', 'setHigh32']]
 
   optimize_syscalls(metadata['declares'], settings, DEBUG)
   update_settings_glue(settings, metadata)
@@ -993,7 +993,7 @@ def global_simd_funcs(access_quote, metadata, settings):
 
   def generate_symbols(types, funcs):
     symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in types for g in funcs]
-    symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), symbols)
+    symbols = [x for x in symbols if not string_contains_any(x, nonexisting_simd_symbols)]
     return ''.join(symbols)
 
   simd_func_text += generate_symbols(simd['int_types'], simd['int_funcs'])
@@ -2085,7 +2085,7 @@ def add_metadata_from_wast(metadata, wast):
         assert False, 'Unhandled export type "%s"' % export_type
 
   # we emit those ourselves
-  metadata['declares'] = filter(lambda x: not x.startswith('emscripten_asm_const'), metadata['declares'])
+  metadata['declares'] = [x for x in metadata['declares'] if not x.startswith('emscripten_asm_const')]
 
 
 def create_invoke_wrappers(invoke_funcs):

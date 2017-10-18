@@ -509,7 +509,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       # we might have exception-supporting versions of them from elsewhere, and if libcxxabi
       # is first then it would "win", breaking exception throwing from those string
       # header methods. To avoid that, we link libcxxabi last.
-      ret = filter(lambda f: f != actual, ret) + [actual]
+      ret = [f for f in ret if f != actual] + [actual]
 
   return ret
 
@@ -707,7 +707,7 @@ def get_ports(settings):
     process_dependencies(settings)
     for port in ports.ports:
       # ports return their output files, which will be linked, or a txt file
-      ret += filter(lambda f: not f.endswith('.txt'), port.get(Ports, settings, shared))
+      ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
     ok = True
   finally:
     if not ok:

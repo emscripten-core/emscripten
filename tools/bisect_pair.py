@@ -27,7 +27,7 @@ rightf.close()
 def run_code(name):
   ret = run_js(name, stderr=PIPE, full_output=True, assert_returncode=None, engine=SPIDERMONKEY_ENGINE)
   # fix stack traces
-  ret = filter(lambda line: not line.startswith('    at ') and not name in line, ret.split('\n'))
+  ret = [line for line in ret.split('\n') if not line.startswith('    at ') and not name in line]
   return '\n'.join(ret)
 
 print('running files')

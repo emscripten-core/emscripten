@@ -1119,7 +1119,7 @@ def unique_ordered(values): # return a list of unique values in an input list, w
     if value in seen: return False
     seen.add(value)
     return True
-  return filter(check, values)
+  return list(filter(check, values))
 
 def expand_response(data):
   if type(data) == str and data[0] == '@':
@@ -1251,7 +1251,7 @@ def extract_archive_contents(f):
     temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
     safe_ensure_dirs(temp_dir)
     os.chdir(temp_dir)
-    contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n'))
+    contents = [x for x in Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n') if len(x) > 0]
     warn_if_duplicate_entries(contents, f)
     if len(contents) == 0:
       logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
@@ -1270,7 +1270,7 @@ def extract_archive_contents(f):
     proc = Popen([LLVM_AR, 'xo', f], stdout=PIPE, stderr=PIPE)
     stdout, stderr = proc.communicate() # if absolute paths, files will appear there. otherwise, in this directory
     contents = list(map(os.path.abspath, contents))
-    nonexisting_contents = filter(lambda x: not os.path.exists(x), contents)
+    nonexisting_contents = [x for x in contents if not os.path.exists(x)]
     if len(nonexisting_contents) != 0:
       raise Exception('llvm-ar failed to extract file(s) ' + str(nonexisting_contents) + ' from archive file ' + f + '! Error:' + str(stdout) + str(stderr))
 
@@ -1486,7 +1486,7 @@ class Building(object):
     env = env.copy()
     if not WINDOWS: return env
     path = env['PATH'].split(';')
-    path = filter(lambda p: not os.path.exists(os.path.join(p, 'sh.exe')), path)
+    path = [p for p in path if not os.path.exists(os.path.join(p, 'sh.exe'))]
     env['PATH'] = ';'.join(path)
     return env
 
@@ -1770,7 +1770,7 @@ class Building(object):
       logging.debug('done running loop of archive %s' % (f))
       return added_any_objects
 
-    Building.read_link_inputs(filter(lambda x: not x.startswith('-'), files))
+    Building.read_link_inputs([x for x in files if not x.startswith('-')])
 
     current_archive_group = None
     for f in files:
@@ -1937,7 +1937,7 @@ class Building(object):
     for line in output.split('\n'):
       if len(line) == 0: continue
       if ':' in line: continue # e.g.  filename.o:  , saying which file it's from
-      parts = filter(lambda seg: len(seg) > 0, line.split(' '))
+      parts = [seg for seg in line.split(' ') if len(seg) > 0]
       # pnacl-nm will print zero offsets for bitcode, and newer llvm-nm will print present symbols as  -------- T name
       if len(parts) == 3 and parts[0] in ["00000000", "--------"]:
         parts.pop(0)

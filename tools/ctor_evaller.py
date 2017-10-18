@@ -40,7 +40,7 @@ def find_ctors_data(js, num):
   ctors_start, ctors_end = find_ctors(js)
   assert ctors_start > 0
   ctors_text = js[ctors_start:ctors_end]
-  all_ctors = filter(lambda ctor: ctor.endswith('()') and not ctor == 'function()' and '.' not in ctor, ctors_text.split(' '))
+  all_ctors = [ctor for ctor in ctors_text.split(' ') if ctor.endswith('()') and not ctor == 'function()' and '.' not in ctor]
   all_ctors = [ctor.replace('()', '') for ctor in all_ctors]
   assert len(all_ctors) > 0
   ctors = all_ctors[:num]
@@ -75,7 +75,7 @@ def eval_ctors_js(js, mem_init, num):
   pre_funcs_end = asm.find('function ', pre_funcs_start)
   pre_funcs_end = asm.rfind(';', pre_funcs_start, pre_funcs_end) + 1
   pre_funcs = asm[pre_funcs_start:pre_funcs_end]
-  parts = filter(lambda x: x.startswith('var '), [x.strip() for x in pre_funcs.split(';')])
+  parts = [x for x in [x.strip() for x in pre_funcs.split(';')] if x.startswith('var ')]
   global_vars = []
   new_globals = '\n'
   for part in parts:
@@ -353,7 +353,7 @@ if __name__ == '__main__':
     exports = [x.split(':')[1].strip() for x in exports_text.replace(' ', '').split(',')]
     for r in removed:
       assert r in exports, 'global ctors were exported'
-    exports = filter(lambda e: e not in removed, exports)
+    exports = [e for e in exports if e not in removed]
     # fix up the exports
     js = open(js_file).read()
     absolute_exports_start = js.find(exports_text)
