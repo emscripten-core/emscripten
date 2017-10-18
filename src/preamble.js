@@ -132,7 +132,7 @@ function getCFunc(ident) {
   return func;
 }
 
-var cwrap, ccall;
+var cwrap, ccall, ccall_varargs;
 (function(){
   var JSfuncs = {
     // Helpers for cwrap -- it can't refer to Runtime directly because it might
@@ -202,6 +202,183 @@ var cwrap, ccall;
     }
     return ret;
   }
+
+  // C calling interface for varargs. Like ccall, but with a varargs specifier
+  // in the last argTypes argument, taking one of two forms:
+  //
+  // 1. a string of the form "[c1c2...]", where cn can be:
+  //   "s" for string, "i" for integer,  "u" for uint, "d" for "double",
+  //   c+ => a single-item repeat pattern if varargs > number of items, or
+  //   (c1c2...)+ => multiple-item repeat pattern, c can be s,i,u,d
+  //
+  // Examples:
+  // "[i]"      => an int arg
+  // "[id]"     => an int arg followed by a double arg
+  // "[d+]"     => repeated double args
+  // "[id+]"    => an int arg followed by repeated double args
+  // "[i(ds)+]" => an int arg, then alternating double and string args
+  //
+  // # pass string, followed by a repeating series of double,int pairs:
+  // Module.ccall_varargs("miniprintf", "null", ["string", "[s(di)+]"], ["%s %f %d %f %d\n", "foo", 1.234, 2, 3.14, -100])
+  //
+  // 2. an array containing 2 arrays of the form [nonrepArr, repArr] where:
+  //   nonrepArr: an array of non-repeating specifiers [c1, c2, ...]
+  //   repArr:    an arrays of repeating specifiers [c1, c2, ...]
+  // where cn specifiers are "s","i","u","d", as above
+  //
+  // # pass string, followed by a repeating series of double,int pairs:
+  // Module.ccall_varargs("miniprintf", "null", ["string", [["s"], ["d", "i"]]], ["%s %f %d %s %f %d %s\n", "foo", 1.234, 2, "foo1", 3.14, -100, "goo1"])
+  //
+  // The second form (the compiled version of the first form) can be used
+  // when ccall_varargs() is called repeatedly with the same varargs spec,
+  // e.g. call_varargs() over all elements in a large 2D array.
+  //
+  ccall_varargs = function ccallVarargsFunc(ident, returnType, argTypes, args, opts) {
+    var func = getCFunc(ident);
+    var cArgs = [];
+    var stack = 0;
+    var ret, converter;
+    var i, j, k;
+    var maxDeclaredArgs, lastInputArg;
+    var vSpecifierArr, vSpecifiers=[[], []], vSpecifiersLen;
+    var vArgs=[], vArgsLen;
+    var vStack, vStackCur;
+    var vToStack = function(item, offset, type){
+      var vrem;
+      switch(type){
+        case "d":
+          vrem = offset % 8;
+          if( vrem !== 0 ){
+	      offset += (8 - vrem);
+	  }
+	  HEAPF64.set([item], offset/8);
+	  offset += 8;
+          break;
+	case 'f':
+	case 'i':
+	case 's':
+	case 'u':
+          vrem = offset % 4;
+          if( vrem !== 0 ){
+	      offset += (4 - vrem);
+	  }
+	  HEAP32.set([item], offset/4);
+	  offset += 4;
+          break;
+      }
+      return offset;
+    };
+    assert(returnType !== 'array', 'Return type should not be "array".');
+    if( args ){
+      lastInputArg = argTypes[argTypes.length-1];
+      // look for varargs specifier in final type argument
+      // optimization: allow direct passing of specification array
+      if( typeof lastInputArg === "object" ){
+	  // array of non-repeating args
+	  vSpecifiers[0] = lastInputArg[0];
+	  // array of repeating args
+	  vSpecifiers[1] = lastInputArg[1];
+          maxDeclaredArgs = argTypes.length-1;
+      } else if( lastInputArg.charAt(0) === "[" ){
+	// string of data type specifications
+	vSpecifierArr = argTypes[argTypes.length-1].split("");
+        j = 0;
+        k = 0;
+	for(i=1; i<vSpecifierArr.length-1; i++){
+          if( vSpecifierArr[i] === "(" ){
+            k = 1;
+            j = 0;
+            continue;
+          } else if( vSpecifierArr[i] === ")" ){
+            continue;
+          } else if( vSpecifierArr[i] === "+" ){
+            if( k === 0 ){
+              k = 1;
+              j = 0;
+              vSpecifiers[k][j++] = vSpecifiers[0].pop();
+            }
+            continue;
+          }
+          vSpecifiers[k][j++] = vSpecifierArr[i];
+        }
+        // for varargs, process declared args up to the start of varargs
+        maxDeclaredArgs = argTypes.length-1;
+      } else {
+	// no varargs, process all args as declared args
+	maxDeclaredArgs = args.length;
+      }
+      // process declared args
+      for(i=0; i<maxDeclaredArgs; i++ ){
+        converter = toC[argTypes[i]];
+        if( converter ){
+          if( stack === 0 ){
+	      stack = Runtime.stackSave();
+	  }
+          cArgs[i] = converter(args[i]);
+        } else {
+          cArgs[i] = args[i];
+        }
+      }
+      // process varargs
+      if( vSpecifiers[0].length || vSpecifiers[1].length ){
+        // varargs go onto the stack
+	if( stack === 0 ){
+	    stack = Runtime.stackSave();
+	}
+        // do string conversions before creating the varargs stack
+	for(i=maxDeclaredArgs, j=0; i < args.length; i++, j++){
+	  if( typeof args[i] === "string" ){
+            vArgs[j] = toC["string"](args[i]);
+          } else {
+            vArgs[j] = args[i];
+          }
+        }
+	// largest stack space we will need (if all varargs are doubles)
+        vStack = Runtime.stackAlloc(vArgs.length * 8);
+        // current location in stack to which to write
+        vStackCur = vStack;
+	// number of varargs processed thus far
+	i = 0;
+        // write non-repeating varargs to stack space, with proper alignment
+	if( vSpecifiers[0].length ){
+	    vSpecifiersLen = vSpecifiers[0].length;
+	    for(j=0; j<vSpecifiersLen; i++, j++) {
+		vStackCur = vToStack(vArgs[i], vStackCur, vSpecifiers[0][j]);
+            }
+	}
+        // write repeating varargs to stack space, with proper alignment
+	if( vSpecifiers[1].length ){
+	    vSpecifiersLen = vSpecifiers[1].length;
+	    vArgsLen = vArgs.length - i;
+	    for(j=0; j<vArgsLen; i++, j++){
+		vStackCur = vToStack(vArgs[i], vStackCur, vSpecifiers[1][j%vSpecifiersLen]);
+            }
+	}
+        // add final varargs argument: a pointer to varargs stack space
+	cArgs[maxDeclaredArgs] = vStack;
+      }
+    }
+    ret = func.apply(null, cArgs);
+    if ((!opts || !opts.async) && typeof EmterpreterAsync === 'object') {
+      assert(!EmterpreterAsync.state, 'cannot start async op with normal JS calling ccall');
+    }
+    if (opts && opts.async){
+	assert(!returnType, 'async ccalls cannot return values');
+    }
+    if (returnType === 'string'){
+	ret = Pointer_stringify(ret);
+    }
+    if (stack !== 0) {
+      if (opts && opts.async) {
+        EmterpreterAsync.asyncFinalizers.push(function() {
+          Runtime.stackRestore(stack);
+        });
+        return;
+      }
+      Runtime.stackRestore(stack);
+    }
+    return ret;
+  };
 
 #if NO_DYNAMIC_EXECUTION == 0
   var sourceRegex = /^function\s*[a-zA-Z$_0-9]*\s*\(([^)]*)\)\s*{\s*([^*]*?)[\s;]*(?:return\s*(.*?)[;\s]*)?}$/;
@@ -290,6 +467,7 @@ var cwrap, ccall;
 #endif
 })();
 {{{ maybeExport("ccall") }}}
+{{{ maybeExport("ccall_varargs") }}}
 {{{ maybeExport("cwrap") }}}
 
 /** @type {function(number, number, string, boolean=)} */

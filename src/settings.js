@@ -352,6 +352,7 @@ var EXPORTED_RUNTIME_METHODS = [ // Runtime elements that are exported on Module
   'FS_unlink',
   'Runtime',
   'ccall',
+  'ccall_varargs',
   'cwrap',
   'setValue',
   'getValue',
