@@ -1154,9 +1154,9 @@ class Settings2(type):
       exec(settings)
 
       # Apply additional settings. First -O, then -s
-      for i in range(len(args)):
-        if args[i].startswith('-O'):
-          v = args[i][2]
+      for arg in args:
+        if arg.startswith('-O'):
+          v = arg[2]
           shrink = 0
           if v in ['s', 'z']:
             shrink = 1 if v == 's' else 2
