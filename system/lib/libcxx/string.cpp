@@ -18,6 +18,9 @@
 #endif // _LIBCPP_MSVCRT
 #include <stdio.h>
 
+// XXX EMSCRIPTEN: Recent versions of clang generates warning in as_integer.
+#pragma clang diagnostic ignored "-Wtautological-compare"
+
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS __basic_string_common<true>;
