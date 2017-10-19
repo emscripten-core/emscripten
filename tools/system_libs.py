@@ -393,7 +393,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   added = set()
   def add_back_deps(need):
     more = False
-    for ident, deps in deps_info.iteritems():
+    for ident, deps in deps_info.items():
       if ident in need.undefs and not ident in added:
         added.add(ident)
         more = True
@@ -424,7 +424,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # and must assume all of deps_info must be exported. Note that this might cause
   # warnings on exports that do not exist.
   if only_forced:
-    for key, value in deps_info.iteritems():
+    for key, value in deps_info.items():
       for dep in value:
         shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
 

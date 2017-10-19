@@ -114,7 +114,7 @@ class AsmModule():
 
     # imports
     all_imports = main.imports
-    for key, value in self.imports.iteritems():
+    for key, value in self.imports.items():
       if key in self.funcs or key in main.funcs: continue # external function in one module, implemented in the other
       value_concrete = '.' not in value # env.key means it is an import, an external value, and not a concrete one
       main_value = main.imports.get(key)
@@ -133,7 +133,7 @@ class AsmModule():
     for key in all_imports.keys():
       if key in self.funcs:
         del all_imports[key] # import in main, provided in side
-    main.imports_js = '\n'.join(['var %s = %s;' % (key, value) for key, value in all_imports.iteritems()]) + '\n'
+    main.imports_js = '\n'.join(['var %s = %s;' % (key, value) for key, value in all_imports.items()]) + '\n'
 
     # check for undefined references to global variables
     def check_import(key, value):
@@ -141,10 +141,10 @@ class AsmModule():
         if key not in all_sendings:
           print('warning: external variable %s is still not defined after linking' % key, file=sys.stderr)
           all_sendings[key] = '0'
-    for key, value in all_imports.iteritems(): check_import(key, value)
+    for key, value in all_imports.items(): check_import(key, value)
 
     if added_sending:
-      sendings_js = ', '.join(['%s: %s' % (key, value) for key, value in all_sendings.iteritems()])
+      sendings_js = ', '.join(['%s: %s' % (key, value) for key, value in all_sendings.items()])
       sendings_start = main.post_js.find('}, { ')+5
       sendings_end = main.post_js.find(' }, buffer);')
       main.post_js = main.post_js[:sendings_start] + sendings_js + main.post_js[sendings_end:]
@@ -152,7 +152,7 @@ class AsmModule():
     # tables
     f_bases = {}
     f_sizes = {}
-    for table, data in self.tables.iteritems():
+    for table, data in self.tables.items():
       main.tables[table] = self.merge_tables(table, main.tables.get(table), data, replacements, f_bases, f_sizes)
     main.combine_tables()
     #print >> sys.stderr, 'f bases', f_bases
@@ -296,7 +296,7 @@ class AsmModule():
 
   def combine_tables(self):
     self.tables_js = '// EMSCRIPTEN_END_FUNCS\n'
-    for table, data in self.tables.iteritems():
+    for table, data in self.tables.items():
       self.tables_js += 'var %s = %s;\n' % (table, data)
 
   def get_table_funcs(self):

@@ -107,7 +107,7 @@ def read_b2g_response(print_errors_to_console = True):
 def send_b2g_cmd(to, cmd, data = {}, print_errors_to_console = True):
   global b2g_socket
   msg = { 'to': to, 'type': cmd}
-  msg = dict(msg.items() + data.items())
+  msg = dict(list(msg.items()) + list(data.items()))
   msg = json.dumps(msg, encoding='latin-1')
   msg = msg.replace('\\\\', '\\')
   msg = str(len(msg))+':'+msg

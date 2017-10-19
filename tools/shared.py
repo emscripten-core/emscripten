@@ -1176,7 +1176,7 @@ class Settings2(type):
     @classmethod
     def serialize(self):
       ret = []
-      for key, value in self.attrs.iteritems():
+      for key, value in self.attrs.items():
         if key == key.upper(): # this is a hack. all of our settings are ALL_CAPS, python internals are not
           jsoned = json.dumps(value, sort_keys=True)
           ret += ['-s', key + '=' + jsoned]
@@ -1206,7 +1206,7 @@ class Settings2(type):
       if attr not in self.attrs:
         import difflib
         logging.warning('''Assigning a non-existent settings attribute "%s"''' % attr)
-        suggestions = ', '.join(difflib.get_close_matches(attr, self.attrs.keys()))
+        suggestions = ', '.join(difflib.get_close_matches(attr, list(self.attrs.keys())))
         if suggestions:
           logging.warning(''' - did you mean one of %s?''' % suggestions)
         logging.warning(''' - perhaps a typo in emcc's  -s X=Y  notation?''')
@@ -1604,7 +1604,7 @@ class Building(object):
     #  except:
     #    pass
     env = Building.get_building_env(native, True)
-    for k, v in env_init.iteritems():
+    for k, v in env_init.items():
       env[k] = v
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
       try:
@@ -2143,14 +2143,14 @@ class Building(object):
           targets = curr[2]
           can_call[func] = set(targets)
       # function tables too - treat a function all as a function that can call anything in it, which is effectively what it is
-      for name, funcs in asm.tables.iteritems():
+      for name, funcs in asm.tables.items():
         can_call[name] = set([x.strip() for x in funcs[1:-1].split(',')])
       #print can_call
       # Note: We ignore calls in from outside the asm module, so you could do emterpreted => outside => emterpreted, and we would
       #       miss the first one there. But this is acceptable to do, because we can't save such a stack anyhow, due to the outside!
       #print 'can call', can_call, '\n!!!\n', asm.tables, '!'
       reachable_from = {}
-      for func, targets in can_call.iteritems():
+      for func, targets in can_call.items():
         for target in targets:
           if target not in reachable_from:
             reachable_from[target] = set()
@@ -2170,7 +2170,7 @@ class Building(object):
       else:
         # find all functions that are reachable from the initial list, including it
         # all tables are assumed reachable, as they can be called from dyncall from outside
-        for name, funcs in asm.tables.iteritems():
+        for name, funcs in asm.tables.items():
           to_check.append(name)
         while len(to_check) > 0:
           curr = to_check.pop()
