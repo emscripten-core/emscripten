@@ -76,7 +76,7 @@ The JSON output format is based on the return value of Runtime.generateStructInf
 '''
 
 import sys, os, re, json, argparse, tempfile, subprocess
-import shared
+from . import shared
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 if DEBUG == "0":

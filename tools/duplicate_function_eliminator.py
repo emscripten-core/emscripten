@@ -1,8 +1,8 @@
 
 from __future__ import print_function
 import os, sys, subprocess, multiprocessing, re, string, json, shutil, logging, traceback
-import shared
-from js_optimizer import *
+from . import shared
+from .js_optimizer import *
 
 DUPLICATE_FUNCTION_ELIMINATOR = path_from_root('tools', 'eliminate-duplicate-functions.js')
 

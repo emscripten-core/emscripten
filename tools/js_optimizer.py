@@ -1,11 +1,15 @@
 
 from __future__ import print_function
-from toolchain_profiler import ToolchainProfiler
+from .toolchain_profiler import ToolchainProfiler
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
 import os, sys, subprocess, multiprocessing, re, string, json, shutil, logging
-import shared
+try:
+  from . import shared
+except ImportError:
+  # Python 2 circular import compatibility
+  import shared
 
 configuration = shared.configuration
 temp_files = configuration.get_temp_files()

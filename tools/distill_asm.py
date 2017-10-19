@@ -11,7 +11,7 @@ XXX this probably doesn't work with closure compiler advanced yet XXX
 '''
 
 import os, sys
-import asm_module
+from . import asm_module
 
 infile = sys.argv[1]
 outfile = sys.argv[2]

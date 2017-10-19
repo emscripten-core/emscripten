@@ -1,15 +1,15 @@
 from __future__ import print_function
-from toolchain_profiler import ToolchainProfiler
-import shutil, time, os, sys, base64, json, tempfile, copy, shlex, atexit, subprocess, hashlib, cPickle, re, errno
+from .toolchain_profiler import ToolchainProfiler
+import shutil, time, os, sys, base64, json, tempfile, copy, shlex, atexit, subprocess, hashlib, pickle, re, errno
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 from distutils.spawn import find_executable
-import jsrun, cache, tempfiles
-import response_file
+from . import jsrun, cache, tempfiles
+from . import response_file
 import logging, platform, multiprocessing
 
 # Temp file utilities
-from tempfiles import try_delete
+from .tempfiles import try_delete
 
 # On Windows python suffers from a particularly nasty bug if python is spawning new processes while python itself is spawned from some other non-console process.
 # Use a custom replacement for Popen on Windows to avoid the "WindowsError: [Error 6] The handle is invalid" errors when emcc is driven through cmake or mingw32-make.
@@ -2123,13 +2123,13 @@ class Building(object):
 
   @staticmethod
   def eliminate_duplicate_funcs(filename):
-    import duplicate_function_eliminator
+    from . import duplicate_function_eliminator
     duplicate_function_eliminator.eliminate_duplicate_funcs(filename)
 
   @staticmethod
   def calculate_reachable_functions(infile, initial_list, can_reach=True):
     with ToolchainProfiler.profile_block('calculate_reachable_functions'):
-      import asm_module
+      from . import asm_module
       temp = configuration.get_temp_files().get('.js').name
       Building.js_optimizer(infile, ['dumpCallGraph'], output_filename=temp, just_concat=True)
       asm = asm_module.AsmModule(temp)
@@ -2260,7 +2260,7 @@ class Building(object):
     with ToolchainProfiler.profile_block('gen_struct_info'):
       Cache.ensure()
 
-      import gen_struct_info
+      from . import gen_struct_info
       gen_struct_info.main(['-qo', info_path, path_from_root('src/struct_info.json')])
 
   @staticmethod
@@ -2653,4 +2653,4 @@ def make_fetch_worker(source_file, output_file):
   open(output_file, 'w').write(fetch_worker_src)
 
 
-import js_optimizer
+from . import js_optimizer

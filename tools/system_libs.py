@@ -1,6 +1,6 @@
 from __future__ import print_function
 import os, json, logging, zipfile, glob, shutil
-import shared
+from . import shared
 from subprocess import Popen, CalledProcessError
 import subprocess, multiprocessing, re
 from sys import maxint
@@ -517,7 +517,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 # emscripten-ports library management (https://github.com/emscripten-ports)
 #---------------------------------------------------------------------------
 
-import ports
+from . import ports
 
 class Ports(object):
   @staticmethod

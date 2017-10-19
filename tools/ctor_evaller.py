@@ -5,8 +5,11 @@ This is an LTO-like operation, and to avoid parsing the entire tree (we might fa
 '''
 
 import os, sys, json, subprocess, time
-import shared, js_optimizer
-from tempfiles import try_delete
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools import shared, js_optimizer
+from tools.tempfiles import try_delete
 
 js_file = sys.argv[1]
 binary_file = sys.argv[2] # mem init for js, wasm binary for wasm

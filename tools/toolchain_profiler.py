@@ -1,6 +1,6 @@
 import subprocess, os, time, sys, tempfile
 if sys.version_info.major == 2:
-  import response_file
+  from . import response_file
 else:
   from tools import response_file
 

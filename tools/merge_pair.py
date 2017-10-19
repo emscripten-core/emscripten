@@ -10,7 +10,9 @@ where a change occurs shows which function is the culprit.
 from __future__ import print_function
 import os, sys, shutil
 
-import asm_module, shared, shutil
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools import asm_module, shared
 
 left = sys.argv[1]
 left_asm = asm_module.AsmModule(left)
