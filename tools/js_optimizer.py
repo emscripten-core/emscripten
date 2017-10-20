@@ -252,7 +252,7 @@ class Minifier(object):
 
     if self.symbols_file:
       mapfile = open(self.symbols_file, 'w')
-      for key, value in self.globs.iteritems():
+      for key, value in self.globs.items():
         mapfile.write(value + ':' + key + '\n')
       mapfile.close()
       print('wrote symbol map file to', self.symbols_file, file=sys.stderr)
@@ -387,7 +387,7 @@ EMSCRIPTEN_FUNCS();
       minify_info = minifier.serialize()
 
       if extra_info:
-        for key, value in extra_info.iteritems():
+        for key, value in extra_info.items():
           assert key not in minify_info or value == minify_info[key], [key, value, minify_info[key]]
           minify_info[key] = value
 

@@ -28,7 +28,7 @@ if DEBUG: print("Debug print ON, CHECKS=%s" % CHECKS)
 
 class Dummy(object):
   def __init__(self, init):
-    for k, v in init.iteritems():
+    for k, v in init.items():
       self.__dict__[k] = v
 
   def getExtendedAttribute(self, name):
@@ -341,7 +341,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
   all_args = sigs.get(max_args)
 
   if DEBUG:
-    print('renderfunc', class_name, func_name, sigs.keys(), return_type, constructor)
+    print('renderfunc', class_name, func_name, list(sigs.keys()), return_type, constructor)
     for i in range(max_args):
       a = all_args[i]
       if isinstance(a, WebIDL.IDLArgument):
@@ -546,7 +546,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
           (', ' if js_call_args else '') + js_call_args)]
 
 
-for name, interface in interfaces.iteritems():
+for name, interface in interfaces.items():
   js_impl = interface.getExtendedAttribute('JSImplementation')
   if not js_impl: continue
   implements[name] = [js_impl[0]]
@@ -560,7 +560,7 @@ for name, interface in interfaces.iteritems():
 # that invariant. Further, the height of a node never decreases. Therefore, when the loop
 # finishes, all ancestors of a given node should have a larger height number than that node.
 nodeHeight = {}
-for child, parent in implements.iteritems():
+for child, parent in implements.items():
   parent = parent[0]
   while parent:
     nodeHeight[parent] = max(nodeHeight.get(parent, 0), nodeHeight.get(child, 0) + 1)
@@ -571,7 +571,7 @@ for child, parent in implements.iteritems():
     else:
       parent = None
 
-names = interfaces.keys()
+names = list(interfaces.keys())
 names.sort(lambda x, y: nodeHeight.get(y, 0) - nodeHeight.get(x, 0))
 
 for name in names:
@@ -712,7 +712,7 @@ public:
 
 deferred_js = []
 
-for name, enum in enums.iteritems():
+for name, enum in enums.items():
   mid_c += ['\n// ' + name + '\n']
   deferred_js += ['\n', '// ' + name + '\n']
   for value in enum.values():

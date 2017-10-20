@@ -77,7 +77,7 @@ def uniq_compare(data1, data2):
     print('file 2 has {} {} than file 1 overall in unique functions'.format(humanbytes(abs(uniqbytediff)), bytesword))
 
 def list_bigfuncs(data):
-    data = data.items()
+    data = list(data.items())
     data.sort(lambda (f1, d1), (f2, d2): d1[0] - d2[0])
     print(''.join(['%6d lines (%6s) : %s' % (d[0], humanbytes(d[1]), f) for f, d in data]))
 

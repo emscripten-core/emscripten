@@ -173,8 +173,8 @@ all_h.write(text)
 all_h.close()
 
 parsed = CppHeaderParser.CppHeader(all_h_name)
-print('zz dir: ', parsed.__dict__.keys())
-for classname, clazz in parsed.classes.items() + parsed.structs.items():
+print('zz dir: ', list(parsed.__dict__.keys()))
+for classname, clazz in list(parsed.classes.items()) + list(parsed.structs.items()):
   print('zz see', classname, clazz, type(clazz))
   classes[classname] = clazz
   if type(clazz['methods']) == dict:
@@ -186,7 +186,7 @@ for classname, clazz in parsed.classes.items() + parsed.structs.items():
     parents[classname.split('::')[1]] = classname.split('::')[0]
 
   if hasattr(clazz, '_public_structs'): # This is a class
-    for sname, struct in clazz._public_structs.iteritems():
+    for sname, struct in clazz._public_structs.items():
       parents[sname] = classname
       classes[classname + '::' + sname] = struct
       struct['name'] = sname # Missing in CppHeaderParser
@@ -204,7 +204,7 @@ def check_has_constructor(clazz):
     if method['constructor'] and not method['destructor']: return True
   return False
 
-for classname, clazz in parsed.classes.items() + parsed.structs.items():
+for classname, clazz in list(parsed.classes.items()) + list(parsed.structs.items()):
   # Various precalculations
   print('zz precalc', classname)
   for method in clazz['methods'][:]:
@@ -379,7 +379,7 @@ def copy_args(args):
     ret.append(copiedarg)
   return ret
 
-for classname, clazz in parsed.classes.items() + parsed.structs.items():
+for classname, clazz in list(parsed.classes.items()) + list(parsed.structs.items()):
   clazz['final_methods'] = {}
 
   def explore(subclass, template_name=None, template_value=None):
@@ -459,7 +459,7 @@ for classname, clazz in parsed.classes.items() + parsed.structs.items():
 
   explore(clazz)
 
-  for method in clazz['final_methods'].itervalues():
+  for method in clazz['final_methods'].values():
     method['parameters'].sort(key=len)
 
 # Second pass - generate bindings
@@ -611,8 +611,8 @@ def generate_class(generating_classname, classname, clazz): # TODO: deprecate ge
       gen_js.write('''Module['%s'] = %s;
 ''' % (generating_classname_head, generating_classname_head))
 
-  print('zz methods: ', clazz['final_methods'].keys())
-  for method in clazz['final_methods'].itervalues():
+  print('zz methods: ', list(clazz['final_methods'].keys()))
+  for method in clazz['final_methods'].values():
     mname = method['name']
     if classname_head + '::' + mname in ignored:
       print('zz ignoring', mname)
@@ -808,7 +808,7 @@ Module['%s'] = %s;
 
 # Main loop
 
-for classname, clazz in parsed.classes.items() + parsed.structs.items():
+for classname, clazz in list(parsed.classes.items()) + list(parsed.structs.items()):
   if any([name in ignored for name in classname.split('::')]):
     print('zz ignoring', classname)
     continue

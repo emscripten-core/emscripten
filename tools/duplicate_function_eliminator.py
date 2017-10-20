@@ -84,7 +84,7 @@ def dump_equivalent_functions(passed_in_filename, global_data):
 
   # Merge the global data's fn_hash_to_fn_name structure into
   # the equivalent function info hash.
-  for fn_hash, fn_names in global_data['fn_hash_to_fn_name'].iteritems():
+  for fn_hash, fn_names in global_data['fn_hash_to_fn_name'].items():
     if fn_hash not in equivalent_fn_info:
       # Exclude single item arrays as they are of no use to us.
       if len(fn_names) > 1:
@@ -111,7 +111,7 @@ def write_equivalent_fn_hash_to_file(f, json_files, passed_in_filename):
 
       # Merge the data's fn_hash_to_fn_name structure into
       # the global data hash.
-      for fn_hash, fn_names in data['fn_hash_to_fn_name'].iteritems():
+      for fn_hash, fn_names in data['fn_hash_to_fn_name'].items():
         if fn_hash not in global_data['fn_hash_to_fn_name']:
             global_data['fn_hash_to_fn_name'][fn_hash] = fn_names[:]
             global_data['fn_hash_to_fn_body'][fn_hash] = data['fn_hash_to_fn_body'][fn_hash]
@@ -124,7 +124,7 @@ def write_equivalent_fn_hash_to_file(f, json_files, passed_in_filename):
 
       # Merge the data's variable_names structure into
       # the global data hash.
-      for variable, value in data['variable_names'].iteritems():
+      for variable, value in data['variable_names'].items():
         if variable not in global_data['variable_names']:
             global_data['variable_names'][variable] = value
 
@@ -132,7 +132,7 @@ def write_equivalent_fn_hash_to_file(f, json_files, passed_in_filename):
 
   # Lets generate the equivalent function hash from the global data set
   equivalent_fn_hash = {}
-  for fn_hash, fn_names in global_data['fn_hash_to_fn_name'].iteritems():
+  for fn_hash, fn_names in global_data['fn_hash_to_fn_name'].items():
     shortest_fn = None
     for fn_name in fn_names:
       if (fn_name not in variable_names) and (shortest_fn is None or (len(fn_name) < len(shortest_fn))):
