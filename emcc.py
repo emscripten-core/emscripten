@@ -33,7 +33,13 @@ from tools import shared, jsrun, system_libs
 from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move
 from tools.response_file import read_response_file
 import tools.line_endings
-
+import platform
+if ( platform.platform().find("Windows")!=-1 ):
+	for i in range(0,len(sys.argv)):
+		if ( sys.argv[i].find("SDL2_IMAGE_FORMATS")!=-1 ):
+			sys.argv[i]=sys.argv[i].replace("'[","['");
+			sys.argv[i]=sys.argv[i].replace("]'","']");	
+      
 # endings = dot + a suffix, safe to test by  filename.endswith(endings)
 C_ENDINGS = ('.c', '.C', '.i')
 CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.CC', '.C++', '.ii')
