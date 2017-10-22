@@ -1,4 +1,5 @@
-import os, shutil, logging, subprocess, sys, stat, ogg
+import os, shutil, logging, subprocess, sys, stat
+from . import ogg
 
 TAG = 'version_1'
 

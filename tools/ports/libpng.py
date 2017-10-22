@@ -1,4 +1,5 @@
-import os, shutil, logging, zlib
+import os, shutil, logging
+from . import zlib
 
 TAG = 'version_1'
 
