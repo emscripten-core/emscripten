@@ -1,12 +1,15 @@
 
 from __future__ import print_function
-from .toolchain_profiler import ToolchainProfiler
+import os, sys, subprocess, multiprocessing, re, string, json, shutil, logging
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools.toolchain_profiler import ToolchainProfiler
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
-import os, sys, subprocess, multiprocessing, re, string, json, shutil, logging
 try:
-  from . import shared
+  from tools import shared
 except ImportError:
   # Python 2 circular import compatibility
   import shared

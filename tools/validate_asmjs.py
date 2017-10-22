@@ -13,7 +13,10 @@
 
 from __future__ import print_function
 import subprocess, sys, re, tempfile, os, time
-from . import shared
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools import shared
 
 # Given a .js file, returns True/False depending on if that file is valid asm.js
 def validate_asmjs_jsfile(filename, muteOutput):
