@@ -652,9 +652,9 @@ var LibraryGL = {
                                              "OES_vertex_array_object", "WEBGL_compressed_texture_s3tc", "WEBGL_depth_texture",
                                              "OES_element_index_uint", "EXT_texture_filter_anisotropic", "ANGLE_instanced_arrays",
                                              "OES_texture_float_linear", "OES_texture_half_float_linear", "WEBGL_compressed_texture_atc",
-                                             "WEBGL_compressed_texture_pvrtc", "EXT_color_buffer_half_float", "WEBGL_color_buffer_float",
-                                             "EXT_frag_depth", "EXT_sRGB", "WEBGL_draw_buffers", "WEBGL_shared_resources",
-                                             "EXT_shader_texture_lod", "EXT_color_buffer_float"];
+                                             "WEBKIT_WEBGL_compressed_texture_pvrtc", "WEBGL_compressed_texture_pvrtc",
+                                             "EXT_color_buffer_half_float", "WEBGL_color_buffer_float", "EXT_frag_depth", "EXT_sRGB",
+                                             "WEBGL_draw_buffers", "WEBGL_shared_resources", "EXT_shader_texture_lod", "EXT_color_buffer_float"];
 
       function shouldEnableAutomatically(extension) {
         var ret = false;
