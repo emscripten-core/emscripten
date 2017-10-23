@@ -1484,7 +1484,7 @@ int main() {
   def test_ptrtoint(self):
       runner = self
       def check_warnings(output):
-          runner.assertEquals(filter(lambda line: 'Warning' in line, output.split('\n')).__len__(), 4)
+          runner.assertEquals([line for line in output.split('\n') if 'Warning' in line].__len__(), 4)
 
       self.do_run_in_out_file_test('tests', 'core', 'test_ptrtoint',
                                    output_processor=check_warnings)
@@ -1784,7 +1784,7 @@ Success!''')
 
   @no_wasm_backend('no implementation of computed gotos')
   def test_indirectbr(self):
-      Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS)
+      Building.COMPILER_TEST_OPTS = [x for x in Building.COMPILER_TEST_OPTS if x != '-g']
 
       self.do_run_in_out_file_test('tests', 'core', 'test_indirectbr')
 
@@ -4063,7 +4063,7 @@ Pass: 0.000012 0.000012''')
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # closure can generate variables called 'gc', which pick up js shell stuff
     if '-O2' in self.emcc_args:
       self.emcc_args += ['--closure', '1'] # Use closure here, to test we don't break FS stuff
-      self.emcc_args = filter(lambda x: x != '-g', self.emcc_args) # ensure we test --closure 1 --memory-init-file 1 (-g would disable closure)
+      self.emcc_args = [x for x in self.emcc_args if x != '-g'] # ensure we test --closure 1 --memory-init-file 1 (-g would disable closure)
     elif '-O3' in self.emcc_args and not self.is_wasm():
       print('closure 2')
       self.emcc_args += ['--closure', '2'] # Use closure 2 here for some additional coverage
@@ -4103,9 +4103,9 @@ def process(filename):
       try_delete(mem_file)
 
       def clean(out, err):
-        return '\n'.join(filter(lambda line: 'binaryen' not in line and 'wasm' not in line and 'so not running' not in line, (out + err).split('\n')))
+        return '\n'.join([line for line in (out + err).split('\n') if 'binaryen' not in line and 'wasm' not in line and 'so not running' not in line])
 
-      self.do_run(src, map(lambda x: x if 'SYSCALL_DEBUG=1' not in mode else ('syscall! 146,SYS_writev' if self.run_name == 'default' else 'syscall! 146'), ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n')),
+      self.do_run(src, [x if 'SYSCALL_DEBUG=1' not in mode else ('syscall! 146,SYS_writev' if self.run_name == 'default' else 'syscall! 146') for x in ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n')],
                   post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'], output_nicerizer=clean)
       if self.uses_memory_init_file():
         assert os.path.exists(mem_file), 'File %s does not exist' % mem_file
@@ -4139,7 +4139,7 @@ def process(filename):
       }
       '''
     def clean(out, err):
-      return '\n'.join(filter(lambda line: 'warning' not in line and 'binaryen' not in line, (out + err).split('\n')))
+      return '\n'.join([line for line in (out + err).split('\n') if 'warning' not in line and 'binaryen' not in line])
     self.do_run(src, ('got: 35\ngot: 45\ngot: 25\ngot: 15\n \nisatty? 0,0,1\n', 'got: 35\ngot: 45\ngot: 25\ngot: 15\nisatty? 0,0,1\n', 'isatty? 0,0,1\ngot: 35\ngot: 45\ngot: 25\ngot: 15\n'), post_build=post, output_nicerizer=clean)
 
   def test_mount(self):
@@ -4639,7 +4639,7 @@ def process(filename):
     self.do_run_from_file(src, output)
 
     if V8_ENGINE in JS_ENGINES:
-      self.banned_js_engines = filter(lambda engine: engine != V8_ENGINE, JS_ENGINES)
+      self.banned_js_engines = [engine for engine in JS_ENGINES if engine != V8_ENGINE]
       self.do_run_from_file(src, test_path + '_no_monotonic.out')
     else:
       print('(no v8, skipping no-monotonic case)')
@@ -4736,8 +4736,8 @@ PORT: 3979
       time.sleep(random.random()/(10*num)) # add some timing nondeterminism here, not that we need it, but whatever
       self.do_run(src, 'hello world\n77.\n')
       return open('src.cpp.o.js').read()
-    builds = map(lambda i: test(), range(num))
-    print(map(len, builds))
+    builds = [test() for i in range(num)]
+    print(list(map(len, builds)))
     uniques = set(builds)
     if len(uniques) != 1:
       i = 0
@@ -5013,7 +5013,7 @@ return malloc(size);
     if self.run_name == 'asm3':
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
-    Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS) # remove -g, so we have one test without it by default
+    Building.COMPILER_TEST_OPTS = [x for x in Building.COMPILER_TEST_OPTS if x != '-g'] # remove -g, so we have one test without it by default
 
     def test():
       self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
@@ -5074,7 +5074,7 @@ return malloc(size);
   # https://llvm.org/bugs/show_bug.cgi?id=28510
   @staticmethod
   def ignore_nans(out, err = ''):
-    return '\n'.join(filter(lambda x: 'NaN' not in x, (out + '\n' + err).split('\n')))
+    return '\n'.join([x for x in (out + '\n' + err).split('\n') if 'NaN' not in x])
 
   # Tests the full SSE1 API.
   @SIMD
@@ -5489,7 +5489,7 @@ def process(filename):
 
       # See post(), below
       input_file = open(os.path.join(self.get_dir(), 'paper.pdf.js'), 'w')
-      input_file.write(str(map(ord, open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read())))
+      input_file.write(str(list(map(ord, open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read()))))
       input_file.close()
 
       post = '''
@@ -5523,7 +5523,7 @@ def process(filename):
       Building.link(poppler + freetype, combined)
 
       self.do_ll_run(combined,
-                     map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read()).__str__().replace(' ', ''),
+                     list(map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read())).__str__().replace(' ', ''),
                      args='-scale-to 512 paper.pdf filename'.split(' '),
                      post_build=post)
                      #, build_ll_hook=self.do_autodebug)
@@ -5546,7 +5546,7 @@ def process(filename):
 
   @sync
   def test_openjpeg(self):
-    Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS) # remove -g, so we have one test without it by default
+    Building.COMPILER_TEST_OPTS = [x for x in Building.COMPILER_TEST_OPTS if x != '-g'] # remove -g, so we have one test without it by default
 
     post = '''
 def process(filename):
@@ -5586,7 +5586,7 @@ def process(filename):
         print('Failed to find proper image output in: ' + output)
         raise
 
-      js_data = map(lambda x: x if x >= 0 else 256+x, js_data) # Our output may be signed, so unsign it
+      js_data = [x if x >= 0 else 256+x for x in js_data] # Our output may be signed, so unsign it
 
       # Get the correct output
       true_data = open(path_from_root('tests', 'openjpeg', 'syntensity_lobby_s.raw'), 'rb').read()

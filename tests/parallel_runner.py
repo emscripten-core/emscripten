@@ -77,7 +77,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     return buffered_results
 
   def clear_finished_processes(self):
-    self.processes = filter(lambda p: p.is_alive(), self.processes)
+    self.processes = [p for p in self.processes if p.is_alive()]
 
   def combine_results(self, result, buffered_results):
     print()

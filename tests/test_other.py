@@ -601,8 +601,8 @@ f.close()
       except:
         pass
 
-    native_features = '\n'.join(filter(lambda x: '***' in x, native_features.split('\n')))
-    emscripten_features = '\n'.join(filter(lambda x: '***' in x, emscripten_features.split('\n')))
+    native_features = '\n'.join([x for x in native_features.split('\n') if '***' in x])
+    emscripten_features = '\n'.join([x for x in emscripten_features.split('\n') if '***' in x])
     self.assertTextDataIdentical(native_features, emscripten_features)
 
   # Tests that it's possible to pass C++11 or GNU++11 build modes to CMake by building code that needs C++11 (embind)
@@ -2131,7 +2131,7 @@ int f() {
       print(input, passes)
 
       if type(expected) == str: expected = [expected]
-      expected = map(lambda out: out.replace('\n\n', '\n').replace('\n\n', '\n'), expected)
+      expected = [out.replace('\n\n', '\n').replace('\n\n', '\n') for out in expected]
 
       # test calling js optimizer
       print('  js')
@@ -2143,14 +2143,14 @@ int f() {
           # registerizeHarder is hard to test, as names vary by chance, nondeterminstically FIXME
           def fix(src):
             if type(src) is list:
-              return map(fix, src)
-            src = '\n'.join(filter(lambda line: 'var ' not in line, src.split('\n'))) # ignore vars
+              return list(map(fix, src))
+            src = '\n'.join([line for line in src.split('\n') if 'var ' not in line]) # ignore vars
             def reorder(func):
               def swap(func, stuff):
                 # emit EYE_ONE always before EYE_TWO, replacing i1,i2 or i2,i1 etc
                 for i in stuff:
                   if i not in func: return func
-                indexes = map(lambda i: [i, func.index(i)], stuff)
+                indexes = [[i, func.index(i)] for i in stuff]
                 indexes.sort(lambda x, y: x[1] - y[1])
                 for j in range(len(indexes)):
                   func = func.replace(indexes[j][0], 'STD_' + str(j))
@@ -2431,7 +2431,7 @@ seeked= file.
     assert len(out2) > 0
     assert 'below the current directory' not in err2
     def clean(txt):
-      return filter(lambda line: 'PACKAGE_UUID' not in line and 'loadPackage({' not in line, txt.split('\n'))
+      return [line for line in txt.split('\n') if 'PACKAGE_UUID' not in line and 'loadPackage({' not in line]
     out = clean(out)
     out2 = clean(out2)
     assert out == out2
@@ -4237,10 +4237,10 @@ EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny
 
     import difflib
     diff = [a.rstrip()+'\n' for a in difflib.unified_diff(normal.split('\n'), dash_e.split('\n'), fromfile='normal', tofile='dash_e')]
-    left_std = filter(lambda x: x.startswith('-') and '-std=' in x, diff)
-    right_std = filter(lambda x: x.startswith('+') and '-std=' in x, diff)
+    left_std = [x for x in diff if x.startswith('-') and '-std=' in x]
+    right_std = [x for x in diff if x.startswith('+') and '-std=' in x]
     assert len(left_std) == len(right_std) == 1, '\n\n'.join(diff)
-    bad = filter(lambda x: '-Wwarn-absolute-paths' in x, diff)
+    bad = [x for x in diff if '-Wwarn-absolute-paths' in x]
     assert len(bad) == 0, '\n\n'.join(diff)
 
   def test_dashE_respect_dashO(self): # issue #3365
@@ -4259,10 +4259,10 @@ EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny
 
     import difflib
     diff = [a.rstrip()+'\n' for a in difflib.unified_diff(normal.split('\n'), dash_m.split('\n'), fromfile='normal', tofile='dash_m')]
-    left_std = filter(lambda x: x.startswith('-') and '-std=' in x, diff)
-    right_std = filter(lambda x: x.startswith('+') and '-std=' in x, diff)
+    left_std = [x for x in diff if x.startswith('-') and '-std=' in x]
+    right_std = [x for x in diff if x.startswith('+') and '-std=' in x]
     assert len(left_std) == len(right_std) == 1, '\n\n'.join(diff)
-    bad = filter(lambda x: '-Wwarn-absolute-paths' in x, diff)
+    bad = [x for x in diff if '-Wwarn-absolute-paths' in x]
     assert len(bad) == 0, '\n\n'.join(diff)
 
   def test_dashM_respect_dashO(self):
@@ -4943,7 +4943,7 @@ main(const int argc, const char * const * const argv)
     def check(has):
       print(has)
       lines = open('a.out.js', 'r').readlines()
-      lines = filter(lambda line: '___assert_fail(' in line or '___assert_func(' in line, lines)
+      lines = [line for line in lines if '___assert_fail(' in line or '___assert_func(' in line]
       found_line_num = any(('//@line 7 "' in line) for line in lines)
       found_filename = any(('src.c"\n' in line) for line in lines)
       assert found_line_num == has, 'Must have debug info with the line number'
@@ -5219,7 +5219,7 @@ pass: error == ENOTDIR
       open('a.out.js', 'w').write(source)
       open('a.out.js.mem', 'wb').write(the_default_mem)
       Popen([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js', 'ASYNC=0']).communicate()
-      sm_no_warn = filter(lambda x: x != '-w', SPIDERMONKEY_ENGINE)
+      sm_no_warn = [x for x in SPIDERMONKEY_ENGINE if x != '-w']
       self.assertTextDataContained(output, run_js('a.out.js', engine=sm_no_warn, args=args)) # run in spidermonkey for print()
       self.assertTextDataContained(output, run_js('em.out.js', engine=sm_no_warn, args=args))
 
@@ -5398,7 +5398,7 @@ function _main() {
       finally:
         del os.environ['EMCC_LOG_EMTERPRETER_CODE']
       lines = err.split('\n')
-      lines = filter(lambda line: 'raw bytecode for ' + func in line, lines)
+      lines = [line for line in lines if 'raw bytecode for ' + func in line]
       assert len(lines) == 1, '\n\n'.join(lines)
       err = lines[0]
       parts = err.split('insts: ')
@@ -7507,7 +7507,7 @@ int main() {
             else:
               assert selects < 10, 'when not optimizing for size we should not create selects'
             # asm2wasm opt line
-            asm2wasm_line = filter(lambda line: 'asm2wasm' in line, err.split('\n'))
+            asm2wasm_line = [line for line in err.split('\n') if 'asm2wasm' in line]
             asm2wasm_line = '' if not asm2wasm_line else asm2wasm_line[0]
             if '-O0' in args or '-O' not in str(args):
               assert '-O' not in asm2wasm_line, 'no opts should be passed to asm2wasm: ' + asm2wasm_line
@@ -7715,7 +7715,7 @@ int main() {
           proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
           output, err = proc.communicate()
           assert proc.returncode == 0
-          asm2wasm_line = filter(lambda x: 'asm2wasm' in x, err.split('\n'))[0]
+          asm2wasm_line = [x for x in err.split('\n') if 'asm2wasm' in x][0]
           asm2wasm_line = asm2wasm_line.strip() + ' ' # ensure it ends with a space, for simpler searches below
           print('|' + asm2wasm_line + '|')
           assert expect_dash_g == (' -g ' in asm2wasm_line)
@@ -7745,7 +7745,7 @@ int main() {
           cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WASM=1', '-O3'] + args
           print(' '.join(cmd))
           output, err = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
-          asm2wasm_line = filter(lambda x: 'asm2wasm' in x, err.split('\n'))[0]
+          asm2wasm_line = [x for x in err.split('\n') if 'asm2wasm' in x][0]
           asm2wasm_line = asm2wasm_line.strip() + ' ' # ensure it ends with a space, for simpler searches below
           print('|' + asm2wasm_line + '|')
           assert expect == (' --ignore-implicit-traps ' in asm2wasm_line)

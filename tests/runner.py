@@ -311,7 +311,7 @@ class RunnerCore(unittest.TestCase):
       shutil.copytree(src, dirname)
       shutil.move(os.path.join(dirname, main_file), filename)
       # the additional files were copied; alter additional_files to point to their full paths now
-      additional_files = map(lambda f: os.path.join(dirname, f), additional_files)
+      additional_files = [os.path.join(dirname, f) for f in additional_files]
       os.chdir(self.get_dir())
 
     if build_ll_hook or post_build or extra_emscripten_args:
@@ -327,7 +327,7 @@ class RunnerCore(unittest.TestCase):
           pass
         args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + Settings.serialize() + \
                ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
-               map(lambda include: '-I' + include, includes) + \
+               ['-I' + include for include in includes] + \
                ['-c', f, '-o', f + '.o']
         output = subprocess.check_call(args, stderr=self.stderr_redirect if not DEBUG else None)
         assert os.path.exists(f + '.o')
@@ -335,7 +335,7 @@ class RunnerCore(unittest.TestCase):
       # Link all files
       if len(additional_files) + len(libraries) > 0:
         shutil.move(filename + '.o', filename + '.o.alone')
-        Building.link([filename + '.o.alone'] + map(lambda f: f + '.o', additional_files) + libraries,
+        Building.link([filename + '.o.alone'] + [f + '.o' for f in additional_files] + libraries,
                  filename + '.o')
         if not os.path.exists(filename + '.o'):
           print("Failed to link LLVM binaries:\n\n", output)
@@ -356,7 +356,7 @@ class RunnerCore(unittest.TestCase):
       args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + Settings.serialize() + \
              self.emcc_args + \
              ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
-             map(lambda include: '-I' + include, includes) + \
+             ['-I' + include for include in includes] + \
              all_files + \
              ['-o', filename + '.o.js']
       output = subprocess.check_call(args, stderr=self.stderr_redirect if not DEBUG else None)
@@ -394,7 +394,7 @@ class RunnerCore(unittest.TestCase):
       print("[was asm.js'ified]", file=sys.stderr)
     elif 'asm.js' in err: # if no asm.js error, then not an odin build
       raise Exception("did NOT asm.js'ify: " + err)
-    err = '\n'.join(filter(lambda line: 'uccessfully compiled asm.js code' not in line, err.split('\n')))
+    err = '\n'.join([line for line in err.split('\n') if 'uccessfully compiled asm.js code' not in line])
     return err
 
   def get_func(self, src, name):
@@ -526,7 +526,7 @@ class RunnerCore(unittest.TestCase):
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
-    cache_name = name + ','.join(filter(lambda opt: len(opt) < 10, Building.COMPILER_TEST_OPTS)) + '_' + hashlib.md5(str(Building.COMPILER_TEST_OPTS)).hexdigest() + cache_name_extra
+    cache_name = name + ','.join([opt for opt in Building.COMPILER_TEST_OPTS if len(opt) < 10]) + '_' + hashlib.md5(str(Building.COMPILER_TEST_OPTS)).hexdigest() + cache_name_extra
 
     valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
@@ -616,10 +616,10 @@ class RunnerCore(unittest.TestCase):
       js_engines = JS_ENGINES
     for engine in js_engines: assert type(engine) == list
     for engine in self.banned_js_engines: assert type(engine) == list
-    js_engines = filter(lambda engine: engine[0] not in map(lambda engine: engine[0], self.banned_js_engines), js_engines)
+    js_engines = [engine for engine in js_engines if engine[0] not in [banned[0] for banned in self.banned_js_engines]]
     if 'BINARYEN_METHOD="native-wasm"' in self.emcc_args:
       # when testing native wasm support, must use a vm with support
-      js_engines = filter(lambda engine: engine == SPIDERMONKEY_ENGINE or engine == V8_ENGINE, js_engines)
+      js_engines = [engine for engine in js_engines if engine == SPIDERMONKEY_ENGINE or engine == V8_ENGINE]
     return js_engines
 
   def do_run_from_file(self, src, expected_output,
@@ -1044,7 +1044,7 @@ def get_default_args(args):
   if len(args) == 1:
     print(HELP_TEXT)
     time.sleep(2)
-    return [args[0]] + map(lambda mode: mode, test_modes)
+    return [args[0]] + [mode for mode in test_modes]
   return args
 
 def print_js_engine_message():
@@ -1056,7 +1056,7 @@ def print_js_engine_message():
 def sanity_checks():
   global JS_ENGINES
   total_engines = len(JS_ENGINES)
-  JS_ENGINES = filter(jsrun.check_engine, JS_ENGINES)
+  JS_ENGINES = list(filter(jsrun.check_engine, JS_ENGINES))
   if len(JS_ENGINES) == 0:
     print('WARNING: None of the JS engines in JS_ENGINES appears to work.')
   elif len(JS_ENGINES) < total_engines:
@@ -1070,14 +1070,14 @@ def args_with_extracted_js_engine_override(args):
       print('Interpreting all capital argument "%s" as JS_ENGINE override' % arg)
       Building.JS_ENGINE_OVERRIDE = eval(arg)
       args[i] = None
-  return filter(lambda arg: arg is not None, args)
+  return [arg for arg in args if arg is not None]
 
 def args_with_default_suite_prepended(args):
   def prepend_default(arg):
     if arg.startswith('test_'):
       return 'default.' + arg
     return arg
-  return map(prepend_default, args)
+  return list(map(prepend_default, args))
 
 def args_with_expanded_all_suite(args):
   # If a test (e.g. test_html) is specified as ALL.test_html, add an entry for each test_mode
@@ -1087,7 +1087,7 @@ def args_with_expanded_all_suite(args):
     if arg.startswith('ALL.'):
       ignore, test = arg.split('.')
       print('Running all test modes on test "%s"' % test)
-      new_args += map(lambda mode: mode+'.'+test, test_modes)
+      new_args += [mode+'.'+test for mode in test_modes]
     else:
       new_args += [arg]
   return new_args
@@ -1109,8 +1109,8 @@ def get_all_tests(modules):
   for m in modules:
     for s in suites:
       if hasattr(m, s):
-        tests = filter(lambda t: t.startswith('test_'), dir(getattr(m, s)))
-        all_tests += map(lambda t: s + '.' + t, tests)
+        tests = [t for t in dir(getattr(m, s)) if t.startswith('test_')]
+        all_tests += [s + '.' + t for t in tests]
   return all_tests
 
 def args_with_expanded_wildcards(args, all_tests):
@@ -1122,7 +1122,7 @@ def args_with_expanded_wildcards(args, all_tests):
       if arg.startswith('skip:'):
         arg = arg[5:]
         matching_tests = fnmatch.filter(all_tests, arg)
-        new_args += map(lambda t: 'skip:' + t, matching_tests)
+        new_args += ['skip:' + t for t in matching_tests]
       else:
         new_args += fnmatch.filter(all_tests, arg)
     else:
@@ -1139,7 +1139,7 @@ def skip_requested_tests(args, modules):
       which = arg.split('skip:')[1]
       if which.startswith('ALL.'):
         ignore, test = which.split('.')
-        which = map(lambda mode: mode+'.'+test, test_modes)
+        which = [mode+'.'+test for mode in test_modes]
       else:
         which = [which]
 
@@ -1155,7 +1155,7 @@ def skip_requested_tests(args, modules):
           except:
             pass
       args[i] = None
-  return filter(lambda arg: arg is not None, args)
+  return [arg for arg in args if arg is not None]
 
 def args_for_random_tests(args, modules):
   if len(args) <= 1:
@@ -1190,7 +1190,7 @@ def get_random_test_parameters(arg):
   return num_tests, base_module, relevant_modes
 
 def choose_random_tests(base, num_tests, relevant_modes):
-  tests = filter(lambda t: t.startswith('test_'), dir(base))
+  tests = [t for t in dir(base) if t.startswith('test_')]
   print()
   chosen = set()
   while len(chosen) < num_tests:

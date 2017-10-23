@@ -45,7 +45,7 @@ class Benchmarker(object):
   def display(self, baseline=None):
     if baseline == self: baseline = None
     mean = sum(self.times)/len(self.times)
-    squared_times = map(lambda x: x*x, self.times)
+    squared_times = [x*x for x in self.times]
     mean_of_squared = sum(squared_times)/len(self.times)
     std = math.sqrt(mean_of_squared - mean*mean)
     sorted_times = self.times[:]
@@ -170,8 +170,7 @@ class benchmark(RunnerCore):
     try:
       d = os.getcwd()
       os.chdir(os.path.expanduser('~/Dev/mozilla-central'))
-      fingerprint.append('sm: ' + filter(lambda line: 'changeset' in line,
-                                         Popen(['hg', 'tip'], stdout=PIPE).communicate()[0].split('\n'))[0])
+      fingerprint.append('sm: ' + [line for line in Popen(['hg', 'tip'], stdout=PIPE).communicate()[0].split('\n') if 'changeset' in line][0])
     except:
       pass
     finally:
