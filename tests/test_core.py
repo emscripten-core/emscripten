@@ -7445,7 +7445,7 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
     try:
       super(TT, self).tearDown()
     finally:
-      for k, v in self.env.iteritems():
+      for k, v in self.env.items():
         del os.environ[k]
 
       # clear global changes to Building
@@ -7457,7 +7457,7 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
 
   def setUp(self):
     super(TT, self).setUp()
-    for k, v in self.env.iteritems():
+    for k, v in self.env.items():
       assert k not in os.environ, k + ' should not be in environment'
       os.environ[k] = v
 

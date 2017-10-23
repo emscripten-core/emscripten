@@ -97,7 +97,7 @@ class JSBenchmarker(Benchmarker):
     self.engine = engine
     self.extra_args = extra_args
     self.env = os.environ.copy()
-    for k, v in env.iteritems():
+    for k, v in env.items():
       self.env[k] = v
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
