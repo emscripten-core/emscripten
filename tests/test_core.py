@@ -1484,7 +1484,7 @@ int main() {
   def test_ptrtoint(self):
       runner = self
       def check_warnings(output):
-          runner.assertEquals([line for line in output.split('\n') if 'Warning' in line].__len__(), 4)
+          runner.assertEqual([line for line in output.split('\n') if 'Warning' in line].__len__(), 4)
 
       self.do_run_in_out_file_test('tests', 'core', 'test_ptrtoint',
                                    output_processor=check_warnings)
