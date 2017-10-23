@@ -304,7 +304,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
       try:
         self.do_run(src, '*300:1*\n*515559*\n*42949672960*\n')
-      except Exception, e:
+      except Exception as e:
         assert 'must be aligned' in str(e), e # expected to fail without emulation
 
   def test_align64(self):
@@ -3602,7 +3602,7 @@ var Module = {
           void side() { std::cout << "cout hello from side"; }
         ''', expected=['cout hello from side\n'],
              need_reverse=need_reverse)
-      except Exception, e:
+      except Exception as e:
         if expect_pass: raise e
         print('(seeing expected fail)')
         passed = False
@@ -6828,7 +6828,7 @@ Module.printErr = Module['printErr'] = function(){};
 
     try:
       self.do_run(src, '*nothingatall*', assert_returncode=None)
-    except Exception, e:
+    except Exception as e:
       # This test *should* fail, by throwing this exception
       assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
 
@@ -6871,7 +6871,7 @@ Module.printErr = Module['printErr'] = function(){};
 
     try:
       self.do_ll_run(all_name, '*nothingatall*', assert_returncode=None)
-    except Exception, e:
+    except Exception as e:
       # This test *should* fail, by throwing this exception
       assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
 

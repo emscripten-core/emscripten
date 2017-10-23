@@ -37,7 +37,7 @@ class Benchmarker(object):
       else:
         try:
           curr = output_parser(output)
-        except Exception, e:
+        except Exception as e:
           logging.error(str(e))
           logging.error('Parsing benchmark results failed, output was: ' + output)
       self.times.append(curr)
@@ -151,7 +151,7 @@ try:
     benchmarkers += [
       JSBenchmarker('v8-wasm',  V8_ENGINE,           ['-s', 'WASM=1']),
     ]
-except Exception, e:
+except Exception as e:
   benchmarkers_error = str(e)
   benchmarkers = []
 
