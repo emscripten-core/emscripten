@@ -11,12 +11,21 @@ Simple test runner. Consider using parallel_test_core.py for faster iteration ti
 from __future__ import print_function
 from subprocess import Popen, PIPE, STDOUT
 import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib
-import webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer
-import multiprocessing, functools, stat, string, random, fnmatch, httplib
+import webbrowser, hashlib, threading, platform
+import multiprocessing, functools, stat, string, random, fnmatch
 import atexit
 import operator
 import parallel_runner
-from urllib import unquote
+
+if sys.version_info.major == 2:
+  from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
+  from SimpleHTTPServer import SimpleHTTPRequestHandler
+  from httplib import HTTPConnection
+  from urllib import unquote
+else:
+  from http.server import HTTPServer, BaseHTTPRequestHandler, SimpleHTTPRequestHandler
+  from http.client import HTTPConnection
+  from urllib.parse import unquote
 
 # Setup
 
@@ -706,7 +715,7 @@ class RunnerCore(unittest.TestCase):
 # which tells the web page, which then opens a window with the test. Doing
 # it this way then allows the page to close() itself when done.
 def harness_server_func(q):
-  class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+  class TestServerHandler(BaseHTTPRequestHandler):
     def do_GET(s):
       s.send_response(200)
       s.send_header("Content-type", "text/html")
@@ -722,11 +731,11 @@ def harness_server_func(q):
     def log_request(code=0, size=0):
       # don't log; too noisy
       pass
-  httpd = BaseHTTPServer.HTTPServer(('localhost', 9999), TestServerHandler)
+  httpd = HTTPServer(('localhost', 9999), TestServerHandler)
   httpd.serve_forever() # test runner will kill us
 
 def server_func(dir, q):
-  class TestServerHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+  class TestServerHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
       if 'report_' in self.path:
         print('[server response:', self.path, ']')
@@ -741,15 +750,15 @@ def server_func(dir, q):
         self.wfile.write('OK')
       else:
         # Use SimpleHTTPServer default file serving operation for GET.
-        SimpleHTTPServer.SimpleHTTPRequestHandler.do_GET(self)
+        SimpleHTTPRequestHandler.do_GET(self)
 
     def log_request(code=0, size=0):
       # don't log; too noisy
       pass
 
-  SimpleHTTPServer.SimpleHTTPRequestHandler.extensions_map['.wasm'] = 'application/wasm'
+  SimpleHTTPRequestHandler.extensions_map['.wasm'] = 'application/wasm'
   os.chdir(dir)
-  httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
+  httpd = HTTPServer(('localhost', 8888), TestServerHandler)
   httpd.serve_forever() # test runner will kill us
 
 class BrowserCore(RunnerCore):
@@ -786,7 +795,7 @@ class BrowserCore(RunnerCore):
         # the test page, we need to know that the server has started up and is ready to process the site navigation.
         # Therefore block until we can make a connection to the server.
         for i in range(10):
-          httpconn = httplib.HTTPConnection('localhost:8888', timeout=1)
+          httpconn = HTTPConnection('localhost:8888', timeout=1)
           try:
             httpconn.connect()
             httpconn.close()

@@ -2,12 +2,16 @@ from __future__ import print_function
 import multiprocessing
 import os
 import pickle
-import Queue
 import subprocess
 import sys
 import time
 import traceback
 import unittest
+
+try:
+  import queue
+except ImportError:
+  import Queue as queue
 
 def g_testing_thread(work_queue, result_queue):
   for test in iter(lambda: get_from_queue(work_queue), None):
@@ -192,9 +196,9 @@ def num_cores():
   return multiprocessing.cpu_count()
 
 
-def get_from_queue(queue):
+def get_from_queue(q):
   try:
-    return queue.get(True, 0.1)
-  except Queue.Empty:
+    return q.get(True, 0.1)
+  except queue.Empty:
     pass
   return None

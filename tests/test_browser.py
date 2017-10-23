@@ -1,7 +1,12 @@
 from __future__ import print_function
-import BaseHTTPServer, multiprocessing, os, shutil, subprocess, unittest, zlib, webbrowser, time, shlex
+import multiprocessing, os, shutil, subprocess, unittest, zlib, webbrowser, time, shlex
 from runner import BrowserCore, path_from_root
 from tools.shared import *
+
+try:
+  from http.server import BaseHTTPRequestHandler, HTTPServer
+except ImportError:
+  from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 # User can specify an environment variable EMSCRIPTEN_BROWSER to force the browser test suite to
 # run using another browser command line than the default system browser.
@@ -15,7 +20,7 @@ if emscripten_browser:
   webbrowser.open_new = run_in_other_browser
 
 def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum):
-  class ChunkedServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+  class ChunkedServerHandler(BaseHTTPRequestHandler):
     def sendheaders(s, extra=[], length=len(data)):
       s.send_response(200)
       s.send_header("Content-Length", str(length))
@@ -49,7 +54,7 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, ch
       s.wfile.close()
 
   expectedConns = 11
-  httpd = BaseHTTPServer.HTTPServer(('localhost', 11111), ChunkedServerHandler)
+  httpd = HTTPServer(('localhost', 11111), ChunkedServerHandler)
   for i in range(expectedConns+1):
     httpd.handle_request()
 
