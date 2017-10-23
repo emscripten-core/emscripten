@@ -1,3 +1,4 @@
+from __future__ import print_function
 import math, os, shutil, subprocess
 import runner
 from runner import RunnerCore, path_from_root
@@ -51,14 +52,14 @@ class Benchmarker(object):
     sorted_times.sort()
     median = sum(sorted_times[len(sorted_times)/2 - 1:len(sorted_times)/2 + 1])/2
 
-    print '   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100*std/mean, self.reps),
+    print('   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100*std/mean, self.reps), end=' ')
 
     if baseline:
       mean_baseline = sum(baseline.times)/len(baseline.times)
       final = mean / mean_baseline
-      print '  Relative: %.2f X slower' % final
+      print('  Relative: %.2f X slower' % final)
     else:
-      print
+      print()
 
 class NativeBenchmarker(Benchmarker):
   def __init__(self, name, cc, cxx, args=['-O2']):
@@ -76,8 +77,8 @@ class NativeBenchmarker(Benchmarker):
       process = Popen(cmd, stdout=PIPE, stderr=parent.stderr_redirect, env=get_clang_native_env())
       output = process.communicate()
       if process.returncode is not 0:
-        print >> sys.stderr, "Building native executable with command failed", ' '.join(cmd)
-        print "Output: " + str(output[0]) + '\n' + str(output[1])
+        print("Building native executable with command failed", ' '.join(cmd), file=sys.stderr)
+        print("Output: " + str(output[0]) + '\n' + str(output[1]))
     else:
       shutil.copyfile(native_exec, filename + '.native')
       shutil.copymode(native_exec, filename + '.native')
@@ -176,7 +177,7 @@ class benchmark(RunnerCore):
     finally:
       os.chdir(d)
     fingerprint.append('llvm: ' + LLVM_ROOT)
-    print 'Running Emscripten benchmarks... [ %s ]' % ' | '.join(fingerprint)
+    print('Running Emscripten benchmarks... [ %s ]' % ' | '.join(fingerprint))
 
     assert(os.path.exists(CLOSURE_COMPILER))
 
@@ -201,7 +202,7 @@ class benchmark(RunnerCore):
     f.write(src)
     f.close()
 
-    print
+    print()
     for b in benchmarkers:
       b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser=output_parser is not None)
       b.bench(args, output_parser, reps)

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import multiprocessing
 import os
 import pickle
@@ -79,9 +80,9 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     self.processes = filter(lambda p: p.is_alive(), self.processes)
 
   def combine_results(self, result, buffered_results):
-    print
-    print 'DONE: combining results on main thread'
-    print
+    print()
+    print('DONE: combining results on main thread')
+    print()
     # Sort the results back into alphabetical order. Running the tests in
     # parallel causes mis-orderings, this makes the results more readable.
     results = sorted(buffered_results, key=lambda res:str(res.test))
@@ -113,15 +114,15 @@ class BufferedParallelTestResult(object):
     pass
 
   def addSuccess(self, test):
-    print >> sys.stderr, test, '... ok'
+    print(test, '... ok', file=sys.stderr)
     self.buffered_result = BufferedTestSuccess(test)
 
   def addFailure(self, test, err):
-    print >> sys.stderr, test, '... FAIL'
+    print(test, '... FAIL', file=sys.stderr)
     self.buffered_result = BufferedTestFailure(test, err)
 
   def addError(self, test, err):
-    print >> sys.stderr, test, '... ERROR'
+    print(test, '... ERROR', file=sys.stderr)
     self.buffered_result = BufferedTestError(test, err)
 
 
