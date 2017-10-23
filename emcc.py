@@ -470,7 +470,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit(subprocess.call(cmd))
     else:
       only_object = '-c' in cmd
-      for i in reversed(range(len(cmd)-1)): # Last -o directive should take precedence, if multiple are specified
+      for i in reversed(list(range(len(cmd)-1))): # Last -o directive should take precedence, if multiple are specified
         if cmd[i] == '-o':
           if not only_object:
             cmd[i+1] += '.js'
@@ -537,7 +537,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if sys.argv[i].startswith('-o='):
       raise Exception('Invalid syntax: do not use -o=X, use -o X')
 
-  for i in reversed(range(len(sys.argv)-1)): # Last -o directive should take precedence, if multiple are specified
+  for i in reversed(list(range(len(sys.argv)-1))): # Last -o directive should take precedence, if multiple are specified
     if sys.argv[i] == '-o':
       target = sys.argv[i+1]
       sys.argv = sys.argv[:i] + sys.argv[i+2:]

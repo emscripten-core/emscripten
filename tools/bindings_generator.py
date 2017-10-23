@@ -231,7 +231,7 @@ for classname, clazz in list(parsed.classes.items()) + list(parsed.structs.items
         break
 
     method['parameters'] = [args[:i] for i in range(default_param-1, len(args)+1)]
-    print('zz ', classname, 'has parameters in range', range(default_param-1, len(args)+1))
+    print('zz ', classname, 'has parameters in range', list(range(default_param-1, len(args)+1)))
 
     method['returns_text'] = method['returns']
     if method['static']:

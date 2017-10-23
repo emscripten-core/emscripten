@@ -165,7 +165,7 @@ if EM_PROFILE_TOOLCHAIN:
 
     @staticmethod
     def remove_last_occurrence_if_exists(lst, item):
-      for i in xrange(len(lst)):
+      for i in range(len(lst)):
         if lst[i] == item:
           lst.pop(i)
           return True
