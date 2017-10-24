@@ -26,12 +26,12 @@ def check_line_endings(filename, expect_only_specific_line_endings=None, print_e
     if print_errors: print("Unable to read file '" + filename + "', or file was empty!", file=sys.stderr)
     return 1
 
-  bad_line_ending_index = data.find("\r\r\n")
+  bad_line_ending_index = data.find(b"\r\r\n")
   if bad_line_ending_index != -1:
     if print_errors:
       print("File '" + filename + "' contains BAD line endings of form \\r\\r\\n!", file=sys.stderr)
       bad_line = data[max(0,bad_line_ending_index-50):min(len(data), bad_line_ending_index+50)]
-      bad_line = bad_line.replace('\r', '\\r').replace('\n', '\\n')
+      bad_line = bad_line.replace(b'\r', b'\\r').replace(b'\n', b'\\n')
       print("Content around the location: '" + bad_line + "'", file=sys.stderr)
     return 1 # Bad line endings in file, return a non-zero process exit code.
 
@@ -41,17 +41,17 @@ def check_line_endings(filename, expect_only_specific_line_endings=None, print_e
   dos_line_ending_count = 0
   unix_line_ending_example = ''
   unix_line_ending_count = 0
-  if '\r\n' in data:
-    dos_line_ending_example = data[max(0, data.find('\r\n') - 50):min(len(data), data.find('\r\n')+50)].replace('\r', '\\r').replace('\n', '\\n')
-    dos_line_ending_count = data.count('\r\n')
+  if b'\r\n' in data:
+    dos_line_ending_example = data[max(0, data.find(b'\r\n') - 50):min(len(data), data.find(b'\r\n')+50)].replace(b'\r', b'\\r').replace(b'\n', b'\\n')
+    dos_line_ending_count = data.count(b'\r\n')
     has_dos_line_endings = True
-    data = data.replace('\r\n', 'A') # Replace all DOS line endings with some other character, and continue testing what's left.
-  if '\n' in data:
-    unix_line_ending_example = data[max(0, data.find('\n') - 50):min(len(data), data.find('\n')+50)].replace('\r', '\\r').replace('\n', '\\n')
-    unix_line_ending_count = data.count('\n')
+    data = data.replace(b'\r\n', b'A') # Replace all DOS line endings with some other character, and continue testing what's left.
+  if b'\n' in data:
+    unix_line_ending_example = data[max(0, data.find(b'\n') - 50):min(len(data), data.find(b'\n')+50)].replace(b'\r', b'\\r').replace(b'\n', b'\\n')
+    unix_line_ending_count = data.count(b'\n')
     has_unix_line_endings = True
-  if '\r' in data:
-    old_osx_line_ending_example = data[max(0, data.find('\r') - 50):min(len(data), data.find('\r')+50)].replace('\r', '\\r').replace('\n', '\\n')
+  if b'\r' in data:
+    old_osx_line_ending_example = data[max(0, data.find(b'\r') - 50):min(len(data), data.find(b'\r')+50)].replace(b'\r', b'\\r').replace(b'\n', b'\\n')
     if print_errors:
       print('File \'' + filename + '\' contains OLD OSX line endings "\\r"', file=sys.stderr)
       print("Content around an OLD OSX line ending location: '" + old_osx_line_ending_example + "'", file=sys.stderr)
