@@ -8,7 +8,10 @@ that would be harmful to asm.js code.
 
 from __future__ import print_function
 import sys
-import shared
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools import shared
 
 try:
   me, in_shell, in_asm, outfile = sys.argv[:4]

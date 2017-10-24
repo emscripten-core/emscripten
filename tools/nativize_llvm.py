@@ -13,7 +13,9 @@ from __future__ import print_function
 import os, sys
 from subprocess import Popen, PIPE, STDOUT
 
-from shared import *
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools.shared import *
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):

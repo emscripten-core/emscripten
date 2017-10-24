@@ -76,7 +76,10 @@ The JSON output format is based on the return value of Runtime.generateStructInf
 '''
 
 import sys, os, re, json, argparse, tempfile, subprocess
-import shared
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools import shared
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 if DEBUG == "0":

@@ -2,7 +2,7 @@
 from __future__ import print_function
 import sys, re, itertools
 
-import shared, js_optimizer
+from . import shared, js_optimizer
 
 
 class AsmModule():

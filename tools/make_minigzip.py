@@ -2,7 +2,7 @@ from __future__ import print_function
 import os, sys
 from subprocess import Popen, PIPE, STDOUT
 
-import shared
+from . import shared
 
 print('Building zlib')
 

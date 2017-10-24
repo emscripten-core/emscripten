@@ -7,8 +7,11 @@ Currently this requires the asm.js code to have been built with -s FINALIZE_ASM_
 '''
 
 from __future__ import print_function
-import os, sys, re, json
-import asm_module, shared, shutil
+import os, sys, re, json, shutil
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools import asm_module, shared
 
 # params
 

@@ -8,7 +8,7 @@ http://kripken.github.io/emscripten-site/docs/porting/connecting_cpp_and_javascr
 from __future__ import print_function
 import os, sys
 
-import shared
+from . import shared
 
 sys.path.append(shared.path_from_root('third_party'))
 sys.path.append(shared.path_from_root('third_party', 'ply'))

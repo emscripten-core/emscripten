@@ -61,15 +61,18 @@ TODO:        You can also provide .crn files yourself, pre-crunched. With this o
 '''
 
 from __future__ import print_function
-from toolchain_profiler import ToolchainProfiler
+import os, sys, shutil, random, uuid, ctypes
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools.toolchain_profiler import ToolchainProfiler
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
-import os, sys, shutil, random, uuid, ctypes
 import posixpath
-import shared
-from shared import execute, suffix, unsuffixed
-from jsrun import run_js
+from tools import shared
+from tools.shared import execute, suffix, unsuffixed
+from tools.jsrun import run_js
 from subprocess import Popen, PIPE, STDOUT
 import fnmatch
 import json
@@ -153,7 +156,7 @@ for arg in sys.argv[2:]:
     leading = ''
   elif arg.startswith('--crunch'):
     try:
-      from shared import CRUNCH
+      from tools.shared import CRUNCH
     except Exception as e:
       print('could not import CRUNCH (make sure it is defined properly in ' + shared.hint_config_file_location() + ')', file=sys.stderr)
       raise e
