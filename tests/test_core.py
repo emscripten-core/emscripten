@@ -4735,7 +4735,10 @@ PORT: 3979
       print('(iteration)')
       time.sleep(random.random()/(10*num)) # add some timing nondeterminism here, not that we need it, but whatever
       self.do_run(src, 'hello world\n77.\n')
-      return open('src.cpp.o.js').read()
+      ret = open('src.cpp.o.js').read()
+      if Settings.BINARYEN:
+        ret += open('src.cpp.o.wasm').read()
+      return ret
     builds = [test() for i in range(num)]
     print(list(map(len, builds)))
     uniques = set(builds)
