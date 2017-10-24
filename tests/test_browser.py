@@ -3528,7 +3528,7 @@ window.close = function() {
       self.btest('binaryen_async.c', expected=str(expect), args=common_args + opts)
     # Ensure that compilation still works and is async without instantiateStreaming available
     no_streaming = ' <script> WebAssembly.instantiateStreaming = undefined;</script>'
-    shell_with_script('shell.html', 'shell_no_streaming.html', no_streaming + script)
+    shell_with_script('shell.html', 'shell.html', no_streaming + script)
     self.btest('binaryen_async.c', expected='1', args=common_args)
 
   # Test that implementing Module.instantiateWasm() callback works.
