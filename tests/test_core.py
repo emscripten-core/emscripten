@@ -6930,7 +6930,7 @@ Module.printErr = Module['printErr'] = function(){};
             data[key] = encode_utf8(data[key])
           return data
         elif isinstance(data, list):
-          for i in xrange(len(data)):
+          for i in range(len(data)):
             data[i] = encode_utf8(data[i])
           return data
         elif isinstance(data, unicode):

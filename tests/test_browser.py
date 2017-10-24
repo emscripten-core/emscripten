@@ -3592,9 +3592,9 @@ window.close = function() {
     # won't fully fit in the heap. This verifies that streaming works properly.
     f = open('largefile.txt', 'w')
     s = '12345678'
-    for i in xrange(14):
+    for i in range(14):
       s = s[::-1] + s # length of str will be 2^17=128KB
-    for i in xrange(1024):
+    for i in range(1024):
       f.write(s)
     f.close()
     self.btest('fetch/stream_file.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'TOTAL_MEMORY=536870912'])

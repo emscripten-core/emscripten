@@ -60,7 +60,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
   def init_processes(self, test_queue):
     self.processes = []
     self.result_queue = multiprocessing.Queue()
-    for i in xrange(num_cores()):
+    for i in range(num_cores()):
       p = multiprocessing.Process(target=g_testing_thread,
                                   args=(test_queue, self.result_queue))
       p.start()
