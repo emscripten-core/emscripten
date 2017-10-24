@@ -52,6 +52,13 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, ch
   for i in range(expectedConns+1):
     httpd.handle_request()
 
+
+def shell_with_script(shell_file, output_file, replacement):
+  with open(path_from_root('src', shell_file)) as input:
+    with open(output_file, 'w') as output:
+      output.write(input.read().replace('{{{ SCRIPT }}}', replacement))
+
+
 class browser(BrowserCore):
   @classmethod
   def setUpClass(self):
@@ -730,7 +737,7 @@ window.close = function() {
   def test_glgears_proxy_jstarget(self):
     # test .js target with --proxy-worker; emits 2 js files, client and worker
     Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles_proxy.c'), '-o', 'test.js', '--proxy-to-worker', '-s', 'GL_TESTING=1', '-lGL', '-lglut']).communicate()
-    open('test.html', 'w').write(open(path_from_root('src', 'shell_minimal.html')).read().replace('{{{ SCRIPT }}}', '<script src="test.js"></script>'))
+    shell_with_script('shell_minimal.html', 'test.html', '<script src="test.js"></script>')
     self.post_manual_reftest('gears.png')
     self.run_browser('test.html', None, '/report_result?0')
 
@@ -3482,9 +3489,7 @@ window.close = function() {
 
   def test_binaryen_async(self):
     # notice when we use async compilation
-    open('shell.html', 'w').write(open(path_from_root('src', 'shell.html')).read().replace(
-      '''{{{ SCRIPT }}}''',
-      '''
+    script = '''
     <script>
       // note if we do async compilation
       var real_wasm_instantiate = WebAssembly.instantiate;
@@ -3507,8 +3512,8 @@ window.close = function() {
       };
     </script>
     {{{ SCRIPT }}}
-''',
-    ))
+'''
+    shell_with_script('shell.html', 'shell.html', script)
     for opts, expect in [
       ([], 1),
       (['-O1'], 1),
@@ -3520,6 +3525,7 @@ window.close = function() {
     ]:
       print opts, expect
       self.btest('binaryen_async.c', expected=str(expect), args=['-s', 'BINARYEN=1', '--shell-file', 'shell.html'] + opts)
+    shell_with_script('shell.html', 'shell_no_streaming.html', '' + script)
 
   # Test that implementing Module.instantiateWasm() callback works.
   def test_manual_wasm_instantiate(self):
