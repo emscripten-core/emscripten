@@ -52,6 +52,13 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, ch
   for i in range(expectedConns+1):
     httpd.handle_request()
 
+
+def shell_with_script(shell_file, output_file, replacement):
+  with open(path_from_root('src', shell_file)) as input:
+    with open(output_file, 'w') as output:
+      output.write(input.read().replace('{{{ SCRIPT }}}', replacement))
+
+
 class browser(BrowserCore):
   @classmethod
   def setUpClass(self):
@@ -730,7 +737,7 @@ window.close = function() {
   def test_glgears_proxy_jstarget(self):
     # test .js target with --proxy-worker; emits 2 js files, client and worker
     Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles_proxy.c'), '-o', 'test.js', '--proxy-to-worker', '-s', 'GL_TESTING=1', '-lGL', '-lglut']).communicate()
-    open('test.html', 'w').write(open(path_from_root('src', 'shell_minimal.html')).read().replace('{{{ SCRIPT }}}', '<script src="test.js"></script>'))
+    shell_with_script('shell_minimal.html', 'test.html', '<script src="test.js"></script>')
     self.post_manual_reftest('gears.png')
     self.run_browser('test.html', None, '/report_result?0')
 
@@ -3482,16 +3489,22 @@ window.close = function() {
 
   def test_binaryen_async(self):
     # notice when we use async compilation
-    open('shell.html', 'w').write(open(path_from_root('src', 'shell.html')).read().replace(
-      '''{{{ SCRIPT }}}''',
-      '''
+    script = '''
     <script>
       // note if we do async compilation
       var real_wasm_instantiate = WebAssembly.instantiate;
-      WebAssembly.instantiate = function(a, b) {
-        Module.sawAsyncCompilation = true;
-        return real_wasm_instantiate(a, b);
-      };
+      var real_wasm_instantiateStreaming = WebAssembly.instantiateStreaming;
+      if (typeof real_wasm_instantiateStreaming === 'function') {
+        WebAssembly.instantiateStreaming = function(a, b) {
+          Module.sawAsyncCompilation = true;
+          return real_wasm_instantiateStreaming(a, b);
+        };
+      } else {
+        WebAssembly.instantiate = function(a, b) {
+          Module.sawAsyncCompilation = true;
+          return real_wasm_instantiate(a, b);
+        };
+      }
       // show stderr for the viewer's fun
       Module.printErr = function(x) {
         Module.print('<<< ' + x + ' >>>');
@@ -3499,8 +3512,9 @@ window.close = function() {
       };
     </script>
     {{{ SCRIPT }}}
-''',
-    ))
+'''
+    shell_with_script('shell.html', 'shell.html', script)
+    common_args = ['-s', 'WASM=1', '--shell-file', 'shell.html']
     for opts, expect in [
       ([], 1),
       (['-O1'], 1),
@@ -3511,7 +3525,11 @@ window.close = function() {
       (['-s', 'BINARYEN_ASYNC_COMPILATION=1', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'], 0), # try to force it on, but have it disabled
     ]:
       print opts, expect
-      self.btest('binaryen_async.c', expected=str(expect), args=['-s', 'BINARYEN=1', '--shell-file', 'shell.html'] + opts)
+      self.btest('binaryen_async.c', expected=str(expect), args=common_args + opts)
+    # Ensure that compilation still works and is async without instantiateStreaming available
+    no_streaming = ' <script> WebAssembly.instantiateStreaming = undefined;</script>'
+    shell_with_script('shell.html', 'shell.html', no_streaming + script)
+    self.btest('binaryen_async.c', expected='1', args=common_args)
 
   # Test that implementing Module.instantiateWasm() callback works.
   def test_manual_wasm_instantiate(self):
