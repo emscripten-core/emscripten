@@ -3514,6 +3514,7 @@ window.close = function() {
     {{{ SCRIPT }}}
 '''
     shell_with_script('shell.html', 'shell.html', script)
+    common_args = ['-s', 'WASM=1', '--shell-file', 'shell.html']
     for opts, expect in [
       ([], 1),
       (['-O1'], 1),
@@ -3524,8 +3525,11 @@ window.close = function() {
       (['-s', 'BINARYEN_ASYNC_COMPILATION=1', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'], 0), # try to force it on, but have it disabled
     ]:
       print opts, expect
-      self.btest('binaryen_async.c', expected=str(expect), args=['-s', 'BINARYEN=1', '--shell-file', 'shell.html'] + opts)
-    shell_with_script('shell.html', 'shell_no_streaming.html', '' + script)
+      self.btest('binaryen_async.c', expected=str(expect), args=common_args + opts)
+    # Ensure that compilation still works and is async without instantiateStreaming available
+    no_streaming = ' <script> WebAssembly.instantiateStreaming = undefined;</script>'
+    shell_with_script('shell.html', 'shell_no_streaming.html', no_streaming + script)
+    self.btest('binaryen_async.c', expected='1', args=common_args)
 
   # Test that implementing Module.instantiateWasm() callback works.
   def test_manual_wasm_instantiate(self):
