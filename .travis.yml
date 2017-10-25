@@ -17,6 +17,7 @@ env:
 - TEST_TARGET=asm2i.test_p*
 - TEST_TARGET="asm3.test_p*"
 - TEST_TARGET="ALL.test_q* ALL.test_r* ALL.test_s*"
+- TEST_TARGET="ALL.test_w*"
 - TEST_TARGET="ALL.test_t* ALL.test_u* ALL.test_v* ALL.test_x* ALL.test_y* ALL.test_z*"
 - TEST_TARGET=other
 
