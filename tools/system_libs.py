@@ -25,6 +25,8 @@ def run_commands(commands):
   else:
     pool = shared.Building.get_multiprocessing_pool()
     # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool, https://bugs.python.org/issue8296
+    # 999999 seconds (about 11 days) is reasonably huge to not trigger actual timeout
+    # and is smaller than the maximum timeout value 4294967.0 for Python 3 on Windows (threading.TIMEOUT_MAX)
     pool.map_async(call_process, commands, chunksize=1).get(999999)
 
 def files_in_path(path_components, filenames):
