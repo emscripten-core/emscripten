@@ -7898,6 +7898,24 @@ int main() {
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'hello_world.bc', '-s', 'WASM=1', '-Oz'], stdout=PIPE, stderr=PIPE).communicate()
     assert 'you should enable  -s NO_EXIT_RUNTIME=1' not in err
 
+  # Tests that the warning message about pairing WASM with EVAL_CTORS appropriately triggers the warning about NO_EXIT_RUNTIME.
+  def test_binaryen_toobig_warning(self):
+    f = open('src.cpp', 'w')
+    f.write('''
+      extern "C" void x();
+      int main() {
+''')
+    for i in range(80 * 1024):
+      f.write('x();\n')
+    f.write(r'''
+        return 0;
+      }
+    ''')
+    f.close()
+    out, err = Popen([PYTHON, EMCC, 'src.cpp', '-s', 'WASM=1'], stdout=PIPE).communicate()
+    self.assertContained("_main", out)
+    self.assertContained("which is larger than some wasm engines will accept", out)
+
   def test_o_level_clamp(self):
     for level in [3, 4, 20]:
       out, err = Popen([PYTHON, EMCC, '-O' + str(level), path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE).communicate()
