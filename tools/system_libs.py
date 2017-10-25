@@ -3,7 +3,6 @@ import os, json, logging, zipfile, glob, shutil
 from . import shared
 from subprocess import Popen, CalledProcessError
 import subprocess, multiprocessing, re
-from sys import maxint
 from tools.shared import check_call
 
 stdout = None
@@ -26,7 +25,9 @@ def run_commands(commands):
   else:
     pool = shared.Building.get_multiprocessing_pool()
     # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool, https://bugs.python.org/issue8296
-    pool.map_async(call_process, commands, chunksize=1).get(maxint)
+    # 999999 seconds (about 11 days) is reasonably huge to not trigger actual timeout
+    # and is smaller than the maximum timeout value 4294967.0 for Python 3 on Windows (threading.TIMEOUT_MAX)
+    pool.map_async(call_process, commands, chunksize=1).get(999999)
 
 def files_in_path(path_components, filenames):
   srcdir = shared.path_from_root(*path_components)
