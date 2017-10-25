@@ -55,7 +55,6 @@ this.alert = threadAlert;
 Module['instantiateWasm'] = function(info, receiveInstance) {
   // Instantiate from the module posted from the main thread.
   // We can just use sync instantiation in the worker.
-  console.log('pthread instantiating');
   instance = new WebAssembly.Instance(Module['wasmModule'], info);
   receiveInstance(instance);
   return instance.exports;
@@ -68,7 +67,6 @@ this.onmessage = function(e) {
       tempDoublePtr = e.data.tempDoublePtr;
 
       // Initialize the global "process"-wide fields:
-
       Module['TOTAL_MEMORY'] = TOTAL_MEMORY = e.data.TOTAL_MEMORY;
       STATICTOP = e.data.STATICTOP;
       DYNAMIC_BASE = e.data.DYNAMIC_BASE;
