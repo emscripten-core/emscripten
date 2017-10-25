@@ -8,14 +8,24 @@ Simple test runner. Consider using parallel_test_core.py for faster iteration ti
 # XXX Use EM_ALL_ENGINES=1 in the env to test all engines!
 
 
+from __future__ import print_function
 from subprocess import Popen, PIPE, STDOUT
 import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib
-import webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer
-import multiprocessing, functools, stat, string, random, fnmatch, httplib
+import webbrowser, hashlib, threading, platform
+import multiprocessing, functools, stat, string, random, fnmatch
 import atexit
 import operator
 import parallel_runner
-from urllib import unquote
+
+if sys.version_info.major == 2:
+  from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
+  from SimpleHTTPServer import SimpleHTTPRequestHandler
+  from httplib import HTTPConnection
+  from urllib import unquote
+else:
+  from http.server import HTTPServer, BaseHTTPRequestHandler, SimpleHTTPRequestHandler
+  from http.client import HTTPConnection
+  from urllib.parse import unquote
 
 # Setup
 
@@ -197,9 +207,9 @@ class RunnerCore(unittest.TestCase):
 
         left_over_files = list(set(temp_files_after_run) - set(self.temp_files_before_run))
         if len(left_over_files) > 0:
-          print >> sys.stderr, 'ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:'
+          print('ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:', file=sys.stderr)
           for f in left_over_files:
-            print >> sys.stderr, 'leaked file: ' + f
+            print('leaked file: ' + f, file=sys.stderr)
           raise Exception('Test leaked ' + str(len(left_over_files)) + ' temporary files!')
 
       # Make sure we don't leave stuff around
@@ -209,7 +219,7 @@ class RunnerCore(unittest.TestCase):
       #    # TODO assert not temp_file.startswith('emscripten_'), temp_file
 
   def skip(self, why):
-    print >> sys.stderr, '<skipping: %s> ' % why,
+    print('<skipping: %s> ' % why, end=' ', file=sys.stderr)
     return False
 
   def get_dir(self):
@@ -310,7 +320,7 @@ class RunnerCore(unittest.TestCase):
       shutil.copytree(src, dirname)
       shutil.move(os.path.join(dirname, main_file), filename)
       # the additional files were copied; alter additional_files to point to their full paths now
-      additional_files = map(lambda f: os.path.join(dirname, f), additional_files)
+      additional_files = [os.path.join(dirname, f) for f in additional_files]
       os.chdir(self.get_dir())
 
     if build_ll_hook or post_build or extra_emscripten_args:
@@ -326,7 +336,7 @@ class RunnerCore(unittest.TestCase):
           pass
         args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + Settings.serialize() + \
                ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
-               map(lambda include: '-I' + include, includes) + \
+               ['-I' + include for include in includes] + \
                ['-c', f, '-o', f + '.o']
         output = subprocess.check_call(args, stderr=self.stderr_redirect if not DEBUG else None)
         assert os.path.exists(f + '.o')
@@ -334,10 +344,10 @@ class RunnerCore(unittest.TestCase):
       # Link all files
       if len(additional_files) + len(libraries) > 0:
         shutil.move(filename + '.o', filename + '.o.alone')
-        Building.link([filename + '.o.alone'] + map(lambda f: f + '.o', additional_files) + libraries,
+        Building.link([filename + '.o.alone'] + [f + '.o' for f in additional_files] + libraries,
                  filename + '.o')
         if not os.path.exists(filename + '.o'):
-          print "Failed to link LLVM binaries:\n\n", output
+          print("Failed to link LLVM binaries:\n\n", output)
           raise Exception("Linkage error");
 
       # Finalize
@@ -355,7 +365,7 @@ class RunnerCore(unittest.TestCase):
       args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + Settings.serialize() + \
              self.emcc_args + \
              ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
-             map(lambda include: '-I' + include, includes) + \
+             ['-I' + include for include in includes] + \
              all_files + \
              ['-o', filename + '.o.js']
       output = subprocess.check_call(args, stderr=self.stderr_redirect if not DEBUG else None)
@@ -385,15 +395,15 @@ class RunnerCore(unittest.TestCase):
       }
       simd = m.group(1)
       if simd in bugs:
-        print >> sys.stderr, ("\nWARNING: ignoring asm.js type error from {} due to implementation not yet available in SpiderMonkey." +
-            " See https://bugzilla.mozilla.org/show_bug.cgi?id={}\n").format(simd, bugs[simd])
+        print(("\nWARNING: ignoring asm.js type error from {} due to implementation not yet available in SpiderMonkey." +
+            " See https://bugzilla.mozilla.org/show_bug.cgi?id={}\n").format(simd, bugs[simd]), file=sys.stderr)
         err = err.replace(m.group(0), '')
 
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
-      print >> sys.stderr, "[was asm.js'ified]"
+      print("[was asm.js'ified]", file=sys.stderr)
     elif 'asm.js' in err: # if no asm.js error, then not an odin build
       raise Exception("did NOT asm.js'ify: " + err)
-    err = '\n'.join(filter(lambda line: 'uccessfully compiled asm.js code' not in line, err.split('\n')))
+    err = '\n'.join([line for line in err.split('\n') if 'uccessfully compiled asm.js code' not in line])
     return err
 
   def get_func(self, src, name):
@@ -452,15 +462,15 @@ class RunnerCore(unittest.TestCase):
     process = Popen([compiler, '-O2', '-fno-math-errno', filename, '-o', filename+'.native'] + args, stdout=PIPE, stderr=self.stderr_redirect)
     output = process.communicate()
     if process.returncode is not 0:
-      print >> sys.stderr, "Building native executable with command '%s' failed with a return code %d!" % (' '.join([CLANG, '-O2', filename, '-o', filename+'.native']), process.returncode)
-      print "Output: " + output[0]
+      print("Building native executable with command '%s' failed with a return code %d!" % (' '.join([CLANG, '-O2', filename, '-o', filename+'.native']), process.returncode), file=sys.stderr)
+      print("Output: " + output[0])
 
   def run_native(self, filename, args):
     process = Popen([filename+'.native'] + args, stdout=PIPE);
     output = process.communicate()
     if process.returncode is not 0:
-      print >> sys.stderr, "Running native executable with command '%s' failed with a return code %d!" % (' '.join([filename+'.native'] + args), process.returncode)
-      print "Output: " + output[0]
+      print("Running native executable with command '%s' failed with a return code %d!" % (' '.join([filename+'.native'] + args), process.returncode), file=sys.stderr)
+      print("Output: " + output[0])
     return output[0]
 
   # Tests that the given two paths are identical, modulo path delimiters. E.g. "C:/foo" is equal to "C:\foo".
@@ -525,14 +535,14 @@ class RunnerCore(unittest.TestCase):
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
-    cache_name = name + ','.join(filter(lambda opt: len(opt) < 10, Building.COMPILER_TEST_OPTS)) + '_' + hashlib.md5(str(Building.COMPILER_TEST_OPTS)).hexdigest() + cache_name_extra
+    cache_name = name + ','.join([opt for opt in Building.COMPILER_TEST_OPTS if len(opt) < 10]) + '_' + hashlib.md5(str(Building.COMPILER_TEST_OPTS)).hexdigest() + cache_name_extra
 
     valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
 
     if self.library_cache is not None:
       if cache and self.library_cache.get(cache_name):
-        print >> sys.stderr,  '<load %s from cache> ' % cache_name
+        print('<load %s from cache> ' % cache_name, file=sys.stderr)
         generated_libs = []
         for basename, contents in self.library_cache[cache_name]:
           bc_file = os.path.join(build_dir, cache_name + '_' +  basename)
@@ -542,7 +552,7 @@ class RunnerCore(unittest.TestCase):
           generated_libs.append(bc_file)
         return generated_libs
 
-    print >> sys.stderr, '<building and saving %s into cache> ' % cache_name
+    print('<building and saving %s into cache> ' % cache_name, file=sys.stderr)
 
     return Building.build_library(name, build_dir, output_dir, generated_libs, configure, configure_args, make, make_args, self.library_cache, cache_name,
                                   copy_project=True, env_init=env_init, native=native)
@@ -615,10 +625,10 @@ class RunnerCore(unittest.TestCase):
       js_engines = JS_ENGINES
     for engine in js_engines: assert type(engine) == list
     for engine in self.banned_js_engines: assert type(engine) == list
-    js_engines = filter(lambda engine: engine[0] not in map(lambda engine: engine[0], self.banned_js_engines), js_engines)
+    js_engines = [engine for engine in js_engines if engine[0] not in [banned[0] for banned in self.banned_js_engines]]
     if 'BINARYEN_METHOD="native-wasm"' in self.emcc_args:
       # when testing native wasm support, must use a vm with support
-      js_engines = filter(lambda engine: engine == SPIDERMONKEY_ENGINE or engine == V8_ENGINE, js_engines)
+      js_engines = [engine for engine in js_engines if engine == SPIDERMONKEY_ENGINE or engine == V8_ENGINE]
     return js_engines
 
   def do_run_from_file(self, src, expected_output,
@@ -669,8 +679,8 @@ class RunnerCore(unittest.TestCase):
         else:
           self.assertContained(expected_output, js_output)
           self.assertNotContained('ERROR', js_output)
-      except Exception, e:
-        print '(test did not pass in JS engine: %s)' % engine
+      except Exception as e:
+        print('(test did not pass in JS engine: %s)' % engine)
         raise e
 
     #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
@@ -705,7 +715,7 @@ class RunnerCore(unittest.TestCase):
 # which tells the web page, which then opens a window with the test. Doing
 # it this way then allows the page to close() itself when done.
 def harness_server_func(q):
-  class TestServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+  class TestServerHandler(BaseHTTPRequestHandler):
     def do_GET(s):
       s.send_response(200)
       s.send_header("Content-type", "text/html")
@@ -721,14 +731,14 @@ def harness_server_func(q):
     def log_request(code=0, size=0):
       # don't log; too noisy
       pass
-  httpd = BaseHTTPServer.HTTPServer(('localhost', 9999), TestServerHandler)
+  httpd = HTTPServer(('localhost', 9999), TestServerHandler)
   httpd.serve_forever() # test runner will kill us
 
 def server_func(dir, q):
-  class TestServerHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+  class TestServerHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
       if 'report_' in self.path:
-        print '[server response:', self.path, ']'
+        print('[server response:', self.path, ']')
         q.put(self.path)
         # Send a default OK response to the browser.
         self.send_response(200)
@@ -740,15 +750,15 @@ def server_func(dir, q):
         self.wfile.write('OK')
       else:
         # Use SimpleHTTPServer default file serving operation for GET.
-        SimpleHTTPServer.SimpleHTTPRequestHandler.do_GET(self)
+        SimpleHTTPRequestHandler.do_GET(self)
 
     def log_request(code=0, size=0):
       # don't log; too noisy
       pass
 
-  SimpleHTTPServer.SimpleHTTPRequestHandler.extensions_map['.wasm'] = 'application/wasm'
+  SimpleHTTPRequestHandler.extensions_map['.wasm'] = 'application/wasm'
   os.chdir(dir)
-  httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
+  httpd = HTTPServer(('localhost', 8888), TestServerHandler)
   httpd.serve_forever() # test runner will kill us
 
 class BrowserCore(RunnerCore):
@@ -762,20 +772,20 @@ class BrowserCore(RunnerCore):
     self.harness_queue = multiprocessing.Queue()
     self.harness_server = multiprocessing.Process(target=harness_server_func, args=(self.harness_queue,))
     self.harness_server.start()
-    print '[Browser harness server on process %d]' % self.harness_server.pid
+    print('[Browser harness server on process %d]' % self.harness_server.pid)
     webbrowser.open_new('http://localhost:9999/run_harness')
 
   @classmethod
   def tearDownClass(self):
     super(BrowserCore, self).tearDownClass()
     self.harness_server.terminate()
-    print '[Browser harness server terminated]'
+    print('[Browser harness server terminated]')
     # On Windows, shutil.rmtree() in tearDown() raises this exception if we do not wait a bit:
     # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.
     time.sleep(0.1)
 
   def run_browser(self, html_file, message, expectedResult=None, timeout=None):
-    print '[browser launch:', html_file, ']'
+    print('[browser launch:', html_file, ']')
     if expectedResult is not None:
       try:
         queue = multiprocessing.Queue()
@@ -785,7 +795,7 @@ class BrowserCore(RunnerCore):
         # the test page, we need to know that the server has started up and is ready to process the site navigation.
         # Therefore block until we can make a connection to the server.
         for i in range(10):
-          httpconn = httplib.HTTPConnection('localhost:8888', timeout=1)
+          httpconn = HTTPConnection('localhost:8888', timeout=1)
           try:
             httpconn.connect()
             httpconn.close()
@@ -812,11 +822,11 @@ class BrowserCore(RunnerCore):
         time.sleep(0.1) # see comment about Windows above
     else:
       webbrowser.open_new(os.path.abspath(html_file))
-      print 'A web browser window should have opened a page containing the results of a part of this test.'
-      print 'You need to manually look at the page to see that it works ok: ' + message
-      print '(sleeping for a bit to keep the directory alive for the web browser..)'
+      print('A web browser window should have opened a page containing the results of a part of this test.')
+      print('You need to manually look at the page to see that it works ok: ' + message)
+      print('(sleeping for a bit to keep the directory alive for the web browser..)')
       time.sleep(5)
-      print '(moving on..)'
+      print('(moving on..)')
 
   def with_report_result(self, code):
     return r'''
@@ -966,7 +976,7 @@ class BrowserCore(RunnerCore):
     if type(expected) is str: expected = [expected]
     self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout)
     if also_proxied:
-      print 'proxied...'
+      print('proxied...')
       # save non-proxied
       if not os.path.exists('normal'):
         os.mkdir('normal')
@@ -1035,48 +1045,48 @@ def main(args):
 
 def print_help_if_args_empty(args):
   if len(args) == 2 and args[1] in ['--help', '-h']:
-    print HELP_TEXT
+    print(HELP_TEXT)
     sys.exit(0)
 
 def get_default_args(args):
   # If no tests were specified, run the core suite
   if len(args) == 1:
-    print HELP_TEXT
+    print(HELP_TEXT)
     time.sleep(2)
-    return [args[0]] + map(lambda mode: mode, test_modes)
+    return [args[0]] + [mode for mode in test_modes]
   return args
 
 def print_js_engine_message():
   if use_all_engines:
-    print '(using ALL js engines)'
+    print('(using ALL js engines)')
   else:
     logging.warning('use EM_ALL_ENGINES=1 in the env to run against all JS engines, which is slower but provides more coverage')
 
 def sanity_checks():
   global JS_ENGINES
   total_engines = len(JS_ENGINES)
-  JS_ENGINES = filter(jsrun.check_engine, JS_ENGINES)
+  JS_ENGINES = list(filter(jsrun.check_engine, JS_ENGINES))
   if len(JS_ENGINES) == 0:
-    print 'WARNING: None of the JS engines in JS_ENGINES appears to work.'
+    print('WARNING: None of the JS engines in JS_ENGINES appears to work.')
   elif len(JS_ENGINES) < total_engines:
-    print 'WARNING: Not all the JS engines in JS_ENGINES appears to work, ignoring those.'
+    print('WARNING: Not all the JS engines in JS_ENGINES appears to work, ignoring those.')
 
 def args_with_extracted_js_engine_override(args):
   # used by benchmarks
   for i in range(1, len(args)):
     arg = args[i]
     if arg.isupper():
-      print 'Interpreting all capital argument "%s" as JS_ENGINE override' % arg
+      print('Interpreting all capital argument "%s" as JS_ENGINE override' % arg)
       Building.JS_ENGINE_OVERRIDE = eval(arg)
       args[i] = None
-  return filter(lambda arg: arg is not None, args)
+  return [arg for arg in args if arg is not None]
 
 def args_with_default_suite_prepended(args):
   def prepend_default(arg):
     if arg.startswith('test_'):
       return 'default.' + arg
     return arg
-  return map(prepend_default, args)
+  return list(map(prepend_default, args))
 
 def args_with_expanded_all_suite(args):
   # If a test (e.g. test_html) is specified as ALL.test_html, add an entry for each test_mode
@@ -1085,8 +1095,8 @@ def args_with_expanded_all_suite(args):
     arg = args[i]
     if arg.startswith('ALL.'):
       ignore, test = arg.split('.')
-      print 'Running all test modes on test "%s"' % test
-      new_args += map(lambda mode: mode+'.'+test, test_modes)
+      print('Running all test modes on test "%s"' % test)
+      new_args += [mode+'.'+test for mode in test_modes]
     else:
       new_args += [arg]
   return new_args
@@ -1108,8 +1118,8 @@ def get_all_tests(modules):
   for m in modules:
     for s in suites:
       if hasattr(m, s):
-        tests = filter(lambda t: t.startswith('test_'), dir(getattr(m, s)))
-        all_tests += map(lambda t: s + '.' + t, tests)
+        tests = [t for t in dir(getattr(m, s)) if t.startswith('test_')]
+        all_tests += [s + '.' + t for t in tests]
   return all_tests
 
 def args_with_expanded_wildcards(args, all_tests):
@@ -1121,13 +1131,13 @@ def args_with_expanded_wildcards(args, all_tests):
       if arg.startswith('skip:'):
         arg = arg[5:]
         matching_tests = fnmatch.filter(all_tests, arg)
-        new_args += map(lambda t: 'skip:' + t, matching_tests)
+        new_args += ['skip:' + t for t in matching_tests]
       else:
         new_args += fnmatch.filter(all_tests, arg)
     else:
       new_args += [arg]
   if len(new_args) == 1 and len(args) > 1:
-    print 'No tests found to run in set ' + str(args[1:])
+    print('No tests found to run in set ' + str(args[1:]))
     sys.exit(0)
   return new_args
 
@@ -1138,13 +1148,13 @@ def skip_requested_tests(args, modules):
       which = arg.split('skip:')[1]
       if which.startswith('ALL.'):
         ignore, test = which.split('.')
-        which = map(lambda mode: mode+'.'+test, test_modes)
+        which = [mode+'.'+test for mode in test_modes]
       else:
         which = [which]
 
-      print >> sys.stderr, ','.join(which)
+      print(','.join(which), file=sys.stderr)
       for test in which:
-        print >> sys.stderr, 'will skip "%s"' % test
+        print('will skip "%s"' % test, file=sys.stderr)
         suite_name, test_name = test.split('.')
         for m in modules:
           try:
@@ -1154,7 +1164,7 @@ def skip_requested_tests(args, modules):
           except:
             pass
       args[i] = None
-  return filter(lambda arg: arg is not None, args)
+  return [arg for arg in args if arg is not None]
 
 def args_for_random_tests(args, modules):
   if len(args) <= 1:
@@ -1189,8 +1199,8 @@ def get_random_test_parameters(arg):
   return num_tests, base_module, relevant_modes
 
 def choose_random_tests(base, num_tests, relevant_modes):
-  tests = filter(lambda t: t.startswith('test_'), dir(base))
-  print
+  tests = [t for t in dir(base) if t.startswith('test_')]
+  print()
   chosen = set()
   while len(chosen) < num_tests:
     test = random.choice(tests)
@@ -1199,25 +1209,25 @@ def choose_random_tests(base, num_tests, relevant_modes):
     before = len(chosen)
     chosen.add(new_test)
     if len(chosen) > before:
-      print '* ' + new_test
+      print('* ' + new_test)
     else:
       # we may have hit the limit
       if len(chosen) == len(tests)*len(relevant_modes):
-        print '(all possible tests chosen! %d = %d*%d)' % (len(chosen), len(tests), len(relevant_modes))
+        print('(all possible tests chosen! %d = %d*%d)' % (len(chosen), len(tests), len(relevant_modes)))
         break
   return list(chosen)
 
 def print_random_test_statistics(num_tests):
   std = 0.5/math.sqrt(num_tests)
   expected = 100.0 * (1.0 - std)
-  print
-  print ('running those %d randomly-selected tests. if they all pass, then there is a '
+  print()
+  print('running those %d randomly-selected tests. if they all pass, then there is a '
          'greater than 95%% chance that at least %.2f%% of the test suite will pass'
          % (num_tests, expected))
-  print
+  print()
 
   def show():
-    print ('if all tests passed then there is a greater than 95%% chance that at least '
+    print('if all tests passed then there is a greater than 95%% chance that at least '
            '%.2f%% of the test suite will pass'
            % (expected))
   atexit.register(show)
@@ -1264,16 +1274,16 @@ def run_tests(suites, unmatched_test_names):
   numFailures = 0
 
   if len(unmatched_test_names) > 0:
-    print 'WARNING: could not find the following tests: ' + ' '.join(unmatched_test_names)
+    print('WARNING: could not find the following tests: ' + ' '.join(unmatched_test_names))
     numFailures += len(unmatched_test_names)
     resultMessages.append('Could not find %s tests' % (len(unmatched_test_names),))
 
-  print 'Test suites:'
-  print [s[0] for s in suites]
+  print('Test suites:')
+  print([s[0] for s in suites])
   # Run the discovered tests
   testRunner = unittest.TextTestRunner(verbosity=2)
   for mod_name, suite in suites:
-    print 'Running %s: (%s tests)' % (mod_name, suite.countTestCases())
+    print('Running %s: (%s tests)' % (mod_name, suite.countTestCases()))
     res = testRunner.run(suite)
     msg = '%s: %s run, %s errors, %s failures, %s skipped' % (mod_name,
         res.testsRun, len(res.errors), len(res.failures), len(res.skipped)
@@ -1282,11 +1292,11 @@ def run_tests(suites, unmatched_test_names):
     resultMessages.append(msg)
 
   if len(resultMessages) > 1:
-    print '===================='
-    print
-    print 'TEST SUMMARY'
+    print('====================')
+    print()
+    print('TEST SUMMARY')
     for msg in resultMessages:
-      print '    ' + msg
+      print('    ' + msg)
 
   # Return the number of failures as the process exit code for automating success/failure reporting.
   exitcode = min(numFailures, 255)
