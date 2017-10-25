@@ -1133,7 +1133,7 @@ def expand_byte_size_suffixes(value):
 
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 
-class Settings2(object):
+class SettingsManager(object):
   class __impl(object):
     attrs = {}
 
@@ -1217,9 +1217,9 @@ class Settings2(object):
 
   @staticmethod
   def instance():
-    if Settings2.__instance is None:
-      Settings2.__instance = Settings2.__impl()
-    return Settings2.__instance
+    if SettingsManager.__instance is None:
+      SettingsManager.__instance = SettingsManager.__impl()
+    return SettingsManager.__instance
 
   def __getattr__(self, attr):
     return getattr(self.instance(), attr)
@@ -1227,7 +1227,7 @@ class Settings2(object):
   def __setattr__(self, attr, value):
     return setattr(self.instance(), attr, value)
 
-Settings = Settings2()
+Settings = SettingsManager()
 
 # llvm-ar appears to just use basenames inside archives. as a result, files with the same basename
 # will trample each other when we extract them. to help warn of such situations, we warn if there
