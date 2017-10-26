@@ -1572,8 +1572,6 @@ LibraryManager.library = {
   llvm_ceil_f64: 'Math_ceil',
   llvm_floor_f32: 'Math_floor',
   llvm_floor_f64: 'Math_floor',
-  llvm_round_f32: 'Math_round',
-  llvm_round_f64: 'Math_round',
   llvm_minnum_f32: 'Math_min',
   llvm_minnum_f64: 'Math_min',
   llvm_maxnum_f32: 'Math_max',
@@ -1610,31 +1608,49 @@ LibraryManager.library = {
   },
 
   roundf__asm: true,
-  roundf__sig: 'dd',
-  roundf: function(f) {
+  roundf__sig: 'ff',
+  roundf: function(d) {
+    d = +d;
+    return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
+  },
+
+  llvm_round_f64__asm: true,
+  llvm_round_f64__sig: 'dd',
+  llvm_round_f64: function(d) {
+    d = +d;
+    return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
+  },
+
+  llvm_round_f32__asm: true,
+  llvm_round_f32__sig: 'ff',
+  llvm_round_f32: function(f) {
     f = +f;
     return f >= +0 ? +Math_floor(f + +0.5) : +Math_ceil(f - +0.5); // TODO: use fround?
   },
 
+  rintf__asm: true,
+  rintf__sig: 'ff',
+  rintf__deps: ['round'],
+  rintf: function(f) {
+    f = +f;
+    return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
+  },
+
   // TODO: fround?
   llvm_rint_f32__asm: true,
-  llvm_rint_f32__sig: 'dd',
+  llvm_rint_f32__sig: 'ff',
+  llvm_rint_f32__deps: ['roundf'],
   llvm_rint_f32: function(f) {
     f = +f;
-    if (+Math_abs(+Math_floor(f + +1) - f) < +Math_abs(+Math_ceil(f - +1) - f)) {
-      return +Math_floor(f + +1);
-    }
-    return +Math_ceil(f - +1);
+    return (f - +Math_floor(f) != .5) ? +_roundf(f) : +_roundf(f / +2) * +2;
   },
 
   llvm_rint_f64__asm: true,
   llvm_rint_f64__sig: 'dd',
+  llvm_rint_f64__deps: ['round'],
   llvm_rint_f64: function(f) {
     f = +f;
-    if (+Math_abs(+Math_floor(f + +1) - f) < +Math_abs(+Math_ceil(f - +1) - f)) {
-      return +Math_floor(f + +1);
-    }
-    return +Math_ceil(f - +1);
+    return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
   },
 
   _reallyNegative: function(x) {
