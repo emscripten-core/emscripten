@@ -19,11 +19,11 @@ def processfile(filename):
     nbytes = None
     data = {}
     for i, line in enumerate(open(filename)):
-        if line.startswith(('function ', 'define ')) and '}' not in line:
+        if line.startswith(('function ', 'define ', ' (func ')) and '}' not in line:
             start = i
             curr = line
             nbytes = len(line)
-        elif line.startswith('}') and curr:
+        elif line.startswith(('}', ' )')) and curr:
             nlines = i - start
             data[curr] = (nlines, nbytes+1)
             curr = None
