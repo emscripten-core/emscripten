@@ -2539,7 +2539,7 @@ def process(filename):
     if not self.can_dlfcn(): return
 
     # Failing under v8 since: https://chromium-review.googlesource.com/712595
-    if Settings.BINARYEN:
+    if self.is_wasm():
       self.banned_js_engines = [V8_ENGINE]
 
     if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
