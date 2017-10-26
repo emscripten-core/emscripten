@@ -1453,14 +1453,6 @@ LibraryManager.library = {
     return '(' + val + ')';
   },
 
-  llvm_lifetime_start: function() {},
-  llvm_lifetime_end: function() {},
-  llvm_lifetime_start_p0i8: function() {},
-  llvm_lifetime_end_p0i8: function() {},
-
-  llvm_invariant_start: function() {},
-  llvm_invariant_end: function() {},
-
   llvm_objectsize_i32: function() { return -1 }, // TODO: support this
 
   llvm_dbg_declare__inline: function() { throw 'llvm_debug_declare' }, // avoid warning
