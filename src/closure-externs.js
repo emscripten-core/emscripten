@@ -1088,3 +1088,15 @@ var fs;
  * @suppress {undefinedVars}
  */
 var FUNCTION_TABLE;
+/**
+ * @suppress {undefinedVars}
+ */
+var MozBlobBuilder;
+/**
+ * @suppress {undefinedVars}
+ */
+var GL;
+/**
+ * @suppress {undefinedVars}
+ */
+var SDL;
