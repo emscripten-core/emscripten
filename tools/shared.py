@@ -330,7 +330,7 @@ def expected_llvm_version():
 def get_clang_version():
   global actual_clang_version
   if actual_clang_version is None:
-    response = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1]
+    response = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1].decode()
     m = re.search(r'[Vv]ersion\s+(\d+\.\d+)', response)
     actual_clang_version = m and m.group(1)
   return actual_clang_version
@@ -368,7 +368,7 @@ def get_fastcomp_src_dir():
 
 def get_llc_targets():
   try:
-    llc_version_info = Popen([LLVM_COMPILER, '--version'], stdout=PIPE).communicate()[0]
+    llc_version_info = Popen([LLVM_COMPILER, '--version'], stdout=PIPE).communicate()[0].decode()
     pre, targets = llc_version_info.split('Registered Targets:')
     return targets
   except Exception as e:
@@ -420,7 +420,7 @@ def check_fastcomp():
 
       # check build versions. don't show it if the repos are wrong, user should fix that first
       if not shown_repo_version_error:
-        clang_v = Popen([CLANG, '--version'], stdout=PIPE).communicate()[0]
+        clang_v = Popen([CLANG, '--version'], stdout=PIPE).communicate()[0].decode()
         llvm_build_version, clang_build_version = clang_v.split('(emscripten ')[1].split(')')[0].split(' : ')
         if EMSCRIPTEN_VERSION != llvm_build_version or EMSCRIPTEN_VERSION != clang_build_version:
           logging.error('Emscripten, llvm and clang build versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_build_version, clang_build_version)
@@ -436,14 +436,14 @@ EXPECTED_NODE_VERSION = (0,8,0)
 def check_node_version():
   jsrun.check_engine(NODE_JS)
   try:
-    actual = Popen(NODE_JS + ['--version'], stdout=PIPE).communicate()[0].strip()
+    actual = Popen(NODE_JS + ['--version'], stdout=PIPE).communicate()[0].strip().decode()
     version = tuple(map(int, actual.replace('v', '').replace('-pre', '').split('.')))
     if version >= EXPECTED_NODE_VERSION:
       return True
     logging.warning('node version appears too old (seeing "%s", expected "%s")' % (actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION)))))
     return False
   except Exception as e:
-    logging.warning('cannot check node version: %s',  e)
+    logging.warning('cannot check node version: %s', e)
     return False
 
 def check_closure_compiler():
@@ -1047,7 +1047,7 @@ except NameError:
 ENV_PREFIX = []
 if not WINDOWS:
   try:
-    assert 'Python' in Popen(['env', 'python', '-V'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    assert b'Python' in Popen(['env', 'python', '-V'], stdout=PIPE, stderr=STDOUT).communicate()[0]
     ENV_PREFIX = ['env']
   except:
     pass
@@ -1250,7 +1250,7 @@ def extract_archive_contents(f):
     temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
     safe_ensure_dirs(temp_dir)
     os.chdir(temp_dir)
-    contents = [x for x in Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n') if len(x) > 0]
+    contents = [x for x in Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].decode().split('\n') if len(x) > 0]
     warn_if_duplicate_entries(contents, f)
     if len(contents) == 0:
       logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
@@ -1271,7 +1271,7 @@ def extract_archive_contents(f):
     contents = list(map(os.path.abspath, contents))
     nonexisting_contents = [x for x in contents if not os.path.exists(x)]
     if len(nonexisting_contents) != 0:
-      raise Exception('llvm-ar failed to extract file(s) ' + str(nonexisting_contents) + ' from archive file ' + f + '! Error:' + str(stdout) + str(stderr))
+      raise Exception('llvm-ar failed to extract file(s) ' + str(nonexisting_contents) + ' from archive file ' + f + '! Error:' + stdout.decode() + stderr.decode())
 
     return {
       'returncode': proc.returncode,
@@ -1841,7 +1841,7 @@ class Building(object):
 
     if not just_calculate:
       logging.debug('emcc: llvm-linking: %s to %s', actual_files, target)
-      output = Popen([LLVM_LINK] + link_args + ['-o', target], stdout=PIPE).communicate()[0]
+      output = Popen([LLVM_LINK] + link_args + ['-o', target], stdout=PIPE).communicate()[0].decode()
       assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
       return target
     else:
@@ -1886,7 +1886,7 @@ class Building(object):
     proc = Popen([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE)
     output = proc.communicate()[0]
     if proc.returncode != 0 or not os.path.exists(target):
-      logging.error('Failed to run llvm optimizations: ' + output)
+      logging.error('Failed to run llvm optimizations: ' + output.decode())
       for i in inputs:
         if not os.path.exists(i):
           logging.warning('Note: Input file "' + i + '" did not exist.')
@@ -1902,7 +1902,7 @@ class Building(object):
     if Building.LLVM_OPTS:
       shutil.move(filename + '.o', filename + '.o.pre')
       output = Popen([LLVM_OPT, filename + '.o.pre'] + Building.LLVM_OPT_OPTS + ['-o', filename + '.o'], stdout=PIPE).communicate()[0]
-      assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output
+      assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output.decode()
 
   @staticmethod
   def llvm_dis(input_filename, output_filename=None):
@@ -1913,7 +1913,7 @@ class Building(object):
       input_filename = input_filename + '.o'
     try_delete(output_filename)
     output = Popen([LLVM_DIS, input_filename, '-o', output_filename], stdout=PIPE).communicate()[0]
-    assert os.path.exists(output_filename), 'Could not create .ll file: ' + output
+    assert os.path.exists(output_filename), 'Could not create .ll file: ' + output.decode()
     return output_filename
 
   @staticmethod
@@ -1925,7 +1925,7 @@ class Building(object):
       input_filename = input_filename + '.o.ll'
     try_delete(output_filename)
     output = Popen([LLVM_AS, input_filename, '-o', output_filename], stdout=PIPE).communicate()[0]
-    assert os.path.exists(output_filename), 'Could not create bc file: ' + output
+    assert os.path.exists(output_filename), 'Could not create bc file: ' + output.decode()
     return output_filename
 
   @staticmethod
@@ -1962,9 +1962,9 @@ class Building(object):
     proc = Popen([LLVM_NM, filename], stdout=stdout, stderr=stderr)
     stdout, stderr = proc.communicate()
     if proc.returncode == 0:
-      return Building.parse_symbols(stdout, include_internal)
+      return Building.parse_symbols(stdout.decode(), include_internal)
     else:
-      return ObjectFileInfo(proc.returncode, str(stdout) + str(stderr))
+      return ObjectFileInfo(proc.returncode, stdout.decode() + stderr.decode())
 
   @staticmethod
   def llvm_nm(filename, stdout=PIPE, stderr=PIPE, include_internal=False):
@@ -2215,7 +2215,7 @@ class Building(object):
       process = Popen(args, stdout=PIPE, stderr=STDOUT)
       cc_output = process.communicate()[0]
       if process.returncode != 0 or not os.path.exists(filename + '.cc.js'):
-        raise Exception('closure compiler error: ' + cc_output + ' (rc: %d)' % process.returncode)
+        raise Exception('closure compiler error: ' + cc_output.decode() + ' (rc: %d)' % process.returncode)
 
       return filename + '.cc.js'
 
@@ -2353,7 +2353,7 @@ class JS(object):
       f = open(path, 'rb')
       data = base64.b64encode(f.read())
       f.close()
-      return 'data:application/octet-stream;base64,' + data
+      return 'data:application/octet-stream;base64,' + data.decode()
     else:
       return os.path.basename(path)
 
