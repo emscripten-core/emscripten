@@ -520,7 +520,7 @@ EMSCRIPTEN_FUNCS();
       end = coutput.find(')', start)
       # First brace is from Closure Compiler comment, thus we need a second one
       pre_2_second_brace = pre_2.find('{', pre_2.find('{')+1)
-      pre = coutput[:start] + '(/** @suppress {uselessCode} */function(global,env,buffer) {\n' + pre_2[pre_2_second_brace+1:]
+      pre = coutput[:start] + '(/** @suppress {uselessCode} */ function(global,env,buffer) {\n' + pre_2[pre_2_second_brace+1:]
       post = post_1 + end_asm + coutput[end+1:]
 
   with ToolchainProfiler.profile_block('write_pre'):

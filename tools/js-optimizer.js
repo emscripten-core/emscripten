@@ -5730,7 +5730,7 @@ function safeHeap(ast) {
   traverseGeneratedFunctions(ast, function(func) {
     if (func[1] in SAFE_HEAP_FUNCS) return null;
     traverseGenerated(func, function(node, type) {
-      var heap, prt;
+      var heap, ptr;
       if (type === 'assign') {
         if (node[1] === true && node[2][0] === 'sub') {
           heap = node[2][1][1];
