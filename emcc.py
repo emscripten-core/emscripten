@@ -66,10 +66,10 @@ DEFERRED_REPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST')
 # llvm opt level 3, and speed-wise emcc level 2 is already the slowest/most optimizing
 # level)
 LLVM_OPT_LEVEL = {
-  0: 0,
-  1: 1,
-  2: 3,
-  3: 3,
+  0: ['-O0'],
+  1: ['-O1'],
+  2: ['-O3'],
+  3: ['-O3'],
 }
 
 DEBUG = os.environ.get('EMCC_DEBUG')
@@ -665,6 +665,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         options.js_opts = options.opt_level >= 2
       if options.llvm_opts is None:
         options.llvm_opts = LLVM_OPT_LEVEL[options.opt_level]
+      if type(options.llvm_opts) == int:
+        options.llvm_opts = ['-O%d' % options.llvm_opts]
       if options.memory_init_file is None:
         options.memory_init_file = options.opt_level >= 2
 
@@ -1359,7 +1361,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         assert len(temp_files) == len(input_files)
 
         # Optimize source files
-        if options.llvm_opts > 0:
+        if '-O0' not in options.llvm_opts:
           for pos, (_, input_file) in enumerate(input_files):
             file_ending = filename_type_ending(input_file)
             if file_ending.endswith(SOURCE_ENDINGS):
@@ -1488,7 +1490,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # something similar, which we can do with a param to opt
           link_opts += ['-disable-debug-info-type-map']
 
-        if options.llvm_lto >= 2 and options.llvm_opts > 0:
+        if options.llvm_lto is not None and options.llvm_lto >= 2 and '-O0' not in options.llvm_opts:
           logging.debug('running LLVM opts as pre-LTO')
           final = shared.Building.llvm_opt(final, options.llvm_opts, DEFAULT_FINAL)
           if DEBUG: save_intermediate('opt', 'bc')

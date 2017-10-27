@@ -299,7 +299,7 @@ class RunnerCore(unittest.TestCase):
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, extra_emscripten_args=[], post_build=None, js_outfile=True):
 
-    Building.pick_llvm_opts(3) # pick llvm opts here, so we include changes to Settings in the test case code
+    Building.LLVM_OPT_OPTS = ['-O3'] # pick llvm opts here, so we include changes to Settings in the test case code
 
     # Copy over necessary files for compiling the source
     if main_file is None:
@@ -348,7 +348,7 @@ class RunnerCore(unittest.TestCase):
                  filename + '.o')
         if not os.path.exists(filename + '.o'):
           print("Failed to link LLVM binaries:\n\n", output)
-          raise Exception("Linkage error");
+          raise Exception("Linkage error")
 
       # Finalize
       self.prep_ll_run(filename, filename + '.o', build_ll_hook=build_ll_hook)

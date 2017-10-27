@@ -1869,8 +1869,6 @@ class Building(object):
       inputs = [inputs]
     else:
       assert out, 'must provide out if llvm_opt on a list of inputs'
-    if type(opts) is int:
-      opts = Building.pick_llvm_opts(opts)
     assert len(opts) > 0, 'should not call opt with nothing to do'
     opts = opts[:]
     #opts += ['-debug-pass=Arguments']
@@ -2079,27 +2077,6 @@ class Building(object):
       return '-Oz'
     else:
       return '-O' + str(min(opt_level, 3))
-
-  @staticmethod
-  def pick_llvm_opts(optimization_level):
-    '''
-      It may be safe to use nonportable optimizations (like -OX) if we remove the platform info from the .ll
-      (which we do in do_ll_opts) - but even there we have issues (even in TA2) with instruction combining
-      into i64s. In any case, the handpicked ones here should be safe and portable. They are also tuned for
-      things that look useful.
-
-      An easy way to see LLVM's standard list of passes is
-
-        llvm-as < /dev/null | opt -std-compile-opts -disable-output -debug-pass=Arguments
-    '''
-    assert 0 <= optimization_level <= 3
-    opts = []
-    if optimization_level > 0:
-      if not Building.can_inline():
-        opts.append('-disable-inlining')
-      opts.append('-O%d' % optimization_level)
-    Building.LLVM_OPT_OPTS = opts
-    return opts
 
   @staticmethod
   def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False):
