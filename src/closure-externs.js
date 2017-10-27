@@ -88,25 +88,6 @@ flags.binary;
  */
 Document.prototype.currentScript;
 
-//Atomics library (not yet in latest closure):
-//See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Atomics
-var Atomics;
-Atomics.prototype.NOTEQUAL = -1;
-Atomics.prototype.OK = 0;
-Atomics.prototype.TIMEDOUT = -2;
-Atomics.prototype.add = function(typedArray, index, value) {};
-Atomics.prototype.and = function(typedArray, index, value) {};
-Atomics.prototype.compareExchange = function(typedArray, index, expectedValue, replacementValue) {};
-Atomics.prototype.exchange = function(typedArray, index, value) {};
-Atomics.prototype.load = function(typedArray, index) {};
-Atomics.prototype.or = function(typedArray, index, value) {};
-Atomics.prototype.store = function(typedArray, index, value) {};
-Atomics.prototype.sub = function(typedArray, index, value) {};
-Atomics.prototype.xor = function(typedArray, index, value) {};
-Atomics.prototype.wait = function(typedArray, index, valuei, timeout) {};
-Atomics.prototype.wake = function(typedArray, index, value) {};
-Atomics.prototype.isLockFree = function(size) {};
-
 /**
  * SIMD.js support (not in upstream closure yet).
  */
