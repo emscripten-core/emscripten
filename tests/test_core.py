@@ -6931,21 +6931,7 @@ Module.printErr = Module['printErr'] = function(){};
       # optimizer can deal with both types.
       map_filename = map_referent + '.map'
 
-      def encode_utf8(data):
-        if isinstance(data, dict):
-          for key in data:
-            data[key] = encode_utf8(data[key])
-          return data
-        elif isinstance(data, list):
-          for i in range(len(data)):
-            data[i] = encode_utf8(data[i])
-          return data
-        elif isinstance(data, unicode):
-          return data.encode('utf8')
-        else:
-          return data
-
-      data = encode_utf8(json.load(open(map_filename, 'r')))
+      data = json.load(open(map_filename, 'r'))
       if hasattr(data, 'file'):
         # the file attribute is optional, but if it is present it needs to refer
         # the output file.
@@ -6956,9 +6942,9 @@ Module.printErr = Module['printErr'] = function(){};
         # the sourcesContent attribute is optional, but if it is present it
         # needs to containt valid source text.
         self.assertTextDataIdentical(src, data['sourcesContent'][0])
-      mappings = encode_utf8(json.loads(jsrun.run_js(
+      mappings = json.loads(jsrun.run_js(
         path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
-        tools.shared.NODE_JS, [map_filename])))
+        tools.shared.NODE_JS, [map_filename]))
       seen_lines = set()
       for m in mappings:
         self.assertPathsIdentical(src_filename, m['source'])
