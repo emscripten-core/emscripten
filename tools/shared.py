@@ -2353,7 +2353,7 @@ class JS(object):
       f = open(path, 'rb')
       data = base64.b64encode(f.read())
       f.close()
-      return 'data:application/octet-stream;base64,' + data
+      return 'data:application/octet-stream;base64,' + data.decode()
     else:
       return os.path.basename(path)
 
