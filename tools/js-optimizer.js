@@ -6587,6 +6587,12 @@ function emterpretify(ast) {
     var hoistedNums = {};
 
     function makeNum(value, type, l) {
+      if (type == ASM_INT && value % 1 != 0) {
+        // normally a double would be +1 etc. However, in hand-written
+        // asm.js we may encounter 1.5 etc. which is a double
+        // by virtue of having a fraction part. fix that here.
+        type = ASM_DOUBLE;
+      }
       if (type === ASM_INT && l === undefined && value in hoistedNums) return [hoistedNums[value], []];
       if (l === undefined) l = getFree();
       var opcode;
@@ -7372,7 +7378,7 @@ function emterpretify(ast) {
       return;
     }
 
-    //printErr('emterpretifying ' + func[1]);
+    //if (func[1] == '?') printErr('emterpretifying ' + JSON.stringify(func, null, 2)); // for debugging
 
     // we implement floats as doubles, and just decrease precision when fround is called. flip floats to doubles, but we
     // must restore this at the end when we emit the trampolines
