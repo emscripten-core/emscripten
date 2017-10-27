@@ -3273,11 +3273,11 @@ var LibraryOpenAL = {
   },
 
   alSpeedOfSound: function(value) {
-    AL.setGlobalParam('alSpeedOfSound', 0xC003 /* AL_SPEED_OF_SOUND */, model);
+    AL.setGlobalParam('alSpeedOfSound', 0xC003 /* AL_SPEED_OF_SOUND */, value);
   },
 
   alDopplerFactor: function(value) {
-    AL.setGlobalParam('alDopplerFactor', 0xC000 /* AL_DOPPLER_FACTOR */, model);
+    AL.setGlobalParam('alDopplerFactor', 0xC000 /* AL_DOPPLER_FACTOR */, value);
   },
 
   // http://openal.996291.n3.nabble.com/alSpeedOfSound-or-alDopperVelocity-tp1960.html
