@@ -477,12 +477,16 @@ class RunnerCore(unittest.TestCase):
   def assertPathsIdentical(self, path1, path2):
     path1 = path1.replace('\\', '/')
     path2 = path2.replace('\\', '/')
+    if type(path1) == bytes: path1 = path1.decode()
+    if type(path2) == bytes: path2 = path2.decode()
     return self.assertIdentical(path1, path2)
 
   # Tests that the given two multiline text content are identical, modulo line ending differences (\r\n on Windows, \n on Unix).
   def assertTextDataIdentical(self, text1, text2):
     text1 = text1.replace('\r\n', '\n')
     text2 = text2.replace('\r\n', '\n')
+    if type(text1) == bytes: text1 = text1.decode()
+    if type(text2) == bytes: text2 = text2.decode()
     return self.assertIdentical(text1, text2)
 
   def assertIdentical(self, values, y):
@@ -502,8 +506,9 @@ class RunnerCore(unittest.TestCase):
   def assertContained(self, values, string, additional_info=''):
     if type(values) not in [list, tuple]: values = [values]
     for value in values:
-      if type(value) is unicode: string = string.decode('UTF-8') # If we have any non-ASCII chars in the expected string, treat the test string from ASCII as UTF8 as well.
-      if type(string) is not str and type(string) is not unicode: string = string()
+      if callable(string): string = string()
+      if type(value) is bytes: value = value.decode()
+      if type(string) is bytes: string = string.decode()
       if value in string: return # success
     raise Exception("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
       limit_size(values[0]), limit_size(string),
@@ -512,8 +517,10 @@ class RunnerCore(unittest.TestCase):
     ))
 
   def assertNotContained(self, value, string):
-    if type(value) is not str: value = value() # lazy loading
-    if type(string) is not str: string = string()
+    if callable(value): value = value() # lazy loading
+    if callable(string): string = string()
+    if type(value) is bytes: value = value.decode()
+    if type(string) is bytes: string = string.decode()
     if value in string:
       raise Exception("Expected to NOT find '%s' in '%s', diff:\n\n%s" % (
         limit_size(value), limit_size(string),
