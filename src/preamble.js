@@ -185,10 +185,12 @@ var cwrap, ccall;
     }
     var ret = func.apply(null, cArgs);
 #if ASSERTIONS
+#if EMTERPRETIFY_ASYNC
     if ((!opts || !opts.async) && typeof EmterpreterAsync === 'object') {
       assert(!EmterpreterAsync.state, 'cannot start async op with normal JS calling ccall');
     }
     if (opts && opts.async) assert(!returnType, 'async ccalls cannot return values');
+#endif
 #endif
     if (returnType === 'string') ret = Pointer_stringify(ret);
     if (stack !== 0) {

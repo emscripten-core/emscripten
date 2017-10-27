@@ -1084,3 +1084,7 @@ var buffer;
  * @suppress {duplicate}
  */
 var fs;
+/**
+ * @suppress {undefinedVars}
+ */
+var FUNCTION_TABLE;

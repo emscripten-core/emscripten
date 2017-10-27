@@ -10,7 +10,6 @@ function intArrayFromString(stringy, dontAddNull, length) {
 }
 
 // Temporarily duplicating function pending Python preprocessor support
-var ASSERTIONS;
 var intArrayToString = ASSERTIONS ?
   function (array) {
     var ret = [];

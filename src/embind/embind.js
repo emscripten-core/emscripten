@@ -2187,14 +2187,14 @@ var LibraryEmbind = {
         var humanName = classType.name + '.' + fieldName;
         var desc = {
             get: function() {
-                throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [getterReturnType, setterArgumentType]);
+                throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [rawFieldType]);
             },
             enumerable: true,
             configurable: true
         };
         if (setter) {
             desc.set = function() {
-                throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [getterReturnType, setterArgumentType]);
+                throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [rawFieldType]);
             };
         } else {
             desc.set = function(v) {
