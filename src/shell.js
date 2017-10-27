@@ -221,7 +221,7 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
         return new Uint8Array(xhr.response);
 #if SUPPORT_BASE64_EMBEDDING
       } catch (err) {
-        var data = tryParseAsDataURI(f);
+        var data = tryParseAsDataURI(url);
         if (data) {
           return data;
         }
