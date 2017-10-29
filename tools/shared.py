@@ -1849,19 +1849,8 @@ class Building(object):
       # just calculating; return the link arguments which is the final list of files to link
       return link_args
 
-  # Emscripten optimizations that we run on the .ll file
-  @staticmethod
-  def ll_opts(filename):
-    ## Remove target info. This helps LLVM opts, if we run them later
-    #cleaned = filter(lambda line: not line.startswith('target datalayout = ') and not line.startswith('target triple = '),
-    #                 open(filename + '.o.ll', 'r').readlines())
-    #os.unlink(filename + '.o.ll')
-    #open(filename + '.o.ll.orig', 'w').write(''.join(cleaned))
-    pass
-
   # LLVM optimizations
-  # @param opt Either an integer, in which case it is the optimization level (-O1, -O2, etc.), or a list of raw
-  #            optimization passes passed to llvm opt
+  # @param opt A list of LLVM optimization parameters
   @staticmethod
   def llvm_opt(filename, opts, out=None):
     inputs = filename

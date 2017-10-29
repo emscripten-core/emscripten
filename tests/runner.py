@@ -248,7 +248,6 @@ class RunnerCore(unittest.TestCase):
       else:
         shutil.copy(ll_file, filename + '.o.ll')
 
-      Building.ll_opts(filename)
       if build_ll_hook:
         need_post = build_ll_hook(filename)
       Building.llvm_as(filename)
