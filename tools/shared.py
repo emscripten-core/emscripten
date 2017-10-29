@@ -1871,6 +1871,8 @@ class Building(object):
       assert out, 'must provide out if llvm_opt on a list of inputs'
     assert len(opts) > 0, 'should not call opt with nothing to do'
     opts = opts[:]
+    if not '-Oz' in opts and not Building.can_inline():
+      opts.append('-disable-inlining')
     #opts += ['-debug-pass=Arguments']
     if not Settings.SIMD:
       opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false']
