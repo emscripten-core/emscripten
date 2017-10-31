@@ -54,7 +54,7 @@ v1.37.10: 4/20/2017
  - Fixed an outlining bug on function returns (#5080)
  - Implemented new parallel test runner architecture (#5074)
  - Added Cocos2D to Emscripten ports. (-s USE_COCOS2D=1)
- - Updated Binaryen to version 32, which migrates Emscripten to use the new WebAssembly Names section. This is a forwards and backwards breaking change with respect to reading debug symbol names in Wasm callstacks. For more information, see https://github.com/WebAssembly/design/pull/984 and https://github.com/WebAssembly/binaryen/pull/933.
+ - Updated Binaryen to version 32, which migrates Emscripten to use the new WebAssembly Names section. This is a forwards and backwards breaking change with respect to reading debug symbol names in Wasm callstacks. Use of the new Names section format first shipped in Emscripten 1.37.10, Binaryen version 32, Firefox 55, Firefox Nightly 2017-05-18 and Chrome 59; earlier versions still used the old format. For more information, see https://github.com/WebAssembly/design/pull/984 and https://github.com/WebAssembly/binaryen/pull/933.
  - Full list of changes:
     - Emscripten: https://github.com/kripken/emscripten/compare/1.37.9...1.37.10
     - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.37.9...1.37.10
