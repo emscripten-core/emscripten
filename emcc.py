@@ -99,7 +99,7 @@ class Intermediate(object):
   counter = 0
 def save_intermediate(name=None, suffix='js'):
   name = os.path.join(shared.get_emscripten_temp_dir(), 'emcc-%d%s.%s' % (Intermediate.counter, '' if name is None else '-' + name, suffix))
-  if type(final) != str:
+  if isinstance(final, list):
     logging.debug('(not saving intermediate %s because deferring linking)' % name)
     return
   shutil.copyfile(final, name)
@@ -1437,7 +1437,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       DEFAULT_FINAL = in_temp(target_basename + '.bc')
       def get_final():
         global final
-        if type(final) != str:
+        if isinstance(final, list):
           final = DEFAULT_FINAL
         return final
 
@@ -1535,7 +1535,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         final = next
         if DEBUG: save_intermediate('autodebug', 'll')
 
-      assert type(final) == str, 'we must have linked the final files, if linking was deferred, by this point'
+      assert not isinstance(final, list), 'we must have linked the final files, if linking was deferred, by this point'
 
     # exit block 'post-link'
     log_time('post-link')

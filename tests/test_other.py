@@ -2130,7 +2130,7 @@ int f() {
     ]:
       print(input, passes)
 
-      if type(expected) == str: expected = [expected]
+      if not isinstance(expected, list): expected = [expected]
       expected = [out.replace('\n\n', '\n').replace('\n\n', '\n') for out in expected]
 
       # test calling js optimizer
