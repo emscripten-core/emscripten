@@ -112,7 +112,7 @@ this.onmessage = function(e) {
     } else if (e.data.cmd === 'objectTransfer') {
       PThread.receiveObjectTransfer(e.data);
     } else if (e.data.cmd === 'run') { // This worker was idle, and now should start executing its pthread entry point.
-    __performance_now_clock_drift = performance.now() - e.data.time; // Sync up to the clock of the main thread.
+      __performance_now_clock_drift = performance.now() - e.data.time; // Sync up to the clock of the main thread.
       threadInfoStruct = e.data.threadInfoStruct;
       __register_pthread_ptr(threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0); // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
       assert(threadInfoStruct);
@@ -136,14 +136,14 @@ this.onmessage = function(e) {
       PThread.setThreadStatus(_pthread_self(), 1/*EM_THREAD_STATUS_RUNNING*/);
 
       try {
-      // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
-      // Native codebases sometimes spawn threads with other thread entry point signatures,
-      // such as void ThreadMain(void *arg), void *ThreadMain(), or void ThreadMain().
-      // That is not acceptable per C/C++ specification, but x86 compiler ABI extensions
-      // enable that to work. If you find the following line to crash, either change the signature
-      // to "proper" void *ThreadMain(void *arg) form, or try linking with the Emscripten linker
-      // flag -s EMULATE_FUNCTION_POINTER_CASTS=1 to add in emulation for this x86 ABI extension.
-      result = Module['asm'].dynCall_ii(e.data.start_routine, e.data.arg);
+        // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
+        // Native codebases sometimes spawn threads with other thread entry point signatures,
+        // such as void ThreadMain(void *arg), void *ThreadMain(), or void ThreadMain().
+        // That is not acceptable per C/C++ specification, but x86 compiler ABI extensions
+        // enable that to work. If you find the following line to crash, either change the signature
+        // to "proper" void *ThreadMain(void *arg) form, or try linking with the Emscripten linker
+        // flag -s EMULATE_FUNCTION_POINTER_CASTS=1 to add in emulation for this x86 ABI extension.
+        result = Module['asm'].dynCall_ii(e.data.start_routine, e.data.arg);
 
 //#if STACK_OVERFLOW_CHECK
         if (typeof checkStackCookie === 'function') checkStackCookie();
