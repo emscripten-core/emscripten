@@ -2416,16 +2416,16 @@ def generate_html(target, options, js_target, target_basename,
   asm_mods = []
 
   if options.proxy_to_worker:
-    proxy_worker_filename = shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename
+    proxy_worker_filename = (shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename) + '.js'
     worker_js = worker_js_script(proxy_worker_filename)
-    script.inline = '''
+    script.inline = ('''
+  var filename = '%s';
   if ((',' + window.location.search.substr(1) + ',').indexOf(',noProxy,') < 0) {
     console.log('running code in a web worker');
-''' + worker_js + '''
+''' % shared.JS.get_subresource_location(proxy_worker_filename)) + worker_js + '''
   } else {
     // note: no support for code mods (PRECISE_F32==2)
     console.log('running code on the main thread');
-    var filename = '%s';
     var fileBytes = tryParseAsDataURI(filename);
     var script = document.createElement('script');
     if (fileBytes) {
@@ -2435,7 +2435,7 @@ def generate_html(target, options, js_target, target_basename,
     }
     document.body.appendChild(script);
   }
-''' % shared.JS.get_subresource_location(proxy_worker_filename + '.js')
+'''
   else:
     # Normal code generation path
     script.src = base_js_target
@@ -2573,9 +2573,11 @@ def generate_html(target, options, js_target, target_basename,
 
   # inline script for SINGLE_FILE output
   if shared.Settings.SINGLE_FILE:
-    js = open(js_target, 'r')
-    js_contents = (script.inline or '') + js.read()
-    js.close()
+    js_contents = script.inline or ''
+    if script.src:
+      js = open(js_target, 'r')
+      js_contents += js.read()
+      js.close()
     shared.try_delete(js_target)
     script.src = None
     script.inline = js_contents
