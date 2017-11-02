@@ -11,7 +11,10 @@ XXX this probably doesn't work with closure compiler advanced yet XXX
 '''
 
 import os, sys
-from . import asm_module
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools import asm_module
 
 infile = sys.argv[1]
 outfile = sys.argv[2]
