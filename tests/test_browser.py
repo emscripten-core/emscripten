@@ -3733,6 +3733,6 @@ window.close = function() {
     shutil.move('test.html.mem', os.path.join('subdir', 'test.html.mem'))
     src = open('test.html').read()
     # Force mem file to be loaded by JS and make sure JS is loaded from subdirectory
-    open('test-subdir.html', 'w').write(src.replace('var memoryInitializer', 'return;var memoryInitializer').replace('test.js', 'subdir/test.js'))
+    open('test-subdir.html', 'w').write(src.replace('var meminitXHR', '//var meminitXHR').replace('meminitXHR.', '//meminitXHR.').replace('test.js', 'subdir/test.js'))
 
     self.run_browser('test-subdir.html', None, '/report_result?0')

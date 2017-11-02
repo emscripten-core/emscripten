@@ -72,6 +72,7 @@ if (!ENVIRONMENT_IS_PTHREAD) PthreadWorkerInit = {};
 var currentScriptUrl = (typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
 #endif
 
+#if !SUPPORT_BASE64_EMBEDDING
 if (typeof Module['locateFile'] !== 'function') {
   // `/` should be present at the end if `Module['scriptDirectory']` is not empty
   if (!Module['scriptDirectory']) {
@@ -98,6 +99,7 @@ if (typeof Module['locateFile'] !== 'function') {
     Module['filePackagePrefixURL'] = Module['scriptDirectory'];
   }
 }
+#endif
 
 if (ENVIRONMENT_IS_NODE) {
   // Expose functionality in the same simple way that the shells work
