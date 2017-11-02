@@ -2588,9 +2588,16 @@ def generate_html(target, options, js_target, target_basename,
 
 
 def generate_worker_js(target, js_target, target_basename):
-  shutil.move(js_target, unsuffixed(js_target) + '.worker.js') # compiler output goes in .worker.js file
-  worker_target_basename = target_basename + '.worker'
-  proxy_worker_filename = shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename
+  # compiler output is embedded as base64
+  if shared.Settings.SINGLE_FILE:
+    proxy_worker_filename = shared.JS.get_subresource_location(js_target)
+
+  # compiler output goes in .worker.js file
+  else:
+    shutil.move(js_target, unsuffixed(js_target) + '.worker.js')
+    worker_target_basename = target_basename + '.worker'
+    proxy_worker_filename = (shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
+
   target_contents = worker_js_script(proxy_worker_filename)
   open(target, 'w').write(target_contents)
 

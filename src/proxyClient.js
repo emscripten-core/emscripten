@@ -101,7 +101,7 @@ var SUPPORT_BASE64_EMBEDDING;
 
 // Worker
 
-var filename = '{{{ filename }}}.js';
+var filename = '{{{ filename }}}';
 
 var workerURL = filename;
 if (SUPPORT_BASE64_EMBEDDING) {
