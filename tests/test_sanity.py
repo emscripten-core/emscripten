@@ -735,7 +735,7 @@ fi
       proc = Popen(command, stdout=PIPE, stderr=STDOUT)
       out, err = proc.communicate()
       assert (proc.returncode == 0) == success, out
-      if type(expected) == str: expected = [expected]
+      if not isinstance(expected, list): expected = [expected]
       for ex in expected:
         print('    seek', ex)
         assert ex in out, out

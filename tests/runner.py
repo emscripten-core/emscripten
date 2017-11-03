@@ -502,8 +502,8 @@ class RunnerCore(unittest.TestCase):
   def assertContained(self, values, string, additional_info=''):
     if type(values) not in [list, tuple]: values = [values]
     for value in values:
-      if type(value) is unicode: string = string.decode('UTF-8') # If we have any non-ASCII chars in the expected string, treat the test string from ASCII as UTF8 as well.
-      if type(string) is not str and type(string) is not unicode: string = string()
+      if not isinstance(value, bytes): string = string.decode('UTF-8') # If we have any non-ASCII chars in the expected string, treat the test string from ASCII as UTF8 as well.
+      if callable(string): string = string()
       if value in string: return # success
     raise Exception("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
       limit_size(values[0]), limit_size(string),
@@ -512,8 +512,8 @@ class RunnerCore(unittest.TestCase):
     ))
 
   def assertNotContained(self, value, string):
-    if type(value) is not str: value = value() # lazy loading
-    if type(string) is not str: string = string()
+    if callable(value): value = value() # lazy loading
+    if callable(string): string = string()
     if value in string:
       raise Exception("Expected to NOT find '%s' in '%s', diff:\n\n%s" % (
         limit_size(value), limit_size(string),
@@ -973,7 +973,7 @@ class BrowserCore(RunnerCore):
     Popen(all_args).communicate()
     assert os.path.exists(outfile)
     if post_build: post_build()
-    if type(expected) is str: expected = [expected]
+    if not isinstance(expected, list): expected = [expected]
     self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout)
     if also_proxied:
       print('proxied...')
