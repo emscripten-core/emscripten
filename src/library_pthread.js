@@ -322,6 +322,12 @@ var LibraryPThread = {
           } else if (d.cmd === 'cancelThread') {
             __cancel_thread(d.thread);
           } else if (d.cmd === 'loaded') {
+            worker.loaded = true;
+            // If this Worker is already pending to start running a thread, launch the thread now
+            if (worker.runPthread) {
+              worker.runPthread();
+              delete worker.runPthread;
+            }
             ++numWorkersLoaded;
             if (numWorkersLoaded === numWorkers && onFinishedLoading) {
               onFinishedLoading();
@@ -477,22 +483,29 @@ var LibraryPThread = {
 #endif
 
     worker.pthread = pthread;
-
-    // Ask the worker to start executing its pthread entry point function.
-    worker.postMessage({
-      cmd: 'run',
-      start_routine: threadParams.startRoutine,
-      arg: threadParams.arg,
-      threadInfoStruct: threadParams.pthread_ptr,
-      selfThreadId: threadParams.pthread_ptr, // TODO: Remove this since thread ID is now the same as the thread address.
-      parentThreadId: threadParams.parent_pthread_ptr,
-      stackBase: threadParams.stackBase,
-      stackSize: threadParams.stackSize,
+    var msg = {
+        cmd: 'run',
+        start_routine: threadParams.startRoutine,
+        arg: threadParams.arg,
+        threadInfoStruct: threadParams.pthread_ptr,
+        selfThreadId: threadParams.pthread_ptr, // TODO: Remove this since thread ID is now the same as the thread address.
+        parentThreadId: threadParams.parent_pthread_ptr,
+        stackBase: threadParams.stackBase,
+        stackSize: threadParams.stackSize,
 #if OFFSCREENCANVAS_SUPPORT
-      moduleCanvasId: threadParams.moduleCanvasId,
-      offscreenCanvases: threadParams.offscreenCanvases,
+        moduleCanvasId: threadParams.moduleCanvasId,
+        offscreenCanvases: threadParams.offscreenCanvases,
 #endif
-    }, threadParams.transferList);
+      };
+    worker.runPthread = function() {
+      // Ask the worker to start executing its pthread entry point function.
+      msg.time = performance.now();
+      worker.postMessage(msg, threadParams.transferList);
+    };
+    if (worker.loaded) {
+      worker.runPthread();
+      delete worker.runPthread;
+    }
   },
 
 #if USE_PTHREADS
