@@ -139,7 +139,6 @@ class EmccOptions(object):
     self.use_closure_compiler = None
     self.js_transform = None
     self.pre_js = '' # before all js
-    self.post_module = '' # in js, after Module exists
     self.post_js = '' # after all js
     self.preload_files = []
     self.embed_files = []
@@ -1606,11 +1605,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         options.pre_js = file_code + options.pre_js
 
       # Apply pre and postjs files
-      if options.pre_js or options.post_module or options.post_js:
+      if options.pre_js or options.post_js:
         logging.debug('applying pre/postjses')
         src = open(final).read()
-        if options.post_module:
-          src = src.replace('// {{PREAMBLE_ADDITIONS}}', options.post_module + '\n// {{PREAMBLE_ADDITIONS}}')
         final += '.pp.js'
         if WINDOWS: # Avoid duplicating \r\n to \r\r\n when writing out.
           if options.pre_js:
