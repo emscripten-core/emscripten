@@ -977,11 +977,6 @@ class BrowserCore(RunnerCore):
     self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout)
     if also_proxied:
       print('proxied...')
-      # save non-proxied
-      if not os.path.exists('normal'):
-        os.mkdir('normal')
-      shutil.copyfile('test.html', os.path.join('normal', 'test.html'))
-      shutil.copyfile('test.js', os.path.join('normal', 'test.js'))
       if reference:
         assert not manual_reference
         manual_reference = True
