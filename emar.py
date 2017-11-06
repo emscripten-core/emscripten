@@ -28,8 +28,8 @@ def run():
   if DEBUG:
     print('emar:', sys.argv, '  ==>  ', newargs, file=sys.stderr)
 
+  to_delete = []
   if len(newargs) > 2:
-    to_delete = []
     if 'r' in newargs[1]:
       # we are adding files to the archive.
       # find the .a; everything after it is an input file.
@@ -59,9 +59,12 @@ def run():
                 pass
           break
         i += 1
-    subprocess.call(newargs)
-    for d in to_delete:
-      shared.try_delete(d)
+
+  if DEBUG:
+    print('Invoking ' + str(newargs))
+  subprocess.call(newargs, stdin=sys.stdin)
+  for d in to_delete:
+    shared.try_delete(d)
 
 if __name__ == '__main__':
   run()
