@@ -3708,14 +3708,9 @@ window.close = function() {
     ''')
     self.run_browser('a.html', '...', '/report_result?0')
 
-  # Tests that SINGLE_FILE works as intended in generated HTML
+  # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
   def test_single_file_html(self):
-    self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1', '-s', "BINARYEN_METHOD='native-wasm'"])
-    assert os.path.exists('test.html') and not os.path.exists('test.js')
-
-  # Tests that SINGLE_FILE works as intended in a Worker in HTML output
-  def test_single_file_worker_html(self):
-    self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=['--proxy-to-worker', '-s', 'SINGLE_FILE=1', '-s', 'WASM=1', '-s', "BINARYEN_METHOD='native-wasm'"])
+    self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1', '-s', "BINARYEN_METHOD='native-wasm'"], also_proxied=True)
     assert os.path.exists('test.html') and not os.path.exists('test.js') and not os.path.exists('test.worker.js')
 
   # Tests that SINGLE_FILE works as intended in a Worker in JS output
