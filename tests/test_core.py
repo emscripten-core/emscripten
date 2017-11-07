@@ -3081,16 +3081,16 @@ ok
       Settings.MAIN_MODULE = 0
       Settings.SIDE_MODULE = 1
       side_suffix = 'js' if not self.is_wasm() else 'wasm'
-      if type(side) == str:
+      if isinstance(side, list):
+        # side is just a library
+        try_delete('liblib.cpp.o.' + side_suffix)
+        Popen([PYTHON, EMCC] + side + self.emcc_args + Settings.serialize() + ['-o', os.path.join(self.get_dir(), 'liblib.cpp.o.' + side_suffix)]).communicate()
+      else:
         base = 'liblib.cpp' if not force_c else 'liblib.c'
         try_delete(base + '.o.' + side_suffix)
         self.build(side, self.get_dir(), base, js_outfile=(side_suffix == 'js'))
         if force_c:
           shutil.move(base + '.o.' + side_suffix, 'liblib.cpp.o.' + side_suffix)
-      else:
-        # side is just a library
-        try_delete('liblib.cpp.o.' + side_suffix)
-        Popen([PYTHON, EMCC] + side + self.emcc_args + Settings.serialize() + ['-o', os.path.join(self.get_dir(), 'liblib.cpp.o.' + side_suffix)]).communicate()
       if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]) and not self.is_wasm():
         out = run_js('liblib.cpp.o.js', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=STDOUT)
         if 'asm' in out:
@@ -3108,13 +3108,13 @@ var Module = {
   ''')
         self.emcc_args += ['--pre-js', 'pre.js'] + main_emcc_args
 
-      if type(main) == str:
-        self.do_run(main, expected, force_c=force_c)
-      else:
+      if isinstance(main, list):
         # main is just a library
         try_delete('src.cpp.o.js')
         Popen([PYTHON, EMCC] + main + self.emcc_args + Settings.serialize() + ['-o', os.path.join(self.get_dir(), 'src.cpp.o.js')]).communicate()
         self.do_run(None, expected, no_build=True)
+      else:
+        self.do_run(main, expected, force_c=force_c)
     finally:
       self.emcc_args = emcc_args[:]
 

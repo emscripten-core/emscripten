@@ -206,8 +206,8 @@ def get_native_optimizer():
 def use_native(x, source_map=False):
   if source_map: return False
   if not NATIVE_OPTIMIZER or NATIVE_OPTIMIZER == '0': return False
-  if type(x) == str: return x in NATIVE_PASSES
-  return len(NATIVE_PASSES.intersection(x)) == len(x) and 'asm' in x
+  if isinstance(x, list): return len(NATIVE_PASSES.intersection(x)) == len(x) and 'asm' in x
+  return x in NATIVE_PASSES
 
 class Minifier(object):
   '''
@@ -308,7 +308,7 @@ def run_on_chunk(command):
 
 def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, just_split=False, just_concat=False):
   with ToolchainProfiler.profile_block('js_optimizer.split_markers'):
-    if type(passes) == str:
+    if not isinstance(passes, list):
       passes = [passes]
 
     js = open(filename).read()

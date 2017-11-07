@@ -14,7 +14,7 @@ if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
 import difflib
-import os, sys, json, optparse, subprocess, re, time, logging
+import os, sys, json, argparse, subprocess, re, time, logging
 import shutil
 
 from tools import shared
@@ -2167,50 +2167,52 @@ def _main(args=None):
         args[index:index+1] = response_file_args
         break
 
-  parser = optparse.OptionParser(
-    usage='usage: %prog [-h] [-H HEADERS] [-o OUTFILE] [-c COMPILER_ENGINE] [-s FOO=BAR]* infile',
+  parser = argparse.ArgumentParser(
+    usage='%(prog)s [-h] [-H HEADERS] [-o OUTFILE] [-c COMPILER_ENGINE] [-s FOO=BAR]* infile',
     description=('You should normally never use this! Use emcc instead. '
                  'This is a wrapper around the JS compiler, converting .ll to .js.'),
     epilog='')
-  parser.add_option('-H', '--headers',
+  parser.add_argument('-H', '--headers',
                     default=[],
                     action='append',
                     help='System headers (comma separated) whose #defines should be exposed to the compiled code.')
-  parser.add_option('-L', '--libraries',
+  parser.add_argument('-L', '--libraries',
                     default=[],
                     action='append',
                     help='Library files (comma separated) to use in addition to those in emscripten src/library_*.')
-  parser.add_option('-o', '--outfile',
+  parser.add_argument('-o', '--outfile',
                     default=sys.stdout,
                     help='Where to write the output; defaults to stdout.')
-  parser.add_option('-c', '--compiler',
+  parser.add_argument('-c', '--compiler',
                     default=None,
                     help='Which JS engine to use to run the compiler; defaults to the one in ~/.emscripten.')
-  parser.add_option('-s', '--setting',
+  parser.add_argument('-s', '--setting',
                     dest='settings',
                     default=[],
                     action='append',
                     metavar='FOO=BAR',
                     help=('Overrides for settings defined in settings.js. '
                           'May occur multiple times.'))
-  parser.add_option('-T', '--temp-dir',
+  parser.add_argument('-T', '--temp-dir',
                     default=None,
                     help=('Where to create temporary files.'))
-  parser.add_option('-v', '--verbose',
+  parser.add_argument('-v', '--verbose',
                     action='store_true',
                     dest='verbose',
                     help='Displays debug output')
-  parser.add_option('-q', '--quiet',
+  parser.add_argument('-q', '--quiet',
                     action='store_false',
                     dest='verbose',
                     help='Hides debug output')
-  parser.add_option('--suppressUsageWarning',
+  parser.add_argument('--suppressUsageWarning',
                     action='store_true',
                     default=os.environ.get('EMSCRIPTEN_SUPPRESS_USAGE_WARNING'),
                     help=('Suppress usage warning'))
+  parser.add_argument('infile', nargs='*')
 
   # Convert to the same format that argparse would have produced.
-  keywords, positional = parser.parse_args(args)
+  keywords = parser.parse_args(args)
+  positional = keywords.infile
 
   if not keywords.suppressUsageWarning:
     logging.warning('''

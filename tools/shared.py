@@ -1864,7 +1864,7 @@ class Building(object):
   @staticmethod
   def llvm_opt(filename, opts, out=None):
     inputs = filename
-    if type(inputs) is str:
+    if not isinstance(inputs, list):
       inputs = [inputs]
     else:
       assert out, 'must provide out if llvm_opt on a list of inputs'

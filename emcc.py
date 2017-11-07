@@ -99,7 +99,7 @@ class Intermediate(object):
   counter = 0
 def save_intermediate(name=None, suffix='js'):
   name = os.path.join(shared.get_emscripten_temp_dir(), 'emcc-%d%s.%s' % (Intermediate.counter, '' if name is None else '-' + name, suffix))
-  if type(final) != str:
+  if isinstance(final, list):
     logging.debug('(not saving intermediate %s because deferring linking)' % name)
     return
   shutil.copyfile(final, name)
@@ -139,7 +139,6 @@ class EmccOptions(object):
     self.use_closure_compiler = None
     self.js_transform = None
     self.pre_js = '' # before all js
-    self.post_module = '' # in js, after Module exists
     self.post_js = '' # after all js
     self.preload_files = []
     self.embed_files = []
@@ -1437,7 +1436,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       DEFAULT_FINAL = in_temp(target_basename + '.bc')
       def get_final():
         global final
-        if type(final) != str:
+        if isinstance(final, list):
           final = DEFAULT_FINAL
         return final
 
@@ -1535,7 +1534,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         final = next
         if DEBUG: save_intermediate('autodebug', 'll')
 
-      assert type(final) == str, 'we must have linked the final files, if linking was deferred, by this point'
+      assert not isinstance(final, list), 'we must have linked the final files, if linking was deferred, by this point'
 
     # exit block 'post-link'
     log_time('post-link')
@@ -1606,11 +1605,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         options.pre_js = file_code + options.pre_js
 
       # Apply pre and postjs files
-      if options.pre_js or options.post_module or options.post_js:
+      if options.pre_js or options.post_js:
         logging.debug('applying pre/postjses')
         src = open(final).read()
-        if options.post_module:
-          src = src.replace('// {{PREAMBLE_ADDITIONS}}', options.post_module + '\n// {{PREAMBLE_ADDITIONS}}')
         final += '.pp.js'
         if WINDOWS: # Avoid duplicating \r\n to \r\r\n when writing out.
           if options.pre_js:
