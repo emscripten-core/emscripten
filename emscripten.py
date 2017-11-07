@@ -1495,7 +1495,7 @@ def create_asm_start_pre(asm_setup, the_global, sending, metadata, settings):
   module_library = module_get.format(access=access_quote('asmLibraryArg'), val=sending)
 
   asm_function_top = ('// EMSCRIPTEN_START_ASM\n'
-                      'var asm = (function(global, env, buffer) {')
+                      'var asm = (/** @suppress {uselessCode} */ function(global, env, buffer) {')
 
   use_asm = "'almost asm';"
   if settings['ASM_JS'] == 1:

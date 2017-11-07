@@ -387,6 +387,9 @@ EMSCRIPTEN_FUNCS();
         return True
       passes = list(filter(check_symbol_mapping, passes))
       asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'minifyWhitespace' in passes, source_map).split('EMSCRIPTEN_FUNCS();');
+      # Restore a comment for Closure Compiler
+      asm_open_bracket = asm_shell_pre.find('(')
+      asm_shell_pre = asm_shell_pre[:asm_open_bracket+1] + '/** @suppress {uselessCode} */' + asm_shell_pre[asm_open_bracket+1:]
       asm_shell_post = asm_shell_post.replace('});', '})');
       pre += asm_shell_pre + '\n' + start_funcs_marker
       post = end_funcs_marker + asm_shell_post + post
@@ -515,7 +518,9 @@ EMSCRIPTEN_FUNCS();
       after = 'wakaUnknownAfter'
       start = coutput.find(after)
       end = coutput.find(')', start)
-      pre = coutput[:start] + '(function(global,env,buffer) {\n' + pre_2[pre_2.find('{')+1:]
+      # First brace is from Closure Compiler comment, thus we need a second one
+      pre_2_second_brace = pre_2.find('{', pre_2.find('{')+1)
+      pre = coutput[:start] + '(/** @suppress {uselessCode} */ function(global,env,buffer) {\n' + pre_2[pre_2_second_brace+1:]
       post = post_1 + end_asm + coutput[end+1:]
 
   with ToolchainProfiler.profile_block('write_pre'):

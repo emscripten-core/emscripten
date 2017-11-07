@@ -522,7 +522,7 @@ function JSify(data, functionsOnly) {
       print('assert(STACK_MAX < SPLIT_MEMORY, "SPLIT_MEMORY size must be big enough so the entire static memory + stack can fit in one chunk, need " + STACK_MAX);\n');
     }
 
-    if (ASSERTIONS) print('var ASSERTIONS = true;\n');
+    print('var ASSERTIONS = ' + !!ASSERTIONS + ';\n');
 
     print(preprocess(read('arrayUtils.js')));
     // Export all arrayUtils.js functions

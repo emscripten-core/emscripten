@@ -185,19 +185,23 @@ var cwrap, ccall;
     }
     var ret = func.apply(null, cArgs);
 #if ASSERTIONS
+#if EMTERPRETIFY_ASYNC
     if ((!opts || !opts.async) && typeof EmterpreterAsync === 'object') {
       assert(!EmterpreterAsync.state, 'cannot start async op with normal JS calling ccall');
     }
     if (opts && opts.async) assert(!returnType, 'async ccalls cannot return values');
 #endif
+#endif
     if (returnType === 'string') ret = Pointer_stringify(ret);
     if (stack !== 0) {
+#if EMTERPRETIFY_ASYNC
       if (opts && opts.async) {
         EmterpreterAsync.asyncFinalizers.push(function() {
           Runtime.stackRestore(stack);
         });
         return;
       }
+#endif
       Runtime.stackRestore(stack);
     }
     return ret;
@@ -406,7 +410,8 @@ function allocate(slab, types, allocator, ptr) {
   }
 
   if (zeroinit) {
-    var ptr = ret, stop;
+    var stop;
+    ptr = ret;
     assert((ret & 3) == 0);
     stop = ret + (size & ~3);
     for (; ptr < stop; ptr += 4) {

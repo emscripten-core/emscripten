@@ -6,31 +6,6 @@
  * The closure_compiler() method in tools/shared.py refers to this file when calling closure.
  */
 
-// Closure externs used by library_uuid.js
-
-/**
- * @param {Array} typedArray
- */
-crypto.getRandomValues = function(typedArray) {};
-
-/**
- BEGIN_NODE_INCLUDE
- var crypto = require('crypto');
- END_NODE_INCLUDE
- */
-
-/**
- * @type {Object.<string,*>}
- */
-var crypto = {};
-
-/**
- * @param {number} size
- * @param {function(Error, buffer.Buffer)} callback
- */
-crypto.randomBytes = function(size, callback) {};
-
-
 // Closure externs used by library_sockfs.js
 
 /**
@@ -107,92 +82,11 @@ var flags = {};
 */
 flags.binary;
 
-
-/**
- * @fileoverview Definitions for W3C's Gamepad specification.
- * @see http://www.w3.org/TR/gamepad/
- * @externs
- */
-
-/**
- * @typedef {{id: string, index: number, timestamp: number, axes: Array.<number>, buttons: Array.<number>}}
- */
-var Gamepad;
-
-/**
-* @type {Array.<number>}
-*/
-Gamepad.buttons;
-
-/**
-* @type {Array.<number>}
-*/
-Gamepad.axes;
-
-/**
-* @type {number}
-*/
-Gamepad.index;
-
-/**
-* @type {string}
-*/
-Gamepad.id;
-
-/**
-* @type {number}
-*/
-Gamepad.timestamp;
-
-/**
- * @return {Array.<Gamepad>}
- */
-navigator.getGamepads = function() {};
-
-/**
- * @return {Array.<Gamepad>}
- */
-navigator.webkitGetGamepads = function() {};
-
-/**
- * @return {Array.<Gamepad>}
- */
-navigator.webkitGamepads = function() {};
-
-/**
- * @return {Array.<Gamepad>}
- */
-navigator.mozGamepads = function() {};
-
-/**
- * @return {Array.<Gamepad>}
- */
-navigator.gamepads = function() {};
-
 /**
  * Backported from latest closure...
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Document/currentScript
  */
 Document.prototype.currentScript;
-
-//Atomics library (not yet in latest closure):
-//See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Atomics
-var Atomics;
-Atomics.prototype.NOTEQUAL = -1;
-Atomics.prototype.OK = 0;
-Atomics.prototype.TIMEDOUT = -2;
-Atomics.prototype.add = function(typedArray, index, value) {};
-Atomics.prototype.and = function(typedArray, index, value) {};
-Atomics.prototype.compareExchange = function(typedArray, index, expectedValue, replacementValue) {};
-Atomics.prototype.exchange = function(typedArray, index, value) {};
-Atomics.prototype.load = function(typedArray, index) {};
-Atomics.prototype.or = function(typedArray, index, value) {};
-Atomics.prototype.store = function(typedArray, index, value) {};
-Atomics.prototype.sub = function(typedArray, index, value) {};
-Atomics.prototype.xor = function(typedArray, index, value) {};
-Atomics.prototype.wait = function(typedArray, index, valuei, timeout) {};
-Atomics.prototype.wake = function(typedArray, index, value) {};
-Atomics.prototype.isLockFree = function(size) {};
 
 /**
  * SIMD.js support (not in upstream closure yet).
@@ -918,7 +812,7 @@ var WebAssembly = {};
  * @param {!BufferSource} bytes
  */
 WebAssembly.Module = function(bytes) {};
-/** 
+/**
  * @constructor
  * @param {!WebAssembly.Module} moduleObject
  * @param {Object=} importObject
@@ -978,7 +872,7 @@ WebAssembly.validate = function(bytes) {};
  * @return {!Array<{name:string, kind:string}>}
  */
 WebAssembly.Module.exports = function(moduleObject) {};
-/** 
+/**
  * @param {!WebAssembly.Module} moduleObject
  * @return {!Array<{module:string, name:string, kind:string}>}
  */
@@ -991,7 +885,7 @@ WebAssembly.Module.imports = function(moduleObject) {};
 WebAssembly.Module.customSections = function(moduleObject, sectionName) {};
 /** @dict */
 WebAssembly.Instance.prototype.exports;
-/** 
+/**
  * @param {number} delta
  * @return {number}
  */
@@ -1019,3 +913,190 @@ WebAssembly.Table.prototype.get = function(index) {};
  * @param {?function(...)} value
  */
 WebAssembly.Table.prototype.set = function(index, value) {};
+
+// Random SpiderMonkey/V8 externs
+
+/**
+ * @param {string} filename
+ * @param {string} type
+ * @return {string}
+ */
+var read = function(filename, type) {};
+/**
+ * @param {string} expression
+ */
+var print = function(expression) {};
+/**
+ * @param {string} expression
+ */
+var printErr = function(expression) {};
+/**
+ * @param {string} filename
+ * @return {ArrayBuffer}
+ */
+var readbuffer = function(filename) {};
+/**
+ * @const
+ */
+var scriptArgs = [];
+/**
+ * @const
+ */
+var quit = function() {};
+/**
+ * @return {number}
+ */
+var dateNow = function() {};
+
+// WebIDL
+
+/**
+ * @suppress {duplicate}
+ */
+var WrapperObject;
+/**
+ * @suppress {duplicate}
+ */
+var getCache;
+/**
+ * @suppress {duplicate}
+ */
+var wrapPointer;
+/**
+ * @suppress {duplicate}
+ */
+var castObject;
+/**
+ * @suppress {duplicate}
+ */
+var destroy;
+/**
+ * @suppress {duplicate}
+ */
+var compare;
+/**
+ * @suppress {duplicate}
+ */
+var getPointer;
+/**
+ * @suppress {duplicate}
+ */
+var getClass;
+/**
+ * @suppress {duplicate}
+ */
+var ensureCache;
+/**
+ * @suppress {duplicate}
+ */
+var ensureString;
+/**
+ * @suppress {duplicate}
+ */
+var ensureInt8;
+/**
+ * @suppress {duplicate}
+ */
+var ensureInt16;
+/**
+ * @suppress {duplicate}
+ */
+var ensureInt32;
+/**
+ * @suppress {duplicate}
+ */
+var ensureFloat32;
+/**
+ * @suppress {duplicate}
+ */
+var ensureFloat64;
+/**
+ * @suppress {duplicate}
+ */
+var VoidPtr;
+
+
+// Various Emscripten-specific global variables
+
+var tempRet0;
+var tempI64;
+var tempDouble;
+/**
+ * @suppress {duplicate}
+ */
+var WasmJS;
+/**
+ * @suppress {duplicate}
+ */
+var Module;
+
+// Various variables that get into WasmJS of Binaryen, but are not present in final build and never actually used (should probably be fixed in future)
+// These are only needed for `interpret-asm2wasm` and not for `asmjs` or `native-wasm`
+
+/**
+ * @suppress {duplicate}
+ */
+var Browser;
+/**
+ * @suppress {duplicate}
+ */
+var SOCKFS = {};
+/**
+ * @suppress {duplicate}
+ */
+var __read_sockaddr = function(addrp, addrlen) {};
+/**
+ * @suppress {duplicate}
+ */
+var DNS = {};
+/**
+ * @suppress {duplicate}
+ */
+var FS;
+/**
+ * @suppress {undefinedVars}
+ */
+var wakaUnknownAfter;
+/**
+ * @suppress {undefinedVars}
+ */
+var wakaUnknownBefore;
+/**
+ * @suppress {duplicate}
+ */
+var env;
+/**
+ * @suppress {duplicate}
+ */
+var ___cxa_free_exception = function() {};
+
+// On top of node externs to avoid some `declared more than once` errors
+
+/**
+ * @suppress {duplicate}
+ */
+var assert;
+/**
+ * @suppress {duplicate}
+ */
+var buffer;
+/**
+ * @suppress {duplicate}
+ */
+var fs;
+/**
+ * @suppress {undefinedVars}
+ */
+var FUNCTION_TABLE;
+/**
+ * @suppress {undefinedVars}
+ */
+var MozBlobBuilder;
+/**
+ * @suppress {undefinedVars}
+ */
+var GL;
+/**
+ * @suppress {undefinedVars}
+ */
+var SDL;
