@@ -26,7 +26,7 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 
 #. Install `Python 2.7 <http://www.python.org/>`_ (not 3.x):
 
-	- For example `python-2.7.5.amd64.msi <http://python.org/ftp/python/2.7.5/python-2.7.5.amd64.msi>`_ (64-bit version) or `python-2.7.5.msi <http://python.org/ftp/python/2.7.5/python-2.7.5.msi>`_ (32-bit version).
+	- For example `python-2.7.12.amd64.msi <http://python.org/ftp/python/2.7.12/python-2.7.12.amd64.msi>`_ (64-bit version) or `python-2.7.12.msi <http://python.org/ftp/python/2.7.12/python-2.7.12.msi>`_ (32-bit version).
 	- Add the path to the Python directory containing **Python.exe** to your PATH. 
 	
 		- Paths are set by opening **System Settings | Advanced system properties**, clicking **Environment Variables** and selecting **PATH**. 
