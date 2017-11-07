@@ -428,7 +428,7 @@ EMSCRIPTEN_FUNCS();
       chunks = [f[1] for f in funcs]
 
     chunks = [chunk for chunk in chunks if len(chunk) > 0]
-    if DEBUG and len(chunks) > 0: print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(list(map(len, chunks))), '-', min(list(map(len, chunks))), file=sys.stderr)
+    if DEBUG and len(chunks) > 0: print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks)), file=sys.stderr)
     funcs = None
 
     if len(chunks) > 0:

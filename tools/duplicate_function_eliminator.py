@@ -226,7 +226,7 @@ def run_on_js(filename, gen_hash_info=False):
   chunks = shared.chunkify(funcs, chunk_size)
 
   chunks = [chunk for chunk in chunks if len(chunk) > 0]
-  if DEBUG and len(chunks) > 0: print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(list(map(len, chunks))), '-', min(list(map(len, chunks))), file=sys.stderr)
+  if DEBUG and len(chunks) > 0: print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks)), file=sys.stderr)
   funcs = None
 
   if len(chunks) > 0:

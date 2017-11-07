@@ -695,7 +695,7 @@ def all_asm_consts(metadata):
     const = trim_asm_const_body(const)
     const = '{ ' + const + ' }'
     args = []
-    arity = max(list(map(len, sigs))) - 1
+    arity = max(map(len, sigs)) - 1
     for i in range(arity):
       args.append('$' + str(i))
     const = 'function(' + ', '.join(args) + ') ' + const
@@ -1861,7 +1861,7 @@ def create_asm_consts_wasm(forwarded_json, metadata):
     const = trim_asm_const_body(const)
     const = '{ ' + const + ' }'
     args = []
-    arity = max(list(map(len, sigs))) - 1
+    arity = max(map(len, sigs)) - 1
     for i in range(arity):
       args.append('$' + str(i))
     const = 'function(' + ', '.join(args) + ') ' + const
