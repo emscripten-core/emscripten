@@ -1861,7 +1861,7 @@ class Building(object):
     assert len(opts) > 0, 'should not call opt with nothing to do'
     opts = opts[:]
     # TODO: disable inlining when needed
-    # if not '-Oz' in opts and not Building.can_inline():
+    # if not Building.can_inline():
     #   opts.append('-disable-inlining')
     #opts += ['-debug-pass=Arguments']
     if not Settings.SIMD:
