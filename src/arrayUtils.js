@@ -9,7 +9,6 @@ function intArrayFromString(stringy, dontAddNull, length) {
   return u8array;
 }
 
-// Temporarily duplicating function pending Python preprocessor support
 var intArrayToString = ASSERTIONS ?
   function (array) {
     var ret = [];
