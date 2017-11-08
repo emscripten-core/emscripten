@@ -1100,3 +1100,10 @@ var GL;
  * @suppress {undefinedVars}
  */
 var SDL;
+
+// Module loaders externs, primarily for Binaryen
+
+/**
+ * @param {Function} wrapper
+ */
+var define = function (wrapper) {};
