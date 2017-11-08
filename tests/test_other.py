@@ -7727,7 +7727,7 @@ int main() {
           js = open('a.out.js').read()
           assert expect_clean_js == ('// ' not in js), 'cleaned-up js must not have comments'
           assert expect_whitespace_js == ('{\n  ' in js), 'whitespace-minified js must not have excess spacing'
-          assert expect_closured == ('var a;' in js), 'closured js must have tiny variable names'
+          assert expect_closured == ('var a;' in js or 'var a,' in js or 'var a=' in js or 'var a ' in js), 'closured js must have tiny variable names'
       finally:
         del os.environ['EMCC_DEBUG']
 
