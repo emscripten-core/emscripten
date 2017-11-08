@@ -1101,7 +1101,7 @@ var GL;
  */
 var SDL;
 
-// Module loaders externs, primarily for Binaryen
+// Module loaders externs, for AMD etc.
 
 /**
  * @param {Function} wrapper
