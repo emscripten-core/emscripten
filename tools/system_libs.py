@@ -609,8 +609,11 @@ class Ports(object):
             return
       # retrieve from remote server
       logging.warning('retrieving port: ' + name + ' from ' + url)
-      import urllib2
-      f = urllib2.urlopen(url)
+      try:
+        from urllib.request import urlopen
+      except ImportError:
+        from urllib2 import urlopen
+      f = urlopen(url)
       data = f.read()
       open(fullname + '.zip', 'wb').write(data)
       State.retrieved = True
