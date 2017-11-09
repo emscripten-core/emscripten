@@ -2390,7 +2390,7 @@ def modularize(final):
   f = open(final, 'w')
   f.write('''var %(EXPORT_NAME)s = function(%(EXPORT_NAME)s) {
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
-  var Module = %(EXPORT_NAME)s; // included code may refer to Module (e.g. from file packager), so alias it
+  Module = %(EXPORT_NAME)s; // included code may refer to Module (e.g. from file packager), so alias it
 
 %(src)s
 
