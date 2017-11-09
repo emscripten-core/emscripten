@@ -1822,6 +1822,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.MODULARIZE:
         final = modularize(final)
 
+      final = module_export_name_substitution(final)
+
       # The JS is now final. Move it to its final location
       shutil.move(final, js_target)
 
@@ -2388,21 +2390,34 @@ def modularize(final):
   src = open(final).read()
   final = final + '.modular.js'
   f = open(final, 'w')
+  # Included code may refer to Module (e.g. from file packager), so alias it
+  # Export the function as Node module, otherwise it is lost when loaded in Node.js or similar environments
   f.write('''var %(EXPORT_NAME)s = function(%(EXPORT_NAME)s) {
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
-  Module = %(EXPORT_NAME)s; // included code may refer to Module (e.g. from file packager), so alias it
+  Module = %(EXPORT_NAME)s;
 
 %(src)s
 
   return %(EXPORT_NAME)s;
 };
-// Export the function if this is for Node (or similar UMD-style exporting), otherwise it is lost.
 if (typeof module === "object" && module.exports) {
   module['exports'] = %(EXPORT_NAME)s;
 };
 ''' % {"EXPORT_NAME": shared.Settings.EXPORT_NAME, "src": src})
   f.close()
   if DEBUG: save_intermediate('modularized', 'js')
+  return final
+
+
+def module_export_name_substitution(final):
+  logging.debug('Private module export name substitution with ' + shared.Settings.EXPORT_NAME)
+  src = open(final).read()
+  final = final + '.module_export_name_substitution.js'
+  f = open(final, 'w')
+  replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": shared.Settings.EXPORT_NAME}
+  f.write(src.replace('"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__"', replacement))
+  f.close()
+  if DEBUG: save_intermediate('module_export_name_substitution', 'js')
   return final
 
 
