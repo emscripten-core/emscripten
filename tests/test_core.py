@@ -2315,7 +2315,7 @@ The current type of b is: 9
 def process(filename):
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createDataFile('/', 'liblib.so', " + str(map(ord, open('liblib.so', 'rb').read())) + ", true, false, false);"
+    "FS.createDataFile('/', 'liblib.so', " + str(list(bytearray(open('liblib.so', 'rb').read()))) + ", true, false, false);"
   )
   open(filename, 'w').write(src)
 '''
