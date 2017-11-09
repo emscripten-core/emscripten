@@ -1174,6 +1174,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.BINARYEN_PASSES:
             shared.Settings.BINARYEN_PASSES += ','
           shared.Settings.BINARYEN_PASSES += 'safe-heap'
+        if shared.Settings.ONLY_MY_CODE:
+          logging.warning('Instead of ONLY_MY_CODE, for wasm it is recommended to use SIDE_MODULE, see https://github.com/kripken/emscripten/wiki/WebAssembly-Standalone')
 
       # wasm outputs are only possible with a side wasm
       if target.endswith(WASM_ENDINGS):

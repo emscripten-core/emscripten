@@ -619,6 +619,10 @@ var ONLY_MY_CODE = 0; // This disables linking and other causes of adding extra 
                       // automatically, and as a result, your output compiled code
                       // (in the .asm.js file, if you emit with --separate-asm) will
                       //  contain only the functions you provide.
+                      // Note: this still emits JS support code. If you want just
+                      //       a wasm file from your compiled code, without JS support
+                      //       or system libraries, you can use a wasm side module, see
+                      //       https://github.com/kripken/emscripten/wiki/WebAssembly-Standalone
 
 var PGO = 0; // Enables profile-guided optimization in the form of runtime checks for
              // which functions are actually called. Emits a list during shutdown that you
