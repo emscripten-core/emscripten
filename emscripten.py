@@ -2197,10 +2197,12 @@ def _main(args=None):
                     default=None,
                     help=('Where to create temporary files.'))
   parser.add_argument('-v', '--verbose',
+                    default=None,
                     action='store_true',
                     dest='verbose',
                     help='Displays debug output')
   parser.add_argument('-q', '--quiet',
+                    default=None,
                     action='store_false',
                     dest='verbose',
                     help='Hides debug output')
