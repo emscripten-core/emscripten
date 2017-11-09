@@ -2574,6 +2574,8 @@ def generate_html(target, options, js_target, target_basename,
       script.inline = f.read() + script.inline
       f.close()
 
+    script.inline = 'var ASSERTIONS = %s;\n%s' % (shared.Settings.ASSERTIONS, script.inline)
+
   # inline script for SINGLE_FILE output
   if shared.Settings.SINGLE_FILE:
     js_contents = script.inline or ''
