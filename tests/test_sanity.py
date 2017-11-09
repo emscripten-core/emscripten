@@ -1017,12 +1017,14 @@ fi
           prep()
           assert not os.path.exists(tag_file)
           try_delete('a.out.js')
+          try_delete('a.out.wasm')
           cmd = [PYTHON, 'emcc.py', 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
           if side_module:
             cmd += ['-s', 'SIDE_MODULE=1']
           subprocess.check_call(cmd)
           assert os.path.exists(tag_file)
-          assert os.path.exists('a.out.js')
+          assert os.path.exists('a.out.wasm')
           if not side_module:
+            assert os.path.exists('a.out.js')
             self.assertContained('hello, world!', run_js('a.out.js'))
 
