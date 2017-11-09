@@ -1424,13 +1424,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       logging.debug('will generate JavaScript')
 
       extra_files_to_link = []
+      # process ports even if not linking them; ports also set up the
+      # settings (e.g. the bin dir of binaryen)
+      ports_files_to_link = system_libs.get_ports(shared.Settings)
 
       if not LEAVE_INPUTS_RAW and \
          not shared.Settings.BUILD_AS_SHARED_LIB and \
          not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and \
          not shared.Settings.ONLY_MY_CODE and \
          not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
-        extra_files_to_link = system_libs.get_ports(shared.Settings)
+        extra_files_to_link = ports_files_to_link
         extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, in_temp, stdout_=None, stderr_=None, forced=forced_stdlibs)
 
     # exit block 'calculate system libraries'

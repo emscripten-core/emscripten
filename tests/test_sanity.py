@@ -1010,3 +1010,13 @@ fi
       assert not os.path.exists('a.out.js')
       self.assertContained('For example, for binaryen, do "python embuilder.py build binaryen"', out)
 
+      if not binaryen_root_in_config:
+        print('build on demand')
+        for more in [[], ['-s', 'SIDE_MODULE=1']]:
+          print(more)
+          prep()
+          assert not os.path.exists(tag_file)
+          subprocess.check_call([PYTHON, 'emcc.py', 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'] + more)
+          assert os.path.exists(tag_file)
+          self.assertContained('hello, world!', run_js('a.out.js'))
+
