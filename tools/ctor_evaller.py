@@ -322,7 +322,7 @@ if __name__ == '__main__':
     # js path
     mem_init_file = binary_file
     if os.path.exists(mem_init_file):
-      mem_init = json.dumps(list(map(ord, open(mem_init_file, 'rb').read())))
+      mem_init = json.dumps(list(bytearray(open(mem_init_file, 'rb').read())))
     else:
       mem_init = []
 
