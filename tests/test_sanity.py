@@ -1012,11 +1012,17 @@ fi
 
       if not binaryen_root_in_config:
         print('build on demand')
-        for more in [[], ['-s', 'SIDE_MODULE=1']]:
-          print(more)
+        for side_module in (False, True):
+          print(side_module)
           prep()
           assert not os.path.exists(tag_file)
-          subprocess.check_call([PYTHON, 'emcc.py', 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'] + more)
+          try_delete('a.out.js')
+          cmd = [PYTHON, 'emcc.py', 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
+          if side_module:
+            cmd += ['-s', 'SIDE_MODULE=1']
+          subprocess.check_call(cmd)
           assert os.path.exists(tag_file)
-          self.assertContained('hello, world!', run_js('a.out.js'))
+          assert os.path.exists('a.out.js')
+          if not side_module:
+            self.assertContained('hello, world!', run_js('a.out.js'))
 
