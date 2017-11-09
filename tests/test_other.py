@@ -2151,7 +2151,7 @@ int f() {
                 for i in stuff:
                   if i not in func: return func
                 indexes = [[i, func.index(i)] for i in stuff]
-                indexes.sort(lambda x, y: x[1] - y[1])
+                indexes.sort(key=lambda x: x[1])
                 for j in range(len(indexes)):
                   func = func.replace(indexes[j][0], 'STD_' + str(j))
                 return func
