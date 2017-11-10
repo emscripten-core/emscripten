@@ -975,6 +975,7 @@ var LibraryBrowser = {
     );
   },
 
+  // Callable from pthread, executes in pthread context.
   emscripten_async_run_script__deps: ['emscripten_run_script'],
   emscripten_async_run_script: function(script, millis) {
     Module['noExitRuntime'] = true;
@@ -1014,11 +1015,13 @@ var LibraryBrowser = {
     document.body.appendChild(script);
   },
 
+  // Runs natively in pthread, no __proxy needed.
   emscripten_get_main_loop_timing: function(mode, value) {
     if (mode) {{{ makeSetValue('mode', 0, 'Browser.mainLoop.timingMode', 'i32') }}};
     if (value) {{{ makeSetValue('value', 0, 'Browser.mainLoop.timingValue', 'i32') }}};
   },
 
+  // Runs natively in pthread, no __proxy needed.
   emscripten_set_main_loop_timing: function(mode, value) {
     Browser.mainLoop.timingMode = mode;
     Browser.mainLoop.timingValue = value;
@@ -1042,34 +1045,37 @@ var LibraryBrowser = {
       };
       Browser.mainLoop.method = 'rAF';
     } else if (mode == 2 /*EM_TIMING_SETIMMEDIATE*/) {
-      if (!window['setImmediate']) {
+      if (typeof setImmediate === 'undefined') {
         // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
         var setImmediates = [];
         var emscriptenMainLoopMessageId = 'setimmediate';
         function Browser_setImmediate_messageHandler(event) {
-          if (event.source === window && event.data === emscriptenMainLoopMessageId) {
+          // When called in current thread or Worker, the main loop ID is structured slightly different to accommodate for --proxy-to-worker runtime listening to Worker events,
+          // so check for both cases.
+          if (event.data === emscriptenMainLoopMessageId || event.data.target === emscriptenMainLoopMessageId) {
             event.stopPropagation();
             setImmediates.shift()();
           }
         }
-        window.addEventListener("message", Browser_setImmediate_messageHandler, true);
-        window['setImmediate'] = function Browser_emulated_setImmediate(func) {
+        addEventListener("message", Browser_setImmediate_messageHandler, true);
+        setImmediate = function Browser_emulated_setImmediate(func) {
           setImmediates.push(func);
           if (ENVIRONMENT_IS_WORKER) {
             if (Module['setImmediates'] === undefined) Module['setImmediates'] = [];
             Module['setImmediates'].push(func);
-            window.postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js
-          } else window.postMessage(emscriptenMainLoopMessageId, "*"); // On the main thread, can just send the message to itself.
+            postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js
+          } else postMessage(emscriptenMainLoopMessageId, "*"); // On the main thread, can just send the message to itself.
         }
       }
       Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler_setImmediate() {
-        window['setImmediate'](Browser.mainLoop.runner);
+        setImmediate(Browser.mainLoop.runner);
       };
       Browser.mainLoop.method = 'immediate';
     }
     return 0;
   },
 
+  // Runs natively in pthread, no __proxy needed.
   emscripten_set_main_loop__deps: ['emscripten_set_main_loop_timing', 'emscripten_get_now'],
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop, arg, noSetTiming) {
     Module['noExitRuntime'] = true;
@@ -1181,24 +1187,29 @@ var LibraryBrowser = {
     }
   },
 
+  // Runs natively in pthread, no __proxy needed.
   emscripten_set_main_loop_arg__deps: ['emscripten_set_main_loop'],
   emscripten_set_main_loop_arg: function(func, arg, fps, simulateInfiniteLoop) {
     _emscripten_set_main_loop(func, fps, simulateInfiniteLoop, arg);
   },
 
+  // Runs natively in pthread, no __proxy needed.
   emscripten_cancel_main_loop: function() {
     Browser.mainLoop.pause();
     Browser.mainLoop.func = null;
   },
 
+  // Runs natively in pthread, no __proxy needed.
   emscripten_pause_main_loop: function() {
     Browser.mainLoop.pause();
   },
 
+  // Runs natively in pthread, no __proxy needed.
   emscripten_resume_main_loop: function() {
     Browser.mainLoop.resume();
   },
 
+  // Runs natively in pthread, no __proxy needed.
   _emscripten_push_main_loop_blocker: function(func, arg, name) {
     Browser.mainLoop.queue.push({ func: function() {
       Module['dynCall_vi'](func, arg);
@@ -1206,6 +1217,7 @@ var LibraryBrowser = {
     Browser.mainLoop.updateStatus();
   },
 
+  // Runs natively in pthread, no __proxy needed.
   _emscripten_push_uncounted_main_loop_blocker: function(func, arg, name) {
     Browser.mainLoop.queue.push({ func: function() {
       Module['dynCall_vi'](func, arg);
@@ -1213,12 +1225,14 @@ var LibraryBrowser = {
     Browser.mainLoop.updateStatus();
   },
 
+  // Runs natively in pthread, no __proxy needed.
   emscripten_set_main_loop_expected_blockers: function(num) {
     Browser.mainLoop.expectedBlockers = num;
     Browser.mainLoop.remainingBlockers = num;
     Browser.mainLoop.updateStatus();
   },
 
+  // Runs natively in pthread, no __proxy needed.
   emscripten_async_call: function(func, arg, millis) {
     Module['noExitRuntime'] = true;
 
@@ -1233,11 +1247,14 @@ var LibraryBrowser = {
     }
   },
 
+  // Callable in pthread without __proxy needed.
   emscripten_exit_with_live_runtime: function() {
     Module['noExitRuntime'] = true;
     throw 'SimulateInfiniteLoop';
   },
 
+  emscripten_force_exit__proxy: 'sync',
+  emscripten_force_exit__sig: 'vi',
   emscripten_force_exit: function(status) {
     Module['noExitRuntime'] = false;
     Module['exit'](status);
