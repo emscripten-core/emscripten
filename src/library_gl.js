@@ -659,7 +659,7 @@ var LibraryGL = {
       function shouldEnableAutomatically(extension) {
         var ret = false;
         automaticallyEnabledExtensions.forEach(function(include) {
-          if (ext.indexOf(include) != -1) {
+          if (extension.indexOf(include) != -1) {
             ret = true;
           }
         });
