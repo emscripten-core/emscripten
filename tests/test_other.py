@@ -7995,3 +7995,19 @@ int main() {
                     assert expect_wast == os.path.exists('a.out.wast')
                     if should_run_js:
                       self.assertContained('hello, world!', run_js('a.out.js'))
+
+  def test_emar_M(self):
+    open('file1', 'w').write(' ')
+    open('file2', 'w').write(' ')
+    subprocess.call([PYTHON, EMAR, 'cr', 'file1.a', 'file1'])
+    subprocess.call([PYTHON, EMAR, 'cr', 'file2.a', 'file2'])
+    emar = subprocess.Popen([PYTHON, EMAR, '-M'], stdin=PIPE)
+    emar.communicate('''create combined.a
+addlib file1.a
+addlib file2.a
+save
+end
+''')
+    result = subprocess.check_output([PYTHON, EMAR, 't', 'combined.a'])
+    assert 'file1' in result
+    assert 'file2' in result
