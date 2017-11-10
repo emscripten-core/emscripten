@@ -1529,6 +1529,52 @@ int f() {
 
     self.assertContained('a\nb\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+  def test_dup_o_in_one_a_with_rsp_file(self):
+    open('common.c', 'w').write(r'''
+      #include <stdio.h>
+      void a(void) {
+        printf("a\n");
+      }
+    ''')
+    os.makedirs("temp")
+    open('temp/common.c', 'w').write(r'''
+      #include <stdio.h>
+      void c(void) {
+        printf("c\n");
+      }
+    ''')
+
+    open('test.rsp', 'w').write(r'''common.o temp/common.o
+    ''')
+    Popen([PYTHON, EMCC, 'common.c', '-c', '-o', 'common.o']).communicate()
+    Popen([PYTHON, EMCC, 'temp/common.c', '-c', '-o', 'temp/common.o']).communicate()
+    Popen([PYTHON, EMAR, 'rc', 'liba.a', '@test.rsp']).communicate()
+
+    open('common.c', 'w').write(r'''
+      #include <stdio.h>
+      void b(void) {
+        printf("b\n");
+      }
+    ''')
+    open('test.rsp', 'w').write(r'''common.o
+    ''')
+    Popen([PYTHON, EMCC, 'common.c', '-c', '-o', 'common.o']).communicate()
+    Popen([PYTHON, EMAR, 'rc', 'libb.a', '@test.rsp']).communicate()
+
+    open('main.c', 'w').write(r'''
+      void a(void);
+      void b(void);
+      void c(void);
+      int main() {
+        a();
+        b();
+        c();
+      }
+    ''')
+    Popen([PYTHON, EMCC, 'main.c', '-L.', '-la', '-lb']).communicate()
+
+    self.assertContained('a\nb\nc\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
   def test_dup_o_in_one_a(self):
     open('common.c', 'w').write(r'''
       #include <stdio.h>

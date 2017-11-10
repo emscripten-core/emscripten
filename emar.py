@@ -14,6 +14,23 @@ if __name__ == '__main__':
 
 import os, subprocess, sys
 from tools import shared
+import shlex
+
+def handle_args_from_files(argument_input):
+  new_arg_list = []
+  for elem in argument_input:
+    if elem.startswith("@"):
+      with open(elem.replace("@","")) as args_file:
+        arg_strings = []
+        for arg_line in args_file.read().splitlines():
+          for arg in shlex.split(arg_line):
+            arg_strings.append(arg)
+        #recurse
+        arg_strings = handle_args_from_files(arg_strings)
+        new_arg_list.extend(arg_strings)
+    else:
+      new_arg_list.append(elem)
+  return new_arg_list
 
 #
 # Main run() function
@@ -23,7 +40,10 @@ def run():
   if DEBUG == "0":
     DEBUG = None
 
-  newargs = [shared.LLVM_AR] + sys.argv[1:]
+  #handle reading args from files
+  expanded_args = handle_args_from_files(sys.argv)
+
+  newargs = [shared.LLVM_AR] + expanded_args[1:]
 
   if DEBUG:
     print('emar:', sys.argv, '  ==>  ', newargs, file=sys.stderr)
