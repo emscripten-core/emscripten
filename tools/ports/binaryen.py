@@ -18,8 +18,8 @@ def needed(settings, shared, ports):
 def get(ports, settings, shared):
   if not needed(settings, shared, ports):
     return []
-  ports.fetch_project('binaryen', 'https://github.com/WebAssembly/binaryen/archive/' + TAG + '.zip', 'binaryen-' + TAG)
   def create():
+    ports.fetch_project('binaryen', 'https://github.com/WebAssembly/binaryen/archive/' + TAG + '.zip', 'binaryen-' + TAG)
     logging.info('building port: binaryen')
     ports.build_native(os.path.join(ports.get_dir(), 'binaryen', 'binaryen-' + TAG))
     # the "output" of this port build is a tag file, saying which port we have

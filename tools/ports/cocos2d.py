@@ -8,10 +8,9 @@ TAG = 'version_3_3'
 
 def get(ports, settings, shared):
   if settings.USE_COCOS2D == 3:
-    ports.fetch_project(
-      'Cocos2d', 'https://github.com/emscripten-ports/Cocos2d/archive/' + TAG + '.zip', 'Cocos2d-' + TAG)
-
     def create():
+      ports.fetch_project(
+        'Cocos2d', 'https://github.com/emscripten-ports/Cocos2d/archive/' + TAG + '.zip', 'Cocos2d-' + TAG)
       logging.info('building port: Cocos2d v3')
       logging.warn('Cocos2d: library is experimental, do not expect that it will work out of the box')
 

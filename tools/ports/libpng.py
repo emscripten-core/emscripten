@@ -5,8 +5,8 @@ TAG = 'version_1'
 
 def get(ports, settings, shared):
   if settings.USE_LIBPNG == 1:
-    ports.fetch_project('libpng', 'https://github.com/emscripten-ports/libpng/archive/' + TAG + '.zip', 'libpng-' + TAG)
     def create():
+      ports.fetch_project('libpng', 'https://github.com/emscripten-ports/libpng/archive/' + TAG + '.zip', 'libpng-' + TAG)
       logging.info('building port: libpng')
 
       source_path = os.path.join(ports.get_dir(), 'libpng', 'libpng-' + TAG)

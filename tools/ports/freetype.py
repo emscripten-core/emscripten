@@ -5,8 +5,8 @@ TAG = 'version_1'
 
 def get(ports, settings, shared):
   if settings.USE_FREETYPE == 1:
-    ports.fetch_project('freetype', 'https://github.com/emscripten-ports/FreeType/archive/' + TAG + '.zip', 'FreeType-' + TAG)
     def create():     
+      ports.fetch_project('freetype', 'https://github.com/emscripten-ports/FreeType/archive/' + TAG + '.zip', 'FreeType-' + TAG)
       ports.clear_project_build('freetype')
 
       source_path = os.path.join(ports.get_dir(), 'freetype', 'FreeType-' + TAG)

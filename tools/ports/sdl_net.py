@@ -6,8 +6,8 @@ def get(ports, settings, shared):
   if settings.USE_SDL_NET == 2:
     sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
     assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_net'
-    ports.fetch_project('sdl2-net', 'https://github.com/emscripten-ports/SDL2_net/archive/' + TAG + '.zip', 'SDL2_net-' + TAG)
     def create():
+      ports.fetch_project('sdl2-net', 'https://github.com/emscripten-ports/SDL2_net/archive/' + TAG + '.zip', 'SDL2_net-' + TAG)
       logging.info('building port: sdl2-net')
       shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2-net', 'SDL2_net-' + TAG, 'SDL_net.h'), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL_net.h'))
       shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2-net', 'SDL2_net-' + TAG, 'SDL_net.h'), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL2', 'SDL_net.h'))

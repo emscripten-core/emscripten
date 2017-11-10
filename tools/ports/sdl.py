@@ -20,8 +20,8 @@ def get_with_configure(ports, settings, shared): # not currently used; no real n
 
 def get(ports, settings, shared):
   if settings.USE_SDL == 2:
-    ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', 'SDL2-' + TAG)
     def create():
+      ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', 'SDL2-' + TAG)
       # we are rebuilding SDL, clear dependant projects so they copy in their includes to ours properly
       ports.clear_project_build('sdl2-image')
       # copy includes to a location so they can be used as 'SDL2/'
