@@ -4276,7 +4276,7 @@ var LibraryGL = {
           GL.shaderInfos[shader].ftransform = need_pm || need_mm || need_pv; // we will need to provide the fixed function stuff as attributes and uniforms
           for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
             // XXX To handle both regular texture mapping and cube mapping, we use vec4 for tex coordinates.
-            var old = source;
+            old = source;
             var need_vtc = source.search('v_texCoord' + i) == -1;
             source = source.replace(new RegExp('gl_TexCoord\\[' + i + '\\]', 'g'), 'v_texCoord' + i)
                            .replace(new RegExp('gl_MultiTexCoord' + i, 'g'), 'a_texCoord' + i);
@@ -4312,8 +4312,8 @@ var LibraryGL = {
           }
           source = ensurePrecision(source);
         } else { // Fragment shader
-          for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
-            var old = source;
+          for (i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
+            old = source;
             source = source.replace(new RegExp('gl_TexCoord\\[' + i + '\\]', 'g'), 'v_texCoord' + i);
             if (source != old) {
               source = 'varying vec4 v_texCoord' + i + ';   \n' + source;

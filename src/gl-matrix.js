@@ -654,8 +654,6 @@ mat4.identity = function (dest) {
  *
  * @param {mat4} mat mat4 to transpose
  * @param {mat4} [dest] mat4 receiving transposed values. If not specified result is written to mat
- *
- * @param {mat4} dest is specified, mat otherwise
  */
 mat4.transpose = function (mat, dest) {
     // If we are transposing ourselves we can skip a few steps but have to cache some values
