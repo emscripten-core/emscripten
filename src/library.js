@@ -632,7 +632,7 @@ LibraryManager.library = {
       ENV['PATH'] = '/';
       ENV['PWD'] = '/';
       ENV['HOME'] = '/home/web_user';
-      ENV['LANG'] = 'C';
+      ENV['LANG'] = 'C.UTF-8';
       ENV['_'] = Module['thisProgram'];
       // Allocate memory.
       poolPtr = allocate(TOTAL_ENV_SIZE, 'i8', ALLOC_STATIC);
