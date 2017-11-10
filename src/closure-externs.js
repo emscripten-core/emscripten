@@ -1112,6 +1112,44 @@ var SDL;
 var define = function (wrapper) {};
 
 /**
+ * GL functions (https://github.com/kripken/emscripten/commit/97a464a654fdadf5dfb8aa082b48516e6bf8d402#commitcomment-25520648)
+ */
+var _emscripten_glDrawArrays;
+var _emscripten_glDrawElements;
+var _emscripten_glActiveTexture;
+var _emscripten_glEnable;
+var _emscripten_glDisable;
+var _emscripten_glTexEnvf;
+var _emscripten_glTexEnvi;
+var _emscripten_glTexEnvfv;
+var _emscripten_glGetIntegerv;
+var _emscripten_glIsEnabled;
+var _emscripten_glGetBooleanv;
+var _emscripten_glGetString;
+var _emscripten_glCreateShader;
+var _emscripten_glShaderSource;
+var _emscripten_glCompileShader;
+var _emscripten_glAttachShader;
+var _emscripten_glDetachShader;
+var _emscripten_glUseProgram;
+var _emscripten_glDeleteProgram;
+var _emscripten_glBindAttribLocation;
+var _emscripten_glLinkProgram;
+var _emscripten_glBindBuffer;
+var _emscripten_glGetFloatv;
+var _emscripten_glHint;
+var _emscripten_glEnableVertexAttribArray;
+var _emscripten_glDisableVertexAttribArray;
+var _emscripten_glVertexAttribPointer;
+
+var _glDrawArrays;
+var _glTexEnvf;
+var _glTexEnvi;
+var _glTexEnvfv;
+var _glGetTexEnviv;
+var _glGetTexEnvfv;
+
+/**
  * @param {string} type
  * @param {!Function} listener
  */
