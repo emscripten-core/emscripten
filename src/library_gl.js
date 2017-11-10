@@ -286,7 +286,7 @@ var LibraryGL = {
       }
 #if LEGACY_GL_EMULATION
       // Let's see if we need to enable the standard derivatives extension
-      type = GLctx.getShaderParameter(GL.shaders[shader], 0x8B4F /* GL_SHADER_TYPE */);
+      var type = GLctx.getShaderParameter(GL.shaders[shader], 0x8B4F /* GL_SHADER_TYPE */);
       if (type == 0x8B30 /* GL_FRAGMENT_SHADER */) {
         if (GL.findToken(source, "dFdx") ||
             GL.findToken(source, "dFdy") ||
@@ -3646,7 +3646,7 @@ var LibraryGL = {
       {{{ makeSetValue('p', '0', 'ptable.maxUniformLength', 'i32') }}};
     } else if (pname == 0x8B8A /* GL_ACTIVE_ATTRIBUTE_MAX_LENGTH */) {
       if (ptable.maxAttributeLength == -1) {
-        var program = GL.programs[program];
+        program = GL.programs[program];
         var numAttribs = GLctx.getProgramParameter(program, GLctx.ACTIVE_ATTRIBUTES);
         ptable.maxAttributeLength = 0; // Spec says if there are no active attribs, 0 must be returned.
         for (var i = 0; i < numAttribs; ++i) {
@@ -3657,7 +3657,7 @@ var LibraryGL = {
       {{{ makeSetValue('p', '0', 'ptable.maxAttributeLength', 'i32') }}};
     } else if (pname == 0x8A35 /* GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH */) {
       if (ptable.maxUniformBlockNameLength == -1) {
-        var program = GL.programs[program];
+        program = GL.programs[program];
         var numBlocks = GLctx.getProgramParameter(program, GLctx.ACTIVE_UNIFORM_BLOCKS);
         ptable.maxUniformBlockNameLength = 0;
         for (var i = 0; i < numBlocks; ++i) {

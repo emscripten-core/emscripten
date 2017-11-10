@@ -1102,7 +1102,15 @@ var GL;
 /**
  * @suppress {duplicate, undefinedVars}
  */
+var WebGLClient;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
 var SDL;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var JSEvents;
 
 // Module loaders externs, for AMD etc.
 
@@ -1148,6 +1156,19 @@ var _glTexEnvi;
 var _glTexEnvfv;
 var _glGetTexEnviv;
 var _glGetTexEnvfv;
+
+/**
+ * @typy {Worker}
+ */
+var worker;
+/**
+ * @type {number}
+ */
+var majorVersion;
+/**
+ * @type {number}
+ */
+var minorVersion;
 
 /**
  * @param {string} type
