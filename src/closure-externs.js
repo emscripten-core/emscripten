@@ -1110,3 +1110,9 @@ var SDL;
  * @param {Function} wrapper
  */
 var define = function (wrapper) {};
+
+/**
+ * @param {string} type
+ * @param {!Function} listener
+ */
+var addEventListener = function (type, listener) {};
