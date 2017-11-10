@@ -801,6 +801,9 @@ SIMD.Bool16x8.fromFloat64x2 = function() {};
 SIMD.Bool32x4.fromFloat64x2 = function() {};
 SIMD.Bool64x2.fromFloat64x2 = function() {};
 
+/**
+ * @suppress {duplicate}
+ */
 var GLctx = {};
 
 /**
@@ -1093,11 +1096,11 @@ var FUNCTION_TABLE;
  */
 var MozBlobBuilder;
 /**
- * @suppress {undefinedVars}
+ * @suppress {duplicate, undefinedVars}
  */
 var GL;
 /**
- * @suppress {undefinedVars}
+ * @suppress {duplicate, undefinedVars}
  */
 var SDL;
 
