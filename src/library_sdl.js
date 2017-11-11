@@ -1336,14 +1336,6 @@ var LibrarySDL = {
       document.addEventListener("visibilitychange", SDL.receiveEvent);
     }
 
-    if (initFlags & 0x200) {
-      // SDL_INIT_JOYSTICK
-      // Firefox will not give us Joystick data unless we register this NOP
-      // callback.
-      // https://bugzilla.mozilla.org/show_bug.cgi?id=936104
-      addEventListener("gamepadconnected", function() {});
-    }
-
     window.addEventListener("unload", SDL.receiveEvent);
     SDL.keyboardState = _malloc(0x10000); // Our SDL needs 512, but 64K is safe for older SDLs
     _memset(SDL.keyboardState, 0, 0x10000);
