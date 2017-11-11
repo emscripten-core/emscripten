@@ -1278,7 +1278,7 @@ mergeInto(LibraryManager.library, {
         random_device = function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
       } else if (ENVIRONMENT_IS_NODE) {
         // for nodejs
-        random_device = function() { return require('crypto').randomBytes(1)[0]; };
+        random_device = function() { return require('crypto')['randomBytes'](1)[0]; };
       } else {
         // default for ES5 platforms
         random_device = function() { return (Math.random()*256)|0; };
