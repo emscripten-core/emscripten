@@ -1235,12 +1235,33 @@ var _emscripten_glDisableVertexAttribArray;
  */
 var _emscripten_glVertexAttribPointer;
 
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
 var _glDrawArrays;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
 var _glDrawElements;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
 var _glTexEnvf;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
 var _glTexEnvi;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
 var _glTexEnvfv;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
 var _glGetTexEnviv;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
 var _glGetTexEnvfv;
 
 var _glutPostRedisplay = function() {};
