@@ -1110,6 +1110,10 @@ var SDL;
 /**
  * @suppress {duplicate, undefinedVars}
  */
+var SDL2;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
 var JSEvents;
 
 // Module loaders externs, for AMD etc.
@@ -1232,11 +1236,14 @@ var _emscripten_glDisableVertexAttribArray;
 var _emscripten_glVertexAttribPointer;
 
 var _glDrawArrays;
+var _glDrawElements;
 var _glTexEnvf;
 var _glTexEnvi;
 var _glTexEnvfv;
 var _glGetTexEnviv;
 var _glGetTexEnvfv;
+
+var _glutPostRedisplay = function() {};
 
 /**
  * @typy {Worker}
