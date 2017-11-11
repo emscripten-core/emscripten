@@ -1370,7 +1370,7 @@ var LibraryGL = {
     if (GL.currentContext.supportsWebGL2EntryPoints) {
       // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding) {
-        GLctx.texSubImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
+        GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
       } else if (pixels != 0) {
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, emscriptenWebGLGetHeapForType(type), pixels >> emscriptenWebGLGetShiftForType(type));
       } else {
