@@ -4,6 +4,7 @@ language: python
 
 env:
 - TEST_TARGET=other
+- TEST_TARGET=browser
 - TEST_TARGET="ALL.test_a* ALL.test_b*"
 - TEST_TARGET=ALL.test_c*
 - TEST_TARGET="default.test_d* asm1.test_d* asm2.test_d* asm2f.test_d* asm2g.test_d* asm3.test_d*"

@@ -37,6 +37,21 @@ import tools.shared
 from tools.shared import *
 from tools.line_endings import check_line_endings
 
+# User can specify an environment variable EMSCRIPTEN_BROWSER to force the browser test suite to
+# run using another browser command line than the default system browser.
+# Setting '0' as the browser disables running a browser (but we still see tests compile)
+emscripten_browser = os.environ.get('EMSCRIPTEN_BROWSER')
+if emscripten_browser:
+  cmd = shlex.split(emscripten_browser)
+  def run_in_other_browser(url):
+    Popen(cmd + [url])
+  if EM_BUILD_VERBOSE_LEVEL >= 3:
+    print("using Emscripten browser: " + str(cmd), file=sys.stderr)
+  webbrowser.open_new = run_in_other_browser
+
+def has_browser():
+  return emscripten_browser != '0'
+
 # Sanity check for config
 
 try:
@@ -767,6 +782,7 @@ class BrowserCore(RunnerCore):
   @classmethod
   def setUpClass(self):
     super(BrowserCore, self).setUpClass()
+    if not has_browser(): return
     self.browser_timeout = 30
     self.harness_queue = multiprocessing.Queue()
     self.harness_server = multiprocessing.Process(target=harness_server_func, args=(self.harness_queue,))
@@ -777,13 +793,16 @@ class BrowserCore(RunnerCore):
   @classmethod
   def tearDownClass(self):
     super(BrowserCore, self).tearDownClass()
+    if not has_browser(): return
     self.harness_server.terminate()
     print('[Browser harness server terminated]')
-    # On Windows, shutil.rmtree() in tearDown() raises this exception if we do not wait a bit:
-    # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.
-    time.sleep(0.1)
+    if WINDOWS:
+      # On Windows, shutil.rmtree() in tearDown() raises this exception if we do not wait a bit:
+      # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.
+      time.sleep(0.1)
 
   def run_browser(self, html_file, message, expectedResult=None, timeout=None):
+    if not has_browser(): return
     print('[browser launch:', html_file, ']')
     if expectedResult is not None:
       try:
