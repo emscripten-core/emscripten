@@ -3776,7 +3776,7 @@ var LibraryGL = {
 
   glIsProgram__sig: 'ii',
   glIsProgram: function(program) {
-    var program = GL.programs[program];
+    program = GL.programs[program];
     if (!program) return 0;
     return GLctx.isProgram(program);
   },
