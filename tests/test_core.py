@@ -4196,7 +4196,7 @@ def process(filename):
         printf("*%d\n", c);
       }
     '''
-    open('file_with_byte_234.txt', 'wb').write('\xea')
+    open('file_with_byte_234.txt', 'wb').write(b'\xea')
     self.emcc_args += ['--embed-file', 'file_with_byte_234.txt']
     self.do_run(src, '*234\n')
 
@@ -4219,7 +4219,7 @@ def process(filename):
         return 0;
       }
     '''
-    open('eol.txt', 'wb').write('\n')
+    open('eol.txt', 'wb').write(b'\n')
     self.emcc_args += ['--embed-file', 'eol.txt']
     self.do_run(src, 'SUCCESS\n')
 
