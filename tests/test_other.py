@@ -7047,7 +7047,10 @@ int main() {
     shutil.rmtree(os.path.join(current_directory, with_space))
 
     # We want only the relative path to be in the linker args, it should not be converted to an absolute path.
-    self.assertItemsEqual(link_args, [main_object_file_name])
+    if hasattr(self, 'assertCountEqual'):
+      self.assertCountEqual(link_args, [main_object_file_name])
+    else:
+      self.assertItemsEqual(link_args, [main_object_file_name])
 
   def test_memory_growth_noasm(self):
     check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-s', 'ALLOW_MEMORY_GROWTH=1'])
