@@ -635,24 +635,29 @@ class Ports(object):
         os.chdir(cwd)
       State.unpacked = True
 
-    # main logic
+    # main logic. do this under a cache lock, since we don't want multiple jobs to
+    # retrieve the same port at once
 
-    if not os.path.exists(fullname + '.zip'):
-      retrieve()
+    shared.Cache.acquire_cache_lock()
+    try:
+      if not os.path.exists(fullname + '.zip'):
+        retrieve()
 
-    if not os.path.exists(fullname):
-      unpack()
+      if not os.path.exists(fullname):
+        unpack()
 
-    if not check_tag():
-      logging.warning('local copy of port is not correct, retrieving from remote server')
-      shared.try_delete(fullname)
-      shared.try_delete(fullname + '.zip')
-      retrieve()
-      unpack()
+      if not check_tag():
+        logging.warning('local copy of port is not correct, retrieving from remote server')
+        shared.try_delete(fullname)
+        shared.try_delete(fullname + '.zip')
+        retrieve()
+        unpack()
 
-    if State.unpacked:
-      # we unpacked a new version, clear the build in the cache
-      Ports.clear_project_build(name)
+      if State.unpacked:
+        # we unpacked a new version, clear the build in the cache
+        Ports.clear_project_build(name)
+    finally:
+      shared.Cache.release_cache_lock()
 
   @staticmethod
   def build_project(name, subdir, configure, generated_libs, post_create=None):
