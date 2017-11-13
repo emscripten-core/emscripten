@@ -950,6 +950,10 @@ var quit = function() {};
  * @return {number}
  */
 var dateNow = function() {};
+/**
+ * This is to prevent Closure Compiler to use `gc` as variable name anywhere, otherwise it might collide with SpiderMonkey's shell `gc()` function
+ */
+var gc = function () {};
 
 // WebIDL
 
