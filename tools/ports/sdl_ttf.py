@@ -4,8 +4,8 @@ TAG = 'version_1'
 
 def get(ports, settings, shared):
   if settings.USE_SDL_TTF == 2:
+    ports.fetch_project('sdl2-ttf', 'https://github.com/emscripten-ports/SDL2_ttf/archive/' + TAG + '.zip', 'SDL2_ttf-' + TAG)
     def create():
-      ports.fetch_project('sdl2-ttf', 'https://github.com/emscripten-ports/SDL2_ttf/archive/' + TAG + '.zip', 'SDL2_ttf-' + TAG)
       sdl_ttf_h = os.path.join(ports.get_dir(), 'sdl2-ttf', 'SDL2_ttf-' + TAG, 'SDL_ttf.h')
       build_inc_path = os.path.join(ports.get_build_dir(), 'include')
       build_inc_sdl2_path = os.path.join(ports.get_build_dir(), 'sdl2', 'include')

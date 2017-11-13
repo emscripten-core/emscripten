@@ -14,8 +14,8 @@ def get_with_configure(ports, settings, shared):
 
 def get(ports, settings, shared):
   if settings.USE_ZLIB == 1:
+    ports.fetch_project('zlib', 'https://github.com/emscripten-ports/zlib/archive/' + TAG + '.zip', 'zlib-' + TAG)
     def create():     
-      ports.fetch_project('zlib', 'https://github.com/emscripten-ports/zlib/archive/' + TAG + '.zip', 'zlib-' + TAG)
       ports.clear_project_build('zlib')
 
       source_path = os.path.join(ports.get_dir(), 'zlib', 'zlib-' + TAG)

@@ -5,8 +5,8 @@ TAG = 'version_1'
 
 def get(ports, settings, shared):
   if settings.USE_VORBIS == 1:
+    ports.fetch_project('vorbis', 'https://github.com/emscripten-ports/vorbis/archive/' + TAG + '.zip', 'Vorbis-' + TAG)
     def create():
-      ports.fetch_project('vorbis', 'https://github.com/emscripten-ports/vorbis/archive/' + TAG + '.zip', 'Vorbis-' + TAG)
       logging.info('building port: vorbis')
      
       source_path = os.path.join(ports.get_dir(), 'vorbis', 'Vorbis-' + TAG)

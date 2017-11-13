@@ -4,8 +4,8 @@ TAG = 'version_1'
 
 def get(ports, settings, shared):
   if settings.USE_OGG == 1:
+    ports.fetch_project('ogg', 'https://github.com/emscripten-ports/ogg/archive/' + TAG + '.zip', 'Ogg-' + TAG)
     def create():
-      ports.fetch_project('ogg', 'https://github.com/emscripten-ports/ogg/archive/' + TAG + '.zip', 'Ogg-' + TAG)
       logging.info('building port: ogg')
       ports.clear_project_build('vorbis')
      

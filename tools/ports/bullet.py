@@ -14,8 +14,8 @@ def build_with_configure(ports, shared, path): # not currently used
 
 def get(ports, settings, shared):
   if settings.USE_BULLET == 1:
+    ports.fetch_project('bullet', 'https://github.com/emscripten-ports/bullet/archive/' + TAG + '.zip', 'Bullet-' + TAG)
     def create():
-      ports.fetch_project('bullet', 'https://github.com/emscripten-ports/bullet/archive/' + TAG + '.zip', 'Bullet-' + TAG)
       logging.info('building port: bullet')
      
       source_path = os.path.join(ports.get_dir(), 'bullet', 'Bullet-' + TAG)
