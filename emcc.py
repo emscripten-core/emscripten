@@ -1142,6 +1142,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if not shared.Settings.BINARYEN_ROOT:
           try:
             shared.Settings.BINARYEN_ROOT = shared.BINARYEN_ROOT
+            # TODO: move all BINARYEN_ROOT stuff from the port into here???
           except:
             pass
         # default precise-f32 to on, since it works well in wasm
@@ -1424,17 +1425,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       logging.debug('will generate JavaScript')
 
       extra_files_to_link = []
-      # process ports even if not linking them; ports also set up the
-      # settings (e.g. the bin dir of binaryen)
-      ports_files_to_link = system_libs.get_ports(shared.Settings)
 
+      # link in ports and system libraries, if necessary
       if not LEAVE_INPUTS_RAW and \
          not shared.Settings.BUILD_AS_SHARED_LIB and \
          not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and \
-         not shared.Settings.ONLY_MY_CODE and \
-         not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
-        extra_files_to_link = ports_files_to_link
-        extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, in_temp, stdout_=None, stderr_=None, forced=forced_stdlibs)
+         not shared.Settings.ONLY_MY_CODE:
+        # process ports for side modules even if not linking them,
+        # as the port may be needed for their building even if we
+        # don't link it in (e.g. binaryen bin/ dir)
+        ports_files_to_link = system_libs.get_ports(shared.Settings)
+        # link in the files for a non-side module, and system libs too
+        if not shared.Settings.SIDE_MODULE:
+          extra_files_to_link = ports_files_to_link
+          extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, in_temp, stdout_=None, stderr_=None, forced=forced_stdlibs)
 
     # exit block 'calculate system libraries'
     log_time('calculate system libraries')
