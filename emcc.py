@@ -1175,6 +1175,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.BINARYEN_PASSES:
             shared.Settings.BINARYEN_PASSES += ','
           shared.Settings.BINARYEN_PASSES += 'safe-heap'
+        # ensure the binaryen port is available, if we are using it. if we do, then
+        # we need it to build to wasm
+        system_libs.get_port('binaryen', shared.Settings)
 
       # wasm outputs are only possible with a side wasm
       if target.endswith(WASM_ENDINGS):
@@ -1430,14 +1433,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if not LEAVE_INPUTS_RAW and \
          not shared.Settings.BUILD_AS_SHARED_LIB and \
          not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and \
-         not shared.Settings.ONLY_MY_CODE:
-        # process ports for side modules even if not linking them,
-        # as the port may be needed for their building even if we
-        # don't link it in (e.g. binaryen bin/ dir)
-        ports_files_to_link = system_libs.get_ports(shared.Settings)
-        # link in the files for a non-side module, and system libs too
-        if not shared.Settings.SIDE_MODULE:
-          extra_files_to_link = ports_files_to_link
+         not shared.Settings.ONLY_MY_CODE and \
+         not shared.Settings.SIDE_MODULE:
+          extra_files_to_link = system_libs.get_ports(shared.Settings)
           extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, in_temp, stdout_=None, stderr_=None, forced=forced_stdlibs)
 
     # exit block 'calculate system libraries'
