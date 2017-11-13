@@ -34,7 +34,7 @@ int main() {
     window.onerror = function(err) {
       assert(err.toString().indexOf('This error happened during an emterpreter-async save or load of the stack') > 0, 'expect good error message');
       // manually REPORT_RESULT; we can't call back into native code at this point, assertions would trigger
-      xhr = new XMLHttpRequest();
+      var xhr = new XMLHttpRequest();
       xhr.open("GET", "http://localhost:8888/report_result?1");
       xhr.onload = xhr.onerror = function() {
         window.close();
