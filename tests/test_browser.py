@@ -2192,6 +2192,7 @@ void *getBindBuffer() {
       self.btest(path_from_root('tests', 'mmap_file.c'), expected='1', args=['--preload-file', 'data.dat'] + extra_args)
 
   def test_emrun_info(self):
+    if not has_browser(): return self.skip('need a browser')
     result = subprocess.check_output([PYTHON, path_from_root('emrun'), '--system_info', '--browser_info'])
     assert 'CPU' in result
     assert 'Browser' in result
