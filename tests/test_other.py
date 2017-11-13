@@ -5463,6 +5463,18 @@ int main(void) {
       Popen([PYTHON, EMCC, 'z.o', 'libtest.a'] + args).communicate()
       out = run_js('a.out.js', assert_returncode=161)
 
+  def test_link_with_bad_o_in_a(self):
+    # when building a .a, we force-include all the objects inside it. but, some
+    # may not be valid bitcode, e.g. if it contains metadata or something else
+    # weird. we should just ignore those
+    subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a.bc'])
+    open('bad.bc', 'w').write('this is not a good file, it should be ignored!')
+    subprocess.check_call([LLVM_AR, 'r', 'a.a', 'a.bc', 'bad.bc'])
+    assert os.path.exists('a.a')
+    subprocess.check_call([PYTHON, EMCC, 'a.a'])
+    assert os.path.exists('a.out.js'), output
+    self.assertContained('hello, world!', run_js('a.out.js'))
+
   def test_require(self):
     inname = path_from_root('tests', 'hello_world.c')
     Building.emcc(inname, output_filename='a.out.js')
