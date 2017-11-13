@@ -126,6 +126,8 @@ Functions
 
 	Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note: If -s NO_DYNAMIC_EXECUTION=1 is set, this function will not be available.
 
+	This function can be called from a pthread, and it is executed in the scope of the Web Worker that is hosting the pthread. To evaluate a function in the scope of the main runtime thread, see the function emscripten_sync_run_in_main_runtime_thread().
+
 	:param script: The script to evaluate.
 	:type script: const char* 
 	:rtype: void
@@ -134,6 +136,8 @@ Functions
 .. c:function:: int emscripten_run_script_int(const char *script)
 
 	Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note: If -s NO_DYNAMIC_EXECUTION=1 is set, this function will not be available.
+
+	This function can be called from a pthread, and it is executed in the scope of the Web Worker that is hosting the pthread. To evaluate a function in the scope of the main runtime thread, see the function emscripten_sync_run_in_main_runtime_thread().
 
 	:param script: The script to evaluate.
 	:type script: const char* 
@@ -145,6 +149,8 @@ Functions
 
 	Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note that this overload uses a single buffer shared between calls. Note: If -s NO_DYNAMIC_EXECUTION=1 is set, this function will not be available.
 
+	This function can be called from a pthread, and it is executed in the scope of the Web Worker that is hosting the pthread. To evaluate a function in the scope of the main runtime thread, see the function emscripten_sync_run_in_main_runtime_thread().
+
 	:param script: The script to evaluate.
 	:type script: const char* 
 	:return: The result of the evaluation, as a string.
@@ -154,6 +160,8 @@ Functions
 .. c:function:: void emscripten_async_run_script(const char *script, int millis) 
 
 	Asynchronously run a script, after a specified amount of time.
+
+	This function can be called from a pthread, and it is executed in the scope of the Web Worker that is hosting the pthread. To evaluate a function in the scope of the main runtime thread, see the function emscripten_sync_run_in_main_runtime_thread().
 
 	:param script: The script to evaluate.
 	:type script: const char* 
@@ -166,6 +174,8 @@ Functions
 	Asynchronously loads a script from a URL.
 	
 	This integrates with the run dependencies system, so your script can call ``addRunDependency`` multiple times, prepare various asynchronous tasks, and call ``removeRunDependency`` on them; when all are complete (or if there were no run dependencies to begin with), ``onload`` is called. An example use for this is to load an asset module, that is, the output of the file packager.
+
+	This function is currently only available in main browser thread, and it will immediately fail by calling the supplied onerror() handler if called in a pthread.
 
 	:param script: The script to evaluate.
 	:type script: const char* 
@@ -187,28 +197,32 @@ Functions
    
 .. c:function:: void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop)
 
-	Set a C function as the main event loop.
+	Set a C function as the main event loop for the calling thread.
 	
 	If the main loop function needs to receive user-defined data, use :c:func:`emscripten_set_main_loop_arg` instead.
 
-	The JavaScript environment will call that function at a specified number of frames per second. Setting 0 or a negative value as the ``fps`` will instead use the browser’s ``requestAnimationFrame`` mechanism to call the main loop function. This is **HIGHLY** recommended if you are doing rendering, as the browser’s ``requestAnimationFrame`` will make sure you render at a proper smooth rate that lines up properly with the browser and monitor. If you do not render at all in your application, then you should pick a specific frame rate that makes sense for your code.
+	The JavaScript environment will call that function at a specified number of frames per second. If called on the main browser thread, setting 0 or a negative value as the ``fps`` will use the browser’s ``requestAnimationFrame`` mechanism to call the main loop function. This is **HIGHLY** recommended if you are doing rendering, as the browser’s ``requestAnimationFrame`` will make sure you render at a proper smooth rate that lines up properly with the browser and monitor. If you do not render at all in your application, then you should pick a specific frame rate that makes sense for your code.
 	
 	If ``simulate_infinite_loop`` is true, the function will throw an exception in order to stop execution of the caller. This will lead to the main loop being entered instead of code after the call to :c:func:`emscripten_set_main_loop` being run, which is the closest we can get to simulating an infinite loop (we do something similar in `glutMainLoop <https://github.com/kripken/emscripten/blob/1.29.12/system/include/GL/freeglut_std.h#L400>`_ in `GLUT <http://www.opengl.org/resources/libraries/glut/>`_). If this parameter is ``false``, then the behavior is the same as it was before this parameter was added to the API, which is that execution continues normally. Note that in both cases we do not run global destructors, ``atexit``, etc., since we know the main loop will still be running, but if we do not simulate an infinite loop then the stack will be unwound. That means that if ``simulate_infinite_loop`` is ``false``, and you created an object on the stack, it will be cleaned up before the main loop is called for the first time.
 	
-	.. tip:: There can be only *one* main loop function at a time. To change the main loop function, first :c:func:`cancel <emscripten_cancel_main_loop>` the current loop, and then call this function to set another.
-	
-	.. note:: See :c:func:`emscripten_set_main_loop_expected_blockers`, :c:func:`emscripten_pause_main_loop`, :c:func:`emscripten_resume_main_loop` and :c:func:`emscripten_cancel_main_loop` for information about blocking, pausing, and resuming the main loop.
+	This function can be called in a pthread, in which case the callback loop will be set up to be called in the context of the calling thread. In order for the loop to work, the calling thread must regularly "yield back" to the browser by exiting from its pthread main function, since the callback will be able to execute only when the calling thread is not executing any other code. This means that running a synchronously blocking main loop is not compatible with the emscripten_set_main_loop() function.
 
-	.. note:: Calling this function overrides the effect of any previous calls to :c:func:`emscripten_set_main_loop_timing` by applying the timing mode specified by the parameter ``fps``. To specify a different timing mode, call the function :c:func:`emscripten_set_main_loop_timing` after setting up the main loop.
+	Since ``requestAnimationFrame()`` API is not available in web workers, when called ``emscripten_set_main_loop()`` in a pthread with ``fps`` <= 0, the effect of syncing up to the display's refresh rate is emulated, and generally will not precisely line up with vsync intervals.
+
+	.. tip:: There can be only *one* main loop function at a time, per thread. To change the main loop function, first :c:func:`cancel <emscripten_cancel_main_loop>` the current loop, and then call this function to set another.
 	
-	:param em_callback_func func: C function to set as main event loop.
+	.. note:: See :c:func:`emscripten_set_main_loop_expected_blockers`, :c:func:`emscripten_pause_main_loop`, :c:func:`emscripten_resume_main_loop` and :c:func:`emscripten_cancel_main_loop` for information about blocking, pausing, and resuming the main loop of the calling thread.
+
+	.. note:: Calling this function overrides the effect of any previous calls to :c:func:`emscripten_set_main_loop_timing` in the calling thread by applying the timing mode specified by the parameter ``fps``. To specify a different timing mode for the current thread, call the function :c:func:`emscripten_set_main_loop_timing` after setting up the main loop.
+	
+	:param em_callback_func func: C function to set as main event loop for the calling thread.
 	:param int fps: Number of frames per second that the JavaScript will call the function. Setting ``int <=0`` (recommended) uses the browser’s ``requestAnimationFrame`` mechanism to call the function.	
 	:param int simulate_infinite_loop: If true, this function will throw an exception in order to stop execution of the caller. 
 
 
 .. c:function:: void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, int simulate_infinite_loop)
 
-	Set a C function as the main event loop, passing it user-defined data.
+	Set a C function as the main event loop for the calling thread, passing it user-defined data.
 	
 	.. seealso:: The information in :c:func:`emscripten_set_main_loop` also applies to this function.
 
@@ -221,7 +235,7 @@ Functions
 .. c:function:: void emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg)
 	void emscripten_push_uncounted_main_loop_blocker(em_arg_callback_func func, void *arg)
 	
-	Add a function that **blocks** the main loop.
+	Add a function that **blocks** the main loop for the calling thread.
 
 	The function is added to the back of a queue of events to be blocked; the main loop will not run until all blockers in the queue complete.
 	
@@ -239,7 +253,7 @@ Functions
 .. c:function:: void emscripten_pause_main_loop(void)
 				  void emscripten_resume_main_loop(void)
 
-	Pause and resume the main loop.
+	Pause and resume the main loop for the calling thread.
 
 	Pausing and resuming the main loop is useful if your app needs to perform some synchronous operation, for example to load a file from the network. It might be wrong to run the main loop before that finishes (the original code assumes that), so you can break the code up into asynchronous callbacks, but you must pause the main loop until they complete.
 	
@@ -249,13 +263,13 @@ Functions
 
 .. c:function:: void emscripten_cancel_main_loop(void)
 
-	Cancels the main event loop. 
+	Cancels the main event loop for the calling thread. 
 	
 	See also :c:func:`emscripten_set_main_loop` and :c:func:`emscripten_set_main_loop_arg` for information about setting and using the main loop. 
 
 .. c:function:: int emscripten_set_main_loop_timing(int mode, int value)
 
-	Specifies the scheduling mode that the current main loop tick function will be called with.
+	Specifies the scheduling mode that the main loop tick function of the calling thread will be called with.
 
 	This function can be used to interactively control the rate at which Emscripten runtime drives the main loop specified by calling the function :c:func:`emscripten_set_main_loop`. In native development, this corresponds with the "swap interval" or the "presentation interval" for 3D rendering. The new tick interval specified by this function takes effect immediately on the existing main loop, and this function must be called only after setting up a main loop via :c:func:`emscripten_set_main_loop`.
 
