@@ -1581,10 +1581,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('source transforms'):
       # Embed and preload files
-      if shared.Settings.SPLIT_MEMORY:
-        options.no_heap_copy = True # copying into the heap is risky when split - the chunks might be too small for the file package!
-
       if len(options.preload_files) + len(options.embed_files) > 0:
+
+        # copying into the heap is risky when split - the chunks might be too small for the file package!
+        if shared.Settings.SPLIT_MEMORY and not options.no_heap_copy:
+          logging.info('Enabling --no-heap-copy because -s SPLIT_MEMORY=1 is being used with file_packager.py (pass --no-heap-copy to suppress this notification)')
+          options.no_heap_copy = True
+
+        # Also, MEMFS is not aware of heap resizing feature in wasm, so if MEMFS and memory growth are used together, force
+        # no_heap_copy to be enabled.
+        if shared.Settings.ALLOW_MEMORY_GROWTH and not options.no_heap_copy:
+          logging.info('Enabling --no-heap-copy because -s ALLOW_MEMORY_GROWTH=1 is being used with file_packager.py (pass --no-heap-copy to suppress this notification)')
+          options.no_heap_copy = True
+
         logging.debug('setting up files')
         file_args = []
         if len(options.preload_files) > 0:
