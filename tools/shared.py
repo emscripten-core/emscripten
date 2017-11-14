@@ -1297,6 +1297,9 @@ class ObjectFileInfo(object):
     self.undefs = undefs
     self.commons = commons
 
+  def is_valid(self):
+    return self.returncode == 0
+
 # Due to a python pickling issue, the following two functions must be at top level, or multiprocessing pool spawn won't find them.
 
 def g_llvm_nm_uncached(filename):
@@ -1736,6 +1739,9 @@ class Building(object):
     # returns True.
     def consider_object(f, force_add=False):
       new_symbols = Building.llvm_nm(f)
+      if not new_symbols.is_valid():
+        logging.warning('object %s is not valid, cannot link' % (f))
+        return False
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
       if do_add:
