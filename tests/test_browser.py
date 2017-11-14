@@ -3716,3 +3716,9 @@ window.close = function() {
     open('test.html', 'w').write('<script src="test.js"></script>')
     self.run_browser('test.html', None, '/report_result?0')
     assert os.path.exists('test.js') and not os.path.exists('test.worker.js')
+
+  def test_access_file_after_heap_resize(self):
+    open('test.txt', 'w').write('hello from file')
+    open('page.c', 'w').write(self.with_report_result(open(path_from_root('tests', 'access_file_after_heap_resize.c'), 'r').read()))
+    Popen([PYTHON, EMCC, 'page.c', '-s', 'WASM=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '--preload-file', 'test.txt', '-o', 'page.html']).communicate()
+    self.run_browser('page.html', 'hello from file', '/report_result?15')
