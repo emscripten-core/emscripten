@@ -5356,7 +5356,7 @@ def process(filename):
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
     "FS.createDataFile('/', 'font.ttf', %s, true, false, false);" % str(
-      map(ord, open(shared.path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'rb').read())
+      list(bytearray(open(shared.path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'rb').read()))
     )
   )
   open(filename, 'w').write(src)
@@ -5501,7 +5501,7 @@ def process(filename):
 
       # See post(), below
       input_file = open(os.path.join(self.get_dir(), 'paper.pdf.js'), 'w')
-      input_file.write(str(list(map(ord, open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read()))))
+      input_file.write(str(list(bytearray(open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read()))))
       input_file.close()
 
       post = '''
@@ -5535,7 +5535,7 @@ def process(filename):
       Building.link(poppler + freetype, combined)
 
       self.do_ll_run(combined,
-                     list(map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read())).__str__().replace(' ', ''),
+                     str(list(bytearray(open(path_from_root('tests', 'poppler', 'ref.ppm'), 'rb').read()))).replace(' ', ''),
                      args='-scale-to 512 paper.pdf filename'.split(' '),
                      post_build=post)
                      #, build_ll_hook=self.do_autodebug)
@@ -5567,7 +5567,7 @@ def process(filename):
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
     "FS.createDataFile('/', 'image.j2k', %s, true, false, false);" % shared.line_splitter(str(
-      map(ord, open(original_j2k, 'rb').read())
+      list(bytearray(open(original_j2k, 'rb').read()))
     ))
   ).replace(
     '// {{POST_RUN_ADDITIONS}}',
@@ -5601,7 +5601,7 @@ def process(filename):
       js_data = [x if x >= 0 else 256+x for x in js_data] # Our output may be signed, so unsign it
 
       # Get the correct output
-      true_data = open(path_from_root('tests', 'openjpeg', 'syntensity_lobby_s.raw'), 'rb').read()
+      true_data = bytearray(open(path_from_root('tests', 'openjpeg', 'syntensity_lobby_s.raw'), 'rb').read())
 
       # Compare them
       assert(len(js_data) == len(true_data))
@@ -5609,8 +5609,8 @@ def process(filename):
       diff_total = js_total = true_total = 0
       for i in range(num):
         js_total += js_data[i]
-        true_total += ord(true_data[i])
-        diff_total += abs(js_data[i] - ord(true_data[i]))
+        true_total += true_data[i]
+        diff_total += abs(js_data[i] - true_data[i])
       js_mean = js_total/float(num)
       true_mean = true_total/float(num)
       diff_mean = diff_total/float(num)
