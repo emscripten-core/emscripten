@@ -20,4 +20,5 @@ RUN cd /root/ \
  && echo EMSCRIPTEN_ROOT="'/root/emscripten/'" >> .emscripten
 
 ARG TEST_TARGET
-RUN python /root/emscripten/tests/runner.py $TEST_TARGET skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full skip:other.test_native_link_error_message skip:other.test_bad_triple
+RUN export EMSCRIPTEN_BROWSER=0 \
+ && python /root/emscripten/tests/runner.py $TEST_TARGET skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full skip:other.test_native_link_error_message skip:other.test_bad_triple
