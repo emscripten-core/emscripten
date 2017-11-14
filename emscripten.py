@@ -16,6 +16,7 @@ if __name__ == '__main__':
 import difflib
 import os, sys, json, argparse, subprocess, re, time, logging
 import shutil
+from collections import OrderedDict
 
 from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
@@ -144,7 +145,7 @@ def parse_backend_output(backend_output, DEBUG):
 
   try:
     #if DEBUG: print >> sys.stderr, "METAraw", metadata_raw
-    metadata = json.loads(metadata_raw)
+    metadata = json.loads(metadata_raw, object_pairs_hook=OrderedDict)
   except Exception as e:
     logging.error('emscript: failure to parse metadata output from compiler backend. raw output is: \n' + metadata_raw)
     raise e
