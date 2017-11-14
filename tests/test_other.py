@@ -5660,14 +5660,14 @@ Descriptor desc;
 
     open('test.py', 'w').write('''
 import os
-print os.environ.get('CROSS_COMPILE')
+print(os.environ.get('CROSS_COMPILE'))
 ''')
     check('emconfigure', [PYTHON, 'test.py'], expect=path_from_root('em'))
     check('emmake', [PYTHON, 'test.py'], expect=path_from_root('em'))
 
     open('test.py', 'w').write('''
 import os
-print os.environ.get('NM')
+print(os.environ.get('NM'))
 ''')
     check('emconfigure', [PYTHON, 'test.py'], expect=tools.shared.LLVM_NM)
 
