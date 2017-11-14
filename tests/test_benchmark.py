@@ -74,7 +74,7 @@ class NativeBenchmarker(Benchmarker):
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
       cmd = [compiler, '-fno-math-errno', filename, '-o', filename+'.native'] + self.args + shared_args + native_args + get_clang_native_args()
-      process = Popen(cmd, stdout=PIPE, stderr=parent.stderr_redirect, env=get_clang_native_env())
+      process = Popen(cmd, stdout=PIPE, stderr=parent.stderr_redirect, env=get_clang_native_env(), universal_newlines=True)
       output = process.communicate()
       if process.returncode is not 0:
         print("Building native executable with command failed", ' '.join(cmd), file=sys.stderr)
@@ -88,7 +88,7 @@ class NativeBenchmarker(Benchmarker):
     self.filename = final
 
   def run(self, args):
-    process = Popen([self.filename] + args, stdout=PIPE, stderr=PIPE)
+    process = Popen([self.filename] + args, stdout=PIPE, stderr=PIPE, universal_newlines=True)
     return process.communicate()[0]
 
 class JSBenchmarker(Benchmarker):
@@ -127,7 +127,7 @@ process(sys.argv[1])
                     '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
                     #'--profiling',
                     #'--closure', '1',
-                    '-o', final] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
+                    '-o', final] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env, universal_newlines=True).communicate()
     assert os.path.exists(final), 'Failed to compile file: ' + output[0] + ' (looked for ' + final + ')'
     self.filename = final
 
@@ -170,7 +170,7 @@ class benchmark(RunnerCore):
     try:
       d = os.getcwd()
       os.chdir(os.path.expanduser('~/Dev/mozilla-central'))
-      fingerprint.append('sm: ' + [line for line in Popen(['hg', 'tip'], stdout=PIPE).communicate()[0].split('\n') if 'changeset' in line][0])
+      fingerprint.append('sm: ' + [line for line in Popen(['hg', 'tip'], stdout=PIPE, universal_newlines=True).communicate()[0].split('\n') if 'changeset' in line][0])
     except:
       pass
     finally:

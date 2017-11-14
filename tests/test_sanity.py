@@ -50,7 +50,7 @@ class sanity(RunnerCore):
     if command[0] == EMCC:
       command = [PYTHON] + command
 
-    return Popen(command, stdout=PIPE, stderr=STDOUT).communicate()[0]
+    return Popen(command, stdout=PIPE, stderr=STDOUT, universal_newlines=True).communicate()[0]
 
   def check_working(self, command, expected=None):
     if type(command) is not list:
@@ -505,8 +505,8 @@ fi
 
     for compiler in [EMCC, EMXX]:
       print(compiler)
-      out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v'], stdout=PIPE, stderr=PIPE).communicate()
-      out2, err2 = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v', '-nostdinc++'], stdout=PIPE, stderr=PIPE).communicate()
+      out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v'], stdout=PIPE, stderr=PIPE, universal_newlines=True).communicate()
+      out2, err2 = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v', '-nostdinc++'], stdout=PIPE, stderr=PIPE, universal_newlines=True).communicate()
       assert out == out2
       def focus(e):
         assert 'search starts here:' in e, e
@@ -736,7 +736,7 @@ fi
       print(command)
       Cache.erase()
 
-      proc = Popen(command, stdout=PIPE, stderr=STDOUT)
+      proc = Popen(command, stdout=PIPE, stderr=STDOUT, universal_newlines=True)
       out, err = proc.communicate()
       assert (proc.returncode == 0) == success, out
       if not isinstance(expected, list): expected = [expected]
