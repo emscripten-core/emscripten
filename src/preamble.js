@@ -2319,7 +2319,10 @@ function integrateWasmJS() {
       });
     }
     // Prefer streaming instantiation if available.
-    if (!Module['wasmBinary'] && typeof WebAssembly.instantiateStreaming === 'function' && wasmBinaryFile.indexOf('data:') !== 0) {
+    if (!Module['wasmBinary'] &&
+        typeof WebAssembly.instantiateStreaming === 'function' &&
+        wasmBinaryFile.indexOf('data:') !== 0 &&
+        typeof fetch === 'function') {
       WebAssembly.instantiateStreaming(fetch(wasmBinaryFile, { credentials: 'same-origin' }), info)
         .then(receiveInstantiatedSource)
         .catch(function(reason) {
