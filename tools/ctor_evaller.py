@@ -247,7 +247,7 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
     err_file = config.get_temp_files().get('.err').name
     out_file_handle = open(out_file, 'w')
     err_file_handle = open(err_file, 'w')
-    proc = subprocess.Popen(shared.NODE_JS + [temp_file], stdout=out_file_handle, stderr=err_file_handle)
+    proc = subprocess.Popen(shared.NODE_JS + [temp_file], stdout=out_file_handle, stderr=err_file_handle, universal_newlines=True)
     try:
       shared.jsrun.timeout_run(proc, timeout=10, full_output=True, throw_on_failure=False)
     except Exception as e:
@@ -289,7 +289,7 @@ def eval_ctors_wasm(js, wasm_file, num):
   if debug_info:
     cmd += ['-g']
   shared.logging.debug('wasm ctor cmd: ' + str(cmd))
-  out, err = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+  out, err = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
   num_successful = err.count('success on')
   shared.logging.debug(err)
   if len(ctors) == num_successful:

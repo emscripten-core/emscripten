@@ -22,7 +22,7 @@ def process_shell(js, js_engine, shell, equivalentfn_hash_info=None):
 
     (output,error) = subprocess.Popen(js_engine +
         [DUPLICATE_FUNCTION_ELIMINATOR, temp_file, '--use-hash-info', '--no-minimize-whitespace'],
-        stdout=subprocess.PIPE,stderr=subprocess.PIPE).communicate()
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
   assert len(output) > 0
   assert len(error) == 0
 
@@ -45,7 +45,7 @@ def run_on_chunk(command):
 
     if shared.EM_BUILD_VERBOSE_LEVEL >= 3: print('run_on_chunk: ' + str(command), file=sys.stderr)
 
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE)
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, universal_newlines=True)
     output = proc.communicate()[0]
     assert proc.returncode == 0, 'Error in optimizer (return code ' + str(proc.returncode) + '): ' + output
     assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in optimizer: ' + output
