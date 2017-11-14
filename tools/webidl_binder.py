@@ -574,7 +574,7 @@ for child, parent in implements.items():
       parent = None
 
 names = list(interfaces.keys())
-names.sort(lambda x, y: nodeHeight.get(y, 0) - nodeHeight.get(x, 0))
+names.sort(key=lambda x: nodeHeight.get(x, 0), reverse=True)
 
 for name in names:
   interface = interfaces[name]

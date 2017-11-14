@@ -2151,7 +2151,7 @@ int f() {
                 for i in stuff:
                   if i not in func: return func
                 indexes = [[i, func.index(i)] for i in stuff]
-                indexes.sort(lambda x, y: x[1] - y[1])
+                indexes.sort(key=lambda x: x[1])
                 for j in range(len(indexes)):
                   func = func.replace(indexes[j][0], 'STD_' + str(j))
                 return func
@@ -7913,21 +7913,23 @@ int main() {
 
   # Tests that Emscripten-provided header files can be cleanly included in C code
   def test_include_system_header_in_c(self):
-    for directory, headers in [
-      ('emscripten', ['dom_pk_codes.h', 'em_asm.h', 'emscripten.h', 'fetch.h', 'html5.h', 'key_codes.h', 'threading.h', 'trace.h', 'vector.h', 'vr.h']), # This directory has also bind.h, val.h and wire.h, which require C++11
-      ('AL', ['al.h', 'alc.h']),
-      ('EGL', ['egl.h', 'eglplatform.h']),
-      ('GL', ['freeglut_std.h', 'gl.h', 'glew.h', 'glfw.h', 'glu.h', 'glut.h']),
-      ('GLES', ['gl.h', 'glplatform.h']),
-      ('GLES2', ['gl2.h', 'gl2platform.h']),
-      ('GLES3', ['gl3.h', 'gl3platform.h', 'gl31.h', 'gl32.h']),
-      ('GLFW', ['glfw3.h']),
-      ('KHR', ['khrplatform.h'])]:
-      for h in headers:
-        inc = '#include <' + directory + '/' + h + '>'
-        print(inc)
-        open('a.c', 'w').write(inc)
-        subprocess.check_call([PYTHON, EMCC, '-std=c89', 'a.c'])
+    for std in [[], ['-std=c89']]: # Test oldest C standard, and the default C standard
+      for directory, headers in [
+        ('emscripten', ['dom_pk_codes.h', 'em_asm.h', 'emscripten.h', 'fetch.h', 'html5.h', 'key_codes.h', 'threading.h', 'trace.h', 'vector.h', 'vr.h']), # This directory has also bind.h, val.h and wire.h, which require C++11
+        ('AL', ['al.h', 'alc.h']),
+        ('EGL', ['egl.h', 'eglplatform.h']),
+        ('GL', ['freeglut_std.h', 'gl.h', 'glew.h', 'glfw.h', 'glu.h', 'glut.h']),
+        ('GLES', ['gl.h', 'glplatform.h']),
+        ('GLES2', ['gl2.h', 'gl2platform.h']),
+        ('GLES3', ['gl3.h', 'gl3platform.h', 'gl31.h', 'gl32.h']),
+        ('GLFW', ['glfw3.h']),
+        ('KHR', ['khrplatform.h'])]:
+        for h in headers:
+          inc = '#include <' + directory + '/' + h + '>'
+          print(inc)
+          open('a.c', 'w').write(inc)
+          open('b.c', 'w').write(inc)
+          subprocess.check_call([PYTHON, EMCC] + std + ['a.c', 'b.c'])
 
   def test_single_file(self):
     for single_file_enabled in [True, False]:
@@ -7993,3 +7995,19 @@ int main() {
                     assert expect_wast == os.path.exists('a.out.wast')
                     if should_run_js:
                       self.assertContained('hello, world!', run_js('a.out.js'))
+
+  def test_emar_M(self):
+    open('file1', 'w').write(' ')
+    open('file2', 'w').write(' ')
+    subprocess.call([PYTHON, EMAR, 'cr', 'file1.a', 'file1'])
+    subprocess.call([PYTHON, EMAR, 'cr', 'file2.a', 'file2'])
+    emar = subprocess.Popen([PYTHON, EMAR, '-M'], stdin=PIPE)
+    emar.communicate('''create combined.a
+addlib file1.a
+addlib file2.a
+save
+end
+''')
+    result = subprocess.check_output([PYTHON, EMAR, 't', 'combined.a'])
+    assert 'file1' in result
+    assert 'file2' in result
