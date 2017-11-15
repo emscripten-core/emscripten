@@ -1229,7 +1229,7 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
     asm_runtime_funcs.append('setAsync')
   all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables(function_table_data, settings)
   if settings['EMULATED_FUNCTION_POINTERS']:
-    all_exported = set(all_exported).union(in_table)
+    all_exported += in_table
   exports = []
   for export in sorted(set(all_exported)):
     exports.append(quote(export) + ": " + export)
