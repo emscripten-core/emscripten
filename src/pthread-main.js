@@ -55,7 +55,7 @@ this.alert = threadAlert;
 Module['instantiateWasm'] = function(info, receiveInstance) {
   // Instantiate from the module posted from the main thread.
   // We can just use sync instantiation in the worker.
-  instance = new WebAssembly.Instance(Module['asm'], info);
+  instance = new WebAssembly.Instance(Module['wasmModule'], info);
   receiveInstance(instance);
   return instance.exports;
 }
@@ -75,7 +75,7 @@ this.onmessage = function(e) {
 
       if (e.data.wasmModule) {
         // Module and memory were sent from main thread
-        Module['asm'] = e.data.wasmModule;
+        Module['wasmModule'] = e.data.wasmModule;
         Module['wasmMemory'] = e.data.wasmMemory;
         buffer = Module['wasmMemory'].buffer;
       } else {

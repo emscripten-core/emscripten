@@ -366,7 +366,7 @@ var LibraryPThread = {
             urlOrBlob: Module['mainScriptUrlOrBlob'] || currentScriptUrl,
 #if BINARYEN
             wasmMemory: Module['wasmMemory'],
-            wasmModule: Module['asm'],
+            wasmModule: Module['wasmModule'],
 #else
             buffer: HEAPU8.buffer,
 #endif

@@ -2313,6 +2313,10 @@ function integrateWasmJS() {
       assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
       trueModule = null;
 #endif
+#if USE_PTHREADS
+      // Keeep a reference to the compiled module so we can post it to the workers.
+      Module['wasmModule'] = output['module'];
+#endif
       receiveInstance(output['instance']);
     }
     function instantiateArrayBuffer(receiver) {
