@@ -154,7 +154,7 @@ class CheerpBenchmarker(Benchmarker):
           volatile charStarStar argv;
           argv[0] = "./cheerp.exe";
           argv[1] = "%s";
-          main(argc, argv);
+          main(argc, (const char**)argv);
         }
       ''' % args[-1]
     )
@@ -463,7 +463,7 @@ class benchmark(RunnerCore):
         return sum;
       }
     '''
-    self.do_benchmark('ifs', src, 'ok', reps=TEST_REPS*5)
+    self.do_benchmark('ifs', src, 'ok', reps=TEST_REPS)
 
   def test_conditionals(self):
     src = r'''
@@ -499,7 +499,7 @@ class benchmark(RunnerCore):
         return x;
       }
     '''
-    self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS*5)
+    self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS)
 
   def test_fannkuch(self):
     src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read().replace(
@@ -639,18 +639,21 @@ class benchmark(RunnerCore):
 
   # Benchmarks the synthetic performance of calling native functions.
   def test_native_functions(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('native_functions', open(path_from_root('tests', 'benchmark_ffis.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
   # Benchmarks the synthetic performance of calling function pointers.
   def test_native_function_pointers(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('native_functions', open(path_from_root('tests', 'benchmark_ffis.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DBENCHMARK_FUNCTION_POINTER=1', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
   # Benchmarks the synthetic performance of calling "foreign" JavaScript functions.
   def test_foreign_functions(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('foreign_functions', open(path_from_root('tests', 'benchmark_ffis.cpp')).read(), '''Total time:''', output_parser=output_parser, emcc_args=['--js-library', path_from_root('tests/benchmark_ffis.js')], shared_args=['-DBENCHMARK_FOREIGN_FUNCTION=1', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
@@ -661,11 +664,13 @@ class benchmark(RunnerCore):
     self.do_benchmark('memcpy_128b', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMAX_COPY=128', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
   def test_memcpy_4k(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_4k', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=128', '-DMAX_COPY=4096', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
   def test_memcpy_16k(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_16k', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=4096', '-DMAX_COPY=16384', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
@@ -676,6 +681,7 @@ class benchmark(RunnerCore):
     self.do_benchmark('memcpy_1mb', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=16384', '-DMAX_COPY=1048576', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
   def test_memcpy_16mb(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_16mb', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
@@ -686,11 +692,13 @@ class benchmark(RunnerCore):
     self.do_benchmark('memset_128b', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMAX_COPY=128', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
   def test_memset_4k(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_4k', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=128', '-DMAX_COPY=4096', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
   def test_memset_16k(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_16k', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=4096', '-DMAX_COPY=16384', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
@@ -701,6 +709,7 @@ class benchmark(RunnerCore):
     self.do_benchmark('memset_1mb', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=16384', '-DMAX_COPY=1048576', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
   def test_memset_16mb(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_16mb', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
