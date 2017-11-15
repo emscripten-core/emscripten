@@ -947,7 +947,7 @@ class BrowserCore(RunnerCore):
 ''' % basename)
 
   def btest(self, filename, expected=None, reference=None, force_c=False, reference_slack=0, manual_reference=False, post_build=None,
-            args=[], outfile='test.html', message='.', also_proxied=False, url_suffix='', timeout=None, force_wasm=False): # TODO: use in all other tests
+            args=[], outfile='test.html', message='.', also_proxied=False, url_suffix='', timeout=None, also_wasm=False): # TODO: use in all other tests
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
@@ -967,12 +967,6 @@ class BrowserCore(RunnerCore):
       self.reftest(path_from_root('tests', reference))
       if not manual_reference:
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
-    if force_wasm:
-      args = args + ['-s', 'WASM=1']
-      # Filter out separate-asm, which is implied by wasm
-      args = [a for a in args if a != '--separate-asm']
-      # wasm doesn't support USE_PTHREADS=2
-      args = ['USE_PTHREADS=1' if a == 'USE_PTHREADS=2' else a for a in args]
     all_args = [PYTHON, EMCC, '-s', 'IN_TEST_HARNESS=1', temp_filepath, '-o', outfile] + args
     #print 'all args:', all_args
     try_delete(outfile)
@@ -981,6 +975,14 @@ class BrowserCore(RunnerCore):
     if post_build: post_build()
     if type(expected) is str: expected = [expected]
     self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout)
+    if also_wasm:
+      wasm_args = args + ['-s', 'WASM=1']
+      # Filter out separate-asm, which is implied by wasm
+      wasm_args = [a for a in wasm_args if a != '--separate-asm']
+      # wasm doesn't support USE_PTHREADS=2
+      wasm_args = ['USE_PTHREADS=1' if a == 'USE_PTHREADS=2' else a for a in wasm_args]
+      self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
+                 wasm_args, outfile, message, also_proxied=False, timeout=timeout, also_wasm=False)
     if also_proxied:
       print('proxied...')
       # save non-proxied
