@@ -177,24 +177,93 @@ class CheerpBenchmarker(Benchmarker):
     ]
     self.parent = parent
     if lib_builder:
-      cheerp_args = cheerp_args + lib_builder(self.name, env_init={
+      # build as "native" (so no emcc env stuff), but with all the cheerp stuff
+      # set in the env
+      cheerp_args = cheerp_args + lib_builder(self.name, native=True, env_init={
         'CC': '/opt/cheerp/bin/clang',
-        'CXX': '/opt/cheerp/bin/clang++'
+        'CXX': '/opt/cheerp/bin/clang++',
+        'AR': '/opt/cheerp/bin/llvm-ar',
+        'LD': '/opt/cheerp/bin/clang',
+        'NM': '/opt/cheerp/bin/llvm-nm',
+        'LDSHARED': '/opt/cheerp/bin/clang',
+        'RANLIB': '/opt/cheerp/bin/llvm-ranlib',
+        'CFLAGS': '-target cheerp -cheerp-mode=wasm',
+        'CXXFLAGS': '-target cheerp -cheerp-mode=wasm',
       })
     final = os.path.dirname(filename) + os.path.sep + 'cheerp_' + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
     try_delete(final)
-    subprocess.check_call(['/opt/cheerp/bin/clang++'] + cheerp_args + [
-      '-cheerp-linear-heap-size=256',
-      '-cheerp-wasm-loader=' + final,
-      cheerp_temp,
-      '-Wno-writable-strings', # for how we set up webMain
-      '-o', final + '.wasm'
-    ] + shared_args, stderr=PIPE)
-    self.filename = final
+    dirs_to_delete = []
+    try:
+      for arg in cheerp_args[:]:
+        if arg.endswith('.a'):
+          info = self.handle_static_lib(arg)
+          cheerp_args += info['files']
+          dirs_to_delete += [info['dir']]
+      cheerp_args = [arg for arg in cheerp_args if not arg.endswith('.a')]
+      #print(cheerp_args)
+      cmd = ['/opt/cheerp/bin/clang++'] + cheerp_args + [
+        '-cheerp-linear-heap-size=256',
+        '-cheerp-wasm-loader=' + final,
+        cheerp_temp,
+        '-Wno-writable-strings', # for how we set up webMain
+        '-o', final + '.wasm'
+      ] + shared_args
+      print(' '.join(cmd))
+      subprocess.check_call(cmd)
+      self.filename = final
+    finally:
+      for dir_ in dirs_to_delete:
+        try_delete(dir_)
 
   def run(self, args):
     return run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True, assert_returncode=None)
+
+  def handle_static_lib(self, f):
+    print('ahdne static lib ' + f)
+    try:
+      cwd = os.getcwd()
+      temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
+      safe_ensure_dirs(temp_dir)
+      os.chdir(temp_dir)
+      contents = [x for x in Popen(['/opt/cheerp/bin/llvm-ar', 't', f], stdout=PIPE).communicate()[0].split('\n') if len(x) > 0]
+      warn_if_duplicate_entries(contents, f)
+      if len(contents) == 0:
+        logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
+        return {
+          'returncode': 0,
+          'dir': temp_dir,
+          'files': []
+        }
+
+      # We are about to ask llvm-ar to extract all the files in the .a archive file, but
+      # it will silently fail if the directory for the file does not exist, so make all the necessary directories
+      for content in contents:
+        dirname = os.path.dirname(content)
+        if dirname:
+          safe_ensure_dirs(dirname)
+      proc = Popen(['/opt/cheerp/bin/llvm-ar', 'xo', f], stdout=PIPE, stderr=PIPE)
+      stdout, stderr = proc.communicate() # if absolute paths, files will appear there. otherwise, in this directory
+      contents = list(map(os.path.abspath, contents))
+      nonexisting_contents = [x for x in contents if not os.path.exists(x)]
+      if len(nonexisting_contents) != 0:
+        raise Exception('llvm-ar failed to extract file(s) ' + str(nonexisting_contents) + ' from archive file ' + f + '! Error:' + str(stdout) + str(stderr))
+
+      return {
+        'returncode': proc.returncode,
+        'dir': temp_dir,
+        'files': contents
+      }
+    except Exception as e:
+      print('extract archive contents('+str(f)+') failed with error: ' + str(e), file=sys.stderr)
+    finally:
+      os.chdir(cwd)
+
+    return {
+      'returncode': 1,
+      'dir': None,
+      'files': []
+    }
 
 # Benchmarkers
 benchmarkers_error = ''
@@ -206,14 +275,14 @@ if SPIDERMONKEY_ENGINE and Building.which(SPIDERMONKEY_ENGINE[0]):
   benchmarkers += [
 #    JSBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
 #    JSBenchmarker('sm-simd',  SPIDERMONKEY_ENGINE, ['-s', 'SIMD=1']),
-    JSBenchmarker('sm-wasm',  SPIDERMONKEY_ENGINE, ['-s', 'WASM=1']),
+#    JSBenchmarker('sm-wasm',  SPIDERMONKEY_ENGINE, ['-s', 'WASM=1']),
   ]
 if V8_ENGINE and Building.which(V8_ENGINE[0]):
   benchmarkers += [
 #    JSBenchmarker('v8-wasm',  V8_ENGINE,           ['-s', 'WASM=1']),
   ]
 benchmarkers += [
-  CheerpBenchmarker('cheerp-sm', SPIDERMONKEY_ENGINE),
+  CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE),
 ]
 
 class benchmark(RunnerCore):
