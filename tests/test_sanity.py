@@ -44,6 +44,7 @@ class sanity(RunnerCore):
     restore()
 
   def do(self, command):
+    print(' '.join(command))
     if type(command) is not list:
       command = [command]
     if command[0] == EMCC:
@@ -566,6 +567,7 @@ fi
       print(compiler)
 
       for i in [0, 1]:
+        self.do([PYTHON, EMCC, '--clear-cache'])
         print(i)
         if i == 0:
           try_delete(PORTS_DIR)
@@ -575,12 +577,14 @@ fi
 
         # Building a file that doesn't need ports should not trigger anything
         output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp')])
+        print('no', output)
         assert RETRIEVING_MESSAGE not in output
         assert BUILDING_MESSAGE not in output
         assert not os.path.exists(PORTS_DIR)
 
         # Building a file that need a port does trigger stuff
         output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+        print('yes', output)
         assert RETRIEVING_MESSAGE in output, output
         assert BUILDING_MESSAGE in output, output
         assert os.path.exists(PORTS_DIR)
@@ -1009,4 +1013,22 @@ fi
       assert not os.path.exists(tag_file)
       assert not os.path.exists('a.out.js')
       self.assertContained('For example, for binaryen, do "python embuilder.py build binaryen"', out)
+
+      if not binaryen_root_in_config:
+        print('build on demand')
+        for side_module in (False, True):
+          print(side_module)
+          prep()
+          assert not os.path.exists(tag_file)
+          try_delete('a.out.js')
+          try_delete('a.out.wasm')
+          cmd = [PYTHON, 'emcc.py', 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
+          if side_module:
+            cmd += ['-s', 'SIDE_MODULE=1']
+          subprocess.check_call(cmd)
+          assert os.path.exists(tag_file)
+          assert os.path.exists('a.out.wasm')
+          if not side_module:
+            assert os.path.exists('a.out.js')
+            self.assertContained('hello, world!', run_js('a.out.js'))
 
