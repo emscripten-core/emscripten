@@ -5,7 +5,7 @@ TAG = 'version_1'
 def build_with_configure(ports, shared, path): # not currently used
   if not sys.platform.startswith('win'): #TODO: test on windows
      autogen_path = os.path.join(path, 'bullet', 'autogen.sh')
-     os.chmod(autogen_path, os.stat(autogen_path).st_mode | 0111) #Make executable
+     os.chmod(autogen_path, os.stat(autogen_path).st_mode | 0o111) # Make executable
      subprocess.Popen(["sh", "autogen.sh"], cwd=os.path.join(path, 'bullet')).wait()
   subprocess.Popen(["python", "make.py"], cwd=path).wait()
   final = os.path.join(path, 'libbullet.bc')

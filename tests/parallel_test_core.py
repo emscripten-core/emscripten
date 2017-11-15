@@ -17,7 +17,6 @@ assert not os.environ.get('EM_SAVE_DIR'), 'Need separate directories to avoid th
 # run slower ones first, to optimize total time
 optimal_order = [
   'asm2i',
-  'asm2nn',
   'asm3',
   'asm2',
   'asm2g',

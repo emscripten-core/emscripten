@@ -1,10 +1,18 @@
 
-from toolchain_profiler import ToolchainProfiler
+from __future__ import print_function
+import os, sys, subprocess, multiprocessing, re, string, json, shutil, logging
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools.toolchain_profiler import ToolchainProfiler
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
-import os, sys, subprocess, multiprocessing, re, string, json, shutil, logging
-import shared
+try:
+  from tools import shared
+except ImportError:
+  # Python 2 circular import compatibility
+  import shared
 
 configuration = shared.configuration
 temp_files = configuration.get_temp_files()
@@ -32,8 +40,8 @@ import_sig = re.compile('(var|const) ([_\w$]+ *=[^;]+);')
 NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER') or '2' # use optimized native optimizer by default, unless disabled by EMCC_NATIVE_OPTIMIZER=0 in the env
 
 def split_funcs(js, just_split=False):
-  if just_split: return map(lambda line: ('(json)', line), js.split('\n'))
-  parts = map(lambda part: part, js.split('\n}\n'))
+  if just_split: return [('(json)', line) for line in js.split('\n')]
+  parts = [part for part in js.split('\n}\n')]
   funcs = []
   for i in range(len(parts)):
     func = parts[i]
@@ -175,7 +183,7 @@ def get_native_optimizer():
         return shared.Cache.get(name, create_optimizer_cmake, extension='exe')
       else:
         return shared.Cache.get(name, create_optimizer, extension='exe')
-    except NativeOptimizerCreationException, e:
+    except NativeOptimizerCreationException as e:
       shared.logging.debug('failed to build native optimizer')
       handle_build_errors(outs, errs)
       open(FAIL_MARKER, 'w').write(':(')
@@ -198,8 +206,8 @@ def get_native_optimizer():
 def use_native(x, source_map=False):
   if source_map: return False
   if not NATIVE_OPTIMIZER or NATIVE_OPTIMIZER == '0': return False
-  if type(x) == str: return x in NATIVE_PASSES
-  return len(NATIVE_PASSES.intersection(x)) == len(x) and 'asm' in x
+  if isinstance(x, list): return len(NATIVE_PASSES.intersection(x)) == len(x) and 'asm' in x
+  return x in NATIVE_PASSES
 
 class Minifier(object):
   '''
@@ -251,10 +259,10 @@ class Minifier(object):
 
     if self.symbols_file:
       mapfile = open(self.symbols_file, 'w')
-      for key, value in self.globs.iteritems():
+      for key, value in self.globs.items():
         mapfile.write(value + ':' + key + '\n')
       mapfile.close()
-      print >> sys.stderr, 'wrote symbol map file to', self.symbols_file
+      print('wrote symbol map file to', self.symbols_file, file=sys.stderr)
 
     return code.replace('13371337', '0.0')
 
@@ -279,9 +287,9 @@ def run_on_chunk(command):
     if os.environ.get('EMCC_SAVE_OPT_TEMP') and os.environ.get('EMCC_SAVE_OPT_TEMP') != '0':
       saved = 'save_' + os.path.basename(filename)
       while os.path.exists(saved): saved = 'input' + str(int(saved.replace('input', '').replace('.txt', ''))+1) + '.txt'
-      print >> sys.stderr, 'running js optimizer command', ' '.join(map(lambda c: c if c != filename else saved, command))
+      print('running js optimizer command', ' '.join([c if c != filename else saved for c in command]), file=sys.stderr)
       shutil.copyfile(filename, os.path.join(shared.get_emscripten_temp_dir(), saved))
-    if shared.EM_BUILD_VERBOSE_LEVEL >= 3: print >> sys.stderr, 'run_on_chunk: ' + str(command)
+    if shared.EM_BUILD_VERBOSE_LEVEL >= 3: print('run_on_chunk: ' + str(command), file=sys.stderr)
     proc = subprocess.Popen(command, stdout=subprocess.PIPE)
     output = proc.communicate()[0]
     assert proc.returncode == 0, 'Error in optimizer (return code ' + str(proc.returncode) + '): ' + output
@@ -292,7 +300,7 @@ def run_on_chunk(command):
     f = open(filename, 'wb')
     f.write(output)
     f.close()
-    if DEBUG and not shared.WINDOWS: print >> sys.stderr, '.' # Skip debug progress indicator on Windows, since it doesn't buffer well with multiple threads printing to console.
+    if DEBUG and not shared.WINDOWS: print('.', file=sys.stderr) # Skip debug progress indicator on Windows, since it doesn't buffer well with multiple threads printing to console.
     return filename
   except KeyboardInterrupt:
     # avoid throwing keyboard interrupts from a child process
@@ -300,7 +308,7 @@ def run_on_chunk(command):
 
 def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, just_split=False, just_concat=False):
   with ToolchainProfiler.profile_block('js_optimizer.split_markers'):
-    if type(passes) == str:
+    if not isinstance(passes, list):
       passes = [passes]
 
     js = open(filename).read()
@@ -326,18 +334,18 @@ def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, ju
 
     minify_globals = 'minifyNames' in passes and 'asm' in passes
     if minify_globals:
-      passes = map(lambda p: p if p != 'minifyNames' else 'minifyLocals', passes)
+      passes = [p if p != 'minifyNames' else 'minifyLocals' for p in passes]
       start_asm = js.find(start_asm_marker)
       end_asm = js.rfind(end_asm_marker)
       assert (start_asm >= 0) == (end_asm >= 0)
 
     closure = 'closure' in passes
     if closure:
-      passes = filter(lambda p: p != 'closure', passes) # we will do it manually
+      passes = [p for p in passes if p != 'closure'] # we will do it manually
 
     cleanup = 'cleanup' in passes
     if cleanup:
-      passes = filter(lambda p: p != 'cleanup', passes) # we will do it manually
+      passes = [p for p in passes if p != 'cleanup'] # we will do it manually
 
     split_memory = 'splitMemory' in passes
 
@@ -377,8 +385,11 @@ EMSCRIPTEN_FUNCS();
           minifier.profiling_funcs = True
           return False
         return True
-      passes = filter(check_symbol_mapping, passes)
+      passes = list(filter(check_symbol_mapping, passes))
       asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'minifyWhitespace' in passes, source_map).split('EMSCRIPTEN_FUNCS();');
+      # Restore a comment for Closure Compiler
+      asm_open_bracket = asm_shell_pre.find('(')
+      asm_shell_pre = asm_shell_pre[:asm_open_bracket+1] + '/** @suppress {uselessCode} */' + asm_shell_pre[asm_open_bracket+1:]
       asm_shell_post = asm_shell_post.replace('});', '})');
       pre += asm_shell_pre + '\n' + start_funcs_marker
       post = end_funcs_marker + asm_shell_post + post
@@ -386,7 +397,7 @@ EMSCRIPTEN_FUNCS();
       minify_info = minifier.serialize()
 
       if extra_info:
-        for key, value in extra_info.iteritems():
+        for key, value in extra_info.items():
           assert key not in minify_info or value == minify_info[key], [key, value, minify_info[key]]
           minify_info[key] = value
 
@@ -414,10 +425,10 @@ EMSCRIPTEN_FUNCS();
       chunks = shared.chunkify(funcs, chunk_size)
     else:
       # keep same chunks as before
-      chunks = map(lambda f: f[1], funcs)
+      chunks = [f[1] for f in funcs]
 
-    chunks = filter(lambda chunk: len(chunk) > 0, chunks)
-    if DEBUG and len(chunks) > 0: print >> sys.stderr, 'chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks))
+    chunks = [chunk for chunk in chunks if len(chunk) > 0]
+    if DEBUG and len(chunks) > 0: print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks)), file=sys.stderr)
     funcs = None
 
     if len(chunks) > 0:
@@ -441,26 +452,26 @@ EMSCRIPTEN_FUNCS();
   with ToolchainProfiler.profile_block('run_optimizer'):
     if len(filenames) > 0:
       if not use_native(passes, source_map) or not get_native_optimizer():
-        commands = map(lambda filename: js_engine +
+        commands = [js_engine +
             [JS_OPTIMIZER, filename, 'noPrintMetadata'] +
-            (['--debug'] if source_map else []) + passes, filenames)
+            (['--debug'] if source_map else []) + passes for filename in filenames]
       else:
         # use the native optimizer
         shared.logging.debug('js optimizer using native')
         assert not source_map # XXX need to use js optimizer
-        commands = map(lambda filename: [get_native_optimizer(), filename] + passes, filenames)
+        commands = [[get_native_optimizer(), filename] + passes for filename in filenames]
       #print [' '.join(command) for command in commands]
 
       cores = min(cores, len(filenames))
       if len(chunks) > 1 and cores >= 2:
         # We can parallelize
-        if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size/(1024*1024.))
+        if DEBUG: print('splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size/(1024*1024.)), file=sys.stderr)
         with ToolchainProfiler.profile_block('optimizer_pool'):
           pool = shared.Building.get_multiprocessing_pool()
           filenames = pool.map(run_on_chunk, commands, chunksize=1)
       else:
         # We can't parallize, but still break into chunks to avoid uglify/node memory issues
-        if len(chunks) > 1 and DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks' % (len(chunks))
+        if len(chunks) > 1 and DEBUG: print('splitting up js optimization into %d chunks' % (len(chunks)), file=sys.stderr)
         filenames = [run_on_chunk(command) for command in commands]
     else:
       filenames = []
@@ -484,17 +495,17 @@ EMSCRIPTEN_FUNCS();
         c.close()
         cld = cle
         if split_memory:
-          if DEBUG: print >> sys.stderr, 'running splitMemory on shell code'
+          if DEBUG: print('running splitMemory on shell code', file=sys.stderr)
           cld = run_on_chunk(js_engine + [JS_OPTIMIZER, cld, 'splitMemoryShell'])
           f = open(cld, 'a')
           f.write(suffix_marker)
           f.close()
         if closure:
-          if DEBUG: print >> sys.stderr, 'running closure on shell code'
+          if DEBUG: print('running closure on shell code', file=sys.stderr)
           cld = shared.Building.closure_compiler(cld, pretty='minifyWhitespace' not in passes)
           temp_files.note(cld)
         elif cleanup:
-          if DEBUG: print >> sys.stderr, 'running cleanup on shell code'
+          if DEBUG: print('running cleanup on shell code', file=sys.stderr)
           next = cld + '.cl.js'
           temp_files.note(next)
           proc = subprocess.Popen(js_engine + [JS_OPTIMIZER, cld, 'noPrintMetadata', 'JSDCE'] + (['minifyWhitespace'] if 'minifyWhitespace' in passes else []), stdout=open(next, 'w'))
@@ -507,7 +518,9 @@ EMSCRIPTEN_FUNCS();
       after = 'wakaUnknownAfter'
       start = coutput.find(after)
       end = coutput.find(')', start)
-      pre = coutput[:start] + '(function(global,env,buffer) {\n' + pre_2[pre_2.find('{')+1:]
+      # First brace is from Closure Compiler comment, thus we need a second one
+      pre_2_second_brace = pre_2.find('{', pre_2.find('{')+1)
+      pre = coutput[:start] + '(/** @suppress {uselessCode} */ function(global,env,buffer) {\n' + pre_2[pre_2_second_brace+1:]
       post = post_1 + end_asm + coutput[end+1:]
 
   with ToolchainProfiler.profile_block('write_pre'):
@@ -524,19 +537,13 @@ EMSCRIPTEN_FUNCS();
         funcses.append(split_funcs(open(out_file).read(), False))
       funcs = [item for sublist in funcses for item in sublist]
       funcses = None
-      def sorter(x, y):
-        diff = len(y[1]) - len(x[1])
-        if diff != 0: return diff
-        if x[0] < y[0]: return 1
-        elif x[0] > y[0]: return -1
-        return 0
       if not os.environ.get('EMCC_NO_OPT_SORT'):
-        funcs.sort(sorter)
+        funcs.sort(key=lambda x: (len(x[1]), x[0]), reverse=True)
 
       if 'last' in passes and len(funcs) > 0:
         count = funcs[0][1].count('\n')
         if count > 3000:
-          print >> sys.stderr, 'warning: Output contains some very large functions (%s lines in %s), consider building source files with -Os or -Oz, and/or trying OUTLINING_LIMIT to break them up (see settings.js; note that the parameter there affects AST nodes, while we measure lines here, so the two may not match up)' % (count, funcs[0][0])
+          print('warning: Output contains some very large functions (%s lines in %s), consider building source files with -Os or -Oz, and/or trying OUTLINING_LIMIT to break them up (see settings.js; note that the parameter there affects AST nodes, while we measure lines here, so the two may not match up)' % (count, funcs[0][0]), file=sys.stderr)
 
       for func in funcs:
         f.write(func[1])
@@ -573,7 +580,7 @@ if __name__ == '__main__':
       extra_info = None
     out = run(sys.argv[1], sys.argv[2:], extra_info=extra_info)
     shutil.copyfile(out, sys.argv[1] + '.jsopt.js')
-  except Exception, e:
+  except Exception as e:
     ToolchainProfiler.record_process_exit(1)
     raise e
   ToolchainProfiler.record_process_exit(0)

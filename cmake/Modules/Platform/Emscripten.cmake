@@ -2,10 +2,10 @@
 # It teaches CMake about the Emscripten compiler, so that CMake can generate makefiles
 # from CMakeLists.txt that invoke emcc.
 
-# Since updating to LLVM 3.9, its build system requires CMake 3.4.3 or newer, so use this as a
-# baseline requirement for Emscripten toolchain as well, as developers will have this version or
-# they would have been unable to build LLVM in the first place.
-cmake_minimum_required(VERSION 3.4.3)
+# At the moment this required minimum version is not exact (i.e. we do not know of a feature that needs CMake 3.0.0 specifically)
+# It is possible that CMake 3.0.0 is too old and will not actually work. If you do find such a case, please report it at Emscripten
+# bug tracker to revise the minimum requirement. See also https://github.com/juj/emsdk/issues/108
+cmake_minimum_required(VERSION 3.0.0)
 
 # To use this toolchain file with CMake, invoke CMake with the following command line parameters
 # cmake -DCMAKE_TOOLCHAIN_FILE=<EmscriptenRoot>/cmake/Modules/Platform/Emscripten.cmake
@@ -110,7 +110,7 @@ if (EMSCRIPTEN_FORCE_COMPILERS)
 		if (NOT "${_cmake_compiler_output}" MATCHES "[Ee]mscripten")
 			message(FATAL_ERROR "System LLVM compiler cannot be used to build with Emscripten! Check Emscripten's LLVM toolchain location in .emscripten configuration file, and make sure to point CMAKE_C_COMPILER to where emcc is located. (was pointing to \"${CMAKE_C_COMPILER}\")")
 		endif()
-		string(REGEX MATCH "clang version ([0-9\.]+)" _dummy_unused "${_cmake_compiler_output}")
+		string(REGEX MATCH "clang version ([0-9\\.]+)" _dummy_unused "${_cmake_compiler_output}")
 		if (NOT CMAKE_MATCH_1)
 			message(FATAL_ERROR "Failed to regex parse Clang compiler version from version string: ${_cmake_compiler_output}")
 		endif()

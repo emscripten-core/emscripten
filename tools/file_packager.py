@@ -60,22 +60,26 @@ TODO:        You can also provide .crn files yourself, pre-crunched. With this o
              to dds files in the browser, exactly the same as if this tool compressed them.
 '''
 
-from toolchain_profiler import ToolchainProfiler
+from __future__ import print_function
+import os, sys, shutil, random, uuid, ctypes
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools.toolchain_profiler import ToolchainProfiler
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
-import os, sys, shutil, random, uuid, ctypes
 import posixpath
-import shared
-from shared import execute, suffix, unsuffixed
-from jsrun import run_js
+from tools import shared
+from tools.shared import execute, suffix, unsuffixed
+from tools.jsrun import run_js
 from subprocess import Popen, PIPE, STDOUT
 import fnmatch
 import json
 
 if len(sys.argv) == 1:
-  print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--exclude C...] [--no-closure] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata]
-See the source for more details.'''
+  print('''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--exclude C...] [--no-closure] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata]
+See the source for more details.''')
   sys.exit(0)
 
 DEBUG = os.environ.get('EMCC_DEBUG')
@@ -152,9 +156,9 @@ for arg in sys.argv[2:]:
     leading = ''
   elif arg.startswith('--crunch'):
     try:
-      from shared import CRUNCH
-    except Exception, e:
-      print >> sys.stderr, 'could not import CRUNCH (make sure it is defined properly in ' + shared.hint_config_file_location() + ')'
+      from tools.shared import CRUNCH
+    except Exception as e:
+      print('could not import CRUNCH (make sure it is defined properly in ' + shared.hint_config_file_location() + ')', file=sys.stderr)
       raise e
     crunch = arg.split('=', 1)[1] if '=' in arg else '128'
     leading = ''
@@ -175,11 +179,11 @@ for arg in sys.argv[2:]:
     if os.path.isfile(srcpath) or os.path.isdir(srcpath):
       data_files.append({ 'srcpath': srcpath, 'dstpath': dstpath, 'mode': mode, 'explicit_dst_path': uses_at_notation })
     else:
-      print >> sys.stderr, 'Warning: ' + arg + ' does not exist, ignoring.'
+      print('Warning: ' + arg + ' does not exist, ignoring.', file=sys.stderr)
   elif leading == 'exclude':
     excluded_patterns.append(arg)
   else:
-    print >> sys.stderr, 'Unknown parameter:', arg
+    print('Unknown parameter:', arg, file=sys.stderr)
     sys.exit(1)
 
 if (not force) and len(data_files) == 0:
@@ -245,34 +249,37 @@ def escape_for_js_string(s):
   return s
 
 # Expand directories into individual files
-def add(arg, dirname, names):
+def add(mode, rootpathsrc, rootpathdst):
   # rootpathsrc: The path name of the root directory on the local FS we are adding to emscripten virtual FS.
   # rootpathdst: The name we want to make the source path available on the emscripten virtual FS.
-  mode, rootpathsrc, rootpathdst = arg
-  new_names = []
-  for name in names:
-    fullname = os.path.join(dirname, name)
-    if should_ignore(fullname):
-      if DEBUG:
-        print >> sys.stderr, 'Skipping file "' + fullname + '" from inclusion in the emscripten virtual file system.'
-    else:
-      new_names.append(name)
-      if not os.path.isdir(fullname):
+  for dirpath, dirnames, filenames in os.walk(rootpathsrc):
+    new_dirnames = []
+    for name in dirnames:
+      fullname = os.path.join(dirpath, name)
+      if not should_ignore(fullname):
+        new_dirnames.append(name)
+      elif DEBUG:
+        print('Skipping directory "' + fullname + '" from inclusion in the emscripten virtual file system.', file=sys.stderr)
+    for name in filenames:
+      fullname = os.path.join(dirpath, name)
+      if not should_ignore(fullname):
         dstpath = os.path.join(rootpathdst, os.path.relpath(fullname, rootpathsrc)) # Convert source filename relative to root directory of target FS.
         new_data_files.append({ 'srcpath': fullname, 'dstpath': dstpath, 'mode': mode, 'explicit_dst_path': True })
-  del names[:]
-  names.extend(new_names)
+      elif DEBUG:
+        print('Skipping file "' + fullname + '" from inclusion in the emscripten virtual file system.', file=sys.stderr)
+    del dirnames[:]
+    dirnames.extend(new_dirnames)
 
 new_data_files = []
 for file_ in data_files:
   if not should_ignore(file_['srcpath']):
     if os.path.isdir(file_['srcpath']):
-      os.path.walk(file_['srcpath'], add, [file_['mode'], file_['srcpath'], file_['dstpath']])
+      add(file_['mode'], file_['srcpath'], file_['dstpath'])
     else:
       new_data_files.append(file_)
-data_files = filter(lambda file_: not os.path.isdir(file_['srcpath']), new_data_files)
+data_files = [file_ for file_ in new_data_files if not os.path.isdir(file_['srcpath'])]
 if len(data_files) == 0:
-  print >> sys.stderr, 'Nothing to do!' 
+  print('Nothing to do!', file=sys.stderr) 
   sys.exit(1)
 
 # Absolutize paths, and check that they make sense
@@ -284,13 +291,13 @@ for file_ in data_files:
     # we require that the destination not be under the current location
     path = file_['dstpath']
     abspath = os.path.realpath(os.path.abspath(path)) # Use os.path.realpath to resolve any symbolic links to hard paths, to match the structure in curr_abspath.
-    if DEBUG: print >> sys.stderr, path, abspath, curr_abspath
+    if DEBUG: print(path, abspath, curr_abspath, file=sys.stderr)
     if not abspath.startswith(curr_abspath):
-      print >> sys.stderr, 'Error: Embedding "%s" which is below the current directory "%s". This is invalid since the current directory becomes the root that the generated code will see' % (path, curr_abspath)
+      print('Error: Embedding "%s" which is below the current directory "%s". This is invalid since the current directory becomes the root that the generated code will see' % (path, curr_abspath), file=sys.stderr)
       sys.exit(1)
     file_['dstpath'] = abspath[len(curr_abspath)+1:]
     if os.path.isabs(path):
-      print >> sys.stderr, 'Warning: Embedding an absolute file/directory name "' + path + '" to the virtual filesystem. The file will be made available in the relative path "' + file_['dstpath'] + '". You can use the explicit syntax --preload-file srcpath@dstpath to explicitly specify the target location the absolute source path should be directed to.'
+      print('Warning: Embedding an absolute file/directory name "' + path + '" to the virtual filesystem. The file will be made available in the relative path "' + file_['dstpath'] + '". You can use the explicit syntax --preload-file srcpath@dstpath to explicitly specify the target location the absolute source path should be directed to.', file=sys.stderr)
 
 for file_ in data_files:
   file_['dstpath'] = file_['dstpath'].replace(os.path.sep, '/') # name in the filesystem, native and emulated
@@ -299,7 +306,7 @@ for file_ in data_files:
   # make destination path always relative to the root
   file_['dstpath'] = posixpath.normpath(os.path.join('/', file_['dstpath']))
   if DEBUG:
-    print >> sys.stderr, 'Packaging file "' + file_['srcpath'] + '" to VFS in path "' + file_['dstpath'] + '".'
+    print('Packaging file "' + file_['srcpath'] + '" to VFS in path "' + file_['dstpath'] + '".', file=sys.stderr)
 
 # Remove duplicates (can occur naively, for example preload dir/, preload dir/subdir/)
 seen = {}
@@ -307,7 +314,7 @@ def was_seen(name):
   if seen.get(name): return True
   seen[name] = 1
   return False
-data_files = filter(lambda file_: not was_seen(file_['dstpath']), data_files)
+data_files = [file_ for file_ in data_files if not was_seen(file_['dstpath'])]
 
 if AV_WORKAROUND:
   random.shuffle(data_files)
@@ -407,7 +414,7 @@ if has_preloaded:
   data.close()
   # TODO: sha256sum on data_target
   if start > 256*1024*1024:
-    print >> sys.stderr, 'warning: file packager is creating an asset bundle of %d MB. this is very large, and browsers might have trouble loading it. see https://hacks.mozilla.org/2015/02/synchronous-execution-and-filesystem-access-in-emscripten/' % (start/(1024*1024))
+    print('warning: file packager is creating an asset bundle of %d MB. this is very large, and browsers might have trouble loading it. see https://hacks.mozilla.org/2015/02/synchronous-execution-and-filesystem-access-in-emscripten/' % (start/(1024*1024)), file=sys.stderr)
 
   create_preloaded = '''
         Module['FS_createPreloadedFile'](this.name, null, byteArray, true, true, function() {
@@ -481,7 +488,7 @@ for file_ in data_files:
   basename = os.path.basename(filename)
   if file_['mode'] == 'embed':
     # Embed
-    data = map(ord, open(file_['srcpath'], 'rb').read())
+    data = list(bytearray(open(file_['srcpath'], 'rb').read()))
     code += '''var fileData%d = [];\n''' % counter
     if data:
       parts = []
@@ -854,7 +861,7 @@ ret += '''%s
 
 if force or len(data_files) > 0:
   if jsoutput == None:
-    print ret
+    print(ret)
   else:
     # Overwrite the old jsoutput file (if exists) only when its content differs from the current generated one, otherwise leave the file untouched preserving its old timestamp
     if os.path.isfile(jsoutput):

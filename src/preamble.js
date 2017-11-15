@@ -185,19 +185,23 @@ var cwrap, ccall;
     }
     var ret = func.apply(null, cArgs);
 #if ASSERTIONS
+#if EMTERPRETIFY_ASYNC
     if ((!opts || !opts.async) && typeof EmterpreterAsync === 'object') {
       assert(!EmterpreterAsync.state, 'cannot start async op with normal JS calling ccall');
     }
     if (opts && opts.async) assert(!returnType, 'async ccalls cannot return values');
 #endif
+#endif
     if (returnType === 'string') ret = Pointer_stringify(ret);
     if (stack !== 0) {
+#if EMTERPRETIFY_ASYNC
       if (opts && opts.async) {
         EmterpreterAsync.asyncFinalizers.push(function() {
           Runtime.stackRestore(stack);
         });
         return;
       }
+#endif
       Runtime.stackRestore(stack);
     }
     return ret;
@@ -340,7 +344,7 @@ function getValue(ptr, type, noSafe) {
       case 'i64': return {{{ makeGetValue('ptr', '0', 'i64', undefined, undefined, undefined, undefined, '1') }}};
       case 'float': return {{{ makeGetValue('ptr', '0', 'float', undefined, undefined, undefined, undefined, '1') }}};
       case 'double': return {{{ makeGetValue('ptr', '0', 'double', undefined, undefined, undefined, undefined, '1') }}};
-      default: abort('invalid type for setValue: ' + type);
+      default: abort('invalid type for getValue: ' + type);
     }
   } else {
 #endif
@@ -352,7 +356,7 @@ function getValue(ptr, type, noSafe) {
       case 'i64': return {{{ makeGetValue('ptr', '0', 'i64') }}};
       case 'float': return {{{ makeGetValue('ptr', '0', 'float') }}};
       case 'double': return {{{ makeGetValue('ptr', '0', 'double') }}};
-      default: abort('invalid type for setValue: ' + type);
+      default: abort('invalid type for getValue: ' + type);
     }
 #if SAFE_HEAP
   }
@@ -406,7 +410,8 @@ function allocate(slab, types, allocator, ptr) {
   }
 
   if (zeroinit) {
-    var ptr = ret, stop;
+    var stop;
+    ptr = ret;
     assert((ret & 3) == 0);
     stop = ret + (size & ~3);
     for (; ptr < stop; ptr += 4) {
@@ -1705,34 +1710,6 @@ function addOnPostRun(cb) {
 }
 {{{ maybeExport('addOnPostRun') }}}
 
-// Tools
-
-/** @type {function(string, boolean=, number=)} */
-function intArrayFromString(stringy, dontAddNull, length) {
-  var len = length > 0 ? length : lengthBytesUTF8(stringy)+1;
-  var u8array = new Array(len);
-  var numBytesWritten = stringToUTF8Array(stringy, u8array, 0, u8array.length);
-  if (dontAddNull) u8array.length = numBytesWritten;
-  return u8array;
-}
-{{{ maybeExport('intArrayFromString') }}}
-
-function intArrayToString(array) {
-  var ret = [];
-  for (var i = 0; i < array.length; i++) {
-    var chr = array[i];
-    if (chr > 0xFF) {
-#if ASSERTIONS
-      assert(false, 'Character code ' + chr + ' (' + String.fromCharCode(chr) + ')  at offset ' + i + ' not in 0x00-0xFF.');
-#endif
-      chr &= 0xFF;
-    }
-    ret.push(String.fromCharCode(chr));
-  }
-  return ret.join('');
-}
-{{{ maybeExport('intArrayToString') }}}
-
 // Deprecated: This function should not be called because it is unsafe and does not provide
 // a maximum length limit of how many bytes it is allowed to write. Prefer calling the
 // function stringToUTF8Array() instead, which takes in a maximum length that can be used
@@ -2213,16 +2190,20 @@ function integrateWasmJS() {
 
   function getBinary() {
     try {
-      var binary;
       if (Module['wasmBinary']) {
-        binary = Module['wasmBinary'];
-        binary = new Uint8Array(binary);
-      } else if (Module['readBinary']) {
-        binary = Module['readBinary'](wasmBinaryFile);
+        return new Uint8Array(Module['wasmBinary']);
+      }
+#if SUPPORT_BASE64_EMBEDDING
+      var binary = tryParseAsDataURI(wasmBinaryFile);
+      if (binary) {
+        return binary;
+      }
+#endif
+      if (Module['readBinary']) {
+        return Module['readBinary'](wasmBinaryFile);
       } else {
         throw "on the web, we need the wasm binary to be preloaded and set on Module['wasmBinary']. emcc.py will do that for you when generating HTML (but not JS)";
       }
-      return binary;
     }
     catch (err) {
       abort(err);
@@ -2238,6 +2219,8 @@ function integrateWasmJS() {
           throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
         }
         return response['arrayBuffer']();
+      }).catch(function () {
+        return getBinary();
       });
     }
     // Otherwise, getBinary should be able to get it synchronously
@@ -2336,7 +2319,10 @@ function integrateWasmJS() {
       });
     }
     // Prefer streaming instantiation if available.
-    if (!Module['wasmBinary'] && typeof WebAssembly.instantiateStreaming === 'function') {
+    if (!Module['wasmBinary'] &&
+        typeof WebAssembly.instantiateStreaming === 'function' &&
+        wasmBinaryFile.indexOf('data:') !== 0 &&
+        typeof fetch === 'function') {
       WebAssembly.instantiateStreaming(fetch(wasmBinaryFile, { credentials: 'same-origin' }), info)
         .then(receiveInstantiatedSource)
         .catch(function(reason) {

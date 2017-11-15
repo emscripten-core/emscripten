@@ -197,8 +197,33 @@ var LibraryEmVal = {
     return newer(handle, argTypes, args);
   },
 
+#if NO_DYNAMIC_EXECUTION
+  $emval_get_global: function() {
+    function testGlobal(obj) {
+      obj['$$$embind_global$$$'] = obj;
+      var success = typeof $$$embind_global$$$ === 'object' && obj['$$$embind_global$$$'] === obj;
+      if (!success) {
+	delete obj['$$$embind_global$$$'];
+      }
+      return success;
+    }
+    if (typeof $$$embind_global$$$ === 'object') {
+      return $$$embind_global$$$;
+    }
+    if (typeof global === 'object' && testGlobal(global)) {
+      $$$embind_global$$$ = global;
+    } else if (typeof window === 'object' && testGlobal(window)) {
+      $$$embind_global$$$ = window;
+    }
+    if (typeof $$$embind_global$$$ === 'object') {
+      return $$$embind_global$$$;
+    }
+    throw Error('unable to get global object.');
+  },
+#else
   // appease jshint (technically this code uses eval)
   $emval_get_global: function() { return (function(){return Function;})()('return this')(); },
+#endif
   _emval_get_global__deps: ['_emval_register', '$getStringOrSymbol', '$emval_get_global'],
   _emval_get_global: function(name) {
     if(name===0){

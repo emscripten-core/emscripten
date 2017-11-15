@@ -1,6 +1,7 @@
-from toolchain_profiler import ToolchainProfiler
+from __future__ import print_function
+from .toolchain_profiler import ToolchainProfiler
 import os.path, sys, shutil, time, logging
-import tempfiles, filelock
+from . import tempfiles, filelock
 
 # Permanent cache for dlmalloc and stdlibc++
 class Cache(object):
@@ -72,8 +73,8 @@ class Cache(object):
     tempfiles.try_delete(self.dirname)
     try:
       open(self.dirname + '__last_clear', 'w').write('last clear: ' + time.asctime() + '\n')
-    except Exception, e:
-      print >> sys.stderr, 'failed to save last clear time: ', e
+    except Exception as e:
+      print('failed to save last clear time: ', e, file=sys.stderr)
     self.filelock = None
     tempfiles.try_delete(self.filelock_name)
     self.filelock = filelock.FileLock(self.filelock_name)
@@ -129,4 +130,8 @@ def chunkify(funcs, chunk_size, DEBUG=False):
       curr = None
     return [''.join([func[1] for func in chunk]) for chunk in chunks] # remove function names
 
-import shared
+try:
+  from . import shared
+except ImportError:
+  # Python 2 circular import compatibility
+  import shared

@@ -29,8 +29,12 @@ endif()
 
 if (MSVC)
 	set(cFlags "${cFlags} -D_CRT_SECURE_NO_WARNINGS=1")
+	set(cFlagsDebug "${cFlagsDebug} /bigobj") # Debug build in Visual Studio is large and generates error C1128 if not explicitly recognized, so pass /bigobj for that
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:10485760")
 endif()
+
+set(CMAKE_C_FLAGS_DEBUG     "${CMAKE_C_FLAGS_DEBUG} ${cFlagsDebug}")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${cFlagsDebug}")
 
 set(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} ${cFlags}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${cFlags}")

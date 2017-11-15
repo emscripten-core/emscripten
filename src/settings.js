@@ -47,7 +47,7 @@ var INVOKE_RUN = 1; // Whether we will run the main() function. Disable if you e
 var NO_EXIT_RUNTIME = 0; // If set, the runtime is not quit when main() completes (allowing code to
                          // run afterwards, for example from the browser main event loop).
 var MEM_INIT_METHOD = 0; // How to represent the initial memory content.
-                         // 0: keep array literal representing the initial memory data
+                         // 0: embed a base64 string literal representing the initial memory data
                          // 1: create a *.mem file containing the binary data of the initial memory;
                          //    use the --memory-init-file command line switch to select this method
                          // 2: embed a string literal representing that initial memory data
@@ -422,7 +422,7 @@ var EXPORTED_FUNCTIONS = ['_main'];
 var EXPORT_ALL = 0; // If true, we export all the symbols. Note that this does *not* affect LLVM, so it can
                     // still eliminate functions as dead. This just exports them on the Module object.
 var EXPORT_BINDINGS = 0; // Export all bindings generator functions (prefixed with emscripten_bind_). This
-                         // is necessary to use the WebIDL binder or bindings generator with asm.js
+                         // is necessary to use the WebIDL binder with asm.js
 var EXPORT_FUNCTION_TABLES = 0; // If true, export all the functions appearing in a function table, and the
                                 // tables themselves.
 var RETAIN_COMPILER_SETTINGS = 0; // Remembers the values of these settings, and makes them accessible
@@ -862,7 +862,21 @@ var FETCH = 0; // If nonzero, enables emscripten_fetch API.
 
 var ASMFS = 0; // If set to 1, uses the multithreaded filesystem that is implemented within the asm.js module, using emscripten_fetch. Implies -s FETCH=1.
 
+var SINGLE_FILE = 0; // If set to 1, embeds all subresources in the emitted file as base64 string
+                     // literals. Embedded subresources may include (but aren't limited to)
+                     // wasm, asm.js, and static memory initialization code.
+                     //
+                     // When using code that depends on this option, your Content Security Policy
+                     // may need to be updated. Specifically, embedding asm.js requires the
+                     // script-src directive to whitelist 'unsafe-inline', and using a Worker
+                     // requires the child-src directive to whitelist blob:. If you aren't using
+                     // Content Security Policy, or your CSP header doesn't include either
+                     // script-src or child-src, then you can safely ignore this warning.
+
 var WASM_TEXT_FILE = ''; // name of the file containing wasm text, if relevant
 var WASM_BINARY_FILE = ''; // name of the file containing wasm binary, if relevant
 var ASMJS_CODE_FILE = ''; // name of the file containing asm.js, if relevant
 var SOURCE_MAP_BASE = ''; // Base URL the source mapfile, if relevant
+
+var SUPPORT_BASE64_EMBEDDING = 0; // If set to 1, src/base64Utils.js will be included in the bundle.
+                                  // This is set internally when needed (SINGLE_FILE)

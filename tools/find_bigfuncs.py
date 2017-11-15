@@ -19,11 +19,11 @@ def processfile(filename):
     nbytes = None
     data = {}
     for i, line in enumerate(open(filename)):
-        if line.startswith(('function ', 'define ')) and '}' not in line:
+        if line.startswith(('function ', 'define ', ' (func ')) and '}' not in line:
             start = i
             curr = line
             nbytes = len(line)
-        elif line.startswith('}') and curr:
+        elif line.startswith(('}', ' )')) and curr:
             nlines = i - start
             data[curr] = (nlines, nbytes+1)
             curr = None
@@ -77,8 +77,8 @@ def uniq_compare(data1, data2):
     print('file 2 has {} {} than file 1 overall in unique functions'.format(humanbytes(abs(uniqbytediff)), bytesword))
 
 def list_bigfuncs(data):
-    data = data.items()
-    data.sort(lambda (f1, d1), (f2, d2): d1[0] - d2[0])
+    data = list(data.items())
+    data.sort(key=lambda (f, d): d[0])
     print(''.join(['%6d lines (%6s) : %s' % (d[0], humanbytes(d[1]), f) for f, d in data]))
 
 def main():
