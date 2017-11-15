@@ -145,19 +145,23 @@ class CheerpBenchmarker(Benchmarker):
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     suffix = filename.split('.')[-1]
     cheerp_temp = filename + '.cheerp.' + suffix
-    open(cheerp_temp, 'w').write(
-      open(filename).read() + '''
-        void webMain() {
-          // TODO: how to read from commandline?
-          volatile int argc = 2;
-          typedef char** charStarStar;
-          volatile charStarStar argv;
-          argv[0] = "./cheerp.exe";
-          argv[1] = "%s";
-          main(argc, (const char**)argv);
-        }
-      ''' % args[-1]
-    )
+    code = open(filename).read()
+    open(cheerp_temp, 'w').write('''
+      %(code)s
+      void webMain() {
+        // TODO: how to read from commandline?
+        volatile int argc = 2;
+        typedef char** charStarStar;
+        volatile charStarStar argv;
+        argv[0] = "./cheerp.exe";
+        argv[1] = "%(arg)s";
+        main(argc, (%(const)s char**)argv);
+      }
+    ''' % {
+      'arg': args[-1],
+      'code': code,
+      'const': 'const' if 'const char *argv' in code else ''
+    })
     cheerp_args = [
       '-target', 'cheerp', '-cheerp-mode=wasm',
     ]
