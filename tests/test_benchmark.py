@@ -11,7 +11,7 @@ from tools.shared import *
 # 3: 1 second
 # 4: 5 seconds
 # 5: 10 seconds
-DEFAULT_ARG = '4'
+DEFAULT_ARG = '3'
 
 TEST_REPS = 3
 
@@ -50,7 +50,7 @@ class Benchmarker(object):
     std = math.sqrt(mean_of_squared - mean*mean)
     sorted_times = self.times[:]
     sorted_times.sort()
-    median = sum(sorted_times[len(sorted_times)//2 - 1:len(sorted_times)//2 + 1])//2
+    median = sum(sorted_times[len(sorted_times)//2 - 1:len(sorted_times)//2 + 1])/2
 
     print('   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100*std/mean, self.reps), end=' ')
 
@@ -120,10 +120,12 @@ process(sys.argv[1])
     final = final.replace('.cpp', '')
     try_delete(final)
     output = Popen([PYTHON, EMCC, filename, #'-O3',
-                    '-O3', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
+                    '-O3',
                     '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
                     '-s', 'TOTAL_MEMORY=256*1024*1024',
                     '-s', 'NO_EXIT_RUNTIME=1',
+                    '-s', 'NO_FILESYSTEM=1',
+                    '-s', 'EXPORTED_RUNTIME_METHODS=[]',
                     '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
                     #'--profiling',
                     #'--closure', '1',
@@ -134,26 +136,71 @@ process(sys.argv[1])
   def run(self, args):
     return run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True, assert_returncode=None)
 
+class CheerpBenchmarker(Benchmarker):
+  def __init__(self, name, engine, args=['-O3']):
+    self.name = name
+    self.engine = engine
+    self.args = args
+
+  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
+    suffix = filename.split('.')[-1]
+    cheerp_temp = filename + '.cheerp.' + suffix
+    open(cheerp_temp, 'w').write(
+      open(filename).read() + '''
+        void webMain() {
+          // TODO: how to read from commandline?
+          volatile int argc = 2;
+          typedef char** charStarStar;
+          volatile charStarStar argv;
+          argv[0] = "./cheerp.exe";
+          argv[1] = "%s";
+          main(argc, argv);
+        }
+      ''' % args[-1]
+    )
+    cheerp_args = [
+      '-target', 'cheerp', '-cheerp-mode=wasm',
+    ]
+    self.parent = parent
+    if lib_builder:
+      cheerp_args = cheerp_args + lib_builder(self.name, env_init={
+        'CC': '/opt/cheerp/bin/clang',
+        'CXX': '/opt/cheerp/bin/clang++'
+      })
+    final = os.path.dirname(filename) + os.path.sep + 'cheerp_' + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
+    final = final.replace('.cpp', '')
+    try_delete(final)
+    subprocess.check_call(['/opt/cheerp/bin/clang++'] + cheerp_args + [
+      '-cheerp-linear-heap-size=256',
+      '-cheerp-wasm-loader=' + final,
+      cheerp_temp,
+      '-Wno-writable-strings', # for how we set up webMain
+      '-o', final + '.wasm'
+    ] + shared_args)
+    self.filename = final
+
+  def run(self, args):
+    return run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True, assert_returncode=None)
+
 # Benchmarkers
-try:
-  benchmarkers_error = ''
-  benchmarkers = [
-    NativeBenchmarker('clang', CLANG_CC, CLANG),
-    NativeBenchmarker('gcc',   'gcc',    'g++')
+benchmarkers_error = ''
+benchmarkers = [
+#    NativeBenchmarker('clang', CLANG_CC, CLANG),
+#    NativeBenchmarker('gcc',   'gcc',    'g++')
+]
+if SPIDERMONKEY_ENGINE and Building.which(SPIDERMONKEY_ENGINE[0]):
+  benchmarkers += [
+#    JSBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
+#    JSBenchmarker('sm-simd',  SPIDERMONKEY_ENGINE, ['-s', 'SIMD=1']),
+    JSBenchmarker('sm-wasm',  SPIDERMONKEY_ENGINE, ['-s', 'WASM=1']),
   ]
-  if SPIDERMONKEY_ENGINE and Building.which(SPIDERMONKEY_ENGINE[0]):
-    benchmarkers += [
-      JSBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
-      JSBenchmarker('sm-simd',  SPIDERMONKEY_ENGINE, ['-s', 'SIMD=1']),
-      JSBenchmarker('sm-wasm',  SPIDERMONKEY_ENGINE, ['-s', 'WASM=1']),
-    ]
-  if V8_ENGINE and Building.which(V8_ENGINE[0]):
-    benchmarkers += [
-      JSBenchmarker('v8-wasm',  V8_ENGINE,           ['-s', 'WASM=1']),
-    ]
-except Exception as e:
-  benchmarkers_error = str(e)
-  benchmarkers = []
+if V8_ENGINE and Building.which(V8_ENGINE[0]):
+  benchmarkers += [
+#    JSBenchmarker('v8-wasm',  V8_ENGINE,           ['-s', 'WASM=1']),
+  ]
+benchmarkers += [
+  CheerpBenchmarker('cheerp', SPIDERMONKEY_ENGINE),
+]
 
 class benchmark(RunnerCore):
   save_dir = True
