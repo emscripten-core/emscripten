@@ -56,6 +56,9 @@ Module['instantiateWasm'] = function(info, receiveInstance) {
   // Instantiate from the module posted from the main thread.
   // We can just use sync instantiation in the worker.
   instance = new WebAssembly.Instance(Module['wasmModule'], info);
+  // We don't need the module anymore; new threads will be spawned from the main thread.
+  // XXX is this true?
+  Module['wasmModule'] = undefined;
   receiveInstance(instance);
   return instance.exports;
 }
