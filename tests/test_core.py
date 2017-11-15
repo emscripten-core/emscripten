@@ -2152,7 +2152,7 @@ The current type of b is: 9
 
       def check(result, err):
         result = result.replace('\n \n', '\n') # remove extra node output
-        return hashlib.sha1(result).hexdigest()
+        return hashlib.sha1(result.encode('utf-8')).hexdigest()
 
       self.do_run_from_file(src, output, output_nicerizer = check)
 
