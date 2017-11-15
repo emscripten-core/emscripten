@@ -6,6 +6,7 @@ from tools.shared import *
 try:
   from http.server import BaseHTTPRequestHandler, HTTPServer
 except ImportError:
+  # Python 2 compatibility
   from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 # User can specify an environment variable EMSCRIPTEN_BROWSER to force the browser test suite to

@@ -38,6 +38,7 @@ import tools.line_endings
 try:
   from urllib.parse import quote
 except ImportError:
+  # Python 2 compatibility
   from urllib import quote
 
 # endings = dot + a suffix, safe to test by  filename.endswith(endings)

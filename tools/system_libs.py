@@ -612,6 +612,7 @@ class Ports(object):
       try:
         from urllib.request import urlopen
       except ImportError:
+        # Python 2 compatibility
         from urllib2 import urlopen
       f = urlopen(url)
       data = f.read()
