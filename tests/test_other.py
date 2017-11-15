@@ -3062,7 +3062,7 @@ var Module = { print: function(x) { throw '<{(' + x + ')}>' } };
       assert os.path.exists('header.h.gch') # default output is gch
       if suffix != 'gch':
         Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix]).communicate()
-        assert open('header.h.gch').read() == open('header.h.' + suffix).read()
+        assert open('header.h.gch', 'rb').read() == open('header.h.' + suffix, 'rb').read()
 
       open('src.cpp', 'w').write(r'''
 #include <stdio.h>
