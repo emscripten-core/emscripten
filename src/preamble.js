@@ -2283,10 +2283,13 @@ function integrateWasmJS() {
       // Keep a reference to the compiled module so we can post it to the workers.
       Module['wasmModule'] = module;
 #endif
-      removeRunDependency('wasm-instantiate');
+      if(!ENVIRONMENT_IS_PTHREAD) {
+        removeRunDependency('wasm-instantiate');
+      }
     }
-
-    addRunDependency('wasm-instantiate'); // we can't run yet
+    if (!ENVIRONMENT_IS_PTHREAD) {
+      addRunDependency('wasm-instantiate'); // we can't run yet (except in a pthread, where we have a custom sync instantiator)
+    }
 
     // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
     // to manually instantiate the Wasm module themselves. This allows pages to run the instantiation parallel
