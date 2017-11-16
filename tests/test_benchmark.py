@@ -11,7 +11,7 @@ from tools.shared import *
 # 3: 1 second
 # 4: 5 seconds
 # 5: 10 seconds
-DEFAULT_ARG = '3'
+DEFAULT_ARG = '4'
 
 TEST_REPS = 3
 
@@ -141,10 +141,11 @@ process(sys.argv[1])
     return run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True, assert_returncode=None)
 
 class CheerpBenchmarker(Benchmarker):
-  def __init__(self, name, engine, args=['-O3']):
+  def __init__(self, name, engine, args=['-O3'], binaryen_opts=[]):
     self.name = name
     self.engine = engine
     self.args = args
+    self.binaryen_opts = binaryen_opts[:]
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     suffix = filename.split('.')[-1]
@@ -209,9 +210,15 @@ class CheerpBenchmarker(Benchmarker):
         '-Wno-writable-strings', # for how we set up webMain
         '-o', final + '.wasm'
       ] + shared_args
-      print(' '.join(cmd))
+      #print(' '.join(cmd))
       subprocess.check_call(cmd)
       self.filename = final
+      if self.binaryen_opts:
+        subprocess.check_call([
+          '/home/alon/Dev/2-binaryen/bin/wasm-opt',
+          final + '.wasm',
+          '-o', final + '.wasm'
+        ] + self.binaryen_opts)
     finally:
       for dir_ in dirs_to_delete:
         try_delete(dir_)
@@ -220,7 +227,6 @@ class CheerpBenchmarker(Benchmarker):
     return run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True, assert_returncode=None)
 
   def handle_static_lib(self, f):
-    print('ahdne static lib ' + f)
     try:
       cwd = os.getcwd()
       temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
@@ -266,24 +272,28 @@ class CheerpBenchmarker(Benchmarker):
     }
 
 # Benchmarkers
-benchmarkers_error = ''
-benchmarkers = [
-#    NativeBenchmarker('clang', CLANG_CC, CLANG),
-#    NativeBenchmarker('gcc',   'gcc',    'g++')
-]
-if SPIDERMONKEY_ENGINE and Building.which(SPIDERMONKEY_ENGINE[0]):
-  benchmarkers += [
-#    JSBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
-#    JSBenchmarker('sm-simd',  SPIDERMONKEY_ENGINE, ['-s', 'SIMD=1']),
-#    JSBenchmarker('sm-wasm',  SPIDERMONKEY_ENGINE, ['-s', 'WASM=1']),
+try:
+  benchmarkers_error = ''
+  benchmarkers = [
+    NativeBenchmarker('clang', CLANG_CC, CLANG),
+    NativeBenchmarker('gcc',   'gcc',    'g++')
   ]
-if V8_ENGINE and Building.which(V8_ENGINE[0]):
+  if SPIDERMONKEY_ENGINE and Building.which(SPIDERMONKEY_ENGINE[0]):
+    benchmarkers += [
+      JSBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
+      #JSBenchmarker('sm-simd',  SPIDERMONKEY_ENGINE, ['-s', 'SIMD=1']),
+      JSBenchmarker('sm-wasm',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['-s', 'WASM=1']),
+    ]
+  if V8_ENGINE and Building.which(V8_ENGINE[0]):
+    benchmarkers += [
+      JSBenchmarker('v8-wasm',  V8_ENGINE,           ['-s', 'WASM=1']),
+    ]
   benchmarkers += [
-#    JSBenchmarker('v8-wasm',  V8_ENGINE,           ['-s', 'WASM=1']),
+    #CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE + ['--no-wasm-baseline']),
   ]
-benchmarkers += [
-  CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE),
-]
+except Exception as e:
+  benchmarkers_error = str(e)
+  benchmarkers = []
 
 class benchmark(RunnerCore):
   save_dir = True
