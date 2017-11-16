@@ -1284,11 +1284,11 @@ keydown(100);keyup(100); // trigger the end
     import random
     self.clear()
     os.mkdir('subdir')
-    open('file1.txt', 'wb').write('0123456789' * (1024*128))
-    open(os.path.join('subdir', 'file2.txt'), 'wb').write('1234567890' * (1024*128))
-    random_data = [chr(random.randint(0,255)) for x in range(1024*128*10 + 1)]
-    random_data[17] = 'X'
-    open('file3.txt', 'wb').write(''.join(random_data))
+    open('file1.txt', 'w').write('0123456789' * (1024*128))
+    open(os.path.join('subdir', 'file2.txt'), 'w').write('1234567890' * (1024*128))
+    random_data = bytearray([random.randint(0,255) for x in range(1024*128*10 + 1)])
+    random_data[17] = ord('X')
+    open('file3.txt', 'wb').write(random_data)
 
     # compress in emcc,  -s LZ4=1  tells it to tell the file packager
     print('emcc-normal')
