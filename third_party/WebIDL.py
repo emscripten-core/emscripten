@@ -3754,7 +3754,7 @@ class Parser(Tokenizer):
                                       [location, p[0].location])
                 p[0].setNonPartial(location, parent, members)
                 return
-        except Exception, ex:
+        except Exception as ex:
             if isinstance(ex, WebIDLError):
                 raise ex
             pass
@@ -3778,7 +3778,7 @@ class Parser(Tokenizer):
                                       "%s and %s" % (identifier.name, p[0]),
                                       [location, p[0].location])
                 return
-        except Exception, ex:
+        except Exception as ex:
             if isinstance(ex, WebIDLError):
                 raise ex
             pass
@@ -3805,7 +3805,7 @@ class Parser(Tokenizer):
                 # automatically.
                 p[0].members.extend(members)
                 return
-        except Exception, ex:
+        except Exception as ex:
             if isinstance(ex, WebIDLError):
                 raise ex
             pass
@@ -4930,8 +4930,8 @@ class Parser(Tokenizer):
     def _installBuiltins(self, scope):
         assert isinstance(scope, IDLScope)
 
-        # xrange omits the last value.
-        for x in xrange(IDLBuiltinType.Types.ArrayBuffer, IDLBuiltinType.Types.Float64Array + 1):
+        # range omits the last value.
+        for x in range(IDLBuiltinType.Types.ArrayBuffer, IDLBuiltinType.Types.Float64Array + 1):
             builtin = BuiltinTypes[x]
             name = builtin.name
 
@@ -5020,14 +5020,14 @@ def main():
             f = open(fullPath, 'rb')
             lines = f.readlines()
             f.close()
-            print fullPath
+            print(fullPath)
             parser.parse(''.join(lines), fullPath)
         parser.finish()
-    except WebIDLError, e:
+    except WebIDLError as e:
         if options.verbose_errors:
             traceback.print_exc()
         else:
-            print e
+            print(e)
 
 if __name__ == '__main__':
     main()
