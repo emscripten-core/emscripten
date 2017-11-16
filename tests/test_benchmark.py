@@ -213,9 +213,10 @@ class CheerpBenchmarker(Benchmarker):
       #print(' '.join(cmd))
       subprocess.check_call(cmd)
       self.filename = final
+      Building.get_binaryen()
       if self.binaryen_opts:
         subprocess.check_call([
-          '/home/alon/Dev/2-binaryen/bin/wasm-opt',
+          os.path.join(Building.get_binaryen_bin(), 'wasm-opt'),
           final + '.wasm',
           '-o', final + '.wasm'
         ] + self.binaryen_opts)
