@@ -40,14 +40,13 @@ def parseInt(literal):
     return value * sign
 
 # Magic for creating enums
-def M_add_class_attribs(attribs, start):
-    def foo(name, bases, dict_):
-        for v, k in enumerate(attribs):
-            dict_[k] = start + v
-        assert 'length' not in dict_
-        dict_['length'] = start + len(attribs)
-        return type(name, bases, dict_)
-    return foo
+def M_add_class_attribs(name, base, attribs, start):
+    dict_ = dict()
+    for v, k in enumerate(attribs):
+        dict_[k] = start + v
+    assert 'length' not in dict_
+    dict_['length'] = start + len(attribs)
+    return type(name, (base,), dict_)
 
 def enum(*names, **kw):
     if len(kw) == 1:
@@ -57,10 +56,10 @@ def enum(*names, **kw):
         assert len(kw) == 0
         base = object
         start = 0
-    class Foo(base):
-        __metaclass__ = M_add_class_attribs(names, start)
-        def __setattr__(self, name, value):  # this makes it read-only
-            raise NotImplementedError
+    Foo = M_add_class_attribs("Foo", base, names, start)
+    def __setattr__(self, name, value):  # this makes it read-only
+        raise NotImplementedError
+    Foo.__setattr__ = __setattr__
     return Foo()
 
 class WebIDLError(Exception):
