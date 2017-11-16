@@ -737,8 +737,6 @@ LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
 LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
 
 EMSCRIPTEN = path_from_root('emscripten.py')
-DEMANGLER = path_from_root('third_party', 'demangler.py')
-NAMESPACER = path_from_root('tools', 'namespacer.py')
 EMCC = path_from_root('emcc')
 EMXX = path_from_root('em++')
 EMAR = path_from_root('emar')
@@ -747,7 +745,6 @@ EMCONFIG = path_from_root('em-config')
 EMLINK = path_from_root('emlink.py')
 EMMAKEN = path_from_root('tools', 'emmaken.py')
 AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
-BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
@@ -1297,6 +1294,9 @@ class ObjectFileInfo(object):
     self.undefs = undefs
     self.commons = commons
 
+  def is_valid(self):
+    return self.returncode == 0
+
 # Due to a python pickling issue, the following two functions must be at top level, or multiprocessing pool spawn won't find them.
 
 def g_llvm_nm_uncached(filename):
@@ -1736,6 +1736,9 @@ class Building(object):
     # returns True.
     def consider_object(f, force_add=False):
       new_symbols = Building.llvm_nm(f)
+      if not new_symbols.is_valid():
+        logging.warning('object %s is not valid, cannot link' % (f))
+        return False
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
       if do_add:
