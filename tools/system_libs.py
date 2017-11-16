@@ -635,24 +635,29 @@ class Ports(object):
         os.chdir(cwd)
       State.unpacked = True
 
-    # main logic
+    # main logic. do this under a cache lock, since we don't want multiple jobs to
+    # retrieve the same port at once
 
-    if not os.path.exists(fullname + '.zip'):
-      retrieve()
+    shared.Cache.acquire_cache_lock()
+    try:
+      if not os.path.exists(fullname + '.zip'):
+        retrieve()
 
-    if not os.path.exists(fullname):
-      unpack()
+      if not os.path.exists(fullname):
+        unpack()
 
-    if not check_tag():
-      logging.warning('local copy of port is not correct, retrieving from remote server')
-      shared.try_delete(fullname)
-      shared.try_delete(fullname + '.zip')
-      retrieve()
-      unpack()
+      if not check_tag():
+        logging.warning('local copy of port is not correct, retrieving from remote server')
+        shared.try_delete(fullname)
+        shared.try_delete(fullname + '.zip')
+        retrieve()
+        unpack()
 
-    if State.unpacked:
-      # we unpacked a new version, clear the build in the cache
-      Ports.clear_project_build(name)
+      if State.unpacked:
+        # we unpacked a new version, clear the build in the cache
+        Ports.clear_project_build(name)
+    finally:
+      shared.Cache.release_cache_lock()
 
   @staticmethod
   def build_project(name, subdir, configure, generated_libs, post_create=None):
@@ -700,6 +705,7 @@ class Ports(object):
     finally:
       os.chdir(old)
 
+# get all ports
 def get_ports(settings):
   ret = []
 
@@ -727,6 +733,14 @@ def process_args(args, settings):
   for port in ports.ports:
     args = port.process_args(Ports, args, settings, shared)
   return args
+
+# get a single port
+def get_port(name, settings):
+  port = ports.ports_by_name[name]
+  if hasattr(port, "process_dependencies"):
+    port.process_dependencies(settings)
+  # ports return their output files, which will be linked, or a txt file
+  return [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
 
 def show_ports():
   print('Available ports:')

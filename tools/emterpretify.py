@@ -874,7 +874,7 @@ if __name__ == '__main__':
         code[j+1] = global_vars[target]
       elif code[j] == 'absolute-value':
         # put the 32-bit absolute value of an abolute target here (correct except for adding eb to relocate at runtime)
-        absolute_value = absolute_start + absolute_targets[unicode(code[j+1])]
+        absolute_value = absolute_start + absolute_targets[str(code[j+1])]
         #print '  fixing absolute value', code[j+1], absolute_targets[unicode(code[j+1])], absolute_value
         assert absolute_value < (1 << 31)
         assert absolute_value % 4 == 0
@@ -933,7 +933,7 @@ if __name__ == '__main__':
     # finalize instruction string names to opcodes
     for i in range(len(code)//4):
       j = i*4
-      if type(code[j]) in (str, unicode):
+      if type(code[j]) in (type(u''), bytes):
         opcode_used[code[j]] = True
         code[j] = ROPCODES[code[j]]
 

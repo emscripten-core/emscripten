@@ -322,40 +322,6 @@ f.close()
         output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world.c'), '-O' + str(opts)], stdout=PIPE, stderr=PIPE).communicate()
         assert os.path.exists('a.out.js.mem') == (opts >= 2), 'mem file should exist in -O2+'
 
-    # TODO: Add in files test a clear example of using disablePermissions, and link to it from the wiki
-    # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
-    # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
-
-  def test_emcc_nonfastcomp_fails(self):
-    open(os.path.join(self.get_dir(), 'test.c'), 'w').write(r'''
-      int main() {
-        return 0;
-      }
-    ''')
-    def check_errors(command):
-      process = Popen(command, stdout=PIPE, stderr=PIPE)
-      stdout, stderr = process.communicate()
-      self.assertIn('Non-fastcomp compiler is no longer available', stderr)
-      self.assertEqual(process.returncode, 1)
-    def check_success(command):
-      process = Popen(command, stdout=PIPE, stderr=PIPE)
-      stdout, stderr = process.communicate()
-      self.assertEqual(stderr, '')
-      self.assertEqual(process.returncode, 0)
-    try:
-      old_fastcomp = os.environ.get('EMCC_FAST_COMPILER')
-      os.environ['EMCC_FAST_COMPILER'] = '0'
-      check_success([PYTHON, EMCC, '--version'])
-      check_success([PYTHON, EMCC, '--help'])
-      check_errors([PYTHON, EMCC, '-v'])
-      check_errors([PYTHON, EMCC, os.path.join(self.get_dir(), 'test.c')])
-    finally:
-      if old_fastcomp is None:
-        del os.environ['EMCC_FAST_COMPILER']
-      else:
-        os.environ['EMCC_FAST_COMPILER'] = old_fastcomp
-    self.assertFalse(os.path.exists('a.out.js'))
-
   # Test that if multiple processes attempt to access or build stuff to the cache on demand, that exactly one of the processes
   # will, and the other processes will block to wait until that process finishes.
   def test_emcc_multiprocess_cache_access(self):
@@ -744,50 +710,6 @@ f.close()
     ''')
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-fsanitize=undefined']).communicate()
     self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
-
-  # TODO: test only worked in non-fastcomp
-  def test_unaligned_memory(self):
-    return self.skip('non-fastcomp is deprecated and fails in 3.5')
-    open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
-      #include <stdio.h>
-      #include <stdarg.h>
-
-      typedef unsigned char   Bit8u;
-      typedef unsigned short  Bit16u;
-      typedef unsigned int    Bit32u;
-
-      int main()
-      {
-        va_list argp;
-        va_arg(argp, char *); // check for compilation error, #1705
-
-        Bit8u data[4] = {0x01,0x23,0x45,0x67};
-
-        printf("data: %x\n", *(Bit32u*)data);
-        printf("data[0,1] 16bit: %x\n", *(Bit16u*)data);
-        printf("data[1,2] 16bit: %x\n", *(Bit16u*)(data+1));
-      }
-    ''')
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-s', 'UNALIGNED_MEMORY=1']).communicate()
-    self.assertContained('data: 67452301\ndata[0,1] 16bit: 2301\ndata[1,2] 16bit: 4523', run_js(os.path.join(self.get_dir(), 'a.out.js')))
-
-  # TODO: test only worked in non-fastcomp
-  def test_unaligned_memory_2(self):
-    return self.skip('non-fastcomp is deprecated and fails in 3.5')
-    open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
-      #include <string>
-      #include <stdio.h>
-
-      int main( int argc, char ** argv )
-      {
-          std::string testString( "Hello, World!" );
-
-          printf( "testString = %s\n", testString.c_str() );
-          return 0;
-      }
-      ''')
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-s', 'UNALIGNED_MEMORY=1']).communicate()
-    self.assertContained('testString = Hello, World!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_asm_minify(self):
     def test(args):
@@ -1367,75 +1289,6 @@ int f() {
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'libfile.cpp'), '-o', 'libfile.so']).communicate()
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), os.path.join(self.get_dir(), 'subdir', 'libfile.so'), '-L.'], stderr=PIPE).communicate()
     self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
-
-  def test_runtimelink_multi(self):
-    return self.skip('BUILD_AS_SHARED_LIB=2 is deprecated')
-    if Settings.ASM_JS: return self.skip('asm does not support runtime linking yet')
-
-    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey due to node limitations')
-
-    open('testa.h', 'w').write(r'''
-      #ifndef _TESTA_H_
-      #define _TESTA_H_
-
-      class TestA {
-        public:
-          TestA();
-      };
-
-      #endif
-    ''')
-    open('testb.h', 'w').write(r'''
-      #ifndef _TESTB_H_
-      #define _TESTB_H_
-
-      class TestB {
-        public:
-          TestB();
-      };
-
-      #endif
-    ''')
-    open('testa.cpp', 'w').write(r'''
-      #include <stdio.h>
-      #include <testa.h>
-
-      TestA::TestA() {
-        printf("TestA\n");
-      }
-    ''')
-    open('testb.cpp', 'w').write(r'''
-      #include <stdio.h>
-      #include <testb.h>
-      #include <testa.h>
-      /*
-      */
-      TestB::TestB() {
-        printf("TestB\n");
-        TestA* testa = new TestA();
-      }
-    ''')
-    open('main.cpp', 'w').write(r'''
-      #include <stdio.h>
-      #include <testa.h>
-      #include <testb.h>
-
-      /*
-      */
-      int main(int argc, char** argv) {
-        printf("Main\n");
-        TestA* testa = new TestA();
-        TestB* testb = new TestB();
-      }
-    ''')
-
-    Popen([PYTHON, EMCC, 'testa.cpp', '-o', 'liba.js', '-s', 'BUILD_AS_SHARED_LIB=2', '-s', 'LINKABLE=1', '-I.']).communicate()
-    Popen([PYTHON, EMCC, 'testb.cpp', '-o', 'libb.js', '-s', 'BUILD_AS_SHARED_LIB=2', '-s', 'LINKABLE=1', '-I.']).communicate()
-    Popen([PYTHON, EMCC, 'main.cpp', '-o', 'main.js', '-s', 'RUNTIME_LINKED_LIBS=["liba.js", "libb.js"]', '-I.', '-s', 'LINKABLE=1']).communicate()
-
-    Popen([PYTHON, EMCC, 'main.cpp', 'testa.cpp', 'testb.cpp', '-o', 'full.js', '-I.']).communicate()
-
-    self.assertContained('TestA\nTestB\nTestA\n', run_js('main.js', engine=SPIDERMONKEY_ENGINE))
 
   def test_identical_basenames(self):
     # Issue 287: files in different dirs but with the same basename get confused as the same,
@@ -2039,15 +1892,6 @@ int f() {
           assert 'hello, world!' in run_js(self.in_dir('two.js'))
         finally:
           del os.environ['EMCC_LEAVE_INPUTS_RAW']
-
-  def test_fix_closure(self):
-    input = path_from_root('tests', 'test-fix-closure.js')
-    expected = path_from_root('tests', 'test-fix-closure.out.js')
-    Popen([PYTHON, path_from_root('tools', 'fix_closure.py'), input, 'out.js']).communicate(input)
-    output = open('out.js').read()
-    assert '0,zzz_Q_39fa,0' in output
-    assert 'function(a,c)' not in output # should be uninlined, so it gets a name
-    assert run_js(input) == run_js('out.js')
 
   def test_js_optimizer(self):
     for input, expected, passes in [
@@ -3028,10 +2872,6 @@ myreade(){
     Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '-s', 'PRECISE_F32=1', '--profiling']).communicate()
     self.check_simd(30, 'Unrolled Single  Precision')
 
-  def test_autovectorize_bullet(self):
-    Building.emcc(path_from_root('tests','bullet_hello_world.cpp'), ['-O2', '-s', 'SIMD=1', '-s', 'INLINING_LIMIT=1', '--llvm-lto', '2', '-s', 'USE_BULLET=1', '-profiling'], output_filename='a.out.js')
-    self.check_simd(100, 'BULLET RUNNING')
-
   def test_dependency_file(self):
     # Issue 1732: -MMD (and friends) create dependency files that need to be
     # copied from the temporary directory.
@@ -3568,12 +3408,6 @@ int main()
     p.communicate()
     assert p.returncode == 0, 'LLVM tests must pass with exit code 0'
 
-  def test_odin_validation(self):
-    if not SPIDERMONKEY_ENGINE or SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('this test tests asm.js validation in SpiderMonkey')
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1'], stdout=PIPE, stderr=PIPE).communicate()
-    output = run_js('a.out.js', stderr=PIPE, full_output=True, engine=SPIDERMONKEY_ENGINE)
-    assert 'asm.js' in output, 'spidermonkey should mention asm.js compilation: ' + output
-
   def test_bad_triple(self):
     Popen([CLANG, path_from_root('tests', 'hello_world.c'), '-c', '-emit-llvm', '-o', 'a.bc'] + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE, stderr=PIPE).communicate()
     out, err = Popen([PYTHON, EMCC, 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
@@ -3617,7 +3451,6 @@ int main()
       open('src.c', 'w').write(src)
       for opts, ifs in [
         [['-g2'], nums[0]],
-        [['-profiling'], nums[1]], # Test that for compatibility support, both forms '-profiling' and '--profiling' are accepted. (https://github.com/kripken/emscripten/issues/2679)
         [['--profiling'], nums[1]],
         [['--profiling', '-g2'], nums[2]]
       ]:
@@ -5412,15 +5245,6 @@ function _main() {
     do_log_test(path_from_root('tests', 'primes.cpp'), list(range(88, 94)), '_main')
     do_log_test(path_from_root('tests', 'fannkuch.cpp'), list(range(226, 235)), '__Z15fannkuch_workerPv')
 
-    # test non-native as well, registerizeHarder can be a little more efficient here
-    old_native = os.environ.get('EMCC_NATIVE_OPTIMIZER')
-    try:
-      os.environ['EMCC_NATIVE_OPTIMIZER'] = '0'
-      do_log_test(path_from_root('tests', 'fannkuch.cpp'), list(range(226, 235)), '__Z15fannkuch_workerPv')
-    finally:
-      if old_native: os.environ['EMCC_NATIVE_OPTIMIZER'] = old_native
-      else: del os.environ['EMCC_NATIVE_OPTIMIZER']
-
   def test_emterpreter_advise(self):
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'emterpreter_advise.cpp'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1'], stdout=PIPE).communicate()
     self.assertContained('-s EMTERPRETIFY_WHITELIST=\'["__Z6middlev", "__Z7sleeperv", "__Z8recurserv", "_main"]\'', out)
@@ -5672,14 +5496,14 @@ Descriptor desc;
 
     open('test.py', 'w').write('''
 import os
-print os.environ.get('CROSS_COMPILE')
+print(os.environ.get('CROSS_COMPILE'))
 ''')
     check('emconfigure', [PYTHON, 'test.py'], expect=path_from_root('em'))
     check('emmake', [PYTHON, 'test.py'], expect=path_from_root('em'))
 
     open('test.py', 'w').write('''
 import os
-print os.environ.get('NM')
+print(os.environ.get('NM'))
 ''')
     check('emconfigure', [PYTHON, 'test.py'], expect=tools.shared.LLVM_NM)
 
@@ -5699,11 +5523,10 @@ print os.environ.get('NM')
 
   def test_warn_toomany_vars(self):
     for source, warn in [
-      (path_from_root('tests', 'hello_world.c'), False),
       (path_from_root('tests', 'hello_libcxx.cpp'), False),
       (path_from_root('tests', 'printf', 'test.c'), True)
     ]:
-      for opts in [0, 1, 2, 3, 's', 'z']:
+      for opts in [0, 1, 2, 's']:
         print(source, opts)
         self.clear()
         out, err = Popen([PYTHON, EMCC, source, '-O' + str(opts)], stderr=PIPE).communicate()
@@ -7566,11 +7389,10 @@ int main() {
       ]:
       print(args, expect_names)
       try_delete('a.out.js')
-      subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
+      subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'BINARYEN=1'])
       code = open('a.out.wasm', 'rb').read()
       assert ('__fflush_unlocked' in code) == expect_names, 'an internal function not exported nor imported must only appear in the binary if we have a names section'
       sizes[str(args)] = os.stat('a.out.wasm').st_size
-      self.assertContained('hello, world!', run_js('a.out.js'))
     print(sizes)
     assert sizes["['-O2']"] < sizes["['-O2', '--profiling-funcs']"], 'when -profiling-funcs, the size increases due to function names'
 
@@ -7771,9 +7593,9 @@ int main() {
   def test_legalize_js_ffi(self):
     with clean_write_access_to_canonical_temp_dir():
       for (args,js_ffi) in [
-          (['-s', 'LEGALIZE_JS_FFI=1', '-s', 'SIDE_MODULE=1', '-O2', ], True),
-          (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'SIDE_MODULE=1', '-O2', ], False),
-          (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'SIDE_MODULE=1', '-O0', ], False),
+          (['-s', 'LEGALIZE_JS_FFI=1', '-s', 'SIDE_MODULE=1', '-O2'], True),
+          (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'SIDE_MODULE=1', '-O2'], False),
+          (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'SIDE_MODULE=1', '-O0'], False),
           (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'SIDE_MODULE=0', '-O0'], False),
         ]:
         print(args)
