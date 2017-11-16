@@ -54,16 +54,17 @@ Module['print'] = threadPrint;
 Module['printErr'] = threadPrintErr;
 this.alert = threadAlert;
 
+#if WASM
 Module['instantiateWasm'] = function(info, receiveInstance) {
   // Instantiate from the module posted from the main thread.
   // We can just use sync instantiation in the worker.
   instance = new WebAssembly.Instance(Module['wasmModule'], info);
   // We don't need the module anymore; new threads will be spawned from the main thread.
-  // XXX is this true?
-  Module['wasmModule'] = undefined;
+  delete Module['wasmModule'] ;
   receiveInstance(instance);
   return instance.exports;
 }
+#endif
 
 this.onmessage = function(e) {
   try {
@@ -78,14 +79,16 @@ this.onmessage = function(e) {
       DYNAMICTOP_PTR = e.data.DYNAMICTOP_PTR;
 
 
-      if (e.data.wasmModule) {
-        // Module and memory were sent from main thread
-        Module['wasmModule'] = e.data.wasmModule;
-        Module['wasmMemory'] = e.data.wasmMemory;
-        buffer = Module['wasmMemory'].buffer;
-      } else {
-        buffer = e.data.buffer;
-      }
+#if WASM
+      assert(e.data.wasmModule);
+      assert(e.data.wasmMemory);
+      // Module and memory were sent from main thread
+      Module['wasmModule'] = e.data.wasmModule;
+      Module['wasmMemory'] = e.data.wasmMemory;
+      buffer = Module['wasmMemory'].buffer;
+#else
+      buffer = e.data.buffer;
+#endif
 
       PthreadWorkerInit = e.data.PthreadWorkerInit;
       if (typeof e.data.urlOrBlob === 'string') {
