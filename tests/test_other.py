@@ -7050,6 +7050,7 @@ int main() {
     if hasattr(self, 'assertCountEqual'):
       self.assertCountEqual(link_args, [main_object_file_name])
     else:
+      # Python 2 compatibility
       self.assertItemsEqual(link_args, [main_object_file_name])
 
   def test_memory_growth_noasm(self):
