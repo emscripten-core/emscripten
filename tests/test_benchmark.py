@@ -132,7 +132,7 @@ process(sys.argv[1])
                     '-s', 'EXPORTED_RUNTIME_METHODS=[]',
                     '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
                     #'--profiling',
-                    #'--closure', '1',
+                    '--closure', '1',
                     '-o', final] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
     assert os.path.exists(final), 'Failed to compile file: ' + output[0] + ' (looked for ' + final + ')'
     self.filename = final
