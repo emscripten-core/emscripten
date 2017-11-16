@@ -38,7 +38,6 @@ var ENVIRONMENT_IS_WEB = false;
 var ENVIRONMENT_IS_WORKER = false;
 var ENVIRONMENT_IS_NODE = false;
 var ENVIRONMENT_IS_SHELL = false;
-var ENVIRONMENT_IS_PTHREAD = false;
 
 // Three configurations we can be running in:
 // 1) We could be the application main() thread running in the main JS UI thread. (ENVIRONMENT_IS_WORKER == false and ENVIRONMENT_IS_PTHREAD == false)
@@ -70,6 +69,8 @@ if (!ENVIRONMENT_IS_PTHREAD) ENVIRONMENT_IS_PTHREAD = false; // ENVIRONMENT_IS_P
 var PthreadWorkerInit; // Collects together variables that are needed at initialization time for the web workers that host pthreads.
 if (!ENVIRONMENT_IS_PTHREAD) PthreadWorkerInit = {};
 var currentScriptUrl = (typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
+#else
+var ENVIRONMENT_IS_PTHREAD = false;
 #endif
 
 if (ENVIRONMENT_IS_NODE) {
