@@ -266,7 +266,7 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
 
   # out contains the new mem init and other info
   num_successful, mem_init_raw, atexits = json.loads(out_result)
-  mem_init = ''.join(map(chr, mem_init_raw))
+  mem_init = bytes(bytearray(mem_init_raw))
   total_ctors = len(all_ctors)
   if num_successful < total_ctors:
     shared.logging.debug('not all ctors could be evalled, something was used that was not safe (and therefore was not defined, and caused an error):\n========\n' + err_result + '========')
@@ -322,7 +322,7 @@ if __name__ == '__main__':
     # js path
     mem_init_file = binary_file
     if os.path.exists(mem_init_file):
-      mem_init = json.dumps(list(map(ord, open(mem_init_file, 'rb').read())))
+      mem_init = json.dumps(list(bytearray(open(mem_init_file, 'rb').read())))
     else:
       mem_init = []
 

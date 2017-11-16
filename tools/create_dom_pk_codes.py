@@ -250,10 +250,10 @@ def pad_to_length(s, length):
   return s + max(0, length - len(s)) * ' '
 
 def longest_dom_pk_code_length():
-  return max(list(map(len, [x[2] for x in input_strings])))
+  return max(map(len, [x[2] for x in input_strings]))
 
 def longest_key_code_length():
-  return max(list(map(len, [x[1] for x in input_strings])))
+  return max(map(len, [x[1] for x in input_strings]))
 
 h_file = open('system/include/emscripten/dom_pk_codes.h', 'w')
 c_file = open('system/lib/html5/dom_pk_codes.c', 'w')

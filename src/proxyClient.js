@@ -101,7 +101,10 @@ var SUPPORT_BASE64_EMBEDDING;
 
 // Worker
 
-var filename = '{{{ filename }}}.js';
+var filename;
+if (!filename) {
+  filename = '{{{ filename }}}';
+}
 
 var workerURL = filename;
 if (SUPPORT_BASE64_EMBEDDING) {
@@ -110,7 +113,7 @@ if (SUPPORT_BASE64_EMBEDDING) {
     workerURL = URL.createObjectURL(new Blob([fileBytes], {type: 'application/javascript'}));
   }
 }
-var worker = new Worker(filename);
+var worker = new Worker(workerURL);
 
 WebGLClient.prefetch();
 

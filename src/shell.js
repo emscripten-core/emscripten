@@ -26,7 +26,8 @@ if (!Module) Module = (typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_N
 // the current environment's defaults to avoid having to be so
 // defensive during initialization.
 var moduleOverrides = {};
-for (var key in Module) {
+var key;
+for (key in Module) {
   if (Module.hasOwnProperty(key)) {
     moduleOverrides[key] = Module[key];
   }
@@ -185,10 +186,6 @@ else if (ENVIRONMENT_IS_SHELL) {
       quit(status);
     }
   }
-
-#if USE_CLOSURE_COMPILER
-  eval("if (typeof gc === 'function' && gc.toString().indexOf('[native code]') > 0) var gc = undefined"); // wipe out the SpiderMonkey shell 'gc' function, which can confuse closure (uses it as a minified name, and it is then initted to a non-falsey value unexpectedly)
-#endif
 }
 else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   Module['read'] = function shell_read(url) {
@@ -222,7 +219,7 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
         return new Uint8Array(xhr.response);
 #if SUPPORT_BASE64_EMBEDDING
       } catch (err) {
-        var data = tryParseAsDataURI(f);
+        var data = tryParseAsDataURI(url);
         if (data) {
           return data;
         }
@@ -325,7 +322,7 @@ Module['preRun'] = [];
 Module['postRun'] = [];
 
 // Merge back in the overrides
-for (var key in moduleOverrides) {
+for (key in moduleOverrides) {
   if (moduleOverrides.hasOwnProperty(key)) {
     Module[key] = moduleOverrides[key];
   }

@@ -414,7 +414,7 @@ def b2g_screenshot(filename):
   global deviceActorName
   data_reply = send_b2g_cmd(deviceActorName, 'screenshotToDataURL')
   data = data_reply['value']
-  if not isinstance(data, basestring): # The device is sending the screenshot in multiple fragments since it's too long to fit in one message?
+  if not isinstance(data, (type(u''), bytes)): # The device is sending the screenshot in multiple fragments since it's too long to fit in one message?
     data_get_actor = data['actor']
     data_len = int(data['length'])
     data = data['initial']

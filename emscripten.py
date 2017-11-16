@@ -14,8 +14,9 @@ if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
 import difflib
-import os, sys, json, optparse, subprocess, re, time, logging
+import os, sys, json, argparse, subprocess, re, time, logging
 import shutil
+from collections import OrderedDict
 
 from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
@@ -144,7 +145,7 @@ def parse_backend_output(backend_output, DEBUG):
 
   try:
     #if DEBUG: print >> sys.stderr, "METAraw", metadata_raw
-    metadata = json.loads(metadata_raw)
+    metadata = json.loads(metadata_raw, object_pairs_hook=OrderedDict)
   except Exception as e:
     logging.error('emscript: failure to parse metadata output from compiler backend. raw output is: \n' + metadata_raw)
     raise e
@@ -299,7 +300,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     global_vars = metadata['externs']
   else:
     global_vars = [] # linkable code accesses globals through function calls
-  global_funcs = list(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].items() if value != 2])
+  global_funcs = sorted(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].items() if value != 2])
                       .difference(set(global_vars)).difference(implemented_functions))
   if settings['RELOCATABLE']:
     global_funcs += ['g$' + extern for extern in metadata['externs']]
@@ -505,7 +506,7 @@ def update_settings_glue(settings, metadata):
     logging.warning('disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
     settings['ASM_JS'] = 2
 
-  settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
+  settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = sorted(
     set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + list(map(shared.JS.to_nice_ident, metadata['declares']))).difference(
       [x[1:] for x in metadata['implementedFunctions']]
     )
@@ -635,7 +636,7 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
       funcs += ['setTempRet0', 'getTempRet0']
     if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
       funcs += ['setThrew']
-  return list(set(funcs))
+  return sorted(set(funcs))
 
 
 def get_implemented_functions(metadata):
@@ -695,7 +696,7 @@ def all_asm_consts(metadata):
     const = trim_asm_const_body(const)
     const = '{ ' + const + ' }'
     args = []
-    arity = max(list(map(len, sigs))) - 1
+    arity = max(map(len, sigs)) - 1
     for i in range(arity):
       args.append('$' + str(i))
     const = 'function(' + ', '.join(args) + ') ' + const
@@ -1228,9 +1229,9 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
     asm_runtime_funcs.append('setAsync')
   all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables(function_table_data, settings)
   if settings['EMULATED_FUNCTION_POINTERS']:
-    all_exported = list(set(all_exported).union(in_table))
+    all_exported += in_table
   exports = []
-  for export in set(all_exported):
+  for export in sorted(set(all_exported)):
     exports.append(quote(export) + ": " + export)
   if settings['BINARYEN'] and settings['SIDE_MODULE']:
     # named globals in side wasm modules are exported globals from asm/wasm
@@ -1495,7 +1496,7 @@ def create_asm_start_pre(asm_setup, the_global, sending, metadata, settings):
   module_library = module_get.format(access=access_quote('asmLibraryArg'), val=sending)
 
   asm_function_top = ('// EMSCRIPTEN_START_ASM\n'
-                      'var asm = (function(global, env, buffer) {')
+                      'var asm = (/** @suppress {uselessCode} */ function(global, env, buffer) {')
 
   use_asm = "'almost asm';"
   if settings['ASM_JS'] == 1:
@@ -1861,7 +1862,7 @@ def create_asm_consts_wasm(forwarded_json, metadata):
     const = trim_asm_const_body(const)
     const = '{ ' + const + ' }'
     args = []
-    arity = max(list(map(len, sigs))) - 1
+    arity = max(map(len, sigs)) - 1
     for i in range(arity):
       args.append('$' + str(i))
     const = 'function(' + ', '.join(args) + ') ' + const
@@ -2167,50 +2168,54 @@ def _main(args=None):
         args[index:index+1] = response_file_args
         break
 
-  parser = optparse.OptionParser(
-    usage='usage: %prog [-h] [-H HEADERS] [-o OUTFILE] [-c COMPILER_ENGINE] [-s FOO=BAR]* infile',
+  parser = argparse.ArgumentParser(
+    usage='%(prog)s [-h] [-H HEADERS] [-o OUTFILE] [-c COMPILER_ENGINE] [-s FOO=BAR]* infile',
     description=('You should normally never use this! Use emcc instead. '
                  'This is a wrapper around the JS compiler, converting .ll to .js.'),
     epilog='')
-  parser.add_option('-H', '--headers',
+  parser.add_argument('-H', '--headers',
                     default=[],
                     action='append',
                     help='System headers (comma separated) whose #defines should be exposed to the compiled code.')
-  parser.add_option('-L', '--libraries',
+  parser.add_argument('-L', '--libraries',
                     default=[],
                     action='append',
                     help='Library files (comma separated) to use in addition to those in emscripten src/library_*.')
-  parser.add_option('-o', '--outfile',
+  parser.add_argument('-o', '--outfile',
                     default=sys.stdout,
                     help='Where to write the output; defaults to stdout.')
-  parser.add_option('-c', '--compiler',
+  parser.add_argument('-c', '--compiler',
                     default=None,
                     help='Which JS engine to use to run the compiler; defaults to the one in ~/.emscripten.')
-  parser.add_option('-s', '--setting',
+  parser.add_argument('-s', '--setting',
                     dest='settings',
                     default=[],
                     action='append',
                     metavar='FOO=BAR',
                     help=('Overrides for settings defined in settings.js. '
                           'May occur multiple times.'))
-  parser.add_option('-T', '--temp-dir',
+  parser.add_argument('-T', '--temp-dir',
                     default=None,
                     help=('Where to create temporary files.'))
-  parser.add_option('-v', '--verbose',
+  parser.add_argument('-v', '--verbose',
+                    default=None,
                     action='store_true',
                     dest='verbose',
                     help='Displays debug output')
-  parser.add_option('-q', '--quiet',
+  parser.add_argument('-q', '--quiet',
+                    default=None,
                     action='store_false',
                     dest='verbose',
                     help='Hides debug output')
-  parser.add_option('--suppressUsageWarning',
+  parser.add_argument('--suppressUsageWarning',
                     action='store_true',
                     default=os.environ.get('EMSCRIPTEN_SUPPRESS_USAGE_WARNING'),
                     help=('Suppress usage warning'))
+  parser.add_argument('infile', nargs='*')
 
   # Convert to the same format that argparse would have produced.
-  keywords, positional = parser.parse_args(args)
+  keywords = parser.parse_args(args)
+  positional = keywords.infile
 
   if not keywords.suppressUsageWarning:
     logging.warning('''
@@ -2222,7 +2227,7 @@ WARNING: You should normally never use this! Use emcc instead.
   if len(positional) != 1:
     raise RuntimeError('Must provide exactly one positional argument. Got ' + str(len(positional)) + ': "' + '", "'.join(positional) + '"')
   keywords.infile = os.path.abspath(positional[0])
-  if isinstance(keywords.outfile, basestring):
+  if isinstance(keywords.outfile, (type(u''), bytes)):
     keywords.outfile = open(keywords.outfile, 'w')
 
   if keywords.temp_dir is None:

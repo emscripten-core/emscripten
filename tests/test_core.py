@@ -2315,7 +2315,7 @@ The current type of b is: 9
 def process(filename):
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createDataFile('/', 'liblib.so', " + str(map(ord, open('liblib.so', 'rb').read())) + ", true, false, false);"
+    "FS.createDataFile('/', 'liblib.so', " + str(list(bytearray(open('liblib.so', 'rb').read()))) + ", true, false, false);"
   )
   open(filename, 'w').write(src)
 '''
@@ -3081,16 +3081,16 @@ ok
       Settings.MAIN_MODULE = 0
       Settings.SIDE_MODULE = 1
       side_suffix = 'js' if not self.is_wasm() else 'wasm'
-      if type(side) == str:
+      if isinstance(side, list):
+        # side is just a library
+        try_delete('liblib.cpp.o.' + side_suffix)
+        Popen([PYTHON, EMCC] + side + self.emcc_args + Settings.serialize() + ['-o', os.path.join(self.get_dir(), 'liblib.cpp.o.' + side_suffix)]).communicate()
+      else:
         base = 'liblib.cpp' if not force_c else 'liblib.c'
         try_delete(base + '.o.' + side_suffix)
         self.build(side, self.get_dir(), base, js_outfile=(side_suffix == 'js'))
         if force_c:
           shutil.move(base + '.o.' + side_suffix, 'liblib.cpp.o.' + side_suffix)
-      else:
-        # side is just a library
-        try_delete('liblib.cpp.o.' + side_suffix)
-        Popen([PYTHON, EMCC] + side + self.emcc_args + Settings.serialize() + ['-o', os.path.join(self.get_dir(), 'liblib.cpp.o.' + side_suffix)]).communicate()
       if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]) and not self.is_wasm():
         out = run_js('liblib.cpp.o.js', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=STDOUT)
         if 'asm' in out:
@@ -3108,13 +3108,13 @@ var Module = {
   ''')
         self.emcc_args += ['--pre-js', 'pre.js'] + main_emcc_args
 
-      if type(main) == str:
-        self.do_run(main, expected, force_c=force_c)
-      else:
+      if isinstance(main, list):
         # main is just a library
         try_delete('src.cpp.o.js')
         Popen([PYTHON, EMCC] + main + self.emcc_args + Settings.serialize() + ['-o', os.path.join(self.get_dir(), 'src.cpp.o.js')]).communicate()
         self.do_run(None, expected, no_build=True)
+      else:
+        self.do_run(main, expected, force_c=force_c)
     finally:
       self.emcc_args = emcc_args[:]
 
@@ -4565,8 +4565,8 @@ def process(filename):
 
   def test_unistd_sysconf_phys_pages(self):
     src = open(path_from_root('tests', 'unistd', 'sysconf_phys_pages.c'), 'r').read()
-    if Settings.ALLOW_MEMORY_GROWTH: expected = (2*1024*1024*1024-16777216) / 16384
-    else: expected = 16*1024*1024 / 16384
+    if Settings.ALLOW_MEMORY_GROWTH: expected = (2*1024*1024*1024-16777216) // 16384
+    else: expected = 16*1024*1024 // 16384
     self.do_run(src, str(expected) + ', errno: 0')
 
   def test_unistd_login(self):
@@ -5308,6 +5308,11 @@ return malloc(size);
     src, output = (test_path + s for s in ('.cpp', '.txt'))
     self.do_run_from_file(src, output)
 
+  # Tests that the vector SIToFP instruction generates an appropriate Int->Float type conversion operator and not a bitcasting/reinterpreting conversion
+  @SIMD
+  def test_simd_sitofp(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_simd_sitofp')
+
   def test_gcc_unmangler(self):
     Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('third_party')]
 
@@ -5351,7 +5356,7 @@ def process(filename):
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
     "FS.createDataFile('/', 'font.ttf', %s, true, false, false);" % str(
-      map(ord, open(shared.path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'rb').read())
+      list(bytearray(open(shared.path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'rb').read()))
     )
   )
   open(filename, 'w').write(src)
@@ -5496,7 +5501,7 @@ def process(filename):
 
       # See post(), below
       input_file = open(os.path.join(self.get_dir(), 'paper.pdf.js'), 'w')
-      input_file.write(str(list(map(ord, open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read()))))
+      input_file.write(str(list(bytearray(open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read()))))
       input_file.close()
 
       post = '''
@@ -5530,7 +5535,7 @@ def process(filename):
       Building.link(poppler + freetype, combined)
 
       self.do_ll_run(combined,
-                     list(map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read())).__str__().replace(' ', ''),
+                     str(list(bytearray(open(path_from_root('tests', 'poppler', 'ref.ppm'), 'rb').read()))).replace(' ', ''),
                      args='-scale-to 512 paper.pdf filename'.split(' '),
                      post_build=post)
                      #, build_ll_hook=self.do_autodebug)
@@ -5562,7 +5567,7 @@ def process(filename):
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
     "FS.createDataFile('/', 'image.j2k', %s, true, false, false);" % shared.line_splitter(str(
-      map(ord, open(original_j2k, 'rb').read())
+      list(bytearray(open(original_j2k, 'rb').read()))
     ))
   ).replace(
     '// {{POST_RUN_ADDITIONS}}',
@@ -5596,7 +5601,7 @@ def process(filename):
       js_data = [x if x >= 0 else 256+x for x in js_data] # Our output may be signed, so unsign it
 
       # Get the correct output
-      true_data = open(path_from_root('tests', 'openjpeg', 'syntensity_lobby_s.raw'), 'rb').read()
+      true_data = bytearray(open(path_from_root('tests', 'openjpeg', 'syntensity_lobby_s.raw'), 'rb').read())
 
       # Compare them
       assert(len(js_data) == len(true_data))
@@ -5604,8 +5609,8 @@ def process(filename):
       diff_total = js_total = true_total = 0
       for i in range(num):
         js_total += js_data[i]
-        true_total += ord(true_data[i])
-        diff_total += abs(js_data[i] - ord(true_data[i]))
+        true_total += true_data[i]
+        diff_total += abs(js_data[i] - true_data[i])
       js_mean = js_total/float(num)
       true_mean = true_total/float(num)
       diff_mean = diff_total/float(num)
@@ -6467,300 +6472,6 @@ someweirdtext
 
   @sync
   @no_wasm_backend()
-  def test_scriptaclass(self):
-      Settings.EXPORT_BINDINGS = 1
-
-      header_filename = os.path.join(self.get_dir(), 'header.h')
-      header = '''
-        struct ScriptMe {
-          int value;
-          ScriptMe(int val);
-          int getVal(); // XXX Sadly, inlining these will result in LLVM not
-                        // producing any code for them (when just building
-                        // as a library)
-          void mulVal(int mul);
-        };
-      '''
-      h = open(header_filename, 'w')
-      h.write(header)
-      h.close()
-
-      src = '''
-        #include "header.h"
-
-        ScriptMe::ScriptMe(int val) : value(val) { }
-        int ScriptMe::getVal() { return value; }
-        void ScriptMe::mulVal(int mul) { value *= mul; }
-      '''
-
-      # Way 1: use demangler and namespacer
-
-      script_src = '''
-        var sme = Module._.ScriptMe.__new__(83);          // malloc(sizeof(ScriptMe)), ScriptMe::ScriptMe(sme, 83) / new ScriptMe(83) (at addr sme)
-        Module._.ScriptMe.mulVal(sme, 2);                 // ScriptMe::mulVal(sme, 2)       sme.mulVal(2)
-        Module.print('*' + Module._.ScriptMe.getVal(sme) + '*');
-        _free(sme);
-        Module.print('*ok*');
-      '''
-      post = '''
-def process(filename):
-  Popen([PYTHON, DEMANGLER, filename], stdout=open(filename + '.tmp', 'w')).communicate()
-  Popen([PYTHON, NAMESPACER, filename, filename + '.tmp'], stdout=open(filename + '.tmp2', 'w')).communicate()
-  src = open(filename, 'r').read().replace(
-    '// {{MODULE_ADDITIONS}',
-    'Module["_"] = ' + open(filename + '.tmp2', 'r').read().replace('var ModuleNames = ', '').rstrip() + ';\n\n' + script_src + '\n\n' +
-      '// {{MODULE_ADDITIONS}'
-  )
-  open(filename, 'w').write(src)
-'''
-      # XXX disable due to possible v8 bug -- self.do_run(src, '*166*\n*ok*', post_build=post)
-
-      if '-O2' in self.emcc_args and 'ASM_JS=0' not in self.emcc_args: # without asm, closure minifies Math.imul badly
-        self.emcc_args += ['--closure', '1'] # Use closure here, to test we export things right
-
-      # Way 2: use CppHeaderParser
-
-      header = '''
-        #include <stdio.h>
-
-        class Parent {
-        protected:
-          int value;
-        public:
-          Parent(int val);
-          Parent(Parent *p, Parent *q); // overload constructor
-          int getVal() { return value; }; // inline should work just fine here, unlike Way 1 before
-          void mulVal(int mul);
-        };
-
-        class Child1 : public Parent {
-        public:
-          Child1() : Parent(7) { printf("Child1:%d\\n", value); };
-          Child1(int val) : Parent(val*2) { value -= 1; printf("Child1:%d\\n", value); };
-          int getValSqr() { return value*value; }
-          int getValSqr(int more) { return value*value*more; }
-          int getValTimes(int times=1) { return value*times; }
-        };
-
-        class Child2 : public Parent {
-        public:
-          Child2() : Parent(9) { printf("Child2:%d\\n", value); };
-          int getValCube() { return value*value*value; }
-          static void printStatic() { printf("*static*\\n"); }
-
-          virtual void virtualFunc() { printf("*virtualf*\\n"); }
-          virtual void virtualFunc2() { printf("*virtualf2*\\n"); }
-          static void runVirtualFunc(Child2 *self) { self->virtualFunc(); };
-        private:
-          void doSomethingSecret() { printf("security breached!\\n"); }; // we should not be able to do this
-        };
-      '''
-      open(header_filename, 'w').write(header)
-
-      basename = os.path.join(self.get_dir(), 'bindingtest')
-      output = Popen([PYTHON, BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
-      #print output
-      assert 'Traceback' not in output, 'Failure in binding generation: ' + output
-
-      src = '''
-        #include "header.h"
-
-        Parent::Parent(int val) : value(val) { printf("Parent:%d\\n", val); }
-        Parent::Parent(Parent *p, Parent *q) : value(p->value + q->value) { printf("Parent:%d\\n", value); }
-        void Parent::mulVal(int mul) { value *= mul; }
-
-        #include "bindingtest.cpp"
-      '''
-
-      post2 = '''
-def process(filename):
-  src = open(filename, 'a')
-  src.write(open('bindingtest.js').read() + '\\n\\n')
-  src.close()
-'''
-
-      def post3(filename):
-        script_src_2 = '''
-          var sme = new Module.Parent(42);
-          sme.mulVal(2);
-          Module.print('*')
-          Module.print(sme.getVal());
-
-          Module.print('c1');
-
-          var c1 = new Module.Child1();
-          Module.print(c1.getVal());
-          c1.mulVal(2);
-          Module.print(c1.getVal());
-          Module.print(c1.getValSqr());
-          Module.print(c1.getValSqr(3));
-          Module.print(c1.getValTimes()); // default argument should be 1
-          Module.print(c1.getValTimes(2));
-
-          Module.print('c1 v2');
-
-          c1 = new Module.Child1(8); // now with a parameter, we should handle the overloading automatically and properly and use constructor #2
-          Module.print(c1.getVal());
-          c1.mulVal(2);
-          Module.print(c1.getVal());
-          Module.print(c1.getValSqr());
-          Module.print(c1.getValSqr(3));
-
-          Module.print('c2')
-
-          var c2 = new Module.Child2();
-          Module.print(c2.getVal());
-          c2.mulVal(2);
-          Module.print(c2.getVal());
-          Module.print(c2.getValCube());
-          var succeeded;
-          try {
-            succeeded = 0;
-            Module.print(c2.doSomethingSecret()); // should fail since private
-            succeeded = 1;
-          } catch(e) {}
-          Module.print(succeeded);
-          try {
-            succeeded = 0;
-            Module.print(c2.getValSqr()); // function from the other class
-            succeeded = 1;
-          } catch(e) {}
-          Module.print(succeeded);
-          try {
-            succeeded = 0;
-            c2.getValCube(); // sanity
-            succeeded = 1;
-          } catch(e) {}
-          Module.print(succeeded);
-
-          Module.Child2.prototype.printStatic(); // static calls go through the prototype
-
-          // virtual function
-          c2.virtualFunc();
-          Module.Child2.prototype.runVirtualFunc(c2);
-          c2.virtualFunc2();
-
-          // extend the class from JS
-          var c3 = new Module.Child2;
-          Module.customizeVTable(c3, [{
-            original: Module.Child2.prototype.virtualFunc,
-            replacement: function() {
-              Module.print('*js virtualf replacement*');
-            }
-          }, {
-            original: Module.Child2.prototype.virtualFunc2,
-            replacement: function() {
-              Module.print('*js virtualf2 replacement*');
-            }
-          }]);
-          c3.virtualFunc();
-          Module.Child2.prototype.runVirtualFunc(c3);
-          c3.virtualFunc2();
-
-          c2.virtualFunc(); // original should remain the same
-          Module.Child2.prototype.runVirtualFunc(c2);
-          c2.virtualFunc2();
-          Module.print('*ok*');
-        '''
-        code = open(filename).read()
-        src = open(filename, 'w')
-        src.write('var Module = {};\n') # name Module
-        src.write(code)
-        src.write(script_src_2 + '\n')
-        src.close()
-
-      Settings.RESERVED_FUNCTION_POINTERS = 20
-
-      self.do_run(src, '''*
-84
-c1
-Parent:7
-Child1:7
-7
-14
-196
-588
-14
-28
-c1 v2
-Parent:16
-Child1:15
-15
-30
-900
-2700
-c2
-Parent:9
-Child2:9
-9
-18
-5832
-0
-0
-1
-*static*
-*virtualf*
-*virtualf*
-*virtualf2*''' + ('''
-Parent:9
-Child2:9
-*js virtualf replacement*
-*js virtualf replacement*
-*js virtualf2 replacement*
-*virtualf*
-*virtualf*
-*virtualf2*''') + '''
-*ok*
-''', post_build=(post2, post3))
-
-  @sync
-  @no_wasm_backend()
-  def test_scriptaclass_2(self):
-      Settings.EXPORT_BINDINGS = 1
-
-      header_filename = os.path.join(self.get_dir(), 'header.h')
-      header = '''
-        #include <stdio.h>
-        #include <string.h>
-
-        class StringUser {
-          char *s;
-          int i;
-        public:
-          StringUser(char *string, int integer) : s(strdup(string)), i(integer) {}
-          void Print(int anotherInteger, char *anotherString) {
-            printf("|%s|%d|%s|%d|\\n", s, i, anotherString, anotherInteger);
-          }
-          void CallOther(StringUser *fr) { fr->Print(i, s); }
-        };
-      '''
-      open(header_filename, 'w').write(header)
-
-      basename = os.path.join(self.get_dir(), 'bindingtest')
-      output = Popen([PYTHON, BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
-      #print output
-      assert 'Traceback' not in output, 'Failure in binding generation: ' + output
-
-      src = '''
-        #include "header.h"
-
-        #include "bindingtest.cpp"
-      '''
-
-      post = '''
-def process(filename):
-  src = open(filename, 'a')
-  src.write(open('bindingtest.js').read() + '\\n\\n')
-  src.write(\'\'\'
-          var user = new Module.StringUser("hello", 43);
-          user.Print(41, "world");
-            \'\'\')
-  src.close()
-'''
-      self.do_run(src, '|hello|43|world|41|', post_build=post)
-
-  @sync
-  @no_wasm_backend()
   def test_webidl(self):
     assert 'asm2' in test_modes
     if self.run_name == 'asm2':
@@ -7117,6 +6828,9 @@ Success!
   def test_locale(self):
     self.do_run_from_file(path_from_root('tests', 'test_locale.c'), path_from_root('tests', 'test_locale.out'))
 
+  def test_vswprintf_utf8(self):
+    self.do_run_from_file(path_from_root('tests', 'vswprintf_utf8.c'), path_from_root('tests', 'vswprintf_utf8.out'))
+
   def test_async(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
 
@@ -7421,8 +7135,8 @@ int main(int argc, char **argv) {
       print('  f2i')
       self.do_run(open(path_from_root('tests', 'wasm', 'trap-f2i.cpp')).read(),
                   {
-                    'js': '|1337|', # JS did an fmod 2^32
-                    'clamp': '|-2147483648|',
+                    'js': '|1337|\n|4294967295|', # JS did an fmod 2^32 | normal
+                    'clamp': '|-2147483648|\n|4294967295|',
                     'allow': TRAP_OUTPUTS
                   }[mode])
 

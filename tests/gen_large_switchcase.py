@@ -8,7 +8,7 @@ for x in range(0, num_cases):
 	i += incr
 	incr = (incr % 5) + 1
 
-print '''#include <stdio.h>
+print('''#include <stdio.h>
 #include <stdlib.h>
 #include <emscripten.h>
 
@@ -23,7 +23,7 @@ const char *foo(int x)
 
 int main()
 {
-	for(int i = 0; i < ''' + str((num_cases+99)/100) + '''; ++i)
+	for(int i = 0; i < ''' + str((num_cases+99)//100) + '''; ++i)
 		printf("%d: %s\\n", i*301, foo(i*301));
 	printf("Success!\\n");
-}'''
+}''')
