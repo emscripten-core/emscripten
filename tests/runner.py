@@ -663,8 +663,6 @@ class RunnerCore(unittest.TestCase):
              js_engines=None, post_build=None, basename='src.cpp', libraries=[],
              includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[],
              assert_returncode=None, assert_identical=False):
-    if Settings.ASYNCIFY == 1 and self.is_wasm_backend():
-      return self.skip("wasm backend doesn't support ASYNCIFY yet")
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
       basename = 'src.c'
       Building.COMPILER = to_cc(Building.COMPILER)

@@ -319,21 +319,6 @@ var NODEJS_CATCH_EXIT = 1; // By default we handle exit() in node, by catching t
                            // longer do that, and exceptions work normally, which can be useful for libraries
                            // or programs that don't need exit() to work.
 
-// For more explanations of this option, please visit
-// https://github.com/kripken/emscripten/wiki/Asyncify
-var ASYNCIFY = 0; // Whether to enable asyncify transformation
-                  // This allows to inject some async functions to the C code that appear to be sync
-                  // e.g. emscripten_sleep
-var ASYNCIFY_FUNCTIONS = ['emscripten_sleep', // Functions that call any function in the list, directly or indirectly
-                          'emscripten_wget',  // will be transformed
-                          'emscripten_yield'];
-var ASYNCIFY_WHITELIST = ['qsort',   // Functions in this list are never considered async, even if they appear in ASYNCIFY_FUNCTIONS
-                          'trinkle', // In the asyncify transformation, any function that calls a function pointer is considered async
-                          '__toread', // This whitelist is useful when a function is known to be sync
-                          '__uflow',  // currently this link contains some functions in libc
-                          '__fwritex',
-                          'MUSL_vfprintf'];
-
 var EXPORTED_RUNTIME_METHODS = [ // Runtime elements that are exported on Module. By default we export quite a bit, you can reduce this list to lower your code size,
                                  // especially when closure is run (exporting prevents closure from eliminating code)
                                  // Note that methods on this list are only exported if they are included (either automatically from linking, or due to being
