@@ -1259,11 +1259,11 @@ if (Module['buffer']) {
     assert(TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
 #endif
 #if ALLOW_MEMORY_GROWTH
-#if BINARYEN_MEM_MAX
+#if WASM_MEM_MAX
 #if ASSERTIONS
-    assert({{{ BINARYEN_MEM_MAX }}} % WASM_PAGE_SIZE == 0);
+    assert({{{ WASM_MEM_MAX }}} % WASM_PAGE_SIZE == 0);
 #endif
-    Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': {{{ BINARYEN_MEM_MAX }}} / WASM_PAGE_SIZE });
+    Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE });
 #else
     Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE });
 #endif
