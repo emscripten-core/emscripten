@@ -643,7 +643,6 @@ class IDLInterface(IDLObjectWithScope):
         # self.members.  Sort our consequential interfaces by name
         # just so we have a consistent order.
         for iface in sorted(self.getConsequentialInterfaces(),
-                            cmp=cmp,
                             key=lambda x: x.identifier.name):
             # Flag the interface as being someone's consequential interface
             iface.setIsConsequentialInterfaceOf(self)
@@ -1154,7 +1153,7 @@ class IDLDictionary(IDLObjectWithScope):
                 assert member.type.isComplete()
 
         # Members of a dictionary are sorted in lexicographic order
-        self.members.sort(cmp=cmp, key=lambda x: x.identifier.name)
+        self.members.sort(key=lambda x: x.identifier.name)
 
         inheritedMembers = []
         ancestor = self.parent
