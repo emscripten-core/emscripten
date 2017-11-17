@@ -165,7 +165,7 @@ var cwrap, ccall;
   var toC = {'string' : JSfuncs['stringToC'], 'array' : JSfuncs['arrayToC']};
 
   // C calling interface.
-  ccall = function ccallFunc(ident, returnType, argTypes, args, opts) {
+  ccall = function (ident, returnType, argTypes, args, opts) {
     var func = getCFunc(ident);
     var cArgs = [];
     var stack = 0;
