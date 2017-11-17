@@ -690,7 +690,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Handle aliases in settings flags
       settings_aliases = {
-          'BINARYEN': 'WASM' # TODO: change all references to BINARYEN in emcc to WASM
           'BINARYEN_MEM_MAX': 'WASM_MEM_MAX',
           # TODO: change most (all?) other BINARYEN* names to WASM*
       }
