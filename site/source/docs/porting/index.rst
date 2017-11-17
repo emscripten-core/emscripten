@@ -18,7 +18,6 @@ The topics in this section cover the main integration points that you need to co
 	Debugging
 	pthreads
 	simd
-	asyncify
 	emterpreter
 	../compiling/Building-Projects
 
