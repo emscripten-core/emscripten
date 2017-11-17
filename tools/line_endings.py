@@ -10,7 +10,7 @@ def convert_line_endings_in_file(filename, from_eol, to_eol):
   if from_eol == to_eol: return # No conversion needed
 
   text = open(filename, 'rb').read()
-  text = convert_line_endings(text, from_eol, to_eol)
+  text = convert_line_endings(text, from_eol.encode(), to_eol.encode())
   open(filename, 'wb').write(text)
 
 # This function checks and prints out the detected line endings in the given file.
