@@ -7845,3 +7845,17 @@ end
     result = subprocess.check_output([PYTHON, EMAR, 't', 'combined.a'])
     assert 'file1' in result
     assert 'file2' in result
+
+
+  def test_flag_aliases(self):
+    def assert_aliases_match(flag1, flag2, flagarg, extra_args):
+      results = {}
+      for f in (flag1, flag2):
+        outfile = 'aliases.js'
+        subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', f + '=' + flagarg, '-o', outfile] + extra_args)
+        with open(outfile) as out:
+          results[f] = out.read()
+      self.assertEqual(results[flag1], results[flag2], 'results should be identical')
+
+
+    assert_aliases_match('WASM_MEM_MAX', 'BINARYEN_MEM_MAX', '16777216', ['-s', 'WASM=1'])
