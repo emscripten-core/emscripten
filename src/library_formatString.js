@@ -154,7 +154,7 @@ mergeInto(LibraryManager.library, {
             // Integer.
             var signed = next == {{{ charCode('d') }}} || next == {{{ charCode('i') }}};
             argSize = argSize || 4;
-            var currArg = getNextArg('i' + (argSize * 8));
+            currArg = getNextArg('i' + (argSize * 8));
 #if PRECISE_I64_MATH
             var origArg = currArg;
 #endif
@@ -173,12 +173,12 @@ mergeInto(LibraryManager.library, {
             var prefix = '';
             if (next == {{{ charCode('d') }}} || next == {{{ charCode('i') }}}) {
 #if PRECISE_I64_MATH
-              if (argSize == 8 && i64Math) argText = i64Math.stringify(origArg[0], origArg[1], null); else
+              if (argSize == 8 && typeof i64Math === 'object') argText = i64Math.stringify(origArg[0], origArg[1], null); else
 #endif
               argText = reSign(currArg, 8 * argSize, 1).toString(10);
             } else if (next == {{{ charCode('u') }}}) {
 #if PRECISE_I64_MATH
-              if (argSize == 8 && i64Math) argText = i64Math.stringify(origArg[0], origArg[1], true); else
+              if (argSize == 8 && typeof i64Math === 'object') argText = i64Math.stringify(origArg[0], origArg[1], true); else
 #endif
               argText = unSign(currArg, 8 * argSize, 1).toString(10);
               currArg = Math.abs(currArg);
@@ -187,7 +187,7 @@ mergeInto(LibraryManager.library, {
             } else if (next == {{{ charCode('x') }}} || next == {{{ charCode('X') }}}) {
               prefix = (flagAlternative && currArg != 0) ? '0x' : '';
 #if PRECISE_I64_MATH
-              if (argSize == 8 && i64Math) {
+              if (argSize == 8 && typeof i64Math === 'object') {
                 if (origArg[1]) {
                   argText = (origArg[1]>>>0).toString(16);
                   var lower = (origArg[0]>>>0).toString(16);
@@ -266,7 +266,7 @@ mergeInto(LibraryManager.library, {
           }
           case 'f': case 'F': case 'e': case 'E': case 'g': case 'G': {
             // Float.
-            var currArg = getNextArg('double');
+            currArg = getNextArg('double');
             var argText;
             if (isNaN(currArg)) {
               argText = 'nan';
