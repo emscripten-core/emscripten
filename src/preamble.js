@@ -207,91 +207,20 @@ var cwrap, ccall;
     return ret;
   }
 
-#if NO_DYNAMIC_EXECUTION == 0
-  var sourceRegex = /^function\s*[a-zA-Z$_0-9]*\s*\(([^)]*)\)\s*{\s*([^*]*?)[\s;]*(?:return\s*(.*?)[;\s]*)?}$/;
-  function parseJSFunc(jsfunc) {
-    // Match the body and the return value of a javascript function source
-    var parsed = jsfunc.toString().match(sourceRegex).slice(1);
-    return {arguments : parsed[0], body : parsed[1], returnValue: parsed[2]}
-  }
-
-  // sources of useful functions. we create this lazily as it can trigger a source decompression on this entire file
-  var JSsource = null;
-  function ensureJSsource() {
-    if (!JSsource) {
-      JSsource = {};
-      for (var fun in JSfuncs) {
-        if (JSfuncs.hasOwnProperty(fun)) {
-          // Elements of toCsource are arrays of three items:
-          // the code, and the return value
-          JSsource[fun] = parseJSFunc(JSfuncs[fun]);
-        }
-      }
-    }
-  }
-
-  cwrap = function cwrap(ident, returnType, argTypes) {
+  cwrap = function (ident, returnType, argTypes) {
     argTypes = argTypes || [];
     var cfunc = getCFunc(ident);
     // When the function takes numbers and returns a number, we can just return
     // the original function
     var numericArgs = argTypes.every(function(type){ return type === 'number'});
-    var numericRet = (returnType !== 'string');
-    if ( numericRet && numericArgs) {
+    var numericRet = returnType !== 'string';
+    if (numericRet && numericArgs) {
       return cfunc;
     }
-    // Creation of the arguments list (["$1","$2",...,"$nargs"])
-    var argNames = argTypes.map(function(x,i){return '$'+i});
-    var funcstr = "(function(" + argNames.join(',') + ") {";
-    var nargs = argTypes.length;
-    if (!numericArgs) {
-      // Generate the code needed to convert the arguments from javascript
-      // values to pointers
-      ensureJSsource();
-      funcstr += 'var stack = ' + JSsource['stackSave'].body + ';';
-      for (var i = 0; i < nargs; i++) {
-        var arg = argNames[i], type = argTypes[i];
-        if (type === 'number') continue;
-        var convertCode = JSsource[type + 'ToC']; // [code, return]
-        funcstr += 'var ' + convertCode.arguments + ' = ' + arg + ';';
-        funcstr += convertCode.body + ';';
-        funcstr += arg + '=(' + convertCode.returnValue + ');';
-      }
-    }
-
-    // When the code is compressed, the name of cfunc is not literally 'cfunc' anymore
-    var cfuncname = parseJSFunc(function(){return cfunc}).returnValue;
-    // Call the function
-    funcstr += 'var ret = ' + cfuncname + '(' + argNames.join(',') + ');';
-    if (!numericRet) { // Return type can only by 'string' or 'number'
-      // Convert the result to a string
-      var strgfy = parseJSFunc(function(){return Pointer_stringify}).returnValue;
-      funcstr += 'ret = ' + strgfy + '(ret);';
-    }
-#if ASSERTIONS
-    funcstr += "if (typeof EmterpreterAsync === 'object') { assert(!EmterpreterAsync.state, 'cannot start async op with normal JS calling cwrap') }";
-#endif
-    if (!numericArgs) {
-      // If we had a stack, restore it
-      ensureJSsource();
-      funcstr += JSsource['stackRestore'].body.replace('()', '(stack)') + ';';
-    }
-    funcstr += 'return ret})';
-    return eval(funcstr);
-  };
-#else
-  // NO_DYNAMIC_EXECUTION is on, so we can't use the fast version of cwrap.
-  // Fall back to returning a bound version of ccall.
-  cwrap = function cwrap(ident, returnType, argTypes) {
     return function() {
-#if ASSERTIONS
-      Runtime.warnOnce('NO_DYNAMIC_EXECUTION was set, '
-                     + 'using slow cwrap implementation');
-#endif
       return ccall(ident, returnType, argTypes, arguments);
     }
   }
-#endif
 })();
 {{{ maybeExport("ccall") }}}
 {{{ maybeExport("cwrap") }}}
