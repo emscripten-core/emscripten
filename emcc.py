@@ -164,7 +164,7 @@ class EmccOptions(object):
     self.cfi = False
     # Specifies the line ending format to use for all generated text files.
     # Defaults to using the native EOL on each platform (\r\n on Windows, \n on Linux&OSX)
-    self.output_eol = os.linesep.encode()
+    self.output_eol = os.linesep
 
 
 class JSOptimizer(object):
@@ -1847,7 +1847,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.try_delete(memfile)
 
       for f in generated_text_files_with_native_eols:
-        tools.line_endings.convert_line_endings_in_file(f, os.linesep.encode(), options.output_eol)
+        tools.line_endings.convert_line_endings_in_file(f, os.linesep, options.output_eol)
     log_time('final emitting')
     # exit block 'final emitting'
 
@@ -2112,9 +2112,9 @@ def parse_args(newargs):
       options.cfi = True
     elif newargs[i] == "--output_eol":
       if newargs[i+1].lower() == 'windows':
-        options.output_eol = b'\r\n'
+        options.output_eol = '\r\n'
       elif newargs[i+1].lower() == 'linux':
-        options.output_eol = b'\n'
+        options.output_eol = '\n'
       else:
         logging.error('Invalid value "' + newargs[i+1] + '" to --output_eol!')
         exit(1)
@@ -2595,9 +2595,9 @@ def generate_html(target, options, js_target, target_basename,
     script.inline = js_contents
 
   html = open(target, 'wb')
-  html_contents = shell.replace('{{{ SCRIPT }}}', script.replacement()).encode('utf-8')
-  html_contents = tools.line_endings.convert_line_endings(html_contents, b'\n', options.output_eol)
-  html.write(html_contents)
+  html_contents = shell.replace('{{{ SCRIPT }}}', script.replacement())
+  html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', options.output_eol)
+  html.write(html_contents.encode('utf-8'))
   html.close()
 
 
