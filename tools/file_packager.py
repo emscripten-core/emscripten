@@ -106,7 +106,7 @@ plugins = []
 jsoutput = None
 no_closure = False
 force = True
-# If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally cache VFS XHR so that subsequent 
+# If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally cache VFS XHR so that subsequent
 # page loads can read the data from the offline cache instead.
 use_preload_cache = False
 indexeddb_name = 'EM_PRELOAD_CACHE'
@@ -170,7 +170,7 @@ for arg in sys.argv[2:]:
     mode = leading
     at_position = arg.replace('@@', '__').find('@') # position of @ if we're doing 'src@dst'. '__' is used to keep the index same with the original if they escaped with '@@'.
     uses_at_notation = (at_position != -1) # '@@' in input string means there is an actual @ character, a single '@' means the 'src@dst' notation.
-    
+
     if uses_at_notation:
       srcpath = arg[0:at_position].replace('@@', '@') # split around the @
       dstpath = arg[at_position+1:].replace('@@', '@')
@@ -192,15 +192,8 @@ if not has_preloaded or jsoutput == None:
   assert not separate_metadata, 'cannot separate-metadata without both --preloaded files and a specified --js-output'
 
 ret = '''
-var Module;
-'''
-if not no_closure:
-  ret += '''
-if (typeof Module === 'undefined') Module = eval('(function() { try { return Module || {} } catch(e) { return {} } })()');
-'''
-else:
-  ret += '''
-if (typeof Module === 'undefined') Module = {};
+// `"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__"` will be replaced with actual code on later stage of the build, this way Closure Compiler will not mangle it
+Module = "__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__";
 '''
 
 ret += '''
@@ -223,7 +216,7 @@ code = '''
 def has_hidden_attribute(filepath):
   if sys.platform != 'win32':
     return False
-    
+
   try:
     attrs = ctypes.windll.kernel32.GetFileAttributesW(unicode(filepath))
     assert attrs != -1
@@ -237,7 +230,7 @@ def has_hidden_attribute(filepath):
 def should_ignore(fullname):
   if has_hidden_attribute(fullname):
     return True
-    
+
   for p in excluded_patterns:
     if fnmatch.fnmatch(fullname, p):
       return True
@@ -279,7 +272,7 @@ for file_ in data_files:
       new_data_files.append(file_)
 data_files = [file_ for file_ in new_data_files if not os.path.isdir(file_['srcpath'])]
 if len(data_files) == 0:
-  print('Nothing to do!', file=sys.stderr) 
+  print('Nothing to do!', file=sys.stderr)
   sys.exit(1)
 
 # Absolutize paths, and check that they make sense
