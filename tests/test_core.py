@@ -6772,7 +6772,7 @@ Success!
     if self.run_name == 'asm2':
       print('closure')
       self.emcc_args += ['--closure', '1', '-g1'] # extra testing
-    self.do_run_in_out_file_test('tests', 'emscripten_log', 'emscripten_log_with_closure')
+      self.do_run_in_out_file_test('tests', 'emscripten_log', 'emscripten_log_with_closure')
 
   def test_float_literals(self):
     self.do_run_in_out_file_test('tests', 'test_float_literals')
