@@ -1168,9 +1168,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.BINARYEN_PASSES:
             shared.Settings.BINARYEN_PASSES += ','
           shared.Settings.BINARYEN_PASSES += 'safe-heap'
-        # ensure the binaryen port is available, if we are using it. if we do, then
-        # we need it to build to wasm
-        shared.Building.get_binaryen()
 
       # wasm outputs are only possible with a side wasm
       if target.endswith(WASM_ENDINGS):

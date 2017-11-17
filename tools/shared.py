@@ -2309,6 +2309,7 @@ class Building(object):
 
   @staticmethod
   def get_binaryen_bin():
+    Building.get_binaryen()
     return os.path.join(Settings.BINARYEN_ROOT, 'bin')
 
 # compatibility with existing emcc, etc. scripts
