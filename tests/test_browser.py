@@ -1286,7 +1286,7 @@ keydown(100);keyup(100); // trigger the end
     os.mkdir('subdir')
     open('file1.txt', 'w').write('0123456789' * (1024*128))
     open(os.path.join('subdir', 'file2.txt'), 'w').write('1234567890' * (1024*128))
-    random_data = bytearray([random.randint(0,255) for x in range(1024*128*10 + 1)])
+    random_data = bytearray(random.randint(0,255) for x in range(1024*128*10 + 1))
     random_data[17] = ord('X')
     open('file3.txt', 'wb').write(random_data)
 
