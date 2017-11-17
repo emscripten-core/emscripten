@@ -2377,10 +2377,10 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
       if DEBUG: save_intermediate('postclean', 'js')
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
-    f = open(final, 'rb')
+    f = open(final, 'r')
     js = f.read()
     f.close()
-    f = open(final, 'wb')
+    f = open(final, 'w')
     for target, replacement_string, should_embed in [
       (wasm_text_target, shared.FilenameReplacementStrings.WASM_TEXT_FILE, True),
       (wasm_binary_target, shared.FilenameReplacementStrings.WASM_BINARY_FILE, True),
