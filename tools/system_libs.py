@@ -9,6 +9,15 @@ stdout = None
 stderr = None
 
 def call_process(cmd):
+  # call clang directly, instead of emcc
+  if cmd[0] == shared.PYTHON and cmd[1] in (shared.EMCC, shared.EMXX):
+    if cmd[1] == shared.EMCC:
+      cmd[1] = shared.CLANG_CC
+    else:
+      cmd[1] = shared.CLANG_CPP
+    cmd = cmd[1:]
+    # add compiler opts emcc would have
+    cmd += shared.COMPILER_OPTS + ['-emit-llvm', '-c']
   proc = Popen(cmd, stdout=stdout, stderr=stderr)
   proc.communicate()
   if proc.returncode != 0:
