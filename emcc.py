@@ -1066,7 +1066,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if not any(s.startswith('PTHREAD_POOL_SIZE=') for s in settings_changes):
           settings_changes.append('PTHREAD_POOL_SIZE=0')
         options.js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
-        newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
+        newargs += shared.Building.get_pthreads_cflags()
         shared.Settings.FORCE_FILESYSTEM = 1 # proxying of utime requires the filesystem
       else:
         options.js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
@@ -1952,7 +1952,7 @@ def parse_args(newargs):
         options.memory_profiler = True
       options.tracing = True
       newargs[i] = ''
-      newargs.append('-D__EMSCRIPTEN_TRACING__=1')
+      newargs += shared.Building.get_tracing_cflags()
       settings_changes.append("EMSCRIPTEN_TRACING=1")
       options.js_libraries.append(shared.path_from_root('src', 'library_trace.js'))
     elif newargs[i] == '--emit-symbol-map':

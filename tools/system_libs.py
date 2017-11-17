@@ -138,7 +138,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
     args = ['-Os']
     if shared.Settings.USE_PTHREADS:
-      args += ['-s', 'USE_PTHREADS=1']
+      args += shared.Building.get_pthreads_cflags()
       assert '-mt' in libname
     else:
       assert '-mt' not in libname
@@ -183,7 +183,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         'pthread_setspecific.c', 'pthread_setcancelstate.c'
       ])
     pthreads_files += [os.path.join('pthread', 'library_pthread.c')]
-    return build_libc(libname, pthreads_files, ['-O2', '-s', 'USE_PTHREADS=1'])
+    return build_libc(libname, pthreads_files, ['-O2'] + shared.Building.get_pthreads_cflags())
 
   def create_wasm_libc(libname):
     # in asm.js we just use Math.sin etc., which is good for code size. But
@@ -309,9 +309,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     o = in_temp(out_name)
     cflags = ['-O2']
     if shared.Settings.USE_PTHREADS:
-      cflags += ['-s', 'USE_PTHREADS=1']
+      cflags += shared.Building.get_pthreads_cflags()
     if shared.Settings.EMSCRIPTEN_TRACING:
-      cflags += ['--tracing']
+      cflags += shared.Building.get_tracing_cflags()
     if shared.Settings.SPLIT_MEMORY:
       cflags += ['-DMSPACES', '-DONLY_MSPACES']
     if shared.Settings.DEBUG_LEVEL:

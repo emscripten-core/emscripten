@@ -2198,6 +2198,16 @@ class Building(object):
 
       return filename + '.cc.js'
 
+  # the compiler flags we add when building with pthreads
+  @staticmethod
+  def get_pthreads_cflags():
+    return ['-D__EMSCRIPTEN_PTHREADS__=1']
+
+  # the compiler flags we add when building with tracing
+  @staticmethod
+  def get_tracing_cflags():
+    return ['-D__EMSCRIPTEN_TRACING__=1']
+
   _is_ar_cache = {}
   @staticmethod
   def is_ar(filename):
