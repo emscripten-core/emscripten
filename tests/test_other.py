@@ -2568,7 +2568,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
                          run_js ('index.js', engine=NODE_JS, stderr=STDOUT, assert_returncode=None))
 
   def test_fs_stream_proto(self):
-    open('src.cpp', 'wb').write(r'''
+    open('src.cpp', 'w').write(r'''
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -3062,7 +3062,7 @@ var Module = { print: function(x) { throw '<{(' + x + ')}>' } };
       assert os.path.exists('header.h.gch') # default output is gch
       if suffix != 'gch':
         Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix]).communicate()
-        assert open('header.h.gch').read() == open('header.h.' + suffix).read()
+        assert open('header.h.gch', 'rb').read() == open('header.h.' + suffix, 'rb').read()
 
       open('src.cpp', 'w').write(r'''
 #include <stdio.h>
@@ -6882,7 +6882,11 @@ int main() {
     shutil.rmtree(os.path.join(current_directory, with_space))
 
     # We want only the relative path to be in the linker args, it should not be converted to an absolute path.
-    self.assertItemsEqual(link_args, [main_object_file_name])
+    if hasattr(self, 'assertCountEqual'):
+      self.assertCountEqual(link_args, [main_object_file_name])
+    else:
+      # Python 2 compatibility
+      self.assertItemsEqual(link_args, [main_object_file_name])
 
   def test_memory_growth_noasm(self):
     check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-s', 'ALLOW_MEMORY_GROWTH=1'])

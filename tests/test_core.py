@@ -6121,7 +6121,7 @@ def process(filename):
 
     js_funcs.append('_main')
     exported_func_json_file = os.path.join(self.get_dir(), 'large_exported_response.json')
-    open(exported_func_json_file, 'wb').write(json.dumps(js_funcs))
+    open(exported_func_json_file, 'w').write(json.dumps(js_funcs))
 
     self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=@' + exported_func_json_file]
     self.do_run(src, '''waka 4999!''')

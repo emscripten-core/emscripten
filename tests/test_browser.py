@@ -6,6 +6,7 @@ from tools.shared import *
 try:
   from http.server import BaseHTTPRequestHandler, HTTPServer
 except ImportError:
+  # Python 2 compatibility
   from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum):
