@@ -6335,6 +6335,9 @@ Resolved: "/" => "/"
 ''', run_js('a.out.js'))
 
   def test_no_warnings(self):
+    # build once before to make sure system libs etc. exist
+    subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')])
+    # check that there is nothing in stderr for a regular compile
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')], stderr=PIPE).communicate()
     assert err == '', err
 
