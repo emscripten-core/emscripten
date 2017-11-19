@@ -692,8 +692,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             settings_changes.append(change)
             newargs[i] = newargs[i+1] = ''
             key, value = change.split('=', 1)
-            assert key != 'WASM_BACKEND', 'do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment'
-            assert key != 'ASYNCIFY', 'ASYNCIFY has been removed, see the Emterpreter-Async option as a replacement'
+            # checks on valid settings being specified
+            if key == 'ASYNCIFY':
+              logging.critical('ASYNCIFY has been removed, see the Emterpreter-Async option as a replacement')
+              sys.exit(1)
       newargs = [arg for arg in newargs if arg is not '']
 
       # Find input files
