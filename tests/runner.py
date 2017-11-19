@@ -49,8 +49,13 @@ if emscripten_browser:
     print("using Emscripten browser: " + str(cmd), file=sys.stderr)
   webbrowser.open_new = run_in_other_browser
 
+# checks if browser testing is enabled
 def has_browser():
   return emscripten_browser != '0'
+
+# returns what browser is being used (None means the default)
+def get_browser():
+  return emscripten_browser
 
 # Sanity check for config
 
