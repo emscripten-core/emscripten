@@ -1,11 +1,12 @@
 from __future__ import print_function
 import multiprocessing, os, shutil, subprocess, unittest, zlib, webbrowser, time, shlex
-from runner import BrowserCore, path_from_root, has_browser
+from runner import BrowserCore, path_from_root, has_browser, get_browser
 from tools.shared import *
 
 try:
   from http.server import BaseHTTPRequestHandler, HTTPServer
 except ImportError:
+  # Python 2 compatibility
   from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum):
@@ -2210,9 +2211,10 @@ void *getBindBuffer() {
     # before launching.
     os.chdir(path_from_root())
     args = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
-    if emscripten_browser is not None:
+    browser = get_browser()
+    if browser is not None:
       # If EMSCRIPTEN_BROWSER carried command line arguments to pass to the browser, (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun, so strip them out.
-      browser_name = shlex.split(emscripten_browser)[0]
+      browser_name = shlex.split(browser)[0]
       args += ['--browser', browser_name]
     args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
     process = subprocess.Popen(args)

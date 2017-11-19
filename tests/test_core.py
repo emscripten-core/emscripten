@@ -2152,7 +2152,7 @@ The current type of b is: 9
 
       def check(result, err):
         result = result.replace('\n \n', '\n') # remove extra node output
-        return hashlib.sha1(result).hexdigest()
+        return hashlib.sha1(result.encode('utf-8')).hexdigest()
 
       self.do_run_from_file(src, output, output_nicerizer = check)
 
@@ -4196,7 +4196,7 @@ def process(filename):
         printf("*%d\n", c);
       }
     '''
-    open('file_with_byte_234.txt', 'wb').write('\xea')
+    open('file_with_byte_234.txt', 'wb').write(b'\xea')
     self.emcc_args += ['--embed-file', 'file_with_byte_234.txt']
     self.do_run(src, '*234\n')
 
@@ -4219,7 +4219,7 @@ def process(filename):
         return 0;
       }
     '''
-    open('eol.txt', 'wb').write('\n')
+    open('eol.txt', 'wb').write(b'\n')
     self.emcc_args += ['--embed-file', 'eol.txt']
     self.do_run(src, 'SUCCESS\n')
 
@@ -6121,7 +6121,7 @@ def process(filename):
 
     js_funcs.append('_main')
     exported_func_json_file = os.path.join(self.get_dir(), 'large_exported_response.json')
-    open(exported_func_json_file, 'wb').write(json.dumps(js_funcs))
+    open(exported_func_json_file, 'w').write(json.dumps(js_funcs))
 
     self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=@' + exported_func_json_file]
     self.do_run(src, '''waka 4999!''')
