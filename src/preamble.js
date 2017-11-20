@@ -132,96 +132,94 @@ function getCFunc(ident) {
   return func;
 }
 
-var cwrap, ccall;
-(function(){
-  var JSfuncs = {
-    // Helpers for cwrap -- it can't refer to Runtime directly because it might
-    // be renamed by closure, instead it calls JSfuncs['stackSave'].body to find
-    // out what the minified function name is.
-    'stackSave': function() {
-      Runtime.stackSave()
-    },
-    'stackRestore': function() {
-      Runtime.stackRestore()
-    },
-    // type conversion from js to c
-    'arrayToC' : function(arr) {
-      var ret = Runtime.stackAlloc(arr.length);
-      writeArrayToMemory(arr, ret);
-      return ret;
-    },
-    'stringToC' : function(str) {
-      var ret = 0;
-      if (str !== null && str !== undefined && str !== 0) { // null string
-        // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
-        var len = (str.length << 2) + 1;
-        ret = Runtime.stackAlloc(len);
-        stringToUTF8(str, ret, len);
-      }
-      return ret;
-    }
-  };
-  // For fast lookup of conversion functions
-  var toC = {'string' : JSfuncs['stringToC'], 'array' : JSfuncs['arrayToC']};
-
-  // C calling interface.
-  ccall = function (ident, returnType, argTypes, args, opts) {
-    var func = getCFunc(ident);
-    var cArgs = [];
-    var stack = 0;
-#if ASSERTIONS
-    assert(returnType !== 'array', 'Return type should not be "array".');
-#endif
-    if (args) {
-      for (var i = 0; i < args.length; i++) {
-        var converter = toC[argTypes[i]];
-        if (converter) {
-          if (stack === 0) stack = Runtime.stackSave();
-          cArgs[i] = converter(args[i]);
-        } else {
-          cArgs[i] = args[i];
-        }
-      }
-    }
-    var ret = func.apply(null, cArgs);
-#if ASSERTIONS
-#if EMTERPRETIFY_ASYNC
-    if ((!opts || !opts.async) && typeof EmterpreterAsync === 'object') {
-      assert(!EmterpreterAsync.state, 'cannot start async op with normal JS calling ccall');
-    }
-    if (opts && opts.async) assert(!returnType, 'async ccalls cannot return values');
-#endif
-#endif
-    if (returnType === 'string') ret = Pointer_stringify(ret);
-    if (stack !== 0) {
-#if EMTERPRETIFY_ASYNC
-      if (opts && opts.async) {
-        EmterpreterAsync.asyncFinalizers.push(function() {
-          Runtime.stackRestore(stack);
-        });
-        return;
-      }
-#endif
-      Runtime.stackRestore(stack);
+var JSfuncs = {
+  // Helpers for cwrap -- it can't refer to Runtime directly because it might
+  // be renamed by closure, instead it calls JSfuncs['stackSave'].body to find
+  // out what the minified function name is.
+  'stackSave': function() {
+    Runtime.stackSave()
+  },
+  'stackRestore': function() {
+    Runtime.stackRestore()
+  },
+  // type conversion from js to c
+  'arrayToC' : function(arr) {
+    var ret = Runtime.stackAlloc(arr.length);
+    writeArrayToMemory(arr, ret);
+    return ret;
+  },
+  'stringToC' : function(str) {
+    var ret = 0;
+    if (str !== null && str !== undefined && str !== 0) { // null string
+      // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
+      var len = (str.length << 2) + 1;
+      ret = Runtime.stackAlloc(len);
+      stringToUTF8(str, ret, len);
     }
     return ret;
   }
+};
+// For fast lookup of conversion functions
+var toC = {'string' : JSfuncs['stringToC'], 'array' : JSfuncs['arrayToC']};
 
-  cwrap = function (ident, returnType, argTypes) {
-    argTypes = argTypes || [];
-    var cfunc = getCFunc(ident);
-    // When the function takes numbers and returns a number, we can just return
-    // the original function
-    var numericArgs = argTypes.every(function(type){ return type === 'number'});
-    var numericRet = returnType !== 'string';
-    if (numericRet && numericArgs) {
-      return cfunc;
-    }
-    return function() {
-      return ccall(ident, returnType, argTypes, arguments);
+// C calling interface.
+function ccall (ident, returnType, argTypes, args, opts) {
+  var func = getCFunc(ident);
+  var cArgs = [];
+  var stack = 0;
+#if ASSERTIONS
+  assert(returnType !== 'array', 'Return type should not be "array".');
+#endif
+  if (args) {
+    for (var i = 0; i < args.length; i++) {
+      var converter = toC[argTypes[i]];
+      if (converter) {
+        if (stack === 0) stack = Runtime.stackSave();
+        cArgs[i] = converter(args[i]);
+      } else {
+        cArgs[i] = args[i];
+      }
     }
   }
-})();
+  var ret = func.apply(null, cArgs);
+#if ASSERTIONS
+#if EMTERPRETIFY_ASYNC
+  if ((!opts || !opts.async) && typeof EmterpreterAsync === 'object') {
+    assert(!EmterpreterAsync.state, 'cannot start async op with normal JS calling ccall');
+  }
+  if (opts && opts.async) assert(!returnType, 'async ccalls cannot return values');
+#endif
+#endif
+  if (returnType === 'string') ret = Pointer_stringify(ret);
+  if (stack !== 0) {
+#if EMTERPRETIFY_ASYNC
+    if (opts && opts.async) {
+      EmterpreterAsync.asyncFinalizers.push(function() {
+        Runtime.stackRestore(stack);
+      });
+      return;
+    }
+#endif
+    Runtime.stackRestore(stack);
+  }
+  return ret;
+}
+
+function cwrap (ident, returnType, argTypes) {
+  argTypes = argTypes || [];
+  var cfunc = getCFunc(ident);
+  // When the function takes numbers and returns a number, we can just return
+  // the original function
+  var numericArgs = argTypes.every(function(type){ return type === 'number'});
+  var numericRet = returnType !== 'string';
+  if (numericRet && numericArgs) {
+    return cfunc;
+  }
+  return function() {
+    return ccall(ident, returnType, argTypes, arguments);
+  }
+}
+
 {{{ maybeExport("ccall") }}}
 {{{ maybeExport("cwrap") }}}
 
