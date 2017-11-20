@@ -81,7 +81,11 @@ mergeInto(LibraryManager.library, {
           currentLength += bucket.offset - bucket.roffset;
         }
 
+#if USE_PTHREADS
+        assert(buffer instanceof ArrayBuffer || buffer instanceof SharedArrayBuffer || ArrayBuffer.isView(buffer));
+#else
         assert(buffer instanceof ArrayBuffer || ArrayBuffer.isView(buffer));
+#endif
         var data = buffer.subarray(offset, offset + length);
 
         if (length <= 0) {
@@ -134,7 +138,11 @@ mergeInto(LibraryManager.library, {
       write: function (stream, buffer, offset, length, position /* ignored */) {
         var pipe = stream.node.pipe;
 
+#if USE_PTHREADS
+        assert(buffer instanceof ArrayBuffer || buffer instanceof SharedArrayBuffer || ArrayBuffer.isView(buffer));
+#else
         assert(buffer instanceof ArrayBuffer || ArrayBuffer.isView(buffer));
+#endif
         var data = buffer.subarray(offset, offset + length);
 
         var dataLen = data.byteLength;

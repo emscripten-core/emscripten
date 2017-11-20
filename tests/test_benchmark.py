@@ -50,7 +50,7 @@ class Benchmarker(object):
     std = math.sqrt(mean_of_squared - mean*mean)
     sorted_times = self.times[:]
     sorted_times.sort()
-    median = sum(sorted_times[len(sorted_times)/2 - 1:len(sorted_times)/2 + 1])/2
+    median = sum(sorted_times[len(sorted_times)//2 - 1:len(sorted_times)//2 + 1])//2
 
     print('   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100*std/mean, self.reps), end=' ')
 

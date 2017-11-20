@@ -587,12 +587,23 @@ mergeInto(LibraryManager.library, {
         // create a copy of the incoming data to send, as the WebSocket API
         // doesn't work entirely with an ArrayBufferView, it'll just send
         // the entire underlying buffer
-        var data;
-        if (buffer instanceof Array || buffer instanceof ArrayBuffer) {
-          data = buffer.slice(offset, offset + length);
-        } else {  // ArrayBufferView
-          data = buffer.buffer.slice(buffer.byteOffset + offset, buffer.byteOffset + offset + length);
+        if (ArrayBuffer.isView(buffer)) {
+          offset += buffer.byteOffset;
+          buffer = buffer.buffer;
         }
+
+        var data;
+#if USE_PTHREADS
+        // WebSockets .send() does not allow passing a SharedArrayBuffer, so clone the portion of the SharedArrayBuffer as a regular
+        // ArrayBuffer that we want to send.
+        if (buffer instanceof SharedArrayBuffer) {
+          data = new Uint8Array(new Uint8Array(buffer.slice(offset, offset + length))).buffer;
+        } else {
+#endif
+          data = buffer.slice(offset, offset + length);
+#if USE_PTHREADS
+        }
+#endif
 
         // if we're emulating a connection-less dgram socket and don't have
         // a cached connection, queue the buffer to send upon connect and

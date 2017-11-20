@@ -16,6 +16,7 @@ if __name__ == '__main__':
 import difflib
 import os, sys, json, argparse, subprocess, re, time, logging
 import shutil
+from collections import OrderedDict
 
 from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
@@ -144,7 +145,7 @@ def parse_backend_output(backend_output, DEBUG):
 
   try:
     #if DEBUG: print >> sys.stderr, "METAraw", metadata_raw
-    metadata = json.loads(metadata_raw)
+    metadata = json.loads(metadata_raw, object_pairs_hook=OrderedDict)
   except Exception as e:
     logging.error('emscript: failure to parse metadata output from compiler backend. raw output is: \n' + metadata_raw)
     raise e
@@ -299,7 +300,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     global_vars = metadata['externs']
   else:
     global_vars = [] # linkable code accesses globals through function calls
-  global_funcs = list(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].items() if value != 2])
+  global_funcs = sorted(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].items() if value != 2])
                       .difference(set(global_vars)).difference(implemented_functions))
   if settings['RELOCATABLE']:
     global_funcs += ['g$' + extern for extern in metadata['externs']]
@@ -505,7 +506,7 @@ def update_settings_glue(settings, metadata):
     logging.warning('disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
     settings['ASM_JS'] = 2
 
-  settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
+  settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = sorted(
     set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + list(map(shared.JS.to_nice_ident, metadata['declares']))).difference(
       [x[1:] for x in metadata['implementedFunctions']]
     )
@@ -635,7 +636,7 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
       funcs += ['setTempRet0', 'getTempRet0']
     if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
       funcs += ['setThrew']
-  return list(set(funcs))
+  return sorted(set(funcs))
 
 
 def get_implemented_functions(metadata):
@@ -1228,9 +1229,9 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
     asm_runtime_funcs.append('setAsync')
   all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables(function_table_data, settings)
   if settings['EMULATED_FUNCTION_POINTERS']:
-    all_exported = list(set(all_exported).union(in_table))
+    all_exported += in_table
   exports = []
-  for export in set(all_exported):
+  for export in sorted(set(all_exported)):
     exports.append(quote(export) + ": " + export)
   if settings['BINARYEN'] and settings['SIDE_MODULE']:
     # named globals in side wasm modules are exported globals from asm/wasm
@@ -2197,10 +2198,12 @@ def _main(args=None):
                     default=None,
                     help=('Where to create temporary files.'))
   parser.add_argument('-v', '--verbose',
+                    default=None,
                     action='store_true',
                     dest='verbose',
                     help='Displays debug output')
   parser.add_argument('-q', '--quiet',
+                    default=None,
                     action='store_false',
                     dest='verbose',
                     help='Hides debug output')
@@ -2224,7 +2227,7 @@ WARNING: You should normally never use this! Use emcc instead.
   if len(positional) != 1:
     raise RuntimeError('Must provide exactly one positional argument. Got ' + str(len(positional)) + ': "' + '", "'.join(positional) + '"')
   keywords.infile = os.path.abspath(positional[0])
-  if isinstance(keywords.outfile, basestring):
+  if isinstance(keywords.outfile, (type(u''), bytes)):
     keywords.outfile = open(keywords.outfile, 'w')
 
   if keywords.temp_dir is None:

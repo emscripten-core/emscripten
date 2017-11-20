@@ -28,12 +28,18 @@ from tools.toolchain_profiler import ToolchainProfiler, exit
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
-import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging, urllib
+import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
 from subprocess import PIPE
 from tools import shared, jsrun, system_libs
 from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move
 from tools.response_file import read_response_file
 import tools.line_endings
+
+try:
+  from urllib.parse import quote
+except ImportError:
+  # Python 2 compatibility
+  from urllib import quote
 
 # endings = dot + a suffix, safe to test by  filename.endswith(endings)
 C_ENDINGS = ('.c', '.C', '.i')
@@ -1138,12 +1144,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS:
           logging.warning('for wasm there is no need to set ELIMINATE_DUPLICATE_FUNCTIONS, the binaryen optimizer does it automatically')
           shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 0
-        # if root was not specified in -s, it might be fixed in ~/.emscripten, copy from there
-        if not shared.Settings.BINARYEN_ROOT:
-          try:
-            shared.Settings.BINARYEN_ROOT = shared.BINARYEN_ROOT
-          except:
-            pass
         # default precise-f32 to on, since it works well in wasm
         # also always use f32s when asm.js is not in the picture
         if ('PRECISE_F32=0' not in settings_changes and 'PRECISE_F32=2' not in settings_changes) or 'asmjs' not in shared.Settings.BINARYEN_METHOD:
@@ -1174,6 +1174,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.BINARYEN_PASSES:
             shared.Settings.BINARYEN_PASSES += ','
           shared.Settings.BINARYEN_PASSES += 'safe-heap'
+        # ensure the binaryen port is available, if we are using it. if we do, then
+        # we need it to build to wasm
+        system_libs.get_port('binaryen', shared.Settings)
 
       # wasm outputs are only possible with a side wasm
       if target.endswith(WASM_ENDINGS):
@@ -1425,6 +1428,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       extra_files_to_link = []
 
+      # link in ports and system libraries, if necessary
       if not LEAVE_INPUTS_RAW and \
          not shared.Settings.BUILD_AS_SHARED_LIB and \
          not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and \
@@ -1581,10 +1585,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('source transforms'):
       # Embed and preload files
-      if shared.Settings.SPLIT_MEMORY:
-        options.no_heap_copy = True # copying into the heap is risky when split - the chunks might be too small for the file package!
-
       if len(options.preload_files) + len(options.embed_files) > 0:
+
+        # copying into the heap is risky when split - the chunks might be too small for the file package!
+        if shared.Settings.SPLIT_MEMORY and not options.no_heap_copy:
+          logging.info('Enabling --no-heap-copy because -s SPLIT_MEMORY=1 is being used with file_packager.py (pass --no-heap-copy to suppress this notification)')
+          options.no_heap_copy = True
+
+        # Also, MEMFS is not aware of heap resizing feature in wasm, so if MEMFS and memory growth are used together, force
+        # no_heap_copy to be enabled.
+        if shared.Settings.ALLOW_MEMORY_GROWTH and not options.no_heap_copy:
+          logging.info('Enabling --no-heap-copy because -s ALLOW_MEMORY_GROWTH=1 is being used with file_packager.py (pass --no-heap-copy to suppress this notification)')
+          options.no_heap_copy = True
+
         logging.debug('setting up files')
         file_args = []
         if len(options.preload_files) > 0:
@@ -2364,10 +2377,10 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
       if DEBUG: save_intermediate('postclean', 'js')
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
-    f = open(final, 'rb')
+    f = open(final, 'r')
     js = f.read()
     f.close()
-    f = open(final, 'wb')
+    f = open(final, 'w')
     for target, replacement_string, should_embed in [
       (wasm_text_target, shared.FilenameReplacementStrings.WASM_TEXT_FILE, True),
       (wasm_binary_target, shared.FilenameReplacementStrings.WASM_BINARY_FILE, True),
@@ -2574,6 +2587,8 @@ def generate_html(target, options, js_target, target_basename,
       script.inline = f.read() + script.inline
       f.close()
 
+    script.inline = 'var ASSERTIONS = %s;\n%s' % (shared.Settings.ASSERTIONS, script.inline)
+
   # inline script for SINGLE_FILE output
   if shared.Settings.SINGLE_FILE:
     js_contents = script.inline or ''
@@ -2588,7 +2603,7 @@ def generate_html(target, options, js_target, target_basename,
   html = open(target, 'wb')
   html_contents = shell.replace('{{{ SCRIPT }}}', script.replacement())
   html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', options.output_eol)
-  html.write(html_contents)
+  html.write(html_contents.encode('utf-8'))
   html.close()
 
 
@@ -2666,7 +2681,7 @@ class ScriptSource(object):
     """Returns the script tag to replace the {{{ SCRIPT }}} tag in the target"""
     assert (self.src or self.inline) and not (self.src and self.inline)
     if self.src:
-      return '<script async type="text/javascript" src="%s"></script>' % urllib.quote(self.src)
+      return '<script async type="text/javascript" src="%s"></script>' % quote(self.src)
     else:
       return '<script>\n%s\n</script>' % self.inline
 

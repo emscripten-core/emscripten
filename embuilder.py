@@ -88,15 +88,44 @@ CXX_WITH_STDLIB = '''
         }
       '''
 
+SYSTEM_TASKS = ['compiler-rt', 'libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'dlmalloc_debug', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'html5']
+USER_TASKS = ['al', 'gl', 'binaryen', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
 
 temp_files = shared.configuration.get_temp_files()
 
 def build(src, result_libs, args=[]):
+  # if a library is a .a, also build the .bc, as we need it when forcing a
+  # a system library - in that case, we always want all the code linked in
+  if result_libs:
+    need_forced = []
+    with_forced = []
+    for result_lib in result_libs:
+      if result_lib.endswith('.a'):
+        short = result_lib[:-2]
+        if short in SYSTEM_TASKS:
+          need_forced.append(short.replace('_noexcept', ''))
+          with_forced.append(short + '.bc')
+          continue
+      with_forced.append(result_lib)
+
+    if need_forced:
+      print(str(need_forced))
+      if os.environ.get('EMCC_FORCE_STDLIBS'):
+        print('skipping forced (.bc) versions of .a libraries, since EMCC_FORCE_STDLIBS already set')
+      else:
+        os.environ['EMCC_FORCE_STDLIBS'] = ','.join(need_forced)
+        try:
+          build(src, with_forced, args)
+        finally:
+          del os.environ['EMCC_FORCE_STDLIBS']
+
+  # build in order to generate the libraries
   with temp_files.get_file('.cpp') as temp:
     open(temp, 'w').write(src)
     temp_js = temp_files.get('.js').name
     shared.Building.emcc(temp, args, output_filename=temp_js)
 
+  # verify
   assert os.path.exists(temp_js), 'failed to build file'
   if result_libs:
     for lib in result_libs:
@@ -106,9 +135,6 @@ def build(src, result_libs, args=[]):
 def build_port(port_name, lib_name, params):
   build(C_BARE, [os.path.join('ports-builds', port_name, lib_name)] if lib_name else None, params)
 
-
-SYSTEM_TASKS = ['compiler-rt', 'libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'dlmalloc_debug', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'html5']
-USER_TASKS = ['al', 'gl', 'binaryen', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
 
 operation = sys.argv[1]
 
