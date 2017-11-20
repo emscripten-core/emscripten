@@ -125,10 +125,7 @@ var globalScope = this;
 // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
 function getCFunc(ident) {
   var func = Module['_' + ident]; // closure exported function
-  if (!func) {
-    {{{ makeEval("try { func = eval('_' + ident); } catch(e) {}") }}}
-  }
-  assert(func, 'Cannot call unknown function ' + ident + ' (perhaps LLVM optimizations or closure removed it?)');
+  assert(func, 'Cannot call unknown function ' + ident + ', make sure it is exported');
   return func;
 }
 
