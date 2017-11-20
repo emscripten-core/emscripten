@@ -14,6 +14,7 @@ if __name__ == '__main__':
 
 import os, subprocess, sys
 from tools import shared
+from tools.append_hashes import append_hash_to_file_list
 
 #
 # Main run() function
@@ -39,24 +40,8 @@ def run():
       i = 1
       while i < len(newargs):
         if newargs[i].endswith('.a'):
-          import hashlib, shutil
-          for j in range(i+1, len(newargs)):
-            orig_name = newargs[j]
-            full_name = os.path.abspath(orig_name)
-            dir_name = os.path.dirname(full_name)
-            base_name = os.path.basename(full_name)
-            h = hashlib.md5(full_name.encode('utf-8')).hexdigest()[:8]
-            parts = base_name.split('.')
-            parts[0] += '_' + h
-            newname = '.'.join(parts)
-            full_newname = os.path.join(dir_name, newname)
-            if not os.path.exists(full_newname):
-              try: # it is ok to fail here, we just don't get hashing
-                shutil.copyfile(orig_name, full_newname)
-                newargs[j] = full_newname
-                to_delete.append(full_newname)
-              except:
-                pass
+          (hashed_names, to_delete) = append_hash_to_file_list(newargs[(i + 1):])
+          newargs[(i + 1):] = hashed_names
           break
         i += 1
 

@@ -7866,3 +7866,39 @@ end
 
 
     assert_aliases_match('WASM_MEM_MAX', 'BINARYEN_MEM_MAX', '16777216', ['-s', 'WASM=1'])
+
+  def test_emar_append_hashes(self):
+    import tools.append_hashes
+    open('a.o', 'a').close()
+    subprocess.call([PYTHON, EMAR, 'cr', 'archive.a', 'a.o'])
+    emar = subprocess.Popen([PYTHON, EMAR, 't', 'archive.a'], stdout=PIPE)
+    emar_out = emar.communicate()[0]
+    self.assertContained(tools.append_hashes.append_hash('a.o'), emar_out)
+
+  def test_emar_append_hashes_rsp(self):
+    import tools.append_hashes
+    open('a.o', 'a').close()
+    with open('r.rsp', 'w') as f:
+      f.write('a.o')
+    subprocess.call([PYTHON, EMAR, 'cr', 'archive.a', '@r.rsp'])
+    emar = subprocess.Popen([PYTHON, EMAR, 't', 'archive.a'], stdout=PIPE)
+    emar_out = emar.communicate()[0]
+    self.assertContained(tools.append_hashes.append_hash('a.o'), emar_out)
+
+  def test_emar_append_hashes_rsp_recursive(self):
+    import tools.append_hashes
+    open('a.o', 'a').close()
+    open('b.o', 'a').close()
+    open('space 1.o', 'a').close()
+    open('space 2.o', 'a').close()
+    with open('r1.rsp', 'w') as f:
+      f.write('a.o @r2.rsp')
+    with open('r2.rsp', 'w') as f:
+      f.write('b.o "space 1.o" space\\ 2.o')
+    subprocess.call([PYTHON, EMAR, 'cr', 'archive.a', '@r1.rsp'])
+    emar = subprocess.Popen([PYTHON, EMAR, 't', 'archive.a'], stdout=PIPE)
+    emar_out = emar.communicate()[0]
+    self.assertContained(tools.append_hashes.append_hash('a.o'), emar_out)
+    self.assertContained(tools.append_hashes.append_hash('b.o'), emar_out)
+    self.assertContained(tools.append_hashes.append_hash('space 1.o'), emar_out)
+    self.assertContained(tools.append_hashes.append_hash('space 2.o'), emar_out)
