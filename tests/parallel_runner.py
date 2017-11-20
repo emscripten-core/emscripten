@@ -11,6 +11,7 @@ import unittest
 try:
   import queue
 except ImportError:
+  # Python 2 compatibility
   import Queue as queue
 
 def g_testing_thread(work_queue, result_queue):

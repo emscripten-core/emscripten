@@ -103,10 +103,6 @@ if (ENVIRONMENT_IS_NODE) {
     return ret;
   };
 
-  Module['load'] = function load(f) {
-    globalEval(read(f));
-  };
-
   if (!Module['thisProgram']) {
     if (process['argv'].length > 1) {
       Module['thisProgram'] = process['argv'][1].replace(/\\/g, '/');
@@ -267,10 +263,6 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     }));
   }
 
-  if (ENVIRONMENT_IS_WORKER) {
-    Module['load'] = importScripts;
-  }
-
   if (typeof Module['setWindowTitle'] === 'undefined') {
     Module['setWindowTitle'] = function(title) { document.title = title };
   }
@@ -280,14 +272,6 @@ else {
   throw new Error('Unknown runtime environment. Where are we?');
 }
 
-function globalEval(x) {
-  {{{ makeEval('eval.call(null, x);') }}}
-}
-if (!Module['load'] && Module['read']) {
-  Module['load'] = function load(f) {
-    globalEval(Module['read'](f));
-  };
-}
 if (!Module['print']) {
   Module['print'] = function(){};
 }

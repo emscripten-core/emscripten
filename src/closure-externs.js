@@ -1115,6 +1115,10 @@ var SDL2;
  * @suppress {duplicate, undefinedVars}
  */
 var JSEvents;
+/**
+ * @suppress {undefinedVars}
+ */
+var i64Math;
 
 // Module loaders externs, for AMD etc.
 
@@ -1265,6 +1269,11 @@ var _glGetTexEnviv;
 var _glGetTexEnvfv;
 
 var _glutPostRedisplay = function() {};
+
+/**
+ * @suppress {undefinedVars}
+ */
+var emscripten_source_map;
 
 /**
  * @typy {Worker}

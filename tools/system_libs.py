@@ -72,9 +72,13 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     commands = []
     # Hide several musl warnings that produce a lot of spam to unit test build server logs.
     # TODO: When updating musl the next time, feel free to recheck which of their warnings might have been fixed, and which ones of these could be cleaned up.
-    c_opts = ['-Wno-return-type', '-Wno-parentheses', '-Wno-ignored-attributes', '-Wno-shift-count-overflow', '-Wno-shift-negative-value', '-Wno-dangling-else', '-Wno-unknown-pragmas', '-Wno-shift-op-parentheses', '-Wno-string-plus-int', '-Wno-logical-op-parentheses', '-Wno-bitwise-op-parentheses', '-Wno-visibility', '-Wno-pointer-sign']
-    if shared.Settings.WASM_BACKEND:
-      c_opts.append('-Wno-error=absolute-value')
+    c_opts = ['-Wno-return-type', '-Wno-parentheses', '-Wno-ignored-attributes',
+              '-Wno-shift-count-overflow', '-Wno-shift-negative-value',
+              '-Wno-dangling-else', '-Wno-unknown-pragmas',
+              '-Wno-shift-op-parentheses', '-Wno-string-plus-int',
+              '-Wno-logical-op-parentheses', '-Wno-bitwise-op-parentheses',
+              '-Wno-visibility', '-Wno-pointer-sign', '-Wno-absolute-value',
+              '-Wno-empty-body']
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
       commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes() + default_opts + c_opts + lib_opts)
@@ -609,8 +613,12 @@ class Ports(object):
             return
       # retrieve from remote server
       logging.warning('retrieving port: ' + name + ' from ' + url)
-      import urllib2
-      f = urllib2.urlopen(url)
+      try:
+        from urllib.request import urlopen
+      except ImportError:
+        # Python 2 compatibility
+        from urllib2 import urlopen
+      f = urlopen(url)
       data = f.read()
       open(fullname + '.zip', 'wb').write(data)
       State.retrieved = True
