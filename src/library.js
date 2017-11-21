@@ -289,8 +289,8 @@ LibraryManager.library = {
 #else
         var maxHeapSize = 2*1024*1024*1024 - 16777216;
 #endif
-#if BINARYEN_MEM_MAX != -1
-        maxHeapSize = {{{ BINARYEN_MEM_MAX }}};
+#if WASM_MEM_MAX != -1
+        maxHeapSize = {{{ WASM_MEM_MAX }}};
 #endif
 #if !ALLOW_MEMORY_GROWTH
         maxHeapSize = HEAPU8.length;
