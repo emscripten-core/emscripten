@@ -33,6 +33,8 @@ Usage:
 
   --js-output=FILE Writes output in FILE, if not specified, standard output is used.
 
+  --export-name=EXPORT_NAME Use custom export name (default is `Module`)
+
   --no-force Don't create output if no valid input file is specified.
 
   --use-preload-cache Stores package in IndexedDB so that subsequent loads don't need to do XHR. Checks package version.
@@ -98,6 +100,7 @@ AV_WORKAROUND = 0 # Set to 1 to randomize file order and add some padding, to wo
 
 data_files = []
 excluded_patterns = []
+export_name = 'Module'
 leading = ''
 has_preloaded = False
 compress_cnt = 0
@@ -151,6 +154,10 @@ for arg in sys.argv[2:]:
   elif arg.startswith('--js-output'):
     jsoutput = arg.split('=', 1)[1] if '=' in arg else None
     leading = ''
+  elif arg.startswith('--export-name'):
+    if '=' in arg:
+      export_name = arg.split('=', 1)[1]
+    leading = ''
   elif arg.startswith('--no-closure'):
     no_closure = True
     leading = ''
@@ -191,10 +198,13 @@ if (not force) and len(data_files) == 0:
 if not has_preloaded or jsoutput == None:
   assert not separate_metadata, 'cannot separate-metadata without both --preloaded files and a specified --js-output'
 
+# `"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__"` will be replaced with actual code on later stage of the build, this way Closure Compiler will not mangle it
 ret = '''
-// `"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__"` will be replaced with actual code on later stage of the build, this way Closure Compiler will not mangle it
 Module = "__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__";
 '''
+if no_closure:
+  replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": export_name}
+  ret = ret.replace('"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__"', replacement)
 
 ret += '''
 if (!Module.expectedDataFileDownloads) {
