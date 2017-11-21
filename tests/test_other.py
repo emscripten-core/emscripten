@@ -6021,29 +6021,6 @@ main(int argc,char** argv)
     self.assertContained('hello1_val by hello1:3', out)
     self.assertContained('hello1_val by hello2:3', out)
 
-  def test_file_packager_eval(self):
-    BAD = 'Module = eval('
-    src = path_from_root('tests', 'hello_world.c')
-    open('temp.txt', 'w').write('temp')
-
-    # should emit eval only when emcc uses closure
-
-    Popen([PYTHON, EMCC, src, '--preload-file', 'temp.txt', '-O1']).communicate()
-    out = open('a.out.js').read()
-    assert BAD not in out, out[max(out.index(BAD)-80, 0) : min(out.index(BAD)+80, len(out)-1)]
-
-    Popen([PYTHON, EMCC, src, '--preload-file', 'temp.txt', '-O1', '--closure', '1']).communicate()
-    out = open('a.out.js').read()
-    assert BAD in out
-
-    # file packager defauls to the safe closure case
-
-    out, err = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'temp.txt'], stdout=PIPE, stderr=PIPE).communicate()
-    assert BAD in out
-
-    out, err = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'temp.txt', '--no-closure'], stdout=PIPE, stderr=PIPE).communicate()
-    assert BAD not in out, out[max(out.index(BAD)-80, 0) : min(out.index(BAD)+80, len(out)-1)]
-
   def test_debug_asmLastOpts(self):
     open('src.c', 'w').write(r'''
 #include <stdio.h>
