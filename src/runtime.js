@@ -76,7 +76,7 @@ var RuntimeGenerator = {
   },
 
   forceAlign: function(target, quantum) {
-    quantum = quantum || {{{ QUANTUM_SIZE }}};
+    quantum = quantum || 4;
     if (quantum == 1) return target;
     if (isNumber(target) && isNumber(quantum)) {
       return Math.ceil(target/quantum)*quantum;
@@ -156,7 +156,7 @@ var Runtime = {
       case 'double': return 8;
       default: {
         if (type[type.length-1] === '*') {
-          return Runtime.QUANTUM_SIZE; // A pointer
+          return 4; // A pointer
         } else if (type[0] === 'i') {
           var bits = parseInt(type.substr(1));
           assert(bits % 8 === 0);
@@ -172,7 +172,7 @@ var Runtime = {
   //! for now).
   //! @param type The type, by name.
   getNativeFieldSize: function(type) {
-    return Math.max(Runtime.getNativeTypeSize(type), Runtime.QUANTUM_SIZE);
+    return Math.max(Runtime.getNativeTypeSize(type), 4);
   },
 
   STACK_ALIGN: {{{ STACK_ALIGN }}},
@@ -197,7 +197,7 @@ var Runtime = {
     // we align i64s and doubles on 64-bit boundaries, unlike x86
     if (!vararg && (type == 'i64' || type == 'double')) return 8;
     if (!type) return Math.min(size, 8); // align structures internally to 64 bits
-    return Math.min(size || (type ? Runtime.getNativeFieldSize(type) : 0), Runtime.QUANTUM_SIZE);
+    return Math.min(size || (type ? Runtime.getNativeFieldSize(type) : 0), 4);
   },
 
   dynCall: function(sig, ptr, args) {

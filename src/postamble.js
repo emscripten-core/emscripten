@@ -175,7 +175,7 @@ Module['callMain'] = Module.callMain = function callMain(args) {
 
   var argc = args.length+1;
   function pad() {
-    for (var i = 0; i < {{{ QUANTUM_SIZE }}}-1; i++) {
+    for (var i = 0; i < 3; i++) {
       argv.push(0);
     }
   }

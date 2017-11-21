@@ -1379,12 +1379,12 @@ var LibrarySDL = {
   SDL_GetVideoInfo__sig: 'i',
   SDL_GetVideoInfo: function() {
     // %struct.SDL_VideoInfo = type { i32, i32, %struct.SDL_PixelFormat*, i32, i32 } - 5 fields of quantum size
-    var ret = _malloc(5*Runtime.QUANTUM_SIZE);
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*0', '0', '0', 'i32') }}}; // TODO
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*1', '0', '0', 'i32') }}}; // TODO
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*2', '0', '0', 'void*') }}};
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*3', '0', 'Module["canvas"].width', 'i32') }}};
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*4', '0', 'Module["canvas"].height', 'i32') }}};
+    var ret = _malloc(20);
+    {{{ makeSetValue('ret', '0', '0', 'i32') }}}; // TODO
+    {{{ makeSetValue('ret+4', '0', '0', 'i32') }}}; // TODO
+    {{{ makeSetValue('ret+8', '0', '0', 'void*') }}};
+    {{{ makeSetValue('ret+12', '0', 'Module["canvas"].width', 'i32') }}};
+    {{{ makeSetValue('ret+16', '0', 'Module["canvas"].height', 'i32') }}};
     return ret;
   },
 
@@ -2225,9 +2225,9 @@ var LibrarySDL = {
         }
       }
       var callStbImage = function(func, params) {
-        var x = Module['_malloc']({{{ QUANTUM_SIZE }}});
-        var y = Module['_malloc']({{{ QUANTUM_SIZE }}});
-        var comp = Module['_malloc']({{{ QUANTUM_SIZE }}});
+        var x = Module['_malloc'](4);
+        var y = Module['_malloc'](4);
+        var comp = Module['_malloc'](4);
         addCleanup(function() {
           Module['_free'](x);
           Module['_free'](y);

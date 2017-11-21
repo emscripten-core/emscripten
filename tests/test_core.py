@@ -2138,8 +2138,7 @@ The current type of b is: 9
   def test_copyop(self):
       # clang generated code is vulnerable to this, as it uses
       # memcpy for assignments, with hardcoded numbers of bytes
-      # (llvm-gcc copies items one by one). See QUANTUM_SIZE in
-      # settings.js.
+      # (llvm-gcc copies items one by one).
       test_path = path_from_root('tests', 'core', 'test_copyop')
       src, output = (test_path + s for s in ('.c', '.out'))
 
@@ -7160,7 +7159,7 @@ int main(int argc, char **argv) {
     self.do_run(open(path_from_root('tests', 'wrap_malloc.cpp')).read(), 'OK.')
 
 # Generate tests for everything
-def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
+def make_run(fullname, name=-1, compiler=-1, embetter=0,
     typed_arrays=0, emcc_args=None, env=None):
 
   if env is None: env = {}

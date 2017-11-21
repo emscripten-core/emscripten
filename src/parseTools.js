@@ -1256,7 +1256,7 @@ function makePointer(slab, pos, allocator, type, ptr, finalMemoryInitialization)
     if (!finalMemoryInitialization) {
       // writing out into memory, without a normal allocation. We put all of these into a single big chunk.
       assert(typeof slab == 'object');
-      assert(slab.length % QUANTUM_SIZE == 0, slab.length); // must be aligned already
+      assert(slab.length % 4 == 0, slab.length); // must be aligned already
       if (SIDE_MODULE && typeof ptr == 'string') {
         ptr = parseInt(ptr.substring(ptr.indexOf('+'), ptr.length-1)); // parse into (H_BASE+X)
       }

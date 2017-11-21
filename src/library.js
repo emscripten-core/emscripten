@@ -636,8 +636,7 @@ LibraryManager.library = {
       ENV['_'] = Module['thisProgram'];
       // Allocate memory.
       poolPtr = allocate(TOTAL_ENV_SIZE, 'i8', ALLOC_STATIC);
-      envPtr = allocate(MAX_ENV_VALUES * {{{ Runtime.QUANTUM_SIZE }}},
-                        'i8*', ALLOC_STATIC);
+      envPtr = allocate(MAX_ENV_VALUES * 4, 'i8*', ALLOC_STATIC);
       {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}};
       {{{ makeSetValue(makeGlobalUse('_environ'), 0, 'envPtr', 'i8*') }}};
     } else {
@@ -1001,17 +1000,17 @@ LibraryManager.library = {
   llvm_va_start__inline: function(ptr) {
     // varargs - we received a pointer to the varargs as a final 'extra' parameter called 'varrp'
     // 2-word structure: struct { void* start; void* currentOffset; }
-    return makeSetValue(ptr, 0, 'varrp', 'void*') + ';' + makeSetValue(ptr, Runtime.QUANTUM_SIZE, 0, 'void*');
+    return makeSetValue(ptr, 0, 'varrp', 'void*') + ';' + makeSetValue(ptr, 4, 0, 'void*');
   },
 
   llvm_va_end: function() {},
 
   llvm_va_copy: function(ppdest, ppsrc) {
     // copy the list start
-    {{{ makeCopyValues('ppdest', 'ppsrc', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
+    {{{ makeCopyValues('ppdest', 'ppsrc', 4, 'null', null, 1) }}};
     
     // copy the list's current offset (will be advanced with each call to va_arg)
-    {{{ makeCopyValues('(ppdest+'+Runtime.QUANTUM_SIZE+')', '(ppsrc+'+Runtime.QUANTUM_SIZE+')', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
+    {{{ makeCopyValues('(ppdest+'+4+')', '(ppsrc+'+4+')', 4, 'null', null, 1) }}};
   },
 
   llvm_bswap_i16__asm: true,
@@ -1840,9 +1839,9 @@ LibraryManager.library = {
     // report all function pointers as coming from this program itself XXX not really correct in any way
     var fname = allocate(intArrayFromString(Module['thisProgram'] || './this.program'), 'i8', ALLOC_NORMAL); // XXX leak
     {{{ makeSetValue('addr', 0, 'fname', 'i32') }}};
-    {{{ makeSetValue('addr', QUANTUM_SIZE, '0', 'i32') }}};
-    {{{ makeSetValue('addr', QUANTUM_SIZE*2, '0', 'i32') }}};
-    {{{ makeSetValue('addr', QUANTUM_SIZE*3, '0', 'i32') }}};
+    {{{ makeSetValue('addr', 4, '0', 'i32') }}};
+    {{{ makeSetValue('addr', 8, '0', 'i32') }}};
+    {{{ makeSetValue('addr', 12, '0', 'i32') }}};
     return 1;
   },
 
@@ -2000,7 +1999,7 @@ LibraryManager.library = {
     var dst = (summerOffset != winterOffset && date.getTimezoneOffset() == Math.min(winterOffset, summerOffset))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
 
-    var zonePtr = {{{ makeGetValue(makeGlobalUse('_tzname'), 'dst ? Runtime.QUANTUM_SIZE : 0', 'i32') }}};
+    var zonePtr = {{{ makeGetValue(makeGlobalUse('_tzname'), 'dst ? 4 : 0', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, 'zonePtr', 'i32') }}};
 
     return tmPtr;
@@ -2061,11 +2060,11 @@ LibraryManager.library = {
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
 #if USE_PTHREADS
-  tzname: '; if (ENVIRONMENT_IS_PTHREAD) _tzname = PthreadWorkerInit._tzname; else PthreadWorkerInit._tzname = _tzname = allocate({{{ 2*Runtime.QUANTUM_SIZE }}}, "i32*", ALLOC_STATIC)',
+  tzname: '; if (ENVIRONMENT_IS_PTHREAD) _tzname = PthreadWorkerInit._tzname; else PthreadWorkerInit._tzname = _tzname = allocate({{{ 8 }}}, "i32*", ALLOC_STATIC)',
   daylight: '; if (ENVIRONMENT_IS_PTHREAD) _daylight = PthreadWorkerInit._daylight; else PthreadWorkerInit._daylight = _daylight = allocate(1, "i32*", ALLOC_STATIC)',
   timezone: '; if (ENVIRONMENT_IS_PTHREAD) _timezone = PthreadWorkerInit._timezone; else PthreadWorkerInit._timezone = _timezone = allocate(1, "i32*", ALLOC_STATIC)',
 #else
-  tzname: '{{{ makeStaticAlloc(2*Runtime.QUANTUM_SIZE) }}}',
+  tzname: '{{{ makeStaticAlloc(8) }}}',
   daylight: '{{{ makeStaticAlloc(1) }}}',
   timezone: '{{{ makeStaticAlloc(1) }}}',
 #endif
@@ -2094,10 +2093,10 @@ LibraryManager.library = {
     if (summer.getTimezoneOffset() < winter.getTimezoneOffset()) {
       // Northern hemisphere
       {{{ makeSetValue(makeGlobalUse('_tzname'), '0', 'winterNamePtr', 'i32') }}};
-      {{{ makeSetValue(makeGlobalUse('_tzname'), Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}};
+      {{{ makeSetValue(makeGlobalUse('_tzname'), '4', 'summerNamePtr', 'i32') }}};
     } else {
       {{{ makeSetValue(makeGlobalUse('_tzname'), '0', 'summerNamePtr', 'i32') }}};
-      {{{ makeSetValue(makeGlobalUse('_tzname'), Runtime.QUANTUM_SIZE, 'winterNamePtr', 'i32') }}};
+      {{{ makeSetValue(makeGlobalUse('_tzname'), '4', 'winterNamePtr', 'i32') }}};
     }
   },
 
