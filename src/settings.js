@@ -718,9 +718,10 @@ var BINARYEN_TRAP_MODE = "allow"; // How we handle wasm operations that may trap
 var BINARYEN_PASSES = ""; // A comma-separated list of passes to run in the binaryen optimizer,
                           // for example, "dce,precompute,vacuum".
                           // When set, this overrides the default passes we would normally run.
-var BINARYEN_MEM_MAX = -1; // Set the maximum size of memory in the wasm module (in bytes).
-                           // Without this, TOTAL_MEMORY is used (as it is used for the initial value),
-                           // or if memory growth is enabled, no limit is set. This overrides both of those.
+var WASM_MEM_MAX = -1; // Set the maximum size of memory in the wasm module (in bytes).
+                       // Without this, TOTAL_MEMORY is used (as it is used for the initial value),
+                       // or if memory growth is enabled, no limit is set. This overrides both of those.
+                       // (This option was formerly called BINARYEN_MEM_MAX)
 var BINARYEN_ASYNC_COMPILATION = 1; // Whether to compile the wasm asynchronously, which is more
                                     // efficient and does not block the main thread. This is currently
                                     // required for all but the smallest modules to run in V8
