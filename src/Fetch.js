@@ -114,7 +114,7 @@ var Fetch = {
       // either via Module.locateFile() function, or via Module.pthreadMainPrefixURL string. If neither
       // of these are passed, then the default URL 'pthread-main.js' relative to the main html file is loaded.
       if (typeof Module['locateFile'] === 'function') fetchJs = Module['locateFile'](fetchJs);
-      else if (Module['pthreadMainPrefixURL']) fetchJs = Module['pthreadMainPrefixURL'] + fetchJs;
+      else fetchJs = Module['pthreadMainPrefixURL'] + fetchJs;
       Fetch.worker = new Worker(fetchJs);
       Fetch.worker.onmessage = function(e) {
         Module['print']('fetch-worker sent a message: ' + e.filename + ':' + e.lineno + ': ' + e.message);
@@ -557,15 +557,15 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
     } else if (fetchAttrNoDownload) {
       __emscripten_fetch_load_cached_data(Fetch.dbInstance, fetch, reportSuccess, reportError);
     } else if (fetchAttrPersistFile) {
-      __emscripten_fetch_load_cached_data(Fetch.dbInstance, fetch, reportSuccess, performCachedXhr);        
+      __emscripten_fetch_load_cached_data(Fetch.dbInstance, fetch, reportSuccess, performCachedXhr);
     } else {
-      __emscripten_fetch_load_cached_data(Fetch.dbInstance, fetch, reportSuccess, performUncachedXhr);        
+      __emscripten_fetch_load_cached_data(Fetch.dbInstance, fetch, reportSuccess, performUncachedXhr);
     }
   } else if (!fetchAttrNoDownload) {
     if (fetchAttrPersistFile) {
       __emscripten_fetch_xhr(fetch, cacheResultAndReportSuccess, reportError, reportProgress);
     } else {
-      __emscripten_fetch_xhr(fetch, reportSuccess, reportError, reportProgress);        
+      __emscripten_fetch_xhr(fetch, reportSuccess, reportError, reportProgress);
     }
   } else {
 #if FETCH_DEBUG

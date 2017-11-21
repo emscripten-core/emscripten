@@ -258,7 +258,7 @@ var LibraryPThread = {
         // either via Module.locateFile() function, or via Module.pthreadMainPrefixURL string. If neither
         // of these are passed, then the default URL 'pthread-main.js' relative to the main html file is loaded.
         if (typeof Module['locateFile'] === 'function') pthreadMainJs = Module['locateFile'](pthreadMainJs);
-        else if (Module['pthreadMainPrefixURL']) pthreadMainJs = Module['pthreadMainPrefixURL'] + pthreadMainJs;
+        else pthreadMainJs = Module['pthreadMainPrefixURL'] + pthreadMainJs;
         var worker = new Worker(pthreadMainJs);
 
         worker.onmessage = function(e) {
@@ -1089,7 +1089,7 @@ var LibraryPThread = {
 #endif
   },
 
-  // The profiler setters are defined twice, here in asm.js so that they can be #ifdeffed out 
+  // The profiler setters are defined twice, here in asm.js so that they can be #ifdeffed out
   // without having to pay the impact of a FFI transition for a no-op in non-profiling builds.
   emscripten_conditional_set_current_thread_status__asm: true,
   emscripten_conditional_set_current_thread_status__sig: 'vii',

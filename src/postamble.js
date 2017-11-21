@@ -41,7 +41,7 @@ if (memoryInitializer) {
 #endif
   if (typeof Module['locateFile'] === 'function') {
     memoryInitializer = Module['locateFile'](memoryInitializer);
-  } else if (Module['memoryInitializerPrefixURL']) {
+  } else {
     memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
   }
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {

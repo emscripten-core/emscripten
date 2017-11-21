@@ -2491,7 +2491,7 @@ def generate_html(target, options, js_target, target_basename,
           var memoryInitializer = '%s';
           if (typeof Module['locateFile'] === 'function') {
             memoryInitializer = Module['locateFile'](memoryInitializer);
-          } else if (Module['memoryInitializerPrefixURL']) {
+          } else {
             memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
           }
           Module['memoryInitializerRequestURL'] = memoryInitializer;

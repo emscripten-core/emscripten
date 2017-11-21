@@ -106,7 +106,7 @@ plugins = []
 jsoutput = None
 no_closure = False
 force = True
-# If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally cache VFS XHR so that subsequent 
+# If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally cache VFS XHR so that subsequent
 # page loads can read the data from the offline cache instead.
 use_preload_cache = False
 indexeddb_name = 'EM_PRELOAD_CACHE'
@@ -170,7 +170,7 @@ for arg in sys.argv[2:]:
     mode = leading
     at_position = arg.replace('@@', '__').find('@') # position of @ if we're doing 'src@dst'. '__' is used to keep the index same with the original if they escaped with '@@'.
     uses_at_notation = (at_position != -1) # '@@' in input string means there is an actual @ character, a single '@' means the 'src@dst' notation.
-    
+
     if uses_at_notation:
       srcpath = arg[0:at_position].replace('@@', '@') # split around the @
       dstpath = arg[at_position+1:].replace('@@', '@')
@@ -223,7 +223,7 @@ code = '''
 def has_hidden_attribute(filepath):
   if sys.platform != 'win32':
     return False
-    
+
   try:
     attrs = ctypes.windll.kernel32.GetFileAttributesW(unicode(filepath))
     assert attrs != -1
@@ -237,7 +237,7 @@ def has_hidden_attribute(filepath):
 def should_ignore(fullname):
   if has_hidden_attribute(fullname):
     return True
-    
+
   for p in excluded_patterns:
     if fnmatch.fnmatch(fullname, p):
       return True
@@ -279,7 +279,7 @@ for file_ in data_files:
       new_data_files.append(file_)
 data_files = [file_ for file_ in new_data_files if not os.path.isdir(file_['srcpath'])]
 if len(data_files) == 0:
-  print('Nothing to do!', file=sys.stderr) 
+  print('Nothing to do!', file=sys.stderr)
   sys.exit(1)
 
 # Absolutize paths, and check that they make sense
@@ -576,7 +576,7 @@ if has_preloaded:
     }
     var REMOTE_PACKAGE_NAME = typeof Module['locateFile'] === 'function' ?
                               Module['locateFile'](REMOTE_PACKAGE_BASE) :
-                              ((Module['filePackagePrefixURL'] || '') + REMOTE_PACKAGE_BASE);
+                              (Module['filePackagePrefixURL'] + REMOTE_PACKAGE_BASE);
   ''' % (escape_for_js_string(data_target), escape_for_js_string(remote_package_name))
   metadata['remote_package_size'] = remote_package_size
   metadata['package_uuid'] = str(package_uuid)
@@ -839,7 +839,7 @@ ret += '''%s
 
  var REMOTE_METADATA_NAME = typeof Module['locateFile'] === 'function' ?
                             Module['locateFile']('%(metadata_file)s') :
-                            ((Module['filePackagePrefixURL'] || '') + '%(metadata_file)s');
+                            (Module['filePackagePrefixURL'] + '%(metadata_file)s');
  var xhr = new XMLHttpRequest();
  xhr.onreadystatechange = function() {
   if (xhr.readyState === 4 && xhr.status === 200) {
