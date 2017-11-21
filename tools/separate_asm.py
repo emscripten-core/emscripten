@@ -5,7 +5,10 @@ This is useful because it lets you load the asm module first, then the main scri
 '''
 
 import os, sys
-import asm_module
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools import asm_module
 
 infile = sys.argv[1]
 asmfile = sys.argv[2]

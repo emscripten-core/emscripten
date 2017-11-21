@@ -175,6 +175,10 @@ mergeInto(LibraryManager.library, {
     },
   },
 });
-LibraryManager.library['$FS__deps'].push('$LZ4'); // LZ4=1, so auto-include us
+if (LibraryManager.library['$FS__deps']) {
+  LibraryManager.library['$FS__deps'].push('$LZ4'); // LZ4=1, so auto-include us
+} else {
+  warn('FS does not seem to be in use (no preloaded files etc.), LZ4 will not do anything');
+}
 #endif
 

@@ -1,8 +1,8 @@
+from __future__ import print_function
 import os, json, logging, zipfile, glob, shutil
-import shared
+from . import shared
 from subprocess import Popen, CalledProcessError
 import subprocess, multiprocessing, re
-from sys import maxint
 from tools.shared import check_call
 
 stdout = None
@@ -25,7 +25,9 @@ def run_commands(commands):
   else:
     pool = shared.Building.get_multiprocessing_pool()
     # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool, https://bugs.python.org/issue8296
-    pool.map_async(call_process, commands, chunksize=1).get(maxint)
+    # 999999 seconds (about 11 days) is reasonably huge to not trigger actual timeout
+    # and is smaller than the maximum timeout value 4294967.0 for Python 3 on Windows (threading.TIMEOUT_MAX)
+    pool.map_async(call_process, commands, chunksize=1).get(999999)
 
 def files_in_path(path_components, filenames):
   srcdir = shared.path_from_root(*path_components)
@@ -51,6 +53,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'))
   libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'))
   gl_symbols = read_symbols(shared.path_from_root('system', 'lib', 'gl.symbols'))
+  al_symbols = read_symbols(shared.path_from_root('system', 'lib', 'al.symbols'))
   compiler_rt_symbols = read_symbols(shared.path_from_root('system', 'lib', 'compiler-rt.symbols'))
   pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
   wasm_libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'wasm-libc.symbols'))
@@ -69,9 +72,13 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     commands = []
     # Hide several musl warnings that produce a lot of spam to unit test build server logs.
     # TODO: When updating musl the next time, feel free to recheck which of their warnings might have been fixed, and which ones of these could be cleaned up.
-    c_opts = ['-Wno-return-type', '-Wno-parentheses', '-Wno-ignored-attributes', '-Wno-shift-count-overflow', '-Wno-shift-negative-value', '-Wno-dangling-else', '-Wno-unknown-pragmas', '-Wno-shift-op-parentheses', '-Wno-string-plus-int', '-Wno-logical-op-parentheses', '-Wno-bitwise-op-parentheses', '-Wno-visibility', '-Wno-pointer-sign']
-    if shared.Settings.WASM_BACKEND:
-      c_opts.append('-Wno-error=absolute-value')
+    c_opts = ['-Wno-return-type', '-Wno-parentheses', '-Wno-ignored-attributes',
+              '-Wno-shift-count-overflow', '-Wno-shift-negative-value',
+              '-Wno-dangling-else', '-Wno-unknown-pragmas',
+              '-Wno-shift-op-parentheses', '-Wno-string-plus-int',
+              '-Wno-logical-op-parentheses', '-Wno-bitwise-op-parentheses',
+              '-Wno-visibility', '-Wno-pointer-sign', '-Wno-absolute-value',
+              '-Wno-empty-body']
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
       commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes() + default_opts + c_opts + lib_opts)
@@ -253,11 +260,17 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'gl.c'), '-o', o])
     return o
 
+  # al
+  def create_al(libname): # libname is ignored, this is just one .o file
+    o = in_temp('al.o')
+    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'al.c'), '-o', o, '-Os'])
+    return o
+
   def create_html5(libname):
     src_dir = shared.path_from_root('system', 'lib', 'html5')
     files = []
     for dirpath, dirnames, filenames in os.walk(src_dir):
-      files += map(lambda f: os.path.join(src_dir, f), filenames)
+      files += [os.path.join(src_dir, f) for f in filenames]
     return build_libc(libname, files, ['-Oz'])
 
   def create_compiler_rt(libname):
@@ -385,7 +398,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   added = set()
   def add_back_deps(need):
     more = False
-    for ident, deps in deps_info.iteritems():
+    for ident, deps in deps_info.items():
       if ident in need.undefs and not ident in added:
         added.add(ident)
         more = True
@@ -396,7 +409,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       add_back_deps(need) # recurse to get deps of deps
 
   # Scan symbols
-  symbolses = shared.Building.parallel_llvm_nm(map(os.path.abspath, temp_files))
+  symbolses = shared.Building.parallel_llvm_nm(list(map(os.path.abspath, temp_files)))
 
   if len(symbolses) == 0:
     class Dummy(object):
@@ -416,13 +429,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # and must assume all of deps_info must be exported. Note that this might cause
   # warnings on exports that do not exist.
   if only_forced:
-    for key, value in deps_info.iteritems():
+    for key, value in deps_info.items():
       for dep in value:
         shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
 
   system_libs = [('libcxx',        'a',  create_libcxx,      libcxx_symbols,      ['libcxxabi'], True),
                  ('libcxxabi',     'bc', create_libcxxabi,   libcxxabi_symbols,   ['libc'],      False),
                  ('gl',            'bc', create_gl,          gl_symbols,          ['libc'],      False),
+                 ('al',            'bc', create_al,          al_symbols,          ['libc'],      False),
                  ('html5',         'bc', create_html5,       html5_symbols,       ['html5'],     False),
                  ('compiler-rt',   'a',  create_compiler_rt, compiler_rt_symbols, ['libc'],      False),
                  (dlmalloc_name(), 'bc', create_dlmalloc,    [],                  [],            False)]
@@ -500,7 +514,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       # we might have exception-supporting versions of them from elsewhere, and if libcxxabi
       # is first then it would "win", breaking exception throwing from those string
       # header methods. To avoid that, we link libcxxabi last.
-      ret = filter(lambda f: f != actual, ret) + [actual]
+      ret = [f for f in ret if f != actual] + [actual]
 
   return ret
 
@@ -508,7 +522,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 # emscripten-ports library management (https://github.com/emscripten-ports)
 #---------------------------------------------------------------------------
 
-import ports
+from . import ports
 
 class Ports(object):
   @staticmethod
@@ -578,7 +592,7 @@ class Ports(object):
       # note that tag **must** be the tag in sdl.py, it is where we store to (not where we load from, we just load the local dir)
       local_ports = os.environ.get('EMCC_LOCAL_PORTS')
       if local_ports:
-        local_ports = map(lambda pair: pair.split('=', 1), local_ports.split(','))
+        local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
         for local in local_ports:
           if name == local[0]:
             path, subdir = local[1].split('|')
@@ -599,8 +613,12 @@ class Ports(object):
             return
       # retrieve from remote server
       logging.warning('retrieving port: ' + name + ' from ' + url)
-      import urllib2
-      f = urllib2.urlopen(url)
+      try:
+        from urllib.request import urlopen
+      except ImportError:
+        # Python 2 compatibility
+        from urllib2 import urlopen
+      f = urlopen(url)
       data = f.read()
       open(fullname + '.zip', 'wb').write(data)
       State.retrieved = True
@@ -625,24 +643,29 @@ class Ports(object):
         os.chdir(cwd)
       State.unpacked = True
 
-    # main logic
+    # main logic. do this under a cache lock, since we don't want multiple jobs to
+    # retrieve the same port at once
 
-    if not os.path.exists(fullname + '.zip'):
-      retrieve()
+    shared.Cache.acquire_cache_lock()
+    try:
+      if not os.path.exists(fullname + '.zip'):
+        retrieve()
 
-    if not os.path.exists(fullname):
-      unpack()
+      if not os.path.exists(fullname):
+        unpack()
 
-    if not check_tag():
-      logging.warning('local copy of port is not correct, retrieving from remote server')
-      shared.try_delete(fullname)
-      shared.try_delete(fullname + '.zip')
-      retrieve()
-      unpack()
+      if not check_tag():
+        logging.warning('local copy of port is not correct, retrieving from remote server')
+        shared.try_delete(fullname)
+        shared.try_delete(fullname + '.zip')
+        retrieve()
+        unpack()
 
-    if State.unpacked:
-      # we unpacked a new version, clear the build in the cache
-      Ports.clear_project_build(name)
+      if State.unpacked:
+        # we unpacked a new version, clear the build in the cache
+        Ports.clear_project_build(name)
+    finally:
+      shared.Cache.release_cache_lock()
 
   @staticmethod
   def build_project(name, subdir, configure, generated_libs, post_create=None):
@@ -690,6 +713,7 @@ class Ports(object):
     finally:
       os.chdir(old)
 
+# get all ports
 def get_ports(settings):
   ret = []
 
@@ -698,7 +722,7 @@ def get_ports(settings):
     process_dependencies(settings)
     for port in ports.ports:
       # ports return their output files, which will be linked, or a txt file
-      ret += filter(lambda f: not f.endswith('.txt'), port.get(Ports, settings, shared))
+      ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
     ok = True
   finally:
     if not ok:
@@ -718,7 +742,15 @@ def process_args(args, settings):
     args = port.process_args(Ports, args, settings, shared)
   return args
 
+# get a single port
+def get_port(name, settings):
+  port = ports.ports_by_name[name]
+  if hasattr(port, "process_dependencies"):
+    port.process_dependencies(settings)
+  # ports return their output files, which will be linked, or a txt file
+  return [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
+
 def show_ports():
-  print 'Available ports:'
+  print('Available ports:')
   for port in ports.ports:
-    print '   ', port.show()
+    print('   ', port.show())

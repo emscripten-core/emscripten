@@ -166,3 +166,10 @@ EM_ASM_INT: A comma character (,) inside the code block may need extra parenthes
 4. returned 15
 5. comma in em_asm
 5. returned 15
+
+EM_ASM: Expression contains a tab character
+1. the following word is delimited by tab characters: H	E	L	L	O	T	A	B	S
+2. the following word is delimited by tab characters: H	E	L	L	O	T	A	B	S
+3. the following word is delimited by tab characters: H	E	L	L	O	T	A	B	S
+4. the following word is delimited by tab characters: H	E	L	L	O	T	A	B	S
+5. the following word is delimited by tab characters: H	E	L	L	O	T	A	B	S

@@ -68,12 +68,12 @@ void EMSCRIPTEN_KEEPALIVE finish() {
   num = fread(buffer, 1, 1, f3); assert(num == 1); // read near the end
   ret = fseek(f3, TOTAL_SIZE - 5000, SEEK_SET); assert(ret == 0);
   num = fread(buffer, 1, 1, f3); assert(num == 1); // also near the end
-  EM_ASM({
+  EM_ASM((
     assert(!Module['decompressedChunks']);
     Module.compressedData.debug = true;
     console.log('last cached indexes ' + Module.compressedData.cachedIndexes);
     assert(Module.compressedData.cachedIndexes.indexOf(0) < 0); // 0 is not cached
-  });
+  ));
   printf("multiple reads of same byte\n");
   for (int i = 0; i < 100; i++) {
     ret = fseek(f1, 0, SEEK_SET); // read near the start, should trigger one decompress, then all cache hits
@@ -81,9 +81,9 @@ void EMSCRIPTEN_KEEPALIVE finish() {
     num = fread(buffer, 1, 1, f1);
     assert(num == 1);
   }
-  EM_ASM({
+  EM_ASM((
     assert(Module['decompressedChunks'] == 1, ['seeing', Module['decompressedChunks'], 'decompressed chunks']);
-  });
+  ));
   printf("multiple reads of adjoining byte\n");
   for (int i = 0; i < 100; i++) {
     ret = fseek(f1, i, SEEK_SET);
@@ -91,9 +91,9 @@ void EMSCRIPTEN_KEEPALIVE finish() {
     num = fread(buffer, 1, 1, f1);
     assert(num == 1);
   }
-  EM_ASM({
+  EM_ASM((
     assert(Module['decompressedChunks'] == 1, ['seeing', Module['decompressedChunks'], 'decompressed chunks']);
-  });
+  ));
   printf("multiple reads across two chunks\n");
   for (int i = 0; i < 2100; i++) {
     ret = fseek(f1, i, SEEK_SET);
@@ -101,9 +101,9 @@ void EMSCRIPTEN_KEEPALIVE finish() {
     num = fread(buffer, 1, 1, f1);
     assert(num == 1);
   }
-  EM_ASM({
+  EM_ASM((
     assert(Module['decompressedChunks'] == 2, ['seeing', Module['decompressedChunks'], 'decompressed chunks']);
-  });
+  ));
   printf("caching test ok\n");
 #endif
 
@@ -127,7 +127,7 @@ int main() {
   before_it_all = emscripten_get_now();
 
 #if LOAD_MANUALLY
-  EM_ASM({
+  EM_ASM((
     var COMPLETE_SIZE = 10*1024*128*3;
 
     var meta, data;
@@ -169,7 +169,7 @@ int main() {
       maybeReady();
     };
     data_xhr.send();
-  });
+  ));
 
   emscripten_exit_with_live_runtime();
 #else

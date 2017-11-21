@@ -5,13 +5,13 @@
 #include <emscripten.h>
 #include <emscripten/vr.h>
 
-static int gDevCount = -1;
-static int gPosDev = -1;
-static int gHmdDev = -1;
+static int gDisplay = -1;
 
-void
-report_result(int result)
-{
+static int renderLoopCalled = 0;
+static bool renderLoopArgCalled = false;
+static void* renderLoopArgArg = NULL;
+
+void report_result(int result) {
     emscripten_cancel_main_loop();
     if (result == 0) {
         printf("Test successful!\n");
@@ -21,12 +21,174 @@ report_result(int result)
 #ifdef REPORT_RESULT
     REPORT_RESULT(result);
 #endif
-    exit(result);
 }
 
-static void
-mainloop()
-{
+static void printMatrix(float* m) {
+    printf("{%f, %f, %f, %f,\n"
+           " %f, %f, %f, %f,\n"
+           " %f, %f, %f, %f,\n"
+           " %f, %f, %f, %f}\n",
+           m[0],  m[1],  m[2],  m[3],
+           m[4],  m[5],  m[6],  m[7],
+           m[8],  m[9],  m[10], m[11],
+           m[12], m[13], m[14], m[15]);
+}
+
+/* Render loop with an argument, set in `renderLoop()` */
+static void renderLoopArg(void* arg) {
+    emscripten_vr_cancel_display_render_loop(gDisplay);
+
+    renderLoopArgCalled = true;
+    renderLoopArgArg = arg;
+
+    emscripten_vr_exit_present(gDisplay);
+
+    printf("Render loop with argument was called.\n");
+
+    return;
+}
+
+static void requestPresentCallback(void* userData) {
+    // Will likely never happen as the callback is not called
+    // from a user-gesture in this test.
+    printf("Request present callback called.\n");
+}
+
+/* Render loop without argument, set in `mainLoop()` */
+static void renderLoop() {
+    renderLoopCalled++;
+    if(renderLoopCalled == 1) {
+        /* First iteration */
+        VRLayerInit init = {
+            "#canvas",
+            VR_LAYER_DEFAULT_LEFT_BOUNDS,
+            VR_LAYER_DEFAULT_RIGHT_BOUNDS
+        };
+        if (!emscripten_vr_request_present(gDisplay, &init, 1, requestPresentCallback, NULL)) {
+            printf("Request present with default canvas failed.\n");
+            report_result(1);
+            return;
+        }
+
+        if(emscripten_vr_display_presenting(gDisplay)) {
+            /* request present needs to be called from a user gesture callback and
+             * should have failed to make the display present. */
+            printf("Error: Expected display not to be presenting.\n");
+            report_result(1);
+            return;
+        }
+
+        VRFrameData data;
+        if (!emscripten_vr_get_frame_data(gDisplay, &data)) {
+            printf("Could not get frame data. (first iteration)\n");
+            report_result(1);
+            return;
+        }
+        if(!emscripten_vr_submit_frame(gDisplay)) {
+            printf("Error: Failed to submit frame to VR display %d (first iteration)\n", gDisplay);
+            report_result(1);
+            return;
+        }
+        return;
+    } else if (renderLoopCalled > 2) {
+        printf("Error: Unexpected render loop iteration\n");
+        report_result(1);
+        return; // only two iterations should run code
+    }
+
+    /* Second iteration */
+
+    emscripten_vr_cancel_display_render_loop(gDisplay);
+
+    VRFrameData data;
+    if (!emscripten_vr_get_frame_data(gDisplay, &data)) {
+        printf("Could not get frame data.\n");
+        report_result(1);
+    }
+
+    /* Print list of properties which are reported as valid */
+    printf("The following properties are valid:\n[");
+    if(data.pose.poseFlags & VR_POSE_POSITION) {
+        printf("position, ");
+    }
+    if(data.pose.poseFlags & VR_POSE_LINEAR_VELOCITY) {
+        printf("linear vel, ");
+    }
+    if(data.pose.poseFlags & VR_POSE_LINEAR_ACCELERATION) {
+        printf("linear accel, ");
+    }
+    if(data.pose.poseFlags & VR_POSE_ORIENTATION) {
+        printf("orientation, ");
+    }
+    if(data.pose.poseFlags & VR_POSE_ANGULAR_VELOCITY) {
+        printf("angular vel, ");
+    }
+    if(data.pose.poseFlags & VR_POSE_ANGULAR_ACCELERATION) {
+        printf("angular accel");
+    }
+    printf("]\n");
+
+    /* Print all values (independent of validity) */
+    printf("Position: \t\t%f %f %f\n",
+            data.pose.position.x,
+            data.pose.position.y,
+            data.pose.position.z);
+
+    printf("Linear Velocity: \t%f %f %f\n",
+            data.pose.linearVelocity.x,
+            data.pose.linearVelocity.y,
+            data.pose.linearVelocity.z);
+
+    printf("Linear Acceleration: \t%f %f %f\n",
+            data.pose.linearAcceleration.x,
+            data.pose.linearAcceleration.y,
+            data.pose.linearAcceleration.z);
+
+    printf("Orientation: \t\t%f %f %f %f\n",
+            data.pose.orientation.x,
+            data.pose.orientation.y,
+            data.pose.orientation.z,
+            data.pose.orientation.w);
+
+    printf("Angular Velocity: \t%f %f %f\n",
+            data.pose.angularVelocity.x,
+            data.pose.angularVelocity.y,
+            data.pose.angularVelocity.z);
+
+    printf("Angular Acceleration: \t%f %f %f\n",
+            data.pose.angularAcceleration.x,
+            data.pose.angularAcceleration.y,
+            data.pose.angularAcceleration.z);
+
+    printf("Left Projection Matrix:\n");
+    printMatrix(data.leftProjectionMatrix);
+
+    printf("Right Projection Matrix:\n");
+    printMatrix(data.rightProjectionMatrix);
+
+    printf("Left View Matrix:\n");
+    printMatrix(data.leftViewMatrix);
+
+    printf("Right View Matrix:\n");
+    printMatrix(data.rightViewMatrix);
+
+    if(!emscripten_vr_submit_frame(gDisplay)) {
+        printf("Error: Failed to submit frame to VR display %d (second iteration)\n", gDisplay);
+        report_result(1);
+    }
+
+    printf("Submitted frame.\n");
+
+    if (!emscripten_vr_set_display_render_loop_arg(gDisplay, renderLoopArg, (void*) 42)) {
+        printf("Error: Failed to dereference handle while settings display render loop of device %d\n", gDisplay);
+        report_result(1);
+    }
+
+    printf("Set main loop with argument to be called next.\n");
+}
+
+/* emscripten main loop */
+static void mainloop() {
     static int loopcount = 0;
 
     if (!emscripten_vr_ready()) {
@@ -34,67 +196,91 @@ mainloop()
         return;
     }
 
-    if (gDevCount == -1) {
-        gDevCount = emscripten_vr_count_devices();
-        if (gDevCount == 0) {
-            printf("No VR devices found!\n");
+    if(gDisplay == -1) {
+        int numDisplays = emscripten_vr_count_displays();
+        if (numDisplays == 0) {
+            printf("No VR displays found!\n");
             report_result(0);
             return;
         }
-        printf("%d VR devices found\n", gDevCount);
 
+        printf("%d VR displays found\n", numDisplays);
 
-        int hwid = -1;
+        int id = -1;
         char *devName;
-        for (int i = 0; i < gDevCount; ++i) {
-            WebVRDeviceId devid = emscripten_vr_get_device_id(i);
-            if (hwid == -1 || hwid == emscripten_vr_get_device_hwid(devid)) {
-                hwid = emscripten_vr_get_device_hwid(devid);
-                devName = emscripten_vr_get_device_name(devid);
+        for (int i = 0; i < numDisplays; ++i) {
+            VRDisplayHandle handle = emscripten_vr_get_display_handle(i);
+            if (gDisplay == -1) {
+                /* Save first found display for more testing */
+                gDisplay = handle;
+                devName = emscripten_vr_get_display_name(handle);
+                printf("Using VRDisplay '%s' (displayId '%d')\n", devName, gDisplay);
 
-                if (emscripten_vr_get_device_type(devid) == WebVRHMDDevice) {
-                    gHmdDev = devid;
-                    printf("Using WebVRHMDDevice '%s' (deviceId '%d'; hardwareUnitId '%d'.)\n", devName, gHmdDev,  hwid);
-                } else if (emscripten_vr_get_device_type(devid) == WebVRPositionSensorDevice) {
-                    gPosDev = devid;
-                    printf("Using WebVRPositionSensorDevice '%s' (deviceId '%d'; hardwareUnitId '%d').\n", devName, gPosDev,  hwid);
+                VRDisplayCapabilities caps;
+                if(!emscripten_vr_get_display_capabilities(handle, &caps)) {
+                    printf("Error: failed to get display capabilities.\n");
+                    report_result(1);
+                    return;
                 }
+                if(!emscripten_vr_display_connected(gDisplay)) {
+                    printf("Error: expected display to be connected.\n");
+                    report_result(1);
+                    return;
+                }
+                printf("Display Capabilities:\n"
+                       "{hasPosition: %d, hasExternalDisplay: %d, canPresent: %d, maxLayers: %lu}\n",
+                       caps.hasPosition, caps.hasExternalDisplay, caps.canPresent, caps.maxLayers);
             }
         }
 
-        if (gHmdDev == -1 || gPosDev == -1) {
-            printf("Couln't find both a HMD and position device\n");
-            // this is a failure because it's weird
+        if (gDisplay == -1) {
+            printf("Couln't find a VR display even though at least one was found.\n");
             report_result(1);
             return;
         }
 
-        WebVREyeParameters leftParams, rightParams;
-        emscripten_vr_hmd_get_eye_parameters(gHmdDev, WebVREyeLeft, &leftParams);
-        emscripten_vr_hmd_get_eye_parameters(gHmdDev, WebVREyeRight, &rightParams);
+        VREyeParameters leftParams, rightParams;
+        emscripten_vr_get_eye_parameters(gDisplay, VREyeLeft, &leftParams);
+        emscripten_vr_get_eye_parameters(gDisplay, VREyeRight, &rightParams);
 
-        WebVRFieldOfView leftFov = leftParams.currentFieldOfView, rightFov = rightParams.currentFieldOfView;
-        printf("Left FOV: %f %f %f %f\n", leftFov.upDegrees, leftFov.downDegrees, leftFov.rightDegrees, leftFov.leftDegrees);
-        printf("Right FOV: %f %f %f %f\n", rightFov.upDegrees, rightFov.downDegrees, rightFov.rightDegrees, rightFov.leftDegrees);
+        VREyeParameters* p = &leftParams;
+        printf("Left eye params: {offset: [%f, %f, %f], renderWidth: %lu, renderHeight: %lu}\n", p->offset.x, p->offset.y, p->offset.z, p->renderWidth, p->renderHeight);
+
+        p = &rightParams;
+        printf("Right eye params: {offset: [%f, %f, %f], renderWidth: %lu, renderHeight: %lu}\n", p->offset.x, p->offset.y, p->offset.z, p->renderWidth, p->renderHeight);
+
+        if (!emscripten_vr_set_display_render_loop(gDisplay, renderLoop)) {
+            printf("Error: Failed to dereference handle while settings display render loop of device %d\n", gDisplay);
+            report_result(1);
+        }
     }
 
-    WebVRPositionState state;
-    emscripten_vr_sensor_get_state(gPosDev, false, &state);
-    printf("Timestamp: %f, hasPosition: %s , hasOrientation: %s\n", state.timeStamp, 
-           state.hasPosition ? "true" : "false", state.hasOrientation ? "true" : "false");
-    printf("State: orientation: [%f %f %f %f] position: [%f %f %f]\n",
-           state.orientation.x, state.orientation.y, state.orientation.z, state.orientation.w,
-           state.position.x, state.position.y, state.position.z);
-
     if (loopcount++ > 10) {
+        if (renderLoopCalled != 2) {
+            printf("Render loop was not called twice (expected 2, was %d)\n", renderLoopCalled);
+            report_result(1);
+        }
+        if (!renderLoopArgCalled) {
+            printf("Render loop with argument was never called\n");
+            report_result(1);
+        }
+        if ((int)renderLoopArgArg != 42) {
+            printf("Argument to emscripten_vr_set_display_render_loop_arg was not passed on correctly\n");
+            report_result(1);
+        }
         report_result(0);
     }
 }
 
-int
-main(int argc, char **argv)
-{
-    emscripten_vr_init();
+int main(int argc, char **argv) {
+    if (!emscripten_vr_init()) {
+        printf("Skipping: Browser does not support WebVR\n");
+        return 0;
+    }
+
+    printf("Browser is running WebVR version %d.%d\n",
+           emscripten_vr_version_major(),
+           emscripten_vr_version_minor());
 
     /* 2fps -- no rAF */
     emscripten_set_main_loop(mainloop, 2, 0);

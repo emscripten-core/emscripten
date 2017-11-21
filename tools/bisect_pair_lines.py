@@ -6,6 +6,7 @@ Unlike bisect_pairs, this uses lines instead of diffs. We replace line by line. 
 the programs differ on each line but lines have not been added or removed
 '''
 
+from __future__ import print_function
 import os, sys, shutil
 from subprocess import Popen, PIPE, STDOUT
 
@@ -28,10 +29,10 @@ rightf.close()
 def run_code(name):
   ret = run_js(name, stderr=PIPE, full_output=True)
   # fix stack traces
-  ret = filter(lambda line: not line.startswith('    at ') and not name in line, ret.split('\n'))
+  ret = [line for line in ret.split('\n') if not line.startswith('    at ') and not name in line]
   return '\n'.join(ret)
 
-print 'running files'
+print('running files')
 left_result = run_code('left')
 right_result = run_code('right') # right as in left-right, not as in correct
 assert left_result != right_result
@@ -39,18 +40,18 @@ assert left_result != right_result
 low = 0
 high = file1.count('\n')
 
-print 'beginning bisection, %d lines' % high
+print('beginning bisection, %d lines' % high)
 
 left_lines = file1.split('\n')
 right_lines = file2.split('\n')
 
 while True:
   mid = int((low + high)/2)
-  print low, high, '  current: %d' % mid,
+  print(low, high, '  current: %d' % mid, end=' ')
   open('middle', 'w').write('\n'.join(left_lines[:mid] + right_lines[mid:]))
   shutil.copyfile('middle', 'middle' + str(mid))
   result = run_code('middle')
-  print result == left_result, result == right_result#, 'XXX', left_result, 'YYY', result, 'ZZZ', right_result
+  print(result == left_result, result == right_result)#, 'XXX', left_result, 'YYY', result, 'ZZZ', right_result
   if mid == low or mid == high: break
   if result == right_result:
     low = mid
@@ -59,5 +60,5 @@ while True:
   else:
     raise Exception('new result!?!?')
 
-print 'middle%d is like left, middle%d is like right' % (mid+1, mid)
+print('middle%d is like left, middle%d is like right' % (mid+1, mid))
 

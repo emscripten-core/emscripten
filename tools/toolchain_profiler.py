@@ -1,8 +1,8 @@
 import subprocess, os, time, sys, tempfile
-if sys.version_info.major == 2:
-  import response_file
-else:
-  from tools import response_file
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools import response_file
 
 EM_PROFILE_TOOLCHAIN = int(os.getenv('EM_PROFILE_TOOLCHAIN')) if os.getenv('EM_PROFILE_TOOLCHAIN') != None else 0
 
@@ -165,7 +165,7 @@ if EM_PROFILE_TOOLCHAIN:
 
     @staticmethod
     def remove_last_occurrence_if_exists(lst, item):
-      for i in xrange(len(lst)):
+      for i in range(len(lst)):
         if lst[i] == item:
           lst.pop(i)
           return True

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os, multiprocessing, subprocess, socket, time
 from runner import BrowserCore, path_from_root
 from tools.shared import *
@@ -25,7 +26,7 @@ def clean_processes(processes):
         pass
 
 def make_relay_server(port1, port2):
-  print >> sys.stderr, 'creating relay server on ports %d,%d' % (port1, port2)
+  print('creating relay server on ports %d,%d' % (port1, port2), file=sys.stderr)
   proc = Popen([PYTHON, path_from_root('tests', 'sockets', 'socket_relay.py'), str(port1), str(port2)])
   return proc
 
@@ -47,13 +48,13 @@ class WebsockifyServerHarness(object):
     if self.filename:
       sp = Popen([CLANG_CC, path_from_root('tests', self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + get_clang_native_args() + self.args, env=get_clang_native_env(), stdout=PIPE, stderr=PIPE)
       out = sp.communicate()
-      print 'Socket server build: out:', out[0] or '', '/ err:', out[1] or ''
+      print('Socket server build: out:', out[0] or '', '/ err:', out[1] or '')
       assert sp.returncode == 0
       process = Popen([os.path.abspath('server')])
       self.processes.append(process)
 
     # start the websocket proxy
-    print >> sys.stderr, 'running websockify on %d, forward to tcp %d' % (self.listen_port, self.target_port)
+    print('running websockify on %d, forward to tcp %d' % (self.listen_port, self.target_port), file=sys.stderr)
     wsp = websockify.WebSocketProxy(verbose=True, listen_port=self.listen_port, target_host="127.0.0.1", target_port=self.target_port, run_once=True)
     self.websockify = multiprocessing.Process(target=wsp.start_server)
     self.websockify.start()
@@ -73,7 +74,7 @@ class WebsockifyServerHarness(object):
       clean_processes(self.processes)
       raise Exception('[Websockify failed to start up in a timely manner]')
 
-    print '[Websockify on process %s]' % str(self.processes[-2:])
+    print('[Websockify on process %s]' % str(self.processes[-2:]))
 
   def __exit__(self, *args, **kwargs):
     # try to kill the websockify proxy gracefully
@@ -110,7 +111,7 @@ class CompiledServerHarness(object):
     # compile the server
     sp = Popen([PYTHON, EMCC, path_from_root('tests', self.filename), '-o', 'server.js', '-DSOCKK=%d' % self.listen_port] + self.args)
     out = sp.communicate()
-    print 'Socket server build: out:', out[0] or '', '/ err:', out[1] or ''
+    print('Socket server build: out:', out[0] or '', '/ err:', out[1] or '')
     assert sp.returncode == 0
 
     process = Popen(NODE_JS + ['server.js'])
@@ -129,9 +130,9 @@ class sockets(BrowserCore):
   @classmethod
   def setUpClass(self):
     super(sockets, self).setUpClass()
-    print
-    print 'Running the socket tests. Make sure the browser allows popups from localhost.'
-    print
+    print()
+    print('Running the socket tests. Make sure the browser allows popups from localhost.')
+    print()
 
   def test_inet(self):
     src = r'''
@@ -398,12 +399,12 @@ int main () {
       harnesses += [ (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_ASYNC=1'], 49166), 0) ]
 
     for harness, datagram in harnesses:
-      print 'harness:', harness
+      print('harness:', harness)
       with harness:
         self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, '-DTEST_ASYNC=1', sockets_include])
 
     # Deliberately attempt a connection on a port that will fail to test the error callback and getsockopt
-    print 'expect fail'
+    print('expect fail')
     self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=49169', '-DTEST_ASYNC=1', sockets_include])
 
   def test_sockets_echo_bigdata(self):
@@ -612,7 +613,7 @@ int main () {
       # Test against a Websockified server with compile time configured WebSocket subprotocol. We use a Websockified
       # server because as long as the subprotocol list contains binary it will configure itself to accept binary
       # This test also checks that the connect url contains the correct subprotocols.
-      print "\nTesting compile time WebSocket configuration.\n"
+      print("\nTesting compile time WebSocket configuration.\n")
       for harness in [
         WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 59166)
       ]:
@@ -626,7 +627,7 @@ int main () {
       # Test against a Websockified server with runtime WebSocket configuration. We specify both url and subprotocol.
       # In this test we have *deliberately* used the wrong port '-DSOCKK=12345' to configure the echo_client.c, so
       # the connection would fail without us specifying a valid WebSocket URL in the configuration.
-      print "\nTesting runtime WebSocket configuration.\n"
+      print("\nTesting runtime WebSocket configuration.\n")
       for harness in [
         WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 59168)
       ]:

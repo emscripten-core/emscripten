@@ -33,7 +33,10 @@ This section lists Emscripten's public API, organised by header file. At a very 
 - :ref:`trace-h`:
 	A tracing API for doing memory usage analysis.
 
-- :ref:`api-reference-advanced-apis`: 
+- :ref:`vr-h`:
+	API for using WebVR from native code.
+
+- :ref:`api-reference-advanced-apis`:
 	APIs for advanced users/core developers.
 
 
@@ -49,6 +52,7 @@ This section lists Emscripten's public API, organised by header file. At a very 
    val.h
    bind.h
    trace.h
+   vr.h
    advanced-apis
 
 

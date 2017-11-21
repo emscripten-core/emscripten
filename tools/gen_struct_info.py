@@ -76,7 +76,10 @@ The JSON output format is based on the return value of Runtime.generateStructInf
 '''
 
 import sys, os, re, json, argparse, tempfile, subprocess
-import shared
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools import shared
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 if DEBUG == "0":
@@ -320,7 +323,7 @@ def gen_inspect_code(path, struct, code):
   for field in struct:
     if isinstance(field, dict):
       # We have to recurse to inspect the nested dict.
-      fname = field.keys()[0]
+      fname = list(field.keys())[0]
       gen_inspect_code(path + [fname], field[fname], code)
     else:
       c_set(field, 'i%zu', 'offsetof(' + prefix + path[0] + ', ' + '.'.join(path[1:] + [field]) + ')', code)

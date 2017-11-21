@@ -97,6 +97,7 @@ browser_info = '<br/>'.join([line for line in browser_info.strip().split('\n') i
 shutil.rmtree(temp_dir)
 
 native_results = json.loads(native_results[0])
+benchmark_results = benchmark_results[benchmark_results.index('{'):benchmark_results.rindex('}')+1]
 html_results = json.loads(benchmark_results)
 
 native_workload = native_results['workload']

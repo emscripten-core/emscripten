@@ -4,6 +4,7 @@ and with different results, will bisect between them to find the smallest
 diff that makes the outputs different.
 '''
 
+from __future__ import print_function
 import os, sys, shutil
 from subprocess import Popen, PIPE, STDOUT
 
@@ -27,16 +28,16 @@ def run_code(name):
   shutil.copyfile(name, 'src.cpp.o.wast')
   ret = run_js('src.cpp.o.js', stderr=PIPE, full_output=True, assert_returncode=None, engine=SPIDERMONKEY_ENGINE)
   # fix stack traces
-  ret = filter(lambda line: not line.startswith('    at ') and not name in line, ret.split('\n'))
+  ret = [line for line in ret.split('\n') if not line.startswith('    at ') and not name in line]
   return '\n'.join(ret)
 
-print 'running files'
+print('running files')
 left_result = run_code('left')
 right_result = run_code('right') # right as in left-right, not as in correct
 assert left_result != right_result
 
 # Calculate diff chunks
-print 'diffing'
+print('diffing')
 diff = Popen(['diff', '-U', '5', 'left', 'right'], stdout=PIPE).communicate()[0].split('\n')
 pre_diff = diff[:2]
 diff = diff[2:]
@@ -56,12 +57,12 @@ if len(curr) > 0:
 # Bisect both sides of the span, until we have a single chunk
 high = len(chunks)
 
-print 'beginning bisection, %d chunks' % high
+print('beginning bisection, %d chunks' % high)
 
 for mid in range(high):
-  print '  current: %d' % mid,
+  print('  current: %d' % mid, end=' ')
   # Take chunks from the middle and on. This is important because the eliminator removes variables, so starting from the beginning will add errors
-  curr_diff = '\n'.join(map(lambda parts: '\n'.join(parts), chunks[mid:])) + '\n'
+  curr_diff = '\n'.join(['\n'.join(parts) for parts in chunks[mid:]]) + '\n'
   difff = open('diff.diff', 'w')
   difff.write(curr_diff)
   difff.close()
@@ -69,15 +70,15 @@ for mid in range(high):
   Popen(['patch', 'middle', 'diff.diff'], stdout=PIPE).communicate()
   shutil.copyfile('middle', 'middle' + str(mid))
   result = run_code('middle')
-  print result == left_result, result == right_result#, 'XXX', left_result, 'YYY', result, 'ZZZ', right_result
+  print(result == left_result, result == right_result)#, 'XXX', left_result, 'YYY', result, 'ZZZ', right_result
   if mid == 0:
     assert result == right_result, '<<< ' + result + ' ??? ' + right_result + ' >>>'
-    print 'sanity check passed (a)'
+    print('sanity check passed (a)')
   if mid == high-1:
     assert result == left_result, '<<< ' + result + ' ??? ' + left_result + ' >>>'
-    print 'sanity check passed (b)'
+    print('sanity check passed (b)')
   if result != right_result:
-    print 'found where it changes: %d' % mid
+    print('found where it changes: %d' % mid)
     found = mid
     break
 
@@ -85,5 +86,5 @@ critical = Popen(['diff', '-U', '5', 'middle' + str(mid-1), 'middle' + str(mid)]
 c = open('critical.diff', 'w')
 c.write(critical)
 c.close()
-print 'middle%d is like left, middle%d is like right, critical.diff is the difference that matters' % (mid-1, mid), 'diff:', critical
+print('middle%d is like left, middle%d is like right, critical.diff is the difference that matters' % (mid-1, mid), 'diff:', critical)
 

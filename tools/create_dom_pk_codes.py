@@ -24,6 +24,7 @@
 
 # Use #include <emscripten/dom_pk_codes.h> in your code to access these IDs.
 
+from __future__ import print_function
 import sys, random
 
 input_strings = [
@@ -220,9 +221,9 @@ def hash_all(k1, k2):
   str_to_hash = {}
   for s in input_strings:
     h = hash(s[1], k1, k2)
-    print >> sys.stderr,  'String "' + s[1] + '" hashes to %s ' % hex(h)
+    print('String "' + s[1] + '" hashes to %s ' % hex(h), file=sys.stderr)
     if h in hashes:
-      print >> sys.stderr,  'Collision! Earlier string ' + hashes[h] + ' also hashed to %s!' % hex(h)
+      print('Collision! Earlier string ' + hashes[h] + ' also hashed to %s!' % hex(h), file=sys.stderr)
       return None
     else:
       hashes[h] = s[1]
@@ -242,17 +243,17 @@ while perfect_hash_table == None:
   perfect_hash_table = hash_all(k1, k2)
 hash_to_str, str_to_hash = perfect_hash_table
 
-print >> sys.stderr, 'Found collision-free hash function!'
-print >> sys.stderr,  'h_i = ((h_(i-1) ^ %s) << %s) ^ s_i' % (hex(k1), hex(k2))
+print('Found collision-free hash function!', file=sys.stderr)
+print('h_i = ((h_(i-1) ^ %s) << %s) ^ s_i' % (hex(k1), hex(k2)), file=sys.stderr)
 
 def pad_to_length(s, length):
   return s + max(0, length - len(s)) * ' '
 
 def longest_dom_pk_code_length():
-  return max(map(len, map(lambda x: x[2], input_strings)))
+  return max(map(len, [x[2] for x in input_strings]))
 
 def longest_key_code_length():
-  return max(map(len, map(lambda x: x[1], input_strings)))
+  return max(map(len, [x[1] for x in input_strings]))
 
 h_file = open('system/include/emscripten/dom_pk_codes.h', 'w')
 c_file = open('system/lib/html5/dom_pk_codes.c', 'w')
@@ -288,11 +289,17 @@ for s in input_strings:
   h_file.write('#define ' + pad_to_length(s[2], longest_dom_pk_code_length()) + ' 0x%04X /* "%s */' % (s[0], pad_to_length(s[1] + '"', longest_key_code_length()+1)) + '\n')
 
 h_file.write('''
+#ifdef __cplusplus
+extern "C" {
+#endif
 /* Maps the EmscriptenKeyboardEvent::code field from emscripten/html5.h to one of the DOM_PK codes above. */
 DOM_PK_CODE_TYPE emscripten_compute_dom_pk_code(const char *keyCodeString);
 
 /* Returns the string representation of the given key code ID. Useful for debug printing. */
 const char *emscripten_dom_pk_code_to_string(DOM_PK_CODE_TYPE code);
+#ifdef __cplusplus
+}
+#endif
 ''')
 
 c_file.write('''

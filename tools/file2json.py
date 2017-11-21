@@ -10,10 +10,11 @@ FILENAME - the binary file
 VARNAME - the variable to store it in (the output will be VARNAME = [...])
 '''
 
+from __future__ import print_function
 import os, sys
 
 data = open(sys.argv[1], 'rb').read()
-sdata = map(lambda x: str(ord(x)) + ',', data)
+sdata = [str(ord(x)) + ',' for x in data]
 sdata[-1] = sdata[-1].replace(',', '')
 lined = []
 while len(sdata) > 0:
@@ -24,9 +25,9 @@ while len(sdata) > 0:
 json = '[' + ''.join(lined) + ']'
 
 if len(sys.argv) < 3:
-  print json
+  print(json)
 else:
-  print 'var ' + sys.argv[2] + '=' + json + ';'
+  print('var ' + sys.argv[2] + '=' + json + ';')
 
 '''
 or (but this fails, we get a string at runtime?)

@@ -1,0 +1,33 @@
+sudo: required
+
+language: python
+
+env:
+- TEST_TARGET="other.test_a* other.test_b* other.test_c* other.test_d* other.test_e* other.test_f* other.test_g* other.test_h* other.test_i* other.test_j* other.test_k* other.test_l* other.test_m*"
+- TEST_TARGET="other.test_n* other.test_o* other.test_p* other.test_q* other.test_r* other.test_s* other.test_t* other.test_u* other.test_v* other.test_w* other.test_x* other.test_y* other.test_z*"
+- TEST_TARGET=browser
+- TEST_TARGET="ALL.test_a* ALL.test_b*"
+- TEST_TARGET=ALL.test_c*
+- TEST_TARGET="default.test_d* asm1.test_d* asm2.test_d* asm2f.test_d* asm2g.test_d* asm3.test_d*"
+- TEST_TARGET=asm2i.test_d*
+- TEST_TARGET=ALL.test_e*
+- TEST_TARGET=ALL.test_f*
+- TEST_TARGET="ALL.test_g* ALL.test_h* ALL.test_i*"
+- TEST_TARGET="ALL.test_j* ALL.test_k* ALL.test_l* ALL.test_m* ALL.test_n* ALL.test_o*"
+- TEST_TARGET="default.test_p* asm1.test_p* asm2.test_p* asm2f.test_p* asm2g.test_p* asm3.test_p*"
+- TEST_TARGET=asm2i.test_p*
+- TEST_TARGET="ALL.test_q* ALL.test_r* ALL.test_s* ALL.test_t*"
+- TEST_TARGET="ALL.test_u* ALL.test_v* ALL.test_w* ALL.test_x* ALL.test_y* ALL.test_z*"
+
+services:
+- docker
+
+before_install:
+- docker pull ubuntu:16.04
+
+script:
+- echo $TEST_TARGET
+- docker build --build-arg TEST_TARGET="$TEST_TARGET" .
+
+notifications:
+  email: false
