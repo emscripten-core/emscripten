@@ -23,6 +23,8 @@ if 'benchmark.' in str(sys.argv):
 
 IGNORE_COMPILATION = 0
 
+OPTIMIZATIONS = '-O3'
+
 class Benchmarker(object):
   def __init__(self, name):
     self.name = name
@@ -66,11 +68,11 @@ class Benchmarker(object):
       print()
 
 class NativeBenchmarker(Benchmarker):
-  def __init__(self, name, cc, cxx, args=['-O2']):
+  def __init__(self, name, cc, cxx, args=[OPTIMIZATIONS]):
     self.name = name
     self.cc = cc
     self.cxx = cxx
-    self.args = args
+    self.args = args[:]
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.parent = parent
@@ -95,14 +97,22 @@ class NativeBenchmarker(Benchmarker):
     process = Popen([self.filename] + args, stdout=PIPE, stderr=PIPE)
     return process.communicate()[0]
 
+def run_binaryen_opts(filename, opts):
+  subprocess.check_call([
+    os.path.join(Building.get_binaryen_bin(), 'wasm-opt'),
+    filename,
+    '-o', filename
+  ] + opts)
+
 class JSBenchmarker(Benchmarker):
-  def __init__(self, name, engine, extra_args=[], env={}):
+  def __init__(self, name, engine, extra_args=[], env={}, binaryen_opts=[]):
     self.name = name
     self.engine = engine
-    self.extra_args = extra_args
+    self.extra_args = extra_args[:]
     self.env = os.environ.copy()
     for k, v in env.items():
       self.env[k] = v
+    self.binaryen_opts = binaryen_opts[:]
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.filename = filename
@@ -123,28 +133,33 @@ process(sys.argv[1])
     final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
     try_delete(final)
-    output = Popen([PYTHON, EMCC, filename, #'-O3',
-                    '-O3',
-                    '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
-                    '-s', 'TOTAL_MEMORY=256*1024*1024',
-                    '-s', 'NO_EXIT_RUNTIME=1',
-                    '-s', 'NO_FILESYSTEM=1',
-                    '-s', 'EXPORTED_RUNTIME_METHODS=[]',
-                    '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
-                    #'--profiling',
-                    '--closure', '1',
-                    '-o', final] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
+    cmd = [
+      PYTHON, EMCC, filename,
+      OPTIMIZATIONS,
+      '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
+      '-s', 'TOTAL_MEMORY=256*1024*1024',
+      '-s', 'NO_EXIT_RUNTIME=1',
+      '-s', 'NO_FILESYSTEM=1',
+      '-s', 'EXPORTED_RUNTIME_METHODS=[]',
+      '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
+      #'--profiling',
+      '--closure', '1',
+      '-o', final
+    ] + shared_args + emcc_args + self.extra_args
+    output = Popen(cmd, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
     assert os.path.exists(final), 'Failed to compile file: ' + output[0] + ' (looked for ' + final + ')'
+    if self.binaryen_opts:
+      run_binaryen_opts(final[:-3] + '.wasm', self.binaryen_opts)
     self.filename = final
 
   def run(self, args):
     return run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True, assert_returncode=None)
 
 class CheerpBenchmarker(Benchmarker):
-  def __init__(self, name, engine, args=['-O3'], binaryen_opts=[]):
+  def __init__(self, name, engine, args=[OPTIMIZATIONS], binaryen_opts=[]):
     self.name = name
     self.engine = engine
-    self.args = args
+    self.args = args[:]
     self.binaryen_opts = binaryen_opts[:]
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
@@ -215,11 +230,7 @@ class CheerpBenchmarker(Benchmarker):
       self.filename = final
       Building.get_binaryen()
       if self.binaryen_opts:
-        subprocess.check_call([
-          os.path.join(Building.get_binaryen_bin(), 'wasm-opt'),
-          final + '.wasm',
-          '-o', final + '.wasm'
-        ] + self.binaryen_opts)
+        run_binaryen_opts(final + '.wasm', self.binaryen_opts)
     finally:
       for dir_ in dirs_to_delete:
         try_delete(dir_)
@@ -283,7 +294,11 @@ try:
     benchmarkers += [
       JSBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
       #JSBenchmarker('sm-simd',  SPIDERMONKEY_ENGINE, ['-s', 'SIMD=1']),
-      JSBenchmarker('sm-wasm',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['-s', 'WASM=1']),
+      JSBenchmarker('sm-asm2wasm',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['-s', 'WASM=1']),
+      #JSBenchmarker('sm-wasmbackend',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['-s', 'WASM=1'], env={
+      #  'LLVM': '/home/alon/Dev/llvm/build/bin',
+      #  'EMCC_WASM_BACKEND': '1',
+      #}),
     ]
   if V8_ENGINE and Building.which(V8_ENGINE[0]):
     benchmarkers += [
@@ -328,7 +343,7 @@ class benchmark(RunnerCore):
       pass
 
     Building.COMPILER = CLANG
-    Building.COMPILER_TEST_OPTS = ['-O2']
+    Building.COMPILER_TEST_OPTS = [OPTIMIZATIONS]
 
   def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None, lib_builder=None):
     if len(benchmarkers) == 0: raise Exception('error, no benchmarkers: ' + benchmarkers_error)
