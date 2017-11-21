@@ -8,7 +8,7 @@ for line in open(sys.argv[1]).readlines():
   try:
     x = line.split(' in ')[1].split(':')[0]
     #output = str([x, Popen(['c++filt', x], stdout=PIPE).communicate()])
-    output = Popen(['c++filt', x], stdout=PIPE).communicate()[0]
+    output = Popen(['c++filt', x], stdout=PIPE, universal_newlines=True).communicate()[0]
     if output not in shown:
       shown.add(output)
       print(output, end=' ')

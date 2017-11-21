@@ -37,7 +37,7 @@ assert left_result != right_result
 
 # Calculate diff chunks
 print('diffing')
-diff = Popen(['diff', '-U', '5', 'left', 'right'], stdout=PIPE).communicate()[0].split('\n')
+diff = Popen(['diff', '-U', '5', 'left', 'right'], stdout=PIPE, universal_newlines=True).communicate()[0].split('\n')
 pre_diff = diff[:2]
 diff = diff[2:]
 
@@ -81,7 +81,7 @@ for mid in range(high):
     found = mid
     break
 
-critical = Popen(['diff', '-U', '5', 'middle' + str(mid-1), 'middle' + str(mid)], stdout=PIPE).communicate()[0]
+critical = Popen(['diff', '-U', '5', 'middle' + str(mid-1), 'middle' + str(mid)], stdout=PIPE, universal_newlines=True).communicate()[0]
 c = open('critical.diff', 'w')
 c.write(critical)
 c.close()

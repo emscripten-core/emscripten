@@ -79,7 +79,7 @@ def run_mode(args):
     # If args has only one argument, e.g. args=['default'] or args=['asm1'], all tests are run in one suite.
     print '<< running %s >>' % mode
 
-  proc = subprocess.Popen([PYTHON, path_from_root('tests', 'runner.py')] + args, stdout=open(mode + '.out', 'w'), stderr=open(mode + '.err', 'w'))
+  proc = subprocess.Popen([PYTHON, path_from_root('tests', 'runner.py')] + args, stdout=open(mode + '.out', 'w'), stderr=open(mode + '.err', 'w'), universal_newlines=True)
   proc.communicate()
   print '<< %s finished with exit code %d >>' % (mode, proc.returncode)
   return proc.returncode

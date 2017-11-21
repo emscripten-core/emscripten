@@ -11,13 +11,13 @@ from tools.shared import *
 temp_dir = tempfile.mkdtemp()
 
 # System info
-system_info = Popen([PYTHON, path_from_root('emrun'), '--system_info'], stdout=PIPE, stderr=PIPE).communicate()
+system_info = Popen([PYTHON, path_from_root('emrun'), '--system_info'], stdout=PIPE, stderr=PIPE, universal_newlines=True).communicate()
 
 # Native info
-native_info = Popen(['clang', '-v'], stdout=PIPE, stderr=PIPE).communicate()
+native_info = Popen(['clang', '-v'], stdout=PIPE, stderr=PIPE, universal_newlines=True).communicate()
 
 # Emscripten info
-emscripten_info = Popen([PYTHON, EMCC, '-v'], stdout=PIPE, stderr=PIPE).communicate()
+emscripten_info = Popen([PYTHON, EMCC, '-v'], stdout=PIPE, stderr=PIPE, universal_newlines=True).communicate()
 
 # Run native build
 out_file = os.path.join(temp_dir, 'benchmark_sse2_native')
@@ -25,12 +25,12 @@ if WINDOWS: out_file += '.exe'
 cmd = [CLANG_CPP] + get_clang_native_args() + [path_from_root('tests', 'benchmark_sse2.cpp'), '-O3', '-o', out_file]
 print 'Building native version of the benchmark:'
 print ' '.join(cmd)
-build = Popen(cmd, env=get_clang_native_env())
+build = Popen(cmd, env=get_clang_native_env(), universal_newlines=True)
 out = build.communicate()
 if build.returncode != 0:
     sys.exit(1)
 
-native_results = Popen([out_file], stdout=PIPE, stderr=PIPE).communicate()
+native_results = Popen([out_file], stdout=PIPE, stderr=PIPE, universal_newlines=True).communicate()
 print native_results[0]
 
 # Run emscripten build
@@ -38,7 +38,7 @@ out_file = os.path.join(temp_dir, 'benchmark_sse2_html.html')
 cmd = [PYTHON, EMCC, path_from_root('tests', 'benchmark_sse2.cpp'), '-O3', '-msse2', '--emrun', '-s', 'TOTAL_MEMORY=536870912', '-o', out_file]
 print 'Building Emscripten version of the benchmark:'
 print ' '.join(cmd)
-build = Popen(cmd)
+build = Popen(cmd, universal_newlines=True)
 out = build.communicate()
 if build.returncode != 0:
     sys.exit(1)
@@ -52,7 +52,7 @@ if 'almost asm' in js:
     open(out_js_file, 'w').write(js.replace('almost asm', 'use asm'))
 
 # Enforce asm.js validation for the output file so that we can capture any validation errors.
-asmjs_validation_status = Popen([PYTHON, path_from_root('tools', 'validate_asmjs.py'), out_file], stdout=PIPE, stderr=PIPE).communicate()
+asmjs_validation_status = Popen([PYTHON, path_from_root('tools', 'validate_asmjs.py'), out_file], stdout=PIPE, stderr=PIPE, universal_newlines=True).communicate()
 asmjs_validation_status = (asmjs_validation_status[0].strip() + '\n' + asmjs_validation_status[1].strip()).strip()
 if 'is not valid asm.js' in asmjs_validation_status:
     print >> sys.stderr, asmjs_validation_status
@@ -72,7 +72,7 @@ print ''
 print 'Once the test has finished, close the browser application to continue.'
 cmd = [PYTHON, path_from_root('emrun'), '--safe_firefox_profile', '--browser=' + browser, out_file]
 print ' '.join(cmd)
-html_results = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
+html_results = Popen(cmd, stdout=PIPE, stderr=PIPE, universal_newlines=True).communicate()
 
 if not html_results or not html_results[0].strip():
     print html_results[1]

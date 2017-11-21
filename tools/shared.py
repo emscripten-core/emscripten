@@ -330,7 +330,7 @@ def expected_llvm_version():
 def get_clang_version():
   global actual_clang_version
   if actual_clang_version is None:
-    response = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1]
+    response = Popen([CLANG, '-v'], stderr=PIPE, universal_newlines=True).communicate()[1]
     m = re.search(r'[Vv]ersion\s+(\d+\.\d+)', response)
     actual_clang_version = m and m.group(1)
   return actual_clang_version
@@ -368,7 +368,7 @@ def get_fastcomp_src_dir():
 
 def get_llc_targets():
   try:
-    llc_version_info = Popen([LLVM_COMPILER, '--version'], stdout=PIPE).communicate()[0]
+    llc_version_info = Popen([LLVM_COMPILER, '--version'], stdout=PIPE, universal_newlines=True).communicate()[0]
     pre, targets = llc_version_info.split('Registered Targets:')
     return targets
   except Exception as e:
@@ -420,7 +420,7 @@ def check_fastcomp():
 
       # check build versions. don't show it if the repos are wrong, user should fix that first
       if not shown_repo_version_error:
-        clang_v = Popen([CLANG, '--version'], stdout=PIPE).communicate()[0]
+        clang_v = Popen([CLANG, '--version'], stdout=PIPE, universal_newlines=True).communicate()[0]
         llvm_build_version, clang_build_version = clang_v.split('(emscripten ')[1].split(')')[0].split(' : ')
         if EMSCRIPTEN_VERSION != llvm_build_version or EMSCRIPTEN_VERSION != clang_build_version:
           logging.error('Emscripten, llvm and clang build versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_build_version, clang_build_version)
@@ -436,7 +436,7 @@ EXPECTED_NODE_VERSION = (0,8,0)
 def check_node_version():
   jsrun.check_engine(NODE_JS)
   try:
-    actual = Popen(NODE_JS + ['--version'], stdout=PIPE).communicate()[0].strip()
+    actual = Popen(NODE_JS + ['--version'], stdout=PIPE, universal_newlines=True).communicate()[0].strip()
     version = tuple(map(int, actual.replace('v', '').replace('-pre', '').split('.')))
     if version >= EXPECTED_NODE_VERSION:
       return True
@@ -1044,7 +1044,7 @@ except NameError:
 ENV_PREFIX = []
 if not WINDOWS:
   try:
-    assert 'Python' in Popen(['env', 'python', '-V'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    assert 'Python' in Popen(['env', 'python', '-V'], stdout=PIPE, stderr=STDOUT, universal_newlines=True).communicate()[0]
     ENV_PREFIX = ['env']
   except:
     pass
@@ -1247,7 +1247,7 @@ def extract_archive_contents(f):
     temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
     safe_ensure_dirs(temp_dir)
     os.chdir(temp_dir)
-    contents = [x for x in Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n') if len(x) > 0]
+    contents = [x for x in Popen([LLVM_AR, 't', f], stdout=PIPE, universal_newlines=True).communicate()[0].split('\n') if len(x) > 0]
     warn_if_duplicate_entries(contents, f)
     if len(contents) == 0:
       logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
@@ -1263,7 +1263,7 @@ def extract_archive_contents(f):
       dirname = os.path.dirname(content)
       if dirname:
         safe_ensure_dirs(dirname)
-    proc = Popen([LLVM_AR, 'xo', f], stdout=PIPE, stderr=PIPE)
+    proc = Popen([LLVM_AR, 'xo', f], stdout=PIPE, stderr=PIPE, universal_newlines=True)
     stdout, stderr = proc.communicate() # if absolute paths, files will appear there. otherwise, in this directory
     contents = list(map(os.path.abspath, contents))
     nonexisting_contents = [x for x in contents if not os.path.exists(x)]
@@ -1844,7 +1844,7 @@ class Building(object):
 
     if not just_calculate:
       logging.debug('emcc: llvm-linking: %s to %s', actual_files, target)
-      output = Popen([LLVM_LINK] + link_args + ['-o', target], stdout=PIPE).communicate()[0]
+      output = Popen([LLVM_LINK] + link_args + ['-o', target], stdout=PIPE, universal_newlines=True).communicate()[0]
       assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
       return target
     else:
@@ -1876,7 +1876,7 @@ class Building(object):
 
     logging.debug('emcc: LLVM opts: ' + ' '.join(opts) + '  [num inputs: ' + str(len(inputs)) + ']')
     target = out or (filename + '.opt.bc')
-    proc = Popen([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE)
+    proc = Popen([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE, universal_newlines=True)
     output = proc.communicate()[0]
     if proc.returncode != 0 or not os.path.exists(target):
       logging.error('Failed to run llvm optimizations: ' + output)
@@ -1894,7 +1894,7 @@ class Building(object):
   def llvm_opts(filename): # deprecated version, only for test runner. TODO: remove
     if Building.LLVM_OPTS:
       shutil.move(filename + '.o', filename + '.o.pre')
-      output = Popen([LLVM_OPT, filename + '.o.pre'] + Building.LLVM_OPT_OPTS + ['-o', filename + '.o'], stdout=PIPE).communicate()[0]
+      output = Popen([LLVM_OPT, filename + '.o.pre'] + Building.LLVM_OPT_OPTS + ['-o', filename + '.o'], stdout=PIPE, universal_newlines=True).communicate()[0]
       assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output
 
   @staticmethod
@@ -1905,7 +1905,7 @@ class Building(object):
       output_filename = input_filename + '.o.ll'
       input_filename = input_filename + '.o'
     try_delete(output_filename)
-    output = Popen([LLVM_DIS, input_filename, '-o', output_filename], stdout=PIPE).communicate()[0]
+    output = Popen([LLVM_DIS, input_filename, '-o', output_filename], stdout=PIPE, universal_newlines=True).communicate()[0]
     assert os.path.exists(output_filename), 'Could not create .ll file: ' + output
     return output_filename
 
@@ -1917,7 +1917,7 @@ class Building(object):
       output_filename = input_filename + '.o'
       input_filename = input_filename + '.o.ll'
     try_delete(output_filename)
-    output = Popen([LLVM_AS, input_filename, '-o', output_filename], stdout=PIPE).communicate()[0]
+    output = Popen([LLVM_AS, input_filename, '-o', output_filename], stdout=PIPE, universal_newlines=True).communicate()[0]
     assert os.path.exists(output_filename), 'Could not create bc file: ' + output
     return output_filename
 
@@ -1952,7 +1952,7 @@ class Building(object):
   @staticmethod
   def llvm_nm_uncached(filename, stdout=PIPE, stderr=PIPE, include_internal=False):
     # LLVM binary ==> list of symbols
-    proc = Popen([LLVM_NM, filename], stdout=stdout, stderr=stderr)
+    proc = Popen([LLVM_NM, filename], stdout=stdout, stderr=stderr, universal_newlines=True)
     stdout, stderr = proc.communicate()
     if proc.returncode == 0:
       return Building.parse_symbols(stdout, include_internal)
@@ -2191,7 +2191,7 @@ class Building(object):
       if os.environ.get('EMCC_CLOSURE_ARGS'):
         args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
       logging.debug('closure compiler: ' + ' '.join(args))
-      process = Popen(args, stdout=PIPE, stderr=STDOUT)
+      process = Popen(args, stdout=PIPE, stderr=STDOUT, universal_newlines=True)
       cc_output = process.communicate()[0]
       if process.returncode != 0 or not os.path.exists(filename + '.cc.js'):
         raise Exception('closure compiler error: ' + cc_output + ' (rc: %d)' % process.returncode)
@@ -2527,7 +2527,7 @@ class WebAssembly(object):
 def execute(cmd, *args, **kw):
   try:
     cmd[0] = Building.remove_quotes(cmd[0])
-    return Popen(cmd, *args, **kw).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
+    return Popen(cmd, universal_newlines=True, *args, **kw).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
   except:
     if not isinstance(cmd, str):
       cmd = ' '.join(cmd)
@@ -2586,7 +2586,7 @@ def safe_copy(src, dst):
 
 def clang_preprocess(filename):
   # TODO: REMOVE HACK AND PASS PREPROCESSOR FLAGS TO CLANG.
-  return subprocess.check_output([CLANG_CC, '-DFETCH_DEBUG=1', '-E', '-P', '-C', '-x', 'c', filename])
+  return subprocess.check_output([CLANG_CC, '-DFETCH_DEBUG=1', '-E', '-P', '-C', '-x', 'c', filename], universal_newlines=True)
 
 def read_and_preprocess(filename):
   f = open(filename, 'r').read()
