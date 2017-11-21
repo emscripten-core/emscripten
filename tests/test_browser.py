@@ -1,6 +1,6 @@
 from __future__ import print_function
 import multiprocessing, os, shutil, subprocess, unittest, zlib, webbrowser, time, shlex
-from runner import BrowserCore, path_from_root, has_browser
+from runner import BrowserCore, path_from_root, has_browser, get_browser
 from tools.shared import *
 
 try:
@@ -1286,11 +1286,11 @@ keydown(100);keyup(100); // trigger the end
     import random
     self.clear()
     os.mkdir('subdir')
-    open('file1.txt', 'wb').write('0123456789' * (1024*128))
-    open(os.path.join('subdir', 'file2.txt'), 'wb').write('1234567890' * (1024*128))
-    random_data = [chr(random.randint(0,255)) for x in range(1024*128*10 + 1)]
-    random_data[17] = 'X'
-    open('file3.txt', 'wb').write(''.join(random_data))
+    open('file1.txt', 'w').write('0123456789' * (1024*128))
+    open(os.path.join('subdir', 'file2.txt'), 'w').write('1234567890' * (1024*128))
+    random_data = bytearray(random.randint(0,255) for x in range(1024*128*10 + 1))
+    random_data[17] = ord('X')
+    open('file3.txt', 'wb').write(random_data)
 
     # compress in emcc,  -s LZ4=1  tells it to tell the file packager
     print('emcc-normal')
@@ -1977,7 +1977,9 @@ void *getBindBuffer() {
     self.btest('gl_error.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL'])
 
   def test_openal_error(self):
-    self.btest('openal_error.c', expected='1')
+    for args in [[], ['--closure', '1']]:
+      print(args)
+      self.btest('openal_error.c', expected='1', args=args)
 
   def test_openal_capture_sanity(self):
     self.btest('openal_capture_sanity.c', expected='0')
@@ -2212,9 +2214,10 @@ void *getBindBuffer() {
     # before launching.
     os.chdir(path_from_root())
     args = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
-    if emscripten_browser is not None:
+    browser = get_browser()
+    if browser is not None:
       # If EMSCRIPTEN_BROWSER carried command line arguments to pass to the browser, (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun, so strip them out.
-      browser_name = shlex.split(emscripten_browser)[0]
+      browser_name = shlex.split(browser)[0]
       args += ['--browser', browser_name]
     args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
     process = subprocess.Popen(args)

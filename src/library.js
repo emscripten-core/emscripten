@@ -289,8 +289,8 @@ LibraryManager.library = {
 #else
         var maxHeapSize = 2*1024*1024*1024 - 16777216;
 #endif
-#if BINARYEN_MEM_MAX != -1
-        maxHeapSize = {{{ BINARYEN_MEM_MAX }}};
+#if WASM_MEM_MAX != -1
+        maxHeapSize = {{{ WASM_MEM_MAX }}};
 #endif
 #if !ALLOW_MEMORY_GROWTH
         maxHeapSize = HEAPU8.length;
@@ -4011,7 +4011,7 @@ LibraryManager.library = {
     var funcname = args.callee.name;
     var str = '(';
     var first = true;
-    for(i in args) {
+    for (var i in args) {
       var a = args[i];
       if (!first) {
         str += ", ";
@@ -4051,19 +4051,19 @@ LibraryManager.library = {
     var stack_args = null;
     if (flags & 128 /*EM_LOG_FUNC_PARAMS*/) {
       // To get the actual parameters to the functions, traverse the stack via the unfortunately deprecated 'arguments.callee' method, if it works:
-      var stack_args = __emscripten_traverse_stack(arguments);
+      stack_args = __emscripten_traverse_stack(arguments);
       while (stack_args[1].indexOf('_emscripten_') >= 0)
         stack_args = __emscripten_traverse_stack(stack_args[0]);
     }
     
     // Process all lines:
-    lines = callstack.split('\n');
+    var lines = callstack.split('\n');
     callstack = '';
     var newFirefoxRe = new RegExp('\\s*(.*?)@(.*?):([0-9]+):([0-9]+)'); // New FF30 with column info: extract components of form '       Object._main@http://server.com:4324:12'
     var firefoxRe = new RegExp('\\s*(.*?)@(.*):(.*)(:(.*))?'); // Old FF without column info: extract components of form '       Object._main@http://server.com:4324'
     var chromeRe = new RegExp('\\s*at (.*?) \\\((.*):(.*):(.*)\\\)'); // Extract components of form '    at Object._main (http://server.com/file.html:4324:12)'
     
-    for(l in lines) {
+    for (var l in lines) {
       var line = lines[l];
 
       var jsSymbolName = '';
