@@ -1976,7 +1976,9 @@ void *getBindBuffer() {
     self.btest('gl_error.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL'])
 
   def test_openal_error(self):
-    self.btest('openal_error.c', expected='1')
+    for args in [[], ['--closure', '1']]:
+      print(args)
+      self.btest('openal_error.c', expected='1', args=args)
 
   def test_openal_capture_sanity(self):
     self.btest('openal_capture_sanity.c', expected='0')
