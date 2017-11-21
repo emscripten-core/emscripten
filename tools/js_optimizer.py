@@ -387,6 +387,9 @@ EMSCRIPTEN_FUNCS();
         return True
       passes = list(filter(check_symbol_mapping, passes))
       asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'minifyWhitespace' in passes, source_map).split('EMSCRIPTEN_FUNCS();');
+      # Restore a comment for Closure Compiler
+      asm_open_bracket = asm_shell_pre.find('(')
+      asm_shell_pre = asm_shell_pre[:asm_open_bracket+1] + '/** @suppress {uselessCode} */' + asm_shell_pre[asm_open_bracket+1:]
       asm_shell_post = asm_shell_post.replace('});', '})');
       pre += asm_shell_pre + '\n' + start_funcs_marker
       post = end_funcs_marker + asm_shell_post + post
@@ -425,7 +428,7 @@ EMSCRIPTEN_FUNCS();
       chunks = [f[1] for f in funcs]
 
     chunks = [chunk for chunk in chunks if len(chunk) > 0]
-    if DEBUG and len(chunks) > 0: print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(list(map(len, chunks))), '-', min(list(map(len, chunks))), file=sys.stderr)
+    if DEBUG and len(chunks) > 0: print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks)), file=sys.stderr)
     funcs = None
 
     if len(chunks) > 0:
@@ -515,7 +518,9 @@ EMSCRIPTEN_FUNCS();
       after = 'wakaUnknownAfter'
       start = coutput.find(after)
       end = coutput.find(')', start)
-      pre = coutput[:start] + '(function(global,env,buffer) {\n' + pre_2[pre_2.find('{')+1:]
+      # First brace is from Closure Compiler comment, thus we need a second one
+      pre_2_second_brace = pre_2.find('{', pre_2.find('{')+1)
+      pre = coutput[:start] + '(/** @suppress {uselessCode} */ function(global,env,buffer) {\n' + pre_2[pre_2_second_brace+1:]
       post = post_1 + end_asm + coutput[end+1:]
 
   with ToolchainProfiler.profile_block('write_pre'):
@@ -532,14 +537,8 @@ EMSCRIPTEN_FUNCS();
         funcses.append(split_funcs(open(out_file).read(), False))
       funcs = [item for sublist in funcses for item in sublist]
       funcses = None
-      def sorter(x, y):
-        diff = len(y[1]) - len(x[1])
-        if diff != 0: return diff
-        if x[0] < y[0]: return 1
-        elif x[0] > y[0]: return -1
-        return 0
       if not os.environ.get('EMCC_NO_OPT_SORT'):
-        funcs.sort(sorter)
+        funcs.sort(key=lambda x: (len(x[1]), x[0]), reverse=True)
 
       if 'last' in passes and len(funcs) > 0:
         count = funcs[0][1].count('\n')

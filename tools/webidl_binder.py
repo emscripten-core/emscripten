@@ -189,7 +189,7 @@ var ensureCache = {
       ensureCache.pos += len;
     }
     return ret;
-  },  
+  },
   copy: function(array, view, offset) {
     var offsetShifted = offset;
     var bytes = view.BYTES_PER_ELEMENT;
@@ -200,7 +200,7 @@ var ensureCache = {
     }
     for (var i = 0; i < array.length; i++) {
       view[offsetShifted + i] = array[i];
-    }   
+    }
   },
 };
 
@@ -465,7 +465,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
   body += '  %s%s(%s)%s;\n' % (call_prefix, '_' + c_names[max_args], ', '.join(pre_arg + args), call_postfix)
   if cache:
     body += '  ' + cache + '\n'
-  mid_js += [r'''function%s(%s) {
+  mid_js += [r'''/** @suppress {undefinedVars, duplicate} */function%s(%s) {
 %s
 };''' % ((' ' + func_name) if constructor else '', ', '.join(args), body[:-1])]
 
@@ -574,7 +574,7 @@ for child, parent in implements.items():
       parent = None
 
 names = list(interfaces.keys())
-names.sort(lambda x, y: nodeHeight.get(y, 0) - nodeHeight.get(x, 0))
+names.sort(key=lambda x: nodeHeight.get(x, 0), reverse=True)
 
 for name in names:
   interface = interfaces[name]

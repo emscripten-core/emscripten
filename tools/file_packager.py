@@ -249,29 +249,32 @@ def escape_for_js_string(s):
   return s
 
 # Expand directories into individual files
-def add(arg, dirname, names):
+def add(mode, rootpathsrc, rootpathdst):
   # rootpathsrc: The path name of the root directory on the local FS we are adding to emscripten virtual FS.
   # rootpathdst: The name we want to make the source path available on the emscripten virtual FS.
-  mode, rootpathsrc, rootpathdst = arg
-  new_names = []
-  for name in names:
-    fullname = os.path.join(dirname, name)
-    if should_ignore(fullname):
-      if DEBUG:
-        print('Skipping file "' + fullname + '" from inclusion in the emscripten virtual file system.', file=sys.stderr)
-    else:
-      new_names.append(name)
-      if not os.path.isdir(fullname):
+  for dirpath, dirnames, filenames in os.walk(rootpathsrc):
+    new_dirnames = []
+    for name in dirnames:
+      fullname = os.path.join(dirpath, name)
+      if not should_ignore(fullname):
+        new_dirnames.append(name)
+      elif DEBUG:
+        print('Skipping directory "' + fullname + '" from inclusion in the emscripten virtual file system.', file=sys.stderr)
+    for name in filenames:
+      fullname = os.path.join(dirpath, name)
+      if not should_ignore(fullname):
         dstpath = os.path.join(rootpathdst, os.path.relpath(fullname, rootpathsrc)) # Convert source filename relative to root directory of target FS.
         new_data_files.append({ 'srcpath': fullname, 'dstpath': dstpath, 'mode': mode, 'explicit_dst_path': True })
-  del names[:]
-  names.extend(new_names)
+      elif DEBUG:
+        print('Skipping file "' + fullname + '" from inclusion in the emscripten virtual file system.', file=sys.stderr)
+    del dirnames[:]
+    dirnames.extend(new_dirnames)
 
 new_data_files = []
 for file_ in data_files:
   if not should_ignore(file_['srcpath']):
     if os.path.isdir(file_['srcpath']):
-      os.path.walk(file_['srcpath'], add, [file_['mode'], file_['srcpath'], file_['dstpath']])
+      add(file_['mode'], file_['srcpath'], file_['dstpath'])
     else:
       new_data_files.append(file_)
 data_files = [file_ for file_ in new_data_files if not os.path.isdir(file_['srcpath'])]
@@ -485,7 +488,7 @@ for file_ in data_files:
   basename = os.path.basename(filename)
   if file_['mode'] == 'embed':
     # Embed
-    data = list(map(ord, open(file_['srcpath'], 'rb').read()))
+    data = list(bytearray(open(file_['srcpath'], 'rb').read()))
     code += '''var fileData%d = [];\n''' % counter
     if data:
       parts = []

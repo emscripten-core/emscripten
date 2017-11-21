@@ -745,8 +745,6 @@ LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
 LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
 
 EMSCRIPTEN = path_from_root('emscripten.py')
-DEMANGLER = path_from_root('third_party', 'demangler.py')
-NAMESPACER = path_from_root('tools', 'namespacer.py')
 EMCC = path_from_root('emcc')
 EMXX = path_from_root('em++')
 EMAR = path_from_root('emar')
@@ -755,7 +753,6 @@ EMCONFIG = path_from_root('em-config')
 EMLINK = path_from_root('emlink.py')
 EMMAKEN = path_from_root('tools', 'emmaken.py')
 AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
-BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
@@ -1311,6 +1308,9 @@ class ObjectFileInfo(object):
     self.undefs = undefs
     self.commons = commons
 
+  def is_valid(self):
+    return self.returncode == 0
+
 # Due to a python pickling issue, the following two functions must be at top level, or multiprocessing pool spawn won't find them.
 
 def g_llvm_nm_uncached(filename):
@@ -1750,6 +1750,9 @@ class Building(object):
     # returns True.
     def consider_object(f, force_add=False):
       new_symbols = Building.llvm_nm(f)
+      if not new_symbols.is_valid():
+        logging.warning('object %s is not valid, cannot link' % (f))
+        return False
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
       if do_add:
@@ -1862,19 +1865,8 @@ class Building(object):
       # just calculating; return the link arguments which is the final list of files to link
       return link_args
 
-  # Emscripten optimizations that we run on the .ll file
-  @staticmethod
-  def ll_opts(filename):
-    ## Remove target info. This helps LLVM opts, if we run them later
-    #cleaned = filter(lambda line: not line.startswith('target datalayout = ') and not line.startswith('target triple = '),
-    #                 open(filename + '.o.ll', 'r').readlines())
-    #os.unlink(filename + '.o.ll')
-    #open(filename + '.o.ll.orig', 'w').write(''.join(cleaned))
-    pass
-
   # LLVM optimizations
-  # @param opt Either an integer, in which case it is the optimization level (-O1, -O2, etc.), or a list of raw
-  #            optimization passes passed to llvm opt
+  # @param opt A list of LLVM optimization parameters
   @staticmethod
   def llvm_opt(filename, opts, out=None):
     inputs = filename
@@ -1882,10 +1874,11 @@ class Building(object):
       inputs = [inputs]
     else:
       assert out, 'must provide out if llvm_opt on a list of inputs'
-    if type(opts) is int:
-      opts = Building.pick_llvm_opts(opts)
     assert len(opts) > 0, 'should not call opt with nothing to do'
     opts = opts[:]
+    # TODO: disable inlining when needed
+    # if not Building.can_inline():
+    #   opts.append('-disable-inlining')
     #opts += ['-debug-pass=Arguments']
     if not Settings.SIMD:
       opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false']
@@ -2094,27 +2087,6 @@ class Building(object):
       return '-O' + str(min(opt_level, 3))
 
   @staticmethod
-  def pick_llvm_opts(optimization_level):
-    '''
-      It may be safe to use nonportable optimizations (like -OX) if we remove the platform info from the .ll
-      (which we do in do_ll_opts) - but even there we have issues (even in TA2) with instruction combining
-      into i64s. In any case, the handpicked ones here should be safe and portable. They are also tuned for
-      things that look useful.
-
-      An easy way to see LLVM's standard list of passes is
-
-        llvm-as < /dev/null | opt -std-compile-opts -disable-output -debug-pass=Arguments
-    '''
-    assert 0 <= optimization_level <= 3
-    opts = []
-    if optimization_level > 0:
-      if not Building.can_inline():
-        opts.append('-disable-inlining')
-      opts.append('-O%d' % optimization_level)
-    Building.LLVM_OPT_OPTS = opts
-    return opts
-
-  @staticmethod
   def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False):
     ret = js_optimizer.run(filename, passes, NODE_JS, debug, extra_info, just_split, just_concat)
     if output_filename:
@@ -2208,6 +2180,10 @@ class Building(object):
       NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
       NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
                       if name.endswith('.js')]
+      BROWSER_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'browser-externs')
+      BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
+      BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
+                      if name.endswith('.js')]
 
       # Something like this (adjust memory as needed):
       #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
@@ -2220,6 +2196,9 @@ class Building(object):
               #'--variable_map_output_file', filename + '.vars',
               '--js', filename, '--js_output_file', filename + '.cc.js']
       for extern in NODE_EXTERNS:
+          args.append('--externs')
+          args.append(extern)
+      for extern in BROWSER_EXTERNS:
           args.append('--externs')
           args.append(extern)
       if pretty: args += ['--formatting', 'PRETTY_PRINT']
@@ -2527,10 +2506,10 @@ class WebAssembly(object):
       more = x != 0
       if more:
         byte = byte | 128
-      ret.append(chr(byte))
+      ret.append(byte)
       if not more:
         break
-    return ret
+    return bytearray(ret)
 
   @staticmethod
   def make_shared_library(js_file, wasm_file):
@@ -2547,14 +2526,14 @@ class WebAssembly(object):
     f = open(wso, 'wb')
     f.write(wasm[0:8]) # copy magic number and version
     # write the special section
-    f.write('\0') # user section is code 0
+    f.write(b'\0') # user section is code 0
     # need to find the size of this section
-    name = "\06dylink" # section name, including prefixed size
+    name = b"\06dylink" # section name, including prefixed size
     contents = WebAssembly.lebify(mem_size) + WebAssembly.lebify(table_size)
     size = len(name) + len(contents)
-    f.write(''.join(WebAssembly.lebify(size)))
+    f.write(WebAssembly.lebify(size))
     f.write(name)
-    f.write(''.join(contents))
+    f.write(contents)
     f.write(wasm[8:]) # copy rest of binary
     f.close()
     return wso

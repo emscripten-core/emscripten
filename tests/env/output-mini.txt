@@ -2,5 +2,5 @@ USER=web_user
 PATH=/
 PWD=/
 HOME=/home/web_user
-LANG=C
+LANG=C.UTF-8
 _={{{ THIS_PROGRAM }}}

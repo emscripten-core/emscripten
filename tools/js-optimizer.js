@@ -1377,7 +1377,7 @@ function hasSideEffects(node) { // this is 99% incomplete!
       }
       return false;
     }
-    case 'conditional': return hasSideEffects(node[1]) || hasSideEffects(node[2]) || hasSideEffects(node[3]); 
+    case 'conditional': return hasSideEffects(node[1]) || hasSideEffects(node[2]) || hasSideEffects(node[3]);
     default: return true;
   }
 }
@@ -1398,7 +1398,7 @@ function triviallySafeToMove(node, asmData) {
         break;
       default:
         ok = false;
-    }  
+    }
   });
   return ok;
 }
@@ -2701,7 +2701,7 @@ function registerizeHarder(ast) {
         junctions[currEntryJunction].outblocks[nextBasicBlock.id] = 1;
         junctions[id].inblocks[nextBasicBlock.id] = 1;
         blocks.push(nextBasicBlock);
-      } 
+      }
       nextBasicBlock = { id: null, entry: null, exit: null, labels: {}, nodes: [], isexpr: [], use: {}, kill: {} };
       setJunction(id, force);
       return id;
@@ -2826,14 +2826,14 @@ function registerizeHarder(ast) {
       // It walks the tree in execution order, calling the above state-management
       // functions at appropriate points in the traversal.
       var type = node[0];
-  
+
       // Any code traversed without an active entry junction must be dead,
       // as the resulting block could never be entered. Let's remove it.
       if (currEntryJunction === null && junctions.length > 0) {
         morphNode(node, ['block', []]);
         return;
       }
- 
+
       // Traverse each node type according to its particular control-flow semantics.
       switch (type) {
         case 'defun':
@@ -3157,7 +3157,7 @@ function registerizeHarder(ast) {
             break FINDLABELLEDBLOCKS;
           }
           labelledJumps.push([finalNode[3][1], block]);
-        } else { 
+        } else {
           // If label is assigned a non-zero value elsewhere in the block
           // then all bets are off.  This can happen e.g. due to outlining
           // saving/restoring label to the stack.
@@ -3631,7 +3631,7 @@ function registerizeHarder(ast) {
 
     // That's it!
     // Re-construct the function with appropriate variable definitions.
- 
+
     var finalAsmData = {
       params: {},
       vars: {},
@@ -3861,7 +3861,7 @@ function eliminate(ast, memSafe) {
         } else if (type === 'call') {
           usesGlobals = true;
           usesMemory = true;
-          doesCall = true;        
+          doesCall = true;
           ignoreName = true;
         } else {
           ignoreName = false;
@@ -4372,7 +4372,7 @@ function eliminate(ast, memSafe) {
                   // they overlap, we can still proceed with the loop optimization, but we must introduce a
                   // loop temp helper variable
                   var temp = looper + '$looptemp';
-                  assert(!(temp in asmData.vars)); 
+                  assert(!(temp in asmData.vars));
                   for (var i = firstLooperUsage; i <= lastLooperUsage; i++) {
                     var curr = i < stats.length-1 ? stats[i] : last[1]; // on the last line, just look in the condition
                     traverse(curr, function looperToLooptemp(node, type) {
@@ -5730,12 +5730,13 @@ function safeHeap(ast) {
   traverseGeneratedFunctions(ast, function(func) {
     if (func[1] in SAFE_HEAP_FUNCS) return null;
     traverseGenerated(func, function(node, type) {
+      var heap, ptr;
       if (type === 'assign') {
         if (node[1] === true && node[2][0] === 'sub') {
-          var heap = node[2][1][1];
-          var ptr = fixPtr(node[2][2], heap);
+          heap = node[2][1][1];
+          ptr = fixPtr(node[2][2], heap);
           var value = node[3];
-          // SAFE_HEAP_STORE(ptr, value, bytes, isFloat) 
+          // SAFE_HEAP_STORE(ptr, value, bytes, isFloat)
           switch (heap) {
             case 'HEAP8':   case 'HEAPU8': {
               return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 1]]];
@@ -5759,9 +5760,9 @@ function safeHeap(ast) {
         var target = node[1][1];
         if (target[0] === 'H') {
           // heap access
-          var heap = target;
-          var ptr = fixPtr(node[2], heap);
-          // SAFE_HEAP_LOAD(ptr, bytes, isFloat) 
+          heap = target;
+          ptr = fixPtr(node[2], heap);
+          // SAFE_HEAP_LOAD(ptr, bytes, isFloat)
           switch (heap) {
             case 'HEAP8': {
               return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 1], ['num', 0]]], ASM_INT);
@@ -5850,12 +5851,13 @@ function fixPtrSlim(ptr, heap, shell) {
 
 function splitMemory(ast, shell) {
   traverse(ast, function(node, type) {
+    var heap, ptr;
     if (type === 'assign') {
       if (node[2][0] === 'sub' && node[2][1][0] === 'name') {
-        var heap = node[2][1][1];
+        heap = node[2][1][1];
         if (parseHeap(heap)) {
           if (node[1] !== true) assert(0, 'bad assign, split memory cannot handle ' + JSON.stringify(node) + '= to a HEAP');
-          var ptr = fixPtrSlim(node[2][2], heap, shell);
+          ptr = fixPtrSlim(node[2][2], heap, shell);
           var value = node[3];
           switch (heap) {
             case 'HEAP8': return ['call', ['name', 'set8'], [ptr, value]];
@@ -5874,8 +5876,8 @@ function splitMemory(ast, shell) {
       var target = node[1][1];
       if (target[0] === 'H') {
         // heap access
-        var heap = target;
-        var ptr = fixPtrSlim(node[2], heap, shell);
+        heap = target;
+        ptr = fixPtrSlim(node[2], heap, shell);
         switch (heap) {
           case 'HEAP8': return ['call', ['name', 'get8'], [ptr]];
           case 'HEAP16': return ['call', ['name', 'get16'], [ptr]];
@@ -6362,7 +6364,7 @@ function emterpretify(ast) {
                   } else {
                     // we can't trample this reg
                     var l = getFree();
-                    ret[1].push(opcode, l, ret[0], 0);                   
+                    ret[1].push(opcode, l, ret[0], 0);
                     ret[0] = l;
                   }
                 } else {
@@ -6483,7 +6485,7 @@ function emterpretify(ast) {
         case 'conditional': {
           // TODO: handle dropIt
           var type = detectType(node[2], asmData);
-          if ((node[2][0] === 'name' || getNum(node[2]) !== null) && 
+          if ((node[2][0] === 'name' || getNum(node[2]) !== null) &&
               (node[3][0] === 'name' || getNum(node[3]) !== null)) {
             // this is a simple choice between concrete values, no need for control flow here
             var out = assignTo >= 0 ? assignTo : getFree();
@@ -6499,7 +6501,7 @@ function emterpretify(ast) {
           assert(type !== ASM_NONE);
           var ret = makeBranchIfFalse(node[1], otherwise);
           var first = getReg(node[2]);
-          ret = ret.concat(first[1]).concat(makeSet(temp, releaseIfFree(first[0]), type)); 
+          ret = ret.concat(first[1]).concat(makeSet(temp, releaseIfFree(first[0]), type));
           ret.push('BR', 0, exit, 0);
           var second = getReg(node[3]);
           ret.push('marker', otherwise, 0, 0);
@@ -7240,7 +7242,7 @@ function emterpretify(ast) {
           }
         }
       }
-      // remove relative and absolute placeholders, after which every instruction is now in its absolute location, and we can write out absolutes 
+      // remove relative and absolute placeholders, after which every instruction is now in its absolute location, and we can write out absolutes
       for (var i = 0; i < code.length; i += 4) {
         if (code[i] === 'marker') {
           var obj = code[i+1];
@@ -7360,7 +7362,7 @@ function emterpretify(ast) {
           var node = stats[i];
           if (node[0] == 'stat') node = node[1];
           if (node[0] !== 'var' && node[0] !== 'assign') {
-            stats.splice(i, 0, ['stat', 
+            stats.splice(i, 0, ['stat',
               ['conditional', ['name', 'asyncState'], makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], ASM_INT), ['num', 0]]
             ]);
             break;
@@ -7885,7 +7887,7 @@ function JSDCE(ast) {
       for (name in scope) {
         var data = scope[name];
         if (data.use && !data.def) {
-          // this is used from a higher scope, propagate the use down 
+          // this is used from a higher scope, propagate the use down
           ensureData(scopes[scopes.length-1], name).use = 1;
           continue;
         }

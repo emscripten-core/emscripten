@@ -840,7 +840,7 @@ if __name__ == '__main__':
     global global_func_id
     absolute_start = len(all_code) # true absolute starting point of this function (except for eb)
     #print 'processing code', func, absolute_start
-    for i in range(len(code)/4):
+    for i in range(len(code)//4):
       j = i*4
       if code[j] == 'EXTCALL':
         # fix CALL instructions' targets and signatures
@@ -874,7 +874,7 @@ if __name__ == '__main__':
         code[j+1] = global_vars[target]
       elif code[j] == 'absolute-value':
         # put the 32-bit absolute value of an abolute target here (correct except for adding eb to relocate at runtime)
-        absolute_value = absolute_start + absolute_targets[unicode(code[j+1])]
+        absolute_value = absolute_start + absolute_targets[str(code[j+1])]
         #print '  fixing absolute value', code[j+1], absolute_targets[unicode(code[j+1])], absolute_value
         assert absolute_value < (1 << 31)
         assert absolute_value % 4 == 0
@@ -897,7 +897,7 @@ if __name__ == '__main__':
         raise e
       assert len(curr) % 4 == 0, len(curr)
       funcs[func] = len(all_code) # no operation here should change the length
-      if LOG_CODE: print('raw bytecode for %s:' % func, curr, 'insts:', len(curr)/4, file=sys.stderr)
+      if LOG_CODE: print('raw bytecode for %s:' % func, curr, 'insts:', len(curr)//4, file=sys.stderr)
       process_code(func, curr, absolute_targets)
       #print >> sys.stderr, 'processed bytecode for %s:' % func, curr
       all_code += curr
@@ -917,7 +917,7 @@ if __name__ == '__main__':
   assert global_var_id < 256, [global_vars, global_var_id]
 
   def post_process_code(code):
-    for i in range(len(code)/4):
+    for i in range(len(code)//4):
       j = i*4
       if code[j] == 'absolute-funcaddr':
         # put the 32-bit absolute value of an abolute function here
@@ -931,9 +931,9 @@ if __name__ == '__main__':
         relocations.append(j)
 
     # finalize instruction string names to opcodes
-    for i in range(len(code)/4):
+    for i in range(len(code)//4):
       j = i*4
-      if type(code[j]) in (str, unicode):
+      if type(code[j]) in (type(u''), bytes):
         opcode_used[code[j]] = True
         code[j] = ROPCODES[code[j]]
 
@@ -984,13 +984,13 @@ __ATPRERUN__.push(function() {
     n = len(all_code)
     while n % 4 != 0:
       n += 1
-    bytecode_file.write(''.join(map(chr, all_code)))
+    bytecode_file.write(bytearray(all_code))
     for i in range(len(all_code), n):
-      bytecode_file.write(chr(0))
+      bytecode_file.write(bytearray([0]))
     for i in range(len(relocations)):
       bytes = bytify(relocations[i])
       for j in range(4):
-        bytecode_file.write(chr(bytes[j]))
+        bytecode_file.write(bytearray([bytes[j]]))
     bytecode_file.close()
 
     js += ['''

@@ -226,7 +226,7 @@ def run_on_js(filename, gen_hash_info=False):
   chunks = shared.chunkify(funcs, chunk_size)
 
   chunks = [chunk for chunk in chunks if len(chunk) > 0]
-  if DEBUG and len(chunks) > 0: print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(list(map(len, chunks))), '-', min(list(map(len, chunks))), file=sys.stderr)
+  if DEBUG and len(chunks) > 0: print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks)), file=sys.stderr)
   funcs = None
 
   if len(chunks) > 0:
@@ -286,14 +286,8 @@ def run_on_js(filename, gen_hash_info=False):
     funcses.append(split_funcs(open(out_file).read(), False))
   funcs = [item for sublist in funcses for item in sublist]
   funcses = None
-  def sorter(x, y):
-    diff = len(y[1]) - len(x[1])
-    if diff != 0: return diff
-    if x[0] < y[0]: return 1
-    elif x[0] > y[0]: return -1
-    return 0
   if not os.environ.get('EMCC_NO_OPT_SORT'):
-    funcs.sort(sorter)
+    funcs.sort(key=lambda x: (len(x[1]), x[0]), reverse=True)
 
   for func in funcs:
     f.write(func[1])

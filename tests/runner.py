@@ -37,6 +37,26 @@ import tools.shared
 from tools.shared import *
 from tools.line_endings import check_line_endings
 
+# User can specify an environment variable EMSCRIPTEN_BROWSER to force the browser test suite to
+# run using another browser command line than the default system browser.
+# Setting '0' as the browser disables running a browser (but we still see tests compile)
+emscripten_browser = os.environ.get('EMSCRIPTEN_BROWSER')
+if emscripten_browser:
+  cmd = shlex.split(emscripten_browser)
+  def run_in_other_browser(url):
+    Popen(cmd + [url])
+  if EM_BUILD_VERBOSE_LEVEL >= 3:
+    print("using Emscripten browser: " + str(cmd), file=sys.stderr)
+  webbrowser.open_new = run_in_other_browser
+
+# checks if browser testing is enabled
+def has_browser():
+  return emscripten_browser != '0'
+
+# returns what browser is being used (None means the default)
+def get_browser():
+  return emscripten_browser
+
 # Sanity check for config
 
 try:
@@ -248,7 +268,6 @@ class RunnerCore(unittest.TestCase):
       else:
         shutil.copy(ll_file, filename + '.o.ll')
 
-      Building.ll_opts(filename)
       if build_ll_hook:
         need_post = build_ll_hook(filename)
       Building.llvm_as(filename)
@@ -299,7 +318,7 @@ class RunnerCore(unittest.TestCase):
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, extra_emscripten_args=[], post_build=None, js_outfile=True):
 
-    Building.pick_llvm_opts(3) # pick llvm opts here, so we include changes to Settings in the test case code
+    Building.LLVM_OPT_OPTS = ['-O3'] # pick llvm opts here, so we include changes to Settings in the test case code
 
     # Copy over necessary files for compiling the source
     if main_file is None:
@@ -348,7 +367,7 @@ class RunnerCore(unittest.TestCase):
                  filename + '.o')
         if not os.path.exists(filename + '.o'):
           print("Failed to link LLVM binaries:\n\n", output)
-          raise Exception("Linkage error");
+          raise Exception("Linkage error")
 
       # Finalize
       self.prep_ll_run(filename, filename + '.o', build_ll_hook=build_ll_hook)
@@ -535,7 +554,7 @@ class RunnerCore(unittest.TestCase):
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
-    cache_name = name + ','.join([opt for opt in Building.COMPILER_TEST_OPTS if len(opt) < 10]) + '_' + hashlib.md5(str(Building.COMPILER_TEST_OPTS)).hexdigest() + cache_name_extra
+    cache_name = name + ','.join([opt for opt in Building.COMPILER_TEST_OPTS if len(opt) < 10]) + '_' + hashlib.md5(str(Building.COMPILER_TEST_OPTS).encode('utf-8')).hexdigest() + cache_name_extra
 
     valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
@@ -768,6 +787,7 @@ class BrowserCore(RunnerCore):
   @classmethod
   def setUpClass(self):
     super(BrowserCore, self).setUpClass()
+    if not has_browser(): return
     self.browser_timeout = 30
     self.harness_queue = multiprocessing.Queue()
     self.harness_server = multiprocessing.Process(target=harness_server_func, args=(self.harness_queue,))
@@ -778,13 +798,16 @@ class BrowserCore(RunnerCore):
   @classmethod
   def tearDownClass(self):
     super(BrowserCore, self).tearDownClass()
+    if not has_browser(): return
     self.harness_server.terminate()
     print('[Browser harness server terminated]')
-    # On Windows, shutil.rmtree() in tearDown() raises this exception if we do not wait a bit:
-    # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.
-    time.sleep(0.1)
+    if WINDOWS:
+      # On Windows, shutil.rmtree() in tearDown() raises this exception if we do not wait a bit:
+      # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.
+      time.sleep(0.1)
 
   def run_browser(self, html_file, message, expectedResult=None, timeout=None):
+    if not has_browser(): return
     print('[browser launch:', html_file, ']')
     if expectedResult is not None:
       try:
@@ -913,7 +936,7 @@ class BrowserCore(RunnerCore):
             }
             var wrong = Math.floor(total / (img.width*img.height*3)); // floor, to allow some margin of error for antialiasing
 
-            xhr = new XMLHttpRequest();
+            var xhr = new XMLHttpRequest();
             xhr.open('GET', 'http://localhost:8888/report_result?' + wrong);
             xhr.send();
             if (wrong < 10 /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000);

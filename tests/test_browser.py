@@ -1,23 +1,13 @@
 from __future__ import print_function
 import multiprocessing, os, shutil, subprocess, unittest, zlib, webbrowser, time, shlex
-from runner import BrowserCore, path_from_root
+from runner import BrowserCore, path_from_root, has_browser, get_browser
 from tools.shared import *
 
 try:
   from http.server import BaseHTTPRequestHandler, HTTPServer
 except ImportError:
+  # Python 2 compatibility
   from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-
-# User can specify an environment variable EMSCRIPTEN_BROWSER to force the browser test suite to
-# run using another browser command line than the default system browser.
-emscripten_browser = os.environ.get('EMSCRIPTEN_BROWSER')
-if emscripten_browser:
-  cmd = shlex.split(emscripten_browser)
-  def run_in_other_browser(url):
-    Popen(cmd + [url])
-  if EM_BUILD_VERBOSE_LEVEL >= 3:
-    print("using Emscripten browser: " + str(cmd), file=sys.stderr)
-  webbrowser.open_new = run_in_other_browser
 
 def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum):
   class ChunkedServerHandler(BaseHTTPRequestHandler):
@@ -85,6 +75,7 @@ class browser(BrowserCore):
     self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-s', 'USE_SDL=1', '-lGL']) # is the default anyhow
 
   def test_html_source_map(self):
+    if not has_browser(): return self.skip('need a browser')
     cpp_file = os.path.join(self.get_dir(), 'src.cpp')
     html_file = os.path.join(self.get_dir(), 'src.html')
     # browsers will try to 'guess' the corresponding original line if a
@@ -1294,11 +1285,11 @@ keydown(100);keyup(100); // trigger the end
     import random
     self.clear()
     os.mkdir('subdir')
-    open('file1.txt', 'wb').write('0123456789' * (1024*128))
-    open(os.path.join('subdir', 'file2.txt'), 'wb').write('1234567890' * (1024*128))
-    random_data = [chr(random.randint(0,255)) for x in range(1024*128*10 + 1)]
-    random_data[17] = 'X'
-    open('file3.txt', 'wb').write(''.join(random_data))
+    open('file1.txt', 'w').write('0123456789' * (1024*128))
+    open(os.path.join('subdir', 'file2.txt'), 'w').write('1234567890' * (1024*128))
+    random_data = bytearray(random.randint(0,255) for x in range(1024*128*10 + 1))
+    random_data[17] = ord('X')
+    open('file3.txt', 'wb').write(random_data)
 
     # compress in emcc,  -s LZ4=1  tells it to tell the file packager
     print('emcc-normal')
@@ -1652,7 +1643,8 @@ keydown(100);keyup(100); // trigger the end
                        '--preload-file', 'basemap.tga', '--preload-file', 'lightmap.tga', '--preload-file', 'smoke.tga'])
 
   def test_emscripten_api(self):
-    self.btest('emscripten_api_browser.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_third']''', '-lSDL'])
+    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+      self.btest('emscripten_api_browser.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_third']''', '-lSDL'])
 
   def test_emscripten_api2(self):
     def setup():
@@ -1686,16 +1678,19 @@ keydown(100);keyup(100); // trigger the end
     self.btest('emscripten_fs_api_browser2.cpp', '1', args=['-s', "ASSERTIONS=1"])
 
   def test_emscripten_main_loop(self):
-    self.btest('emscripten_main_loop.cpp', '0')
+    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+      self.btest('emscripten_main_loop.cpp', '0', args=args)
 
   def test_emscripten_main_loop_settimeout(self):
-    self.btest('emscripten_main_loop_settimeout.cpp', '1')
+    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+      self.btest('emscripten_main_loop_settimeout.cpp', '1', args=args)
 
   def test_emscripten_main_loop_and_blocker(self):
-    self.btest('emscripten_main_loop_and_blocker.cpp', '0')
+    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+      self.btest('emscripten_main_loop_and_blocker.cpp', '0', args=args)
 
   def test_emscripten_main_loop_setimmediate(self):
-    for args in [[], ['--proxy-to-worker']]:
+    for args in [[], ['--proxy-to-worker'], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
       self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=args)
 
   def test_sdl_quit(self):
@@ -1981,7 +1976,9 @@ void *getBindBuffer() {
     self.btest('gl_error.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL'])
 
   def test_openal_error(self):
-    self.btest('openal_error.c', expected='1')
+    for args in [[], ['--closure', '1']]:
+      print(args)
+      self.btest('openal_error.c', expected='1', args=args)
 
   def test_openal_capture_sanity(self):
     self.btest('openal_capture_sanity.c', expected='0')
@@ -2198,6 +2195,7 @@ void *getBindBuffer() {
       self.btest(path_from_root('tests', 'mmap_file.c'), expected='1', args=['--preload-file', 'data.dat'] + extra_args)
 
   def test_emrun_info(self):
+    if not has_browser(): return self.skip('need a browser')
     result = subprocess.check_output([PYTHON, path_from_root('emrun'), '--system_info', '--browser_info'])
     assert 'CPU' in result
     assert 'Browser' in result
@@ -2207,6 +2205,7 @@ void *getBindBuffer() {
     assert 'Traceback' not in result
 
   def test_emrun(self):
+    if not has_browser(): return self.skip('need a browser')
     Popen([PYTHON, EMCC, path_from_root('tests', 'test_emrun.c'), '--emrun', '-o', 'hello_world.html']).communicate()
     outdir = os.getcwd()
     # We cannot run emrun from the temp directory the suite will clean up afterwards, since the browser that is launched will have that directory as startup directory,
@@ -2214,9 +2213,10 @@ void *getBindBuffer() {
     # before launching.
     os.chdir(path_from_root())
     args = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
-    if emscripten_browser is not None:
+    browser = get_browser()
+    if browser is not None:
       # If EMSCRIPTEN_BROWSER carried command line arguments to pass to the browser, (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun, so strip them out.
-      browser_name = shlex.split(emscripten_browser)[0]
+      browser_name = shlex.split(browser)[0]
       args += ['--browser', browser_name]
     args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
     process = subprocess.Popen(args)
@@ -2951,7 +2951,7 @@ window.close = function() {
           var helloOutside = HelloWorld({ noInitialRun: true }).then(function(hello) {
             setTimeout(function() {
               hello._main();
-              assert(hello === helloOutside); // as we are async, helloOutside must have been set
+              if (hello !== helloOutside) throw 'helloOutside has not been set!'; // as we are async, helloOutside must have been set
             });
           });
         '''),
@@ -3720,3 +3720,9 @@ window.close = function() {
     open('test.html', 'w').write('<script src="test.js"></script>')
     self.run_browser('test.html', None, '/report_result?0')
     assert os.path.exists('test.js') and not os.path.exists('test.worker.js')
+
+  def test_access_file_after_heap_resize(self):
+    open('test.txt', 'w').write('hello from file')
+    open('page.c', 'w').write(self.with_report_result(open(path_from_root('tests', 'access_file_after_heap_resize.c'), 'r').read()))
+    Popen([PYTHON, EMCC, 'page.c', '-s', 'WASM=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '--preload-file', 'test.txt', '-o', 'page.html']).communicate()
+    self.run_browser('page.html', 'hello from file', '/report_result?15')

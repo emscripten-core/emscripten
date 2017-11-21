@@ -28,12 +28,18 @@ from tools.toolchain_profiler import ToolchainProfiler, exit
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
-import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging, urllib
+import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
 from subprocess import PIPE
 from tools import shared, jsrun, system_libs
 from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move
 from tools.response_file import read_response_file
 import tools.line_endings
+
+try:
+  from urllib.parse import quote
+except ImportError:
+  # Python 2 compatibility
+  from urllib import quote
 
 # endings = dot + a suffix, safe to test by  filename.endswith(endings)
 C_ENDINGS = ('.c', '.C', '.i')
@@ -66,10 +72,10 @@ DEFERRED_REPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST')
 # llvm opt level 3, and speed-wise emcc level 2 is already the slowest/most optimizing
 # level)
 LLVM_OPT_LEVEL = {
-  0: 0,
-  1: 1,
-  2: 3,
-  3: 3,
+  0: ['-O0'],
+  1: ['-O1'],
+  2: ['-O3'],
+  3: ['-O3'],
 }
 
 DEBUG = os.environ.get('EMCC_DEBUG')
@@ -469,7 +475,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit(subprocess.call(cmd))
     else:
       only_object = '-c' in cmd
-      for i in reversed(list(range(len(cmd)-1))): # Last -o directive should take precedence, if multiple are specified
+      for i in reversed(range(len(cmd)-1)): # Last -o directive should take precedence, if multiple are specified
         if cmd[i] == '-o':
           if not only_object:
             cmd[i+1] += '.js'
@@ -536,7 +542,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if sys.argv[i].startswith('-o='):
       raise Exception('Invalid syntax: do not use -o=X, use -o X')
 
-  for i in reversed(list(range(len(sys.argv)-1))): # Last -o directive should take precedence, if multiple are specified
+  for i in reversed(range(len(sys.argv)-1)): # Last -o directive should take precedence, if multiple are specified
     if sys.argv[i] == '-o':
       target = sys.argv[i+1]
       sys.argv = sys.argv[:i] + sys.argv[i+2:]
@@ -586,6 +592,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       return filename
     suffix = filename_type_suffix(filename)
     return '' if not suffix else ('.' + suffix)
+
+  def optimizing(opts):
+    return '-O0' not in opts
 
   use_cxx = True
 
@@ -664,6 +673,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         options.js_opts = options.opt_level >= 2
       if options.llvm_opts is None:
         options.llvm_opts = LLVM_OPT_LEVEL[options.opt_level]
+      if type(options.llvm_opts) == int:
+        options.llvm_opts = ['-O%d' % options.llvm_opts]
       if options.memory_init_file is None:
         options.memory_init_file = options.opt_level >= 2
 
@@ -682,6 +693,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             newargs[i] = newargs[i+1] = ''
             assert key != 'WASM_BACKEND', 'do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment'
       newargs = [arg for arg in newargs if arg is not '']
+
+      # Handle aliases in settings flags
+      settings_aliases = {
+          'BINARYEN_MEM_MAX': 'WASM_MEM_MAX',
+          # TODO: change most (all?) other BINARYEN* names to WASM*
+      }
+      def setting_sub(s):
+        key, rest = s.split('=', 1)
+        return '='.join([settings_aliases.get(key, key), rest])
+      settings_changes = map(setting_sub, settings_changes)
 
       # Find input files
 
@@ -869,7 +890,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         key, value = change.split('=', 1)
 
         # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
-        if key in ['TOTAL_STACK', 'TOTAL_MEMORY', 'GL_MAX_TEMP_BUFFER_SIZE', 'SPLIT_MEMORY', 'BINARYEN_MEM_MAX']:
+        if key in ['TOTAL_STACK', 'TOTAL_MEMORY', 'GL_MAX_TEMP_BUFFER_SIZE', 'SPLIT_MEMORY', 'WASM_MEM_MAX']:
           value = str(shared.expand_byte_size_suffixes(value))
 
         original_exported_response = False
@@ -1105,7 +1126,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       else:
         assert shared.Settings.TOTAL_MEMORY % (16*1024*1024) == 0, 'For asm.js, TOTAL_MEMORY must be a multiple of 16MB, was ' + str(shared.Settings.TOTAL_MEMORY)
       assert shared.Settings.TOTAL_MEMORY >= shared.Settings.TOTAL_STACK, 'TOTAL_MEMORY must be larger than TOTAL_STACK, was ' + str(shared.Settings.TOTAL_MEMORY) + ' (TOTAL_STACK=' + str(shared.Settings.TOTAL_STACK) + ')'
-      assert shared.Settings.BINARYEN_MEM_MAX == -1 or shared.Settings.BINARYEN_MEM_MAX % 65536 == 0, 'BINARYEN_MEM_MAX must be a multiple of 64KB, was ' + str(shared.Settings.BINARYEN_MEM_MAX)
+      assert shared.Settings.WASM_MEM_MAX == -1 or shared.Settings.WASM_MEM_MAX % 65536 == 0, 'WASM_MEM_MAX must be a multiple of 64KB, was ' + str(shared.Settings.WASM_MEM_MAX)
 
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
@@ -1133,12 +1154,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS:
           logging.warning('for wasm there is no need to set ELIMINATE_DUPLICATE_FUNCTIONS, the binaryen optimizer does it automatically')
           shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 0
-        # if root was not specified in -s, it might be fixed in ~/.emscripten, copy from there
-        if not shared.Settings.BINARYEN_ROOT:
-          try:
-            shared.Settings.BINARYEN_ROOT = shared.BINARYEN_ROOT
-          except:
-            pass
         # default precise-f32 to on, since it works well in wasm
         # also always use f32s when asm.js is not in the picture
         if ('PRECISE_F32=0' not in settings_changes and 'PRECISE_F32=2' not in settings_changes) or 'asmjs' not in shared.Settings.BINARYEN_METHOD:
@@ -1169,6 +1184,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.BINARYEN_PASSES:
             shared.Settings.BINARYEN_PASSES += ','
           shared.Settings.BINARYEN_PASSES += 'safe-heap'
+        # ensure the binaryen port is available, if we are using it. if we do, then
+        # we need it to build to wasm
+        system_libs.get_port('binaryen', shared.Settings)
 
       # wasm outputs are only possible with a side wasm
       if target.endswith(WASM_ENDINGS):
@@ -1358,7 +1376,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         assert len(temp_files) == len(input_files)
 
         # Optimize source files
-        if options.llvm_opts > 0:
+        if optimizing(options.llvm_opts):
           for pos, (_, input_file) in enumerate(input_files):
             file_ending = filename_type_ending(input_file)
             if file_ending.endswith(SOURCE_ENDINGS):
@@ -1420,6 +1438,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       extra_files_to_link = []
 
+      # link in ports and system libraries, if necessary
       if not LEAVE_INPUTS_RAW and \
          not shared.Settings.BUILD_AS_SHARED_LIB and \
          not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and \
@@ -1487,7 +1506,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # something similar, which we can do with a param to opt
           link_opts += ['-disable-debug-info-type-map']
 
-        if options.llvm_lto >= 2 and options.llvm_opts > 0:
+        if options.llvm_lto is not None and options.llvm_lto >= 2 and optimizing(options.llvm_opts):
           logging.debug('running LLVM opts as pre-LTO')
           final = shared.Building.llvm_opt(final, options.llvm_opts, DEFAULT_FINAL)
           if DEBUG: save_intermediate('opt', 'bc')
@@ -1576,10 +1595,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('source transforms'):
       # Embed and preload files
-      if shared.Settings.SPLIT_MEMORY:
-        options.no_heap_copy = True # copying into the heap is risky when split - the chunks might be too small for the file package!
-
       if len(options.preload_files) + len(options.embed_files) > 0:
+
+        # copying into the heap is risky when split - the chunks might be too small for the file package!
+        if shared.Settings.SPLIT_MEMORY and not options.no_heap_copy:
+          logging.info('Enabling --no-heap-copy because -s SPLIT_MEMORY=1 is being used with file_packager.py (pass --no-heap-copy to suppress this notification)')
+          options.no_heap_copy = True
+
+        # Also, MEMFS is not aware of heap resizing feature in wasm, so if MEMFS and memory growth are used together, force
+        # no_heap_copy to be enabled.
+        if shared.Settings.ALLOW_MEMORY_GROWTH and not options.no_heap_copy:
+          logging.info('Enabling --no-heap-copy because -s ALLOW_MEMORY_GROWTH=1 is being used with file_packager.py (pass --no-heap-copy to suppress this notification)')
+          options.no_heap_copy = True
+
         logging.debug('setting up files')
         file_args = []
         if len(options.preload_files) > 0:
@@ -1653,7 +1681,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.MEM_INIT_METHOD == 2:
             # memory initializer in a string literal
             return "memoryInitializer = '%s';" % shared.JS.generate_string_initializer(membytes)
-          open(memfile, 'wb').write(bytes(bytearray(membytes)))
+          open(memfile, 'wb').write(bytearray(membytes))
           if DEBUG:
             # Copy into temp dir as well, so can be run there too
             shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
@@ -2261,8 +2289,8 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--table-max=-1']
     if shared.Settings.SIDE_MODULE:
       cmd += ['--mem-max=-1']
-    elif shared.Settings.BINARYEN_MEM_MAX >= 0:
-      cmd += ['--mem-max=' + str(shared.Settings.BINARYEN_MEM_MAX)]
+    elif shared.Settings.WASM_MEM_MAX >= 0:
+      cmd += ['--mem-max=' + str(shared.Settings.WASM_MEM_MAX)]
     if shared.Settings.LEGALIZE_JS_FFI != 1:
       cmd += ['--no-legalize-javascript-ffi']
     if shared.Building.is_wasm_only():
@@ -2359,10 +2387,10 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
       if DEBUG: save_intermediate('postclean', 'js')
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
-    f = open(final, 'rb')
+    f = open(final, 'r')
     js = f.read()
     f.close()
-    f = open(final, 'wb')
+    f = open(final, 'w')
     for target, replacement_string, should_embed in [
       (wasm_text_target, shared.FilenameReplacementStrings.WASM_TEXT_FILE, True),
       (wasm_binary_target, shared.FilenameReplacementStrings.WASM_BINARY_FILE, True),
@@ -2383,18 +2411,19 @@ def modularize(final):
   src = open(final).read()
   final = final + '.modular.js'
   f = open(final, 'w')
-  f.write('var ' + shared.Settings.EXPORT_NAME + ' = function(' + shared.Settings.EXPORT_NAME + ') {\n')
-  f.write('  ' + shared.Settings.EXPORT_NAME + ' = ' + shared.Settings.EXPORT_NAME + ' || {};\n')
-  f.write('  var Module = ' + shared.Settings.EXPORT_NAME + ';\n') # included code may refer to Module (e.g. from file packager), so alias it
-  f.write('\n')
-  f.write(src)
-  f.write('\n')
-  f.write('  return ' + shared.Settings.EXPORT_NAME + ';\n')
-  f.write('};\n')
-  # Export the function if this is for Node (or similar UMD-style exporting), otherwise it is lost.
-  f.write('if (typeof module === "object" && module.exports) {\n')
-  f.write("  module['exports'] = " + shared.Settings.EXPORT_NAME + ';\n')
-  f.write('};\n')
+  f.write('''var %(EXPORT_NAME)s = function(%(EXPORT_NAME)s) {
+  %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
+  var Module = %(EXPORT_NAME)s; // included code may refer to Module (e.g. from file packager), so alias it
+
+%(src)s
+
+  return %(EXPORT_NAME)s;
+};
+// Export the function if this is for Node (or similar UMD-style exporting), otherwise it is lost.
+if (typeof module === "object" && module.exports) {
+  module['exports'] = %(EXPORT_NAME)s;
+};
+''' % {"EXPORT_NAME": shared.Settings.EXPORT_NAME, "src": src})
   f.close()
   if DEBUG: save_intermediate('modularized', 'js')
   return final
@@ -2568,6 +2597,8 @@ def generate_html(target, options, js_target, target_basename,
       script.inline = f.read() + script.inline
       f.close()
 
+    script.inline = 'var ASSERTIONS = %s;\n%s' % (shared.Settings.ASSERTIONS, script.inline)
+
   # inline script for SINGLE_FILE output
   if shared.Settings.SINGLE_FILE:
     js_contents = script.inline or ''
@@ -2582,7 +2613,7 @@ def generate_html(target, options, js_target, target_basename,
   html = open(target, 'wb')
   html_contents = shell.replace('{{{ SCRIPT }}}', script.replacement())
   html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', options.output_eol)
-  html.write(html_contents)
+  html.write(html_contents.encode('utf-8'))
   html.close()
 
 
@@ -2660,7 +2691,7 @@ class ScriptSource(object):
     """Returns the script tag to replace the {{{ SCRIPT }}} tag in the target"""
     assert (self.src or self.inline) and not (self.src and self.inline)
     if self.src:
-      return '<script async type="text/javascript" src="%s"></script>' % urllib.quote(self.src)
+      return '<script async type="text/javascript" src="%s"></script>' % quote(self.src)
     else:
       return '<script>\n%s\n</script>' % self.inline
 
