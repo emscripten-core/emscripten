@@ -2152,7 +2152,7 @@ The current type of b is: 9
 
       def check(result, err):
         result = result.replace('\n \n', '\n') # remove extra node output
-        return hashlib.sha1(result).hexdigest()
+        return hashlib.sha1(result.encode('utf-8')).hexdigest()
 
       self.do_run_from_file(src, output, output_nicerizer = check)
 
@@ -4196,7 +4196,7 @@ def process(filename):
         printf("*%d\n", c);
       }
     '''
-    open('file_with_byte_234.txt', 'wb').write('\xea')
+    open('file_with_byte_234.txt', 'wb').write(b'\xea')
     self.emcc_args += ['--embed-file', 'file_with_byte_234.txt']
     self.do_run(src, '*234\n')
 
@@ -4219,7 +4219,7 @@ def process(filename):
         return 0;
       }
     '''
-    open('eol.txt', 'wb').write('\n')
+    open('eol.txt', 'wb').write(b'\n')
     self.emcc_args += ['--embed-file', 'eol.txt']
     self.do_run(src, 'SUCCESS\n')
 
@@ -6768,6 +6768,11 @@ Module.printErr = Module['printErr'] = function(){};
 
 Success!
 ''')
+    # test closure compiler as well
+    if self.run_name == 'asm2':
+      print('closure')
+      self.emcc_args += ['--closure', '1', '-g1'] # extra testing
+      self.do_run_in_out_file_test('tests', 'emscripten_log', 'emscripten_log_with_closure')
 
   def test_float_literals(self):
     self.do_run_in_out_file_test('tests', 'test_float_literals')
