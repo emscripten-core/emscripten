@@ -702,7 +702,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       def setting_sub(s):
         key, rest = s.split('=', 1)
         return '='.join([settings_aliases.get(key, key), rest])
-      settings_changes = map(setting_sub, settings_changes)
+      settings_changes = list(map(setting_sub, settings_changes))
 
       # Find input files
 
