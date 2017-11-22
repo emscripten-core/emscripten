@@ -1,7 +1,7 @@
 # For travis
 FROM buildpack-deps:xenial
 SHELL ["/bin/bash", "-c"]
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive LANG=C.UTF-8
 RUN mkdir -p /root/emscripten/
 COPY . /root/emscripten/
 
