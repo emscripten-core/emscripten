@@ -2524,6 +2524,38 @@ class WebAssembly(object):
     f.close()
     return wso
 
+# https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess
+class Py2CompletedProcess:
+  def __init__(self, process, args):
+    (self.stdout, self.stderr) = process.communicate()
+    self.args = args
+    self.returncode = process.returncode
+
+  def __repr__(self):
+    _repr = ['args=%s, returncode=%s' % (self.args, self.returncode)]
+    if self.stdout is not None:
+      _repr += 'stdout=' + self.stdout
+    if self.stderr is not None:
+      _repr += 'stderr=' + self.stderr
+    return 'CompletedProcess(%s)' % ', '.join(_repr)
+
+  def check_returncode(self):
+    if self.returncode is not 0:
+      raise subprocess.CalledProcessError(returncode=self.returncode, cmd=self.args, output=self.stdout)
+
+def run_base(cmd, check=False, *args, **kw):
+  if hasattr(subprocess, "run"):
+    return subprocess.run(cmd, check=check, *args, **kw)
+
+  # Python 2 compatibility: Introduce Python 3 subprocess.run-like behavior
+  result = Py2CompletedProcess(Popen(cmd, *args, **kw), cmd)
+  if check:
+    result.check_returncode()
+  return result
+
+def run_process(cmd, universal_newlines=True, *args, **kw):
+  return run_base(cmd, universal_newlines=universal_newlines, *args, **kw)
+
 def execute(cmd, *args, **kw):
   try:
     cmd[0] = Building.remove_quotes(cmd[0])
