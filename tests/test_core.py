@@ -1611,7 +1611,7 @@ int main(int argc, char **argv) {
   # Tests various different ways to invoke the MAIN_THREAD_EM_ASM(), MAIN_THREAD_EM_ASM_INT() and MAIN_THREAD_EM_ASM_DOUBLE() macros.
   # This test is identical to test_em_asm_2, just search-replaces EM_ASM to MAIN_THREAD_EM_ASM on the test file. That way if new
   # test cases are added to test_em_asm_2.cpp for EM_ASM, they will also get tested in MAIN_THREAD_EM_ASM form.
-  @@no_wasm_backend
+  @no_wasm_backend
   def test_main_thread_em_asm(self):
     src = open(path_from_root('tests', 'core', 'test_em_asm_2.cpp'), 'r').read()
     test_file = 'src.cpp'
