@@ -2322,6 +2322,27 @@ seeked= file.
     assert unicode_name in out, out
     print(len(err))
 
+  def test_file_packager_standalone(self):
+    open('input.txt', 'w').write('abcd')
+    subprocess.check_call([PYTHON, FILE_PACKAGER, 'test.data', '--embed', 'input.txt'], stdout=open('data.js', 'w'))
+    open('src.cpp', 'w').write(r'''
+      #include <stdio.h>
+      int main() {
+        int data2;
+        FILE* f = fopen("input.txt", "rb");
+        fread(&data2, 4, 1, f);
+        printf("read: %d\n", data2);
+      }
+    ''')
+    for args in [[], ['-O2', '--closure', '1']]:
+      print(args)
+      Popen([PYTHON, EMCC, 'src.cpp'] + args).communicate()
+      # combine the standalone file packager output with the emcc output manually
+      open('combined.js', 'w').write(
+        open('data.js').read() + '\n' + open('a.out.js').read()
+      )
+      self.assertContained('read: 1684234849\n', run_js('combined.js'))
+
   def test_crunch(self):
     try:
       print('Crunch is located at ' + CRUNCH)
