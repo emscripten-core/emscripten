@@ -203,44 +203,25 @@ var cwrap, ccall, ccall_varargs;
     return ret;
   }
 
-  // C calling interface for varargs. Like ccall, but with a varargs specifier
-  // in the last argTypes argument, taking one of two forms:
+  // C calling interface for varargs.
+  // Like ccall, but with a varargs array in the last argTypes argument
+  // containing 2 strings [nonrepArr, repArr] where:
+  //   nonrepArr: an string of non-repeating specifiers "n1n2,...nn"
+  //   repArr:    an string of repeating specifiers "r1r2...rn"
+  // valid specifiers are "s","i","u","d"
   //
-  // 1. a string of the form "[c1c2...]", where cn can be:
-  //   "s" for string, "i" for integer,  "u" for uint, "d" for "double",
-  //   c+ => a single-item repeat pattern if varargs > number of items, or
-  //   (c1c2...)+ => multiple-item repeat pattern, c can be s,i,u,d
+  // ex: pass string, followed by a repeating series of double,int pairs:
+  // Module.ccall_varargs("miniprintf", "null", ["string", ["s", "di"]], ["%s %f %d %s %f %d %s\n", "foo", 1.234, 2, "foo1", 3.14, -100, "goo1"])
   //
-  // Examples:
-  // "[i]"      => an int arg
-  // "[id]"     => an int arg followed by a double arg
-  // "[d+]"     => repeated double args
-  // "[id+]"    => an int arg followed by repeated double args
-  // "[i(ds)+]" => an int arg, then alternating double and string args
-  //
-  // # pass string, followed by a repeating series of double,int pairs:
-  // Module.ccall_varargs("miniprintf", "null", ["string", "[s(di)+]"], ["%s %f %d %f %d\n", "foo", 1.234, 2, 3.14, -100])
-  //
-  // 2. an array containing 2 arrays of the form [nonrepArr, repArr] where:
-  //   nonrepArr: an array of non-repeating specifiers [c1, c2, ...]
-  //   repArr:    an arrays of repeating specifiers [c1, c2, ...]
-  // where cn specifiers are "s","i","u","d", as above
-  //
-  // # pass string, followed by a repeating series of double,int pairs:
-  // Module.ccall_varargs("miniprintf", "null", ["string", [["s"], ["d", "i"]]], ["%s %f %d %s %f %d %s\n", "foo", 1.234, 2, "foo1", 3.14, -100, "goo1"])
-  //
-  // The second form (the compiled version of the first form) can be used
-  // when ccall_varargs() is called repeatedly with the same varargs spec,
-  // e.g. call_varargs() over all elements in a large 2D array.
   //
   ccall_varargs = function ccallVarargsFunc(ident, returnType, argTypes, args, opts) {
     var func = getCFunc(ident);
     var cArgs = [];
     var stack = 0;
     var ret, converter;
-    var i, j, k;
+    var i, j;
     var maxDeclaredArgs, lastInputArg;
-    var vSpecifierArr, vSpecifiers=[[], []], vSpecifiersLen;
+    var vSpecifiers=[[], []], vSpecifiersLen;
     var vArgs=[], vArgsLen;
     var vStack, vStackCur;
     var vToStack = function(item, offset, type) {
@@ -272,37 +253,16 @@ var cwrap, ccall, ccall_varargs;
     if (args) {
       lastInputArg = argTypes[argTypes.length-1];
       // look for varargs specifier in final type argument
-      // optimization: allow direct passing of specification array
       if (typeof lastInputArg === "object") {
 	  // array of non-repeating args
-	  vSpecifiers[0] = lastInputArg[0];
+	  if( lastInputArg[0] ){
+	      vSpecifiers[0] = lastInputArg[0].split("");
+	  }
 	  // array of repeating args
-	  vSpecifiers[1] = lastInputArg[1];
+	  if( lastInputArg[1] ){
+	      vSpecifiers[1] = lastInputArg[1].split("");
+	  }
           maxDeclaredArgs = argTypes.length-1;
-      } else if (lastInputArg.charAt(0) === "[") {
-	// string of data type specifications
-	vSpecifierArr = argTypes[argTypes.length-1].split("");
-        j = 0;
-        k = 0;
-	for (i = 1; i < vSpecifierArr.length - 1; i++) {
-          if (vSpecifierArr[i] === "(") {
-            k = 1;
-            j = 0;
-            continue;
-          } else if (vSpecifierArr[i] === ")") {
-            continue;
-          } else if (vSpecifierArr[i] === "+") {
-            if (k === 0) {
-              k = 1;
-              j = 0;
-              vSpecifiers[k][j++] = vSpecifiers[0].pop();
-            }
-            continue;
-          }
-          vSpecifiers[k][j++] = vSpecifierArr[i];
-        }
-        // for varargs, process declared args up to the start of varargs
-        maxDeclaredArgs = argTypes.length-1;
       } else {
 	// no varargs, process all args as declared args
 	maxDeclaredArgs = args.length;
