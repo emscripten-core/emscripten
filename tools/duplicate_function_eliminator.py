@@ -9,7 +9,7 @@ from tools.js_optimizer import *
 
 DUPLICATE_FUNCTION_ELIMINATOR = path_from_root('tools', 'eliminate-duplicate-functions.js')
 
-def process_shell(js, js_engine, shell, equivalentfn_hash_info=None):
+def process_shell(js_engine, shell, equivalentfn_hash_info=None):
   suffix = '.eliminatedupes'
 
   with temp_files.get_file(suffix + '.js') as temp_file:
@@ -197,7 +197,7 @@ def run_on_js(filename, gen_hash_info=False):
     js = js[start_funcs + len(start_funcs_marker):end_funcs]
 
     # we assume there is a maximum of one new name per line
-    asm_shell_pre, asm_shell_post = process_shell(js, js_engine, asm_shell, equivalentfn_hash_info).split('EMSCRIPTEN_FUNCS();');
+    asm_shell_pre, asm_shell_post = process_shell(js_engine, asm_shell, equivalentfn_hash_info).split('EMSCRIPTEN_FUNCS();')
     asm_shell_pre = re.sub(r'(\S+\s*=\s*)ZERO\$DOT\$ZERO', r'\g<1>0.0', asm_shell_pre)
     asm_shell_post = asm_shell_post.replace('});', '})');
     pre += asm_shell_pre + '\n' + start_funcs_marker
