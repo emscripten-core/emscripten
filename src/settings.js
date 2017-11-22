@@ -795,6 +795,8 @@ var PTHREAD_HINT_NUM_CORES = 4;
 
 var PTHREADS_PROFILING = 0; // True when building with --threadprofiler
 
+var PTHREADS_DEBUG = 0; // If true, add in debug traces for diagnosing pthreads related issues.
+
 var MAX_GLOBAL_ALIGN = -1; // received from the backend
 
 // Duplicate function elimination. This coalesces function bodies that are

@@ -312,7 +312,7 @@ File system API
 		#include <emscripten.h>
 
 		int main() {
-		  EM_ASM(
+		  MAIN_THREAD_EM_ASM(
 			FS.writeFile('file', 'foobar');
 			FS.symlink('file', 'link');
 			console.log(FS.readlink('link'));
@@ -341,7 +341,7 @@ File system API
 		#include <emscripten.h>
 
 		int main() {
-		  EM_ASM(
+		  MAIN_THREAD_EM_ASM(
 			FS.writeFile('file', 'foobar');
 			console.log(FS.stat('file'));
 		  );
@@ -459,7 +459,7 @@ File system API
 		#include <emscripten.h>
 
 		int main() {
-		  EM_ASM(
+		  MAIN_THREAD_EM_ASM(
 			FS.writeFile('file', 'foobar');
 			FS.truncate('file', 3);
 			console.log(FS.readFile('file', { encoding: 'utf8' }));
