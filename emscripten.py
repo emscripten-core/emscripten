@@ -711,7 +711,7 @@ def all_asm_consts(metadata):
   for k, v in metadata['asmConsts'].items():
     const = v[0].encode('utf-8')
     sigs = v[1]
-    call_types = v[2]
+    call_types = v[2] if len(v) >= 3 else None
     const = trim_asm_const_body(const)
     const = '{ ' + const + ' }'
     args = []
@@ -721,7 +721,7 @@ def all_asm_consts(metadata):
     const = 'function(' + ', '.join(args) + ') ' + const
     asm_consts[int(k)] = const
     all_sigs += sigs
-    all_call_types += call_types
+    if call_types: all_call_types += call_types
   return asm_consts, all_sigs, all_call_types
 
 
