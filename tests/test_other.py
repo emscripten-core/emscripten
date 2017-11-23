@@ -4828,7 +4828,7 @@ main(const int argc, const char * const * const argv)
     assert no_size < 360000
 
   def test_no_nuthin(self):
-    print('part one: check NO_FILESYSTEM is automatically set, and effective')
+    # check NO_FILESYSTEM is automatically set, and effective
     def test(opts, ratio, absolute):
       print('opts, ratio, absolute:', opts, ratio, absolute)
       def get_size(name):
@@ -4851,13 +4851,14 @@ main(const int argc, const char * const * const argv)
       if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
         assert sizes['no_nuthin'] < 0.975*sizes['no_fs']
       assert sizes['no_fs_manual'] < sizes['no_fs'] # manual can remove a tiny bit more
-    test([], 0.75, 360000)
+    test(['-s', 'ASSERTIONS=0'], 0.75, 360000) # we don't care about code size with assertions
     test(['-O1'], 0.66, 210000)
     test(['-O2'], 0.50, 70000)
     test(['-O3', '--closure', '1'], 0.60, 50000)
     test(['-O3', '--closure', '2'], 0.60, 41000) # might change now and then
 
-    print('part two: focus on EXPORTED_RUNTIME_METHODS effects, on hello_world_em_asm')
+  def test_no_nuthin_2(self):
+    # focus on EXPORTED_RUNTIME_METHODS effects, on hello_world_em_asm
     def test(opts, ratio, absolute):
       print('opts, ratio, absolute:', opts, ratio, absolute)
       def get_size(name):
@@ -4876,7 +4877,7 @@ main(const int argc, const char * const * const argv)
       assert sizes['no_nuthin'] < absolute
       if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
         assert sizes['no_nuthin'] < 0.975*sizes['normal']
-    test([], 1, 220000)
+    test(['-s', 'ASSERTIONS=0'], 1, 220000) # we don't care about code size with assertions
     test(['-O1'], 1, 215000)
     test(['-O2'], 0.99, 75000)
     test(['-O3', '--closure', '1'], 0.975, 50000)
