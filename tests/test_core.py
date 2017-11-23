@@ -4412,7 +4412,7 @@ def process(filename):
   def test_utf(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # only node handles utf well
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
-
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['getValue', 'setValue']
     self.do_run_in_out_file_test('tests', 'core', 'test_utf')
 
   def test_utf32(self):
