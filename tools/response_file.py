@@ -44,3 +44,15 @@ def read_response_file(response_filename):
     logging.warning('Read response file ' + response_filename + ': ' + str(args))
 
   return args
+
+# Expands response file recursively.
+# Returns contents of all response files as list of file names.
+def expand_response_files(args):
+  result = []
+  for arg in args:
+    if arg.startswith('@'):
+      rsp_content = read_response_file(arg)
+      result.extend(expand_response_files(rsp_content))
+    else:
+      result.append(arg)
+  return result

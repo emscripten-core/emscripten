@@ -1,12 +1,4 @@
 '''
-Recurrent response file traverser.
-
-Extends each file name from a file list with it's full path hash and copies original file to hashed file.
-Response files (i.e. whose name start with @ and who contain a list of other files) are processed recursively.
-
-Modifies response files content with hashed file names.
-Also returns list of copied files.
-
 Ar archivers (ar, llvm-ar) include only basename of their members whithout a full path,
 which leads to duplicate entries in an archive. When linking with *.a file containing duplicate entries,
 only the last one is taken into account, leading to unresolved external symbols.
@@ -16,6 +8,7 @@ when we archive files with same basenames from different directories.
 
 
 import hashlib, os, shutil
+from response_file import create_response_file, expand_response_files
 
 # appends absolute path hash to file_name
 def append_hash(file_name):
@@ -40,69 +33,18 @@ def find_unused_filename(file_name):
     nonce += 1
   return file_name
 
-# Append hashes to all files referenced in file rsp_filename.
-# Original files are always copied to hashed files, as they could be altered since last copying.
-# Recursively processes other rsp files referenced in rsp_filename.
-def append_hash_to_rsp_file(rsp_filename):
-  with open(rsp_filename, 'r') as f:
-    rsp_content = f.read().replace('\n', '')
-  (hashed_names, copied_names) = append_hash_to_file_list(rsp_content_as_list(rsp_content))
-  with open(rsp_filename, 'w') as f:
-    f.write(' '.join(hashed_names))
-  return copied_names
-
-# parse response file content according to @file section from man ar(1)
-def rsp_content_as_list(rsp_content):
-  result = []
-  current = ''
-  verbatim = False
-  skip = False
-  for i in range(len(rsp_content)):
-    if skip:
-      skip = False
-      continue
-    if rsp_content[i] == '\\':
-      current += rsp_content[i + 1]
-      skip = True
-      continue
-    if rsp_content[i] == '"':
-      if verbatim:
-        result.append(current)
-        current = ''
-      verbatim = not verbatim
-      continue
-    if (rsp_content[i] == ' ') and (not verbatim):
-      if len(current) > 0:
-        result.append(current)
-        current = ''
-      continue
-    current += rsp_content[i]
-  if len(current) > 0:
-    result.append(current)
-  return result
-
-# Append hash to each file name from file_list.
-# Recursively call append_hash_to_rsp_file on each rsp file from file_list.
-def append_hash_to_file_list(file_list):
-  hashed_names = []
-  copied_names = []
-  for file_name in file_list:
-    if file_name.startswith('@'):
-      tobehashed_file_name = file_name[1:]
-    else:
-      tobehashed_file_name = file_name
-    # prevent any existing files from overwriting
-    hashed_name = find_unused_filename(append_hash(tobehashed_file_name))
-    full_hashed_name = os.path.abspath(hashed_name)
-    if file_name.startswith('@'): # prepend @ back to hashed file name
-      hashed_name = '@%s' % (hashed_name)
-    try: # it is ok to fail here, we just don't get hashing
-      shutil.copyfile(tobehashed_file_name, full_hashed_name)
-      hashed_names.append(hashed_name)
-      copied_names.append(full_hashed_name) # delete copied files only
-    except:
-      hashed_names.append(file_name)
-    if file_name.startswith('@'):
-      copied_names.extend(append_hash_to_rsp_file(hashed_names[-1][1:]))
-  hashed_names = map(lambda fname: '"%s"' % (fname) if ' ' in fname else fname, hashed_names)
-  return (hashed_names, copied_names)
+# Recursively expands response files from argument list into a flattened list of files.
+# Appends full path hashes to file names from flattened list and copies original files to hashed ones.
+# All hashed files are added to temp file list and will be automatically deleted after process finishes.
+# Writes a temporary response file with hashed file names. Returns temporary response file name.
+def make_hashed_response_file(args, directory):
+  from . import shared
+  rsp_content = expand_response_files(args)
+  hashed_rsp_content = map(lambda fn:  append_hash(fn), rsp_content)
+  dst_filenames = []
+  for p in zip(rsp_content, hashed_rsp_content):
+    dst_name = find_unused_filename(p[1])
+    shutil.copyfile(p[0], dst_name)
+    dst_filenames.append(dst_name)
+    shared.configuration.get_temp_files().note(dst_name)
+  return create_response_file(dst_filenames, directory)

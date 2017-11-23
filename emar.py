@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
 import os, subprocess, sys
 from tools import shared
-from tools.append_hashes import append_hash_to_file_list
+from tools.append_hashes import make_hashed_response_file
 
 #
 # Main run() function
@@ -29,7 +29,6 @@ def run():
   if DEBUG:
     print('emar:', sys.argv, '  ==>  ', newargs, file=sys.stderr)
 
-  to_delete = []
   if len(newargs) > 2:
     if 'r' in newargs[1]:
       # we are adding files to the archive.
@@ -40,16 +39,14 @@ def run():
       i = 1
       while i < len(newargs):
         if newargs[i].endswith('.a'):
-          (hashed_names, to_delete) = append_hash_to_file_list(newargs[(i + 1):])
-          newargs[(i + 1):] = hashed_names
-          break
+          rsp_filename = '%s%s' % ('@', make_hashed_response_file(newargs[(i + 1):], os.getcwd()))
+          newargs = newargs[0:(i + 1)]
+          newargs.append(rsp_filename)
         i += 1
 
   if DEBUG:
     print('Invoking ' + str(newargs))
   subprocess.call(newargs, stdin=sys.stdin)
-  for d in to_delete:
-    shared.try_delete(d)
 
 if __name__ == '__main__':
   run()
