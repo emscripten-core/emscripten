@@ -6680,7 +6680,10 @@ Module.printErr = Module['printErr'] = function(){};
         else:
           return data
 
-      data = encode_utf8(json.load(open(map_filename, 'r')))
+      data = json.load(open(map_filename, 'r'))
+      if str is bytes:
+        # Python 2 compatibility
+        data = encode_utf8(data)
       if hasattr(data, 'file'):
         # the file attribute is optional, but if it is present it needs to refer
         # the output file.
@@ -6691,9 +6694,12 @@ Module.printErr = Module['printErr'] = function(){};
         # the sourcesContent attribute is optional, but if it is present it
         # needs to containt valid source text.
         self.assertTextDataIdentical(src, data['sourcesContent'][0])
-      mappings = encode_utf8(json.loads(jsrun.run_js(
+      mappings = json.loads(jsrun.run_js(
         path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
-        tools.shared.NODE_JS, [map_filename])))
+        tools.shared.NODE_JS, [map_filename]))
+      if str is bytes:
+        # Python 2 compatibility
+        mappings = encode_utf8(mappings)
       seen_lines = set()
       for m in mappings:
         self.assertPathsIdentical(src_filename, m['source'])

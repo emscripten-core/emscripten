@@ -521,7 +521,10 @@ class RunnerCore(unittest.TestCase):
   def assertContained(self, values, string, additional_info=''):
     if type(values) not in [list, tuple]: values = [values]
     for value in values:
-      if not isinstance(value, bytes): string = string.decode('UTF-8') # If we have any non-ASCII chars in the expected string, treat the test string from ASCII as UTF8 as well.
+      if str is bytes and type(value) is unicode: 
+        # Python 2 compatibility:
+        # If we have any non-ASCII chars in the expected string, treat the test string from ASCII as UTF8 as well.
+        string = string.decode('utf-8')
       if callable(string): string = string()
       if value in string: return # success
     raise Exception("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
