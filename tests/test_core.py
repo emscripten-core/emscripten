@@ -5936,6 +5936,20 @@ def process(filename):
       self.emcc_args += ['--closure', '1']
       self.do_run_in_out_file_test('tests', 'core', 'test_ccall', post_build=post)
 
+  def test_getValue_setValue(self):
+    # these used to be exported, but no longer are by default
+    def test(output_prefix=''):
+      self.do_run(open(path_from_root('tests', 'core', 'getValue_setValue.cpp')).read(),
+                  open(path_from_root('tests', 'core', 'getValue_setValue' + output_prefix + '.txt')).read())
+    # see that with assertions, we get a nice error message
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = []
+    Settings.ASSERTIONS = 1
+    test('_assert')
+    Settings.ASSERTIONS = 0
+    # see that when we export them, things work
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['getValue', 'setValue']
+    test()
+
   @no_wasm_backend('DEAD_FUNCTIONS elimination is done by the JSOptimizer')
   def test_dead_functions(self):
     src = r'''

@@ -805,7 +805,7 @@ function demangle(func) {
       stringToUTF8(s, buf, len);
       var status = _malloc(4);
       var ret = __cxa_demangle_func(buf, 0, 0, status);
-      if (getValue(status, 'i32') === 0 && ret) {
+      if ({{{ makeGetValue('status', '0', 'i32') }}} === 0 && ret) {
         return Pointer_stringify(ret);
       }
       // otherwise, libcxxabi failed

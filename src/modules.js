@@ -272,11 +272,17 @@ EXPORTED_RUNTIME_METHODS = unset(EXPORTED_RUNTIME_METHODS_SET);
 EXTRA_EXPORTED_RUNTIME_METHODS = [];
 
 function maybeExport(name) {
+  // if requested to be exported, export it
   if (name in EXPORTED_RUNTIME_METHODS_SET) {
     return 'Module["' + name + '"] = ' + name + ';';
-  } else {
-    return '';
   }
+  // do not export it. but if ASSERTIONS, emit a
+  // stub with an error, so the user gets a message
+  // if it is used, that they should export it
+  if (ASSERTIONS) {
+    return 'Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS.") };';
+  }
+  return '';
 }
 
 var PassManager = {
