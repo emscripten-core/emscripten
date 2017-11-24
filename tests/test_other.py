@@ -4896,14 +4896,16 @@ main(const int argc, const char * const * const argv)
     def test(opts, has, not_has):
       print(opts, has, not_has)
       self.clear()
-      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')] + opts).communicate()
+      # check without assertions, as with assertions we add stubs for the things we remove (which
+      # print nice error messages)
+      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASSERTIONS=0'] + opts).communicate()
       self.assertContained('hello, world!', run_js('a.out.js'))
       src = open('a.out.js').read()
       self.assertContained(has, src)
       self.assertNotContained(not_has, src)
 
     test([], 'Module["intArray', 'Module["waka')
-    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]'], 'Module["print', 'Module["intArray')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]'], '', 'Module["intArray')
     test(['-s', 'EXPORTED_RUNTIME_METHODS=["intArrayToString"]'], 'Module["intArray', 'Module["waka')
     test(['-s', 'EXPORTED_RUNTIME_METHODS=[]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["intArrayToString"]'], 'Module["intArray', 'Module["waka')
 
