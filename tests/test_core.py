@@ -5938,15 +5938,21 @@ def process(filename):
 
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
-    def test(output_prefix=''):
+    def test(output_prefix='', args=[]):
+      old = self.emcc_args[:]
+      self.emcc_args += args
       self.do_run(open(path_from_root('tests', 'core', 'getValue_setValue.cpp')).read(),
                   open(path_from_root('tests', 'core', 'getValue_setValue' + output_prefix + '.txt')).read())
+      self.emcc_args = old
+    # see that direct usage (not on module) works. we don't export, but the use
+    # keeps it alive through JSDCE
+    test(args=['-DDIRECT'])
     # see that with assertions, we get a nice error message
     Settings.EXTRA_EXPORTED_RUNTIME_METHODS = []
     Settings.ASSERTIONS = 1
     test('_assert')
     Settings.ASSERTIONS = 0
-    # see that when we export them, things work
+    # see that when we export them, things work on the module
     Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['getValue', 'setValue']
     test()
 
