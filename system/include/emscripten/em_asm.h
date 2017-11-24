@@ -32,6 +32,12 @@ extern "C" {
 void emscripten_asm_const(const char* code);
 int emscripten_asm_const_int(const char* code, ...);
 double emscripten_asm_const_double(const char* code, ...);
+
+int emscripten_asm_const_int_sync_on_main_thread(const char* code, ...);
+double emscripten_asm_const_double_sync_on_main_thread(const char* code, ...);
+
+void emscripten_asm_const_async_on_main_thread(const char* code, ...);
+
 #ifdef __cplusplus
 }
 #endif
@@ -43,14 +49,38 @@ void emscripten_asm_const(const char* code);
 // then wrap the whole code block inside parentheses (). See tests/core/test_em_asm_2.cpp
 // for example code snippets.
 
-// Runs the given JavaScript code, and returns nothing back.
+// Runs the given JavaScript code on the calling thread (synchronously), and returns no value back.
 #define EM_ASM(code, ...) ((void)emscripten_asm_const_int(#code, ##__VA_ARGS__))
 
-// Runs the given JavaScript code, and returns an integer back.
+// Runs the given JavaScript code on the calling thread (synchronously), and returns an integer back.
 #define EM_ASM_INT(code, ...) emscripten_asm_const_int(#code, ##__VA_ARGS__)
 
-// Runs the given JavaScript code, and returns a double back.
+// Runs the given JavaScript code on the calling thread (synchronously), and returns a double back.
 #define EM_ASM_DOUBLE(code, ...) emscripten_asm_const_double(#code, ##__VA_ARGS__)
+
+// Runs the given JavaScript code synchronously on the main browser thread, and returns no value back.
+// Call this function for example to access DOM elements in a pthread/web worker. Avoid calling this
+// function in performance sensitive code, because this will effectively sleep the calling thread until the
+// main browser thread is able to service the proxied function call. If you have multiple MAIN_THREAD_EM_ASM()
+// code blocks to call in succession, it will likely be much faster to coalesce all the calls to a single
+// MAIN_THREAD_EM_ASM() block. If you do not need synchronization nor a return value back, consider using
+// the function MAIN_THREAD_ASYNC_EM_ASM() instead, which will not block.
+#define MAIN_THREAD_EM_ASM(code, ...) ((void)emscripten_asm_const_int_sync_on_main_thread(#code, ##__VA_ARGS__))
+
+// Runs the given JavaScript code synchronously on the main browser thread, and returns an integer back.
+// The same considerations apply as with MAIN_THREAD_EM_ASM().
+#define MAIN_THREAD_EM_ASM_INT(code, ...) emscripten_asm_const_int_sync_on_main_thread(#code, ##__VA_ARGS__)
+
+// Runs the given JavaScript code synchronously on the main browser thread, and returns a double back.
+// The same considerations apply as with MAIN_THREAD_EM_ASM().
+#define MAIN_THREAD_EM_ASM_DOUBLE(code, ...) emscripten_asm_const_double_sync_on_main_thread(#code, ##__VA_ARGS__)
+
+// Asynchronously dispatches the given JavaScript code to be run on the main browser thread.
+// If the calling thread is the main browser thread, then the specified JavaScript code is executed
+// synchronously. Otherwise an event will be queued on the main browser thread to execute the call
+// later (think postMessage()), and this call will immediately return without waiting. Be sure to
+// guard any accesses to shared memory on the heap inside the JavaScript code with appropriate locking.
+#define MAIN_THREAD_ASYNC_EM_ASM(code, ...) ((void)emscripten_asm_const_async_on_main_thread(#code, ##__VA_ARGS__))
 
 // Old forms for compatibility, no need to use these.
 // Replace EM_ASM_, EM_ASM_ARGS and EM_ASM_INT_V with EM_ASM_INT,

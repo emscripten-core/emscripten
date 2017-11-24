@@ -2435,7 +2435,7 @@ var LibraryOpenAL = {
       }
 
       ret = '';
-      for (ext in AL.ALC_EXTENSIONS) {
+      for (var ext in AL.ALC_EXTENSIONS) {
         ret = ret.concat(ext);
         ret = ret.concat(' ');
       }

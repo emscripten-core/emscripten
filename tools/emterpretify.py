@@ -984,13 +984,13 @@ __ATPRERUN__.push(function() {
     n = len(all_code)
     while n % 4 != 0:
       n += 1
-    bytecode_file.write(''.join(map(chr, all_code)))
+    bytecode_file.write(bytearray(all_code))
     for i in range(len(all_code), n):
-      bytecode_file.write(chr(0))
+      bytecode_file.write(bytearray([0]))
     for i in range(len(relocations)):
       bytes = bytify(relocations[i])
       for j in range(4):
-        bytecode_file.write(chr(bytes[j]))
+        bytecode_file.write(bytearray([bytes[j]]))
     bytecode_file.close()
 
     js += ['''

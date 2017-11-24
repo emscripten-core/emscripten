@@ -1603,9 +1603,33 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm', force_c=True)
 
+  # Tests various different ways to invoke the EM_ASM(), EM_ASM_INT() and EM_ASM_DOUBLE() macros.
   def test_em_asm_2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2', force_c=True)
+
+  # Tests various different ways to invoke the MAIN_THREAD_EM_ASM(), MAIN_THREAD_EM_ASM_INT() and MAIN_THREAD_EM_ASM_DOUBLE() macros.
+  # This test is identical to test_em_asm_2, just search-replaces EM_ASM to MAIN_THREAD_EM_ASM on the test file. That way if new
+  # test cases are added to test_em_asm_2.cpp for EM_ASM, they will also get tested in MAIN_THREAD_EM_ASM form.
+  @no_wasm_backend('Proxying EM_ASM calls is not yet implemented in Wasm backend')
+  def test_main_thread_em_asm(self):
+    return self.skip('TODO: Enable me when we have tagged new compiler build')
+    src = open(path_from_root('tests', 'core', 'test_em_asm_2.cpp'), 'r').read()
+    test_file = 'src.cpp'
+    open(test_file, 'w').write(src.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
+
+    expected_result = open(path_from_root('tests', 'core', 'test_em_asm_2.out'), 'r').read()
+    expected_result_file = 'result.out'
+    open(expected_result_file, 'w').write(expected_result.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
+
+    self.do_run_from_file(test_file, expected_result_file)
+    self.do_run_from_file(test_file, expected_result_file, force_c=True)
+
+  @no_wasm_backend('Proxying EM_ASM calls is not yet implemented in Wasm backend')
+  def test_main_thread_async_em_asm(self):
+    return self.skip('TODO: Enable me when we have tagged new compiler build')
+    self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm')
+    self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm', force_c=True)
 
   def test_em_asm_unicode(self):
     self.do_run(r'''
@@ -2152,7 +2176,7 @@ The current type of b is: 9
 
       def check(result, err):
         result = result.replace('\n \n', '\n') # remove extra node output
-        return hashlib.sha1(result).hexdigest()
+        return hashlib.sha1(result.encode('utf-8')).hexdigest()
 
       self.do_run_from_file(src, output, output_nicerizer = check)
 
@@ -4196,7 +4220,7 @@ def process(filename):
         printf("*%d\n", c);
       }
     '''
-    open('file_with_byte_234.txt', 'wb').write('\xea')
+    open('file_with_byte_234.txt', 'wb').write(b'\xea')
     self.emcc_args += ['--embed-file', 'file_with_byte_234.txt']
     self.do_run(src, '*234\n')
 
@@ -4219,7 +4243,7 @@ def process(filename):
         return 0;
       }
     '''
-    open('eol.txt', 'wb').write('\n')
+    open('eol.txt', 'wb').write(b'\n')
     self.emcc_args += ['--embed-file', 'eol.txt']
     self.do_run(src, 'SUCCESS\n')
 
@@ -6121,7 +6145,7 @@ def process(filename):
 
     js_funcs.append('_main')
     exported_func_json_file = os.path.join(self.get_dir(), 'large_exported_response.json')
-    open(exported_func_json_file, 'wb').write(json.dumps(js_funcs))
+    open(exported_func_json_file, 'w').write(json.dumps(js_funcs))
 
     self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=@' + exported_func_json_file]
     self.do_run(src, '''waka 4999!''')
@@ -6768,6 +6792,11 @@ Module.printErr = Module['printErr'] = function(){};
 
 Success!
 ''')
+    # test closure compiler as well
+    if self.run_name == 'asm2':
+      print('closure')
+      self.emcc_args += ['--closure', '1', '-g1'] # extra testing
+      self.do_run_in_out_file_test('tests', 'emscripten_log', 'emscripten_log_with_closure')
 
   def test_float_literals(self):
     self.do_run_in_out_file_test('tests', 'test_float_literals')

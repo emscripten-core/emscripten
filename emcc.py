@@ -694,6 +694,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             assert key != 'WASM_BACKEND', 'do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment'
       newargs = [arg for arg in newargs if arg is not '']
 
+      # Handle aliases in settings flags
+      settings_aliases = {
+          'BINARYEN_MEM_MAX': 'WASM_MEM_MAX',
+          # TODO: change most (all?) other BINARYEN* names to WASM*
+      }
+      def setting_sub(s):
+        key, rest = s.split('=', 1)
+        return '='.join([settings_aliases.get(key, key), rest])
+      settings_changes = list(map(setting_sub, settings_changes))
+
       # Find input files
 
       # These three arrays are used to store arguments of different types for
@@ -880,7 +890,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         key, value = change.split('=', 1)
 
         # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
-        if key in ['TOTAL_STACK', 'TOTAL_MEMORY', 'GL_MAX_TEMP_BUFFER_SIZE', 'SPLIT_MEMORY', 'BINARYEN_MEM_MAX']:
+        if key in ['TOTAL_STACK', 'TOTAL_MEMORY', 'GL_MAX_TEMP_BUFFER_SIZE', 'SPLIT_MEMORY', 'WASM_MEM_MAX']:
           value = str(shared.expand_byte_size_suffixes(value))
 
         original_exported_response = False
@@ -1116,7 +1126,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       else:
         assert shared.Settings.TOTAL_MEMORY % (16*1024*1024) == 0, 'For asm.js, TOTAL_MEMORY must be a multiple of 16MB, was ' + str(shared.Settings.TOTAL_MEMORY)
       assert shared.Settings.TOTAL_MEMORY >= shared.Settings.TOTAL_STACK, 'TOTAL_MEMORY must be larger than TOTAL_STACK, was ' + str(shared.Settings.TOTAL_MEMORY) + ' (TOTAL_STACK=' + str(shared.Settings.TOTAL_STACK) + ')'
-      assert shared.Settings.BINARYEN_MEM_MAX == -1 or shared.Settings.BINARYEN_MEM_MAX % 65536 == 0, 'BINARYEN_MEM_MAX must be a multiple of 64KB, was ' + str(shared.Settings.BINARYEN_MEM_MAX)
+      assert shared.Settings.WASM_MEM_MAX == -1 or shared.Settings.WASM_MEM_MAX % 65536 == 0, 'WASM_MEM_MAX must be a multiple of 64KB, was ' + str(shared.Settings.WASM_MEM_MAX)
 
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
@@ -1671,7 +1681,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.MEM_INIT_METHOD == 2:
             # memory initializer in a string literal
             return "memoryInitializer = '%s';" % shared.JS.generate_string_initializer(membytes)
-          open(memfile, 'wb').write(bytes(bytearray(membytes)))
+          open(memfile, 'wb').write(bytearray(membytes))
           if DEBUG:
             # Copy into temp dir as well, so can be run there too
             shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
@@ -2279,8 +2289,8 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--table-max=-1']
     if shared.Settings.SIDE_MODULE:
       cmd += ['--mem-max=-1']
-    elif shared.Settings.BINARYEN_MEM_MAX >= 0:
-      cmd += ['--mem-max=' + str(shared.Settings.BINARYEN_MEM_MAX)]
+    elif shared.Settings.WASM_MEM_MAX >= 0:
+      cmd += ['--mem-max=' + str(shared.Settings.WASM_MEM_MAX)]
     if shared.Settings.LEGALIZE_JS_FFI != 1:
       cmd += ['--no-legalize-javascript-ffi']
     if shared.Building.is_wasm_only():
@@ -2377,10 +2387,10 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
       if DEBUG: save_intermediate('postclean', 'js')
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
-    f = open(final, 'rb')
+    f = open(final, 'r')
     js = f.read()
     f.close()
-    f = open(final, 'wb')
+    f = open(final, 'w')
     for target, replacement_string, should_embed in [
       (wasm_text_target, shared.FilenameReplacementStrings.WASM_TEXT_FILE, True),
       (wasm_binary_target, shared.FilenameReplacementStrings.WASM_BINARY_FILE, True),
@@ -2603,7 +2613,7 @@ def generate_html(target, options, js_target, target_basename,
   html = open(target, 'wb')
   html_contents = shell.replace('{{{ SCRIPT }}}', script.replacement())
   html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', options.output_eol)
-  html.write(html_contents)
+  html.write(html_contents.encode('utf-8'))
   html.close()
 
 

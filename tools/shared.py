@@ -2502,10 +2502,10 @@ class WebAssembly(object):
       more = x != 0
       if more:
         byte = byte | 128
-      ret.append(chr(byte))
+      ret.append(byte)
       if not more:
         break
-    return ret
+    return bytearray(ret)
 
   @staticmethod
   def make_shared_library(js_file, wasm_file):
@@ -2522,14 +2522,14 @@ class WebAssembly(object):
     f = open(wso, 'wb')
     f.write(wasm[0:8]) # copy magic number and version
     # write the special section
-    f.write('\0') # user section is code 0
+    f.write(b'\0') # user section is code 0
     # need to find the size of this section
-    name = "\06dylink" # section name, including prefixed size
+    name = b"\06dylink" # section name, including prefixed size
     contents = WebAssembly.lebify(mem_size) + WebAssembly.lebify(table_size)
     size = len(name) + len(contents)
-    f.write(''.join(WebAssembly.lebify(size)))
+    f.write(WebAssembly.lebify(size))
     f.write(name)
-    f.write(''.join(contents))
+    f.write(contents)
     f.write(wasm[8:]) # copy rest of binary
     f.close()
     return wso
