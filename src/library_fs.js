@@ -1367,6 +1367,7 @@ mergeInto(LibraryManager.library, {
         };
         this.setErrno(errno);
         this.message = ERRNO_MESSAGES[errno];
+        if (this.stack) this.stack = (new Error).stack;
 #if ASSERTIONS
         if (this.stack) this.stack = demangleAll(this.stack);
 #endif
