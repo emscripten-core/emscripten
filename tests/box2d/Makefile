@@ -51,7 +51,7 @@ OBJECTS = \
 all: box2d.a
 
 %.o: %.cpp
-	$(CXX) -I. $< -o $@ -O2 -c
+	$(CXX) $(CFLAGS) -I. $< -o $@ -O2 -c
 
 box2d.a: $(OBJECTS)
 	$(AR) rvs $@ $(OBJECTS)
