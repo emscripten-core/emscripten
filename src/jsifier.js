@@ -26,7 +26,10 @@ var proxiedFunctionTable = ["null" /* Reserve index 0 for an undefined function*
 var proxiedFunctionInvokers = {};
 
 // used internally. set when there is a main() function.
-var HAS_MAIN = '_main' in IMPLEMENTED_FUNCTIONS;
+// also set when in a linkable module, as the main() function might
+// arrive from a dynamically-linked library, and not necessarily
+// the current compilation unit.
+var HAS_MAIN = ('_main' in IMPLEMENTED_FUNCTIONS) || MAIN_MODULE || SIDE_MODULE;
 
 // JSifier
 function JSify(data, functionsOnly) {
