@@ -385,6 +385,7 @@ if (Module['preInit']) {
   }
 }
 
+#if HAS_MAIN
 // shouldRunNow refers to calling main(), not run().
 #if INVOKE_RUN
 var shouldRunNow = true;
@@ -394,6 +395,7 @@ var shouldRunNow = false;
 if (Module['noInitialRun']) {
   shouldRunNow = false;
 }
+#endif // HAS_MAIN
 
 #if NO_EXIT_RUNTIME
 Module["noExitRuntime"] = true;
