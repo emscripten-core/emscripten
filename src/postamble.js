@@ -163,6 +163,7 @@ dependenciesFulfilled = function runCaller() {
   if (!Module['calledRun']) dependenciesFulfilled = runCaller; // try this again later, after new deps are fulfilled
 }
 
+#if HAS_MAIN
 Module['callMain'] = Module.callMain = function callMain(args) {
 #if ASSERTIONS
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on __ATMAIN__)');
@@ -237,6 +238,7 @@ Module['callMain'] = Module.callMain = function callMain(args) {
     calledMain = true;
   }
 }
+#endif // HAS_MAIN
 
 {{GLOBAL_VARS}}
 
@@ -280,7 +282,9 @@ function run(args) {
 
     if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
 
+#if HAS_MAIN
     if (Module['_main'] && shouldRunNow) Module['callMain'](args);
+#endif // HAS_MAIN
 
     postRun();
   }
