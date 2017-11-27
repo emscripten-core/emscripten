@@ -25,6 +25,10 @@ var proxiedFunctionTable = ["null" /* Reserve index 0 for an undefined function*
 // map: pair(sig, syncOrAsync) -> function body
 var proxiedFunctionInvokers = {};
 
+// We include asm2wasm imports if we may interpret (where we call out to JS to do some math stuff)
+// or if the trap mode is 'js' (where we do the same)
+var NEED_ASM2WASM_IMPORTS = BINARYEN_METHOD != 'native-wasm' || BINARYEN_TRAP_MODE == 'js';
+
 // JSifier
 function JSify(data, functionsOnly) {
   //B.start('jsifier');
