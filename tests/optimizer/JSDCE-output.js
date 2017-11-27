@@ -21,4 +21,7 @@ print(h(123));
  }
  print(hh(123));
 }))();
+function glue() {
+}
+glue();
 

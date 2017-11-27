@@ -49,3 +49,13 @@ print(h(123));
   print(hh(123));
 })();
 
+function glue() {
+  function lookup() { // 2 passes needed for this one
+    throw 1;
+  }
+  function removable() { // first remove this
+    lookup();
+  }
+}
+glue();
+
