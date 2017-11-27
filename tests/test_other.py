@@ -3434,6 +3434,16 @@ int main()
     out, err = process.communicate()
     assert(warning not in err)
 
+  def test_valid_abspath_2(self):
+    if WINDOWS:
+      abs_include_path = 'C:\\nowhere\\at\\all'
+    else:
+      abs_include_path = '/nowhere/at/all'
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--valid-abspath', abs_include_path,'-I%s' % abs_include_path]
+    print(' '.join(cmd))
+    subprocess.check_call(cmd)
+    self.assertContained('hello, world!', run_js('a.out.js'))
+
   def test_warn_dylibs(self):
     shared_suffixes = ['.so', '.dylib', '.dll']
 
