@@ -2156,7 +2156,7 @@ void *getBindBuffer() {
         self.btest(filename, expected='600', args=['--post-js', 'post.js', '--memory-init-file', '1'] + extra_args + mode)
         print('sync startup, call too late')
         open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + 'Module.postRun.push(function() { ' + post_test + ' });' + post_hook);
-        self.btest(filename, expected=str(second_code), args=['--post-js', 'post.js', '--memory-init-file', '0'] + extra_args + mode)
+        self.btest(filename, expected=str(second_code), args=['--post-js', 'post.js', '--memory-init-file', '0', '-s', 'NO_EXIT_RUNTIME=0'] + extra_args + mode)
         print('sync, runtime still alive, so all good')
         open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + 'expected_ok = true; Module.postRun.push(function() { ' + post_test + ' });' + post_hook);
         self.btest(filename, expected='606', args=['--post-js', 'post.js', '--memory-init-file', '0'] + extra_args + mode)

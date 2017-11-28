@@ -787,7 +787,7 @@ var SyscallsLibrary = {
     if (!printChar) return;
     var buffers = ___syscall146.buffers;
     if (buffers[1].length) printChar(1, {{{ charCode("\n") }}});
-    if (buffers[2].length) printChar(2, {{{ charCode("\n") }}}); 
+    if (buffers[2].length) printChar(2, {{{ charCode("\n") }}});
   },
   __syscall146__deps: ['$flush_NO_FILESYSTEM'],
 #if NO_EXIT_RUNTIME == 0
