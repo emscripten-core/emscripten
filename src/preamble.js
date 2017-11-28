@@ -791,36 +791,40 @@ function lengthBytesUTF32(str) {
 {{{ maybeExport('lengthBytesUTF32') }}}
 
 function demangle(func) {
+#if DEMANGLE_SUPPORT
   var __cxa_demangle_func = Module['___cxa_demangle'] || Module['__cxa_demangle'];
-  if (__cxa_demangle_func) {
-    try {
-      var s =
+  assert(__cxa_demangle_func);
+  try {
+    var s =
 #if WASM_BACKEND
-        func;
+      func;
 #else
-        func.substr(1);
+      func.substr(1);
 #endif
-      var len = lengthBytesUTF8(s)+1;
-      var buf = _malloc(len);
-      stringToUTF8(s, buf, len);
-      var status = _malloc(4);
-      var ret = __cxa_demangle_func(buf, 0, 0, status);
-      if (getValue(status, 'i32') === 0 && ret) {
-        return Pointer_stringify(ret);
-      }
-      // otherwise, libcxxabi failed
-    } catch(e) {
-      // ignore problems here
-    } finally {
-      if (buf) _free(buf);
-      if (status) _free(status);
-      if (ret) _free(ret);
+    var len = lengthBytesUTF8(s)+1;
+    var buf = _malloc(len);
+    stringToUTF8(s, buf, len);
+    var status = _malloc(4);
+    var ret = __cxa_demangle_func(buf, 0, 0, status);
+    if (getValue(status, 'i32') === 0 && ret) {
+      return Pointer_stringify(ret);
     }
-    // failure when using libcxxabi, don't demangle
-    return func;
+    // otherwise, libcxxabi failed
+  } catch(e) {
+    // ignore problems here
+  } finally {
+    if (buf) _free(buf);
+    if (status) _free(status);
+    if (ret) _free(ret);
   }
-  Runtime.warnOnce('warning: build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling');
+  // failure when using libcxxabi, don't demangle
   return func;
+#else // DEMANGLE_SUPPORT
+#if ASSERTIONS
+  Runtime.warnOnce('warning: build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling');
+#endif // ASSERTIONS
+  return func;
+#endif // DEMANGLE_SUPPORT
 }
 
 function demangleAll(text) {
