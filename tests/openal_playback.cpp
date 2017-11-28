@@ -233,13 +233,17 @@ int main() {
 #elif defined(TEST_ANIMATED_LOOPED_PITCHED_PLAYBACK)
   printf("You should hear a continuously looping clip of the 1902 piano song \"The Entertainer\" played back at a dynamic playback rate that smoothly varies its pitch according to a sine wave. Press OK when confirmed.\n");
 #elif defined(TEST_ANIMATED_LOOPED_DISTANCE_PLAYBACK)
+  alSourcei(sources[0], 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */, AL_TRUE);
   alSourcef(sources[0], AL_REFERENCE_DISTANCE, 25.0);
   printf("You should hear a continuously looping clip of the 1902 piano song \"The Entertainer\" fade in and out. Press OK when confirmed.\n");
 #elif defined(TEST_ANIMATED_LOOPED_DOPPLER_PLAYBACK)
+  alSourcei(sources[0], 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */, AL_TRUE);
   printf("You should hear a continuously looping clip of the 1902 piano song \"The Entertainer\" played back at a dynamic playback rate that smoothly varies its pitch according to a sine wave doppler shift. Press OK when confirmed.\n");
 #elif defined(TEST_ANIMATED_LOOPED_PANNED_PLAYBACK)
+  alSourcei(sources[0], 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */, AL_TRUE);
   printf("You should hear a continuously looping clip of the 1902 piano song \"The Entertainer\" smoothly panning around the listener. Press OK when confirmed.\n");
 #elif defined(TEST_ANIMATED_LOOPED_RELATIVE_PLAYBACK)
+  alSourcei(sources[0], 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */, AL_TRUE);
   alSourcei(sources[0], AL_SOURCE_RELATIVE, AL_TRUE);
   printf("You should hear a continuously looping clip of the 1902 piano song \"The Entertainer\" centered at the listener. If it is panning, then the test failed. Press OK when confirmed.\n");
 #elif defined(TEST_ALC_SOFT_PAUSE_DEVICE)
