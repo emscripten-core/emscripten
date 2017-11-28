@@ -497,6 +497,7 @@ int main()
     self.do_run_in_out_file_test('tests', 'core', 'test_zerodiv')
 
   def test_zero_multiplication(self):
+    Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     self.do_run_in_out_file_test('tests', 'core', 'test_zero_multiplication')
 
   def test_isnan(self):
@@ -6481,7 +6482,7 @@ someweirdtext
       #include<stdio.h>
 
       int main(int argc, char** argv){
-        printf("418");
+        printf("418\n");
         return 0;
       }
     '''
