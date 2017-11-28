@@ -1919,3 +1919,7 @@ mergeInto(LibraryManager.library, {
   }
 });
 
+if (FORCE_FILESYSTEM) {
+  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$FS');
+}
+
