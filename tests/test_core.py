@@ -4986,8 +4986,6 @@ return malloc(size);
     if 'SAFE_HEAP' in str(self.emcc_args): return self.skip('we do unsafe stuff here')
     # present part of the symbols of dlmalloc, not all. malloc is harder to link than new which is weak.
 
-    Settings.NO_EXIT_RUNTIME = 1 # if we exit, then we flush streams, but the bad malloc we install here messes that up
-
     self.do_run_in_out_file_test('tests', 'core', 'test_dlmalloc_partial_2')
 
   def test_libcxx(self):
@@ -5514,8 +5512,6 @@ def process(filename):
     if WINDOWS: return self.skip('test_poppler depends on freetype, which uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
 
     def test():
-      Settings.NO_EXIT_RUNTIME = 1
-
       Building.COMPILER_TEST_OPTS += [
         '-I' + path_from_root('tests', 'freetype', 'include'),
         '-I' + path_from_root('tests', 'poppler', 'include')
@@ -5648,8 +5644,6 @@ def process(filename):
       return output
 
     self.emcc_args += ['--minify', '0'] # to compare the versions
-
-    Settings.NO_EXIT_RUNTIME = 1
 
     def do_test():
       self.do_run(open(path_from_root('tests', 'openjpeg', 'codec', 'j2k_to_image.c'), 'r').read(),
@@ -6258,9 +6252,6 @@ def process(filename):
   def test_eval_ctors(self):
     if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args): return self.skip('need js optimizations')
 
-    if self.is_wasm():
-      self.emcc_args += ['-s', 'NO_EXIT_RUNTIME=1']
-
     orig_args = self.emcc_args[:] + ['-s', 'EVAL_CTORS=0']
 
     print('leave printf in ctor')
@@ -6386,7 +6377,6 @@ someweirdtext
     self.do_run(src, 'abs(-10): 10\nabs(-11): 11');
 
   def test_embind_2(self):
-    Settings.NO_EXIT_RUNTIME = 1 # we emit some post.js that we need to see
     Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
     open('post.js', 'w').write('''
       function printLerp() {
@@ -6412,7 +6402,6 @@ someweirdtext
     self.do_run(src, 'lerp 166');
 
   def test_embind_3(self):
-    Settings.NO_EXIT_RUNTIME = 1 # we emit some post.js that we need to see
     Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
     open('post.js', 'w').write('''
       function ready() {
