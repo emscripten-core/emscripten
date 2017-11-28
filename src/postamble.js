@@ -310,7 +310,36 @@ function exit(status, implicit) {
   if (implicit && Module['noExitRuntime']) {
 #if ASSERTIONS
     Module.printErr('exit(' + status + ') implicitly called by end of main(), but noExitRuntime, so not exiting the runtime (you can use emscripten_force_exit, if you want to force a true shutdown)');
+
+#if NO_EXIT_RUNTIME == 1
+    // compiler settings do not allow exiting the runtime, so flushing
+    // the streams is not possible. but in ASSERTIONS mode we check
+    // if there was something to flush, and if so tell the user they
+    // should request that the runtime be exitable.
+    // how we flush the streams depends on whether we are in NO_FILESYSTEM
+    // mode (which has its own special function for this; otherwise, all
+    // the code is inside libc)
+#if NO_FILESYSTEM
+    var flush = typeof flush_NO_FILESYSTEM === 'function' ? flush_NO_FILESYSTEM : null;
+#else
+    var flush = Module['_fflush'];
 #endif
+    if (flush) {
+      var print = Module['print'];
+      var printErr = Module['printErr'];
+      var has = false;
+      Module['print'] = Module['printErr'] = function(x) {
+        has = true;
+      }
+      flush(0);
+      Module['print'] = print;
+      Module['printErr'] = printErr;
+      if (has) {
+        Runtime.warnOnce('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0');
+      }
+    }
+#endif // NO_EXIT_RUNTIME
+#endif // ASSERTIONS
     return;
   }
 

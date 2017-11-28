@@ -1624,7 +1624,7 @@ int f() {
       Module.print(MESSAGE);
     ''')
 
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'before.js', '--post-js', 'after.js', '-s', 'NO_EXIT_RUNTIME=1']).communicate()
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'before.js', '--post-js', 'after.js']).communicate()
     self.assertContained('hello from main\nhello from js\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_sdl_endianness(self):
@@ -1802,7 +1802,7 @@ int f() {
       };
     ''')
 
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '-s', 'NO_EXIT_RUNTIME=1']).communicate()
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js']).communicate()
     self.assertContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     # never run, so no preRun or postRun
@@ -1813,7 +1813,7 @@ int f() {
     # noInitialRun prevents run
     for no_initial_run, run_dep in [(0, 0), (1, 0), (0, 1)]:
       print(no_initial_run, run_dep)
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'NO_EXIT_RUNTIME=1']).communicate()
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')]).communicate()
       src = 'var Module = { noInitialRun: %d };\n' % no_initial_run + open(os.path.join(self.get_dir(), 'a.out.js')).read()
       if run_dep:
         src = src.replace('// {{PRE_RUN_ADDITIONS}}', '// {{PRE_RUN_ADDITIONS}}\naddRunDependency("test");') \
@@ -1836,7 +1836,7 @@ int f() {
         preInit: function() { Module.print('pre-init') }
       };
     ''')
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '-s', 'NO_EXIT_RUNTIME=1']).communicate()
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js']).communicate()
     self.assertContained('pre-init\npre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_prepost2(self):
@@ -1855,7 +1855,7 @@ int f() {
     open(os.path.join(self.get_dir(), 'pre2.js'), 'w').write('''
       Module.postRun = function() { Module.print('post-run') };
     ''')
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js', '-s', 'NO_EXIT_RUNTIME=1']).communicate()
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js']).communicate()
     self.assertContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_prepre(self):
@@ -3232,6 +3232,27 @@ int main(int argc, char **argv) {
         assert ('going away' in output) == exit, 'destructors should not run if no exit'
         assert ('_ZN5WasteILi2EED' in src) == exit, 'destructors should not appear if no exit'
         assert ('atexit(' in src) == exit, 'atexit should not appear or be called'
+
+  def test_no_exit_runtime_warnings(self):
+    open('code.cpp', 'w').write(r'''
+#include <stdio.h>
+int main(int argc, char **argv) {
+  printf("hello\n");
+  printf("world"); // no newline, not flushed
+  return 0;
+}
+''')
+
+    for no_exit in [0, 1]:
+      for assertions in [0, 1]:
+        print(no_exit, assertions)
+        subprocess.check_call([PYTHON, EMCC, 'code.cpp', '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-s', 'ASSERTIONS=%d' % assertions])
+        output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True)
+        exit = 1-no_exit
+        assert 'hello' in output
+        assert ('world' in output) == exit, 'unflushed content is shown only when exiting the runtime'
+        if no_exit and assertions:
+          assert 'stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0' in output, 'warning should be shown'
 
   def test_os_oz(self):
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
