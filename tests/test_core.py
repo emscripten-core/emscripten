@@ -531,6 +531,7 @@ int main()
       self.do_run_in_out_file_test('tests', 'core', 'test_frexp')
 
   def test_rounding(self):
+      Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
       for precise_f32 in [0, 1]:
         print(precise_f32)
         Settings.PRECISE_F32 = precise_f32
