@@ -1068,7 +1068,7 @@ int main(int argc, char **argv)
 
   def test_exceptions_uncaught(self):
       Settings.DISABLE_EXCEPTION_CATCHING = 0
-
+      Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
       src = r'''
         #include <stdio.h>
         #include <exception>
@@ -4142,6 +4142,7 @@ def process(filename):
   @sync
   def test_files_m(self):
     # Test for Module.stdin etc.
+    Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
 
     post = '''
 def process(filename):
@@ -5008,6 +5009,7 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'test_typeid')
 
   def test_static_variable(self):
+    Settings.NO_EXIT_RUNTIME = 0 # needs atexit
     self.do_run_in_out_file_test('tests', 'core', 'test_static_variable')
 
   def test_fakestat(self):
