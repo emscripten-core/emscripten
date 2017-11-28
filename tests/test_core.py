@@ -1105,7 +1105,7 @@ int main(int argc, char **argv)
 
   def test_exceptions_uncaught_2(self):
       Settings.DISABLE_EXCEPTION_CATCHING = 0
-
+      Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
       src = r'''
         #include <iostream>
         #include <exception>
@@ -2091,6 +2091,7 @@ The current type of b is: 9
 
   def test_atexit(self):
     # Confirms they are called in reverse order
+    Settings.NO_EXIT_RUNTIME = 0 # needs atexits
     self.do_run_in_out_file_test('tests', 'core', 'test_atexit')
 
   def test_pthread_specific(self):
@@ -4055,7 +4056,7 @@ Pass: 0.000012 0.000012''')
 
   def test_sscanf_other_whitespace(self):
     Settings.SAFE_HEAP = 0 # use i16s in printf
-
+    Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_other_whitespace')
 
   def test_sscanf_3(self):
