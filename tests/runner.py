@@ -794,6 +794,7 @@ class BrowserCore(RunnerCore):
     self.harness_server.start()
     print('[Browser harness server on process %d]' % self.harness_server.pid)
     webbrowser.open_new('http://localhost:9999/run_harness')
+    self.also_wasm = os.environ.get('EMCC_BROWSER_ALSO_WASM', '0') == '1'
 
   @classmethod
   def tearDownClass(self):
@@ -970,7 +971,7 @@ class BrowserCore(RunnerCore):
 ''' % basename)
 
   def btest(self, filename, expected=None, reference=None, force_c=False, reference_slack=0, manual_reference=False, post_build=None,
-            args=[], outfile='test.html', message='.', also_proxied=False, url_suffix='', timeout=None, also_wasm=False): # TODO: use in all other tests
+            args=[], outfile='test.html', message='.', also_proxied=False, url_suffix='', timeout=None, also_wasm=True): # TODO: use in all other tests
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
@@ -998,7 +999,7 @@ class BrowserCore(RunnerCore):
     if post_build: post_build()
     if not isinstance(expected, list): expected = [expected]
     self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout)
-    if also_wasm:
+    if also_wasm and self.also_wasm:
       wasm_args = args + ['-s', 'WASM=1']
       # Filter out separate-asm, which is implied by wasm
       wasm_args = [a for a in wasm_args if a != '--separate-asm']

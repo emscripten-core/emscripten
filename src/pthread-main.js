@@ -60,7 +60,7 @@ Module['instantiateWasm'] = function(info, receiveInstance) {
   // We can just use sync instantiation in the worker.
   instance = new WebAssembly.Instance(Module['wasmModule'], info);
   // We don't need the module anymore; new threads will be spawned from the main thread.
-  delete Module['wasmModule'] ;
+  delete Module['wasmModule'];
   receiveInstance(instance);
   return instance.exports;
 }
