@@ -2022,11 +2022,15 @@ function integrateWasmJS() {
   var info = {
     'global': null,
     'env': null,
-#if NEED_ASM2WASM_IMPORTS
     'asm2wasm': { // special asm2wasm imports
       "f64-rem": function(x, y) {
         return x % y;
       },
+      "debugger": function() {
+        debugger;
+      }
+#if NEED_ALL_ASM2WASM_IMPORTS
+      ,
       "f64-to-int": function(x) {
         return x | 0;
       },
@@ -2041,12 +2045,9 @@ function integrateWasmJS() {
       },
       "i32u-rem": function(x, y) {
         return ((x >>> 0) % (y >>> 0)) >>> 0;
-      },
-      "debugger": function() {
-        debugger;
-      },
+      }
+#endif // NEED_ALL_ASM2WASM_IMPORTS
     },
-#endif // NEED_ASM2WASM_IMPORTS
     'parent': Module // Module inside wasm-js.cpp refers to wasm-js.cpp; this allows access to the outside program.
   };
 
