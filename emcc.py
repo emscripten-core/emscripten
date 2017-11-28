@@ -1068,9 +1068,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if not shared.Settings.NO_FILESYSTEM and not shared.Settings.ONLY_MY_CODE:
         shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location'] # so FS can report errno back to C
-        if not shared.Settings.NO_EXIT_RUNTIME:
-          shared.Settings.EXPORTED_FUNCTIONS += ['_fflush'] # to flush the streams on FS quit
-                                                            # TODO this forces 4 syscalls, maybe we should avoid it?
+        # to flush streams on FS exit, we need to be able to call fflush
+        # we only include it if the runtime is exitable, or when ASSERTIONS
+        # (ASSERTIONS will check that streams do not need to be flushed,
+        # helping people see when they should have disabled NO_EXIT_RUNTIME)
+        if not shared.Settings.NO_EXIT_RUNTIME or shared.Settings.ASSERTIONS:
+          shared.Settings.EXPORTED_FUNCTIONS += ['_fflush']
 
       if shared.Settings.USE_PTHREADS:
         if not any(s.startswith('PTHREAD_POOL_SIZE=') for s in settings_changes):

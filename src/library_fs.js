@@ -1420,7 +1420,24 @@ mergeInto(LibraryManager.library, {
       FS.init.initialized = false;
       // force-flush all streams, so we get musl std streams printed out
       var fflush = Module['_fflush'];
-      if (fflush) fflush(0);
+      if (fflush) {
+#if ASSERTIONS
+#if NO_EXIT_RUNTIME == 1
+        // compiler settings do not allow exiting the runtime, so flushing
+        // the streams is not possible. but in ASSERTIONS mode we check
+        // if there was something to flush, and if so tell the user they
+        // should request that the runtime be exitable.
+        var print = Module['print'];
+        var printErr = Module['printErr'];
+        Module['print'] = Module['printErr'] = function(x) {
+          Runtime.warnOnce('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0');
+        }
+        Module['print'] = print;
+        Module['printErr'] = printErr;
+#endif
+#endif
+        fflush(0);
+      }
       // close all of our streams
       for (var i = 0; i < FS.streams.length; i++) {
         var stream = FS.streams[i];
