@@ -230,7 +230,7 @@ Another option is to define an ``onRuntimeInitialized`` function,
 
   Module['onRuntimeInitialized'] = function() { ... };
 
-That method will be called when the runtime is ready and it is ok for you to call compiled code. In practice, that is exactly the same time at which ``main()`` would be called, so ``onRuntimeInitialized`` doesn't let you do anything new, but it can be convenient in some cases - for example, if you use ``onRuntimeInitialized`` and don't define a ``main()`` function, then the runtime will not be shut down after ``main()`` exits, and you can keep calling compiled methods (you can also have a ``main()`` and build with ``-s NO_EXIT_RUNTIME=1`` to keep the runtime from being shut down). Thus, for libraries, ``onRuntimeInitialized`` can be convenient.
+That method will be called when the runtime is ready and it is ok for you to call compiled code. In practice, that is exactly the same time at which ``main()`` would be called, so ``onRuntimeInitialized`` doesn't let you do anything new, but you can set it from JavaScript at runtime in a flexible way.
 
 Here is an example of how to use it:
 
