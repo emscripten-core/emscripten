@@ -163,6 +163,7 @@ dependenciesFulfilled = function runCaller() {
   if (!Module['calledRun']) dependenciesFulfilled = runCaller; // try this again later, after new deps are fulfilled
 }
 
+#if HAS_MAIN
 Module['callMain'] = Module.callMain = function callMain(args) {
 #if ASSERTIONS
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on __ATMAIN__)');
@@ -237,6 +238,7 @@ Module['callMain'] = Module.callMain = function callMain(args) {
     calledMain = true;
   }
 }
+#endif // HAS_MAIN
 
 {{GLOBAL_VARS}}
 
@@ -280,7 +282,9 @@ function run(args) {
 
     if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
 
+#if HAS_MAIN
     if (Module['_main'] && shouldRunNow) Module['callMain'](args);
+#endif // HAS_MAIN
 
     postRun();
   }
@@ -381,6 +385,7 @@ if (Module['preInit']) {
   }
 }
 
+#if HAS_MAIN
 // shouldRunNow refers to calling main(), not run().
 #if INVOKE_RUN
 var shouldRunNow = true;
@@ -390,6 +395,7 @@ var shouldRunNow = false;
 if (Module['noInitialRun']) {
   shouldRunNow = false;
 }
+#endif // HAS_MAIN
 
 #if NO_EXIT_RUNTIME
 Module["noExitRuntime"] = true;
