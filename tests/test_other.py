@@ -3366,12 +3366,12 @@ Waste<3> *getMore() {
 ''')
 
     for opts, has_global in [
-      (['-O2', '-g'], True),
-      (['-O2', '-g', '-s', 'NO_EXIT_RUNTIME=1'], False), # no-exit-runtime removes the atexits, and then globalgce can work it's magic to remove the global initializer entirely
-      (['-Os', '-g'], True),
-      (['-Os', '-g', '-s', 'NO_EXIT_RUNTIME=1'], False),
-      (['-O2', '-g', '--llvm-lto', '1'], True),
-      (['-O2', '-g', '-s', 'NO_EXIT_RUNTIME=1', '--llvm-lto', '1'], False),
+      (['-O2', '-g', '-s', 'NO_EXIT_RUNTIME=0'], True),
+      (['-O2', '-g'], False), # no-exit-runtime removes the atexits, and then globalgce can work it's magic to remove the global initializer entirely
+      (['-Os', '-g', '-s', 'NO_EXIT_RUNTIME=0'], True),
+      (['-Os', '-g'], False),
+      (['-O2', '-g', '--llvm-lto', '1', '-s', 'NO_EXIT_RUNTIME=0'], True),
+      (['-O2', '-g', '--llvm-lto', '1'], False),
     ]:
       print(opts, has_global)
       Popen([PYTHON, EMCC, 'main.cpp', '-c'] + opts).communicate()
@@ -5340,17 +5340,17 @@ int main(void) {
     assert output == ('hello, world!\n', ''), 'expected no output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % output
 
   def test_require_modularize(self):
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1']).communicate()
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1', '-s', 'ASSERTIONS=0']).communicate()
     src = open('a.out.js').read()
     assert "module['exports'] = Module;" in src
     output = Popen(NODE_JS + ['-e', 'var m = require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE).communicate()
     assert output == ('hello, world!\n', ''), 'expected output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % output
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="NotModule"']).communicate()
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="NotModule"', '-s', 'ASSERTIONS=0']).communicate()
     src = open('a.out.js').read()
     assert "module['exports'] = NotModule;" in src
     output = Popen(NODE_JS + ['-e', 'var m = require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE).communicate()
     assert output == ('hello, world!\n', ''), 'expected output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % output
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1',  '-s', 'NO_EXIT_RUNTIME=1']).communicate()
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1']).communicate()
     # We call require() twice to ensure it returns wrapper function each time
     output = Popen(NODE_JS + ['-e', 'require("./a.out.js")();var m = require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE).communicate()
     assert output[0] == 'hello, world!\nhello, world!\n', 'expected output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % output
@@ -7765,13 +7765,6 @@ int main() {
     Popen([LLVM_AR, 'r', 'hello_world.a', 'hello_world.o'], env=get_clang_native_env(), stdout=PIPE, stderr=PIPE).communicate()
     out, err = Popen([PYTHON, EMCC, 'hello_world.a', '-o', 'hello_world.js'], stdout=PIPE, stderr=PIPE).communicate()
     assert 'exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?' in err
-
-  # Tests that the warning message about pairing WASM with EVAL_CTORS appropriately triggers the warning about NO_EXIT_RUNTIME.
-  def test_binaryen_no_exit_runtime_warn_message(self):
-    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'hello_world.js', '-s', 'WASM=1', '-Oz'], stdout=PIPE, stderr=PIPE).communicate()
-    assert 'you should enable  -s NO_EXIT_RUNTIME=1' in err
-    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'hello_world.bc', '-s', 'WASM=1', '-Oz'], stdout=PIPE, stderr=PIPE).communicate()
-    assert 'you should enable  -s NO_EXIT_RUNTIME=1' not in err
 
   def test_o_level_clamp(self):
     for level in [3, 4, 20]:

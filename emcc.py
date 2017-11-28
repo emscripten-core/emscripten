@@ -1203,10 +1203,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if 'interpret' in shared.Settings.BINARYEN_METHOD:
             logging.warning('disabling EVAL_CTORS as the bundled interpreter confuses the ctor tool')
             shared.Settings.EVAL_CTORS = 0
-          else:
-            # for wasm, we really want no-exit-runtime, so that atexits don't stop us
-            if final_suffix in JS_CONTAINING_SUFFIXES and not shared.Settings.NO_EXIT_RUNTIME:
-              logging.warning('you should enable  -s NO_EXIT_RUNTIME=1  so that EVAL_CTORS can work at full efficiency (it gets rid of atexit calls which might disrupt EVAL_CTORS)')
 
       # memory growth does not work in dynamic linking, except for wasm
       if not shared.Settings.WASM and (shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE):
