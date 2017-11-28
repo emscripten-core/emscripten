@@ -7,8 +7,8 @@ To browse or download snapshots of old tagged versions, visit https://github.com
 
 Not all changes are documented here. In particular, new features, user-oriented fixes, options, command-line parameters, usage changes, deprecations, significant internal modifications and optimizations etc. generally deserve a mention. To examine the full set of changes between versions, visit the link to full changeset diff at the end of each section.
 
-v1.37.23: ?
-------------------
+Current Trunk
+-------------
  - Breaking change: Do not export getValue/setValue runtime methods by default. You can still use them by calling them directly in code optimized with the main file (pre-js, post-js, js libraries; if the optimizer sees they are used, it preserves them), but if you try to use them on `Module` then you must export them by adding them to `EXTRA_EXPORTED_RUNTIME_METHODS`. In `-O0` or when `ASSERTIONS` is on, a run-time error message explains that, if they are attempted to be used incorrectly.
 
 v1.37.17: 7/25/2017
