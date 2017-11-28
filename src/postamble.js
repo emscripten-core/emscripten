@@ -164,7 +164,7 @@ dependenciesFulfilled = function runCaller() {
 }
 
 #if HAS_MAIN
-Module['callMain'] = Module.callMain = function callMain(args) {
+Module['callMain'] = function callMain(args) {
 #if ASSERTIONS
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on __ATMAIN__)');
   assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
@@ -304,7 +304,7 @@ function run(args) {
   checkStackCookie();
 #endif
 }
-Module['run'] = Module.run = run;
+Module['run'] = run;
 
 function exit(status, implicit) {
   if (implicit && Module['noExitRuntime']) {
@@ -337,7 +337,7 @@ function exit(status, implicit) {
   }
   Module['quit'](status, new ExitStatus(status));
 }
-Module['exit'] = Module.exit = exit;
+Module['exit'] = exit;
 
 var abortDecorators = [];
 
@@ -374,7 +374,7 @@ function abort(what) {
   }
   throw output;
 }
-Module['abort'] = Module.abort = abort;
+Module['abort'] = abort;
 
 // {{PRE_RUN_ADDITIONS}}
 
