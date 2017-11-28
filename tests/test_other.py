@@ -3233,16 +3233,14 @@ int main(int argc, char **argv) {
         assert ('_ZN5WasteILi2EED' in src) == exit, 'destructors should not appear if no exit'
         assert ('atexit(' in src) == exit, 'atexit should not appear or be called'
 
-  def test_no_exit_runtime_warnings(self):
+  def test_no_exit_runtime_warnings_flush(self):
     open('code.cpp', 'w').write(r'''
 #include <stdio.h>
 int main(int argc, char **argv) {
   printf("hello\n");
   printf("world"); // no newline, not flushed
-  return 0;
 }
 ''')
-
     for no_exit in [0, 1]:
       for assertions in [0, 1]:
         print(no_exit, assertions)
@@ -3251,8 +3249,23 @@ int main(int argc, char **argv) {
         exit = 1-no_exit
         assert 'hello' in output
         assert ('world' in output) == exit, 'unflushed content is shown only when exiting the runtime'
-        if no_exit and assertions:
-          assert 'stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0' in output, 'warning should be shown'
+        assert (no_exit and assertions) == ('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0' in output), 'warning should be shown'
+
+  def test_no_exit_runtime_warnings_atexit(self):
+    open('code.cpp', 'w').write(r'''
+#include <stdlib.h>
+void bye() {}
+int main() {
+  atexit(bye);
+}
+''')
+    for no_exit in [0, 1]:
+      for assertions in [0, 1]:
+        print(no_exit, assertions)
+        subprocess.check_call([PYTHON, EMCC, 'code.cpp', '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-s', 'ASSERTIONS=%d' % assertions])
+        output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True)
+        exit = 1-no_exit
+        assert (no_exit and assertions) == ('atexit() called, but NO_EXIT_RUNTIME, so atexits() will not be called. set NO_EXIT_RUNTIME to 0' in output), 'warning should be shown'
 
   def test_os_oz(self):
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
