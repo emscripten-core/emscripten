@@ -284,6 +284,10 @@ function run(args) {
 
 #if HAS_MAIN
     if (Module['_main'] && shouldRunNow) Module['callMain'](args);
+#else
+#if ASSERTIONS
+    assert(!Module['_main'], 'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');
+#endif // ASSERTIONS
 #endif // HAS_MAIN
 
     postRun();
