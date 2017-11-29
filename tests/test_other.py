@@ -4751,6 +4751,20 @@ main(const int argc, const char * const * const argv)
     self.assertContained('locale set to waka: waka;waka;waka;waka;waka;waka',
                          run_js('a.out.js', args=['waka']))
 
+  def test_js_main(self):
+    # try to add a main() from JS, at runtime. this is not supported (the
+    # compiler needs to know at compile time about main).
+    open('pre_main.js', 'w').write(r'''
+      var Module = {
+        '_main': function() {
+        }
+      };
+    ''')
+    open('src.cpp', 'w').write('')
+    subprocess.check_call([PYTHON, EMCC, 'src.cpp', '--pre-js', 'pre_main.js'])
+    self.assertContained('compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]',
+                         run_js('a.out.js', assert_returncode=None, stderr=PIPE))
+
   def test_js_malloc(self):
     open('src.cpp', 'w').write(r'''
 #include <stdio.h>
