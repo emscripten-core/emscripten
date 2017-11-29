@@ -1601,7 +1601,7 @@ int f() {
       Popen(compiler + [os.path.join(self.get_dir(), 'main.cpp')] + link_cmd + ['-lother', '-c']).communicate()
       print('...')
       # The normal build system is over. We need to do an additional step to link in the dynamic libraries, since we ignored them before
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.o')] + link_cmd + ['-lother']).communicate()
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.o')] + link_cmd + ['-lother', '-s', 'NO_EXIT_RUNTIME=0']).communicate()
 
       self.assertContained('*hello from lib\n|hello from lib|\n*', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
@@ -3799,7 +3799,7 @@ int main(int argc, char **argv) {
         return 123;
       }
     ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    Popen([PYTHON, EMCC, 'src.cpp', '-s', 'NO_EXIT_RUNTIME=0']).communicate()
     for engine in JS_ENGINES:
       print(engine)
       process = Popen(engine + ['a.out.js'], stdout=PIPE, stderr=PIPE)
@@ -4777,7 +4777,7 @@ main(const int argc, const char * const * const argv)
   }
 }
     ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    Popen([PYTHON, EMCC, 'src.cpp', '-s', 'NO_EXIT_RUNTIME=0']).communicate()
     self.assertContained('Constructed locale "C"\nThis locale is the global locale.\nThis locale is the C locale.', run_js('a.out.js', args=['C']))
     self.assertContained('''Can't construct locale "waka": collate_byname<char>::collate_byname failed to construct for waka''', run_js('a.out.js', args=['waka'], assert_returncode=1))
 
@@ -5324,7 +5324,7 @@ int main(void) {
       Popen([PYTHON, EMAR, 'rc', 'libtest.a', 'y.o']).communicate()
       Popen([PYTHON, EMAR, 'rc', 'libtest.a', 'x.o']).communicate()
       Popen([PYTHON, EMRANLIB, 'libtest.a']).communicate()
-      Popen([PYTHON, EMCC, 'z.o', 'libtest.a'] + args).communicate()
+      Popen([PYTHON, EMCC, 'z.o', 'libtest.a', '-s', 'NO_EXIT_RUNTIME=0'] + args).communicate()
       out = run_js('a.out.js', assert_returncode=161)
 
   def test_link_with_bad_o_in_a(self):
@@ -5341,7 +5341,7 @@ int main(void) {
 
   def test_require(self):
     inname = path_from_root('tests', 'hello_world.c')
-    Building.emcc(inname, output_filename='a.out.js')
+    Building.emcc(inname, args=['-s', 'ASSERTIONS=0'], output_filename='a.out.js')
     output = Popen(NODE_JS + ['-e', 'require("./a.out.js")'], stdout=PIPE, stderr=PIPE).communicate()
     assert output == ('hello, world!\n', ''), 'expected no output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % output
 
@@ -5578,13 +5578,13 @@ print(os.environ.get('NM'))
 #include <emscripten.h>
 int main() {
   EM_ASM({
-    Module.onExit = function(status) { Module.print('exiting now, status ' + status) };
+    Module['onExit'] = function(status) { Module.print('exiting now, status ' + status) };
   });
   return 14;
 }
     ''')
     try_delete('a.out.js')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    Popen([PYTHON, EMCC, 'src.cpp', '-s', 'NO_EXIT_RUNTIME=0']).communicate()
     self.assertContained('exiting now, status 14', run_js('a.out.js', assert_returncode=14))
 
   def test_underscore_exit(self):
@@ -6282,7 +6282,7 @@ main(int argc, char **argv)
     perror("Resolve failed");
     return 1;
   } else {
-    printf("Resolved: %s", t_realpath_buf);
+    printf("Resolved: %s\n", t_realpath_buf);
     free(t_realpath_buf);
     return 0;
   }
@@ -6316,7 +6316,7 @@ main(int argc, char **argv)
     perror("Resolve failed");
     return 1;
   } else {
-    printf("Resolved: %s", t_realpath_buf);
+    printf("Resolved: %s\n", t_realpath_buf);
     free(t_realpath_buf);
     return 0;
   }
@@ -7438,7 +7438,7 @@ int main() {
       try_delete('a.out.js')
       subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'BINARYEN=1'])
       code = open('a.out.wasm', 'rb').read()
-      assert (b'__fflush_unlocked' in code) == expect_names, 'an internal function not exported nor imported must only appear in the binary if we have a names section'
+      assert (code.count(b'malloc') == 2) == expect_names, 'name section adds the name of malloc (there is also another one for the export'
       sizes[str(args)] = os.stat('a.out.wasm').st_size
     print(sizes)
     assert sizes["['-O2']"] < sizes["['-O2', '--profiling-funcs']"], 'when -profiling-funcs, the size increases due to function names'
