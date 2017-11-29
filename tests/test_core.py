@@ -1319,7 +1319,8 @@ int main() {
     self.do_run_in_out_file_test('tests', 'stdio', 'test_rename', force_c=True)
 
   def test_remove(self):
-    self.do_run_in_out_file_test('tests', 'cstdio', 'test_remove')
+   Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
+   self.do_run_in_out_file_test('tests', 'cstdio', 'test_remove')
 
   def test_alloca_stack(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_alloca_stack')
