@@ -3234,7 +3234,8 @@ int main(int argc, char **argv) {
         assert ('atexit(' in src) == exit, 'atexit should not appear or be called'
 
   def test_no_exit_runtime_warnings_flush(self):
-    open('code.cpp', 'w').write(r'''
+    # check we warn if there is unflushed info
+    open('code.c', 'w').write(r'''
 #include <stdio.h>
 int main(int argc, char **argv) {
   printf("hello\n");
@@ -3244,18 +3245,31 @@ int main(int argc, char **argv) {
 #endif
 }
 ''')
-    for no_exit in [0, 1]:
-      for assertions in [0, 1]:
-        for flush in [0, 1]:
-          print(no_exit, assertions, flush)
-          cmd = [PYTHON, EMCC, 'code.cpp', '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-s', 'ASSERTIONS=%d' % assertions]
-          if flush: cmd += ['-DFLUSH']
-          subprocess.check_call(cmd)
-          output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True)
-          exit = 1-no_exit
-          assert 'hello' in output
-          assert ('world' in output) == (exit or flush), 'unflushed content is shown only when exiting the runtime'
-          assert (no_exit and assertions and not flush) == ('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0' in output), 'warning should be shown'
+    open('code.cpp', 'w').write(r'''
+#include <iostream>
+int main() {
+  using namespace std;
+  cout << "hello" << std::endl;
+  cout << "world"; // no newline, not flushed
+#if FLUSH
+  std::cout << std::endl;
+#endif
+}
+''')
+    for src in ['code.c', 'code.cpp']:
+      for no_exit in [0, 1]:
+        for assertions in [0, 1]:
+          for flush in [0, 1]:
+            # TODO: also check NO_FILESYSTEM here. it never worked though, buffered output was not emitted at shutdown
+            print(src, no_exit, assertions, flush)
+            cmd = [PYTHON, EMCC, src, '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-s', 'ASSERTIONS=%d' % assertions]
+            if flush: cmd += ['-DFLUSH']
+            subprocess.check_call(cmd)
+            output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True)
+            exit = 1-no_exit
+            assert 'hello' in output, output
+            assert ('world' in output) == (exit or flush), 'unflushed content is shown only when exiting the runtime'
+            assert (no_exit and assertions and not flush) == ('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0' in output), 'warning should be shown'
 
   def test_no_exit_runtime_warnings_atexit(self):
     open('code.cpp', 'w').write(r'''

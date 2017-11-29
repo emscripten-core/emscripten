@@ -317,9 +317,9 @@ function exit(status, implicit) {
   // mode (which has its own special function for this; otherwise, all
   // the code is inside libc)
 #if NO_FILESYSTEM
-  var flush = typeof flush_NO_FILESYSTEM === 'function' ? flush_NO_FILESYSTEM : null;
+  var flush = {{{ '$flush_NO_FILESYSTEM' in addedLibraryItems ? 'flush_NO_FILESYSTEM' : 'null' }}};
 #else
-  var flush = Module['_fflush'];
+  var flush = {{{ '$FS' in addedLibraryItems ? 'FS.quit' : "Module['_fflush']" }}};
 #endif
   if (flush) {
     var print = Module['print'];

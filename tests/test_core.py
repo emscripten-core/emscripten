@@ -147,6 +147,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_zextneg')
 
   def test_i64_7z(self):
+    Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_7z',
                                  args=['hallo'])
 
@@ -4461,6 +4462,7 @@ def process(filename):
     self.do_run_in_out_file_test('tests', 'core', 'test_std_cout_new')
 
   def test_istream(self):
+    Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     test_path = path_from_root('tests', 'core', 'test_istream')
     src, output = (test_path + s for s in ('.c', '.out'))
 
