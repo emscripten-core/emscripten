@@ -5741,6 +5741,8 @@ def process(filename):
   def test_cases(self):
     if Building.LLVM_OPTS: return self.skip("Our code is not exactly 'normal' llvm assembly")
 
+    Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
+
     emcc_args = self.emcc_args
 
     # The following tests link to libc, and must be run with EMCC_LEAVE_INPUTS_RAW = 0
