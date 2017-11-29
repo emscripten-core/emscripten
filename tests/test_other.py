@@ -3795,29 +3795,29 @@ int main(int argc, char **argv) {
   def test_returncode(self):
     open('src.cpp', 'w').write(r'''
       #include <stdio.h>
+      #include <stdlib.h>
       int main() {
+      #if CALL_EXIT
+        exit(CODE);
+      #else
         return CODE;
+      #endif
       }
     ''')
     for code in [0, 123]:
       for no_exit in [0, 1]:
-        subprocess.check_call([PYTHON, EMCC, 'src.cpp', '-DCODE=%d' % code, '-s', 'NO_EXIT_RUNTIME=%d' % no_exit])
-        for engine in JS_ENGINES:
-          print(code, engine)
-          process = Popen(engine + ['a.out.js'], stdout=PIPE, stderr=PIPE)
-          out, err = process.communicate()
-          if no_exit == 0:
-            # if we exit the runtime, then code should be as expected, and output empty
+        for call_exit in [0, 1]:
+          subprocess.check_call([PYTHON, EMCC, 'src.cpp', '-DCODE=%d' % code, '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-DCALL_EXIT=%d' % call_exit])
+          for engine in JS_ENGINES:
+            print(code, no_exit, call_exit, engine)
+            process = Popen(engine + ['a.out.js'], stdout=PIPE, stderr=PIPE)
+            out, err = process.communicate()
+            # we always emit the right exit code, whether we exit the runtime or not
             assert process.returncode == code, [process.returncode, out, err]
             assert not out, out
-            assert not err, err
-          else:
-            # otherwise, we don't exit, so we won't emit a non-zero code
-            assert process.returncode == 0, [process.returncode, out, err]
-            assert (('exiting with status %d != 0; you should set NO_EXIT_RUNTIME=0 for full exit support' % code) in err) == (code != 0), [out, err]
-            if code == 0:
-              assert not out, out
+            if not call_exit:
               assert not err, err
+            assert ('compiled with NO_EXIT_RUNTIME, so halting execution but not exiting the runtime or preventing further async execution (build with NO_EXIT_RUNTIME=0, if you want a true shutdown)' in err) == (no_exit and call_exit), err
 
   def test_mkdir_silly(self):
     open('src.cpp', 'w').write(r'''

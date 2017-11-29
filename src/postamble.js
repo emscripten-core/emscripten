@@ -309,11 +309,6 @@ Module['run'] = Module.run = run;
 function exit(status, implicit) {
 #if ASSERTIONS
 #if NO_EXIT_RUNTIME == 1
-  // if a non-default (0) returncode is provided, the user should set
-  // NO_EXIT_RUNTIME so we emit it
-  if (status !== 0) {
-    Module['printErr']('exiting with status ' + status + ' != 0; you should set NO_EXIT_RUNTIME=0 for full exit support');
-  }
   // compiler settings do not allow exiting the runtime, so flushing
   // the streams is not possible. but in ASSERTIONS mode we check
   // if there was something to flush, and if so tell the user they
@@ -343,17 +338,25 @@ function exit(status, implicit) {
 #endif // NO_EXIT_RUNTIME
 #endif // ASSERTIONS
 
-  if (implicit && Module['noExitRuntime']) {
-    // we may have warned about this earlier, if a situation justifies doing so.
-    // otherwise, we reached the end of main() (an implicit exit), and can just
-    // leave here.
+  // if this is just main exit-ing implicitly, and the status is 0, then we
+  // don't need to do anything here and can just leave. if the status is
+  // non-zero, though, then we need to report it.
+  // (we may have warned about this earlier, if a situation justifies doing so)
+  if (implicit && Module['noExitRuntime'] && status === 0) {
     return;
   }
 
   if (Module['noExitRuntime']) {
 #if ASSERTIONS
-    Module.printErr('exit(' + status + ') called, but noExitRuntime, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)');
-#endif
+    // if exit() was called, we may warn the user if the runtime isn't actually being shut down
+    if (!implicit) {
+#if NO_EXIT_RUNTIME
+      Module.printErr('exit(' + status + ') called, but compiled with NO_EXIT_RUNTIME, so halting execution but not exiting the runtime or preventing further async execution (build with NO_EXIT_RUNTIME=0, if you want a true shutdown)');
+#else
+      Module.printErr('exit(' + status + ') called, but noExitRuntime, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)');
+#endif // NO_EXIT_RUNTIME
+    }
+#endif // ASSERTIONS
   } else {
 #if USE_PTHREADS
     PThread.terminateAllThreads();
