@@ -3796,15 +3796,28 @@ int main(int argc, char **argv) {
     open('src.cpp', 'w').write(r'''
       #include <stdio.h>
       int main() {
-        return 123;
+        return CODE;
       }
     ''')
-    Popen([PYTHON, EMCC, 'src.cpp', '-s', 'NO_EXIT_RUNTIME=0']).communicate()
-    for engine in JS_ENGINES:
-      print(engine)
-      process = Popen(engine + ['a.out.js'], stdout=PIPE, stderr=PIPE)
-      output = process.communicate()
-      assert process.returncode == 123, process.returncode
+    for code in [0, 123]:
+      for no_exit in [0, 1]:
+        subprocess.check_call([PYTHON, EMCC, 'src.cpp', '-DCODE=%d' % code, '-s', 'NO_EXIT_RUNTIME=%d' % no_exit])
+        for engine in JS_ENGINES:
+          print(code, engine)
+          process = Popen(engine + ['a.out.js'], stdout=PIPE, stderr=PIPE)
+          out, err = process.communicate()
+          if no_exit == 0:
+            # if we exit the runtime, then code should be as expected, and output empty
+            assert process.returncode == code, [process.returncode, out, err]
+            assert not out, out
+            assert not err, err
+          else:
+            # otherwise, we don't exit, so we won't emit a non-zero code
+            assert process.returncode == 0, [process.returncode, out, err]
+            assert (('exiting with status %d != 0; you should set NO_EXIT_RUNTIME=0 for full exit support' % code) in err) == (code != 0), [out, err]
+            if code == 0:
+              assert not out, out
+              assert not err, err
 
   def test_mkdir_silly(self):
     open('src.cpp', 'w').write(r'''
