@@ -1132,6 +1132,7 @@ int main(int argc, char **argv)
 
   def test_exceptions_typed(self):
     Settings.DISABLE_EXCEPTION_CATCHING = 0
+    Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     self.emcc_args += ['-s', 'SAFE_HEAP=0'] # Throwing null will cause an ignorable null pointer access.
 
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_typed')
@@ -3405,12 +3406,12 @@ var Module = {
     ''', 'other says 175a1ddee82b8c31.')
 
   def test_dylink_i64_b(self):
-    self.dylink_test('''
+    self.dylink_test(r'''
       #include <stdio.h>
       #include <stdint.h>
       extern int64_t sidey();
       int main() {
-        printf("other says %lld.", sidey());
+        printf("other says %lld.\n", sidey());
         return 0;
       }
     ''', '''
@@ -6801,6 +6802,7 @@ Success!
 
   @sync
   def test_exit_status(self):
+    Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
