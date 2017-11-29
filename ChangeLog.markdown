@@ -7,7 +7,11 @@ To browse or download snapshots of old tagged versions, visit https://github.com
 
 Not all changes are documented here. In particular, new features, user-oriented fixes, options, command-line parameters, usage changes, deprecations, significant internal modifications and optimizations etc. generally deserve a mention. To examine the full set of changes between versions, visit the link to full changeset diff at the end of each section.
 
-Current trunk code
+Current Trunk
+-------------
+ - Breaking change: Change `NO_EXIT_RUNTIME` to 1 by default. This means that by default we don't include code to shut down the runtime, flush stdio streams, run atexits, etc., which is better for code size. When `ASSERTIONS` is on, we warn at runtime if there is text buffered in the streams that should be flushed, or atexits are used.
+
+v1.37.17: 7/25/2017
 ------------------
  - Updated to libc++'s "v2" ABI, which provides better alignment for string data and other improvements. This is an ABI-incompatible change, so bitcode files from previous versions will not be compatible.
  - To see a list of commits in the active development branch 'incoming', which have not yet been packaged in a release, see
