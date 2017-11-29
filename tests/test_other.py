@@ -3239,17 +3239,23 @@ int main(int argc, char **argv) {
 int main(int argc, char **argv) {
   printf("hello\n");
   printf("world"); // no newline, not flushed
+#if FLUSH
+  printf("\n");
+#endif
 }
 ''')
     for no_exit in [0, 1]:
       for assertions in [0, 1]:
-        print(no_exit, assertions)
-        subprocess.check_call([PYTHON, EMCC, 'code.cpp', '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-s', 'ASSERTIONS=%d' % assertions])
-        output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True)
-        exit = 1-no_exit
-        assert 'hello' in output
-        assert ('world' in output) == exit, 'unflushed content is shown only when exiting the runtime'
-        assert (no_exit and assertions) == ('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0' in output), 'warning should be shown'
+        for flush in [0, 1]:
+          print(no_exit, assertions, flush)
+          cmd = [PYTHON, EMCC, 'code.cpp', '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-s', 'ASSERTIONS=%d' % assertions]
+          if flush: cmd += ['-DFLUSH']
+          subprocess.check_call(cmd)
+          output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True)
+          exit = 1-no_exit
+          assert 'hello' in output
+          assert ('world' in output) == (exit or flush), 'unflushed content is shown only when exiting the runtime'
+          assert (no_exit and assertions and not flush) == ('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0' in output), 'warning should be shown'
 
   def test_no_exit_runtime_warnings_atexit(self):
     open('code.cpp', 'w').write(r'''
