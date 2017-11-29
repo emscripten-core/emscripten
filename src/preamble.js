@@ -2000,19 +2000,18 @@ function integrateWasmJS() {
   //  * 'interpret-binary': load binary wasm and interpret
   //  * 'interpret-asm2wasm': load asm.js code, translate to wasm, and interpret
   //  * 'asmjs': no wasm, just load the asm.js code and use that (good for testing)
-  // The method can be set at compile time (BINARYEN_METHOD), or runtime by setting Module['wasmJSMethod'].
+  // The method is set at compile time (BINARYEN_METHOD)
   // The method can be a comma-separated list, in which case, we will try the
   // options one by one. Some of them can fail gracefully, and then we can try
   // the next.
 
   // inputs
 
-  var method = Module['wasmJSMethod'] || '{{{ BINARYEN_METHOD }}}';
-  Module['wasmJSMethod'] = method;
+  var method = '{{{ BINARYEN_METHOD }}}';
 
-  var wasmTextFile = Module['wasmTextFile'] || '{{{ WASM_TEXT_FILE }}}';
-  var wasmBinaryFile = Module['wasmBinaryFile'] || '{{{ WASM_BINARY_FILE }}}';
-  var asmjsCodeFile = Module['asmjsCodeFile'] || '{{{ ASMJS_CODE_FILE }}}';
+  var wasmTextFile = '{{{ WASM_TEXT_FILE }}}';
+  var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
+  var asmjsCodeFile = '{{{ ASMJS_CODE_FILE }}}';
 
   if (typeof Module['locateFile'] === 'function') {
     wasmTextFile = Module['locateFile'](wasmTextFile);
@@ -2024,39 +2023,41 @@ function integrateWasmJS() {
 
   var wasmPageSize = 64*1024;
 
-  var asm2wasmImports = { // special asm2wasm imports
-    "f64-rem": function(x, y) {
-      return x % y;
-    },
-    "f64-to-int": function(x) {
-      return x | 0;
-    },
-    "i32s-div": function(x, y) {
-      return ((x | 0) / (y | 0)) | 0;
-    },
-    "i32u-div": function(x, y) {
-      return ((x >>> 0) / (y >>> 0)) >>> 0;
-    },
-    "i32s-rem": function(x, y) {
-      return ((x | 0) % (y | 0)) | 0;
-    },
-    "i32u-rem": function(x, y) {
-      return ((x >>> 0) % (y >>> 0)) >>> 0;
-    },
-    "debugger": function() {
-      debugger;
-    },
-  };
-
   var info = {
     'global': null,
     'env': null,
-    'asm2wasm': asm2wasmImports,
+    'asm2wasm': { // special asm2wasm imports
+      "f64-rem": function(x, y) {
+        return x % y;
+      },
+      "debugger": function() {
+        debugger;
+      }
+#if NEED_ALL_ASM2WASM_IMPORTS
+      ,
+      "f64-to-int": function(x) {
+        return x | 0;
+      },
+      "i32s-div": function(x, y) {
+        return ((x | 0) / (y | 0)) | 0;
+      },
+      "i32u-div": function(x, y) {
+        return ((x >>> 0) / (y >>> 0)) >>> 0;
+      },
+      "i32s-rem": function(x, y) {
+        return ((x | 0) % (y | 0)) | 0;
+      },
+      "i32u-rem": function(x, y) {
+        return ((x >>> 0) % (y >>> 0)) >>> 0;
+      }
+#endif // NEED_ALL_ASM2WASM_IMPORTS
+    },
     'parent': Module // Module inside wasm-js.cpp refers to wasm-js.cpp; this allows access to the outside program.
   };
 
   var exports = null;
 
+#if BINARYEN_METHOD != 'native-wasm'
   function lookupImport(mod, base) {
     var lookup = info;
     if (mod.indexOf('.') < 0) {
@@ -2074,6 +2075,7 @@ function integrateWasmJS() {
     }
     return lookup;
   }
+#endif // BINARYEN_METHOD != 'native-wasm'
 
   function mergeMemory(newBuffer) {
     // The wasm instance creates its memory. But static init code might have written to
@@ -2097,16 +2099,8 @@ function integrateWasmJS() {
     updateGlobalBufferViews();
   }
 
-  var WasmTypes = {
-    none: 0,
-    i32: 1,
-    i64: 2,
-    f32: 3,
-    f64: 4
-  };
-
   function fixImports(imports) {
-    if (!{{{ WASM_BACKEND }}}) return imports;
+#if WASM_BACKEND
     var ret = {};
     for (var i in imports) {
       var fixed = i;
@@ -2114,6 +2108,9 @@ function integrateWasmJS() {
       ret[fixed] = imports[i];
     }
     return ret;
+#else
+    return imports;
+#endif // WASM_BACKEND
   }
 
   function getBinary() {
@@ -2159,6 +2156,7 @@ function integrateWasmJS() {
 
   // do-method functions
 
+#if BINARYEN_METHOD != 'native-wasm'
   function doJustAsm(global, env, providedBuffer) {
     // if no Module.asm, or it's the method handler helper (see below), then apply
     // the asmjs
@@ -2176,6 +2174,7 @@ function integrateWasmJS() {
     }
     return Module['asm'](global, env, providedBuffer);
   }
+#endif // BINARYEN_METHOD != 'native-wasm'
 
   function doNativeWasm(global, env, providedBuffer) {
     if (typeof WebAssembly !== 'object') {
@@ -2280,6 +2279,7 @@ function integrateWasmJS() {
 #endif
   }
 
+#if BINARYEN_METHOD != 'native-wasm'
   function doWasmPolyfill(global, env, providedBuffer, method) {
     if (typeof WasmJS !== 'function') {
       Module['printErr']('WasmJS not detected - polyfill not bundled?');
@@ -2345,6 +2345,7 @@ function integrateWasmJS() {
 
     return exports;
   }
+#endif // BINARYEN_METHOD != 'native-wasm'
 
   // We may have a preloaded value in Module.asm, save it
   Module['asmPreload'] = Module['asm'];
@@ -2374,12 +2375,15 @@ function integrateWasmJS() {
 #endif
         return null;
       }
-    } else {
+    }
+#if BINARYEN_METHOD != 'native-wasm'
+    else {
       // wasm interpreter support
       exports['__growWasmMemory']((size - oldSize) / wasmPageSize); // tiny wasm method that just does grow_memory
       // in interpreter, we replace Module.buffer if we allocate
       return Module['buffer'] !== old ? Module['buffer'] : null; // if it was reallocated, it changed
     }
+#endif // BINARYEN_METHOD != 'native-wasm'
   };
 
   Module['reallocBuffer'] = function(size) {
