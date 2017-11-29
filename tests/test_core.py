@@ -2049,6 +2049,7 @@ The current type of b is: 9
   def test_stdlibs(self):
       # safe heap prints a warning that messes up our output.
       Settings.SAFE_HEAP = 0
+      Settings.NO_EXIT_RUNTIME = 0 # needs atexit
       self.do_run_in_out_file_test('tests', 'core', 'test_stdlibs')
 
   def test_stdbool(self):
@@ -3862,7 +3863,7 @@ var Module = {
 int main()
 {
     srandom(0xdeadbeef);
-    printf("%ld", random());
+    printf("%ld\n", random());
 }
 '''
     self.do_run(src, '956867869')
@@ -3959,6 +3960,7 @@ Have even and odd!
 
   def test_printf(self):
     self.banned_js_engines = [NODE_JS, V8_ENGINE] # SpiderMonkey and V8 do different things to float64 typed arrays, un-NaNing, etc.
+    Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
     expected = open(path_from_root('tests', 'printf', 'output.txt'), 'r').read()
     self.do_run(src, expected)
@@ -4062,6 +4064,7 @@ Pass: 0.000012 0.000012''')
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_n')
 
   def test_sscanf_whitespace(self):
+    Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_whitespace')
 
   def test_sscanf_other_whitespace(self):
@@ -5029,6 +5032,7 @@ return malloc(size);
 
   def test_mmap(self):
     Settings.TOTAL_MEMORY = 128*1024*1024
+    Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
 
     test_path = path_from_root('tests', 'core', 'test_mmap')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -5213,6 +5217,7 @@ return malloc(size);
   @SIMD
   def test_simd3(self):
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
+    Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     self.emcc_args = self.emcc_args + ['-msse2']
     test_path = path_from_root('tests', 'core', 'test_simd3')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -5233,6 +5238,7 @@ return malloc(size);
 
   @SIMD
   def test_simd6(self):
+    Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     # test_simd6 is to test x86 min and max intrinsics on NaN and -0.0
     self.emcc_args = self.emcc_args + ['-msse']
     test_path = path_from_root('tests', 'core', 'test_simd6')
@@ -5295,6 +5301,7 @@ return malloc(size);
 
   @SIMD
   def test_simd14(self):
+    Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     self.emcc_args = self.emcc_args + ['-msse', '-msse2']
     test_path = path_from_root('tests', 'core', 'test_simd14')
     src, output = (test_path + s for s in ('.c', '.out'))
