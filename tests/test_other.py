@@ -7614,7 +7614,7 @@ int main() {
           assert see_polyfill, 'we need the polyfill'
 
         def break_cashew():
-          asm = open('a.wasm.asm.js').read()
+          with open('a.wasm.asm.js') as f: asm = f.read()
           asm = asm.replace('"almost asm"', '"use asm"; var not_in_asm = [].length + (true || { x: 5 }.x);')
           asm = asm.replace("'almost asm'", '"use asm"; var not_in_asm = [].length + (true || { x: 5 }.x);')
           with open('a.wasm.asm.js', 'w') as o: o.write(asm)
@@ -7637,7 +7637,7 @@ int main() {
           if not success:
             try_delete('a.wasm.wasm')
         else:
-          1/0
+          raise Exception('internal test error')
         proc = subprocess.Popen(NODE_JS + ['a.wasm.js'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = proc.communicate()
         if success:
