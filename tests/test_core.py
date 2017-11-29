@@ -181,6 +181,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_in_out_file_test('tests', 'core', 'test_i32_mul_precise')
 
   def test_i16_emcc_intrinsic(self):
+    Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     self.do_run_in_out_file_test('tests', 'core', 'test_i16_emcc_intrinsic')
 
   def test_double_i64_conversion(self):
@@ -1545,6 +1546,7 @@ def process(filename):
 
   def test_emscripten_get_now(self):
     self.banned_js_engines = [V8_ENGINE] # timer limitations in v8 shell
+    Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
 
     if self.run_name == 'asm2':
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
@@ -2148,6 +2150,7 @@ The current type of b is: 9
     self.do_run_in_out_file_test('tests', 'core', 'test_strptime_days')
 
   def test_strptime_reentrant(self):
+    Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     self.do_run_in_out_file_test('tests', 'core', 'test_strptime_reentrant')
 
   def test_strftime(self):
@@ -3160,7 +3163,7 @@ var Module = {
         #include <stdio.h>
         extern int sidey();
         int main() {
-          printf("other says %d.", sidey());
+          printf("other says %d.\\n", sidey());
           return 0;
         }
       ''', '''
@@ -3178,7 +3181,7 @@ var Module = {
       #include <stdio.h>
       extern float sidey();
       int main() {
-        printf("other says %.2f.", sidey()+1);
+        printf("other says %.2f.\\n", sidey()+1);
         return 0;
       }
     ''', '''
@@ -3634,7 +3637,7 @@ var Module = {
           }
         ''', side=r'''
           #include <iostream>
-          void side() { std::cout << "cout hello from side"; }
+          void side() { std::cout << "cout hello from side\n"; }
         ''', expected=['cout hello from side\n'],
              need_reverse=need_reverse)
       except Exception as e:
@@ -4451,6 +4454,7 @@ def process(filename):
       self.do_run_from_file(src, output)
 
   def test_direct_string_constant_usage(self):
+    Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     self.do_run_in_out_file_test('tests', 'core', 'test_direct_string_constant_usage')
 
   def test_std_cout_new(self):
@@ -6862,6 +6866,7 @@ Success!
     self.do_run_from_file(path_from_root('tests', 'vswprintf_utf8.c'), path_from_root('tests', 'vswprintf_utf8.out'))
 
   def test_async(self):
+    Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
 
     src = r'''
@@ -7005,6 +7010,7 @@ int main() {
 ''', 'f\nhello\nf\nhello\nf\nhello\nf\nhello\nf\nhello\nexit\n')
 
   def test_coroutine(self):
+    Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     src = r'''
 #include <stdio.h>
 #include <emscripten.h>
