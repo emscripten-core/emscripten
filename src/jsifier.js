@@ -25,9 +25,20 @@ var proxiedFunctionTable = ["null" /* Reserve index 0 for an undefined function*
 // map: pair(sig, syncOrAsync) -> function body
 var proxiedFunctionInvokers = {};
 
+// We include asm2wasm imports if we may interpret (where we call out to JS to do some math stuff)
+// or if the trap mode is 'js' (where we do the same). However, we always need some of them (like
+// the frem import because % is in asm.js but not in wasm). But we can avoid emitting all the others
+// in many cases.
+var NEED_ALL_ASM2WASM_IMPORTS = BINARYEN_METHOD != 'native-wasm' || BINARYEN_TRAP_MODE == 'js';
+
+// used internally. set when there is a main() function.
+// also set when in a linkable module, as the main() function might
+// arrive from a dynamically-linked library, and not necessarily
+// the current compilation unit.
+var HAS_MAIN = ('_main' in IMPLEMENTED_FUNCTIONS) || MAIN_MODULE || SIDE_MODULE;
+
 // JSifier
 function JSify(data, functionsOnly) {
-  //B.start('jsifier');
   var mainPass = !functionsOnly;
 
   var itemsDict = { type: [], GlobalVariableStub: [], functionStub: [], function: [], GlobalVariable: [], GlobalVariablePostSet: [] };
@@ -569,6 +580,7 @@ function JSify(data, functionsOnly) {
     if (DETERMINISTIC) {
       print(read('deterministic.js'));
     }
+
     var postFile = BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'postamble_sharedlib.js' : 'postamble.js';
     var postParts = processMacros(preprocess(read(postFile), postFile)).split('{{GLOBAL_VARS}}');
     print(postParts[0]);
