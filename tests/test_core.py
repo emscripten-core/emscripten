@@ -6863,6 +6863,11 @@ Success!
   def test_async(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
 
+    if not self.is_emterpreter():
+      return self.skip('need emterpreter for async')
+
+    Settings.EMTERPRETIFY_ASYNC = 1
+
     src = r'''
 #include <stdio.h>
 #include <emscripten.h>
@@ -6879,11 +6884,6 @@ int main() {
   printf("%%d\n", i);
 }
 ''' % ('sleep_with_yield' if self.is_emterpreter() else 'sleep')
-
-    if not self.is_emterpreter():
-      Settings.ASYNCIFY = 1
-    else:
-      Settings.EMTERPRETIFY_ASYNC = 1
 
     self.do_run(src, 'HelloWorld!99');
 
@@ -7004,6 +7004,7 @@ int main() {
 ''', 'f\nhello\nf\nhello\nf\nhello\nf\nhello\nf\nhello\nexit\n')
 
   def test_coroutine(self):
+    return self.skip('restore this test when we support coroutines somehow (ASYNCIFY used to)')
     src = r'''
 #include <stdio.h>
 #include <emscripten.h>
@@ -7046,7 +7047,6 @@ int main(int argc, char **argv) {
     return 0;
 }
 '''
-    Settings.ASYNCIFY = 1
     self.do_run(src, '*0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
   @no_emterpreter

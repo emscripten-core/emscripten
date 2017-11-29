@@ -464,20 +464,6 @@ Typedefs
 Functions
 ---------
 
-.. c:function:: void emscripten_wget(const char* url, const char* file)
-
-	Load file from url in *synchronously*. For the asynchronous version, see the :c:func:`emscripten_async_wget`.
-
-	In addition to fetching the URL from the network, preload plugins are executed so that the data is usable in ``IMG_Load`` and so forth (we synchronously do the work to make the browser decode the image or audio etc.).
- 
-	This function is blocking; it won't return until all operations are finished. You can then open and read the file if it succeeded.
-
-	To use this function, you will need to compile your application with the linker flag ``-s ASYNCIFY=1``
-
-	:param const char* url: The URL to load.
-	:param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten. If the destination directory for the file does not exist on the filesystem, it will be created. A relative pathname may be passed, which will be interpreted relative to the current working directory at the time of the call to this function.
-
-	
 .. c:function:: void emscripten_async_wget(const char* url, const char* file, em_str_callback_func onload, em_str_callback_func onerror)
 		 
 	Loads a file from a URL asynchronously. 
@@ -1181,17 +1167,11 @@ IndexedDB
 	:param perror: An out parameter that will be filled with a non-zero value if an error occurred.
 
 		
-Asyncify functions
-==================
+Async functions
+===============
 
-Asyncify functions are asynchronous functions that appear synchronously in C, the linker flag `-s ASYNCIFY=1` is required to use these functions. See `Asyncify <https://github.com/kripken/emscripten/wiki/Asyncify>`_ for more details.
+Async functions are asynchronous functions that appear synchronously in C, using the Emterpreter-Async option, which is enabled by the linker flags `-s EMTERPRETIFY=1 -s EMTERPRETIFY_ASYNC=1`. See the `Emterpreter-Async docs <https://github.com/kripken/emscripten/wiki/Emterpreter#emterpreter-async-run-synchronous-code>`_ for more details.
 
-Typedefs
---------
-
-.. c:type:: emscripten_coroutine
-
-    A handle to the structure used by coroutine supporting functions.
 
 Functions
 ---------
@@ -1200,18 +1180,22 @@ Functions
 
     Sleep for `ms` milliseconds.
 
-.. c:function:: emscripten_coroutine emscripten_coroutine_create(em_arg_callback_func func, void *arg, int stack_size)
+.. c:function:: void emscripten_sleep_with_yield(unsigned int ms)
 
-    Create a coroutine which will be run as `func(arg)`.
+    Sleep for `ms` milliseconds, allowing async callbacks during that time.
 
-    :param int stack_size: the stack size that should be allocated for the coroutine, use 0 for the default value.
+.. c:function:: void emscripten_wget(const char* url, const char* file)
 
-.. c:function:: int emscripten_coroutine_next(emscripten_coroutine coroutine)
+	Load file from url in synchronously. For the asynchronous version, see the :c:func:`emscripten_async_wget`.
 
-    Run `coroutine` until it returns, or `emscripten_yield` is called. A non-zero value is returned if `emscripten_yield` is called, otherwise 0 is returned, and future calls of `emscripten_coroutine_next` on this coroutine is undefined behaviour.
+	In addition to fetching the URL from the network, preload plugins are executed so that the data is usable in ``IMG_Load`` and so forth (we synchronously do the work to make the browser decode the image or audio etc.).
+ 
+	This function is blocking; it won't return until all operations are finished. You can then open and read the file if it succeeded.
 
-.. c:function:: void emscripten_yield(void)
+	:param const char* url: The URL to load.
+	:param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten. If the destination directory for the file does not exist on the filesystem, it will be created. A relative pathname may be passed, which will be interpreted relative to the current working directory at the time of the call to this function.
 
-    This function should only be called in a coroutine created by `emscripten_coroutine_create`, when it called, the coroutine is paused and the caller will continue.
-    
+.. c:function:: void emscripten_wget_data(const char* url, void** pbuffer, int* pnum, int *perror)
+
+	Similar to `emscripten_wget`, but fetches the data into a buffer instead of a file.
 

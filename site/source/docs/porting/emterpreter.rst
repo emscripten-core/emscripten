@@ -127,13 +127,12 @@ Note that this will only be a performance issue, not correctness - by inlining, 
 Comparison to ASYNCIFY
 ----------------------
 
-ASYNCIFY is an earlier experiment on running synchronous code. It does a whole-program analysis in LLVM and modifies all relevant methods to they can be saved and resumed, by breaking them up and so forth. Comparing the two,
+ASYNCIFY was an earlier experiment on running synchronous code. It did a whole-program analysis in LLVM and modifies all relevant methods to they can be saved and resumed, by breaking them up and so forth. Comparing the two,
 
- * ASYNCIFY has a bad worst-case of large code size: If it needs to modify many methods, it can grow code size very significantly (even 10x more was seen). The emterpreter on the other hand has a guarantee of having smaller code size than normal emscripten output, simply because emterpreter bytecode is smaller than JS source. (Note: you should use ``EMTERPRETIFY_FILE`` to reduce code size, as without it the bytecode is stored in JS which is inefficient for binary data.)
- * ASYNCIFY is slower than normal emscripten output, but probably not hugely so, while the emterpreter can be much slower, because it interprets code. Using a whitelist or blacklist with the emterpreter, this can be mitigated.
+ * ASYNCIFY had a bad worst-case of large code size: If it needs to modify many methods, it can grow code size very significantly (even 10x more was seen). The emterpreter on the other hand has a guarantee of having smaller code size than normal emscripten output, simply because emterpreter bytecode is smaller than JS source. (Note: you should use ``EMTERPRETIFY_FILE`` to reduce code size, as without it the bytecode is stored in JS which is inefficient for binary data.)
+ * ASYNCIFY was slower than normal emscripten output, but probably not hugely so, while the emterpreter can be much slower, because it interprets code. Using a whitelist or blacklist with the emterpreter, this can be mitigated.
  * There are some known bugs with ASYNCIFY on things like exceptions and setjmp. The emterpreter has not been tested on those feature yet, so it's unclear if it would work. Update: there are known issues with doing and async operation when there is a try-catch (llvm invoke) on the stack.
  * ASYNCIFY focused on a static analysis, while the Emterpreter-Async option has both a static analysis and dynamic tools to help figure out which methods should be treated in a special way to enable synchronous code.
- * As the emterpreter is useful for other things than synchronous code, it will likely continue to be worked on, while the ASYNCIFY option currently does not have activity.
 
 Further reading
 ~~~~~~~~~~~~~~~

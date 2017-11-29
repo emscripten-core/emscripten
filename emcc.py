@@ -688,10 +688,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       for i in range(len(newargs)):
         if newargs[i] == '-s':
           if is_minus_s_for_emcc(newargs, i):
-            key = newargs[i+1]
-            settings_changes.append(key)
+            change = newargs[i+1]
+            settings_changes.append(change)
             newargs[i] = newargs[i+1] = ''
-            assert key != 'WASM_BACKEND', 'do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment'
+            key, value = change.split('=', 1)
+            # checks on valid settings being specified
+            if key == 'ASYNCIFY':
+              logging.critical('ASYNCIFY has been removed, see the Emterpreter-Async option as a replacement')
+              sys.exit(1)
       newargs = [arg for arg in newargs if arg is not '']
 
       # Handle aliases in settings flags

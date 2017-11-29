@@ -451,10 +451,6 @@ def create_backend_args(infile, temp_js, settings):
     args += ['-enable-emscripten-cpp-exceptions']
     if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
       args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['fake'])]
-  if settings['ASYNCIFY']:
-    args += ['-emscripten-asyncify']
-    args += ['-emscripten-asyncify-functions=' + ','.join(settings['ASYNCIFY_FUNCTIONS'])]
-    args += ['-emscripten-asyncify-whitelist=' + ','.join(settings['ASYNCIFY_WHITELIST'])]
   if settings['NO_EXIT_RUNTIME']:
     args += ['-emscripten-no-exit-runtime']
   if settings['BINARYEN']:
@@ -1109,10 +1105,6 @@ def make_simd_types(metadata, settings):
   }
 
 
-def need_asyncify(exported_implemented_functions):
-  return '_emscripten_alloc_async_context' in exported_implemented_functions
-
-
 def asm_safe_heap(settings):
   """optimized safe heap in asm, when we can"""
   return settings['SAFE_HEAP'] and not settings['SAFE_HEAP_LOG'] and not settings['RELOCATABLE']
@@ -1235,19 +1227,12 @@ def create_basic_vars(exported_implemented_functions, forwarded_json, metadata, 
       basic_vars += ['gb', 'fb']
     else:
       basic_vars += ['memoryBase', 'tableBase'] # wasm side modules have a specific convention for these
-
-  # See if we need ASYNCIFY functions
-  # We might not need them even if ASYNCIFY is enabled
-  if need_asyncify(exported_implemented_functions):
-    basic_vars += ['___async', '___async_unwind', '___async_retval', '___async_cur_frame']
   return basic_vars
 
 
 def create_exports(exported_implemented_functions, in_table, function_table_data, metadata, settings):
   quote = quoter(settings)
   asm_runtime_funcs = create_asm_runtime_funcs(settings)
-  if need_asyncify(exported_implemented_functions):
-    asm_runtime_funcs.append('setAsync')
   all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables(function_table_data, settings)
   if settings['EMULATED_FUNCTION_POINTERS']:
     all_exported += in_table
@@ -1390,9 +1375,6 @@ function establishStackSpace(stackBase, stackMax) {
   STACK_MAX = stackMax;
 }
 ''' + ('''
-function setAsync() {
-  ___async = 1;
-}''' if need_asyncify(exports) else '') + ('''
 function emterpret(pc) { // this will be replaced when the emterpreter code is generated; adding it here allows validation until then
   pc = pc | 0;
   assert(0);

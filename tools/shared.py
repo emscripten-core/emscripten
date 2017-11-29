@@ -2291,7 +2291,6 @@ class Building(object):
   def path_to_system_js_libraries_for_settings(link_settings):
     system_js_libraries =[]
     if 'EMTERPRETIFY_ASYNC=1' in link_settings: system_js_libraries += ['library_async.js']
-    if 'ASYNCIFY=1' in link_settings: system_js_libraries += ['library_async.js']
     if 'LZ4=1' in link_settings: system_js_libraries += ['library_lz4.js']
     if 'USE_SDL=1' in link_settings: system_js_libraries += ['library_sdl.js']
     if 'USE_SDL=2' in link_settings: system_js_libraries += ['library_egl.js', 'library_glut.js', 'library_gl.js']
