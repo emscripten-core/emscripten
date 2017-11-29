@@ -1241,6 +1241,7 @@ int main() {
       self.do_run_in_out_file_test('tests', 'core', 'test_isdigit_l')
 
   def test_iswdigit(self):
+      Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
       self.do_run_in_out_file_test('tests', 'core', 'test_iswdigit')
 
   def test_polymorph(self):
