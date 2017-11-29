@@ -882,6 +882,7 @@ int main() {
 
   def test_exceptions(self):
       Settings.EXCEPTION_DEBUG = 1
+      Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
 
       Settings.DISABLE_EXCEPTION_CATCHING = 0
       if '-O2' in self.emcc_args:
