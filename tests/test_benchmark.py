@@ -15,9 +15,15 @@ DEFAULT_ARG = '4'
 
 TEST_REPS = 3
 
-CORE_BENCHMARKS = True # core benchmarks vs full regression suite
+# by default, run just core benchmarks
+CORE_BENCHMARKS = True
+# if a specific benchmark is requested, don't limit to core
+if 'benchmark.' in str(sys.argv):
+  CORE_BENCHMARKS = False
 
 IGNORE_COMPILATION = 0
+
+OPTIMIZATIONS = '-O3'
 
 class Benchmarker(object):
   def __init__(self, name):
@@ -50,7 +56,7 @@ class Benchmarker(object):
     std = math.sqrt(mean_of_squared - mean*mean)
     sorted_times = self.times[:]
     sorted_times.sort()
-    median = sum(sorted_times[len(sorted_times)//2 - 1:len(sorted_times)//2 + 1])//2
+    median = sum(sorted_times[len(sorted_times)//2 - 1:len(sorted_times)//2 + 1])/2
 
     print('   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100*std/mean, self.reps), end=' ')
 
@@ -62,11 +68,11 @@ class Benchmarker(object):
       print()
 
 class NativeBenchmarker(Benchmarker):
-  def __init__(self, name, cc, cxx, args=['-O2']):
+  def __init__(self, name, cc, cxx, args=[OPTIMIZATIONS]):
     self.name = name
     self.cc = cc
     self.cxx = cxx
-    self.args = args
+    self.args = args[:]
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.parent = parent
@@ -91,14 +97,22 @@ class NativeBenchmarker(Benchmarker):
     process = Popen([self.filename] + args, stdout=PIPE, stderr=PIPE)
     return process.communicate()[0]
 
+def run_binaryen_opts(filename, opts):
+  subprocess.check_call([
+    os.path.join(Building.get_binaryen_bin(), 'wasm-opt'),
+    filename,
+    '-o', filename
+  ] + opts)
+
 class JSBenchmarker(Benchmarker):
-  def __init__(self, name, engine, extra_args=[], env={}):
+  def __init__(self, name, engine, extra_args=[], env={}, binaryen_opts=[]):
     self.name = name
     self.engine = engine
-    self.extra_args = extra_args
+    self.extra_args = extra_args[:]
     self.env = os.environ.copy()
     for k, v in env.items():
       self.env[k] = v
+    self.binaryen_opts = binaryen_opts[:]
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.filename = filename
@@ -119,20 +133,157 @@ process(sys.argv[1])
     final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
     try_delete(final)
-    output = Popen([PYTHON, EMCC, filename, #'-O3',
-                    '-O3', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
-                    '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
-                    '-s', 'TOTAL_MEMORY=256*1024*1024',
-                    '-s', 'NO_EXIT_RUNTIME=1',
-                    '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
-                    #'--profiling',
-                    #'--closure', '1',
-                    '-o', final] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
+    cmd = [
+      PYTHON, EMCC, filename,
+      OPTIMIZATIONS,
+      '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
+      '-s', 'TOTAL_MEMORY=256*1024*1024',
+      '-s', 'NO_EXIT_RUNTIME=1',
+      '-s', 'NO_FILESYSTEM=1',
+      '-s', 'EXPORTED_RUNTIME_METHODS=[]',
+      '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
+      #'--profiling',
+      '--closure', '1',
+      '-o', final
+    ] + shared_args + emcc_args + self.extra_args
+    output = Popen(cmd, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
     assert os.path.exists(final), 'Failed to compile file: ' + output[0] + ' (looked for ' + final + ')'
+    if self.binaryen_opts:
+      run_binaryen_opts(final[:-3] + '.wasm', self.binaryen_opts)
     self.filename = final
 
   def run(self, args):
     return run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True, assert_returncode=None)
+
+CHEERP_BIN = '/opt/cheerp/bin/'
+
+class CheerpBenchmarker(Benchmarker):
+  def __init__(self, name, engine, args=[OPTIMIZATIONS], binaryen_opts=[]):
+    self.name = name
+    self.engine = engine
+    self.args = args[:]
+    self.binaryen_opts = binaryen_opts[:]
+
+  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
+    suffix = filename.split('.')[-1]
+    cheerp_temp = filename + '.cheerp.' + suffix
+    code = open(filename).read()
+    if 'int main()' in code:
+      main_args = ''
+    else:
+      main_args = 'argc, (%(const)s char**)argv' % {
+        'const': 'const' if 'const char *argv' in code else ''
+      }
+    open(cheerp_temp, 'w').write('''
+      %(code)s
+      void webMain() {
+        // TODO: how to read from commandline?
+        volatile int argc = 2;
+        typedef char** charStarStar;
+        volatile charStarStar argv;
+        argv[0] = "./cheerp.exe";
+        argv[1] = "%(arg)s";
+        main(%(main_args)s);
+      }
+    ''' % {
+      'arg': args[-1],
+      'code': code,
+      'main_args': main_args
+    })
+    cheerp_args = [
+      '-target', 'cheerp', '-cheerp-mode=wasm',
+    ]
+    self.parent = parent
+    if lib_builder:
+      # build as "native" (so no emcc env stuff), but with all the cheerp stuff
+      # set in the env
+      cheerp_args = cheerp_args + lib_builder(self.name, native=True, env_init={
+        'CC': CHEERP_BIN + 'clang',
+        'CXX': CHEERP_BIN + 'clang++',
+        'AR': CHEERP_BIN + 'llvm-ar',
+        'LD': CHEERP_BIN + 'clang',
+        'NM': CHEERP_BIN + 'llvm-nm',
+        'LDSHARED': CHEERP_BIN + 'clang',
+        'RANLIB': CHEERP_BIN + 'llvm-ranlib',
+        'CFLAGS': '-target cheerp -cheerp-mode=wasm',
+        'CXXFLAGS': '-target cheerp -cheerp-mode=wasm',
+      })
+    final = os.path.dirname(filename) + os.path.sep + 'cheerp_' + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
+    final = final.replace('.cpp', '')
+    try_delete(final)
+    dirs_to_delete = []
+    try:
+      for arg in cheerp_args[:]:
+        if arg.endswith('.a'):
+          info = self.handle_static_lib(arg)
+          cheerp_args += info['files']
+          dirs_to_delete += [info['dir']]
+      cheerp_args = [arg for arg in cheerp_args if not arg.endswith('.a')]
+      #print(cheerp_args)
+      cmd = [CHEERP_BIN + 'clang++'] + cheerp_args + [
+        '-cheerp-linear-heap-size=256',
+        '-cheerp-wasm-loader=' + final,
+        cheerp_temp,
+        '-Wno-writable-strings', # for how we set up webMain
+        '-o', final + '.wasm'
+      ] + shared_args
+      #print(' '.join(cmd))
+      subprocess.check_call(cmd)
+      self.filename = final
+      Building.get_binaryen()
+      if self.binaryen_opts:
+        run_binaryen_opts(final + '.wasm', self.binaryen_opts)
+    finally:
+      for dir_ in dirs_to_delete:
+        try_delete(dir_)
+
+  def run(self, args):
+    return run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True, assert_returncode=None)
+
+  def handle_static_lib(self, f):
+    try:
+      cwd = os.getcwd()
+      temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
+      safe_ensure_dirs(temp_dir)
+      os.chdir(temp_dir)
+      contents = [x for x in Popen([CHEERP_BIN + 'llvm-ar', 't', f], stdout=PIPE).communicate()[0].split('\n') if len(x) > 0]
+      warn_if_duplicate_entries(contents, f)
+      if len(contents) == 0:
+        logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
+        return {
+          'returncode': 0,
+          'dir': temp_dir,
+          'files': []
+        }
+
+      # We are about to ask llvm-ar to extract all the files in the .a archive file, but
+      # it will silently fail if the directory for the file does not exist, so make all the necessary directories
+      for content in contents:
+        dirname = os.path.dirname(content)
+        if dirname:
+          safe_ensure_dirs(dirname)
+      proc = Popen([CHEERP_BIN + 'llvm-ar', 'xo', f], stdout=PIPE, stderr=PIPE)
+      stdout, stderr = proc.communicate() # if absolute paths, files will appear there. otherwise, in this directory
+      contents = list(map(os.path.abspath, contents))
+      nonexisting_contents = [x for x in contents if not os.path.exists(x)]
+      if len(nonexisting_contents) != 0:
+        raise Exception('llvm-ar failed to extract file(s) ' + str(nonexisting_contents) + ' from archive file ' + f + '! Error:' + str(stdout) + str(stderr))
+
+      return {
+        'returncode': proc.returncode,
+        'dir': temp_dir,
+        'files': contents
+      }
+    except Exception as e:
+      print('extract archive contents('+str(f)+') failed with error: ' + str(e), file=sys.stderr)
+    finally:
+      os.chdir(cwd)
+
+    return {
+      'returncode': 1,
+      'dir': None,
+      'files': []
+    }
 
 # Benchmarkers
 try:
@@ -144,12 +295,20 @@ try:
   if SPIDERMONKEY_ENGINE and Building.which(SPIDERMONKEY_ENGINE[0]):
     benchmarkers += [
       JSBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
-      JSBenchmarker('sm-simd',  SPIDERMONKEY_ENGINE, ['-s', 'SIMD=1']),
-      JSBenchmarker('sm-wasm',  SPIDERMONKEY_ENGINE, ['-s', 'WASM=1']),
+      #JSBenchmarker('sm-simd',  SPIDERMONKEY_ENGINE, ['-s', 'SIMD=1']),
+      JSBenchmarker('sm-asm2wasm',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['-s', 'WASM=1']),
+      #JSBenchmarker('sm-wasmbackend',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['-s', 'WASM=1'], env={
+      #  'LLVM': '/home/alon/Dev/llvm/build/bin',
+      #  'EMCC_WASM_BACKEND': '1',
+      #}),
     ]
   if V8_ENGINE and Building.which(V8_ENGINE[0]):
     benchmarkers += [
       JSBenchmarker('v8-wasm',  V8_ENGINE,           ['-s', 'WASM=1']),
+    ]
+  if os.path.exists(CHEERP_BIN):
+    benchmarkers += [
+      #CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE + ['--no-wasm-baseline']),
     ]
 except Exception as e:
   benchmarkers_error = str(e)
@@ -187,7 +346,7 @@ class benchmark(RunnerCore):
       pass
 
     Building.COMPILER = CLANG
-    Building.COMPILER_TEST_OPTS = ['-O2']
+    Building.COMPILER_TEST_OPTS = [OPTIMIZATIONS]
 
   def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None, lib_builder=None):
     if len(benchmarkers) == 0: raise Exception('error, no benchmarkers: ' + benchmarkers_error)
@@ -416,7 +575,7 @@ class benchmark(RunnerCore):
         return sum;
       }
     '''
-    self.do_benchmark('ifs', src, 'ok', reps=TEST_REPS*5)
+    self.do_benchmark('ifs', src, 'ok', reps=TEST_REPS)
 
   def test_conditionals(self):
     src = r'''
@@ -452,7 +611,7 @@ class benchmark(RunnerCore):
         return x;
       }
     '''
-    self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS*5)
+    self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS)
 
   def test_fannkuch(self):
     src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read().replace(
@@ -592,68 +751,81 @@ class benchmark(RunnerCore):
 
   # Benchmarks the synthetic performance of calling native functions.
   def test_native_functions(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('native_functions', open(path_from_root('tests', 'benchmark_ffis.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
   # Benchmarks the synthetic performance of calling function pointers.
   def test_native_function_pointers(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('native_functions', open(path_from_root('tests', 'benchmark_ffis.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DBENCHMARK_FUNCTION_POINTER=1', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
   # Benchmarks the synthetic performance of calling "foreign" JavaScript functions.
   def test_foreign_functions(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('foreign_functions', open(path_from_root('tests', 'benchmark_ffis.cpp')).read(), '''Total time:''', output_parser=output_parser, emcc_args=['--js-library', path_from_root('tests/benchmark_ffis.js')], shared_args=['-DBENCHMARK_FOREIGN_FUNCTION=1', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
   def test_memcpy_128b(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_128b', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMAX_COPY=128', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
   def test_memcpy_4k(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_4k', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=128', '-DMAX_COPY=4096', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
   def test_memcpy_16k(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_16k', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=4096', '-DMAX_COPY=16384', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
   def test_memcpy_1mb(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_1mb', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=16384', '-DMAX_COPY=1048576', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
   def test_memcpy_16mb(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_16mb', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
   def test_memset_128b(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_128b', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMAX_COPY=128', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
   def test_memset_4k(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_4k', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=128', '-DMAX_COPY=4096', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
   def test_memset_16k(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_16k', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=4096', '-DMAX_COPY=16384', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
   def test_memset_1mb(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_1mb', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=16384', '-DMAX_COPY=1048576', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])
 
   def test_memset_16mb(self):
+    if CORE_BENCHMARKS: return
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_16mb', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), '''Total time:''', output_parser=output_parser, shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I'+path_from_root('tests')])

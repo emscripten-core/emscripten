@@ -2131,13 +2131,6 @@ void *getBindBuffer() {
       }, 1000);
     '''
 
-    open('pre_main.js', 'w').write(r'''
-      Module._main = function(){
-        myJSCallback();
-        return 0;
-      };
-    ''')
-
     open('pre_runtime.js', 'w').write(r'''
       Module.onRuntimeInitialized = function(){
         myJSCallback();
@@ -2146,7 +2139,6 @@ void *getBindBuffer() {
 
     for filename, extra_args, second_code in [
       ('runtime_misuse.cpp', [], 600),
-      ('runtime_misuse_2.cpp', ['--pre-js', 'pre_main.js'], 600),
       ('runtime_misuse_2.cpp', ['--pre-js', 'pre_runtime.js'], 601) # 601, because no main means we *do* run another call after exit()
     ]:
       for mode in [[], ['-s', 'WASM=1']]:

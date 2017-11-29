@@ -4684,6 +4684,20 @@ main(const int argc, const char * const * const argv)
     self.assertContained('locale set to waka: waka;waka;waka;waka;waka;waka',
                          run_js('a.out.js', args=['waka']))
 
+  def test_js_main(self):
+    # try to add a main() from JS, at runtime. this is not supported (the
+    # compiler needs to know at compile time about main).
+    open('pre_main.js', 'w').write(r'''
+      var Module = {
+        '_main': function() {
+        }
+      };
+    ''')
+    open('src.cpp', 'w').write('')
+    subprocess.check_call([PYTHON, EMCC, 'src.cpp', '--pre-js', 'pre_main.js'])
+    self.assertContained('compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]',
+                         run_js('a.out.js', assert_returncode=None, stderr=PIPE))
+
   def test_js_malloc(self):
     open('src.cpp', 'w').write(r'''
 #include <stdio.h>
@@ -7595,6 +7609,57 @@ int main() {
         del os.environ['EMCC_DEBUG']
       print('sizes:', sizes)
       assert sizes[1] < sizes[0], 'ignoring implicit traps must reduce code size'
+
+  def test_binaryen_methods(self):
+    for method_init in ['interpret-asm2wasm', 'interpret-s-expr', 'asmjs', 'interpret-binary', 'asmjs,interpret-binary', 'interpret-binary,asmjs']:
+      # check success and failure for simple modes, only success for combined/fallback ones
+      for success in [1, 0] if ',' not in method_init else [1]:
+        method = method_init
+        command = [PYTHON, EMCC, '-o', 'a.wasm.js', '-s', 'BINARYEN=1', path_from_root('tests', 'hello_world.c')]
+        command += ['-s', 'BINARYEN_METHOD="' + method + '"']
+        print([method, ' : ', ' '.join(command), ' => ', success])
+        subprocess.check_call(command)
+
+        see_polyfill =  'var WasmJS = ' in open('a.wasm.js').read()
+
+        if method and 'interpret' not in method:
+          assert not see_polyfill, 'verify polyfill was not added - we specified a method, and it does not need it'
+        else:
+          assert see_polyfill, 'we need the polyfill'
+
+        def break_cashew():
+          with open('a.wasm.asm.js') as f: asm = f.read()
+          asm = asm.replace('"almost asm"', '"use asm"; var not_in_asm = [].length + (true || { x: 5 }.x);')
+          asm = asm.replace("'almost asm'", '"use asm"; var not_in_asm = [].length + (true || { x: 5 }.x);')
+          with open('a.wasm.asm.js', 'w') as o: o.write(asm)
+        if method.startswith('interpret-asm2wasm'):
+          try_delete('a.wasm.wast') # we should not need the .wast
+          if not success:
+            break_cashew() # we need cashew
+        elif method.startswith('interpret-s-expr'):
+          try_delete('a.wasm.asm.js') # we should not need the .asm.js
+          if not success:
+            try_delete('a.wasm.wast')
+        elif method.startswith('asmjs'):
+          try_delete('a.wasm.wast') # we should not need the .wast
+          break_cashew() # we don't use cashew, so ok to break it
+          if not success:
+            try_delete('a.wasm.js')
+        elif method.startswith('interpret-binary'):
+          try_delete('a.wasm.wast') # we should not need the .wast
+          try_delete('a.wasm.asm.js') # we should not need the .asm.js
+          if not success:
+            try_delete('a.wasm.wasm')
+        else:
+          raise Exception('internal test error')
+        proc = subprocess.Popen(NODE_JS + ['a.wasm.js'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = proc.communicate()
+        if success:
+          assert proc.returncode == 0, err
+          assert 'hello, world!' in out, out
+        else:
+          assert proc.returncode != 0, err
+          assert 'hello, world!' not in out, out
 
   # test disabling of JS FFI legalization
   def test_legalize_js_ffi(self):

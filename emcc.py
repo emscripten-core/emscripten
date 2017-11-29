@@ -1188,9 +1188,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # mem init file to be loadable by itself
         shared.Settings.MEM_INIT_IN_WASM = 'asmjs' not in shared.Settings.BINARYEN_METHOD and \
                                            'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD
-        # ensure the binaryen port is available, if we are using it. if we do, then
-        # we need it to build to wasm
-        system_libs.get_port('binaryen', shared.Settings)
 
       # wasm outputs are only possible with a side wasm
       if target.endswith(WASM_ENDINGS):
@@ -2244,7 +2241,7 @@ def binaryen_method_sanity_check():
 def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
                 wasm_text_target, misc_temp_files, optimizer):
   logging.debug('using binaryen, with method: ' + shared.Settings.BINARYEN_METHOD)
-  binaryen_bin = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin')
+  binaryen_bin = shared.Building.get_binaryen_bin()
   # Emit wasm.js at the top of the js. This is *not* optimized with the rest of the code, since
   # (1) it contains asm.js, whose validation would be broken, and (2) it's very large so it would
   # be slow in cleanup/JSDCE etc.

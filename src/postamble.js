@@ -165,7 +165,8 @@ dependenciesFulfilled = function runCaller() {
   if (!Module['calledRun']) dependenciesFulfilled = runCaller; // try this again later, after new deps are fulfilled
 }
 
-Module['callMain'] = Module.callMain = function callMain(args) {
+#if HAS_MAIN
+Module['callMain'] = function callMain(args) {
 #if ASSERTIONS
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on __ATMAIN__)');
   assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
@@ -239,6 +240,7 @@ Module['callMain'] = Module.callMain = function callMain(args) {
     calledMain = true;
   }
 }
+#endif // HAS_MAIN
 
 {{GLOBAL_VARS}}
 
@@ -282,7 +284,13 @@ function run(args) {
 
     if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
 
+#if HAS_MAIN
     if (Module['_main'] && shouldRunNow) Module['callMain'](args);
+#else
+#if ASSERTIONS
+    assert(!Module['_main'], 'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');
+#endif // ASSERTIONS
+#endif // HAS_MAIN
 
     postRun();
   }
@@ -302,7 +310,7 @@ function run(args) {
   checkStackCookie();
 #endif
 }
-Module['run'] = Module.run = run;
+Module['run'] = run;
 
 function exit(status, implicit) {
   if (implicit && Module['noExitRuntime']) {
@@ -335,7 +343,7 @@ function exit(status, implicit) {
   }
   Module['quit'](status, new ExitStatus(status));
 }
-Module['exit'] = Module.exit = exit;
+Module['exit'] = exit;
 
 var abortDecorators = [];
 
@@ -372,7 +380,7 @@ function abort(what) {
   }
   throw output;
 }
-Module['abort'] = Module.abort = abort;
+Module['abort'] = abort;
 
 // {{PRE_RUN_ADDITIONS}}
 
@@ -383,6 +391,7 @@ if (Module['preInit']) {
   }
 }
 
+#if HAS_MAIN
 // shouldRunNow refers to calling main(), not run().
 #if INVOKE_RUN
 var shouldRunNow = true;
@@ -392,6 +401,7 @@ var shouldRunNow = false;
 if (Module['noInitialRun']) {
   shouldRunNow = false;
 }
+#endif // HAS_MAIN
 
 #if NO_EXIT_RUNTIME
 Module["noExitRuntime"] = true;
