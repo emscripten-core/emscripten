@@ -81,7 +81,6 @@ this.onmessage = function(e) {
 
 //#if WASM
       if (e.data.wasmModule) {
-        assert(e.data.wasmMemory);
         // Module and memory were sent from main thread
         Module['wasmModule'] = e.data.wasmModule;
         Module['wasmMemory'] = e.data.wasmMemory;
