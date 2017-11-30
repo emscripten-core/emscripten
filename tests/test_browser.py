@@ -2462,7 +2462,7 @@ int main() {
   def test_asm_swapping(self):
     self.clear()
     open('run.js', 'w').write(r'''
-Module['_main'] = function() {
+Module['onRuntimeInitialized'] = function() {
   // test proper initial result
   var result = Module._func();
   console.log('first: ' + result);
