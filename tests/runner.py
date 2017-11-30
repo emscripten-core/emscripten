@@ -2,7 +2,7 @@
 # This Python file uses the following encoding: utf-8
 
 '''
-Simple test runner. Consider using parallel_test_core.py for faster iteration times.
+Simple test runner.
 '''
 
 # XXX Use EM_ALL_ENGINES=1 in the env to test all engines!
