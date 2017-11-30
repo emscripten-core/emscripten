@@ -17,7 +17,7 @@ test-defaults: &test-defaults
         apt-get install -y python python-pip cmake build-essential openjdk-9-jre-headless
         pip install --upgrade pip
         pip install lit
-        EMCC_CORES=8 python emscripten/tests/runner.py $TEST_TARGET skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full skip:other.test_native_link_error_message skip:other.test_bad_triple
+        EMCC_CORES=4 python emscripten/tests/runner.py $TEST_TARGET skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full skip:other.test_native_link_error_message skip:other.test_bad_triple
 
 version: 2
 jobs:
@@ -38,7 +38,7 @@ jobs:
           popd
           echo EMSCRIPTEN_ROOT="'~/emscripten/'" >> .emscripten
           echo BINARYEN_ROOT="''" >> .emscripten
-          EMCC_CORES=8 python2 emscripten/embuilder.py build ALL
+          EMCC_CORES=4 python2 emscripten/embuilder.py build ALL
           python2 emscripten/tests/runner.py test_hello_world
 
       - persist_to_workspace:
