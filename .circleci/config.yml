@@ -17,7 +17,8 @@ test-defaults: &test-defaults
         apt-get install -y python python-pip cmake build-essential openjdk-9-jre-headless
         pip install --upgrade pip
         pip install lit
-        EMCC_CORES=4 python emscripten/tests/runner.py $TEST_TARGET skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full skip:other.test_native_link_error_message skip:other.test_bad_triple
+        EMCC_CORES=4 python emscripten/tests/runner.py $TEST_TARGET skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full skip:other.test_native_link_error_message skip:other.test_bad_triple skip:other.test_emcc_v skip:default.test_simd_sitofp skip:default.test_simd3
+        # TODO: remove `other.test_emcc_v skip:default.test_simd_sitofp skip:default.test_simd3` after fastcomp update on travis for 1.37.23
 
 version: 2
 jobs:
@@ -107,8 +108,7 @@ jobs:
   test-qrst:
     <<: *test-defaults
     environment:
-      # TODO: remove `skip:default.test_simd_sitofp skip:default.test_simd3` after fastcomp update on travis for 1.37.23
-      - TEST_TARGET=ALL.test_q* ALL.test_r* ALL.test_s* ALL.test_t* skip:default.test_simd_sitofp skip:default.test_simd3 
+      - TEST_TARGET=ALL.test_q* ALL.test_r* ALL.test_s* ALL.test_t*
   test-uvwxyz:
     <<: *test-defaults
     environment:
