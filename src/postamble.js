@@ -332,7 +332,9 @@ function exit(status, implicit) {
     Module['print'] = Module['printErr'] = function(x) {
       has = true;
     }
-    flush(0);
+    try { // it doesn't matter if it fails
+      flush(0);
+    } catch(e) {}
     Module['print'] = print;
     Module['printErr'] = printErr;
     if (has) {
