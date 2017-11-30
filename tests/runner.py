@@ -173,7 +173,7 @@ class RunnerCore(unittest.TestCase):
     return False
 
   def is_wasm_backend(self):
-    return LLVM_TARGET == WASM_TARGET
+    return Settings.WASM_BACKEND
 
   def uses_memory_init_file(self):
     if self.emcc_args is None:
