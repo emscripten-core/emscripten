@@ -54,7 +54,7 @@ Module['print'] = threadPrint;
 Module['printErr'] = threadPrintErr;
 this.alert = threadAlert;
 
-#if WASM
+// #if WASM
 Module['instantiateWasm'] = function(info, receiveInstance) {
   // Instantiate from the module posted from the main thread.
   // We can just use sync instantiation in the worker.
@@ -64,7 +64,7 @@ Module['instantiateWasm'] = function(info, receiveInstance) {
   receiveInstance(instance);
   return instance.exports;
 }
-#endif
+//#endif
 
 this.onmessage = function(e) {
   try {
@@ -79,16 +79,18 @@ this.onmessage = function(e) {
       DYNAMICTOP_PTR = e.data.DYNAMICTOP_PTR;
 
 
-#if WASM
-      assert(e.data.wasmModule);
-      assert(e.data.wasmMemory);
-      // Module and memory were sent from main thread
-      Module['wasmModule'] = e.data.wasmModule;
-      Module['wasmMemory'] = e.data.wasmMemory;
-      buffer = Module['wasmMemory'].buffer;
-#else
-      buffer = e.data.buffer;
-#endif
+//#if WASM
+      if (e.data.wasmModule) {
+        assert(e.data.wasmMemory);
+        // Module and memory were sent from main thread
+        Module['wasmModule'] = e.data.wasmModule;
+        Module['wasmMemory'] = e.data.wasmMemory;
+        buffer = Module['wasmMemory'].buffer;
+      } else {
+//#else
+        buffer = e.data.buffer;
+      }
+//#endif
 
       PthreadWorkerInit = e.data.PthreadWorkerInit;
       if (typeof e.data.urlOrBlob === 'string') {
