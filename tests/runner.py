@@ -787,6 +787,7 @@ class BrowserCore(RunnerCore):
   @classmethod
   def setUpClass(self):
     super(BrowserCore, self).setUpClass()
+    self.also_wasm = os.environ.get('EMCC_BROWSER_ALSO_WASM', '0') == '1'
     if not has_browser(): return
     self.browser_timeout = 30
     self.harness_queue = multiprocessing.Queue()
@@ -794,7 +795,6 @@ class BrowserCore(RunnerCore):
     self.harness_server.start()
     print('[Browser harness server on process %d]' % self.harness_server.pid)
     webbrowser.open_new('http://localhost:9999/run_harness')
-    self.also_wasm = os.environ.get('EMCC_BROWSER_ALSO_WASM', '0') == '1'
 
   @classmethod
   def tearDownClass(self):
