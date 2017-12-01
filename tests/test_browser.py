@@ -3722,7 +3722,7 @@ window.close = function() {
     self.run_browser('page.html', 'hello from file', '/report_result?15')
 
   def test_unicode_html_shell(self):
-    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+    open(self.in_dir('main.cpp'), 'w').write(self.with_report_result(r'''
       int main() {
         REPORT_RESULT(0);
         return 0;
