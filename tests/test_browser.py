@@ -9,12 +9,12 @@ except ImportError:
   # Python 2 compatibility
   from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
-def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum):
+def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum, port):
   class ChunkedServerHandler(BaseHTTPRequestHandler):
     def sendheaders(s, extra=[], length=len(data)):
       s.send_response(200)
       s.send_header("Content-Length", str(length))
-      s.send_header("Access-Control-Allow-Origin", "http://localhost:8888")
+      s.send_header("Access-Control-Allow-Origin", "http://localhost:%s" % port)
       s.send_header("Access-Control-Expose-Headers", "Content-Length, Accept-Ranges")
       s.send_header("Content-type", "application/octet-stream")
       if support_byte_ranges:
@@ -719,17 +719,17 @@ window.close = function() {
       open(to + '.js', 'w').write(js_mod(open('test.js').read()))
 
     # run with noProxy, but make main thread fail
-    copy('two', lambda original: re.sub(r'function _main\(\$(.+),\$(.+)\) {', r'function _main($\1,$\2) { if (ENVIRONMENT_IS_WEB) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:8888/report_result?999");xhr.send(); return; }', original),
+    copy('two', lambda original: re.sub(r'function _main\(\$(.+),\$(.+)\) {', r'function _main($\1,$\2) { if (ENVIRONMENT_IS_WEB) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:%s/report_result?999");xhr.send(); return; }' % self.test_port, original),
                 lambda original: original.replace('function doReftest() {', 'function doReftest() { return; ')) # don't reftest on main thread, it would race
     self.run_browser('two.html?noProxy', None, ['/report_result?999'])
-    copy('two', lambda original: re.sub(r'function _main\(\$(.+),\$(.+)\) {', r'function _main($\1,$\2) { if (ENVIRONMENT_IS_WEB) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:8888/report_result?999");xhr.send(); return; }', original))
+    copy('two', lambda original: re.sub(r'function _main\(\$(.+),\$(.+)\) {', r'function _main($\1,$\2) { if (ENVIRONMENT_IS_WEB) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:%s/report_result?999");xhr.send(); return; }' % self.test_port, original))
     self.run_browser('two.html', None, ['/report_result?0']) # this is still cool
 
     # run without noProxy, so proxy, but make worker fail
-    copy('three', lambda original: re.sub(r'function _main\(\$(.+),\$(.+)\) {', r'function _main($\1,$\2) { if (ENVIRONMENT_IS_WORKER) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:8888/report_result?999");xhr.send(); return; }', original),
+    copy('three', lambda original: re.sub(r'function _main\(\$(.+),\$(.+)\) {', r'function _main($\1,$\2) { if (ENVIRONMENT_IS_WORKER) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:%s/report_result?999");xhr.send(); return; }' % self.test_port, original),
                 lambda original: original.replace('function doReftest() {', 'function doReftest() { return; ')) # don't reftest on main thread, it would race
     self.run_browser('three.html', None, ['/report_result?999'])
-    copy('three', lambda original: re.sub(r'function _main\(\$(.+),\$(.+)\) {', r'function _main($\1,$\2) { if (ENVIRONMENT_IS_WORKER) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:8888/report_result?999");xhr.send(); return; }', original))
+    copy('three', lambda original: re.sub(r'function _main\(\$(.+),\$(.+)\) {', r'function _main($\1,$\2) { if (ENVIRONMENT_IS_WORKER) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:%s/report_result?999");xhr.send(); return; }' % self.test_port, original))
     self.run_browser('three.html?noProxy', None, ['/report_result?0']) # this is still cool
 
   def test_glgears_proxy_jstarget(self):
@@ -1464,14 +1464,14 @@ keydown(100);keyup(100); // trigger the end
           var worker = new Worker('worker.js');
           worker.onmessage = function(event) {
             var xhr = new XMLHttpRequest();
-            xhr.open('GET', 'http://localhost:8888/report_result?' + event.data);
+            xhr.open('GET', 'http://localhost:%s/report_result?' + event.data);
             xhr.send();
             setTimeout(function() { window.close() }, 1000);
           };
         </script>
       </body>
       </html>
-    ''')
+    ''' % self.test_port)
     html_file.close()
 
     for file_data in [1, 0]:
@@ -1503,7 +1503,7 @@ keydown(100);keyup(100); // trigger the end
           worker.onmessage = function(event) {
             if (event.data.channel === "stdout") {
               var xhr = new XMLHttpRequest();
-              xhr.open('GET', 'http://localhost:8888/report_result?' + event.data.line);
+              xhr.open('GET', 'http://localhost:%s/report_result?' + event.data.line);
               xhr.send();
               setTimeout(function() { window.close() }, 1000);
             } else {
@@ -1524,7 +1524,7 @@ keydown(100);keyup(100); // trigger the end
         </script>
       </body>
       </html>
-    """)
+    """ % self.test_port)
     html_file.close()
 
     c_source_filename = "checksummer.c"
@@ -1551,7 +1551,7 @@ keydown(100);keyup(100); // trigger the end
     data = os.urandom(10*chunkSize+1) # 10 full chunks and one 1 byte chunk
     checksum = zlib.adler32(data)
 
-    server = multiprocessing.Process(target=test_chunked_synchronous_xhr_server, args=(True,chunkSize,data,checksum,))
+    server = multiprocessing.Process(target=test_chunked_synchronous_xhr_server, args=(True,chunkSize,data,checksum,self.test_port))
     server.start()
     self.run_browser(main, 'Chunked binary synchronous XHR in Web Workers!', '/report_result?' + str(checksum))
     server.terminate()
@@ -2021,7 +2021,7 @@ void *getBindBuffer() {
       var assert = function(check, text) {
         if (!check) {
           var xhr = new XMLHttpRequest();
-          xhr.open('GET', 'http://localhost:8888/report_result?9');
+          xhr.open('GET', 'http://localhost:%s/report_result?9');
           xhr.onload = function() {
             window.close();
           };
@@ -2029,7 +2029,7 @@ void *getBindBuffer() {
         }
       }
       Module._note(4); // this happens too early! and is overwritten when the mem init arrives
-    ''')
+    ''' % self.test_port)
 
     # with assertions, we notice when memory was written to too early
     self.btest('mem_init.cpp', expected='9', args=['--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1'])
@@ -2048,7 +2048,7 @@ void *getBindBuffer() {
         console.warn = function(x) {
           if (x.indexOf('a problem seems to have happened with Module.memoryInitializerRequest') >= 0) {
             var xhr = new XMLHttpRequest();
-            xhr.open('GET', 'http://localhost:8888/report_result?0');
+            xhr.open('GET', 'http://localhost:%s/report_result?0');
             setTimeout(xhr.onload = function() {
               console.log('close!');
               window.close();
@@ -2058,7 +2058,7 @@ void *getBindBuffer() {
           }
           console.log('WARNING: ' + x);
         };
-      ''')
+      ''' % self.test_port)
       self.btest('mem_init_request.cpp', expected=status, args=['--pre-js', 'pre.js', '--memory-init-file', '1'])
 
     test('test.html.mem', '1')
@@ -2126,11 +2126,11 @@ void *getBindBuffer() {
       setTimeout(function() {
         var xhr = new XMLHttpRequest();
         assert(Module.noted);
-        xhr.open('GET', 'http://localhost:8888/report_result?' + HEAP32[Module.noted>>2]);
+        xhr.open('GET', 'http://localhost:%s/report_result?' + HEAP32[Module.noted>>2]);
         xhr.send();
         setTimeout(function() { window.close() }, 1000);
       }, 1000);
-    '''
+    ''' % self.test_port
 
     open('pre_runtime.js', 'w').write(r'''
       Module.onRuntimeInitialized = function(){

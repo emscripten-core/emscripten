@@ -733,7 +733,7 @@ class RunnerCore(unittest.TestCase):
 # Run a server and a web page. When a test runs, we tell the server about it,
 # which tells the web page, which then opens a window with the test. Doing
 # it this way then allows the page to close() itself when done.
-def harness_server_func(q):
+def harness_server_func(q, port):
   class TestServerHandler(BaseHTTPRequestHandler):
     def do_GET(s):
       s.send_response(200)
@@ -750,10 +750,11 @@ def harness_server_func(q):
     def log_request(code=0, size=0):
       # don't log; too noisy
       pass
-  httpd = HTTPServer(('localhost', 9999), TestServerHandler)
+
+  httpd = HTTPServer(('localhost', port), TestServerHandler)
   httpd.serve_forever() # test runner will kill us
 
-def server_func(dir, q):
+def server_func(dir, q, port):
   class TestServerHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
       if 'report_' in self.path:
@@ -777,7 +778,7 @@ def server_func(dir, q):
 
   SimpleHTTPRequestHandler.extensions_map['.wasm'] = 'application/wasm'
   os.chdir(dir)
-  httpd = HTTPServer(('localhost', 8888), TestServerHandler)
+  httpd = HTTPServer(('localhost', port), TestServerHandler)
   httpd.serve_forever() # test runner will kill us
 
 class BrowserCore(RunnerCore):
@@ -789,12 +790,14 @@ class BrowserCore(RunnerCore):
     super(BrowserCore, self).setUpClass()
     self.also_wasm = os.environ.get('EMCC_BROWSER_ALSO_WASM', '0') == '1'
     if not has_browser(): return
+    self.harness_port = int(os.environ.get('EMCC_BROWSER_HARNESS_PORT', '9999'))
     self.browser_timeout = 30
     self.harness_queue = multiprocessing.Queue()
-    self.harness_server = multiprocessing.Process(target=harness_server_func, args=(self.harness_queue,))
+    self.harness_server = multiprocessing.Process(target=harness_server_func, args=(self.harness_queue, self.harness_port))
     self.harness_server.start()
     print('[Browser harness server on process %d]' % self.harness_server.pid)
-    webbrowser.open_new('http://localhost:9999/run_harness')
+    webbrowser.open_new('http://localhost:%s/run_harness' % self.harness_port)
+    self.test_port = int(os.environ.get('EMCC_BROWSER_TEST_PORT', '8888'))
 
   @classmethod
   def tearDownClass(self):
@@ -813,13 +816,13 @@ class BrowserCore(RunnerCore):
     if expectedResult is not None:
       try:
         queue = multiprocessing.Queue()
-        server = multiprocessing.Process(target=functools.partial(server_func, self.get_dir()), args=(queue,))
+        server = multiprocessing.Process(target=functools.partial(server_func, self.get_dir()), args=(queue, self.test_port))
         server.start()
         # Starting the web page server above is an asynchronous procedure, so before we tell the browser below to navigate to
         # the test page, we need to know that the server has started up and is ready to process the site navigation.
         # Therefore block until we can make a connection to the server.
         for i in range(10):
-          httpconn = HTTPConnection('localhost:8888', timeout=1)
+          httpconn = HTTPConnection('localhost:%s' % self.test_port, timeout=1)
           try:
             httpconn.connect()
             httpconn.close()
@@ -828,7 +831,7 @@ class BrowserCore(RunnerCore):
             time.sleep(1)
         else:
           raise Exception('[Test harness server failed to start up in a timely manner]')
-        self.harness_queue.put('http://localhost:8888/' + html_file)
+        self.harness_queue.put('http://localhost:%s/%s' % (self.test_port, html_file))
         output = '[no http server activity]'
         start = time.time()
         if timeout is None: timeout = self.browser_timeout
@@ -865,7 +868,7 @@ class BrowserCore(RunnerCore):
       var xhr = new XMLHttpRequest();
       var result = $0;
       if (Module['pageThrewException']) result = 12345;
-      xhr.open('GET', 'http://localhost:8888/report_result?' + result, !$1);
+      xhr.open('GET', 'http://localhost:%s/report_result?' + result, !$1);
       xhr.send();
       if (!Module['pageThrewException'] /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000);
     }, result, sync);
@@ -883,7 +886,7 @@ class BrowserCore(RunnerCore):
   #endif // ~__REPORT_RESULT_DEFINED__
 
 #endif
-''' + code
+''' % self.test_port + code
 
   def reftest(self, expected):
     # make sure the pngs used here have no color correction, using e.g.
@@ -938,7 +941,7 @@ class BrowserCore(RunnerCore):
             var wrong = Math.floor(total / (img.width*img.height*3)); // floor, to allow some margin of error for antialiasing
 
             var xhr = new XMLHttpRequest();
-            xhr.open('GET', 'http://localhost:8888/report_result?' + wrong);
+            xhr.open('GET', 'http://localhost:%s/report_result?' + wrong);
             xhr.send();
             if (wrong < 10 /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000);
           };
@@ -968,7 +971,7 @@ class BrowserCore(RunnerCore):
         };
       }
 
-''' % basename)
+''' % (self.test_port, basename))
 
   def btest(self, filename, expected=None, reference=None, force_c=False, reference_slack=0, manual_reference=False, post_build=None,
             args=[], outfile='test.html', message='.', also_proxied=False, url_suffix='', timeout=None, also_wasm=True): # TODO: use in all other tests
