@@ -5895,6 +5895,7 @@ def process(filename):
 
   @sync
   def test_ccall(self):
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['ccall', 'cwrap']
     post = '''
 def process(filename):
   src = open(filename, 'r').read() + \'\'\'
