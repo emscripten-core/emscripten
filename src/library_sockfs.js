@@ -194,6 +194,12 @@ mergeInto(LibraryManager.library, {
             // The node ws library API for specifying optional subprotocol is slightly different than the browser's.
             var opts = ENVIRONMENT_IS_NODE ? {'protocol': subProtocols.toString()} : subProtocols;
 
+            // some webservers (azure) does not support subprotocol header
+            if (runtimeConfig && null === Module['websocket']['subprotocol']) {
+              subProtocols = 'null';
+              opts = undefined;
+            }
+
 #if SOCKET_DEBUG
             Module.print('connect: ' + url + ', ' + subProtocols.toString());
 #endif
