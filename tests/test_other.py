@@ -51,6 +51,15 @@ class clean_write_access_to_canonical_temp_dir(object):
       self.clean_emcc_files_in_temp_dir()
 
 class other(RunnerCore):
+  def test_emcc_v(self):
+    for compiler in [EMCC, EMXX]:
+      # -v, without input files
+      output = Popen([PYTHON, compiler, '-v'], stdout=PIPE, stderr=PIPE).communicate()
+      self.assertContained('''clang version %s.0 ''' % expected_llvm_version(), output[1].replace('\r', ''), output[1].replace('\r', ''))
+      self.assertContained('''GNU''', output[0])
+      self.assertNotContained('this is dangerous', output[0])
+      self.assertNotContained('this is dangerous', output[1])
+
   def test_emcc(self):
     for compiler in [EMCC, EMXX]:
       shortcompiler = os.path.basename(compiler)
@@ -64,13 +73,6 @@ class other(RunnerCore):
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 ''', output)
-
-      # -v, without input files
-      output = Popen([PYTHON, compiler, '-v'], stdout=PIPE, stderr=PIPE).communicate()
-      self.assertContained('''clang version %s.0 ''' % expected_llvm_version(), output[1].replace('\r', ''), output[1].replace('\r', ''))
-      self.assertContained('''GNU''', output[0])
-      self.assertNotContained('this is dangerous', output[0])
-      self.assertNotContained('this is dangerous', output[1])
 
       # --help
       output = Popen([PYTHON, compiler, '--help'], stdout=PIPE, stderr=PIPE).communicate()
