@@ -4929,10 +4929,10 @@ main(const int argc, const char * const * const argv)
       self.assertContained(has, src)
       self.assertNotContained(not_has, src)
 
-    test([], 'Module["intArray', 'Module["waka')
-    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]'], '', 'Module["intArray')
-    test(['-s', 'EXPORTED_RUNTIME_METHODS=["intArrayToString"]'], 'Module["intArray', 'Module["waka')
-    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["intArrayToString"]'], 'Module["intArray', 'Module["waka')
+    test([], 'Module["getMemory', 'Module["waka')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]'], '', 'Module["getMemory')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=["getMemory"]'], 'Module["getMemory', 'Module["waka')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["getMemory"]'], 'Module["getMemory', 'Module["waka')
 
   def test_stat_fail_alongtheway(self):
     open('src.cpp', 'w').write(r'''
