@@ -360,6 +360,9 @@ var EXPORTED_RUNTIME_METHODS = [ // Runtime elements that are exported on Module
   'ALLOC_STATIC',
   'ALLOC_DYNAMIC',
   'ALLOC_NONE',
+  'getMemory',
+  'addRunDependency',
+  'removeRunDependency',
 ];
 
 var EXTRA_EXPORTED_RUNTIME_METHODS = []; // Additional methods to those in EXPORTED_RUNTIME_METHODS. Adjusting that list
