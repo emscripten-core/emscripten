@@ -3194,7 +3194,7 @@ window.close = function() {
 
   # Test pthread_kill() operation
   def test_pthread_kill(self):
-    if emscripten_browser and 'chrom' in emscripten_browser.lower():
+    if get_browser() and 'chrom' in get_browser().lower():
       # This test hangs the chrome render process, and keep subsequent tests from passing too
       return self.skip("pthread_kill hangs chrome renderer")
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_kill.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
