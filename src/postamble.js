@@ -313,11 +313,15 @@ Module['run'] = run;
 function exit(status, implicit) {
 #if ASSERTIONS
 #if NO_EXIT_RUNTIME == 1
-  // compiler settings do not allow exiting the runtime, so flushing
+  // Compiler settings do not allow exiting the runtime, so flushing
   // the streams is not possible. but in ASSERTIONS mode we check
   // if there was something to flush, and if so tell the user they
   // should request that the runtime be exitable.
-  // how we flush the streams depends on whether we are in NO_FILESYSTEM
+  // Normally we would not even include flush() at all, but in ASSERTIONS
+  // builds we do so just for this check, and here we see if there is any
+  // content to flush, that is, we check if there would have been
+  // something a non-ASSERTIONS build would have not seen.
+  // How we flush the streams depends on whether we are in NO_FILESYSTEM
   // mode (which has its own special function for this; otherwise, all
   // the code is inside libc)
 #if NO_FILESYSTEM
