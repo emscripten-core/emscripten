@@ -1,3 +1,5 @@
+# coding=utf-8
+
 from __future__ import print_function
 import multiprocessing, os, shutil, subprocess, unittest, zlib, webbrowser, time, shlex
 from runner import BrowserCore, path_from_root, has_browser, get_browser
@@ -3718,3 +3720,14 @@ window.close = function() {
     open('page.c', 'w').write(self.with_report_result(open(path_from_root('tests', 'access_file_after_heap_resize.c'), 'r').read()))
     Popen([PYTHON, EMCC, 'page.c', '-s', 'WASM=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '--preload-file', 'test.txt', '-o', 'page.html']).communicate()
     self.run_browser('page.html', 'hello from file', '/report_result?15')
+
+  def test_unicode_html_shell(self):
+    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+      int main() {
+        REPORT_RESULT(0);
+        return 0;
+      }
+    '''))
+    open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('Emscripten-Generated Code', 'Emscripten-Generated Emoji 😅'))
+    subprocess.check_output([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'shell.html', '-o', 'test.html'])
+    self.run_browser('test.html', None, '/report_result?0')

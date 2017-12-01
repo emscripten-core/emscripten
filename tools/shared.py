@@ -2539,6 +2539,13 @@ class WebAssembly(object):
     f.close()
     return wso
 
+def asbytes(s):
+  if str is bytes:
+    # Python 2 compatibility:
+    # s.encode implicitly will first call s.decode('ascii') which may fail when with Unicode characters
+    return s
+  return s.encode('utf-8')
+
 def execute(cmd, *args, **kw):
   try:
     cmd[0] = Building.remove_quotes(cmd[0])
