@@ -354,8 +354,6 @@ var EXPORTED_RUNTIME_METHODS = [ // Runtime elements that are exported on Module
   'Runtime',
   'ccall',
   'cwrap',
-  'setValue',
-  'getValue',
   'ALLOC_NORMAL',
   'ALLOC_STACK',
   'ALLOC_STATIC',

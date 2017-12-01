@@ -4844,7 +4844,7 @@ main(const int argc, const char * const * const argv)
     assert no_size < 360000
 
   def test_no_nuthin(self):
-    print('part one: check NO_FILESYSTEM is automatically set, and effective')
+    # check NO_FILESYSTEM is automatically set, and effective
     def test(opts, ratio, absolute):
       print('opts, ratio, absolute:', opts, ratio, absolute)
       def get_size(name):
@@ -4867,13 +4867,14 @@ main(const int argc, const char * const * const argv)
       if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
         assert sizes['no_nuthin'] < 0.975*sizes['no_fs']
       assert sizes['no_fs_manual'] < sizes['no_fs'] # manual can remove a tiny bit more
-    test([], 0.75, 360000)
+    test(['-s', 'ASSERTIONS=0'], 0.75, 360000) # we don't care about code size with assertions
     test(['-O1'], 0.66, 210000)
     test(['-O2'], 0.50, 70000)
     test(['-O3', '--closure', '1'], 0.60, 50000)
     test(['-O3', '--closure', '2'], 0.60, 41000) # might change now and then
 
-    print('part two: focus on EXPORTED_RUNTIME_METHODS effects, on hello_world_em_asm')
+  def test_no_nuthin_2(self):
+    # focus on EXPORTED_RUNTIME_METHODS effects, on hello_world_em_asm
     def test(opts, ratio, absolute):
       print('opts, ratio, absolute:', opts, ratio, absolute)
       def get_size(name):
@@ -4892,7 +4893,7 @@ main(const int argc, const char * const * const argv)
       assert sizes['no_nuthin'] < absolute
       if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
         assert sizes['no_nuthin'] < 0.975*sizes['normal']
-    test([], 1, 220000)
+    test(['-s', 'ASSERTIONS=0'], 1, 220000) # we don't care about code size with assertions
     test(['-O1'], 1, 215000)
     test(['-O2'], 0.99, 75000)
     test(['-O3', '--closure', '1'], 0.975, 50000)
@@ -4911,14 +4912,16 @@ main(const int argc, const char * const * const argv)
     def test(opts, has, not_has):
       print(opts, has, not_has)
       self.clear()
-      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')] + opts).communicate()
+      # check without assertions, as with assertions we add stubs for the things we remove (which
+      # print nice error messages)
+      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASSERTIONS=0'] + opts).communicate()
       self.assertContained('hello, world!', run_js('a.out.js'))
       src = open('a.out.js').read()
       self.assertContained(has, src)
       self.assertNotContained(not_has, src)
 
     test([], 'Module["intArray', 'Module["waka')
-    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]'], 'Module["print', 'Module["intArray')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]'], '', 'Module["intArray')
     test(['-s', 'EXPORTED_RUNTIME_METHODS=["intArrayToString"]'], 'Module["intArray', 'Module["waka')
     test(['-s', 'EXPORTED_RUNTIME_METHODS=[]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["intArrayToString"]'], 'Module["intArray', 'Module["waka')
 
