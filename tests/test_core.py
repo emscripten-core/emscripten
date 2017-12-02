@@ -6925,7 +6925,7 @@ int main() {
       Settings.INVOKE_RUN = 0
       open('post.js', 'w').write('''
 try {
-  Module['ccall']('main', 'number', ['number', 'string'], [2, 'waka']);
+  ccall('main', 'number', ['number', 'string'], [2, 'waka']);
   var never = true;
 } catch(e) {
   Module.print(e);
@@ -6946,7 +6946,7 @@ int main() {
 }
 '''
       open('post.js', 'w').write('''
-Module['ccall']('main', null, ['number', 'string'], [2, 'waka'], { async: true });
+ccall('main', null, ['number', 'string'], [2, 'waka'], { async: true });
 ''')
       self.do_run(src, 'HelloWorld');
 
