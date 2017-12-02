@@ -4875,7 +4875,7 @@ main(const int argc, const char * const * const argv)
       assert sizes['no_nuthin'] < ratio*sizes['normal']
       assert sizes['no_nuthin'] < absolute, str(sizes['no_nuthin']) + ' >= ' + str(absolute)
       if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
-        assert sizes['no_nuthin'] < 0.975*sizes['no_fs']
+        assert sizes['no_nuthin'] < 0.995*sizes['no_fs']
       assert sizes['no_fs_manual'] < sizes['no_fs'] # manual can remove a tiny bit more
     test(['-s', 'ASSERTIONS=0'], 0.75, 360000) # we don't care about code size with assertions
     test(['-O1'], 0.66, 210000)
@@ -4901,13 +4901,11 @@ main(const int argc, const char * const * const argv)
       assert sizes['no_nuthin'] < sizes['normal']
       assert sizes['no_nuthin'] < ratio*sizes['normal']
       assert sizes['no_nuthin'] < absolute
-      if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
-        assert sizes['no_nuthin'] < 0.975*sizes['normal']
     test(['-s', 'ASSERTIONS=0'], 1, 220000) # we don't care about code size with assertions
     test(['-O1'], 1, 215000)
     test(['-O2'], 0.99, 75000)
-    test(['-O3', '--closure', '1'], 0.975, 50000)
-    test(['-O3', '--closure', '2'], 0.975, 41000) # might change now and then
+    test(['-O3', '--closure', '1'], 0.995, 38000)
+    test(['-O3', '--closure', '2'], 0.995, 35000) # might change now and then
 
   def test_no_browser(self):
     BROWSER_INIT = 'var Browser'
