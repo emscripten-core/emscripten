@@ -789,15 +789,15 @@ class BrowserCore(RunnerCore):
   def setUpClass(self):
     super(BrowserCore, self).setUpClass()
     self.also_wasm = os.environ.get('EMCC_BROWSER_ALSO_WASM', '0') == '1'
-    if not has_browser(): return
+    self.test_port = int(os.environ.get('EMCC_BROWSER_TEST_PORT', '8888'))
     self.harness_port = int(os.environ.get('EMCC_BROWSER_HARNESS_PORT', '9999'))
+    if not has_browser(): return
     self.browser_timeout = 30
     self.harness_queue = multiprocessing.Queue()
     self.harness_server = multiprocessing.Process(target=harness_server_func, args=(self.harness_queue, self.harness_port))
     self.harness_server.start()
     print('[Browser harness server on process %d]' % self.harness_server.pid)
     webbrowser.open_new('http://localhost:%s/run_harness' % self.harness_port)
-    self.test_port = int(os.environ.get('EMCC_BROWSER_TEST_PORT', '8888'))
 
   @classmethod
   def tearDownClass(self):
