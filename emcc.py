@@ -946,6 +946,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       assert not (shared.Settings.NO_DYNAMIC_EXECUTION and options.use_closure_compiler), 'cannot have both NO_DYNAMIC_EXECUTION and closure compiler enabled at the same time'
 
+      if options.emrun:
+        shared.Settings.EXPORTED_RUNTIME_METHODS.append('addOnExit')
+
       if options.use_closure_compiler:
         shared.Settings.USE_CLOSURE_COMPILER = options.use_closure_compiler
         if not shared.check_closure_compiler():
