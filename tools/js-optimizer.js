@@ -7926,7 +7926,7 @@ function JSDCE(ast, multipleIterations) {
 }
 
 // Aggressive JSDCE - multiple iterations
-function AJSCE(ast) {
+function AJSDCE(ast) {
   JSDCE(ast, /* multipleIterations= */ true);
 }
 
