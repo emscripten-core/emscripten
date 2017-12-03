@@ -4412,7 +4412,7 @@ def process(filename):
   def test_utf(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # only node handles utf well
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
-
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['getValue', 'setValue']
     self.do_run_in_out_file_test('tests', 'core', 'test_utf')
 
   def test_utf32(self):
@@ -5936,6 +5936,26 @@ def process(filename):
       self.emcc_args += ['--closure', '1']
       self.do_run_in_out_file_test('tests', 'core', 'test_ccall', post_build=post)
 
+  def test_getValue_setValue(self):
+    # these used to be exported, but no longer are by default
+    def test(output_prefix='', args=[]):
+      old = self.emcc_args[:]
+      self.emcc_args += args
+      self.do_run(open(path_from_root('tests', 'core', 'getValue_setValue.cpp')).read(),
+                  open(path_from_root('tests', 'core', 'getValue_setValue' + output_prefix + '.txt')).read())
+      self.emcc_args = old
+    # see that direct usage (not on module) works. we don't export, but the use
+    # keeps it alive through JSDCE
+    test(args=['-DDIRECT'])
+    # see that with assertions, we get a nice error message
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = []
+    Settings.ASSERTIONS = 1
+    test('_assert')
+    Settings.ASSERTIONS = 0
+    # see that when we export them, things work on the module
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['getValue', 'setValue']
+    test()
+
   @no_wasm_backend('DEAD_FUNCTIONS elimination is done by the JSOptimizer')
   def test_dead_functions(self):
     src = r'''
@@ -7142,6 +7162,7 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
     self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
 
+  @no_wasm_backend('Wasm backend emits non-trapping float-to-int conversion')
   def test_binaryen_trap_mode(self):
     if not self.is_wasm(): return self.skip('wasm test')
     TRAP_OUTPUTS = ('trap', 'RuntimeError')

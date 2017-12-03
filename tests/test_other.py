@@ -51,6 +51,15 @@ class clean_write_access_to_canonical_temp_dir(object):
       self.clean_emcc_files_in_temp_dir()
 
 class other(RunnerCore):
+  def test_emcc_v(self):
+    for compiler in [EMCC, EMXX]:
+      # -v, without input files
+      output = Popen([PYTHON, compiler, '-v'], stdout=PIPE, stderr=PIPE).communicate()
+      self.assertContained('''clang version %s.0 ''' % expected_llvm_version(), output[1].replace('\r', ''), output[1].replace('\r', ''))
+      self.assertContained('''GNU''', output[0])
+      self.assertNotContained('this is dangerous', output[0])
+      self.assertNotContained('this is dangerous', output[1])
+
   def test_emcc(self):
     for compiler in [EMCC, EMXX]:
       shortcompiler = os.path.basename(compiler)
@@ -64,13 +73,6 @@ class other(RunnerCore):
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 ''', output)
-
-      # -v, without input files
-      output = Popen([PYTHON, compiler, '-v'], stdout=PIPE, stderr=PIPE).communicate()
-      self.assertContained('''clang version %s.0 ''' % expected_llvm_version(), output[1].replace('\r', ''), output[1].replace('\r', ''))
-      self.assertContained('''GNU''', output[0])
-      self.assertNotContained('this is dangerous', output[0])
-      self.assertNotContained('this is dangerous', output[1])
 
       # --help
       output = Popen([PYTHON, compiler, '--help'], stdout=PIPE, stderr=PIPE).communicate()
@@ -3119,6 +3121,15 @@ int main() {
     assert 'emcc: warning: unaligned store' in output[1], output[1]
     assert '@line 11 "src.cpp"' in output[1], output[1]
 
+  def test_LEGACY_VM_SUPPORT(self):
+    # when modern features are lacking, we can polyfill them or at least warn
+    with open('pre.js', 'w') as f: f.write('Math.imul = undefined;')
+    def test(expected, opts=[]):
+      subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--pre-js', 'pre.js'] + opts)
+      self.assertContained(expected, run_js('a.out.js', stderr=PIPE, full_output=True, engine=NODE_JS, assert_returncode=None))
+    test('this is a legacy browser, build with LEGACY_VM_SUPPORT')
+    test('hello, world!', ['-s', 'LEGACY_VM_SUPPORT=1'])
+
   def test_on_abort(self):
     expected_output = 'Module.onAbort was called'
 
@@ -4686,6 +4697,20 @@ main(const int argc, const char * const * const argv)
     self.assertContained('locale set to waka: waka;waka;waka;waka;waka;waka',
                          run_js('a.out.js', args=['waka']))
 
+  def test_js_main(self):
+    # try to add a main() from JS, at runtime. this is not supported (the
+    # compiler needs to know at compile time about main).
+    open('pre_main.js', 'w').write(r'''
+      var Module = {
+        '_main': function() {
+        }
+      };
+    ''')
+    open('src.cpp', 'w').write('')
+    subprocess.check_call([PYTHON, EMCC, 'src.cpp', '--pre-js', 'pre_main.js'])
+    self.assertContained('compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]',
+                         run_js('a.out.js', assert_returncode=None, stderr=PIPE))
+
   def test_js_malloc(self):
     open('src.cpp', 'w').write(r'''
 #include <stdio.h>
@@ -4830,7 +4855,7 @@ main(const int argc, const char * const * const argv)
     assert no_size < 360000
 
   def test_no_nuthin(self):
-    print('part one: check NO_FILESYSTEM is automatically set, and effective')
+    # check NO_FILESYSTEM is automatically set, and effective
     def test(opts, ratio, absolute):
       print('opts, ratio, absolute:', opts, ratio, absolute)
       def get_size(name):
@@ -4853,13 +4878,14 @@ main(const int argc, const char * const * const argv)
       if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
         assert sizes['no_nuthin'] < 0.975*sizes['no_fs']
       assert sizes['no_fs_manual'] < sizes['no_fs'] # manual can remove a tiny bit more
-    test([], 0.75, 360000)
+    test(['-s', 'ASSERTIONS=0'], 0.75, 360000) # we don't care about code size with assertions
     test(['-O1'], 0.66, 210000)
     test(['-O2'], 0.50, 70000)
     test(['-O3', '--closure', '1'], 0.60, 50000)
     test(['-O3', '--closure', '2'], 0.60, 41000) # might change now and then
 
-    print('part two: focus on EXPORTED_RUNTIME_METHODS effects, on hello_world_em_asm')
+  def test_no_nuthin_2(self):
+    # focus on EXPORTED_RUNTIME_METHODS effects, on hello_world_em_asm
     def test(opts, ratio, absolute):
       print('opts, ratio, absolute:', opts, ratio, absolute)
       def get_size(name):
@@ -4878,7 +4904,7 @@ main(const int argc, const char * const * const argv)
       assert sizes['no_nuthin'] < absolute
       if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
         assert sizes['no_nuthin'] < 0.975*sizes['normal']
-    test([], 1, 220000)
+    test(['-s', 'ASSERTIONS=0'], 1, 220000) # we don't care about code size with assertions
     test(['-O1'], 1, 215000)
     test(['-O2'], 0.99, 75000)
     test(['-O3', '--closure', '1'], 0.975, 50000)
@@ -4897,14 +4923,16 @@ main(const int argc, const char * const * const argv)
     def test(opts, has, not_has):
       print(opts, has, not_has)
       self.clear()
-      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')] + opts).communicate()
+      # check without assertions, as with assertions we add stubs for the things we remove (which
+      # print nice error messages)
+      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASSERTIONS=0'] + opts).communicate()
       self.assertContained('hello, world!', run_js('a.out.js'))
       src = open('a.out.js').read()
       self.assertContained(has, src)
       self.assertNotContained(not_has, src)
 
     test([], 'Module["intArray', 'Module["waka')
-    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]'], 'Module["print', 'Module["intArray')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]'], '', 'Module["intArray')
     test(['-s', 'EXPORTED_RUNTIME_METHODS=["intArrayToString"]'], 'Module["intArray', 'Module["waka')
     test(['-s', 'EXPORTED_RUNTIME_METHODS=[]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["intArrayToString"]'], 'Module["intArray', 'Module["waka')
 
@@ -7597,6 +7625,57 @@ int main() {
         del os.environ['EMCC_DEBUG']
       print('sizes:', sizes)
       assert sizes[1] < sizes[0], 'ignoring implicit traps must reduce code size'
+
+  def test_binaryen_methods(self):
+    for method_init in ['interpret-asm2wasm', 'interpret-s-expr', 'asmjs', 'interpret-binary', 'asmjs,interpret-binary', 'interpret-binary,asmjs']:
+      # check success and failure for simple modes, only success for combined/fallback ones
+      for success in [1, 0] if ',' not in method_init else [1]:
+        method = method_init
+        command = [PYTHON, EMCC, '-o', 'a.wasm.js', '-s', 'BINARYEN=1', path_from_root('tests', 'hello_world.c')]
+        command += ['-s', 'BINARYEN_METHOD="' + method + '"']
+        print([method, ' : ', ' '.join(command), ' => ', success])
+        subprocess.check_call(command)
+
+        see_polyfill =  'var WasmJS = ' in open('a.wasm.js').read()
+
+        if method and 'interpret' not in method:
+          assert not see_polyfill, 'verify polyfill was not added - we specified a method, and it does not need it'
+        else:
+          assert see_polyfill, 'we need the polyfill'
+
+        def break_cashew():
+          with open('a.wasm.asm.js') as f: asm = f.read()
+          asm = asm.replace('"almost asm"', '"use asm"; var not_in_asm = [].length + (true || { x: 5 }.x);')
+          asm = asm.replace("'almost asm'", '"use asm"; var not_in_asm = [].length + (true || { x: 5 }.x);')
+          with open('a.wasm.asm.js', 'w') as o: o.write(asm)
+        if method.startswith('interpret-asm2wasm'):
+          try_delete('a.wasm.wast') # we should not need the .wast
+          if not success:
+            break_cashew() # we need cashew
+        elif method.startswith('interpret-s-expr'):
+          try_delete('a.wasm.asm.js') # we should not need the .asm.js
+          if not success:
+            try_delete('a.wasm.wast')
+        elif method.startswith('asmjs'):
+          try_delete('a.wasm.wast') # we should not need the .wast
+          break_cashew() # we don't use cashew, so ok to break it
+          if not success:
+            try_delete('a.wasm.js')
+        elif method.startswith('interpret-binary'):
+          try_delete('a.wasm.wast') # we should not need the .wast
+          try_delete('a.wasm.asm.js') # we should not need the .asm.js
+          if not success:
+            try_delete('a.wasm.wasm')
+        else:
+          raise Exception('internal test error')
+        proc = subprocess.Popen(NODE_JS + ['a.wasm.js'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = proc.communicate()
+        if success:
+          assert proc.returncode == 0, err
+          assert 'hello, world!' in out, out
+        else:
+          assert proc.returncode != 0, err
+          assert 'hello, world!' not in out, out
 
   # test disabling of JS FFI legalization
   def test_legalize_js_ffi(self):

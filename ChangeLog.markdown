@@ -7,7 +7,12 @@ To browse or download snapshots of old tagged versions, visit https://github.com
 
 Not all changes are documented here. In particular, new features, user-oriented fixes, options, command-line parameters, usage changes, deprecations, significant internal modifications and optimizations etc. generally deserve a mention. To examine the full set of changes between versions, visit the link to full changeset diff at the end of each section.
 
-Current trunk code
+Current Trunk
+-------------
+ - Breaking change: Do not polyfill Math.{clz32, fround, imul, trunc} by default. A new `LEGACY_VM_SUPPORT` option enables support for legacy browsers. In `ASSERTIONS` mode, a warning is shown if a polyfill was needed, suggesting using that option.
+ - Breaking change: Do not export getValue/setValue runtime methods by default. You can still use them by calling them directly in code optimized with the main file (pre-js, post-js, js libraries; if the optimizer sees they are used, it preserves them), but if you try to use them on `Module` then you must export them by adding them to `EXTRA_EXPORTED_RUNTIME_METHODS`. In `-O0` or when `ASSERTIONS` is on, a run-time error message explains that, if they are attempted to be used incorrectly.
+
+v1.37.17: 7/25/2017
 ------------------
  - Updated to libc++'s "v2" ABI, which provides better alignment for string data and other improvements. This is an ABI-incompatible change, so bitcode files from previous versions will not be compatible.
  - To see a list of commits in the active development branch 'incoming', which have not yet been packaged in a release, see
