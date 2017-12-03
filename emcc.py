@@ -2368,20 +2368,22 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
   if options.opt_level >= 2:
     # minify the JS
     optimizer.do_minify() # calculate how to minify
-    if optimizer.cleanup_shell or optimizer.minify_whitespace or options.use_closure_compiler:
-      misc_temp_files.note(final)
+    if optimizer.cleanup_shell or options.use_closure_compiler:
       if DEBUG: save_intermediate('preclean', 'js')
-      if options.use_closure_compiler:
-        logging.debug('running closure on shell code')
-        final = shared.Building.closure_compiler(final, pretty=not optimizer.minify_whitespace)
-      else:
-        assert optimizer.cleanup_shell
+      if optimizer.cleanup_shell
         logging.debug('running cleanup on shell code')
-        passes = ['noPrintMetadata', 'JSDCE', 'last']
+        # in -Os and -Oz, run AJSDCE (aggressive JS DCE, performs multiple iterations)
+        passes = ['noPrintMetadata', 'JSDCE' if options.shrink_level == 0 else 'AJSDCE', 'last']
         if optimizer.minify_whitespace:
           passes.append('minifyWhitespace')
+        misc_temp_files.note(final)
         final = shared.Building.js_optimizer_no_asmjs(final, passes)
       if DEBUG: save_intermediate('postclean', 'js')
+      if options.use_closure_compiler:
+        logging.debug('running closure on shell code')
+        misc_temp_files.note(final)
+        final = shared.Building.closure_compiler(final, pretty=not optimizer.minify_whitespace)
+        if DEBUG: save_intermediate('postclosure', 'js')
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
     f = open(final, 'r')

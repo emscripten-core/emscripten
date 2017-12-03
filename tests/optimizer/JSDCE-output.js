@@ -22,6 +22,9 @@ print(h(123));
  print(hh(123));
 }))();
 function glue() {
+ function lookup() {
+   throw 1;
+ }
 }
 glue();
 

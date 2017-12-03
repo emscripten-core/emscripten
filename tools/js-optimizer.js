@@ -7807,7 +7807,7 @@ function eliminateDeadGlobals(ast) {
 // Removes obviously-unused code. Similar to closure compiler in its rules -
 // export e.g. by Module['..'] = theThing; , or use it somewhere, otherwise
 // it goes away.
-function JSDCE(ast) {
+function JSDCE(ast, multipleIterations) {
   function iteration() {
     var removed = false;
     var scopes = [{}]; // begin with empty toplevel scope
@@ -7922,7 +7922,12 @@ function JSDCE(ast) {
     cleanUp(ast, names);
     return removed;
   }
-  while (iteration()) { }
+  while (iteration() && multipleIterations) { }
+}
+
+// Aggressive JSDCE - multiple iterations
+function AJSCE(ast) {
+  JSDCE(ast, /* multipleIterations= */ true);
 }
 
 function removeFuncs(ast) {
@@ -7971,6 +7976,7 @@ var passes = {
   dumpCallGraph: dumpCallGraph,
   asmLastOpts: asmLastOpts,
   JSDCE: JSDCE,
+  AJSDCE: AJSDCE,
   removeFuncs: removeFuncs,
   noop: function() {},
 
