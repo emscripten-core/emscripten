@@ -101,6 +101,10 @@ EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS') # Additional compiler flags that we 
 final = None
 
 
+def exit_with_error(message):
+  logging.error(message)
+  exit(1)
+
 class Intermediate(object):
   counter = 0
 def save_intermediate(name=None, suffix='js'):
@@ -694,6 +698,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             assert key != 'WASM_BACKEND', 'do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment'
       newargs = [arg for arg in newargs if arg is not '']
 
+      # Handle aliases in settings flags
+      settings_aliases = {
+          'BINARYEN_MEM_MAX': 'WASM_MEM_MAX',
+          # TODO: change most (all?) other BINARYEN* names to WASM*
+      }
+      def setting_sub(s):
+        key, rest = s.split('=', 1)
+        return '='.join([settings_aliases.get(key, key), rest])
+      settings_changes = list(map(setting_sub, settings_changes))
+
       # Find input files
 
       # These three arrays are used to store arguments of different types for
@@ -727,8 +741,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
         if not arg.startswith('-'):
           if not os.path.exists(arg):
-            logging.error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
-            exit(1)
+            exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
 
           arg_ending = filename_type_ending(arg)
           if arg_ending.endswith(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
@@ -756,18 +769,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           elif arg_ending.endswith(STATICLIB_ENDINGS):
             if not shared.Building.is_ar(arg):
               if shared.Building.is_bitcode(arg):
-                logging.error(arg + ': File has a suffix of a static library ' + str(STATICLIB_ENDINGS) + ', but instead is an LLVM bitcode file! When linking LLVM bitcode files, use one of the suffixes ' + str(BITCODE_ENDINGS))
+                message = arg + ': File has a suffix of a static library ' + str(STATICLIB_ENDINGS) + ', but instead is an LLVM bitcode file! When linking LLVM bitcode files, use one of the suffixes ' + str(BITCODE_ENDINGS)
               else:
-                logging.error(arg + ': Unknown format, not a static library!')
-              exit(1)
+                message = arg + ': Unknown format, not a static library!'
+              exit_with_error(message)
           else:
             if has_fixed_language_mode:
               newargs[i] = ''
               input_files.append((i, arg))
               has_source_inputs = True
             else:
-              logging.error(arg + ": Input file has an unknown suffix, don't know what to do with it!")
-              exit(1)
+              exit_with_error(arg + ": Input file has an unknown suffix, don't know what to do with it!")
         elif arg.startswith('-L'):
           lib_dirs.append(arg[2:])
           newargs[i] = ''
@@ -852,8 +864,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         input_files = [(i, input_file) for (i, input_file) in input_files if check(input_file)]
 
       if len(input_files) == 0:
-        logging.error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + STATICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS))
-        exit(1)
+        exit_with_error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + STATICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS))
 
       newargs = CC_ADDITIONAL_ARGS + newargs
 
@@ -880,7 +891,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         key, value = change.split('=', 1)
 
         # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
-        if key in ['TOTAL_STACK', 'TOTAL_MEMORY', 'GL_MAX_TEMP_BUFFER_SIZE', 'SPLIT_MEMORY', 'BINARYEN_MEM_MAX']:
+        if key in ['TOTAL_STACK', 'TOTAL_MEMORY', 'GL_MAX_TEMP_BUFFER_SIZE', 'SPLIT_MEMORY', 'WASM_MEM_MAX']:
           value = str(shared.expand_byte_size_suffixes(value))
 
         original_exported_response = False
@@ -923,8 +934,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         assert shared.Settings.PGO == 0, 'pgo not supported in fastcomp'
         assert shared.Settings.QUANTUM_SIZE == 4, 'altering the QUANTUM_SIZE is not supported'
       except Exception as e:
-        logging.error('Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
-        raise e
+        exit_with_error('Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
 
       assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
 
@@ -939,8 +949,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.use_closure_compiler:
         shared.Settings.USE_CLOSURE_COMPILER = options.use_closure_compiler
         if not shared.check_closure_compiler():
-          logging.error('fatal: closure compiler is not configured correctly')
-          sys.exit(1)
+          exit_with_error('fatal: closure compiler is not configured correctly')
         if options.use_closure_compiler == 2 and shared.Settings.ASM_JS == 1:
           shared.WarningManager.warn('ALMOST_ASM', 'not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
           shared.Settings.ASM_JS = 2
@@ -997,8 +1006,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.NO_FILESYSTEM = 1
         shared.Settings.FETCH = 1
         if not shared.Settings.USE_PTHREADS:
-          logging.error('-s ASMFS=1 requires either -s USE_PTHREADS=1 or -s USE_PTHREADS=2 to be set!')
-          sys.exit(1)
+          exit_with_error('-s ASMFS=1 requires either -s USE_PTHREADS=1 or -s USE_PTHREADS=2 to be set!')
 
       if shared.Settings.FETCH and final_suffix in JS_CONTAINING_SUFFIXES:
         input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'fetch', 'emscripten_fetch.cpp')))
@@ -1073,24 +1081,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.USE_PTHREADS:
         if shared.Settings.LINKABLE:
-          logging.error('-s LINKABLE=1 is not supported with -s USE_PTHREADS>0!')
-          exit(1)
+          exit_with_error('-s LINKABLE=1 is not supported with -s USE_PTHREADS>0!')
         if shared.Settings.SIDE_MODULE:
-          logging.error('-s SIDE_MODULE=1 is not supported with -s USE_PTHREADS>0!')
-          exit(1)
+          exit_with_error('-s SIDE_MODULE=1 is not supported with -s USE_PTHREADS>0!')
         if shared.Settings.MAIN_MODULE:
-          logging.error('-s MAIN_MODULE=1 is not supported with -s USE_PTHREADS>0!')
-          exit(1)
+          exit_with_error('-s MAIN_MODULE=1 is not supported with -s USE_PTHREADS>0!')
         if shared.Settings.EMTERPRETIFY:
-          logging.error('-s EMTERPRETIFY=1 is not supported with -s USE_PTHREADS>0!')
-          exit(1)
+          exit_with_error('-s EMTERPRETIFY=1 is not supported with -s USE_PTHREADS>0!')
         if shared.Settings.PROXY_TO_WORKER:
-          logging.error('--proxy-to-worker is not supported with -s USE_PTHREADS>0! Use the option -s PROXY_TO_PTHREAD=1 if you want to run the main thread of a multithreaded application in a web worker.')
-          exit(1)
+          exit_with_error('--proxy-to-worker is not supported with -s USE_PTHREADS>0! Use the option -s PROXY_TO_PTHREAD=1 if you want to run the main thread of a multithreaded application in a web worker.')
       else:
         if shared.Settings.PROXY_TO_PTHREAD:
-          logging.error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
-          exit(1)
+          exit_with_error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
 
       if shared.Settings.OUTLINING_LIMIT:
         if not options.js_opts:
@@ -1110,13 +1112,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if not DEBUG:
             misc_temp_files.note(asm_target)
 
-      assert shared.Settings.TOTAL_MEMORY >= 16*1024*1024, 'TOTAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.TOTAL_MEMORY)
+      if shared.Settings.TOTAL_MEMORY < 16*1024*1024:
+        exit_with_error('TOTAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.TOTAL_MEMORY))
       if shared.Settings.BINARYEN:
-        assert shared.Settings.TOTAL_MEMORY % 65536 == 0, 'For wasm, TOTAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.TOTAL_MEMORY)
+        if shared.Settings.TOTAL_MEMORY % 65536 != 0:
+          exit_with_error('For wasm, TOTAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.TOTAL_MEMORY))
       else:
-        assert shared.Settings.TOTAL_MEMORY % (16*1024*1024) == 0, 'For asm.js, TOTAL_MEMORY must be a multiple of 16MB, was ' + str(shared.Settings.TOTAL_MEMORY)
-      assert shared.Settings.TOTAL_MEMORY >= shared.Settings.TOTAL_STACK, 'TOTAL_MEMORY must be larger than TOTAL_STACK, was ' + str(shared.Settings.TOTAL_MEMORY) + ' (TOTAL_STACK=' + str(shared.Settings.TOTAL_STACK) + ')'
-      assert shared.Settings.BINARYEN_MEM_MAX == -1 or shared.Settings.BINARYEN_MEM_MAX % 65536 == 0, 'BINARYEN_MEM_MAX must be a multiple of 64KB, was ' + str(shared.Settings.BINARYEN_MEM_MAX)
+        if shared.Settings.TOTAL_MEMORY % (16*1024*1024) != 0:
+          exit_with_error('For asm.js, TOTAL_MEMORY must be a multiple of 16MB, was ' + str(shared.Settings.TOTAL_MEMORY))
+      if shared.Settings.TOTAL_MEMORY < shared.Settings.TOTAL_STACK:
+        exit_with_error('TOTAL_MEMORY must be larger than TOTAL_STACK, was ' + str(shared.Settings.TOTAL_MEMORY) + ' (TOTAL_STACK=' + str(shared.Settings.TOTAL_STACK) + ')')
+      if shared.Settings.WASM_MEM_MAX != -1 and shared.Settings.WASM_MEM_MAX % 65536 != 0:
+        exit_with_error('WASM_MEM_MAX must be a multiple of 64KB, was ' + str(shared.Settings.WASM_MEM_MAX))
+      if shared.Settings.USE_PTHREADS and shared.Settings.WASM and shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.WASM_MEM_MAX == -1:
+        exit_with_error('If pthreads and memory growth are enabled, WASM_MEM_MAX must be set')
 
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
@@ -1140,7 +1149,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.ASM_JS = 2 # when targeting wasm, we use a wasm Memory, but that is not compatible with asm.js opts
         shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
         assert not shared.Settings.SPLIT_MEMORY, 'WebAssembly does not support split memory'
-        assert not shared.Settings.USE_PTHREADS, 'WebAssembly does not support pthreads'
         if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS:
           logging.warning('for wasm there is no need to set ELIMINATE_DUPLICATE_FUNCTIONS, the binaryen optimizer does it automatically')
           shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 0
@@ -1174,9 +1182,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.BINARYEN_PASSES:
             shared.Settings.BINARYEN_PASSES += ','
           shared.Settings.BINARYEN_PASSES += 'safe-heap'
-        # ensure the binaryen port is available, if we are using it. if we do, then
-        # we need it to build to wasm
-        system_libs.get_port('binaryen', shared.Settings)
 
       # wasm outputs are only possible with a side wasm
       if target.endswith(WASM_ENDINGS):
@@ -1330,8 +1335,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logging.debug("running: " + ' '.join(shared.Building.doublequote_spaces(args))) # NOTE: Printing this line here in this specific format is important, it is parsed to implement the "emcc --cflags" command
         execute(args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
         if not os.path.exists(output_file):
-          logging.error('compiler frontend failed to generate LLVM bitcode, halting')
-          sys.exit(1)
+          exit_with_error('compiler frontend failed to generate LLVM bitcode, halting')
 
       # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
       for i, input_file in input_files:
@@ -1355,8 +1359,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             if has_fixed_language_mode:
               compile_source_file(i, input_file)
             else:
-              logging.error(input_file + ': Unknown file suffix when compiling to LLVM bitcode!')
-              sys.exit(1)
+              exit_with_error(input_file + ': Unknown file suffix when compiling to LLVM bitcode!')
 
     # exit block 'bitcodeize inputs'
     log_time('bitcodeize inputs')
@@ -1671,7 +1674,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.MEM_INIT_METHOD == 2:
             # memory initializer in a string literal
             return "memoryInitializer = '%s';" % shared.JS.generate_string_initializer(membytes)
-          open(memfile, 'wb').write(bytes(bytearray(membytes)))
+          open(memfile, 'wb').write(bytearray(membytes))
           if DEBUG:
             # Copy into temp dir as well, so can be run there too
             shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
@@ -2122,8 +2125,7 @@ def parse_args(newargs):
       elif newargs[i+1].lower() == 'linux':
         options.output_eol = '\n'
       else:
-        logging.error('Invalid value "' + newargs[i+1] + '" to --output_eol!')
-        exit(1)
+        exit_with_error('Invalid value "' + newargs[i+1] + '" to --output_eol!')
       newargs[i] = ''
       newargs[i+1] = ''
 
@@ -2223,14 +2225,13 @@ def binaryen_method_sanity_check():
     valid_methods = ['asmjs', 'native-wasm', 'interpret-s-expr', 'interpret-binary', 'interpret-asm2wasm']
     for m in methods:
       if m.strip() not in valid_methods:
-        logging.error('Unrecognized BINARYEN_METHOD "' + m.strip() + '" specified! Please pass a comma-delimited list containing one or more of: ' + ','.join(valid_methods))
-        sys.exit(1)
+        exit_with_error('Unrecognized BINARYEN_METHOD "' + m.strip() + '" specified! Please pass a comma-delimited list containing one or more of: ' + ','.join(valid_methods))
 
 
 def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
                 wasm_text_target, misc_temp_files, optimizer):
   logging.debug('using binaryen, with method: ' + shared.Settings.BINARYEN_METHOD)
-  binaryen_bin = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin')
+  binaryen_bin = shared.Building.get_binaryen_bin()
   # Emit wasm.js at the top of the js. This is *not* optimized with the rest of the code, since
   # (1) it contains asm.js, whose validation would be broken, and (2) it's very large so it would
   # be slow in cleanup/JSDCE etc.
@@ -2259,8 +2260,7 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
     if shared.Settings.BINARYEN_TRAP_MODE in ('js', 'clamp', 'allow'):
       cmd += ['--trap-mode=' + shared.Settings.BINARYEN_TRAP_MODE]
     else:
-      logging.error('invalid BINARYEN_TRAP_MODE value: ' + shared.Settings.BINARYEN_TRAP_MODE + ' (should be js/clamp/allow)')
-      sys.exit(1)
+      exit_with_error('invalid BINARYEN_TRAP_MODE value: ' + shared.Settings.BINARYEN_TRAP_MODE + ' (should be js/clamp/allow)')
     if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
       cmd += ['--ignore-implicit-traps']
     # pass optimization level to asm2wasm (if not optimizing, or which passes we should run was overridden, do not optimize)
@@ -2279,12 +2279,14 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--table-max=-1']
     if shared.Settings.SIDE_MODULE:
       cmd += ['--mem-max=-1']
-    elif shared.Settings.BINARYEN_MEM_MAX >= 0:
-      cmd += ['--mem-max=' + str(shared.Settings.BINARYEN_MEM_MAX)]
+    elif shared.Settings.WASM_MEM_MAX >= 0:
+      cmd += ['--mem-max=' + str(shared.Settings.WASM_MEM_MAX)]
     if shared.Settings.LEGALIZE_JS_FFI != 1:
       cmd += ['--no-legalize-javascript-ffi']
     if shared.Building.is_wasm_only():
       cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, an can contain special fastcomp-wasm support
+    if shared.Settings.USE_PTHREADS:
+      cmd += ['--enable-threads']
     if debug_info:
       cmd += ['-g']
     if options.emit_symbol_map or shared.Settings.CYBERDWARF:

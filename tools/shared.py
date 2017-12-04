@@ -905,7 +905,7 @@ except:
 
 # Target choice.
 ASM_JS_TARGET = 'asmjs-unknown-emscripten'
-WASM_TARGET = 'wasm32-unknown-unknown'
+WASM_TARGET = 'wasm32-unknown-unknown-elf'
 
 def check_vanilla():
   global LLVM_TARGET
@@ -957,7 +957,6 @@ def check_vanilla():
 check_vanilla()
 
 def get_llvm_target():
-  global LLVM_TARGET
   assert LLVM_TARGET is not None
   return LLVM_TARGET
 
@@ -976,7 +975,7 @@ COMPILER_OPTS = COMPILER_OPTS + [#'-fno-threadsafe-statics', # disabled due to i
                                  '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY),
                                  '-D_LIBCPP_ABI_VERSION=2']
 
-if LLVM_TARGET == WASM_TARGET:
+if get_llvm_target() == WASM_TARGET:
   # wasm target does not automatically define emscripten stuff, so do it here.
   COMPILER_OPTS = COMPILER_OPTS + ['-D__EMSCRIPTEN__',
                                    '-Dunix',
@@ -2297,6 +2296,21 @@ class Building(object):
     if 'USE_SDL=2' in link_settings: system_js_libraries += ['library_egl.js', 'library_glut.js', 'library_gl.js']
     return [path_from_root('src', x) for x in system_js_libraries]
 
+  @staticmethod
+  def get_binaryen():
+    # fetch the port, so we have binaryen set up. indicate we need binaryen
+    # using the settings
+    import system_libs
+    old = Settings.BINARYEN
+    Settings.BINARYEN = 1
+    system_libs.get_port('binaryen', Settings)
+    Settings.BINARYEN = old
+
+  @staticmethod
+  def get_binaryen_bin():
+    Building.get_binaryen()
+    return os.path.join(Settings.BINARYEN_ROOT, 'bin')
+
 # compatibility with existing emcc, etc. scripts
 Cache = cache.Cache(debug=DEBUG_CACHE)
 chunkify = cache.chunkify
@@ -2492,10 +2506,10 @@ class WebAssembly(object):
       more = x != 0
       if more:
         byte = byte | 128
-      ret.append(chr(byte))
+      ret.append(byte)
       if not more:
         break
-    return ret
+    return bytearray(ret)
 
   @staticmethod
   def make_shared_library(js_file, wasm_file):
@@ -2512,14 +2526,14 @@ class WebAssembly(object):
     f = open(wso, 'wb')
     f.write(wasm[0:8]) # copy magic number and version
     # write the special section
-    f.write('\0') # user section is code 0
+    f.write(b'\0') # user section is code 0
     # need to find the size of this section
-    name = "\06dylink" # section name, including prefixed size
+    name = b"\06dylink" # section name, including prefixed size
     contents = WebAssembly.lebify(mem_size) + WebAssembly.lebify(table_size)
     size = len(name) + len(contents)
-    f.write(''.join(WebAssembly.lebify(size)))
+    f.write(WebAssembly.lebify(size))
     f.write(name)
-    f.write(''.join(contents))
+    f.write(contents)
     f.write(wasm[8:]) # copy rest of binary
     f.close()
     return wso

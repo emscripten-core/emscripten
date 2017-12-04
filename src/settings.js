@@ -246,6 +246,7 @@ var SOCKET_WEBRTC = 0; // Select socket backend, either webrtc or websockets. XX
 // settings may configured at run time via the Module object e.g.
 // Module['websocket'] = {subprotocol: 'base64, binary, text'};
 // Module['websocket'] = {url: 'wss://', subprotocol: 'base64'};
+// You can set 'subprotocol' to null, if you don't want to specify it
 // Run time configuration may be useful as it lets an application select multiple different services.
 var WEBSOCKET_URL = 'ws://'; // A string containing either a WebSocket URL prefix (ws:// or wss://) or a complete
                              // RFC 6455 URL - "ws[s]:" "//" host [ ":" port ] path [ "?" query ].
@@ -285,6 +286,9 @@ var STB_IMAGE = 0; // Enables building of stb-image, a tiny public-domain librar
                    // can be done synchronously, however, it will not be as fast as the browser itself.
                    // When enabled, stb-image will be used automatically from IMG_Load and IMG_Load_RW. You
                    // can also call the stbi_* functions directly yourself.
+
+var LEGACY_VM_SUPPORT = 0; // Enable this to get support for non-modern browsers, node.js, etc. This adds:
+                           //  * Polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround
 
 var LZ4 = 0; // Enable this to support lz4-compressed file packages. They are stored compressed in memory, and
              // decompressed on the fly, avoiding storing the entire decompressed data in memory at once.
@@ -353,8 +357,6 @@ var EXPORTED_RUNTIME_METHODS = [ // Runtime elements that are exported on Module
   'Runtime',
   'ccall',
   'cwrap',
-  'setValue',
-  'getValue',
   'ALLOC_NORMAL',
   'ALLOC_STACK',
   'ALLOC_STATIC',
@@ -718,9 +720,10 @@ var BINARYEN_TRAP_MODE = "allow"; // How we handle wasm operations that may trap
 var BINARYEN_PASSES = ""; // A comma-separated list of passes to run in the binaryen optimizer,
                           // for example, "dce,precompute,vacuum".
                           // When set, this overrides the default passes we would normally run.
-var BINARYEN_MEM_MAX = -1; // Set the maximum size of memory in the wasm module (in bytes).
-                           // Without this, TOTAL_MEMORY is used (as it is used for the initial value),
-                           // or if memory growth is enabled, no limit is set. This overrides both of those.
+var WASM_MEM_MAX = -1; // Set the maximum size of memory in the wasm module (in bytes).
+                       // Without this, TOTAL_MEMORY is used (as it is used for the initial value),
+                       // or if memory growth is enabled, no limit is set. This overrides both of those.
+                       // (This option was formerly called BINARYEN_MEM_MAX)
 var BINARYEN_ASYNC_COMPILATION = 1; // Whether to compile the wasm asynchronously, which is more
                                     // efficient and does not block the main thread. This is currently
                                     // required for all but the smallest modules to run in V8
@@ -793,6 +796,8 @@ var PTHREAD_POOL_SIZE = 0; // Specifies the number of web workers that are preal
 var PTHREAD_HINT_NUM_CORES = 4;
 
 var PTHREADS_PROFILING = 0; // True when building with --threadprofiler
+
+var PTHREADS_DEBUG = 0; // If true, add in debug traces for diagnosing pthreads related issues.
 
 var MAX_GLOBAL_ALIGN = -1; // received from the backend
 
