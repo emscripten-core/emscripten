@@ -54,6 +54,18 @@ Module['print'] = threadPrint;
 Module['printErr'] = threadPrintErr;
 this.alert = threadAlert;
 
+// #if WASM
+Module['instantiateWasm'] = function(info, receiveInstance) {
+  // Instantiate from the module posted from the main thread.
+  // We can just use sync instantiation in the worker.
+  instance = new WebAssembly.Instance(Module['wasmModule'], info);
+  // We don't need the module anymore; new threads will be spawned from the main thread.
+  delete Module['wasmModule'];
+  receiveInstance(instance);
+  return instance.exports;
+}
+//#endif
+
 this.onmessage = function(e) {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
@@ -61,11 +73,23 @@ this.onmessage = function(e) {
       tempDoublePtr = e.data.tempDoublePtr;
 
       // Initialize the global "process"-wide fields:
-      buffer = e.data.buffer;
       Module['TOTAL_MEMORY'] = TOTAL_MEMORY = e.data.TOTAL_MEMORY;
       STATICTOP = e.data.STATICTOP;
       DYNAMIC_BASE = e.data.DYNAMIC_BASE;
       DYNAMICTOP_PTR = e.data.DYNAMICTOP_PTR;
+
+
+//#if WASM
+      if (e.data.wasmModule) {
+        // Module and memory were sent from main thread
+        Module['wasmModule'] = e.data.wasmModule;
+        Module['wasmMemory'] = e.data.wasmMemory;
+        buffer = Module['wasmMemory'].buffer;
+      } else {
+//#else
+        buffer = e.data.buffer;
+      }
+//#endif
 
       PthreadWorkerInit = e.data.PthreadWorkerInit;
       if (typeof e.data.urlOrBlob === 'string') {
