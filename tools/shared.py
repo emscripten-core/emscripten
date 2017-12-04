@@ -2300,7 +2300,7 @@ class Building(object):
   def get_binaryen():
     # fetch the port, so we have binaryen set up. indicate we need binaryen
     # using the settings
-    import system_libs
+    from . import system_libs
     old = Settings.BINARYEN
     Settings.BINARYEN = 1
     system_libs.get_port('binaryen', Settings)
