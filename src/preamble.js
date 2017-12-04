@@ -2025,10 +2025,19 @@ function integrateWasmJS() {
   // inputs
 
   var method = '{{{ BINARYEN_METHOD }}}';
+  var withDirName = function (p) {
+    if (ENVIRONMENT_IS_NODE) {
+      var path = require('path');
+      var programFile = process['argv'][1];
+      return path.join(path.dirname(programFile),p);
+    } else {
+      return p;
+    }
+  };
 
-  var wasmTextFile = '{{{ WASM_TEXT_FILE }}}';
-  var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
-  var asmjsCodeFile = '{{{ ASMJS_CODE_FILE }}}';
+  var wasmTextFile = withDirName('{{{ WASM_TEXT_FILE }}}');
+  var wasmBinaryFile = withDirName('{{{ WASM_BINARY_FILE }}}');
+  var asmjsCodeFile = withDirName('{{{ ASMJS_CODE_FILE }}}');
 
   if (typeof Module['locateFile'] === 'function') {
     wasmTextFile = Module['locateFile'](wasmTextFile);
