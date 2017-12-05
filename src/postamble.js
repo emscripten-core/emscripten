@@ -369,9 +369,9 @@ function exit(status, implicit) {
     // if exit() was called, we may warn the user if the runtime isn't actually being shut down
     if (!implicit) {
 #if NO_EXIT_RUNTIME
-      Module.printErr('exit(' + status + ') called, but compiled with NO_EXIT_RUNTIME, so halting execution but not exiting the runtime or preventing further async execution (build with NO_EXIT_RUNTIME=0, if you want a true shutdown)');
+      Module.printErr('exit(' + status + ') called, but NO_EXIT_RUNTIME is set, so halting execution but not exiting the runtime or preventing further async execution (build with NO_EXIT_RUNTIME=0, if you want a true shutdown)');
 #else
-      Module.printErr('exit(' + status + ') called, but noExitRuntime, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)');
+      Module.printErr('exit(' + status + ') called, but noExitRuntime is set due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)');
 #endif // NO_EXIT_RUNTIME
     }
 #endif // ASSERTIONS

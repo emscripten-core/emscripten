@@ -3285,7 +3285,7 @@ int main() {
         subprocess.check_call([PYTHON, EMCC, 'code.cpp', '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-s', 'ASSERTIONS=%d' % assertions])
         output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True)
         exit = 1-no_exit
-        assert (no_exit and assertions) == ('atexit() called, but NO_EXIT_RUNTIME, so atexits() will not be called. set NO_EXIT_RUNTIME to 0' in output), 'warning should be shown'
+        assert (no_exit and assertions) == ('atexit() called, but NO_EXIT_RUNTIME is set, so atexits() will not be called. set NO_EXIT_RUNTIME to 0' in output), 'warning should be shown'
 
   def test_os_oz(self):
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
@@ -3831,7 +3831,7 @@ int main(int argc, char **argv) {
             assert not out, out
             if not call_exit:
               assert not err, err
-            assert ('compiled with NO_EXIT_RUNTIME, so halting execution but not exiting the runtime or preventing further async execution (build with NO_EXIT_RUNTIME=0, if you want a true shutdown)' in err) == (no_exit and call_exit), err
+            assert ('but NO_EXIT_RUNTIME is set, so halting execution but not exiting the runtime or preventing further async execution (build with NO_EXIT_RUNTIME=0, if you want a true shutdown)' in err) == (no_exit and call_exit), err
 
   def test_mkdir_silly(self):
     open('src.cpp', 'w').write(r'''
