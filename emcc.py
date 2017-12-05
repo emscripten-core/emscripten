@@ -575,15 +575,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   def in_temp(name):
     return os.path.join(temp_dir, os.path.basename(name))
 
-  def in_directory(root, child):
-    # make both path absolute
-    root = os.path.realpath(root)
-    child = os.path.realpath(child)
-
-    # return true, if the common prefix of both is equal to directory
-    # e.g. /a/b/c/d.rst and directory is /a/b, the common prefix is /a/b
-    return os.path.commonprefix([root, child]) == root
-
   # Parses the essential suffix of a filename, discarding Unix-style version numbers in the name. For example for 'libz.so.1.2.8' returns '.so'
   def filename_type_suffix(filename):
     for i in reversed(filename.split('.')[1:]):
@@ -2692,6 +2683,15 @@ def is_valid_abspath(options, path_name):
   # Any path that is underneath the emscripten repository root must be ok.
   if shared.path_from_root().replace('\\', '/') in path_name.replace('\\', '/'):
     return True
+
+  def in_directory(root, child):
+    # make both path absolute
+    root = os.path.realpath(root)
+    child = os.path.realpath(child)
+
+    # return true, if the common prefix of both is equal to directory
+    # e.g. /a/b/c/d.rst and directory is /a/b, the common prefix is /a/b
+    return os.path.commonprefix([root, child]) == root
 
   for valid_abspath in options.valid_abspaths:
     if in_directory(valid_abspath, path_name):
