@@ -31,7 +31,7 @@ if __name__ == '__main__':
 import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
 from subprocess import PIPE
 from tools import shared, jsrun, system_libs
-from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move
+from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move, run_process
 from tools.response_file import read_response_file
 import tools.line_endings
 
@@ -386,8 +386,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     args = [x for x in sys.argv if x != '--cflags']
     with misc_temp_files.get_file(suffix='.o') as temp_target:
       input_file = 'hello_world.c'
-      out, err = subprocess.Popen([shared.PYTHON] + args + [shared.path_from_root('tests', input_file), '-c', '-o', temp_target], stderr=subprocess.PIPE, env=debug_env).communicate()
-      lines = [x for x in err.split(os.linesep) if shared.CLANG_CC in x and input_file in x]
+      err = run_process([shared.PYTHON] + args + [shared.path_from_root('tests', input_file), '-c', '-o', temp_target], stderr=subprocess.PIPE, env=debug_env).stderr
+      lines = [x for x in err.split('\n') if shared.CLANG_CC in x and input_file in x]
       line = re.search('running: (.*)', lines[0]).group(1)
       parts = shlex.split(line.replace('\\', '\\\\'))
       parts = [x for x in parts if x != '-c' and x != '-o' and input_file not in x and temp_target not in x and '-emit-llvm' not in x]
