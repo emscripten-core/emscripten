@@ -1832,8 +1832,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       binaryen_method_sanity_check()
       if shared.Settings.BINARYEN:
-        final = do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
-                            wasm_text_target, misc_temp_files, optimizer)
+        do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
+                    wasm_text_target, misc_temp_files, optimizer)
 
       if shared.Settings.MODULARIZE:
         final = modularize(final)
@@ -2228,8 +2228,9 @@ def binaryen_method_sanity_check():
         exit_with_error('Unrecognized BINARYEN_METHOD "' + m.strip() + '" specified! Please pass a comma-delimited list containing one or more of: ' + ','.join(valid_methods))
 
 
-def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
+def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                 wasm_text_target, misc_temp_files, optimizer):
+  global final
   logging.debug('using binaryen, with method: ' + shared.Settings.BINARYEN_METHOD)
   binaryen_bin = shared.Building.get_binaryen_bin()
   # Emit wasm.js at the top of the js. This is *not* optimized with the rest of the code, since
@@ -2395,7 +2396,6 @@ def do_binaryen(final, target, asm_target, options, memfile, wasm_binary_target,
       shared.try_delete(target)
     f.write(js)
     f.close()
-  return final
 
 
 def modularize(final):
