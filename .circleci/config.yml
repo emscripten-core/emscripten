@@ -14,7 +14,7 @@ test-defaults: &test-defaults
 
     - run: |
         apt-get update
-        apt-get install -y python python-pip cmake build-essential openjdk-9-jre-headless
+        apt-get install -y firefox python python-pip cmake build-essential openjdk-9-jre-headless
         pip install --upgrade pip
         pip install lit
         EMCC_CORES=4 python emscripten/tests/runner.py $TEST_TARGET
@@ -66,7 +66,7 @@ jobs:
     <<: *test-defaults
     environment:
       - TEST_TARGET=browser
-      - EMSCRIPTEN_BROWSER=0
+      - EMSCRIPTEN_BROWSER="firefox -headless"
   test-ab:
     <<: *test-defaults
     environment:
