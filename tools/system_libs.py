@@ -323,14 +323,18 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   def create_wasm_rt_lib(libname, files):
     o_s = []
     commands = []
+    args = [shared.CLANG_CC, '-mthread-model', 'single', '-O2']
+    if shared.Settings.WASM_BACKEND == 2:
+      args += ['--target=wasm32-unknown-unknown-wasm', '-c']
+    else:
+      args += ['--target=wasm32-unknown-unknown-elf', '-S']
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
       # Use clang directly instead of emcc. Since emcc's intermediate format (produced by -S) is LLVM IR, there's no way to
       # get emcc to output wasm .s files, which is what we archive in compiler_rt.
-      commands.append([
-        shared.CLANG_CC, '--target=wasm32', '-mthread-model', 'single',
-        '-S', shared.path_from_root('system', 'lib', src),
-        '-O2', '-o', o] + musl_internal_includes() + shared.EMSDK_OPTS)
+      cmd = args + [shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes() + shared.EMSDK_OPTS
+      logging.debug(' '.join(cmd))
+      commands.append(cmd)
       o_s.append(o)
     run_commands(commands)
     lib = in_temp(libname)
@@ -501,11 +505,15 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       force = force.union(deps)
   ret.sort(key=lambda x: x.endswith('.a')) # make sure to put .a files at the end.
 
-  # Handle backend compiler_rt separately because it is not a bitcode system lib like the others.
-  # Here, just ensure that it's in the cache.
+  # Handle backend compiler_rt separately because it is not a bitcode system lib
+  # like the others.  Here, just ensure that it's in the cache.
   if shared.Settings.BINARYEN and shared.Settings.WASM_BACKEND:
-    shared.Cache.get('wasm_compiler_rt.a', lambda: create_wasm_compiler_rt('wasm_compiler_rt.a'), extension='a')
-    shared.Cache.get('wasm_libc_rt.a', lambda: create_wasm_libc_rt('wasm_libc_rt.a'), extension='a')
+    if shared.Settings.WASM_BACKEND == 2:
+      shared.Cache.get('libwasm_compiler_rt.a', lambda: create_wasm_compiler_rt('libwasm_compiler_rt.a'), extension='a')
+      shared.Cache.get('libwasm_libc_rt.a', lambda: create_wasm_libc_rt('libwasm_libc_rt.a'), extension='a')
+    else:
+      shared.Cache.get('wasm_compiler_rt.a', lambda: create_wasm_compiler_rt('wasm_compiler_rt.a'), extension='a')
+      shared.Cache.get('wasm_libc_rt.a', lambda: create_wasm_libc_rt('wasm_libc_rt.a'), extension='a')
 
   for actual in ret:
     if os.path.basename(actual) == 'libcxxabi.bc':
