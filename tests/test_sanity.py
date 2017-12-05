@@ -510,7 +510,6 @@ fi
       assert out == out2
       def focus(e):
         assert 'search starts here:' in e, e
-        assert e.count('End of search list.') == 1, e
         return e[e.index('search starts here:'):e.index('End of search list.')+20]
       err = focus(err)
       err2 = focus(err2)
