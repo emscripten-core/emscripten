@@ -3844,6 +3844,22 @@ int main(int argc, char **argv) {
               assert not err, err
             assert ('but NO_EXIT_RUNTIME is set, so halting execution but not exiting the runtime or preventing further async execution (build with NO_EXIT_RUNTIME=0, if you want a true shutdown)' in err) == (no_exit and call_exit), err
 
+  def test_emscripten_force_exit_NO_EXIT_RUNTIME(self):
+    open('src.cpp', 'w').write(r'''
+      #include <emscripten.h>
+      int main() {
+      #if CALL_EXIT
+        emscripten_force_exit(0);
+      #endif
+      }
+    ''')
+    for no_exit in [0, 1]:
+      for call_exit in [0, 1]:
+        subprocess.check_call([PYTHON, EMCC, 'src.cpp', '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-DCALL_EXIT=%d' % call_exit])
+        print(no_exit, call_exit)
+        out = run_js('a.out.js', stdout=PIPE, stderr=PIPE, full_output=True)
+        assert ('emscripten_force_exit cannot actually shut down the runtime, as the build has NO_EXIT_RUNTIME set' in out) == (no_exit and call_exit), out
+
   def test_mkdir_silly(self):
     open('src.cpp', 'w').write(r'''
 #include <stdio.h>
