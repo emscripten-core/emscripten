@@ -4524,6 +4524,18 @@ def process(filename):
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run_from_file(src, out)
 
+  def test_fs_errorstack(self):
+    Settings.FORCE_FILESYSTEM = 1
+    self.do_run(r'''
+      #include <emscripten.h>
+      int main(void) {
+        EM_ASM(
+          FS.write('/dummy.txt', 'homu');
+        );
+        return 0;
+      }
+    ''', 'at new ErrnoError', js_engines=[NODE_JS]) # engines has different error stack format
+
   def test_unistd_access(self):
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
