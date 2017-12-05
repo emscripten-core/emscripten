@@ -905,7 +905,7 @@ except:
 
 # Target choice.
 ASM_JS_TARGET = 'asmjs-unknown-emscripten'
-WASM_TARGET = 'wasm32-unknown-unknown'
+WASM_TARGET = 'wasm32-unknown-unknown-elf'
 
 def check_vanilla():
   global LLVM_TARGET
@@ -957,7 +957,6 @@ def check_vanilla():
 check_vanilla()
 
 def get_llvm_target():
-  global LLVM_TARGET
   assert LLVM_TARGET is not None
   return LLVM_TARGET
 
@@ -976,7 +975,7 @@ COMPILER_OPTS = COMPILER_OPTS + [#'-fno-threadsafe-statics', # disabled due to i
                                  '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY),
                                  '-D_LIBCPP_ABI_VERSION=2']
 
-if LLVM_TARGET == WASM_TARGET:
+if get_llvm_target() == WASM_TARGET:
   # wasm target does not automatically define emscripten stuff, so do it here.
   COMPILER_OPTS = COMPILER_OPTS + ['-D__EMSCRIPTEN__',
                                    '-Dunix',
@@ -2301,7 +2300,7 @@ class Building(object):
   def get_binaryen():
     # fetch the port, so we have binaryen set up. indicate we need binaryen
     # using the settings
-    import system_libs
+    from . import system_libs
     old = Settings.BINARYEN
     Settings.BINARYEN = 1
     system_libs.get_port('binaryen', Settings)

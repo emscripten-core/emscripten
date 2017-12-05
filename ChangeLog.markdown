@@ -10,6 +10,8 @@ Not all changes are documented here. In particular, new features, user-oriented 
 Current Trunk
 -------------
  - Breaking change: Change `NO_EXIT_RUNTIME` to 1 by default. This means that by default we don't include code to shut down the runtime, flush stdio streams, run atexits, etc., which is better for code size. When `ASSERTIONS` is on, we warn at runtime if there is text buffered in the streams that should be flushed, or atexits are used.
+ - Breaking change: Do not polyfill Math.{clz32, fround, imul, trunc} by default. A new `LEGACY_VM_SUPPORT` option enables support for legacy browsers. In `ASSERTIONS` mode, a warning is shown if a polyfill was needed, suggesting using that option.
+ - Breaking change: Do not export getValue/setValue runtime methods by default. You can still use them by calling them directly in code optimized with the main file (pre-js, post-js, js libraries; if the optimizer sees they are used, it preserves them), but if you try to use them on `Module` then you must export them by adding them to `EXTRA_EXPORTED_RUNTIME_METHODS`. In `-O0` or when `ASSERTIONS` is on, a run-time error message explains that, if they are attempted to be used incorrectly.
 
 v1.37.17: 7/25/2017
 ------------------
