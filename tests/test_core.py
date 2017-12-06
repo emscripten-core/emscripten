@@ -6209,7 +6209,6 @@ def process(filename):
     assert 'asm2' in test_modes
     if self.run_name == 'asm2':
       print('closure')
-      self.banned_js_engines = [NODE_JS] # weird global handling in node
       self.emcc_args += ['--closure', '1']
       self.do_run_from_file(src, expected)
 
