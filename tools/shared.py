@@ -206,8 +206,8 @@ def run_base(cmd, check=False, *args, **kw):
     result.check_returncode()
   return result
 
-def run_process(cmd, universal_newlines=True, *args, **kw):
-  return run_base(cmd, universal_newlines=universal_newlines, *args, **kw)
+def run_process(cmd, universal_newlines=True, check=True, *args, **kw):
+  return run_base(cmd, universal_newlines=universal_newlines, check=check, *args, **kw)
 
 def execute(cmd, *args, **kw):
   try:
