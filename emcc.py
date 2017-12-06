@@ -1628,48 +1628,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if options.post_js:
             options.post_js = options.post_js.replace('\r\n', '\n')
         outfile = open(final, 'w')
-        outfile.write(options.pre_js)
-        outfile.write(src) # this may be large, don't join it to others
+        # pre-js code goes right after the Module integration code (so it
+        # can use Module), we have a marker for it
+        outfile.write(src.replace('// {{PRE_JSES}}', options.pre_js))
         outfile.write(options.post_js)
         outfile.close()
         options.pre_js = src = options.post_js = None
         if DEBUG: save_intermediate('pre-post')
-
-      if not shared.Settings.SIDE_MODULE:
-        # The Module object: Our interface to the outside world. We import
-        # and export values on it. There are various ways Module can be used:
-        # 1. Not defined. We create it here
-        # 2. A function parameter, function(Module) { ..generated code.. }
-        # 3. pre-run appended it, var Module = {}; ..generated code..
-        # 4. External script tag defines var Module.
-        # We need to check if Module already exists (e.g. case 3 above).
-        # Substitution will be replaced with actual code on later stage of the build,
-        # this way Closure Compiler will not mangle it (e.g. case 4. above).
-        # Note that if you want to run closure, and also to use Module
-        # after the generated code, you will need to define   var Module = {};
-        # before the code. Then that object will be used in the code, and you
-        # can continue to use Module afterwards as well.
-        if options.use_closure_compiler:
-          # `if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
-          module_header = '''
-var Module;
-if (!Module) Module = %s;
-''' % shared.JS.module_export_name_substitution_pattern
-        else:
-          module_header = '''
-var Module = typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {};
-''' % {"EXPORT_NAME": shared.Settings.EXPORT_NAME}
-
-        # Append module header now as --pre-js is already added
-        logging.debug('Appending module header')
-        src = open(final).read()
-        final += '.wh.js'
-        outfile = open(final, 'w')
-        outfile.write(module_header)
-        outfile.write(src)
-        outfile.close()
-        src = None
-        if DEBUG: save_intermediate('with-header')
 
       # Apply a source code transformation, if requested
       if options.js_transform:
