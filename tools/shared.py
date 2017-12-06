@@ -197,8 +197,6 @@ class Py2CompletedProcess:
       raise subprocess.CalledProcessError(returncode=self.returncode, cmd=self.args, output=self.stdout)
 
 def run_base(cmd, check=False, *args, **kw):
-  if int(DEBUG) > 1:
-    logging.debug('Executing %s' % ' '.join(cmd))
   if hasattr(subprocess, "run"):
     return subprocess.run(cmd, check=check, *args, **kw)
 
