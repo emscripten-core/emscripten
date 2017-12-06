@@ -25,11 +25,12 @@ def validate_asmjs_jsfile(filename, muteOutput):
     print('Could not find SpiderMonkey engine! Please set its location to SPIDERMONKEY_ENGINE in your ' + shared.hint_config_file_location() + ' configuration file!', file=sys.stderr)
     return False
   try:
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+    process = shared.run_process(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
   except Exception as e:
     print('Executing command ' + str(cmd) + ' failed due to an exception: ' + str(e) + '!', file=sys.stderr)
     return False
-  (stdout, stderr) = process.communicate()
+  stdout = process.stdout
+  stderr = process.stderr
   if not muteOutput:
     if len(stdout.strip()) > 0:
       print(stdout.strip())

@@ -330,7 +330,7 @@ def expected_llvm_version():
 def get_clang_version():
   global actual_clang_version
   if actual_clang_version is None:
-    response = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1]
+    response = run_process([CLANG, '-v'], stderr=PIPE).stderr
     m = re.search(r'[Vv]ersion\s+(\d+\.\d+)', response)
     actual_clang_version = m and m.group(1)
   return actual_clang_version
@@ -368,7 +368,7 @@ def get_fastcomp_src_dir():
 
 def get_llc_targets():
   try:
-    llc_version_info = Popen([LLVM_COMPILER, '--version'], stdout=PIPE).communicate()[0]
+    llc_version_info = run_process([LLVM_COMPILER, '--version'], stdout=PIPE).stdout
     pre, targets = llc_version_info.split('Registered Targets:')
     return targets
   except Exception as e:
@@ -420,7 +420,7 @@ def check_fastcomp():
 
       # check build versions. don't show it if the repos are wrong, user should fix that first
       if not shown_repo_version_error:
-        clang_v = Popen([CLANG, '--version'], stdout=PIPE).communicate()[0]
+        clang_v = run_process([CLANG, '--version'], stdout=PIPE).stdout
         llvm_build_version, clang_build_version = clang_v.split('(emscripten ')[1].split(')')[0].split(' : ')
         if EMSCRIPTEN_VERSION != llvm_build_version or EMSCRIPTEN_VERSION != clang_build_version:
           logging.error('Emscripten, llvm and clang build versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_build_version, clang_build_version)
@@ -436,7 +436,7 @@ EXPECTED_NODE_VERSION = (0,8,0)
 def check_node_version():
   jsrun.check_engine(NODE_JS)
   try:
-    actual = Popen(NODE_JS + ['--version'], stdout=PIPE).communicate()[0].strip()
+    actual = run_process(NODE_JS + ['--version'], stdout=PIPE).stdout.strip()
     version = tuple(map(int, actual.replace('v', '').replace('-pre', '').split('.')))
     if version >= EXPECTED_NODE_VERSION:
       return True
@@ -1043,7 +1043,7 @@ except NameError:
 ENV_PREFIX = []
 if not WINDOWS:
   try:
-    assert 'Python' in Popen(['env', 'python', '-V'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    assert 'Python' in run_process(['env', 'python', '-V'], stdout=PIPE, stderr=STDOUT).stdout
     ENV_PREFIX = ['env']
   except:
     pass
@@ -1246,7 +1246,7 @@ def extract_archive_contents(f):
     temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
     safe_ensure_dirs(temp_dir)
     os.chdir(temp_dir)
-    contents = [x for x in Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n') if len(x) > 0]
+    contents = [x for x in run_process([LLVM_AR, 't', f], stdout=PIPE).stdout.split('\n') if len(x) > 0]
     warn_if_duplicate_entries(contents, f)
     if len(contents) == 0:
       logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
@@ -1843,7 +1843,7 @@ class Building(object):
 
     if not just_calculate:
       logging.debug('emcc: llvm-linking: %s to %s', actual_files, target)
-      output = Popen([LLVM_LINK] + link_args + ['-o', target], stdout=PIPE).communicate()[0]
+      output = run_process([LLVM_LINK] + link_args + ['-o', target], stdout=PIPE).stdout
       assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
       return target
     else:
@@ -1875,8 +1875,8 @@ class Building(object):
 
     logging.debug('emcc: LLVM opts: ' + ' '.join(opts) + '  [num inputs: ' + str(len(inputs)) + ']')
     target = out or (filename + '.opt.bc')
-    proc = Popen([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE)
-    output = proc.communicate()[0]
+    proc = run_process([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE)
+    output = proc.stdout
     if proc.returncode != 0 or not os.path.exists(target):
       logging.error('Failed to run llvm optimizations: ' + output)
       for i in inputs:
@@ -1893,7 +1893,7 @@ class Building(object):
   def llvm_opts(filename): # deprecated version, only for test runner. TODO: remove
     if Building.LLVM_OPTS:
       shutil.move(filename + '.o', filename + '.o.pre')
-      output = Popen([LLVM_OPT, filename + '.o.pre'] + Building.LLVM_OPT_OPTS + ['-o', filename + '.o'], stdout=PIPE).communicate()[0]
+      output = run_process([LLVM_OPT, filename + '.o.pre'] + Building.LLVM_OPT_OPTS + ['-o', filename + '.o'], stdout=PIPE).stdout
       assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output
 
   @staticmethod
@@ -1904,7 +1904,7 @@ class Building(object):
       output_filename = input_filename + '.o.ll'
       input_filename = input_filename + '.o'
     try_delete(output_filename)
-    output = Popen([LLVM_DIS, input_filename, '-o', output_filename], stdout=PIPE).communicate()[0]
+    output = run_process([LLVM_DIS, input_filename, '-o', output_filename], stdout=PIPE).stdout
     assert os.path.exists(output_filename), 'Could not create .ll file: ' + output
     return output_filename
 
@@ -1916,7 +1916,7 @@ class Building(object):
       output_filename = input_filename + '.o'
       input_filename = input_filename + '.o.ll'
     try_delete(output_filename)
-    output = Popen([LLVM_AS, input_filename, '-o', output_filename], stdout=PIPE).communicate()[0]
+    output = run_process([LLVM_AS, input_filename, '-o', output_filename], stdout=PIPE).stdout
     assert os.path.exists(output_filename), 'Could not create bc file: ' + output
     return output_filename
 
@@ -1951,12 +1951,11 @@ class Building(object):
   @staticmethod
   def llvm_nm_uncached(filename, stdout=PIPE, stderr=PIPE, include_internal=False):
     # LLVM binary ==> list of symbols
-    proc = Popen([LLVM_NM, filename], stdout=stdout, stderr=stderr)
-    stdout, stderr = proc.communicate()
+    proc = run_process([LLVM_NM, filename], stdout=stdout, stderr=stderr)
     if proc.returncode == 0:
-      return Building.parse_symbols(stdout, include_internal)
+      return Building.parse_symbols(proc.stdout, include_internal)
     else:
-      return ObjectFileInfo(proc.returncode, str(stdout) + str(stderr))
+      return ObjectFileInfo(proc.returncode, str(proc.stdout) + str(proc.stderr))
 
   @staticmethod
   def llvm_nm(filename, stdout=PIPE, stderr=PIPE, include_internal=False):
@@ -2190,10 +2189,9 @@ class Building(object):
       if os.environ.get('EMCC_CLOSURE_ARGS'):
         args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
       logging.debug('closure compiler: ' + ' '.join(args))
-      process = Popen(args, stdout=PIPE, stderr=STDOUT)
-      cc_output = process.communicate()[0]
+      process = run_process(args, stdout=PIPE, stderr=STDOUT)
       if process.returncode != 0 or not os.path.exists(filename + '.cc.js'):
-        raise Exception('closure compiler error: ' + cc_output + ' (rc: %d)' % process.returncode)
+        raise Exception('closure compiler error: ' + process.stdout + ' (rc: %d)' % process.returncode)
 
       return filename + '.cc.js'
 
@@ -2300,7 +2298,7 @@ class Building(object):
   def get_binaryen():
     # fetch the port, so we have binaryen set up. indicate we need binaryen
     # using the settings
-    import system_libs
+    from . import system_libs
     old = Settings.BINARYEN
     Settings.BINARYEN = 1
     system_libs.get_port('binaryen', Settings)
@@ -2538,10 +2536,42 @@ class WebAssembly(object):
     f.close()
     return wso
 
+# https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess
+class Py2CompletedProcess:
+  def __init__(self, process, args):
+    (self.stdout, self.stderr) = process.communicate()
+    self.args = args
+    self.returncode = process.returncode
+
+  def __repr__(self):
+    _repr = ['args=%s, returncode=%s' % (self.args, self.returncode)]
+    if self.stdout is not None:
+      _repr += 'stdout=' + self.stdout
+    if self.stderr is not None:
+      _repr += 'stderr=' + self.stderr
+    return 'CompletedProcess(%s)' % ', '.join(_repr)
+
+  def check_returncode(self):
+    if self.returncode is not 0:
+      raise subprocess.CalledProcessError(returncode=self.returncode, cmd=self.args, output=self.stdout)
+
+def run_base(cmd, check=False, *args, **kw):
+  if hasattr(subprocess, "run"):
+    return subprocess.run(cmd, check=check, *args, **kw)
+
+  # Python 2 compatibility: Introduce Python 3 subprocess.run-like behavior
+  result = Py2CompletedProcess(Popen(cmd, *args, **kw), cmd)
+  if check:
+    result.check_returncode()
+  return result
+
+def run_process(cmd, universal_newlines=True, *args, **kw):
+  return run_base(cmd, universal_newlines=universal_newlines, *args, **kw)
+
 def execute(cmd, *args, **kw):
   try:
     cmd[0] = Building.remove_quotes(cmd[0])
-    return Popen(cmd, *args, **kw).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
+    return Popen(cmd, universal_newlines=True, *args, **kw).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
   except:
     if not isinstance(cmd, str):
       cmd = ' '.join(cmd)
@@ -2600,7 +2630,7 @@ def safe_copy(src, dst):
 
 def clang_preprocess(filename):
   # TODO: REMOVE HACK AND PASS PREPROCESSOR FLAGS TO CLANG.
-  return subprocess.check_output([CLANG_CC, '-DFETCH_DEBUG=1', '-E', '-P', '-C', '-x', 'c', filename])
+  return run_process([CLANG_CC, '-DFETCH_DEBUG=1', '-E', '-P', '-C', '-x', 'c', filename], check=True, stdout=subprocess.PIPE).stdout
 
 def read_and_preprocess(filename):
   f = open(filename, 'r').read()
