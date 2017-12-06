@@ -1593,7 +1593,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           options.no_heap_copy = True
 
         logging.debug('setting up files')
-        file_args = ['--export-name=' + shared.Settings.EXPORT_NAME]
+        file_args = ['--from-emcc', '--export-name=' + shared.Settings.EXPORT_NAME]
         if len(options.preload_files) > 0:
           file_args.append('--preload')
           file_args += options.preload_files
@@ -1607,8 +1607,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           file_args.append('--use-preload-cache')
         if options.no_heap_copy:
           file_args.append('--no-heap-copy')
-        if not options.use_closure_compiler:
-          file_args.append('--no-closure')
         if shared.Settings.LZ4:
           file_args.append('--lz4')
         if options.use_preload_plugins:

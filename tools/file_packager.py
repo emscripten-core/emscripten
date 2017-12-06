@@ -19,9 +19,7 @@ Usage:
   --exclude E [F..] Specifies filename pattern matches to use for excluding given files from being added to the package.
                     See https://docs.python.org/2/library/fnmatch.html for syntax.
 
-  --no-closure In general, the file packager emits closure compiler-compatible code, which requires an eval().
-               With this flag passed, we avoid emitting the eval. emcc passes this flag by default whenever
-               it knows that closure is not run.
+  --from-emcc Indicate that `file_packager.py` was called from `emcc.py` and will be further processed by it, so some code generation can be skipped here
 
   --crunch=X Will compress dxt files to crn with quality level X. The crunch commandline tool must be present
              and CRUNCH should be defined in ~/.emscripten that points to it. JS crunch decompressing code will
@@ -107,7 +105,7 @@ compress_cnt = 0
 crunch = 0
 plugins = []
 jsoutput = None
-no_closure = False
+from_emcc = False
 force = True
 # If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally cache VFS XHR so that subsequent
 # page loads can read the data from the offline cache instead.
@@ -158,8 +156,8 @@ for arg in sys.argv[2:]:
     if '=' in arg:
       export_name = arg.split('=', 1)[1]
     leading = ''
-  elif arg.startswith('--no-closure'):
-    no_closure = True
+  elif arg.startswith('--from-emcc'):
+    from_emcc = True
     leading = ''
   elif arg.startswith('--crunch'):
     try:
@@ -198,14 +196,12 @@ if (not force) and len(data_files) == 0:
 if not has_preloaded or jsoutput == None:
   assert not separate_metadata, 'cannot separate-metadata without both --preloaded files and a specified --js-output'
 
-if no_closure:
+ret = ''
+# emcc.py will add this to the output itself, so it is only needed for standalone calls
+if not from_emcc:
   ret = '''
 Module = typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {};
 ''' % {"EXPORT_NAME": export_name}
-else:
-  ret = '''
-Module = %s;
-''' % shared.JS.module_export_name_substitution_pattern
 
 ret += '''
 if (!Module.expectedDataFileDownloads) {
