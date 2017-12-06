@@ -1647,14 +1647,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # before the code. Then that object will be used in the code, and you
         # can continue to use Module afterwards as well.
         if options.use_closure_compiler:
+          # `if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
           module_header = '''
 var Module;
-Module = %s;
+if (!Module) Module = %s;
 ''' % shared.JS.module_export_name_substitution_pattern
         else:
           module_header = '''
-var Module;
-Module = typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {};
+var Module = typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {};
 ''' % {"EXPORT_NAME": shared.Settings.EXPORT_NAME}
 
         # Append module header now as --pre-js is already added
