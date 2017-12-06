@@ -1634,6 +1634,35 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         options.pre_js = src = options.post_js = None
         if DEBUG: save_intermediate('pre-post')
 
+      # The Module object: Our interface to the outside world. We import
+      # and export values on it. There are various ways Module can be used:
+      # 1. Not defined. We create it here
+      # 2. A function parameter, function(Module) { ..generated code.. }
+      # 3. pre-run appended it, var Module = {}; ..generated code..
+      # 4. External script tag defines var Module.
+      # We need to check if Module already exists (e.g. case 3 above).
+      # Substitution will be replaced with actual code on later stage of the build,
+      # this way Closure Compiler will not mangle it (e.g. case 4. above).
+      # Note that if you want to run closure, and also to use Module
+      # after the generated code, you will need to define   var Module = {};
+      # before the code. Then that object will be used in the code, and you
+      # can continue to use Module afterwards as well.
+      module_header = '''
+var Module;
+if (!Module) Module = %s;
+''' % shared.JS.module_export_name_substitution_pattern
+
+      # Append module header now as --pre-js is already added
+      logging.debug('Appending module header')
+      src = open(final).read()
+      final += '.wh.js'
+      outfile = open(final, 'w')
+      outfile.write(module_header)
+      outfile.write(src)
+      outfile.close()
+      src = None
+      if DEBUG: save_intermediate('with-header')
+
       # Apply a source code transformation, if requested
       if options.js_transform:
         shutil.copyfile(final, final + '.tr.js')
