@@ -200,7 +200,7 @@ ret = ''
 # emcc.py will add this to the output itself, so it is only needed for standalone calls
 if not from_emcc:
   ret = '''
-Module = typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {};
+var Module = typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {};
 ''' % {"EXPORT_NAME": export_name}
 
 ret += '''
