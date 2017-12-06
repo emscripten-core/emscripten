@@ -806,7 +806,7 @@ function demangle(func) {
     stringToUTF8(s, buf, len);
     var status = _malloc(4);
     var ret = __cxa_demangle_func(buf, 0, 0, status);
-    if (getValue(status, 'i32') === 0 && ret) {
+    if ({{{ makeGetValue('status', '0', 'i32') }}} === 0 && ret) {
       return Pointer_stringify(ret);
     }
     // otherwise, libcxxabi failed
@@ -1118,6 +1118,7 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
 #endif
 
 #if USE_PTHREADS
+#if !BINARYEN
 if (typeof SharedArrayBuffer !== 'undefined') {
   if (!ENVIRONMENT_IS_PTHREAD) buffer = new SharedArrayBuffer(TOTAL_MEMORY);
   // Currently SharedArrayBuffer does not have a slice() operation, so polyfill it in.
@@ -1170,6 +1171,18 @@ if (typeof Atomics === 'undefined') {
   Atomics['xor'] = function(t, i, v) { var w = t[i]; t[i] ^= v; return w; }
 }
 
+#else
+if (!ENVIRONMENT_IS_PTHREAD) {
+#if ALLOW_MEMORY_GROWTH
+  Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE, 'shared': true });
+#else
+  Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE, 'shared': true });
+#endif
+  buffer = Module['wasmMemory'].buffer;
+}
+
+updateGlobalBufferViews();
+#endif // !BINARYEN
 #else // USE_PTHREADS
 
 #if SPLIT_MEMORY == 0
@@ -1185,7 +1198,7 @@ if (Module['buffer']) {
   if (typeof WebAssembly === 'object' && typeof WebAssembly.Memory === 'function') {
 #if ASSERTIONS
     assert(TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
-#endif
+#endif // ASSERTIONS
 #if ALLOW_MEMORY_GROWTH
 #if WASM_MEM_MAX
 #if ASSERTIONS
@@ -1194,19 +1207,19 @@ if (Module['buffer']) {
     Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE });
 #else
     Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE });
-#endif
+#endif // BINARYEN_MEM_MAX
 #else
     Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE });
-#endif
+#endif // ALLOW_MEMORY_GROWTH
     buffer = Module['wasmMemory'].buffer;
   } else
-#endif
+#endif // BINARYEN
   {
     buffer = new ArrayBuffer(TOTAL_MEMORY);
   }
 #if ASSERTIONS
   assert(buffer.byteLength === TOTAL_MEMORY);
-#endif
+#endif // ASSERTIONS
 }
 updateGlobalBufferViews();
 #else // SPLIT_MEMORY
@@ -1682,6 +1695,7 @@ function writeAsciiToMemory(str, buffer, dontAddNull) {
 {{{ unSign }}}
 {{{ reSign }}}
 
+#if LEGACY_VM_SUPPORT
 // check for imul support, and also for correctness ( https://bugs.webkit.org/show_bug.cgi?id=126345 )
 if (!Math['imul'] || Math['imul'](0xffffffff, 5) !== -5) Math['imul'] = function imul(a, b) {
   var ah  = a >>> 16;
@@ -1721,6 +1735,9 @@ if (!Math['trunc']) Math['trunc'] = function(x) {
   return x < 0 ? Math.ceil(x) : Math.floor(x);
 };
 Math.trunc = Math['trunc'];
+#else // LEGACY_VM_SUPPORT
+assert(Math['imul'] && Math['fround'] && Math['clz32'] && Math['trunc'], 'this is a legacy browser, build with LEGACY_VM_SUPPORT');
+#endif // LEGACY_VM_SUPPORT
 
 var Math_abs = Math.abs;
 var Math_cos = Math.cos;
@@ -2196,15 +2213,27 @@ function integrateWasmJS() {
     info['env'] = env;
     // handle a generated wasm instance, receiving its exports and
     // performing other necessary setup
-    function receiveInstance(instance) {
+    function receiveInstance(instance, module) {
       exports = instance.exports;
       if (exports.memory) mergeMemory(exports.memory);
       Module['asm'] = exports;
       Module["usingWasm"] = true;
+#if USE_PTHREADS
+      // Keep a reference to the compiled module so we can post it to the workers.
+      Module['wasmModule'] = module;
+      // Instantiation is synchronous in pthreads and we assert on run dependencies.
+      if(!ENVIRONMENT_IS_PTHREAD) removeRunDependency('wasm-instantiate');
+#else
       removeRunDependency('wasm-instantiate');
+#endif
     }
-
-    addRunDependency('wasm-instantiate'); // we can't run yet
+#if USE_PTHREADS
+    if (!ENVIRONMENT_IS_PTHREAD) {
+      addRunDependency('wasm-instantiate'); // we can't run yet (except in a pthread, where we have a custom sync instantiator)
+    }
+#else
+    addRunDependency('wasm-instantiate');
+#endif
 
     // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
     // to manually instantiate the Wasm module themselves. This allows pages to run the instantiation parallel
@@ -2235,7 +2264,7 @@ function integrateWasmJS() {
       assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
       trueModule = null;
 #endif
-      receiveInstance(output['instance']);
+      receiveInstance(output['instance'], output['module']);
     }
     function instantiateArrayBuffer(receiver) {
       getBinaryPromise().then(function(binary) {

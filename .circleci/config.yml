@@ -17,7 +17,7 @@ test-defaults: &test-defaults
         apt-get install -y python python-pip cmake build-essential openjdk-9-jre-headless
         pip install --upgrade pip
         pip install lit
-        EMCC_CORES=8 python emscripten/tests/runner.py $TEST_TARGET skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full skip:other.test_native_link_error_message skip:other.test_bad_triple
+        EMCC_CORES=4 python emscripten/tests/runner.py $TEST_TARGET
 
 version: 2
 jobs:
@@ -38,7 +38,7 @@ jobs:
           popd
           echo EMSCRIPTEN_ROOT="'~/emscripten/'" >> .emscripten
           echo BINARYEN_ROOT="''" >> .emscripten
-          EMCC_CORES=8 python2 emscripten/embuilder.py build ALL
+          EMCC_CORES=4 python2 emscripten/embuilder.py build ALL
           python2 emscripten/tests/runner.py test_hello_world
 
       - persist_to_workspace:
@@ -54,11 +54,14 @@ jobs:
   test-other-am:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=other.test_a* other.test_b* other.test_c* other.test_d* other.test_e* other.test_f* other.test_g* other.test_h* other.test_i* other.test_j* other.test_k* other.test_l* other.test_m*
+      - TEST_TARGET=other.test_a* other.test_b* other.test_c* other.test_d* other.test_e* other.test_f* other.test_g* other.test_h* other.test_i* other.test_j* other.test_k* other.test_l* other.test_m* skip:other.test_bad_triple skip:other.test_emcc_v
+      # TODO: remove skips after fastcomp update on travis for 1.37.23
+
   test-other-nz:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=other.test_n* other.test_o* other.test_p* other.test_q* other.test_r* other.test_s* other.test_t* other.test_u* other.test_v* other.test_w* other.test_x* other.test_y* other.test_z*
+      - TEST_TARGET=other.test_n* other.test_o* other.test_p* other.test_q* other.test_r* other.test_s* other.test_t* other.test_u* other.test_v* other.test_w* other.test_x* other.test_y* other.test_z* skip:other.test_native_link_error_message
+      # TODO: remove skips after fastcomp update on travis for 1.37.23
   test-browser:
     <<: *test-defaults
     environment:
@@ -107,8 +110,8 @@ jobs:
   test-qrst:
     <<: *test-defaults
     environment:
-      # TODO: remove `skip:default.test_simd_sitofp skip:default.test_simd3` after fastcomp update on travis for 1.37.23
-      - TEST_TARGET=ALL.test_q* ALL.test_r* ALL.test_s* ALL.test_t* skip:default.test_simd_sitofp skip:default.test_simd3 
+      - TEST_TARGET=ALL.test_q* ALL.test_r* ALL.test_s* ALL.test_t* skip:default.test_simd_sitofp skip:default.test_simd3 skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full
+      # TODO: remove skips after fastcomp update on travis for 1.37.23
   test-uvwxyz:
     <<: *test-defaults
     environment:
