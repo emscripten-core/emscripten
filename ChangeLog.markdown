@@ -9,6 +9,7 @@ Not all changes are documented here. In particular, new features, user-oriented 
 
 Current Trunk
 -------------
+ - Breaking change: Similar to the getValue/setValue change from before (and with the same `ASSERTIONS` warnings to help users), do not export the following runtime methods by default: ccall, cwrap, allocate, Pointer_stringify, AsciiToString, stringToAscii, UTF8ArrayToString, UTF8ToString, stringToUTF8Array, stringToUTF8, lengthBytesUTF8, stackTrace, addOnPreRun, addOnInit, addOnPreMain, addOnExit, addOnPostRun, intArrayFromString, intArrayToString, writeStringToMemory, writeArrayToMemory, writeAsciiToMemory.
 
 v1.37.17: 12/4/2017
 -------------------

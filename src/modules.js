@@ -283,7 +283,7 @@ function maybeExport(name) {
     // check if it already exists, to support EXPORT_ALL and other cases
     // (we could optimize this, but in ASSERTIONS mode code size doesn't
     // matter anyhow)
-    return 'if (!Module["' + name + '"]) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS.") };';
+    return 'if (!Module["' + name + '"]) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)") };';
   }
   return '';
 }
