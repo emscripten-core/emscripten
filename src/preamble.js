@@ -431,7 +431,7 @@ function Pointer_stringify(ptr, length) {
     }
     return ret;
   }
-  return Module['UTF8ToString'](ptr);
+  return UTF8ToString(ptr);
 }
 {{{ maybeExport('Pointer_stringify') }}}
 

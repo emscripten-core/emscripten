@@ -55,6 +55,13 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def is_wasm(self):
     return 'BINARYEN' in str(self.emcc_args) or self.is_wasm_backend()
 
+  # Use closure in some tests for some additional coverage
+  def maybe_closure(self):
+    if '-O2' in self.emcc_args or '-Os' in self.emcc_args:
+      self.emcc_args += ['--closure', '1']
+      return True
+    return False
+
   def do_run_in_out_file_test(self, *path, **kwargs):
       test_path = path_from_root(*path)
 
@@ -887,8 +894,7 @@ int main() {
       Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
 
       Settings.DISABLE_EXCEPTION_CATCHING = 0
-      if '-O2' in self.emcc_args:
-        self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+      self.maybe_closure()
 
       src = '''
         #include <stdio.h>
@@ -4104,8 +4110,7 @@ Pass: 0.000012 0.000012''')
 
   def test_files(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # closure can generate variables called 'gc', which pick up js shell stuff
-    if '-O2' in self.emcc_args:
-      self.emcc_args += ['--closure', '1'] # Use closure here, to test we don't break FS stuff
+    if self.maybe_closure(): # Use closure here, to test we don't break FS stuff
       self.emcc_args = [x for x in self.emcc_args if x != '-g'] # ensure we test --closure 1 --memory-init-file 1 (-g would disable closure)
     elif '-O3' in self.emcc_args and not self.is_wasm():
       print('closure 2')
@@ -4428,7 +4433,7 @@ def process(filename):
   def test_utf(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # only node handles utf well
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
-    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['getValue', 'setValue']
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['getValue', 'setValue', 'UTF8ToString', 'stringToUTF8']
     self.do_run_in_out_file_test('tests', 'core', 'test_utf')
 
   def test_utf32(self):
@@ -4437,10 +4442,12 @@ def process(filename):
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.', args=['-fshort-wchar'])
 
   def test_utf8(self):
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii']
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
     self.do_run(open(path_from_root('tests', 'utf8.cpp')).read(), 'OK.')
 
   def test_utf8_textdecoder(self):
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['UTF8ToString', 'stringToUTF8']
     Building.COMPILER_TEST_OPTS += ['--embed-file', path_from_root('tests/utf8_corpus.txt')+ '@/utf8_corpus.txt']
     self.do_run(open(path_from_root('tests', 'benchmark_utf8.cpp')).read(), 'OK.')
 
@@ -5125,8 +5132,7 @@ return malloc(size);
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
       self.emcc_args = orig_args + mode + ['-msse']
-      if '-O2' in self.emcc_args:
-        self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+      self.maybe_closure()
 
       self.do_run(open(path_from_root('tests', 'test_sse1.cpp'), 'r').read(), 'Success!')
 
@@ -5148,8 +5154,7 @@ return malloc(size);
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
       self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse']
-      if '-O2' in self.emcc_args:
-        self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+      self.maybe_closure()
 
       self.do_run(open(path_from_root('tests', 'test_sse1_full.cpp'), 'r').read(), self.ignore_nans(native_result), output_nicerizer=self.ignore_nans)
 
@@ -5171,8 +5176,7 @@ return malloc(size);
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
       self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse2'] + args
-      if '-O2' in self.emcc_args:
-        self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+      self.maybe_closure()
 
       self.do_run(open(path_from_root('tests', 'test_sse2_full.cpp'), 'r').read(), self.ignore_nans(native_result), output_nicerizer=self.ignore_nans)
 
@@ -5484,8 +5488,7 @@ def process(filename):
                  force_c=True)
 
   def test_zlib(self):
-    if '-O2' in self.emcc_args and 'ASM_JS=0' not in self.emcc_args: # without asm, closure minifies Math.imul badly
-      self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+    self.maybe_closure()
 
     assert 'asm2g' in test_modes
     if self.run_name == 'asm2g':
@@ -5924,6 +5927,7 @@ def process(filename):
 
   @sync
   def test_ccall(self):
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['ccall', 'cwrap']
     post = '''
 def process(filename):
   src = open(filename, 'r').read() + \'\'\'
@@ -6869,10 +6873,10 @@ Success!
       }
     '''
     open('post.js', 'w').write('''
-      Module.addOnExit(function () {
+      addOnExit(function () {
         Module.print('I see exit status: ' + EXITSTATUS);
       });
-      Module.callMain();
+      Module['callMain']();
     ''')
     self.emcc_args += ['-s', 'INVOKE_RUN=0', '--post-js', 'post.js']
     self.do_run(src.replace('CAPITAL_EXIT', '0'), 'hello, world!\ncleanup\nI see exit status: 118')
@@ -6950,7 +6954,7 @@ int main() {
       Settings.INVOKE_RUN = 0
       open('post.js', 'w').write('''
 try {
-  Module['ccall']('main', 'number', ['number', 'string'], [2, 'waka']);
+  ccall('main', 'number', ['number', 'string'], [2, 'waka']);
   var never = true;
 } catch(e) {
   Module.print(e);
@@ -6971,7 +6975,7 @@ int main() {
 }
 '''
       open('post.js', 'w').write('''
-Module['ccall']('main', null, ['number', 'string'], [2, 'waka'], { async: true });
+ccall('main', null, ['number', 'string'], [2, 'waka'], { async: true });
 ''')
       self.do_run(src, 'HelloWorld');
 

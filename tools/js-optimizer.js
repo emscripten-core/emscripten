@@ -7807,112 +7807,127 @@ function eliminateDeadGlobals(ast) {
 // Removes obviously-unused code. Similar to closure compiler in its rules -
 // export e.g. by Module['..'] = theThing; , or use it somewhere, otherwise
 // it goes away.
-function JSDCE(ast) {
-  var scopes = [{}]; // begin with empty toplevel scope
-  function DUMP() {
-    printErr('vvvvvvvvvvvvvv');
-    for (var i = 0; i < scopes.length; i++) {
-      printErr(i + ' : ' + JSON.stringify(scopes[i]));
+function JSDCE(ast, multipleIterations) {
+  function iteration() {
+    var removed = false;
+    var scopes = [{}]; // begin with empty toplevel scope
+    function DUMP() {
+      printErr('vvvvvvvvvvvvvv');
+      for (var i = 0; i < scopes.length; i++) {
+        printErr(i + ' : ' + JSON.stringify(scopes[i]));
+      }
+      printErr('^^^^^^^^^^^^^^');
     }
-    printErr('^^^^^^^^^^^^^^');
-  }
-  function ensureData(scope, name) {
-    if (Object.prototype.hasOwnProperty.call(scope, name)) return scope[name];
-    scope[name] = {
-      def: 0,
-      use: 0,
-      param: 0 // true for function params, which cannot be eliminated
-    };
-    return scope[name];
-  }
-  function cleanUp(ast, names) {
+    function ensureData(scope, name) {
+      if (Object.prototype.hasOwnProperty.call(scope, name)) return scope[name];
+      scope[name] = {
+        def: 0,
+        use: 0,
+        param: 0 // true for function params, which cannot be eliminated
+      };
+      return scope[name];
+    }
+    function cleanUp(ast, names) {
+      traverse(ast, function(node, type) {
+        if (type === 'defun' && Object.prototype.hasOwnProperty.call(names, node[1])) {
+          removed = true;
+          return emptyNode();
+        }
+        if (type === 'defun' || type === 'function') return null; // do not enter other scopes
+        if (type === 'var') {
+          node[1] = node[1].filter(function(varItem, j) {
+            var curr = varItem[0];
+            var value = varItem[1];
+            var keep = !(curr in names) || (value && hasSideEffects(value));
+            if (!keep) removed = true;
+            return keep;
+          });
+          if (node[1].length === 0) return emptyNode();
+        }
+      });
+      return ast;
+    }
+    var isVarNameOrObjectKeys = [];
+    // isVarNameOrObjectKeys is a stack which saves the state the node is defining a variable or in an object literal.
+    // the second argument `type` passed into the callback function called by traverse() could be a variable name or object key name.
+    // You cannot distinguish the `type` is a real type or not without isVarNameOrObjectKeys.
+    // ex.) var name = true;          // `type` can be 'name'
+    //      var obj = { defun: true } // `type` can be 'defun'
     traverse(ast, function(node, type) {
-      if (type === 'defun' && Object.prototype.hasOwnProperty.call(names, node[1])) return emptyNode();
-      if (type === 'defun' || type === 'function') return null; // do not enter other scopes
+      if (isVarNameOrObjectKeys[isVarNameOrObjectKeys.length - 1]) { // check parent node defines a variable or is an object literal
+        // `type` is a variable name or an object key name
+        isVarNameOrObjectKeys.push(false); // doesn't define a variable nor be an object literal
+        return;
+      }
       if (type === 'var') {
-        node[1] = node[1].filter(function(varItem, j) {
-          var curr = varItem[0];
-          var value = varItem[1];
-          return !(curr in names) || (value && hasSideEffects(value));
+        node[1].forEach(function(varItem, j) {
+          var name = varItem[0];
+          ensureData(scopes[scopes.length-1], name).def = 1;
         });
-        if (node[1].length === 0) return emptyNode();
+        isVarNameOrObjectKeys.push(true); // this `node` defines a varible
+        return;
+      }
+      if (type === 'object') {
+        isVarNameOrObjectKeys.push(true); // this `node` is an object literal
+        return;
+      }
+      isVarNameOrObjectKeys.push(false); // doesn't define a variable nor be an object literal
+      if (type === 'defun' || type === 'function') {
+        if (node[1]) ensureData(scopes[scopes.length-1], node[1]).def = 1;
+        var scope = {};
+        node[2].forEach(function(param) {
+          ensureData(scope, param).def = 1;
+          scope[param].param = 1;
+        });
+        scopes.push(scope);
+        return;
+      }
+      if (type === 'name') {
+        ensureData(scopes[scopes.length-1], node[1]).use = 1;
+      }
+    }, function(node, type) {
+      isVarNameOrObjectKeys.pop();
+      if (isVarNameOrObjectKeys[isVarNameOrObjectKeys.length - 1]) return; // `type` is a variable name or an object key name
+      if (type === 'defun' || type === 'function') {
+        var scope = scopes.pop();
+        var names = set();
+        for (name in scope) {
+          var data = scope[name];
+          if (data.use && !data.def) {
+            // this is used from a higher scope, propagate the use down
+            ensureData(scopes[scopes.length-1], name).use = 1;
+            continue;
+          }
+          if (data.def && !data.use && !data.param) {
+            // this is eliminateable!
+            names[name] = 0;
+          }
+        }
+        cleanUp(node[3], names);
       }
     });
-    return ast;
-  }
-  var isVarNameOrObjectKeys = [];
-  // isVarNameOrObjectKeys is a stack which saves the state the node is defining a variable or in an object literal.
-  // the second argument `type` passed into the callback function called by traverse() could be a variable name or object key name.
-  // You cannot distinguish the `type` is a real type or not without isVarNameOrObjectKeys.
-  // ex.) var name = true;          // `type` can be 'name'
-  //      var obj = { defun: true } // `type` can be 'defun'
-  traverse(ast, function(node, type) {
-    if (isVarNameOrObjectKeys[isVarNameOrObjectKeys.length - 1]) { // check parent node defines a variable or is an object literal
-      // `type` is a variable name or an object key name
-      isVarNameOrObjectKeys.push(false); // doesn't define a variable nor be an object literal
-      return;
-    }
-    if (type === 'var') {
-      node[1].forEach(function(varItem, j) {
-        var name = varItem[0];
-        ensureData(scopes[scopes.length-1], name).def = 1;
-      });
-      isVarNameOrObjectKeys.push(true); // this `node` defines a varible
-      return;
-    }
-    if (type === 'object') {
-      isVarNameOrObjectKeys.push(true); // this `node` is an object literal
-      return;
-    }
-    isVarNameOrObjectKeys.push(false); // doesn't define a variable nor be an object literal
-    if (type === 'defun' || type === 'function') {
-      if (node[1]) ensureData(scopes[scopes.length-1], node[1]).def = 1;
-      var scope = {};
-      node[2].forEach(function(param) {
-        ensureData(scope, param).def = 1;
-        scope[param].param = 1;
-      });
-      scopes.push(scope);
-      return;
-    }
-    if (type === 'name') {
-      ensureData(scopes[scopes.length-1], node[1]).use = 1;
-    }
-  }, function(node, type) {
-    isVarNameOrObjectKeys.pop();
-    if (isVarNameOrObjectKeys[isVarNameOrObjectKeys.length - 1]) return; // `type` is a variable name or an object key name
-    if (type === 'defun' || type === 'function') {
-      var scope = scopes.pop();
-      var names = set();
-      for (name in scope) {
-        var data = scope[name];
-        if (data.use && !data.def) {
-          // this is used from a higher scope, propagate the use down
-          ensureData(scopes[scopes.length-1], name).use = 1;
-          continue;
-        }
-        if (data.def && !data.use && !data.param) {
-          // this is eliminateable!
-          names[name] = 0;
-        }
-      }
-      cleanUp(node[3], names);
-    }
-  });
-  // toplevel
-  var scope = scopes.pop();
-  assert(scopes.length === 0);
+    // toplevel
+    var scope = scopes.pop();
+    assert(scopes.length === 0);
 
-  var names = set();
-  for (var name in scope) {
-    var data = scope[name];
-    if (data.def && !data.use) {
-      assert(!data.param); // can't be
-      // this is eliminateable!
-      names[name] = 0;
+    var names = set();
+    for (var name in scope) {
+      var data = scope[name];
+      if (data.def && !data.use) {
+        assert(!data.param); // can't be
+        // this is eliminateable!
+        names[name] = 0;
+      }
     }
+    cleanUp(ast, names);
+    return removed;
   }
-  cleanUp(ast, names);
+  while (iteration() && multipleIterations) { }
+}
+
+// Aggressive JSDCE - multiple iterations
+function AJSDCE(ast) {
+  JSDCE(ast, /* multipleIterations= */ true);
 }
 
 function removeFuncs(ast) {
@@ -7961,6 +7976,7 @@ var passes = {
   dumpCallGraph: dumpCallGraph,
   asmLastOpts: asmLastOpts,
   JSDCE: JSDCE,
+  AJSDCE: AJSDCE,
   removeFuncs: removeFuncs,
   noop: function() {},
 

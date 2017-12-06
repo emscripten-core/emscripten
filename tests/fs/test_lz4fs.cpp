@@ -147,7 +147,7 @@ int main() {
       console.log('seeing compressed size of ' + compressedSize + ', expect in ' + [low, high]);
       assert(compressedSize > low && compressedSize < high); // more than 1/3, because 1/3 is uncompressible, but still, less than 1/2
 
-      Module['ccall']('finish');
+      ccall('finish');
     }
 
     var meta_xhr = new XMLHttpRequest();
