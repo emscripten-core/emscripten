@@ -3,11 +3,31 @@
 <head>
   <meta charset="utf-8" />
   <title>Emscripten Browser Test Harness</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+    #iframe {
+      border: none;
+      width: 100%;
+      height: 70%;
+    }
+    #output {
+      height: 30%;
+      flex: 1;
+    }
+  </style>
 </head>
 <body>
 <h2><b>Running tests...</b></h2>
-<div id="output"></div>
 <iframe id="iframe"></iframe>
+<div id="output"></div>
 <script>
   var counter = 0;
   function check() {
