@@ -1647,10 +1647,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # after the generated code, you will need to define   var Module = {};
       # before the code. Then that object will be used in the code, and you
       # can continue to use Module afterwards as well.
-      module_header = '''
+      if options.use_closure_compiler:
+        module_header = '''
 var Module;
-if (!Module) Module = %s;
+Module = %s;
 ''' % shared.JS.module_export_name_substitution_pattern
+      else:
+        module_header = '''
+var Module;
+Module = typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {};
+''' % {"EXPORT_NAME": shared.Settings.EXPORT_NAME}
 
       # Append module header now as --pre-js is already added
       logging.debug('Appending module header')
