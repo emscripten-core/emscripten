@@ -289,8 +289,8 @@ LibraryManager.library = {
 #else
         var maxHeapSize = 2*1024*1024*1024 - 16777216;
 #endif
-#if BINARYEN_MEM_MAX != -1
-        maxHeapSize = {{{ BINARYEN_MEM_MAX }}};
+#if WASM_MEM_MAX != -1
+        maxHeapSize = {{{ WASM_MEM_MAX }}};
 #endif
 #if !ALLOW_MEMORY_GROWTH
         maxHeapSize = HEAPU8.length;
@@ -4372,6 +4372,9 @@ LibraryManager.library = {
   emscripten_asm_const: true,
   emscripten_asm_const_int: true,
   emscripten_asm_const_double: true,
+  emscripten_asm_const_int_sync_on_main_thread: true,
+  emscripten_asm_const_double_sync_on_main_thread: true,
+  emscripten_asm_const_async_on_main_thread: true,
 
   // ======== compiled code from system/lib/compiler-rt , see readme therein
   __muldsi3__asm: true,

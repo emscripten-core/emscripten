@@ -1603,9 +1603,33 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm', force_c=True)
 
+  # Tests various different ways to invoke the EM_ASM(), EM_ASM_INT() and EM_ASM_DOUBLE() macros.
   def test_em_asm_2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2', force_c=True)
+
+  # Tests various different ways to invoke the MAIN_THREAD_EM_ASM(), MAIN_THREAD_EM_ASM_INT() and MAIN_THREAD_EM_ASM_DOUBLE() macros.
+  # This test is identical to test_em_asm_2, just search-replaces EM_ASM to MAIN_THREAD_EM_ASM on the test file. That way if new
+  # test cases are added to test_em_asm_2.cpp for EM_ASM, they will also get tested in MAIN_THREAD_EM_ASM form.
+  @no_wasm_backend('Proxying EM_ASM calls is not yet implemented in Wasm backend')
+  def test_main_thread_em_asm(self):
+    return self.skip('TODO: Enable me when we have tagged new compiler build')
+    src = open(path_from_root('tests', 'core', 'test_em_asm_2.cpp'), 'r').read()
+    test_file = 'src.cpp'
+    open(test_file, 'w').write(src.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
+
+    expected_result = open(path_from_root('tests', 'core', 'test_em_asm_2.out'), 'r').read()
+    expected_result_file = 'result.out'
+    open(expected_result_file, 'w').write(expected_result.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
+
+    self.do_run_from_file(test_file, expected_result_file)
+    self.do_run_from_file(test_file, expected_result_file, force_c=True)
+
+  @no_wasm_backend('Proxying EM_ASM calls is not yet implemented in Wasm backend')
+  def test_main_thread_async_em_asm(self):
+    return self.skip('TODO: Enable me when we have tagged new compiler build')
+    self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm')
+    self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm', force_c=True)
 
   def test_em_asm_unicode(self):
     self.do_run(r'''
@@ -4388,7 +4412,7 @@ def process(filename):
   def test_utf(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # only node handles utf well
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
-
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['getValue', 'setValue']
     self.do_run_in_out_file_test('tests', 'core', 'test_utf')
 
   def test_utf32(self):
@@ -4497,6 +4521,18 @@ def process(filename):
       out = path_from_root('tests', 'fs', 'test_mmap.out')
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run_from_file(src, out)
+
+  def test_fs_errorstack(self):
+    Settings.FORCE_FILESYSTEM = 1
+    self.do_run(r'''
+      #include <emscripten.h>
+      int main(void) {
+        EM_ASM(
+          FS.write('/dummy.txt', 'homu');
+        );
+        return 0;
+      }
+    ''', 'at new ErrnoError', js_engines=[NODE_JS]) # engines has different error stack format
 
   def test_unistd_access(self):
     self.clear()
@@ -5912,6 +5948,26 @@ def process(filename):
       self.emcc_args += ['--closure', '1']
       self.do_run_in_out_file_test('tests', 'core', 'test_ccall', post_build=post)
 
+  def test_getValue_setValue(self):
+    # these used to be exported, but no longer are by default
+    def test(output_prefix='', args=[]):
+      old = self.emcc_args[:]
+      self.emcc_args += args
+      self.do_run(open(path_from_root('tests', 'core', 'getValue_setValue.cpp')).read(),
+                  open(path_from_root('tests', 'core', 'getValue_setValue' + output_prefix + '.txt')).read())
+      self.emcc_args = old
+    # see that direct usage (not on module) works. we don't export, but the use
+    # keeps it alive through JSDCE
+    test(args=['-DDIRECT'])
+    # see that with assertions, we get a nice error message
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = []
+    Settings.ASSERTIONS = 1
+    test('_assert')
+    Settings.ASSERTIONS = 0
+    # see that when we export them, things work on the module
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['getValue', 'setValue']
+    test()
+
   @no_wasm_backend('DEAD_FUNCTIONS elimination is done by the JSOptimizer')
   def test_dead_functions(self):
     src = r'''
@@ -6695,6 +6751,25 @@ Module.printErr = Module['printErr'] = function(){};
         else:
           os.environ.pop('EMCC_DEBUG', None)
 
+  def test_modularize_closure_pre(self):
+    # test that the combination of modularize + closure + pre-js works. in that mode,
+    # closure should not minify the Module object in a way that the pre-js cannot use it.
+    self.emcc_args += [
+      '--pre-js', path_from_root('tests', 'core', 'modularize_closure_pre.js'),
+      '--closure', '1',
+      '-s', 'MODULARIZE=1',
+      '-g1'
+    ]
+    def post(filename):
+      src = open(filename, 'a')
+      src.write('\n\n')
+      src.write('var TheModule = Module();\n')
+      src.close()
+    self.do_run(
+      open(path_from_root('tests', 'core', 'modularize_closure_pre.c')).read(),
+      open(path_from_root('tests', 'core', 'modularize_closure_pre.txt')).read(),
+      post_build=(None, post))
+
   @no_emterpreter
   def test_exception_source_map(self):
     if self.is_wasm(): return self.skip('wasmifying destroys debug info and stack tracability')
@@ -7118,6 +7193,7 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
     self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
 
+  @no_wasm_backend('Wasm backend emits non-trapping float-to-int conversion')
   def test_binaryen_trap_mode(self):
     if not self.is_wasm(): return self.skip('wasm test')
     TRAP_OUTPUTS = ('trap', 'RuntimeError')

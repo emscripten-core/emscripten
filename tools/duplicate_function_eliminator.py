@@ -9,7 +9,7 @@ from tools.js_optimizer import *
 
 DUPLICATE_FUNCTION_ELIMINATOR = path_from_root('tools', 'eliminate-duplicate-functions.js')
 
-def process_shell(js, js_engine, shell, equivalentfn_hash_info=None):
+def process_shell(js_engine, shell, equivalentfn_hash_info=None):
   suffix = '.eliminatedupes'
 
   with temp_files.get_file(suffix + '.js') as temp_file:
@@ -20,13 +20,13 @@ def process_shell(js, js_engine, shell, equivalentfn_hash_info=None):
     f.write(equivalentfn_hash_info)
     f.close()
 
-    (output,error) = subprocess.Popen(js_engine +
+    proc = shared.run_process(js_engine +
         [DUPLICATE_FUNCTION_ELIMINATOR, temp_file, '--use-hash-info', '--no-minimize-whitespace'],
-        stdout=subprocess.PIPE,stderr=subprocess.PIPE).communicate()
-  assert len(output) > 0
-  assert len(error) == 0
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  assert len(proc.stdout) > 0
+  assert len(proc.stderr) == 0
 
-  return output
+  return proc.stdout
 
 def run_on_chunk(command):
   try:
@@ -45,15 +45,13 @@ def run_on_chunk(command):
 
     if shared.EM_BUILD_VERBOSE_LEVEL >= 3: print('run_on_chunk: ' + str(command), file=sys.stderr)
 
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE)
-    output = proc.communicate()[0]
+    proc = shared.run_process(command, stdout=subprocess.PIPE)
+    output = proc.stdout
     assert proc.returncode == 0, 'Error in optimizer (return code ' + str(proc.returncode) + '): ' + output
     assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in optimizer: ' + output
     filename = temp_files.get(os.path.basename(filename) + '.jo' + file_suffix).name
 
-    # Important to write out in binary mode, because the data we are writing contains Windows line endings '\r\n' because it was PIPED from console.
-    # Otherwise writing \r\n to ascii mode file will result in Windows amplifying \n to \r\n, generating bad \r\r\n line endings.
-    f = open(filename, 'wb')
+    f = open(filename, 'w')
     f.write(output)
     f.close()
     if DEBUG and not shared.WINDOWS: print('.', file=sys.stderr) # Skip debug progress indicator on Windows, since it doesn't buffer well with multiple threads printing to console.
@@ -197,7 +195,7 @@ def run_on_js(filename, gen_hash_info=False):
     js = js[start_funcs + len(start_funcs_marker):end_funcs]
 
     # we assume there is a maximum of one new name per line
-    asm_shell_pre, asm_shell_post = process_shell(js, js_engine, asm_shell, equivalentfn_hash_info).split('EMSCRIPTEN_FUNCS();');
+    asm_shell_pre, asm_shell_post = process_shell(js_engine, asm_shell, equivalentfn_hash_info).split('EMSCRIPTEN_FUNCS();')
     asm_shell_pre = re.sub(r'(\S+\s*=\s*)ZERO\$DOT\$ZERO', r'\g<1>0.0', asm_shell_pre)
     asm_shell_post = asm_shell_post.replace('});', '})');
     pre += asm_shell_pre + '\n' + start_funcs_marker
