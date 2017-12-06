@@ -2434,7 +2434,6 @@ def modularize(final):
   # Export the function as Node module, otherwise it is lost when loaded in Node.js or similar environments
   f.write('''var %(EXPORT_NAME)s = function(%(EXPORT_NAME)s) {
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
-  Module = %(EXPORT_NAME)s;
 
 %(src)s
 
