@@ -176,6 +176,68 @@ if sys.stderr.isatty():
   else:
     logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
 
+
+# https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess
+class Py2CompletedProcess:
+  def __init__(self, process, args):
+    (self.stdout, self.stderr) = process.communicate()
+    self.args = args
+    self.returncode = process.returncode
+
+  def __repr__(self):
+    _repr = ['args=%s, returncode=%s' % (self.args, self.returncode)]
+    if self.stdout is not None:
+      _repr += 'stdout=' + self.stdout
+    if self.stderr is not None:
+      _repr += 'stderr=' + self.stderr
+    return 'CompletedProcess(%s)' % ', '.join(_repr)
+
+  def check_returncode(self):
+    if self.returncode is not 0:
+      raise subprocess.CalledProcessError(returncode=self.returncode, cmd=self.args, output=self.stdout)
+
+def run_base(cmd, check=False, *args, **kw):
+  if hasattr(subprocess, "run"):
+    return subprocess.run(cmd, check=check, *args, **kw)
+
+  # Python 2 compatibility: Introduce Python 3 subprocess.run-like behavior
+  result = Py2CompletedProcess(Popen(cmd, *args, **kw), cmd)
+  if check:
+    result.check_returncode()
+  return result
+
+def run_process(cmd, universal_newlines=True, *args, **kw):
+  return run_base(cmd, universal_newlines=universal_newlines, *args, **kw)
+
+def execute(cmd, *args, **kw):
+  try:
+    cmd[0] = Building.remove_quotes(cmd[0])
+    return Popen(cmd, universal_newlines=True, *args, **kw).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
+  except:
+    if not isinstance(cmd, str):
+      cmd = ' '.join(cmd)
+    logging.error('Invoking Process failed: <<< ' + cmd + ' >>>')
+    raise
+
+def check_execute(cmd, *args, **kw):
+  # TODO: use in more places. execute doesn't actually check that return values
+  # are nonzero
+  try:
+    subprocess.check_output(cmd, *args, **kw)
+    logging.debug("Successfuly executed %s" % " ".join(cmd))
+  except subprocess.CalledProcessError as e:
+    logging.error("'%s' failed with output:\n%s" % (" ".join(e.cmd), e.output))
+    raise
+
+def check_call(cmd, *args, **kw):
+  try:
+    subprocess.check_call(cmd, *args, **kw)
+    logging.debug("Successfully executed %s" % " ".join(cmd))
+  except subprocess.CalledProcessError as e:
+    logging.error("'%s' failed" % " ".join(cmd))
+    raise
+
+
 # Emscripten configuration is done through the --em-config command line option or
 # the EM_CONFIG environment variable. If the specified string value contains newline
 # or semicolon-separated definitions, then these definitions will be used to configure
@@ -2536,65 +2598,6 @@ class WebAssembly(object):
     f.close()
     return wso
 
-# https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess
-class Py2CompletedProcess:
-  def __init__(self, process, args):
-    (self.stdout, self.stderr) = process.communicate()
-    self.args = args
-    self.returncode = process.returncode
-
-  def __repr__(self):
-    _repr = ['args=%s, returncode=%s' % (self.args, self.returncode)]
-    if self.stdout is not None:
-      _repr += 'stdout=' + self.stdout
-    if self.stderr is not None:
-      _repr += 'stderr=' + self.stderr
-    return 'CompletedProcess(%s)' % ', '.join(_repr)
-
-  def check_returncode(self):
-    if self.returncode is not 0:
-      raise subprocess.CalledProcessError(returncode=self.returncode, cmd=self.args, output=self.stdout)
-
-def run_base(cmd, check=False, *args, **kw):
-  if hasattr(subprocess, "run"):
-    return subprocess.run(cmd, check=check, *args, **kw)
-
-  # Python 2 compatibility: Introduce Python 3 subprocess.run-like behavior
-  result = Py2CompletedProcess(Popen(cmd, *args, **kw), cmd)
-  if check:
-    result.check_returncode()
-  return result
-
-def run_process(cmd, universal_newlines=True, *args, **kw):
-  return run_base(cmd, universal_newlines=universal_newlines, *args, **kw)
-
-def execute(cmd, *args, **kw):
-  try:
-    cmd[0] = Building.remove_quotes(cmd[0])
-    return Popen(cmd, universal_newlines=True, *args, **kw).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
-  except:
-    if not isinstance(cmd, str):
-      cmd = ' '.join(cmd)
-    logging.error('Invoking Process failed: <<< ' + cmd + ' >>>')
-    raise
-
-def check_execute(cmd, *args, **kw):
-  # TODO: use in more places. execute doesn't actually check that return values
-  # are nonzero
-  try:
-    subprocess.check_output(cmd, *args, **kw)
-    logging.debug("Successfuly executed %s" % " ".join(cmd))
-  except subprocess.CalledProcessError as e:
-    logging.error("'%s' failed with output:\n%s" % (" ".join(e.cmd), e.output))
-    raise
-
-def check_call(cmd, *args, **kw):
-  try:
-    subprocess.check_call(cmd, *args, **kw)
-    logging.debug("Successfully executed %s" % " ".join(cmd))
-  except subprocess.CalledProcessError as e:
-    logging.error("'%s' failed" % " ".join(cmd))
-    raise
 
 def suffix(name):
   """Return the file extension *not* including the '.'."""
