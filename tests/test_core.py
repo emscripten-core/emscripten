@@ -6758,7 +6758,8 @@ Module.printErr = Module['printErr'] = function(){};
       '--pre-js', path_from_root('tests', 'core', 'modularize_closure_pre.js'),
       '--closure', '1',
       '-s', 'MODULARIZE=1',
-      '-g1'
+      '-g1',
+      '-O2'
     ]
     def post(filename):
       src = open(filename, 'a')
