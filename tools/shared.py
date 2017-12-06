@@ -2257,6 +2257,25 @@ class Building(object):
 
       return filename + '.cc.js'
 
+  # minify the final wasm+JS combination. this is done after all the JS
+  # and wasm optimizations; here we do the very final optimizations on them
+  @staticmethod
+  def minify_wasm_js(js_file, wasm_file, shrink_level, minify_whitespace, use_closure_compiler, temp_files):
+    # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
+    # use AJSDCE (aggressive JS DCE, performs multiple iterations)
+    passes = ['noPrintMetadata', 'JSDCE' if shrink_level == 0 else 'AJSDCE', 'last']
+    if minify_whitespace:
+      passes.append('minifyWhitespace')
+    logging.debug('running cleanup on shell code: ' + ' '.join(passes))
+    temp_files.note(js_file)
+    js_file = Building.js_optimizer_no_asmjs(js_file, passes)
+    # finally, optionally use closure compiler to finish cleaning up the JS
+    if use_closure_compiler:
+      logging.debug('running closure on shell code')
+      temp_files.note(js_file)
+      js_file = Building.closure_compiler(js_file, pretty=not minify_whitespace)
+    return js_file
+
   _is_ar_cache = {}
   @staticmethod
   def is_ar(filename):
