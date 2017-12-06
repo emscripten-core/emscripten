@@ -198,13 +198,14 @@ if (not force) and len(data_files) == 0:
 if not has_preloaded or jsoutput == None:
   assert not separate_metadata, 'cannot separate-metadata without both --preloaded files and a specified --js-output'
 
-# `"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__"` will be replaced with actual code on later stage of the build, this way Closure Compiler will not mangle it
-ret = '''
-Module = "__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__";
-'''
 if no_closure:
-  replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": export_name}
-  ret = ret.replace('"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__"', replacement)
+  ret = '''
+Module = typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {};
+''' % {"EXPORT_NAME": export_name}
+else:
+  ret = '''
+Module = %s;
+''' % shared.JS.module_export_name_substitution_pattern
 
 ret += '''
 if (!Module.expectedDataFileDownloads) {

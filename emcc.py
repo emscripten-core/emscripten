@@ -2428,7 +2428,7 @@ def module_export_name_substitution(final):
   final = final + '.module_export_name_substitution.js'
   f = open(final, 'w')
   replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": shared.Settings.EXPORT_NAME}
-  f.write(src.replace('"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__"', replacement))
+  f.write(src.replace(shared.JS.module_export_name_substitution_pattern, replacement))
   f.close()
   if DEBUG: save_intermediate('module_export_name_substitution', 'js')
   return final
