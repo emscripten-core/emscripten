@@ -1620,7 +1620,7 @@ int f() {
     ''')
     open(os.path.join(self.get_dir(), 'before.js'), 'w').write('''
       var MESSAGE = 'hello from js';
-      if (typeof Module != 'undefined') throw 'This code should run before anything else!';
+      if (Object.keys(Module).length) throw 'This code should run before anything else!';
     ''')
     open(os.path.join(self.get_dir(), 'after.js'), 'w').write('''
       Module.print(MESSAGE);
