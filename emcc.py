@@ -107,6 +107,12 @@ def exit_with_error(message):
 
 class Intermediate(object):
   counter = 0
+# this method uses the global 'final' variable, which contains the current
+# final output file. if a method alters final, and calls this method, then it
+# must modify final globally (i.e. it can't receive final as a param and
+# return it)
+# TODO: refactor all this, a singleton that abstracts over the final output
+#       and saving of intermediates
 def save_intermediate(name=None, suffix='js'):
   name = os.path.join(shared.get_emscripten_temp_dir(), 'emcc-%d%s.%s' % (Intermediate.counter, '' if name is None else '-' + name, suffix))
   if isinstance(final, list):
@@ -1829,9 +1835,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                     wasm_text_target, misc_temp_files, optimizer)
 
       if shared.Settings.MODULARIZE:
-        final = modularize(final)
+        modularize()
 
-      final = module_export_name_substitution(final)
+      module_export_name_substitution()
 
       # The JS is now final. Move it to its final location
       shutil.move(final, js_target)
@@ -2394,7 +2400,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     f.close()
 
 
-def modularize(final):
+def modularize():
+  global final
   logging.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
   src = open(final).read()
   final = final + '.modular.js'
@@ -2414,10 +2421,10 @@ if (typeof module === "object" && module.exports) {
 ''' % {"EXPORT_NAME": shared.Settings.EXPORT_NAME, "src": src})
   f.close()
   if DEBUG: save_intermediate('modularized', 'js')
-  return final
 
 
-def module_export_name_substitution(final):
+def module_export_name_substitution():
+  global final
   logging.debug('Private module export name substitution with ' + shared.Settings.EXPORT_NAME)
   src = open(final).read()
   final = final + '.module_export_name_substitution.js'
@@ -2426,7 +2433,6 @@ def module_export_name_substitution(final):
   f.write(src.replace(shared.JS.module_export_name_substitution_pattern, replacement))
   f.close()
   if DEBUG: save_intermediate('module_export_name_substitution', 'js')
-  return final
 
 
 def generate_html(target, options, js_target, target_basename,
