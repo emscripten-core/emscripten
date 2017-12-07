@@ -1378,6 +1378,7 @@ function hasSideEffects(node) { // this is 99% incomplete!
       return false;
     }
     case 'conditional': return hasSideEffects(node[1]) || hasSideEffects(node[2]) || hasSideEffects(node[3]);
+    case 'function': case 'defun': return false;
     default: return true;
   }
 }
@@ -7928,6 +7929,25 @@ function AJSDCE(ast) {
   JSDCE(ast, /* multipleIterations= */ true);
 }
 
+function isAsmLibraryArgAssign(node) {
+  return node[0] === 'assign' && node[2][0] === 'dot'
+                              && node[2][1][0] === 'name' && node[2][1][1] === 'Module'
+                              && node[2][2] === 'asmLibraryArg';
+}
+
+function isAsmUse(node) {
+  return node[0] === 'sub' &&
+         ((node[1][0] === 'name' && node[1][1] === 'asm') || // asm['X']
+          (node[1][0] === 'sub' && node[1][1][0] === 'name' && node[1][1][1] === 'Module' && node[1][2][0] === 'string' && node[1][2][1] === 'asm')) && // Module
+         node[2][0] === 'string';
+}
+
+function isModuleUse(node) {
+  return node[0] === 'sub' &&
+         node[1][0] === 'name' && node[1][1] === 'Module' && // Module['X']
+         node[2][0] === 'string';
+}
+
 // Emit the DCE graph, to help optimize the combined JS+wasm.
 // This finds where JS depends on wasm, and where wasm depends
 // on JS, and prints that out.
@@ -7961,32 +7981,25 @@ function emitDCEGraph(ast) {
   var moduleUses = {}; // uses of Module['X']
   var allUses = {}; // any use of X
   traverse(ast, function(node, type) {
-    if (type === 'assign' && node[2][0] === 'dot'
-                          && node[2][1][0] === 'name' && node[2][1][1] === 'Module'
-                          && node[2][2] === 'asmLibraryArg') {
+    if (isAsmLibraryArgAssign(node)) {
       var items = node[3][1];
       items.forEach(function(item) {
         imports.push(item[0]); // the value doesn't matter, for now
       });
     } else if (type === 'sub') {
-      if ((node[1][0] === 'name' && node[1][1] === 'asm') || // asm['X']
-          (node[1][0] === 'sub' && node[1][1][0] === 'name' && node[1][1][1] === 'Module' && node[1][2][0] === 'string' && node[1][2][1] === 'asm')) { // Module['asm']['X']
-        if (node[2][0] === 'string') {
-          var name = node[2][1];
-          if (!asmUses[name]) {
-            asmUses[name] = 1;
-          } else {
-            asmUses[name]++;
-          }
+      if (isAsmUse(node)) {
+        var name = node[2][1];
+        if (!asmUses[name]) {
+          asmUses[name] = 1;
+        } else {
+          asmUses[name]++;
         }
-      } else if (node[1][0] === 'name' && node[1][1] === 'Module') { // Module['X']
-        if (node[2][0] === 'string') {
-          var name = node[2][1];
-          if (!moduleUses[name]) {
-            moduleUses[name] = 1;
-          } else {
-            moduleUses[name]++;
-          }
+      } else if (isModuleUse(node)) {
+        var name = node[2][1];
+        if (!moduleUses[name]) {
+          moduleUses[name] = 1;
+        } else {
+          moduleUses[name]++;
         }
       }
     } else if (type === 'name') {
@@ -8003,13 +8016,13 @@ function emitDCEGraph(ast) {
   var graph = [];
   imports.forEach(function(name) {
     graph.push({
-      'name': 'import$' + name,
+      'name': 'emcc$import$' + name,
       'import': ['env', name]
     });
   });
   for (var name in asmUses) {
     var node = {
-      'name': 'export$' + name,
+      'name': 'emcc$export$' + name,
       'export': name
     };
     // root it, if it is a root. a non-root has at most one asmUse
@@ -8022,6 +8035,33 @@ function emitDCEGraph(ast) {
     graph.push(node);
   }
   print(JSON.stringify(graph, null, ' '));
+}
+
+// Apply graph removals from running wasm-metadce
+function applyDCEGraphRemovals(ast) {
+  var unused = set(extraInfo.unused);
+
+  traverse(ast, function(node, type) {
+    if (isAsmLibraryArgAssign(node)) {
+      node[3][1] = node[3][1].filter(function(item) {
+        var name = item[0];
+        var value = item[1];
+        var full = 'emcc$import$' + name;
+        return !((full in unused) && !hasSideEffects(value));
+      });
+    } else if (type === 'assign') {
+      // when we assign to a thing we don't need, we can just remove the assign
+      var target = node[2];
+      if (isAsmUse(target) || isModuleUse(target)) {
+        var name = target[2][1];
+        var full = 'emcc$export$' + name;
+        var value = node[3];
+        if ((full in unused) && !hasSideEffects(value)) {
+          return ['name', 'undefined'];
+        }
+      }
+    }
+  });
 }
 
 function removeFuncs(ast) {
@@ -8074,6 +8114,7 @@ var passes = {
   JSDCE: JSDCE,
   AJSDCE: AJSDCE,
   emitDCEGraph: emitDCEGraph,
+  applyDCEGraphRemovals: applyDCEGraphRemovals,
   removeFuncs: removeFuncs,
   noop: function() {},
 

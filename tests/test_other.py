@@ -1977,6 +1977,8 @@ int f() {
        ['AJSDCE']),
       (path_from_root('tests', 'optimizer', 'emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'emitDCEGraph-output.js')).read(),
        ['emitDCEGraph', 'noEmitAst']),
+      (path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals.js'), open(path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals-output.js')).read(),
+       ['applyDCEGraphRemovals']),
     ]:
       print(input, passes)
 
