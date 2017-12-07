@@ -16,19 +16,13 @@
     #iframe {
       border: none;
       width: 100%;
-      height: 70%;
-    }
-    #output {
-      height: 30%;
       flex: 1;
-      overflow: auto;
     }
   </style>
 </head>
 <body>
-<h2><b>Running tests...</b></h2>
+<span>Running test <span id="count"></span>...</span>
 <iframe id="iframe"></iframe>
-<div id="output"></div>
 <script>
   var counter = 0;
   function check() {
@@ -38,7 +32,7 @@
     request.addEventListener("load", function() {
       if (request.responseText != 'False') {
         iframe.src = request.responseText;
-        document.getElementById('output').innerHTML += 'opened test frame ' + (counter++) + '..<br>';
+        document.getElementById('count').textContent = counter++;
       }
       setTimeout(check, 333);
     });
