@@ -2432,8 +2432,10 @@ def modularize(final):
   f = open(final, 'w')
   # Included code may refer to Module (e.g. from file packager), so alias it
   # Export the function as Node module, otherwise it is lost when loaded in Node.js or similar environments
+  # Module assignment is needed here too, since Closure Compiler will mangle original `Module` name
   f.write('''var %(EXPORT_NAME)s = function(%(EXPORT_NAME)s) {
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
+  Module = %(EXPORT_NAME)s;
 
 %(src)s
 
