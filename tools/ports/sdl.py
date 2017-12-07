@@ -56,6 +56,7 @@ def process_args(ports, args, settings, shared):
   elif settings.USE_SDL == 2:
     get(ports, settings, shared)
     args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2', 'include')]
+    settings.EXPORTED_RUNTIME_METHODS.append('Pointer_stringify')
   return args
 
 def show():

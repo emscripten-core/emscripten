@@ -1,0 +1,170 @@
+defaults: &defaults
+  docker:
+    - image: buildpack-deps:xenial
+  working_directory: ~/
+
+test-defaults: &test-defaults
+  <<: *defaults
+  steps:
+    - checkout:
+        path: emscripten/
+    - attach_workspace:
+        # Must be absolute path or relative path from working_directory
+        at: ~/
+
+    - run: |
+        apt-get update
+        apt-get install -y python python-pip cmake build-essential openjdk-9-jre-headless
+        pip install --upgrade pip
+        pip install lit
+        EMCC_CORES=4 python emscripten/tests/runner.py $TEST_TARGET
+
+version: 2
+jobs:
+  build:
+    <<: *defaults
+    steps:
+      - checkout:
+          path: emscripten/
+      - run: |
+          apt-get update
+          apt-get install -y python cmake
+          wget https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz
+          tar -xf emsdk-portable.tar.gz
+          pushd emsdk-portable
+          ./emsdk update
+          ./emsdk install latest
+          ./emsdk activate latest
+          popd
+          echo EMSCRIPTEN_ROOT="'~/emscripten/'" >> .emscripten
+          echo BINARYEN_ROOT="''" >> .emscripten
+          EMCC_CORES=4 python2 emscripten/embuilder.py build ALL
+          python2 emscripten/tests/runner.py test_hello_world
+
+      - persist_to_workspace:
+          # Must be an absolute path, or relative path from working_directory
+          root: ~/
+          # Must be relative path from root
+          paths:
+            - emsdk-portable/
+            - .emscripten_cache/
+            - .emscripten_ports/
+            - .emscripten
+
+  test-other-am:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=other.test_a* other.test_b* other.test_c* other.test_d* other.test_e* other.test_f* other.test_g* other.test_h* other.test_i* other.test_j* other.test_k* other.test_l* other.test_m* skip:other.test_bad_triple skip:other.test_emcc_v
+      # TODO: remove skips after fastcomp update on travis for 1.37.23
+
+  test-other-nz:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=other.test_n* other.test_o* other.test_p* other.test_q* other.test_r* other.test_s* other.test_t* other.test_u* other.test_v* other.test_w* other.test_x* other.test_y* other.test_z* skip:other.test_native_link_error_message
+      # TODO: remove skips after fastcomp update on travis for 1.37.23
+  test-browser:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=browser
+      - EMSCRIPTEN_BROWSER=0
+  test-ab:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=ALL.test_a* ALL.test_b*
+  test-c:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=ALL.test_c*
+  test-d:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=default.test_d* asm1.test_d* asm2.test_d* asm2f.test_d* asm2g.test_d* asm3.test_d*
+  test-d2i:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=asm2i.test_d*
+  test-e:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=ALL.test_e*
+  test-f:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=ALL.test_f*
+  test-ghi:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=ALL.test_g* ALL.test_h* ALL.test_i*
+  test-jklmno:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=ALL.test_j* ALL.test_k* ALL.test_l* ALL.test_m* ALL.test_n* ALL.test_o*
+  test-p:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=default.test_p* asm1.test_p* asm2.test_p* asm2f.test_p* asm2g.test_p* asm3.test_p*
+  test-p2i:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=asm2i.test_p*
+  test-qrst:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=ALL.test_q* ALL.test_r* ALL.test_s* ALL.test_t* skip:default.test_simd_sitofp skip:default.test_simd3 skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full
+      # TODO: remove skips after fastcomp update on travis for 1.37.23
+  test-uvwxyz:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=ALL.test_u* ALL.test_w* ALL.test_v* ALL.test_x* ALL.test_y* ALL.test_z*
+
+workflows:
+  version: 2
+
+  build-test:
+    jobs:
+      - build
+      - test-other-am:
+          requires:
+            - build
+      - test-other-nz:
+          requires:
+            - build
+      - test-browser:
+          requires:
+            - build
+      - test-ab:
+          requires:
+            - build
+      - test-c:
+          requires:
+            - build
+      - test-d:
+          requires:
+            - build
+      - test-d2i:
+          requires:
+            - build
+      - test-e:
+          requires:
+            - build
+      - test-f:
+          requires:
+            - build
+      - test-ghi:
+          requires:
+            - build
+      - test-jklmno:
+          requires:
+            - build
+      - test-p:
+          requires:
+            - build
+      - test-p2i:
+          requires:
+            - build
+      - test-qrst:
+          requires:
+            - build
+      - test-uvwxyz:
+          requires:
+            - build
