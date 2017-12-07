@@ -2301,8 +2301,8 @@ class Building(object):
     # run wasm-metadce
     # TODO: use -g here when necessary
     out = subprocess.check_output([os.path.join(Building.get_binaryen_bin(), 'wasm-metadce'), '--graph-file=' + temp, wasm_file, '-o', wasm_file])
-    print(out)
-    1/0
+    #print(out)
+    #1/0
 
   _is_ar_cache = {}
   @staticmethod
