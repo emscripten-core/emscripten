@@ -2269,6 +2269,12 @@ class Building(object):
     logging.debug('running cleanup on shell code: ' + ' '.join(passes))
     temp_files.note(js_file)
     js_file = Building.js_optimizer_no_asmjs(js_file, passes)
+    # if we are optimizing for size, shrink the combined wasm+JS
+    if shrink_level > 0:
+      # first, ...
+      #noEmitAst
+      #get_binaryen_bin
+      pass
     # finally, optionally use closure compiler to finish cleaning up the JS
     if use_closure_compiler:
       logging.debug('running closure on shell code')

@@ -5995,8 +5995,6 @@ function ilog2(x) {
 
 // Converts functions into binary format to be run by an emterpreter
 function emterpretify(ast) {
-  emitAst = false;
-
   var EMTERPRETED_FUNCS = set(extraInfo.emterpretedFuncs);
   var EXTERNAL_EMTERPRETED_FUNCS = set(extraInfo.externalEmterpretedFuncs);
   var OPCODES = extraInfo.opcodes;
@@ -7930,6 +7928,15 @@ function AJSDCE(ast) {
   JSDCE(ast, /* multipleIterations= */ true);
 }
 
+// Emit the DCE graph, to help optimize the combined JS+wasm.
+// This finds where JS depends on wasm, and where wasm depends
+// on JS, and prints that out.
+// TODO: full dependency/reachability analysis in JS
+function emitDCEGraph(ast) {
+  traverse(ast, function(node, type) {
+  });
+}
+
 function removeFuncs(ast) {
   assert(ast[0] === 'toplevel');
   var keep = set(extraInfo.keep);
@@ -7941,7 +7948,9 @@ function removeFuncs(ast) {
 
 // Passes table
 
-var minifyWhitespace = false, printMetadata = true, asm = false, asmPreciseF32 = false, emitJSON = false, last = false;
+var minifyWhitespace = false, printMetadata = true, asm = false,
+    asmPreciseF32 = false, emitJSON = false, last = false,
+    emitAst = true;
 
 var passes = {
   // passes
@@ -7977,6 +7986,7 @@ var passes = {
   asmLastOpts: asmLastOpts,
   JSDCE: JSDCE,
   AJSDCE: AJSDCE,
+  emitDCEGraph: emitDCEGraph,
   removeFuncs: removeFuncs,
   noop: function() {},
 
@@ -7988,6 +7998,7 @@ var passes = {
   emitJSON: function() { emitJSON = true },
   receiveJSON: function() { }, // handled in a special way, before passes are run
   last: function() { last = true },
+  noEmitAst: function() { emitAst = false },
 };
 
 // Main
@@ -8020,8 +8031,6 @@ if (arguments_.indexOf('receiveJSON') < 0) {
 }
 //printErr('ast: ' + JSON.stringify(ast));
 
-var emitAst = true;
-
 arguments_.slice(1).forEach(function(arg) {
   passes[arg](ast);
 });
@@ -8046,7 +8055,5 @@ if (emitAst) {
   } else {
     print(JSON.stringify(ast));
   }
-} else {
-  //print('/* not printing ast */');
 }
 
