@@ -7933,8 +7933,85 @@ function AJSDCE(ast) {
 // on JS, and prints that out.
 // TODO: full dependency/reachability analysis in JS
 function emitDCEGraph(ast) {
+  // The imports that wasm receives look like this:
+  //
+  //  Module.asmLibraryArg = { "abort": abort, "assert": assert, [..] };
+  //
+  // The exports are trickier, as they have a different form whether or not
+  // async compilation is enabled. It can be either:
+  //
+  //  var _malloc = Module["_malloc"] = asm["_malloc"];
+  //
+  // or
+  //
+  //  var _malloc = Module["_malloc"] = (function() {
+  //   return Module["asm"]["_malloc"].apply(null, arguments);
+  //  });
+  //
+  // Thus, one appearance of asm['malloc'] or Module['asm']['malloc'] is
+  // "free" - that is just receiving the export. We count other appearances
+  // of either _malloc or Module['_malloc'] or Module['asm']['_malloc'];
+  // if there are any, then the export appears to be used
+  // As mentioned in the TODO above, we should have full JS dependency
+  // analysis here, including scoping and so forth.
+
+  var imports = [];
+  var asmUses = {}; // uses of asm['X'] or Module['asm']['X']
+  var allUses = {}; // any use of X
   traverse(ast, function(node, type) {
+    if (type === 'assign' && node[2][0] === 'dot'
+                          && node[2][1][0] === 'name' && node[2][1][1] === 'Module'
+                          && node[2][2] === 'asmLibraryArg') {
+      var items = node[3][1];
+      items.forEach(function(item) {
+        imports.push(item[0]); // the value doesn't matter, for now
+      });
+    } else if (type === 'sub') {
+      var name;
+      if ((node[1][0] === 'name' && node[1][1] === 'asm') || // asm['X']
+          (node[1][0] === 'sub' && node[1][1][0] === 'name' && node[1][1][1] === 'Module' && node[1][2][0] === 'name' && node[1][2][1] === 'asm')) { // Module['asm']['X']
+        if (node[2][0] === 'name') {
+          var name = node[2][1];
+          if (!asmUses[name]) {
+            asmUses[name] = 1;
+          } else {
+            asmUses[name]++;
+          }
+        }
+      }
+    } else if (type === 'name') {
+      // Look, no scoping logic at all O.O
+      var name = node[1];
+      if (!allUses[name]) {
+        allUses[name] = 1;
+      } else {
+        allUses[name]++;
+      }
+    }
   });
+  // create the output
+  var graph = [];
+  imports.forEach(function(name) {
+    graph.push({
+      'name': 'import$' + name,
+      'import': ['env', name]
+    });
+  });
+  for (var name in asmUses) {
+    var node = {
+      'name': 'export$' + name,
+      'export': name
+    };
+    // root it, if it is a root. a non-root has one asmUse
+    // (the "free" one, that is getting the export), and no
+    // other uses
+    var unused = asmUses[name] === 1 && !(name in allUses);
+    if (!unused) {
+      node['root'] = true;
+    }
+    graph.push(node);
+  }
+  print(JSON.stringify(graph));
 }
 
 function removeFuncs(ast) {
