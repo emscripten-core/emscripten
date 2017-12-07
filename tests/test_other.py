@@ -8,6 +8,8 @@ from tools.shared import *
 from runner import RunnerCore, path_from_root, get_zlib_library, get_bullet_library
 import tools.line_endings
 
+#add test
+
 # Runs an emcc task (used from another process in test test_emcc_multiprocess_cache_access, needs to be at top level for it to be pickleable).
 def multiprocess_task(c_file, cache_dir_name):
   output = subprocess.check_output([PYTHON, EMCC, c_file, '--cache', cache_dir_name], stderr=subprocess.STDOUT)

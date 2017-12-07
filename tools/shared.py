@@ -2294,15 +2294,16 @@ class Building(object):
   # run binaryen's wasm-metadce to dce both js and wasm
   @staticmethod
   def metadce(js_file, wasm_file, minify_whitespace):
+    logging.debug('running meta-DCE')
     temp_files = configuration.get_temp_files()
     # first, get the JS part of the graph
     txt = Building.js_optimizer_no_asmjs(js_file, ['emitDCEGraph', 'noEmitAst'], return_output=True)
     # ensure that functions expected to be exported to the outside are roots
     graph = json.loads(txt)
     for item in graph:
-      if hasattr(item, 'export'):
+      if 'export' in item:
         name = item['export']
-        if name in Settings.ORIGINAL_EXPORTED_FUNCTIONS:
+        if name in Settings.ORIGINAL_EXPORTED_FUNCTIONS or Settings.EXPORT_ALL:
           item['root'] = True
     temp = temp_files.get('.txt').name
     txt = json.dumps(graph)

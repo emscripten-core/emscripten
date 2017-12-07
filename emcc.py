@@ -114,7 +114,10 @@ def save_intermediate(name=None, suffix='js'):
     return
   shutil.copyfile(final, name)
   Intermediate.counter += 1
-
+def save_intermediate_with_wasm(name, wasm_binary):
+  save_intermediate(name) # save the js
+  name = os.path.join(shared.get_emscripten_temp_dir(), 'emcc-%d-%s.wasm' % (Intermediate.counter - 1, name))
+  shutil.copyfile(wasm_binary, name)
 
 class TimeLogger(object):
   last = time.time()
@@ -2395,13 +2398,15 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     # minify the JS
     optimizer.do_minify() # calculate how to minify
     if optimizer.cleanup_shell or options.use_closure_compiler:
-      if DEBUG: save_intermediate('preclean', 'js')
+      if DEBUG:
+        save_intermediate_with_wasm('preclean', wasm_binary_target)
       final = shared.Building.minify_wasm_js(js_file=final,
                                              wasm_file=wasm_binary_target,
                                              shrink_level=options.shrink_level,
                                              minify_whitespace=optimizer.minify_whitespace,
                                              use_closure_compiler=options.use_closure_compiler)
-      if DEBUG: save_intermediate('postclean', 'js')
+      if DEBUG:
+        save_intermediate_with_wasm('postclean', wasm_binary_target)
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
     f = open(final, 'r')
