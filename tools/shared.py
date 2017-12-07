@@ -2263,7 +2263,8 @@ class Building(object):
   # minify the final wasm+JS combination. this is done after all the JS
   # and wasm optimizations; here we do the very final optimizations on them
   @staticmethod
-  def minify_wasm_js(js_file, wasm_file, shrink_level, minify_whitespace, use_closure_compiler, temp_files):
+  def minify_wasm_js(js_file, wasm_file, shrink_level, minify_whitespace, use_closure_compiler):
+    temp_files = configuration.get_temp_files()
     # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
     # use AJSDCE (aggressive JS DCE, performs multiple iterations)
     passes = ['noPrintMetadata', 'JSDCE' if shrink_level == 0 else 'AJSDCE', 'last']
@@ -2274,7 +2275,8 @@ class Building(object):
     js_file = Building.js_optimizer_no_asmjs(js_file, passes)
     # if we are optimizing for size, shrink the combined wasm+JS
     if shrink_level > 0:
-      Building.metadce(js_file, wasm_file)
+      temp_files.note(js_file)
+      js_file = Building.metadce(js_file, wasm_file, minify_whitespace)
     # finally, optionally use closure compiler to finish cleaning up the JS
     if use_closure_compiler:
       logging.debug('running closure on shell code')
@@ -2284,7 +2286,8 @@ class Building(object):
 
   # run binaryen's wasm-metadce to dce both js and wasm
   @staticmethod
-  def metadce(js_file, wasm_file):
+  def metadce(js_file, wasm_file, minify_whitespace):
+    temp_files = configuration.get_temp_files()
     # first, get the JS part of the graph
     txt = Building.js_optimizer_no_asmjs(js_file, ['emitDCEGraph', 'noEmitAst'], return_output=True)
     # ensure that functions expected to be exported to the outside are roots
@@ -2301,8 +2304,20 @@ class Building(object):
     # run wasm-metadce
     # TODO: use -g here when necessary
     out = subprocess.check_output([os.path.join(Building.get_binaryen_bin(), 'wasm-metadce'), '--graph-file=' + temp, wasm_file, '-o', wasm_file])
-    print(out)
-    #1/0
+    # find the unused things in js
+    unused = []
+    PREFIX = 'unused: '
+    for line in out.split(os.linesep):
+      if line.startswith(PREFIX):
+        name = line.replace(PREFIX, '').strip()
+        unused.append(name)
+    # remove them
+    passes = ['applyDCEGraphRemovals']
+    if minify_whitespace:
+      passes.append('minifyWhitespace')
+    extra_info = { 'unused': unused }
+    temp_files.note(js_file)
+    return Building.js_optimizer_no_asmjs(js_file, passes, extra_info=json.dumps(extra_info))
 
   _is_ar_cache = {}
   @staticmethod
