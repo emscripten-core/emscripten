@@ -1620,6 +1620,7 @@ int f() {
     ''')
     open(os.path.join(self.get_dir(), 'before.js'), 'w').write('''
       var MESSAGE = 'hello from js';
+      // Module is initialized with empty object by default, so if there are no keys - nothing was run yet
       if (Object.keys(Module).length) throw 'This code should run before anything else!';
     ''')
     open(os.path.join(self.get_dir(), 'after.js'), 'w').write('''
