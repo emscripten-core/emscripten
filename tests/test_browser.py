@@ -2199,7 +2199,10 @@ void *getBindBuffer() {
     result = subprocess.check_output([PYTHON, path_from_root('emrun'), '--list_browsers'])
     assert 'Traceback' not in result
 
-  def test_emrun(self):
+  # Deliberately named as test_zzz_emrun to make this test the last one
+  # as this test may take the focus away from the main test window
+  # by opening a new window and possibly not closing it.
+  def test_zzz_emrun(self):
     if not has_browser(): return self.skip('need a browser')
     Popen([PYTHON, EMCC, path_from_root('tests', 'test_emrun.c'), '--emrun', '-o', 'hello_world.html']).communicate()
     outdir = os.getcwd()

@@ -28,6 +28,8 @@ int main() {
 
   emscripten_set_main_loop(one, 0, 0);
 
-  emscripten_run_script("setTimeout(function() { window.close() }, 2000)");
+  // Mimic window.close with unload event
+  // (actual window.close won't work as the test will be done inside an iframe)
+  emscripten_run_script("setTimeout(function() { window.dispatchEvent(new Event('unload')) }, 2000)");
 }
 
