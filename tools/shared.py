@@ -2021,7 +2021,7 @@ class Building(object):
   @staticmethod
   def llvm_nm_uncached(filename, stdout=PIPE, stderr=PIPE, include_internal=False):
     # LLVM binary ==> list of symbols
-    proc = run_process([LLVM_NM, filename], stdout=stdout, stderr=stderr)
+    proc = run_process([LLVM_NM, filename], stdout=stdout, stderr=stderr, check=False)
     if proc.returncode == 0:
       return Building.parse_symbols(proc.stdout, include_internal)
     else:
