@@ -1289,6 +1289,9 @@ def function_tables(function_table_data, settings):
 
 
 def create_the_global(metadata, settings):
+  # the global is only needed for asm.js
+  if settings['WASM'] and settings['BINARYEN_METHOD'] == 'native-wasm':
+    return '{}'
   fundamentals = ['Math']
   fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
   fundamentals += ['NaN', 'Infinity']
@@ -1509,7 +1512,7 @@ def create_asm_start_pre(asm_setup, the_global, sending, metadata, settings):
   access_quote = access_quoter(settings)
 
   shared_array_buffer = ''
-  if settings['USE_PTHREADS']:
+  if settings['USE_PTHREADS'] and not settings['WASM']:
     shared_array_buffer = "Module.asmGlobalArg['Atomics'] = Atomics;"
 
   module_get = 'Module{access} = {val};'
@@ -1963,7 +1966,7 @@ def create_module_wasm(sending, receiving, invoke_funcs, settings):
 
   the_global = '{}'
 
-  if settings['USE_PTHREADS']:
+  if settings['USE_PTHREADS'] and not settings['WASM']:
     shared_array_buffer = "if (typeof SharedArrayBuffer !== 'undefined') Module.asmGlobalArg['Atomics'] = Atomics;"
   else:
     shared_array_buffer = ''
