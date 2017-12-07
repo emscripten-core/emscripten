@@ -7949,7 +7949,8 @@ function emitDCEGraph(ast) {
   //  });
   //
   // Thus, one appearance of asm['malloc'] or Module['asm']['malloc'] is
-  // "free" - that is just receiving the export. We count other appearances
+  // "free" - that is just receiving the export. And the same for
+  // Module['malloc']. We count other appearances
   // of either _malloc or Module['_malloc'] or Module['asm']['_malloc'];
   // if there are any, then the export appears to be used
   // As mentioned in the TODO above, we should have full JS dependency
@@ -7957,6 +7958,7 @@ function emitDCEGraph(ast) {
 
   var imports = [];
   var asmUses = {}; // uses of asm['X'] or Module['asm']['X']
+  var moduleUses = {}; // uses of Module['X']
   var allUses = {}; // any use of X
   traverse(ast, function(node, type) {
     if (type === 'assign' && node[2][0] === 'dot'
@@ -7967,7 +7969,6 @@ function emitDCEGraph(ast) {
         imports.push(item[0]); // the value doesn't matter, for now
       });
     } else if (type === 'sub') {
-      var name;
       if ((node[1][0] === 'name' && node[1][1] === 'asm') || // asm['X']
           (node[1][0] === 'sub' && node[1][1][0] === 'name' && node[1][1][1] === 'Module' && node[1][2][0] === 'name' && node[1][2][1] === 'asm')) { // Module['asm']['X']
         if (node[2][0] === 'name') {
@@ -7976,6 +7977,16 @@ function emitDCEGraph(ast) {
             asmUses[name] = 1;
           } else {
             asmUses[name]++;
+          }
+        }
+moduleAsm
+      } else if (node[1][0] === 'name' && node[1][1] === 'Module') { // Module['X']
+        if (node[2][0] === 'name') {
+          var name = node[2][1];
+          if (!moduleUses[name]) {
+            moduleUses[name] = 1;
+          } else {
+            moduleUses[name]++;
           }
         }
       }
@@ -8002,10 +8013,10 @@ function emitDCEGraph(ast) {
       'name': 'export$' + name,
       'export': name
     };
-    // root it, if it is a root. a non-root has one asmUse
-    // (the "free" one, that is getting the export), and no
-    // other uses
-    var unused = asmUses[name] === 1 && !(name in allUses);
+    // root it, if it is a root. a non-root has at most one asmUse
+    // and moduleUse respectively (the "free" ones, that is getting
+    // the export), and none other
+    var unused = asmUses[name] <= 1 && moduleUses[name] <= 1 && !(name in allUses);
     if (!unused) {
       node['root'] = true;
     }
