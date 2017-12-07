@@ -7970,8 +7970,8 @@ function emitDCEGraph(ast) {
       });
     } else if (type === 'sub') {
       if ((node[1][0] === 'name' && node[1][1] === 'asm') || // asm['X']
-          (node[1][0] === 'sub' && node[1][1][0] === 'name' && node[1][1][1] === 'Module' && node[1][2][0] === 'name' && node[1][2][1] === 'asm')) { // Module['asm']['X']
-        if (node[2][0] === 'name') {
+          (node[1][0] === 'sub' && node[1][1][0] === 'name' && node[1][1][1] === 'Module' && node[1][2][0] === 'string' && node[1][2][1] === 'asm')) { // Module['asm']['X']
+        if (node[2][0] === 'string') {
           var name = node[2][1];
           if (!asmUses[name]) {
             asmUses[name] = 1;
@@ -7979,9 +7979,8 @@ function emitDCEGraph(ast) {
             asmUses[name]++;
           }
         }
-moduleAsm
       } else if (node[1][0] === 'name' && node[1][1] === 'Module') { // Module['X']
-        if (node[2][0] === 'name') {
+        if (node[2][0] === 'string') {
           var name = node[2][1];
           if (!moduleUses[name]) {
             moduleUses[name] = 1;
@@ -8016,13 +8015,13 @@ moduleAsm
     // root it, if it is a root. a non-root has at most one asmUse
     // and moduleUse respectively (the "free" ones, that is getting
     // the export), and none other
-    var unused = asmUses[name] <= 1 && moduleUses[name] <= 1 && !(name in allUses);
+    var unused = asmUses[name] === 1 && moduleUses[name] === 1 && !(name in allUses);
     if (!unused) {
       node['root'] = true;
     }
     graph.push(node);
   }
-  print(JSON.stringify(graph));
+  print(JSON.stringify(graph, null, ' '));
 }
 
 function removeFuncs(ast) {
