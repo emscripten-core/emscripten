@@ -1032,10 +1032,6 @@ var tempDouble;
  * @suppress {duplicate}
  */
 var WasmJS;
-/**
- * @suppress {duplicate}
- */
-var Module;
 
 // Various variables that get into WasmJS of Binaryen, but are not present in final build and never actually used (should probably be fixed in future)
 // These are only needed for `interpret-asm2wasm` and not for `asmjs` or `native-wasm`

@@ -2064,35 +2064,35 @@ The current type of b is: 9
       self.do_run(src, '*1*', force_c=True)
 
   def test_strtoll_hex(self):
-    # tests strtoll for hex strings (0x...) 
+    # tests strtoll for hex strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtoll_hex')
 
   def test_strtoll_dec(self):
-    # tests strtoll for decimal strings (0x...) 
+    # tests strtoll for decimal strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtoll_dec')
 
   def test_strtoll_bin(self):
-    # tests strtoll for binary strings (0x...) 
+    # tests strtoll for binary strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtoll_bin')
 
   def test_strtoll_oct(self):
-    # tests strtoll for decimal strings (0x...) 
+    # tests strtoll for decimal strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtoll_oct')
 
   def test_strtol_hex(self):
-    # tests strtoll for hex strings (0x...) 
+    # tests strtoll for hex strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtol_hex')
 
   def test_strtol_dec(self):
-    # tests strtoll for decimal strings (0x...) 
+    # tests strtoll for decimal strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtol_dec')
 
   def test_strtol_bin(self):
-    # tests strtoll for binary strings (0x...) 
+    # tests strtoll for binary strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtol_bin')
 
   def test_strtol_oct(self):
-    # tests strtoll for decimal strings (0x...) 
+    # tests strtoll for decimal strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtol_oct')
 
   def test_atexit(self):
@@ -3132,7 +3132,7 @@ ok
       Settings.SIDE_MODULE = 0
       if auto_load:
         open('pre.js', 'w').write('''
-var Module = {
+Module = {
   dynamicLibraries: ['liblib.so'],
 };
   ''')
@@ -4106,7 +4106,7 @@ Pass: 0.000012 0.000012''')
     post = '''
 def process(filename):
   src = \'\'\'
-    var Module = {
+    Module = {
       'noFSInit': true,
       'preRun': function() {
         FS.createLazyFile('/', 'test.file', 'test.file', true, false);
@@ -4150,7 +4150,7 @@ def process(filename):
     post = '''
 def process(filename):
   src = \'\'\'
-    var Module = {
+    Module = {
       data: [10, 20, 40, 30],
       stdin: function() { return Module.data.pop() || null },
       stdout: function(x) { Module.print('got: ' + x) }
@@ -5556,7 +5556,7 @@ def process(filename):
   )
   src.close()
 '''
- 
+
  #fontconfig = self.get_library('fontconfig', [os.path.join('src', '.libs', 'libfontconfig.a')]) # Used in file, but not needed, mostly
 
       freetype = self.get_freetype()
@@ -6755,6 +6755,26 @@ Module.printErr = Module['printErr'] = function(){};
         else:
           os.environ.pop('EMCC_DEBUG', None)
 
+  def test_modularize_closure_pre(self):
+    # test that the combination of modularize + closure + pre-js works. in that mode,
+    # closure should not minify the Module object in a way that the pre-js cannot use it.
+    self.emcc_args += [
+      '--pre-js', path_from_root('tests', 'core', 'modularize_closure_pre.js'),
+      '--closure', '1',
+      '-s', 'MODULARIZE=1',
+      '-g1',
+      '-O2'
+    ]
+    def post(filename):
+      src = open(filename, 'a')
+      src.write('\n\n')
+      src.write('var TheModule = Module();\n')
+      src.close()
+    self.do_run(
+      open(path_from_root('tests', 'core', 'modularize_closure_pre.c')).read(),
+      open(path_from_root('tests', 'core', 'modularize_closure_pre.txt')).read(),
+      post_build=(None, post))
+
   @no_emterpreter
   def test_exception_source_map(self):
     if self.is_wasm(): return self.skip('wasmifying destroys debug info and stack tracability')
@@ -6805,7 +6825,7 @@ Module.printErr = Module['printErr'] = function(){};
       Building.COMPILER_TEST_OPTS += ['-DEMTERPRETER'] # even so, we get extra emterpret() calls on the stack
     if Settings.ASM_JS:
       # XXX Does not work in SpiderMonkey since callstacks cannot be captured when running in asm.js, see https://bugzilla.mozilla.org/show_bug.cgi?id=947996
-      self.banned_js_engines += [SPIDERMONKEY_ENGINE] 
+      self.banned_js_engines += [SPIDERMONKEY_ENGINE]
     if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
     Building.COMPILER_TEST_OPTS += ['-DRUN_FROM_JS_SHELL']
     self.do_run(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read(), '''test print 123
@@ -7150,7 +7170,7 @@ int main(int argc, char **argv) {
   def test_fs_dict(self):
       Settings.FORCE_FILESYSTEM = 1
       open(self.in_dir('pre.js'), 'w').write('''
-        var Module = {};
+        Module = {};
         Module['preRun'] = function() {
             Module.print(typeof FS.filesystems['MEMFS']);
             Module.print(typeof FS.filesystems['IDBFS']);
@@ -7309,7 +7329,7 @@ binaryen2_interpret = make_run("binaryen2_interpret", compiler=CLANG, emcc_args=
 #normalyen = make_run("normalyen", compiler=CLANG, emcc_args=['-O0', '-s', 'GLOBAL_BASE=1024']) # useful comparison to binaryen
 #spidaryen = make_run("binaryen", compiler=CLANG, emcc_args=['-O0', '-s', 'BINARYEN=1', '-s', 'BINARYEN_SCRIPTS="spidermonkify.py"'])
 
-# Legacy test modes - 
+# Legacy test modes -
 asm2nn = make_run("asm2nn", compiler=CLANG, emcc_args=["-O2"], env={"EMCC_NATIVE_OPTIMIZER": "0"})
 
 del T # T is just a shape for the specific subclasses, we don't test it itself
