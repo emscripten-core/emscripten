@@ -1,6 +1,6 @@
-#define _Addr int
-#define _Int64 long long
-#define _Reg int
+#define _Addr __PTRDIFF_TYPE__
+#define _Int64 __INT64_TYPE__
+#define _Reg __PTRDIFF_TYPE__
 
 #if __GNUC__ >= 3
 #if defined(__NEED_va_list) && !defined(__DEFINED_va_list)
