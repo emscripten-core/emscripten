@@ -77,7 +77,10 @@ class browser(BrowserCore):
     self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-lSDL', '-lGL'])
     self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-s', 'USE_SDL=1', '-lGL']) # is the default anyhow
 
-  def test_html_source_map(self):
+  # Deliberately named as test_zzz_* to make this test the last one
+  # as this test may take the focus away from the main test window
+  # by opening a new window and possibly not closing it.
+  def test_zzz_html_source_map(self):
     if not has_browser(): return self.skip('need a browser')
     cpp_file = os.path.join(self.get_dir(), 'src.cpp')
     html_file = os.path.join(self.get_dir(), 'src.html')
