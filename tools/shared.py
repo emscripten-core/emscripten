@@ -2142,9 +2142,16 @@ class Building(object):
 
   # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
   @staticmethod
-  def js_optimizer_no_asmjs(filename, passes, return_output=False):
+  def js_optimizer_no_asmjs(filename, passes, return_output=False, extra_info=None):
+    original_filename = filename
+    if extra_info is not None:
+      temp_files = configuration.get_temp_files()
+      temp = temp_files.get('.js').name
+      shutil.copyfile(filename, temp)
+      with open(temp, 'a') as f: f.write('// EXTRA_INFO: ' + extra_info)
+      filename = temp
     if not return_output:
-      next = filename + '.jso.js'
+      next = original_filename + '.jso.js'
       subprocess.check_call(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
       return next
     else:
@@ -2297,7 +2304,7 @@ class Building(object):
         name = item['export']
         if name in Settings.ORIGINAL_EXPORTED_FUNCTIONS:
           item['root'] = True
-    temp = configuration.get_temp_files().get('.txt').name
+    temp = temp_files.get('.txt').name
     txt = json.dumps(graph)
     with open(temp, 'w') as f: f.write(txt)
     shutil.copyfile(temp, '/tmp/emscripten_temp/a.txt')
