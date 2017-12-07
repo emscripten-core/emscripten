@@ -3025,7 +3025,6 @@ int main(void) {
 ''')
 
     open('pre.js', 'w').write(r'''
-if (typeof Module === 'undefined') Module = eval('(function() { try { return Module || {} } catch(e) { return {} } })()');
 if (!Module['preRun']) Module['preRun'] = [];
 Module["preRun"].push(function () {
     Module['addRunDependency']('test_run_dependency');

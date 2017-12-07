@@ -894,7 +894,6 @@ class BrowserCore(RunnerCore):
     basename = os.path.basename(expected)
     shutil.copyfile(expected, os.path.join(self.get_dir(), basename))
     open(os.path.join(self.get_dir(), 'reftest.js'), 'w').write('''
-      Module = eval('Module');
       function doReftest() {
         if (doReftest.done) return;
         doReftest.done = true;
