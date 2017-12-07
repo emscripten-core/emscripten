@@ -2142,10 +2142,13 @@ class Building(object):
 
   # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
   @staticmethod
-  def js_optimizer_no_asmjs(filename, passes):
-    next = filename + '.jso.js'
-    subprocess.check_call(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
-    return next
+  def js_optimizer_no_asmjs(filename, passes, return_output=False):
+    if not return_output:
+      next = filename + '.jso.js'
+      subprocess.check_call(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
+      return next
+    else:
+      return subprocess.check_output(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes)
 
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
   @staticmethod
@@ -2271,16 +2274,35 @@ class Building(object):
     js_file = Building.js_optimizer_no_asmjs(js_file, passes)
     # if we are optimizing for size, shrink the combined wasm+JS
     if shrink_level > 0:
-      # first, ...
-      #noEmitAst
-      #get_binaryen_bin
-      pass
+      Building.metadce(js_file, wasm_file)
     # finally, optionally use closure compiler to finish cleaning up the JS
     if use_closure_compiler:
       logging.debug('running closure on shell code')
       temp_files.note(js_file)
       js_file = Building.closure_compiler(js_file, pretty=not minify_whitespace)
     return js_file
+
+  # run binaryen's wasm-metadce to dce both js and wasm
+  @staticmethod
+  def metadce(js_file, wasm_file):
+    # first, get the JS part of the graph
+    txt = Building.js_optimizer_no_asmjs(js_file, ['emitDCEGraph', 'noEmitAst'], return_output=True)
+    # ensure that functions expected to be exported to the outside are roots
+    graph = json.loads(txt)
+    for item in graph:
+      if hasattr(item, 'export'):
+        name = item['export']
+        if name in Settings.ORIGINAL_EXPORTED_FUNCTIONS:
+          item['root'] = True
+    temp = configuration.get_temp_files().get('.txt').name
+    txt = json.dumps(graph)
+    with open(temp, 'w') as f: f.write(txt)
+    shutil.copyfile(temp, '/tmp/emscripten_temp/a.txt')
+    # run wasm-metadce
+    # TODO: use -g here when necessary
+    out = subprocess.check_output([os.path.join(Building.get_binaryen_bin(), 'wasm-metadce'), '--graph-file=' + temp, wasm_file, '-o', wasm_file])
+    print(out)
+    1/0
 
   _is_ar_cache = {}
   @staticmethod
