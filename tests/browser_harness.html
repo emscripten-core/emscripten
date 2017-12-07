@@ -13,7 +13,10 @@
       display: flex;
       flex-direction: column;
     }
-    #iframe {
+    .topbar {
+      background-color: #79f;
+    }
+    .full {
       border: none;
       width: 100%;
       flex: 1;
@@ -21,8 +24,8 @@
   </style>
 </head>
 <body>
-<span>Running test <span id="count"></span>...</span>
-<iframe id="iframe"></iframe>
+<span class="topbar">Running test <span id="count"></span>...</span>
+<iframe class="full" id="iframe"></iframe>
 <script>
   var counter = 0;
   function check() {
