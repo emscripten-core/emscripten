@@ -1596,7 +1596,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           options.no_heap_copy = True
 
         logging.debug('setting up files')
-        file_args = []
+        file_args = ['--from-emcc', '--export-name=' + shared.Settings.EXPORT_NAME]
         if len(options.preload_files) > 0:
           file_args.append('--preload')
           file_args += options.preload_files
@@ -1610,8 +1610,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           file_args.append('--use-preload-cache')
         if options.no_heap_copy:
           file_args.append('--no-heap-copy')
-        if not options.use_closure_compiler:
-          file_args.append('--no-closure')
         if shared.Settings.LZ4:
           file_args.append('--lz4')
         if options.use_preload_plugins:
@@ -1636,6 +1634,42 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         outfile.close()
         options.pre_js = src = options.post_js = None
         if DEBUG: save_intermediate('pre-post')
+
+      if not shared.Settings.SIDE_MODULE:
+        # The Module object: Our interface to the outside world. We import
+        # and export values on it. There are various ways Module can be used:
+        # 1. Not defined. We create it here
+        # 2. A function parameter, function(Module) { ..generated code.. }
+        # 3. pre-run appended it, var Module = {}; ..generated code..
+        # 4. External script tag defines var Module.
+        # We need to check if Module already exists (e.g. case 3 above).
+        # Substitution will be replaced with actual code on later stage of the build,
+        # this way Closure Compiler will not mangle it (e.g. case 4. above).
+        # Note that if you want to run closure, and also to use Module
+        # after the generated code, you will need to define   var Module = {};
+        # before the code. Then that object will be used in the code, and you
+        # can continue to use Module afterwards as well.
+        if options.use_closure_compiler:
+          # `if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
+          module_header = '''
+var Module;
+if (!Module) Module = %s;
+''' % shared.JS.module_export_name_substitution_pattern
+        else:
+          module_header = '''
+var Module = typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {};
+''' % {"EXPORT_NAME": shared.Settings.EXPORT_NAME}
+
+        # Append module header now as --pre-js is already added
+        logging.debug('Appending module header')
+        src = open(final).read()
+        final += '.wh.js'
+        outfile = open(final, 'w')
+        outfile.write(module_header)
+        outfile.write(src)
+        outfile.close()
+        src = None
+        if DEBUG: save_intermediate('with-header')
 
       # Apply a source code transformation, if requested
       if options.js_transform:
@@ -1831,6 +1865,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.MODULARIZE:
         final = modularize(final)
+
+      final = module_export_name_substitution(final)
 
       # The JS is now final. Move it to its final location
       shutil.move(final, js_target)
@@ -2398,21 +2434,33 @@ def modularize(final):
   src = open(final).read()
   final = final + '.modular.js'
   f = open(final, 'w')
+  # Included code may refer to Module (e.g. from file packager), so alias it
+  # Export the function as Node module, otherwise it is lost when loaded in Node.js or similar environments
   f.write('''var %(EXPORT_NAME)s = function(%(EXPORT_NAME)s) {
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
-  var Module = %(EXPORT_NAME)s; // included code may refer to Module (e.g. from file packager), so alias it
 
 %(src)s
 
   return %(EXPORT_NAME)s;
 };
-// Export the function if this is for Node (or similar UMD-style exporting), otherwise it is lost.
 if (typeof module === "object" && module.exports) {
   module['exports'] = %(EXPORT_NAME)s;
 };
 ''' % {"EXPORT_NAME": shared.Settings.EXPORT_NAME, "src": src})
   f.close()
   if DEBUG: save_intermediate('modularized', 'js')
+  return final
+
+
+def module_export_name_substitution(final):
+  logging.debug('Private module export name substitution with ' + shared.Settings.EXPORT_NAME)
+  src = open(final).read()
+  final = final + '.module_export_name_substitution.js'
+  f = open(final, 'w')
+  replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": shared.Settings.EXPORT_NAME}
+  f.write(src.replace(shared.JS.module_export_name_substitution_pattern, replacement))
+  f.close()
+  if DEBUG: save_intermediate('module_export_name_substitution', 'js')
   return final
 
 
