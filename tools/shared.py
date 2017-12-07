@@ -176,6 +176,14 @@ if sys.stderr.isatty():
   else:
     logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
 
+# This is a workaround for https://bugs.python.org/issue9400
+class Py2CalledProcessError(subprocess.CalledProcessError):
+    def __init__(self, returncode, cmd, output=None, stderr=None):
+      super(Exception, self).__init__(returncode, cmd, output, stderr)
+      self.returncode = returncode
+      self.cmd = cmd
+      self.output = output
+      self.stderr = stderr
 
 # https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess
 class Py2CompletedProcess:
@@ -194,7 +202,7 @@ class Py2CompletedProcess:
 
   def check_returncode(self):
     if self.returncode is not 0:
-      raise subprocess.CalledProcessError(returncode=self.returncode, cmd=self.args, output=self.stdout)
+      raise Py2CalledProcessError(returncode=self.returncode, cmd=self.args, output=self.stdout, stderr=self.stderr)
 
 def run_base(cmd, check=False, *args, **kw):
   if hasattr(subprocess, "run"):
