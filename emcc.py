@@ -1861,7 +1861,7 @@ var Module = typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {};
                     wasm_text_target, misc_temp_files, optimizer)
 
       if shared.Settings.MODULARIZE:
-        final = modularize(final)
+        final = modularize(final, options.use_closure_compiler)
 
       final = module_export_name_substitution(final)
 
@@ -2425,17 +2425,22 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     f.close()
 
 
-def modularize(final):
+def modularize(final, use_closure_compiler):
   logging.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
   src = open(final).read()
   final = final + '.modular.js'
   f = open(final, 'w')
+  module_variable = ''
+  # Module assignment is needed here too, since Closure Compiler will mangle original `Module` name and some other strange code might still reference it
+  if use_closure_compiler:
+      module_variable = '''
+var Module = %s;
+''' % shared.Settings.EXPORT_NAME
   # Included code may refer to Module (e.g. from file packager), so alias it
   # Export the function as Node module, otherwise it is lost when loaded in Node.js or similar environments
-  # Module assignment is needed here too, since Closure Compiler will mangle original `Module` name
   f.write('''var %(EXPORT_NAME)s = function(%(EXPORT_NAME)s) {
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
-  Module = %(EXPORT_NAME)s;
+  %(module_variable)s;
 
 %(src)s
 
@@ -2444,7 +2449,7 @@ def modularize(final):
 if (typeof module === "object" && module.exports) {
   module['exports'] = %(EXPORT_NAME)s;
 };
-''' % {"EXPORT_NAME": shared.Settings.EXPORT_NAME, "src": src})
+''' % {"module_variable": module_variable, "EXPORT_NAME": shared.Settings.EXPORT_NAME, "src": src})
   f.close()
   if DEBUG: save_intermediate('modularized', 'js')
   return final
