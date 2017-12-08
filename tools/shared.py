@@ -2274,7 +2274,7 @@ class Building(object):
     temp_files = configuration.get_temp_files()
     # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
     # use AJSDCE (aggressive JS DCE, performs multiple iterations)
-    passes = ['noPrintMetadata', 'JSDCE' if shrink_level == 0 else 'AJSDCE', 'last']
+    passes = ['noPrintMetadata', 'JSDCE' if shrink_level == 0 else 'AJSDCE']
     if minify_whitespace:
       passes.append('minifyWhitespace')
     logging.debug('running cleanup on shell code: ' + ' '.join(passes))
@@ -2284,6 +2284,14 @@ class Building(object):
     if shrink_level > 0:
       temp_files.note(js_file)
       js_file = Building.metadce(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
+      # now that we removed unneeded communication between js and wasm, we can clean up
+      # the js some more.
+      passes = ['noPrintMetadata', 'AJSDCE']
+      if minify_whitespace:
+        passes.append('minifyWhitespace')
+      logging.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
+      temp_files.note(js_file)
+      js_file = Building.js_optimizer_no_asmjs(js_file, passes)
     # finally, optionally use closure compiler to finish cleaning up the JS
     if use_closure_compiler:
       logging.debug('running closure on shell code')
