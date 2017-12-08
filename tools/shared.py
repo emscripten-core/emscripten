@@ -2270,7 +2270,7 @@ class Building(object):
   # minify the final wasm+JS combination. this is done after all the JS
   # and wasm optimizations; here we do the very final optimizations on them
   @staticmethod
-  def minify_wasm_js(js_file, wasm_file, shrink_level, minify_whitespace, use_closure_compiler):
+  def minify_wasm_js(js_file, wasm_file, shrink_level, minify_whitespace, use_closure_compiler, debug_info):
     temp_files = configuration.get_temp_files()
     # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
     # use AJSDCE (aggressive JS DCE, performs multiple iterations)
@@ -2283,7 +2283,7 @@ class Building(object):
     # if we are optimizing for size, shrink the combined wasm+JS
     if shrink_level > 0:
       temp_files.note(js_file)
-      js_file = Building.metadce(js_file, wasm_file, minify_whitespace)
+      js_file = Building.metadce(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
     # finally, optionally use closure compiler to finish cleaning up the JS
     if use_closure_compiler:
       logging.debug('running closure on shell code')
@@ -2293,7 +2293,7 @@ class Building(object):
 
   # run binaryen's wasm-metadce to dce both js and wasm
   @staticmethod
-  def metadce(js_file, wasm_file, minify_whitespace):
+  def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     logging.debug('running meta-DCE')
     temp_files = configuration.get_temp_files()
     # first, get the JS part of the graph
@@ -2310,8 +2310,10 @@ class Building(object):
     with open(temp, 'w') as f: f.write(txt)
     shutil.copyfile(temp, '/tmp/emscripten_temp/a.txt')
     # run wasm-metadce
-    # TODO: use -g here when necessary
-    out = subprocess.check_output([os.path.join(Building.get_binaryen_bin(), 'wasm-metadce'), '--graph-file=' + temp, wasm_file, '-o', wasm_file])
+    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-metadce'), '--graph-file=' + temp, wasm_file, '-o', wasm_file]
+    if debug_info:
+      cmd += ['-g']
+    out = subprocess.check_output(cmd)
     # find the unused things in js
     unused = []
     PREFIX = 'unused: '

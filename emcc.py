@@ -2404,7 +2404,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                              wasm_file=wasm_binary_target,
                                              shrink_level=options.shrink_level,
                                              minify_whitespace=optimizer.minify_whitespace,
-                                             use_closure_compiler=options.use_closure_compiler)
+                                             use_closure_compiler=options.use_closure_compiler,
+                                             debug_info=debug_info)
       if DEBUG:
         save_intermediate_with_wasm('postclean', wasm_binary_target)
   # replace placeholder strings with correct subresource locations
