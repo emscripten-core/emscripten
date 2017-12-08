@@ -2323,7 +2323,6 @@ class Building(object):
     temp = temp_files.get('.txt').name
     txt = json.dumps(graph)
     with open(temp, 'w') as f: f.write(txt)
-    shutil.copyfile(temp, '/tmp/emscripten_temp/a.txt')
     # run wasm-metadce
     cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-metadce'), '--graph-file=' + temp, wasm_file, '-o', wasm_file]
     if debug_info:

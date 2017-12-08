@@ -905,7 +905,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = original_exported_response or shared.Settings.EXPORTED_FUNCTIONS[:]
 
       # Note the exports the user requested
-      shared.Building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS
+      shared.Building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
 
       # -s ASSERTIONS=1 implies the heaviest stack overflow check mode. Set the implication here explicitly to avoid having to
       # do preprocessor "#if defined(ASSERTIONS) || defined(STACK_OVERFLOW_CHECK)" in .js files, which is not supported.
