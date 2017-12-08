@@ -1,3 +1,5 @@
+# coding=utf-8
+
 from __future__ import print_function
 import multiprocessing, os, shutil, subprocess, unittest, zlib, webbrowser, time, shlex
 from runner import BrowserCore, path_from_root, has_browser, get_browser
@@ -75,7 +77,10 @@ class browser(BrowserCore):
     self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-lSDL', '-lGL'])
     self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-s', 'USE_SDL=1', '-lGL']) # is the default anyhow
 
-  def test_html_source_map(self):
+  # Deliberately named as test_zzz_* to make this test the last one
+  # as this test may take the focus away from the main test window
+  # by opening a new window and possibly not closing it.
+  def test_zzz_html_source_map(self):
     if not has_browser(): return self.skip('need a browser')
     cpp_file = os.path.join(self.get_dir(), 'src.cpp')
     html_file = os.path.join(self.get_dir(), 'src.html')
@@ -121,7 +126,7 @@ If manually bisecting:
 
     Popen([PYTHON, EMCC, src, '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g', '-o', 'page.html', '-s', 'DEMANGLE_SUPPORT=1']).communicate()
     self.run_browser('page.html', None, '/report_result?1')
-  
+
   def build_native_lzma(self):
     lzma_native = path_from_root('third_party', 'lzma.js', 'lzma-native')
     if os.path.isfile(lzma_native) and os.access(lzma_native, os.X_OK): return
@@ -142,10 +147,10 @@ If manually bisecting:
 
     absolute_src_path2 = os.path.join(self.get_dir(), '.somefile.txt').replace('\\', '/')
     open(absolute_src_path2, 'w').write('''load me right before running the code please''')
-    
+
     absolute_src_path3 = os.path.join(self.get_dir(), 'some@file.txt').replace('\\', '/')
     open(absolute_src_path3, 'w').write('''load me right before running the code please''')
-    
+
     def make_main(path):
       print('make main at', path)
       path = path.replace('\\', '\\\\').replace('"', '\\"') # Escape tricky path name for use inside a C string.
@@ -176,7 +181,7 @@ If manually bisecting:
       ("./somefile.txt@file.txt", "file.txt"),
       ("./somefile.txt@./file.txt", "file.txt"),
       ("somefile.txt@/file.txt", "file.txt"),
-      ("somefile.txt@/", "somefile.txt"), 
+      ("somefile.txt@/", "somefile.txt"),
       (absolute_src_path + "@file.txt", "file.txt"),
       (absolute_src_path + "@/file.txt", "file.txt"),
       (absolute_src_path + "@/", "somefile.txt"),
@@ -266,7 +271,7 @@ If manually bisecting:
       print(srcpath)
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', srcpath, '--exclude-file', '*/.*', '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
-      
+
     # Should still work with -o subdir/..
 
     make_main('somefile.txt') # absolute becomes relative
@@ -568,12 +573,12 @@ If manually bisecting:
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html']).communicate()
       shutil.move('test.data','missing.data');
       self.run_browser('test.html', '', '/report_result?1')
-      
+
       # test unknown protocol should go through xhr.onerror
       setup("unknown_protocol://");
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html']).communicate()
       self.run_browser('test.html', '', '/report_result?1')
-      
+
       # test wrong protocol and port
       setup("https://localhost:8800/");
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html']).communicate()
@@ -1154,7 +1159,7 @@ keydown(100);keyup(100); // trigger the end
 
 
   def test_webgl_context_attributes(self):
-    # Javascript code to check the attributes support we want to test in the WebGL implementation 
+    # Javascript code to check the attributes support we want to test in the WebGL implementation
     # (request the attribute, create a context and check its value afterwards in the context attributes).
     # Tests will succeed when an attribute is not supported.
     open(os.path.join(self.get_dir(), 'check_webgl_attributes_support.js'), 'w').write('''
@@ -1185,17 +1190,17 @@ keydown(100);keyup(100); // trigger the end
         }
       });
     ''')
-    
+
     # Copy common code file to temporary directory
     filepath = path_from_root('tests/test_webgl_context_attributes_common.c')
     temp_filepath = os.path.join(self.get_dir(), os.path.basename(filepath))
     shutil.copyfile(filepath, temp_filepath)
-    
-    # perform tests with attributes activated 
+
+    # perform tests with attributes activated
     self.btest('test_webgl_context_attributes_glut.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-lglut', '-lGLEW'])
     self.btest('test_webgl_context_attributes_sdl.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-lSDL', '-lGLEW'])
     self.btest('test_webgl_context_attributes_glfw.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-lglfw', '-lGLEW'])
-    
+
     # perform tests with attributes desactivated
     self.btest('test_webgl_context_attributes_glut.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lglut', '-lGLEW'])
     self.btest('test_webgl_context_attributes_sdl.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lSDL', '-lGLEW'])
@@ -1439,7 +1444,7 @@ keydown(100);keyup(100); // trigger the end
 
   def test_glfw_time(self):
     self.btest('test_glfw_time.c', '1', args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'])
-    
+
   def test_egl(self):
     open(os.path.join(self.get_dir(), 'test_egl.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'test_egl.c')).read()))
 
@@ -2155,7 +2160,7 @@ void *getBindBuffer() {
         self.btest(filename, expected='606', args=['--post-js', 'post.js', '--memory-init-file', '0', '-s', 'NO_EXIT_RUNTIME=1'] + extra_args + mode)
 
   def test_cwrap_early(self):
-    self.btest(os.path.join('browser', 'cwrap_early.cpp'), args=['-O2', '-s', 'ASSERTIONS=1', '--pre-js', path_from_root('tests', 'browser', 'cwrap_early.js')], expected='0')
+    self.btest(os.path.join('browser', 'cwrap_early.cpp'), args=['-O2', '-s', 'ASSERTIONS=1', '--pre-js', path_from_root('tests', 'browser', 'cwrap_early.js'), '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["cwrap"]'], expected='0')
 
   def test_worker_api(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'worker_api_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]']).communicate()
@@ -2197,7 +2202,10 @@ void *getBindBuffer() {
     result = subprocess.check_output([PYTHON, path_from_root('emrun'), '--list_browsers'])
     assert 'Traceback' not in result
 
-  def test_emrun(self):
+  # Deliberately named as test_zzz_emrun to make this test the last one
+  # as this test may take the focus away from the main test window
+  # by opening a new window and possibly not closing it.
+  def test_zzz_emrun(self):
     if not has_browser(): return self.skip('need a browser')
     Popen([PYTHON, EMCC, path_from_root('tests', 'test_emrun.c'), '--emrun', '-o', 'hello_world.html']).communicate()
     outdir = os.getcwd()
@@ -2262,7 +2270,6 @@ void *getBindBuffer() {
 
   def test_doublestart_bug(self):
     open('pre.js', 'w').write(r'''
-if (typeof Module === 'undefined') Module = eval('(function() { try { return Module || {} } catch(e) { return {} } })()');
 if (!Module['preRun']) Module['preRun'] = [];
 Module["preRun"].push(function () {
     Module['addRunDependency']('test_run_dependency');
@@ -2951,7 +2958,7 @@ window.close = function() {
         int main() {
           EM_ASM({
             // use eval here in order for the test with closure compiler enabled to succeed
-            var totalMemory = eval('Module.TOTAL_MEMORY');
+            var totalMemory = Module['TOTAL_MEMORY'];
             assert(totalMemory === %d, 'bad memory size');
           });
           REPORT_RESULT(0);
@@ -3532,7 +3539,7 @@ window.close = function() {
     self.run_browser('test.html', '', '/report_result?0')
 
   def test_utf8_textdecoder(self):
-    self.btest('benchmark_utf8.cpp', expected='0', args=['--embed-file', path_from_root('tests/utf8_corpus.txt') + '@/utf8_corpus.txt'])
+    self.btest('benchmark_utf8.cpp', expected='0', args=['--embed-file', path_from_root('tests/utf8_corpus.txt') + '@/utf8_corpus.txt', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["UTF8ToString"]'])
 
   def test_utf16_textdecoder(self):
     self.btest('benchmark_utf16.cpp', expected='0', args=['--embed-file', path_from_root('tests/utf16_corpus.txt') + '@/utf16_corpus.txt', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["UTF16ToString","stringToUTF16","lengthBytesUTF16"]'])
@@ -3608,7 +3615,7 @@ window.close = function() {
   def test_asmfs_dirent_test_readdir(self):
     self.btest('dirent/test_readdir.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
 
-  def test_asmfs_dirent_test_readdir_empty(self): 
+  def test_asmfs_dirent_test_readdir_empty(self):
     self.btest('dirent/test_readdir_empty.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
 
   def test_asmfs_unistd_close(self):
@@ -3699,3 +3706,14 @@ window.close = function() {
     open('page.c', 'w').write(self.with_report_result(open(path_from_root('tests', 'access_file_after_heap_resize.c'), 'r').read()))
     Popen([PYTHON, EMCC, 'page.c', '-s', 'WASM=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '--preload-file', 'test.txt', '-o', 'page.html']).communicate()
     self.run_browser('page.html', 'hello from file', '/report_result?15')
+
+  def test_unicode_html_shell(self):
+    open(self.in_dir('main.cpp'), 'w').write(self.with_report_result(r'''
+      int main() {
+        REPORT_RESULT(0);
+        return 0;
+      }
+    '''))
+    open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('Emscripten-Generated Code', 'Emscripten-Generated Emoji 😅'))
+    subprocess.check_output([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'shell.html', '-o', 'test.html'])
+    self.run_browser('test.html', None, '/report_result?0')

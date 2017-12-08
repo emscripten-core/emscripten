@@ -31,7 +31,7 @@ if __name__ == '__main__':
 import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
 from subprocess import PIPE
 from tools import shared, jsrun, system_libs
-from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move, run_process
+from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move, run_process, asbytes
 from tools.response_file import read_response_file
 import tools.line_endings
 
@@ -937,6 +937,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       assert not (shared.Settings.NO_DYNAMIC_EXECUTION and options.use_closure_compiler), 'cannot have both NO_DYNAMIC_EXECUTION and closure compiler enabled at the same time'
 
+      if options.emrun:
+        shared.Settings.EXPORTED_RUNTIME_METHODS.append('addOnExit')
+
       if options.use_closure_compiler:
         shared.Settings.USE_CLOSURE_COMPILER = options.use_closure_compiler
         if not shared.check_closure_compiler():
@@ -1593,7 +1596,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           options.no_heap_copy = True
 
         logging.debug('setting up files')
-        file_args = []
+        file_args = ['--from-emcc', '--export-name=' + shared.Settings.EXPORT_NAME]
         if len(options.preload_files) > 0:
           file_args.append('--preload')
           file_args += options.preload_files
@@ -1607,8 +1610,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           file_args.append('--use-preload-cache')
         if options.no_heap_copy:
           file_args.append('--no-heap-copy')
-        if not options.use_closure_compiler:
-          file_args.append('--no-closure')
         if shared.Settings.LZ4:
           file_args.append('--lz4')
         if options.use_preload_plugins:
@@ -1633,6 +1634,42 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         outfile.close()
         options.pre_js = src = options.post_js = None
         if DEBUG: save_intermediate('pre-post')
+
+      if not shared.Settings.SIDE_MODULE:
+        # The Module object: Our interface to the outside world. We import
+        # and export values on it. There are various ways Module can be used:
+        # 1. Not defined. We create it here
+        # 2. A function parameter, function(Module) { ..generated code.. }
+        # 3. pre-run appended it, var Module = {}; ..generated code..
+        # 4. External script tag defines var Module.
+        # We need to check if Module already exists (e.g. case 3 above).
+        # Substitution will be replaced with actual code on later stage of the build,
+        # this way Closure Compiler will not mangle it (e.g. case 4. above).
+        # Note that if you want to run closure, and also to use Module
+        # after the generated code, you will need to define   var Module = {};
+        # before the code. Then that object will be used in the code, and you
+        # can continue to use Module afterwards as well.
+        if options.use_closure_compiler:
+          # `if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
+          module_header = '''
+var Module;
+if (!Module) Module = %s;
+''' % shared.JS.module_export_name_substitution_pattern
+        else:
+          module_header = '''
+var Module = typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {};
+''' % {"EXPORT_NAME": shared.Settings.EXPORT_NAME}
+
+        # Append module header now as --pre-js is already added
+        logging.debug('Appending module header')
+        src = open(final).read()
+        final += '.wh.js'
+        outfile = open(final, 'w')
+        outfile.write(module_header)
+        outfile.write(src)
+        outfile.close()
+        src = None
+        if DEBUG: save_intermediate('with-header')
 
       # Apply a source code transformation, if requested
       if options.js_transform:
@@ -1828,6 +1865,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.MODULARIZE:
         final = modularize(final)
+
+      final = module_export_name_substitution(final)
 
       # The JS is now final. Move it to its final location
       shutil.move(final, js_target)
@@ -2355,20 +2394,21 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   if options.opt_level >= 2:
     # minify the JS
     optimizer.do_minify() # calculate how to minify
-    if optimizer.cleanup_shell or optimizer.minify_whitespace or options.use_closure_compiler:
-      misc_temp_files.note(final)
+    if optimizer.cleanup_shell or options.use_closure_compiler:
       if DEBUG: save_intermediate('preclean', 'js')
+      # in -Os and -Oz, run AJSDCE (aggressive JS DCE, performs multiple iterations)
+      passes = ['noPrintMetadata', 'JSDCE' if options.shrink_level == 0 else 'AJSDCE', 'last']
+      if optimizer.minify_whitespace:
+        passes.append('minifyWhitespace')
+      misc_temp_files.note(final)
+      logging.debug('running cleanup on shell code: ' + ' '.join(passes))
+      final = shared.Building.js_optimizer_no_asmjs(final, passes)
+      if DEBUG: save_intermediate('postclean', 'js')
       if options.use_closure_compiler:
         logging.debug('running closure on shell code')
+        misc_temp_files.note(final)
         final = shared.Building.closure_compiler(final, pretty=not optimizer.minify_whitespace)
-      else:
-        assert optimizer.cleanup_shell
-        logging.debug('running cleanup on shell code')
-        passes = ['noPrintMetadata', 'JSDCE', 'last']
-        if optimizer.minify_whitespace:
-          passes.append('minifyWhitespace')
-        final = shared.Building.js_optimizer_no_asmjs(final, passes)
-      if DEBUG: save_intermediate('postclean', 'js')
+        if DEBUG: save_intermediate('postclosure', 'js')
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
     f = open(final, 'r')
@@ -2394,21 +2434,33 @@ def modularize(final):
   src = open(final).read()
   final = final + '.modular.js'
   f = open(final, 'w')
+  # Included code may refer to Module (e.g. from file packager), so alias it
+  # Export the function as Node module, otherwise it is lost when loaded in Node.js or similar environments
   f.write('''var %(EXPORT_NAME)s = function(%(EXPORT_NAME)s) {
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
-  var Module = %(EXPORT_NAME)s; // included code may refer to Module (e.g. from file packager), so alias it
 
 %(src)s
 
   return %(EXPORT_NAME)s;
 };
-// Export the function if this is for Node (or similar UMD-style exporting), otherwise it is lost.
 if (typeof module === "object" && module.exports) {
   module['exports'] = %(EXPORT_NAME)s;
 };
 ''' % {"EXPORT_NAME": shared.Settings.EXPORT_NAME, "src": src})
   f.close()
   if DEBUG: save_intermediate('modularized', 'js')
+  return final
+
+
+def module_export_name_substitution(final):
+  logging.debug('Private module export name substitution with ' + shared.Settings.EXPORT_NAME)
+  src = open(final).read()
+  final = final + '.module_export_name_substitution.js'
+  f = open(final, 'w')
+  replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": shared.Settings.EXPORT_NAME}
+  f.write(src.replace(shared.JS.module_export_name_substitution_pattern, replacement))
+  f.close()
+  if DEBUG: save_intermediate('module_export_name_substitution', 'js')
   return final
 
 
@@ -2596,7 +2648,7 @@ def generate_html(target, options, js_target, target_basename,
   html = open(target, 'wb')
   html_contents = shell.replace('{{{ SCRIPT }}}', script.replacement())
   html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', options.output_eol)
-  html.write(html_contents.encode('utf-8'))
+  html.write(asbytes(html_contents))
   html.close()
 
 

@@ -6,9 +6,13 @@ preamble.js
 
 The JavaScript APIs in `preamble.js <https://github.com/kripken/emscripten/blob/master/src/preamble.js>`_ provide programmatic access for interacting with the compiled C code, including: calling compiled C functions, accessing memory, converting pointers to JavaScript ``Strings`` and ``Strings`` to pointers (with different encodings/formats), and other convenience functions.
 
-We call this "``preamble.js``" because Emscripten's output JS, at a high level, contains the preamble (from ``src/preamble.js``), then the compiled code, then the postamble. (In slightly more detail, the preamble contains utility functions and setup, while the postamble connects things and handles running the application.) Thus, the preamble code is included in the output JS, which means you can use the APIs described in this document without needing to do anything special.
+We call this "``preamble.js``" because Emscripten's output JS, at a high level, contains the preamble (from ``src/preamble.js``), then the compiled code, then the postamble. (In slightly more detail, the preamble contains utility functions and setup, while the postamble connects things and handles running the application.)
 
-.. note:: All functions should be called though the :ref:`Module <module>` object (for example: ``Module.functionName``). At optimisation ``-O2`` (and higher) function names are minified by the closure compiler, and calling them directly will fail.
+The preamble code is included in the output JS, which is then optimized all together by the compiler, together with any ``--pre-js`` and ``--post-js`` files you added and code from any JavaScript libraries (``--js-library``). That means that you can call methods from the preamble directly, and the compiler will see that you need them, and not remove them as being unused.
+
+If you want to call preamble methods from somewhere the compiler can't see, like another script tag on the HTML, you need to **export** them. To do so, add them to ``EXTRA_EXPORTED_RUNTIME_METHODS`` (for example, ``-s 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]'`` will export ``call`` and ``cwrap``). Once exported, you can access them on the ``Module`` object (as ``Module.ccall``, for example).
+
+.. note:: If you try to use ``Module.ccall`` or another runtime method without exporting it, you will get an error. In a build with ``-s ASSERTIONS=1``, the compiler emits code to show you a useful error message, which will explain that you need to export it. In general, if you see something odd, it's useful to build with assertions.
 
 
 .. contents:: Table of Contents

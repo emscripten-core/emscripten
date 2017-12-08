@@ -246,10 +246,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         ([], lambda generated: 'Module["_dump"]' not in generated, 'dump is not exported by default'),
         (['-s', 'EXPORTED_FUNCTIONS=["_main", "_dump"]'], lambda generated: 'Module["_dump"]' in generated, 'dump is now exported'),
         (['--llvm-opts', '1'], lambda generated: '_puts(' in generated, 'llvm opts requested'),
-        ([], lambda generated: '// The Module object' in generated, 'without opts, comments in shell code'),
-        (['-O2'], lambda generated: '// The Module object' not in generated, 'with opts, no comments in shell code'),
-        (['-O2', '-g2'], lambda generated: '// The Module object' not in generated, 'with -g2, no comments in shell code'),
-        (['-O2', '-g3'], lambda generated: '// The Module object' in generated, 'with -g3, yes comments in shell code'),
+        ([], lambda generated: '// Sometimes an existing Module' in generated, 'without opts, comments in shell code'),
+        (['-O2'], lambda generated: '// Sometimes an existing Module' not in generated, 'with opts, no comments in shell code'),
+        (['-O2', '-g2'], lambda generated: '// Sometimes an existing Module' not in generated, 'with -g2, no comments in shell code'),
+        (['-O2', '-g3'], lambda generated: '// Sometimes an existing Module' in generated, 'with -g3, yes comments in shell code'),
       ]:
         print(params, text)
         self.clear()
@@ -1620,7 +1620,8 @@ int f() {
     ''')
     open(os.path.join(self.get_dir(), 'before.js'), 'w').write('''
       var MESSAGE = 'hello from js';
-      if (typeof Module != 'undefined') throw 'This code should run before anything else!';
+      // Module is initialized with empty object by default, so if there are no keys - nothing was run yet
+      if (Object.keys(Module).length) throw 'This code should run before anything else!';
     ''')
     open(os.path.join(self.get_dir(), 'after.js'), 'w').write('''
       Module.print(MESSAGE);
@@ -1973,6 +1974,8 @@ int f() {
        ['JSDCE']),
       (path_from_root('tests', 'optimizer', 'JSDCE-hasOwnProperty.js'), open(path_from_root('tests', 'optimizer', 'JSDCE-hasOwnProperty-output.js')).read(),
        ['JSDCE']),
+      (path_from_root('tests', 'optimizer', 'AJSDCE.js'), open(path_from_root('tests', 'optimizer', 'AJSDCE-output.js')).read(),
+       ['AJSDCE']),
     ]:
       print(input, passes)
 
@@ -2465,7 +2468,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.clear()
 
     # compile with -O2 --closure 0
-    Popen([PYTHON, EMCC, path_from_root('tests', 'Module-exports', 'test.c'), '-o', 'test.js', '-O2', '--closure', '0', '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'), '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]'], stdout=PIPE, stderr=PIPE).communicate()
+    Popen([PYTHON, EMCC, path_from_root('tests', 'Module-exports', 'test.c'), '-o', 'test.js', '-O2', '--closure', '0', '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'), '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]'], stdout=PIPE, stderr=PIPE).communicate()
 
     # Check that compilation was successful
     assert os.path.exists('test.js')
@@ -2820,6 +2823,7 @@ myreade(){
     Popen([PYTHON, EMCC,
            '-o', 'proxyfs_test.js', 'proxyfs_test.c',
            '--embed-file', 'proxyfs_embed.txt', '--pre-js', 'proxyfs_pre.js',
+           '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]',
            '-s', 'MAIN_MODULE=1']).communicate()
     # Following shutil.copyfile just prevent 'require' of node.js from caching js-object.
     # See https://nodejs.org/api/modules.html
@@ -3024,7 +3028,6 @@ int main(void) {
 ''')
 
     open('pre.js', 'w').write(r'''
-if (typeof Module === 'undefined') Module = eval('(function() { try { return Module || {} } catch(e) { return {} } })()');
 if (!Module['preRun']) Module['preRun'] = [];
 Module["preRun"].push(function () {
     Module['addRunDependency']('test_run_dependency');
@@ -4884,7 +4887,7 @@ main(const int argc, const char * const * const argv)
       assert sizes['no_nuthin'] < ratio*sizes['normal']
       assert sizes['no_nuthin'] < absolute, str(sizes['no_nuthin']) + ' >= ' + str(absolute)
       if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
-        assert sizes['no_nuthin'] < 0.975*sizes['no_fs']
+        assert sizes['no_nuthin'] < 0.995*sizes['no_fs']
       assert sizes['no_fs_manual'] < sizes['no_fs'] # manual can remove a tiny bit more
     test(['-s', 'ASSERTIONS=0'], 0.75, 360000) # we don't care about code size with assertions
     test(['-O1'], 0.66, 210000)
@@ -4910,13 +4913,11 @@ main(const int argc, const char * const * const argv)
       assert sizes['no_nuthin'] < sizes['normal']
       assert sizes['no_nuthin'] < ratio*sizes['normal']
       assert sizes['no_nuthin'] < absolute
-      if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
-        assert sizes['no_nuthin'] < 0.975*sizes['normal']
     test(['-s', 'ASSERTIONS=0'], 1, 220000) # we don't care about code size with assertions
     test(['-O1'], 1, 215000)
-    test(['-O2'], 0.99, 75000)
-    test(['-O3', '--closure', '1'], 0.975, 50000)
-    test(['-O3', '--closure', '2'], 0.975, 41000) # might change now and then
+    test(['-O2'], 0.995, 55000)
+    test(['-O3', '--closure', '1'], 0.995, 38000)
+    test(['-O3', '--closure', '2'], 0.995, 35000) # might change now and then
 
   def test_no_browser(self):
     BROWSER_INIT = 'var Browser'
@@ -4939,10 +4940,10 @@ main(const int argc, const char * const * const argv)
       self.assertContained(has, src)
       self.assertNotContained(not_has, src)
 
-    test([], 'Module["intArray', 'Module["waka')
-    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]'], '', 'Module["intArray')
-    test(['-s', 'EXPORTED_RUNTIME_METHODS=["intArrayToString"]'], 'Module["intArray', 'Module["waka')
-    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["intArrayToString"]'], 'Module["intArray', 'Module["waka')
+    test([], 'Module["getMemory', 'Module["waka')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]'], '', 'Module["getMemory')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=["getMemory"]'], 'Module["getMemory', 'Module["waka')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["getMemory"]'], 'Module["getMemory', 'Module["waka')
 
   def test_stat_fail_alongtheway(self):
     open('src.cpp', 'w').write(r'''
@@ -6058,29 +6059,6 @@ main(int argc,char** argv)
     self.assertContained('Hello2', out)
     self.assertContained('hello1_val by hello1:3', out)
     self.assertContained('hello1_val by hello2:3', out)
-
-  def test_file_packager_eval(self):
-    BAD = 'Module = eval('
-    src = path_from_root('tests', 'hello_world.c')
-    open('temp.txt', 'w').write('temp')
-
-    # should emit eval only when emcc uses closure
-
-    Popen([PYTHON, EMCC, src, '--preload-file', 'temp.txt', '-O1']).communicate()
-    out = open('a.out.js').read()
-    assert BAD not in out, out[max(out.index(BAD)-80, 0) : min(out.index(BAD)+80, len(out)-1)]
-
-    Popen([PYTHON, EMCC, src, '--preload-file', 'temp.txt', '-O1', '--closure', '1']).communicate()
-    out = open('a.out.js').read()
-    assert BAD in out
-
-    # file packager defauls to the safe closure case
-
-    out, err = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'temp.txt'], stdout=PIPE, stderr=PIPE).communicate()
-    assert BAD in out
-
-    out, err = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'temp.txt', '--no-closure'], stdout=PIPE, stderr=PIPE).communicate()
-    assert BAD not in out, out[max(out.index(BAD)-80, 0) : min(out.index(BAD)+80, len(out)-1)]
 
   def test_debug_asmLastOpts(self):
     open('src.c', 'w').write(r'''

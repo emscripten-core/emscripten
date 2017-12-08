@@ -2401,6 +2401,8 @@ class JS(object):
 
   global_initializers_pattern = '/\* global initializers \*/ __ATINIT__.push\((.+)\);'
 
+  module_export_name_substitution_pattern = '"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__"'
+
   @staticmethod
   def to_nice_ident(ident): # limited version of the JS function toNiceIdent
     return ident.replace('%', '$').replace('@', '_').replace('.', '_')
@@ -2606,6 +2608,12 @@ class WebAssembly(object):
     f.close()
     return wso
 
+def asbytes(s):
+  if str is bytes:
+    # Python 2 compatibility:
+    # s.encode implicitly will first call s.decode('ascii') which may fail when with Unicode characters
+    return s
+  return s.encode('utf-8')
 
 def suffix(name):
   """Return the file extension *not* including the '.'."""
