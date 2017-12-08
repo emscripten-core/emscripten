@@ -7669,6 +7669,33 @@ int main() {
           assert proc.returncode != 0, err
           assert 'hello, world!' not in out, out
 
+  def test_binaryen_metadce(self):
+    sizes = {}
+    # in -Os, -Oz, we remove imports wasm doesn't need
+    for args, expected_len, expected_exists, expected_not_exists in [
+        ([],      24, ['abort', 'tempDoublePtr'], ['waka']),
+        (['-O1'], 21, ['abort', 'tempDoublePtr'], ['waka']),
+        (['-O2'], 21, ['abort', 'tempDoublePtr'], ['waka']),
+        (['-O3'], 21, ['abort', 'tempDoublePtr'], ['waka']),
+        (['-Os'], 16, ['abort'], ['tempDoublePtr', 'waka']),
+        (['-Oz'], 16, ['abort'], ['tempDoublePtr', 'waka']),
+      ]:
+      print(args, expected_len, expected_exists, expected_not_exists)
+      subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'WASM=1', '-g2'])
+      # find the imports we send from JS
+      js = open('a.out.js').read()
+      start = js.find('Module.asmLibraryArg = ')
+      end = js.find('}', start) + 1
+      start = js.find('{', start)
+      relevant = js[start+2:end-2]
+      relevant = relevant.replace(' ', '').replace('"', '').replace("'", '').split(',')
+      sent = [x.split(':')[0].strip() for x in relevant]
+      assert len(sent) == expected_len, sent
+      for exists in expected_exists:
+        assert exists in sent, [exists, sent]
+      for not_exists in expected_not_exists:
+        assert not_exists not in sent, [not_exists, sent]
+
   # test disabling of JS FFI legalization
   def test_legalize_js_ffi(self):
     with clean_write_access_to_canonical_temp_dir():
