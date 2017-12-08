@@ -2106,10 +2106,12 @@ function integrateWasmJS() {
     var oldView = new Int8Array(oldBuffer);
     var newView = new Int8Array(newBuffer);
 
+#if MEM_INIT_IN_WASM == 0
     // If we have a mem init file, do not trample it
     if (!memoryInitializer) {
       oldView.set(newView.subarray(Module['STATIC_BASE'], Module['STATIC_BASE'] + Module['STATIC_BUMP']), Module['STATIC_BASE']);
     }
+#endif
 
     newView.set(oldView);
     updateGlobalBuffer(newBuffer);

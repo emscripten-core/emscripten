@@ -6,6 +6,7 @@ Module['asm'] = asm;
 {{{ maybeExport('FS') }}}
 {{{ maybeExport('GL') }}}
 
+#if MEM_INIT_IN_WASM == 0
 #if MEM_INIT_METHOD == 2
 #if USE_PTHREADS
 if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) (function(s) {
@@ -110,6 +111,7 @@ if (memoryInitializer) {
   }
 }
 #endif
+#endif // MEM_INIT_IN_WASM == 0
 
 #if CYBERDWARF
   Module['cyberdwarf'] = _cyberdwarf_Debugger(cyberDWARFFile);
