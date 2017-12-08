@@ -868,9 +868,9 @@ fi
     try:
       os.environ['EMCC_DEBUG'] = '1'
       os.environ['EMCC_WASM_BACKEND'] = '1'
-      make_fake('wasm32-unknown-unknown')
+      make_fake('wasm32-unknown-unknown-elf')
       # see that we request the right backend from llvm
-      self.check_working([EMCC, 'tests/hello_world.c', '-c'], 'wasm32-unknown-unknown')
+      self.check_working([EMCC, 'tests/hello_world.c', '-c'], 'wasm32-unknown-unknown-elf')
       os.environ['EMCC_WASM_BACKEND'] = '0'
       make_fake('asmjs-unknown-emscripten')
       self.check_working([EMCC, 'tests/hello_world.c', '-c'], 'asmjs-unknown-emscripten')
@@ -880,7 +880,7 @@ fi
       self.check_working(EMCC)
       output = self.check_working(EMCC, 'check tells us to use')
       if 'wasm backend' in output:
-        self.check_working([EMCC, 'tests/hello_world.c', '-c'], 'wasm32-unknown-unknown')
+        self.check_working([EMCC, 'tests/hello_world.c', '-c'], 'wasm32-unknown-unknown-elf')
       else:
         assert 'asm.js backend' in output
         self.check_working([EMCC, 'tests/hello_world.c', '-c'], 'asmjs-unknown-emscripten')      
@@ -964,6 +964,26 @@ fi
       assert os.path.exists(os.path.join(root_cache, 'asmjs'))
     finally:
       del os.environ['EMCC_WASM_BACKEND']
+
+  def test_wasm_backend_builds(self):
+    # we can build a program using the wasm backend, rebuilding binaryen etc. as needed
+    restore()
+    def check():
+      print(self.do([PYTHON, EMCC, '--clear-cache']))
+      print(self.do([PYTHON, EMCC, '--clear-ports']))
+      try:
+        os.environ['EMCC_WASM_BACKEND'] = '1'
+        self.check_working([EMCC, 'tests/hello_world.c'], '')
+      finally:
+        del os.environ['EMCC_WASM_BACKEND']
+    print('normally')
+    check()
+    print('with no BINARYEN_ROOT')
+    open(CONFIG_FILE, 'a').write('''
+BINARYEN_ROOT = ''
+    ''')
+    print(open(CONFIG_FILE).read())
+    check()
 
   def test_binaryen(self):
     import tools.ports.binaryen as binaryen

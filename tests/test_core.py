@@ -55,6 +55,13 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def is_wasm(self):
     return 'BINARYEN' in str(self.emcc_args) or self.is_wasm_backend()
 
+  # Use closure in some tests for some additional coverage
+  def maybe_closure(self):
+    if '-O2' in self.emcc_args or '-Os' in self.emcc_args:
+      self.emcc_args += ['--closure', '1']
+      return True
+    return False
+
   def do_run_in_out_file_test(self, *path, **kwargs):
       test_path = path_from_root(*path)
 
@@ -882,8 +889,7 @@ int main() {
       Settings.EXCEPTION_DEBUG = 1
 
       Settings.DISABLE_EXCEPTION_CATCHING = 0
-      if '-O2' in self.emcc_args:
-        self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+      self.maybe_closure()
 
       src = '''
         #include <stdio.h>
@@ -2058,35 +2064,35 @@ The current type of b is: 9
       self.do_run(src, '*1*', force_c=True)
 
   def test_strtoll_hex(self):
-    # tests strtoll for hex strings (0x...) 
+    # tests strtoll for hex strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtoll_hex')
 
   def test_strtoll_dec(self):
-    # tests strtoll for decimal strings (0x...) 
+    # tests strtoll for decimal strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtoll_dec')
 
   def test_strtoll_bin(self):
-    # tests strtoll for binary strings (0x...) 
+    # tests strtoll for binary strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtoll_bin')
 
   def test_strtoll_oct(self):
-    # tests strtoll for decimal strings (0x...) 
+    # tests strtoll for decimal strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtoll_oct')
 
   def test_strtol_hex(self):
-    # tests strtoll for hex strings (0x...) 
+    # tests strtoll for hex strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtol_hex')
 
   def test_strtol_dec(self):
-    # tests strtoll for decimal strings (0x...) 
+    # tests strtoll for decimal strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtol_dec')
 
   def test_strtol_bin(self):
-    # tests strtoll for binary strings (0x...) 
+    # tests strtoll for binary strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtol_bin')
 
   def test_strtol_oct(self):
-    # tests strtoll for decimal strings (0x...) 
+    # tests strtoll for decimal strings (0x...)
     self.do_run_in_out_file_test('tests', 'core', 'test_strtol_oct')
 
   def test_atexit(self):
@@ -3126,7 +3132,7 @@ ok
       Settings.SIDE_MODULE = 0
       if auto_load:
         open('pre.js', 'w').write('''
-var Module = {
+Module = {
   dynamicLibraries: ['liblib.so'],
 };
   ''')
@@ -4089,8 +4095,7 @@ Pass: 0.000012 0.000012''')
 
   def test_files(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # closure can generate variables called 'gc', which pick up js shell stuff
-    if '-O2' in self.emcc_args:
-      self.emcc_args += ['--closure', '1'] # Use closure here, to test we don't break FS stuff
+    if self.maybe_closure(): # Use closure here, to test we don't break FS stuff
       self.emcc_args = [x for x in self.emcc_args if x != '-g'] # ensure we test --closure 1 --memory-init-file 1 (-g would disable closure)
     elif '-O3' in self.emcc_args and not self.is_wasm():
       print('closure 2')
@@ -4101,7 +4106,7 @@ Pass: 0.000012 0.000012''')
     post = '''
 def process(filename):
   src = \'\'\'
-    var Module = {
+    Module = {
       'noFSInit': true,
       'preRun': function() {
         FS.createLazyFile('/', 'test.file', 'test.file', true, false);
@@ -4145,7 +4150,7 @@ def process(filename):
     post = '''
 def process(filename):
   src = \'\'\'
-    var Module = {
+    Module = {
       data: [10, 20, 40, 30],
       stdin: function() { return Module.data.pop() || null },
       stdout: function(x) { Module.print('got: ' + x) }
@@ -4412,7 +4417,7 @@ def process(filename):
   def test_utf(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # only node handles utf well
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
-
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['getValue', 'setValue', 'UTF8ToString', 'stringToUTF8']
     self.do_run_in_out_file_test('tests', 'core', 'test_utf')
 
   def test_utf32(self):
@@ -4421,10 +4426,12 @@ def process(filename):
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.', args=['-fshort-wchar'])
 
   def test_utf8(self):
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii']
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
     self.do_run(open(path_from_root('tests', 'utf8.cpp')).read(), 'OK.')
 
   def test_utf8_textdecoder(self):
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['UTF8ToString', 'stringToUTF8']
     Building.COMPILER_TEST_OPTS += ['--embed-file', path_from_root('tests/utf8_corpus.txt')+ '@/utf8_corpus.txt']
     self.do_run(open(path_from_root('tests', 'benchmark_utf8.cpp')).read(), 'OK.')
 
@@ -4521,6 +4528,18 @@ def process(filename):
       out = path_from_root('tests', 'fs', 'test_mmap.out')
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run_from_file(src, out)
+
+  def test_fs_errorstack(self):
+    Settings.FORCE_FILESYSTEM = 1
+    self.do_run(r'''
+      #include <emscripten.h>
+      int main(void) {
+        EM_ASM(
+          FS.write('/dummy.txt', 'homu');
+        );
+        return 0;
+      }
+    ''', 'at new ErrnoError', js_engines=[NODE_JS]) # engines has different error stack format
 
   def test_unistd_access(self):
     self.clear()
@@ -5095,8 +5114,7 @@ return malloc(size);
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
       self.emcc_args = orig_args + mode + ['-msse']
-      if '-O2' in self.emcc_args:
-        self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+      self.maybe_closure()
 
       self.do_run(open(path_from_root('tests', 'test_sse1.cpp'), 'r').read(), 'Success!')
 
@@ -5118,8 +5136,7 @@ return malloc(size);
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
       self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse']
-      if '-O2' in self.emcc_args:
-        self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+      self.maybe_closure()
 
       self.do_run(open(path_from_root('tests', 'test_sse1_full.cpp'), 'r').read(), self.ignore_nans(native_result), output_nicerizer=self.ignore_nans)
 
@@ -5141,8 +5158,7 @@ return malloc(size);
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
       self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse2'] + args
-      if '-O2' in self.emcc_args:
-        self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+      self.maybe_closure()
 
       self.do_run(open(path_from_root('tests', 'test_sse2_full.cpp'), 'r').read(), self.ignore_nans(native_result), output_nicerizer=self.ignore_nans)
 
@@ -5451,8 +5467,7 @@ def process(filename):
                  force_c=True)
 
   def test_zlib(self):
-    if '-O2' in self.emcc_args and 'ASM_JS=0' not in self.emcc_args: # without asm, closure minifies Math.imul badly
-      self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+    self.maybe_closure()
 
     assert 'asm2g' in test_modes
     if self.run_name == 'asm2g':
@@ -5541,7 +5556,7 @@ def process(filename):
   )
   src.close()
 '''
- 
+
  #fontconfig = self.get_library('fontconfig', [os.path.join('src', '.libs', 'libfontconfig.a')]) # Used in file, but not needed, mostly
 
       freetype = self.get_freetype()
@@ -5893,6 +5908,7 @@ def process(filename):
 
   @sync
   def test_ccall(self):
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['ccall', 'cwrap']
     post = '''
 def process(filename):
   src = open(filename, 'r').read() + \'\'\'
@@ -5935,6 +5951,26 @@ def process(filename):
       print('with closure')
       self.emcc_args += ['--closure', '1']
       self.do_run_in_out_file_test('tests', 'core', 'test_ccall', post_build=post)
+
+  def test_getValue_setValue(self):
+    # these used to be exported, but no longer are by default
+    def test(output_prefix='', args=[]):
+      old = self.emcc_args[:]
+      self.emcc_args += args
+      self.do_run(open(path_from_root('tests', 'core', 'getValue_setValue.cpp')).read(),
+                  open(path_from_root('tests', 'core', 'getValue_setValue' + output_prefix + '.txt')).read())
+      self.emcc_args = old
+    # see that direct usage (not on module) works. we don't export, but the use
+    # keeps it alive through JSDCE
+    test(args=['-DDIRECT'])
+    # see that with assertions, we get a nice error message
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = []
+    Settings.ASSERTIONS = 1
+    test('_assert')
+    Settings.ASSERTIONS = 0
+    # see that when we export them, things work on the module
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['getValue', 'setValue']
+    test()
 
   @no_wasm_backend('DEAD_FUNCTIONS elimination is done by the JSOptimizer')
   def test_dead_functions(self):
@@ -6725,6 +6761,26 @@ Module.printErr = Module['printErr'] = function(){};
         else:
           os.environ.pop('EMCC_DEBUG', None)
 
+  def test_modularize_closure_pre(self):
+    # test that the combination of modularize + closure + pre-js works. in that mode,
+    # closure should not minify the Module object in a way that the pre-js cannot use it.
+    self.emcc_args += [
+      '--pre-js', path_from_root('tests', 'core', 'modularize_closure_pre.js'),
+      '--closure', '1',
+      '-s', 'MODULARIZE=1',
+      '-g1',
+      '-O2'
+    ]
+    def post(filename):
+      src = open(filename, 'a')
+      src.write('\n\n')
+      src.write('var TheModule = Module();\n')
+      src.close()
+    self.do_run(
+      open(path_from_root('tests', 'core', 'modularize_closure_pre.c')).read(),
+      open(path_from_root('tests', 'core', 'modularize_closure_pre.txt')).read(),
+      post_build=(None, post))
+
   @no_emterpreter
   def test_exception_source_map(self):
     if self.is_wasm(): return self.skip('wasmifying destroys debug info and stack tracability')
@@ -6775,7 +6831,7 @@ Module.printErr = Module['printErr'] = function(){};
       Building.COMPILER_TEST_OPTS += ['-DEMTERPRETER'] # even so, we get extra emterpret() calls on the stack
     if Settings.ASM_JS:
       # XXX Does not work in SpiderMonkey since callstacks cannot be captured when running in asm.js, see https://bugzilla.mozilla.org/show_bug.cgi?id=947996
-      self.banned_js_engines += [SPIDERMONKEY_ENGINE] 
+      self.banned_js_engines += [SPIDERMONKEY_ENGINE]
     if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
     Building.COMPILER_TEST_OPTS += ['-DRUN_FROM_JS_SHELL']
     self.do_run(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read(), '''test print 123
@@ -6828,10 +6884,10 @@ Success!
       }
     '''
     open('post.js', 'w').write('''
-      Module.addOnExit(function () {
+      addOnExit(function () {
         Module.print('I see exit status: ' + EXITSTATUS);
       });
-      Module.callMain();
+      Module['callMain']();
     ''')
     self.emcc_args += ['-s', 'INVOKE_RUN=0', '--post-js', 'post.js']
     self.do_run(src.replace('CAPITAL_EXIT', '0'), 'hello, world!\ncleanup\nI see exit status: 118')
@@ -6908,7 +6964,7 @@ int main() {
       Settings.INVOKE_RUN = 0
       open('post.js', 'w').write('''
 try {
-  Module['ccall']('main', 'number', ['number', 'string'], [2, 'waka']);
+  ccall('main', 'number', ['number', 'string'], [2, 'waka']);
   var never = true;
 } catch(e) {
   Module.print(e);
@@ -6929,7 +6985,7 @@ int main() {
 }
 '''
       open('post.js', 'w').write('''
-Module['ccall']('main', null, ['number', 'string'], [2, 'waka'], { async: true });
+ccall('main', null, ['number', 'string'], [2, 'waka'], { async: true });
 ''')
       self.do_run(src, 'HelloWorld');
 
@@ -7120,7 +7176,7 @@ int main(int argc, char **argv) {
   def test_fs_dict(self):
       Settings.FORCE_FILESYSTEM = 1
       open(self.in_dir('pre.js'), 'w').write('''
-        var Module = {};
+        Module = {};
         Module['preRun'] = function() {
             Module.print(typeof FS.filesystems['MEMFS']);
             Module.print(typeof FS.filesystems['IDBFS']);
@@ -7148,6 +7204,7 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
     self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
 
+  @no_wasm_backend('Wasm backend emits non-trapping float-to-int conversion')
   def test_binaryen_trap_mode(self):
     if not self.is_wasm(): return self.skip('wasm test')
     TRAP_OUTPUTS = ('trap', 'RuntimeError')
@@ -7278,7 +7335,7 @@ binaryen2_interpret = make_run("binaryen2_interpret", compiler=CLANG, emcc_args=
 #normalyen = make_run("normalyen", compiler=CLANG, emcc_args=['-O0', '-s', 'GLOBAL_BASE=1024']) # useful comparison to binaryen
 #spidaryen = make_run("binaryen", compiler=CLANG, emcc_args=['-O0', '-s', 'BINARYEN=1', '-s', 'BINARYEN_SCRIPTS="spidermonkify.py"'])
 
-# Legacy test modes - 
+# Legacy test modes -
 asm2nn = make_run("asm2nn", compiler=CLANG, emcc_args=["-O2"], env={"EMCC_NATIVE_OPTIMIZER": "0"})
 
 del T # T is just a shape for the specific subclasses, we don't test it itself

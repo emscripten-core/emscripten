@@ -69,7 +69,9 @@ to prevent C++ name mangling.
 To compile this code run the following command in the Emscripten
 home directory::
 
-    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS="['_int_sqrt']"
+    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS='["_int_sqrt"]' -s EXTRA_EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]'
+
+``EXPORTED_FUNCTIONS`` tells the compiler what we want to be accessible from the compiled code (everything else might be removed if it is not used), and ``EXTRA_EXPORTED_RUNTIME_METHODS`` tells the compiler that we want to use the runtime functions ``ccall`` and ``cwrap`` (otherwise, it will remove them if it does not see they are used).
 
 .. note::
 
@@ -146,9 +148,17 @@ parameters to pass to the function:
        as the latter will force the method to actually be included in
        the build.
 
-   - Use ``Module.ccall`` and not ``ccall`` by itself. The former will work
-     at all optimisation levels (even if the :term:`Closure Compiler`
-     minifies the function names).
+   - The compiler will remove code it does not see is used, to improve code
+     size. If you use ``ccall`` in a place it sees, like code in a ``--pre-js``
+     or ``--post-js``, it will just work. If you use it in a place the compiler
+     didn't see, like another script tag on the HTML or in the JS console like
+     we did in this tutorial, then because of optimizations
+     and minification you should export ccall from the runtime, using
+     ``EXTRA_EXPORTED_RUNTIME_METHODS``, for example using
+     ``-s 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]'``,
+     and call it on ``Module`` (which contains
+     everything exported, in a safe way that is not influenced by minification
+     or optimizations).
 
 
 Interacting with an API written in C/C++ from NodeJS
