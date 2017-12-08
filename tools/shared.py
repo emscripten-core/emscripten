@@ -2300,11 +2300,10 @@ class Building(object):
     txt = Building.js_optimizer_no_asmjs(js_file, ['emitDCEGraph', 'noEmitAst'], return_output=True)
     # ensure that functions expected to be exported to the outside are roots
     graph = json.loads(txt)
-    user_requested_exports = Building.get_user_requested_exports()
     for item in graph:
       if 'export' in item:
         name = item['export']
-        if name in user_requested_exports or Settings.EXPORT_ALL:
+        if name in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
     temp = temp_files.get('.txt').name
     txt = json.dumps(graph)
@@ -2330,16 +2329,8 @@ class Building(object):
     temp_files.note(js_file)
     return Building.js_optimizer_no_asmjs(js_file, passes, extra_info=json.dumps(extra_info))
 
-  # returns the exports the user explicitly requested
-  @staticmethod
-  def get_user_requested_exports(settings=None):
-    if settings is None:
-      ret = Settings.ORIGINAL_EXPORTED_FUNCTIONS
-    else:
-      ret = settings['ORIGINAL_EXPORTED_FUNCTIONS']
-    if ret[0] == '@':
-      ret = json.loads(open(ret[1:]).read())
-    return ret
+  # the exports the user requested
+  user_requested_exports = []
 
   _is_ar_cache = {}
   @staticmethod
