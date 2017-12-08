@@ -599,9 +599,7 @@ def get_all_implemented(forwarded_json, metadata):
 
 def check_all_implemented(all_implemented, pre, settings):
   if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
-    original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
-    if original_exports[0] == '@':
-      original_exports = json.loads(open(original_exports[1:]).read())
+    original_exports = shared.Building.get_user_requested_exports(settings)
     for requested in original_exports:
       if not is_already_implemented(requested, pre, all_implemented):
         # could be a js library func
@@ -1862,8 +1860,7 @@ def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata, se
       exported_implemented_functions.add(key)
 
   if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
-    original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
-    if original_exports[0] == '@': original_exports = json.loads(open(original_exports[1:]).read())
+    original_exports = shared.Building.get_user_requested_exports(settings)
     for requested in original_exports:
       # check if already implemented
       # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS \
