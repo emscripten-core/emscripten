@@ -7670,15 +7670,17 @@ int main() {
   def test_binaryen_metadce(self):
     sizes = {}
     # in -Os, -Oz, we remove imports wasm doesn't need
-    for args, expected_len, expected_exists, expected_not_exists in [
-        ([],      24, ['abort', 'tempDoublePtr'], ['waka']),
-        (['-O1'], 21, ['abort', 'tempDoublePtr'], ['waka']),
-        (['-O2'], 21, ['abort', 'tempDoublePtr'], ['waka']),
-        (['-O3'], 21, ['abort', 'tempDoublePtr'], ['waka']),
-        (['-Os'], 16, ['abort'], ['tempDoublePtr', 'waka']),
-        (['-Oz'], 16, ['abort'], ['tempDoublePtr', 'waka']),
+    for args, expected_len, expected_exists, expected_not_exists, expected_wasm_size in [
+        ([],      24, ['abort', 'tempDoublePtr'], ['waka'], 65470),
+        (['-O1'], 21, ['abort', 'tempDoublePtr'], ['waka'], 25546),
+        (['-O2'], 21, ['abort', 'tempDoublePtr'], ['waka'], 25379),
+        (['-O3'], 21, ['abort', 'tempDoublePtr'], ['waka'], 25277),
+        (['-Os'], 16, ['abort'], ['tempDoublePtr', 'waka'], 18829),
+        (['-Oz'], 16, ['abort'], ['tempDoublePtr', 'waka'], 18799),
+        # finally, check what happens when we export pretty much nothing. wasm should be almost  empty
+        (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[]'], 9, ['abort'], ['tempDoublePtr', 'waka'], 2136),
       ]:
-      print(args, expected_len, expected_exists, expected_not_exists)
+      print(args, expected_len, expected_exists, expected_not_exists, expected_wasm_size)
       subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'WASM=1', '-g2'])
       # find the imports we send from JS
       js = open('a.out.js').read()
@@ -7693,6 +7695,9 @@ int main() {
         assert exists in sent, [exists, sent]
       for not_exists in expected_not_exists:
         assert not_exists not in sent, [not_exists, sent]
+      wasm_size = os.stat('a.out.wasm').st_size
+      # finally, check that the wasm size seen is within a small margin of the expected size
+      assert abs(1 - float(wasm_size) / float(expected_wasm_size)) < 0.05, wasm_size
 
   # test disabling of JS FFI legalization
   def test_legalize_js_ffi(self):
