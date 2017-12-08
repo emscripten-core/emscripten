@@ -2313,6 +2313,12 @@ class Building(object):
         name = item['export']
         if name in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
+    if Settings.WASM_BACKEND:
+      # wasm backend's imports are prefixed differently inside the wasm
+      for item in graph:
+        if 'import' in item:
+          if item['import'][1][0] == '_':
+            item['import'][1] = item['import'][1][1:]
     temp = temp_files.get('.txt').name
     txt = json.dumps(graph)
     with open(temp, 'w') as f: f.write(txt)
