@@ -1,3 +1,5 @@
+# coding=utf-8
+
 from __future__ import print_function
 import multiprocessing, os, shutil, subprocess, unittest, zlib, webbrowser, time, shlex
 from runner import BrowserCore, path_from_root, has_browser, get_browser
@@ -75,7 +77,10 @@ class browser(BrowserCore):
     self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-lSDL', '-lGL'])
     self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-s', 'USE_SDL=1', '-lGL']) # is the default anyhow
 
-  def test_html_source_map(self):
+  # Deliberately named as test_zzz_* to make this test the last one
+  # as this test may take the focus away from the main test window
+  # by opening a new window and possibly not closing it.
+  def test_zzz_html_source_map(self):
     if not has_browser(): return self.skip('need a browser')
     cpp_file = os.path.join(self.get_dir(), 'src.cpp')
     html_file = os.path.join(self.get_dir(), 'src.html')
@@ -2197,7 +2202,10 @@ void *getBindBuffer() {
     result = subprocess.check_output([PYTHON, path_from_root('emrun'), '--list_browsers'])
     assert 'Traceback' not in result
 
-  def test_emrun(self):
+  # Deliberately named as test_zzz_emrun to make this test the last one
+  # as this test may take the focus away from the main test window
+  # by opening a new window and possibly not closing it.
+  def test_zzz_emrun(self):
     if not has_browser(): return self.skip('need a browser')
     Popen([PYTHON, EMCC, path_from_root('tests', 'test_emrun.c'), '--emrun', '-o', 'hello_world.html']).communicate()
     outdir = os.getcwd()
@@ -3704,3 +3712,14 @@ window.close = function() {
     open('page.c', 'w').write(self.with_report_result(open(path_from_root('tests', 'access_file_after_heap_resize.c'), 'r').read()))
     Popen([PYTHON, EMCC, 'page.c', '-s', 'WASM=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '--preload-file', 'test.txt', '-o', 'page.html']).communicate()
     self.run_browser('page.html', 'hello from file', '/report_result?15')
+
+  def test_unicode_html_shell(self):
+    open(self.in_dir('main.cpp'), 'w').write(self.with_report_result(r'''
+      int main() {
+        REPORT_RESULT(0);
+        return 0;
+      }
+    '''))
+    open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('Emscripten-Generated Code', 'Emscripten-Generated Emoji 😅'))
+    subprocess.check_output([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'shell.html', '-o', 'test.html'])
+    self.run_browser('test.html', None, '/report_result?0')

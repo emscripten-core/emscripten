@@ -176,7 +176,6 @@ if sys.stderr.isatty():
   else:
     logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
 
-
 # https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess
 class Py2CompletedProcess:
   def __init__(self, process, args):
@@ -2600,6 +2599,12 @@ class WebAssembly(object):
     f.close()
     return wso
 
+def asbytes(s):
+  if str is bytes:
+    # Python 2 compatibility:
+    # s.encode implicitly will first call s.decode('ascii') which may fail when with Unicode characters
+    return s
+  return s.encode('utf-8')
 
 def suffix(name):
   """Return the file extension *not* including the '.'."""
