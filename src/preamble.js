@@ -2209,7 +2209,7 @@ function integrateWasmJS() {
       'NaN': NaN,
       'Infinity': Infinity
     };
-    info['global.Math'] = global.Math;
+    info['global.Math'] = Math;
     info['env'] = env;
     // handle a generated wasm instance, receiving its exports and
     // performing other necessary setup
@@ -2431,7 +2431,9 @@ function integrateWasmJS() {
   // doesn't need to care that it is wasm or olyfilled wasm or asm.js.
 
   Module['asm'] = function(global, env, providedBuffer) {
+#if BINARYEN_METHOD != 'native-wasm'
     global = fixImports(global);
+#endif
     env = fixImports(env);
 
     // import table
