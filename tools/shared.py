@@ -2270,7 +2270,7 @@ class Building(object):
   # minify the final wasm+JS combination. this is done after all the JS
   # and wasm optimizations; here we do the very final optimizations on them
   @staticmethod
-  def minify_wasm_js(js_file, wasm_file, shrink_level, minify_whitespace, use_closure_compiler, debug_info):
+  def minify_wasm_js(js_file, wasm_file, shrink_level, minify_whitespace, use_closure_compiler, debug_info, emit_symbol_map):
     temp_files = configuration.get_temp_files()
     # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
     # use AJSDCE (aggressive JS DCE, performs multiple iterations)
@@ -2281,7 +2281,8 @@ class Building(object):
     temp_files.note(js_file)
     js_file = Building.js_optimizer_no_asmjs(js_file, passes)
     # if we are optimizing for size, shrink the combined wasm+JS
-    if shrink_level > 0:
+    # TODO: support this when a symbol map is used
+    if shrink_level > 0 and not emit_symbol_map:
       temp_files.note(js_file)
       js_file = Building.metadce(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
       # now that we removed unneeded communication between js and wasm, we can clean up

@@ -2288,6 +2288,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   # normally we emit binary, but for debug info, we might emit text first
   wrote_wasm_text = False
   debug_info = options.debug_level >= 2 or options.profiling_funcs
+  emit_symbol_map = options.emit_symbol_map or shared.Settings.CYBERDWARF
   # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
   if not shared.Settings.WASM_BACKEND:
     if DEBUG:
@@ -2326,7 +2327,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--enable-threads']
     if debug_info:
       cmd += ['-g']
-    if options.emit_symbol_map or shared.Settings.CYBERDWARF:
+    if emit_symbol_map:
       cmd += ['--symbolmap=' + target + '.symbols']
     # we prefer to emit a binary, as it is more efficient. however, when we
     # want full debug info support (not just function names), then we must
@@ -2408,7 +2409,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                              shrink_level=options.shrink_level,
                                              minify_whitespace=optimizer.minify_whitespace,
                                              use_closure_compiler=options.use_closure_compiler,
-                                             debug_info=debug_info)
+                                             debug_info=debug_info,
+                                             emit_symbol_map=emit_symbol_map)
       if DEBUG:
         save_intermediate_with_wasm('postclean', wasm_binary_target)
   # replace placeholder strings with correct subresource locations
