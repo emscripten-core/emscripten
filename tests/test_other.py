@@ -7674,7 +7674,7 @@ int main() {
         ([],      24, ['abort', 'tempDoublePtr'], ['waka']),
         (['-O1'], 21, ['abort', 'tempDoublePtr'], ['waka']),
         (['-O2'], 21, ['abort', 'tempDoublePtr'], ['waka']),
-        (['-O3'], 21, ['abort', 'tempDoublePtr'], ['waka']),
+        (['-O3'], 16, ['abort'], ['tempDoublePtr', 'waka']), # in -O3, -Os and -Oz we metadce
         (['-Os'], 16, ['abort'], ['tempDoublePtr', 'waka']),
         (['-Oz'], 16, ['abort'], ['tempDoublePtr', 'waka']),
         # finally, check what happens when we export pretty much nothing. wasm should be almost  empty
@@ -7690,7 +7690,7 @@ int main() {
       relevant = js[start+2:end-2]
       relevant = relevant.replace(' ', '').replace('"', '').replace("'", '').split(',')
       sent = [x.split(':')[0].strip() for x in relevant]
-      assert len(sent) == expected_len, sent
+      assert len(sent) == expected_len, (len(sent), expected_len)
       for exists in expected_exists:
         assert exists in sent, [exists, sent]
       for not_exists in expected_not_exists:

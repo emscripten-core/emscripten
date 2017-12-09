@@ -2406,7 +2406,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
         save_intermediate_with_wasm('preclean', wasm_binary_target)
       final = shared.Building.minify_wasm_js(js_file=final,
                                              wasm_file=wasm_binary_target,
-                                             shrink_level=options.shrink_level,
+                                             expensive_optimizations=options.opt_level >= 3 or options.shrink_level > 0,
                                              minify_whitespace=optimizer.minify_whitespace,
                                              use_closure_compiler=options.use_closure_compiler,
                                              debug_info=debug_info,
