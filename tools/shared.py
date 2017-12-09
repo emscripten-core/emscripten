@@ -176,6 +176,15 @@ if sys.stderr.isatty():
   else:
     logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
 
+# This is a workaround for https://bugs.python.org/issue9400
+class Py2CalledProcessError(subprocess.CalledProcessError):
+    def __init__(self, returncode, cmd, output=None, stderr=None):
+      super(Exception, self).__init__(returncode, cmd, output, stderr)
+      self.returncode = returncode
+      self.cmd = cmd
+      self.output = output
+      self.stderr = stderr
+
 # https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess
 class Py2CompletedProcess:
   def __init__(self, process, args):
@@ -193,7 +202,7 @@ class Py2CompletedProcess:
 
   def check_returncode(self):
     if self.returncode is not 0:
-      raise subprocess.CalledProcessError(returncode=self.returncode, cmd=self.args, output=self.stdout)
+      raise Py2CalledProcessError(returncode=self.returncode, cmd=self.args, output=self.stdout, stderr=self.stderr)
 
 def run_base(cmd, check=False, *args, **kw):
   if hasattr(subprocess, "run"):
@@ -205,8 +214,8 @@ def run_base(cmd, check=False, *args, **kw):
     result.check_returncode()
   return result
 
-def run_process(cmd, universal_newlines=True, *args, **kw):
-  return run_base(cmd, universal_newlines=universal_newlines, *args, **kw)
+def run_process(cmd, universal_newlines=True, check=True, *args, **kw):
+  return run_base(cmd, universal_newlines=universal_newlines, check=check, *args, **kw)
 
 def execute(cmd, *args, **kw):
   try:
@@ -2012,7 +2021,7 @@ class Building(object):
   @staticmethod
   def llvm_nm_uncached(filename, stdout=PIPE, stderr=PIPE, include_internal=False):
     # LLVM binary ==> list of symbols
-    proc = run_process([LLVM_NM, filename], stdout=stdout, stderr=stderr)
+    proc = run_process([LLVM_NM, filename], stdout=stdout, stderr=stderr, check=False)
     if proc.returncode == 0:
       return Building.parse_symbols(proc.stdout, include_internal)
     else:
