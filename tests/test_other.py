@@ -5726,8 +5726,9 @@ int main() {
           if not aborting: args += ['-s', 'ABORTING_MALLOC=0']
           print(args, pre_fail)
           check_execute(args)
-          output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
-          if (not aborting) or growth: # growth also disables aborting
+          manage_malloc = (not aborting) or growth # growth also disables aborting
+          output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=0 if manage_malloc else None)
+          if manage_malloc:
             # we should fail eventually, then free, then succeed
             self.assertContained('''managed another malloc!\n''', output)
           else:
