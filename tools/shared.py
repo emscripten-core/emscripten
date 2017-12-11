@@ -187,10 +187,11 @@ class Py2CalledProcessError(subprocess.CalledProcessError):
 
 # https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess
 class Py2CompletedProcess:
-  def __init__(self, process, args):
-    (self.stdout, self.stderr) = process.communicate()
+  def __init__(self, args, returncode, stdout, stderr):
     self.args = args
-    self.returncode = process.returncode
+    self.returncode = returncode
+    self.stdout = stdout
+    self.stderr = stderr
 
   def __repr__(self):
     _repr = ['args=%s, returncode=%s' % (self.args, self.returncode)]
@@ -204,12 +205,16 @@ class Py2CompletedProcess:
     if self.returncode is not 0:
       raise Py2CalledProcessError(returncode=self.returncode, cmd=self.args, output=self.stdout, stderr=self.stderr)
 
-def run_base(cmd, check=False, *args, **kw):
+def run_base(cmd, check=False, input=None, *args, **kw):
   if hasattr(subprocess, "run"):
-    return subprocess.run(cmd, check=check, *args, **kw)
+    return subprocess.run(cmd, check=check, input=input, *args, **kw)
 
   # Python 2 compatibility: Introduce Python 3 subprocess.run-like behavior
-  result = Py2CompletedProcess(Popen(cmd, *args, **kw), cmd)
+  if input is not None:
+    kw['stdin'] = subprocess.PIPE
+  proc = Popen(cmd, *args, **kw)
+  stdout, stderr = proc.communicate(input)
+  result = Py2CompletedProcess(cmd, proc.returncode, stdout, stderr)
   if check:
     result.check_returncode()
   return result
