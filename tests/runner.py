@@ -478,19 +478,17 @@ class RunnerCore(unittest.TestCase):
 
   def build_native(self, filename, args=[]):
     compiler = CLANG if filename.endswith('cpp') else CLANG_CC
-    process = Popen([compiler, '-O2', '-fno-math-errno', filename, '-o', filename+'.native'] + args, stdout=PIPE, stderr=self.stderr_redirect)
-    output = process.communicate()
+    process = run_process([compiler, '-O2', '-fno-math-errno', filename, '-o', filename+'.native'] + args, stdout=PIPE, stderr=self.stderr_redirect, check=False)
     if process.returncode is not 0:
       print("Building native executable with command '%s' failed with a return code %d!" % (' '.join([CLANG, '-O2', filename, '-o', filename+'.native']), process.returncode), file=sys.stderr)
-      print("Output: " + output[0])
+      print("Output: " + process.stdout)
 
   def run_native(self, filename, args):
-    process = Popen([filename+'.native'] + args, stdout=PIPE);
-    output = process.communicate()
+    process = run_process([filename+'.native'] + args, stdout=PIPE, check=False)
     if process.returncode is not 0:
       print("Running native executable with command '%s' failed with a return code %d!" % (' '.join([filename+'.native'] + args), process.returncode), file=sys.stderr)
-      print("Output: " + output[0])
-    return output[0]
+      print("Output: " + output.stdout)
+    return output.stdout
 
   # Tests that the given two paths are identical, modulo path delimiters. E.g. "C:/foo" is equal to "C:\foo".
   def assertPathsIdentical(self, path1, path2):
