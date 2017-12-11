@@ -195,9 +195,9 @@ class Py2CompletedProcess:
   def __repr__(self):
     _repr = ['args=%s, returncode=%s' % (self.args, self.returncode)]
     if self.stdout is not None:
-      _repr += 'stdout=' + self.stdout
+      _repr += 'stdout=' + repr(self.stdout)
     if self.stderr is not None:
-      _repr += 'stderr=' + self.stderr
+      _repr += 'stderr=' + repr(self.stderr)
     return 'CompletedProcess(%s)' % ', '.join(_repr)
 
   def check_returncode(self):
