@@ -1721,23 +1721,14 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
 
   if libraries is None: libraries = []
 
-  wast = build_wasm(temp_files, infile, outfile, settings, DEBUG)
+  wasm, meta, wast = build_wasm(temp_files, infile, outfile, settings, DEBUG)
 
   # js compiler
 
   if DEBUG: logging.debug('emscript: js compiler glue')
 
   # Integrate info from backend
-
-  output = open(wast).read()
-  parts = output.split('\n;; METADATA:')
-  assert len(parts) == 2
-  metadata_raw = parts[1]
-  parts = output = None
-
-  if DEBUG: logging.debug("METAraw %s", metadata_raw)
-  metadata = create_metadata_wasm(metadata_raw, wast)
-  if DEBUG: logging.debug(repr(metadata))
+  metadata = read_metadata_file_wasm(meta, wast, DEBUG)
 
   update_settings_glue(settings, metadata)
 
@@ -1798,8 +1789,23 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
 
 
 def build_wasm(temp_files, infile, outfile, settings, DEBUG):
-  with temp_files.get_file('.wb.s') as temp_s:
-    backend_args = create_backend_args_wasm(infile, temp_s, settings)
+  lld = os.path.join(shared.LLVM_ROOT, 'ld.lld')
+  lld_metadata = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'lld-metadata')
+  lld_emscripten = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'lld-emscripten')
+  wasm_dis = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-dis')
+
+  def debug_copy(src, dst):
+    if DEBUG:
+      shutil.copyfile(src, os.path.join(shared.CANONICAL_TEMP_DIR, dst))
+      print '>>> debug_copied', src, 'to', dst
+      if src[-2:] == '.o' or src[-5:] == '.wasm':
+        tmp = dst + '.wast'
+        shared.check_call([wasm_dis, src, '-o', tmp])
+        shutil.copyfile(tmp, os.path.join(shared.CANONICAL_TEMP_DIR, tmp))
+        print '>>> debug_copied', src, 'to', tmp
+
+  with temp_files.get_file('.wb.o') as temp_o:
+    backend_args = create_backend_args_wasm(infile, temp_o, settings)
     if DEBUG:
       logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
       t = time.time()
@@ -1807,37 +1813,71 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
     if DEBUG:
       logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
       t = time.time()
-      shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
+      debug_copy(temp_o, 'emcc-llvm-backend-output.o')
 
-    assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
+    assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen tools on the backend output'
     basename = shared.unsuffixed(outfile.name)
     wast = basename + '.wast'
     wasm = basename + '.wasm'
-    s2wasm_args = create_s2wasm_args(temp_s)
-    if DEBUG:
-      logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
-      t = time.time()
-      #s2wasm_args += ['--debug']
-    shared.check_call(s2wasm_args, stdout=open(wast, 'w'))
-    # Also convert wasm text to binary
-    wasm_as_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-as'),
-                    wast, '-o', wasm]
-    if settings['DEBUG_LEVEL'] >= 2 or settings['PROFILING_FUNCS']:
-      wasm_as_args += ['-g']
-      if settings['DEBUG_LEVEL'] >= 4:
-        wasm_as_args += ['--source-map=' + wasm + '.map']
-        if not settings['SOURCE_MAP_BASE']:
-          logging.warn("Wasm source map won't be usable in a browser without --source-map-base")
-        else:
-          wasm_as_args += ['--source-map-url=' + settings['SOURCE_MAP_BASE'] + os.path.basename(settings['WASM_BINARY_FILE']) + '.map']
-    logging.debug('  emscript: binaryen wasm-as: ' + ' '.join(wasm_as_args))
-    shared.check_call(wasm_as_args)
+    base_wasm = basename + '.lld.wasm'
+    meta = basename + '.json'
+    shared.check_call([lld_metadata, temp_o, '-o', meta])
+    shared.check_call([
+      lld, '-flavor', 'wasm',
+      '-z', '-stack-size=1048576',
+      '--global-base=%s' % shared.Settings.GLOBAL_BASE,
+      '--initial-memory=%s' % shared.Settings.TOTAL_MEMORY,
+      temp_o, '-o', base_wasm,
+      '--entry=main',
+      '--allow-undefined',
+      '--import-memory',
+    ])
+    debug_copy(base_wasm, 'base_wasm.wasm')
+
+    initializers = json.loads(open(meta).read())['initializers']
+    shared.check_call([lld_emscripten, base_wasm, '-o', wasm,
+      '--force-exports', ','.join(initializers),
+    ])
+    debug_copy(wasm, 'lld-emscripten-output.wasm')
+    debug_copy(meta, 'lld-metadata.json')
+
+    # TODO: omg
+    shared.check_call([wasm_dis, wasm, '-o', wast])
+
+    # s2wasm_args = create_s2wasm_args(temp_o)
+    # if DEBUG:
+    #   logging.debug('emscript: lld: ' + ' '.join(lld_args))
+    #   t = time.time()
+    #   #s2wasm_args += ['--debug']
+    # shared.check_call(s2wasm_args, stdout=open(wast, 'w'))
+    # # Also convert wasm text to binary
+    # wasm_as_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-as'),
+    #                 wast, '-o', wasm]
+    # if settings['DEBUG_LEVEL'] >= 2 or settings['PROFILING_FUNCS']:
+    #   wasm_as_args += ['-g']
+    #   if settings['DEBUG_LEVEL'] >= 4:
+    #     wasm_as_args += ['--source-map=' + wasm + '.map']
+    #     if not settings['SOURCE_MAP_BASE']:
+    #       logging.warn("Wasm source map won't be usable in a browser without --source-map-base")
+    #     else:
+    #       wasm_as_args += ['--source-map-url=' + settings['SOURCE_MAP_BASE'] + os.path.basename(settings['WASM_BINARY_FILE']) + '.map']
+    # logging.debug('  emscript: binaryen wasm-as: ' + ' '.join(wasm_as_args))
+    # shared.check_call(wasm_as_args)
 
   if DEBUG:
-    logging.debug('  emscript: binaryen s2wasm took %s seconds' % (time.time() - t))
+    logging.debug('  emscript: lld took %s seconds' % (time.time() - t))
     t = time.time()
-    shutil.copyfile(wast, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-s2wasm-output.wast'))
-  return wast
+    debug_copy(wast, 'emcc-s2wasm-output.wast')
+  return wasm, meta, wast
+
+
+def read_metadata_file_wasm(meta, wast, DEBUG):
+  metadata_raw = open(meta).read()
+
+  if DEBUG: logging.debug("METAraw %s", metadata_raw)
+  metadata = create_metadata_wasm(metadata_raw, wast)
+  if DEBUG: logging.debug(repr(metadata))
+  return metadata
 
 
 def create_metadata_wasm(metadata_raw, wast):
@@ -2001,12 +2041,13 @@ var establishStackSpace = Module['establishStackSpace'];
 
 def create_backend_args_wasm(infile, temp_s, settings):
   backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
-  args = [backend_compiler, infile, '-mtriple=wasm32-unknown-unknown-elf', '-filetype=asm',
-                  '-asm-verbose=false',
+  args = [backend_compiler, infile, '-mtriple={}'.format(shared.WASM_TARGET),
+                  # '-asm-verbose=false',
+                  '-filetype=obj',
                   '-o', temp_s]
   args += ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
   # disable slow and relatively unimportant optimization passes
-  args += ['-combiner-global-alias-analysis=false']
+  # args += ['-combiner-global-alias-analysis=false']
 
   # asm.js-style exception handling
   if settings['DISABLE_EXCEPTION_CATCHING'] != 1:

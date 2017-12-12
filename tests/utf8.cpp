@@ -21,6 +21,7 @@ int main() {
     var str = Module.UTF8ToString($0);
     Module.print(str);
     var numBytesWritten = Module.stringToUTF8(str, $1, $2);
+    Module.print('Wrote numbtypes' + numBytesWritten);
     if (numBytesWritten != 12) throw 'stringToUTF8 wrote an invalid length ' + numBytesWritten;
   }, asciiString, asciiString3, 128);
   assert(!strcmp(asciiString, asciiString3));
@@ -31,6 +32,14 @@ int main() {
     var str = Module.UTF8ToString($0);
     Module.print(str);
     var numBytesWritten = Module.stringToUTF8(str, $1, $2);
+    Module.print('Wrote numbtypes = ' + numBytesWritten +
+      '\n : ' + typeof numBytesWritten +
+      '\n : ' + (numBytesWritten == 69) +
+      '\n : ' + (numBytesWritten | 0) +
+      '\n : ' + (numBytesWritten === 69) +
+      '\n : ' + numBytesWritten.toFixed(10) +
+      '\n $'
+    );
     if (numBytesWritten != 69) throw 'stringToUTF8 wrote an invalid length ' + numBytesWritten;
   }, utf8String, utf8String2, 128);
   assert(strlen(utf8String) == strlen(utf8String2));

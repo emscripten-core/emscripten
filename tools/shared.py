@@ -887,7 +887,7 @@ except:
 
 # Target choice.
 ASM_JS_TARGET = 'asmjs-unknown-emscripten'
-WASM_TARGET = 'wasm32-unknown-unknown-elf'
+WASM_TARGET = 'wasm32-unknown-unknown-wasm'
 
 def check_vanilla():
   global LLVM_TARGET
