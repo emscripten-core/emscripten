@@ -645,9 +645,6 @@ class RunnerCore(unittest.TestCase):
     for engine in js_engines: assert type(engine) == list
     for engine in self.banned_js_engines: assert type(engine) == list
     js_engines = [engine for engine in js_engines if engine[0] not in [banned[0] for banned in self.banned_js_engines]]
-    if 'BINARYEN_METHOD="native-wasm"' in self.emcc_args:
-      # when testing native wasm support, must use a vm with support
-      js_engines = [engine for engine in js_engines if engine == SPIDERMONKEY_ENGINE or engine == V8_ENGINE]
     return js_engines
 
   def do_run_from_file(self, src, expected_output,
