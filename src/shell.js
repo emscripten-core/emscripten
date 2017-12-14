@@ -155,7 +155,9 @@ else if (ENVIRONMENT_IS_SHELL) {
 
   if (typeof quit === 'function') {
     Module['quit'] = function(status, toThrow) {
-      quit(status);
+      // In d8, calling quit in a promise causes deadlock. setTimeout gets
+      // around that: https://bugs.chromium.org/p/v8/issues/detail?id=7212#c1
+      setTimeout(function() { quit(status); });
     }
   }
 }

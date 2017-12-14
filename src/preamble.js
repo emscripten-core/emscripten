@@ -2249,6 +2249,15 @@ function integrateWasmJS() {
       }
     }
 
+    function isD8Shell() {
+      // d8 shell doesn't always resolve the WebAssembly.instantiate promise
+      // when exiting, so we need to call testRunner.waitUntilDone/.notifyDone,
+      // which only exist in d8
+      return (ENVIRONMENT_IS_SHELL && testRunner &&
+              typeof testRunner.waitUntilDone === 'function' &&
+              typeof testRunner.notifyDone === 'function');
+    }
+
 #if BINARYEN_ASYNC_COMPILATION
 #if RUNTIME_LOGGING
     Module['printErr']('asynchronously preparing wasm');
@@ -2266,6 +2275,9 @@ function integrateWasmJS() {
       assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
       trueModule = null;
 #endif
+      if (isD8Shell()) {
+        testRunner.notifyDone();
+      }
       receiveInstance(output['instance'], output['module']);
     }
     function instantiateArrayBuffer(receiver) {
@@ -2273,6 +2285,9 @@ function integrateWasmJS() {
         return WebAssembly.instantiate(binary, info);
       }).then(receiver).catch(function(reason) {
         Module['printErr']('failed to asynchronously prepare wasm: ' + reason);
+        if (isD8Shell()) {
+          testRunner.notifyDone();
+        }
         abort(reason);
       });
     }
@@ -2292,6 +2307,9 @@ function integrateWasmJS() {
         });
     } else {
       instantiateArrayBuffer(receiveInstantiatedSource);
+    }
+    if (isD8Shell()) {
+      testRunner.waitUntilDone();
     }
     return {}; // no exports yet; we'll fill them in later
 #else
