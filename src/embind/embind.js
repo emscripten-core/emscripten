@@ -182,25 +182,16 @@ var LibraryEmbind = {
   },
 
 
-  // from https://github.com/imvu/imvujs/blob/master/src/function.js
   $createNamedFunction__deps: ['$makeLegalFunctionName'],
-  $createNamedFunction: function(name, body) {
+  $createNamedFunction: function(name, func) {
     name = makeLegalFunctionName(name);
-#if NO_DYNAMIC_EXECUTION
-    return function() {
-      "use strict";
-      return body.apply(this, arguments);
+    // Non-standard Firefox feature
+    func.displayName = name;
+    // And this works in Chromium
+    func.toString = function () {
+      return 'function ' + name + ' () {}';
     };
-#else
-    /*jshint evil:true*/
-    return new Function(
-        "body",
-        "return function " + name + "() {\n" +
-        "    \"use strict\";" +
-        "    return body.apply(this, arguments);\n" +
-        "};\n"
-    )(body);
-#endif
+    return func;
   },
 
   embind_repr: function(v) {
