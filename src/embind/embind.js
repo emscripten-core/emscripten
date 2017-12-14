@@ -44,13 +44,6 @@ var LibraryEmbind = {
     Module['getLiveInheritedInstances'] = getLiveInheritedInstances;
     Module['flushPendingDeletes'] = flushPendingDeletes;
     Module['setDelayFunction'] = setDelayFunction;
-#if IN_TEST_HARNESS
-#if NO_DYNAMIC_EXECUTION
-    // Without dynamic execution, dynamically created functions will have no
-    // names. This lets the test suite know that.
-    Module['NO_DYNAMIC_EXECUTION'] = true;
-#endif
-#endif
   },
 
   $throwInternalError__deps: ['$InternalError'],
@@ -185,6 +178,10 @@ var LibraryEmbind = {
   $createNamedFunction__deps: ['$makeLegalFunctionName'],
   $createNamedFunction: function(name, func) {
     name = makeLegalFunctionName(name);
+    // Make code that relies on `.name` property happy
+    Object.defineProperty(func, 'name', {
+      value: name
+    });
     // Non-standard Firefox feature
     func.displayName = name;
     // And this works in Chromium
@@ -848,7 +845,7 @@ var LibraryEmbind = {
 
 #if NO_DYNAMIC_EXECUTION
     var argsWired = new Array(argCount - 2);
-    return function() {
+    return createNamedFunction(humanName, function() {
       if (arguments.length !== argCount - 2) {
         throwBindingError('function ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount - 2) + ' args!');
       }
@@ -887,7 +884,7 @@ var LibraryEmbind = {
       if (returns) {
         return argTypes[0].fromWireType(rv);
       }
-    };
+    });
 #else
     var argsList = "";
     var argsListWired = "";
