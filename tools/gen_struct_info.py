@@ -517,7 +517,7 @@ def main(args):
       header_files.append(header)
       data = parse_header(header, cpp_opts)
       structs.update(data['structs'])
-      defines.extend(data['defines'])
+      defines.update({k: 'i' for k in data['defines']})
   
   # Inspect all collected structs.
   struct_info = inspect_code(header_files, cpp_opts, structs, defines)
