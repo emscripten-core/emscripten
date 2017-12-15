@@ -7755,14 +7755,14 @@ int main() {
     sizes = {}
     # in -Os, -Oz, we remove imports wasm doesn't need
     for args, expected_len, expected_exists, expected_not_exists in [
-        ([],      24, ['abort', 'tempDoublePtr'], ['waka']),
-        (['-O1'], 21, ['abort', 'tempDoublePtr'], ['waka']),
-        (['-O2'], 21, ['abort', 'tempDoublePtr'], ['waka']),
-        (['-O3'], 16, ['abort'], ['tempDoublePtr', 'waka']), # in -O3, -Os and -Oz we metadce
-        (['-Os'], 16, ['abort'], ['tempDoublePtr', 'waka']),
-        (['-Oz'], 16, ['abort'], ['tempDoublePtr', 'waka']),
+        ([],      25, ['abort', 'tempDoublePtr'], ['waka']),
+        (['-O1'], 20, ['abort', 'tempDoublePtr'], ['waka']),
+        (['-O2'], 20, ['abort', 'tempDoublePtr'], ['waka']),
+        (['-O3'], 14, ['abort'], ['tempDoublePtr', 'waka']), # in -O3, -Os and -Oz we metadce
+        (['-Os'], 14, ['abort'], ['tempDoublePtr', 'waka']),
+        (['-Oz'], 14, ['abort'], ['tempDoublePtr', 'waka']),
         # finally, check what happens when we export pretty much nothing. wasm should be almost  empty
-        (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[]'], 9, ['abort'], ['tempDoublePtr', 'waka']),
+        (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[]'], 2, ['STACKTOP'], ['tempDoublePtr', 'waka']),
       ]:
       print(args, expected_len, expected_exists, expected_not_exists)
       subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'WASM=1', '-g2'])
@@ -7774,7 +7774,8 @@ int main() {
       relevant = js[start+2:end-2]
       relevant = relevant.replace(' ', '').replace('"', '').replace("'", '').split(',')
       sent = [x.split(':')[0].strip() for x in relevant]
-      assert len(sent) == expected_len, (len(sent), expected_len)
+      print('   seen: ' + str(sent))
+      assert len(sent) == expected_len, (expected_len, len(sent))
       for exists in expected_exists:
         assert exists in sent, [exists, sent]
       for not_exists in expected_not_exists:
