@@ -1085,6 +1085,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       else:
         options.js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
 
+      if shared.Settings.FORCE_FILESYSTEM:
+        # when the filesystem is forced, we export by default methods that filesystem usage
+        # may need, including filesystem usage from standalone file packager output (i.e.
+        # file packages not built together with emcc, but that are loaded at runtime
+        # separately, and they need emcc's output to contain the support they need)
+        shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+          'FS_createFolder',
+          'FS_createPath',
+          'FS_createDataFile',
+          'FS_createPreloadedFile',
+          'FS_createLazyFile',
+          'FS_createLink',
+          'FS_createDevice',
+          'FS_unlink',
+          'getMemory',
+        ]
+
       if shared.Settings.USE_PTHREADS:
         if shared.Settings.LINKABLE:
           exit_with_error('-s LINKABLE=1 is not supported with -s USE_PTHREADS>0!')

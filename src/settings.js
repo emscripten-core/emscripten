@@ -346,21 +346,12 @@ var EXPORTED_RUNTIME_METHODS = [ // Runtime elements that are exported on Module
                                  // is for any JS library element, and not just
                                  // methods. For example, we export the Runtime object
                                  // by having "Runtime" in this list.
-  'FS_createFolder',
-  'FS_createPath',
-  'FS_createDataFile',
-  'FS_createPreloadedFile',
-  'FS_createLazyFile',
-  'FS_createLink',
-  'FS_createDevice',
-  'FS_unlink',
   'Runtime',
   'ALLOC_NORMAL',
   'ALLOC_STACK',
   'ALLOC_STATIC',
   'ALLOC_DYNAMIC',
   'ALLOC_NONE',
-  'getMemory',
   'addRunDependency',
   'removeRunDependency',
 ];
