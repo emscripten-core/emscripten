@@ -1090,7 +1090,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # may need, including filesystem usage from standalone file packager output (i.e.
         # file packages not built together with emcc, but that are loaded at runtime
         # separately, and they need emcc's output to contain the support they need)
-        shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+        shared.Settings.EXPORTED_RUNTIME_METHODS += [
           'FS_createFolder',
           'FS_createPath',
           'FS_createDataFile',
