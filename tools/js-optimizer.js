@@ -1378,6 +1378,7 @@ function hasSideEffects(node) { // this is 99% incomplete!
       return false;
     }
     case 'conditional': return hasSideEffects(node[1]) || hasSideEffects(node[2]) || hasSideEffects(node[3]);
+    case 'function': case 'defun': return false;
     default: return true;
   }
 }
@@ -5995,8 +5996,6 @@ function ilog2(x) {
 
 // Converts functions into binary format to be run by an emterpreter
 function emterpretify(ast) {
-  emitAst = false;
-
   var EMTERPRETED_FUNCS = set(extraInfo.emterpretedFuncs);
   var EXTERNAL_EMTERPRETED_FUNCS = set(extraInfo.externalEmterpretedFuncs);
   var OPCODES = extraInfo.opcodes;
@@ -7930,6 +7929,141 @@ function AJSDCE(ast) {
   JSDCE(ast, /* multipleIterations= */ true);
 }
 
+function isAsmLibraryArgAssign(node) {
+  return node[0] === 'assign' && node[2][0] === 'dot'
+                              && node[2][1][0] === 'name' && node[2][1][1] === 'Module'
+                              && node[2][2] === 'asmLibraryArg';
+}
+
+function isAsmUse(node) {
+  return node[0] === 'sub' &&
+         ((node[1][0] === 'name' && node[1][1] === 'asm') || // asm['X']
+          (node[1][0] === 'sub' && node[1][1][0] === 'name' && node[1][1][1] === 'Module' && node[1][2][0] === 'string' && node[1][2][1] === 'asm')) && // Module
+         node[2][0] === 'string';
+}
+
+function isModuleUse(node) {
+  return node[0] === 'sub' &&
+         node[1][0] === 'name' && node[1][1] === 'Module' && // Module['X']
+         node[2][0] === 'string';
+}
+
+// Emit the DCE graph, to help optimize the combined JS+wasm.
+// This finds where JS depends on wasm, and where wasm depends
+// on JS, and prints that out.
+// TODO: full dependency/reachability analysis in JS
+function emitDCEGraph(ast) {
+  // The imports that wasm receives look like this:
+  //
+  //  Module.asmLibraryArg = { "abort": abort, "assert": assert, [..] };
+  //
+  // The exports are trickier, as they have a different form whether or not
+  // async compilation is enabled. It can be either:
+  //
+  //  var _malloc = Module["_malloc"] = asm["_malloc"];
+  //
+  // or
+  //
+  //  var _malloc = Module["_malloc"] = (function() {
+  //   return Module["asm"]["_malloc"].apply(null, arguments);
+  //  });
+  //
+  // Thus, one appearance of asm['malloc'] or Module['asm']['malloc'] is
+  // "free" - that is just receiving the export. And the same for
+  // Module['malloc']. We count other appearances
+  // of either _malloc or Module['_malloc'] or Module['asm']['_malloc'];
+  // if there are any, then the export appears to be used
+  // As mentioned in the TODO above, we should have full JS dependency
+  // analysis here, including scoping and so forth.
+
+  var imports = [];
+  var asmUses = {}; // uses of asm['X'] or Module['asm']['X']
+  var moduleUses = {}; // uses of Module['X']
+  var allUses = {}; // any use of X
+  traverse(ast, function(node, type) {
+    if (isAsmLibraryArgAssign(node)) {
+      var items = node[3][1];
+      items.forEach(function(item) {
+        imports.push(item[0]); // the value doesn't matter, for now
+      });
+    } else if (type === 'sub') {
+      if (isAsmUse(node)) {
+        var name = node[2][1];
+        if (!asmUses[name]) {
+          asmUses[name] = 1;
+        } else {
+          asmUses[name]++;
+        }
+      } else if (isModuleUse(node)) {
+        var name = node[2][1];
+        if (!moduleUses[name]) {
+          moduleUses[name] = 1;
+        } else {
+          moduleUses[name]++;
+        }
+      }
+    } else if (type === 'name') {
+      // Look, no scoping logic at all O.O
+      var name = node[1];
+      if (!allUses[name]) {
+        allUses[name] = 1;
+      } else {
+        allUses[name]++;
+      }
+    }
+  });
+  // create the output
+  var graph = [];
+  imports.forEach(function(name) {
+    graph.push({
+      'name': 'emcc$import$' + name,
+      'import': ['env', name]
+    });
+  });
+  for (var name in asmUses) {
+    var node = {
+      'name': 'emcc$export$' + name,
+      'export': name
+    };
+    // root it, if it is a root. a non-root has at most one asmUse
+    // and moduleUse respectively (the "free" ones, that is getting
+    // the export), and none other
+    var unused = asmUses[name] === 1 && moduleUses[name] === 1 && !(name in allUses);
+    if (!unused) {
+      node['root'] = true;
+    }
+    graph.push(node);
+  }
+  print(JSON.stringify(graph, null, ' '));
+}
+
+// Apply graph removals from running wasm-metadce
+function applyDCEGraphRemovals(ast) {
+  var unused = set(extraInfo.unused);
+
+  traverse(ast, function(node, type) {
+    if (isAsmLibraryArgAssign(node)) {
+      node[3][1] = node[3][1].filter(function(item) {
+        var name = item[0];
+        var value = item[1];
+        var full = 'emcc$import$' + name;
+        return !((full in unused) && !hasSideEffects(value));
+      });
+    } else if (type === 'assign') {
+      // when we assign to a thing we don't need, we can just remove the assign
+      var target = node[2];
+      if (isAsmUse(target) || isModuleUse(target)) {
+        var name = target[2][1];
+        var full = 'emcc$export$' + name;
+        var value = node[3];
+        if ((full in unused) && !hasSideEffects(value)) {
+          return ['name', 'undefined'];
+        }
+      }
+    }
+  });
+}
+
 function removeFuncs(ast) {
   assert(ast[0] === 'toplevel');
   var keep = set(extraInfo.keep);
@@ -7941,7 +8075,9 @@ function removeFuncs(ast) {
 
 // Passes table
 
-var minifyWhitespace = false, printMetadata = true, asm = false, asmPreciseF32 = false, emitJSON = false, last = false;
+var minifyWhitespace = false, printMetadata = true, asm = false,
+    asmPreciseF32 = false, emitJSON = false, last = false,
+    emitAst = true;
 
 var passes = {
   // passes
@@ -7977,6 +8113,8 @@ var passes = {
   asmLastOpts: asmLastOpts,
   JSDCE: JSDCE,
   AJSDCE: AJSDCE,
+  emitDCEGraph: emitDCEGraph,
+  applyDCEGraphRemovals: applyDCEGraphRemovals,
   removeFuncs: removeFuncs,
   noop: function() {},
 
@@ -7988,6 +8126,7 @@ var passes = {
   emitJSON: function() { emitJSON = true },
   receiveJSON: function() { }, // handled in a special way, before passes are run
   last: function() { last = true },
+  noEmitAst: function() { emitAst = false },
 };
 
 // Main
@@ -8020,8 +8159,6 @@ if (arguments_.indexOf('receiveJSON') < 0) {
 }
 //printErr('ast: ' + JSON.stringify(ast));
 
-var emitAst = true;
-
 arguments_.slice(1).forEach(function(arg) {
   passes[arg](ast);
 });
@@ -8046,7 +8183,5 @@ if (emitAst) {
   } else {
     print(JSON.stringify(ast));
   }
-} else {
-  //print('/* not printing ast */');
 }
 

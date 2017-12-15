@@ -246,10 +246,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         ([], lambda generated: 'Module["_dump"]' not in generated, 'dump is not exported by default'),
         (['-s', 'EXPORTED_FUNCTIONS=["_main", "_dump"]'], lambda generated: 'Module["_dump"]' in generated, 'dump is now exported'),
         (['--llvm-opts', '1'], lambda generated: '_puts(' in generated, 'llvm opts requested'),
-        ([], lambda generated: '// The Module object' in generated, 'without opts, comments in shell code'),
-        (['-O2'], lambda generated: '// The Module object' not in generated, 'with opts, no comments in shell code'),
-        (['-O2', '-g2'], lambda generated: '// The Module object' not in generated, 'with -g2, no comments in shell code'),
-        (['-O2', '-g3'], lambda generated: '// The Module object' in generated, 'with -g3, yes comments in shell code'),
+        ([], lambda generated: '// Sometimes an existing Module' in generated, 'without opts, comments in shell code'),
+        (['-O2'], lambda generated: '// Sometimes an existing Module' not in generated, 'with opts, no comments in shell code'),
+        (['-O2', '-g2'], lambda generated: '// Sometimes an existing Module' not in generated, 'with -g2, no comments in shell code'),
+        (['-O2', '-g3'], lambda generated: '// Sometimes an existing Module' in generated, 'with -g3, yes comments in shell code'),
       ]:
         print(params, text)
         self.clear()
@@ -1620,7 +1620,8 @@ int f() {
     ''')
     open(os.path.join(self.get_dir(), 'before.js'), 'w').write('''
       var MESSAGE = 'hello from js';
-      if (typeof Module != 'undefined') throw 'This code should run before anything else!';
+      // Module is initialized with empty object by default, so if there are no keys - nothing was run yet
+      if (Object.keys(Module).length) throw 'This code should run before anything else!';
     ''')
     open(os.path.join(self.get_dir(), 'after.js'), 'w').write('''
       Module.print(MESSAGE);
@@ -1975,6 +1976,10 @@ int f() {
        ['JSDCE']),
       (path_from_root('tests', 'optimizer', 'AJSDCE.js'), open(path_from_root('tests', 'optimizer', 'AJSDCE-output.js')).read(),
        ['AJSDCE']),
+      (path_from_root('tests', 'optimizer', 'emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'emitDCEGraph-output.js')).read(),
+       ['emitDCEGraph', 'noEmitAst']),
+      (path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals.js'), open(path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals-output.js')).read(),
+       ['applyDCEGraphRemovals']),
     ]:
       print(input, passes)
 
@@ -3027,7 +3032,6 @@ int main(void) {
 ''')
 
     open('pre.js', 'w').write(r'''
-if (typeof Module === 'undefined') Module = eval('(function() { try { return Module || {} } catch(e) { return {} } })()');
 if (!Module['preRun']) Module['preRun'] = [];
 Module["preRun"].push(function () {
     Module['addRunDependency']('test_run_dependency');
@@ -5809,8 +5813,9 @@ int main() {
           if not aborting: args += ['-s', 'ABORTING_MALLOC=0']
           print(args, pre_fail)
           check_execute(args)
-          output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
-          if (not aborting) or growth: # growth also disables aborting
+          manage_malloc = (not aborting) or growth # growth also disables aborting
+          output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=0 if manage_malloc else None)
+          if manage_malloc:
             # we should fail eventually, then free, then succeed
             self.assertContained('''managed another malloc!\n''', output)
           else:
@@ -6142,29 +6147,6 @@ main(int argc,char** argv)
     self.assertContained('Hello2', out)
     self.assertContained('hello1_val by hello1:3', out)
     self.assertContained('hello1_val by hello2:3', out)
-
-  def test_file_packager_eval(self):
-    BAD = 'Module = eval('
-    src = path_from_root('tests', 'hello_world.c')
-    open('temp.txt', 'w').write('temp')
-
-    # should emit eval only when emcc uses closure
-
-    Popen([PYTHON, EMCC, src, '--preload-file', 'temp.txt', '-O1']).communicate()
-    out = open('a.out.js').read()
-    assert BAD not in out, out[max(out.index(BAD)-80, 0) : min(out.index(BAD)+80, len(out)-1)]
-
-    Popen([PYTHON, EMCC, src, '--preload-file', 'temp.txt', '-O1', '--closure', '1']).communicate()
-    out = open('a.out.js').read()
-    assert BAD in out
-
-    # file packager defauls to the safe closure case
-
-    out, err = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'temp.txt'], stdout=PIPE, stderr=PIPE).communicate()
-    assert BAD in out
-
-    out, err = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'temp.txt', '--no-closure'], stdout=PIPE, stderr=PIPE).communicate()
-    assert BAD not in out, out[max(out.index(BAD)-80, 0) : min(out.index(BAD)+80, len(out)-1)]
 
   def test_debug_asmLastOpts(self):
     open('src.c', 'w').write(r'''
@@ -7768,6 +7750,35 @@ int main() {
         else:
           assert proc.returncode != 0, err
           assert 'hello, world!' not in out, out
+
+  def test_binaryen_metadce(self):
+    sizes = {}
+    # in -Os, -Oz, we remove imports wasm doesn't need
+    for args, expected_len, expected_exists, expected_not_exists in [
+        ([],      24, ['abort', 'tempDoublePtr'], ['waka']),
+        (['-O1'], 21, ['abort', 'tempDoublePtr'], ['waka']),
+        (['-O2'], 21, ['abort', 'tempDoublePtr'], ['waka']),
+        (['-O3'], 16, ['abort'], ['tempDoublePtr', 'waka']), # in -O3, -Os and -Oz we metadce
+        (['-Os'], 16, ['abort'], ['tempDoublePtr', 'waka']),
+        (['-Oz'], 16, ['abort'], ['tempDoublePtr', 'waka']),
+        # finally, check what happens when we export pretty much nothing. wasm should be almost  empty
+        (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[]'], 9, ['abort'], ['tempDoublePtr', 'waka']),
+      ]:
+      print(args, expected_len, expected_exists, expected_not_exists)
+      subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'WASM=1', '-g2'])
+      # find the imports we send from JS
+      js = open('a.out.js').read()
+      start = js.find('Module.asmLibraryArg = ')
+      end = js.find('}', start) + 1
+      start = js.find('{', start)
+      relevant = js[start+2:end-2]
+      relevant = relevant.replace(' ', '').replace('"', '').replace("'", '').split(',')
+      sent = [x.split(':')[0].strip() for x in relevant]
+      assert len(sent) == expected_len, (len(sent), expected_len)
+      for exists in expected_exists:
+        assert exists in sent, [exists, sent]
+      for not_exists in expected_not_exists:
+        assert not_exists not in sent, [not_exists, sent]
 
   # test disabling of JS FFI legalization
   def test_legalize_js_ffi(self):

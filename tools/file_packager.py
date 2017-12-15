@@ -19,9 +19,7 @@ Usage:
   --exclude E [F..] Specifies filename pattern matches to use for excluding given files from being added to the package.
                     See https://docs.python.org/2/library/fnmatch.html for syntax.
 
-  --no-closure In general, the file packager emits closure compiler-compatible code, which requires an eval().
-               With this flag passed, we avoid emitting the eval. emcc passes this flag by default whenever
-               it knows that closure is not run.
+  --from-emcc Indicate that `file_packager.py` was called from `emcc.py` and will be further processed by it, so some code generation can be skipped here
 
   --crunch=X Will compress dxt files to crn with quality level X. The crunch commandline tool must be present
              and CRUNCH should be defined in ~/.emscripten that points to it. JS crunch decompressing code will
@@ -32,6 +30,8 @@ Usage:
              unneeded computation.
 
   --js-output=FILE Writes output in FILE, if not specified, standard output is used.
+
+  --export-name=EXPORT_NAME Use custom export name (default is `Module`)
 
   --no-force Don't create output if no valid input file is specified.
 
@@ -98,15 +98,16 @@ AV_WORKAROUND = 0 # Set to 1 to randomize file order and add some padding, to wo
 
 data_files = []
 excluded_patterns = []
+export_name = 'Module'
 leading = ''
 has_preloaded = False
 compress_cnt = 0
 crunch = 0
 plugins = []
 jsoutput = None
-no_closure = False
+from_emcc = False
 force = True
-# If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally cache VFS XHR so that subsequent 
+# If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally cache VFS XHR so that subsequent
 # page loads can read the data from the offline cache instead.
 use_preload_cache = False
 indexeddb_name = 'EM_PRELOAD_CACHE'
@@ -151,8 +152,12 @@ for arg in sys.argv[2:]:
   elif arg.startswith('--js-output'):
     jsoutput = arg.split('=', 1)[1] if '=' in arg else None
     leading = ''
-  elif arg.startswith('--no-closure'):
-    no_closure = True
+  elif arg.startswith('--export-name'):
+    if '=' in arg:
+      export_name = arg.split('=', 1)[1]
+    leading = ''
+  elif arg.startswith('--from-emcc'):
+    from_emcc = True
     leading = ''
   elif arg.startswith('--crunch'):
     try:
@@ -170,7 +175,7 @@ for arg in sys.argv[2:]:
     mode = leading
     at_position = arg.replace('@@', '__').find('@') # position of @ if we're doing 'src@dst'. '__' is used to keep the index same with the original if they escaped with '@@'.
     uses_at_notation = (at_position != -1) # '@@' in input string means there is an actual @ character, a single '@' means the 'src@dst' notation.
-    
+
     if uses_at_notation:
       srcpath = arg[0:at_position].replace('@@', '@') # split around the @
       dstpath = arg[at_position+1:].replace('@@', '@')
@@ -191,17 +196,12 @@ if (not force) and len(data_files) == 0:
 if not has_preloaded or jsoutput == None:
   assert not separate_metadata, 'cannot separate-metadata without both --preloaded files and a specified --js-output'
 
-ret = '''
-var Module;
-'''
-if not no_closure:
-  ret += '''
-if (typeof Module === 'undefined') Module = eval('(function() { try { return Module || {} } catch(e) { return {} } })()');
-'''
-else:
-  ret += '''
-if (typeof Module === 'undefined') Module = {};
-'''
+ret = ''
+# emcc.py will add this to the output itself, so it is only needed for standalone calls
+if not from_emcc:
+  ret = '''
+var Module = typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {};
+''' % {"EXPORT_NAME": export_name}
 
 ret += '''
 if (!Module.expectedDataFileDownloads) {
@@ -223,7 +223,7 @@ code = '''
 def has_hidden_attribute(filepath):
   if sys.platform != 'win32':
     return False
-    
+
   try:
     attrs = ctypes.windll.kernel32.GetFileAttributesW(unicode(filepath))
     assert attrs != -1
@@ -237,7 +237,7 @@ def has_hidden_attribute(filepath):
 def should_ignore(fullname):
   if has_hidden_attribute(fullname):
     return True
-    
+
   for p in excluded_patterns:
     if fnmatch.fnmatch(fullname, p):
       return True
@@ -279,7 +279,7 @@ for file_ in data_files:
       new_data_files.append(file_)
 data_files = [file_ for file_ in new_data_files if not os.path.isdir(file_['srcpath'])]
 if len(data_files) == 0:
-  print('Nothing to do!', file=sys.stderr) 
+  print('Nothing to do!', file=sys.stderr)
   sys.exit(1)
 
 # Absolutize paths, and check that they make sense

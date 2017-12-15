@@ -31,7 +31,7 @@ if __name__ == '__main__':
 import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
 from subprocess import PIPE
 from tools import shared, jsrun, system_libs
-from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move, run_process
+from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move, run_process, asbytes
 from tools.response_file import read_response_file
 import tools.line_endings
 
@@ -107,6 +107,12 @@ def exit_with_error(message):
 
 class Intermediate(object):
   counter = 0
+# this method uses the global 'final' variable, which contains the current
+# final output file. if a method alters final, and calls this method, then it
+# must modify final globally (i.e. it can't receive final as a param and
+# return it)
+# TODO: refactor all this, a singleton that abstracts over the final output
+#       and saving of intermediates
 def save_intermediate(name=None, suffix='js'):
   name = os.path.join(shared.get_emscripten_temp_dir(), 'emcc-%d%s.%s' % (Intermediate.counter, '' if name is None else '-' + name, suffix))
   if isinstance(final, list):
@@ -114,7 +120,10 @@ def save_intermediate(name=None, suffix='js'):
     return
   shutil.copyfile(final, name)
   Intermediate.counter += 1
-
+def save_intermediate_with_wasm(name, wasm_binary):
+  save_intermediate(name) # save the js
+  name = os.path.join(shared.get_emscripten_temp_dir(), 'emcc-%d-%s.wasm' % (Intermediate.counter - 1, name))
+  shutil.copyfile(wasm_binary, name)
 
 class TimeLogger(object):
   last = time.time()
@@ -736,7 +745,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
         if not arg.startswith('-'):
           if not os.path.exists(arg):
-            exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
+            exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)' % (arg, arg))
 
           arg_ending = filename_type_ending(arg)
           if arg_ending.endswith(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
@@ -904,6 +913,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if key == 'EXPORTED_FUNCTIONS':
           # used for warnings in emscripten.py
           shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = original_exported_response or shared.Settings.EXPORTED_FUNCTIONS[:]
+
+      # Note the exports the user requested
+      shared.Building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
 
       # -s ASSERTIONS=1 implies the heaviest stack overflow check mode. Set the implication here explicitly to avoid having to
       # do preprocessor "#if defined(ASSERTIONS) || defined(STACK_OVERFLOW_CHECK)" in .js files, which is not supported.
@@ -1183,6 +1195,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.BINARYEN_PASSES:
             shared.Settings.BINARYEN_PASSES += ','
           shared.Settings.BINARYEN_PASSES += 'safe-heap'
+        # we will include the mem init data in the wasm, when we don't need the
+        # mem init file to be loadable by itself
+        shared.Settings.MEM_INIT_IN_WASM = 'asmjs' not in shared.Settings.BINARYEN_METHOD and \
+                                           'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD and \
+                                           not shared.Settings.USE_PTHREADS
 
       # wasm outputs are only possible with a side wasm
       if target.endswith(WASM_ENDINGS):
@@ -1599,7 +1616,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           options.no_heap_copy = True
 
         logging.debug('setting up files')
-        file_args = []
+        file_args = ['--from-emcc', '--export-name=' + shared.Settings.EXPORT_NAME]
         if len(options.preload_files) > 0:
           file_args.append('--preload')
           file_args += options.preload_files
@@ -1613,8 +1630,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           file_args.append('--use-preload-cache')
         if options.no_heap_copy:
           file_args.append('--no-heap-copy')
-        if not options.use_closure_compiler:
-          file_args.append('--no-closure')
         if shared.Settings.LZ4:
           file_args.append('--lz4')
         if options.use_preload_plugins:
@@ -1633,8 +1648,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if options.post_js:
             options.post_js = options.post_js.replace('\r\n', '\n')
         outfile = open(final, 'w')
-        outfile.write(options.pre_js)
-        outfile.write(src) # this may be large, don't join it to others
+        # pre-js code goes right after the Module integration code (so it
+        # can use Module), we have a marker for it
+        outfile.write(src.replace('// {{PRE_JSES}}', options.pre_js))
         outfile.write(options.post_js)
         outfile.close()
         options.pre_js = src = options.post_js = None
@@ -1678,7 +1694,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if not shared.Settings.BINARYEN or 'asmjs' in shared.Settings.BINARYEN_METHOD or 'interpret-asm2wasm' in shared.Settings.BINARYEN_METHOD:
             return 'memoryInitializer = "%s";' % shared.JS.get_subresource_location(memfile, embed_memfile(options))
           else:
-            return 'memoryInitializer = null;'
+            return ''
         src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
         open(final + '.mem.js', 'w').write(src)
         final += '.mem.js'
@@ -1833,7 +1849,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                     wasm_text_target, misc_temp_files, optimizer)
 
       if shared.Settings.MODULARIZE:
-        final = modularize(final)
+        modularize()
+
+      module_export_name_substitution()
 
       # The JS is now final. Move it to its final location
       shutil.move(final, js_target)
@@ -2249,6 +2267,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   # normally we emit binary, but for debug info, we might emit text first
   wrote_wasm_text = False
   debug_info = options.debug_level >= 2 or options.profiling_funcs
+  emit_symbol_map = options.emit_symbol_map or shared.Settings.CYBERDWARF
   # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
   if not shared.Settings.WASM_BACKEND:
     if DEBUG:
@@ -2266,8 +2285,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       cmd.append(shared.Building.opt_level_to_str(options.opt_level, options.shrink_level))
     # import mem init file if it exists, and if we will not be using asm.js as a binaryen method (as it needs the mem init file, of course)
     mem_file_exists = options.memory_init_file and os.path.exists(memfile)
-    ok_binaryen_method = 'asmjs' not in shared.Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD
-    import_mem_init = mem_file_exists and ok_binaryen_method
+    import_mem_init = mem_file_exists and shared.Settings.MEM_INIT_IN_WASM
     if import_mem_init:
       cmd += ['--mem-init=' + memfile]
       if not shared.Settings.RELOCATABLE:
@@ -2287,7 +2305,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--enable-threads']
     if debug_info:
       cmd += ['-g']
-    if options.emit_symbol_map or shared.Settings.CYBERDWARF:
+    if emit_symbol_map:
       cmd += ['--symbolmap=' + target + '.symbols']
     # we prefer to emit a binary, as it is more efficient. however, when we
     # want full debug info support (not just function names), then we must
@@ -2362,20 +2380,17 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     # minify the JS
     optimizer.do_minify() # calculate how to minify
     if optimizer.cleanup_shell or options.use_closure_compiler:
-      if DEBUG: save_intermediate('preclean', 'js')
-      # in -Os and -Oz, run AJSDCE (aggressive JS DCE, performs multiple iterations)
-      passes = ['noPrintMetadata', 'JSDCE' if options.shrink_level == 0 else 'AJSDCE', 'last']
-      if optimizer.minify_whitespace:
-        passes.append('minifyWhitespace')
-      misc_temp_files.note(final)
-      logging.debug('running cleanup on shell code: ' + ' '.join(passes))
-      final = shared.Building.js_optimizer_no_asmjs(final, passes)
-      if DEBUG: save_intermediate('postclean', 'js')
-      if options.use_closure_compiler:
-        logging.debug('running closure on shell code')
-        misc_temp_files.note(final)
-        final = shared.Building.closure_compiler(final, pretty=not optimizer.minify_whitespace)
-        if DEBUG: save_intermediate('postclosure', 'js')
+      if DEBUG:
+        save_intermediate_with_wasm('preclean', wasm_binary_target)
+      final = shared.Building.minify_wasm_js(js_file=final,
+                                             wasm_file=wasm_binary_target,
+                                             expensive_optimizations=options.opt_level >= 3 or options.shrink_level > 0,
+                                             minify_whitespace=optimizer.minify_whitespace,
+                                             use_closure_compiler=options.use_closure_compiler,
+                                             debug_info=debug_info,
+                                             emit_symbol_map=emit_symbol_map)
+      if DEBUG:
+        save_intermediate_with_wasm('postclean', wasm_binary_target)
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
     f = open(final, 'r')
@@ -2396,27 +2411,39 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     f.close()
 
 
-def modularize(final):
+def modularize():
+  global final
   logging.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
   src = open(final).read()
   final = final + '.modular.js'
   f = open(final, 'w')
+  # Included code may refer to Module (e.g. from file packager), so alias it
+  # Export the function as Node module, otherwise it is lost when loaded in Node.js or similar environments
   f.write('''var %(EXPORT_NAME)s = function(%(EXPORT_NAME)s) {
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
-  var Module = %(EXPORT_NAME)s; // included code may refer to Module (e.g. from file packager), so alias it
 
 %(src)s
 
   return %(EXPORT_NAME)s;
 };
-// Export the function if this is for Node (or similar UMD-style exporting), otherwise it is lost.
 if (typeof module === "object" && module.exports) {
   module['exports'] = %(EXPORT_NAME)s;
 };
 ''' % {"EXPORT_NAME": shared.Settings.EXPORT_NAME, "src": src})
   f.close()
   if DEBUG: save_intermediate('modularized', 'js')
-  return final
+
+
+def module_export_name_substitution():
+  global final
+  logging.debug('Private module export name substitution with ' + shared.Settings.EXPORT_NAME)
+  src = open(final).read()
+  final = final + '.module_export_name_substitution.js'
+  f = open(final, 'w')
+  replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": shared.Settings.EXPORT_NAME}
+  f.write(src.replace(shared.JS.module_export_name_substitution_pattern, replacement))
+  f.close()
+  if DEBUG: save_intermediate('module_export_name_substitution', 'js')
 
 
 def generate_html(target, options, js_target, target_basename,
@@ -2603,7 +2630,7 @@ def generate_html(target, options, js_target, target_basename,
   html = open(target, 'wb')
   html_contents = shell.replace('{{{ SCRIPT }}}', script.replacement())
   html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', options.output_eol)
-  html.write(html_contents.encode('utf-8'))
+  html.write(asbytes(html_contents))
   html.close()
 
 

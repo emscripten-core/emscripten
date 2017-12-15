@@ -2106,10 +2106,12 @@ function integrateWasmJS() {
     var oldView = new Int8Array(oldBuffer);
     var newView = new Int8Array(newBuffer);
 
+#if MEM_INIT_IN_WASM == 0
     // If we have a mem init file, do not trample it
     if (!memoryInitializer) {
       oldView.set(newView.subarray(Module['STATIC_BASE'], Module['STATIC_BASE'] + Module['STATIC_BUMP']), Module['STATIC_BASE']);
     }
+#endif
 
     newView.set(oldView);
     updateGlobalBuffer(newBuffer);
@@ -2209,7 +2211,7 @@ function integrateWasmJS() {
       'NaN': NaN,
       'Infinity': Infinity
     };
-    info['global.Math'] = global.Math;
+    info['global.Math'] = Math;
     info['env'] = env;
     // handle a generated wasm instance, receiving its exports and
     // performing other necessary setup
@@ -2431,7 +2433,9 @@ function integrateWasmJS() {
   // doesn't need to care that it is wasm or olyfilled wasm or asm.js.
 
   Module['asm'] = function(global, env, providedBuffer) {
+#if BINARYEN_METHOD != 'native-wasm'
     global = fixImports(global);
+#endif
     env = fixImports(env);
 
     // import table
