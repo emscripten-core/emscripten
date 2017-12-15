@@ -1976,6 +1976,10 @@ int f() {
        ['JSDCE']),
       (path_from_root('tests', 'optimizer', 'AJSDCE.js'), open(path_from_root('tests', 'optimizer', 'AJSDCE-output.js')).read(),
        ['AJSDCE']),
+      (path_from_root('tests', 'optimizer', 'emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'emitDCEGraph-output.js')).read(),
+       ['emitDCEGraph', 'noEmitAst']),
+      (path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals.js'), open(path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals-output.js')).read(),
+       ['applyDCEGraphRemovals']),
     ]:
       print(input, passes)
 
@@ -7663,6 +7667,35 @@ int main() {
         else:
           assert proc.returncode != 0, err
           assert 'hello, world!' not in out, out
+
+  def test_binaryen_metadce(self):
+    sizes = {}
+    # in -Os, -Oz, we remove imports wasm doesn't need
+    for args, expected_len, expected_exists, expected_not_exists in [
+        ([],      24, ['abort', 'tempDoublePtr'], ['waka']),
+        (['-O1'], 21, ['abort', 'tempDoublePtr'], ['waka']),
+        (['-O2'], 21, ['abort', 'tempDoublePtr'], ['waka']),
+        (['-O3'], 16, ['abort'], ['tempDoublePtr', 'waka']), # in -O3, -Os and -Oz we metadce
+        (['-Os'], 16, ['abort'], ['tempDoublePtr', 'waka']),
+        (['-Oz'], 16, ['abort'], ['tempDoublePtr', 'waka']),
+        # finally, check what happens when we export pretty much nothing. wasm should be almost  empty
+        (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[]'], 9, ['abort'], ['tempDoublePtr', 'waka']),
+      ]:
+      print(args, expected_len, expected_exists, expected_not_exists)
+      subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'WASM=1', '-g2'])
+      # find the imports we send from JS
+      js = open('a.out.js').read()
+      start = js.find('Module.asmLibraryArg = ')
+      end = js.find('}', start) + 1
+      start = js.find('{', start)
+      relevant = js[start+2:end-2]
+      relevant = relevant.replace(' ', '').replace('"', '').replace("'", '').split(',')
+      sent = [x.split(':')[0].strip() for x in relevant]
+      assert len(sent) == expected_len, (len(sent), expected_len)
+      for exists in expected_exists:
+        assert exists in sent, [exists, sent]
+      for not_exists in expected_not_exists:
+        assert not_exists not in sent, [not_exists, sent]
 
   # test disabling of JS FFI legalization
   def test_legalize_js_ffi(self):

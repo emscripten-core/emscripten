@@ -192,7 +192,7 @@ Module['callMain'] = function callMain(args) {
   argv = allocate(argv, 'i32', ALLOC_NORMAL);
 
 #if EMTERPRETIFY_ASYNC
-  var initialEmtStackTop = Module['asm'].emtStackSave();
+  var initialEmtStackTop = Module['asm']['emtStackSave']();
 #endif
 
   try {

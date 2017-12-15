@@ -150,9 +150,9 @@ def parse_backend_output(backend_output, DEBUG):
     logging.error('emscript: failure to parse metadata output from compiler backend. raw output is: \n' + metadata_raw)
     raise e
 
-  #if DEBUG: print >> sys.stderr, "FUNCS", funcs
-  #if DEBUG: print >> sys.stderr, "META", metadata
-  #if DEBUG: print >> sys.stderr, "meminit", mem_init
+  # functions marked llvm.used in the code are exports requested by the user
+  shared.Building.user_requested_exports += metadata['exports']
+
   return funcs, metadata, mem_init
 
 
@@ -597,11 +597,18 @@ def get_all_implemented(forwarded_json, metadata):
   return metadata['implementedFunctions'] + list(forwarded_json['Functions']['implementedFunctions'].keys()) # XXX perf?
 
 
+# Return the list of original exports, for error reporting. It may
+# be a response file, in which case, load it
+def get_original_exported_functions(settings):
+  ret = settings['ORIGINAL_EXPORTED_FUNCTIONS']
+  if ret[0] == '@':
+    ret = json.loads(open(ret[1:]).read())
+  return ret
+
+
 def check_all_implemented(all_implemented, pre, settings):
   if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
-    original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
-    if original_exports[0] == '@':
-      original_exports = json.loads(open(original_exports[1:]).read())
+    original_exports = get_original_exported_functions(settings)
     for requested in original_exports:
       if not is_already_implemented(requested, pre, all_implemented):
         # could be a js library func
@@ -1865,8 +1872,7 @@ def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata, se
       exported_implemented_functions.add(key)
 
   if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
-    original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
-    if original_exports[0] == '@': original_exports = json.loads(open(original_exports[1:]).read())
+    original_exports = get_original_exported_functions(settings)
     for requested in original_exports:
       # check if already implemented
       # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS \
@@ -2068,6 +2074,9 @@ def load_metadata(metadata_raw):
 
   # Initializers call the global var version of the export, so they get the mangled name.
   metadata['initializers'] = list(map(asmjs_mangle, metadata['initializers']))
+
+  # functions marked llvm.used in the code are exports requested by the user
+  shared.Building.user_requested_exports += metadata['exports']
 
   return metadata
 

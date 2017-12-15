@@ -787,7 +787,7 @@ if __name__ == '__main__':
 
   # process functions, generating bytecode
   with temp_files.get_file('.js') as temp:
-    shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES, 'ASYNC': ASYNC, 'PROFILING': PROFILING, 'ASSERTIONS': ASSERTIONS }, output_filename=temp, just_concat=True)
+    shared.Building.js_optimizer(infile, ['emterpretify', 'noEmitAst'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES, 'ASYNC': ASYNC, 'PROFILING': PROFILING, 'ASSERTIONS': ASSERTIONS }, output_filename=temp, just_concat=True)
     # load the module and modify it
     asm = asm_module.AsmModule(temp)
 
