@@ -560,7 +560,10 @@ class Ports(object):
 
   @staticmethod
   def erase():
-    shared.try_delete(Ports.get_dir())
+    dirname = Ports.get_dir()
+    shared.try_delete(dirname)
+    if os.path.exists(dirname):
+      logging.warning('could not delete ports dir %s - try to delete it manually' % dirname)
 
   @staticmethod
   def get_build_dir():
