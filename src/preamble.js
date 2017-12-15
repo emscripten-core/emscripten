@@ -2253,7 +2253,8 @@ function integrateWasmJS() {
       // d8 shell doesn't always resolve the WebAssembly.instantiate promise
       // when exiting, so we need to call testRunner.waitUntilDone/.notifyDone,
       // which only exist in d8
-      return (ENVIRONMENT_IS_SHELL && testRunner &&
+      return (ENVIRONMENT_IS_SHELL &&
+              typeof testRunner === 'object' &&
               typeof testRunner.waitUntilDone === 'function' &&
               typeof testRunner.notifyDone === 'function');
     }
@@ -2276,6 +2277,8 @@ function integrateWasmJS() {
       trueModule = null;
 #endif
       if (isD8Shell()) {
+        // Need to tell d8 that we're done waiting to run promise code, and can
+        // exit normally when everything else finishes.
         testRunner.notifyDone();
       }
       receiveInstance(output['instance'], output['module']);
@@ -2309,6 +2312,8 @@ function integrateWasmJS() {
       instantiateArrayBuffer(receiveInstantiatedSource);
     }
     if (isD8Shell()) {
+      // Need to use a workaround to keep the d8 shell alive until it can resolve
+      // the WebAssembly.instantiate promise.
       testRunner.waitUntilDone();
     }
     return {}; // no exports yet; we'll fill them in later
