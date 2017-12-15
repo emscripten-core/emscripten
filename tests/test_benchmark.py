@@ -148,7 +148,6 @@ process(sys.argv[1])
     ] + shared_args + emcc_args + self.extra_args
     if 'FORCE_FILESYSTEM=1' in cmd:
       cmd = [arg if arg != 'NO_FILESYSTEM=1' else 'NO_FILESYSTEM=0' for arg in cmd]
-    print(cmd)
     output = Popen(cmd, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
     assert os.path.exists(final), 'Failed to compile file: ' + output[0] + ' (looked for ' + final + ')'
     if self.binaryen_opts:
