@@ -4101,6 +4101,8 @@ Pass: 0.000012 0.000012''')
       print('closure 2')
       self.emcc_args += ['--closure', '2'] # Use closure 2 here for some additional coverage
 
+    #self.emcc_args += ['-s', 'FORCE_FILESYSTEM=1']
+
     print('base', self.emcc_args)
 
     post = '''
