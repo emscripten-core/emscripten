@@ -1822,12 +1822,16 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
     base_wasm = basename + '.lld.wasm'
     meta = basename + '.json'
     shared.check_call([lld_metadata, temp_o, '-o', meta])
+
+    libc_rt_lib = shared.Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
+    compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', wasm_rt_fail('wasm_compiler_rt.a'), 'a')
     shared.check_call([
       lld, '-flavor', 'wasm',
       '-z', '-stack-size=1048576',
       '--global-base=%s' % shared.Settings.GLOBAL_BASE,
       '--initial-memory=%s' % shared.Settings.TOTAL_MEMORY,
-      temp_o, '-o', base_wasm,
+      temp_o, libc_rt_lib, compiler_rt_lib,
+      '-o', base_wasm,
       '--entry=main',
       '--allow-undefined',
       '--import-memory',
@@ -2060,12 +2064,12 @@ def create_backend_args_wasm(infile, temp_s, settings):
   args += ['-enable-emscripten-sjlj']
   return args
 
+def wasm_rt_fail(archive_file):
+  def wrapped():
+    raise Exception('Expected {} to already be built'.format(archive_file))
+  return wrapped
 
 def create_s2wasm_args(temp_s):
-  def wasm_rt_fail(archive_file):
-    def wrapped():
-      raise Exception('Expected {} to already be built'.format(archive_file))
-    return wrapped
   compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', wasm_rt_fail('wasm_compiler_rt.a'), 'a')
   libc_rt_lib = shared.Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
 
