@@ -9,9 +9,13 @@ Not all changes are documented here. In particular, new features, user-oriented 
 
 Current Trunk
 -------------
+ - Meta-DCE for JS+wasm: remove unused code between JS+wasm more aggressively. This should not break valid code, but may break code that depended on unused code being kept around (like using a function from outside the emitted JS without exporting it - only exported things are guaranteed to be kept alive through optimization).
+
+v1.37.24: 12/13/2017
+--------------------
  - Breaking change: Similar to the getValue/setValue change from before (and with the same `ASSERTIONS` warnings to help users), do not export the following runtime methods by default: ccall, cwrap, allocate, Pointer_stringify, AsciiToString, stringToAscii, UTF8ArrayToString, UTF8ToString, stringToUTF8Array, stringToUTF8, lengthBytesUTF8, stackTrace, addOnPreRun, addOnInit, addOnPreMain, addOnExit, addOnPostRun, intArrayFromString, intArrayToString, writeStringToMemory, writeArrayToMemory, writeAsciiToMemory.
 
-v1.37.17: 12/4/2017
+v1.37.23: 12/4/2017
 -------------------
  - Breaking change: Do not polyfill Math.{clz32, fround, imul, trunc} by default. A new `LEGACY_VM_SUPPORT` option enables support for legacy browsers. In `ASSERTIONS` mode, a warning is shown if a polyfill was needed, suggesting using that option.
  - Breaking change: Do not export getValue/setValue runtime methods by default. You can still use them by calling them directly in code optimized with the main file (pre-js, post-js, js libraries; if the optimizer sees they are used, it preserves them), but if you try to use them on `Module` then you must export them by adding them to `EXTRA_EXPORTED_RUNTIME_METHODS`. In `-O0` or when `ASSERTIONS` is on, a run-time error message explains that, if they are attempted to be used incorrectly.
