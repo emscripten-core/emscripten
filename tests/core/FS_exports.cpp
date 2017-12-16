@@ -1,6 +1,12 @@
 #include<emscripten.h>
 
 int main() {
+#ifdef USE_FILES
+  if (fopen("nonexistend", "r")) {
+    puts("that was bad");
+    return 1;
+  }
+#endif
 #ifdef DIRECT
   EM_ASM({
     FS.createDataFile("/", "file.txt", [1, 2, 3]);

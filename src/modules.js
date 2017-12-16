@@ -271,10 +271,24 @@ var EXPORTED_RUNTIME_METHODS_SET = set(EXPORTED_RUNTIME_METHODS.concat(EXTRA_EXP
 EXPORTED_RUNTIME_METHODS = unset(EXPORTED_RUNTIME_METHODS_SET);
 EXTRA_EXPORTED_RUNTIME_METHODS = [];
 
+function isFSPrefixed(name) {
+  return name.substr(0, 3) === 'FS_';
+}
+
+// forcing the filesystem exports a few things by default
+function isExportedByForceFilesystem(name) {
+  return isFSPrefixed(name) || name === 'getMemory';
+}
+
 function maybeExport(name) {
   // if requested to be exported, export it
   if (name in EXPORTED_RUNTIME_METHODS_SET) {
-    return 'Module["' + name + '"] = ' + name + ';';
+    var exported = name;
+    if (isFSPrefixed(exported)) {
+      // this is a filesystem value, FS.x exported as FS_x
+      exported = 'FS.' + exported.substr(3);
+    }
+    return 'Module["' + name + '"] = ' + exported + ';';
   }
   // do not export it. but if ASSERTIONS, emit a
   // stub with an error, so the user gets a message
@@ -284,7 +298,10 @@ function maybeExport(name) {
     // (we could optimize this, but in ASSERTIONS mode code size doesn't
     // matter anyhow)
     var extra = '';
-    return 'if (!Module["' + name + '"]) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"' + extra + ') };';
+    if (isExportedByForceFilesystem(name)) {
+      extra = '. Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you';
+    }
+    return 'if (!Module["' + name + '"]) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") };';
   }
   return '';
 }
