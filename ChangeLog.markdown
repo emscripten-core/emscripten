@@ -9,6 +9,7 @@ Not all changes are documented here. In particular, new features, user-oriented 
 
 Current Trunk
 -------------
+ - Breaking change: Change `NO_EXIT_RUNTIME` to 1 by default. This means that by default we don't include code to shut down the runtime, flush stdio streams, run atexits, etc., which is better for code size. When `ASSERTIONS` is on, we warn at runtime if there is text buffered in the streams that should be flushed, or atexits are used.
  - Meta-DCE for JS+wasm: remove unused code between JS+wasm more aggressively. This should not break valid code, but may break code that depended on unused code being kept around (like using a function from outside the emitted JS without exporting it - only exported things are guaranteed to be kept alive through optimization).
 
 v1.37.24: 12/13/2017

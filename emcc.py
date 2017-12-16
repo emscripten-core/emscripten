@@ -479,7 +479,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code in strict mode. Code should use the define __EMSCRIPTEN__ instead.
       if not shared.Settings.STRICT:
         cmd += ['-DEMSCRIPTEN']
-    if use_js: cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'] # configure tests should fail when an undefined symbol exists
+    if use_js:
+      cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'] # configure tests should fail when an undefined symbol exists
+      cmd += ['-s', 'NO_EXIT_RUNTIME=0'] # configure tests want a more shell-like style, where we emit return codes on exit()
 
     logging.debug('just configuring: ' + ' '.join(cmd))
     if debug_configure: open(tempout, 'a').write('emcc, just configuring: ' + ' '.join(cmd) + '\n\n')
@@ -663,6 +665,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.emrun:
         options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
         options.post_js += open(shared.path_from_root('src', 'emrun_postjs.js')).read() + '\n'
+        # emrun mode waits on program exit
+        shared.Settings.NO_EXIT_RUNTIME = 0
 
       if options.cpu_profiler:
         options.post_js += open(shared.path_from_root('src', 'cpuprofiler.js')).read() + '\n'
@@ -1072,9 +1076,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if not shared.Settings.NO_FILESYSTEM and not shared.Settings.ONLY_MY_CODE:
         shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location'] # so FS can report errno back to C
-        if not shared.Settings.NO_EXIT_RUNTIME:
-          shared.Settings.EXPORTED_FUNCTIONS += ['_fflush'] # to flush the streams on FS quit
-                                                            # TODO this forces 4 syscalls, maybe we should avoid it?
+        # to flush streams on FS exit, we need to be able to call fflush
+        # we only include it if the runtime is exitable, or when ASSERTIONS
+        # (ASSERTIONS will check that streams do not need to be flushed,
+        # helping people see when they should have disabled NO_EXIT_RUNTIME)
+        if not shared.Settings.NO_EXIT_RUNTIME or shared.Settings.ASSERTIONS:
+          shared.Settings.EXPORTED_FUNCTIONS += ['_fflush']
 
       if shared.Settings.USE_PTHREADS:
         if not any(s.startswith('PTHREAD_POOL_SIZE=') for s in settings_changes):
@@ -1209,10 +1216,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if 'interpret' in shared.Settings.BINARYEN_METHOD:
             logging.warning('disabling EVAL_CTORS as the bundled interpreter confuses the ctor tool')
             shared.Settings.EVAL_CTORS = 0
-          else:
-            # for wasm, we really want no-exit-runtime, so that atexits don't stop us
-            if final_suffix in JS_CONTAINING_SUFFIXES and not shared.Settings.NO_EXIT_RUNTIME:
-              logging.warning('you should enable  -s NO_EXIT_RUNTIME=1  so that EVAL_CTORS can work at full efficiency (it gets rid of atexit calls which might disrupt EVAL_CTORS)')
 
       # memory growth does not work in dynamic linking, except for wasm
       if not shared.Settings.WASM and (shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE):
