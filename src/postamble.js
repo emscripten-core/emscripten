@@ -352,7 +352,7 @@ function exit(status, implicit) {
     Module['print'] = print;
     Module['printErr'] = printErr;
     if (has) {
-      Runtime.warnOnce('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0 (see the FAQ)');
+      Runtime.warnOnce('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0 (see the FAQ), or make sure to emit a newline when you printf etc.');
     }
   }
 #endif // NO_EXIT_RUNTIME
