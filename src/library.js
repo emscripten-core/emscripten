@@ -596,6 +596,11 @@ LibraryManager.library = {
   atexit__proxy: 'sync',
   atexit__sig: 'ii',
   atexit: function(func, arg) {
+#if ASSERTIONS
+#if NO_EXIT_RUNTIME == 1
+    Runtime.warnOnce('atexit() called, but NO_EXIT_RUNTIME is set, so atexits() will not be called. set NO_EXIT_RUNTIME to 0 (see the FAQ)');
+#endif
+#endif
     __ATEXIT__.unshift({ func: func, arg: arg });
   },
   __cxa_atexit: 'atexit',

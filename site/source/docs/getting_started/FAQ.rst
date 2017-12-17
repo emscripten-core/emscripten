@@ -230,7 +230,7 @@ Another option is to define an ``onRuntimeInitialized`` function,
 
   Module['onRuntimeInitialized'] = function() { ... };
 
-That method will be called when the runtime is ready and it is ok for you to call compiled code. In practice, that is exactly the same time at which ``main()`` would be called, so ``onRuntimeInitialized`` doesn't let you do anything new, but it can be convenient in some cases - for example, if you use ``onRuntimeInitialized`` and don't define a ``main()`` function, then the runtime will not be shut down after ``main()`` exits, and you can keep calling compiled methods (you can also have a ``main()`` and build with ``-s NO_EXIT_RUNTIME=1`` to keep the runtime from being shut down). Thus, for libraries, ``onRuntimeInitialized`` can be convenient.
+That method will be called when the runtime is ready and it is ok for you to call compiled code. In practice, that is exactly the same time at which ``main()`` would be called, so ``onRuntimeInitialized`` doesn't let you do anything new, but you can set it from JavaScript at runtime in a flexible way.
 
 Here is an example of how to use it:
 
@@ -247,6 +247,27 @@ Here is an example of how to use it:
 
 The crucial thing is that ``Module`` exists, and has the property ``onRuntimeInitialized``, before the script containing emscripten output (``my_project.js`` in this example) is loaded.
 
+
+.. _faq-NO_EXIT_RUNTIME:
+
+What does "exiting the runtime" mean? Why don't ``atexit()s`` run?
+==================================================================
+
+(You may need this answer if you see an error saying something like ``atexit() called, but NO_EXIT_RUNTIME`` or ``stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0``.)
+
+By default Emscripten sets ``NO_EXIT_RUNTIME=1``, which means that we don't include code to shut down the runtime. That means that when ``main()`` exits, we don't flush the stdio streams, or call the destructors of global C++ objects, or call ``atexit`` callbacks. This lets us emit smaller code by default, and is normally what you want on the web: even though ``main()`` exited, you may have something asynchronous happening later that you want to execute.
+
+In some cases, though, you may want a more "commandline" experience, where we do shut down the runtime when ``main()`` exits. You can build with ``-s NO_EXIT_RUNTIME=0``, and then we will call ``atexits`` and so forth. When you build with ``ASSERTIONS``, you should get a warning when you need this. For example, if your program prints something without a newline,
+
+::
+
+  #include <stdio.h>
+
+  int main() {
+    printf("hello"); // note no newline
+  }
+
+If we don't shut down the runtime and flush the stdio streams, "hello" won't be printed. In an ``ASSERTIONS`` build you'll get a notification saying ``stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0``.
 
 .. _faq-dead-code-elimination:
 
@@ -324,6 +345,14 @@ Emscripten by default does *not* give fatal errors on undefined symbols, so you 
 
 Aside from just forgetting to link in a necessary object file, one possible cause for this error is inline functions in headers. If you have a header with ``inline int my_func() { .. }`` then *Clang* may not actually inline the function (since inline is just a hint), and also not generate code for it (since it's in a header). The result is that the generated bitcode and JavaScript will not have that function implemented. One solution is to add ``static`` to the function declaration, which forces code to be generated in the object file: ``static inline int my_func() { .. }``.
 
+Why do I get ``TypeError: Module.someThing is not a function``?
+===============================================================
+
+The ``Module`` object will contain exported methods. For something to appear there, you should add it to ``EXPORTED_FUNCTIONS`` for compiled code, or ``EXTRA_EXPORTED_RUNTIME_METHODS`` for a runtime method (like ``getValue``).
+
+.. note:: You can use runtime methods directly, without exporting them, if the compiler can see them used. For example, you can use ``getValue`` in ``EM_ASM`` code, or a ``--pre-js``, by calling it directly. The optimizer will not remove that JS runtime method because it sees it is used. You only need to use ``Module.getValue`` if you want to call that method from outside the JS code the compiler can see, and then you need to export it.
+
+.. note:: Emscripten used to export many runtime methods by default. This increased code size, and for that reason we've changed that default. If you depend on something that used to be exported, you should see a warning pointing you to the solution, in an unoptimized build, or a build with ``ASSERTIONS`` enabled, which we hope will minimize any annoyance. See ``Changelog.markdown`` for details.
 
 Why do I get an odd python error complaining about libcxx.bc or libcxxabi.bc?
 =============================================================================

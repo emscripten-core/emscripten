@@ -779,7 +779,20 @@ var SyscallsLibrary = {
     return SYSCALLS.doReadv(stream, iov, iovcnt);
   },
 #if NO_FILESYSTEM
-  __syscall146__postset: '/* flush anything remaining in the buffer during shutdown */ __ATEXIT__.push(function() { var fflush = Module["_fflush"]; if (fflush) fflush(0); var printChar = ___syscall146.printChar; if (!printChar) return; var buffers = ___syscall146.buffers; if (buffers[1].length) printChar(1, {{{ charCode("\n") }}}); if (buffers[2].length) printChar(2, {{{ charCode("\n") }}}); });',
+  $flush_NO_FILESYSTEM: function() {
+    // flush anything remaining in the buffers during shutdown
+    var fflush = Module["_fflush"];
+    if (fflush) fflush(0);
+    var printChar = ___syscall146.printChar;
+    if (!printChar) return;
+    var buffers = ___syscall146.buffers;
+    if (buffers[1].length) printChar(1, {{{ charCode("\n") }}});
+    if (buffers[2].length) printChar(2, {{{ charCode("\n") }}});
+  },
+  __syscall146__deps: ['$flush_NO_FILESYSTEM'],
+#if NO_EXIT_RUNTIME == 0
+  __syscall146__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
+#endif
 #endif
   __syscall146: function(which, varargs) { // writev
 #if NO_FILESYSTEM == 0

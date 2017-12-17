@@ -138,7 +138,6 @@ process(sys.argv[1])
       OPTIMIZATIONS,
       '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
       '-s', 'TOTAL_MEMORY=256*1024*1024',
-      '-s', 'NO_EXIT_RUNTIME=1',
       '-s', 'NO_FILESYSTEM=1',
       '-s', 'EXPORTED_RUNTIME_METHODS=[]',
       '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),

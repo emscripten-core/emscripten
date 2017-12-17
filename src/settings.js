@@ -44,8 +44,12 @@ var VERBOSE = 0; // When set to 1, will generate more verbose output during comp
 var INVOKE_RUN = 1; // Whether we will run the main() function. Disable if you embed the generated
                     // code in your own, and will call main() yourself at the right time (which you
                     // can do with Module.callMain(), with an optional parameter of commandline args).
-var NO_EXIT_RUNTIME = 0; // If set, the runtime is not quit when main() completes (allowing code to
-                         // run afterwards, for example from the browser main event loop).
+var NO_EXIT_RUNTIME = 1; // If 1, the runtime is not quit when main() completes (allowing code to
+                         // run afterwards, for example from the browser main event loop). atexit()s
+                         // are also not executed, and we can avoid including code for runtime shutdown,
+                         // like flushing the stdio streams.
+                         // Set this to 0 if you do want atexit()s or stdio streams to be flushed
+                         // on exit.
 var MEM_INIT_METHOD = 0; // How to represent the initial memory content.
                          // 0: embed a base64 string literal representing the initial memory data
                          // 1: create a *.mem file containing the binary data of the initial memory;
