@@ -143,6 +143,9 @@ def parse_backend_output(backend_output, DEBUG):
   metadata_raw = backend_output[metadata_split+len(metadata_split_marker):]
   mem_init = backend_output[end_funcs+len(end_funcs_marker):metadata_split]
 
+  # we no longer use the "Runtime" object. TODO: stop emiting it in the backend
+  mem_init = mem_init.replace('Runtime.', '')
+
   try:
     #if DEBUG: print >> sys.stderr, "METAraw", metadata_raw
     metadata = json.loads(metadata_raw, object_pairs_hook=OrderedDict)

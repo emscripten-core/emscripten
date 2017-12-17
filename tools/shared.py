@@ -2483,7 +2483,7 @@ class FilenameReplacementStrings:
   ASMJS_CODE_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_ASMJS_CODE_FILE }}}'
 
 class JS(object):
-  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+Runtime\.GLOBAL_BASEHgb]+)\);'
+  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+\.GLOBAL_BASEHgb]+)\);'
   no_memory_initializer_pattern = '/\* no memory initializer \*/'
 
   memory_staticbump_pattern = 'STATICTOP = STATIC_BASE \+ (\d+);'
@@ -2596,7 +2596,7 @@ class JS(object):
     fnargs = ','.join(['a' + str(i) for i in range(1, len(sig))])
     args = 'index' + (',' if fnargs else '') + fnargs
     ret = '''function%s(%s) {
-    %sRuntime.functionPointers[index](%s);
+    %functionPointers[index](%s);
 }''' % ((' jsCall_' + sig) if named else '', args, 'return ' if sig[0] != 'v' else '', fnargs)
     return ret
 
