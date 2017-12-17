@@ -13,7 +13,9 @@ mergeInto(LibraryManager.library, {
   $FS__postset: 'FS.staticInit();' +
                 '__ATINIT__.unshift(function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() });' +
                 '__ATMAIN__.push(function() { FS.ignorePermissions = false });' +
-                '__ATEXIT__.push(function() { FS.quit() });',
+                '__ATEXIT__.push(function() { FS.quit() });' +
+                // Get module methods from settings
+                '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}',
   $FS: {
     root: null,
     mounts: [],
