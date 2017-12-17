@@ -2269,7 +2269,7 @@ class Building(object):
       if os.environ.get('EMCC_CLOSURE_ARGS'):
         args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
       logging.debug('closure compiler: ' + ' '.join(args))
-      process = run_process(args, stdout=PIPE, stderr=STDOUT)
+      process = run_process(args, stdout=PIPE, stderr=STDOUT, check=False)
       if process.returncode != 0 or not os.path.exists(filename + '.cc.js'):
         raise Exception('closure compiler error: ' + process.stdout + ' (rc: %d)' % process.returncode)
 

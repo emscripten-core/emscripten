@@ -378,8 +378,6 @@ def create_module(function_table_sigs, metadata, settings,
 
   asm_end = create_asm_end(exports, settings)
 
-  runtime_library_overrides = create_runtime_library_overrides(settings)
-
   module = [
     asm_start,
     temp_float,
@@ -389,7 +387,7 @@ def create_module(function_table_sigs, metadata, settings,
     start_funcs_marker
   ] + runtime_funcs + funcs_js + ['\n  ',
     pre_tables, final_function_tables, asm_end,
-    '\n', receiving, ';\n', runtime_library_overrides]
+    '\n', receiving, ';\n']
 
   if settings['SIDE_MODULE']:
     module.append('''
@@ -1598,25 +1596,6 @@ def create_asm_end(exports, settings):
 ''' % (exports,
        'Module' + access_quote('asmGlobalArg'),
        'Module' + access_quote('asmLibraryArg'))
-
-
-def create_runtime_library_overrides(settings):
-  overrides = []
-  if not settings.get('SIDE_MODULE'):
-    overrides += [
-      'stackAlloc',
-      'stackSave',
-      'stackRestore',
-      'establishStackSpace',
-    ]
-    if settings['SAFE_HEAP']:
-      overrides.append('setDynamicTop')
-
-  if not settings['RELOCATABLE']:
-    overrides += ['setTempRet0', 'getTempRet0']
-
-  lines = ["{0} = Module['{0}'];".format(func) for func in overrides]
-  return '\n'.join(lines)
 
 
 def create_first_in_asm(settings):

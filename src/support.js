@@ -2,9 +2,9 @@
 
 var STACK_ALIGN = {{{ STACK_ALIGN }}};
 
-// stack management and other functionality that is provided by the compiled code
-var stackSave, stackRestore, stackAlloc, setTempRet0, getTempRet0;
 #if ASSERTIONS
+// stack management, and other functionality that is provided by the compiled code,
+// should not be used before it is ready
 stackSave = stackRestore = stackAlloc = setTempRet0 = getTempRet0 = function() {
   abort('cannot use the stack before compiled code is ready to run, and has provided stack access');
 };
