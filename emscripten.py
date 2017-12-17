@@ -1215,8 +1215,6 @@ def create_basic_funcs(function_table_sigs, settings):
   if settings['ASSERTIONS']:
     for sig in function_table_sigs:
       basic_funcs += ['nullFunc_' + sig]
-  if settings['RELOCATABLE']:
-    basic_funcs += ['setTempRet0', 'getTempRet0']
 
   for sig in function_table_sigs:
     basic_funcs.append('invoke_%s' % sig)
@@ -1275,8 +1273,6 @@ def create_asm_runtime_funcs(settings):
   funcs = []
   if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
     funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', 'setThrew']
-  if not settings['RELOCATABLE']:
-    funcs += ['setTempRet0', 'getTempRet0']
   if settings['SAFE_HEAP']:
     funcs += ['setDynamicTop']
   if settings['ONLY_MY_CODE']:
