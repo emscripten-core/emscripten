@@ -572,6 +572,8 @@ Runtime.dynamicAlloc = unInline('dynamicAlloc', ['size'], false);
 Runtime.alignMemory = unInline('alignMemory', ['size', 'quantum'], true);
 Runtime.makeBigInt = unInline('makeBigInt', ['low', 'high', 'unsigned'], true);
 
+Runtime.POINTER_SIZE = 4;
+
 if (MAIN_MODULE || SIDE_MODULE) {
   Runtime.tempRet0 = 0;
   Runtime.getTempRet0 = function() {

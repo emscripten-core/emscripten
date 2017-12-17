@@ -714,10 +714,10 @@ mergeInto(LibraryManager.library, {
     function _callback(data) {
       try {
         if (event === 'error') {
-          var sp = Runtime.stackSave();
+          var sp = stackSave();
           var msg = allocate(intArrayFromString(data[2]), 'i8', ALLOC_STACK);
           Module['dynCall_viiii'](callback, data[0], data[1], msg, userData);
-          Runtime.stackRestore(sp);
+          stackRestore(sp);
         } else {
           Module['dynCall_vii'](callback, data, userData);
         }

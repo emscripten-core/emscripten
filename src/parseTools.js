@@ -1313,7 +1313,7 @@ function makeStructuralReturn(values, inAsm) {
   return 'return ' + asmCoercion(values.slice(1).map(function(value) {
     i++;
     if (!inAsm) {
-      return 'Runtime.setTempRet' + i + '(' + value + ')';
+      return 'setTempRet' + i + '(' + value + ')';
     }
     if (i === 0) {
       return makeSetTempRet0(value)

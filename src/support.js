@@ -240,7 +240,7 @@ function alignFunctionTables(module) {
     while (table.length < maxx) table.push(0);
   }
   return maxx;
-},
+}
 
 function registerFunctions(sigs, newModule) {
   sigs.forEach(function(sig) {
@@ -262,7 +262,7 @@ function registerFunctions(sigs, newModule) {
     assert(oldTable.length === maxx);
   });
   assert(maxx === alignFunctionTables()); // align the ones we didn't touch
-},
+}
 #endif
 
 var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
@@ -362,6 +362,30 @@ function prettyPrint(arg) {
   return arg;
 }
 #endif
+
+function makeBigInt(low, high, unsigned) {
+  return unsigned ? ((+((low>>>0)))+((+((high>>>0)))*4294967296.0)) : ((+((low>>>0)))+((+((high|0)))*4294967296.0));
+}
+
+function dynCall(sig, ptr, args) {
+  if (args && args.length) {
+#if ASSERTIONS
+    assert(args.length == sig.length-1);
+#endif
+#if ASSERTIONS
+    assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
+#endif
+    return Module['dynCall_' + sig].apply(null, [ptr].concat(args));
+  } else {
+#if ASSERTIONS
+    assert(sig.length == 1);
+#endif
+#if ASSERTIONS
+    assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
+#endif
+    return Module['dynCall_' + sig].call(null, ptr);
+  }
+}
 
 // The address globals begin at. Very low in memory, for code size and optimization opportunities.
 // Above 0 is static memory, starting with globals.

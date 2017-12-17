@@ -122,7 +122,7 @@ var LibraryBrowser = {
               b = new Blob([(new Uint8Array(byteArray)).buffer], { type: Browser.getMimetype(name) });
             }
           } catch(e) {
-            Runtime.warnOnce('Blob constructor present but fails: ' + e + '; falling back to blob builder');
+            warnOnce('Blob constructor present but fails: ' + e + '; falling back to blob builder');
           }
         }
         if (!b) {
@@ -743,9 +743,9 @@ var LibraryBrowser = {
     _file = PATH.resolve(FS.cwd(), _file);
     function doCallback(callback) {
       if (callback) {
-        var stack = Runtime.stackSave();
+        var stack = stackSave();
         Module['dynCall_vi'](callback, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK));
-        Runtime.stackRestore(stack);
+        stackRestore(stack);
       }
     }
     var destinationDirectory = PATH.dirname(_file);
@@ -817,9 +817,9 @@ var LibraryBrowser = {
 
         FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true, false);
         if (onload) {
-          var stack = Runtime.stackSave();
+          var stack = stackSave();
           Module['dynCall_viii'](onload, handle, arg, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK));
-          Runtime.stackRestore(stack);
+          stackRestore(stack);
         }
       } else {
         if (onerror) Module['dynCall_viii'](onerror, handle, arg, http.status);
@@ -1002,8 +1002,8 @@ var LibraryBrowser = {
 
   // TODO: currently not callable from a pthread, but immediately calls onerror() if not on main thread.
   emscripten_async_load_script: function(url, onload, onerror) {
-    onload = Runtime.getFuncWrapper(onload, 'v');
-    onerror = Runtime.getFuncWrapper(onerror, 'v');
+    onload = getFuncWrapper(onload, 'v');
+    onerror = getFuncWrapper(onerror, 'v');
 
 #if USE_PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
@@ -1251,7 +1251,7 @@ var LibraryBrowser = {
     Module['noExitRuntime'] = true;
 
     function wrapper() {
-      Runtime.getFuncWrapper(func, 'vi')(arg);
+      getFuncWrapper(func, 'vi')(arg);
     }
 
     if (millis >= 0) {
@@ -1272,7 +1272,7 @@ var LibraryBrowser = {
   emscripten_force_exit: function(status) {
 #if NO_EXIT_RUNTIME
 #if ASSERTIONS
-    Runtime.warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build has NO_EXIT_RUNTIME set');
+    warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build has NO_EXIT_RUNTIME set');
 #endif
 #endif
     Module['noExitRuntime'] = false;
@@ -1377,7 +1377,7 @@ var LibraryBrowser = {
     if (callback) {
       callbackId = info.callbacks.length;
       info.callbacks.push({
-        func: Runtime.getFuncWrapper(callback, 'viii'),
+        func: getFuncWrapper(callback, 'viii'),
         arg: arg
       });
       info.awaited++;
