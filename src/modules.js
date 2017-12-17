@@ -277,7 +277,6 @@ function isFSPrefixed(name) {
 
 // forcing the filesystem exports a few things by default
 function isExportedByForceFilesystem(name) {
-  if (!isFSPrefixed(name)) return false;
   return name === 'FS_createFolder' ||
          name === 'FS_createPath' ||
          name === 'FS_createDataFile' ||
