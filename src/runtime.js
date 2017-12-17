@@ -626,12 +626,6 @@ function reSign(value, bits, ignore) {
   return value;
 }
 
-// The address globals begin at. Very low in memory, for code size and optimization opportunities.
-// Above 0 is static memory, starting with globals.
-// Then the stack.
-// Then 'dynamic' memory for sbrk.
-Runtime.GLOBAL_BASE = {{{ GLOBAL_BASE }}};
-
 if (RETAIN_COMPILER_SETTINGS) {
   var blacklist = set('STRUCT_INFO');
   for (var x in this) {

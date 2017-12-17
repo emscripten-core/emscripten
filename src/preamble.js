@@ -1,5 +1,3 @@
-// {{PREAMBLE_ADDITIONS}}
-
 // === Preamble library stuff ===
 
 // Documentation for the public APIs defined in this file must be updated in:
@@ -9,22 +7,6 @@
 // You can also build docs locally as HTML or other formats in site/
 // An online HTML version (which may be of a different version of Emscripten)
 //    is up at http://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html
-
-//========================================
-// Runtime code shared with compiler
-//========================================
-
-{{RUNTIME}}
-
-#if RELOCATABLE
-Runtime.GLOBAL_BASE = Runtime.alignMemory(Runtime.GLOBAL_BASE, {{{ MAX_GLOBAL_ALIGN || 1 }}});
-#endif
-
-{{{ maybeExport('Runtime') }}}
-#if USE_CLOSURE_COMPILER
-Runtime['addFunction'] = Runtime.addFunction;
-Runtime['removeFunction'] = Runtime.removeFunction;
-#endif
 
 #if BENCHMARK
 Module.realPrint = Module.print;
@@ -134,14 +116,14 @@ var JSfuncs = {
   // be renamed by closure, instead it calls JSfuncs['stackSave'].body to find
   // out what the minified function name is.
   'stackSave': function() {
-    Runtime.stackSave()
+    stackSave()
   },
   'stackRestore': function() {
-    Runtime.stackRestore()
+    stackRestore()
   },
   // type conversion from js to c
   'arrayToC' : function(arr) {
-    var ret = Runtime.stackAlloc(arr.length);
+    var ret = stackAlloc(arr.length);
     writeArrayToMemory(arr, ret);
     return ret;
   },
@@ -150,7 +132,7 @@ var JSfuncs = {
     if (str !== null && str !== undefined && str !== 0) { // null string
       // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
       var len = (str.length << 2) + 1;
-      ret = Runtime.stackAlloc(len);
+      ret = stackAlloc(len);
       stringToUTF8(str, ret, len);
     }
     return ret;
@@ -171,7 +153,7 @@ function ccall (ident, returnType, argTypes, args, opts) {
     for (var i = 0; i < args.length; i++) {
       var converter = toC[argTypes[i]];
       if (converter) {
-        if (stack === 0) stack = Runtime.stackSave();
+        if (stack === 0) stack = stackSave();
         cArgs[i] = converter(args[i]);
       } else {
         cArgs[i] = args[i];
@@ -192,12 +174,12 @@ function ccall (ident, returnType, argTypes, args, opts) {
 #if EMTERPRETIFY_ASYNC
     if (opts && opts.async) {
       EmterpreterAsync.asyncFinalizers.push(function() {
-        Runtime.stackRestore(stack);
+        stackRestore(stack);
       });
       return;
     }
 #endif
-    Runtime.stackRestore(stack);
+    stackRestore(stack);
   }
   return ret;
 }
@@ -330,7 +312,7 @@ function allocate(slab, types, allocator, ptr) {
   if (allocator == ALLOC_NONE) {
     ret = ptr;
   } else {
-    ret = [typeof _malloc === 'function' ? _malloc : Runtime.staticAlloc, Runtime.stackAlloc, Runtime.staticAlloc, Runtime.dynamicAlloc][allocator === undefined ? ALLOC_STATIC : allocator](Math.max(size, singleType ? 1 : types.length));
+    ret = [typeof _malloc === 'function' ? _malloc : staticAlloc, stackAlloc, staticAlloc, dynamicAlloc][allocator === undefined ? ALLOC_STATIC : allocator](Math.max(size, singleType ? 1 : types.length));
   }
 
   if (zeroinit) {
@@ -361,10 +343,6 @@ function allocate(slab, types, allocator, ptr) {
   while (i < size) {
     var curr = slab[i];
 
-    if (typeof curr === 'function') {
-      curr = Runtime.getFunctionIndex(curr);
-    }
-
     type = singleType || types[i];
     if (type === 0) {
       i++;
@@ -380,7 +358,7 @@ function allocate(slab, types, allocator, ptr) {
 
     // no need to look up size unless type changes, so cache it
     if (previousType !== type) {
-      typeSize = Runtime.getNativeTypeSize(type);
+      typeSize = getNativeTypeSize(type);
       previousType = type;
     }
     i += typeSize;
@@ -392,8 +370,8 @@ function allocate(slab, types, allocator, ptr) {
 
 // Allocate memory during any stage of startup - static memory early on, dynamic memory later, malloc when ready
 function getMemory(size) {
-  if (!staticSealed) return Runtime.staticAlloc(size);
-  if (!runtimeInitialized) return Runtime.dynamicAlloc(size);
+  if (!staticSealed) return staticAlloc(size);
+  if (!runtimeInitialized) return dynamicAlloc(size);
   return _malloc(size);
 }
 {{{ maybeExport('getMemory') }}}
@@ -821,7 +799,7 @@ function demangle(func) {
   return func;
 #else // DEMANGLE_SUPPORT
 #if ASSERTIONS
-  Runtime.warnOnce('warning: build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling');
+  warnOnce('warning: build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling');
 #endif // ASSERTIONS
   return func;
 #endif // DEMANGLE_SUPPORT
@@ -1657,7 +1635,7 @@ function addOnPostRun(cb) {
 // to be secure from out of bounds writes.
 /** @deprecated */
 function writeStringToMemory(string, buffer, dontAddNull) {
-  Runtime.warnOnce('writeStringToMemory is deprecated and should not be called! Use stringToUTF8() instead!');
+  warnOnce('writeStringToMemory is deprecated and should not be called! Use stringToUTF8() instead!');
 
   var /** @type {number} */ lastChar, /** @type {number} */ end;
   if (dontAddNull) {
@@ -1890,7 +1868,7 @@ addOnPreRun(function() {
   function loadDynamicLibraries(libs) {
     if (libs) {
       libs.forEach(function(lib) {
-        Runtime.loadDynamicLibrary(lib);
+        loadDynamicLibrary(lib);
       });
     }
     if (Module['asm']['runPostSets']) {
