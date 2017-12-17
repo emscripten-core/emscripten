@@ -1111,6 +1111,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           'FS_createDevice',
           'FS_unlink',
           'getMemory',
+          'addRunDependency',
+          'removeRunDependency',
         ]
 
       if shared.Settings.USE_PTHREADS:

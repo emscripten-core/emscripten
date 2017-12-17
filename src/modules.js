@@ -272,12 +272,23 @@ EXPORTED_RUNTIME_METHODS = unset(EXPORTED_RUNTIME_METHODS_SET);
 EXTRA_EXPORTED_RUNTIME_METHODS = [];
 
 function isFSPrefixed(name) {
-  return name.substr(0, 3) === 'FS_';
+  return name.length > 3 && name[0] === 'F' && name[1] === 'S' && name[2] === '_';
 }
 
 // forcing the filesystem exports a few things by default
 function isExportedByForceFilesystem(name) {
-  return isFSPrefixed(name) || name === 'getMemory';
+  if (!isFSPrefixed(name)) return false;
+  return name === 'FS_createFolder' ||
+         name === 'FS_createPath' ||
+         name === 'FS_createDataFile' ||
+         name === 'FS_createPreloadedFile' ||
+         name === 'FS_createLazyFile' ||
+         name === 'FS_createLink' ||
+         name === 'FS_createDevice' ||
+         name === 'FS_unlink' ||
+         name === 'getMemory' ||
+         name === 'addRunDependency' ||
+         name === 'removeRunDependency';
 }
 
 function maybeExport(name) {

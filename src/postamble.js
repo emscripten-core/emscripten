@@ -4,7 +4,6 @@
 Module['asm'] = asm;
 
 {{{ maybeExport('FS') }}}
-{{{ maybeExport('GL') }}}
 {{{ maybeExport('FS_createFolder') }}}
 {{{ maybeExport('FS_createPath') }}}
 {{{ maybeExport('FS_createDataFile') }}}
@@ -13,6 +12,8 @@ Module['asm'] = asm;
 {{{ maybeExport('FS_createLink') }}}
 {{{ maybeExport('FS_createDevice') }}}
 {{{ maybeExport('FS_unlink') }}}
+
+{{{ maybeExport('GL') }}}
 
 #if MEM_INIT_IN_WASM == 0
 #if MEM_INIT_METHOD == 2
