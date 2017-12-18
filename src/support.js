@@ -387,6 +387,21 @@ function dynCall(sig, ptr, args) {
   }
 }
 
+#if RELOCATABLE
+// tempRet0 is normally handled in the module. but in relocatable code,
+// we need to share a single one among all the modules, so they all call
+// out.
+var tempRet0 = 0;
+
+function setTempRet0(value) {
+  tempRet0 = value;
+}
+
+function getTempRet0() {
+  return tempRet0;
+}
+#endif // RELOCATABLE
+
 // The address globals begin at. Very low in memory, for code size and optimization opportunities.
 // Above 0 is static memory, starting with globals.
 // Then the stack.
