@@ -5027,7 +5027,7 @@ main(const int argc, const char * const * const argv)
       self.assertContained(has, src)
       self.assertNotContained(not_has, src)
 
-    test([], 'Module["addRunDependency', 'Module["waka')
+    test([], 'Module["', 'Module["waka')
     test(['-s', 'EXPORTED_RUNTIME_METHODS=[]'], '', 'Module["addRunDependency')
     test(['-s', 'EXPORTED_RUNTIME_METHODS=["addRunDependency"]'], 'Module["addRunDependency', 'Module["waka')
     test(['-s', 'EXPORTED_RUNTIME_METHODS=[]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["addRunDependency"]'], 'Module["addRunDependency', 'Module["waka')
