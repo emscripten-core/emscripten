@@ -2596,7 +2596,7 @@ class JS(object):
     fnargs = ','.join(['a' + str(i) for i in range(1, len(sig))])
     args = 'index' + (',' if fnargs else '') + fnargs
     ret = '''function%s(%s) {
-    %functionPointers[index](%s);
+    %sfunctionPointers[index](%s);
 }''' % ((' jsCall_' + sig) if named else '', args, 'return ' if sig[0] != 'v' else '', fnargs)
     return ret
 
