@@ -2340,11 +2340,11 @@ class Building(object):
     cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-metadce'), '--graph-file=' + temp, wasm_file, '-o', wasm_file]
     if debug_info:
       cmd += ['-g']
-    out = subprocess.check_output(cmd)
+    out = run_process(cmd, stdout=PIPE).stdout
     # find the unused things in js
     unused = []
     PREFIX = 'unused: '
-    for line in out.split(os.linesep):
+    for line in out.split('\n'):
       if line.startswith(PREFIX):
         name = line.replace(PREFIX, '').strip()
         unused.append(name)
