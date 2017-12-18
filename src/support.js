@@ -436,6 +436,13 @@ var getTempRet0 = function() {
 }
 #endif // RELOCATABLE
 
+// FIXME backwards compatibility layer for ports. Support some Runtime.*
+//       for now, fix it there, then remove it from here. That way we
+//       can minimize any period of breakage.
+var Runtime = {
+  dynCall: dynCall // for SDL2 port
+};
+
 // The address globals begin at. Very low in memory, for code size and optimization opportunities.
 // Above 0 is static memory, starting with globals.
 // Then the stack.
