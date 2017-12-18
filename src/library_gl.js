@@ -7275,7 +7275,7 @@ var LibraryGL = {
   glTexCoord3f: function() { throw 'glTexCoord3f: TODO' },
   glGetTexLevelParameteriv: function() { throw 'glGetTexLevelParameteriv: TODO' },
 
-  glShadeModel: function() { Runtime.warnOnce('TODO: glShadeModel') },
+  glShadeModel: function() { warnOnce('TODO: glShadeModel') },
 
   // Open GLES1.1 compatibility
 
