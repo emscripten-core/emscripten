@@ -2505,7 +2505,7 @@ class JS(object):
       f = open(path, 'rb')
       data = base64.b64encode(f.read())
       f.close()
-      return 'data:application/octet-stream;base64,' + data
+      return 'data:application/octet-stream;base64,' + asstr(data)
     else:
       return os.path.basename(path)
 
@@ -2696,6 +2696,16 @@ class WebAssembly(object):
     f.write(wasm[8:]) # copy rest of binary
     f.close()
     return wso
+
+# Python 2-3 compatibility helper function:
+# Converts a string to the native str type.
+def asstr(s):
+  if str is bytes:
+    if isinstance(s, unicode):
+      return s.encode('utf-8')
+  elif isinstance(s, bytes):
+      return s.decode('utf-8')
+  return s
 
 def asbytes(s):
   if str is bytes:

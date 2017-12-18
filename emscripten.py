@@ -21,7 +21,7 @@ from collections import OrderedDict
 from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
 from tools.response_file import read_response_file
-from tools.shared import WINDOWS
+from tools.shared import WINDOWS, asstr
 
 __rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
@@ -619,7 +619,7 @@ def is_already_implemented(requested, pre, all_implemented):
   is_implemented = requested in all_implemented
   # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS
   is_exception = requested == '_malloc'
-  in_pre = ('function ' + requested.encode('utf-8')) in pre
+  in_pre = ('function ' + asstr(requested)) in pre
   return is_implemented or is_exception or in_pre
 
 def get_exported_implemented_functions(all_exported_functions, all_implemented, metadata, settings):
@@ -681,13 +681,13 @@ def include_asm_consts(pre, forwarded_json, metadata, settings):
     asm_const_funcs.append(r'''
 function _emscripten_asm_const_%s(%s) {
 %s  return ASM_CONSTS[code](%s);
-}''' % (call_type + sig.encode('utf-8'), ', '.join(all_args), proxy_to_main_thread, ', '.join(args)))
+}''' % (call_type + asstr(sig), ', '.join(all_args), proxy_to_main_thread, ', '.join(args)))
 
   asm_consts_text = '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n'
   asm_funcs_text = '\n'.join(asm_const_funcs) + '\n'
 
   body_marker = '// === Body ==='
-  return pre.replace(body_marker, body_marker + '\n' + asm_consts_text + asm_funcs_text.encode('utf-8'))
+  return pre.replace(body_marker, body_marker + '\n' + asm_consts_text + asstr(asm_funcs_text))
 
 # Test if the parentheses at body[openIdx] and body[closeIdx] are a match to each other.
 def parentheses_match(body, openIdx, closeIdx):
@@ -717,7 +717,7 @@ def all_asm_consts(metadata):
   all_sigs = []
   all_call_types = []
   for k, v in metadata['asmConsts'].items():
-    const = v[0].encode('utf-8')
+    const = asstr(v[0])
     sigs = v[1]
     call_types = v[2] if len(v) >= 3 else None
     const = trim_asm_const_body(const)
@@ -1878,7 +1878,7 @@ def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata, se
       # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS \
       if requested not in all_implemented and \
          requested != '_malloc' and \
-         (('function ' + requested.encode('utf-8')) not in pre): # could be a js library func
+         (('function ' + asstr(requested)) not in pre): # could be a js library func
         logging.warning('function requested to be exported, but not implemented: "%s"', requested)
 
   return exported_implemented_functions
@@ -1887,7 +1887,7 @@ def create_asm_consts_wasm(forwarded_json, metadata):
   asm_consts = [0]*len(metadata['asmConsts'])
   all_sigs = []
   for k, v in metadata['asmConsts'].items():
-    const = v[0].encode('utf-8')
+    const = asstr(v[0])
     sigs = v[1]
     const = trim_asm_const_body(const)
     const = '{ ' + const + ' }'
@@ -1907,7 +1907,7 @@ def create_asm_consts_wasm(forwarded_json, metadata):
     asm_const_funcs.append(r'''
 function _emscripten_asm_const_%s(%s) {
 return ASM_CONSTS[code](%s);
-}''' % (sig.encode('utf-8'), ', '.join(all_args), ', '.join(args)))
+}''' % (asstr(sig), ', '.join(all_args), ', '.join(args)))
 
   return asm_consts, asm_const_funcs
 
@@ -2164,9 +2164,7 @@ def main(args, compiler_engine, cache, temp_files, DEBUG):
   for setting in args.settings:
     name, value = setting.strip().split('=', 1)
     value = json.loads(value)
-    if isinstance(value, unicode):
-      value = value.encode('utf8')
-    settings[name] = value
+    settings[name] = asstr(value)
 
   # libraries
   libraries = args.libraries[0].split(',') if len(args.libraries) > 0 else []
