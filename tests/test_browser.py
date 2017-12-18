@@ -2194,12 +2194,12 @@ void *getBindBuffer() {
 
   def test_emrun_info(self):
     if not has_browser(): return self.skip('need a browser')
-    result = subprocess.check_output([PYTHON, path_from_root('emrun'), '--system_info', '--browser_info'])
+    result = run_process([PYTHON, path_from_root('emrun'), '--system_info', '--browser_info'], stdout=PIPE).stdout
     assert 'CPU' in result
     assert 'Browser' in result
     assert 'Traceback' not in result
 
-    result = subprocess.check_output([PYTHON, path_from_root('emrun'), '--list_browsers'])
+    result = run_process([PYTHON, path_from_root('emrun'), '--list_browsers'], stdout=PIPE).stdout
     assert 'Traceback' not in result
 
   # Deliberately named as test_zzz_emrun to make this test the last one

@@ -1815,7 +1815,7 @@ int main() {
   @no_emterpreter
   def test_biggerswitch(self):
     num_cases = 20000
-    switch_case, err = Popen([PYTHON, path_from_root('tests', 'gen_large_switchcase.py'), str(num_cases)], stdout=PIPE, stderr=PIPE).communicate()
+    switch_case = run_process([PYTHON, path_from_root('tests', 'gen_large_switchcase.py'), str(num_cases)], stdout=PIPE, stderr=PIPE).stdout
     self.do_run(switch_case, '''58996: 589965899658996
 59297: 592975929759297
 59598: default
@@ -5147,8 +5147,7 @@ return malloc(size);
   @SIMD
   def test_sse1_full(self):
     Popen([CLANG, path_from_root('tests', 'test_sse1_full.cpp'), '-o', 'test_sse1_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE).communicate()
-    native_result, err = Popen('./test_sse1_full', stdout=PIPE).communicate()
-    native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
+    native_result = run_process('./test_sse1_full', stdout=PIPE).stdout
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     orig_args = self.emcc_args
@@ -5169,8 +5168,7 @@ return malloc(size);
     args = []
     if '-O0' in self.emcc_args: args += ['-D_DEBUG=1']
     Popen([CLANG, path_from_root('tests', 'test_sse2_full.cpp'), '-o', 'test_sse2_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + args + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE).communicate()
-    native_result, err = Popen('./test_sse2_full', stdout=PIPE).communicate()
-    native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
+    native_result = run_process('./test_sse2_full', stdout=PIPE).stdout
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     orig_args = self.emcc_args
@@ -5186,8 +5184,7 @@ return malloc(size);
     args = []
     if '-O0' in self.emcc_args: args += ['-D_DEBUG=1']
     Popen([CLANG, path_from_root('tests', 'test_sse3_full.cpp'), '-o', 'test_sse3_full', '-D_CRT_SECURE_NO_WARNINGS=1', '-msse3'] + args + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE).communicate()
-    native_result, err = Popen('./test_sse3_full', stdout=PIPE).communicate()
-    native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
+    native_result = run_process('./test_sse3_full', stdout=PIPE).stdout
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     orig_args = self.emcc_args
@@ -5200,8 +5197,7 @@ return malloc(size);
     args = []
     if '-O0' in self.emcc_args: args += ['-D_DEBUG=1']
     Popen([CLANG, path_from_root('tests', 'test_ssse3_full.cpp'), '-o', 'test_ssse3_full', '-D_CRT_SECURE_NO_WARNINGS=1', '-mssse3'] + args + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE).communicate()
-    native_result, err = Popen('./test_ssse3_full', stdout=PIPE).communicate()
-    native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
+    native_result = run_process('./test_ssse3_full', stdout=PIPE).stdout
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     orig_args = self.emcc_args
@@ -5214,8 +5210,7 @@ return malloc(size);
     args = []
     if '-O0' in self.emcc_args: args += ['-D_DEBUG=1']
     Popen([CLANG, path_from_root('tests', 'test_sse4_1_full.cpp'), '-o', 'test_sse4_1_full', '-D_CRT_SECURE_NO_WARNINGS=1', '-msse4.1'] + args + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE).communicate()
-    native_result, err = Popen('./test_sse4_1_full', stdout=PIPE).communicate()
-    native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
+    native_result = run_process('./test_sse4_1_full', stdout=PIPE).stdout
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     orig_args = self.emcc_args
@@ -5872,7 +5867,7 @@ def process(filename):
   # Autodebug the code
   def do_autodebug(self, filename):
     Building.llvm_dis(filename)
-    output = Popen([PYTHON, AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
+    output = run_process([PYTHON, AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).stdout
     assert 'Success.' in output, output
     self.prep_ll_run(filename, filename+'.o.ll.ll', force_recompile=True) # rebuild .bc # TODO: use code in do_autodebug_post for this
 
@@ -5884,7 +5879,7 @@ def process(filename):
       return True
     print('Autodebugging during post time')
     delattr(self, 'post')
-    output = Popen([PYTHON, AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
+    output = run_process([PYTHON, AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).stdout
     assert 'Success.' in output, output
     shutil.copyfile(filename + '.o.ll.ll', filename + '.o.ll')
     Building.llvm_as(filename)
