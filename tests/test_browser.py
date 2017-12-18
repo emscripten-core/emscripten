@@ -2272,8 +2272,8 @@ void *getBindBuffer() {
     open('pre.js', 'w').write(r'''
 if (!Module['preRun']) Module['preRun'] = [];
 Module["preRun"].push(function () {
-    Module['addRunDependency']('test_run_dependency');
-    Module['removeRunDependency']('test_run_dependency');
+  addRunDependency('test_run_dependency');
+  removeRunDependency('test_run_dependency');
 });
 ''')
 
