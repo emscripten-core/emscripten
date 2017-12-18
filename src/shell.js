@@ -140,7 +140,9 @@ if (ENVIRONMENT_IS_NODE) {
   // Currently node will swallow unhandled rejections, but this behavior is
   // deprecated, and in the future it will exit with error status.
   process['on']('unhandledRejection', function(reason, p) {
+#if ASSERTIONS
     Module['printErr']('node.js exiting due to unhandled promise rejection');
+#endif
     process['exit'](1);
   });
 
