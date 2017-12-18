@@ -334,6 +334,8 @@ Functions
 	
 	The difference is that ``emscripten_force_exit`` will shut down the runtime even if you previously called :c:func:`emscripten_exit_with_live_runtime` or otherwise kept the runtime alive. In other words, this method gives you the option to completely shut down the runtime after it was kept alive beyond the completion of ``main()``.
 
+	Note that if ``NO_EXIT_RUNTIME`` is set (which it is by default) then the runtime cannot be shut down, as we do not include the code to do so. Build with ``-s NO_EXIT_RUNTIME=0`` if you want to be able to exit the runtime.
+
 	:param int status: The same as for the *libc* function `exit() <http://linux.die.net/man/3/exit>`_.
 
 .. c:function:: double emscripten_get_device_pixel_ratio(void)

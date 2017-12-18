@@ -1,11 +1,11 @@
 var defun = (function() {
-});
+})();
 var name = (function() {
-});
+})();
 var object = (function() {
-});
+})();
 var non_reserved = (function() {
-});
+})();
 function func_1() {
 }
 function func_2() {

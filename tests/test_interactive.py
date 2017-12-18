@@ -39,10 +39,10 @@ class interactive(BrowserCore):
     self.btest(path_from_root('tests', 'sdl_touch.c'), args=['-O2', '-g1', '--closure', '1'], expected='0')
 
   def test_sdl_wm_togglefullscreen(self):
-    self.btest('sdl_wm_togglefullscreen.c', expected='1', args=['-s', 'NO_EXIT_RUNTIME=1'])
+    self.btest('sdl_wm_togglefullscreen.c', expected='1')
 
   def test_sdl2_togglefullscreen(self):
-    self.btest('sdl_togglefullscreen.c', expected='1', args=['-s', 'USE_SDL=2', '-s', 'NO_EXIT_RUNTIME=1'])
+    self.btest('sdl_togglefullscreen.c', expected='1', args=['-s', 'USE_SDL=2'])
 
   def test_sdl_audio(self):
     shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
@@ -147,7 +147,7 @@ class interactive(BrowserCore):
     self.btest('openal_playback.cpp', '1', args=['-DTEST_AL_SOFT_SOURCE_SPATIALIZE=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_capture(self):
-    self.btest('openal_capture.c', expected='0', args=['-s', 'NO_EXIT_RUNTIME=1'])
+    self.btest('openal_capture.c', expected='0')
 
   def get_freealut_library(self):
     if WINDOWS and Building.which('cmake'):
@@ -169,16 +169,16 @@ class interactive(BrowserCore):
     self.btest('test_glfw_dropfile.c', expected='1', args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'])
 
   def test_glfw_fullscreen(self):
-    self.btest('test_glfw_fullscreen.c', expected='1', args=['-s', 'NO_EXIT_RUNTIME=1', '-s', 'USE_GLFW=3'])
+    self.btest('test_glfw_fullscreen.c', expected='1', args=['-s', 'USE_GLFW=3'])
 
   def test_glfw_get_key_stuck(self):
-    self.btest('test_glfw_get_key_stuck.c', expected='1', args=['-s', 'NO_EXIT_RUNTIME=1', '-s', 'USE_GLFW=3'])
+    self.btest('test_glfw_get_key_stuck.c', expected='1', args=['-s', 'USE_GLFW=3'])
 
   def test_glfw_joystick(self):
-    self.btest('glfw_joystick.c', expected='1', args=['-s', 'NO_EXIT_RUNTIME=1', '-s', 'USE_GLFW=3'])
+    self.btest('glfw_joystick.c', expected='1', args=['-s', 'USE_GLFW=3'])
 
   def test_glfw_pointerlock(self):
-    self.btest('test_glfw_pointerlock.c', expected='1', args=['-s', 'NO_EXIT_RUNTIME=1', '-s', 'USE_GLFW=3'])
+    self.btest('test_glfw_pointerlock.c', expected='1', args=['-s', 'USE_GLFW=3'])
 
   def test_cpuprofiler_memoryprofiler(self):
     self.btest('hello_world_gles.c', expected='0', args=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '-O2', '--cpuprofiler', '--memoryprofiler'])

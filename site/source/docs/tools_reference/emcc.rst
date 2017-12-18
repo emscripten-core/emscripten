@@ -405,7 +405,7 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-emrun:
 	
 ``--emrun``
-	Enables the generated output to be aware of the :ref:`emrun <Running-html-files-with-emrun>` command line tool. This allows ``stdout``, ``stderr`` and ``exit(returncode)`` capture when running the generated application through *emrun*.     
+	Enables the generated output to be aware of the :ref:`emrun <Running-html-files-with-emrun>` command line tool. This allows ``stdout``, ``stderr`` and ``exit(returncode)`` capture when running the generated application through *emrun*. (This enables `NO_EXIT_RUNTIME=0`, allowing normal runtime exiting with return code passing.)
 
 ``--cpuprofiler``
 	Embeds a simple CPU profiler onto the generated page. Use this to perform cursory interactive performance profiling.
