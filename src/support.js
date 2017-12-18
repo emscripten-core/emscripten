@@ -436,6 +436,21 @@ var getTempRet0 = function() {
 }
 #endif // RELOCATABLE
 
+#if RETAIN_COMPILER_SETTINGS
+var compilerSettings = {{{ JSON.stringify(makeRetainedCompilerSettings()) }}} ;
+
+function getCompilerSetting(name) {
+  if (!(name in compilerSettings)) return 'invalid compiler setting: ' + name;
+  return compilerSettings[name];
+}
+#else // RETAIN_COMPILER_SETTINGS
+#if ASSERTIONS
+function getCompilerSetting(name) {
+  throw 'You must build with -s RETAIN_COMPILER_SETTINGS=1 for Runtime.getCompilerSetting or emscripten_get_compiler_setting to work';
+}
+#endif // ASSERTIONS
+#endif // RETAIN_COMPILER_SETTINGS
+
 // FIXME backwards compatibility layer for ports. Support some Runtime.*
 //       for now, fix it there, then remove it from here. That way we
 //       can minimize any period of breakage.

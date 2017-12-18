@@ -1473,3 +1473,14 @@ function makeStaticAlloc(size) {
   return 'STATICTOP; STATICTOP += ' + size + ';';
 }
 
+function makeRetainedCompilerSettings() {
+  var blacklist = set('STRUCT_INFO');
+  var ret = {};
+  for (var x in this) {
+    try {
+      if (x[0] !== '_' && !(x in blacklist) && x == x.toUpperCase() && (typeof this[x] === 'number' || typeof this[x] === 'string' || this.isArray())) ret[x] = this[x];
+    } catch(e){}
+  }
+  return ret;
+}
+

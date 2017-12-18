@@ -628,12 +628,3 @@ function reSign(value, bits, ignore) {
   return value;
 }
 
-if (RETAIN_COMPILER_SETTINGS) {
-  var blacklist = set('STRUCT_INFO');
-  for (var x in this) {
-    try {
-      if (x[0] !== '_' && !(x in blacklist) && x == x.toUpperCase() && (typeof this[x] === 'number' || typeof this[x] === 'string' || this.isArray())) Runtime.compilerSettings[x] = this[x];
-    } catch(e){}
-  }
-}
-
