@@ -15,7 +15,7 @@ var emscriptenMemoryProfiler = {
   // If allocateStatistics = true, then all callstacks that have recorded more than the following number of allocations will be printed to html page.
   allocateStatisticsNumcallsMinReported: 100,
 
-  // If true, we hook into Runtime.stackAlloc to be able to catch better estimate of the maximum used STACK space.
+  // If true, we hook into stackAlloc to be able to catch better estimate of the maximum used STACK space.
   // You might only ever want to set this to false for performance reasons. Since stack allocations may occur often, this might impact performance.
   hookStackAlloc: true,
 
@@ -167,12 +167,12 @@ var emscriptenMemoryProfiler = {
 
     if (this.hookStackAlloc) {
       // Inject stack allocator.
-      var prevStackAlloc = Runtime.stackAlloc;
+      var prevStackAlloc = stackAlloc;
       function hookedStackAlloc(size) {
         emscriptenMemoryProfiler.stackTopWatermark = Math.max(emscriptenMemoryProfiler.stackTopWatermark, STACKTOP + size);
         return prevStackAlloc(size);
       }
-      Runtime.stackAlloc = hookedStackAlloc;
+      stackAlloc = hookedStackAlloc;
     }
 
     memoryprofiler = document.getElementById('memoryprofiler');

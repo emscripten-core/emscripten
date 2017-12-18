@@ -4176,7 +4176,7 @@ LibraryManager.library = {
   emscripten_log: function(flags, varargs) {
     // Extract the (optionally-existing) printf format specifier field from varargs.
     var format = {{{ makeGetValue('varargs', '0', 'i32', undefined, undefined, true) }}};
-    varargs += Math.max(getNativeFieldSize('i32'), getAlignSize('i32', null, true));
+    varargs += {{{ Math.max(Runtime.getNativeFieldSize('i32'), Runtime.getAlignSize('i32', null, true)) }}};
     var str = '';
     if (format) {
       var result = __formatString(format, varargs);
