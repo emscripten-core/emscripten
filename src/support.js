@@ -316,6 +316,35 @@ function removeFunction(index) {
 #endif
 }
 
+var funcWrappers = {};
+
+function getFuncWrapper(func, sig) {
+  if (!func) return; // on null pointer, return undefined
+  assert(sig);
+  if (!funcWrappers[sig]) {
+    funcWrappers[sig] = {};
+  }
+  var sigCache = funcWrappers[sig];
+  if (!sigCache[func]) {
+    // optimize away arguments usage in common cases
+    if (sig.length === 1) {
+      sigCache[func] = function dynCall_wrapper() {
+        return dynCall(sig, func);
+      };
+    } else if (sig.length === 2) {
+      sigCache[func] = function dynCall_wrapper(arg) {
+        return dynCall(sig, func, [arg]);
+      };
+    } else {
+      // general case
+      sigCache[func] = function dynCall_wrapper() {
+        return dynCall(sig, func, Array.prototype.slice.call(arguments));
+      };
+    }
+  }
+  return sigCache[func];
+}
+
 #if RUNTIME_DEBUG
 var runtimeDebug = true; // Switch to false at runtime to disable logging at the right times
 
@@ -325,7 +354,7 @@ function prettyPrint(arg) {
   if (typeof arg == 'undefined') return '!UNDEFINED!';
   if (typeof arg == 'boolean') arg = arg + 0;
   if (!arg) return arg;
-  var index = Runtime.printObjectList.indexOf(arg);
+  var index = printObjectList.indexOf(arg);
   if (index >= 0) return '<' + arg + '|' + index + '>';
   if (arg.toString() == '[object HTMLImageElement]') {
     return arg + '\n\n';
@@ -358,8 +387,8 @@ function prettyPrint(arg) {
     return ret;
   }
   if (typeof arg == 'object') {
-    Runtime.printObjectList.push(arg);
-    return '<' + arg + '|' + (Runtime.printObjectList.length-1) + '>';
+    printObjectList.push(arg);
+    return '<' + arg + '|' + (printObjectList.length-1) + '>';
   }
   if (typeof arg == 'number') {
     if (arg > 0) return '0x' + arg.toString(16) + ' (' + arg + ')';
