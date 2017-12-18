@@ -451,11 +451,17 @@ function getCompilerSetting(name) {
 #endif // ASSERTIONS
 #endif // RETAIN_COMPILER_SETTINGS
 
-// FIXME backwards compatibility layer for ports. Support some Runtime.*
-//       for now, fix it there, then remove it from here. That way we
-//       can minimize any period of breakage.
 var Runtime = {
-  dynCall: dynCall // for SDL2 port
+  // FIXME backwards compatibility layer for ports. Support some Runtime.*
+  //       for now, fix it there, then remove it from here. That way we
+  //       can minimize any period of breakage.
+  dynCall: dynCall, // for SDL2 port
+#if ASSERTIONS
+  // helpful errors
+  getTempRet0: function() { abort('getTempRet0() is now a top-level function, after removing the Runtime object. Remove "Runtime."') },
+  staticAlloc: function() { abort('staticAlloc() is now a top-level function, after removing the Runtime object. Remove "Runtime."') },
+  stackAlloc: function() { abort('stackAlloc() is now a top-level function, after removing the Runtime object. Remove "Runtime."') },
+#endif
 };
 
 // The address globals begin at. Very low in memory, for code size and optimization opportunities.

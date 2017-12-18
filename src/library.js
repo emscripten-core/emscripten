@@ -2005,7 +2005,7 @@ LibraryManager.library = {
     var dst = (summerOffset != winterOffset && date.getTimezoneOffset() == Math.min(winterOffset, summerOffset))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
 
-    var zonePtr = {{{ makeGetValue(makeGlobalUse('_tzname'), 'dst ? Runtime.QUANTUM_SIZE : 0', 'i32') }}};
+    var zonePtr = {{{ makeGetValue(makeGlobalUse('_tzname'), 'dst ? ' + Runtime.QUANTUM_SIZE + ' : 0', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, 'zonePtr', 'i32') }}};
 
     return tmPtr;
