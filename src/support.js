@@ -398,11 +398,11 @@ function dynCall(sig, ptr, args) {
 // out.
 var tempRet0 = 0;
 
-function setTempRet0(value) {
+var setTempRet0 = function(value) {
   tempRet0 = value;
 }
 
-function getTempRet0() {
+var getTempRet0 = function() {
   return tempRet0;
 }
 #endif // RELOCATABLE
