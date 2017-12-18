@@ -242,6 +242,8 @@ function alignFunctionTables(module) {
   return maxx;
 }
 
+#if RELOCATABLE
+// register functions from a new module being loaded
 function registerFunctions(sigs, newModule) {
   sigs.forEach(function(sig) {
     if (!Module['FUNCTION_TABLE_' + sig]) {
@@ -263,7 +265,10 @@ function registerFunctions(sigs, newModule) {
   });
   assert(maxx === alignFunctionTables()); // align the ones we didn't touch
 }
-#endif
+// export this so side modules can use it
+Module['registerFunctions'] = registerFunctions;
+#endif // RELOCATABLE
+#endif // EMULATED_FUNCTION_POINTERS
 
 var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
 

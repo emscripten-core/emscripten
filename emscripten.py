@@ -394,7 +394,7 @@ def create_module(function_table_sigs, metadata, settings,
 
   if settings['SIDE_MODULE']:
     module.append('''
-registerFunctions(%(sigs)s, Module);
+parentModule['registerFunctions'](%(sigs)s, Module);
 ''' % { 'sigs': str(list(map(str, function_table_sigs))) })
 
   return module
