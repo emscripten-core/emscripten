@@ -478,19 +478,17 @@ class RunnerCore(unittest.TestCase):
 
   def build_native(self, filename, args=[]):
     compiler = CLANG if filename.endswith('cpp') else CLANG_CC
-    process = Popen([compiler, '-O2', '-fno-math-errno', filename, '-o', filename+'.native'] + args, stdout=PIPE, stderr=self.stderr_redirect)
-    output = process.communicate()
+    process = run_process([compiler, '-O2', '-fno-math-errno', filename, '-o', filename+'.native'] + args, stdout=PIPE, stderr=self.stderr_redirect, check=False)
     if process.returncode is not 0:
       print("Building native executable with command '%s' failed with a return code %d!" % (' '.join([CLANG, '-O2', filename, '-o', filename+'.native']), process.returncode), file=sys.stderr)
-      print("Output: " + output[0])
+      print("Output: " + process.stdout)
 
   def run_native(self, filename, args):
-    process = Popen([filename+'.native'] + args, stdout=PIPE);
-    output = process.communicate()
+    process = run_process([filename+'.native'] + args, stdout=PIPE, check=False)
     if process.returncode is not 0:
       print("Running native executable with command '%s' failed with a return code %d!" % (' '.join([filename+'.native'] + args), process.returncode), file=sys.stderr)
-      print("Output: " + output[0])
-    return output[0]
+      print("Output: " + output.stdout)
+    return output.stdout
 
   # Tests that the given two paths are identical, modulo path delimiters. E.g. "C:/foo" is equal to "C:\foo".
   def assertPathsIdentical(self, path1, path2):
@@ -520,9 +518,9 @@ class RunnerCore(unittest.TestCase):
 
   def assertContained(self, values, string, additional_info=''):
     if type(values) not in [list, tuple]: values = [values]
+    values = list(map(asstr, values))
+    if callable(string): string = string()
     for value in values:
-      if not isinstance(value, bytes): string = string.decode('UTF-8') # If we have any non-ASCII chars in the expected string, treat the test string from ASCII as UTF8 as well.
-      if callable(string): string = string()
       if value in string: return # success
     raise Exception("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
       limit_size(values[0]), limit_size(string),
@@ -645,9 +643,6 @@ class RunnerCore(unittest.TestCase):
     for engine in js_engines: assert type(engine) == list
     for engine in self.banned_js_engines: assert type(engine) == list
     js_engines = [engine for engine in js_engines if engine[0] not in [banned[0] for banned in self.banned_js_engines]]
-    if 'BINARYEN_METHOD="native-wasm"' in self.emcc_args:
-      # when testing native wasm support, must use a vm with support
-      js_engines = [engine for engine in js_engines if engine == SPIDERMONKEY_ENGINE or engine == V8_ENGINE]
     return js_engines
 
   def do_run_from_file(self, src, expected_output,

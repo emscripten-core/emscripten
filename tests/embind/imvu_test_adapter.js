@@ -563,10 +563,6 @@ function module(ignore, func) {
     assert['undefined'] = assert.equal.bind(null, undefined);
     assert.notUndefined = assert.notEqual.bind(null, undefined);
 
-    // ES3 synonyms
-    assert.false_ = assert['false'];
-    assert.true_ = assert['true'];
-
     g.registerSuperFixture = registerSuperFixture;
     g.test = test;
     g.run_all = run_all;
