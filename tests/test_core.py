@@ -1563,7 +1563,10 @@ def process(filename):
   def test_emscripten_get_compiler_setting(self):
     test_path = path_from_root('tests', 'core', 'emscripten_get_compiler_setting')
     src, output = (test_path + s for s in ('.c', '.out'))
+    old = Settings.ASSERTIONS
+    Settings.ASSERTIONS = 1 # with assertions, a nice message is shown
     self.do_run(open(src).read(), 'You must build with -s RETAIN_COMPILER_SETTINGS=1')
+    Settings.ASSERTIONS = old
     Settings.RETAIN_COMPILER_SETTINGS = 1
     self.do_run(open(src).read(), open(output).read().replace('waka', EMSCRIPTEN_VERSION))
 
