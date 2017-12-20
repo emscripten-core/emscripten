@@ -22,16 +22,16 @@ LibraryManager.library = {
     if (!self.called) {
       HEAP32[DYNAMICTOP_PTR>>2] = alignUp(HEAP32[DYNAMICTOP_PTR>>2], 16777216); // make sure we start out aligned
       self.called = true;
-      assert(Runtime.dynamicAlloc);
-      self.alloc = Runtime.dynamicAlloc;
-      Runtime.dynamicAlloc = function() { abort('cannot dynamically allocate, sbrk now has control') };
+      assert(dynamicAlloc);
+      self.alloc = dynamicAlloc;
+      dynamicAlloc = function() { abort('cannot dynamically allocate, sbrk now has control') };
     }
     var ret = HEAP32[DYNAMICTOP_PTR>>2];
     if (bytes != 0) self.alloc(bytes);
     return ret;  // Previous break location.
   },
   malloc: function(x) {
-    return Runtime.dynamicAlloc(x);
+    return dynamicAlloc(x);
   },
 };
 

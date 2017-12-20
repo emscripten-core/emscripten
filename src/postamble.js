@@ -31,7 +31,7 @@ if (memoryInitializer) (function(s) {
   assert(crc === 0, "memory initializer checksum");
 #endif
   for (i = 0; i < n; ++i) {
-    HEAPU8[Runtime.GLOBAL_BASE + i] = s.charCodeAt(i);
+    HEAPU8[GLOBAL_BASE + i] = s.charCodeAt(i);
   }
 })(memoryInitializer);
 #else
@@ -47,17 +47,17 @@ if (memoryInitializer) {
   }
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
     var data = Module['readBinary'](memoryInitializer);
-    HEAPU8.set(data, Runtime.GLOBAL_BASE);
+    HEAPU8.set(data, GLOBAL_BASE);
   } else {
     addRunDependency('memory initializer');
     var applyMemoryInitializer = function(data) {
       if (data.byteLength) data = new Uint8Array(data);
 #if ASSERTIONS
       for (var i = 0; i < data.length; i++) {
-        assert(HEAPU8[Runtime.GLOBAL_BASE + i] === 0, "area for memory initializer should not have been touched before it's loaded");
+        assert(HEAPU8[GLOBAL_BASE + i] === 0, "area for memory initializer should not have been touched before it's loaded");
       }
 #endif
-      HEAPU8.set(data, Runtime.GLOBAL_BASE);
+      HEAPU8.set(data, GLOBAL_BASE);
       // Delete the typed array that contains the large blob of the memory initializer request response so that
       // we won't keep unnecessary memory lying around. However, keep the XHR object itself alive so that e.g.
       // its .status field can still be accessed later.
@@ -352,7 +352,7 @@ function exit(status, implicit) {
     Module['print'] = print;
     Module['printErr'] = printErr;
     if (has) {
-      Runtime.warnOnce('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0 (see the FAQ), or make sure to emit a newline when you printf etc.');
+      warnOnce('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0 (see the FAQ), or make sure to emit a newline when you printf etc.');
     }
   }
 #endif // NO_EXIT_RUNTIME

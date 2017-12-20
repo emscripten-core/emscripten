@@ -147,11 +147,11 @@ var LibraryWebVR = {
     var displayIterationFunc;
     if (typeof arg !== 'undefined') {
       displayIterationFunc = function() {
-        Runtime.dynCall('vi', func, [arg]);
+        dynCall('vi', func, [arg]);
       };
     } else {
       displayIterationFunc = function() {
-        Runtime.dynCall('v', func);
+        dynCall('v', func);
       };
     }
 
@@ -257,7 +257,7 @@ var LibraryWebVR = {
 
     display.requestPresent(layerInit).then(function() {
       if (!func) return;
-      Runtime.dynCall('vi', func, [userData]);
+      dynCall('vi', func, [userData]);
     });
 
     return 1;
