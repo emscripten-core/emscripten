@@ -2168,7 +2168,7 @@ class Building(object):
       subprocess.check_call(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
       return next
     else:
-      return subprocess.check_output(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes)
+      return run_process(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=PIPE).stdout
 
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
   @staticmethod
@@ -2340,11 +2340,11 @@ class Building(object):
     cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-metadce'), '--graph-file=' + temp, wasm_file, '-o', wasm_file]
     if debug_info:
       cmd += ['-g']
-    out = subprocess.check_output(cmd)
+    out = run_process(cmd, stdout=PIPE).stdout
     # find the unused things in js
     unused = []
     PREFIX = 'unused: '
-    for line in out.split(os.linesep):
+    for line in out.split('\n'):
       if line.startswith(PREFIX):
         name = line.replace(PREFIX, '').strip()
         unused.append(name)
