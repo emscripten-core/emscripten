@@ -2031,9 +2031,15 @@ function integrateWasmJS() {
   var asmjsCodeFile = '{{{ ASMJS_CODE_FILE }}}';
 
   if (typeof Module['locateFile'] === 'function') {
-    wasmTextFile = Module['locateFile'](wasmTextFile);
-    wasmBinaryFile = Module['locateFile'](wasmBinaryFile);
-    asmjsCodeFile = Module['locateFile'](asmjsCodeFile);
+    if (wasmTextFile.indexOf('data:') !== 0) {
+      wasmTextFile = Module['locateFile'](wasmTextFile);
+    }
+    if (wasmBinaryFile.indexOf('data:') !== 0) {
+      wasmBinaryFile = Module['locateFile'](wasmBinaryFile);
+    }
+    if (asmjsCodeFile.indexOf('data:') !== 0) {
+      asmjsCodeFile = Module['locateFile'](asmjsCodeFile);
+    }
   }
 
   // utilities

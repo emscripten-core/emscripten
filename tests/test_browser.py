@@ -3699,6 +3699,28 @@ window.close = function() {
     self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1', '-s', "BINARYEN_METHOD='native-wasm'"], also_proxied=True)
     assert os.path.exists('test.html') and not os.path.exists('test.js') and not os.path.exists('test.worker.js')
 
+  # Tests that SINGLE_FILE works as intended with locateFile
+  def test_single_file_locate_file(self):
+    open('src.cpp', 'w').write(self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
+    Popen([PYTHON, EMCC, 'src.cpp', '-o', 'test.js', '-s', 'SINGLE_FILE=1', '-s', 'WASM=1', '-s', "BINARYEN_METHOD='native-wasm'"]).communicate()
+
+    open('test.html', 'w').write('''
+      <script>
+        var Module = {
+          locateFile: function (path) {
+            if (path.indexOf('data:') === 0) {
+              throw new Error('Unexpected data URI.');
+            }
+
+            return path;
+          }
+        };
+      </script>
+      <script src="test.js"></script>
+    ''')
+
+    self.run_browser('test.html', None, '/report_result?0')
+
   # Tests that SINGLE_FILE works as intended in a Worker in JS output
   def test_single_file_worker_js(self):
     open('src.cpp', 'w').write(self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))

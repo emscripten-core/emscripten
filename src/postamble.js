@@ -40,7 +40,7 @@ if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) {
 #else
 if (memoryInitializer) {
 #endif
-  if (typeof Module['locateFile'] === 'function') {
+  if (typeof Module['locateFile'] === 'function' && memoryInitializer.indexOf('data:') !== 0) {
     memoryInitializer = Module['locateFile'](memoryInitializer);
   } else if (Module['memoryInitializerPrefixURL']) {
     memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
