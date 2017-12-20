@@ -1797,12 +1797,10 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
   def debug_copy(src, dst):
     if DEBUG:
       shutil.copyfile(src, os.path.join(shared.CANONICAL_TEMP_DIR, dst))
-      print '>>> debug_copied', src, 'to', dst
       if src[-2:] == '.o' or src[-5:] == '.wasm':
         tmp = dst + '.wast'
         shared.check_call([wasm_dis, src, '-o', tmp])
         shutil.copyfile(tmp, os.path.join(shared.CANONICAL_TEMP_DIR, tmp))
-        print '>>> debug_copied', src, 'to', tmp
 
   with temp_files.get_file('.wb.o') as temp_o:
     backend_args = create_backend_args_wasm(infile, temp_o, settings)
