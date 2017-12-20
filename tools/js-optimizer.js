@@ -191,6 +191,7 @@ function traverseChildren(node, traverse, pre, post) {
   if (node[0] === 'var') {
     // don't traverse the names, just the values
     var children = node[1];
+    if (!Array.isArray(children)) return;
     for (var i = 0; i < children.length; i++) {
       var subnode = children[i];
       if (subnode.length === 2) {
@@ -205,6 +206,7 @@ function traverseChildren(node, traverse, pre, post) {
   } else if (node[0] === 'object') {
     // don't traverse the names, just the values
     var children = node[1];
+    if (!Array.isArray(children)) return;
     for (var i = 0; i < children.length; i++) {
       var subnode = children[i];
       var value = subnode[1];
