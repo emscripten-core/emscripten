@@ -1410,6 +1410,7 @@ function hasSideEffects(node) { // this is 99% incomplete!
     }
     case 'conditional': return hasSideEffects(node[1]) || hasSideEffects(node[2]) || hasSideEffects(node[3]);
     case 'function': case 'defun': return false;
+    case 'object': return false;
     default: return true;
   }
 }

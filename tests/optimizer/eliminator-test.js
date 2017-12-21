@@ -178,6 +178,7 @@ function g(a1, a2) {
   unquoted: 3,
   4: 5
  };
+ obj(); // fake use
 }
 function h() {
  var out;
