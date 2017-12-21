@@ -2274,7 +2274,7 @@ class Building(object):
       if os.environ.get('EMCC_CLOSURE_ARGS'):
         args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
       logging.debug('closure compiler: ' + ' '.join(args))
-      process = run_process(args, stdout=PIPE, stderr=STDOUT)
+      process = run_process(args, stdout=PIPE, stderr=STDOUT, check=False)
       if process.returncode != 0 or not os.path.exists(filename + '.cc.js'):
         raise Exception('closure compiler error: ' + process.stdout + ' (rc: %d)' % process.returncode)
 
@@ -2488,7 +2488,7 @@ class FilenameReplacementStrings:
   ASMJS_CODE_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_ASMJS_CODE_FILE }}}'
 
 class JS(object):
-  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+Runtime\.GLOBAL_BASEHgb]+)\);'
+  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+\.GLOBAL_BASEHgb]+)\);'
   no_memory_initializer_pattern = '/\* no memory initializer \*/'
 
   memory_staticbump_pattern = 'STATICTOP = STATIC_BASE \+ (\d+);'
@@ -2601,7 +2601,7 @@ class JS(object):
     fnargs = ','.join(['a' + str(i) for i in range(1, len(sig))])
     args = 'index' + (',' if fnargs else '') + fnargs
     ret = '''function%s(%s) {
-    %sRuntime.functionPointers[index](%s);
+    %sfunctionPointers[index](%s);
 }''' % ((' jsCall_' + sig) if named else '', args, 'return ' if sig[0] != 'v' else '', fnargs)
     return ret
 

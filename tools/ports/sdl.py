@@ -20,6 +20,9 @@ def get_with_configure(ports, settings, shared): # not currently used; no real n
 
 def get(ports, settings, shared):
   if settings.USE_SDL == 2:
+    # SDL2 uses some things on the Module object, make sure they are exported
+    settings.EXPORTED_RUNTIME_METHODS.append('Pointer_stringify')
+    # get the port
     ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', 'SDL2-' + TAG)
     def create():
       # we are rebuilding SDL, clear dependant projects so they copy in their includes to ours properly
@@ -56,7 +59,6 @@ def process_args(ports, args, settings, shared):
   elif settings.USE_SDL == 2:
     get(ports, settings, shared)
     args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2', 'include')]
-    settings.EXPORTED_RUNTIME_METHODS.append('Pointer_stringify')
   return args
 
 def show():

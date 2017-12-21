@@ -89,7 +89,7 @@ class AsmModule():
   def relocate_into(self, main):
     # heap initializer
     if self.staticbump > 0:
-      new_mem_init = self.mem_init_js[:self.mem_init_js.rfind(', ')] + ', Runtime.GLOBAL_BASE+%d)' % main.staticbump
+      new_mem_init = self.mem_init_js[:self.mem_init_js.rfind(', ')] + ', GLOBAL_BASE+%d)' % main.staticbump
       main.set_pre_js(main.staticbump + self.staticbump, new_mem_init)
 
     # Find function name replacements TODO: do not rename duplicate names with duplicate contents, just merge them

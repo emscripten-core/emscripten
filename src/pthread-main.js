@@ -119,7 +119,7 @@ this.onmessage = function(e) {
       STACK_MAX = STACK_BASE + e.data.stackSize;
       assert(STACK_BASE != 0);
       assert(STACK_MAX > STACK_BASE);
-      Runtime.establishStackSpace(e.data.stackBase, e.data.stackBase + e.data.stackSize);
+      establishStackSpace(e.data.stackBase, e.data.stackBase + e.data.stackSize);
       var result = 0;
 //#if STACK_OVERFLOW_CHECK
       if (typeof writeStackCookie === 'function') writeStackCookie();

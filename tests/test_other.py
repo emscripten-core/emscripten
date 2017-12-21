@@ -7725,11 +7725,11 @@ int main() {
         ([],      25, ['abort', 'tempDoublePtr'], ['waka']),
         (['-O1'], 20, ['abort', 'tempDoublePtr'], ['waka']),
         (['-O2'], 20, ['abort', 'tempDoublePtr'], ['waka']),
-        (['-O3'], 14, ['abort'], ['tempDoublePtr', 'waka']), # in -O3, -Os and -Oz we metadce
-        (['-Os'], 14, ['abort'], ['tempDoublePtr', 'waka']),
-        (['-Oz'], 14, ['abort'], ['tempDoublePtr', 'waka']),
+        (['-O3'], 13, ['abort'], ['tempDoublePtr', 'waka']), # in -O3, -Os and -Oz we metadce
+        (['-Os'], 13, ['abort'], ['tempDoublePtr', 'waka']),
+        (['-Oz'], 13, ['abort'], ['tempDoublePtr', 'waka']),
         # finally, check what happens when we export pretty much nothing. wasm should be almost  empty
-        (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[]'], 2, ['STACKTOP'], ['tempDoublePtr', 'waka']),
+        (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[]'], 1, ['STACKTOP'], ['tempDoublePtr', 'waka']),
       ]:
       print(args, expected_len, expected_exists, expected_not_exists)
       subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'WASM=1', '-g2'])

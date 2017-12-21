@@ -1563,7 +1563,10 @@ def process(filename):
   def test_emscripten_get_compiler_setting(self):
     test_path = path_from_root('tests', 'core', 'emscripten_get_compiler_setting')
     src, output = (test_path + s for s in ('.c', '.out'))
+    old = Settings.ASSERTIONS
+    Settings.ASSERTIONS = 1 # with assertions, a nice message is shown
     self.do_run(open(src).read(), 'You must build with -s RETAIN_COMPILER_SETTINGS=1')
+    Settings.ASSERTIONS = old
     Settings.RETAIN_COMPILER_SETTINGS = 1
     self.do_run(open(src).read(), open(output).read().replace('waka', EMSCRIPTEN_VERSION))
 
@@ -3257,13 +3260,13 @@ Module = {
         printf("main\n");
         EM_ASM({
           // make the function table sizes a non-power-of-two
-          Runtime.alignFunctionTables();
+          alignFunctionTables();
           Module['FUNCTION_TABLE_v'].push(0, 0, 0, 0, 0);
-          var newSize = Runtime.alignFunctionTables();
+          var newSize = alignFunctionTables();
           //Module.print('new size of function tables: ' + newSize);
           // when masked, the two function pointers 1 and 2 should not happen to fall back to the right place
           assert(((newSize+1) & 3) !== 1 || ((newSize+2) & 3) !== 2);
-          Runtime.loadDynamicLibrary('liblib.so');
+          loadDynamicLibrary('liblib.so');
         });
         volatilevoidfunc f;
         f = (volatilevoidfunc)left1;
@@ -3765,7 +3768,7 @@ Module = {
       extern int bsideg;
       int main() {
         EM_ASM({
-          Runtime.loadDynamicLibrary('third.js'); // hyper-dynamic! works at least for functions (and consts not used in same block)
+          loadDynamicLibrary('third.js'); // hyper-dynamic! works at least for functions (and consts not used in same block)
         });
         printf("sidef: %d, sideg: %d.\n", sidef(), sideg);
         printf("bsidef: %d.\n", bsidef());
@@ -6250,8 +6253,8 @@ def process(filename):
 
     int main() {
       EM_ASM({
-        Runtime.getFuncWrapper($0, 'vi')(0);
-        Runtime.getFuncWrapper($1, 'vii')(0, 0);
+        getFuncWrapper($0, 'vi')(0);
+        getFuncWrapper($1, 'vii')(0, 0);
       }, func1, func2);
       return 0;
     }

@@ -2835,6 +2835,15 @@ window.close = function() {
     shutil.copyfile(path_from_root('tests', 'cursor.bmp'), os.path.join(self.get_dir(), 'cursor.bmp'))
     self.btest('sdl2_custom_cursor.c', expected='1', args=['--preload-file', 'cursor.bmp', '-s', 'USE_SDL=2'])
 
+  def test_sdl2_misc(self):
+    self.btest('sdl2_misc.c', expected='1', args=['-s', 'USE_SDL=2'])
+    print('also test building to object files first')
+    src = open(path_from_root('tests', 'sdl2_misc.c')).read()
+    open('test.c', 'w').write(self.with_report_result(src))
+    Popen([PYTHON, EMCC, 'test.c', '-s', 'USE_SDL=2', '-o', 'test.o']).communicate()
+    Popen([PYTHON, EMCC, 'test.o', '-s', 'USE_SDL=2', '-o', 'test.html']).communicate()
+    self.run_browser('test.html', '...', '/report_result?1')
+
   def test_cocos2d_hello(self):
     from tools import system_libs
     cocos2d_root = os.path.join(system_libs.Ports.get_build_dir(), 'Cocos2d')
@@ -3698,6 +3707,35 @@ window.close = function() {
   def test_single_file_html(self):
     self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1', '-s', "BINARYEN_METHOD='native-wasm'"], also_proxied=True)
     assert os.path.exists('test.html') and not os.path.exists('test.js') and not os.path.exists('test.worker.js')
+
+  # Tests that SINGLE_FILE works as intended with locateFile
+  def test_single_file_locate_file(self):
+    open('src.cpp', 'w').write(self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
+
+    for wasm_enabled in [True, False]:
+      args = [PYTHON, EMCC, 'src.cpp', '-o', 'test.js', '-s', 'SINGLE_FILE=1']
+
+      if wasm_enabled:
+        args += ['-s', 'WASM=1']
+
+      run_process(args)
+
+      open('test.html', 'w').write('''
+        <script>
+          var Module = {
+            locateFile: function (path) {
+              if (path.indexOf('data:') === 0) {
+                throw new Error('Unexpected data URI.');
+              }
+
+              return path;
+            }
+          };
+        </script>
+        <script src="test.js"></script>
+      ''')
+
+      self.run_browser('test.html', None, '/report_result?0')
 
   # Tests that SINGLE_FILE works as intended in a Worker in JS output
   def test_single_file_worker_js(self):

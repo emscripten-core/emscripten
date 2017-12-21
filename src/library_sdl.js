@@ -302,7 +302,7 @@ var LibrarySDL = {
       // Canvas screens are always RGBA.
       var format = {{{ makeGetValue('fmt', C_STRUCTS.SDL_PixelFormat.format, 'i32') }}};
       if (format != {{{ cDefine('SDL_PIXELFORMAT_RGBA8888') }}}) {
-        Runtime.warnOnce('Unsupported pixel format!');
+        warnOnce('Unsupported pixel format!');
       }
 #endif
     },
@@ -514,7 +514,7 @@ var LibrarySDL = {
       dstData.ctx.globalAlpha = oldAlpha;
       if (dst != SDL.screen) {
         // XXX As in IMG_Load, for compatibility we write out |pixels|
-        Runtime.warnOnce('WARNING: copying canvas data to memory for compatibility');
+        warnOnce('WARNING: copying canvas data to memory for compatibility');
         _SDL_LockSurface(dst);
         dstData.locked--; // The surface is not actually locked in this hack
       }
@@ -1379,12 +1379,12 @@ var LibrarySDL = {
   SDL_GetVideoInfo__sig: 'i',
   SDL_GetVideoInfo: function() {
     // %struct.SDL_VideoInfo = type { i32, i32, %struct.SDL_PixelFormat*, i32, i32 } - 5 fields of quantum size
-    var ret = _malloc(5*Runtime.QUANTUM_SIZE);
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*0', '0', '0', 'i32') }}}; // TODO
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*1', '0', '0', 'i32') }}}; // TODO
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*2', '0', '0', 'void*') }}};
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*3', '0', 'Module["canvas"].width', 'i32') }}};
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*4', '0', 'Module["canvas"].height', 'i32') }}};
+    var ret = _malloc(5 * {{{ Runtime.QUANTUM_SIZE }}});
+    {{{ makeSetValue('ret+' + (Runtime.QUANTUM_SIZE*0), '0', '0', 'i32') }}}; // TODO
+    {{{ makeSetValue('ret+' + (Runtime.QUANTUM_SIZE*1), '0', '0', 'i32') }}}; // TODO
+    {{{ makeSetValue('ret+' + (Runtime.QUANTUM_SIZE*2), '0', '0', 'void*') }}};
+    {{{ makeSetValue('ret+' + (Runtime.QUANTUM_SIZE*3), '0', 'Module["canvas"].width', 'i32') }}};
+    {{{ makeSetValue('ret+' + (Runtime.QUANTUM_SIZE*4), '0', 'Module["canvas"].height', 'i32') }}};
     return ret;
   },
 
@@ -2010,7 +2010,7 @@ var LibrarySDL = {
     // SetColorKey assigns one color to be rendered as transparent. I don't
     // think the canvas API allows for anything like this, and iterating through
     // each pixel to replace that color seems prohibitively expensive.
-    Runtime.warnOnce('SDL_SetColorKey is a no-op for performance reasons');
+    warnOnce('SDL_SetColorKey is a no-op for performance reasons');
     return 0;
   },
 
@@ -2257,7 +2257,7 @@ var LibrarySDL = {
         var raw = callStbImage('stbi_load_from_memory', [rwops.bytes, rwops.count]);
         if (!raw) return 0;
 #else
-        Runtime.warnOnce('Only file names that have been preloaded are supported for IMG_Load_RW. Consider using STB_IMAGE=1 if you want synchronous image decoding (see settings.js), or package files with --use-preload-plugins');
+        warnOnce('Only file names that have been preloaded are supported for IMG_Load_RW. Consider using STB_IMAGE=1 if you want synchronous image decoding (see settings.js), or package files with --use-preload-plugins');
         return 0;
 #endif
       }
@@ -2277,8 +2277,8 @@ var LibrarySDL = {
           var raw = callStbImage('stbi_load', [name]);
           if (!raw) return 0;
 #else
-          Runtime.warnOnce('Cannot find preloaded image ' + filename);
-          Runtime.warnOnce('Cannot find preloaded image ' + filename + '. Consider using STB_IMAGE=1 if you want synchronous image decoding (see settings.js), or package files with --use-preload-plugins');
+          warnOnce('Cannot find preloaded image ' + filename);
+          warnOnce('Cannot find preloaded image ' + filename + '. Consider using STB_IMAGE=1 if you want synchronous image decoding (see settings.js), or package files with --use-preload-plugins');
           return 0;
 #endif
         } else if (Module['freePreloadedMediaOnUse']) {
@@ -2751,7 +2751,7 @@ var LibrarySDL = {
       var raw = Module["preloadedAudios"][filename];
       if (!raw) {
         if (raw === null) Module.printErr('Trying to reuse preloaded audio, but freePreloadedMediaOnUse is set!');
-        if (!Module.noAudioDecoding) Runtime.warnOnce('Cannot find preloaded audio ' + filename);
+        if (!Module.noAudioDecoding) warnOnce('Cannot find preloaded audio ' + filename);
 
         // see if we can read the file-contents from the in-memory FS
         try {
@@ -2916,7 +2916,7 @@ var LibrarySDL = {
     }
     audio['onended'] = function SDL_audio_onended() { // TODO: cache these
       if (channelInfo.audio == this) { channelInfo.audio.paused = true; channelInfo.audio = null; }
-      if (SDL.channelFinished) Runtime.getFuncWrapper(SDL.channelFinished, 'vi')(channel);
+      if (SDL.channelFinished) getFuncWrapper(SDL.channelFinished, 'vi')(channel);
     }
     channelInfo.audio = audio;
     // TODO: handle N loops. Behavior matches Mix_PlayMusic
@@ -2941,7 +2941,7 @@ var LibrarySDL = {
         info.audio = null;
       }
       if (SDL.channelFinished) {
-        Runtime.getFuncWrapper(SDL.channelFinished, 'vi')(channel);
+        getFuncWrapper(SDL.channelFinished, 'vi')(channel);
       }
     }
     if (channel != -1) {
@@ -3679,7 +3679,7 @@ var LibrarySDL = {
   SDL_CondWaitTimeout: function() { throw 'SDL_CondWaitTimeout: TODO' },
   SDL_WM_IconifyWindow: function() { throw 'SDL_WM_IconifyWindow TODO' },
 
-  Mix_SetPostMix: function() { Runtime.warnOnce('Mix_SetPostMix: TODO') },
+  Mix_SetPostMix: function() { warnOnce('Mix_SetPostMix: TODO') },
 
   Mix_VolumeChunk: function(chunk, volume) { throw 'Mix_VolumeChunk: TODO' },
   Mix_SetPosition: function(channel, angle, distance) { throw 'Mix_SetPosition: TODO' },
