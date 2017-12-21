@@ -1216,6 +1216,18 @@ int f() {
                   output_filename='a.out.js')
     _test()
 
+  def test_memory_file_not_in_cwd(self):
+    # Test that even if JS is executed in different working directory, then it should still find .js.mem file in the same folder as script itself
+    filename = path_from_root('a.out.js')
+    Building.emcc(path_from_root('tests', 'hello_world.c'), ['--memory-init-file', '1'], output_filename=filename)
+    cwd = path_from_root('tests')
+    print
+    print 'Filename: %s' % filename
+    print 'Working dir: %s' % cwd
+    for engine in JS_ENGINES:
+      print engine
+      run_js(filename, cwd=cwd)
+
   def test_ungetc_fscanf(self):
     open('main.cpp', 'w').write(r'''
       #include <stdio.h>
