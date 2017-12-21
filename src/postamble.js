@@ -40,10 +40,12 @@ if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) {
 #else
 if (memoryInitializer) {
 #endif
-  if (typeof Module['locateFile'] === 'function' && memoryInitializer.indexOf('data:') !== 0) {
-    memoryInitializer = Module['locateFile'](memoryInitializer);
-  } else if (Module['memoryInitializerPrefixURL']) {
-    memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
+  if (!isDataURI(memoryInitializer)) {
+    if (typeof Module['locateFile'] === 'function') {
+      memoryInitializer = Module['locateFile'](memoryInitializer);
+    } else if (Module['memoryInitializerPrefixURL']) {
+      memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
+    }
   }
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
     var data = Module['readBinary'](memoryInitializer);
