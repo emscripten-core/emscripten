@@ -545,8 +545,6 @@ function JSify(data, functionsOnly) {
     print(maybeExport('intArrayFromString'));
     print(maybeExport('intArrayToString'));
 
-    print(preprocess(read('URIUtils.js')));
-
     if (SUPPORT_BASE64_EMBEDDING) {
       print(preprocess(read('base64Utils.js')));
       // Export all base64Utils.js functions

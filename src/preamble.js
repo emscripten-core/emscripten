@@ -1987,6 +1987,8 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
 #endif
 
+#include "URIUtils.js"
+
 #if BINARYEN
 function integrateWasmJS() {
   // wasm.js has several methods for creating the compiled code module here:
