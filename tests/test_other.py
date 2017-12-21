@@ -8009,3 +8009,26 @@ end
 
 
     assert_aliases_match('WASM_MEM_MAX', 'BINARYEN_MEM_MAX', '16777216', ['-s', 'WASM=1'])
+
+  def test_IGNORE_CLOSURE_COMPILER_ERRORS(self):
+    open('pre.js', 'w').write(r'''
+      // make closure compiler very very angry
+      var dupe = 1;
+      var dupe = 2;
+      function Node() {
+        throw 'Node is a DOM thing too, and use the ' + dupe;
+      }
+      function Node() {
+        throw '(duplicate) Node is a DOM thing too, and also use the ' + dupe;
+      }
+    ''')
+    def test(extra=[]):
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure', '1', '--pre-js', 'pre.js'] + extra)
+    failed = False
+    try:
+      test()
+    except:
+      failed = True
+    assert failed
+    test(['-s', 'IGNORE_CLOSURE_COMPILER_ERRORS=1'])
+
