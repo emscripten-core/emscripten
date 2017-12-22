@@ -4053,7 +4053,7 @@ var LibraryGL = {
 #endif
 
 // DCE might get rid of some of the functions we would override; make sure we don't throw an error trying to find them
-{{{ (getIfDefined = function(x){ return '(typeof ' + x + ' !== "undefined" ? ' + x + ' : null)' }, '') }}}
+{{{ (getIfDefined = function(x){ return '(typeof ' + x + ' !== "undefined" ? ' + x + ' : function(){})' }, '') }}}
 
       var glEnable = {{{ getIfDefined('_glEnable') }}};
       _glEnable = _emscripten_glEnable = function _glEnable(cap) {
@@ -4371,7 +4371,7 @@ var LibraryGL = {
       {{{ updateExport('glCompileShader') }}}
 
       GL.programShaders = {};
-      var glAttachShader = _glAttachShader;
+      var glAttachShader = {{{ getIfDefined('_glAttachShader') }}};
       _glAttachShader = _emscripten_glAttachShader = function _glAttachShader(program, shader) {
         if (!GL.programShaders[program]) GL.programShaders[program] = [];
         GL.programShaders[program].push(shader);
@@ -6408,28 +6408,28 @@ var LibraryGL = {
         GLEmulation.init();
       }
 
-      var glActiveTexture = _glActiveTexture;
+      var glActiveTexture = {{{ getIfDefined('_glActiveTexture') }}};
       _glActiveTexture = _emscripten_glActiveTexture = function _glActiveTexture(texture) {
         GLImmediate.TexEnvJIT.hook_activeTexture(texture);
         glActiveTexture(texture);
       };
       {{{ updateExport('glActiveTexture') }}}
 
-      var glEnable = _glEnable;
+      var glEnable = {{{ getIfDefined('_glEnable') }}};
       _glEnable = _emscripten_glEnable = function _glEnable(cap) {
         GLImmediate.TexEnvJIT.hook_enable(cap);
         glEnable(cap);
       };
       {{{ updateExport('glEnable') }}}
 
-      var glDisable = _glDisable;
+      var glDisable = {{{ getIfDefined('_glDisable') }}};
       _glDisable = _emscripten_glDisable = function _glDisable(cap) {
         GLImmediate.TexEnvJIT.hook_disable(cap);
         glDisable(cap);
       };
       {{{ updateExport('glDisable') }}}
 
-      var glTexEnvf = (typeof(_glTexEnvf) != 'undefined') ? _glTexEnvf : function(){};
+      var glTexEnvf = {{{ getIfDefined('_glTexEnvf') }}};
       _glTexEnvf = _emscripten_glTexEnvf = function _glTexEnvf(target, pname, param) {
         GLImmediate.TexEnvJIT.hook_texEnvf(target, pname, param);
         // Don't call old func, since we are the implementor.
@@ -6437,7 +6437,7 @@ var LibraryGL = {
       };
       {{{ updateExport('glTexEnvf') }}}
 
-      var glTexEnvi = (typeof(_glTexEnvi) != 'undefined') ? _glTexEnvi : function(){};
+      var glTexEnvi = {{{ getIfDefined('_glTexEnvi') }}};
       _glTexEnvi = _emscripten_glTexEnvi = function _glTexEnvi(target, pname, param) {
         GLImmediate.TexEnvJIT.hook_texEnvi(target, pname, param);
         // Don't call old func, since we are the implementor.
@@ -6445,7 +6445,7 @@ var LibraryGL = {
       };
       {{{ updateExport('glTexEnvi') }}}
 
-      var glTexEnvfv = (typeof(_glTexEnvfv) != 'undefined') ? _glTexEnvfv : function(){};
+      var glTexEnvfv = {{{ getIfDefined('_glTexEnvfv') }}};
       _glTexEnvfv = _emscripten_glTexEnvfv = function _glTexEnvfv(target, pname, param) {
         GLImmediate.TexEnvJIT.hook_texEnvfv(target, pname, param);
         // Don't call old func, since we are the implementor.
@@ -6463,7 +6463,7 @@ var LibraryGL = {
       };
       {{{ updateExport('glGetTexEnvfv') }}}
 
-      var glGetIntegerv = _glGetIntegerv;
+      var glGetIntegerv = {{{ getIfDefined('_glGetIntegerv') }}};
       _glGetIntegerv = _emscripten_glGetIntegerv = function _glGetIntegerv(pname, params) {
         switch (pname) {
           case 0x8B8D: { // GL_CURRENT_PROGRAM
