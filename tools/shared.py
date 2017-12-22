@@ -521,6 +521,10 @@ def check_node_version():
     logging.warning('cannot check node version: %s',  e)
     return False
 
+def check_python_version():
+  if sys.version_info.major > 2:
+    logging.warning('Python 3 support is experimental')
+
 def check_closure_compiler():
   try:
     subprocess.call([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
@@ -610,6 +614,7 @@ def check_sanity(force=False):
     # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
     check_llvm_version()
     check_node_version()
+    check_python_version()
 
     if os.environ.get('EMCC_FAST_COMPILER') == '0':
       logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
