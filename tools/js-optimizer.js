@@ -7872,7 +7872,8 @@ function JSDCE(ast, multipleIterations) {
       }
       isVarNameOrObjectKeys.push(false); // doesn't define a variable nor be an object literal
       if (type === 'defun' || type === 'function') {
-        if (node[1]) ensureData(scopes[scopes.length-1], node[1]).def = 1;
+        // defun names matter - function names (the y in var x = function y() {..}) are just for stack traces.
+        if (type === 'defun') ensureData(scopes[scopes.length-1], node[1]).def = 1;
         var scope = {};
         node[2].forEach(function(param) {
           ensureData(scope, param).def = 1;

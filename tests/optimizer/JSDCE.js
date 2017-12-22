@@ -58,4 +58,15 @@ function glue() {
   }
 }
 glue();
+// gl emulation style code
+function _glCreateShader() {
+ return 1;
+}
+function emulate() {
+  var saved = _glCreateShader;
+  _glCreateShader = function _glCreateShader(shaderType) { // the name here is just for show in stack traces!
+    return glCreateShader();
+  };
+}
+emulate();
 
