@@ -1,6 +1,9 @@
 defaults: &defaults
   docker:
     - image: buildpack-deps:xenial
+      environment:
+        LANG: C.UTF-8
+        EMSCRIPTEN_ALLOW_NEWER_PYTHON: 1
   working_directory: ~/
 
 test-defaults: &test-defaults
@@ -14,10 +17,10 @@ test-defaults: &test-defaults
 
     - run: |
         apt-get update
-        apt-get install -y python python-pip cmake build-essential openjdk-9-jre-headless
-        pip install --upgrade pip
-        pip install lit
-        EMCC_CORES=4 python emscripten/tests/runner.py $TEST_TARGET
+        apt-get install -y python3 python3-pip cmake build-essential openjdk-9-jre-headless
+        pip3 install --upgrade pip
+        pip3 install lit
+        EMCC_CORES=4 python3 emscripten/tests/runner.py $TEST_TARGET
 
 version: 2
 jobs:
@@ -28,7 +31,7 @@ jobs:
           path: emscripten/
       - run: |
           apt-get update
-          apt-get install -y python cmake
+          apt-get install -y python3 cmake
           wget https://github.com/juj/emsdk/archive/master.tar.gz
           tar -xf master.tar.gz
           pushd emsdk-master
@@ -38,8 +41,8 @@ jobs:
           popd
           echo EMSCRIPTEN_ROOT="'~/emscripten/'" >> .emscripten
           echo BINARYEN_ROOT="''" >> .emscripten
-          EMCC_CORES=4 python2 emscripten/embuilder.py build ALL
-          python2 emscripten/tests/runner.py test_hello_world
+          EMCC_CORES=4 python3 emscripten/embuilder.py build ALL
+          python3 emscripten/tests/runner.py test_hello_world
 
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
