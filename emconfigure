@@ -4,14 +4,8 @@
 
 
 import sys
+from tools import force_python_version
 
-
-
-if sys.version_info.major == 2:
+if __name__ == '__main__' and not force_python_version.run(__file__):
   import emconfigure
-  if __name__ == '__main__':
-    emconfigure.run()
-else:
-  import os, subprocess
-  if __name__ == '__main__':
-    sys.exit(subprocess.call(['python2', os.path.join(os.path.dirname(os.path.realpath(__file__)), 'emconfigure.py')] + sys.argv[1:]))
+  emconfigure.run()
