@@ -4222,7 +4222,7 @@ var LibraryGL = {
       GL.shaderSources = {};
       GL.shaderOriginalSources = {};
 #endif
-      var glCreateShader = _glCreateShader;
+      var glCreateShader = {{{ getIfDefined('_glCreateShader') }}};
       _glCreateShader = _emscripten_glCreateShader = function _glCreateShader(shaderType) {
         var id = glCreateShader(shaderType);
         GL.shaderInfos[id] = {
