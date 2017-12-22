@@ -33,7 +33,7 @@ jobs:
           tar -xf emsdk-portable.tar.gz
           pushd emsdk-portable
           ./emsdk update
-          ./emsdk install latest
+          ./emsdk install latest node-8.9.1-64bit
           ./emsdk activate latest
           popd
           echo EMSCRIPTEN_ROOT="'~/emscripten/'" >> .emscripten
