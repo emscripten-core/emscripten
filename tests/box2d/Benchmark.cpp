@@ -174,7 +174,7 @@ void iter() {
   printf("frame averages: %.3f +- %.3f, range: %.3f to %.3f \n", result.mean, result.stddev, float(minn)/CLOCKS_PER_SEC * 1000, float(maxx)/CLOCKS_PER_SEC * 1000);
 
 #ifdef __EMSCRIPTEN__
-  emscripten_run_script("if (Module.reportCompletion) Module.reportCompletion()");
+  EM_ASM({ if (Module.reportCompletion) Module.reportCompletion() });
   if (responsive_main_loop) emscripten_cancel_main_loop();
 #endif
 }
