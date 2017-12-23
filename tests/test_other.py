@@ -4952,11 +4952,9 @@ main(const int argc, const char * const * const argv)
       do('no_nuthin', 'hello_world.c', ['-s', 'EXPORTED_RUNTIME_METHODS=[]'])
       print('  ', sizes)
       assert sizes['no_fs'] < sizes['normal']
-      assert sizes['no_nuthin'] < sizes['no_fs']
+      assert abs(sizes['no_nuthin'] - sizes['no_fs']) < 10, 'almost no difference between then, now that we export nothing by default anyhow'
       assert sizes['no_nuthin'] < ratio*sizes['normal']
       assert sizes['no_nuthin'] < absolute, str(sizes['no_nuthin']) + ' >= ' + str(absolute)
-      if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
-        assert sizes['no_nuthin'] < 0.9995*sizes['no_fs']
       assert sizes['no_fs_manual'] < sizes['no_fs'] # manual can remove a tiny bit more
     test(['-s', 'ASSERTIONS=0'], 0.75, 360000) # we don't care about code size with assertions
     test(['-O1'], 0.66, 210000)
@@ -4966,8 +4964,8 @@ main(const int argc, const char * const * const argv)
 
   def test_no_nuthin_2(self):
     # focus on EXPORTED_RUNTIME_METHODS effects, on hello_world_em_asm
-    def test(opts, ratio, absolute):
-      print('opts, ratio, absolute:', opts, ratio, absolute)
+    def test(opts, absolute):
+      print('opts, absolute:', opts, absolute)
       def get_size(name):
         return os.stat(name).st_size
       sizes = {}
@@ -4979,14 +4977,13 @@ main(const int argc, const char * const * const argv)
       do('normal', [])
       do('no_nuthin', ['-s', 'EXPORTED_RUNTIME_METHODS=[]'])
       print('  ', sizes)
-      assert sizes['no_nuthin'] < sizes['normal']
-      assert sizes['no_nuthin'] < ratio*sizes['normal']
+      assert abs(sizes['no_nuthin'] - sizes['normal']) < 10
       assert sizes['no_nuthin'] < absolute
-    test(['-s', 'ASSERTIONS=0'], 1, 220000) # we don't care about code size with assertions
-    test(['-O1'], 1, 215000)
-    test(['-O2'], 0.995, 55000)
-    test(['-O3', '--closure', '1'], 0.9995, 38000)
-    test(['-O3', '--closure', '2'], 0.9995, 35000) # might change now and then
+    test(['-s', 'ASSERTIONS=0'], 220000) # we don't care about code size with assertions
+    test(['-O1'], 215000)
+    test(['-O2'], 55000)
+    test(['-O3', '--closure', '1'], 38000)
+    test(['-O3', '--closure', '2'], 35000) # might change now and then
 
   def test_no_browser(self):
     BROWSER_INIT = 'var Browser'

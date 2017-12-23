@@ -290,7 +290,11 @@ function isExportedByForceFilesystem(name) {
          name === 'removeRunDependency';
 }
 
-function maybeExport(name) {
+// optionally export something.
+// in ASSERTIONS mode we show a useful error if it is used without
+// being exported. how we show the message depends on whether it's
+// a function (almost all of them) or a number.
+function maybeExport(name, isNumber) {
   // if requested to be exported, export it
   if (name in EXPORTED_RUNTIME_METHODS_SET) {
     var exported = name;
@@ -311,9 +315,17 @@ function maybeExport(name) {
     if (isExportedByForceFilesystem(name)) {
       extra = '. Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you';
     }
-    return 'if (!Module["' + name + '"]) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") };';
+    if (!isNumber) {
+      return 'if (!Module["' + name + '"]) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") };';
+    } else {
+      return 'if (!Module["' + name + '"]) Object.defineProperty(Module, "' + name + '", { get: function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") } });';
+    }
   }
   return '';
+}
+
+function maybeExportNumber(name) {
+  return maybeExport(name, true);
 }
 
 var PassManager = {
