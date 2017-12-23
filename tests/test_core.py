@@ -1563,7 +1563,10 @@ def process(filename):
   def test_emscripten_get_compiler_setting(self):
     test_path = path_from_root('tests', 'core', 'emscripten_get_compiler_setting')
     src, output = (test_path + s for s in ('.c', '.out'))
+    old = Settings.ASSERTIONS
+    Settings.ASSERTIONS = 1 # with assertions, a nice message is shown
     self.do_run(open(src).read(), 'You must build with -s RETAIN_COMPILER_SETTINGS=1')
+    Settings.ASSERTIONS = old
     Settings.RETAIN_COMPILER_SETTINGS = 1
     self.do_run(open(src).read(), open(output).read().replace('waka', EMSCRIPTEN_VERSION))
 
@@ -1815,7 +1818,7 @@ int main() {
   @no_emterpreter
   def test_biggerswitch(self):
     num_cases = 20000
-    switch_case, err = Popen([PYTHON, path_from_root('tests', 'gen_large_switchcase.py'), str(num_cases)], stdout=PIPE, stderr=PIPE).communicate()
+    switch_case = run_process([PYTHON, path_from_root('tests', 'gen_large_switchcase.py'), str(num_cases)], stdout=PIPE, stderr=PIPE).stdout
     self.do_run(switch_case, '''58996: 589965899658996
 59297: 592975929759297
 59598: default
@@ -3257,13 +3260,13 @@ Module = {
         printf("main\n");
         EM_ASM({
           // make the function table sizes a non-power-of-two
-          Runtime.alignFunctionTables();
+          alignFunctionTables();
           Module['FUNCTION_TABLE_v'].push(0, 0, 0, 0, 0);
-          var newSize = Runtime.alignFunctionTables();
+          var newSize = alignFunctionTables();
           //Module.print('new size of function tables: ' + newSize);
           // when masked, the two function pointers 1 and 2 should not happen to fall back to the right place
           assert(((newSize+1) & 3) !== 1 || ((newSize+2) & 3) !== 2);
-          Runtime.loadDynamicLibrary('liblib.so');
+          loadDynamicLibrary('liblib.so');
         });
         volatilevoidfunc f;
         f = (volatilevoidfunc)left1;
@@ -3765,7 +3768,7 @@ Module = {
       extern int bsideg;
       int main() {
         EM_ASM({
-          Runtime.loadDynamicLibrary('third.js'); // hyper-dynamic! works at least for functions (and consts not used in same block)
+          loadDynamicLibrary('third.js'); // hyper-dynamic! works at least for functions (and consts not used in same block)
         });
         printf("sidef: %d, sideg: %d.\n", sidef(), sideg);
         printf("bsidef: %d.\n", bsidef());
@@ -5149,8 +5152,7 @@ return malloc(size);
   @SIMD
   def test_sse1_full(self):
     Popen([CLANG, path_from_root('tests', 'test_sse1_full.cpp'), '-o', 'test_sse1_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE).communicate()
-    native_result, err = Popen('./test_sse1_full', stdout=PIPE).communicate()
-    native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
+    native_result = run_process('./test_sse1_full', stdout=PIPE).stdout
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     orig_args = self.emcc_args
@@ -5171,8 +5173,7 @@ return malloc(size);
     args = []
     if '-O0' in self.emcc_args: args += ['-D_DEBUG=1']
     Popen([CLANG, path_from_root('tests', 'test_sse2_full.cpp'), '-o', 'test_sse2_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + args + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE).communicate()
-    native_result, err = Popen('./test_sse2_full', stdout=PIPE).communicate()
-    native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
+    native_result = run_process('./test_sse2_full', stdout=PIPE).stdout
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     orig_args = self.emcc_args
@@ -5188,8 +5189,7 @@ return malloc(size);
     args = []
     if '-O0' in self.emcc_args: args += ['-D_DEBUG=1']
     Popen([CLANG, path_from_root('tests', 'test_sse3_full.cpp'), '-o', 'test_sse3_full', '-D_CRT_SECURE_NO_WARNINGS=1', '-msse3'] + args + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE).communicate()
-    native_result, err = Popen('./test_sse3_full', stdout=PIPE).communicate()
-    native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
+    native_result = run_process('./test_sse3_full', stdout=PIPE).stdout
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     orig_args = self.emcc_args
@@ -5202,8 +5202,7 @@ return malloc(size);
     args = []
     if '-O0' in self.emcc_args: args += ['-D_DEBUG=1']
     Popen([CLANG, path_from_root('tests', 'test_ssse3_full.cpp'), '-o', 'test_ssse3_full', '-D_CRT_SECURE_NO_WARNINGS=1', '-mssse3'] + args + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE).communicate()
-    native_result, err = Popen('./test_ssse3_full', stdout=PIPE).communicate()
-    native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
+    native_result = run_process('./test_ssse3_full', stdout=PIPE).stdout
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     orig_args = self.emcc_args
@@ -5216,8 +5215,7 @@ return malloc(size);
     args = []
     if '-O0' in self.emcc_args: args += ['-D_DEBUG=1']
     Popen([CLANG, path_from_root('tests', 'test_sse4_1_full.cpp'), '-o', 'test_sse4_1_full', '-D_CRT_SECURE_NO_WARNINGS=1', '-msse4.1'] + args + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE).communicate()
-    native_result, err = Popen('./test_sse4_1_full', stdout=PIPE).communicate()
-    native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
+    native_result = run_process('./test_sse4_1_full', stdout=PIPE).stdout
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     orig_args = self.emcc_args
@@ -5874,7 +5872,7 @@ def process(filename):
   # Autodebug the code
   def do_autodebug(self, filename):
     Building.llvm_dis(filename)
-    output = Popen([PYTHON, AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
+    output = run_process([PYTHON, AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).stdout
     assert 'Success.' in output, output
     self.prep_ll_run(filename, filename+'.o.ll.ll', force_recompile=True) # rebuild .bc # TODO: use code in do_autodebug_post for this
 
@@ -5886,7 +5884,7 @@ def process(filename):
       return True
     print('Autodebugging during post time')
     delattr(self, 'post')
-    output = Popen([PYTHON, AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
+    output = run_process([PYTHON, AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).stdout
     assert 'Success.' in output, output
     shutil.copyfile(filename + '.o.ll.ll', filename + '.o.ll')
     Building.llvm_as(filename)
@@ -6282,8 +6280,8 @@ def process(filename):
 
     int main() {
       EM_ASM({
-        Runtime.getFuncWrapper($0, 'vi')(0);
-        Runtime.getFuncWrapper($1, 'vii')(0, 0);
+        getFuncWrapper($0, 'vi')(0);
+        getFuncWrapper($1, 'vii')(0, 0);
       }, func1, func2);
       return 0;
     }
@@ -6756,7 +6754,10 @@ Module.printErr = Module['printErr'] = function(){};
         else:
           return data
 
-      data = encode_utf8(json.load(open(map_filename, 'r')))
+      data = json.load(open(map_filename, 'r'))
+      if str is bytes:
+        # Python 2 compatibility
+        data = encode_utf8(data)
       if hasattr(data, 'file'):
         # the file attribute is optional, but if it is present it needs to refer
         # the output file.
@@ -6767,9 +6768,12 @@ Module.printErr = Module['printErr'] = function(){};
         # the sourcesContent attribute is optional, but if it is present it
         # needs to containt valid source text.
         self.assertTextDataIdentical(src, data['sourcesContent'][0])
-      mappings = encode_utf8(json.loads(jsrun.run_js(
+      mappings = json.loads(jsrun.run_js(
         path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
-        tools.shared.NODE_JS, [map_filename])))
+        tools.shared.NODE_JS, [map_filename]))
+      if str is bytes:
+        # Python 2 compatibility
+        mappings = encode_utf8(mappings)
       seen_lines = set()
       for m in mappings:
         self.assertPathsIdentical(src_filename, m['source'])

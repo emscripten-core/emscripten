@@ -8,11 +8,25 @@ mergeInto(LibraryManager.library, {
     assert((varargs & 3) === 0);
     var textIndex = format;
     var argIndex = varargs;
+    // This must be called before reading a double or i64 vararg. It will bump the pointer properly.
+    // It also does an assert on i32 values, so it's nice to call it before all varargs calls.
+    function prepVararg(ptr, type) {
+      if (type === 'double' || type === 'i64') {
+        // move so the load is aligned
+        if (ptr & 7) {
+          assert((ptr & 7) === 4);
+          ptr += 4;
+        }
+      } else {
+        assert((ptr & 3) === 0);
+      }
+      return ptr;
+    }
     function getNextArg(type) {
       // NOTE: Explicitly ignoring type safety. Otherwise this fails:
       //       int x = 4; printf("%c\n", (char)x);
       var ret;
-      argIndex = Runtime.prepVararg(argIndex, type);
+      argIndex = prepVararg(argIndex, type);
       if (type === 'double') {
         ret = {{{ makeGetValue('argIndex', 0, 'double', undefined, undefined, true) }}};
         argIndex += 8;
@@ -161,7 +175,7 @@ mergeInto(LibraryManager.library, {
             var argText;
             // Flatten i64-1 [low, high] into a (slightly rounded) double
             if (argSize == 8) {
-              currArg = Runtime.makeBigInt(currArg[0], currArg[1], next == {{{ charCode('u') }}});
+              currArg = makeBigInt(currArg[0], currArg[1], next == {{{ charCode('u') }}});
             }
             // Truncate to requested size.
             if (argSize <= 4) {

@@ -187,29 +187,34 @@ class Py2CalledProcessError(subprocess.CalledProcessError):
 
 # https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess
 class Py2CompletedProcess:
-  def __init__(self, process, args):
-    (self.stdout, self.stderr) = process.communicate()
+  def __init__(self, args, returncode, stdout, stderr):
     self.args = args
-    self.returncode = process.returncode
+    self.returncode = returncode
+    self.stdout = stdout
+    self.stderr = stderr
 
   def __repr__(self):
     _repr = ['args=%s, returncode=%s' % (self.args, self.returncode)]
     if self.stdout is not None:
-      _repr += 'stdout=' + self.stdout
+      _repr += 'stdout=' + repr(self.stdout)
     if self.stderr is not None:
-      _repr += 'stderr=' + self.stderr
+      _repr += 'stderr=' + repr(self.stderr)
     return 'CompletedProcess(%s)' % ', '.join(_repr)
 
   def check_returncode(self):
     if self.returncode is not 0:
       raise Py2CalledProcessError(returncode=self.returncode, cmd=self.args, output=self.stdout, stderr=self.stderr)
 
-def run_base(cmd, check=False, *args, **kw):
+def run_base(cmd, check=False, input=None, *args, **kw):
   if hasattr(subprocess, "run"):
-    return subprocess.run(cmd, check=check, *args, **kw)
+    return subprocess.run(cmd, check=check, input=input, *args, **kw)
 
   # Python 2 compatibility: Introduce Python 3 subprocess.run-like behavior
-  result = Py2CompletedProcess(Popen(cmd, *args, **kw), cmd)
+  if input is not None:
+    kw['stdin'] = subprocess.PIPE
+  proc = Popen(cmd, *args, **kw)
+  stdout, stderr = proc.communicate(input)
+  result = Py2CompletedProcess(cmd, proc.returncode, stdout, stderr)
   if check:
     result.check_returncode()
   return result
@@ -2163,7 +2168,7 @@ class Building(object):
       subprocess.check_call(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
       return next
     else:
-      return subprocess.check_output(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes)
+      return run_process(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=PIPE).stdout
 
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
   @staticmethod
@@ -2269,7 +2274,7 @@ class Building(object):
       if os.environ.get('EMCC_CLOSURE_ARGS'):
         args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
       logging.debug('closure compiler: ' + ' '.join(args))
-      process = run_process(args, stdout=PIPE, stderr=STDOUT)
+      process = run_process(args, stdout=PIPE, stderr=STDOUT, check=False)
       if process.returncode != 0 or not os.path.exists(filename + '.cc.js'):
         raise Exception('closure compiler error: ' + process.stdout + ' (rc: %d)' % process.returncode)
 
@@ -2335,11 +2340,11 @@ class Building(object):
     cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-metadce'), '--graph-file=' + temp, wasm_file, '-o', wasm_file]
     if debug_info:
       cmd += ['-g']
-    out = subprocess.check_output(cmd)
+    out = run_process(cmd, stdout=PIPE).stdout
     # find the unused things in js
     unused = []
     PREFIX = 'unused: '
-    for line in out.split(os.linesep):
+    for line in out.split('\n'):
       if line.startswith(PREFIX):
         name = line.replace(PREFIX, '').strip()
         unused.append(name)
@@ -2483,7 +2488,7 @@ class FilenameReplacementStrings:
   ASMJS_CODE_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_ASMJS_CODE_FILE }}}'
 
 class JS(object):
-  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+Runtime\.GLOBAL_BASEHgb]+)\);'
+  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+\.GLOBAL_BASEHgb]+)\);'
   no_memory_initializer_pattern = '/\* no memory initializer \*/'
 
   memory_staticbump_pattern = 'STATICTOP = STATIC_BASE \+ (\d+);'
@@ -2505,7 +2510,7 @@ class JS(object):
       f = open(path, 'rb')
       data = base64.b64encode(f.read())
       f.close()
-      return 'data:application/octet-stream;base64,' + data
+      return 'data:application/octet-stream;base64,' + asstr(data)
     else:
       return os.path.basename(path)
 
@@ -2596,7 +2601,7 @@ class JS(object):
     fnargs = ','.join(['a' + str(i) for i in range(1, len(sig))])
     args = 'index' + (',' if fnargs else '') + fnargs
     ret = '''function%s(%s) {
-    %sRuntime.functionPointers[index](%s);
+    %sfunctionPointers[index](%s);
 }''' % ((' jsCall_' + sig) if named else '', args, 'return ' if sig[0] != 'v' else '', fnargs)
     return ret
 
@@ -2696,6 +2701,16 @@ class WebAssembly(object):
     f.write(wasm[8:]) # copy rest of binary
     f.close()
     return wso
+
+# Python 2-3 compatibility helper function:
+# Converts a string to the native str type.
+def asstr(s):
+  if str is bytes:
+    if isinstance(s, unicode):
+      return s.encode('utf-8')
+  elif isinstance(s, bytes):
+      return s.decode('utf-8')
+  return s
 
 def asbytes(s):
   if str is bytes:

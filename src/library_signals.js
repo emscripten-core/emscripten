@@ -91,7 +91,7 @@ var funs = {
 #endif
   ___setErrNo(ERRNO_CODES.ENOSYS);
 #if ASSERTIONS
-      Runtime.warnOnce('raise() returning an error as we do not support it');
+    warnOnce('raise() returning an error as we do not support it');
 #endif
     return -1;
   },
@@ -131,7 +131,7 @@ var funs = {
     // in most cases siglongjmp will be called later.
 
     // siglongjmp can be called very many times, so don't flood the stderr.
-    Runtime.warnOnce("Calling longjmp() instead of siglongjmp()");
+    warnOnce("Calling longjmp() instead of siglongjmp()");
     _longjmp(env, value);
   },
 #else
