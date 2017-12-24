@@ -188,12 +188,43 @@ function srcToExp(src) {
 // Traverses the children of a node. If the traverse function returns an object,
 // replaces the child. If it returns true, stop the traversal and return true.
 function traverseChildren(node, traverse, pre, post) {
-  for (var i = 0; i < node.length; i++) {
-    var subnode = node[i];
-    if (Array.isArray(subnode)) {
-      var subresult = traverse(subnode, pre, post);
-      if (subresult === true) return true;
-      if (subresult !== null && typeof subresult === 'object') node[i] = subresult;
+  if (node[0] === 'var') {
+    // don't traverse the names, just the values
+    var children = node[1];
+    if (!Array.isArray(children)) return;
+    for (var i = 0; i < children.length; i++) {
+      var subnode = children[i];
+      if (subnode.length === 2) {
+        var value = subnode[1];
+        if (Array.isArray(value)) {
+          var subresult = traverse(value, pre, post);
+          if (subresult === true) return true;
+          if (subresult !== null && typeof subresult === 'object') subnode[1] = subresult;
+        }
+      }
+    }
+  } else if (node[0] === 'object') {
+    // don't traverse the names, just the values
+    var children = node[1];
+    if (!Array.isArray(children)) return;
+    for (var i = 0; i < children.length; i++) {
+      var subnode = children[i];
+      var value = subnode[1];
+      if (Array.isArray(value)) {
+        var subresult = traverse(value, pre, post);
+        if (subresult === true) return true;
+        if (subresult !== null && typeof subresult === 'object') subnode[1] = subresult;
+      }
+    }
+  } else {
+    // generic traversal
+    for (var i = 0; i < node.length; i++) {
+      var subnode = node[i];
+      if (Array.isArray(subnode)) {
+        var subresult = traverse(subnode, pre, post);
+        if (subresult === true) return true;
+        if (subresult !== null && typeof subresult === 'object') node[i] = subresult;
+      }
     }
   }
 }
@@ -1379,6 +1410,7 @@ function hasSideEffects(node) { // this is 99% incomplete!
     }
     case 'conditional': return hasSideEffects(node[1]) || hasSideEffects(node[2]) || hasSideEffects(node[3]);
     case 'function': case 'defun': return false;
+    case 'object': return false;
     default: return true;
   }
 }
@@ -4704,7 +4736,12 @@ var FAST_ELIMINATION_BINARIES = setUnion(setUnion(USEFUL_BINARY_OPS, COMPARE_OPS
 
 function measureSize(ast) {
   var size = 0;
-  traverse(ast, function() {
+  traverse(ast, function(node, type) {
+    // FIXME backwards compatibility: measure var internal node too. this
+    //       affects the 'outline' test.
+    if (type === 'var') {
+      size += node[1].length;
+    }
     size++;
   });
   return size;
@@ -7846,33 +7883,20 @@ function JSDCE(ast, multipleIterations) {
       });
       return ast;
     }
-    var isVarNameOrObjectKeys = [];
-    // isVarNameOrObjectKeys is a stack which saves the state the node is defining a variable or in an object literal.
-    // the second argument `type` passed into the callback function called by traverse() could be a variable name or object key name.
-    // You cannot distinguish the `type` is a real type or not without isVarNameOrObjectKeys.
-    // ex.) var name = true;          // `type` can be 'name'
-    //      var obj = { defun: true } // `type` can be 'defun'
     traverse(ast, function(node, type) {
-      if (isVarNameOrObjectKeys[isVarNameOrObjectKeys.length - 1]) { // check parent node defines a variable or is an object literal
-        // `type` is a variable name or an object key name
-        isVarNameOrObjectKeys.push(false); // doesn't define a variable nor be an object literal
-        return;
-      }
       if (type === 'var') {
         node[1].forEach(function(varItem, j) {
           var name = varItem[0];
           ensureData(scopes[scopes.length-1], name).def = 1;
         });
-        isVarNameOrObjectKeys.push(true); // this `node` defines a varible
         return;
       }
       if (type === 'object') {
-        isVarNameOrObjectKeys.push(true); // this `node` is an object literal
         return;
       }
-      isVarNameOrObjectKeys.push(false); // doesn't define a variable nor be an object literal
       if (type === 'defun' || type === 'function') {
-        if (node[1]) ensureData(scopes[scopes.length-1], node[1]).def = 1;
+        // defun names matter - function names (the y in var x = function y() {..}) are just for stack traces.
+        if (type === 'defun') ensureData(scopes[scopes.length-1], node[1]).def = 1;
         var scope = {};
         node[2].forEach(function(param) {
           ensureData(scope, param).def = 1;
@@ -7885,8 +7909,6 @@ function JSDCE(ast, multipleIterations) {
         ensureData(scopes[scopes.length-1], node[1]).use = 1;
       }
     }, function(node, type) {
-      isVarNameOrObjectKeys.pop();
-      if (isVarNameOrObjectKeys[isVarNameOrObjectKeys.length - 1]) return; // `type` is a variable name or an object key name
       if (type === 'defun' || type === 'function') {
         var scope = scopes.pop();
         var names = set();

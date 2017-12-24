@@ -644,6 +644,13 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
       funcs += ['setTempRet0', 'getTempRet0']
     if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
       funcs += ['setThrew']
+    if settings['EMTERPRETIFY']:
+      funcs += ['emterpret']
+      if settings['EMTERPRETIFY_ASYNC']:
+        funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore']
+    if settings['ASYNCIFY']:
+      funcs += ['setAsync']
+
   return sorted(set(funcs))
 
 
@@ -1253,8 +1260,6 @@ def create_basic_vars(exported_implemented_functions, forwarded_json, metadata, 
 def create_exports(exported_implemented_functions, in_table, function_table_data, metadata, settings):
   quote = quoter(settings)
   asm_runtime_funcs = create_asm_runtime_funcs(settings)
-  if need_asyncify(exported_implemented_functions):
-    asm_runtime_funcs.append('setAsync')
   all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables(function_table_data, settings)
   if settings['EMULATED_FUNCTION_POINTERS']:
     all_exported += in_table
@@ -1281,10 +1286,6 @@ def create_asm_runtime_funcs(settings):
     funcs += ['setDynamicTop']
   if settings['ONLY_MY_CODE']:
     funcs = []
-  if settings.get('EMTERPRETIFY'):
-    funcs += ['emterpret']
-    if settings.get('EMTERPRETIFY_ASYNC'):
-      funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore']
   return funcs
 
 

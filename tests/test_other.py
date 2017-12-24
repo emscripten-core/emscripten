@@ -2346,11 +2346,9 @@ seeked= file.
     assert crunch_time < os.stat('ship.crn').st_mtime, 'Crunch was changed'
 
   def test_headless(self):
-    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey due to node limitations (Uint8ClampedArray etc.)')
-
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'example.png'))
     Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_headless.c'), '-s', 'HEADLESS=1']).communicate()
-    output = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE)
+    output = run_js('a.out.js', stderr=PIPE)
     assert '''Init: 0
 Font: 0x1
 Sum: 0
@@ -3021,8 +3019,8 @@ int main(void) {
     open('pre.js', 'w').write(r'''
 if (!Module['preRun']) Module['preRun'] = [];
 Module["preRun"].push(function () {
-    Module['addRunDependency']('test_run_dependency');
-    Module['removeRunDependency']('test_run_dependency');
+    addRunDependency('test_run_dependency');
+    removeRunDependency('test_run_dependency');
 });
 ''')
 
@@ -4956,7 +4954,7 @@ main(const int argc, const char * const * const argv)
       assert sizes['no_nuthin'] < ratio*sizes['normal']
       assert sizes['no_nuthin'] < absolute, str(sizes['no_nuthin']) + ' >= ' + str(absolute)
       if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
-        assert sizes['no_nuthin'] < 0.995*sizes['no_fs']
+        assert sizes['no_nuthin'] < 0.9995*sizes['no_fs']
       assert sizes['no_fs_manual'] < sizes['no_fs'] # manual can remove a tiny bit more
     test(['-s', 'ASSERTIONS=0'], 0.75, 360000) # we don't care about code size with assertions
     test(['-O1'], 0.66, 210000)
@@ -4984,9 +4982,9 @@ main(const int argc, const char * const * const argv)
       assert sizes['no_nuthin'] < absolute
     test(['-s', 'ASSERTIONS=0'], 1, 220000) # we don't care about code size with assertions
     test(['-O1'], 1, 215000)
-    test(['-O2'], 0.995, 55000)
-    test(['-O3', '--closure', '1'], 0.995, 38000)
-    test(['-O3', '--closure', '2'], 0.995, 35000) # might change now and then
+    test(['-O2'], 0.9995, 55000)
+    test(['-O3', '--closure', '1'], 0.9995, 38000)
+    test(['-O3', '--closure', '2'], 0.9995, 35000) # might change now and then
 
   def test_no_browser(self):
     BROWSER_INIT = 'var Browser'
@@ -5009,10 +5007,10 @@ main(const int argc, const char * const * const argv)
       self.assertContained(has, src)
       self.assertNotContained(not_has, src)
 
-    test([], 'Module["getMemory', 'Module["waka')
-    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]'], '', 'Module["getMemory')
-    test(['-s', 'EXPORTED_RUNTIME_METHODS=["getMemory"]'], 'Module["getMemory', 'Module["waka')
-    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["getMemory"]'], 'Module["getMemory', 'Module["waka')
+    test([], 'Module["', 'Module["waka')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]'], '', 'Module["addRunDependency')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=["addRunDependency"]'], 'Module["addRunDependency', 'Module["waka')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["addRunDependency"]'], 'Module["addRunDependency', 'Module["waka')
 
   def test_stat_fail_alongtheway(self):
     open('src.cpp', 'w').write(r'''
@@ -7721,17 +7719,17 @@ int main() {
   def test_binaryen_metadce(self):
     sizes = {}
     # in -Os, -Oz, we remove imports wasm doesn't need
-    for args, expected_len, expected_exists, expected_not_exists in [
-        ([],      25, ['abort', 'tempDoublePtr'], ['waka']),
-        (['-O1'], 20, ['abort', 'tempDoublePtr'], ['waka']),
-        (['-O2'], 20, ['abort', 'tempDoublePtr'], ['waka']),
-        (['-O3'], 13, ['abort'], ['tempDoublePtr', 'waka']), # in -O3, -Os and -Oz we metadce
-        (['-Os'], 13, ['abort'], ['tempDoublePtr', 'waka']),
-        (['-Oz'], 13, ['abort'], ['tempDoublePtr', 'waka']),
-        # finally, check what happens when we export pretty much nothing. wasm should be almost  empty
-        (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[]'], 1, ['STACKTOP'], ['tempDoublePtr', 'waka']),
+    for args, expected_len, expected_exists, expected_not_exists, expected_wasm_size in [
+        ([],                                                                          25, ['abort', 'tempDoublePtr'], ['waka'],                  48335),
+        (['-O1'],                                                                     20, ['abort', 'tempDoublePtr'], ['waka'],                  13600),
+        (['-O2'],                                                                     20, ['abort', 'tempDoublePtr'], ['waka'],                  13512),
+        (['-O3'],                                                                     13, ['abort'],                  ['tempDoublePtr', 'waka'], 10459), # in -O3, -Os and -Oz we metadce
+        (['-Os'],                                                                     13, ['abort'],                  ['tempDoublePtr', 'waka'], 10387),
+        (['-Oz'],                                                                     13, ['abort'],                  ['tempDoublePtr', 'waka'], 10377),
+        # finally, check what happens when we export pretty much nothing. wasm should be almost empty
+        (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[]'],  0, [],                         ['tempDoublePtr', 'waka'], 195),
       ]:
-      print(args, expected_len, expected_exists, expected_not_exists)
+      print(args, expected_len, expected_exists, expected_not_exists, expected_wasm_size)
       subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'WASM=1', '-g2'])
       # find the imports we send from JS
       js = open('a.out.js').read()
@@ -7741,12 +7739,16 @@ int main() {
       relevant = js[start+2:end-2]
       relevant = relevant.replace(' ', '').replace('"', '').replace("'", '').split(',')
       sent = [x.split(':')[0].strip() for x in relevant]
+      sent = [x for x in sent if x]
       print('   seen: ' + str(sent))
       assert len(sent) == expected_len, (expected_len, len(sent))
       for exists in expected_exists:
         assert exists in sent, [exists, sent]
       for not_exists in expected_not_exists:
         assert not_exists not in sent, [not_exists, sent]
+      wasm_size = os.stat('a.out.wasm').st_size
+      ratio = (wasm_size - expected_wasm_size) / float(expected_wasm_size)
+      assert ratio < 0.05, [expected_wasm_size, wasm_size, ratio]
 
   # test disabling of JS FFI legalization
   def test_legalize_js_ffi(self):

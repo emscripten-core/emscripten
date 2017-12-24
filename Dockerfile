@@ -10,10 +10,10 @@ RUN cd /root/ \
  && apt-get install -y python python-pip cmake build-essential openjdk-9-jre-headless \
  && pip install --upgrade pip \
  && pip install lit \
- && wget https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz \
- && tar -xf emsdk-portable.tar.gz \
- && pushd emsdk-portable \
- && ./emsdk update \
+ && wget https://github.com/juj/emsdk/archive/master.tar.gz \
+ && tar -xf master.tar.gz \
+ && pushd emsdk-master \
+ && ./emsdk update-tags \
  && ./emsdk install latest \
  && ./emsdk activate latest \
  && popd \

@@ -9,6 +9,11 @@ with this tool. Then just include the generated js for each and they will load
 the data and prepare it accordingly. This allows you to share assets and reduce
 data downloads.
 
+ * If you run this yourself, separately/standalone from emcc, then the main program
+   compiled by emcc must be built with filesystem support. You can do that with
+   -s FORCE_FILESYSTEM=1 (if you forget that, an unoptimized build or one with
+   ASSERTIONS enabled will show an error suggesting you use that flag).
+
 Usage:
 
   file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--no-heap-copy] [--separate-metadata] [--lz4] [--use-preload-plugins]

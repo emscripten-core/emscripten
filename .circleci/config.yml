@@ -29,10 +29,10 @@ jobs:
       - run: |
           apt-get update
           apt-get install -y python cmake
-          wget https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz
-          tar -xf emsdk-portable.tar.gz
-          pushd emsdk-portable
-          ./emsdk update
+          wget https://github.com/juj/emsdk/archive/master.tar.gz
+          tar -xf master.tar.gz
+          pushd emsdk-master
+          ./emsdk update-tags
           ./emsdk install latest
           ./emsdk activate latest
           popd
@@ -46,7 +46,7 @@ jobs:
           root: ~/
           # Must be relative path from root
           paths:
-            - emsdk-portable/
+            - emsdk-master/
             - .emscripten_cache/
             - .emscripten_ports/
             - .emscripten
