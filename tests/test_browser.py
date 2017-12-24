@@ -1787,8 +1787,9 @@ void *getBindBuffer() {
   return glBindBuffer;
 }
 ''')
-    for opts in [0, 1]:
-      self.btest('cubegeom_proc.c', reference='cubegeom.png', args=['-O' + str(opts), 'side.c', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    # also test -Os in wasm, which uses meta-dce, which should not break legacy gl emulation hacks
+    for opts in [[], ['-O1'], ['-Os', '-s', 'WASM=1']]:
+      self.btest('cubegeom_proc.c', reference='cubegeom.png', args=opts + ['side.c', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   def test_cubegeom_glew(self):
     self.btest('cubegeom_glew.c', reference='cubegeom.png', args=['-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lGLEW', '-lSDL'])

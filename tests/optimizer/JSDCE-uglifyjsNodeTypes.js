@@ -43,3 +43,5 @@ var recursiveObject = {
     }
   }
 };
+
+quotedObject || unquotedObject || recursiveObject; // fake uses

@@ -50,3 +50,5 @@ var recursiveObject = {
   }
  }
 };
+quotedObject || unquotedObject || recursiveObject;
+
