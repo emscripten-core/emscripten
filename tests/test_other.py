@@ -4984,7 +4984,7 @@ main(const int argc, const char * const * const argv)
       assert sizes['no_nuthin'] < absolute
     test(['-s', 'ASSERTIONS=0'], 1, 220000) # we don't care about code size with assertions
     test(['-O1'], 1, 215000)
-    test(['-O2'], 0.995, 55000)
+    test(['-O2'], 0.9995, 55000)
     test(['-O3', '--closure', '1'], 0.9995, 38000)
     test(['-O3', '--closure', '2'], 0.9995, 35000) # might change now and then
 
