@@ -54,7 +54,7 @@ mergeInto(LibraryManager.library, {
 
   emscripten_sleep__deps: ['emscripten_async_resume', '$Browser'],
   emscripten_sleep: function(ms) {
-    Module['asm'].setAsync(); // tell the scheduler that we have a callback on hold
+    Module['setAsync'](); // tell the scheduler that we have a callback on hold
     Browser.safeSetTimeout(_emscripten_async_resume, ms);
   },
 
@@ -196,7 +196,7 @@ mergeInto(LibraryManager.library, {
     var _url = Pointer_stringify(url);
     var _file = Pointer_stringify(file);
     _file = PATH.resolve(FS.cwd(), _file);
-    Module['asm'].setAsync();
+    Module['setAsync']();
     Module['noExitRuntime'] = true;
     var destinationDirectory = PATH.dirname(_file);
     FS.createPreloadedFile(
@@ -255,7 +255,7 @@ mergeInto(LibraryManager.library, {
     setState: function(s) {
       this.ensureInit();
       this.state = s;
-      Module['asm'].setAsyncState(s);
+      Module['setAsyncState'](s);
     },
     handle: function(doAsyncOp, yieldDuring) {
       Module['noExitRuntime'] = true;

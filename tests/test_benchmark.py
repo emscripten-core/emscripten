@@ -145,6 +145,8 @@ process(sys.argv[1])
       '--closure', '1',
       '-o', final
     ] + shared_args + emcc_args + self.extra_args
+    if 'FORCE_FILESYSTEM=1' in cmd:
+      cmd = [arg if arg != 'NO_FILESYSTEM=1' else 'NO_FILESYSTEM=0' for arg in cmd]
     output = Popen(cmd, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
     assert os.path.exists(final), 'Failed to compile file: ' + output[0] + ' (looked for ' + final + ')'
     if self.binaryen_opts:
@@ -850,7 +852,8 @@ class benchmark(RunnerCore):
       ret[0] += '.bc'
       return ret
     self.do_benchmark('lua_' + benchmark, '', expected,
-                      force_c=True, args=[benchmark + '.lua', DEFAULT_ARG], emcc_args=['--embed-file', benchmark + '.lua'],
+                      force_c=True, args=[benchmark + '.lua', DEFAULT_ARG],
+                      emcc_args=['--embed-file', benchmark + '.lua', '-s', 'FORCE_FILESYSTEM=1'],
                       lib_builder=lib_builder, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'),
                       output_parser=output_parser, args_processor=args_processor)
 

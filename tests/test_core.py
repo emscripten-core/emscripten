@@ -4119,6 +4119,8 @@ Pass: 0.000012 0.000012''')
       print('closure 2')
       self.emcc_args += ['--closure', '2'] # Use closure 2 here for some additional coverage
 
+    self.emcc_args += ['-s', 'FORCE_FILESYSTEM=1']
+
     print('base', self.emcc_args)
 
     post = '''
@@ -5988,6 +5990,31 @@ def process(filename):
     # see that when we export them, things work on the module
     Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['getValue', 'setValue']
     test()
+
+  def test_FS_exports(self):
+    # these used to be exported, but no longer are by default
+    for use_files in (0, 1):
+      print(use_files)
+      def test(output_prefix='', args=[]):
+        if use_files: args = args + ['-DUSE_FILES']
+        print(args)
+        old = self.emcc_args[:]
+        self.emcc_args += args
+        self.do_run(open(path_from_root('tests', 'core', 'FS_exports.cpp')).read(),
+                    (open(path_from_root('tests', 'core', 'FS_exports' + output_prefix + '.txt')).read(),
+                     open(path_from_root('tests', 'core', 'FS_exports' + output_prefix + '_2.txt')).read()))
+        self.emcc_args = old
+      # see that direct usage (not on module) works. we don't export, but the use
+      # keeps it alive through JSDCE
+      test(args=['-DDIRECT', '-s', 'FORCE_FILESYSTEM=1'])
+      # see that with assertions, we get a nice error message
+      Settings.EXTRA_EXPORTED_RUNTIME_METHODS = []
+      Settings.ASSERTIONS = 1
+      test('_assert')
+      Settings.ASSERTIONS = 0
+      # see that when we export them, things work on the module
+      Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['FS_createDataFile']
+      test(args=['-s', 'FORCE_FILESYSTEM=1'])
 
   @no_wasm_backend('DEAD_FUNCTIONS elimination is done by the JSOptimizer')
   def test_dead_functions(self):
