@@ -149,9 +149,6 @@ workflows:
       - test-d:
           requires:
             - build
-      - test-d2i:
-          requires:
-            - build
       - test-e:
           requires:
             - build
@@ -165,9 +162,6 @@ workflows:
           requires:
             - build
       - test-p:
-          requires:
-            - build
-      - test-p2i:
           requires:
             - build
       - test-qrst:
