@@ -65,7 +65,8 @@ jobs:
   test-browser:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=browser
+      # browser.test_sdl_ttf_render_text_solid depends on Arial from Microsoft
+      - TEST_TARGET=browser skip:browser.test_sdl_ttf_render_text_solid
       - EMSCRIPTEN_BROWSER=firefox -headless
   test-ab:
     <<: *test-defaults
