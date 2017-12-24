@@ -271,10 +271,34 @@ var EXPORTED_RUNTIME_METHODS_SET = set(EXPORTED_RUNTIME_METHODS.concat(EXTRA_EXP
 EXPORTED_RUNTIME_METHODS = unset(EXPORTED_RUNTIME_METHODS_SET);
 EXTRA_EXPORTED_RUNTIME_METHODS = [];
 
+function isFSPrefixed(name) {
+  return name.length > 3 && name[0] === 'F' && name[1] === 'S' && name[2] === '_';
+}
+
+// forcing the filesystem exports a few things by default
+function isExportedByForceFilesystem(name) {
+  return name === 'FS_createFolder' ||
+         name === 'FS_createPath' ||
+         name === 'FS_createDataFile' ||
+         name === 'FS_createPreloadedFile' ||
+         name === 'FS_createLazyFile' ||
+         name === 'FS_createLink' ||
+         name === 'FS_createDevice' ||
+         name === 'FS_unlink' ||
+         name === 'getMemory' ||
+         name === 'addRunDependency' ||
+         name === 'removeRunDependency';
+}
+
 function maybeExport(name) {
   // if requested to be exported, export it
   if (name in EXPORTED_RUNTIME_METHODS_SET) {
-    return 'Module["' + name + '"] = ' + name + ';';
+    var exported = name;
+    if (isFSPrefixed(exported)) {
+      // this is a filesystem value, FS.x exported as FS_x
+      exported = 'FS.' + exported.substr(3);
+    }
+    return 'Module["' + name + '"] = ' + exported + ';';
   }
   // do not export it. but if ASSERTIONS, emit a
   // stub with an error, so the user gets a message
@@ -283,7 +307,11 @@ function maybeExport(name) {
     // check if it already exists, to support EXPORT_ALL and other cases
     // (we could optimize this, but in ASSERTIONS mode code size doesn't
     // matter anyhow)
-    return 'if (!Module["' + name + '"]) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)") };';
+    var extra = '';
+    if (isExportedByForceFilesystem(name)) {
+      extra = '. Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you';
+    }
+    return 'if (!Module["' + name + '"]) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") };';
   }
   return '';
 }

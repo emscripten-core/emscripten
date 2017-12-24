@@ -3021,8 +3021,8 @@ int main(void) {
     open('pre.js', 'w').write(r'''
 if (!Module['preRun']) Module['preRun'] = [];
 Module["preRun"].push(function () {
-    Module['addRunDependency']('test_run_dependency');
-    Module['removeRunDependency']('test_run_dependency');
+    addRunDependency('test_run_dependency');
+    removeRunDependency('test_run_dependency');
 });
 ''')
 
@@ -4956,7 +4956,7 @@ main(const int argc, const char * const * const argv)
       assert sizes['no_nuthin'] < ratio*sizes['normal']
       assert sizes['no_nuthin'] < absolute, str(sizes['no_nuthin']) + ' >= ' + str(absolute)
       if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
-        assert sizes['no_nuthin'] < 0.995*sizes['no_fs']
+        assert sizes['no_nuthin'] < 0.9995*sizes['no_fs']
       assert sizes['no_fs_manual'] < sizes['no_fs'] # manual can remove a tiny bit more
     test(['-s', 'ASSERTIONS=0'], 0.75, 360000) # we don't care about code size with assertions
     test(['-O1'], 0.66, 210000)
@@ -4985,8 +4985,8 @@ main(const int argc, const char * const * const argv)
     test(['-s', 'ASSERTIONS=0'], 1, 220000) # we don't care about code size with assertions
     test(['-O1'], 1, 215000)
     test(['-O2'], 0.995, 55000)
-    test(['-O3', '--closure', '1'], 0.995, 38000)
-    test(['-O3', '--closure', '2'], 0.995, 35000) # might change now and then
+    test(['-O3', '--closure', '1'], 0.9995, 38000)
+    test(['-O3', '--closure', '2'], 0.9995, 35000) # might change now and then
 
   def test_no_browser(self):
     BROWSER_INIT = 'var Browser'
@@ -5009,10 +5009,10 @@ main(const int argc, const char * const * const argv)
       self.assertContained(has, src)
       self.assertNotContained(not_has, src)
 
-    test([], 'Module["getMemory', 'Module["waka')
-    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]'], '', 'Module["getMemory')
-    test(['-s', 'EXPORTED_RUNTIME_METHODS=["getMemory"]'], 'Module["getMemory', 'Module["waka')
-    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["getMemory"]'], 'Module["getMemory', 'Module["waka')
+    test([], 'Module["', 'Module["waka')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]'], '', 'Module["addRunDependency')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=["addRunDependency"]'], 'Module["addRunDependency', 'Module["waka')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["addRunDependency"]'], 'Module["addRunDependency', 'Module["waka')
 
   def test_stat_fail_alongtheway(self):
     open('src.cpp', 'w').write(r'''

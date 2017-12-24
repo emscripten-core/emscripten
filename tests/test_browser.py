@@ -342,7 +342,7 @@ If manually bisecting:
     Popen([PYTHON, FILE_PACKAGER, data_file, '--use-preload-cache', '--indexedDB-name=testdb', '--preload', abs_txt + '@' + txt, '--js-output=' + data_js_file]).communicate()
     page_file = os.path.join(d, 'file with ' + tricky_part + '.html')
     abs_page_file = os.path.join(self.get_dir(), page_file)
-    Popen([PYTHON, EMCC, cpp, '--pre-js', data_js_file, '-o', abs_page_file]).communicate()
+    Popen([PYTHON, EMCC, cpp, '--pre-js', data_js_file, '-o', abs_page_file, '-s', 'FORCE_FILESYSTEM=1']).communicate()
     self.run_browser(page_file, '|load me right before|.', '/report_result?0')
 
   def test_preload_caching(self):
@@ -444,7 +444,7 @@ If manually bisecting:
 
     make_main('somefile.txt')
     Popen([PYTHON, FILE_PACKAGER, os.path.join(self.get_dir(), 'somefile.data'), '--use-preload-cache', '--indexedDB-name=testdb', '--preload', os.path.join(self.get_dir(), 'somefile.txt'), '--js-output=' + os.path.join(self.get_dir(), 'somefile.js')]).communicate()
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--js-library', os.path.join(self.get_dir(), 'test.js'), '--pre-js', 'somefile.js', '-o', 'page.html']).communicate()
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--js-library', os.path.join(self.get_dir(), 'test.js'), '--pre-js', 'somefile.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1']).communicate()
     self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
     self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?2')
 
@@ -1309,18 +1309,18 @@ keydown(100);keyup(100); // trigger the end
     print('normal')
     out = subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--lz4'])
     open('files.js', 'wb').write(out)
-    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-s', 'LZ4=1'], timeout=60)
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1'], timeout=60)
     print('    opts')
-    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-s', 'LZ4=1', '-O2'], timeout=60)
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1', '-O2'], timeout=60)
 
     # load the data into LZ4FS manually at runtime. This means we compress on the client. This is generally not recommended
     print('manual')
     subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--separate-metadata', '--js-output=files.js'])
-    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1'], timeout=60)
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1'], timeout=60)
     print('    opts')
-    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-O2'], timeout=60)
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1', '-O2'], timeout=60)
     print('    opts+closure')
-    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-O2', '--closure', '1', '-g1'], timeout=60)
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1', '-O2', '--closure', '1', '-g1'], timeout=60)
 
     '''# non-lz4 for comparison
     try:
@@ -1662,7 +1662,7 @@ keydown(100);keyup(100); // trigger the end
 
     setup()
     Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w')).communicate()
-    self.btest('emscripten_api_browser2.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_set']'''])
+    self.btest('emscripten_api_browser2.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_set']''', '-s', 'FORCE_FILESYSTEM=1'])
 
     # check using file packager to another dir
     self.clear()
@@ -1670,7 +1670,7 @@ keydown(100);keyup(100); // trigger the end
     os.mkdir('sub')
     Popen([PYTHON, FILE_PACKAGER, 'sub/test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w')).communicate()
     shutil.copyfile(os.path.join('sub', 'test.data'), 'test.data')
-    self.btest('emscripten_api_browser2.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_set']'''])
+    self.btest('emscripten_api_browser2.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_set']''', '-s', 'FORCE_FILESYSTEM=1'])
 
   def test_emscripten_api_infloop(self):
     self.btest('emscripten_api_browser_infloop.cpp', '7')
@@ -2273,8 +2273,8 @@ void *getBindBuffer() {
     open('pre.js', 'w').write(r'''
 if (!Module['preRun']) Module['preRun'] = [];
 Module["preRun"].push(function () {
-    Module['addRunDependency']('test_run_dependency');
-    Module['removeRunDependency']('test_run_dependency');
+  addRunDependency('test_run_dependency');
+  removeRunDependency('test_run_dependency');
 });
 ''')
 
@@ -2393,7 +2393,7 @@ Module["preRun"].push(function () {
     open('pre.js', 'w').write('Module.locateFile = function(x) { return "sub/" + x };')
     Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w')).communicate()
     # put pre.js first, then the file packager data, so locateFile is there for the file loading code
-    Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html']).communicate()
+    Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1']).communicate()
     os.mkdir('sub')
     shutil.move('page.html.mem', os.path.join('sub', 'page.html.mem'))
     shutil.move('test.data', os.path.join('sub', 'test.data'))
@@ -2415,7 +2415,7 @@ Module["preRun"].push(function () {
     ''')
 
     def in_html(expected, args=[]):
-      Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'SAFE_HEAP=1', '-s', 'ASSERTIONS=1'] + args).communicate()
+      Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'SAFE_HEAP=1', '-s', 'ASSERTIONS=1', '-s', 'FORCE_FILESYSTEM=1'] + args).communicate()
       shutil.move('page.html.mem', os.path.join('sub', 'page.html.mem'))
       self.run_browser('page.html', None, '/report_result?' + expected)
 
@@ -2436,7 +2436,7 @@ int main() {
 }
     '''))
 
-    in_html('200', ['-s', 'FORCE_FILESYSTEM=1'])
+    in_html('200')
 
   def test_glfw3(self):
     self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3', '-lglfw', '-lGL'], expected='1')
