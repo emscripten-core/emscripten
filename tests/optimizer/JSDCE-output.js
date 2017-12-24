@@ -27,4 +27,13 @@ function glue() {
  }
 }
 glue();
+function _glCreateShader() {
+ return 1;
+}
+function emulate() {
+ _glCreateShader = function _glCreateShader(shaderType) {
+  return glCreateShader();
+ };
+}
+emulate();
 
