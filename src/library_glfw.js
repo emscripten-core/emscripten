@@ -1703,7 +1703,7 @@ var LibraryGLFW = {
     for (var i in arg) {
       str += 'i';
     }
-    Runtime.dynCall(str, fun, arg);
+    dynCall(str, fun, arg);
     // One single thread
     return 0;
   },

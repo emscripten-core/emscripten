@@ -38,18 +38,6 @@ Advanced compiler settings
 
 There are several flags you can :ref:`pass to the compiler <emcc-s-option-value>` to affect code generation, which will also affect performance — for example :ref:`DISABLE_EXCEPTION_CATCHING <optimizing-code-exception-catching>`. These are documented in `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_. Some of these will be directly affected by the optimization settings (you can find out which ones by searching for ``apply_opt_level`` in `tools/shared.py <https://github.com/kripken/emscripten/blob/1.29.12/tools/shared.py#L958>`_).
 
-A few useful flags are:
-
-- 
-	.. _optimizing-code-no-exit-runtime:
-	
-	``NO_EXIT_RUNTIME``: Building with ``-s NO_EXIT_RUNTIME=1`` lets the compiler know that you don't want to shut down the runtime environment after the ``main()`` function finishes. This allows it to discard the ``atexit`` and global destructor calls it would otherwise make, improving code size and startup speed.
-
-	This is useful if your ``main()`` function finishes but you still want to execute code, for example in an app that uses a :ref:`main loop function <emscripten-runtime-environment-main-loop>`. 
-	
-	.. note:: Emscripten will not shut down the runtime if it detects :c:func:`emscripten_set_main_loop`, but it is better to optimise away the unnecessary code.
-
-
 	
 Code size
 =========

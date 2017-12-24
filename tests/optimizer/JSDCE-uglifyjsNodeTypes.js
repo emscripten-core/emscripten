@@ -1,7 +1,7 @@
-var defun = function () { var a = 1; };
-var name = function () { var a = 1; };
-var object = function () { var a = 1; };
-var non_reserved = function () { var a = 1; };
+var defun = (function () { var a = 1; })();
+var name = (function () { var a = 1; })();
+var object = (function () { var a = 1; })();
+var non_reserved = (function () { var a = 1; })();
 
 function func_1() { var a = 1; }
 function func_2() { var a = 1; }

@@ -122,7 +122,7 @@ var LibraryBrowser = {
               b = new Blob([(new Uint8Array(byteArray)).buffer], { type: Browser.getMimetype(name) });
             }
           } catch(e) {
-            Runtime.warnOnce('Blob constructor present but fails: ' + e + '; falling back to blob builder');
+            warnOnce('Blob constructor present but fails: ' + e + '; falling back to blob builder');
           }
         }
         if (!b) {
@@ -555,13 +555,13 @@ var LibraryBrowser = {
         
         // check if SDL is available
         if (typeof SDL != "undefined") {
-        	Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
-        	Browser.mouseY = SDL.mouseY + Browser.mouseMovementY;
+          Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
+          Browser.mouseY = SDL.mouseY + Browser.mouseMovementY;
         } else {
-        	// just add the mouse delta to the current absolut mouse position
-        	// FIXME: ideally this should be clamped against the canvas size and zero
-        	Browser.mouseX += Browser.mouseMovementX;
-        	Browser.mouseY += Browser.mouseMovementY;
+          // just add the mouse delta to the current absolut mouse position
+          // FIXME: ideally this should be clamped against the canvas size and zero
+          Browser.mouseX += Browser.mouseMovementX;
+          Browser.mouseY += Browser.mouseMovementY;
         }        
       } else {
         // Otherwise, calculate the movement based on the changes
@@ -659,9 +659,9 @@ var LibraryBrowser = {
     setFullscreenCanvasSize: function() {
       // check if SDL is available   
       if (typeof SDL != "undefined") {
-      	var flags = {{{ makeGetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'i32', 0, 1) }}};
-      	flags = flags | 0x00800000; // set SDL_FULLSCREEN flag
-      	{{{ makeSetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}
+        var flags = {{{ makeGetValue('SDL.screen', '0', 'i32', 0, 1) }}};
+        flags = flags | 0x00800000; // set SDL_FULLSCREEN flag
+        {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}}
       }
       Browser.updateResizeListeners();
     },
@@ -669,9 +669,9 @@ var LibraryBrowser = {
     setWindowedCanvasSize: function() {
       // check if SDL is available       
       if (typeof SDL != "undefined") {
-      	var flags = {{{ makeGetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'i32', 0, 1) }}};
-      	flags = flags & ~0x00800000; // clear SDL_FULLSCREEN flag
-      	{{{ makeSetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}
+        var flags = {{{ makeGetValue('SDL.screen', '0', 'i32', 0, 1) }}};
+        flags = flags & ~0x00800000; // clear SDL_FULLSCREEN flag
+        {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}}
       }
       Browser.updateResizeListeners();
     },
@@ -743,9 +743,9 @@ var LibraryBrowser = {
     _file = PATH.resolve(FS.cwd(), _file);
     function doCallback(callback) {
       if (callback) {
-        var stack = Runtime.stackSave();
+        var stack = stackSave();
         Module['dynCall_vi'](callback, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK));
-        Runtime.stackRestore(stack);
+        stackRestore(stack);
       }
     }
     var destinationDirectory = PATH.dirname(_file);
@@ -817,9 +817,9 @@ var LibraryBrowser = {
 
         FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true, false);
         if (onload) {
-          var stack = Runtime.stackSave();
+          var stack = stackSave();
           Module['dynCall_viii'](onload, handle, arg, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK));
-          Runtime.stackRestore(stack);
+          stackRestore(stack);
         }
       } else {
         if (onerror) Module['dynCall_viii'](onerror, handle, arg, http.status);
@@ -1002,8 +1002,8 @@ var LibraryBrowser = {
 
   // TODO: currently not callable from a pthread, but immediately calls onerror() if not on main thread.
   emscripten_async_load_script: function(url, onload, onerror) {
-    onload = Runtime.getFuncWrapper(onload, 'v');
-    onerror = Runtime.getFuncWrapper(onerror, 'v');
+    onload = getFuncWrapper(onload, 'v');
+    onerror = getFuncWrapper(onerror, 'v');
 
 #if USE_PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
@@ -1251,7 +1251,7 @@ var LibraryBrowser = {
     Module['noExitRuntime'] = true;
 
     function wrapper() {
-      Runtime.getFuncWrapper(func, 'vi')(arg);
+      getFuncWrapper(func, 'vi')(arg);
     }
 
     if (millis >= 0) {
@@ -1270,6 +1270,11 @@ var LibraryBrowser = {
   emscripten_force_exit__proxy: 'sync',
   emscripten_force_exit__sig: 'vi',
   emscripten_force_exit: function(status) {
+#if NO_EXIT_RUNTIME
+#if ASSERTIONS
+    warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build has NO_EXIT_RUNTIME set');
+#endif
+#endif
     Module['noExitRuntime'] = false;
     Module['exit'](status);
   },
@@ -1372,7 +1377,7 @@ var LibraryBrowser = {
     if (callback) {
       callbackId = info.callbacks.length;
       info.callbacks.push({
-        func: Runtime.getFuncWrapper(callback, 'viii'),
+        func: getFuncWrapper(callback, 'viii'),
         arg: arg
       });
       info.awaited++;

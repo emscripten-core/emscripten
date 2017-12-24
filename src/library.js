@@ -565,14 +565,14 @@ LibraryManager.library = {
      * not an issue.
      */
 #if ASSERTIONS == 2
-    Runtime.warnOnce('using stub malloc (reference it from C to have the real one included)');
+    warnOnce('using stub malloc (reference it from C to have the real one included)');
 #endif
-    var ptr = Runtime.dynamicAlloc(bytes + 8);
+    var ptr = dynamicAlloc(bytes + 8);
     return (ptr+8) & 0xFFFFFFF8;
   },
   free: function() {
 #if ASSERTIONS == 2
-    Runtime.warnOnce('using stub free (reference it from C to have the real one included)');
+    warnOnce('using stub free (reference it from C to have the real one included)');
 #endif
 },
 
@@ -596,6 +596,11 @@ LibraryManager.library = {
   atexit__proxy: 'sync',
   atexit__sig: 'ii',
   atexit: function(func, arg) {
+#if ASSERTIONS
+#if NO_EXIT_RUNTIME == 1
+    warnOnce('atexit() called, but NO_EXIT_RUNTIME is set, so atexits() will not be called. set NO_EXIT_RUNTIME to 0 (see the FAQ)');
+#endif
+#endif
     __ATEXIT__.unshift({ func: func, arg: arg });
   },
   __cxa_atexit: 'atexit',
@@ -636,7 +641,7 @@ LibraryManager.library = {
       ENV['_'] = Module['thisProgram'];
       // Allocate memory.
       poolPtr = allocate(TOTAL_ENV_SIZE, 'i8', ALLOC_STATIC);
-      envPtr = allocate(MAX_ENV_VALUES * {{{ Runtime.QUANTUM_SIZE }}},
+      envPtr = allocate(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}},
                         'i8*', ALLOC_STATIC);
       {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}};
       {{{ makeSetValue(makeGlobalUse('_environ'), 0, 'envPtr', 'i8*') }}};
@@ -1427,14 +1432,14 @@ LibraryManager.library = {
     if (!self.LLVM_SAVEDSTACKS) {
       self.LLVM_SAVEDSTACKS = [];
     }
-    self.LLVM_SAVEDSTACKS.push(Runtime.stackSave());
+    self.LLVM_SAVEDSTACKS.push(stackSave());
     return self.LLVM_SAVEDSTACKS.length-1;
   },
   llvm_stackrestore: function(p) {
     var self = _llvm_stacksave;
     var ret = self.LLVM_SAVEDSTACKS[p];
     self.LLVM_SAVEDSTACKS.splice(p, 1);
-    Runtime.stackRestore(ret);
+    stackRestore(ret);
   },
 
   __cxa_pure_virtual: function() {
@@ -1702,12 +1707,12 @@ LibraryManager.library = {
         var lib_data = FS.readFile(filename, { encoding: 'binary' });
         if (!(lib_data instanceof Uint8Array)) lib_data = new Uint8Array(lib_data);
         //Module.printErr('libfile ' + filename + ' size: ' + lib_data.length);
-        lib_module = Runtime.loadWebAssemblyModule(lib_data);
+        lib_module = loadWebAssemblyModule(lib_data);
 #else
         // the shared library is a JS file, which we eval
         var lib_data = FS.readFile(filename, { encoding: 'utf8' });
         lib_module = eval(lib_data)(
-          Runtime.alignFunctionTables(),
+          alignFunctionTables(),
           Module
         );
 #endif
@@ -1808,7 +1813,7 @@ LibraryManager.library = {
       } else {
         var result = lib.module[symbol];
         if (typeof result == 'function') {
-          result = Runtime.addFunction(result);
+          result = addFunction(result);
           //Module.printErr('adding function dlsym result for ' + symbol + ' => ' + result);
           lib.cached_functions = result;
         }
@@ -2000,7 +2005,7 @@ LibraryManager.library = {
     var dst = (summerOffset != winterOffset && date.getTimezoneOffset() == Math.min(winterOffset, summerOffset))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
 
-    var zonePtr = {{{ makeGetValue(makeGlobalUse('_tzname'), 'dst ? Runtime.QUANTUM_SIZE : 0', 'i32') }}};
+    var zonePtr = {{{ makeGetValue(makeGlobalUse('_tzname'), 'dst ? ' + Runtime.QUANTUM_SIZE + ' : 0', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, 'zonePtr', 'i32') }}};
 
     return tmPtr;
@@ -2047,9 +2052,9 @@ LibraryManager.library = {
 
   ctime_r__deps: ['localtime_r', 'asctime_r'],
   ctime_r: function(time, buf) {
-    var stack = Runtime.stackSave();
-    var rv = _asctime_r(_localtime_r(time, Runtime.stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
-    Runtime.stackRestore(stack);
+    var stack = stackSave();
+    var rv = _asctime_r(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
+    stackRestore(stack);
     return rv;
   },
 
@@ -4043,7 +4048,7 @@ LibraryManager.library = {
 
     // If user requested to see the original source stack, but no source map information is available, just fall back to showing the JS stack.
     if (flags & 8/*EM_LOG_C_STACK*/ && typeof emscripten_source_map === 'undefined') {
-      Runtime.warnOnce('Source map information is not available, emscripten_log with EM_LOG_C_STACK will be ignored. Build with "--pre-js $EMSCRIPTEN/src/emscripten-source-map.min.js" linker flag to add source map loading to code.');
+      warnOnce('Source map information is not available, emscripten_log with EM_LOG_C_STACK will be ignored. Build with "--pre-js $EMSCRIPTEN/src/emscripten-source-map.min.js" linker flag to add source map loading to code.');
       flags ^= 8/*EM_LOG_C_STACK*/;
       flags |= 16/*EM_LOG_JS_STACK*/;
     }
@@ -4171,7 +4176,7 @@ LibraryManager.library = {
   emscripten_log: function(flags, varargs) {
     // Extract the (optionally-existing) printf format specifier field from varargs.
     var format = {{{ makeGetValue('varargs', '0', 'i32', undefined, undefined, true) }}};
-    varargs += Math.max(Runtime.getNativeFieldSize('i32'), Runtime.getAlignSize('i32', null, true));
+    varargs += {{{ Math.max(Runtime.getNativeFieldSize('i32'), Runtime.getAlignSize('i32', null, true)) }}};
     var str = '';
     if (format) {
       var result = __formatString(format, varargs);
@@ -4185,7 +4190,7 @@ LibraryManager.library = {
   emscripten_get_compiler_setting: function(name) {
     name = Pointer_stringify(name);
 
-    var ret = Runtime.getCompilerSetting(name);
+    var ret = getCompilerSetting(name);
     if (typeof ret === 'number') return ret;
 
     if (!_emscripten_get_compiler_setting.cache) _emscripten_get_compiler_setting.cache = {};

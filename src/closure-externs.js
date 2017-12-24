@@ -1025,6 +1025,9 @@ var VoidPtr;
 
 // Various Emscripten-specific global variables
 
+/**
+ * @suppress {duplicate}
+ */
 var tempRet0;
 var tempI64;
 var tempDouble;

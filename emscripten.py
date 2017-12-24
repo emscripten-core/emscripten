@@ -21,7 +21,7 @@ from collections import OrderedDict
 from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
 from tools.response_file import read_response_file
-from tools.shared import WINDOWS
+from tools.shared import WINDOWS, asstr
 
 __rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
@@ -143,6 +143,9 @@ def parse_backend_output(backend_output, DEBUG):
   metadata_raw = backend_output[metadata_split+len(metadata_split_marker):]
   mem_init = backend_output[end_funcs+len(end_funcs_marker):metadata_split]
 
+  # we no longer use the "Runtime" object. TODO: stop emiting it in the backend
+  mem_init = mem_init.replace('Runtime.', '')
+
   try:
     #if DEBUG: print >> sys.stderr, "METAraw", metadata_raw
     metadata = json.loads(metadata_raw, object_pairs_hook=OrderedDict)
@@ -150,9 +153,9 @@ def parse_backend_output(backend_output, DEBUG):
     logging.error('emscript: failure to parse metadata output from compiler backend. raw output is: \n' + metadata_raw)
     raise e
 
-  #if DEBUG: print >> sys.stderr, "FUNCS", funcs
-  #if DEBUG: print >> sys.stderr, "META", metadata
-  #if DEBUG: print >> sys.stderr, "meminit", mem_init
+  # functions marked llvm.used in the code are exports requested by the user
+  shared.Building.user_requested_exports += metadata['exports']
+
   return funcs, metadata, mem_init
 
 
@@ -378,8 +381,6 @@ def create_module(function_table_sigs, metadata, settings,
 
   asm_end = create_asm_end(exports, settings)
 
-  runtime_library_overrides = create_runtime_library_overrides(settings)
-
   module = [
     asm_start,
     temp_float,
@@ -389,11 +390,11 @@ def create_module(function_table_sigs, metadata, settings,
     start_funcs_marker
   ] + runtime_funcs + funcs_js + ['\n  ',
     pre_tables, final_function_tables, asm_end,
-    '\n', receiving, ';\n', runtime_library_overrides]
+    '\n', receiving, ';\n']
 
   if settings['SIDE_MODULE']:
     module.append('''
-Runtime.registerFunctions(%(sigs)s, Module);
+parentModule['registerFunctions'](%(sigs)s, Module);
 ''' % { 'sigs': str(list(map(str, function_table_sigs))) })
 
   return module
@@ -564,7 +565,7 @@ def memory_and_global_initializers(pre, metadata, mem_init, settings):
                      mem_init=mem_init))
 
   if settings['SIDE_MODULE']:
-    pre = pre.replace('Runtime.GLOBAL_BASE', 'gb')
+    pre = pre.replace('GLOBAL_BASE', 'gb')
   if settings['SIDE_MODULE'] or settings['BINARYEN']:
     pre = pre.replace('{{{ STATIC_BUMP }}}', str(staticbump))
 
@@ -597,11 +598,18 @@ def get_all_implemented(forwarded_json, metadata):
   return metadata['implementedFunctions'] + list(forwarded_json['Functions']['implementedFunctions'].keys()) # XXX perf?
 
 
+# Return the list of original exports, for error reporting. It may
+# be a response file, in which case, load it
+def get_original_exported_functions(settings):
+  ret = settings['ORIGINAL_EXPORTED_FUNCTIONS']
+  if ret[0] == '@':
+    ret = json.loads(open(ret[1:]).read())
+  return ret
+
+
 def check_all_implemented(all_implemented, pre, settings):
   if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
-    original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
-    if original_exports[0] == '@':
-      original_exports = json.loads(open(original_exports[1:]).read())
+    original_exports = get_original_exported_functions(settings)
     for requested in original_exports:
       if not is_already_implemented(requested, pre, all_implemented):
         # could be a js library func
@@ -612,7 +620,7 @@ def is_already_implemented(requested, pre, all_implemented):
   is_implemented = requested in all_implemented
   # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS
   is_exception = requested == '_malloc'
-  in_pre = ('function ' + requested.encode('utf-8')) in pre
+  in_pre = ('function ' + asstr(requested)) in pre
   return is_implemented or is_exception or in_pre
 
 def get_exported_implemented_functions(all_exported_functions, all_implemented, metadata, settings):
@@ -644,8 +652,8 @@ def get_implemented_functions(metadata):
 
 def proxy_debug_print(call_type, settings):
   if shared.Settings.PTHREADS_DEBUG:
-    if call_type == 'sync_on_main_thread_': return 'Runtime.warnOnce("sync proxying function " + code);';
-    elif call_type == 'async_on_main_thread_': return 'Runtime.warnOnce("async proxying function " + code);';
+    if call_type == 'sync_on_main_thread_': return 'warnOnce("sync proxying function " + code);';
+    elif call_type == 'async_on_main_thread_': return 'warnOnce("async proxying function " + code);';
   return ''
 
 def include_asm_consts(pre, forwarded_json, metadata, settings):
@@ -674,13 +682,13 @@ def include_asm_consts(pre, forwarded_json, metadata, settings):
     asm_const_funcs.append(r'''
 function _emscripten_asm_const_%s(%s) {
 %s  return ASM_CONSTS[code](%s);
-}''' % (call_type + sig.encode('utf-8'), ', '.join(all_args), proxy_to_main_thread, ', '.join(args)))
+}''' % (call_type + asstr(sig), ', '.join(all_args), proxy_to_main_thread, ', '.join(args)))
 
   asm_consts_text = '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n'
   asm_funcs_text = '\n'.join(asm_const_funcs) + '\n'
 
   body_marker = '// === Body ==='
-  return pre.replace(body_marker, body_marker + '\n' + asm_consts_text + asm_funcs_text.encode('utf-8'))
+  return pre.replace(body_marker, body_marker + '\n' + asm_consts_text + asstr(asm_funcs_text))
 
 # Test if the parentheses at body[openIdx] and body[closeIdx] are a match to each other.
 def parentheses_match(body, openIdx, closeIdx):
@@ -710,7 +718,7 @@ def all_asm_consts(metadata):
   all_sigs = []
   all_call_types = []
   for k, v in metadata['asmConsts'].items():
-    const = v[0].encode('utf-8')
+    const = asstr(v[0])
     sigs = v[1]
     call_types = v[2] if len(v) >= 3 else None
     const = trim_asm_const_body(const)
@@ -1144,9 +1152,8 @@ def create_asm_setup(debug_tables, function_table_data, metadata, settings):
     if not settings['EMULATED_FUNCTION_POINTERS']:
       asm_setup += "\nModule['wasmMaxTableSize'] = %d;\n" % table_total_size
   if settings['RELOCATABLE']:
-    asm_setup += 'var setTempRet0 = Runtime.setTempRet0, getTempRet0 = Runtime.getTempRet0;\n'
     if not settings['SIDE_MODULE']:
-      asm_setup += 'var gb = Runtime.GLOBAL_BASE, fb = 0;\n'
+      asm_setup += 'var gb = GLOBAL_BASE, fb = 0;\n'
     side = 'parent' if settings['SIDE_MODULE'] else ''
     def check(extern):
       if settings['ASSERTIONS']:
@@ -1594,25 +1601,6 @@ def create_asm_end(exports, settings):
        'Module' + access_quote('asmLibraryArg'))
 
 
-def create_runtime_library_overrides(settings):
-  overrides = []
-  if not settings.get('SIDE_MODULE'):
-    overrides += [
-      'stackAlloc',
-      'stackSave',
-      'stackRestore',
-      'establishStackSpace',
-    ]
-    if settings['SAFE_HEAP']:
-      overrides.append('setDynamicTop')
-
-  if not settings['RELOCATABLE']:
-    overrides += ['setTempRet0', 'getTempRet0']
-
-  lines = ["Runtime.{0} = Module['{0}'];".format(func) for func in overrides]
-  return '\n'.join(lines)
-
-
 def create_first_in_asm(settings):
   first_in_asm = ''
   if settings['SPLIT_MEMORY']:
@@ -1865,14 +1853,13 @@ def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata, se
       exported_implemented_functions.add(key)
 
   if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
-    original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
-    if original_exports[0] == '@': original_exports = json.loads(open(original_exports[1:]).read())
+    original_exports = get_original_exported_functions(settings)
     for requested in original_exports:
       # check if already implemented
       # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS \
       if requested not in all_implemented and \
          requested != '_malloc' and \
-         (('function ' + requested.encode('utf-8')) not in pre): # could be a js library func
+         (('function ' + asstr(requested)) not in pre): # could be a js library func
         logging.warning('function requested to be exported, but not implemented: "%s"', requested)
 
   return exported_implemented_functions
@@ -1881,7 +1868,7 @@ def create_asm_consts_wasm(forwarded_json, metadata):
   asm_consts = [0]*len(metadata['asmConsts'])
   all_sigs = []
   for k, v in metadata['asmConsts'].items():
-    const = v[0].encode('utf-8')
+    const = asstr(v[0])
     sigs = v[1]
     const = trim_asm_const_body(const)
     const = '{ ' + const + ' }'
@@ -1901,7 +1888,7 @@ def create_asm_consts_wasm(forwarded_json, metadata):
     asm_const_funcs.append(r'''
 function _emscripten_asm_const_%s(%s) {
 return ASM_CONSTS[code](%s);
-}''' % (sig.encode('utf-8'), ', '.join(all_args), ', '.join(args)))
+}''' % (asstr(sig), ', '.join(all_args), ', '.join(args)))
 
   return asm_consts, asm_const_funcs
 
@@ -1989,15 +1976,15 @@ var asm = Module['asm'](%s, %s, buffer);
 STACKTOP = STACK_BASE + TOTAL_STACK;
 STACK_MAX = STACK_BASE;
 HEAP32[%d >> 2] = STACKTOP;
-Runtime.stackAlloc = Module['_stackAlloc'];
-Runtime.stackSave = Module['_stackSave'];
-Runtime.stackRestore = Module['_stackRestore'];
-Runtime.establishStackSpace = Module['establishStackSpace'];
+stackAlloc = Module['_stackAlloc'];
+stackSave = Module['_stackSave'];
+stackRestore = Module['_stackRestore'];
+establishStackSpace = Module['establishStackSpace'];
 ''' % shared.Settings.GLOBAL_BASE)
 
   module.append('''
-Runtime.setTempRet0 = Module['setTempRet0'];
-Runtime.getTempRet0 = Module['getTempRet0'];
+setTempRet0 = Module['setTempRet0'];
+getTempRet0 = Module['getTempRet0'];
 ''')
 
   module.append(invoke_wrappers)
@@ -2068,6 +2055,9 @@ def load_metadata(metadata_raw):
 
   # Initializers call the global var version of the export, so they get the mangled name.
   metadata['initializers'] = list(map(asmjs_mangle, metadata['initializers']))
+
+  # functions marked llvm.used in the code are exports requested by the user
+  shared.Building.user_requested_exports += metadata['exports']
 
   return metadata
 
@@ -2155,9 +2145,7 @@ def main(args, compiler_engine, cache, temp_files, DEBUG):
   for setting in args.settings:
     name, value = setting.strip().split('=', 1)
     value = json.loads(value)
-    if isinstance(value, unicode):
-      value = value.encode('utf8')
-    settings[name] = value
+    settings[name] = asstr(value)
 
   # libraries
   libraries = args.libraries[0].split(',') if len(args.libraries) > 0 else []

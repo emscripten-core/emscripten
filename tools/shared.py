@@ -187,29 +187,34 @@ class Py2CalledProcessError(subprocess.CalledProcessError):
 
 # https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess
 class Py2CompletedProcess:
-  def __init__(self, process, args):
-    (self.stdout, self.stderr) = process.communicate()
+  def __init__(self, args, returncode, stdout, stderr):
     self.args = args
-    self.returncode = process.returncode
+    self.returncode = returncode
+    self.stdout = stdout
+    self.stderr = stderr
 
   def __repr__(self):
     _repr = ['args=%s, returncode=%s' % (self.args, self.returncode)]
     if self.stdout is not None:
-      _repr += 'stdout=' + self.stdout
+      _repr += 'stdout=' + repr(self.stdout)
     if self.stderr is not None:
-      _repr += 'stderr=' + self.stderr
+      _repr += 'stderr=' + repr(self.stderr)
     return 'CompletedProcess(%s)' % ', '.join(_repr)
 
   def check_returncode(self):
     if self.returncode is not 0:
       raise Py2CalledProcessError(returncode=self.returncode, cmd=self.args, output=self.stdout, stderr=self.stderr)
 
-def run_base(cmd, check=False, *args, **kw):
+def run_base(cmd, check=False, input=None, *args, **kw):
   if hasattr(subprocess, "run"):
-    return subprocess.run(cmd, check=check, *args, **kw)
+    return subprocess.run(cmd, check=check, input=input, *args, **kw)
 
   # Python 2 compatibility: Introduce Python 3 subprocess.run-like behavior
-  result = Py2CompletedProcess(Popen(cmd, *args, **kw), cmd)
+  if input is not None:
+    kw['stdin'] = subprocess.PIPE
+  proc = Popen(cmd, *args, **kw)
+  stdout, stderr = proc.communicate(input)
+  result = Py2CompletedProcess(cmd, proc.returncode, stdout, stderr)
   if check:
     result.check_returncode()
   return result
@@ -2150,10 +2155,20 @@ class Building(object):
 
   # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
   @staticmethod
-  def js_optimizer_no_asmjs(filename, passes):
-    next = filename + '.jso.js'
-    subprocess.check_call(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
-    return next
+  def js_optimizer_no_asmjs(filename, passes, return_output=False, extra_info=None):
+    original_filename = filename
+    if extra_info is not None:
+      temp_files = configuration.get_temp_files()
+      temp = temp_files.get('.js').name
+      shutil.copyfile(filename, temp)
+      with open(temp, 'a') as f: f.write('// EXTRA_INFO: ' + extra_info)
+      filename = temp
+    if not return_output:
+      next = original_filename + '.jso.js'
+      subprocess.check_call(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
+      return next
+    else:
+      return run_process(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=PIPE).stdout
 
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
   @staticmethod
@@ -2259,11 +2274,90 @@ class Building(object):
       if os.environ.get('EMCC_CLOSURE_ARGS'):
         args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
       logging.debug('closure compiler: ' + ' '.join(args))
-      process = run_process(args, stdout=PIPE, stderr=STDOUT)
+      process = run_process(args, stdout=PIPE, stderr=STDOUT, check=False)
       if process.returncode != 0 or not os.path.exists(filename + '.cc.js'):
         raise Exception('closure compiler error: ' + process.stdout + ' (rc: %d)' % process.returncode)
 
       return filename + '.cc.js'
+
+  # minify the final wasm+JS combination. this is done after all the JS
+  # and wasm optimizations; here we do the very final optimizations on them
+  @staticmethod
+  def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, use_closure_compiler, debug_info, emit_symbol_map):
+    temp_files = configuration.get_temp_files()
+    # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
+    # use AJSDCE (aggressive JS DCE, performs multiple iterations)
+    passes = ['noPrintMetadata', 'JSDCE' if not expensive_optimizations else 'AJSDCE']
+    if minify_whitespace:
+      passes.append('minifyWhitespace')
+    logging.debug('running cleanup on shell code: ' + ' '.join(passes))
+    temp_files.note(js_file)
+    js_file = Building.js_optimizer_no_asmjs(js_file, passes)
+    # if we are optimizing for size, shrink the combined wasm+JS
+    # TODO: support this when a symbol map is used
+    if expensive_optimizations and not emit_symbol_map:
+      temp_files.note(js_file)
+      js_file = Building.metadce(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
+      # now that we removed unneeded communication between js and wasm, we can clean up
+      # the js some more.
+      passes = ['noPrintMetadata', 'AJSDCE']
+      if minify_whitespace:
+        passes.append('minifyWhitespace')
+      logging.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
+      temp_files.note(js_file)
+      js_file = Building.js_optimizer_no_asmjs(js_file, passes)
+    # finally, optionally use closure compiler to finish cleaning up the JS
+    if use_closure_compiler:
+      logging.debug('running closure on shell code')
+      temp_files.note(js_file)
+      js_file = Building.closure_compiler(js_file, pretty=not minify_whitespace)
+    return js_file
+
+  # run binaryen's wasm-metadce to dce both js and wasm
+  @staticmethod
+  def metadce(js_file, wasm_file, minify_whitespace, debug_info):
+    logging.debug('running meta-DCE')
+    temp_files = configuration.get_temp_files()
+    # first, get the JS part of the graph
+    txt = Building.js_optimizer_no_asmjs(js_file, ['emitDCEGraph', 'noEmitAst'], return_output=True)
+    # ensure that functions expected to be exported to the outside are roots
+    graph = json.loads(txt)
+    for item in graph:
+      if 'export' in item:
+        name = item['export']
+        if name in Building.user_requested_exports or Settings.EXPORT_ALL:
+          item['root'] = True
+    if Settings.WASM_BACKEND:
+      # wasm backend's imports are prefixed differently inside the wasm
+      for item in graph:
+        if 'import' in item:
+          if item['import'][1][0] == '_':
+            item['import'][1] = item['import'][1][1:]
+    temp = temp_files.get('.txt').name
+    txt = json.dumps(graph)
+    with open(temp, 'w') as f: f.write(txt)
+    # run wasm-metadce
+    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-metadce'), '--graph-file=' + temp, wasm_file, '-o', wasm_file]
+    if debug_info:
+      cmd += ['-g']
+    out = run_process(cmd, stdout=PIPE).stdout
+    # find the unused things in js
+    unused = []
+    PREFIX = 'unused: '
+    for line in out.split('\n'):
+      if line.startswith(PREFIX):
+        name = line.replace(PREFIX, '').strip()
+        unused.append(name)
+    # remove them
+    passes = ['applyDCEGraphRemovals']
+    if minify_whitespace:
+      passes.append('minifyWhitespace')
+    extra_info = { 'unused': unused }
+    temp_files.note(js_file)
+    return Building.js_optimizer_no_asmjs(js_file, passes, extra_info=json.dumps(extra_info))
+
+  # the exports the user requested
+  user_requested_exports = []
 
   _is_ar_cache = {}
   @staticmethod
@@ -2394,7 +2488,7 @@ class FilenameReplacementStrings:
   ASMJS_CODE_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_ASMJS_CODE_FILE }}}'
 
 class JS(object):
-  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+Runtime\.GLOBAL_BASEHgb]+)\);'
+  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+\.GLOBAL_BASEHgb]+)\);'
   no_memory_initializer_pattern = '/\* no memory initializer \*/'
 
   memory_staticbump_pattern = 'STATICTOP = STATIC_BASE \+ (\d+);'
@@ -2416,7 +2510,7 @@ class JS(object):
       f = open(path, 'rb')
       data = base64.b64encode(f.read())
       f.close()
-      return 'data:application/octet-stream;base64,' + data
+      return 'data:application/octet-stream;base64,' + asstr(data)
     else:
       return os.path.basename(path)
 
@@ -2507,7 +2601,7 @@ class JS(object):
     fnargs = ','.join(['a' + str(i) for i in range(1, len(sig))])
     args = 'index' + (',' if fnargs else '') + fnargs
     ret = '''function%s(%s) {
-    %sRuntime.functionPointers[index](%s);
+    %sfunctionPointers[index](%s);
 }''' % ((' jsCall_' + sig) if named else '', args, 'return ' if sig[0] != 'v' else '', fnargs)
     return ret
 
@@ -2607,6 +2701,16 @@ class WebAssembly(object):
     f.write(wasm[8:]) # copy rest of binary
     f.close()
     return wso
+
+# Python 2-3 compatibility helper function:
+# Converts a string to the native str type.
+def asstr(s):
+  if str is bytes:
+    if isinstance(s, unicode):
+      return s.encode('utf-8')
+  elif isinstance(s, bytes):
+      return s.decode('utf-8')
+  return s
 
 def asbytes(s):
   if str is bytes:
