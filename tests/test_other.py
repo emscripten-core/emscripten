@@ -2346,11 +2346,9 @@ seeked= file.
     assert crunch_time < os.stat('ship.crn').st_mtime, 'Crunch was changed'
 
   def test_headless(self):
-    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey due to node limitations (Uint8ClampedArray etc.)')
-
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'example.png'))
     Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_headless.c'), '-s', 'HEADLESS=1']).communicate()
-    output = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE)
+    output = run_js('a.out.js', stderr=PIPE)
     assert '''Init: 0
 Font: 0x1
 Sum: 0
