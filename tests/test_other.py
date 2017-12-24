@@ -4982,7 +4982,7 @@ main(const int argc, const char * const * const argv)
       assert sizes['no_nuthin'] < absolute
     test(['-s', 'ASSERTIONS=0'], 1, 220000) # we don't care about code size with assertions
     test(['-O1'], 1, 215000)
-    test(['-O2'], 0.995, 55000)
+    test(['-O2'], 0.9995, 55000)
     test(['-O3', '--closure', '1'], 0.9995, 38000)
     test(['-O3', '--closure', '2'], 0.9995, 35000) # might change now and then
 
@@ -7719,17 +7719,17 @@ int main() {
   def test_binaryen_metadce(self):
     sizes = {}
     # in -Os, -Oz, we remove imports wasm doesn't need
-    for args, expected_len, expected_exists, expected_not_exists in [
-        ([],      25, ['abort', 'tempDoublePtr'], ['waka']),
-        (['-O1'], 20, ['abort', 'tempDoublePtr'], ['waka']),
-        (['-O2'], 20, ['abort', 'tempDoublePtr'], ['waka']),
-        (['-O3'], 13, ['abort'], ['tempDoublePtr', 'waka']), # in -O3, -Os and -Oz we metadce
-        (['-Os'], 13, ['abort'], ['tempDoublePtr', 'waka']),
-        (['-Oz'], 13, ['abort'], ['tempDoublePtr', 'waka']),
-        # finally, check what happens when we export pretty much nothing. wasm should be almost  empty
-        (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[]'], 1, ['STACKTOP'], ['tempDoublePtr', 'waka']),
+    for args, expected_len, expected_exists, expected_not_exists, expected_wasm_size in [
+        ([],                                                                          25, ['abort', 'tempDoublePtr'], ['waka'],                  48335),
+        (['-O1'],                                                                     20, ['abort', 'tempDoublePtr'], ['waka'],                  13600),
+        (['-O2'],                                                                     20, ['abort', 'tempDoublePtr'], ['waka'],                  13512),
+        (['-O3'],                                                                     13, ['abort'],                  ['tempDoublePtr', 'waka'], 10459), # in -O3, -Os and -Oz we metadce
+        (['-Os'],                                                                     13, ['abort'],                  ['tempDoublePtr', 'waka'], 10387),
+        (['-Oz'],                                                                     13, ['abort'],                  ['tempDoublePtr', 'waka'], 10377),
+        # finally, check what happens when we export pretty much nothing. wasm should be almost empty
+        (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[]'],  0, [],                         ['tempDoublePtr', 'waka'], 195),
       ]:
-      print(args, expected_len, expected_exists, expected_not_exists)
+      print(args, expected_len, expected_exists, expected_not_exists, expected_wasm_size)
       subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'WASM=1', '-g2'])
       # find the imports we send from JS
       js = open('a.out.js').read()
@@ -7739,12 +7739,16 @@ int main() {
       relevant = js[start+2:end-2]
       relevant = relevant.replace(' ', '').replace('"', '').replace("'", '').split(',')
       sent = [x.split(':')[0].strip() for x in relevant]
+      sent = [x for x in sent if x]
       print('   seen: ' + str(sent))
       assert len(sent) == expected_len, (expected_len, len(sent))
       for exists in expected_exists:
         assert exists in sent, [exists, sent]
       for not_exists in expected_not_exists:
         assert not_exists not in sent, [not_exists, sent]
+      wasm_size = os.stat('a.out.wasm').st_size
+      ratio = (wasm_size - expected_wasm_size) / float(expected_wasm_size)
+      assert ratio < 0.05, [expected_wasm_size, wasm_size, ratio]
 
   # test disabling of JS FFI legalization
   def test_legalize_js_ffi(self):
