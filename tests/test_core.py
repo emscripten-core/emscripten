@@ -6300,9 +6300,10 @@ def process(filename):
     if '-O' in str(self.emcc_args):
       self.emcc_args += ['--profiling-funcs', '--llvm-opts', '0']
     self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks')
-    # without assertions, the stack is not printed
-    Settings.ASSERTIONS = 0
-    self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks_noassert')
+    if 'ASSERTIONS' not in str(self.emcc_args):
+      print('without assertions, the stack is not printed, but a message suggesting assertions is')
+      Settings.ASSERTIONS = 0
+      self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks_noassert')
 
   @no_emterpreter
   @no_wasm_backend('s2wasm does not generate symbol maps')
