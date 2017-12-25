@@ -1410,7 +1410,22 @@ function hasSideEffects(node) { // this is 99% incomplete!
     }
     case 'conditional': return hasSideEffects(node[1]) || hasSideEffects(node[2]) || hasSideEffects(node[3]);
     case 'function': case 'defun': return false;
-    case 'object': return false;
+    case 'object': {
+      var children = node[1];
+      if (!Array.isArray(children)) return false;
+      for (var i = 0; i < children.length; i++) {
+        if (hasSideEffects(children[i][1])) return true;
+      }
+      return false;
+    }
+    case 'array': {
+      var children = node[1];
+      if (!Array.isArray(children)) return false;
+      for (var i = 0; i < children.length; i++) {
+        if (hasSideEffects(children[i])) return true;
+      }
+      return false;
+    }
     default: return true;
   }
 }

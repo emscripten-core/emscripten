@@ -1,6 +1,10 @@
 
 var z = fleefl();
 var zz = fleefl();
+var keeperObj = {
+ x: fleefl()
+};
+var keeperArray = [ 1, 2, "3", four() ];
 function g(a) {
  return a + 1;
 }
