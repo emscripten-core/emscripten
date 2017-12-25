@@ -431,7 +431,7 @@ function abort(what) {
   EXITSTATUS = 1;
 
 #if ASSERTIONS == 0
-  throw 'abort(' + what + '). If this is unexpected, build with -s ASSERTIONS=1 which can give more information.';
+  throw 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
 #else
   var extra = '';
   var output = 'abort(' + what + ') at ' + stackTrace() + extra;
