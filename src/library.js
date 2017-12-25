@@ -1287,6 +1287,9 @@ LibraryManager.library = {
   llvm_eh_typeid_for: function(type) {
     return type;
   },
+#if DISABLE_EXCEPTION_CATCHING
+  __cxa_begin_catch: function() {}, // without exceptions, just do nothing
+#else // DISABLE_EXCEPTION_CATCHING
   __cxa_begin_catch__deps: ['_ZSt18uncaught_exceptionv', '$EXCEPTIONS'],
   __cxa_begin_catch: function(ptr) {
     var info = EXCEPTIONS.infos[ptr];
@@ -1302,6 +1305,7 @@ LibraryManager.library = {
     EXCEPTIONS.addRef(EXCEPTIONS.deAdjust(ptr));
     return ptr;
   },
+#endif // DISABLE_EXCEPTION_CATCHING
   // We're done with a catch. Now, we can run the destructor if there is one
   // and free the exception. Note that if the dynCall on the destructor fails
   // due to calling apply on undefined, that means that the destructor is
@@ -1357,10 +1361,12 @@ LibraryManager.library = {
 
   terminate: '__cxa_call_unexpected',
 
+#if DISABLE_EXCEPTION_CATCHING == 0
+  // when exceptions are enabled, ensure we bring in all necessary support
   __gxx_personality_v0__deps: ['_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch'],
+#endif // DISABLE_EXCEPTION_CATCHING
   __gxx_personality_v0: function() {
   },
-
   __gcc_personality_v0: function() {
   },
 
