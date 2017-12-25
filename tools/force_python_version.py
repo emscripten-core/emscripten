@@ -6,19 +6,38 @@ import os
 import sys
 
 '''
-Runs filename+'.py' on Python 2 subprocess if required, or returns False
+Imports the target script by filename and calls run()
 '''
-def run(filename):
+def run_by_import(filename, main):
+  import importlib
+  return getattr(importlib.import_module(os.path.basename(filename)), main)()
+
+'''
+Opens Python 2 subprocess to run target script
+'''
+def run_by_subprocess(filename):
+  # Python on Windows does not provide `python2` but instead `py` that receives version parameter
+  py2 = ['py', '-2'] if sys.platform.startswith('win') else ['python2']
+  import subprocess
+  return subprocess.call(py2 + [os.path.realpath(filename) + '.py'] + sys.argv[1:])
+
+def allowed_version():
   major = sys.version_info.major
   if major == 2:
-    return False
+    return True
   if os.environ.get('EMSCRIPTEN_ALLOW_NEWER_PYTHON'):
     import logging
     from tools import colored_logger
     logging.warning('Running on Python %s which is not officially supported yet', major)
-    return False
+    return True
+  return False
 
-  # Python on Windows does not provide `python2` but instead `py` that receives version parameter
-  py2 = ['py', '-2'] if sys.platform.startswith('win') else ['python2']
-  import subprocess
-  sys.exit(subprocess.call(py2 + [os.path.realpath(filename) + '.py'] + sys.argv[1:]))
+'''
+Runs filename+'.py' by opening Python 2 subprocess if required, or by importing.
+'''
+def run(filename, profile=False, main="run"):
+  if profile:
+    from tools.toolchain_profiler import ToolchainProfiler
+    ToolchainProfiler.record_process_start()
+
+  sys.exit(run_by_import(filename, main) if allowed_version() else run_by_subprocess(filename))

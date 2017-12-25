@@ -5,6 +5,5 @@
 import sys
 from tools import force_python_version
 
-if __name__ == '__main__' and not force_python_version.run(__file__):
-  import emrun
-  sys.exit(emrun.main())
+if __name__ == '__main__':
+  force_python_version.run(__file__, main="main")
