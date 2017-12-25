@@ -768,6 +768,15 @@ function lengthBytesUTF32(str) {
 }
 {{{ maybeExport('lengthBytesUTF32') }}}
 
+// Allocate heap space for a JS string, and write it there.
+function allocateUTF8(str) {
+  var size = lengthBytesUTF8(str) + 1;
+  var ret = _malloc(size);
+  stringToUTF8Array(str, HEAP8, ret, size);
+  return ret;
+}
+{{{ maybeExport('allocateUTF8') }}}
+
 function demangle(func) {
 #if DEMANGLE_SUPPORT
   var __cxa_demangle_func = Module['___cxa_demangle'] || Module['__cxa_demangle'];
