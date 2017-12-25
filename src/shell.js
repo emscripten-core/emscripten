@@ -38,6 +38,14 @@ for (key in Module) {
   }
 }
 
+Module['arguments'] = [];
+Module['thisProgram'] = './this.program';
+Module['quit'] = function(status, toThrow) {
+  throw toThrow;
+};
+Module['preRun'] = [];
+Module['postRun'] = [];
+
 // The environment setup code below is customized to use Module.
 // *** Environment setup code ***
 var ENVIRONMENT_IS_WEB = false;
@@ -268,28 +276,19 @@ if (typeof console !== 'undefined') {
   Module['print'] = Module['printErr'] = function(){};
 #if LEGACY_VM_SUPPORT
   if (typeof print !== 'undefined') {
-    Module['print'] = Module['printErr'] = print
+    Module['print'] = Module['printErr'] = print;
   }
   if (typeof printErr !== 'undefined') {
     Module['printErr'] = printErr;
   }
 #endif
 }
-Module['arguments'] = [];
-Module['thisProgram'] = './this.program';
-Module['quit'] = function(status, toThrow) {
-  throw toThrow;
-};
 
 // *** Environment setup code ***
 
 // Closure helpers
 Module.print = Module['print'];
 Module.printErr = Module['printErr'];
-
-// Callbacks
-Module['preRun'] = [];
-Module['postRun'] = [];
 
 // Merge back in the overrides
 for (key in moduleOverrides) {
