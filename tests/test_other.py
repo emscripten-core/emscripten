@@ -764,7 +764,7 @@ f.close()
       if moar_expected: self.assertContained(moar_expected, out)
 
     # fastcomp. all asm, so it can't just work with wrong sigs. but, ASSERTIONS=2 gives much better info to debug
-    test(['-O1'], 'If this abort() is unexpected, build with -s ASSERTIONS=1 which can give more information.') # no useful info, but does mention ASSERTIONS
+    test(['-O1'], 'Build with -s ASSERTIONS=1 for more info.') # no useful info, but does mention ASSERTIONS
     test(['-O1', '-s', 'ASSERTIONS=1'], '''Invalid function pointer called with signature 'v'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an incorrect type, which will fail? (it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)
 Build with ASSERTIONS=2 for more info.
 ''') # some useful text
@@ -3665,7 +3665,7 @@ int main() {
                 if opts == 0:
                   assert 'Invalid function pointer called' in output, output
                 else:
-                  assert 'abort()' in output, output
+                  assert 'abort(' in output, output
 
   def test_aliased_func_pointers(self):
     open('src.cpp', 'w').write(r'''
