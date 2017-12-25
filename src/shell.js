@@ -80,9 +80,6 @@ var currentScriptUrl = (typeof document !== 'undefined' && document.currentScrip
 if (ENVIRONMENT_IS_NODE) {
   // Expose functionality in the same simple way that the shells work
   // Note that we pollute the global namespace here, otherwise we break in node
-  if (!Module['print']) Module['print'] = console.log;
-  if (!Module['printErr']) Module['printErr'] = console.warn;
-
   var nodeFS;
   var nodePath;
 
@@ -111,12 +108,10 @@ if (ENVIRONMENT_IS_NODE) {
     return ret;
   };
 
-  if (!Module['thisProgram']) {
-    if (process['argv'].length > 1) {
-      Module['thisProgram'] = process['argv'][1].replace(/\\/g, '/');
-    } else {
-      Module['thisProgram'] = 'unknown-program';
-    }
+  if (process['argv'].length > 1) {
+    Module['thisProgram'] = process['argv'][1].replace(/\\/g, '/');
+  } else {
+    Module['thisProgram'] = 'unknown-program';
   }
 
   Module['arguments'] = process['argv'].slice(2);
@@ -149,9 +144,6 @@ if (ENVIRONMENT_IS_NODE) {
   Module['inspect'] = function () { return '[Emscripten Module object]'; };
 }
 else if (ENVIRONMENT_IS_SHELL) {
-  if (!Module['print']) Module['print'] = print;
-  if (typeof printErr != 'undefined') Module['printErr'] = printErr; // not present in v8 or older sm
-
   if (typeof read != 'undefined') {
     Module['read'] = function shell_read(f) {
 #if SUPPORT_BASE64_EMBEDDING
@@ -262,49 +254,24 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     Module['arguments'] = arguments;
   }
 
-  if (typeof console !== 'undefined') {
-    if (!Module['print']) Module['print'] = function shell_print(x) {
-      console.log(x);
-    };
-    if (!Module['printErr']) Module['printErr'] = function shell_printErr(x) {
-      console.warn(x);
-    };
-  } else {
-    // Probably a worker, and without console.log. We can do very little here...
-    var TRY_USE_DUMP = false;
-    if (!Module['print']) Module['print'] = (TRY_USE_DUMP && (typeof(dump) !== "undefined") ? (function(x) {
-      dump(x);
-    }) : (function(x) {
-      // self.postMessage(x); // enable this if you want stdout to be sent as messages
-    }));
-  }
-
-  if (typeof Module['setWindowTitle'] === 'undefined') {
-    Module['setWindowTitle'] = function(title) { document.title = title };
-  }
+  Module['setWindowTitle'] = function(title) { document.title = title };
 }
 else {
   // Unreachable because SHELL is dependent on the others
   throw new Error('Unknown runtime environment. Where are we?');
 }
 
-if (!Module['print']) {
-  Module['print'] = function(){};
+if (typeof console !== 'undefined') {
+  Module['print'] = console.log;
+  Module['printErr'] = console.warn || console.log;
+} else {
+  Module['print'] = Module['printErr'] = function(){};
 }
-if (!Module['printErr']) {
-  Module['printErr'] = Module['print'];
-}
-if (!Module['arguments']) {
-  Module['arguments'] = [];
-}
-if (!Module['thisProgram']) {
-  Module['thisProgram'] = './this.program';
-}
-if (!Module['quit']) {
-  Module['quit'] = function(status, toThrow) {
-    throw toThrow;
-  }
-}
+Module['arguments'] = [];
+Module['thisProgram'] = './this.program';
+Module['quit'] = function(status, toThrow) {
+  throw toThrow;
+};
 
 // *** Environment setup code ***
 
