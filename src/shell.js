@@ -266,6 +266,14 @@ if (typeof console !== 'undefined') {
   Module['printErr'] = console.warn || console.log;
 } else {
   Module['print'] = Module['printErr'] = function(){};
+#if LEGACY_VM_SUPPORT
+  if (typeof print !== 'undefined') {
+    Module['print'] = Module['printErr'] = print
+  }
+  if (typeof printErr !== 'undefined') {
+    Module['printErr'] = printErr;
+  }
+#endif
 }
 Module['arguments'] = [];
 Module['thisProgram'] = './this.program';
