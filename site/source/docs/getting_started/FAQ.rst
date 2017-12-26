@@ -354,6 +354,28 @@ The ``Module`` object will contain exported methods. For something to appear the
 
 .. note:: Emscripten used to export many runtime methods by default. This increased code size, and for that reason we've changed that default. If you depend on something that used to be exported, you should see a warning pointing you to the solution, in an unoptimized build, or a build with ``ASSERTIONS`` enabled, which we hope will minimize any annoyance. See ``Changelog.markdown`` for details.
 
+Why do I get a ``NameError`` or ``a problem occurred in evaluating content after a "-s"`` when I use a ``-s`` option?
+========================================================
+
+That may occur when running something like
+
+::
+
+	# this fails on most Linuxes
+	./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']
+
+You may need quotation marks, such as
+
+::
+
+	# this works on most Linuxes
+	./emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']"
+
+	# also this should work
+	./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS="['addOnPostRun']"
+
+The proper syntax depends on the OS and shell you are in.
+
 Why do I get an odd python error complaining about libcxx.bc or libcxxabi.bc?
 =============================================================================
 
