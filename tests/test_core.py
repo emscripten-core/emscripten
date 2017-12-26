@@ -5971,6 +5971,9 @@ def process(filename):
       self.emcc_args += ['--closure', '1']
       self.do_run_in_out_file_test('tests', 'core', 'test_ccall', post_build=post)
 
+  def test_dyncall(self):
+    self.do_run_in_out_file_test('tests', 'core', 'dyncall')
+
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
     def test(output_prefix='', args=[]):
