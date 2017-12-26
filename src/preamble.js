@@ -1714,7 +1714,9 @@ if (!Math['trunc']) Math['trunc'] = function(x) {
 };
 Math.trunc = Math['trunc'];
 #else // LEGACY_VM_SUPPORT
+#if ASSERTIONS
 assert(Math['imul'] && Math['fround'] && Math['clz32'] && Math['trunc'], 'this is a legacy browser, build with LEGACY_VM_SUPPORT');
+#endif
 #endif // LEGACY_VM_SUPPORT
 
 var Math_abs = Math.abs;
