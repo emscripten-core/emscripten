@@ -139,12 +139,13 @@ function g(a1, a2) {
  new asd;
  sadijn2 = "qwe%sert";
  this.Module || (this.Module = {});
- {
+ var obj = {
   "quoted": 1,
   "doublequoted": 2,
   unquoted: 3,
   4: 5
  };
+ obj();
 }
 function h() {
  var out;

@@ -342,31 +342,16 @@ var ASYNCIFY_WHITELIST = ['qsort',   // Functions in this list are never conside
                           '__fwritex',
                           'MUSL_vfprintf'];
 
-var EXPORTED_RUNTIME_METHODS = [ // Runtime elements that are exported on Module. By default we export quite a bit, you can reduce this list to lower your code size,
-                                 // especially when closure is run (exporting prevents closure from eliminating code)
+var EXPORTED_RUNTIME_METHODS = [ // Runtime elements that are exported on Module by default. We used to export quite a lot here,
+                                 // but have removed them all, so this option is redundant given that EXTRA_EXPORTED_RUNTIME_METHODS
+                                 // exists, and so this option exists only for backwards compatibility. You should use
+                                 // EXTRA_EXPORTED_RUNTIME_METHODS for things you want to export from the runtime.
                                  // Note that methods on this list are only exported if they are included (either automatically from linking, or due to being
                                  // in DEFAULT_LIBRARY_FUNCS_TO_INCLUDE)
                                  // Note that the name may be slightly misleading, as this
                                  // is for any JS library element, and not just
                                  // methods. For example, we export the Runtime object
                                  // by having "Runtime" in this list.
-  'FS_createFolder',
-  'FS_createPath',
-  'FS_createDataFile',
-  'FS_createPreloadedFile',
-  'FS_createLazyFile',
-  'FS_createLink',
-  'FS_createDevice',
-  'FS_unlink',
-  'Runtime',
-  'ALLOC_NORMAL',
-  'ALLOC_STACK',
-  'ALLOC_STATIC',
-  'ALLOC_DYNAMIC',
-  'ALLOC_NONE',
-  'getMemory',
-  'addRunDependency',
-  'removeRunDependency',
 ];
 
 var EXTRA_EXPORTED_RUNTIME_METHODS = []; // Additional methods to those in EXPORTED_RUNTIME_METHODS. Adjusting that list

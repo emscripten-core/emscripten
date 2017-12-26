@@ -276,11 +276,11 @@ var ALLOC_STACK = 1; // Lives for the duration of the current function call
 var ALLOC_STATIC = 2; // Cannot be freed
 var ALLOC_DYNAMIC = 3; // Cannot be freed except through sbrk
 var ALLOC_NONE = 4; // Do not allocate
-{{{ maybeExport('ALLOC_NORMAL') }}}
-{{{ maybeExport('ALLOC_STACK') }}}
-{{{ maybeExport('ALLOC_STATIC') }}}
-{{{ maybeExport('ALLOC_DYNAMIC') }}}
-{{{ maybeExport('ALLOC_NONE') }}}
+{{{ maybeExportNumber('ALLOC_NORMAL') }}}
+{{{ maybeExportNumber('ALLOC_STACK') }}}
+{{{ maybeExportNumber('ALLOC_STATIC') }}}
+{{{ maybeExportNumber('ALLOC_DYNAMIC') }}}
+{{{ maybeExportNumber('ALLOC_NONE') }}}
 
 // allocate(): This is for internal use. You can use it yourself as well, but the interface
 //             is a little tricky (see docs right below). The reason is that it is optimized
@@ -933,7 +933,7 @@ function checkStackCookie() {
 }
 
 function abortStackOverflow(allocSize) {
-  abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - Module['asm'].stackSave() + allocSize) + ' bytes available!');
+  abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - stackSave() + allocSize) + ' bytes available!');
 }
 #endif
 

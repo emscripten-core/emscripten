@@ -60,7 +60,6 @@ b2World *world;
 clock_t *times, minn = CLOCKS_PER_SEC * 1000 * 100, maxx = -1;
 b2Body* topBody;
 int32 frameCounter = 0;
-int responsive_main_loop;
 
 void iter();
 
@@ -131,19 +130,9 @@ int main(int argc, char **argv) {
 		world->Step(1.0f/60.0f, 3, 3);
   }
 
-#ifdef __EMSCRIPTEN__
-  responsive_main_loop = argc > 2 ? argv[2][0] - '0' : 0;
-  if (responsive_main_loop) {
-    printf("responsive main loop\n");
-    emscripten_set_main_loop(iter, 60, 1);
-  } else {
-#endif
-    do {
-      iter();
-    } while (frameCounter <= FRAMES);
-#ifdef __EMSCRIPTEN__
-  }
-#endif
+  do {
+    iter();
+  } while (frameCounter <= FRAMES);
 
   return 0;
 }
@@ -172,10 +161,5 @@ void iter() {
   result_t result = measure(times);
 
   printf("frame averages: %.3f +- %.3f, range: %.3f to %.3f \n", result.mean, result.stddev, float(minn)/CLOCKS_PER_SEC * 1000, float(maxx)/CLOCKS_PER_SEC * 1000);
-
-#ifdef __EMSCRIPTEN__
-  emscripten_run_script("if (Module.reportCompletion) Module.reportCompletion()");
-  if (responsive_main_loop) emscripten_cancel_main_loop();
-#endif
 }
 

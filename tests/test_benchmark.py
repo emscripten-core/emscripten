@@ -1,5 +1,5 @@
 from __future__ import print_function
-import math, os, shutil, subprocess
+import math, os, shutil, subprocess, zlib
 import runner
 from runner import RunnerCore, path_from_root
 from tools.shared import *
@@ -49,6 +49,8 @@ class Benchmarker(object):
       self.times.append(curr)
 
   def display(self, baseline=None):
+    # speed
+
     if baseline == self: baseline = None
     mean = sum(self.times)/len(self.times)
     squared_times = [x*x for x in self.times]
@@ -67,6 +69,19 @@ class Benchmarker(object):
     else:
       print()
 
+    # size
+
+    size = sum([os.stat(f).st_size for f in self.get_output_files()])
+    gzip_size = sum([len(zlib.compress(open(f).read())) for f in self.get_output_files()])
+
+    print('        size: %8s, compressed: %8s' % (size, gzip_size), end=' ')
+    if self.get_size_text():
+      print('  (' + self.get_size_text() + ')', end=' ')
+    print()
+
+  def get_size_text(self):
+    return ''
+
 class NativeBenchmarker(Benchmarker):
   def __init__(self, name, cc, cxx, args=[OPTIMIZATIONS]):
     self.name = name
@@ -79,7 +94,12 @@ class NativeBenchmarker(Benchmarker):
     if lib_builder: native_args = native_args + lib_builder(self.name, native=True, env_init={ 'CC': self.cc, 'CXX': self.cxx })
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
-      cmd = [compiler, '-fno-math-errno', filename, '-o', filename+'.native'] + self.args + shared_args + native_args + get_clang_native_args()
+      cmd = [
+        compiler,
+        '-fno-math-errno',
+        filename,
+        '-o', filename+'.native'
+      ] + self.args + shared_args + native_args + get_clang_native_args()
       process = Popen(cmd, stdout=PIPE, stderr=parent.stderr_redirect, env=get_clang_native_env())
       output = process.communicate()
       if process.returncode is not 0:
@@ -97,6 +117,12 @@ class NativeBenchmarker(Benchmarker):
     process = Popen([self.filename] + args, stdout=PIPE, stderr=PIPE)
     return process.communicate()[0]
 
+  def get_output_files(self):
+    return [self.filename]
+
+  def get_size_text(self):
+    return 'dynamically linked - libc etc. are not included!'
+
 def run_binaryen_opts(filename, opts):
   subprocess.check_call([
     os.path.join(Building.get_binaryen_bin(), 'wasm-opt'),
@@ -104,7 +130,7 @@ def run_binaryen_opts(filename, opts):
     '-o', filename
   ] + opts)
 
-class JSBenchmarker(Benchmarker):
+class EmscriptenBenchmarker(Benchmarker):
   def __init__(self, name, engine, extra_args=[], env={}, binaryen_opts=[]):
     self.name = name
     self.engine = engine
@@ -136,7 +162,7 @@ process(sys.argv[1])
     cmd = [
       PYTHON, EMCC, filename,
       OPTIMIZATIONS,
-      '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
+      '--js-transform', 'python hardcode.py',
       '-s', 'TOTAL_MEMORY=256*1024*1024',
       '-s', 'NO_FILESYSTEM=1',
       '-s', 'EXPORTED_RUNTIME_METHODS=[]',
@@ -145,6 +171,8 @@ process(sys.argv[1])
       '--closure', '1',
       '-o', final
     ] + shared_args + emcc_args + self.extra_args
+    if 'FORCE_FILESYSTEM=1' in cmd:
+      cmd = [arg if arg != 'NO_FILESYSTEM=1' else 'NO_FILESYSTEM=0' for arg in cmd]
     output = Popen(cmd, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
     assert os.path.exists(final), 'Failed to compile file: ' + output[0] + ' (looked for ' + final + ')'
     if self.binaryen_opts:
@@ -153,6 +181,14 @@ process(sys.argv[1])
 
   def run(self, args):
     return run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True, assert_returncode=None)
+
+  def get_output_files(self):
+    ret = [self.filename]
+    if 'WASM=1' in self.extra_args:
+      ret.append(self.filename[:-3] + '.wasm')
+    else:
+      ret.append(self.filename + '.mem')
+    return ret
 
 CHEERP_BIN = '/opt/cheerp/bin/'
 
@@ -239,6 +275,9 @@ class CheerpBenchmarker(Benchmarker):
   def run(self, args):
     return run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True, assert_returncode=None)
 
+  def get_output_files(self):
+    return [self.filename, self.filename + '.wasm']
+
   def handle_static_lib(self, f):
     try:
       cwd = os.getcwd()
@@ -289,21 +328,21 @@ try:
   benchmarkers_error = ''
   benchmarkers = [
     NativeBenchmarker('clang', CLANG_CC, CLANG),
-    NativeBenchmarker('gcc',   'gcc',    'g++')
+    #NativeBenchmarker('gcc',   'gcc',    'g++')
   ]
   if SPIDERMONKEY_ENGINE and Building.which(SPIDERMONKEY_ENGINE[0]):
     benchmarkers += [
-      JSBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
-      #JSBenchmarker('sm-simd',  SPIDERMONKEY_ENGINE, ['-s', 'SIMD=1']),
-      JSBenchmarker('sm-asm2wasm',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['-s', 'WASM=1']),
-      #JSBenchmarker('sm-wasmbackend',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['-s', 'WASM=1'], env={
+      EmscriptenBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
+      #EmscriptenBenchmarker('sm-simd',  SPIDERMONKEY_ENGINE, ['-s', 'SIMD=1']),
+      EmscriptenBenchmarker('sm-asm2wasm',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['-s', 'WASM=1']),
+      #EmscriptenBenchmarker('sm-wasmbackend',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['-s', 'WASM=1'], env={
       #  'LLVM': '/home/alon/Dev/llvm/build/bin',
       #  'EMCC_WASM_BACKEND': '1',
       #}),
     ]
   if V8_ENGINE and Building.which(V8_ENGINE[0]):
     benchmarkers += [
-      JSBenchmarker('v8-wasm',  V8_ENGINE,           ['-s', 'WASM=1']),
+      EmscriptenBenchmarker('v8-wasm',  V8_ENGINE,           ['-s', 'WASM=1']),
     ]
   if os.path.exists(CHEERP_BIN):
     benchmarkers += [
@@ -850,7 +889,8 @@ class benchmark(RunnerCore):
       ret[0] += '.bc'
       return ret
     self.do_benchmark('lua_' + benchmark, '', expected,
-                      force_c=True, args=[benchmark + '.lua', DEFAULT_ARG], emcc_args=['--embed-file', benchmark + '.lua'],
+                      force_c=True, args=[benchmark + '.lua', DEFAULT_ARG],
+                      emcc_args=['--embed-file', benchmark + '.lua', '-s', 'FORCE_FILESYSTEM=1'],
                       lib_builder=lib_builder, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'),
                       output_parser=output_parser, args_processor=args_processor)
 
