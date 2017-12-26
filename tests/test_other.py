@@ -6828,6 +6828,12 @@ int main() {
     print(check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', '-std=c++03']))
     self.assertContained('hello, world!', run_js('a.out.js'))
 
+  def test_dash_s_error(self):
+    # missing quotes
+    err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "EXTRA_EXPORTED_RUNTIME_METHODS=[addOnPostRun]"], stderr=PIPE, check=False).stderr
+    self.assertContained('NameError', err) # it failed
+    self.assertContained('one possible cause of this is missing quotation marks', err) # but we suggested the fix
+
   def test_python_2_3(self): # check emcc/em++ can be called by any python
     print()
     for python in ['python', 'python2', 'python3']:
