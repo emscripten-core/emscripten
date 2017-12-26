@@ -190,8 +190,8 @@ Module['callMain'] = function callMain(args) {
   var argc = args.length+1;
   var argv = _malloc(argc * {{{ Runtime.POINTER_SIZE }}});
   HEAP32[argv >> 2] = allocateUTF8(Module['thisProgram']);
-  for (var i = 0; i < argc-1; i++) {
-    HEAP32[(argv >> 2) + 1 + i] = allocateUTF8(args[i]);
+  for (var i = 1; i < argc; i++) {
+    HEAP32[(argv >> 2) + i] = allocateUTF8(args[i - 1]);
   }
 
 #if EMTERPRETIFY_ASYNC
