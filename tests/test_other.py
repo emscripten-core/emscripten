@@ -2317,7 +2317,6 @@ seeked= file.
     open(full, 'w').write('data')
     proc = run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', full], stdout=PIPE, stderr=PIPE)
     assert len(proc.stdout) > 0, proc.stderr
-    assert len(proc.stderr) == 0, proc.stderr
     assert unicode_name in proc.stdout, proc.stdout
     print(len(proc.stderr))
 
@@ -5670,12 +5669,13 @@ int main() {
     self.assertContained('', run_js('a.out.js', assert_returncode=0))
 
   def test_file_packager_huge(self):
+    MESSAGE = 'warning: file packager is creating an asset bundle of 257 MB. this is very large, and browsers might have trouble loading it'
     open('huge.dat', 'w').write('a'*(1024*1024*257))
     open('tiny.dat', 'w').write('a')
     err = run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'tiny.dat'], stdout=PIPE, stderr=PIPE).stderr
-    assert err == '', err
+    self.assertNotContained(MESSAGE, err)
     err = run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], stdout=PIPE, stderr=PIPE).stderr
-    assert 'warning: file packager is creating an asset bundle of 257 MB. this is very large, and browsers might have trouble loading it' in err, err
+    self.assertContained(MESSAGE, err)
     self.clear()
 
   def test_nosplit(self): # relooper shouldn't split nodes if -Os or -Oz
