@@ -14,7 +14,7 @@ test-defaults: &test-defaults
 
     - run: |
         apt-get update
-        apt-get install -y firefox python python-pip cmake build-essential openjdk-9-jre-headless
+        apt-get install -y firefox python python-pip cmake build-essential openjdk-9-jre-headless $TEST_DEPENDENCY
         pip install --upgrade pip
         pip install lit
         EMCC_CORES=4 python emscripten/tests/runner.py $TEST_TARGET
@@ -67,6 +67,7 @@ jobs:
     environment:
       # browser.test_sdl_ttf_render_text_solid depends on Arial from Microsoft
       - TEST_TARGET=browser skip:browser.test_sdl_ttf_render_text_solid
+      - TEST_DEPENDENCY=firefox
       - EMSCRIPTEN_BROWSER=firefox -headless
       - EMSCRIPTEN_LACKS_HARDWARE_ACCESS=1
   test-ab:
