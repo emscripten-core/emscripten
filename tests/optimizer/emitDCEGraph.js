@@ -67,9 +67,11 @@ var expI4 = Module['expI4'] = (function() {
 // add uses for some of them
 expD1;
 Module['expD2'];
+asm['expD3'];
 
 expI1;
 Module['expI2'];
+Module['asm']['expI3'];
 
 // deep uses, that we can't scan
 function usedFromDeep() {

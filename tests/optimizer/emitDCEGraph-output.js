@@ -69,7 +69,8 @@
  {
   "name": "emcc$export$expD3",
   "export": "expD3",
-  "reaches": []
+  "reaches": [],
+  "root": true
  },
  {
   "name": "emcc$export$expD4",
@@ -91,7 +92,8 @@
  {
   "name": "emcc$export$expI3",
   "export": "expI3",
-  "reaches": []
+  "reaches": [],
+  "root": true
  },
  {
   "name": "emcc$export$expI4",

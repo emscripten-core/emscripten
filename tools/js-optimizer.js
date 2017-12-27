@@ -7964,6 +7964,10 @@ function isAsmUse(node) {
          node[2][0] === 'string';
 }
 
+function getAsmUseName(node) {
+  return node[2][1];
+}
+
 function isModuleUse(node) {
   return node[0] === 'sub' &&
          node[1][0] === 'name' && node[1][1] === 'Module' && // Module['X']
@@ -8109,7 +8113,6 @@ function emitDCEGraph(ast) {
     traverse(defun[3], function(node, type) {
       // TODO: scope awareness here. for now we just assume all uses are
       //       from the top scope, which might create more uses than needed
-      assert(!isAsmUse(node)); // we should have removed these
       if (type === 'name') {
         var name = node[1];
         if (defunNames.hasOwnProperty(name)) {
@@ -8122,13 +8125,16 @@ function emitDCEGraph(ast) {
         if (exportNames.hasOwnProperty(name)) {
           info.reaches[getGraphName(name, 'export')] = 1;
         }
+      } else if (isAsmUse(node)) {
+        // any remaining asm uses are rooted
+        var name = getAsmUseName(node);
+        infos[getGraphName(name, 'export')].root = true;
       }
     });
   });
   traverse(ast, function(node, type) {
     // TODO: scope awareness here. for now we just assume all uses are
     //       from the top scope, which might create more uses than needed
-    assert(!isAsmUse(node), node); // we should have removed these
     if (type === 'name') {
       var name = node[1];
       if (defunNames.hasOwnProperty(name)) {
@@ -8141,6 +8147,10 @@ function emitDCEGraph(ast) {
       if (exportNames.hasOwnProperty(name)) {
         infos[getGraphName(name, 'export')].root = true;
       }
+    } else if (isAsmUse(node)) {
+      // any remaining asm uses are rooted
+      var name = getAsmUseName(node);
+      infos[getGraphName(name, 'export')].root = true;
     }
   });
   // Final work: print out the graph
