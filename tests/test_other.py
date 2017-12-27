@@ -7716,15 +7716,16 @@ int main() {
   def test_binaryen_metadce(self):
     sizes = {}
     # in -Os, -Oz, we remove imports wasm doesn't need
-    for args, expected_len, expected_exists, expected_not_exists, expected_wasm_size in [
-        ([],                                                                          25, ['abort', 'tempDoublePtr'], ['waka'],                  48335),
-        (['-O1'],                                                                     20, ['abort', 'tempDoublePtr'], ['waka'],                  13600),
-        (['-O2'],                                                                     20, ['abort', 'tempDoublePtr'], ['waka'],                  13512),
-        (['-O3'],                                                                     13, ['abort'],                  ['tempDoublePtr', 'waka'], 10459), # in -O3, -Os and -Oz we metadce
-        (['-Os'],                                                                     13, ['abort'],                  ['tempDoublePtr', 'waka'], 10387),
-        (['-Oz'],                                                                     13, ['abort'],                  ['tempDoublePtr', 'waka'], 10377),
+    for args, expected_len, expected_exists, expected_not_exists, expected_wasm_size, expected_wasm_imports, expected_wasm_exports in [
+        ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  48213, 26, 19),
+        (['-O1'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13478, 18, 17),
+        (['-O2'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13438, 18, 17),
+        (['-O3'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10244, 16,  4), # in -O3, -Os and -Oz we metadce
+        (['-Os'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10170, 16,  4),
+        (['-Oz'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10160, 16,  4),
         # finally, check what happens when we export pretty much nothing. wasm should be almost empty
-        (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[]'],  0, [],                         ['tempDoublePtr', 'waka'], 46),
+        (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[]'],
+                   0, [],                         ['tempDoublePtr', 'waka'],    46,  2,  0), # import memory and table, and no exports!
       ]:
       print(args, expected_len, expected_exists, expected_not_exists, expected_wasm_size)
       subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'WASM=1', '-g2'])
@@ -7747,6 +7748,11 @@ int main() {
       ratio = abs(wasm_size - expected_wasm_size) / float(expected_wasm_size)
       print('  seem wasm size: %d, ratio to expected: %f' % (wasm_size, ratio))
       assert ratio < 0.05, [expected_wasm_size, wasm_size, ratio]
+      wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
+      imports = wast.count('(import ')
+      exports = wast.count('(export ')
+      assert imports == expected_wasm_imports, imports
+      assert exports == expected_wasm_exports, exports
 
   # test disabling of JS FFI legalization
   def test_legalize_js_ffi(self):
