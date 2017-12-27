@@ -1,7 +1,22 @@
 var tempNum;
+
 function tempFunc() {
 }
-Module.asmLibraryArg = { 'tempNum': tempNum, 'tempFunc': tempFunc };
+
+function rootedFunc1() {
+}
+Module['rootedFunc1'] = rootedFunc1;
+
+function rootedFunc2() {
+}
+var use = rootedFunc2();
+
+Module.asmLibraryArg = {
+  'tempNum': tempNum,
+  'tempFunc': tempFunc,
+  'rootedFunc1': rootedFunc1,
+  'rootedFunc2': rootedFunc2,
+};
 
 // exports gotten directly
 var expD1 = Module['expD1'] = asm['expD1'];

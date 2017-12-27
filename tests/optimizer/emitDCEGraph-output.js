@@ -1,5 +1,15 @@
 [
  {
+  "name": "emcc$defun$rootedFunc1",
+  "reaches": [],
+  "root": true
+ },
+ {
+  "name": "emcc$defun$rootedFunc2",
+  "reaches": [],
+  "root": true
+ },
+ {
   "name": "emcc$defun$tempFunc",
   "reaches": []
  },
@@ -46,6 +56,26 @@
   "name": "emcc$export$expI4",
   "export": "expI4",
   "reaches": []
+ },
+ {
+  "name": "emcc$import$rootedFunc1",
+  "import": [
+   "env",
+   "rootedFunc1"
+  ],
+  "reaches": [
+   "emcc$defun$rootedFunc1"
+  ]
+ },
+ {
+  "name": "emcc$import$rootedFunc2",
+  "import": [
+   "env",
+   "rootedFunc2"
+  ],
+  "reaches": [
+   "emcc$defun$rootedFunc2"
+  ]
  },
  {
   "name": "emcc$import$tempFunc",
