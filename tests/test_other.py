@@ -7747,15 +7747,15 @@ int main() {
 
     print('test on hello world')
     test(path_from_root('tests', 'hello_world.cpp'), [
-      ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  48213, 26, 19),
-      (['-O1'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13478, 18, 17),
-      (['-O2'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13438, 18, 17),
-      (['-O3'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10244, 16,  4), # in -O3, -Os and -Oz we metadce
-      (['-Os'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10170, 16,  4),
-      (['-Oz'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10160, 16,  4),
+      ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  48213, 26, 20),
+      (['-O1'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13478, 18, 18),
+      (['-O2'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13438, 18, 18),
+      (['-O3'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10244, 16,  5), # in -O3, -Os and -Oz we metadce
+      (['-Os'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10170, 16,  5),
+      (['-Oz'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10160, 16,  5),
       # finally, check what happens when we export nothing. wasm should be almost empty
       (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[]'],
-                 0, [],                         ['tempDoublePtr', 'waka'],    46,  2,  0), # import memory and table, and no exports! nothing left, really...
+                 0, [],                         ['tempDoublePtr', 'waka'],   148,  2,  1), # import memory and table, and no exports! nothing left, really...
     ])
 
     print('test on a minimal pure computational thing')
@@ -7768,14 +7768,14 @@ int main() {
       }
       ''')
     test('minimal.c', [
-      ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  24536, 26, 18),
-      (['-O1'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  11324, 13, 15),
-      (['-O2'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  11326, 13, 15),
+      ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  24536, 26, 19),
+      (['-O1'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  11324, 13, 16),
+      (['-O2'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  11326, 13, 16),
       # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-      (['-O3'],  0, [],                         ['tempDoublePtr', 'waka'],    96,  2,  1),
-      (['-Os'],  0, [],                         ['tempDoublePtr', 'waka'],    96,  2,  1),
-      (['-Oz'],  0, [],                         ['tempDoublePtr', 'waka'],    96,  2,  1),
-      (['-Os'],  0, [],                         ['tempDoublePtr', 'waka'],    96,  2,  1),
+      (['-O3'],  0, [],                         ['tempDoublePtr', 'waka'],   177,  2,  2),
+      (['-Os'],  0, [],                         ['tempDoublePtr', 'waka'],   177,  2,  2),
+      (['-Oz'],  0, [],                         ['tempDoublePtr', 'waka'],   177,  2,  2),
+      (['-Os'],  0, [],                         ['tempDoublePtr', 'waka'],   177,  2,  2),
     ])
 
   # test disabling of JS FFI legalization
