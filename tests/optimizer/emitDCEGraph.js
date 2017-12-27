@@ -1,5 +1,7 @@
-var temp;
-Module.asmLibraryArg = { 'temp': temp };
+var tempNum;
+function tempFunc() {
+}
+Module.asmLibraryArg = { 'tempNum': tempNum, 'tempFunc': tempFunc };
 
 // exports gotten directly
 var expD1 = Module['expD1'] = asm['expD1'];
@@ -21,10 +23,11 @@ var expI4 = Module['expI4'] = (function() {
  return Module['asm']['expI4'].apply(null, arguments);
 });
 
-// add uses for some of them, leave *4 as non-roots
+// add uses for some of them
 expD1;
 Module['expD2'];
 
 expI1;
 Module['expI2'];
 
+// add some defuns TODO

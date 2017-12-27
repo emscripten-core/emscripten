@@ -8088,7 +8088,9 @@ function emitDCEGraph(ast) {
       import: ['env', import_],
       reaches: {}
     };
-    info.reaches[getGraphName(import_, 'defun')] = 1;
+    if (defunNames.hasOwnProperty(import_)) {
+      info.reaches[getGraphName(import_, 'defun')] = 1;
+    } // otherwise, it's a number, ignore
   });
   exports.forEach(function(export_) {
     var name = getGraphName(export_, 'export');
@@ -8129,6 +8131,9 @@ function emitDCEGraph(ast) {
       var name = node[1];
       if (defunNames.hasOwnProperty(name)) {
         infos[getGraphName(name, 'defun')].root = true;
+      }
+      if (exportNames.hasOwnProperty(name)) {
+        infos[getGraphName(name, 'export')].root = true;
       }
     } else if (isModuleUse(node)) {
       var name = getModuleUseName(node);
