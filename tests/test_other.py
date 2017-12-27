@@ -7714,45 +7714,69 @@ int main() {
           assert 'hello, world!' not in proc.stdout, proc.stdout
 
   def test_binaryen_metadce(self):
-    sizes = {}
-    # in -Os, -Oz, we remove imports wasm doesn't need
-    for args, expected_len, expected_exists, expected_not_exists, expected_wasm_size, expected_wasm_imports, expected_wasm_exports in [
-        ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  48213, 26, 19),
-        (['-O1'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13478, 18, 17),
-        (['-O2'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13438, 18, 17),
-        (['-O3'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10244, 16,  4), # in -O3, -Os and -Oz we metadce
-        (['-Os'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10170, 16,  4),
-        (['-Oz'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10160, 16,  4),
-        # finally, check what happens when we export pretty much nothing. wasm should be almost empty
-        (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[]'],
-                   0, [],                         ['tempDoublePtr', 'waka'],    46,  2,  0), # import memory and table, and no exports!
-      ]:
-      print(args, expected_len, expected_exists, expected_not_exists, expected_wasm_size)
-      subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'WASM=1', '-g2'])
-      # find the imports we send from JS
-      js = open('a.out.js').read()
-      start = js.find('Module.asmLibraryArg = ')
-      end = js.find('}', start) + 1
-      start = js.find('{', start)
-      relevant = js[start+2:end-2]
-      relevant = relevant.replace(' ', '').replace('"', '').replace("'", '').split(',')
-      sent = [x.split(':')[0].strip() for x in relevant]
-      sent = [x for x in sent if x]
-      print('   seen: ' + str(sent))
-      assert len(sent) == expected_len, (expected_len, len(sent))
-      for exists in expected_exists:
-        assert exists in sent, [exists, sent]
-      for not_exists in expected_not_exists:
-        assert not_exists not in sent, [not_exists, sent]
-      wasm_size = os.stat('a.out.wasm').st_size
-      ratio = abs(wasm_size - expected_wasm_size) / float(expected_wasm_size)
-      print('  seem wasm size: %d, ratio to expected: %f' % (wasm_size, ratio))
-      assert ratio < 0.05, [expected_wasm_size, wasm_size, ratio]
-      wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
-      imports = wast.count('(import ')
-      exports = wast.count('(export ')
-      assert imports == expected_wasm_imports, imports
-      assert exports == expected_wasm_exports, exports
+    def test(filename, expectations):
+      sizes = {}
+      # in -Os, -Oz, we remove imports wasm doesn't need
+      for args, expected_len, expected_exists, expected_not_exists, expected_wasm_size, expected_wasm_imports, expected_wasm_exports in expectations:
+        print(args, expected_len, expected_exists, expected_not_exists, expected_wasm_size, expected_wasm_imports, expected_wasm_exports)
+        subprocess.check_call([PYTHON, EMCC, filename] + args + ['-s', 'WASM=1', '-g2'])
+        # find the imports we send from JS
+        js = open('a.out.js').read()
+        start = js.find('Module.asmLibraryArg = ')
+        end = js.find('}', start) + 1
+        start = js.find('{', start)
+        relevant = js[start+2:end-2]
+        relevant = relevant.replace(' ', '').replace('"', '').replace("'", '').split(',')
+        sent = [x.split(':')[0].strip() for x in relevant]
+        sent = [x for x in sent if x]
+        print('   seen: ' + str(sent))
+        assert len(sent) == expected_len, (expected_len, len(sent))
+        for exists in expected_exists:
+          assert exists in sent, [exists, sent]
+        for not_exists in expected_not_exists:
+          assert not_exists not in sent, [not_exists, sent]
+        wasm_size = os.stat('a.out.wasm').st_size
+        ratio = abs(wasm_size - expected_wasm_size) / float(expected_wasm_size)
+        print('  seem wasm size: %d, ratio to expected: %f' % (wasm_size, ratio))
+        assert ratio < 0.05, [expected_wasm_size, wasm_size, ratio]
+        wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
+        imports = wast.count('(import ')
+        exports = wast.count('(export ')
+        assert imports == expected_wasm_imports, imports
+        assert exports == expected_wasm_exports, exports
+
+    print('test on hello world')
+    test(path_from_root('tests', 'hello_world.cpp'), [
+      ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  48213, 26, 19),
+      (['-O1'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13478, 18, 17),
+      (['-O2'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13438, 18, 17),
+      (['-O3'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10244, 16,  4), # in -O3, -Os and -Oz we metadce
+      (['-Os'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10170, 16,  4),
+      (['-Oz'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10160, 16,  4),
+      # finally, check what happens when we export nothing. wasm should be almost empty
+      (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[]'],
+                 0, [],                         ['tempDoublePtr', 'waka'],    46,  2,  0), # import memory and table, and no exports! nothing left, really...
+    ])
+
+    print('test on a minimal pure computational thing')
+    open('minimal.c', 'w').write('''
+      #include <emscripten.h>
+
+      EMSCRIPTEN_KEEPALIVE
+      int add(int x, int y) {
+        return x + y;
+      }
+      ''')
+    test('minimal.c', [
+      ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  24536, 26, 18),
+      (['-O1'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  11324, 13, 15),
+      (['-O2'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  11326, 13, 15),
+      # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
+      (['-O3'],  0, [],                         ['tempDoublePtr', 'waka'],    96,  2,  1),
+      (['-Os'],  0, [],                         ['tempDoublePtr', 'waka'],    96,  2,  1),
+      (['-Oz'],  0, [],                         ['tempDoublePtr', 'waka'],    96,  2,  1),
+      (['-Os'],  0, [],                         ['tempDoublePtr', 'waka'],    96,  2,  1),
+    ])
 
   # test disabling of JS FFI legalization
   def test_legalize_js_ffi(self):
