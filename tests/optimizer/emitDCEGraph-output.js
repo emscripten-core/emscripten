@@ -26,6 +26,15 @@
   ]
  },
  {
+  "name": "emcc$defun$useManySorted",
+  "reaches": [
+   "emcc$export$expI1",
+   "emcc$export$expI2",
+   "emcc$export$expI3",
+   "emcc$export$expI4"
+  ]
+ },
+ {
   "name": "emcc$defun$used",
   "reaches": []
  },
@@ -135,6 +144,16 @@
   ],
   "reaches": [
    "emcc$defun$useExportB"
+  ]
+ },
+ {
+  "name": "emcc$import$useManySorted",
+  "import": [
+   "env",
+   "useManySorted"
+  ],
+  "reaches": [
+   "emcc$defun$useManySorted"
   ]
  },
  {

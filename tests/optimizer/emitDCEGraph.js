@@ -25,6 +25,13 @@ function useExportB() {
   Module['expI3']();
 }
 
+function useManySorted() {
+  Module['expI4']();
+  expI3();
+  expI1();
+  Module['expI2']();
+}
+
 Module.asmLibraryArg = {
   'tempNum': tempNum,
   'tempFunc': tempFunc,
@@ -34,6 +41,7 @@ Module.asmLibraryArg = {
   'used': used,
   'useExportA': useExportA,
   'useExportB': useExportB,
+  'useManySorted': useManySorted,
 };
 
 // exports gotten directly
