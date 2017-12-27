@@ -8081,20 +8081,20 @@ function emitDCEGraph(ast) {
     return 'emcc$' + what + '$' + name;
   }
   var infos = {}; // the graph name of the item => info for it
-  imports.forEach(function(import) {
-    var name = getGraphName(import, 'import');
+  imports.forEach(function(import_) {
+    var name = getGraphName(import_, 'import');
     var info = infos[name] = {
       name: name,
-      import: ['env', import],
+      import: ['env', import_],
       reaches: {}
     };
-    info.reaches[getGraphName(import, 'defun')] = 1;
+    info.reaches[getGraphName(import_, 'defun')] = 1;
   });
-  exports.forEach(function(export) {
-    var name = getGraphName(export, 'export');
+  exports.forEach(function(export_) {
+    var name = getGraphName(export_, 'export');
     infos[name] = {
       name: name,
-      export: export,
+      export: export_,
       reaches: {}
     };
   });
