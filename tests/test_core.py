@@ -6290,6 +6290,7 @@ def process(filename):
       self.do_run_from_file(src, expected)
 
   def test_getFuncWrapper_sig_alias(self):
+    Settings.EXPORT_DYNCALLS = 1 # TODO: add a good error message without this, and test that
     src = r'''
     #include <stdio.h>
     #include <emscripten.h>
