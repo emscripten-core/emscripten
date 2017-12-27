@@ -8106,7 +8106,7 @@ function emitDCEGraph(ast) {
       name: name,
       reaches: {}
     };
-    traverse(defun[2], function(node, type) {
+    traverse(defun[3], function(node, type) {
       // TODO: scope awareness here. for now we just assume all uses are
       //       from the top scope, which might create more uses than needed
       assert(!isAsmUse(node)); // we should have removed these

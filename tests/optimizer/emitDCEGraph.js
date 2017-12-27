@@ -11,11 +11,19 @@ function rootedFunc2() {
 }
 var use = rootedFunc2();
 
+function user() {
+  used();
+}
+function used() {
+}
+
 Module.asmLibraryArg = {
   'tempNum': tempNum,
   'tempFunc': tempFunc,
   'rootedFunc1': rootedFunc1,
   'rootedFunc2': rootedFunc2,
+  'user': user,
+  'used': used
 };
 
 // exports gotten directly

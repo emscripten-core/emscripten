@@ -14,6 +14,16 @@
   "reaches": []
  },
  {
+  "name": "emcc$defun$used",
+  "reaches": []
+ },
+ {
+  "name": "emcc$defun$user",
+  "reaches": [
+   "emcc$defun$used"
+  ]
+ },
+ {
   "name": "emcc$export$expD1",
   "export": "expD1",
   "reaches": [],
@@ -94,5 +104,25 @@
    "tempNum"
   ],
   "reaches": []
+ },
+ {
+  "name": "emcc$import$used",
+  "import": [
+   "env",
+   "used"
+  ],
+  "reaches": [
+   "emcc$defun$used"
+  ]
+ },
+ {
+  "name": "emcc$import$user",
+  "import": [
+   "env",
+   "user"
+  ],
+  "reaches": [
+   "emcc$defun$user"
+  ]
  }
 ]
