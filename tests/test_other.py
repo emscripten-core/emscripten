@@ -7724,7 +7724,7 @@ int main() {
         (['-Os'],                                                                     13, ['abort'],                  ['tempDoublePtr', 'waka'], 10387),
         (['-Oz'],                                                                     13, ['abort'],                  ['tempDoublePtr', 'waka'], 10377),
         # finally, check what happens when we export pretty much nothing. wasm should be almost empty
-        (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[]'],  0, [],                         ['tempDoublePtr', 'waka'], 195),
+        (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[]'],  0, [],                         ['tempDoublePtr', 'waka'], 46),
       ]:
       print(args, expected_len, expected_exists, expected_not_exists, expected_wasm_size)
       subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'WASM=1', '-g2'])
@@ -7744,7 +7744,8 @@ int main() {
       for not_exists in expected_not_exists:
         assert not_exists not in sent, [not_exists, sent]
       wasm_size = os.stat('a.out.wasm').st_size
-      ratio = (wasm_size - expected_wasm_size) / float(expected_wasm_size)
+      ratio = abs(wasm_size - expected_wasm_size) / float(expected_wasm_size)
+      print('  seem wasm size: %d, ratio to expected: %f' % (wasm_size, ratio))
       assert ratio < 0.05, [expected_wasm_size, wasm_size, ratio]
 
   # test disabling of JS FFI legalization
