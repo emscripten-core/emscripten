@@ -8141,7 +8141,10 @@ function emitDCEGraph(ast) {
       reached = getGraphName(getDynamicDynCallName(node), 'export');
     } else if (isAsmUse(node)) {
       // any remaining asm uses are always rooted in any case
-      infos[getGraphName(getAsmUseName(node), 'export')].root = true;
+      var name = getGraphName(getAsmUseName(node), 'export');
+      if (infos.hasOwnProperty(name)) { // may not be a wasm export
+        infos[name].root = true;
+      }
       return;
     }
     if (reached) {
