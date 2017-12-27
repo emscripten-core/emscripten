@@ -1,5 +1,5 @@
 var temp;
-Module.asmLibraryArg = { 'number': 33, 'temp': temp };
+Module.asmLibraryArg = { 'temp': temp };
 
 // exports gotten directly
 var expD1 = Module['expD1'] = asm['expD1'];
@@ -24,13 +24,7 @@ var expI4 = Module['expI4'] = (function() {
 // add uses for some of them, leave *4 as non-roots
 expD1;
 Module['expD2'];
-asm['expD3'];
 
 expI1;
 Module['expI2'];
-asm['expI3'];
-
-// without a Module use, not ok to remove, as this looks weird
-// and we don't know what's going on
-var expD1NM = asm['expD1NM'];
 

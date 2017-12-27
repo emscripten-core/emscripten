@@ -8036,7 +8036,7 @@ function emitDCEGraph(ast) {
     if (isAsmLibraryArgAssign(node)) {
       var items = node[3][1];
       items.forEach(function(item) {
-        assert(item[1][0] === 'name' && item[1][1] === item[0]); // must have x: x form, nothing else
+        assert(item[1][0] === 'name' && item[1][1] === item[0], item[0]); // must have x: x form, nothing else
         imports.push(item[0]); // the value doesn't matter, for now
       });
       foundAsmLibraryArgAssign = true;
@@ -8046,7 +8046,7 @@ function emitDCEGraph(ast) {
         var item = node[1][0];
         var name = item[0];
         var value = item[1];
-        if (value[0] === 'assign') {
+        if (Array.isArray(value) && value[0] === 'assign') {
           var assigned = value[2];
           if (isModuleUse(assigned) && getModuleUseName(assigned) === name) {
             // this is
@@ -8113,7 +8113,7 @@ function emitDCEGraph(ast) {
         if (defunNames.hasOwnProperty(name)) {
           info.reaches[getGraphName(name, 'defun')] = 1;
         }
-      } else if (isModuleUseName(node)) {
+      } else if (isModuleUse(node)) {
         var name = getModuleUseName(node);
         if (exportNames.hasOwnProperty(name)) {
           info.reaches[getGraphName(name, 'export')] = 1;
@@ -8124,13 +8124,13 @@ function emitDCEGraph(ast) {
   traverse(ast, function(node, type) {
     // TODO: scope awareness here. for now we just assume all uses are
     //       from the top scope, which might create more uses than needed
-    assert(!isAsmUse(node)); // we should have removed these
+    assert(!isAsmUse(node), node); // we should have removed these
     if (type === 'name') {
       var name = node[1];
       if (defunNames.hasOwnProperty(name)) {
         infos[getGraphName(name, 'defun')].root = true;
       }
-    } else if (isModuleUseName(node)) {
+    } else if (isModuleUse(node)) {
       var name = getModuleUseName(node);
       if (exportNames.hasOwnProperty(name)) {
         infos[getGraphName(name, 'export')].root = true;
