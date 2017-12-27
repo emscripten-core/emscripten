@@ -193,6 +193,7 @@ Module['callMain'] = function callMain(args) {
   for (var i = 1; i < argc; i++) {
     HEAP32[(argv >> 2) + i] = allocateUTF8(args[i - 1]);
   }
+  HEAP32[(argv >> 2) + argc] = 0;
 
 #if EMTERPRETIFY_ASYNC
   var initialEmtStackTop = Module['asm']['emtStackSave']();
