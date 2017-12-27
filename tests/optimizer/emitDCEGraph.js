@@ -88,3 +88,5 @@ var func = function() {
   usedFromDeep2();
 };
 
+// TODO: add more corner case things
+

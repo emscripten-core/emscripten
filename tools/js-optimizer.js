@@ -7978,6 +7978,14 @@ function getModuleUseName(node) {
   return node[2][1];
 }
 
+function isDynamicDynCall(node) {
+  return node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'dynCall' && node[2][0][0] === 'string';
+}
+
+function getDynamicDynCallSig(node) {
+  return node[2][0][1];
+}
+
 //
 // Emit the DCE graph, to help optimize the combined JS+wasm.
 // This finds where JS depends on wasm, and where wasm depends
@@ -8005,6 +8013,13 @@ function getModuleUseName(node) {
 //       link in the DCE graph.
 //  * Anything not in the toplevel or not in a toplevel defun is
 //    considering rooted. We don't optimize those cases.
+//
+// Special handling:
+//
+//  * dynCall('vii', ..) are dynamic dynCalls, but we analyze them
+//    statically, to preserve the dynCall_vii etc. method they depend on.
+//    Truly dynamic dynCalls (not to a string constant) will not work,
+//    and require the user to export them.
 //
 // XXX this modifies the input AST. if you want to keep using it,
 //     that should be fixed. Currently the main use case here does
@@ -8104,6 +8119,39 @@ function emitDCEGraph(ast) {
       reaches: {}
     };
   });
+  // a function that handles a node we visit, in either a defun or
+  // the toplevel scope (in which case the second param is not provided)
+  function visitNode(node, defunInfo) {
+    // TODO: scope awareness here. for now we just assume all uses are
+    //       from the top scope, which might create more uses than needed
+    var reached;
+    if (node[0] === 'name') {
+      var name = node[1];
+      if (defunNames.hasOwnProperty(name)) {
+        reached = getGraphName(name, 'defun');
+      } else if (exportNames.hasOwnProperty(name)) {
+        reached = getGraphName(name, 'export');
+      }
+    } else if (isModuleUse(node)) {
+      var name = getModuleUseName(node);
+      if (exportNames.hasOwnProperty(name)) {
+        reached = getGraphName(name, 'export');
+      }
+    } else if (isDynamicDynCall(node)) {
+      reached = getGraphName(getDynamicDynCallSig(node), 'defun');
+    } else if (isAsmUse(node)) {
+      // any remaining asm uses are always rooted in any case
+      infos[getGraphName(getAsmUseName(node), 'export')].root = true;
+      return;
+    }
+    if (reached) {
+      if (defunInfo) {
+        defunInfo.reaches[reached] = 1; // defun reaches it
+      } else {
+        infos[reached].root = true; // in global scope, root it
+      }
+    }
+  }
   defuns.forEach(function(defun) {
     var name = getGraphName(defun[1], 'defun');
     var info = infos[name] = {
@@ -8111,47 +8159,11 @@ function emitDCEGraph(ast) {
       reaches: {}
     };
     traverse(defun[3], function(node, type) {
-      // TODO: scope awareness here. for now we just assume all uses are
-      //       from the top scope, which might create more uses than needed
-      if (type === 'name') {
-        var name = node[1];
-        if (defunNames.hasOwnProperty(name)) {
-          info.reaches[getGraphName(name, 'defun')] = 1;
-        } else if (exportNames.hasOwnProperty(name)) {
-          info.reaches[getGraphName(name, 'export')] = 1;
-        }
-      } else if (isModuleUse(node)) {
-        var name = getModuleUseName(node);
-        if (exportNames.hasOwnProperty(name)) {
-          info.reaches[getGraphName(name, 'export')] = 1;
-        }
-      } else if (isAsmUse(node)) {
-        // any remaining asm uses are rooted
-        var name = getAsmUseName(node);
-        infos[getGraphName(name, 'export')].root = true;
-      }
+      visitNode(node, info);
     });
   });
   traverse(ast, function(node, type) {
-    // TODO: scope awareness here. for now we just assume all uses are
-    //       from the top scope, which might create more uses than needed
-    if (type === 'name') {
-      var name = node[1];
-      if (defunNames.hasOwnProperty(name)) {
-        infos[getGraphName(name, 'defun')].root = true;
-      } else if (exportNames.hasOwnProperty(name)) {
-        infos[getGraphName(name, 'export')].root = true;
-      }
-    } else if (isModuleUse(node)) {
-      var name = getModuleUseName(node);
-      if (exportNames.hasOwnProperty(name)) {
-        infos[getGraphName(name, 'export')].root = true;
-      }
-    } else if (isAsmUse(node)) {
-      // any remaining asm uses are rooted
-      var name = getAsmUseName(node);
-      infos[getGraphName(name, 'export')].root = true;
-    }
+    visitNode(node, null);
   });
   // Final work: print out the graph
   // sort for determinism
