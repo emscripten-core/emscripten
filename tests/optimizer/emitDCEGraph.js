@@ -71,4 +71,18 @@ Module['expD2'];
 expI1;
 Module['expI2'];
 
-// add some defuns TODO
+// deep uses, that we can't scan
+function usedFromDeep() {
+}
+var Something = {
+  property: function() {
+    usedFromDeep();
+  },
+};
+
+function usedFromDeep2() {
+}
+var func = function() {
+  usedFromDeep2();
+};
+

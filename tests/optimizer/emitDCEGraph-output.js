@@ -39,6 +39,16 @@
   "reaches": []
  },
  {
+  "name": "emcc$defun$usedFromDeep",
+  "reaches": [],
+  "root": true
+ },
+ {
+  "name": "emcc$defun$usedFromDeep2",
+  "reaches": [],
+  "root": true
+ },
+ {
   "name": "emcc$defun$user",
   "reaches": [
    "emcc$defun$used"
