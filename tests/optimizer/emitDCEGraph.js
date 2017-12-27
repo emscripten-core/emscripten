@@ -17,13 +17,23 @@ function user() {
 function used() {
 }
 
+function useExportA() {
+  expI3();
+}
+
+function useExportB() {
+  Module['expI3']();
+}
+
 Module.asmLibraryArg = {
   'tempNum': tempNum,
   'tempFunc': tempFunc,
   'rootedFunc1': rootedFunc1,
   'rootedFunc2': rootedFunc2,
   'user': user,
-  'used': used
+  'used': used,
+  'useExportA': useExportA,
+  'useExportB': useExportB,
 };
 
 // exports gotten directly

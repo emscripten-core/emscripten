@@ -8114,6 +8114,8 @@ function emitDCEGraph(ast) {
         var name = node[1];
         if (defunNames.hasOwnProperty(name)) {
           info.reaches[getGraphName(name, 'defun')] = 1;
+        } else if (exportNames.hasOwnProperty(name)) {
+          info.reaches[getGraphName(name, 'export')] = 1;
         }
       } else if (isModuleUse(node)) {
         var name = getModuleUseName(node);
@@ -8131,8 +8133,7 @@ function emitDCEGraph(ast) {
       var name = node[1];
       if (defunNames.hasOwnProperty(name)) {
         infos[getGraphName(name, 'defun')].root = true;
-      }
-      if (exportNames.hasOwnProperty(name)) {
+      } else if (exportNames.hasOwnProperty(name)) {
         infos[getGraphName(name, 'export')].root = true;
       }
     } else if (isModuleUse(node)) {

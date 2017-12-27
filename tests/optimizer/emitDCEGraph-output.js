@@ -14,6 +14,18 @@
   "reaches": []
  },
  {
+  "name": "emcc$defun$useExportA",
+  "reaches": [
+   "emcc$export$expI3"
+  ]
+ },
+ {
+  "name": "emcc$defun$useExportB",
+  "reaches": [
+   "emcc$export$expI3"
+  ]
+ },
+ {
   "name": "emcc$defun$used",
   "reaches": []
  },
@@ -104,6 +116,26 @@
    "tempNum"
   ],
   "reaches": []
+ },
+ {
+  "name": "emcc$import$useExportA",
+  "import": [
+   "env",
+   "useExportA"
+  ],
+  "reaches": [
+   "emcc$defun$useExportA"
+  ]
+ },
+ {
+  "name": "emcc$import$useExportB",
+  "import": [
+   "env",
+   "useExportB"
+  ],
+  "reaches": [
+   "emcc$defun$useExportB"
+  ]
  },
  {
   "name": "emcc$import$used",
