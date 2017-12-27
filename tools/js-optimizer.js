@@ -7982,8 +7982,8 @@ function isDynamicDynCall(node) {
   return node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'dynCall' && node[2][0][0] === 'string';
 }
 
-function getDynamicDynCallSig(node) {
-  return node[2][0][1];
+function getDynamicDynCallName(node) {
+  return 'dynCall_' + node[2][0][1];
 }
 
 //
@@ -8138,7 +8138,7 @@ function emitDCEGraph(ast) {
         reached = getGraphName(name, 'export');
       }
     } else if (isDynamicDynCall(node)) {
-      reached = getGraphName(getDynamicDynCallSig(node), 'defun');
+      reached = getGraphName(getDynamicDynCallName(node), 'export');
     } else if (isAsmUse(node)) {
       // any remaining asm uses are always rooted in any case
       infos[getGraphName(getAsmUseName(node), 'export')].root = true;

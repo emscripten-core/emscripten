@@ -55,6 +55,34 @@
   ]
  },
  {
+  "name": "emcc$export$dynCall_v",
+  "export": "dynCall_v",
+  "reaches": [],
+  "root": true
+ },
+ {
+  "name": "emcc$export$dynCall_vi",
+  "export": "dynCall_vi",
+  "reaches": [],
+  "root": true
+ },
+ {
+  "name": "emcc$export$dynCall_vii",
+  "export": "dynCall_vii",
+  "reaches": [],
+  "root": true
+ },
+ {
+  "name": "emcc$export$dynCall_viii",
+  "export": "dynCall_viii",
+  "reaches": []
+ },
+ {
+  "name": "emcc$export$dynCall_viiii",
+  "export": "dynCall_viiii",
+  "reaches": []
+ },
+ {
   "name": "emcc$export$expD1",
   "export": "expD1",
   "reaches": [],
