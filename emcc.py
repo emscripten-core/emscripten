@@ -875,11 +875,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.separate_asm and final_suffix != 'html':
         shared.WarningManager.warn('SEPARATE_ASM')
 
-      # If we are using embind and generating JS, now is the time to link in bind.cpp
-      if options.bind and final_suffix in JS_CONTAINING_SUFFIXES:
-        input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')))
-        next_arg_index += 1
-
       # Apply optimization level settings
       shared.Settings.apply_opt_level(opt_level=options.opt_level, shrink_level=options.shrink_level, noisy=True)
 
@@ -916,6 +911,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Note the exports the user requested
       shared.Building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
+
+      if options.bind:
+        # embind requires fully dynamic dynCalls, not analyzable at runtime. don't try to optimize them out
+        shared.Settings.EXPORT_DYNCALLS = 1
+        # If we are using embind and generating JS, now is the time to link in bind.cpp
+        if final_suffix in JS_CONTAINING_SUFFIXES:
+          input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')))
+          next_arg_index += 1
 
       # -s ASSERTIONS=1 implies the heaviest stack overflow check mode. Set the implication here explicitly to avoid having to
       # do preprocessor "#if defined(ASSERTIONS) || defined(STACK_OVERFLOW_CHECK)" in .js files, which is not supported.

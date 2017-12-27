@@ -2333,6 +2333,11 @@ class Building(object):
         if 'import' in item:
           if item['import'][1][0] == '_':
             item['import'][1] = item['import'][1][1:]
+    if Settings.EXPORT_DYNCALLS:
+      for item in graph:
+        if 'export' in item:
+          if item['export'].startswith('dynCall_'):
+            item['root'] = True
     temp = temp_files.get('.txt').name
     txt = json.dumps(graph)
     with open(temp, 'w') as f: f.write(txt)
