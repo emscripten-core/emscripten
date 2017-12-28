@@ -1582,6 +1582,10 @@ LibraryManager.library = {
   llvm_floor_f64: 'Math_floor',
   llvm_round_f32: 'Math_round',
   llvm_round_f64: 'Math_round',
+  llvm_minnum_f32: 'Math_min',
+  llvm_minnum_f64: 'Math_min',
+  llvm_maxnum_f32: 'Math_max',
+  llvm_maxnum_f64: 'Math_max',
 
   llvm_exp2_f32: function(x) {
     return Math.pow(2, x);
@@ -4372,8 +4376,6 @@ LibraryManager.library = {
   llvm_dbg_value: true,
   llvm_debugtrap: true,
   llvm_ctlz_i32: true,
-  llvm_maxnum_f32: true,
-  llvm_maxnum_f64: true,
   emscripten_asm_const: true,
   emscripten_asm_const_int: true,
   emscripten_asm_const_double: true,
