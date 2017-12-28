@@ -42,6 +42,7 @@ Available operations and tasks:
         ogg
         sdl2
         sdl2-image
+        sdl2-mixer
         sdl2-ttf
         sdl2-net
         vorbis
@@ -89,7 +90,7 @@ CXX_WITH_STDLIB = '''
       '''
 
 SYSTEM_TASKS = ['compiler-rt', 'libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'dlmalloc_debug', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'html5']
-USER_TASKS = ['al', 'gl', 'binaryen', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
+USER_TASKS = ['al', 'gl', 'binaryen', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'sdl2-mixer', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
 
 temp_files = shared.configuration.get_temp_files()
 
@@ -241,6 +242,8 @@ if operation == 'build':
       build_port('sdl2-net', 'libsdl2_net.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
     elif what == 'freetype':
       build_port('freetype', 'libfreetype.a', ['-s', 'USE_FREETYPE=1'])
+    elif what == 'sdl2-mixer':
+      build_port('sdl2-mixer', 'libsdl2_mixer.a', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'USE_VORBIS=1'])
     elif what == 'sdl2-ttf':
       build_port('sdl2-ttf', 'libsdl2_ttf.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '-s', 'USE_FREETYPE=1'])
     elif what == 'binaryen':
