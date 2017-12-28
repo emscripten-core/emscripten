@@ -671,19 +671,6 @@ class Ports(object):
       shared.Cache.release_cache_lock()
 
   @staticmethod
-  def build_project(name, subdir, configure, generated_libs, post_create=None):
-    def create():
-      logging.info('building port: ' + name + '...')
-      port_build_dir = Ports.get_build_dir()
-      shared.safe_ensure_dirs(port_build_dir)
-      libs = shared.Building.build_library(name, port_build_dir, None, generated_libs, source_dir=os.path.join(Ports.get_dir(), name, subdir), copy_project=True,
-                                           configure=configure, make=['make', '-j' + str(CORES)])
-      assert len(libs) == 1
-      if post_create: post_create()
-      return libs[0]
-    return shared.Cache.get(name, create)
-
-  @staticmethod
   def clear_project_build(name):
     shared.try_delete(os.path.join(Ports.get_build_dir(), name))
     shared.try_delete(shared.Cache.get_path(name + '.bc'))
