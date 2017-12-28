@@ -63,6 +63,9 @@ mergeInto(LibraryManager.library, {
           if (result === null || result === undefined) break;
           bytesRead++;
           buffer[offset+i] = result;
+
+          // If EOL character, return having put it in the buffer.
+          if (result === 10) break;
         }
         if (bytesRead) {
           stream.node.timestamp = Date.now();
@@ -127,7 +130,8 @@ mergeInto(LibraryManager.library, {
             } else {
               result = null;
             }
-
+          } else if (Module['get_char'] != undefined) {
+	            result = Module['get_char']();
           } else if (typeof window != 'undefined' &&
             typeof window.prompt == 'function') {
             // Browser.
@@ -143,13 +147,19 @@ mergeInto(LibraryManager.library, {
             }
           }
           if (!result) {
-            return null;
+            return result;
           }
           tty.input = intArrayFromString(result, true);
         }
         return tty.input.shift();
       },
       put_char: function(tty, val) {
+        if (Module['rawPrint'] != undefined) {
+          if (val != 0) tty.output.push(val);
+          Module['rawPrint'](UTF8ArrayToString(tty.output, 0));
+          tty.output = [];
+          return;
+        }
         if (val === null || val === {{{ charCode('\n') }}}) {
           Module['print'](UTF8ArrayToString(tty.output, 0));
           tty.output = [];
@@ -166,6 +176,12 @@ mergeInto(LibraryManager.library, {
     },
     default_tty1_ops: {
       put_char: function(tty, val) {
+        if (Module['rawPrintErr'] != undefined) {
+          if (val != 0) tty.output.push(val);
+          Module['rawPrintErr'](UTF8ArrayToString(tty.output, 0));
+          tty.output = [];
+          return;
+        }
         if (val === null || val === {{{ charCode('\n') }}}) {
           Module['printErr'](UTF8ArrayToString(tty.output, 0));
           tty.output = [];

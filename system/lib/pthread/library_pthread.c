@@ -185,7 +185,7 @@ void emscripten_async_waitable_close(em_queued_call *call)
 	em_queued_call_free(call);
 }
 
-static void _do_call(em_queued_call *q)
+static int _do_call(em_queued_call *q)
 {
 	switch(q->functionEnum)
 	{
@@ -202,6 +202,13 @@ static void _do_call(em_queued_call *q)
 		default: assert(0 && "Invalid Emscripten pthread _do_call opcode!");
 	}
 
+	if (q->functionEnum == EM_PROXIED_SYSCALL && q->args[0].i == 145
+	               && q->returnValue.i == -EAGAIN && isatty((*(int *)(q->args[1].vp)))) {
+		// We tried to do a read operation from the terminal, but no input was ready,
+		// so return without waking the worker.
+		return -1;
+	} 
+	
 	// If the caller is detached from this operation, it is the main thread's responsibility to free up the call object.
 	if (q->calleeDelete) {
 		emscripten_async_waitable_close(q);
@@ -211,6 +218,7 @@ static void _do_call(em_queued_call *q)
 		q->operationDone = 1;
 		emscripten_futex_wake(&q->operationDone, INT_MAX);
 	}
+	return 0;
 }
 
 #define CALL_QUEUE_SIZE 128
@@ -428,8 +436,12 @@ void EMSCRIPTEN_KEEPALIVE emscripten_main_thread_process_queued_calls()
 	{
 		// Assume that the call is heavy, so unlock access to the call queue while it is being performed.
 		pthread_mutex_unlock(&call_queue_lock);
-		_do_call(call_queue[head]);
+		int ret = _do_call(call_queue[head]);
 		pthread_mutex_lock(&call_queue_lock);
+
+		// If we get a return value of -1, leave the operation on the queue and return and we will
+		// restart processing later.
+		if (ret == -1) break;
 
 		head = (head + 1) % CALL_QUEUE_SIZE;
 		emscripten_atomic_store_u32((void*)&call_queue_head, head);

@@ -2654,8 +2654,48 @@ def generate_html(target, options, js_target, target_basename,
     script.src = None
     script.inline = js_contents
 
+  if shared.Settings.USE_PTHREADS and shared.Settings.PROXY_TO_PTHREAD:
+    get_char = '''
+        get_char: (function() {
+          var keys = '';
+          var output = document.getElementById('output');
+          output.focus();
+
+          output.addEventListener('keydown', function(ev) {
+            // Make sure cursor is at end of textarea
+            var len = output.value.length;
+            output.setSelectionRange(len, len);
+
+            var key = ev.keyCode || ev.which;
+            if (key == '\\r') key = key + '\\n';
+            if (ev.key == 'Backspace') {
+              // Backspace - erase the last character in Module.keys
+              if (keys == '') ev.preventDefault();
+              keys = keys.slice(0, -1);
+            }
+            else if (ev.code == 'Enter') {
+              keys += '\\r';
+              setTimeout(_emscripten_main_thread_process_queued_calls, 0);
+            }
+            else if ((ev.key.length == 1) && !ev.altKey && !ev.ctrlKey && !ev.metaKey){
+              keys += ev.key;
+            }
+          });
+          return function() {
+            if (keys === '') {
+              return undefined;
+            }
+            var k = keys;
+            keys = ''
+            return k;
+          };
+        })(),'''
+  else:
+    get_char = ''
+    
   html = open(target, 'wb')
   html_contents = shell.replace('{{{ SCRIPT }}}', script.replacement())
+  html_contents = html_contents.replace('{{{ GET_CHAR }}}', get_char)
   html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', options.output_eol)
   html.write(asbytes(html_contents))
   html.close()

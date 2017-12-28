@@ -82,6 +82,8 @@ if (ENVIRONMENT_IS_NODE) {
   // Note that we pollute the global namespace here, otherwise we break in node
   if (!Module['print']) Module['print'] = console.log;
   if (!Module['printErr']) Module['printErr'] = console.warn;
+  if (!Module['rawPrint']) Module['rawPrint'] = function(txt) { process.stdout.write(txt); }
+  if (!Module['rawPrintErr']) Module['rawPrintErr'] = function(txt) { process.stderr.write(txt); }
 
   var nodeFS;
   var nodePath;
@@ -151,6 +153,8 @@ if (ENVIRONMENT_IS_NODE) {
 else if (ENVIRONMENT_IS_SHELL) {
   if (!Module['print']) Module['print'] = print;
   if (typeof printErr != 'undefined') Module['printErr'] = printErr; // not present in v8 or older sm
+  if (!Module['rawPrint']) Module['rawPrint'] = putstr;
+  //if (!Module['rawPrintErr']) Module['rawPrintErr'] = putstr; // goes to stdout not stderr.
 
   if (typeof read != 'undefined') {
     Module['read'] = function shell_read(f) {

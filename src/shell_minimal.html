@@ -101,6 +101,22 @@
             console.error(text);
           }
         },
+        rawPrint: function(text) {
+          var element = document.getElementById('output');
+          if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+          if (text == "\n") {
+            text = "\r" + text;
+          }
+          element.value += text;
+        },
+        rawPrintErr: function(text) {
+          var element = document.getElementById('output');
+          if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+          if (text == "\n") {
+            text = "\r" + text;
+          }
+          element.value += text;
+        },{{{ GET_CHAR }}}
         canvas: (function() {
           var canvas = document.getElementById('canvas');
 

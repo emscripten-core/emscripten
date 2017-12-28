@@ -1216,6 +1216,34 @@ int f() {
                   output_filename='a.out.js')
     _test()
 
+  def test_stdin2(self):
+    def _test():
+      for engine in JS_ENGINES:
+        if engine == V8_ENGINE: continue # no stdin support in v8 shell
+        engine[0] = os.path.normpath(engine[0])
+        print >> sys.stderr, engine
+        # work around a bug in python's subprocess module
+        # (we'd use run_js() normally)
+        try_delete('out.txt')
+        try_delete('err.txt')
+        if os.name == 'nt': # windows
+          os.system('type "in.txt" | {} >out.txt 2>err.txt'.format(' '.join(Building.doublequote_spaces(make_js_command(os.path.normpath(exe), engine)))))
+        else: # posix
+          os.system('cat in.txt | {} > out.txt 2>err.txt'.format(' '.join(Building.doublequote_spaces(make_js_command(exe, engine)))))
+        self.assertContained('''Enter your name: Hello Dave.
+What is your favourite colour? Green is a great colour!
+Goodbye, Dave.''', open('out.txt').read())
+        self.assertContained('Do you want another go?', open('err.txt').read())
+
+    Building.emcc(path_from_root('tests', 'module', 'test_stdin2.c'), output_filename='a.out.js')
+    open('in.txt', 'w').write('Dave\nGreen\nNo\n')
+    exe = os.path.join(self.get_dir(), 'a.out.js')
+    _test()
+    Building.emcc(path_from_root('tests', 'module', 'test_stdin2.c'),
+                  ['-O2', '--closure', '1'],
+                  output_filename='a.out.js')
+    _test()
+
   def test_ungetc_fscanf(self):
     open('main.cpp', 'w').write(r'''
       #include <stdio.h>
