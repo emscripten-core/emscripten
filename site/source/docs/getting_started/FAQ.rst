@@ -345,10 +345,24 @@ Emscripten by default does *not* give fatal errors on undefined symbols, so you 
 
 Aside from just forgetting to link in a necessary object file, one possible cause for this error is inline functions in headers. If you have a header with ``inline int my_func() { .. }`` then *Clang* may not actually inline the function (since inline is just a hint), and also not generate code for it (since it's in a header). The result is that the generated bitcode and JavaScript will not have that function implemented. One solution is to add ``static`` to the function declaration, which forces code to be generated in the object file: ``static inline int my_func() { .. }``.
 
+.. _faq-export-stuff:
+
 Why do I get ``TypeError: Module.someThing is not a function``?
 ===============================================================
 
-The ``Module`` object will contain exported methods. For something to appear there, you should add it to ``EXPORTED_FUNCTIONS`` for compiled code, or ``EXTRA_EXPORTED_RUNTIME_METHODS`` for a runtime method (like ``getValue``).
+The ``Module`` object will contain exported methods. For something to appear there, you should add it to ``EXPORTED_FUNCTIONS`` for compiled code, or ``EXTRA_EXPORTED_RUNTIME_METHODS`` for a runtime method (like ``getValue``). For example,
+
+ ::
+
+	./emcc -s EXPORTED_FUNCTIONS="['_main', '_my_func']" ...
+
+would export a C method ``my_func`` (in addition to ``main``, in this example). And
+
+ ::
+
+	./emcc -s EXTRA_EXPORTED_RUNTIME_METHODS="['ccall']" ...
+
+will export ``ccall``. In both cases you can then access the exported function on the ``Module`` object.
 
 .. note:: You can use runtime methods directly, without exporting them, if the compiler can see them used. For example, you can use ``getValue`` in ``EM_ASM`` code, or a ``--pre-js``, by calling it directly. The optimizer will not remove that JS runtime method because it sees it is used. You only need to use ``Module.getValue`` if you want to call that method from outside the JS code the compiler can see, and then you need to export it.
 
