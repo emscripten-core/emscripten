@@ -19,7 +19,7 @@ def run_by_subprocess(filename):
   # Python on Windows does not provide `python2` but instead `py` that receives version parameter
   py2 = ['py', '-2'] if sys.platform.startswith('win') else ['python2']
   import subprocess
-  return subprocess.call(py2 + [os.path.realpath(filename) + '.py'] + sys.argv[1:])
+  return subprocess.run(py2 + [os.path.realpath(filename) + '.py'] + sys.argv[1:]).returncode
 
 def allowed_version():
   major = sys.version_info.major
