@@ -2317,7 +2317,6 @@ seeked= file.
     open(full, 'w').write('data')
     proc = run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', full], stdout=PIPE, stderr=PIPE)
     assert len(proc.stdout) > 0, proc.stderr
-    assert len(proc.stderr) == 0, proc.stderr
     assert unicode_name in proc.stdout, proc.stdout
     print(len(proc.stderr))
 
@@ -2344,6 +2343,16 @@ seeked= file.
     os.utime('ship.dds', None)
     Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
     assert crunch_time < os.stat('ship.crn').st_mtime, 'Crunch was changed'
+
+  def test_file_packager_mention_FORCE_FILESYSTEM(self):
+    MESSAGE = 'Remember to build the main file with  -s FORCE_FILESYSTEM=1  so that it includes support for loading this file package'
+    open('data.txt', 'w').write('data1')
+    # mention when running standalone
+    err = run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=PIPE, stderr=PIPE).stderr
+    self.assertContained(MESSAGE, err)
+    # do not mention from emcc
+    err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--preload-file', 'data.txt'], stdout=PIPE, stderr=PIPE).stderr
+    assert len(err) == 0, err
 
   def test_headless(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'example.png'))
@@ -5660,12 +5669,13 @@ int main() {
     self.assertContained('', run_js('a.out.js', assert_returncode=0))
 
   def test_file_packager_huge(self):
+    MESSAGE = 'warning: file packager is creating an asset bundle of 257 MB. this is very large, and browsers might have trouble loading it'
     open('huge.dat', 'w').write('a'*(1024*1024*257))
     open('tiny.dat', 'w').write('a')
     err = run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'tiny.dat'], stdout=PIPE, stderr=PIPE).stderr
-    assert err == '', err
+    self.assertNotContained(MESSAGE, err)
     err = run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], stdout=PIPE, stderr=PIPE).stderr
-    assert 'warning: file packager is creating an asset bundle of 257 MB. this is very large, and browsers might have trouble loading it' in err, err
+    self.assertContained(MESSAGE, err)
     self.clear()
 
   def test_nosplit(self): # relooper shouldn't split nodes if -Os or -Oz
@@ -6827,6 +6837,12 @@ int main() {
   def test_dash_s(self):
     print(check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', '-std=c++03']))
     self.assertContained('hello, world!', run_js('a.out.js'))
+
+  def test_dash_s_error(self):
+    # missing quotes
+    err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "EXTRA_EXPORTED_RUNTIME_METHODS=[addOnPostRun]"], stderr=PIPE, check=False).stderr
+    self.assertContained('NameError', err) # it failed
+    self.assertContained('one possible cause of this is missing quotation marks', err) # but we suggested the fix
 
   def test_python_2_3(self): # check emcc/em++ can be called by any python
     print()
