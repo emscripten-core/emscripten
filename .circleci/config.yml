@@ -78,11 +78,7 @@ jobs:
   test-d:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=default.test_d* asm1.test_d* asm2.test_d* asm2f.test_d* asm2g.test_d* asm3.test_d*
-  test-d2i:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=asm2i.test_d*
+      - TEST_TARGET=default.test_d* asm1.test_d* asm2.test_d* asm2g.test_d* asm3.test_d*
   test-e:
     <<: *test-defaults
     environment:
@@ -102,11 +98,7 @@ jobs:
   test-p:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=default.test_p* asm1.test_p* asm2.test_p* asm2f.test_p* asm2g.test_p* asm3.test_p*
-  test-p2i:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=asm2i.test_p*
+      - TEST_TARGET=default.test_p* asm1.test_p* asm2.test_p* asm2g.test_p* asm3.test_p*
   test-qrst:
     <<: *test-defaults
     environment:
@@ -116,6 +108,22 @@ jobs:
     <<: *test-defaults
     environment:
       - TEST_TARGET=ALL.test_u* ALL.test_w* ALL.test_v* ALL.test_x* ALL.test_y* ALL.test_z*
+  test-binaryen0:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=binaryen0
+  test-binaryen1:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=binaryen1
+  test-binaryen2:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=binaryen2
+  test-binaryen3:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=binaryen3
 
 workflows:
   version: 2
@@ -141,9 +149,6 @@ workflows:
       - test-d:
           requires:
             - build
-      - test-d2i:
-          requires:
-            - build
       - test-e:
           requires:
             - build
@@ -159,12 +164,21 @@ workflows:
       - test-p:
           requires:
             - build
-      - test-p2i:
-          requires:
-            - build
       - test-qrst:
           requires:
             - build
       - test-uvwxyz:
+          requires:
+            - build
+      - test-binaryen0:
+          requires:
+            - build
+      - test-binaryen1:
+          requires:
+            - build
+      - test-binaryen2:
+          requires:
+            - build
+      - test-binaryen3:
           requires:
             - build
