@@ -4558,7 +4558,13 @@ def process(filename):
       #include <emscripten.h>
       int main(void) {
         EM_ASM(
-          FS.write('/dummy.txt', 'homu');
+          "use strict";
+          try {
+            FS.write('/dummy.txt', 'homu');
+          } catch (err) {
+            err.stack = err.stack; // should be writable
+            throw err;
+          }
         );
         return 0;
       }
