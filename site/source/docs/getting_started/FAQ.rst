@@ -278,7 +278,7 @@ Emscripten does dead code elimination of functions that are not called from the 
 
 To make sure a C function remains available to be called from normal JavaScript, it must be added to the `EXPORTED_FUNCTIONS <https://github.com/kripken/emscripten/blob/1.29.12/src/settings.js#L388>`_ using the *emcc* command line. For example, to prevent functions ``my_func()`` and ``main()`` from being removed/renamed, run *emcc* with: ::
 
-	./emcc -s EXPORTED_FUNCTIONS="['_main', '_my_func']"  ...
+	./emcc -s "EXPORTED_FUNCTIONS=['_main', '_my_func']"  ...
 
 .. note:: 
 
@@ -354,13 +354,13 @@ The ``Module`` object will contain exported methods. For something to appear the
 
  ::
 
-	./emcc -s EXPORTED_FUNCTIONS="['_main', '_my_func']" ...
+	./emcc -s "EXPORTED_FUNCTIONS=['_main', '_my_func']" ...
 
 would export a C method ``my_func`` (in addition to ``main``, in this example). And
 
  ::
 
-	./emcc -s EXTRA_EXPORTED_RUNTIME_METHODS="['ccall']" ...
+	./emcc -s "EXTRA_EXPORTED_RUNTIME_METHODS=['ccall']" ...
 
 will export ``ccall``. In both cases you can then access the exported function on the ``Module`` object.
 
@@ -378,15 +378,15 @@ That may occur when running something like
 	# this fails on most Linuxes
 	./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']
 
-You may need quotation marks, such as
+	# this fails on OS X
+	./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS="['addOnPostRun']"
+
+You may need to quote things like this:
 
 ::
 
-	# this works on most Linuxes
+	# this works on most Linuxes and on OS X
 	./emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']"
-
-	# also this should work
-	./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS="['addOnPostRun']"
 
 The proper syntax depends on the OS and shell you are in.
 
