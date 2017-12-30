@@ -2453,7 +2453,10 @@ def modularize():
 
   return %(EXPORT_NAME)s;
 };
-if (typeof module === "object" && module.exports) {
+if (typeof define === "function" && define['amd']) {
+  define(function() { return %(EXPORT_NAME)s; });
+}
+if (typeof require === "function" && typeof module === "object" && module && module['exports']) {
   module['exports'] = %(EXPORT_NAME)s;
 };
 ''' % {"EXPORT_NAME": shared.Settings.EXPORT_NAME, "src": src})
