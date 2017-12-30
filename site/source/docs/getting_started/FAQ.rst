@@ -373,7 +373,7 @@ will export ``ccall``. In both cases you can then access the exported function o
 Why does ``Runtime`` no longer exist? Why do I get an error trying to access ``Runtime.someThing``?
 ===================================================================================================
 
-1.37.27 includes a refactoring to remove the ``Runtime`` object. This makes the generated code more efficient and compact, but requires minor changes if you used ``Runtime.*`` APIs. You just need to remobe the ``Runtime.`` prefix, as those functions are now simple functions in the top scope (an error message in ``-O0`` or builds with assertions enabled with suggest this). In other words, replace
+1.37.27 includes a refactoring to remove the ``Runtime`` object. This makes the generated code more efficient and compact, but requires minor changes if you used ``Runtime.*`` APIs. You just need to remove the ``Runtime.`` prefix, as those functions are now simple functions in the top scope (an error message in ``-O0`` or builds with assertions enabled with suggest this). In other words, replace
 
  ::
 
