@@ -126,6 +126,10 @@ var LibraryManager = {
           'library_workerfs.js',
           'library_lz4.js',
         ]);
+
+        if (NODERAWFS) {
+          libraries.push('library_noderawfs.js')
+        }
       }
     }
 

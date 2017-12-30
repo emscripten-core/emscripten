@@ -9,6 +9,9 @@ mergeInto(LibraryManager.library, {
 #if __EMSCRIPTEN_HAS_workerfs_js__
     '$WORKERFS',
 #endif
+#if __EMSCRIPTEN_HAS_noderawfs_js__
+    '$NODERAWFS',
+#endif
     'stdin', 'stdout', 'stderr'],
   $FS__postset: 'FS.staticInit();' +
                 '__ATINIT__.unshift(function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() });' +

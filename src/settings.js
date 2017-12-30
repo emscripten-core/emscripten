@@ -378,6 +378,8 @@ var FORCE_FILESYSTEM = 0; // Makes full filesystem support be included, even if 
                           // used. For example, if your C code uses no files, but you include some JS that does,
                           // you might need this.
 
+var NODERAWFS = 0; // Enables experimental NODERAWFS
+
 var EXPORTED_FUNCTIONS = ['_main'];
                                     // Functions that are explicitly exported. These functions are kept alive
                                     // through LLVM dead code elimination, and also made accessible outside of
