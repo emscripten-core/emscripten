@@ -368,8 +368,28 @@ will export ``ccall``. In both cases you can then access the exported function o
 
 .. note:: Emscripten used to export many runtime methods by default. This increased code size, and for that reason we've changed that default. If you depend on something that used to be exported, you should see a warning pointing you to the solution, in an unoptimized build, or a build with ``ASSERTIONS`` enabled, which we hope will minimize any annoyance. See ``Changelog.markdown`` for details.
 
+.. _faq-runtime-change:
+
+Why does ``Runtime`` no longer exist? Why do I get an error trying to access ``Runtime.someThing``?
+===================================================================================================
+
+1.37.27 includes a refactoring to remove the ``Runtime`` object. This makes the generated code more efficient and compact, but requires minor changes if you used ``Runtime.*`` APIs. You just need to remobe the ``Runtime.`` prefix, as those functions are now simple functions in the top scope (an error message in ``-O0`` or builds with assertions enabled with suggest this). In other words, replace
+
+ ::
+
+	x = Runtime.stackAlloc(10);
+
+with
+
+ ::
+
+	x = stackAlloc(10);
+
+.. note:: The above will work for code in a ``--pre-js`` or JS library, that is, code that is compiled together with the emscripten output. If you try to access ``Runtime.*`` methods from outside the compiled code, then you must export that function (using ``EXTRA_EXPORTED_RUNTIME_METHODS``), and use it on the Module object, see :ref:`that FAQ entry<faq-export-stuff>`.
+
+
 Why do I get a ``NameError`` or ``a problem occurred in evaluating content after a "-s"`` when I use a ``-s`` option?
-========================================================
+=====================================================================================================================
 
 That may occur when running something like
 
