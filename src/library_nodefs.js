@@ -240,27 +240,18 @@ mergeInto(LibraryManager.library, {
       },
       read: function (stream, buffer, offset, length, position) {
         if (length === 0) return 0; // node errors on 0 length reads
-        // FIXME this is terrible.
-        var nbuffer = new Buffer(length);
         var res;
         try {
-          res = fs.readSync(stream.nfd, nbuffer, 0, length, position);
+          res = fs.readSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
         } catch (e) {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
-        }
-        if (res > 0) {
-          for (var i = 0; i < res; i++) {
-            buffer[offset + i] = nbuffer[i];
-          }
         }
         return res;
       },
       write: function (stream, buffer, offset, length, position) {
-        // FIXME this is terrible.
-        var nbuffer = new Buffer(buffer.subarray(offset, offset + length));
         var res;
         try {
-          res = fs.writeSync(stream.nfd, nbuffer, 0, length, position);
+          res = fs.writeSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
         } catch (e) {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
