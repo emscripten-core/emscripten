@@ -64,7 +64,6 @@ mergeInto(LibraryManager.library, {
     read: function(stream, buffer, offset, length, position) {
       var seeking = true;
       if (typeof position === 'undefined') {
-        position = stream.position;
         seeking = false;
       }
       var bytesRead = fs.readSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
@@ -78,7 +77,6 @@ mergeInto(LibraryManager.library, {
       }
       var seeking = true;
       if (typeof position === 'undefined') {
-        position = stream.position;
         seeking = false;
       }
       var bytesWritten = fs.writeSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
