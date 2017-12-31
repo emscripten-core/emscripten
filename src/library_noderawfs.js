@@ -1,5 +1,5 @@
 mergeInto(LibraryManager.library, {
-  $NODERAWFS__deps: ['$ERRNO_CODES', '$FS'],
+  $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS'],
   $NODERAWFS__postset: 'if (ENVIRONMENT_IS_NODE) {' +
     'var fs = require("fs"); var NODEJS_PATH = require("path"); var prcoess = require("process");' +
     'var _wrapNodeError = function(func) { return function() { try { return func.apply(this, arguments) } catch (e) { if (!e.code) throw e; throw new FS.ErrnoError(ERRNO_CODES[e.code]); } } };' +
@@ -37,7 +37,7 @@ mergeInto(LibraryManager.library, {
     ftruncate: function() { fs.ftruncate.apply(void 0, arguments); },
     utime: function() { fs.utimes.apply(void 0, arguments); },
     open: function(path, flags, mode, suggestFD) {
-      var nfd = fs.openSync(path, flags, mode);
+      var nfd = fs.openSync(path, NODEFS.flagsToPermissionString(flags), mode);
       var fd = suggestFD != null ? suggestFD : nfd;
       var stream = { fd: fd, nfd: nfd, position: 0, path: path, flags: flags };
       FS.streams[fd] = stream;
