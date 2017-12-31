@@ -290,42 +290,132 @@ function isExportedByForceFilesystem(name) {
          name === 'removeRunDependency';
 }
 
-// optionally export something.
-// in ASSERTIONS mode we show a useful error if it is used without
-// being exported. how we show the message depends on whether it's
-// a function (almost all of them) or a number.
-function maybeExport(name, isNumber) {
-  // if requested to be exported, export it
-  if (name in EXPORTED_RUNTIME_METHODS_SET) {
-    var exported = name;
-    if (isFSPrefixed(exported)) {
-      // this is a filesystem value, FS.x exported as FS_x
-      exported = 'FS.' + exported.substr(3);
+// export parts of the JS runtime that the user asked for
+function exportRuntime() {
+  // optionally export something.
+  // in ASSERTIONS mode we show a useful error if it is used without
+  // being exported. how we show the message depends on whether it's
+  // a function (almost all of them) or a number.
+  function maybeExport(name, isNumber) {
+    // if requested to be exported, export it
+    if (name in EXPORTED_RUNTIME_METHODS_SET) {
+      var exported = name;
+      if (isFSPrefixed(exported)) {
+        // this is a filesystem value, FS.x exported as FS_x
+        exported = 'FS.' + exported.substr(3);
+      }
+      return 'Module["' + name + '"] = ' + exported + ';';
     }
-    return 'Module["' + name + '"] = ' + exported + ';';
+    // do not export it. but if ASSERTIONS, emit a
+    // stub with an error, so the user gets a message
+    // if it is used, that they should export it
+    if (ASSERTIONS) {
+      // check if it already exists, to support EXPORT_ALL and other cases
+      // (we could optimize this, but in ASSERTIONS mode code size doesn't
+      // matter anyhow)
+      var extra = '';
+      if (isExportedByForceFilesystem(name)) {
+        extra = '. Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you';
+      }
+      if (!isNumber) {
+        return 'if (!Module["' + name + '"]) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") };';
+      } else {
+        return 'if (!Module["' + name + '"]) Object.defineProperty(Module, "' + name + '", { get: function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") } });';
+      }
+    }
+    return '';
   }
-  // do not export it. but if ASSERTIONS, emit a
-  // stub with an error, so the user gets a message
-  // if it is used, that they should export it
-  if (ASSERTIONS) {
-    // check if it already exists, to support EXPORT_ALL and other cases
-    // (we could optimize this, but in ASSERTIONS mode code size doesn't
-    // matter anyhow)
-    var extra = '';
-    if (isExportedByForceFilesystem(name)) {
-      extra = '. Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you';
-    }
-    if (!isNumber) {
-      return 'if (!Module["' + name + '"]) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") };';
-    } else {
-      return 'if (!Module["' + name + '"]) Object.defineProperty(Module, "' + name + '", { get: function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") } });';
-    }
-  }
-  return '';
-}
 
-function maybeExportNumber(name) {
-  return maybeExport(name, true);
+  function maybeExportNumber(name) {
+    return maybeExport(name, true);
+  }
+
+  // All possible runtime elements to export
+  var runtimeElements = [
+    'intArrayFromString',
+    'intArrayToString',
+    'ccall',
+    'cwrap',
+    'setValue',
+    'getValue',
+    'allocate',
+    'getMemory',
+    'Pointer_stringify',
+    'AsciiToString',
+    'stringToAscii',
+    'UTF8ArrayToString',
+    'UTF8ToString',
+    'stringToUTF8Array',
+    'stringToUTF8',
+    'UTF16ToString',
+    'stringToUTF16',
+    'lengthBytesUTF16',
+    'UTF32ToString',
+    'stringToUTF32',
+    'lengthBytesUTF32',
+    'stackTrace',
+    'addOnPreRun',
+    'addOnInit',
+    'addOnPreMain',
+    'addOnExit',
+    'addOnPostRun',
+    'writeStringToMemory',
+    'writeArrayToMemory',
+    'writeAsciiToMemory',
+    'addRunDependency',
+    'removeRunDependency',
+    'FS',
+    'FS_createFolder',
+    'FS_createPath',
+    'FS_createDataFile',
+    'FS_createPreloadedFile',
+    'FS_createLazyFile',
+    'FS_createLink',
+    'FS_createDevice',
+    'FS_unlink',
+    'GL',
+    'staticAlloc',
+    'dynamicAlloc',
+    'warnOnce',
+    'loadDynamicLibrary',
+    'loadWebAssemblyModule',
+    'getLEB',
+    'getFunctionTables',
+    'alignFunctionTables',
+    'registerFunctions',
+    'addFunction',
+    'removeFunction',
+    'getFuncWrapper',
+    'prettyPrint',
+    'makeBigInt',
+    'dynCall',
+    'getCompilerSetting',
+  ];
+  if (SUPPORT_BASE64_EMBEDDING) {
+    runtimeElements.push('intArrayFromBase64');
+    runtimeElements.push('tryParseAsDataURI');
+  }
+  var runtimeNumbers = [
+    'ALLOC_NORMAL',
+    'ALLOC_STACK',
+    'ALLOC_STATIC',
+    'ALLOC_DYNAMIC',
+    'ALLOC_NONE',
+  ];
+  if (ASSERTIONS) {
+    // check all exported things exist, warn about typos
+    for (var name in EXPORTED_RUNTIME_METHODS_SET) {
+      if (runtimeElements.indexOf(name) < 0 &&
+          runtimeNumbers.indexOf(name) < 0) {
+        printErr('warning: invalid item (maybe a typo?) in EXPORTED_RUNTIME_METHODS: ' + name);
+      }
+    }
+  }
+  return runtimeElements.map(function(name) {
+    return maybeExport(name);
+  }).join('\n') + runtimeNumbers.map(function(name) {
+    return maybeExportNumber(name);
+  }).join('\n');
 }
 
 var PassManager = {

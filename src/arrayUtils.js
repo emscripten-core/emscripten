@@ -1,5 +1,3 @@
-// All functions here should be maybeExported from jsifier.js
-
 /** @type {function(string, boolean=, number=)} */
 function intArrayFromString(stringy, dontAddNull, length) {
   var len = length > 0 ? length : lengthBytesUTF8(stringy)+1;

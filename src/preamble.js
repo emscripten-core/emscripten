@@ -199,9 +199,6 @@ function cwrap (ident, returnType, argTypes) {
   }
 }
 
-{{{ maybeExport("ccall") }}}
-{{{ maybeExport("cwrap") }}}
-
 /** @type {function(number, number, string, boolean=)} */
 function setValue(ptr, value, type, noSafe) {
   type = type || 'i8';
@@ -234,7 +231,6 @@ function setValue(ptr, value, type, noSafe) {
   }
 #endif
 }
-{{{ maybeExport("setValue") }}}
 
 /** @type {function(number, string, boolean=)} */
 function getValue(ptr, type, noSafe) {
@@ -269,18 +265,12 @@ function getValue(ptr, type, noSafe) {
 #endif
   return null;
 }
-{{{ maybeExport("getValue") }}}
 
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
 var ALLOC_STATIC = 2; // Cannot be freed
 var ALLOC_DYNAMIC = 3; // Cannot be freed except through sbrk
 var ALLOC_NONE = 4; // Do not allocate
-{{{ maybeExportNumber('ALLOC_NORMAL') }}}
-{{{ maybeExportNumber('ALLOC_STACK') }}}
-{{{ maybeExportNumber('ALLOC_STATIC') }}}
-{{{ maybeExportNumber('ALLOC_DYNAMIC') }}}
-{{{ maybeExportNumber('ALLOC_NONE') }}}
 
 // allocate(): This is for internal use. You can use it yourself as well, but the interface
 //             is a little tricky (see docs right below). The reason is that it is optimized
@@ -366,7 +356,6 @@ function allocate(slab, types, allocator, ptr) {
 
   return ret;
 }
-{{{ maybeExport('allocate') }}}
 
 // Allocate memory during any stage of startup - static memory early on, dynamic memory later, malloc when ready
 function getMemory(size) {
@@ -374,7 +363,6 @@ function getMemory(size) {
   if (!runtimeInitialized) return dynamicAlloc(size);
   return _malloc(size);
 }
-{{{ maybeExport('getMemory') }}}
 
 /** @type {function(number, number=)} */
 function Pointer_stringify(ptr, length) {
@@ -411,7 +399,6 @@ function Pointer_stringify(ptr, length) {
   }
   return UTF8ToString(ptr);
 }
-{{{ maybeExport('Pointer_stringify') }}}
 
 // Given a pointer 'ptr' to a null-terminated ASCII-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
@@ -424,7 +411,6 @@ function AsciiToString(ptr) {
     str += String.fromCharCode(ch);
   }
 }
-{{{ maybeExport('AsciiToString') }}}
 
 // Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
 // null-terminated and encoded in ASCII form. The copy will require at most str.length+1 bytes of space in the HEAP.
@@ -432,7 +418,6 @@ function AsciiToString(ptr) {
 function stringToAscii(str, outPtr) {
   return writeAsciiToMemory(str, outPtr, false);
 }
-{{{ maybeExport('stringToAscii') }}}
 
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
 // a copy of that string as a Javascript String object.
@@ -489,7 +474,6 @@ function UTF8ArrayToString(u8Array, idx) {
   }
 #endif
 }
-{{{ maybeExport('UTF8ArrayToString') }}}
 
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
@@ -497,7 +481,6 @@ function UTF8ArrayToString(u8Array, idx) {
 function UTF8ToString(ptr) {
   return UTF8ArrayToString({{{ heapAndOffset('HEAPU8', 'ptr') }}});
 }
-{{{ maybeExport('UTF8ToString') }}}
 
 // Copies the given Javascript String object 'str' to the given byte array at address 'outIdx',
 // encoded in UTF8 form and null-terminated. The copy will require at most str.length*4+1 bytes of space in the HEAP.
@@ -562,7 +545,6 @@ function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
   outU8Array[outIdx] = 0;
   return outIdx - startIdx;
 }
-{{{ maybeExport('stringToUTF8Array') }}}
 
 // Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
 // null-terminated and encoded in UTF8 form. The copy will require at most str.length*4+1 bytes of space in the HEAP.
@@ -575,7 +557,6 @@ function stringToUTF8(str, outPtr, maxBytesToWrite) {
 #endif
   return stringToUTF8Array(str, {{{ heapAndOffset('HEAPU8', 'outPtr') }}}, maxBytesToWrite);
 }
-{{{ maybeExport('stringToUTF8') }}}
 
 // Returns the number of bytes the given Javascript string takes if encoded as a UTF8 byte array, EXCLUDING the null terminator byte.
 
@@ -602,7 +583,6 @@ function lengthBytesUTF8(str) {
   }
   return len;
 }
-{{{ maybeExport('lengthBytesUTF8') }}}
 
 // Given a pointer 'ptr' to a null-terminated UTF16LE-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
@@ -638,7 +618,6 @@ function UTF16ToString(ptr) {
   }
 #endif
 }
-{{{ maybeExport('UTF16ToString') }}}
 
 // Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
 // null-terminated and encoded in UTF16 form. The copy will require at most str.length*4+2 bytes of space in the HEAP.
@@ -676,14 +655,12 @@ function stringToUTF16(str, outPtr, maxBytesToWrite) {
   {{{ makeSetValue('outPtr', 0, 0, 'i16') }}};
   return outPtr - startPtr;
 }
-{{{ maybeExport('stringToUTF16') }}}
 
 // Returns the number of bytes the given Javascript string takes if encoded as a UTF16 byte array, EXCLUDING the null terminator byte.
 
 function lengthBytesUTF16(str) {
   return str.length*2;
 }
-{{{ maybeExport('lengthBytesUTF16') }}}
 
 function UTF32ToString(ptr) {
 #if ASSERTIONS
@@ -707,7 +684,6 @@ function UTF32ToString(ptr) {
     }
   }
 }
-{{{ maybeExport('UTF32ToString') }}}
 
 // Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
 // null-terminated and encoded in UTF32 form. The copy will require at most str.length*4+4 bytes of space in the HEAP.
@@ -750,7 +726,6 @@ function stringToUTF32(str, outPtr, maxBytesToWrite) {
   {{{ makeSetValue('outPtr', 0, 0, 'i32') }}};
   return outPtr - startPtr;
 }
-{{{ maybeExport('stringToUTF32') }}}
 
 // Returns the number of bytes the given Javascript string takes if encoded as a UTF16 byte array, EXCLUDING the null terminator byte.
 
@@ -766,7 +741,6 @@ function lengthBytesUTF32(str) {
 
   return len;
 }
-{{{ maybeExport('lengthBytesUTF32') }}}
 
 function demangle(func) {
 #if DEMANGLE_SUPPORT
@@ -841,7 +815,6 @@ function stackTrace() {
   if (Module['extraStackTrace']) js += '\n' + Module['extraStackTrace']();
   return demangleAll(js);
 }
-{{{ maybeExport('stackTrace') }}}
 
 // Memory management
 
@@ -1607,27 +1580,22 @@ function postRun() {
 function addOnPreRun(cb) {
   __ATPRERUN__.unshift(cb);
 }
-{{{ maybeExport('addOnPreRun') }}}
 
 function addOnInit(cb) {
   __ATINIT__.unshift(cb);
 }
-{{{ maybeExport('addOnInit') }}}
 
 function addOnPreMain(cb) {
   __ATMAIN__.unshift(cb);
 }
-{{{ maybeExport('addOnPreMain') }}}
 
 function addOnExit(cb) {
   __ATEXIT__.unshift(cb);
 }
-{{{ maybeExport('addOnExit') }}}
 
 function addOnPostRun(cb) {
   __ATPOSTRUN__.unshift(cb);
 }
-{{{ maybeExport('addOnPostRun') }}}
 
 // Deprecated: This function should not be called because it is unsafe and does not provide
 // a maximum length limit of how many bytes it is allowed to write. Prefer calling the
@@ -1648,7 +1616,6 @@ function writeStringToMemory(string, buffer, dontAddNull) {
   stringToUTF8(string, buffer, Infinity);
   if (dontAddNull) HEAP8[end] = lastChar; // Restore the value under the null character.
 }
-{{{ maybeExport('writeStringToMemory') }}}
 
 function writeArrayToMemory(array, buffer) {
 #if ASSERTIONS
@@ -1656,7 +1623,6 @@ function writeArrayToMemory(array, buffer) {
 #endif
   HEAP8.set(array, buffer);
 }
-{{{ maybeExport('writeArrayToMemory') }}}
 
 function writeAsciiToMemory(str, buffer, dontAddNull) {
   for (var i = 0; i < str.length; ++i) {
@@ -1668,7 +1634,6 @@ function writeAsciiToMemory(str, buffer, dontAddNull) {
   // Null-terminate the pointer to the HEAP.
   if (!dontAddNull) {{{ makeSetValue('buffer', 0, 0, 'i8') }}};
 }
-{{{ maybeExport('writeAsciiToMemory') }}}
 
 {{{ unSign }}}
 {{{ reSign }}}
@@ -1805,7 +1770,6 @@ function addRunDependency(id) {
   }
 #endif
 }
-{{{ maybeExport('addRunDependency') }}}
 
 function removeRunDependency(id) {
   runDependencies--;
@@ -1832,7 +1796,6 @@ function removeRunDependency(id) {
     }
   }
 }
-{{{ maybeExport('removeRunDependency') }}}
 
 Module["preloadedImages"] = {}; // maps url to image data
 Module["preloadedAudios"] = {}; // maps url to audio data
