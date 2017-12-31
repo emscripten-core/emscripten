@@ -4553,12 +4553,17 @@ def process(filename):
       self.do_run_from_file(src, out)
 
   def test_fs_errorstack(self):
+    post = '''
+def process(filename):
+  src = open(filename, 'r').read()
+  open(filename, 'w').write('"use strict";\\n' + src)
+'''
+
     Settings.FORCE_FILESYSTEM = 1
     self.do_run(r'''
       #include <emscripten.h>
       int main(void) {
         EM_ASM(
-          "use strict";
           try {
             FS.write('/dummy.txt', 'homu');
           } catch (err) {
@@ -4568,7 +4573,7 @@ def process(filename):
         );
         return 0;
       }
-    ''', 'at new ErrnoError', js_engines=[NODE_JS]) # engines has different error stack format
+    ''', 'at Object.write', js_engines=[NODE_JS], post_build=post) # engines has different error stack format
 
   def test_unistd_access(self):
     self.clear()
