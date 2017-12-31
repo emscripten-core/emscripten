@@ -374,6 +374,22 @@ function exportRuntime() {
     'FS_createDevice',
     'FS_unlink',
     'GL',
+    'staticAlloc',
+    'dynamicAlloc',
+    'warnOnce',
+    'loadDynamicLibrary',
+    'loadWebAssemblyModule',
+    'getLEB',
+    'getFunctionTables',
+    'alignFunctionTables',
+    'registerFunctions',
+    'addFunction',
+    'removeFunction',
+    'getFuncWrapper',
+    'prettyPrint',
+    'makeBigInt',
+    'dynCall',
+    'getCompilerSetting',
   ];
   if (SUPPORT_BASE64_EMBEDDING) {
     runtimeElements.push('intArrayFromBase64');
