@@ -8026,9 +8026,10 @@ end
     assert_aliases_match('WASM_MEM_MAX', 'BINARYEN_MEM_MAX', '16777216', ['-s', 'WASM=1'])
 
   def test_noderawfs(self):
-    txt = open(path_from_root('tests', 'hello_world_file.txt'), 'r').read()
-    hello_world_file = open(path_from_root('tests', 'hello_world_file.cpp'), 'r').read().replace('tests/', '')
-    open(os.path.join(self.get_dir(), 'hello_world_file.txt'), 'w').write(txt)
-    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(hello_world_file)
+    fopen_write = open(path_from_root('tests', 'asmfs', 'fopen_write.cpp'), 'r').read()
+    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(fopen_write)
     run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'NODERAWFS=1'])
-    self.assertContained(txt, run_js('a.out.js'))
+    self.assertContained("read 11 bytes. Result: Hello data!", run_js('a.out.js'))
+
+    # NODERAWFS should directly write on OS file system
+    self.assertEqual("Hello data!", open(os.path.join(self.get_dir(), 'hello_file.txt'), 'r').read())
