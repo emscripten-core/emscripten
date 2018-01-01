@@ -52,7 +52,7 @@ void test() {
   err = std::remove("dir");
   assert(!err);
 
-  std::cout << "success";
+  std::cout << "success" << std::endl;
 }
 
 int main() {

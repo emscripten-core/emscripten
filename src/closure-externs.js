@@ -934,6 +934,10 @@ var print = function(expression) {};
  */
 var printErr = function(expression) {};
 /**
+ * @param {string} expression
+ */
+var putstr = function(expression) {};
+/**
  * @param {string} filename
  * @return {ArrayBuffer}
  */
