@@ -188,7 +188,7 @@ Module['callMain'] = function callMain(args) {
   ensureInitRuntime();
 
   var argc = args.length+1;
-  var argv = _malloc(argc * {{{ Runtime.POINTER_SIZE }}});
+  var argv = _malloc((argc + 1) * {{{ Runtime.POINTER_SIZE }}});
   HEAP32[argv >> 2] = allocateUTF8(Module['thisProgram']);
   for (var i = 1; i < argc; i++) {
     HEAP32[(argv >> 2) + i] = allocateUTF8(args[i - 1]);
