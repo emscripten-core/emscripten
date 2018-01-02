@@ -774,7 +774,7 @@ var LibraryGLFW = {
           }
 
           var data = e.target.result;
-          FS.writeFile(path, new Uint8Array(data), { encoding: 'binary' });
+          FS.writeFile(path, new Uint8Array(data));
           if (++written === count) {
             Module['dynCall_viii'](GLFW.active.dropFunc, GLFW.active.id, count, filenames);
 

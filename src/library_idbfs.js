@@ -165,7 +165,7 @@ mergeInto(LibraryManager.library, {
         if (FS.isDir(entry.mode)) {
           FS.mkdir(path, entry.mode);
         } else if (FS.isFile(entry.mode)) {
-          FS.writeFile(path, entry.contents, { encoding: 'binary', canOwn: true });
+          FS.writeFile(path, entry.contents, { canOwn: true });
         } else {
           return callback(new Error('node type not supported'));
         }
