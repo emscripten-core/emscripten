@@ -1132,7 +1132,7 @@ mergeInto(LibraryManager.library, {
       }
       if (stream.flags & {{{ cDefine('O_APPEND') }}}) {
         // seek to the end before writing in append mode
-        FS.llseek(stream, 0, {{{ cDefine('SEEK_END') }}});
+        position = FS.llseek(stream, 0, {{{ cDefine('SEEK_END') }}});
       }
       var seeking = true;
       if (typeof position === 'undefined') {
@@ -1220,7 +1220,7 @@ mergeInto(LibraryManager.library, {
         var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
         FS.write(stream, buf, 0, actualNumBytes, 0, opts.canOwn);
       } else if (ArrayBuffer.isView(data)) {
-        FS.write(stream, data, 0, data.length, 0, opts.canOwn);
+        FS.write(stream, data, 0, data.byteLength, 0, opts.canOwn);
       } else {
         throw new Error('Unsupported data type');
       }
