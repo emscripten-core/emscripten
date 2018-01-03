@@ -178,19 +178,12 @@ Module['callMain'] = function callMain(args) {
   ensureInitRuntime();
 
   var argc = args.length+1;
-  function pad() {
-    for (var i = 0; i < {{{ QUANTUM_SIZE }}}-1; i++) {
-      argv.push(0);
-    }
+  var argv = _malloc((argc + 1) * {{{ Runtime.POINTER_SIZE }}});
+  HEAP32[argv >> 2] = allocateUTF8(Module['thisProgram']);
+  for (var i = 1; i < argc; i++) {
+    HEAP32[(argv >> 2) + i] = allocateUTF8(args[i - 1]);
   }
-  var argv = [allocate(intArrayFromString(Module['thisProgram']), 'i8', ALLOC_NORMAL) ];
-  pad();
-  for (var i = 0; i < argc-1; i = i + 1) {
-    argv.push(allocate(intArrayFromString(args[i]), 'i8', ALLOC_NORMAL));
-    pad();
-  }
-  argv.push(0);
-  argv = allocate(argv, 'i32', ALLOC_NORMAL);
+  HEAP32[(argv >> 2) + argc] = 0;
 
 #if EMTERPRETIFY_ASYNC
   var initialEmtStackTop = Module['asm']['emtStackSave']();
