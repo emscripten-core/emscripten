@@ -4553,6 +4553,8 @@ def process(filename):
       self.do_run_from_file(src, out)
 
   def test_fs_errorstack(self):
+    # Enables strict mode, which may catch some strict-mode-only errors
+    # so that users can safely work with strict JavaScript if enabled.
     post = '''
 def process(filename):
   src = open(filename, 'r').read()
@@ -4562,7 +4564,9 @@ def process(filename):
     Settings.FORCE_FILESYSTEM = 1
     self.do_run(r'''
       #include <emscripten.h>
+      #include <iostream>
       int main(void) {
+        std::cout << "hello world\n"; // should work with strict mode
         EM_ASM(
           try {
             FS.write('/dummy.txt', 'homu');
