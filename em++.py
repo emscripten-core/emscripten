@@ -5,10 +5,10 @@
 
 import os
 import sys
-from tools import force_python_version
+from tools import python_selector
 
 sys.argv += ['--emscripten-cxx']
 
 emcc = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'emcc')
 if __name__ == '__main__':
-  force_python_version.run(emcc)
+  python_selector.run(emcc)

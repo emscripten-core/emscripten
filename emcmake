@@ -4,7 +4,7 @@
 
 
 import sys
-from tools import force_python_version
+from tools import python_selector
 
 if __name__ == '__main__':
-  force_python_version.run(__file__)
+  python_selector.run(__file__)

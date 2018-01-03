@@ -2,9 +2,9 @@
 
 # This script should work in python 2 *or* 3. It loads emar.py, which needs python 2.
 
-from tools import force_python_version
+from tools import python_selector
 
 import sys
 
 if __name__ == '__main__':
-  force_python_version.run(__file__, profile=True)
+  python_selector.run(__file__, profile=True)

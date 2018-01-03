@@ -21,7 +21,7 @@ def run_by_subprocess(filename):
   import subprocess
   return subprocess.run(py2 + [os.path.realpath(filename) + '.py'] + sys.argv[1:]).returncode
 
-def allowed_version():
+def on_allowed_version():
   major = sys.version_info.major
   if major == 2:
     return True
@@ -40,4 +40,4 @@ def run(filename, profile=False, main="run"):
     from tools.toolchain_profiler import ToolchainProfiler
     ToolchainProfiler.record_process_start()
 
-  sys.exit(run_by_import(filename, main) if allowed_version() else run_by_subprocess(filename))
+  sys.exit(run_by_import(filename, main) if on_allowed_version() else run_by_subprocess(filename))
