@@ -749,7 +749,6 @@ function allocateUTF8(str) {
   stringToUTF8Array(str, HEAP8, ret, size);
   return ret;
 }
-{{{ maybeExport('allocateUTF8') }}}
 
 function demangle(func) {
 #if DEMANGLE_SUPPORT
