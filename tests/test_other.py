@@ -6857,6 +6857,10 @@ int main() {
     self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_python_2_3(self): # check emcc/em++ can be called by any python
+    # remove .py from EMCC(=emcc.py)
+    def trim_py_suffix(filename):
+      return filename[:-3] if filename.endswith('.py') else filename
+
     print()
     for python in ['python', 'python2', 'python3']:
       try:
@@ -6867,9 +6871,9 @@ int main() {
       print(python, has)
       if has:
         print('  checking emcc...')
-        check_execute([python, EMCC[:-3], '--version'])
+        check_execute([python, trim_py_suffix(EMCC), '--version'])
         print('  checking em++...')
-        check_execute([python, EMXX[:-3], '--version'])
+        check_execute([python, trim_py_suffix(EMXX), '--version'])
         if python == 'python2':
           print('  checking emcc.py...')
           check_execute([python, EMCC, '--version'])
