@@ -57,7 +57,7 @@ def shell_with_script(shell_file, output_file, replacement):
       output.write(input.read().replace('{{{ SCRIPT }}}', replacement))
 
 def requires_hardware(func):
-  return lambda self: self.skip("This test requires hardware access including graphics and sound devices") if os.environ.get("EMSCRIPTEN_LACKS_HARDWARE_ACCESS") else func(self)
+  return lambda self: self.skip("This test requires hardware access including graphics and sound devices") if os.environ.get("EM_LACKS_HARDWARE_ACCESS") else func(self)
 
 class browser(BrowserCore):
   @classmethod

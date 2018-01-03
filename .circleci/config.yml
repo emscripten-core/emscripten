@@ -69,7 +69,7 @@ jobs:
       - TEST_TARGET=browser skip:browser.test_sdl_ttf_render_text_solid
       - TEST_DEPENDENCY=firefox
       - EMSCRIPTEN_BROWSER=firefox -headless
-      - EMSCRIPTEN_LACKS_HARDWARE_ACCESS=1
+      - EM_LACKS_HARDWARE_ACCESS=1
   test-ab:
     <<: *test-defaults
     environment:
