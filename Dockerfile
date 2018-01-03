@@ -23,7 +23,7 @@ RUN cd /root/ \
 ARG TEST_TARGET
 RUN export EMSCRIPTEN_BROWSER="firefox -headless" \
  && export EM_LACKS_HARDWARE_ACCESS=1 \
- && python /root/emscripten/tests/runner.py $TEST_TARGET skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full skip:other.test_native_link_error_message skip:other.test_bad_triple skip:default.test_simd_sitofp skip:default.test_simd3 skip:other.test_emcc_v
+ && python /root/emscripten/tests/runner.py $TEST_TARGET skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full skip:other.test_native_link_error_message skip:other.test_bad_triple skip:default.test_simd_sitofp skip:default.test_simd3 skip:other.test_emcc_v skip:browser.test_zzz_emrun
 
 # TODO: remove  skip:default.test_simd_sitofp skip:default.test_simd3 skip:other.test_emcc_v  after fastcomp update on travis for 1.37.23
-
+# TODO: remove skip:browser.test_zzz_emrun after merging https://github.com/juj/emrun/pull/8
