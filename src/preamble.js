@@ -743,10 +743,11 @@ function lengthBytesUTF32(str) {
 }
 
 // Allocate heap space for a JS string, and write it there.
+// It is the responsibility of the caller to free() that memory.
 function allocateUTF8(str) {
   var size = lengthBytesUTF8(str) + 1;
   var ret = _malloc(size);
-  stringToUTF8Array(str, HEAP8, ret, size);
+  if (ret) stringToUTF8Array(str, HEAP8, ret, size);
   return ret;
 }
 
