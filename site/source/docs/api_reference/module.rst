@@ -8,7 +8,7 @@ Module object
 
 Developers can provide an implementation of ``Module`` to control the execution of code. For example, to define how notification messages from Emscripten are displayed, developers implement the :js:attr:`Module.print` attribute.
 
-.. note:: ``Module`` is also used to provide access to Emscripten API functions (for example :js:func:`ccall`) in a safe way. Any function or runtime method exported (using ``EXPORTED_FUNCTIONS`` for compiled functions, or ``EXTRA_EXPORTED_RUNTIME_METHODS`` for runtime methods like ``ccall``) will be accessible on the ``Module`` object, without minification changing the name, and the optimizer will make sure to keep the function present (and not remove it as unused).
+.. note:: ``Module`` is also used to provide access to Emscripten API functions (for example :js:func:`ccall`) in a safe way. Any function or runtime method exported (using ``EXPORTED_FUNCTIONS`` for compiled functions, or ``EXTRA_EXPORTED_RUNTIME_METHODS`` for runtime methods like ``ccall``) will be accessible on the ``Module`` object, without minification changing the name, and the optimizer will make sure to keep the function present (and not remove it as unused). See the :ref:`relevant FAQ entry<faq-export-stuff>`.
 
 .. contents:: Table of Contents
 	:local:

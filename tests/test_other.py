@@ -2317,7 +2317,6 @@ seeked= file.
     open(full, 'w').write('data')
     proc = run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', full], stdout=PIPE, stderr=PIPE)
     assert len(proc.stdout) > 0, proc.stderr
-    assert len(proc.stderr) == 0, proc.stderr
     assert unicode_name in proc.stdout, proc.stdout
     print(len(proc.stderr))
 
@@ -2344,6 +2343,16 @@ seeked= file.
     os.utime('ship.dds', None)
     Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
     assert crunch_time < os.stat('ship.crn').st_mtime, 'Crunch was changed'
+
+  def test_file_packager_mention_FORCE_FILESYSTEM(self):
+    MESSAGE = 'Remember to build the main file with  -s FORCE_FILESYSTEM=1  so that it includes support for loading this file package'
+    open('data.txt', 'w').write('data1')
+    # mention when running standalone
+    err = run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=PIPE, stderr=PIPE).stderr
+    self.assertContained(MESSAGE, err)
+    # do not mention from emcc
+    err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--preload-file', 'data.txt'], stdout=PIPE, stderr=PIPE).stderr
+    assert len(err) == 0, err
 
   def test_headless(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'example.png'))
@@ -4950,11 +4959,9 @@ main(const int argc, const char * const * const argv)
       do('no_nuthin', 'hello_world.c', ['-s', 'EXPORTED_RUNTIME_METHODS=[]'])
       print('  ', sizes)
       assert sizes['no_fs'] < sizes['normal']
-      assert sizes['no_nuthin'] < sizes['no_fs']
+      assert abs(sizes['no_nuthin'] - sizes['no_fs']) < 10, 'almost no difference between then, now that we export nothing by default anyhow'
       assert sizes['no_nuthin'] < ratio*sizes['normal']
       assert sizes['no_nuthin'] < absolute, str(sizes['no_nuthin']) + ' >= ' + str(absolute)
-      if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
-        assert sizes['no_nuthin'] < 0.9995*sizes['no_fs']
       assert sizes['no_fs_manual'] < sizes['no_fs'] # manual can remove a tiny bit more
     test(['-s', 'ASSERTIONS=0'], 0.75, 360000) # we don't care about code size with assertions
     test(['-O1'], 0.66, 210000)
@@ -4964,8 +4971,8 @@ main(const int argc, const char * const * const argv)
 
   def test_no_nuthin_2(self):
     # focus on EXPORTED_RUNTIME_METHODS effects, on hello_world_em_asm
-    def test(opts, ratio, absolute):
-      print('opts, ratio, absolute:', opts, ratio, absolute)
+    def test(opts, absolute):
+      print('opts, absolute:', opts, absolute)
       def get_size(name):
         return os.stat(name).st_size
       sizes = {}
@@ -4977,14 +4984,13 @@ main(const int argc, const char * const * const argv)
       do('normal', [])
       do('no_nuthin', ['-s', 'EXPORTED_RUNTIME_METHODS=[]'])
       print('  ', sizes)
-      assert sizes['no_nuthin'] < sizes['normal']
-      assert sizes['no_nuthin'] < ratio*sizes['normal']
+      assert abs(sizes['no_nuthin'] - sizes['normal']) < 10
       assert sizes['no_nuthin'] < absolute
-    test(['-s', 'ASSERTIONS=0'], 1, 220000) # we don't care about code size with assertions
-    test(['-O1'], 1, 215000)
-    test(['-O2'], 0.9995, 55000)
-    test(['-O3', '--closure', '1'], 0.9995, 38000)
-    test(['-O3', '--closure', '2'], 0.9995, 35000) # might change now and then
+    test(['-s', 'ASSERTIONS=0'], 220000) # we don't care about code size with assertions
+    test(['-O1'], 215000)
+    test(['-O2'], 55000)
+    test(['-O3', '--closure', '1'], 38000)
+    test(['-O3', '--closure', '2'], 35000) # might change now and then
 
   def test_no_browser(self):
     BROWSER_INIT = 'var Browser'
@@ -5663,12 +5669,13 @@ int main() {
     self.assertContained('', run_js('a.out.js', assert_returncode=0))
 
   def test_file_packager_huge(self):
+    MESSAGE = 'warning: file packager is creating an asset bundle of 257 MB. this is very large, and browsers might have trouble loading it'
     open('huge.dat', 'w').write('a'*(1024*1024*257))
     open('tiny.dat', 'w').write('a')
     err = run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'tiny.dat'], stdout=PIPE, stderr=PIPE).stderr
-    assert err == '', err
+    self.assertNotContained(MESSAGE, err)
     err = run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], stdout=PIPE, stderr=PIPE).stderr
-    assert 'warning: file packager is creating an asset bundle of 257 MB. this is very large, and browsers might have trouble loading it' in err, err
+    self.assertContained(MESSAGE, err)
     self.clear()
 
   def test_nosplit(self): # relooper shouldn't split nodes if -Os or -Oz
@@ -6830,6 +6837,12 @@ int main() {
   def test_dash_s(self):
     print(check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', '-std=c++03']))
     self.assertContained('hello, world!', run_js('a.out.js'))
+
+  def test_dash_s_error(self):
+    # missing quotes
+    err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "EXTRA_EXPORTED_RUNTIME_METHODS=[addOnPostRun]"], stderr=PIPE, check=False).stderr
+    self.assertContained('NameError', err) # it failed
+    self.assertContained('one possible cause of this is missing quotation marks', err) # but we suggested the fix
 
   def test_python_2_3(self): # check emcc/em++ can be called by any python
     print()
