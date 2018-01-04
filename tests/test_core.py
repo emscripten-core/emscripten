@@ -47,6 +47,16 @@ def sync(f):
     f(self)
   return decorated
 
+def also_with_noderawfs(func):
+  def decorated(self):
+    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    orig_args = self.emcc_args[:]
+    func(self)
+    Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-DNODERAWFS']
+    self.emcc_args = orig_args + ['-s', 'NODERAWFS=1']
+    func(self)
+  return decorated
+
 class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
   def is_emterpreter(self):
     return 'EMTERPRETIFY=1' in self.emcc_args
@@ -4506,6 +4516,7 @@ def process(filename):
     finally:
       Settings.INCLUDE_FULL_LIBRARY = 0
 
+  @also_with_noderawfs
   def test_fs_nodefs_rw(self):
     Settings.SYSCALL_DEBUG = 1
     src = open(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'r').read()

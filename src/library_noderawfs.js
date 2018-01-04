@@ -19,6 +19,7 @@ mergeInto(LibraryManager.library, {
         fs.writeFileSync(path, '', { mode: node.mode });
       }
     },
+    mkdir: function() { fs.mkdirSync.apply(void 0, arguments); },
     symlink: function() { fs.symlinkSync.apply(void 0, arguments); },
     rename: function() { fs.renameSync.apply(void 0, arguments); },
     rmdir: function() { fs.rmdirSync.apply(void 0, arguments); },
