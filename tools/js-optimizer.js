@@ -8067,6 +8067,7 @@ function emitDCEGraph(ast) {
   var dynCallNames = [];
   var exportNames = {};
   var foundAsmLibraryArgAssign = false;
+  var graph = [];
   traverse(ast, function(node, type) {
     if (isAsmLibraryArgAssign(node)) {
       var items = node[3][1];
@@ -8088,16 +8089,30 @@ function emitDCEGraph(ast) {
             //  var x = Module['x'] = ?
             // which looks like a wasm export being received. confirm with the asm use
             var found = 0;
+            var asmName;
             traverse(value[3], function(node, type) {
-              if (isAsmUse(node)) found++;
+              if (isAsmUse(node)) {
+                found++;
+                asmName = getAsmUseName(node);
+              }
             });
-            // TODO: more careful analysis here
-            if (found === 1) {
+            // in the wasm backend, the asm name may have one fewer "_" prefixed
+            if (found === 1 && (asmName === name || asmName === name.substr(1))) {
               // this is indeed an export
-              exports.push(name);
-              exportNames[name] = 1;
+              // the asmName is what the wasm provides directly; the outside JS
+              // name may be slightly different (extra "_" in wasm backend)
+              var graphName = getGraphName(asmName, 'export');
+              exports.push(asmName);
+              exportNames[asmName] = graphName;
+              if (asmName !== name) {
+                // link the two up
+                graph.push({
+                  name: 'emcc$defun$' + name,
+                  reaches: [graphName]
+                });
+              }
               if (/^dynCall_/.test(name)) {
-                dynCallNames.push(getGraphName(name, 'export'));
+                dynCallNames.push(graphName);
               }
               return emptyNode(); // ignore this in the second pass; this does not root
             }
@@ -8131,14 +8146,14 @@ function emitDCEGraph(ast) {
       info.reaches[getGraphName(import_, 'defun')] = 1;
     } // otherwise, it's a number, ignore
   });
-  exports.forEach(function(export_) {
-    var name = getGraphName(export_, 'export');
+  for (var e in exportNames) {
+    var name = exportNames[e];
     infos[name] = {
       name: name,
-      export: export_,
+      export: e,
       reaches: {}
     };
-  });
+  }
   // a function that handles a node we visit, in either a defun or
   // the toplevel scope (in which case the second param is not provided)
   function visitNode(node, defunInfo) {
@@ -8150,12 +8165,12 @@ function emitDCEGraph(ast) {
       if (defunNames.hasOwnProperty(name)) {
         reached = getGraphName(name, 'defun');
       } else if (exportNames.hasOwnProperty(name)) {
-        reached = getGraphName(name, 'export');
+        reached = exportNames[name];
       }
     } else if (isModuleUse(node)) {
       var name = getModuleUseName(node);
       if (exportNames.hasOwnProperty(name)) {
-        reached = getGraphName(name, 'export');
+        reached = exportNames[name];
       }
     } else if (isStaticDynCall(node)) {
       reached = getGraphName(getStaticDynCallName(node), 'export');
@@ -8208,7 +8223,6 @@ function emitDCEGraph(ast) {
     names.sort();
     return names;
   }
-  var graph = [];
   sortedNamesFromMap(infos).forEach(function(name) {
     var info = infos[name];
     info.reaches = sortedNamesFromMap(info.reaches);
