@@ -2327,9 +2327,8 @@ class Building(object):
         export = item['export']
         if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
-      name = item['name']
-    # wasm backend's imports are prefixed differently inside the wasm
     if Settings.WASM_BACKEND:
+      # wasm backend's imports are prefixed differently inside the wasm
       for item in graph:
         if 'import' in item:
           if item['import'][1][0] == '_':
