@@ -10,7 +10,7 @@ RUN cd /root/ \
  && apt-get install -y python python-pip cmake build-essential openjdk-9-jre-headless \
  && pip install --upgrade pip \
  && pip install lit \
- && wget https://github.com/juj/emsdk/archive/master.tar.gz \
+ && wget https://github.com/juj/emsdk/archive/ae40344624b0d92358c9659ec1e8a3e9aa90916d.tar.gz \
  && tar -xf master.tar.gz \
  && pushd emsdk-master \
  && ./emsdk update-tags \
