@@ -136,11 +136,11 @@ test_modes = [
   'asm1',
   'asm2',
   'asm3',
-  'asm2f',
   'asm2g',
-  'asm2i'
 ]
 nondefault_test_modes = [
+  'asm2f',
+  'asm2i',
   'binaryen0',
   'binaryen1',
   'binaryen2',

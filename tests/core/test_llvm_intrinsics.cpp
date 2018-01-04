@@ -36,7 +36,7 @@ extern float llvm_copysign_f32(float x, float y);
 extern double llvm_copysign_f64(double x, double y);
 
 extern double llvm_round_f64(double x);
-extern double llvm_round_f32(double x);
+extern float llvm_round_f32(float x);
 }
 
 int main(void) {

@@ -201,6 +201,9 @@ if (not force) and len(data_files) == 0:
 if not has_preloaded or jsoutput == None:
   assert not separate_metadata, 'cannot separate-metadata without both --preloaded files and a specified --js-output'
 
+if not from_emcc:
+  print('Remember to build the main file with  -s FORCE_FILESYSTEM=1  so that it includes support for loading this file package', file=sys.stderr)
+
 ret = ''
 # emcc.py will add this to the output itself, so it is only needed for standalone calls
 if not from_emcc:
