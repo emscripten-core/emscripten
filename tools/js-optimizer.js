@@ -8061,11 +8061,11 @@ function emitDCEGraph(ast) {
   //  });
   //
   var imports = [];
-  var exports = [];
   var defuns = [];
-  var defunNames = {};
   var dynCallNames = [];
-  var exportNames = {};
+  var nameToGraphName = {};
+  var modulePropertyToGraphName = {};
+  var exportNameToGraphName = {}; // identical to asm['..'] nameToGraphName
   var foundAsmLibraryArgAssign = false;
   var graph = [];
   traverse(ast, function(node, type) {
@@ -8097,20 +8097,14 @@ function emitDCEGraph(ast) {
               }
             });
             // in the wasm backend, the asm name may have one fewer "_" prefixed
-            if (found === 1 && (asmName === name || asmName === name.substr(1))) {
+            if (found === 1) {
               // this is indeed an export
               // the asmName is what the wasm provides directly; the outside JS
               // name may be slightly different (extra "_" in wasm backend)
-              var graphName = getGraphName(asmName, 'export');
-              exports.push(asmName);
-              exportNames[asmName] = graphName;
-              if (asmName !== name) {
-                // link the two up
-                graph.push({
-                  name: 'emcc$defun$' + name,
-                  reaches: [graphName]
-                });
-              }
+              var graphName = getGraphName(name, 'export');
+              nameToGraphName[name] = graphName;
+              modulePropertyToGraphName[name] = graphName;
+              exportNameToGraphName[asmName] = graphName;
               if (/^dynCall_/.test(name)) {
                 dynCallNames.push(graphName);
               }
@@ -8122,7 +8116,7 @@ function emitDCEGraph(ast) {
     } else if (type === 'defun') {
       defuns.push(node);
       var name = node[1];
-      defunNames[name] = 1;
+      nameToGraphName[name] = getGraphName(name, 'defun');
       return emptyNode(); // ignore this in the second pass; we scan defuns separately
     } else if (type === 'function') {
       return null; // don't look inside
@@ -8142,12 +8136,12 @@ function emitDCEGraph(ast) {
       import: ['env', import_],
       reaches: {}
     };
-    if (defunNames.hasOwnProperty(import_)) {
-      info.reaches[getGraphName(import_, 'defun')] = 1;
+    if (nameToGraphName.hasOwnProperty(import_)) {
+      info.reaches[nameToGraphName[import_]] = 1;
     } // otherwise, it's a number, ignore
   });
-  for (var e in exportNames) {
-    var name = exportNames[e];
+  for (var e in exportNameToGraphName) {
+    var name = exportNameToGraphName[e];
     infos[name] = {
       name: name,
       export: e,
@@ -8162,15 +8156,13 @@ function emitDCEGraph(ast) {
     var reached;
     if (node[0] === 'name') {
       var name = node[1];
-      if (defunNames.hasOwnProperty(name)) {
-        reached = getGraphName(name, 'defun');
-      } else if (exportNames.hasOwnProperty(name)) {
-        reached = exportNames[name];
+      if (nameToGraphName.hasOwnProperty(name)) {
+        reached = nameToGraphName[name];
       }
     } else if (isModuleUse(node)) {
       var name = getModuleUseName(node);
-      if (exportNames.hasOwnProperty(name)) {
-        reached = exportNames[name];
+      if (modulePropertyToGraphName.hasOwnProperty(name)) {
+        reached = modulePropertyToGraphName[name];
       }
     } else if (isStaticDynCall(node)) {
       reached = getGraphName(getStaticDynCallName(node), 'export');
@@ -8180,8 +8172,8 @@ function emitDCEGraph(ast) {
     } else if (isAsmUse(node)) {
       // any remaining asm uses are always rooted in any case
       var name = getGraphName(getAsmUseName(node), 'export');
-      if (infos.hasOwnProperty(name)) { // may not be a wasm export
-        infos[name].root = true;
+      if (exportNameToGraphName.hasOwnProperty(name)) {
+        infos[exportNameToGraphName[name]].root = true;
       }
       return;
     }
