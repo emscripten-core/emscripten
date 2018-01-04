@@ -2321,14 +2321,6 @@ class Building(object):
     # first, get the JS part of the graph
     txt = Building.js_optimizer_no_asmjs(js_file, ['emitDCEGraph', 'noEmitAst'], return_output=True)
     graph = json.loads(txt)
-    # dynCalls are special: we allow calling dynCall(..) with a signature
-    # only known at runtime, and it is expected to be able to reach all
-    # dynCall_*() methods
-    # similarly, embind's requireFunction generates dynamic dynCalls, and
-    # must also be linked to all possible dynCall_*() methods
-    DYNAMIC_DYNCALLERS = ['emcc$defun$dynCall', 'emcc$defun$embind__requireFunction']
-    dynamic_dynCallers = []
-    dynCall_funcs = []
     # ensure that functions expected to be exported to the outside are roots
     for item in graph:
       if 'export' in item:
@@ -2336,12 +2328,6 @@ class Building(object):
         if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
       name = item['name']
-      if name in DYNAMIC_DYNCALLERS:
-        dynamic_dynCallers.append(item)
-      elif name.startswith('emcc$export$dynCall_'):
-        dynCall_funcs.append(name)
-    for dynamic_dynCaller in dynamic_dynCallers:
-      dynamic_dynCaller['reaches'] += dynCall_funcs
     # wasm backend's imports are prefixed differently inside the wasm
     if Settings.WASM_BACKEND:
       for item in graph:

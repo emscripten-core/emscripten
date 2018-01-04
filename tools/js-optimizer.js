@@ -7978,12 +7978,26 @@ function getModuleUseName(node) {
   return node[2][1];
 }
 
-function isDynamicDynCall(node) {
+// A static dyncall is dynCall('vii', ..), which is actually static even
+// though we call dynCall() - we see the string signature statically.
+function isStaticDynCall(node) {
   return node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'dynCall' && node[2][0][0] === 'string';
 }
 
-function getDynamicDynCallName(node) {
+function getStaticDynCallName(node) {
   return 'dynCall_' + node[2][0][1];
+}
+
+// a dynamic dyncall is one in which all we know is *some* dynCall may
+// be called, but not who. This can be either
+//   dynCall(*not a string*, ..)
+// or, to be conservative,
+//   "dynCall_"
+// as that prefix means we may be constructing a dynamic dyncall name
+// (dynCall and embind's requireFunction do this internally).
+function isDynamicDynCall(node) {
+  return (node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'dynCall' && node[2][0][0] !== 'string') ||
+         (node[0] === 'string' && node[1] === 'dynCall_');
 }
 
 //
@@ -8020,6 +8034,7 @@ function getDynamicDynCallName(node) {
 //    statically, to preserve the dynCall_vii etc. method they depend on.
 //    Truly dynamic dynCalls (not to a string constant) will not work,
 //    and require the user to export them.
+//  * Truly dynamic dynCalls are assumed to reach any dynCall_*.
 //
 // XXX this modifies the input AST. if you want to keep using it,
 //     that should be fixed. Currently the main use case here does
@@ -8049,6 +8064,7 @@ function emitDCEGraph(ast) {
   var exports = [];
   var defuns = [];
   var defunNames = {};
+  var dynCallNames = [];
   var exportNames = {};
   var foundAsmLibraryArgAssign = false;
   traverse(ast, function(node, type) {
@@ -8080,6 +8096,9 @@ function emitDCEGraph(ast) {
               // this is indeed an export
               exports.push(name);
               exportNames[name] = 1;
+              if (/^dynCall_/.test(name)) {
+                dynCallNames.push(getGraphName(name, 'export'));
+              }
               return emptyNode(); // ignore this in the second pass; this does not root
             }
           }
@@ -8087,7 +8106,8 @@ function emitDCEGraph(ast) {
       }
     } else if (type === 'defun') {
       defuns.push(node);
-      defunNames[node[1]] = 1;
+      var name = node[1];
+      defunNames[name] = 1;
       return emptyNode(); // ignore this in the second pass; we scan defuns separately
     } else if (type === 'function') {
       return null; // don't look inside
@@ -8137,8 +8157,11 @@ function emitDCEGraph(ast) {
       if (exportNames.hasOwnProperty(name)) {
         reached = getGraphName(name, 'export');
       }
+    } else if (isStaticDynCall(node)) {
+      reached = getGraphName(getStaticDynCallName(node), 'export');
     } else if (isDynamicDynCall(node)) {
-      reached = getGraphName(getDynamicDynCallName(node), 'export');
+      // this can reach *all* dynCall_* targets, we can't narrow it down
+      reached = dynCallNames;
     } else if (isAsmUse(node)) {
       // any remaining asm uses are always rooted in any case
       var name = getGraphName(getAsmUseName(node), 'export');
@@ -8148,10 +8171,17 @@ function emitDCEGraph(ast) {
       return;
     }
     if (reached) {
-      if (defunInfo) {
-        defunInfo.reaches[reached] = 1; // defun reaches it
+      function addReach(reached) {
+        if (defunInfo) {
+          defunInfo.reaches[reached] = 1; // defun reaches it
+        } else {
+          infos[reached].root = true; // in global scope, root it
+        }
+      }
+      if (typeof reached === 'string') {
+        addReach(reached);
       } else {
-        infos[reached].root = true; // in global scope, root it
+        reached.forEach(addReach);
       }
     }
   }
