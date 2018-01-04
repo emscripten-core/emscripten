@@ -8171,7 +8171,7 @@ function emitDCEGraph(ast) {
       reached = dynCallNames;
     } else if (isAsmUse(node)) {
       // any remaining asm uses are always rooted in any case
-      var name = getGraphName(getAsmUseName(node), 'export');
+      var name = getAsmUseName(node);
       if (exportNameToGraphName.hasOwnProperty(name)) {
         infos[exportNameToGraphName[name]].root = true;
       }
