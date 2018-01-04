@@ -50,28 +50,16 @@ if EM_PROFILE_TOOLCHAIN:
     ToolchainProfiler.record_subprocess_finish(pid, 0)
     return ret
 
-  class ProfiledPopen(object):
-    def __init__(self, args, bufsize=0, executable=None, stdin=None, stdout=None, stderr=None, preexec_fn=None, close_fds=False,
-                 shell=False, cwd=None, env=None, universal_newlines=False, startupinfo=None, creationflags=0):
-      self.process = original_Popen(args, bufsize, executable, stdin, stdout, stderr, preexec_fn, close_fds, shell, cwd, env, universal_newlines, startupinfo, creationflags)
-      self.pid = self.process.pid
+  class ProfiledPopen(original_Popen):
+    def __init__(self, args, *otherargs, **kwargs):
+      super(ProfiledPopen, self).__init__(args, *otherargs, **kwargs)
       ToolchainProfiler.record_subprocess_spawn(self.pid, args)
 
-    def communicate(self, input=None):
+    def communicate(self, *args, **kwargs):
       ToolchainProfiler.record_subprocess_wait(self.pid)
-      output = self.process.communicate(input)
-      self.returncode = self.process.returncode
+      output = super(ProfiledPopen, self).communicate(*args, **kwargs)
       ToolchainProfiler.record_subprocess_finish(self.pid, self.returncode)
       return output
-
-    def wait(self):
-      return self.process.wait()
-
-    def poll(self):
-      return self.process.poll()
-
-    def kill(self):
-      return self.process.kill()
 
   exit = sys.exit = profiled_sys_exit
   subprocess.call = profiled_call

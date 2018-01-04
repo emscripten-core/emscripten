@@ -1368,7 +1368,7 @@ mergeInto(LibraryManager.library, {
         this.setErrno(errno);
         this.message = ERRNO_MESSAGES[errno];
         // Node.js compatibility: assigning on this.stack fails on Node 4 (but fixed on Node 8)
-        if (this.stack) Object.defineProperty(this, "stack", { value: (new Error).stack });
+        if (this.stack) Object.defineProperty(this, "stack", { value: (new Error).stack, writable: true });
 #if ASSERTIONS
         if (this.stack) this.stack = demangleAll(this.stack);
 #endif

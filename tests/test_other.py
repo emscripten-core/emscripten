@@ -8024,3 +8024,9 @@ end
 
 
     assert_aliases_match('WASM_MEM_MAX', 'BINARYEN_MEM_MAX', '16777216', ['-s', 'WASM=1'])
+
+  def test_toolchain_profiler(self):
+    environ = os.environ.copy()
+    environ['EM_PROFILE_TOOLCHAIN'] = '1'
+    # replaced subprocess functions should not cause errors
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')], env=environ)
