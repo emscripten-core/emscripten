@@ -1977,15 +1977,15 @@ var asm = Module['asm'](%s, %s, buffer);
 STACKTOP = STACK_BASE + TOTAL_STACK;
 STACK_MAX = STACK_BASE;
 HEAP32[%d >> 2] = STACKTOP;
-stackAlloc = Module['_stackAlloc'];
-stackSave = Module['_stackSave'];
-stackRestore = Module['_stackRestore'];
-establishStackSpace = Module['establishStackSpace'];
+var stackAlloc = Module['_stackAlloc'];
+var stackSave = Module['_stackSave'];
+var stackRestore = Module['_stackRestore'];
+var establishStackSpace = Module['establishStackSpace'];
 ''' % shared.Settings.GLOBAL_BASE)
 
   module.append('''
-setTempRet0 = Module['setTempRet0'];
-getTempRet0 = Module['getTempRet0'];
+var setTempRet0 = Module['setTempRet0'];
+var getTempRet0 = Module['getTempRet0'];
 ''')
 
   module.append(invoke_wrappers)
