@@ -414,11 +414,9 @@ function abort(what) {
   EXITSTATUS = 1;
 
 #if ASSERTIONS == 0
-  var extra = '\nIf this abort() is unexpected, build with -s ASSERTIONS=1 which can give more information.';
+  throw 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
 #else
   var extra = '';
-#endif
-
   var output = 'abort(' + what + ') at ' + stackTrace() + extra;
   if (abortDecorators) {
     abortDecorators.forEach(function(decorator) {
@@ -426,6 +424,7 @@ function abort(what) {
     });
   }
   throw output;
+#endif // ASSERTIONS
 }
 Module['abort'] = abort;
 
