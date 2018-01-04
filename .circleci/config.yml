@@ -29,9 +29,9 @@ jobs:
       - run: |
           apt-get update
           apt-get install -y python cmake
-          wget https://github.com/juj/emsdk/archive/ae40344624b0d92358c9659ec1e8a3e9aa90916d.tar.gz
-          tar -xf ae40344624b0d92358c9659ec1e8a3e9aa90916d.tar.gz
-          pushd emsdk-ae40344624b0d92358c9659ec1e8a3e9aa90916d
+          wget https://github.com/juj/emsdk/archive/master.tar.gz
+          tar -xf master.tar.gz
+          pushd emsdk-master
           ./emsdk update-tags
           ./emsdk install latest
           ./emsdk activate latest
@@ -46,7 +46,7 @@ jobs:
           root: ~/
           # Must be relative path from root
           paths:
-            - emsdk-ae40344624b0d92358c9659ec1e8a3e9aa90916d/
+            - emsdk-master/
             - .emscripten_cache/
             - .emscripten_ports/
             - .emscripten
