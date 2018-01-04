@@ -4599,10 +4599,15 @@ def process(filename):
   def test_unistd_access(self):
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
+    expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
     for fs in ['MEMFS', 'NODEFS']:
-      src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
-      expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
+      self.do_run(src, expected, js_engines=[NODE_JS])
+    if not WINDOWS:
+      # Node.js fs.chmod is nearly no-op on Windows
+      Building.COMPILER_TEST_OPTS = orig_compiler_opts
+      self.emcc_args += ['-s', 'NODERAWFS=1']
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_curdir(self):
