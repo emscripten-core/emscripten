@@ -78,11 +78,6 @@
   "reaches": []
  },
  {
-  "name": "emcc$export$dynCall_viiii",
-  "export": "dynCall_viiii",
-  "reaches": []
- },
- {
   "name": "emcc$export$expD1",
   "export": "expD1",
   "reaches": [],

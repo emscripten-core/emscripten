@@ -93,11 +93,9 @@ var dynCall_v = Module["dynCall_v"] = function() {  return Module["asm"]["dynCal
 var dynCall_vi = Module["dynCall_vi"] = function() {  return Module["asm"]["dynCall_vi"].apply(null, arguments) };
 var dynCall_vii = Module["dynCall_vii"] = function() {  return Module["asm"]["dynCall_vii"].apply(null, arguments) };
 var dynCall_viii = Module["dynCall_viii"] = function() {  return Module["asm"]["dynCall_viii"].apply(null, arguments) };
-var dynCall_viiii = Module["dynCall_viiii"] = function() {  return Module["asm"]["dynCall_viiii"].apply(null, arguments) };
 
 dynCall_v(ptr); // use directly
 Module['dynCall_vi'](ptr, 1); // use on module
 dynCall('vii', ptr, [2, 3]); // use indirectly, depending on analysis of dynCall(string, )
-dynCall('vi' + 'ii', ptr, [4, 5, 6]); // we can't figure out the non-constant string param
-// and viiii is never used, so definitely legitimately eliminatable
+// and viii is never used, so definitely legitimately eliminatable
 
