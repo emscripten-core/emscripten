@@ -7766,9 +7766,9 @@ int main() {
       ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  48213, 26, 20),
       (['-O1'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13478, 18, 18),
       (['-O2'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13438, 18, 18),
-      (['-O3'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10244, 16,  5), # in -O3, -Os and -Oz we metadce
-      (['-Os'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10170, 16,  5),
-      (['-Oz'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10160, 16,  5),
+      (['-O3'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10244, 16,  4), # in -O3, -Os and -Oz we metadce
+      (['-Os'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10170, 16,  4),
+      (['-Oz'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10160, 16,  4),
       # finally, check what happens when we export nothing. wasm should be almost empty
       (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[]'],
                  0, [],                         ['tempDoublePtr', 'waka'],   148,  2,  1), # import memory and table, and no exports! nothing left, really...
