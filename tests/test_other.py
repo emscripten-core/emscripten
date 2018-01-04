@@ -7880,6 +7880,21 @@ int main() {
       for x in os.listdir('.'):
         assert not x.endswith('.js'), 'we should not emit js when making a wasm side module'
 
+  def test_wasm_backend(self):
+    old = os.environ.get('EMCC_WASM_BACKEND')
+    if old == '1': return # already the default
+    try:
+      os.environ['EMCC_WASM_BACKEND'] = '1'
+      for args in [[], ['-O1'], ['-O2'], ['-O2'], ['-Os'], ['-Oz']]:
+        print(args)
+        run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args)
+        self.assertContained('hello, world!', run_js('a.out.js'))
+    finally:
+      if not old:
+        del os.environ['EMCC_WASM_BACKEND']
+      else:
+        os.environ['EMCC_WASM_BACKEND'] = old
+
   def test_check_engine(self):
     compiler_engine = COMPILER_ENGINE
     bogus_engine = ['/fake/inline4']
