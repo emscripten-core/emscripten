@@ -71,7 +71,7 @@ mergeInto(LibraryManager.library, {
     write: function(stream, buffer, offset, length, position) {
       if (stream.flags & +"{{{ cDefine('O_APPEND') }}}") {
         // seek to the end before writing in append mode
-        FS.llseek(stream, 0, +"{{{ cDefine('SEEK_END') }}}");
+        position = FS.llseek(stream, 0, +"{{{ cDefine('SEEK_END') }}}");
       }
       var seeking = true;
       if (typeof position === 'undefined') {
