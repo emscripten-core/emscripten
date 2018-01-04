@@ -12,7 +12,7 @@ RUN cd /root/ \
  && pip install lit \
  && wget https://github.com/juj/emsdk/archive/ae40344624b0d92358c9659ec1e8a3e9aa90916d.tar.gz \
  && tar -xf ae40344624b0d92358c9659ec1e8a3e9aa90916d.tar.gz \
- && pushd emsdk-master \
+ && pushd emsdk-ae40344624b0d92358c9659ec1e8a3e9aa90916d \
  && ./emsdk update-tags \
  && ./emsdk install latest \
  && ./emsdk activate latest \
