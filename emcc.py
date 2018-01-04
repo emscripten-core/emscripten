@@ -917,8 +917,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
 
       if options.bind:
-        # embind requires fully dynamic dynCalls, not analyzable at runtime. don't try to optimize them out
-        shared.Settings.EXPORT_DYNCALLS = 1
         # If we are using embind and generating JS, now is the time to link in bind.cpp
         if final_suffix in JS_CONTAINING_SUFFIXES:
           input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')))

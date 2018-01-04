@@ -2320,24 +2320,34 @@ class Building(object):
     temp_files = configuration.get_temp_files()
     # first, get the JS part of the graph
     txt = Building.js_optimizer_no_asmjs(js_file, ['emitDCEGraph', 'noEmitAst'], return_output=True)
-    # ensure that functions expected to be exported to the outside are roots
     graph = json.loads(txt)
+    # dynCalls are special: we allow calling dynCall(..) with a signature
+    # only known at runtime, and it is expected to be able to reach all
+    # dynCall_*() methods
+    # similarly, embind's requireFunction generates dynamic dynCalls, and
+    # must also be linked to all possible dynCall_*() methods
+    DYNAMIC_DYNCALLERS = ['emcc$defun$dynCall', 'emcc$defun$requireFunction']
+    dynamic_dynCallers = []
+    dynCall_funcs = []
+    # ensure that functions expected to be exported to the outside are roots
     for item in graph:
       if 'export' in item:
-        name = item['export']
-        if name in Building.user_requested_exports or Settings.EXPORT_ALL:
+        export = item['export']
+        if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
+      name = item['name']
+      if name in DYNAMIC_DYNCALLERS:
+        dynamic_dynCallers.append(item)
+      elif name.startswith('emcc$export$dynCall_'):
+        dynCall_funcs.append(name)
+    for dynamic_dynCaller in dynamic_dynCallers:
+      dynamic_dynCaller['reaches'] += dynCall_funcs
+    # wasm backend's imports are prefixed differently inside the wasm
     if Settings.WASM_BACKEND:
-      # wasm backend's imports are prefixed differently inside the wasm
       for item in graph:
         if 'import' in item:
           if item['import'][1][0] == '_':
             item['import'][1] = item['import'][1][1:]
-    if Settings.EXPORT_DYNCALLS:
-      for item in graph:
-        if 'export' in item:
-          if item['export'].startswith('dynCall_'):
-            item['root'] = True
     temp = temp_files.get('.txt').name
     txt = json.dumps(graph)
     with open(temp, 'w') as f: f.write(txt)

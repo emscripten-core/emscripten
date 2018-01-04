@@ -394,9 +394,6 @@ var EXPORT_BINDINGS = 0; // Export all bindings generator functions (prefixed wi
                          // is necessary to use the WebIDL binder with asm.js
 var EXPORT_FUNCTION_TABLES = 0; // If true, export all the functions appearing in a function table, and the
                                 // tables themselves.
-var EXPORT_DYNCALLS = 0; // If true, we export all the dynCall_* methods, which lets you call dynCall with
-                         // any signature at runtime - the optimizer will not try to eliminate dynCalls
-                         // based on what it sees.
 var RETAIN_COMPILER_SETTINGS = 0; // Remembers the values of these settings, and makes them accessible
                                   // through Runtime.getCompilerSetting and emscripten_get_compiler_setting.
                                   // To see what is retained, look for compilerSettings in the generated code.

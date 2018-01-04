@@ -101,5 +101,3 @@ dynCall('vii', ptr, [2, 3]); // use indirectly, depending on analysis of dynCall
 dynCall('vi' + 'ii', ptr, [4, 5, 6]); // we can't figure out the non-constant string param
 // and viiii is never used, so definitely legitimately eliminatable
 
-// TODO: add more corner case things
-
