@@ -1,10 +1,8 @@
 mergeInto(LibraryManager.library, {
   $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS'],
   $NODERAWFS__postset: 'if (ENVIRONMENT_IS_NODE) {' +
-    'var fs = require("fs"); var NODEJS_PATH = require("path"); var prcoess = require("process");' +
     'var _wrapNodeError = function(func) { return function() { try { return func.apply(this, arguments) } catch (e) { if (!e.code) throw e; throw new FS.ErrnoError(ERRNO_CODES[e.code]); } } };' +
-    'for (var key in NODERAWFS) NODERAWFS[key] = _wrapNodeError(NODERAWFS[key]);' +
-    'for (var key in NODERAWFS) FS[key] = NODERAWFS[key];' +
+    'for (var key in NODERAWFS) FS[key] = _wrapNodeError(NODERAWFS[key]);' +
     '}',
   $NODERAWFS: {
     createStandardStreams: function() {
