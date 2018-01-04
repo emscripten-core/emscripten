@@ -5,6 +5,9 @@ mergeInto(LibraryManager.library, {
     'for (var key in NODERAWFS) FS[key] = _wrapNodeError(NODERAWFS[key]);' +
     '}',
   $NODERAWFS: {
+    lookupPath: function(path) {
+      return { path: path, node: { mode: NODEFS.getMode(path) } };
+    },
     createStandardStreams: function() {
       FS.streams[0] = { fd: 0, nfd: 0, position: 0, path: '', flags: 0 };
       for (var i = 1; i < 3; i++) {
@@ -13,11 +16,11 @@ mergeInto(LibraryManager.library, {
     },
     // generic function for all node creation
     chdir: function() { process.chdir.apply(void 0, arguments); },
-    mknod: function(path, mode, dev) {
-      if (FS.isDir(node.mode)) {
-        fs.mkdirSync(path, node.mode);
+    mknod: function(path, mode) {
+      if (FS.isDir(path)) {
+        fs.mkdirSync(path, mode);
       } else {
-        fs.writeFileSync(path, '', { mode: node.mode });
+        fs.writeFileSync(path, '', { mode: mode });
       }
     },
     mkdir: function() { fs.mkdirSync.apply(void 0, arguments); },
