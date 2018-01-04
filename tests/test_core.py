@@ -4553,16 +4553,31 @@ def process(filename):
       self.do_run_from_file(src, out)
 
   def test_fs_errorstack(self):
+    # Enables strict mode, which may catch some strict-mode-only errors
+    # so that users can safely work with strict JavaScript if enabled.
+    post = '''
+def process(filename):
+  src = open(filename, 'r').read()
+  open(filename, 'w').write('"use strict";\\n' + src)
+'''
+
     Settings.FORCE_FILESYSTEM = 1
     self.do_run(r'''
       #include <emscripten.h>
+      #include <iostream>
       int main(void) {
+        std::cout << "hello world\n"; // should work with strict mode
         EM_ASM(
-          FS.write('/dummy.txt', 'homu');
+          try {
+            FS.write('/dummy.txt', 'homu');
+          } catch (err) {
+            err.stack = err.stack; // should be writable
+            throw err;
+          }
         );
         return 0;
       }
-    ''', 'at new ErrnoError', js_engines=[NODE_JS]) # engines has different error stack format
+    ''', 'at Object.write', js_engines=[NODE_JS], post_build=post) # engines has different error stack format
 
   def test_unistd_access(self):
     self.clear()
@@ -5972,6 +5987,10 @@ def process(filename):
       self.do_run_in_out_file_test('tests', 'core', 'test_ccall', post_build=post)
 
   def test_dyncall(self):
+    self.do_run_in_out_file_test('tests', 'core', 'dyncall')
+    # test dyncall (and other runtime methods in support.js) can be exported
+    self.emcc_args += ['-DEXPORTED']
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['dynCall', 'addFunction']
     self.do_run_in_out_file_test('tests', 'core', 'dyncall')
 
   def test_getValue_setValue(self):

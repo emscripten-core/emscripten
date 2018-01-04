@@ -8025,6 +8025,12 @@ end
 
     assert_aliases_match('WASM_MEM_MAX', 'BINARYEN_MEM_MAX', '16777216', ['-s', 'WASM=1'])
 
+  def test_toolchain_profiler(self):
+    environ = os.environ.copy()
+    environ['EM_PROFILE_TOOLCHAIN'] = '1'
+    # replaced subprocess functions should not cause errors
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')], env=environ)
+
   def test_noderawfs(self):
     fopen_write = open(path_from_root('tests', 'asmfs', 'fopen_write.cpp'), 'r').read()
     open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(fopen_write)
