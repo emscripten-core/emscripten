@@ -239,16 +239,21 @@ mergeInto(LibraryManager.library, {
         }
       },
       read: function (stream, buffer, offset, length, position) {
-        if (length === 0) return 0; // node errors on 0 length reads
+        // Node.js < 6 compatibility: node errors on 0 length reads
+        if (length === 0) return 0;
+        // Node.js < 4.5 compatibility: Buffer.from does not support ArrayBuffer
+        var buf = Buffer.from ? Buffer.from(buffer.buffer) : new Buffer(buffer.buffer);
         try {
-          return fs.readSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
+          return fs.readSync(stream.nfd, buf, offset, length, position);
         } catch (e) {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
       },
       write: function (stream, buffer, offset, length, position) {
+        // Node.js < 4.5 compatibility: Buffer.from does not support ArrayBuffer
+        var buf = Buffer.from ? Buffer.from(buffer.buffer) : new Buffer(buffer.buffer);
         try {
-          return fs.writeSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
+          return fs.writeSync(stream.nfd, buf, offset, length, position);
         } catch (e) {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
