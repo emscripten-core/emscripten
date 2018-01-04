@@ -1974,6 +1974,12 @@ int f() {
        ['AJSDCE']),
       (path_from_root('tests', 'optimizer', 'emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'emitDCEGraph-output.js')).read(),
        ['emitDCEGraph', 'noEmitAst']),
+      (path_from_root('tests', 'optimizer', 'emitDCEGraph2.js'), open(path_from_root('tests', 'optimizer', 'emitDCEGraph2-output.js')).read(),
+       ['emitDCEGraph', 'noEmitAst']),
+      (path_from_root('tests', 'optimizer', 'emitDCEGraph3.js'), open(path_from_root('tests', 'optimizer', 'emitDCEGraph3-output.js')).read(),
+       ['emitDCEGraph', 'noEmitAst']),
+      (path_from_root('tests', 'optimizer', 'emitDCEGraph4.js'), open(path_from_root('tests', 'optimizer', 'emitDCEGraph4-output.js')).read(),
+       ['emitDCEGraph', 'noEmitAst']),
       (path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals.js'), open(path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals-output.js')).read(),
        ['applyDCEGraphRemovals']),
     ]:
