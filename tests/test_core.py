@@ -4542,17 +4542,20 @@ def process(filename):
     out = path_from_root('tests', 'fs', 'test_writeFile.out')
     self.do_run_from_file(src, out)
 
+  @also_with_noderawfs
   def test_fs_write(self):
     self.emcc_args = ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']
     src = path_from_root('tests', 'fs', 'test_write.cpp')
     out = path_from_root('tests', 'fs', 'test_write.out')
     self.do_run_from_file(src, out)
 
+  @also_with_noderawfs
   def test_fs_emptyPath(self):
     src = path_from_root('tests', 'fs', 'test_emptyPath.c')
     out = path_from_root('tests', 'fs', 'test_emptyPath.out')
     self.do_run_from_file(src, out)
 
+  @also_with_noderawfs
   def test_fs_append(self):
     src = open(path_from_root('tests', 'fs', 'test_append.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)

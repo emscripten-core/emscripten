@@ -60,7 +60,7 @@ mergeInto(LibraryManager.library, {
       if (position < 0) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
-
+      stream.position = position;
       return position;
     },
     read: function(stream, buffer, offset, length, position) {
