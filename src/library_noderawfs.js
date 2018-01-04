@@ -36,7 +36,10 @@ mergeInto(LibraryManager.library, {
     ftruncate: function() { fs.ftruncate.apply(void 0, arguments); },
     utime: function() { fs.utimes.apply(void 0, arguments); },
     open: function(path, flags, mode, suggestFD) {
-      var nfd = fs.openSync(path, NODEFS.flagsToPermissionString(flags), mode);
+      if (typeof flags === "number") {
+        flags = NODEFS.flagsToPermissionString(flags)
+      }
+      var nfd = fs.openSync(path, flags, mode);
       var fd = suggestFD != null ? suggestFD : nfd;
       var stream = { fd: fd, nfd: nfd, position: 0, path: path, flags: flags };
       FS.streams[fd] = stream;
