@@ -1224,9 +1224,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.BINARYEN_PASSES:
             shared.Settings.BINARYEN_PASSES += ','
           shared.Settings.BINARYEN_PASSES += 'safe-heap'
-
-#if no BINARYEN_PASSES and wasm backend, run -O[appropriate]!
-
         # we will include the mem init data in the wasm, when we don't need the
         # mem init file to be loadable by itself
         shared.Settings.MEM_INIT_IN_WASM = 'asmjs' not in shared.Settings.BINARYEN_METHOD and \
