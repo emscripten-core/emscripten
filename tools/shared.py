@@ -2326,7 +2326,7 @@ class Building(object):
     # dynCall_*() methods
     # similarly, embind's requireFunction generates dynamic dynCalls, and
     # must also be linked to all possible dynCall_*() methods
-    DYNAMIC_DYNCALLERS = ['emcc$defun$dynCall', 'emcc$defun$requireFunction']
+    DYNAMIC_DYNCALLERS = ['emcc$defun$dynCall', 'emcc$defun$embind__requireFunction']
     dynamic_dynCallers = []
     dynCall_funcs = []
     # ensure that functions expected to be exported to the outside are roots
