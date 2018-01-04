@@ -417,10 +417,10 @@ mergeInto(LibraryManager.library, {
    * Layout of an EMTERPRETIFY_ASYNC coroutine structure:
    *
    *  0 callee's EMTSTACKTOP
-   *  4 callee's EMTSTACKTOP from Module['asm']
+   *  4 callee's EMTSTACKTOP from the compiled code
    *  8 callee's EMT_STACK_MAX
    * 12 my EMTSTACKTOP
-   * 16 my EMTSTACKTOP from Module['asm']
+   * 16 my EMTSTACKTOP from the compiled code
    * 20 my EMT_STACK_MAX
    * 24 coroutine function (0 if already started)
    * 28 coroutine arg
@@ -456,14 +456,14 @@ mergeInto(LibraryManager.library, {
 
     // switch context
     {{{ makeSetValueAsm('coroutine', 0, 'EMTSTACKTOP', 'i32') }}};
-    temp = Module['asm'].emtStackSave();
+    temp = Module['emtStackSave']();
     {{{ makeSetValueAsm('coroutine', 4, 'temp', 'i32') }}};
-    temp = Module['asm'].getEmtStackMax();
+    temp = Module['getEmtStackMax']();
     {{{ makeSetValueAsm('coroutine', 8, 'temp', 'i32') }}};
 
     EMTSTACKTOP = {{{ makeGetValueAsm('coroutine', 12, 'i32') }}};
-    Module['asm'].emtStackRestore({{{ makeGetValueAsm('coroutine', 16, 'i32') }}});
-    Module['asm'].setEmtStackMax({{{ makeGetValueAsm('coroutine', 20, 'i32') }}});
+    Module['emtStackRestore']({{{ makeGetValueAsm('coroutine', 16, 'i32') }}});
+    Module['setEmtStackMax']({{{ makeGetValueAsm('coroutine', 20, 'i32') }}});
 
     func = {{{ makeGetValueAsm('coroutine', 24, 'i32') }}};
     if (func !== 0) {
@@ -474,21 +474,21 @@ mergeInto(LibraryManager.library, {
       {{{ makeDynCall('vi') }}}(func, funcArg);
     } else {
       EmterpreterAsync.setState(2);
-      Module['asm'].emterpret({{{ makeGetValue('EMTSTACKTOP', 0, 'i32')}}});
+      Module['emterpret']({{{ makeGetValue('EMTSTACKTOP', 0, 'i32')}}});
     }
     coroutine_not_finished = EmterpreterAsync.state !== 0;
     EmterpreterAsync.setState(0);
 
     // switch context
     {{{ makeSetValueAsm('coroutine', 12, 'EMTSTACKTOP', 'i32') }}}; // cannot change?
-    temp = Module['asm'].emtStackSave();
+    temp = Module['emtStackSave']();
     {{{ makeSetValueAsm('coroutine', 16, 'temp', 'i32') }}};
-    temp = Module['asm'].getEmtStackMax();
+    temp = Module['getEmtStackMax']();
     {{{ makeSetValueAsm('coroutine', 20, 'temp', 'i32') }}}; // cannot change?
 
     EMTSTACKTOP = {{{ makeGetValueAsm('coroutine', 0, 'i32') }}};
-    Module['asm'].emtStackRestore({{{ makeGetValueAsm('coroutine', 4, 'i32') }}});
-    Module['asm'].setEmtStackMax({{{ makeGetValueAsm('coroutine', 8, 'i32') }}});
+    Module['emtStackRestore']({{{ makeGetValueAsm('coroutine', 4, 'i32') }}});
+    Module['setEmtStackMax']({{{ makeGetValueAsm('coroutine', 8, 'i32') }}});
 
     if (!coroutine_not_finished) {
       _free(coroutine);
