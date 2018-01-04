@@ -12,6 +12,7 @@ mergeInto(LibraryManager.library, {
       }
     },
     // generic function for all node creation
+    chdir: function() { process.chdir.apply(void 0, arguments); },
     mknod: function(path, mode, dev) {
       if (FS.isDir(node.mode)) {
         fs.mkdirSync(path, node.mode);
