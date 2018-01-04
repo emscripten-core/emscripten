@@ -7,11 +7,14 @@
 int main(void)
 {
     EM_ASM(
+#ifndef NODERAWFS
         FS.mkdir('/working');
         FS.mount(NODEFS, {root: '.'}, '/working');
-        FS.close(FS.open('/working/test.txt', 'w'));
+        FS.currentPath = '/working';
+#endif
+        FS.close(FS.open('test.txt', 'w'));
     );
-    assert(open("/working/test.txt", O_RDONLY | O_CLOEXEC) != -1);
+    assert(open("test.txt", O_RDONLY | O_CLOEXEC) != -1);
     printf("success\n");
     return 0;
 }
