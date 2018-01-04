@@ -7885,7 +7885,7 @@ int main() {
     if old == '1': return # already the default
     try:
       os.environ['EMCC_WASM_BACKEND'] = '1'
-      for args in [[], ['-O1'], ['-O2'], ['-O2'], ['-Os'], ['-Oz']]:
+      for args in [[], ['-O1'], ['-O2'], ['-O3'], ['-Os'], ['-Oz']]:
         print(args)
         run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args)
         self.assertContained('hello, world!', run_js('a.out.js'))
