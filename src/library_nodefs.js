@@ -240,22 +240,18 @@ mergeInto(LibraryManager.library, {
       },
       read: function (stream, buffer, offset, length, position) {
         if (length === 0) return 0; // node errors on 0 length reads
-        var res;
         try {
-          res = fs.readSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
+          return fs.readSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
         } catch (e) {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
-        return res;
       },
       write: function (stream, buffer, offset, length, position) {
-        var res;
         try {
-          res = fs.writeSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
+          return fs.writeSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
         } catch (e) {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
-        return res;
       },
       llseek: function (stream, offset, whence) {
         var position = offset;
