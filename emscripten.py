@@ -1782,7 +1782,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   receiving = create_receiving_wasm(exported_implemented_functions, settings)
 
   # finalize
-  module = create_module_wasm(sending, receiving, invoke_funcs, settings)
+  module = create_module_wasm(sending, receiving, invoke_funcs, exported_implemented_functions, settings)
 
   write_output_file(outfile, post, module)
   module = None
@@ -1948,7 +1948,7 @@ return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
   return receiving
 
 
-def create_module_wasm(sending, receiving, invoke_funcs, settings):
+def create_module_wasm(sending, receiving, invoke_funcs, exported_implemented_functions, settings):
   access_quote = access_quoter(settings)
   invoke_wrappers = create_invoke_wrappers(invoke_funcs)
 
@@ -1983,9 +1983,15 @@ var stackRestore = Module['_stackRestore'];
 var establishStackSpace = Module['establishStackSpace'];
 ''' % shared.Settings.GLOBAL_BASE)
 
-  module.append('''
-var setTempRet0 = Module['setTempRet0'];
-var getTempRet0 = Module['getTempRet0'];
+  # the tempRet0 methods may have been implemented and exported already;
+  # if not, we still need them from JS
+  has_set = 'setTempRet0' in exported_implemented_functions
+  has_get = 'getTempRet0' in exported_implemented_functions
+  if not has_set and not has_get:
+    module.append('''
+var tempRet0 = 0;
+var setTempRet0 = function(x) { tempRet0 = x };
+var getTempRet0 = function() { return tempRet0 };
 ''')
 
   module.append(invoke_wrappers)
