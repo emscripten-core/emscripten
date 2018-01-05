@@ -909,7 +909,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             value = '"' + value + '"'
         else:
           value = value.replace('\\', '\\\\')
-        setattr(shared.Settings, key, eval(value))
+        try:
+          setattr(shared.Settings, key, eval(value))
+        except Exception as e:
+          logging.error('a problem occurred in evaluating content after a "-s", specifically  %s . one possible cause of this is missing quotation marks (this depends on the shell you are running in; you may need quotation marks around the entire  %s , or on an individual element)' % (change, change))
+          raise e
         if key == 'EXPORTED_FUNCTIONS':
           # used for warnings in emscripten.py
           shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = original_exported_response or shared.Settings.EXPORTED_FUNCTIONS[:]
@@ -979,8 +983,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.RELOCATABLE = 1
         shared.Settings.PRECISE_I64_MATH = 1 # other might use precise math, we need to be able to print it
         assert not options.use_closure_compiler, 'cannot use closure compiler on shared modules'
-        # getMemory is used during startup of shared modules (to allocate their static memory)
+        # shared modules need memory utilities to allocate their memory
         shared.Settings.EXPORTED_RUNTIME_METHODS += [
+          'allocate',
           'getMemory',
         ]
 

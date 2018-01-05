@@ -4553,16 +4553,31 @@ def process(filename):
       self.do_run_from_file(src, out)
 
   def test_fs_errorstack(self):
+    # Enables strict mode, which may catch some strict-mode-only errors
+    # so that users can safely work with strict JavaScript if enabled.
+    post = '''
+def process(filename):
+  src = open(filename, 'r').read()
+  open(filename, 'w').write('"use strict";\\n' + src)
+'''
+
     Settings.FORCE_FILESYSTEM = 1
     self.do_run(r'''
       #include <emscripten.h>
+      #include <iostream>
       int main(void) {
+        std::cout << "hello world\n"; // should work with strict mode
         EM_ASM(
-          FS.write('/dummy.txt', 'homu');
+          try {
+            FS.write('/dummy.txt', 'homu');
+          } catch (err) {
+            err.stack = err.stack; // should be writable
+            throw err;
+          }
         );
         return 0;
       }
-    ''', 'at new ErrnoError', js_engines=[NODE_JS]) # engines has different error stack format
+    ''', 'at Object.write', js_engines=[NODE_JS], post_build=post) # engines has different error stack format
 
   def test_unistd_access(self):
     self.clear()
@@ -5973,6 +5988,10 @@ def process(filename):
 
   def test_dyncall(self):
     self.do_run_in_out_file_test('tests', 'core', 'dyncall')
+    # test dyncall (and other runtime methods in support.js) can be exported
+    self.emcc_args += ['-DEXPORTED']
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['dynCall', 'addFunction']
+    self.do_run_in_out_file_test('tests', 'core', 'dyncall')
 
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
@@ -6066,12 +6085,12 @@ def process(filename):
     # Kill off the dead function, and check a code path using it aborts
     Settings.DEAD_FUNCTIONS = ['_unused']
     test('*2*')
-    test('abort(-1) at', args=['x'], no_build=True)
+    test('abort(', args=['x'], no_build=True)
 
     # Kill off a library function, check code aborts
     Settings.DEAD_FUNCTIONS = ['_printf']
-    test('abort(-1) at')
-    test('abort(-1) at', args=['x'], no_build=True)
+    test('abort(')
+    test('abort(', args=['x'], no_build=True)
 
   def test_pgo(self):
     if Settings.ASM_JS: return self.skip('PGO does not work in asm mode')
@@ -6319,10 +6338,14 @@ def process(filename):
 
   def test_demangle_stacks(self):
     Settings.DEMANGLE_SUPPORT = 1
+    Settings.ASSERTIONS = 1
     if '-O' in str(self.emcc_args):
       self.emcc_args += ['--profiling-funcs', '--llvm-opts', '0']
-
     self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks')
+    if 'ASSERTIONS' not in str(self.emcc_args):
+      print('without assertions, the stack is not printed, but a message suggesting assertions is')
+      Settings.ASSERTIONS = 0
+      self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks_noassert')
 
   @no_emterpreter
   @no_wasm_backend('s2wasm does not generate symbol maps')
@@ -7373,32 +7396,27 @@ default = make_run("default", compiler=CLANG, emcc_args=["-s", "ASM_JS=2"])
 asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1"])
 asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])
 asm3 = make_run("asm3", compiler=CLANG, emcc_args=["-O3"])
-asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-Oz", "-s", "PRECISE_F32=1", "-s", "ALLOW_MEMORY_GROWTH=1"])
 asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "-s", "SAFE_HEAP=1"])
-asm2i = make_run("asm2i", compiler=CLANG, emcc_args=["-O2", '-s', 'EMTERPRETIFY=1'])
-#asm2m = make_run("asm2m", compiler=CLANG, emcc_args=["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"])
 
 # Main wasm test modes
 binaryen0 = make_run("binaryen0", compiler=CLANG, emcc_args=['-O0', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
 binaryen1 = make_run("binaryen1", compiler=CLANG, emcc_args=['-O1', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
 binaryen2 = make_run("binaryen2", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
-binaryen3 = make_run("binaryen3", compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'ASSERTIONS=1', "-s", "PRECISE_F32=1"])
+binaryen3 = make_run("binaryen3", compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
 binaryens = make_run("binaryens", compiler=CLANG, emcc_args=['-Os', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
 binaryenz = make_run("binaryenz", compiler=CLANG, emcc_args=['-Oz', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
 
-# Secondary wasm test modes
+# Secondary test modes - run directly when there is a specific need
+
+# asm.js
+asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-Oz", "-s", "PRECISE_F32=1", "-s", "ALLOW_MEMORY_GROWTH=1"])
+asm2i = make_run("asm2i", compiler=CLANG, emcc_args=["-O2", '-s', 'EMTERPRETIFY=1'])
+asm2nn = make_run("asm2nn", compiler=CLANG, emcc_args=["-O2"], env={"EMCC_NATIVE_OPTIMIZER": "0"})
+
+# wasm
 binaryen2jo = make_run("binaryen2jo", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'])
 binaryen3jo = make_run("binaryen3jo", compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'])
 binaryen2s = make_run("binaryen2s", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'SAFE_HEAP=1'])
-
-# This tests the binaryen interpreter and its polyfill integration in the emscripten JS glue
 binaryen2_interpret = make_run("binaryen2_interpret", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
-
-
-#normalyen = make_run("normalyen", compiler=CLANG, emcc_args=['-O0', '-s', 'GLOBAL_BASE=1024']) # useful comparison to binaryen
-#spidaryen = make_run("binaryen", compiler=CLANG, emcc_args=['-O0', '-s', 'BINARYEN=1', '-s', 'BINARYEN_SCRIPTS="spidermonkify.py"'])
-
-# Legacy test modes -
-asm2nn = make_run("asm2nn", compiler=CLANG, emcc_args=["-O2"], env={"EMCC_NATIVE_OPTIMIZER": "0"})
 
 del T # T is just a shape for the specific subclasses, we don't test it itself

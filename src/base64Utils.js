@@ -1,5 +1,3 @@
-// All functions here should be maybeExported from jsifier.js
-
 // Copied from https://github.com/strophe/strophejs/blob/e06d027/src/polyfills.js#L149
 
 // This code was written by Tyler Akins and has been placed in the
