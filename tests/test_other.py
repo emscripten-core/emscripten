@@ -7743,7 +7743,7 @@ int main() {
       # in -Os, -Oz, we remove imports wasm doesn't need
       for args, expected_len, expected_exists, expected_not_exists, expected_wasm_size, expected_wasm_imports, expected_wasm_exports in expectations:
         print(args, expected_len, expected_exists, expected_not_exists, expected_wasm_size, expected_wasm_imports, expected_wasm_exports)
-        subprocess.check_call([PYTHON, EMCC, filename] + args + ['-s', 'WASM=1', '-g2'])
+        run_process([PYTHON, EMCC, filename] + args + ['-s', 'WASM=1', '-g2'])
         # find the imports we send from JS
         js = open('a.out.js').read()
         start = js.find('Module.asmLibraryArg = ')
