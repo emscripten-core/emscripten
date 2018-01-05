@@ -4663,11 +4663,16 @@ def process(filename):
       expected = open(path_from_root('tests', 'unistd', 'truncate.out'), 'r').read()
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
-    # Windows throws EPERM rather than EACCES or EINVAL
-    if not WINDOWS:
-      Building.COMPILER_TEST_OPTS = orig_compiler_opts
-      self.emcc_args += ['-s', 'NODERAWFS=1']
-      self.do_run(src, expected, js_engines=[NODE_JS])
+
+  def test_unistd_truncate_noderawfs(self):
+    if WINDOWS:
+      return self.skip("Windows throws EPERM rather than EACCES or EINVAL")
+    if not os.geteuid(): # 0 if root
+      return self.skip("Root access invalidates this test by being able to write on readonly files")
+    self.emcc_args += ['-s', 'NODERAWFS=1']
+    test_path = path_from_root('tests', 'unistd', 'truncate')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    self.do_run_from_file(src, output, js_engines=[NODE_JS])
 
   def test_unistd_swab(self):
     src = open(path_from_root('tests', 'unistd', 'swab.c'), 'r').read()
