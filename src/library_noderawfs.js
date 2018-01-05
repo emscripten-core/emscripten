@@ -15,6 +15,7 @@ mergeInto(LibraryManager.library, {
       }
     },
     // generic function for all node creation
+    cwd: function() { return process.cwd(); },
     chdir: function() { process.chdir.apply(void 0, arguments); },
     mknod: function(path, mode) {
       if (FS.isDir(path)) {
@@ -51,7 +52,7 @@ mergeInto(LibraryManager.library, {
     },
     close: function(stream) {
       fs.closeSync(stream.nfd);
-      FS.closeStream(stream);
+      FS.closeStream(stream.fd);
     },
     llseek: function(stream, offset, whence) {
       var position = offset;

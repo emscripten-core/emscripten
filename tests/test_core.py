@@ -4613,8 +4613,8 @@ def process(filename):
     for fs in ['MEMFS', 'NODEFS']:
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
+    # Node.js fs.chmod is nearly no-op on Windows
     if not WINDOWS:
-      # Node.js fs.chmod is nearly no-op on Windows
       Building.COMPILER_TEST_OPTS = orig_compiler_opts
       self.emcc_args += ['-s', 'NODERAWFS=1']
       self.do_run(src, expected, js_engines=[NODE_JS])
@@ -4624,6 +4624,7 @@ def process(filename):
     expected = open(path_from_root('tests', 'unistd', 'curdir.out'), 'r').read()
     self.do_run(src, expected)
 
+  @also_with_noderawfs
   def test_unistd_close(self):
     src = open(path_from_root('tests', 'unistd', 'close.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'close.out'), 'r').read()
