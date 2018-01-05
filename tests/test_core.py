@@ -4639,6 +4639,7 @@ def process(filename):
     src = open(path_from_root('tests', 'unistd', 'ttyname.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
+  @also_with_noderawfs
   def test_unistd_pipe(self):
     src = open(path_from_root('tests', 'unistd', 'pipe.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)

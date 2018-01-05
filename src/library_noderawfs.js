@@ -2,6 +2,7 @@ mergeInto(LibraryManager.library, {
   $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS'],
   $NODERAWFS__postset: 'if (ENVIRONMENT_IS_NODE) {' +
     'var _wrapNodeError = function(func) { return function() { try { return func.apply(this, arguments) } catch (e) { if (!e.code) throw e; throw new FS.ErrnoError(ERRNO_CODES[e.code]); } } };' +
+    'var VFS = Object.assign({}, FS);' +
     'for (var _key in NODERAWFS) FS[_key] = _wrapNodeError(NODERAWFS[_key]);' +
     '}',
   $NODERAWFS: {
@@ -51,10 +52,17 @@ mergeInto(LibraryManager.library, {
       return stream;
     },
     close: function(stream) {
-      fs.closeSync(stream.nfd);
+      if (!stream.stream_ops) {
+        // this stream is created by in-memory filesystem
+        fs.closeSync(stream.nfd);
+      }
       FS.closeStream(stream.fd);
     },
     llseek: function(stream, offset, whence) {
+      if (stream.stream_ops) {
+        // this stream is created by in-memory filesystem
+        return VFS.llseek(stream, offset, whence);
+      }
       var position = offset;
       if (whence === 1) {  // SEEK_CUR.
         position += stream.position;
@@ -69,6 +77,10 @@ mergeInto(LibraryManager.library, {
       return position;
     },
     read: function(stream, buffer, offset, length, position) {
+      if (stream.stream_ops) {
+        // this stream is created by in-memory filesystem
+        return VFS.read(stream, buffer, offset, length, position);
+      }
       var seeking = true;
       if (typeof position === 'undefined') {
         seeking = false;
@@ -78,6 +90,10 @@ mergeInto(LibraryManager.library, {
       return bytesRead;
     },
     write: function(stream, buffer, offset, length, position) {
+      if (stream.stream_ops) {
+        // this stream is created by in-memory filesystem
+        return VFS.write(stream, buffer, offset, length, position);
+      }
       if (stream.flags & +"{{{ cDefine('O_APPEND') }}}") {
         // seek to the end before writing in append mode
         position = FS.llseek(stream, 0, +"{{{ cDefine('SEEK_END') }}}");
