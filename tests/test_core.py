@@ -4708,6 +4708,11 @@ def process(filename):
       # symlinks on node.js on Windows require administrative privileges, so skip testing those bits on that combination.
       if WINDOWS and fs == 'NODEFS': Building.COMPILER_TEST_OPTS += ['-DNO_SYMLINK=1']
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
+    # chmod does not work on Windows
+    if not WINDOWS:
+      Building.COMPILER_TEST_OPTS = orig_compiler_opts
+      self.emcc_args += ['-s', 'NODERAWFS=1']
+      self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_unistd_links(self):
     self.clear()

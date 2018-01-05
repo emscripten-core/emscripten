@@ -43,7 +43,7 @@ mergeInto(LibraryManager.library, {
     utime: function() { fs.utimesSync.apply(void 0, arguments); },
     open: function(path, flags, mode, suggestFD) {
       if (typeof flags === "number") {
-        flags = NODEFS.flagsToPermissionString(flags)
+        flags = NODEFS.flagsForNode(flags)
       }
       var nfd = fs.openSync(path, flags, mode);
       var fd = suggestFD != null ? suggestFD : FS.nextfd(nfd);
