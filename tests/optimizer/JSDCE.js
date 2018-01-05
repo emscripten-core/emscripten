@@ -70,4 +70,8 @@ function emulate() {
   };
 }
 emulate();
+// has a self-reference
+function ___cxa_find_matching_catch() {
+ if (!___cxa_find_matching_catch.buffer) ___cxa_find_matching_catch.buffer = {};
+}
 
