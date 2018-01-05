@@ -66,8 +66,7 @@ jobs:
     <<: *test-defaults
     environment:
       # browser.test_sdl_ttf_render_text_solid depends on Arial from Microsoft
-      # TODO: remove skip:browser.test_zzz_emrun after merging https://github.com/juj/emrun/pull/8
-      - TEST_TARGET=browser skip:browser.test_sdl_ttf_render_text_solid skip:browser.test_zzz_emrun
+      - TEST_TARGET=browser skip:browser.test_sdl_ttf_render_text_solid
       - TEST_DEPENDENCY=firefox
       - EMSCRIPTEN_BROWSER=firefox -headless
       - EM_LACKS_HARDWARE_ACCESS=1
