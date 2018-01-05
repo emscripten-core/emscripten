@@ -4596,6 +4596,15 @@ def process(filename):
       }
     ''', 'at Object.write', js_engines=[NODE_JS], post_build=post) # engines has different error stack format
 
+  def test_noderawfs(self):
+    fopen_write = open(path_from_root('tests', 'asmfs', 'fopen_write.cpp'), 'r').read()
+    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(fopen_write)
+    run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'NODERAWFS=1'])
+    self.assertContained("read 11 bytes. Result: Hello data!", run_js('a.out.js'))
+
+    # NODERAWFS should directly write on OS file system
+    self.assertEqual("Hello data!", open(os.path.join(self.get_dir(), 'hello_file.txt'), 'r').read())
+
   def test_unistd_access(self):
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
