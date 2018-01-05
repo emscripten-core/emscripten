@@ -7,7 +7,7 @@ COPY . /root/emscripten/
 
 RUN cd /root/ \
  && apt-get update \
- && apt-get install -y python python-pip cmake build-essential openjdk-9-jre-headless firefox \
+ && apt-get install -y python python-pip cmake build-essential openjdk-9-jre-headless \
  && pip install --upgrade pip \
  && pip install lit \
  && wget https://github.com/juj/emsdk/archive/master.tar.gz \
