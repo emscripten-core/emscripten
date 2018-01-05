@@ -36,7 +36,14 @@ function emulate() {
  };
 }
 emulate();
-
+___cxa_find_matching_catch_before();
+function ___cxa_find_matching_catch_before() {
+ if (!___cxa_find_matching_catch_before.buffer) ___cxa_find_matching_catch_before.buffer = {};
+}
+function ___cxa_find_matching_catch_after() {
+ if (!___cxa_find_matching_catch_after.buffer) ___cxa_find_matching_catch_after.buffer = {};
+}
+___cxa_find_matching_catch_after();
 
 
 

@@ -70,8 +70,18 @@ function emulate() {
   };
 }
 emulate();
-// has a self-reference
+// has only a self-reference
 function ___cxa_find_matching_catch() {
  if (!___cxa_find_matching_catch.buffer) ___cxa_find_matching_catch.buffer = {};
 }
+// use before
+___cxa_find_matching_catch_before();
+function ___cxa_find_matching_catch_before() {
+ if (!___cxa_find_matching_catch_before.buffer) ___cxa_find_matching_catch_before.buffer = {};
+}
+// use after
+function ___cxa_find_matching_catch_after() {
+ if (!___cxa_find_matching_catch_after.buffer) ___cxa_find_matching_catch_after.buffer = {};
+}
+___cxa_find_matching_catch_after();
 
