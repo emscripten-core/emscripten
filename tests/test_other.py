@@ -7881,6 +7881,8 @@ int main() {
         assert not x.endswith('.js'), 'we should not emit js when making a wasm side module'
 
   def test_wasm_backend(self):
+    if not has_wasm_target(get_llc_targets()):
+      return self.skip('wasm backend was not built')
     old = os.environ.get('EMCC_WASM_BACKEND')
     if old == '1': return # already the default
     try:
