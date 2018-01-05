@@ -1983,16 +1983,11 @@ var stackRestore = Module['_stackRestore'];
 var establishStackSpace = Module['establishStackSpace'];
 ''' % shared.Settings.GLOBAL_BASE)
 
-  # the tempRet0 methods may have been implemented and exported already;
-  # if not, we still need them from JS
-  has_set = 'setTempRet0' in exported_implemented_functions
-  has_get = 'getTempRet0' in exported_implemented_functions
-  if not has_set and not has_get:
-    module.append('''
-var tempRet0 = 0;
-var setTempRet0 = function(x) { tempRet0 = x };
-var getTempRet0 = function() { return tempRet0 };
-''')
+  # some runtime functionality may not have been generated in
+  # the wasm; provide a JS shim for it
+  for name in ['setTempRet0', 'getTempRet0', 'stackSave', 'stackRestore', 'stackAlloc']:
+    if name not in exported_implemented_functions:
+      module.append('var %s;\n' % name)
 
   module.append(invoke_wrappers)
   return module
