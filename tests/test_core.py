@@ -4644,6 +4644,7 @@ def process(filename):
     src = open(path_from_root('tests', 'unistd', 'pipe.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
+  @also_with_noderawfs
   def test_unistd_dup(self):
     src = open(path_from_root('tests', 'unistd', 'dup.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'dup.out'), 'r').read()
@@ -4661,6 +4662,11 @@ def process(filename):
       src = open(path_from_root('tests', 'unistd', 'truncate.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'truncate.out'), 'r').read()
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
+      self.do_run(src, expected, js_engines=[NODE_JS])
+    # Windows throws EPERM rather than EACCES or EINVAL
+    if not WINDOWS:
+      Building.COMPILER_TEST_OPTS = orig_compiler_opts
+      self.emcc_args += ['-s', 'NODERAWFS=1']
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_swab(self):

@@ -7,8 +7,8 @@ int main() {
   int f, f2, f3;
 
   printf("DUP\n");
-  f = open("/", O_RDONLY);
-  f2 = open("/", O_RDONLY);
+  f = open(".", O_RDONLY);
+  f2 = open(".", O_RDONLY);
   f3 = dup(f);
   printf("errno: %d\n", errno);
   printf("f: %d\n", f != f2 && f != f3);
@@ -20,8 +20,8 @@ int main() {
   errno = 0;
 
   printf("DUP2\n");
-  f = open("/", O_RDONLY);
-  f2 = open("/", O_RDONLY);
+  f = open(".", O_RDONLY);
+  f2 = open(".", O_RDONLY);
   f3 = dup2(f, f2);
   printf("errno: %d\n", errno);
   printf("f: %d\n", f != f2 && f != f3);

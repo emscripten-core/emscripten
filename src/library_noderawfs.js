@@ -32,8 +32,8 @@ mergeInto(LibraryManager.library, {
     readdir: function() { fs.readdirSync.apply(void 0, arguments); },
     unlink: function() { fs.unlinkSync.apply(void 0, arguments); },
     readlink: function() { fs.readlinkSync.apply(void 0, arguments); },
-    stat: function() { fs.statSync.apply(void 0, arguments); },
-    lstat: function() { fs.lstatSync.apply(void 0, arguments); },
+    stat: function() { return fs.statSync.apply(void 0, arguments); },
+    lstat: function() { return fs.lstatSync.apply(void 0, arguments); },
     chmod: function() { fs.chmodSync.apply(void 0, arguments); },
     fchmod: function() { fs.fchmodSync.apply(void 0, arguments); },
     chown: function() { fs.chownSync.apply(void 0, arguments); },
@@ -46,7 +46,7 @@ mergeInto(LibraryManager.library, {
         flags = NODEFS.flagsToPermissionString(flags)
       }
       var nfd = fs.openSync(path, flags, mode);
-      var fd = suggestFD != null ? suggestFD : nfd;
+      var fd = suggestFD != null ? suggestFD : FS.nextfd(nfd);
       var stream = { fd: fd, nfd: nfd, position: 0, path: path, flags: flags };
       FS.streams[fd] = stream;
       return stream;
