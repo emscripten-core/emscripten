@@ -1782,7 +1782,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   receiving = create_receiving_wasm(exported_implemented_functions, settings)
 
   # finalize
-  module = create_module_wasm(sending, receiving, invoke_funcs, settings)
+  module = create_module_wasm(sending, receiving, invoke_funcs, exported_implemented_functions, settings)
 
   write_output_file(outfile, post, module)
   module = None
@@ -1948,7 +1948,7 @@ return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
   return receiving
 
 
-def create_module_wasm(sending, receiving, invoke_funcs, settings):
+def create_module_wasm(sending, receiving, invoke_funcs, exported_implemented_functions, settings):
   access_quote = access_quoter(settings)
   invoke_wrappers = create_invoke_wrappers(invoke_funcs)
 
@@ -1983,10 +1983,11 @@ var stackRestore = Module['_stackRestore'];
 var establishStackSpace = Module['establishStackSpace'];
 ''' % shared.Settings.GLOBAL_BASE)
 
-  module.append('''
-var setTempRet0 = Module['setTempRet0'];
-var getTempRet0 = Module['getTempRet0'];
-''')
+  # some runtime functionality may not have been generated in
+  # the wasm; provide a JS shim for it
+  for name in ['setTempRet0', 'getTempRet0', 'stackSave', 'stackRestore', 'stackAlloc']:
+    if name not in exported_implemented_functions:
+      module.append('var %s;\n' % name)
 
   module.append(invoke_wrappers)
   return module

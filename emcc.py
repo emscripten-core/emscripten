@@ -707,8 +707,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           'BINARYEN_MEM_MAX': 'WASM_MEM_MAX',
           # TODO: change most (all?) other BINARYEN* names to WASM*
       }
+      settings_key_changes = set()
       def setting_sub(s):
         key, rest = s.split('=', 1)
+        settings_key_changes.add(key)
         return '='.join([settings_aliases.get(key, key), rest])
       settings_changes = list(map(setting_sub, settings_changes))
 
@@ -1171,6 +1173,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
         shared.Settings.BINARYEN = shared.Settings.WASM = 1
+
+        # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
+        # we run the optimizer during asm2wasm itself). use it, if not overridden
+        if 'BINARYEN_PASSES' not in settings_key_changes:
+          if options.opt_level > 0 or options.shrink_level > 0:
+            shared.Settings.BINARYEN_PASSES = shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)
 
         # to bootstrap struct_info, we need binaryen
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
