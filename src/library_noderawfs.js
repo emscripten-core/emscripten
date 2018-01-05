@@ -9,9 +9,9 @@ mergeInto(LibraryManager.library, {
       return { path: path, node: { mode: NODEFS.getMode(path) } };
     },
     createStandardStreams: function() {
-      FS.streams[0] = { fd: 0, nfd: 0, position: 0, path: '', flags: 0 };
+      FS.streams[0] = { fd: 0, nfd: 0, position: 0, path: '', flags: 0, tty: true };
       for (var i = 1; i < 3; i++) {
-        FS.streams[i] = { fd: i, nfd: i, position: 0, path: '', flags: 577 };
+        FS.streams[i] = { fd: i, nfd: i, position: 0, path: '', flags: 577, tty: true };
       }
     },
     // generic function for all node creation
@@ -36,9 +36,9 @@ mergeInto(LibraryManager.library, {
     fchmod: function() { fs.fchmodSync.apply(void 0, arguments); },
     chown: function() { fs.chownSync.apply(void 0, arguments); },
     fchown: function() { fs.fchownSync.apply(void 0, arguments); },
-    truncate: function() { fs.truncate.apply(void 0, arguments); },
-    ftruncate: function() { fs.ftruncate.apply(void 0, arguments); },
-    utime: function() { fs.utimes.apply(void 0, arguments); },
+    truncate: function() { fs.truncateSync.apply(void 0, arguments); },
+    ftruncate: function() { fs.ftruncateSync.apply(void 0, arguments); },
+    utime: function() { fs.utimesSync.apply(void 0, arguments); },
     open: function(path, flags, mode, suggestFD) {
       if (typeof flags === "number") {
         flags = NODEFS.flagsToPermissionString(flags)
