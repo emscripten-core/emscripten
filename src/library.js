@@ -4715,7 +4715,7 @@ function autoAddDeps(object, name) {
   }
 }
 
-if (DISABLE_EXCEPTION_CATCHING) {
+if (DISABLE_EXCEPTION_CATCHING == 1) {
   // sometimes exception-using code remains even when compiled without exceptions,
   // if LLVM couldn't eliminate it all. we still don't need it, even if it's here
   var EXCEPTIONS_SUPPORT_FUNCS = [
@@ -4726,7 +4726,9 @@ if (DISABLE_EXCEPTION_CATCHING) {
     '__gxx_personality_v0',
   ];
   EXCEPTIONS_SUPPORT_FUNCS.forEach(function(name) {
-    LibraryManager.library[name] = function(){}
+    LibraryManager.library[name] = function() {
+      {{{ makeThrow() }}}
+    };
     LibraryManager.library[name + '__deps'] = null;
   });
 }
