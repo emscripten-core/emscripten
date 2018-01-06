@@ -3307,6 +3307,12 @@ int main() {
         exit = 1-no_exit
         assert (no_exit and assertions) == ('atexit() called, but NO_EXIT_RUNTIME is set, so atexits() will not be called. set NO_EXIT_RUNTIME to 0' in output), 'warning should be shown'
 
+  def test_fs_after_main(self):
+    for args in [[], ['-O1']]:
+      print(args)
+      run_process([PYTHON, EMCC, path_from_root('tests', 'fs_after_main.cpp')])
+      self.assertContained('Test passed.', run_js('a.out.js', engine=NODE_JS))
+
   def test_os_oz(self):
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
     try:

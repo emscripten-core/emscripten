@@ -19,7 +19,7 @@ mergeInto(LibraryManager.library, {
   $FS: {
     root: null,
     mounts: [],
-    devices: [null],
+    devices: {},
     streams: [],
     nextInode: 1,
     nameTable: null,
