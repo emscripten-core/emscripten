@@ -4733,18 +4733,15 @@ def process(filename):
 
   def test_unistd_symlink_on_nodefs(self):
     self.clear()
-    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
-    for fs in ['NODEFS']:
-      if WINDOWS and fs == 'NODEFS':
-        print('Skipping NODEFS part of this test for test_unistd_symlink_on_nodefs on Windows, since it would require administrative privileges.', file=sys.stderr)
-        # Also, other detected discrepancies if you do end up running this test on NODEFS:
-        # test expects /, but Windows gives \ as path slashes.
-        # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
-        continue
-      src = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.c'), 'r').read()
-      expected = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.out'), 'r').read()
-      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
-      self.do_run(src, expected, js_engines=[NODE_JS])
+    if WINDOWS:
+      print('Skipping NODEFS part of this test for test_unistd_symlink_on_nodefs on Windows, since it would require administrative privileges.', file=sys.stderr)
+      # Also, other detected discrepancies if you do end up running this test on NODEFS:
+      # test expects /, but Windows gives \ as path slashes.
+      # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
+      continue
+    src = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.c'), 'r').read()
+    expected = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.out'), 'r').read()
+    self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_sleep(self):
     src = open(path_from_root('tests', 'unistd', 'sleep.c'), 'r').read()
