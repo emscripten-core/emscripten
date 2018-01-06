@@ -19,4 +19,7 @@ for (key in Module) {
 for (var value in Module) {
   value;
 }
-
+c(true);
+c(false);
+c(undefined);
+c(somethingELSE);

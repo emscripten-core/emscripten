@@ -2291,8 +2291,8 @@ class Building(object):
     # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
     # use AJSDCE (aggressive JS DCE, performs multiple iterations)
     passes = ['noPrintMetadata', 'JSDCE' if not expensive_optimizations else 'AJSDCE']
-    if not debug_info and not use_closure_compiler and not do_metadce:
-      passes += ['minifyJS']
+    #if not debug_info and not use_closure_compiler and not do_metadce:
+    #  passes += ['minifyJS']
     if minify_whitespace:
       passes.append('minifyWhitespace')
     logging.debug('running cleanup on shell code: ' + ' '.join(passes))
@@ -2304,8 +2304,8 @@ class Building(object):
       # now that we removed unneeded communication between js and wasm, we can clean up
       # the js some more.
       passes = ['noPrintMetadata', 'AJSDCE']
-      if not debug_info and not use_closure_compiler:
-        passes += ['minifyJS']
+      #if not debug_info and not use_closure_compiler:
+      #  passes += ['minifyJS']
       if minify_whitespace:
         passes.append('minifyWhitespace')
       logging.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
