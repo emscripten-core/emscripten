@@ -4750,7 +4750,8 @@ function definedInSomeScope(name, stack) {
 // has one global minification for each name.
 // We are careful to not minify Module itself.
 function minifyJS(ast) {
-  RESERVED['Module'] = 1;
+  RESERVED['Module'] = 1; // has a var, but arrives from outside
+  RESERVED['gc'] = 1; // is special-cased in closure-externs.js
   // find the names we need to minify and their frequencies
   var freqs = {};
   function add(name, stack) {

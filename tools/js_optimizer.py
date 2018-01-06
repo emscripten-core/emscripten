@@ -503,10 +503,13 @@ EMSCRIPTEN_FUNCS();
           cld = shared.Building.closure_compiler(cld, pretty='minifyWhitespace' not in passes)
           temp_files.note(cld)
         elif cleanup:
-          if DEBUG: print('running cleanup on shell code', file=sys.stderr)
+          cleanup_passes =  ['JSDCE', 'minifyJS']
+          if 'minifyWhitespace' in passes:
+            cleanup_passes.append('minifyWhitespace')
+          if DEBUG: print('running cleanup on shell code: ' + ' '.join(cleanup_passes), file=sys.stderr)
           next = cld + '.cl.js'
           temp_files.note(next)
-          proc = subprocess.Popen(js_engine + [JS_OPTIMIZER, cld, 'noPrintMetadata', 'JSDCE', 'minifyJS'] + (['minifyWhitespace'] if 'minifyWhitespace' in passes else []), stdout=open(next, 'w'))
+          proc = subprocess.Popen(js_engine + [JS_OPTIMIZER, cld, 'noPrintMetadata'] + cleanup_passes, stdout=open(next, 'w'))
           proc.communicate()
           assert proc.returncode == 0
           cld = next
