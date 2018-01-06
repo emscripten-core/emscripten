@@ -503,7 +503,9 @@ EMSCRIPTEN_FUNCS();
           cld = shared.Building.closure_compiler(cld, pretty='minifyWhitespace' not in passes)
           temp_files.note(cld)
         elif cleanup:
-          cleanup_passes =  ['JSDCE', 'minifyJS']
+          cleanup_passes =  ['JSDCE']
+          if minify_globals:
+            cleanup_passes.append('minifyJS')
           if 'minifyWhitespace' in passes:
             cleanup_passes.append('minifyWhitespace')
           if DEBUG: print('running cleanup on shell code: ' + ' '.join(cleanup_passes), file=sys.stderr)
