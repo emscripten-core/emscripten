@@ -506,7 +506,7 @@ EMSCRIPTEN_FUNCS();
           if DEBUG: print('running cleanup on shell code', file=sys.stderr)
           next = cld + '.cl.js'
           temp_files.note(next)
-          proc = subprocess.Popen(js_engine + [JS_OPTIMIZER, cld, 'noPrintMetadata', 'JSDCE'] + (['minifyWhitespace'] if 'minifyWhitespace' in passes else []), stdout=open(next, 'w'))
+          proc = subprocess.Popen(js_engine + [JS_OPTIMIZER, cld, 'noPrintMetadata', 'JSDCE', 'minifyJS'] + (['minifyWhitespace'] if 'minifyWhitespace' in passes else []), stdout=open(next, 'w'))
           proc.communicate()
           assert proc.returncode == 0
           cld = next

@@ -4528,6 +4528,7 @@ function eliminateMemSafe(ast) {
   eliminate(ast, true);
 }
 
+// Works in conjunction with minifyLocals for asm.js
 function minifyGlobals(ast) {
   var minified = {};
   var next = 0;
@@ -4569,7 +4570,7 @@ function minifyGlobals(ast) {
   suffix = '// EXTRA_INFO:' + JSON.stringify(minified);
 }
 
-
+// works in conjunction with minifyGlobals for asm.js
 function minifyLocals(ast) {
   assert(asm);
   assert(extraInfo && extraInfo.globals);
@@ -4671,6 +4672,78 @@ function minifyLocals(ast) {
       }
     });
 
+  });
+}
+
+// Generic minification. Currently does not consider scopes, just
+// has one global minification for each name.
+// We are careful to not minify Module itself.
+function minifyJS(ast) {
+  RESERVED['Module'] = 1;
+  // find the names we need to minify and their frequencies
+  var freqs = {};
+  function add(name) {
+    if (!freqs[name]) {
+      freqs[name] = 1;
+    } else {
+      freqs[name]++;
+    }
+  }
+  traverse(ast, function(node, type) {
+    if (type === 'name') {
+      add(node[1]);
+    } else if (type === 'var' || type === 'const') {
+      var vars = node[1];
+      for (var i = 0; i < vars.length; i++) {
+        add(vars[i][0]);
+      }
+    } else if (type === 'defun') {
+      add(node[1]);
+      var params = node[2];
+      for (var i = 0; i < params.length; i++) {
+        add(params[i]);
+      }
+    }
+  });
+  // sort by frequency
+  var sorted = [];
+  for (var name in freqs) {
+    if (Object.hasOwnProperty.call(freqs, name)) {
+      sorted.push(name);
+    }
+  }
+  sorted.sort(function(a, b) {
+    var diff = freqs[b] - freqs[a];
+    if (diff > 0) return 1;
+    if (diff < 0) return -1;
+    return a < b; // use the name to keep determinism
+  });
+  // generate the minified names
+  ensureMinifiedNames(sorted.length);
+  var minified = {};
+  for (var i = 0; i < sorted.length; i++) {
+    assert(minifiedNames[i]);
+    minified[sorted[i]] = minifiedNames[i];
+  }
+  minified['Module'] = 'Module'; // don't modify it
+  // perform the minification
+  traverse(ast, function(node, type) {
+    if (type === 'name') {
+      node[1] = minified[node[1]];
+    } else if (type === 'var' || type === 'const') {
+      var vars = node[1];
+      for (var i = 0; i < vars.length; i++) {
+        vars[i][0] = minified[vars[i][0]];
+      }
+    } else if (type === 'defun') {
+      node[1] = minified[node[1]];
+      var params = node[2];
+      for (var i = 0; i < params.length; i++) {
+        params[i] = minified[params[i]];
+      }
+    } else if (type === 'function') {
+      node[1] = null; // would just be for stack traces
+    }
   });
 }
 
@@ -8122,6 +8195,7 @@ var passes = {
   aggressiveVariableElimination: aggressiveVariableElimination,
   minifyGlobals: minifyGlobals,
   minifyLocals: minifyLocals,
+  minifyJS: minifyJS,
   relocate: relocate,
   outline: outline,
   safeHeap: safeHeap,
