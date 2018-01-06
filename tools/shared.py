@@ -398,7 +398,7 @@ actual_clang_version = None
 
 def expected_llvm_version():
   if get_llvm_target() == WASM_TARGET:
-    return "6.0"
+    return "7.0"
   else:
     return "4.0"
 
@@ -506,7 +506,7 @@ def check_fastcomp():
     logging.warning('could not check fastcomp: %s' % str(e))
     return True
 
-EXPECTED_NODE_VERSION = (0,8,0)
+EXPECTED_NODE_VERSION = (4, 1, 1)
 
 def check_node_version():
   jsrun.check_engine(NODE_JS)
@@ -2320,12 +2320,12 @@ class Building(object):
     temp_files = configuration.get_temp_files()
     # first, get the JS part of the graph
     txt = Building.js_optimizer_no_asmjs(js_file, ['emitDCEGraph', 'noEmitAst'], return_output=True)
-    # ensure that functions expected to be exported to the outside are roots
     graph = json.loads(txt)
+    # ensure that functions expected to be exported to the outside are roots
     for item in graph:
       if 'export' in item:
-        name = item['export']
-        if name in Building.user_requested_exports or Settings.EXPORT_ALL:
+        export = item['export']
+        if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
     if Settings.WASM_BACKEND:
       # wasm backend's imports are prefixed differently inside the wasm

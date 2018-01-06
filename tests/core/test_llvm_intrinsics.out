@@ -69,6 +69,14 @@ llvm_round_f32 21.0
 llvm_round_f32 42.0
 llvm_round_f32 -20.0
 llvm_round_f32 -21.0
+llvm_minnum_f32 5.7
+llvm_minnum_f32 2.3
+llvm_minnum_f64 5.7
+llvm_minnum_f64 2.3
+llvm_maxnum_f32 10.2
+llvm_maxnum_f32 8.5
+llvm_maxnum_f64 10.2
+llvm_maxnum_f64 8.5
 llvm_copysign_f32 1.2
 llvm_copysign_f32 -5.6
 llvm_copysign_f32 -1.3
