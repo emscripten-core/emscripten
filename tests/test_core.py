@@ -2250,6 +2250,9 @@ The current type of b is: 9
     Settings.ASSERTIONS = 1
     self.do_run(open(path_from_root('tests', 'core', 'stack_overflow.cpp')).read(), 'Stack overflow!')
 
+  def test_stackAlloc(self):
+    self.do_run_in_out_file_test('tests', 'core', 'stackAlloc')
+
   def test_nestedstructs(self):
       src = '''
         #include <stdio.h>
