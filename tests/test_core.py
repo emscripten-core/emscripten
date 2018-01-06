@@ -4605,6 +4605,14 @@ def process(filename):
     # NODERAWFS should directly write on OS file system
     self.assertEqual("Hello data!", open(os.path.join(self.get_dir(), 'hello_file.txt'), 'r').read())
 
+  def test_noderawfs_disables_embedding(self):
+    expected = '--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem'
+    base = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'NODERAWFS=1']
+    err = run_process(base + ['--preload-files', 'somefile'], stderr=PIPE, check=False).stderr
+    assert expected in err
+    err = run_process(base + ['--embed-files', 'somefile'], stderr=PIPE, check=False).stderr
+    assert expected in err
+
   def test_unistd_access(self):
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
@@ -4734,11 +4742,10 @@ def process(filename):
   def test_unistd_symlink_on_nodefs(self):
     self.clear()
     if WINDOWS:
-      print('Skipping NODEFS part of this test for test_unistd_symlink_on_nodefs on Windows, since it would require administrative privileges.', file=sys.stderr)
+      return self.skip('Skipping NODEFS part of this test for test_unistd_symlink_on_nodefs on Windows, since it would require administrative privileges.')
       # Also, other detected discrepancies if you do end up running this test on NODEFS:
       # test expects /, but Windows gives \ as path slashes.
       # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
-      continue
     src = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.out'), 'r').read()
     self.do_run(src, expected, js_engines=[NODE_JS])
