@@ -21,6 +21,7 @@ int main(int argc, char const *argv[])
     if (!strcmp(answer, "yes") || !strcmp(answer, "Yes") || !strcmp(answer, "YES")) continue;
     break; 
   }
+  fprintf(stderr, "\n");
   printf("Goodbye, %s.\n", name);
   exit(0);
 }

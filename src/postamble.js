@@ -353,8 +353,10 @@ function exit(status, implicit) {
   if (flush) {
     var print = Module['print'];
     var printErr = Module['printErr'];
+    var rawPrint = Module['rawPrint'];
+    var rawPrintErr = Module['rawPrintErr'];
     var has = false;
-    Module['print'] = Module['printErr'] = function(x) {
+    Module['print'] = Module['printErr'] = Module['rawPrint'] = Module['rawPrintErr'] = function(x) {
       has = true;
     }
     try { // it doesn't matter if it fails

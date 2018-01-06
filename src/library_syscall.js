@@ -806,11 +806,16 @@ var SyscallsLibrary = {
       ___syscall146.buffers = [null, [], []]; // 1 => stdout, 2 => stderr
       ___syscall146.printChar = function(stream, curr) {
         var buffer = ___syscall146.buffers[stream];
+        var printfn;
         assert(buffer);
         if (curr === 0 || curr === {{{ charCode('\n') }}}) {
           (stream === 1 ? Module['print'] : Module['printErr'])(UTF8ArrayToString(buffer, 0));
           buffer.length = 0;
-        } else {
+        } else if (curr === null && buffer.length) {
+          printfn = (stream === 1 ? Module['rawPrint'] : Module['rawPrintErr']);
+          if (printfn != undefined) printfn(UTF8ArrayToString(buffer, 0));
+          buffer.length = 0;
+        } else if (curr !== null) {
           buffer.push(curr);
         }
       };
@@ -821,6 +826,9 @@ var SyscallsLibrary = {
       for (var j = 0; j < len; j++) {
         ___syscall146.printChar(stream, HEAPU8[ptr+j]);
       }
+        // Sending null causes output to be printed, even if it didn't end in a
+        // newline.
+        ___syscall146.printChar(stream, null);
       ret += len;
     }
     return ret;
