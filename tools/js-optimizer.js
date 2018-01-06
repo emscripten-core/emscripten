@@ -4675,6 +4675,74 @@ function minifyLocals(ast) {
   });
 }
 
+// traverse with scope definition info: callback gets what names
+// are defined in the current, in the form
+//  callback(node, type, scopes)
+// where `scopes` is an array of the scopes, each containing an
+// object with the names defined in that scope
+function traverseWithScopeInfo(ast, pre) {
+  // first, find all the scopes and what is defined in them
+  var toplevel = {};
+  var scopes = [toplevel]; // id => scope
+  var stack = [toplevel]; // current stack of scopes
+  function add(name) {
+    var scope = stack[stack.length - 1];
+    scope[name] = 1;
+  }
+  traverse(ast, function(node, type) {
+    if (type === 'var' || type === 'const') {
+      var vars = node[1];
+      for (var i = 0; i < vars.length; i++) {
+        add(vars[i][0]);
+      }
+    } else if (type === 'defun' || type === 'function') {
+      if (type === 'defun') add(node[1]);
+      var id = scopes.length;
+      var scope = {};
+      scopes.push(scope);
+      stack.push(scope);
+      var params = node[2];
+      for (var i = 0; i < params.length; i++) {
+        add(params[i]);
+      }
+    }
+  }, function(node, type) {
+    if (type === 'defun' || type === 'function') {
+      stack.pop();
+    }
+  });
+  assert(stack.length === 1);
+  // now do the real traversal, using that info. we use
+  // integer ids for the scopes, with 0 as the toplevel
+  var nextId = 1;
+  traverse(ast, function(node, type) {
+    if (type === 'defun' || type === 'function') {
+      var newId = nextId++;
+      assert(newId < scopes.length);
+      stack.push(scopes[newId]);
+    }
+    // do the callback
+    // NB this is after we enter a new scope for a defun,
+    //    so we are already in the defun's scope, and its
+    //    name is really in the outer one. But the params
+    //    are in the right one
+    pre(node, type, stack);
+  }, function(node, type) {
+    if (type === 'defun' || type === 'function') {
+      stack.pop();
+    }
+  });
+}
+
+function definedInSomeScope(name, stack) {
+  for (var i = 0; i < stack.length; i++) {
+    if (stack[i][name]) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // Generic minification. Currently does not consider scopes, just
 // has one global minification for each name.
 // We are careful to not minify Module itself.
@@ -4682,26 +4750,35 @@ function minifyJS(ast) {
   RESERVED['Module'] = 1;
   // find the names we need to minify and their frequencies
   var freqs = {};
-  function add(name) {
-    if (!freqs[name]) {
-      freqs[name] = 1;
+  function add(name, stack) {
+    // if this is defined in the stack of scopes, we can process
+    // it. if not, it is a global thing which we must avoid
+    if (definedInSomeScope(name, stack)) {
+      if (!freqs[name]) {
+        freqs[name] = 1;
+      } else {
+        freqs[name]++;
+      }
     } else {
-      freqs[name]++;
+      // we didn't find it, it is a global we must reserve
+      // note how if we see something used even once in such
+      // a way, it is reserved globally, for simplicity
+      RESERVED[name] = 1;
     }
   }
-  traverse(ast, function(node, type) {
+  traverseWithScopeInfo(ast, function(node, type, stack) {
     if (type === 'name') {
-      add(node[1]);
+      add(node[1], stack);
     } else if (type === 'var' || type === 'const') {
       var vars = node[1];
       for (var i = 0; i < vars.length; i++) {
-        add(vars[i][0]);
+        add(vars[i][0], stack);
       }
     } else if (type === 'defun') {
-      add(node[1]);
+      add(node[1], stack.slice(0, stack.length - 1)); // defun is in the outer scope actually
       var params = node[2];
       for (var i = 0; i < params.length; i++) {
-        add(params[i]);
+        add(params[i], stack); // params are in the defun scope which we are in
       }
     }
   });
@@ -4725,21 +4802,25 @@ function minifyJS(ast) {
     assert(minifiedNames[i]);
     minified[sorted[i]] = minifiedNames[i];
   }
-  minified['Module'] = 'Module'; // don't modify it
   // perform the minification
+  function minify(name) {
+    // if it's reserved, don't do anything
+    if (RESERVED[name]) return name;
+    return minified[name];
+  }
   traverse(ast, function(node, type) {
     if (type === 'name') {
-      node[1] = minified[node[1]];
+      node[1] = minify(node[1]);
     } else if (type === 'var' || type === 'const') {
       var vars = node[1];
       for (var i = 0; i < vars.length; i++) {
-        vars[i][0] = minified[vars[i][0]];
+        vars[i][0] = minify(vars[i][0]);
       }
     } else if (type === 'defun') {
-      node[1] = minified[node[1]];
+      node[1] = minify(node[1]);
       var params = node[2];
       for (var i = 0; i < params.length; i++) {
-        params[i] = minified[params[i]];
+        params[i] = minify(params[i]);
       }
     } else if (type === 'function') {
       node[1] = null; // would just be for stack traces

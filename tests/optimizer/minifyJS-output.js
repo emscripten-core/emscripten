@@ -1,19 +1,39 @@
-var a, h, e;
+var a, e, c;
 a++;
 a = a - 1;
-e++;
-var b, c;
-function b(b, c) {
- function b(b, c) {
+c++;
+var f, i;
+function f(f, i) {
+ function f(f, i) {
   a++;
  }
 }
-var i = (function() {});
+var b = (function() {});
 Module;
-var g;
-for (g in Module) {}
-for (var f in Module) {
- f;
+var k;
+for (k in Module) {}
+for (var j in Module) {
+ j;
+}
+b(true);
+b(false);
+b(undefined);
+b(somethingELSE);
+b(Math.min(1, 3));
+b(d);
+function l(Math, d, a, e, c) {
+ Math;
+ d;
+ a;
+ e;
+ c;
+ (function() {
+  var Math, d, a, e, c;
+  Math;
+  a;
+  e;
+  c;
+ });
 }
 
 

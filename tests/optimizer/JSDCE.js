@@ -70,4 +70,9 @@ function emulate() {
   };
 }
 emulate();
+// uglify parsing
+for (var cant_remove_me_i_am_in_a_for_in in new_node.contents) {
+}
+for (var cant_remove_me_i_am_in_a_for = 0; cant_remove_me_i_am_in_a_for < 10; cant_remove_me_i_am_in_a_for++) {
+}
 

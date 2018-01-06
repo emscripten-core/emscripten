@@ -23,3 +23,29 @@ c(true);
 c(false);
 c(undefined);
 c(somethingELSE);
+c(Math.min(1, 3));
+c(d); // d is not defined anywhere here, so it is a global, and we cannot use it
+function func(Math, d, x, z, y) {
+  Math;
+  d;
+  x;
+  z;
+  y;
+  (function() {
+    var Math, d, x, z, y;
+    Math;
+    x;
+    z;
+    y;
+  });
+}
+// more uglify
+(function() {
+  var new_node;
+  if (new_node) {
+    for (var i in new_node.contents) {
+      throw new FS.ErrnoError(ERRNO_CODES.ENOTEMPTY);
+    }
+  }
+})();
+
