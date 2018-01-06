@@ -5,16 +5,16 @@ mergeInto(LibraryManager.library, {
     isWindows: false,
     staticInit: function() {
       NODEFS.isWindows = !!process.platform.match(/^win/);
-      var flags = process.binding("constants").fs;
+      var flags = process["binding"]("constants")["fs"];
       NODEFS.flagsForNodeMap = {
-        "{{{ cDefine('O_APPEND') }}}": flags.O_APPEND,
-        "{{{ cDefine('O_CREAT') }}}": flags.O_CREAT,
-        "{{{ cDefine('O_EXCL') }}}": flags.O_EXCL,
-        "{{{ cDefine('O_RDONLY') }}}": flags.O_RDONLY,
-        "{{{ cDefine('O_RDWR') }}}": flags.O_RDWR,
-        "{{{ cDefine('O_DSYNC') }}}": flags.O_SYNC,
-        "{{{ cDefine('O_TRUNC') }}}": flags.O_TRUNC,
-        "{{{ cDefine('O_WRONLY') }}}": flags.O_WRONLY
+        "{{{ cDefine('O_APPEND') }}}": flags["O_APPEND"],
+        "{{{ cDefine('O_CREAT') }}}": flags["O_CREAT"],
+        "{{{ cDefine('O_EXCL') }}}": flags["O_EXCL"],
+        "{{{ cDefine('O_RDONLY') }}}": flags["O_RDONLY"],
+        "{{{ cDefine('O_RDWR') }}}": flags["O_RDWR"],
+        "{{{ cDefine('O_DSYNC') }}}": flags["O_SYNC"],
+        "{{{ cDefine('O_TRUNC') }}}": flags["O_TRUNC"],
+        "{{{ cDefine('O_WRONLY') }}}": flags["O_WRONLY"]
       };
     },
     mount: function (mount) {
