@@ -48,4 +48,13 @@ function func(Math, d, x, z, y) {
     }
   }
 })();
+function wasmSetup() {
+  function fixImports(xx) { return xx }
+  var fixImports2 = function(xx) { return xx }
+  Module["asm"] = function(global, env, providedBuffer) {
+    env = fixImports(env);
+    providedBuffer = fixImports2(providedBuffer);
+  };
+  var saveName = function saveMyNamePlease(){};
+}
 

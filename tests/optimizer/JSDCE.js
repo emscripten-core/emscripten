@@ -75,4 +75,20 @@ for (var cant_remove_me_i_am_in_a_for_in in new_node.contents) {
 }
 for (var cant_remove_me_i_am_in_a_for = 0; cant_remove_me_i_am_in_a_for < 10; cant_remove_me_i_am_in_a_for++) {
 }
-
+// non-defuns add to the inner scope, and inner scope only
+function t1() {
+  var YYY;
+  var x = function YYY() {
+    YYY;
+  };
+  YYY;
+}
+t1();
+function t2() {
+  var YYY;
+  var x = function YYY() {
+    YYY;
+  };
+  x;
+}
+t2();

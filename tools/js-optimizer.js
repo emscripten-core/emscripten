@@ -4699,6 +4699,9 @@ function traverseWithScopeInfo(ast, pre) {
       if (type === 'defun') add(node[1]);
       var id = scopes.length;
       var scope = {};
+      if (type === 'function' && node[1]) {
+        scope[node[1]] = 1; // function names are in the inner scope
+      }
       scopes.push(scope);
       stack.push(scope);
       var params = node[2];
@@ -4774,8 +4777,12 @@ function minifyJS(ast) {
       for (var i = 0; i < vars.length; i++) {
         add(vars[i][0], stack);
       }
-    } else if (type === 'defun') {
-      add(node[1], stack.slice(0, stack.length - 1)); // defun is in the outer scope actually
+    } else if (type === 'defun' || type === 'function') {
+      if (type === 'defun') {
+        add(node[1], stack.slice(0, stack.length - 1)); // defun is in the outer scope actually
+      } else if (node[1]) {
+        add(node[1], stack); // function is in the inner scope, and inner scope only
+      }
       var params = node[2];
       for (var i = 0; i < params.length; i++) {
         add(params[i], stack); // params are in the defun scope which we are in
@@ -4816,14 +4823,14 @@ function minifyJS(ast) {
       for (var i = 0; i < vars.length; i++) {
         vars[i][0] = minify(vars[i][0]);
       }
-    } else if (type === 'defun') {
-      node[1] = minify(node[1]);
+    } else if (type === 'defun' || type === 'function') {
+      if (node[1]) {
+        node[1] = minify(node[1]);
+      }
       var params = node[2];
       for (var i = 0; i < params.length; i++) {
         params[i] = minify(params[i]);
       }
-    } else if (type === 'function') {
-      node[1] = null; // would just be for stack traces
     }
   });
 }
@@ -8049,9 +8056,11 @@ function JSDCE(ast, multipleIterations) {
         return;
       }
       if (type === 'defun' || type === 'function') {
-        // defun names matter - function names (the y in var x = function y() {..}) are just for stack traces.
         if (type === 'defun') ensureData(scopes[scopes.length-1], node[1]).def = 1;
         var scope = {};
+        if (type === 'function' && node[1]) {
+          ensureData(scope, node[1]).def = 1; // add to the inner scope only
+        }
         node[2].forEach(function(param) {
           ensureData(scope, param).def = 1;
           scope[param].param = 1;
