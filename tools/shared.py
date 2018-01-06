@@ -2325,12 +2325,12 @@ class Building(object):
     temp_files = configuration.get_temp_files()
     # first, get the JS part of the graph
     txt = Building.js_optimizer_no_asmjs(js_file, ['emitDCEGraph', 'noEmitAst'], return_output=True)
-    # ensure that functions expected to be exported to the outside are roots
     graph = json.loads(txt)
+    # ensure that functions expected to be exported to the outside are roots
     for item in graph:
       if 'export' in item:
-        name = item['export']
-        if name in Building.user_requested_exports or Settings.EXPORT_ALL:
+        export = item['export']
+        if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
     if Settings.WASM_BACKEND:
       # wasm backend's imports are prefixed differently inside the wasm
