@@ -4721,7 +4721,7 @@ def process(filename):
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
     # Several differences/bugs on Windows including https://github.com/nodejs/node/issues/18014
     if not WINDOWS:
-      Building.COMPILER_TEST_OPTS = orig_compiler_opts
+      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-DNODERAWFS']
       if not os.geteuid(): # 0 if root
         Building.COMPILER_TEST_OPTS += ['-DSKIP_ACCESS_TESTS']
       self.emcc_args += ['-s', 'NODERAWFS=1']

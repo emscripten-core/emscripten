@@ -143,7 +143,11 @@ void test() {
   getcwd(buffer, sizeof(buffer));
   err = rmdir(buffer);
   assert(err == -1);
+#ifdef NODERAWFS
+  assert(errno == ENOTEMPTY);
+#else
   assert(errno == EBUSY);
+#endif
 #endif
   err = rmdir("/");
   assert(err == -1);
