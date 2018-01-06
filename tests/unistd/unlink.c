@@ -92,9 +92,11 @@ void test() {
   assert(errno == EPERM);
 #endif
 
+#ifndef SKIP_ACCESS_TESTS
   err = unlink("dir-readonly/anotherfile");
   assert(err == -1);
   assert(errno == EACCES);
+#endif
 
 #ifndef NO_SYMLINK
   // try unlinking the symlink first to make sure
@@ -125,9 +127,11 @@ void test() {
   assert(err == -1);
   assert(errno == ENOTDIR);
 
+#ifndef SKIP_ACCESS_TESTS
   err = rmdir("dir-readonly/anotherdir");
   assert(err == -1);
   assert(errno == EACCES);
+#endif
 
   err = rmdir("dir-full");
   assert(err == -1);

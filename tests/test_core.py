@@ -4708,8 +4708,10 @@ def process(filename):
       # symlinks on node.js on Windows require administrative privileges, so skip testing those bits on that combination.
       if WINDOWS and fs == 'NODEFS': Building.COMPILER_TEST_OPTS += ['-DNO_SYMLINK=1']
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
-    # chmod does not work on Windows
+    # Several differences/bugs on Windows including https://github.com/nodejs/node/issues/18014
     if not WINDOWS:
+      if not os.geteuid(): # 0 if root
+        Building.COMPILER_TEST_OPTS += ['-DSKIP_ACCESS_TESTS']
       Building.COMPILER_TEST_OPTS = orig_compiler_opts
       self.emcc_args += ['-s', 'NODERAWFS=1']
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
