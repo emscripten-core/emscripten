@@ -7480,23 +7480,35 @@ int main() {
 
   def test_binaryen_names(self):
     sizes = {}
-    for args, expect_names in [
-        ([], False),
-        (['-g'], True),
-        (['-O1'], False),
-        (['-O2'], False),
-        (['-O2', '-g'], True),
-        (['-O2', '-g1'], False),
-        (['-O2', '-g2'], True),
-        (['-O2', '--profiling'], True),
-        (['-O2', '--profiling-funcs'], True),
+    for args, expect_names, expect_js_names, expect_js_whitespace in [
+        ([], False, True, True),
+        (['-g'], True, True, True),
+        (['-O1'], False, True, True),
+        (['-O2'], False, True, False),
+        (['-O2', '-g'], True, True, True),
+        (['-O2', '-g1'], False, True, True),
+        (['-O2', '-g2'], True, True, True),
+        (['-O2', '--profiling'], True, True, True),
+        (['-O2', '--profiling-funcs'], True, True, False),
+        (['-O3'], False, False, False),
+        (['-O3', '-g'], True, True, True),
+        (['-O3', '-g1'], False, False, True),
+        (['-O3', '-g2'], True, True, True),
+        (['-O3', '--profiling'], True, True, True),
+        (['-O3', '--profiling-funcs'], True, True, False),
+        (['-Os'], False, False, False),
+        (['-Oz'], False, False, False),
       ]:
-      print(args, expect_names)
+      print(args, expect_names, expect_js_names, expect_js_whitespace)
       try_delete('a.out.js')
       subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'BINARYEN=1'])
       code = open('a.out.wasm', 'rb').read()
       assert (code.count(b'malloc') == 2) == expect_names, 'name section adds the name of malloc (there is also another one for the export'
       sizes[str(args)] = os.stat('a.out.wasm').st_size
+      js = open('a.out.js').read()
+      assert ('var moduleOverrides' in js) == expect_js_names
+      assert ('var Module =' in js) == expect_js_whitespace
+
     print(sizes)
     assert sizes["['-O2']"] < sizes["['-O2', '--profiling-funcs']"], 'when -profiling-funcs, the size increases due to function names'
 
