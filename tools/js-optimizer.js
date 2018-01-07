@@ -4813,7 +4813,9 @@ function minifyJS(ast) {
   // perform the minification
   function minify(name) {
     // if it's reserved, don't do anything
+    assert(name);
     if (RESERVED[name]) return name;
+    assert(minified[name]);
     return minified[name];
   }
   traverse(ast, function(node, type) {
