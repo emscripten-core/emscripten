@@ -4661,8 +4661,8 @@ def process(filename):
   def test_unistd_unlink(self):
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    src = open(path_from_root('tests', 'unistd', 'unlink.c'), 'r').read()
     for fs in ['MEMFS', 'NODEFS']:
-      src = open(path_from_root('tests', 'unistd', 'unlink.c'), 'r').read()
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       # symlinks on node.js on Windows require administrative privileges, so skip testing those bits on that combination.
       if WINDOWS and fs == 'NODEFS': Building.COMPILER_TEST_OPTS += ['-DNO_SYMLINK=1']
@@ -4671,6 +4671,8 @@ def process(filename):
   def test_unistd_links(self):
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
+    expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
     for fs in ['MEMFS', 'NODEFS']:
       if WINDOWS and fs == 'NODEFS':
         print('Skipping NODEFS part of this test for test_unistd_links on Windows, since it would require administrative privileges.', file=sys.stderr)
@@ -4678,25 +4680,19 @@ def process(filename):
         # test expects /, but Windows gives \ as path slashes.
         # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
         continue
-      src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
-      expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_symlink_on_nodefs(self):
     self.clear()
-    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
-    for fs in ['NODEFS']:
-      if WINDOWS and fs == 'NODEFS':
-        print('Skipping NODEFS part of this test for test_unistd_symlink_on_nodefs on Windows, since it would require administrative privileges.', file=sys.stderr)
-        # Also, other detected discrepancies if you do end up running this test on NODEFS:
-        # test expects /, but Windows gives \ as path slashes.
-        # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
-        continue
-      src = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.c'), 'r').read()
-      expected = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.out'), 'r').read()
-      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
-      self.do_run(src, expected, js_engines=[NODE_JS])
+    if WINDOWS:
+      return self.skip('Skipping NODEFS part of this test for test_unistd_symlink_on_nodefs on Windows, since it would require administrative privileges.')
+      # Also, other detected discrepancies if you do end up running this test on NODEFS:
+      # test expects /, but Windows gives \ as path slashes.
+      # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
+    src = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.c'), 'r').read()
+    expected = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.out'), 'r').read()
+    self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_sleep(self):
     src = open(path_from_root('tests', 'unistd', 'sleep.c'), 'r').read()
@@ -4706,17 +4702,17 @@ def process(filename):
   def test_unistd_io(self):
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
+    expected = open(path_from_root('tests', 'unistd', 'io.out'), 'r').read()
     for fs in ['MEMFS', 'NODEFS']:
-      src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
-      expected = open(path_from_root('tests', 'unistd', 'io.out'), 'r').read()
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_misc(self):
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    src = open(path_from_root('tests', 'unistd', 'misc.c'), 'r').read()
+    expected = open(path_from_root('tests', 'unistd', 'misc.out'), 'r').read()
     for fs in ['MEMFS', 'NODEFS']:
-      src = open(path_from_root('tests', 'unistd', 'misc.c'), 'r').read()
-      expected = open(path_from_root('tests', 'unistd', 'misc.out'), 'r').read()
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
