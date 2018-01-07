@@ -6015,7 +6015,7 @@ def process(filename):
       test('_assert')
       Settings.ASSERTIONS = 0
       # see that when we export them, things work on the module
-      Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['FS_createDataFile']
+      Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['FS_createDataFile', 'FS']
       test(args=['-s', 'FORCE_FILESYSTEM=1'])
 
   def test_legacy_exported_runtime_numbers(self):
