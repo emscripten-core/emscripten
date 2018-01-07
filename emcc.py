@@ -197,6 +197,7 @@ class JSOptimizer(object):
 
     self.target = target
     self.opt_level = options.opt_level
+    self.shrink_level = options.shrink_level
     self.debug_level = options.debug_level
     self.emit_symbol_map = options.emit_symbol_map
     self.preserve_function_names = options.preserve_function_names
@@ -286,6 +287,8 @@ class JSOptimizer(object):
     if self.opt_level >= 2:
       if not self.preserve_function_names and not self.use_closure_compiler == 2:
         self.queue += ['minifyNames']
+        if self.opt_level >= 3 or self.shrink_level >= 1:
+          self.queue += ['minifyJSNames']
       if self.debug_level == 0:
         self.minify_whitespace = True
 
@@ -1287,6 +1290,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.BUNDLED_CD_DEBUG_FILE = target + ".cd"
         options.js_libraries.append(shared.path_from_root('src', 'library_cyberdwarf.js'))
         options.js_libraries.append(shared.path_from_root('src', 'library_debugger_toolkit.js'))
+        options.preserve_function_names = True
 
       if options.tracing:
         if shared.Settings.ALLOW_MEMORY_GROWTH:

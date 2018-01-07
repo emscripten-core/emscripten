@@ -21,7 +21,7 @@ __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
-NATIVE_PASSES = set(['asm', 'asmPreciseF32', 'receiveJSON', 'emitJSON', 'eliminateDeadFuncs', 'eliminate', 'eliminateMemSafe', 'simplifyExpressions', 'simplifyIfs', 'optimizeFrounds', 'registerize', 'registerizeHarder', 'minifyNames', 'minifyLocals', 'minifyWhitespace', 'cleanup', 'asmLastOpts', 'last', 'noop', 'closure'])
+NATIVE_PASSES = set(['asm', 'asmPreciseF32', 'receiveJSON', 'emitJSON', 'eliminateDeadFuncs', 'eliminate', 'eliminateMemSafe', 'simplifyExpressions', 'simplifyIfs', 'optimizeFrounds', 'registerize', 'registerizeHarder', 'minifyNames', 'minifyLocals', 'minifyWhitespace', 'minifyJSNames', 'cleanup', 'asmLastOpts', 'last', 'noop', 'closure'])
 
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
@@ -337,6 +337,10 @@ def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, ju
       end_asm = js.rfind(end_asm_marker)
       assert (start_asm >= 0) == (end_asm >= 0)
 
+    minify_js_names = 'minifyJSNames' in passes
+    if minify_js_names:
+      passes = [p for p in passes if p != 'minifyJSNames']
+
     closure = 'closure' in passes
     if closure:
       passes = [p for p in passes if p != 'closure'] # we will do it manually
@@ -504,7 +508,7 @@ EMSCRIPTEN_FUNCS();
           temp_files.note(cld)
         elif cleanup:
           cleanup_passes = ['noPrintMetadata', 'JSDCE']
-          if minify_globals:
+          if minify_js_names:
             cleanup_passes.append('minifyJS')
           if 'minifyWhitespace' in passes:
             cleanup_passes.append('minifyWhitespace')

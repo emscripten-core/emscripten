@@ -2291,7 +2291,7 @@ class Building(object):
     # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
     # use AJSDCE (aggressive JS DCE, performs multiple iterations)
     passes = ['noPrintMetadata', 'JSDCE' if not expensive_optimizations else 'AJSDCE']
-    if not debug_info and not do_metadce:
+    if not debug_info and not do_metadce and expensive_optimizations:
       passes += ['minifyJS']
     if minify_whitespace:
       passes.append('minifyWhitespace')

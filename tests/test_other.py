@@ -7333,7 +7333,7 @@ int main() {
 
   def test_cyberdwarf_pointers(self):
     check_execute([PYTHON, EMCC, path_from_root('tests', 'debugger', 'test_pointers.cpp'), '-Oz', '-s', 'CYBERDWARF=1',
-    '-std=c++11', '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_pointers.js' ], stderr=PIPE)
+    '-std=c++11', '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_pointers.js'], stderr=PIPE)
     run_js('test_pointers.js', engine=NODE_JS)
 
   def test_cyberdwarf_union(self):
