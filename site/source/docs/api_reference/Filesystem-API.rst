@@ -615,7 +615,7 @@ File system API
 		var contents = FS.readFile('file', { encoding: 'utf8' });
 		
 	:param string path: The file to which to write ``data``.
-	:param string|ArrayBufferView data: The data to write.
+	:param string|ArrayBufferView data: The data to write. A string will always be decoded as UTF-8.
 	:param object opts:
 	
 		- **flags** (*string*)
