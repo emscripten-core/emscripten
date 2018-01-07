@@ -40,6 +40,8 @@ jobs:
           echo BINARYEN_ROOT="''" >> .emscripten
           EMCC_CORES=4 python2 emscripten/embuilder.py build ALL
           python2 emscripten/tests/runner.py test_hello_world
+          mkdir tmp-firefox-profile/
+          echo 'user_pref("javascript.options.shared_memory", true);' >> tmp-firefox-profile/user.js
 
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
@@ -50,6 +52,7 @@ jobs:
             - .emscripten_cache/
             - .emscripten_ports/
             - .emscripten
+            - tmp-firefox-profile/
 
   test-other-am:
     <<: *test-defaults
@@ -68,7 +71,7 @@ jobs:
       # browser.test_sdl_ttf_render_text_solid depends on Arial from Microsoft
       - TEST_TARGET=browser skip:browser.test_sdl_ttf_render_text_solid
       - TEST_DEPENDENCY=firefox
-      - EMSCRIPTEN_BROWSER=firefox -headless
+      - EMSCRIPTEN_BROWSER=firefox -headless -profile tmp-firefox-profile/
       - EM_LACKS_HARDWARE_ACCESS=1
   test-ab:
     <<: *test-defaults
