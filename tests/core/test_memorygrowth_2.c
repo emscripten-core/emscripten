@@ -16,7 +16,9 @@ int main(int argc, char **argv)
 
   printf("*pre: %s,%.3f*\n", buf1, buf2[0]);
 
-  int totalMemory = emscripten_run_script_int("TOTAL_MEMORY");
+  int totalMemory = EM_ASM_INT({
+    return TOTAL_MEMORY;
+  });
   int chunk = 1024*1024;
   char *buf3;
   for (int i = 0; i < (totalMemory/chunk)+1; i++) {

@@ -1700,21 +1700,6 @@ int main() {
     # Win with it
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
     self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
-    win = open('src.cpp.o.js').read()
-
-    if '-O2' in self.emcc_args:
-      # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
-      possible_starts = ['// EMSCRIPTEN_START_FUNCS', 'var TOTAL_MEMORY']
-      code_start = None
-      for s in possible_starts:
-        if fail.find(s) >= 0:
-          code_start = s
-          break
-      assert code_start is not None, 'Generated code must contain one of ' + str(possible_starts)
-
-      fail = fail[fail.find(code_start):]
-      win = win[win.find(code_start):]
-      assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
 
     # Tracing of memory growths should work
     Settings.EMSCRIPTEN_TRACING = 1
@@ -1740,14 +1725,6 @@ int main() {
       # Win with it
       self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
       self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
-      win = open('src.cpp.o.js').read()
-
-      if '-O2' in self.emcc_args:
-        # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
-        code_start = 'var TOTAL_MEMORY'
-        fail = fail[fail.find(code_start):]
-        win = win[win.find(code_start):]
-        assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
 
     test()
 
