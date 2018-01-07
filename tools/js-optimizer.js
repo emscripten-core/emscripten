@@ -4738,7 +4738,7 @@ function traverseWithScopeInfo(ast, pre) {
     //    so we are already in the defun's scope, and its
     //    name is really in the outer one. But the params
     //    are in the right one
-    pre(node, type, stack);
+    return pre(node, type, stack);
   }, function(node, type) {
     if (type === 'defun' || type === 'function') {
       stack.pop();
@@ -4791,8 +4791,23 @@ function minifyJS(ast) {
       if (type === 'defun') {
         add(node[1], stack.slice(0, stack.length - 1)); // defun is in the outer scope actually
       } else if (node[1]) {
-//TODO if not used, just remove it
-        add(node[1], stack); // function is in the inner scope, and inner scope only
+        // function name is in the inner scope, and inner scope only
+        // if it's never used, we can remove it, i.e., minify it into nothing
+        var name = node[1];
+        node[1] = null;
+        var used = false;
+        traverseWithScopeInfo(node[3], function(node, type, stack) {
+          if (type === 'name' && node[1] === name) {
+            if (!definedInSomeScope(name, stack)) {
+              used = true;
+              return false;
+            }
+          }
+        });
+        if (used) {
+          node[1] = name;
+          add(name, stack);
+        }
       }
       var params = node[2];
       for (var i = 0; i < params.length; i++) {

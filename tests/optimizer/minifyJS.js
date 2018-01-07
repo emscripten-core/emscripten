@@ -62,4 +62,20 @@ var cheez = function(name, value) {
   local + name;
 };
 var name, value;
+// function names, used and not
+(function func1() {
+  func1;
+});
+(function func2() {
+});
+var func3;
+(function func3() {
+});
+(function func4() {
+  var func4;
+});
+(function func5() {
+});
+(function func5() {
+});
 
