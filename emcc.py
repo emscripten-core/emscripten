@@ -285,7 +285,7 @@ class JSOptimizer(object):
       self.queue += ['splitMemory', 'simplifyExpressions']
 
     if self.opt_level >= 2:
-      if not self.preserve_function_names and not self.use_closure_compiler == 2:
+      if not self.use_closure_compiler == 2:
         self.queue += ['minifyNames']
         if self.opt_level >= 3 or self.shrink_level >= 1:
           self.queue += ['minifyJSNames']
