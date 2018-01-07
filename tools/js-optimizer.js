@@ -4791,6 +4791,7 @@ function minifyJS(ast) {
       if (type === 'defun') {
         add(node[1], stack.slice(0, stack.length - 1)); // defun is in the outer scope actually
       } else if (node[1]) {
+//TODO if not used, just remove it
         add(node[1], stack); // function is in the inner scope, and inner scope only
       }
       var params = node[2];
@@ -4846,6 +4847,8 @@ function minifyJS(ast) {
     }
   });
 }
+//TODO document emscripten_run_script as doing eval and so not safe for closure or the optimizer, you must use Module and export etc. or use EM_ASM
+//TODO verify that profiling-funcs keeps names alive in the js too - minifies whitespace, but not minify names
 
 // Relocation pass for a shared module (for the functions part of the module)
 //

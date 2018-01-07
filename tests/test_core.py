@@ -6602,8 +6602,11 @@ someweirdtext
       self.emcc_args += ['--closure', '1', '-g1'] # extra testing
       Settings.MODULARIZE = 1 # avoid closure minified names competing with our test code in the global name space
 
+    original_emcc_args = self.emcc_args[:]
+
     def do_test_in_mode(mode, allow_memory_growth):
       print('testing mode', mode, ', memory growth =', allow_memory_growth)
+      self.emcc_args = original_emcc_args[:]
       # Force IDL checks mode
       os.environ['IDL_CHECKS'] = mode
 
