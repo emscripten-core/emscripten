@@ -645,17 +645,8 @@ class RunnerCore(unittest.TestCase):
     js_engines = [engine for engine in js_engines if engine[0] not in [banned[0] for banned in self.banned_js_engines]]
     return js_engines
 
-  def do_run_from_file(self, src, expected_output,
-                       args=[], output_nicerizer=None, output_processor=None,
-                       no_build=False, main_file=None, additional_files=[],
-                       js_engines=None, post_build=None, basename='src.cpp',
-                       libraries=[], includes=[], force_c=False, build_ll_hook=None,
-                       assert_returncode=None, assert_identical=False):
-    self.do_run(open(src).read(), open(expected_output).read(),
-                args, output_nicerizer, output_processor, no_build, main_file,
-                additional_files, js_engines, post_build, basename, libraries,
-                includes, force_c, build_ll_hook,
-                assert_returncode, assert_identical)
+  def do_run_from_file(self, src, expected_output, *args, **kwargs):
+    self.do_run(open(src).read(), open(expected_output).read(), *args, **kwargs)
 
   ## Does a complete test - builds, runs, checks output, etc.
   def do_run(self, src, expected_output, args=[], output_nicerizer=None,
