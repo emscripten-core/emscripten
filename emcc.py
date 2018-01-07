@@ -147,7 +147,7 @@ class EmccOptions(object):
     self.shrink_level = 0
     self.requested_debug = ''
     self.profiling = False
-    self.profiling_funcs = False
+    self.preserve_function_names = False
     self.tracing = False
     self.emit_symbol_map = False
     self.js_opts = None
@@ -199,7 +199,7 @@ class JSOptimizer(object):
     self.opt_level = options.opt_level
     self.debug_level = options.debug_level
     self.emit_symbol_map = options.emit_symbol_map
-    self.profiling_funcs = options.profiling_funcs
+    self.preserve_function_names = options.preserve_function_names
     self.use_closure_compiler = options.use_closure_compiler
 
     self.misc_temp_files = misc_temp_files
@@ -259,8 +259,8 @@ class JSOptimizer(object):
       passes = ['asmPreciseF32'] + passes
     if (self.emit_symbol_map or shared.Settings.CYBERDWARF) and 'minifyNames' in passes:
       passes += ['symbolMap=' + self.target + '.symbols']
-    if self.profiling_funcs and 'minifyNames' in passes:
-      passes += ['profilingFuncs']
+    if self.preserve_function_names and 'minifyNames' in passes:
+      passes += ['preserveFunctionNames']
     if self.minify_whitespace and 'last' in passes:
       passes += ['minifyWhitespace']
     if self.cleanup_shell and 'last' in passes:
@@ -284,7 +284,7 @@ class JSOptimizer(object):
       self.queue += ['splitMemory', 'simplifyExpressions']
 
     if self.opt_level >= 2:
-      if self.debug_level < 2 and not self.use_closure_compiler == 2:
+      if not self.preserve_function_names and not self.use_closure_compiler == 2:
         self.queue += ['minifyNames']
       if self.debug_level == 0:
         self.minify_whitespace = True
@@ -956,6 +956,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logging.warning('disabling closure because debug info was requested')
         options.use_closure_compiler = False
 
+      if options.debug_level >= 2:
+        options.preserve_function_names = True
+
       assert not (shared.Settings.EMTERPRETIFY_FILE and shared.Settings.SINGLE_FILE), 'cannot have both EMTERPRETIFY_FILE and SINGLE_FILE enabled at the same time'
 
       assert not (shared.Settings.NO_DYNAMIC_EXECUTION and options.use_closure_compiler), 'cannot have both NO_DYNAMIC_EXECUTION and closure compiler enabled at the same time'
@@ -991,6 +994,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           'allocate',
           'getMemory',
         ]
+        # we must preserve function names so that they can be accessed between the modules
+        options.preserve_function_names = True
 
       if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
         shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -1013,6 +1018,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if options.use_closure_compiler:
           options.use_closure_compiler = False
           logging.warning('cannot use closure compiler on split memory, for now, disabling')
+        if not options.preserve_function_names:
+          logging.warning('must preserve function names with split memory for now')
+          options.preserve_function_names = True
 
       if shared.Settings.STB_IMAGE and final_suffix in JS_CONTAINING_SUFFIXES:
         input_files.append((next_arg_index, shared.path_from_root('third_party', 'stb_image.c')))
@@ -1309,7 +1317,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
       shared.Settings.OPT_LEVEL = options.opt_level
       shared.Settings.DEBUG_LEVEL = options.debug_level
-      shared.Settings.PROFILING_FUNCS = options.profiling_funcs
       shared.Settings.SOURCE_MAP_BASE = options.source_map_base or ''
 
       ## Compile source code to bitcode
@@ -2000,7 +2007,7 @@ def parse_args(newargs):
       options.profiling = True
       newargs[i] = ''
     elif newargs[i] == '-profiling-funcs' or newargs[i] == '--profiling-funcs':
-      options.profiling_funcs = True
+      options.preserve_function_names = True
       newargs[i] = ''
     elif newargs[i] == '--tracing' or newargs[i] == '--memoryprofiler':
       if newargs[i] == '--memoryprofiler':
@@ -2209,7 +2216,7 @@ def emterpretify(js_target, optimizer, options):
       args += ['ASYNC=1']
     if shared.Settings.EMTERPRETIFY_ADVISE:
       args += ['ADVISE=1']
-    if options.profiling or options.profiling_funcs:
+    if options.profiling or options.preserve_function_names:
       args += ['PROFILING=1']
     if shared.Settings.ASSERTIONS:
       args += ['ASSERTIONS=1']
@@ -2303,7 +2310,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     combined.close()
   # normally we emit binary, but for debug info, we might emit text first
   wrote_wasm_text = False
-  debug_info = options.debug_level >= 2 or options.profiling_funcs
+  debug_info = options.preserve_function_names
   emit_symbol_map = options.emit_symbol_map or shared.Settings.CYBERDWARF
   # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
   if not shared.Settings.WASM_BACKEND:
