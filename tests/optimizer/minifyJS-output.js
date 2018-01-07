@@ -1,19 +1,19 @@
-var a, e, c;
+var a, f, c;
 a++;
 a = a - 1;
 c++;
-var f, o;
-function f(f, o) {
- function f(f, o) {
+var g, p;
+function g(g, p) {
+ function g(g, p) {
   a++;
  }
 }
-var b = function t() {};
+var b = function v() {};
 Module;
-var i;
-for (i in Module) {}
-for (var j in Module) {
- j;
+var m;
+for (m in Module) {}
+for (var e in Module) {
+ e;
 }
 b(true);
 b(false);
@@ -21,41 +21,46 @@ b(undefined);
 b(somethingELSE);
 b(Math.min(1, 3));
 b(d);
-function x(Math, d, a, e, c) {
+function z(Math, d, a, f, c) {
  Math;
  d;
  a;
- e;
+ f;
  c;
  (function() {
-  var Math, d, a, e, c;
+  var Math, d, a, f, c;
   Math;
   a;
-  e;
+  f;
   c;
  });
 }
 ((function() {
- var n;
- if (n) {
-  for (var p in n.contents) {
+ var k;
+ if (k) {
+  for (var r in k.contents) {
    throw new FS.ErrnoError(ERRNO_CODES.ENOTEMPTY);
   }
  }
 }))();
-function s() {
- function r(g) {
-  return g;
+function u() {
+ function t(h) {
+  return h;
  }
- var q = (function(g) {
-  return g;
+ var s = (function(h) {
+  return h;
  });
- Module["asm"] = (function(w, m, k) {
-  m = r(m);
-  k = q(k);
+ Module["asm"] = (function(y, n, j) {
+  n = t(n);
+  j = s(j);
  });
- var u = function v() {};
+ var w = function x() {};
 }
+var A = (function(l, e) {
+ var q;
+ q + l;
+});
+var l, e;
 
 
 

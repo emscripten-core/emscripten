@@ -57,4 +57,9 @@ function wasmSetup() {
   };
   var saveName = function saveMyNamePlease(){};
 }
+var cheez = function(name, value) {
+  var local;
+  local + name;
+};
+var name, value;
 

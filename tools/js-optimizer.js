@@ -188,7 +188,8 @@ function srcToExp(src) {
 // Traverses the children of a node. If the traverse function returns an object,
 // replaces the child. If it returns true, stop the traversal and return true.
 function traverseChildren(node, traverse, pre, post) {
-  if (node[0] === 'var') {
+  var type = node[0];
+  if (type === 'var') {
     // don't traverse the names, just the values
     var children = node[1];
     if (!Array.isArray(children)) return;
@@ -203,7 +204,7 @@ function traverseChildren(node, traverse, pre, post) {
         }
       }
     }
-  } else if (node[0] === 'object') {
+  } else if (type === 'object') {
     // don't traverse the names, just the values
     var children = node[1];
     if (!Array.isArray(children)) return;
@@ -215,6 +216,14 @@ function traverseChildren(node, traverse, pre, post) {
         if (subresult === true) return true;
         if (subresult !== null && typeof subresult === 'object') subnode[1] = subresult;
       }
+    }
+  } else if (type === 'defun' || type === 'function') {
+    // don't traverse the params
+    var subnode = node[3];
+    if (Array.isArray(subnode)) {
+      var subresult = traverse(subnode, pre, post);
+      if (subresult === true) return true;
+      if (subresult !== null && typeof subresult === 'object') node[i] = subresult;
     }
   } else {
     // generic traversal
