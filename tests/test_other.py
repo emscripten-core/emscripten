@@ -6235,6 +6235,7 @@ int main() {
 
   def test_almost_asm_warning(self):
     warning = "[-Walmost-asm]"
+    message = 'not all asm.js optimizations are possible'
     for args, expected in [(['-O1', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=' + str(16*1024*1024)], True),  # default
                            # suppress almost-asm warning when building with ALLOW_MEMORY_GROWTH
                            (['-O1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-Wno-almost-asm'], False),
@@ -6245,8 +6246,7 @@ int main() {
       print(args, expected)
       err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')] + args, stderr=PIPE).stderr
       assert (warning in err) == expected, err
-      if not expected:
-        assert err == '', err
+      assert (message in err) == expected, err
 
   def test_static_syscalls(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')]).communicate()
