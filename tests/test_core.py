@@ -4785,7 +4785,7 @@ PORT: 3979
     test_path = path_from_root('tests', 'core', 'test_atomic_cxx')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
-    #self.do_run_from_file(src, output)
+    self.do_run_from_file(src, output)
 
     if Settings.ALLOW_MEMORY_GROWTH == 0 and not self.is_wasm():
       print('main module')
