@@ -2294,9 +2294,17 @@ void *getBindBuffer() {
     if browser is not None:
       # If EMSCRIPTEN_BROWSER carried command line arguments to pass to the browser, (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun, so strip them out.
       browser_cmd = shlex.split(browser)
-      args += ['--browser', browser_cmd[0]]
+      browser_path = browser_cmd[0]
+      args += ['--browser', browser_path]
       if len(browser_cmd) > 1:
-        args += ['--browser_args', ' '.join(browser_cmd[1:])]
+        browser_args = browser_cmd[1:]
+        if 'firefox' in browser_path and '-profile' in browser_args:
+          # emrun uses its own -profile, strip it out
+          import argparse
+          parser = argparse.ArgumentParser()
+          parser.add_argument('-profile')
+          browser_args = parser.parse_known_args(browser_args)[1]
+        args += ['--browser_args', ' '.join(browser_args)]
     args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
     process = subprocess.Popen(args)
     process.communicate()
