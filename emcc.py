@@ -1000,8 +1000,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           'allocate',
           'getMemory',
         ]
-        # we must preserve function names so that they can be accessed between the modules
-        options.preserve_function_names = True
+        # we must preserve js names so that they can be accessed between the modules
+        options.preserve_js_names = True
 
       if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
         shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -1293,7 +1293,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.BUNDLED_CD_DEBUG_FILE = target + ".cd"
         options.js_libraries.append(shared.path_from_root('src', 'library_cyberdwarf.js'))
         options.js_libraries.append(shared.path_from_root('src', 'library_debugger_toolkit.js'))
-        options.preserve_function_names = True
+        options.preserve_js_names = True
 
       if options.tracing:
         if shared.Settings.ALLOW_MEMORY_GROWTH:
