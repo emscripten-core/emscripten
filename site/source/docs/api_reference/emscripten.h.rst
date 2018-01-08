@@ -124,7 +124,11 @@ Functions
 
 .. c:function:: void emscripten_run_script(const char *script)
 
-	Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note: If -s NO_DYNAMIC_EXECUTION=1 is set, this function will not be available.
+	Interface to the underlying JavaScript engine. This function will ``eval()`` the given script.
+
+	.. note:: You should use ``EM_ASM`` when possible, instead of `emscripten_run_script*`. ``EM_ASM`` is seen by the compiler statically at compile time, and can be optimized together with the rest of the code, while the `emscripten_run_script*` functions perform an ``eval()`` at run time, which you need to be more careful with.
+
+	.. note:: Note: If -s NO_DYNAMIC_EXECUTION=1 is set, this function will not be available.
 
 	This function can be called from a pthread, and it is executed in the scope of the Web Worker that is hosting the pthread. To evaluate a function in the scope of the main runtime thread, see the function emscripten_sync_run_in_main_runtime_thread().
 
