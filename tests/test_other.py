@@ -2886,7 +2886,7 @@ myreade(){
     assert simds >= expected_simds, 'expecting to see at least %d SIMD* uses, but seeing %d' % (expected_simds, simds)
 
   def test_autovectorize_linpack(self):
-    Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '-s', 'PRECISE_F32=1', '--profiling']).communicate()
+    Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '-s', 'PRECISE_F32=1', '-g']).communicate()
     self.check_simd(30, 'Unrolled Single  Precision')
 
   def test_dependency_file(self):
@@ -5560,11 +5560,6 @@ Descriptor desc;
     try_delete('a.out.js')
     Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EXPORT_ALL=1']).communicate()
     assert os.path.exists('a.out.js')
-
-  def test_f0(self):
-    Popen([PYTHON, EMCC, path_from_root('tests', 'fasta.cpp'), '-O2', '-s', 'PRECISE_F32=1', '-profiling']).communicate()
-    src = open('a.out.js').read()
-    assert ' = f0;' in src or ' = f0,' in src
 
   def test_merge_pair(self):
     def test(filename, full):
