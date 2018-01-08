@@ -55,28 +55,33 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-O2: 
 		
 ``-O2``
-	Like ``-O1``, but with various JavaScript-level optimizations and LLVM ``-O3`` optimizations. 
+	Like ``-O1``, but with various asm.js/wasm and JavaScript optimizations and LLVM ``-O3`` optimizations.
 	
-	.. note:: This is a reasonable setting for a release build.
+	.. note:: This is a well-optimized build, but you should use ``-O3`` or ``-Os`` for a release build.
 
-	.. note:: These JavaScript optimizations can reduce code size by removing things that the compiler does not see being used, in particular, parts of the runtime may be stripped if they are not exported on the ``Module`` object. The compiler is aware of code in :ref:`--pre-js <emcc-pre-js>` and :ref:`--post-js <emcc-post-js>`, so you can safely use the runtime from there. Alternatively, you can use ``EXTRA_EXPORTED_RUNTIME_METHODS``, see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_.
+	.. note:: The JavaScript optimizations can reduce code size by removing things that the compiler does not see being used, in particular, parts of the runtime may be stripped if they are not exported on the ``Module`` object. The compiler is aware of code in :ref:`--pre-js <emcc-pre-js>` and :ref:`--post-js <emcc-post-js>`, so you can safely use the runtime from there. Alternatively, you can use ``EXTRA_EXPORTED_RUNTIME_METHODS``, see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_.
 
 .. _emcc-O3:
 
 ``-O3``
-	Like ``-O2``, but with additional JavaScript optimizations that can take a significant amount of compilation time.
+	Like ``-O2``, but with additional asm.js/wasm and JavaScript optimizations that can take a significant amount of compilation time.
 
 	.. note:: This is a good setting for a release build.
 
+	.. note:: The JavaScript optimizations can change the names of variables in JavaScript, shrinking them for size and efficiency. If you directly use code in the runtime where the compiler can see it (in :ref:`--pre-js <emcc-pre-js>` and :ref:`--post-js <emcc-post-js>`) your code will be minified together so things should work, but using things from the outside will require you to export things on ``Module``, using ``EXTRA_EXPORTED_RUNTIME_METHODS``, see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_. The minified names in this mode may include common variable names like ``i``, so if you put the code in the global scope along with other external things, there may be collisions. You can use ``MODULARIZE`` to enclose the output in a function scope, see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_.
+
 .. _emcc-Os: 
+
 	
 ``-Os``
-	Like ``-O3``, but with extra optimizations that reduce code size at the expense of performance. This can effect both bitcode generation and JavaScript.
+	Like ``-O3``, but with additional asm.js/wasm optimizations that reduce code size at the expense of performance. This can effect both bitcode generation and JavaScript.
+
+	.. note:: This is a good setting for a release build.
 
 .. _emcc-Oz: 
 	
 ``-Oz``
-	Like ``-Os``, but reduces code size even further. This can effect both bitcode generation and JavaScript.
+	Like ``-Os``, but reduces code size even further (sometimes at the cost of throughput). This can effect both bitcode generation and JavaScript.
 
 	For JavaScript, this turns on some code size reduction optimizations that can take a significant amount of compilation time.
 
