@@ -23,14 +23,15 @@ The optimization level you should use depends mostly on the current stage of dev
 
 - When first porting code, run *emcc* on your code using the default settings (without optimization). Check that your code works and :ref:`debug <Debugging>` and fix any issues before continuing.
 - Build with lower optimization levels during development for a shorter compile/test iteration cycle (``-O0`` or ``-O1``).
-- Build with ``-O2`` or ``-O3`` when releasing your code.  ``-O3`` builds are even more optimized than ``-O2``, but at the cost of significantly longer compilation time.
+- Build with ``-O2`` to get a well-optimized build.
+- Building with ``-O3`` or ``-Os`` can produce an ever better build than ``-O2``, and are worth considering for release builds. ``-O3`` builds are even more optimized than ``-O2``, but at the cost of significantly longer compilation time and potentially larger code size. ``-Os`` is similar in increasing compile times, but focuses on reducing code size while doing additional optimization. It's worth trying these different optimization options to see what works best for your application.
 - Other optimizations are discussed in the following sections.
 
 In addition to the ``-Ox`` options, there are separate compiler options that can be used to control the JavaScript optimizer (:ref:`js-opts <emcc-js-opts>`), LLVM optimizations (:ref:`llvm-opts <emcc-llvm-opts>`) and LLVM link-time optimizations (:ref:`llvm-lto <emcc-llvm-lto>`).
 
 .. note::
 
-	-  The meanings of the *emcc* optimization flags (``-O1, -O2`` etc.) are different to the similarly-named options in *gcc*, *clang*, and other compilers, because optimizing JavaScript is very different to optimizing native code. The mapping of the *emcc* levels to the LLVM bitcode optimization levels is documented in the reference.
+	-  The meanings of the *emcc* optimization flags (``-O1, -O2`` etc.) are similar to *gcc*, *clang*, and other compilers, but also different because optimizing asm.js and WebAssembly includes some additional types of optimizations. The mapping of the *emcc* levels to the LLVM bitcode optimization levels is documented in the reference.
 
 
 Advanced compiler settings
@@ -71,10 +72,9 @@ In addition to the above (defining a separate memory initialization file as :ref
 
 - `Floh's blogpost on this topic <http://floooh.github.io/2016/08/27/asmjs-diet.html>`_ is very helpful.
 - Use :ref:`llvm-lto <emcc-llvm-lto>` when compiling from bitcode to JavaScript: ``--llvm-lto 1``. This can break some code as the LTO code path is less tested.
-- Disable :ref:`optimizing-code-inlining`: ``-s INLINING_LIMIT=1``. Compiling with -Os or -Oz generally avoids inlining too.
+- Disable inlining when possible, using ``-s INLINING_LIMIT=1``. Compiling with -Os or -Oz generally avoids inlining too. (Inlining can make code faster, though, so use this carefully.)
 - Use :ref:`closure <emcc-closure>` on the outside non-asm.js code: ``--closure 1``. This can break code that doesn't use `closure annotations properly <https://developers.google.com/closure/compiler/docs/api-tutorial3>`_.
 - You can use the ``NO_FILESYSTEM`` option to disable bundling of filesystem support code (the compiler should optimize it out if not used, but may not always succeed). This can be useful if you are building a pure computational library, for example. See ``settings.js`` for more details.
-- You can use ``EXPORTED_RUNTIME_METHODS`` to define which runtime methods are exported. By default a bunch of useful methods are exported, which you may not need; setting this to a smaller list will cause fewer methods to be exported. In conjunction with the closure compiler, this can be very effective, since closure can eliminate non-exported code. See ``settings.js`` for more details. See ``test_no_nuthin`` in ``tests/test_other.py`` for an example usage in the test suite.
 - You can use ``ELIMINATE_DUPLICATE_FUNCTIONS`` to remove duplicate functions, which C++ templates often create. See ``settings.js`` for more details.
 - You can move some of your code into the `Emterpreter <https://github.com/kripken/emscripten/wiki/Emterpreter>`_, which will then run much slower (as it is interpreted), but it will transfer all that code into a smaller amount of data.
 - You can use separate modules through `dynamic linking <https://github.com/kripken/emscripten/wiki/Linking>`_. That can increase the total code size of everything, but reduces the maximum size of a single module, which can help in some cases (e.g. if a single big module hits a memory limit).
@@ -148,30 +148,23 @@ Other optimization issues
 C++ exceptions
 --------------
 
-C++ exceptions are turned off by default in ``-O1`` (and above). This prevents the generation of ``try-catch`` blocks, which lets the code run much faster, and also makes the code smaller. 
+Catching C++ exceptions (specifically, emitting catch blocks) is turned off by default in ``-O1`` (and above). Due to how asm.js/wasm currently implement exceptions, this makes the code much smaller and faster (eventually, wasm should gain native support for exceptions, and not have this isue).
 
 To re-enable exceptions in optimized code, run *emcc* with ``-s DISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_).
+
+.. note:: When exception catching is disabled, a thrown exception terminates the application. In other words, an exception is still thrown, but it isn't caught.
+
+.. note:: Even with catch blocks not being emitted, there is some code size overhead unless you build your source files with ``-fno-exceptions``, which will omit all exceptions support code (for example, it will avoid creating proper C++ exception objects in errors in std::vector, and just abort the application if they occur). `-fno-rtti` may help as well.
 
 Memory Growth
 -------------
 
-Building with ``-s ALLOW_MEMORY_GROWTH=1`` allows the total amount of memory used to change depending on the demands of the application. This is useful for apps that don't know ahead of time how much they will need, but it disables some optimizations. (Work is ongoing to improve this.)
-
-.. _optimizing-code-inlining:
-
-Inlining
---------
-
-`Inlining <http://en.wikipedia.org/wiki/Inline_expansion>`_ often generates large functions, as these allow the compiler's optimizations to be more effective. Unfortunately large functions can be slower at runtime than multiple smaller functions because JavaScript engines often either don't optimize big functions (for fear of long JIT times), or they do optimize them resulting in noticeable pauses. 
-
-.. note:: ``-O1`` and ``-O2`` inline functions by default. Ironically, this can actually decrease performance in some cases!
-
-You can try to avoid this issue by disabling inlining (in specific files or everywhere), or by using :ref:`optimizing-code-outlining`.
+Building with ``-s ALLOW_MEMORY_GROWTH=1`` allows the total amount of memory used to change depending on the demands of the application. This is useful for apps that don't know ahead of time how much they will need, but it disables asm.js optimizations. In WebAssembly, however, there should be little or no overhead.
 
 Viewing code optimization passes
 --------------------------------
 
-Enable :ref:`debugging-EMCC_DEBUG` to output files for each JavaScript optimization pass.
+Enable :ref:`debugging-EMCC_DEBUG` to output files for each compilation phase, including the main optimization operations.
 
 .. _optimizing-code-unsafe-optimisations:
 
@@ -180,9 +173,8 @@ Unsafe optimizations
 
 A few **UNSAFE** optimizations you might want to try are:
 
-- ``-s FORCE_ALIGNED_MEMORY=1``: Makes all memory accesses fully aligned. This can break on code that actually requires unaligned accesses.
+- ``--closure 1``: This can help with reducing the size of the non-generated (support/glue) JS code, and with startup. However it can break if you do not do proper :term:`Closure Compiler` annotations and exports. But it's worth it!
 - ``--llvm-lto 1``: This enables LLVM's link-time optimizations, which can help in some cases. However there are known issues with these optimizations, so code must be extensively tested. See :ref:`llvm-lto <emcc-llvm-lto>` for information about the other modes.
-- ``--closure 1``: This can help with reducing the size of the non-generated (support/glue) code, and with startup. However it can break if you do not do proper :term:`Closure Compiler` annotations and exports.
 
 .. _optimizing-code-profiling:
 
