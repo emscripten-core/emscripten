@@ -1115,6 +1115,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         options.js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
         newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
         shared.Settings.FORCE_FILESYSTEM = 1 # proxying of utime requires the filesystem
+        options.preserve_js_names = True
       else:
         options.js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
 

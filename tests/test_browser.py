@@ -3387,7 +3387,7 @@ window.close = function() {
     self.btest(path_from_root('tests', 'custom_messages_proxy.c'), expected='1', args=['--proxy-to-worker', '--shell-file', path_from_root('tests', 'custom_messages_proxy_shell.html'), '--post-js', path_from_root('tests', 'custom_messages_proxy_postjs.js')])
 
   def test_separate_asm(self):
-    for opts in [['-O0'], ['-O1'], ['-O2'], ['-O2', '--closure', '1']]:
+    for opts in [['-O0'], ['-O1'], ['-O2'], ['-O3'], ['-O2', '--closure', '1']]:
       print(opts)
       open('src.cpp', 'w').write(self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
       Popen([PYTHON, EMCC, 'src.cpp', '-o', 'test.html'] + opts).communicate()
