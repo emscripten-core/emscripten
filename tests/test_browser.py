@@ -2301,7 +2301,7 @@ void *getBindBuffer() {
         if 'firefox' in browser_path and '-profile' in browser_args:
           # emrun uses its own -profile, strip it out
           import argparse
-          parser = argparse.ArgumentParser()
+          parser = argparse.ArgumentParser(add_help=False) # otherwise it throws with -headless
           parser.add_argument('-profile')
           browser_args = parser.parse_known_args(browser_args)[1]
         args += ['--browser_args', ' '.join(browser_args)]
