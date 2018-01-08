@@ -148,6 +148,7 @@ class EmccOptions(object):
     self.requested_debug = ''
     self.profiling = False
     self.preserve_function_names = False
+    self.preserve_js_names = False
     self.tracing = False
     self.emit_symbol_map = False
     self.js_opts = None
@@ -201,6 +202,7 @@ class JSOptimizer(object):
     self.debug_level = options.debug_level
     self.emit_symbol_map = options.emit_symbol_map
     self.preserve_function_names = options.preserve_function_names
+    self.preserve_js_names = options.preserve_js_names
     self.use_closure_compiler = options.use_closure_compiler
 
     self.misc_temp_files = misc_temp_files
@@ -287,7 +289,7 @@ class JSOptimizer(object):
     if self.opt_level >= 2:
       if self.debug_level <= 2 and not self.use_closure_compiler == 2:
         self.queue += ['minifyNames']
-        if self.opt_level >= 3 or self.shrink_level >= 1:
+        if not self.preserve_js_names and (self.opt_level >= 3 or self.shrink_level >= 1):
           self.queue += ['minifyJSNames']
       if self.debug_level == 0:
         self.minify_whitespace = True
@@ -961,6 +963,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if options.debug_level >= 2:
         options.preserve_function_names = True
+        options.preserve_js_names = True
 
       assert not (shared.Settings.EMTERPRETIFY_FILE and shared.Settings.SINGLE_FILE), 'cannot have both EMTERPRETIFY_FILE and SINGLE_FILE enabled at the same time'
 
@@ -1021,9 +1024,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if options.use_closure_compiler:
           options.use_closure_compiler = False
           logging.warning('cannot use closure compiler on split memory, for now, disabling')
-        if not options.preserve_function_names:
-          logging.warning('must preserve function names with split memory for now')
-          options.preserve_function_names = True
+        if not options.preserve_js_names:
+          logging.warning('must preserve js names with split memory for now')
+          options.preserve_js_names = True
 
       if shared.Settings.STB_IMAGE and final_suffix in JS_CONTAINING_SUFFIXES:
         input_files.append((next_arg_index, shared.path_from_root('third_party', 'stb_image.c')))
