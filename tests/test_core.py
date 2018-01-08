@@ -4089,7 +4089,7 @@ Pass: 0.000012 0.000012''')
   def test_langinfo(self):
     src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
     expected = open(path_from_root('tests', 'langinfo', 'output.txt'), 'r').read()
-    self.do_run(src, expected, extra_emscripten_args=['-H', 'libc/langinfo.h'])
+    self.do_run(src, expected)
 
   def test_files(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # closure can generate variables called 'gc', which pick up js shell stuff
@@ -4139,7 +4139,7 @@ def process(filename):
         return '\n'.join([line for line in (out + err).split('\n') if 'binaryen' not in line and 'wasm' not in line and 'so not running' not in line])
 
       self.do_run(src, [x if 'SYSCALL_DEBUG=1' not in mode else ('syscall! 146,SYS_writev' if self.run_name == 'default' else 'syscall! 146') for x in ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n')],
-                  post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'], output_nicerizer=clean)
+                  post_build=post, output_nicerizer=clean)
       if self.uses_memory_init_file():
         assert os.path.exists(mem_file), 'File %s does not exist' % mem_file
 
@@ -4365,12 +4365,12 @@ def process(filename):
 '''
     src = open(path_from_root('tests', 'fcntl', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'fcntl', 'output.txt'), 'r').read()
-    self.do_run(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
+    self.do_run(src, expected, post_build=add_pre_run, )
 
   def test_fcntl_open(self):
     src = open(path_from_root('tests', 'fcntl-open', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'fcntl-open', 'output.txt'), 'r').read()
-    self.do_run(src, expected, force_c=True, extra_emscripten_args=['-H', 'libc/fcntl.h'])
+    self.do_run(src, expected, force_c=True)
 
   def test_fcntl_misc(self):
     add_pre_run = '''
@@ -4383,7 +4383,7 @@ def process(filename):
 '''
     src = open(path_from_root('tests', 'fcntl-misc', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'fcntl-misc', 'output.txt'), 'r').read()
-    self.do_run(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
+    self.do_run(src, expected, post_build=add_pre_run)
 
   def test_poll(self):
     add_pre_run = '''
@@ -4403,7 +4403,7 @@ def process(filename):
     test_path = path_from_root('tests', 'core', 'test_poll')
     src, output = (test_path + s for s in ('.c', '.out'))
 
-    self.do_run_from_file(src, output, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h,poll.h'])
+    self.do_run_from_file(src, output, post_build=add_pre_run)
 
   def test_statvfs(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_statvfs')
@@ -4482,7 +4482,7 @@ def process(filename):
 '''
       src = 'int main() {return 0;}\n'
       expected = open(path_from_root('tests', 'filesystem', 'output.txt'), 'r').read()
-      self.do_run(src, expected, post_build=addJS, extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
+      self.do_run(src, expected, post_build=addJS)
     finally:
       Settings.INCLUDE_FULL_LIBRARY = 0
 
@@ -4581,7 +4581,7 @@ def process(filename):
   def test_unistd_confstr(self):
     src = open(path_from_root('tests', 'unistd', 'confstr.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'confstr.out'), 'r').read()
-    self.do_run(src, expected, extra_emscripten_args=['-H', 'libc/unistd.h'])
+    self.do_run(src, expected)
 
   def test_unistd_ttyname(self):
     src = open(path_from_root('tests', 'unistd', 'ttyname.c'), 'r').read()
@@ -4638,8 +4638,8 @@ def process(filename):
   def test_unistd_unlink(self):
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    src = open(path_from_root('tests', 'unistd', 'unlink.c'), 'r').read()
     for fs in ['MEMFS', 'NODEFS']:
-      src = open(path_from_root('tests', 'unistd', 'unlink.c'), 'r').read()
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       # symlinks on node.js on Windows require administrative privileges, so skip testing those bits on that combination.
       if WINDOWS and fs == 'NODEFS': Building.COMPILER_TEST_OPTS += ['-DNO_SYMLINK=1']
@@ -4648,6 +4648,8 @@ def process(filename):
   def test_unistd_links(self):
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
+    expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
     for fs in ['MEMFS', 'NODEFS']:
       if WINDOWS and fs == 'NODEFS':
         print('Skipping NODEFS part of this test for test_unistd_links on Windows, since it would require administrative privileges.', file=sys.stderr)
@@ -4655,25 +4657,19 @@ def process(filename):
         # test expects /, but Windows gives \ as path slashes.
         # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
         continue
-      src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
-      expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_symlink_on_nodefs(self):
+    if WINDOWS:
+      return self.skip('Skipping NODEFS part of this test for test_unistd_symlink_on_nodefs on Windows, since it would require administrative privileges.')
+      # Also, other detected discrepancies if you do end up running this test on NODEFS:
+      # test expects /, but Windows gives \ as path slashes.
+      # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
     self.clear()
-    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
-    for fs in ['NODEFS']:
-      if WINDOWS and fs == 'NODEFS':
-        print('Skipping NODEFS part of this test for test_unistd_symlink_on_nodefs on Windows, since it would require administrative privileges.', file=sys.stderr)
-        # Also, other detected discrepancies if you do end up running this test on NODEFS:
-        # test expects /, but Windows gives \ as path slashes.
-        # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
-        continue
-      src = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.c'), 'r').read()
-      expected = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.out'), 'r').read()
-      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
-      self.do_run(src, expected, js_engines=[NODE_JS])
+    src = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.c'), 'r').read()
+    expected = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.out'), 'r').read()
+    self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_sleep(self):
     src = open(path_from_root('tests', 'unistd', 'sleep.c'), 'r').read()
@@ -4683,17 +4679,17 @@ def process(filename):
   def test_unistd_io(self):
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
+    expected = open(path_from_root('tests', 'unistd', 'io.out'), 'r').read()
     for fs in ['MEMFS', 'NODEFS']:
-      src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
-      expected = open(path_from_root('tests', 'unistd', 'io.out'), 'r').read()
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_misc(self):
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    src = open(path_from_root('tests', 'unistd', 'misc.c'), 'r').read()
+    expected = open(path_from_root('tests', 'unistd', 'misc.out'), 'r').read()
     for fs in ['MEMFS', 'NODEFS']:
-      src = open(path_from_root('tests', 'unistd', 'misc.c'), 'r').read()
-      expected = open(path_from_root('tests', 'unistd', 'misc.out'), 'r').read()
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
@@ -4981,8 +4977,8 @@ int main(void) {
 
     # Linked version
     src = open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
-    self.do_run(src, '*1,0*', ['200', '1'], extra_emscripten_args=['-m'])
-    self.do_run(src, '*400,0*', ['400', '400'], extra_emscripten_args=['-m'], no_build=True)
+    self.do_run(src, '*1,0*', ['200', '1'])
+    self.do_run(src, '*400,0*', ['400', '400'], no_build=True)
 
     if self.emcc_args == []: # TODO: do this in other passes too, passing their opts into emcc
       # emcc should build in dlmalloc automatically, and do all the sign correction etc. for it

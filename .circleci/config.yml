@@ -102,8 +102,8 @@ jobs:
   test-qrst:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=ALL.test_q* ALL.test_r* ALL.test_s* ALL.test_t* skip:default.test_simd_sitofp skip:default.test_simd3 skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full
-      # TODO: remove skips after fastcomp update on travis for 1.37.23
+      - TEST_TARGET=ALL.test_q* ALL.test_r* ALL.test_s* ALL.test_t* skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full
+      # SSE tests fail because of the lack of native headers on emsdk-bundled clang
   test-uvwxyz:
     <<: *test-defaults
     environment:
