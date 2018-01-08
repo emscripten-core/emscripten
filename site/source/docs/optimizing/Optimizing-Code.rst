@@ -23,8 +23,8 @@ The optimization level you should use depends mostly on the current stage of dev
 
 - When first porting code, run *emcc* on your code using the default settings (without optimization). Check that your code works and :ref:`debug <Debugging>` and fix any issues before continuing.
 - Build with lower optimization levels during development for a shorter compile/test iteration cycle (``-O0`` or ``-O1``).
-- Build with ``-O2`` to get most optimizations.
-- Build with ``-O3`` or ``-Os`` when releasing your code. ``-O3`` builds are even more optimized than ``-O2``, but at the cost of significantly longer compilation time. ``-Os`` builds focus more on size than speed (and also can increase compilation times like ``-O3``).
+- Build with ``-O2`` to get a well-optimized build.
+- Building with ``-O3`` or ``-Os`` can produce an ever better build than ``-O2``, and are worth considering for release builds. ``-O3`` builds are even more optimized than ``-O2``, but at the cost of significantly longer compilation time and potentially larger code size. ``-Os`` is similar in increasing compile times, but focuses on reducing code size while doing additional optimization. It's worth trying these different optimization options to see what works best for your application.
 - Other optimizations are discussed in the following sections.
 
 In addition to the ``-Ox`` options, there are separate compiler options that can be used to control the JavaScript optimizer (:ref:`js-opts <emcc-js-opts>`), LLVM optimizations (:ref:`llvm-opts <emcc-llvm-opts>`) and LLVM link-time optimizations (:ref:`llvm-lto <emcc-llvm-lto>`).
@@ -148,11 +148,13 @@ Other optimization issues
 C++ exceptions
 --------------
 
-Catching C++ exceptions is turned off by default in ``-O1`` (and above). This prevents the generation of ``try-catch`` blocks, which lets the code run much faster, and also makes the code smaller. 
+Catching C++ exceptions (specifically, emitting catch blocks) is turned off by default in ``-O1`` (and above). Due to how asm.js/wasm currently implement exceptions, this makes the code much smaller and faster (eventually, wasm should gain native support for exceptions, and not have this isue).
 
 To re-enable exceptions in optimized code, run *emcc* with ``-s DISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_).
 
-.. note:: Removing catching of exceptions helps a lot with speed, but for code size you should build with `-fno-exceptions` to really get rid of all exceptions code overhead, as it may contain thrown exceptions that are never caught (e.g. just using std::vector can have that). `-fno-rtti` may help as well.
+.. note:: When exception catching is disabled, a thrown exception terminates the application. In other words, an exception is still thrown, but it isn't caught.
+
+.. note:: Even with catch blocks not being emitted, there is some code size overhead unless you build your source files with ``-fno-exceptions``, which will omit all exceptions support code (for example, it will avoid creating proper C++ exception objects in errors in std::vector, and just abort the application if they occur). `-fno-rtti` may help as well.
 
 Memory Growth
 -------------
