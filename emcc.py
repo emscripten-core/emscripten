@@ -707,8 +707,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           'BINARYEN_MEM_MAX': 'WASM_MEM_MAX',
           # TODO: change most (all?) other BINARYEN* names to WASM*
       }
+      settings_key_changes = set()
       def setting_sub(s):
         key, rest = s.split('=', 1)
+        settings_key_changes.add(key)
         return '='.join([settings_aliases.get(key, key), rest])
       settings_changes = list(map(setting_sub, settings_changes))
 
@@ -875,11 +877,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.separate_asm and final_suffix != 'html':
         shared.WarningManager.warn('SEPARATE_ASM')
 
-      # If we are using embind and generating JS, now is the time to link in bind.cpp
-      if options.bind and final_suffix in JS_CONTAINING_SUFFIXES:
-        input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')))
-        next_arg_index += 1
-
       # Apply optimization level settings
       shared.Settings.apply_opt_level(opt_level=options.opt_level, shrink_level=options.shrink_level, noisy=True)
 
@@ -909,13 +906,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             value = '"' + value + '"'
         else:
           value = value.replace('\\', '\\\\')
-        setattr(shared.Settings, key, eval(value))
+        try:
+          setattr(shared.Settings, key, eval(value))
+        except Exception as e:
+          logging.error('a problem occurred in evaluating content after a "-s", specifically  %s . one possible cause of this is missing quotation marks (this depends on the shell you are running in; you may need quotation marks around the entire  %s , or on an individual element)' % (change, change))
+          raise e
         if key == 'EXPORTED_FUNCTIONS':
           # used for warnings in emscripten.py
           shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = original_exported_response or shared.Settings.EXPORTED_FUNCTIONS[:]
 
       # Note the exports the user requested
       shared.Building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
+
+      if options.bind:
+        # If we are using embind and generating JS, now is the time to link in bind.cpp
+        if final_suffix in JS_CONTAINING_SUFFIXES:
+          input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')))
+          next_arg_index += 1
 
       # -s ASSERTIONS=1 implies the heaviest stack overflow check mode. Set the implication here explicitly to avoid having to
       # do preprocessor "#if defined(ASSERTIONS) || defined(STACK_OVERFLOW_CHECK)" in .js files, which is not supported.
@@ -979,6 +986,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.RELOCATABLE = 1
         shared.Settings.PRECISE_I64_MATH = 1 # other might use precise math, we need to be able to print it
         assert not options.use_closure_compiler, 'cannot use closure compiler on shared modules'
+        # shared modules need memory utilities to allocate their memory
+        shared.Settings.EXPORTED_RUNTIME_METHODS += [
+          'allocate',
+          'getMemory',
+        ]
 
       if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
         shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -1092,6 +1104,25 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       else:
         options.js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
 
+      if shared.Settings.FORCE_FILESYSTEM:
+        # when the filesystem is forced, we export by default methods that filesystem usage
+        # may need, including filesystem usage from standalone file packager output (i.e.
+        # file packages not built together with emcc, but that are loaded at runtime
+        # separately, and they need emcc's output to contain the support they need)
+        shared.Settings.EXPORTED_RUNTIME_METHODS += [
+          'FS_createFolder',
+          'FS_createPath',
+          'FS_createDataFile',
+          'FS_createPreloadedFile',
+          'FS_createLazyFile',
+          'FS_createLink',
+          'FS_createDevice',
+          'FS_unlink',
+          'getMemory',
+          'addRunDependency',
+          'removeRunDependency',
+        ]
+
       if shared.Settings.USE_PTHREADS:
         if shared.Settings.LINKABLE:
           exit_with_error('-s LINKABLE=1 is not supported with -s USE_PTHREADS>0!')
@@ -1143,6 +1174,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
         shared.Settings.BINARYEN = shared.Settings.WASM = 1
+
+        # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
+        # we run the optimizer during asm2wasm itself). use it, if not overridden
+        if 'BINARYEN_PASSES' not in settings_key_changes:
+          if options.opt_level > 0 or options.shrink_level > 0:
+            shared.Settings.BINARYEN_PASSES = shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)
 
         # to bootstrap struct_info, we need binaryen
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
@@ -2609,8 +2646,8 @@ def generate_html(target, options, js_target, target_basename,
 
   # when script.inline isn't empty, add required helper functions such as tryParseAsDataURI
   if script.inline:
-    for file in ['src/arrayUtils.js', 'src/base64Utils.js']:
-      f = open(shared.path_from_root(file), 'r')
+    for file in ['arrayUtils.js', 'base64Utils.js', 'URIUtils.js']:
+      f = open(shared.path_from_root('src', file), 'r')
       script.inline = f.read() + script.inline
       f.close()
 

@@ -10,10 +10,10 @@ RUN cd /root/ \
  && apt-get install -y python python-pip cmake build-essential openjdk-9-jre-headless \
  && pip install --upgrade pip \
  && pip install lit \
- && wget https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz \
- && tar -xf emsdk-portable.tar.gz \
- && pushd emsdk-portable \
- && ./emsdk update \
+ && wget https://github.com/juj/emsdk/archive/master.tar.gz \
+ && tar -xf master.tar.gz \
+ && pushd emsdk-master \
+ && ./emsdk update-tags \
  && ./emsdk install latest \
  && ./emsdk activate latest \
  && popd \
@@ -22,7 +22,7 @@ RUN cd /root/ \
 
 ARG TEST_TARGET
 RUN export EMSCRIPTEN_BROWSER=0 \
- && python /root/emscripten/tests/runner.py $TEST_TARGET skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full skip:other.test_native_link_error_message skip:other.test_bad_triple skip:default.test_simd_sitofp skip:default.test_simd3 skip:other.test_emcc_v
+ && python /root/emscripten/tests/runner.py $TEST_TARGET skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full skip:other.test_native_link_error_message skip:other.test_bad_triple skip:other.test_emcc_v
 
-# TODO: remove  skip:default.test_simd_sitofp skip:default.test_simd3 skip:other.test_emcc_v  after fastcomp update on travis for 1.37.23
+# skip:other.test_emcc_v to prevent tool version differences from breaking CI
 

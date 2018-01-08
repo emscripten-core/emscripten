@@ -136,11 +136,11 @@ test_modes = [
   'asm1',
   'asm2',
   'asm3',
-  'asm2f',
   'asm2g',
-  'asm2i'
 ]
 nondefault_test_modes = [
+  'asm2f',
+  'asm2i',
   'binaryen0',
   'binaryen1',
   'binaryen2',
@@ -292,7 +292,7 @@ class RunnerCore(unittest.TestCase):
   # Generate JS from ll, and optionally modify the generated JS with a post_build function. Note
   # that post_build is called on unoptimized JS, so we send it to emcc (otherwise, if run after
   # emcc, it would not apply on the optimized/minified JS)
-  def ll_to_js(self, filename, extra_emscripten_args, post_build):
+  def ll_to_js(self, filename, post_build):
     if type(post_build) in (list, tuple):
       post1, post2 = post_build
     else:
@@ -316,7 +316,7 @@ class RunnerCore(unittest.TestCase):
     if post2: post2(filename + '.o.js')
 
   # Build JavaScript code from source code
-  def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, extra_emscripten_args=[], post_build=None, js_outfile=True):
+  def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, post_build=None, js_outfile=True):
 
     Building.LLVM_OPT_OPTS = ['-O3'] # pick llvm opts here, so we include changes to Settings in the test case code
 
@@ -342,7 +342,7 @@ class RunnerCore(unittest.TestCase):
       additional_files = [os.path.join(dirname, f) for f in additional_files]
       os.chdir(self.get_dir())
 
-    if build_ll_hook or post_build or extra_emscripten_args:
+    if build_ll_hook or post_build:
       # "slow", old path: build to bc, then build to JS
 
       # C++ => LLVM binary
@@ -373,7 +373,7 @@ class RunnerCore(unittest.TestCase):
       self.prep_ll_run(filename, filename + '.o', build_ll_hook=build_ll_hook)
 
       # BC => JS
-      self.ll_to_js(filename, extra_emscripten_args, post_build)
+      self.ll_to_js(filename, post_build)
     else:
       # "fast", new path: just call emcc and go straight to JS
       all_files = [filename] + additional_files + libraries
@@ -645,23 +645,14 @@ class RunnerCore(unittest.TestCase):
     js_engines = [engine for engine in js_engines if engine[0] not in [banned[0] for banned in self.banned_js_engines]]
     return js_engines
 
-  def do_run_from_file(self, src, expected_output,
-                       args=[], output_nicerizer=None, output_processor=None,
-                       no_build=False, main_file=None, additional_files=[],
-                       js_engines=None, post_build=None, basename='src.cpp',
-                       libraries=[], includes=[], force_c=False, build_ll_hook=None,
-                       extra_emscripten_args=[], assert_returncode=None, assert_identical=False):
-    self.do_run(open(src).read(), open(expected_output).read(),
-                args, output_nicerizer, output_processor, no_build, main_file,
-                additional_files, js_engines, post_build, basename, libraries,
-                includes, force_c, build_ll_hook, extra_emscripten_args,
-                assert_returncode, assert_identical)
+  def do_run_from_file(self, src, expected_output, *args, **kwargs):
+    self.do_run(open(src).read(), open(expected_output).read(), *args, **kwargs)
 
   ## Does a complete test - builds, runs, checks output, etc.
   def do_run(self, src, expected_output, args=[], output_nicerizer=None,
              output_processor=None, no_build=False, main_file=None, additional_files=[],
              js_engines=None, post_build=None, basename='src.cpp', libraries=[],
-             includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[],
+             includes=[], force_c=False, build_ll_hook=None,
              assert_returncode=None, assert_identical=False):
     if Settings.ASYNCIFY == 1 and self.is_wasm_backend():
       return self.skip("wasm backend doesn't support ASYNCIFY yet")
@@ -673,7 +664,7 @@ class RunnerCore(unittest.TestCase):
     filename = os.path.join(dirname, basename)
     if not no_build:
       self.build(src, dirname, filename, main_file=main_file, additional_files=additional_files, libraries=libraries, includes=includes,
-                 build_ll_hook=build_ll_hook, extra_emscripten_args=extra_emscripten_args, post_build=post_build)
+                 build_ll_hook=build_ll_hook, post_build=post_build)
 
     # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
     js_engines = self.filtered_js_engines(js_engines)
@@ -708,12 +699,12 @@ class RunnerCore(unittest.TestCase):
   # No building - just process an existing .ll file (or .bc, which we turn into .ll)
   def do_ll_run(self, ll_file, expected_output=None, args=[], js_engines=None,
                 output_nicerizer=None, post_build=None, force_recompile=False,
-                build_ll_hook=None, extra_emscripten_args=[], assert_returncode=None):
+                build_ll_hook=None, assert_returncode=None):
     filename = os.path.join(self.get_dir(), 'src.cpp')
 
     self.prep_ll_run(filename, ll_file, force_recompile, build_ll_hook)
 
-    self.ll_to_js(filename, extra_emscripten_args, post_build)
+    self.ll_to_js(filename, post_build)
 
     self.do_run(None,
                 expected_output,

@@ -4,6 +4,7 @@ var x;
 var y = 1;
 var z = fleefl();
 var xx, yy = 1, zz = fleefl(); // but zz must remain due to the side effects in the value
+var obj = {};
 function f(x, y, z) {
   // shadow the x,y,z
   x = y;
@@ -58,4 +59,15 @@ function glue() {
   }
 }
 glue();
+// gl emulation style code
+function _glCreateShader() {
+ return 1;
+}
+function emulate() {
+  var saved = _glCreateShader;
+  _glCreateShader = function _glCreateShader(shaderType) { // the name here is just for show in stack traces!
+    return glCreateShader();
+  };
+}
+emulate();
 

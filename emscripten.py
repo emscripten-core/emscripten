@@ -644,6 +644,13 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
       funcs += ['setTempRet0', 'getTempRet0']
     if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
       funcs += ['setThrew']
+    if settings['EMTERPRETIFY']:
+      funcs += ['emterpret']
+      if settings['EMTERPRETIFY_ASYNC']:
+        funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore']
+    if settings['ASYNCIFY']:
+      funcs += ['setAsync']
+
   return sorted(set(funcs))
 
 
@@ -1253,8 +1260,6 @@ def create_basic_vars(exported_implemented_functions, forwarded_json, metadata, 
 def create_exports(exported_implemented_functions, in_table, function_table_data, metadata, settings):
   quote = quoter(settings)
   asm_runtime_funcs = create_asm_runtime_funcs(settings)
-  if need_asyncify(exported_implemented_functions):
-    asm_runtime_funcs.append('setAsync')
   all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables(function_table_data, settings)
   if settings['EMULATED_FUNCTION_POINTERS']:
     all_exported += in_table
@@ -1281,10 +1286,6 @@ def create_asm_runtime_funcs(settings):
     funcs += ['setDynamicTop']
   if settings['ONLY_MY_CODE']:
     funcs = []
-  if settings.get('EMTERPRETIFY'):
-    funcs += ['emterpret']
-    if settings.get('EMTERPRETIFY_ASYNC'):
-      funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore']
   return funcs
 
 
@@ -1781,7 +1782,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   receiving = create_receiving_wasm(exported_implemented_functions, settings)
 
   # finalize
-  module = create_module_wasm(sending, receiving, invoke_funcs, settings)
+  module = create_module_wasm(sending, receiving, invoke_funcs, exported_implemented_functions, settings)
 
   write_output_file(outfile, post, module)
   module = None
@@ -1947,7 +1948,7 @@ return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
   return receiving
 
 
-def create_module_wasm(sending, receiving, invoke_funcs, settings):
+def create_module_wasm(sending, receiving, invoke_funcs, exported_implemented_functions, settings):
   access_quote = access_quoter(settings)
   invoke_wrappers = create_invoke_wrappers(invoke_funcs)
 
@@ -1976,16 +1977,17 @@ var asm = Module['asm'](%s, %s, buffer);
 STACKTOP = STACK_BASE + TOTAL_STACK;
 STACK_MAX = STACK_BASE;
 HEAP32[%d >> 2] = STACKTOP;
-stackAlloc = Module['_stackAlloc'];
-stackSave = Module['_stackSave'];
-stackRestore = Module['_stackRestore'];
-establishStackSpace = Module['establishStackSpace'];
+var stackAlloc = Module['_stackAlloc'];
+var stackSave = Module['_stackSave'];
+var stackRestore = Module['_stackRestore'];
+var establishStackSpace = Module['establishStackSpace'];
 ''' % shared.Settings.GLOBAL_BASE)
 
-  module.append('''
-setTempRet0 = Module['setTempRet0'];
-getTempRet0 = Module['getTempRet0'];
-''')
+  # some runtime functionality may not have been generated in
+  # the wasm; provide a JS shim for it
+  for name in ['setTempRet0', 'getTempRet0', 'stackSave', 'stackRestore', 'stackAlloc']:
+    if name not in exported_implemented_functions:
+      module.append('var %s;\n' % name)
 
   module.append(invoke_wrappers)
   return module
