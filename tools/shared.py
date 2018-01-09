@@ -2265,11 +2265,14 @@ class Building(object):
               #'--variable_map_output_file', filename + '.vars',
               '--js', filename, '--js_output_file', filename + '.cc.js']
       for extern in NODE_EXTERNS:
-          args.append('--externs')
-          args.append(extern)
+        args.append('--externs')
+        args.append(extern)
       for extern in BROWSER_EXTERNS:
-          args.append('--externs')
-          args.append(extern)
+        args.append('--externs')
+        args.append(extern)
+      if Settings.IGNORE_CLOSURE_COMPILER_ERRORS:
+        args.append('--jscomp_off')
+        args.append('*')
       if pretty: args += ['--formatting', 'PRETTY_PRINT']
       if os.environ.get('EMCC_CLOSURE_ARGS'):
         args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))

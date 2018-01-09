@@ -147,6 +147,8 @@ var SIMD = 0; // Whether to allow autovectorized SIMD code ( https://github.com/
 
 var USE_CLOSURE_COMPILER = 0; // Whether closure compiling is being run on this output
 
+var IGNORE_CLOSURE_COMPILER_ERRORS = 0; // Ignore closure warnings and errors (like on duplicate definitions)
+
 var SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all in
                              // functions that have no basic stack usage. But, they
                              // may allocate stack later, and in a loop, this can be
