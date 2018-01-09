@@ -8,11 +8,19 @@ void waka(int x, int y, int z) {
 
 int main() {
   EM_ASM({
+#if DIRECT
+    dynCall_viii($0, 1, 4, 9);
+    return;
+#endif
 #if EXPORTED
     Module['dynCall_viii']($0, 1, 4, 9);
-#else
-    dynCall_viii($0, 1, 4, 9);
+    return;
 #endif
+#if FROM_OUTSIDE
+    eval("Module['dynCall_viii'](" + $0 + ", 1, 4, 9)");
+    return;
+#endif
+    throw "no test mode";
   }, &waka);
 }
 

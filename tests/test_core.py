@@ -5993,11 +5993,16 @@ def process(filename):
     self.do_run_in_out_file_test('tests', 'core', 'dyncall')
 
   def test_dyncall_specific(self):
-    self.do_run_in_out_file_test('tests', 'core', 'dyncall_specific')
-    # test dyncall (and other runtime methods in support.js) can be exported
-    self.emcc_args += ['-DEXPORTED']
-    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['dynCall_viii']
-    self.do_run_in_out_file_test('tests', 'core', 'dyncall_specific')
+    emcc_args = self.emcc_args[:]
+    for which, exported_runtime_methods in [
+        ('DIRECT', []),
+        ('EXPORTED', []),
+        ('FROM_OUTSIDE', ['dynCall_viii'])
+      ]:
+      print(which)
+      self.emcc_args = emcc_args + ['-D' + which]
+      Settings.EXTRA_EXPORTED_RUNTIME_METHODS = exported_runtime_methods
+      self.do_run_in_out_file_test('tests', 'core', 'dyncall_specific')
 
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
