@@ -15,8 +15,9 @@ int main() {
     assert((y - x)*(z - y) > 0, "allocations must be in the same direction");
     // no overlaps
     function notInRange(value, begin, end) {
-      if (begin < end) assert(!(value >= begin && value < end), value + " must not be in the range [" + [begin, end] + ")");
-      else assert(!(value <= begin && value > end), value + " must not be in the range [" + [begin, end] + ")");
+      function errormsg() { return value + " must not be in the range (" + begin + ", " + end + "]"; }
+      if (begin < end) assert(!(value >= begin && value < end), errormsg());
+      else assert(!(value <= begin && value > end), errormsg());
     }
     notInRange(x, y, y + direction*size);
     notInRange(x, z, z + direction*size);
