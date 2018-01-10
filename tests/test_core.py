@@ -1629,7 +1629,7 @@ int main(int argc, char **argv) {
 ''', 'false')
 
   def test_em_asm(self):
-    # self.do_run_in_out_file_test('tests', 'core', 'test_em_asm')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm', force_c=True)
 
   # Tests various different ways to invoke the EM_ASM(), EM_ASM_INT() and EM_ASM_DOUBLE() macros.
