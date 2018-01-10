@@ -1152,7 +1152,11 @@ class SettingsManager(object):
         if self.attrs['EXPERIMENTAL_USE_LLD']:
           # LLD target uses '-wasm' instead of '-elf'
           WASM_TARGET = 'wasm32-unknown-unknown-wasm'
+          # Re-set LLVM_TARGET and flags dependent on LLVM_TARGET
           LLVM_TARGET = WASM_TARGET
+          for i in xrange(len(COMPILER_OPTS) - 1):
+            if COMPILER_OPTS[i] == '-target':
+              COMPILER_OPTS[i + 1] = get_llvm_target()
 
     # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
     # the reverse of load_settings, except for -Ox which is relevant there but not here
