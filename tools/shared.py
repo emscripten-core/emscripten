@@ -887,7 +887,7 @@ except:
 
 # Target choice.
 ASM_JS_TARGET = 'asmjs-unknown-emscripten'
-WASM_TARGET = 'wasm32-unknown-unknown-wasm'
+WASM_TARGET = 'wasm32-unknown-unknown-elf'
 
 def check_vanilla():
   global LLVM_TARGET
@@ -1126,6 +1126,7 @@ class SettingsManager(object):
     # Given some emcc-type args (-O3, -s X=Y, etc.), fill Settings with the right settings
     @classmethod
     def load(self, args=[]):
+      global WASM_TARGET, LLVM_TARGET
       # Load the JS defaults into python
       settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
       settings = re.sub(r'var ([\w\d]+)', r'self.attrs["\1"]', settings)
@@ -1148,6 +1149,10 @@ class SettingsManager(object):
 
       if get_llvm_target() == WASM_TARGET:
         self.attrs['WASM_BACKEND'] = 1
+        if self.attrs['EXPERIMENTAL_USE_LLD']:
+          # LLD target uses '-wasm' instead of '-elf'
+          WASM_TARGET = 'wasm32-unknown-unknown-wasm'
+          LLVM_TARGET = WASM_TARGET
 
     # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
     # the reverse of load_settings, except for -Ox which is relevant there but not here

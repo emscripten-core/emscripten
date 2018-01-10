@@ -323,14 +323,17 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   def create_wasm_rt_lib(libname, files):
     o_s = []
     commands = []
+    output_flag = '-c' if shared.Settings.EXPERIMENTAL_USE_LLD else '-S'
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
       # Use clang directly instead of emcc. Since emcc's intermediate format (produced by -S) is LLVM IR, there's no way to
       # get emcc to output wasm .s files, which is what we archive in compiler_rt.
       commands.append([
-        shared.CLANG_CC, '--target=wasm32-unknown-unknown-wasm',
+        shared.CLANG_CC,
+        '--target={}'.format(shared.WASM_TARGET),
         '-mthread-model', 'single',
-        '-c', shared.path_from_root('system', 'lib', src),
+        output_flag,
+        shared.path_from_root('system', 'lib', src),
         '-O2', '-o', o] + musl_internal_includes() + shared.EMSDK_OPTS)
       o_s.append(o)
     run_commands(commands)
