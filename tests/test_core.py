@@ -882,7 +882,7 @@ int main() {
   work(10);
   dump();
   struct mallinfo m2 = mallinfo();
-  assert(m1.arena == m2.arena && m1.uordblks == m2.uordblks);
+  assert(m1.uordblks == m2.uordblks);
   printf("ok.\n");
 }
 '''
