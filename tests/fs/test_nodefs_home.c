@@ -6,7 +6,7 @@ int main(void)
     EM_ASM(
         var path = require("path");
         var home = process.env.HOME;
-        var parent = path.dirname(process.env.HOME);
+        var parent = path.dirname(home);
         var relative = path.relative(parent, home);
         FS.mkdir('/nodefs_home');
         FS.mount(NODEFS, { root: parent }, '/nodefs_home');
