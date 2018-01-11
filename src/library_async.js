@@ -280,6 +280,9 @@ mergeInto(LibraryManager.library, {
         var callingDoAsyncOp = 1; // if resume is called synchronously - during the doAsyncOp - we must make it truly async, for consistency
 
         doAsyncOp(function resume(post) {
+          if (ABORT) {
+            return;
+          }
           if (callingDoAsyncOp) {
             assert(callingDoAsyncOp === 1); // avoid infinite recursion
             callingDoAsyncOp++;
@@ -355,7 +358,7 @@ mergeInto(LibraryManager.library, {
   emscripten_sleep: function(ms) {
     EmterpreterAsync.handle(function(resume) {
       setTimeout(function() {
-        if (ABORT) return; // do this manually; we can't call into Browser.safeSetTimeout, because that is paused/resumed!
+        // do this manually; we can't call into Browser.safeSetTimeout, because that is paused/resumed!
         resume();
       }, ms);
     });
