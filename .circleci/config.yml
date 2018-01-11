@@ -14,7 +14,7 @@ test-defaults: &test-defaults
 
     - run: |
         apt-get update
-        apt-get install -y firefox python python-pip cmake build-essential openjdk-9-jre-headless $TEST_DEPENDENCY
+        apt-get install -y python python-pip cmake build-essential openjdk-9-jre-headless $TEST_DEPENDENCY
         pip install --upgrade pip
         pip install lit
         EMCC_CORES=4 python emscripten/tests/runner.py $TEST_TARGET
