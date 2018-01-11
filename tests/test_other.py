@@ -7010,7 +7010,7 @@ int main() {
   }, int64_t(0x12345678ABCDEF1FLL));
 }
 ''')
-    err = run_process([PYTHON, EMCC, 'src.cpp', '-Oz'], stderr=PIPE).stderr
+    err = run_process([PYTHON, EMCC, 'src.cpp', '-Oz'], stderr=PIPE, check=False).stderr
     self.assertContained('LLVM ERROR: EM_ASM should not receive i64s as inputs, they are not valid in JS', err)
 
   def test_eval_ctors(self):
@@ -7956,8 +7956,8 @@ int main() {
   def test_native_link_error_message(self):
     Popen([CLANG, '-c', path_from_root('tests', 'hello_world.c'), '-o', 'hello_world.o'] + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE, stderr=PIPE).communicate()
     Popen([LLVM_AR, 'r', 'hello_world.a', 'hello_world.o'], env=get_clang_native_env(), stdout=PIPE, stderr=PIPE).communicate()
-    err = run_process([PYTHON, EMCC, 'hello_world.a', '-o', 'hello_world.js'], stdout=PIPE, stderr=PIPE).stderr
-    assert 'exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?' in err
+    err = run_process([PYTHON, EMCC, 'hello_world.a', '-o', 'hello_world.js'], stdout=PIPE, stderr=PIPE, check=False).stderr
+    assert 'exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?' in err, err
 
   def test_o_level_clamp(self):
     for level in [3, 4, 20]:
