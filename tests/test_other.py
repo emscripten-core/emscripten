@@ -60,6 +60,29 @@ class other(RunnerCore):
       self.assertNotContained('this is dangerous', output.stdout)
       self.assertNotContained('this is dangerous', output.stderr)
 
+  def test_emcc_python_version(self):
+    env = os.environ.copy()
+    env['EMSCRIPTEN_ALLOW_NEWER_PYTHON'] = '1'
+
+    for version in [2, 3]:
+      py = ["py", '-%s' % version] if WINDOWS else ["python%s" % version]
+      try:
+        output = run_process(py + ['--version'], stdout=PIPE, stderr=PIPE)
+        print("python%s" % version)
+      except:
+        print("python%s does not exist, skipping" % version)
+        continue
+
+      # Python 2 emits its version in stderr
+      major = int((output.stdout if output.stdout else output.stderr)[7])
+
+      output = run_process(py + [path_from_root('emcc'), '--version'], stdout=PIPE, stderr=PIPE, env=env).stderr
+      expected_call = 'Running on Python %s which is not officially supported yet' % major
+      if major > 2:
+        assert expected_call in output
+      else:
+        assert expected_call not in output
+
   def test_emcc(self):
     for compiler in [EMCC, EMXX]:
       shortcompiler = os.path.basename(compiler)
@@ -6859,6 +6882,10 @@ int main() {
     self.assertContained('one possible cause of this is missing quotation marks', err) # but we suggested the fix
 
   def test_python_2_3(self): # check emcc/em++ can be called by any python
+    # remove .py from EMCC(=emcc.py)
+    def trim_py_suffix(filename):
+      return filename[:-3] if filename.endswith('.py') else filename
+
     print()
     for python in ['python', 'python2', 'python3']:
       try:
@@ -6869,12 +6896,12 @@ int main() {
       print(python, has)
       if has:
         print('  checking emcc...')
-        check_execute([python, EMCC, '--version'])
+        check_execute([python, trim_py_suffix(EMCC), '--version'])
         print('  checking em++...')
-        check_execute([python, EMXX, '--version'])
+        check_execute([python, trim_py_suffix(EMXX), '--version'])
         if python == 'python2':
           print('  checking emcc.py...')
-          check_execute([python, EMCC + '.py', '--version'])
+          check_execute([python, EMCC, '--version'])
 
   def test_zeroinit(self):
     open('src.c', 'w').write(r'''
