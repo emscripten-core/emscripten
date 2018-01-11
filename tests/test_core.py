@@ -4521,6 +4521,11 @@ def process(filename):
     src = open(path_from_root('tests', 'fs', 'test_nodefs_cloexec.c'), 'r').read()
     self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
+  def test_fs_nodefs_home(self):
+    Settings.FORCE_FILESYSTEM = 1
+    src = open(path_from_root('tests', 'fs', 'test_nodefs_home.c'), 'r').read()
+    self.do_run(src, 'success', js_engines=[NODE_JS])
+
   def test_fs_trackingdelegate(self):
     src = path_from_root('tests', 'fs', 'test_trackingdelegate.c')
     out = path_from_root('tests', 'fs', 'test_trackingdelegate.out')
