@@ -4,17 +4,24 @@
 #include <fcntl.h>
 #include <emscripten.h>
 
+#ifdef NODERAWFS
+#define CWD ""
+#else
+#define CWD "/working/"
+#endif
+
 int main(void)
 {
     EM_ASM(
-#ifndef NODERAWFS
+#ifdef NODERAWFS
+        FS.close(FS.open('test.txt', 'w'));
+#else
         FS.mkdir('/working');
         FS.mount(NODEFS, {root: '.'}, '/working');
-        FS.currentPath = '/working';
+        FS.close(FS.open('/working/test.txt', 'w'));
 #endif
-        FS.close(FS.open('test.txt', 'w'));
     );
-    assert(open("test.txt", O_RDONLY | O_CLOEXEC) != -1);
+    assert(open(CWD "test.txt", O_RDONLY | O_CLOEXEC) != -1);
     printf("success\n");
     return 0;
 }
