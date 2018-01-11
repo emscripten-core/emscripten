@@ -314,9 +314,9 @@ function run(args) {
 }
 Module['run'] = run;
 
-function exit(status, implicit) {
 #if ASSERTIONS
-#if NO_EXIT_RUNTIME == 1
+#if NO_EXIT_RUNTIME
+function checkUnflushedContent() {
   // Compiler settings do not allow exiting the runtime, so flushing
   // the streams is not possible. but in ASSERTIONS mode we check
   // if there was something to flush, and if so tell the user they
@@ -328,27 +328,49 @@ function exit(status, implicit) {
   // How we flush the streams depends on whether we are in NO_FILESYSTEM
   // mode (which has its own special function for this; otherwise, all
   // the code is inside libc)
-#if NO_FILESYSTEM
-  var flush = {{{ '$flush_NO_FILESYSTEM' in addedLibraryItems ? 'flush_NO_FILESYSTEM' : 'null' }}};
-#else
-  var flush = {{{ '$FS' in addedLibraryItems ? 'FS.quit' : "Module['_fflush']" }}};
-#endif
-  if (flush) {
-    var print = Module['print'];
-    var printErr = Module['printErr'];
-    var has = false;
-    Module['print'] = Module['printErr'] = function(x) {
-      has = true;
-    }
-    try { // it doesn't matter if it fails
-      flush(0);
-    } catch(e) {}
-    Module['print'] = print;
-    Module['printErr'] = printErr;
-    if (has) {
-      warnOnce('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0 (see the FAQ), or make sure to emit a newline when you printf etc.');
-    }
+  var print = Module['print'];
+  var printErr = Module['printErr'];
+  var has = false;
+  Module['print'] = Module['printErr'] = function(x) {
+    has = true;
   }
+  try { // it doesn't matter if it fails
+#if NO_FILESYSTEM
+    var flush = {{{ '$flush_NO_FILESYSTEM' in addedLibraryItems ? 'flush_NO_FILESYSTEM' : 'null' }}};
+#else
+    var flush = Module['_fflush'];
+#endif
+    if (flush) flush(0);
+#if NO_FILESYSTEM == 0
+    // also flush in the JS FS layer
+    var hasFS = {{{ '$FS' in addedLibraryItems ? 'true' : 'false' }}};
+    if (hasFS) {
+      ['stdout', 'stderr'].forEach(function(name) {
+        var info = FS.analyzePath('/dev/' + name);
+        if (!info) return;
+        var stream = info.object;
+        var rdev = stream.rdev;
+        var tty = TTY.ttys[rdev];
+        if (tty && tty.output && tty.output.length) {
+          has = true;
+        }
+      });
+    }
+#endif
+  } catch(e) {}
+  Module['print'] = print;
+  Module['printErr'] = printErr;
+  if (has) {
+    warnOnce('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0 (see the FAQ), or make sure to emit a newline when you printf etc.');
+  }
+}
+#endif // NO_EXIT_RUNTIME
+#endif // ASSERTIONS
+
+function exit(status, implicit) {
+#if ASSERTIONS
+#if NO_EXIT_RUNTIME
+  checkUnflushedContent();
 #endif // NO_EXIT_RUNTIME
 #endif // ASSERTIONS
 

@@ -7910,9 +7910,13 @@ function JSDCE(ast, multipleIterations) {
       }
     }, function(node, type) {
       if (type === 'defun' || type === 'function') {
+        // we can ignore self-references, i.e., references to ourselves inside
+        // ourselves, for named defined (defun) functions
+        var ownName = type === 'defun' ? node[1] : '';
         var scope = scopes.pop();
         var names = set();
         for (name in scope) {
+          if (name === ownName) continue;
           var data = scope[name];
           if (data.use && !data.def) {
             // this is used from a higher scope, propagate the use down

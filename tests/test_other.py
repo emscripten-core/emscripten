@@ -3307,6 +3307,12 @@ int main() {
         exit = 1-no_exit
         assert (no_exit and assertions) == ('atexit() called, but NO_EXIT_RUNTIME is set, so atexits() will not be called. set NO_EXIT_RUNTIME to 0' in output), 'warning should be shown'
 
+  def test_fs_after_main(self):
+    for args in [[], ['-O1']]:
+      print(args)
+      run_process([PYTHON, EMCC, path_from_root('tests', 'fs_after_main.cpp')])
+      self.assertContained('Test passed.', run_js('a.out.js', engine=NODE_JS))
+
   def test_os_oz(self):
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
     try:
@@ -7761,7 +7767,7 @@ int main() {
           assert not_exists not in sent, [not_exists, sent]
         wasm_size = os.stat('a.out.wasm').st_size
         ratio = abs(wasm_size - expected_wasm_size) / float(expected_wasm_size)
-        print('  seem wasm size: %d, ratio to expected: %f' % (wasm_size, ratio))
+        print('  seen wasm size: %d, ratio to expected: %f' % (wasm_size, ratio))
         assert ratio < 0.05, [expected_wasm_size, wasm_size, ratio]
         wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
         imports = wast.count('(import ')
@@ -7771,15 +7777,15 @@ int main() {
 
     print('test on hello world')
     test(path_from_root('tests', 'hello_world.cpp'), [
-      ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  48213, 26, 20),
-      (['-O1'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13478, 18, 18),
-      (['-O2'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13438, 18, 18),
-      (['-O3'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10244, 16,  4), # in -O3, -Os and -Oz we metadce
-      (['-Os'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10170, 16,  4),
-      (['-Oz'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10160, 16,  4),
+      ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  48213, 26, 19),
+      (['-O1'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13460, 17, 17),
+      (['-O2'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13381, 17, 17),
+      (['-O3'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10165, 16,  3), # in -O3, -Os and -Oz we metadce
+      (['-Os'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10091, 16,  3),
+      (['-Oz'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10081, 16,  3),
       # finally, check what happens when we export nothing. wasm should be almost empty
-      (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[]'],
-                 0, [],                         ['tempDoublePtr', 'waka'],   148,  2,  1), # import memory and table, and no exports! nothing left, really...
+      (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
+                 0, [],                         ['tempDoublePtr', 'waka'],     8,  0,  0), # totally empty!
     ])
 
     print('test on a minimal pure computational thing')
@@ -7792,14 +7798,13 @@ int main() {
       }
       ''')
     test('minimal.c', [
-      ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  24536, 26, 19),
-      (['-O1'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  11324, 13, 16),
-      (['-O2'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  11326, 13, 16),
+      ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  24536, 26, 18),
+      (['-O1'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  11271, 10, 15),
+      (['-O2'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  11326, 10, 15),
       # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-      (['-O3'],  0, [],                         ['tempDoublePtr', 'waka'],   177,  2,  2),
-      (['-Os'],  0, [],                         ['tempDoublePtr', 'waka'],   177,  2,  2),
-      (['-Oz'],  0, [],                         ['tempDoublePtr', 'waka'],   177,  2,  2),
-      (['-Os'],  0, [],                         ['tempDoublePtr', 'waka'],   177,  2,  2),
+      (['-O3'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1),
+      (['-Os'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1),
+      (['-Oz'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1),
     ])
 
   # test disabling of JS FFI legalization
@@ -8078,8 +8083,29 @@ end
           results[f] = out.read()
       self.assertEqual(results[flag1], results[flag2], 'results should be identical')
 
-
     assert_aliases_match('WASM_MEM_MAX', 'BINARYEN_MEM_MAX', '16777216', ['-s', 'WASM=1'])
+
+  def test_IGNORE_CLOSURE_COMPILER_ERRORS(self):
+    open('pre.js', 'w').write(r'''
+      // make closure compiler very very angry
+      var dupe = 1;
+      var dupe = 2;
+      function Node() {
+        throw 'Node is a DOM thing too, and use the ' + dupe;
+      }
+      function Node() {
+        throw '(duplicate) Node is a DOM thing too, and also use the ' + dupe;
+      }
+    ''')
+    def test(extra=[]):
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure', '1', '--pre-js', 'pre.js'] + extra)
+    failed = False
+    try:
+      test()
+    except:
+      failed = True
+    assert failed
+    test(['-s', 'IGNORE_CLOSURE_COMPILER_ERRORS=1'])
 
   def test_toolchain_profiler(self):
     environ = os.environ.copy()

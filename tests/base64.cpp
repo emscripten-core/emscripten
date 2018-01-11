@@ -102,11 +102,11 @@ int main(int argc, char *argv[]) {
   int arg = argc > 1 ? argv[1][0] - '0' : 3;
   switch(arg) {
     case 0: return 0; break;
-    case 1: TRIES = 10; break;
-    case 2: TRIES = 50; break;
-    case 3: TRIES = 100; break;
-    case 4: TRIES = 200; break;
-    case 5: TRIES = 500; break;
+    case 1: TRIES = 3; break;
+    case 2: TRIES = 15; break;
+    case 3: TRIES = 25; break;
+    case 4: TRIES = 50; break;
+    case 5: TRIES = 100; break;
     default: printf("error: %d\\n", arg); return -1;
   }
 
