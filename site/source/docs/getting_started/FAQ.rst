@@ -278,7 +278,7 @@ Emscripten does dead code elimination of functions that are not called from the 
 
 To make sure a C function remains available to be called from normal JavaScript, it must be added to the `EXPORTED_FUNCTIONS <https://github.com/kripken/emscripten/blob/1.29.12/src/settings.js#L388>`_ using the *emcc* command line. For example, to prevent functions ``my_func()`` and ``main()`` from being removed/renamed, run *emcc* with: ::
 
-	./emcc -s EXPORTED_FUNCTIONS="['_main', '_my_func']"  ...
+	./emcc -s "EXPORTED_FUNCTIONS=['_main', '_my_func']"  ...
 
 .. note:: 
 
@@ -354,13 +354,13 @@ The ``Module`` object will contain exported methods. For something to appear the
 
  ::
 
-	./emcc -s EXPORTED_FUNCTIONS="['_main', '_my_func']" ...
+	./emcc -s "EXPORTED_FUNCTIONS=['_main', '_my_func']" ...
 
 would export a C method ``my_func`` (in addition to ``main``, in this example). And
 
  ::
 
-	./emcc -s EXTRA_EXPORTED_RUNTIME_METHODS="['ccall']" ...
+	./emcc -s "EXTRA_EXPORTED_RUNTIME_METHODS=['ccall']" ...
 
 will export ``ccall``. In both cases you can then access the exported function on the ``Module`` object.
 
@@ -368,8 +368,28 @@ will export ``ccall``. In both cases you can then access the exported function o
 
 .. note:: Emscripten used to export many runtime methods by default. This increased code size, and for that reason we've changed that default. If you depend on something that used to be exported, you should see a warning pointing you to the solution, in an unoptimized build, or a build with ``ASSERTIONS`` enabled, which we hope will minimize any annoyance. See ``Changelog.markdown`` for details.
 
+.. _faq-runtime-change:
+
+Why does ``Runtime`` no longer exist? Why do I get an error trying to access ``Runtime.someThing``?
+===================================================================================================
+
+1.37.27 includes a refactoring to remove the ``Runtime`` object. This makes the generated code more efficient and compact, but requires minor changes if you used ``Runtime.*`` APIs. You just need to remove the ``Runtime.`` prefix, as those functions are now simple functions in the top scope (an error message in ``-O0`` or builds with assertions enabled with suggest this). In other words, replace
+
+ ::
+
+	x = Runtime.stackAlloc(10);
+
+with
+
+ ::
+
+	x = stackAlloc(10);
+
+.. note:: The above will work for code in a ``--pre-js`` or JS library, that is, code that is compiled together with the emscripten output. If you try to access ``Runtime.*`` methods from outside the compiled code, then you must export that function (using ``EXTRA_EXPORTED_RUNTIME_METHODS``), and use it on the Module object, see :ref:`that FAQ entry<faq-export-stuff>`.
+
+
 Why do I get a ``NameError`` or ``a problem occurred in evaluating content after a "-s"`` when I use a ``-s`` option?
-========================================================
+=====================================================================================================================
 
 That may occur when running something like
 
@@ -378,15 +398,15 @@ That may occur when running something like
 	# this fails on most Linuxes
 	./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']
 
-You may need quotation marks, such as
+	# this fails on macOS
+	./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS="['addOnPostRun']"
+
+You may need to quote things like this:
 
 ::
 
-	# this works on most Linuxes
+	# this works on most Linuxes and on macOS
 	./emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']"
-
-	# also this should work
-	./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS="['addOnPostRun']"
 
 The proper syntax depends on the OS and shell you are in.
 
@@ -413,7 +433,7 @@ Why do I get a stack size error when optimizing: ``RangeError: Maximum call stac
 
 You may need to increase the stack size for :term:`node.js`. 
 
-On Linux and Mac OS X, you can just do ``NODE_JS = ['node', '--stack_size=8192']`` in the :ref:`compiler-configuration-file`. On Windows, you will also need ``--max-stack-size=8192``, and also run ``editbin /stack:33554432 node.exe``.
+On Linux and Mac macOS, you can just do ``NODE_JS = ['node', '--stack_size=8192']`` in the :ref:`compiler-configuration-file`. On Windows, you will also need ``--max-stack-size=8192``, and also run ``editbin /stack:33554432 node.exe``.
 
 
 Why do I get ``error: cannot compile this aggregate va_arg expression yet`` and it says ``compiler frontend failed to generate LLVM bitcode, halting`` afterwards?
