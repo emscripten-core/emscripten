@@ -7154,6 +7154,47 @@ int main() {
 }
 ''', 'f\nhello\nf\nhello\nf\nhello\nf\nhello\nf\nhello\nexit\n')
 
+  def test_async_abort(self):
+    if not self.is_emterpreter(): return self.skip('emterpreter-only test')
+
+    self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
+
+    Settings.EMTERPRETIFY_ASYNC = 1
+
+    open('lib.js', 'w').write(r'''
+mergeInto(LibraryManager.library, {
+  sleep_with_abort__deps: ['$EmterpreterAsync'],
+  sleep_with_abort: function() {
+    EmterpreterAsync.handle(function(resume) {
+      setTimeout(function() {
+        abort();
+      }, 50);
+      setTimeout(function() {
+        resume();
+      }, 100);
+    });
+  }
+});
+''')
+
+    src = r'''
+#include <stdio.h>
+
+extern "C" {
+extern void sleep_with_abort(void);
+}
+
+int main() {
+    printf("Hello\n");
+    sleep_with_abort();
+    printf("ERROR\n");
+    return 0;
+}
+'''
+
+    self.emcc_args += ['--js-library', 'lib.js']
+    self.do_run(src, 'Hello')
+
   def test_coroutine(self):
     Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     src = r'''
