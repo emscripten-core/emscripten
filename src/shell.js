@@ -68,7 +68,7 @@ if (Module['ENVIRONMENT']) {
   } else if (Module['ENVIRONMENT'] === 'SHELL') {
     ENVIRONMENT_IS_SHELL = true;
   } else {
-    throw new Error('The provided Module[\'ENVIRONMENT\'] value is not valid. It must be one of: WEB|WORKER|NODE|SHELL.');
+    throw new Error('Module[\'ENVIRONMENT\'] value is not valid. must be one of: WEB|WORKER|NODE|SHELL.');
   }
 } else {
   ENVIRONMENT_IS_WEB = typeof window === 'object';
@@ -118,8 +118,6 @@ if (ENVIRONMENT_IS_NODE) {
 
   if (process['argv'].length > 1) {
     Module['thisProgram'] = process['argv'][1].replace(/\\/g, '/');
-  } else {
-    Module['thisProgram'] = 'unknown-program';
   }
 
   Module['arguments'] = process['argv'].slice(2);
@@ -162,8 +160,6 @@ else if (ENVIRONMENT_IS_SHELL) {
 #endif
       return read(f);
     };
-  } else {
-    Module['read'] = function shell_read() { throw 'no read() available' };
   }
 
   Module['readBinary'] = function readBinary(f) {
@@ -264,25 +260,23 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 
   Module['setWindowTitle'] = function(title) { document.title = title };
 }
+#if ASSERTIONS
 else {
   // Unreachable because SHELL is dependent on the others
-  throw new Error('Unknown runtime environment. Where are we?');
+  throw new Error('unknown runtime environment');
 }
+#endif // ASSERTIONS
 
 if (typeof console !== 'undefined') {
   Module['print'] = console.log;
-  Module['printErr'] = console.warn || console.log;
+  Module['printErr'] = console.warn;
+} else if (typeof print !== 'undefined') {
+  Module['print'] = print;
+  if (typeof printErr !== 'undefined') Module['printErr'] = printErr;
 } else {
-  Module['print'] = Module['printErr'] = function(){};
-#if LEGACY_VM_SUPPORT
-  if (typeof print !== 'undefined') {
-    Module['print'] = Module['printErr'] = print;
-  }
-  if (typeof printErr !== 'undefined') {
-    Module['printErr'] = printErr;
-  }
-#endif
+  Module['print'] = {};
 }
+if (!Module['printErr']) Module['printErr'] = Module['print'];
 
 // *** Environment setup code ***
 
