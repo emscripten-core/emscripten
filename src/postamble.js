@@ -3,17 +3,7 @@
 
 Module['asm'] = asm;
 
-{{{ maybeExport('FS') }}}
-{{{ maybeExport('FS_createFolder') }}}
-{{{ maybeExport('FS_createPath') }}}
-{{{ maybeExport('FS_createDataFile') }}}
-{{{ maybeExport('FS_createPreloadedFile') }}}
-{{{ maybeExport('FS_createLazyFile') }}}
-{{{ maybeExport('FS_createLink') }}}
-{{{ maybeExport('FS_createDevice') }}}
-{{{ maybeExport('FS_unlink') }}}
-
-{{{ maybeExport('GL') }}}
+{{{ exportRuntime() }}}
 
 #if MEM_INIT_IN_WASM == 0
 #if MEM_INIT_METHOD == 2
@@ -188,19 +178,12 @@ Module['callMain'] = function callMain(args) {
   ensureInitRuntime();
 
   var argc = args.length+1;
-  function pad() {
-    for (var i = 0; i < {{{ QUANTUM_SIZE }}}-1; i++) {
-      argv.push(0);
-    }
+  var argv = stackAlloc((argc + 1) * {{{ Runtime.POINTER_SIZE }}});
+  HEAP32[argv >> 2] = allocateUTF8OnStack(Module['thisProgram']);
+  for (var i = 1; i < argc; i++) {
+    HEAP32[(argv >> 2) + i] = allocateUTF8OnStack(args[i - 1]);
   }
-  var argv = [allocate(intArrayFromString(Module['thisProgram']), 'i8', ALLOC_NORMAL) ];
-  pad();
-  for (var i = 0; i < argc-1; i = i + 1) {
-    argv.push(allocate(intArrayFromString(args[i]), 'i8', ALLOC_NORMAL));
-    pad();
-  }
-  argv.push(0);
-  argv = allocate(argv, 'i32', ALLOC_NORMAL);
+  HEAP32[(argv >> 2) + argc] = 0;
 
 #if EMTERPRETIFY_ASYNC
   var initialEmtStackTop = Module['asm']['emtStackSave']();
@@ -331,9 +314,9 @@ function run(args) {
 }
 Module['run'] = run;
 
-function exit(status, implicit) {
 #if ASSERTIONS
-#if NO_EXIT_RUNTIME == 1
+#if NO_EXIT_RUNTIME
+function checkUnflushedContent() {
   // Compiler settings do not allow exiting the runtime, so flushing
   // the streams is not possible. but in ASSERTIONS mode we check
   // if there was something to flush, and if so tell the user they
@@ -345,27 +328,49 @@ function exit(status, implicit) {
   // How we flush the streams depends on whether we are in NO_FILESYSTEM
   // mode (which has its own special function for this; otherwise, all
   // the code is inside libc)
-#if NO_FILESYSTEM
-  var flush = {{{ '$flush_NO_FILESYSTEM' in addedLibraryItems ? 'flush_NO_FILESYSTEM' : 'null' }}};
-#else
-  var flush = {{{ '$FS' in addedLibraryItems ? 'FS.quit' : "Module['_fflush']" }}};
-#endif
-  if (flush) {
-    var print = Module['print'];
-    var printErr = Module['printErr'];
-    var has = false;
-    Module['print'] = Module['printErr'] = function(x) {
-      has = true;
-    }
-    try { // it doesn't matter if it fails
-      flush(0);
-    } catch(e) {}
-    Module['print'] = print;
-    Module['printErr'] = printErr;
-    if (has) {
-      warnOnce('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0 (see the FAQ), or make sure to emit a newline when you printf etc.');
-    }
+  var print = Module['print'];
+  var printErr = Module['printErr'];
+  var has = false;
+  Module['print'] = Module['printErr'] = function(x) {
+    has = true;
   }
+  try { // it doesn't matter if it fails
+#if NO_FILESYSTEM
+    var flush = {{{ '$flush_NO_FILESYSTEM' in addedLibraryItems ? 'flush_NO_FILESYSTEM' : 'null' }}};
+#else
+    var flush = Module['_fflush'];
+#endif
+    if (flush) flush(0);
+#if NO_FILESYSTEM == 0
+    // also flush in the JS FS layer
+    var hasFS = {{{ '$FS' in addedLibraryItems ? 'true' : 'false' }}};
+    if (hasFS) {
+      ['stdout', 'stderr'].forEach(function(name) {
+        var info = FS.analyzePath('/dev/' + name);
+        if (!info) return;
+        var stream = info.object;
+        var rdev = stream.rdev;
+        var tty = TTY.ttys[rdev];
+        if (tty && tty.output && tty.output.length) {
+          has = true;
+        }
+      });
+    }
+#endif
+  } catch(e) {}
+  Module['print'] = print;
+  Module['printErr'] = printErr;
+  if (has) {
+    warnOnce('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0 (see the FAQ), or make sure to emit a newline when you printf etc.');
+  }
+}
+#endif // NO_EXIT_RUNTIME
+#endif // ASSERTIONS
+
+function exit(status, implicit) {
+#if ASSERTIONS
+#if NO_EXIT_RUNTIME
+  checkUnflushedContent();
 #endif // NO_EXIT_RUNTIME
 #endif // ASSERTIONS
 
@@ -431,11 +436,9 @@ function abort(what) {
   EXITSTATUS = 1;
 
 #if ASSERTIONS == 0
-  var extra = '\nIf this abort() is unexpected, build with -s ASSERTIONS=1 which can give more information.';
+  throw 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
 #else
   var extra = '';
-#endif
-
   var output = 'abort(' + what + ') at ' + stackTrace() + extra;
   if (abortDecorators) {
     abortDecorators.forEach(function(decorator) {
@@ -443,6 +446,7 @@ function abort(what) {
     });
   }
   throw output;
+#endif // ASSERTIONS
 }
 Module['abort'] = abort;
 

@@ -24,9 +24,9 @@ mergeInto(LibraryManager.library, {
       try {
         stat = fs.lstatSync(path);
         if (NODEFS.isWindows) {
-          // On Windows, directories return permission bits 'rw-rw-rw-', even though they have 'rwxrwxrwx', so
-          // propagate write bits to execute bits.
-          stat.mode = stat.mode | ((stat.mode & 146) >> 1);
+          // Node.js on Windows never represents permission bit 'x', so
+          // propagate read bits to execute bits
+          stat.mode = stat.mode | ((stat.mode & 292) >> 2);
         }
       } catch (e) {
         if (!e.code) throw e;
@@ -239,32 +239,24 @@ mergeInto(LibraryManager.library, {
         }
       },
       read: function (stream, buffer, offset, length, position) {
-        if (length === 0) return 0; // node errors on 0 length reads
-        // FIXME this is terrible.
-        var nbuffer = new Buffer(length);
-        var res;
+        // Node.js < 6 compatibility: node errors on 0 length reads
+        if (length === 0) return 0;
+        // Node.js < 4.5 compatibility: Buffer.from does not support ArrayBuffer
+        var buf = Buffer.from ? Buffer.from(buffer.buffer) : new Buffer(buffer.buffer);
         try {
-          res = fs.readSync(stream.nfd, nbuffer, 0, length, position);
+          return fs.readSync(stream.nfd, buf, offset, length, position);
         } catch (e) {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
-        if (res > 0) {
-          for (var i = 0; i < res; i++) {
-            buffer[offset + i] = nbuffer[i];
-          }
-        }
-        return res;
       },
       write: function (stream, buffer, offset, length, position) {
-        // FIXME this is terrible.
-        var nbuffer = new Buffer(buffer.subarray(offset, offset + length));
-        var res;
+        // Node.js < 4.5 compatibility: Buffer.from does not support ArrayBuffer
+        var buf = Buffer.from ? Buffer.from(buffer.buffer) : new Buffer(buffer.buffer);
         try {
-          res = fs.writeSync(stream.nfd, nbuffer, 0, length, position);
+          return fs.writeSync(stream.nfd, buf, offset, length, position);
         } catch (e) {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
-        return res;
       },
       llseek: function (stream, offset, whence) {
         var position = offset;

@@ -9,6 +9,9 @@ Not all changes are documented here. In particular, new features, user-oriented 
 
 Current Trunk
 -------------
+
+v1.37.28: 01/08/2018
+--------------------
  - Breaking change: Don't export the `ALLOC_*` numeric constants by default. As with previous changes, a warning will be shown in `-O0` and when `ASSERTIONS` are on if they are used.
  - Breaking change: Don't export FS methods by default. As with previous changes, a warning will be shown in `-O0` and when `ASSERTIONS` are on, which will suggest either exporting the specific methods you need, or using `FORCE_FILESYSTEM` which will auto export all the main filesystem methods. Aside from using FS methods yourself, you may notice this change when using a file package created standalone, that is, by running the file packager directly and then loading it at run time (as opposed to telling `emcc` to package the files for you, in which case it would be aware of them at compile time); you should build with `FORCE_FILESYSTEM` to ensure filesystem support for that case.
 

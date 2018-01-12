@@ -35,7 +35,7 @@ class Benchmarker(object):
     for i in range(reps):
       start = time.time()
       output = self.run(args)
-      if not output_parser:
+      if not output_parser or args == ['0']: # if arg is 0, we are not running code, and have no output to parse
         if IGNORE_COMPILATION:
           curr = float(re.search('took +([\d\.]+) milliseconds', output).group(1)) / 1000
         else:
@@ -165,10 +165,9 @@ process(sys.argv[1])
       '--js-transform', 'python hardcode.py',
       '-s', 'TOTAL_MEMORY=256*1024*1024',
       '-s', 'NO_FILESYSTEM=1',
-      '-s', 'EXPORTED_RUNTIME_METHODS=[]',
-      '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       #'--profiling',
       '--closure', '1',
+      '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
     ] + shared_args + emcc_args + self.extra_args
     if 'FORCE_FILESYSTEM=1' in cmd:
@@ -771,21 +770,24 @@ class benchmark(RunnerCore):
     src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
     self.do_benchmark('skinning', src, 'blah=0.000000')
 
+  def test_havlak(self):
+    src = open(path_from_root('tests', 'havlak.cpp'), 'r').read()
+    self.do_benchmark('havlak', src, 'Found', shared_args=['-std=c++11'])
+
+  def test_base64(self):
+    src = open(path_from_root('tests', 'base64.cpp'), 'r').read()
+    self.do_benchmark('base64', src, 'decode')
+
   def test_life(self):
     if CORE_BENCHMARKS: return
     src = open(path_from_root('tests', 'life.c'), 'r').read()
     self.do_benchmark('life', src, '''--------------------------------''', shared_args=['-std=c99'], force_c=True)
 
-  def test_linpack_double(self):
-    if CORE_BENCHMARKS: return
+  def test_linpack(self):
     def output_parser(output):
-      return 100.0/float(re.search('Unrolled Double  Precision +([\d\.]+) Mflops', output).group(1))
-    self.do_benchmark('linpack_double', open(path_from_root('tests', 'linpack.c')).read(), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
-
-  def test_linpack_float(self): # TODO: investigate if this might benefit from -ffast-math in LLVM 3.3+ which has fast math stuff in LLVM IR
-    def output_parser(output):
-      return 100.0/float(re.search('Unrolled Single  Precision +([\d\.]+) Mflops', output).group(1))
-    self.do_benchmark('linpack_float', open(path_from_root('tests', 'linpack.c')).read(), '''Unrolled Single  Precision''', force_c=True, output_parser=output_parser, shared_args=['-DSP'])
+      mflops = re.search('Unrolled Double  Precision ([\d\.]+) Mflops', output).group(1)
+      return 100.0/float(mflops)
+    self.do_benchmark('linpack_double', open(path_from_root('tests', 'linpack2.c')).read(), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
 
   # Benchmarks the synthetic performance of calling native functions.
   def test_native_functions(self):

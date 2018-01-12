@@ -1,6 +1,9 @@
 defaults: &defaults
   docker:
     - image: buildpack-deps:xenial
+      environment:
+        LANG: C.UTF-8
+        EMSCRIPTEN_ALLOW_NEWER_PYTHON: 1
   working_directory: ~/
 
 test-defaults: &test-defaults
@@ -14,10 +17,10 @@ test-defaults: &test-defaults
 
     - run: |
         apt-get update
-        apt-get install -y python python-pip cmake build-essential openjdk-9-jre-headless
-        pip install --upgrade pip
-        pip install lit
-        EMCC_CORES=4 python emscripten/tests/runner.py $TEST_TARGET
+        apt-get install -y python3 python3-pip cmake build-essential openjdk-9-jre-headless
+        pip3 install --upgrade pip
+        pip3 install lit
+        EMCC_CORES=4 python3 emscripten/tests/runner.py $TEST_TARGET
 
 version: 2
 jobs:
@@ -28,7 +31,7 @@ jobs:
           path: emscripten/
       - run: |
           apt-get update
-          apt-get install -y python cmake
+          apt-get install -y python3 cmake
           wget https://github.com/juj/emsdk/archive/master.tar.gz
           tar -xf master.tar.gz
           pushd emsdk-master
@@ -38,8 +41,8 @@ jobs:
           popd
           echo EMSCRIPTEN_ROOT="'~/emscripten/'" >> .emscripten
           echo BINARYEN_ROOT="''" >> .emscripten
-          EMCC_CORES=4 python2 emscripten/embuilder.py build ALL
-          python2 emscripten/tests/runner.py test_hello_world
+          EMCC_CORES=4 python3 emscripten/embuilder.py build ALL
+          python3 emscripten/tests/runner.py test_hello_world
 
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
@@ -78,11 +81,7 @@ jobs:
   test-d:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=default.test_d* asm1.test_d* asm2.test_d* asm2f.test_d* asm2g.test_d* asm3.test_d*
-  test-d2i:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=asm2i.test_d*
+      - TEST_TARGET=default.test_d* asm1.test_d* asm2.test_d* asm2g.test_d* asm3.test_d*
   test-e:
     <<: *test-defaults
     environment:
@@ -102,20 +101,32 @@ jobs:
   test-p:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=default.test_p* asm1.test_p* asm2.test_p* asm2f.test_p* asm2g.test_p* asm3.test_p*
-  test-p2i:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=asm2i.test_p*
+      - TEST_TARGET=default.test_p* asm1.test_p* asm2.test_p* asm2g.test_p* asm3.test_p*
   test-qrst:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=ALL.test_q* ALL.test_r* ALL.test_s* ALL.test_t* skip:default.test_simd_sitofp skip:default.test_simd3 skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full
-      # TODO: remove skips after fastcomp update on travis for 1.37.23
+      - TEST_TARGET=ALL.test_q* ALL.test_r* ALL.test_s* ALL.test_t* skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full
+      # SSE tests fail because of the lack of native headers on emsdk-bundled clang
   test-uvwxyz:
     <<: *test-defaults
     environment:
       - TEST_TARGET=ALL.test_u* ALL.test_w* ALL.test_v* ALL.test_x* ALL.test_y* ALL.test_z*
+  test-binaryen0:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=binaryen0
+  test-binaryen1:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=binaryen1
+  test-binaryen2:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=binaryen2
+  test-binaryen3:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=binaryen3
 
 workflows:
   version: 2
@@ -141,9 +152,6 @@ workflows:
       - test-d:
           requires:
             - build
-      - test-d2i:
-          requires:
-            - build
       - test-e:
           requires:
             - build
@@ -159,12 +167,21 @@ workflows:
       - test-p:
           requires:
             - build
-      - test-p2i:
-          requires:
-            - build
       - test-qrst:
           requires:
             - build
       - test-uvwxyz:
+          requires:
+            - build
+      - test-binaryen0:
+          requires:
+            - build
+      - test-binaryen1:
+          requires:
+            - build
+      - test-binaryen2:
+          requires:
+            - build
+      - test-binaryen3:
           requires:
             - build

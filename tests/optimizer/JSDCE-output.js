@@ -1,6 +1,10 @@
 
 var z = fleefl();
 var zz = fleefl();
+var keeperObj = {
+ x: fleefl()
+};
+var keeperArray = [ 1, 2, "3", four() ];
 function g(a) {
  return a + 1;
 }
@@ -36,4 +40,14 @@ function emulate() {
  };
 }
 emulate();
+___cxa_find_matching_catch_before();
+function ___cxa_find_matching_catch_before() {
+ if (!___cxa_find_matching_catch_before.buffer) ___cxa_find_matching_catch_before.buffer = {};
+}
+function ___cxa_find_matching_catch_after() {
+ if (!___cxa_find_matching_catch_after.buffer) ___cxa_find_matching_catch_after.buffer = {};
+}
+___cxa_find_matching_catch_after();
+
+
 
