@@ -1384,6 +1384,12 @@ class Building(object):
 
   @staticmethod
   def get_building_env(native=False, doublequote_commands=False):
+    # CMake does not like 'CC=python emcc.py', CMAKE_C_COMPILER becomes just 'python' without emcc
+    def shellpath(pypath):
+      ext = '.bat' if WINDOWS else ''
+      if pypath.endswith('.py'):
+        pypath = pypath[:-3]
+      return quote(pypath + ext)
     def nop(arg):
       return arg
     quote = Building.doublequote_spaces if doublequote_commands else nop
@@ -1401,13 +1407,13 @@ class Building(object):
         if env.get(dangerous) and env.get(dangerous) == non_native.get(dangerous):
           del env[dangerous] # better to delete it than leave it, as the non-native one is definitely wrong
       return env
-    env['CC'] = 'python %s' % quote(EMCC)
-    env['CXX'] = 'python %s' % quote(EMXX)
-    env['AR'] = 'python %s' % quote(EMAR)
-    env['LD'] = 'python %s' % quote(EMCC)
+    env['CC'] = shellpath(EMCC)
+    env['CXX'] = shellpath(EMXX)
+    env['AR'] = shellpath(EMAR)
+    env['LD'] = shellpath(EMCC)
     env['NM'] = quote(LLVM_NM)
-    env['LDSHARED'] = 'python %s' % quote(EMCC)
-    env['RANLIB'] = quote(EMRANLIB) if not WINDOWS else 'python %s' % quote(EMRANLIB)
+    env['LDSHARED'] = shellpath(EMCC)
+    env['RANLIB'] = shellpath(EMRANLIB)
     env['EMMAKEN_COMPILER'] = quote(Building.COMPILER)
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(Building.COMPILER_TEST_OPTS)
