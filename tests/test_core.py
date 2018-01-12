@@ -4824,9 +4824,9 @@ PORT: 3979
       print('(iteration)')
       time.sleep(random.random()/(10*num)) # add some timing nondeterminism here, not that we need it, but whatever
       self.do_run(src, 'hello world\n77.\n')
-      ret = open('src.cpp.o.js').read()
+      ret = open('src.cpp.o.js', 'rb').read()
       if Settings.BINARYEN:
-        ret += open('src.cpp.o.wasm').read()
+        ret += open('src.cpp.o.wasm', 'rb').read()
       return ret
     builds = [test() for i in range(num)]
     print(list(map(len, builds)))
