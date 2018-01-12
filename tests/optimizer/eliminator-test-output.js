@@ -121,11 +121,7 @@ function g(a1, a2) {
  a = c;
  foo(c);
  foo(2);
- for (var i = 0; i < 5; i++) {
-  {
-   a: 1
-  } + [ 2, 3 ];
- }
+ for (var i = 0; i < 5; i++) {}
  for (var iterator in SOME_GLOBAL) {
   quux(iterator);
  }
