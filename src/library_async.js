@@ -262,8 +262,8 @@ mergeInto(LibraryManager.library, {
       if (EmterpreterAsync.state === 0) {
         // save the stack we want to resume. this lets other code run in between
         // XXX this assumes that this stack top never ever leak! exceptions might violate that
-        var stack = new Int32Array(HEAP32.subarray(EMTSTACKTOP>>2, Module['asm'].emtStackSave()>>2));
-        var stacktop = Module['asm'].stackSave();
+        var stack = new Int32Array(HEAP32.subarray(EMTSTACKTOP>>2, Module['emtStackSave']()>>2));
+        var stacktop = Module['stackSave']();
 
         var resumedCallbacksForYield = false;
         function resumeCallbacksForYield() {
@@ -300,7 +300,7 @@ mergeInto(LibraryManager.library, {
           // copy the stack back in and resume
           HEAP32.set(stack, EMTSTACKTOP>>2);
 #if ASSERTIONS
-          assert(stacktop === Module['asm'].stackSave()); // nothing should have modified the stack meanwhile
+          assert(stacktop === Module['stackSave']()); // nothing should have modified the stack meanwhile
 #endif
           EmterpreterAsync.setState(2);
           // Resume the main loop
@@ -309,7 +309,7 @@ mergeInto(LibraryManager.library, {
           }
           assert(!EmterpreterAsync.postAsync);
           EmterpreterAsync.postAsync = post || null;
-          Module['asm'].emterpret(stack[0]); // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
+          Module['emterpret'](stack[0]); // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
           if (!yieldDuring && EmterpreterAsync.state === 0) {
             // if we did *not* do another async operation, then we know that nothing is conceptually on the stack now, and we can re-allow async callbacks as well as run the queued ones right now
             Browser.resumeAsyncCallbacks();
