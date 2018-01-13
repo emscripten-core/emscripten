@@ -305,6 +305,9 @@ def run_on_chunk(command):
     raise Exception()
 
 def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, just_split=False, just_concat=False):
+  # Load the correct optimizer
+  JS_OPTIMIZER = path_from_root('tools', 'js-optimizer-babel.js' if shared.Settings.BABEL_OPTIMIZER else 'js-optimizer.js')
+
   with ToolchainProfiler.profile_block('js_optimizer.split_markers'):
     if not isinstance(passes, list):
       passes = [passes]

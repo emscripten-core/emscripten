@@ -2,6 +2,7 @@
   "name": "emscripten",
   "version": "1.13.0",
   "dependencies": {
+    "babel-core": "^6.26.0",
     "ws": "~0.4.28"
   }
 }
