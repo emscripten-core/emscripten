@@ -7168,10 +7168,10 @@ mergeInto(LibraryManager.library, {
     EmterpreterAsync.handle(function(resume) {
       setTimeout(function() {
         abort();
-      }, 50);
-      setTimeout(function() {
-        resume();
-      }, 100);
+        setTimeout(function() {
+          resume();
+        }, 10);
+      }, 10);
     });
   }
 });
