@@ -120,7 +120,7 @@ mergeInto(LibraryManager.library, {
  * 32 my stack:
  *    ...
  */
-  emscripten_coroutine_create__sig: 'iii',
+  emscripten_coroutine_create__sig: 'iiii',
   emscripten_coroutine_create__asm: true,
   emscripten_coroutine_create__deps: ['malloc', 'emscripten_alloc_async_context'],
   emscripten_coroutine_create: function(f, arg, stack_size) {
@@ -427,7 +427,7 @@ mergeInto(LibraryManager.library, {
    * 32 my stack:
    *    ...
    */
-  emscripten_coroutine_create__sig: 'iii',
+  emscripten_coroutine_create__sig: 'iiii',
   emscripten_coroutine_create__asm: true,
   emscripten_coroutine_create__deps: ['malloc'],
   emscripten_coroutine_create: function(f, arg, stack_size) {
