@@ -396,6 +396,15 @@ function exportRuntime() {
     runtimeElements.push('intArrayFromBase64');
     runtimeElements.push('tryParseAsDataURI');
   }
+  // dynCall_* methods are not hardcoded here, as they
+  // depend on the file being compiled. check for them
+  // and add them.
+  for (var name in EXPORTED_RUNTIME_METHODS_SET) {
+    if (/^dynCall_/.test(name)) {
+      // a specific dynCall; add to the list
+      runtimeElements.push(name);
+    }
+  }
   var runtimeNumbers = [
     'ALLOC_NORMAL',
     'ALLOC_STACK',

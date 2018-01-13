@@ -60,6 +60,29 @@ class other(RunnerCore):
       self.assertNotContained('this is dangerous', output.stdout)
       self.assertNotContained('this is dangerous', output.stderr)
 
+  def test_emcc_python_version(self):
+    env = os.environ.copy()
+    env['EMSCRIPTEN_ALLOW_NEWER_PYTHON'] = '1'
+
+    for version in [2, 3]:
+      py = ["py", '-%s' % version] if WINDOWS else ["python%s" % version]
+      try:
+        output = run_process(py + ['--version'], stdout=PIPE, stderr=PIPE)
+        print("python%s" % version)
+      except:
+        print("python%s does not exist, skipping" % version)
+        continue
+
+      # Python 2 emits its version in stderr
+      major = int((output.stdout if output.stdout else output.stderr)[7])
+
+      output = run_process(py + [path_from_root('emcc'), '--version'], stdout=PIPE, stderr=PIPE, env=env).stderr
+      expected_call = 'Running on Python %s which is not officially supported yet' % major
+      if major > 2:
+        assert expected_call in output
+      else:
+        assert expected_call not in output
+
   def test_emcc(self):
     for compiler in [EMCC, EMXX]:
       shortcompiler = os.path.basename(compiler)
@@ -6859,6 +6882,10 @@ int main() {
     self.assertContained('one possible cause of this is missing quotation marks', err) # but we suggested the fix
 
   def test_python_2_3(self): # check emcc/em++ can be called by any python
+    # remove .py from EMCC(=emcc.py)
+    def trim_py_suffix(filename):
+      return filename[:-3] if filename.endswith('.py') else filename
+
     print()
     for python in ['python', 'python2', 'python3']:
       try:
@@ -6869,12 +6896,12 @@ int main() {
       print(python, has)
       if has:
         print('  checking emcc...')
-        check_execute([python, EMCC, '--version'])
+        check_execute([python, trim_py_suffix(EMCC), '--version'])
         print('  checking em++...')
-        check_execute([python, EMXX, '--version'])
+        check_execute([python, trim_py_suffix(EMXX), '--version'])
         if python == 'python2':
           print('  checking emcc.py...')
-          check_execute([python, EMCC + '.py', '--version'])
+          check_execute([python, EMCC, '--version'])
 
   def test_zeroinit(self):
     open('src.c', 'w').write(r'''
@@ -7010,7 +7037,7 @@ int main() {
   }, int64_t(0x12345678ABCDEF1FLL));
 }
 ''')
-    err = run_process([PYTHON, EMCC, 'src.cpp', '-Oz'], stderr=PIPE).stderr
+    err = run_process([PYTHON, EMCC, 'src.cpp', '-Oz'], stderr=PIPE, check=False).stderr
     self.assertContained('LLVM ERROR: EM_ASM should not receive i64s as inputs, they are not valid in JS', err)
 
   def test_eval_ctors(self):
@@ -7780,9 +7807,9 @@ int main() {
       ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  48213, 26, 19),
       (['-O1'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13460, 17, 17),
       (['-O2'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13381, 17, 17),
-      (['-O3'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10165, 16,  3), # in -O3, -Os and -Oz we metadce
-      (['-Os'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10091, 16,  3),
-      (['-Oz'], 13, ['abort'],                  ['tempDoublePtr', 'waka'], 10081, 16,  3),
+      (['-O3'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2678, 10,  2), # in -O3, -Os and -Oz we metadce
+      (['-Os'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2771, 10,  2),
+      (['-Oz'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2765, 10,  2),
       # finally, check what happens when we export nothing. wasm should be almost empty
       (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
                  0, [],                         ['tempDoublePtr', 'waka'],     8,  0,  0), # totally empty!
@@ -7956,8 +7983,8 @@ int main() {
   def test_native_link_error_message(self):
     Popen([CLANG, '-c', path_from_root('tests', 'hello_world.c'), '-o', 'hello_world.o'] + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE, stderr=PIPE).communicate()
     Popen([LLVM_AR, 'r', 'hello_world.a', 'hello_world.o'], env=get_clang_native_env(), stdout=PIPE, stderr=PIPE).communicate()
-    err = run_process([PYTHON, EMCC, 'hello_world.a', '-o', 'hello_world.js'], stdout=PIPE, stderr=PIPE).stderr
-    assert 'exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?' in err
+    err = run_process([PYTHON, EMCC, 'hello_world.a', '-o', 'hello_world.js'], stdout=PIPE, stderr=PIPE, check=False).stderr
+    assert 'exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?' in err, err
 
   def test_o_level_clamp(self):
     for level in [3, 4, 20]:

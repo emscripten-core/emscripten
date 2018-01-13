@@ -24,9 +24,9 @@ mergeInto(LibraryManager.library, {
       try {
         stat = fs.lstatSync(path);
         if (NODEFS.isWindows) {
-          // On Windows, directories return permission bits 'rw-rw-rw-', even though they have 'rwxrwxrwx', so
-          // propagate write bits to execute bits.
-          stat.mode = stat.mode | ((stat.mode & 146) >> 1);
+          // Node.js on Windows never represents permission bit 'x', so
+          // propagate read bits to execute bits
+          stat.mode = stat.mode | ((stat.mode & 292) >> 2);
         }
       } catch (e) {
         if (!e.code) throw e;

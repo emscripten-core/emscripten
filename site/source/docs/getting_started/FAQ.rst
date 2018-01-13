@@ -408,6 +408,9 @@ You may need to quote things like this:
 	# this works on most Linuxes and on macOS
 	./emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']"
 
+	# or you may need something like this
+	./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=\"['addOnPostRun']\"
+
 The proper syntax depends on the OS and shell you are in.
 
 Why do I get an odd python error complaining about libcxx.bc or libcxxabi.bc?

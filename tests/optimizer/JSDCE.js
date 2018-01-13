@@ -4,7 +4,10 @@ var x;
 var y = 1;
 var z = fleefl();
 var xx, yy = 1, zz = fleefl(); // but zz must remain due to the side effects in the value
-var obj = {};
+var obj = { x: 5 };
+var keeperObj = { x: fleefl() };
+var array = [1, 2, '3', function() { ignoreInsideIt() }];
+var keeperArray = [1, 2, '3', four()];
 function f(x, y, z) {
   // shadow the x,y,z
   x = y;
