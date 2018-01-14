@@ -4,7 +4,8 @@ mergeInto(LibraryManager.library, {
     'var _wrapNodeError = function(func) { return function() { try { return func.apply(this, arguments) } catch (e) { if (!e.code) throw e; throw new FS.ErrnoError(ERRNO_CODES[e.code]); } } };' +
     'var VFS = Object.assign({}, FS);' +
     'for (var _key in NODERAWFS) FS[_key] = _wrapNodeError(NODERAWFS[_key]);' +
-    '}',
+    '}' +
+    'else { throw new Error("NODERAWFS is currently only supported on Node.js environment.") }',
   $NODERAWFS: {
     lookupPath: function(path) {
       return { path: path, node: { mode: NODEFS.getMode(path) } };
