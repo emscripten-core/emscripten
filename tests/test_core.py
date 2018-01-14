@@ -4834,7 +4834,7 @@ PORT: 3979
     if len(uniques) != 1:
       i = 0
       for unique in uniques:
-        open('unique_' + str(i) + '.js', 'w').write(unique)
+        open('unique_' + str(i) + '.js', 'wb').write(unique)
         i += 1
       assert 0, 'builds must be deterministic, see unique_X.js'
 
