@@ -43,7 +43,6 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, ch
         length = end-start+1
         s.sendheaders([],length)
         s.wfile.write(data[start:end+1])
-      s.wfile.close()
 
   expectedConns = 11
   httpd = HTTPServer(('localhost', 11111), ChunkedServerHandler)
@@ -1573,7 +1572,7 @@ keydown(100);keyup(100); // trigger the end
 
     chunkSize = 1024
     data = os.urandom(10*chunkSize+1) # 10 full chunks and one 1 byte chunk
-    checksum = zlib.adler32(data)
+    checksum = zlib.adler32(data) & 0xffffffff # Python 2 compatibility: force bigint
 
     server = multiprocessing.Process(target=test_chunked_synchronous_xhr_server, args=(True,chunkSize,data,checksum,self.test_port))
     server.start()
