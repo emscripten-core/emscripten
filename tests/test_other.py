@@ -4214,7 +4214,9 @@ EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny
     assert len(bad) == 0, '\n\n'.join(diff)
 
   def test_dashE_respect_dashO(self): # issue #3365
-    with_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-E', '-o', '/dev/null'], stdout=PIPE, stderr=PIPE).stdout
+    null_file = 'NUL' if WINDOWS else '/dev/null'
+    with_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-E', '-o', null_file], stdout=PIPE, stderr=PIPE).stdout
+    if WINDOWS: assert not os.path.isfile(null_file)
     without_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-E'], stdout=PIPE, stderr=PIPE).stdout
     assert len(with_dash_o) == 0
     assert len(without_dash_o) != 0
@@ -4236,7 +4238,9 @@ EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny
     assert len(bad) == 0, '\n\n'.join(diff)
 
   def test_dashM_respect_dashO(self):
-    with_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-M', '-o', '/dev/null'], stdout=PIPE, stderr=PIPE).stdout
+    null_file = 'NUL' if WINDOWS else '/dev/null'
+    with_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-M', '-o', null_file], stdout=PIPE, stderr=PIPE).stdout
+    if WINDOWS: assert not os.path.isfile(null_file)
     without_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-M'], stdout=PIPE, stderr=PIPE).stdout
     assert len(with_dash_o) == 0
     assert len(without_dash_o) != 0
