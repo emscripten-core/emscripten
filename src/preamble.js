@@ -751,6 +751,14 @@ function allocateUTF8(str) {
   return ret;
 }
 
+// Allocate stack space for a JS string, and write it there.
+function allocateUTF8OnStack(str) {
+  var size = lengthBytesUTF8(str) + 1;
+  var ret = stackAlloc(size);
+  stringToUTF8Array(str, HEAP8, ret, size);
+  return ret;
+}
+
 function demangle(func) {
 #if DEMANGLE_SUPPORT
   var __cxa_demangle_func = Module['___cxa_demangle'] || Module['__cxa_demangle'];
@@ -1701,6 +1709,7 @@ var Math_imul = Math.imul;
 var Math_fround = Math.fround;
 var Math_round = Math.round;
 var Math_min = Math.min;
+var Math_max = Math.max;
 var Math_clz32 = Math.clz32;
 var Math_trunc = Math.trunc;
 
