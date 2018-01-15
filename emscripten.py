@@ -1994,7 +1994,7 @@ var establishStackSpace = Module['establishStackSpace'];
 
 def create_backend_args_wasm(infile, temp_s, settings):
   backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
-  args = [backend_compiler, infile, '-march=wasm32', '-filetype=asm',
+  args = [backend_compiler, infile, '-mtriple=wasm32-unknown-unknown-elf', '-filetype=asm',
                   '-asm-verbose=false',
                   '-o', temp_s]
   args += ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
