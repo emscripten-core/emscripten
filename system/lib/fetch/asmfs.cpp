@@ -13,6 +13,9 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <ctype.h>
+#include <pthread.h>
+#include <emscripten/threading.h>
+#include <bits/ioctl.h>
 #include "syscall_arch.h"
 
 extern "C" {
@@ -555,24 +558,8 @@ static int stderr_buffer_end = 0;
 
 static void print_stream(void *bytes, int numBytes, bool stdout)
 {
-	char *buffer = stdout ? stdout_buffer : stderr_buffer;
-	int &buffer_end = stdout ? stdout_buffer_end : stderr_buffer_end;
-
-	memcpy(buffer + buffer_end, bytes, numBytes);
-	buffer_end += numBytes;
-	int new_buffer_start = 0;
-	for(int i = 0; i < buffer_end; ++i)
-	{
-		if (buffer[i] == '\n')
-		{
-			buffer[i] = 0;
-			EM_ASM_INT( { Module['print'](Pointer_stringify($0)) }, buffer+new_buffer_start);
-			new_buffer_start = i+1;
-		}
-	}
-	size_t new_buffer_size = buffer_end - new_buffer_start;
-	memmove(buffer, buffer + new_buffer_start, new_buffer_size);
-	buffer_end = new_buffer_size;
+	int fd = stdout ? 1 : 2;
+	MAIN_THREAD_EM_ASM({ Module['writeOut']($0, $1, $2) }, fd, bytes, numBytes);
 }
 
 long __syscall3(int which, ...) // read
@@ -1068,8 +1055,32 @@ long __syscall54(int which, ...) // ioctl/sysctl
 	int request = va_arg(vl, int);
 	char *argp = va_arg(vl, char *);
 	va_end(vl);
-	EM_ASM(Module['printErr']('ioctl(fd=' + $0 + ', request=' + $1 + ', argp=0x' + $2 + ')'), fd, request, argp);
-	RETURN_ERRNO(ENOTSUP, "TODO: ioctl() is a stub and not yet implemented in ASMFS");
+
+	switch(request)
+	{
+		case TCGETS:
+			if (fd > 2) return -ENOTTY; // Currently hardcoded stdin, stdout and stderr fds 0, 1 and 2 (TODO)
+			EM_ASM_INT({Module['printErr']('ioctl(fd=' + $0 + ', request=0x' + $1.toString(16) + ', argp=0x' + $2 + ') warning: not filling tio struct')}, fd, request, argp);
+			return 0;
+		case TCSETS:
+			if (fd > 2) return -ENOTTY; // Currently hardcoded stdin, stdout and stderr fds 0, 1 and 2 (TODO)
+			EM_ASM_INT({Module['printErr']('ioctl(fd=' + $0 + ', request=0x' + $1.toString(16) + ', argp=0x' + $2 + ') warning: not filling tio struct')}, fd, request, argp);
+			return 0;
+		case TIOCGPGRP:
+			if (fd > 2) return -ENOTTY; // Currently hardcoded stdin, stdout and stderr fds 0, 1 and 2 (TODO)
+			*argp = 0;
+			return 0;
+		case TIOCSPGRP:
+			if (fd > 2) return -ENOTTY; // Currently hardcoded stdin, stdout and stderr fds 0, 1 and 2 (TODO)
+			return -EINVAL; // not supported
+		case FIONREAD:
+			*argp = 0;
+			EM_ASM_INT({Module['printErr']('ioctl(fd=' + $0 + ', request=0x' + $1.toString(16) + ', argp=0x' + $2 + ') TODO: Returning hardcoded 0 bytes to read')}, fd, request, argp);
+			return 0;
+		default:
+			EM_ASM_INT({Module['printErr']('ioctl(fd=' + $0 + ', request=0x' + $1.toString(16) + ', argp=0x' + $2 + ')')}, fd, request, argp);
+			RETURN_ERRNO(ENOTSUP, "TODO: ioctl() is a stub and not yet implemented in ASMFS");
+	}
 }
 
 // TODO: syscall60: mode_t umask(mode_t mask);
@@ -1139,6 +1150,51 @@ long __syscall140(int which, ...) // llseek
 	return 0;
 }
 
+static char *stdinBuffer = 0;
+static volatile int stdinBufferUsed = 0;
+static volatile int stdinBufferCapacity = 0;
+static pthread_mutex_t stdinMutex = PTHREAD_MUTEX_INITIALIZER;
+
+void EMSCRIPTEN_KEEPALIVE writeStdin(char *buf, int numBytes)
+{
+	pthread_mutex_lock(&stdinMutex); // todo: lock free
+	if (!stdinBufferUsed + numBytes > stdinBufferCapacity)
+	{
+		int newCapacity = stdinBufferUsed + numBytes > stdinBufferCapacity*2 ? stdinBufferUsed + numBytes : stdinBufferCapacity*2;
+		stdinBuffer = (char*)realloc(stdinBuffer, newCapacity);
+		stdinBufferCapacity = newCapacity;
+	}
+	memcpy(stdinBuffer + stdinBufferUsed, buf, numBytes);
+	stdinBufferUsed += numBytes;
+	pthread_mutex_unlock(&stdinMutex);
+	emscripten_futex_wake(&stdinBufferUsed, 0x7FFFFFFF);
+}
+
+static int readStdin(char *dst, int numBytes)
+{
+	if (numBytes == 0) return 0;
+	int numRead = 0;
+	while(numRead == 0 && numBytes > 0)
+	{
+		pthread_mutex_lock(&stdinMutex); // todo: lock free
+		int numToRead = (numBytes < stdinBufferUsed) ? numBytes : stdinBufferUsed;
+		memcpy(dst, stdinBuffer, numToRead);
+		memmove(stdinBuffer, stdinBuffer + numToRead, stdinBufferUsed - numToRead);
+		stdinBufferUsed -= numToRead;
+		pthread_mutex_unlock(&stdinMutex);
+		dst += numToRead;
+		numBytes -= numToRead;
+		numRead += numToRead;
+		if (numRead == 0 && numBytes > 0)
+		{
+			fflush(stdout);
+			fflush(stderr);
+			emscripten_futex_wait(&stdinBufferUsed, 0, INFINITY);
+		}
+	}
+	return numRead;
+}
+
 // TODO: syscall144 msync
 
 long __syscall145(int which, ...) // readv
@@ -1149,7 +1205,20 @@ long __syscall145(int which, ...) // readv
 	const iovec *iov = va_arg(vl, const iovec*);
 	int iovcnt = va_arg(vl, int);
 	va_end(vl);
-	EM_ASM(Module['printErr']('readv(fd=' + $0 + ', iov=0x' + ($1).toString(16) + ', iovcnt=' + $2 + ')'), fd, iov, iovcnt);
+//	EM_ASM(Module['printErr']('readv(fd=' + $0 + ', iov=0x' + ($1).toString(16) + ', iovcnt=' + $2 + ')'), fd, iov, iovcnt);
+
+	if (fd == 0)
+	{
+		int totalRead = 0;
+		for(int i = 0; i < iovcnt; ++i)
+		{
+			int numRead = readStdin((char*)iov[i].iov_base, iov[i].iov_len);
+			totalRead += numRead;
+			if (numRead < iov[i].iov_len)
+				break;
+		}
+		return totalRead;
+	}
 
 	FileDescriptor *desc = (FileDescriptor*)fd;
 	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC) RETURN_ERRNO(EBADF, "fd isn't a valid open file descriptor");

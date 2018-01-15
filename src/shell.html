@@ -1214,40 +1214,71 @@
     <div class="emscripten_border">
       <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
     </div>
-    <textarea id="output" rows="8"></textarea>
+    <textarea id="output" rows="8" autocomplete=off></textarea>
 
     <script type='text/javascript'>
       var statusElement = document.getElementById('status');
       var progressElement = document.getElementById('progress');
       var spinnerElement = document.getElementById('spinner');
+      var consoleElement = document.getElementById('output');
+
+      function onkey(e) {
+        console.error(e);
+        if (e.ctrlKey || e.altKey) return;
+        if (e.key.length == 1) Module.writeStdin(e.key);
+        else if (e.key == "Enter") Module.writeStdin('\n');
+        else if (e.key == "Backspace") Module.writeStdin(0x08);
+      }
+      window.addEventListener('keypress', onkey);
+      consoleElement.addEventListener('paste', function(e) { var text = e.clipboardData.getData('Text'); Module.writeStdin(text); });
 
       var Module = {
         preRun: [],
         postRun: [],
-        print: (function() {
-          var element = document.getElementById('output');
-          if (element) element.value = ''; // clear browser cache
-          return function(text) {
-            if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
-            // These replacements are necessary if you render to raw HTML
-            //text = text.replace(/&/g, "&amp;");
-            //text = text.replace(/</g, "&lt;");
-            //text = text.replace(/>/g, "&gt;");
-            //text = text.replace('\n', '<br>', 'g');
-            console.log(text);
-            if (element) {
-              element.value += text + "\n";
-              element.scrollTop = element.scrollHeight; // focus on bottom
-            }
-          };
-        })(),
-        printErr: function(text) {
-          if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
-          if (0) { // XXX disabled for safety typeof dump == 'function') {
-            dump(text + '\n'); // fast, straight to the real console
-          } else {
-            console.error(text);
+        fdBuf: ['', '', ''],
+        writeStdin: function(text) {
+          if (text == 0x08) {
+            if (Module.fdBuf[0].length > 0) Module.fdBuf[0] = Module.fdBuf[0].length.substr(0, Module.fdBuf[0].length-1);
+            return;
           }
+          var lastnl = text.lastIndexOf('\n');
+          if (lastnl == -1) {
+            Module.fdBuf[0] += text;
+            return;
+          }
+          Module.fdBuf[0] += text.substr(0, lastnl+1);
+          var len = lengthBytesUTF8(Module.fdBuf[0]);
+          var buf = _malloc(len+1);
+          stringToUTF8(Module.fdBuf[0], buf, len+1);
+          _writeStdin(buf, len);
+          _free(buf);
+          Module.fdBuf[0] = text.substr(lastnl+1);
+        },
+        writeOut: function(fd, ptr, len) {
+          if (!ptr) return;
+          var str = (typeof ptr === 'number') ? String.fromCharCode.apply(String, HEAPU8.subarray(ptr, ptr + len)) : ptr;
+          consoleElement.value += str;
+          consoleElement.scrollTop = consoleElement.scrollHeight;
+          var nl = str.indexOf('\n');
+          if (nl == -1) {
+            Module.fdBuf[fd] += str;
+            return;
+          }
+          var log = (fd == 2) ? console.error : console.log;
+          log(Module.fdBuf[fd] + str.substr(0, nl));
+          var nextnl = str.indexOf('\n', nl+1);
+          while (nextnl != -1) {
+            log(str.substr(nl+1), nextnl-nl-1);
+            nl = nextnl;
+            nextnl = str.indexOf('\n', nl+1);
+          }
+          Module.fdBuf[fd] = str.substr(nl+1);
+        },
+        print: function() {
+          Module.writeOut(1, Array.prototype.slice.call(arguments).join(' ') + '\n');
+        },
+        printErr: function() {
+          Module.writeOut(2, Array.prototype.slice.call(arguments).join(' ') + '\n');
         },
         canvas: (function() {
           var canvas = document.getElementById('canvas');
