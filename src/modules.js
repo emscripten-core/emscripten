@@ -27,7 +27,7 @@ var Types = {
   preciseI64MathUsed: (PRECISE_I64_MATH == 2)
 };
 
-var firstTableIndex = FUNCTION_POINTER_ALIGNMENT * RESERVED_FUNCTION_POINTERS + 1;
+var firstTableIndex = RESERVED_FUNCTION_POINTERS + 1;
 
 var Functions = {
   // All functions that will be implemented in this file. Maps id to signature
