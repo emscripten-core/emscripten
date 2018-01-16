@@ -809,7 +809,7 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
       body = list(map(receive, body))
     for j in range(settings['RESERVED_FUNCTION_POINTERS']):
       curr = 'jsCall_%s_%s' % (sig, j)
-      body[settings['FUNCTION_POINTER_ALIGNMENT'] * (1 + j)] = curr
+      body[1 + j] = curr
       implemented_functions.add(curr)
     Counter.next_item = 0
     def fix_item(item):
