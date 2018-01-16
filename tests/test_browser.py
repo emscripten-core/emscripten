@@ -2307,7 +2307,8 @@ void *getBindBuffer() {
           parser = argparse.ArgumentParser(add_help=False) # otherwise it throws with -headless
           parser.add_argument('-profile')
           browser_args = parser.parse_known_args(browser_args)[1]
-        args += ['--browser_args', ' '.join(browser_args)]
+        if browser_args:
+          args += ['--browser_args', ' ' + ' '.join(browser_args)]
     args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
     process = subprocess.Popen(args)
     process.communicate()
