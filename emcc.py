@@ -65,7 +65,7 @@ LIB_PREFIXES = ('', 'lib')
 JS_CONTAINING_SUFFIXES = ('js', 'html')
 EXECUTABLE_SUFFIXES = JS_CONTAINING_SUFFIXES + ('wasm',)
 
-DEFERRED_REPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST')
+DEFERRED_REPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST', 'EMTERPRETIFY_SYNCLIST')
 
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
 # levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to get
@@ -2203,7 +2203,7 @@ def emterpretify(js_target, optimizer, options):
             final + '.em.js',
             json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST),
             json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST),
-            '',
+            json.dumps(shared.Settings.EMTERPRETIFY_SYNCLIST),
             str(shared.Settings.SWAPPABLE_ASM_MODULE),
            ]
     if shared.Settings.EMTERPRETIFY_ASYNC:

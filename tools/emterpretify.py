@@ -720,6 +720,13 @@ if __name__ == '__main__':
       WHITELIST = json.loads(temp)
 
       if len(sys.argv) >= 6:
+        temp = sys.argv[5]
+        if temp[0] == '"':
+          # response file
+          assert temp[1] == '@'
+          temp = open(temp[2:-1]).read()
+        SYNC_FUNCS.update(json.loads(temp))
+
         if len(sys.argv) >= 7:
           SWAPPABLE = int(sys.argv[6])
 

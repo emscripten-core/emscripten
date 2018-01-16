@@ -649,6 +649,8 @@ var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which func
                              // appears they can be on the stack when a sync function is called in the EMTERPRETIFY_ASYNC option.
                              // After showing the suggested list, compilation will halt. You can apply the provided list as an
                              // emcc argument when compiling later.
+var EMTERPRETIFY_SYNCLIST = []; // If you have additional custom synchronous functions, add them to this list and the advise mode
+                                // will include them in its analysis.
 
 var SPLIT_MEMORY = 0; // If > 0, we split memory into chunks, of the size given in this parameter.
                       //  * TOTAL_MEMORY becomes the maximum amount of memory, as chunks are allocated on
