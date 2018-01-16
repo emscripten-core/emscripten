@@ -5,6 +5,17 @@ mergeInto(LibraryManager.library, {
     isWindows: false,
     staticInit: function() {
       NODEFS.isWindows = !!process.platform.match(/^win/);
+      var flags = process["binding"]("constants")["fs"];
+      NODEFS.flagsForNodeMap = {
+        "{{{ cDefine('O_APPEND') }}}": flags["O_APPEND"],
+        "{{{ cDefine('O_CREAT') }}}": flags["O_CREAT"],
+        "{{{ cDefine('O_EXCL') }}}": flags["O_EXCL"],
+        "{{{ cDefine('O_RDONLY') }}}": flags["O_RDONLY"],
+        "{{{ cDefine('O_RDWR') }}}": flags["O_RDWR"],
+        "{{{ cDefine('O_DSYNC') }}}": flags["O_SYNC"],
+        "{{{ cDefine('O_TRUNC') }}}": flags["O_TRUNC"],
+        "{{{ cDefine('O_WRONLY') }}}": flags["O_WRONLY"]
+      };
     },
     mount: function (mount) {
       assert(ENVIRONMENT_IS_NODE);
@@ -46,39 +57,21 @@ mergeInto(LibraryManager.library, {
     },
     // This maps the integer permission modes from http://linux.die.net/man/3/open
     // to node.js-specific file open permission strings at http://nodejs.org/api/fs.html#fs_fs_open_path_flags_mode_callback
-    flagsToPermissionStringMap: {
-      0/*O_RDONLY*/: 'r',
-      1/*O_WRONLY*/: 'r+',
-      2/*O_RDWR*/: 'r+',
-      64/*O_CREAT*/: 'r',
-      65/*O_WRONLY|O_CREAT*/: 'r+',
-      66/*O_RDWR|O_CREAT*/: 'r+',
-      129/*O_WRONLY|O_EXCL*/: 'rx+',
-      193/*O_WRONLY|O_CREAT|O_EXCL*/: 'rx+',
-      514/*O_RDWR|O_TRUNC*/: 'w+',
-      577/*O_WRONLY|O_CREAT|O_TRUNC*/: 'w',
-      578/*O_CREAT|O_RDWR|O_TRUNC*/: 'w+',
-      705/*O_WRONLY|O_CREAT|O_EXCL|O_TRUNC*/: 'wx',
-      706/*O_RDWR|O_CREAT|O_EXCL|O_TRUNC*/: 'wx+',
-      1024/*O_APPEND*/: 'a',
-      1025/*O_WRONLY|O_APPEND*/: 'a',
-      1026/*O_RDWR|O_APPEND*/: 'a+',
-      1089/*O_WRONLY|O_CREAT|O_APPEND*/: 'a',
-      1090/*O_RDWR|O_CREAT|O_APPEND*/: 'a+',
-      1153/*O_WRONLY|O_EXCL|O_APPEND*/: 'ax',
-      1154/*O_RDWR|O_EXCL|O_APPEND*/: 'ax+',
-      1217/*O_WRONLY|O_CREAT|O_EXCL|O_APPEND*/: 'ax',
-      1218/*O_RDWR|O_CREAT|O_EXCL|O_APPEND*/: 'ax+',
-      4096/*O_RDONLY|O_DSYNC*/: 'rs',
-      4098/*O_RDWR|O_DSYNC*/: 'rs+'
-    },
-    flagsToPermissionString: function(flags) {
+    flagsForNode: function(flags) {
       flags &= ~0x200000 /*O_PATH*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
       flags &= ~0x800 /*O_NONBLOCK*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
       flags &= ~0x8000 /*O_LARGEFILE*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
       flags &= ~0x80000 /*O_CLOEXEC*/; // Some applications may pass it; it makes no sense for a single process.
-      if (flags in NODEFS.flagsToPermissionStringMap) {
-        return NODEFS.flagsToPermissionStringMap[flags];
+      var newFlags = 0;
+      for (var k in NODEFS.flagsForNodeMap) {
+        if (flags & k) {
+          newFlags |= NODEFS.flagsForNodeMap[k];
+          flags ^= k;
+        }
+      }
+
+      if (!flags) {
+        return newFlags;
       } else {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
@@ -221,7 +214,7 @@ mergeInto(LibraryManager.library, {
         var path = NODEFS.realPath(stream.node);
         try {
           if (FS.isFile(stream.node.mode)) {
-            stream.nfd = fs.openSync(path, NODEFS.flagsToPermissionString(stream.flags));
+            stream.nfd = fs.openSync(path, NODEFS.flagsForNode(stream.flags));
           }
         } catch (e) {
           if (!e.code) throw e;

@@ -382,6 +382,9 @@ var NO_FILESYSTEM = 0; // If set, does not build in any filesystem support. Usef
 var FORCE_FILESYSTEM = 0; // Makes full filesystem support be included, even if statically it looks like it is not
                           // used. For example, if your C code uses no files, but you include some JS that does,
                           // you might need this.
+var NODERAWFS = 0; // This mode is intended for use with Node.js (and will throw if the build runs in other engines)
+                   // The File System API will directly use Node.js API without requiring `FS.mount()`.
+                   // The initial working directory will be same as process.cwd() instead of VFS root directory.
 
 var EXPORTED_FUNCTIONS = ['_main'];
                                     // Functions that are explicitly exported. These functions are kept alive

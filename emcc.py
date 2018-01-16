@@ -1080,6 +1080,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.PROXY_TO_WORKER = 1
 
       if options.use_preload_plugins or len(options.preload_files) > 0 or len(options.embed_files) > 0:
+        assert not shared.Settings.NODERAWFS, '--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem'
         # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
         shared.Settings.FORCE_FILESYSTEM = 1
 

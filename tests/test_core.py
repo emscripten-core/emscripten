@@ -47,6 +47,16 @@ def sync(f):
     f(self)
   return decorated
 
+def also_with_noderawfs(func):
+  def decorated(self):
+    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    orig_args = self.emcc_args[:]
+    func(self)
+    Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-DNODERAWFS']
+    self.emcc_args = orig_args + ['-s', 'NODERAWFS=1']
+    func(self)
+  return decorated
+
 class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
   def is_emterpreter(self):
     return 'EMTERPRETIFY=1' in self.emcc_args
@@ -4509,6 +4519,7 @@ def process(filename):
     finally:
       Settings.INCLUDE_FULL_LIBRARY = 0
 
+  @also_with_noderawfs
   def test_fs_nodefs_rw(self):
     Settings.SYSCALL_DEBUG = 1
     src = open(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'r').read()
@@ -4517,6 +4528,7 @@ def process(filename):
     self.emcc_args += ['--closure', '1']
     self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
+  @also_with_noderawfs
   def test_fs_nodefs_cloexec(self):
     src = open(path_from_root('tests', 'fs', 'test_nodefs_cloexec.c'), 'r').read()
     self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
@@ -4531,23 +4543,27 @@ def process(filename):
     out = path_from_root('tests', 'fs', 'test_trackingdelegate.out')
     self.do_run_from_file(src, out)
 
+  @also_with_noderawfs
   def test_fs_writeFile(self):
     self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=1'] # see issue 2334
     src = path_from_root('tests', 'fs', 'test_writeFile.cc')
     out = path_from_root('tests', 'fs', 'test_writeFile.out')
     self.do_run_from_file(src, out)
 
+  @also_with_noderawfs
   def test_fs_write(self):
     self.emcc_args = ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']
     src = path_from_root('tests', 'fs', 'test_write.cpp')
     out = path_from_root('tests', 'fs', 'test_write.out')
     self.do_run_from_file(src, out)
 
+  @also_with_noderawfs
   def test_fs_emptyPath(self):
     src = path_from_root('tests', 'fs', 'test_emptyPath.c')
     out = path_from_root('tests', 'fs', 'test_emptyPath.out')
     self.do_run_from_file(src, out)
 
+  @also_with_noderawfs
   def test_fs_append(self):
     src = open(path_from_root('tests', 'fs', 'test_append.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
@@ -4560,6 +4576,7 @@ def process(filename):
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run_from_file(src, out)
 
+  @also_with_noderawfs
   def test_fs_errorstack(self):
     # Enables strict mode, which may catch some strict-mode-only errors
     # so that users can safely work with strict JavaScript if enabled.
@@ -4590,10 +4607,15 @@ def process(filename):
   def test_unistd_access(self):
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
+    expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
     for fs in ['MEMFS', 'NODEFS']:
-      src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
-      expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
+      self.do_run(src, expected, js_engines=[NODE_JS])
+    # Node.js fs.chmod is nearly no-op on Windows
+    if not WINDOWS:
+      Building.COMPILER_TEST_OPTS = orig_compiler_opts
+      self.emcc_args += ['-s', 'NODERAWFS=1']
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_curdir(self):
@@ -4601,6 +4623,7 @@ def process(filename):
     expected = open(path_from_root('tests', 'unistd', 'curdir.out'), 'r').read()
     self.do_run(src, expected)
 
+  @also_with_noderawfs
   def test_unistd_close(self):
     src = open(path_from_root('tests', 'unistd', 'close.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'close.out'), 'r').read()
@@ -4615,10 +4638,12 @@ def process(filename):
     src = open(path_from_root('tests', 'unistd', 'ttyname.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
+  @also_with_noderawfs
   def test_unistd_pipe(self):
     src = open(path_from_root('tests', 'unistd', 'pipe.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
+  @also_with_noderawfs
   def test_unistd_dup(self):
     src = open(path_from_root('tests', 'unistd', 'dup.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'dup.out'), 'r').read()
@@ -4637,6 +4662,16 @@ def process(filename):
       expected = open(path_from_root('tests', 'unistd', 'truncate.out'), 'r').read()
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
+
+  def test_unistd_truncate_noderawfs(self):
+    if WINDOWS:
+      return self.skip("Windows throws EPERM rather than EACCES or EINVAL")
+    if not os.geteuid(): # 0 if root
+      return self.skip("Root access invalidates this test by being able to write on readonly files")
+    self.emcc_args += ['-s', 'NODERAWFS=1']
+    test_path = path_from_root('tests', 'unistd', 'truncate')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    self.do_run_from_file(src, output, js_engines=[NODE_JS])
 
   def test_unistd_swab(self):
     src = open(path_from_root('tests', 'unistd', 'swab.c'), 'r').read()
@@ -4671,6 +4706,13 @@ def process(filename):
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       # symlinks on node.js on Windows require administrative privileges, so skip testing those bits on that combination.
       if WINDOWS and fs == 'NODEFS': Building.COMPILER_TEST_OPTS += ['-DNO_SYMLINK=1']
+      self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
+    # Several differences/bugs on Windows including https://github.com/nodejs/node/issues/18014
+    if not WINDOWS:
+      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-DNODERAWFS']
+      if not os.geteuid(): # 0 if root
+        Building.COMPILER_TEST_OPTS += ['-DSKIP_ACCESS_TESTS']
+      self.emcc_args += ['-s', 'NODERAWFS=1']
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_unistd_links(self):
