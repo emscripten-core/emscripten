@@ -890,11 +890,13 @@ ASM_JS_TARGET = 'asmjs-unknown-emscripten'
 WASM_TARGET = 'wasm32-unknown-unknown-elf'
 
 def check_vanilla():
-  global LLVM_TARGET
+  global LLVM_TARGET, WASM_TARGET
   # if the env var tells us what to do, do that
   if 'EMCC_WASM_BACKEND' in os.environ:
     if os.environ['EMCC_WASM_BACKEND'] != '0':
       logging.debug('EMCC_WASM_BACKEND tells us to use wasm backend')
+      if os.environ.get('EMCC_EXPERIMENTAL_USE_LLD', '0') != '0':
+        WASM_TARGET = 'wasm32-unknown-unknown-wasm'
       LLVM_TARGET = WASM_TARGET
     else:
       logging.debug('EMCC_WASM_BACKEND tells us to use asm.js backend')
@@ -931,6 +933,8 @@ def check_vanilla():
     temp_cache = None
     if is_vanilla:
       logging.debug('check tells us to use wasm backend')
+      if os.environ.get('EMCC_EXPERIMENTAL_USE_LLD', '0') != '0':
+        WASM_TARGET = 'wasm32-unknown-unknown-wasm'
       LLVM_TARGET = WASM_TARGET
     else:
       logging.debug('check tells us to use asm.js backend')
@@ -1126,7 +1130,6 @@ class SettingsManager(object):
     # Given some emcc-type args (-O3, -s X=Y, etc.), fill Settings with the right settings
     @classmethod
     def load(self, args=[]):
-      global WASM_TARGET, LLVM_TARGET
       # Load the JS defaults into python
       settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
       settings = re.sub(r'var ([\w\d]+)', r'self.attrs["\1"]', settings)
@@ -1149,14 +1152,8 @@ class SettingsManager(object):
 
       if get_llvm_target() == WASM_TARGET:
         self.attrs['WASM_BACKEND'] = 1
-        if self.attrs['EXPERIMENTAL_USE_LLD']:
-          # LLD target uses '-wasm' instead of '-elf'
-          WASM_TARGET = 'wasm32-unknown-unknown-wasm'
-          # Re-set LLVM_TARGET and flags dependent on LLVM_TARGET
-          LLVM_TARGET = WASM_TARGET
-          for i in xrange(len(COMPILER_OPTS) - 1):
-            if COMPILER_OPTS[i] == '-target':
-              COMPILER_OPTS[i + 1] = get_llvm_target()
+        if os.environ.get('EMCC_EXPERIMENTAL_USE_LLD', '0') != '0':
+          self.attrs['EXPERIMENTAL_USE_LLD'] = 1
 
     # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
     # the reverse of load_settings, except for -Ox which is relevant there but not here

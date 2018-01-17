@@ -728,6 +728,8 @@ var EXPERIMENTAL_USE_LLD = 0; // Whether to use lld as a linker for the
                               // Currently an experiment, the plan is to make
                               // this the default behavior long-term, and remove
                               // the flag.
+                              // You should not set this yourself, instead set
+                              // EMCC_EXPERIMENTAL_USE_LLD=1 in the environment.
 
 // Ports
 
