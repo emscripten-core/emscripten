@@ -7256,7 +7256,7 @@ int main() {
     self.emcc_args += ['--js-library', 'lib.js']
     self.do_run(src, 'Hello')
 
-  def test_coroutine(self):
+  def do_test_coroutine(self, additional_settings):
     Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     src = r'''
 #include <stdio.h>
@@ -7300,8 +7300,15 @@ int main(int argc, char **argv) {
     return 0;
 }
 '''
-    Settings.ASYNCIFY = 1
+    for (k, v) in additional_settings.items():
+      Settings.__setattr__(k, v)
     self.do_run(src, '*0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
+
+  def test_coroutine_asyncify(self):
+    self.do_test_coroutine({'ASYNCIFY': 1})
+
+  def test_coroutine_emterpretify_async(self):
+    self.do_test_coroutine({'EMTERPRETIFY': 1, 'EMTERPRETIFY_ASYNC': 1})
 
   @no_emterpreter
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is disallowed')

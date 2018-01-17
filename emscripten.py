@@ -647,7 +647,7 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
     if settings['EMTERPRETIFY']:
       funcs += ['emterpret']
       if settings['EMTERPRETIFY_ASYNC']:
-        funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore']
+        funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore', 'getEmtStackMax', 'setEmtStackMax']
     if settings['ASYNCIFY']:
       funcs += ['setAsync']
 
@@ -1419,6 +1419,13 @@ function emtStackSave() {
 function emtStackRestore(x) {
   x = x | 0;
   EMTSTACKTOP = x;
+}
+function getEmtStackMax() {
+  return EMT_STACK_MAX | 0;
+}
+function setEmtStackMax(x) {
+  x = x | 0;
+  EMT_STACK_MAX = x;
 }
 ''' if settings['EMTERPRETIFY_ASYNC'] else '') + '''
 function setThrew(threw, value) {
