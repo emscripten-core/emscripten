@@ -455,6 +455,7 @@ mergeInto(LibraryManager.library, {
     var temp = 0, func = 0, funcArg = 0, coroutine_not_finished = 0;
 
     // switch context
+    // TODO Save EMTSTACKTOP to EMTSTACK_BASE during startup and use it instead
     {{{ makeSetValueAsm('coroutine', 0, 'EMTSTACKTOP', 'i32') }}};
     temp = Module['emtStackSave']();
     {{{ makeSetValueAsm('coroutine', 4, 'temp', 'i32') }}};
