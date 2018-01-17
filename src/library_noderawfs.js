@@ -86,7 +86,7 @@ mergeInto(LibraryManager.library, {
       if (typeof position === 'undefined') {
         seeking = false;
       }
-      var bytesRead = fs.readSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
+      var bytesRead = fs.readSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
       if (!seeking) stream.position += bytesRead;
       return bytesRead;
     },
@@ -103,7 +103,7 @@ mergeInto(LibraryManager.library, {
       if (typeof position === 'undefined') {
         seeking = false;
       }
-      var bytesWritten = fs.writeSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
+      var bytesWritten = fs.writeSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
       if (!seeking) stream.position += bytesWritten;
       return bytesWritten;
     },
