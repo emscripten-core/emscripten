@@ -5,7 +5,11 @@ mergeInto(LibraryManager.library, {
     isWindows: false,
     staticInit: function() {
       NODEFS.isWindows = !!process.platform.match(/^win/);
-      var flags = process["binding"]("constants")["fs"];
+      var flags = process["binding"]("constants");
+      // Node.js 4 compatibility: it has no namespaces for constants
+      if (flags["fs"]) {
+        flags = flags["fs"];
+      }
       NODEFS.flagsForNodeMap = {
         "{{{ cDefine('O_APPEND') }}}": flags["O_APPEND"],
         "{{{ cDefine('O_CREAT') }}}": flags["O_CREAT"],
