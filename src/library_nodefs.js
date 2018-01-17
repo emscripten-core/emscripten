@@ -5,7 +5,11 @@ mergeInto(LibraryManager.library, {
     isWindows: false,
     staticInit: function() {
       NODEFS.isWindows = !!process.platform.match(/^win/);
-      var flags = process["binding"]("constants")["fs"];
+      var flags = process["binding"]("constants");
+      // Node.js 4 compatibility: it has no namespaces for constants
+      if (flags["fs"]) {
+        flags = flags["fs"];
+      }
       NODEFS.flagsForNodeMap = {
         "{{{ cDefine('O_APPEND') }}}": flags["O_APPEND"],
         "{{{ cDefine('O_CREAT') }}}": flags["O_CREAT"],
@@ -16,6 +20,12 @@ mergeInto(LibraryManager.library, {
         "{{{ cDefine('O_TRUNC') }}}": flags["O_TRUNC"],
         "{{{ cDefine('O_WRONLY') }}}": flags["O_WRONLY"]
       };
+    },
+    bufferFrom: function (arrayBuffer) {
+      // Node.js < 4.5 compatibility: Buffer.from does not support ArrayBuffer
+      // Buffer.from before 4.5 was just a method inherited from Uint8Array
+      // Buffer.alloc has been added with Buffer.from together, so check it instead
+      return Buffer.alloc ? Buffer.from(arrayBuffer) : new Buffer(arrayBuffer);
     },
     mount: function (mount) {
       assert(ENVIRONMENT_IS_NODE);
@@ -234,19 +244,15 @@ mergeInto(LibraryManager.library, {
       read: function (stream, buffer, offset, length, position) {
         // Node.js < 6 compatibility: node errors on 0 length reads
         if (length === 0) return 0;
-        // Node.js < 4.5 compatibility: Buffer.from does not support ArrayBuffer
-        var buf = Buffer.from ? Buffer.from(buffer.buffer) : new Buffer(buffer.buffer);
         try {
-          return fs.readSync(stream.nfd, buf, offset, length, position);
+          return fs.readSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
         } catch (e) {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
       },
       write: function (stream, buffer, offset, length, position) {
-        // Node.js < 4.5 compatibility: Buffer.from does not support ArrayBuffer
-        var buf = Buffer.from ? Buffer.from(buffer.buffer) : new Buffer(buffer.buffer);
         try {
-          return fs.writeSync(stream.nfd, buf, offset, length, position);
+          return fs.writeSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
         } catch (e) {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }

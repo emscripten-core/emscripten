@@ -2605,7 +2605,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
                          run_js ('index.js', engine=NODE_JS, stderr=STDOUT, assert_returncode=None))
 
   def test_fs_stream_proto(self):
-    open('src.cpp', 'wb').write(r'''
+    open('src.cpp', 'wb').write(br'''
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
