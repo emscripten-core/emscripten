@@ -54,7 +54,7 @@ def also_with_noderawfs(func):
     func(self)
     Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-DNODERAWFS']
     self.emcc_args = orig_args + ['-s', 'NODERAWFS=1']
-    func(self)
+    func(self, js_engines=[NODE_JS])
   return decorated
 
 class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
@@ -4520,18 +4520,18 @@ def process(filename):
       Settings.INCLUDE_FULL_LIBRARY = 0
 
   @also_with_noderawfs
-  def test_fs_nodefs_rw(self):
+  def test_fs_nodefs_rw(self, js_engines=[NODE_JS]):
     Settings.SYSCALL_DEBUG = 1
     src = open(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'r').read()
-    self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
+    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
     print('closure')
     self.emcc_args += ['--closure', '1']
-    self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
+    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
 
   @also_with_noderawfs
-  def test_fs_nodefs_cloexec(self):
+  def test_fs_nodefs_cloexec(self, js_engines=[NODE_JS]):
     src = open(path_from_root('tests', 'fs', 'test_nodefs_cloexec.c'), 'r').read()
-    self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
+    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
 
   def test_fs_nodefs_home(self):
     Settings.FORCE_FILESYSTEM = 1
@@ -4544,29 +4544,29 @@ def process(filename):
     self.do_run_from_file(src, out)
 
   @also_with_noderawfs
-  def test_fs_writeFile(self):
+  def test_fs_writeFile(self, js_engines=None):
     self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=1'] # see issue 2334
     src = path_from_root('tests', 'fs', 'test_writeFile.cc')
     out = path_from_root('tests', 'fs', 'test_writeFile.out')
-    self.do_run_from_file(src, out)
+    self.do_run_from_file(src, out, js_engines=js_engines)
 
   @also_with_noderawfs
-  def test_fs_write(self):
+  def test_fs_write(self, js_engines=None):
     self.emcc_args = ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']
     src = path_from_root('tests', 'fs', 'test_write.cpp')
     out = path_from_root('tests', 'fs', 'test_write.out')
-    self.do_run_from_file(src, out)
+    self.do_run_from_file(src, out, js_engines=js_engines)
 
   @also_with_noderawfs
-  def test_fs_emptyPath(self):
+  def test_fs_emptyPath(self, js_engines=None):
     src = path_from_root('tests', 'fs', 'test_emptyPath.c')
     out = path_from_root('tests', 'fs', 'test_emptyPath.out')
-    self.do_run_from_file(src, out)
+    self.do_run_from_file(src, out, js_engines=js_engines)
 
   @also_with_noderawfs
-  def test_fs_append(self):
+  def test_fs_append(self, js_engines=None):
     src = open(path_from_root('tests', 'fs', 'test_append.c'), 'r').read()
-    self.do_run(src, 'success', force_c=True)
+    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
 
   def test_fs_mmap(self):
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
@@ -4577,7 +4577,7 @@ def process(filename):
       self.do_run_from_file(src, out)
 
   @also_with_noderawfs
-  def test_fs_errorstack(self):
+  def test_fs_errorstack(self, js_engines=[NODE_JS]):
     # Enables strict mode, which may catch some strict-mode-only errors
     # so that users can safely work with strict JavaScript if enabled.
     post = '''
@@ -4602,7 +4602,7 @@ def process(filename):
         );
         return 0;
       }
-    ''', 'at Object.write', js_engines=[NODE_JS], post_build=post) # engines has different error stack format
+    ''', 'at Object.write', js_engines=js_engines, post_build=post) # engines has different error stack format
 
   def test_unistd_access(self):
     self.clear()
@@ -4624,10 +4624,10 @@ def process(filename):
     self.do_run(src, expected)
 
   @also_with_noderawfs
-  def test_unistd_close(self):
+  def test_unistd_close(self, js_engines=None):
     src = open(path_from_root('tests', 'unistd', 'close.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'close.out'), 'r').read()
-    self.do_run(src, expected)
+    self.do_run(src, expected, js_engines=js_engines)
 
   def test_unistd_confstr(self):
     src = open(path_from_root('tests', 'unistd', 'confstr.c'), 'r').read()
@@ -4639,15 +4639,15 @@ def process(filename):
     self.do_run(src, 'success', force_c=True)
 
   @also_with_noderawfs
-  def test_unistd_pipe(self):
+  def test_unistd_pipe(self, js_engines=None):
     src = open(path_from_root('tests', 'unistd', 'pipe.c'), 'r').read()
-    self.do_run(src, 'success', force_c=True)
+    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
 
   @also_with_noderawfs
-  def test_unistd_dup(self):
+  def test_unistd_dup(self, js_engines=None):
     src = open(path_from_root('tests', 'unistd', 'dup.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'dup.out'), 'r').read()
-    self.do_run(src, expected)
+    self.do_run(src, expected, js_engines=js_engines)
 
   def test_unistd_pathconf(self):
     src = open(path_from_root('tests', 'unistd', 'pathconf.c'), 'r').read()
