@@ -1865,6 +1865,7 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
     base_wasm = basename + '.lld.wasm'
     meta = basename + '.json'
     shared.check_call([wasm_link_metadata, temp_o, '-o', meta])
+    debug_copy(meta, 'lld-metadata.json')
 
     libc_rt_lib = shared.Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
     compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', wasm_rt_fail('wasm_compiler_rt.a'), 'a')
@@ -1882,11 +1883,11 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
     debug_copy(base_wasm, 'base_wasm.wasm')
 
     initializers = json.loads(open(meta).read())['initializers']
-    shared.check_call([wasm_emscripten_finalize, base_wasm, '-o', wasm,
-      '--force-exports', ','.join(initializers),
-    ])
+    cmd = [wasm_emscripten_finalize, base_wasm, '-o', wasm]
+    if len(initializers) > 0:
+      cmd += ['--force-exports', ','.join(initializers)]
+    shared.check_call(cmd)
     debug_copy(wasm, 'lld-emscripten-output.wasm')
-    debug_copy(meta, 'lld-metadata.json')
 
     # TODO: This is gross. We currently read exports from the wast in order to
     # generate metadata. So this disassembles the binary so we can parse wast
