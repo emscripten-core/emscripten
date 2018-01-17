@@ -88,7 +88,7 @@ CXX_WITH_STDLIB = '''
         }
       '''
 
-SYSTEM_TASKS = ['compiler-rt', 'libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'dlmalloc_debug', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'html5']
+SYSTEM_TASKS = ['compiler-rt', 'libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'dlmalloc_debug', 'dlmalloc_threadsafe_debug', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'html5']
 USER_TASKS = ['al', 'gl', 'binaryen', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
 
 temp_files = shared.configuration.get_temp_files()
@@ -149,7 +149,7 @@ if operation == 'build':
     auto_tasks = True
   if auto_tasks:
     if shared.Settings.WASM_BACKEND:
-      skip_tasks = {'libc-mt', 'dlmalloc_threadsafe', 'pthreads'}
+      skip_tasks = {'libc-mt', 'dlmalloc_threadsafe', 'dlmalloc_threadsafe_debug', 'pthreads'}
       print('Skipping building of %s, because WebAssembly does not support pthreads.' % ', '.join(skip_tasks))
       tasks = [x for x in tasks if x not in skip_tasks]
     else:
@@ -178,6 +178,8 @@ if operation == 'build':
       build(C_WITH_MALLOC, ['libc-mt.bc', 'dlmalloc_threadsafe.bc', 'pthreads.bc'], ['-s', 'USE_PTHREADS=1'])
     elif what == 'dlmalloc_debug':
       build(C_WITH_MALLOC, ['dlmalloc_debug.bc'], ['-g'])
+    elif what == 'dlmalloc_threadsafe_debug':
+      build(C_WITH_MALLOC, ['dlmalloc_threadsafe_debug.bc'], ['-g', '-s', 'USE_PTHREADS=1'])
     elif what == 'libcxx':
       build(CXX_WITH_STDLIB, ['libcxx.a'])
     elif what == 'libcxx_noexcept':
