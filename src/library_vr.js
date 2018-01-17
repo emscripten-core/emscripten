@@ -42,7 +42,7 @@ var LibraryWebVR = {
 
     deinit: function() {
       WebVR.displayNames.forEach(function(name) {
-          _free(name);
+        _free(name);
       });
       return 1
     },
@@ -101,7 +101,7 @@ var LibraryWebVR = {
 
     var name = WebVR.displayNames[displayHandle-1];
     if (name) {
-        return name;
+      return name;
     }
 
     var buffer, displayName;
