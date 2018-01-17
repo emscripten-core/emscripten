@@ -566,6 +566,14 @@ var MODULARIZE = 0; // By default we emit all code in a straightforward way into
                     // to the onRuntimeInitialized callback (i.e., it waits for all
                     // necessary async events). It receives the instance as a parameter,
                     // for convenience.
+var MODULARIZE_INSTANCE = 0; // Similar to MODULARIZE, but while that mode exports a function,
+                             // with which you can create multiple instances, this option exports
+                             // a singleton instance. In other words, it's the same as if you
+                             // used MODULARIZE and did EXPORT_NAME = EXPORT_NAME() to create
+                             // the instance manually.
+                             // Note that the promise-like API MODULARIZE provides isn't
+                             // available here (since you arean't creating the instance
+                             // yourself).
 
 var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
                    // print out anything at all whatsoever. This is useful for benchmarking.

@@ -992,6 +992,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           'getMemory',
         ]
 
+      if shared.Settings.MODULARIZE_INSTANCE:
+        shared.Settings.MODULARIZE = 1
+
       if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
         shared.Settings.ALIASING_FUNCTION_POINTERS = 0
 
@@ -2463,11 +2466,15 @@ def modularize():
 %(src)s
 
   return %(EXPORT_NAME)s;
-};
+}%(instantiate)s;
 if (typeof module === "object" && module.exports) {
   module['exports'] = %(EXPORT_NAME)s;
 };
-''' % {"EXPORT_NAME": shared.Settings.EXPORT_NAME, "src": src})
+''' % {
+  'EXPORT_NAME': shared.Settings.EXPORT_NAME,
+  'src': src,
+  'instantiate': '()' if shared.Settings.MODULARIZE_INSTANCE else ''
+})
   f.close()
   if DEBUG: save_intermediate('modularized', 'js')
 

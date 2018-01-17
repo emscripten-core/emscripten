@@ -6904,23 +6904,30 @@ Module.printErr = Module['printErr'] = function(){};
           os.environ.pop('EMCC_DEBUG', None)
 
   def test_modularize_closure_pre(self):
-    # test that the combination of modularize + closure + pre-js works. in that mode,
-    # closure should not minify the Module object in a way that the pre-js cannot use it.
-    self.emcc_args += [
-      '--pre-js', path_from_root('tests', 'core', 'modularize_closure_pre.js'),
-      '--closure', '1',
-      '-s', 'MODULARIZE=1',
-      '-g1'
-    ]
-    def post(filename):
-      src = open(filename, 'a')
-      src.write('\n\n')
-      src.write('var TheModule = Module();\n')
-      src.close()
-    self.do_run(
-      open(path_from_root('tests', 'core', 'modularize_closure_pre.c')).read(),
-      open(path_from_root('tests', 'core', 'modularize_closure_pre.txt')).read(),
-      post_build=(None, post))
+    emcc_args = self.emcc_args[:]
+    for instance in [0, 1]:
+      print(instance)
+      # test that the combination of modularize + closure + pre-js works. in that mode,
+      # closure should not minify the Module object in a way that the pre-js cannot use it.
+      self.emcc_args = emcc_args + [
+        '--pre-js', path_from_root('tests', 'core', 'modularize_closure_pre.js'),
+        '--closure', '1',
+        '-g1'
+      ]
+      if not instance:
+        self.emcc_args += ['-s', 'MODULARIZE=1']
+      else:
+        self.emcc_args += ['-s', 'MODULARIZE_INSTANCE=1']
+      def post(filename):
+        src = open(filename, 'a')
+        src.write('\n\n')
+        if not instance:
+          src.write('var TheModule = Module();\n')
+        src.close()
+      self.do_run(
+        open(path_from_root('tests', 'core', 'modularize_closure_pre.c')).read(),
+        open(path_from_root('tests', 'core', 'modularize_closure_pre.txt')).read(),
+        post_build=(None, post))
 
   @no_emterpreter
   def test_exception_source_map(self):
