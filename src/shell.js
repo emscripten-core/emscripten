@@ -267,9 +267,9 @@ else {
 }
 #endif // ASSERTIONS
 
-// prefer print/printErr if they exist, as they are the best supported in shells (printErr goes
-// to stderr properly, etc.)
-Module['print'] = typeof print !== 'undefined' ? print : (typeof console !== 'undefined' ? console.log : null);
+// console.log is checked first, as 'print' on the web will open a print dialogue
+// printErr is preferable to console.warn (works better in shells)
+Module['print'] = typeof console !== 'undefined' ? console.log : (typeof print !== 'undefined' ? print : null);
 Module['printErr'] = typeof printErr !== 'undefined' ? printErr : ((typeof console !== 'undefined' && console.warn) || Module['print']);
 
 // *** Environment setup code ***
