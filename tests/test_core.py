@@ -47,6 +47,16 @@ def sync(f):
     f(self)
   return decorated
 
+def also_with_noderawfs(func):
+  def decorated(self):
+    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    orig_args = self.emcc_args[:]
+    func(self)
+    Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-DNODERAWFS']
+    self.emcc_args = orig_args + ['-s', 'NODERAWFS=1']
+    func(self, js_engines=[NODE_JS])
+  return decorated
+
 class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
   def is_emterpreter(self):
     return 'EMTERPRETIFY=1' in self.emcc_args
@@ -4509,17 +4519,19 @@ def process(filename):
     finally:
       Settings.INCLUDE_FULL_LIBRARY = 0
 
-  def test_fs_nodefs_rw(self):
+  @also_with_noderawfs
+  def test_fs_nodefs_rw(self, js_engines=[NODE_JS]):
     Settings.SYSCALL_DEBUG = 1
     src = open(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'r').read()
-    self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
+    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
     print('closure')
     self.emcc_args += ['--closure', '1']
-    self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
+    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
 
-  def test_fs_nodefs_cloexec(self):
+  @also_with_noderawfs
+  def test_fs_nodefs_cloexec(self, js_engines=[NODE_JS]):
     src = open(path_from_root('tests', 'fs', 'test_nodefs_cloexec.c'), 'r').read()
-    self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
+    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
 
   def test_fs_nodefs_home(self):
     Settings.FORCE_FILESYSTEM = 1
@@ -4531,26 +4543,30 @@ def process(filename):
     out = path_from_root('tests', 'fs', 'test_trackingdelegate.out')
     self.do_run_from_file(src, out)
 
-  def test_fs_writeFile(self):
+  @also_with_noderawfs
+  def test_fs_writeFile(self, js_engines=None):
     self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=1'] # see issue 2334
     src = path_from_root('tests', 'fs', 'test_writeFile.cc')
     out = path_from_root('tests', 'fs', 'test_writeFile.out')
-    self.do_run_from_file(src, out)
+    self.do_run_from_file(src, out, js_engines=js_engines)
 
-  def test_fs_write(self):
+  @also_with_noderawfs
+  def test_fs_write(self, js_engines=None):
     self.emcc_args = ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']
     src = path_from_root('tests', 'fs', 'test_write.cpp')
     out = path_from_root('tests', 'fs', 'test_write.out')
-    self.do_run_from_file(src, out)
+    self.do_run_from_file(src, out, js_engines=js_engines)
 
-  def test_fs_emptyPath(self):
+  @also_with_noderawfs
+  def test_fs_emptyPath(self, js_engines=None):
     src = path_from_root('tests', 'fs', 'test_emptyPath.c')
     out = path_from_root('tests', 'fs', 'test_emptyPath.out')
-    self.do_run_from_file(src, out)
+    self.do_run_from_file(src, out, js_engines=js_engines)
 
-  def test_fs_append(self):
+  @also_with_noderawfs
+  def test_fs_append(self, js_engines=None):
     src = open(path_from_root('tests', 'fs', 'test_append.c'), 'r').read()
-    self.do_run(src, 'success', force_c=True)
+    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
 
   def test_fs_mmap(self):
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
@@ -4560,7 +4576,8 @@ def process(filename):
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run_from_file(src, out)
 
-  def test_fs_errorstack(self):
+  @also_with_noderawfs
+  def test_fs_errorstack(self, js_engines=[NODE_JS]):
     # Enables strict mode, which may catch some strict-mode-only errors
     # so that users can safely work with strict JavaScript if enabled.
     post = '''
@@ -4585,15 +4602,20 @@ def process(filename):
         );
         return 0;
       }
-    ''', 'at Object.write', js_engines=[NODE_JS], post_build=post) # engines has different error stack format
+    ''', 'at Object.write', js_engines=js_engines, post_build=post) # engines has different error stack format
 
   def test_unistd_access(self):
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
+    expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
     for fs in ['MEMFS', 'NODEFS']:
-      src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
-      expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
+      self.do_run(src, expected, js_engines=[NODE_JS])
+    # Node.js fs.chmod is nearly no-op on Windows
+    if not WINDOWS:
+      Building.COMPILER_TEST_OPTS = orig_compiler_opts
+      self.emcc_args += ['-s', 'NODERAWFS=1']
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_curdir(self):
@@ -4601,10 +4623,11 @@ def process(filename):
     expected = open(path_from_root('tests', 'unistd', 'curdir.out'), 'r').read()
     self.do_run(src, expected)
 
-  def test_unistd_close(self):
+  @also_with_noderawfs
+  def test_unistd_close(self, js_engines=None):
     src = open(path_from_root('tests', 'unistd', 'close.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'close.out'), 'r').read()
-    self.do_run(src, expected)
+    self.do_run(src, expected, js_engines=js_engines)
 
   def test_unistd_confstr(self):
     src = open(path_from_root('tests', 'unistd', 'confstr.c'), 'r').read()
@@ -4615,14 +4638,16 @@ def process(filename):
     src = open(path_from_root('tests', 'unistd', 'ttyname.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
-  def test_unistd_pipe(self):
+  @also_with_noderawfs
+  def test_unistd_pipe(self, js_engines=None):
     src = open(path_from_root('tests', 'unistd', 'pipe.c'), 'r').read()
-    self.do_run(src, 'success', force_c=True)
+    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
 
-  def test_unistd_dup(self):
+  @also_with_noderawfs
+  def test_unistd_dup(self, js_engines=None):
     src = open(path_from_root('tests', 'unistd', 'dup.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'dup.out'), 'r').read()
-    self.do_run(src, expected)
+    self.do_run(src, expected, js_engines=js_engines)
 
   def test_unistd_pathconf(self):
     src = open(path_from_root('tests', 'unistd', 'pathconf.c'), 'r').read()
@@ -4637,6 +4662,16 @@ def process(filename):
       expected = open(path_from_root('tests', 'unistd', 'truncate.out'), 'r').read()
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
+
+  def test_unistd_truncate_noderawfs(self):
+    if WINDOWS:
+      return self.skip("Windows throws EPERM rather than EACCES or EINVAL")
+    if not os.geteuid(): # 0 if root
+      return self.skip("Root access invalidates this test by being able to write on readonly files")
+    self.emcc_args += ['-s', 'NODERAWFS=1']
+    test_path = path_from_root('tests', 'unistd', 'truncate')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    self.do_run_from_file(src, output, js_engines=[NODE_JS])
 
   def test_unistd_swab(self):
     src = open(path_from_root('tests', 'unistd', 'swab.c'), 'r').read()
@@ -4671,6 +4706,13 @@ def process(filename):
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       # symlinks on node.js on Windows require administrative privileges, so skip testing those bits on that combination.
       if WINDOWS and fs == 'NODEFS': Building.COMPILER_TEST_OPTS += ['-DNO_SYMLINK=1']
+      self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
+    # Several differences/bugs on Windows including https://github.com/nodejs/node/issues/18014
+    if not WINDOWS:
+      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-DNODERAWFS']
+      if not os.geteuid(): # 0 if root
+        Building.COMPILER_TEST_OPTS += ['-DSKIP_ACCESS_TESTS']
+      self.emcc_args += ['-s', 'NODERAWFS=1']
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_unistd_links(self):
@@ -4834,7 +4876,7 @@ PORT: 3979
     if len(uniques) != 1:
       i = 0
       for unique in uniques:
-        open('unique_' + str(i) + '.js', 'w').write(unique)
+        open('unique_' + str(i) + '.js', 'wb').write(unique)
         i += 1
       assert 0, 'builds must be deterministic, see unique_X.js'
 
@@ -5997,6 +6039,18 @@ def process(filename):
     Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['dynCall', 'addFunction']
     self.do_run_in_out_file_test('tests', 'core', 'dyncall')
 
+  def test_dyncall_specific(self):
+    emcc_args = self.emcc_args[:]
+    for which, exported_runtime_methods in [
+        ('DIRECT', []),
+        ('EXPORTED', []),
+        ('FROM_OUTSIDE', ['dynCall_viii'])
+      ]:
+      print(which)
+      self.emcc_args = emcc_args + ['-D' + which]
+      Settings.EXTRA_EXPORTED_RUNTIME_METHODS = exported_runtime_methods
+      self.do_run_in_out_file_test('tests', 'core', 'dyncall_specific')
+
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
     def test(output_prefix='', args=[]):
@@ -6850,23 +6904,30 @@ Module.printErr = Module['printErr'] = function(){};
           os.environ.pop('EMCC_DEBUG', None)
 
   def test_modularize_closure_pre(self):
-    # test that the combination of modularize + closure + pre-js works. in that mode,
-    # closure should not minify the Module object in a way that the pre-js cannot use it.
-    self.emcc_args += [
-      '--pre-js', path_from_root('tests', 'core', 'modularize_closure_pre.js'),
-      '--closure', '1',
-      '-s', 'MODULARIZE=1',
-      '-g1'
-    ]
-    def post(filename):
-      src = open(filename, 'a')
-      src.write('\n\n')
-      src.write('var TheModule = Module();\n')
-      src.close()
-    self.do_run(
-      open(path_from_root('tests', 'core', 'modularize_closure_pre.c')).read(),
-      open(path_from_root('tests', 'core', 'modularize_closure_pre.txt')).read(),
-      post_build=(None, post))
+    emcc_args = self.emcc_args[:]
+    for instance in [0, 1]:
+      print(instance)
+      # test that the combination of modularize + closure + pre-js works. in that mode,
+      # closure should not minify the Module object in a way that the pre-js cannot use it.
+      self.emcc_args = emcc_args + [
+        '--pre-js', path_from_root('tests', 'core', 'modularize_closure_pre.js'),
+        '--closure', '1',
+        '-g1'
+      ]
+      if not instance:
+        self.emcc_args += ['-s', 'MODULARIZE=1']
+      else:
+        self.emcc_args += ['-s', 'MODULARIZE_INSTANCE=1']
+      def post(filename):
+        src = open(filename, 'a')
+        src.write('\n\n')
+        if not instance:
+          src.write('var TheModule = Module();\n')
+        src.close()
+      self.do_run(
+        open(path_from_root('tests', 'core', 'modularize_closure_pre.c')).read(),
+        open(path_from_root('tests', 'core', 'modularize_closure_pre.txt')).read(),
+        post_build=(None, post))
 
   @no_emterpreter
   def test_exception_source_map(self):
@@ -7154,7 +7215,48 @@ int main() {
 }
 ''', 'f\nhello\nf\nhello\nf\nhello\nf\nhello\nf\nhello\nexit\n')
 
-  def test_coroutine(self):
+  def test_async_abort(self):
+    if not self.is_emterpreter(): return self.skip('emterpreter-only test')
+
+    self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
+
+    Settings.EMTERPRETIFY_ASYNC = 1
+
+    open('lib.js', 'w').write(r'''
+mergeInto(LibraryManager.library, {
+  sleep_with_abort__deps: ['$EmterpreterAsync'],
+  sleep_with_abort: function() {
+    EmterpreterAsync.handle(function(resume) {
+      setTimeout(function() {
+        abort();
+        setTimeout(function() {
+          resume();
+        }, 10);
+      }, 10);
+    });
+  }
+});
+''')
+
+    src = r'''
+#include <stdio.h>
+
+extern "C" {
+extern void sleep_with_abort(void);
+}
+
+int main() {
+    printf("Hello\n");
+    sleep_with_abort();
+    printf("ERROR\n");
+    return 0;
+}
+'''
+
+    self.emcc_args += ['--js-library', 'lib.js']
+    self.do_run(src, 'Hello')
+
+  def do_test_coroutine(self, additional_settings):
     Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     src = r'''
 #include <stdio.h>
@@ -7198,8 +7300,15 @@ int main(int argc, char **argv) {
     return 0;
 }
 '''
-    Settings.ASYNCIFY = 1
+    for (k, v) in additional_settings.items():
+      Settings.__setattr__(k, v)
     self.do_run(src, '*0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
+
+  def test_coroutine_asyncify(self):
+    self.do_test_coroutine({'ASYNCIFY': 1})
+
+  def test_coroutine_emterpretify_async(self):
+    self.do_test_coroutine({'EMTERPRETIFY': 1, 'EMTERPRETIFY_ASYNC': 1})
 
   @no_emterpreter
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is disallowed')

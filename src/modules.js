@@ -27,7 +27,7 @@ var Types = {
   preciseI64MathUsed: (PRECISE_I64_MATH == 2)
 };
 
-var firstTableIndex = FUNCTION_POINTER_ALIGNMENT * RESERVED_FUNCTION_POINTERS + 1;
+var firstTableIndex = RESERVED_FUNCTION_POINTERS + 1;
 
 var Functions = {
   // All functions that will be implemented in this file. Maps id to signature
@@ -126,6 +126,10 @@ var LibraryManager = {
           'library_workerfs.js',
           'library_lz4.js',
         ]);
+
+        if (NODERAWFS) {
+          libraries.push('library_noderawfs.js')
+        }
       }
     }
 
@@ -395,6 +399,15 @@ function exportRuntime() {
   if (SUPPORT_BASE64_EMBEDDING) {
     runtimeElements.push('intArrayFromBase64');
     runtimeElements.push('tryParseAsDataURI');
+  }
+  // dynCall_* methods are not hardcoded here, as they
+  // depend on the file being compiled. check for them
+  // and add them.
+  for (var name in EXPORTED_RUNTIME_METHODS_SET) {
+    if (/^dynCall_/.test(name)) {
+      // a specific dynCall; add to the list
+      runtimeElements.push(name);
+    }
   }
   var runtimeNumbers = [
     'ALLOC_NORMAL',

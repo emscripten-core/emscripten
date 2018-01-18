@@ -65,7 +65,7 @@ LIB_PREFIXES = ('', 'lib')
 JS_CONTAINING_SUFFIXES = ('js', 'html')
 EXECUTABLE_SUFFIXES = JS_CONTAINING_SUFFIXES + ('wasm',)
 
-DEFERRED_REPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST')
+DEFERRED_REPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST', 'EMTERPRETIFY_SYNCLIST')
 
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
 # levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to get
@@ -992,6 +992,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           'getMemory',
         ]
 
+      if shared.Settings.MODULARIZE_INSTANCE:
+        shared.Settings.MODULARIZE = 1
+
       if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
         shared.Settings.ALIASING_FUNCTION_POINTERS = 0
 
@@ -1080,6 +1083,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.PROXY_TO_WORKER = 1
 
       if options.use_preload_plugins or len(options.preload_files) > 0 or len(options.embed_files) > 0:
+        assert not shared.Settings.NODERAWFS, '--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem'
         # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
         shared.Settings.FORCE_FILESYSTEM = 1
 
@@ -2202,7 +2206,7 @@ def emterpretify(js_target, optimizer, options):
             final + '.em.js',
             json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST),
             json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST),
-            '',
+            json.dumps(shared.Settings.EMTERPRETIFY_SYNCLIST),
             str(shared.Settings.SWAPPABLE_ASM_MODULE),
            ]
     if shared.Settings.EMTERPRETIFY_ASYNC:
@@ -2462,11 +2466,15 @@ def modularize():
 %(src)s
 
   return %(EXPORT_NAME)s;
-};
+}%(instantiate)s;
 if (typeof module === "object" && module.exports) {
   module['exports'] = %(EXPORT_NAME)s;
 };
-''' % {"EXPORT_NAME": shared.Settings.EXPORT_NAME, "src": src})
+''' % {
+  'EXPORT_NAME': shared.Settings.EXPORT_NAME,
+  'src': src,
+  'instantiate': '()' if shared.Settings.MODULARIZE_INSTANCE else ''
+})
   f.close()
   if DEBUG: save_intermediate('modularized', 'js')
 
