@@ -267,13 +267,10 @@ else {
 }
 #endif // ASSERTIONS
 
-if (typeof console !== 'undefined') {
-  Module['print'] = console.log;
-  Module['printErr'] = console.warn;
-} else if (typeof print !== 'undefined') {
-  Module['print'] = print;
-}
-Module['printErr'] = Module['printErr'] || (typeof printErr !== 'undefined' ? printErr : Module['print']);
+// prefer print/printErr if they exist, as they are the best supported in shells (printErr goes
+// to stderr properly, etc.)
+Module['print'] = typeof print !== 'undefined' ? print : (typeof console !== 'undefined' ? console.log : null);
+Module['printErr'] = typeof printErr !== 'undefined' ? printErr : ((typeof console !== 'undefined' && console.warn) || Module['print']);
 
 // *** Environment setup code ***
 
