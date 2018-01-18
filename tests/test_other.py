@@ -8163,3 +8163,14 @@ end
     assert expected in err
     err = run_process(base + ['--embed-files', 'somefile'], stderr=PIPE, check=False).stderr
     assert expected in err
+
+  def test_configurejs_envnode(self):
+    if WINDOWS:
+      return self.skip('Windows does not support running extension-less executable file')
+    environ = os.environ.copy()
+    environ['EMMAKEN_JUST_CONFIGURE'] = '1'
+    environ['EMCONFIGURE_JS'] = '2'
+    if os.path.sep in NODE_JS:
+      environ['PATH'] = NODE_JS + ';' if WINDOWS else ':' + environ['PATH']
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'hello'], env=environ)
+    run_process([os.path.join(self.get_dir(), 'hello')])

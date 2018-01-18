@@ -511,7 +511,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         src = open(target).read()
         full_node = ' '.join(shared.NODE_JS)
         if os.path.sep not in full_node:
-          full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
+          full_node = '/usr/bin/env ' + full_node # TODO: use whereis etc. And how about non-*NIX?
         open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
         import stat
         try:
