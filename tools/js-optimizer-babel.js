@@ -111,6 +111,7 @@ arguments_ = arguments_.filter(function (arg) {
 });
 
 var options = {
+  compact: true,
   plugins: [],
 };
 
