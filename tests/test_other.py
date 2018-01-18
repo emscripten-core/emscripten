@@ -7814,7 +7814,7 @@ int main() {
       ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  48213, 26, 19),
       (['-O1'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13460, 17, 17),
       (['-O2'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13381, 17, 17),
-      (['-O3'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2678, 10,  2), # in -O3, -Os and -Oz we metadce
+      (['-O3'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2818, 10,  2), # in -O3, -Os and -Oz we metadce
       (['-Os'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2771, 10,  2),
       (['-Oz'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2765, 10,  2),
       # finally, check what happens when we export nothing. wasm should be almost empty
