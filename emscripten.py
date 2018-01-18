@@ -314,8 +314,13 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   asm_global_vars = create_asm_global_vars(bg_vars, settings)
 
   the_global = create_the_global(metadata, settings)
-  sending_vars = basic_funcs + global_funcs + basic_vars + global_vars
-  sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in sending_vars]) + ' }'
+  sending_vars = basic_funcs + basic_vars + global_vars
+  sending_vars_texts = ['"' + math_fix(s) + '": ' + s for s in sending_vars]
+  if settings.get('EMTERPRETIFY_ASYNC'):
+    sending_vars_texts += ['"' + math_fix(s) + '": emscripten_async_wrap(' + s + ')' for s in global_funcs]
+  else:
+    sending_vars_texts += ['"' + math_fix(s) + '": ' + s for s in global_funcs]
+  sending = '{ ' + ', '.join(sending_vars_texts) + ' }'
 
   receiving = create_receiving(function_table_data, function_tables_defs,
                                exported_implemented_functions, settings)

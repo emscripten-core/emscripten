@@ -2469,4 +2469,86 @@ function integrateWasmJS() {
 integrateWasmJS();
 #endif
 
+
+#if EMTERPRETIFY_ASYNC
+
+// Wrap library functions to handle promises
+function emscripten_async_wrap(func) {
+  return function()
+  {
+    if (EmterpreterAsync.state === 0) {
+      var ret = func.apply( null, arguments );
+
+      // We have a promise
+      if ( ret && ret.then ) {
+        Module['noExitRuntime'] = true;
+        // save the stack we want to resume. this lets other code run in between
+        // XXX this assumes that this stack top never ever leak! exceptions might violate that
+        var stack = new Int32Array(HEAP32.subarray(EMTSTACKTOP>>2, Module['emtStackSave']()>>2));
+        var stacktop = Module['stackSave']();
+
+        EmterpreterAsync.setState(1);
+#if ASSERTIONS
+        EmterpreterAsync.saveStack = new Error().stack; // we can't call  stackTrace()  as it calls compiled code
+#endif
+        // Pause the main loop, until we resume
+        if (Browser.mainLoop.func) {
+          Browser.mainLoop.pause();
+        }
+        Browser.pauseAsyncCallbacks();
+
+        ret.then( function(res) {
+          if (ABORT) {
+            return;
+          }
+
+          assert(EmterpreterAsync.state === 1 || EmterpreterAsync.state === 3);
+          EmterpreterAsync.setState(3);
+          // copy the stack back in and resume
+          HEAP32.set(stack, EMTSTACKTOP>>2);
+#if ASSERTIONS
+          assert(stacktop === Module['stackSave']()); // nothing should have modified the stack meanwhile
+#endif
+          EmterpreterAsync.setState(2);
+
+          // Resume the main loop
+          if (Browser.mainLoop.func) {
+            Browser.mainLoop.resume();
+          }
+          assert(!EmterpreterAsync.postAsync);
+          EmterpreterAsync.postAsync = function() { return res; };
+
+          Module['emterpret'](stack[0]); // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
+          if (EmterpreterAsync.state === 0) {
+            // if we did *not* do another async operation, then we know that nothing is conceptually on the stack now, and we can re-allow async callbacks as well as run the queued ones right now
+            Browser.resumeAsyncCallbacks();
+          }
+          if (EmterpreterAsync.state === 0) {
+            EmterpreterAsync.asyncFinalizers.forEach(function(func) {
+              func();
+            });
+            EmterpreterAsync.asyncFinalizers.length = 0;
+          }
+        });
+      }
+      else {
+        return ret;
+      }
+    }
+    else {
+      // nothing to do here, the stack was just recreated. reset the state.
+      assert(EmterpreterAsync.state === 2);
+      EmterpreterAsync.setState(0);
+
+      if (EmterpreterAsync.postAsync) {
+        var ret = EmterpreterAsync.postAsync();
+        EmterpreterAsync.postAsync = null;
+        return ret;
+      }
+    }
+  };
+}
+
+#endif
+
 // === Body ===
