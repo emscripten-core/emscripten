@@ -272,11 +272,11 @@ if (typeof console !== 'undefined') {
   Module['printErr'] = console.warn;
 } else if (typeof print !== 'undefined') {
   Module['print'] = print;
-  if (typeof printErr !== 'undefined') Module['printErr'] = printErr;
-} else {
-  Module['print'] = {};
 }
-if (!Module['printErr']) Module['printErr'] = Module['print'];
+if (!Module['printErr']) {
+  if (typeof printErr !== 'undefined') Module['printErr'] = printErr;
+  else Module['printErr'] = Module['print'];
+}
 
 // *** Environment setup code ***
 
