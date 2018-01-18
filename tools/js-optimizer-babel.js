@@ -110,19 +110,24 @@ arguments_ = arguments_.filter(function (arg) {
   else throw new Error('Unrecognized flag: ' + arg);
 });
 
-var src = read(arguments_[0]);
+var options = {
+  plugins: [],
+};
 
-function hasArg( arg )
-{
-  return arguments_.indexOf( arg ) > -1;
+for (let arg of arguments_) {
+  if (arg === 'minifyWhitespace') {
+    options.comments = false;
+    options.minified = true;
+  }
+
+  if (arg === 'JSDCE') {
+    options.plugins.push('minify-dead-code-elimination');
+  }
 }
 
-// Run through Babel
+var src = read(arguments_[0]);
 
-var options = {
-  comments: !hasArg('minifyWhitespace'),
-  minified: hasArg('minifyWhitespace'),
-};
+// Run through Babel
 
 var result = babel.transform(src, options);
 

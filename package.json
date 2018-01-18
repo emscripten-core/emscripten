@@ -3,6 +3,7 @@
   "version": "1.13.0",
   "dependencies": {
     "babel-core": "^6.26.0",
+    "babel-plugin-minify-dead-code-elimination": "^0.2.0",
     "ws": "~0.4.28"
   }
 }
