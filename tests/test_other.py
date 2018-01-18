@@ -2605,7 +2605,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
                          run_js ('index.js', engine=NODE_JS, stderr=STDOUT, assert_returncode=None))
 
   def test_fs_stream_proto(self):
-    open('src.cpp', 'w').write(r'''
+    open('src.cpp', 'wb').write(br'''
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -4214,7 +4214,9 @@ EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny
     assert len(bad) == 0, '\n\n'.join(diff)
 
   def test_dashE_respect_dashO(self): # issue #3365
-    with_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-E', '-o', '/dev/null'], stdout=PIPE, stderr=PIPE).stdout
+    null_file = 'NUL' if WINDOWS else '/dev/null'
+    with_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-E', '-o', null_file], stdout=PIPE, stderr=PIPE).stdout
+    if WINDOWS: assert not os.path.isfile(null_file)
     without_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-E'], stdout=PIPE, stderr=PIPE).stdout
     assert len(with_dash_o) == 0
     assert len(without_dash_o) != 0
@@ -4236,7 +4238,9 @@ EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny
     assert len(bad) == 0, '\n\n'.join(diff)
 
   def test_dashM_respect_dashO(self):
-    with_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-M', '-o', '/dev/null'], stdout=PIPE, stderr=PIPE).stdout
+    null_file = 'NUL' if WINDOWS else '/dev/null'
+    with_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-M', '-o', null_file], stdout=PIPE, stderr=PIPE).stdout
+    if WINDOWS: assert not os.path.isfile(null_file)
     without_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-M'], stdout=PIPE, stderr=PIPE).stdout
     assert len(with_dash_o) == 0
     assert len(without_dash_o) != 0
@@ -5400,6 +5404,9 @@ function _main() {
 
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'emterpreter_advise_funcptr.cpp'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1'], stdout=PIPE).stdout
     self.assertContained('-s EMTERPRETIFY_WHITELIST=\'["__Z4posti", "__Z5post2i", "__Z6middlev", "__Z7sleeperv", "__Z8recurserv", "_main"]\'', out)
+
+    out = run_process([PYTHON, EMCC, path_from_root('tests', 'emterpreter_advise_synclist.c'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1', '-s', 'EMTERPRETIFY_SYNCLIST=["_j","_k"]'], stdout=PIPE).stdout
+    self.assertContained('-s EMTERPRETIFY_WHITELIST=\'["_a", "_b", "_e", "_f", "_main"]\'', out)
 
   def test_link_with_a_static(self):
     for args in [[], ['-O2']]:
@@ -8139,3 +8146,20 @@ end
     environ['EM_PROFILE_TOOLCHAIN'] = '1'
     # replaced subprocess functions should not cause errors
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')], env=environ)
+
+  def test_noderawfs(self):
+    fopen_write = open(path_from_root('tests', 'asmfs', 'fopen_write.cpp'), 'r').read()
+    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(fopen_write)
+    run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'NODERAWFS=1'])
+    self.assertContained("read 11 bytes. Result: Hello data!", run_js('a.out.js'))
+
+    # NODERAWFS should directly write on OS file system
+    self.assertEqual("Hello data!", open(os.path.join(self.get_dir(), 'hello_file.txt'), 'r').read())
+
+  def test_noderawfs_disables_embedding(self):
+    expected = '--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem'
+    base = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'NODERAWFS=1']
+    err = run_process(base + ['--preload-files', 'somefile'], stderr=PIPE, check=False).stderr
+    assert expected in err
+    err = run_process(base + ['--embed-files', 'somefile'], stderr=PIPE, check=False).stderr
+    assert expected in err

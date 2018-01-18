@@ -808,7 +808,7 @@ var SyscallsLibrary = {
     // hack to support printf in NO_FILESYSTEM
     var stream = SYSCALLS.get(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     var ret = 0;
-    if (!___syscall146.buffer) {
+    if (!___syscall146.buffers) {
       ___syscall146.buffers = [null, [], []]; // 1 => stdout, 2 => stderr
       ___syscall146.printChar = function(stream, curr) {
         var buffer = ___syscall146.buffers[stream];

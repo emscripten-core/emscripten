@@ -457,6 +457,7 @@
         "defines": [
             "O_CREAT", 
             "O_SYNC", 
+            "O_DSYNC",
             "F_GETFD", 
             "F_SETFL", 
             "O_NOFOLLOW", 

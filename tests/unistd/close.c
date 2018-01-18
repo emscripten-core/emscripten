@@ -5,7 +5,7 @@
 #include <assert.h>
 
 int main() {
-  int f = open("/", O_RDONLY);
+  int f = open(".", O_RDONLY);
 
   int ret = fsync(f);
   printf("fsync(opened): %d\n", ret);
