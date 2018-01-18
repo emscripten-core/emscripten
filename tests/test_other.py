@@ -8171,6 +8171,6 @@ end
     environ['EMMAKEN_JUST_CONFIGURE'] = '1'
     environ['EMCONFIGURE_JS'] = '2'
     if os.path.sep in NODE_JS:
-      environ['PATH'] = NODE_JS + ';' if WINDOWS else ':' + environ['PATH']
+      environ['PATH'] = NODE_JS + (';' if WINDOWS else ':') + environ['PATH']
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'hello'], env=environ)
     run_process([os.path.join(self.get_dir(), 'hello')])
