@@ -33,7 +33,7 @@ extern "C" {
  * E.g. emscripten vr API version 1.1.0 implements some initial features for
  * WebVR 1.1 and its version define will have the value 10100
  */
-#define EMSCRIPTEN_VR_API_VERSION 10100
+#define EMSCRIPTEN_VR_API_VERSION 10101
 
 typedef int32_t VRDisplayHandle;
 
