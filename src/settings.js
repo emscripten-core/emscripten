@@ -182,7 +182,7 @@ var OUTLINING_LIMIT = 0; // A function size above which we try to automatically 
                          // emscripten to disable some passes that are incompatible with
                          // it).
 
-var BABEL_OPTIMIZER = 0; // Whether to use the Babel optimizer instead of the Uglify optimizer
+var BABEL_OPTIMIZER = 1; // Whether to use the Babel optimizer instead of the Uglify optimizer
 
 var AGGRESSIVE_VARIABLE_ELIMINATION = 0; // Run aggressiveVariableElimination in js-optimizer.js
 var SIMPLIFY_IFS = 1; // Whether to simplify ifs in js-optimizer.js
