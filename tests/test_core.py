@@ -7307,6 +7307,7 @@ int main(int argc, char **argv) {
   def test_coroutine_asyncify(self):
     self.do_test_coroutine({'ASYNCIFY': 1})
 
+  @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is disallowed')
   def test_coroutine_emterpretify_async(self):
     self.do_test_coroutine({'EMTERPRETIFY': 1, 'EMTERPRETIFY_ASYNC': 1})
 
