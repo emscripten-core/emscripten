@@ -1878,14 +1878,11 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
       '--entry=main',
       '--allow-undefined',
       '--import-memory',
+      '--export', '__wasm_call_ctors',
     ])
     debug_copy(base_wasm, 'base_wasm.wasm')
 
-    initializers = json.loads(open(meta).read())['initializers']
-    cmd = [wasm_emscripten_finalize, base_wasm, '-o', wasm]
-    if len(initializers) > 0:
-      cmd += ['--force-exports', ','.join(initializers)]
-    shared.check_call(cmd)
+    shared.check_call([wasm_emscripten_finalize, base_wasm, '-o', wasm])
     debug_copy(wasm, 'lld-emscripten-output.wasm')
 
     # TODO: This is gross. We currently read exports from the wast in order to
@@ -2185,6 +2182,9 @@ def add_metadata_from_wast(metadata, wast):
       if export_type == 'func':
         assert asmjs_mangle(export_name) not in metadata['exports']
         metadata['exports'].append(export_name)
+      elif export_type == 'global':
+        # Ignore global exports
+        pass
       else:
         assert False, 'Unhandled export type "%s"' % export_type
 
