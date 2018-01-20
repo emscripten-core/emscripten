@@ -39,6 +39,21 @@ def no_wasm_backend(note=''):
     return skip_if(f, 'is_wasm_backend', note)
   return decorated
 
+def no_linux(note=''):
+  def decorated(f):
+    return skip_if(f, 'is_linux', note)
+  return decorated
+
+def no_mac(note=''):
+  def decorated(f):
+    return skip_if(f, 'is_mac', note)
+  return decorated
+
+def no_windows(note=''):
+  def decorated(f):
+    return skip_if(f, 'is_windows', note)
+  return decorated
+
 # Async wasm compilation can't work in some tests, they are set up synchronously
 def sync(f):
   def decorated(self):
@@ -64,6 +79,13 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     return 'SPLIT_MEMORY=' in str(self.emcc_args)
   def is_wasm(self):
     return 'BINARYEN' in str(self.emcc_args) or self.is_wasm_backend()
+  def is_linux(self):
+    # sys.platform is 'linux2' in Python 2.x and 'linux' in Python 3.x
+    return sys.platform.startsWith('linux')
+  def is_mac(self):
+    return sys.platform == 'darwin'
+  def is_windows(self):
+    return sys.platform == 'win32'
 
   # Use closure in some tests for some additional coverage
   def maybe_closure(self):
@@ -4543,6 +4565,7 @@ def process(filename):
     out = path_from_root('tests', 'fs', 'test_trackingdelegate.out')
     self.do_run_from_file(src, out)
 
+  @no_mac('noderawfs support on mac is flaky')
   @also_with_noderawfs
   def test_fs_writeFile(self, js_engines=None):
     self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=1'] # see issue 2334
@@ -4698,6 +4721,7 @@ def process(filename):
     expected = open(path_from_root('tests', 'unistd', 'login.out'), 'r').read()
     self.do_run(src, expected)
 
+  @no_mac('noderawfs support on mac is flaky')
   def test_unistd_unlink(self):
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
