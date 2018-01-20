@@ -4565,7 +4565,7 @@ def process(filename):
     out = path_from_root('tests', 'fs', 'test_trackingdelegate.out')
     self.do_run_from_file(src, out)
 
-  @no_mac('noderawfs support on mac is flaky')
+  @no_mac('NODERAWFS support on mac is flaky')
   @also_with_noderawfs
   def test_fs_writeFile(self, js_engines=None):
     self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=1'] # see issue 2334
@@ -4721,7 +4721,7 @@ def process(filename):
     expected = open(path_from_root('tests', 'unistd', 'login.out'), 'r').read()
     self.do_run(src, expected)
 
-  @no_mac('noderawfs support on mac is flaky')
+  @no_mac('NODERAWFS support on mac is flaky')
   def test_unistd_unlink(self):
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
