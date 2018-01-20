@@ -4636,7 +4636,7 @@ def process(filename):
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
     # Node.js fs.chmod is nearly no-op on Windows
-    if not WINDOWS:
+    if not self.is_windows():
       Building.COMPILER_TEST_OPTS = orig_compiler_opts
       self.emcc_args += ['-s', 'NODERAWFS=1']
       self.do_run(src, expected, js_engines=[NODE_JS])
@@ -4687,7 +4687,7 @@ def process(filename):
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_truncate_noderawfs(self):
-    if WINDOWS:
+    if self.is_windows():
       return self.skip("Windows throws EPERM rather than EACCES or EINVAL")
     if not os.geteuid(): # 0 if root
       return self.skip("Root access invalidates this test by being able to write on readonly files")
@@ -4721,7 +4721,6 @@ def process(filename):
     expected = open(path_from_root('tests', 'unistd', 'login.out'), 'r').read()
     self.do_run(src, expected)
 
-  @no_mac('NODERAWFS support on mac is flaky')
   def test_unistd_unlink(self):
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
@@ -4729,10 +4728,10 @@ def process(filename):
     for fs in ['MEMFS', 'NODEFS']:
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       # symlinks on node.js on Windows require administrative privileges, so skip testing those bits on that combination.
-      if WINDOWS and fs == 'NODEFS': Building.COMPILER_TEST_OPTS += ['-DNO_SYMLINK=1']
+      if self.is_windows() and fs == 'NODEFS': Building.COMPILER_TEST_OPTS += ['-DNO_SYMLINK=1']
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
     # Several differences/bugs on Windows including https://github.com/nodejs/node/issues/18014
-    if not WINDOWS:
+    if not self.mac() and not self.is_windows():
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-DNODERAWFS']
       if not os.geteuid(): # 0 if root
         Building.COMPILER_TEST_OPTS += ['-DSKIP_ACCESS_TESTS']
@@ -4745,7 +4744,7 @@ def process(filename):
     src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
     for fs in ['MEMFS', 'NODEFS']:
-      if WINDOWS and fs == 'NODEFS':
+      if self.is_windows() and fs == 'NODEFS':
         print('Skipping NODEFS part of this test for test_unistd_links on Windows, since it would require administrative privileges.', file=sys.stderr)
         # Also, other detected discrepancies if you do end up running this test on NODEFS:
         # test expects /, but Windows gives \ as path slashes.
@@ -4755,7 +4754,7 @@ def process(filename):
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_symlink_on_nodefs(self):
-    if WINDOWS:
+    if self.is_windows():
       return self.skip('Skipping NODEFS part of this test for test_unistd_symlink_on_nodefs on Windows, since it would require administrative privileges.')
       # Also, other detected discrepancies if you do end up running this test on NODEFS:
       # test expects /, but Windows gives \ as path slashes.
@@ -5490,7 +5489,7 @@ return malloc(size);
                             os.path.join('objs', '.libs', 'libfreetype.a'))
 
   def test_freetype(self):
-    if WINDOWS: return self.skip('test_freetype uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
+    if self.is_windows(): return self.skip('test_freetype uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
     assert 'asm2g' in test_modes
     if self.run_name == 'asm2g':
       Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS # flip for some more coverage here
@@ -5579,7 +5578,7 @@ def process(filename):
     if self.run_name == 'asm2g':
       self.emcc_args += ['-g4'] # more source maps coverage
 
-    use_cmake_configure = WINDOWS
+    use_cmake_configure = self.is_windows()
     if use_cmake_configure:
       make_args = []
       configure = [PYTHON, path_from_root('emcmake'), 'cmake', '.', '-DBUILD_SHARED_LIBS=OFF']
@@ -5601,7 +5600,7 @@ def process(filename):
     for use_cmake in [False, True]: # If false, use a configure script to configure Bullet build.
       print('cmake', use_cmake)
       # Windows cannot run configure sh scripts.
-      if WINDOWS and not use_cmake:
+      if self.is_windows() and not use_cmake:
         continue
 
       Settings.ASSERTIONS = 2 if use_cmake else asserts # extra testing for ASSERTIONS == 2
@@ -5632,7 +5631,7 @@ def process(filename):
 
   @sync
   def test_poppler(self):
-    if WINDOWS: return self.skip('test_poppler depends on freetype, which uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
+    if self.is_windows(): return self.skip('test_poppler depends on freetype, which uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
 
     def test():
       Building.COMPILER_TEST_OPTS += [
