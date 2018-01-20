@@ -220,6 +220,11 @@ The types of the parameters you pass to functions need to make sense.
 Integers and floating point values can be passed as is. Pointers are
 simply integers in the generated code.
 
+.. note:: Since ``long long`` variables are 64 bits long, they can not be
+   represented in JavaScript. For this reason if function in C/C++ code receives
+   ``long long`` parameter, Emscripten will emit 2 parameters to represent it,
+   for lower and higher 32 bits accordingly.
+
 Strings in JavaScript must be converted to pointers for compiled
 code — the relevant function is :js:func:`Pointer_stringify`, which
 given a pointer returns a JavaScript string. Converting a JavaScript
