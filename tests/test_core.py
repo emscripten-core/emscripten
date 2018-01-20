@@ -7307,11 +7307,14 @@ int main(int argc, char **argv) {
   def test_coroutine_asyncify(self):
     self.do_test_coroutine({'ASYNCIFY': 1})
 
+  @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
+                   'unsupported with Wasm backend')
   def test_coroutine_emterpretify_async(self):
     self.do_test_coroutine({'EMTERPRETIFY': 1, 'EMTERPRETIFY_ASYNC': 1})
 
   @no_emterpreter
-  @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is disallowed')
+  @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
+                   'unsupported with Wasm backend')
   def test_emterpretify(self):
     Settings.EMTERPRETIFY = 1
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
