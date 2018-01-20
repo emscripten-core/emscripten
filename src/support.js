@@ -253,7 +253,7 @@ function addFunction(func) {
   for (var i = 0; i < functionPointers.length; i++) {
     if (!functionPointers[i]) {
       functionPointers[i] = func;
-      return {{{ FUNCTION_POINTER_ALIGNMENT }}}*(1 + i);
+      return 1 + i;
     }
   }
   throw 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.';
@@ -282,7 +282,7 @@ function addFunction(func) {
 
 function removeFunction(index) {
 #if EMULATED_FUNCTION_POINTERS == 0
-  functionPointers[(index-{{{ FUNCTION_POINTER_ALIGNMENT }}})/{{{ FUNCTION_POINTER_ALIGNMENT }}}] = null;
+  functionPointers[index-1] = null;
 #else
   alignFunctionTables(); // XXX we should rely on this being an invariant
   var tables = getFunctionTables();

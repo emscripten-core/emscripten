@@ -5,7 +5,7 @@
 # See emrun --help for more information
 
 from __future__ import print_function
-import os, platform, optparse, logging, re, pprint, atexit, subprocess, sys, time, struct, socket, cgi, tempfile, stat, shutil, json, uuid, shlex
+import os, platform, argparse, logging, re, pprint, atexit, subprocess, sys, time, struct, socket, cgi, tempfile, stat, shutil, json, uuid, shlex
 from operator import itemgetter
 from threading import Thread, RLock
 
@@ -285,6 +285,8 @@ user_pref("extensions.update.enabled", false);
 user_pref("extensions.getAddons.cache.enabled", false);
 // Enable wasm
 user_pref("javascript.options.wasm", true);
+// Enable SharedArrayBuffer (this profile is for a testing environment, so Spectre/Meltdown don't apply)
+user_pref("javascript.options.shared_memory", true);
 ''')
   f.close()
   logv('create_emrun_safe_firefox_profile: Created new Firefox profile "' + temp_firefox_profile_dir + '"')
@@ -602,6 +604,14 @@ class HTTPHandler(SimpleHTTPRequestHandler):
     self.end_headers()
     self.wfile.write('OK')
 
+# Returns stdout by running command with universal_newlines=True
+def check_output(cmd, universal_newlines=True, *args, **kwargs):
+  if hasattr(subprocess, "run"):
+    return subprocess.run(cmd, universal_newlines=universal_newlines, stdout=subprocess.PIPE, check=True, *args, **kwargs).stdout
+  else:
+    # check_output is considered as an old API so prefer subprocess.run if possible
+    return subprocess.check_output(cmd, universal_newlines=universal_newlines, *args, **kwargs)
+
 # From http://stackoverflow.com/questions/4842448/getting-processor-information-in-python
 # Returns a string with something like "AMD64, Intel(R) Core(TM) i5-2557M CPU @ 1.70GHz, Intel64 Family 6 Model 42 Stepping 7, GenuineIntel"
 def get_cpu_info():
@@ -614,20 +624,20 @@ def get_cpu_info():
       root_winmgmts = GetObject("winmgmts:root\cimv2")
       cpus = root_winmgmts.ExecQuery("Select * from Win32_Processor")
       cpu_name = cpus[0].Name + ', ' + platform.processor()
-      physical_cores = int(subprocess.check_output(['wmic', 'cpu', 'get', 'NumberOfCores']).split(b'\n')[1].strip())
-      logical_cores = int(subprocess.check_output(['wmic', 'cpu', 'get', 'NumberOfLogicalProcessors']).split(b'\n')[1].strip())
-      frequency = int(subprocess.check_output(['wmic', 'cpu', 'get', 'MaxClockSpeed']).split(b'\n')[1].strip())
+      physical_cores = int(check_output(['wmic', 'cpu', 'get', 'NumberOfCores']).split('\n')[1].strip())
+      logical_cores = int(check_output(['wmic', 'cpu', 'get', 'NumberOfLogicalProcessors']).split('\n')[1].strip())
+      frequency = int(check_output(['wmic', 'cpu', 'get', 'MaxClockSpeed']).split('\n')[1].strip())
     elif OSX:
-      cpu_name = subprocess.check_output(['sysctl', '-n', 'machdep.cpu.brand_string']).strip()
-      physical_cores = int(subprocess.check_output(['sysctl', '-n', 'machdep.cpu.core_count']).strip())
-      logical_cores = int(subprocess.check_output(['sysctl', '-n', 'machdep.cpu.thread_count']).strip())
-      frequency = int(subprocess.check_output(['sysctl', '-n', 'hw.cpufrequency']).strip()) / 1000000
+      cpu_name = check_output(['sysctl', '-n', 'machdep.cpu.brand_string']).strip()
+      physical_cores = int(check_output(['sysctl', '-n', 'machdep.cpu.core_count']).strip())
+      logical_cores = int(check_output(['sysctl', '-n', 'machdep.cpu.thread_count']).strip())
+      frequency = int(check_output(['sysctl', '-n', 'hw.cpufrequency']).strip()) // 1000000
     elif LINUX:
-      all_info = subprocess.check_output(['cat', '/proc/cpuinfo']).strip()
+      all_info = check_output(['cat', '/proc/cpuinfo']).strip()
       for line in all_info.split("\n"):
         if "model name" in line:
           cpu_name = re.sub( ".*model name.*:", "", line, 1).strip()
-      lscpu = subprocess.check_output(['lscpu'])
+      lscpu = check_output(['lscpu'])
       frequency = int(float(re.search('CPU MHz: (.*)', lscpu).group(1).strip()) + 0.5)
       sockets = int(re.search('Socket\(s\): (.*)', lscpu).group(1).strip())
       physical_cores = sockets * int(re.search('Core\(s\) per socket: (.*)', lscpu).group(1).strip())
@@ -648,7 +658,7 @@ def get_cpu_info():
     }
 
 def get_android_cpu_infoline():
-  lines = subprocess.check_output([ADB, 'shell', 'cat', '/proc/cpuinfo']).split('\n')
+  lines = check_output([ADB, 'shell', 'cat', '/proc/cpuinfo']).split('\n')
   processor = ''
   hardware = ''
   for line in lines:
@@ -657,7 +667,7 @@ def get_android_cpu_infoline():
     elif line.startswith('Hardware'):
       hardware = line[line.find(':')+1:].strip()
 
-  freq = int(subprocess.check_output([ADB, 'shell', 'cat', '/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq']).strip())/1000
+  freq = int(check_output([ADB, 'shell', 'cat', '/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq']).strip())//1000
   return 'CPU: ' + processor + ', ' + hardware + ' @ ' + str(freq) + ' MHz'
 
 def win_get_gpu_info():
@@ -718,7 +728,7 @@ def win_get_gpu_info():
 def linux_get_gpu_info():
   glinfo = ''
   try:
-    glxinfo = subprocess.check_output('glxinfo')
+    glxinfo = check_output('glxinfo')
     for line in glxinfo.split("\n"):
       if "OpenGL vendor string:" in line: gl_vendor = line[len("OpenGL vendor string:"):].strip()
       if "OpenGL version string:" in line: gl_version = line[len("OpenGL version string:"):].strip()
@@ -729,7 +739,7 @@ def linux_get_gpu_info():
 
   adapterinfo = ''
   try:
-    vgainfo = subprocess.check_output(['lshw', '-C', 'display'], stderr=subprocess.PIPE)
+    vgainfo = check_output(['lshw', '-C', 'display'], stderr=subprocess.PIPE)
     vendor = re.search("vendor: (.*)", vgainfo).group(1).strip()
     product = re.search("product: (.*)", vgainfo).group(1).strip()
     description = re.search("description: (.*)", vgainfo).group(1).strip()
@@ -740,7 +750,7 @@ def linux_get_gpu_info():
 
   ram = 0
   try:
-    vgainfo = subprocess.check_output('lspci -v -s $(lspci | grep VGA | cut -d " " -f 1)', shell=True, stderr=subprocess.PIPE)
+    vgainfo = check_output('lspci -v -s $(lspci | grep VGA | cut -d " " -f 1)', shell=True, stderr=subprocess.PIPE)
     ram = int(re.search("\[size=([0-9]*)M\]", vgainfo).group(1)) * 1024 * 1024
   except Exception as e:
     logv(e)
@@ -752,7 +762,7 @@ def linux_get_gpu_info():
 def osx_get_gpu_info():
   gpus = []
   try:
-    info = subprocess.check_output(['system_profiler', 'SPDisplaysDataType'])
+    info = check_output(['system_profiler', 'SPDisplaysDataType'])
     info = info.split("Chipset Model:")[1:]
     for gpu in info:
       model_name = gpu.split('\n')[0].strip()
@@ -789,7 +799,7 @@ def get_executable_version(filename):
         return info['CFBundleShortVersionString']
     elif LINUX:
       if 'firefox' in filename.lower():
-        version = subprocess.check_output([filename, '-v'])
+        version = check_output([filename, '-v'])
         version = version.replace('Mozilla Firefox ', '')
         return version.strip()
       else:
@@ -877,34 +887,34 @@ def get_computer_model():
 
       try:
         # http://apple.stackexchange.com/questions/98080/can-a-macs-model-year-be-determined-via-terminal-command
-        serial = subprocess.check_output(['system_profiler', 'SPHardwareDataType'])
+        serial = check_output(['system_profiler', 'SPHardwareDataType'])
         serial = re.search("Serial Number (.*): (.*)", serial)
         serial = serial.group(2).strip()[-4:]
         cmd = ['curl', '-s', 'http://support-sp.apple.com/sp/product?cc=' + serial]
         logv(str(cmd))
-        model = subprocess.check_output(cmd)
+        model = check_output(cmd)
         model = re.search('<configCode>(.*)</configCode>', model)
         model = model.group(1).strip()
         open(os.path.join(os.getenv("HOME"), '.emrun.hwmodel.cached'), 'w').write(model) # Cache the hardware model to disk
         return model
       except:
-        hwmodel = subprocess.check_output(['sysctl', 'hw.model'])
+        hwmodel = check_output(['sysctl', 'hw.model'])
         hwmodel = re.search('hw.model: (.*)', hwmodel).group(1).strip()
         return hwmodel
     elif WINDOWS:
-      manufacturer = subprocess.check_output(['wmic', 'baseboard', 'get', 'manufacturer']).split('\n')[1].strip()
-      version = subprocess.check_output(['wmic', 'baseboard', 'get', 'version']).split('\n')[1].strip()
-      product = subprocess.check_output(['wmic', 'baseboard', 'get', 'product']).split('\n')[1].strip()
+      manufacturer = check_output(['wmic', 'baseboard', 'get', 'manufacturer']).split('\n')[1].strip()
+      version = check_output(['wmic', 'baseboard', 'get', 'version']).split('\n')[1].strip()
+      product = check_output(['wmic', 'baseboard', 'get', 'product']).split('\n')[1].strip()
       if 'Apple' in manufacturer: return manufacturer + ' ' + version + ', ' + product
       else: return manufacturer + ' ' + product + ', ' + version
     elif LINUX:
-      board_vendor = subprocess.check_output(['cat', '/sys/devices/virtual/dmi/id/board_vendor']).strip()
-      board_name = subprocess.check_output(['cat', '/sys/devices/virtual/dmi/id/board_name']).strip()
-      board_version = subprocess.check_output(['cat', '/sys/devices/virtual/dmi/id/board_version']).strip()
+      board_vendor = check_output(['cat', '/sys/devices/virtual/dmi/id/board_vendor']).strip()
+      board_name = check_output(['cat', '/sys/devices/virtual/dmi/id/board_name']).strip()
+      board_version = check_output(['cat', '/sys/devices/virtual/dmi/id/board_version']).strip()
 
-      bios_vendor = subprocess.check_output(['cat', '/sys/devices/virtual/dmi/id/bios_vendor']).strip()
-      bios_version = subprocess.check_output(['cat', '/sys/devices/virtual/dmi/id/bios_version']).strip()
-      bios_date = subprocess.check_output(['cat', '/sys/devices/virtual/dmi/id/bios_date']).strip()
+      bios_vendor = check_output(['cat', '/sys/devices/virtual/dmi/id/bios_vendor']).strip()
+      bios_version = check_output(['cat', '/sys/devices/virtual/dmi/id/bios_version']).strip()
+      bios_date = check_output(['cat', '/sys/devices/virtual/dmi/id/bios_date']).strip()
       return board_vendor + ' ' + board_name + ' ' + board_version + ', ' + bios_vendor + ' ' + bios_version + ' (' + bios_date + ')'
   except Exception as e:
     logv(str(e))
@@ -920,14 +930,14 @@ def get_os_version():
 
       version = ''
       try:
-        version = ' ' + subprocess.check_output(['wmic', 'os', 'get', 'version']).split('\n')[1].strip()
+        version = ' ' + check_output(['wmic', 'os', 'get', 'version']).split('\n')[1].strip()
       except:
         pass
       return productName[0] + version + bitness
     elif OSX:
       return 'Mac OS ' + platform.mac_ver()[0] + bitness
     elif LINUX:
-      kernel_version = subprocess.check_output(['uname', '-r']).strip()
+      kernel_version = check_output(['uname', '-r']).strip()
       return ' '.join(platform.linux_distribution()) + ', linux kernel ' + kernel_version + ' ' + platform.architecture()[0] + bitness
   except:
     return 'Unknown OS'
@@ -938,7 +948,7 @@ def get_system_memory():
   try:
     if LINUX or emrun_options.android:
       if emrun_options.android:
-        lines = subprocess.check_output([ADB, 'shell', 'cat', '/proc/meminfo']).split('\n')
+        lines = check_output([ADB, 'shell', 'cat', '/proc/meminfo']).split('\n')
       else:
         mem = open('/proc/meminfo', 'r')
         lines = mem.readlines()
@@ -950,7 +960,7 @@ def get_system_memory():
     elif WINDOWS:
       return win32api.GlobalMemoryStatusEx()['TotalPhys']
     elif OSX:
-      return int(subprocess.check_output(['sysctl', '-n', 'hw.memsize']).strip())
+      return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
   except:
     return -1
 
@@ -1065,32 +1075,32 @@ def find_browser(name):
 
 def get_android_model():
   global ADB
-  manufacturer = subprocess.check_output([ADB, 'shell', 'getprop', 'ro.product.manufacturer']).strip()
-  brand = subprocess.check_output([ADB, 'shell', 'getprop', 'ro.product.brand']).strip()
-  model = subprocess.check_output([ADB, 'shell', 'getprop', 'ro.product.model']).strip()
-  board = subprocess.check_output([ADB, 'shell', 'getprop', 'ro.product.board']).strip()
-  device = subprocess.check_output([ADB, 'shell', 'getprop', 'ro.product.device']).strip()
-  name = subprocess.check_output([ADB, 'shell', 'getprop', 'ro.product.name']).strip()
+  manufacturer = check_output([ADB, 'shell', 'getprop', 'ro.product.manufacturer']).strip()
+  brand = check_output([ADB, 'shell', 'getprop', 'ro.product.brand']).strip()
+  model = check_output([ADB, 'shell', 'getprop', 'ro.product.model']).strip()
+  board = check_output([ADB, 'shell', 'getprop', 'ro.product.board']).strip()
+  device = check_output([ADB, 'shell', 'getprop', 'ro.product.device']).strip()
+  name = check_output([ADB, 'shell', 'getprop', 'ro.product.name']).strip()
   return manufacturer + ' ' + brand + ' ' + model + ' ' + board + ' ' + device + ' ' + name
 
 def get_android_os_version():
   global ADB
-  ver = subprocess.check_output([ADB, 'shell', 'getprop', 'ro.build.version.release']).strip()
-  apiLevel = subprocess.check_output([ADB, 'shell', 'getprop', 'ro.build.version.sdk']).strip()
+  ver = check_output([ADB, 'shell', 'getprop', 'ro.build.version.release']).strip()
+  apiLevel = check_output([ADB, 'shell', 'getprop', 'ro.build.version.sdk']).strip()
   if not apiLevel:
-    apiLevel = subprocess.check_output([ADB, 'shell', 'getprop', 'ro.build.version.sdk_int']).strip()
+    apiLevel = check_output([ADB, 'shell', 'getprop', 'ro.build.version.sdk_int']).strip()
 
   os = ''
   if ver:
     os += 'Android ' + ver + ' '
   if apiLevel:
     os += 'SDK API Level ' + apiLevel + ' '
-  os += subprocess.check_output([ADB, 'shell', 'getprop', 'ro.build.description']).strip()
+  os += check_output([ADB, 'shell', 'getprop', 'ro.build.description']).strip()
   return os
 
 def list_android_browsers():
   global ADB
-  apps = subprocess.check_output([ADB, 'shell', 'pm', 'list', 'packages', '-f']).replace('\r\n', '\n')
+  apps = check_output([ADB, 'shell', 'pm', 'list', 'packages', '-f']).replace('\r\n', '\n')
   browsers = []
   for line in apps.split('\n'):
     line = line.strip()
@@ -1190,7 +1200,7 @@ def get_system_info(format_json):
           }, indent=2)
     else:
       info = 'Model: ' + get_android_model() + '\n'
-      info += 'OS: ' + get_android_os_version() + ' with ' + str(get_system_memory()/1024/1024) + ' MB of System RAM\n'
+      info += 'OS: ' + get_android_os_version() + ' with ' + str(get_system_memory()//1024//1024) + ' MB of System RAM\n'
       info += 'CPU: ' + get_android_cpu_infoline() + '\n'
       return info.strip()
   else:
@@ -1219,97 +1229,106 @@ def get_system_info(format_json):
       gpus = get_gpu_info()
       info = 'Computer name: ' + socket.gethostname() + '\n' # http://stackoverflow.com/questions/799767/getting-name-of-windows-computer-running-python-script
       info += 'Model: ' + get_computer_model() + '\n'
-      info += 'OS: ' + get_os_version() + ' with ' + str(get_system_memory()/1024/1024) + ' MB of System RAM\n'
+      info += 'OS: ' + get_os_version() + ' with ' + str(get_system_memory()//1024//1024) + ' MB of System RAM\n'
       info += 'CPU: ' + cpu['model'] + ', ' + str(cpu['frequency']) + ' MHz, ' + str(cpu['physicalCores']) + ' physical cores, ' + str(cpu['logicalCores']) + ' logical cores\n';
       if len(gpus) == 1:
-        info += "GPU: " + gpus[0]['model'] + " with " + str(gpus[0]['ram']/1024/1024) + " MB of VRAM\n"
+        info += "GPU: " + gpus[0]['model'] + " with " + str(gpus[0]['ram']//1024//1024) + " MB of VRAM\n"
       elif len(gpus) > 1:
         for i in range(0, len(gpus)):
-          info += "GPU"+str(i)+ ": " + gpus[i]['model'] + " with " + str(gpus[i]['ram']/1024/1024) + " MBs of VRAM\n"
+          info += "GPU"+str(i)+ ": " + gpus[i]['model'] + " with " + str(gpus[i]['ram']//1024//1024) + " MBs of VRAM\n"
       info += 'UUID: ' + unique_system_id
       return info.strip()
 
+# Be resilient to quotes and whitespace
+def unwrap(s):
+  s = s.strip()
+  if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
+    s = s[1:-1].strip()
+  return s
+
 def run():
   global browser_process, browser_exe, processname_killed_atexit, emrun_options, emrun_not_enabled_nag_printed, ADB
-  usage_str = "usage: emrun [emrun_options] filename.html [html_cmdline_options]\n\n   where emrun_options specifies command line options for emrun itself, whereas\n   html_cmdline_options specifies startup arguments to the program."
-  parser = optparse.OptionParser(usage=usage_str)
+  usage_str = "emrun [emrun_options] filename.html [html_cmdline_options]\n\n   where emrun_options specifies command line options for emrun itself, whereas\n   html_cmdline_options specifies startup arguments to the program."
+  parser = argparse.ArgumentParser(usage=usage_str)
 
-  parser.add_option('--kill_start', dest='kill_on_start', action='store_true', default=False,
+  parser.add_argument('--kill_start', dest='kill_on_start', action='store_true', default=False,
     help='If true, any previously running instances of the target browser are killed before starting.')
 
-  parser.add_option('--kill_exit', dest='kill_on_exit', action='store_true', default=False,
+  parser.add_argument('--kill_exit', dest='kill_on_exit', action='store_true', default=False,
     help='If true, the spawned browser process is forcibly killed when it calls exit(). Note: Using this option may require explicitly passing the option --browser=/path/to/browser, to avoid emrun being detached from the browser process it spawns.')
 
-  parser.add_option('--no_server', dest='no_server', action='store_true', default=False,
+  parser.add_argument('--no_server', dest='no_server', action='store_true', default=False,
     help='If specified, a HTTP web server is not launched to host the page to run.')
 
-  parser.add_option('--no_browser', dest='no_browser', action='store_true', default=False,
+  parser.add_argument('--no_browser', dest='no_browser', action='store_true', default=False,
     help='If specified, emrun will not launch a web browser to run the page.')
 
-  parser.add_option('--no_emrun_detect', dest='no_emrun_detect', action='store_true', default=False,
+  parser.add_argument('--no_emrun_detect', dest='no_emrun_detect', action='store_true', default=False,
     help='If specified, skips printing the warning message if html page is detected to not have been built with --emrun linker flag.')
 
-  parser.add_option('--serve_after_close', dest='serve_after_close', action='store_true', default=False,
+  parser.add_argument('--serve_after_close', dest='serve_after_close', action='store_true', default=False,
     help='If true, serves the web page even after the application quits by user closing the web page.')
 
-  parser.add_option('--serve_after_exit', dest='serve_after_exit', action='store_true', default=False,
+  parser.add_argument('--serve_after_exit', dest='serve_after_exit', action='store_true', default=False,
     help='If true, serves the web page even after the application quits by a call to exit().')
 
-  parser.add_option('--serve_root', dest='serve_root', default='',
+  parser.add_argument('--serve_root', dest='serve_root', default='',
     help='If set, specifies the root path that the emrun web server serves. If not specified, the directory where the target .html page lives in is served.')
 
-  parser.add_option('--verbose', dest='verbose', action='store_true', default=False,
+  parser.add_argument('--verbose', dest='verbose', action='store_true', default=False,
     help='Enable verbose logging from emrun internal operation.')
 
-  parser.add_option('--hostname', dest='hostname', default=default_webserver_hostname,
+  parser.add_argument('--hostname', dest='hostname', default=default_webserver_hostname,
     help='Specifies the hostname the server runs in.')
 
-  parser.add_option('--port', dest='port', default=default_webserver_port, type="int",
+  parser.add_argument('--port', dest='port', default=default_webserver_port, type=int,
     help='Specifies the port the server runs in.')
 
-  parser.add_option('--log_stdout', dest='log_stdout', default='',
+  parser.add_argument('--log_stdout', dest='log_stdout', default='',
     help='Specifies a log filename where the browser process stdout data will be appended to.')
 
-  parser.add_option('--log_stderr', dest='log_stderr', default='',
+  parser.add_argument('--log_stderr', dest='log_stderr', default='',
     help='Specifies a log filename where the browser process stderr data will be appended to.')
 
-  parser.add_option('--silence_timeout', dest='silence_timeout', type="int", default=0,
+  parser.add_argument('--silence_timeout', dest='silence_timeout', type=int, default=0,
     help='If no activity is received in this many seconds, the browser process is assumed to be hung, and the web server is shut down and the target browser killed. Disabled by default.')
 
-  parser.add_option('--timeout', dest='timeout', type="int", default=0,
+  parser.add_argument('--timeout', dest='timeout', type=int, default=0,
     help='If the browser process does not quit or the page exit() in this many seconds, the browser is assumed to be hung, and the web server is shut down and the target browser killed. Disabled by default.')
 
-  parser.add_option('--timeout_returncode', dest='timeout_returncode', type="int", default=99999,
+  parser.add_argument('--timeout_returncode', dest='timeout_returncode', type=int, default=99999,
     help='Sets the exit code that emrun reports back to caller in the case that a page timeout occurs. Default: 99999.')
 
-  parser.add_option('--list_browsers', dest='list_browsers', action='store_true',
+  parser.add_argument('--list_browsers', dest='list_browsers', action='store_true',
     help='Prints out all detected browser that emrun is able to use with the --browser command and exits.')
 
-  parser.add_option('--browser', dest='browser', default='',
+  parser.add_argument('--browser', dest='browser', default='',
     help='Specifies the browser executable to run the web page in.')
 
-  parser.add_option('--browser_args', dest='browser_args', default='',
+  parser.add_argument('--browser_args', dest='browser_args', default='',
     help='Specifies the arguments to the browser executable.')
 
-  parser.add_option('--android', dest='android', action='store_true', default=False,
+  parser.add_argument('--android', dest='android', action='store_true', default=False,
     help='Launches the page in a browser of an Android device connected to an USB on the local system. (via adb)')
 
-  parser.add_option('--system_info', dest='system_info', action='store_true',
+  parser.add_argument('--system_info', dest='system_info', action='store_true',
     help='Prints information about the current system at startup.')
 
-  parser.add_option('--browser_info', dest='browser_info', action='store_true',
+  parser.add_argument('--browser_info', dest='browser_info', action='store_true',
     help='Prints information about the target browser to launch at startup.')
 
-  parser.add_option('--json', dest='json', action='store_true',
+  parser.add_argument('--json', dest='json', action='store_true',
     help='If specified, --system_info and --browser_info are outputted in JSON format.')
 
-  parser.add_option('--safe_firefox_profile', dest='safe_firefox_profile', action='store_true',
+  parser.add_argument('--safe_firefox_profile', dest='safe_firefox_profile', action='store_true',
     help='If true, the browser is launched into a new clean Firefox profile that is suitable for unattended automated runs. (If target browser != Firefox, this parameter is ignored)')
 
-  parser.add_option('--log_html', dest='log_html', action='store_true',
+  parser.add_argument('--log_html', dest='log_html', action='store_true',
     help='If set, information lines are printed out an HTML-friendly format.')
 
-  opts_with_param = ['--browser', '--timeout_returncode', '--timeout', '--silence_timeout', '--log_stderr', '--log_stdout', '--hostname', '--port', '--serve_root']
+  parser.add_argument('serve', nargs='*')
+
+  opts_with_param = ['--browser', '--browser_args', '--timeout_returncode', '--timeout', '--silence_timeout', '--log_stderr', '--log_stdout', '--hostname', '--port', '--serve_root']
 
   cmdlineparams = []
   # Split the startup arguments to two parts, delimited by the first (unbound) positional argument.
@@ -1324,7 +1343,8 @@ def run():
       break
     i += 1
 
-  (options, args) = parser.parse_args(sys.argv)
+  options = parser.parse_args(sys.argv[1:])
+  args = options.serve
   emrun_options = options
 
   if options.android:
@@ -1350,16 +1370,16 @@ def run():
       list_pc_browsers()
     return
 
-  if len(args) < 2 and (options.system_info or options.browser_info):
+  if len(args) < 1 and (options.system_info or options.browser_info):
     options.no_server = options.no_browser = True # Don't run if only --system_info or --browser_info was passed.
 
-  if len(args) < 2 and not (options.no_server == True and options.no_browser == True):
+  if len(args) < 1 and not (options.no_server == True and options.no_browser == True):
     logi(usage_str)
     logi('')
     logi('Type emrun --help for a detailed list of available options.')
     return
 
-  file_to_serve = args[1] if len(args) > 1 else '.'
+  file_to_serve = args[0] if len(args) > 0 else '.'
   file_to_serve_is_url = file_to_serve.startswith('file://') or file_to_serve.startswith('http://') or file_to_serve.startswith('https://')
   
   if options.serve_root:
@@ -1426,10 +1446,7 @@ def run():
       processname_killed_atexit = browser_app[:browser_app.find('/')]
   else: #Launching a web page on local system.
     if options.browser:
-      # Be resilient to quotes and whitespace
-      options.browser = options.browser.strip()
-      if (options.browser.startswith('"') and options.browser.endswith('"')) or (options.browser.startswith("'") and options.browser.endswith("'")):
-        options.browser = options.browser[1:-1].strip()
+      options.browser = unwrap(options.browser)
 
     if not options.no_browser or options.browser_info:
       browser = find_browser(str(options.browser))
@@ -1437,7 +1454,7 @@ def run():
         loge('Unable to find browser "' + str(options.browser) + '"! Check the correctness of the passed --browser=xxx parameter!')
         return 1
       browser_exe = browser[0]
-      browser_args = shlex.split(options.browser_args)
+      browser_args = shlex.split(unwrap(options.browser_args))
 
       if 'safari' in browser_exe.lower():
         # Safari has a bug that a command line 'Safari http://page.com' does not launch that page,

@@ -65,7 +65,7 @@ LIB_PREFIXES = ('', 'lib')
 JS_CONTAINING_SUFFIXES = ('js', 'html')
 EXECUTABLE_SUFFIXES = JS_CONTAINING_SUFFIXES + ('wasm',)
 
-DEFERRED_REPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST')
+DEFERRED_REPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST', 'EMTERPRETIFY_SYNCLIST')
 
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
 # levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to get
@@ -707,8 +707,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           'BINARYEN_MEM_MAX': 'WASM_MEM_MAX',
           # TODO: change most (all?) other BINARYEN* names to WASM*
       }
+      settings_key_changes = set()
       def setting_sub(s):
         key, rest = s.split('=', 1)
+        settings_key_changes.add(key)
         return '='.join([settings_aliases.get(key, key), rest])
       settings_changes = list(map(setting_sub, settings_changes))
 
@@ -875,11 +877,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.separate_asm and final_suffix != 'html':
         shared.WarningManager.warn('SEPARATE_ASM')
 
-      # If we are using embind and generating JS, now is the time to link in bind.cpp
-      if options.bind and final_suffix in JS_CONTAINING_SUFFIXES:
-        input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')))
-        next_arg_index += 1
-
       # Apply optimization level settings
       shared.Settings.apply_opt_level(opt_level=options.opt_level, shrink_level=options.shrink_level, noisy=True)
 
@@ -920,6 +917,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Note the exports the user requested
       shared.Building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
+
+      if options.bind:
+        # If we are using embind and generating JS, now is the time to link in bind.cpp
+        if final_suffix in JS_CONTAINING_SUFFIXES:
+          input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')))
+          next_arg_index += 1
 
       # -s ASSERTIONS=1 implies the heaviest stack overflow check mode. Set the implication here explicitly to avoid having to
       # do preprocessor "#if defined(ASSERTIONS) || defined(STACK_OVERFLOW_CHECK)" in .js files, which is not supported.
@@ -988,6 +991,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           'allocate',
           'getMemory',
         ]
+
+      if shared.Settings.MODULARIZE_INSTANCE:
+        shared.Settings.MODULARIZE = 1
 
       if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
         shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -1077,6 +1083,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.PROXY_TO_WORKER = 1
 
       if options.use_preload_plugins or len(options.preload_files) > 0 or len(options.embed_files) > 0:
+        assert not shared.Settings.NODERAWFS, '--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem'
         # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
         shared.Settings.FORCE_FILESYSTEM = 1
 
@@ -1171,6 +1178,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
         shared.Settings.BINARYEN = shared.Settings.WASM = 1
+
+        # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
+        # we run the optimizer during asm2wasm itself). use it, if not overridden
+        if 'BINARYEN_PASSES' not in settings_key_changes:
+          if options.opt_level > 0 or options.shrink_level > 0:
+            shared.Settings.BINARYEN_PASSES = shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)
 
         # to bootstrap struct_info, we need binaryen
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
@@ -2193,7 +2206,7 @@ def emterpretify(js_target, optimizer, options):
             final + '.em.js',
             json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST),
             json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST),
-            '',
+            json.dumps(shared.Settings.EMTERPRETIFY_SYNCLIST),
             str(shared.Settings.SWAPPABLE_ASM_MODULE),
            ]
     if shared.Settings.EMTERPRETIFY_ASYNC:
@@ -2453,7 +2466,7 @@ def modularize():
 %(src)s
 
   return %(EXPORT_NAME)s;
-};
+}%(instantiate)s;
 if (typeof exports === 'object' && typeof module === 'object')
   module.exports = %(EXPORT_NAME)s;
 else if (typeof define === 'function' && define['amd'])
@@ -2461,6 +2474,11 @@ else if (typeof define === 'function' && define['amd'])
 else if (typeof exports === 'object')
   exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
 ''' % {"EXPORT_NAME": shared.Settings.EXPORT_NAME, "src": src})
+''' % {
+  'EXPORT_NAME': shared.Settings.EXPORT_NAME,
+  'src': src,
+  'instantiate': '()' if shared.Settings.MODULARIZE_INSTANCE else ''
+})
   f.close()
   if DEBUG: save_intermediate('modularized', 'js')
 

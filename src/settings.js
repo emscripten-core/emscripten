@@ -147,6 +147,8 @@ var SIMD = 0; // Whether to allow autovectorized SIMD code ( https://github.com/
 
 var USE_CLOSURE_COMPILER = 0; // Whether closure compiling is being run on this output
 
+var IGNORE_CLOSURE_COMPILER_ERRORS = 0; // Ignore closure warnings and errors (like on duplicate definitions)
+
 var SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all in
                              // functions that have no basic stack usage. But, they
                              // may allocate stack later, and in a loop, this can be
@@ -226,12 +228,6 @@ var EMULATE_FUNCTION_POINTER_CASTS = 0; // Allows function pointers to be cast, 
                                         // call of an incorrect type with a runtime correction.
                                         // This adds overhead and should not be used normally.
                                         // It also forces ALIASING_FUNCTION_POINTERS to 0.
-var FUNCTION_POINTER_ALIGNMENT = 2; // Byte alignment of function pointers - we will fill the
-                                    // tables with zeros on aligned values. 1 means all values
-                                    // are aligned and all will be used (which is optimal).
-                                    // Sadly 1 breaks on &Class::method function pointer calls,
-                                    // which llvm assumes have the lower bit zero (see
-                                    // test_polymorph and issue #1692).
 
 var EXCEPTION_DEBUG = 0; // Print out exceptions in emscriptened code. Does not work in asm.js mode
 
@@ -316,8 +312,11 @@ var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catc
                                     // DISABLE_EXCEPTION_CATCHING = 1 - disable exception catching at all
                                     // DISABLE_EXCEPTION_CATCHING = 2 - disable exception catching, but enables
                                     // catching in whitelist
-                                    // TODO: Make this also remove cxa_begin_catch etc., optimize relooper
-                                    //       for it, etc. (perhaps do all of this as preprocessing on .ll?)
+                                    // XXX note that this removes *catching* of exceptions, which is the main
+                                    //     issue for speed, but for code size you need to build with
+                                    //     -fno-exceptions to really get rid of all exceptions code overhead,
+                                    //     as it may contain thrown exceptions that are never caught (e.g.
+                                    //     just using std::vector can have that). -fno-rtti may help as well.
 
 var EXCEPTION_CATCHING_WHITELIST = [];  // Enables catching exception in the listed functions only, if
                                         // DISABLE_EXCEPTION_CATCHING = 2 is set
@@ -377,6 +376,9 @@ var NO_FILESYSTEM = 0; // If set, does not build in any filesystem support. Usef
 var FORCE_FILESYSTEM = 0; // Makes full filesystem support be included, even if statically it looks like it is not
                           // used. For example, if your C code uses no files, but you include some JS that does,
                           // you might need this.
+var NODERAWFS = 0; // This mode is intended for use with Node.js (and will throw if the build runs in other engines)
+                   // The File System API will directly use Node.js API without requiring `FS.mount()`.
+                   // The initial working directory will be same as process.cwd() instead of VFS root directory.
 
 var EXPORTED_FUNCTIONS = ['_main'];
                                     // Functions that are explicitly exported. These functions are kept alive
@@ -564,6 +566,14 @@ var MODULARIZE = 0; // By default we emit all code in a straightforward way into
                     // to the onRuntimeInitialized callback (i.e., it waits for all
                     // necessary async events). It receives the instance as a parameter,
                     // for convenience.
+var MODULARIZE_INSTANCE = 0; // Similar to MODULARIZE, but while that mode exports a function,
+                             // with which you can create multiple instances, this option exports
+                             // a singleton instance. In other words, it's the same as if you
+                             // used MODULARIZE and did EXPORT_NAME = EXPORT_NAME() to create
+                             // the instance manually.
+                             // Note that the promise-like API MODULARIZE provides isn't
+                             // available here (since you arean't creating the instance
+                             // yourself).
 
 var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
                    // print out anything at all whatsoever. This is useful for benchmarking.
@@ -641,6 +651,8 @@ var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which func
                              // appears they can be on the stack when a sync function is called in the EMTERPRETIFY_ASYNC option.
                              // After showing the suggested list, compilation will halt. You can apply the provided list as an
                              // emcc argument when compiling later.
+var EMTERPRETIFY_SYNCLIST = []; // If you have additional custom synchronous functions, add them to this list and the advise mode
+                                // will include them in its analysis.
 
 var SPLIT_MEMORY = 0; // If > 0, we split memory into chunks, of the size given in this parameter.
                       //  * TOTAL_MEMORY becomes the maximum amount of memory, as chunks are allocated on

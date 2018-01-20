@@ -321,6 +321,7 @@ var SyscallsLibrary = {
 #else
     var stream = SYSCALLS.getStreamFromFD(), op = SYSCALLS.get();
     switch (op) {
+      case {{{ cDefine('TCGETA') }}}:
       case {{{ cDefine('TCGETS') }}}: {
         if (!stream.tty) return -ERRNO_CODES.ENOTTY;
 #if SYSCALL_DEBUG
@@ -328,7 +329,12 @@ var SyscallsLibrary = {
 #endif
         return 0;
       }
-      case {{{ cDefine('TCSETS') }}}: {
+      case {{{ cDefine('TCSETA') }}}:
+      case {{{ cDefine('TCSETAW') }}}:
+      case {{{ cDefine('TCSETAF') }}}:
+      case {{{ cDefine('TCSETS') }}}:
+      case {{{ cDefine('TCSETSW') }}}:
+      case {{{ cDefine('TCSETSF') }}}: {
         if (!stream.tty) return -ERRNO_CODES.ENOTTY;
         return 0; // no-op, not actually adjusting terminal settings
       }
@@ -802,7 +808,7 @@ var SyscallsLibrary = {
     // hack to support printf in NO_FILESYSTEM
     var stream = SYSCALLS.get(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     var ret = 0;
-    if (!___syscall146.buffer) {
+    if (!___syscall146.buffers) {
       ___syscall146.buffers = [null, [], []]; // 1 => stdout, 2 => stderr
       ___syscall146.printChar = function(stream, curr) {
         var buffer = ___syscall146.buffers[stream];

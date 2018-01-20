@@ -1699,6 +1699,10 @@ keydown(100);keyup(100); // trigger the end
     for args in [[], ['--proxy-to-worker'], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
       self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=args)
 
+  def test_fs_after_main(self):
+    for args in [[], ['-O1']]:
+      self.btest('fs_after_main.cpp', '0', args=args)
+
   def test_sdl_quit(self):
     self.btest('sdl_quit.c', '1', args=['-lSDL', '-lGL'])
 
@@ -2729,6 +2733,11 @@ Module['onRuntimeInitialized'] = function() {
     # load an image file, get pixel data.
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
     self.btest('sdl2_image_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
+
+  def test_sdl2_image_prepare_data(self):
+    # load an image file, get pixel data.
+    shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
+    self.btest('sdl2_image_prepare_data.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
 
   def test_sdl2_canvas_proxy(self):
     def post():

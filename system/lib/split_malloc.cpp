@@ -229,6 +229,9 @@ void* calloc(size_t num, size_t size) {
 
 // very minimal sbrk, within one chunk
 void* sbrk(intptr_t increment) {
+  if (!initialized) {
+    init();
+  }
   const int SBRK_CHUNK = split_memory - 1024;
   static size_t start = -1;
   static size_t curr = 0;
