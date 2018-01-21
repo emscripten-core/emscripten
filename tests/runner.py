@@ -213,6 +213,9 @@ class RunnerCore(unittest.TestCase):
         if temp_file.endswith('.ll'):
           self.has_prev_ll = True
 
+    # Cache check results
+    check_sanity()
+
   def tearDown(self):
     if not self.save_dir:
       # rmtree() fails on Windows if the current working directory is inside the tree.

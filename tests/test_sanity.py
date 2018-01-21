@@ -12,9 +12,6 @@ def restore():
 def wipe():
   try_delete(CONFIG_FILE)
   try_delete(SANITY_FILE)
-  if EMCC_SANITY_CHECK_CACHED_TAG_ENV in os.environ:
-    del os.environ[EMCC_SANITY_CHECK_CACHED_TAG_ENV]
-
 
 def mtime(filename):
   return os.stat(filename).st_mtime
@@ -32,6 +29,7 @@ class sanity(RunnerCore):
     print('WARNING: This will modify %s, and in theory can break it although it should be restored properly. A backup will be saved in %s_backup' % (EM_CONFIG, EM_CONFIG))
     print()
 
+    os.environ[EMCC_SANITY_CHECK_CACHED_TAG_ENV] = EMCC_SANITY_CHECK_IGNORE_CACHE
     assert os.path.exists(CONFIG_FILE), 'To run these tests, we need a (working!) %s file to already exist' % EM_CONFIG
     assert not os.environ.get('EMCC_DEBUG'), 'do not run sanity checks in debug mode!'
     assert not os.environ.get('EMCC_WASM_BACKEND'), 'do not force wasm backend either way in sanity checks!'
@@ -39,6 +37,9 @@ class sanity(RunnerCore):
   @classmethod
   def tearDownClass(self):
     super(RunnerCore, self).tearDownClass()
+    if EMCC_SANITY_CHECK_CACHED_TAG_ENV in os.environ:
+      del os.environ[EMCC_SANITY_CHECK_CACHED_TAG_ENV]
+      check_sanity()
 
   def setUp(self):
     wipe()
