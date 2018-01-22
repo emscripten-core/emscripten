@@ -1410,7 +1410,22 @@ function hasSideEffects(node) { // this is 99% incomplete!
     }
     case 'conditional': return hasSideEffects(node[1]) || hasSideEffects(node[2]) || hasSideEffects(node[3]);
     case 'function': case 'defun': return false;
-    case 'object': return false;
+    case 'object': {
+      var children = node[1];
+      if (!Array.isArray(children)) return false;
+      for (var i = 0; i < children.length; i++) {
+        if (hasSideEffects(children[i][1])) return true;
+      }
+      return false;
+    }
+    case 'array': {
+      var children = node[1];
+      if (!Array.isArray(children)) return false;
+      for (var i = 0; i < children.length; i++) {
+        if (hasSideEffects(children[i])) return true;
+      }
+      return false;
+    }
     default: return true;
   }
 }
@@ -7910,9 +7925,13 @@ function JSDCE(ast, multipleIterations) {
       }
     }, function(node, type) {
       if (type === 'defun' || type === 'function') {
+        // we can ignore self-references, i.e., references to ourselves inside
+        // ourselves, for named defined (defun) functions
+        var ownName = type === 'defun' ? node[1] : '';
         var scope = scopes.pop();
         var names = set();
         for (name in scope) {
+          if (name === ownName) continue;
           var data = scope[name];
           if (data.use && !data.def) {
             // this is used from a higher scope, propagate the use down
@@ -7964,17 +7983,87 @@ function isAsmUse(node) {
          node[2][0] === 'string';
 }
 
+function getAsmUseName(node) {
+  return node[2][1];
+}
+
 function isModuleUse(node) {
   return node[0] === 'sub' &&
          node[1][0] === 'name' && node[1][1] === 'Module' && // Module['X']
          node[2][0] === 'string';
 }
 
+function getModuleUseName(node) {
+  return node[2][1];
+}
+
+// A static dyncall is dynCall('vii', ..), which is actually static even
+// though we call dynCall() - we see the string signature statically.
+function isStaticDynCall(node) {
+  return node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'dynCall' && node[2][0][0] === 'string';
+}
+
+function getStaticDynCallName(node) {
+  return 'dynCall_' + node[2][0][1];
+}
+
+// a dynamic dyncall is one in which all we know is *some* dynCall may
+// be called, but not who. This can be either
+//   dynCall(*not a string*, ..)
+// or, to be conservative,
+//   "dynCall_"
+// as that prefix means we may be constructing a dynamic dyncall name
+// (dynCall and embind's requireFunction do this internally).
+function isDynamicDynCall(node) {
+  return (node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'dynCall' && node[2][0][0] !== 'string') ||
+         (node[0] === 'string' && node[1] === 'dynCall_');
+}
+
+//
 // Emit the DCE graph, to help optimize the combined JS+wasm.
 // This finds where JS depends on wasm, and where wasm depends
 // on JS, and prints that out.
-// TODO: full dependency/reachability analysis in JS
+//
+// The analysis here is simplified, and not completely general. It
+// is enough to optimize the common case of JS library and runtime
+// functions involved in loops with wasm, but not more complicated
+// things like JS objects and sub-functions. Specifically we
+// analyze as follows:
+//
+//  * We consider (1) the toplevel scope, and (2) the scopes of toplevel defined
+//    functions (defun, not function; i.e., function X() {} where
+//    X can be called later, and not y = function Z() {} where Z is
+//    just a name for stack traces). We also consider the wasm, which
+//    we can see things going to and arriving from.
+//  * Anything used in a defun creates a link in the DCE graph, either
+//    to another defun, or the wasm.
+//  * Anything used in the toplevel scope is rooted, as it is code
+//    we assume will execute. The exceptions are
+//     * when we receive something from wasm; those are "free" and
+//       do not cause rooting. (They will become roots if they are
+//       exported, the metadce logic will handle that.)
+//     * when we send something to wasm; sending a defun causes a
+//       link in the DCE graph.
+//  * Anything not in the toplevel or not in a toplevel defun is
+//    considering rooted. We don't optimize those cases.
+//
+// Special handling:
+//
+//  * dynCall('vii', ..) are dynamic dynCalls, but we analyze them
+//    statically, to preserve the dynCall_vii etc. method they depend on.
+//    Truly dynamic dynCalls (not to a string constant) will not work,
+//    and require the user to export them.
+//  * Truly dynamic dynCalls are assumed to reach any dynCall_*.
+//
+// XXX this modifies the input AST. if you want to keep using it,
+//     that should be fixed. Currently the main use case here does
+//     not require that. TODO FIXME
+//
 function emitDCEGraph(ast) {
+  // First pass: find the wasm imports and exports, and the toplevel
+  // defuns, and save them on the side, removing them from the AST,
+  // which makes the second pass simpler.
+  //
   // The imports that wasm receives look like this:
   //
   //  Module.asmLibraryArg = { "abort": abort, "assert": assert, [..] };
@@ -7990,72 +8079,166 @@ function emitDCEGraph(ast) {
   //   return Module["asm"]["_malloc"].apply(null, arguments);
   //  });
   //
-  // Thus, one appearance of asm['malloc'] or Module['asm']['malloc'] is
-  // "free" - that is just receiving the export. And the same for
-  // Module['malloc']. We count other appearances
-  // of either _malloc or Module['_malloc'] or Module['asm']['_malloc'];
-  // if there are any, then the export appears to be used
-  // As mentioned in the TODO above, we should have full JS dependency
-  // analysis here, including scoping and so forth.
-
   var imports = [];
-  var asmUses = {}; // uses of asm['X'] or Module['asm']['X']
-  var moduleUses = {}; // uses of Module['X']
-  var allUses = {}; // any use of X
+  var defuns = [];
+  var dynCallNames = [];
+  var nameToGraphName = {};
+  var modulePropertyToGraphName = {};
+  var exportNameToGraphName = {}; // identical to asm['..'] nameToGraphName
+  var foundAsmLibraryArgAssign = false;
+  var graph = [];
   traverse(ast, function(node, type) {
     if (isAsmLibraryArgAssign(node)) {
       var items = node[3][1];
       items.forEach(function(item) {
+        assert(item[1][0] === 'name' && item[1][1] === item[0], item[0]); // must have x: x form, nothing else
         imports.push(item[0]); // the value doesn't matter, for now
       });
-    } else if (type === 'sub') {
-      if (isAsmUse(node)) {
-        var name = node[2][1];
-        if (!asmUses[name]) {
-          asmUses[name] = 1;
-        } else {
-          asmUses[name]++;
-        }
-      } else if (isModuleUse(node)) {
-        var name = node[2][1];
-        if (!moduleUses[name]) {
-          moduleUses[name] = 1;
-        } else {
-          moduleUses[name]++;
+      foundAsmLibraryArgAssign = true;
+      return emptyNode(); // ignore this in the second pass; this does not root
+    } else if (type === 'var') {
+      if (node[1] && node[1].length === 1) {
+        var item = node[1][0];
+        var name = item[0];
+        var value = item[1];
+        if (Array.isArray(value) && value[0] === 'assign') {
+          var assigned = value[2];
+          if (isModuleUse(assigned) && getModuleUseName(assigned) === name) {
+            // this is
+            //  var x = Module['x'] = ?
+            // which looks like a wasm export being received. confirm with the asm use
+            var found = 0;
+            var asmName;
+            traverse(value[3], function(node, type) {
+              if (isAsmUse(node)) {
+                found++;
+                asmName = getAsmUseName(node);
+              }
+            });
+            // in the wasm backend, the asm name may have one fewer "_" prefixed
+            if (found === 1) {
+              // this is indeed an export
+              // the asmName is what the wasm provides directly; the outside JS
+              // name may be slightly different (extra "_" in wasm backend)
+              var graphName = getGraphName(name, 'export');
+              nameToGraphName[name] = graphName;
+              modulePropertyToGraphName[name] = graphName;
+              exportNameToGraphName[asmName] = graphName;
+              if (/^dynCall_/.test(name)) {
+                dynCallNames.push(graphName);
+              }
+              return emptyNode(); // ignore this in the second pass; this does not root
+            }
+          }
         }
       }
-    } else if (type === 'name') {
-      // Look, no scoping logic at all O.O
+    } else if (type === 'defun') {
+      defuns.push(node);
       var name = node[1];
-      if (!allUses[name]) {
-        allUses[name] = 1;
-      } else {
-        allUses[name]++;
-      }
+      nameToGraphName[name] = getGraphName(name, 'defun');
+      return emptyNode(); // ignore this in the second pass; we scan defuns separately
+    } else if (type === 'function') {
+      return null; // don't look inside
     }
   });
-  // create the output
-  var graph = [];
-  imports.forEach(function(name) {
-    graph.push({
-      'name': 'emcc$import$' + name,
-      'import': ['env', name]
+  assert(foundAsmLibraryArgAssign); // must find the info we need
+  // Second pass: everything used in the toplevel scope is rooted;
+  // things used in defun scopes create links
+  function getGraphName(name, what) {
+    return 'emcc$' + what + '$' + name;
+  }
+  var infos = {}; // the graph name of the item => info for it
+  imports.forEach(function(import_) {
+    var name = getGraphName(import_, 'import');
+    var info = infos[name] = {
+      name: name,
+      import: ['env', import_],
+      reaches: {}
+    };
+    if (nameToGraphName.hasOwnProperty(import_)) {
+      info.reaches[nameToGraphName[import_]] = 1;
+    } // otherwise, it's a number, ignore
+  });
+  for (var e in exportNameToGraphName) {
+    var name = exportNameToGraphName[e];
+    infos[name] = {
+      name: name,
+      export: e,
+      reaches: {}
+    };
+  }
+  // a function that handles a node we visit, in either a defun or
+  // the toplevel scope (in which case the second param is not provided)
+  function visitNode(node, defunInfo) {
+    // TODO: scope awareness here. for now we just assume all uses are
+    //       from the top scope, which might create more uses than needed
+    var reached;
+    if (node[0] === 'name') {
+      var name = node[1];
+      if (nameToGraphName.hasOwnProperty(name)) {
+        reached = nameToGraphName[name];
+      }
+    } else if (isModuleUse(node)) {
+      var name = getModuleUseName(node);
+      if (modulePropertyToGraphName.hasOwnProperty(name)) {
+        reached = modulePropertyToGraphName[name];
+      }
+    } else if (isStaticDynCall(node)) {
+      reached = getGraphName(getStaticDynCallName(node), 'export');
+    } else if (isDynamicDynCall(node)) {
+      // this can reach *all* dynCall_* targets, we can't narrow it down
+      reached = dynCallNames;
+    } else if (isAsmUse(node)) {
+      // any remaining asm uses are always rooted in any case
+      var name = getAsmUseName(node);
+      if (exportNameToGraphName.hasOwnProperty(name)) {
+        infos[exportNameToGraphName[name]].root = true;
+      }
+      return;
+    }
+    if (reached) {
+      function addReach(reached) {
+        if (defunInfo) {
+          defunInfo.reaches[reached] = 1; // defun reaches it
+        } else {
+          infos[reached].root = true; // in global scope, root it
+        }
+      }
+      if (typeof reached === 'string') {
+        addReach(reached);
+      } else {
+        reached.forEach(addReach);
+      }
+    }
+  }
+  defuns.forEach(function(defun) {
+    var name = getGraphName(defun[1], 'defun');
+    var info = infos[name] = {
+      name: name,
+      reaches: {}
+    };
+    traverse(defun[3], function(node, type) {
+      visitNode(node, info);
     });
   });
-  for (var name in asmUses) {
-    var node = {
-      'name': 'emcc$export$' + name,
-      'export': name
-    };
-    // root it, if it is a root. a non-root has at most one asmUse
-    // and moduleUse respectively (the "free" ones, that is getting
-    // the export), and none other
-    var unused = asmUses[name] === 1 && moduleUses[name] === 1 && !(name in allUses);
-    if (!unused) {
-      node['root'] = true;
+  traverse(ast, function(node, type) {
+    visitNode(node, null);
+  });
+  // Final work: print out the graph
+  // sort for determinism
+  function sortedNamesFromMap(map) {
+    var names = [];
+    for (var name in map) {
+      names.push(name);
     }
-    graph.push(node);
+    names.sort();
+    return names;
   }
+  sortedNamesFromMap(infos).forEach(function(name) {
+    var info = infos[name];
+    info.reaches = sortedNamesFromMap(info.reaches);
+    graph.push(info);
+  });
   print(JSON.stringify(graph, null, ' '));
 }
 

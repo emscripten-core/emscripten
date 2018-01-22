@@ -321,6 +321,7 @@ var SyscallsLibrary = {
 #else
     var stream = SYSCALLS.getStreamFromFD(), op = SYSCALLS.get();
     switch (op) {
+      case {{{ cDefine('TCGETA') }}}:
       case {{{ cDefine('TCGETS') }}}: {
         if (!stream.tty) return -ERRNO_CODES.ENOTTY;
 #if SYSCALL_DEBUG
@@ -328,7 +329,12 @@ var SyscallsLibrary = {
 #endif
         return 0;
       }
-      case {{{ cDefine('TCSETS') }}}: {
+      case {{{ cDefine('TCSETA') }}}:
+      case {{{ cDefine('TCSETAW') }}}:
+      case {{{ cDefine('TCSETAF') }}}:
+      case {{{ cDefine('TCSETS') }}}:
+      case {{{ cDefine('TCSETSW') }}}:
+      case {{{ cDefine('TCSETSF') }}}: {
         if (!stream.tty) return -ERRNO_CODES.ENOTTY;
         return 0; // no-op, not actually adjusting terminal settings
       }

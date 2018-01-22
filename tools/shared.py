@@ -4,7 +4,7 @@ import shutil, time, os, sys, base64, json, tempfile, copy, shlex, atexit, subpr
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 from distutils.spawn import find_executable
-from . import jsrun, cache, tempfiles
+from . import jsrun, cache, tempfiles, colored_logger
 from . import response_file
 import logging, platform, multiprocessing
 
@@ -80,101 +80,8 @@ __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
-def add_coloring_to_emit_windows(fn):
-  def _out_handle(self):
-    import ctypes
-    return ctypes.windll.kernel32.GetStdHandle(self.STD_OUTPUT_HANDLE)
-  out_handle = property(_out_handle)
-
-  def _set_color(self, code):
-    import ctypes
-    # Constants from the Windows API
-    self.STD_OUTPUT_HANDLE = -11
-    hdl = ctypes.windll.kernel32.GetStdHandle(self.STD_OUTPUT_HANDLE)
-    ctypes.windll.kernel32.SetConsoleTextAttribute(hdl, code)
-
-  setattr(logging.StreamHandler, '_set_color', _set_color)
-
-  def new(*args):
-    FOREGROUND_BLUE      = 0x0001 # text color contains blue.
-    FOREGROUND_GREEN     = 0x0002 # text color contains green.
-    FOREGROUND_RED       = 0x0004 # text color contains red.
-    FOREGROUND_INTENSITY = 0x0008 # text color is intensified.
-    FOREGROUND_WHITE     = FOREGROUND_BLUE|FOREGROUND_GREEN |FOREGROUND_RED
-    # winbase.h
-    STD_INPUT_HANDLE = -10
-    STD_OUTPUT_HANDLE = -11
-    STD_ERROR_HANDLE = -12
-
-    # wincon.h
-    FOREGROUND_BLACK     = 0x0000
-    FOREGROUND_BLUE      = 0x0001
-    FOREGROUND_GREEN     = 0x0002
-    FOREGROUND_CYAN      = 0x0003
-    FOREGROUND_RED       = 0x0004
-    FOREGROUND_MAGENTA   = 0x0005
-    FOREGROUND_YELLOW    = 0x0006
-    FOREGROUND_GREY      = 0x0007
-    FOREGROUND_INTENSITY = 0x0008 # foreground color is intensified.
-
-    BACKGROUND_BLACK     = 0x0000
-    BACKGROUND_BLUE      = 0x0010
-    BACKGROUND_GREEN     = 0x0020
-    BACKGROUND_CYAN      = 0x0030
-    BACKGROUND_RED       = 0x0040
-    BACKGROUND_MAGENTA   = 0x0050
-    BACKGROUND_YELLOW    = 0x0060
-    BACKGROUND_GREY      = 0x0070
-    BACKGROUND_INTENSITY = 0x0080 # background color is intensified.
-    levelno = args[1].levelno
-    if(levelno >= 50):
-        color = BACKGROUND_YELLOW | FOREGROUND_RED | FOREGROUND_INTENSITY | BACKGROUND_INTENSITY
-    elif(levelno >= 40):
-        color = FOREGROUND_RED | FOREGROUND_INTENSITY
-    elif(levelno >= 30):
-        color = FOREGROUND_YELLOW | FOREGROUND_INTENSITY
-    elif(levelno >= 20):
-        color = FOREGROUND_GREEN
-    elif(levelno >= 10):
-        color = FOREGROUND_MAGENTA
-    else:
-        color =  FOREGROUND_WHITE
-    args[0]._set_color(color)
-    ret = fn(*args)
-    args[0]._set_color( FOREGROUND_WHITE )
-    #print "after"
-    return ret
-  return new
-
-def add_coloring_to_emit_ansi(fn):
-  # add methods we need to the class
-  def new(*args):
-    levelno = args[1].levelno
-    if(levelno >= 50):
-      color = '\x1b[31m' # red
-    elif(levelno >= 40):
-      color = '\x1b[31m' # red
-    elif(levelno >= 30):
-      color = '\x1b[33m' # yellow
-    elif(levelno >= 20):
-      color = '\x1b[32m' # green
-    elif(levelno >= 10):
-      color = '\x1b[35m' # pink
-    else:
-      color = '\x1b[0m' # normal
-    args[1].msg = color + args[1].msg +  '\x1b[0m'  # normal
-    #print "after"
-    return fn(*args)
-  return new
-
 WINDOWS = sys.platform.startswith('win')
 OSX = sys.platform == 'darwin'
-
-if sys.stderr.isatty():
-  if WINDOWS:
-    logging.StreamHandler.emit = add_coloring_to_emit_windows(logging.StreamHandler.emit)
-  else:
-    logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
 
 # This is a workaround for https://bugs.python.org/issue9400
 class Py2CalledProcessError(subprocess.CalledProcessError):
@@ -398,7 +305,7 @@ actual_clang_version = None
 
 def expected_llvm_version():
   if get_llvm_target() == WASM_TARGET:
-    return "6.0"
+    return "7.0"
   else:
     return "4.0"
 
@@ -506,7 +413,7 @@ def check_fastcomp():
     logging.warning('could not check fastcomp: %s' % str(e))
     return True
 
-EXPECTED_NODE_VERSION = (0,8,0)
+EXPECTED_NODE_VERSION = (4, 1, 1)
 
 def check_node_version():
   jsrun.check_engine(NODE_JS)
@@ -812,9 +719,9 @@ LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
 LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
 
 EMSCRIPTEN = path_from_root('emscripten.py')
-EMCC = path_from_root('emcc')
-EMXX = path_from_root('em++')
-EMAR = path_from_root('emar')
+EMCC = path_from_root('emcc.py')
+EMXX = path_from_root('em++.py')
+EMAR = path_from_root('emar.py')
 EMRANLIB = path_from_root('emranlib')
 EMCONFIG = path_from_root('em-config')
 EMLINK = path_from_root('emlink.py')
@@ -1494,12 +1401,12 @@ class Building(object):
         if env.get(dangerous) and env.get(dangerous) == non_native.get(dangerous):
           del env[dangerous] # better to delete it than leave it, as the non-native one is definitely wrong
       return env
-    env['CC'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
-    env['CXX'] = quote(EMXX) if not WINDOWS else 'python %s' % quote(EMXX)
-    env['AR'] = quote(EMAR) if not WINDOWS else 'python %s' % quote(EMAR)
-    env['LD'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
+    env['CC'] = 'python %s' % quote(EMCC)
+    env['CXX'] = 'python %s' % quote(EMXX)
+    env['AR'] = 'python %s' % quote(EMAR)
+    env['LD'] = 'python %s' % quote(EMCC)
     env['NM'] = quote(LLVM_NM)
-    env['LDSHARED'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
+    env['LDSHARED'] = 'python %s' % quote(EMCC)
     env['RANLIB'] = quote(EMRANLIB) if not WINDOWS else 'python %s' % quote(EMRANLIB)
     env['EMMAKEN_COMPILER'] = quote(Building.COMPILER)
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
@@ -1950,7 +1857,7 @@ class Building(object):
 
     logging.debug('emcc: LLVM opts: ' + ' '.join(opts) + '  [num inputs: ' + str(len(inputs)) + ']')
     target = out or (filename + '.opt.bc')
-    proc = run_process([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE)
+    proc = run_process([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE, check=False)
     output = proc.stdout
     if proc.returncode != 0 or not os.path.exists(target):
       logging.error('Failed to run llvm optimizations: ' + output)
@@ -2265,11 +2172,14 @@ class Building(object):
               #'--variable_map_output_file', filename + '.vars',
               '--js', filename, '--js_output_file', filename + '.cc.js']
       for extern in NODE_EXTERNS:
-          args.append('--externs')
-          args.append(extern)
+        args.append('--externs')
+        args.append(extern)
       for extern in BROWSER_EXTERNS:
-          args.append('--externs')
-          args.append(extern)
+        args.append('--externs')
+        args.append(extern)
+      if Settings.IGNORE_CLOSURE_COMPILER_ERRORS:
+        args.append('--jscomp_off')
+        args.append('*')
       if pretty: args += ['--formatting', 'PRETTY_PRINT']
       if os.environ.get('EMCC_CLOSURE_ARGS'):
         args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
@@ -2320,12 +2230,12 @@ class Building(object):
     temp_files = configuration.get_temp_files()
     # first, get the JS part of the graph
     txt = Building.js_optimizer_no_asmjs(js_file, ['emitDCEGraph', 'noEmitAst'], return_output=True)
-    # ensure that functions expected to be exported to the outside are roots
     graph = json.loads(txt)
+    # ensure that functions expected to be exported to the outside are roots
     for item in graph:
       if 'export' in item:
-        name = item['export']
-        if name in Building.user_requested_exports or Settings.EXPORT_ALL:
+        export = item['export']
+        if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
     if Settings.WASM_BACKEND:
       # wasm backend's imports are prefixed differently inside the wasm

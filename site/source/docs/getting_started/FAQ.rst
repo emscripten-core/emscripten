@@ -398,17 +398,20 @@ That may occur when running something like
 	# this fails on most Linuxes
 	./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']
 
-	# this fails on OS X
+	# this fails on macOS
 	./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS="['addOnPostRun']"
 
 You may need to quote things like this:
 
 ::
 
-	# this works on most Linuxes and on OS X
+	# this works in the shell on most Linuxes and on macOS
 	./emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']"
 
-The proper syntax depends on the OS and shell you are in.
+	# or you may need something like this in a Makefile
+	./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=\"['addOnPostRun']\"
+
+The proper syntax depends on the OS and shell you are in, and if you are writing in a Makefile, etc.
 
 Why do I get an odd python error complaining about libcxx.bc or libcxxabi.bc?
 =============================================================================
@@ -433,7 +436,7 @@ Why do I get a stack size error when optimizing: ``RangeError: Maximum call stac
 
 You may need to increase the stack size for :term:`node.js`. 
 
-On Linux and Mac OS X, you can just do ``NODE_JS = ['node', '--stack_size=8192']`` in the :ref:`compiler-configuration-file`. On Windows, you will also need ``--max-stack-size=8192``, and also run ``editbin /stack:33554432 node.exe``.
+On Linux and Mac macOS, you can just do ``NODE_JS = ['node', '--stack_size=8192']`` in the :ref:`compiler-configuration-file`. On Windows, you will also need ``--max-stack-size=8192``, and also run ``editbin /stack:33554432 node.exe``.
 
 
 Why do I get ``error: cannot compile this aggregate va_arg expression yet`` and it says ``compiler frontend failed to generate LLVM bitcode, halting`` afterwards?

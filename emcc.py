@@ -707,8 +707,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           'BINARYEN_MEM_MAX': 'WASM_MEM_MAX',
           # TODO: change most (all?) other BINARYEN* names to WASM*
       }
+      settings_key_changes = set()
       def setting_sub(s):
         key, rest = s.split('=', 1)
+        settings_key_changes.add(key)
         return '='.join([settings_aliases.get(key, key), rest])
       settings_changes = list(map(setting_sub, settings_changes))
 
@@ -875,11 +877,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.separate_asm and final_suffix != 'html':
         shared.WarningManager.warn('SEPARATE_ASM')
 
-      # If we are using embind and generating JS, now is the time to link in bind.cpp
-      if options.bind and final_suffix in JS_CONTAINING_SUFFIXES:
-        input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')))
-        next_arg_index += 1
-
       # Apply optimization level settings
       shared.Settings.apply_opt_level(opt_level=options.opt_level, shrink_level=options.shrink_level, noisy=True)
 
@@ -920,6 +917,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Note the exports the user requested
       shared.Building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
+
+      if options.bind:
+        # If we are using embind and generating JS, now is the time to link in bind.cpp
+        if final_suffix in JS_CONTAINING_SUFFIXES:
+          input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')))
+          next_arg_index += 1
 
       # -s ASSERTIONS=1 implies the heaviest stack overflow check mode. Set the implication here explicitly to avoid having to
       # do preprocessor "#if defined(ASSERTIONS) || defined(STACK_OVERFLOW_CHECK)" in .js files, which is not supported.
@@ -983,8 +986,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.RELOCATABLE = 1
         shared.Settings.PRECISE_I64_MATH = 1 # other might use precise math, we need to be able to print it
         assert not options.use_closure_compiler, 'cannot use closure compiler on shared modules'
-        # getMemory is used during startup of shared modules (to allocate their static memory)
+        # shared modules need memory utilities to allocate their memory
         shared.Settings.EXPORTED_RUNTIME_METHODS += [
+          'allocate',
           'getMemory',
         ]
 
@@ -1170,6 +1174,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
         shared.Settings.BINARYEN = shared.Settings.WASM = 1
+
+        # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
+        # we run the optimizer during asm2wasm itself). use it, if not overridden
+        if 'BINARYEN_PASSES' not in settings_key_changes:
+          if options.opt_level > 0 or options.shrink_level > 0:
+            shared.Settings.BINARYEN_PASSES = shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)
 
         # to bootstrap struct_info, we need binaryen
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'

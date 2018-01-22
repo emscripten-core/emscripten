@@ -19,7 +19,7 @@ mergeInto(LibraryManager.library, {
   $FS: {
     root: null,
     mounts: [],
-    devices: [null],
+    devices: {},
     streams: [],
     nextInode: 1,
     nameTable: null,
@@ -1132,7 +1132,7 @@ mergeInto(LibraryManager.library, {
       }
       if (stream.flags & {{{ cDefine('O_APPEND') }}}) {
         // seek to the end before writing in append mode
-        FS.llseek(stream, 0, {{{ cDefine('SEEK_END') }}});
+        position = FS.llseek(stream, 0, {{{ cDefine('SEEK_END') }}});
       }
       var seeking = true;
       if (typeof position === 'undefined') {
@@ -1214,17 +1214,15 @@ mergeInto(LibraryManager.library, {
     writeFile: function(path, data, opts) {
       opts = opts || {};
       opts.flags = opts.flags || 'w';
-      opts.encoding = opts.encoding || 'utf8';
-      if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
-        throw new Error('Invalid encoding type "' + opts.encoding + '"');
-      }
       var stream = FS.open(path, opts.flags, opts.mode);
-      if (opts.encoding === 'utf8') {
+      if (typeof data === 'string') {
         var buf = new Uint8Array(lengthBytesUTF8(data)+1);
         var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
         FS.write(stream, buf, 0, actualNumBytes, 0, opts.canOwn);
-      } else if (opts.encoding === 'binary') {
-        FS.write(stream, data, 0, data.length, 0, opts.canOwn);
+      } else if (ArrayBuffer.isView(data)) {
+        FS.write(stream, data, 0, data.byteLength, 0, opts.canOwn);
+      } else {
+        throw new Error('Unsupported data type');
       }
       FS.close(stream);
     },
@@ -1368,7 +1366,7 @@ mergeInto(LibraryManager.library, {
         this.setErrno(errno);
         this.message = ERRNO_MESSAGES[errno];
         // Node.js compatibility: assigning on this.stack fails on Node 4 (but fixed on Node 8)
-        if (this.stack) Object.defineProperty(this, "stack", { value: (new Error).stack });
+        if (this.stack) Object.defineProperty(this, "stack", { value: (new Error).stack, writable: true });
 #if ASSERTIONS
         if (this.stack) this.stack = demangleAll(this.stack);
 #endif

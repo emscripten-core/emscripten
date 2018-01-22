@@ -5,7 +5,7 @@
 # See emrun --help for more information
 
 from __future__ import print_function
-import os, platform, optparse, logging, re, pprint, atexit, subprocess, sys, time, struct, socket, cgi, tempfile, stat, shutil, json, uuid, shlex
+import os, platform, argparse, logging, re, pprint, atexit, subprocess, sys, time, struct, socket, cgi, tempfile, stat, shutil, json, uuid, shlex
 from operator import itemgetter
 from threading import Thread, RLock
 
@@ -285,6 +285,8 @@ user_pref("extensions.update.enabled", false);
 user_pref("extensions.getAddons.cache.enabled", false);
 // Enable wasm
 user_pref("javascript.options.wasm", true);
+// Enable SharedArrayBuffer (this profile is for a testing environment, so Spectre/Meltdown don't apply)
+user_pref("javascript.options.shared_memory", true);
 ''')
   f.close()
   logv('create_emrun_safe_firefox_profile: Created new Firefox profile "' + temp_firefox_profile_dir + '"')
@@ -504,6 +506,8 @@ class HTTPHandler(SimpleHTTPRequestHandler):
       if guess_file_type.endswith('.'): guess_file_type = guess_file_type[:-1]
 
     ctype = self.guess_type(guess_file_type)
+    if guess_file_type.lower().endswith('.wasm'):
+      ctype = 'application/wasm'
     self.send_header("Content-type", ctype)
     fs = os.fstat(f.fileno())
     self.send_header("Content-Length", str(fs[6]))
@@ -1229,80 +1233,85 @@ def get_system_info(format_json):
 
 def run():
   global browser_process, browser_exe, processname_killed_atexit, emrun_options, emrun_not_enabled_nag_printed, ADB
-  usage_str = "usage: emrun [emrun_options] filename.html [html_cmdline_options]\n\n   where emrun_options specifies command line options for emrun itself, whereas\n   html_cmdline_options specifies startup arguments to the program."
-  parser = optparse.OptionParser(usage=usage_str)
+  usage_str = "emrun [emrun_options] filename.html [html_cmdline_options]\n\n   where emrun_options specifies command line options for emrun itself, whereas\n   html_cmdline_options specifies startup arguments to the program."
+  parser = argparse.ArgumentParser(usage=usage_str)
 
-  parser.add_option('--kill_start', dest='kill_on_start', action='store_true', default=False,
+  parser.add_argument('--kill_start', dest='kill_on_start', action='store_true', default=False,
     help='If true, any previously running instances of the target browser are killed before starting.')
 
-  parser.add_option('--kill_exit', dest='kill_on_exit', action='store_true', default=False,
+  parser.add_argument('--kill_exit', dest='kill_on_exit', action='store_true', default=False,
     help='If true, the spawned browser process is forcibly killed when it calls exit(). Note: Using this option may require explicitly passing the option --browser=/path/to/browser, to avoid emrun being detached from the browser process it spawns.')
 
-  parser.add_option('--no_server', dest='no_server', action='store_true', default=False,
+  parser.add_argument('--no_server', dest='no_server', action='store_true', default=False,
     help='If specified, a HTTP web server is not launched to host the page to run.')
 
-  parser.add_option('--no_browser', dest='no_browser', action='store_true', default=False,
+  parser.add_argument('--no_browser', dest='no_browser', action='store_true', default=False,
     help='If specified, emrun will not launch a web browser to run the page.')
 
-  parser.add_option('--no_emrun_detect', dest='no_emrun_detect', action='store_true', default=False,
+  parser.add_argument('--no_emrun_detect', dest='no_emrun_detect', action='store_true', default=False,
     help='If specified, skips printing the warning message if html page is detected to not have been built with --emrun linker flag.')
 
-  parser.add_option('--serve_after_close', dest='serve_after_close', action='store_true', default=False,
+  parser.add_argument('--serve_after_close', dest='serve_after_close', action='store_true', default=False,
     help='If true, serves the web page even after the application quits by user closing the web page.')
 
-  parser.add_option('--serve_after_exit', dest='serve_after_exit', action='store_true', default=False,
+  parser.add_argument('--serve_after_exit', dest='serve_after_exit', action='store_true', default=False,
     help='If true, serves the web page even after the application quits by a call to exit().')
 
-  parser.add_option('--serve_root', dest='serve_root', default='',
+  parser.add_argument('--serve_root', dest='serve_root', default='',
     help='If set, specifies the root path that the emrun web server serves. If not specified, the directory where the target .html page lives in is served.')
 
-  parser.add_option('--verbose', dest='verbose', action='store_true', default=False,
+  parser.add_argument('--verbose', dest='verbose', action='store_true', default=False,
     help='Enable verbose logging from emrun internal operation.')
 
-  parser.add_option('--hostname', dest='hostname', default=default_webserver_hostname,
+  parser.add_argument('--hostname', dest='hostname', default=default_webserver_hostname,
     help='Specifies the hostname the server runs in.')
 
-  parser.add_option('--port', dest='port', default=default_webserver_port, type="int",
+  parser.add_argument('--port', dest='port', default=default_webserver_port, type=int,
     help='Specifies the port the server runs in.')
 
-  parser.add_option('--log_stdout', dest='log_stdout', default='',
+  parser.add_argument('--log_stdout', dest='log_stdout', default='',
     help='Specifies a log filename where the browser process stdout data will be appended to.')
 
-  parser.add_option('--log_stderr', dest='log_stderr', default='',
+  parser.add_argument('--log_stderr', dest='log_stderr', default='',
     help='Specifies a log filename where the browser process stderr data will be appended to.')
 
-  parser.add_option('--silence_timeout', dest='silence_timeout', type="int", default=0,
+  parser.add_argument('--silence_timeout', dest='silence_timeout', type=int, default=0,
     help='If no activity is received in this many seconds, the browser process is assumed to be hung, and the web server is shut down and the target browser killed. Disabled by default.')
 
-  parser.add_option('--timeout', dest='timeout', type="int", default=0,
+  parser.add_argument('--timeout', dest='timeout', type=int, default=0,
     help='If the browser process does not quit or the page exit() in this many seconds, the browser is assumed to be hung, and the web server is shut down and the target browser killed. Disabled by default.')
 
-  parser.add_option('--timeout_returncode', dest='timeout_returncode', type="int", default=99999,
+  parser.add_argument('--timeout_returncode', dest='timeout_returncode', type=int, default=99999,
     help='Sets the exit code that emrun reports back to caller in the case that a page timeout occurs. Default: 99999.')
 
-  parser.add_option('--list_browsers', dest='list_browsers', action='store_true',
+  parser.add_argument('--list_browsers', dest='list_browsers', action='store_true',
     help='Prints out all detected browser that emrun is able to use with the --browser command and exits.')
 
-  parser.add_option('--browser', dest='browser', default='',
+  parser.add_argument('--browser', dest='browser', default='',
     help='Specifies the browser executable to run the web page in.')
 
-  parser.add_option('--android', dest='android', action='store_true', default=False,
+  parser.add_argument('--browser_args', dest='browser_args', default='',
+    help='Specifies the arguments to the browser executable.')
+
+  parser.add_argument('--android', dest='android', action='store_true', default=False,
     help='Launches the page in a browser of an Android device connected to an USB on the local system. (via adb)')
 
-  parser.add_option('--system_info', dest='system_info', action='store_true',
+  parser.add_argument('--system_info', dest='system_info', action='store_true',
     help='Prints information about the current system at startup.')
 
-  parser.add_option('--browser_info', dest='browser_info', action='store_true',
+  parser.add_argument('--browser_info', dest='browser_info', action='store_true',
     help='Prints information about the target browser to launch at startup.')
 
-  parser.add_option('--json', dest='json', action='store_true',
+  parser.add_argument('--json', dest='json', action='store_true',
     help='If specified, --system_info and --browser_info are outputted in JSON format.')
 
-  parser.add_option('--safe_firefox_profile', dest='safe_firefox_profile', action='store_true',
+  parser.add_argument('--safe_firefox_profile', dest='safe_firefox_profile', action='store_true',
     help='If true, the browser is launched into a new clean Firefox profile that is suitable for unattended automated runs. (If target browser != Firefox, this parameter is ignored)')
 
-  parser.add_option('--log_html', dest='log_html', action='store_true',
+  parser.add_argument('--log_html', dest='log_html', action='store_true',
     help='If set, information lines are printed out an HTML-friendly format.')
+
+  parser.add_argument('serve', nargs='*')
 
   opts_with_param = ['--browser', '--timeout_returncode', '--timeout', '--silence_timeout', '--log_stderr', '--log_stdout', '--hostname', '--port', '--serve_root']
 
@@ -1319,7 +1328,8 @@ def run():
       break
     i += 1
 
-  (options, args) = parser.parse_args(sys.argv)
+  options = parser.parse_args(sys.argv[1:])
+  args = options.serve
   emrun_options = options
 
   if options.android:
@@ -1345,10 +1355,10 @@ def run():
       list_pc_browsers()
     return
 
-  if len(args) < 2 and (options.system_info or options.browser_info):
+  if len(args) < 1 and (options.system_info or options.browser_info):
     options.no_server = options.no_browser = True # Don't run if only --system_info or --browser_info was passed.
 
-  if len(args) < 2 and not (options.no_server == True and options.no_browser == True):
+  if len(args) < 1 and not (options.no_server == True and options.no_browser == True):
     logi(usage_str)
     logi('')
     logi('Type emrun --help for a detailed list of available options.')
@@ -1432,7 +1442,7 @@ def run():
         loge('Unable to find browser "' + str(options.browser) + '"! Check the correctness of the passed --browser=xxx parameter!')
         return 1
       browser_exe = browser[0]
-      browser_args = []
+      browser_args = shlex.split(options.browser_args)
 
       if 'safari' in browser_exe.lower():
         # Safari has a bug that a command line 'Safari http://page.com' does not launch that page,
@@ -1444,14 +1454,14 @@ def run():
         processname_killed_atexit = 'Safari'
       elif 'chrome' in browser_exe.lower():
         processname_killed_atexit = 'chrome'
-        browser_args = ['--incognito', '--enable-nacl', '--enable-pnacl', '--disable-restore-session-state', '--enable-webgl', '--no-default-browser-check', '--no-first-run', '--allow-file-access-from-files']
+        browser_args += ['--incognito', '--enable-nacl', '--enable-pnacl', '--disable-restore-session-state', '--enable-webgl', '--no-default-browser-check', '--no-first-run', '--allow-file-access-from-files']
     #    if options.no_server:
     #      browser_args += ['--disable-web-security']
       elif 'firefox' in browser_exe.lower():
         processname_killed_atexit = 'firefox'
       elif 'iexplore' in browser_exe.lower():
         processname_killed_atexit = 'iexplore'
-        browser_args = ['-private']
+        browser_args += ['-private']
       elif 'opera' in browser_exe.lower():
         processname_killed_atexit = 'opera'
 

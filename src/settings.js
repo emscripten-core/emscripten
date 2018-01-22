@@ -147,6 +147,8 @@ var SIMD = 0; // Whether to allow autovectorized SIMD code ( https://github.com/
 
 var USE_CLOSURE_COMPILER = 0; // Whether closure compiling is being run on this output
 
+var IGNORE_CLOSURE_COMPILER_ERRORS = 0; // Ignore closure warnings and errors (like on duplicate definitions)
+
 var SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all in
                              // functions that have no basic stack usage. But, they
                              // may allocate stack later, and in a loop, this can be
@@ -316,8 +318,11 @@ var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catc
                                     // DISABLE_EXCEPTION_CATCHING = 1 - disable exception catching at all
                                     // DISABLE_EXCEPTION_CATCHING = 2 - disable exception catching, but enables
                                     // catching in whitelist
-                                    // TODO: Make this also remove cxa_begin_catch etc., optimize relooper
-                                    //       for it, etc. (perhaps do all of this as preprocessing on .ll?)
+                                    // XXX note that this removes *catching* of exceptions, which is the main
+                                    //     issue for speed, but for code size you need to build with
+                                    //     -fno-exceptions to really get rid of all exceptions code overhead,
+                                    //     as it may contain thrown exceptions that are never caught (e.g.
+                                    //     just using std::vector can have that). -fno-rtti may help as well.
 
 var EXCEPTION_CATCHING_WHITELIST = [];  // Enables catching exception in the listed functions only, if
                                         // DISABLE_EXCEPTION_CATCHING = 2 is set

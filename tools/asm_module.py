@@ -60,7 +60,7 @@ class AsmModule():
 
     # funcs
     self.funcs_js = self.js[self.start_funcs:self.end_funcs]
-    self.funcs = set([m.group(1) for m in js_optimizer.func_sig.finditer(self.funcs_js)])
+    self.funcs = sorted(set([m.group(1) for m in js_optimizer.func_sig.finditer(self.funcs_js)]))
     #print 'funcs', self.funcs
 
     # tables and exports
