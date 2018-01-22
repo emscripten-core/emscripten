@@ -2074,7 +2074,6 @@ var establishStackSpace = Module['establishStackSpace'];
 def create_backend_args_wasm(infile, temp_s, settings):
   backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
   args = [backend_compiler, infile, '-mtriple={}'.format(shared.WASM_TARGET),
-                  '-filetype=obj',
                   '-asm-verbose=false',
                   '-o', temp_s]
   if settings['EXPERIMENTAL_USE_LLD']:
