@@ -2084,7 +2084,12 @@ LibraryManager.library = {
     if (_tzset.called) return;
     _tzset.called = true;
 
-    {{{ makeSetValue(makeGlobalUse('_timezone'), '0', '-(new Date()).getTimezoneOffset() * 60', 'i32') }}};
+    // timezone is specified as seconds west of UTC ("The external variable
+    // `timezone` shall be set to the difference, in seconds, between
+    // Coordinated Universal Time (UTC) and local standard time."), the same
+    // as returned by getTimezoneOffset().
+    // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
+    {{{ makeSetValue(makeGlobalUse('_timezone'), '0', '(new Date()).getTimezoneOffset() * 60', 'i32') }}};
 
     var winter = new Date(2000, 0, 1);
     var summer = new Date(2000, 6, 1);
