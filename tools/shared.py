@@ -1756,6 +1756,18 @@ class Building(object):
     Building.read_link_inputs([x for x in files if not x.startswith('-')])
 
     current_archive_group = None
+
+    # Rescan a group of archives until we don't find any more objects to link.
+    def scan_archive_group(group):
+      loop_again = True
+      logging.debug('starting archive group loop');
+      while loop_again:
+        loop_again = False
+        for archive in group:
+          if consider_archive(archive):
+            loop_again = True
+      logging.debug('done with archive group loop');
+
     for f in files:
       absolute_path_f = Building.make_paths_absolute(f)
       if f.startswith('-'):
@@ -1764,16 +1776,7 @@ class Building(object):
           current_archive_group = []
         elif f in ['--end-group', '-)']:
           assert current_archive_group is not None, '--end-group without --start-group'
-          # rescan the archives in the group until we don't find any more
-          # objects to link.
-          loop_again = True
-          logging.debug('starting archive group loop');
-          while loop_again:
-            loop_again = False
-            for archive in current_archive_group:
-              if consider_archive(archive):
-                loop_again = True
-          logging.debug('done with archive group loop');
+          scan_archive_group(current_archive_group)
           current_archive_group = None
         else:
           logging.debug('Ignoring unsupported link flag: %s' % f)
