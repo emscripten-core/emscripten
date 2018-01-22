@@ -29,10 +29,13 @@ class Cache(object):
     self.filelock = filelock.FileLock(self.filelock_name)
 
     if use_subdir:
-      if shared.Settings.WASM_BACKEND:
-        dirname = os.path.join(dirname, 'wasm')
-      else:
+      if not shared.Settings.WASM_BACKEND:
         dirname = os.path.join(dirname, 'asmjs')
+      else:
+        if shared.Settings.EXPERIMENTAL_USE_LLD:
+          dirname = os.path.join(dirname, 'wasm-lld')
+        else:
+          dirname = os.path.join(dirname, 'wasm')
     self.dirname = dirname
     self.debug = debug
     self.acquired_count = 0

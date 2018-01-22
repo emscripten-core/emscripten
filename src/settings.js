@@ -728,6 +728,13 @@ var WASM_BACKEND = 0; // Whether to use the WebAssembly backend that is in devel
                       // translate the backend output.
                       // You should not set this yourself, instead set EMCC_WASM_BACKEND=1 in the
                       // environment.
+var EXPERIMENTAL_USE_LLD = 0; // Whether to use lld as a linker for the
+                              // WebAssembly backend, instead of s2wasm.
+                              // Currently an experiment, the plan is to make
+                              // this the default behavior long-term, and remove
+                              // the flag.
+                              // You should not set this yourself, instead set
+                              // EMCC_EXPERIMENTAL_USE_LLD=1 in the environment.
 
 // Ports
 
