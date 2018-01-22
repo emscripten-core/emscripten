@@ -1846,10 +1846,10 @@ LibraryManager.library = {
   dladdr: function(addr, info) {
     // report all function pointers as coming from this program itself XXX not really correct in any way
     var fname = allocate(intArrayFromString(Module['thisProgram'] || './this.program'), 'i8', ALLOC_NORMAL); // XXX leak
-    {{{ makeSetValue('addr', 0, 'fname', 'i32') }}};
-    {{{ makeSetValue('addr', QUANTUM_SIZE, '0', 'i32') }}};
-    {{{ makeSetValue('addr', QUANTUM_SIZE*2, '0', 'i32') }}};
-    {{{ makeSetValue('addr', QUANTUM_SIZE*3, '0', 'i32') }}};
+    {{{ makeSetValue('info', 0, 'fname', 'i32') }}};
+    {{{ makeSetValue('info', QUANTUM_SIZE, '0', 'i32') }}};
+    {{{ makeSetValue('info', QUANTUM_SIZE*2, '0', 'i32') }}};
+    {{{ makeSetValue('info', QUANTUM_SIZE*3, '0', 'i32') }}};
     return 1;
   },
 
