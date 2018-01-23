@@ -82,6 +82,7 @@ def path_from_root(*pathelems):
 
 WINDOWS = sys.platform.startswith('win')
 OSX = sys.platform == 'darwin'
+LINUX = sys.platform.startswith('linux')
 
 # This is a workaround for https://bugs.python.org/issue9400
 class Py2CalledProcessError(subprocess.CalledProcessError):
@@ -717,6 +718,7 @@ LLVM_DIS=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dis')))
 LLVM_NM=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
 LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
 LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
+LLD=os.path.expanduser(build_llvm_tool_path(exe_suffix('ld.lld')))
 
 EMSCRIPTEN = path_from_root('emscripten.py')
 EMCC = path_from_root('emcc.py')
@@ -890,11 +892,13 @@ ASM_JS_TARGET = 'asmjs-unknown-emscripten'
 WASM_TARGET = 'wasm32-unknown-unknown-elf'
 
 def check_vanilla():
-  global LLVM_TARGET
+  global LLVM_TARGET, WASM_TARGET
   # if the env var tells us what to do, do that
   if 'EMCC_WASM_BACKEND' in os.environ:
     if os.environ['EMCC_WASM_BACKEND'] != '0':
       logging.debug('EMCC_WASM_BACKEND tells us to use wasm backend')
+      if os.environ.get('EMCC_EXPERIMENTAL_USE_LLD', '0') != '0':
+        WASM_TARGET = 'wasm32-unknown-unknown-wasm'
       LLVM_TARGET = WASM_TARGET
     else:
       logging.debug('EMCC_WASM_BACKEND tells us to use asm.js backend')
@@ -931,6 +935,8 @@ def check_vanilla():
     temp_cache = None
     if is_vanilla:
       logging.debug('check tells us to use wasm backend')
+      if os.environ.get('EMCC_EXPERIMENTAL_USE_LLD', '0') != '0':
+        WASM_TARGET = 'wasm32-unknown-unknown-wasm'
       LLVM_TARGET = WASM_TARGET
     else:
       logging.debug('check tells us to use asm.js backend')
@@ -1148,6 +1154,8 @@ class SettingsManager(object):
 
       if get_llvm_target() == WASM_TARGET:
         self.attrs['WASM_BACKEND'] = 1
+        if os.environ.get('EMCC_EXPERIMENTAL_USE_LLD', '0') != '0':
+          self.attrs['EXPERIMENTAL_USE_LLD'] = 1
 
     # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
     # the reverse of load_settings, except for -Ox which is relevant there but not here
@@ -1756,6 +1764,18 @@ class Building(object):
     Building.read_link_inputs([x for x in files if not x.startswith('-')])
 
     current_archive_group = None
+
+    # Rescan a group of archives until we don't find any more objects to link.
+    def scan_archive_group(group):
+      loop_again = True
+      logging.debug('starting archive group loop');
+      while loop_again:
+        loop_again = False
+        for archive in group:
+          if consider_archive(archive):
+            loop_again = True
+      logging.debug('done with archive group loop');
+
     for f in files:
       absolute_path_f = Building.make_paths_absolute(f)
       if f.startswith('-'):
@@ -1764,16 +1784,7 @@ class Building(object):
           current_archive_group = []
         elif f in ['--end-group', '-)']:
           assert current_archive_group is not None, '--end-group without --start-group'
-          # rescan the archives in the group until we don't find any more
-          # objects to link.
-          loop_again = True
-          logging.debug('starting archive group loop');
-          while loop_again:
-            loop_again = False
-            for archive in current_archive_group:
-              if consider_archive(archive):
-                loop_again = True
-          logging.debug('done with archive group loop');
+          scan_archive_group(current_archive_group)
           current_archive_group = None
         else:
           logging.debug('Ignoring unsupported link flag: %s' % f)
@@ -1793,7 +1804,14 @@ class Building(object):
         # so we can loop back around later.
         if current_archive_group is not None:
           current_archive_group.append(absolute_path_f)
-    assert current_archive_group is None, '--start-group without matching --end-group'
+
+    # We have to consider the possibility that --start-group was used without a matching
+    # --end-group; GNU ld permits this behavior and implicitly treats the end of the
+    # command line as having an --end-group.
+    if current_archive_group:
+      logging.debug('--start-group without matching --end-group, rescanning')
+      scan_archive_group(current_archive_group)
+      current_archive_group = None
 
     try_delete(target)
 

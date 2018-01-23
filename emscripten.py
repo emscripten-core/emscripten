@@ -1721,23 +1721,16 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
 
   if libraries is None: libraries = []
 
-  wast = build_wasm(temp_files, infile, outfile, settings, DEBUG)
+  if shared.Settings.EXPERIMENTAL_USE_LLD:
+    wast, meta = build_wasm_lld(temp_files, infile, outfile, settings, DEBUG)
+    metadata = read_metadata_file_wasm(meta, wast, DEBUG)
+  else:
+    wast = build_wasm(temp_files, infile, outfile, settings, DEBUG)
+    metadata = read_metadata_wast(wast, DEBUG)
 
   # js compiler
 
   if DEBUG: logging.debug('emscript: js compiler glue')
-
-  # Integrate info from backend
-
-  output = open(wast).read()
-  parts = output.split('\n;; METADATA:')
-  assert len(parts) == 2
-  metadata_raw = parts[1]
-  parts = output = None
-
-  if DEBUG: logging.debug("METAraw %s", metadata_raw)
-  metadata = create_metadata_wasm(metadata_raw, wast)
-  if DEBUG: logging.debug(repr(metadata))
 
   update_settings_glue(settings, metadata)
 
@@ -1840,9 +1833,88 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
   return wast
 
 
-def create_metadata_wasm(metadata_raw, wast):
+def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
+  wasm_link_metadata = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-link-metadata')
+  wasm_emscripten_finalize = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-emscripten-finalize')
+  wasm_dis = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-dis')
+
+  def debug_copy(src, dst):
+    if DEBUG:
+      shutil.copyfile(src, os.path.join(shared.CANONICAL_TEMP_DIR, dst))
+      if src[-2:] == '.o' or src[-5:] == '.wasm':
+        tmp = dst + '.wast'
+        shared.check_call([wasm_dis, src, '-o', tmp])
+        shutil.copyfile(tmp, os.path.join(shared.CANONICAL_TEMP_DIR, tmp))
+
+  with temp_files.get_file('.wb.o') as temp_o:
+    backend_args = create_backend_args_wasm(infile, temp_o, settings)
+    if DEBUG:
+      logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
+      t = time.time()
+    shared.check_call(backend_args)
+    if DEBUG:
+      logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
+      t = time.time()
+      debug_copy(temp_o, 'emcc-llvm-backend-output.o')
+
+    assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen tools on the backend output'
+    basename = shared.unsuffixed(outfile.name)
+    wast = basename + '.wast'
+    wasm = basename + '.wasm'
+    base_wasm = basename + '.lld.wasm'
+    meta = basename + '.json'
+    shared.check_call([wasm_link_metadata, temp_o, '-o', meta])
+    debug_copy(meta, 'lld-metadata.json')
+
+    libc_rt_lib = shared.Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
+    compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', wasm_rt_fail('wasm_compiler_rt.a'), 'a')
+    shared.check_call([
+      shared.LLD, '-flavor', 'wasm',
+      '-z', '-stack-size=1048576',
+      '--global-base=%s' % shared.Settings.GLOBAL_BASE,
+      '--initial-memory=%s' % shared.Settings.TOTAL_MEMORY,
+      temp_o, libc_rt_lib, compiler_rt_lib,
+      '-o', base_wasm,
+      '--entry=main',
+      '--allow-undefined',
+      '--import-memory',
+      '--export', '__wasm_call_ctors',
+    ])
+    debug_copy(base_wasm, 'base_wasm.wasm')
+
+    shared.check_call([wasm_emscripten_finalize, base_wasm, '-o', wasm])
+    debug_copy(wasm, 'lld-emscripten-output.wasm')
+
+    # TODO: This is gross. We currently read exports from the wast in order to
+    # generate metadata. So this disassembles the binary so we can parse wast
+    # from python.
+    shared.check_call([wasm_dis, wasm, '-o', wast])
+
+  if DEBUG:
+    logging.debug('  emscript: lld took %s seconds' % (time.time() - t))
+    t = time.time()
+    debug_copy(wast, 'emcc-lld-output.wast')
+  return wast, meta
+
+
+def read_metadata_wast(wast, DEBUG):
+  output = open(wast).read()
+  parts = output.split('\n;; METADATA:')
+  assert len(parts) == 2
+  metadata_raw = parts[1]
+  return create_metadata_wasm(metadata_raw, wast, DEBUG)
+
+
+def read_metadata_file_wasm(meta, wast, DEBUG):
+  metadata_raw = open(meta).read()
+  return create_metadata_wasm(metadata_raw, wast, DEBUG)
+
+
+def create_metadata_wasm(metadata_raw, wast, DEBUG):
+  if DEBUG: logging.debug("METAraw %s", metadata_raw)
   metadata = load_metadata(metadata_raw)
   add_metadata_from_wast(metadata, wast)
+  if DEBUG: logging.debug(repr(metadata))
   return metadata
 
 
@@ -2001,9 +2073,13 @@ var establishStackSpace = Module['establishStackSpace'];
 
 def create_backend_args_wasm(infile, temp_s, settings):
   backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
-  args = [backend_compiler, infile, '-mtriple=wasm32-unknown-unknown-elf', '-filetype=asm',
+  args = [backend_compiler, infile, '-mtriple={}'.format(shared.WASM_TARGET),
                   '-asm-verbose=false',
                   '-o', temp_s]
+  if settings['EXPERIMENTAL_USE_LLD']:
+    args += ['-filetype=obj']
+  else:
+    args += ['-filetype=asm']
   args += ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
   # disable slow and relatively unimportant optimization passes
   args += ['-combiner-global-alias-analysis=false']
@@ -2019,12 +2095,12 @@ def create_backend_args_wasm(infile, temp_s, settings):
   args += ['-enable-emscripten-sjlj']
   return args
 
+def wasm_rt_fail(archive_file):
+  def wrapped():
+    raise Exception('Expected {} to already be built'.format(archive_file))
+  return wrapped
 
 def create_s2wasm_args(temp_s):
-  def wasm_rt_fail(archive_file):
-    def wrapped():
-      raise Exception('Expected {} to already be built'.format(archive_file))
-    return wrapped
   compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', wasm_rt_fail('wasm_compiler_rt.a'), 'a')
   libc_rt_lib = shared.Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
 
@@ -2105,6 +2181,9 @@ def add_metadata_from_wast(metadata, wast):
       if export_type == 'func':
         assert asmjs_mangle(export_name) not in metadata['exports']
         metadata['exports'].append(export_name)
+      elif export_type == 'global':
+        # Ignore global exports
+        pass
       else:
         assert False, 'Unhandled export type "%s"' % export_type
 

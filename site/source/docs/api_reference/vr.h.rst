@@ -27,17 +27,19 @@ Functions
 Initialization
 ==============
 
-.. c:function:: int emscripten_vr_init()
+.. c:function:: int emscripten_vr_init(em_vr_arg_callback_func callback, void* userData)
 
 	Initialize the emscripten VR API. This will `navigator.getVRDisplays()
 	<https://w3c.github.io/webvr/spec/1.1/#navigator-getvrdisplays-attribute>`_
 	and when completed, set the return of :c:func:`emscripten_vr_ready` to be `true`.
 
+	:param em_vr_callback_arg_func callback: C function to call when initialization is complete. The function signature must have a ``void*`` parameter for passing the ``arg`` value.
+	:param void* arg: User-defined data passed to the callback, untouched by the API itself.
 	:returns: `1` on success, `0` if the browsers WebVR support is insufficient.
 	:rtype: int
 
 .. tip:: This call succeeding is not sufficient for use of the rest of the API. Please
-	make sure to wait until the return value of :c:func:`emscripten_vr_ready` is true.
+	make sure to wait until the callback is executed.
 
 .. c:function:: int emscripten_vr_ready()
 
@@ -48,6 +50,13 @@ Initialization
 	running browser.
 
 	:returns: `1` if ready, `0` otherwise.
+
+.. c:function:: int emscripten_vr_deinit()
+
+	Deinitialize the emscripten VR API. This will free all memory allocated for
+	display name strings.
+
+	:returns: `1` on success.
 	:rtype: int
 
 API Queries
@@ -88,22 +97,24 @@ called the return value of :c:func:`emscripten_vr_ready` to be `true`.
 	:returns: handle for a VR display.
 	:rtype: VRDisplayHandle
 
-.. c:function:: char* emscripten_vr_get_display_name(VRDisplayHandle handle)
+.. c:function:: const char* emscripten_vr_get_display_name(VRDisplayHandle handle)
 
-	Get a user-readable name which identifies the VR display.
+	Get a user-readable name which identifies the VR display. The memory for the
+	returned string is managed by the API and will be freed on
+	:c:func:`emscripten_vr_deinit`.
 
 	:param VRDisplayHandle handle: |display-handle-parameter-doc|
 	:returns: name of the VR display or `0 (NULL)` if the handle is invalid.
 	:rtype: char*
 
-.. c:function:: bool emscripten_vr_get_display_connected(VRDisplayHandle handle)
+.. c:function:: bool emscripten_vr_display_connected(VRDisplayHandle handle)
 
 	:param VRDisplayHandle handle: |display-handle-parameter-doc|
 	:returns: `true` if the display is connected, `false` otherwise or when
 		the handle is invalid.
 	:rtype: bool
 
-.. c:function:: bool emscripten_vr_get_display_presenting(VRDisplayHandle handle)
+.. c:function:: bool emscripten_vr_display_presenting(VRDisplayHandle handle)
 
 	See also :c:func:`emscripten_vr_request_present`.
 
@@ -163,7 +174,7 @@ display is requested to present, as of which it will run at the VR display's ref
 	:param VRDisplayHandle handle: |display-handle-parameter-doc|
 	:rtype: |display-function-return-doc|
 
-.. c:function:: int emscripten_vr_get_frame_data(VRDisplayHandle handle)
+.. c:function:: int emscripten_vr_get_frame_data(VRDisplayHandle handle, VRFrameData* frameData)
 
 	Get view matrix, projection matrix, timestamp and head pose for current frame.
 	Only valid when called from within a render loop callback.
@@ -171,6 +182,7 @@ display is requested to present, as of which it will run at the VR display's ref
 	|render-loop-info|
 
 	:param VRDisplayHandle handle: |display-handle-parameter-doc|
+	:param VRFrameData* frameData: Will receive the new framedata values.
 	:rtype: |display-function-return-doc|
 
 .. c:function:: int emscripten_vr_submit_frame(VRDisplayHandle handle)
@@ -283,27 +295,27 @@ Types
 
 	.. c:member:: VRVector3 position
 
-		Position, valid only if ``poseFlags & VR_POSE_POSITION == 0``.
+		Position, valid only if ``poseFlags & VR_POSE_POSITION != 0``.
 
 	.. c:member:: VRVector3 linearVelocity
 
-		Linear velocity, valid only if ``poseFlags & VR_POSE_LINEAR_VELOCITY == 0``.
+		Linear velocity, valid only if ``poseFlags & VR_POSE_LINEAR_VELOCITY != 0``.
 
 	.. c:member:: VRVector3 linearAcceleration
 
-		Linear acceleration, valid only if ``poseFlags & VR_POSE_LINEAR_ACCELERATION == 0``.
+		Linear acceleration, valid only if ``poseFlags & VR_POSE_LINEAR_ACCELERATION != 0``.
 
 	.. c:member:: VRQuaternion orientation
 
-		Orientation quaternion, valid only if ``poseFlags & VR_POSE_ORIENTATION == 0``.
+		Orientation quaternion, valid only if ``poseFlags & VR_POSE_ORIENTATION != 0``.
 
 	.. c:member:: VRVector3 angularVelocity
 
-		Angular velocity, valid only if ``poseFlags & VR_POSE_ANGULAR_VELOCITY == 0``.
+		Angular velocity, valid only if ``poseFlags & VR_POSE_ANGULAR_VELOCITY != 0``.
 
 	.. c:member:: VRVector3 angularAcceleration
 
-		Angular acceleration, valid only if ``poseFlags & VR_POSE_ANGULAR_ACCELERATION == 0``.
+		Angular acceleration, valid only if ``poseFlags & VR_POSE_ANGULAR_ACCELERATION != 0``.
 
 	.. c:member:: int poseFlags
 

@@ -376,9 +376,14 @@ var NO_FILESYSTEM = 0; // If set, does not build in any filesystem support. Usef
 var FORCE_FILESYSTEM = 0; // Makes full filesystem support be included, even if statically it looks like it is not
                           // used. For example, if your C code uses no files, but you include some JS that does,
                           // you might need this.
-var NODERAWFS = 0; // This mode is intended for use with Node.js (and will throw if the build runs in other engines)
+var NODERAWFS = 0; // This mode is intended for use with Node.js (and will throw if the build runs in other engines).
                    // The File System API will directly use Node.js API without requiring `FS.mount()`.
                    // The initial working directory will be same as process.cwd() instead of VFS root directory.
+                   // Because this mode directly uses Node.js to access the real local filesystem on your OS,
+                   // the code will not necessarily be portable between OSes - it will be as portable as a
+                   // Node.js program would be, which means that differences in how the underlying OS handles
+                   // permissions and errors and so forth may be noticeable.
+                   // This has mostly been tested on Linux so far.
 
 var EXPORTED_FUNCTIONS = ['_main'];
                                     // Functions that are explicitly exported. These functions are kept alive
@@ -723,6 +728,13 @@ var WASM_BACKEND = 0; // Whether to use the WebAssembly backend that is in devel
                       // translate the backend output.
                       // You should not set this yourself, instead set EMCC_WASM_BACKEND=1 in the
                       // environment.
+var EXPERIMENTAL_USE_LLD = 0; // Whether to use lld as a linker for the
+                              // WebAssembly backend, instead of s2wasm.
+                              // Currently an experiment, the plan is to make
+                              // this the default behavior long-term, and remove
+                              // the flag.
+                              // You should not set this yourself, instead set
+                              // EMCC_EXPERIMENTAL_USE_LLD=1 in the environment.
 
 // Ports
 

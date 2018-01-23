@@ -44,9 +44,9 @@ def no_linux(note=''):
     return skip_if(f, 'is_linux', note)
   return decorated
 
-def no_mac(note=''):
+def no_osx(note=''):
   def decorated(f):
-    return skip_if(f, 'is_mac', note)
+    return skip_if(f, 'is_osx', note)
   return decorated
 
 def no_windows(note=''):
@@ -80,12 +80,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def is_wasm(self):
     return 'BINARYEN' in str(self.emcc_args) or self.is_wasm_backend()
   def is_linux(self):
-    # sys.platform is 'linux2' in Python 2.x and 'linux' in Python 3.x
-    return sys.platform.startsWith('linux')
-  def is_mac(self):
-    return sys.platform == 'darwin'
+    return LINUX
+  def is_osx(self):
+    return OSX
   def is_windows(self):
-    return sys.platform == 'win32'
+    return WINDOWS
 
   # Use closure in some tests for some additional coverage
   def maybe_closure(self):
@@ -7330,11 +7329,14 @@ int main(int argc, char **argv) {
   def test_coroutine_asyncify(self):
     self.do_test_coroutine({'ASYNCIFY': 1})
 
+  @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
+                   'unsupported with Wasm backend')
   def test_coroutine_emterpretify_async(self):
     self.do_test_coroutine({'EMTERPRETIFY': 1, 'EMTERPRETIFY_ASYNC': 1})
 
   @no_emterpreter
-  @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is disallowed')
+  @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
+                   'unsupported with Wasm backend')
   def test_emterpretify(self):
     Settings.EMTERPRETIFY = 1
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
