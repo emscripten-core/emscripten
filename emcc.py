@@ -46,9 +46,10 @@ C_ENDINGS = ('.c', '.C', '.i')
 CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.CC', '.C++', '.ii')
 OBJC_ENDINGS = ('.m', '.mi')
 OBJCXX_ENDINGS = ('.mm', '.mii')
+EC_ENDINGS = ('.ec',)
 SPECIAL_ENDINGLESS_FILENAMES = ('/dev/null',)
 
-SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES
+SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + EC_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES
 C_ENDINGS = C_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
 
 BITCODE_ENDINGS = ('.bc', '.o', '.obj', '.lo')
@@ -641,16 +642,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       options, settings_changes, newargs = parse_args(newargs)
 
-      for i in range(0, len(newargs)):
+      argscount = len(newargs)
+      for i in range(0, argscount):
         arg = newargs[i]
-        if arg == '-xc':
-          use_cxx = False
-          break
-        elif arg == '-xc++':
-          use_cxx = True
-          break
+        if arg == '-x' and i+1 < argscount:
+           if newargs[i+1] == 'c':
+             use_cxx = False
+             break
+           elif newargs[i+1] == 'c++':
+             use_cxx = True
+             break
         elif not arg.startswith('-'):
-          if arg.endswith(C_ENDINGS + OBJC_ENDINGS):
+          if arg.endswith(C_ENDINGS + OBJC_ENDINGS + EC_ENDINGS):
             use_cxx = False
 
       if not use_cxx:
