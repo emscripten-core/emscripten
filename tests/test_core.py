@@ -4564,18 +4564,11 @@ def process(filename):
     out = path_from_root('tests', 'fs', 'test_trackingdelegate.out')
     self.do_run_from_file(src, out)
 
-  def test_fs_writeFile(self, js_engines=None):
-    self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=1'] # see issue 2334
-    src = path_from_root('tests', 'fs', 'test_writeFile.cc')
-    out = path_from_root('tests', 'fs', 'test_writeFile.out')
-    self.do_run_from_file(src, out, js_engines=js_engines)
-
-  # NODERAWFS support for OSX is flaky, but it is not desirable to always
-  # disable test_fs_writeFile test, so we split the test into two.
-  # See issue 6121
-  @no_osx('NODERAWFS support on OSX is flaky')
   @also_with_noderawfs
-  def test_fs_writeFile_noderawfs(self, js_engines=None):
+  def test_fs_writeFile(self, js_engines=None):
+    if self.is_osx() and 'NODERAWFS=1' in self.emcc_args:
+      return self.skip('Skipping NODERAWFS part on OSX because NODERAWFS '
+                       'support on OSX is flaky')
     self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=1'] # see issue 2334
     src = path_from_root('tests', 'fs', 'test_writeFile.cc')
     out = path_from_root('tests', 'fs', 'test_writeFile.out')
