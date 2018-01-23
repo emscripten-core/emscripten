@@ -1080,10 +1080,10 @@ int main() {
         assert os.path.exists(out_js), output.stdout + '\n' + output.stderr
         self.assertContained('result: 42', run_js(out_js))
 
-    test(['-Wl,--start-group', lib_name], '--start-group without matching --end-group')
     test(['-Wl,--start-group', lib_name, '-Wl,--start-group'], 'Nested --start-group, missing --end-group?')
     test(['-Wl,--end-group', lib_name, '-Wl,--start-group'], '--end-group without --start-group')
     test(['-Wl,--start-group', lib_name, '-Wl,--end-group'], None)
+    test(['-Wl,--start-group', lib_name], None)
 
     print('embind test with groups')
 
