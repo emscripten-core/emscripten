@@ -82,6 +82,7 @@ def path_from_root(*pathelems):
 
 WINDOWS = sys.platform.startswith('win')
 OSX = sys.platform == 'darwin'
+LINUX = sys.platform.startswith('linux')
 
 # This is a workaround for https://bugs.python.org/issue9400
 class Py2CalledProcessError(subprocess.CalledProcessError):
