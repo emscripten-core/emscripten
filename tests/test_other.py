@@ -349,10 +349,7 @@ f.close()
   # Test that if multiple processes attempt to access or build stuff to the cache on demand, that exactly one of the processes
   # will, and the other processes will block to wait until that process finishes.
   def test_emcc_multiprocess_cache_access(self):
-    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_emcache_', dir=TEMP_DIR)
-    prev_cwd = os.getcwd()
-    try:
-      os.chdir(tempdirname)
+    with temp_directory() as tempdirname:
       c_file = os.path.join(tempdirname, 'test.c')
       open(c_file, 'w').write(r'''
         #include <stdio.h>
@@ -374,14 +371,9 @@ f.close()
       assert os.path.exists(cache_dir_name), 'The cache directory %s must exist after the build' % cache_dir_name
       assert os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')), 'The cache directory must contain a built libc'
       assert num_times_libc_was_built == 1, 'Exactly one child process should have triggered libc build! (instead %d processes did)' % num_times_libc_was_built
-    finally:
-      os.chdir(prev_cwd) # On Windows, we can't have CWD in the directory we're deleting
-      try_delete(tempdirname)
 
   def test_emcc_cache_flag(self):
-    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_emcache_', dir=TEMP_DIR)
-    try:
-      os.chdir(tempdirname)
+    with temp_directory() as tempdirname:
       c_file = os.path.join(tempdirname, 'test.c')
       cache_dir_name = os.path.join(tempdirname, 'emscripten_cache')
       assert os.path.exists(cache_dir_name) == False, 'The cache directory %s must not already exist' % cache_dir_name
@@ -395,9 +387,6 @@ f.close()
       subprocess.check_call([PYTHON, EMCC, c_file, '--cache', cache_dir_name])
       assert os.path.exists(cache_dir_name), 'The cache directory %s must exist after the build' % cache_dir_name
       assert os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')), 'The cache directory must contain a built libc'
-    finally:
-      os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
-      shutil.rmtree(tempdirname)
 
   def test_emcc_cflags(self):
     # see we print them out
@@ -504,11 +493,7 @@ f.close()
       ]
       for test_dir, output_file, cmake_args in cases:
         cmakelistsdir = path_from_root('tests', 'cmake', test_dir)
-        # Create a temp workspace folder
-        tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-        try:
-          os.chdir(tempdirname)
-
+        with temp_directory() as tempdirname:
           # Run Cmake
           cmd = [emconfigure, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
 
@@ -548,48 +533,24 @@ f.close()
           if output_file.endswith('.js'):
             ret = run_process(NODE_JS + [tempdirname + '/' + output_file], stdout=PIPE).stdout
             self.assertTextDataIdentical(open(cmakelistsdir + '/out.txt', 'r').read().strip(), ret.strip())
-        finally:
-          os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
-          #there is a race condition under windows here causing an exception in shutil.rmtree because the directory is not empty yet
-          try:
-            shutil.rmtree(tempdirname)
-          except:
-            time.sleep(0.1)
-            shutil.rmtree(tempdirname)
 
   # Test that the various CMAKE_xxx_COMPILE_FEATURES that are advertised for the Emscripten toolchain match with the actual language features that Clang supports.
   # If we update LLVM version and this test fails, copy over the new advertised features from Clang and place them to cmake/Modules/Platform/Emscripten.cmake.
   def test_cmake_compile_features(self):
     if WINDOWS: return self.skip('Skipped on Windows because CMake does not configure native Clang builds well on Windows.')
 
-    tempdirname_native = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-    tempdirname_emscripten = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-    try:
-      os.chdir(tempdirname_native)
+    with temp_directory():
       cmd = ['cmake', '-DCMAKE_C_COMPILER=' + CLANG_CC, '-DCMAKE_CXX_COMPILER=' + CLANG_CPP, path_from_root('tests', 'cmake', 'stdproperty')]
       print(str(cmd))
       native_features = run_process(cmd, stdout=PIPE).stdout
-    finally:
-      os.chdir(tempdirname_emscripten)
-      try:
-        shutil.rmtree(tempdirname_native)
-      except:
-        pass
 
     if os.name == 'nt': emconfigure = path_from_root('emcmake.bat')
     else: emconfigure = path_from_root('emcmake')
 
-    try:
-      os.chdir(tempdirname_emscripten)
+    with temp_directory():
       cmd = [emconfigure, 'cmake', path_from_root('tests', 'cmake', 'stdproperty')]
       print(str(cmd))
       emscripten_features = run_process(cmd, stdout=PIPE).stdout
-    finally:
-      os.chdir(path_from_root('tests'))
-      try:
-        shutil.rmtree(tempdirname_emscripten)
-      except:
-        pass
 
     native_features = '\n'.join([x for x in native_features.split('\n') if '***' in x])
     emscripten_features = '\n'.join([x for x in emscripten_features.split('\n') if '***' in x])
@@ -600,10 +561,7 @@ f.close()
     cwd = os.getcwd()
 
     for args in [[], ['-DNO_GNU_EXTENSIONS=1']]:
-      tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-      try:
-        os.chdir(tempdirname)
-
+      with temp_directory() as tempdirname:
         configure = [path_from_root('emcmake.bat' if WINDOWS else 'emcmake'), 'cmake', path_from_root('tests', 'cmake', 'cmake_with_emval')] + args
         print(str(configure))
         subprocess.check_call(configure)
@@ -616,15 +574,6 @@ f.close()
           self.assertTextDataIdentical('Hello! __STRICT_ANSI__: 1, __cplusplus: 201103', ret)
         else:
           self.assertTextDataIdentical('Hello! __STRICT_ANSI__: 0, __cplusplus: 201103', ret)
-      finally:
-        os.chdir(cwd)
-
-        # Clean up for EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS mode to be able to detect no leaks
-        try:
-          shutil.rmtree(tempdirname)
-        except:
-          time.sleep(0.1)
-          shutil.rmtree(tempdirname)
 
   # Tests that the Emscripten CMake toolchain option -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON works.
   def test_cmake_bitcode_static_libraries(self):
@@ -632,35 +581,26 @@ f.close()
     else: emcmake = path_from_root('emcmake')
 
     # Test that building static libraries by default generates UNIX archives (.a, with the emar tool)
-    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-    os.chdir(tempdirname)
-    subprocess.check_call([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib')])
-    subprocess.check_call([Building.which('cmake'), '--build', '.'])
-    assert tools.shared.Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.a'))
-    assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.a'))
-    os.chdir(path_from_root('tests'))
-    shutil.rmtree(tempdirname)
+    with temp_directory() as tempdirname:
+      subprocess.check_call([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib')])
+      subprocess.check_call([Building.which('cmake'), '--build', '.'])
+      assert tools.shared.Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.a'))
+      assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.a'))
 
     # Test that passing the -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON directive causes CMake to generate LLVM bitcode files as static libraries (.bc)
-    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-    os.chdir(tempdirname)
-    subprocess.check_call([emcmake, 'cmake', '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON', path_from_root('tests', 'cmake', 'static_lib')])
-    subprocess.check_call([Building.which('cmake'), '--build', '.'])
-    assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.bc'))
-    assert not tools.shared.Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.bc'))
-    os.chdir(path_from_root('tests'))
-    shutil.rmtree(tempdirname)
+    with temp_directory() as tempdirname:
+      subprocess.check_call([emcmake, 'cmake', '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON', path_from_root('tests', 'cmake', 'static_lib')])
+      subprocess.check_call([Building.which('cmake'), '--build', '.'])
+      assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.bc'))
+      assert not tools.shared.Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.bc'))
 
     # Test that one is able to fake custom suffixes for static libraries.
     # (sometimes projects want to emulate stuff, and do weird things like files with ".so" suffix which are in fact either ar archives or bitcode files)
-    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-    os.chdir(tempdirname)
-    subprocess.check_call([emcmake, 'cmake', '-DSET_FAKE_SUFFIX_IN_PROJECT=1', path_from_root('tests', 'cmake', 'static_lib')])
-    subprocess.check_call([Building.which('cmake'), '--build', '.'])
-    assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
-    assert tools.shared.Building.is_ar(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
-    os.chdir(path_from_root('tests'))
-    shutil.rmtree(tempdirname)
+    with temp_directory() as tempdirname:
+      subprocess.check_call([emcmake, 'cmake', '-DSET_FAKE_SUFFIX_IN_PROJECT=1', path_from_root('tests', 'cmake', 'static_lib')])
+      subprocess.check_call([Building.which('cmake'), '--build', '.'])
+      assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
+      assert tools.shared.Building.is_ar(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
 
   def test_failure_error_code(self):
     for compiler in [EMCC, EMXX]:
