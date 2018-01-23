@@ -4564,9 +4564,18 @@ def process(filename):
     out = path_from_root('tests', 'fs', 'test_trackingdelegate.out')
     self.do_run_from_file(src, out)
 
-  @no_mac('NODERAWFS support on mac is flaky')
-  @also_with_noderawfs
   def test_fs_writeFile(self, js_engines=None):
+    self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=1'] # see issue 2334
+    src = path_from_root('tests', 'fs', 'test_writeFile.cc')
+    out = path_from_root('tests', 'fs', 'test_writeFile.out')
+    self.do_run_from_file(src, out, js_engines=js_engines)
+
+  # NODERAWFS support for OSX is flaky, but it is not desirable to always
+  # disable test_fs_writeFile test, so we split the test into two.
+  # See issue 6121
+  @no_osx('NODERAWFS support on OSX is flaky')
+  @also_with_noderawfs
+  def test_fs_writeFile_noderawfs(self, js_engines=None):
     self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=1'] # see issue 2334
     src = path_from_root('tests', 'fs', 'test_writeFile.cc')
     out = path_from_root('tests', 'fs', 'test_writeFile.out')
@@ -4730,7 +4739,7 @@ def process(filename):
       if self.is_windows() and fs == 'NODEFS': Building.COMPILER_TEST_OPTS += ['-DNO_SYMLINK=1']
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
     # Several differences/bugs on Windows including https://github.com/nodejs/node/issues/18014
-    if not self.is_mac() and not self.is_windows():
+    if not self.is_osx() and not self.is_windows():
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-DNODERAWFS']
       if not os.geteuid(): # 0 if root
         Building.COMPILER_TEST_OPTS += ['-DSKIP_ACCESS_TESTS']
