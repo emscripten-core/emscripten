@@ -161,11 +161,11 @@ class BufferedTestError(BufferedTestBase):
 
 
 class FakeTraceback(object):
-  """A fake version of a trackeback object that is picklable across processes.
+  """A fake version of a traceback object that is picklable across processes.
 
   Python's traceback objects contain hidden stack information that isn't able
   to be pickled. Further, traceback objects aren't constructable from Python,
-  so we need a dummy object that fulfils its interface.
+  so we need a dummy object that fulfills its interface.
 
   The fields we expose are exactly those which are used by
   unittest.TextTestResult to show a text representation of a traceback. Any
