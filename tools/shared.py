@@ -1796,7 +1796,14 @@ class Building(object):
         # so we can loop back around later.
         if current_archive_group is not None:
           current_archive_group.append(absolute_path_f)
-    assert current_archive_group is None, '--start-group without matching --end-group'
+
+    # We have to consider the possibility that --start-group was used without a matching
+    # --end-group; GNU ld permits this behavior and implicitly treats the end of the
+    # command line as having an --end-group.
+    if current_archive_group:
+      logging.debug('--start-group without matching --end-group, rescanning')
+      scan_archive_group(current_archive_group)
+      current_archive_group = None
 
     try_delete(target)
 
