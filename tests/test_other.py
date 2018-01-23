@@ -21,6 +21,7 @@ class temp_directory(object):
   def __enter__(self):
     self.directory = tempfile.mkdtemp(prefix='emsripten_temp_', dir=TEMP_DIR)
     self.prev_cwd = os.getcwd()
+    os.chdir(self.directory)
     return self.directory
 
   def __exit__(self, type, value, traceback):
