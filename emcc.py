@@ -182,7 +182,8 @@ class EmccOptions(object):
     self.separate_asm = False
     self.cfi = False
     # Specifies the line ending format to use for all generated text files.
-    # Defaults to using the native EOL on each platform (\r\n on Windows, \n on Linux&OSX)
+    # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
+    # Linux & MacOS)
     self.output_eol = os.linesep
 
 

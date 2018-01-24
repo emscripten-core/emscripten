@@ -44,9 +44,9 @@ def no_linux(note=''):
     return skip_if(f, 'is_linux', note)
   return decorated
 
-def no_osx(note=''):
+def no_macos(note=''):
   def decorated(f):
-    return skip_if(f, 'is_osx', note)
+    return skip_if(f, 'is_macos', note)
   return decorated
 
 def no_windows(note=''):
@@ -81,8 +81,8 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     return 'BINARYEN' in str(self.emcc_args) or self.is_wasm_backend()
   def is_linux(self):
     return LINUX
-  def is_osx(self):
-    return OSX
+  def is_macos(self):
+    return MACOS
   def is_windows(self):
     return WINDOWS
 
@@ -2830,6 +2830,64 @@ def process(filename):
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
     self.do_run(src, 'success', force_c=True, post_build=self.dlfcn_post_build)
 
+  def test_dlfcn_info(self):
+    if not self.can_dlfcn(): return
+
+    self.prep_dlfcn_lib()
+    lib_src = '''
+      #include <stdio.h>
+
+      int myfunc(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j, int k, int l, int m) {
+        return 13;
+      }
+      '''
+    Settings.EXPORTED_FUNCTIONS = ['_myfunc']
+    dirname = self.get_dir()
+    filename = os.path.join(dirname, 'liblib.c')
+    self.build_dlfcn_lib(lib_src, dirname, filename)
+
+    self.prep_dlfcn_main()
+    src = '''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <string.h>
+      #include <dlfcn.h>
+
+      typedef int (*FUNCTYPE)(int, int, int, int, int, int, int, int, int, int, int, int, int);
+
+      int main() {
+        void *lib_handle;
+        FUNCTYPE func_ptr;
+
+        lib_handle = dlopen("liblib.so", RTLD_NOW);
+        assert(lib_handle != NULL);
+
+        func_ptr = (FUNCTYPE)dlsym(lib_handle, "myfunc");
+        assert(func_ptr != NULL);
+        assert(func_ptr(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) == 13);
+
+        /* Verify that we don't corrupt func_ptr when calling dladdr.  */
+        Dl_info info;
+        memset(&info, 0, sizeof(info));
+        dladdr(func_ptr, &info);
+
+        assert(func_ptr != NULL);
+        assert(func_ptr(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) == 13);
+
+        /* Verify something useful lives in info.  */
+        assert(info.dli_fname != NULL);
+        assert(info.dli_fbase == NULL);
+        assert(info.dli_sname == NULL);
+        assert(info.dli_saddr == NULL);
+
+        puts("success");
+
+        return 0;
+      }
+      '''
+    Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
+    self.do_run(src, 'success', force_c=True, post_build=self.dlfcn_post_build)
+
   def test_dlfcn_stacks(self):
     if not self.can_dlfcn(): return
 
@@ -5490,7 +5548,7 @@ return malloc(size);
                             os.path.join('objs', '.libs', 'libfreetype.a'))
 
   def test_freetype(self):
-    if self.is_windows(): return self.skip('test_freetype uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
+    if self.is_windows(): return self.skip('test_freetype uses a ./configure script to build and therefore currently only runs on Linux and macOS.')
     assert 'asm2g' in test_modes
     if self.run_name == 'asm2g':
       Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS # flip for some more coverage here
@@ -5632,7 +5690,7 @@ def process(filename):
 
   @sync
   def test_poppler(self):
-    if self.is_windows(): return self.skip('test_poppler depends on freetype, which uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
+    if self.is_windows(): return self.skip('test_poppler depends on freetype, which uses a ./configure script to build and therefore currently only runs on Linux and macOS.')
 
     def test():
       Building.COMPILER_TEST_OPTS += [

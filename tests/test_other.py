@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 import multiprocessing, os, pipes, re, shutil, subprocess, sys
+import itertools
 import glob
 import tools.shared
 from tools.shared import *
@@ -21,6 +22,7 @@ class temp_directory(object):
   def __enter__(self):
     self.directory = tempfile.mkdtemp(prefix='emsripten_temp_', dir=TEMP_DIR)
     self.prev_cwd = os.getcwd()
+    os.chdir(self.directory)
     return self.directory
 
   def __exit__(self, type, value, traceback):
@@ -348,10 +350,7 @@ f.close()
   # Test that if multiple processes attempt to access or build stuff to the cache on demand, that exactly one of the processes
   # will, and the other processes will block to wait until that process finishes.
   def test_emcc_multiprocess_cache_access(self):
-    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_emcache_', dir=TEMP_DIR)
-    prev_cwd = os.getcwd()
-    try:
-      os.chdir(tempdirname)
+    with temp_directory() as tempdirname:
       c_file = os.path.join(tempdirname, 'test.c')
       open(c_file, 'w').write(r'''
         #include <stdio.h>
@@ -373,14 +372,9 @@ f.close()
       assert os.path.exists(cache_dir_name), 'The cache directory %s must exist after the build' % cache_dir_name
       assert os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')), 'The cache directory must contain a built libc'
       assert num_times_libc_was_built == 1, 'Exactly one child process should have triggered libc build! (instead %d processes did)' % num_times_libc_was_built
-    finally:
-      os.chdir(prev_cwd) # On Windows, we can't have CWD in the directory we're deleting
-      try_delete(tempdirname)
 
   def test_emcc_cache_flag(self):
-    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_emcache_', dir=TEMP_DIR)
-    try:
-      os.chdir(tempdirname)
+    with temp_directory() as tempdirname:
       c_file = os.path.join(tempdirname, 'test.c')
       cache_dir_name = os.path.join(tempdirname, 'emscripten_cache')
       assert os.path.exists(cache_dir_name) == False, 'The cache directory %s must not already exist' % cache_dir_name
@@ -394,9 +388,6 @@ f.close()
       subprocess.check_call([PYTHON, EMCC, c_file, '--cache', cache_dir_name])
       assert os.path.exists(cache_dir_name), 'The cache directory %s must exist after the build' % cache_dir_name
       assert os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')), 'The cache directory must contain a built libc'
-    finally:
-      os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
-      shutil.rmtree(tempdirname)
 
   def test_emcc_cflags(self):
     # see we print them out
@@ -503,11 +494,7 @@ f.close()
       ]
       for test_dir, output_file, cmake_args in cases:
         cmakelistsdir = path_from_root('tests', 'cmake', test_dir)
-        # Create a temp workspace folder
-        tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-        try:
-          os.chdir(tempdirname)
-
+        with temp_directory() as tempdirname:
           # Run Cmake
           cmd = [emconfigure, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
 
@@ -547,48 +534,24 @@ f.close()
           if output_file.endswith('.js'):
             ret = run_process(NODE_JS + [tempdirname + '/' + output_file], stdout=PIPE).stdout
             self.assertTextDataIdentical(open(cmakelistsdir + '/out.txt', 'r').read().strip(), ret.strip())
-        finally:
-          os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
-          #there is a race condition under windows here causing an exception in shutil.rmtree because the directory is not empty yet
-          try:
-            shutil.rmtree(tempdirname)
-          except:
-            time.sleep(0.1)
-            shutil.rmtree(tempdirname)
 
   # Test that the various CMAKE_xxx_COMPILE_FEATURES that are advertised for the Emscripten toolchain match with the actual language features that Clang supports.
   # If we update LLVM version and this test fails, copy over the new advertised features from Clang and place them to cmake/Modules/Platform/Emscripten.cmake.
   def test_cmake_compile_features(self):
     if WINDOWS: return self.skip('Skipped on Windows because CMake does not configure native Clang builds well on Windows.')
 
-    tempdirname_native = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-    tempdirname_emscripten = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-    try:
-      os.chdir(tempdirname_native)
+    with temp_directory():
       cmd = ['cmake', '-DCMAKE_C_COMPILER=' + CLANG_CC, '-DCMAKE_CXX_COMPILER=' + CLANG_CPP, path_from_root('tests', 'cmake', 'stdproperty')]
       print(str(cmd))
       native_features = run_process(cmd, stdout=PIPE).stdout
-    finally:
-      os.chdir(tempdirname_emscripten)
-      try:
-        shutil.rmtree(tempdirname_native)
-      except:
-        pass
 
     if os.name == 'nt': emconfigure = path_from_root('emcmake.bat')
     else: emconfigure = path_from_root('emcmake')
 
-    try:
-      os.chdir(tempdirname_emscripten)
+    with temp_directory():
       cmd = [emconfigure, 'cmake', path_from_root('tests', 'cmake', 'stdproperty')]
       print(str(cmd))
       emscripten_features = run_process(cmd, stdout=PIPE).stdout
-    finally:
-      os.chdir(path_from_root('tests'))
-      try:
-        shutil.rmtree(tempdirname_emscripten)
-      except:
-        pass
 
     native_features = '\n'.join([x for x in native_features.split('\n') if '***' in x])
     emscripten_features = '\n'.join([x for x in emscripten_features.split('\n') if '***' in x])
@@ -599,10 +562,7 @@ f.close()
     cwd = os.getcwd()
 
     for args in [[], ['-DNO_GNU_EXTENSIONS=1']]:
-      tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-      try:
-        os.chdir(tempdirname)
-
+      with temp_directory() as tempdirname:
         configure = [path_from_root('emcmake.bat' if WINDOWS else 'emcmake'), 'cmake', path_from_root('tests', 'cmake', 'cmake_with_emval')] + args
         print(str(configure))
         subprocess.check_call(configure)
@@ -615,15 +575,6 @@ f.close()
           self.assertTextDataIdentical('Hello! __STRICT_ANSI__: 1, __cplusplus: 201103', ret)
         else:
           self.assertTextDataIdentical('Hello! __STRICT_ANSI__: 0, __cplusplus: 201103', ret)
-      finally:
-        os.chdir(cwd)
-
-        # Clean up for EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS mode to be able to detect no leaks
-        try:
-          shutil.rmtree(tempdirname)
-        except:
-          time.sleep(0.1)
-          shutil.rmtree(tempdirname)
 
   # Tests that the Emscripten CMake toolchain option -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON works.
   def test_cmake_bitcode_static_libraries(self):
@@ -631,35 +582,26 @@ f.close()
     else: emcmake = path_from_root('emcmake')
 
     # Test that building static libraries by default generates UNIX archives (.a, with the emar tool)
-    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-    os.chdir(tempdirname)
-    subprocess.check_call([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib')])
-    subprocess.check_call([Building.which('cmake'), '--build', '.'])
-    assert tools.shared.Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.a'))
-    assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.a'))
-    os.chdir(path_from_root('tests'))
-    shutil.rmtree(tempdirname)
+    with temp_directory() as tempdirname:
+      subprocess.check_call([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib')])
+      subprocess.check_call([Building.which('cmake'), '--build', '.'])
+      assert tools.shared.Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.a'))
+      assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.a'))
 
     # Test that passing the -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON directive causes CMake to generate LLVM bitcode files as static libraries (.bc)
-    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-    os.chdir(tempdirname)
-    subprocess.check_call([emcmake, 'cmake', '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON', path_from_root('tests', 'cmake', 'static_lib')])
-    subprocess.check_call([Building.which('cmake'), '--build', '.'])
-    assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.bc'))
-    assert not tools.shared.Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.bc'))
-    os.chdir(path_from_root('tests'))
-    shutil.rmtree(tempdirname)
+    with temp_directory() as tempdirname:
+      subprocess.check_call([emcmake, 'cmake', '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON', path_from_root('tests', 'cmake', 'static_lib')])
+      subprocess.check_call([Building.which('cmake'), '--build', '.'])
+      assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.bc'))
+      assert not tools.shared.Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.bc'))
 
     # Test that one is able to fake custom suffixes for static libraries.
     # (sometimes projects want to emulate stuff, and do weird things like files with ".so" suffix which are in fact either ar archives or bitcode files)
-    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-    os.chdir(tempdirname)
-    subprocess.check_call([emcmake, 'cmake', '-DSET_FAKE_SUFFIX_IN_PROJECT=1', path_from_root('tests', 'cmake', 'static_lib')])
-    subprocess.check_call([Building.which('cmake'), '--build', '.'])
-    assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
-    assert tools.shared.Building.is_ar(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
-    os.chdir(path_from_root('tests'))
-    shutil.rmtree(tempdirname)
+    with temp_directory() as tempdirname:
+      subprocess.check_call([emcmake, 'cmake', '-DSET_FAKE_SUFFIX_IN_PROJECT=1', path_from_root('tests', 'cmake', 'static_lib')])
+      subprocess.check_call([Building.which('cmake'), '--build', '.'])
+      assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
+      assert tools.shared.Building.is_ar(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
 
   def test_failure_error_code(self):
     for compiler in [EMCC, EMXX]:
@@ -2198,7 +2140,7 @@ int f() {
 
   def test_llvm_nativizer(self):
     if WINDOWS: return self.skip('test_llvm_nativizer does not work on Windows: https://github.com/kripken/emscripten/issues/702')
-    if OSX: return self.skip('test_llvm_nativizer does not work on OS X: https://github.com/kripken/emscripten/issues/709')
+    if MACOS: return self.skip('test_llvm_nativizer does not work on macOS: https://github.com/kripken/emscripten/issues/709')
     try:
       Popen(['as', '--version'], stdout=PIPE, stderr=PIPE).communicate()
     except:
@@ -2367,7 +2309,7 @@ seeked= file.
     # run again, should not recrunch!
     time.sleep(0.1)
     Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
-    if 'linux' in sys.platform: # OS time reporting in other OSes (OS X) seems flaky here
+    if 'linux' in sys.platform: # OS time reporting in other OSes (macOS) seems flaky here
       assert crunch_time == os.stat('ship.crn').st_mtime, 'Crunch is unchanged ' + str([crunch_time, os.stat('ship.crn').st_mtime])
     # update dds, so should recrunch
     time.sleep(0.1)
@@ -8045,69 +7987,69 @@ int main() {
           subprocess.check_call([PYTHON, EMCC] + std + ['a.c', 'b.c'])
 
   def test_single_file(self):
-    for single_file_enabled in [True, False]:
-      for meminit1_enabled in [True, False]:
-        for debug_enabled in [True, False]:
-          for emterpreter_enabled in [True, False]:
-            for emterpreter_file_enabled in [True, False]:
-              for closure_enabled in [True, False]:
-                for wasm_enabled in [True, False]:
-                  for asmjs_fallback_enabled in [True, False]:
-                    # skip unhelpful option combinations
-                    if (
-                      (asmjs_fallback_enabled and not wasm_enabled) or
-                      (emterpreter_file_enabled and not emterpreter_enabled)
-                    ):
-                      continue
+    for (single_file_enabled,
+         meminit1_enabled,
+         debug_enabled,
+         emterpreter_enabled,
+         emterpreter_file_enabled,
+         closure_enabled,
+         wasm_enabled,
+         asmjs_fallback_enabled) in itertools.product([True, False], repeat=8):
+      # skip unhelpful option combinations
+      if (
+          (asmjs_fallback_enabled and not wasm_enabled) or
+          (emterpreter_file_enabled and not emterpreter_enabled)
+      ):
+        continue
 
-                    expect_asmjs_code = asmjs_fallback_enabled and wasm_enabled
-                    expect_emterpretify_file = emterpreter_file_enabled
-                    expect_meminit = (meminit1_enabled and not wasm_enabled) or (wasm_enabled and asmjs_fallback_enabled)
-                    expect_success = not (emterpreter_file_enabled and single_file_enabled)
-                    expect_wasm = wasm_enabled
-                    expect_wast = debug_enabled and wasm_enabled
+      expect_asmjs_code = asmjs_fallback_enabled and wasm_enabled
+      expect_emterpretify_file = emterpreter_file_enabled
+      expect_meminit = (meminit1_enabled and not wasm_enabled) or (wasm_enabled and asmjs_fallback_enabled)
+      expect_success = not (emterpreter_file_enabled and single_file_enabled)
+      expect_wasm = wasm_enabled
+      expect_wast = debug_enabled and wasm_enabled
 
-                    # currently, the emterpreter always fails with JS output since we do not preload the emterpreter file, which in non-HTML we would need to do manually
-                    should_run_js = expect_success and not emterpreter_enabled
+      # currently, the emterpreter always fails with JS output since we do not preload the emterpreter file, which in non-HTML we would need to do manually
+      should_run_js = expect_success and not emterpreter_enabled
 
-                    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c')]
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c')]
 
-                    if single_file_enabled:
-                      expect_asmjs_code = False
-                      expect_emterpretify_file = False
-                      expect_meminit = False
-                      expect_wasm = False
-                      expect_wast = False
-                      cmd += ['-s', 'SINGLE_FILE=1']
-                    if meminit1_enabled:
-                      cmd += ['--memory-init-file', '1']
-                    if debug_enabled:
-                      cmd += ['-g']
-                    if emterpreter_enabled:
-                      cmd += ['-s', 'EMTERPRETIFY=1']
-                    if emterpreter_file_enabled:
-                      cmd += ['-s', "EMTERPRETIFY_FILE='a.out.dat'"]
-                    if closure_enabled:
-                      cmd += ['--closure', '1']
-                    if wasm_enabled:
-                      method = 'interpret-binary'
-                      if asmjs_fallback_enabled:
-                        method += ',asmjs'
-                      cmd += ['-s', 'WASM=1', '-s', "BINARYEN_METHOD='" + method + "'"]
+      if single_file_enabled:
+        expect_asmjs_code = False
+        expect_emterpretify_file = False
+        expect_meminit = False
+        expect_wasm = False
+        expect_wast = False
+        cmd += ['-s', 'SINGLE_FILE=1']
+      if meminit1_enabled:
+        cmd += ['--memory-init-file', '1']
+      if debug_enabled:
+        cmd += ['-g']
+      if emterpreter_enabled:
+        cmd += ['-s', 'EMTERPRETIFY=1']
+      if emterpreter_file_enabled:
+        cmd += ['-s', "EMTERPRETIFY_FILE='a.out.dat'"]
+      if closure_enabled:
+        cmd += ['--closure', '1']
+      if wasm_enabled:
+        method = 'interpret-binary'
+        if asmjs_fallback_enabled:
+          method += ',asmjs'
+        cmd += ['-s', 'WASM=1', '-s', "BINARYEN_METHOD='" + method + "'"]
 
-                    print(' '.join(cmd))
-                    self.clear()
-                    proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
-                    output, err = proc.communicate()
-                    print(os.listdir('.'))
-                    assert expect_success == (proc.returncode == 0)
-                    assert expect_asmjs_code == os.path.exists('a.out.asm.js')
-                    assert expect_emterpretify_file == os.path.exists('a.out.dat')
-                    assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
-                    assert expect_wasm == os.path.exists('a.out.wasm')
-                    assert expect_wast == os.path.exists('a.out.wast')
-                    if should_run_js:
-                      self.assertContained('hello, world!', run_js('a.out.js'))
+      print(' '.join(cmd))
+      self.clear()
+      proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
+      output, err = proc.communicate()
+      print(os.listdir('.'))
+      assert expect_success == (proc.returncode == 0)
+      assert expect_asmjs_code == os.path.exists('a.out.asm.js')
+      assert expect_emterpretify_file == os.path.exists('a.out.dat')
+      assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
+      assert expect_wasm == os.path.exists('a.out.wasm')
+      assert expect_wast == os.path.exists('a.out.wast')
+      if should_run_js:
+        self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_emar_M(self):
     open('file1', 'w').write(' ')
