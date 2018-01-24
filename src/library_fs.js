@@ -1109,10 +1109,9 @@ mergeInto(LibraryManager.library, {
       if (!stream.stream_ops.read) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
-      var seeking = true;
-      if (typeof position === 'undefined') {
+      var seeking = position != null;
+      if (!seeking) {
         position = stream.position;
-        seeking = false;
       } else if (!stream.seekable) {
         throw new FS.ErrnoError(ERRNO_CODES.ESPIPE);
       }
@@ -1137,10 +1136,9 @@ mergeInto(LibraryManager.library, {
         // seek to the end before writing in append mode
         position = FS.llseek(stream, 0, {{{ cDefine('SEEK_END') }}});
       }
-      var seeking = true;
-      if (typeof position === 'undefined') {
+      var seeking = position != null;
+      if (!seeking) {
         position = stream.position;
-        seeking = false;
       } else if (!stream.seekable) {
         throw new FS.ErrnoError(ERRNO_CODES.ESPIPE);
       }

@@ -82,12 +82,9 @@ mergeInto(LibraryManager.library, {
         // this stream is created by in-memory filesystem
         return VFS.read(stream, buffer, offset, length, position);
       }
-      var seeking = true;
-      if (typeof position === 'undefined') {
-        seeking = false;
-      }
       var bytesRead = fs.readSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
-      if (!seeking) stream.position += bytesRead;
+      // update position marker when non-seeking
+      if (position == null) stream.position += bytesRead;
       return bytesRead;
     },
     write: function(stream, buffer, offset, length, position) {
@@ -99,12 +96,9 @@ mergeInto(LibraryManager.library, {
         // seek to the end before writing in append mode
         position = FS.llseek(stream, 0, +"{{{ cDefine('SEEK_END') }}}");
       }
-      var seeking = true;
-      if (typeof position === 'undefined') {
-        seeking = false;
-      }
       var bytesWritten = fs.writeSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
-      if (!seeking) stream.position += bytesWritten;
+      // update position marker when non-seeking
+      if (position == null) stream.position += bytesWritten;
       return bytesWritten;
     },
     allocate: function() {
