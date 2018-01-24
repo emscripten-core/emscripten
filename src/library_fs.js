@@ -1219,9 +1219,9 @@ mergeInto(LibraryManager.library, {
       if (typeof data === 'string') {
         var buf = new Uint8Array(lengthBytesUTF8(data)+1);
         var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
-        FS.write(stream, buf, 0, actualNumBytes, 0, opts.canOwn);
+        FS.write(stream, buf, 0, actualNumBytes, void 0, opts.canOwn);
       } else if (ArrayBuffer.isView(data)) {
-        FS.write(stream, data, 0, data.byteLength, 0, opts.canOwn);
+        FS.write(stream, data, 0, data.byteLength, void 0, opts.canOwn);
       } else {
         throw new Error('Unsupported data type');
       }
