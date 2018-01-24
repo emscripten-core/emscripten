@@ -1,6 +1,10 @@
 #ifndef __em_asm_h__
 #define __em_asm_h__
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 #ifndef __asmjs
 // When calling EM_ASM functions, we're calling out to JS. JS only has doubles
 // natively, so we can convert all C types to double before the call. By
@@ -65,31 +69,15 @@ inline double _ea_cast_ptr(const void* x) {
   _EA_CONCATENATE(_EA_PROMOTE_ARGS_,N)(__VA_ARGS__)
 
 #define _EA_PREP_ARGS(...) \
-  _EA_PROMOTE_ARGS(_EA_COUNT_ARGS(__VA_ARGS__), ##__VA_ARGS__)
+  , _EA_COUNT_ARGS(__VA_ARGS__) \
+    _EA_PROMOTE_ARGS(_EA_COUNT_ARGS(__VA_ARGS__), ##__VA_ARGS__)
 
-#ifndef __cplusplus
-// In C, declare these as non-prototype declarations. This is obsolete K&R C
-// (that is still supported) that causes the C frontend to consider any calls
-// to them as valid, and avoids using the vararg calling convention.
-void emscripten_asm_const();
-int emscripten_asm_const_int();
-double emscripten_asm_const_double();
-#else
-// C++ interprets an empty parameter list as a function taking no arguments,
-// instead of a K&R C function declaration. Variadic templates are lowered as
-// non-vararg calls to the instantiated templated function, which we then
-// replace in s2wasm.
-template <typename... Args> void emscripten_asm_const(const char* code, Args...);
-template <typename... Args> int emscripten_asm_const_int(const char* code, Args...);
-template <typename... Args> double emscripten_asm_const_double(const char* code, Args...);
-#endif // !__cplusplus
+void emscripten_asm_const(const char* code, int num_args, ...);
+int emscripten_asm_const_int(const char* code, int num_args, ...);
+double emscripten_asm_const_double(const char* code, int num_args, ...);
 
 #else // __asmjs
 #define _EA_PREP_ARGS(...) , ##__VA_ARGS__
-
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
 
 int emscripten_asm_const_int(const char* code, ...);
 double emscripten_asm_const_double(const char* code, ...);
@@ -99,10 +87,11 @@ double emscripten_asm_const_double_sync_on_main_thread(const char* code, ...);
 
 void emscripten_asm_const_async_on_main_thread(const char* code, ...);
 
+#endif // __asmjs
+
 #ifdef __cplusplus
 }
 #endif // __cplusplus
-#endif // __asmjs
 
 // Note: If the code block in the EM_ASM() family of functions below contains a comma,
 // then wrap the whole code block inside parentheses (). See tests/core/test_em_asm_2.cpp
@@ -146,7 +135,7 @@ void emscripten_asm_const_async_on_main_thread(const char* code, ...);
 // and EM_ASM_DOUBLE_V with EM_ASM_DOUBLE.
 #define EM_ASM_(code, ...) emscripten_asm_const_int(#code _EA_PREP_ARGS(__VA_ARGS__))
 #define EM_ASM_ARGS(code, ...) emscripten_asm_const_int(#code _EA_PREP_ARGS(__VA_ARGS__))
-#define EM_ASM_INT_V(code) emscripten_asm_const_int(#code)
-#define EM_ASM_DOUBLE_V(code) emscripten_asm_const_double(#code)
+#define EM_ASM_INT_V(code) EM_ASM_INT(#code)
+#define EM_ASM_DOUBLE_V(code) EM_ASM_DOUBLE(#code)
 
 #endif // __em_asm_h__

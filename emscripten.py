@@ -1951,12 +1951,15 @@ def create_asm_consts_wasm(forwarded_json, metadata):
     const = asstr(v[0])
     sigs = v[1]
     const = trim_asm_const_body(const)
-    const = '{ ' + const + ' }'
     args = []
-    arity = max(map(len, sigs)) - 1
+    max_arity = 16
+    arity = 0
+    for i in range(max_arity):
+      if ('$' + str(i)) in const:
+        arity = i + 1
     for i in range(arity):
       args.append('$' + str(i))
-    const = 'function(' + ', '.join(args) + ') ' + const
+    const = 'function(' + ', '.join(args) + ') {' + const + '}'
     asm_consts[int(k)] = const
     all_sigs += sigs
 
@@ -1966,10 +1969,13 @@ def create_asm_consts_wasm(forwarded_json, metadata):
     args = ['a%d' % i for i in range(len(sig)-1)]
     all_args = ['code'] + args
     asm_const_funcs.append(r'''
-function _emscripten_asm_const_%s(%s) {
-return ASM_CONSTS[code](%s);
-}''' % (asstr(sig), ', '.join(all_args), ', '.join(args)))
-
+function _emscripten_asm_const_%s(code, nargs, argbuf) {
+  var args = [];
+  for (var i = 0; i < nargs; ++i) {
+    args.push(HEAPF64[(argbuf >> 3) + i]);
+  }
+  return ASM_CONSTS[code].apply(null, args);
+}''' % sig)
   return asm_consts, asm_const_funcs
 
 
