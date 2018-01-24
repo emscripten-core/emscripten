@@ -63,18 +63,18 @@ ADB = ''
 # Host OS detection to autolocate browsers and other OS-specific support needs.
 WINDOWS = False
 LINUX = False
-OSX = False
+MACOS = False
 if os.name == 'nt':
   WINDOWS = True
 elif platform.system() == 'Linux':
   LINUX = True
 elif platform.mac_ver()[0] != '':
-  OSX = True
+  MACOS = True
 
   import plistlib
 
 # If you are running on an OS that is not any of these, must add explicit support for it.
-if not WINDOWS and not LINUX and not OSX:
+if not WINDOWS and not LINUX and not MACOS:
   raise Exception("Unknown OS!")
 
 import_win32api_modules_warned_once = False
@@ -99,7 +99,8 @@ def import_win32api_modules():
 
 # Returns wallclock time in seconds.
 def tick():
-  # Would like to return time.clock() since it's apparently better for precision, but it is broken on OSX 10.10 and Python 2.7.8.
+  # Would like to return time.clock() since it's apparently better for
+  # precision, but it is broken on macOS 10.10 and Python 2.7.8.
   return time.time()
 
 # Absolute wallclock time in seconds specifying when the previous HTTP stdout message from
@@ -627,7 +628,7 @@ def get_cpu_info():
       physical_cores = int(check_output(['wmic', 'cpu', 'get', 'NumberOfCores']).split('\n')[1].strip())
       logical_cores = int(check_output(['wmic', 'cpu', 'get', 'NumberOfLogicalProcessors']).split('\n')[1].strip())
       frequency = int(check_output(['wmic', 'cpu', 'get', 'MaxClockSpeed']).split('\n')[1].strip())
-    elif OSX:
+    elif MACOS:
       cpu_name = check_output(['sysctl', '-n', 'machdep.cpu.brand_string']).strip()
       physical_cores = int(check_output(['sysctl', '-n', 'machdep.cpu.core_count']).strip())
       logical_cores = int(check_output(['sysctl', '-n', 'machdep.cpu.thread_count']).strip())
@@ -759,7 +760,7 @@ def linux_get_gpu_info():
   if not model: model = 'Unknown'
   return [{'model': model, 'ram': ram}]
 
-def osx_get_gpu_info():
+def macos_get_gpu_info():
   gpus = []
   try:
     info = check_output(['system_profiler', 'SPDisplaysDataType'])
@@ -776,7 +777,7 @@ def osx_get_gpu_info():
 def get_gpu_info():
   if WINDOWS: return win_get_gpu_info()
   elif LINUX: return linux_get_gpu_info()
-  elif OSX: return osx_get_gpu_info()
+  elif MACOS: return macos_get_gpu_info()
   else: return []
 
 def get_executable_version(filename):
@@ -787,7 +788,7 @@ def get_executable_version(filename):
       ls = info['FileVersionLS']
       version = win32api.HIWORD(ms), win32api.LOWORD(ms), win32api.HIWORD(ls), win32api.LOWORD(ls)
       return '.'.join(map(str, version))
-    elif OSX:
+    elif MACOS:
       plistfile = filename[0:filename.find('MacOS')] + 'Info.plist'
       info = plistlib.readPlist(plistfile)
       # Data in Info.plists is a bit odd, this check combo gives best information on each browser.
@@ -810,7 +811,7 @@ def get_executable_version(filename):
 
 def get_browser_build_date(filename):
   try:
-    if OSX:
+    if MACOS:
       plistfile = filename[0:filename.find('MacOS')] + 'Info.plist'
       info = plistlib.readPlist(plistfile)
       # Data in Info.plists is a bit odd, this check combo gives best information on each browser.
@@ -877,7 +878,7 @@ def win_get_file_properties(fname):
 
 def get_computer_model():
   try:
-    if OSX:
+    if MACOS:
       try:
         with open(os.path.join(os.getenv("HOME"), '.emrun.hwmodel.cached'), 'r') as f:
           model = f.read()
@@ -934,7 +935,7 @@ def get_os_version():
       except:
         pass
       return productName[0] + version + bitness
-    elif OSX:
+    elif MACOS:
       return 'Mac OS ' + platform.mac_ver()[0] + bitness
     elif LINUX:
       kernel_version = check_output(['uname', '-r']).strip()
@@ -959,7 +960,7 @@ def get_system_memory():
           return int(sline[1]) * 1024
     elif WINDOWS:
       return win32api.GlobalMemoryStatusEx()['TotalPhys']
-    elif OSX:
+    elif MACOS:
       return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
   except:
     return -1
@@ -1011,7 +1012,7 @@ def win_get_default_browser():
 def find_browser(name):
   if WINDOWS and name == 'start':
     return win_get_default_browser()
-  if OSX and name == 'open':
+  if MACOS and name == 'open':
     return [name]
 
   if os.path.isfile(os.path.abspath(name)):
@@ -1028,7 +1029,7 @@ def find_browser(name):
     return [path_lookup]
 
   browser_locations = []
-  if OSX:
+  if MACOS:
     # Note: by default Firefox beta installs as 'Firefox.app', you must manually rename it to
     # FirefoxBeta.app after installation.
     browser_locations = [ ('firefox', '/Applications/Firefox.app/Contents/MacOS/firefox'),
@@ -1360,7 +1361,7 @@ def run():
       options.browser = which('xdg-open')
       if not options.browser:
         options.browser = 'firefox'
-    elif OSX:
+    elif MACOS:
       options.browser = 'safari'
 
   if options.list_browsers:
@@ -1460,7 +1461,7 @@ def run():
         # Safari has a bug that a command line 'Safari http://page.com' does not launch that page,
         # but instead launches 'file:///http://page.com'. To remedy this, must use the open -a command
         # to run Safari, but unfortunately this will end up spawning Safari process detached from emrun.
-        if OSX:
+        if MACOS:
           browser = ['open', '-a', 'Safari'] + (browser[1:] if len(browser) > 1 else [])
 
         processname_killed_atexit = 'Safari'

@@ -44,9 +44,9 @@ def no_linux(note=''):
     return skip_if(f, 'is_linux', note)
   return decorated
 
-def no_osx(note=''):
+def no_macos(note=''):
   def decorated(f):
-    return skip_if(f, 'is_osx', note)
+    return skip_if(f, 'is_macos', note)
   return decorated
 
 def no_windows(note=''):
@@ -81,8 +81,8 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     return 'BINARYEN' in str(self.emcc_args) or self.is_wasm_backend()
   def is_linux(self):
     return LINUX
-  def is_osx(self):
-    return OSX
+  def is_macos(self):
+    return MACOS
   def is_windows(self):
     return WINDOWS
 

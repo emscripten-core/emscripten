@@ -81,7 +81,7 @@ def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
 WINDOWS = sys.platform.startswith('win')
-OSX = sys.platform == 'darwin'
+MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
 
 # This is a workaround for https://bugs.python.org/issue9400
@@ -598,16 +598,16 @@ def build_clang_tool_path(tool):
   else:
     return os.path.join(LLVM_ROOT, tool)
 
-# Whenever building a native executable for OSX, we must provide the OSX SDK version we want to target.
-def osx_find_native_sdk_path():
+# Whenever building a native executable for macOS, we must provide the macOS SDK version we want to target.
+def macos_find_native_sdk_path():
   try:
     sdk_root = '/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs'
     sdks = os.walk(sdk_root).next()[1]
     sdk_path = os.path.join(sdk_root, sdks[0]) # Just pick first one found, we don't care which one we found.
-    logging.debug('Targeting OSX SDK found at ' + sdk_path)
+    logging.debug('Targeting macOS SDK found at ' + sdk_path)
     return sdk_path
   except:
-    logging.warning('Could not find native OSX SDK path to target!')
+    logging.warning('Could not find native macOS SDK path to target!')
     return None
 
 # These extra args need to be passed to Clang when targeting a native host system executable
@@ -616,10 +616,10 @@ def get_clang_native_args():
   global CACHED_CLANG_NATIVE_ARGS
   if CACHED_CLANG_NATIVE_ARGS is not None: return CACHED_CLANG_NATIVE_ARGS
   CACHED_CLANG_NATIVE_ARGS = []
-  if OSX:
-    sdk_path = osx_find_native_sdk_path()
+  if MACOS:
+    sdk_path = macos_find_native_sdk_path()
     if sdk_path:
-      CACHED_CLANG_NATIVE_ARGS = ['-isysroot', osx_find_native_sdk_path()]
+      CACHED_CLANG_NATIVE_ARGS = ['-isysroot', macos_find_native_sdk_path()]
   elif os.name == 'nt':
     CACHED_CLANG_NATIVE_ARGS = ['-DWIN32']
     # TODO: If Windows.h et al. are needed, will need to add something like '-isystemC:/Program Files (x86)/Microsoft SDKs/Windows/v7.1A/Include'.

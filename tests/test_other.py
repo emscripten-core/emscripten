@@ -2198,7 +2198,7 @@ int f() {
 
   def test_llvm_nativizer(self):
     if WINDOWS: return self.skip('test_llvm_nativizer does not work on Windows: https://github.com/kripken/emscripten/issues/702')
-    if OSX: return self.skip('test_llvm_nativizer does not work on OS X: https://github.com/kripken/emscripten/issues/709')
+    if MACOS: return self.skip('test_llvm_nativizer does not work on OS X: https://github.com/kripken/emscripten/issues/709')
     try:
       Popen(['as', '--version'], stdout=PIPE, stderr=PIPE).communicate()
     except:
