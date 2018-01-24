@@ -4683,6 +4683,12 @@ def process(filename):
       }
     ''', 'at Object.write', js_engines=js_engines, post_build=post) # engines has different error stack format
 
+  @also_with_noderawfs
+  def test_fs_llseek(self, js_engines=None):
+    Settings.FORCE_FILESYSTEM = 1
+    src = open(path_from_root('tests', 'fs', 'test_llseek.c'), 'r').read()
+    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
+
   def test_unistd_access(self):
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
