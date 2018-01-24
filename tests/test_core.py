@@ -4624,9 +4624,6 @@ def process(filename):
 
   @also_with_noderawfs
   def test_fs_writeFile(self, js_engines=None):
-    if self.is_macos() and 'NODERAWFS=1' in self.emcc_args:
-      return self.skip('Skipping NODERAWFS part on macOS because NODERAWFS '
-                       'support on macOS is flaky')
     self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=1'] # see issue 2334
     src = path_from_root('tests', 'fs', 'test_writeFile.cc')
     out = path_from_root('tests', 'fs', 'test_writeFile.out')
