@@ -8,7 +8,7 @@ Emscripten has support for multithreading using the new SharedArrayBuffer capabi
 
 Support in asm.js is fairly stable in Emscripten. Support in WebAssembly is arriving in browsers, and still experimental.
 
-.. note:: Due to the Spectre set of vulnerabilities, browsers have disabled SharedArrayBuffer support for now. You can still experiment with it if you flip a pref in your browser.
+.. note:: As of January 2018, browsers have disabled SharedArrayBuffer due to the Spectre set of vulnerabilities. Until it is restored you can still experiment with it if you flip a pref in your browser.
 
 Compiling with pthreads enabled
 ===============================
