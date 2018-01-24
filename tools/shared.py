@@ -1939,7 +1939,7 @@ class Building(object):
         elif status == 'C':
           commons.append(symbol)
         elif (not include_internal and status == status.upper()) or \
-             (    include_internal and status in ['W', 't', 'T', 'd', 'D']): # FIXME: using WTD in the previous line fails due to llvm-nm behavior on OS X,
+             (    include_internal and status in ['W', 't', 'T', 'd', 'D']): # FIXME: using WTD in the previous line fails due to llvm-nm behavior on macOS,
                                                                              #        so for now we assume all uppercase are normally defined external symbols
           defs.append(symbol)
     return ObjectFileInfo(0, None, set(defs), set(undefs), set(commons))
@@ -2314,7 +2314,7 @@ class Building(object):
     # look for ar signature
     elif Building.is_ar(filename):
       return True
-    # on OS X, there is a 20-byte prefix
+    # on macOS, there is a 20-byte prefix
     elif b[0] == 222 and b[1] == 192 and b[2] == 23 and b[3] == 11:
       b = bytearray(open(filename, 'rb').read(24))
       return b[20] == ord('B') and b[21] == ord('C')

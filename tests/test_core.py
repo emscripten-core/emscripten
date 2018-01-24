@@ -5545,7 +5545,7 @@ return malloc(size);
                             os.path.join('objs', '.libs', 'libfreetype.a'))
 
   def test_freetype(self):
-    if self.is_windows(): return self.skip('test_freetype uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
+    if self.is_windows(): return self.skip('test_freetype uses a ./configure script to build and therefore currently only runs on Linux and macOS.')
     assert 'asm2g' in test_modes
     if self.run_name == 'asm2g':
       Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS # flip for some more coverage here
@@ -5687,7 +5687,7 @@ def process(filename):
 
   @sync
   def test_poppler(self):
-    if self.is_windows(): return self.skip('test_poppler depends on freetype, which uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
+    if self.is_windows(): return self.skip('test_poppler depends on freetype, which uses a ./configure script to build and therefore currently only runs on Linux and macOS.')
 
     def test():
       Building.COMPILER_TEST_OPTS += [
