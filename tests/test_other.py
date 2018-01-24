@@ -2198,7 +2198,7 @@ int f() {
 
   def test_llvm_nativizer(self):
     if WINDOWS: return self.skip('test_llvm_nativizer does not work on Windows: https://github.com/kripken/emscripten/issues/702')
-    if OSX: return self.skip('test_llvm_nativizer does not work on OS X: https://github.com/kripken/emscripten/issues/709')
+    if MACOS: return self.skip('test_llvm_nativizer does not work on macOS: https://github.com/kripken/emscripten/issues/709')
     try:
       Popen(['as', '--version'], stdout=PIPE, stderr=PIPE).communicate()
     except:
@@ -2367,7 +2367,7 @@ seeked= file.
     # run again, should not recrunch!
     time.sleep(0.1)
     Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
-    if 'linux' in sys.platform: # OS time reporting in other OSes (OS X) seems flaky here
+    if 'linux' in sys.platform: # OS time reporting in other OSes (macOS) seems flaky here
       assert crunch_time == os.stat('ship.crn').st_mtime, 'Crunch is unchanged ' + str([crunch_time, os.stat('ship.crn').st_mtime])
     # update dds, so should recrunch
     time.sleep(0.1)

@@ -44,9 +44,9 @@ def no_linux(note=''):
     return skip_if(f, 'is_linux', note)
   return decorated
 
-def no_osx(note=''):
+def no_macos(note=''):
   def decorated(f):
-    return skip_if(f, 'is_osx', note)
+    return skip_if(f, 'is_macos', note)
   return decorated
 
 def no_windows(note=''):
@@ -81,8 +81,8 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     return 'BINARYEN' in str(self.emcc_args) or self.is_wasm_backend()
   def is_linux(self):
     return LINUX
-  def is_osx(self):
-    return OSX
+  def is_macos(self):
+    return MACOS
   def is_windows(self):
     return WINDOWS
 
@@ -5545,7 +5545,7 @@ return malloc(size);
                             os.path.join('objs', '.libs', 'libfreetype.a'))
 
   def test_freetype(self):
-    if self.is_windows(): return self.skip('test_freetype uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
+    if self.is_windows(): return self.skip('test_freetype uses a ./configure script to build and therefore currently only runs on Linux and macOS.')
     assert 'asm2g' in test_modes
     if self.run_name == 'asm2g':
       Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS # flip for some more coverage here
@@ -5687,7 +5687,7 @@ def process(filename):
 
   @sync
   def test_poppler(self):
-    if self.is_windows(): return self.skip('test_poppler depends on freetype, which uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
+    if self.is_windows(): return self.skip('test_poppler depends on freetype, which uses a ./configure script to build and therefore currently only runs on Linux and macOS.')
 
     def test():
       Building.COMPILER_TEST_OPTS += [
