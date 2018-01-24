@@ -94,7 +94,7 @@ mergeInto(LibraryManager.library, {
       }
       if (stream.flags & +"{{{ cDefine('O_APPEND') }}}") {
         // seek to the end before writing in append mode
-        position = FS.llseek(stream, 0, +"{{{ cDefine('SEEK_END') }}}");
+        FS.llseek(stream, 0, +"{{{ cDefine('SEEK_END') }}}");
       }
       var bytesWritten = fs.writeSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
       // update position marker when non-seeking

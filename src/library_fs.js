@@ -1134,7 +1134,7 @@ mergeInto(LibraryManager.library, {
       }
       if (stream.flags & {{{ cDefine('O_APPEND') }}}) {
         // seek to the end before writing in append mode
-        position = FS.llseek(stream, 0, {{{ cDefine('SEEK_END') }}});
+        FS.llseek(stream, 0, {{{ cDefine('SEEK_END') }}});
       }
       var seeking = position != null;
       if (!seeking) {
