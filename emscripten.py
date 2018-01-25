@@ -1966,8 +1966,6 @@ def create_asm_consts_wasm(forwarded_json, metadata):
   asm_const_funcs = []
   for sig in set(all_sigs):
     forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
-    args = ['a%d' % i for i in range(len(sig)-1)]
-    all_args = ['code'] + args
     asm_const_funcs.append(r'''
 function _emscripten_asm_const_%s(code, nargs, argbuf) {
   var args = [];
