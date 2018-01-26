@@ -393,13 +393,6 @@ var LibraryGLFW = {
 
     onKeydown: function(event) {
       GLFW.onKeyChanged(event.keyCode, 1); // GLFW_PRESS or GLFW_REPEAT
-
-      // This logic comes directly from the sdl implementation. We cannot
-      // call preventDefault on all keydown events otherwise onKeyPress will
-      // not get called
-      if (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */) {
-        event.preventDefault();
-      }
     },
 
     onKeyup: function(event) {
