@@ -1901,6 +1901,7 @@ def read_metadata_wast(wast, DEBUG):
   parts = output.split('\n;; METADATA:')
   assert len(parts) == 2
   metadata_raw = parts[1]
+  print(metadata_raw)
   return create_metadata_wasm(metadata_raw, wast, DEBUG)
 
 
@@ -2050,7 +2051,7 @@ var asm = Module['asm'](%s, %s, buffer);
      'Module' + access_quote('asmLibraryArg'),
      receiving)]
 
-  # wasm backend stack goes down, and is stored in the first global var location
+# wasm backend stack goes down, and is stored in the first global var location
   module.append('''
 STACKTOP = STACK_BASE + TOTAL_STACK;
 STACK_MAX = STACK_BASE;
@@ -2109,6 +2110,8 @@ def create_s2wasm_args(temp_s):
   args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
   args += ['--initial-memory=%d' % shared.Settings.TOTAL_MEMORY]
   args += ['--allow-memory-growth'] if shared.Settings.ALLOW_MEMORY_GROWTH else []
+  args += ['--reserved-function-pointers=%d' %
+           shared.Settings.RESERVED_FUNCTION_POINTERS]
   args += ['-l', libc_rt_lib]
   args += ['-l', compiler_rt_lib]
 
