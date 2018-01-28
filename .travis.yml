@@ -3,8 +3,7 @@ sudo: required
 language: python
 
 env:
-- TEST_TARGET="other.test_a* other.test_b* other.test_c* other.test_d* other.test_e* other.test_f* other.test_g* other.test_h* other.test_i* other.test_j* other.test_k* other.test_l* other.test_m*"
-- TEST_TARGET="other.test_n* other.test_o* other.test_p* other.test_q* other.test_r* other.test_s* other.test_t* other.test_u* other.test_v* other.test_w* other.test_x* other.test_y* other.test_z*"
+- TEST_TARGET=other
 - TEST_TARGET=browser
 - TEST_TARGET="ALL.test_a* ALL.test_b*"
 - TEST_TARGET=ALL.test_c*
