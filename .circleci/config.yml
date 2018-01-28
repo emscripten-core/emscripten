@@ -57,8 +57,9 @@ jobs:
   test-other:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=other skip:other.test_bad_triple skip:other.test_native_link_error_message skip:other.test_emcc_v
+      - TEST_TARGET=other skip:other.test_bad_triple skip:other.test_native_link_error_message skip:other.test_emcc_v skip:other.test_failing_alloc
       # some native-dependent tests fail because of the lack of native headers on emsdk-bundled clang
+      # CircleCI actively kills memory-over-consuming process
   test-browser:
     <<: *test-defaults
     environment:
