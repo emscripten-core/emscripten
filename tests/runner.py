@@ -1278,7 +1278,7 @@ def flattened_tests(loaded_tests):
   return tests
 
 def suite_for_module(module, tests):
-  suite_supported = module.__name__ == 'test_core'
+  suite_supported = module.__name__ in ('test_core', 'test_other')
   has_multiple_tests = len(tests) > 1
   has_multiple_cores = parallel_runner.num_cores() > 1
   if suite_supported and has_multiple_tests and has_multiple_cores:
