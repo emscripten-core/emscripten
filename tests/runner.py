@@ -155,6 +155,7 @@ use_all_engines = os.environ.get('EM_ALL_ENGINES') # generally js engines are eq
 
 class RunnerCore(unittest.TestCase):
   emcc_args = None
+  temp_dir = TEMP_DIR
   save_dir = os.environ.get('EM_SAVE_DIR')
   save_JS = 0
   stderr_redirect = STDOUT # This avoids cluttering the test runner output, which is stderr too, with compiler warnings etc.
@@ -188,14 +189,14 @@ class RunnerCore(unittest.TestCase):
     Settings.reset()
 
     if self.EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS:
-      for root, dirnames, filenames in os.walk(TEMP_DIR):
+      for root, dirnames, filenames in os.walk(self.temp_dir):
         for dirname in dirnames: self.temp_files_before_run.append(os.path.normpath(os.path.join(root, dirname)))
         for filename in filenames: self.temp_files_before_run.append(os.path.normpath(os.path.join(root, filename)))
 
     self.banned_js_engines = []
     self.use_all_engines = use_all_engines
     if not self.save_dir:
-      dirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
+      dirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
     else:
       dirname = CANONICAL_TEMP_DIR
     if not os.path.exists(dirname):
@@ -221,7 +222,7 @@ class RunnerCore(unittest.TestCase):
 
       if self.EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS and not os.environ.get('EMCC_DEBUG'):
         temp_files_after_run = []
-        for root, dirnames, filenames in os.walk(TEMP_DIR):
+        for root, dirnames, filenames in os.walk(self.temp_dir):
           for dirname in dirnames: temp_files_after_run.append(os.path.normpath(os.path.join(root, dirname)))
           for filename in filenames: temp_files_after_run.append(os.path.normpath(os.path.join(root, filename)))
 
