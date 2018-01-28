@@ -467,15 +467,11 @@ def get_emscripten_version(path):
 try:
   EMSCRIPTEN_VERSION = get_emscripten_version(path_from_root('emscripten-version.txt'))
   try:
-    parts = list(map(int, EMSCRIPTEN_VERSION.split('.')))
-    EMSCRIPTEN_VERSION_MAJOR = parts[0]
-    EMSCRIPTEN_VERSION_MINOR = parts[1]
-    EMSCRIPTEN_VERSION_TINY = parts[2]
+    parts = map(int, EMSCRIPTEN_VERSION.split('.'))
+    EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
   except Exception as e:
     logging.warning('emscripten version ' + EMSCRIPTEN_VERSION + ' lacks standard parts')
-    EMSCRIPTEN_VERSION_MAJOR = 0
-    EMSCRIPTEN_VERSION_MINOR = 0
-    EMSCRIPTEN_VERSION_TINY = 0
+    EMSCRIPTEN_VERSION_MAJOR = EMSCRIPTEN_VERSION_MINOR = EMSCRIPTEN_VERSION_TINY = 0
     raise e
 except Exception as e:
   logging.error('cannot find emscripten version ' + str(e))
@@ -737,14 +733,11 @@ FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 def safe_ensure_dirs(dirname):
   try:
     os.makedirs(dirname)
-  except os.error as e:
-    # Ignore error for already existing dirname
-    if e.errno != errno.EEXIST:
+  except OSError as e:
+    # Python 2 compatibility: makedirs does not support exist_ok parameter
+    # Ignore error for already existing dirname as exist_ok does
+    if not os.path.isdir(dirname):
       raise e
-    # FIXME: Notice that this will result in a false positive,
-    # should the dirname be a file! There seems to no way to
-    # handle this atomically in Python 2.x.
-    # There is an additional option for Python 3.x, though.
 
 # Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist.
 def get_emscripten_temp_dir():
