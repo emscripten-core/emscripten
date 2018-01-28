@@ -809,6 +809,8 @@ class Configuration(object):
     self.DEBUG_CACHE = self.DEBUG and "cache" in self.DEBUG
     self.EMSCRIPTEN_TEMP_DIR = None
 
+    if "EMCC_TEMP_DIR" in environ:
+      TEMP_DIR = environ.get("EMCC_TEMP_DIR")
     try:
       self.TEMP_DIR = TEMP_DIR
     except NameError:
