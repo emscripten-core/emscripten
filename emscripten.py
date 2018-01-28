@@ -1770,6 +1770,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   pre = None
 
   invoke_funcs = read_wast_invoke_imports(wast)
+  jscall_sigs = metadata.get('jsCallFuncType', [])
 
   try:
     del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
@@ -1781,7 +1782,8 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   receiving = create_receiving_wasm(exported_implemented_functions, settings)
 
   # finalize
-  module = create_module_wasm(sending, receiving, invoke_funcs, exported_implemented_functions, settings)
+  module = create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
+                              exported_implemented_functions, settings)
 
   write_output_file(outfile, post, module)
   module = None
@@ -1901,7 +1903,6 @@ def read_metadata_wast(wast, DEBUG):
   parts = output.split('\n;; METADATA:')
   assert len(parts) == 2
   metadata_raw = parts[1]
-  print(metadata_raw)
   return create_metadata_wasm(metadata_raw, wast, DEBUG)
 
 
@@ -2027,9 +2028,11 @@ return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
   return receiving
 
 
-def create_module_wasm(sending, receiving, invoke_funcs, exported_implemented_functions, settings):
+def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
+                       exported_implemented_functions, settings):
   access_quote = access_quoter(settings)
   invoke_wrappers = create_invoke_wrappers(invoke_funcs)
+  jscalls = create_jscalls(jscall_sigs)
 
   the_global = '{}'
 
@@ -2051,7 +2054,7 @@ var asm = Module['asm'](%s, %s, buffer);
      'Module' + access_quote('asmLibraryArg'),
      receiving)]
 
-# wasm backend stack goes down, and is stored in the first global var location
+  # wasm backend stack goes down, and is stored in the first global var location
   module.append('''
 STACKTOP = STACK_BASE + TOTAL_STACK;
 STACK_MAX = STACK_BASE;
@@ -2069,6 +2072,7 @@ var establishStackSpace = Module['establishStackSpace'];
       module.append('var %s;\n' % name)
 
   module.append(invoke_wrappers)
+  module.append(jscalls)
   return module
 
 def create_backend_args_wasm(infile, temp_s, settings):
@@ -2200,6 +2204,13 @@ def create_invoke_wrappers(invoke_funcs):
     sig = invoke[len('invoke_'):]
     invoke_wrappers += '\n' + shared.JS.make_invoke(sig) + '\n'
   return invoke_wrappers
+
+
+def create_jscalls(sigs):
+  jscalls = ''
+  for sig in sigs:
+    jscalls += '\n' + shared.JS.make_jscall(sig) + '\n'
+  return jscalls
 
 
 def asmjs_mangle(name):
