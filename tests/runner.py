@@ -185,6 +185,9 @@ class RunnerCore(unittest.TestCase):
       # side modules handle memory differently; binaryen puts the memory in the wasm module
       return ('-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args) and not (Settings.SIDE_MODULE or Settings.BINARYEN)
 
+  def canonical_temp_dir(self):
+    return os.path.join(self.temp_dir, 'emscripten_temp')
+
   def setUp(self):
     Settings.reset()
 
