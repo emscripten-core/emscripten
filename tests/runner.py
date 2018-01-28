@@ -188,6 +188,9 @@ class RunnerCore(unittest.TestCase):
   def setUp(self):
     Settings.reset()
 
+    # Explicitly set dedicated temporary directory for parallel tests
+    os.environ['EMCC_TEMP_DIR'] = self.temp_dir
+
     if self.EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS:
       for root, dirnames, filenames in os.walk(self.temp_dir):
         for dirname in dirnames: self.temp_files_before_run.append(os.path.normpath(os.path.join(root, dirname)))
