@@ -519,6 +519,13 @@ def update_settings_glue(settings, metadata):
   settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
   settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
 
+  # addFunction support
+  sig2index = {}
+  start_index = metadata['jsCallStartIndex']
+  for i, sig in enumerate(metadata['jsCallFuncType']):
+    sig2index[sig] = start_index + i * settings['RESERVED_FUNCTION_POINTERS']
+  settings['JSCALL_SIG_TO_INDEX'] = sig2index
+
 
 def compile_settings(compiler_engine, settings, libraries, temp_files):
   # Save settings to a file to work around v8 issue 1579

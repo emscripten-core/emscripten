@@ -246,11 +246,22 @@ Module['registerFunctions'] = registerFunctions;
 #endif // RELOCATABLE
 #endif // EMULATED_FUNCTION_POINTERS
 
+#if WASM_BACKEND
+var functionPointers = new Array({{{ numSigs * RESERVED_FUNCTION_POINTERS }}});
+
+function addFunction(func, sig) {
+#else
 var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
 
 function addFunction(func) {
+#endif
 #if EMULATED_FUNCTION_POINTERS == 0
-  for (var i = 0; i < functionPointers.length; i++) {
+#if WASN_BACKEND
+  var start = sigindex * RESERVED_FUNCTION_POINTERS;
+#else
+  var start = 0;
+#endif
+  for (var i = start; i < start + RESERVED_FUNCTION_POINTERS; i++) {
     if (!functionPointers[i]) {
       functionPointers[i] = func;
       return 1 + i;
