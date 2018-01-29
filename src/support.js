@@ -247,21 +247,32 @@ Module['registerFunctions'] = registerFunctions;
 #endif // EMULATED_FUNCTION_POINTERS
 
 #if WASM_BACKEND
+#if RESERVED_FUNCTION_POINTERS
 var jsCallStartIndex = {{{ JSCALL_START_INDEX }}};
 var jsCallSigOrder = {{{ JSON.stringify(JSCALL_SIG_ORDER) }}};
 var jsCallNumSigs = Object.keys(jsCallSigOrder).length;
 var functionPointers = new Array(jsCallNumSigs * {{{ RESERVED_FUNCTION_POINTERS }}});
-
-function addFunction(func, sig) {
 #else
 var jsCallStartIndex = 1;
 var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
+#endif
+#else
+var jsCallStartIndex = 1;
+var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
+#endif
 
+#if WASM_BACKEND
+function addFunction(func, sig) {
+#else
 function addFunction(func) {
 #endif
 #if EMULATED_FUNCTION_POINTERS == 0
 #if WASM_BACKEND
+#if RESERVED_FUNCTION_POINTERS
   var base = jsCallSigOrder[sig] * {{{ RESERVED_FUNCTION_POINTERS }}};
+#else
+  var base = 0;
+#endif
 #else
   var base = 0;
 #endif
