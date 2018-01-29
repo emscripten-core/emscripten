@@ -247,7 +247,9 @@ Module['registerFunctions'] = registerFunctions;
 #endif // EMULATED_FUNCTION_POINTERS
 
 #if WASM_BACKEND
-var functionPointers = new Array({{{ numSigs * RESERVED_FUNCTION_POINTERS }}});
+var jsCallSig2Index = {{{ JSON.stringify(JSCALL_SIG_TO_INDEX) }}};
+var jsCallNumSigs = Object.keys(jsCall_sig2index).length;
+var functionPointers = new Array(jsCallNumSigs * {{{ RESERVED_FUNCTION_POINTERS }}});
 
 function addFunction(func, sig) {
 #else
@@ -256,8 +258,8 @@ var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
 function addFunction(func) {
 #endif
 #if EMULATED_FUNCTION_POINTERS == 0
-#if WASN_BACKEND
-  var start = sigindex * RESERVED_FUNCTION_POINTERS;
+#if WASM_BACKEND
+  var start = jsCallSig2Index[sig];
 #else
   var start = 0;
 #endif

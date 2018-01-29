@@ -6417,7 +6417,6 @@ def process(filename):
     assert '_exported_func_from_response_file_1' in open('src.cpp.o.js').read()
 
   @sync
-  @no_wasm_backend('no jsCall function pointers are created for wasm backend')
   def test_add_function(self):
     Settings.INVOKE_RUN = 0
     Settings.RESERVED_FUNCTION_POINTERS = 1
