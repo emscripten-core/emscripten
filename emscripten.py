@@ -520,11 +520,10 @@ def update_settings_glue(settings, metadata):
   settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
 
   # addFunction support
-  sig2index = {}
   start_index = metadata['jsCallStartIndex']
-  for i, sig in enumerate(metadata['jsCallFuncType']):
-    sig2index[sig] = start_index + i * settings['RESERVED_FUNCTION_POINTERS']
-  settings['JSCALL_SIG_TO_INDEX'] = sig2index
+  sig2order = {sig: i for i, sig in enumerate(metadata['jsCallFuncType'])}
+  settings['JSCALL_START_INDEX'] = start_index
+  settings['JSCALL_SIG_ORDER'] = sig2order
 
 
 def compile_settings(compiler_engine, settings, libraries, temp_files):
@@ -1785,7 +1784,8 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
     pass
 
   # sent data
-  sending = create_sending_wasm(invoke_funcs, forwarded_json, metadata, settings)
+  sending = create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json,
+                                metadata, settings)
   receiving = create_receiving_wasm(exported_implemented_functions, settings)
 
   # finalize
@@ -1992,7 +1992,8 @@ def read_wast_invoke_imports(wast):
   return invoke_funcs
 
 
-def create_sending_wasm(invoke_funcs, forwarded_json, metadata, settings):
+def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata,
+                        settings):
   basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory']
   if settings['ABORTING_MALLOC']:
     basic_funcs += ['abortOnCannotGrowMemory']
@@ -2009,7 +2010,10 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata, settings):
   implemented_functions = set(metadata['implementedFunctions'])
   global_funcs = list(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].items() if value != 2]).difference(set(global_vars)).difference(implemented_functions))
 
-  send_items = basic_funcs + invoke_funcs + global_funcs + basic_vars + global_vars
+  jscall_funcs = ['jsCall_' + sig for sig in jscall_sigs]
+
+  send_items = basic_funcs + invoke_funcs + jscall_funcs + global_funcs + \
+               basic_vars + global_vars
   def math_fix(g):
     return g if not g.startswith('Math_') else g.split('_')[1]
   return '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in send_items]) + ' }'
@@ -2039,7 +2043,7 @@ def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
                        exported_implemented_functions, settings):
   access_quote = access_quoter(settings)
   invoke_wrappers = create_invoke_wrappers(invoke_funcs)
-  jscalls = create_jscalls(jscall_sigs)
+  jscall_funcs = create_jscall_funcs(jscall_sigs)
 
   the_global = '{}'
 
@@ -2079,7 +2083,7 @@ var establishStackSpace = Module['establishStackSpace'];
       module.append('var %s;\n' % name)
 
   module.append(invoke_wrappers)
-  module.append(jscalls)
+  module.append(jscall_funcs)
   return module
 
 def create_backend_args_wasm(infile, temp_s, settings):
@@ -2214,11 +2218,11 @@ def create_invoke_wrappers(invoke_funcs):
   return invoke_wrappers
 
 
-def create_jscalls(sigs):
-  jscalls = ''
+def create_jscall_funcs(sigs):
+  jscall_funcs = ''
   for sig in sigs:
-    jscalls += '\n' + shared.JS.make_jscall(sig) + '\n'
-  return jscalls
+    jscall_funcs += '\n' + shared.JS.make_jscall(sig) + '\n'
+  return jscall_funcs
 
 
 def asmjs_mangle(name):

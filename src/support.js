@@ -247,26 +247,28 @@ Module['registerFunctions'] = registerFunctions;
 #endif // EMULATED_FUNCTION_POINTERS
 
 #if WASM_BACKEND
-var jsCallSig2Index = {{{ JSON.stringify(JSCALL_SIG_TO_INDEX) }}};
-var jsCallNumSigs = Object.keys(jsCallSig2Index).length;
+var jsCallStartIndex = {{{ JSCALL_START_INDEX }}};
+var jsCallSigOrder = {{{ JSON.stringify(JSCALL_SIG_ORDER) }}};
+var jsCallNumSigs = Object.keys(jsCallSigOrder).length;
 var functionPointers = new Array(jsCallNumSigs * {{{ RESERVED_FUNCTION_POINTERS }}});
 
 function addFunction(func, sig) {
 #else
+var jsCallStartIndex = 1;
 var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
 
 function addFunction(func) {
 #endif
 #if EMULATED_FUNCTION_POINTERS == 0
 #if WASM_BACKEND
-  var start = jsCallSig2Index[sig];
+  var base = jsCallSigOrder[sig] * {{{ RESERVED_FUNCTION_POINTERS }}};
 #else
-  var start = 0;
+  var base = 0;
 #endif
-  for (var i = start; i < start + RESERVED_FUNCTION_POINTERS; i++) {
+  for (var i = base; i < base + {{{ RESERVED_FUNCTION_POINTERS }}}; i++) {
     if (!functionPointers[i]) {
       functionPointers[i] = func;
-      return 1 + i;
+      return jsCallStartIndex + i;
     }
   }
   throw 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.';
