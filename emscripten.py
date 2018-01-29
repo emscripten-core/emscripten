@@ -2170,7 +2170,8 @@ def add_metadata_from_wast(metadata, wast):
       if import_type == 'memory':
         continue
       elif import_type == 'func':
-        if not import_name.startswith('invoke_'):
+        if not import_name.startswith('invoke_') and \
+           not import_name.startswith('jsCall_'):
           metadata['declares'].append(import_name)
       elif import_type == 'global':
         metadata['externs'].append('_' + import_name)
