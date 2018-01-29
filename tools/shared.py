@@ -81,7 +81,8 @@ def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
 WINDOWS = sys.platform.startswith('win')
-OSX = sys.platform == 'darwin'
+MACOS = sys.platform == 'darwin'
+LINUX = sys.platform.startswith('linux')
 
 # This is a workaround for https://bugs.python.org/issue9400
 class Py2CalledProcessError(subprocess.CalledProcessError):
@@ -597,16 +598,16 @@ def build_clang_tool_path(tool):
   else:
     return os.path.join(LLVM_ROOT, tool)
 
-# Whenever building a native executable for OSX, we must provide the OSX SDK version we want to target.
-def osx_find_native_sdk_path():
+# Whenever building a native executable for macOS, we must provide the macOS SDK version we want to target.
+def macos_find_native_sdk_path():
   try:
     sdk_root = '/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs'
     sdks = os.walk(sdk_root).next()[1]
     sdk_path = os.path.join(sdk_root, sdks[0]) # Just pick first one found, we don't care which one we found.
-    logging.debug('Targeting OSX SDK found at ' + sdk_path)
+    logging.debug('Targeting macOS SDK found at ' + sdk_path)
     return sdk_path
   except:
-    logging.warning('Could not find native OSX SDK path to target!')
+    logging.warning('Could not find native macOS SDK path to target!')
     return None
 
 # These extra args need to be passed to Clang when targeting a native host system executable
@@ -615,10 +616,10 @@ def get_clang_native_args():
   global CACHED_CLANG_NATIVE_ARGS
   if CACHED_CLANG_NATIVE_ARGS is not None: return CACHED_CLANG_NATIVE_ARGS
   CACHED_CLANG_NATIVE_ARGS = []
-  if OSX:
-    sdk_path = osx_find_native_sdk_path()
+  if MACOS:
+    sdk_path = macos_find_native_sdk_path()
     if sdk_path:
-      CACHED_CLANG_NATIVE_ARGS = ['-isysroot', osx_find_native_sdk_path()]
+      CACHED_CLANG_NATIVE_ARGS = ['-isysroot', macos_find_native_sdk_path()]
   elif os.name == 'nt':
     CACHED_CLANG_NATIVE_ARGS = ['-DWIN32']
     # TODO: If Windows.h et al. are needed, will need to add something like '-isystemC:/Program Files (x86)/Microsoft SDKs/Windows/v7.1A/Include'.
@@ -717,6 +718,7 @@ LLVM_DIS=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dis')))
 LLVM_NM=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
 LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
 LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
+LLD=os.path.expanduser(build_llvm_tool_path(exe_suffix('ld.lld')))
 
 EMSCRIPTEN = path_from_root('emscripten.py')
 EMCC = path_from_root('emcc.py')
@@ -890,11 +892,13 @@ ASM_JS_TARGET = 'asmjs-unknown-emscripten'
 WASM_TARGET = 'wasm32-unknown-unknown-elf'
 
 def check_vanilla():
-  global LLVM_TARGET
+  global LLVM_TARGET, WASM_TARGET
   # if the env var tells us what to do, do that
   if 'EMCC_WASM_BACKEND' in os.environ:
     if os.environ['EMCC_WASM_BACKEND'] != '0':
       logging.debug('EMCC_WASM_BACKEND tells us to use wasm backend')
+      if os.environ.get('EMCC_EXPERIMENTAL_USE_LLD', '0') != '0':
+        WASM_TARGET = 'wasm32-unknown-unknown-wasm'
       LLVM_TARGET = WASM_TARGET
     else:
       logging.debug('EMCC_WASM_BACKEND tells us to use asm.js backend')
@@ -931,6 +935,8 @@ def check_vanilla():
     temp_cache = None
     if is_vanilla:
       logging.debug('check tells us to use wasm backend')
+      if os.environ.get('EMCC_EXPERIMENTAL_USE_LLD', '0') != '0':
+        WASM_TARGET = 'wasm32-unknown-unknown-wasm'
       LLVM_TARGET = WASM_TARGET
     else:
       logging.debug('check tells us to use asm.js backend')
@@ -1148,6 +1154,8 @@ class SettingsManager(object):
 
       if get_llvm_target() == WASM_TARGET:
         self.attrs['WASM_BACKEND'] = 1
+        if os.environ.get('EMCC_EXPERIMENTAL_USE_LLD', '0') != '0':
+          self.attrs['EXPERIMENTAL_USE_LLD'] = 1
 
     # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
     # the reverse of load_settings, except for -Ox which is relevant there but not here
@@ -1756,6 +1764,18 @@ class Building(object):
     Building.read_link_inputs([x for x in files if not x.startswith('-')])
 
     current_archive_group = None
+
+    # Rescan a group of archives until we don't find any more objects to link.
+    def scan_archive_group(group):
+      loop_again = True
+      logging.debug('starting archive group loop');
+      while loop_again:
+        loop_again = False
+        for archive in group:
+          if consider_archive(archive):
+            loop_again = True
+      logging.debug('done with archive group loop');
+
     for f in files:
       absolute_path_f = Building.make_paths_absolute(f)
       if f.startswith('-'):
@@ -1764,16 +1784,7 @@ class Building(object):
           current_archive_group = []
         elif f in ['--end-group', '-)']:
           assert current_archive_group is not None, '--end-group without --start-group'
-          # rescan the archives in the group until we don't find any more
-          # objects to link.
-          loop_again = True
-          logging.debug('starting archive group loop');
-          while loop_again:
-            loop_again = False
-            for archive in current_archive_group:
-              if consider_archive(archive):
-                loop_again = True
-          logging.debug('done with archive group loop');
+          scan_archive_group(current_archive_group)
           current_archive_group = None
         else:
           logging.debug('Ignoring unsupported link flag: %s' % f)
@@ -1793,7 +1804,14 @@ class Building(object):
         # so we can loop back around later.
         if current_archive_group is not None:
           current_archive_group.append(absolute_path_f)
-    assert current_archive_group is None, '--start-group without matching --end-group'
+
+    # We have to consider the possibility that --start-group was used without a matching
+    # --end-group; GNU ld permits this behavior and implicitly treats the end of the
+    # command line as having an --end-group.
+    if current_archive_group:
+      logging.debug('--start-group without matching --end-group, rescanning')
+      scan_archive_group(current_archive_group)
+      current_archive_group = None
 
     try_delete(target)
 
@@ -1921,7 +1939,7 @@ class Building(object):
         elif status == 'C':
           commons.append(symbol)
         elif (not include_internal and status == status.upper()) or \
-             (    include_internal and status in ['W', 't', 'T', 'd', 'D']): # FIXME: using WTD in the previous line fails due to llvm-nm behavior on OS X,
+             (    include_internal and status in ['W', 't', 'T', 'd', 'D']): # FIXME: using WTD in the previous line fails due to llvm-nm behavior on macOS,
                                                                              #        so for now we assume all uppercase are normally defined external symbols
           defs.append(symbol)
     return ObjectFileInfo(0, None, set(defs), set(undefs), set(commons))
@@ -2296,7 +2314,7 @@ class Building(object):
     # look for ar signature
     elif Building.is_ar(filename):
       return True
-    # on OS X, there is a 20-byte prefix
+    # on macOS, there is a 20-byte prefix
     elif b[0] == 222 and b[1] == 192 and b[2] == 23 and b[3] == 11:
       b = bytearray(open(filename, 'rb').read(24))
       return b[20] == ord('B') and b[21] == ord('C')

@@ -182,7 +182,8 @@ class EmccOptions(object):
     self.separate_asm = False
     self.cfi = False
     # Specifies the line ending format to use for all generated text files.
-    # Defaults to using the native EOL on each platform (\r\n on Windows, \n on Linux&OSX)
+    # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
+    # Linux & MacOS)
     self.output_eol = os.linesep
 
 
@@ -2467,9 +2468,12 @@ def modularize():
 
   return %(EXPORT_NAME)s;
 }%(instantiate)s;
-if (typeof module === "object" && module.exports) {
-  module['exports'] = %(EXPORT_NAME)s;
-};
+if (typeof exports === 'object' && typeof module === 'object')
+  module.exports = %(EXPORT_NAME)s;
+else if (typeof define === 'function' && define['amd'])
+  define([], function() { return %(EXPORT_NAME)s; });
+else if (typeof exports === 'object')
+  exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
 ''' % {
   'EXPORT_NAME': shared.Settings.EXPORT_NAME,
   'src': src,
