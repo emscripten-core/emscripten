@@ -7,6 +7,13 @@ import unittest
 import tempfile
 import shutil
 
+__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+def path_from_root(*pathelems):
+  return os.path.join(__rootpath__, *pathelems)
+sys.path.append(path_from_root('tools'))
+
+from tempfiles import try_delete
+
 try:
   import queue
 except ImportError:
@@ -81,7 +88,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
       else:
         self.clear_finished_processes()
     for temp_dir in self.dedicated_temp_dirs:
-      shutil.rmtree(temp_dir)
+      try_delete(temp_dir)
     return buffered_results
 
   def clear_finished_processes(self):
