@@ -22,26 +22,12 @@ extern "C" {
 // though only one is selected. Fortunately, we can use a function inside the
 // _Generic expression, and use that do do our conversion.
 // All pointer types should go through the default case.
-#define _EM_ASM_CAST(x) _Generic((x), \
-    float: _em_asm_cast_double, \
-    double: _em_asm_cast_double, \
-    int: _em_asm_cast_int, \
-    unsigned: _em_asm_cast_uint, \
-    long: _em_asm_cast_int, \
-    unsigned long: _em_asm_cast_uint, \
-    default: _em_asm_cast_ptr)(x)
-inline double _em_asm_cast_double(double x) {
-  return x;
-}
-inline double _em_asm_cast_int(long x) {
-  return (double)x;
-}
-inline double _em_asm_cast_uint(unsigned long x) {
-  return (double)x;
-}
-inline double _em_asm_cast_ptr(const void* x) {
-  return (double)(long)x;
-}
+#define _EM_ASM_SIG_CHAR(x) _Generic((x), \
+    float: 'f', \
+    double: 'd', \
+    int: 'i', \
+    unsigned: 'i', \
+    default: 'i')
 
 // This indirection is needed to allow us to concatenate computed results, e.g.
 //   #define BAR(N) _EM_ASM_CONCATENATE(FOO_, N)
@@ -60,22 +46,23 @@ inline double _em_asm_cast_ptr(const void* x) {
 // Promote each argument to double. We lead with commas to avoid adding a comma
 // in the 0-argument case, which messes up the argument parsing.
 // Note that we omit a comma separating calls to _EM_ASM_PROMOTE_ARGS as well.
-#define _EM_ASM_PROMOTE_ARGS_0(x, ...)
-#define _EM_ASM_PROMOTE_ARGS_1(x, ...) , _EM_ASM_CAST(x)
-#define _EM_ASM_PROMOTE_ARGS_2(x, ...) , _EM_ASM_CAST(x) _EM_ASM_PROMOTE_ARGS_1(__VA_ARGS__)
-#define _EM_ASM_PROMOTE_ARGS_3(x, ...) , _EM_ASM_CAST(x) _EM_ASM_PROMOTE_ARGS_2(__VA_ARGS__)
-#define _EM_ASM_PROMOTE_ARGS_4(x, ...) , _EM_ASM_CAST(x) _EM_ASM_PROMOTE_ARGS_3(__VA_ARGS__)
-#define _EM_ASM_PROMOTE_ARGS_5(x, ...) , _EM_ASM_CAST(x) _EM_ASM_PROMOTE_ARGS_4(__VA_ARGS__)
-#define _EM_ASM_PROMOTE_ARGS(N, ...) \
-  _EM_ASM_CONCATENATE(_EM_ASM_PROMOTE_ARGS_,N)(__VA_ARGS__)
+#define _EM_ASM_ARG_SIGS_0(x, ...)
+#define _EM_ASM_ARG_SIGS_1(x, ...) _EM_ASM_SIG_CHAR(x),
+#define _EM_ASM_ARG_SIGS_2(x, ...) _EM_ASM_SIG_CHAR(x), _EM_ASM_ARG_SIGS_1(__VA_ARGS__)
+#define _EM_ASM_ARG_SIGS_3(x, ...) _EM_ASM_SIG_CHAR(x), _EM_ASM_ARG_SIGS_2(__VA_ARGS__)
+#define _EM_ASM_ARG_SIGS_4(x, ...) _EM_ASM_SIG_CHAR(x), _EM_ASM_ARG_SIGS_3(__VA_ARGS__)
+#define _EM_ASM_ARG_SIGS_5(x, ...) _EM_ASM_SIG_CHAR(x), _EM_ASM_ARG_SIGS_4(__VA_ARGS__)
+#define _EM_ASM_ARG_SIGS_(N, ...) \
+    ((char[]){ _EM_ASM_CONCATENATE(_EM_ASM_ARG_SIGS_,N)(__VA_ARGS__) '\0' })
 
-#define _EM_ASM_PREP_ARGS(...) \
-  , _EM_ASM_COUNT_ARGS(__VA_ARGS__) \
-    _EM_ASM_PROMOTE_ARGS(_EM_ASM_COUNT_ARGS(__VA_ARGS__), ##__VA_ARGS__)
+#define _EM_ASM_ARG_SIGS(...) \
+    _EM_ASM_ARG_SIGS_(_EM_ASM_COUNT_ARGS(__VA_ARGS__), ##__VA_ARGS__)
 
-void emscripten_asm_const(const char* code, int num_args, ...);
-int emscripten_asm_const_int(const char* code, int num_args, ...);
-double emscripten_asm_const_double(const char* code, int num_args, ...);
+#define _EM_ASM_PREP_ARGS(...) , _EM_ASM_ARG_SIGS(__VA_ARGS__), ##__VA_ARGS__
+
+void emscripten_asm_const(const char* code, const char* arg_sigs, ...);
+int emscripten_asm_const_int(const char* code, const char* arg_sigs, ...);
+double emscripten_asm_const_double(const char* code, const char* arg_sigs, ...);
 
 #else // __asmjs
 #define _EM_ASM_PREP_ARGS(...) , ##__VA_ARGS__

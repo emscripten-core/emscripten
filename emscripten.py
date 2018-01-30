@@ -1979,10 +1979,24 @@ def create_asm_consts_wasm(forwarded_json, metadata):
   for sig in set(all_sigs):
     forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
     asm_const_funcs.append(r'''
-function _emscripten_asm_const_%s(code, nargs, argbuf) {
+function _emscripten_asm_const_%s(code, sig_ptr, argbuf) {
+  var sig = UTF8ToString(sig_ptr);
   var args = [];
-  for (var i = 0; i < nargs; ++i) {
-    args.push(HEAPF64[(argbuf >> 3) + i]);
+  var align_to = function(ptr, align) {
+    return (ptr+align-1) & ~(align-1);
+  };
+  var buf = argbuf;
+  for (var i = 0; i < sig.length; i++) {
+    var c = sig[i];
+    if (c == 'd' || c == 'f') {
+      buf = align_to(buf, 8);
+      args.push(HEAPF64[(buf >> 3)]);
+      buf += 8;
+    } else if (c == 'i') {
+      buf = align_to(buf, 4);
+      args.push(HEAPU32[(buf >> 2)]);
+      buf += 4;
+    }
   }
   return ASM_CONSTS[code].apply(null, args);
 }''' % sig)
