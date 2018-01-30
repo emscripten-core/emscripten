@@ -2253,6 +2253,9 @@ class Building(object):
     for item in graph:
       if 'export' in item:
         export = item['export']
+        # wasm backend's exports are prefixed differently inside the wasm
+        if Settings.WASM_BACKEND:
+          export = '_' + export
         if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
     if Settings.WASM_BACKEND:
