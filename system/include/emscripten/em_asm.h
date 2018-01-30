@@ -1,10 +1,6 @@
 #ifndef __em_asm_h__
 #define __em_asm_h__
 
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
-
 #ifndef __asmjs
 // When calling EM_ASM functions, we're calling out to JS. JS only has doubles
 // natively, so we can convert all C types to double before the call. By
@@ -58,13 +54,56 @@ extern "C" {
 #define _EM_ASM_ARG_SIGS(...) \
     _EM_ASM_ARG_SIGS_(_EM_ASM_COUNT_ARGS(__VA_ARGS__), ##__VA_ARGS__)
 
+#ifndef __cplusplus
 #define _EM_ASM_PREP_ARGS(...) , _EM_ASM_ARG_SIGS(__VA_ARGS__), ##__VA_ARGS__
+#else // __cplusplus
+#include <string>
+struct __em_asm_sig_builder {
+  static inline std::string __em_asm_sig() {
+    return "";
+  }
+  template <typename ...Args>
+  static inline std::string __em_asm_sig(float arg, Args ...args) {
+    return "d" + __em_asm_sig(args...);
+  }
+  template <typename ...Args>
+  static inline std::string __em_asm_sig(double arg, Args ...args) {
+    return "d" + __em_asm_sig(args...);
+  }
+  template <typename ...Args>
+  static inline std::string __em_asm_sig(int arg, Args ...args) {
+    return "i" + __em_asm_sig(args...);
+  }
+  template <typename ...Args>
+  static inline std::string __em_asm_sig(unsigned int arg, Args ...args) {
+    return "i" + __em_asm_sig(args...);
+  }
+  template <typename T, typename ...Args>
+  static inline std::string __em_asm_sig(T *arg, Args ...args) {
+    return "i" + __em_asm_sig(args...);
+  }
+};
 
-void emscripten_asm_const(const char* code, const char* arg_sigs, ...);
+#define _EM_ASM_PREP_ARGS(...) , __em_asm_sig_builder::__em_asm_sig(__VA_ARGS__).c_str(), ##__VA_ARGS__
+
+extern "C" {
+#endif // __cplusplus
+
+__attribute__((nothrow))
 int emscripten_asm_const_int(const char* code, const char* arg_sigs, ...);
+__attribute__((nothrow))
 double emscripten_asm_const_double(const char* code, const char* arg_sigs, ...);
 
+#ifdef __cplusplus
+}
+#endif // __cplusplus
+
 #else // __asmjs
+
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 #define _EM_ASM_PREP_ARGS(...) , ##__VA_ARGS__
 
 int emscripten_asm_const_int(const char* code, ...);
@@ -75,11 +114,12 @@ double emscripten_asm_const_double_sync_on_main_thread(const char* code, ...);
 
 void emscripten_asm_const_async_on_main_thread(const char* code, ...);
 
-#endif // __asmjs
-
 #ifdef __cplusplus
 }
 #endif // __cplusplus
+
+#endif // __asmjs
+
 
 // Note: If the code block in the EM_ASM() family of functions below contains a comma,
 // then wrap the whole code block inside parentheses (). See tests/core/test_em_asm_2.cpp
