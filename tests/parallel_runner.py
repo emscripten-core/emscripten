@@ -16,7 +16,7 @@ except ImportError:
 def g_testing_thread(work_queue, result_queue, temp_dir):
   for test in iter(lambda: get_from_queue(work_queue), None):
     result = BufferedParallelTestResult()
-    test.temp_dir = temp_dir
+    test.set_temp_dir(temp_dir)
     try:
       test(result)
     except Exception as e:

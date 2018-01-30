@@ -751,6 +751,9 @@ def get_emscripten_temp_dir():
     prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR) # this global var might change later
   return EMSCRIPTEN_TEMP_DIR
 
+def get_canonical_temp_dir(temp_dir):
+  return os.path.join(temp_dir, 'emscripten_temp')
+
 class WarningManager(object):
   warnings = {
     'ABSOLUTE_PATHS': {
@@ -822,7 +825,7 @@ class Configuration(object):
     if not os.path.isdir(self.TEMP_DIR):
       logging.critical("The temp directory TEMP_DIR='" + self.TEMP_DIR + "' doesn't seem to exist! Please make sure that the path is correct.")
 
-    self.CANONICAL_TEMP_DIR = os.path.join(self.TEMP_DIR, 'emscripten_temp')
+    self.CANONICAL_TEMP_DIR = get_canonical_temp_dir(self.TEMP_DIR)
 
     if self.DEBUG:
       try:

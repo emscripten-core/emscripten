@@ -185,14 +185,14 @@ class RunnerCore(unittest.TestCase):
       # side modules handle memory differently; binaryen puts the memory in the wasm module
       return ('-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args) and not (Settings.SIDE_MODULE or Settings.BINARYEN)
 
-  def canonical_temp_dir(self):
-    return os.path.join(self.temp_dir, 'emscripten_temp')
+  def set_temp_dir(self, temp_dir):
+    self.temp_dir = temp_dir
+    self.canonical_temp_dir = get_canonical_temp_dir(self.temp_dir)
+    # Explicitly set dedicated temporary directory for parallel tests
+    os.environ['EMCC_TEMP_DIR'] = self.temp_dir
 
   def setUp(self):
     Settings.reset()
-
-    # Explicitly set dedicated temporary directory for parallel tests
-    os.environ['EMCC_TEMP_DIR'] = self.temp_dir
 
     if self.EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS:
       for root, dirnames, filenames in os.walk(self.temp_dir):
