@@ -4,6 +4,8 @@ import os
 import subprocess
 import sys
 import unittest
+import tempfile
+import shutil
 
 try:
   import queue
@@ -11,9 +13,10 @@ except ImportError:
   # Python 2 compatibility
   import Queue as queue
 
-def g_testing_thread(work_queue, result_queue):
+def g_testing_thread(work_queue, result_queue, temp_dir):
   for test in iter(lambda: get_from_queue(work_queue), None):
     result = BufferedParallelTestResult()
+    test.set_temp_dir(temp_dir)
     try:
       test(result)
     except Exception as e:
@@ -62,9 +65,10 @@ class ParallelTestSuite(unittest.BaseTestSuite):
   def init_processes(self, test_queue):
     self.processes = []
     self.result_queue = multiprocessing.Queue()
-    for i in range(num_cores()):
+    self.dedicated_temp_dirs = [tempfile.mkdtemp() for x in range(num_cores())]
+    for temp_dir in self.dedicated_temp_dirs:
       p = multiprocessing.Process(target=g_testing_thread,
-                                  args=(test_queue, self.result_queue))
+                                  args=(test_queue, self.result_queue, temp_dir))
       p.start()
       self.processes.append(p)
 
@@ -76,6 +80,8 @@ class ParallelTestSuite(unittest.BaseTestSuite):
         buffered_results.append(res)
       else:
         self.clear_finished_processes()
+    for temp_dir in self.dedicated_temp_dirs:
+      shutil.rmtree(temp_dir)
     return buffered_results
 
   def clear_finished_processes(self):

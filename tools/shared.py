@@ -467,15 +467,11 @@ def get_emscripten_version(path):
 try:
   EMSCRIPTEN_VERSION = get_emscripten_version(path_from_root('emscripten-version.txt'))
   try:
-    parts = list(map(int, EMSCRIPTEN_VERSION.split('.')))
-    EMSCRIPTEN_VERSION_MAJOR = parts[0]
-    EMSCRIPTEN_VERSION_MINOR = parts[1]
-    EMSCRIPTEN_VERSION_TINY = parts[2]
+    parts = map(int, EMSCRIPTEN_VERSION.split('.'))
+    EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
   except Exception as e:
     logging.warning('emscripten version ' + EMSCRIPTEN_VERSION + ' lacks standard parts')
-    EMSCRIPTEN_VERSION_MAJOR = 0
-    EMSCRIPTEN_VERSION_MINOR = 0
-    EMSCRIPTEN_VERSION_TINY = 0
+    EMSCRIPTEN_VERSION_MAJOR = EMSCRIPTEN_VERSION_MINOR = EMSCRIPTEN_VERSION_TINY = 0
     raise e
 except Exception as e:
   logging.error('cannot find emscripten version ' + str(e))
@@ -737,14 +733,11 @@ FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 def safe_ensure_dirs(dirname):
   try:
     os.makedirs(dirname)
-  except os.error as e:
-    # Ignore error for already existing dirname
-    if e.errno != errno.EEXIST:
+  except OSError as e:
+    # Python 2 compatibility: makedirs does not support exist_ok parameter
+    # Ignore error for already existing dirname as exist_ok does
+    if not os.path.isdir(dirname):
       raise e
-    # FIXME: Notice that this will result in a false positive,
-    # should the dirname be a file! There seems to no way to
-    # handle this atomically in Python 2.x.
-    # There is an additional option for Python 3.x, though.
 
 # Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist.
 def get_emscripten_temp_dir():
@@ -757,6 +750,9 @@ def get_emscripten_temp_dir():
       atexit.register(clean_temp)
     prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR) # this global var might change later
   return EMSCRIPTEN_TEMP_DIR
+
+def get_canonical_temp_dir(temp_dir):
+  return os.path.join(temp_dir, 'emscripten_temp')
 
 class WarningManager(object):
   warnings = {
@@ -816,6 +812,8 @@ class Configuration(object):
     self.DEBUG_CACHE = self.DEBUG and "cache" in self.DEBUG
     self.EMSCRIPTEN_TEMP_DIR = None
 
+    if "EMCC_TEMP_DIR" in environ:
+      TEMP_DIR = environ.get("EMCC_TEMP_DIR")
     try:
       self.TEMP_DIR = TEMP_DIR
     except NameError:
@@ -827,7 +825,7 @@ class Configuration(object):
     if not os.path.isdir(self.TEMP_DIR):
       logging.critical("The temp directory TEMP_DIR='" + self.TEMP_DIR + "' doesn't seem to exist! Please make sure that the path is correct.")
 
-    self.CANONICAL_TEMP_DIR = os.path.join(self.TEMP_DIR, 'emscripten_temp')
+    self.CANONICAL_TEMP_DIR = get_canonical_temp_dir(self.TEMP_DIR)
 
     if self.DEBUG:
       try:

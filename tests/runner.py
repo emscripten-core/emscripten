@@ -155,6 +155,7 @@ use_all_engines = os.environ.get('EM_ALL_ENGINES') # generally js engines are eq
 
 class RunnerCore(unittest.TestCase):
   emcc_args = None
+  temp_dir = TEMP_DIR
   save_dir = os.environ.get('EM_SAVE_DIR')
   save_JS = 0
   stderr_redirect = STDOUT # This avoids cluttering the test runner output, which is stderr too, with compiler warnings etc.
@@ -184,18 +185,24 @@ class RunnerCore(unittest.TestCase):
       # side modules handle memory differently; binaryen puts the memory in the wasm module
       return ('-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args) and not (Settings.SIDE_MODULE or Settings.BINARYEN)
 
+  def set_temp_dir(self, temp_dir):
+    self.temp_dir = temp_dir
+    self.canonical_temp_dir = get_canonical_temp_dir(self.temp_dir)
+    # Explicitly set dedicated temporary directory for parallel tests
+    os.environ['EMCC_TEMP_DIR'] = self.temp_dir
+
   def setUp(self):
     Settings.reset()
 
     if self.EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS:
-      for root, dirnames, filenames in os.walk(TEMP_DIR):
+      for root, dirnames, filenames in os.walk(self.temp_dir):
         for dirname in dirnames: self.temp_files_before_run.append(os.path.normpath(os.path.join(root, dirname)))
         for filename in filenames: self.temp_files_before_run.append(os.path.normpath(os.path.join(root, filename)))
 
     self.banned_js_engines = []
     self.use_all_engines = use_all_engines
     if not self.save_dir:
-      dirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
+      dirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
     else:
       dirname = CANONICAL_TEMP_DIR
     if not os.path.exists(dirname):
@@ -221,7 +228,7 @@ class RunnerCore(unittest.TestCase):
 
       if self.EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS and not os.environ.get('EMCC_DEBUG'):
         temp_files_after_run = []
-        for root, dirnames, filenames in os.walk(TEMP_DIR):
+        for root, dirnames, filenames in os.walk(self.temp_dir):
           for dirname in dirnames: temp_files_after_run.append(os.path.normpath(os.path.join(root, dirname)))
           for filename in filenames: temp_files_after_run.append(os.path.normpath(os.path.join(root, filename)))
 
@@ -1277,7 +1284,7 @@ def flattened_tests(loaded_tests):
   return tests
 
 def suite_for_module(module, tests):
-  suite_supported = module.__name__ == 'test_core'
+  suite_supported = module.__name__ in ('test_core', 'test_other')
   has_multiple_tests = len(tests) > 1
   has_multiple_cores = parallel_runner.num_cores() > 1
   if suite_supported and has_multiple_tests and has_multiple_cores:

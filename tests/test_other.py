@@ -30,15 +30,18 @@ class temp_directory(object):
       try_delete(self.directory)
 
 class clean_write_access_to_canonical_temp_dir(object):
+  def __init__(self, dir=CANONICAL_TEMP_DIR):
+    self.canonical_temp_dir = dir
+
   def clean_emcc_files_in_temp_dir(self):
-    for x in os.listdir(CANONICAL_TEMP_DIR):
+    for x in os.listdir(self.canonical_temp_dir):
       if x.startswith('emcc-') or x.startswith('a.out'):
-        os.unlink(os.path.join(CANONICAL_TEMP_DIR, x))
+        os.unlink(os.path.join(self.canonical_temp_dir, x))
 
   def __enter__(self):
-    self.CANONICAL_TEMP_DIR_exists = os.path.exists(CANONICAL_TEMP_DIR)
+    self.CANONICAL_TEMP_DIR_exists = os.path.exists(self.canonical_temp_dir)
     if not self.CANONICAL_TEMP_DIR_exists:
-      os.makedirs(CANONICAL_TEMP_DIR)
+      os.makedirs(self.canonical_temp_dir)
     else:
       # Delete earlier files in the canonical temp directory so that
       # previous leftover files don't have a possibility of confusing
@@ -47,7 +50,7 @@ class clean_write_access_to_canonical_temp_dir(object):
 
   def __exit__(self, type, value, traceback):
     if not self.CANONICAL_TEMP_DIR_exists:
-      try_delete(CANONICAL_TEMP_DIR)
+      try_delete(self.canonical_temp_dir)
       pass
     else:
       self.clean_emcc_files_in_temp_dir()
@@ -391,7 +394,7 @@ f.close()
 
   def test_emcc_cflags(self):
     # see we print them out
-    with clean_write_access_to_canonical_temp_dir(): # --cflags needs to set EMCC_DEBUG=1, which needs to create canonical temp directory.
+    with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir): # --cflags needs to set EMCC_DEBUG=1, which needs to create canonical temp directory.
       output = run_process([PYTHON, EMCC, '--cflags'], stdout=PIPE, stderr=PIPE)
     flags = output.stdout.strip()
     self.assertContained(' '.join(Building.doublequote_spaces(COMPILER_OPTS)), flags)
@@ -2043,19 +2046,19 @@ int f() {
         print(opts, debug)
         try:
           if debug: os.environ['EMCC_DEBUG'] = debug
-          with clean_write_access_to_canonical_temp_dir():
+          with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
             check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-O'+ str(opts)], stderr=PIPE)
             if debug is None:
-              for x in os.listdir(CANONICAL_TEMP_DIR):
+              for x in os.listdir(self.canonical_temp_dir):
                 if x.startswith('emcc-'):
                   assert 0
             elif debug == '1':
-              assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-0-linktime.bc'))
-              assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-1-original.js'))
+              assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-0-linktime.bc'))
+              assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-1-original.js'))
             elif debug == '2':
-              assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-0-basebc.bc'))
-              assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-1-linktime.bc'))
-              assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-2-original.js'))
+              assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-0-basebc.bc'))
+              assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-1-linktime.bc'))
+              assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-2-original.js'))
         finally:
           if debug: del os.environ['EMCC_DEBUG']
 
@@ -2075,7 +2078,7 @@ int f() {
           (['-O2', '-g4'], True, True), # drop llvm debug info as js opts kill it anyway
         ]:
         print(args, expect_llvm, expect_js)
-        with clean_write_access_to_canonical_temp_dir():
+        with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
           err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
         assert expect_llvm == ('strip-debug' not in err)
         assert expect_js == ('registerize' not in err)
@@ -3290,7 +3293,7 @@ int main() {
           (['-O3'], 'LLVM opts: -O3'),
         ]:
         print(args, expect)
-        with clean_write_access_to_canonical_temp_dir():
+        with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
           err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
         self.assertContained(expect, err)
         if '-O3' in args or '-Oz' in args or '-Os' in args:
@@ -5445,7 +5448,7 @@ int main(void) {
       try:
         os.environ['EMCC_DEBUG'] = '1'
         os.environ['EMCC_NATIVE_OPTIMIZER'] = '1'
-        with clean_write_access_to_canonical_temp_dir():
+        with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
           err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2',] + args, stderr=PIPE).stderr
       finally:
         if old_debug: os.environ['EMCC_DEBUG'] = old_debug
@@ -5484,7 +5487,7 @@ int main(void) {
           del os.environ['EMCONFIGURE_JS']
 
   def test_emcc_c_multi(self):
-    with clean_write_access_to_canonical_temp_dir():
+    with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
       def test(args, llvm_opts=None):
         print(args)
         lib = r'''
@@ -7101,7 +7104,7 @@ struct C {
 C c;
 int main() {}
       ''')
-      with clean_write_access_to_canonical_temp_dir():
+      with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
         err = run_process([PYTHON, EMCC, 'src.cpp', '-Oz'], stderr=PIPE).stderr
       self.assertContained('___syscall54', err) # the failing call should be mentioned
       self.assertContained('ctorEval.js', err) # with a stack trace
@@ -7405,7 +7408,7 @@ int main() {
   def test_binaryen_opts(self):
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
 
-    with clean_write_access_to_canonical_temp_dir():
+    with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
       try:
         os.environ['EMCC_DEBUG'] = '1'
         for args, expect_js_opts, expect_only_wasm in [
@@ -7469,7 +7472,7 @@ int main() {
         ]:
         print(args, expect)
         try_delete('a.out.js')
-        with clean_write_access_to_canonical_temp_dir():
+        with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
           err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'] + args, stdout=PIPE, stderr=PIPE).stderr
         assert expect == (' -emscripten-precise-f32' in err), err
         self.assertContained('hello, world!', run_js('a.out.js'))
@@ -7625,7 +7628,7 @@ int main() {
 
   # test debug info and debuggability of JS output
   def test_binaryen_debug(self):
-    with clean_write_access_to_canonical_temp_dir():
+    with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
       if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
       try:
         os.environ['EMCC_DEBUG'] = '1'
@@ -7665,7 +7668,7 @@ int main() {
         del os.environ['EMCC_DEBUG']
 
   def test_binaryen_ignore_implicit_traps(self):
-    with clean_write_access_to_canonical_temp_dir():
+    with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
       if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
       sizes = []
       try:
@@ -7803,7 +7806,7 @@ int main() {
 
   # test disabling of JS FFI legalization
   def test_legalize_js_ffi(self):
-    with clean_write_access_to_canonical_temp_dir():
+    with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
       for (args,js_ffi) in [
           (['-s', 'LEGALIZE_JS_FFI=1', '-s', 'SIDE_MODULE=1', '-O2'], True),
           (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'SIDE_MODULE=1', '-O2'], False),
