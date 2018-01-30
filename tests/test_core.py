@@ -1683,13 +1683,8 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm', force_c=True)
 
   def test_em_asm_unicode(self):
-    self.do_run(r'''
-#include <emscripten.h>
-
-int main() {
-  EM_ASM( Module.print("hello world…") );
-}
-''', 'hello world…')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode', force_c=True)
 
   def test_em_asm_unused_arguments(self):
     src = r'''
