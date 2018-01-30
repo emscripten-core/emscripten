@@ -1109,7 +1109,7 @@ mergeInto(LibraryManager.library, {
       if (!stream.stream_ops.read) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
-      var seeking = position != null;
+      var seeking = typeof position !== 'undefined';
       if (!seeking) {
         position = stream.position;
       } else if (!stream.seekable) {
@@ -1136,7 +1136,7 @@ mergeInto(LibraryManager.library, {
         // seek to the end before writing in append mode
         FS.llseek(stream, 0, {{{ cDefine('SEEK_END') }}});
       }
-      var seeking = position != null;
+      var seeking = typeof position !== 'undefined';
       if (!seeking) {
         position = stream.position;
       } else if (!stream.seekable) {
@@ -1219,9 +1219,9 @@ mergeInto(LibraryManager.library, {
       if (typeof data === 'string') {
         var buf = new Uint8Array(lengthBytesUTF8(data)+1);
         var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
-        FS.write(stream, buf, 0, actualNumBytes, void 0, opts.canOwn);
+        FS.write(stream, buf, 0, actualNumBytes, undefined, opts.canOwn);
       } else if (ArrayBuffer.isView(data)) {
-        FS.write(stream, data, 0, data.byteLength, void 0, opts.canOwn);
+        FS.write(stream, data, 0, data.byteLength, undefined, opts.canOwn);
       } else {
         throw new Error('Unsupported data type');
       }
