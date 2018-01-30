@@ -1772,7 +1772,11 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   exported_implemented_functions = create_exported_implemented_functions_wasm(pre, forwarded_json, metadata, settings)
 
   asm_consts, asm_const_funcs = create_asm_consts_wasm(forwarded_json, metadata)
-  pre = pre.replace('// === Body ===', '// === Body ===\n' + '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
+  asm_consts_text = '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n'
+  asm_funcs_text = '\n'.join(asm_const_funcs) + '\n'
+
+  body_marker = '// === Body ==='
+  pre = pre.replace(body_marker, body_marker + '\n' + asm_consts_text + asstr(asm_funcs_text))
 
   outfile.write(pre)
   pre = None
