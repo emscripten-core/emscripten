@@ -520,7 +520,7 @@ def update_settings_glue(settings, metadata):
   settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
 
   # addFunction support
-  if settings['RESERVED_FUNCTION_POINTERS'] > 0:
+  if settings['WASM_BACKEND'] and settings['RESERVED_FUNCTION_POINTERS'] > 0:
     start_index = metadata['jsCallStartIndex']
     sig2order = {sig: i for i, sig in enumerate(metadata['jsCallFuncType'])}
     settings['JSCALL_START_INDEX'] = start_index
