@@ -84,7 +84,7 @@ mergeInto(LibraryManager.library, {
       }
       var bytesRead = fs.readSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
       // update position marker when non-seeking
-      if (position == null) stream.position += bytesRead;
+      if (typeof position === 'undefined') stream.position += bytesRead;
       return bytesRead;
     },
     write: function(stream, buffer, offset, length, position) {
@@ -98,7 +98,7 @@ mergeInto(LibraryManager.library, {
       }
       var bytesWritten = fs.writeSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
       // update position marker when non-seeking
-      if (position == null) stream.position += bytesWritten;
+      if (typeof position === 'undefined') stream.position += bytesWritten;
       return bytesWritten;
     },
     allocate: function() {
