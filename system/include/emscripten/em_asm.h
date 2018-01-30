@@ -2,21 +2,18 @@
 #define __em_asm_h__
 
 #ifndef __asmjs
-// When calling EM_ASM functions, we're calling out to JS. JS only has doubles
-// natively, so we can convert all C types to double before the call. By
-// converting all arguments to double, we can store them in a vararg buffer,
-// and we only need to pass the number of args in order to read them in JS.
+// In wasm backend, we need to call the emscripten_asm_const_* functions with
+// the C vararg calling convention, because we will call it with a variety of
+// arguments, but need to generate a coherent import for the wasm module before
+// binaryen can run over it to fix up any calls to emscripten_asm_const_*.  In
+// order to read from a vararg buffer, we need to know the signatures to read.
+// We can use compile-time trickery to generate a format string, and read that
+// in JS in order to correctly handle the vararg buffer.
 
-// When converting arguments to double, we need to:
-//   - upcast floats to doubles, so we have consistent bit widths
-//   - convert ints to doubles (via f64.convert_s/i32 and such)
-//   - cast pointers to ints, and then convert (C disallows direct pointer to
-//     double conversions)
+#ifndef __cplusplus
+
 // We can use the generic selection C11 feature (that clang supports pre-C11
-// as an extension) to decide at compile time what operations to apply.
-// Unfortunately each branch needs to compile for all possible types, even
-// though only one is selected. Fortunately, we can use a function inside the
-// _Generic expression, and use that do do our conversion.
+// as an extension) to emulate function overloading in C.
 // All pointer types should go through the default case.
 #define _EM_ASM_SIG_CHAR(x) _Generic((x), \
     float: 'f', \
@@ -39,9 +36,7 @@
 #define _EM_ASM_COUNT_ARGS(...) \
     _EM_ASM_COUNT_ARGS_EXP($$,##__VA_ARGS__,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)
 
-// Promote each argument to double. We lead with commas to avoid adding a comma
-// in the 0-argument case, which messes up the argument parsing.
-// Note that we omit a comma separating calls to _EM_ASM_PROMOTE_ARGS as well.
+// Find the corresponding char for each argument.
 #define _EM_ASM_ARG_SIGS_0(x, ...)
 #define _EM_ASM_ARG_SIGS_1(x, ...) _EM_ASM_SIG_CHAR(x),
 #define _EM_ASM_ARG_SIGS_2(x, ...) _EM_ASM_SIG_CHAR(x), _EM_ASM_ARG_SIGS_1(__VA_ARGS__)
@@ -65,10 +60,18 @@
 #define _EM_ASM_ARG_SIGS(...) \
     _EM_ASM_ARG_SIGS_(_EM_ASM_COUNT_ARGS(__VA_ARGS__), ##__VA_ARGS__)
 
-#ifndef __cplusplus
+// We lead with commas to avoid adding an extra comma in the 0-argument case.
 #define _EM_ASM_PREP_ARGS(...) , _EM_ASM_ARG_SIGS(__VA_ARGS__), ##__VA_ARGS__
+
 #else // __cplusplus
+
+// C++ needs to support vararg template parameter packs, e.g. like in
+// tests/core/test_em_asm_parameter_pack.cpp. Because of that, a macro-only
+// approach doesn't work (a macro applied to a parameter pack would expand
+// incorrectly). So we can use a template function instead to build a
+// std::string, and convert that to a C string.
 #include <string>
+// String builder class is so the _sig functions can be mutually recursive.
 struct __em_asm_sig_builder {
   static inline std::string __em_asm_sig() {
     return "";
@@ -95,11 +98,13 @@ struct __em_asm_sig_builder {
   }
 };
 
-#define _EM_ASM_PREP_ARGS(...) , __em_asm_sig_builder::__em_asm_sig(__VA_ARGS__).c_str(), ##__VA_ARGS__
+#define _EM_ASM_PREP_ARGS(...) \
+    , __em_asm_sig_builder::__em_asm_sig(__VA_ARGS__).c_str(), ##__VA_ARGS__
 
 extern "C" {
 #endif // __cplusplus
 
+// C++ needs the nothrow attribute so -O0 doesn't lower these calls as invokes.
 __attribute__((nothrow))
 int emscripten_asm_const_int(const char* code, const char* arg_sigs, ...);
 __attribute__((nothrow))
