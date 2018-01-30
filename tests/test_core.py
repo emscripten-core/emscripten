@@ -6424,7 +6424,10 @@ def process(filename):
     test_path = path_from_root('tests', 'interop')
     src, expected = (os.path.join(test_path, s) for s in ('test_add_function.cpp', 'test_add_function.out'))
 
-    post_js = os.path.join(test_path, 'test_add_function_post.js')
+    if Settings.WASM_BACKEND:
+      post_js = os.path.join(test_path, 'test_add_function_post.js')
+    else:
+      post_js = os.path.join(test_path, 'test_add_function_post_asmjs.js')
     self.emcc_args += ['--post-js', post_js]
     self.do_run_from_file(src, expected)
 
