@@ -609,6 +609,7 @@ space for 20 functions to be added::
    For example, if you add a function that takes an integer and does not return
    anything, you can do
    ``addFunction(your_function, 'vi');``
+   See tests/interop/test_add_function_post.js for an example.
 
 
 .. _interacting-with-code-access-memory:
