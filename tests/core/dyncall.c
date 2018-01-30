@@ -11,6 +11,7 @@ int main() {
 #if EXPORTED
     // test for additional things being exported
     assert(Module['addFunction']);
+    assert(Module['lengthBytesUTF8']);
     // the main test here
     Module['dynCall']('viii', $0, [1, 4, 9]);
 #else
