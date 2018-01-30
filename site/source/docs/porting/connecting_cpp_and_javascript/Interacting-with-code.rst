@@ -582,17 +582,17 @@ See the `library_*.js`_ files for other examples.
 Calling JavaScript functions as function pointers from C
 ========================================================
 
-You can use ``Runtime.addFunction`` to return an integer value that represents
-a function pointer. Passing that integer to C code then lets it call that
-value as a function pointer, and the JavaScript function you sent to
-``Runtime.addFunction`` will be called.
+You can use ``addFunction`` to return an integer value that represents a
+function pointer. Passing that integer to C code then lets it call that value as
+a function pointer, and the JavaScript function you sent to ``addFunction`` will
+be called.
 
 See `test_add_function in tests/test_core.py`_ for an example.
 
-When using ``Runtime.addFunction``, there is a backing array where these
-functions are stored. This array must be explicitly sized, which can be
-done via a compile-time setting, ``RESERVED_FUNCTION_POINTERS``. For
-example, to reserve space for 20 functions to be added::
+When using ``addFunction``, there is a backing array where these functions are
+stored. This array must be explicitly sized, which can be done via a
+compile-time setting, ``RESERVED_FUNCTION_POINTERS``. For example, to reserve
+space for 20 functions to be added::
 
     emcc ... -s RESERVED_FUNCTION_POINTERS=20 ...
 

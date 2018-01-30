@@ -47,16 +47,6 @@ The following advanced APIs are documented in `preamble.js <https://github.com/k
 	:param allocator: How to allocate memory, see ALLOC_*
 
 
-	
-Module.Runtime
-================
-
-``Module.Runtime`` gives access to low-level runtime functionality. Some of these, for example ``Runtime.stackSave()`` and ``Runtime.stackRestore()`` may be useful for advanced users.
-
-.. todo:: **HamishW** It would be useful to expand on what is offered by ``Module.Runtime``. This has been deferred.
-
-
-
 Advanced File System API
 ========================
 
