@@ -1728,6 +1728,10 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
     wast = build_wasm(temp_files, infile, outfile, settings, DEBUG)
     metadata = read_metadata_wast(wast, DEBUG)
 
+  # optimize syscalls
+
+  optimize_syscalls(metadata['declares'], settings, DEBUG)
+
   # js compiler
 
   if DEBUG: logging.debug('emscript: js compiler glue')
