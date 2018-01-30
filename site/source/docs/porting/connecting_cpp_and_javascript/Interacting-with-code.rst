@@ -596,6 +596,21 @@ space for 20 functions to be added::
 
     emcc ... -s RESERVED_FUNCTION_POINTERS=20 ...
 
+.. note:: When using ``addFunction`` on Wasm backend, you need to provide
+   an additional second argument, a Wasm function signature string. Each
+   character within a signature string represents a type. The first character
+   represents the return type of a function, and remaining characters are for
+   parameter types.
+   - 'v': void type
+   - 'i': 32-bit integer type
+   - 'j': 64-bit integer type (currently does not exist in JavaScript)
+   - 'f': 32-bit float type
+   - 'd': 64-bit float type
+   For example, if you add a function that takes an integer and does not return
+   anything, you can do
+   ``addFunction(your_function, 'vi');``
+
+
 .. _interacting-with-code-access-memory:
 
 Access memory from JavaScript
