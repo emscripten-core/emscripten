@@ -321,6 +321,7 @@ var SyscallsLibrary = {
 #else
     var stream = SYSCALLS.getStreamFromFD(), op = SYSCALLS.get();
     switch (op) {
+      case {{{ cDefine('TCGETA') }}}:
       case {{{ cDefine('TCGETS') }}}: {
         if (!stream.tty) return -ERRNO_CODES.ENOTTY;
 #if SYSCALL_DEBUG
@@ -328,7 +329,12 @@ var SyscallsLibrary = {
 #endif
         return 0;
       }
-      case {{{ cDefine('TCSETS') }}}: {
+      case {{{ cDefine('TCSETA') }}}:
+      case {{{ cDefine('TCSETAW') }}}:
+      case {{{ cDefine('TCSETAF') }}}:
+      case {{{ cDefine('TCSETS') }}}:
+      case {{{ cDefine('TCSETSW') }}}:
+      case {{{ cDefine('TCSETSF') }}}: {
         if (!stream.tty) return -ERRNO_CODES.ENOTTY;
         return 0; // no-op, not actually adjusting terminal settings
       }
@@ -779,7 +785,20 @@ var SyscallsLibrary = {
     return SYSCALLS.doReadv(stream, iov, iovcnt);
   },
 #if NO_FILESYSTEM
-  __syscall146__postset: '/* flush anything remaining in the buffer during shutdown */ __ATEXIT__.push(function() { var fflush = Module["_fflush"]; if (fflush) fflush(0); var printChar = ___syscall146.printChar; if (!printChar) return; var buffers = ___syscall146.buffers; if (buffers[1].length) printChar(1, {{{ charCode("\n") }}}); if (buffers[2].length) printChar(2, {{{ charCode("\n") }}}); });',
+  $flush_NO_FILESYSTEM: function() {
+    // flush anything remaining in the buffers during shutdown
+    var fflush = Module["_fflush"];
+    if (fflush) fflush(0);
+    var printChar = ___syscall146.printChar;
+    if (!printChar) return;
+    var buffers = ___syscall146.buffers;
+    if (buffers[1].length) printChar(1, {{{ charCode("\n") }}});
+    if (buffers[2].length) printChar(2, {{{ charCode("\n") }}});
+  },
+  __syscall146__deps: ['$flush_NO_FILESYSTEM'],
+#if NO_EXIT_RUNTIME == 0
+  __syscall146__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
+#endif
 #endif
   __syscall146: function(which, varargs) { // writev
 #if NO_FILESYSTEM == 0
@@ -789,7 +808,7 @@ var SyscallsLibrary = {
     // hack to support printf in NO_FILESYSTEM
     var stream = SYSCALLS.get(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     var ret = 0;
-    if (!___syscall146.buffer) {
+    if (!___syscall146.buffers) {
       ___syscall146.buffers = [null, [], []]; // 1 => stdout, 2 => stderr
       ___syscall146.printChar = function(stream, curr) {
         var buffer = ___syscall146.buffers[stream];

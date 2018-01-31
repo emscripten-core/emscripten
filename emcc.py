@@ -65,7 +65,7 @@ LIB_PREFIXES = ('', 'lib')
 JS_CONTAINING_SUFFIXES = ('js', 'html')
 EXECUTABLE_SUFFIXES = JS_CONTAINING_SUFFIXES + ('wasm',)
 
-DEFERRED_REPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST')
+DEFERRED_REPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST', 'EMTERPRETIFY_SYNCLIST')
 
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
 # levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to get
@@ -82,7 +82,6 @@ DEBUG = os.environ.get('EMCC_DEBUG')
 if DEBUG == "0":
   DEBUG = None
 
-TEMP_DIR = os.environ.get('EMCC_TEMP_DIR')
 LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll files into .bc, just compile them with emscripten directly
                                                            # Not recommended, this is mainly for the test runner, or if you have some other
                                                            # specific need.
@@ -182,7 +181,8 @@ class EmccOptions(object):
     self.separate_asm = False
     self.cfi = False
     # Specifies the line ending format to use for all generated text files.
-    # Defaults to using the native EOL on each platform (\r\n on Windows, \n on Linux&OSX)
+    # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
+    # Linux & MacOS)
     self.output_eol = os.linesep
 
 
@@ -479,7 +479,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code in strict mode. Code should use the define __EMSCRIPTEN__ instead.
       if not shared.Settings.STRICT:
         cmd += ['-DEMSCRIPTEN']
-    if use_js: cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'] # configure tests should fail when an undefined symbol exists
+    if use_js:
+      cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'] # configure tests should fail when an undefined symbol exists
+      cmd += ['-s', 'NO_EXIT_RUNTIME=0'] # configure tests want a more shell-like style, where we emit return codes on exit()
 
     logging.debug('just configuring: ' + ' '.join(cmd))
     if debug_configure: open(tempout, 'a').write('emcc, just configuring: ' + ' '.join(cmd) + '\n\n')
@@ -570,16 +572,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   else:
     final_suffix = ''
 
-  if TEMP_DIR:
-    temp_dir = TEMP_DIR
-    if os.path.exists(temp_dir):
-      shutil.rmtree(temp_dir) # clear it
-    os.makedirs(temp_dir)
-  else:
-    temp_root = shared.TEMP_DIR
-    if not os.path.exists(temp_root):
-      os.makedirs(temp_root)
-    temp_dir = tempfile.mkdtemp(dir=temp_root)
+  temp_root = shared.TEMP_DIR
+  if not os.path.exists(temp_root):
+    os.makedirs(temp_root)
+  temp_dir = tempfile.mkdtemp(dir=temp_root)
 
   def in_temp(name):
     return os.path.join(temp_dir, os.path.basename(name))
@@ -663,6 +659,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.emrun:
         options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
         options.post_js += open(shared.path_from_root('src', 'emrun_postjs.js')).read() + '\n'
+        # emrun mode waits on program exit
+        shared.Settings.NO_EXIT_RUNTIME = 0
 
       if options.cpu_profiler:
         options.post_js += open(shared.path_from_root('src', 'cpuprofiler.js')).read() + '\n'
@@ -703,8 +701,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           'BINARYEN_MEM_MAX': 'WASM_MEM_MAX',
           # TODO: change most (all?) other BINARYEN* names to WASM*
       }
+      settings_key_changes = set()
       def setting_sub(s):
         key, rest = s.split('=', 1)
+        settings_key_changes.add(key)
         return '='.join([settings_aliases.get(key, key), rest])
       settings_changes = list(map(setting_sub, settings_changes))
 
@@ -871,11 +871,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.separate_asm and final_suffix != 'html':
         shared.WarningManager.warn('SEPARATE_ASM')
 
-      # If we are using embind and generating JS, now is the time to link in bind.cpp
-      if options.bind and final_suffix in JS_CONTAINING_SUFFIXES:
-        input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')))
-        next_arg_index += 1
-
       # Apply optimization level settings
       shared.Settings.apply_opt_level(opt_level=options.opt_level, shrink_level=options.shrink_level, noisy=True)
 
@@ -905,13 +900,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             value = '"' + value + '"'
         else:
           value = value.replace('\\', '\\\\')
-        setattr(shared.Settings, key, eval(value))
+        try:
+          setattr(shared.Settings, key, eval(value))
+        except Exception as e:
+          logging.error('a problem occurred in evaluating content after a "-s", specifically  %s . one possible cause of this is missing quotation marks (this depends on the shell you are running in; you may need quotation marks around the entire  %s , or on an individual element)' % (change, change))
+          raise e
         if key == 'EXPORTED_FUNCTIONS':
           # used for warnings in emscripten.py
           shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = original_exported_response or shared.Settings.EXPORTED_FUNCTIONS[:]
 
       # Note the exports the user requested
       shared.Building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
+
+      if options.bind:
+        # If we are using embind and generating JS, now is the time to link in bind.cpp
+        if final_suffix in JS_CONTAINING_SUFFIXES:
+          input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')))
+          next_arg_index += 1
 
       # -s ASSERTIONS=1 implies the heaviest stack overflow check mode. Set the implication here explicitly to avoid having to
       # do preprocessor "#if defined(ASSERTIONS) || defined(STACK_OVERFLOW_CHECK)" in .js files, which is not supported.
@@ -975,6 +980,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.RELOCATABLE = 1
         shared.Settings.PRECISE_I64_MATH = 1 # other might use precise math, we need to be able to print it
         assert not options.use_closure_compiler, 'cannot use closure compiler on shared modules'
+        # shared modules need memory utilities to allocate their memory
+        shared.Settings.EXPORTED_RUNTIME_METHODS += [
+          'allocate',
+          'getMemory',
+        ]
+
+      if shared.Settings.MODULARIZE_INSTANCE:
+        shared.Settings.MODULARIZE = 1
 
       if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
         shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -1064,6 +1077,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.PROXY_TO_WORKER = 1
 
       if options.use_preload_plugins or len(options.preload_files) > 0 or len(options.embed_files) > 0:
+        assert not shared.Settings.NODERAWFS, '--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem'
         # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
         shared.Settings.FORCE_FILESYSTEM = 1
 
@@ -1072,9 +1086,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if not shared.Settings.NO_FILESYSTEM and not shared.Settings.ONLY_MY_CODE:
         shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location'] # so FS can report errno back to C
-        if not shared.Settings.NO_EXIT_RUNTIME:
-          shared.Settings.EXPORTED_FUNCTIONS += ['_fflush'] # to flush the streams on FS quit
-                                                            # TODO this forces 4 syscalls, maybe we should avoid it?
+        # to flush streams on FS exit, we need to be able to call fflush
+        # we only include it if the runtime is exitable, or when ASSERTIONS
+        # (ASSERTIONS will check that streams do not need to be flushed,
+        # helping people see when they should have disabled NO_EXIT_RUNTIME)
+        if not shared.Settings.NO_EXIT_RUNTIME or shared.Settings.ASSERTIONS:
+          shared.Settings.EXPORTED_FUNCTIONS += ['_fflush']
 
       if shared.Settings.USE_PTHREADS:
         if not any(s.startswith('PTHREAD_POOL_SIZE=') for s in settings_changes):
@@ -1084,6 +1101,25 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.FORCE_FILESYSTEM = 1 # proxying of utime requires the filesystem
       else:
         options.js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
+
+      if shared.Settings.FORCE_FILESYSTEM:
+        # when the filesystem is forced, we export by default methods that filesystem usage
+        # may need, including filesystem usage from standalone file packager output (i.e.
+        # file packages not built together with emcc, but that are loaded at runtime
+        # separately, and they need emcc's output to contain the support they need)
+        shared.Settings.EXPORTED_RUNTIME_METHODS += [
+          'FS_createFolder',
+          'FS_createPath',
+          'FS_createDataFile',
+          'FS_createPreloadedFile',
+          'FS_createLazyFile',
+          'FS_createLink',
+          'FS_createDevice',
+          'FS_unlink',
+          'getMemory',
+          'addRunDependency',
+          'removeRunDependency',
+        ]
 
       if shared.Settings.USE_PTHREADS:
         if shared.Settings.LINKABLE:
@@ -1136,6 +1172,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
         shared.Settings.BINARYEN = shared.Settings.WASM = 1
+
+        # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
+        # we run the optimizer during asm2wasm itself). use it, if not overridden
+        if 'BINARYEN_PASSES' not in settings_key_changes:
+          if options.opt_level > 0 or options.shrink_level > 0:
+            shared.Settings.BINARYEN_PASSES = shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)
 
         # to bootstrap struct_info, we need binaryen
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
@@ -1209,10 +1251,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if 'interpret' in shared.Settings.BINARYEN_METHOD:
             logging.warning('disabling EVAL_CTORS as the bundled interpreter confuses the ctor tool')
             shared.Settings.EVAL_CTORS = 0
-          else:
-            # for wasm, we really want no-exit-runtime, so that atexits don't stop us
-            if final_suffix in JS_CONTAINING_SUFFIXES and not shared.Settings.NO_EXIT_RUNTIME:
-              logging.warning('you should enable  -s NO_EXIT_RUNTIME=1  so that EVAL_CTORS can work at full efficiency (it gets rid of atexit calls which might disrupt EVAL_CTORS)')
 
       # memory growth does not work in dynamic linking, except for wasm
       if not shared.Settings.WASM and (shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE):
@@ -1875,14 +1913,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if DEBUG: logging.debug('total time: %.2f seconds', (time.time() - start_time))
 
   finally:
-    if not TEMP_DIR:
-      try:
-        shutil.rmtree(temp_dir)
-      except:
-        pass
-    else:
-      logging.info('emcc saved files are in:' + temp_dir)
-
+    try:
+      shutil.rmtree(temp_dir)
+    except:
+      pass
 
 def parse_args(newargs):
   options = EmccOptions()
@@ -2162,7 +2196,7 @@ def emterpretify(js_target, optimizer, options):
             final + '.em.js',
             json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST),
             json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST),
-            '',
+            json.dumps(shared.Settings.EMTERPRETIFY_SYNCLIST),
             str(shared.Settings.SWAPPABLE_ASM_MODULE),
            ]
     if shared.Settings.EMTERPRETIFY_ASYNC:
@@ -2422,11 +2456,18 @@ def modularize():
 %(src)s
 
   return %(EXPORT_NAME)s;
-};
-if (typeof module === "object" && module.exports) {
-  module['exports'] = %(EXPORT_NAME)s;
-};
-''' % {"EXPORT_NAME": shared.Settings.EXPORT_NAME, "src": src})
+}%(instantiate)s;
+if (typeof exports === 'object' && typeof module === 'object')
+  module.exports = %(EXPORT_NAME)s;
+else if (typeof define === 'function' && define['amd'])
+  define([], function() { return %(EXPORT_NAME)s; });
+else if (typeof exports === 'object')
+  exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
+''' % {
+  'EXPORT_NAME': shared.Settings.EXPORT_NAME,
+  'src': src,
+  'instantiate': '()' if shared.Settings.MODULARIZE_INSTANCE else ''
+})
   f.close()
   if DEBUG: save_intermediate('modularized', 'js')
 
@@ -2606,8 +2647,8 @@ def generate_html(target, options, js_target, target_basename,
 
   # when script.inline isn't empty, add required helper functions such as tryParseAsDataURI
   if script.inline:
-    for file in ['src/arrayUtils.js', 'src/base64Utils.js']:
-      f = open(shared.path_from_root(file), 'r')
+    for file in ['arrayUtils.js', 'base64Utils.js', 'URIUtils.js']:
+      f = open(shared.path_from_root('src', file), 'r')
       script.inline = f.read() + script.inline
       f.close()
 

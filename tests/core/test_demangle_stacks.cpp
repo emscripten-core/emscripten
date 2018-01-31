@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <emscripten.h>
+
 namespace NameSpace {
 class Class {
  public:
@@ -8,6 +10,9 @@ class Class {
   void Aborter(double x, char y, int *z) {
     volatile int w = 1;
     if (w) {
+      EM_ASM({
+        Module['print'](stackTrace());
+      });
       abort();
     }
   }

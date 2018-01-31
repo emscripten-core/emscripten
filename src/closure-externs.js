@@ -861,6 +861,12 @@ WebAssembly.RuntimeError = function() {};
  */
 WebAssembly.instantiate = function(moduleObject, importObject) {};
 /**
+ * @param {!Promise<!Response>} source
+ * @param {Object=} importObject
+ * @return {!Promise<{module:WebAssembly.Module, instance:WebAssembly.Instance}>}
+ */
+WebAssembly.instantiateStreaming = function(source, importObject) {};
+/**
  * @param {!BufferSource} bytes
  * @return {!Promise<!WebAssembly.Module>}
  */
@@ -1025,6 +1031,9 @@ var VoidPtr;
 
 // Various Emscripten-specific global variables
 
+/**
+ * @suppress {duplicate}
+ */
 var tempRet0;
 var tempI64;
 var tempDouble;

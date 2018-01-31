@@ -457,6 +457,7 @@
         "defines": [
             "O_CREAT", 
             "O_SYNC", 
+            "O_DSYNC",
             "F_GETFD", 
             "F_SETFL", 
             "O_NOFOLLOW", 
@@ -490,8 +491,14 @@
         "file": "bits/ioctl.h", 
         "defines": [
             "FIONREAD",
+            "TCGETA",
             "TCGETS",
+            "TCSETA",
+            "TCSETAW",
+            "TCSETAF",
             "TCSETS",
+            "TCSETSW",
+            "TCSETSF",
             "TIOCGPGRP",
             "TIOCSPGRP",
             "TIOCGWINSZ"

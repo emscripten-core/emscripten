@@ -136,11 +136,11 @@ test_modes = [
   'asm1',
   'asm2',
   'asm3',
-  'asm2f',
   'asm2g',
-  'asm2i'
 ]
 nondefault_test_modes = [
+  'asm2f',
+  'asm2i',
   'binaryen0',
   'binaryen1',
   'binaryen2',
@@ -155,6 +155,7 @@ use_all_engines = os.environ.get('EM_ALL_ENGINES') # generally js engines are eq
 
 class RunnerCore(unittest.TestCase):
   emcc_args = None
+  temp_dir = TEMP_DIR
   save_dir = os.environ.get('EM_SAVE_DIR')
   save_JS = 0
   stderr_redirect = STDOUT # This avoids cluttering the test runner output, which is stderr too, with compiler warnings etc.
@@ -184,18 +185,24 @@ class RunnerCore(unittest.TestCase):
       # side modules handle memory differently; binaryen puts the memory in the wasm module
       return ('-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args) and not (Settings.SIDE_MODULE or Settings.BINARYEN)
 
+  def set_temp_dir(self, temp_dir):
+    self.temp_dir = temp_dir
+    self.canonical_temp_dir = get_canonical_temp_dir(self.temp_dir)
+    # Explicitly set dedicated temporary directory for parallel tests
+    os.environ['EMCC_TEMP_DIR'] = self.temp_dir
+
   def setUp(self):
     Settings.reset()
 
     if self.EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS:
-      for root, dirnames, filenames in os.walk(TEMP_DIR):
+      for root, dirnames, filenames in os.walk(self.temp_dir):
         for dirname in dirnames: self.temp_files_before_run.append(os.path.normpath(os.path.join(root, dirname)))
         for filename in filenames: self.temp_files_before_run.append(os.path.normpath(os.path.join(root, filename)))
 
     self.banned_js_engines = []
     self.use_all_engines = use_all_engines
     if not self.save_dir:
-      dirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
+      dirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
     else:
       dirname = CANONICAL_TEMP_DIR
     if not os.path.exists(dirname):
@@ -221,7 +228,7 @@ class RunnerCore(unittest.TestCase):
 
       if self.EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS and not os.environ.get('EMCC_DEBUG'):
         temp_files_after_run = []
-        for root, dirnames, filenames in os.walk(TEMP_DIR):
+        for root, dirnames, filenames in os.walk(self.temp_dir):
           for dirname in dirnames: temp_files_after_run.append(os.path.normpath(os.path.join(root, dirname)))
           for filename in filenames: temp_files_after_run.append(os.path.normpath(os.path.join(root, filename)))
 
@@ -292,7 +299,7 @@ class RunnerCore(unittest.TestCase):
   # Generate JS from ll, and optionally modify the generated JS with a post_build function. Note
   # that post_build is called on unoptimized JS, so we send it to emcc (otherwise, if run after
   # emcc, it would not apply on the optimized/minified JS)
-  def ll_to_js(self, filename, extra_emscripten_args, post_build):
+  def ll_to_js(self, filename, post_build):
     if type(post_build) in (list, tuple):
       post1, post2 = post_build
     else:
@@ -316,7 +323,7 @@ class RunnerCore(unittest.TestCase):
     if post2: post2(filename + '.o.js')
 
   # Build JavaScript code from source code
-  def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, extra_emscripten_args=[], post_build=None, js_outfile=True):
+  def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, post_build=None, js_outfile=True):
 
     Building.LLVM_OPT_OPTS = ['-O3'] # pick llvm opts here, so we include changes to Settings in the test case code
 
@@ -342,7 +349,7 @@ class RunnerCore(unittest.TestCase):
       additional_files = [os.path.join(dirname, f) for f in additional_files]
       os.chdir(self.get_dir())
 
-    if build_ll_hook or post_build or extra_emscripten_args:
+    if build_ll_hook or post_build:
       # "slow", old path: build to bc, then build to JS
 
       # C++ => LLVM binary
@@ -373,7 +380,7 @@ class RunnerCore(unittest.TestCase):
       self.prep_ll_run(filename, filename + '.o', build_ll_hook=build_ll_hook)
 
       # BC => JS
-      self.ll_to_js(filename, extra_emscripten_args, post_build)
+      self.ll_to_js(filename, post_build)
     else:
       # "fast", new path: just call emcc and go straight to JS
       all_files = [filename] + additional_files + libraries
@@ -478,19 +485,17 @@ class RunnerCore(unittest.TestCase):
 
   def build_native(self, filename, args=[]):
     compiler = CLANG if filename.endswith('cpp') else CLANG_CC
-    process = Popen([compiler, '-O2', '-fno-math-errno', filename, '-o', filename+'.native'] + args, stdout=PIPE, stderr=self.stderr_redirect)
-    output = process.communicate()
+    process = run_process([compiler, '-O2', '-fno-math-errno', filename, '-o', filename+'.native'] + args, stdout=PIPE, stderr=self.stderr_redirect, check=False)
     if process.returncode is not 0:
       print("Building native executable with command '%s' failed with a return code %d!" % (' '.join([CLANG, '-O2', filename, '-o', filename+'.native']), process.returncode), file=sys.stderr)
-      print("Output: " + output[0])
+      print("Output: " + process.stdout)
 
   def run_native(self, filename, args):
-    process = Popen([filename+'.native'] + args, stdout=PIPE);
-    output = process.communicate()
+    process = run_process([filename+'.native'] + args, stdout=PIPE, check=False)
     if process.returncode is not 0:
       print("Running native executable with command '%s' failed with a return code %d!" % (' '.join([filename+'.native'] + args), process.returncode), file=sys.stderr)
-      print("Output: " + output[0])
-    return output[0]
+      print("Output: " + output.stdout)
+    return output.stdout
 
   # Tests that the given two paths are identical, modulo path delimiters. E.g. "C:/foo" is equal to "C:\foo".
   def assertPathsIdentical(self, path1, path2):
@@ -520,9 +525,9 @@ class RunnerCore(unittest.TestCase):
 
   def assertContained(self, values, string, additional_info=''):
     if type(values) not in [list, tuple]: values = [values]
+    values = list(map(asstr, values))
+    if callable(string): string = string()
     for value in values:
-      if not isinstance(value, bytes): string = string.decode('UTF-8') # If we have any non-ASCII chars in the expected string, treat the test string from ASCII as UTF8 as well.
-      if callable(string): string = string()
       if value in string: return # success
     raise Exception("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
       limit_size(values[0]), limit_size(string),
@@ -645,28 +650,16 @@ class RunnerCore(unittest.TestCase):
     for engine in js_engines: assert type(engine) == list
     for engine in self.banned_js_engines: assert type(engine) == list
     js_engines = [engine for engine in js_engines if engine[0] not in [banned[0] for banned in self.banned_js_engines]]
-    if 'BINARYEN_METHOD="native-wasm"' in self.emcc_args:
-      # when testing native wasm support, must use a vm with support
-      js_engines = [engine for engine in js_engines if engine == SPIDERMONKEY_ENGINE or engine == V8_ENGINE]
     return js_engines
 
-  def do_run_from_file(self, src, expected_output,
-                       args=[], output_nicerizer=None, output_processor=None,
-                       no_build=False, main_file=None, additional_files=[],
-                       js_engines=None, post_build=None, basename='src.cpp',
-                       libraries=[], includes=[], force_c=False, build_ll_hook=None,
-                       extra_emscripten_args=[], assert_returncode=None, assert_identical=False):
-    self.do_run(open(src).read(), open(expected_output).read(),
-                args, output_nicerizer, output_processor, no_build, main_file,
-                additional_files, js_engines, post_build, basename, libraries,
-                includes, force_c, build_ll_hook, extra_emscripten_args,
-                assert_returncode, assert_identical)
+  def do_run_from_file(self, src, expected_output, *args, **kwargs):
+    self.do_run(open(src).read(), open(expected_output).read(), *args, **kwargs)
 
   ## Does a complete test - builds, runs, checks output, etc.
   def do_run(self, src, expected_output, args=[], output_nicerizer=None,
              output_processor=None, no_build=False, main_file=None, additional_files=[],
              js_engines=None, post_build=None, basename='src.cpp', libraries=[],
-             includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[],
+             includes=[], force_c=False, build_ll_hook=None,
              assert_returncode=None, assert_identical=False):
     if Settings.ASYNCIFY == 1 and self.is_wasm_backend():
       return self.skip("wasm backend doesn't support ASYNCIFY yet")
@@ -678,7 +671,7 @@ class RunnerCore(unittest.TestCase):
     filename = os.path.join(dirname, basename)
     if not no_build:
       self.build(src, dirname, filename, main_file=main_file, additional_files=additional_files, libraries=libraries, includes=includes,
-                 build_ll_hook=build_ll_hook, extra_emscripten_args=extra_emscripten_args, post_build=post_build)
+                 build_ll_hook=build_ll_hook, post_build=post_build)
 
     # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
     js_engines = self.filtered_js_engines(js_engines)
@@ -713,12 +706,12 @@ class RunnerCore(unittest.TestCase):
   # No building - just process an existing .ll file (or .bc, which we turn into .ll)
   def do_ll_run(self, ll_file, expected_output=None, args=[], js_engines=None,
                 output_nicerizer=None, post_build=None, force_recompile=False,
-                build_ll_hook=None, extra_emscripten_args=[], assert_returncode=None):
+                build_ll_hook=None, assert_returncode=None):
     filename = os.path.join(self.get_dir(), 'src.cpp')
 
     self.prep_ll_run(filename, ll_file, force_recompile, build_ll_hook)
 
-    self.ll_to_js(filename, extra_emscripten_args, post_build)
+    self.ll_to_js(filename, post_build)
 
     self.do_run(None,
                 expected_output,
@@ -1291,7 +1284,7 @@ def flattened_tests(loaded_tests):
   return tests
 
 def suite_for_module(module, tests):
-  suite_supported = module.__name__ == 'test_core'
+  suite_supported = module.__name__ in ('test_core', 'test_other')
   has_multiple_tests = len(tests) > 1
   has_multiple_cores = parallel_runner.num_cores() > 1
   if suite_supported and has_multiple_tests and has_multiple_cores:

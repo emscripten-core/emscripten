@@ -119,7 +119,7 @@ this.onmessage = function(e) {
       STACK_MAX = STACK_BASE + e.data.stackSize;
       assert(STACK_BASE != 0);
       assert(STACK_MAX > STACK_BASE);
-      Runtime.establishStackSpace(e.data.stackBase, e.data.stackBase + e.data.stackSize);
+      establishStackSpace(e.data.stackBase, e.data.stackBase + e.data.stackSize);
       var result = 0;
 //#if STACK_OVERFLOW_CHECK
       if (typeof writeStackCookie === 'function') writeStackCookie();
@@ -156,8 +156,7 @@ this.onmessage = function(e) {
       }
       // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
       // (This is a no-op if explicit pthread_exit() had been called prior.)
-      if (!Module['noExitRuntime']) PThread.threadExit(result);
-      else console.log('pthread noExitRuntime: not quitting.');
+      PThread.threadExit(result);
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
       if (threadInfoStruct && PThread.thisThreadCancelState == 0/*PTHREAD_CANCEL_ENABLE*/) {
         PThread.threadCancel();

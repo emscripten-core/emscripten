@@ -1,5 +1,3 @@
-// {{PREAMBLE_ADDITIONS}}
-
 // === Preamble library stuff ===
 
 // Documentation for the public APIs defined in this file must be updated in:
@@ -9,22 +7,6 @@
 // You can also build docs locally as HTML or other formats in site/
 // An online HTML version (which may be of a different version of Emscripten)
 //    is up at http://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html
-
-//========================================
-// Runtime code shared with compiler
-//========================================
-
-{{RUNTIME}}
-
-#if RELOCATABLE
-Runtime.GLOBAL_BASE = Runtime.alignMemory(Runtime.GLOBAL_BASE, {{{ MAX_GLOBAL_ALIGN || 1 }}});
-#endif
-
-{{{ maybeExport('Runtime') }}}
-#if USE_CLOSURE_COMPILER
-Runtime['addFunction'] = Runtime.addFunction;
-Runtime['removeFunction'] = Runtime.removeFunction;
-#endif
 
 #if BENCHMARK
 Module.realPrint = Module.print;
@@ -134,14 +116,14 @@ var JSfuncs = {
   // be renamed by closure, instead it calls JSfuncs['stackSave'].body to find
   // out what the minified function name is.
   'stackSave': function() {
-    Runtime.stackSave()
+    stackSave()
   },
   'stackRestore': function() {
-    Runtime.stackRestore()
+    stackRestore()
   },
   // type conversion from js to c
   'arrayToC' : function(arr) {
-    var ret = Runtime.stackAlloc(arr.length);
+    var ret = stackAlloc(arr.length);
     writeArrayToMemory(arr, ret);
     return ret;
   },
@@ -150,7 +132,7 @@ var JSfuncs = {
     if (str !== null && str !== undefined && str !== 0) { // null string
       // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
       var len = (str.length << 2) + 1;
-      ret = Runtime.stackAlloc(len);
+      ret = stackAlloc(len);
       stringToUTF8(str, ret, len);
     }
     return ret;
@@ -171,7 +153,7 @@ function ccall (ident, returnType, argTypes, args, opts) {
     for (var i = 0; i < args.length; i++) {
       var converter = toC[argTypes[i]];
       if (converter) {
-        if (stack === 0) stack = Runtime.stackSave();
+        if (stack === 0) stack = stackSave();
         cArgs[i] = converter(args[i]);
       } else {
         cArgs[i] = args[i];
@@ -192,12 +174,12 @@ function ccall (ident, returnType, argTypes, args, opts) {
 #if EMTERPRETIFY_ASYNC
     if (opts && opts.async) {
       EmterpreterAsync.asyncFinalizers.push(function() {
-        Runtime.stackRestore(stack);
+        stackRestore(stack);
       });
       return;
     }
 #endif
-    Runtime.stackRestore(stack);
+    stackRestore(stack);
   }
   return ret;
 }
@@ -216,9 +198,6 @@ function cwrap (ident, returnType, argTypes) {
     return ccall(ident, returnType, argTypes, arguments);
   }
 }
-
-{{{ maybeExport("ccall") }}}
-{{{ maybeExport("cwrap") }}}
 
 /** @type {function(number, number, string, boolean=)} */
 function setValue(ptr, value, type, noSafe) {
@@ -252,7 +231,6 @@ function setValue(ptr, value, type, noSafe) {
   }
 #endif
 }
-{{{ maybeExport("setValue") }}}
 
 /** @type {function(number, string, boolean=)} */
 function getValue(ptr, type, noSafe) {
@@ -287,18 +265,12 @@ function getValue(ptr, type, noSafe) {
 #endif
   return null;
 }
-{{{ maybeExport("getValue") }}}
 
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
 var ALLOC_STATIC = 2; // Cannot be freed
 var ALLOC_DYNAMIC = 3; // Cannot be freed except through sbrk
 var ALLOC_NONE = 4; // Do not allocate
-{{{ maybeExport('ALLOC_NORMAL') }}}
-{{{ maybeExport('ALLOC_STACK') }}}
-{{{ maybeExport('ALLOC_STATIC') }}}
-{{{ maybeExport('ALLOC_DYNAMIC') }}}
-{{{ maybeExport('ALLOC_NONE') }}}
 
 // allocate(): This is for internal use. You can use it yourself as well, but the interface
 //             is a little tricky (see docs right below). The reason is that it is optimized
@@ -330,7 +302,7 @@ function allocate(slab, types, allocator, ptr) {
   if (allocator == ALLOC_NONE) {
     ret = ptr;
   } else {
-    ret = [typeof _malloc === 'function' ? _malloc : Runtime.staticAlloc, Runtime.stackAlloc, Runtime.staticAlloc, Runtime.dynamicAlloc][allocator === undefined ? ALLOC_STATIC : allocator](Math.max(size, singleType ? 1 : types.length));
+    ret = [typeof _malloc === 'function' ? _malloc : staticAlloc, stackAlloc, staticAlloc, dynamicAlloc][allocator === undefined ? ALLOC_STATIC : allocator](Math.max(size, singleType ? 1 : types.length));
   }
 
   if (zeroinit) {
@@ -361,10 +333,6 @@ function allocate(slab, types, allocator, ptr) {
   while (i < size) {
     var curr = slab[i];
 
-    if (typeof curr === 'function') {
-      curr = Runtime.getFunctionIndex(curr);
-    }
-
     type = singleType || types[i];
     if (type === 0) {
       i++;
@@ -380,7 +348,7 @@ function allocate(slab, types, allocator, ptr) {
 
     // no need to look up size unless type changes, so cache it
     if (previousType !== type) {
-      typeSize = Runtime.getNativeTypeSize(type);
+      typeSize = getNativeTypeSize(type);
       previousType = type;
     }
     i += typeSize;
@@ -388,15 +356,13 @@ function allocate(slab, types, allocator, ptr) {
 
   return ret;
 }
-{{{ maybeExport('allocate') }}}
 
 // Allocate memory during any stage of startup - static memory early on, dynamic memory later, malloc when ready
 function getMemory(size) {
-  if (!staticSealed) return Runtime.staticAlloc(size);
-  if (!runtimeInitialized) return Runtime.dynamicAlloc(size);
+  if (!staticSealed) return staticAlloc(size);
+  if (!runtimeInitialized) return dynamicAlloc(size);
   return _malloc(size);
 }
-{{{ maybeExport('getMemory') }}}
 
 /** @type {function(number, number=)} */
 function Pointer_stringify(ptr, length) {
@@ -433,7 +399,6 @@ function Pointer_stringify(ptr, length) {
   }
   return UTF8ToString(ptr);
 }
-{{{ maybeExport('Pointer_stringify') }}}
 
 // Given a pointer 'ptr' to a null-terminated ASCII-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
@@ -446,7 +411,6 @@ function AsciiToString(ptr) {
     str += String.fromCharCode(ch);
   }
 }
-{{{ maybeExport('AsciiToString') }}}
 
 // Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
 // null-terminated and encoded in ASCII form. The copy will require at most str.length+1 bytes of space in the HEAP.
@@ -454,7 +418,6 @@ function AsciiToString(ptr) {
 function stringToAscii(str, outPtr) {
   return writeAsciiToMemory(str, outPtr, false);
 }
-{{{ maybeExport('stringToAscii') }}}
 
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
 // a copy of that string as a Javascript String object.
@@ -511,7 +474,6 @@ function UTF8ArrayToString(u8Array, idx) {
   }
 #endif
 }
-{{{ maybeExport('UTF8ArrayToString') }}}
 
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
@@ -519,7 +481,6 @@ function UTF8ArrayToString(u8Array, idx) {
 function UTF8ToString(ptr) {
   return UTF8ArrayToString({{{ heapAndOffset('HEAPU8', 'ptr') }}});
 }
-{{{ maybeExport('UTF8ToString') }}}
 
 // Copies the given Javascript String object 'str' to the given byte array at address 'outIdx',
 // encoded in UTF8 form and null-terminated. The copy will require at most str.length*4+1 bytes of space in the HEAP.
@@ -584,7 +545,6 @@ function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
   outU8Array[outIdx] = 0;
   return outIdx - startIdx;
 }
-{{{ maybeExport('stringToUTF8Array') }}}
 
 // Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
 // null-terminated and encoded in UTF8 form. The copy will require at most str.length*4+1 bytes of space in the HEAP.
@@ -597,7 +557,6 @@ function stringToUTF8(str, outPtr, maxBytesToWrite) {
 #endif
   return stringToUTF8Array(str, {{{ heapAndOffset('HEAPU8', 'outPtr') }}}, maxBytesToWrite);
 }
-{{{ maybeExport('stringToUTF8') }}}
 
 // Returns the number of bytes the given Javascript string takes if encoded as a UTF8 byte array, EXCLUDING the null terminator byte.
 
@@ -624,7 +583,6 @@ function lengthBytesUTF8(str) {
   }
   return len;
 }
-{{{ maybeExport('lengthBytesUTF8') }}}
 
 // Given a pointer 'ptr' to a null-terminated UTF16LE-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
@@ -660,7 +618,6 @@ function UTF16ToString(ptr) {
   }
 #endif
 }
-{{{ maybeExport('UTF16ToString') }}}
 
 // Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
 // null-terminated and encoded in UTF16 form. The copy will require at most str.length*4+2 bytes of space in the HEAP.
@@ -698,14 +655,12 @@ function stringToUTF16(str, outPtr, maxBytesToWrite) {
   {{{ makeSetValue('outPtr', 0, 0, 'i16') }}};
   return outPtr - startPtr;
 }
-{{{ maybeExport('stringToUTF16') }}}
 
 // Returns the number of bytes the given Javascript string takes if encoded as a UTF16 byte array, EXCLUDING the null terminator byte.
 
 function lengthBytesUTF16(str) {
   return str.length*2;
 }
-{{{ maybeExport('lengthBytesUTF16') }}}
 
 function UTF32ToString(ptr) {
 #if ASSERTIONS
@@ -729,7 +684,6 @@ function UTF32ToString(ptr) {
     }
   }
 }
-{{{ maybeExport('UTF32ToString') }}}
 
 // Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
 // null-terminated and encoded in UTF32 form. The copy will require at most str.length*4+4 bytes of space in the HEAP.
@@ -772,7 +726,6 @@ function stringToUTF32(str, outPtr, maxBytesToWrite) {
   {{{ makeSetValue('outPtr', 0, 0, 'i32') }}};
   return outPtr - startPtr;
 }
-{{{ maybeExport('stringToUTF32') }}}
 
 // Returns the number of bytes the given Javascript string takes if encoded as a UTF16 byte array, EXCLUDING the null terminator byte.
 
@@ -788,7 +741,23 @@ function lengthBytesUTF32(str) {
 
   return len;
 }
-{{{ maybeExport('lengthBytesUTF32') }}}
+
+// Allocate heap space for a JS string, and write it there.
+// It is the responsibility of the caller to free() that memory.
+function allocateUTF8(str) {
+  var size = lengthBytesUTF8(str) + 1;
+  var ret = _malloc(size);
+  if (ret) stringToUTF8Array(str, HEAP8, ret, size);
+  return ret;
+}
+
+// Allocate stack space for a JS string, and write it there.
+function allocateUTF8OnStack(str) {
+  var size = lengthBytesUTF8(str) + 1;
+  var ret = stackAlloc(size);
+  stringToUTF8Array(str, HEAP8, ret, size);
+  return ret;
+}
 
 function demangle(func) {
 #if DEMANGLE_SUPPORT
@@ -821,7 +790,7 @@ function demangle(func) {
   return func;
 #else // DEMANGLE_SUPPORT
 #if ASSERTIONS
-  Runtime.warnOnce('warning: build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling');
+  warnOnce('warning: build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling');
 #endif // ASSERTIONS
   return func;
 #endif // DEMANGLE_SUPPORT
@@ -863,7 +832,6 @@ function stackTrace() {
   if (Module['extraStackTrace']) js += '\n' + Module['extraStackTrace']();
   return demangleAll(js);
 }
-{{{ maybeExport('stackTrace') }}}
 
 // Memory management
 
@@ -955,7 +923,7 @@ function checkStackCookie() {
 }
 
 function abortStackOverflow(allocSize) {
-  abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - Module['asm'].stackSave() + allocSize) + ' bytes available!');
+  abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - stackSave() + allocSize) + ' bytes available!');
 }
 #endif
 
@@ -1220,6 +1188,7 @@ if (Module['buffer']) {
 #if ASSERTIONS
   assert(buffer.byteLength === TOTAL_MEMORY);
 #endif // ASSERTIONS
+  Module['buffer'] = buffer;
 }
 updateGlobalBufferViews();
 #else // SPLIT_MEMORY
@@ -1514,17 +1483,6 @@ HEAP16[1] = 0x6373;
 if (HEAPU8[2] !== 0x73 || HEAPU8[3] !== 0x63) throw 'Runtime error: expected the system to be little-endian!';
 #endif
 
-Module['HEAP'] = HEAP;
-Module['buffer'] = buffer;
-Module['HEAP8'] = HEAP8;
-Module['HEAP16'] = HEAP16;
-Module['HEAP32'] = HEAP32;
-Module['HEAPU8'] = HEAPU8;
-Module['HEAPU16'] = HEAPU16;
-Module['HEAPU32'] = HEAPU32;
-Module['HEAPF32'] = HEAPF32;
-Module['HEAPF64'] = HEAPF64;
-
 function callRuntimeCallbacks(callbacks) {
   while(callbacks.length > 0) {
     var callback = callbacks.shift();
@@ -1629,27 +1587,22 @@ function postRun() {
 function addOnPreRun(cb) {
   __ATPRERUN__.unshift(cb);
 }
-{{{ maybeExport('addOnPreRun') }}}
 
 function addOnInit(cb) {
   __ATINIT__.unshift(cb);
 }
-{{{ maybeExport('addOnInit') }}}
 
 function addOnPreMain(cb) {
   __ATMAIN__.unshift(cb);
 }
-{{{ maybeExport('addOnPreMain') }}}
 
 function addOnExit(cb) {
   __ATEXIT__.unshift(cb);
 }
-{{{ maybeExport('addOnExit') }}}
 
 function addOnPostRun(cb) {
   __ATPOSTRUN__.unshift(cb);
 }
-{{{ maybeExport('addOnPostRun') }}}
 
 // Deprecated: This function should not be called because it is unsafe and does not provide
 // a maximum length limit of how many bytes it is allowed to write. Prefer calling the
@@ -1657,7 +1610,7 @@ function addOnPostRun(cb) {
 // to be secure from out of bounds writes.
 /** @deprecated */
 function writeStringToMemory(string, buffer, dontAddNull) {
-  Runtime.warnOnce('writeStringToMemory is deprecated and should not be called! Use stringToUTF8() instead!');
+  warnOnce('writeStringToMemory is deprecated and should not be called! Use stringToUTF8() instead!');
 
   var /** @type {number} */ lastChar, /** @type {number} */ end;
   if (dontAddNull) {
@@ -1670,7 +1623,6 @@ function writeStringToMemory(string, buffer, dontAddNull) {
   stringToUTF8(string, buffer, Infinity);
   if (dontAddNull) HEAP8[end] = lastChar; // Restore the value under the null character.
 }
-{{{ maybeExport('writeStringToMemory') }}}
 
 function writeArrayToMemory(array, buffer) {
 #if ASSERTIONS
@@ -1678,7 +1630,6 @@ function writeArrayToMemory(array, buffer) {
 #endif
   HEAP8.set(array, buffer);
 }
-{{{ maybeExport('writeArrayToMemory') }}}
 
 function writeAsciiToMemory(str, buffer, dontAddNull) {
   for (var i = 0; i < str.length; ++i) {
@@ -1690,7 +1641,6 @@ function writeAsciiToMemory(str, buffer, dontAddNull) {
   // Null-terminate the pointer to the HEAP.
   if (!dontAddNull) {{{ makeSetValue('buffer', 0, 0, 'i8') }}};
 }
-{{{ maybeExport('writeAsciiToMemory') }}}
 
 {{{ unSign }}}
 {{{ reSign }}}
@@ -1736,7 +1686,9 @@ if (!Math['trunc']) Math['trunc'] = function(x) {
 };
 Math.trunc = Math['trunc'];
 #else // LEGACY_VM_SUPPORT
+#if ASSERTIONS
 assert(Math['imul'] && Math['fround'] && Math['clz32'] && Math['trunc'], 'this is a legacy browser, build with LEGACY_VM_SUPPORT');
+#endif
 #endif // LEGACY_VM_SUPPORT
 
 var Math_abs = Math.abs;
@@ -1757,6 +1709,7 @@ var Math_imul = Math.imul;
 var Math_fround = Math.fround;
 var Math_round = Math.round;
 var Math_min = Math.min;
+var Math_max = Math.max;
 var Math_clz32 = Math.clz32;
 var Math_trunc = Math.trunc;
 
@@ -1825,7 +1778,6 @@ function addRunDependency(id) {
   }
 #endif
 }
-{{{ maybeExport('addRunDependency') }}}
 
 function removeRunDependency(id) {
   runDependencies--;
@@ -1852,7 +1804,6 @@ function removeRunDependency(id) {
     }
   }
 }
-{{{ maybeExport('removeRunDependency') }}}
 
 Module["preloadedImages"] = {}; // maps url to image data
 Module["preloadedAudios"] = {}; // maps url to audio data
@@ -1890,7 +1841,7 @@ addOnPreRun(function() {
   function loadDynamicLibraries(libs) {
     if (libs) {
       libs.forEach(function(lib) {
-        Runtime.loadDynamicLibrary(lib);
+        loadDynamicLibrary(lib);
       });
     }
     if (Module['asm']['runPostSets']) {
@@ -2009,6 +1960,8 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
 #endif
 
+#include "URIUtils.js"
+
 #if BINARYEN
 function integrateWasmJS() {
   // wasm.js has several methods for creating the compiled code module here:
@@ -2031,9 +1984,15 @@ function integrateWasmJS() {
   var asmjsCodeFile = '{{{ ASMJS_CODE_FILE }}}';
 
   if (typeof Module['locateFile'] === 'function') {
-    wasmTextFile = Module['locateFile'](wasmTextFile);
-    wasmBinaryFile = Module['locateFile'](wasmBinaryFile);
-    asmjsCodeFile = Module['locateFile'](asmjsCodeFile);
+    if (!isDataURI(wasmTextFile)) {
+      wasmTextFile = Module['locateFile'](wasmTextFile);
+    }
+    if (!isDataURI(wasmBinaryFile)) {
+      wasmBinaryFile = Module['locateFile'](wasmBinaryFile);
+    }
+    if (!isDataURI(asmjsCodeFile)) {
+      asmjsCodeFile = Module['locateFile'](asmjsCodeFile);
+    }
   }
 
   // utilities
@@ -2279,7 +2238,7 @@ function integrateWasmJS() {
     // Prefer streaming instantiation if available.
     if (!Module['wasmBinary'] &&
         typeof WebAssembly.instantiateStreaming === 'function' &&
-        wasmBinaryFile.indexOf('data:') !== 0 &&
+        !isDataURI(wasmBinaryFile) &&
         typeof fetch === 'function') {
       WebAssembly.instantiateStreaming(fetch(wasmBinaryFile, { credentials: 'same-origin' }), info)
         .then(receiveInstantiatedSource)

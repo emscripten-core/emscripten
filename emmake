@@ -2,19 +2,10 @@
 
 # This script should work in python 2 *or* 3. It loads emmake.py, which needs python 2.
 
-from tools.toolchain_profiler import ToolchainProfiler
+from tools import python_selector
 
 import sys
 
 
-
-if sys.version_info.major == 2:
-  if __name__ == '__main__':
-    ToolchainProfiler.record_process_start()
-    import emmake
-    emmake.run()
-    sys.exit(0)
-else:
-  import os, subprocess
-  if __name__ == '__main__':
-    sys.exit(subprocess.call(['python2', os.path.join(os.path.dirname(os.path.realpath(__file__)), 'emmake.py')] + sys.argv[1:]))
+if __name__ == '__main__':
+  python_selector.run(__file__, profile=True)

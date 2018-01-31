@@ -301,7 +301,7 @@ document.styleSheets = [{
 document.URL = 'http://worker.not.yet.ready.wait.for.window.onload?fake';
 
 function Audio() {
-  Runtime.warnOnce('faking Audio elements, no actual sound will play');
+  warnOnce('faking Audio elements, no actual sound will play');
 }
 Audio.prototype = new EventListener();
 Object.defineProperty(Audio.prototype, 'src', {
@@ -319,7 +319,7 @@ Audio.prototype.cloneNode = function() {
 }
 
 function AudioContext() {
-  Runtime.warnOnce('faking WebAudio elements, no actual sound will play');
+  warnOnce('faking WebAudio elements, no actual sound will play');
   function makeNode() {
     return {
       connect: function(){},
