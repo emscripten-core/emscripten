@@ -6,6 +6,9 @@ int main(void)
     EM_ASM(
         var path = require("path");
         var home = process.env.HOME;
+        // On Windows HOME environment variable doesn't exist, but concatenating HOMEDRIVE and HOMEPATH
+        // does the same thing.
+        if (!home) home = process.env.HOMEDRIVE + process.env.HOMEPATH;
         var parent = path.dirname(home);
         var relative = path.relative(parent, home);
         FS.mkdir('/nodefs_home');
