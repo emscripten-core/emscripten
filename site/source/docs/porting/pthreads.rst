@@ -4,9 +4,11 @@
 Pthreads support
 ==============================
 
-Low level multithreading is currently supported in Firefox Nightly release channel via an experimental extension to JavaScript Web Workers. This is a work-in-progress research project, and the prototype specification can be located `here <https://docs.google.com/document/d/1NDGA_gZJ7M7w1Bh8S0AoDyEqwDdRh4uSoTPSNn77PFk/edit?usp=sharing>`_.
+Emscripten has support for multithreading using the new SharedArrayBuffer capability in browsers. That API allows sharing memory between the main thread and web workers as well as atomic operations for synchronization, which enables Emscripten to implement support for the Pthreads (POSIX threads) API.
 
-The proposed specification allows Emscripten applications to share the main memory heap between web workers. This along with primitives for low level atomics and futex support enables Emscripten to implement support for the Pthreads (POSIX threads) API.
+Support in asm.js is fairly stable in Emscripten. Support in WebAssembly is arriving in browsers, and still experimental.
+
+.. note:: As of January 2018, browsers have disabled SharedArrayBuffer due to the Spectre set of vulnerabilities. Until it is restored you can still experiment with it if you flip a pref in your browser.
 
 Compiling with pthreads enabled
 ===============================
