@@ -1945,9 +1945,11 @@ class Building(object):
 
     logging.debug('emcc: LLVM opts: ' + ' '.join(opts) + '  [num inputs: ' + str(len(inputs)) + ']')
     target = out or (filename + '.opt.bc')
-    proc = run_process([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE, check=False)
-    if proc.returncode != 0 or not os.path.exists(target):
-      logging.error('Failed to run llvm optimizations: ' + proc.stdout)
+    try:
+      run_process([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE)
+      assert os.path.exists(target), 'llvm optimizer emitted no output.'
+    except CalledProcessError as e:
+      logging.error('Failed to run llvm optimizations: ' + e.stdout)
       for i in inputs:
         if not os.path.exists(i):
           logging.warning('Note: Input file "' + i + '" did not exist.')
