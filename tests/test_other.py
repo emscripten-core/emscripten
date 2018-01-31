@@ -361,7 +361,7 @@ f.close()
         tasks += [p]
       for p in tasks:
         stdout, stderr = p.communicate()
-        assert not p.returncode, 'A child process failed with nonzero return code: ' + stderr
+        assert not p.returncode, 'A child process failed with return code %s: %s' % (p.returncode, stderr)
         if 'generating system library: libc.bc' in stdout:
           num_times_libc_was_built += 1
       assert os.path.exists(cache_dir_name), 'The cache directory %s must exist after the build' % cache_dir_name
