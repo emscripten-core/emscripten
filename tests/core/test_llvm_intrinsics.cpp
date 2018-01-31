@@ -131,12 +131,14 @@ int main(void) {
   printf("llvm_round_f64 %.1f\n", llvm_round_f64(20.49));
   printf("llvm_round_f64 %.1f\n", llvm_round_f64(20.5));
   printf("llvm_round_f64 %.1f\n", llvm_round_f64(42));
+  printf("llvm_round_f64 %.1f\n", llvm_round_f64(-20.49));
   printf("llvm_round_f64 %.1f\n", llvm_round_f64(-20.5));
   printf("llvm_round_f64 %.1f\n", llvm_round_f64(-20.51));
 
   printf("llvm_round_f32 %.1f\n", llvm_round_f32(20.49));
   printf("llvm_round_f32 %.1f\n", llvm_round_f32(20.5));
   printf("llvm_round_f32 %.1f\n", llvm_round_f32(42));
+  printf("llvm_round_f32 %.1f\n", llvm_round_f32(-20.49));
   printf("llvm_round_f32 %.1f\n", llvm_round_f32(-20.5));
   printf("llvm_round_f32 %.1f\n", llvm_round_f32(-20.51));
 
