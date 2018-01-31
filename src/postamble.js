@@ -159,7 +159,6 @@ ExitStatus.prototype = new Error();
 ExitStatus.prototype.constructor = ExitStatus;
 
 var initialStackTop;
-var preloadStartTime = null;
 var calledMain = false;
 
 dependenciesFulfilled = function runCaller() {
@@ -252,8 +251,6 @@ Module['callMain'] = function callMain(args) {
 function run(args) {
   args = args || Module['arguments'];
 
-  if (preloadStartTime === null) preloadStartTime = Date.now();
-
   if (runDependencies > 0) {
 #if RUNTIME_LOGGING
     Module.printErr('run() called, but dependencies remain, so not running');
@@ -279,12 +276,6 @@ function run(args) {
     ensureInitRuntime();
 
     preMain();
-
-#if ASSERTIONS
-    if (ENVIRONMENT_IS_WEB && preloadStartTime !== null) {
-      Module.printErr('pre-main prep time: ' + (Date.now() - preloadStartTime) + ' ms');
-    }
-#endif
 
     if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
 
