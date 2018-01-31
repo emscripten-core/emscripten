@@ -1876,7 +1876,7 @@ class Building(object):
     try:
       run_process([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE)
       assert os.path.exists(target), 'llvm optimizer emitted no output.'
-    except CalledProcessError as e:
+    except subprocess.CalledProcessError as e:
       logging.error('Failed to run llvm optimizations: ' + e.stdout)
       for i in inputs:
         if not os.path.exists(i):
