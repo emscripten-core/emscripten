@@ -70,36 +70,44 @@
 // approach doesn't work (a macro applied to a parameter pack would expand
 // incorrectly). So we can use a template function instead to build a
 // std::string, and convert that to a C string.
-#include <string>
 // String builder class is so the _sig functions can be mutually recursive.
-struct __em_asm_sig_builder {
-  static inline std::string __em_asm_sig() {
-    return "";
+class __em_asm_sig_builder {
+private:
+  static char sig_char(float) {
+    return 'd';
   }
+  static char sig_char(double) {
+    return 'd';
+  }
+  static char sig_char(int) {
+    return 'i';
+  }
+  static char sig_char(unsigned) {
+    return 'i';
+  }
+  template <typename T>
+  static char sig_char(T *arg) {
+    return 'i';
+  }
+
   template <typename ...Args>
-  static inline std::string __em_asm_sig(float arg, Args ...args) {
-    return "d" + __em_asm_sig(args...);
-  }
+  struct inner {
+    char buffer[sizeof...(Args)+1];
+  };
+public:
   template <typename ...Args>
-  static inline std::string __em_asm_sig(double arg, Args ...args) {
-    return "d" + __em_asm_sig(args...);
-  }
-  template <typename ...Args>
-  static inline std::string __em_asm_sig(int arg, Args ...args) {
-    return "i" + __em_asm_sig(args...);
-  }
-  template <typename ...Args>
-  static inline std::string __em_asm_sig(unsigned int arg, Args ...args) {
-    return "i" + __em_asm_sig(args...);
-  }
-  template <typename T, typename ...Args>
-  static inline std::string __em_asm_sig(T *arg, Args ...args) {
-    return "i" + __em_asm_sig(args...);
+  static const inner<Args...> __em_asm_sig(Args ...args) {
+    inner<Args...> temp;
+    char buf[sizeof...(Args)+1] = { sig_char(args)..., 0 };
+    for (int i = 0; i < sizeof...(Args)+1; ++i) {
+        temp.buffer[i] = buf[i];
+    }
+    return temp;
   }
 };
 
 #define _EM_ASM_PREP_ARGS(...) \
-    , __em_asm_sig_builder::__em_asm_sig(__VA_ARGS__).c_str(), ##__VA_ARGS__
+    , __em_asm_sig_builder::__em_asm_sig(__VA_ARGS__).buffer, ##__VA_ARGS__
 
 extern "C" {
 #endif // __cplusplus
