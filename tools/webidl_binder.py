@@ -526,7 +526,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     if not constructor:
       if i == max_args:
         dec_args = ', '.join([type_to_cdec(raw[j]) + ' ' + args[j] for j in range(i)])
-        js_call_args = ', '.join(['%s%s' % (('(int)' if sig[j] in interfaces else '') + ('&' if raw[j].getExtendedAttribute('Ref') or raw[j].getExtendedAttribute('Value') else ''), args[j]) for j in range(i)])
+        js_call_args = ', '.join(['%s%s' % (('(int)' if sig[j] in interfaces else '') + take_addr_if_nonpointer(raw[j]), args[j]) for j in range(i)])
 
         js_impl_methods += [r'''  %s %s(%s) {
     %sEM_ASM_%s({
