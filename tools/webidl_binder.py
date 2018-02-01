@@ -375,11 +375,8 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     body = ''
     pre_arg = []
 
-  for i in range(max_args):
-    arg = all_args[i]
-    if arg.type.isString() or arg.type.isArray():
-      body += '  ensureCache.prepare();\n'
-      break
+  if any(arg.type.isString() or arg.type.isArray() for arg in all_args):
+    body += '  ensureCache.prepare();\n'
 
   full_name = "%s::%s" % (class_name, func_name)
 
