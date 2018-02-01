@@ -338,7 +338,6 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
   min_args = min(sigs.keys())
   max_args = max(sigs.keys())
 
-  c_names = {}
   all_args = sigs.get(max_args)
 
   if DEBUG:
@@ -454,6 +453,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
         elif arg_type == 'Double':
           body += "  if (typeof arg%d == 'object') { arg%d = ensureFloat64(arg%d); }\n" % (i, i, i)
 
+  c_names = {}
   for i in range(min_args, max_args):
     c_names[i] = 'emscripten_bind_%s_%d' % (bindings_name, i)
     body += '  if (arg%d === undefined) { %s%s(%s)%s%s }\n' % (i, call_prefix, '_' + c_names[i], ', '.join(pre_arg + args[:i]), call_postfix, '' if 'return ' in call_prefix else '; ' + (cache or ' ') + 'return')
