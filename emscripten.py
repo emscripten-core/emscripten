@@ -1872,7 +1872,12 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
     wasm = basename + '.wasm'
     base_wasm = basename + '.lld.wasm'
     meta = basename + '.json'
-    shared.check_call([wasm_link_metadata, temp_o, '-o', meta])
+    shared.check_call([
+        wasm_link_metadata,
+        '--emscripten-reserved-function-pointers=%d' %
+        shared.Settings.RESERVED_FUNCTION_POINTERS,
+        temp_o,
+        '-o', meta])
     debug_copy(meta, 'lld-metadata.json')
 
     libc_rt_lib = shared.Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
@@ -1893,9 +1898,9 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
 
     shared.check_call([
         wasm_emscripten_finalize,
-        base_wasm,
-        '--reserved-function-pointers=%d' %
+        '--emscripten-reserved-function-pointers=%d' %
         shared.Settings.RESERVED_FUNCTION_POINTERS,
+        base_wasm,
         '-o', wasm])
     debug_copy(wasm, 'lld-emscripten-output.wasm')
 
@@ -2226,8 +2231,8 @@ def create_invoke_wrappers(invoke_funcs):
 
 def create_jscall_funcs(sigs):
   jscall_funcs = ''
-  for sig in sigs:
-    jscall_funcs += '\n' + shared.JS.make_jscall(sig) + '\n'
+  for i, sig in enumerate(sigs):
+    jscall_funcs += '\n' + shared.JS.make_jscall(sig, i) + '\n'
   return jscall_funcs
 
 
