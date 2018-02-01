@@ -20,7 +20,7 @@ from collections import OrderedDict
 
 from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
-from tools.response_file import read_response_file
+from tools.response_file import substitute_response_files
 from tools.shared import WINDOWS, asstr
 
 __rootpath__ = os.path.abspath(os.path.dirname(__file__))
@@ -2255,17 +2255,7 @@ def _main(args=None):
   if args is None:
     args = sys.argv[1:]
 
-  response_file = True
-  while response_file:
-    response_file = None
-    for index in range(len(args)):
-      if args[index][0] == '@':
-        # found one, loop again next time
-        response_file = True
-        response_file_args = read_response_file(args[index])
-        # slice in extra_args in place of the response file arg
-        args[index:index+1] = response_file_args
-        break
+  substitute_response_files(args)
 
   parser = argparse.ArgumentParser(
     usage='%(prog)s [-h] [-H HEADERS] [-o OUTFILE] [-c COMPILER_ENGINE] [-s FOO=BAR]* infile',

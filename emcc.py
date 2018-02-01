@@ -32,7 +32,7 @@ import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
 from subprocess import PIPE
 from tools import shared, jsrun, system_libs
 from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move, run_process, asbytes
-from tools.response_file import read_response_file
+from tools.response_file import substitute_response_files
 import tools.line_endings
 
 try:
@@ -329,17 +329,7 @@ def run():
     exit(1)
 
   # read response files very early on
-  response_file = True
-  while response_file:
-    response_file = None
-    for index in range(1, len(sys.argv)):
-      if sys.argv[index][0] == '@':
-        # found one, loop again next time
-        response_file = True
-        extra_args = read_response_file(sys.argv[index])
-        # slice in extra_args in place of the response file arg
-        sys.argv[index:index+1] = extra_args
-        break
+  substitute_response_files(sys.argv)
 
   if len(sys.argv) == 1 or '--help' in sys.argv:
     # Documentation for emcc and its options must be updated in:

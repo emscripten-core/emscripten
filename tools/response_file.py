@@ -44,3 +44,15 @@ def read_response_file(response_filename):
     logging.warning('Read response file ' + response_filename + ': ' + str(args))
 
   return args
+
+def substitute_response_files(args):
+  """Substitute any response files found in args with their contents."""
+  found = True
+  while found:
+    found = False
+    for index in range(len(args)):
+      if args[index].startswith('@'):
+        found = True
+        new_args = read_response_file(args[index])
+        args[index:index+1] = new_args
+        break
