@@ -273,39 +273,43 @@ def full_typename(arg):
 
 def type_to_c(t, non_pointing=False):
   #print 'to c ', t
+  def base_type_to_c(t):
+    if t == 'Long':
+      ret = 'int'
+    elif t == 'UnsignedLong':
+      ret = 'unsigned int'
+    elif t == 'Short':
+      ret = 'short'
+    elif t == 'UnsignedShort':
+      ret = 'unsigned short'
+    elif t == 'Byte':
+      ret = 'char'
+    elif t == 'Octet':
+      ret = 'unsigned char'
+    elif t == 'Void':
+      ret = 'void'
+    elif t == 'String':
+      ret = 'char*'
+    elif t == 'Float':
+      ret = 'float'
+    elif t == 'Double':
+      ret = 'double'
+    elif t == 'Boolean':
+      ret = 'bool'
+    elif t == 'Any' or t == 'VoidPtr':
+      ret = 'void*'
+    elif t in interfaces:
+      ret = (interfaces[t].getExtendedAttribute('Prefix') or [''])[0] + t + ('' if non_pointing else '*')
+    else:
+      ret = t
+    return ret
+
   t = t.replace(' (Wrapper)', '')
   suffix = ''
   if '[]' in t:
     suffix = '*'
     t = t.replace('[]', '')
-  if t == 'Long':
-    ret = 'int'
-  elif t == 'UnsignedLong':
-    ret = 'unsigned int'
-  elif t == 'Short':
-    ret = 'short'
-  elif t == 'UnsignedShort':
-    ret = 'unsigned short'
-  elif t == 'Byte':
-    ret = 'char'
-  elif t == 'Octet':
-    ret = 'unsigned char'
-  elif t == 'Void':
-    ret = 'void'
-  elif t == 'String':
-    ret = 'char*'
-  elif t == 'Float':
-    ret = 'float'
-  elif t == 'Double':
-    ret = 'double'
-  elif t == 'Boolean':
-    ret = 'bool'
-  elif t == 'Any' or t == 'VoidPtr':
-    ret = 'void*'
-  elif t in interfaces:
-    ret = (interfaces[t].getExtendedAttribute('Prefix') or [''])[0] + t + ('' if non_pointing else '*')
-  else:
-    ret = t
+  ret = base_type_to_c(t)
   return ret + suffix
 
 def take_addr_if_nonpointer(m):
