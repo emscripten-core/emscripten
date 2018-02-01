@@ -381,7 +381,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
 
   full_name = "%s::%s" % (class_name, func_name)
 
-  for i, arg in enumerate(all_args):
+  for i, (js_arg, arg) in enumerate(zip(args, all_args)):
     if i >= min_args:
       optional = True
     else:
@@ -396,38 +396,38 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       else:
         arg_name = ''
       # Format assert fail message
-      check_msg = "[CHECK FAILED] %s(arg%d:%s): " % (full_name, i, arg_name)
+      check_msg = "[CHECK FAILED] %s(%s:%s): " % (full_name, js_arg, arg_name)
       if isinstance(arg.type, WebIDL.IDLWrapperType):
         inner = arg.type.inner
       else:
         inner = ""
 
       # Print type info in comments.
-      body += "  /* arg%d <%s> [%s] */\n" % (i, arg.type.name, inner)
+      body += "  /* %s <%s> [%s] */\n" % (js_arg, arg.type.name, inner)
 
       # Wrap asserts with existance check when argument is optional.
-      if all_checks and optional: body += "if(typeof arg%d !== 'undefined' && arg%d !== null) {\n" % (i, i)
+      if all_checks and optional: body += "if(typeof {0} !== 'undefined' && {0} !== null) {{\n".format(js_arg)
       # Special case argument types.
       if arg.type.isNumeric():
         if arg.type.isInteger():
-          if all_checks: body += "  assert(typeof arg%d === 'number' && !isNaN(arg%d), '%sExpecting <integer>');\n" % (i, i, check_msg)
+          if all_checks: body += "  assert(typeof {0} === 'number' && !isNaN({0}), '{1}Expecting <integer>');\n".format(js_arg, check_msg)
         else:
-          if all_checks: body += "  assert(typeof arg%d === 'number', '%sExpecting <number>');\n" % (i, check_msg)
+          if all_checks: body += "  assert(typeof {0} === 'number', '{1}Expecting <number>');\n".format(js_arg, check_msg)
         # No transform needed for numbers
       elif arg.type.isBoolean():
-        if all_checks: body += "  assert(typeof arg%d === 'boolean' || (typeof arg%d === 'number' && !isNaN(arg%d)), '%sExpecting <boolean>');\n" % (i, i, i, check_msg)
+        if all_checks: body += "  assert(typeof {0} === 'boolean' || (typeof {0} === 'number' && !isNaN({0})), '{1}Expecting <boolean>');\n".format(js_arg, check_msg)
         # No transform needed for booleans
       elif arg.type.isString():
         # Strings can be DOM strings or pointers.
-        if all_checks: body += "  assert(typeof arg%d === 'string' || (arg%d && typeof arg%d === 'object' && typeof arg%d.ptr === 'number'), '%sExpecting <string>');\n" % (i, i, i, i, check_msg)
+        if all_checks: body += "  assert(typeof {0} === 'string' || ({0} && typeof {0} === 'object' && typeof {0}.ptr === 'number'), '{1}Expecting <string>');\n".format(js_arg, check_msg)
         do_default = True # legacy path is fast enough for strings.
       elif arg.type.isInterface():
-        if all_checks: body += "  assert(typeof arg%d === 'object' && typeof arg%d.ptr === 'number', '%sExpecting <pointer>');\n" % (i, i, check_msg)
+        if all_checks: body += "  assert(typeof {0} === 'object' && typeof {0}.ptr === 'number', '{1}Expecting <pointer>');\n".format(js_arg, check_msg)
         if optional:
-          body += "  if(typeof arg%d !== 'undefined' && arg%d !== null) { arg%d = arg%d.ptr };\n" % (i, i, i, i)
+          body += "  if(typeof {0} !== 'undefined' && {0} !== null) {{ {0} = {0}.ptr }};\n".format(js_arg)
         else:
           # No checks in fast mode when the arg is required
-          body += "  arg%d = arg%d.ptr;\n" % (i, i)
+          body += "  {0} = {0}.ptr;\n".format(js_arg)
       else:
         do_default = True
 
@@ -437,27 +437,27 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
 
     if do_default:
       if not (arg.type.isArray() and not array_attribute):
-        body += "  if (arg%d && typeof arg%d === 'object') arg%d = arg%d.ptr;\n" % (i, i, i, i)
+        body += "  if ({0} && typeof {0} === 'object') {0} = {0}.ptr;\n".format(js_arg)
         if arg.type.isString():
-          body += "  else arg%d = ensureString(arg%d);\n" % (i, i)
+          body += "  else {0} = ensureString({0});\n".format(js_arg)
       else:
         # an array can be received here
         arg_type = arg.type.name
         if arg_type in ['Byte', 'Octet']:
-          body += "  if (typeof arg%d == 'object') { arg%d = ensureInt8(arg%d); }\n" % (i, i, i)
+          body += "  if (typeof {0} == 'object') {{ {0} = ensureInt8({0}); }}\n".format(js_arg)
         elif arg_type in ['Short', 'UnsignedShort']:
-          body += "  if (typeof arg%d == 'object') { arg%d = ensureInt16(arg%d); }\n" % (i, i, i)
+          body += "  if (typeof {0} == 'object') {{ {0} = ensureInt16({0}); }}\n".format(js_arg)
         elif arg_type in ['Long', 'UnsignedLong']:
-          body += "  if (typeof arg%d == 'object') { arg%d = ensureInt32(arg%d); }\n" % (i, i, i)
+          body += "  if (typeof {0} == 'object') {{ {0} = ensureInt32({0}); }}\n".format(js_arg)
         elif arg_type == 'Float':
-          body += "  if (typeof arg%d == 'object') { arg%d = ensureFloat32(arg%d); }\n" % (i, i, i)
+          body += "  if (typeof {0} == 'object') {{ {0} = ensureFloat32({0}); }}\n".format(js_arg)
         elif arg_type == 'Double':
-          body += "  if (typeof arg%d == 'object') { arg%d = ensureFloat64(arg%d); }\n" % (i, i, i)
+          body += "  if (typeof {0} == 'object') {{ {0} = ensureFloat64({0}); }}\n".format(js_arg)
 
   c_names = {}
   for i in range(min_args, max_args):
     c_names[i] = 'emscripten_bind_%s_%d' % (bindings_name, i)
-    body += '  if (arg%d === undefined) { %s%s(%s)%s%s }\n' % (i, call_prefix, '_' + c_names[i], ', '.join(pre_arg + args[:i]), call_postfix, '' if 'return ' in call_prefix else '; ' + (cache or ' ') + 'return')
+    body += '  if (%s === undefined) { %s%s(%s)%s%s }\n' % (args[i], call_prefix, '_' + c_names[i], ', '.join(pre_arg + args[:i]), call_postfix, '' if 'return ' in call_prefix else '; ' + (cache or ' ') + 'return')
   c_names[max_args] = 'emscripten_bind_%s_%d' % (bindings_name, max_args)
   body += '  %s%s(%s)%s;\n' % (call_prefix, '_' + c_names[max_args], ', '.join(pre_arg + args), call_postfix)
   if cache:
@@ -477,12 +477,12 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
 
     c_arg_types = list(map(type_to_c, sig))
 
-    normal_args = ', '.join(['%s arg%d' % (c_arg_types[j], j) for j in range(i)])
+    normal_args = ', '.join(['%s %s' % (c_arg_types[j], args[j]) for j in range(i)])
     if constructor:
       full_args = normal_args
     else:
       full_args = type_to_c(class_name, non_pointing=True) + '* self' + ('' if not normal_args else ', ' + normal_args)
-    call_args = ', '.join(['%sarg%d' % ('*' if raw[j].getExtendedAttribute('Ref') else '', j) for j in range(i)])
+    call_args = ', '.join(['%s%s' % ('*' if raw[j].getExtendedAttribute('Ref') else '', args[j]) for j in range(i)])
     if constructor:
       call = 'new ' + type_to_c(class_name, non_pointing=True)
       call += '(' + call_args + ')'
@@ -498,9 +498,9 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
         # this function comes from an ancestor class; for operators, we must cast it
         cast_self = 'dynamic_cast<' + type_to_c(func_scope) + '>(' + cast_self + ')'
       if '=' in operator:
-        call = '(*%s %s %sarg0)' % (cast_self, operator, '*' if sig[0] in interfaces else '')
+        call = '(*%s %s %s%s)' % (cast_self, operator, '*' if sig[0] in interfaces else '', args[0])
       elif operator == '[]':
-        call = '((*%s)[%sarg0])' % (cast_self, '*' if sig[0] in interfaces else '')
+        call = '((*%s)[%s%s])' % (cast_self, '*' if sig[0] in interfaces else '', args[0])
       else:
         raise Exception('unfamiliar operator ' + operator)
 
@@ -525,8 +525,8 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
 
     if not constructor:
       if i == max_args:
-        dec_args = ', '.join([type_to_cdec(raw[j]) + ' arg' + str(j) for j in range(i)])
-        js_call_args = ', '.join(['%sarg%d' % (('(int)' if sig[j] in interfaces else '') + ('&' if raw[j].getExtendedAttribute('Ref') or raw[j].getExtendedAttribute('Value') else ''), j) for j in range(i)])
+        dec_args = ', '.join([type_to_cdec(raw[j]) + ' ' + args[j] for j in range(i)])
+        js_call_args = ', '.join(['%s%s' % (('(int)' if sig[j] in interfaces else '') + ('&' if raw[j].getExtendedAttribute('Ref') or raw[j].getExtendedAttribute('Value') else ''), args[j]) for j in range(i)])
 
         js_impl_methods += [r'''  %s %s(%s) {
     %sEM_ASM_%s({
