@@ -716,23 +716,24 @@ for name, enum in enums.items():
   deferred_js += ['\n', '// ' + name + '\n']
   for value in enum.values():
     function_id = "%s_%s" % (name, value.split('::')[-1])
-    mid_c += [r'''%s EMSCRIPTEN_KEEPALIVE emscripten_enum_%s() {
+    function_id = 'emscripten_enum_%s' % function_id
+    mid_c += [r'''%s EMSCRIPTEN_KEEPALIVE %s() {
   return %s;
 }
 ''' % (name, function_id, value)]
     symbols = value.split('::')
     if len(symbols) == 1:
       identifier = symbols[0]
-      deferred_js += ["Module['%s'] = _emscripten_enum_%s();\n" % (identifier, function_id)]
+      deferred_js += ["Module['%s'] = _%s();\n" % (identifier, function_id)]
     elif len(symbols) == 2:
       [namespace, identifier] = symbols
       if namespace in interfaces:
         # namespace is a class
-        deferred_js += ["Module['%s']['%s'] = _emscripten_enum_%s();\n" % \
+        deferred_js += ["Module['%s']['%s'] = _%s();\n" % \
                   (namespace, identifier, function_id)]
       else:
         # namespace is a namespace, so the enums get collapsed into the top level namespace.
-        deferred_js += ["Module['%s'] = _emscripten_enum_%s();\n" % (identifier, function_id)]
+        deferred_js += ["Module['%s'] = _%s();\n" % (identifier, function_id)]
     else:
       raise Exception("Illegal enum value %s" % value)
 
