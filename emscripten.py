@@ -1891,7 +1891,12 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
     ])
     debug_copy(base_wasm, 'base_wasm.wasm')
 
-    shared.check_call([wasm_emscripten_finalize, base_wasm, '-o', wasm])
+    shared.check_call([
+        wasm_emscripten_finalize,
+        base_wasm,
+        '--reserved-function-pointers=%d' %
+        shared.Settings.RESERVED_FUNCTION_POINTERS,
+        '-o', wasm])
     debug_copy(wasm, 'lld-emscripten-output.wasm')
 
     # TODO: This is gross. We currently read exports from the wast in order to
@@ -2126,7 +2131,7 @@ def create_s2wasm_args(temp_s):
   args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
   args += ['--initial-memory=%d' % shared.Settings.TOTAL_MEMORY]
   args += ['--allow-memory-growth'] if shared.Settings.ALLOW_MEMORY_GROWTH else []
-  args += ['--reserved-function-pointers=%d' %
+  args += ['--emscripten-reserved-function-pointers=%d' %
            shared.Settings.RESERVED_FUNCTION_POINTERS]
   args += ['-l', libc_rt_lib]
   args += ['-l', compiler_rt_lib]
