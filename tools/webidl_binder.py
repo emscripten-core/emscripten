@@ -305,12 +305,9 @@ def type_to_c(t, non_pointing=False):
     return ret
 
   t = t.replace(' (Wrapper)', '')
-  suffix = ''
   if '[]' in t:
-    suffix = '*'
-    t = t.replace('[]', '')
-  ret = base_type_to_c(t)
-  return ret + suffix
+    return base_type_to_c(t.replace('[]', '')) + '*'
+  return base_type_to_c(t)
 
 def take_addr_if_nonpointer(m):
   if m.getExtendedAttribute('Ref') or m.getExtendedAttribute('Value'):
