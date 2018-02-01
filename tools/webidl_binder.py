@@ -77,12 +77,13 @@ extern "C" {
 ''']
 
 def build_constructor(name):
-  return [r'''%s.prototype = %s;
-%s.prototype.constructor = %s;
-%s.prototype.__class__ = %s;
-%s.__cache__ = {};
-Module['%s'] = %s;
-''' % (name, 'Object.create(%s.prototype)' % (implements[name][0] if implements.get(name) else 'WrapperObject'), name, name, name, name, name, name, name)]
+  implementing_name = implements[name][0] if implements.get(name) else 'WrapperObject'
+  return [r'''{name}.prototype = Object.create({implementing}.prototype);
+{name}.prototype.constructor = {name};
+{name}.prototype.__class__ = {name};
+{name}.__cache__ = {{}};
+Module['{name}'] = {name};
+'''.format(name=name, implementing=implementing_name)]
 
 
 mid_js += ['''
