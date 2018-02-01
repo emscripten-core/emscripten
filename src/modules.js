@@ -351,6 +351,7 @@ function exportRuntime() {
     'UTF8ToString',
     'stringToUTF8Array',
     'stringToUTF8',
+    'lengthBytesUTF8',
     'UTF16ToString',
     'stringToUTF16',
     'lengthBytesUTF16',
