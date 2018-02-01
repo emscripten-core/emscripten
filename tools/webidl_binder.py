@@ -591,12 +591,8 @@ for name in names:
 
   # Methods
 
-  seen_constructor = False # ensure a constructor, even for abstract base classes
-  for m in interface.members:
-    if m.identifier.name == name:
-      seen_constructor = True
-      break
-  if not seen_constructor:
+  # Ensure a constructor even if one is not specified.
+  if not any(m.identifier.name == name for m in interface.members):
     mid_js += ['function %s() { throw "cannot construct a %s, no constructor in IDL" }\n' % (name, name)]
     mid_js += build_constructor(name)
 
