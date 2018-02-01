@@ -749,12 +749,10 @@ mid_js += ['''
 
 # Write
 
-c = open(output_base + '.cpp', 'w')
-for x in pre_c: c.write(x)
-for x in mid_c: c.write(x)
-c.close()
+with open(output_base + '.cpp', 'w') as c:
+  for x in pre_c: c.write(x)
+  for x in mid_c: c.write(x)
 
-js = open(output_base + '.js', 'w')
-for x in mid_js: js.write(x)
-js.close()
+with open(output_base + '.js', 'w') as js:
+  for x in mid_js: js.write(x)
 
