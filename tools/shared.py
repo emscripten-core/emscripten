@@ -2529,6 +2529,17 @@ class JS(object):
   def make_jscall(sig, order, named=True):
     fnargs = ','.join(['a' + str(i) for i in range(1, len(sig))])
     args = 'index' + (',' if fnargs else '') + fnargs
+    # While asm.js/fastcomp's addFunction support preallocates
+    # Settings.RESERVED_FUNCTION_POINTERS slots in functionPointers array, on
+    # the Wasm backend we reserve that number of slots for each possible
+    # function signature, so it is (Settings.RESERVED_FUNCTION_POINTERS * # of
+    # indirectly called function signatures) slots in total. So the index to
+    # functionPointers array should be adjusted according to the order of the
+    # function signature. The reason we do this is Wasm has a single unified
+    # function table while asm.js maintains separate function table per
+    # signature.
+    # e.g. When there are three possible function signature, ['v', 'ii', 'ff'],
+    # the 'order' parameter will be 0 for 'v', 1 for 'ii', and so on.
     if Settings.WASM_BACKEND:
       index = 'index + %d' % (Settings.RESERVED_FUNCTION_POINTERS * order)
     else:

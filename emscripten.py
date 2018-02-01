@@ -519,10 +519,12 @@ def update_settings_glue(settings, metadata):
   settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
   settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
 
-  # addFunction support
+  # addFunction support for Wasm backend
   if settings['WASM_BACKEND'] and settings['RESERVED_FUNCTION_POINTERS'] > 0:
     start_index = metadata['jsCallStartIndex']
+    # e.g. jsCallFunctionType ['v', 'ii'] -> sig2order {'v': 0, 'ii': 1}
     sig2order = {sig: i for i, sig in enumerate(metadata['jsCallFuncType'])}
+    # Index in the Wasm function table in which jsCall thunk function starts
     settings['JSCALL_START_INDEX'] = start_index
     settings['JSCALL_SIG_ORDER'] = sig2order
 
@@ -1777,6 +1779,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   pre = None
 
   invoke_funcs = read_wast_invoke_imports(wast)
+  # List of function signatures used in jsCall functions, e.g. ['v', 'vi']
   jscall_sigs = metadata.get('jsCallFuncType', [])
 
   try:
