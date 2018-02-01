@@ -76,9 +76,8 @@ mid_c += [r'''
 extern "C" {
 ''']
 
-def emit_constructor(name):
-  global mid_js
-  mid_js += [r'''%s.prototype = %s;
+def build_constructor(name):
+  return [r'''%s.prototype = %s;
 %s.prototype.constructor = %s;
 %s.prototype.__class__ = %s;
 %s.__cache__ = {};
@@ -93,7 +92,7 @@ function WrapperObject() {
 }
 ''']
 
-emit_constructor('WrapperObject')
+mid_js += build_constructor('WrapperObject')
 
 mid_js += ['''
 function getCache(__class__) {
@@ -601,7 +600,7 @@ for name in names:
       break
   if not seen_constructor:
     mid_js += ['function %s() { throw "cannot construct a %s, no constructor in IDL" }\n' % (name, name)]
-    emit_constructor(name)
+    mid_js += build_constructor(name)
 
   for m in interface.members:
     if not m.isMethod(): continue
@@ -639,7 +638,7 @@ for name in names:
                     const=m.getExtendedAttribute('Const'))
     mid_js += [';\n']
     if constructor:
-      emit_constructor(name)
+      mid_js += build_constructor(name)
 
   for m in interface.members:
     if not m.isAttr(): continue
