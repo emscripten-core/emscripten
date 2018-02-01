@@ -9,15 +9,6 @@ from tools.shared import *
 from runner import RunnerCore, path_from_root, get_zlib_library, get_bullet_library
 import tools.line_endings
 
-# Runs an emcc task (used from another process in test test_emcc_multiprocess_cache_access, needs to be at top level for it to be pickleable).
-def multiprocess_task(c_file, cache_dir_name):
-  output = run_process([PYTHON, EMCC, c_file, '--cache', cache_dir_name], stderr=subprocess.STDOUT, stdout=PIPE).stdout
-  if len(output.strip()) > 0:
-    print('------')
-    print(output)
-    print('------')
-  sys.exit(1 if 'generating system library: libc.bc' in output else 0)
-
 class temp_directory(object):
   def __enter__(self):
     self.directory = tempfile.mkdtemp(prefix='emsripten_temp_', dir=TEMP_DIR)
@@ -366,12 +357,13 @@ f.close()
       tasks = []
       num_times_libc_was_built = 0
       for i in range(3):
-        p = multiprocessing.Process(target=multiprocess_task, args=(c_file,cache_dir_name,))
-        p.start()
+        p = subprocess.Popen([PYTHON, EMCC, c_file, '--cache', cache_dir_name], stderr=subprocess.STDOUT, stdout=PIPE, universal_newlines=True)
         tasks += [p]
       for p in tasks:
-        p.join()
-        num_times_libc_was_built += p.exitcode
+        stdout, stderr = p.communicate()
+        assert not p.returncode, 'A child process failed with return code %s: %s' % (p.returncode, stderr)
+        if 'generating system library: libc.bc' in stdout:
+          num_times_libc_was_built += 1
       assert os.path.exists(cache_dir_name), 'The cache directory %s must exist after the build' % cache_dir_name
       assert os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')), 'The cache directory must contain a built libc'
       assert num_times_libc_was_built == 1, 'Exactly one child process should have triggered libc build! (instead %d processes did)' % num_times_libc_was_built
