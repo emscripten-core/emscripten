@@ -381,12 +381,11 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
 
   full_name = "%s::%s" % (class_name, func_name)
 
-  for i in range(max_args):
+  for i, arg in enumerate(all_args):
     if i >= min_args:
       optional = True
     else:
       optional = False
-    arg = all_args[i]
     do_default = False
     # Filter out arguments we don't know how to parse. Fast casing only common cases.
     compatible_arg = isinstance(arg, Dummy) or (isinstance(arg, WebIDL.IDLArgument) and arg.optional is False)
