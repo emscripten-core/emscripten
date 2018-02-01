@@ -569,8 +569,7 @@ for child, parent in implements.items():
     else:
       parent = None
 
-names = list(interfaces.keys())
-names.sort(key=lambda x: nodeHeight.get(x, 0), reverse=True)
+names = sorted(interfaces.keys(), key=lambda x: nodeHeight.get(x, 0), reverse=True)
 
 for name in names:
   interface = interfaces[name]
