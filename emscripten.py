@@ -523,13 +523,8 @@ def update_settings_glue(settings, metadata):
 def compile_settings(compiler_engine, settings, libraries, temp_files):
   # Save settings to a file to work around v8 issue 1579
   with temp_files.get_file('.txt') as settings_file:
-    def save_settings():
-      global settings_text
-      settings_text = json.dumps(settings, sort_keys=True)
-      s = open(settings_file, 'w')
-      s.write(settings_text)
-      s.close()
-    save_settings()
+    with open(settings_file, 'w') as s:
+      json.dump(settings, s, sort_keys=True)
 
     # Call js compiler
     out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
