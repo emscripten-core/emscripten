@@ -405,7 +405,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       # Print type info in comments.
       body += "  /* %s <%s> [%s] */\n" % (js_arg, arg.type.name, inner)
 
-      # Wrap asserts with existance check when argument is optional.
+      # Wrap asserts with existence check when argument is optional.
       if all_checks and optional: body += "if(typeof {0} !== 'undefined' && {0} !== null) {{\n".format(js_arg)
       # Special case argument types.
       if arg.type.isNumeric():
