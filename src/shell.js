@@ -91,7 +91,7 @@ if (typeof Module['locateFile'] !== 'function') {
 #if !SUPPORT_BASE64_EMBEDDING
     if (ENVIRONMENT_IS_NODE) {
       Module['scriptDirectory'] = __dirname + '/';
-    } else if (ENVIRONMENT_IS_WEB && !document.currentScript.src.startsWith('blob:')) {
+    } else if (ENVIRONMENT_IS_WEB && document.currentScript.src.indexOf('blob:') !== 0) {
       Module['scriptDirectory'] = document.currentScript.src.split('/').slice(0, -1).join('/') + '/';
     } else if (ENVIRONMENT_IS_WORKER) {
       Module['scriptDirectory'] = self.location.href.split('/').slice(0, -1).join('/') + '/';
