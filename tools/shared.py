@@ -2194,8 +2194,7 @@ class Building(object):
         args.append('--externs')
         args.append(extern)
       if Settings.IGNORE_CLOSURE_COMPILER_ERRORS:
-        args.append('--jscomp_off')
-        args.append('*')
+        args.append('--jscomp_off=*')
       if pretty: args += ['--formatting', 'PRETTY_PRINT']
       if os.environ.get('EMCC_CLOSURE_ARGS'):
         args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
