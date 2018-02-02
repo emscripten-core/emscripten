@@ -3354,6 +3354,10 @@ window.close = function() {
       for args in [[], ['-O3']]:
         self.btest(path_from_root('tests', 'pthread', 'test_pthread_global_data_initialization.c'), expected='20', args=args+mem_init_mode+['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'], also_wasm=False)
 
+  # Test that emscripten_get_now() reports coherent wallclock times across all pthreads, instead of each pthread independently reporting wallclock times since the launch of that pthread.
+  def test_pthread_clock_drift(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_clock_drift.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
   # test atomicrmw i64
   def test_atomicrmw_i64(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'atomicrmw_i64.ll'), '-s', 'USE_PTHREADS=1', '-s', 'IN_TEST_HARNESS=1', '-o', 'test.html']).communicate()

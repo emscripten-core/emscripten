@@ -252,106 +252,115 @@ var LibraryPThread = {
       Module['print']('Preallocating ' + numWorkers + ' workers for a pthread spawn pool.');
 
       var numWorkersLoaded = 0;
+      var pthreadMainJs = 'pthread-main.js';
+      // Allow HTML module to configure the location where the 'pthread-main.js' file will be loaded from,
+      // either via Module.locateFile() function, or via Module.pthreadMainPrefixURL string. If neither
+      // of these are passed, then the default URL 'pthread-main.js' relative to the main html file is loaded.
+      if (typeof Module['locateFile'] === 'function') pthreadMainJs = Module['locateFile'](pthreadMainJs);
+      else if (Module['pthreadMainPrefixURL']) pthreadMainJs = Module['pthreadMainPrefixURL'] + pthreadMainJs;
+
       for (var i = 0; i < numWorkers; ++i) {
-        var pthreadMainJs = 'pthread-main.js';
-        // Allow HTML module to configure the location where the 'pthread-main.js' file will be loaded from,
-        // either via Module.locateFile() function, or via Module.pthreadMainPrefixURL string. If neither
-        // of these are passed, then the default URL 'pthread-main.js' relative to the main html file is loaded.
-        if (typeof Module['locateFile'] === 'function') pthreadMainJs = Module['locateFile'](pthreadMainJs);
-        else if (Module['pthreadMainPrefixURL']) pthreadMainJs = Module['pthreadMainPrefixURL'] + pthreadMainJs;
         var worker = new Worker(pthreadMainJs);
 
-        worker.onmessage = function(e) {
-          var d = e.data;
-          // TODO: Move the proxied call mechanism into a queue inside heap.
-          if (d.proxiedCall) {
-            var returnValue;
-            var funcTable = (d.func >= 0) ? proxiedFunctionTable : ASM_CONSTS;
-            var funcIdx = (d.func >= 0) ? d.func : (-1 - d.func);
-            PThread.currentProxiedOperationCallerThread = worker.pthread.threadInfoStruct; // Sometimes we need to backproxy events to the calling thread (e.g. HTML5 DOM events handlers such as emscripten_set_mousemove_callback()), so keep track in a globally accessible variable about the thread that initiated the proxying.
-            switch(d.proxiedCall & 31) {
-              case 1: returnValue = funcTable[funcIdx](); break;
-              case 2: returnValue = funcTable[funcIdx](d.p0); break;
-              case 3: returnValue = funcTable[funcIdx](d.p0, d.p1); break;
-              case 4: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2); break;
-              case 5: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3); break;
-              case 6: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4); break;
-              case 7: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5); break;
-              case 8: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5, d.p6); break;
-              case 9: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5, d.p6, d.p7); break;
-              case 10: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5, d.p6, d.p7, d.p8); break;
-              default:
-                if (d.proxiedCall) {
-                  Module['printErr']("worker sent an unknown proxied call idx " + d.proxiedCall);
-                  console.error(e.data);
-                }
-                break;
+        (function(worker) {
+          worker.onmessage = function(e) {
+            var d = e.data;
+            // TODO: Move the proxied call mechanism into a queue inside heap.
+            if (d.proxiedCall) {
+              var returnValue;
+              var funcTable = (d.func >= 0) ? proxiedFunctionTable : ASM_CONSTS;
+              var funcIdx = (d.func >= 0) ? d.func : (-1 - d.func);
+              PThread.currentProxiedOperationCallerThread = worker.pthread.threadInfoStruct; // Sometimes we need to backproxy events to the calling thread (e.g. HTML5 DOM events handlers such as emscripten_set_mousemove_callback()), so keep track in a globally accessible variable about the thread that initiated the proxying.
+              switch(d.proxiedCall & 31) {
+                case 1: returnValue = funcTable[funcIdx](); break;
+                case 2: returnValue = funcTable[funcIdx](d.p0); break;
+                case 3: returnValue = funcTable[funcIdx](d.p0, d.p1); break;
+                case 4: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2); break;
+                case 5: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3); break;
+                case 6: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4); break;
+                case 7: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5); break;
+                case 8: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5, d.p6); break;
+                case 9: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5, d.p6, d.p7); break;
+                case 10: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5, d.p6, d.p7, d.p8); break;
+                default:
+                  if (d.proxiedCall) {
+                    Module['printErr']("worker sent an unknown proxied call idx " + d.proxiedCall);
+                    console.error(e.data);
+                  }
+                  break;
+              }
+              if (d.returnValue) {
+                if (d.proxiedCall < 32) HEAP32[d.returnValue >> 2] = returnValue;
+                else HEAPF64[d.returnValue >> 3] = returnValue;
+              }
+              var waitAddress = d.waitAddress;
+              if (waitAddress) {
+                Atomics.store(HEAP32, waitAddress >> 2, 1);
+                Atomics.wake(HEAP32, waitAddress >> 2, 1);
+              }
+              return;
             }
-            if (d.returnValue) {
-              if (d.proxiedCall < 32) HEAP32[d.returnValue >> 2] = returnValue;
-              else HEAPF64[d.returnValue >> 3] = returnValue;
-            }
-            var waitAddress = d.waitAddress;
-            if (waitAddress) {
-              Atomics.store(HEAP32, waitAddress >> 2, 1);
-              Atomics.wake(HEAP32, waitAddress >> 2, 1);
-            }
-            return;
-          }
 
-          // If this message is intended to a recipient that is not the main thread, forward it to the target thread.
-          if (d.targetThread && d.targetThread != _pthread_self()) {
-            var thread = PThread.pthreads[d.targetThread];
-            if (thread) {
-              thread.worker.postMessage(e.data, d.transferList);
+            // If this message is intended to a recipient that is not the main thread, forward it to the target thread.
+            if (d.targetThread && d.targetThread != _pthread_self()) {
+              var thread = PThread.pthreads[d.targetThread];
+              if (thread) {
+                thread.worker.postMessage(e.data, d.transferList);
+              } else {
+                console.error('Internal error! Worker sent a message "' + d.cmd + '" to target pthread ' + d.targetThread + ', but that thread no longer exists!');
+              }
+              return;
+            }
+
+            if (d.cmd === 'processQueuedMainThreadWork') {
+              // TODO: Must post message to main Emscripten thread in PROXY_TO_WORKER mode.
+              _emscripten_main_thread_process_queued_calls();
+            } else if (d.cmd === 'spawnThread') {
+              __spawn_thread(e.data);
+            } else if (d.cmd === 'cleanupThread') {
+              __cleanup_thread(d.thread);
+            } else if (d.cmd === 'killThread') {
+              __kill_thread(d.thread);
+            } else if (d.cmd === 'cancelThread') {
+              __cancel_thread(d.thread);
+            } else if (d.cmd === 'loaded') {
+              worker.loaded = true;
+              // If this Worker is already pending to start running a thread, launch the thread now
+              if (worker.runPthread) {
+                worker.runPthread();
+                delete worker.runPthread;
+              }
+              ++numWorkersLoaded;
+              if (numWorkersLoaded === numWorkers && onFinishedLoading) {
+                onFinishedLoading();
+              }
+            } else if (d.cmd === 'print') {
+              Module['print']('Thread ' + d.threadId + ': ' + d.text);
+            } else if (d.cmd === 'printErr') {
+              Module['printErr']('Thread ' + d.threadId + ': ' + d.text);
+            } else if (d.cmd === 'alert') {
+              alert('Thread ' + d.threadId + ': ' + d.text);
+            } else if (d.cmd === 'exit') {
+              // currently no-op
+            } else if (d.cmd === 'cancelDone') {
+              PThread.freeThreadData(worker.pthread);
+              worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
+              PThread.unusedWorkerPool.push(worker);
+              // TODO: Free if detached.
+              PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker.pthread), 1); // Not a running Worker anymore.
+            } else if (d.cmd === 'objectTransfer') {
+              PThread.receiveObjectTransfer(e.data);
+            } else if (e.data.target === 'setimmediate') {
+              worker.postMessage(e.data); // Worker wants to postMessage() to itself to implement setImmediate() emulation.
             } else {
-              console.error('Internal error! Worker sent a message "' + d.cmd + '" to target pthread ' + d.targetThread + ', but that thread no longer exists!');
+              Module['printErr']("worker sent an unknown command " + d.cmd);
             }
-            return;
-          }
+          };
 
-          if (d.cmd === 'processQueuedMainThreadWork') {
-            // TODO: Must post message to main Emscripten thread in PROXY_TO_WORKER mode.
-            _emscripten_main_thread_process_queued_calls();
-          } else if (d.cmd === 'spawnThread') {
-            __spawn_thread(e.data);
-          } else if (d.cmd === 'cleanupThread') {
-            __cleanup_thread(d.thread);
-          } else if (d.cmd === 'killThread') {
-            __kill_thread(d.thread);
-          } else if (d.cmd === 'cancelThread') {
-            __cancel_thread(d.thread);
-          } else if (d.cmd === 'loaded') {
-            ++numWorkersLoaded;
-            if (numWorkersLoaded === numWorkers && onFinishedLoading) {
-              onFinishedLoading();
-            }
-          } else if (d.cmd === 'print') {
-            Module['print']('Thread ' + d.threadId + ': ' + d.text);
-          } else if (d.cmd === 'printErr') {
-            Module['printErr']('Thread ' + d.threadId + ': ' + d.text);
-          } else if (d.cmd === 'alert') {
-            alert('Thread ' + d.threadId + ': ' + d.text);
-          } else if (d.cmd === 'exit') {
-            // currently no-op
-          } else if (d.cmd === 'cancelDone') {
-            PThread.freeThreadData(worker.pthread);
-            worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
-            PThread.unusedWorkerPool.push(worker);
-            // TODO: Free if detached.
-            PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker.pthread), 1); // Not a running Worker anymore.
-          } else if (d.cmd === 'objectTransfer') {
-            PThread.receiveObjectTransfer(e.data);
-          } else if (e.data.target === 'setimmediate') {
-            worker.postMessage(e.data); // Worker wants to postMessage() to itself to implement setImmediate() emulation.
-          } else {
-            Module['printErr']("worker sent an unknown command " + d.cmd);
-          }
-        };
-
-        worker.onerror = function(e) {
-          Module['printErr']('pthread sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
-        };
+          worker.onerror = function(e) {
+            Module['printErr']('pthread sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
+          };
+        }(worker));
 
         // Allocate tempDoublePtr for the worker. This is done here on the worker's behalf, since we may need to do this statically
         // if the runtime has not been loaded yet, etc. - so we just use getMemory, which is main-thread only.
@@ -477,22 +486,29 @@ var LibraryPThread = {
 #endif
 
     worker.pthread = pthread;
-
-    // Ask the worker to start executing its pthread entry point function.
-    worker.postMessage({
-      cmd: 'run',
-      start_routine: threadParams.startRoutine,
-      arg: threadParams.arg,
-      threadInfoStruct: threadParams.pthread_ptr,
-      selfThreadId: threadParams.pthread_ptr, // TODO: Remove this since thread ID is now the same as the thread address.
-      parentThreadId: threadParams.parent_pthread_ptr,
-      stackBase: threadParams.stackBase,
-      stackSize: threadParams.stackSize,
+    var msg = {
+        cmd: 'run',
+        start_routine: threadParams.startRoutine,
+        arg: threadParams.arg,
+        threadInfoStruct: threadParams.pthread_ptr,
+        selfThreadId: threadParams.pthread_ptr, // TODO: Remove this since thread ID is now the same as the thread address.
+        parentThreadId: threadParams.parent_pthread_ptr,
+        stackBase: threadParams.stackBase,
+        stackSize: threadParams.stackSize,
 #if OFFSCREENCANVAS_SUPPORT
-      moduleCanvasId: threadParams.moduleCanvasId,
-      offscreenCanvases: threadParams.offscreenCanvases,
+        moduleCanvasId: threadParams.moduleCanvasId,
+        offscreenCanvases: threadParams.offscreenCanvases,
 #endif
-    }, threadParams.transferList);
+      };
+    worker.runPthread = function() {
+      // Ask the worker to start executing its pthread entry point function.
+      msg.time = performance.now();
+      worker.postMessage(msg, threadParams.transferList);
+    };
+    if (worker.loaded) {
+      worker.runPthread();
+      delete worker.runPthread;
+    }
   },
 
 #if USE_PTHREADS

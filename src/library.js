@@ -4015,6 +4015,11 @@ LibraryManager.library = {
                                "    var t = process['hrtime']();\n" +
                                "    return t[0] * 1e3 + t[1] / 1e6;\n" +
                                "  };\n" +
+#if USE_PTHREADS
+// Pthreads need their clocks synchronized to the execution of the main thread, so give them a special form of the function.
+                               "} else if (ENVIRONMENT_IS_PTHREAD) {\n" +
+                               "  _emscripten_get_now = function() { return performance['now']() - __performance_now_clock_drift; };\n" +
+#endif
                                "} else if (typeof dateNow !== 'undefined') {\n" +
                                "  _emscripten_get_now = dateNow;\n" +
                                "} else if (typeof self === 'object' && self['performance'] && typeof self['performance']['now'] === 'function') {\n" +
