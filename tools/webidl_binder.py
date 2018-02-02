@@ -76,14 +76,14 @@ mid_c += [r'''
 extern "C" {
 ''']
 
-def emit_constructor(name):
-  global mid_js
-  mid_js += [r'''%s.prototype = %s;
-%s.prototype.constructor = %s;
-%s.prototype.__class__ = %s;
-%s.__cache__ = {};
-Module['%s'] = %s;
-''' % (name, 'Object.create(%s.prototype)' % (implements[name][0] if implements.get(name) else 'WrapperObject'), name, name, name, name, name, name, name)]
+def build_constructor(name):
+  implementing_name = implements[name][0] if implements.get(name) else 'WrapperObject'
+  return [r'''{name}.prototype = Object.create({implementing}.prototype);
+{name}.prototype.constructor = {name};
+{name}.prototype.__class__ = {name};
+{name}.__cache__ = {{}};
+Module['{name}'] = {name};
+'''.format(name=name, implementing=implementing_name)]
 
 
 mid_js += ['''
@@ -93,7 +93,7 @@ function WrapperObject() {
 }
 ''']
 
-emit_constructor('WrapperObject')
+mid_js += build_constructor('WrapperObject')
 
 mid_js += ['''
 function getCache(__class__) {
@@ -274,40 +274,41 @@ def full_typename(arg):
 
 def type_to_c(t, non_pointing=False):
   #print 'to c ', t
+  def base_type_to_c(t):
+    if t == 'Long':
+      ret = 'int'
+    elif t == 'UnsignedLong':
+      ret = 'unsigned int'
+    elif t == 'Short':
+      ret = 'short'
+    elif t == 'UnsignedShort':
+      ret = 'unsigned short'
+    elif t == 'Byte':
+      ret = 'char'
+    elif t == 'Octet':
+      ret = 'unsigned char'
+    elif t == 'Void':
+      ret = 'void'
+    elif t == 'String':
+      ret = 'char*'
+    elif t == 'Float':
+      ret = 'float'
+    elif t == 'Double':
+      ret = 'double'
+    elif t == 'Boolean':
+      ret = 'bool'
+    elif t == 'Any' or t == 'VoidPtr':
+      ret = 'void*'
+    elif t in interfaces:
+      ret = (interfaces[t].getExtendedAttribute('Prefix') or [''])[0] + t + ('' if non_pointing else '*')
+    else:
+      ret = t
+    return ret
+
   t = t.replace(' (Wrapper)', '')
-  suffix = ''
   if '[]' in t:
-    suffix = '*'
-    t = t.replace('[]', '')
-  if t == 'Long':
-    ret = 'int'
-  elif t == 'UnsignedLong':
-    ret = 'unsigned int'
-  elif t == 'Short':
-    ret = 'short'
-  elif t == 'UnsignedShort':
-    ret = 'unsigned short'
-  elif t == 'Byte':
-    ret = 'char'
-  elif t == 'Octet':
-    ret = 'unsigned char'
-  elif t == 'Void':
-    ret = 'void'
-  elif t == 'String':
-    ret = 'char*'
-  elif t == 'Float':
-    ret = 'float'
-  elif t == 'Double':
-    ret = 'double'
-  elif t == 'Boolean':
-    ret = 'bool'
-  elif t == 'Any' or t == 'VoidPtr':
-    ret = 'void*'
-  elif t in interfaces:
-    ret = (interfaces[t].getExtendedAttribute('Prefix') or [''])[0] + t + ('' if non_pointing else '*')
-  else:
-    ret = t
-  return ret + suffix
+    return base_type_to_c(t.replace('[]', '')) + '*'
+  return base_type_to_c(t)
 
 def take_addr_if_nonpointer(m):
   if m.getExtendedAttribute('Ref') or m.getExtendedAttribute('Value'):
@@ -339,7 +340,6 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
   min_args = min(sigs.keys())
   max_args = max(sigs.keys())
 
-  c_names = {}
   all_args = sigs.get(max_args)
 
   if DEBUG:
@@ -376,20 +376,16 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     body = ''
     pre_arg = []
 
-  for i in range(max_args):
-    arg = all_args[i]
-    if arg.type.isString() or arg.type.isArray():
-      body += '  ensureCache.prepare();\n'
-      break
+  if any(arg.type.isString() or arg.type.isArray() for arg in all_args):
+    body += '  ensureCache.prepare();\n'
 
   full_name = "%s::%s" % (class_name, func_name)
 
-  for i in range(max_args):
+  for i, (js_arg, arg) in enumerate(zip(args, all_args)):
     if i >= min_args:
       optional = True
     else:
       optional = False
-    arg = all_args[i]
     do_default = False
     # Filter out arguments we don't know how to parse. Fast casing only common cases.
     compatible_arg = isinstance(arg, Dummy) or (isinstance(arg, WebIDL.IDLArgument) and arg.optional is False)
@@ -400,38 +396,38 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       else:
         arg_name = ''
       # Format assert fail message
-      check_msg = "[CHECK FAILED] %s(arg%d:%s): " % (full_name, i, arg_name)
+      check_msg = "[CHECK FAILED] %s(%s:%s): " % (full_name, js_arg, arg_name)
       if isinstance(arg.type, WebIDL.IDLWrapperType):
         inner = arg.type.inner
       else:
         inner = ""
 
       # Print type info in comments.
-      body += "  /* arg%d <%s> [%s] */\n" % (i, arg.type.name, inner)
+      body += "  /* %s <%s> [%s] */\n" % (js_arg, arg.type.name, inner)
 
-      # Wrap asserts with existance check when argument is optional.
-      if all_checks and optional: body += "if(typeof arg%d !== 'undefined' && arg%d !== null) {\n" % (i, i)
+      # Wrap asserts with existence check when argument is optional.
+      if all_checks and optional: body += "if(typeof {0} !== 'undefined' && {0} !== null) {{\n".format(js_arg)
       # Special case argument types.
       if arg.type.isNumeric():
         if arg.type.isInteger():
-          if all_checks: body += "  assert(typeof arg%d === 'number' && !isNaN(arg%d), '%sExpecting <integer>');\n" % (i, i, check_msg)
+          if all_checks: body += "  assert(typeof {0} === 'number' && !isNaN({0}), '{1}Expecting <integer>');\n".format(js_arg, check_msg)
         else:
-          if all_checks: body += "  assert(typeof arg%d === 'number', '%sExpecting <number>');\n" % (i, check_msg)
+          if all_checks: body += "  assert(typeof {0} === 'number', '{1}Expecting <number>');\n".format(js_arg, check_msg)
         # No transform needed for numbers
       elif arg.type.isBoolean():
-        if all_checks: body += "  assert(typeof arg%d === 'boolean' || (typeof arg%d === 'number' && !isNaN(arg%d)), '%sExpecting <boolean>');\n" % (i, i, i, check_msg)
+        if all_checks: body += "  assert(typeof {0} === 'boolean' || (typeof {0} === 'number' && !isNaN({0})), '{1}Expecting <boolean>');\n".format(js_arg, check_msg)
         # No transform needed for booleans
       elif arg.type.isString():
         # Strings can be DOM strings or pointers.
-        if all_checks: body += "  assert(typeof arg%d === 'string' || (arg%d && typeof arg%d === 'object' && typeof arg%d.ptr === 'number'), '%sExpecting <string>');\n" % (i, i, i, i, check_msg)
+        if all_checks: body += "  assert(typeof {0} === 'string' || ({0} && typeof {0} === 'object' && typeof {0}.ptr === 'number'), '{1}Expecting <string>');\n".format(js_arg, check_msg)
         do_default = True # legacy path is fast enough for strings.
       elif arg.type.isInterface():
-        if all_checks: body += "  assert(typeof arg%d === 'object' && typeof arg%d.ptr === 'number', '%sExpecting <pointer>');\n" % (i, i, check_msg)
+        if all_checks: body += "  assert(typeof {0} === 'object' && typeof {0}.ptr === 'number', '{1}Expecting <pointer>');\n".format(js_arg, check_msg)
         if optional:
-          body += "  if(typeof arg%d !== 'undefined' && arg%d !== null) { arg%d = arg%d.ptr };\n" % (i, i, i, i)
+          body += "  if(typeof {0} !== 'undefined' && {0} !== null) {{ {0} = {0}.ptr }};\n".format(js_arg)
         else:
           # No checks in fast mode when the arg is required
-          body += "  arg%d = arg%d.ptr;\n" % (i, i)
+          body += "  {0} = {0}.ptr;\n".format(js_arg)
       else:
         do_default = True
 
@@ -441,26 +437,27 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
 
     if do_default:
       if not (arg.type.isArray() and not array_attribute):
-        body += "  if (arg%d && typeof arg%d === 'object') arg%d = arg%d.ptr;\n" % (i, i, i, i)
+        body += "  if ({0} && typeof {0} === 'object') {0} = {0}.ptr;\n".format(js_arg)
         if arg.type.isString():
-          body += "  else arg%d = ensureString(arg%d);\n" % (i, i)
+          body += "  else {0} = ensureString({0});\n".format(js_arg)
       else:
         # an array can be received here
         arg_type = arg.type.name
         if arg_type in ['Byte', 'Octet']:
-          body += "  if (typeof arg%d == 'object') { arg%d = ensureInt8(arg%d); }\n" % (i, i, i)
+          body += "  if (typeof {0} == 'object') {{ {0} = ensureInt8({0}); }}\n".format(js_arg)
         elif arg_type in ['Short', 'UnsignedShort']:
-          body += "  if (typeof arg%d == 'object') { arg%d = ensureInt16(arg%d); }\n" % (i, i, i)
+          body += "  if (typeof {0} == 'object') {{ {0} = ensureInt16({0}); }}\n".format(js_arg)
         elif arg_type in ['Long', 'UnsignedLong']:
-          body += "  if (typeof arg%d == 'object') { arg%d = ensureInt32(arg%d); }\n" % (i, i, i)
+          body += "  if (typeof {0} == 'object') {{ {0} = ensureInt32({0}); }}\n".format(js_arg)
         elif arg_type == 'Float':
-          body += "  if (typeof arg%d == 'object') { arg%d = ensureFloat32(arg%d); }\n" % (i, i, i)
+          body += "  if (typeof {0} == 'object') {{ {0} = ensureFloat32({0}); }}\n".format(js_arg)
         elif arg_type == 'Double':
-          body += "  if (typeof arg%d == 'object') { arg%d = ensureFloat64(arg%d); }\n" % (i, i, i)
+          body += "  if (typeof {0} == 'object') {{ {0} = ensureFloat64({0}); }}\n".format(js_arg)
 
+  c_names = {}
   for i in range(min_args, max_args):
     c_names[i] = 'emscripten_bind_%s_%d' % (bindings_name, i)
-    body += '  if (arg%d === undefined) { %s%s(%s)%s%s }\n' % (i, call_prefix, '_' + c_names[i], ', '.join(pre_arg + args[:i]), call_postfix, '' if 'return ' in call_prefix else '; ' + (cache or ' ') + 'return')
+    body += '  if (%s === undefined) { %s%s(%s)%s%s }\n' % (args[i], call_prefix, '_' + c_names[i], ', '.join(pre_arg + args[:i]), call_postfix, '' if 'return ' in call_prefix else '; ' + (cache or ' ') + 'return')
   c_names[max_args] = 'emscripten_bind_%s_%d' % (bindings_name, max_args)
   body += '  %s%s(%s)%s;\n' % (call_prefix, '_' + c_names[max_args], ', '.join(pre_arg + args), call_postfix)
   if cache:
@@ -480,12 +477,12 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
 
     c_arg_types = list(map(type_to_c, sig))
 
-    normal_args = ', '.join(['%s arg%d' % (c_arg_types[j], j) for j in range(i)])
+    normal_args = ', '.join(['%s %s' % (c_arg_types[j], args[j]) for j in range(i)])
     if constructor:
       full_args = normal_args
     else:
       full_args = type_to_c(class_name, non_pointing=True) + '* self' + ('' if not normal_args else ', ' + normal_args)
-    call_args = ', '.join(['%sarg%d' % ('*' if raw[j].getExtendedAttribute('Ref') else '', j) for j in range(i)])
+    call_args = ', '.join(['%s%s' % ('*' if raw[j].getExtendedAttribute('Ref') else '', args[j]) for j in range(i)])
     if constructor:
       call = 'new ' + type_to_c(class_name, non_pointing=True)
       call += '(' + call_args + ')'
@@ -500,10 +497,11 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       if class_name != func_scope:
         # this function comes from an ancestor class; for operators, we must cast it
         cast_self = 'dynamic_cast<' + type_to_c(func_scope) + '>(' + cast_self + ')'
+      maybe_deref = '*' if sig[0] in interfaces else ''
       if '=' in operator:
-        call = '(*%s %s %sarg0)' % (cast_self, operator, '*' if sig[0] in interfaces else '')
+        call = '(*%s %s %s%s)' % (cast_self, operator, maybe_deref, args[0])
       elif operator == '[]':
-        call = '((*%s)[%sarg0])' % (cast_self, '*' if sig[0] in interfaces else '')
+        call = '((*%s)[%s%s])' % (cast_self, maybe_deref, args[0])
       else:
         raise Exception('unfamiliar operator ' + operator)
 
@@ -528,8 +526,8 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
 
     if not constructor:
       if i == max_args:
-        dec_args = ', '.join([type_to_cdec(raw[j]) + ' arg' + str(j) for j in range(i)])
-        js_call_args = ', '.join(['%sarg%d' % (('(int)' if sig[j] in interfaces else '') + ('&' if raw[j].getExtendedAttribute('Ref') or raw[j].getExtendedAttribute('Value') else ''), j) for j in range(i)])
+        dec_args = ', '.join([type_to_cdec(raw[j]) + ' ' + args[j] for j in range(i)])
+        js_call_args = ', '.join(['%s%s' % (('(int)' if sig[j] in interfaces else '') + take_addr_if_nonpointer(raw[j]), args[j]) for j in range(i)])
 
         js_impl_methods += [r'''  %s %s(%s) {
     %sEM_ASM_%s({
@@ -573,8 +571,7 @@ for child, parent in implements.items():
     else:
       parent = None
 
-names = list(interfaces.keys())
-names.sort(key=lambda x: nodeHeight.get(x, 0), reverse=True)
+names = sorted(interfaces.keys(), key=lambda x: nodeHeight.get(x, 0), reverse=True)
 
 for name in names:
   interface = interfaces[name]
@@ -594,14 +591,10 @@ for name in names:
 
   # Methods
 
-  seen_constructor = False # ensure a constructor, even for abstract base classes
-  for m in interface.members:
-    if m.identifier.name == name:
-      seen_constructor = True
-      break
-  if not seen_constructor:
+  # Ensure a constructor even if one is not specified.
+  if not any(m.identifier.name == name for m in interface.members):
     mid_js += ['function %s() { throw "cannot construct a %s, no constructor in IDL" }\n' % (name, name)]
-    emit_constructor(name)
+    mid_js += build_constructor(name)
 
   for m in interface.members:
     if not m.isMethod(): continue
@@ -639,7 +632,7 @@ for name in names:
                     const=m.getExtendedAttribute('Const'))
     mid_js += [';\n']
     if constructor:
-      emit_constructor(name)
+      mid_js += build_constructor(name)
 
   for m in interface.members:
     if not m.isAttr(): continue
@@ -719,23 +712,24 @@ for name, enum in enums.items():
   deferred_js += ['\n', '// ' + name + '\n']
   for value in enum.values():
     function_id = "%s_%s" % (name, value.split('::')[-1])
-    mid_c += [r'''%s EMSCRIPTEN_KEEPALIVE emscripten_enum_%s() {
+    function_id = 'emscripten_enum_%s' % function_id
+    mid_c += [r'''%s EMSCRIPTEN_KEEPALIVE %s() {
   return %s;
 }
 ''' % (name, function_id, value)]
     symbols = value.split('::')
     if len(symbols) == 1:
       identifier = symbols[0]
-      deferred_js += ["Module['%s'] = _emscripten_enum_%s();\n" % (identifier, function_id)]
+      deferred_js += ["Module['%s'] = _%s();\n" % (identifier, function_id)]
     elif len(symbols) == 2:
       [namespace, identifier] = symbols
       if namespace in interfaces:
         # namespace is a class
-        deferred_js += ["Module['%s']['%s'] = _emscripten_enum_%s();\n" % \
+        deferred_js += ["Module['%s']['%s'] = _%s();\n" % \
                   (namespace, identifier, function_id)]
       else:
         # namespace is a namespace, so the enums get collapsed into the top level namespace.
-        deferred_js += ["Module['%s'] = _emscripten_enum_%s();\n" % (identifier, function_id)]
+        deferred_js += ["Module['%s'] = _%s();\n" % (identifier, function_id)]
     else:
       raise Exception("Illegal enum value %s" % value)
 
@@ -752,12 +746,10 @@ mid_js += ['''
 
 # Write
 
-c = open(output_base + '.cpp', 'w')
-for x in pre_c: c.write(x)
-for x in mid_c: c.write(x)
-c.close()
+with open(output_base + '.cpp', 'w') as c:
+  for x in pre_c: c.write(x)
+  for x in mid_c: c.write(x)
 
-js = open(output_base + '.js', 'w')
-for x in mid_js: js.write(x)
-js.close()
+with open(output_base + '.js', 'w') as js:
+  for x in mid_js: js.write(x)
 
