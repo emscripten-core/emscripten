@@ -844,6 +844,18 @@ function stackTrace() {
   return demangleAll(js);
 }
 
+function isAbsolutePath(path) {
+  return isDataURI(path) || /^(?:[a-z]+:)?[\/\\]\/?/i.test(path);
+}
+
+// Joins relative URL 'b' to URL 'a'. 'a' may be empty, in which case 'b' is returned.
+// If 'b' is an absolute URL, then 'a' is ignored and 'b' is returned as-is as well.
+function joinUrl(a, b) {
+#if ASSERTIONS
+  if (a && !a.endsWith('/')) throw 'First parameter to joinUrl() should end in /!';
+#endif
+  return (a && !isAbsolutePath(b)) ? a + b : b;
+}
 // Memory management
 
 var PAGE_SIZE = 16384;
@@ -2031,6 +2043,9 @@ function integrateWasmJS() {
       asmjsCodeFile = Module['locateFile'](asmjsCodeFile);
     }
   }
+  wasmTextFile = joinUrl(Module['scriptDirectory'], wasmTextFile);
+  wasmBinaryFile = joinUrl(Module['scriptDirectory'], wasmBinaryFile);
+  asmjsCodeFile = joinUrl(Module['scriptDirectory'], asmjsCodeFile);
 
   // utilities
 

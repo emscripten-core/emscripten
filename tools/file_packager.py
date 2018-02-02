@@ -738,6 +738,7 @@ ret += '''%s
   var REMOTE_METADATA_NAME = typeof Module['locateFile'] === 'function' ?
                              Module['locateFile']('%(metadata_file)s') :
                              ((Module['filePackagePrefixURL'] || '') + '%(metadata_file)s');
+  REMOTE_METADATA_NAME = joinUrl(Module['scriptDirectory'], REMOTE_METADATA_NAME);
   var xhr = new XMLHttpRequest();
   xhr.onreadystatechange = function() {
    if (xhr.readyState === 4 && xhr.status === 200) {

@@ -94,6 +94,8 @@ if (ENVIRONMENT_IS_NODE) {
 
   // Expose functionality in the same simple way that the shells work
   // Note that we pollute the global namespace here, otherwise we break in node
+  if (!Module['scriptDirectory']) Module['scriptDirectory'] = __dirname + '/';
+
   var nodeFS;
   var nodePath;
 

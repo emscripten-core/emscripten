@@ -260,6 +260,7 @@ var LibraryPThread = {
       else if (Module['pthreadMainPrefixURL']) pthreadMainJs = Module['pthreadMainPrefixURL'] + pthreadMainJs;
 
       for (var i = 0; i < numWorkers; ++i) {
+        pthreadMainJs = joinUrl(Module['scriptDirectory'], pthreadMainJs);
         var worker = new Worker(pthreadMainJs);
 
         (function(worker) {

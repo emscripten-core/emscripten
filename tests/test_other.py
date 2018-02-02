@@ -8539,3 +8539,56 @@ T3:(else) NO_EXIT_RUNTIME >= 2
 T4:NO_EXIT_RUNTIME > 1
 T5:NO_EXIT_RUNTIME
 T6:(else) !NO_EXIT_RUNTIME""", output)
+
+  # Tests that Emscripten-compiled applications can be run from a relative path with node command line that is different than the current working directory.
+  def test_node_js_run_from_different_directory(self):
+    args = ['-O3', '-s', 'WASM=1', '--memory-init-file', '1', '-s', 'BINARYEN_METHOD="asmjs,native-wasm"']
+    # Test that .mem.js is loaded up properly even if running the build output from a separate directory.
+    os.mkdir('subdir')
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join('subdir', 'a.js')] + args).communicate()
+    ret = Popen(NODE_JS + [os.path.join('subdir', 'a.js')], stdout=PIPE).communicate()[0]
+    try_delete('subdir')
+    assert 'hello, world!' in ret
+
+    # Test that the build is loaded properly when Module.locateFile is being used, where Module.locateFile() specifies an absolute path already.
+    os.mkdir('subdir')
+    open(os.path.join('subdir', 'pre.js'), 'w').write('''
+      var Module = {};
+      Module.memoryInitializerPrefixURL = 'this_should_be_getting_ignored_since_locateFile_is_specified/';
+      Module.locateFile = function(f) { return __dirname + '/' + f; }
+    ''')
+
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join('subdir', 'a.js'), '--pre-js', os.path.join('subdir', 'pre.js')] + args).communicate()
+    ret = Popen(NODE_JS + [os.path.join('subdir', 'a.js')], stdout=PIPE).communicate()[0]
+    try_delete('subdir')
+    assert 'hello, world!' in ret
+
+    # Test that the build is loaded properly when Module.locateFile is being used, and it returns a relative path.
+    os.mkdir('subdir')
+    open(os.path.join('subdir', 'pre.js'), 'w').write('''
+      var Module = {};
+      Module.memoryInitializerPrefixURL = 'this_should_be_getting_ignored_since_locateFile_is_specified/';
+      Module.locateFile = function(f) { return 'data/' + f; }
+    ''')
+
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join('subdir', 'a.js'), '--pre-js', os.path.join('subdir', 'pre.js')] + args).communicate()
+    os.mkdir(os.path.join('subdir', 'data'))
+    os.rename(os.path.join('subdir', 'a.js.mem'), os.path.join('subdir', 'data', 'a.js.mem'))
+    os.rename(os.path.join('subdir', 'a.asm.js'), os.path.join('subdir', 'data', 'a.asm.js'))
+    ret = Popen(NODE_JS + [os.path.join('subdir', 'a.js')], stdout=PIPE).communicate()[0]
+    try_delete('subdir')
+    assert 'hello, world!' in ret
+
+    # Test that the build is loaded properly when memoryInitializerPrefixURL is being used, and it returns a relative path.
+    os.mkdir('subdir')
+    open(os.path.join('subdir', 'pre.js'), 'w').write('''
+      var Module = {};
+      Module.memoryInitializerPrefixURL = 'data/';
+    ''')
+
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join('subdir', 'a.js'), '--pre-js', os.path.join('subdir', 'pre.js')] + args).communicate()
+    os.mkdir(os.path.join('subdir', 'data'))
+    os.rename(os.path.join('subdir', 'a.js.mem'), os.path.join('subdir', 'data', 'a.js.mem'))
+    ret = Popen(NODE_JS + [os.path.join('subdir', 'a.js')], stdout=PIPE).communicate()[0]
+    try_delete('subdir')
+    assert 'hello, world!' in ret
