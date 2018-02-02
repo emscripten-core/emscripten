@@ -24,7 +24,6 @@ The instructions for building Emscripten using both methods are given below, fol
    building_emscripten_from_source_using_the_sdk
    building_emscripten_from_source_on_linux
    building_emscripten_from_source_on_windows
-   manually_integrating_emscripten_with_vs2010
    building_emscripten_from_source_on_mac_os_x
    LLVM-Backend
    building_fastcomp_manually_from_source
