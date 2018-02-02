@@ -39,6 +39,21 @@ def no_wasm_backend(note=''):
     return skip_if(f, 'is_wasm_backend', note)
   return decorated
 
+def no_linux(note=''):
+  def decorated(f):
+    return skip_if(f, 'is_linux', note)
+  return decorated
+
+def no_macos(note=''):
+  def decorated(f):
+    return skip_if(f, 'is_macos', note)
+  return decorated
+
+def no_windows(note=''):
+  def decorated(f):
+    return skip_if(f, 'is_windows', note)
+  return decorated
+
 # Async wasm compilation can't work in some tests, they are set up synchronously
 def sync(f):
   def decorated(self):
@@ -64,6 +79,12 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     return 'SPLIT_MEMORY=' in str(self.emcc_args)
   def is_wasm(self):
     return 'BINARYEN' in str(self.emcc_args) or self.is_wasm_backend()
+  def is_linux(self):
+    return LINUX
+  def is_macos(self):
+    return MACOS
+  def is_windows(self):
+    return WINDOWS
 
   # Use closure in some tests for some additional coverage
   def maybe_closure(self):
@@ -2809,6 +2830,64 @@ def process(filename):
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
     self.do_run(src, 'success', force_c=True, post_build=self.dlfcn_post_build)
 
+  def test_dlfcn_info(self):
+    if not self.can_dlfcn(): return
+
+    self.prep_dlfcn_lib()
+    lib_src = '''
+      #include <stdio.h>
+
+      int myfunc(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j, int k, int l, int m) {
+        return 13;
+      }
+      '''
+    Settings.EXPORTED_FUNCTIONS = ['_myfunc']
+    dirname = self.get_dir()
+    filename = os.path.join(dirname, 'liblib.c')
+    self.build_dlfcn_lib(lib_src, dirname, filename)
+
+    self.prep_dlfcn_main()
+    src = '''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <string.h>
+      #include <dlfcn.h>
+
+      typedef int (*FUNCTYPE)(int, int, int, int, int, int, int, int, int, int, int, int, int);
+
+      int main() {
+        void *lib_handle;
+        FUNCTYPE func_ptr;
+
+        lib_handle = dlopen("liblib.so", RTLD_NOW);
+        assert(lib_handle != NULL);
+
+        func_ptr = (FUNCTYPE)dlsym(lib_handle, "myfunc");
+        assert(func_ptr != NULL);
+        assert(func_ptr(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) == 13);
+
+        /* Verify that we don't corrupt func_ptr when calling dladdr.  */
+        Dl_info info;
+        memset(&info, 0, sizeof(info));
+        dladdr(func_ptr, &info);
+
+        assert(func_ptr != NULL);
+        assert(func_ptr(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) == 13);
+
+        /* Verify something useful lives in info.  */
+        assert(info.dli_fname != NULL);
+        assert(info.dli_fbase == NULL);
+        assert(info.dli_sname == NULL);
+        assert(info.dli_saddr == NULL);
+
+        puts("success");
+
+        return 0;
+      }
+      '''
+    Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
+    self.do_run(src, 'success', force_c=True, post_build=self.dlfcn_post_build)
+
   def test_dlfcn_stacks(self):
     if not self.can_dlfcn(): return
 
@@ -4604,6 +4683,12 @@ def process(filename):
       }
     ''', 'at Object.write', js_engines=js_engines, post_build=post) # engines has different error stack format
 
+  @also_with_noderawfs
+  def test_fs_llseek(self, js_engines=None):
+    Settings.FORCE_FILESYSTEM = 1
+    src = open(path_from_root('tests', 'fs', 'test_llseek.c'), 'r').read()
+    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
+
   def test_unistd_access(self):
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
@@ -4613,7 +4698,7 @@ def process(filename):
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
     # Node.js fs.chmod is nearly no-op on Windows
-    if not WINDOWS:
+    if not self.is_windows():
       Building.COMPILER_TEST_OPTS = orig_compiler_opts
       self.emcc_args += ['-s', 'NODERAWFS=1']
       self.do_run(src, expected, js_engines=[NODE_JS])
@@ -4664,7 +4749,7 @@ def process(filename):
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_truncate_noderawfs(self):
-    if WINDOWS:
+    if self.is_windows():
       return self.skip("Windows throws EPERM rather than EACCES or EINVAL")
     if not os.geteuid(): # 0 if root
       return self.skip("Root access invalidates this test by being able to write on readonly files")
@@ -4705,10 +4790,10 @@ def process(filename):
     for fs in ['MEMFS', 'NODEFS']:
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       # symlinks on node.js on Windows require administrative privileges, so skip testing those bits on that combination.
-      if WINDOWS and fs == 'NODEFS': Building.COMPILER_TEST_OPTS += ['-DNO_SYMLINK=1']
+      if self.is_windows() and fs == 'NODEFS': Building.COMPILER_TEST_OPTS += ['-DNO_SYMLINK=1']
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
     # Several differences/bugs on Windows including https://github.com/nodejs/node/issues/18014
-    if not WINDOWS:
+    if not self.is_windows():
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-DNODERAWFS']
       if not os.geteuid(): # 0 if root
         Building.COMPILER_TEST_OPTS += ['-DSKIP_ACCESS_TESTS']
@@ -4721,7 +4806,7 @@ def process(filename):
     src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
     for fs in ['MEMFS', 'NODEFS']:
-      if WINDOWS and fs == 'NODEFS':
+      if self.is_windows() and fs == 'NODEFS':
         print('Skipping NODEFS part of this test for test_unistd_links on Windows, since it would require administrative privileges.', file=sys.stderr)
         # Also, other detected discrepancies if you do end up running this test on NODEFS:
         # test expects /, but Windows gives \ as path slashes.
@@ -4731,7 +4816,7 @@ def process(filename):
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_symlink_on_nodefs(self):
-    if WINDOWS:
+    if self.is_windows():
       return self.skip('Skipping NODEFS part of this test for test_unistd_symlink_on_nodefs on Windows, since it would require administrative privileges.')
       # Also, other detected discrepancies if you do end up running this test on NODEFS:
       # test expects /, but Windows gives \ as path slashes.
@@ -5466,7 +5551,7 @@ return malloc(size);
                             os.path.join('objs', '.libs', 'libfreetype.a'))
 
   def test_freetype(self):
-    if WINDOWS: return self.skip('test_freetype uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
+    if self.is_windows(): return self.skip('test_freetype uses a ./configure script to build and therefore currently only runs on Linux and macOS.')
     assert 'asm2g' in test_modes
     if self.run_name == 'asm2g':
       Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS # flip for some more coverage here
@@ -5555,7 +5640,7 @@ def process(filename):
     if self.run_name == 'asm2g':
       self.emcc_args += ['-g4'] # more source maps coverage
 
-    use_cmake_configure = WINDOWS
+    use_cmake_configure = self.is_windows()
     if use_cmake_configure:
       make_args = []
       configure = [PYTHON, path_from_root('emcmake'), 'cmake', '.', '-DBUILD_SHARED_LIBS=OFF']
@@ -5577,7 +5662,7 @@ def process(filename):
     for use_cmake in [False, True]: # If false, use a configure script to configure Bullet build.
       print('cmake', use_cmake)
       # Windows cannot run configure sh scripts.
-      if WINDOWS and not use_cmake:
+      if self.is_windows() and not use_cmake:
         continue
 
       Settings.ASSERTIONS = 2 if use_cmake else asserts # extra testing for ASSERTIONS == 2
@@ -5608,7 +5693,7 @@ def process(filename):
 
   @sync
   def test_poppler(self):
-    if WINDOWS: return self.skip('test_poppler depends on freetype, which uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
+    if self.is_windows(): return self.skip('test_poppler depends on freetype, which uses a ./configure script to build and therefore currently only runs on Linux and macOS.')
 
     def test():
       Building.COMPILER_TEST_OPTS += [
@@ -6036,7 +6121,7 @@ def process(filename):
     self.do_run_in_out_file_test('tests', 'core', 'dyncall')
     # test dyncall (and other runtime methods in support.js) can be exported
     self.emcc_args += ['-DEXPORTED']
-    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['dynCall', 'addFunction']
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['dynCall', 'addFunction', 'lengthBytesUTF8']
     self.do_run_in_out_file_test('tests', 'core', 'dyncall')
 
   def test_dyncall_specific(self):
@@ -7307,11 +7392,14 @@ int main(int argc, char **argv) {
   def test_coroutine_asyncify(self):
     self.do_test_coroutine({'ASYNCIFY': 1})
 
+  @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
+                   'unsupported with Wasm backend')
   def test_coroutine_emterpretify_async(self):
     self.do_test_coroutine({'EMTERPRETIFY': 1, 'EMTERPRETIFY_ASYNC': 1})
 
   @no_emterpreter
-  @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is disallowed')
+  @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
+                   'unsupported with Wasm backend')
   def test_emterpretify(self):
     Settings.EMTERPRETIFY = 1
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')

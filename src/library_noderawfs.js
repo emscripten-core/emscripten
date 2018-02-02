@@ -43,10 +43,10 @@ mergeInto(LibraryManager.library, {
     ftruncate: function() { fs.ftruncateSync.apply(void 0, arguments); },
     utime: function() { fs.utimesSync.apply(void 0, arguments); },
     open: function(path, flags, mode, suggestFD) {
-      if (typeof flags === "number") {
-        flags = NODEFS.flagsForNode(flags)
+      if (typeof flags === "string") {
+        flags = VFS.modeStringToFlags(flags)
       }
-      var nfd = fs.openSync(path, flags, mode);
+      var nfd = fs.openSync(path, NODEFS.flagsForNode(flags), mode);
       var fd = suggestFD != null ? suggestFD : FS.nextfd(nfd);
       var stream = { fd: fd, nfd: nfd, position: 0, path: path, flags: flags };
       FS.streams[fd] = stream;
@@ -82,12 +82,9 @@ mergeInto(LibraryManager.library, {
         // this stream is created by in-memory filesystem
         return VFS.read(stream, buffer, offset, length, position);
       }
-      var seeking = true;
-      if (typeof position === 'undefined') {
-        seeking = false;
-      }
       var bytesRead = fs.readSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
-      if (!seeking) stream.position += bytesRead;
+      // update position marker when non-seeking
+      if (typeof position === 'undefined') stream.position += bytesRead;
       return bytesRead;
     },
     write: function(stream, buffer, offset, length, position) {
@@ -97,14 +94,11 @@ mergeInto(LibraryManager.library, {
       }
       if (stream.flags & +"{{{ cDefine('O_APPEND') }}}") {
         // seek to the end before writing in append mode
-        position = FS.llseek(stream, 0, +"{{{ cDefine('SEEK_END') }}}");
-      }
-      var seeking = true;
-      if (typeof position === 'undefined') {
-        seeking = false;
+        FS.llseek(stream, 0, +"{{{ cDefine('SEEK_END') }}}");
       }
       var bytesWritten = fs.writeSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
-      if (!seeking) stream.position += bytesWritten;
+      // update position marker when non-seeking
+      if (typeof position === 'undefined') stream.position += bytesWritten;
       return bytesWritten;
     },
     allocate: function() {

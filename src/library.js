@@ -1453,12 +1453,6 @@ LibraryManager.library = {
     return '(' + val + ')';
   },
 
-  llvm_lifetime_start: function() {},
-  llvm_lifetime_end: function() {},
-
-  llvm_invariant_start: function() {},
-  llvm_invariant_end: function() {},
-
   llvm_objectsize_i32: function() { return -1 }, // TODO: support this
 
   llvm_dbg_declare__inline: function() { throw 'llvm_debug_declare' }, // avoid warning
@@ -1578,8 +1572,6 @@ LibraryManager.library = {
   llvm_ceil_f64: 'Math_ceil',
   llvm_floor_f32: 'Math_floor',
   llvm_floor_f64: 'Math_floor',
-  llvm_round_f32: 'Math_round',
-  llvm_round_f64: 'Math_round',
   llvm_minnum_f32: 'Math_min',
   llvm_minnum_f64: 'Math_min',
   llvm_maxnum_f32: 'Math_max',
@@ -1616,10 +1608,49 @@ LibraryManager.library = {
   },
 
   roundf__asm: true,
-  roundf__sig: 'dd',
-  roundf: function(f) {
+  roundf__sig: 'ff',
+  roundf: function(d) {
+    d = +d;
+    return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
+  },
+
+  llvm_round_f64__asm: true,
+  llvm_round_f64__sig: 'dd',
+  llvm_round_f64: function(d) {
+    d = +d;
+    return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
+  },
+
+  llvm_round_f32__asm: true,
+  llvm_round_f32__sig: 'ff',
+  llvm_round_f32: function(f) {
     f = +f;
     return f >= +0 ? +Math_floor(f + +0.5) : +Math_ceil(f - +0.5); // TODO: use fround?
+  },
+
+  rintf__asm: true,
+  rintf__sig: 'ff',
+  rintf__deps: ['round'],
+  rintf: function(f) {
+    f = +f;
+    return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
+  },
+
+  // TODO: fround?
+  llvm_rint_f32__asm: true,
+  llvm_rint_f32__sig: 'ff',
+  llvm_rint_f32__deps: ['roundf'],
+  llvm_rint_f32: function(f) {
+    f = +f;
+    return (f - +Math_floor(f) != .5) ? +_roundf(f) : +_roundf(f / +2) * +2;
+  },
+
+  llvm_rint_f64__asm: true,
+  llvm_rint_f64__sig: 'dd',
+  llvm_rint_f64__deps: ['round'],
+  llvm_rint_f64: function(f) {
+    f = +f;
+    return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
   },
 
   _reallyNegative: function(x) {
@@ -1846,10 +1877,10 @@ LibraryManager.library = {
   dladdr: function(addr, info) {
     // report all function pointers as coming from this program itself XXX not really correct in any way
     var fname = allocate(intArrayFromString(Module['thisProgram'] || './this.program'), 'i8', ALLOC_NORMAL); // XXX leak
-    {{{ makeSetValue('addr', 0, 'fname', 'i32') }}};
-    {{{ makeSetValue('addr', QUANTUM_SIZE, '0', 'i32') }}};
-    {{{ makeSetValue('addr', QUANTUM_SIZE*2, '0', 'i32') }}};
-    {{{ makeSetValue('addr', QUANTUM_SIZE*3, '0', 'i32') }}};
+    {{{ makeSetValue('info', 0, 'fname', 'i32') }}};
+    {{{ makeSetValue('info', QUANTUM_SIZE, '0', 'i32') }}};
+    {{{ makeSetValue('info', QUANTUM_SIZE*2, '0', 'i32') }}};
+    {{{ makeSetValue('info', QUANTUM_SIZE*3, '0', 'i32') }}};
     return 1;
   },
 
@@ -2084,7 +2115,12 @@ LibraryManager.library = {
     if (_tzset.called) return;
     _tzset.called = true;
 
-    {{{ makeSetValue(makeGlobalUse('_timezone'), '0', '-(new Date()).getTimezoneOffset() * 60', 'i32') }}};
+    // timezone is specified as seconds west of UTC ("The external variable
+    // `timezone` shall be set to the difference, in seconds, between
+    // Coordinated Universal Time (UTC) and local standard time."), the same
+    // as returned by getTimezoneOffset().
+    // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
+    {{{ makeSetValue(makeGlobalUse('_timezone'), '0', '(new Date()).getTimezoneOffset() * 60', 'i32') }}};
 
     var winter = new Date(2000, 0, 1);
     var summer = new Date(2000, 6, 1);

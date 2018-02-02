@@ -210,20 +210,6 @@ For example, if ``allReady()`` is a JavaScript function you want called when eve
     EM_ASM( allReady() );
   }
 
-You can also define a ``main()`` function in JavaScript:
-
-::
-
-  Module['_main'] = function() { ... };
-
-or
-
-::
-
-  Module['_main'] = allReady;
-
-What happens in practice is that when code is ready to be run, we check for ``Module._main``. If present, we call it. If a ``main()`` function was compiled from C, it will be there (and it will be a JavaScript function). But, you can also just define a JavaScript function there, either will work.
-
 Another option is to define an ``onRuntimeInitialized`` function,
 
 ::
@@ -247,6 +233,13 @@ Here is an example of how to use it:
 
 The crucial thing is that ``Module`` exists, and has the property ``onRuntimeInitialized``, before the script containing emscripten output (``my_project.js`` in this example) is loaded.
 
+Another option is to use the ``MODULARIZE`` option, using ``-s MODULARIZE=1``. That will put all of the generated JavaScript in a function, which you can call to create an instance. The instance has a promise-like `.then()` method, so if you build with say ``-s MODULARIZE=1 -s 'EXPORT_NAME="MyCode"'`` (see details in settings.js), then you can do something like this:
+
+::
+
+    MyCode().then(function(Module) {
+      // this is reached when everything is ready, and you can call methods on Module
+    });
 
 .. _faq-NO_EXIT_RUNTIME:
 
@@ -405,13 +398,13 @@ You may need to quote things like this:
 
 ::
 
-	# this works on most Linuxes and on macOS
+	# this works in the shell on most Linuxes and on macOS
 	./emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']"
 
-	# or you may need something like this
+	# or you may need something like this in a Makefile
 	./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=\"['addOnPostRun']\"
 
-The proper syntax depends on the OS and shell you are in.
+The proper syntax depends on the OS and shell you are in, and if you are writing in a Makefile, etc.
 
 Why do I get an odd python error complaining about libcxx.bc or libcxxabi.bc?
 =============================================================================

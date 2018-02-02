@@ -5,26 +5,40 @@ import tempfile
 import atexit
 import stat
 
-def try_delete(filename):
+# Attempts to delete given possibly nonexisting or read-only directory tree or filename.
+# If any failures occur, the function silently returns without throwing an error.
+def try_delete(pathname):
   try:
-    os.unlink(filename)
+    os.unlink(pathname)
   except:
     pass
-  if not os.path.exists(filename): return
+  if not os.path.exists(pathname): return
   try:
-    shutil.rmtree(filename, ignore_errors=True)
+    shutil.rmtree(pathname, ignore_errors=True)
   except:
     pass
-  if not os.path.exists(filename): return
+  if not os.path.exists(pathname): return
+
+  write_bits = stat.S_IWRITE | stat.S_IWGRP | stat.S_IWOTH
+  def is_writable(path):
+    return (os.stat(path).st_mode & write_bits) == write_bits
+  def make_writable(path):
+    os.chmod(path, os.stat(path).st_mode | write_bits)
+
+  # Some tests make files and subdirectories read-only, so rmtree/unlink will not delete
+  # them. Force-make everything writable in the subdirectory to make it
+  # removable and re-attempt.
+  if not is_writable(pathname):
+    make_writable(pathname)
+
+  if os.path.isdir(pathname):
+    for directory, subdirs, files in os.walk(pathname):
+      for item in files+subdirs:
+        i = os.path.join(directory, item)
+        make_writable(i)
+
   try:
-    os.chmod(filename, os.stat(filename).st_mode | stat.S_IWRITE)
-    def remove_readonly_and_try_again(func, path, exc_info):
-      if not (os.stat(path).st_mode & stat.S_IWRITE):
-        os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
-        func(path)
-      else:
-        raise
-    shutil.rmtree(filename, onerror=remove_readonly_and_try_again)
+    shutil.rmtree(pathname, ignore_errors=True)
   except:
     pass
 

@@ -32,7 +32,7 @@ import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
 from subprocess import PIPE
 from tools import shared, jsrun, system_libs
 from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move, run_process, asbytes
-from tools.response_file import read_response_file
+from tools.response_file import substitute_response_files
 import tools.line_endings
 
 try:
@@ -82,7 +82,6 @@ DEBUG = os.environ.get('EMCC_DEBUG')
 if DEBUG == "0":
   DEBUG = None
 
-TEMP_DIR = os.environ.get('EMCC_TEMP_DIR')
 LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll files into .bc, just compile them with emscripten directly
                                                            # Not recommended, this is mainly for the test runner, or if you have some other
                                                            # specific need.
@@ -182,7 +181,8 @@ class EmccOptions(object):
     self.separate_asm = False
     self.cfi = False
     # Specifies the line ending format to use for all generated text files.
-    # Defaults to using the native EOL on each platform (\r\n on Windows, \n on Linux&OSX)
+    # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
+    # Linux & MacOS)
     self.output_eol = os.linesep
 
 
@@ -329,17 +329,7 @@ def run():
     exit(1)
 
   # read response files very early on
-  response_file = True
-  while response_file:
-    response_file = None
-    for index in range(1, len(sys.argv)):
-      if sys.argv[index][0] == '@':
-        # found one, loop again next time
-        response_file = True
-        extra_args = read_response_file(sys.argv[index])
-        # slice in extra_args in place of the response file arg
-        sys.argv[index:index+1] = extra_args
-        break
+  substitute_response_files(sys.argv)
 
   if len(sys.argv) == 1 or '--help' in sys.argv:
     # Documentation for emcc and its options must be updated in:
@@ -572,16 +562,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   else:
     final_suffix = ''
 
-  if TEMP_DIR:
-    temp_dir = TEMP_DIR
-    if os.path.exists(temp_dir):
-      shutil.rmtree(temp_dir) # clear it
-    os.makedirs(temp_dir)
-  else:
-    temp_root = shared.TEMP_DIR
-    if not os.path.exists(temp_root):
-      os.makedirs(temp_root)
-    temp_dir = tempfile.mkdtemp(dir=temp_root)
+  temp_root = shared.TEMP_DIR
+  if not os.path.exists(temp_root):
+    os.makedirs(temp_root)
+  temp_dir = tempfile.mkdtemp(dir=temp_root)
 
   def in_temp(name):
     return os.path.join(temp_dir, os.path.basename(name))
@@ -1369,6 +1353,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           args += shared.EMSDK_CXX_OPTS
         if not shared.Building.can_inline():
           args.append('-fno-inline-functions')
+        # For fastcomp backend, no LLVM IR functions should ever be annotated 'optnone', because that would skip running the SimplifyCFG pass on them, which is required to always run to
+        # clean up LandingPadInst instructions that are not needed.
+        if not shared.Settings.WASM_BACKEND:
+          args += ['-Xclang', '-disable-O0-optnone']
         args = system_libs.process_args(args, shared.Settings)
         return args
 
@@ -1919,14 +1907,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if DEBUG: logging.debug('total time: %.2f seconds', (time.time() - start_time))
 
   finally:
-    if not TEMP_DIR:
-      try:
-        shutil.rmtree(temp_dir)
-      except:
-        pass
-    else:
-      logging.info('emcc saved files are in:' + temp_dir)
-
+    try:
+      shutil.rmtree(temp_dir)
+    except:
+      pass
 
 def parse_args(newargs):
   options = EmccOptions()
@@ -2467,9 +2451,12 @@ def modularize():
 
   return %(EXPORT_NAME)s;
 }%(instantiate)s;
-if (typeof module === "object" && module.exports) {
-  module['exports'] = %(EXPORT_NAME)s;
-};
+if (typeof exports === 'object' && typeof module === 'object')
+  module.exports = %(EXPORT_NAME)s;
+else if (typeof define === 'function' && define['amd'])
+  define([], function() { return %(EXPORT_NAME)s; });
+else if (typeof exports === 'object')
+  exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
 ''' % {
   'EXPORT_NAME': shared.Settings.EXPORT_NAME,
   'src': src,

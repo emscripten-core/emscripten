@@ -2,25 +2,18 @@
 
 from __future__ import print_function
 import multiprocessing, os, pipes, re, shutil, subprocess, sys
+import itertools
 import glob
 import tools.shared
 from tools.shared import *
 from runner import RunnerCore, path_from_root, get_zlib_library, get_bullet_library
 import tools.line_endings
 
-# Runs an emcc task (used from another process in test test_emcc_multiprocess_cache_access, needs to be at top level for it to be pickleable).
-def multiprocess_task(c_file, cache_dir_name):
-  output = run_process([PYTHON, EMCC, c_file, '--cache', cache_dir_name], stderr=subprocess.STDOUT, stdout=PIPE).stdout
-  if len(output.strip()) > 0:
-    print('------')
-    print(output)
-    print('------')
-  sys.exit(1 if 'generating system library: libc.bc' in output else 0)
-
 class temp_directory(object):
   def __enter__(self):
     self.directory = tempfile.mkdtemp(prefix='emsripten_temp_', dir=TEMP_DIR)
     self.prev_cwd = os.getcwd()
+    os.chdir(self.directory)
     return self.directory
 
   def __exit__(self, type, value, traceback):
@@ -28,15 +21,18 @@ class temp_directory(object):
       try_delete(self.directory)
 
 class clean_write_access_to_canonical_temp_dir(object):
+  def __init__(self, dir=CANONICAL_TEMP_DIR):
+    self.canonical_temp_dir = dir
+
   def clean_emcc_files_in_temp_dir(self):
-    for x in os.listdir(CANONICAL_TEMP_DIR):
+    for x in os.listdir(self.canonical_temp_dir):
       if x.startswith('emcc-') or x.startswith('a.out'):
-        os.unlink(os.path.join(CANONICAL_TEMP_DIR, x))
+        os.unlink(os.path.join(self.canonical_temp_dir, x))
 
   def __enter__(self):
-    self.CANONICAL_TEMP_DIR_exists = os.path.exists(CANONICAL_TEMP_DIR)
+    self.CANONICAL_TEMP_DIR_exists = os.path.exists(self.canonical_temp_dir)
     if not self.CANONICAL_TEMP_DIR_exists:
-      os.makedirs(CANONICAL_TEMP_DIR)
+      os.makedirs(self.canonical_temp_dir)
     else:
       # Delete earlier files in the canonical temp directory so that
       # previous leftover files don't have a possibility of confusing
@@ -45,7 +41,7 @@ class clean_write_access_to_canonical_temp_dir(object):
 
   def __exit__(self, type, value, traceback):
     if not self.CANONICAL_TEMP_DIR_exists:
-      try_delete(CANONICAL_TEMP_DIR)
+      try_delete(self.canonical_temp_dir)
       pass
     else:
       self.clean_emcc_files_in_temp_dir()
@@ -348,10 +344,7 @@ f.close()
   # Test that if multiple processes attempt to access or build stuff to the cache on demand, that exactly one of the processes
   # will, and the other processes will block to wait until that process finishes.
   def test_emcc_multiprocess_cache_access(self):
-    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_emcache_', dir=TEMP_DIR)
-    prev_cwd = os.getcwd()
-    try:
-      os.chdir(tempdirname)
+    with temp_directory() as tempdirname:
       c_file = os.path.join(tempdirname, 'test.c')
       open(c_file, 'w').write(r'''
         #include <stdio.h>
@@ -364,23 +357,19 @@ f.close()
       tasks = []
       num_times_libc_was_built = 0
       for i in range(3):
-        p = multiprocessing.Process(target=multiprocess_task, args=(c_file,cache_dir_name,))
-        p.start()
+        p = subprocess.Popen([PYTHON, EMCC, c_file, '--cache', cache_dir_name], stderr=subprocess.STDOUT, stdout=PIPE, universal_newlines=True)
         tasks += [p]
       for p in tasks:
-        p.join()
-        num_times_libc_was_built += p.exitcode
+        stdout, stderr = p.communicate()
+        assert not p.returncode, 'A child process failed with return code %s: %s' % (p.returncode, stderr)
+        if 'generating system library: libc.bc' in stdout:
+          num_times_libc_was_built += 1
       assert os.path.exists(cache_dir_name), 'The cache directory %s must exist after the build' % cache_dir_name
       assert os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')), 'The cache directory must contain a built libc'
       assert num_times_libc_was_built == 1, 'Exactly one child process should have triggered libc build! (instead %d processes did)' % num_times_libc_was_built
-    finally:
-      os.chdir(prev_cwd) # On Windows, we can't have CWD in the directory we're deleting
-      try_delete(tempdirname)
 
   def test_emcc_cache_flag(self):
-    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_emcache_', dir=TEMP_DIR)
-    try:
-      os.chdir(tempdirname)
+    with temp_directory() as tempdirname:
       c_file = os.path.join(tempdirname, 'test.c')
       cache_dir_name = os.path.join(tempdirname, 'emscripten_cache')
       assert os.path.exists(cache_dir_name) == False, 'The cache directory %s must not already exist' % cache_dir_name
@@ -394,13 +383,10 @@ f.close()
       subprocess.check_call([PYTHON, EMCC, c_file, '--cache', cache_dir_name])
       assert os.path.exists(cache_dir_name), 'The cache directory %s must exist after the build' % cache_dir_name
       assert os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')), 'The cache directory must contain a built libc'
-    finally:
-      os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
-      shutil.rmtree(tempdirname)
 
   def test_emcc_cflags(self):
     # see we print them out
-    with clean_write_access_to_canonical_temp_dir(): # --cflags needs to set EMCC_DEBUG=1, which needs to create canonical temp directory.
+    with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir): # --cflags needs to set EMCC_DEBUG=1, which needs to create canonical temp directory.
       output = run_process([PYTHON, EMCC, '--cflags'], stdout=PIPE, stderr=PIPE)
     flags = output.stdout.strip()
     self.assertContained(' '.join(Building.doublequote_spaces(COMPILER_OPTS)), flags)
@@ -503,11 +489,7 @@ f.close()
       ]
       for test_dir, output_file, cmake_args in cases:
         cmakelistsdir = path_from_root('tests', 'cmake', test_dir)
-        # Create a temp workspace folder
-        tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-        try:
-          os.chdir(tempdirname)
-
+        with temp_directory() as tempdirname:
           # Run Cmake
           cmd = [emconfigure, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
 
@@ -547,48 +529,24 @@ f.close()
           if output_file.endswith('.js'):
             ret = run_process(NODE_JS + [tempdirname + '/' + output_file], stdout=PIPE).stdout
             self.assertTextDataIdentical(open(cmakelistsdir + '/out.txt', 'r').read().strip(), ret.strip())
-        finally:
-          os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
-          #there is a race condition under windows here causing an exception in shutil.rmtree because the directory is not empty yet
-          try:
-            shutil.rmtree(tempdirname)
-          except:
-            time.sleep(0.1)
-            shutil.rmtree(tempdirname)
 
   # Test that the various CMAKE_xxx_COMPILE_FEATURES that are advertised for the Emscripten toolchain match with the actual language features that Clang supports.
   # If we update LLVM version and this test fails, copy over the new advertised features from Clang and place them to cmake/Modules/Platform/Emscripten.cmake.
   def test_cmake_compile_features(self):
     if WINDOWS: return self.skip('Skipped on Windows because CMake does not configure native Clang builds well on Windows.')
 
-    tempdirname_native = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-    tempdirname_emscripten = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-    try:
-      os.chdir(tempdirname_native)
+    with temp_directory():
       cmd = ['cmake', '-DCMAKE_C_COMPILER=' + CLANG_CC, '-DCMAKE_CXX_COMPILER=' + CLANG_CPP, path_from_root('tests', 'cmake', 'stdproperty')]
       print(str(cmd))
       native_features = run_process(cmd, stdout=PIPE).stdout
-    finally:
-      os.chdir(tempdirname_emscripten)
-      try:
-        shutil.rmtree(tempdirname_native)
-      except:
-        pass
 
     if os.name == 'nt': emconfigure = path_from_root('emcmake.bat')
     else: emconfigure = path_from_root('emcmake')
 
-    try:
-      os.chdir(tempdirname_emscripten)
+    with temp_directory():
       cmd = [emconfigure, 'cmake', path_from_root('tests', 'cmake', 'stdproperty')]
       print(str(cmd))
       emscripten_features = run_process(cmd, stdout=PIPE).stdout
-    finally:
-      os.chdir(path_from_root('tests'))
-      try:
-        shutil.rmtree(tempdirname_emscripten)
-      except:
-        pass
 
     native_features = '\n'.join([x for x in native_features.split('\n') if '***' in x])
     emscripten_features = '\n'.join([x for x in emscripten_features.split('\n') if '***' in x])
@@ -599,10 +557,7 @@ f.close()
     cwd = os.getcwd()
 
     for args in [[], ['-DNO_GNU_EXTENSIONS=1']]:
-      tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-      try:
-        os.chdir(tempdirname)
-
+      with temp_directory() as tempdirname:
         configure = [path_from_root('emcmake.bat' if WINDOWS else 'emcmake'), 'cmake', path_from_root('tests', 'cmake', 'cmake_with_emval')] + args
         print(str(configure))
         subprocess.check_call(configure)
@@ -615,15 +570,6 @@ f.close()
           self.assertTextDataIdentical('Hello! __STRICT_ANSI__: 1, __cplusplus: 201103', ret)
         else:
           self.assertTextDataIdentical('Hello! __STRICT_ANSI__: 0, __cplusplus: 201103', ret)
-      finally:
-        os.chdir(cwd)
-
-        # Clean up for EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS mode to be able to detect no leaks
-        try:
-          shutil.rmtree(tempdirname)
-        except:
-          time.sleep(0.1)
-          shutil.rmtree(tempdirname)
 
   # Tests that the Emscripten CMake toolchain option -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON works.
   def test_cmake_bitcode_static_libraries(self):
@@ -631,35 +577,26 @@ f.close()
     else: emcmake = path_from_root('emcmake')
 
     # Test that building static libraries by default generates UNIX archives (.a, with the emar tool)
-    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-    os.chdir(tempdirname)
-    subprocess.check_call([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib')])
-    subprocess.check_call([Building.which('cmake'), '--build', '.'])
-    assert tools.shared.Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.a'))
-    assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.a'))
-    os.chdir(path_from_root('tests'))
-    shutil.rmtree(tempdirname)
+    with temp_directory() as tempdirname:
+      subprocess.check_call([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib')])
+      subprocess.check_call([Building.which('cmake'), '--build', '.'])
+      assert tools.shared.Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.a'))
+      assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.a'))
 
     # Test that passing the -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON directive causes CMake to generate LLVM bitcode files as static libraries (.bc)
-    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-    os.chdir(tempdirname)
-    subprocess.check_call([emcmake, 'cmake', '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON', path_from_root('tests', 'cmake', 'static_lib')])
-    subprocess.check_call([Building.which('cmake'), '--build', '.'])
-    assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.bc'))
-    assert not tools.shared.Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.bc'))
-    os.chdir(path_from_root('tests'))
-    shutil.rmtree(tempdirname)
+    with temp_directory() as tempdirname:
+      subprocess.check_call([emcmake, 'cmake', '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON', path_from_root('tests', 'cmake', 'static_lib')])
+      subprocess.check_call([Building.which('cmake'), '--build', '.'])
+      assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.bc'))
+      assert not tools.shared.Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.bc'))
 
     # Test that one is able to fake custom suffixes for static libraries.
     # (sometimes projects want to emulate stuff, and do weird things like files with ".so" suffix which are in fact either ar archives or bitcode files)
-    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-    os.chdir(tempdirname)
-    subprocess.check_call([emcmake, 'cmake', '-DSET_FAKE_SUFFIX_IN_PROJECT=1', path_from_root('tests', 'cmake', 'static_lib')])
-    subprocess.check_call([Building.which('cmake'), '--build', '.'])
-    assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
-    assert tools.shared.Building.is_ar(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
-    os.chdir(path_from_root('tests'))
-    shutil.rmtree(tempdirname)
+    with temp_directory() as tempdirname:
+      subprocess.check_call([emcmake, 'cmake', '-DSET_FAKE_SUFFIX_IN_PROJECT=1', path_from_root('tests', 'cmake', 'static_lib')])
+      subprocess.check_call([Building.which('cmake'), '--build', '.'])
+      assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
+      assert tools.shared.Building.is_ar(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
 
   def test_failure_error_code(self):
     for compiler in [EMCC, EMXX]:
@@ -1080,10 +1017,10 @@ int main() {
         assert os.path.exists(out_js), output.stdout + '\n' + output.stderr
         self.assertContained('result: 42', run_js(out_js))
 
-    test(['-Wl,--start-group', lib_name], '--start-group without matching --end-group')
     test(['-Wl,--start-group', lib_name, '-Wl,--start-group'], 'Nested --start-group, missing --end-group?')
     test(['-Wl,--end-group', lib_name, '-Wl,--start-group'], '--end-group without --start-group')
     test(['-Wl,--start-group', lib_name, '-Wl,--end-group'], None)
+    test(['-Wl,--start-group', lib_name], None)
 
     print('embind test with groups')
 
@@ -2101,19 +2038,19 @@ int f() {
         print(opts, debug)
         try:
           if debug: os.environ['EMCC_DEBUG'] = debug
-          with clean_write_access_to_canonical_temp_dir():
+          with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
             check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-O'+ str(opts)], stderr=PIPE)
             if debug is None:
-              for x in os.listdir(CANONICAL_TEMP_DIR):
+              for x in os.listdir(self.canonical_temp_dir):
                 if x.startswith('emcc-'):
                   assert 0
             elif debug == '1':
-              assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-0-linktime.bc'))
-              assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-1-original.js'))
+              assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-0-linktime.bc'))
+              assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-1-original.js'))
             elif debug == '2':
-              assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-0-basebc.bc'))
-              assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-1-linktime.bc'))
-              assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-2-original.js'))
+              assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-0-basebc.bc'))
+              assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-1-linktime.bc'))
+              assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-2-original.js'))
         finally:
           if debug: del os.environ['EMCC_DEBUG']
 
@@ -2133,7 +2070,7 @@ int f() {
           (['-O2', '-g4'], True, True), # drop llvm debug info as js opts kill it anyway
         ]:
         print(args, expect_llvm, expect_js)
-        with clean_write_access_to_canonical_temp_dir():
+        with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
           err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
         assert expect_llvm == ('strip-debug' not in err)
         assert expect_js == ('registerize' not in err)
@@ -2198,7 +2135,7 @@ int f() {
 
   def test_llvm_nativizer(self):
     if WINDOWS: return self.skip('test_llvm_nativizer does not work on Windows: https://github.com/kripken/emscripten/issues/702')
-    if OSX: return self.skip('test_llvm_nativizer does not work on OS X: https://github.com/kripken/emscripten/issues/709')
+    if MACOS: return self.skip('test_llvm_nativizer does not work on macOS: https://github.com/kripken/emscripten/issues/709')
     try:
       Popen(['as', '--version'], stdout=PIPE, stderr=PIPE).communicate()
     except:
@@ -2367,7 +2304,7 @@ seeked= file.
     # run again, should not recrunch!
     time.sleep(0.1)
     Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
-    if 'linux' in sys.platform: # OS time reporting in other OSes (OS X) seems flaky here
+    if 'linux' in sys.platform: # OS time reporting in other OSes (macOS) seems flaky here
       assert crunch_time == os.stat('ship.crn').st_mtime, 'Crunch is unchanged ' + str([crunch_time, os.stat('ship.crn').st_mtime])
     # update dds, so should recrunch
     time.sleep(0.1)
@@ -3348,7 +3285,7 @@ int main() {
           (['-O3'], 'LLVM opts: -O3'),
         ]:
         print(args, expect)
-        with clean_write_access_to_canonical_temp_dir():
+        with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
           err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
         self.assertContained(expect, err)
         if '-O3' in args or '-Oz' in args or '-Os' in args:
@@ -5464,18 +5401,36 @@ int main(void) {
   def test_require_modularize(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1', '-s', 'ASSERTIONS=0']).communicate()
     src = open('a.out.js').read()
-    assert "module['exports'] = Module;" in src
+    assert "module.exports = Module;" in src
     output = run_process(NODE_JS + ['-e', 'var m = require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE)
     assert output.stdout == 'hello, world!\n' and output.stderr == '', 'expected output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % (output.stdout, output.stderr)
     Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="NotModule"', '-s', 'ASSERTIONS=0']).communicate()
     src = open('a.out.js').read()
-    assert "module['exports'] = NotModule;" in src
+    assert "module.exports = NotModule;" in src
     output = run_process(NODE_JS + ['-e', 'var m = require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE)
     assert output.stdout == 'hello, world!\n' and output.stderr == '', 'expected output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % (output.stdout, output.stderr)
     Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1']).communicate()
     # We call require() twice to ensure it returns wrapper function each time
     output = run_process(NODE_JS + ['-e', 'require("./a.out.js")();var m = require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE)
     assert output.stdout == 'hello, world!\nhello, world!\n', 'expected output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % (output.stdout, output.stderr)
+
+  def test_define_modularize(self):
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1', '-s', 'ASSERTIONS=0']).communicate()
+    with open('a.out.js') as f:
+      src = 'var module = 0; ' + f.read()
+    with open('a.out.js', 'w') as f:
+      f.write(src)
+    assert "define([], function() { return Module; });" in src
+    output = run_process(NODE_JS + ['-e', 'var m; (global.define = function(deps, factory) { m = factory(); }).amd = true; require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE)
+    assert output.stdout == 'hello, world!\n' and output.stderr == '', 'expected output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % (output.stdout, output.stderr)
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="NotModule"', '-s', 'ASSERTIONS=0']).communicate()
+    with open('a.out.js') as f:
+      src = 'var module = 0; ' + f.read()
+    with open('a.out.js', 'w') as f:
+      f.write(src)
+    assert "define([], function() { return NotModule; });" in src
+    output = run_process(NODE_JS + ['-e', 'var m; (global.define = function(deps, factory) { m = factory(); }).amd = true; require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE)
+    assert output.stdout == 'hello, world!\n' and output.stderr == '', 'expected output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % (output.stdout, output.stderr)
 
   def test_native_optimizer(self):
     def test(args, expected):
@@ -5485,7 +5440,7 @@ int main(void) {
       try:
         os.environ['EMCC_DEBUG'] = '1'
         os.environ['EMCC_NATIVE_OPTIMIZER'] = '1'
-        with clean_write_access_to_canonical_temp_dir():
+        with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
           err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2',] + args, stderr=PIPE).stderr
       finally:
         if old_debug: os.environ['EMCC_DEBUG'] = old_debug
@@ -5524,7 +5479,7 @@ int main(void) {
           del os.environ['EMCONFIGURE_JS']
 
   def test_emcc_c_multi(self):
-    with clean_write_access_to_canonical_temp_dir():
+    with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
       def test(args, llvm_opts=None):
         print(args)
         lib = r'''
@@ -7141,7 +7096,7 @@ struct C {
 C c;
 int main() {}
       ''')
-      with clean_write_access_to_canonical_temp_dir():
+      with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
         err = run_process([PYTHON, EMCC, 'src.cpp', '-Oz'], stderr=PIPE).stderr
       self.assertContained('___syscall54', err) # the failing call should be mentioned
       self.assertContained('ctorEval.js', err) # with a stack trace
@@ -7445,7 +7400,7 @@ int main() {
   def test_binaryen_opts(self):
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
 
-    with clean_write_access_to_canonical_temp_dir():
+    with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
       try:
         os.environ['EMCC_DEBUG'] = '1'
         for args, expect_js_opts, expect_only_wasm in [
@@ -7509,7 +7464,7 @@ int main() {
         ]:
         print(args, expect)
         try_delete('a.out.js')
-        with clean_write_access_to_canonical_temp_dir():
+        with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
           err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'] + args, stdout=PIPE, stderr=PIPE).stderr
         assert expect == (' -emscripten-precise-f32' in err), err
         self.assertContained('hello, world!', run_js('a.out.js'))
@@ -7665,7 +7620,7 @@ int main() {
 
   # test debug info and debuggability of JS output
   def test_binaryen_debug(self):
-    with clean_write_access_to_canonical_temp_dir():
+    with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
       if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
       try:
         os.environ['EMCC_DEBUG'] = '1'
@@ -7705,7 +7660,7 @@ int main() {
         del os.environ['EMCC_DEBUG']
 
   def test_binaryen_ignore_implicit_traps(self):
-    with clean_write_access_to_canonical_temp_dir():
+    with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
       if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
       sizes = []
       try:
@@ -7814,7 +7769,7 @@ int main() {
       ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  48213, 26, 19),
       (['-O1'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13460, 17, 17),
       (['-O2'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13381, 17, 17),
-      (['-O3'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2678, 10,  2), # in -O3, -Os and -Oz we metadce
+      (['-O3'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2818, 10,  2), # in -O3, -Os and -Oz we metadce
       (['-Os'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2771, 10,  2),
       (['-Oz'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2765, 10,  2),
       # finally, check what happens when we export nothing. wasm should be almost empty
@@ -7843,7 +7798,7 @@ int main() {
 
   # test disabling of JS FFI legalization
   def test_legalize_js_ffi(self):
-    with clean_write_access_to_canonical_temp_dir():
+    with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
       for (args,js_ffi) in [
           (['-s', 'LEGALIZE_JS_FFI=1', '-s', 'SIDE_MODULE=1', '-O2'], True),
           (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'SIDE_MODULE=1', '-O2'], False),
@@ -8027,69 +7982,69 @@ int main() {
           subprocess.check_call([PYTHON, EMCC] + std + ['a.c', 'b.c'])
 
   def test_single_file(self):
-    for single_file_enabled in [True, False]:
-      for meminit1_enabled in [True, False]:
-        for debug_enabled in [True, False]:
-          for emterpreter_enabled in [True, False]:
-            for emterpreter_file_enabled in [True, False]:
-              for closure_enabled in [True, False]:
-                for wasm_enabled in [True, False]:
-                  for asmjs_fallback_enabled in [True, False]:
-                    # skip unhelpful option combinations
-                    if (
-                      (asmjs_fallback_enabled and not wasm_enabled) or
-                      (emterpreter_file_enabled and not emterpreter_enabled)
-                    ):
-                      continue
+    for (single_file_enabled,
+         meminit1_enabled,
+         debug_enabled,
+         emterpreter_enabled,
+         emterpreter_file_enabled,
+         closure_enabled,
+         wasm_enabled,
+         asmjs_fallback_enabled) in itertools.product([True, False], repeat=8):
+      # skip unhelpful option combinations
+      if (
+          (asmjs_fallback_enabled and not wasm_enabled) or
+          (emterpreter_file_enabled and not emterpreter_enabled)
+      ):
+        continue
 
-                    expect_asmjs_code = asmjs_fallback_enabled and wasm_enabled
-                    expect_emterpretify_file = emterpreter_file_enabled
-                    expect_meminit = (meminit1_enabled and not wasm_enabled) or (wasm_enabled and asmjs_fallback_enabled)
-                    expect_success = not (emterpreter_file_enabled and single_file_enabled)
-                    expect_wasm = wasm_enabled
-                    expect_wast = debug_enabled and wasm_enabled
+      expect_asmjs_code = asmjs_fallback_enabled and wasm_enabled
+      expect_emterpretify_file = emterpreter_file_enabled
+      expect_meminit = (meminit1_enabled and not wasm_enabled) or (wasm_enabled and asmjs_fallback_enabled)
+      expect_success = not (emterpreter_file_enabled and single_file_enabled)
+      expect_wasm = wasm_enabled
+      expect_wast = debug_enabled and wasm_enabled
 
-                    # currently, the emterpreter always fails with JS output since we do not preload the emterpreter file, which in non-HTML we would need to do manually
-                    should_run_js = expect_success and not emterpreter_enabled
+      # currently, the emterpreter always fails with JS output since we do not preload the emterpreter file, which in non-HTML we would need to do manually
+      should_run_js = expect_success and not emterpreter_enabled
 
-                    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c')]
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c')]
 
-                    if single_file_enabled:
-                      expect_asmjs_code = False
-                      expect_emterpretify_file = False
-                      expect_meminit = False
-                      expect_wasm = False
-                      expect_wast = False
-                      cmd += ['-s', 'SINGLE_FILE=1']
-                    if meminit1_enabled:
-                      cmd += ['--memory-init-file', '1']
-                    if debug_enabled:
-                      cmd += ['-g']
-                    if emterpreter_enabled:
-                      cmd += ['-s', 'EMTERPRETIFY=1']
-                    if emterpreter_file_enabled:
-                      cmd += ['-s', "EMTERPRETIFY_FILE='a.out.dat'"]
-                    if closure_enabled:
-                      cmd += ['--closure', '1']
-                    if wasm_enabled:
-                      method = 'interpret-binary'
-                      if asmjs_fallback_enabled:
-                        method += ',asmjs'
-                      cmd += ['-s', 'WASM=1', '-s', "BINARYEN_METHOD='" + method + "'"]
+      if single_file_enabled:
+        expect_asmjs_code = False
+        expect_emterpretify_file = False
+        expect_meminit = False
+        expect_wasm = False
+        expect_wast = False
+        cmd += ['-s', 'SINGLE_FILE=1']
+      if meminit1_enabled:
+        cmd += ['--memory-init-file', '1']
+      if debug_enabled:
+        cmd += ['-g']
+      if emterpreter_enabled:
+        cmd += ['-s', 'EMTERPRETIFY=1']
+      if emterpreter_file_enabled:
+        cmd += ['-s', "EMTERPRETIFY_FILE='a.out.dat'"]
+      if closure_enabled:
+        cmd += ['--closure', '1']
+      if wasm_enabled:
+        method = 'interpret-binary'
+        if asmjs_fallback_enabled:
+          method += ',asmjs'
+        cmd += ['-s', 'WASM=1', '-s', "BINARYEN_METHOD='" + method + "'"]
 
-                    print(' '.join(cmd))
-                    self.clear()
-                    proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
-                    output, err = proc.communicate()
-                    print(os.listdir('.'))
-                    assert expect_success == (proc.returncode == 0)
-                    assert expect_asmjs_code == os.path.exists('a.out.asm.js')
-                    assert expect_emterpretify_file == os.path.exists('a.out.dat')
-                    assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
-                    assert expect_wasm == os.path.exists('a.out.wasm')
-                    assert expect_wast == os.path.exists('a.out.wast')
-                    if should_run_js:
-                      self.assertContained('hello, world!', run_js('a.out.js'))
+      print(' '.join(cmd))
+      self.clear()
+      proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
+      output, err = proc.communicate()
+      print(os.listdir('.'))
+      assert expect_success == (proc.returncode == 0)
+      assert expect_asmjs_code == os.path.exists('a.out.asm.js')
+      assert expect_emterpretify_file == os.path.exists('a.out.dat')
+      assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
+      assert expect_wasm == os.path.exists('a.out.wasm')
+      assert expect_wast == os.path.exists('a.out.wast')
+      if should_run_js:
+        self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_emar_M(self):
     open('file1', 'w').write(' ')

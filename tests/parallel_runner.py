@@ -4,6 +4,15 @@ import os
 import subprocess
 import sys
 import unittest
+import tempfile
+import shutil
+
+__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+def path_from_root(*pathelems):
+  return os.path.join(__rootpath__, *pathelems)
+sys.path.append(path_from_root('tools'))
+
+from tempfiles import try_delete
 
 try:
   import queue
@@ -11,9 +20,10 @@ except ImportError:
   # Python 2 compatibility
   import Queue as queue
 
-def g_testing_thread(work_queue, result_queue):
+def g_testing_thread(work_queue, result_queue, temp_dir):
   for test in iter(lambda: get_from_queue(work_queue), None):
     result = BufferedParallelTestResult()
+    test.set_temp_dir(temp_dir)
     try:
       test(result)
     except Exception as e:
@@ -62,9 +72,10 @@ class ParallelTestSuite(unittest.BaseTestSuite):
   def init_processes(self, test_queue):
     self.processes = []
     self.result_queue = multiprocessing.Queue()
-    for i in range(num_cores()):
+    self.dedicated_temp_dirs = [tempfile.mkdtemp() for x in range(num_cores())]
+    for temp_dir in self.dedicated_temp_dirs:
       p = multiprocessing.Process(target=g_testing_thread,
-                                  args=(test_queue, self.result_queue))
+                                  args=(test_queue, self.result_queue, temp_dir))
       p.start()
       self.processes.append(p)
 
@@ -76,6 +87,8 @@ class ParallelTestSuite(unittest.BaseTestSuite):
         buffered_results.append(res)
       else:
         self.clear_finished_processes()
+    for temp_dir in self.dedicated_temp_dirs:
+      try_delete(temp_dir)
     return buffered_results
 
   def clear_finished_processes(self):
@@ -161,11 +174,11 @@ class BufferedTestError(BufferedTestBase):
 
 
 class FakeTraceback(object):
-  """A fake version of a trackeback object that is picklable across processes.
+  """A fake version of a traceback object that is picklable across processes.
 
   Python's traceback objects contain hidden stack information that isn't able
   to be pickled. Further, traceback objects aren't constructable from Python,
-  so we need a dummy object that fulfils its interface.
+  so we need a dummy object that fulfills its interface.
 
   The fields we expose are exactly those which are used by
   unittest.TextTestResult to show a text representation of a traceback. Any
