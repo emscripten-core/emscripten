@@ -63,7 +63,7 @@ ADB = ''
 # Host OS detection to autolocate browsers and other OS-specific support needs.
 WINDOWS = False
 LINUX = False
-OSX = False
+MACOS = False
 if os.name == 'nt':
   WINDOWS = True
 elif platform.system() == 'Linux':
@@ -938,7 +938,7 @@ def get_os_version():
         pass
       return productName[0] + version + bitness
     elif MACOS:
-      return 'Mac OS ' + platform.mac_ver()[0] + bitness
+      return 'macOS ' + platform.mac_ver()[0] + bitness
     elif LINUX:
       kernel_version = check_output(['uname', '-r']).strip()
       return ' '.join(platform.linux_distribution()) + ', linux kernel ' + kernel_version + ' ' + platform.architecture()[0] + bitness
