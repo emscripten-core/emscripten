@@ -172,6 +172,9 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeou
 // onerror() handler will be called in the calling thread before this function returns.
 EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch);
 
+// For internal use only. Frees all memory related to fetch operation.
+void emscripten_fetch_free(emscripten_fetch_t *fetch);
+
 #ifdef __cplusplus
 }
 #endif
