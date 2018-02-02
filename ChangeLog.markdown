@@ -9,6 +9,27 @@ Not all changes are documented here. In particular, new features, user-oriented 
 
 Current Trunk
 -------------
+
+v1.37.28: 01/08/2018
+--------------------
+ - Breaking change: Don't export the `ALLOC_*` numeric constants by default. As with previous changes, a warning will be shown in `-O0` and when `ASSERTIONS` are on if they are used.
+ - Breaking change: Don't export FS methods by default. As with previous changes, a warning will be shown in `-O0` and when `ASSERTIONS` are on, which will suggest either exporting the specific methods you need, or using `FORCE_FILESYSTEM` which will auto export all the main filesystem methods. Aside from using FS methods yourself, you may notice this change when using a file package created standalone, that is, by running the file packager directly and then loading it at run time (as opposed to telling `emcc` to package the files for you, in which case it would be aware of them at compile time); you should build with `FORCE_FILESYSTEM` to ensure filesystem support for that case.
+
+v1.37.27: 12/24/2017
+--------------------
+ - Breaking change: Remove the `Runtime` object, and move all the useful methods from it to simple top-level functions. Any usage of `Runtime.func` should be changed to `func`.
+
+v1.37.26: 12/20/2017
+--------------------
+ - Breaking change: Change `NO_EXIT_RUNTIME` to 1 by default. This means that by default we don't include code to shut down the runtime, flush stdio streams, run atexits, etc., which is better for code size. When `ASSERTIONS` is on, we warn at runtime if there is text buffered in the streams that should be flushed, or atexits are used.
+ - Meta-DCE for JS+wasm: remove unused code between JS+wasm more aggressively. This should not break valid code, but may break code that depended on unused code being kept around (like using a function from outside the emitted JS without exporting it - only exported things are guaranteed to be kept alive through optimization).
+
+v1.37.24: 12/13/2017
+--------------------
+ - Breaking change: Similar to the getValue/setValue change from before (and with the same `ASSERTIONS` warnings to help users), do not export the following runtime methods by default: ccall, cwrap, allocate, Pointer_stringify, AsciiToString, stringToAscii, UTF8ArrayToString, UTF8ToString, stringToUTF8Array, stringToUTF8, lengthBytesUTF8, stackTrace, addOnPreRun, addOnInit, addOnPreMain, addOnExit, addOnPostRun, intArrayFromString, intArrayToString, writeStringToMemory, writeArrayToMemory, writeAsciiToMemory.
+
+v1.37.23: 12/4/2017
+-------------------
  - Breaking change: Do not polyfill Math.{clz32, fround, imul, trunc} by default. A new `LEGACY_VM_SUPPORT` option enables support for legacy browsers. In `ASSERTIONS` mode, a warning is shown if a polyfill was needed, suggesting using that option.
  - Breaking change: Do not export getValue/setValue runtime methods by default. You can still use them by calling them directly in code optimized with the main file (pre-js, post-js, js libraries; if the optimizer sees they are used, it preserves them), but if you try to use them on `Module` then you must export them by adding them to `EXTRA_EXPORTED_RUNTIME_METHODS`. In `-O0` or when `ASSERTIONS` is on, a run-time error message explains that, if they are attempted to be used incorrectly.
 

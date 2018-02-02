@@ -15,7 +15,7 @@ def convert_line_endings_in_file(filename, from_eol, to_eol):
 
 # This function checks and prints out the detected line endings in the given file.
 # If the file only contains either Windows \r\n line endings or Unix \n line endings, it returns 0.
-# Otherwise, in the presence of old OSX or mixed/malformed line endings, a non-zero error code is returned.
+# Otherwise, in the presence of old macOS or mixed/malformed line endings, a non-zero error code is returned.
 def check_line_endings(filename, expect_only_specific_line_endings=None, print_errors=True, print_info=False):
   try:
     data = open(filename, 'rb').read()
@@ -51,11 +51,11 @@ def check_line_endings(filename, expect_only_specific_line_endings=None, print_e
     unix_line_ending_count = data.count(b'\n')
     has_unix_line_endings = True
   if b'\r' in data:
-    old_osx_line_ending_example = data[max(0, data.find(b'\r') - 50):min(len(data), data.find(b'\r')+50)].replace(b'\r', b'\\r').replace(b'\n', b'\\n')
+    old_macos_line_ending_example = data[max(0, data.find(b'\r') - 50):min(len(data), data.find(b'\r')+50)].replace(b'\r', b'\\r').replace(b'\n', b'\\n')
     if print_errors:
-      print('File \'' + filename + '\' contains OLD OSX line endings "\\r"', file=sys.stderr)
-      print("Content around an OLD OSX line ending location: '" + old_osx_line_ending_example + "'", file=sys.stderr)
-    return 1 # Return a non-zero process exit code since we don't want to use the old OSX (9.x) line endings anywhere.
+      print('File \'' + filename + '\' contains OLD macOS line endings "\\r"', file=sys.stderr)
+      print("Content around an OLD macOS line ending location: '" + old_macos_line_ending_example + "'", file=sys.stderr)
+    return 1 # Return a non-zero process exit code since we don't want to use the old macOS (9.x) line endings anywhere.
   if has_dos_line_endings and has_unix_line_endings:
     if print_errors:
       print('File \'' + filename + '\' contains both DOS "\\r\\n" and UNIX "\\n" line endings! (' + str(dos_line_ending_count) + ' DOS line endings, ' + str(unix_line_ending_count) + ' UNIX line endings)', file=sys.stderr)

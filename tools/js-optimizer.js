@@ -188,12 +188,43 @@ function srcToExp(src) {
 // Traverses the children of a node. If the traverse function returns an object,
 // replaces the child. If it returns true, stop the traversal and return true.
 function traverseChildren(node, traverse, pre, post) {
-  for (var i = 0; i < node.length; i++) {
-    var subnode = node[i];
-    if (Array.isArray(subnode)) {
-      var subresult = traverse(subnode, pre, post);
-      if (subresult === true) return true;
-      if (subresult !== null && typeof subresult === 'object') node[i] = subresult;
+  if (node[0] === 'var') {
+    // don't traverse the names, just the values
+    var children = node[1];
+    if (!Array.isArray(children)) return;
+    for (var i = 0; i < children.length; i++) {
+      var subnode = children[i];
+      if (subnode.length === 2) {
+        var value = subnode[1];
+        if (Array.isArray(value)) {
+          var subresult = traverse(value, pre, post);
+          if (subresult === true) return true;
+          if (subresult !== null && typeof subresult === 'object') subnode[1] = subresult;
+        }
+      }
+    }
+  } else if (node[0] === 'object') {
+    // don't traverse the names, just the values
+    var children = node[1];
+    if (!Array.isArray(children)) return;
+    for (var i = 0; i < children.length; i++) {
+      var subnode = children[i];
+      var value = subnode[1];
+      if (Array.isArray(value)) {
+        var subresult = traverse(value, pre, post);
+        if (subresult === true) return true;
+        if (subresult !== null && typeof subresult === 'object') subnode[1] = subresult;
+      }
+    }
+  } else {
+    // generic traversal
+    for (var i = 0; i < node.length; i++) {
+      var subnode = node[i];
+      if (Array.isArray(subnode)) {
+        var subresult = traverse(subnode, pre, post);
+        if (subresult === true) return true;
+        if (subresult !== null && typeof subresult === 'object') node[i] = subresult;
+      }
     }
   }
 }
@@ -1378,6 +1409,23 @@ function hasSideEffects(node) { // this is 99% incomplete!
       return false;
     }
     case 'conditional': return hasSideEffects(node[1]) || hasSideEffects(node[2]) || hasSideEffects(node[3]);
+    case 'function': case 'defun': return false;
+    case 'object': {
+      var children = node[1];
+      if (!Array.isArray(children)) return false;
+      for (var i = 0; i < children.length; i++) {
+        if (hasSideEffects(children[i][1])) return true;
+      }
+      return false;
+    }
+    case 'array': {
+      var children = node[1];
+      if (!Array.isArray(children)) return false;
+      for (var i = 0; i < children.length; i++) {
+        if (hasSideEffects(children[i])) return true;
+      }
+      return false;
+    }
     default: return true;
   }
 }
@@ -4703,7 +4751,12 @@ var FAST_ELIMINATION_BINARIES = setUnion(setUnion(USEFUL_BINARY_OPS, COMPARE_OPS
 
 function measureSize(ast) {
   var size = 0;
-  traverse(ast, function() {
+  traverse(ast, function(node, type) {
+    // FIXME backwards compatibility: measure var internal node too. this
+    //       affects the 'outline' test.
+    if (type === 'var') {
+      size += node[1].length;
+    }
     size++;
   });
   return size;
@@ -5995,8 +6048,6 @@ function ilog2(x) {
 
 // Converts functions into binary format to be run by an emterpreter
 function emterpretify(ast) {
-  emitAst = false;
-
   var EMTERPRETED_FUNCS = set(extraInfo.emterpretedFuncs);
   var EXTERNAL_EMTERPRETED_FUNCS = set(extraInfo.externalEmterpretedFuncs);
   var OPCODES = extraInfo.opcodes;
@@ -7807,112 +7858,415 @@ function eliminateDeadGlobals(ast) {
 // Removes obviously-unused code. Similar to closure compiler in its rules -
 // export e.g. by Module['..'] = theThing; , or use it somewhere, otherwise
 // it goes away.
-function JSDCE(ast) {
-  var scopes = [{}]; // begin with empty toplevel scope
-  function DUMP() {
-    printErr('vvvvvvvvvvvvvv');
-    for (var i = 0; i < scopes.length; i++) {
-      printErr(i + ' : ' + JSON.stringify(scopes[i]));
+function JSDCE(ast, multipleIterations) {
+  function iteration() {
+    var removed = false;
+    var scopes = [{}]; // begin with empty toplevel scope
+    function DUMP() {
+      printErr('vvvvvvvvvvvvvv');
+      for (var i = 0; i < scopes.length; i++) {
+        printErr(i + ' : ' + JSON.stringify(scopes[i]));
+      }
+      printErr('^^^^^^^^^^^^^^');
     }
-    printErr('^^^^^^^^^^^^^^');
-  }
-  function ensureData(scope, name) {
-    if (Object.prototype.hasOwnProperty.call(scope, name)) return scope[name];
-    scope[name] = {
-      def: 0,
-      use: 0,
-      param: 0 // true for function params, which cannot be eliminated
-    };
-    return scope[name];
-  }
-  function cleanUp(ast, names) {
+    function ensureData(scope, name) {
+      if (Object.prototype.hasOwnProperty.call(scope, name)) return scope[name];
+      scope[name] = {
+        def: 0,
+        use: 0,
+        param: 0 // true for function params, which cannot be eliminated
+      };
+      return scope[name];
+    }
+    function cleanUp(ast, names) {
+      traverse(ast, function(node, type) {
+        if (type === 'defun' && Object.prototype.hasOwnProperty.call(names, node[1])) {
+          removed = true;
+          return emptyNode();
+        }
+        if (type === 'defun' || type === 'function') return null; // do not enter other scopes
+        if (type === 'var') {
+          node[1] = node[1].filter(function(varItem, j) {
+            var curr = varItem[0];
+            var value = varItem[1];
+            var keep = !(curr in names) || (value && hasSideEffects(value));
+            if (!keep) removed = true;
+            return keep;
+          });
+          if (node[1].length === 0) return emptyNode();
+        }
+      });
+      return ast;
+    }
     traverse(ast, function(node, type) {
-      if (type === 'defun' && Object.prototype.hasOwnProperty.call(names, node[1])) return emptyNode();
-      if (type === 'defun' || type === 'function') return null; // do not enter other scopes
       if (type === 'var') {
-        node[1] = node[1].filter(function(varItem, j) {
-          var curr = varItem[0];
-          var value = varItem[1];
-          return !(curr in names) || (value && hasSideEffects(value));
+        node[1].forEach(function(varItem, j) {
+          var name = varItem[0];
+          ensureData(scopes[scopes.length-1], name).def = 1;
         });
-        if (node[1].length === 0) return emptyNode();
+        return;
+      }
+      if (type === 'object') {
+        return;
+      }
+      if (type === 'defun' || type === 'function') {
+        // defun names matter - function names (the y in var x = function y() {..}) are just for stack traces.
+        if (type === 'defun') ensureData(scopes[scopes.length-1], node[1]).def = 1;
+        var scope = {};
+        node[2].forEach(function(param) {
+          ensureData(scope, param).def = 1;
+          scope[param].param = 1;
+        });
+        scopes.push(scope);
+        return;
+      }
+      if (type === 'name') {
+        ensureData(scopes[scopes.length-1], node[1]).use = 1;
+      }
+    }, function(node, type) {
+      if (type === 'defun' || type === 'function') {
+        // we can ignore self-references, i.e., references to ourselves inside
+        // ourselves, for named defined (defun) functions
+        var ownName = type === 'defun' ? node[1] : '';
+        var scope = scopes.pop();
+        var names = set();
+        for (name in scope) {
+          if (name === ownName) continue;
+          var data = scope[name];
+          if (data.use && !data.def) {
+            // this is used from a higher scope, propagate the use down
+            ensureData(scopes[scopes.length-1], name).use = 1;
+            continue;
+          }
+          if (data.def && !data.use && !data.param) {
+            // this is eliminateable!
+            names[name] = 0;
+          }
+        }
+        cleanUp(node[3], names);
       }
     });
-    return ast;
+    // toplevel
+    var scope = scopes.pop();
+    assert(scopes.length === 0);
+
+    var names = set();
+    for (var name in scope) {
+      var data = scope[name];
+      if (data.def && !data.use) {
+        assert(!data.param); // can't be
+        // this is eliminateable!
+        names[name] = 0;
+      }
+    }
+    cleanUp(ast, names);
+    return removed;
   }
-  var isVarNameOrObjectKeys = [];
-  // isVarNameOrObjectKeys is a stack which saves the state the node is defining a variable or in an object literal.
-  // the second argument `type` passed into the callback function called by traverse() could be a variable name or object key name.
-  // You cannot distinguish the `type` is a real type or not without isVarNameOrObjectKeys.
-  // ex.) var name = true;          // `type` can be 'name'
-  //      var obj = { defun: true } // `type` can be 'defun'
+  while (iteration() && multipleIterations) { }
+}
+
+// Aggressive JSDCE - multiple iterations
+function AJSDCE(ast) {
+  JSDCE(ast, /* multipleIterations= */ true);
+}
+
+function isAsmLibraryArgAssign(node) {
+  return node[0] === 'assign' && node[2][0] === 'dot'
+                              && node[2][1][0] === 'name' && node[2][1][1] === 'Module'
+                              && node[2][2] === 'asmLibraryArg';
+}
+
+function isAsmUse(node) {
+  return node[0] === 'sub' &&
+         ((node[1][0] === 'name' && node[1][1] === 'asm') || // asm['X']
+          (node[1][0] === 'sub' && node[1][1][0] === 'name' && node[1][1][1] === 'Module' && node[1][2][0] === 'string' && node[1][2][1] === 'asm')) && // Module
+         node[2][0] === 'string';
+}
+
+function getAsmUseName(node) {
+  return node[2][1];
+}
+
+function isModuleUse(node) {
+  return node[0] === 'sub' &&
+         node[1][0] === 'name' && node[1][1] === 'Module' && // Module['X']
+         node[2][0] === 'string';
+}
+
+function getModuleUseName(node) {
+  return node[2][1];
+}
+
+// A static dyncall is dynCall('vii', ..), which is actually static even
+// though we call dynCall() - we see the string signature statically.
+function isStaticDynCall(node) {
+  return node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'dynCall' && node[2][0][0] === 'string';
+}
+
+function getStaticDynCallName(node) {
+  return 'dynCall_' + node[2][0][1];
+}
+
+// a dynamic dyncall is one in which all we know is *some* dynCall may
+// be called, but not who. This can be either
+//   dynCall(*not a string*, ..)
+// or, to be conservative,
+//   "dynCall_"
+// as that prefix means we may be constructing a dynamic dyncall name
+// (dynCall and embind's requireFunction do this internally).
+function isDynamicDynCall(node) {
+  return (node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'dynCall' && node[2][0][0] !== 'string') ||
+         (node[0] === 'string' && node[1] === 'dynCall_');
+}
+
+//
+// Emit the DCE graph, to help optimize the combined JS+wasm.
+// This finds where JS depends on wasm, and where wasm depends
+// on JS, and prints that out.
+//
+// The analysis here is simplified, and not completely general. It
+// is enough to optimize the common case of JS library and runtime
+// functions involved in loops with wasm, but not more complicated
+// things like JS objects and sub-functions. Specifically we
+// analyze as follows:
+//
+//  * We consider (1) the toplevel scope, and (2) the scopes of toplevel defined
+//    functions (defun, not function; i.e., function X() {} where
+//    X can be called later, and not y = function Z() {} where Z is
+//    just a name for stack traces). We also consider the wasm, which
+//    we can see things going to and arriving from.
+//  * Anything used in a defun creates a link in the DCE graph, either
+//    to another defun, or the wasm.
+//  * Anything used in the toplevel scope is rooted, as it is code
+//    we assume will execute. The exceptions are
+//     * when we receive something from wasm; those are "free" and
+//       do not cause rooting. (They will become roots if they are
+//       exported, the metadce logic will handle that.)
+//     * when we send something to wasm; sending a defun causes a
+//       link in the DCE graph.
+//  * Anything not in the toplevel or not in a toplevel defun is
+//    considering rooted. We don't optimize those cases.
+//
+// Special handling:
+//
+//  * dynCall('vii', ..) are dynamic dynCalls, but we analyze them
+//    statically, to preserve the dynCall_vii etc. method they depend on.
+//    Truly dynamic dynCalls (not to a string constant) will not work,
+//    and require the user to export them.
+//  * Truly dynamic dynCalls are assumed to reach any dynCall_*.
+//
+// XXX this modifies the input AST. if you want to keep using it,
+//     that should be fixed. Currently the main use case here does
+//     not require that. TODO FIXME
+//
+function emitDCEGraph(ast) {
+  // First pass: find the wasm imports and exports, and the toplevel
+  // defuns, and save them on the side, removing them from the AST,
+  // which makes the second pass simpler.
+  //
+  // The imports that wasm receives look like this:
+  //
+  //  Module.asmLibraryArg = { "abort": abort, "assert": assert, [..] };
+  //
+  // The exports are trickier, as they have a different form whether or not
+  // async compilation is enabled. It can be either:
+  //
+  //  var _malloc = Module["_malloc"] = asm["_malloc"];
+  //
+  // or
+  //
+  //  var _malloc = Module["_malloc"] = (function() {
+  //   return Module["asm"]["_malloc"].apply(null, arguments);
+  //  });
+  //
+  var imports = [];
+  var defuns = [];
+  var dynCallNames = [];
+  var nameToGraphName = {};
+  var modulePropertyToGraphName = {};
+  var exportNameToGraphName = {}; // identical to asm['..'] nameToGraphName
+  var foundAsmLibraryArgAssign = false;
+  var graph = [];
   traverse(ast, function(node, type) {
-    if (isVarNameOrObjectKeys[isVarNameOrObjectKeys.length - 1]) { // check parent node defines a variable or is an object literal
-      // `type` is a variable name or an object key name
-      isVarNameOrObjectKeys.push(false); // doesn't define a variable nor be an object literal
-      return;
-    }
-    if (type === 'var') {
-      node[1].forEach(function(varItem, j) {
-        var name = varItem[0];
-        ensureData(scopes[scopes.length-1], name).def = 1;
+    if (isAsmLibraryArgAssign(node)) {
+      var items = node[3][1];
+      items.forEach(function(item) {
+        assert(item[1][0] === 'name' && item[1][1] === item[0], item[0]); // must have x: x form, nothing else
+        imports.push(item[0]); // the value doesn't matter, for now
       });
-      isVarNameOrObjectKeys.push(true); // this `node` defines a varible
-      return;
-    }
-    if (type === 'object') {
-      isVarNameOrObjectKeys.push(true); // this `node` is an object literal
-      return;
-    }
-    isVarNameOrObjectKeys.push(false); // doesn't define a variable nor be an object literal
-    if (type === 'defun' || type === 'function') {
-      if (node[1]) ensureData(scopes[scopes.length-1], node[1]).def = 1;
-      var scope = {};
-      node[2].forEach(function(param) {
-        ensureData(scope, param).def = 1;
-        scope[param].param = 1;
-      });
-      scopes.push(scope);
-      return;
-    }
-    if (type === 'name') {
-      ensureData(scopes[scopes.length-1], node[1]).use = 1;
-    }
-  }, function(node, type) {
-    isVarNameOrObjectKeys.pop();
-    if (isVarNameOrObjectKeys[isVarNameOrObjectKeys.length - 1]) return; // `type` is a variable name or an object key name
-    if (type === 'defun' || type === 'function') {
-      var scope = scopes.pop();
-      var names = set();
-      for (name in scope) {
-        var data = scope[name];
-        if (data.use && !data.def) {
-          // this is used from a higher scope, propagate the use down
-          ensureData(scopes[scopes.length-1], name).use = 1;
-          continue;
-        }
-        if (data.def && !data.use && !data.param) {
-          // this is eliminateable!
-          names[name] = 0;
+      foundAsmLibraryArgAssign = true;
+      return emptyNode(); // ignore this in the second pass; this does not root
+    } else if (type === 'var') {
+      if (node[1] && node[1].length === 1) {
+        var item = node[1][0];
+        var name = item[0];
+        var value = item[1];
+        if (Array.isArray(value) && value[0] === 'assign') {
+          var assigned = value[2];
+          if (isModuleUse(assigned) && getModuleUseName(assigned) === name) {
+            // this is
+            //  var x = Module['x'] = ?
+            // which looks like a wasm export being received. confirm with the asm use
+            var found = 0;
+            var asmName;
+            traverse(value[3], function(node, type) {
+              if (isAsmUse(node)) {
+                found++;
+                asmName = getAsmUseName(node);
+              }
+            });
+            // in the wasm backend, the asm name may have one fewer "_" prefixed
+            if (found === 1) {
+              // this is indeed an export
+              // the asmName is what the wasm provides directly; the outside JS
+              // name may be slightly different (extra "_" in wasm backend)
+              var graphName = getGraphName(name, 'export');
+              nameToGraphName[name] = graphName;
+              modulePropertyToGraphName[name] = graphName;
+              exportNameToGraphName[asmName] = graphName;
+              if (/^dynCall_/.test(name)) {
+                dynCallNames.push(graphName);
+              }
+              return emptyNode(); // ignore this in the second pass; this does not root
+            }
+          }
         }
       }
-      cleanUp(node[3], names);
+    } else if (type === 'defun') {
+      defuns.push(node);
+      var name = node[1];
+      nameToGraphName[name] = getGraphName(name, 'defun');
+      return emptyNode(); // ignore this in the second pass; we scan defuns separately
+    } else if (type === 'function') {
+      return null; // don't look inside
     }
   });
-  // toplevel
-  var scope = scopes.pop();
-  assert(scopes.length === 0);
-
-  var names = set();
-  for (var name in scope) {
-    var data = scope[name];
-    if (data.def && !data.use) {
-      assert(!data.param); // can't be
-      // this is eliminateable!
-      names[name] = 0;
+  assert(foundAsmLibraryArgAssign); // must find the info we need
+  // Second pass: everything used in the toplevel scope is rooted;
+  // things used in defun scopes create links
+  function getGraphName(name, what) {
+    return 'emcc$' + what + '$' + name;
+  }
+  var infos = {}; // the graph name of the item => info for it
+  imports.forEach(function(import_) {
+    var name = getGraphName(import_, 'import');
+    var info = infos[name] = {
+      name: name,
+      import: ['env', import_],
+      reaches: {}
+    };
+    if (nameToGraphName.hasOwnProperty(import_)) {
+      info.reaches[nameToGraphName[import_]] = 1;
+    } // otherwise, it's a number, ignore
+  });
+  for (var e in exportNameToGraphName) {
+    var name = exportNameToGraphName[e];
+    infos[name] = {
+      name: name,
+      export: e,
+      reaches: {}
+    };
+  }
+  // a function that handles a node we visit, in either a defun or
+  // the toplevel scope (in which case the second param is not provided)
+  function visitNode(node, defunInfo) {
+    // TODO: scope awareness here. for now we just assume all uses are
+    //       from the top scope, which might create more uses than needed
+    var reached;
+    if (node[0] === 'name') {
+      var name = node[1];
+      if (nameToGraphName.hasOwnProperty(name)) {
+        reached = nameToGraphName[name];
+      }
+    } else if (isModuleUse(node)) {
+      var name = getModuleUseName(node);
+      if (modulePropertyToGraphName.hasOwnProperty(name)) {
+        reached = modulePropertyToGraphName[name];
+      }
+    } else if (isStaticDynCall(node)) {
+      reached = getGraphName(getStaticDynCallName(node), 'export');
+    } else if (isDynamicDynCall(node)) {
+      // this can reach *all* dynCall_* targets, we can't narrow it down
+      reached = dynCallNames;
+    } else if (isAsmUse(node)) {
+      // any remaining asm uses are always rooted in any case
+      var name = getAsmUseName(node);
+      if (exportNameToGraphName.hasOwnProperty(name)) {
+        infos[exportNameToGraphName[name]].root = true;
+      }
+      return;
+    }
+    if (reached) {
+      function addReach(reached) {
+        if (defunInfo) {
+          defunInfo.reaches[reached] = 1; // defun reaches it
+        } else {
+          infos[reached].root = true; // in global scope, root it
+        }
+      }
+      if (typeof reached === 'string') {
+        addReach(reached);
+      } else {
+        reached.forEach(addReach);
+      }
     }
   }
-  cleanUp(ast, names);
+  defuns.forEach(function(defun) {
+    var name = getGraphName(defun[1], 'defun');
+    var info = infos[name] = {
+      name: name,
+      reaches: {}
+    };
+    traverse(defun[3], function(node, type) {
+      visitNode(node, info);
+    });
+  });
+  traverse(ast, function(node, type) {
+    visitNode(node, null);
+  });
+  // Final work: print out the graph
+  // sort for determinism
+  function sortedNamesFromMap(map) {
+    var names = [];
+    for (var name in map) {
+      names.push(name);
+    }
+    names.sort();
+    return names;
+  }
+  sortedNamesFromMap(infos).forEach(function(name) {
+    var info = infos[name];
+    info.reaches = sortedNamesFromMap(info.reaches);
+    graph.push(info);
+  });
+  print(JSON.stringify(graph, null, ' '));
+}
+
+// Apply graph removals from running wasm-metadce
+function applyDCEGraphRemovals(ast) {
+  var unused = set(extraInfo.unused);
+
+  traverse(ast, function(node, type) {
+    if (isAsmLibraryArgAssign(node)) {
+      node[3][1] = node[3][1].filter(function(item) {
+        var name = item[0];
+        var value = item[1];
+        var full = 'emcc$import$' + name;
+        return !((full in unused) && !hasSideEffects(value));
+      });
+    } else if (type === 'assign') {
+      // when we assign to a thing we don't need, we can just remove the assign
+      var target = node[2];
+      if (isAsmUse(target) || isModuleUse(target)) {
+        var name = target[2][1];
+        var full = 'emcc$export$' + name;
+        var value = node[3];
+        if ((full in unused) && !hasSideEffects(value)) {
+          return ['name', 'undefined'];
+        }
+      }
+    }
+  });
 }
 
 function removeFuncs(ast) {
@@ -7926,7 +8280,9 @@ function removeFuncs(ast) {
 
 // Passes table
 
-var minifyWhitespace = false, printMetadata = true, asm = false, asmPreciseF32 = false, emitJSON = false, last = false;
+var minifyWhitespace = false, printMetadata = true, asm = false,
+    asmPreciseF32 = false, emitJSON = false, last = false,
+    emitAst = true;
 
 var passes = {
   // passes
@@ -7961,6 +8317,9 @@ var passes = {
   dumpCallGraph: dumpCallGraph,
   asmLastOpts: asmLastOpts,
   JSDCE: JSDCE,
+  AJSDCE: AJSDCE,
+  emitDCEGraph: emitDCEGraph,
+  applyDCEGraphRemovals: applyDCEGraphRemovals,
   removeFuncs: removeFuncs,
   noop: function() {},
 
@@ -7972,6 +8331,7 @@ var passes = {
   emitJSON: function() { emitJSON = true },
   receiveJSON: function() { }, // handled in a special way, before passes are run
   last: function() { last = true },
+  noEmitAst: function() { emitAst = false },
 };
 
 // Main
@@ -8004,8 +8364,6 @@ if (arguments_.indexOf('receiveJSON') < 0) {
 }
 //printErr('ast: ' + JSON.stringify(ast));
 
-var emitAst = true;
-
 arguments_.slice(1).forEach(function(arg) {
   passes[arg](ast);
 });
@@ -8030,7 +8388,5 @@ if (emitAst) {
   } else {
     print(JSON.stringify(ast));
   }
-} else {
-  //print('/* not printing ast */');
 }
 

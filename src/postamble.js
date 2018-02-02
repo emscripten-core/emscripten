@@ -3,9 +3,9 @@
 
 Module['asm'] = asm;
 
-{{{ maybeExport('FS') }}}
-{{{ maybeExport('GL') }}}
+{{{ exportRuntime() }}}
 
+#if MEM_INIT_IN_WASM == 0
 #if MEM_INIT_METHOD == 2
 #if USE_PTHREADS
 if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) (function(s) {
@@ -30,7 +30,7 @@ if (memoryInitializer) (function(s) {
   assert(crc === 0, "memory initializer checksum");
 #endif
   for (i = 0; i < n; ++i) {
-    HEAPU8[Runtime.GLOBAL_BASE + i] = s.charCodeAt(i);
+    HEAPU8[GLOBAL_BASE + i] = s.charCodeAt(i);
   }
 })(memoryInitializer);
 #else
@@ -39,24 +39,26 @@ if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) {
 #else
 if (memoryInitializer) {
 #endif
-  if (typeof Module['locateFile'] === 'function') {
-    memoryInitializer = Module['locateFile'](memoryInitializer);
-  } else {
-    memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
+  if (!isDataURI(memoryInitializer)) {
+    if (typeof Module['locateFile'] === 'function') {
+      memoryInitializer = Module['locateFile'](memoryInitializer);
+    } else {
+      memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
+    }
   }
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
     var data = Module['readBinary'](memoryInitializer);
-    HEAPU8.set(data, Runtime.GLOBAL_BASE);
+    HEAPU8.set(data, GLOBAL_BASE);
   } else {
     addRunDependency('memory initializer');
     var applyMemoryInitializer = function(data) {
       if (data.byteLength) data = new Uint8Array(data);
 #if ASSERTIONS
       for (var i = 0; i < data.length; i++) {
-        assert(HEAPU8[Runtime.GLOBAL_BASE + i] === 0, "area for memory initializer should not have been touched before it's loaded");
+        assert(HEAPU8[GLOBAL_BASE + i] === 0, "area for memory initializer should not have been touched before it's loaded");
       }
 #endif
-      HEAPU8.set(data, Runtime.GLOBAL_BASE);
+      HEAPU8.set(data, GLOBAL_BASE);
       // Delete the typed array that contains the large blob of the memory initializer request response so that
       // we won't keep unnecessary memory lying around. However, keep the XHR object itself alive so that e.g.
       // its .status field can still be accessed later.
@@ -110,12 +112,14 @@ if (memoryInitializer) {
   }
 }
 #endif
+#endif // MEM_INIT_IN_WASM == 0
 
 #if CYBERDWARF
   Module['cyberdwarf'] = _cyberdwarf_Debugger(cyberDWARFFile);
 #endif
 
 #if MODULARIZE
+#if MODULARIZE_INSTANCE == 0
 // Modularize mode returns a function, which can be called to
 // create instances. The instances provide a then() method,
 // must like a Promise, that receives a callback. The callback
@@ -139,6 +143,7 @@ Module['then'] = function(func) {
   return Module;
 };
 #endif
+#endif
 
 /**
  * @constructor
@@ -154,7 +159,6 @@ ExitStatus.prototype = new Error();
 ExitStatus.prototype.constructor = ExitStatus;
 
 var initialStackTop;
-var preloadStartTime = null;
 var calledMain = false;
 
 dependenciesFulfilled = function runCaller() {
@@ -175,22 +179,15 @@ Module['callMain'] = function callMain(args) {
   ensureInitRuntime();
 
   var argc = args.length+1;
-  function pad() {
-    for (var i = 0; i < {{{ QUANTUM_SIZE }}}-1; i++) {
-      argv.push(0);
-    }
+  var argv = stackAlloc((argc + 1) * {{{ Runtime.POINTER_SIZE }}});
+  HEAP32[argv >> 2] = allocateUTF8OnStack(Module['thisProgram']);
+  for (var i = 1; i < argc; i++) {
+    HEAP32[(argv >> 2) + i] = allocateUTF8OnStack(args[i - 1]);
   }
-  var argv = [allocate(intArrayFromString(Module['thisProgram']), 'i8', ALLOC_NORMAL) ];
-  pad();
-  for (var i = 0; i < argc-1; i = i + 1) {
-    argv.push(allocate(intArrayFromString(args[i]), 'i8', ALLOC_NORMAL));
-    pad();
-  }
-  argv.push(0);
-  argv = allocate(argv, 'i32', ALLOC_NORMAL);
+  HEAP32[(argv >> 2) + argc] = 0;
 
 #if EMTERPRETIFY_ASYNC
-  var initialEmtStackTop = Module['asm'].emtStackSave();
+  var initialEmtStackTop = Module['asm']['emtStackSave']();
 #endif
 
   try {
@@ -210,8 +207,16 @@ Module['callMain'] = function callMain(args) {
     Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
 #endif
 
+#if EMTERPRETIFY_ASYNC
+    // if we are saving the stack, then do not call exit, we are not
+    // really exiting now, just unwinding the JS stack
+    if (EmterpreterAsync.state !== 1) {
+#endif // EMTERPRETIFY_ASYNC
     // if we're not running an evented main loop, it's time to exit
-    exit(ret, /* implicit = */ true);
+      exit(ret, /* implicit = */ true);
+#if EMTERPRETIFY_ASYNC
+    }
+#endif // EMTERPRETIFY_ASYNC
   }
   catch(e) {
     if (e instanceof ExitStatus) {
@@ -246,8 +251,6 @@ Module['callMain'] = function callMain(args) {
 function run(args) {
   args = args || Module['arguments'];
 
-  if (preloadStartTime === null) preloadStartTime = Date.now();
-
   if (runDependencies > 0) {
 #if RUNTIME_LOGGING
     Module.printErr('run() called, but dependencies remain, so not running');
@@ -273,12 +276,6 @@ function run(args) {
     ensureInitRuntime();
 
     preMain();
-
-#if ASSERTIONS
-    if (ENVIRONMENT_IS_WEB && preloadStartTime !== null) {
-      Module.printErr('pre-main prep time: ' + (Date.now() - preloadStartTime) + ' ms');
-    }
-#endif
 
     if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
 
@@ -310,18 +307,85 @@ function run(args) {
 }
 Module['run'] = run;
 
-function exit(status, implicit) {
-  if (implicit && Module['noExitRuntime']) {
 #if ASSERTIONS
-    Module.printErr('exit(' + status + ') implicitly called by end of main(), but noExitRuntime, so not exiting the runtime (you can use emscripten_force_exit, if you want to force a true shutdown)');
+#if NO_EXIT_RUNTIME
+function checkUnflushedContent() {
+  // Compiler settings do not allow exiting the runtime, so flushing
+  // the streams is not possible. but in ASSERTIONS mode we check
+  // if there was something to flush, and if so tell the user they
+  // should request that the runtime be exitable.
+  // Normally we would not even include flush() at all, but in ASSERTIONS
+  // builds we do so just for this check, and here we see if there is any
+  // content to flush, that is, we check if there would have been
+  // something a non-ASSERTIONS build would have not seen.
+  // How we flush the streams depends on whether we are in NO_FILESYSTEM
+  // mode (which has its own special function for this; otherwise, all
+  // the code is inside libc)
+  var print = Module['print'];
+  var printErr = Module['printErr'];
+  var has = false;
+  Module['print'] = Module['printErr'] = function(x) {
+    has = true;
+  }
+  try { // it doesn't matter if it fails
+#if NO_FILESYSTEM
+    var flush = {{{ '$flush_NO_FILESYSTEM' in addedLibraryItems ? 'flush_NO_FILESYSTEM' : 'null' }}};
+#else
+    var flush = Module['_fflush'];
 #endif
+    if (flush) flush(0);
+#if NO_FILESYSTEM == 0
+    // also flush in the JS FS layer
+    var hasFS = {{{ '$FS' in addedLibraryItems ? 'true' : 'false' }}};
+    if (hasFS) {
+      ['stdout', 'stderr'].forEach(function(name) {
+        var info = FS.analyzePath('/dev/' + name);
+        if (!info) return;
+        var stream = info.object;
+        var rdev = stream.rdev;
+        var tty = TTY.ttys[rdev];
+        if (tty && tty.output && tty.output.length) {
+          has = true;
+        }
+      });
+    }
+#endif
+  } catch(e) {}
+  Module['print'] = print;
+  Module['printErr'] = printErr;
+  if (has) {
+    warnOnce('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0 (see the FAQ), or make sure to emit a newline when you printf etc.');
+  }
+}
+#endif // NO_EXIT_RUNTIME
+#endif // ASSERTIONS
+
+function exit(status, implicit) {
+#if ASSERTIONS
+#if NO_EXIT_RUNTIME
+  checkUnflushedContent();
+#endif // NO_EXIT_RUNTIME
+#endif // ASSERTIONS
+
+  // if this is just main exit-ing implicitly, and the status is 0, then we
+  // don't need to do anything here and can just leave. if the status is
+  // non-zero, though, then we need to report it.
+  // (we may have warned about this earlier, if a situation justifies doing so)
+  if (implicit && Module['noExitRuntime'] && status === 0) {
     return;
   }
 
   if (Module['noExitRuntime']) {
 #if ASSERTIONS
-    Module.printErr('exit(' + status + ') called, but noExitRuntime, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)');
-#endif
+    // if exit() was called, we may warn the user if the runtime isn't actually being shut down
+    if (!implicit) {
+#if NO_EXIT_RUNTIME
+      Module.printErr('exit(' + status + ') called, but NO_EXIT_RUNTIME is set, so halting execution but not exiting the runtime or preventing further async execution (build with NO_EXIT_RUNTIME=0, if you want a true shutdown)');
+#else
+      Module.printErr('exit(' + status + ') called, but noExitRuntime is set due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)');
+#endif // NO_EXIT_RUNTIME
+    }
+#endif // ASSERTIONS
   } else {
 #if USE_PTHREADS
     PThread.terminateAllThreads();
@@ -365,11 +429,9 @@ function abort(what) {
   EXITSTATUS = 1;
 
 #if ASSERTIONS == 0
-  var extra = '\nIf this abort() is unexpected, build with -s ASSERTIONS=1 which can give more information.';
+  throw 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
 #else
   var extra = '';
-#endif
-
   var output = 'abort(' + what + ') at ' + stackTrace() + extra;
   if (abortDecorators) {
     abortDecorators.forEach(function(decorator) {
@@ -377,6 +439,7 @@ function abort(what) {
     });
   }
   throw output;
+#endif // ASSERTIONS
 }
 Module['abort'] = abort;
 

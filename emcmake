@@ -4,14 +4,7 @@
 
 
 import sys
+from tools import python_selector
 
-
-
-if sys.version_info.major == 2:
-  import emcmake
-  if __name__ == '__main__':
-    emcmake.run()
-else:
-  import os, subprocess
-  if __name__ == '__main__':
-    sys.exit(subprocess.call(['python2', os.path.join(os.path.dirname(os.path.realpath(__file__)), 'emcmake.py')] + sys.argv[1:]))
+if __name__ == '__main__':
+  python_selector.run(__file__)

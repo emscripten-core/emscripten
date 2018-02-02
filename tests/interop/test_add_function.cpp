@@ -7,7 +7,9 @@ int main(int argc, char **argv) {
   printf("fp: %d\n", fp);
   void (*f)(int) = reinterpret_cast<void (*)(int)>(fp);
   f(7);
-  EM_ASM(Module['Runtime']['removeFunction']($0), f);
+  EM_ASM({
+    removeFunction($0)
+  }, f);
   printf("ok\n");
   return 0;
 }

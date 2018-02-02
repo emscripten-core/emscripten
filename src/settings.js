@@ -44,8 +44,12 @@ var VERBOSE = 0; // When set to 1, will generate more verbose output during comp
 var INVOKE_RUN = 1; // Whether we will run the main() function. Disable if you embed the generated
                     // code in your own, and will call main() yourself at the right time (which you
                     // can do with Module.callMain(), with an optional parameter of commandline args).
-var NO_EXIT_RUNTIME = 0; // If set, the runtime is not quit when main() completes (allowing code to
-                         // run afterwards, for example from the browser main event loop).
+var NO_EXIT_RUNTIME = 1; // If 1, the runtime is not quit when main() completes (allowing code to
+                         // run afterwards, for example from the browser main event loop). atexit()s
+                         // are also not executed, and we can avoid including code for runtime shutdown,
+                         // like flushing the stdio streams.
+                         // Set this to 0 if you do want atexit()s or stdio streams to be flushed
+                         // on exit.
 var MEM_INIT_METHOD = 0; // How to represent the initial memory content.
                          // 0: embed a base64 string literal representing the initial memory data
                          // 1: create a *.mem file containing the binary data of the initial memory;
@@ -143,6 +147,8 @@ var SIMD = 0; // Whether to allow autovectorized SIMD code ( https://github.com/
 
 var USE_CLOSURE_COMPILER = 0; // Whether closure compiling is being run on this output
 
+var IGNORE_CLOSURE_COMPILER_ERRORS = 0; // Ignore closure warnings and errors (like on duplicate definitions)
+
 var SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all in
                              // functions that have no basic stack usage. But, they
                              // may allocate stack later, and in a loop, this can be
@@ -222,12 +228,6 @@ var EMULATE_FUNCTION_POINTER_CASTS = 0; // Allows function pointers to be cast, 
                                         // call of an incorrect type with a runtime correction.
                                         // This adds overhead and should not be used normally.
                                         // It also forces ALIASING_FUNCTION_POINTERS to 0.
-var FUNCTION_POINTER_ALIGNMENT = 2; // Byte alignment of function pointers - we will fill the
-                                    // tables with zeros on aligned values. 1 means all values
-                                    // are aligned and all will be used (which is optimal).
-                                    // Sadly 1 breaks on &Class::method function pointer calls,
-                                    // which llvm assumes have the lower bit zero (see
-                                    // test_polymorph and issue #1692).
 
 var EXCEPTION_DEBUG = 0; // Print out exceptions in emscriptened code. Does not work in asm.js mode
 
@@ -312,8 +312,11 @@ var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catc
                                     // DISABLE_EXCEPTION_CATCHING = 1 - disable exception catching at all
                                     // DISABLE_EXCEPTION_CATCHING = 2 - disable exception catching, but enables
                                     // catching in whitelist
-                                    // TODO: Make this also remove cxa_begin_catch etc., optimize relooper
-                                    //       for it, etc. (perhaps do all of this as preprocessing on .ll?)
+                                    // XXX note that this removes *catching* of exceptions, which is the main
+                                    //     issue for speed, but for code size you need to build with
+                                    //     -fno-exceptions to really get rid of all exceptions code overhead,
+                                    //     as it may contain thrown exceptions that are never caught (e.g.
+                                    //     just using std::vector can have that). -fno-rtti may help as well.
 
 var EXCEPTION_CATCHING_WHITELIST = [];  // Enables catching exception in the listed functions only, if
                                         // DISABLE_EXCEPTION_CATCHING = 2 is set
@@ -338,53 +341,16 @@ var ASYNCIFY_WHITELIST = ['qsort',   // Functions in this list are never conside
                           '__fwritex',
                           'MUSL_vfprintf'];
 
-var EXPORTED_RUNTIME_METHODS = [ // Runtime elements that are exported on Module. By default we export quite a bit, you can reduce this list to lower your code size,
-                                 // especially when closure is run (exporting prevents closure from eliminating code)
+var EXPORTED_RUNTIME_METHODS = [ // Runtime elements that are exported on Module by default. We used to export quite a lot here,
+                                 // but have removed them all, so this option is redundant given that EXTRA_EXPORTED_RUNTIME_METHODS
+                                 // exists, and so this option exists only for backwards compatibility. You should use
+                                 // EXTRA_EXPORTED_RUNTIME_METHODS for things you want to export from the runtime.
                                  // Note that methods on this list are only exported if they are included (either automatically from linking, or due to being
                                  // in DEFAULT_LIBRARY_FUNCS_TO_INCLUDE)
                                  // Note that the name may be slightly misleading, as this
                                  // is for any JS library element, and not just
                                  // methods. For example, we export the Runtime object
                                  // by having "Runtime" in this list.
-  'FS_createFolder',
-  'FS_createPath',
-  'FS_createDataFile',
-  'FS_createPreloadedFile',
-  'FS_createLazyFile',
-  'FS_createLink',
-  'FS_createDevice',
-  'FS_unlink',
-  'Runtime',
-  'ccall',
-  'cwrap',
-  'ALLOC_NORMAL',
-  'ALLOC_STACK',
-  'ALLOC_STATIC',
-  'ALLOC_DYNAMIC',
-  'ALLOC_NONE',
-  'allocate',
-  'getMemory',
-  'Pointer_stringify',
-  'AsciiToString',
-  'stringToAscii',
-  'UTF8ArrayToString',
-  'UTF8ToString',
-  'stringToUTF8Array',
-  'stringToUTF8',
-  'lengthBytesUTF8',
-  'stackTrace',
-  'addOnPreRun',
-  'addOnInit',
-  'addOnPreMain',
-  'addOnExit',
-  'addOnPostRun',
-  'intArrayFromString',
-  'intArrayToString',
-  'writeStringToMemory',
-  'writeArrayToMemory',
-  'writeAsciiToMemory',
-  'addRunDependency',
-  'removeRunDependency',
 ];
 
 var EXTRA_EXPORTED_RUNTIME_METHODS = []; // Additional methods to those in EXPORTED_RUNTIME_METHODS. Adjusting that list
@@ -410,6 +376,14 @@ var NO_FILESYSTEM = 0; // If set, does not build in any filesystem support. Usef
 var FORCE_FILESYSTEM = 0; // Makes full filesystem support be included, even if statically it looks like it is not
                           // used. For example, if your C code uses no files, but you include some JS that does,
                           // you might need this.
+var NODERAWFS = 0; // This mode is intended for use with Node.js (and will throw if the build runs in other engines).
+                   // The File System API will directly use Node.js API without requiring `FS.mount()`.
+                   // The initial working directory will be same as process.cwd() instead of VFS root directory.
+                   // Because this mode directly uses Node.js to access the real local filesystem on your OS,
+                   // the code will not necessarily be portable between OSes - it will be as portable as a
+                   // Node.js program would be, which means that differences in how the underlying OS handles
+                   // permissions and errors and so forth may be noticeable.
+                   // This has mostly been tested on Linux so far.
 
 var EXPORTED_FUNCTIONS = ['_main'];
                                     // Functions that are explicitly exported. These functions are kept alive
@@ -597,6 +571,14 @@ var MODULARIZE = 0; // By default we emit all code in a straightforward way into
                     // to the onRuntimeInitialized callback (i.e., it waits for all
                     // necessary async events). It receives the instance as a parameter,
                     // for convenience.
+var MODULARIZE_INSTANCE = 0; // Similar to MODULARIZE, but while that mode exports a function,
+                             // with which you can create multiple instances, this option exports
+                             // a singleton instance. In other words, it's the same as if you
+                             // used MODULARIZE and did EXPORT_NAME = EXPORT_NAME() to create
+                             // the instance manually.
+                             // Note that the promise-like API MODULARIZE provides isn't
+                             // available here (since you arean't creating the instance
+                             // yourself).
 
 var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
                    // print out anything at all whatsoever. This is useful for benchmarking.
@@ -674,6 +656,8 @@ var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which func
                              // appears they can be on the stack when a sync function is called in the EMTERPRETIFY_ASYNC option.
                              // After showing the suggested list, compilation will halt. You can apply the provided list as an
                              // emcc argument when compiling later.
+var EMTERPRETIFY_SYNCLIST = []; // If you have additional custom synchronous functions, add them to this list and the advise mode
+                                // will include them in its analysis.
 
 var SPLIT_MEMORY = 0; // If > 0, we split memory into chunks, of the size given in this parameter.
                       //  * TOTAL_MEMORY becomes the maximum amount of memory, as chunks are allocated on
@@ -744,6 +728,13 @@ var WASM_BACKEND = 0; // Whether to use the WebAssembly backend that is in devel
                       // translate the backend output.
                       // You should not set this yourself, instead set EMCC_WASM_BACKEND=1 in the
                       // environment.
+var EXPERIMENTAL_USE_LLD = 0; // Whether to use lld as a linker for the
+                              // WebAssembly backend, instead of s2wasm.
+                              // Currently an experiment, the plan is to make
+                              // this the default behavior long-term, and remove
+                              // the flag.
+                              // You should not set this yourself, instead set
+                              // EMCC_EXPERIMENTAL_USE_LLD=1 in the environment.
 
 // Ports
 
@@ -882,6 +873,8 @@ var WASM_TEXT_FILE = ''; // name of the file containing wasm text, if relevant
 var WASM_BINARY_FILE = ''; // name of the file containing wasm binary, if relevant
 var ASMJS_CODE_FILE = ''; // name of the file containing asm.js, if relevant
 var SOURCE_MAP_BASE = ''; // Base URL the source mapfile, if relevant
+
+var MEM_INIT_IN_WASM = 0; // for internal use only
 
 var SUPPORT_BASE64_EMBEDDING = 0; // If set to 1, src/base64Utils.js will be included in the bundle.
                                   // This is set internally when needed (SINGLE_FILE)

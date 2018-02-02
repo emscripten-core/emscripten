@@ -405,7 +405,7 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-emrun:
 	
 ``--emrun``
-	Enables the generated output to be aware of the :ref:`emrun <Running-html-files-with-emrun>` command line tool. This allows ``stdout``, ``stderr`` and ``exit(returncode)`` capture when running the generated application through *emrun*.     
+	Enables the generated output to be aware of the :ref:`emrun <Running-html-files-with-emrun>` command line tool. This allows ``stdout``, ``stderr`` and ``exit(returncode)`` capture when running the generated application through *emrun*. (This enables `NO_EXIT_RUNTIME=0`, allowing normal runtime exiting with return code passing.)
 
 ``--cpuprofiler``
 	Embeds a simple CPU profiler onto the generated page. Use this to perform cursory interactive performance profiling.
@@ -477,7 +477,7 @@ Environment variables
 	- ``EMMAKEN_CFLAGS``
 	- ``EMCC_DEBUG``
 
-Search for 'os.environ' in `emcc <https://github.com/kripken/emscripten/blob/master/emcc>`_ to see how these are used. The most interesting is possibly ``EMCC_DEBUG``, which forces the compiler to dump its build and temporary files to a temporary directory where they can be reviewed.
+Search for 'os.environ' in `emcc.py <https://github.com/kripken/emscripten/blob/master/emcc.py>`_ to see how these are used. The most interesting is possibly ``EMCC_DEBUG``, which forces the compiler to dump its build and temporary files to a temporary directory where they can be reviewed.
 
 
 .. todo:: In case we choose to document them properly in future, below are some of the :ref:`-s <emcc-s-option-value>` options that are documented in the site are listed below. Note that this is not exhaustive by any means:

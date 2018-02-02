@@ -9,17 +9,20 @@ mergeInto(LibraryManager.library, {
 #if __EMSCRIPTEN_HAS_workerfs_js__
     '$WORKERFS',
 #endif
+#if __EMSCRIPTEN_HAS_noderawfs_js__
+    '$NODERAWFS',
+#endif
     'stdin', 'stdout', 'stderr'],
   $FS__postset: 'FS.staticInit();' +
                 '__ATINIT__.unshift(function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() });' +
                 '__ATMAIN__.push(function() { FS.ignorePermissions = false });' +
                 '__ATEXIT__.push(function() { FS.quit() });' +
-                //Get module methods from settings
+                // Get module methods from settings
                 '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}',
   $FS: {
     root: null,
     mounts: [],
-    devices: [null],
+    devices: {},
     streams: [],
     nextInode: 1,
     nameTable: null,
@@ -1106,10 +1109,9 @@ mergeInto(LibraryManager.library, {
       if (!stream.stream_ops.read) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
-      var seeking = true;
-      if (typeof position === 'undefined') {
+      var seeking = typeof position !== 'undefined';
+      if (!seeking) {
         position = stream.position;
-        seeking = false;
       } else if (!stream.seekable) {
         throw new FS.ErrnoError(ERRNO_CODES.ESPIPE);
       }
@@ -1134,10 +1136,9 @@ mergeInto(LibraryManager.library, {
         // seek to the end before writing in append mode
         FS.llseek(stream, 0, {{{ cDefine('SEEK_END') }}});
       }
-      var seeking = true;
-      if (typeof position === 'undefined') {
+      var seeking = typeof position !== 'undefined';
+      if (!seeking) {
         position = stream.position;
-        seeking = false;
       } else if (!stream.seekable) {
         throw new FS.ErrnoError(ERRNO_CODES.ESPIPE);
       }
@@ -1214,17 +1215,15 @@ mergeInto(LibraryManager.library, {
     writeFile: function(path, data, opts) {
       opts = opts || {};
       opts.flags = opts.flags || 'w';
-      opts.encoding = opts.encoding || 'utf8';
-      if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
-        throw new Error('Invalid encoding type "' + opts.encoding + '"');
-      }
       var stream = FS.open(path, opts.flags, opts.mode);
-      if (opts.encoding === 'utf8') {
+      if (typeof data === 'string') {
         var buf = new Uint8Array(lengthBytesUTF8(data)+1);
         var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
-        FS.write(stream, buf, 0, actualNumBytes, 0, opts.canOwn);
-      } else if (opts.encoding === 'binary') {
-        FS.write(stream, data, 0, data.length, 0, opts.canOwn);
+        FS.write(stream, buf, 0, actualNumBytes, undefined, opts.canOwn);
+      } else if (ArrayBuffer.isView(data)) {
+        FS.write(stream, data, 0, data.byteLength, undefined, opts.canOwn);
+      } else {
+        throw new Error('Unsupported data type');
       }
       FS.close(stream);
     },
@@ -1367,6 +1366,8 @@ mergeInto(LibraryManager.library, {
         };
         this.setErrno(errno);
         this.message = ERRNO_MESSAGES[errno];
+        // Node.js compatibility: assigning on this.stack fails on Node 4 (but fixed on Node 8)
+        if (this.stack) Object.defineProperty(this, "stack", { value: (new Error).stack, writable: true });
 #if ASSERTIONS
         if (this.stack) this.stack = demangleAll(this.stack);
 #endif
@@ -1918,4 +1919,8 @@ mergeInto(LibraryManager.library, {
     }
   }
 });
+
+if (FORCE_FILESYSTEM) {
+  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$FS');
+}
 

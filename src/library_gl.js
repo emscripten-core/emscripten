@@ -2464,7 +2464,7 @@ var LibraryGL = {
     // See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.15
     timeoutLo = timeoutLo >>> 0;
     timeoutHi = timeoutHi >>> 0;
-    var timeout = (timeoutLo == 0xFFFFFFFF && timeoutHi == 0xFFFFFFFF) ? -1 : Runtime.makeBigInt(timeoutLo, timeoutHi, true);
+    var timeout = (timeoutLo == 0xFFFFFFFF && timeoutHi == 0xFFFFFFFF) ? -1 : makeBigInt(timeoutLo, timeoutHi, true);
     return GLctx.clientWaitSync(GL.syncs[sync], flags, timeout);
   },
 
@@ -2473,7 +2473,7 @@ var LibraryGL = {
     // See WebGL2 vs GLES3 difference on GL_TIMEOUT_IGNORED above (https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.15)
     timeoutLo = timeoutLo >>> 0;
     timeoutHi = timeoutHi >>> 0;
-    var timeout = (timeoutLo == 0xFFFFFFFF && timeoutHi == 0xFFFFFFFF) ? -1 : Runtime.makeBigInt(timeoutLo, timeoutHi, true);
+    var timeout = (timeoutLo == 0xFFFFFFFF && timeoutHi == 0xFFFFFFFF) ? -1 : makeBigInt(timeoutLo, timeoutHi, true);
     GLctx.waitSync(GL.syncs[sync], flags, timeout);
   },
 
@@ -5933,7 +5933,7 @@ var LibraryGL = {
 #if ASSERTIONS
         if (!useCurrProgram) {
           if (GLImmediate.TexEnvJIT.getTexUnitType(i) == 0) {
-             Runtime.warnOnce("GL_TEXTURE" + i + " coords are supplied, but that texture unit is disabled in the fixed-function pipeline.");
+             warnOnce("GL_TEXTURE" + i + " coords are supplied, but that texture unit is disabled in the fixed-function pipeline.");
           }
         }
 #endif
@@ -6539,7 +6539,7 @@ var LibraryGL = {
       if (!GLImmediate.modifiedClientAttributes) {
 #if GL_ASSERTIONS
         if ((GLImmediate.stride & 3) != 0) {
-          Runtime.warnOnce('Warning: Rendering from client side vertex arrays where stride (' + GLImmediate.stride + ') is not a multiple of four! This is not currently supported!');
+          warnOnce('Warning: Rendering from client side vertex arrays where stride (' + GLImmediate.stride + ') is not a multiple of four! This is not currently supported!');
         }
 #endif
         GLImmediate.vertexCounter = (GLImmediate.stride * count) / 4; // XXX assuming float
@@ -6585,7 +6585,7 @@ var LibraryGL = {
         // The immediate-mode glBegin()/glEnd() vertex submission gets automatically generated in appropriate layout,
         // so never need to come down this path if that was used.
 #if GL_ASSERTIONS
-        Runtime.warnOnce('Rendering from planar client-side vertex arrays. This is a very slow emulation path! Use interleaved vertex arrays for best performance.');
+        warnOnce('Rendering from planar client-side vertex arrays. This is a very slow emulation path! Use interleaved vertex arrays for best performance.');
 #endif
         if (!GLImmediate.restrideBuffer) GLImmediate.restrideBuffer = _malloc(GL.MAX_TEMP_BUFFER_SIZE);
         var start = GLImmediate.restrideBuffer;
@@ -6637,7 +6637,7 @@ var LibraryGL = {
       if (!beginEnd) {
 #if GL_ASSERTIONS
         if ((GLImmediate.stride & 3) != 0) {
-          Runtime.warnOnce('Warning: Rendering from client side vertex arrays where stride (' + GLImmediate.stride + ') is not a multiple of four! This is not currently supported!');
+          warnOnce('Warning: Rendering from client side vertex arrays where stride (' + GLImmediate.stride + ') is not a multiple of four! This is not currently supported!');
         }
 #endif
         GLImmediate.vertexCounter = (GLImmediate.stride * count) / 4; // XXX assuming float
@@ -7264,9 +7264,9 @@ var LibraryGL = {
 
   glTexGeni: function() { throw 'glTexGeni: TODO' },
   glTexGenfv: function() { throw 'glTexGenfv: TODO' },
-  glTexEnvi: function() { Runtime.warnOnce('glTexEnvi: TODO') },
-  glTexEnvf: function() { Runtime.warnOnce('glTexEnvf: TODO') },
-  glTexEnvfv: function() { Runtime.warnOnce('glTexEnvfv: TODO') },
+  glTexEnvi: function() { warnOnce('glTexEnvi: TODO') },
+  glTexEnvf: function() { warnOnce('glTexEnvf: TODO') },
+  glTexEnvfv: function() { warnOnce('glTexEnvfv: TODO') },
 
   glGetTexEnviv: function(target, pname, param) { throw 'GL emulation not initialized!'; },
   glGetTexEnvfv: function(target, pname, param) { throw 'GL emulation not initialized!'; },
@@ -7275,7 +7275,7 @@ var LibraryGL = {
   glTexCoord3f: function() { throw 'glTexCoord3f: TODO' },
   glGetTexLevelParameteriv: function() { throw 'glGetTexLevelParameteriv: TODO' },
 
-  glShadeModel: function() { Runtime.warnOnce('TODO: glShadeModel') },
+  glShadeModel: function() { warnOnce('TODO: glShadeModel') },
 
   // Open GLES1.1 compatibility
 

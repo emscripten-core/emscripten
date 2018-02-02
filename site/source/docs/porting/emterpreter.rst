@@ -85,6 +85,12 @@ Building with ``EMTERPRETIFY_ADVISE`` will process the project and perform a sta
 
 The analysis is pessimistic, in that it checks what *could* possibly be called, but might not in practice. For example, function pointers are hard to figure out: Even though the analysis takes into account the **type** of function pointer, if you call a ``void (int)`` method by a function pointer, then the analysis must assume that any ``void (int)`` method (that ever has its address taken, i.e., *could* be called via a function pointer) could be called there. For example, on Doom it suggests that 31% (!) of all methods should be interpreted, while in practice only 1% need to be (as is easy to verify by reading the code).
 
+If you have written custom synchronous functions, use ``EMTERPRETIFY_SYNCLIST`` to specify them and ``EMTERPRETIFY_ADVISE`` will include them in its analysis along with the standard synchronous functions.
+
+::
+
+    -s EMTERPRETIFY_SYNCLIST='["_custom_func_a","_custom_func_b"]'
+
 Dynamic Tools
 ~~~~~~~~~~~~~
 

@@ -69,7 +69,9 @@ to prevent C++ name mangling.
 To compile this code run the following command in the Emscripten
 home directory::
 
-    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS="['_int_sqrt']"
+    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS='["_int_sqrt"]' -s EXTRA_EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]'
+
+``EXPORTED_FUNCTIONS`` tells the compiler what we want to be accessible from the compiled code (everything else might be removed if it is not used), and ``EXTRA_EXPORTED_RUNTIME_METHODS`` tells the compiler that we want to use the runtime functions ``ccall`` and ``cwrap`` (otherwise, it will remove them if it does not see they are used).
 
 .. note::
 
@@ -146,9 +148,17 @@ parameters to pass to the function:
        as the latter will force the method to actually be included in
        the build.
 
-   - Use ``Module.ccall`` and not ``ccall`` by itself. The former will work
-     at all optimisation levels (even if the :term:`Closure Compiler`
-     minifies the function names).
+   - The compiler will remove code it does not see is used, to improve code
+     size. If you use ``ccall`` in a place it sees, like code in a ``--pre-js``
+     or ``--post-js``, it will just work. If you use it in a place the compiler
+     didn't see, like another script tag on the HTML or in the JS console like
+     we did in this tutorial, then because of optimizations
+     and minification you should export ccall from the runtime, using
+     ``EXTRA_EXPORTED_RUNTIME_METHODS``, for example using
+     ``-s 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]'``,
+     and call it on ``Module`` (which contains
+     everything exported, in a safe way that is not influenced by minification
+     or optimizations).
 
 
 Interacting with an API written in C/C++ from NodeJS
@@ -572,17 +582,17 @@ See the `library_*.js`_ files for other examples.
 Calling JavaScript functions as function pointers from C
 ========================================================
 
-You can use ``Runtime.addFunction`` to return an integer value that represents
-a function pointer. Passing that integer to C code then lets it call that
-value as a function pointer, and the JavaScript function you sent to
-``Runtime.addFunction`` will be called.
+You can use ``addFunction`` to return an integer value that represents a
+function pointer. Passing that integer to C code then lets it call that value as
+a function pointer, and the JavaScript function you sent to ``addFunction`` will
+be called.
 
 See `test_add_function in tests/test_core.py`_ for an example.
 
-When using ``Runtime.addFunction``, there is a backing array where these
-functions are stored. This array must be explicitly sized, which can be
-done via a compile-time setting, ``RESERVED_FUNCTION_POINTERS``. For
-example, to reserve space for 20 functions to be added::
+When using ``addFunction``, there is a backing array where these functions are
+stored. This array must be explicitly sized, which can be done via a
+compile-time setting, ``RESERVED_FUNCTION_POINTERS``. For example, to reserve
+space for 20 functions to be added::
 
     emcc ... -s RESERVED_FUNCTION_POINTERS=20 ...
 

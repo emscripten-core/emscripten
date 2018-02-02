@@ -565,14 +565,14 @@ LibraryManager.library = {
      * not an issue.
      */
 #if ASSERTIONS == 2
-    Runtime.warnOnce('using stub malloc (reference it from C to have the real one included)');
+    warnOnce('using stub malloc (reference it from C to have the real one included)');
 #endif
-    var ptr = Runtime.dynamicAlloc(bytes + 8);
+    var ptr = dynamicAlloc(bytes + 8);
     return (ptr+8) & 0xFFFFFFF8;
   },
   free: function() {
 #if ASSERTIONS == 2
-    Runtime.warnOnce('using stub free (reference it from C to have the real one included)');
+    warnOnce('using stub free (reference it from C to have the real one included)');
 #endif
 },
 
@@ -596,6 +596,11 @@ LibraryManager.library = {
   atexit__proxy: 'sync',
   atexit__sig: 'ii',
   atexit: function(func, arg) {
+#if ASSERTIONS
+#if NO_EXIT_RUNTIME == 1
+    warnOnce('atexit() called, but NO_EXIT_RUNTIME is set, so atexits() will not be called. set NO_EXIT_RUNTIME to 0 (see the FAQ)');
+#endif
+#endif
     __ATEXIT__.unshift({ func: func, arg: arg });
   },
   __cxa_atexit: 'atexit',
@@ -635,9 +640,8 @@ LibraryManager.library = {
       ENV['LANG'] = 'C.UTF-8';
       ENV['_'] = Module['thisProgram'];
       // Allocate memory.
-      poolPtr = allocate(TOTAL_ENV_SIZE, 'i8', ALLOC_STATIC);
-      envPtr = allocate(MAX_ENV_VALUES * {{{ Runtime.QUANTUM_SIZE }}},
-                        'i8*', ALLOC_STATIC);
+      poolPtr = staticAlloc(TOTAL_ENV_SIZE);
+      envPtr = staticAlloc(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
       {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}};
       {{{ makeSetValue(makeGlobalUse('_environ'), 0, 'envPtr', 'i8*') }}};
     } else {
@@ -687,7 +691,7 @@ LibraryManager.library = {
     if (!ENV.hasOwnProperty(name)) return 0;
 
     if (_getenv.ret) _free(_getenv.ret);
-    _getenv.ret = allocate(intArrayFromString(ENV[name]), 'i8', ALLOC_NORMAL);
+    _getenv.ret = allocateUTF8(ENV[name]);
     return _getenv.ret;
   },
   clearenv__deps: ['$ENV', '__buildEnvironment'],
@@ -1131,12 +1135,11 @@ LibraryManager.library = {
   llvm_prefetch: function(){},
 
   __assert_fail: function(condition, filename, line, func) {
-    ABORT = true;
-    throw 'Assertion failed: ' + Pointer_stringify(condition) + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function'] + ' at ' + stackTrace();
+    abort('Assertion failed: ' + Pointer_stringify(condition) + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function']);
   },
 
   __assert_func: function(filename, line, func, condition) {
-    throw 'Assertion failed: ' + (condition ? Pointer_stringify(condition) : 'unknown condition') + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function'] + ' at ' + stackTrace();
+    abort('Assertion failed: ' + (condition ? Pointer_stringify(condition) : 'unknown condition') + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function']);
   },
 
   $EXCEPTIONS: {
@@ -1427,14 +1430,14 @@ LibraryManager.library = {
     if (!self.LLVM_SAVEDSTACKS) {
       self.LLVM_SAVEDSTACKS = [];
     }
-    self.LLVM_SAVEDSTACKS.push(Runtime.stackSave());
+    self.LLVM_SAVEDSTACKS.push(stackSave());
     return self.LLVM_SAVEDSTACKS.length-1;
   },
   llvm_stackrestore: function(p) {
     var self = _llvm_stacksave;
     var ret = self.LLVM_SAVEDSTACKS[p];
     self.LLVM_SAVEDSTACKS.splice(p, 1);
-    Runtime.stackRestore(ret);
+    stackRestore(ret);
   },
 
   __cxa_pure_virtual: function() {
@@ -1449,12 +1452,6 @@ LibraryManager.library = {
   llvm_expect_i32__inline: function(val, expected) {
     return '(' + val + ')';
   },
-
-  llvm_lifetime_start: function() {},
-  llvm_lifetime_end: function() {},
-
-  llvm_invariant_start: function() {},
-  llvm_invariant_end: function() {},
 
   llvm_objectsize_i32: function() { return -1 }, // TODO: support this
 
@@ -1575,8 +1572,10 @@ LibraryManager.library = {
   llvm_ceil_f64: 'Math_ceil',
   llvm_floor_f32: 'Math_floor',
   llvm_floor_f64: 'Math_floor',
-  llvm_round_f32: 'Math_round',
-  llvm_round_f64: 'Math_round',
+  llvm_minnum_f32: 'Math_min',
+  llvm_minnum_f64: 'Math_min',
+  llvm_maxnum_f32: 'Math_max',
+  llvm_maxnum_f64: 'Math_max',
 
   llvm_exp2_f32: function(x) {
     return Math.pow(2, x);
@@ -1609,10 +1608,49 @@ LibraryManager.library = {
   },
 
   roundf__asm: true,
-  roundf__sig: 'dd',
-  roundf: function(f) {
+  roundf__sig: 'ff',
+  roundf: function(d) {
+    d = +d;
+    return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
+  },
+
+  llvm_round_f64__asm: true,
+  llvm_round_f64__sig: 'dd',
+  llvm_round_f64: function(d) {
+    d = +d;
+    return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
+  },
+
+  llvm_round_f32__asm: true,
+  llvm_round_f32__sig: 'ff',
+  llvm_round_f32: function(f) {
     f = +f;
     return f >= +0 ? +Math_floor(f + +0.5) : +Math_ceil(f - +0.5); // TODO: use fround?
+  },
+
+  rintf__asm: true,
+  rintf__sig: 'ff',
+  rintf__deps: ['round'],
+  rintf: function(f) {
+    f = +f;
+    return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
+  },
+
+  // TODO: fround?
+  llvm_rint_f32__asm: true,
+  llvm_rint_f32__sig: 'ff',
+  llvm_rint_f32__deps: ['roundf'],
+  llvm_rint_f32: function(f) {
+    f = +f;
+    return (f - +Math_floor(f) != .5) ? +_roundf(f) : +_roundf(f / +2) * +2;
+  },
+
+  llvm_rint_f64__asm: true,
+  llvm_rint_f64__sig: 'dd',
+  llvm_rint_f64__deps: ['round'],
+  llvm_rint_f64: function(f) {
+    f = +f;
+    return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
   },
 
   _reallyNegative: function(x) {
@@ -1702,12 +1740,12 @@ LibraryManager.library = {
         var lib_data = FS.readFile(filename, { encoding: 'binary' });
         if (!(lib_data instanceof Uint8Array)) lib_data = new Uint8Array(lib_data);
         //Module.printErr('libfile ' + filename + ' size: ' + lib_data.length);
-        lib_module = Runtime.loadWebAssemblyModule(lib_data);
+        lib_module = loadWebAssemblyModule(lib_data);
 #else
         // the shared library is a JS file, which we eval
         var lib_data = FS.readFile(filename, { encoding: 'utf8' });
         lib_module = eval(lib_data)(
-          Runtime.alignFunctionTables(),
+          alignFunctionTables(),
           Module
         );
 #endif
@@ -1808,7 +1846,7 @@ LibraryManager.library = {
       } else {
         var result = lib.module[symbol];
         if (typeof result == 'function') {
-          result = Runtime.addFunction(result);
+          result = addFunction(result);
           //Module.printErr('adding function dlsym result for ' + symbol + ' => ' + result);
           lib.cached_functions = result;
         }
@@ -1839,10 +1877,10 @@ LibraryManager.library = {
   dladdr: function(addr, info) {
     // report all function pointers as coming from this program itself XXX not really correct in any way
     var fname = allocate(intArrayFromString(Module['thisProgram'] || './this.program'), 'i8', ALLOC_NORMAL); // XXX leak
-    {{{ makeSetValue('addr', 0, 'fname', 'i32') }}};
-    {{{ makeSetValue('addr', QUANTUM_SIZE, '0', 'i32') }}};
-    {{{ makeSetValue('addr', QUANTUM_SIZE*2, '0', 'i32') }}};
-    {{{ makeSetValue('addr', QUANTUM_SIZE*3, '0', 'i32') }}};
+    {{{ makeSetValue('info', 0, 'fname', 'i32') }}};
+    {{{ makeSetValue('info', QUANTUM_SIZE, '0', 'i32') }}};
+    {{{ makeSetValue('info', QUANTUM_SIZE*2, '0', 'i32') }}};
+    {{{ makeSetValue('info', QUANTUM_SIZE*3, '0', 'i32') }}};
     return 1;
   },
 
@@ -2000,7 +2038,7 @@ LibraryManager.library = {
     var dst = (summerOffset != winterOffset && date.getTimezoneOffset() == Math.min(winterOffset, summerOffset))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
 
-    var zonePtr = {{{ makeGetValue(makeGlobalUse('_tzname'), 'dst ? Runtime.QUANTUM_SIZE : 0', 'i32') }}};
+    var zonePtr = {{{ makeGetValue(makeGlobalUse('_tzname'), 'dst ? ' + Runtime.QUANTUM_SIZE + ' : 0', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, 'zonePtr', 'i32') }}};
 
     return tmPtr;
@@ -2047,9 +2085,9 @@ LibraryManager.library = {
 
   ctime_r__deps: ['localtime_r', 'asctime_r'],
   ctime_r: function(time, buf) {
-    var stack = Runtime.stackSave();
-    var rv = _asctime_r(_localtime_r(time, Runtime.stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
-    Runtime.stackRestore(stack);
+    var stack = stackSave();
+    var rv = _asctime_r(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
+    stackRestore(stack);
     return rv;
   },
 
@@ -2077,7 +2115,12 @@ LibraryManager.library = {
     if (_tzset.called) return;
     _tzset.called = true;
 
-    {{{ makeSetValue(makeGlobalUse('_timezone'), '0', '-(new Date()).getTimezoneOffset() * 60', 'i32') }}};
+    // timezone is specified as seconds west of UTC ("The external variable
+    // `timezone` shall be set to the difference, in seconds, between
+    // Coordinated Universal Time (UTC) and local standard time."), the same
+    // as returned by getTimezoneOffset().
+    // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
+    {{{ makeSetValue(makeGlobalUse('_timezone'), '0', '(new Date()).getTimezoneOffset() * 60', 'i32') }}};
 
     var winter = new Date(2000, 0, 1);
     var summer = new Date(2000, 6, 1);
@@ -4043,7 +4086,7 @@ LibraryManager.library = {
 
     // If user requested to see the original source stack, but no source map information is available, just fall back to showing the JS stack.
     if (flags & 8/*EM_LOG_C_STACK*/ && typeof emscripten_source_map === 'undefined') {
-      Runtime.warnOnce('Source map information is not available, emscripten_log with EM_LOG_C_STACK will be ignored. Build with "--pre-js $EMSCRIPTEN/src/emscripten-source-map.min.js" linker flag to add source map loading to code.');
+      warnOnce('Source map information is not available, emscripten_log with EM_LOG_C_STACK will be ignored. Build with "--pre-js $EMSCRIPTEN/src/emscripten-source-map.min.js" linker flag to add source map loading to code.');
       flags ^= 8/*EM_LOG_C_STACK*/;
       flags |= 16/*EM_LOG_JS_STACK*/;
     }
@@ -4171,7 +4214,7 @@ LibraryManager.library = {
   emscripten_log: function(flags, varargs) {
     // Extract the (optionally-existing) printf format specifier field from varargs.
     var format = {{{ makeGetValue('varargs', '0', 'i32', undefined, undefined, true) }}};
-    varargs += Math.max(Runtime.getNativeFieldSize('i32'), Runtime.getAlignSize('i32', null, true));
+    varargs += {{{ Math.max(Runtime.getNativeFieldSize('i32'), Runtime.getAlignSize('i32', null, true)) }}};
     var str = '';
     if (format) {
       var result = __formatString(format, varargs);
@@ -4185,7 +4228,7 @@ LibraryManager.library = {
   emscripten_get_compiler_setting: function(name) {
     name = Pointer_stringify(name);
 
-    var ret = Runtime.getCompilerSetting(name);
+    var ret = getCompilerSetting(name);
     if (typeof ret === 'number') return ret;
 
     if (!_emscripten_get_compiler_setting.cache) _emscripten_get_compiler_setting.cache = {};
@@ -4367,8 +4410,6 @@ LibraryManager.library = {
   llvm_dbg_value: true,
   llvm_debugtrap: true,
   llvm_ctlz_i32: true,
-  llvm_maxnum_f32: true,
-  llvm_maxnum_f64: true,
   emscripten_asm_const: true,
   emscripten_asm_const_int: true,
   emscripten_asm_const_double: true,

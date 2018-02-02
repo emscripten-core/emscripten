@@ -9,6 +9,11 @@ with this tool. Then just include the generated js for each and they will load
 the data and prepare it accordingly. This allows you to share assets and reduce
 data downloads.
 
+ * If you run this yourself, separately/standalone from emcc, then the main program
+   compiled by emcc must be built with filesystem support. You can do that with
+   -s FORCE_FILESYSTEM=1 (if you forget that, an unoptimized build or one with
+   ASSERTIONS enabled will show an error suggesting you use that flag).
+
 Usage:
 
   file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--no-heap-copy] [--separate-metadata] [--lz4] [--use-preload-plugins]
@@ -19,9 +24,7 @@ Usage:
   --exclude E [F..] Specifies filename pattern matches to use for excluding given files from being added to the package.
                     See https://docs.python.org/2/library/fnmatch.html for syntax.
 
-  --no-closure In general, the file packager emits closure compiler-compatible code, which requires an eval().
-               With this flag passed, we avoid emitting the eval. emcc passes this flag by default whenever
-               it knows that closure is not run.
+  --from-emcc Indicate that `file_packager.py` was called from `emcc.py` and will be further processed by it, so some code generation can be skipped here
 
   --crunch=X Will compress dxt files to crn with quality level X. The crunch commandline tool must be present
              and CRUNCH should be defined in ~/.emscripten that points to it. JS crunch decompressing code will
@@ -32,6 +35,8 @@ Usage:
              unneeded computation.
 
   --js-output=FILE Writes output in FILE, if not specified, standard output is used.
+
+  --export-name=EXPORT_NAME Use custom export name (default is `Module`)
 
   --no-force Don't create output if no valid input file is specified.
 
@@ -98,13 +103,14 @@ AV_WORKAROUND = 0 # Set to 1 to randomize file order and add some padding, to wo
 
 data_files = []
 excluded_patterns = []
+export_name = 'Module'
 leading = ''
 has_preloaded = False
 compress_cnt = 0
 crunch = 0
 plugins = []
 jsoutput = None
-no_closure = False
+from_emcc = False
 force = True
 # If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally cache VFS XHR so that subsequent
 # page loads can read the data from the offline cache instead.
@@ -151,8 +157,12 @@ for arg in sys.argv[2:]:
   elif arg.startswith('--js-output'):
     jsoutput = arg.split('=', 1)[1] if '=' in arg else None
     leading = ''
-  elif arg.startswith('--no-closure'):
-    no_closure = True
+  elif arg.startswith('--export-name'):
+    if '=' in arg:
+      export_name = arg.split('=', 1)[1]
+    leading = ''
+  elif arg.startswith('--from-emcc'):
+    from_emcc = True
     leading = ''
   elif arg.startswith('--crunch'):
     try:
@@ -191,17 +201,15 @@ if (not force) and len(data_files) == 0:
 if not has_preloaded or jsoutput == None:
   assert not separate_metadata, 'cannot separate-metadata without both --preloaded files and a specified --js-output'
 
-ret = '''
-var Module;
-'''
-if not no_closure:
-  ret += '''
-if (typeof Module === 'undefined') Module = eval('(function() { try { return Module || {} } catch(e) { return {} } })()');
-'''
-else:
-  ret += '''
-if (typeof Module === 'undefined') Module = {};
-'''
+if not from_emcc:
+  print('Remember to build the main file with  -s FORCE_FILESYSTEM=1  so that it includes support for loading this file package', file=sys.stderr)
+
+ret = ''
+# emcc.py will add this to the output itself, so it is only needed for standalone calls
+if not from_emcc:
+  ret = '''
+var Module = typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {};
+''' % {"EXPORT_NAME": export_name}
 
 ret += '''
 if (!Module.expectedDataFileDownloads) {
@@ -365,7 +373,7 @@ if crunch:
 
       # guess at format. this lets us tell crunch to not try to be clever and use odd formats like DXT5_AGBR
       try:
-        format = Popen(['file', file_['srcpath']], stdout=PIPE).communicate()[0]
+        format = run_process(['file', file_['srcpath']], stdout=PIPE).stdout
         if 'DXT5' in format:
           format = ['-dxt5']
         elif 'DXT1' in format:

@@ -184,13 +184,13 @@ var LibraryOpenAL = {
             audioSrc.noteOn(startTime);
 #if OPENAL_DEBUG
             if (offset > 0.0) {
-              Runtime.warnOnce('The current browser does not support AudioBufferSourceNode.start(when, offset); method, so cannot play back audio with an offset '+startOffset+' secs! Audio glitches will occur!');
+              warnOnce('The current browser does not support AudioBufferSourceNode.start(when, offset); method, so cannot play back audio with an offset '+startOffset+' secs! Audio glitches will occur!');
             }
 #endif
           }
 #if OPENAL_DEBUG
           else {
-            Runtime.warnOnce('Unable to start AudioBufferSourceNode playback! Not supported by the browser?');
+            warnOnce('Unable to start AudioBufferSourceNode playback! Not supported by the browser?');
           }
 
           console.log('scheduleSourceAudio() queuing buffer ' + buf.id + ' for source ' + src.id + ' at ' + startTime + ' (offset by ' + startOffset + ')');
@@ -473,7 +473,7 @@ var LibraryOpenAL = {
         listener.positionZ.value = listener._position[2];
       } else {
 #if OPENAL_DEBUG
-        Runtime.warnOnce('Listener position attributes are not present, falling back to setPosition()');
+        warnOnce('Listener position attributes are not present, falling back to setPosition()');
 #endif
         listener.setPosition(listener._position[0], listener._position[1], listener._position[2]);
       }
@@ -486,7 +486,7 @@ var LibraryOpenAL = {
         listener.upZ.value = listener._up[2];
       } else {
 #if OPENAL_DEBUG
-        Runtime.warnOnce('Listener orientation attributes are not present, falling back to setOrientation()');
+        warnOnce('Listener orientation attributes are not present, falling back to setOrientation()');
 #endif
         listener.setOrientation(
           listener._direction[0], listener._direction[1], listener._direction[2],
@@ -598,7 +598,7 @@ var LibraryOpenAL = {
         panner.positionZ.value = posZ;
       } else {
 #if OPENAL_DEBUG
-        Runtime.warnOnce('Panner position attributes are not present, falling back to setPosition()');
+        warnOnce('Panner position attributes are not present, falling back to setPosition()');
 #endif
         panner.setPosition(posX, posY, posZ);
       }
@@ -608,7 +608,7 @@ var LibraryOpenAL = {
         panner.orientationZ.value = dirZ;
       } else {
 #if OPENAL_DEBUG
-        Runtime.warnOnce('Panner orientation attributes are not present, falling back to setOrientation()');
+        warnOnce('Panner orientation attributes are not present, falling back to setOrientation()');
 #endif
         panner.setOrientation(dirX, dirY, dirZ);
       }
@@ -1347,7 +1347,7 @@ var LibraryOpenAL = {
           return;
         }
 #if OPENAL_DEBUG
-        Runtime.warnOnce('AL_MIN_GAIN is not currently supported');
+        warnOnce('AL_MIN_GAIN is not currently supported');
 #endif
         src.minGain = value;
         break;
@@ -1360,7 +1360,7 @@ var LibraryOpenAL = {
           return;
         }
 #if OPENAL_DEBUG
-        Runtime.warnOnce('AL_MAX_GAIN is not currently supported');
+        warnOnce('AL_MAX_GAIN is not currently supported');
 #endif
         src.maxGain = value;
         break;
@@ -3377,7 +3377,7 @@ var LibraryOpenAL = {
   alDopplerVelocity__proxy: 'sync',
   alDopplerVelocity__sig: 'vi',
   alDopplerVelocity: function(value) {
-    Runtime.warnOnce('alDopplerVelocity() is deprecated, and only kept for compatibility with OpenAL 1.0. Use alSpeedOfSound() instead.');
+    warnOnce('alDopplerVelocity() is deprecated, and only kept for compatibility with OpenAL 1.0. Use alSpeedOfSound() instead.');
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
       console.error('alDopplerVelocity() called without a valid context');

@@ -56,7 +56,7 @@ int main() {
         packages: [{ metadata: meta, blob: blob }]
       }, '/files');
 
-      Module.ccall('finish');
+      ccall('finish');
     }
 
     var meta_xhr = new XMLHttpRequest();

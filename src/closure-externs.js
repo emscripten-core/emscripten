@@ -861,6 +861,12 @@ WebAssembly.RuntimeError = function() {};
  */
 WebAssembly.instantiate = function(moduleObject, importObject) {};
 /**
+ * @param {!Promise<!Response>} source
+ * @param {Object=} importObject
+ * @return {!Promise<{module:WebAssembly.Module, instance:WebAssembly.Instance}>}
+ */
+WebAssembly.instantiateStreaming = function(source, importObject) {};
+/**
  * @param {!BufferSource} bytes
  * @return {!Promise<!WebAssembly.Module>}
  */
@@ -1025,6 +1031,9 @@ var VoidPtr;
 
 // Various Emscripten-specific global variables
 
+/**
+ * @suppress {duplicate}
+ */
 var tempRet0;
 var tempI64;
 var tempDouble;
@@ -1032,10 +1041,6 @@ var tempDouble;
  * @suppress {duplicate}
  */
 var WasmJS;
-/**
- * @suppress {duplicate}
- */
-var Module;
 
 // Various variables that get into WasmJS of Binaryen, but are not present in final build and never actually used (should probably be fixed in future)
 // These are only needed for `interpret-asm2wasm` and not for `asmjs` or `native-wasm`

@@ -1,18 +1,16 @@
-// All functions here should be maybeExported from jsifier.js
-
 // Copied from https://github.com/strophe/strophejs/blob/e06d027/src/polyfills.js#L149
 
 // This code was written by Tyler Akins and has been placed in the
 // public domain.  It would be nice if you left this header intact.
 // Base64 code from Tyler Akins -- http://rumkin.com
 
-var keyStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-
+/**
+ * Decodes a base64 string.
+ * @param {String} input The string to decode.
+ */
 var decodeBase64 = typeof atob === 'function' ? atob : function (input) {
-  /**
-   * Decodes a base64 string.
-   * @param {String} input The string to decode.
-   */
+  var keyStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+
   var output = '';
   var chr1, chr2, chr3;
   var enc1, enc2, enc3, enc4;
@@ -69,13 +67,7 @@ function intArrayFromBase64(s) {
 // If filename is a base64 data URI, parses and returns data (Buffer on node,
 // Uint8Array otherwise). If filename is not a base64 data URI, returns undefined.
 function tryParseAsDataURI(filename) {
-  var dataURIPrefix = 'data:application/octet-stream;base64,';
-
-  if (!(
-    String.prototype.startsWith ?
-      filename.startsWith(dataURIPrefix) :
-      filename.indexOf(dataURIPrefix) === 0
-  )) {
+  if (!isDataURI(filename)) {
     return;
   }
 
