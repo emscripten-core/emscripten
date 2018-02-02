@@ -85,35 +85,33 @@ if (!ENVIRONMENT_IS_PTHREAD) PthreadWorkerInit = {};
 var currentScriptUrl = (typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
 #endif
 
-if (typeof Module['locateFile'] !== 'function') {
-  // `/` should be present at the end if `Module['scriptDirectory']` is not empty
-  if (!Module['scriptDirectory']) {
+// `/` should be present at the end if `Module['scriptDirectory']` is not empty
+if (!Module['scriptDirectory']) {
 #if !SUPPORT_BASE64_EMBEDDING
-    if (ENVIRONMENT_IS_NODE) {
-      Module['scriptDirectory'] = __dirname + '/';
-    } else if (ENVIRONMENT_IS_WEB && document.currentScript.src.indexOf('blob:') !== 0) {
-      Module['scriptDirectory'] = document.currentScript.src.split('/').slice(0, -1).join('/') + '/';
-    } else if (ENVIRONMENT_IS_WORKER) {
-      Module['scriptDirectory'] = self.location.href.split('/').slice(0, -1).join('/') + '/';
-    } else {
-      Module['scriptDirectory'] = '';
-    }
-#else
+  if (ENVIRONMENT_IS_NODE) {
+    Module['scriptDirectory'] = __dirname + '/';
+  } else if (ENVIRONMENT_IS_WEB && document.currentScript.src.indexOf('blob:') !== 0) {
+    Module['scriptDirectory'] = document.currentScript.src.split('/').slice(0, -1).join('/') + '/';
+  } else if (ENVIRONMENT_IS_WORKER) {
+    Module['scriptDirectory'] = self.location.href.split('/').slice(0, -1).join('/') + '/';
+  } else {
     Module['scriptDirectory'] = '';
+  }
+#else
+  Module['scriptDirectory'] = '';
 #endif
-  }
-  if (!Module['memoryInitializerPrefixURL']) {
-    Module['memoryInitializerPrefixURL'] = Module['scriptDirectory'];
-  }
-  if (!Module['pthreadMainPrefixURL']) {
-    Module['pthreadMainPrefixURL'] = Module['scriptDirectory'];
-  }
-  if (!Module['cdInitializerPrefixURL']) {
-    Module['cdInitializerPrefixURL'] = Module['scriptDirectory'];
-  }
-  if (!Module['filePackagePrefixURL']) {
-    Module['filePackagePrefixURL'] = Module['scriptDirectory'];
-  }
+}
+if (!Module['memoryInitializerPrefixURL']) {
+  Module['memoryInitializerPrefixURL'] = Module['scriptDirectory'];
+}
+if (!Module['pthreadMainPrefixURL']) {
+  Module['pthreadMainPrefixURL'] = Module['scriptDirectory'];
+}
+if (!Module['cdInitializerPrefixURL']) {
+  Module['cdInitializerPrefixURL'] = Module['scriptDirectory'];
+}
+if (!Module['filePackagePrefixURL']) {
+  Module['filePackagePrefixURL'] = Module['scriptDirectory'];
 }
 
 if (ENVIRONMENT_IS_NODE) {
