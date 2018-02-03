@@ -87,7 +87,9 @@ void test() {
 
   // emscripten uses 'musl' what is an implementation of the standard library for Linux-based systems
 #if defined(__linux__) || defined(__EMSCRIPTEN__)
-  assert(errno == EISDIR);
+  // Here errno is supposed to be EISDIR, but it is EPERM for NODERAWFS on macOS.
+  // See issue #6121.
+  assert(errno == EISDIR || errno == EPERM);
 #else
   assert(errno == EPERM);
 #endif
@@ -154,7 +156,8 @@ void test() {
 #ifdef __APPLE__
   assert(errno == EISDIR);
 #else
-  assert(errno == EBUSY);
+  // errno is EISDIR for NODERAWFS on macOS. See issue #6121.
+  assert(errno == EBUSY || errno == EISDIR);
 #endif
 
 #ifndef NO_SYMLINK
