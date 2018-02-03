@@ -1757,6 +1757,9 @@ keydown(100);keyup(100); // trigger the end
   def test_gl_vertex_buffer(self):
     self.btest('gl_vertex_buffer.c', reference='gl_vertex_buffer.png', args=['-s', 'GL_UNSAFE_OPTS=0', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], reference_slack=1)
 
+  def test_gl_draw_elements(self):
+    self.btest('gl_draw_elements.c', reference='gl_draw_elements.png', args=['-s', 'GL_UNSAFE_OPTS=0', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lglut'], reference_slack=1)
+
   def test_gles2_uniform_arrays(self):
     self.btest('gles2_uniform_arrays.cpp', args=['-s', 'GL_ASSERTIONS=1', '-lGL', '-lSDL'], expected=['1'], also_proxied=True)
 
