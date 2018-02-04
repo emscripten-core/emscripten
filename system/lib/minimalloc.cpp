@@ -232,7 +232,7 @@ static void useRegion(Region* region, size_t size) {
   possiblySplitRemainder(region, size);
 }
 
-static Region* useFreeInfo(FreeInfo* freeInfo) {
+static Region* useFreeInfo(FreeInfo* freeInfo, size_t size) {
   Region* region = fromFreeInfo(freeInfo);
   // This region is no longer free
   removeFromFreeList(region);
@@ -274,7 +274,7 @@ static Region* tryFromFreeList(size_t size) {
       Region* region = fromFreeInfo(freeInfo);
       if (getMaximumPayloadSize(region) >= size) {
         // Success, use it
-        return useFreeInfo(freeInfo);
+        return useFreeInfo(freeInfo, size);
       }
       freeInfo = freeInfo->next;
       tries++;
@@ -284,7 +284,7 @@ static Region* tryFromFreeList(size_t size) {
     FreeInfo* freeInfo = freeLists[index];
     if (freeInfo) {
       // We found one, use it.
-      return useFreeInfo(freeInfo);
+      return useFreeInfo(freeInfo, size);
     }
     // Look in a freelist of larger elements.
     // TODO This does increase the risk of fragmentation, though,
