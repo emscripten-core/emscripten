@@ -1,3 +1,13 @@
+/*
+ * Simple minimalistic but efficient malloc/free.
+ *
+ * Assumptions:
+ *
+ *  - 32-bit system.
+ *  - sbrk() is available (and nothing better, it's all we use).
+ *  - sbrk() will not be accessed on another thread in parallel to us.
+ *
+ */
 #include <assert.h>
 #include <string.h> // for memcpy, memset
 #include <unistd.h> // for sbrk()
@@ -136,8 +146,10 @@ static void* getAfter(Region* region) {
 // power of 2 payload sizes (only the ones from ALIGNMENT
 // size and above are relevant, though). The freelist at index
 // K contains regions of memory big enough to contain 2^K bytes.
-static const size_t NUM_FREELISTS = 32;
-static FreeInfo* freeLists[NUM_FREELISTS] = {
+
+static const size_t MAX_FREELIST_INDEX = 32;
+
+static FreeInfo* freeLists[MAX_FREELIST_INDEX] = {
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -156,7 +168,7 @@ static size_t getFreeListIndex(size_t size) {
   // We need a lower bound here, as the list contains things
   // that can contain at least a power of 2.
   size_t ret = lowerBoundByPowerOf2(size);
-  assert(ret < NUM_FREELISTS);
+  assert(ret < MAX_FREELIST_INDEX);
   return ret;
 }
 
@@ -214,24 +226,54 @@ static void useRegion(Region* region, size_t size) {
 
 static Region* getFromFreeList(size_t size) {
   size_t index = getFreeListIndex(size);
-  FreeInfo* freeInfo = freeLists[index];
-  if (!freeInfo) return NULL;
-  Region* region = freeInfo->region;
-  // This region is no longer free
-  removeFromFreeList(region);
-  // This region is now in use
-  useRegion(region, size);
-  return region;
+  while (index < MAX_FREELIST_INDEX) {
+    FreeInfo* freeInfo = freeLists[index];
+    if (freeInfo) {
+      // We found one, use it.
+      Region* region = freeInfo->region;
+      // This region is no longer free
+      removeFromFreeList(region);
+      // This region is now in use
+      useRegion(region, size);
+      return region;
+    }
+    // Look in a freelist of larger elements.
+    // TODO This does increase the risk of fragmentation, though,
+    //      and maybe the iteration adds runtime overhead.
+    index++;
+  }
+  // No luck, no free list.
+  return NULL;
 }
 
 static Region* newAllocation(size_t size) {
   assert(size > 0);
   size_t sbrkSize = METADATA_SIZE + alignUp(size);
-  Region* region = (Region*)sbrk(sbrkSize);
-  if (region == (void*)-1) {
-    // sbrk failed, we failed.
+  void* ptr = sbrk(sbrkSize);
+  if (ptr == (void*)-1) {
+    // sbrk() failed, we failed.
     return NULL;
   }
+  // sbrk() results might not be aligned. We assume single-threaded sbrk()
+  // access here in order to fix that up
+  void* fixedPtr = alignUpPointer(ptr);
+  if (ptr != fixedPtr) {
+    size_t extra = (char*)fixedPtr - (char*)ptr;
+    void* extraPtr = sbrk(extra);
+    if (extraPtr == (void*)-1) {
+      // sbrk() failed, we failed.
+      return NULL;
+    }
+    // Verify the single-threaded assumption. If this fails, it means
+    // we also leak the previous allocation, so we don't even try to
+    // handle it.
+    assert((char*)extraPtr == (char*)ptr + sbrkSize);
+    // We now have a contiguous block of memory from ptr to
+    // ptr + sbrkSize + fixedPtr - ptr = fixedPtr + sbrkSize.
+    // fixedPtr is aligned and starts a region of the right
+    // amount of memory.
+  }
+  Region* region = (Region*)fixedPtr;
   // Success, we have new memory
   initRegion(region, sbrkSize, size);
   useRegion(region, size);
@@ -358,5 +400,7 @@ void* realloc(void *ptr, size_t size) {
   free(ptr);
   return newPtr;
 }
+
+// XXX how about the max size of allocation, half the size of total memory? and 3/4 of total memory? how do those fit in freelists?
 
 } // extern "C"
