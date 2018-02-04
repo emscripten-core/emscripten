@@ -1,4 +1,4 @@
-#include <string.h> // for memset
+#include <string.h> // for memcpy, memset
 #include <unistd.h> // for sbrk()
 
 // Math utilities
@@ -25,9 +25,11 @@ static size_t lowerBoundByPowerOf2(size_t x) {
 
 // Constants
 
-// All allocations are aligned to this value. This is
-// also the minimum allocation size.
+// All allocations are aligned to this value.
 static const size_t ALIGNMENT = 16;
+
+// Even allocating 1 byte incurs this much actual
+// allocation. This is our minimum bin size.
 static const size_t MIN_ALLOC = ALIGNMENT;
 
 // How big the metadata is in each region. It is convenient
@@ -69,17 +71,18 @@ struct FreeInfo {
 struct Metadata {
   // The total size of the section of memory this is associated
   // with and contained in.
-XXX is this aligned to a multiple of ALIGN, the raw amount? or the total?
-  // That includes the metadata itself and the payload memory after.
+  // That includes the metadata itself and the payload memory after,
+  // which includes the used and unused portions of it.
   size_t totalSize;
+
+  // How many bytes are used out of the payload. If this is 0, the
+  // region is free for use (we don't allocate payloads of size 0).
+  size_t usedPayload;
 
   // Each memory area knows its neighbors, as we hope to merge them.
   // If there is no neighbor, NULL.
   Region* prev = NULL,
           next = NULL;
-
-  // Whether the payload is free for use, or already in use (malloc'd).
-  size_t free;
 };
 
 // A contiguous region of memory. Metadata at the beginning describes it,
@@ -99,33 +102,33 @@ struct Region {
 
 // Region utilities
 
-static void initRegion(Region* region, size_t totalSize) {
+static void initRegion(Region* region, size_t totalSize, size_t usedPayload) {
   region->metadata.totalSize = totalSize;
+  region->metadata.usedPayload = usedPayload;
   region->metadata.prev = NULL;
   region->metadata.next = NULL;
-  region->metadata.free = 0;
 }
 
 static void* getPayload(Region* region) {
   assert(sizeof(Metadata) == METADATA_SIZE);
   assert(&region->freeInfo - region == METADATA_SIZE);
-  assert(!region->free);
+  assert(region->metadata.usedPayload);
   return &region->payload;
 }
 
 static Region* fromPayload(void* payload) {
   assert(sizeof(Metadata) == METADATA_SIZE);
   assert(&region->freeInfo - region == METADATA_SIZE);
-  assert(!region->free);
+  assert(region->metadata.usedPayload);
   return (region*)(payload - sizeof(Metadata));
 }
 
-static void* getPayloadSize(Region* region) {
+static void* getMaximumPayloadSize(Region* region) {
   return region->metadata.totalSize - METADATA_SIZE;
 }
 
 static FreeInfo* getFreeInfo(Region* region) {
-  assert(region->free);
+  assert(!region->metadata.usedPayload);
   return &region->freeInfo;
 }
 
@@ -167,8 +170,8 @@ static size_t getFreeListIndex(size) {
 }
 
 static void removeFromFreeList(Region* region) {
-  assert(!region->metadata.free);
-  size_t index = getFreeListIndex(getPayloadSize(region));
+  assert(region->metadata.usedPayload);
+  size_t index = getFreeListIndex(getMaximumPayloadSize(region));
   FreeInfo* freeInfo = getFreeInfo(region);
   if (*freeLists[index] == freeInfo) {
     *freeLists[index] = freeInfo->next;
@@ -182,8 +185,8 @@ static void removeFromFreeList(Region* region) {
 }
 
 static void addToFreeList(Region* region) {
-  assert(!region->metadata.free);
-  size_t index = getFreeListIndex(getPayloadSize(region));
+  assert(region->metadata.usedPayload);
+  size_t index = getFreeListIndex(getMaximumPayloadSize(region));
   FreeInfo* freeInfo = getFreeInfo(region);
   FreeInfo* last = freeLists[index];
   freeLists[index] = freeInfo;
@@ -192,7 +195,7 @@ static void addToFreeList(Region* region) {
 }
 
 static void possiblySplitRemainder(Region* region, size_t size) {
-  size_t payloadSize = getPayloadSize(region);
+  size_t payloadSize = getMaximumPayloadSize(region);
   assert(payloadSize >= size);
   size_t extra = payloadSize - size;
   // We need room for a minimal region, but also must align it.
@@ -202,7 +205,7 @@ static void possiblySplitRemainder(Region* region, size_t size) {
     Region* split = (Region*)alignUpPointer(getPayload(region) + size);
     size_t totalSplitSize = (void*)split - (void*)region;
     assert(totalSplitSize >= MIN_REGION_SIZE);
-    initRegion(split, totalSplitSize);
+    initRegion(split, totalSplitSize, size);
     split->prev = region;
     split->next = region->next;
     region->next = split;
@@ -211,8 +214,8 @@ static void possiblySplitRemainder(Region* region, size_t size) {
 }
 
 static void useRegion(Region* region, size_t size) {
-  assert(!region->metadata.free);
-  region->metadata.free = 1;
+  assert(!region->metadata.usedPayload);
+  region->metadata.usedPayload = size;
   // We may not be using all of it, split out a smaller
   // region into a free list if it's large enough.
   possiblySplitRemainder(region, size);
@@ -239,7 +242,7 @@ static Region* newAllocation(size_t size) {
     return NULL;
   }
   // Success, we have new memory
-  initRegion(region, sbrkSize);
+  initRegion(region, sbrkSize, size);
   useRegion(region, size);
   // Apply globally, connect it to lastRegion
   if (lastRegion) {
@@ -258,13 +261,13 @@ int mergeIntoExistingFreeRegion(Region *region) {
   int merged = 0;
   Region* prev = region->prev;
   Region* next = region->next;
-  if (prev && prev->free) {
+  if (prev && !prev->metadata.usedPayload) {
     // Merge them.
     removeFromFreeList(prev);
     prev->totalSize += region->totalSize;
     prev->next = region->next;
     // We may also be able to merge with the next, keep trying.
-    if (next && next->free) {
+    if (next && !next->metadata.usedPayload) {
       removeFromFreeList(next);
       prev->totalSize += next->totalSize;
       prev->next = next->next;
@@ -272,7 +275,7 @@ int mergeIntoExistingFreeRegion(Region *region) {
     addToFreeList(prev);
     return 1;
   }
-  if (next && next->free) {
+  if (next && !next->metadata.usedPayload) {
     // Merge them.
     removeFromFreeList(next);
     region->totalSize += next->totalSize;
@@ -303,7 +306,7 @@ void* malloc(size_t size) {
 void free(void *ptr) {
   if (ptr == NULL) return;
   Region* region = fromPayload(ptr);
-  region->metadata.free = 0;
+  region->metadata.usedPayload = 0;
   // Perhaps we can join this to an adjacent free region, unfragmenting?
   if (!mergeIntoExistingFreeRegion(region)) {
     // Otherwise, mark as unused and add to freelist.
@@ -326,5 +329,40 @@ void* realloc(void *ptr, size_t size) {
     free(ptr);
     return;
   }
+  Region* region = fromPayload(ptr);
+  if (size == region->metadata.usedPayload) {
+    // Nothing to do.
+    return ptr;
+  }
+  if (size < region->metadata.usedPayload) {
+    // Shrink it.
+    region->metadata.usedPayload = size;
+    // There might be enough left over to split out now.
+    possiblySplitRemainder(region, size);
+    return ptr;
+  }
+  // Grow it. First, maybe we can do simple growth in the current region.
+  if (size <= getMaximumPayloadSize(region)) {
+    region->metadata.usedPayload = size;
+    return ptr;
+  }
+  // Perhaps right after us is free space we can merge to us. We
+  // can only do this once, as if there were two free regions after
+  // us they would have already been merged.
+  Region* next = region->next;
+  if (next && !next->metadata.usedPayload &&
+      size <= getMaximumPayloadSize(region) + next->totalSize) {
+    region->metadata.totalSize += next->totalSize;
+    region->metadata.usedPayload = size;
+    region->next = next->next;
+    removeFromFreeList(next);
+    return ptr;
+  }
+  // Slow path: New allocation, copy to there, free original.
+  void* newPtr = malloc(size);
+  if (!newPtr) return NULL;
+  memcpy(newPtr, getPayload(region), region->metadata.usedPayload);
+  free(ptr);
+  return newPtr;
 }
 
