@@ -1,3 +1,4 @@
+#include <string.h> // for memset
 #include <unistd.h> // for sbrk()
 
 // Math utilities
@@ -68,6 +69,7 @@ struct FreeInfo {
 struct Metadata {
   // The total size of the section of memory this is associated
   // with and contained in.
+XXX is this aligned to a multiple of ALIGN, the raw amount? or the total?
   // That includes the metadata itself and the payload memory after.
   size_t totalSize;
 
@@ -76,9 +78,8 @@ struct Metadata {
   Region* prev = NULL,
           next = NULL;
 
-  // Whether the payload is being used for allocation, that is, whether
-  // it was malloc'd.
-  size_t inUse;
+  // Whether the payload is free for use, or already in use (malloc'd).
+  size_t free;
 };
 
 // A contiguous region of memory. Metadata at the beginning describes it,
@@ -102,20 +103,20 @@ static void initRegion(Region* region, size_t totalSize) {
   region->metadata.totalSize = totalSize;
   region->metadata.prev = NULL;
   region->metadata.next = NULL;
-  region->metadata.inUse = 0;
+  region->metadata.free = 0;
 }
 
 static void* getPayload(Region* region) {
   assert(sizeof(Metadata) == METADATA_SIZE);
   assert(&region->freeInfo - region == METADATA_SIZE);
-  assert(region->inUse);
+  assert(!region->free);
   return &region->payload;
 }
 
 static Region* fromPayload(void* payload) {
   assert(sizeof(Metadata) == METADATA_SIZE);
   assert(&region->freeInfo - region == METADATA_SIZE);
-  assert(region->inUse);
+  assert(!region->free);
   return (region*)(payload - sizeof(Metadata));
 }
 
@@ -124,7 +125,7 @@ static void* getPayloadSize(Region* region) {
 }
 
 static FreeInfo* getFreeInfo(Region* region) {
-  assert(!region->inUse);
+  assert(region->free);
   return &region->freeInfo;
 }
 
@@ -166,7 +167,7 @@ static size_t getFreeListIndex(size) {
 }
 
 static void removeFromFreeList(Region* region) {
-  assert(!region->metadata.inUse);
+  assert(!region->metadata.free);
   size_t index = getFreeListIndex(getPayloadSize(region));
   FreeInfo* freeInfo = getFreeInfo(region);
   if (*freeLists[index] == freeInfo) {
@@ -181,7 +182,7 @@ static void removeFromFreeList(Region* region) {
 }
 
 static void addToFreeList(Region* region) {
-  assert(!region->metadata.inUse);
+  assert(!region->metadata.free);
   size_t index = getFreeListIndex(getPayloadSize(region));
   FreeInfo* freeInfo = getFreeInfo(region);
   FreeInfo* last = freeLists[index];
@@ -210,8 +211,8 @@ static void possiblySplitRemainder(Region* region, size_t size) {
 }
 
 static void useRegion(Region* region, size_t size) {
-  assert(!region->metadata.inUse);
-  region->metadata.inUse = 1;
+  assert(!region->metadata.free);
+  region->metadata.free = 1;
   // We may not be using all of it, split out a smaller
   // region into a free list if it's large enough.
   possiblySplitRemainder(region, size);
@@ -253,6 +254,35 @@ static Region* newAllocation(size_t size) {
   return region;
 }
 
+int mergeIntoExistingFreeRegion(Region *region) {
+  int merged = 0;
+  Region* prev = region->prev;
+  Region* next = region->next;
+  if (prev && prev->free) {
+    // Merge them.
+    removeFromFreeList(prev);
+    prev->totalSize += region->totalSize;
+    prev->next = region->next;
+    // We may also be able to merge with the next, keep trying.
+    if (next && next->free) {
+      removeFromFreeList(next);
+      prev->totalSize += next->totalSize;
+      prev->next = next->next;
+    }
+    addToFreeList(prev);
+    return 1;
+  }
+  if (next && next->free) {
+    // Merge them.
+    removeFromFreeList(next);
+    region->totalSize += next->totalSize;
+    region->next = next->next;
+    addToFreeList(region);
+    return 1;
+  }
+  return 0;
+}
+
 // public API
 
 void* malloc(size_t size) {
@@ -271,11 +301,30 @@ void* malloc(size_t size) {
 }
 
 void free(void *ptr) {
+  if (ptr == NULL) return;
+  Region* region = fromPayload(ptr);
+  region->metadata.free = 0;
+  // Perhaps we can join this to an adjacent free region, unfragmenting?
+  if (!mergeIntoExistingFreeRegion(region)) {
+    // Otherwise, mark as unused and add to freelist.
+    addToFreeList(region);
+  }
 }
 
 void* calloc(size_t nmemb, size_t size) {
+  // TODO If we know no one else is using sbrk(), we can assume that new
+  //      memory allocations are zero'd out.
+  void* ptr = malloc(size);
+  if (!ptr) return NULL;
+  memset(ptr, 0, size);
+  return ptr;
 }
 
 void* realloc(void *ptr, size_t size) {
+  if (!ptr) return malloc(size);
+  if (!size) {
+    free(ptr);
+    return;
+  }
 }
 
