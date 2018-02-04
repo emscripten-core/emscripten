@@ -2526,7 +2526,7 @@ class JS(object):
     return ret
 
   @staticmethod
-  def make_jscall(sig, sig_order, named=True):
+  def make_jscall(sig, sig_order=0, named=True):
     fnargs = ','.join(['a' + str(i) for i in range(1, len(sig))])
     args = 'index' + (',' if fnargs else '') + fnargs
     # While asm.js/fastcomp's addFunction support preallocates
