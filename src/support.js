@@ -272,8 +272,8 @@ Module['registerFunctions'] = registerFunctions;
 #if WASM_BACKEND
 #if RESERVED_FUNCTION_POINTERS
 var jsCallStartIndex = {{{ JSCALL_START_INDEX }}};
-var jsCallSigIndex = {{{ JSON.stringify(JSCALL_SIG_TO_SIG_INDEX) }}};
-var jsCallNumSigs = Object.keys(jsCallSigIndex).length;
+var jsCallSigOrder = {{{ JSON.stringify(JSCALL_SIG_ORDER) }}};
+var jsCallNumSigs = Object.keys(jsCallSigOrder).length;
 var functionPointers = new Array(jsCallNumSigs * {{{ RESERVED_FUNCTION_POINTERS }}});
 #else // RESERVED_FUNCTION_POINTERS == 0
 var jsCallStartIndex = 1;
@@ -289,7 +289,7 @@ function addFunction(func, sig) {
 #if EMULATED_FUNCTION_POINTERS == 0
 #if WASM_BACKEND
 #if RESERVED_FUNCTION_POINTERS
-  var base = jsCallSigIndex[sig] * {{{ RESERVED_FUNCTION_POINTERS }}};
+  var base = jsCallSigOrder[sig] * {{{ RESERVED_FUNCTION_POINTERS }}};
 #else // RESERVED_FUNCTION_POINTERS == 0
   var base = 0;
 #endif // RESERVED_FUNCTION_POINTERS
@@ -328,7 +328,7 @@ function addFunction(func, sig) {
 
 function removeFunction(index) {
 #if EMULATED_FUNCTION_POINTERS == 0
-  functionPointers[index-1] = null;
+  functionPointers[index-jsCallStartIndex] = null;
 #else
   alignFunctionTables(); // XXX we should rely on this being an invariant
   var tables = getFunctionTables();

@@ -2526,7 +2526,7 @@ class JS(object):
     return ret
 
   @staticmethod
-  def make_jscall(sig, sig_index, named=True):
+  def make_jscall(sig, sig_order, named=True):
     fnargs = ','.join(['a' + str(i) for i in range(1, len(sig))])
     args = 'index' + (',' if fnargs else '') + fnargs
     # While asm.js/fastcomp's addFunction support preallocates
@@ -2539,9 +2539,9 @@ class JS(object):
     # function table while asm.js maintains separate function table per
     # signature.
     # e.g. When there are three possible function signature, ['v', 'ii', 'ff'],
-    # the 'sig_index' parameter will be 0 for 'v', 1 for 'ii', and so on.
+    # the 'sig_order' parameter will be 0 for 'v', 1 for 'ii', and so on.
     if Settings.WASM_BACKEND:
-      index = 'index + %d' % (Settings.RESERVED_FUNCTION_POINTERS * sig_index)
+      index = 'index + %d' % (Settings.RESERVED_FUNCTION_POINTERS * sig_order)
     else:
       index = 'index'
     ret = '''function%s(%s) {
