@@ -279,6 +279,8 @@ int mergeIntoExistingFreeRegion(Region *region) {
 
 // public API
 
+extern "C" {
+
 void* malloc(size_t size) {
   if (size == 0) return NULL;
   // Look in the freelist first.
@@ -357,3 +359,4 @@ void* realloc(void *ptr, size_t size) {
   return newPtr;
 }
 
+} // extern "C"
