@@ -70,9 +70,6 @@ struct Region;
 // Information memory that is a free list, i.e., may
 // be reused.
 struct FreeInfo {
-  // The region of the memory this is associated with.
-  Region* region;
-
   // free lists are doubly-linked lists
   FreeInfo* prev;
   FreeInfo* next;
@@ -124,6 +121,10 @@ static Region* fromPayload(void* payload) {
   return (Region*)((char*)payload - METADATA_SIZE);
 }
 
+static Region* fromFreeInfo(FreeInfo* freeInfo) {
+  return (Region*)((char*)freeInfo - METADATA_SIZE);
+}
+
 static size_t getMaximumPayloadSize(Region* region) {
   return region->totalSize - METADATA_SIZE;
 }
@@ -142,12 +143,14 @@ static void* getAfter(Region* region) {
 // TODO: For now we have a single global space for all allocations,
 //       but for multithreading etc. we may want to generalize that.
 
-// a freelist (a list of Regions ready for re-use) for all
+// A freelist (a list of Regions ready for re-use) for all
 // power of 2 payload sizes (only the ones from ALIGNMENT
 // size and above are relevant, though). The freelist at index
-// K contains regions of memory big enough to contain 2^K bytes.
+// K contains regions of memory big enough to contain at least
+// 2^K bytes.
 
-static const size_t MAX_FREELIST_INDEX = 32;
+static const size_t MIN_FREELIST_INDEX = 4;  // 16 == MIN_ALLOC
+static const size_t MAX_FREELIST_INDEX = 32; // uint32_t
 
 static FreeInfo* freeLists[MAX_FREELIST_INDEX] = {
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -163,13 +166,18 @@ static Region* lastRegion = NULL;
 // Global utilities
 
 static size_t getFreeListIndex(size_t size) {
+  assert(1 << MIN_FREELIST_INDEX == MIN_ALLOC);
   assert(size > 0);
   if (size < MIN_ALLOC) size = MIN_ALLOC;
   // We need a lower bound here, as the list contains things
   // that can contain at least a power of 2.
   size_t ret = lowerBoundByPowerOf2(size);
-  assert(ret < MAX_FREELIST_INDEX);
+  assert(MIN_FREELIST_INDEX <= ret && ret < MAX_FREELIST_INDEX);
   return ret;
+}
+
+static size_t getMinSizeForFreeListIndex(size_t index) {
+  return 1 << index;
 }
 
 static void removeFromFreeList(Region* region) {
@@ -224,18 +232,59 @@ static void useRegion(Region* region, size_t size) {
   possiblySplitRemainder(region, size);
 }
 
-static Region* getFromFreeList(size_t size) {
+static Region* useFreeInfo(FreeInfo* freeInfo) {
+  Region* region = fromFreeInfo(freeInfo);
+  // This region is no longer free
+  removeFromFreeList(region);
+  // This region is now in use
+  useRegion(region, size);
+  return region;
+}
+
+// When we free something of size 100, we put it in the
+// freelist for items of size 64 and above. Then when something
+// needs 64 bytes, we know the things in that list are all
+// suitable. However, note that this means that if we then
+// try to allocate something of size 100 once more, we will
+// look in the freelist for items of size 128 or more (again,
+// so we know all items in the list are big enough), which means
+// we may not reuse the perfect region we just freed. It's hard
+// to do a perfect job on that without a lot more work (memory
+// and/or time), so instead, we use a simple heuristic to look
+// at the one-lower freelist, which *may* contain something
+// big enough for us. We look at just a few elements, but that is
+// enough if we are alloating/freeing a lot of such elements
+// (since the recent items are there).
+// TODO: Consider more optimizations, e.g. slow bubbling of larger
+//       items in each freelist towards the root, or even actually
+//       keep it sorted by size.
+static const size_t SPECULATIVE_FREELIST_TRIES = 3;
+
+static Region* tryFromFreeList(size_t size) {
   size_t index = getFreeListIndex(size);
+  // If we *may* find an item in the index one
+  // below us, try that briefly in constant time;
+  // see comment on algorithm on the declaration of
+  // SPECULATIVE_FREELIST_TRIES.
+  if (index > MIN_FREELIST_INDEX &&
+      size < getMinSizeForFreeListIndex(index)) {
+    FreeInfo* freeInfo = freeLists[index - 1];
+    size_t tries = 0;
+    while (freeInfo && tries < SPECULATIVE_FREELIST_TRIES) {
+      Region* region = fromFreeInfo(freeInfo);
+      if (getMaximumPayloadSize(region) >= size) {
+        // Success, use it
+        return useFreeInfo(freeInfo);
+      }
+      freeInfo = freeInfo->next;
+      tries++;
+    }
+  }
   while (index < MAX_FREELIST_INDEX) {
     FreeInfo* freeInfo = freeLists[index];
     if (freeInfo) {
       // We found one, use it.
-      Region* region = freeInfo->region;
-      // This region is no longer free
-      removeFromFreeList(region);
-      // This region is now in use
-      useRegion(region, size);
-      return region;
+      return useFreeInfo(freeInfo);
     }
     // Look in a freelist of larger elements.
     // TODO This does increase the risk of fragmentation, though,
@@ -326,7 +375,7 @@ extern "C" {
 void* malloc(size_t size) {
   if (size == 0) return NULL;
   // Look in the freelist first.
-  Region* region = getFromFreeList(size);
+  Region* region = tryFromFreeList(size);
   if (!region) {
     // Allocate some new memory otherwise.
     region = newAllocation(size);
