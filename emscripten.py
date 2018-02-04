@@ -1779,7 +1779,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   pre = None
 
   invoke_funcs = read_wast_invoke_imports(wast)
-#List of function signatures used in jsCall functions, e.g.['v', 'vi']
+  # List of function signatures used in jsCall functions, e.g.['v', 'vi']
   jscall_sigs = metadata.get('jsCallFuncType', [])
 
   try:
