@@ -1779,7 +1779,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   pre = None
 
   invoke_funcs = read_wast_invoke_imports(wast)
-  # List of function signatures used in jsCall functions, e.g. ['v', 'vi']
+#List of function signatures used in jsCall functions, e.g.['v', 'vi']
   jscall_sigs = metadata.get('jsCallFuncType', [])
 
   try:
@@ -1877,8 +1877,8 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
     meta = basename + '.json'
     shared.check_call([
         wasm_link_metadata,
-        '--emscripten-reserved-function-pointers=%d' %
-        shared.Settings.RESERVED_FUNCTION_POINTERS,
+        ('--emscripten-reserved-function-pointers=%d' %
+         shared.Settings.RESERVED_FUNCTION_POINTERS),
         temp_o,
         '-o', meta])
     debug_copy(meta, 'lld-metadata.json')
@@ -1901,8 +1901,8 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
 
     shared.check_call([
         wasm_emscripten_finalize,
-        '--emscripten-reserved-function-pointers=%d' %
-        shared.Settings.RESERVED_FUNCTION_POINTERS,
+        ('--emscripten-reserved-function-pointers=%d' %
+         shared.Settings.RESERVED_FUNCTION_POINTERS),
         base_wasm,
         '-o', wasm])
     debug_copy(wasm, 'lld-emscripten-output.wasm')
@@ -2026,8 +2026,8 @@ def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata,
 
   jscall_funcs = ['jsCall_' + sig for sig in jscall_sigs]
 
-  send_items = basic_funcs + invoke_funcs + jscall_funcs + global_funcs + \
-               basic_vars + global_vars
+  send_items = (basic_funcs + invoke_funcs + jscall_funcs + global_funcs +
+                basic_vars + global_vars)
   def math_fix(g):
     return g if not g.startswith('Math_') else g.split('_')[1]
   return '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in send_items]) + ' }'
@@ -2195,8 +2195,8 @@ def add_metadata_from_wast(metadata, wast):
       if import_type == 'memory':
         continue
       elif import_type == 'func':
-        if not import_name.startswith('invoke_') and \
-           not import_name.startswith('jsCall_'):
+        if (not import_name.startswith('invoke_') and
+            not import_name.startswith('jsCall_')):
           metadata['declares'].append(import_name)
       elif import_type == 'global':
         metadata['externs'].append('_' + import_name)

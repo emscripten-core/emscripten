@@ -246,6 +246,28 @@ Module['registerFunctions'] = registerFunctions;
 #endif // RELOCATABLE
 #endif // EMULATED_FUNCTION_POINTERS
 
+// TODO Currently logical operations like '#if a && b' or '#if a || b' are not
+// supported, so the code below contains duplicate parts, as in the pattern
+// below:
+//
+// #if WASM BACKEND
+// #if RESERVED_FUNCTION_POINTERS
+// TASK 1
+// #else
+// TASK 2
+// #endif
+// #else
+// TASK 2
+// #endif
+//
+// When the logical operations become supported, change the code to this:
+//
+// #if WASM_BACKEND && RESERVED_FUNCTION_POINTERS
+// TASK 1
+// #else
+// TASK 2
+// #endif
+
 #if WASM_BACKEND
 #if RESERVED_FUNCTION_POINTERS
 var jsCallStartIndex = {{{ JSCALL_START_INDEX }}};
@@ -261,11 +283,7 @@ var jsCallStartIndex = 1;
 var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
 #endif
 
-#if WASM_BACKEND
 function addFunction(func, sig) {
-#else
-function addFunction(func) {
-#endif
 #if EMULATED_FUNCTION_POINTERS == 0
 #if WASM_BACKEND
 #if RESERVED_FUNCTION_POINTERS

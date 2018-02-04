@@ -596,7 +596,7 @@ space for 20 functions to be added::
 
     emcc ... -s RESERVED_FUNCTION_POINTERS=20 ...
 
-.. note:: When using ``addFunction`` on Wasm backend, you need to provide
+.. note:: When using ``addFunction`` on LLVM wasm backend, you need to provide
    an additional second argument, a Wasm function signature string. Each
    character within a signature string represents a type. The first character
    represents the return type of a function, and remaining characters are for
