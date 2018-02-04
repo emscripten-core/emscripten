@@ -97,6 +97,10 @@ if EM_PROFILE_TOOLCHAIN:
       return open(os.path.join(ToolchainProfiler.profiler_logs_path, 'toolchain_profiler.pid_' + str(os.getpid()) + '.json'), 'a')
 
     @staticmethod
+    def escape_args(args):
+      return map(lambda arg: arg.replace('\\', '\\\\').replace('"', '\\"'), args)
+
+    @staticmethod
     def record_process_start(write_log_entry=True):
       # For subprocessing.Pool.map() child processes, this points to the PID of the parent process that spawned
       # the subprocesses. This makes the subprocesses look as if the parent had called the functions.
@@ -113,7 +117,7 @@ if EM_PROFILE_TOOLCHAIN:
 
       if write_log_entry:
         with ToolchainProfiler.log_access() as f:
-          f.write('[\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"start","time":' + ToolchainProfiler.timestamp() + ',"cmdLine":["' + '","'.join(sys.argv).replace('\\', '\\\\') + '"]}')
+          f.write('[\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"start","time":' + ToolchainProfiler.timestamp() + ',"cmdLine":["' + '","'.join(ToolchainProfiler.escape_args(sys.argv)) + '"]}')
 
     @staticmethod
     def record_process_exit(returncode):
@@ -132,7 +136,7 @@ if EM_PROFILE_TOOLCHAIN:
           response_cmdline += response_file.read_response_file(item)
 
       with ToolchainProfiler.log_access() as f:
-        f.write(',\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"spawn","targetPid":' + str(process_pid) + ',"time":' + ToolchainProfiler.timestamp() + ',"cmdLine":["' + '","'.join(process_cmdline + response_cmdline).replace('\\', '\\\\') + '"]}')
+        f.write(',\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"spawn","targetPid":' + str(process_pid) + ',"time":' + ToolchainProfiler.timestamp() + ',"cmdLine":["' + '","'.join(ToolchainProfiler.escape_args(process_cmdline + response_cmdline)) + '"]}')
 
     @staticmethod
     def record_subprocess_wait(process_pid):

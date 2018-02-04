@@ -16,7 +16,7 @@ What you'll need
 
 The specific versions of tools that are needed are listed in the :ref:`Emscripten Toolchain Requirements <toolchain-what-you-need>`.
 
-.. note:: 64-bit versions of all needed dependencies are preferred, and may be required if you are building large projects. However, if you plan to :ref:`integrate with Visual Studio <emscripten-and-vs2010-manual-integration-on-windows>`, do NOT install the 64-bit versions of the tools.
+.. note:: 64-bit versions of all needed dependencies are preferred, and may be required if you are building large projects.
 
 Installing required tools
 ==========================
@@ -24,9 +24,9 @@ Installing required tools
 These instructions explain how to install **all** the :ref:`required tools <toolchain-what-you-need>`. You can :ref:`test whether some of these are already installed <toolchain-test-which-dependencies-are-installed>` on the platform and skip those steps.
 
 
-#. Install `Python 2.7 <http://www.python.org/>`_ (not 3.x):
+#. Install `Python <http://www.python.org/>`_:
 
-	- For example `python-2.7.12.amd64.msi <http://python.org/ftp/python/2.7.12/python-2.7.12.amd64.msi>`_ (64-bit version) or `python-2.7.12.msi <http://python.org/ftp/python/2.7.12/python-2.7.12.msi>`_ (32-bit version).
+    - Python v2.7 is currently preferred, although experimental work has been going towards adding Python 3 support as well.
 	- Add the path to the Python directory containing **Python.exe** to your PATH. 
 	
 		- Paths are set by opening **System Settings | Advanced system properties**, clicking **Environment Variables** and selecting **PATH**. 
@@ -35,10 +35,10 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 		
 #. Install `node.js <http://nodejs.org/>`_:
 
-	- For example `node-v0.10.17-x64.msi <http://nodejs.org/dist/v0.10.17/x64/node-v0.10.17-x64.msi>`_ (64-bit version) or `node-v0.10.17-x86.msi <http://nodejs.org/dist/v0.10.17/node-v0.10.17-x86.msi>`_ (32-bit version).
+	- Version 8.9.1 or newer is needed.
 
 
-#. Install `Visual Studio 2010 <http://go.microsoft.com/?linkid=9709949>`_ (and possibly `Microsoft Windows SDK for Windows 7 and .NET Framework 4 <http://www.microsoft.com/en-us/download/details.aspx?id=8279>`_).
+#. Install `Visual Studio 2017 <http://go.microsoft.com/?linkid=9709949>`_.
 
 #. Install `cmake <http://www.cmake.org/cmake/resources/software.html>`_.
 
