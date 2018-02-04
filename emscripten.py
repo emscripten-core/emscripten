@@ -522,11 +522,11 @@ def update_settings_glue(settings, metadata):
   # addFunction support for Wasm backend
   if settings['WASM_BACKEND'] and settings['RESERVED_FUNCTION_POINTERS'] > 0:
     start_index = metadata['jsCallStartIndex']
-    # e.g. jsCallFunctionType ['v', 'ii'] -> sig2order {'v': 0, 'ii': 1}
-    sig2order = {sig: i for i, sig in enumerate(metadata['jsCallFuncType'])}
+    # e.g. jsCallFunctionType ['v', 'ii'] -> sig2index{'v': 0, 'ii': 1}
+    sig2index = {sig: i for i, sig in enumerate(metadata['jsCallFuncType'])}
     # Index in the Wasm function table in which jsCall thunk function starts
     settings['JSCALL_START_INDEX'] = start_index
-    settings['JSCALL_SIG_ORDER'] = sig2order
+    settings['JSCALL_SIG_TO_SIG_INDEX'] = sig2index
 
 
 def compile_settings(compiler_engine, settings, libraries, temp_files):
