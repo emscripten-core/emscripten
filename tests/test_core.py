@@ -725,10 +725,14 @@ base align: 0, 0, 0, 0'''])
   '''
 
   def test_mallocstruct(self):
-      self.do_run(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(sizeof(S))').replace('{{del_struct}}', 'free'), '*51,62*')
+    self.do_run(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(sizeof(S))').replace('{{del_struct}}', 'free'), '*51,62*')
+
+  def test_emmalloc(self):
+    self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() + open(path_from_root('tests', 'core', 'test_emmalloc.cpp')).read(),
+                open(path_from_root('tests', 'core', 'test_emmalloc.txt')).read())
 
   def test_newstruct(self):
-      self.do_run(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
+    self.do_run(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
 
   def test_addr_of_stacked(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_addr_of_stacked')
