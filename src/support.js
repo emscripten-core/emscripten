@@ -286,6 +286,17 @@ var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
 
 // 'sig' parameter is only used in LLVM wasm backend
 function addFunction(func, sig) {
+#if WASM_BACKEND
+  assert(typeof sig !== 'undefined',
+         'Second argument of addFunction should be a wasm function signature ' +
+         'string');
+#endif // WASM_BACKEND
+#if ASSERTIONS
+  if (typeof sig === 'undefined') {
+    Module.printErr('Warning: addFunction: Provide a wasm function signature ' +
+                    'string as a second argument');
+  }
+#endif // ASSERTIONS
 #if EMULATED_FUNCTION_POINTERS == 0
 #if WASM_BACKEND
 #if RESERVED_FUNCTION_POINTERS
