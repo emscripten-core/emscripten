@@ -4,8 +4,9 @@
  * Assumptions:
  *
  *  - 32-bit system.
+ *  - Single-threaded.
  *  - sbrk() is available (and nothing better, it's all we use).
- *  - sbrk() will not be accessed on another thread in parallel to us.
+ *  - sbrk() will not be accessed by anyone else.
  *
  */
 #include <assert.h>
@@ -129,11 +130,6 @@ static size_t getMaximumPayloadSize(Region* region) {
   return region->totalSize - METADATA_SIZE;
 }
 
-static FreeInfo* getFreeInfo(Region* region) {
-  assert(!region->usedPayload);
-  return &region->freeInfo;
-}
-
 static void* getAfter(Region* region) {
   return ((char*)region) + region->totalSize;
 }
@@ -183,7 +179,7 @@ static size_t getMinSizeForFreeListIndex(size_t index) {
 static void removeFromFreeList(Region* region) {
   assert(region->usedPayload);
   size_t index = getFreeListIndex(getMaximumPayloadSize(region));
-  FreeInfo* freeInfo = getFreeInfo(region);
+  FreeInfo* freeInfo = &region->freeInfo;
   if (freeLists[index] == freeInfo) {
     freeLists[index] = freeInfo->next;
   }
@@ -198,7 +194,7 @@ static void removeFromFreeList(Region* region) {
 static void addToFreeList(Region* region) {
   assert(region->usedPayload);
   size_t index = getFreeListIndex(getMaximumPayloadSize(region));
-  FreeInfo* freeInfo = getFreeInfo(region);
+  FreeInfo* freeInfo = &region->freeInfo;
   FreeInfo* last = freeLists[index];
   freeLists[index] = freeInfo;
   freeInfo->prev = NULL;
@@ -297,6 +293,28 @@ static Region* tryFromFreeList(size_t size) {
 
 static Region* newAllocation(size_t size) {
   assert(size > 0);
+  // If the last region is free, we can extend it rather than leave it
+  // as fragmented free spce between allocated regions. This is also
+  // more efficient and simple as well.
+  if (lastRegion) {
+    size_t reusable = getMaximumPayloadSize(lastRegion);
+    // We should only do a new allocation when we must, so the last region
+    // was not sufficient.
+    assert(reusable < size);
+    size_t sbrkSize = alignUp(size) - reusable;
+    void* ptr = sbrk(sbrkSize);
+    if (ptr == (void*)-1) {
+      // sbrk() failed, we failed.
+      return NULL;
+    }
+    // sbrk() should give us new space right after the last region.
+    assert(ptr == getAfter(lastRegion));
+    lastRegion->totalSize += sbrkSize;
+    // Move the region into use. Note that we waste a little work here
+    // checking if there is something to split off at the end - there isn't.
+    useFreeInfo(&lastRegion->freeInfo, size);
+    return lastRegion;
+  }
   size_t sbrkSize = METADATA_SIZE + alignUp(size);
   void* ptr = sbrk(sbrkSize);
   if (ptr == (void*)-1) {
@@ -313,10 +331,12 @@ static Region* newAllocation(size_t size) {
       // sbrk() failed, we failed.
       return NULL;
     }
-    // Verify the single-threaded assumption. If this fails, it means
-    // we also leak the previous allocation, so we don't even try to
-    // handle it.
+    // Verify the sbrk() assumption, no one else should call it.
+    // If this fails, it means we also leak the previous allocation,
+    // so we don't even try to handle it.
     assert((char*)extraPtr == (char*)ptr + sbrkSize);
+    // After the first allocation, everything must remain aligned forever.
+    assert(!lastRegion);
     // We now have a contiguous block of memory from ptr to
     // ptr + sbrkSize + fixedPtr - ptr = fixedPtr + sbrkSize.
     // fixedPtr is aligned and starts a region of the right
@@ -328,12 +348,11 @@ static Region* newAllocation(size_t size) {
   useRegion(region, size);
   // Apply globally, connect it to lastRegion
   if (lastRegion) {
-    // If this is adjacent to the previous region, link them.
-    if (region == getAfter(lastRegion)) {
-      assert(lastRegion->next == NULL);
-      lastRegion->next = region;
-      region->prev = lastRegion;
-    }
+    // No one else should be using sbrk(), so we must be adjacent
+    assert(region == getAfter(lastRegion));
+    assert(lastRegion->next == NULL);
+    lastRegion->next = region;
+    region->prev = lastRegion;
   }
   lastRegion = region;
   return region;
@@ -451,5 +470,7 @@ void* realloc(void *ptr, size_t size) {
 }
 
 // XXX how about the max size of allocation, half the size of total memory? and 3/4 of total memory? how do those fit in freelists?
+// need to look through entire biggest-size freelist
+// also, if last region is free, can enlarge it via sbrk!
 
 } // extern "C"
