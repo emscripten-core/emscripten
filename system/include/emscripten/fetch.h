@@ -174,6 +174,38 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeou
 // onerror() handler will be called in the calling thread before this function returns.
 EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch);
 
+#define emscripten_asmfs_open_t int
+
+// The following flags specify how opening files for reading works (from strictest behavior to most flexible)
+
+// When a file is opened for reading, the file data must already fully reside in memory. (most similar to MEMFS behavior)
+#define EMSCRIPTEN_ASMFS_OPEN_MEMORY    0
+
+// The file data does not need to be already in memory, but can reside in IndexedDB.
+#define EMSCRIPTEN_ASMFS_OPEN_INDEXEDDB 1
+
+// The file will be downloaded from remote server, as long as it has an index entry in local filesystem.
+#define EMSCRIPTEN_ASMFS_OPEN_REMOTE    2
+
+// A file entry does not need to exist on the local filesystem, but discovery will be attempted from remote server via an XHR first.
+#define EMSCRIPTEN_ASMFS_OPEN_REMOTE_DISCOVER 3
+
+// Specifies how calls to non-truncating open(), fopen(), std::ifstream etc. behave on the calling thread.
+void emscripten_asmfs_set_file_open_behavior(emscripten_asmfs_open_t behavior);
+
+// Returns the current file open behavior modein the calling thread.
+emscripten_asmfs_open_t emscripten_asmfs_get_file_open_behavior();
+
+void emscripten_asmfs_set_remote_url(const char *filename, const char *remoteUrl);
+
+void emscripten_asmfs_remote_url(const char *filename, char *outRemoteUrl, int maxBytesToWrite);
+
+void emscripten_asmfs_unload_data(const char *pathname);
+
+// Computes the total amount of bytes in memory utilized by the filesystem at the moment.
+// Note: This function can be slow since it walks through the whole filesystem.
+uint64_t emscripten_asmfs_compute_memory_usage();
+
 #ifdef __cplusplus
 }
 #endif
