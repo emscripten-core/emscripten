@@ -187,3 +187,17 @@ class interactive(BrowserCore):
 
   def test_threadprofiler(self):
     self.btest('pthread/test_pthread_mandelbrot.cpp', expected='0', args=['-O2', '--threadprofiler', '-s', 'USE_PTHREADS=1', '-DTEST_THREAD_PROFILING=1', '-msse', '-s', 'PTHREAD_POOL_SIZE=16', '--shell-file', path_from_root('tests', 'pthread', 'test_pthread_mandelbrot_shell.html')])
+
+  # Test that event backproxying works.
+  def test_html5_callbacks_on_calling_thread(self):
+    # TODO: Make this automatic by injecting mouse event in e.g. shell html file.
+    for args in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
+      self.btest('html5_callbacks_on_calling_thread.c', expected='1', args=args + ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
+  # Test that it is possible to register HTML5 event callbacks on either main browser thread, or application main thread,
+  # and that the application can manually proxy the event from main browser thread to the application main thread, to
+  # implement event suppression capabilities.
+  def test_html5_callback_on_two_threads(self):
+    # TODO: Make this automatic by injecting enter key press in e.g. shell html file.
+    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+      self.btest('html5_event_callback_in_two_threads.c', expected='1', args=args)
