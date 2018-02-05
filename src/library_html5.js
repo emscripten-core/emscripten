@@ -1954,6 +1954,9 @@ var LibraryJSEvents = {
 
     target.width = width;
     target.height = height;
+#if OFFSCREEN_FRAMEBUFFER
+    if (canvas.GLctxObject) GL.resizeOffscreenFramebuffer(canvas.GLctxObject);
+#endif
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
