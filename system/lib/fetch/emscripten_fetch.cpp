@@ -168,8 +168,16 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeou
 	// TODO: timeoutMsecs is currently ignored. Return EMSCRIPTEN_RESULT_TIMED_OUT on timeout.
 	while(proxyState == 1/*sent to proxy worker*/)
 	{
-		emscripten_futex_wait(&fetch->__proxyState, proxyState, 100 /*TODO HACK:Sleep sometimes doesn't wake up?*/);//timeoutMsecs);
-		proxyState = emscripten_atomic_load_u32(&fetch->__proxyState);
+		if (!emscripten_is_main_browser_thread())
+		{
+			emscripten_futex_wait(&fetch->__proxyState, proxyState, 100 /*TODO HACK:Sleep sometimes doesn't wake up?*/);//timeoutMsecs);
+			proxyState = emscripten_atomic_load_u32(&fetch->__proxyState);
+		}
+		else 
+		{
+			EM_ASM({ console.error('fetch: emscripten_fetch_wait failed: main thread cannot block to wait for long periods of time! Migrate the application to run in a worker to perform synchronous file IO, or switch to using asynchronous IO.') });
+			return EMSCRIPTEN_RESULT_FAILED;
+		}
 	}
 // #ifdef FETCH_DEBUG
 	EM_ASM(console.log('fetch: emscripten_fetch_wait done..'));
