@@ -3948,6 +3948,11 @@ window.close = function() {
   def test_emscripten_set_canvas_element_size(self):
     self.btest('emscripten_set_canvas_element_size.c', expected='1')
 
+  # Tests that emscripten_run_script() variants of functions work in pthreads.
+  def test_pthread_run_script(self):
+    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_run_script.cpp'), expected='1', args=['-O3', '--separate-asm'] + args, timeout=30)
+
   # Tests the absolute minimum pthread-enabled application.
   def test_hello_thread(self):
     self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), expected='1', args=['-s', 'USE_PTHREADS=1'])
