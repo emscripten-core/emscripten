@@ -502,7 +502,4 @@ void* realloc(void *ptr, size_t size) {
   return newPtr;
 }
 
-// XXX how about the max size of allocation, half the size of total memory? and 3/4 of total memory? how do those fit in freelists?
-// need to look through entire biggest-size freelist
-
 } // extern "C"
