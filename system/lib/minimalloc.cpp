@@ -144,6 +144,9 @@ static void* getAfter(Region* region) {
 // size and above are relevant, though). The freelist at index
 // K contains regions of memory big enough to contain at least
 // 2^K bytes.
+//
+// Note that there is no freelist for 2^32, as that amount can
+// never be allocated.
 
 static const size_t MIN_FREELIST_INDEX = 4;  // 16 == MIN_ALLOC
 static const size_t MAX_FREELIST_INDEX = 32; // uint32_t
@@ -161,15 +164,29 @@ static Region* lastRegion = NULL;
 
 // Global utilities
 
+// The freelist index is where we would appear in a freelist if
+// we were one. It is a list of items of size at least the power
+// of 2 that lower bounds us.
 static size_t getFreeListIndex(size_t size) {
   assert(1 << MIN_FREELIST_INDEX == MIN_ALLOC);
   assert(size > 0);
   if (size < MIN_ALLOC) size = MIN_ALLOC;
   // We need a lower bound here, as the list contains things
   // that can contain at least a power of 2.
-  size_t ret = lowerBoundByPowerOf2(size);
-  assert(MIN_FREELIST_INDEX <= ret && ret < MAX_FREELIST_INDEX);
-  return ret;
+  size_t index = lowerBoundByPowerOf2(size);
+  assert(MIN_FREELIST_INDEX <= index && index < MAX_FREELIST_INDEX);
+  return index;
+}
+
+// The big-enough freelist index is the index of the freelist of
+// items that are all big enough for us. This is computed using
+// an upper bound power of 2.
+static size_t getBigEnoughFreeListIndex(size_t size) {
+  size_t index = getFreeListIndex(size);
+  // If we're a power of 2, the lower and upper bounds are the
+  // same. Otherwise, add one.
+  if (!isPowerOf2(size)) index++;
+  return index;
 }
 
 static size_t getMinSizeForFreeListIndex(size_t index) {
@@ -254,10 +271,18 @@ static Region* useFreeInfo(FreeInfo* freeInfo, size_t size) {
 // TODO: Consider more optimizations, e.g. slow bubbling of larger
 //       items in each freelist towards the root, or even actually
 //       keep it sorted by size.
+// Consider also what happens to the very largest allocations,
+// 2^32 - a little. That goes in the freelist of items of size
+// 2^31 or less. 3 tries is enough to go through that entire
+// freelist because even 2 can't exist, they'd exhaust memory
+// (together with metadata overhead). So we should be able to
+// free and allocate such largest allocations (barring fragmentation
+// happening in between).
 static const size_t SPECULATIVE_FREELIST_TRIES = 3;
 
 static Region* tryFromFreeList(size_t size) {
-  size_t index = getFreeListIndex(size);
+  // Look in the freelist of items big enough for us.
+  size_t index = getBigEnoughFreeListIndex(size);
   // If we *may* find an item in the index one
   // below us, try that briefly in constant time;
   // see comment on algorithm on the declaration of
@@ -276,6 +301,13 @@ static Region* tryFromFreeList(size_t size) {
       tries++;
     }
   }
+  // Note that index may start out at MAX_FREELIST_INDEX,
+  // if it is almost the largest allocation possible,
+  // 2^32 minus a little. In that case, looking in the lower
+  // freelist is our only hope, and it can contain at most 1
+  // element (see discussion above), so we will find it if
+  // it's there). If not, and we got here, we'll never enter
+  // the loop at all.
   while (index < MAX_FREELIST_INDEX) {
     FreeInfo* freeInfo = freeLists[index];
     if (freeInfo) {
@@ -392,6 +424,7 @@ int mergeIntoExistingFreeRegion(Region *region) {
 extern "C" {
 
 void* malloc(size_t size) {
+  // malloc() spec defines malloc(0) => NULL.
   if (size == 0) return NULL;
   // Look in the freelist first.
   Region* region = tryFromFreeList(size);
@@ -471,6 +504,5 @@ void* realloc(void *ptr, size_t size) {
 
 // XXX how about the max size of allocation, half the size of total memory? and 3/4 of total memory? how do those fit in freelists?
 // need to look through entire biggest-size freelist
-// also, if last region is free, can enlarge it via sbrk!
 
 } // extern "C"
