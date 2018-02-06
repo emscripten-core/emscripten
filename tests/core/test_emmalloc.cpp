@@ -104,9 +104,21 @@ void min_alloc() {
   for (int i = 1; i < 100; i++) {
     void* temp = malloc(i);
     void* expected = (char*)start + 16 + 16 * ((i + 15) / 16);
-    EM_ASM({ Module.print('min_alloc: ' + [$0, $1, $2]) }, i, temp, expected);
     check_where_we_would_malloc(1, expected);
     free(temp);
+  }
+}
+
+void space_at_end() {
+  stage("space_at_end");
+  emmalloc_blank_slate_from_orbit();
+  void* start = check_where_we_would_malloc(1);
+  for (int i = 1; i < 50; i++) {
+    for (int j = 1; j < 50; j++) {
+      void* temp = malloc(i);
+      free(temp);
+      check_where_we_would_malloc(j, start);
+    }
   }
 }
 
@@ -122,6 +134,7 @@ int main() {
   blank_slate();
   previous_sbrk();
   min_alloc();
+  space_at_end();
 
   stage("the_end");
 }
