@@ -55,7 +55,7 @@ void one() {
   emmalloc_dump_all();
   free(four);
   stage("allocate various sizes to see they all start at the start");
-  for (int i = 1; i < 300; i++) {
+  for (int i = 1; i < 1500; i++) {
     check_where_we_would_malloc(i, first);
   }
   stage("the_end");
