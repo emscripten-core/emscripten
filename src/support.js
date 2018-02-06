@@ -246,45 +246,17 @@ Module['registerFunctions'] = registerFunctions;
 #endif // RELOCATABLE
 #endif // EMULATED_FUNCTION_POINTERS
 
-#if 0
-// TODO Currently logical operations like '#if a && b' or '#if a || b' are not
-// supported, so the code below contains duplicate parts, as in the pattern
-// below:
-//
-// #if WASM BACKEND
-// #if RESERVED_FUNCTION_POINTERS
-// [TASK 1]
-// #else
-// [TASK 2]
-// #endif
-// #else
-// [TASK 2]
-// #endif
-//
-// When the logical operations become supported, change the code to this:
-//
-// #if WASM_BACKEND && RESERVED_FUNCTION_POINTERS
-// [TASK 1]
-// #else
-// [TASK 2]
-// #endif
-#endif
-#if WASM_BACKEND
-#if RESERVED_FUNCTION_POINTERS
+#if WASM_BACKEND_WITH_RESERVED_FUNCTION_POINTERS
 var jsCallStartIndex = {{{ JSCALL_START_INDEX }}};
 var jsCallSigOrder = {{{ JSON.stringify(JSCALL_SIG_ORDER) }}};
 var jsCallNumSigs = Object.keys(jsCallSigOrder).length;
 var functionPointers = new Array(jsCallNumSigs * {{{ RESERVED_FUNCTION_POINTERS }}});
-#else // RESERVED_FUNCTION_POINTERS == 0
+#else // WASM_BACKEND_WITH_RESERVED_FUNCTION_POINTERS == 0
 var jsCallStartIndex = 1;
 var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
-#endif // RESERVED_FUNCTION_POINTERS
-#else // WASM_BACKEND == 0
-var jsCallStartIndex = 1;
-var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
-#endif // WASM_BACKEND
+#endif // WASM_BACKEND_WITH_RESERVED_FUNCTION_POINTERS
 
-// 'sig' parameter is only used in LLVM wasm backend
+// 'sig' parameter is only used on LLVM wasm backend
 function addFunction(func, sig) {
 #if WASM_BACKEND
   assert(typeof sig !== 'undefined',
@@ -298,15 +270,11 @@ function addFunction(func, sig) {
   }
 #endif // ASSERTIONS
 #if EMULATED_FUNCTION_POINTERS == 0
-#if WASM_BACKEND
-#if RESERVED_FUNCTION_POINTERS
+#if WASM_BACKEND_WITH_RESERVED_FUNCTION_POINTERS
   var base = jsCallSigOrder[sig] * {{{ RESERVED_FUNCTION_POINTERS }}};
-#else // RESERVED_FUNCTION_POINTERS == 0
+#else // WASM_BACKEND_WITH_RESERVED_FUNCTION_POINTERS == 0
   var base = 0;
-#endif // RESERVED_FUNCTION_POINTERS
-#else // WASM_BACKEND == 0
-  var base = 0;
-#endif // WASM_BACKEND
+#endif // WASM_BACKEND_WITH_RESERVED_FUNCTION_POINTERS
   for (var i = base; i < base + {{{ RESERVED_FUNCTION_POINTERS }}}; i++) {
     if (!functionPointers[i]) {
       functionPointers[i] = func;
