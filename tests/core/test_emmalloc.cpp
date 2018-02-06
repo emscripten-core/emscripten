@@ -27,6 +27,7 @@ void stage(const char* name) {
 }
 
 void one() {
+  stage("ONE");
   stage("allocate 0");
   void* ptr = malloc(0);
   assert(ptr == 0);
@@ -61,7 +62,26 @@ void one() {
   stage("the_end");
 }
 
+void two() {
+  stage("TWO");
+  emmalloc_blank_slate_from_orbit();
+  void* ptr = malloc(0);
+  free(ptr);
+  for (int i = 0; i < 3; i++) {
+    void* two = malloc(0);
+    assert(two == ptr);
+    free(two);
+  }
+  for (int i = 0; i < 3; i++) {
+    emmalloc_blank_slate_from_orbit();
+    void* two = malloc(0);
+    assert(two == ptr);
+    free(two);
+  }
+}
+
 int main() {
   one();
+  two();
 }
 
