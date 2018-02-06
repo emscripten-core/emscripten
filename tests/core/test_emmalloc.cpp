@@ -5,8 +5,6 @@
 #include <emscripten.h>
 
 extern void emmalloc_blank_slate_from_orbit();
-extern void emmalloc_validate_all();
-extern void emmalloc_dump_all();
 
 // Test emmalloc internals, but through the external interface. We expect
 // very specific outputs here based on the internals, this test would not
@@ -28,8 +26,6 @@ void stage(const char* name) {
   EM_ASM({
     Module.print('\n>> ' + Pointer_stringify($0) + '\n');
   }, name);
-  emmalloc_validate_all();
-  emmalloc_dump_all();
 }
 
 void basics() {
@@ -59,7 +55,6 @@ void basics() {
   }
   stage("free all");
   free(third);
-  emmalloc_dump_all();
   free(four);
   stage("allocate various sizes to see they all start at the start");
   for (int i = 1; i < 1500; i++) {
@@ -122,6 +117,45 @@ void space_at_end() {
   }
 }
 
+void randoms() {
+  stage("randoms");
+  const int N = 1000;
+  const int BINS = 128;
+  void* bins[BINS];
+  for (int i = 0; i < BINS; i++) {
+    bins[i] = NULL;
+  }
+  srandom(1337101);
+  for (int i = 0; i < 1000; i++) {
+    unsigned int r = random();
+    int alloc = r & 1;
+    r >>= 1;
+    int bin = r & 127;
+    r >>= 7;
+    int size = r & 65535;
+    r >>= 8;
+    EM_ASM({ Module.print([$0, $1, $2, $3]) }, i, alloc, bin, size);
+    if (alloc) {
+      if (bins[bin]) {
+        bins[bin] = realloc(bins[bin], size);
+      } else {
+        bins[bin] = malloc(size);
+      }
+    } else {
+      if (bins[bin]) {
+        free(bins[bin]);
+        bins[bin] = NULL;
+      } else {
+        // can't free what isn't there; do a calloc
+        bins[bin] = calloc(size, 1);
+      }
+    }
+  }
+  for (int i = 0; i < BINS; i++) {
+    if (bins[i]) free(bins[i]);
+  }
+}
+
 // Add test for
 //  * alloc 1,2,4,8,16, etc.
 //  * free it
@@ -135,6 +169,7 @@ int main() {
   previous_sbrk();
   min_alloc();
   space_at_end();
+  randoms();
 
   stage("the_end");
 }
