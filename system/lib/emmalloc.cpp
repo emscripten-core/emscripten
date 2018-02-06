@@ -38,9 +38,16 @@
 #include <string.h> // for memcpy, memset
 #include <unistd.h> // for sbrk()
 
+// Debugging
+
 #ifdef EMMALLOC_DEBUG_LOG
 #include <emscripten.h>
 #define EMMALLOC_DEBUG
+#endif
+
+#ifdef EMMALLOC_DEBUG
+// Forward declaration for convenience.
+void emmalloc_validate_all();
 #endif
 
 // Math utilities
@@ -266,6 +273,9 @@ static void addToFreeList(Region* region) {
   freeLists[index] = freeInfo;
   freeInfo->prev = NULL;
   freeInfo->next = last;
+  if (last) {
+    last->prev = freeInfo;
+  }
 }
 
 static void possiblySplitRemainder(Region* region, size_t size) {
@@ -419,7 +429,6 @@ void emmalloc_dump_all() {
     EM_ASM({ Module.print("    freeList[" + $0 + "] sizes: [" + $1 + ", " + $2 + ")") }, i, getMinSizeForFreeListIndex(i), getMaxSizeForFreeListIndex(i));
     FreeInfo* prev = NULL;
     while (curr) {
-      assert(curr->prev == prev);
       Region* region = fromFreeInfo(curr);
       emmalloc_dump_region(region);
       prev = curr;
@@ -528,7 +537,7 @@ static int extendLastRegion(size_t size) {
   if (ptr == (void*)-1) {
     // sbrk() failed, we failed.
 #ifdef EMMALLOC_DEBUG_LOG
-   EM_ASM({ Module.print("    emmalloc.newAllocation sbrk failure") });
+   EM_ASM({ Module.print("    emmalloc.extendLastRegion sbrk failure") });
 #endif
     return 1;
   }
@@ -798,6 +807,9 @@ void* emmalloc_realloc(void *ptr, size_t size) {
   }
   // We still aren't big enough. But if we are the last, extend ourselves.
   if (region == lastRegion) {
+#ifdef EMMALLOC_DEBUG_LOG
+    EM_ASM({ Module.print("  emmalloc.emmalloc_realloc extend last region") });
+#endif
     if (extendLastRegion(size) == 0) {
       return ptr;
     } else {
@@ -808,11 +820,19 @@ void* emmalloc_realloc(void *ptr, size_t size) {
   }
 #ifdef EMMALLOC_DEBUG_LOG
   EM_ASM({ Module.print("  emmalloc.emmalloc_realloc slow path: new allocation, copy, free") });
+EM_ASM({ Module.print("  a0") });
+emmalloc_validate_all();
 #endif
   void* newPtr = emmalloc_malloc(size);
+EM_ASM({ Module.print("  a1") });
+emmalloc_validate_all();
   if (!newPtr) return NULL;
   memcpy(newPtr, getPayload(region), region->usedPayload);
+emmalloc_dump_all();
   emmalloc_free(ptr);
+emmalloc_dump_all();
+EM_ASM({ Module.print("  a2") });
+emmalloc_validate_all();
   return newPtr;
 }
 

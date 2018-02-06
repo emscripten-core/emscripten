@@ -164,24 +164,32 @@ void randoms() {
     unsigned int r = random();
     int alloc = r & 1;
     r >>= 1;
+    int calloc_ = r & 1;
+    r >>= 1;
     int bin = r & 127;
     r >>= 7;
-    int size = r & 65535;
-    r >>= 8;
-    EM_ASM({ Module.print([$0, $1, $2, $3]) }, i, alloc, bin, size);
+    unsigned int size = r & 65535;
+    r >>= 16;
+    unsigned int shifts = r & 15;
+    r >>= 4;
+    size >>= shifts; // spread out values logarithmically
+    EM_ASM({ Module.print([$0, $1, $2, $3, $4]) }, i, alloc, bin, size, shifts);
     if (alloc) {
       if (bins[bin]) {
         bins[bin] = realloc(bins[bin], size);
       } else {
-        bins[bin] = malloc(size);
+        if (calloc_) {
+          bins[bin] = malloc(size);
+        } else {
+          bins[bin] = calloc(size, 1);
+        }
       }
     } else {
       if (bins[bin]) {
         free(bins[bin]);
         bins[bin] = NULL;
       } else {
-        // can't free what isn't there; do a calloc
-        bins[bin] = calloc(size, 1);
+        // can't free what isn't there; pass
       }
     }
   }
