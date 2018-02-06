@@ -21,6 +21,9 @@ int main() {
   void* third = malloc(10);
   printf("%d - %d\n", size_t(third), size_t(first));
   assert(size_t(third) == size_t(first) + 112 + 16); // allocation units are multiples of 16, so first allocates a payload of 112. then second has 16 of metadata
+  printf("allocate 10 more\n");
+  void* four = malloc(10);
+  assert(size_t(four) == size_t(third) + 16 + 16); // allocation units are multiples of 16, so first allocates a payload of 16. then second has 16 of metadata
   puts("ok");
 }
 
