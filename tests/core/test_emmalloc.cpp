@@ -6,6 +6,12 @@
 // very specific outputs here based on the internals, this test would not
 // pass in another malloc.
 
+void check_where_we_would_malloc(size_t size, void* expected) {
+  void* temp = malloc(size);
+  assert(temp == expected);
+  free(temp);
+}
+
 int main() {
   printf("allocate 0\n");
   void* ptr = malloc(0);
@@ -28,9 +34,15 @@ int main() {
   free(second);
   // we reuse the first area, despite stuff later.
   for (int i = 0; i < 10; i++) {
-    void* temp = malloc(100);
-    assert(temp == first);
-    free(temp);
+    check_where_we_would_malloc(100, first);
+  }
+  printf("free everything\n");
+  free(third);
+  free(four);
+  printf("allocate various sizes to see they all start at the start\n");
+  for (int i = 1; i < 300; i++) {
+    printf("%d\n", i);
+    check_where_we_would_malloc(i, first);
   }
   puts("ok");
 }
