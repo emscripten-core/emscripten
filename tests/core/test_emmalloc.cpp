@@ -24,6 +24,14 @@ int main() {
   printf("allocate 10 more\n");
   void* four = malloc(10);
   assert(size_t(four) == size_t(third) + 16 + 16); // allocation units are multiples of 16, so first allocates a payload of 16. then second has 16 of metadata
+  printf("free the first\n");
+  free(second);
+  // we reuse the first area, despite stuff later.
+  for (int i = 0; i < 10; i++) {
+    void* temp = malloc(100);
+    assert(temp == first);
+    free(temp);
+  }
   puts("ok");
 }
 
