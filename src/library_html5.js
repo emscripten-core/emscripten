@@ -35,10 +35,20 @@ var LibraryJSEvents = {
     // Track in this field whether we have yet registered that __ATEXIT__ handler.
     removeEventListenersRegistered: false, 
 
+    _incrementNumGamepads: function() {
+      ++JSEvents.numGamepadsConnected;
+    },
+
+    _decrementNumGamepads: function() {
+      --JSEvents.numGamepadsConnected;
+    },
+
     staticInit: function() {
       if (typeof window !== 'undefined') {
-        window.addEventListener("gamepadconnected", function() { ++JSEvents.numGamepadsConnected; });
-        window.addEventListener("gamepaddisconnected", function() { --JSEvents.numGamepadsConnected; });
+        window.addEventListener("gamepadconnected", JSEvents._incrementNumGamepads);
+        window.addEventListener("gamepaddisconnected", JSEvents._decrementNumGamepads);
+        addOnPostRun(function() { window.removeEventListener("gamepadconnected", JSEvents._incrementNumGamepads) });
+        addOnPostRun(function() { window.removeEventListener("gamepaddisconnected", JSEvents._decrementNumGamepads) });
         
         // Chromium does not fire the gamepadconnected event on reload, so we need to get the number of gamepads here as a workaround.
         // See https://bugs.chromium.org/p/chromium/issues/detail?id=502824
