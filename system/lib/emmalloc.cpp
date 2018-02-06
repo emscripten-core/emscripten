@@ -144,7 +144,7 @@ static Region* fromFreeInfo(FreeInfo* freeInfo) {
   return (Region*)((char*)freeInfo - METADATA_SIZE);
 }
 
-static size_t getMaximumPayloadSize(Region* region) {
+static size_t getMaxPayload(Region* region) {
   return region->totalSize - METADATA_SIZE;
 }
 
@@ -189,6 +189,137 @@ static Region* lastRegion = NULL;
 
 // Global utilities
 
+// The freelist index is where we would appear in a freelist if
+// we were one. It is a list of items of size at least the power
+// of 2 that lower bounds us.
+static size_t getFreeListIndex(size_t size) {
+  assert(1 << MIN_FREELIST_INDEX == MIN_ALLOC);
+  assert(size > 0);
+  if (size < MIN_ALLOC) size = MIN_ALLOC;
+  // We need a lower bound here, as the list contains things
+  // that can contain at least a power of 2.
+  size_t index = lowerBoundPowerOf2(size);
+  assert(MIN_FREELIST_INDEX <= index && index < MAX_FREELIST_INDEX);
+#ifdef EMMALLOC_DEBUG
+  EM_ASM({ Module.print("emmalloc.getFreeListIndex " + [$0, $1]) }, size, index);
+#endif
+  return index;
+}
+
+// The big-enough freelist index is the index of the freelist of
+// items that are all big enough for us. This is computed using
+// an upper bound power of 2.
+static size_t getBigEnoughFreeListIndex(size_t size) {
+  size_t index = getFreeListIndex(size);
+  // If we're a power of 2, the lower and upper bounds are the
+  // same. Otherwise, add one.
+  if (!isPowerOf2(size)) index++;
+#ifdef EMMALLOC_DEBUG
+  EM_ASM({ Module.print("emmalloc.getBigEnoughFreeListIndex " + [$0, $1]) }, size, index);
+#endif
+  return index;
+}
+
+// Items in the freelist at this index must be at least this large.
+static size_t getMinSizeForFreeListIndex(size_t index) {
+  return 1 << index;
+}
+
+// Items in the freelist at this index must be smaller than this.
+static size_t getMaxSizeForFreeListIndex(size_t index) {
+  return 1 << (index + 1);
+}
+
+static void removeFromFreeList(Region* region) {
+#ifdef EMMALLOC_DEBUG
+  EM_ASM({ Module.print("emmalloc.removeFromFreeList " + $0) },region);
+#endif
+  assert(!region->usedPayload);
+  size_t index = getFreeListIndex(getMaxPayload(region));
+  FreeInfo* freeInfo = &region->freeInfo;
+  if (freeLists[index] == freeInfo) {
+    freeLists[index] = freeInfo->next;
+  }
+  if (freeInfo->prev) {
+    freeInfo->prev->next = freeInfo->next;
+  }
+  if (freeInfo->next) {
+    freeInfo->next->prev = freeInfo->prev;
+  }
+}
+
+static void addToFreeList(Region* region) {
+#ifdef EMMALLOC_DEBUG
+  EM_ASM({ Module.print("emmalloc.addToFreeList " + $0) }, region);
+#endif
+  assert(!region->usedPayload);
+  assert(getAfter(region) <= sbrk(0));
+  size_t index = getFreeListIndex(getMaxPayload(region));
+  FreeInfo* freeInfo = &region->freeInfo;
+  FreeInfo* last = freeLists[index];
+  freeLists[index] = freeInfo;
+  freeInfo->prev = NULL;
+  freeInfo->next = last;
+}
+
+static void possiblySplitRemainder(Region* region, size_t size) {
+#ifdef EMMALLOC_DEBUG
+  EM_ASM({ Module.print("emmalloc.possiblySplitRemainder " + [$0, $1]) }, region, size);
+#endif
+  size_t payloadSize = getMaxPayload(region);
+  assert(payloadSize >= size);
+  size_t extra = payloadSize - size;
+  // We need room for a minimal region, but also must align it.
+  if (extra >= MIN_REGION_SIZE + ALIGNMENT) {
+#ifdef EMMALLOC_DEBUG
+    EM_ASM({ Module.print("  emmalloc.possiblySplitRemainder is splitting") });
+#endif
+    // Worth it, split the region
+    // TODO: Consider not doing it, may affect long-term fragmentation.
+    void* after = getAfter(region);
+    Region* split = (Region*)alignUpPointer((char*)getPayload(region) + size);
+    region->totalSize = (char*)split - (char*)region;
+    size_t totalSplitSize = (char*)after - (char*)split;
+    assert(totalSplitSize >= MIN_REGION_SIZE);
+    initRegion(split, totalSplitSize, 0);
+    split->prev = region;
+    split->next = region->next;
+    region->next = split;
+    if (split->next) {
+      split->next->prev = split;
+    } else {
+      assert(region == lastRegion);
+      lastRegion = split;
+    }
+    addToFreeList(split);
+  }
+}
+
+static void useRegion(Region* region, size_t size) {
+#ifdef EMMALLOC_DEBUG
+  EM_ASM({ Module.print("emmalloc.useRegion " + [$0, $1]) }, region, size);
+#endif
+  region->usedPayload = size;
+  // We may not be using all of it, split out a smaller
+  // region into a free list if it's large enough.
+  possiblySplitRemainder(region, size);
+}
+
+static Region* useFreeInfo(FreeInfo* freeInfo, size_t size) {
+  Region* region = fromFreeInfo(freeInfo);
+#ifdef EMMALLOC_DEBUG
+  EM_ASM({ Module.print("emmalloc.useFreeInfo " + [$0, $1]) }, region, size);
+#endif
+  assert(getAfter(region) <= sbrk(0));
+  // This region is no longer free
+  removeFromFreeList(region);
+  // This region is now in use
+  useRegion(region, size);
+  return region;
+}
+
+// Debugging
+
 #ifdef EMMALLOC_DEBUG
 // For testing purposes, wipes everything.
 void emmalloc_blank_slate_from_orbit() {
@@ -201,6 +332,7 @@ void emmalloc_blank_slate_from_orbit() {
 // For testing purposes, validate a region.
 void emmalloc_validate_region(Region* region) {
   assert(getAfter(region) <= sbrk(0));
+  assert(region->usedPayload <= region->totalSize);
   if (region->prev) {
     assert(getAfter(region->prev) == region);
     assert(region->prev->next == region);
@@ -243,6 +375,8 @@ void emmalloc_validate_all() {
       assert(curr->prev == prev);
       Region* region = fromFreeInfo(curr);
       assert(getAfter(region) <= end);
+      assert(getMaxPayload(region) >= getMinSizeForFreeListIndex(i));
+      assert(getMaxPayload(region) <  getMaxSizeForFreeListIndex(i));
       prev = curr;
       curr = curr->next;
     }
@@ -258,18 +392,14 @@ void emmalloc_validate_all() {
 }
 
 // For testing purposes, dump out a region.
-// Also validates.
 void emmalloc_dump_region(Region* region) {
   EM_ASM({ Module.print("    [" + $0 + " - " + $1 + " (used: " + $2 + ")] prev: " + $3 + " next: " + $4) },
          region, getAfter(region), region->usedPayload, region->prev, region->next);
-  emmalloc_validate_region(region);
 }
 
 // For testing purposes, dumps out the entire global state.
-// Also validates.
 void emmalloc_dump_all() {
   EM_ASM({ Module.print("emmalloc_dump_everything:\n  sbrk(0) = " + $0) }, sbrk(0));
-  // Validate regions.
   Region* curr = firstRegion;
   while (curr) {
     emmalloc_dump_region(curr);
@@ -292,128 +422,8 @@ void emmalloc_dump_all() {
   if (lastRegion) {
     emmalloc_dump_region(lastRegion);
   }
-  emmalloc_validate_all();
 }
 #endif
-
-// The freelist index is where we would appear in a freelist if
-// we were one. It is a list of items of size at least the power
-// of 2 that lower bounds us.
-static size_t getFreeListIndex(size_t size) {
-  assert(1 << MIN_FREELIST_INDEX == MIN_ALLOC);
-  assert(size > 0);
-  if (size < MIN_ALLOC) size = MIN_ALLOC;
-  // We need a lower bound here, as the list contains things
-  // that can contain at least a power of 2.
-  size_t index = lowerBoundPowerOf2(size);
-  assert(MIN_FREELIST_INDEX <= index && index < MAX_FREELIST_INDEX);
-#ifdef EMMALLOC_DEBUG
-  EM_ASM({ Module.print("emmalloc.getFreeListIndex " + [$0, $1]) }, size, index);
-#endif
-  return index;
-}
-
-// The big-enough freelist index is the index of the freelist of
-// items that are all big enough for us. This is computed using
-// an upper bound power of 2.
-static size_t getBigEnoughFreeListIndex(size_t size) {
-  size_t index = getFreeListIndex(size);
-  // If we're a power of 2, the lower and upper bounds are the
-  // same. Otherwise, add one.
-  if (!isPowerOf2(size)) index++;
-#ifdef EMMALLOC_DEBUG
-  EM_ASM({ Module.print("emmalloc.getBigEnoughFreeListIndex " + [$0, $1]) }, size, index);
-#endif
-  return index;
-}
-
-static size_t getMinSizeForFreeListIndex(size_t index) {
-  return 1 << index;
-}
-
-static void removeFromFreeList(Region* region) {
-#ifdef EMMALLOC_DEBUG
-  EM_ASM({ Module.print("emmalloc.removeFromFreeList " + $0) },region);
-#endif
-  assert(!region->usedPayload);
-  size_t index = getFreeListIndex(getMaximumPayloadSize(region));
-  FreeInfo* freeInfo = &region->freeInfo;
-  if (freeLists[index] == freeInfo) {
-    freeLists[index] = freeInfo->next;
-  }
-  if (freeInfo->prev) {
-    freeInfo->prev->next = freeInfo->next;
-  }
-  if (freeInfo->next) {
-    freeInfo->next->prev = freeInfo->prev;
-  }
-}
-
-static void addToFreeList(Region* region) {
-#ifdef EMMALLOC_DEBUG
-  EM_ASM({ Module.print("emmalloc.addToFreeList " + $0) }, region);
-#endif
-  assert(!region->usedPayload);
-  assert(getAfter(region) <= sbrk(0));
-  size_t index = getFreeListIndex(getMaximumPayloadSize(region));
-  FreeInfo* freeInfo = &region->freeInfo;
-  FreeInfo* last = freeLists[index];
-  freeLists[index] = freeInfo;
-  freeInfo->prev = NULL;
-  freeInfo->next = last;
-}
-
-static void possiblySplitRemainder(Region* region, size_t size) {
-#ifdef EMMALLOC_DEBUG
-  EM_ASM({ Module.print("emmalloc.possiblySplitRemainder " + [$0, $1]) }, region, size);
-#endif
-  size_t payloadSize = getMaximumPayloadSize(region);
-  assert(payloadSize >= size);
-  size_t extra = payloadSize - size;
-  // We need room for a minimal region, but also must align it.
-  if (extra >= MIN_REGION_SIZE + ALIGNMENT) {
-#ifdef EMMALLOC_DEBUG
-    EM_ASM({ Module.print("  emmalloc.possiblySplitRemainder is splitting") });
-#endif
-    // Worth it, split the region
-    // TODO: Consider not doing it, may affect long-term fragmentation.
-    Region* split = (Region*)alignUpPointer((char*)getPayload(region) + size);
-    size_t totalSplitSize = (char*)split - (char*)region;
-    assert(totalSplitSize >= MIN_REGION_SIZE);
-    initRegion(split, totalSplitSize, 0);
-    split->prev = region;
-    split->next = region->next;
-    if (split->next) split->next->prev = split;
-    region->next = split;
-    emmalloc_validate_region(region);
-    emmalloc_validate_region(split);
-    addToFreeList(split);
-  }
-}
-
-static void useRegion(Region* region, size_t size) {
-#ifdef EMMALLOC_DEBUG
-  EM_ASM({ Module.print("emmalloc.useRegion " + [$0, $1]) }, region, size);
-#endif
-  region->usedPayload = size;
-  emmalloc_validate_region(region);
-  // We may not be using all of it, split out a smaller
-  // region into a free list if it's large enough.
-  possiblySplitRemainder(region, size);
-}
-
-static Region* useFreeInfo(FreeInfo* freeInfo, size_t size) {
-  Region* region = fromFreeInfo(freeInfo);
-#ifdef EMMALLOC_DEBUG
-  EM_ASM({ Module.print("emmalloc.useFreeInfo " + [$0, $1]) }, region, size);
-#endif
-  assert(getAfter(region) <= sbrk(0));
-  // This region is no longer free
-  removeFromFreeList(region);
-  // This region is now in use
-  useRegion(region, size);
-  return region;
-}
 
 // When we free something of size 100, we put it in the
 // freelist for items of size 64 and above. Then when something
@@ -457,7 +467,7 @@ static Region* tryFromFreeList(size_t size) {
     size_t tries = 0;
     while (freeInfo && tries < SPECULATIVE_FREELIST_TRIES) {
       Region* region = fromFreeInfo(freeInfo);
-      if (getMaximumPayloadSize(region) >= size) {
+      if (getMaxPayload(region) >= size) {
         // Success, use it
 #ifdef EMMALLOC_DEBUG
         EM_ASM({ Module.print("  emmalloc.tryFromFreeList try succeeded") });
@@ -508,7 +518,7 @@ static Region* newAllocation(size_t size) {
 #ifdef EMMALLOC_DEBUG
     EM_ASM({ Module.print("  emmalloc.newAllocation extending lastRegion at " + $0) }, lastRegion);
 #endif
-    size_t reusable = getMaximumPayloadSize(lastRegion);
+    size_t reusable = getMaxPayload(lastRegion);
     // We should only do a new allocation when we must, so the last region
     // was not sufficient.
     assert(reusable < size);
@@ -527,7 +537,6 @@ static Region* newAllocation(size_t size) {
     // Move the region into use. Note that we waste a little work here
     // checking if there is something to split off at the end - there isn't.
     useFreeInfo(&lastRegion->freeInfo, size);
-    emmalloc_validate_region(lastRegion);
     return lastRegion;
   }
 #ifdef EMMALLOC_DEBUG
@@ -587,7 +596,6 @@ static Region* newAllocation(size_t size) {
   }
 #endif
   lastRegion = region;
-  emmalloc_validate_region(lastRegion);
   return region;
 }
 
@@ -599,13 +607,8 @@ int mergeIntoExistingFreeRegion(Region* region) {
 #endif
   assert(getAfter(region) <= sbrk(0));
   int merged = 0;
-emmalloc_dump_region(region);
   Region* prev = region->prev;
-emmalloc_dump_all();
-emmalloc_validate_all();
-if (prev) emmalloc_dump_region(prev);
   Region* next = region->next;
-if (next) emmalloc_dump_region(next);
   if (prev && !prev->usedPayload) {
     // Merge them.
 #ifdef EMMALLOC_DEBUG
@@ -616,10 +619,11 @@ if (next) emmalloc_dump_region(next);
     prev->next = region->next;
     if (next) {
       next->prev = prev; // was: region
+    } else {
+      assert(region == lastRegion);
+      lastRegion = prev;
     }
-    emmalloc_validate_region(prev);
     if (next) {
-      emmalloc_validate_region(next);
       // We may also be able to merge with the next, keep trying.
       if (!next->usedPayload) {
 #ifdef EMMALLOC_DEBUG
@@ -630,13 +634,10 @@ if (next) emmalloc_dump_region(next);
         prev->next = next->next;
         if (prev->next) {
           prev->next->prev = prev;
-          emmalloc_validate_region(prev->next);
-        }
-        // We may now be the last region
-        if (next == lastRegion) {
+        } else {
+          assert(next == lastRegion);
           lastRegion = prev;
         }
-        emmalloc_validate_region(prev);
       }
     }
     addToFreeList(prev);
@@ -646,21 +647,16 @@ if (next) emmalloc_dump_region(next);
 #ifdef EMMALLOC_DEBUG
     EM_ASM({ Module.print("emmalloc.mergeIntoExistingFreeRegion merge into next " + $0) }, next);
 #endif
-emmalloc_dump_region(region);
-emmalloc_dump_region(next);
     // Merge them.
     removeFromFreeList(next);
     region->totalSize += next->totalSize;
     region->next = next->next;
     if (region->next) {
       region->next->prev = region;
-      emmalloc_validate_region(region->next);
-    }
-    // We may now be the last region
-    if (next == lastRegion) {
+    } else {
+      assert(next == lastRegion);
       lastRegion = region;
     }
-    emmalloc_validate_region(region);
     addToFreeList(region);
     return 1;
   }
@@ -682,7 +678,6 @@ void* emmalloc_malloc(size_t size) {
       return NULL;
     }
   }
-EM_ASM({ console.log('waka ' + [$0, $1]) }, getAfter(region), sbrk(0));
   assert(getAfter(region) <= sbrk(0));
   return getPayload(region);
 }
@@ -726,7 +721,7 @@ void* emmalloc_realloc(void *ptr, size_t size) {
     return ptr;
   }
   // Grow it. First, maybe we can do simple growth in the current region.
-  if (size <= getMaximumPayloadSize(region)) {
+  if (size <= getMaxPayload(region)) {
     region->usedPayload = size;
     return ptr;
   }
@@ -735,7 +730,7 @@ void* emmalloc_realloc(void *ptr, size_t size) {
   // us they would have already been merged.
   Region* next = region->next;
   if (next && !next->usedPayload &&
-      size <= getMaximumPayloadSize(region) + next->totalSize) {
+      size <= getMaxPayload(region) + next->totalSize) {
     region->totalSize += next->totalSize;
     region->usedPayload = size;
     region->next = next->next;

@@ -20,7 +20,7 @@ void check_where_we_would_malloc(size_t size, void* expected) {
 
 void stage(const char* name) {
   EM_ASM({
-    Module.print('>> ' + Pointer_stringify($0));
+    Module.print('\n>> ' + Pointer_stringify($0) + '\n');
   }, name);
   emmalloc_validate_all();
   emmalloc_dump_all();
