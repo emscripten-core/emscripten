@@ -26,8 +26,8 @@ void stage(const char* name) {
   emmalloc_dump_all();
 }
 
-void one() {
-  stage("ONE");
+void basics() {
+  stage("basics");
   stage("allocate 0");
   void* ptr = malloc(0);
   assert(ptr == 0);
@@ -62,8 +62,8 @@ void one() {
   stage("the_end");
 }
 
-void two() {
-  stage("TWO");
+void blank_slate() {
+  stage("blank_slate");
   emmalloc_blank_slate_from_orbit();
   void* ptr = malloc(0);
   free(ptr);
@@ -80,8 +80,22 @@ void two() {
   }
 }
 
+void previous_sbrk() {
+  stage("previous_sbrk");
+  emmalloc_blank_slate_from_orbit();
+  void* old = sbrk(0);
+  assert((size_t)old % 16 == 0);
+  sbrk(3); // unalign things
+  void* other = malloc(10);
+  free(other);
+  assert(other != old);
+  assert((char*)other == (char*)old + 16);
+  free(other);
+}
+
 int main() {
-  one();
-  two();
+  basics();
+  blank_slate();
+  previous_sbrk();
 }
 
