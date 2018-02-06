@@ -32,7 +32,7 @@
  */
 
 #define EMMALLOC_DEBUG
-#define EMMALLOC_DEBUG_LOG
+//#define EMMALLOC_DEBUG_LOG
 
 #include <assert.h>
 #include <string.h> // for memcpy, memset
@@ -278,6 +278,70 @@ static void addToFreeList(Region* region) {
   }
 }
 
+// Receives a region that has just become free (and is not yet in a freelist).
+// Tries to merge it into a region before or after it to which it is adjacent.
+int mergeIntoExistingFreeRegion(Region* region) {
+#ifdef EMMALLOC_DEBUG_LOG
+  EM_ASM({ Module.print("  emmalloc.mergeIntoExistingFreeRegion " + $0) }, region);
+#endif
+  assert(getAfter(region) <= sbrk(0));
+  int merged = 0;
+  Region* prev = region->prev;
+  Region* next = region->next;
+  if (prev && !prev->usedPayload) {
+    // Merge them.
+#ifdef EMMALLOC_DEBUG_LOG
+    EM_ASM({ Module.print("  emmalloc.mergeIntoExistingFreeRegion merge into prev " + $0) }, prev);
+#endif
+    removeFromFreeList(prev);
+    prev->totalSize += region->totalSize;
+    prev->next = region->next;
+    if (next) {
+      next->prev = prev; // was: region
+    } else {
+      assert(region == lastRegion);
+      lastRegion = prev;
+    }
+    if (next) {
+      // We may also be able to merge with the next, keep trying.
+      if (!next->usedPayload) {
+#ifdef EMMALLOC_DEBUG_LOG
+        EM_ASM({ Module.print("  emmalloc.mergeIntoExistingFreeRegion also merge into next " + $0) }, next);
+#endif
+        removeFromFreeList(next);
+        prev->totalSize += next->totalSize;
+        prev->next = next->next;
+        if (prev->next) {
+          prev->next->prev = prev;
+        } else {
+          assert(next == lastRegion);
+          lastRegion = prev;
+        }
+      }
+    }
+    addToFreeList(prev);
+    return 1;
+  }
+  if (next && !next->usedPayload) {
+#ifdef EMMALLOC_DEBUG_LOG
+    EM_ASM({ Module.print("  emmalloc.mergeIntoExistingFreeRegion merge into next " + $0) }, next);
+#endif
+    // Merge them.
+    removeFromFreeList(next);
+    region->totalSize += next->totalSize;
+    region->next = next->next;
+    if (region->next) {
+      region->next->prev = region;
+    } else {
+      assert(next == lastRegion);
+      lastRegion = region;
+    }
+    addToFreeList(region);
+    return 1;
+  }
+  return 0;
+}
+
 static void possiblySplitRemainder(Region* region, size_t size) {
 #ifdef EMMALLOC_DEBUG_LOG
   EM_ASM({ Module.print("  emmalloc.possiblySplitRemainder " + [$0, $1]) }, region, size);
@@ -307,7 +371,11 @@ static void possiblySplitRemainder(Region* region, size_t size) {
       assert(region == lastRegion);
       lastRegion = split;
     }
-    addToFreeList(split);
+    // It may be mergable into something adjacent (e.g. if we split off part of
+    // a used region during realloc, and there was a free region after it).
+    if (!mergeIntoExistingFreeRegion(split)) {
+      addToFreeList(split);
+    }
   }
 }
 
@@ -660,70 +728,6 @@ static Region* newAllocation(size_t size) {
   return region;
 }
 
-// Receives a region that has just become free (and is not yet in a freelist).
-// Tries to merge it into a region before or after it to which it is adjacent.
-int mergeIntoExistingFreeRegion(Region* region) {
-#ifdef EMMALLOC_DEBUG_LOG
-  EM_ASM({ Module.print("  emmalloc.mergeIntoExistingFreeRegion " + $0) }, region);
-#endif
-  assert(getAfter(region) <= sbrk(0));
-  int merged = 0;
-  Region* prev = region->prev;
-  Region* next = region->next;
-  if (prev && !prev->usedPayload) {
-    // Merge them.
-#ifdef EMMALLOC_DEBUG_LOG
-    EM_ASM({ Module.print("  emmalloc.mergeIntoExistingFreeRegion merge into prev " + $0) }, prev);
-#endif
-    removeFromFreeList(prev);
-    prev->totalSize += region->totalSize;
-    prev->next = region->next;
-    if (next) {
-      next->prev = prev; // was: region
-    } else {
-      assert(region == lastRegion);
-      lastRegion = prev;
-    }
-    if (next) {
-      // We may also be able to merge with the next, keep trying.
-      if (!next->usedPayload) {
-#ifdef EMMALLOC_DEBUG_LOG
-        EM_ASM({ Module.print("  emmalloc.mergeIntoExistingFreeRegion also merge into next " + $0) }, next);
-#endif
-        removeFromFreeList(next);
-        prev->totalSize += next->totalSize;
-        prev->next = next->next;
-        if (prev->next) {
-          prev->next->prev = prev;
-        } else {
-          assert(next == lastRegion);
-          lastRegion = prev;
-        }
-      }
-    }
-    addToFreeList(prev);
-    return 1;
-  }
-  if (next && !next->usedPayload) {
-#ifdef EMMALLOC_DEBUG_LOG
-    EM_ASM({ Module.print("  emmalloc.mergeIntoExistingFreeRegion merge into next " + $0) }, next);
-#endif
-    // Merge them.
-    removeFromFreeList(next);
-    region->totalSize += next->totalSize;
-    region->next = next->next;
-    if (region->next) {
-      region->next->prev = region;
-    } else {
-      assert(next == lastRegion);
-      lastRegion = region;
-    }
-    addToFreeList(region);
-    return 1;
-  }
-  return 0;
-}
-
 // Internal mirror of public API.
 
 void* emmalloc_malloc(size_t size) {
@@ -820,19 +824,11 @@ void* emmalloc_realloc(void *ptr, size_t size) {
   }
 #ifdef EMMALLOC_DEBUG_LOG
   EM_ASM({ Module.print("  emmalloc.emmalloc_realloc slow path: new allocation, copy, free") });
-EM_ASM({ Module.print("  a0") });
-emmalloc_validate_all();
 #endif
   void* newPtr = emmalloc_malloc(size);
-EM_ASM({ Module.print("  a1") });
-emmalloc_validate_all();
   if (!newPtr) return NULL;
   memcpy(newPtr, getPayload(region), region->usedPayload);
-emmalloc_dump_all();
   emmalloc_free(ptr);
-emmalloc_dump_all();
-EM_ASM({ Module.print("  a2") });
-emmalloc_validate_all();
   return newPtr;
 }
 
