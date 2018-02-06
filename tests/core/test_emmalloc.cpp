@@ -169,6 +169,8 @@ void realloc() {
 
 void randoms() {
   stage("randoms");
+  emmalloc_blank_slate_from_orbit();
+  void* start = check_where_we_would_malloc(10);
   const int N = 1000;
   const int BINS = 128;
   void* bins[BINS];
@@ -211,6 +213,8 @@ void randoms() {
   for (int i = 0; i < BINS; i++) {
     if (bins[i]) free(bins[i]);
   }
+  // it's all freed, should be a blank slate
+  assert(check_where_we_would_malloc(10) == start);
 }
 
 int main() {
