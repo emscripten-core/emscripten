@@ -31,9 +31,6 @@
  *    risk of debugging or logging depending on malloc.
  */
 
-#define EMMALLOC_DEBUG
-//#define EMMALLOC_DEBUG_LOG
-
 #include <assert.h>
 #include <string.h> // for memcpy, memset
 #include <unistd.h> // for sbrk()
@@ -42,7 +39,9 @@
 
 #ifdef EMMALLOC_DEBUG_LOG
 #include <emscripten.h>
+#ifndef EMMALLOC_DEBUG
 #define EMMALLOC_DEBUG
+#endif
 #endif
 
 #ifdef EMMALLOC_DEBUG
@@ -189,12 +188,8 @@ static FreeInfo* freeLists[MAX_FREELIST_INDEX] = {
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
-// The first region of memory. This is not actually needed unless
-// we are debugging, in which case it is the start of the linked list
-// of all the regions.
-#ifdef EMMALLOC_DEBUG
+// The first region of memory.
 static Region* firstRegion = NULL;
-#endif
 
 // The last region of memory. It's important to know the end
 // since we may append to it.
@@ -403,8 +398,7 @@ static Region* useFreeInfo(FreeInfo* freeInfo, size_t size) {
 
 // Debugging
 
-#ifdef EMMALLOC_DEBUG
-// For testing purposes, wipes everything.
+// Mostly for testing purposes, wipes everything.
 void emmalloc_blank_slate_from_orbit() {
   for (int i = 0; i < MAX_FREELIST_INDEX; i++) {
     freeLists[i] = NULL;
@@ -413,6 +407,7 @@ void emmalloc_blank_slate_from_orbit() {
   lastRegion = NULL;
 }
 
+#ifdef EMMALLOC_DEBUG
 // For testing purposes, validate a region.
 void emmalloc_validate_region(Region* region) {
   assert(getAfter(region) <= sbrk(0));

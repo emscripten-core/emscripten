@@ -4,6 +4,10 @@
 
 #include <emscripten.h>
 
+#ifndef RANDOM_ITERS
+#define RANDOM_ITERS 12345
+#endif
+
 extern void emmalloc_blank_slate_from_orbit();
 
 // Test emmalloc internals, but through the external interface. We expect
@@ -172,7 +176,7 @@ void randoms() {
     bins[i] = NULL;
   }
   srandom(1337101);
-  for (int i = 0; i < 10000; i++) {
+  for (int i = 0; i < RANDOM_ITERS; i++) {
     unsigned int r = random();
     int alloc = r & 1;
     r >>= 1;
@@ -182,11 +186,14 @@ void randoms() {
     r >>= 7;
     unsigned int size = r & 65535;
     r >>= 16;
+    int useShifts = r & 1;
+    r >>= 1;
     unsigned int shifts = r & 15;
     r >>= 4;
-    size >>= shifts; // spread out values logarithmically
-    //EM_ASM({ Module.print([$0, $1, $2, $3, $4]) }, i, alloc, bin, size, shifts);
-    if (alloc) {
+    if (useShifts) {
+      size >>= shifts; // spread out values logarithmically
+    }
+    if (alloc || !bins[bin]) {
       if (bins[bin]) {
         bins[bin] = realloc(bins[bin], size);
       } else {
@@ -197,12 +204,8 @@ void randoms() {
         }
       }
     } else {
-      if (bins[bin]) {
-        free(bins[bin]);
-        bins[bin] = NULL;
-      } else {
-        // can't free what isn't there; pass
-      }
+      free(bins[bin]);
+      bins[bin] = NULL;
     }
   }
   for (int i = 0; i < BINS; i++) {

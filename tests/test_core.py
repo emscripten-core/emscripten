@@ -728,8 +728,18 @@ base align: 0, 0, 0, 0'''])
     self.do_run(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(sizeof(S))').replace('{{del_struct}}', 'free'), '*51,62*')
 
   def test_emmalloc(self):
-    self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() + open(path_from_root('tests', 'core', 'test_emmalloc.cpp')).read(),
-                open(path_from_root('tests', 'core', 'test_emmalloc.txt')).read())
+    def test():
+      self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() + open(path_from_root('tests', 'core', 'test_emmalloc.cpp')).read(),
+                  open(path_from_root('tests', 'core', 'test_emmalloc.txt')).read())
+    print('normal')
+    test()
+    print('debug')
+    self.emcc_args += ['-DEMMALLOC_DEBUG']
+    test()
+    print('debug log')
+    self.emcc_args += ['-DEMMALLOC_DEBUG_LOG']
+    self.emcc_args += ['-DRANDOM_ITERS=130']
+    test()
 
   def test_newstruct(self):
     self.do_run(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
