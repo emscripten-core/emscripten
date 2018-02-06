@@ -326,6 +326,7 @@ void emmalloc_blank_slate_from_orbit() {
   for (int i = 0; i < MAX_FREELIST_INDEX; i++) {
     freeLists[i] = NULL;
   }
+  firstRegion = NULL;
   lastRegion = NULL;
 }
 
@@ -376,7 +377,8 @@ void emmalloc_validate_all() {
       Region* region = fromFreeInfo(curr);
       assert(getAfter(region) <= end);
       assert(getMaxPayload(region) >= getMinSizeForFreeListIndex(i));
-      assert(getMaxPayload(region) <  getMaxSizeForFreeListIndex(i));
+      assert(region->usedPayload < getMaxSizeForFreeListIndex(i));
+      assert(getMaxPayload(region) <=  getMaxSizeForFreeListIndex(i));
       prev = curr;
       curr = curr->next;
     }
@@ -393,8 +395,8 @@ void emmalloc_validate_all() {
 
 // For testing purposes, dump out a region.
 void emmalloc_dump_region(Region* region) {
-  EM_ASM({ Module.print("    [" + $0 + " - " + $1 + " (used: " + $2 + ")] prev: " + $3 + " next: " + $4) },
-         region, getAfter(region), region->usedPayload, region->prev, region->next);
+  EM_ASM({ Module.print("    [" + $0 + " - " + $1 + " (used: " + $2 + " / " + $3 + ")] prev: " + $4 + " next: " + $5) },
+         region, getAfter(region), region->usedPayload, getMaxPayload(region), region->prev, region->next);
 }
 
 // For testing purposes, dumps out the entire global state.
@@ -408,7 +410,7 @@ void emmalloc_dump_all() {
   for (int i = 0; i < MAX_FREELIST_INDEX; i++) {
     FreeInfo* curr = freeLists[i];
     if (!curr) continue;
-    EM_ASM({ Module.print("  freeList[" + $0 + "]") }, i);
+    EM_ASM({ Module.print("  freeList[" + $0 + "] sizes: [" + $1 + ", " + $2 + ")") }, i, getMinSizeForFreeListIndex(i), getMaxSizeForFreeListIndex(i));
     FreeInfo* prev = NULL;
     while (curr) {
       assert(curr->prev == prev);
