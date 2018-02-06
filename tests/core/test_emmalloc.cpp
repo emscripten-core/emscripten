@@ -148,7 +148,19 @@ void realloc() {
     assert(raptr4 != ptr);
     // leaving those in place, do another iteration
   }
-  // TODO: test 0 i both params to realloc
+  emmalloc_blank_slate_from_orbit();
+  {
+    // realloc of NULL is like malloc
+    void* ptr = check_where_we_would_malloc(10);
+    assert(realloc(NULL, 10) == ptr);
+  }
+  emmalloc_blank_slate_from_orbit();
+  {
+    // realloc to 0 is like free
+    void* ptr = malloc(10);
+    assert(realloc(ptr, 0) == NULL);
+    assert(check_where_we_would_malloc(10) == ptr);
+  }
 }
 
 void randoms() {
@@ -160,7 +172,7 @@ void randoms() {
     bins[i] = NULL;
   }
   srandom(1337101);
-  for (int i = 0; i < 1000; i++) {
+  for (int i = 0; i < 10000; i++) {
     unsigned int r = random();
     int alloc = r & 1;
     r >>= 1;
@@ -173,7 +185,7 @@ void randoms() {
     unsigned int shifts = r & 15;
     r >>= 4;
     size >>= shifts; // spread out values logarithmically
-    EM_ASM({ Module.print([$0, $1, $2, $3, $4]) }, i, alloc, bin, size, shifts);
+    //EM_ASM({ Module.print([$0, $1, $2, $3, $4]) }, i, alloc, bin, size, shifts);
     if (alloc) {
       if (bins[bin]) {
         bins[bin] = realloc(bins[bin], size);
@@ -197,11 +209,6 @@ void randoms() {
     if (bins[i]) free(bins[i]);
   }
 }
-
-// Add test for
-//  * alloc 1,2,4,8,16, etc.
-//  * free it
-//  * alloc 1. should be at the start, not after a big emptiness
 
 int main() {
   stage("beginning");
