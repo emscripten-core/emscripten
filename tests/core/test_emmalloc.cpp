@@ -7,10 +7,14 @@
 // pass in another malloc.
 
 int main() {
+  printf("allocate 0\n");
   void* ptr = malloc(0);
   assert(ptr == 0);
+  printf("allocate 100\n");
   void* first = malloc(100);
+  printf("free 100\n");
   free(first);
+  printf("allocate another 100\n");
   void* second = malloc(100);
   assert(second == first);
   puts("ok");

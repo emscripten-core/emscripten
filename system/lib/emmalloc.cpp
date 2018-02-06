@@ -5,13 +5,20 @@
  *
  *  - 32-bit system.
  *  - Single-threaded.
- *  - sbrk() is available (and nothing better, it's all we use).
+ *  - sbrk() is used, and nothing else.
  *  - sbrk() will not be accessed by anyone else.
  *
+ * Debugging: define EMMALLOC_DEBUG and rebuild
  */
+
+#define EMMALLOC_DEBUG
+
 #include <assert.h>
 #include <string.h> // for memcpy, memset
 #include <unistd.h> // for sbrk()
+#ifdef EMMALLOC_DEBUG
+  #include <stdio.h>
+#endif
 
 // Math utilities
 
@@ -19,20 +26,12 @@ static bool isPowerOf2(size_t x) {
   return __builtin_popcount(x) == 1;
 }
 
-static size_t upperBoundByPowerOf2(size_t x) {
+static size_t lowerBoundPowerOf2(size_t x) {
   if (x == 0) return 1;
   if (isPowerOf2(x)) return x;
-  // e.g. 5 is 0..0101, so clz is 29, and we
-  // want 8 which is 1 << 3
-  return 1 << (32 - __builtin_clz(x));
-}
-
-static size_t lowerBoundByPowerOf2(size_t x) {
-  if (x == 0) return 1;
-  if (isPowerOf2(x)) return x;
-  // e.g. 5 is 0..0101, so clz is 29, and we
-  // want 4 which is 1 << 2
-  return 1 << (31 - __builtin_clz(x));
+  // e.g. 5 is 0..0101, so clz is 29, and we want
+  // 4 which is 1 << 2, so the result should be 2
+  return 31 - __builtin_clz(x);
 }
 
 // Constants
@@ -106,6 +105,9 @@ struct Region {
 // Region utilities
 
 static void initRegion(Region* region, size_t totalSize, size_t usedPayload) {
+#ifdef EMMALLOC_DEBUG
+  printf("emmalloc.initRegion %p %d %d\n", region, totalSize, usedPayload);
+#endif
   region->totalSize = totalSize;
   region->usedPayload = usedPayload;
   region->prev = NULL;
@@ -173,8 +175,11 @@ static size_t getFreeListIndex(size_t size) {
   if (size < MIN_ALLOC) size = MIN_ALLOC;
   // We need a lower bound here, as the list contains things
   // that can contain at least a power of 2.
-  size_t index = lowerBoundByPowerOf2(size);
+  size_t index = lowerBoundPowerOf2(size);
   assert(MIN_FREELIST_INDEX <= index && index < MAX_FREELIST_INDEX);
+#ifdef EMMALLOC_DEBUG
+  printf("emmalloc.getFreeListIndex %d => %d\n", size, index);
+#endif
   return index;
 }
 
@@ -186,6 +191,9 @@ static size_t getBigEnoughFreeListIndex(size_t size) {
   // If we're a power of 2, the lower and upper bounds are the
   // same. Otherwise, add one.
   if (!isPowerOf2(size)) index++;
+#ifdef EMMALLOC_DEBUG
+  printf("emmalloc.getBigEnoughFreeListIndex %d => %d\n", size, index);
+#endif
   return index;
 }
 
@@ -194,7 +202,10 @@ static size_t getMinSizeForFreeListIndex(size_t index) {
 }
 
 static void removeFromFreeList(Region* region) {
-  assert(region->usedPayload);
+#ifdef EMMALLOC_DEBUG
+  printf("emmalloc.removeFromFreeList %p\n", region);
+#endif
+  assert(!region->usedPayload);
   size_t index = getFreeListIndex(getMaximumPayloadSize(region));
   FreeInfo* freeInfo = &region->freeInfo;
   if (freeLists[index] == freeInfo) {
@@ -209,7 +220,10 @@ static void removeFromFreeList(Region* region) {
 }
 
 static void addToFreeList(Region* region) {
-  assert(region->usedPayload);
+#ifdef EMMALLOC_DEBUG
+  printf("emmalloc.addToFreeList %p\n", region);
+#endif
+  assert(!region->usedPayload);
   size_t index = getFreeListIndex(getMaximumPayloadSize(region));
   FreeInfo* freeInfo = &region->freeInfo;
   FreeInfo* last = freeLists[index];
@@ -219,11 +233,17 @@ static void addToFreeList(Region* region) {
 }
 
 static void possiblySplitRemainder(Region* region, size_t size) {
+#ifdef EMMALLOC_DEBUG
+  printf("emmalloc.possiblySplitRemainder %p %d\n", region, size);
+#endif
   size_t payloadSize = getMaximumPayloadSize(region);
   assert(payloadSize >= size);
   size_t extra = payloadSize - size;
   // We need room for a minimal region, but also must align it.
   if (extra >= MIN_REGION_SIZE + ALIGNMENT) {
+#ifdef EMMALLOC_DEBUG
+    printf("  emmalloc.possiblySplitRemainder is splitting\n");
+#endif
     // Worth it, split the region
     // TODO: Consider not doing it, may affect long-term fragmentation.
     Region* split = (Region*)alignUpPointer((char*)getPayload(region) + size);
@@ -238,7 +258,9 @@ static void possiblySplitRemainder(Region* region, size_t size) {
 }
 
 static void useRegion(Region* region, size_t size) {
-  assert(!region->usedPayload);
+#ifdef EMMALLOC_DEBUG
+  printf("emmalloc.useRegion %p %d\n", region, size);
+#endif
   region->usedPayload = size;
   // We may not be using all of it, split out a smaller
   // region into a free list if it's large enough.
@@ -247,6 +269,9 @@ static void useRegion(Region* region, size_t size) {
 
 static Region* useFreeInfo(FreeInfo* freeInfo, size_t size) {
   Region* region = fromFreeInfo(freeInfo);
+#ifdef EMMALLOC_DEBUG
+  printf("emmalloc.useFreeInfo %p %d\n", region, size);
+#endif
   // This region is no longer free
   removeFromFreeList(region);
   // This region is now in use
@@ -281,6 +306,9 @@ static Region* useFreeInfo(FreeInfo* freeInfo, size_t size) {
 static const size_t SPECULATIVE_FREELIST_TRIES = 3;
 
 static Region* tryFromFreeList(size_t size) {
+#ifdef EMMALLOC_DEBUG
+  printf("emmalloc.tryFromFreeList %d\n", size);
+#endif
   // Look in the freelist of items big enough for us.
   size_t index = getBigEnoughFreeListIndex(size);
   // If we *may* find an item in the index one
@@ -295,6 +323,9 @@ static Region* tryFromFreeList(size_t size) {
       Region* region = fromFreeInfo(freeInfo);
       if (getMaximumPayloadSize(region) >= size) {
         // Success, use it
+#ifdef EMMALLOC_DEBUG
+        printf("  emmalloc.tryFromFreeList try succeeded\n");
+#endif
         return useFreeInfo(freeInfo, size);
       }
       freeInfo = freeInfo->next;
@@ -312,6 +343,9 @@ static Region* tryFromFreeList(size_t size) {
     FreeInfo* freeInfo = freeLists[index];
     if (freeInfo) {
       // We found one, use it.
+#ifdef EMMALLOC_DEBUG
+      printf("  emmalloc.tryFromFreeList had item to use\n");
+#endif
       return useFreeInfo(freeInfo, size);
     }
     // Look in a freelist of larger elements.
@@ -320,15 +354,24 @@ static Region* tryFromFreeList(size_t size) {
     index++;
   }
   // No luck, no free list.
+#ifdef EMMALLOC_DEBUG
+  printf("  emmalloc.tryFromFreeList no luck\n");
+#endif
   return NULL;
 }
 
 static Region* newAllocation(size_t size) {
+#ifdef EMMALLOC_DEBUG
+  printf("  emmalloc.newAllocation %d\n", size);
+#endif
   assert(size > 0);
   // If the last region is free, we can extend it rather than leave it
   // as fragmented free spce between allocated regions. This is also
   // more efficient and simple as well.
-  if (lastRegion) {
+  if (lastRegion && !lastRegion->usedPayload) {
+#ifdef EMMALLOC_DEBUG
+    printf("  emmalloc.newAllocation extending lastRegion at %p\n", lastRegion);
+#endif
     size_t reusable = getMaximumPayloadSize(lastRegion);
     // We should only do a new allocation when we must, so the last region
     // was not sufficient.
@@ -337,6 +380,9 @@ static Region* newAllocation(size_t size) {
     void* ptr = sbrk(sbrkSize);
     if (ptr == (void*)-1) {
       // sbrk() failed, we failed.
+#ifdef EMMALLOC_DEBUG
+      printf("  emmalloc.newAllocation sbrk failure\n");
+#endif
       return NULL;
     }
     // sbrk() should give us new space right after the last region.
@@ -347,20 +393,32 @@ static Region* newAllocation(size_t size) {
     useFreeInfo(&lastRegion->freeInfo, size);
     return lastRegion;
   }
+#ifdef EMMALLOC_DEBUG
+  printf("  emmalloc.newAllocation getting brand new space\n");
+#endif
   size_t sbrkSize = METADATA_SIZE + alignUp(size);
   void* ptr = sbrk(sbrkSize);
   if (ptr == (void*)-1) {
     // sbrk() failed, we failed.
+#ifdef EMMALLOC_DEBUG
+    printf("  emmalloc.newAllocation sbrk failure\n");
+#endif
     return NULL;
   }
   // sbrk() results might not be aligned. We assume single-threaded sbrk()
   // access here in order to fix that up
   void* fixedPtr = alignUpPointer(ptr);
   if (ptr != fixedPtr) {
+#ifdef EMMALLOC_DEBUG
+    printf("  emmalloc.newAllocation fixing alignment\n");
+#endif
     size_t extra = (char*)fixedPtr - (char*)ptr;
     void* extraPtr = sbrk(extra);
     if (extraPtr == (void*)-1) {
       // sbrk() failed, we failed.
+#ifdef EMMALLOC_DEBUG
+      printf("  emmalloc.newAllocation sbrk failure\n");
+#endif
       return NULL;
     }
     // Verify the sbrk() assumption, no one else should call it.
@@ -390,17 +448,26 @@ static Region* newAllocation(size_t size) {
   return region;
 }
 
-int mergeIntoExistingFreeRegion(Region *region) {
+int mergeIntoExistingFreeRegion(Region* region) {
+#ifdef EMMALLOC_DEBUG
+  printf("emmalloc.mergeIntoExistingFreeRegion %p\n", region);
+#endif
   int merged = 0;
   Region* prev = region->prev;
   Region* next = region->next;
   if (prev && !prev->usedPayload) {
     // Merge them.
+#ifdef EMMALLOC_DEBUG
+    printf("emmalloc.mergeIntoExistingFreeRegion merge into prev %p\n", prev);
+#endif
     removeFromFreeList(prev);
     prev->totalSize += region->totalSize;
     prev->next = region->next;
     // We may also be able to merge with the next, keep trying.
     if (next && !next->usedPayload) {
+#ifdef EMMALLOC_DEBUG
+      printf("emmalloc.mergeIntoExistingFreeRegion also merge into next %p\n", next);
+#endif
       removeFromFreeList(next);
       prev->totalSize += next->totalSize;
       prev->next = next->next;
@@ -409,6 +476,9 @@ int mergeIntoExistingFreeRegion(Region *region) {
     return 1;
   }
   if (next && !next->usedPayload) {
+#ifdef EMMALLOC_DEBUG
+    printf("emmalloc.mergeIntoExistingFreeRegion merge into next %p\n", next);
+#endif
     // Merge them.
     removeFromFreeList(next);
     region->totalSize += next->totalSize;
