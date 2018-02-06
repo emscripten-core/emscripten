@@ -280,9 +280,10 @@ static void possiblySplitRemainder(Region* region, size_t size) {
     Region* split = (Region*)alignUpPointer((char*)getPayload(region) + size);
     size_t totalSplitSize = (char*)split - (char*)region;
     assert(totalSplitSize >= MIN_REGION_SIZE);
-    initRegion(split, totalSplitSize, size);
+    initRegion(split, totalSplitSize, 0);
     split->prev = region;
     split->next = region->next;
+    if (split->next) split->next->prev = split;
     region->next = split;
     addToFreeList(split);
   }
