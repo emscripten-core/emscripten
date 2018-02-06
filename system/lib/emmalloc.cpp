@@ -761,20 +761,14 @@ void* emmalloc_realloc(void *ptr, size_t size) {
     return NULL;
   }
   Region* region = fromPayload(ptr);
-  if (size == region->usedPayload) {
-    // Nothing to do.
-    return ptr;
-  }
-  if (size < region->usedPayload) {
-    // Shrink it.
+  // Grow it. First, maybe we can do simple growth in the current region.
+  if (size <= getMaxPayload(region)) {
+#ifdef EMMALLOC_DEBUG_LOG
+    EM_ASM({ Module.print("  emmalloc.emmalloc_realloc use existing payload space") });
+#endif
     region->usedPayload = size;
     // There might be enough left over to split out now.
     possiblySplitRemainder(region, size);
-    return ptr;
-  }
-  // Grow it. First, maybe we can do simple growth in the current region.
-  if (size <= getMaxPayload(region)) {
-    region->usedPayload = size;
     return ptr;
   }
   // Perhaps right after us is free space we can merge to us. We
@@ -785,6 +779,9 @@ void* emmalloc_realloc(void *ptr, size_t size) {
   Region* next = region->next;
   if (next && !next->usedPayload &&
       (size <= getMaxPayload(region) + next->totalSize || next == lastRegion)) {
+#ifdef EMMALLOC_DEBUG_LOG
+    EM_ASM({ Module.print("  emmalloc.emmalloc_realloc use last region") });
+#endif
     removeFromFreeList(next);
     region->totalSize += next->totalSize;
     region->next = next->next;
@@ -810,7 +807,9 @@ void* emmalloc_realloc(void *ptr, size_t size) {
       }
     }
   }
-  // Slow path: New allocation, copy to there, free original.
+#ifdef EMMALLOC_DEBUG_LOG
+  EM_ASM({ Module.print("  emmalloc.emmalloc_realloc slow path: new allocation, copy, free") });
+#endif
   void* newPtr = emmalloc_malloc(size);
   if (!newPtr) return NULL;
   memcpy(newPtr, getPayload(region), region->usedPayload);
