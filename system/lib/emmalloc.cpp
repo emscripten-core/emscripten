@@ -1,3 +1,4 @@
+
 /*
  * Simple minimalistic but efficient malloc/free.
  *
@@ -8,7 +9,23 @@
  *  - sbrk() is used, and nothing else.
  *  - sbrk() will not be accessed by anyone else.
  *
- * Debugging: define EMMALLOC_DEBUG and rebuild
+ * Invariants:
+ *
+ *  - Metadata is 16 bytes, allocation payload is a
+ *    multiple of 16 bytes.
+ *  - All regions of memory are adjacent.
+ *  - Due to the above, after initial alignment fixing, all
+ *    regions are aligned.
+ *  - A region is either in use (used payload > 0) or not.
+ *    Used regions may be adjacent, and a used and unused region
+ *    may be adjacent, but not two unused ones - they would be
+ *    merged.
+ *
+ * Debugging:
+ *
+ *  - If not NDEBUG, runtime assert()s are in use.
+ *  - If EMMALLOC_DEBUG is defined, a large amount of logging and
+ *    additional checks are done.
  */
 
 #define EMMALLOC_DEBUG
@@ -159,6 +176,13 @@ static FreeInfo* freeLists[MAX_FREELIST_INDEX] = {
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
+// The first region of memory. This is not actually needed unless
+// we are debugging, in which case it is the start of the linked list
+// of all the regions.
+#ifdef EMMALLOC_DEBUG
+static Region* firstRegion = NULL;
+#endif
+
 // The last region of memory. It's important to know the end
 // since we may append to it.
 static Region* lastRegion = NULL;
@@ -190,6 +214,27 @@ void emmalloc_validate_region(Region* region) {
 // For testing purposes, check that everything is valid.
 void emmalloc_validate_all() {
   void* end = sbrk(0);
+  // Validate regions.
+  Region* curr = firstRegion;
+  Region* prev = NULL;
+  while (curr) {
+    assert(curr->prev == prev);
+    if (prev) {
+      assert(getAfter(prev) == curr);
+      assert(prev->next = curr);
+      // Adjacent free regions must be merged.
+      assert(!(!prev->usedPayload && !curr->usedPayload));
+    }
+    assert(getAfter(curr) <= end);
+    prev = curr;
+    curr = curr->next;
+  }
+  if (prev) {
+    assert(prev == lastRegion);
+  } else {
+    assert(!lastRegion);
+  }
+  // Validate freelists.
   for (int i = 0; i < MAX_FREELIST_INDEX; i++) {
     FreeInfo* curr = freeLists[i];
     if (!curr) continue;
@@ -202,16 +247,21 @@ void emmalloc_validate_all() {
       curr = curr->next;
     }
   }
+  // Validate lastRegion.
   if (lastRegion) {
     assert(lastRegion->next == NULL);
     assert(getAfter(lastRegion) <= end);
+    assert(firstRegion);
+  } else {
+    assert(!firstRegion);
   }
 }
 
 // For testing purposes, dump out a region.
 // Also validates.
 void emmalloc_dump_region(Region* region) {
-  EM_ASM({ Module.print("    [" + $0 + " - " + $1 + "] prev: " + $2 + " next: " + $3) }, region, getAfter(region), region->prev, region->next);
+  EM_ASM({ Module.print("    [" + $0 + " - " + $1 + " (used: " + $2 + ")] prev: " + $3 + " next: " + $4) },
+         region, getAfter(region), region->usedPayload, region->prev, region->next);
   emmalloc_validate_region(region);
 }
 
@@ -219,6 +269,12 @@ void emmalloc_dump_region(Region* region) {
 // Also validates.
 void emmalloc_dump_all() {
   EM_ASM({ Module.print("emmalloc_dump_everything:\n  sbrk(0) = " + $0) }, sbrk(0));
+  // Validate regions.
+  Region* curr = firstRegion;
+  while (curr) {
+    emmalloc_dump_region(curr);
+    curr = curr->next;
+  }
   for (int i = 0; i < MAX_FREELIST_INDEX; i++) {
     FreeInfo* curr = freeLists[i];
     if (!curr) continue;
@@ -235,9 +291,8 @@ void emmalloc_dump_all() {
   EM_ASM({ Module.print("  lastRegion:") });
   if (lastRegion) {
     emmalloc_dump_region(lastRegion);
-    EM_ASM({ Module.print("    (used: " + $0) }, lastRegion->usedPayload);
-    emmalloc_validate_region(lastRegion);
   }
+  emmalloc_validate_all();
 }
 #endif
 
@@ -526,6 +581,11 @@ static Region* newAllocation(size_t size) {
     lastRegion->next = region;
     region->prev = lastRegion;
   }
+#ifdef EMMALLOC_DEBUG
+  if (!firstRegion) {
+    firstRegion = region;
+  }
+#endif
   lastRegion = region;
   emmalloc_validate_region(lastRegion);
   return region;
@@ -572,6 +632,10 @@ if (next) emmalloc_dump_region(next);
           prev->next->prev = prev;
           emmalloc_validate_region(prev->next);
         }
+        // We may now be the last region
+        if (next == lastRegion) {
+          lastRegion = prev;
+        }
         emmalloc_validate_region(prev);
       }
     }
@@ -592,6 +656,10 @@ emmalloc_dump_region(next);
       region->next->prev = region;
       emmalloc_validate_region(region->next);
     }
+    // We may now be the last region
+    if (next == lastRegion) {
+      lastRegion = region;
+    }
     emmalloc_validate_region(region);
     addToFreeList(region);
     return 1;
@@ -599,14 +667,9 @@ emmalloc_dump_region(next);
   return 0;
 }
 
-// public API
+// Internal mirror of public API.
 
-extern "C" {
-
-void* malloc(size_t size) {
-#ifdef EMMALLOC_DEBUG
-  EM_ASM({ Module.print("emmalloc.malloc " + $0) }, size);
-#endif
+void* emmalloc_malloc(size_t size) {
   // malloc() spec defines malloc(0) => NULL.
   if (size == 0) return NULL;
   // Look in the freelist first.
@@ -624,10 +687,7 @@ EM_ASM({ console.log('waka ' + [$0, $1]) }, getAfter(region), sbrk(0));
   return getPayload(region);
 }
 
-void free(void *ptr) {
-#ifdef EMMALLOC_DEBUG
-  EM_ASM({ Module.print("emmalloc.free " + $0) }, ptr);
-#endif
+void emmalloc_free(void *ptr) {
   if (ptr == NULL) return;
   Region* region = fromPayload(ptr);
   region->usedPayload = 0;
@@ -638,25 +698,19 @@ void free(void *ptr) {
   }
 }
 
-void* calloc(size_t nmemb, size_t size) {
-#ifdef EMMALLOC_DEBUG
-  EM_ASM({ Module.print("emmalloc.calloc " + $0) }, size);
-#endif
+void* emmalloc_calloc(size_t nmemb, size_t size) {
   // TODO If we know no one else is using sbrk(), we can assume that new
   //      memory allocations are zero'd out.
-  void* ptr = malloc(size);
+  void* ptr = emmalloc_malloc(nmemb * size);
   if (!ptr) return NULL;
-  memset(ptr, 0, size);
+  memset(ptr, 0, nmemb * size);
   return ptr;
 }
 
-void* realloc(void *ptr, size_t size) {
-#ifdef EMMALLOC_DEBUG
-  EM_ASM({ Module.print("emmalloc.realloc " + [$0, $1]) }, ptr, size);
-#endif
-  if (!ptr) return malloc(size);
+void* emmalloc_realloc(void *ptr, size_t size) {
+  if (!ptr) return emmalloc_malloc(size);
   if (!size) {
-    free(ptr);
+    emmalloc_free(ptr);
     return NULL;
   }
   Region* region = fromPayload(ptr);
@@ -689,10 +743,68 @@ void* realloc(void *ptr, size_t size) {
     return ptr;
   }
   // Slow path: New allocation, copy to there, free original.
-  void* newPtr = malloc(size);
+  void* newPtr = emmalloc_malloc(size);
   if (!newPtr) return NULL;
   memcpy(newPtr, getPayload(region), region->usedPayload);
-  free(ptr);
+  emmalloc_free(ptr);
+  return newPtr;
+}
+
+// Public API. This is a thin wrapper around our mirror of it, adding
+// logging and validation when debugging. Otherwise it should inline
+// out.
+
+extern "C" {
+
+void* malloc(size_t size) {
+#ifdef EMMALLOC_DEBUG
+  EM_ASM({ Module.print("emmalloc.malloc " + $0) }, size);
+  emmalloc_validate_all();
+  emmalloc_dump_all();
+#endif
+  void* ptr = emmalloc_malloc(size);
+#ifdef EMMALLOC_DEBUG
+  EM_ASM({ Module.print("emmalloc.malloc ==> " + $0) }, ptr);
+  emmalloc_dump_all();
+  emmalloc_validate_all();
+#endif
+  return ptr;
+}
+
+void free(void *ptr) {
+#ifdef EMMALLOC_DEBUG
+  EM_ASM({ Module.print("emmalloc.free " + $0) }, ptr);
+  emmalloc_validate_all();
+#endif
+  emmalloc_free(ptr);
+#ifdef EMMALLOC_DEBUG
+  emmalloc_validate_all();
+#endif
+}
+
+void* calloc(size_t nmemb, size_t size) {
+#ifdef EMMALLOC_DEBUG
+  EM_ASM({ Module.print("emmalloc.calloc " + $0) }, size);
+  emmalloc_validate_all();
+#endif
+  void* ptr = emmalloc_calloc(nmemb, size);
+#ifdef EMMALLOC_DEBUG
+  EM_ASM({ Module.print("emmalloc.calloc ==> " + $0) }, ptr);
+  emmalloc_validate_all();
+#endif
+  return ptr;
+}
+
+void* realloc(void *ptr, size_t size) {
+#ifdef EMMALLOC_DEBUG
+  EM_ASM({ Module.print("emmalloc.realloc " + [$0, $1]) }, ptr, size);
+  emmalloc_validate_all();
+#endif
+  void* newPtr = emmalloc_realloc(ptr, size);
+#ifdef EMMALLOC_DEBUG
+  EM_ASM({ Module.print("emmalloc.realloc ==> " + $0) }, newPtr);
+  emmalloc_validate_all();
+#endif
   return newPtr;
 }
 
