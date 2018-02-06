@@ -25,14 +25,14 @@
  *
  *  - If not NDEBUG, runtime assert()s are in use.
  *  - If EMMALLOC_DEBUG is defined, a large amount of extra checks are done.
- *  - If EMMALLOC_DEBUG_LOG is also defined, a lot of operations are logged
- *    out.
+ *  - If EMMALLOC_DEBUG_LOG is defined, a lot of operations are logged
+ *    out, in addition to EMMALLOC_DEBUG.
  *  - Debugging and logging uses EM_ASM, not printf etc., to minimize any
  *    risk of debugging or logging depending on malloc.
  */
 
 #define EMMALLOC_DEBUG
-//#define EMMALLOC_DEBUG_LOG
+#define EMMALLOC_DEBUG_LOG
 
 #include <assert.h>
 #include <string.h> // for memcpy, memset
@@ -511,6 +511,34 @@ static Region* tryFromFreeList(size_t size) {
   return NULL;
 }
 
+// Extends the last region to a certain size. Returns 0 if successful,
+// 1 if an error occurred in sbrk().
+static int extendLastRegion(size_t size) {
+#ifdef EMMALLOC_DEBUG_LOG
+  EM_ASM({ Module.print("    emmalloc.extendLastRegionToSize " + $0) }, size);
+#endif
+  assert(size > lastRegion->usedPayload);
+  assert(size > getMaxPayload(lastRegion));
+  size_t reusable = getMaxPayload(lastRegion);
+  // We should only do a new allocation when we must, so the last region
+  // was not sufficient.
+  assert(reusable < size);
+  size_t sbrkSize = alignUp(size) - reusable;
+  void* ptr = sbrk(sbrkSize);
+  if (ptr == (void*)-1) {
+    // sbrk() failed, we failed.
+#ifdef EMMALLOC_DEBUG_LOG
+   EM_ASM({ Module.print("    emmalloc.newAllocation sbrk failure") });
+#endif
+    return 1;
+  }
+  // sbrk() should give us new space right after the last region.
+  assert(ptr == getAfter(lastRegion));
+  lastRegion->totalSize += sbrkSize;
+  lastRegion->usedPayload = size;
+  return 0;
+}
+
 static Region* newAllocation(size_t size) {
 #ifdef EMMALLOC_DEBUG_LOG
   EM_ASM({ Module.print("    emmalloc.newAllocation " + $0) }, size);
@@ -527,24 +555,11 @@ static Region* newAllocation(size_t size) {
       // Remove it first, before we adjust the size (which affects which list
       // it should be in).
       removeFromFreeList(lastRegion);
-      size_t reusable = getMaxPayload(lastRegion);
-      // We should only do a new allocation when we must, so the last region
-      // was not sufficient.
-      assert(reusable < size);
-      size_t sbrkSize = alignUp(size) - reusable;
-      void* ptr = sbrk(sbrkSize);
-      if (ptr == (void*)-1) {
-        // sbrk() failed, we failed.
-#ifdef EMMALLOC_DEBUG_LOG
-       EM_ASM({ Module.print("    emmalloc.newAllocation sbrk failure") });
-#endif
+      if (extendLastRegion(size) == 0) {
+        return lastRegion;
+      } else {
         return NULL;
       }
-      // sbrk() should give us new space right after the last region.
-      assert(ptr == getAfter(lastRegion));
-      lastRegion->totalSize += sbrkSize;
-      lastRegion->usedPayload = size;
-      return lastRegion;
     } else {
       // The last region is not free. But if it has useful free space at the
       // end, we can split that part off and use it
@@ -765,14 +780,35 @@ void* emmalloc_realloc(void *ptr, size_t size) {
   // Perhaps right after us is free space we can merge to us. We
   // can only do this once, as if there were two free regions after
   // us they would have already been merged.
+  // We can merge next if it is enough for us, or if it is the last
+  // region, we can merge it in before extending that.
   Region* next = region->next;
   if (next && !next->usedPayload &&
-      size <= getMaxPayload(region) + next->totalSize) {
-    region->totalSize += next->totalSize;
-    region->usedPayload = size;
-    region->next = next->next;
+      (size <= getMaxPayload(region) + next->totalSize || next == lastRegion)) {
     removeFromFreeList(next);
-    return ptr;
+    region->totalSize += next->totalSize;
+    region->next = next->next;
+    if (region->next) {
+      region->next->prev = region;
+      // Must be enough without extending.
+      assert(size < getMaxPayload(region));
+      return ptr;
+    } else {
+      lastRegion = region;
+      if (size >= getMaxPayload(region)) {
+        // We have all we need.
+        return ptr;
+      } else {
+        // We also need some more space, here at the end.
+        if (extendLastRegion(size) == 0) {
+          return lastRegion;
+        } else {
+          // If this failed, we can also try the normal
+          // malloc path, which may find space in a freelist;
+          // fall through.
+        }
+      }
+    }
   }
   // Slow path: New allocation, copy to there, free original.
   void* newPtr = emmalloc_malloc(size);

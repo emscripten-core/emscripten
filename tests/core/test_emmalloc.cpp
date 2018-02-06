@@ -117,6 +117,40 @@ void space_at_end() {
   }
 }
 
+void calloc() {
+  stage("calloc");
+  emmalloc_blank_slate_from_orbit();
+  char* ptr = (char*)malloc(10);
+  ptr[0] = 77;
+  free(ptr);
+  char* cptr = (char*)calloc(10, 1);
+  assert(cptr == ptr);
+  assert(ptr[0] == 0);
+}
+
+void realloc() {
+  stage("realloc");
+  emmalloc_blank_slate_from_orbit();
+  for (int i = 0; i < 2; i++) {
+    char* ptr = (char*)malloc(10);
+    char* raptr = (char*)realloc(ptr, 1);
+    assert(raptr == ptr);
+    char* raptr2 = (char*)realloc(ptr, 100);
+    assert(raptr2 == ptr);
+    char* last = (char*)malloc(1);
+    assert(last >= ptr + 100);
+    // slightly more still fits
+    char* raptr3 = (char*)realloc(ptr, 11);
+    assert(raptr3 == ptr);
+    // finally, realloc a size we must reallocate for
+    char* raptr4 = (char*)realloc(ptr, 1000);
+    assert(raptr4);
+    assert(raptr4 != ptr);
+    // leaving those in place, do another iteration
+  }
+  // TODO: test 0 i both params to realloc
+}
+
 void randoms() {
   stage("randoms");
   const int N = 1000;
@@ -169,6 +203,8 @@ int main() {
   previous_sbrk();
   min_alloc();
   space_at_end();
+  calloc();
+  realloc();
   randoms();
 
   stage("the_end");
