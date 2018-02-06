@@ -771,40 +771,39 @@ void* emmalloc_realloc(void *ptr, size_t size) {
     possiblySplitRemainder(region, size);
     return ptr;
   }
-  // Perhaps right after us is free space we can merge to us. We
-  // can only do this once, as if there were two free regions after
-  // us they would have already been merged.
-  // We can merge next if it is enough for us, or if it is the last
-  // region, we can merge it in before extending that.
+  // Perhaps right after us is free space we can merge to us.
   Region* next = region->next;
-  if (next && !next->usedPayload &&
-      (size <= getMaxPayload(region) + next->totalSize || next == lastRegion)) {
+  if (next && !next->usedPayload) {
 #ifdef EMMALLOC_DEBUG_LOG
-    EM_ASM({ Module.print("  emmalloc.emmalloc_realloc use last region") });
+    EM_ASM({ Module.print("  emmalloc.emmalloc_realloc merge in next") });
 #endif
     removeFromFreeList(next);
     region->totalSize += next->totalSize;
     region->next = next->next;
     if (region->next) {
       region->next->prev = region;
-      // Must be enough without extending.
-      assert(size < getMaxPayload(region));
-      return ptr;
     } else {
       lastRegion = region;
-      if (size >= getMaxPayload(region)) {
-        // We have all we need.
-        return ptr;
-      } else {
-        // We also need some more space, here at the end.
-        if (extendLastRegion(size) == 0) {
-          return lastRegion;
-        } else {
-          // If this failed, we can also try the normal
-          // malloc path, which may find space in a freelist;
-          // fall through.
-        }
-      }
+    }
+  }
+  // We may now be big enough.
+  if (size <= getMaxPayload(region)) {
+#ifdef EMMALLOC_DEBUG_LOG
+    EM_ASM({ Module.print("  emmalloc.emmalloc_realloc use existing payload space after merge") });
+#endif
+    region->usedPayload = size;
+    // There might be enough left over to split out now.
+    possiblySplitRemainder(region, size);
+    return ptr;
+  }
+  // We still aren't big enough. But if we are the last, extend ourselves.
+  if (region == lastRegion) {
+    if (extendLastRegion(size) == 0) {
+      return ptr;
+    } else {
+      // If this failed, we can also try the normal
+      // malloc path, which may find space in a freelist;
+      // fall through.
     }
   }
 #ifdef EMMALLOC_DEBUG_LOG
