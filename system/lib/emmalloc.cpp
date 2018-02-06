@@ -28,7 +28,6 @@ static bool isPowerOf2(size_t x) {
 
 static size_t lowerBoundPowerOf2(size_t x) {
   if (x == 0) return 1;
-  if (isPowerOf2(x)) return x;
   // e.g. 5 is 0..0101, so clz is 29, and we want
   // 4 which is 1 << 2, so the result should be 2
   return 31 - __builtin_clz(x);
