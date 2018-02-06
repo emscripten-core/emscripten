@@ -174,9 +174,51 @@ void emmalloc_blank_slate_from_orbit() {
   lastRegion = NULL;
 }
 
-// For testing purposes, dumps out the entire global state
-void emmalloc_dump_everything() {
-  EM_ASM({ Module.print("emmalloc_dump_everything:") });
+// For testing purposes, validate a region.
+void emmalloc_validate_region(Region* region) {
+  assert(getAfter(region) <= sbrk(0));
+  if (region->prev) {
+    assert(getAfter(region->prev) == region);
+    assert(region->prev->next == region);
+  }
+  if (region->next) {
+    assert(getAfter(region) == region->next);
+    assert(region->next->prev == region);
+  }
+}
+
+// For testing purposes, check that everything is valid.
+void emmalloc_validate_all() {
+  void* end = sbrk(0);
+  for (int i = 0; i < MAX_FREELIST_INDEX; i++) {
+    FreeInfo* curr = freeLists[i];
+    if (!curr) continue;
+    FreeInfo* prev = NULL;
+    while (curr) {
+      assert(curr->prev == prev);
+      Region* region = fromFreeInfo(curr);
+      assert(getAfter(region) <= end);
+      prev = curr;
+      curr = curr->next;
+    }
+  }
+  if (lastRegion) {
+    assert(lastRegion->next == NULL);
+    assert(getAfter(lastRegion) <= end);
+  }
+}
+
+// For testing purposes, dump out a region.
+// Also validates.
+void emmalloc_dump_region(Region* region) {
+  EM_ASM({ Module.print("    [" + $0 + " - " + $1 + "] prev: " + $2 + " next: " + $3) }, region, getAfter(region), region->prev, region->next);
+  emmalloc_validate_region(region);
+}
+
+// For testing purposes, dumps out the entire global state.
+// Also validates.
+void emmalloc_dump_all() {
+  EM_ASM({ Module.print("emmalloc_dump_everything:\n  sbrk(0) = " + $0) }, sbrk(0));
   for (int i = 0; i < MAX_FREELIST_INDEX; i++) {
     FreeInfo* curr = freeLists[i];
     if (!curr) continue;
@@ -185,14 +227,16 @@ void emmalloc_dump_everything() {
     while (curr) {
       assert(curr->prev == prev);
       Region* region = fromFreeInfo(curr);
-      EM_ASM({ Module.print("    [" + $0 + " - " + $1 + "] prev: " + $2 + " next: " + $3) }, region, getAfter(region), region->prev, region->next);
+      emmalloc_dump_region(region);
       prev = curr;
       curr = curr->next;
     }
   }
   EM_ASM({ Module.print("  lastRegion:") });
   if (lastRegion) {
-    EM_ASM({ Module.print("    [" + $0 + " - " + $1 + " (use: " + $2 + ")] prev: " + $3 + " next: " + $4) }, lastRegion, getAfter(lastRegion), lastRegion->usedPayload, lastRegion->prev, lastRegion->next);
+    emmalloc_dump_region(lastRegion);
+    EM_ASM({ Module.print("    (used: " + $0) }, lastRegion->usedPayload);
+    emmalloc_validate_region(lastRegion);
   }
 }
 #endif
@@ -255,6 +299,7 @@ static void addToFreeList(Region* region) {
   EM_ASM({ Module.print("emmalloc.addToFreeList " + $0) }, region);
 #endif
   assert(!region->usedPayload);
+  assert(getAfter(region) <= sbrk(0));
   size_t index = getFreeListIndex(getMaximumPayloadSize(region));
   FreeInfo* freeInfo = &region->freeInfo;
   FreeInfo* last = freeLists[index];
@@ -285,6 +330,8 @@ static void possiblySplitRemainder(Region* region, size_t size) {
     split->next = region->next;
     if (split->next) split->next->prev = split;
     region->next = split;
+    emmalloc_validate_region(region);
+    emmalloc_validate_region(split);
     addToFreeList(split);
   }
 }
@@ -294,6 +341,7 @@ static void useRegion(Region* region, size_t size) {
   EM_ASM({ Module.print("emmalloc.useRegion " + [$0, $1]) }, region, size);
 #endif
   region->usedPayload = size;
+  emmalloc_validate_region(region);
   // We may not be using all of it, split out a smaller
   // region into a free list if it's large enough.
   possiblySplitRemainder(region, size);
@@ -304,6 +352,7 @@ static Region* useFreeInfo(FreeInfo* freeInfo, size_t size) {
 #ifdef EMMALLOC_DEBUG
   EM_ASM({ Module.print("emmalloc.useFreeInfo " + [$0, $1]) }, region, size);
 #endif
+  assert(getAfter(region) <= sbrk(0));
   // This region is no longer free
   removeFromFreeList(region);
   // This region is now in use
@@ -423,6 +472,7 @@ static Region* newAllocation(size_t size) {
     // Move the region into use. Note that we waste a little work here
     // checking if there is something to split off at the end - there isn't.
     useFreeInfo(&lastRegion->freeInfo, size);
+    emmalloc_validate_region(lastRegion);
     return lastRegion;
   }
 #ifdef EMMALLOC_DEBUG
@@ -477,6 +527,7 @@ static Region* newAllocation(size_t size) {
     region->prev = lastRegion;
   }
   lastRegion = region;
+  emmalloc_validate_region(lastRegion);
   return region;
 }
 
@@ -486,9 +537,15 @@ int mergeIntoExistingFreeRegion(Region* region) {
 #ifdef EMMALLOC_DEBUG
   EM_ASM({ Module.print("emmalloc.mergeIntoExistingFreeRegion " + $0) }, region);
 #endif
+  assert(getAfter(region) <= sbrk(0));
   int merged = 0;
+emmalloc_dump_region(region);
   Region* prev = region->prev;
+emmalloc_dump_all();
+emmalloc_validate_all();
+if (prev) emmalloc_dump_region(prev);
   Region* next = region->next;
+if (next) emmalloc_dump_region(next);
   if (prev && !prev->usedPayload) {
     // Merge them.
 #ifdef EMMALLOC_DEBUG
@@ -497,17 +554,25 @@ int mergeIntoExistingFreeRegion(Region* region) {
     removeFromFreeList(prev);
     prev->totalSize += region->totalSize;
     prev->next = region->next;
-    next->prev = prev; // was: region
-    // We may also be able to merge with the next, keep trying.
-    if (next && !next->usedPayload) {
+    if (next) {
+      next->prev = prev; // was: region
+    }
+    emmalloc_validate_region(prev);
+    if (next) {
+      emmalloc_validate_region(next);
+      // We may also be able to merge with the next, keep trying.
+      if (!next->usedPayload) {
 #ifdef EMMALLOC_DEBUG
-      EM_ASM({ Module.print("emmalloc.mergeIntoExistingFreeRegion also merge into next " + $0) }, next);
+        EM_ASM({ Module.print("emmalloc.mergeIntoExistingFreeRegion also merge into next " + $0) }, next);
 #endif
-      removeFromFreeList(next);
-      prev->totalSize += next->totalSize;
-      prev->next = next->next;
-      if (prev->next) {
-        prev->next->prev = prev;
+        removeFromFreeList(next);
+        prev->totalSize += next->totalSize;
+        prev->next = next->next;
+        if (prev->next) {
+          prev->next->prev = prev;
+          emmalloc_validate_region(prev->next);
+        }
+        emmalloc_validate_region(prev);
       }
     }
     addToFreeList(prev);
@@ -517,13 +582,17 @@ int mergeIntoExistingFreeRegion(Region* region) {
 #ifdef EMMALLOC_DEBUG
     EM_ASM({ Module.print("emmalloc.mergeIntoExistingFreeRegion merge into next " + $0) }, next);
 #endif
+emmalloc_dump_region(region);
+emmalloc_dump_region(next);
     // Merge them.
     removeFromFreeList(next);
     region->totalSize += next->totalSize;
     region->next = next->next;
     if (region->next) {
       region->next->prev = region;
+      emmalloc_validate_region(region->next);
     }
+    emmalloc_validate_region(region);
     addToFreeList(region);
     return 1;
   }
@@ -536,7 +605,7 @@ extern "C" {
 
 void* malloc(size_t size) {
 #ifdef EMMALLOC_DEBUG
-  EM_ASM({ Module.print("malloc " + $0) }, size);
+  EM_ASM({ Module.print("emmalloc.malloc " + $0) }, size);
 #endif
   // malloc() spec defines malloc(0) => NULL.
   if (size == 0) return NULL;
@@ -550,12 +619,14 @@ void* malloc(size_t size) {
       return NULL;
     }
   }
+EM_ASM({ console.log('waka ' + [$0, $1]) }, getAfter(region), sbrk(0));
+  assert(getAfter(region) <= sbrk(0));
   return getPayload(region);
 }
 
 void free(void *ptr) {
 #ifdef EMMALLOC_DEBUG
-  EM_ASM({ Module.print("free " + $0) }, ptr);
+  EM_ASM({ Module.print("emmalloc.free " + $0) }, ptr);
 #endif
   if (ptr == NULL) return;
   Region* region = fromPayload(ptr);
@@ -569,7 +640,7 @@ void free(void *ptr) {
 
 void* calloc(size_t nmemb, size_t size) {
 #ifdef EMMALLOC_DEBUG
-  EM_ASM({ Module.print("calloc " + $0) }, size);
+  EM_ASM({ Module.print("emmalloc.calloc " + $0) }, size);
 #endif
   // TODO If we know no one else is using sbrk(), we can assume that new
   //      memory allocations are zero'd out.
@@ -581,7 +652,7 @@ void* calloc(size_t nmemb, size_t size) {
 
 void* realloc(void *ptr, size_t size) {
 #ifdef EMMALLOC_DEBUG
-  EM_ASM({ Module.print("realloc " + [$0, $1]) }, ptr, size);
+  EM_ASM({ Module.print("emmalloc.realloc " + [$0, $1]) }, ptr, size);
 #endif
   if (!ptr) return malloc(size);
   if (!size) {

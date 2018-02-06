@@ -5,7 +5,8 @@
 #include <emscripten.h>
 
 extern void emmalloc_blank_slate_from_orbit();
-extern void emmalloc_dump_everything();
+extern void emmalloc_validate_all();
+extern void emmalloc_dump_all();
 
 // Test emmalloc internals, but through the external interface. We expect
 // very specific outputs here based on the internals, this test would not
@@ -21,7 +22,8 @@ void stage(const char* name) {
   EM_ASM({
     Module.print('>> ' + Pointer_stringify($0));
   }, name);
-  emmalloc_dump_everything();
+  emmalloc_validate_all();
+  emmalloc_dump_all();
 }
 
 void one() {
@@ -48,9 +50,9 @@ void one() {
   for (int i = 0; i < 4; i++) {
     check_where_we_would_malloc(100, first);
   }
-  stage("free everything");
+  stage("free all");
   free(third);
-  emmalloc_dump_everything();
+  emmalloc_dump_all();
   free(four);
   stage("allocate various sizes to see they all start at the start");
   for (int i = 1; i < 300; i++) {
