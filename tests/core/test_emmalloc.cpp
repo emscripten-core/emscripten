@@ -12,6 +12,12 @@ extern void emmalloc_dump_all();
 // very specific outputs here based on the internals, this test would not
 // pass in another malloc.
 
+void* check_where_we_would_malloc(size_t size) {
+  void* temp = malloc(size);
+  free(temp);
+  return temp;
+}
+
 void check_where_we_would_malloc(size_t size, void* expected) {
   void* temp = malloc(size);
   assert(temp == expected);
@@ -59,7 +65,6 @@ void basics() {
   for (int i = 1; i < 1500; i++) {
     check_where_we_would_malloc(i, first);
   }
-  stage("the_end");
 }
 
 void blank_slate() {
@@ -89,13 +94,35 @@ void previous_sbrk() {
   void* other = malloc(10);
   free(other);
   assert(other != old);
-  assert((char*)other == (char*)old + 16);
-  free(other);
+  assert((char*)other == (char*)old + 32);
 }
 
+void min_alloc() {
+  stage("min_alloc");
+  emmalloc_blank_slate_from_orbit();
+  void* start = check_where_we_would_malloc(1);
+  for (int i = 1; i < 100; i++) {
+    void* temp = malloc(i);
+    void* expected = (char*)start + 16 + 16 * ((i + 15) / 16);
+    EM_ASM({ Module.print('min_alloc: ' + [$0, $1, $2]) }, i, temp, expected);
+    check_where_we_would_malloc(1, expected);
+    free(temp);
+  }
+}
+
+// Add test for
+//  * alloc 1,2,4,8,16, etc.
+//  * free it
+//  * alloc 1. should be at the start, not after a big emptiness
+
 int main() {
+  stage("beginning");
+
   basics();
   blank_slate();
   previous_sbrk();
+  min_alloc();
+
+  stage("the_end");
 }
 

@@ -24,13 +24,15 @@
  * Debugging:
  *
  *  - If not NDEBUG, runtime assert()s are in use.
- *  - If EMMALLOC_DEBUG is defined, a large amount of logging and
- *    additional checks are done.
+ *  - If EMMALLOC_DEBUG is defined, a large amount of extra checks are done.
+ *  - If EMMALLOC_DEBUG_LOG is also defined, a lot of operations are logged
+ *    out.
  *  - Debugging and logging uses EM_ASM, not printf etc., to minimize any
  *    risk of debugging or logging depending on malloc.
  */
 
 #define EMMALLOC_DEBUG
+#define EMMALLOC_DEBUG_LOG
 
 #include <assert.h>
 #include <string.h> // for memcpy, memset
@@ -57,16 +59,16 @@ static size_t lowerBoundPowerOf2(size_t x) {
 // All allocations are aligned to this value.
 static const size_t ALIGNMENT = 16;
 
-// Even allocating 1 byte incurs this much actual
+// Even allocating 1 byte incurs this much actual payload
 // allocation. This is our minimum bin size.
-static const size_t MIN_ALLOC = ALIGNMENT;
+static const size_t ALLOC_UNIT = ALIGNMENT;
 
 // How big the metadata is in each region. It is convenient
 // that this is identical to the above values.
-static const size_t METADATA_SIZE = MIN_ALLOC;
+static const size_t METADATA_SIZE = ALLOC_UNIT;
 
 // How big a minimal region is.
-static const size_t MIN_REGION_SIZE = METADATA_SIZE + MIN_ALLOC;
+static const size_t MIN_REGION_SIZE = METADATA_SIZE + ALLOC_UNIT;
 
 // Constant utilities
 
@@ -168,7 +170,7 @@ static void* getAfter(Region* region) {
 // Note that there is no freelist for 2^32, as that amount can
 // never be allocated.
 
-static const size_t MIN_FREELIST_INDEX = 4;  // 16 == MIN_ALLOC
+static const size_t MIN_FREELIST_INDEX = 4;  // 16 == ALLOC_UNIT
 static const size_t MAX_FREELIST_INDEX = 32; // uint32_t
 
 static FreeInfo* freeLists[MAX_FREELIST_INDEX] = {
@@ -195,9 +197,9 @@ static Region* lastRegion = NULL;
 // we were one. It is a list of items of size at least the power
 // of 2 that lower bounds us.
 static size_t getFreeListIndex(size_t size) {
-  assert(1 << MIN_FREELIST_INDEX == MIN_ALLOC);
+  assert(1 << MIN_FREELIST_INDEX == ALLOC_UNIT);
   assert(size > 0);
-  if (size < MIN_ALLOC) size = MIN_ALLOC;
+  if (size < ALLOC_UNIT) size = ALLOC_UNIT;
   // We need a lower bound here, as the list contains things
   // that can contain at least a power of 2.
   size_t index = lowerBoundPowerOf2(size);
@@ -271,8 +273,8 @@ static void possiblySplitRemainder(Region* region, size_t size) {
   size_t payloadSize = getMaxPayload(region);
   assert(payloadSize >= size);
   size_t extra = payloadSize - size;
-  // We need room for a minimal region, but also must align it.
-  if (extra >= MIN_REGION_SIZE + ALIGNMENT) {
+  // We need room for a minimal region.
+  if (extra >= MIN_REGION_SIZE) {
 #ifdef EMMALLOC_DEBUG
     EM_ASM({ Module.print("    emmalloc.possiblySplitRemainder is splitting") });
 #endif
@@ -401,7 +403,7 @@ void emmalloc_dump_region(Region* region) {
 
 // For testing purposes, dumps out the entire global state.
 void emmalloc_dump_all() {
-  EM_ASM({ Module.print("  emmalloc_dump_everything:\n  sbrk(0) = " + $0) }, sbrk(0));
+  EM_ASM({ Module.print("  emmalloc_dump_everything:\n    sbrk(0) = " + $0) }, sbrk(0));
   Region* curr = firstRegion;
   EM_ASM({ Module.print("    all regions:") });
   while (curr) {
@@ -510,37 +512,65 @@ static Region* newAllocation(size_t size) {
   EM_ASM({ Module.print("    emmalloc.newAllocation " + $0) }, size);
 #endif
   assert(size > 0);
-  // If the last region is free, we can extend it rather than leave it
-  // as fragmented free spce between allocated regions. This is also
-  // more efficient and simple as well.
-  if (lastRegion && !lastRegion->usedPayload) {
+  if (lastRegion) {
+    // If the last region is free, we can extend it rather than leave it
+    // as fragmented free spce between allocated regions. This is also
+    // more efficient and simple as well.
+    if (!lastRegion->usedPayload) {
 #ifdef EMMALLOC_DEBUG
-    EM_ASM({ Module.print("    emmalloc.newAllocation extending lastRegion at " + $0) }, lastRegion);
+     EM_ASM({ Module.print("    emmalloc.newAllocation extending lastRegion at " + $0) }, lastRegion);
 #endif
-    // Remove it first, before we adjust the size (which affects which list
-    // it should be in).
-    removeFromFreeList(lastRegion);
-    size_t reusable = getMaxPayload(lastRegion);
-    // We should only do a new allocation when we must, so the last region
-    // was not sufficient.
-    assert(reusable < size);
-    size_t sbrkSize = alignUp(size) - reusable;
-    void* ptr = sbrk(sbrkSize);
-    if (ptr == (void*)-1) {
-      // sbrk() failed, we failed.
+      // Remove it first, before we adjust the size (which affects which list
+      // it should be in).
+      removeFromFreeList(lastRegion);
+      size_t reusable = getMaxPayload(lastRegion);
+      // We should only do a new allocation when we must, so the last region
+      // was not sufficient.
+      assert(reusable < size);
+      size_t sbrkSize = alignUp(size) - reusable;
+      void* ptr = sbrk(sbrkSize);
+      if (ptr == (void*)-1) {
+        // sbrk() failed, we failed.
 #ifdef EMMALLOC_DEBUG
-      EM_ASM({ Module.print("    emmalloc.newAllocation sbrk failure") });
+       EM_ASM({ Module.print("    emmalloc.newAllocation sbrk failure") });
 #endif
-      return NULL;
+        return NULL;
+      }
+      // sbrk() should give us new space right after the last region.
+      assert(ptr == getAfter(lastRegion));
+      lastRegion->totalSize += sbrkSize;
+      lastRegion->usedPayload = size;
+      return lastRegion;
+    } else {
+      // The last region is not free. But if it has useful free space at the
+      // end, we can split that part off and use it
+      size_t alignedUsed = alignUp(lastRegion->usedPayload);
+      size_t usable = getMaxPayload(lastRegion) - alignedUsed;
+      if (usable > 0) {
+        assert(usable >= ALLOC_UNIT);
+#ifdef EMMALLOC_DEBUG
+        EM_ASM({ Module.print("    emmalloc.newAllocation splitting lastRegion at " + $0) }, lastRegion);
+#endif
+        size_t sbrkSize = METADATA_SIZE + alignUp(size) - usable;
+        void* ptr = sbrk(sbrkSize);
+        if (ptr == (void*)-1) {
+          // sbrk() failed, we failed.
+#ifdef EMMALLOC_DEBUG
+          EM_ASM({ Module.print("    emmalloc.newAllocation sbrk failure") });
+#endif
+          return NULL;
+        }
+        // sbrk() should give us new space right after the last region.
+        assert(ptr == getAfter(lastRegion));
+        Region* region = (Region*)((char*)ptr - usable);
+        lastRegion->totalSize -= usable;
+        initRegion(region, sbrkSize + usable, size);
+        lastRegion->next = region;
+        region->prev = lastRegion;
+        lastRegion = region;
+        return lastRegion;
+      }
     }
-    // sbrk() should give us new space right after the last region.
-    assert(ptr == getAfter(lastRegion));
-    lastRegion->totalSize += sbrkSize;
-    // Move the region into use. Note that we waste a little work here
-    // checking if there is something to split off at the end - there isn't.
-    // This region is now in use
-    useRegion(lastRegion, size);
-    return lastRegion;
   }
 #ifdef EMMALLOC_DEBUG
   EM_ASM({ Module.print("    emmalloc.newAllocation getting brand new space") });
@@ -758,12 +788,16 @@ void* malloc(size_t size) {
 #ifdef EMMALLOC_DEBUG
   EM_ASM({ Module.print("emmalloc.malloc " + $0) }, size);
   emmalloc_validate_all();
+#ifdef EMMALLOC_DEBUG_LOG
   emmalloc_dump_all();
+#endif
 #endif
   void* ptr = emmalloc_malloc(size);
 #ifdef EMMALLOC_DEBUG
   EM_ASM({ Module.print("emmalloc.malloc ==> " + $0) }, ptr);
+#ifdef EMMALLOC_DEBUG_LOG
   emmalloc_dump_all();
+#endif
   emmalloc_validate_all();
 #endif
   return ptr;
@@ -773,9 +807,15 @@ void free(void *ptr) {
 #ifdef EMMALLOC_DEBUG
   EM_ASM({ Module.print("emmalloc.free " + $0) }, ptr);
   emmalloc_validate_all();
+#ifdef EMMALLOC_DEBUG_LOG
+  emmalloc_dump_all();
+#endif
 #endif
   emmalloc_free(ptr);
 #ifdef EMMALLOC_DEBUG
+#ifdef EMMALLOC_DEBUG_LOG
+  emmalloc_dump_all();
+#endif
   emmalloc_validate_all();
 #endif
 }
@@ -784,10 +824,16 @@ void* calloc(size_t nmemb, size_t size) {
 #ifdef EMMALLOC_DEBUG
   EM_ASM({ Module.print("emmalloc.calloc " + $0) }, size);
   emmalloc_validate_all();
+#ifdef EMMALLOC_DEBUG_LOG
+  emmalloc_dump_all();
+#endif
 #endif
   void* ptr = emmalloc_calloc(nmemb, size);
 #ifdef EMMALLOC_DEBUG
   EM_ASM({ Module.print("emmalloc.calloc ==> " + $0) }, ptr);
+#ifdef EMMALLOC_DEBUG_LOG
+  emmalloc_dump_all();
+#endif
   emmalloc_validate_all();
 #endif
   return ptr;
@@ -797,10 +843,16 @@ void* realloc(void *ptr, size_t size) {
 #ifdef EMMALLOC_DEBUG
   EM_ASM({ Module.print("emmalloc.realloc " + [$0, $1]) }, ptr, size);
   emmalloc_validate_all();
+#ifdef EMMALLOC_DEBUG_LOG
+  emmalloc_dump_all();
+#endif
 #endif
   void* newPtr = emmalloc_realloc(ptr, size);
 #ifdef EMMALLOC_DEBUG
   EM_ASM({ Module.print("emmalloc.realloc ==> " + $0) }, newPtr);
+#ifdef EMMALLOC_DEBUG_LOG
+  emmalloc_dump_all();
+#endif
   emmalloc_validate_all();
 #endif
   return newPtr;
