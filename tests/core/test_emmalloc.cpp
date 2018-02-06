@@ -17,6 +17,8 @@ int main() {
   printf("allocate another 100\n");
   void* second = malloc(100);
   assert(second == first);
+  void* third = malloc(10);
+  assert(third == first + 112); // allocation units are multiples of 16
   puts("ok");
 }
 
