@@ -231,8 +231,10 @@ void randoms() {
           bins[bin] = calloc(size, 1);
         }
         values[bin] = random();
-        *(char*)(bins[bin]) = values[bin];
-        assert(*(char*)(bins[bin]) == values[bin] /* three */);
+        if (bins[bin]) {
+          *(char*)(bins[bin]) = values[bin];
+          assert(*(char*)(bins[bin]) == values[bin] /* three */);
+        }
       }
     } else {
       free(bins[bin]);
