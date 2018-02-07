@@ -276,11 +276,6 @@ static void addToFreeList(Region* region) {
   }
 }
 
-static void unuseAndAddToFreeList(Region* region) {
-  region->usedPayload = 0;
-  addToFreeList(region);
-}
-
 // Receives a region that has just become free (and is not yet in a freelist).
 // Tries to merge it into a region before or after it to which it is adjacent.
 int mergeIntoExistingFreeRegion(Region* region) {
@@ -345,6 +340,13 @@ int mergeIntoExistingFreeRegion(Region* region) {
   return 0;
 }
 
+static void stopUsing(Region* region) {
+  region->usedPayload = 0;
+  if (!mergeIntoExistingFreeRegion(region)) {
+    addToFreeList(region);
+  }
+}
+
 static void possiblySplitRemainder(Region* region, size_t size) {
 #ifdef EMMALLOC_DEBUG_LOG
   EM_ASM({ Module.print("  emmalloc.possiblySplitRemainder " + [$0, $1]) }, region, size);
@@ -374,11 +376,7 @@ static void possiblySplitRemainder(Region* region, size_t size) {
       assert(region == lastRegion);
       lastRegion = split;
     }
-    // It may be mergable into something adjacent (e.g. if we split off part of
-    // a used region during realloc, and there was a free region after it).
-    if (!mergeIntoExistingFreeRegion(split)) {
-      addToFreeList(split);
-    }
+    stopUsing(split);
   }
 }
 
@@ -556,7 +554,7 @@ static Region* tryFromFreeList(size_t size) {
       if (getMaxPayload(region) >= size) {
         // Success, use it
 #ifdef EMMALLOC_DEBUG_LOG
-        EM_ASM({ Module.print("    emmalloc.tryFromFreeList try succeeded") });
+        EM_ASM({ Module.print("  emmalloc.tryFromFreeList try succeeded") });
 #endif
         return useFreeInfo(freeInfo, size);
       }
@@ -576,7 +574,7 @@ static Region* tryFromFreeList(size_t size) {
     if (freeInfo) {
       // We found one, use it.
 #ifdef EMMALLOC_DEBUG_LOG
-      EM_ASM({ Module.print("    emmalloc.tryFromFreeList had item to use") });
+      EM_ASM({ Module.print("  emmalloc.tryFromFreeList had item to use") });
 #endif
       return useFreeInfo(freeInfo, size);
     }
@@ -587,7 +585,7 @@ static Region* tryFromFreeList(size_t size) {
   }
   // No luck, no free list.
 #ifdef EMMALLOC_DEBUG_LOG
-  EM_ASM({ Module.print("    emmalloc.tryFromFreeList no luck") });
+  EM_ASM({ Module.print("  emmalloc.tryFromFreeList no luck") });
 #endif
   return NULL;
 }
@@ -596,7 +594,7 @@ static Region* tryFromFreeList(size_t size) {
 // 1 if an error occurred in sbrk().
 static int extendLastRegion(size_t size) {
 #ifdef EMMALLOC_DEBUG_LOG
-  EM_ASM({ Module.print("    emmalloc.extendLastRegionToSize " + $0) }, size);
+  EM_ASM({ Module.print("  emmalloc.extendLastRegionToSize " + $0) }, size);
 #endif
   assert(size > lastRegion->usedPayload);
   assert(size > getMaxPayload(lastRegion));
@@ -606,7 +604,7 @@ static int extendLastRegion(size_t size) {
   if (ptr == (void*)-1) {
     // sbrk() failed, we failed.
 #ifdef EMMALLOC_DEBUG_LOG
-   EM_ASM({ Module.print("    emmalloc.extendLastRegion sbrk failure") });
+   EM_ASM({ Module.print("  emmalloc.extendLastRegion sbrk failure") });
 #endif
     return 1;
   }
@@ -619,7 +617,7 @@ static int extendLastRegion(size_t size) {
 
 static Region* newAllocation(size_t size) {
 #ifdef EMMALLOC_DEBUG_LOG
-  EM_ASM({ Module.print("    emmalloc.newAllocation " + $0) }, size);
+  EM_ASM({ Module.print("  emmalloc.newAllocation " + $0) }, size);
 #endif
   assert(size > 0);
   if (lastRegion) {
@@ -750,13 +748,7 @@ void* emmalloc_malloc(size_t size) {
 
 void emmalloc_free(void *ptr) {
   if (ptr == NULL) return;
-  Region* region = fromPayload(ptr);
-  region->usedPayload = 0;
-  // Perhaps we can join this to an adjacent free region, unfragmenting?
-  if (!mergeIntoExistingFreeRegion(region)) {
-    // Otherwise, mark as unused and add to freelist.
-    addToFreeList(region);
-  }
+  stopUsing(fromPayload(ptr));
 }
 
 void* emmalloc_calloc(size_t nmemb, size_t size) {
@@ -813,7 +805,7 @@ void* emmalloc_realloc(void *ptr, size_t size) {
   // We still aren't big enough. If we are the last, we can extend ourselves - however, that
   // definitely means increasing the total sbrk(), and there may be free space lower down, so
   // this is a tradeoff between speed (avoid the memcpy) and space. It's not clear what's
-  // better here; for now, check for free space first
+  // better here; for now, check for free space first.
   Region* newRegion = tryFromFreeList(size);
   if (!newRegion && region == lastRegion) {
 #ifdef EMMALLOC_DEBUG_LOG
@@ -821,7 +813,9 @@ void* emmalloc_realloc(void *ptr, size_t size) {
 #endif
     if (extendLastRegion(size) == 0) {
       // It worked. We don't need the formerly free region.
-      unuseAndAddToFreeList(newRegion);
+      if (newRegion) {
+        stopUsing(newRegion);
+      }
       return ptr;
     } else {
       // If this failed, we can also try the normal
@@ -835,7 +829,7 @@ void* emmalloc_realloc(void *ptr, size_t size) {
     if (!newRegion) return NULL;
   }
   memcpy(getPayload(newRegion), getPayload(region), size < region->usedPayload ? size : region->usedPayload);
-  unuseAndAddToFreeList(region);
+  stopUsing(region);
   return getPayload(newRegion);
 }
 
