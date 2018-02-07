@@ -193,6 +193,7 @@ void randoms() {
   const int N = 1000;
   const int BINS = 128;
   void* bins[BINS];
+  char values[BINS];
   for (int i = 0; i < BINS; i++) {
     bins[i] = NULL;
   }
@@ -211,18 +212,27 @@ void randoms() {
     r >>= 1;
     unsigned int shifts = r & 15;
     r >>= 4;
+    if (size == 0) size = 1;
     if (useShifts) {
       size >>= shifts; // spread out values logarithmically
     }
     if (alloc || !bins[bin]) {
       if (bins[bin]) {
+        char value = values[bin];
+        assert(*(char*)(bins[bin]) == value /* one */);
         bins[bin] = realloc(bins[bin], size);
+        if (bins[bin]) {
+          assert(*(char*)(bins[bin]) == value /* two */);
+        }
       } else {
         if (calloc_) {
           bins[bin] = malloc(size);
         } else {
           bins[bin] = calloc(size, 1);
         }
+        values[bin] = random();
+        *(char*)(bins[bin]) = values[bin];
+        assert(*(char*)(bins[bin]) == values[bin] /* three */);
       }
     } else {
       free(bins[bin]);

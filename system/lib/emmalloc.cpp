@@ -33,11 +33,11 @@
 #include <assert.h>
 #include <string.h> // for memcpy, memset
 #include <unistd.h> // for sbrk()
+#include <emscripten.h>
 
 // Debugging
 
 #ifdef EMMALLOC_DEBUG_LOG
-#include <emscripten.h>
 #ifndef EMMALLOC_DEBUG
 #define EMMALLOC_DEBUG
 #endif
@@ -46,6 +46,10 @@
 #ifdef EMMALLOC_DEBUG
 // Forward declaration for convenience.
 void emmalloc_validate_all();
+#endif
+#ifdef EMMALLOC_DEBUG
+// Forward declaration for convenience.
+void emmalloc_dump_all();
 #endif
 
 // Math utilities
@@ -472,8 +476,8 @@ void emmalloc_validate_all() {
 #ifdef EMMALLOC_DEBUG_LOG
 // For testing purposes, dump out a region.
 void emmalloc_dump_region(Region* region) {
-  EM_ASM({ Module.print("      [" + $0 + " - " + $1 + " (used: " + $2 + " / " + $3 + ")] prev: " + $4 + " next: " + $5) },
-         region, getAfter(region), region->usedPayload, getMaxPayload(region), region->prev, region->next);
+  EM_ASM({ Module.print("      [" + $0 + " - " + $1 + " (used: " + $2 + " / " + $3 + ")]") },
+         region, getAfter(region), region->usedPayload, getMaxPayload(region));
 }
 
 // For testing purposes, dumps out the entire global state.
@@ -821,7 +825,7 @@ void* emmalloc_realloc(void *ptr, size_t size) {
 #endif
   void* newPtr = emmalloc_malloc(size);
   if (!newPtr) return NULL;
-  memcpy(newPtr, getPayload(region), region->usedPayload);
+  memcpy(newPtr, getPayload(region), size < region->usedPayload ? size : region->usedPayload);
   emmalloc_free(ptr);
   return newPtr;
 }
