@@ -9,13 +9,13 @@
 #define _EM_JS_CPP_END
 #endif // __cplusplus
 
-#define EM_JS(ret, name, params, code)           \
-  ret name params;                               \
-  _EM_JS_CPP_BEGIN                               \
-  __attribute__((used))                          \
-  const char* __em_js__##name() {                \
-    return #ret " " #name " " #params " " #code; \
-  }                                              \
+#define EM_JS(ret, name, params, ...)                   \
+  ret name params;                                      \
+  _EM_JS_CPP_BEGIN                                      \
+  __attribute__((used, visibility("default")))          \
+  const char* __em_js__##name() {                       \
+    return #ret " " #name " " #params " " #__VA_ARGS__; \
+  }                                                     \
   _EM_JS_CPP_END
 
 #endif // __em_js_h__
