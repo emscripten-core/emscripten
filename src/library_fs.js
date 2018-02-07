@@ -1290,7 +1290,7 @@ mergeInto(LibraryManager.library, {
       FS.mkdev('/dev/tty1', FS.makedev(6, 0));
       // setup /dev/[u]random
       var random_device;
-      if (typeof crypto !== 'undefined') {
+      if (!ENVIRONMENT_IS_NODE && typeof crypto !== 'undefined') {
         // for modern web browsers
         var randomBuffer = new Uint8Array(1);
         random_device = function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
