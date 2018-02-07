@@ -269,8 +269,31 @@ else {
 
 // console.log is checked first, as 'print' on the web will open a print dialogue
 // printErr is preferable to console.warn (works better in shells)
-Module['print'] = typeof console !== 'undefined' ? console.log : (typeof print !== 'undefined' ? print : null);
-Module['printErr'] = typeof printErr !== 'undefined' ? printErr : ((typeof console !== 'undefined' && console.warn) || Module['print']);
+if(typeof console !== 'undefined') {
+  Module['print'] = function(str) {
+    console.log(str);
+  }
+} else if(typeof print !== 'undefined') {
+  Module['print'] = function(str) {
+    print(str);
+  }
+} else {
+  Module['print'] = function(str) {
+    //empty
+  }
+}
+
+if(typeof printErr !== 'undefined') {
+  Module['printErr'] = function(str) {
+    printErr(str);
+  }
+} else if(typeof console !== 'undefined' && console.warn) {
+  Module['printErr'] = function(str) {
+    console.warn(str);
+  }
+} else {
+  Module['printErr'] = Module['print'];
+}
 
 // *** Environment setup code ***
 
