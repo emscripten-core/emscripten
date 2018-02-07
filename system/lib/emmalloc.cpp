@@ -31,6 +31,7 @@
  */
 
 #include <assert.h>
+#include <malloc.h> // mallinfo
 #include <string.h> // for memcpy, memset
 #include <unistd.h> // for sbrk()
 #include <emscripten.h>
@@ -833,6 +834,34 @@ void* emmalloc_realloc(void *ptr, size_t size) {
   return getPayload(newRegion);
 }
 
+struct mallinfo emmalloc_mallinfo() {
+	struct mallinfo info;
+  info.arena = 0;
+  info.ordblks = 0;
+  info.smblks = 0;
+  info.hblks = 0;
+  info.hblkhd = 0;
+  info.usmblks = 0;
+  info.fsmblks = 0;
+  info.uordblks = 0;
+  info.ordblks = 0;
+  info.keepcost = 0;
+  if (firstRegion) {
+    info.arena = (char*)sbrk(0) - (char*)firstRegion;
+    Region* region = firstRegion;
+    while (region) {
+      if (region->usedPayload) {
+        info.uordblks += region->usedPayload;
+      } else {
+        info.fordblks += getMaxPayload(region);
+        info.ordblks++;
+      }
+      region = region->next;
+    }
+  }
+  return info;
+}
+
 // Public API. This is a thin wrapper around our mirror of it, adding
 // logging and validation when debugging. Otherwise it should inline
 // out.
@@ -885,7 +914,6 @@ void free(void *ptr) {
 #endif
 }
 
-EMMALLOC_EXPORT
 void* calloc(size_t nmemb, size_t size) {
 #ifdef EMMALLOC_DEBUG
 #ifdef EMMALLOC_DEBUG_LOG
@@ -909,7 +937,6 @@ void* calloc(size_t nmemb, size_t size) {
   return ptr;
 }
 
-EMMALLOC_EXPORT
 void* realloc(void *ptr, size_t size) {
 #ifdef EMMALLOC_DEBUG
 #ifdef EMMALLOC_DEBUG_LOG
@@ -931,6 +958,19 @@ void* realloc(void *ptr, size_t size) {
   emmalloc_validate_all();
 #endif
   return newPtr;
+}
+
+struct mallinfo mallinfo() {
+#ifdef EMMALLOC_DEBUG
+#ifdef EMMALLOC_DEBUG_LOG
+  EM_ASM({ Module.print("emmalloc.mallinfo") });
+#endif
+  emmalloc_validate_all();
+#ifdef EMMALLOC_DEBUG_LOG
+  emmalloc_dump_all();
+#endif
+#endif
+  return emmalloc_mallinfo();
 }
 
 // Export malloc and free as duplicate names emscripten_builtin_malloc and
