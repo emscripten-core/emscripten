@@ -62,7 +62,7 @@ var TOTAL_STACK = 5*1024*1024; // The total stack size. There is no way to enlar
 var TOTAL_MEMORY = 16777216;     // The total amount of memory to use. Using more memory than this will
                                  // cause us to expand the heap, which can be costly with typed arrays:
                                  // we need to copy the old heap into a new one in that case.
-var MALLOC = "dlmalloc"; // What malloc to use, out of
+var MALLOC = "emmalloc"; // What malloc to use, out of
                          //  * emmalloc - a small and fast single-threaded malloc designed for emscripten
                          //  * dlmalloc - a powerful general-purpose malloc
                          // dlmalloc is necessary for multithreading, split memory, and other special
