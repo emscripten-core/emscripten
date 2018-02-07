@@ -1726,8 +1726,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   if libraries is None: libraries = []
 
   if shared.Settings.EXPERIMENTAL_USE_LLD:
-    wast, meta = build_wasm_lld(temp_files, infile, outfile, settings, DEBUG)
-    metadata = read_metadata_file_wasm(meta, wast, DEBUG)
+    wast, metadata = build_wasm_lld(temp_files, infile, outfile, settings, DEBUG)
   else:
     wast = build_wasm(temp_files, infile, outfile, settings, DEBUG)
     metadata = read_metadata_wast(wast, DEBUG)
@@ -1846,8 +1845,9 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
 
 
 def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
-  wasm_link_metadata = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-link-metadata')
+  assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen tools on the backend output'
   wasm_emscripten_finalize = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-emscripten-finalize')
+  wasm_as = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-as')
   wasm_dis = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-dis')
 
   def debug_copy(src, dst):
@@ -1869,19 +1869,10 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
       t = time.time()
       debug_copy(temp_o, 'emcc-llvm-backend-output.o')
 
-    assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen tools on the backend output'
     basename = shared.unsuffixed(outfile.name)
     wast = basename + '.wast'
     wasm = basename + '.wasm'
     base_wasm = basename + '.lld.wasm'
-    meta = basename + '.json'
-    shared.check_call([
-        wasm_link_metadata,
-        ('--emscripten-reserved-function-pointers=%d' %
-         shared.Settings.RESERVED_FUNCTION_POINTERS),
-        temp_o,
-        '-o', meta])
-    debug_copy(meta, 'lld-metadata.json')
 
     libc_rt_lib = shared.Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
     compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', wasm_rt_fail('wasm_compiler_rt.a'), 'a')
@@ -1899,24 +1890,23 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
     ])
     debug_copy(base_wasm, 'base_wasm.wasm')
 
-    shared.check_call([
-        wasm_emscripten_finalize,
-        ('--emscripten-reserved-function-pointers=%d' %
-         shared.Settings.RESERVED_FUNCTION_POINTERS),
-        base_wasm,
-        '-o', wasm])
+    # TODO: We currently read exports from the wast in order to generate
+    # metadata. So we emit text here so we can parse wast from python.
+    shared.check_call([wasm_emscripten_finalize, base_wasm, '-o', wast, '-S',
+                       '--global-base=%s' % shared.Settings.GLOBAL_BASE,
+                       ('--emscripten-reserved-function-pointers=%d' %
+                        shared.Settings.RESERVED_FUNCTION_POINTERS)])
+    debug_copy(wast, 'lld-emscripten-output.wast')
+
+    shared.check_call([wasm_as, wast, '-o', wasm])
     debug_copy(wasm, 'lld-emscripten-output.wasm')
 
-    # TODO: This is gross. We currently read exports from the wast in order to
-    # generate metadata. So this disassembles the binary so we can parse wast
-    # from python.
-    shared.check_call([wasm_dis, wasm, '-o', wast])
+    metadata = read_metadata_wast(wast, DEBUG)
 
   if DEBUG:
     logging.debug('  emscript: lld took %s seconds' % (time.time() - t))
     t = time.time()
-    debug_copy(wast, 'emcc-lld-output.wast')
-  return wast, meta
+  return wast, metadata
 
 
 def read_metadata_wast(wast, DEBUG):
