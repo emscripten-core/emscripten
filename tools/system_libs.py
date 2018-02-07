@@ -293,19 +293,37 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     shared.Building.emar('cr', in_temp(libname), o_s)
     return in_temp(libname)
 
-  def dlmalloc_name():
-    ret = 'dlmalloc'
+  def malloc_name():
+    if shared.Settings.MALLOC == 'dlmalloc':
+      base = 'dlmalloc'
+    elif shared.Settings.MALLOC == 'emmalloc':
+      base = 'emmalloc'
+    else:
+      raise Exception('malloc must be one of "emmalloc", "dlmalloc", see settings.js')
+    # only dlmalloc supports most modes
+    extra = ''
     if shared.Settings.USE_PTHREADS:
-      ret += '_threadsafe'
+      extra += '_threadsafe'
+      base = 'dlmalloc'
     if shared.Settings.EMSCRIPTEN_TRACING:
-      ret += '_tracing'
+      extra += '_tracing'
+      base = 'dlmalloc'
     if shared.Settings.SPLIT_MEMORY:
-      ret += '_split'
+      extra += '_split'
+      base = 'dlmalloc'
     if shared.Settings.DEBUG_LEVEL:
-      ret += '_debug'
-    return ret
+      extra += '_debug'
+    return base + extra
 
-  def create_dlmalloc(out_name):
+  def malloc_source():
+    if shared.Settings.MALLOC == 'dlmalloc':
+      return 'dlmalloc.c'
+    elif shared.Settings.MALLOC == 'emmalloc':
+      return 'emmalloc.cpp'
+    else:
+      raise Exception('malloc must be one of "emmalloc", "dlmalloc", see settings.js')
+    
+  def create_malloc(out_name):
     o = in_temp(out_name)
     cflags = ['-O2']
     if shared.Settings.USE_PTHREADS:
@@ -315,8 +333,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     if shared.Settings.SPLIT_MEMORY:
       cflags += ['-DMSPACES', '-DONLY_MSPACES']
     if shared.Settings.DEBUG_LEVEL:
-      cflags += ['-DDLMALLOC_DEBUG']
-    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-o', o] + cflags)
+      cflags += ['-UNDEBUG', '-DDLMALLOC_DEBUG', '-DEMMALLOC_DEBUG']
+    else:
+      cflags += ['-DNDEBUG']
+    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', malloc_source()), '-o', o] + cflags)
     if shared.Settings.SPLIT_MEMORY:
       split_malloc_o = in_temp('sm' + out_name)
       check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'split_malloc.cpp'), '-o', split_malloc_o, '-O2'])
@@ -449,7 +469,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  ('al',            'bc', create_al,          al_symbols,          ['libc'],      False),
                  ('html5',         'bc', create_html5,       html5_symbols,       ['html5'],     False),
                  ('compiler-rt',   'a',  create_compiler_rt, compiler_rt_symbols, ['libc'],      False),
-                 (dlmalloc_name(), 'bc', create_dlmalloc,    [],                  [],            False)]
+                 (malloc_name(),   'bc', create_malloc,      [],                  [],            False)]
 
   if shared.Settings.USE_PTHREADS:
     system_libs += [('libc-mt',        'bc', create_libc,           libc_symbols,     [],       False),
@@ -460,7 +480,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   else:
     system_libs += [('libc', 'bc', create_libc, libc_symbols, [], False)]
 
-  force.add(dlmalloc_name())
+  force.add(malloc_name())
 
   # if building to wasm, we need more math code, since we have less builtins
   if shared.Settings.BINARYEN:
