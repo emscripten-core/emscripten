@@ -1,4 +1,3 @@
-
 /*
  * Simple minimalistic but efficient malloc/free.
  *
@@ -521,12 +520,12 @@ void emmalloc_dump_all() {
 //       keep it sorted by size.
 // Consider also what happens to the very largest allocations,
 // 2^32 - a little. That goes in the freelist of items of size
-// 2^31 or less. 3 tries is enough to go through that entire
+// 2^31 or less. >2 tries is enough to go through that entire
 // freelist because even 2 can't exist, they'd exhaust memory
 // (together with metadata overhead). So we should be able to
 // free and allocate such largest allocations (barring fragmentation
 // happening in between).
-static const size_t SPECULATIVE_FREELIST_TRIES = 3;
+static const size_t SPECULATIVE_FREELIST_TRIES = 32;
 
 static Region* tryFromFreeList(size_t size) {
 #ifdef EMMALLOC_DEBUG_LOG
