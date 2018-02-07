@@ -5137,6 +5137,8 @@ int main(void) {
     self.do_run(open(path_from_root('tests', 'whets.cpp')).read(), 'Single Precision C Whetstone Benchmark')
 
   def test_dlmalloc(self):
+    Settings.MALLOC = "dlmalloc"
+
     self.banned_js_engines = [NODE_JS] # slower, and fail on 64-bit
     Settings.TOTAL_MEMORY = 128*1024*1024 # needed with typed arrays
 
