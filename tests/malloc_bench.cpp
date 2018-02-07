@@ -105,3 +105,5 @@ int main() {
   randoms();
 }
 
+// ./emcc tests/malloc_bench.cpp -O2 -s WASM=1 -DMALLOC_ALIGNMENT=16 system/lib/dlmalloc.c && time mozjs a.out.js && ./emcc tests/malloc_bench.cpp -O2 -s WASM=1 system/lib/emmalloc.cpp -DNDEBUG -o b.out.js && time mozjs b.out.js
+
