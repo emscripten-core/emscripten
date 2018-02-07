@@ -165,6 +165,25 @@ void realloc() {
     assert(realloc(ptr, 0) == NULL);
     assert(check_where_we_would_malloc(10) == ptr);
   }
+  emmalloc_blank_slate_from_orbit();
+  {
+    // realloc copies
+    char* ptr = (char*)malloc(10);
+    *ptr = 123;
+    for (int i = 5; i <= 16; i++) {
+      char* temp = (char*)realloc(ptr, i);
+      assert(*temp == 123);
+      assert(temp == ptr);
+    }
+    malloc(1);
+    malloc(100);
+    {
+      char* temp = (char*)realloc(ptr, 17);
+      assert(*temp == 123);
+      assert(temp != ptr);
+      ptr = temp;
+    }
+  }
 }
 
 void randoms() {
