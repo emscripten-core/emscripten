@@ -28,6 +28,11 @@
  *    out, in addition to EMMALLOC_DEBUG.
  *  - Debugging and logging uses EM_ASM, not printf etc., to minimize any
  *    risk of debugging or logging depending on malloc.
+ *
+ * TODO
+ *
+ *  - posix_memalign() (test_aligned_alloc)
+ *  - memalign() (test_mmap)
  */
 
 #include <assert.h>
@@ -35,6 +40,8 @@
 #include <string.h> // for memcpy, memset
 #include <unistd.h> // for sbrk()
 #include <emscripten.h>
+
+#define EMMALLOC_EXPORT __attribute__((__weak__, __visibility__("default")))
 
 // Debugging
 
@@ -279,7 +286,7 @@ static void addToFreeList(Region* region) {
 
 // Receives a region that has just become free (and is not yet in a freelist).
 // Tries to merge it into a region before or after it to which it is adjacent.
-int mergeIntoExistingFreeRegion(Region* region) {
+static int mergeIntoExistingFreeRegion(Region* region) {
 #ifdef EMMALLOC_DEBUG_LOG
   EM_ASM({ Module.print("  emmalloc.mergeIntoExistingFreeRegion " + $0) }, region);
 #endif
@@ -406,6 +413,7 @@ static Region* useFreeInfo(FreeInfo* freeInfo, size_t size) {
 // Debugging
 
 // Mostly for testing purposes, wipes everything.
+EMMALLOC_EXPORT
 void emmalloc_blank_slate_from_orbit() {
   for (int i = 0; i < MAX_FREELIST_INDEX; i++) {
     freeLists[i] = NULL;
@@ -730,7 +738,7 @@ static Region* newAllocation(size_t size) {
 
 // Internal mirror of public API.
 
-void* emmalloc_malloc(size_t size) {
+static void* emmalloc_malloc(size_t size) {
   // malloc() spec defines malloc(0) => NULL.
   if (size == 0) return NULL;
   // Look in the freelist first.
@@ -747,12 +755,12 @@ void* emmalloc_malloc(size_t size) {
   return getPayload(region);
 }
 
-void emmalloc_free(void *ptr) {
+static void emmalloc_free(void *ptr) {
   if (ptr == NULL) return;
   stopUsing(fromPayload(ptr));
 }
 
-void* emmalloc_calloc(size_t nmemb, size_t size) {
+static void* emmalloc_calloc(size_t nmemb, size_t size) {
   // TODO If we know no one else is using sbrk(), we can assume that new
   //      memory allocations are zero'd out.
   void* ptr = emmalloc_malloc(nmemb * size);
@@ -761,7 +769,7 @@ void* emmalloc_calloc(size_t nmemb, size_t size) {
   return ptr;
 }
 
-void* emmalloc_realloc(void *ptr, size_t size) {
+static void* emmalloc_realloc(void *ptr, size_t size) {
   if (!ptr) return emmalloc_malloc(size);
   if (!size) {
     emmalloc_free(ptr);
@@ -834,7 +842,7 @@ void* emmalloc_realloc(void *ptr, size_t size) {
   return getPayload(newRegion);
 }
 
-struct mallinfo emmalloc_mallinfo() {
+static struct mallinfo emmalloc_mallinfo() {
 	struct mallinfo info;
   info.arena = 0;
   info.ordblks = 0;
@@ -865,8 +873,6 @@ struct mallinfo emmalloc_mallinfo() {
 // Public API. This is a thin wrapper around our mirror of it, adding
 // logging and validation when debugging. Otherwise it should inline
 // out.
-
-#define EMMALLOC_EXPORT __attribute__((__weak__, __visibility__("default")))
 
 extern "C" {
 
@@ -914,6 +920,7 @@ void free(void *ptr) {
 #endif
 }
 
+EMMALLOC_EXPORT
 void* calloc(size_t nmemb, size_t size) {
 #ifdef EMMALLOC_DEBUG
 #ifdef EMMALLOC_DEBUG_LOG
@@ -937,6 +944,7 @@ void* calloc(size_t nmemb, size_t size) {
   return ptr;
 }
 
+EMMALLOC_EXPORT
 void* realloc(void *ptr, size_t size) {
 #ifdef EMMALLOC_DEBUG
 #ifdef EMMALLOC_DEBUG_LOG
@@ -960,6 +968,7 @@ void* realloc(void *ptr, size_t size) {
   return newPtr;
 }
 
+EMMALLOC_EXPORT
 struct mallinfo mallinfo() {
 #ifdef EMMALLOC_DEBUG
 #ifdef EMMALLOC_DEBUG_LOG
