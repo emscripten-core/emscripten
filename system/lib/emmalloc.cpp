@@ -837,8 +837,11 @@ void* emmalloc_realloc(void *ptr, size_t size) {
 // logging and validation when debugging. Otherwise it should inline
 // out.
 
+#define EMMALLOC_EXPORT __attribute__((__weak__, __visibility__("default")))
+
 extern "C" {
 
+EMMALLOC_EXPORT
 void* malloc(size_t size) {
 #ifdef EMMALLOC_DEBUG
 #ifdef EMMALLOC_DEBUG_LOG
@@ -862,6 +865,7 @@ void* malloc(size_t size) {
   return ptr;
 }
 
+EMMALLOC_EXPORT
 void free(void *ptr) {
 #ifdef EMMALLOC_DEBUG
 #ifdef EMMALLOC_DEBUG_LOG
@@ -881,6 +885,7 @@ void free(void *ptr) {
 #endif
 }
 
+EMMALLOC_EXPORT
 void* calloc(size_t nmemb, size_t size) {
 #ifdef EMMALLOC_DEBUG
 #ifdef EMMALLOC_DEBUG_LOG
@@ -904,6 +909,7 @@ void* calloc(size_t nmemb, size_t size) {
   return ptr;
 }
 
+EMMALLOC_EXPORT
 void* realloc(void *ptr, size_t size) {
 #ifdef EMMALLOC_DEBUG
 #ifdef EMMALLOC_DEBUG_LOG
@@ -926,5 +932,15 @@ void* realloc(void *ptr, size_t size) {
 #endif
   return newPtr;
 }
+
+// Export malloc and free as duplicate names emscripten_builtin_malloc and
+// emscripten_builtin_free so that applications can replace malloc and free
+// in their code, and make those replacements refer to the original malloc
+// and free from this file.
+// This allows an easy mechanism for hooking into memory allocation.
+#if defined(__EMSCRIPTEN__) && !ONLY_MSPACES
+extern __typeof(malloc) emscripten_builtin_malloc __attribute__((weak, alias("malloc")));
+extern __typeof(free) emscripten_builtin_free __attribute__((weak, alias("free")));
+#endif
 
 } // extern "C"
