@@ -311,7 +311,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     if shared.Settings.SPLIT_MEMORY:
       extra += '_split'
       base = 'dlmalloc'
-    if shared.Settings.DEBUG_LEVEL:
+    if shared.Settings.DEBUG_LEVEL >= 3:
       extra += '_debug'
     return base + extra
 
@@ -332,7 +332,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       cflags += ['--tracing']
     if shared.Settings.SPLIT_MEMORY:
       cflags += ['-DMSPACES', '-DONLY_MSPACES']
-    if shared.Settings.DEBUG_LEVEL:
+    if shared.Settings.DEBUG_LEVEL >= 3:
       cflags += ['-UNDEBUG', '-DDLMALLOC_DEBUG', '-DEMMALLOC_DEBUG']
     else:
       cflags += ['-DNDEBUG']
