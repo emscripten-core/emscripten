@@ -276,6 +276,11 @@ static void addToFreeList(Region* region) {
   }
 }
 
+static void unuseAndAddToFreeList(Region* region) {
+  region->usedPayload = 0;
+  addToFreeList(region);
+}
+
 // Receives a region that has just become free (and is not yet in a freelist).
 // Tries to merge it into a region before or after it to which it is adjacent.
 int mergeIntoExistingFreeRegion(Region* region) {
@@ -414,7 +419,8 @@ void emmalloc_blank_slate_from_orbit() {
 // For testing purposes, validate a region.
 void emmalloc_validate_region(Region* region) {
   assert(getAfter(region) <= sbrk(0));
-  assert(region->usedPayload <= region->totalSize);
+  assert(region->usedPayload <= getMaxPayload(region));
+  assert(getMaxPayload(region) < region->totalSize);
   if (region->prev) {
     assert(getAfter(region->prev) == region);
     assert(region->prev->next == region);
@@ -595,9 +601,6 @@ static int extendLastRegion(size_t size) {
   assert(size > lastRegion->usedPayload);
   assert(size > getMaxPayload(lastRegion));
   size_t reusable = getMaxPayload(lastRegion);
-  // We should only do a new allocation when we must, so the last region
-  // was not sufficient.
-  assert(reusable < size);
   size_t sbrkSize = alignUp(size) - reusable;
   void* ptr = sbrk(sbrkSize);
   if (ptr == (void*)-1) {
@@ -807,12 +810,18 @@ void* emmalloc_realloc(void *ptr, size_t size) {
     possiblySplitRemainder(region, size);
     return ptr;
   }
-  // We still aren't big enough. But if we are the last, extend ourselves.
-  if (region == lastRegion) {
+  // We still aren't big enough. If we are the last, we can extend ourselves - however, that
+  // definitely means increasing the total sbrk(), and there may be free space lower down, so
+  // this is a tradeoff between speed (avoid the memcpy) and space. It's not clear what's
+  // better here; for now, check for free space first
+  Region* newRegion = tryFromFreeList(size);
+  if (!newRegion && region == lastRegion) {
 #ifdef EMMALLOC_DEBUG_LOG
     EM_ASM({ Module.print("  emmalloc.emmalloc_realloc extend last region") });
 #endif
     if (extendLastRegion(size) == 0) {
+      // It worked. We don't need the formerly free region.
+      unuseAndAddToFreeList(newRegion);
       return ptr;
     } else {
       // If this failed, we can also try the normal
@@ -820,14 +829,14 @@ void* emmalloc_realloc(void *ptr, size_t size) {
       // fall through.
     }
   }
-#ifdef EMMALLOC_DEBUG_LOG
-  EM_ASM({ Module.print("  emmalloc.emmalloc_realloc slow path: new allocation, copy, free") });
-#endif
-  void* newPtr = emmalloc_malloc(size);
-  if (!newPtr) return NULL;
-  memcpy(newPtr, getPayload(region), size < region->usedPayload ? size : region->usedPayload);
-  emmalloc_free(ptr);
-  return newPtr;
+  // We need new space, and a copy
+  if (!newRegion) {
+    newRegion = newAllocation(size);
+    if (!newRegion) return NULL;
+  }
+  memcpy(getPayload(newRegion), getPayload(region), size < region->usedPayload ? size : region->usedPayload);
+  unuseAndAddToFreeList(region);
+  return getPayload(newRegion);
 }
 
 // Public API. This is a thin wrapper around our mirror of it, adding
