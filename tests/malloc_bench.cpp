@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h> // for sbrk()
 
-const int BINS = 256; // Max 256 (8 bits)
+const int BINS = 2048;
 const int BIN_MASK = BINS - 1;
 const int ITERS = 20 * 1024 * 1024;
 const int MIN_SIZE = 1; // 1 is somewhat bad, tiny allocations are not good for us
@@ -24,13 +24,12 @@ void randoms() {
     bins[i] = NULL;
   }
   for (int i = 0; i < ITERS; i++) {
+    int bin = random() & BIN_MASK;
     unsigned int r = random();
     int alloc = r & 1;
     r >>= 1;
     int calloc_ = r & 1;
     r >>= 1;
-    int bin = r & BIN_MASK;
-    r >>= 8;
     unsigned int size = r & 65535;
     r >>= 16;
     int useShifts = r & 1;
