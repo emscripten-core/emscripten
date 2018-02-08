@@ -170,6 +170,11 @@ function loadWebAssemblyModule(binary) {
   var exports = {};
   for (var e in instance.exports) {
     var value = instance.exports[e];
+    if (typeof value === 'object') {
+      // a breaking change in the wasm spec, globals are now objects
+      // https://github.com/WebAssembly/mutable-global/issues/1
+      value = value.value;
+    }
     if (typeof value === 'number') {
       // relocate it - modules export the absolute value, they can't relocate before they export
       value = value + env['memoryBase'];
