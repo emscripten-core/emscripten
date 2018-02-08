@@ -193,6 +193,9 @@ Module['callMain'] = function callMain(args) {
   try {
 #if BENCHMARK
     var start = Date.now();
+    if (typeof _sbrk === 'function') {
+      var sbrk0 = _sbrk(0);
+    }
 #endif
 
 #if PROXY_TO_PTHREAD
@@ -205,6 +208,9 @@ Module['callMain'] = function callMain(args) {
 
 #if BENCHMARK
     Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
+    if (typeof _sbrk === 'function') {
+      Module.realPrint('main() used ' + (_sbrk(0) - sbrk0) + ' sbrk');
+    }
 #endif
 
 #if EMTERPRETIFY_ASYNC
