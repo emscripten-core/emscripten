@@ -25,4 +25,3 @@ RUN export EMSCRIPTEN_BROWSER=0 \
  && python /root/emscripten/tests/runner.py $TEST_TARGET skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full skip:other.test_native_link_error_message skip:other.test_bad_triple skip:other.test_emcc_v
 
 # skip:other.test_emcc_v to prevent tool version differences from breaking CI
-

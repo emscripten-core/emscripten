@@ -238,8 +238,10 @@ class JSOptimizer(object):
         if len(chunks) == 1:
           self.run_passes(chunks[0], title, just_split=False, just_concat=False)
         else:
-          for i in range(len(chunks)):
-            self.run_passes(chunks[i], 'js_opts_' + str(i), just_split='receiveJSON' in chunks[i], just_concat='emitJSON' in chunks[i])
+          for i, chunk in enumerate(chunks):
+            self.run_passes(chunk, 'js_opts_' + str(i),
+                            just_split='receiveJSON' in chunk,
+                            just_concat='emitJSON' in chunk)
       else:
         # DEBUG 2, run each pass separately
         extra_info = self.extra_info
@@ -543,9 +545,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # Check if a target is specified
   target = None
-  for i in range(len(sys.argv)):
-    if sys.argv[i].startswith('-o='):
-      raise Exception('Invalid syntax: do not use -o=X, use -o X')
+  if any(arg.startswith('-o=') for arg in sys.argv):
+    raise Exception('Invalid syntax: do not use -o=X, use -o X')
 
   for i in reversed(range(len(sys.argv)-1)): # Last -o directive should take precedence, if multiple are specified
     if sys.argv[i] == '-o':
@@ -625,8 +626,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       options, settings_changes, newargs = parse_args(newargs)
 
-      for i in range(0, len(newargs)):
-        arg = newargs[i]
+      for arg in newargs:
         if arg == '-xc':
           use_cxx = False
           break
@@ -1430,8 +1430,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if final_suffix not in EXECUTABLE_SUFFIXES:
         if not specified_target:
           assert len(temp_files) == len(input_files)
-          for i in range(len(input_files)):
-            safe_move(temp_files[i][1], unsuffixed_basename(input_files[i][1]) + final_ending)
+          for tempf, inputf in zip(temp_files, input_files):
+            safe_move(tempf[1], unsuffixed_basename(inputf[1]) + final_ending)
         else:
           if len(input_files) == 1:
             _, input_file = input_files[0]

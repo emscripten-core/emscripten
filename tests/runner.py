@@ -733,13 +733,12 @@ def harness_server_func(q, port):
       s.send_header("Content-type", "text/html")
       s.end_headers()
       if s.path == '/run_harness':
-        s.wfile.write(open(path_from_root('tests', 'browser_harness.html')).read())
+        s.wfile.write(open(path_from_root('tests', 'browser_harness.html'), 'rb').read())
       else:
-        result = 'False'
+        result = b'False'
         if not q.empty():
           result = q.get()
         s.wfile.write(result)
-      s.wfile.close()
     def log_request(code=0, size=0):
       # don't log; too noisy
       pass
@@ -760,7 +759,7 @@ def server_func(dir, q, port):
         self.send_header('Connection','close')
         self.send_header('Expires','-1')
         self.end_headers()
-        self.wfile.write('OK')
+        self.wfile.write(b'OK')
       else:
         # Use SimpleHTTPServer default file serving operation for GET.
         SimpleHTTPRequestHandler.do_GET(self)
@@ -824,7 +823,7 @@ class BrowserCore(RunnerCore):
             time.sleep(1)
         else:
           raise Exception('[Test harness server failed to start up in a timely manner]')
-        self.harness_queue.put('http://localhost:%s/%s' % (self.test_port, html_file))
+        self.harness_queue.put(asbytes('http://localhost:%s/%s' % (self.test_port, html_file)))
         output = '[no http server activity]'
         start = time.time()
         if timeout is None: timeout = self.browser_timeout
