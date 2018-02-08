@@ -1772,11 +1772,13 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   exported_implemented_functions = create_exported_implemented_functions_wasm(pre, forwarded_json, metadata, settings)
 
   asm_consts, asm_const_funcs = create_asm_consts_wasm(forwarded_json, metadata)
-  asm_consts_text = '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n'
-  asm_funcs_text = '\n'.join(asm_const_funcs) + '\n'
-
-  body_marker = '// === Body ==='
-  pre = pre.replace(body_marker, body_marker + '\n' + asm_consts_text + asstr(asm_funcs_text))
+  em_js_funcs = create_em_js_wasm(forwarded_json, metadata)
+  pre = pre.replace(
+    '// === Body ===',
+    ('// === Body ===\n\nvar ASM_CONSTS = [' +
+      ',\n '.join(asm_consts) + '];\n' +
+      asstr('\n'.join(asm_const_funcs)) +
+      '\n'.join(em_js_funcs) + '\n'))
 
   outfile.write(pre)
   pre = None
@@ -1954,6 +1956,7 @@ def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata, se
 
   return exported_implemented_functions
 
+
 def create_asm_consts_wasm(forwarded_json, metadata):
   asm_consts = [0]*len(metadata['asmConsts'])
   all_sigs = []
@@ -1999,6 +2002,22 @@ function _emscripten_asm_const_%s(code, sig_ptr, argbuf) {
   return ASM_CONSTS[code].apply(null, args);
 }''' % sig)
   return asm_consts, asm_const_funcs
+
+
+def create_em_js_wasm(forwarded_json, metadata):
+  em_js_funcs = []
+  for name, raw in metadata['emJsFuncs'].iteritems():
+    parts = raw.split('<::>')
+    # TODO(jgravelle): support seeing the separator string in user code
+    assert len(parts) == 2
+    args, body = parts
+    args = args[1:-1].split(',')
+    arg_names = [arg.split()[-1] for arg in args if arg]
+    func = 'function {}({}){}'.format(name, ','.join(arg_names), body)
+    em_js_funcs.append(func)
+    forwarded_json['Functions']['libraryFunctions'][name] = 1
+
+  return em_js_funcs
 
 
 def read_wast_invoke_imports(wast):
@@ -2170,6 +2189,7 @@ def load_metadata(metadata_raw):
     'maxGlobalAlign': 0,
     'initializers': [],
     'exports': [],
+    'emJsFuncs': {},
   }
 
   for k, v in metadata_json.items():
