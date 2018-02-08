@@ -328,10 +328,9 @@ static int mergeIntoExistingFreeRegion(Region* region) {
 #endif
         removeFromFreeList(next);
         prev->totalSize() += next->totalSize();
-        if (prev->next()) {
-          prev->next()->prev() = prev;
+        if (next != lastRegion) {
+          next->next()->prev() = prev;
         } else {
-          assert(next == lastRegion);
           lastRegion = prev;
         }
       }
@@ -346,10 +345,9 @@ static int mergeIntoExistingFreeRegion(Region* region) {
     // Merge them.
     removeFromFreeList(next);
     region->totalSize() += next->totalSize();
-    if (region->next()) {
-      region->next()->prev() = region;
+    if (next != lastRegion) {
+      next->next()->prev() = region;
     } else {
-      assert(next == lastRegion);
       lastRegion = region;
     }
     addToFreeList(region);
@@ -385,12 +383,10 @@ static void possiblySplitRemainder(Region* region, size_t size) {
     size_t totalSplitSize = (char*)after - (char*)split;
     assert(totalSplitSize >= MIN_REGION_SIZE);
     split->totalSize() = totalSplitSize;
-    split->usedPayload() = 0;
     split->prev() = region;
-    if (split->next()) {
+    if (region != lastRegion) {
       split->next()->prev() = split;
     } else {
-      assert(region == lastRegion);
       lastRegion = split;
     }
     stopUsing(split);
@@ -817,8 +813,8 @@ static void* emmalloc_realloc(void *ptr, size_t size) {
 #endif
     removeFromFreeList(next);
     region->totalSize() += next->totalSize();
-    if (region->next()) {
-      region->next()->prev() = region;
+    if (next != lastRegion) {
+      next->next()->prev() = region;
     } else {
       lastRegion = region;
     }
