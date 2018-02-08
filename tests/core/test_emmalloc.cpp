@@ -66,6 +66,17 @@ void basics() {
   for (int i = 1; i < 1500; i++) {
     check_where_we_would_malloc(i, first);
   }
+  stage("8/4 issues");
+  emmalloc_blank_slate_from_orbit();
+  for (int i = 1; i < 20; i++) {
+    for (int j = 1; j < 20; j++) {
+      void* first = malloc(i);
+      char* second = (char*)first;
+      second += 8; // metadata, fixed size
+      if (i < 8)
+      check_where_we_would_malloc(j, (char*)first + 1);
+    }
+  }
 }
 
 void blank_slate() {
