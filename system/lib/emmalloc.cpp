@@ -32,7 +32,7 @@
  * TODO
  *
  *  - posix_memalign() (test_aligned_alloc)
- *  - memalign() (test_mmap)
+ *  - memalign() (test_mmap, test_openjpeg)
  */
 
 #include <assert.h>

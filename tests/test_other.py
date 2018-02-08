@@ -7486,9 +7486,10 @@ int main() {
       ]:
       print(args, expect_names)
       try_delete('a.out.js')
-      subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'BINARYEN=1'])
+      # we use dlmalloc here, as emmalloc has a bunch of asserts that contain the text "malloc" in them, which makes counting harder
+      subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'WASM=1', '-s', 'MALLOC="dlmalloc"'])
       code = open('a.out.wasm', 'rb').read()
-      assert (code.count(b'malloc') == 2) == expect_names, 'name section adds the name of malloc (there is also another one for the export'
+      assert (code.count(b'malloc') == 2) == expect_names, 'name section adds the name of malloc (there is also another one for the export)'
       sizes[str(args)] = os.stat('a.out.wasm').st_size
     print(sizes)
     assert sizes["['-O2']"] < sizes["['-O2', '--profiling-funcs']"], 'when -profiling-funcs, the size increases due to function names'
