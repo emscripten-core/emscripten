@@ -229,6 +229,7 @@ static size_t getFreeListIndex(size_t size) {
 // items that are all big enough for us. This is computed using
 // an upper bound power of 2.
 static size_t getBigEnoughFreeListIndex(size_t size) {
+  assert(size > 0);
   size_t index = getFreeListIndex(size);
   // If we're a power of 2, the lower and upper bounds are the
   // same. Otherwise, add one.
