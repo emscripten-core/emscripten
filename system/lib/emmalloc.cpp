@@ -78,7 +78,7 @@ static size_t lowerBoundPowerOf2(size_t x) {
 // Constants
 
 // All allocations are aligned to this value.
-static const size_t ALIGNMENT = 16;
+static const size_t ALIGNMENT = 8;
 
 // Even allocating 1 byte incurs this much actual payload
 // allocation. This is our minimum bin size.
@@ -110,6 +110,8 @@ struct Region;
 
 // Information memory that is a free list, i.e., may
 // be reused.
+// Note how this can fit instead of the payload (as
+// the payload is a multiple of MIN_ALLOC).
 struct FreeInfo {
   // free lists are doubly-linked lists
   FreeInfo* _prev;
@@ -134,8 +136,10 @@ struct Region {
   // with and contained in.
   // That includes the metadata itself and the payload memory after,
   // which includes the used and unused portions of it.
-  // FIXME: shift by 1, as our size is even anyhow?
-  //        or, disallow allocation of half the total space or above.
+  // FIXME: Shift by 1, as our size is even anyhow?
+  //        Or, disallow allocation of half the total space or above.
+  //        Browsers barely allow allocating 2^31 anyhow, so inside that
+  //        space we can just allocate something smaller than it.
   size_t _totalSize : 31;
 
   // Whether this region is in use or not.
@@ -145,10 +149,6 @@ struct Region {
   // To compute the next neighbor we can use the total size, and to know
   // if a neighbor exists we can compare the region to lastRegion
   Region* _prev;
-
-  // Get the metadata to size 16
-  size_t unused1;
-  size_t unused2;
 
   // Up to here was the fixed metadata, of size 16. The rest is either
   // the payload, or freelist info.
@@ -185,6 +185,9 @@ struct Region {
 static void* getPayload(Region* region) {
   assert(((char*)&region->freeInfo()) - ((char*)region) == METADATA_SIZE);
   assert(region->getUsed());
+  assert(sizeof(FreeInfo) == ALLOC_UNIT);
+  assert(ALLOC_UNIT == ALIGNMENT);
+  assert(METADATA_SIZE == ALIGNMENT);
   return region->payload();
 }
 
@@ -200,6 +203,7 @@ static size_t getMaxPayload(Region* region) {
   return region->getTotalSize() - METADATA_SIZE;
 }
 
+// TODO: move into class, make more similar to next()
 static void* getAfter(Region* region) {
   return ((char*)region) + region->getTotalSize();
 }
@@ -218,7 +222,7 @@ static void* getAfter(Region* region) {
 // Note that there is no freelist for 2^32, as that amount can
 // never be allocated.
 
-static const size_t MIN_FREELIST_INDEX = 4;  // 16 == ALLOC_UNIT
+static const size_t MIN_FREELIST_INDEX = 3;  // 8 == ALLOC_UNIT
 static const size_t MAX_FREELIST_INDEX = 32; // uint32_t
 
 static FreeInfo* freeLists[MAX_FREELIST_INDEX] = {
@@ -531,6 +535,9 @@ static void emmalloc_validate_all() {
   } else {
     assert(!lastRegion);
   }
+  if (lastRegion) {
+    assert(getAfter(lastRegion) == end);
+  }
   // Validate freelists.
   for (int i = 0; i < MAX_FREELIST_INDEX; i++) {
     FreeInfo* curr = freeLists[i];
@@ -564,13 +571,13 @@ static void emmalloc_validate_all() {
 #ifdef EMMALLOC_DEBUG_LOG
 // For testing purposes, dump out a region.
 static void emmalloc_dump_region(Region* region) {
-  EM_ASM({ Module.print("      [" + $0 + " - " + $1 + " (used: " + $2 + " / " + $3 + ")]") },
-         region, getAfter(region), region->getUsed(), getMaxPayload(region));
+  EM_ASM({ Module.print("      [" + $0 + " - " + $1 + " (" + $2 + " bytes" + ($3 ? ", used" : "") + ")]") },
+         region, getAfter(region), getMaxPayload(region), region->getUsed());
 }
 
 // For testing purposes, dumps out the entire global state.
 static void emmalloc_dump_all() {
-  EM_ASM({ Module.print("  emmalloc_dump_everything:\n    sbrk(0) = " + $0) }, sbrk(0));
+  EM_ASM({ Module.print("  emmalloc_dump_all:\n    sbrk(0) = " + $0) }, sbrk(0));
   Region* curr = firstRegion;
   EM_ASM({ Module.print("    all regions:") });
   while (curr) {
@@ -701,6 +708,9 @@ static Region* newAllocation(size_t size) {
   EM_ASM({ Module.print("    emmalloc.newAllocation getting brand new space") });
 #endif
   size_t sbrkSize = METADATA_SIZE + alignUp(size);
+#ifdef EMMALLOC_DEBUG_LOG
+  EM_ASM({ Module.print("    emmalloc.newAllocation getting brand new space") });
+#endif
   void* ptr = sbrk(sbrkSize);
   if (ptr == (void*)-1) {
     // sbrk() failed, we failed.

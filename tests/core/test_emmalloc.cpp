@@ -32,6 +32,8 @@ void stage(const char* name) {
   }, name);
 }
 
+const size_t ALLOCATION_UNIT = 8;
+
 void basics() {
   stage("basics");
   stage("allocate 0");
@@ -46,10 +48,10 @@ void basics() {
   stage("allocate 10");
   assert(second == first);
   void* third = malloc(10);
-  assert(size_t(third) == size_t(first) + 112 + 16); // allocation units are multiples of 16, so first allocates a payload of 112. then second has 16 of metadata
+  assert(size_t(third) == size_t(first) + ((100 + ALLOCATION_UNIT - 1)&(-ALLOCATION_UNIT)) + ALLOCATION_UNIT); // allocation units are multiples of ALLOCATION_UNIT
   stage("allocate 10 more");
   void* four = malloc(10);
-  assert(size_t(four) == size_t(third) + 16 + 16); // allocation units are multiples of 16, so first allocates a payload of 16. then second has 16 of metadata
+  assert(size_t(four) == size_t(third) + (2*ALLOCATION_UNIT) + ALLOCATION_UNIT); // payload (10 = 2 allocation units) and metadata
   stage("free the first");
   free(second);
   stage("several temp alloc/frees");
@@ -88,12 +90,12 @@ void previous_sbrk() {
   stage("previous_sbrk");
   emmalloc_blank_slate_from_orbit();
   void* old = sbrk(0);
-  assert((size_t)old % 16 == 0);
+  assert((size_t)old % ALLOCATION_UNIT == 0);
   sbrk(3); // unalign things
   void* other = malloc(10);
   free(other);
   assert(other != old);
-  assert((char*)other == (char*)old + 32);
+  assert((char*)other == (char*)old + 2 * ALLOCATION_UNIT);
 }
 
 void min_alloc() {
@@ -102,7 +104,7 @@ void min_alloc() {
   void* start = check_where_we_would_malloc(1);
   for (int i = 1; i < 100; i++) {
     void* temp = malloc(i);
-    void* expected = (char*)start + 16 + 16 * ((i + 15) / 16);
+    void* expected = (char*)start + ALLOCATION_UNIT + ALLOCATION_UNIT * ((i + ALLOCATION_UNIT - 1) / ALLOCATION_UNIT);
     check_where_we_would_malloc(1, expected);
     free(temp);
   }
