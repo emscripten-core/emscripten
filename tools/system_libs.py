@@ -293,7 +293,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     shared.Building.emar('cr', in_temp(libname), o_s)
     return in_temp(libname)
 
-  def malloc_name():
+  # decides which malloc to use, and returns the base malloc and the full name when built with options
+  def malloc_decision():
     if shared.Settings.MALLOC == 'dlmalloc':
       base = 'dlmalloc'
     elif shared.Settings.MALLOC == 'emmalloc':
@@ -313,16 +314,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       base = 'dlmalloc'
     if shared.Settings.DEBUG_LEVEL >= 3:
       extra += '_debug'
-    return base + extra
+    return (base, base + extra)
 
   def malloc_source():
-    if shared.Settings.MALLOC == 'dlmalloc':
-      return 'dlmalloc.c'
-    elif shared.Settings.MALLOC == 'emmalloc':
-      return 'emmalloc.cpp'
-    else:
-      raise Exception('malloc must be one of "emmalloc", "dlmalloc", see settings.js')
-    
+    return malloc_decision()[0]
+
+  def malloc_name():
+    return malloc_decision()[1]
+
   def create_malloc(out_name):
     o = in_temp(out_name)
     cflags = ['-O2']
