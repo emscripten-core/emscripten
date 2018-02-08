@@ -1709,6 +1709,10 @@ int main(int argc, char **argv) {
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_parameter_pack')
 
+  def test_em_js(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_js')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_js', force_c=True)
+
   def test_runtime_stacksave(self):
     src = open(path_from_root('tests', 'core', 'test_runtime_stacksave.c')).read()
     self.do_run(src, 'success')
