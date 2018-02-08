@@ -9,6 +9,12 @@ Not all changes are documented here. In particular, new features, user-oriented 
 
 Current Trunk
 -------------
+ - Breaking change: `addFunction` is now supported on LLVM wasm backend, but when being used on the wasm backend, you need to provide an additional second argument, a Wasm function signature string. Each character within a signature string represents a type. The first character represents the return type of a function, and remaining characters are for parameter types.
+    - 'v': void type
+    - 'i': 32-bit integer type
+    - 'j': 64-bit integer type (currently does not exist in JavaScript)
+    - 'f': 32-bit float type
+    - 'd': 64-bit float type
 
 v1.37.28: 01/08/2018
 --------------------

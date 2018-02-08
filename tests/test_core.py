@@ -6417,7 +6417,6 @@ def process(filename):
     assert '_exported_func_from_response_file_1' in open('src.cpp.o.js').read()
 
   @sync
-  @no_wasm_backend('no jsCall function pointers are created for wasm backend')
   def test_add_function(self):
     Settings.INVOKE_RUN = 0
     Settings.RESERVED_FUNCTION_POINTERS = 1
@@ -6433,7 +6432,7 @@ def process(filename):
       Settings.RESERVED_FUNCTION_POINTERS = 0
       self.do_run(open(src).read(), '''Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.''')
       generated = open('src.cpp.o.js').read()
-      assert 'jsCall' not in generated
+      assert 'jsCall_' not in generated
       Settings.RESERVED_FUNCTION_POINTERS = 1
 
       Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS # flip the test

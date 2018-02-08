@@ -37,6 +37,9 @@ var NEED_ALL_ASM2WASM_IMPORTS = BINARYEN_METHOD != 'native-wasm' || BINARYEN_TRA
 // the current compilation unit.
 var HAS_MAIN = ('_main' in IMPLEMENTED_FUNCTIONS) || MAIN_MODULE || SIDE_MODULE;
 
+var WASM_BACKEND_WITH_RESERVED_FUNCTION_POINTERS =
+  WASM_BACKEND && RESERVED_FUNCTION_POINTERS;
+
 // JSifier
 function JSify(data, functionsOnly) {
   var mainPass = !functionsOnly;
