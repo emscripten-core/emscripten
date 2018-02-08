@@ -53,11 +53,11 @@
 
 #ifdef EMMALLOC_DEBUG
 // Forward declaration for convenience.
-void emmalloc_validate_all();
+static void emmalloc_validate_all();
 #endif
 #ifdef EMMALLOC_DEBUG
 // Forward declaration for convenience.
-void emmalloc_dump_all();
+static void emmalloc_dump_all();
 #endif
 
 // Math utilities
@@ -437,7 +437,7 @@ void emmalloc_blank_slate_from_orbit() {
 
 #ifdef EMMALLOC_DEBUG
 // For testing purposes, validate a region.
-void emmalloc_validate_region(Region* region) {
+static void emmalloc_validate_region(Region* region) {
   assert(getAfter(region) <= sbrk(0));
   assert(region->usedPayload() <= getMaxPayload(region));
   assert(getMaxPayload(region) < region->totalSize());
@@ -452,7 +452,7 @@ void emmalloc_validate_region(Region* region) {
 }
 
 // For testing purposes, check that everything is valid.
-void emmalloc_validate_all() {
+static void emmalloc_validate_all() {
   void* end = sbrk(0);
   // Validate regions.
   Region* curr = firstRegion;
@@ -501,13 +501,13 @@ void emmalloc_validate_all() {
 
 #ifdef EMMALLOC_DEBUG_LOG
 // For testing purposes, dump out a region.
-void emmalloc_dump_region(Region* region) {
+static void emmalloc_dump_region(Region* region) {
   EM_ASM({ Module.print("      [" + $0 + " - " + $1 + " (used: " + $2 + " / " + $3 + ")]") },
          region, getAfter(region), region->usedPayload(), getMaxPayload(region));
 }
 
 // For testing purposes, dumps out the entire global state.
-void emmalloc_dump_all() {
+static void emmalloc_dump_all() {
   EM_ASM({ Module.print("  emmalloc_dump_everything:\n    sbrk(0) = " + $0) }, sbrk(0));
   Region* curr = firstRegion;
   EM_ASM({ Module.print("    all regions:") });
