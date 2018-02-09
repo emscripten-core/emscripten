@@ -121,7 +121,7 @@ typedef struct VRFrameData {
 
 extern int emscripten_vr_ready(void);
 extern int emscripten_vr_init(em_vr_arg_callback_func callback, void* userData);
-extern int emscripten_vr_deinit();
+extern int emscripten_vr_deinit(void);
 
 extern int emscripten_vr_version_major(void);
 extern int emscripten_vr_version_minor(void);
