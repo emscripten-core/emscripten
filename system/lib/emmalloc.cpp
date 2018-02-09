@@ -433,7 +433,6 @@ static void possiblySplitRemainder(Region* region, size_t size) {
   // Alignment might change things (moving the region up to an aligned
   // address means less bytes to split off).
   splittableSize = size_t(payload) + payloadSize - (size_t)split;
-  assert(split == alignUpForSize(payload + size, splittableSize));
   // Room for a minimal region is definitely worth splitting. Otherwise,
   // if we don't have room for a full region, but we do have an allocation
   // unit's worth, and we are the last region, it's worth allocating some
