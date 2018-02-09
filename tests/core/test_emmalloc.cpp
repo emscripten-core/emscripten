@@ -68,33 +68,14 @@ void basics() {
   }
   stage("8/4 issues");
   emmalloc_blank_slate_from_orbit();
-  for (int k = 0; k < 2; k++) {
-    for (int i = 1; i < 20; i++) {
-      for (int j = 1; j < 20; j++) {
-        void* first = malloc(i);
-        char* second = (char*)first;
-        // 8 allocated bytes must be 8-byte aligned, less is just 4-byte
-        if (i < 8) {
-          assert(size_t(first) % 4 == 0);
-          second += 8; // minimum allocation unit is 8
-        } else {
-          assert(size_t(first) % 8 == 0);
-          second += (i + 3) & -3; // first payload is aligned to a muliple of 4
-        }
-        second += 8; // metadata, fixed size
-        if (j >= 8) {
-          // if second needs 8-byte alignment, it may add 4 to ensure that
-          if (size_t(second) % 8 != 0) {
-            second += 4;
-          }
-        }
-printf("%d, %d  %d, %d\n", i, j, first, second);
-        check_where_we_would_malloc(j, second);
-        free(first);
-      }
+  for (int i = 1; i < 20; i++) {
+    for (int j = 1; j < 20; j++) {
+      void* first = malloc(i);
+      char* second = (char*)first;
+      second += 8; // metadata, fixed size
+      if (i < 8)
+      check_where_we_would_malloc(j, (char*)first + 1);
     }
-    // do it again, with 4 more bytes at the front
-    malloc(4);
   }
 }
 

@@ -83,8 +83,6 @@ static const size_t MIN_ALIGNMENT = 4;
 // Even allocating 1 byte incurs this much actual payload
 // allocation. This is big enough to allow freelist info to
 // be kept in a region's payload when it is not in use.
-// (A downside is that we need a little more room for tiny
-// allocations of 1-7 bytes).
 // This is also the alignment of things of this size and
 // above.
 // TODO: should 16-byte and above values have 16-byte align?
@@ -102,25 +100,24 @@ static const size_t MIN_REGION_SIZE = METADATA_SIZE + ALLOC_UNIT;
 // Align a size for allocation, increasing it upwards as necessary.
 // How much alignment depends on the size we are aligning for.
 // We also enforce the minimum allocation size rule
-static size_t alignUp(size_t size) {
-  if (size >= ALLOC_UNIT) {
+static size_t alignUpForSize(size_t size, size_t forSize) {
+  if (forSize >= ALLOC_UNIT) {
+    return (size + ALLOC_UNIT - 1) & -ALLOC_UNIT;
+  } else if (size >= ALLOC_UNIT) {
     return (size + MIN_ALIGNMENT - 1) & -MIN_ALIGNMENT;
   } else {
-    // We have a minimum size of ALLOC_UNIT.
+    // A very small value, use the min alignment
+    // We also have a minimum size of ALLOC_UNIT
     return ALLOC_UNIT;
   }
 }
 
-static void* alignUpForSize(void* ptr, size_t forSize) {
+static void* alignUpPointerForSize(void* ptr, size_t forSize) {
   if (forSize >= ALLOC_UNIT) {
     return (void*)((size_t(ptr) + ALLOC_UNIT - 1) & -ALLOC_UNIT);
   } else {
     return (void*)((size_t(ptr) + MIN_ALIGNMENT - 1) & -MIN_ALIGNMENT);
   }
-}
-
-int isAlignedForSize(void* ptr, size_t size) {
-  return ptr == alignUpForSize(ptr, size);
 }
 
 //
@@ -203,9 +200,9 @@ struct Region {
 
 // Region utilities
 
-// TODO: move into struct
 static void* getPayload(Region* region) {
   assert(((char*)&region->freeInfo()) - ((char*)region) == METADATA_SIZE);
+  assert(region->getUsed());
   assert(sizeof(FreeInfo) == ALLOC_UNIT);
   return region->payload();
 }
@@ -318,6 +315,7 @@ static void addToFreeList(Region* region) {
   EM_ASM({ Module.print("  emmalloc.addToFreeList " + $0) }, region);
 #endif
   assert(!region->getUsed());
+  assert(getAfter(region) <= sbrk(0));
   size_t index = getFreeListIndex(getMaxPayload(region));
   FreeInfo* freeInfo = &region->freeInfo();
   FreeInfo* last = freeLists[index];
@@ -335,6 +333,7 @@ static int mergeIntoExistingFreeRegion(Region* region) {
 #ifdef EMMALLOC_DEBUG_LOG
   EM_ASM({ Module.print("  emmalloc.mergeIntoExistingFreeRegion " + $0) }, region);
 #endif
+  assert(getAfter(region) <= sbrk(0));
   int merged = 0;
   Region* prev = region->prev();
   Region* next = region->next();
@@ -401,7 +400,7 @@ static int extendLastRegion(size_t size) {
   EM_ASM({ Module.print("  emmalloc.extendLastRegionToSize " + $0) }, size);
 #endif
   size_t reusable = getMaxPayload(lastRegion);
-  size_t sbrkSize = alignUp(size) - reusable;
+  size_t sbrkSize = alignUpForSize(size, size) - reusable;
   void* ptr = sbrk(sbrkSize);
   if (ptr == (void*)-1) {
     // sbrk() failed, we failed.
@@ -421,65 +420,49 @@ static void possiblySplitRemainder(Region* region, size_t size) {
 #ifdef EMMALLOC_DEBUG_LOG
   EM_ASM({ Module.print("  emmalloc.possiblySplitRemainder " + [$0, $1]) }, region, size);
 #endif
-  size = alignUp(size);
   size_t payloadSize = getMaxPayload(region);
   assert(payloadSize >= size);
-  size_t splittableSize = payloadSize - size;
-  // If we don't have the bare minimum, give up now.
-  if (splittableSize < ALLOC_UNIT) return;
-  // Compute where the split-off region would be.
-  char* payload = (char*)getPayload(region);
-  Region* split = (Region*)alignUpForSize(payload + size, splittableSize);
-  // Alignment might change things (moving the region up to an aligned
-  // address means less bytes to split off).
-EM_ASM({ console.log([$0, $1, $2, $3, $4]) }, payload, size, payload + size, split, splittableSize);
-  splittableSize = size_t(payload) + payloadSize - (size_t)split;
-EM_ASM({ console.log([$0, $1, $2, $3, $4]) }, payload, size, payload + size, split, splittableSize);
-  assert(split == alignUpForSize(payload + size, splittableSize));
+  size_t extra = payloadSize - size;
   // Room for a minimal region is definitely worth splitting. Otherwise,
   // if we don't have room for a full region, but we do have an allocation
   // unit's worth, and we are the last region, it's worth allocating some
   // more memory to create a region here. The next allocation can reuse it,
   // which is better than leaving it as unused and unreusable space at the
   // end of this region.
-  if (region == lastRegion && splittableSize >= ALLOC_UNIT && splittableSize < MIN_REGION_SIZE) {
+  if (region == lastRegion && extra >= ALLOC_UNIT && extra < MIN_REGION_SIZE) {
     // Yes, this is a small-but-useful amount of memory in the final region,
     // extend it.
 #ifdef EMMALLOC_DEBUG_LOG
     EM_ASM({ Module.print("    emmalloc.possiblySplitRemainder pre-extending") });
 #endif
-    // We'll need at least this much.
-    size_t extra = ALLOC_UNIT;
-    splittableSize += extra;
-    // The change should not make us unaligned.
-    assert(split == alignUpForSize(payload + size, splittableSize));
-    if (extendLastRegion(payloadSize + extra)) {
+    if (extendLastRegion(payloadSize + ALLOC_UNIT)) {
       // Success.
-      splittableSize += extra;
-      assert(splittableSize >= MIN_REGION_SIZE);
+      extra += ALLOC_UNIT;
+      assert(extra >= MIN_REGION_SIZE);
     } else {
       return;
     }
-  } else {
-    // If it's not worth it, stop.
-    if (splittableSize < MIN_REGION_SIZE) {
-      return;
-    }
   }
-  // Worth it, split the region
+  if (extra >= MIN_REGION_SIZE) {
 #ifdef EMMALLOC_DEBUG_LOG
-  EM_ASM({ Module.print("    emmalloc.possiblySplitRemainder is splitting") });
+    EM_ASM({ Module.print("    emmalloc.possiblySplitRemainder is splitting") });
 #endif
-  assert(splittableSize >= MIN_REGION_SIZE);
-  region->setTotalSize((char*)split - (char*)region);
-  split->setTotalSize(splittableSize);
-  split->prev() = region;
-  if (region != lastRegion) {
-    split->next()->prev() = split;
-  } else {
-    lastRegion = split;
+    // Worth it, split the region
+    // TODO: Consider not doing it, may affect long-term fragmentation.
+    void* after = getAfter(region);
+    Region* split = (Region*)alignUpPointerForSize((char*)getPayload(region) + size, extra);
+    region->setTotalSize((char*)split - (char*)region);
+    size_t totalSplitSize = (char*)after - (char*)split;
+    assert(totalSplitSize >= MIN_REGION_SIZE);
+    split->setTotalSize(totalSplitSize);
+    split->prev() = region;
+    if (region != lastRegion) {
+      split->next()->prev() = split;
+    } else {
+      lastRegion = split;
+    }
+    stopUsing(split);
   }
-  stopUsing(split);
 }
 
 // Sets the used payload of a region, and does other necessary work when
@@ -554,8 +537,6 @@ static void emmalloc_validate_all() {
       Module.emmallocDebug.regions[region] = 1;
     }, curr);
     assert(curr->prev() == prev);
-    size_t maxPayload = getMaxPayload(curr);
-    assert(maxPayload >= ALLOC_UNIT);
     if (prev) {
       assert(getAfter(prev) == curr);
       // Adjacent free regions must be merged.
@@ -677,8 +658,7 @@ static Region* tryFromFreeList(size_t size) {
     size_t tries = 0;
     while (freeInfo && tries < SPECULATIVE_FREELIST_TRIES) {
       Region* region = fromFreeInfo(freeInfo);
-      if (getMaxPayload(region) >= size &&
-          isAlignedForSize(getPayload(region), size)) {
+      if (getMaxPayload(region) >= size) {
         // Success, use it
 #ifdef EMMALLOC_DEBUG_LOG
         EM_ASM({ Module.print("  emmalloc.tryFromFreeList try succeeded") });
@@ -743,7 +723,10 @@ static Region* newAllocation(size_t size) {
 #ifdef EMMALLOC_DEBUG_LOG
   EM_ASM({ Module.print("    emmalloc.newAllocation getting brand new space") });
 #endif
-  size_t sbrkSize = METADATA_SIZE + alignUp(size);
+  size_t sbrkSize = METADATA_SIZE + alignUpForSize(size, size);
+#ifdef EMMALLOC_DEBUG_LOG
+  EM_ASM({ Module.print("    emmalloc.newAllocation getting brand new space") });
+#endif
   void* ptr = sbrk(sbrkSize);
   if (ptr == (void*)-1) {
     // sbrk() failed, we failed.
@@ -754,14 +737,12 @@ static Region* newAllocation(size_t size) {
   }
   // sbrk() results might not be aligned. We assume single-threaded sbrk()
   // access here in order to fix that up
-  void* fixedPtr = alignUpForSize(ptr, size);
+  void* fixedPtr = alignUpPointerForSize(ptr, size);
   if (ptr != fixedPtr) {
 #ifdef EMMALLOC_DEBUG_LOG
     EM_ASM({ Module.print("    emmalloc.newAllocation fixing alignment") });
 #endif
     size_t extra = (char*)fixedPtr - (char*)ptr;
-    // Use sbrk() to get us more room in which to align.
-    // TODO: we could save an sbrk() call, we can know this before.
     void* extraPtr = sbrk(extra);
     if (extraPtr == (void*)-1) {
       // sbrk() failed, we failed.
@@ -774,14 +755,12 @@ static Region* newAllocation(size_t size) {
     // If this fails, it means we also leak the previous allocation,
     // so we don't even try to handle it.
     assert((char*)extraPtr == (char*)ptr + sbrkSize);
-    if (lastRegion) {
-      // There is a previous region here. We must also extend it so that
-      // the two are contiguous.
-      lastRegion->incTotalSize(extra);
-      // The only possible difference here is when the previous ends on a
-      // 4-aligned address but we need 8.
-      assert(extra == 4);
-    }
+    // After the first allocation, everything must remain aligned forever.
+    assert(!lastRegion);
+    // We now have a contiguous block of memory from ptr to
+    // ptr + sbrkSize + fixedPtr - ptr = fixedPtr + sbrkSize.
+    // fixedPtr is aligned and starts a region of the right
+    // amount of memory.
   }
   Region* region = (Region*)fixedPtr;
   // Apply globally
@@ -840,65 +819,59 @@ static void* emmalloc_realloc(void *ptr, size_t size) {
     return NULL;
   }
   Region* region = fromPayload(ptr);
-  // We may create a new region while trying to efficiently realloc.
-  Region* newRegion = NULL;
-  // If the current pointer is properly aligned for the new size, we may
-  // be able to extend things in place.
-  if (isAlignedForSize(ptr, size)) {
-    // Grow it. First, maybe we can do simple growth in the current region.
-    if (size <= getMaxPayload(region)) {
+  // Grow it. First, maybe we can do simple growth in the current region.
+  if (size <= getMaxPayload(region)) {
 #ifdef EMMALLOC_DEBUG_LOG
-      EM_ASM({ Module.print("  emmalloc.emmalloc_realloc use existing payload space") });
+    EM_ASM({ Module.print("  emmalloc.emmalloc_realloc use existing payload space") });
 #endif
-      region->setUsed(1);
-      // There might be enough left over to split out now.
-      possiblySplitRemainder(region, size);
-      return ptr;
+    region->setUsed(1);
+    // There might be enough left over to split out now.
+    possiblySplitRemainder(region, size);
+    return ptr;
+  }
+  // Perhaps right after us is free space we can merge to us.
+  Region* next = region->next();
+  if (next && !next->getUsed()) {
+#ifdef EMMALLOC_DEBUG_LOG
+    EM_ASM({ Module.print("  emmalloc.emmalloc_realloc merge in next") });
+#endif
+    removeFromFreeList(next);
+    region->incTotalSize(next->getTotalSize());
+    if (next != lastRegion) {
+      next->next()->prev() = region;
+    } else {
+      lastRegion = region;
     }
-    // Perhaps right after us is free space we can merge to us.
-    Region* next = region->next();
-    if (next && !next->getUsed()) {
+  }
+  // We may now be big enough.
+  if (size <= getMaxPayload(region)) {
 #ifdef EMMALLOC_DEBUG_LOG
-      EM_ASM({ Module.print("  emmalloc.emmalloc_realloc merge in next") });
+    EM_ASM({ Module.print("  emmalloc.emmalloc_realloc use existing payload space after merge") });
 #endif
-      removeFromFreeList(next);
-      region->incTotalSize(next->getTotalSize());
-      if (next != lastRegion) {
-        next->next()->prev() = region;
-      } else {
-        lastRegion = region;
+    region->setUsed(1);
+    // There might be enough left over to split out now.
+    possiblySplitRemainder(region, size);
+    return ptr;
+  }
+  // We still aren't big enough. If we are the last, we can extend ourselves - however, that
+  // definitely means increasing the total sbrk(), and there may be free space lower down, so
+  // this is a tradeoff between speed (avoid the memcpy) and space. It's not clear what's
+  // better here; for now, check for free space first.
+  Region* newRegion = tryFromFreeList(size);
+  if (!newRegion && region == lastRegion) {
+#ifdef EMMALLOC_DEBUG_LOG
+    EM_ASM({ Module.print("  emmalloc.emmalloc_realloc extend last region") });
+#endif
+    if (extendLastRegion(size)) {
+      // It worked. We don't need the formerly free region.
+      if (newRegion) {
+        stopUsing(newRegion);
       }
-    }
-    // We may now be big enough.
-    if (size <= getMaxPayload(region)) {
-#ifdef EMMALLOC_DEBUG_LOG
-      EM_ASM({ Module.print("  emmalloc.emmalloc_realloc use existing payload space after merge") });
-#endif
-      region->setUsed(1);
-      // There might be enough left over to split out now.
-      possiblySplitRemainder(region, size);
       return ptr;
-    }
-    // We still aren't big enough. If we are the last, we can extend ourselves - however, that
-    // definitely means increasing the total sbrk(), and there may be free space lower down, so
-    // this is a tradeoff between speed (avoid the memcpy) and space. It's not clear what's
-    // better here; for now, check for free space first.
-    newRegion = tryFromFreeList(size);
-    if (!newRegion && region == lastRegion) {
-#ifdef EMMALLOC_DEBUG_LOG
-      EM_ASM({ Module.print("  emmalloc.emmalloc_realloc extend last region") });
-#endif
-      if (extendLastRegion(size)) {
-        // It worked. We don't need the formerly free region.
-        if (newRegion) {
-          stopUsing(newRegion);
-        }
-        return ptr;
-      } else {
-        // If this failed, we can also try the normal
-        // malloc path, which may find space in a freelist;
-        // fall through.
-      }
+    } else {
+      // If this failed, we can also try the normal
+      // malloc path, which may find space in a freelist;
+      // fall through.
     }
   }
   // We need new space, and a copy
