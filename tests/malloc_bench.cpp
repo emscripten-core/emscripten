@@ -2,19 +2,23 @@
 #include <stdlib.h>
 #include <unistd.h> // for sbrk()
 
-const int BINS = 16384;
+const int BINS = 32768;
 const int BIN_MASK = BINS - 1;
-const int ITERS = 5 * 1024 * 1024;
-const int MIN_SIZE = 12; // 1 is somewhat bad, tiny allocations are not good for us
-const int MAX_SIZE = 20;
+const int ITERS = 6 * 1024 * 1024;
+// 8, 32: emmalloc much slower
+// 8, 20: emmalloc much sbrkier and also slower
+const int MIN_SIZE = 8;
+const int MAX_SIZE = 32;
 const int SIZE_MASK = 0;
 const bool POLL_SBRK = false;
 const bool USE_REALLOC_UP = true;
 const bool USE_REALLOC_DOWN = true;
+const bool USE_CALLOC = false;
 
 void randoms() {
   srandom(1);
   size_t before = (size_t)sbrk(0);
+  double sum_sbrk = 0;
   size_t max_sbrk = before;
   void* bins[BINS];
   size_t allocated[BINS];
@@ -62,7 +66,7 @@ void randoms() {
           total_allocated += size;
         }
       } else {
-        if (calloc_) {
+        if (calloc_ && USE_CALLOC) {
           bins[bin] = malloc(size);
           allocated[bin] = size;
           total_allocated += size;
@@ -84,6 +88,7 @@ void randoms() {
     if (POLL_SBRK) {
       size_t curr = (size_t)sbrk(0);
       if (curr > max_sbrk) max_sbrk = curr;
+      sum_sbrk += curr;
     }
   }
   for (int i = 0; i < BINS; i++) {
@@ -93,10 +98,11 @@ void randoms() {
     }
   }
   size_t after = (size_t)sbrk(0);
-  printf("max allocated:   %u   (total left should be 0: %u)\n", max_allocated, total_allocated); 
-  printf("sbrk change:     %u\n", after - before);
+  printf("max allocated:    %u   (total left should be 0: %u)\n", max_allocated, total_allocated); 
+  printf("sbrk change:      %u\n", after - before);
   if (POLL_SBRK) {
-    printf("sbrk max change: %u\n", max_sbrk - before);
+    printf("sbrk mean change: %.2f\n", (sum_sbrk / double(ITERS)) - before);
+    printf("sbrk max change:  %u\n", max_sbrk - before);
   }
 }
 
@@ -104,7 +110,7 @@ int main() {
   randoms();
 }
 
-// ./emcc tests/malloc_bench.cpp -O2 -s WASM=1 -s TOTAL_MEMORY=67108864 -DMALLOC_ALIGNMENT=16 system/lib/dlmalloc.c && time mozjs a.out.js && ./emcc tests/malloc_bench.cpp -O2 -s WASM=1 system/lib/emmalloc.cpp -DNDEBUG -s TOTAL_MEMORY=67108864 -o b.out.js && time mozjs b.out.js
+// ./emcc tests/malloc_bench.cpp -s TOTAL_MEMORY=68157440 -O2 -s WASM=1 system/lib/dlmalloc.c && time mozjs a.out.js && ./emcc tests/malloc_bench.cpp -O2 -s WASM=1 system/lib/emmalloc.cpp -DNDEBUG -o b.out.js -s TOTAL_MEMORY=68157440 && time mozjs b.out.js && ls -al a.out.wasm b.out.wasm
 
 /*
 
