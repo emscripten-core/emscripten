@@ -903,11 +903,6 @@ static struct mallinfo emmalloc_mallinfo() {
 // large allocations.
 static void* alignedAllocation(size_t size, size_t alignment) {
   assert(alignment > ALIGNMENT);
-  // Alignments like 12 are tricky for us - we want a mulitple of
-  // our ALIGNMENT.
-  while (alignment % ALIGNMENT != 0) {
-    alignment *= 2;
-  }
   assert(alignment % ALIGNMENT == 0);
   // Ensure a region before us, which we may enlarge as necessary.
   if (!lastRegion) {
@@ -945,7 +940,7 @@ static int isMultipleOfSizeT(size_t size) {
 
 static int emmalloc_posix_memalign(void **memptr, size_t alignment, size_t size) {
   *memptr = NULL;
-  if (!isPowerOf2(alignment) && !isMultipleOfSizeT(alignment)) {
+  if (!isPowerOf2(alignment) || !isMultipleOfSizeT(alignment)) {
     return 22; // EINVAL
   }
   if (size == 0) {
@@ -1074,7 +1069,7 @@ EMMALLOC_EXPORT
 int posix_memalign(void **memptr, size_t alignment, size_t size) {
 #ifdef EMMALLOC_DEBUG
 #ifdef EMMALLOC_DEBUG_LOG
-  EM_ASM({ Module.print("emmalloc.posix_memalign") });
+  EM_ASM({ Module.print("emmalloc.posix_memalign " + [$0, $1, $2]) }, memptr, alignment, size);
 #endif
   emmalloc_validate_all();
 #ifdef EMMALLOC_DEBUG_LOG
@@ -1098,7 +1093,7 @@ EMMALLOC_EXPORT
 void* memalign(size_t alignment, size_t size) {
 #ifdef EMMALLOC_DEBUG
 #ifdef EMMALLOC_DEBUG_LOG
-  EM_ASM({ Module.print("emmalloc.memalign") });
+  EM_ASM({ Module.print("emmalloc.memalign " + [$0, $1]) }, alignment, size);
 #endif
   emmalloc_validate_all();
 #ifdef EMMALLOC_DEBUG_LOG

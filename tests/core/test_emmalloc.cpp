@@ -188,6 +188,29 @@ void realloc() {
   }
 }
 
+void check_aligned(size_t align, size_t ptr) {
+  if (align < 4 || ((align & (align - 1)) != 0)) {
+    assert(ptr == 0);
+  } else {
+    assert(ptr);
+    assert(ptr % align == 0);
+  }
+}
+
+void aligned() {
+  stage("aligned");
+  for (int i = 0; i < 35; i++) {
+    for (int j = 0; j < 35; j++) {
+      emmalloc_blank_slate_from_orbit();
+      size_t first = (size_t)memalign(i, 100);
+      size_t second = (size_t)memalign(j, 100);
+      printf("%d %d => %d %d\n", i, j, first, second);
+      check_aligned(i, first);
+      check_aligned(j, second);
+    }
+  }
+}
+
 void randoms() {
   stage("randoms");
   emmalloc_blank_slate_from_orbit();
@@ -260,6 +283,7 @@ int main() {
   space_at_end();
   calloc();
   realloc();
+  aligned();
   randoms();
 
   stage("the_end");
