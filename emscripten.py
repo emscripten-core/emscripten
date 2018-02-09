@@ -2006,11 +2006,11 @@ function _emscripten_asm_const_%s(code, sig_ptr, argbuf) {
 
 def create_em_js_wasm(forwarded_json, metadata):
   em_js_funcs = []
+  separator = '<::>'
   for name, raw in metadata['emJsFuncs'].iteritems():
-    parts = raw.split('<::>')
-    # TODO(jgravelle): support seeing the separator string in user code
-    assert len(parts) == 2
-    args, body = parts
+    parts = raw.split(separator)
+    assert len(parts) >= 2
+    args, body = parts[0], separator.join(parts[1:])
     args = args[1:-1].split(',')
     arg_names = [arg.split()[-1] for arg in args if arg]
     func = 'function {}({}){}'.format(name, ','.join(arg_names), body)

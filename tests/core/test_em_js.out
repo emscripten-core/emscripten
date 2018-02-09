@@ -18,4 +18,6 @@ no args returning double
     skip_args returned: 6.000000
   5.5 + 14.375
     add_outer returned: 19.875000
+  can use <::> separator in user code
+    user_separator returned: 15
 END

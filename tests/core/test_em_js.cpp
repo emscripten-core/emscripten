@@ -36,6 +36,10 @@ EM_JS(double, add_outer, (double x, double y, double z), {
   Module['print']("  " + x + " + " + z);
   return x + z;
 });
+EM_JS(int, user_separator, (), {
+  Module['print']("  can use <::> separator in user code");
+  return 15;
+});
 
 int main() {
   printf("BEGIN\n");
@@ -51,6 +55,7 @@ int main() {
   printf("    unused_args returned: %d\n", unused_args(0));
   printf("    skip_args returned: %f\n", skip_args(5, 7));
   printf("    add_outer returned: %f\n", add_outer(5.5, 7.0, 14.375));
+  printf("    user_separator returned: %d\n", user_separator());
 
   printf("END\n");
   return 0;
