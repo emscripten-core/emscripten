@@ -174,21 +174,21 @@ if operation == 'build':
         }
       ''', ['compiler-rt.a'])
     elif what == 'libc':
-      build(C_WITH_MALLOC, ['libc.bc', 'dlmalloc.bc'])
+      build(C_WITH_MALLOC, ['libc.bc'])
     elif what == 'emmalloc':
-      build(C_WITH_MALLOC, ['libc.bc', 'emmalloc.bc'], ['-s', 'MALLOC="emmalloc"'])
+      build(C_WITH_MALLOC, ['emmalloc.bc'], ['-s', 'MALLOC="emmalloc"'])
     elif what == 'emmalloc_debug':
-      build(C_WITH_MALLOC, ['libc.bc', 'emmalloc_debug.bc'], ['-s', 'MALLOC="emmalloc"', '-g'])
+      build(C_WITH_MALLOC, ['emmalloc_debug.bc'], ['-s', 'MALLOC="emmalloc"', '-g'])
     elif what == 'dlmalloc':
-      build(C_WITH_MALLOC, ['libc.bc', 'dlmalloc.bc'], ['-s', 'MALLOC="dlmalloc"'])
-    elif what == 'wasm-libc':
-      build(C_WITH_STDLIB, ['wasm-libc.bc'], ['-s', 'WASM=1'])
-    elif what in ('libc-mt', 'pthreads', 'dlmalloc_threadsafe'):
-      build(C_WITH_MALLOC, ['libc-mt.bc', 'dlmalloc_threadsafe.bc', 'pthreads.bc'], ['-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"'])
+      build(C_WITH_MALLOC, ['dlmalloc.bc'], ['-s', 'MALLOC="dlmalloc"'])
     elif what == 'dlmalloc_debug':
       build(C_WITH_MALLOC, ['dlmalloc_debug.bc'], ['-g', '-s', 'MALLOC="dlmalloc"'])
     elif what == 'dlmalloc_threadsafe_debug':
       build(C_WITH_MALLOC, ['dlmalloc_threadsafe_debug.bc'], ['-g', '-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"'])
+    elif what in ('dlmalloc_threadsafe', 'libc-mt', 'pthreads'):
+      build(C_WITH_MALLOC, ['libc-mt.bc', 'dlmalloc_threadsafe.bc', 'pthreads.bc'], ['-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"'])
+    elif what == 'wasm-libc':
+      build(C_WITH_STDLIB, ['wasm-libc.bc'], ['-s', 'WASM=1'])
     elif what == 'libcxx':
       build(CXX_WITH_STDLIB, ['libcxx.a'])
     elif what == 'libcxx_noexcept':
