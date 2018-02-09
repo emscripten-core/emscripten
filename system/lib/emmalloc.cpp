@@ -77,47 +77,29 @@ static size_t lowerBoundPowerOf2(size_t x) {
 
 // Constants
 
-// The absolute minimum alignment of all things.
-static const size_t MIN_ALIGNMENT = 4;
+// All allocations are aligned to this value.
+static const size_t ALIGNMENT = 8;
 
 // Even allocating 1 byte incurs this much actual payload
-// allocation. This is big enough to allow freelist info to
-// be kept in a region's payload when it is not in use.
-// This is also the alignment of things of this size and
-// above.
-// TODO: should 16-byte and above values have 16-byte align?
-static const size_t ALLOC_UNIT = 8;
+// allocation. This is our minimum bin size.
+static const size_t ALLOC_UNIT = ALIGNMENT;
 
 // How big the metadata is in each region. It is convenient
 // that this is identical to the above values.
-static const size_t METADATA_SIZE = 8;
+static const size_t METADATA_SIZE = ALLOC_UNIT;
 
 // How big a minimal region is.
 static const size_t MIN_REGION_SIZE = METADATA_SIZE + ALLOC_UNIT;
 
 // Constant utilities
 
-// Align a size for allocation, increasing it upwards as necessary.
-// How much alignment depends on the size we are aligning for.
-// We also enforce the minimum allocation size rule
-static size_t alignUpForSize(size_t size, size_t forSize) {
-  if (forSize >= ALLOC_UNIT) {
-    return (size + ALLOC_UNIT - 1) & -ALLOC_UNIT;
-  } else if (size >= ALLOC_UNIT) {
-    return (size + MIN_ALIGNMENT - 1) & -MIN_ALIGNMENT;
-  } else {
-    // A very small value, use the min alignment
-    // We also have a minimum size of ALLOC_UNIT
-    return ALLOC_UNIT;
-  }
+// Align a pointer, increasing it upwards as necessary
+static size_t alignUp(size_t ptr) {
+  return (size_t(ptr) + ALIGNMENT - 1) & -ALIGNMENT;
 }
 
-static void* alignUpPointerForSize(void* ptr, size_t forSize) {
-  if (forSize >= ALLOC_UNIT) {
-    return (void*)((size_t(ptr) + ALLOC_UNIT - 1) & -ALLOC_UNIT);
-  } else {
-    return (void*)((size_t(ptr) + MIN_ALIGNMENT - 1) & -MIN_ALIGNMENT);
-  }
+static void* alignUpPointer(void* ptr) {
+  return (void*)alignUp(size_t(ptr));
 }
 
 //
@@ -204,6 +186,8 @@ static void* getPayload(Region* region) {
   assert(((char*)&region->freeInfo()) - ((char*)region) == METADATA_SIZE);
   assert(region->getUsed());
   assert(sizeof(FreeInfo) == ALLOC_UNIT);
+  assert(ALLOC_UNIT == ALIGNMENT);
+  assert(METADATA_SIZE == ALIGNMENT);
   return region->payload();
 }
 
@@ -400,7 +384,7 @@ static int extendLastRegion(size_t size) {
   EM_ASM({ Module.print("  emmalloc.extendLastRegionToSize " + $0) }, size);
 #endif
   size_t reusable = getMaxPayload(lastRegion);
-  size_t sbrkSize = alignUpForSize(size, size) - reusable;
+  size_t sbrkSize = alignUp(size) - reusable;
   void* ptr = sbrk(sbrkSize);
   if (ptr == (void*)-1) {
     // sbrk() failed, we failed.
@@ -450,7 +434,7 @@ static void possiblySplitRemainder(Region* region, size_t size) {
     // Worth it, split the region
     // TODO: Consider not doing it, may affect long-term fragmentation.
     void* after = getAfter(region);
-    Region* split = (Region*)alignUpPointerForSize((char*)getPayload(region) + size, extra);
+    Region* split = (Region*)alignUpPointer((char*)getPayload(region) + size);
     region->setTotalSize((char*)split - (char*)region);
     size_t totalSplitSize = (char*)after - (char*)split;
     assert(totalSplitSize >= MIN_REGION_SIZE);
@@ -723,7 +707,7 @@ static Region* newAllocation(size_t size) {
 #ifdef EMMALLOC_DEBUG_LOG
   EM_ASM({ Module.print("    emmalloc.newAllocation getting brand new space") });
 #endif
-  size_t sbrkSize = METADATA_SIZE + alignUpForSize(size, size);
+  size_t sbrkSize = METADATA_SIZE + alignUp(size);
 #ifdef EMMALLOC_DEBUG_LOG
   EM_ASM({ Module.print("    emmalloc.newAllocation getting brand new space") });
 #endif
@@ -737,7 +721,7 @@ static Region* newAllocation(size_t size) {
   }
   // sbrk() results might not be aligned. We assume single-threaded sbrk()
   // access here in order to fix that up
-  void* fixedPtr = alignUpPointerForSize(ptr, size);
+  void* fixedPtr = alignUpPointer(ptr);
   if (ptr != fixedPtr) {
 #ifdef EMMALLOC_DEBUG_LOG
     EM_ASM({ Module.print("    emmalloc.newAllocation fixing alignment") });
