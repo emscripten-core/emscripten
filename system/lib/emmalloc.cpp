@@ -35,6 +35,7 @@
  *
  *  - Optimizations for small allocations that are not multiples of 8, like
  *    12 and 20 (which take 24 and 32 bytes respectively)
+ *
  */
 
 #include <assert.h>
