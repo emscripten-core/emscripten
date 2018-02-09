@@ -14,6 +14,8 @@ struct __emscripten_fetch_queue
 	int queueSize;
 };
 
+static void emscripten_fetch_free(emscripten_fetch_t *fetch);
+
 extern "C" {
 	void emscripten_start_fetch(emscripten_fetch_t *fetch);
 	__emscripten_fetch_queue *_emscripten_get_fetch_work_queue();
@@ -72,24 +74,41 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 	fetch->id = globalFetchIdCounter++; // TODO: make this thread-safe!
 	fetch->userData = fetch_attr->userData;
 	fetch->url = strdup(url);
+	if (!fetch->url)
+	{
+		emscripten_fetch_free(fetch);
+		return 0;
+	}
 	fetch->__attributes = *fetch_attr;
-	fetch->__attributes.destinationPath = fetch->__attributes.destinationPath ? strdup(fetch->__attributes.destinationPath) : 0;
-	fetch->__attributes.userName = fetch->__attributes.userName ? strdup(fetch->__attributes.userName) : 0;
-	fetch->__attributes.password = fetch->__attributes.password ? strdup(fetch->__attributes.password) : 0;
+
+#define SAFE_STRDUP(s)                  \
+  if (s)                                \
+  {                                     \
+    s = strdup(s);                      \
+    if (!s)                             \
+    {                                   \
+      emscripten_fetch_free(fetch);     \
+      return 0;                         \
+    }                                   \
+  }
+
+	SAFE_STRDUP(fetch->__attributes.destinationPath);
+	SAFE_STRDUP(fetch->__attributes.userName);
+	SAFE_STRDUP(fetch->__attributes.password);
 	if (fetch->__attributes.requestHeaders)
 	{
 		size_t headersCount;
-		for(headersCount = 0; fetch->__attributes.requestHeaders[headersCount]; ++headersCount);
+		for (headersCount = 0; fetch->__attributes.requestHeaders[headersCount]; ++headersCount);
 		const char** headers = (const char**)malloc((headersCount + 1) * sizeof(const char*));
-		if(!headers)
+		if (!headers)
 		{
 			emscripten_fetch_free(fetch);
 			return 0;
 		}
-		for(size_t i = 0; i < headersCount; ++i)
+		for (size_t i = 0; i < headersCount; ++i)
 		{
 			headers[i] = strdup(fetch->__attributes.requestHeaders[i]);
-			if(!headers[i])
+			if (!headers[i])
 			{
 				emscripten_fetch_free(fetch);
 				return 0;
@@ -98,18 +117,9 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 		headers[headersCount] = 0;
 		fetch->__attributes.requestHeaders = headers;
 	}
-	fetch->__attributes.overriddenMimeType = fetch->__attributes.overriddenMimeType ? strdup(fetch->__attributes.overriddenMimeType) : 0;
-	if (fetch->__attributes.requestData && fetch->__attributes.requestDataSize)
-	{
-		char* data = (char*)malloc(fetch->__attributes.requestDataSize);
-		if(!data)
-		{
-			emscripten_fetch_free(fetch);
-			return 0;
-		}
-		memcpy(data, fetch->__attributes.requestData, fetch->__attributes.requestDataSize);
-		fetch->__attributes.requestData = data;
-	}
+	SAFE_STRDUP(fetch->__attributes.overriddenMimeType);
+
+#undef SAFE_STRDUP
 
 #if __EMSCRIPTEN_PTHREADS__
 	// Depending on the type of fetch, we can either perform it in the same Worker/thread than the caller, or we might need
@@ -182,7 +192,7 @@ EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch)
 	return EMSCRIPTEN_RESULT_SUCCESS;
 }
 
-void emscripten_fetch_free(emscripten_fetch_t *fetch)
+static void emscripten_fetch_free(emscripten_fetch_t *fetch)
 {
 	fetch->id = 0;
 	free((void*)fetch->data);
@@ -197,6 +207,5 @@ void emscripten_fetch_free(emscripten_fetch_t *fetch)
 		free((void*)fetch->__attributes.requestHeaders);
 	}
 	free((void*)fetch->__attributes.overriddenMimeType);
-	free((void*)fetch->__attributes.requestData);
 	free(fetch);
 }
