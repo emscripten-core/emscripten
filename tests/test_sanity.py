@@ -315,11 +315,12 @@ class sanity(RunnerCore):
 
     try:
       os.environ['EM_IGNORE_SANITY'] = '1'
-      for version, succeed in [('v0.7.9', False),
-                               ('v0.8.0', True),
-                               ('v0.8.1', True),
-                               ('v0.10.21-pre', True),
+      for version, succeed in [('v0.8.0', False),
+                               ('v4.1.0', False),
+                               ('v4.1.1', True),
+                               ('v4.2.3-pre', True),
                                ('cheez', False)]:
+        print(version, succeed)
         f = open(path_from_root('tests', 'fake', 'nodejs'), 'w')
         f.write('#!/bin/sh\n')
         f.write('''if [ $1 = "--version" ]; then
