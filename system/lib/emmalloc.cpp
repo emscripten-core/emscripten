@@ -394,7 +394,7 @@ static void stopUsing(Region* region) {
   }
 }
 
-// Extends the last region's payload to a certain size. Returns 1 if successful,
+// Extends the last region to a certain size. Returns 1 if successful,
 // 0 if an error occurred in sbrk().
 static int extendLastRegion(size_t size) {
 #ifdef EMMALLOC_DEBUG_LOG
@@ -432,7 +432,9 @@ static void possiblySplitRemainder(Region* region, size_t size) {
   Region* split = (Region*)alignUpForSize(payload + size, splittableSize);
   // Alignment might change things (moving the region up to an aligned
   // address means less bytes to split off).
+EM_ASM({ console.log([$0, $1, $2, $3, $4]) }, payload, size, payload + size, split, splittableSize);
   splittableSize = size_t(payload) + payloadSize - (size_t)split;
+EM_ASM({ console.log([$0, $1, $2, $3, $4]) }, payload, size, payload + size, split, splittableSize);
   assert(split == alignUpForSize(payload + size, splittableSize));
   // Room for a minimal region is definitely worth splitting. Otherwise,
   // if we don't have room for a full region, but we do have an allocation
@@ -451,7 +453,7 @@ static void possiblySplitRemainder(Region* region, size_t size) {
     splittableSize += extra;
     // The change should not make us unaligned.
     assert(split == alignUpForSize(payload + size, splittableSize));
-    if (extendLastRegion(METADATA_SIZE + payloadSize + extra)) {
+    if (extendLastRegion(payloadSize + extra)) {
       // Success.
       splittableSize += extra;
       assert(splittableSize >= MIN_REGION_SIZE);

@@ -32,9 +32,7 @@ void stage(const char* name) {
   }, name);
 }
 
-const size_t MIN_ALLOC = 8;
-const size_t ALLOC_FACTOR = 4;
-const size_t METADATA = 8;
+const size_t ALLOCATION_UNIT = 8;
 
 void basics() {
   stage("basics");
@@ -50,10 +48,10 @@ void basics() {
   stage("allocate 10");
   assert(second == first);
   void* third = malloc(10);
-  assert(size_t(third) == size_t(first) + ((100 + MIN_ALLOC - 1)&(-MIN_ALLOC)) + MIN_ALLOC); // allocation units are multiples of MIN_ALLOC
+  assert(size_t(third) == size_t(first) + ((100 + ALLOCATION_UNIT - 1)&(-ALLOCATION_UNIT)) + ALLOCATION_UNIT); // allocation units are multiples of ALLOCATION_UNIT
   stage("allocate 10 more");
   void* four = malloc(10);
-  assert(size_t(four) == size_t(third) + (2*MIN_ALLOC) + MIN_ALLOC); // payload (10 = 2 allocation units) and metadata
+  assert(size_t(four) == size_t(third) + (2*ALLOCATION_UNIT) + ALLOCATION_UNIT); // payload (10 = 2 allocation units) and metadata
   stage("free the first");
   free(second);
   stage("several temp alloc/frees");
@@ -69,12 +67,10 @@ void basics() {
     check_where_we_would_malloc(i, first);
   }
   stage("8/4 issues");
+  emmalloc_blank_slate_from_orbit();
   for (int k = 0; k < 2; k++) {
     for (int i = 1; i < 20; i++) {
       for (int j = 1; j < 20; j++) {
-        emmalloc_blank_slate_from_orbit();
-        void* pre = NULL;
-        if (k) pre = malloc(4);
         void* first = malloc(i);
         char* second = (char*)first;
         // 8 allocated bytes must be 8-byte aligned, less is just 4-byte
@@ -83,7 +79,7 @@ void basics() {
           second += 8; // minimum allocation unit is 8
         } else {
           assert(size_t(first) % 8 == 0);
-          second += (i + 3) & -4; // first payload is aligned to a muliple of 4
+          second += (i + 3) & -3; // first payload is aligned to a muliple of 4
         }
         second += 8; // metadata, fixed size
         if (j >= 8) {
@@ -92,11 +88,13 @@ void basics() {
             second += 4;
           }
         }
+printf("%d, %d  %d, %d\n", i, j, first, second);
         check_where_we_would_malloc(j, second);
         free(first);
-        free(pre);
       }
     }
+    // do it again, with 4 more bytes at the front
+    malloc(4);
   }
 }
 
@@ -121,29 +119,22 @@ void blank_slate() {
 void previous_sbrk() {
   stage("previous_sbrk");
   emmalloc_blank_slate_from_orbit();
-  while (size_t(sbrk(0)) % MIN_ALLOC != 0) {
-    sbrk(1);
-  }
   void* old = sbrk(0);
+  assert((size_t)old % ALLOCATION_UNIT == 0);
   sbrk(3); // unalign things
   void* other = malloc(10);
   free(other);
   assert(other != old);
-  assert((char*)other == (char*)old + 2 * MIN_ALLOC);
+  assert((char*)other == (char*)old + 2 * ALLOCATION_UNIT);
 }
 
 void min_alloc() {
   stage("min_alloc");
+  emmalloc_blank_slate_from_orbit();
+  void* start = check_where_we_would_malloc(1);
   for (int i = 1; i < 100; i++) {
-    emmalloc_blank_slate_from_orbit();
-    void* start = check_where_we_would_malloc(1);
     void* temp = malloc(i);
-    char* expected = (char*)start + METADATA;
-    if (i < MIN_ALLOC) {
-      expected += MIN_ALLOC;
-    } else {
-      expected += ALLOC_FACTOR * ((i + ALLOC_FACTOR - 1) / ALLOC_FACTOR);
-    }
+    void* expected = (char*)start + ALLOCATION_UNIT + ALLOCATION_UNIT * ((i + ALLOCATION_UNIT - 1) / ALLOCATION_UNIT);
     check_where_we_would_malloc(1, expected);
     free(temp);
   }
