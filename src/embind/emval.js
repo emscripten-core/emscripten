@@ -412,6 +412,13 @@ var LibraryEmVal = {
     handle = requireHandle(handle);
     return __emval_register(typeof handle);
   },
+
+  _emval_instanceof__deps: ['_emval_register', '$requireHandle'],
+  _emval_instanceof: function(object, constructor) {
+    object = requireHandle(object);
+    constructor = requireHandle(constructor);
+    return __emval_register(object instanceof constructor);
+  },
 };
 
 mergeInto(LibraryManager.library, LibraryEmVal);

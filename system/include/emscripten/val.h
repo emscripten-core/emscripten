@@ -85,6 +85,7 @@ namespace emscripten {
                 const char* methodName,
                 EM_VAR_ARGS argv);
             EM_VAL _emval_typeof(EM_VAL value);
+            EM_VAL _emval_instanceof(EM_VAL object, EM_VAL constructor);
         }
 
         template<const char* address>
@@ -272,7 +273,6 @@ namespace emscripten {
         // missing operators:
         // * delete
         // * in
-        // * instanceof
         // * ! ~ - + ++ --
         // * * / %
         // * + -
@@ -445,6 +445,10 @@ namespace emscripten {
 // Prefer calling val::typeOf() over val::typeof(), since this form works in both C++11 and GNU++11 build modes. "typeof" is a reserved word in GNU++11 extensions.
         val typeOf() const {
             return val(_emval_typeof(handle));
+        }
+
+        val instanceof(const val& v) const {
+          return val(_emval_instanceof(handle, v.handle));
         }
 
     private:
