@@ -399,8 +399,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_align_moar(self):
     self.emcc_args = self.emcc_args + ['-msse']
     def test():
-      # hardcoded addresses, for 2 common global_base values.
-      # this tracks if this ever changes by surprise. will need normal updates.
       self.do_run(r'''
 #include <xmmintrin.h>
 #include <stdio.h>
@@ -419,12 +417,10 @@ __m128 m;
 
 int main()
 {
-    printf("Alignment: %d addr: 0x%x\n", ((int)&v) % 16, (int)&v);
-    printf("Alignment: %d addr: 0x%x\n", ((int)&m) % 16, (int)&m);
+    printf("Alignment: %d\n", ((int)&v) % 16);
+    printf("Alignment: %d\n", ((int)&m) % 16);
 }
-    ''', ('Alignment: 0 addr: 0xb20\nAlignment: 0 addr: 0xb60\n',   # asmjs
-          'Alignment: 0 addr: 0xf10\nAlignment: 0 addr: 0xf50\n',   # asm2wasm
-          'Alignment: 0 addr: 0x410\nAlignment: 0 addr: 0x450\n',)) # wasm_backend
+    ''', 'Alignment: 0\nAlignment: 0\n')
 
     test()
     print('relocatable')
