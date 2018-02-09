@@ -119,7 +119,7 @@ static void* alignUpForSize(void* ptr, size_t forSize) {
   }
 }
 
-int isAlignedForSize(void* ptr, size_t size) {
+static int isAlignedForSize(void* ptr, size_t size) {
   return ptr == alignUpForSize(ptr, size);
 }
 
@@ -240,8 +240,13 @@ static void* getAfter(Region* region) {
 //
 // Note that there is no freelist for 2^32, as that amount can
 // never be allocated.
+//
+// The freelist indexes normally go from 3 (2^3 == 8, ALLOC_UNIT),
+// but if an item of size 8 is not aligned it will go into the
+// lower index of 2. Speculative freelist tries can get it from
+// there.
 
-static const size_t MIN_FREELIST_INDEX = 3;  // 8 == ALLOC_UNIT
+static const size_t MIN_FREELIST_INDEX = 2;  // 8 == ALLOC_UNIT
 static const size_t MAX_FREELIST_INDEX = 32; // uint32_t
 
 static FreeInfo* freeLists[MAX_FREELIST_INDEX] = {
@@ -253,20 +258,29 @@ static FreeInfo* freeLists[MAX_FREELIST_INDEX] = {
 
 // Global utilities
 
+// Items in the freelist at this index must be at least this large.
+static size_t getMinSizeForFreeListIndex(size_t index) {
+  return 1 << index;
+}
+
 // The freelist index is where we would appear in a freelist if
 // we were one. It is a list of items of size at least the power
-// of 2 that lower bounds us.
-static size_t getFreeListIndex(size_t size) {
-  assert(1 << MIN_FREELIST_INDEX == ALLOC_UNIT);
+// of 2 that lower bounds us, and with proper alignment.
+static size_t getFreeListIndex(size_t size, void* payload) {
+  assert((1 << MIN_FREELIST_INDEX) == (ALLOC_UNIT >> 1));
   assert(size > 0);
   if (size < ALLOC_UNIT) size = ALLOC_UNIT;
   // We need a lower bound here, as the list contains things
   // that can contain at least a power of 2.
   size_t index = lowerBoundPowerOf2(size);
-  assert(MIN_FREELIST_INDEX <= index && index < MAX_FREELIST_INDEX);
+  // TODO: this loop could be a few ifs.
+  while (!isAlignedForSize(payload, getMinSizeForFreeListIndex(index))) {
+    index--;
+  }
 #ifdef EMMALLOC_DEBUG_LOG
-  EM_ASM({ Module.print("  emmalloc.getFreeListIndex " + [$0, $1]) }, size, index);
+  EM_ASM({ Module.print("  emmalloc.getFreeListIndex " + [$0, $1, $2]) }, size, payload, index);
 #endif
+  assert(MIN_FREELIST_INDEX <= index && index < MAX_FREELIST_INDEX);
   return index;
 }
 
@@ -274,20 +288,18 @@ static size_t getFreeListIndex(size_t size) {
 // items that are all big enough for us. This is computed using
 // an upper bound power of 2.
 static size_t getBigEnoughFreeListIndex(size_t size) {
+  assert((1 << MIN_FREELIST_INDEX) == (ALLOC_UNIT >> 1));
   assert(size > 0);
-  size_t index = getFreeListIndex(size);
-  // If we're a power of 2, the lower and upper bounds are the
-  // same. Otherwise, add one.
+  if (size < ALLOC_UNIT) size = ALLOC_UNIT;
+  // Start with a lower bound.
+  size_t index = lowerBoundPowerOf2(size);
+  // If we weren't exact in the lower bound, add one.
   if (!isPowerOf2(size)) index++;
 #ifdef EMMALLOC_DEBUG_LOG
   EM_ASM({ Module.print("  emmalloc.getBigEnoughFreeListIndex " + [$0, $1]) }, size, index);
 #endif
+  assert(MIN_FREELIST_INDEX <= index && index < MAX_FREELIST_INDEX);
   return index;
-}
-
-// Items in the freelist at this index must be at least this large.
-static size_t getMinSizeForFreeListIndex(size_t index) {
-  return 1 << index;
 }
 
 // Items in the freelist at this index must be smaller than this.
@@ -300,7 +312,7 @@ static void removeFromFreeList(Region* region) {
   EM_ASM({ Module.print("  emmalloc.removeFromFreeList " + $0) },region);
 #endif
   assert(!region->getUsed());
-  size_t index = getFreeListIndex(getMaxPayload(region));
+  size_t index = getFreeListIndex(getMaxPayload(region), getPayload(region));
   FreeInfo* freeInfo = &region->freeInfo();
   if (freeLists[index] == freeInfo) {
     freeLists[index] = freeInfo->next();
@@ -318,7 +330,7 @@ static void addToFreeList(Region* region) {
   EM_ASM({ Module.print("  emmalloc.addToFreeList " + $0) }, region);
 #endif
   assert(!region->getUsed());
-  size_t index = getFreeListIndex(getMaxPayload(region));
+  size_t index = getFreeListIndex(getMaxPayload(region), getPayload(region));
   FreeInfo* freeInfo = &region->freeInfo();
   FreeInfo* last = freeLists[index];
   freeLists[index] = freeInfo;
@@ -338,7 +350,7 @@ static int mergeIntoExistingFreeRegion(Region* region) {
   int merged = 0;
   Region* prev = region->prev();
   Region* next = region->next();
-  if (prev && !prev->getUsed()) {
+  if (prev && !prev->getUsed() && isAlignedForSize(getPayload(prev), getMaxPayload(prev) + region->getTotalSize())) {
     // Merge them.
 #ifdef EMMALLOC_DEBUG_LOG
     EM_ASM({ Module.print("  emmalloc.mergeIntoExistingFreeRegion merge into prev " + $0) }, prev);
@@ -353,7 +365,7 @@ static int mergeIntoExistingFreeRegion(Region* region) {
     }
     if (next) {
       // We may also be able to merge with the next, keep trying.
-      if (!next->getUsed()) {
+      if (!next->getUsed() && isAlignedForSize(getPayload(prev), getMaxPayload(prev) + next->getTotalSize())) {
 #ifdef EMMALLOC_DEBUG_LOG
         EM_ASM({ Module.print("  emmalloc.mergeIntoExistingFreeRegion also merge into next " + $0) }, next);
 #endif
@@ -369,7 +381,7 @@ static int mergeIntoExistingFreeRegion(Region* region) {
     addToFreeList(prev);
     return 1;
   }
-  if (next && !next->getUsed()) {
+  if (next && !next->getUsed() && isAlignedForSize(getPayload(region), getMaxPayload(region) + next->getTotalSize())) {
 #ifdef EMMALLOC_DEBUG_LOG
     EM_ASM({ Module.print("  emmalloc.mergeIntoExistingFreeRegion merge into next " + $0) }, next);
 #endif
@@ -498,6 +510,7 @@ static Region* useFreeInfo(FreeInfo* freeInfo, size_t size) {
 #ifdef EMMALLOC_DEBUG_LOG
   EM_ASM({ Module.print("  emmalloc.useFreeInfo " + [$0, $1]) }, region, size);
 #endif
+  assert(isAlignedForSize(getPayload(region), size));
   // This region is no longer free
   removeFromFreeList(region);
   // This region is now in use
@@ -585,7 +598,11 @@ static void emmalloc_validate_all() {
       }, region);
       assert(getAfter(region) <= end);
       assert(getMaxPayload(region) >= getMinSizeForFreeListIndex(i));
-      assert(getMaxPayload(region) <  getMaxSizeForFreeListIndex(i));
+      if (getMaxPayload(region) >= getMaxSizeForFreeListIndex(i)) {
+        // We may put a larger item in a lower index depending on alignment.
+        assert(!isAlignedForSize(getPayload(region), getMinSizeForFreeListIndex(i + 1)));
+      }
+      assert(isAlignedForSize(getPayload(region), getMinSizeForFreeListIndex(i)));
       prev = curr;
       curr = curr->next();
     }
@@ -674,6 +691,7 @@ static Region* tryFromFreeList(size_t size) {
     size_t tries = 0;
     while (freeInfo && tries < SPECULATIVE_FREELIST_TRIES) {
       Region* region = fromFreeInfo(freeInfo);
+      // See if it's big enough and aligned enough.
       if (getMaxPayload(region) >= size &&
           isAlignedForSize(getPayload(region), size)) {
         // Success, use it

@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <unistd.h> // for sbrk()
 
-const int BINS = 2048;
+const int BINS = 1024;
 const int BIN_MASK = BINS - 1;
-const int ITERS = 20 * 1024 * 1024;
-const int MIN_SIZE = 1; // 1 is somewhat bad, tiny allocations are not good for us
-const int MAX_SIZE = 4096;
+const int ITERS = 1 * 1024 * 1024;
+const int MIN_SIZE = 12; // 1 is somewhat bad, tiny allocations are not good for us
+const int MAX_SIZE = 12;
 const int SIZE_MASK = 0;
 const bool POLL_SBRK = false;
 const bool USE_REALLOC_UP = true; // the bad one!

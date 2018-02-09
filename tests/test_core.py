@@ -732,10 +732,10 @@ base align: 0, 0, 0, 0'''])
       self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() + open(path_from_root('tests', 'core', 'test_emmalloc.cpp')).read(),
                   open(path_from_root('tests', 'core', 'test_emmalloc.txt')).read())
     print('normal')
-    test()
+    #test()
     print('debug')
     self.emcc_args += ['-DEMMALLOC_DEBUG']
-    test()
+    #test()
     print('debug log')
     self.emcc_args += ['-DEMMALLOC_DEBUG_LOG']
     self.emcc_args += ['-DRANDOM_ITERS=130']
