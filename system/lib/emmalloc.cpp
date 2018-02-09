@@ -379,7 +379,7 @@ static void stopUsing(Region* region) {
   }
 }
 
-// Extends the last region to a certain size. Returns 1 if successful,
+// Extends the last region to a certain payload size. Returns 1 if successful,
 // 0 if an error occurred in sbrk().
 static int extendLastRegion(size_t size) {
 #ifdef EMMALLOC_DEBUG_LOG
@@ -898,6 +898,80 @@ static struct mallinfo emmalloc_mallinfo() {
   return info;
 }
 
+// An aligned allocation. This is a rarer allocation path, and is
+// much less optimized - the assumption is that it is used for few
+// large allocations.
+static void* alignedAllocation(size_t size, size_t alignment) {
+  assert(alignment > ALIGNMENT);
+  // Alignments like 12 are tricky for us - we want a mulitple of
+  // our ALIGNMENT.
+  while (alignment % ALIGNMENT != 0) {
+    alignment *= 2;
+  }
+  assert(alignment % ALIGNMENT == 0);
+  // Ensure a region before us, which we may enlarge as necessary.
+  if (!lastRegion) {
+    // This allocation is not freeable, but there is one at most.
+    void* prev = emmalloc_malloc(MIN_REGION_SIZE);
+    if (!prev) return NULL;
+  }
+  // See if we need to enlarge the previous region in order to get
+  // us properly aligned. Take into account that our region will
+  // start with METADATA_SIZE of space.
+  size_t address = size_t(getAfter(lastRegion)) + METADATA_SIZE;
+  size_t error = address % alignment;
+  if (error != 0) {
+    // E.g. if we want alignment 24, and have address 16, then we
+    // need to add 8.
+    size_t extra = alignment - error;
+    assert(extra % ALIGNMENT == 0);
+    if (!extendLastRegion(getMaxPayload(lastRegion) + extra)) {
+      return NULL;
+    }
+    address = size_t(getAfter(lastRegion)) + METADATA_SIZE;
+    error = address % alignment;
+    assert(error == 0);
+  }
+  void* ptr = emmalloc_malloc(size);
+  if (!ptr) return NULL;
+  assert(size_t(ptr) == address);
+  assert(size_t(ptr) % alignment == 0);
+  return ptr;
+}
+
+static int isMultipleOfSizeT(size_t size) {
+  return (size & 3) == 0;
+}
+
+static int emmalloc_posix_memalign(void **memptr, size_t alignment, size_t size) {
+  *memptr = NULL;
+  if (!isPowerOf2(alignment) && !isMultipleOfSizeT(alignment)) {
+    return 22; // EINVAL
+  }
+  if (size == 0) {
+    return 0;
+  }
+  if (alignment <= ALIGNMENT) {
+    // Use normal allocation path, which will provide that alignment.
+    *memptr = emmalloc_malloc(size);
+  } else {
+    // Use more sophisticaed alignment-specific allocation path.
+    *memptr = alignedAllocation(size, alignment);
+  }
+  if (!*memptr) {
+    return 12; // ENOMEM
+  }
+  return 0;
+}
+
+static void* emmalloc_memalign(size_t alignment, size_t size) {
+  void* ptr;
+  if (emmalloc_posix_memalign(&ptr, alignment, size) != 0) {
+    return NULL;
+  }
+  return ptr;
+}
+
 // Public API. This is a thin wrapper around our mirror of it, adding
 // logging and validation when debugging. Otherwise it should inline
 // out.
@@ -997,6 +1071,54 @@ void* realloc(void *ptr, size_t size) {
 }
 
 EMMALLOC_EXPORT
+int posix_memalign(void **memptr, size_t alignment, size_t size) {
+#ifdef EMMALLOC_DEBUG
+#ifdef EMMALLOC_DEBUG_LOG
+  EM_ASM({ Module.print("emmalloc.posix_memalign") });
+#endif
+  emmalloc_validate_all();
+#ifdef EMMALLOC_DEBUG_LOG
+  emmalloc_dump_all();
+#endif
+#endif
+  int result = emmalloc_posix_memalign(memptr, alignment, size);
+#ifdef EMMALLOC_DEBUG
+#ifdef EMMALLOC_DEBUG_LOG
+  EM_ASM({ Module.print("emmalloc.posix_memalign ==> " + $0) }, result);
+#endif
+#ifdef EMMALLOC_DEBUG_LOG
+  emmalloc_dump_all();
+#endif
+  emmalloc_validate_all();
+#endif
+  return result;
+}
+
+EMMALLOC_EXPORT
+void* memalign(size_t alignment, size_t size) {
+#ifdef EMMALLOC_DEBUG
+#ifdef EMMALLOC_DEBUG_LOG
+  EM_ASM({ Module.print("emmalloc.memalign") });
+#endif
+  emmalloc_validate_all();
+#ifdef EMMALLOC_DEBUG_LOG
+  emmalloc_dump_all();
+#endif
+#endif
+  void* ptr = emmalloc_memalign(alignment, size);
+#ifdef EMMALLOC_DEBUG
+#ifdef EMMALLOC_DEBUG_LOG
+  EM_ASM({ Module.print("emmalloc.memalign ==> " + $0) }, ptr);
+#endif
+#ifdef EMMALLOC_DEBUG_LOG
+  emmalloc_dump_all();
+#endif
+  emmalloc_validate_all();
+#endif
+  return ptr;
+}
+
+EMMALLOC_EXPORT
 struct mallinfo mallinfo() {
 #ifdef EMMALLOC_DEBUG
 #ifdef EMMALLOC_DEBUG_LOG
@@ -1015,7 +1137,7 @@ struct mallinfo mallinfo() {
 // in their code, and make those replacements refer to the original malloc
 // and free from this file.
 // This allows an easy mechanism for hooking into memory allocation.
-#if defined(__EMSCRIPTEN__) && !ONLY_MSPACES
+#if defined(__EMSCRIPTEN__)
 extern __typeof(malloc) emscripten_builtin_malloc __attribute__((weak, alias("malloc")));
 extern __typeof(free) emscripten_builtin_free __attribute__((weak, alias("free")));
 #endif
