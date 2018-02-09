@@ -10,8 +10,8 @@
  *
  * Invariants:
  *
- *  - Metadata is 16 bytes, allocation payload is a
- *    multiple of 16 bytes.
+ *  - Metadata is 8 bytes, allocation payload is a
+ *    multiple of 8 bytes.
  *  - All regions of memory are adjacent.
  *  - Due to the above, after initial alignment fixing, all
  *    regions are aligned.
@@ -33,6 +33,8 @@
  *
  * TODO
  *
+ *  - Optimizations for small allocations that are not multiples of 8, like
+ *    12 and 20 (which take 24 and 32 bytes respectively)
  *  - posix_memalign() (test_aligned_alloc)
  *  - memalign() (test_mmap, test_openjpeg)
  */

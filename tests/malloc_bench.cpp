@@ -4,10 +4,10 @@
 
 const int BINS = 2048;
 const int BIN_MASK = BINS - 1;
-const int ITERS = 20 * 1024 * 1024;
-const int MIN_SIZE = 1; // 1 is somewhat bad, tiny allocations are not good for us
-const int MAX_SIZE = 4096;
-const int SIZE_MASK = 0;
+const int ITERS = 5 * 1024 * 1024;
+const int MIN_SIZE = 32; // 1 is somewhat bad, tiny allocations are not good for us
+const int MAX_SIZE = 1024;
+const int SIZE_MASK = 7;
 const bool POLL_SBRK = false;
 const bool USE_REALLOC_UP = true; // the bad one!
 const bool USE_REALLOC_DOWN = true;
