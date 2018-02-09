@@ -35,8 +35,7 @@
  *
  *  - Optimizations for small allocations that are not multiples of 8, like
  *    12 and 20 (which take 24 and 32 bytes respectively)
- *  - posix_memalign() (test_aligned_alloc)
- *  - memalign() (test_mmap, test_openjpeg)
+ *  - Benchmark in -Os
  */
 
 #include <assert.h>
