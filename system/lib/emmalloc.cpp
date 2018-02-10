@@ -281,7 +281,6 @@ static void removeFromFreeList(Region* region) {
 #ifdef EMMALLOC_DEBUG_LOG
   EM_ASM({ Module.print("  emmalloc.removeFromFreeList " + $0) },region);
 #endif
-  assert(!region->getUsed());
   size_t index = getFreeListIndex(getMaxPayload(region));
   FreeInfo* freeInfo = &region->freeInfo();
   if (freeLists[index] == freeInfo) {
@@ -299,7 +298,6 @@ static void addToFreeList(Region* region) {
 #ifdef EMMALLOC_DEBUG_LOG
   EM_ASM({ Module.print("  emmalloc.addToFreeList " + $0) }, region);
 #endif
-  assert(!region->getUsed());
   assert(getAfter(region) <= sbrk(0));
   size_t index = getFreeListIndex(getMaxPayload(region));
   FreeInfo* freeInfo = &region->freeInfo();
@@ -378,6 +376,22 @@ static void stopUsing(Region* region) {
   }
 }
 
+// Grow a region. If not in use, we may need to be in another
+// freelist.
+// TODO: We can calculate that, to save some work.
+static void growRegion(Region* region, size_t sizeDelta) {
+#ifdef EMMALLOC_DEBUG_LOG
+  EM_ASM({ Module.print("  emmalloc.growRegion " + [$0, $1]) }, region, sizeDelta);
+#endif
+  if (!region->getUsed()) {
+    removeFromFreeList(region);
+  }
+  region->incTotalSize(sizeDelta);
+  if (!region->getUsed()) {
+    addToFreeList(region);
+  }
+}
+
 // Extends the last region to a certain payload size. Returns 1 if successful,
 // 0 if an error occurred in sbrk().
 static int extendLastRegion(size_t size) {
@@ -396,8 +410,8 @@ static int extendLastRegion(size_t size) {
   }
   // sbrk() should give us new space right after the last region.
   assert(ptr == getAfter(lastRegion));
-  lastRegion->incTotalSize(sbrkSize);
-  lastRegion->setUsed(1);
+  // Increment the region's size.
+  growRegion(lastRegion, sbrkSize);
   return 1;
 }
 
@@ -553,6 +567,7 @@ static void emmalloc_validate_all() {
         assert(Module.emmallocDebug.regions[region], "free region not in list");
       }, region);
       assert(getAfter(region) <= end);
+      assert(!region->getUsed());
       assert(getMaxPayload(region) >= getMinSizeForFreeListIndex(i));
       assert(getMaxPayload(region) <  getMaxSizeForFreeListIndex(i));
       prev = curr;
@@ -682,41 +697,17 @@ static Region* tryFromFreeList(size_t size) {
   return NULL;
 }
 
-static Region* newAllocation(size_t size) {
+// Allocate a completely new region.
+static Region* allocateRegion(size_t size) {
 #ifdef EMMALLOC_DEBUG_LOG
-  EM_ASM({ Module.print("  emmalloc.newAllocation " + $0) }, size);
-#endif
-  assert(size > 0);
-  if (lastRegion) {
-    // If the last region is free, we can extend it rather than leave it
-    // as fragmented free spce between allocated regions. This is also
-    // more efficient and simple as well.
-    if (!lastRegion->getUsed()) {
-#ifdef EMMALLOC_DEBUG_LOG
-     EM_ASM({ Module.print("    emmalloc.newAllocation extending lastRegion at " + $0) }, lastRegion);
-#endif
-      // Remove it first, before we adjust the size (which affects which list
-      // it should be in).
-      removeFromFreeList(lastRegion);
-      if (extendLastRegion(size)) {
-        return lastRegion;
-      } else {
-        return NULL;
-      }
-    }
-  }
-#ifdef EMMALLOC_DEBUG_LOG
-  EM_ASM({ Module.print("    emmalloc.newAllocation getting brand new space") });
+  EM_ASM({ Module.print("  emmalloc.allocateRegion") });
 #endif
   size_t sbrkSize = METADATA_SIZE + alignUp(size);
-#ifdef EMMALLOC_DEBUG_LOG
-  EM_ASM({ Module.print("    emmalloc.newAllocation getting brand new space") });
-#endif
   void* ptr = sbrk(sbrkSize);
   if (ptr == (void*)-1) {
     // sbrk() failed, we failed.
 #ifdef EMMALLOC_DEBUG_LOG
-    EM_ASM({ Module.print("    emmalloc.newAllocation sbrk failure") });
+    EM_ASM({ Module.print("    emmalloc.allocateRegion sbrk failure") });
 #endif
     return NULL;
   }
@@ -725,7 +716,7 @@ static Region* newAllocation(size_t size) {
   void* fixedPtr = alignUpPointer(ptr);
   if (ptr != fixedPtr) {
 #ifdef EMMALLOC_DEBUG_LOG
-    EM_ASM({ Module.print("    emmalloc.newAllocation fixing alignment") });
+    EM_ASM({ Module.print("    emmalloc.allocateRegion fixing alignment") });
 #endif
     size_t extra = (char*)fixedPtr - (char*)ptr;
     void* extraPtr = sbrk(extra);
@@ -762,6 +753,38 @@ static Region* newAllocation(size_t size) {
   region->setTotalSize(sbrkSize);
   useRegion(region, size);
   return region;
+}
+
+// Allocate new memory. This may reuse part of the last region, only
+// allocating what we need.
+static Region* newAllocation(size_t size) {
+#ifdef EMMALLOC_DEBUG_LOG
+  EM_ASM({ Module.print("  emmalloc.newAllocation " + $0) }, size);
+#endif
+  assert(size > 0);
+  if (lastRegion) {
+    // If the last region is free, we can extend it rather than leave it
+    // as fragmented free spce between allocated regions. This is also
+    // more efficient and simple as well.
+    if (!lastRegion->getUsed()) {
+#ifdef EMMALLOC_DEBUG_LOG
+      EM_ASM({ Module.print("    emmalloc.newAllocation extending lastRegion at " + $0) }, lastRegion);
+#endif
+      // Remove it first, before we adjust the size (which affects which list
+      // it should be in). Also mark it as used so extending it doesn't do
+      // freelist computations; we'll undo that if we fail.
+      lastRegion->setUsed(1);
+      removeFromFreeList(lastRegion);
+      if (extendLastRegion(size)) {
+        return lastRegion;
+      } else {
+        lastRegion->setUsed(0);
+        return NULL;
+      }
+    }
+  }
+  // Otherwise, get a new region.
+  return allocateRegion(size);
 }
 
 // Internal mirror of public API.
@@ -901,8 +924,27 @@ static struct mallinfo emmalloc_mallinfo() {
 // much less optimized - the assumption is that it is used for few
 // large allocations.
 static void* alignedAllocation(size_t size, size_t alignment) {
+#ifdef EMMALLOC_DEBUG_LOG
+  EM_ASM({ Module.print("  emmalloc.alignedAllocation") });
+#endif
   assert(alignment > ALIGNMENT);
   assert(alignment % ALIGNMENT == 0);
+  // Try from the freelist first. We may be lucky and get something
+  // properly aligned.
+  // TODO: Perhaps look more carefully, checking alignment as we go,
+  //       using multiple tries?
+  Region* fromFreeList = tryFromFreeList(size + alignment);
+  if (fromFreeList && size_t(getPayload(fromFreeList)) % alignment == 0) {
+    // Luck has favored us.
+    return getPayload(fromFreeList);
+  } else if (fromFreeList) {
+    stopUsing(fromFreeList);
+  }
+  // No luck from free list, so do a new allocation which we can
+  // force to be aligned.
+#ifdef EMMALLOC_DEBUG_LOG
+  EM_ASM({ Module.print("    emmalloc.alignedAllocation new allocation") });
+#endif
   // Ensure a region before us, which we may enlarge as necessary.
   if (!lastRegion) {
     // This allocation is not freeable, but there is one at most.
@@ -926,8 +968,9 @@ static void* alignedAllocation(size_t size, size_t alignment) {
     error = address % alignment;
     assert(error == 0);
   }
-  void* ptr = emmalloc_malloc(size);
-  if (!ptr) return NULL;
+  Region* region = allocateRegion(size);
+  if (!region) return NULL;
+  void* ptr = getPayload(region);
   assert(size_t(ptr) == address);
   assert(size_t(ptr) % alignment == 0);
   return ptr;

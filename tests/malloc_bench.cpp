@@ -7,8 +7,9 @@ const int BIN_MASK = BINS - 1;
 const int ITERS = 6 * 1024 * 1024;
 // 8, 32: emmalloc much slower
 // 8, 20: emmalloc much sbrkier and also slower
+// 256, 512: emmalloc much faster
 const int MIN_SIZE = 8;
-const int MAX_SIZE = 32;
+const int MAX_SIZE = 8;
 const int SIZE_MASK = 0;
 const bool POLL_SBRK = false;
 const bool USE_REALLOC_UP = true;
@@ -98,7 +99,7 @@ void randoms() {
     }
   }
   size_t after = (size_t)sbrk(0);
-  printf("max allocated:    %u   (total left should be 0: %u)\n", max_allocated, total_allocated); 
+  printf("max allocated:    %u\n", max_allocated);
   printf("sbrk change:      %u\n", after - before);
   if (POLL_SBRK) {
     printf("sbrk mean change: %.2f\n", (sum_sbrk / double(ITERS)) - before);
