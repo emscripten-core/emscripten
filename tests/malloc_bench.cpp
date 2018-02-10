@@ -1,20 +1,23 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h> // for sbrk()
 
 const int BINS = 32768;
 const int BIN_MASK = BINS - 1;
 const int ITERS = 6 * 1024 * 1024;
-//   8, 32: emmalloc slower
+//  12, 64: emmalloc slower
 //  12, 28: emmalloc much sbrkier and also slower
-// 256, 512: emmalloc much faster
+// 256, 512: emmalloc faster without USE_MEMORY
 const int MIN_SIZE = 12;
-const int MAX_SIZE = 28;
-const int SIZE_MASK = 0;
+const int MAX_SIZE = 12;
+const int SIZE_MASK = 7;
 const bool POLL_SBRK = false;
 const bool USE_REALLOC_UP = true;
 const bool USE_REALLOC_DOWN = true;
 const bool USE_CALLOC = false;
+const bool USE_MEMORY = true;
+const bool USE_SHIFTS = false;
 
 void randoms() {
   srandom(1);
@@ -25,6 +28,9 @@ void randoms() {
   size_t allocated[BINS];
   size_t total_allocated = 0;
   size_t max_allocated = 0;
+  size_t checksum = 0;
+  size_t sizes = 0;
+  size_t allocations = 0;
   for (int i = 0; i < BINS; i++) {
     bins[i] = NULL;
   }
@@ -41,12 +47,15 @@ void randoms() {
     r >>= 1;
     unsigned int shifts = r & 15;
     r >>= 4;
-    if (useShifts) {
+    if (MAX_SIZE) {
+      size = size % (MAX_SIZE + 1);
+    }
+    if (USE_SHIFTS && useShifts) {
       size >>= shifts; // spread out values logarithmically
     }
     if (SIZE_MASK) size = size & ~SIZE_MASK;
-    if (MIN_SIZE && size <= MIN_SIZE) size = MIN_SIZE;
-    if (MAX_SIZE && size >= MAX_SIZE) size = MAX_SIZE;
+    if (MIN_SIZE && size < MIN_SIZE) size = MIN_SIZE;
+    if (MAX_SIZE && size > MAX_SIZE) size = MAX_SIZE;
     //printf("%d\n", size);
     if (alloc || !bins[bin]) {
       if (bins[bin]) {
@@ -77,7 +86,21 @@ void randoms() {
           total_allocated += size;
         }
       }
+      if (bins[bin]) {
+        allocations++;
+        sizes += size;
+      }
+      if (USE_MEMORY && bins[bin]) {
+        for (int i = 0; i < size; i++) {
+          ((char*)(bins[bin]))[i] = i;
+        }
+      }
     } else {
+      if (USE_MEMORY && bins[bin]) {
+        for (int i = 0; i < size; i++) {
+          checksum += ((char*)(bins[bin]))[i];
+        }
+      }
       free(bins[bin]);
       bins[bin] = NULL;
       total_allocated -= allocated[bin];
@@ -99,8 +122,16 @@ void randoms() {
     }
   }
   size_t after = (size_t)sbrk(0);
+  printf("checksum:         %x\n", checksum);
+  printf("allocations:      %d\n", allocations);
+  printf("mean alloc size:  %.2f\n", double(sizes) / allocations);
   printf("max allocated:    %u\n", max_allocated);
-  printf("sbrk change:      %u\n", after - before);
+  double allocs_at_max = max_allocated / (double(sizes) / allocations);
+  printf("allocations #max  %.2f\n", allocs_at_max);
+  size_t sbrk_change = after - before;
+  printf("sbrk chng:        %u\n", sbrk_change);
+  printf("sbrk chng/allocs: %.2f\n", sbrk_change / double(allocs_at_max));
+  printf("overhead:         %.2f\n", -((double(sizes) / allocations) - (sbrk_change / double(allocs_at_max))));
   if (POLL_SBRK) {
     printf("sbrk mean change: %.2f\n", (sum_sbrk / double(ITERS)) - before);
     printf("sbrk max change:  %u\n", max_sbrk - before);
@@ -191,7 +222,7 @@ alon@florida:/tmp/emscripten_temp$ grep "malloc 28\." o | wc -l
 alon@florida:/tmp/emscripten_temp$ grep "malloc 11\." o | wc -l
   15000
 
-dlmalloc, align 16                 align 8      emmalloc  rotated
+dlmalloc, align 16                 align 8      emmalloc  rotated/revolved
 48 => 66                           56.1           56        56
 44                                 48             56        52
 40                                 48.1           48        48

@@ -7,6 +7,7 @@
  *  - Single-threaded.
  *  - sbrk() is used, and nothing else.
  *  - sbrk() will not be accessed by anyone else.
+ *  - sbrk() is very fast in most cases (internal wasm call).
  *
  * Invariants:
  *
