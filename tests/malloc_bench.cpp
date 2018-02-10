@@ -5,11 +5,11 @@
 const int BINS = 32768;
 const int BIN_MASK = BINS - 1;
 const int ITERS = 6 * 1024 * 1024;
-// 8, 32: emmalloc much slower
-// 8, 20: emmalloc much sbrkier and also slower
+//   8, 32: emmalloc slower
+//  12, 28: emmalloc much sbrkier and also slower
 // 256, 512: emmalloc much faster
-const int MIN_SIZE = 8;
-const int MAX_SIZE = 8;
+const int MIN_SIZE = 12;
+const int MAX_SIZE = 28;
 const int SIZE_MASK = 0;
 const bool POLL_SBRK = false;
 const bool USE_REALLOC_UP = true;
@@ -172,5 +172,38 @@ main() caused an 569136 sbrk increase
 alon@determincy:/tmp/emscripten_temp$ mozjs emmalloc_zlib.c.js 
 main() took 1423 milliseconds
 main() caused an 568160 sbrk increase
+
+havlak
+alon@florida:/tmp/emscripten_temp$ grep "malloc" o | wc -l
+2258745
+alon@florida:/tmp/emscripten_temp$ grep "malloc 12\." o | wc -l
+ 948951
+alon@florida:/tmp/emscripten_temp$ grep "malloc 20\." o | wc -l
+ 396242
+alon@florida:/tmp/emscripten_temp$ grep "malloc 16\." o | wc -l
+ 323768
+alon@florida:/tmp/emscripten_temp$ grep "malloc 8\." o | wc -l
+ 241854
+alon@florida:/tmp/emscripten_temp$ grep "malloc 4\." o | wc -l
+ 100826
+alon@florida:/tmp/emscripten_temp$ grep "malloc 28\." o | wc -l
+  50413
+alon@florida:/tmp/emscripten_temp$ grep "malloc 11\." o | wc -l
+  15000
+
+dlmalloc, align 16                 align 8      emmalloc  rotated
+48 => 66                           56.1           56        56
+44                                 48             56        52
+40                                 48.1           48        48
+36                                 40.1           48        44
+32 => 49                           41             40        40
+28                                 32.05          40        36
+24                                 32.05          32        32
+20 => 35                           24.1           32*       28
+16 => 35                           24.1           24        24
+12 => 18                           16.15          24*       20
+ 8 => 18                           16.15          16        16
+ 4 => 18                           16.15          16        16
+
 */
 
