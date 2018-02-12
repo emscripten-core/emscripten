@@ -135,6 +135,8 @@ def build(src, result_libs, args=[]):
 def build_port(port_name, lib_name, params):
   build(C_BARE, [os.path.join('ports-builds', port_name, lib_name)] if lib_name else None, params)
 
+# Check once and cache results
+shared.check_sanity()
 
 operation = sys.argv[1]
 

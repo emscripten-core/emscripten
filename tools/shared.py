@@ -483,30 +483,17 @@ except Exception as e:
 def generate_sanity():
   return EMSCRIPTEN_VERSION + '|' + LLVM_ROOT + '|' + get_clang_version() + ('_wasm' if Settings.WASM_BACKEND else '')
 
-EMCC_SANITY_CHECK_CACHED_TAG_ENV = 'EMCC_SANITY_CHECK_CACHED_TAG'
-EMCC_SANITY_CHECK_IGNORE_CACHE= '#IGNORE#'
+EMCC_SKIP_SANITY_CHECK_NAME = 'EMCC_SKIP_SANITY_CHECK'
 
 def check_sanity(force=False):
   ToolchainProfiler.enter_block('sanity')
   try:
-    if os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
+    if os.environ.get(EMCC_SKIP_SANITY_CHECK_NAME) == '1':
       return
+    if EMCC_SKIP_SANITY_CHECK_NAME not in os.environ:
+      os.environ[EMCC_SKIP_SANITY_CHECK_NAME] = '1'
+
     reason = None
-
-    # Configurations resulting in the same tags
-    # are supposed to perform the same checks
-    tag = 'tag'
-    if Settings.WASM_BACKEND:
-      tag += '_wasm'
-    tag = '#' + tag + '#'
-    previous_tag = os.environ.get(EMCC_SANITY_CHECK_CACHED_TAG_ENV, '')
-
-    if not EMCC_SANITY_CHECK_IGNORE_CACHE in previous_tag:
-      if tag in previous_tag:
-        return
-      else:
-        os.environ[EMCC_SANITY_CHECK_CACHED_TAG_ENV] = previous_tag + tag
-
     if not CONFIG_FILE:
       return # config stored directly in EM_CONFIG => skip sanity checks
     else:

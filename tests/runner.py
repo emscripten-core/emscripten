@@ -214,7 +214,7 @@ class RunnerCore(unittest.TestCase):
           self.has_prev_ll = True
 
     # Cache check results
-    check_sanity()
+    check_sanity(force=True)
 
   def tearDown(self):
     if not self.save_dir:

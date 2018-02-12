@@ -7926,6 +7926,11 @@ int main() {
     if old == '1': return # already the default
     try:
       os.environ['EMCC_WASM_BACKEND'] = '1'
+      if EMCC_SKIP_SANITY_CHECK_NAME in os.environ:
+        # Cached sanity check result was for different configuration
+        del os.environ[EMCC_SKIP_SANITY_CHECK_NAME]
+        check_sanity(force=True)
+
       for args in [[], ['-O1'], ['-O2'], ['-O3'], ['-Os'], ['-Oz']]:
         print(args)
         run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args)
