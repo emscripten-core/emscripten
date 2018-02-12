@@ -8118,3 +8118,15 @@ end
     assert expected in err
     err = run_process(base + ['--embed-files', 'somefile'], stderr=PIPE, check=False).stderr
     assert expected in err
+
+  def test_autotools_shared_check(self):
+    env = os.environ.copy()
+    env['LC_ALL'] = 'C'
+    expected = ': supported targets:.* elf'
+    for python in [PYTHON, 'python', 'python2', 'python3']:
+      try:
+        out = run_process([python, EMCC, '--help'], stdout=PIPE, env=env).stdout
+        assert re.search(expected, out)
+      except OSError:
+        # Ignore missing python aliases.
+        pass
