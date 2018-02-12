@@ -481,10 +481,13 @@ def generate_sanity():
   return EMSCRIPTEN_VERSION + '|' + LLVM_ROOT + '|' + get_clang_version() + ('_wasm' if Settings.WASM_BACKEND else '')
 
 def check_sanity(force=False):
+  # perform the sanity check once in each process: once we check it, set the
+  # skip flag, which lets child processes avoid re-doing the checks
+  if os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
+    return
+  os.environ['EMCC_SKIP_SANITY_CHECK'] = '1'
   ToolchainProfiler.enter_block('sanity')
   try:
-    if os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
-      return
     reason = None
     if not CONFIG_FILE:
       return # config stored directly in EM_CONFIG => skip sanity checks
