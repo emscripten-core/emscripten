@@ -1291,6 +1291,7 @@ int main() {
     self.do_run_in_out_file_test('tests', 'core', 'test_complex', force_c=True)
 
   def test_float_builtins(self):
+    # tests wasm_libc_rt
     if not self.is_wasm_backend(): return self.skip('no __builtin_fmin support in JSBackend')
     self.do_run_in_out_file_test('tests', 'core', 'test_float_builtins')
 
