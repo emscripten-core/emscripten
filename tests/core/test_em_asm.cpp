@@ -4,8 +4,13 @@
 int main() {
   printf("BEGIN\n");
   EM_ASM({ Module['print']("no args works"); });
+
+  // The following two lines are deprecated, test them still.
   printf("  EM_ASM_INT_V returned: %d\n", EM_ASM_INT_V({ Module['print']("no args returning int"); return 12; }));
   printf("  EM_ASM_DOUBLE_V returned: %f\n", EM_ASM_DOUBLE_V({ Module['print']("no args returning double"); return 12.25; }));
+
+  printf("  EM_ASM_INT returned: %d\n", EM_ASM_INT({ Module['print']("no args returning int"); return 12; }));
+  printf("  EM_ASM_DOUBLE returned: %f\n", EM_ASM_DOUBLE({ Module['print']("no args returning double"); return 12.25; }));
 
 #define TEST() \
   FUNC({ Module['print']("  takes ints: " + $0);}, 5); \
