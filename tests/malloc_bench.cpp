@@ -9,8 +9,8 @@ const int ITERS = 6 * 1024 * 1024;
 //  12, 64: emmalloc slower
 //  12, 28: emmalloc much sbrkier and also slower
 // 256, 512: emmalloc faster without USE_MEMORY
-const int MIN_SIZE = 12;
-const int MAX_SIZE = 12;
+const int MIN_SIZE = 16;
+const int MAX_SIZE = 64;
 const int SIZE_MASK = 7;
 const bool POLL_SBRK = false;
 const bool USE_REALLOC_UP = true;

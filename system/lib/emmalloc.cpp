@@ -862,6 +862,7 @@ static void* emmalloc_realloc(void *ptr, size_t size) {
     return NULL;
   }
   Region* region = fromPayload(ptr);
+  assert(region->getUsed());
   // Grow it. First, maybe we can do simple growth in the current region.
   if (size <= getMaxPayload(region)) {
 #ifdef EMMALLOC_DEBUG_LOG
