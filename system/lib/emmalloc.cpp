@@ -540,7 +540,7 @@ static void emmalloc_validate_all() {
     if (prev) {
       assert(getAfter(prev) == curr);
       // Adjacent free regions must be merged.
-      assert(!(!prev->getUsed() && !curr->getUsed()));
+//      assert(!(!prev->getUsed() && !curr->getUsed()));
     }
     assert(getAfter(curr) <= end);
     prev = curr;
@@ -751,8 +751,42 @@ static Region* allocateRegion(size_t size) {
     lastRegion = region;
   }
   // Success, we have new memory
+#ifdef EMMALLOC_DEBUG_LOG
+  EM_ASM({ Module.print("    emmalloc.newAllocation success") });;
+#endif
   region->setTotalSize(sbrkSize);
-  useRegion(region, size);
+  region->setUsed(1);
+  // We just allocated a new region. If it's small, pre-allocate a bunch more
+  // of the same size. This is similar to pool allocation, in that we make
+  // future allocations faster by just picking off the freelist.
+  if (size < 64) {
+    size_t bump = METADATA_SIZE + alignUp(size);
+    assert(bump == alignUp(bump));
+    char* pool = (char*)sbrk(10 * bump);
+    if (pool) {
+#ifdef EMMALLOC_DEBUG_LOG
+      EM_ASM({ Module.print("    emmalloc.newAllocation 'pool' allocating " + [$0, $1, $2]) }, pool, size, bump);
+#endif
+      size_t index = getFreeListIndex(bump - METADATA_SIZE);
+      char* curr = pool;
+      for (int i = 0; i < 10; i++) {
+        Region* region = (Region*)curr;
+        curr += bump;
+        region->setTotalSize(bump);
+        region->setUsed(0);
+        FreeInfo* info = &region->freeInfo();
+        info->prev() = (FreeInfo*)((char*)info - bump);
+        info->next() = (FreeInfo*)((char*)info + bump);
+        region->prev() = lastRegion;
+        lastRegion = region;
+      }
+      Region* first = (Region*)pool;
+      first->freeInfo().prev() = freeLists[index];
+      freeLists[index] = &first->freeInfo();
+      Region* last = (Region*)(pool + (10 - 1) * bump);
+      last->freeInfo().next() = NULL;
+    }
+  }
   return region;
 }
 
