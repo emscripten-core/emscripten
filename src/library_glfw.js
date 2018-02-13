@@ -998,8 +998,7 @@ var LibraryGLFW = {
         }
 #if OFFSCREEN_FRAMEBUFFER
         // TODO: Make GLFW explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
-        contextAttributes.renderViaOffscreenBackBuffer = true;
-        contextAttributes.preserveDrawingBuffer = true;
+        GL.enableOffscreenFramebufferAttributes(contextAttributes);
 #endif
         Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
       }

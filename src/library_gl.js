@@ -549,6 +549,11 @@ var LibraryGL = {
     },
 
 #if OFFSCREEN_FRAMEBUFFER
+    enableOffscreenFramebufferAttributes: function(webGLContextAttributes) {
+      webGLContextAttributes.renderViaOffscreenBackBuffer = true;
+      webGLContextAttributes.preserveDrawingBuffer = true;
+    },
+
     // If WebGL is being proxied from a pthread to the main thread, we can't directly render to the WebGL default back buffer
     // because of WebGL's implicit swap behavior. Therefore in such modes, create an offscreen render target surface to
     // which rendering is performed to, and finally flipped to the main screen.

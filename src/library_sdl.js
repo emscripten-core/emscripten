@@ -397,8 +397,7 @@ var LibrarySDL = {
 
 #if OFFSCREEN_FRAMEBUFFER
       // TODO: Make SDL explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
-      webGLContextAttributes.renderViaOffscreenBackBuffer = true;
-      webGLContextAttributes.preserveDrawingBuffer = true;
+      GL.enableOffscreenFramebufferAttributes(webGLContextAttributes);
 #endif
       var ctx = Browser.createContext(canvas, is_SDL_OPENGL, usePageCanvas, webGLContextAttributes);
 
