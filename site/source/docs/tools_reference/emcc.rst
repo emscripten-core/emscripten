@@ -71,12 +71,12 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-Os: 
 	
 ``-Os``
-	Like ``-O3``, but with extra optimizations that reduce code size at the expense of performance. This can effect both bitcode generation and JavaScript.
+	Like ``-O3``, but with extra optimizations that reduce code size at the expense of performance. This can affect both bitcode generation and JavaScript.
 
 .. _emcc-Oz: 
 	
 ``-Oz``
-	Like ``-Os``, but reduces code size even further. This can effect both bitcode generation and JavaScript.
+	Like ``-Os``, but reduces code size even further. This can affect both bitcode generation and JavaScript.
 
 	For JavaScript, this turns on some code size reduction optimizations that can take a significant amount of compilation time.
 
