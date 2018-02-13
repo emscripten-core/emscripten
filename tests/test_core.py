@@ -1291,6 +1291,7 @@ int main() {
     self.do_run_in_out_file_test('tests', 'core', 'test_complex', force_c=True)
 
   def test_float_builtins(self):
+    # tests wasm_libc_rt
     if not self.is_wasm_backend(): return self.skip('no __builtin_fmin support in JSBackend')
     self.do_run_in_out_file_test('tests', 'core', 'test_float_builtins')
 
@@ -6417,7 +6418,6 @@ def process(filename):
     assert '_exported_func_from_response_file_1' in open('src.cpp.o.js').read()
 
   @sync
-  @no_wasm_backend('no jsCall function pointers are created for wasm backend')
   def test_add_function(self):
     Settings.INVOKE_RUN = 0
     Settings.RESERVED_FUNCTION_POINTERS = 1
@@ -6433,7 +6433,7 @@ def process(filename):
       Settings.RESERVED_FUNCTION_POINTERS = 0
       self.do_run(open(src).read(), '''Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.''')
       generated = open('src.cpp.o.js').read()
-      assert 'jsCall' not in generated
+      assert 'jsCall_' not in generated
       Settings.RESERVED_FUNCTION_POINTERS = 1
 
       Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS # flip the test

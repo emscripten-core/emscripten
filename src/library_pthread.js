@@ -611,6 +611,11 @@ var LibraryPThread = {
     var schedPrio = 0;
     if (attr) {
       stackSize = {{{ makeGetValue('attr', 0, 'i32') }}};
+      // Musl has a convention that the stack size that is stored to the pthread attribute structure is always musl's #define DEFAULT_STACK_SIZE
+      // smaller than the actual created stack size. That is, stored stack size of 0 would mean a stack of DEFAULT_STACK_SIZE in size. All musl
+      // functions hide this impl detail, and offset the size transparently, so pthread_*() API user does not see this offset when operating with
+      // the pthread API. When reading the structure directly on JS side however, we need to offset the size manually here.
+      stackSize += 81920 /*DEFAULT_STACK_SIZE*/;
       stackBase = {{{ makeGetValue('attr', 8, 'i32') }}};
       detached = {{{ makeGetValue('attr', 12/*_a_detach*/, 'i32') }}} != 0/*PTHREAD_CREATE_JOINABLE*/;
       var inheritSched = {{{ makeGetValue('attr', 16/*_a_sched*/, 'i32') }}} == 0/*PTHREAD_INHERIT_SCHED*/;
@@ -626,8 +631,10 @@ var LibraryPThread = {
         schedPolicy = {{{ makeGetValue('attr', 20/*_a_policy*/, 'i32') }}};
         schedPrio = {{{ makeGetValue('attr', 24/*_a_prio*/, 'i32') }}};
       }
+    } else {
+      // According to http://man7.org/linux/man-pages/man3/pthread_create.3.html, default stack size if not specified is 2 MB, so follow that convention.
+      stackSize = {{{ DEFAULT_PTHREAD_STACK_SIZE }}};
     }
-    stackSize += 81920 /*DEFAULT_STACK_SIZE*/;
     var allocatedOwnStack = stackBase == 0; // If allocatedOwnStack == true, then the pthread impl maintains the stack allocation.
     if (allocatedOwnStack) {
       stackBase = _malloc(stackSize); // Allocate a stack if the user doesn't want to place the stack in a custom memory area.

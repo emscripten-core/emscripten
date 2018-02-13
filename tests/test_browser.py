@@ -44,7 +44,8 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, ch
         s.sendheaders([],length)
         s.wfile.write(data[start:end+1])
 
-  expectedConns = 11
+  # CORS preflight makes OPTIONS requests which we need to account for.
+  expectedConns = 22
   httpd = HTTPServer(('localhost', 11111), ChunkedServerHandler)
   for i in range(expectedConns+1):
     httpd.handle_request()
@@ -1567,7 +1568,7 @@ keydown(100);keyup(100); // trigger the end
     prejs_file.close()
     # vs. os.path.join(self.get_dir(), filename)
     # vs. path_from_root('tests', 'hello_world_gles.c')
-    Popen([PYTHON, EMCC, path_from_root('tests', c_source_filename), '-g', '-s', 'SMALL_CHUNKS=1', '-o', worker_filename,
+    Popen([PYTHON, EMCC, path_from_root('tests', c_source_filename), '-g', '-s', 'SMALL_XHR_CHUNKS=1', '-o', worker_filename,
                                          '--pre-js', prejs_filename]).communicate()
 
     chunkSize = 1024
