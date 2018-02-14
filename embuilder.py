@@ -28,6 +28,7 @@ Available operations and tasks:
   build libc
         libc-mt
         emmalloc
+        emmalloc_debug
         dlmalloc
         dlmalloc_debug
         dlmalloc_threadsafe
