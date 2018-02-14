@@ -85,9 +85,14 @@ void test() {
   err = unlink("dir-readonly");
   assert(err == -1);
 
+  // emscripten uses 'musl' what is an implementation of the standard library for Linux-based systems
+#if defined(__linux__) || defined(__EMSCRIPTEN__)
   // Here errno is supposed to be EISDIR, but it is EPERM for NODERAWFS on macOS.
   // See issue #6121.
   assert(errno == EISDIR || errno == EPERM);
+#else
+  assert(errno == EPERM);
+#endif
 
 #ifndef SKIP_ACCESS_TESTS
   err = unlink("dir-readonly/anotherfile");
@@ -136,6 +141,7 @@ void test() {
 
   // test removing the cwd / root. The result isn't specified by
   // POSIX, but Linux seems to set EBUSY in both cases.
+#ifndef __APPLE__
   getcwd(buffer, sizeof(buffer));
   err = rmdir(buffer);
   assert(err == -1);
@@ -144,10 +150,15 @@ void test() {
 #else
   assert(errno == EBUSY);
 #endif
+#endif
   err = rmdir("/");
   assert(err == -1);
+#ifdef __APPLE__
+  assert(errno == EISDIR);
+#else
   // errno is EISDIR for NODERAWFS on macOS. See issue #6121.
   assert(errno == EBUSY || errno == EISDIR);
+#endif
 
 #ifndef NO_SYMLINK
   err = rmdir("dir-empty-link");
