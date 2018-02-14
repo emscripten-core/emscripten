@@ -11,9 +11,9 @@ from tools.shared import *
 # 3: 1 second
 # 4: 5 seconds
 # 5: 10 seconds
-DEFAULT_ARG = '1'
+DEFAULT_ARG = '4'
 
-TEST_REPS = 1
+TEST_REPS = 3
 
 # by default, run just core benchmarks
 CORE_BENCHMARKS = True
@@ -21,7 +21,7 @@ CORE_BENCHMARKS = True
 if 'benchmark.' in str(sys.argv):
   CORE_BENCHMARKS = False
 
-IGNORE_COMPILATION = 1
+IGNORE_COMPILATION = 0
 
 OPTIMIZATIONS = '-O3'
 
@@ -165,8 +165,8 @@ process(sys.argv[1])
       '--js-transform', 'python hardcode.py',
       '-s', 'TOTAL_MEMORY=256*1024*1024',
       '-s', 'NO_FILESYSTEM=1',
-      '--profiling',
-      #'--closure', '1',
+      #'--profiling',
+      '--closure', '1',
       '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
     ] + shared_args + emcc_args + self.extra_args
@@ -326,15 +326,14 @@ class CheerpBenchmarker(Benchmarker):
 try:
   benchmarkers_error = ''
   benchmarkers = [
-    #NativeBenchmarker('clang', CLANG_CC, CLANG),
+    NativeBenchmarker('clang', CLANG_CC, CLANG),
     #NativeBenchmarker('gcc',   'gcc',    'g++')
   ]
   if SPIDERMONKEY_ENGINE and Building.which(SPIDERMONKEY_ENGINE[0]):
     benchmarkers += [
-      #EmscriptenBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
+      EmscriptenBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
       #EmscriptenBenchmarker('sm-simd',  SPIDERMONKEY_ENGINE, ['-s', 'SIMD=1']),
-      EmscriptenBenchmarker('dlmalloc',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['-s', 'WASM=1', '-s', 'MALLOC="dlmalloc"']),
-      EmscriptenBenchmarker('emmalloc',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['-s', 'WASM=1', '-s', 'MALLOC="emmalloc"']),
+      EmscriptenBenchmarker('sm-asm2wasm',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['-s', 'WASM=1']),
       #EmscriptenBenchmarker('sm-wasmbackend',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['-s', 'WASM=1'], env={
       #  'LLVM': '/home/alon/Dev/llvm/build/bin',
       #  'EMCC_WASM_BACKEND': '1',
@@ -342,7 +341,7 @@ try:
     ]
   if V8_ENGINE and Building.which(V8_ENGINE[0]):
     benchmarkers += [
-      #EmscriptenBenchmarker('v8-wasm',  V8_ENGINE,           ['-s', 'WASM=1']),
+      EmscriptenBenchmarker('v8-wasm',  V8_ENGINE,           ['-s', 'WASM=1']),
     ]
   if os.path.exists(CHEERP_BIN):
     benchmarkers += [
