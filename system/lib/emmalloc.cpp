@@ -134,6 +134,9 @@ static Region* lastRegion = NULL;
 // after which is the "payload", the sections that user code calling
 // malloc can use.
 struct Region {
+  // Whether this region is in use or not.
+  size_t _used : 1;
+
   // The total size of the section of memory this is associated
   // with and contained in.
   // That includes the metadata itself and the payload memory after,
@@ -143,9 +146,6 @@ struct Region {
   //        Browsers barely allow allocating 2^31 anyhow, so inside that
   //        space we can just allocate something smaller than it.
   size_t _totalSize : 31;
-
-  // Whether this region is in use or not.
-  size_t _used : 1;
 
   // Each memory area knows its previous neighbor, as we hope to merge them.
   // To compute the next neighbor we can use the total size, and to know
