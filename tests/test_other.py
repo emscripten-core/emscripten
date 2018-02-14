@@ -6479,6 +6479,26 @@ Resolved: "/" => "/"
       seen_error = True
     assert seen_error, out
 
+  def test_mallocs(self):
+    for opts in [[], ['-O2']]:
+      print(opts)
+      sizes = {}
+      for malloc, name in (
+        ('dlmalloc', 'dlmalloc'),
+        (None, 'default'),
+        ('emmalloc', 'emmalloc')
+      ):
+        print(malloc, name)
+        cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WASM=1', '-o', 'a.out.js'] + opts
+        if malloc:
+          cmd += ['-s', 'MALLOC="%s"' % malloc]
+        print(cmd)
+        run_process(cmd)
+        sizes[name] = os.stat('a.out.wasm').st_size
+      print(sizes)
+      assert sizes['dlmalloc'] == sizes['default'], 'dlmalloc is the default'
+      assert sizes['emmalloc']  < sizes['dlmalloc'] - 5000, 'emmalloc is much smaller'
+
   def test_split_memory(self): # make sure multiple split memory chunks get used
     open('src.c', 'w').write(r'''
 #include <emscripten.h>
