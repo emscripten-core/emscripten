@@ -7787,9 +7787,9 @@ int main() {
 
     print('test on hello world')
     test(path_from_root('tests', 'hello_world.cpp'), [
-      ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  48213, 26, 19),
-      (['-O1'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13460, 17, 17),
-      (['-O2'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13381, 17, 17),
+      ([],      24, ['abort', 'tempDoublePtr'], ['waka'],                  46505, 25, 19),
+      (['-O1'], 19, ['abort', 'tempDoublePtr'], ['waka'],                  12630, 16, 17),
+      (['-O2'], 19, ['abort', 'tempDoublePtr'], ['waka'],                  12616, 16, 17),
       (['-O3'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2818, 10,  2), # in -O3, -Os and -Oz we metadce
       (['-Os'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2771, 10,  2),
       (['-Oz'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2765, 10,  2),
@@ -7808,9 +7808,9 @@ int main() {
       }
       ''')
     test('minimal.c', [
-      ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  24536, 26, 18),
-      (['-O1'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  11271, 10, 15),
-      (['-O2'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  11326, 10, 15),
+      ([],      24, ['abort', 'tempDoublePtr'], ['waka'],                  22712, 25, 18),
+      (['-O1'], 12, ['abort', 'tempDoublePtr'], ['waka'],                  10450,  9, 15),
+      (['-O2'], 12, ['abort', 'tempDoublePtr'], ['waka'],                  10440,  9, 15),
       # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
       (['-O3'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1),
       (['-Os'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1),
