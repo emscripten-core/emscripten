@@ -269,8 +269,9 @@ else {
 
 // console.log is checked first, as 'print' on the web will open a print dialogue
 // printErr is preferable to console.warn (works better in shells)
-Module['print'] = typeof console !== 'undefined' ? console.log : (typeof print !== 'undefined' ? print : null);
-Module['printErr'] = typeof printErr !== 'undefined' ? printErr : ((typeof console !== 'undefined' && console.warn) || Module['print']);
+// bind(console) is necessary to fix IE/Edge closed dev tools panel behavior.
+Module['print'] = typeof console !== 'undefined' ? console.log.bind(console) : (typeof print !== 'undefined' ? print : null);
+Module['printErr'] = typeof printErr !== 'undefined' ? printErr : ((typeof console !== 'undefined' && console.warn.bind(console)) || Module['print']);
 
 // *** Environment setup code ***
 
