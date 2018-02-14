@@ -62,11 +62,15 @@ var TOTAL_STACK = 5*1024*1024; // The total stack size. There is no way to enlar
 var TOTAL_MEMORY = 16777216;     // The total amount of memory to use. Using more memory than this will
                                  // cause us to expand the heap, which can be costly with typed arrays:
                                  // we need to copy the old heap into a new one in that case.
-var MALLOC = "emmalloc"; // What malloc to use, out of
-                         //  * emmalloc - a small and fast single-threaded malloc designed for emscripten
+var MALLOC = "dlmalloc"; // What malloc()/free() to use, out of
                          //  * dlmalloc - a powerful general-purpose malloc
+                         //  * emmalloc - a simple and compact malloc designed for emscripten
                          // dlmalloc is necessary for multithreading, split memory, and other special
                          // modes, and will be used automatically in those cases.
+                         // In general, if you don't need one of those special modes, and if you don't
+                         // allocate very many small objects, you should use emmalloc since it's
+                         // smaller. Otherwise, if you do allocate many small objects, dlmalloc
+                         // is usually worth the extra size.
 var ABORTING_MALLOC = 1; // If 1, then when malloc would fail we abort(). This is nonstandard behavior,
                          // but makes sense for the web since we have a fixed amount of memory that
                          // must all be allocated up front, and so (a) failing mallocs are much more
