@@ -16,6 +16,22 @@ Current Trunk
     - 'f': 32-bit float type
     - 'd': 64-bit float type
 
+v1.37.33: 02/02/2018
+--------------------
+
+v1.37.32: 01/31/2018
+--------------------
+
+v1.37.31: 01/31/2018
+--------------------
+ - LLVM and clang updates from upstream (5.0svn, close 5.0 release).
+
+v1.37.30: 01/31/2018
+--------------------
+
+v1.37.29: 01/24/2018
+--------------------
+
 v1.37.28: 01/08/2018
 --------------------
  - Breaking change: Don't export the `ALLOC_*` numeric constants by default. As with previous changes, a warning will be shown in `-O0` and when `ASSERTIONS` are on if they are used.
