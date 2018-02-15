@@ -1984,7 +1984,7 @@ def create_asm_consts_wasm(forwarded_json, metadata):
     forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
     asm_const_funcs.append(r'''
 function _emscripten_asm_const_%s(code, sig_ptr, argbuf) {
-  var sig = UTF8ToString(sig_ptr);
+  var sig = AsciiToString(sig_ptr);
   var args = [];
   var align_to = function(ptr, align) {
     return (ptr+align-1) & ~(align-1);
