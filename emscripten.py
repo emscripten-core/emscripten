@@ -1772,7 +1772,11 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   exported_implemented_functions = create_exported_implemented_functions_wasm(pre, forwarded_json, metadata, settings)
 
   asm_consts, asm_const_funcs = create_asm_consts_wasm(forwarded_json, metadata)
-  pre = pre.replace('// === Body ===', '// === Body ===\n' + '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
+  asm_consts_text = '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n'
+  asm_funcs_text = '\n'.join(asm_const_funcs) + '\n'
+
+  body_marker = '// === Body ==='
+  pre = pre.replace(body_marker, body_marker + '\n' + asm_consts_text + asstr(asm_funcs_text))
 
   outfile.write(pre)
   pre = None
@@ -1963,25 +1967,43 @@ def create_asm_consts_wasm(forwarded_json, metadata):
     const = asstr(v[0])
     sigs = v[1]
     const = trim_asm_const_body(const)
-    const = '{ ' + const + ' }'
     args = []
-    arity = max(map(len, sigs)) - 1
+    max_arity = 16
+    arity = 0
+    for i in range(max_arity):
+      if ('$' + str(i)) in const:
+        arity = i + 1
     for i in range(arity):
       args.append('$' + str(i))
-    const = 'function(' + ', '.join(args) + ') ' + const
+    const = 'function(' + ', '.join(args) + ') {' + const + '}'
     asm_consts[int(k)] = const
     all_sigs += sigs
 
   asm_const_funcs = []
   for sig in set(all_sigs):
     forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
-    args = ['a%d' % i for i in range(len(sig)-1)]
-    all_args = ['code'] + args
     asm_const_funcs.append(r'''
-function _emscripten_asm_const_%s(%s) {
-return ASM_CONSTS[code](%s);
-}''' % (asstr(sig), ', '.join(all_args), ', '.join(args)))
-
+function _emscripten_asm_const_%s(code, sig_ptr, argbuf) {
+  var sig = AsciiToString(sig_ptr);
+  var args = [];
+  var align_to = function(ptr, align) {
+    return (ptr+align-1) & ~(align-1);
+  };
+  var buf = argbuf;
+  for (var i = 0; i < sig.length; i++) {
+    var c = sig[i];
+    if (c == 'd' || c == 'f') {
+      buf = align_to(buf, 8);
+      args.push(HEAPF64[(buf >> 3)]);
+      buf += 8;
+    } else if (c == 'i') {
+      buf = align_to(buf, 4);
+      args.push(HEAPU32[(buf >> 2)]);
+      buf += 4;
+    }
+  }
+  return ASM_CONSTS[code].apply(null, args);
+}''' % sig)
   return asm_consts, asm_const_funcs
 
 
