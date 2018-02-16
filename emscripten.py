@@ -698,8 +698,11 @@ function _emscripten_asm_const_%s(%s) {
   asm_consts_text = '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n'
   asm_funcs_text = '\n'.join(asm_const_funcs) + '\n'
 
+  em_js_funcs = create_em_js(forwarded_json, metadata)
+  em_js_text = '\n'.join(em_js_funcs) + '\n'
+
   body_marker = '// === Body ==='
-  return pre.replace(body_marker, body_marker + '\n' + asm_consts_text + asstr(asm_funcs_text))
+  return pre.replace(body_marker, body_marker + '\n' + asm_consts_text + asstr(asm_funcs_text) + em_js_text)
 
 # Test if the parentheses at body[openIdx] and body[closeIdx] are a match to each other.
 def parentheses_match(body, openIdx, closeIdx):
@@ -1772,7 +1775,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   exported_implemented_functions = create_exported_implemented_functions_wasm(pre, forwarded_json, metadata, settings)
 
   asm_consts, asm_const_funcs = create_asm_consts_wasm(forwarded_json, metadata)
-  em_js_funcs = create_em_js_wasm(forwarded_json, metadata)
+  em_js_funcs = create_em_js(forwarded_json, metadata)
   pre = pre.replace(
     '// === Body ===',
     ('// === Body ===\n\nvar ASM_CONSTS = [' +
@@ -2004,10 +2007,10 @@ function _emscripten_asm_const_%s(code, sig_ptr, argbuf) {
   return asm_consts, asm_const_funcs
 
 
-def create_em_js_wasm(forwarded_json, metadata):
+def create_em_js(forwarded_json, metadata):
   em_js_funcs = []
   separator = '<::>'
-  for name, raw in metadata['emJsFuncs'].iteritems():
+  for name, raw in metadata.get('emJsFuncs', {}).iteritems():
     parts = raw.split(separator)
     assert len(parts) >= 2
     args, body = parts[0], separator.join(parts[1:])
