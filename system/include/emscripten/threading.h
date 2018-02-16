@@ -191,6 +191,13 @@ typedef int (*em_func_iiiiiiiiii)(int, int, int, int, int, int, int, int, int);
 #define EM_FUNC_SIG_PARAM_D   0x3U
 #define EM_FUNC_SIG_SET_PARAM(i, type) ((EM_FUNC_SIGNATURE)(type) << (2*i))
 
+// In total, the above encoding scheme gives the following 32-bit structure for the proxied function signatures (highest -> lowest bit order):
+// RRRiiiiSbbaa99887766554433221100
+// where RRR is return type
+// iiii is the number of inputs
+// S denotes a special function (internal proxying mechanism for functions related to built-in threading APIs, like thread creation itself)
+// 00-bb encode the type of up to 12 function parameters
+
 #define EM_FUNC_SIG_V     (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(0))
 #define EM_FUNC_SIG_VI    (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(1) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I))
 #define EM_FUNC_SIG_VF    (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(1) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_F))
@@ -225,6 +232,15 @@ typedef int (*em_func_iiiiiiiiii)(int, int, int, int, int, int, int, int, int);
 #define EM_FUNC_SIG_IIIIIIIIII (EM_FUNC_SIG_RETURN_VALUE_I | EM_FUNC_SIG_WITH_N_PARAMETERS(9) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(4, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(5, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(6, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(7, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(8, EM_FUNC_SIG_PARAM_I))
 
 #define EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(x) ((((EM_FUNC_SIGNATURE)x) & EM_FUNC_SIG_NUM_PARAMETERS_MASK) >> EM_FUNC_SIG_NUM_PARAMETERS_SHIFT)
+
+// There are some built-in special proxied functions, that embed the signatures inside the above encoding scheme
+#define EM_FUNC_SIG_SPECIAL_INTERNAL (1 << 24)
+#define EM_PROXIED_FUNC_SPECIAL(x) (EM_FUNC_SIG_SPECIAL_INTERNAL | ((x) << 20))
+
+#define EM_PROXIED_PTHREAD_CREATE (EM_PROXIED_FUNC_SPECIAL(0) | EM_FUNC_SIG_IIIII)
+#define EM_PROXIED_SYSCALL (EM_PROXIED_FUNC_SPECIAL(1) | EM_FUNC_SIG_III)
+#define EM_PROXIED_CREATE_CONTEXT (EM_PROXIED_FUNC_SPECIAL(2) | EM_FUNC_SIG_III)
+#define EM_PROXIED_RESIZE_OFFSCREENCANVAS (EM_PROXIED_FUNC_SPECIAL(3) | EM_FUNC_SIG_IIII)
 
 // Runs the given function synchronously on the main Emscripten runtime thread.
 // If this thread is the main thread, the operation is immediately performed, and the result is returned.
@@ -340,9 +356,6 @@ struct thread_profiler_block
 	// A human-readable name for this thread.
 	char name[32];
 };
-
-#define EM_PROXIED_PTHREAD_CREATE 137
-#define EM_PROXIED_SYSCALL 138
 
 #ifdef __cplusplus
 }
