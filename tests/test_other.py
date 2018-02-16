@@ -5700,61 +5700,6 @@ int main() {
     self.assertContained(MESSAGE, err)
     self.clear()
 
-  def test_nosplit(self): # relooper shouldn't split nodes if -Os or -Oz
-    open('src.cpp', 'w').write(r'''
-      #include <stdio.h>
-      int main(int argc, char **argv) {
-        printf("extra code\n");
-        printf("to make the function big enough to justify splitting\n");
-        if (argc == 1) {
-          printf("1\n");
-          printf("1\n");
-          printf("1\n");
-          printf("1\n");
-        } else if (argc/2 == 2) {
-          printf("1\n");
-          printf("1\n");
-          printf("1\n");
-          printf("1\n");
-          printf("2\n");
-        } else if (argc/3 == 3) {
-          printf("1\n");
-          printf("3\n");
-          printf("1\n");
-          printf("1\n");
-          printf("1\n");
-        } else if (argc/4 == 4) {
-          printf("4\n");
-          printf("1\n");
-          printf("1\n");
-          printf("1\n");
-        } else if (argc/5 == 5) {
-          printf("five\n");
-          printf("1\n");
-          printf("1\n");
-          printf("1\n");
-          printf("1\n");
-          printf("1\n");
-          printf("1\n");
-          printf("1\n");
-        }
-        printf("hai\n");
-        return 5;
-      }
-    ''')
-    def test(opts, expected):
-      print(opts)
-      Popen([PYTHON, EMCC, 'src.cpp', '--profiling'] + opts).communicate()
-      src = open('a.out.js').read()
-      main = self.get_func(src, '_main')
-      rets = main.count('return ')
-      print('    ', rets)
-      assert rets == expected, [rets, '!=', expected]
-    test(['-O1'], 6)
-    test(['-O2'], 6)
-    test(['-Os'], 1)
-    test(['-Oz'], 1)
-
   def test_massive_alloc(self):
     if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey, node cannnot alloc huge arrays')
 
@@ -6950,13 +6895,13 @@ int main() {
     self.assertContained('//@line 12 "src.cpp"', stderr)
 
   def test_only_my_code(self):
-    check_execute([PYTHON, EMCC, '-O1', path_from_root('tests', 'hello_world.c'), '--separate-asm'])
+    check_execute([PYTHON, EMCC, '-O1', path_from_root('tests', 'hello_world.c'), '--separate-asm', '-s', 'WASM=0'])
     count = open('a.out.asm.js').read().count('function ')
     assert count > 30, count # libc brings in a bunch of stuff
 
     def test(filename, opts, expected_funcs, expected_vars):
       print(filename, opts)
-      check_execute([PYTHON, EMCC, path_from_root('tests', filename), '--separate-asm', '-s', 'ONLY_MY_CODE=1'] + opts)
+      check_execute([PYTHON, EMCC, path_from_root('tests', filename), '--separate-asm', '-s', 'ONLY_MY_CODE=1', '-s', 'WASM=0'] + opts)
       full = 'var Module = {};\n' + open('a.out.asm.js').read()
       open('asm.js', 'w').write(full)
       funcs = open('a.out.asm.js').read().count('function ')
