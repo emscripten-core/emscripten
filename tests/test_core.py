@@ -78,7 +78,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def is_split_memory(self):
     return 'SPLIT_MEMORY=' in str(self.emcc_args)
   def is_wasm(self):
-    return 'BINARYEN' in str(self.emcc_args) or self.is_wasm_backend()
+    return 'WASM=0' not in str(self.emcc_args) or self.is_wasm_backend()
   def is_linux(self):
     return LINUX
   def is_macos(self):
