@@ -686,40 +686,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             assert key != 'WASM_BACKEND', 'do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment'
       newargs = [arg for arg in newargs if arg is not '']
 
-      # This will contain the names of all settings that were changed.
-      settings_key_changes = set()
-
-      # Handle aliases in settings flags. In each alias group, we make sure
-      # that any change is applied to all those names, so it doesn't matter
-      # which we use (as a convention, though, the first is the newer and
-      # more preferable).
-      settings_alias_groups = [
-        ('WASM', 'BINARYEN'),
-      ]
-      settings_aliases = {}
-      for group in settings_alias_groups:
-        settings_aliases[group[0]] = group[1]
-        settings_aliases[group[1]] = group[0]
-      extra_settings_changes = []
-      for s in settings_changes:
-        key, rest = s.split('=', 1)
-        settings_key_changes.add(key)
-        alias = settings_aliases.get(key)
-        if alias:
-          settings_key_changes.add(alias)
-          extra_settings_changes.append('='.join([alias, rest]))
-      settings_changes += extra_settings_changes
-
-      # Handle renamed settings (unlike an alias, here there is no old name,
-      # only one remains existing).
-
-      renamed_settings = {
-        'BINARYEN_MEM_MAX': 'WASM_MEM_MAX',
-        # TODO: change most (all?) other BINARYEN* names to WASM*
+      # Handle aliases in settings flags. These are settings whose name
+      # has changed.
+      settings_aliases = {
+          'BINARYEN': 'WASM',
+          'BINARYEN_MEM_MAX': 'WASM_MEM_MAX',
+          # TODO: change most (all?) other BINARYEN* names to WASM*
       }
+      settings_key_changes = set()
       def setting_sub(s):
         key, rest = s.split('=', 1)
-        return '='.join([renamed_settings.get(key, key), rest])
+        settings_key_changes.add(key)
+        return '='.join([settings_aliases.get(key, key), rest])
       settings_changes = list(map(setting_sub, settings_changes))
 
       # Find input files
@@ -1156,12 +1134,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           options.js_opts = True
         options.force_js_opts = True
 
-      if shared.Settings.BINARYEN:
-        shared.Settings.WASM = 1 # these are synonyms
-
       if shared.Settings.WASM:
-        shared.Settings.BINARYEN = 1 # these are synonyms
-
         # When only targeting wasm, the .asm.js file is not executable, so is treated as an intermediate build file that can be cleaned up.
         if shared.Building.is_wasm_only():
           asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
@@ -1170,7 +1143,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.TOTAL_MEMORY < 16*1024*1024:
         exit_with_error('TOTAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.TOTAL_MEMORY))
-      if shared.Settings.BINARYEN:
+      if shared.Settings.WASM:
         if shared.Settings.TOTAL_MEMORY % 65536 != 0:
           exit_with_error('For wasm, TOTAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.TOTAL_MEMORY))
       else:
@@ -1185,7 +1158,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
-        shared.Settings.BINARYEN = shared.Settings.WASM = 1
+        shared.Settings.WASM = 1
 
         # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
         # we run the optimizer during asm2wasm itself). use it, if not overridden
@@ -1196,7 +1169,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # to bootstrap struct_info, we need binaryen
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
 
-      if shared.Settings.BINARYEN:
+      if shared.Settings.WASM:
         if shared.Settings.SINGLE_FILE:
           # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
           shared.Settings.WASM_TEXT_FILE = shared.FilenameReplacementStrings.WASM_TEXT_FILE
@@ -1252,12 +1225,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # wasm outputs are only possible with a side wasm
       if target.endswith(WASM_ENDINGS):
-        if not (shared.Settings.BINARYEN and shared.Settings.SIDE_MODULE):
+        if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
           logging.warning('output file "%s" has a wasm suffix, but we cannot emit wasm by itself, except as a dynamic library (see SIDE_MODULE option). specify an output file with suffix .js or .html, and a wasm file will be created on the side' % target)
           sys.exit(1)
 
       if shared.Settings.EVAL_CTORS:
-        if not shared.Settings.BINARYEN:
+        if not shared.Settings.WASM:
           # for asm.js: this option is not a js optimizer pass, but does run the js optimizer internally, so
           # we need to generate proper code for that (for wasm, we run a binaryen tool for this)
           shared.Settings.RUNNING_JS_OPTS = 1
@@ -1744,7 +1717,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if DEBUG:
             # Copy into temp dir as well, so can be run there too
             shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
-          if not shared.Settings.BINARYEN or 'asmjs' in shared.Settings.BINARYEN_METHOD or 'interpret-asm2wasm' in shared.Settings.BINARYEN_METHOD:
+          if not shared.Settings.WASM or 'asmjs' in shared.Settings.BINARYEN_METHOD or 'interpret-asm2wasm' in shared.Settings.BINARYEN_METHOD:
             return 'memoryInitializer = "%s";' % shared.JS.get_subresource_location(memfile, embed_memfile(options))
           else:
             return ''
@@ -1820,7 +1793,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # with commaified code breaks late aggressive variable elimination)
           # do not do this with binaryen, as commaifying confuses binaryen call type detection (FIXME, in theory, but unimportant)
           debugging = options.debug_level == 0 or options.profiling
-          if shared.Settings.SIMPLIFY_IFS and debugging and shared.Settings.OUTLINING_LIMIT == 0 and not shared.Settings.BINARYEN:
+          if shared.Settings.SIMPLIFY_IFS and debugging and shared.Settings.OUTLINING_LIMIT == 0 and not shared.Settings.WASM:
             optimizer.queue += ['simplifyIfs']
 
           if shared.Settings.PRECISE_F32: optimizer.queue += ['optimizeFrounds']
@@ -1844,14 +1817,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           optimizer.flush()
           shared.Building.eliminate_duplicate_funcs(final)
 
-      if shared.Settings.EVAL_CTORS and options.memory_init_file and options.debug_level < 4 and not shared.Settings.BINARYEN:
+      if shared.Settings.EVAL_CTORS and options.memory_init_file and options.debug_level < 4 and not shared.Settings.WASM:
         optimizer.flush()
         shared.Building.eval_ctors(final, memfile)
         if DEBUG: save_intermediate('eval-ctors', 'js')
 
       if options.js_opts:
         # some compilation modes require us to minify later or not at all
-        if not shared.Settings.EMTERPRETIFY and not shared.Settings.BINARYEN:
+        if not shared.Settings.EMTERPRETIFY and not shared.Settings.WASM:
           optimizer.do_minify()
 
         if options.opt_level >= 2:
@@ -1886,18 +1859,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.CYBERDWARF:
           execute([shared.PYTHON, shared.path_from_root('tools', 'emdebug_cd_merger.py'), target + '.cd', target+'.symbols'])
 
-      if options.debug_level >= 4 and not shared.Settings.BINARYEN:
+      if options.debug_level >= 4 and not shared.Settings.WASM:
         emit_js_source_maps(target, optimizer.js_transform_tempfiles)
 
       # track files that will need native eols
       generated_text_files_with_native_eols = []
 
-      if (options.separate_asm or shared.Settings.BINARYEN) and not shared.Settings.WASM_BACKEND:
+      if (options.separate_asm or shared.Settings.WASM) and not shared.Settings.WASM_BACKEND:
         separate_asm_js(final, asm_target)
         generated_text_files_with_native_eols += [asm_target]
 
       binaryen_method_sanity_check()
-      if shared.Settings.BINARYEN:
+      if shared.Settings.WASM:
         do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                     wasm_text_target, misc_temp_files, optimizer)
 
@@ -2243,7 +2216,7 @@ def emterpretify(js_target, optimizer, options):
   # minify (if requested) after emterpreter processing, and finalize output
   logging.debug('finalizing emterpreted code')
   shared.Settings.FINALIZE_ASM_JS = 1
-  if not shared.Settings.BINARYEN:
+  if not shared.Settings.WASM:
     optimizer.do_minify()
   optimizer.queue += ['last']
   optimizer.flush()
@@ -2254,7 +2227,7 @@ def emterpretify(js_target, optimizer, options):
     original = js_target + '.orig.js' # the emterpretify tool saves the original here
     final = original
     logging.debug('finalizing original (non-emterpreted) code at ' + final)
-    if not shared.Settings.BINARYEN:
+    if not shared.Settings.WASM:
       optimizer.do_minify()
     optimizer.queue += ['last']
     optimizer.flush()
@@ -2586,7 +2559,7 @@ def generate_html(target, options, js_target, target_basename,
 
     # Download .asm.js if --separate-asm was passed in an asm.js build, or if 'asmjs' is one
     # of the wasm run methods.
-    if not options.separate_asm or (shared.Settings.BINARYEN and 'asmjs' not in shared.Settings.BINARYEN_METHOD):
+    if not options.separate_asm or (shared.Settings.WASM and 'asmjs' not in shared.Settings.BINARYEN_METHOD):
       assert len(asm_mods) == 0, 'no --separate-asm means no client code mods are possible'
     else:
       script.un_src()
@@ -2641,7 +2614,7 @@ def generate_html(target, options, js_target, target_basename,
     codeXHR.send(null);
 ''' % (shared.JS.get_subresource_location(asm_target), '\n'.join(asm_mods), script.inline)
 
-    if shared.Settings.BINARYEN and not shared.Settings.BINARYEN_ASYNC_COMPILATION:
+    if shared.Settings.WASM and not shared.Settings.BINARYEN_ASYNC_COMPILATION:
       # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize
       script.un_src()
       script.inline = '''

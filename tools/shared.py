@@ -1177,7 +1177,7 @@ class SettingsManager(object):
         self.attrs['ASSERTIONS'] = 0
         self.attrs['DISABLE_EXCEPTION_CATCHING'] = 1
         self.attrs['ALIASING_FUNCTION_POINTERS'] = 1
-      if shrink_level >= 2 and not self.attrs['BINARYEN']:
+      if shrink_level >= 2 and not self.attrs['WASM']:
         self.attrs['EVAL_CTORS'] = 1
 
     def __getattr__(self, attr):
@@ -2392,10 +2392,10 @@ class Building(object):
     # fetch the port, so we have binaryen set up. indicate we need binaryen
     # using the settings
     from . import system_libs
-    old = Settings.BINARYEN
-    Settings.BINARYEN = 1
+    old = Settings.WASM
+    Settings.WASM = 1
     system_libs.get_port('binaryen', Settings)
-    Settings.BINARYEN = old
+    Settings.WASM = old
 
   @staticmethod
   def get_binaryen_bin():
@@ -2452,7 +2452,7 @@ class JS(object):
       return 'Math_fround(0)'
     elif sig == 'j':
       if settings:
-        assert settings['BINARYEN'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
+        assert settings['WASM'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
       return 'i64(0)'
     elif sig == 'F':
       return 'SIMD_Float32x4_check(SIMD_Float32x4(0,0,0,0))'
@@ -2488,7 +2488,7 @@ class JS(object):
       return '+' + value
     elif sig == 'j':
       if settings:
-        assert settings['BINARYEN'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
+        assert settings['WASM'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
       return 'i64(' + value + ')'
     elif sig == 'F':
       return 'SIMD_Float32x4_check(' + value + ')'
