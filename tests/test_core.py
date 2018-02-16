@@ -2397,7 +2397,7 @@ def process(filename):
 '''
 
   def build_dlfcn_lib(self, lib_src, dirname, filename):
-    if Settings.BINARYEN:
+    if Settings.WASM:
       # emcc emits a wasm in this case
       self.build(lib_src, dirname, filename, js_outfile=False)
       shutil.move(filename + '.o.wasm', os.path.join(dirname, 'liblib.so'))
@@ -4948,7 +4948,7 @@ PORT: 3979
       time.sleep(random.random()/(10*num)) # add some timing nondeterminism here, not that we need it, but whatever
       self.do_run(src, 'hello world\n77.\n')
       ret = open('src.cpp.o.js', 'rb').read()
-      if Settings.BINARYEN:
+      if Settings.WASM:
         ret += open('src.cpp.o.wasm', 'rb').read()
       return ret
     builds = [test() for i in range(num)]
@@ -6534,7 +6534,7 @@ def process(filename):
       int main() {}
     ''', "constructing!\n");
 
-    code_file = 'src.cpp.o.js' if not Settings.BINARYEN else 'src.cpp.o.wasm'
+    code_file = 'src.cpp.o.js' if not Settings.WASM else 'src.cpp.o.wasm'
 
     def do_test(test):
       self.emcc_args = orig_args + ['-s', 'EVAL_CTORS=1']
@@ -6916,7 +6916,7 @@ Module.printErr = Module['printErr'] = function(){};
       import json
       Building.emcc(src_filename, Settings.serialize() + self.emcc_args +
           Building.COMPILER_TEST_OPTS, out_filename, stderr=PIPE)
-      map_referent = out_filename if not Settings.BINARYEN else wasm_filename
+      map_referent = out_filename if not Settings.WASM else wasm_filename
       # after removing the @line and @sourceMappingURL comments, the build
       # result should be identical to the non-source-mapped debug version.
       # this is worth checking because the parser AST swaps strings for token

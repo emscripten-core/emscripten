@@ -183,7 +183,7 @@ class RunnerCore(unittest.TestCase):
       return int(self.emcc_args[self.emcc_args.index('--memory-init-file')+1])
     else:
       # side modules handle memory differently; binaryen puts the memory in the wasm module
-      return ('-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args) and not (Settings.SIDE_MODULE or Settings.BINARYEN)
+      return ('-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args) and not (Settings.SIDE_MODULE or Settings.WASM)
 
   def set_temp_dir(self, temp_dir):
     self.temp_dir = temp_dir
