@@ -692,8 +692,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # more preferable).
       settings_alias_groups = [
         ('WASM', 'BINARYEN'),
-        ('WASM_MEM_MAX', 'BINARYEN_MEM_MAX'),
-        # TODO: change most (all?) other BINARYEN* names to WASM*
       ]
       settings_aliases = {}
       for group in settings_alias_groups:
@@ -709,6 +707,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           settings_key_changes.add(alias)
           extra_settings_changes.append('='.join([alias, rest]))
       settings_changes += extra_settings_changes
+        ('WASM_MEM_MAX', 'BINARYEN_MEM_MAX'),
+        # TODO: change most (all?) other BINARYEN* names to WASM*
+
+      # Handle renamed settings (unlike an alias, here there is no old name,
+      # only one remains existing).
 
       # Find input files
 
