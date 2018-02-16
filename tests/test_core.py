@@ -7588,31 +7588,31 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
   return TT
 
 # Main asm.js test modes
-default = make_run("default", compiler=CLANG, emcc_args=["-s", "ASM_JS=2"])
-asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1"])
-asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])
-asm3 = make_run("asm3", compiler=CLANG, emcc_args=["-O3"])
-asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "-s", "SAFE_HEAP=1"])
+default = make_run('default', compiler=CLANG, emcc_args=['-s', 'ASM_JS=2', '-s', 'WASM=0'])
+asm1 = make_run('asm1', compiler=CLANG, emcc_args=['-O1', '-s', 'WASM=0'])
+asm2 = make_run('asm2', compiler=CLANG, emcc_args=['-O2', '-s', 'WASM=0'])
+asm3 = make_run('asm3', compiler=CLANG, emcc_args=['-O3', '-s', 'WASM=0'])
+asm2g = make_run('asm2g', compiler=CLANG, emcc_args=['-O2', '-s', 'WASM=0', '-g', '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1'])
 
 # Main wasm test modes
-binaryen0 = make_run("binaryen0", compiler=CLANG, emcc_args=['-O0', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
-binaryen1 = make_run("binaryen1", compiler=CLANG, emcc_args=['-O1', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
-binaryen2 = make_run("binaryen2", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
-binaryen3 = make_run("binaryen3", compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
-binaryens = make_run("binaryens", compiler=CLANG, emcc_args=['-Os', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
-binaryenz = make_run("binaryenz", compiler=CLANG, emcc_args=['-Oz', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"'])
+binaryen0 = make_run('binaryen0', compiler=CLANG, emcc_args=['-O0'])
+binaryen1 = make_run('binaryen1', compiler=CLANG, emcc_args=['-O1'])
+binaryen2 = make_run('binaryen2', compiler=CLANG, emcc_args=['-O2'])
+binaryen3 = make_run('binaryen3', compiler=CLANG, emcc_args=['-O3'])
+binaryens = make_run('binaryens', compiler=CLANG, emcc_args=['-Os'])
+binaryenz = make_run('binaryenz', compiler=CLANG, emcc_args=['-Oz'])
 
 # Secondary test modes - run directly when there is a specific need
 
 # asm.js
-asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-Oz", "-s", "PRECISE_F32=1", "-s", "ALLOW_MEMORY_GROWTH=1"])
-asm2i = make_run("asm2i", compiler=CLANG, emcc_args=["-O2", '-s', 'EMTERPRETIFY=1'])
-asm2nn = make_run("asm2nn", compiler=CLANG, emcc_args=["-O2"], env={"EMCC_NATIVE_OPTIMIZER": "0"})
+asm2f = make_run('asm2f', compiler=CLANG, emcc_args=['-Oz', '-s', 'PRECISE_F32=1', '-s', 'ALLOW_MEMORY_GROWTH=1'])
+asm2i = make_run('asm2i', compiler=CLANG, emcc_args=['-O2', '-s', 'EMTERPRETIFY=1'])
+asm2nn = make_run('asm2nn', compiler=CLANG, emcc_args=['-O2'], env={'EMCC_NATIVE_OPTIMIZER': '0'})
 
 # wasm
-binaryen2jo = make_run("binaryen2jo", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'])
-binaryen3jo = make_run("binaryen3jo", compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'])
-binaryen2s = make_run("binaryen2s", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'SAFE_HEAP=1'])
-binaryen2_interpret = make_run("binaryen2_interpret", compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
+binaryen2jo = make_run('binaryen2jo', compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'])
+binaryen3jo = make_run('binaryen3jo', compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'])
+binaryen2s = make_run('binaryen2s', compiler=CLANG, emcc_args=['-O2', '-s', 'SAFE_HEAP=1'])
+binaryen2_interpret = make_run('binaryen2_interpret', compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN_METHOD="interpret-binary"'])
 
 del T # T is just a shape for the specific subclasses, we don't test it itself

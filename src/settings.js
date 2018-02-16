@@ -678,11 +678,12 @@ var USE_GLFW = 2; // Specify the GLFW version that is being linked against.
                   // Only relevant, if you are linking against the GLFW library.
                   // Valid options are 2 for GLFW2 and 3 for GLFW3.
 
-var BINARYEN = 0; // Whether to use [Binaryen](https://github.com/WebAssembly/binaryen) to
+var BINARYEN = 1; // Whether to use [Binaryen](https://github.com/WebAssembly/binaryen) to
                   // compile code to WebAssembly.
                   // This will fetch the binaryen port and build it. (If, instead, you set
                   // BINARYEN_ROOT in your ~/.emscripten file, then we use that instead
                   // of the port, which can useful for local dev work on binaryen itself).
+                  // Set this to 0 to compile to asm.js.
 var BINARYEN_METHOD = "native-wasm"; // How we should run WebAssembly code. By default, we run it natively.
                                      // See binaryen's src/js/wasm.js-post.js for more details and options.
 var BINARYEN_SCRIPTS = ""; // An optional comma-separated list of script hooks to run after binaryen,
@@ -720,7 +721,7 @@ var LEGALIZE_JS_FFI = 1; // Whether to legalize the JS FFI interfaces (imports/e
                          // LEGALIZE_JS_FFI=0 is incompatible with RUNNING_JS_OPTS and using
                          // non-wasm BINARYEN_METHOD settings.
 
-var WASM = 0; // Alias for BINARYEN, the two are identical. Both make us compile code to WebAssembly.
+var WASM = 1; // Alias for BINARYEN, the two are identical. Both make us compile code to WebAssembly.
 
 var WASM_BACKEND = 0; // Whether to use the WebAssembly backend that is in development in LLVM.
                       // This requires that BINARYEN be set, as we use Binaryen's s2wasm to

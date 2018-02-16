@@ -102,11 +102,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       output = run_process([PYTHON, compiler, '-dumpmachine'], stdout=PIPE, stderr=PIPE)
       self.assertContained(get_llvm_target(), output.stdout)
 
-      # emcc src.cpp ==> writes a.out.js
+      # emcc src.cpp ==> writes a.out.js and a.out.wasm
       self.clear()
       output = run_process([PYTHON, compiler, path_from_root('tests', 'hello_world' + suffix)], stdout=PIPE, stderr=PIPE)
       assert len(output.stdout) == 0, output.stdout
       assert os.path.exists('a.out.js'), output.stdout + '\n' + output.stderr
+      assert os.path.exists('a.out.wasm'), output.stdout + '\n' + output.stderr
       self.assertContained('hello, world!', run_js('a.out.js'))
 
       # properly report source code errors, and stop there
@@ -340,6 +341,28 @@ f.close()
         self.clear()
         output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world.c'), '-O' + str(opts)], stdout=PIPE, stderr=PIPE).communicate()
         assert os.path.exists('a.out.js.mem') == (opts >= 2), 'mem file should exist in -O2+'
+
+  def test_emcc_asm_v_wasm(self):
+    for opts in ([], ['-O1'], ['-O2'], ['-O3']):
+      print('opts', opts)
+      for mode in ([], ['-s', 'WASM=0'], ['-s', 'BINARYEN=0'], ['-s', 'WASM=1'], ['-s', 'BINARYEN=1']):
+        self.clear()
+        wasm = '=0' not in str(mode)
+        print('  mode', mode, 'wasm?', wasm)
+        run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')] + opts + mode)
+        assert os.path.exists('a.out.js')
+        assert os.path.exists('a.out.wasm') == wasm
+        for engine in JS_ENGINES:
+          print('    engine', engine)
+          out = run_js('a.out.js', engine=engine, stderr=PIPE, full_output=True)
+          self.assertContained('hello, world!', out)
+          if not wasm and engine == SPIDERMONKEY_ENGINE: self.validate_asmjs(out)
+        if not wasm:
+          src = open('a.out.js').read()
+          if opts == []:
+            assert 'almost asm' in src
+          else:
+            assert 'use asm' in src
 
   # Test that if multiple processes attempt to access or build stuff to the cache on demand, that exactly one of the processes
   # will, and the other processes will block to wait until that process finishes.
