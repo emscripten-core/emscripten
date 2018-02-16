@@ -9,6 +9,7 @@ Not all changes are documented here. In particular, new features, user-oriented 
 
 Current Trunk
 -------------
+ - Binaryen update that should fix all known determinism bugs.
 
 v1.37.34: 02/16/2018
 --------------------
@@ -19,7 +20,6 @@ v1.37.34: 02/16/2018
     - 'f': 32-bit float type
     - 'd': 64-bit float type
    For asm.js and asm2wasm you can provide the optional second argument, but it isn't needed. For that reason this isn't a breaking change, however, providing the second argument is recommended so that code is portable across all backends and modes.
- - Binaryen update that should fix all known determinism bugs.
 
 v1.37.33: 02/02/2018
 --------------------
