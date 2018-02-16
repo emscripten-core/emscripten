@@ -686,6 +686,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             assert key != 'WASM_BACKEND', 'do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment'
       newargs = [arg for arg in newargs if arg is not '']
 
+      # This will contain the names of all settings that were changed.
+      settings_key_changes = set()
+
       # Handle aliases in settings flags. In each alias group, we make sure
       # that any change is applied to all those names, so it doesn't matter
       # which we use (as a convention, though, the first is the newer and
@@ -697,7 +700,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       for group in settings_alias_groups:
         settings_aliases[group[0]] = group[1]
         settings_aliases[group[1]] = group[0]
-      settings_key_changes = set()
       extra_settings_changes = []
       for s in settings_changes:
         key, rest = s.split('=', 1)
@@ -707,11 +709,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           settings_key_changes.add(alias)
           extra_settings_changes.append('='.join([alias, rest]))
       settings_changes += extra_settings_changes
-        ('WASM_MEM_MAX', 'BINARYEN_MEM_MAX'),
-        # TODO: change most (all?) other BINARYEN* names to WASM*
 
       # Handle renamed settings (unlike an alias, here there is no old name,
       # only one remains existing).
+
+      renamed_settings = {
+        'BINARYEN_MEM_MAX': 'WASM_MEM_MAX',
+        # TODO: change most (all?) other BINARYEN* names to WASM*
+      }
+      def setting_sub(s):
+        key, rest = s.split('=', 1)
+        return '='.join([renamed_settings.get(key, key), rest])
+      settings_changes = list(map(setting_sub, settings_changes))
 
       # Find input files
 
