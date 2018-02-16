@@ -6898,8 +6898,9 @@ int main() {
 }
 ''')
     check_execute([PYTHON, EMCC, 'src.c', '-O2', '-g'])
-    size = os.stat('a.out.js.mem').st_size
-    assert size < 4096, size
+    size = os.stat('a.out.wasm').st_size
+    # size should be much smaller than the size of that zero-initialized buffer
+    assert size < (123456 / 2), size
 
   def test_separate_asm_warning(self):
     # Test that -s PRECISE_F32=2 raises a warning that --separate-asm is implied.
