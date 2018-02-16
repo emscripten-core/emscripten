@@ -435,7 +435,7 @@ function JSify(data, functionsOnly) {
           print('gb = alignMemory(getMemory({{{ STATIC_BUMP }}}, ' + MAX_GLOBAL_ALIGN + ' || 1));\n');
           print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n'); // comment as metadata only
         }
-        if (BINARYEN) {
+        if (WASM) {
           // export static base and bump, needed for linking in wasm binary's memory, dynamic linking, etc.
           print('var STATIC_BUMP = {{{ STATIC_BUMP }}};');
           print('Module["STATIC_BASE"] = STATIC_BASE;');

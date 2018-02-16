@@ -49,7 +49,7 @@ var loadedDynamicLibraries = [];
 
 function loadDynamicLibrary(lib) {
   var libModule;
-#if BINARYEN
+#if WASM
   var bin;
   if (lib.buffer) {
     // we were provided the binary, in a typed array
@@ -84,7 +84,7 @@ function loadDynamicLibrary(lib) {
   loadedDynamicLibraries.push(libModule);
 }
 
-#if BINARYEN
+#if WASM
 // Loads a side module from binary data
 function loadWebAssemblyModule(binary) {
   var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
@@ -188,7 +188,7 @@ function loadWebAssemblyModule(binary) {
   }
   return exports;
 }
-#endif // BINARYEN
+#endif // WASM
 #endif // RELOCATABLE
 
 #if EMULATED_FUNCTION_POINTERS
@@ -283,7 +283,7 @@ function addFunction(func, sig) {
   }
   throw 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.';
 #else
-#if BINARYEN
+#if WASM
   // we can simply appent to the wasm table
   var table = Module['wasmTable'];
   var ret = table.length;
