@@ -4981,17 +4981,21 @@ main(const int argc, const char * const * const argv)
         self.clear()
         Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_em_asm.c'), '-o', name + '.js'] + opts + moar_opts).communicate()
         sizes[name] = get_size(name + '.js')
+        if os.path.exists(name + '.wasm'):
+          sizes[name] += get_size(name + '.wasm')
         self.assertContained('hello, world!', run_js(name + '.js'))
       do('normal', [])
       do('no_nuthin', ['-s', 'EXPORTED_RUNTIME_METHODS=[]'])
       print('  ', sizes)
       assert abs(sizes['no_nuthin'] - sizes['normal']) < 10
       assert sizes['no_nuthin'] < absolute
-    test(['-s', 'ASSERTIONS=0'], 220000) # we don't care about code size with assertions
-    test(['-O1'], 215000)
-    test(['-O2'], 55000)
-    test(['-O3', '--closure', '1'], 38000)
-    test(['-O3', '--closure', '2'], 35000) # might change now and then
+    test(['-s', 'ASSERTIONS=0'], 95000) # we don't care about code size with assertions
+    test(['-O1'], 80000)
+    test(['-O2'], 42000)
+    test(['-O3', '--closure', '1'], 12000) # closure is great!
+    # asm.js comparison with closure 1 and 2. these numbers are fairly close, might change now and then.
+    test(['-O3', '--closure', '1', '-s', 'WASM=0'], 28000)
+    test(['-O3', '--closure', '2', '-s', 'WASM=0'], 26000)
 
   def test_no_browser(self):
     BROWSER_INIT = 'var Browser'
