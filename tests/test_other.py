@@ -5589,7 +5589,7 @@ Descriptor desc;
   def test_merge_pair(self):
     def test(filename, full):
       print('----', filename, full)
-      Popen([PYTHON, EMCC, path_from_root('tests', filename), '-O1', '-profiling', '-o', 'left.js']).communicate()
+      Popen([PYTHON, EMCC, path_from_root('tests', filename), '-O1', '-profiling', '-o', 'left.js', '-s', 'WASM=0']).communicate()
       src = open('left.js').read()
       open('right.js', 'w').write(src.replace('function _main() {', 'function _main() { Module.print("replaced"); '))
 
