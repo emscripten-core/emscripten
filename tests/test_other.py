@@ -4953,6 +4953,8 @@ main(const int argc, const char * const * const argv)
         self.clear()
         Popen([PYTHON, EMCC, path_from_root('tests', source), '-o', name + '.js'] + opts + moar_opts).communicate()
         sizes[name] = get_size(name + '.js')
+        if os.path.exists(name + '.wasm'):
+          sizes[name] += get_size(name + '.wasm')
         self.assertContained('hello, world!', run_js(name + '.js'))
       do('normal', 'hello_world_fopen.c', [])
       do('no_fs', 'hello_world.c', []) # without fopen, we should auto-detect we do not need full fs support and can do NO_FILESYSTEM
@@ -4960,15 +4962,17 @@ main(const int argc, const char * const * const argv)
       do('no_nuthin', 'hello_world.c', ['-s', 'EXPORTED_RUNTIME_METHODS=[]'])
       print('  ', sizes)
       assert sizes['no_fs'] < sizes['normal']
-      assert abs(sizes['no_nuthin'] - sizes['no_fs']) < 10, 'almost no difference between then, now that we export nothing by default anyhow'
+      assert abs(sizes['no_nuthin'] - sizes['no_fs']) < 30, 'almost no difference between then, now that we export nothing by default anyhow'
       assert sizes['no_nuthin'] < ratio*sizes['normal']
       assert sizes['no_nuthin'] < absolute, str(sizes['no_nuthin']) + ' >= ' + str(absolute)
-      assert sizes['no_fs_manual'] < sizes['no_fs'] # manual can remove a tiny bit more
-    test(['-s', 'ASSERTIONS=0'], 0.75, 360000) # we don't care about code size with assertions
-    test(['-O1'], 0.66, 210000)
-    test(['-O2'], 0.50, 70000)
-    test(['-O3', '--closure', '1'], 0.60, 50000)
-    test(['-O3', '--closure', '2'], 0.60, 41000) # might change now and then
+      assert sizes['no_fs_manual'] < sizes['no_fs'] + 30 # manual can usually remove a tiny bit more
+    test(['-s', 'ASSERTIONS=0'], 0.75, 120000) # we don't care about code size with assertions
+    test(['-O1'], 0.66, 90000)
+    test(['-O2'], 0.50, 45000)
+    test(['-O3', '--closure', '1'], 0.60, 17000)
+    # asm.js too
+    test(['-O3', '--closure', '1', '-s', 'WASM=0'], 0.60, 50000)
+    test(['-O3', '--closure', '2', '-s', 'WASM=0'], 0.60, 41000) # might change now and then
 
   def test_no_nuthin_2(self):
     # focus on EXPORTED_RUNTIME_METHODS effects, on hello_world_em_asm
