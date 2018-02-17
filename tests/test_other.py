@@ -6018,19 +6018,19 @@ main()
   void *h;
   void (*f) ();
 
-  h = dlopen ("libhello1.js", RTLD_NOW);
+  h = dlopen ("libhello1.wasm", RTLD_NOW);
   f = dlsym (h, "hello1");
   f();
   dlclose (h);
-  h = dlopen ("libhello2.js", RTLD_NOW);
+  h = dlopen ("libhello2.wasm", RTLD_NOW);
   f = dlsym (h, "hello2");
   f();
   dlclose (h);
-  h = dlopen ("libhello3.js", RTLD_NOW);
+  h = dlopen ("libhello3.wasm", RTLD_NOW);
   f = dlsym (h, "hello3");
   f();
   dlclose (h);
-  h = dlopen ("/usr/local/lib/libhello4.js", RTLD_NOW);
+  h = dlopen ("/usr/local/lib/libhello4.wasm", RTLD_NOW);
   f = dlsym (h, "hello4");
   f();
   dlclose (h);
@@ -6039,15 +6039,15 @@ main()
 
 ''')
 
-    Popen([PYTHON, EMCC, '-o', 'libhello1.js', 'hello1.c', '-s', 'SIDE_MODULE=1']).communicate()
-    Popen([PYTHON, EMCC, '-o', 'libhello2.js', 'hello2.c', '-s', 'SIDE_MODULE=1']).communicate()
-    Popen([PYTHON, EMCC, '-o', 'libhello3.js', 'hello3.c', '-s', 'SIDE_MODULE=1']).communicate()
-    Popen([PYTHON, EMCC, '-o', 'libhello4.js', 'hello4.c', '-s', 'SIDE_MODULE=1']).communicate()
-    Popen([PYTHON, EMCC, '-o', 'main.js', 'main.c', '-s', 'MAIN_MODULE=1',
-           '--embed-file', 'libhello1.js@/lib/libhello1.js',
-           '--embed-file', 'libhello2.js@/usr/lib/libhello2.js',
-           '--embed-file', 'libhello3.js@/libhello3.js',
-           '--embed-file', 'libhello4.js@/usr/local/lib/libhello4.js',
+    Popen([PYTHON, EMCC, '-o', 'libhello1.wasm', 'hello1.c', '-s', 'SIDE_MODULE=1']).communicate()
+    Popen([PYTHON, EMCC, '-o', 'libhello2.wasm', 'hello2.c', '-s', 'SIDE_MODULE=1']).communicate()
+    Popen([PYTHON, EMCC, '-o', 'libhello3.wasm', 'hello3.c', '-s', 'SIDE_MODULE=1']).communicate()
+    Popen([PYTHON, EMCC, '-o', 'libhello4.wasm', 'hello4.c', '-s', 'SIDE_MODULE=1']).communicate()
+    Popen([PYTHON, EMCC, '-o', 'main.js', 'main.c', '-s', 'MAIN_MODULE=1', '-s', 'TOTAL_MEMORY=' + str(32*1024*1024),
+           '--embed-file', 'libhello1.wasm@/lib/libhello1.wasm',
+           '--embed-file', 'libhello2.wasm@/usr/lib/libhello2.wasm',
+           '--embed-file', 'libhello3.wasm@/libhello3.wasm',
+           '--embed-file', 'libhello4.wasm@/usr/local/lib/libhello4.wasm',
            '--pre-js', 'pre.js']).communicate()
     out = run_js('main.js')
     self.assertContained('Hello1', out)
