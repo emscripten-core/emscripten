@@ -1226,6 +1226,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                                            'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD and \
                                            not shared.Settings.USE_PTHREADS
 
+        # wasm side modules have suffix .wasm
+        if shared.Settings.SIDE_MODULE and target.endswith('.js'):
+          logging.warning('output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
+
       # wasm outputs are only possible with a side wasm
       if target.endswith(WASM_ENDINGS):
         if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
