@@ -4859,6 +4859,9 @@ def process(filename):
   def test_uname(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_uname')
 
+  def test_unary_literal(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_unary_literal')
+
   def test_env(self):
     src = open(path_from_root('tests', 'env', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'env', 'output.txt'), 'r').read()
