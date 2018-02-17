@@ -1291,6 +1291,7 @@ int main() {
     self.do_run_in_out_file_test('tests', 'core', 'test_complex', force_c=True)
 
   def test_float_builtins(self):
+    # tests wasm_libc_rt
     if not self.is_wasm_backend(): return self.skip('no __builtin_fmin support in JSBackend')
     self.do_run_in_out_file_test('tests', 'core', 'test_float_builtins')
 
@@ -1682,13 +1683,8 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm', force_c=True)
 
   def test_em_asm_unicode(self):
-    self.do_run(r'''
-#include <emscripten.h>
-
-int main() {
-  EM_ASM( Module.print("hello world…") );
-}
-''', 'hello world…')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode', force_c=True)
 
   def test_em_asm_unused_arguments(self):
     src = r'''
