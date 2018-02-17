@@ -5888,64 +5888,73 @@ int main(int argc, char** argv) {
       test(['-O' + str(opts), '-s', 'MAIN_MODULE=1', '-s', 'EMULATED_FUNCTION_POINTERS=1'], flipped) # but you can disable that
 
   def test_minimal_dynamic(self):
-    def test(main_args=[], library_args=[], expected='hello from main\nhello from library'):
-      print('testing', main_args, library_args)
-      self.clear()
-      open('library.c', 'w').write(r'''
-        #include <stdio.h>
-        void library_func() {
-        #ifdef USE_PRINTF
-          printf("hello from library: %p\n", (int)&library_func);
-        #else
-          puts("hello from library");
-        #endif
-        }
-      ''')
-      check_execute([PYTHON, EMCC, 'library.c', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'library.js'] + library_args)
-      open('main.c', 'w').write(r'''
-        #include <dlfcn.h>
-        #include <stdio.h>
-        int main() {
-          puts("hello from main");
-          void *lib_handle = dlopen("library.js", 0);
-          typedef void (*voidfunc)();
-          voidfunc x = (voidfunc)dlsym(lib_handle, "library_func");
-          if (!x) puts("cannot find side function");
-          else x();
-        }
-      ''')
-      check_execute([PYTHON, EMCC, 'main.c', '-s', 'MAIN_MODULE=1', '--embed-file', 'library.js', '-O2'] + main_args)
-      self.assertContained(expected, run_js('a.out.js', assert_returncode=None, stderr=subprocess.STDOUT))
-      size = os.stat('a.out.js').st_size
-      side_size = os.stat('library.js').st_size
-      print('  sizes:', size, side_size)
-      return (size, side_size)
+    for wasm in (1, 0):
+      print('wasm?', wasm)
+      library_file = 'library.wasm' if wasm else 'library.js'
+      def test(main_args=[], library_args=[], expected='hello from main\nhello from library'):
+        print('testing', main_args, library_args)
+        self.clear()
+        open('library.c', 'w').write(r'''
+          #include <stdio.h>
+          void library_func() {
+          #ifdef USE_PRINTF
+            printf("hello from library: %p\n", (int)&library_func);
+          #else
+            puts("hello from library");
+          #endif
+          }
+        ''')
+        check_execute([PYTHON, EMCC, 'library.c', '-s', 'SIDE_MODULE=1', '-O2', '-o', library_file, '-s', 'WASM=' + str(wasm)] + library_args)
+        open('main.c', 'w').write(r'''
+          #include <dlfcn.h>
+          #include <stdio.h>
+          int main() {
+            puts("hello from main");
+            void *lib_handle = dlopen("%s", 0);
+            if (!lib_handle) {
+              puts("cannot load side module");
+              return 1;
+            }
+            typedef void (*voidfunc)();
+            voidfunc x = (voidfunc)dlsym(lib_handle, "library_func");
+            if (!x) puts("cannot find side function");
+            else x();
+          }
+        ''' % library_file)
+        check_execute([PYTHON, EMCC, 'main.c', '-s', 'MAIN_MODULE=1', '--embed-file', library_file, '-O2', '-s', 'WASM=' + str(wasm)] + main_args)
+        self.assertContained(expected, run_js('a.out.js', assert_returncode=None, stderr=subprocess.STDOUT))
+        size = os.stat('a.out.js').st_size
+        if wasm:
+          size += os.stat('a.out.wasm').st_size
+        side_size = os.stat(library_file).st_size
+        print('  sizes:', size, side_size)
+        return (size, side_size)
 
-    def percent_diff(x, y):
-      small = min(x, y)
-      large = max(x, y)
-      return float(100*large)/small - 100
+      def percent_diff(x, y):
+        small = min(x, y)
+        large = max(x, y)
+        return float(100*large)/small - 100
 
-    # main module tests
+      # main module tests
 
-    full     = test()
-    printf   = test(                                   library_args=['-DUSE_PRINTF'])                       # printf is not used in main, but libc was linked in, so it's there
-    dce      = test(main_args=['-s', 'MAIN_MODULE=2'])                                                      # dce in main, and side happens to be ok since it uses puts as well
-    dce_fail = test(main_args=['-s', 'MAIN_MODULE=2'], library_args=['-DUSE_PRINTF'], expected='undefined') # printf is not used in main, and we dce, so we failz
-    dce_save = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_printf"]'],
-                                                       library_args=['-DUSE_PRINTF'])                       # exporting printf in main keeps it alive for the library
+      full     = test()
+      printf   = test(                                   library_args=['-DUSE_PRINTF'])                       # printf is not used in main, but libc was linked in, so it's there
+      dce      = test(main_args=['-s', 'MAIN_MODULE=2'])                                                      # dce in main, and side happens to be ok since it uses puts as well
+      dce_fail = test(main_args=['-s', 'MAIN_MODULE=2'], library_args=['-DUSE_PRINTF'], expected=('cannot', 'undefined')) # printf is not used in main, and we dce, so we failz
+      dce_save = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_printf"]'],
+                                                         library_args=['-DUSE_PRINTF'])                       # exporting printf in main keeps it alive for the library
 
-    assert percent_diff(full[0], printf[0]) < 4
-    assert percent_diff(dce[0], dce_fail[0]) < 4
-    assert dce[0] < 0.2*full[0] # big effect, 80%+ is gone
-    assert dce_save[0] > 1.1*dce[0] # save exported all of printf
+      assert percent_diff(full[0], printf[0]) < 4
+      assert percent_diff(dce[0], dce_fail[0]) < 4
+      assert dce[0] < 0.2*full[0] # big effect, 80%+ is gone
+      assert dce_save[0] > 1.1*dce[0] # save exported all of printf
 
-    # side module tests
+      # side module tests
 
-    side_dce_fail = test(library_args=['-s', 'SIDE_MODULE=2'], expected='cannot find side function') # mode 2, so dce in side, but library_func is not exported, so it is dce'd
-    side_dce_work = test(library_args=['-s', 'SIDE_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_library_func"]'], expected='hello from library') # mode 2, so dce in side, and library_func is not exported
+      side_dce_fail = test(library_args=['-s', 'SIDE_MODULE=2'], expected='cannot find side function') # mode 2, so dce in side, but library_func is not exported, so it is dce'd
+      side_dce_work = test(library_args=['-s', 'SIDE_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_library_func"]'], expected='hello from library') # mode 2, so dce in side, and library_func is not exported
 
-    assert side_dce_fail[1] < 0.95*side_dce_work[1] # removing that function saves a chunk
+      assert side_dce_fail[1] < 0.95*side_dce_work[1] # removing that function saves a chunk
 
   def test_ld_library_path(self):
     open('hello1.c', 'w').write(r'''
