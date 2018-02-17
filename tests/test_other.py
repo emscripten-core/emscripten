@@ -4971,8 +4971,8 @@ main(const int argc, const char * const * const argv)
     test(['-O2'], 0.50, 45000)
     test(['-O3', '--closure', '1'], 0.60, 17000)
     # asm.js too
-    test(['-O3', '--closure', '1', '-s', 'WASM=0'], 0.60, 50000)
-    test(['-O3', '--closure', '2', '-s', 'WASM=0'], 0.60, 41000) # might change now and then
+    test(['-O3', '--closure', '1', '-s', 'WASM=0'], 0.60, 36000)
+    test(['-O3', '--closure', '2', '-s', 'WASM=0'], 0.60, 33000) # might change now and then
 
   def test_no_nuthin_2(self):
     # focus on EXPORTED_RUNTIME_METHODS effects, on hello_world_em_asm
