@@ -3445,16 +3445,16 @@ int main()
           self.assertContained(e, output)
 
   def test_incorrect_static_call(self):
-    for opts in [0, 1]:
-      for asserts in [0, 1]:
-        extra = []
-        if opts != 1-asserts: extra = ['-s', 'ASSERTIONS=' + str(asserts)]
-        cmd = [PYTHON, EMCC, path_from_root('tests', 'sillyfuncast2_noasm.ll'), '-O' + str(opts)] + extra
-        print(cmd)
-        stderr = run_process(cmd, stderr=PIPE).stderr
-        assert ('''unexpected number of arguments 3 in call to 'doit', should be 2''' in stderr) == asserts, stderr
-        assert ('''unexpected return type i32 in call to 'doit', should be void''' in stderr) == asserts, stderr
-        assert ('''unexpected argument type float at index 1 in call to 'doit', should be i32''' in stderr) == asserts, stderr
+    for wasm in [0, 1]:
+      for opts in [0, 1]:
+        for asserts in [0, 1]:
+          extra = []
+          if opts != 1-asserts: extra = ['-s', 'ASSERTIONS=' + str(asserts)]
+          cmd = [PYTHON, EMCC, path_from_root('tests', 'sillyfuncast2_noasm.ll'), '-O' + str(opts), '-s', 'WASM=' + str(wasm)] + extra
+          print(opts, asserts, wasm, cmd)
+          stderr = run_process(cmd, stdout=PIPE, stderr=PIPE, check=False).stderr
+          assert ('unexpected' in stderr) == asserts, stderr
+          assert ("to 'doit'" in stderr) == asserts, stderr
 
   def test_llvm_lit(self):
     grep_path = Building.which('grep')
