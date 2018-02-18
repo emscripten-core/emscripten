@@ -46,6 +46,10 @@ class clean_write_access_to_canonical_temp_dir(object):
     else:
       self.clean_emcc_files_in_temp_dir()
 
+def is_exported_in_wasm(name, wasm):
+  wat = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), wasm], stdout=PIPE).stdout
+  return ('(export "%s"' % name) in wat
+
 class other(RunnerCore):
   def test_emcc_v(self):
     for compiler in [EMCC, EMXX]:
@@ -1416,6 +1420,7 @@ int f() {
 
   def test_export_in_a(self):
     export_name = 'this_is_an_entry_point'
+    full_export_name = '_' + export_name
 
     open('export.c', 'w').write(r'''
       #include <stdio.h>
@@ -1432,20 +1437,18 @@ int f() {
       }
     ''')
 
-    definition = 'function _%s(' % export_name
-
     # Sanity check: the symbol should not be linked in if not requested.
     Popen([PYTHON, EMCC, 'main.c', '-L.', '-lexport']).communicate()
-    self.assertNotContained(definition, open(os.path.join(self.get_dir(), 'a.out.js')).read())
+    assert not is_exported_in_wasm(full_export_name, 'a.out.wasm')
 
     # Sanity check: exporting without a definition does not cause it to appear.
     # Note: exporting main prevents emcc from warning that it generated no code.
-    Popen([PYTHON, EMCC, 'main.c', '-s', '''EXPORTED_FUNCTIONS=['_main', '_%s']''' % export_name]).communicate()
-    self.assertNotContained(definition, open(os.path.join(self.get_dir(), 'a.out.js')).read())
+    Popen([PYTHON, EMCC, 'main.c', '-s', '''EXPORTED_FUNCTIONS=['_main', '%s']''' % full_export_name]).communicate()
+    assert not is_exported_in_wasm(full_export_name, 'a.out.wasm')
 
     # Actual test: defining symbol in library and exporting it causes it to appear in the output.
-    Popen([PYTHON, EMCC, 'main.c', '-L.', '-lexport', '-s', '''EXPORTED_FUNCTIONS=['_%s']''' % export_name]).communicate()
-    self.assertContained(definition, open(os.path.join(self.get_dir(), 'a.out.js')).read())
+    Popen([PYTHON, EMCC, 'main.c', '-L.', '-lexport', '-s', '''EXPORTED_FUNCTIONS=['%s']''' % full_export_name]).communicate()
+    assert is_exported_in_wasm(full_export_name, 'a.out.wasm')
 
   def test_embed_file(self):
     open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''hello from a file with lots of data and stuff in it thank you very much''')
