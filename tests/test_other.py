@@ -5837,7 +5837,7 @@ int main(int argc, char** argv) {
     open('src.c', 'w').write(src)
     def test(args, expected):
       print(args, expected)
-      out, err = Popen([PYTHON, EMCC, 'src.c'] + args, stderr=PIPE).communicate()
+      out, err = Popen([PYTHON, EMCC, 'src.c', '-s', 'WASM=0'] + args, stderr=PIPE).communicate()
       self.assertContained(expected, run_js(self.in_dir('a.out.js')))
 
     for opts in [0, 1, 2, 3]:
@@ -5882,7 +5882,7 @@ int main(int argc, char** argv) {
 
     def test(args, expected):
       print(args, expected.replace('\n', ' '))
-      Popen([PYTHON, EMCC, 'src.c'] + args).communicate()
+      Popen([PYTHON, EMCC, 'src.c', '-s', 'WASM=0'] + args).communicate()
       self.assertContained(expected, run_js(self.in_dir('a.out.js')))
 
     for opts in [0, 1, 2]:
