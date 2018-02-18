@@ -2956,7 +2956,8 @@ mergeInto(LibraryManager.library, {
   asmlibfunc__asm: true,
   asmlibfunc__sig: 'ii',
   asmlibfunc: function(x) {
-    return x + 1;
+    x = x | 0;
+    return x + 1 | 0;
   }
 });
 ''')
