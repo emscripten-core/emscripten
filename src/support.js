@@ -265,8 +265,7 @@ function addFunction(func, sig) {
 #endif // WASM_BACKEND
 #if ASSERTIONS
   if (typeof sig === 'undefined') {
-    Module.printErr('Warning: addFunction: Provide a wasm function signature ' +
-                    'string as a second argument');
+    Module.printErr('warning: addFunction(): You should provide a wasm function signature string as a second argument. This is not necessary for asm.js and asm2wasm, but is required for the LLVM wasm backend, so it is recommended for full portability.');
   }
 #endif // ASSERTIONS
 #if EMULATED_FUNCTION_POINTERS == 0
