@@ -187,7 +187,7 @@ Module['callMain'] = function callMain(args) {
   HEAP32[(argv >> 2) + argc] = 0;
 
 #if EMTERPRETIFY_ASYNC
-  var initialEmtStackTop = Module['asm']['emtStackSave']();
+  var initialEmtStackTop = Module['emtStackSave']();
 #endif
 
   try {
@@ -228,7 +228,7 @@ Module['callMain'] = function callMain(args) {
       Module['noExitRuntime'] = true;
 #if EMTERPRETIFY_ASYNC
       // an infinite loop keeps the C stack around, but the emterpreter stack must be unwound - we do not want to restore the call stack at infinite loop
-      Module['asm'].emtStackRestore(initialEmtStackTop);
+      Module['emtStackRestore'](initialEmtStackTop);
 #endif
       return;
     } else {
