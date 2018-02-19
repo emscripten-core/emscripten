@@ -2118,9 +2118,9 @@ void *getBindBuffer() {
     ''' % self.test_port)
 
     # with assertions, we notice when memory was written to too early
-    self.btest('mem_init.cpp', expected='9', args=['--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1'])
+    self.btest('mem_init.cpp', expected='9', args=['-s', 'WASM=0', '--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1'])
     # otherwise, we just overwrite
-    self.btest('mem_init.cpp', expected='3', args=['--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1', '-s', 'ASSERTIONS=0'])
+    self.btest('mem_init.cpp', expected='3', args=['-s', 'WASM=0', '--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1', '-s', 'ASSERTIONS=0'])
 
   def test_mem_init_request(self):
     def test(what, status):
@@ -2145,7 +2145,7 @@ void *getBindBuffer() {
           console.log('WARNING: ' + x);
         };
       ''' % self.test_port)
-      self.btest('mem_init_request.cpp', expected=status, args=['--pre-js', 'pre.js', '--memory-init-file', '1'])
+      self.btest('mem_init_request.cpp', expected=status, args=['-s', 'WASM=0', '--pre-js', 'pre.js', '--memory-init-file', '1'])
 
     test('test.html.mem', '1')
     test('nothing.nowhere', '0')
@@ -3494,7 +3494,7 @@ window.close = function() {
                                 for j in range(256)) for i in range(256))
     with open(path_from_root('tests', 'meminit_pairs.c')) as f:
       d += '"\n};\n' + f.read()
-    args = ["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"]
+    args = ["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1", '-s', 'WASM=0']
     self.btest(d, expected='0', args=args + ["--closure", "0"])
     self.btest(d, expected='0', args=args + ["--closure", "0", "-g"])
     self.btest(d, expected='0', args=args + ["--closure", "1"])
@@ -3506,7 +3506,7 @@ window.close = function() {
     with open(path_from_root('tests', 'meminit_pairs.c')) as f:
       d += '"\n};\n' + f.read()
     assert len(d) > (1 << 27) # more than 32M memory initializer
-    args = ["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"]
+    args = ["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1", '-s', 'WASM=0']
     self.btest(d, expected='0', args=args + ["--closure", "0"])
     self.btest(d, expected='0', args=args + ["--closure", "0", "-g"])
     self.btest(d, expected='0', args=args + ["--closure", "1"])
