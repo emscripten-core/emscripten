@@ -6065,6 +6065,11 @@ main()
     self.assertContained('Hello4', out)
 
   def test_dlopen_rtld_global(self):
+    # TODO: wasm support. this test checks RTLD_GLOBAL where a module is loaded
+    #       before the module providing a global it needs is. in asm.js we use JS
+    #       to create a redirection function. In wasm we just have wasm, so we
+    #       need to introspect the wasm module. Browsers may add that eventually,
+    #       or we could ship a little library that does it.
     open('hello1.c', 'w').write(r'''
 #include <stdio.h>
 
@@ -6117,9 +6122,9 @@ main(int argc,char** argv)
 }
 ''')
 
-    Popen([PYTHON, EMCC, '-o', 'libhello1.js', 'hello1.c', '-s', 'SIDE_MODULE=1']).communicate()
-    Popen([PYTHON, EMCC, '-o', 'libhello2.js', 'hello2.c', '-s', 'SIDE_MODULE=1']).communicate()
-    Popen([PYTHON, EMCC, '-o', 'main.js', 'main.c', '-s', 'MAIN_MODULE=1',
+    Popen([PYTHON, EMCC, '-o', 'libhello1.js', 'hello1.c', '-s', 'SIDE_MODULE=1', '-s', 'WASM=0']).communicate()
+    Popen([PYTHON, EMCC, '-o', 'libhello2.js', 'hello2.c', '-s', 'SIDE_MODULE=1', '-s', 'WASM=0']).communicate()
+    Popen([PYTHON, EMCC, '-o', 'main.js', 'main.c', '-s', 'MAIN_MODULE=1', '-s', 'WASM=0',
            '--embed-file', 'libhello1.js',
            '--embed-file', 'libhello2.js']).communicate()
     out = run_js('main.js')
