@@ -2445,13 +2445,14 @@ Module["preRun"].push(function () {
       self.btest(path_from_root('tests', 'test_sdl_mousewheel.c'), args=opts + ['-DAUTOMATE_SUCCESS=1', '-lSDL', '-lGL'], expected='0')
 
   def test_codemods(self):
+    # tests asm.js client-side code modifications
     for opt_level in [0, 2]:
       print('opt level', opt_level)
-      opts = '-O' + str(opt_level)
+      opts = ['-O' + str(opt_level), '-s', 'WASM=0']
       # sanity checks, building with and without precise float semantics generates different results
-      self.btest(path_from_root('tests', 'codemods.cpp'), expected='2', args=[opts])
-      self.btest(path_from_root('tests', 'codemods.cpp'), expected='1', args=[opts, '-s', 'PRECISE_F32=1'])
-      self.btest(path_from_root('tests', 'codemods.cpp'), expected='1', args=[opts, '-s', 'PRECISE_F32=2', '--separate-asm']) # empty polyfill, but browser has support, so semantics are like float
+      self.btest(path_from_root('tests', 'codemods.cpp'), expected='2', args=opts)
+      self.btest(path_from_root('tests', 'codemods.cpp'), expected='1', args=opts + ['-s', 'PRECISE_F32=1'])
+      self.btest(path_from_root('tests', 'codemods.cpp'), expected='1', args=opts + ['-s', 'PRECISE_F32=2', '--separate-asm']) # empty polyfill, but browser has support, so semantics are like float
 
   def test_wget(self):
     with open(os.path.join(self.get_dir(), 'test.txt'), 'w') as f:
@@ -3120,7 +3121,7 @@ window.close = function() {
 
   def test_dynamic_link(self):
     open('pre.js', 'w').write('''
-      Module.dynamicLibraries = ['side.js'];
+      Module.dynamicLibraries = ['side.wasm'];
   ''')
     open('main.cpp', 'w').write(r'''
       #include <stdio.h>
@@ -3156,7 +3157,7 @@ window.close = function() {
         return ret;
       }
     ''')
-    Popen([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.js']).communicate()
+    Popen([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm']).communicate()
     self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js'])
 
     print('wasm in worker (we can read binary data synchronously there)')
@@ -3164,7 +3165,7 @@ window.close = function() {
     open('pre.js', 'w').write('''
       var Module = { dynamicLibraries: ['side.wasm'] };
   ''')
-    Popen([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.js', '-s', 'WASM=1']).communicate()
+    Popen([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-s', 'WASM=1']).communicate()
     self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'WASM=1', '--proxy-to-worker'])
 
     print('wasm (will auto-preload since no sync binary reading)')
