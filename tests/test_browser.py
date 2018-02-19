@@ -2471,73 +2471,82 @@ Module["preRun"].push(function () {
     self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O2', '-g2', '-s', 'ASSERTIONS=1'])
 
   def test_locate_file(self):
-    self.clear()
-    open('src.cpp', 'w').write(self.with_report_result(r'''
-      #include <stdio.h>
-      #include <string.h>
-      #include <assert.h>
-      int main() {
-        FILE *f = fopen("data.txt", "r");
-        assert(f && "could not open file");
-        char buf[100];
-        int num = fread(buf, 1, 20, f);
-        assert(num == 20 && "could not read 20 bytes");
-        buf[20] = 0;
-        fclose(f);
-        int result = !strcmp("load me right before", buf);
-        printf("|%s| : %d\n", buf, result);
-        REPORT_RESULT(result);
-        return 0;
-      }
-    '''))
-    open('data.txt', 'w').write('load me right before...')
-    open('pre.js', 'w').write('Module.locateFile = function(x) { return "sub/" + x };')
-    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w')).communicate()
-    # put pre.js first, then the file packager data, so locateFile is there for the file loading code
-    Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1']).communicate()
-    os.mkdir('sub')
-    shutil.move('page.html.mem', os.path.join('sub', 'page.html.mem'))
-    shutil.move('test.data', os.path.join('sub', 'test.data'))
-    self.run_browser('page.html', None, '/report_result?1')
+    for wasm in [0, 1]:
+      print('wasm', wasm)
+      self.clear()
+      open('src.cpp', 'w').write(self.with_report_result(r'''
+        #include <stdio.h>
+        #include <string.h>
+        #include <assert.h>
+        int main() {
+          FILE *f = fopen("data.txt", "r");
+          assert(f && "could not open file");
+          char buf[100];
+          int num = fread(buf, 1, 20, f);
+          assert(num == 20 && "could not read 20 bytes");
+          buf[20] = 0;
+          fclose(f);
+          int result = !strcmp("load me right before", buf);
+          printf("|%s| : %d\n", buf, result);
+          REPORT_RESULT(result);
+          return 0;
+        }
+      '''))
+      open('data.txt', 'w').write('load me right before...')
+      open('pre.js', 'w').write('Module.locateFile = function(x) { return "sub/" + x };')
+      Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w')).communicate()
+      # put pre.js first, then the file packager data, so locateFile is there for the file loading code
+      Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1', '-s', 'WASM=' + str(wasm)]).communicate()
+      os.mkdir('sub')
+      if wasm:
+        shutil.move('page.wasm', os.path.join('sub', 'page.wasm'))
+      else:
+        shutil.move('page.html.mem', os.path.join('sub', 'page.html.mem'))
+      shutil.move('test.data', os.path.join('sub', 'test.data'))
+      self.run_browser('page.html', None, '/report_result?1')
 
-    # alternatively, put locateFile in the HTML
-    print('in html')
+      # alternatively, put locateFile in the HTML
+      print('in html')
 
-    open('shell.html', 'w').write('''
-      <body>
-        <script>
-          var Module = {
-            locateFile: function(x) { return "sub/" + x }
-          };
-        </script>
+      open('shell.html', 'w').write('''
+        <body>
+          <script>
+            var Module = {
+              locateFile: function(x) { return "sub/" + x }
+            };
+          </script>
 
-        {{{ SCRIPT }}}
-      </body>
-    ''')
+          {{{ SCRIPT }}}
+        </body>
+      ''')
 
-    def in_html(expected, args=[]):
-      Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'SAFE_HEAP=1', '-s', 'ASSERTIONS=1', '-s', 'FORCE_FILESYSTEM=1'] + args).communicate()
-      shutil.move('page.html.mem', os.path.join('sub', 'page.html.mem'))
-      self.run_browser('page.html', None, '/report_result?' + expected)
+      def in_html(expected, args=[]):
+        Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'SAFE_HEAP=1', '-s', 'ASSERTIONS=1', '-s', 'FORCE_FILESYSTEM=1', '-s', 'WASM=' + str(wasm)] + args).communicate()
+        if wasm:
+          shutil.move('page.wasm', os.path.join('sub', 'page.wasm'))
+        else:
+          shutil.move('page.html.mem', os.path.join('sub', 'page.html.mem'))
+        self.run_browser('page.html', None, '/report_result?' + expected)
 
-    in_html('1')
+      in_html('1')
 
-    # verify that the mem init request succeeded in the latter case
-    open('src.cpp', 'w').write(self.with_report_result(r'''
-#include <stdio.h>
-#include <emscripten.h>
+      # verify that the mem init request succeeded in the latter case
+      if not wasm:
+        open('src.cpp', 'w').write(self.with_report_result(r'''
+  #include <stdio.h>
+  #include <emscripten.h>
 
-int main() {
-  int result = EM_ASM_INT({
-    return Module['memoryInitializerRequest'].status;
-  });
-  printf("memory init request: %d\n", result);
-  REPORT_RESULT(result);
-  return 0;
-}
-    '''))
+  int main() {
+    int result = EM_ASM_INT({
+      return Module['memoryInitializerRequest'].status;
+    });
+    printf("memory init request: %d\n", result);
+    REPORT_RESULT(result);
+    return 0;
+  }
+      '''))
 
-    in_html('200')
+        in_html('200')
 
   @requires_hardware
   def test_glfw3(self):
@@ -3574,9 +3583,10 @@ window.close = function() {
       self.run_browser('test.html', None, '/report_result?0')
 
   def test_in_flight_memfile_request(self):
+    # test the XHR for an asm.js mem init file being in flight already
     for o in [0, 1, 2]:
       print(o)
-      opts = ['-O' + str(o)]
+      opts = ['-O' + str(o), '-s', 'WASM=0']
 
       print('plain html')
       open('src.cpp', 'w').write(self.with_report_result(open(path_from_root('tests', 'in_flight_memfile_request.c')).read()))
