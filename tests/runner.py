@@ -986,6 +986,9 @@ class BrowserCore(RunnerCore):
       if not manual_reference:
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
     all_args = [PYTHON, EMCC, '-s', 'IN_TEST_HARNESS=1', temp_filepath, '-o', outfile] + args
+    if 'USE_PTHREADS=1' in all_args or 'USE_PTHREADS=2' in all_args:
+      logging.warning('not using wasm in pthreads test (even hello world does not seem to work yet')
+      all_args += ['-s', 'WASM=0']
     #print 'all args:', all_args
     try_delete(outfile)
     Popen(all_args).communicate()
