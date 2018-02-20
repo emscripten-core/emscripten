@@ -3808,7 +3808,6 @@ window.close = function() {
     # TODO: enable this with wasm, currently pthreads/atomics have limitations
     src = os.path.join(self.get_dir(), 'src.c')
     open(src, 'w').write(self.with_report_result(open(path_from_root('tests', 'pthread', 'hello_thread.c')).read()))
-
     Popen([PYTHON, EMCC, 'src.c', '-s', 'USE_PTHREADS=1', '-o', 'hello_thread_with_blob_url.js', '-s', 'WASM=0']).communicate()
     shutil.copyfile(path_from_root('tests', 'pthread', 'main_js_as_blob_loader.html'), os.path.join(self.get_dir(), 'hello_thread_with_blob_url.html'))
     self.run_browser('hello_thread_with_blob_url.html', 'hello from thread!', '/report_result?1')
