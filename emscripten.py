@@ -1918,18 +1918,12 @@ def read_metadata_wast(wast, DEBUG):
   parts = output.split('\n;; METADATA:')
   assert len(parts) == 2
   metadata_raw = parts[1]
-  return create_metadata_wasm(metadata_raw, wast, DEBUG)
+  return create_metadata_wasm(metadata_raw, DEBUG)
 
 
-def read_metadata_file_wasm(meta, wast, DEBUG):
-  metadata_raw = open(meta).read()
-  return create_metadata_wasm(metadata_raw, wast, DEBUG)
-
-
-def create_metadata_wasm(metadata_raw, wast, DEBUG):
+def create_metadata_wasm(metadata_raw, DEBUG):
   if DEBUG: logging.debug("METAraw %s", metadata_raw)
   metadata = load_metadata(metadata_raw)
-  add_metadata_from_wast(metadata, wast)
   if DEBUG: logging.debug(repr(metadata))
   return metadata
 
@@ -2188,51 +2182,6 @@ def load_metadata(metadata_raw):
   shared.Building.user_requested_exports += metadata['exports']
 
   return metadata
-
-
-def add_metadata_from_wast(metadata, wast):
-  """Reads .wast file and adds metadata we can read from the code.
-
-  TODO: emit this metadata directly from s2wasm.
-  """
-  for line in open(wast).readlines():
-    line = line.strip()
-    if line.startswith('(import '):
-      parts = line.split()
-      # Don't include Invoke wrapper names (for asm.js-style exception handling)
-      # in metadata[declares], the invoke wrappers will be generated in
-      # this script later.
-      import_type = parts[3][1:]
-      import_name = parts[2][1:-1]
-      if import_type == 'memory':
-        continue
-      elif import_type == 'func':
-        if (not import_name.startswith('invoke_') and
-            not import_name.startswith('jsCall_')):
-          metadata['declares'].append(import_name)
-      elif import_type == 'global':
-        metadata['externs'].append('_' + import_name)
-      else:
-        assert False, 'Unhandled import type "%s"' % import_type
-    elif line.startswith('(func '):
-      parts = line.split()
-      func_name = parts[1][1:]
-      metadata['implementedFunctions'].append('_' + func_name)
-    elif line.startswith('(export '):
-      parts = line.split()
-      export_name = parts[1][1:-1]
-      export_type = parts[2][1:]
-      if export_type == 'func':
-        assert asmjs_mangle(export_name) not in metadata['exports']
-        metadata['exports'].append(export_name)
-      elif export_type == 'global':
-        # Ignore global exports
-        pass
-      else:
-        assert False, 'Unhandled export type "%s"' % export_type
-
-  # we emit those ourselves
-  metadata['declares'] = [x for x in metadata['declares'] if not x.startswith('emscripten_asm_const')]
 
 
 def create_invoke_wrappers(invoke_funcs):
