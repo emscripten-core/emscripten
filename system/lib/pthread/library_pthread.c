@@ -542,7 +542,7 @@ int EMSCRIPTEN_KEEPALIVE proxy_main(int argc, char **argv)
     emscripten_pthread_attr_settransferredcanvases(&attr, (EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES));
 #else
     // Otherwise by default, transfer whatever is set to Module.canvas.
-    if (EM_ASM_INT_V({ return !!(Module['canvas']); })) emscripten_pthread_attr_settransferredcanvases(&attr, "#canvas");
+    if (EM_ASM_INT(return !!(Module['canvas']))) emscripten_pthread_attr_settransferredcanvases(&attr, "#canvas");
 #endif
     _main_arguments.argc = argc;
     _main_arguments.argv = argv;
