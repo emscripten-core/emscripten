@@ -3481,7 +3481,8 @@ window.close = function() {
 
   # test atomicrmw i64
   def test_atomicrmw_i64(self):
-    Popen([PYTHON, EMCC, path_from_root('tests', 'atomicrmw_i64.ll'), '-s', 'USE_PTHREADS=1', '-s', 'IN_TEST_HARNESS=1', '-o', 'test.html']).communicate()
+    # TODO: enable this with wasm, currently pthreads/atomics have limitations
+    Popen([PYTHON, EMCC, path_from_root('tests', 'atomicrmw_i64.ll'), '-s', 'USE_PTHREADS=1', '-s', 'IN_TEST_HARNESS=1', '-o', 'test.html', '-s', 'WASM=0']).communicate()
     self.run_browser('test.html', None, '/report_result?0')
 
   # Test that it is possible to send a signal via calling alarm(timeout), which in turn calls to the signal handler set by signal(SIGALRM, func);
@@ -3804,10 +3805,11 @@ window.close = function() {
 
   # Tests that it is possible to load the main .js file of the application manually via a Blob URL, and still use pthreads.
   def test_load_js_from_blob_with_pthreads(self):
+    # TODO: enable this with wasm, currently pthreads/atomics have limitations
     src = os.path.join(self.get_dir(), 'src.c')
     open(src, 'w').write(self.with_report_result(open(path_from_root('tests', 'pthread', 'hello_thread.c')).read()))
 
-    Popen([PYTHON, EMCC, 'src.c', '-s', 'USE_PTHREADS=1', '-o', 'hello_thread_with_blob_url.js']).communicate()
+    Popen([PYTHON, EMCC, 'src.c', '-s', 'USE_PTHREADS=1', '-o', 'hello_thread_with_blob_url.js', '-s', 'WASM=0']).communicate()
     shutil.copyfile(path_from_root('tests', 'pthread', 'main_js_as_blob_loader.html'), os.path.join(self.get_dir(), 'hello_thread_with_blob_url.html'))
     self.run_browser('hello_thread_with_blob_url.html', 'hello from thread!', '/report_result?1')
 
