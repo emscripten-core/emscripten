@@ -62,6 +62,7 @@ class sanity(RunnerCore):
         expected = 'no input files'
       else:
         expected = "could not find the following tests: blahblah"
+      expected = asbytes(expected)
 
     output = self.do(command)
     self.assertContained(expected, output)
