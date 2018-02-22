@@ -52,7 +52,7 @@ class sanity(RunnerCore):
     if command[0] == EMCC:
       command = [PYTHON] + command
 
-    return Popen(command, stdout=PIPE, stderr=STDOUT).communicate()[0]
+    return run_process(command, stdout=PIPE, stderr=STDOUT, check=False).stdout
 
   def check_working(self, command, expected=None):
     if type(command) is not list:
@@ -62,7 +62,6 @@ class sanity(RunnerCore):
         expected = 'no input files'
       else:
         expected = "could not find the following tests: blahblah"
-      expected = asbytes(expected)
 
     output = self.do(command)
     self.assertContained(expected, output)
