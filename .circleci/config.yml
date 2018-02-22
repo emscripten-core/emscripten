@@ -71,6 +71,10 @@ jobs:
       - TEST_DEPENDENCY=firefox
       - EMSCRIPTEN_BROWSER=firefox -headless -profile tmp-firefox-profile/
       - EM_LACKS_HARDWARE_ACCESS=1
+  test-sanity:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=sanity
   test-ab:
     <<: *test-defaults
     environment:
@@ -139,6 +143,9 @@ workflows:
           requires:
             - build
       - test-browser:
+          requires:
+            - build
+      - test-sanity:
           requires:
             - build
       - test-ab:
