@@ -5632,18 +5632,6 @@ print(os.environ.get('NM'))
       out = run_process([PYTHON, path_from_root('emmake'), 'sdl2-config'] + args, stdout=PIPE, stderr=PIPE).stdout
       assert expected in out, out
 
-  def test_warn_toomany_vars(self):
-    for source, warn in [
-      (path_from_root('tests', 'hello_libcxx.cpp'), False),
-      (path_from_root('tests', 'printf', 'test.c'), True)
-    ]:
-      for opts in [0, 1, 2, 's']:
-        print(source, opts)
-        self.clear()
-        err = run_process([PYTHON, EMCC, source, '-O' + str(opts)], stderr=PIPE).stderr
-        assert os.path.exists('a.out.js')
-        assert ('emitted code will contain very large numbers of local variables' in err) == (warn and (opts in [0, 1]))
-
   def test_module_onexit(self):
     open('src.cpp', 'w').write(r'''
 #include <emscripten.h>
