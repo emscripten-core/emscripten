@@ -15,14 +15,16 @@ def get(ports, settings, shared):
 
       freetype_dir = os.path.join(ports.get_build_dir(), 'freetype')
       freetype_lib = os.path.join(freetype_dir, 'libfreetype.a')
-      freetype_include = os.path.join(freetype_dir, 'include')
-      freetype_include_dirs = freetype_include + ';' + os.path.join(freetype_include, 'config')
+      freetype_include = os.path.join(freetype_dir, 'include', 'freetype2')
+      freetype_config = os.path.join(freetype_dir, 'include', 'freetype', 'config')
+      freetype_include_dirs = freetype_include + ';' + freetype_config
 
       shared.Building.configure(['cmake', '-H' + source_path, '-B' + dest_path,
         '-DHB_HAVE_FREETYPE=ON', '-DFREETYPE_LIBRARY=' + freetype_lib,
         '-DFREETYPE_INCLUDE_DIRS=' + freetype_include_dirs,
-        '-DCMAKE_BUILD_TYPE=Release'])
+        '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_INSTALL_PREFIX:PATH=' + dest_path])
       shared.Building.make(['make', '-C' + dest_path])
+      shared.Building.make(['make', '-C' + dest_path, 'install'])
       return os.path.join(dest_path, 'libharfbuzz.a')
     return [shared.Cache.get('harfbuzz', create, what='port')]
   else:
