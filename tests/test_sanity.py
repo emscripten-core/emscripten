@@ -1028,13 +1028,13 @@ BINARYEN_ROOT = ''
       prep()
       subprocess.check_call([PYTHON, EMBUILDER, 'build', 'binaryen'])
       assert os.path.exists(tag_file)
-      subprocess.check_call([PYTHON, 'emcc.py', 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
+      subprocess.check_call([PYTHON, EMCC, 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
       self.assertContained('hello, world!', run_js('a.out.js'))
 
       print('see we show an error for emmake (we cannot build natively under emmake)')
       prep()
       try_delete('a.out.js')
-      out = self.do([PYTHON, 'emmake.py', EMCC, 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
+      out = self.do([PYTHON, path_from_root('emmake.py'), EMCC, 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
       assert not os.path.exists(tag_file)
       assert not os.path.exists('a.out.js')
       self.assertContained('For example, for binaryen, do "python embuilder.py build binaryen"', out)
@@ -1047,7 +1047,7 @@ BINARYEN_ROOT = ''
           assert not os.path.exists(tag_file)
           try_delete('a.out.js')
           try_delete('a.out.wasm')
-          cmd = [PYTHON, 'emcc.py', 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
+          cmd = [PYTHON, EMCC, 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
           if side_module:
             cmd += ['-s', 'SIDE_MODULE=1']
           subprocess.check_call(cmd)
