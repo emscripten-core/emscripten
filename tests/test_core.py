@@ -4677,7 +4677,7 @@ def process(filename):
         );
         return 0;
       }
-    ''', 'at Object.write', js_engines=js_engines, post_build=post) # engines has different error stack format
+    ''', 'at Object._wrapNodeError', js_engines=js_engines, post_build=post) # engines has different error stack format
 
   @also_with_noderawfs
   def test_fs_llseek(self, js_engines=None):
