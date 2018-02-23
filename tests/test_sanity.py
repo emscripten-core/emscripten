@@ -433,7 +433,7 @@ fi
 
     EMCC_CACHE = Cache.dirname
 
-    for compiler in [EMCC, EMXX]:
+    for compiler in [EMCC]:
       print(compiler)
 
       restore()
@@ -506,7 +506,7 @@ fi
     restore()
     Cache.erase()
 
-    for compiler in [EMCC, EMXX]:
+    for compiler in [EMCC]:
       print(compiler)
       out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v'], stdout=PIPE, stderr=PIPE).communicate()
       out2, err2 = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v', '-nostdinc++'], stdout=PIPE, stderr=PIPE).communicate()
@@ -566,7 +566,7 @@ fi
     from tools import system_libs
     PORTS_DIR = system_libs.Ports.get_dir()
 
-    for compiler in [EMCC, EMXX]:
+    for compiler in [EMCC]:
       print(compiler)
 
       for i in [0, 1]:
