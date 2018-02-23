@@ -745,10 +745,10 @@ fi
       print(command)
       Cache.erase()
 
-      output = run_process(command, stdout=PIPE, stderr=STDOUT)
+      output = run_process(command, stdout=PIPE, stderr=STDOUT, check=False)
       out = output.stdout
       err = output.stderr
-      assert (proc.returncode == 0) == success, out
+      assert (output.returncode == 0) == success, out
       if not isinstance(expected, list): expected = [expected]
       for ex in expected:
         print('    seek', ex)
