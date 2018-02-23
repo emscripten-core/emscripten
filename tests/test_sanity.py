@@ -748,7 +748,7 @@ fi
       output = run_process(command, stdout=PIPE, stderr=STDOUT, check=False)
       out = output.stdout
       err = output.stderr
-      assert (output.returncode == 0) == success, out
+      assert (output.returncode == 0) == success, out + err
       if not isinstance(expected, list): expected = [expected]
       for ex in expected:
         print('    seek', ex)
