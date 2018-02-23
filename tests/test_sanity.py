@@ -414,7 +414,7 @@ fi
         return 0;
       }
     ''')
-    Popen([PYTHON, EMCC, os.path.join(dirname, 'main.cpp'), '-o', os.path.join(dirname, 'a.out.js')]).communicate()
+    run_process([PYTHON, EMCC, os.path.join(dirname, 'main.cpp'), '-o', os.path.join(dirname, 'a.out.js')])
     del os.environ['EM_CONFIG']
     old_dir = os.getcwd()
     try:
@@ -508,8 +508,12 @@ fi
 
     for compiler in [EMCC]:
       print(compiler)
-      out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v'], stdout=PIPE, stderr=PIPE).communicate()
-      out2, err2 = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v', '-nostdinc++'], stdout=PIPE, stderr=PIPE).communicate()
+      output = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v'], stdout=PIPE, stderr=PIPE)
+      out = output.stdout
+      err = output.stderr
+      output2 = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v', '-nostdinc++'], stdout=PIPE, stderr=PIPE)
+      out2 = output2.stdout
+      err2 = output2.stderr
       assert out == out2
       def focus(e):
         assert 'search starts here:' in e, e
@@ -741,8 +745,9 @@ fi
       print(command)
       Cache.erase()
 
-      proc = Popen(command, stdout=PIPE, stderr=STDOUT)
-      out, err = proc.communicate()
+      output = run_process(command, stdout=PIPE, stderr=STDOUT)
+      out = output.stdout
+      err = output.stderr
       assert (proc.returncode == 0) == success, out
       if not isinstance(expected, list): expected = [expected]
       for ex in expected:
