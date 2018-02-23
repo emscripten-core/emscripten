@@ -35,7 +35,8 @@ def process_dependencies(settings):
 def process_args(ports, args, settings, shared):
   if settings.USE_HARFBUZZ == 1:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(ports.get_build_dir(), 'harfbuzz')]
+    args += ['-Xclang',
+      '-isystem' + os.path.join(ports.get_build_dir(), 'harfbuzz', 'include', 'harfbuzz')]
   return args
 
 def show():
