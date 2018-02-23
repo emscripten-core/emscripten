@@ -157,12 +157,12 @@ class sanity(RunnerCore):
     f = open(CONFIG_FILE, 'a')
     f.write('CLOSURE_COMPILER = "/tmp/nowhere/nothingtoseehere/kjadsfkjwelkjsdfkqgas/nonexistent.txt"\n')
     f.close()
-    output = self.check_working([EMCC, '-O2', '-s', '--closure', '1', 'tests/hello_world.cpp'], CLOSURE_FATAL)
+    output = self.check_working([EMCC, '-O2', '-s', '--closure', '1', path_from_root('tests', 'hello_world.cpp')], CLOSURE_FATAL)
 
     # With a working path, all is well
     restore()
     try_delete('a.out.js')
-    output = self.check_working([EMCC, '-O2', '-s', '--closure', '1', 'tests/hello_world.cpp'], '')
+    output = self.check_working([EMCC, '-O2', '-s', '--closure', '1', path_from_root('tests', 'hello_world.cpp')], '')
     assert os.path.exists('a.out.js'), output
 
   def test_llvm(self):
@@ -293,7 +293,7 @@ class sanity(RunnerCore):
 
     restore()
 
-    self.check_working([EMCC, 'tests/hello_world.cpp', '-s', 'ASM_JS=0'], '''Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended''')
+    self.check_working([EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'ASM_JS=0'], '''Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended''')
 
   def test_node(self):
     NODE_WARNING = 'node version appears too old'
@@ -623,7 +623,7 @@ fi
     restore()
 
     def build():
-      return self.check_working([EMCC, '-O2', 'tests/hello_world.c'], 'running js post-opts')
+      return self.check_working([EMCC, '-O2', path_from_root('tests', 'hello_world.c')], 'running js post-opts')
 
     def test():
       self.assertContained('hello, world!', run_js('a.out.js'))
@@ -804,7 +804,7 @@ fi
     restore()
 
     def build():
-      return self.check_working([EMCC, 'tests/hello_world.c'], '')
+      return self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], '')
 
     def test():
       self.assertContained('hello, world!', run_js('a.out.js'))
@@ -831,7 +831,7 @@ fi
     struct_info_file = path_from_root('src', 'struct_info.compiled.json')
     before = open(struct_info_file).read()
     os.remove(struct_info_file)
-    self.check_working([EMCC, 'tests/hello_world.c'], '')
+    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], '')
     self.assertContained('hello, world!', run_js('a.out.js'))
     assert os.path.exists(struct_info_file), 'removing the struct info file forces a rebuild'
     after = open(struct_info_file).read()
@@ -875,20 +875,20 @@ fi
       os.environ['EMCC_WASM_BACKEND'] = '1'
       make_fake('wasm32-unknown-unknown-elf')
       # see that we request the right backend from llvm
-      self.check_working([EMCC, 'tests/hello_world.c', '-c'], 'wasm32-unknown-unknown-elf')
+      self.check_working([EMCC, path_from_root('tests', 'hello_world.c'), '-c'], 'wasm32-unknown-unknown-elf')
       os.environ['EMCC_WASM_BACKEND'] = '0'
       make_fake('asmjs-unknown-emscripten')
-      self.check_working([EMCC, 'tests/hello_world.c', '-c'], 'asmjs-unknown-emscripten')
+      self.check_working([EMCC, path_from_root('tests', 'hello_world.c'), '-c'], 'asmjs-unknown-emscripten')
       del os.environ['EMCC_WASM_BACKEND']
       # check the current installed one is ok
       restore()
       self.check_working(EMCC)
       output = self.check_working(EMCC, 'check tells us to use')
       if 'wasm backend' in output:
-        self.check_working([EMCC, 'tests/hello_world.c', '-c'], 'wasm32-unknown-unknown-elf')
+        self.check_working([EMCC, path_from_root('tests', 'hello_world.c'), '-c'], 'wasm32-unknown-unknown-elf')
       else:
         assert 'asm.js backend' in output
-        self.check_working([EMCC, 'tests/hello_world.c', '-c'], 'asmjs-unknown-emscripten')      
+        self.check_working([EMCC, path_from_root('tests', 'hello_world.c'), '-c'], 'asmjs-unknown-emscripten')      
     finally:
       del os.environ['EMCC_DEBUG']
       if 'EMCC_WASM_BACKEND' in os.environ:
@@ -903,7 +903,7 @@ fi
       make_fake(report)
       try:
         os.environ['EMCC_DEBUG'] = '1'
-        output = self.check_working([EMCC, 'tests/hello_world.c', '-c'], expected)
+        output = self.check_working([EMCC, path_from_root('tests', 'hello_world.c'), '-c'], expected)
         self.assertContained('config file changed since we checked vanilla', output)
       finally:
         del os.environ['EMCC_DEBUG']
@@ -935,9 +935,9 @@ fi
 
     try:
       os.environ['EMCC_DEBUG'] = '1'
-      self.check_working([EMCC, 'tests/hello_world.c', '-c'], 'use asm.js backend')
+      self.check_working([EMCC, path_from_root('tests', 'hello_world.c'), '-c'], 'use asm.js backend')
       os.environ['LLVM'] = path_from_root('tests', 'fake2', 'bin')
-      self.check_working([EMCC, 'tests/hello_world.c', '-c'], 'regenerating vanilla check since other llvm')
+      self.check_working([EMCC, path_from_root('tests', 'hello_world.c'), '-c'], 'regenerating vanilla check since other llvm')
     finally:
       del os.environ['EMCC_DEBUG']
       if os.environ.get('LLVM'):
@@ -958,14 +958,14 @@ fi
 
     try:
       os.environ['EMCC_WASM_BACKEND'] = '1'
-      self.check_working([EMCC, 'tests/hello_world.c'], '')
+      self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], '')
       assert os.path.exists(os.path.join(root_cache, 'wasm'))
       os.environ['EMCC_WASM_BACKEND'] = '0'
-      self.check_working([EMCC, 'tests/hello_world.c'], '')
+      self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], '')
       assert os.path.exists(os.path.join(root_cache, 'asmjs'))
       shutil.rmtree(os.path.join(root_cache, 'asmjs'))
       del os.environ['EMCC_WASM_BACKEND']
-      self.check_working([EMCC, 'tests/hello_world.c'], '')
+      self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], '')
       assert os.path.exists(os.path.join(root_cache, 'asmjs'))
     finally:
       del os.environ['EMCC_WASM_BACKEND']
@@ -978,7 +978,7 @@ fi
       print(self.do([PYTHON, EMCC, '--clear-ports']))
       try:
         os.environ['EMCC_WASM_BACKEND'] = '1'
-        self.check_working([EMCC, 'tests/hello_world.c'], '')
+        self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], '')
       finally:
         del os.environ['EMCC_WASM_BACKEND']
     print('normally')
@@ -1028,13 +1028,13 @@ BINARYEN_ROOT = ''
       prep()
       subprocess.check_call([PYTHON, EMBUILDER, 'build', 'binaryen'])
       assert os.path.exists(tag_file)
-      subprocess.check_call([PYTHON, EMCC, 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
+      subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
       self.assertContained('hello, world!', run_js('a.out.js'))
 
       print('see we show an error for emmake (we cannot build natively under emmake)')
       prep()
       try_delete('a.out.js')
-      out = self.do([PYTHON, path_from_root('emmake.py'), EMCC, 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
+      out = self.do([PYTHON, path_from_root('emmake.py'), EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
       assert not os.path.exists(tag_file)
       assert not os.path.exists('a.out.js')
       self.assertContained('For example, for binaryen, do "python embuilder.py build binaryen"', out)
@@ -1047,7 +1047,7 @@ BINARYEN_ROOT = ''
           assert not os.path.exists(tag_file)
           try_delete('a.out.js')
           try_delete('a.out.wasm')
-          cmd = [PYTHON, EMCC, 'tests/hello_world.c', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
+          cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
           if side_module:
             cmd += ['-s', 'SIDE_MODULE=1']
           subprocess.check_call(cmd)
