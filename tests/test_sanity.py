@@ -494,7 +494,7 @@ fi
       os.environ['LLVM'] = 'waka'
       assert os.path.exists(EMCC_CACHE)
       output = self.do([PYTHON, EMCC])
-      assert ERASING_MESSAGE in output
+      assert ERASING_MESSAGE in output, output
       assert not os.path.exists(EMCC_CACHE)
     finally:
       if old: os.environ['LLVM'] = old
@@ -645,7 +645,7 @@ fi
           assert ('js optimizer using native' in output) == (not not (native or native is None)), output
           test()
           if native or native is None: # None means use the default, which is to use the native optimizer
-            assert 'building native optimizer' in output
+            assert 'building native optimizer' in output, output
             # compile again, no rebuild of optimizer
             output = build()
             assert 'building native optimizer' not in output
@@ -748,7 +748,7 @@ fi
       output = run_process(command, stdout=PIPE, stderr=STDOUT, check=False)
       out = output.stdout
       err = output.stderr
-      assert (output.returncode == 0) == success, out + err
+      assert (output.returncode == 0) == success, [out, err]
       if not isinstance(expected, list): expected = [expected]
       for ex in expected:
         print('    seek', ex)
