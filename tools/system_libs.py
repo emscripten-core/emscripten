@@ -1,5 +1,5 @@
 from __future__ import print_function
-import os, json, logging, zipfile, glob, shutil
+import os, json, logging, zipfile, tarfile, glob, shutil
 from . import shared
 from subprocess import Popen, CalledProcessError
 import subprocess, multiprocessing, re
@@ -587,7 +587,7 @@ class Ports(object):
   name_cache = set()
 
   @staticmethod
-  def fetch_project(name, url, subdir):
+  def fetch_project(name, url, subdir, is_tarbz2=False):
     fullname = os.path.join(Ports.get_dir(), name)
 
     if name not in Ports.name_cache: # only mention each port once in log
@@ -638,12 +638,15 @@ class Ports(object):
         from urllib2 import urlopen
       f = urlopen(url)
       data = f.read()
-      open(fullname + '.zip', 'wb').write(data)
+      open(fullname + ('.zip' if not is_tarbz2 else '.tar.bz2'), 'wb').write(data)
       State.retrieved = True
 
     def check_tag():
-      z = zipfile.ZipFile(fullname + '.zip', 'r')
-      names = z.namelist()
+      if is_tarbz2:
+        names = tarfile.open(fullname + '.tar.bz2', 'r:bz2').getnames()
+      else:
+        names = zipfile.ZipFile(fullname + '.zip', 'r').namelist()
+
       if not (names[0].startswith(subdir + '/') or names[0].startswith(subdir + '\\')):
         # current zip file is old, force a retrieve
         return False
@@ -652,7 +655,10 @@ class Ports(object):
     def unpack():
       logging.warning('unpacking port: ' + name)
       shared.safe_ensure_dirs(fullname)
-      z = zipfile.ZipFile(fullname + '.zip', 'r')
+      if is_tarbz2:
+        z = tarfile.open(fullname + '.tar.bz2', 'r:bz2')
+      else:
+        z = zipfile.ZipFile(fullname + '.zip', 'r')
       try:
         cwd = os.getcwd()
         os.chdir(fullname)
