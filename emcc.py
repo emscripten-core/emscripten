@@ -2451,7 +2451,7 @@ def modularize():
 
   return %(EXPORT_NAME)s;
 }%(instantiate)s;
-%(EXPORT_NAME)s.bind({
+%(EXPORT_NAME)s = %(EXPORT_NAME)s.bind({
   _currentScript: typeof document !== 'undefined' ? document.currentScript : undefined,
   _selfLocation: typeof self !== 'undefined' ? self.location : undefined
 });
