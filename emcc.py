@@ -2450,11 +2450,11 @@ def modularize():
 %(src)s
 
   return %(EXPORT_NAME)s;
-}%(instantiate)s;
+};
 %(EXPORT_NAME)s = %(EXPORT_NAME)s.bind({
   _currentScript: typeof document !== 'undefined' ? document.currentScript : undefined,
   _selfLocation: typeof self !== 'undefined' ? self.location : undefined
-});
+})%(instantiate)s;
 if (typeof exports === 'object' && typeof module === 'object')
   module.exports = %(EXPORT_NAME)s;
 else if (typeof define === 'function' && define['amd'])
