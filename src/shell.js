@@ -87,18 +87,21 @@ var currentScriptUrl = (typeof document !== 'undefined' && document.currentScrip
 
 // `/` should be present at the end if `Module['scriptDirectory']` is not empty
 if (!Module['scriptDirectory']) {
+  Module['scriptDirectory'] = '';
 #if !SUPPORT_BASE64_EMBEDDING
   if (ENVIRONMENT_IS_NODE) {
     Module['scriptDirectory'] = __dirname + '/';
-  } else if (ENVIRONMENT_IS_WEB && document.currentScript && document.currentScript.src.indexOf('blob:') !== 0) {
-    Module['scriptDirectory'] = document.currentScript.src.split('/').slice(0, -1).join('/') + '/';
+  } else if (ENVIRONMENT_IS_WEB) {
+    // We do this for `-s MODULARIZE=1` where at the time when this code runs document.currentScript might already be unavailable
+    var currentScript = this['_currentScript'] || document.currentScript;
+    if (currentScript.src.indexOf('blob:') !== 0) {
+      Module['scriptDirectory'] = currentScript.src.split('/').slice(0, -1).join('/') + '/';
+    }
   } else if (ENVIRONMENT_IS_WORKER) {
-    Module['scriptDirectory'] = self.location.href.split('/').slice(0, -1).join('/') + '/';
-  } else {
-    Module['scriptDirectory'] = '';
+    // We do this for `-s MODULARIZE=1` where at the time when this code runs self.location might already be unavailable
+    var selfLocation = this['_selfLocation'] || self.location;
+    Module['scriptDirectory'] = selfLocation.href.split('/').slice(0, -1).join('/') + '/';
   }
-#else
-  Module['scriptDirectory'] = '';
 #endif
 }
 if (!Module['memoryInitializerPrefixURL']) {
