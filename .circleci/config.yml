@@ -17,7 +17,7 @@ test-defaults: &test-defaults
 
     - run: |
         apt-get update
-        apt-get install -y python3 python3-pip cmake build-essential openjdk-9-jre-headless
+        apt-get install -y python3 python3-pip cmake build-essential openjdk-9-jre-headless $TEST_DEPENDENCY
         pip3 install --upgrade pip
         pip3 install lit
         EMCC_CORES=4 python3 emscripten/tests/runner.py $TEST_TARGET
@@ -43,6 +43,8 @@ jobs:
           echo BINARYEN_ROOT="''" >> .emscripten
           EMCC_CORES=4 python3 emscripten/embuilder.py build ALL
           python3 emscripten/tests/runner.py test_hello_world
+          mkdir tmp-firefox-profile/
+          echo 'user_pref("javascript.options.shared_memory", true);' >> tmp-firefox-profile/user.js
 
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
@@ -53,6 +55,7 @@ jobs:
             - .emscripten_cache/
             - .emscripten_ports/
             - .emscripten
+            - tmp-firefox-profile/
 
   test-other:
     <<: *test-defaults
@@ -63,8 +66,11 @@ jobs:
   test-browser:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=browser
-      - EMSCRIPTEN_BROWSER=0
+      # browser.test_sdl_ttf_render_text_solid depends on Arial from Microsoft
+      - TEST_TARGET=browser skip:browser.test_sdl_ttf_render_text_solid
+      - TEST_DEPENDENCY=firefox
+      - EMSCRIPTEN_BROWSER=firefox -headless -profile tmp-firefox-profile/
+      - EM_LACKS_HARDWARE_ACCESS=1
   test-ab:
     <<: *test-defaults
     environment:

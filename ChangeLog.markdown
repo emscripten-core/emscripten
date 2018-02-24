@@ -9,7 +9,34 @@ Not all changes are documented here. In particular, new features, user-oriented 
 
 Current Trunk
 -------------
+ - Binaryen update that should fix all known determinism bugs.
  - Added new option "Module.scriptDirectory" that allows customizing the URL where .wasm, .mem and some other files are located (defaults to the same location as .js file)
+
+v1.37.34: 02/16/2018
+--------------------
+ - `addFunction` is now supported on LLVM wasm backend, but when being used on the wasm backend, you need to provide an additional second argument, a Wasm function signature string. Each character within a signature string represents a type. The first character represents the return type of a function, and remaining characters are for parameter types.
+    - 'v': void type
+    - 'i': 32-bit integer type
+    - 'j': 64-bit integer type (currently does not exist in JavaScript)
+    - 'f': 32-bit float type
+    - 'd': 64-bit float type
+   For asm.js and asm2wasm you can provide the optional second argument, but it isn't needed. For that reason this isn't a breaking change, however, providing the second argument is recommended so that code is portable across all backends and modes.
+
+v1.37.33: 02/02/2018
+--------------------
+
+v1.37.32: 01/31/2018
+--------------------
+
+v1.37.31: 01/31/2018
+--------------------
+ - LLVM and clang updates from upstream (5.0svn, close 5.0 release).
+
+v1.37.30: 01/31/2018
+--------------------
+
+v1.37.29: 01/24/2018
+--------------------
 
 v1.37.28: 01/08/2018
 --------------------
@@ -795,7 +822,7 @@ v1.34.5: 8/18/2015
  - Fixed some OpenAL alGetSource get calls (#3669)
  - Fixed issues with building the optimizer on 32-bit Windows (#3673)
  - Increased optimizer stack size on Windows to 10MB (#3679)
- - Added support for passing multiple input files to opt, to speed up optimization and linking in opt.
+ - Added support for passing multiple input files to opt, to speed up optimization and linking in opt.  
  - Full list of changes:
     - Emscripten: https://github.com/kripken/emscripten/compare/1.34.4...1.34.5
     - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.4...1.34.5
@@ -1214,7 +1241,7 @@ v1.29.2: 1/16/2015
 -------------------
  - Fixed an issue with embind compilation in LLVM 3.5.
  - Fixed an issue with SDL audio queueing stability, which would queue audio too eagerly and cause stutter in some applications (#3122, #3124)
- - Enabled native JS optimizer to be built automatically on Windows, requires VS2012 or VS2013.
+ - Enabled native JS optimizer to be built automatically on Windows, requires VS2012 or VS2013. 
  - Improve error message to reflect the fact that DLOPEN_SUPPORT is currently not available (#2365)
  - Improve SIMD load and store support.
  - Upgraded SDL2 port to version 3.
@@ -1487,7 +1514,7 @@ v1.23.1: 8/26/2014
  - Removed the support for old discontinued Mozilla Audio Data API in src/library_sdl.js.
  - Removed the support for using Web Audio ScriptProcessorNode to stream audio.
  - Improved SDL audio streaming by using the main rAF() callback instead of a separate setTimeout() callback to schedule the audio data.
- - Deprecated compiling without typed arrays support.
+ - Deprecated compiling without typed arrays support. 
  - Migrated to using musl PRNG functions. Fixes reported bugs about the quality of randomness (#2341)
  - Improved SIMD support for the experimental Ecmascript SIMD spec.
  - Full list of changes:
@@ -1857,7 +1884,7 @@ v1.17.0: 5/6/2014
 
 v1.16.0: 4/16/2014
 ------------------
- - Removed browser warnings message in VFS library about replacing __proto__ performance issue.
+ - Removed browser warnings message in VFS library about replacing __proto__ performance issue. 
  - Full list of changes:
     - Emscripten: https://github.com/kripken/emscripten/compare/1.15.1...1.16.0
     - Emscripten-LLVM: no changes.
@@ -1866,7 +1893,7 @@ v1.16.0: 4/16/2014
 v1.15.1: 4/15/2014
 ------------------
  - Added support for SDL2 touch api.
- - Added new user-controllable emdind-related define #define EMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES, which allows optimizing embind for minimal size when std::type_info is not needed.
+ - Added new user-controllable emdind-related define #define EMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES, which allows optimizing embind for minimal size when std::type_info is not needed. 
  - Fixed issues with CMake support where CMAKE_AR and CMAKE_RANLIB were not accessible from CMakeLists.txt files.
  - Full list of changes:
     - Emscripten: https://github.com/kripken/emscripten/compare/1.15.0...1.15.1
@@ -2022,7 +2049,7 @@ v1.11.0: 2/14/2014
 v1.10.4: 2/10/2014
 ------------------
  - Added support for legacy GL emulation in fastcomp.
- - Deprecated the --split-js compiler option. This is not supported in fastcomp.
+ - Deprecated the --split-js compiler option. This is not supported in fastcomp. 
  - Full list of changes: https://github.com/kripken/emscripten/compare/1.10.3...1.10.4
 
 v1.10.3: 2/9/2014
@@ -2252,7 +2279,7 @@ v1.7.3: 11/12/2013
  - Converted return value of emscripten_get_now() from float to double, to not lose precision in the function call.
  - Added support for joysticks in SDL via the Gamepad API
  - Full list of changes: https://github.com/kripken/emscripten/compare/1.7.2...1.7.3
-
+ 
 v1.7.2: 11/9/2013
 ------------------
  - The compiler now always generates a .js file that contains the generated source code even when compiling to a .html file.
@@ -2264,7 +2291,7 @@ v1.7.2: 11/9/2013
  - Fixed some mappings with SDL keyboard codes.
  - Added a new command line parameter --no-heap-copy to compiler and file packager that can be used to optimize VFS memory usage at startup.
  - Updated libcxx to revision 194185, 2013-11-07.
- - Improvements to various library support.
+ - Improvements to various library support. 
  - Full list of changes: https://github.com/kripken/emscripten/compare/1.7.1...1.7.2
 
 v1.7.1: 10/24/2013
@@ -2337,7 +2364,7 @@ v1.6.0: 9/21/2013
  - Enable support for %[] pattern in scanf.
  - Added dependency tracking support to linked .js files in CMake toolchain.
  - The hex prefix 0x is now properly handled in sscanf (#1632).
- - Simplify internal compiler operations by removing the internal framework.js.
+ - Simplify internal compiler operations by removing the internal framework.js. 
  - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.9...1.6.0
 
 v1.5.9: 9/15/2013
@@ -2532,7 +2559,7 @@ v1.3.3: 3/23/2013
 
 v1.3.2: 3/22/2013
 ------------------
- - Fix issues with fgets.
+ - Fix issues with fgets. 
  - Add support for non-fullscreen pointer lock.
  - Improve OpenAL support.
  - Full list of changes: https://github.com/kripken/emscripten/compare/1.3.1...1.3.2

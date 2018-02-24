@@ -455,7 +455,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
     self.print_all_messages()
 
   def handle_error(self, request, client_address):
-    err = sys.exc_info()[1][0]
+    err = sys.exc_info()[1].args[0]
     # Filter out the useless '[Errno 10054] An existing connection was forcibly closed by the remote host' errors that occur when we
     # forcibly kill the client.
     if err != 10054:
@@ -565,6 +565,8 @@ class HTTPHandler(SimpleHTTPRequestHandler):
       return
     else:
       data = self.rfile.read(int(self.headers['Content-Length']))
+      if str is not bytes and isinstance(data, bytes):
+        data = data.decode('utf-8')
       data = data.replace("+", " ")
       data = unquote_u(data)
 
@@ -603,7 +605,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
     self.send_header('Connection','close')
     self.send_header('Expires','-1')
     self.end_headers()
-    self.wfile.write('OK')
+    self.wfile.write(b'OK')
 
 # Returns stdout by running command with universal_newlines=True
 def check_output(cmd, universal_newlines=True, *args, **kwargs):
@@ -936,7 +938,7 @@ def get_os_version():
         pass
       return productName[0] + version + bitness
     elif MACOS:
-      return 'Mac OS ' + platform.mac_ver()[0] + bitness
+      return 'macOS ' + platform.mac_ver()[0] + bitness
     elif LINUX:
       kernel_version = check_output(['uname', '-r']).strip()
       return ' '.join(platform.linux_distribution()) + ', linux kernel ' + kernel_version + ' ' + platform.architecture()[0] + bitness
@@ -1529,12 +1531,12 @@ def run():
 
   global browser_stdout_handle, browser_stderr_handle
   if options.log_stdout:
-    browser_stdout_handle = open(options.log_stdout, 'ab')
+    browser_stdout_handle = open(options.log_stdout, 'a')
   if options.log_stderr:
     if options.log_stderr == options.log_stdout:
       browser_stderr_handle = browser_stdout_handle
     else:
-      browser_stderr_handle = open(options.log_stderr, 'ab')
+      browser_stderr_handle = open(options.log_stderr, 'a')
 
   if not options.no_server:
     logv('Starting web server: http://%s:%i/' % (options.hostname, options.port))

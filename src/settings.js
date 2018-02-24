@@ -749,6 +749,7 @@ var USE_BULLET = 0; // 1 = use bullet from emscripten-ports
 var USE_VORBIS = 0; // 1 = use vorbis from emscripten-ports
 var USE_OGG = 0; // 1 = use ogg from emscripten-ports
 var USE_FREETYPE = 0; // 1 = use freetype from emscripten-ports
+var USE_HARFBUZZ = 0; // 1 = use harfbuzz from harfbuzz upstream
 var USE_COCOS2D = 0; // 3 = use cocos2d v3 from emscripten-ports
 
 var SDL2_IMAGE_FORMATS = []; // Formats to support in SDL2_image. Valid values: bmp, gif, lbm, pcx, png, pnm, tga, xcf, xpm, xv
@@ -779,6 +780,14 @@ var IN_TEST_HARNESS = 0; // If true, the current build is performed for the Emsc
 var USE_PTHREADS = 0; // If true, enables support for pthreads.
 
 var PTHREAD_POOL_SIZE = 0; // Specifies the number of web workers that are preallocated before runtime is initialized. If 0, workers are created on demand.
+
+var DEFAULT_PTHREAD_STACK_SIZE = 2*1024*1024; // If not explicitly specified, this is the stack size to use for newly created pthreads.
+                                              // According to http://man7.org/linux/man-pages/man3/pthread_create.3.html, default stack size on
+                                              // Linux/x86-32 for a new thread is 2 megabytes, so follow the same convention. Use
+                                              // pthread_attr_setstacksize() at thread creation time to explicitly specify the stack size, in which case
+                                              // this value is ignored. Note that the asm.js/wasm function call control flow stack is separate from this
+                                              // stack, and this stack only contains certain function local variables, such as those that have their
+                                              // addresses taken, or ones that are too large to fit as local vars in asm.js/wasm code.
 
 // Specifies the value returned by the function emscripten_num_logical_cores()
 // if navigator.hardwareConcurrency is not supported. Pass in a negative number

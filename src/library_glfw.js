@@ -539,7 +539,7 @@ var LibraryGLFW = {
 
       var resizeNeeded = true;
 
-      // If the client is requestiong fullscreen mode
+      // If the client is requesting fullscreen mode
       if (document["fullscreen"] || document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
         GLFW.active.storedX = GLFW.active.x;
         GLFW.active.storedY = GLFW.active.y;

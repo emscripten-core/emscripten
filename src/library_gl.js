@@ -2240,13 +2240,11 @@ var LibraryGL = {
     emscriptenWebGLGetIndexed(target, index, data, 'Integer');
   },
 
-#if USE_WEBGL2
   glGetInteger64i_v__sig: 'viii',
   glGetInteger64i_v__deps: ['$emscriptenWebGLGetIndexed'],
   glGetInteger64i_v: function(target, index, data) {
     emscriptenWebGLGetIndexed(target, index, data, 'Integer64');
   },
-#endif
 
   // Uniform Buffer objects
   glBindBufferBase__sig: 'viii',
@@ -7503,7 +7501,6 @@ var LibraryGL = {
     // TODO: This should be a trivial pass-though function, but due to https://bugzilla.mozilla.org/show_bug.cgi?id=1202427,
     // we work around by ignoring the range.
     _glDrawElements(mode, count, type, indices);
-    GLctx.drawElements(mode, count, type, indices);
   },
 #endif
 
