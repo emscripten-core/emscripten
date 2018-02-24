@@ -1844,6 +1844,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # no need to add this to js_transform_tempfiles, because closure and
         # debug_level > 0 are never simultaneously true
         final = shared.Building.closure_compiler(final, pretty=options.debug_level >= 1)
+        misc_temp_files.note(final)
         if DEBUG: save_intermediate('closure')
 
     log_time('js opts')
