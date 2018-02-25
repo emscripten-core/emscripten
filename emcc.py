@@ -187,7 +187,7 @@ class EmccOptions(object):
 
 
 class JSOptimizer(object):
-  def __init__(self, target, options, misc_temp_files, js_transform_tempfiles):
+  def __init__(self, target, options, js_transform_tempfiles, in_temp):
     self.queue = []
     self.extra_info = {}
     self.queue_history = []
@@ -202,8 +202,8 @@ class JSOptimizer(object):
     self.profiling_funcs = options.profiling_funcs
     self.use_closure_compiler = options.use_closure_compiler
 
-    self.misc_temp_files = misc_temp_files
     self.js_transform_tempfiles = js_transform_tempfiles
+    self.in_temp = in_temp
 
   def flush(self, title='js_opts'):
     self.queue = [p for p in self.queue if p not in self.blacklist]
@@ -268,11 +268,10 @@ class JSOptimizer(object):
     if self.cleanup_shell and 'last' in passes:
       passes += ['cleanup']
     logging.debug('applying js optimization passes: %s', ' '.join(passes))
-    self.misc_temp_files.note(final)
     final = shared.Building.js_optimizer(final, passes, self.debug_level >= 4,
                                          self.extra_info, just_split=just_split,
-                                         just_concat=just_concat)
-    self.misc_temp_files.note(final)
+                                         just_concat=just_concat,
+                                         output_filename=self.in_temp('jsopted.js'))
     self.js_transform_tempfiles.append(final)
     if DEBUG: save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
 
@@ -1141,8 +1140,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # When only targeting wasm, the .asm.js file is not executable, so is treated as an intermediate build file that can be cleaned up.
         if shared.Building.is_wasm_only():
           asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
-          if not DEBUG:
-            misc_temp_files.note(asm_target)
 
       if shared.Settings.TOTAL_MEMORY < 16*1024*1024:
         exit_with_error('TOTAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.TOTAL_MEMORY))
@@ -1751,8 +1748,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     optimizer = JSOptimizer(
       target=target,
       options=options,
-      misc_temp_files=misc_temp_files,
       js_transform_tempfiles=js_transform_tempfiles,
+      in_temp=in_temp,
     )
     with ToolchainProfiler.profile_block('js opts'):
       # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
@@ -1844,7 +1841,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # no need to add this to js_transform_tempfiles, because closure and
         # debug_level > 0 are never simultaneously true
         final = shared.Building.closure_compiler(final, pretty=options.debug_level >= 1)
-        misc_temp_files.note(final)
+        print(temp_dir, final)
         if DEBUG: save_intermediate('closure')
 
     log_time('js opts')
@@ -2442,7 +2439,6 @@ def modularize():
   logging.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
   src = open(final).read()
   final = final + '.modular.js'
-  shared.configuration.get_temp_files().note(final)
   f = open(final, 'w')
   # Included code may refer to Module (e.g. from file packager), so alias it
   # Export the function as Node module, otherwise it is lost when loaded in Node.js or similar environments
