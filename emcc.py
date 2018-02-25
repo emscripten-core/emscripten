@@ -2442,6 +2442,7 @@ def modularize():
   logging.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
   src = open(final).read()
   final = final + '.modular.js'
+  shared.configuration.get_temp_files().note(final)
   f = open(final, 'w')
   # Included code may refer to Module (e.g. from file packager), so alias it
   # Export the function as Node module, otherwise it is lost when loaded in Node.js or similar environments

@@ -2089,6 +2089,7 @@ class Building(object):
       filename = temp
     if not return_output:
       next = original_filename + '.jso.js'
+      configuration.get_temp_files().note(next)
       subprocess.check_call(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
       return next
     else:
