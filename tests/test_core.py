@@ -5843,42 +5843,6 @@ def process(filename):
 
     do_test()
 
-    # some test coverage for EMCC_DEBUG 1 and 2
-    assert 'asm2g' in test_modes
-    if self.run_name == 'asm2g':
-      shutil.copyfile('src.c.o.js', 'release.js')
-      try:
-        os.environ['EMCC_DEBUG'] = '1'
-        print('2')
-        do_test()
-        shutil.copyfile('src.c.o.js', 'debug1.js')
-        os.environ['EMCC_DEBUG'] = '2'
-        print('3')
-        do_test()
-        shutil.copyfile('src.c.o.js', 'debug2.js')
-      finally:
-        del os.environ['EMCC_DEBUG']
-      for debug in [1,2]:
-        def clean(text):
-          text = text.replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n').replace('{\n}', '{}')
-          return '\n'.join(sorted(text.split('\n')))
-        sizes = len(open('release.js').read()), len(open('debug%d.js' % debug).read())
-        print(debug, 'sizes', sizes, file=sys.stderr)
-        assert abs(sizes[0] - sizes[1]) < 0.001*sizes[0], sizes # we can't check on identical output, compilation is not 100% deterministic (order of switch elements, etc.), but size should be ~identical
-        print('debug check %d passed too' % debug, file=sys.stderr)
-
-      try:
-        os.environ['EMCC_FORCE_STDLIBS'] = '1'
-        print('EMCC_FORCE_STDLIBS')
-        do_test()
-      finally:
-        del os.environ['EMCC_FORCE_STDLIBS']
-      print('EMCC_FORCE_STDLIBS ok', file=sys.stderr)
-
-      try_delete(CANONICAL_TEMP_DIR)
-    else:
-      print('not doing debug check', file=sys.stderr)
-
     if Settings.ALLOW_MEMORY_GROWTH == 1: # extra testing
       print('no memory growth', file=sys.stderr)
       Settings.ALLOW_MEMORY_GROWTH = 0
