@@ -1140,6 +1140,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # When only targeting wasm, the .asm.js file is not executable, so is treated as an intermediate build file that can be cleaned up.
         if shared.Building.is_wasm_only():
           asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
+          misc_temp_files.note(asm_target)
 
       if shared.Settings.TOTAL_MEMORY < 16*1024*1024:
         exit_with_error('TOTAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.TOTAL_MEMORY))
