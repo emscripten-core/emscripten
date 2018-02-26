@@ -2010,7 +2010,7 @@ function _emscripten_asm_const_%s(code, sig_ptr, argbuf) {
 def create_em_js(forwarded_json, metadata):
   em_js_funcs = []
   separator = '<::>'
-  for name, raw in metadata.get('emJsFuncs', {}).iteritems():
+  for name, raw in metadata.get('emJsFuncs', {}).items():
     parts = raw.split(separator)
     assert len(parts) >= 2
     args, body = parts[0], separator.join(parts[1:])
