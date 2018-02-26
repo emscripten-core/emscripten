@@ -1867,8 +1867,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         separate_asm_js(final, asm_target)
         generated_text_files_with_native_eols += [asm_target]
 
-      binaryen_method_sanity_check()
       if shared.Settings.BINARYEN:
+        binaryen_method_sanity_check()
         do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                     wasm_text_target, misc_temp_files, optimizer)
 
@@ -2173,7 +2173,7 @@ def parse_args(newargs):
 
 def emterpretify(js_target, optimizer, options):
   global final
-  optimizer.flush()
+  optimizer.flush('pre-emterpretify')
   logging.debug('emterpretifying')
   import json
   try:
@@ -2217,7 +2217,7 @@ def emterpretify(js_target, optimizer, options):
   if not shared.Settings.BINARYEN:
     optimizer.do_minify()
   optimizer.queue += ['last']
-  optimizer.flush()
+  optimizer.flush('finalizing-emterpreted-code')
 
   # finalize the original as well, if we will be swapping it in (TODO: add specific option for this)
   if shared.Settings.SWAPPABLE_ASM_MODULE:
@@ -2228,7 +2228,7 @@ def emterpretify(js_target, optimizer, options):
     if not shared.Settings.BINARYEN:
       optimizer.do_minify()
     optimizer.queue += ['last']
-    optimizer.flush()
+    optimizer.flush('finalizing-original-code')
     safe_copy(final, original)
     final = real
 
