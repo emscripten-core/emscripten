@@ -31,7 +31,7 @@ if __name__ == '__main__':
 import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
 from subprocess import PIPE
 from tools import shared, jsrun, system_libs
-from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move, run_process, asbytes
+from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes
 from tools.response_file import substitute_response_files
 import tools.line_endings
 
@@ -1841,11 +1841,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # no need to add this to js_transform_tempfiles, because closure and
         # debug_level > 0 are never simultaneously true
         final = shared.Building.closure_compiler(final, pretty=options.debug_level >= 1)
-        print(temp_dir, final)
         if DEBUG: save_intermediate('closure')
 
     log_time('js opts')
-    # exit block 'js opts'
 
     with ToolchainProfiler.profile_block('final emitting'):
       if shared.Settings.EMTERPRETIFY:
@@ -1858,14 +1856,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Bundle symbol data in with the cyberdwarf file
       if shared.Settings.CYBERDWARF:
-          execute([shared.PYTHON, shared.path_from_root('tools', 'emdebug_cd_merger.py'), target + '.cd', target+'.symbols'])
+        execute([shared.PYTHON, shared.path_from_root('tools', 'emdebug_cd_merger.py'), target + '.cd', target+'.symbols'])
 
       if options.debug_level >= 4 and not shared.Settings.BINARYEN:
         emit_js_source_maps(target, optimizer.js_transform_tempfiles)
 
       # track files that will need native eols
       generated_text_files_with_native_eols = []
-
       if (options.separate_asm or shared.Settings.BINARYEN) and not shared.Settings.WASM_BACKEND:
         separate_asm_js(final, asm_target)
         generated_text_files_with_native_eols += [asm_target]
@@ -2232,7 +2229,7 @@ def emterpretify(js_target, optimizer, options):
       optimizer.do_minify()
     optimizer.queue += ['last']
     optimizer.flush()
-    safe_move(final, original)
+    safe_copy(final, original)
     final = real
 
 
