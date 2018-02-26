@@ -6934,22 +6934,6 @@ Module.printErr = Module['printErr'] = function(){};
 
     build_and_check()
 
-    assert 'asm2g' in test_modes
-    if self.run_name == 'asm2g':
-      # EMCC_DEBUG=2 causes lots of intermediate files to be written, and so
-      # serves as a stress test for source maps because it needs to correlate
-      # line numbers across all those files.
-      old_emcc_debug = os.environ.get('EMCC_DEBUG', None)
-      os.environ.pop('EMCC_DEBUG', None)
-      try:
-        os.environ['EMCC_DEBUG'] = '2'
-        build_and_check()
-      finally:
-        if old_emcc_debug is not None:
-          os.environ['EMCC_DEBUG'] = old_emcc_debug
-        else:
-          os.environ.pop('EMCC_DEBUG', None)
-
   def test_modularize_closure_pre(self):
     emcc_args = self.emcc_args[:]
     for instance in [0, 1]:
