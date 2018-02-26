@@ -271,7 +271,7 @@ class JSOptimizer(object):
     final = shared.Building.js_optimizer(final, passes, self.debug_level >= 4,
                                          self.extra_info, just_split=just_split,
                                          just_concat=just_concat,
-                                         output_filename=self.in_temp('jsopted.js'))
+                                         output_filename=self.in_temp(os.path.basename(final) + '.jsopted.js'))
     self.js_transform_tempfiles.append(final)
     if DEBUG: save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
 
