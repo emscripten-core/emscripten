@@ -255,12 +255,12 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-pre-js:
 		
 ``--pre-js <file>``
-	Specify a file whose contents are added before the generated code. This is done *before* optimization, so it will be minified properly if the *Closure Compiler* is run.
+	Specify a file whose contents are added before the emitted code and optimized together with it. Note that this might not literally be the very first thing in the JS output, for example if ``MODULARIZE`` is used (see ``src/settings.js``). If you want that, you can just prepend to the output from emscripten; the benefit of ``--pre-js`` is that it optimizes the code with the rest of the emscripten output, which allows better dead code elimination and minification.
 
 .. _emcc-post-js:
 	
 ``--post-js <file>``
-	Specify a file whose contents are added after the generated code. This is done *before* optimization, so it will be minified properly if the *Closure Compiler* is run.
+	Like `--pre-js``, but emits a file *after* the emitted code.
 	
 .. _emcc-embed-file:
 	
