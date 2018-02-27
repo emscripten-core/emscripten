@@ -262,6 +262,10 @@ def run_on_js(filename, gen_hash_info=False):
   else:
     filenames = []
 
+  # we create temp files in the child threads, clean them up here when we are done
+  for filename in filenames:
+    temp_files.note(filename)
+
   json_files = []
 
   # We're going to be coalescing the files back at the end
