@@ -562,6 +562,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   else:
     final_suffix = ''
 
+  # Temporary file handling: we ensure that TEMP_DIR exists, which is the general
+  # location for all temp files from us on this system. We then create a temp dir
+  # under that, and store our main files there. As we process the main js file,
+  # we update the variable `final`, giving it an extra suffix each time, and
+  # relying on the entire dir going away for cleanup. For other miscellaneous
+  # temporary files (like in the js optimizer) we need to note() them so they
+  # get removed.
+
   temp_root = shared.TEMP_DIR
   if not os.path.exists(temp_root):
     os.makedirs(temp_root)
