@@ -6,9 +6,13 @@ from tools.shared import *
 SANITY_FILE = CONFIG_FILE + '_sanity'
 commands = [[PYTHON, EMCC], [PYTHON, path_from_root('tests', 'runner.py'), 'blahblah']]
 
+# restore the config file and set it up for our uses
 def restore():
   shutil.copyfile(CONFIG_FILE + '_backup', CONFIG_FILE)
+  # don't use the native optimizer from the emsdk - we want to test how it builds
+  open(CONFIG_FILE, 'a').write('EMSCRIPTEN_NATIVE_OPTIMIZER = ""\n')
 
+# wipe the config and sanity files, creating a blank slate
 def wipe():
   try_delete(CONFIG_FILE)
   try_delete(SANITY_FILE)
@@ -43,7 +47,7 @@ class sanity(RunnerCore):
     wipe()
 
   def tearDown(self):
-    restore()
+    shutil.copyfile(CONFIG_FILE, CONFIG_FILE + '_backup')
 
   def do(self, command):
     print(' '.join(command))
