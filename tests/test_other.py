@@ -104,7 +104,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       
       # -dumpversion
       output = run_process([PYTHON, compiler, '-dumpversion'], stdout=PIPE, stderr=PIPE)
-      self.assertEqual(EMSCRIPTEN_VERSION, output.stdout, 'results should be identical')
+      self.assertEqual(EMSCRIPTEN_VERSION + os.linesep, output.stdout, 'results should be identical')
 
       # emcc src.cpp ==> writes a.out.js
       self.clear()
