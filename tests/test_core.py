@@ -1709,6 +1709,10 @@ int main(int argc, char **argv) {
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_parameter_pack')
 
+  def test_em_js(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_js')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_js', force_c=True)
+
   def test_runtime_stacksave(self):
     src = open(path_from_root('tests', 'core', 'test_runtime_stacksave.c')).read()
     self.do_run(src, 'success')
@@ -4669,7 +4673,7 @@ def process(filename):
         std::cout << "hello world\n"; // should work with strict mode
         EM_ASM(
           try {
-            FS.write('/dummy.txt', 'homu');
+            FS.readFile('/dummy.txt');
           } catch (err) {
             err.stack = err.stack; // should be writable
             throw err;
@@ -4677,7 +4681,7 @@ def process(filename):
         );
         return 0;
       }
-    ''', 'at Object.write', js_engines=js_engines, post_build=post) # engines has different error stack format
+    ''', 'at Object.readFile', js_engines=js_engines, post_build=post) # engines has different error stack format
 
   @also_with_noderawfs
   def test_fs_llseek(self, js_engines=None):

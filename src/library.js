@@ -1653,6 +1653,23 @@ LibraryManager.library = {
     return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
   },
 
+  // TODO: fround?
+  llvm_nearbyint_f32__asm: true,
+  llvm_nearbyint_f32__sig: 'ff',
+  llvm_nearbyint_f32__deps: ['roundf'],
+  llvm_nearbyint_f32: function(f) {
+    f = +f;
+    return (f - +Math_floor(f) != .5) ? +_roundf(f) : +_roundf(f / +2) * +2;
+  },
+
+  llvm_nearbyint_f64__asm: true,
+  llvm_nearbyint_f64__sig: 'dd',
+  llvm_nearbyint_f64__deps: ['round'],
+  llvm_nearbyint_f64: function(f) {
+    f = +f;
+    return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
+  },
+
   _reallyNegative: function(x) {
     return x < 0 || (x === 0 && (1/x) === -Infinity);
   },

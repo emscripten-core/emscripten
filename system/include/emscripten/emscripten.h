@@ -15,6 +15,7 @@
  */
 
 #include "em_asm.h"
+#include "em_js.h"
 
 #ifdef __cplusplus
 extern "C" {
