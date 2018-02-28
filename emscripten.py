@@ -1789,7 +1789,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   outfile.write(pre)
   pre = None
 
-  invoke_funcs = read_wast_invoke_imports(wast)
+  invoke_funcs = metadata.get('invokeFuncs', [])
   # List of function signatures used in jsCall functions, e.g.['v', 'vi']
   jscall_sigs = metadata.get('jsCallFuncType', [])
 
@@ -2028,17 +2028,6 @@ def create_em_js(forwarded_json, metadata):
   return em_js_funcs
 
 
-def read_wast_invoke_imports(wast):
-  invoke_funcs = []
-  for line in open(wast).readlines():
-    if line.strip().startswith('(import '):
-      parts = line.split()
-      func_name = parts[2][1:-1]
-      if func_name.startswith('invoke_'):
-        invoke_funcs.append(func_name)
-  return invoke_funcs
-
-
 def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata,
                         settings):
   basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory']
@@ -2194,6 +2183,7 @@ def load_metadata(metadata_raw):
     'initializers': [],
     'exports': [],
     'emJsFuncs': {},
+    'invokeFuncs': [],
   }
 
   for k, v in metadata_json.items():
