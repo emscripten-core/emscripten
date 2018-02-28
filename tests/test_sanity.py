@@ -836,16 +836,21 @@ fi
       del os.environ['EMCC_FORCE_STDLIBS']
 
   def test_struct_info(self):
-    restore()
-
     struct_info_file = path_from_root('src', 'struct_info.compiled.json')
-    before = open(struct_info_file).read()
-    os.remove(struct_info_file)
-    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], '')
-    self.assertContained('hello, world!', run_js('a.out.js'))
-    assert os.path.exists(struct_info_file), 'removing the struct info file forces a rebuild'
-    after = open(struct_info_file).read()
-    assert len(after) == len(before), 'struct info must be already valid, recreating it should not alter anything (checking size, since order might change)'
+    for debug in [1, 0]:
+      print('debug', debug)
+      restore()
+      before = open(struct_info_file).read()
+      os.remove(struct_info_file)
+      try:
+        if debug: os.environ['EMCC_DEBUG'] = '1'
+        out = self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], '')
+      finally:
+        if debug: del os.environ['EMCC_DEBUG']
+      self.assertContained('hello, world!', run_js('a.out.js'))
+      assert os.path.exists(struct_info_file), out # removing the struct info file forces a rebuild
+      after = open(struct_info_file).read()
+      assert len(after) == len(before), 'struct info must be already valid, recreating it should not alter anything (checking size, since order might change)'
 
   def test_vanilla(self):
     restore()
