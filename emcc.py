@@ -380,7 +380,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     print(shared.get_llvm_target())
     exit(0)
   
-  elif '-dumpversion' in sys.argv: # gcc's doc states "Print the compiler version [...] and don’t do anything else."
+  elif '-dumpversion' in sys.argv: # gcc's doc states "Print the compiler version [...] and don't do anything else."
     print(shared.EMSCRIPTEN_VERSION)
     exit(0)
 
