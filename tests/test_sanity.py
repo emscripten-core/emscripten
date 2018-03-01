@@ -746,10 +746,13 @@ fi
     if Settings.WASM_BACKEND:
       tests.append(([PYTHON, EMBUILDER, 'build', 'wasm_compiler_rt'], ['building and verifying wasm_compiler_rt', 'success'], True, ['wasm_compiler_rt.a']),)
 
+    Cache.erase()
+
     for command, expected, success, result_libs in tests:
       print(command)
-      Cache.erase()
-
+      for lib in result_libs:
+        print('    erase', lib)
+        try_delete(Cache.get_path(lib))
       output = run_process(command, stdout=PIPE, stderr=STDOUT, check=False)
       out = output.stdout
       err = output.stderr
