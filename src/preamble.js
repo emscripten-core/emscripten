@@ -2164,7 +2164,7 @@ function integrateWasmJS() {
       Module['printErr']('no native wasm Memory in use');
       return false;
     }
-    env['memory'] = Module['wasmMemory'];
+    env['__linear_memory'] = Module['wasmMemory'];
     // Load the wasm module and create an instance of using native support in the JS engine.
     info['global'] = {
       'NaN': NaN,
@@ -2294,8 +2294,8 @@ function integrateWasmJS() {
 
     // polyfill interpreter expects an ArrayBuffer
     assert(providedBuffer === Module['buffer']);
-    env['memory'] = providedBuffer;
-    assert(env['memory'] instanceof ArrayBuffer);
+    env['__linear_memory'] = providedBuffer;
+    assert(env['__linear_memory'] instanceof ArrayBuffer);
 
     wasmJS['providedTotalMemory'] = Module['buffer'].byteLength;
 
