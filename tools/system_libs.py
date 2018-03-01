@@ -132,7 +132,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
               break
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
-    args = ['-Os']
+    args = ['-Os', '-fno-builtin']
     if shared.Settings.USE_PTHREADS:
       args += ['-s', 'USE_PTHREADS=1']
       assert '-mt' in libname
@@ -340,7 +340,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         '-mthread-model', 'single',
         output_flag,
         shared.path_from_root('system', 'lib', src),
-        '-O2', '-o', o] + musl_internal_includes() + shared.EMSDK_OPTS)
+        '-O2', '-fno-builtin', '-o', o] +
+        musl_internal_includes() +
+        shared.EMSDK_OPTS)
       o_s.append(o)
     run_commands(commands)
     lib = in_temp(libname)
