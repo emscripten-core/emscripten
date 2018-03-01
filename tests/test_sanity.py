@@ -10,7 +10,7 @@ commands = [[PYTHON, EMCC], [PYTHON, path_from_root('tests', 'runner.py'), 'blah
 def restore():
   shutil.copyfile(CONFIG_FILE + '_backup', CONFIG_FILE)
   # don't use the native optimizer from the emsdk - we want to test how it builds
-  open(CONFIG_FILE, 'a').write('EMSCRIPTEN_NATIVE_OPTIMIZER = ""\n')
+  open(CONFIG_FILE, 'a').write('\nEMSCRIPTEN_NATIVE_OPTIMIZER = ""\n')
 
 # wipe the config and sanity files, creating a blank slate
 def wipe():
@@ -47,7 +47,7 @@ class sanity(RunnerCore):
     wipe()
 
   def tearDown(self):
-    shutil.copyfile(CONFIG_FILE, CONFIG_FILE + '_backup')
+    pass
 
   def do(self, command):
     print(' '.join(command))
