@@ -196,7 +196,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c',
                  'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c'])
 
-    return build_libc(libname, files, ['-O2'])
+    return build_libc(libname, files, ['-O2', '-fno-builtin'])
 
   # libcxx
   def create_libcxx(libname):
@@ -307,7 +307,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   def create_dlmalloc(out_name):
     o = in_temp(out_name)
-    cflags = ['-O2']
+    cflags = ['-O2', '-fno-builtin']
     if shared.Settings.USE_PTHREADS:
       cflags += ['-s', 'USE_PTHREADS=1']
     if shared.Settings.EMSCRIPTEN_TRACING:
