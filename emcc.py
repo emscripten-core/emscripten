@@ -31,7 +31,7 @@ if __name__ == '__main__':
 import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
 from subprocess import PIPE
 from tools import shared, jsrun, system_libs
-from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move, run_process, asbytes
+from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes
 from tools.response_file import substitute_response_files
 import tools.line_endings
 
@@ -187,7 +187,7 @@ class EmccOptions(object):
 
 
 class JSOptimizer(object):
-  def __init__(self, target, options, misc_temp_files, js_transform_tempfiles):
+  def __init__(self, target, options, js_transform_tempfiles, in_temp):
     self.queue = []
     self.extra_info = {}
     self.queue_history = []
@@ -202,8 +202,8 @@ class JSOptimizer(object):
     self.profiling_funcs = options.profiling_funcs
     self.use_closure_compiler = options.use_closure_compiler
 
-    self.misc_temp_files = misc_temp_files
     self.js_transform_tempfiles = js_transform_tempfiles
+    self.in_temp = in_temp
 
   def flush(self, title='js_opts'):
     self.queue = [p for p in self.queue if p not in self.blacklist]
@@ -268,11 +268,10 @@ class JSOptimizer(object):
     if self.cleanup_shell and 'last' in passes:
       passes += ['cleanup']
     logging.debug('applying js optimization passes: %s', ' '.join(passes))
-    self.misc_temp_files.note(final)
     final = shared.Building.js_optimizer(final, passes, self.debug_level >= 4,
                                          self.extra_info, just_split=just_split,
-                                         just_concat=just_concat)
-    self.misc_temp_files.note(final)
+                                         just_concat=just_concat,
+                                         output_filename=self.in_temp(os.path.basename(final) + '.jsopted.js'))
     self.js_transform_tempfiles.append(final)
     if DEBUG: save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
 
@@ -567,6 +566,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     final_suffix = target.split('.')[-1]
   else:
     final_suffix = ''
+
+  # Temporary file handling: we ensure that TEMP_DIR exists, which is the general
+  # location for all temp files from us on this system. We then create a temp dir
+  # under that, and store our main files there. As we process the main js file,
+  # we update the variable `final`, giving it an extra suffix each time, and
+  # relying on the entire dir going away for cleanup. For other miscellaneous
+  # temporary files (like in the js optimizer) we need to note() them so they
+  # get removed.
 
   temp_root = shared.TEMP_DIR
   if not os.path.exists(temp_root):
@@ -1146,8 +1153,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # When only targeting wasm, the .asm.js file is not executable, so is treated as an intermediate build file that can be cleaned up.
         if shared.Building.is_wasm_only():
           asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
-          if not DEBUG:
-            misc_temp_files.note(asm_target)
+          misc_temp_files.note(asm_target)
 
       if shared.Settings.TOTAL_MEMORY < 16*1024*1024:
         exit_with_error('TOTAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.TOTAL_MEMORY))
@@ -1756,8 +1762,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     optimizer = JSOptimizer(
       target=target,
       options=options,
-      misc_temp_files=misc_temp_files,
       js_transform_tempfiles=js_transform_tempfiles,
+      in_temp=in_temp,
     )
     with ToolchainProfiler.profile_block('js opts'):
       # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
@@ -1852,7 +1858,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if DEBUG: save_intermediate('closure')
 
     log_time('js opts')
-    # exit block 'js opts'
 
     with ToolchainProfiler.profile_block('final emitting'):
       if shared.Settings.EMTERPRETIFY:
@@ -1865,20 +1870,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Bundle symbol data in with the cyberdwarf file
       if shared.Settings.CYBERDWARF:
-          execute([shared.PYTHON, shared.path_from_root('tools', 'emdebug_cd_merger.py'), target + '.cd', target+'.symbols'])
+        execute([shared.PYTHON, shared.path_from_root('tools', 'emdebug_cd_merger.py'), target + '.cd', target+'.symbols'])
 
       if options.debug_level >= 4 and not shared.Settings.BINARYEN:
         emit_js_source_maps(target, optimizer.js_transform_tempfiles)
 
       # track files that will need native eols
       generated_text_files_with_native_eols = []
-
       if (options.separate_asm or shared.Settings.BINARYEN) and not shared.Settings.WASM_BACKEND:
         separate_asm_js(final, asm_target)
         generated_text_files_with_native_eols += [asm_target]
 
-      binaryen_method_sanity_check()
       if shared.Settings.BINARYEN:
+        binaryen_method_sanity_check()
         do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                     wasm_text_target, misc_temp_files, optimizer)
 
@@ -2183,7 +2187,7 @@ def parse_args(newargs):
 
 def emterpretify(js_target, optimizer, options):
   global final
-  optimizer.flush()
+  optimizer.flush('pre-emterpretify')
   logging.debug('emterpretifying')
   import json
   try:
@@ -2227,7 +2231,7 @@ def emterpretify(js_target, optimizer, options):
   if not shared.Settings.BINARYEN:
     optimizer.do_minify()
   optimizer.queue += ['last']
-  optimizer.flush()
+  optimizer.flush('finalizing-emterpreted-code')
 
   # finalize the original as well, if we will be swapping it in (TODO: add specific option for this)
   if shared.Settings.SWAPPABLE_ASM_MODULE:
@@ -2238,8 +2242,8 @@ def emterpretify(js_target, optimizer, options):
     if not shared.Settings.BINARYEN:
       optimizer.do_minify()
     optimizer.queue += ['last']
-    optimizer.flush()
-    safe_move(final, original)
+    optimizer.flush('finalizing-original-code')
+    safe_copy(final, original)
     final = real
 
 

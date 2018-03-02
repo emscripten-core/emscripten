@@ -7515,7 +7515,7 @@ int main() {
         self.assertNotContained(warning, err)
 
   def test_binaryen_invalid_method(self):
-    proc = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'test.js', '-s', "BINARYEN_METHOD='invalid'"])
+    proc = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'test.js', '-s', 'WASM=1', '-s', "BINARYEN_METHOD='invalid'"])
     proc.communicate()
     assert proc.returncode != 0
 

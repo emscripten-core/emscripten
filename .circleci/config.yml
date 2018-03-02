@@ -4,6 +4,7 @@ defaults: &defaults
       environment:
         LANG: C.UTF-8
         EMSCRIPTEN_ALLOW_NEWER_PYTHON: 1
+        EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS: 1
   working_directory: ~/
 
 test-defaults: &test-defaults
