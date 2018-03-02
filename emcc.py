@@ -421,7 +421,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # 0 - use native compilation for configure checks
     # 1 - use js when we think it will work
     # 2 - always use js for configure checks
-    use_js = int(os.environ.get('EMCONFIGURE_JS') or 1)
+    use_js = int(os.environ.get('EMCONFIGURE_JS') or 2)
 
     if debug_configure:
       tempout = '/tmp/emscripten_temp/out'
@@ -478,6 +478,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if use_js:
       cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'] # configure tests should fail when an undefined symbol exists
       cmd += ['-s', 'NO_EXIT_RUNTIME=0'] # configure tests want a more shell-like style, where we emit return codes on exit()
+      cmd += ['-s', 'NODERAWFS=1'] # use node.js raw filesystem access, to behave just like a native executable
 
     logging.debug('just configuring: ' + ' '.join(cmd))
     if debug_configure: open(tempout, 'a').write('emcc, just configuring: ' + ' '.join(cmd) + '\n\n')
