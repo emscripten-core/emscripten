@@ -11,6 +11,8 @@ def restore():
   shutil.copyfile(CONFIG_FILE + '_backup', CONFIG_FILE)
   # don't use the native optimizer from the emsdk - we want to test how it builds
   open(CONFIG_FILE, 'a').write('\nEMSCRIPTEN_NATIVE_OPTIMIZER = ""\n')
+  # make LLVM_ROOT sensitive to the LLVM env var, as we test that
+  open(CONFIG_FILE, 'a').write('\nLLVM_ROOT = os.path.expanduser(os.getenv("LLVM", "%s"))\n' % LLVM_ROOT)
 
 # wipe the config and sanity files, creating a blank slate
 def wipe():
