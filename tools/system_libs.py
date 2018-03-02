@@ -132,7 +132,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
               break
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
-    args = ['-Os']
+    # Without -fno-builtin, LLVM can optimize away or convert calls to library
+    # functions to something else based on assumptions that they behave exactly
+    # like the standard library. This can cause unexpected bugs when we use our
+    # custom standard library. The same for other libc/libm builds.
+    args = ['-Os', '-fno-builtin']
     if shared.Settings.USE_PTHREADS:
       args += ['-s', 'USE_PTHREADS=1']
       assert '-mt' in libname
@@ -196,7 +200,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c',
                  'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c'])
 
-    return build_libc(libname, files, ['-O2'])
+    return build_libc(libname, files, ['-O2', '-fno-builtin'])
 
   # libcxx
   def create_libcxx(libname):
@@ -307,7 +311,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   def create_dlmalloc(out_name):
     o = in_temp(out_name)
-    cflags = ['-O2']
+    cflags = ['-O2', '-fno-builtin']
     if shared.Settings.USE_PTHREADS:
       cflags += ['-s', 'USE_PTHREADS=1']
     if shared.Settings.EMSCRIPTEN_TRACING:
@@ -340,7 +344,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         '-mthread-model', 'single',
         output_flag,
         shared.path_from_root('system', 'lib', src),
-        '-O2', '-o', o] + musl_internal_includes() + shared.EMSDK_OPTS)
+        '-O2', '-fno-builtin', '-o', o] +
+        musl_internal_includes() +
+        shared.EMSDK_OPTS)
       o_s.append(o)
     run_commands(commands)
     lib = in_temp(libname)
