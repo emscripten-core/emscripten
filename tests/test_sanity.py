@@ -34,6 +34,10 @@ class sanity(RunnerCore):
     print('Running sanity checks.')
     print('WARNING: This will modify %s, and in theory can break it although it should be restored properly. A backup will be saved in %s_backup' % (EM_CONFIG, EM_CONFIG))
     print()
+    print('>>> the original settings file is:')
+    print(open(os.path.expanduser('~/.emscripten')).read())
+    print('<<<')
+    print()
 
     assert os.path.exists(CONFIG_FILE), 'To run these tests, we need a (working!) %s file to already exist' % EM_CONFIG
     assert not os.environ.get('EMCC_DEBUG'), 'do not run sanity checks in debug mode!'
