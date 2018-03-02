@@ -200,10 +200,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c',
                  'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c'])
 
-    # Without -fno-builtin, LLVM can optimize away or convert calls to library
-    # functions to something else based on assumptions that they behave exactly
-    # like the standard library. This can cause unexpected bugs when we use our
-    # custom standard library. The same for other libc/libm builds.
     return build_libc(libname, files, ['-O2', '-fno-builtin'])
 
   # libcxx
@@ -315,10 +311,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   def create_dlmalloc(out_name):
     o = in_temp(out_name)
-    # Without -fno-builtin, LLVM can optimize away or convert calls to library
-    # functions to something else based on assumptions that they behave exactly
-    # like the standard library. This can cause unexpected bugs when we use our
-    # custom standard library. The same for other libc/libm builds.
     cflags = ['-O2', '-fno-builtin']
     if shared.Settings.USE_PTHREADS:
       cflags += ['-s', 'USE_PTHREADS=1']
