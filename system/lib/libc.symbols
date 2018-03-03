@@ -242,7 +242,6 @@
          T cacoshf
          T cacoshl
          T cacosl
-         W calloc
          T carg
          T cargf
          T cargl
@@ -470,7 +469,6 @@
          W fputws_unlocked
          T fread
          W fread_unlocked
-         W free
          T freeaddrinfo
          T freeifaddrs
          T freelocale
@@ -730,18 +728,6 @@
          T lstat
          W lstat64
          W madvise
-         W mallinfo
-         W malloc
-         W malloc_footprint
-         W malloc_footprint_limit
-         W malloc_max_footprint
-         W malloc_set_footprint_limit
-         W malloc_stats
-         W malloc_trim
-         W malloc_usable_size
-         W mallopt
-         W emscripten_builtin_malloc
-         W emscripten_builtin_free
          T mblen
          T mbrlen
          T mbrtowc
@@ -750,7 +736,6 @@
          T mbsrtowcs
          T mbstowcs
          T mbtowc
-         W memalign
          T memccpy
          T memchr
          T memcmp
@@ -838,7 +823,6 @@
          T posix_fallocate
          W posix_fallocate64
          T posix_madvise
-         W posix_memalign
          T posix_openpt
          U posix_spawn
          U posix_spawn_file_actions_adddup2
