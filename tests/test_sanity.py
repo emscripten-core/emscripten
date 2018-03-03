@@ -1088,7 +1088,7 @@ BINARYEN_ROOT = ''
             cmd += MINIMAL_HELLO_WORLD
           else:
             # EM_ASM doesn't work in a wasm side module, build a normal program
-            cmd = [path_from_root('tests', 'hello_world.c'), '-s', 'SIDE_MODULE=1']
+            cmd += [path_from_root('tests', 'hello_world.c'), '-s', 'SIDE_MODULE=1']
           cmd += ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
           subprocess.check_call(cmd)
           assert os.path.exists(tag_file)
