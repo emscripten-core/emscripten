@@ -1083,9 +1083,13 @@ BINARYEN_ROOT = ''
           assert not os.path.exists(tag_file)
           try_delete('a.out.js')
           try_delete('a.out.wasm')
-          cmd = [PYTHON, EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
-          if side_module:
-            cmd += ['-s', 'SIDE_MODULE=1']
+          cmd = [PYTHON, EMCC]
+          if not side_module:
+            cmd += MINIMAL_HELLO_WORLD
+          else:
+            # EM_ASM doesn't work in a wasm side module, build a normal program
+            cmd = [path_from_root('tests', 'hello_world.c'), '-s', 'SIDE_MODULE=1']
+          cmd += ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
           subprocess.check_call(cmd)
           assert os.path.exists(tag_file)
           assert os.path.exists('a.out.wasm')
