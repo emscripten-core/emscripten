@@ -273,7 +273,6 @@ namespace emscripten {
         // missing operators:
         // * delete
         // * in
-        // * instanceof
         // * ! ~ - + ++ --
         // * * / %
         // * + -
