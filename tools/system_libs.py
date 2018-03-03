@@ -49,7 +49,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
   #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
-  dlmalloc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'dlmalloc.symbols'))
   libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc.symbols'))
   libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'))
   libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'))
@@ -453,7 +452,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  ('al',            'bc', create_al,          al_symbols,          ['libc'],      False),
                  ('html5',         'bc', create_html5,       html5_symbols,       ['html5'],     False),
                  ('compiler-rt',   'a',  create_compiler_rt, compiler_rt_symbols, ['libc'],      False),
-                 (dlmalloc_name(), 'bc', create_dlmalloc,    dlmalloc_symbols,    [],            False)]
+                 (dlmalloc_name(), 'bc', create_dlmalloc,    [],                  [],            False)]
 
   if shared.Settings.USE_PTHREADS:
     system_libs += [('libc-mt',        'bc', create_libc,           libc_symbols,     [],       False),
