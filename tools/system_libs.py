@@ -307,9 +307,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       raise Exception('malloc must be one of "emmalloc", "dlmalloc", see settings.js')
     # only dlmalloc supports most modes
     def require_dlmalloc(what):
-      logging.error('only dlmalloc is possible when using %s' % what)
-      import sys
-      sys.exit(1)
+      if base != 'dlmalloc':
+        logging.error('only dlmalloc is possible when using %s' % what)
+        import sys
+        sys.exit(1)
     extra = ''
     if shared.Settings.USE_PTHREADS:
       extra += '_threadsafe'
