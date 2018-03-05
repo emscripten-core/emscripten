@@ -47,6 +47,12 @@
 
 #define EMMALLOC_EXPORT __attribute__((__weak__, __visibility__("default")))
 
+// Assumptions
+
+static_assert(sizeof(void*) == 4, "32-bit system");
+static_assert(sizeof(size_t) == 4, "32-bit system");
+static_assert(sizeof(int) == 4, "32-bit system");
+
 // Debugging
 
 #ifdef EMMALLOC_DEBUG_LOG
@@ -93,6 +99,9 @@ static const size_t METADATA_SIZE = ALLOC_UNIT;
 // How big a minimal region is.
 static const size_t MIN_REGION_SIZE = METADATA_SIZE + ALLOC_UNIT;
 
+static_assert(ALLOC_UNIT == ALIGNMENT, "expected size of allocation unit");
+static_assert(METADATA_SIZE == ALIGNMENT, "expected size of metadata");
+
 // Constant utilities
 
 // Align a pointer, increasing it upwards as necessary
@@ -123,12 +132,14 @@ struct FreeInfo {
   FreeInfo*& next() { return _next; }
 };
 
+static_assert(sizeof(FreeInfo) == ALLOC_UNIT, "expected size of free info");
+
 // The first region of memory.
-static Region* firstRegion = NULL;
+static Region* firstRegion = nullptr;
 
 // The last region of memory. It's important to know the end
 // since we may append to it.
-static Region* lastRegion = NULL;
+static Region* lastRegion = nullptr;
 
 // A contiguous region of memory. Metadata at the beginning describes it,
 // after which is the "payload", the sections that user code calling
@@ -173,7 +184,7 @@ struct Region {
     if (this != lastRegion) {
       return (Region*)((char*)this + getTotalSize());
     } else {
-      return NULL;
+      return nullptr;
     }
   }
   FreeInfo& freeInfo() { return _freeInfo; }
@@ -185,12 +196,6 @@ struct Region {
 // Region utilities
 
 static void* getPayload(Region* region) {
-  static_assert(sizeof(void*) == 4, "32-bit system");
-  static_assert(sizeof(size_t) == 4, "32-bit system");
-  static_assert(sizeof(int) == 4, "32-bit system");
-  static_assert(sizeof(FreeInfo) == ALLOC_UNIT, "expected size of free info");
-  static_assert(ALLOC_UNIT == ALIGNMENT, "expected size of allocation unit");
-  static_assert(METADATA_SIZE == ALIGNMENT, "expected size of metadata");
   assert(((char*)&region->freeInfo()) - ((char*)region) == METADATA_SIZE);
   assert(region->getUsed());
   return region->payload();
@@ -231,10 +236,10 @@ static const size_t MIN_FREELIST_INDEX = 3;  // 8 == ALLOC_UNIT
 static const size_t MAX_FREELIST_INDEX = 32; // uint32_t
 
 static FreeInfo* freeLists[MAX_FREELIST_INDEX] = {
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr
 };
 
 // Global utilities
@@ -307,7 +312,7 @@ static void addToFreeList(Region* region) {
   FreeInfo* freeInfo = &region->freeInfo();
   FreeInfo* last = freeLists[index];
   freeLists[index] = freeInfo;
-  freeInfo->prev() = NULL;
+  freeInfo->prev() = nullptr;
   freeInfo->next() = last;
   if (last) {
     last->prev() = freeInfo;
@@ -500,10 +505,10 @@ static Region* useFreeInfo(FreeInfo* freeInfo, size_t size) {
 EMMALLOC_EXPORT
 void emmalloc_blank_slate_from_orbit() {
   for (int i = 0; i < MAX_FREELIST_INDEX; i++) {
-    freeLists[i] = NULL;
+    freeLists[i] = nullptr;
   }
-  firstRegion = NULL;
-  lastRegion = NULL;
+  firstRegion = nullptr;
+  lastRegion = nullptr;
 }
 
 #ifdef EMMALLOC_DEBUG
@@ -526,7 +531,7 @@ static void emmalloc_validate_all() {
   void* end = sbrk(0);
   // Validate regions.
   Region* curr = firstRegion;
-  Region* prev = NULL;
+  Region* prev = nullptr;
   EM_ASM({
     Module.emmallocDebug = {
       regions: {}
@@ -561,7 +566,7 @@ static void emmalloc_validate_all() {
   for (int i = 0; i < MAX_FREELIST_INDEX; i++) {
     FreeInfo* curr = freeLists[i];
     if (!curr) continue;
-    FreeInfo* prev = NULL;
+    FreeInfo* prev = nullptr;
     while (curr) {
       assert(curr->prev() == prev);
       Region* region = fromFreeInfo(curr);
@@ -580,7 +585,7 @@ static void emmalloc_validate_all() {
   }
   // Validate lastRegion.
   if (lastRegion) {
-    assert(lastRegion->next() == NULL);
+    assert(lastRegion->next() == nullptr);
     assert(getAfter(lastRegion) <= end);
     assert(firstRegion);
   } else {
@@ -608,7 +613,7 @@ static void emmalloc_dump_all() {
     FreeInfo* curr = freeLists[i];
     if (!curr) continue;
     EM_ASM({ Module.print("    freeList[" + $0 + "] sizes: [" + $1 + ", " + $2 + ")") }, i, getMinSizeForFreeListIndex(i), getMaxSizeForFreeListIndex(i));
-    FreeInfo* prev = NULL;
+    FreeInfo* prev = nullptr;
     while (curr) {
       Region* region = fromFreeInfo(curr);
       emmalloc_dump_region(region);
@@ -698,7 +703,7 @@ static Region* tryFromFreeList(size_t size) {
 #ifdef EMMALLOC_DEBUG_LOG
   EM_ASM({ Module.print("  emmalloc.tryFromFreeList no luck") });
 #endif
-  return NULL;
+  return nullptr;
 }
 
 // Allocate a completely new region.
@@ -713,7 +718,7 @@ static Region* allocateRegion(size_t size) {
 #ifdef EMMALLOC_DEBUG_LOG
     EM_ASM({ Module.print("    emmalloc.allocateRegion sbrk failure") });
 #endif
-    return NULL;
+    return nullptr;
   }
   // sbrk() results might not be aligned. We assume single-threaded sbrk()
   // access here in order to fix that up
@@ -729,7 +734,7 @@ static Region* allocateRegion(size_t size) {
 #ifdef EMMALLOC_DEBUG_LOG
       EM_ASM({ Module.print("    emmalloc.newAllocation sbrk failure") });;
 #endif
-      return NULL;
+      return nullptr;
     }
     // Verify the sbrk() assumption, no one else should call it.
     // If this fails, it means we also leak the previous allocation,
@@ -786,7 +791,7 @@ static Region* newAllocation(size_t size) {
         return lastRegion;
       } else {
         lastRegion->setUsed(0);
-        return NULL;
+        return nullptr;
       }
     }
   }
@@ -797,8 +802,8 @@ static Region* newAllocation(size_t size) {
 // Internal mirror of public API.
 
 static void* emmalloc_malloc(size_t size) {
-  // malloc() spec defines malloc(0) => NULL.
-  if (size == 0) return NULL;
+  // malloc() spec defines malloc(0) => nullptr.
+  if (size == 0) return nullptr;
   // Look in the freelist first.
   Region* region = tryFromFreeList(size);
   if (!region) {
@@ -806,7 +811,7 @@ static void* emmalloc_malloc(size_t size) {
     region = newAllocation(size);
     if (!region) {
       // We failed to allocate, sadly.
-      return NULL;
+      return nullptr;
     }
   }
   assert(getAfter(region) <= sbrk(0));
@@ -814,7 +819,7 @@ static void* emmalloc_malloc(size_t size) {
 }
 
 static void emmalloc_free(void *ptr) {
-  if (ptr == NULL) return;
+  if (ptr == nullptr) return;
   stopUsing(fromPayload(ptr));
 }
 
@@ -822,7 +827,7 @@ static void* emmalloc_calloc(size_t nmemb, size_t size) {
   // TODO If we know no one else is using sbrk(), we can assume that new
   //      memory allocations are zero'd out.
   void* ptr = emmalloc_malloc(nmemb * size);
-  if (!ptr) return NULL;
+  if (!ptr) return nullptr;
   memset(ptr, 0, nmemb * size);
   return ptr;
 }
@@ -831,7 +836,7 @@ static void* emmalloc_realloc(void *ptr, size_t size) {
   if (!ptr) return emmalloc_malloc(size);
   if (!size) {
     emmalloc_free(ptr);
-    return NULL;
+    return nullptr;
   }
   Region* region = fromPayload(ptr);
   assert(region->getUsed());
@@ -893,7 +898,7 @@ static void* emmalloc_realloc(void *ptr, size_t size) {
   // We need new space, and a copy
   if (!newRegion) {
     newRegion = newAllocation(size);
-    if (!newRegion) return NULL;
+    if (!newRegion) return nullptr;
   }
   memcpy(getPayload(newRegion), getPayload(region), size < getMaxPayload(region) ? size : getMaxPayload(region));
   stopUsing(region);
@@ -957,7 +962,7 @@ static void* alignedAllocation(size_t size, size_t alignment) {
   if (!lastRegion) {
     // This allocation is not freeable, but there is one at most.
     void* prev = emmalloc_malloc(MIN_REGION_SIZE);
-    if (!prev) return NULL;
+    if (!prev) return nullptr;
   }
   // See if we need to enlarge the previous region in order to get
   // us properly aligned. Take into account that our region will
@@ -970,14 +975,14 @@ static void* alignedAllocation(size_t size, size_t alignment) {
     size_t extra = alignment - error;
     assert(extra % ALIGNMENT == 0);
     if (!extendLastRegion(getMaxPayload(lastRegion) + extra)) {
-      return NULL;
+      return nullptr;
     }
     address = size_t(getAfter(lastRegion)) + METADATA_SIZE;
     error = address % alignment;
     assert(error == 0);
   }
   Region* region = allocateRegion(size);
-  if (!region) return NULL;
+  if (!region) return nullptr;
   void* ptr = getPayload(region);
   assert(size_t(ptr) == address);
   assert(size_t(ptr) % alignment == 0);
@@ -989,7 +994,7 @@ static int isMultipleOfSizeT(size_t size) {
 }
 
 static int emmalloc_posix_memalign(void **memptr, size_t alignment, size_t size) {
-  *memptr = NULL;
+  *memptr = nullptr;
   if (!isPowerOf2(alignment) || !isMultipleOfSizeT(alignment)) {
     return 22; // EINVAL
   }
@@ -1012,7 +1017,7 @@ static int emmalloc_posix_memalign(void **memptr, size_t alignment, size_t size)
 static void* emmalloc_memalign(size_t alignment, size_t size) {
   void* ptr;
   if (emmalloc_posix_memalign(&ptr, alignment, size) != 0) {
-    return NULL;
+    return nullptr;
   }
   return ptr;
 }
