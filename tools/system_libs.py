@@ -306,16 +306,20 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     else:
       raise Exception('malloc must be one of "emmalloc", "dlmalloc", see settings.js')
     # only dlmalloc supports most modes
+    def require_dlmalloc(what):
+      logging.error('only dlmalloc is possible when using %s' % what)
+      import sys
+      sys.exit(1)
     extra = ''
     if shared.Settings.USE_PTHREADS:
       extra += '_threadsafe'
-      base = 'dlmalloc'
+      require_dlmalloc('pthreads')
     if shared.Settings.EMSCRIPTEN_TRACING:
       extra += '_tracing'
-      base = 'dlmalloc'
+      require_dlmalloc('tracing')
     if shared.Settings.SPLIT_MEMORY:
       extra += '_split'
-      base = 'dlmalloc'
+      require_dlmalloc('split memory')
     if shared.Settings.DEBUG_LEVEL >= 3:
       extra += '_debug'
     if base == 'dlmalloc':
