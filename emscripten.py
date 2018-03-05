@@ -2107,16 +2107,15 @@ var asm = Module['asm'](%s, %s, buffer);
      'Module' + access_quote('asmLibraryArg'),
      receiving)]
 
-  # wasm backend stack goes down, and is stored in the first global var location
+  # wasm backend stack goes down
   module.append('''
 STACKTOP = STACK_BASE + TOTAL_STACK;
 STACK_MAX = STACK_BASE;
-HEAP32[%d >> 2] = STACKTOP;
 var stackAlloc = Module['_stackAlloc'];
 var stackSave = Module['_stackSave'];
 var stackRestore = Module['_stackRestore'];
 var establishStackSpace = Module['establishStackSpace'];
-''' % shared.Settings.GLOBAL_BASE)
+''')
 
   # some runtime functionality may not have been generated in
   # the wasm; provide a JS shim for it

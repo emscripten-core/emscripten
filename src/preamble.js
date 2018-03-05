@@ -2187,6 +2187,7 @@ function integrateWasmJS() {
 #else
       removeRunDependency('wasm-instantiate');
 #endif
+      stackRestore(STACKTOP);
     }
 #if USE_PTHREADS
     if (!ENVIRONMENT_IS_PTHREAD) {
