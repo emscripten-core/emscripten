@@ -97,7 +97,7 @@ static const size_t MIN_REGION_SIZE = METADATA_SIZE + ALLOC_UNIT;
 
 // Align a pointer, increasing it upwards as necessary
 static size_t alignUp(size_t ptr) {
-  return (size_t(ptr) + ALIGNMENT - 1) & -ALIGNMENT;
+  return (ptr + ALIGNMENT - 1) & -ALIGNMENT;
 }
 
 static void* alignUpPointer(void* ptr) {
