@@ -86,6 +86,7 @@ namespace emscripten {
                 EM_VAR_ARGS argv);
             EM_VAL _emval_typeof(EM_VAL value);
             EM_VAL _emval_instanceof(EM_VAL object, EM_VAL constructor);
+            EM_VAL _emval_operator_cmp_e(EM_VAL value1, EM_VAL value2);
         }
 
         template<const char* address>
@@ -278,7 +279,7 @@ namespace emscripten {
         // * + -
         // * << >> >>>
         // * < <= > >=
-        // * == != === !==
+        // * != === !==
         // * & ^ | && || ?:
         //
         // exposing void, comma, and conditional is unnecessary
@@ -449,6 +450,10 @@ namespace emscripten {
 
         val instanceof(const val& v) const {
           return val(_emval_instanceof(handle, v.handle));
+        }
+
+        bool operator==(const val& v) const {
+          return val(_emval_operator_cmp_e(handle, v.handle)).as<bool>();
         }
 
     private:

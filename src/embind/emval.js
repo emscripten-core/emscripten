@@ -419,6 +419,14 @@ var LibraryEmVal = {
     constructor = requireHandle(constructor);
     return __emval_register(object instanceof constructor);
   },
+
+  _emval_operator_cmp_e__deps: ['_emval_register', '$requireHandle'],
+  _emval_operator_cmp_e: function(object1, object2) {
+    object1 = requireHandle(object1);
+    object2 = requireHandle(object2);
+    return __emval_register(object1 == object2);
+  },
+
 };
 
 mergeInto(LibraryManager.library, LibraryEmVal);
