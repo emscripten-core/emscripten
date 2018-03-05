@@ -109,7 +109,7 @@ int main(int argc, char **argv)
     Method = atoi(argv[6]);
   }
 #ifdef __EMSCRIPTEN__
-  ENVIRONMENT_IS_WEB = EM_ASM_INT_V(return ENVIRONMENT_IS_WEB);
+  ENVIRONMENT_IS_WEB = EM_ASM_INT(return ENVIRONMENT_IS_WEB);
 #endif
   printf("Performing %d multiplications of matrices of size %dx%d and %dx%d. Distributing multiplication across %d animation frames (matrix muls per frame=%d).\n", NumFrames*ItersPerFrame, A, B, B, C, NumFrames, ItersPerFrame);
 

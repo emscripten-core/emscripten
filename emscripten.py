@@ -698,8 +698,11 @@ function _emscripten_asm_const_%s(%s) {
   asm_consts_text = '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n'
   asm_funcs_text = '\n'.join(asm_const_funcs) + '\n'
 
+  em_js_funcs = create_em_js(forwarded_json, metadata)
+  em_js_text = '\n'.join(em_js_funcs) + '\n'
+
   body_marker = '// === Body ==='
-  return pre.replace(body_marker, body_marker + '\n' + asm_consts_text + asstr(asm_funcs_text))
+  return pre.replace(body_marker, body_marker + '\n' + asm_consts_text + asstr(asm_funcs_text) + em_js_text)
 
 # Test if the parentheses at body[openIdx] and body[closeIdx] are a match to each other.
 def parentheses_match(body, openIdx, closeIdx):
@@ -1772,7 +1775,13 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   exported_implemented_functions = create_exported_implemented_functions_wasm(pre, forwarded_json, metadata, settings)
 
   asm_consts, asm_const_funcs = create_asm_consts_wasm(forwarded_json, metadata)
-  pre = pre.replace('// === Body ===', '// === Body ===\n' + '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
+  em_js_funcs = create_em_js(forwarded_json, metadata)
+  pre = pre.replace(
+    '// === Body ===',
+    ('// === Body ===\n\nvar ASM_CONSTS = [' +
+      ',\n '.join(asm_consts) + '];\n' +
+      asstr('\n'.join(asm_const_funcs)) +
+      '\n'.join(em_js_funcs) + '\n'))
 
   outfile.write(pre)
   pre = None
@@ -1914,18 +1923,12 @@ def read_metadata_wast(wast, DEBUG):
   parts = output.split('\n;; METADATA:')
   assert len(parts) == 2
   metadata_raw = parts[1]
-  return create_metadata_wasm(metadata_raw, wast, DEBUG)
+  return create_metadata_wasm(metadata_raw, DEBUG)
 
 
-def read_metadata_file_wasm(meta, wast, DEBUG):
-  metadata_raw = open(meta).read()
-  return create_metadata_wasm(metadata_raw, wast, DEBUG)
-
-
-def create_metadata_wasm(metadata_raw, wast, DEBUG):
+def create_metadata_wasm(metadata_raw, DEBUG):
   if DEBUG: logging.debug("METAraw %s", metadata_raw)
   metadata = load_metadata(metadata_raw)
-  add_metadata_from_wast(metadata, wast)
   if DEBUG: logging.debug(repr(metadata))
   return metadata
 
@@ -1956,6 +1959,7 @@ def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata, se
 
   return exported_implemented_functions
 
+
 def create_asm_consts_wasm(forwarded_json, metadata):
   asm_consts = [0]*len(metadata['asmConsts'])
   all_sigs = []
@@ -1963,26 +1967,60 @@ def create_asm_consts_wasm(forwarded_json, metadata):
     const = asstr(v[0])
     sigs = v[1]
     const = trim_asm_const_body(const)
-    const = '{ ' + const + ' }'
     args = []
-    arity = max(map(len, sigs)) - 1
+    max_arity = 16
+    arity = 0
+    for i in range(max_arity):
+      if ('$' + str(i)) in const:
+        arity = i + 1
     for i in range(arity):
       args.append('$' + str(i))
-    const = 'function(' + ', '.join(args) + ') ' + const
+    const = 'function(' + ', '.join(args) + ') {' + const + '}'
     asm_consts[int(k)] = const
     all_sigs += sigs
 
   asm_const_funcs = []
   for sig in set(all_sigs):
     forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
-    args = ['a%d' % i for i in range(len(sig)-1)]
-    all_args = ['code'] + args
     asm_const_funcs.append(r'''
-function _emscripten_asm_const_%s(%s) {
-return ASM_CONSTS[code](%s);
-}''' % (asstr(sig), ', '.join(all_args), ', '.join(args)))
-
+function _emscripten_asm_const_%s(code, sig_ptr, argbuf) {
+  var sig = AsciiToString(sig_ptr);
+  var args = [];
+  var align_to = function(ptr, align) {
+    return (ptr+align-1) & ~(align-1);
+  };
+  var buf = argbuf;
+  for (var i = 0; i < sig.length; i++) {
+    var c = sig[i];
+    if (c == 'd' || c == 'f') {
+      buf = align_to(buf, 8);
+      args.push(HEAPF64[(buf >> 3)]);
+      buf += 8;
+    } else if (c == 'i') {
+      buf = align_to(buf, 4);
+      args.push(HEAPU32[(buf >> 2)]);
+      buf += 4;
+    }
+  }
+  return ASM_CONSTS[code].apply(null, args);
+}''' % sig)
   return asm_consts, asm_const_funcs
+
+
+def create_em_js(forwarded_json, metadata):
+  em_js_funcs = []
+  separator = '<::>'
+  for name, raw in metadata.get('emJsFuncs', {}).items():
+    parts = raw.split(separator)
+    assert len(parts) >= 2
+    args, body = parts[0], separator.join(parts[1:])
+    args = args[1:-1].split(',')
+    arg_names = [arg.split()[-1] for arg in args if arg]
+    func = 'function {}({}){}'.format(name, ','.join(arg_names), body)
+    em_js_funcs.append(func)
+    forwarded_json['Functions']['libraryFunctions'][name] = 1
+
+  return em_js_funcs
 
 
 def read_wast_invoke_imports(wast):
@@ -2154,6 +2192,7 @@ def load_metadata(metadata_raw):
     'maxGlobalAlign': 0,
     'initializers': [],
     'exports': [],
+    'emJsFuncs': {},
   }
 
   for k, v in metadata_json.items():
@@ -2166,51 +2205,6 @@ def load_metadata(metadata_raw):
   shared.Building.user_requested_exports += metadata['exports']
 
   return metadata
-
-
-def add_metadata_from_wast(metadata, wast):
-  """Reads .wast file and adds metadata we can read from the code.
-
-  TODO: emit this metadata directly from s2wasm.
-  """
-  for line in open(wast).readlines():
-    line = line.strip()
-    if line.startswith('(import '):
-      parts = line.split()
-      # Don't include Invoke wrapper names (for asm.js-style exception handling)
-      # in metadata[declares], the invoke wrappers will be generated in
-      # this script later.
-      import_type = parts[3][1:]
-      import_name = parts[2][1:-1]
-      if import_type == 'memory':
-        continue
-      elif import_type == 'func':
-        if (not import_name.startswith('invoke_') and
-            not import_name.startswith('jsCall_')):
-          metadata['declares'].append(import_name)
-      elif import_type == 'global':
-        metadata['externs'].append('_' + import_name)
-      else:
-        assert False, 'Unhandled import type "%s"' % import_type
-    elif line.startswith('(func '):
-      parts = line.split()
-      func_name = parts[1][1:]
-      metadata['implementedFunctions'].append('_' + func_name)
-    elif line.startswith('(export '):
-      parts = line.split()
-      export_name = parts[1][1:-1]
-      export_type = parts[2][1:]
-      if export_type == 'func':
-        assert asmjs_mangle(export_name) not in metadata['exports']
-        metadata['exports'].append(export_name)
-      elif export_type == 'global':
-        # Ignore global exports
-        pass
-      else:
-        assert False, 'Unhandled export type "%s"' % export_type
-
-  # we emit those ourselves
-  metadata['declares'] = [x for x in metadata['declares'] if not x.startswith('emscripten_asm_const')]
 
 
 def create_invoke_wrappers(invoke_funcs):

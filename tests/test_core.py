@@ -1693,13 +1693,8 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm', force_c=True)
 
   def test_em_asm_unicode(self):
-    self.do_run(r'''
-#include <emscripten.h>
-
-int main() {
-  EM_ASM( Module.print("hello world…") );
-}
-''', 'hello world…')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode', force_c=True)
 
   def test_em_asm_unused_arguments(self):
     src = r'''
@@ -1723,6 +1718,10 @@ int main() {
   def test_em_asm_parameter_pack(self):
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_parameter_pack')
+
+  def test_em_js(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_js')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_js', force_c=True)
 
   def test_runtime_stacksave(self):
     src = open(path_from_root('tests', 'core', 'test_runtime_stacksave.c')).read()
@@ -4684,7 +4683,7 @@ def process(filename):
         std::cout << "hello world\n"; // should work with strict mode
         EM_ASM(
           try {
-            FS.write('/dummy.txt', 'homu');
+            FS.readFile('/dummy.txt');
           } catch (err) {
             err.stack = err.stack; // should be writable
             throw err;
@@ -4692,7 +4691,7 @@ def process(filename):
         );
         return 0;
       }
-    ''', 'at Object.write', js_engines=js_engines, post_build=post) # engines has different error stack format
+    ''', 'at Object.readFile', js_engines=js_engines, post_build=post) # engines has different error stack format
 
   @also_with_noderawfs
   def test_fs_llseek(self, js_engines=None):
@@ -4873,6 +4872,9 @@ def process(filename):
 
   def test_uname(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_uname')
+
+  def test_unary_literal(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_unary_literal')
 
   def test_env(self):
     src = open(path_from_root('tests', 'env', 'src.c'), 'r').read()
@@ -5856,42 +5858,6 @@ def process(filename):
                    output_nicerizer=image_compare)#, build_ll_hook=self.do_autodebug)
 
     do_test()
-
-    # some test coverage for EMCC_DEBUG 1 and 2
-    assert 'asm2g' in test_modes
-    if self.run_name == 'asm2g':
-      shutil.copyfile('src.c.o.js', 'release.js')
-      try:
-        os.environ['EMCC_DEBUG'] = '1'
-        print('2')
-        do_test()
-        shutil.copyfile('src.c.o.js', 'debug1.js')
-        os.environ['EMCC_DEBUG'] = '2'
-        print('3')
-        do_test()
-        shutil.copyfile('src.c.o.js', 'debug2.js')
-      finally:
-        del os.environ['EMCC_DEBUG']
-      for debug in [1,2]:
-        def clean(text):
-          text = text.replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n').replace('{\n}', '{}')
-          return '\n'.join(sorted(text.split('\n')))
-        sizes = len(open('release.js').read()), len(open('debug%d.js' % debug).read())
-        print(debug, 'sizes', sizes, file=sys.stderr)
-        assert abs(sizes[0] - sizes[1]) < 0.001*sizes[0], sizes # we can't check on identical output, compilation is not 100% deterministic (order of switch elements, etc.), but size should be ~identical
-        print('debug check %d passed too' % debug, file=sys.stderr)
-
-      try:
-        os.environ['EMCC_FORCE_STDLIBS'] = '1'
-        print('EMCC_FORCE_STDLIBS')
-        do_test()
-      finally:
-        del os.environ['EMCC_FORCE_STDLIBS']
-      print('EMCC_FORCE_STDLIBS ok', file=sys.stderr)
-
-      try_delete(CANONICAL_TEMP_DIR)
-    else:
-      print('not doing debug check', file=sys.stderr)
 
     if Settings.ALLOW_MEMORY_GROWTH == 1: # extra testing
       print('no memory growth', file=sys.stderr)
@@ -6983,22 +6949,6 @@ Module.printErr = Module['printErr'] = function(){};
       assert seen_lines.issuperset([6, 7, 11, 12])
 
     build_and_check()
-
-    assert 'asm2g' in test_modes
-    if self.run_name == 'asm2g':
-      # EMCC_DEBUG=2 causes lots of intermediate files to be written, and so
-      # serves as a stress test for source maps because it needs to correlate
-      # line numbers across all those files.
-      old_emcc_debug = os.environ.get('EMCC_DEBUG', None)
-      os.environ.pop('EMCC_DEBUG', None)
-      try:
-        os.environ['EMCC_DEBUG'] = '2'
-        build_and_check()
-      finally:
-        if old_emcc_debug is not None:
-          os.environ['EMCC_DEBUG'] = old_emcc_debug
-        else:
-          os.environ.pop('EMCC_DEBUG', None)
 
   def test_modularize_closure_pre(self):
     emcc_args = self.emcc_args[:]

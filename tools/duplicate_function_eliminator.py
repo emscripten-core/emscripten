@@ -49,7 +49,7 @@ def run_on_chunk(command):
     output = proc.stdout
     assert proc.returncode == 0, 'Error in optimizer (return code ' + str(proc.returncode) + '): ' + output
     assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in optimizer: ' + output
-    filename = temp_files.get(os.path.basename(filename) + '.jo' + file_suffix).name
+    filename = temp_files.get(os.path.basename(filename) + '.dfjo' + file_suffix).name
 
     f = open(filename, 'w')
     f.write(output)
@@ -261,6 +261,10 @@ def run_on_js(filename, gen_hash_info=False):
       filenames = [run_on_chunk(command) for command in commands]
   else:
     filenames = []
+
+  # we create temp files in the child threads, clean them up here when we are done
+  for filename in filenames:
+    temp_files.note(filename)
 
   json_files = []
 

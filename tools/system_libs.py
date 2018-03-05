@@ -1,5 +1,5 @@
 from __future__ import print_function
-import os, json, logging, zipfile, glob, shutil
+import os, json, logging, zipfile, tarfile, glob, shutil
 from . import shared
 from subprocess import Popen, CalledProcessError
 import subprocess, multiprocessing, re
@@ -132,7 +132,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
               break
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
-    args = ['-Os']
+    # Without -fno-builtin, LLVM can optimize away or convert calls to library
+    # functions to something else based on assumptions that they behave exactly
+    # like the standard library. This can cause unexpected bugs when we use our
+    # custom standard library. The same for other libc/libm builds.
+    args = ['-Os', '-fno-builtin']
     if shared.Settings.USE_PTHREADS:
       args += ['-s', 'USE_PTHREADS=1']
       assert '-mt' in libname
@@ -196,7 +200,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c',
                  'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c'])
 
-    return build_libc(libname, files, ['-O2'])
+    return build_libc(libname, files, ['-O2', '-fno-builtin'])
 
   # libcxx
   def create_libcxx(libname):
@@ -328,7 +332,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   def create_malloc(out_name):
     o = in_temp(out_name)
-    cflags = ['-O2']
+    cflags = ['-O2', '-fno-builtin']
     if shared.Settings.USE_PTHREADS:
       cflags += ['-s', 'USE_PTHREADS=1']
     if shared.Settings.EMSCRIPTEN_TRACING:
@@ -364,7 +368,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         '-mthread-model', 'single',
         output_flag,
         shared.path_from_root('system', 'lib', src),
-        '-O2', '-o', o] + musl_internal_includes() + shared.EMSDK_OPTS)
+        '-O2', '-fno-builtin', '-o', o] +
+        musl_internal_includes() +
+        shared.EMSDK_OPTS)
       o_s.append(o)
     run_commands(commands)
     lib = in_temp(libname)
@@ -611,7 +617,7 @@ class Ports(object):
   name_cache = set()
 
   @staticmethod
-  def fetch_project(name, url, subdir):
+  def fetch_project(name, url, subdir, is_tarbz2=False):
     fullname = os.path.join(Ports.get_dir(), name)
 
     if name not in Ports.name_cache: # only mention each port once in log
@@ -662,12 +668,15 @@ class Ports(object):
         from urllib2 import urlopen
       f = urlopen(url)
       data = f.read()
-      open(fullname + '.zip', 'wb').write(data)
+      open(fullname + ('.zip' if not is_tarbz2 else '.tar.bz2'), 'wb').write(data)
       State.retrieved = True
 
     def check_tag():
-      z = zipfile.ZipFile(fullname + '.zip', 'r')
-      names = z.namelist()
+      if is_tarbz2:
+        names = tarfile.open(fullname + '.tar.bz2', 'r:bz2').getnames()
+      else:
+        names = zipfile.ZipFile(fullname + '.zip', 'r').namelist()
+
       if not (names[0].startswith(subdir + '/') or names[0].startswith(subdir + '\\')):
         # current zip file is old, force a retrieve
         return False
@@ -676,7 +685,10 @@ class Ports(object):
     def unpack():
       logging.warning('unpacking port: ' + name)
       shared.safe_ensure_dirs(fullname)
-      z = zipfile.ZipFile(fullname + '.zip', 'r')
+      if is_tarbz2:
+        z = tarfile.open(fullname + '.tar.bz2', 'r:bz2')
+      else:
+        z = zipfile.ZipFile(fullname + '.zip', 'r')
       try:
         cwd = os.getcwd()
         os.chdir(fullname)

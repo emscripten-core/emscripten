@@ -2089,6 +2089,7 @@ class Building(object):
       filename = temp
     if not return_output:
       next = original_filename + '.jso.js'
+      configuration.get_temp_files().note(next)
       subprocess.check_call(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
       return next
     else:
@@ -2210,19 +2211,16 @@ class Building(object):
   # and wasm optimizations; here we do the very final optimizations on them
   @staticmethod
   def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, use_closure_compiler, debug_info, emit_symbol_map):
-    temp_files = configuration.get_temp_files()
     # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
     # use AJSDCE (aggressive JS DCE, performs multiple iterations)
     passes = ['noPrintMetadata', 'JSDCE' if not expensive_optimizations else 'AJSDCE']
     if minify_whitespace:
       passes.append('minifyWhitespace')
     logging.debug('running cleanup on shell code: ' + ' '.join(passes))
-    temp_files.note(js_file)
     js_file = Building.js_optimizer_no_asmjs(js_file, passes)
     # if we are optimizing for size, shrink the combined wasm+JS
     # TODO: support this when a symbol map is used
     if expensive_optimizations and not emit_symbol_map:
-      temp_files.note(js_file)
       js_file = Building.metadce(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
       # now that we removed unneeded communication between js and wasm, we can clean up
       # the js some more.
@@ -2230,12 +2228,10 @@ class Building(object):
       if minify_whitespace:
         passes.append('minifyWhitespace')
       logging.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
-      temp_files.note(js_file)
       js_file = Building.js_optimizer_no_asmjs(js_file, passes)
     # finally, optionally use closure compiler to finish cleaning up the JS
     if use_closure_compiler:
       logging.debug('running closure on shell code')
-      temp_files.note(js_file)
       js_file = Building.closure_compiler(js_file, pretty=not minify_whitespace)
     return js_file
 
@@ -2282,7 +2278,6 @@ class Building(object):
     if minify_whitespace:
       passes.append('minifyWhitespace')
     extra_info = { 'unused': unused }
-    temp_files.note(js_file)
     return Building.js_optimizer_no_asmjs(js_file, passes, extra_info=json.dumps(extra_info))
 
   # the exports the user requested
