@@ -3,7 +3,7 @@
  *
  * Assumptions:
  *
- *  - 32-bit system.
+ *  - Pointers are 32-bit.
  *  - Single-threaded.
  *  - sbrk() is used, and nothing else.
  *  - sbrk() will not be accessed by anyone else.
@@ -185,11 +185,14 @@ struct Region {
 // Region utilities
 
 static void* getPayload(Region* region) {
+  static_assert(sizeof(void*) == 4, "32-bit system");
+  static_assert(sizeof(size_t) == 4, "32-bit system");
+  static_assert(sizeof(int) == 4, "32-bit system");
+  static_assert(sizeof(FreeInfo) == ALLOC_UNIT, "expected size of free info");
+  static_assert(ALLOC_UNIT == ALIGNMENT, "expected size of allocation unit");
+  static_assert(METADATA_SIZE == ALIGNMENT, "expected size of metadata");
   assert(((char*)&region->freeInfo()) - ((char*)region) == METADATA_SIZE);
   assert(region->getUsed());
-  assert(sizeof(FreeInfo) == ALLOC_UNIT);
-  assert(ALLOC_UNIT == ALIGNMENT);
-  assert(METADATA_SIZE == ALIGNMENT);
   return region->payload();
 }
 
