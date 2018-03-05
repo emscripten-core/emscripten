@@ -279,7 +279,7 @@ namespace emscripten {
         // * + -
         // * << >> >>>
         // * < <= > >=
-        // * != === !==
+        // * === !==
         // * & ^ | && || ?:
         //
         // exposing void, comma, and conditional is unnecessary
@@ -454,6 +454,10 @@ namespace emscripten {
 
         bool operator==(const val& v) const {
           return val(_emval_operator_cmp_e(handle, v.handle)).as<bool>();
+        }
+
+        bool operator!=(const val& v) const {
+          return !(*this == v);
         }
 
     private:
