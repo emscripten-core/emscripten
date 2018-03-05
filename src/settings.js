@@ -562,6 +562,16 @@ var MODULARIZE = 0; // By default we emit all code in a straightforward way into
                     // the module. (This allows, in particular, for you to create multiple
                     // instantiations, etc.)
                     //
+                    // If you add --pre-js or --post-js files, they will be included inside
+                    // the module with the rest of the emitted code. That way, they can be
+                    // optimized together with it. (If you want something outside of the module,
+                    // that is, literally before or after all the code including the extra
+                    // MODULARIZE code, you can do that by modifying the JS yourself after
+                    // emscripten runs. While --pre-js and --post-js happen to do that in
+                    // non-modularize mode, their big feature is that they add code to be
+                    // optimized with the rest of the emitted code, allowing better dead code
+                    // elimination and minification.)
+                    //
                     // Modularize also provides a promise-like API,
                     //
                     //   var instance = EXPORT_NAME().then(function(Module) { .. });
