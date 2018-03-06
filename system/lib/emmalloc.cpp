@@ -40,6 +40,7 @@
  */
 
 #include <assert.h>
+#include <limits.h> // CHAR_BIT
 #include <malloc.h> // mallinfo
 #include <string.h> // for memcpy, memset
 #include <unistd.h> // for sbrk()
@@ -52,6 +53,11 @@
 static_assert(sizeof(void*) == 4, "32-bit system");
 static_assert(sizeof(size_t) == 4, "32-bit system");
 static_assert(sizeof(int) == 4, "32-bit system");
+
+#define SIZE_T_BIT (sizeof(size_t) * CHAR_BIT)
+
+static_assert(CHAR_BIT == 8, "standard char bit size");
+static_assert(SIZE_T_BIT == 32, "standard size_t bit size");
 
 // Debugging
 
@@ -80,7 +86,7 @@ static size_t lowerBoundPowerOf2(size_t x) {
   if (x == 0) return 1;
   // e.g. 5 is 0..0101, so clz is 29, and we want
   // 4 which is 1 << 2, so the result should be 2
-  return 31 - __builtin_clz(x);
+  return SIZE_T_BIT - 1 - __builtin_clz(x);
 }
 
 // Constants
