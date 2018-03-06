@@ -9,6 +9,9 @@ Not all changes are documented here. In particular, new features, user-oriented 
 
 Current Trunk
 -------------
+
+v1.37.35: 02/23/2018
+--------------------
  - Binaryen update that should fix all known determinism bugs.
 
 v1.37.34: 02/16/2018
