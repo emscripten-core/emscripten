@@ -58,6 +58,77 @@ jobs:
             - .emscripten
             - tmp-firefox-profile/
 
+  test-other:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=other skip:other.test_bad_triple skip:other.test_native_link_error_message skip:other.test_emcc_v skip:other.test_failing_alloc
+      # some native-dependent tests fail because of the lack of native headers on emsdk-bundled clang
+      # CircleCI actively kills memory-over-consuming process
+  test-browser:
+    <<: *test-defaults
+    environment:
+      # browser.test_sdl_ttf_render_text_solid depends on Arial from Microsoft
+      - TEST_TARGET=browser skip:browser.test_sdl_ttf_render_text_solid
+      - TEST_DEPENDENCY=firefox
+      - EMSCRIPTEN_BROWSER=firefox -headless -profile tmp-firefox-profile/
+      - EM_LACKS_HARDWARE_ACCESS=1
+  test-ab:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=ALL.test_a* ALL.test_b*
+  test-c:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=ALL.test_c*
+  test-d:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=default.test_d* asm1.test_d* asm2.test_d* asm2g.test_d* asm3.test_d*
+  test-e:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=ALL.test_e*
+  test-f:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=ALL.test_f*
+  test-ghi:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=ALL.test_g* ALL.test_h* ALL.test_i*
+  test-jklmno:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=ALL.test_j* ALL.test_k* ALL.test_l* ALL.test_m* ALL.test_n* ALL.test_o*
+  test-p:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=default.test_p* asm1.test_p* asm2.test_p* asm2g.test_p* asm3.test_p*
+  test-qrst:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=ALL.test_q* ALL.test_r* ALL.test_s* ALL.test_t* skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full
+      # SSE tests fail because of the lack of native headers on emsdk-bundled clang
+  test-uvwxyz:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=ALL.test_u* ALL.test_w* ALL.test_v* ALL.test_x* ALL.test_y* ALL.test_z*
+  test-binaryen0:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=binaryen0
+  test-binaryen1:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=binaryen1
+  test-binaryen2:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=binaryen2
+  test-binaryen3:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=binaryen3
   test-sanity:
     <<: *test-defaults
     environment:
@@ -69,6 +140,54 @@ workflows:
   build-test:
     jobs:
       - build
+      - test-other:
+          requires:
+            - build
+      - test-browser:
+          requires:
+            - build
+      - test-ab:
+          requires:
+            - build
+      - test-c:
+          requires:
+            - build
+      - test-d:
+          requires:
+            - build
+      - test-e:
+          requires:
+            - build
+      - test-f:
+          requires:
+            - build
+      - test-ghi:
+          requires:
+            - build
+      - test-jklmno:
+          requires:
+            - build
+      - test-p:
+          requires:
+            - build
+      - test-qrst:
+          requires:
+            - build
+      - test-uvwxyz:
+          requires:
+            - build
+      - test-binaryen0:
+          requires:
+            - build
+      - test-binaryen1:
+          requires:
+            - build
+      - test-binaryen2:
+          requires:
+            - build
+      - test-binaryen3:
+          requires:
+            - build
       - test-sanity:
           requires:
             - build
