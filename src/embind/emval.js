@@ -132,6 +132,13 @@ var LibraryEmVal = {
     return __emval_register(v);
   },
 
+  _emval_new_spread__deps: ['_emval_register', '$requireHandle'],
+  _emval_new_spread: function(constructor, args) {
+    constructor = requireHandle(constructor);
+    args = requireHandle(args);
+    return __emval_register(new constructor(...args));
+  },
+
   $emval_newers: {}, // arity -> function
   $craftEmvalAllocator__deps: ['_emval_register', '$requireRegisteredType'],
   $craftEmvalAllocator: function(argCount) {

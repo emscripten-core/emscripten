@@ -52,6 +52,7 @@ namespace emscripten {
                 unsigned argCount,
                 const TYPEID argTypes[],
                 EM_VAR_ARGS argv);
+            EM_VAL _emval_new_spread(EM_VAL constructor, EM_VAL args);
 
             EM_VAL _emval_get_global(const char* name);
             EM_VAL _emval_get_module_property(const char* name);
@@ -289,6 +290,14 @@ namespace emscripten {
             return val(internal::_emval_new_array());
         }
 
+        template<typename T>
+        static val array(const std::vector<T> vec) {
+            val arr = array();
+            for(auto it = vec.begin(); it != vec.end(); it++)
+                arr.call<void>("push", *it);
+            return arr;
+        }
+
         static val object() {
             return val(internal::_emval_new_object());
         }
@@ -386,6 +395,12 @@ namespace emscripten {
 
         bool strictlyEquals(const val& v) const {
             return internal::_emval_strictly_equals(handle, v.handle);
+        }
+
+        template<typename T>
+        val new_(const std::vector<T> args) const {
+            val arr = array(args);
+            return val(_emval_new_spread(handle, arr.handle));
         }
 
         template<typename... Args>
