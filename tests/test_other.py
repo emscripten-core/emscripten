@@ -101,6 +101,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # -dumpmachine
       output = run_process([PYTHON, compiler, '-dumpmachine'], stdout=PIPE, stderr=PIPE)
       self.assertContained(get_llvm_target(), output.stdout)
+      
+      # -dumpversion
+      output = run_process([PYTHON, compiler, '-dumpversion'], stdout=PIPE, stderr=PIPE)
+      self.assertEqual(EMSCRIPTEN_VERSION + os.linesep, output.stdout, 'results should be identical')
 
       # emcc src.cpp ==> writes a.out.js
       self.clear()
@@ -7511,7 +7515,7 @@ int main() {
         self.assertNotContained(warning, err)
 
   def test_binaryen_invalid_method(self):
-    proc = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'test.js', '-s', "BINARYEN_METHOD='invalid'"])
+    proc = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'test.js', '-s', 'WASM=1', '-s', "BINARYEN_METHOD='invalid'"])
     proc.communicate()
     assert proc.returncode != 0
 
