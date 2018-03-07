@@ -168,7 +168,10 @@ def fixup_metadata_tables(metadata, settings):
     for k, v in metadata['tables'].items():
       curr = v.count(',')+1
       if curr < max_size:
-        metadata['tables'][k] = v.replace(']', (',0'*(max_size - curr)) + ']')
+        if v.count('[]') == 1:
+          metadata['tables'][k] = v.replace(']', (','.join(['0'] * (max_size - curr)) + ']'))
+        else:
+          metadata['tables'][k] = v.replace(']', (',0'*(max_size - curr)) + ']')
 
   if settings['SIDE_MODULE']:
     for k in metadata['tables'].keys():
