@@ -2107,10 +2107,7 @@ var asm = Module['asm'](%s, %s, buffer);
      'Module' + access_quote('asmLibraryArg'),
      receiving)]
 
-  # wasm backend stack goes down
   module.append('''
-STACKTOP = STACK_BASE + TOTAL_STACK;
-STACK_MAX = STACK_BASE;
 var stackAlloc = Module['_stackAlloc'];
 var stackSave = Module['_stackSave'];
 var stackRestore = Module['_stackRestore'];
