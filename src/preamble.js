@@ -2179,6 +2179,9 @@ function integrateWasmJS() {
       if (exports.memory) mergeMemory(exports.memory);
       Module['asm'] = exports;
       Module["usingWasm"] = true;
+#if WASM_BACKEND
+      Module["_stackRestore"](STACKTOP);
+#endif
 #if USE_PTHREADS
       // Keep a reference to the compiled module so we can post it to the workers.
       Module['wasmModule'] = module;
@@ -2187,7 +2190,6 @@ function integrateWasmJS() {
 #else
       removeRunDependency('wasm-instantiate');
 #endif
-      stackRestore(STACKTOP);
     }
 #if USE_PTHREADS
     if (!ENVIRONMENT_IS_PTHREAD) {
