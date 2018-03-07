@@ -2180,7 +2180,9 @@ function integrateWasmJS() {
       Module['asm'] = exports;
       Module["usingWasm"] = true;
 #if WASM_BACKEND
-      Module["_stackRestore"](STACKTOP);
+      //exports.stackRestore(STACKTOP);
+      Module["asm"]["stackRestore"](STACKTOP);
+      //stackRestore(STACKTOP);
 #endif
 #if USE_PTHREADS
       // Keep a reference to the compiled module so we can post it to the workers.
