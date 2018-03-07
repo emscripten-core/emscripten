@@ -52,6 +52,7 @@ namespace emscripten {
                 unsigned argCount,
                 const TYPEID argTypes[],
                 EM_VAR_ARGS argv);
+            EM_VAL _emval_new_spread(EM_VAL constructor, EM_VAL args);
 
             EM_VAL _emval_get_global(const char* name);
             EM_VAL _emval_get_module_property(const char* name);
@@ -85,6 +86,8 @@ namespace emscripten {
                 const char* methodName,
                 EM_VAR_ARGS argv);
             EM_VAL _emval_typeof(EM_VAL value);
+            EM_VAL _emval_instanceof(EM_VAL object, EM_VAL constructor);
+            EM_VAL _emval_operator_cmp_e(EM_VAL value1, EM_VAL value2);
         }
 
         template<const char* address>
@@ -272,13 +275,12 @@ namespace emscripten {
         // missing operators:
         // * delete
         // * in
-        // * instanceof
         // * ! ~ - + ++ --
         // * * / %
         // * + -
         // * << >> >>>
         // * < <= > >=
-        // * == != === !==
+        // * === !==
         // * & ^ | && || ?:
         //
         // exposing void, comma, and conditional is unnecessary
@@ -286,6 +288,14 @@ namespace emscripten {
 
         static val array() {
             return val(internal::_emval_new_array());
+        }
+
+        template<typename T>
+        static val array(const std::vector<T> vec) {
+            val arr = array();
+            for(auto it = vec.begin(); it != vec.end(); it++)
+                arr.call<void>("push", *it);
+            return arr;
         }
 
         static val object() {
@@ -387,6 +397,12 @@ namespace emscripten {
             return internal::_emval_strictly_equals(handle, v.handle);
         }
 
+        template<typename T>
+        val new_(const std::vector<T> args) const {
+            val arr = array(args);
+            return val(_emval_new_spread(handle, arr.handle));
+        }
+
         template<typename... Args>
         val new_(Args&&... args) const {
             return internalCall(internal::_emval_new,std::forward<Args>(args)...);
@@ -445,6 +461,18 @@ namespace emscripten {
 // Prefer calling val::typeOf() over val::typeof(), since this form works in both C++11 and GNU++11 build modes. "typeof" is a reserved word in GNU++11 extensions.
         val typeOf() const {
             return val(_emval_typeof(handle));
+        }
+
+        val instanceof(const val& v) const {
+          return val(_emval_instanceof(handle, v.handle));
+        }
+
+        bool operator==(const val& v) const {
+          return val(_emval_operator_cmp_e(handle, v.handle)).as<bool>();
+        }
+
+        bool operator!=(const val& v) const {
+          return !(*this == v);
         }
 
     private:

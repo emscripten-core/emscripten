@@ -132,6 +132,13 @@ var LibraryEmVal = {
     return __emval_register(v);
   },
 
+  _emval_new_spread__deps: ['_emval_register', '$requireHandle'],
+  _emval_new_spread: function(constructor, args) {
+    constructor = requireHandle(constructor);
+    args = requireHandle(args);
+    return __emval_register(new constructor(...args));
+  },
+
   $emval_newers: {}, // arity -> function
   $craftEmvalAllocator__deps: ['_emval_register', '$requireRegisteredType'],
   $craftEmvalAllocator: function(argCount) {
@@ -412,6 +419,21 @@ var LibraryEmVal = {
     handle = requireHandle(handle);
     return __emval_register(typeof handle);
   },
+
+  _emval_instanceof__deps: ['_emval_register', '$requireHandle'],
+  _emval_instanceof: function(object, constructor) {
+    object = requireHandle(object);
+    constructor = requireHandle(constructor);
+    return __emval_register(object instanceof constructor);
+  },
+
+  _emval_operator_cmp_e__deps: ['_emval_register', '$requireHandle'],
+  _emval_operator_cmp_e: function(object1, object2) {
+    object1 = requireHandle(object1);
+    object2 = requireHandle(object2);
+    return __emval_register(object1 == object2);
+  },
+
 };
 
 mergeInto(LibraryManager.library, LibraryEmVal);
