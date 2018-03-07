@@ -5688,6 +5688,10 @@ return malloc(size);
   def test_simd_sitofp(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_sitofp')
 
+  @SIMD
+  def test_simd_shift_right(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_simd_shift_right')
+
   def test_gcc_unmangler(self):
     Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('third_party')]
 
