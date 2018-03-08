@@ -724,6 +724,11 @@ base align: 0, 0, 0, 0'''])
     self.do_run(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(sizeof(S))').replace('{{del_struct}}', 'free'), '*51,62*')
 
   def test_emmalloc(self):
+    # in newer clang+llvm, the internal calls to malloc in emmalloc may be optimized under
+    # the assumption that they are external, so like in system_libs.py where we build
+    # malloc, we need to disable builtin here too
+    self.emcc_args += ['-fno-builtin']
+
     def test():
       self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() + open(path_from_root('tests', 'core', 'test_emmalloc.cpp')).read(),
                   open(path_from_root('tests', 'core', 'test_emmalloc.txt')).read())
