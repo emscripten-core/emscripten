@@ -708,6 +708,8 @@ fi
       ([PYTHON, 'embuilder.py', 'build', 'waka'], 'ERROR', False, []),
       ([PYTHON, 'embuilder.py', 'build', 'libc'], ['building and verifying libc', 'success'], True, ['libc.bc']),
       ([PYTHON, 'embuilder.py', 'build', 'libc-mt'], ['building and verifying libc-mt', 'success'], True, ['libc-mt.bc']),
+      ([PYTHON, 'embuilder.py', 'build', 'emmalloc'], ['building and verifying emmalloc', 'success'], True, ['emmalloc.bc']),
+      ([PYTHON, 'embuilder.py', 'build', 'emmalloc_debug'], ['building and verifying emmalloc', 'success'], True, ['emmalloc_debug.bc']),
       ([PYTHON, 'embuilder.py', 'build', 'dlmalloc'], ['building and verifying dlmalloc', 'success'], True, ['dlmalloc.bc']),
       ([PYTHON, 'embuilder.py', 'build', 'dlmalloc_debug'], ['building and verifying dlmalloc', 'success'], True, ['dlmalloc_debug.bc']),
       ([PYTHON, 'embuilder.py', 'build', 'dlmalloc_threadsafe'], ['building and verifying dlmalloc_threadsafe', 'success'], True, ['dlmalloc_threadsafe.bc']),

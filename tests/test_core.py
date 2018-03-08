@@ -399,8 +399,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_align_moar(self):
     self.emcc_args = self.emcc_args + ['-msse']
     def test():
-      # hardcoded addresses, for 2 common global_base values.
-      # this tracks if this ever changes by surprise. will need normal updates.
       self.do_run(r'''
 #include <xmmintrin.h>
 #include <stdio.h>
@@ -419,12 +417,10 @@ __m128 m;
 
 int main()
 {
-    printf("Alignment: %d addr: 0x%x\n", ((int)&v) % 16, (int)&v);
-    printf("Alignment: %d addr: 0x%x\n", ((int)&m) % 16, (int)&m);
+    printf("Alignment: %d\n", ((int)&v) % 16);
+    printf("Alignment: %d\n", ((int)&m) % 16);
 }
-    ''', ('Alignment: 0 addr: 0xb20\nAlignment: 0 addr: 0xb60\n',   # asmjs
-          'Alignment: 0 addr: 0xf10\nAlignment: 0 addr: 0xf50\n',   # asm2wasm
-          'Alignment: 0 addr: 0x410\nAlignment: 0 addr: 0x450\n',)) # wasm_backend
+    ''', 'Alignment: 0\nAlignment: 0\n')
 
     test()
     print('relocatable')
@@ -725,10 +721,24 @@ base align: 0, 0, 0, 0'''])
   '''
 
   def test_mallocstruct(self):
-      self.do_run(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(sizeof(S))').replace('{{del_struct}}', 'free'), '*51,62*')
+    self.do_run(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(sizeof(S))').replace('{{del_struct}}', 'free'), '*51,62*')
+
+  def test_emmalloc(self):
+    def test():
+      self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() + open(path_from_root('tests', 'core', 'test_emmalloc.cpp')).read(),
+                  open(path_from_root('tests', 'core', 'test_emmalloc.txt')).read())
+    print('normal')
+    test()
+    print('debug')
+    self.emcc_args += ['-DEMMALLOC_DEBUG']
+    test()
+    print('debug log')
+    self.emcc_args += ['-DEMMALLOC_DEBUG_LOG']
+    self.emcc_args += ['-DRANDOM_ITERS=130']
+    test()
 
   def test_newstruct(self):
-      self.do_run(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
+    self.do_run(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
 
   def test_addr_of_stacked(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_addr_of_stacked')
@@ -5126,6 +5136,8 @@ int main(void) {
     self.do_run(open(path_from_root('tests', 'whets.cpp')).read(), 'Single Precision C Whetstone Benchmark')
 
   def test_dlmalloc(self):
+    Settings.MALLOC = "dlmalloc"
+
     self.banned_js_engines = [NODE_JS] # slower, and fail on 64-bit
     Settings.TOTAL_MEMORY = 128*1024*1024 # needed with typed arrays
 
