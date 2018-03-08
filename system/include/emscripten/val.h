@@ -52,6 +52,7 @@ namespace emscripten {
                 unsigned argCount,
                 const TYPEID argTypes[],
                 EM_VAR_ARGS argv);
+            EM_VAL _emval_new_spread(EM_VAL constructor, EM_VAL args);
 
             EM_VAL _emval_get_global(const char* name);
             EM_VAL _emval_get_module_property(const char* name);
@@ -429,6 +430,12 @@ namespace emscripten {
 
         bool operator<= (const val& v) const {
             return (*this < v) || (*this == v);
+        }
+
+        template<typename T>
+        val new_(const std::vector<T> args) const {
+            val arr = array(args);
+            return val(_emval_new_spread(handle, arr.handle));
         }
 
         template<typename... Args>
