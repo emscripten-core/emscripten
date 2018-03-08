@@ -5,6 +5,22 @@ pass
 pass
 pass
 test:
+template<typename T> val array(const std::vector<T> vec)
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+test:
 val object()
 pass
 test:
