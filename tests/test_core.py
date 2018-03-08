@@ -6934,8 +6934,18 @@ Module.printErr = Module['printErr'] = function(){};
         # the file attribute is optional, but if it is present it needs to refer
         # the output file.
         self.assertPathsIdentical(map_referent, data['file'])
-      assert len(data['sources']) == 1, data['sources']
-      self.assertPathsIdentical(src_filename, data['sources'][0])
+      if not self.is_wasm_backend:
+        assert len(data['sources']) == 1, data['sources']
+        self.assertPathsIdentical(src_filename, data['sources'][0])
+      else:
+        # Wasm backend currently adds every file linked as part of compiler-rt
+        # to the 'sources' field.
+        # TODO(jgravelle): when LLD is the wasm-backend default, make sure it
+        # emits only the files we have lines for.
+        assert len(data['sources']) > 1, data['sources']
+        normalized_srcs = [src.replace('\\', '/') for src in data['sources']]
+        normalized_filename = src_filename.replace('\\', '/')
+        assert normalized_filename in normalized_srcs, "Source file not found"
       if hasattr(data, 'sourcesContent'):
         # the sourcesContent attribute is optional, but if it is present it
         # needs to containt valid source text.
