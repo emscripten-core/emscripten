@@ -6934,7 +6934,7 @@ Module.printErr = Module['printErr'] = function(){};
         # the file attribute is optional, but if it is present it needs to refer
         # the output file.
         self.assertPathsIdentical(map_referent, data['file'])
-      if not self.is_wasm_backend:
+      if not self.is_wasm_backend():
         assert len(data['sources']) == 1, data['sources']
         self.assertPathsIdentical(src_filename, data['sources'][0])
       else:
