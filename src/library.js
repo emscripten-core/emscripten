@@ -448,7 +448,6 @@ LibraryManager.library = {
     var oldDynamicTopOnChange = 0;
     var newDynamicTop = 0;
     var totalMemory = 0;
-    increment = ((increment + 15) & -16)|0;
 #if USE_PTHREADS
     totalMemory = getTotalMemory()|0;
 

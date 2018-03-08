@@ -735,6 +735,8 @@ fi
       ([PYTHON, EMBUILDER, 'build', 'dlmalloc_debug'], ['building and verifying dlmalloc', 'success'], True, ['dlmalloc_debug.bc']),
       ([PYTHON, EMBUILDER, 'build', 'dlmalloc_threadsafe'], ['building and verifying dlmalloc_threadsafe', 'success'], True, ['dlmalloc_threadsafe.bc']),
       ([PYTHON, EMBUILDER, 'build', 'dlmalloc_threadsafe_debug'], ['building and verifying dlmalloc', 'success'], True, ['dlmalloc_threadsafe_debug.bc']),
+      ([PYTHON, EMBUILDER, 'build', 'emmalloc'], ['building and verifying emmalloc', 'success'], True, ['emmalloc.bc']),
+      ([PYTHON, EMBUILDER, 'build', 'emmalloc_debug'], ['building and verifying emmalloc', 'success'], True, ['emmalloc_debug.bc']),
       ([PYTHON, EMBUILDER, 'build', 'pthreads'], ['building and verifying pthreads', 'success'], True, ['pthreads.bc']),
       ([PYTHON, EMBUILDER, 'build', 'libcxx'], ['success'], True, ['libcxx.a', 'libcxx.bc']),
       ([PYTHON, EMBUILDER, 'build', 'libcxx_noexcept'], ['success'], True, ['libcxx_noexcept.a', 'libcxx_noexcept.bc']),

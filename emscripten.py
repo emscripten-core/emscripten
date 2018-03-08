@@ -168,7 +168,10 @@ def fixup_metadata_tables(metadata, settings):
     for k, v in metadata['tables'].items():
       curr = v.count(',')+1
       if curr < max_size:
-        metadata['tables'][k] = v.replace(']', (',0'*(max_size - curr)) + ']')
+        if v.count('[]') == 1:
+          metadata['tables'][k] = v.replace(']', (','.join(['0'] * (max_size - curr)) + ']'))
+        else:
+          metadata['tables'][k] = v.replace(']', (',0'*(max_size - curr)) + ']')
 
   if settings['SIDE_MODULE']:
     for k in metadata['tables'].keys():
@@ -2107,16 +2110,12 @@ var asm = Module['asm'](%s, %s, buffer);
      'Module' + access_quote('asmLibraryArg'),
      receiving)]
 
-  # wasm backend stack goes down, and is stored in the first global var location
   module.append('''
-STACKTOP = STACK_BASE + TOTAL_STACK;
-STACK_MAX = STACK_BASE;
-HEAP32[%d >> 2] = STACKTOP;
 var stackAlloc = Module['_stackAlloc'];
 var stackSave = Module['_stackSave'];
 var stackRestore = Module['_stackRestore'];
 var establishStackSpace = Module['establishStackSpace'];
-''' % shared.Settings.GLOBAL_BASE)
+''')
 
   # some runtime functionality may not have been generated in
   # the wasm; provide a JS shim for it

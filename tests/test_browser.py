@@ -64,7 +64,6 @@ class browser(BrowserCore):
   def setUpClass(self):
     super(browser, self).setUpClass()
     self.browser_timeout = 20
-    self.test_wasm_pthreads = os.environ.get('TEST_WASM_PTHREADS', '0') == '1'
     print()
     print('Running the browser tests. Make sure the browser allows popups from localhost.')
     print()
@@ -3723,10 +3722,15 @@ window.close = function() {
     f.close()
     self.btest('fetch/stream_file.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'TOTAL_MEMORY=536870912'])
 
-  # Tests emscripten_fetch() usage in synchronous mode.
+  # Tests emscripten_fetch() usage in synchronous mode when used from the main thread proxied to a Worker with -s PROXY_TO_PTHREAD=1 option.
   def test_fetch_sync_xhr(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
     self.btest('fetch/sync_xhr.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
+  # Tests that the Fetch API works for synchronous XHRs when used with --proxy-to-worker.
+  def test_fetch_sync_xhr_in_proxy_to_worker(self):
+    shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
+    self.btest('fetch/sync_xhr.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '--proxy-to-worker'])
 
   def test_fetch_idb_store(self):
     self.btest('fetch/idb_store.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'PROXY_TO_PTHREAD=1'])
