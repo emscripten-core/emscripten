@@ -61,6 +61,8 @@ namespace emscripten {
 
             bool _emval_equals(EM_VAL first, EM_VAL second);
             bool _emval_strictly_equals(EM_VAL first, EM_VAL second);
+            bool _emval_greater_than(EM_VAL first, EM_VAL second);
+            bool _emval_less_than(EM_VAL first, EM_VAL second);
 
             EM_VAL _emval_call(
                 EM_VAL value,
@@ -85,7 +87,8 @@ namespace emscripten {
                 const char* methodName,
                 EM_VAR_ARGS argv);
             EM_VAL _emval_typeof(EM_VAL value);
-            EM_VAL _emval_instanceof(EM_VAL object, EM_VAL constructor);
+            bool _emval_instanceof(EM_VAL object, EM_VAL constructor);
+            bool _emval_in(EM_VAL item, EM_VAL object);
         }
 
         template<const char* address>
@@ -272,13 +275,10 @@ namespace emscripten {
     public:
         // missing operators:
         // * delete
-        // * in
         // * ! ~ - + ++ --
         // * * / %
         // * + -
         // * << >> >>>
-        // * < <= > >=
-        // * == != === !==
         // * & ^ | && || ?:
         //
         // exposing void, comma, and conditional is unnecessary
@@ -383,8 +383,32 @@ namespace emscripten {
             return internal::_emval_equals(handle, v.handle);
         }
 
+        bool operator==(const val& v) const {
+            return internal::_emval_equals(handle, v.handle);
+        }
+
+        bool operator!=(const val& v) const {
+            return !(*this == v);
+        }
+
         bool strictlyEquals(const val& v) const {
             return internal::_emval_strictly_equals(handle, v.handle);
+        }
+
+        bool operator>(const val& v) const {
+            return internal::_emval_greater_than(handle, v.handle);
+        }
+
+        bool operator>= (const val& v) const {
+            return (*this > v) || (*this == v);
+        }
+
+        bool operator< (const val& v) const {
+            return internal::_emval_less_than(handle, v.handle);
+        }
+
+        bool operator<= (const val& v) const {
+            return (*this < v) || (*this == v);
         }
 
         template<typename... Args>
@@ -447,8 +471,12 @@ namespace emscripten {
             return val(_emval_typeof(handle));
         }
 
-        val instanceof(const val& v) const {
-          return val(_emval_instanceof(handle, v.handle));
+        bool instanceof(const val& v) const {
+            return internal::_emval_instanceof(handle, v.handle);
+        }
+
+        bool in(const val& v) const {
+            return internal::_emval_in(handle, v.handle);
         }
 
     private:
