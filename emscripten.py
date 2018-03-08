@@ -1879,7 +1879,7 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
     if DEBUG:
       logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
       t = time.time()
-      debug_copy(temp_o, 'emcc-llvm-backend-output.o')
+    debug_copy(temp_o, 'emcc-llvm-backend-output.o')
 
     basename = shared.unsuffixed(outfile.name)
     wast = basename + '.wast'
@@ -1888,8 +1888,7 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
 
     libc_rt_lib = shared.Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
     compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', wasm_rt_fail('wasm_compiler_rt.a'), 'a')
-    shared.check_call([
-      shared.LLD, '-flavor', 'wasm',
+    cmd = [shared.LLD, '-flavor', 'wasm',
       '-z', '-stack-size=1048576',
       '--global-base=%s' % shared.Settings.GLOBAL_BASE,
       '--initial-memory=%s' % shared.Settings.TOTAL_MEMORY,
@@ -1898,8 +1897,14 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
       '--entry=main',
       '--allow-undefined',
       '--import-memory',
-      '--export', '__wasm_call_ctors',
-    ])
+      '--export', '__wasm_call_ctors']
+    for export in shared.expand_response(settings['EXPORTED_FUNCTIONS']):
+      cmd += ['--export', export[1:]] # Strip the leading underscore
+    shared.check_call(cmd)
+
+    if DEBUG:
+      logging.debug('  emscript: lld took %s seconds' % (time.time() - t))
+      t = time.time()
     debug_copy(base_wasm, 'base_wasm.wasm')
 
     # TODO: We currently read exports from the wast in order to generate
@@ -1915,9 +1920,6 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
 
     metadata = read_metadata_wast(wast, DEBUG)
 
-  if DEBUG:
-    logging.debug('  emscript: lld took %s seconds' % (time.time() - t))
-    t = time.time()
   return wast, metadata
 
 
