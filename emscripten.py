@@ -1896,8 +1896,7 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
       '--import-memory',
       '--export', '__wasm_call_ctors']
     for export in shared.expand_response(settings['EXPORTED_FUNCTIONS']):
-      cmd.append('--export')
-      cmd.append(export[1:]) # Strip the leading underscore
+      cmd += ['--export', export[1:]] # Strip the leading underscore
     shared.check_call(cmd)
 
     if DEBUG:
