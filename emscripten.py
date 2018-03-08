@@ -1848,7 +1848,6 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
   if DEBUG:
     logging.debug('  emscript: binaryen s2wasm took %s seconds' % (time.time() - t))
     t = time.time()
-    # shutil.copyfile(wast, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-s2wasm-output.wast'))
   return wasm, metadata
 
 
