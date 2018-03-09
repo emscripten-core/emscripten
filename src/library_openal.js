@@ -489,8 +489,8 @@ var LibraryOpenAL = {
         warnOnce('Listener orientation attributes are not present, falling back to setOrientation()');
 #endif
         listener.setOrientation(
-            ctx.listener.direction[0], ctx.listener.direction[1], ctx.listener.direction[2],
-            ctx.listener.up[0], ctx.listener.up[1], ctx.listener.up[2]);
+          ctx.listener.direction[0], ctx.listener.direction[1], ctx.listener.direction[2],
+          ctx.listener.up[0], ctx.listener.up[1], ctx.listener.up[2]);
       }
 
       // Update sources that are relative to the listener
