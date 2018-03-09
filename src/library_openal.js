@@ -489,8 +489,8 @@ var LibraryOpenAL = {
         warnOnce('Listener orientation attributes are not present, falling back to setOrientation()');
 #endif
         listener.setOrientation(
-        		ctx.listener.direction[0], ctx.listener.direction[1], ctx.listener.direction[2],
-        		ctx.listener.up[0], ctx.listener.up[1], ctx.listener.up[2]);
+            ctx.listener.direction[0], ctx.listener.direction[1], ctx.listener.direction[2],
+            ctx.listener.up[0], ctx.listener.up[1], ctx.listener.up[2]);
       }
 
       // Update sources that are relative to the listener
@@ -532,9 +532,9 @@ var LibraryOpenAL = {
       // a displacement from the listener.
       if (src.relative) {
         // Negate the listener direction since forward is -Z.
-        var lBackX = listener.direction[0];
-        var lBackY = listener.direction[1];
-        var lBackZ = listener.direction[2];
+        var lBackX = -listener.direction[0];
+        var lBackY = -listener.direction[1];
+        var lBackZ = -listener.direction[2];
         var lUpX = listener.up[0];
         var lUpY = listener.up[1];
         var lUpZ = listener.up[2];
