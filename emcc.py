@@ -24,7 +24,7 @@ emcc can be influenced by a few environment variables:
 '''
 
 from __future__ import print_function
-from tools.toolchain_profiler import ToolchainProfiler, exit
+from tools.toolchain_profiler import ToolchainProfiler
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
@@ -102,7 +102,7 @@ final = None
 
 def exit_with_error(message):
   logging.error(message)
-  exit(1)
+  sys.exit(1)
 
 class Intermediate(object):
   counter = 0
@@ -327,7 +327,7 @@ def run():
 
   if len(sys.argv) == 1:
     logging.warning('no input files')
-    exit(1)
+    return 1
 
   # read response files very early on
   substitute_response_files(sys.argv)
@@ -349,7 +349,7 @@ def run():
 emcc: supported targets: llvm bitcode, javascript, NOT elf
 (autoconf likes to see elf above to enable shared object support)
 ''' % (open(shared.path_from_root('site', 'build', 'text', 'docs', 'tools_reference', 'emcc.txt')).read()))
-    exit(0)
+    return 0
 
   elif sys.argv[1] == '--version':
     revision = '(unknown revision)'
@@ -366,22 +366,22 @@ Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
   ''' % (shared.EMSCRIPTEN_VERSION, revision))
-    exit(0)
+    return 0
 
   elif len(sys.argv) == 2 and sys.argv[1] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION)
     code = subprocess.call([shared.CLANG, '-v'])
     shared.check_sanity(force=True)
-    exit(code)
+    return code
 
   elif '-dumpmachine' in sys.argv:
     print(shared.get_llvm_target())
-    exit(0)
-  
+    return 0
+
   elif '-dumpversion' in sys.argv: # gcc's doc states "Print the compiler version [...] and don't do anything else."
     print(shared.EMSCRIPTEN_VERSION)
-    exit(0)
+    return 0
 
   elif '--cflags' in sys.argv:
     # fake running the command, to see the full args we pass to clang
@@ -396,7 +396,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       parts = shlex.split(line.replace('\\', '\\\\'))
       parts = [x for x in parts if x != '-c' and x != '-o' and input_file not in x and temp_target not in x and '-emit-llvm' not in x]
       print(' '.join(shared.Building.doublequote_spaces(parts[1:])))
-    exit(0)
+    return 0
 
   def is_minus_s_for_emcc(newargs, i):
     assert newargs[i] == '-s'
@@ -483,7 +483,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if debug_configure: open(tempout, 'a').write('emcc, just configuring: ' + ' '.join(cmd) + '\n\n')
 
     if not use_js:
-      exit(subprocess.call(cmd))
+      return subprocess.call(cmd)
     else:
       only_object = '-c' in cmd
       for i in reversed(range(len(cmd)-1)): # Last -o directive should take precedence, if multiple are specified
@@ -497,9 +497,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = '1'
       ret = subprocess.call(cmd)
       os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = ''
-      if not os.path.exists(target): exit(ret) # note that emcc -c will cause target to have the wrong value here;
-                                               # but then, we don't care about bitcode outputs anyhow, below, so
-                                               # skipping to exit(ret) is fine
+      if not os.path.exists(target):
+        return ret # note that emcc -c will cause target to have the wrong value here;
+                   # but then, we don't care about bitcode outputs anyhow, below, so
+                   # skipping to exit(ret) is fine
       if target.endswith('.js'):
         shutil.copyfile(target, unsuffixed(target))
         target = unsuffixed(target)
@@ -514,7 +515,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
         except:
           pass # can fail if e.g. writing the executable to /dev/null
-      exit(ret)
+      return ret
 
   if os.environ.get('EMMAKEN_COMPILER'):
     CXX = os.environ['EMMAKEN_COMPILER']
@@ -545,7 +546,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if len(sys.argv) == 1 or sys.argv[1] in ['x', 't']:
     # noop ar
     logging.debug('just ar')
-    sys.exit(0)
+    return 0
 
   # Check if a target is specified
   target = None
@@ -878,7 +879,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if os.environ.get('EMCC_FAST_COMPILER') == '0':
         logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
-        sys.exit(1)
+        return 0
 
       # Set ASM_JS default here so that we can override it from the command line.
       shared.Settings.ASM_JS = 1 if options.opt_level > 0 else 2
@@ -1241,7 +1242,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if target.endswith(WASM_ENDINGS):
         if not (shared.Settings.BINARYEN and shared.Settings.SIDE_MODULE):
           logging.warning('output file "%s" has a wasm suffix, but we cannot emit wasm by itself, except as a dynamic library (see SIDE_MODULE option). specify an output file with suffix .js or .html, and a wasm file will be created on the side' % target)
-          sys.exit(1)
+          return 1
 
       if shared.Settings.EVAL_CTORS:
         if not shared.Settings.BINARYEN:
@@ -1332,7 +1333,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         args = system_libs.process_args(args, shared.Settings)
         logging.debug("running (for precompiled headers): " + call + ' ' + ' '.join(args))
         execute([call] + args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
-        sys.exit(0)
+        return 0
 
       def get_bitcode_file(input_file):
         if final_suffix not in JS_CONTAINING_SUFFIXES:
@@ -1379,7 +1380,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           cmd += ['-o', specified_target]
         # Do not compile, but just output the result from preprocessing stage or output the dependency rule. Warning: clang and gcc behave differently with -MF! (clang seems to not recognize it)
         logging.debug(('just preprocessor ' if '-E' in newargs else 'just dependencies: ') + ' '.join(cmd))
-        exit(subprocess.call(cmd))
+        return subprocess.call(cmd)
 
       def compile_source_file(i, input_file):
         logging.debug('compiling source file: ' + input_file)
@@ -1473,7 +1474,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           logging.warning('Dynamic libraries (.so, .dylib, .dll) are currently not supported by Emscripten. For build system emulation purposes, Emscripten'
             + ' will now generate a static library file (.bc) with the suffix \'.' + final_suffix + '\'. For best practices,'
             + ' please adapt your build system to directly generate a static LLVM bitcode library by setting the output suffix to \'.bc.\')')
-        exit(0)
+        return 0
 
     # exit block 'process inputs'
     log_time('process inputs')
@@ -1920,6 +1921,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shutil.rmtree(temp_dir)
     except:
       pass
+
+  return 0
 
 def parse_args(newargs):
   options = EmccOptions()
@@ -2792,5 +2795,10 @@ def validate_arg_level(level_string, max_level, err_msg, clamp=False):
 
 
 if __name__ == '__main__':
-  run()
-  sys.exit(0)
+  try:
+    sys.exit(run())
+  except subprocess.CalledProcessError as e:
+    # Handle subprocess failure cleanly unles DEBUG is set
+    if DEBUG:
+      raise
+    sys.exit(e.returncode)
