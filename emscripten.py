@@ -161,7 +161,9 @@ def parse_backend_output(backend_output, DEBUG):
 
 def fixup_metadata_tables(metadata, settings):
   # if emulating pointer casts, force all tables to the size of the largest
-  if settings['EMULATE_FUNCTION_POINTER_CASTS']:
+  # (for wasm, we use binaryen's fpcast-emu pass, we don't need to do anything
+  # here)
+  if settings['EMULATE_FUNCTION_POINTER_CASTS'] and not settings['WASM']:
     max_size = 0
     for k, v in metadata['tables'].items():
       max_size = max(max_size, v.count(',')+1)
@@ -770,7 +772,7 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
   def make_coercions(sig): return ';'.join(['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, sig[p+1], settings)) for p in range(len(sig)-1)]) + ';'
 
   # when emulating function pointer casts, we need to know what is the target of each pointer
-  if settings['EMULATE_FUNCTION_POINTER_CASTS']:
+  if settings['EMULATE_FUNCTION_POINTER_CASTS'] and not settings['WASM']:
     function_pointer_targets = {}
     for sig, table in function_table_data.items():
       start = table.index('[')
@@ -827,7 +829,7 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
       Counter.next_item += 1
       newline = Counter.next_item % 30 == 29
       if item == '0':
-        if j > 0 and settings['EMULATE_FUNCTION_POINTER_CASTS'] and j in function_pointer_targets: # emulate all non-null pointer calls, if asked to
+        if j > 0 and settings['EMULATE_FUNCTION_POINTER_CASTS'] and not settings['WASM'] and j in function_pointer_targets: # emulate all non-null pointer calls, if asked to
           proper_sig, proper_target = function_pointer_targets[j]
           if settings['EMULATED_FUNCTION_POINTERS']:
             if proper_target in all_implemented:

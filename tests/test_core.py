@@ -252,7 +252,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     # extra coverages
     for emulate_casts in [0, 1]:
       for emulate_fps in [0, 1, 2]:
-        if self.is_wasm() and emulate_casts and emulate_fps: continue # in wasm we can't do both
         print(emulate_casts, emulate_fps)
         Settings.EMULATE_FUNCTION_POINTER_CASTS = emulate_casts
         Settings.EMULATED_FUNCTION_POINTERS = emulate_fps
@@ -6456,7 +6455,6 @@ def process(filename):
     '''
     self.do_run(src, 'func1\nfunc2\n')
 
-  @no_wasm_backend('no implementation of emulated function pointer casts')
   def test_emulate_function_pointer_casts(self):
     Settings.EMULATE_FUNCTION_POINTER_CASTS = 1
 

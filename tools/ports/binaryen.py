@@ -1,6 +1,6 @@
 import os, shutil, logging
 
-TAG = 'version_44'
+TAG = 'fcastemu' # XXX FIXME
 
 def needed(settings, shared, ports):
   if not settings.BINARYEN: return False

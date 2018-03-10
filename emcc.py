@@ -1231,6 +1231,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.BINARYEN_PASSES:
             shared.Settings.BINARYEN_PASSES += ','
           shared.Settings.BINARYEN_PASSES += 'safe-heap'
+        if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
+          # emulated function pointer casts is emulated in wasm using a binaryen pass
+          if shared.Settings.BINARYEN_PASSES:
+            shared.Settings.BINARYEN_PASSES += ','
+          shared.Settings.BINARYEN_PASSES += 'fpcast-emu'
+          # we also need emulated function pointers for that, as we need a single flat
+          # table, as is standard in wasm, and not asm.js split ones.
+          shared.Settings.EMULATED_FUNCTION_POINTERS = 1
+
         # we will include the mem init data in the wasm, when we don't need the
         # mem init file to be loadable by itself
         shared.Settings.MEM_INIT_IN_WASM = 'asmjs' not in shared.Settings.BINARYEN_METHOD and \
