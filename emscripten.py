@@ -1201,18 +1201,23 @@ def setup_function_pointers(function_table_sigs, settings):
     if settings.get('EMULATED_FUNCTION_POINTERS'):
       args = ['a%d' % i for i in range(len(sig)-1)]
       full_args = ['x'] + args
-      table_access = 'FUNCTION_TABLE_' + sig
-      if settings['SIDE_MODULE']:
-        table_access = 'parentModule["' + table_access + '"]' # side module tables were merged into the parent, we need to access the global one
-      if settings['BINARYEN']:
-        # wasm uses a Table, which means we have function pointer emulation capabilities all the time, at no cost. just call the table
-        table_access = "Module['wasmTable']"
-        table_read = table_access + '.get(x)'
+      if settings['WASM']:
+        # emulated function pointers in wasm use an internal i64-based ABI with a fixed number of arguments. we can't
+        # call into it directly because it returns an i64, which is an error for the VM. instead, we use dynCalls
+        dyn_call = "Module['asm']['dynCall_" + sig + "']"
+        asm_setup += '''
+function ftCall_%s(%s) {
+  return %s(%s);
+}
+''' % (sig, ', '.join(full_args), dyn_call, ', '.join(full_args))
       else:
+        table_access = 'FUNCTION_TABLE_' + sig
+        if settings['SIDE_MODULE']:
+          table_access = 'parentModule["' + table_access + '"]' # side module tables were merged into the parent, we need to access the global one
         table_read = table_access + '[x]'
-      prelude = '''
+        prelude = '''
   if (x < 0 || x >= %s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig, function_table_sigs, settings))
-      asm_setup += '''
+        asm_setup += '''
 function ftCall_%s(%s) {%s
   return %s(%s);
 }
