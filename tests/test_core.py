@@ -6458,7 +6458,9 @@ def process(filename):
   def test_emulate_function_pointer_casts(self):
     Settings.EMULATE_FUNCTION_POINTER_CASTS = 1
 
-    self.do_run_in_out_file_test('tests', 'core', 'test_emulate_function_pointer_casts')
+    self.do_run(open(path_from_root('tests', 'core', 'test_emulate_function_pointer_casts.cpp')).read(),
+                ('|1.266,1|',                 # asm.js, double <-> int
+                 '|1.266,1413754136|')) # wasm, reinterpret the bits
 
   def test_demangle_stacks(self):
     Settings.DEMANGLE_SUPPORT = 1
