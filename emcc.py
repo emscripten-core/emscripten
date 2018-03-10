@@ -500,7 +500,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if not os.path.exists(target):
         return ret # note that emcc -c will cause target to have the wrong value here;
                    # but then, we don't care about bitcode outputs anyhow, below, so
-                   # skipping to exit(ret) is fine
+                   # skipping returning early is fine
       if target.endswith('.js'):
         shutil.copyfile(target, unsuffixed(target))
         target = unsuffixed(target)
@@ -2795,10 +2795,4 @@ def validate_arg_level(level_string, max_level, err_msg, clamp=False):
 
 
 if __name__ == '__main__':
-  try:
-    sys.exit(run())
-  except subprocess.CalledProcessError as e:
-    # Handle subprocess failure cleanly unles DEBUG is set
-    if DEBUG:
-      raise
-    sys.exit(e.returncode)
+  sys.exit(run())
