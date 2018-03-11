@@ -147,7 +147,7 @@ def parse_backend_output(backend_output, DEBUG):
   mem_init = mem_init.replace('Runtime.', '')
 
   try:
-    #if DEBUG: print >> sys.stderr, "METAraw", metadata_raw
+    #if DEBUG: logging.debug("METAraw %s", metadata_raw)
     metadata = json.loads(metadata_raw, object_pairs_hook=OrderedDict)
   except Exception as e:
     logging.error('emscript: failure to parse metadata output from compiler backend. raw output is: \n' + metadata_raw)
@@ -1283,13 +1283,18 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
   exports = []
   for export in sorted(set(all_exported)):
     exports.append(quote(export) + ": " + export)
-  if settings['BINARYEN'] and settings['SIDE_MODULE']:
+  if settings['WASM'] and settings['SIDE_MODULE']:
     # named globals in side wasm modules are exported globals from asm/wasm
     for k, v in metadata['namedGlobals'].items():
       exports.append(quote('_' + str(k)) + ': ' + str(v))
     # aliases become additional exports
     for k, v in metadata['aliases'].items():
       exports.append(quote(str(k)) + ': ' + str(v))
+  # shared wasm emulated function pointer mode requires us to know the function pointer for
+  # each function. export fp$func => function pointer for func
+  if settings['WASM'] and settings['RELOCATABLE'] and settings['EMULATED_FUNCTION_POINTERS']:
+    for k, v in metadata['functionPointers'].items():
+      exports.append(quote('fp$' + str(k)) + ': ' + str(v))
   return '{ ' + ', '.join(exports) + ' }'
 
 
