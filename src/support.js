@@ -173,8 +173,10 @@ function loadWebAssemblyModule(binary) {
     if (typeof value === 'number') {
       // relocate it - modules export the absolute value, they can't relocate before they export
 #if EMULATED_FUNCTION_POINTERS
-      // make sure it isn't a function pointer export
-      if (!(e.substr(0, 3) == 'fp$' && typeof instance.exports[e.substr(3)] === 'function')) {
+      // it may be a function pointer
+      if (e.substr(0, 3) == 'fp$' && typeof instance.exports[e.substr(3)] === 'function') {
+        value = value + env['tableBase'];
+      } else {
 #endif
         value = value + env['memoryBase'];
 #if EMULATED_FUNCTION_POINTERS
