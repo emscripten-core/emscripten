@@ -468,29 +468,29 @@ var LibraryOpenAL = {
     updateListenerSpace: function(ctx) {
       var listener = ctx.audioCtx.listener;
       if (listener.positionX) {
-        listener.positionX.value = listener._position[0];
-        listener.positionY.value = listener._position[1];
-        listener.positionZ.value = listener._position[2];
+        listener.positionX.value = ctx.listener.position[0];
+        listener.positionY.value = ctx.listener.position[1];
+        listener.positionZ.value = ctx.listener.position[2];
       } else {
 #if OPENAL_DEBUG
         warnOnce('Listener position attributes are not present, falling back to setPosition()');
 #endif
-        listener.setPosition(listener._position[0], listener._position[1], listener._position[2]);
+        listener.setPosition(ctx.listener.position[0], ctx.listener.position[1], ctx.listener.position[2]);
       }
       if (listener.forwardX) {
-        listener.forwardX.value = listener._direction[0];
-        listener.forwardY.value = listener._direction[1];
-        listener.forwardZ.value = listener._direction[2];
-        listener.upX.value = listener._up[0];
-        listener.upY.value = listener._up[1];
-        listener.upZ.value = listener._up[2];
+        listener.forwardX.value = ctx.listener.direction[0];
+        listener.forwardY.value = ctx.listener.direction[1];
+        listener.forwardZ.value = ctx.listener.direction[2];
+        listener.upX.value = ctx.listener.up[0];
+        listener.upY.value = ctx.listener.up[1];
+        listener.upZ.value = ctx.listener.up[2];
       } else {
 #if OPENAL_DEBUG
         warnOnce('Listener orientation attributes are not present, falling back to setOrientation()');
 #endif
         listener.setOrientation(
-          listener._direction[0], listener._direction[1], listener._direction[2],
-          listener._up[0], listener._up[1], listener._up[2]);
+          ctx.listener.direction[0], ctx.listener.direction[1], ctx.listener.direction[2],
+          ctx.listener.up[0], ctx.listener.up[1], ctx.listener.up[2]);
       }
 
       // Update sources that are relative to the listener
@@ -512,10 +512,10 @@ var LibraryOpenAL = {
       var dirY = src.direction[1];
       var dirZ = src.direction[2];
 
-      var listener = src.context.audioCtx.listener;
-      var lPosX = listener._position[0];
-      var lPosY = listener._position[1];
-      var lPosZ = listener._position[2];
+      var listener = src.context.listener;
+      var lPosX = listener.position[0];
+      var lPosY = listener.position[1];
+      var lPosZ = listener.position[2];
 
       // WebAudio does spatialization in world-space coordinates, meaning both the buffer sources and
       // the listener position are in the same absolute coordinate system relative to a fixed origin.
@@ -532,12 +532,12 @@ var LibraryOpenAL = {
       // a displacement from the listener.
       if (src.relative) {
         // Negate the listener direction since forward is -Z.
-        var lBackX = -listener._direction[0];
-        var lBackY = -listener._direction[1];
-        var lBackZ = -listener._direction[2];
-        var lUpX = listener._up[0];
-        var lUpY = listener._up[1];
-        var lUpZ = listener._up[2];
+        var lBackX = -listener.direction[0];
+        var lBackY = -listener.direction[1];
+        var lBackZ = -listener.direction[2];
+        var lUpX = listener.up[0];
+        var lUpY = listener.up[1];
+        var lUpZ = listener.up[2];
 
         // Normalize the Back vector
         var invMag = 1.0 / Math.sqrt(lBackX * lBackX + lBackY * lBackY + lBackZ * lBackZ);
@@ -617,9 +617,9 @@ var LibraryOpenAL = {
       var velX = src.velocity[0];
       var velY = src.velocity[1];
       var velZ = src.velocity[2];
-      var lVelX = listener._velocity[0];
-      var lVelY = listener._velocity[1];
-      var lVelZ = listener._velocity[2];
+      var lVelX = listener.velocity[0];
+      var lVelY = listener.velocity[1];
+      var lVelZ = listener.velocity[2];
       if (posX === lPosX && posY === lPosY && posZ === lPosZ
         || velX === lVelX && velY === lVelY && velZ === lVelZ)
       {
@@ -813,11 +813,11 @@ var LibraryOpenAL = {
 
       switch (param) {
       case 0x1004 /* AL_POSITION */:
-        return AL.currentCtx.audioCtx.listener._position;
+        return AL.currentCtx.listener.position;
       case 0x1006 /* AL_VELOCITY */:
-        return AL.currentCtx.audioCtx.listener._velocity;
+        return AL.currentCtx.listener.velocity;
       case 0x100F /* AL_ORIENTATION */:
-        return AL.currentCtx.audioCtx.listener._direction.concat(AL.currentCtx.audioCtx.listener._up);
+        return AL.currentCtx.listener.direction.concat(AL.currentCtx.listener.up);
       case 0x100A /* AL_GAIN */:
         return AL.currentCtx.gain.gain.value;
       default:
@@ -844,7 +844,7 @@ var LibraryOpenAL = {
         return;
       }
 
-      var listener = AL.currentCtx.audioCtx.listener;
+      var listener = AL.currentCtx.listener;
       switch (param) {
       case 0x1004 /* AL_POSITION */:
         if (!Number.isFinite(value[0]) || !Number.isFinite(value[1]) || !Number.isFinite(value[2])) {
@@ -855,9 +855,9 @@ var LibraryOpenAL = {
           return;
         }
 
-        listener._position[0] = value[0];
-        listener._position[1] = value[1];
-        listener._position[2] = value[2];
+        listener.position[0] = value[0];
+        listener.position[1] = value[1];
+        listener.position[2] = value[2];
         AL.updateListenerSpace(AL.currentCtx);
         break;
       case 0x1006 /* AL_VELOCITY */:
@@ -869,9 +869,9 @@ var LibraryOpenAL = {
           return;
         }
 
-        listener._velocity[0] = value[0];
-        listener._velocity[1] = value[1];
-        listener._velocity[2] = value[2];
+        listener.velocity[0] = value[0];
+        listener.velocity[1] = value[1];
+        listener.velocity[2] = value[2];
         AL.updateListenerSpace(AL.currentCtx);
         break;
       case 0x100A /* AL_GAIN */:
@@ -896,12 +896,12 @@ var LibraryOpenAL = {
           return;
         }
 
-        listener._direction[0] = value[0];
-        listener._direction[1] = value[1];
-        listener._direction[2] = value[2];
-        listener._up[0] = value[3];
-        listener._up[1] = value[4];
-        listener._up[2] = value[5];
+        listener.direction[0] = value[0];
+        listener.direction[1] = value[1];
+        listener.direction[2] = value[2];
+        listener.up[0] = value[3];
+        listener.up[1] = value[4];
+        listener.up[2] = value[5];
         AL.updateListenerSpace(AL.currentCtx);
         break;
       default:
@@ -2168,16 +2168,17 @@ var LibraryOpenAL = {
 
     var gain = ac.createGain();
     gain.connect(ac.destination);
-    // Extend the Web Audio API AudioListener object with a few tracking values of our own.
-    ac.listener._position = [0.0, 0.0, 0.0];
-    ac.listener._velocity = [0.0, 0.0, 0.0];
-    ac.listener._direction = [0.0, 0.0, 0.0];
-    ac.listener._up = [0.0, 0.0, 0.0];
     var ctx = {
       deviceId: deviceId,
       id: AL.newId(),
       attrs: attrs,
       audioCtx: ac,
+      listener: {
+    	  position: [0.0, 0.0, 0.0],
+    	  velocity: [0.0, 0.0, 0.0],
+    	  direction: [0.0, 0.0, 0.0],
+    	  up: [0.0, 0.0, 0.0]
+      },
       sources: [],
       interval: setInterval(function() { AL.scheduleContextAudio(ctx); }, AL.QUEUE_INTERVAL),
       gain: gain,
