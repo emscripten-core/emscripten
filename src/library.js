@@ -1863,6 +1863,11 @@ LibraryManager.library = {
           // not be usable from wasm. instead, the wasm has exported function pointers
           // for everything we need, with prefix fp$, use those
           result = lib.module['fp$' + symbol];
+          if (typeof result === 'object') {
+            // a breaking change in the wasm spec, globals are now objects
+            // https://github.com/WebAssembly/mutable-global/issues/1
+            result = result.value;
+          }
 #if ASSERTIONS
           assert(typeof result === 'number', 'could not find function pointer for ' + symbol);
 #endif // ASSERTIONS
