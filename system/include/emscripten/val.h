@@ -379,6 +379,18 @@ namespace emscripten {
             return handle == internal::EM_VAL(internal::_EMVAL_FALSE);
         }
 
+        bool isNumber() const {
+            return typeof().as<std::string>() == "number";
+        }
+
+        bool isString() const {
+            return typeof().as<std::string>() == "string";
+        }
+
+        bool isArray() const {
+            return instanceof(global("Array"));
+        }
+
         bool equals(const val& v) const {
             return internal::_emval_equals(handle, v.handle);
         }
