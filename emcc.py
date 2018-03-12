@@ -1231,10 +1231,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.BINARYEN_PASSES:
             shared.Settings.BINARYEN_PASSES += ','
           shared.Settings.BINARYEN_PASSES += 'safe-heap'
-        # emulated function pointers and casts are intertwined in wasm: they use a simplified
-        # internal ABI and model
-        if shared.Settings.EMULATED_FUNCTION_POINTERS:
-          shared.Settings.EMULATE_FUNCTION_POINTER_CASTS = 1
         if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
           # emulated function pointer casts is emulated in wasm using a binaryen pass
           if shared.Settings.BINARYEN_PASSES:

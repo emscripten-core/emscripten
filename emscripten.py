@@ -327,7 +327,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
   function_tables_impls = make_function_tables_impls(function_table_data, settings)
   final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
-  if settings.get('EMULATED_FUNCTION_POINTERS'):
+  if settings['EMULATED_FUNCTION_POINTERS']:
     final_function_tables = (
       final_function_tables
       .replace("asm['", '')
@@ -377,7 +377,7 @@ def create_module(function_table_sigs, metadata, settings,
   asm_start = asm_start_pre + '\n' + asm_global_vars + asm_temp_vars + asm_runtime_thread_local_vars + '\n' + asm_global_funcs
 
   temp_float = '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround(settings) else '0.0')
-  async_state = '  var asyncState = 0;\n' if settings.get('EMTERPRETIFY_ASYNC') else ''
+  async_state = '  var asyncState = 0;\n' if settings['EMTERPRETIFY_ASYNC'] else ''
   f0_fround = '  const f0 = Math_fround(0);\n' if provide_fround(settings) else ''
 
   replace_memory = create_replace_memory(settings)
@@ -617,7 +617,7 @@ def get_original_exported_functions(settings):
 
 
 def check_all_implemented(all_implemented, pre, settings):
-  if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
+  if settings['ASSERTIONS'] and settings['ORIGINAL_EXPORTED_FUNCTIONS']:
     original_exports = get_original_exported_functions(settings)
     for requested in original_exports:
       if not is_already_implemented(requested, pre, all_implemented):
@@ -937,8 +937,8 @@ function jsCall_%s_%s(%s) {
 
 def create_mftCall_funcs(function_table_data, settings):
   mftCall_funcs = []
-  if settings.get('EMULATED_FUNCTION_POINTERS'):
-    if settings.get('RELOCATABLE') and not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
+  if settings['EMULATED_FUNCTION_POINTERS']:
+    if settings['RELOCATABLE'] and not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
       for sig, table in function_table_data.items():
         params = ','.join(['ptr'] + ['p%d' % p for p in range(len(sig)-1)])
         coerced_params = ','.join([shared.JS.make_coercion('ptr', 'i', settings)] + [shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
@@ -1185,7 +1185,7 @@ def create_asm_setup(debug_tables, function_table_data, metadata, settings):
 
   asm_setup += setup_function_pointers(function_table_sigs, settings)
 
-  if settings.get('EMULATED_FUNCTION_POINTERS'):
+  if settings['EMULATED_FUNCTION_POINTERS']:
     function_tables_impls = make_function_tables_impls(function_table_data, settings)
     asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
 
@@ -1196,12 +1196,12 @@ def setup_function_pointers(function_table_sigs, settings):
   asm_setup = ''
   for sig in function_table_sigs:
     asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
-    if settings.get('RESERVED_FUNCTION_POINTERS'):
+    if settings['RESERVED_FUNCTION_POINTERS']:
       asm_setup += '\n' + shared.JS.make_jscall(sig) + '\n'
-    if settings.get('EMULATED_FUNCTION_POINTERS'):
+    if settings['EMULATED_FUNCTION_POINTERS']:
       args = ['a%d' % i for i in range(len(sig)-1)]
       full_args = ['x'] + args
-      if settings['WASM']:
+      if settings['WASM'] and settings['EMULATE_FUNCTION_POINTER_CASTS']:
         # emulated function pointers in wasm use an internal i64-based ABI with a fixed number of arguments. we can't
         # call into it directly because it returns an i64, which is an error for the VM. instead, we use dynCalls
         dyn_call = "Module['asm']['dynCall_" + sig + "']"
@@ -1211,7 +1211,13 @@ function ftCall_%s(%s) {
 }
 ''' % (sig, ', '.join(full_args), dyn_call, ', '.join(full_args))
       else:
-        table_access = 'FUNCTION_TABLE_' + sig
+        table_access = 'FUNCTION_TABLE_'
+        # with wasm emulated function pointers, we just have one table, 'X'. otherwise, we
+        # call the table with the proper signature
+        if settings['WASM']:
+          table_access += 'X'
+        else:
+          table_access += sig
         if settings['SIDE_MODULE']:
           table_access = 'parentModule["' + table_access + '"]' # side module tables were merged into the parent, we need to access the global one
         table_read = table_access + '[x]'
@@ -1244,9 +1250,9 @@ def create_basic_funcs(function_table_sigs, settings):
 
   for sig in function_table_sigs:
     basic_funcs.append('invoke_%s' % sig)
-    if settings.get('RESERVED_FUNCTION_POINTERS'):
+    if settings['RESERVED_FUNCTION_POINTERS']:
       basic_funcs.append('jsCall_%s' % sig)
-    if settings.get('EMULATED_FUNCTION_POINTERS'):
+    if settings['EMULATED_FUNCTION_POINTERS']:
       if not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
         basic_funcs.append('ftCall_%s' % sig)
   return basic_funcs
@@ -1359,7 +1365,7 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
       table = table.replace('var ' + tableName, 'var ' + tableName + ' = Module["' + tableName + '"]')
       receiving += table + '\n'
 
-  if settings.get('EMULATED_FUNCTION_POINTERS'):
+  if settings['EMULATED_FUNCTION_POINTERS']:
     receiving += '\n' + function_tables_defs.replace('// EMSCRIPTEN_END_FUNCS\n', '') + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in function_table_data])
     if not settings['BINARYEN']:
       for sig in function_table_data.keys():
@@ -1962,7 +1968,7 @@ def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata, se
     if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
       exported_implemented_functions.add(key)
 
-  if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
+  if settings['ASSERTIONS'] and settings['ORIGINAL_EXPORTED_FUNCTIONS']:
     original_exports = get_original_exported_functions(settings)
     for requested in original_exports:
       # check if already implemented
@@ -2273,9 +2279,9 @@ def main(args, compiler_engine, cache, temp_files, DEBUG):
   libraries = args.libraries[0].split(',') if len(args.libraries) > 0 else []
 
   settings.setdefault('STRUCT_INFO', shared.path_from_root('src', 'struct_info.compiled.json'))
-  struct_info = settings.get('STRUCT_INFO')
+  struct_info = settings['STRUCT_INFO']
 
-  if not os.path.exists(struct_info) and not settings.get('BOOTSTRAPPING_STRUCT_INFO') and not settings.get('ONLY_MY_CODE'):
+  if not os.path.exists(struct_info) and not settings['BOOTSTRAPPING_STRUCT_INFO'] and not settings['ONLY_MY_CODE']:
     if DEBUG: logging.debug('  emscript: bootstrapping struct info...')
     shared.Building.ensure_struct_info(struct_info)
     if DEBUG: logging.debug('  emscript: bootstrapping struct info complete')
