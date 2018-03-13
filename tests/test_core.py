@@ -96,26 +96,21 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def do_run_in_out_file_test(self, *path, **kwargs):
       test_path = path_from_root(*path)
 
-      def find_extension(*ext_list):
+      def find_files(*ext_list):
         ret = None
         count = 0
         for ext in ext_list:
           if os.path.isfile(test_path + ext):
-            ret = ext
+            ret = test_path + ext
             count += 1
-        if count == 0:
-          assert False, ("No file found at {} with extension {}"
-                         .format(test_path, ext_list))
-        if count > 1:
-          assert False, ("Test file {} found with multiple valid extensions {}"
-                         .format(test_path, ext_list))
+        assert count > 0, ("No file found at {} with extension {}"
+                           .format(test_path, ext_list))
+        assert count <= 1, ("Test file {} found with multiple valid extensions {}"
+                            .format(test_path, ext_list))
         return ret
 
-      input_extensions = find_extension('.c', '.cpp', '.cc')
-      output_extensions = find_extension('.out', '.txt')
-      extensions = (input_extensions, output_extensions)
-
-      src, output = (test_path + ext for ext in extensions)
+      src = find_files('.c', '.cpp', '.cc')
+      output = find_files('.out', '.txt')
       self.do_run_from_file(src, output, **kwargs)
 
   def test_hello_world(self):
@@ -6934,8 +6929,18 @@ Module.printErr = Module['printErr'] = function(){};
         # the file attribute is optional, but if it is present it needs to refer
         # the output file.
         self.assertPathsIdentical(map_referent, data['file'])
-      assert len(data['sources']) == 1, data['sources']
-      self.assertPathsIdentical(src_filename, data['sources'][0])
+      if not self.is_wasm_backend():
+        assert len(data['sources']) == 1, data['sources']
+        self.assertPathsIdentical(src_filename, data['sources'][0])
+      else:
+        # Wasm backend currently adds every file linked as part of compiler-rt
+        # to the 'sources' field.
+        # TODO(jgravelle): when LLD is the wasm-backend default, make sure it
+        # emits only the files we have lines for.
+        assert len(data['sources']) > 1, data['sources']
+        normalized_srcs = [src.replace('\\', '/') for src in data['sources']]
+        normalized_filename = src_filename.replace('\\', '/')
+        assert normalized_filename in normalized_srcs, "Source file not found"
       if hasattr(data, 'sourcesContent'):
         # the sourcesContent attribute is optional, but if it is present it
         # needs to containt valid source text.
