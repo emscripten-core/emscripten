@@ -2246,7 +2246,7 @@ def main(args, compiler_engine, cache, temp_files, DEBUG):
   struct_info = settings.get('STRUCT_INFO')
 
   if not os.path.exists(struct_info) and not settings.get('BOOTSTRAPPING_STRUCT_INFO') and not settings.get('ONLY_MY_CODE'):
-    if DEBUG: logging.debug('  emscript: bootstrapping struct info...')
+    if DEBUG: logging.debug('  emscript: bootstrapping struct info to %s', struct_info)
     shared.Building.ensure_struct_info(struct_info)
     if DEBUG: logging.debug('  emscript: bootstrapping struct info complete')
 

@@ -182,7 +182,7 @@ def get_native_optimizer():
     shared.logging.debug('to see compiler errors, build with EMCC_NATIVE_OPTIMIZER=g')
   def show_build_errors(outs, errs):
     for i in range(len(outs)):
-      shared.logging.debug('output from attempt ' + str(i) + ': ' + outs[i] + '\n===========\n' + errs[i])
+      shared.logging.debug('output from attempt ' + str(i) + ':\n' + shared.asstr(outs[i]) + '\n===========\n' + shared.asstr(errs[i]))
 
   if NATIVE_OPTIMIZER == '1':
     return get_optimizer('optimizer.exe', [], ignore_build_errors)
