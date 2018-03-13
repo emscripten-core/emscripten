@@ -10,6 +10,9 @@ Not all changes are documented here. In particular, new features, user-oriented 
 Current Trunk
 -------------
 
+v1.37.36: 03/13/2018
+--------------------
+
 v1.37.35: 02/23/2018
 --------------------
  - MALLOC option, allowing picking between dlmalloc (previous allocator and still the default) and emmalloc, a new allocator which is smaller and simpler.
