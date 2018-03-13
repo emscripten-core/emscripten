@@ -23,6 +23,8 @@ The core Emscripten SDK (emsdk) driver is a Python script. You can get it for th
     # Enter that directory
     cd emsdk
 
+.. note:: You can also get the emsdk without git, by selecting "Clone or download => Download ZIP" on the `emsdk GitHub page <https://github.com/juj/emsdk>`_.
+
 Run the following :ref:`emsdk <emsdk>` commands to get the latest tools from GitHub and set them as :term:`active <Active Tool/SDK>`:
 	
 	::
@@ -84,20 +86,7 @@ Linux
 
 .. note:: *Emsdk* does not install any tools to the system, or otherwise interact with Linux package managers. All file changes are done inside the **emsdk/** directory.
 
-- The system must have a working :ref:`compiler-toolchain` (because *emsdk* builds software from the source): 
-
-	::	
-	
-		#Update the package lists
-		sudo apt-get update
-		
-		# Install *gcc* (and related dependencies)
-		sudo apt-get install build-essential
-		
-		# Install cmake
-		sudo apt-get install cmake
-		
-- *Python*, *node.js* or *Java* are not provided by *emsdk*. The user is expected to install these beforehand with the *system package manager*:
+- *Python*, *node.js*, *CMake*, and *Java* are not provided by *emsdk*. The user is expected to install these beforehand with the *system package manager*:
 
 	::
 	
@@ -106,6 +95,9 @@ Linux
 		
 		# Install node.js
 		sudo apt-get install nodejs
+
+		# Install CMake (optional, only needed for tests and building Binaryen)
+		sudo apt-get install cmake
 		
 		# Install Java (optional, only needed for Closure Compiler minification)
 		sudo apt-get install default-jre
