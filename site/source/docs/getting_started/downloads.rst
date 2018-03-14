@@ -55,6 +55,8 @@ Windows
 
 #. Install Python 2.7.12 or newer (older versions may not work due to `a GitHub change with SSL <https://github.com/kripken/emscripten/issues/6275>`_).
 
+	.. note:: Instead of running emscripten on Windows directly, you can use the Windows Subsystem for Linux to run it in a Linux environment.
+
 Mac OS X
 ++++++++
 
