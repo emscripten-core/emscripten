@@ -2409,14 +2409,14 @@ def process(filename):
   open(filename, 'w').write(src)
 '''
 
-  def build_dlfcn_lib(self, lib_src, dirname, filename):
+  def build_dlfcn_lib(self, lib_src, dirname, filename, lib_out='liblib.so'):
     if Settings.BINARYEN:
       # emcc emits a wasm in this case
       self.build(lib_src, dirname, filename, js_outfile=False)
-      shutil.move(filename + '.o.wasm', os.path.join(dirname, 'liblib.so'))
+      shutil.move(filename + '.o.wasm', os.path.join(dirname, lib_out))
     else:
       self.build(lib_src, dirname, filename)
-      shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+      shutil.move(filename + '.o.js', os.path.join(dirname, lib_out))
 
   def test_dlfcn_basic(self):
     if not self.can_dlfcn(): return
@@ -2625,45 +2625,48 @@ def process(filename):
       if 'asm' in out:
         self.validate_asmjs(out)
 
-  def test_dlfcn_data_and_fptr(self):
+  # test a library with data and a function pointer
+  # if "triple" is set, we test three units: one main, two libraries
+  def test_dlfcn_data_and_fptr(self, triple=False):
     if not self.can_dlfcn(): return
 
     # Failing under v8 since: https://chromium-review.googlesource.com/712595
     if self.is_wasm():
       self.banned_js_engines = [V8_ENGINE]
 
-    if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
-
     self.prep_dlfcn_lib()
-    lib_src = '''
-      #include <stdio.h>
+    def make_lib(name, suffix, num, lib_out):
+      lib_src = '''
+        #include <stdio.h>
 
-      int global = 42;
+        int global%s = %d;
 
-      extern void parent_func(); // a function that is defined in the parent
+        extern void parent_func(); // a function that is defined in the parent
 
-      void lib_fptr() {
-        printf("Second calling lib_fptr from main.\\n");
-        parent_func();
-        // call it also through a pointer, to check indexizing
-        void (*p_f)();
-        p_f = parent_func;
-        p_f();
-      }
+        void lib_fptr%s() {
+          printf("%s calling lib_fptr from main.\\n");
+          parent_func();
+          // call it also through a pointer, to check indexizing
+          void (*p_f)();
+          p_f = parent_func;
+          p_f();
+        }
 
-      extern "C" void (*func(int x, void(*fptr)()))() {
-        printf("In func: %d\\n", x);
-        fptr();
-        return lib_fptr;
-      }
-      '''
-    dirname = self.get_dir()
-    filename = os.path.join(dirname, 'liblib.cpp')
-    Settings.EXPORTED_FUNCTIONS = ['_func']
-    self.build_dlfcn_lib(lib_src, dirname, filename)
+        extern "C" void (*func%s(int x, void(*fptr)()))() {
+          printf("In func: %%d\\n", x);
+          fptr();
+          return lib_fptr%s;
+        }
+        ''' % (suffix, num, suffix, name, suffix, suffix)
+      dirname = self.get_dir()
+      filename = os.path.join(dirname, 'liblib' + suffix + '.cpp')
+      Settings.EXPORTED_FUNCTIONS = ['_func' + suffix]
+      self.build_dlfcn_lib(lib_src, dirname, filename, lib_out=lib_out)
+    make_lib('Second', '', 42, 'liblib.so')
+    if triple:
+      make_lib('Third', '_triple', 1337, 'liblib_triple.so')
 
     self.prep_dlfcn_main()
-    Settings.LINKABLE = 1
     src = '''
       #include <stdio.h>
       #include <dlfcn.h>
@@ -2681,21 +2684,17 @@ def process(filename):
         printf("First calling main_fptr from lib.\\n");
       }
 
+      // Test basic lib loading.
       int main() {
-        void* lib_handle;
-        FUNCTYPE* func_fptr;
-
-        // Test basic lib loading.
-        lib_handle = dlopen("liblib.so", RTLD_NOW);
+        void* lib_handle = dlopen("liblib.so", RTLD_NOW);
         if (lib_handle == NULL) {
           printf("Could not load lib.\\n");
           return 1;
         }
+        printf("Loaded lib\\n");
 
         // Test looked up function.
-        func_fptr = (FUNCTYPE*) dlsym(lib_handle, "func");
-        // Load twice to test cache.
-        func_fptr = (FUNCTYPE*) dlsym(lib_handle, "func");
+        FUNCTYPE* func_fptr = (FUNCTYPE*) dlsym(lib_handle, "func");
         if (func_fptr == NULL) {
           printf("Could not find func.\\n");
           return 1;
@@ -2711,16 +2710,59 @@ def process(filename):
           printf("Could not find global.\\n");
           return 1;
         }
-
         printf("Var: %d\\n", *global);
+
+#ifdef TRIPLE
+        void* lib_handle_triple = dlopen("liblib_triple.so", RTLD_NOW);
+        if (lib_handle_triple == NULL) {
+          printf("Could not load triple lib.\\n");
+          return 1;
+        }
+        printf("Loaded triple lib\\n");
+        // Test looked up function.
+        FUNCTYPE* func_fptr_triple = (FUNCTYPE*) dlsym(lib_handle_triple, "func_triple");
+        if (func_fptr_triple == NULL) {
+          printf("Could not find triple func.\\n");
+          return 1;
+        }
+        void (*fptr_triple)() = func_fptr_triple(13, main_fptr);
+        fptr();
+        // Test global data.
+        int* global_triple = (int*) dlsym(lib_handle_triple, "global_triple");
+        if (global_triple == NULL) {
+          printf("Could not find triple global.\\n");
+          return 1;
+        }
+        printf("Var: %d\\n", *global_triple);
+#endif
 
         return 0;
       }
       '''
+    if triple:
+      print('triple')
+      Building.COMPILER_TEST_OPTS += ['-DTRIPLE']
     Settings.EXPORTED_FUNCTIONS = ['_main']
-    self.do_run(src, 'In func: 13*First calling main_fptr from lib.*Second calling lib_fptr from main.*parent_func called from child*parent_func called from child*Var: 42*',
-                 output_nicerizer=lambda x, err: x.replace('\n', '*'),
-                 post_build=self.dlfcn_post_build)
+    dlfcn_post_build = '''
+def process(filename):
+  extra = ''
+  if %d:
+    extra = "FS.createDataFile('/', 'liblib_triple.so', " + str(list(bytearray(open('liblib_triple.so', 'rb').read()))) + ", true, false, false);"
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    "FS.createDataFile('/', 'liblib.so', " + str(list(bytearray(open('liblib.so', 'rb').read()))) + ", true, false, false);" + extra
+  )
+  open(filename, 'w').write(src)
+''' % triple
+    self.do_run(src, 'Loaded lib\nIn func: 13\nFirst calling main_fptr from lib.\nSecond calling lib_fptr from main.\nparent_func called from child\nparent_func called from child\nVar: 42\n' + ('' if not triple else 'Loaded triple lib\nIn func: 13\nFirst calling main_fptr from lib.\nSecond calling lib_fptr from main.\nparent_func called from child\nparent_func called from child\nVar: 1337\n'),
+                output_nicerizer=lambda x, err: '\n'.join([line for line in x.split('\n') if 'arning' not in line]), # ignore warnings from js vm
+                post_build=dlfcn_post_build)
+
+  def test_dlfcn_data_and_fptr_triple(self):
+    if not self.can_dlfcn(): return
+
+    # one main module and two libraries
+    self.test_dlfcn_data_and_fptr(triple=True)
 
   def test_dlfcn_varargs(self):
     # this test is not actually valid - it fails natively. the child should fail to be loaded, not load and successfully see the parent print_ints func
