@@ -33,7 +33,7 @@ int main() {
   
   printf("Timer resolution (smallest delta): %.20f msecs\n", smallest_delta);
 
-  if (smallest_delta < 5.f) {
+  if (smallest_delta <= 5.f) {
     printf("Timer resolution is good (or as good as spectre allows...).\n");
     result = 1;
   } else {
