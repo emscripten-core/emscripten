@@ -682,10 +682,9 @@ class Ports(object):
       else:
         names = zipfile.ZipFile(fullname + '.zip', 'r').namelist()
 
-      if not (names[0].startswith(subdir + '/') or names[0].startswith(subdir + '\\')):
-        # current zip file is old, force a retrieve
-        return False
-      return True
+      # check if first entry of the archive is prefixed with the same
+      # tag as we need so no longer download and recompile if so
+      return bool(re.match(subdir + r'(\\|/|$)', names[0]))
 
     def unpack():
       logging.warning('unpacking port: ' + name)
