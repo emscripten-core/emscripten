@@ -2179,6 +2179,14 @@ function integrateWasmJS() {
       if (exports.memory) mergeMemory(exports.memory);
       Module['asm'] = exports;
       Module["usingWasm"] = true;
+#if WASM_BACKEND
+      // wasm backend stack goes down
+      STACKTOP = STACK_BASE + TOTAL_STACK;
+      STACK_MAX = STACK_BASE;
+      // can't call stackRestore() here since this function can be called
+      // synchronously before stackRestore() is declared.
+      Module["asm"]["stackRestore"](STACKTOP);
+#endif
 #if USE_PTHREADS
       // Keep a reference to the compiled module so we can post it to the workers.
       Module['wasmModule'] = module;

@@ -100,7 +100,7 @@ Right now though there's a quick and *de facto* reliable way to do this (C examp
 
     // Avoid calling this more than once! Caching the value is up to you.
     unsigned query_sample_rate_of_audiocontexts() {
-        return EM_ASM_INT_V({
+        return EM_ASM_INT({
             var AudioContext = window.AudioContext || window.webkitAudioContext;
             var ctx = new AudioContext();
             var sr = ctx.sampleRate;
