@@ -124,10 +124,12 @@ def build(src, result_libs, args=[]):
           del os.environ['EMCC_FORCE_STDLIBS']
 
   # build in order to generate the libraries
-  with temp_files.get_file('.cpp') as temp:
-    open(temp, 'w').write(src)
-    temp_js = temp_files.get('.js').name
-    shared.Building.emcc(temp, args, output_filename=temp_js)
+  # do it all in a temp dir where everything will be cleaned up
+  temp_dir = temp_files.get_dir()
+  cpp = os.path.join(temp_dir, 'src.cpp')
+  open(cpp, 'w').write(src)
+  temp_js = os.path.join(temp_dir, 'out.js')
+  shared.Building.emcc(cpp, args, output_filename=temp_js)
 
   # verify
   assert os.path.exists(temp_js), 'failed to build file'

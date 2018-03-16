@@ -3946,7 +3946,8 @@ Module = {
     Settings.BINARYEN_TRAP_MODE = 'clamp' # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'zlib')]
 
-    Popen([PYTHON, path_from_root('embuilder.py'), 'build' ,'zlib']).communicate()
+    run_process([PYTHON, path_from_root('embuilder.py'), 'build' ,'zlib'])
+
     zlib = Cache.get_path(os.path.join('ports-builds', 'zlib', 'libz.a'))
     try:
       os.environ['EMCC_FORCE_STDLIBS'] = 'libcextra'
