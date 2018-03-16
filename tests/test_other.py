@@ -101,6 +101,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # -dumpmachine
       output = run_process([PYTHON, compiler, '-dumpmachine'], stdout=PIPE, stderr=PIPE)
       self.assertContained(get_llvm_target(), output.stdout)
+      
+      # -dumpversion
+      output = run_process([PYTHON, compiler, '-dumpversion'], stdout=PIPE, stderr=PIPE)
+      self.assertEqual(EMSCRIPTEN_VERSION + os.linesep, output.stdout, 'results should be identical')
 
       # emcc src.cpp ==> writes a.out.js
       self.clear()
@@ -5632,18 +5636,6 @@ print(os.environ.get('NM'))
       out = run_process([PYTHON, path_from_root('emmake'), 'sdl2-config'] + args, stdout=PIPE, stderr=PIPE).stdout
       assert expected in out, out
 
-  def test_warn_toomany_vars(self):
-    for source, warn in [
-      (path_from_root('tests', 'hello_libcxx.cpp'), False),
-      (path_from_root('tests', 'printf', 'test.c'), True)
-    ]:
-      for opts in [0, 1, 2, 's']:
-        print(source, opts)
-        self.clear()
-        err = run_process([PYTHON, EMCC, source, '-O' + str(opts)], stderr=PIPE).stderr
-        assert os.path.exists('a.out.js')
-        assert ('emitted code will contain very large numbers of local variables' in err) == (warn and (opts in [0, 1]))
-
   def test_module_onexit(self):
     open('src.cpp', 'w').write(r'''
 #include <emscripten.h>
@@ -6478,6 +6470,26 @@ Resolved: "/" => "/"
     except:
       seen_error = True
     assert seen_error, out
+
+  def test_mallocs(self):
+    for opts in [[], ['-O2']]:
+      print(opts)
+      sizes = {}
+      for malloc, name in (
+        ('dlmalloc', 'dlmalloc'),
+        (None, 'default'),
+        ('emmalloc', 'emmalloc')
+      ):
+        print(malloc, name)
+        cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WASM=1', '-o', 'a.out.js'] + opts
+        if malloc:
+          cmd += ['-s', 'MALLOC="%s"' % malloc]
+        print(cmd)
+        run_process(cmd)
+        sizes[name] = os.stat('a.out.wasm').st_size
+      print(sizes)
+      assert sizes['dlmalloc'] == sizes['default'], 'dlmalloc is the default'
+      assert sizes['emmalloc']  < sizes['dlmalloc'] - 5000, 'emmalloc is much smaller'
 
   def test_split_memory(self): # make sure multiple split memory chunks get used
     open('src.c', 'w').write(r'''
@@ -7486,9 +7498,10 @@ int main() {
       ]:
       print(args, expect_names)
       try_delete('a.out.js')
-      subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'BINARYEN=1'])
+      # we use dlmalloc here, as emmalloc has a bunch of asserts that contain the text "malloc" in them, which makes counting harder
+      subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'WASM=1', '-s', 'MALLOC="dlmalloc"'])
       code = open('a.out.wasm', 'rb').read()
-      assert (code.count(b'malloc') == 2) == expect_names, 'name section adds the name of malloc (there is also another one for the export'
+      assert (code.count(b'malloc') == 2) == expect_names, 'name section adds the name of malloc (there is also another one for the export)'
       sizes[str(args)] = os.stat('a.out.wasm').st_size
     print(sizes)
     assert sizes["['-O2']"] < sizes["['-O2', '--profiling-funcs']"], 'when -profiling-funcs, the size increases due to function names'
@@ -7523,7 +7536,7 @@ int main() {
         self.assertNotContained(warning, err)
 
   def test_binaryen_invalid_method(self):
-    proc = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'test.js', '-s', "BINARYEN_METHOD='invalid'"])
+    proc = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'test.js', '-s', 'WASM=1', '-s', "BINARYEN_METHOD='invalid'"])
     proc.communicate()
     assert proc.returncode != 0
 
@@ -7766,9 +7779,9 @@ int main() {
 
     print('test on hello world')
     test(path_from_root('tests', 'hello_world.cpp'), [
-      ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  48213, 26, 19),
-      (['-O1'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13460, 17, 17),
-      (['-O2'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  13381, 17, 17),
+      ([],      24, ['abort', 'tempDoublePtr'], ['waka'],                  46505, 25, 19),
+      (['-O1'], 19, ['abort', 'tempDoublePtr'], ['waka'],                  12630, 16, 17),
+      (['-O2'], 19, ['abort', 'tempDoublePtr'], ['waka'],                  12616, 16, 17),
       (['-O3'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2818, 10,  2), # in -O3, -Os and -Oz we metadce
       (['-Os'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2771, 10,  2),
       (['-Oz'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2765, 10,  2),
@@ -7787,9 +7800,9 @@ int main() {
       }
       ''')
     test('minimal.c', [
-      ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  24536, 26, 18),
-      (['-O1'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  11271, 10, 15),
-      (['-O2'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  11326, 10, 15),
+      ([],      24, ['abort', 'tempDoublePtr'], ['waka'],                  22712, 25, 18),
+      (['-O1'], 12, ['abort', 'tempDoublePtr'], ['waka'],                  10450,  9, 15),
+      (['-O2'], 12, ['abort', 'tempDoublePtr'], ['waka'],                  10440,  9, 15),
       # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
       (['-O3'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1),
       (['-Os'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1),
@@ -8118,3 +8131,15 @@ end
     assert expected in err
     err = run_process(base + ['--embed-files', 'somefile'], stderr=PIPE, check=False).stderr
     assert expected in err
+
+  def test_autotools_shared_check(self):
+    env = os.environ.copy()
+    env['LC_ALL'] = 'C'
+    expected = ': supported targets:.* elf'
+    for python in [PYTHON, 'python', 'python2', 'python3']:
+      try:
+        out = run_process([python, EMCC, '--help'], stdout=PIPE, env=env).stdout
+        assert re.search(expected, out)
+      except OSError:
+        # Ignore missing python aliases.
+        pass

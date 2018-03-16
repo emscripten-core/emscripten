@@ -153,9 +153,17 @@ static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_min_pd(__m128d __a, __m128d __b)
 {
 #ifdef __EMSCRIPTEN__
+  return (__m128d) { __a[0] < __b[0] ? __a[0] : __b[0],
+    __a[1] < __b[1] ? __a[1] : __b[1]
+  };
+
+  // The vectorized version in SIMD.js would be the following, but
+  // this does not work due to https://bugzilla.mozilla.org/show_bug.cgi?id=1176375.
+  // TODO: Remove the above scalarized version once the bug is fixed.
+
   // Use a comparison and select instead of emscripten_float32x4_min in order to
   // correctly emulate x86's NaN and -0.0 semantics.
-  return emscripten_float64x2_select(emscripten_float64x2_lessThan(__a, __b), __a, __b);
+ // return emscripten_float64x2_select(emscripten_float64x2_lessThan(__a, __b), __a, __b);
 #else
   return __builtin_ia32_minpd(__a, __b);
 #endif
@@ -175,9 +183,17 @@ static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_max_pd(__m128d __a, __m128d __b)
 {
 #ifdef __EMSCRIPTEN__
+  return (__m128d) { __a[0] > __b[0] ? __a[0] : __b[0],
+    __a[1] > __b[1] ? __a[1] : __b[1]
+  };
+
+  // The vectorized version in SIMD.js would be the following, but
+  // this does not work due to https://bugzilla.mozilla.org/show_bug.cgi?id=1176375.
+  // TODO: Remove the above scalarized version once the bug is fixed.
+
   // Use a comparison and select instead of emscripten_float32x4_max in order to
   // correctly emulate x86's NaN and -0.0 semantics.
-  return emscripten_float64x2_select(emscripten_float64x2_greaterThan(__a, __b), __a, __b);
+//  return emscripten_float64x2_select(emscripten_float64x2_greaterThan(__a, __b), __a, __b);
 #else
   return __builtin_ia32_maxpd(__a, __b);
 #endif
