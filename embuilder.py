@@ -214,7 +214,7 @@ if operation == 'build':
         }
       ''', ['gl.bc'])
     elif what == 'native_optimizer':
-      build(C_BARE, ['optimizer.2.exe'], ['-O2'])
+      build(C_BARE, ['optimizer.2.exe'], ['-O2', '-s', 'WASM=0'])
     elif what == 'wasm_compiler_rt':
       if shared.Settings.WASM_BACKEND:
         build(C_BARE, ['wasm_compiler_rt.a'], ['-s', 'WASM=1'])
