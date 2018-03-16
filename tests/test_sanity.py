@@ -531,7 +531,7 @@ fi
       output2 = run_process([PYTHON, EMCC] + MINIMAL_HELLO_WORLD + ['-v', '-nostdinc++'], stdout=PIPE, stderr=PIPE)
       out2 = output2.stdout
       err2 = output2.stderr
-      assert out == out2
+      self.assertIdentical(out, out2)
       def focus(e):
         assert 'search starts here:' in e, e
         assert e.count('End of search list.') == 1, e
@@ -644,7 +644,7 @@ fi
     restore()
 
     def build():
-      return self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-O2'], 'running js post-opts')
+      return self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-O2', '-s', 'WASM=0'], 'running js post-opts')
 
     def test():
       self.assertContained('hello, world!', run_js('a.out.js'))
