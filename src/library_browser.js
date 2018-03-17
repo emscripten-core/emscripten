@@ -22,6 +22,7 @@ var LibraryBrowser = {
       arg: 0, // The argument that will be passed to the main loop. (of type void*)
       timingMode: 0,
       timingValue: 0,
+      timingInitialized: 0,
       currentFrameNumber: 0,
       queue: [],
       pause: function() {
@@ -1037,6 +1038,9 @@ var LibraryBrowser = {
 
   // Runs natively in pthread, no __proxy needed.
   emscripten_set_main_loop_timing: function(mode, value) {
+    if (Browser.mainLoop.timingInitialized) {
+      return 1;
+    }
     Browser.mainLoop.timingMode = mode;
     Browser.mainLoop.timingValue = value;
 
@@ -1086,6 +1090,7 @@ var LibraryBrowser = {
       };
       Browser.mainLoop.method = 'immediate';
     }
+    Browser.mainLoop.timingInitialized = 1;
     return 0;
   },
 

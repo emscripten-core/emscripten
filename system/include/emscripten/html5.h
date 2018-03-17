@@ -441,6 +441,14 @@ extern EMSCRIPTEN_RESULT emscripten_webgl_commit_frame();
 extern EMSCRIPTEN_RESULT emscripten_set_canvas_element_size(const char *target, int width, int height);
 extern EMSCRIPTEN_RESULT emscripten_get_canvas_element_size(const char *target, int *width, int *height);
 
+#define EMSCRIPTEN_HAS_WINDOW_SELECTOR
+extern EMSCRIPTEN_RESULT emscripten_add_window(const char *title, void *data);
+extern EMSCRIPTEN_RESULT emscripten_set_window_title(const char *title, void *data);
+extern EMSCRIPTEN_RESULT emscripten_remove_window(void *data);
+extern void *emscripten_get_current_window_data(void);
+extern EMSCRIPTEN_RESULT emscripten_set_current_window(void *data);
+extern EMSCRIPTEN_RESULT emscripten_set_selected_window_change_callback(void (*func)(void));
+
 extern EMSCRIPTEN_RESULT emscripten_set_element_css_size(const char *target, double width, double height);
 extern EMSCRIPTEN_RESULT emscripten_get_element_css_size(const char *target, double *width, double *height);
 

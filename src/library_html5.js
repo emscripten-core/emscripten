@@ -47,6 +47,7 @@ var LibraryJSEvents = {
           JSEvents.numGamepadsConnected = firstState.length;
         }
       }
+      Module['processWindowSelectorChange'] = JSEvents.processWindowSelectorChange;
     },
 
     registerRemoveEventListeners: function() {
@@ -145,6 +146,7 @@ var LibraryJSEvents = {
 
     // Stores objects representing each currently registered JS event handler.
     eventHandlers: [],
+    windowSelectorChangeHandler: 0,
 
     isInternetExplorer: function() { return navigator.userAgent.indexOf('MSIE') !== -1 || navigator.appVersion.indexOf('Trident/') > 0; },
 
@@ -708,6 +710,15 @@ var LibraryJSEvents = {
       }
 
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+    },
+
+    processWindowSelectorChange: function() {
+      if (JSEvents.windowSelectorChangeHandler) {
+        Module.dynCall_v(JSEvents.windowSelectorChangeHandler);
+      }
+      if (GLctx) {
+        GLctx["clear"](GLctx["COLOR_BUFFER_BIT"] | GLctx["DEPTH_BUFFER_BIT"] | GLctx["STENCIL_BUFFER_BIT"]);
+      }
     },
 
     fillPointerlockChangeEventData: function(eventStruct, e) {
@@ -1943,6 +1954,100 @@ var LibraryJSEvents = {
     {{{ makeSetValue('width', '0', 'target.width', 'i32') }}};
     {{{ makeSetValue('height', '0', 'target.height', 'i32') }}};
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
+  _emscripten_get_window_index_by_data: function(selector, data) {
+    for (var i = 0; i < selector.options.length; ++i) {
+      if (selector.options[i].value == data) {
+        return i;
+      }
+    }
+    return -1;
+  },
+
+  emscripten_add_window__deps: ['_emscripten_get_window_index_by_data', '$JSEvents'],
+  emscripten_add_window: function(title, data) {
+    var selector = JSEvents.findEventTarget('windowSelector');
+    if (!selector) {
+      return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    }
+    if (__emscripten_get_window_index_by_data(selector, data) != -1) {
+      return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
+    }
+    var newWindowOption = document.createElement('option');
+    newWindowOption.value = data;
+    newWindowOption.text = UTF8ToString(title);
+    selector.add(newWindowOption);
+    if (selector.options.length == 1) {
+      selector.selectedIndex = 0;
+    }
+    if (selector.options.length > 1) {
+      selector.hidden = false;
+    }
+    Module.processWindowSelectorChange();
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
+  _emscripten_modify_window__deps: ['_emscripten_get_window_index_by_data', '$JSEvents'],
+  _emscripten_modify_window: function(data, func) {
+    var selector = JSEvents.findEventTarget('windowSelector');
+    if (!selector) {
+      return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    }
+    var ind = __emscripten_get_window_index_by_data(selector, data);
+    if (ind != -1) {
+      return func(selector, ind);
+    } else {
+      return {{{ cDefine('EMSCRIPTEN_RESULT_NO_DATA') }}};
+    }
+  },
+
+  emscripten_set_window_title__deps: ['_emscripten_modify_window'],
+  emscripten_set_window_title: function(title, data) {
+    __emscripten_modify_window(data, function(selector, ind) {
+      if (title) {
+        selector.options[ind].text = UTF8ToString(title);
+        return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+      } else {
+        return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
+      }
+    });
+  },
+
+  emscripten_remove_window__deps: ['_emscripten_modify_window'],
+  emscripten_remove_window: function(data) {
+    __emscripten_modify_window(data, function(selector, ind) {
+      selector.remove(ind);
+      Module.processWindowSelectorChange();
+      return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+    });
+  },
+
+  emscripten_get_current_window_data__deps: ['$JSEvents'],
+  emscripten_get_current_window_data: function() {
+    var selector = JSEvents.findEventTarget('windowSelector');
+    if (!selector) {
+      return 0;
+    }
+    var ind = selector.selectedIndex;
+    if (ind < 0) {
+      return 0;
+    }
+    return selector.options[ind].value | 0;
+  },
+
+  emscripten_set_current_window__deps: ['_emscripten_modify_window'],
+  emscripten_set_current_window: function(data) {
+    __emscripten_modify_window(data, function(selector, ind) {
+      selector.selectedIndex = ind;
+      Module.processWindowSelectorChange();
+      return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+    });
+  },
+
+  emscripten_set_selected_window_change_callback__deps: ['$JSEvents'],
+  emscripten_set_selected_window_change_callback: function(func) {
+    JSEvents.windowSelectorChangeHandler = func;
   },
 
   emscripten_set_element_css_size: function(target, width, height) {
