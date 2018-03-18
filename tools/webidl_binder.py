@@ -306,14 +306,16 @@ def type_to_c(t, non_pointing=False):
     return ret
 
   t = t.replace(' (Wrapper)', '')
-  if '[]' in t and 'const' in t:
-    t = t.replace('const ', '')
-    return 'const ' + base_type_to_c(t.replace('[]', '')) + '*'
+
+  prefix = ''
+  suffix = ''
   if '[]' in t:
-    return base_type_to_c(t.replace('[]', '')) + '*'
+    t = t.replace('[]', '')
+    suffix = '*'
   if 'const' in t:
-    return 'const ' + base_type_to_c(t.replace('const ', ''))
-  return base_type_to_c(t)
+    t = t.replace('const ', '')
+    prefix = 'const '
+  return prefix + base_type_to_c(t) + suffix
 
 def take_addr_if_nonpointer(m):
   if m.getExtendedAttribute('Ref') or m.getExtendedAttribute('Value'):
