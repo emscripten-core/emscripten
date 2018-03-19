@@ -478,6 +478,13 @@ class RunnerCore(unittest.TestCase):
     ret = line.split(':')[1].strip()
     return int(ret)
 
+  def get_wasm_text(self, wasm_binary):
+    return run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), wasm_binary], stdout=PIPE).stdout
+
+  def is_exported_in_wasm(self, name, wasm):
+    wat = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), wasm], stdout=PIPE).stdout
+    return ('(export "%s"' % name) in wat
+
   def run_generated_code(self, engine, filename, args=[], check_timeout=True, output_nicerizer=None, assert_returncode=0):
     stdout = os.path.join(self.get_dir(), 'stdout') # use files, as PIPE can get too full and hang us
     stderr = os.path.join(self.get_dir(), 'stderr')

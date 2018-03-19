@@ -46,10 +46,6 @@ class clean_write_access_to_canonical_temp_dir(object):
     else:
       self.clean_emcc_files_in_temp_dir()
 
-def is_exported_in_wasm(name, wasm):
-  wat = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), wasm], stdout=PIPE).stdout
-  return ('(export "%s"' % name) in wat
-
 class other(RunnerCore):
   def test_emcc_v(self):
     for compiler in [EMCC, EMXX]:
@@ -1451,16 +1447,16 @@ int f() {
 
     # Sanity check: the symbol should not be linked in if not requested.
     Popen([PYTHON, EMCC, 'main.c', '-L.', '-lexport']).communicate()
-    assert not is_exported_in_wasm(full_export_name, 'a.out.wasm')
+    assert not self.self.is_exported_in_wasm(full_export_name, 'a.out.wasm')
 
     # Sanity check: exporting without a definition does not cause it to appear.
     # Note: exporting main prevents emcc from warning that it generated no code.
     Popen([PYTHON, EMCC, 'main.c', '-s', '''EXPORTED_FUNCTIONS=['_main', '%s']''' % full_export_name]).communicate()
-    assert not is_exported_in_wasm(full_export_name, 'a.out.wasm')
+    assert not self.is_exported_in_wasm(full_export_name, 'a.out.wasm')
 
     # Actual test: defining symbol in library and exporting it causes it to appear in the output.
     Popen([PYTHON, EMCC, 'main.c', '-L.', '-lexport', '-s', '''EXPORTED_FUNCTIONS=['%s']''' % full_export_name]).communicate()
-    assert is_exported_in_wasm(full_export_name, 'a.out.wasm')
+    assert self.is_exported_in_wasm(full_export_name, 'a.out.wasm')
 
   def test_embed_file(self):
     open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''hello from a file with lots of data and stuff in it thank you very much''')
@@ -3241,17 +3237,24 @@ int main(int argc, char **argv) {
 }
 ''')
 
-    for no_exit in [0, 1]:
-      for opts in [[], ['-O1'], ['-O2', '-g2'], ['-O2', '-g2', '--llvm-lto', '1']]:
-        print(no_exit, opts)
-        Popen([PYTHON, EMCC] + opts + ['code.cpp', '-s', 'NO_EXIT_RUNTIME=' + str(no_exit)]).communicate()
-        output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True, engine=NODE_JS)
-        src = open('a.out.js').read()
-        exit = 1-no_exit
-        assert 'coming around' in output
-        assert ('going away' in output) == exit, 'destructors should not run if no exit'
-        assert ('_ZN5WasteILi2EED' in src) == exit, 'destructors should not appear if no exit'
-        assert ('atexit(' in src) == exit, 'atexit should not appear or be called'
+    for wasm in [0, 1]:
+      for no_exit in [0, 1]:
+        for opts in [[], ['-O1'], ['-O2', '-g2'], ['-O2', '-g2', '--llvm-lto', '1']]:
+          print(wasm, no_exit, opts)
+          cmd = [PYTHON, EMCC] + opts + ['code.cpp', '-s', 'NO_EXIT_RUNTIME=' + str(no_exit), '-s', 'WASM=' + str(wasm)]
+          if wasm:
+            cmd += ['--profiling-funcs'] # for function names
+          run_process(cmd)
+          output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True, engine=NODE_JS)
+          src = open('a.out.js').read()
+          if wasm:
+            src += '\n' + self.get_wasm_text('a.out.wasm')
+          exit = 1-no_exit
+          print('  exit:', exit, 'opts:', opts)
+          assert 'coming around' in output
+          assert ('going away' in output) == exit, 'destructors should not run if no exit'
+          assert ('_ZN5WasteILi2EED' in src) == exit, 'destructors should not appear if no exit:\n' + src
+          assert ('atexit(' in src) == exit, 'atexit should not appear or be called'
 
   def test_no_exit_runtime_warnings_flush(self):
     # check we warn if there is unflushed info
