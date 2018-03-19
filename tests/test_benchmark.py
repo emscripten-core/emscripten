@@ -235,29 +235,46 @@ class CheerpBenchmarker(Benchmarker):
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     suffix = filename.split('.')[-1]
-    cheerp_temp = filename[:-len(suffix)-1] + '.cheerp.' + suffix
+    cheerp_temp = filename[:-len(suffix) - 1] + '.cheerp.cpp'
     code = open(filename).read()
-    if 'int main()' in code:
-      main_args = ''
-    else:
-      main_args = 'argc, (%(const)s char**)argv' % {
-        'const': 'const' if 'const char *argv' in code else ''
-      }
     open(cheerp_temp, 'w').write('''
       %(code)s
-      void webMain() {
-        // TODO: how to read from commandline?
-        volatile int argc = 2;
-        typedef char** charStarStar;
-        volatile charStarStar argv;
-        argv[0] = "./cheerp.exe";
-        argv[1] = "%(arg)s";
-        volatile int exit_code = main(%(main_args)s);
-      }
-    ''' % {
-      'arg': args[-1],
+#include <cheerp/client.h>
+namespace client
+{
+    extern client::TArray<client::String>& args;
+}
+class [[cheerp::genericjs]] Arguments
+{
+public:
+    static int getArgumentsCount()
+    {
+        return client::args.get_length();
+    }
+    static int getArgumentLength(int arg)
+    {
+        return client::args[arg]->get_length();
+    }
+    static void copyArgument(int arg, char* buf)
+    {
+        client::String* a = client::args[arg];
+        for(int i=0;i<a->get_length();i++)
+            *(buf++) = a->charCodeAt(i);
+        *buf = 0;
+    }
+};
+void webMain() {
+    int arg1Len = Arguments::getArgumentLength(0);
+    char arg1Buf[arg1Len+1];
+    Arguments::copyArgument(0, arg1Buf);
+    const char* args[2];
+    args[0]="benchmark";
+    args[1]=arg1Buf;
+    int argc = Arguments::getArgumentsCount() + 1;
+    const char** argv=&args[0];
+    main(argc, ( char**)argv);
+}\n''' % {
       'code': code,
-      'main_args': main_args
     })
     cheerp_args = [
       '-target', 'cheerp',
@@ -297,6 +314,8 @@ class CheerpBenchmarker(Benchmarker):
       # print(' '.join(cmd))
       run_process(cmd)
       self.filename = final
+      # Inject command line arguments
+      run_process(['sed', '-i', 's/"use strict";/"use strict";var args=typeof(scriptArgs) !== "undefined" ? scriptArgs : arguments;/', self.filename])
       Building.get_binaryen()
       if self.binaryen_opts:
         run_binaryen_opts(final.replace('.js', '.wasm'), self.binaryen_opts)
