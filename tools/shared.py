@@ -1175,7 +1175,6 @@ class SettingsManager(object):
       if opt_level >= 1:
         self.attrs['ASM_JS'] = 1
         self.attrs['ASSERTIONS'] = 0
-        self.attrs['DISABLE_EXCEPTION_CATCHING'] = 1
         self.attrs['ALIASING_FUNCTION_POINTERS'] = 1
       if shrink_level >= 2 and not self.attrs['BINARYEN']:
         self.attrs['EVAL_CTORS'] = 1
