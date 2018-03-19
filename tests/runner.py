@@ -470,6 +470,14 @@ class RunnerCore(unittest.TestCase):
 
     return num_funcs
 
+  def count_wasm_contents(self, wasm_binary, what):
+    out = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), wasm_binary, '--metrics'], stdout=PIPE).stdout
+    # output is something like
+    # [?]        : 125
+    line = [line for line in out.split('\n') if '[' + what + ']' in line][0].strip()
+    ret = line.split(':')[1].strip()
+    return int(ret)
+
   def run_generated_code(self, engine, filename, args=[], check_timeout=True, output_nicerizer=None, assert_returncode=0):
     stdout = os.path.join(self.get_dir(), 'stdout') # use files, as PIPE can get too full and hang us
     stderr = os.path.join(self.get_dir(), 'stderr')
