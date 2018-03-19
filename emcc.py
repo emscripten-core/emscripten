@@ -1289,6 +1289,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.CYBERDWARF:
         newargs.append('-g')
+        options.debug_level = max(options.debug_level, 2)
         shared.Settings.BUNDLED_CD_DEBUG_FILE = target + ".cd"
         options.js_libraries.append(shared.path_from_root('src', 'library_cyberdwarf.js'))
         options.js_libraries.append(shared.path_from_root('src', 'library_debugger_toolkit.js'))
