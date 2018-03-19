@@ -1023,10 +1023,6 @@ function enlargeMemory() {
   updateGlobalBufferViews();
 
 #if ASSERTIONS
-  Module.printErr('enlarged memory arrays from ' + OLD_TOTAL_MEMORY + ' to ' + TOTAL_MEMORY + ', took ' + (Date.now() - start) + ' ms (has ArrayBuffer.transfer? ' + (!!ArrayBuffer.transfer) + ')');
-#endif
-
-#if ASSERTIONS
   if (!Module["usingWasm"]) {
     Module.printErr('Warning: Enlarging memory arrays, this is not fast! ' + [OLD_TOTAL_MEMORY, TOTAL_MEMORY]);
   }
