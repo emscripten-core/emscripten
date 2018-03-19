@@ -5489,7 +5489,7 @@ int main(void) {
         os.environ['EMCC_DEBUG'] = '1'
         os.environ['EMCC_NATIVE_OPTIMIZER'] = '1'
         with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
-          err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2',] + args, stderr=PIPE).stderr
+          err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-s', 'WASM=0'] + args, stderr=PIPE).stderr
       finally:
         if old_debug: os.environ['EMCC_DEBUG'] = old_debug
         else: del os.environ['EMCC_DEBUG']
