@@ -5133,7 +5133,7 @@ pass: error == ENOTDIR
         source = 'src.cpp'
       else:
         source = path_from_root('tests', source)
-      Popen([PYTHON, EMCC, source, '-O2', '-s', 'EMTERPRETIFY=1', '-g2'] + emcc_args).communicate()
+      Popen([PYTHON, EMCC, source, '-O2', '-s', 'EMTERPRETIFY=1', '-g2', '-s', 'WASM=0'] + emcc_args).communicate()
       self.assertTextDataContained(output, run_js('a.out.js', args=args))
       out = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, args=args, stderr=PIPE, full_output=True)
       self.assertTextDataContained(output, out)
@@ -5158,7 +5158,7 @@ pass: error == ENOTDIR
         source = 'src.cpp'
       else:
         source = path_from_root('tests', source)
-      Popen([PYTHON, EMCC, source, '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0', '-s', 'GLOBAL_BASE=2048', '-s', 'ALLOW_MEMORY_GROWTH=0']).communicate()
+      Popen([PYTHON, EMCC, source, '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0', '-s', 'GLOBAL_BASE=2048', '-s', 'ALLOW_MEMORY_GROWTH=0', '-s', 'WASM=0']).communicate()
       Popen([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js', 'ASYNC=0']).communicate()
       self.assertTextDataContained(output, run_js('a.out.js', args=args))
       self.assertTextDataContained(output, run_js('em.out.js', args=args))
@@ -5168,7 +5168,7 @@ pass: error == ENOTDIR
 
     # generate default shell for js test
     def make_default(args=[]):
-      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0', '-s', 'GLOBAL_BASE=2048'] + args).communicate()
+      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0', '-s', 'GLOBAL_BASE=2048', '-s', 'WASM=0'] + args).communicate()
       default = open('a.out.js').read()
       start = default.index('function _main(')
       end = default.index('}', start)
@@ -5380,8 +5380,8 @@ function _main() {
       print('  seen', seen, ', expected ', expected, type(seen), type(expected))
       assert expected == seen or (seen in expected if type(expected) in [list, tuple] else False), ['expect', expected, 'but see', seen]
 
-    do_log_test(path_from_root('tests', 'primes.cpp'), list(range(88, 94)), '_main')
-    do_log_test(path_from_root('tests', 'fannkuch.cpp'), list(range(226, 235)), '__Z15fannkuch_workerPv')
+    do_log_test(path_from_root('tests', 'primes.cpp'), list(range(88, 101)), '_main')
+    do_log_test(path_from_root('tests', 'fannkuch.cpp'), list(range(226, 241)), '__Z15fannkuch_workerPv')
 
   def test_emterpreter_advise(self):
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'emterpreter_advise.cpp'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1'], stdout=PIPE).stdout
