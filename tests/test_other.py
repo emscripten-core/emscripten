@@ -7809,6 +7809,14 @@ int main() {
       (['-Oz'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1),
     ])
 
+  # ensures runtime exports work, even with metadce
+  def test_extra_runtime_exports(self):
+    exports = ['stackSave', 'stackRestore', 'stackAlloc']
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-Os', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=%s' % str(exports)])
+    js = open('a.out.js').read()
+    for export in exports:
+      assert ('Module["%s"]' % export) in js, export
+
   # test disabling of JS FFI legalization
   def test_legalize_js_ffi(self):
     with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
