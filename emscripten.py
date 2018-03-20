@@ -680,6 +680,9 @@ def include_asm_consts(pre, forwarded_json, metadata, settings):
   asm_const_funcs = []
   for s in range(len(all_sigs)):
     sig = all_sigs[s]
+    if 'j' in sig:
+      logging.error('emscript: EM_ASM should not receive i64s as inputs, they are not valid in JS')
+      sys.exit(1)
     call_type = call_types[s] if s < len(call_types) else ''
     if '_emscripten_asm_const_' + call_type + sig in forwarded_json['Functions']['libraryFunctions']: continue # Only one invoker needs to be emitted for each ASM_CONST (signature x call_type) item
     forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + call_type + sig] = 1

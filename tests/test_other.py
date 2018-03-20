@@ -7019,7 +7019,7 @@ int main() {
 }
 ''')
     err = run_process([PYTHON, EMCC, 'src.cpp', '-Oz'], stderr=PIPE, check=False).stderr
-    self.assertContained('LLVM ERROR: EM_ASM should not receive i64s as inputs, they are not valid in JS', err)
+    self.assertContained('EM_ASM should not receive i64s as inputs, they are not valid in JS', err)
 
   def test_eval_ctors(self):
     for wasm in (1, 0):
