@@ -3721,7 +3721,7 @@ int main(int argc, char **argv) {
     sizes_dd = {}
 
     for alias in [None, 0, 1]:
-      cmd = [PYTHON, EMCC, 'src.cpp', '-O1']
+      cmd = [PYTHON, EMCC, 'src.cpp', '-O1', '-s', 'WASM=0']
       if alias is not None:
         cmd += ['-s', 'ALIASING_FUNCTION_POINTERS=' + str(alias)]
       else:
