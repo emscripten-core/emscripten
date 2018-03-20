@@ -123,6 +123,7 @@ var FORCE_ALIGNED_MEMORY = 0; // If enabled, assumes all reads and writes are fu
 var WARN_UNALIGNED = 0; // Warn at compile time about instructions that LLVM tells us are not fully aligned.
                         // This is useful to find places in your code where you might refactor to ensure proper
                         // alignment.
+                        // This is currently only supported in asm.js, not wasm.
 var PRECISE_I64_MATH = 1; // If enabled, i64 addition etc. is emulated - which is slow but precise. If disabled,
                           // we use the 'double trick' which is fast but incurs rounding at high values.
                           // If set to 2, we always include the i64 math code, which is necessary in the case
