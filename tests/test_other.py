@@ -3546,7 +3546,7 @@ int main()
         print(opts, ifs)
         if type(ifs) == int: ifs = [ifs]
         try_delete('a.out.js')
-        Popen([PYTHON, EMCC, 'src.c', '-O2'] + opts, stdout=PIPE).communicate()
+        Popen([PYTHON, EMCC, 'src.c', '-O2', '-s', 'WASM=0'] + opts, stdout=PIPE).communicate()
         src = open('a.out.js').read()
         main = src[src.find('function _main'):src.find('\n}', src.find('function _main'))]
         actual_ifs = main.count('if (')
