@@ -312,7 +312,7 @@ def type_to_c(t, non_pointing=False):
   if '[]' in t:
     t = t.replace('[]', '')
     suffix = '*'
-  if 'const' in t:
+  if 'const ' in t:
     t = t.replace('const ', '')
     prefix = 'const '
   return prefix + base_type_to_c(t) + suffix
