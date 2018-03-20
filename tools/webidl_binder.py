@@ -270,7 +270,7 @@ void array_bounds_check(const int array_size, const int array_idx) {
 C_FLOATS = ['float', 'double']
 
 def full_typename(arg):
-  return arg.type.name + ('[]' if arg.type.isArray() else '')
+  return ('const ' if arg.getExtendedAttribute('Const') else '') + arg.type.name + ('[]' if arg.type.isArray() else '')
 
 def type_to_c(t, non_pointing=False):
   #print 'to c ', t
@@ -306,9 +306,16 @@ def type_to_c(t, non_pointing=False):
     return ret
 
   t = t.replace(' (Wrapper)', '')
+
+  prefix = ''
+  suffix = ''
   if '[]' in t:
-    return base_type_to_c(t.replace('[]', '')) + '*'
-  return base_type_to_c(t)
+    t = t.replace('[]', '')
+    suffix = '*'
+  if 'const ' in t:
+    t = t.replace('const ', '')
+    prefix = 'const '
+  return prefix + base_type_to_c(t) + suffix
 
 def take_addr_if_nonpointer(m):
   if m.getExtendedAttribute('Ref') or m.getExtendedAttribute('Value'):
