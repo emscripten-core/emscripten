@@ -129,6 +129,10 @@ jobs:
     <<: *test-defaults
     environment:
       - TEST_TARGET=binaryen3
+  test-sanity:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=sanity
 
 workflows:
   version: 2
@@ -184,3 +188,7 @@ workflows:
       - test-binaryen3:
           requires:
             - build
+      - test-sanity:
+          requires:
+            - build
+

@@ -96,26 +96,21 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def do_run_in_out_file_test(self, *path, **kwargs):
       test_path = path_from_root(*path)
 
-      def find_extension(*ext_list):
+      def find_files(*ext_list):
         ret = None
         count = 0
         for ext in ext_list:
           if os.path.isfile(test_path + ext):
-            ret = ext
+            ret = test_path + ext
             count += 1
-        if count == 0:
-          assert False, ("No file found at {} with extension {}"
-                         .format(test_path, ext_list))
-        if count > 1:
-          assert False, ("Test file {} found with multiple valid extensions {}"
-                         .format(test_path, ext_list))
+        assert count > 0, ("No file found at {} with extension {}"
+                           .format(test_path, ext_list))
+        assert count <= 1, ("Test file {} found with multiple valid extensions {}"
+                            .format(test_path, ext_list))
         return ret
 
-      input_extensions = find_extension('.c', '.cpp', '.cc')
-      output_extensions = find_extension('.out', '.txt')
-      extensions = (input_extensions, output_extensions)
-
-      src, output = (test_path + ext for ext in extensions)
+      src = find_files('.c', '.cpp', '.cc')
+      output = find_files('.out', '.txt')
       self.do_run_from_file(src, output, **kwargs)
 
   def test_hello_world(self):
@@ -252,7 +247,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     # extra coverages
     for emulate_casts in [0, 1]:
       for emulate_fps in [0, 1, 2]:
-        if self.is_wasm() and emulate_casts and emulate_fps: continue # in wasm we can't do both
         print(emulate_casts, emulate_fps)
         Settings.EMULATE_FUNCTION_POINTER_CASTS = emulate_casts
         Settings.EMULATED_FUNCTION_POINTERS = emulate_fps
@@ -724,6 +718,11 @@ base align: 0, 0, 0, 0'''])
     self.do_run(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(sizeof(S))').replace('{{del_struct}}', 'free'), '*51,62*')
 
   def test_emmalloc(self):
+    # in newer clang+llvm, the internal calls to malloc in emmalloc may be optimized under
+    # the assumption that they are external, so like in system_libs.py where we build
+    # malloc, we need to disable builtin here too
+    self.emcc_args += ['-fno-builtin']
+
     def test():
       self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() + open(path_from_root('tests', 'core', 'test_emmalloc.cpp')).read(),
                   open(path_from_root('tests', 'core', 'test_emmalloc.txt')).read())
@@ -1600,7 +1599,7 @@ def process(filename):
 
     if self.run_name == 'asm2':
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
-    self.do_run(open(path_from_root('tests', 'emscripten_get_now.cpp')).read(), 'Timer resolution is good.')
+    self.do_run(open(path_from_root('tests', 'emscripten_get_now.cpp')).read(), 'Timer resolution is good')
 
   def test_emscripten_get_compiler_setting(self):
     test_path = path_from_root('tests', 'core', 'emscripten_get_compiler_setting')
@@ -6451,11 +6450,12 @@ def process(filename):
     '''
     self.do_run(src, 'func1\nfunc2\n')
 
-  @no_wasm_backend('no implementation of emulated function pointer casts')
   def test_emulate_function_pointer_casts(self):
     Settings.EMULATE_FUNCTION_POINTER_CASTS = 1
 
-    self.do_run_in_out_file_test('tests', 'core', 'test_emulate_function_pointer_casts')
+    self.do_run(open(path_from_root('tests', 'core', 'test_emulate_function_pointer_casts.cpp')).read(),
+                ('|1.266,1|',                 # asm.js, double <-> int
+                 '|1.266,1413754136|')) # wasm, reinterpret the bits
 
   def test_demangle_stacks(self):
     Settings.DEMANGLE_SUPPORT = 1
@@ -6929,8 +6929,18 @@ Module.printErr = Module['printErr'] = function(){};
         # the file attribute is optional, but if it is present it needs to refer
         # the output file.
         self.assertPathsIdentical(map_referent, data['file'])
-      assert len(data['sources']) == 1, data['sources']
-      self.assertPathsIdentical(src_filename, data['sources'][0])
+      if not self.is_wasm_backend():
+        assert len(data['sources']) == 1, data['sources']
+        self.assertPathsIdentical(src_filename, data['sources'][0])
+      else:
+        # Wasm backend currently adds every file linked as part of compiler-rt
+        # to the 'sources' field.
+        # TODO(jgravelle): when LLD is the wasm-backend default, make sure it
+        # emits only the files we have lines for.
+        assert len(data['sources']) > 1, data['sources']
+        normalized_srcs = [src.replace('\\', '/') for src in data['sources']]
+        normalized_filename = src_filename.replace('\\', '/')
+        assert normalized_filename in normalized_srcs, "Source file not found"
       if hasattr(data, 'sourcesContent'):
         # the sourcesContent attribute is optional, but if it is present it
         # needs to containt valid source text.

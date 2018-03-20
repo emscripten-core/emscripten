@@ -155,7 +155,12 @@ use_all_engines = os.environ.get('EM_ALL_ENGINES') # generally js engines are eq
 
 class RunnerCore(unittest.TestCase):
   emcc_args = None
+
+  # default temporary directory settings. set_temp_dir may be called later to
+  # override these
   temp_dir = TEMP_DIR
+  canonical_temp_dir = get_canonical_temp_dir(TEMP_DIR)
+
   save_dir = os.environ.get('EM_SAVE_DIR')
   save_JS = 0
   stderr_redirect = STDOUT # This avoids cluttering the test runner output, which is stderr too, with compiler warnings etc.
@@ -991,7 +996,7 @@ class BrowserCore(RunnerCore):
       if not manual_reference:
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
     all_args = [PYTHON, EMCC, '-s', 'IN_TEST_HARNESS=1', temp_filepath, '-o', outfile] + args
-    #print 'all args:', all_args
+    #print('all args:', all_args)
     try_delete(outfile)
     Popen(all_args).communicate()
     assert os.path.exists(outfile)

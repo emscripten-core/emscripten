@@ -147,7 +147,7 @@ def parse_backend_output(backend_output, DEBUG):
   mem_init = mem_init.replace('Runtime.', '')
 
   try:
-    #if DEBUG: print >> sys.stderr, "METAraw", metadata_raw
+    #if DEBUG: logging.debug("METAraw %s", metadata_raw)
     metadata = json.loads(metadata_raw, object_pairs_hook=OrderedDict)
   except Exception as e:
     logging.error('emscript: failure to parse metadata output from compiler backend. raw output is: \n' + metadata_raw)
@@ -161,14 +161,19 @@ def parse_backend_output(backend_output, DEBUG):
 
 def fixup_metadata_tables(metadata, settings):
   # if emulating pointer casts, force all tables to the size of the largest
-  if settings['EMULATE_FUNCTION_POINTER_CASTS']:
+  # (for wasm, we use binaryen's fpcast-emu pass, we don't need to do anything
+  # here)
+  if settings['EMULATE_FUNCTION_POINTER_CASTS'] and not settings['WASM']:
     max_size = 0
     for k, v in metadata['tables'].items():
       max_size = max(max_size, v.count(',')+1)
     for k, v in metadata['tables'].items():
       curr = v.count(',')+1
       if curr < max_size:
-        metadata['tables'][k] = v.replace(']', (',0'*(max_size - curr)) + ']')
+        if v.count('[]') == 1:
+          metadata['tables'][k] = v.replace(']', (','.join(['0'] * (max_size - curr)) + ']'))
+        else:
+          metadata['tables'][k] = v.replace(']', (',0'*(max_size - curr)) + ']')
 
   if settings['SIDE_MODULE']:
     for k in metadata['tables'].keys():
@@ -322,7 +327,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
   function_tables_impls = make_function_tables_impls(function_table_data, settings)
   final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
-  if settings.get('EMULATED_FUNCTION_POINTERS'):
+  if settings['EMULATED_FUNCTION_POINTERS']:
     final_function_tables = (
       final_function_tables
       .replace("asm['", '')
@@ -372,7 +377,7 @@ def create_module(function_table_sigs, metadata, settings,
   asm_start = asm_start_pre + '\n' + asm_global_vars + asm_temp_vars + asm_runtime_thread_local_vars + '\n' + asm_global_funcs
 
   temp_float = '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround(settings) else '0.0')
-  async_state = '  var asyncState = 0;\n' if settings.get('EMTERPRETIFY_ASYNC') else ''
+  async_state = '  var asyncState = 0;\n' if settings['EMTERPRETIFY_ASYNC'] else ''
   f0_fround = '  const f0 = Math_fround(0);\n' if provide_fround(settings) else ''
 
   replace_memory = create_replace_memory(settings)
@@ -612,7 +617,7 @@ def get_original_exported_functions(settings):
 
 
 def check_all_implemented(all_implemented, pre, settings):
-  if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
+  if settings['ASSERTIONS'] and settings['ORIGINAL_EXPORTED_FUNCTIONS']:
     original_exports = get_original_exported_functions(settings)
     for requested in original_exports:
       if not is_already_implemented(requested, pre, all_implemented):
@@ -767,7 +772,7 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
   def make_coercions(sig): return ';'.join(['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, sig[p+1], settings)) for p in range(len(sig)-1)]) + ';'
 
   # when emulating function pointer casts, we need to know what is the target of each pointer
-  if settings['EMULATE_FUNCTION_POINTER_CASTS']:
+  if settings['EMULATE_FUNCTION_POINTER_CASTS'] and not settings['WASM']:
     function_pointer_targets = {}
     for sig, table in function_table_data.items():
       start = table.index('[')
@@ -824,7 +829,7 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
       Counter.next_item += 1
       newline = Counter.next_item % 30 == 29
       if item == '0':
-        if j > 0 and settings['EMULATE_FUNCTION_POINTER_CASTS'] and j in function_pointer_targets: # emulate all non-null pointer calls, if asked to
+        if j > 0 and settings['EMULATE_FUNCTION_POINTER_CASTS'] and not settings['WASM'] and j in function_pointer_targets: # emulate all non-null pointer calls, if asked to
           proper_sig, proper_target = function_pointer_targets[j]
           if settings['EMULATED_FUNCTION_POINTERS']:
             if proper_target in all_implemented:
@@ -932,8 +937,8 @@ function jsCall_%s_%s(%s) {
 
 def create_mftCall_funcs(function_table_data, settings):
   mftCall_funcs = []
-  if settings.get('EMULATED_FUNCTION_POINTERS'):
-    if settings.get('RELOCATABLE') and not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
+  if settings['EMULATED_FUNCTION_POINTERS']:
+    if settings['RELOCATABLE'] and not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
       for sig, table in function_table_data.items():
         params = ','.join(['ptr'] + ['p%d' % p for p in range(len(sig)-1)])
         coerced_params = ','.join([shared.JS.make_coercion('ptr', 'i', settings)] + [shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
@@ -1180,7 +1185,7 @@ def create_asm_setup(debug_tables, function_table_data, metadata, settings):
 
   asm_setup += setup_function_pointers(function_table_sigs, settings)
 
-  if settings.get('EMULATED_FUNCTION_POINTERS'):
+  if settings['EMULATED_FUNCTION_POINTERS']:
     function_tables_impls = make_function_tables_impls(function_table_data, settings)
     asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
 
@@ -1191,19 +1196,32 @@ def setup_function_pointers(function_table_sigs, settings):
   asm_setup = ''
   for sig in function_table_sigs:
     asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
-    if settings.get('RESERVED_FUNCTION_POINTERS'):
+    if settings['RESERVED_FUNCTION_POINTERS']:
       asm_setup += '\n' + shared.JS.make_jscall(sig) + '\n'
-    if settings.get('EMULATED_FUNCTION_POINTERS'):
+    if settings['EMULATED_FUNCTION_POINTERS']:
       args = ['a%d' % i for i in range(len(sig)-1)]
       full_args = ['x'] + args
-      table_access = 'FUNCTION_TABLE_' + sig
-      if settings['SIDE_MODULE']:
-        table_access = 'parentModule["' + table_access + '"]' # side module tables were merged into the parent, we need to access the global one
-      if settings['BINARYEN']:
-        # wasm uses a Table, which means we have function pointer emulation capabilities all the time, at no cost. just call the table
-        table_access = "Module['wasmTable']"
-        table_read = table_access + '.get(x)'
+      if settings['WASM']:
+        if settings['EMULATE_FUNCTION_POINTER_CASTS']:
+          # emulated function pointers in wasm use an internal i64-based ABI with a fixed number of arguments. we can't
+          # call into it directly because it returns an i64, which is an error for the VM. instead, we use dynCalls
+          dyn_call = "Module['asm']['dynCall_" + sig + "']"
+          asm_setup += '''
+function ftCall_%s(%s) {
+  return %s(%s);
+}
+''' % (sig, ', '.join(full_args), dyn_call, ', '.join(full_args))
+          # and we are done with this signature, continue
+          continue
+        else:
+          # otherwise, wasm emulated function pointers *without* emulated casts can just all
+          # into the table
+          table_access = "Module['wasmTable']"
+          table_read = table_access + '.get(x)'
       else:
+        table_access = 'FUNCTION_TABLE_' + sig
+        if settings['SIDE_MODULE']:
+          table_access = 'parentModule["' + table_access + '"]' # side module tables were merged into the parent, we need to access the global one
         table_read = table_access + '[x]'
       prelude = '''
   if (x < 0 || x >= %s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig, function_table_sigs, settings))
@@ -1234,9 +1252,9 @@ def create_basic_funcs(function_table_sigs, settings):
 
   for sig in function_table_sigs:
     basic_funcs.append('invoke_%s' % sig)
-    if settings.get('RESERVED_FUNCTION_POINTERS'):
+    if settings['RESERVED_FUNCTION_POINTERS']:
       basic_funcs.append('jsCall_%s' % sig)
-    if settings.get('EMULATED_FUNCTION_POINTERS'):
+    if settings['EMULATED_FUNCTION_POINTERS']:
       if not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
         basic_funcs.append('ftCall_%s' % sig)
   return basic_funcs
@@ -1273,13 +1291,18 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
   exports = []
   for export in sorted(set(all_exported)):
     exports.append(quote(export) + ": " + export)
-  if settings['BINARYEN'] and settings['SIDE_MODULE']:
+  if settings['WASM'] and settings['SIDE_MODULE']:
     # named globals in side wasm modules are exported globals from asm/wasm
     for k, v in metadata['namedGlobals'].items():
       exports.append(quote('_' + str(k)) + ': ' + str(v))
     # aliases become additional exports
     for k, v in metadata['aliases'].items():
       exports.append(quote(str(k)) + ': ' + str(v))
+  # shared wasm emulated function pointer mode requires us to know the function pointer for
+  # each function. export fp$func => function pointer for func
+  if settings['WASM'] and settings['RELOCATABLE'] and settings['EMULATED_FUNCTION_POINTERS']:
+    for k, v in metadata['functionPointers'].items():
+      exports.append(quote('fp$' + str(k)) + ': ' + str(v))
   return '{ ' + ', '.join(exports) + ' }'
 
 
@@ -1344,7 +1367,7 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
       table = table.replace('var ' + tableName, 'var ' + tableName + ' = Module["' + tableName + '"]')
       receiving += table + '\n'
 
-  if settings.get('EMULATED_FUNCTION_POINTERS'):
+  if settings['EMULATED_FUNCTION_POINTERS']:
     receiving += '\n' + function_tables_defs.replace('// EMSCRIPTEN_END_FUNCS\n', '') + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in function_table_data])
     if not settings['BINARYEN']:
       for sig in function_table_data.keys():
@@ -1729,10 +1752,9 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   if libraries is None: libraries = []
 
   if shared.Settings.EXPERIMENTAL_USE_LLD:
-    wast, metadata = build_wasm_lld(temp_files, infile, outfile, settings, DEBUG)
+    wasm, metadata = build_wasm_lld(temp_files, infile, outfile, settings, DEBUG)
   else:
-    wast = build_wasm(temp_files, infile, outfile, settings, DEBUG)
-    metadata = read_metadata_wast(wast, DEBUG)
+    wasm, metadata = build_wasm(temp_files, infile, outfile, settings, DEBUG)
 
   # optimize syscalls
 
@@ -1786,7 +1808,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   outfile.write(pre)
   pre = None
 
-  invoke_funcs = read_wast_invoke_imports(wast)
+  invoke_funcs = metadata.get('invokeFuncs', [])
   # List of function signatures used in jsCall functions, e.g.['v', 'vi']
   jscall_sigs = metadata.get('jsCallFuncType', [])
 
@@ -1824,33 +1846,29 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
 
     assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
     basename = shared.unsuffixed(outfile.name)
-    wast = basename + '.wast'
     wasm = basename + '.wasm'
-    s2wasm_args = create_s2wasm_args(temp_s)
+    metadata_file = basename + '.metadata'
+    s2wasm_args = create_s2wasm_args(temp_s, wasm)
+    if settings['DEBUG_LEVEL'] >= 2 or settings['PROFILING_FUNCS']:
+      s2wasm_args += ['-g']
+      if settings['DEBUG_LEVEL'] >= 4:
+        s2wasm_args += ['--source-map=' + wasm + '.map']
+        if not settings['SOURCE_MAP_BASE']:
+          logging.warn("Wasm source map won't be usable in a browser without --source-map-base")
+        else:
+          s2wasm_args += ['--source-map-url=' + settings['SOURCE_MAP_BASE'] + os.path.basename(settings['WASM_BINARY_FILE']) + '.map']
     if DEBUG:
       logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
       t = time.time()
       #s2wasm_args += ['--debug']
-    shared.check_call(s2wasm_args, stdout=open(wast, 'w'))
-    # Also convert wasm text to binary
-    wasm_as_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 'wasm-as'),
-                    wast, '-o', wasm]
-    if settings['DEBUG_LEVEL'] >= 2 or settings['PROFILING_FUNCS']:
-      wasm_as_args += ['-g']
-      if settings['DEBUG_LEVEL'] >= 4:
-        wasm_as_args += ['--source-map=' + wasm + '.map']
-        if not settings['SOURCE_MAP_BASE']:
-          logging.warn("Wasm source map won't be usable in a browser without --source-map-base")
-        else:
-          wasm_as_args += ['--source-map-url=' + settings['SOURCE_MAP_BASE'] + os.path.basename(settings['WASM_BINARY_FILE']) + '.map']
-    logging.debug('  emscript: binaryen wasm-as: ' + ' '.join(wasm_as_args))
-    shared.check_call(wasm_as_args)
+    shared.check_call(s2wasm_args, stdout=open(metadata_file, 'w'))
+
+  metadata = create_metadata_wasm(open(metadata_file).read(), DEBUG)
 
   if DEBUG:
     logging.debug('  emscript: binaryen s2wasm took %s seconds' % (time.time() - t))
     t = time.time()
-    shutil.copyfile(wast, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-s2wasm-output.wast'))
-  return wast
+  return wasm, metadata
 
 
 def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
@@ -1876,17 +1894,16 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
     if DEBUG:
       logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
       t = time.time()
-      debug_copy(temp_o, 'emcc-llvm-backend-output.o')
+    debug_copy(temp_o, 'emcc-llvm-backend-output.o')
 
     basename = shared.unsuffixed(outfile.name)
-    wast = basename + '.wast'
     wasm = basename + '.wasm'
+    metadata_file = basename + '.metadata'
     base_wasm = basename + '.lld.wasm'
 
     libc_rt_lib = shared.Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
     compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', wasm_rt_fail('wasm_compiler_rt.a'), 'a')
-    shared.check_call([
-      shared.LLD, '-flavor', 'wasm',
+    cmd = [shared.LLD, '-flavor', 'wasm',
       '-z', '-stack-size=1048576',
       '--global-base=%s' % shared.Settings.GLOBAL_BASE,
       '--initial-memory=%s' % shared.Settings.TOTAL_MEMORY,
@@ -1895,27 +1912,25 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
       '--entry=main',
       '--allow-undefined',
       '--import-memory',
-      '--export', '__wasm_call_ctors',
-    ])
+      '--export', '__wasm_call_ctors']
+    for export in shared.expand_response(settings['EXPORTED_FUNCTIONS']):
+      cmd += ['--export', export[1:]] # Strip the leading underscore
+    shared.check_call(cmd)
+
+    if DEBUG:
+      logging.debug('  emscript: lld took %s seconds' % (time.time() - t))
+      t = time.time()
     debug_copy(base_wasm, 'base_wasm.wasm')
 
-    # TODO: We currently read exports from the wast in order to generate
-    # metadata. So we emit text here so we can parse wast from python.
-    shared.check_call([wasm_emscripten_finalize, base_wasm, '-o', wast, '-S',
+    shared.check_call([wasm_emscripten_finalize, base_wasm, '-o', wasm,
                        '--global-base=%s' % shared.Settings.GLOBAL_BASE,
                        ('--emscripten-reserved-function-pointers=%d' %
-                        shared.Settings.RESERVED_FUNCTION_POINTERS)])
-    debug_copy(wast, 'lld-emscripten-output.wast')
+                        shared.Settings.RESERVED_FUNCTION_POINTERS)],
+                      stdout=open(metadata_file, 'w'))
 
-    shared.check_call([wasm_as, wast, '-o', wasm])
-    debug_copy(wasm, 'lld-emscripten-output.wasm')
+    metadata = create_metadata_wasm(open(metadata_file).read(), DEBUG)
 
-    metadata = read_metadata_wast(wast, DEBUG)
-
-  if DEBUG:
-    logging.debug('  emscript: lld took %s seconds' % (time.time() - t))
-    t = time.time()
-  return wast, metadata
+  return wasm, metadata
 
 
 def read_metadata_wast(wast, DEBUG):
@@ -1947,7 +1962,7 @@ def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata, se
     if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
       exported_implemented_functions.add(key)
 
-  if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
+  if settings['ASSERTIONS'] and settings['ORIGINAL_EXPORTED_FUNCTIONS']:
     original_exports = get_original_exported_functions(settings)
     for requested in original_exports:
       # check if already implemented
@@ -2021,17 +2036,6 @@ def create_em_js(forwarded_json, metadata):
     forwarded_json['Functions']['libraryFunctions'][name] = 1
 
   return em_js_funcs
-
-
-def read_wast_invoke_imports(wast):
-  invoke_funcs = []
-  for line in open(wast).readlines():
-    if line.strip().startswith('(import '):
-      parts = line.split()
-      func_name = parts[2][1:-1]
-      if func_name.startswith('invoke_'):
-        invoke_funcs.append(func_name)
-  return invoke_funcs
 
 
 def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata,
@@ -2153,13 +2157,13 @@ def wasm_rt_fail(archive_file):
     raise Exception('Expected {} to already be built'.format(archive_file))
   return wrapped
 
-def create_s2wasm_args(temp_s):
+def create_s2wasm_args(temp_s, wasm):
   compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', wasm_rt_fail('wasm_compiler_rt.a'), 'a')
   libc_rt_lib = shared.Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
 
   s2wasm_path = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 's2wasm')
 
-  args = [s2wasm_path, temp_s, '--emscripten-glue']
+  args = [s2wasm_path, temp_s, '-o', wasm, '--emscripten-glue', '--emit-binary']
   args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
   args += ['--initial-memory=%d' % shared.Settings.TOTAL_MEMORY]
   args += ['--allow-memory-growth'] if shared.Settings.ALLOW_MEMORY_GROWTH else []
@@ -2189,6 +2193,7 @@ def load_metadata(metadata_raw):
     'initializers': [],
     'exports': [],
     'emJsFuncs': {},
+    'invokeFuncs': [],
   }
 
   for k, v in metadata_json.items():
@@ -2258,10 +2263,10 @@ def main(args, compiler_engine, cache, temp_files, DEBUG):
   libraries = args.libraries[0].split(',') if len(args.libraries) > 0 else []
 
   settings.setdefault('STRUCT_INFO', shared.path_from_root('src', 'struct_info.compiled.json'))
-  struct_info = settings.get('STRUCT_INFO')
+  struct_info = settings['STRUCT_INFO']
 
-  if not os.path.exists(struct_info) and not settings.get('BOOTSTRAPPING_STRUCT_INFO') and not settings.get('ONLY_MY_CODE'):
-    if DEBUG: logging.debug('  emscript: bootstrapping struct info...')
+  if not os.path.exists(struct_info) and not settings['BOOTSTRAPPING_STRUCT_INFO'] and not settings['ONLY_MY_CODE']:
+    if DEBUG: logging.debug('  emscript: bootstrapping struct info to %s', struct_info)
     shared.Building.ensure_struct_info(struct_info)
     if DEBUG: logging.debug('  emscript: bootstrapping struct info complete')
 

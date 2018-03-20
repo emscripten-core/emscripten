@@ -1740,7 +1740,6 @@ LibraryManager.library = {
     if (filename === '__self__') {
       var handle = -1;
       var lib_module = Module;
-      var cached_functions = {};
     } else {
       var target = FS.findObject(filename);
       if (!target || target.isFolder || target.isDevice) {
@@ -1802,14 +1801,11 @@ LibraryManager.library = {
           }
         }
       }
-
-      var cached_functions = {};
     }
     DLFCN.loadedLibs[handle] = {
       refcount: 1,
       name: filename,
-      module: lib_module,
-      cached_functions: cached_functions
+      module: lib_module
     };
     DLFCN.loadedLibNames[filename] = handle;
 
@@ -1852,19 +1848,35 @@ LibraryManager.library = {
     } else {
       var lib = DLFCN.loadedLibs[handle];
       symbol = '_' + symbol;
-      if (lib.cached_functions.hasOwnProperty(symbol)) {
-        return lib.cached_functions[symbol];
-      }
       if (!lib.module.hasOwnProperty(symbol)) {
         DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
                                '" in dynamic lib: ' + lib.name);
         return 0;
       } else {
         var result = lib.module[symbol];
-        if (typeof result == 'function') {
-          result = addFunction(result);
-          //Module.printErr('adding function dlsym result for ' + symbol + ' => ' + result);
-          lib.cached_functions = result;
+        if (typeof result === 'function') {
+#if WASM
+#if EMULATED_FUNCTION_POINTERS
+          // for wasm with emulated function pointers, the i64 ABI is used for all
+          // function calls, so we can't just call addFunction on something JS
+          // can call (which does not use that ABI), as the function pointer would
+          // not be usable from wasm. instead, the wasm has exported function pointers
+          // for everything we need, with prefix fp$, use those
+          result = lib.module['fp$' + symbol];
+          if (typeof result === 'object') {
+            // a breaking change in the wasm spec, globals are now objects
+            // https://github.com/WebAssembly/mutable-global/issues/1
+            result = result.value;
+          }
+#if ASSERTIONS
+          assert(typeof result === 'number', 'could not find function pointer for ' + symbol);
+#endif // ASSERTIONS
+          return result;
+#endif // EMULATED_FUNCTION_POINTERS
+#endif // WASM
+          // convert the exported function into a function pointer using our generic
+          // JS mechanism.
+          return addFunction(result);
         }
         return result;
       }
