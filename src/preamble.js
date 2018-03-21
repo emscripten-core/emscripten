@@ -1023,10 +1023,6 @@ function enlargeMemory() {
   updateGlobalBufferViews();
 
 #if ASSERTIONS
-  Module.printErr('enlarged memory arrays from ' + OLD_TOTAL_MEMORY + ' to ' + TOTAL_MEMORY + ', took ' + (Date.now() - start) + ' ms (has ArrayBuffer.transfer? ' + (!!ArrayBuffer.transfer) + ')');
-#endif
-
-#if ASSERTIONS
   if (!Module["usingWasm"]) {
     Module.printErr('Warning: Enlarging memory arrays, this is not fast! ' + [OLD_TOTAL_MEMORY, TOTAL_MEMORY]);
   }
@@ -2179,6 +2175,14 @@ function integrateWasmJS() {
       if (exports.memory) mergeMemory(exports.memory);
       Module['asm'] = exports;
       Module["usingWasm"] = true;
+#if WASM_BACKEND
+      // wasm backend stack goes down
+      STACKTOP = STACK_BASE + TOTAL_STACK;
+      STACK_MAX = STACK_BASE;
+      // can't call stackRestore() here since this function can be called
+      // synchronously before stackRestore() is declared.
+      Module["asm"]["stackRestore"](STACKTOP);
+#endif
 #if USE_PTHREADS
       // Keep a reference to the compiled module so we can post it to the workers.
       Module['wasmModule'] = module;

@@ -170,9 +170,23 @@ function loadWebAssemblyModule(binary) {
   var exports = {};
   for (var e in instance.exports) {
     var value = instance.exports[e];
+    if (typeof value === 'object') {
+      // a breaking change in the wasm spec, globals are now objects
+      // https://github.com/WebAssembly/mutable-global/issues/1
+      value = value.value;
+    }
     if (typeof value === 'number') {
       // relocate it - modules export the absolute value, they can't relocate before they export
-      value = value + env['memoryBase'];
+#if EMULATED_FUNCTION_POINTERS
+      // it may be a function pointer
+      if (e.substr(0, 3) == 'fp$' && typeof instance.exports[e.substr(3)] === 'function') {
+        value = value + env['tableBase'];
+      } else {
+#endif
+        value = value + env['memoryBase'];
+#if EMULATED_FUNCTION_POINTERS
+      }
+#endif
     }
     exports[e] = value;
   }
@@ -284,7 +298,7 @@ function addFunction(func, sig) {
   throw 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.';
 #else
 #if BINARYEN
-  // we can simply appent to the wasm table
+  // we can simply append to the wasm table
   var table = Module['wasmTable'];
   var ret = table.length;
   table.grow(1);

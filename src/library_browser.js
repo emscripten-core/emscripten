@@ -847,12 +847,6 @@ var LibraryBrowser = {
       delete Browser.wgetRequests[handle];
     };
 
-    // Useful because the browser can limit the number of redirection
-    try {
-      if (http.channel instanceof Ci.nsIHttpChannel)
-      http.channel.redirectionLimit = 0;
-    } catch (ex) { /* whatever */ }
-
     if (_request == "POST") {
       //Send the proper header information along with the request
       http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
@@ -910,12 +904,6 @@ var LibraryBrowser = {
     http.onabort = function http_onabort(e) {
       delete Browser.wgetRequests[handle];
     };
-
-    // Useful because the browser can limit the number of redirection
-    try {
-      if (http.channel instanceof Ci.nsIHttpChannel)
-      http.channel.redirectionLimit = 0;
-    } catch (ex) { /* whatever */ }
 
     if (_request == "POST") {
       //Send the proper header information along with the request

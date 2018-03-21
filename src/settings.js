@@ -62,6 +62,15 @@ var TOTAL_STACK = 5*1024*1024; // The total stack size. There is no way to enlar
 var TOTAL_MEMORY = 16777216;     // The total amount of memory to use. Using more memory than this will
                                  // cause us to expand the heap, which can be costly with typed arrays:
                                  // we need to copy the old heap into a new one in that case.
+var MALLOC = "dlmalloc"; // What malloc()/free() to use, out of
+                         //  * dlmalloc - a powerful general-purpose malloc
+                         //  * emmalloc - a simple and compact malloc designed for emscripten
+                         // dlmalloc is necessary for multithreading, split memory, and other special
+                         // modes, and will be used automatically in those cases.
+                         // In general, if you don't need one of those special modes, and if you don't
+                         // allocate very many small objects, you should use emmalloc since it's
+                         // smaller. Otherwise, if you do allocate many small objects, dlmalloc
+                         // is usually worth the extra size.
 var ABORTING_MALLOC = 1; // If 1, then when malloc would fail we abort(). This is nonstandard behavior,
                          // but makes sense for the web since we have a fixed amount of memory that
                          // must all be allocated up front, and so (a) failing mallocs are much more
@@ -221,12 +230,26 @@ var EMULATED_FUNCTION_POINTERS = 0; // asm.js:
                                     // the plain JS array with a Table. However, Tables have
                                     // some limitations currently, like not being able to
                                     // assign an arbitrary JS method to them, which we have
-                                    // yet to work around. Another limitation is that this
-                                    // cannot yet mix with EMULATE_FUNCTION_POINTER_CASTS.
+                                    // yet to work around.
 var EMULATE_FUNCTION_POINTER_CASTS = 0; // Allows function pointers to be cast, wraps each
                                         // call of an incorrect type with a runtime correction.
                                         // This adds overhead and should not be used normally.
                                         // It also forces ALIASING_FUNCTION_POINTERS to 0.
+                                        // Aside from making calls not fail, this tries to
+                                        // convert values as best it can. In asm.js, this
+                                        // uses doubles as the JS number type, so if you
+                                        // send a double to a parameter accepting an int,
+                                        // it will be |0-d into a (signed) int. In wasm, we
+                                        // have i64s so that is not valid, and instead we
+                                        // use 64 bits to represent values, as if we wrote
+                                        // the sent value to memory and loaded the received
+                                        // type from the same memory (using truncs/extends/
+                                        // reinterprets). This means that when types do not
+                                        // match the emulated values may differ between asm.js
+                                        // and wasm (and native, for that matter - this is all
+                                        // undefined behavior). In any case, both approaches
+                                        // appear good enough to support Python, which is the
+                                        // main use case motivating this feature.
 
 var EXCEPTION_DEBUG = 0; // Print out exceptions in emscriptened code. Does not work in asm.js mode
 
@@ -440,7 +463,7 @@ var INCLUDE_FULL_LIBRARY = 0; // Include all JS library functions instead of the
                               // Note that this only applies to js libraries, *not* C. You
                               // will need the main file to include all needed C libraries.
                               // For example, if a module uses malloc or new, you will
-                              // need to use those in the main file too to pull in dlmalloc
+                              // need to use those in the main file too to pull in malloc
                               // for use by the module.
 
 var SHELL_FILE = 0; // set this to a string to override the shell file used
@@ -561,6 +584,16 @@ var MODULARIZE = 0; // By default we emit all code in a straightforward way into
                     // Note the parentheses - we are calling EXPORT_NAME in order to instantiate
                     // the module. (This allows, in particular, for you to create multiple
                     // instantiations, etc.)
+                    //
+                    // If you add --pre-js or --post-js files, they will be included inside
+                    // the module with the rest of the emitted code. That way, they can be
+                    // optimized together with it. (If you want something outside of the module,
+                    // that is, literally before or after all the code including the extra
+                    // MODULARIZE code, you can do that by modifying the JS yourself after
+                    // emscripten runs. While --pre-js and --post-js happen to do that in
+                    // non-modularize mode, their big feature is that they add code to be
+                    // optimized with the rest of the emitted code, allowing better dead code
+                    // elimination and minification.)
                     //
                     // Modularize also provides a promise-like API,
                     //

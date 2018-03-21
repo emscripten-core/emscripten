@@ -132,7 +132,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
               break
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
-    args = ['-Os']
+    # Without -fno-builtin, LLVM can optimize away or convert calls to library
+    # functions to something else based on assumptions that they behave exactly
+    # like the standard library. This can cause unexpected bugs when we use our
+    # custom standard library. The same for other libc/libm builds.
+    args = ['-Os', '-fno-builtin']
     if shared.Settings.USE_PTHREADS:
       args += ['-s', 'USE_PTHREADS=1']
       assert '-mt' in libname
@@ -196,7 +200,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c',
                  'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c'])
 
-    return build_libc(libname, files, ['-O2'])
+    return build_libc(libname, files, ['-O2', '-fno-builtin'])
 
   # libcxx
   def create_libcxx(libname):
@@ -293,30 +297,59 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     shared.Building.emar('cr', in_temp(libname), o_s)
     return in_temp(libname)
 
-  def dlmalloc_name():
-    ret = 'dlmalloc'
+  # decides which malloc to use, and returns the source for malloc and the full library name
+  def malloc_decision():
+    if shared.Settings.MALLOC == 'dlmalloc':
+      base = 'dlmalloc'
+    elif shared.Settings.MALLOC == 'emmalloc':
+      base = 'emmalloc'
+    else:
+      raise Exception('malloc must be one of "emmalloc", "dlmalloc", see settings.js')
+    # only dlmalloc supports most modes
+    def require_dlmalloc(what):
+      if base != 'dlmalloc':
+        logging.error('only dlmalloc is possible when using %s' % what)
+        import sys
+        sys.exit(1)
+    extra = ''
     if shared.Settings.USE_PTHREADS:
-      ret += '_threadsafe'
+      extra += '_threadsafe'
+      require_dlmalloc('pthreads')
     if shared.Settings.EMSCRIPTEN_TRACING:
-      ret += '_tracing'
+      extra += '_tracing'
+      require_dlmalloc('tracing')
     if shared.Settings.SPLIT_MEMORY:
-      ret += '_split'
-    if shared.Settings.DEBUG_LEVEL:
-      ret += '_debug'
-    return ret
+      extra += '_split'
+      require_dlmalloc('split memory')
+    if shared.Settings.DEBUG_LEVEL >= 3:
+      extra += '_debug'
+    if base == 'dlmalloc':
+      source = 'dlmalloc.c'
+    elif base == 'emmalloc':
+      source = 'emmalloc.cpp'
+    return (source, base + extra)
 
-  def create_dlmalloc(out_name):
+  def malloc_source():
+    return malloc_decision()[0]
+
+  def malloc_name():
+    return malloc_decision()[1]
+
+  def create_malloc(out_name):
     o = in_temp(out_name)
-    cflags = ['-O2']
+    cflags = ['-O2', '-fno-builtin']
     if shared.Settings.USE_PTHREADS:
       cflags += ['-s', 'USE_PTHREADS=1']
     if shared.Settings.EMSCRIPTEN_TRACING:
       cflags += ['--tracing']
     if shared.Settings.SPLIT_MEMORY:
       cflags += ['-DMSPACES', '-DONLY_MSPACES']
-    if shared.Settings.DEBUG_LEVEL:
-      cflags += ['-DDLMALLOC_DEBUG']
-    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-o', o] + cflags)
+    if shared.Settings.DEBUG_LEVEL >= 3:
+      cflags += ['-UNDEBUG', '-DDLMALLOC_DEBUG']
+      # TODO: consider adding -DEMMALLOC_DEBUG, but that is quite slow
+    else:
+      cflags += ['-DNDEBUG']
+    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', malloc_source()), '-o', o] + cflags)
     if shared.Settings.SPLIT_MEMORY:
       split_malloc_o = in_temp('sm' + out_name)
       check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'split_malloc.cpp'), '-o', split_malloc_o, '-O2'])
@@ -340,7 +373,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         '-mthread-model', 'single',
         output_flag,
         shared.path_from_root('system', 'lib', src),
-        '-O2', '-o', o] + musl_internal_includes() + shared.EMSDK_OPTS)
+        '-O2', '-fno-builtin', '-o', o] +
+        musl_internal_includes() +
+        shared.EMSDK_OPTS)
       o_s.append(o)
     run_commands(commands)
     lib = in_temp(libname)
@@ -452,7 +487,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  ('al',            'bc', create_al,          al_symbols,          ['libc'],      False),
                  ('html5',         'bc', create_html5,       html5_symbols,       ['html5'],     False),
                  ('compiler-rt',   'a',  create_compiler_rt, compiler_rt_symbols, ['libc'],      False),
-                 (dlmalloc_name(), 'bc', create_dlmalloc,    [],                  [],            False)]
+                 (malloc_name(),   'bc', create_malloc,      [],                  [],            False)]
 
   if shared.Settings.USE_PTHREADS:
     system_libs += [('libc-mt',        'bc', create_libc,           libc_symbols,     [],       False),
@@ -463,7 +498,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   else:
     system_libs += [('libc', 'bc', create_libc, libc_symbols, [], False)]
 
-  force.add(dlmalloc_name())
+  force.add(malloc_name())
 
   # if building to wasm, we need more math code, since we have less builtins
   if shared.Settings.BINARYEN:
@@ -647,10 +682,9 @@ class Ports(object):
       else:
         names = zipfile.ZipFile(fullname + '.zip', 'r').namelist()
 
-      if not (names[0].startswith(subdir + '/') or names[0].startswith(subdir + '\\')):
-        # current zip file is old, force a retrieve
-        return False
-      return True
+      # check if first entry of the archive is prefixed with the same
+      # tag as we need so no longer download and recompile if so
+      return bool(re.match(subdir + r'(\\|/|$)', names[0]))
 
     def unpack():
       logging.warning('unpacking port: ' + name)

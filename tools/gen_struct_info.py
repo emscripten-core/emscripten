@@ -367,7 +367,7 @@ def inspect_code(headers, cpp_opts, structs, defines):
   src_file = tempfile.mkstemp('.c')
   js_file = tempfile.mkstemp('.js')
   
-  os.write(src_file[0], '\n'.join(code))
+  os.write(src_file[0], shared.asbytes('\n'.join(code)))
   
   # Close all unneeded FDs.
   os.close(src_file[0])

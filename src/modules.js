@@ -396,6 +396,9 @@ function exportRuntime() {
     'makeBigInt',
     'dynCall',
     'getCompilerSetting',
+    'stackSave',
+    'stackRestore',
+    'stackAlloc',
   ];
   if (SUPPORT_BASE64_EMBEDDING) {
     runtimeElements.push('intArrayFromBase64');
