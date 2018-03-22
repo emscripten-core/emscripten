@@ -289,7 +289,13 @@ def eval_ctors_wasm(js, wasm_file, num):
   if debug_info:
     cmd += ['-g']
   shared.logging.debug('wasm ctor cmd: ' + str(cmd))
-  err = shared.run_process(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).stderr
+  proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+  try:
+    err = shared.jsrun.timeout_run(proc, timeout=10, full_output=True, throw_on_failure=False)
+  except Exception as e:
+    if 'Timed out' not in str(e): raise e
+    shared.logging.debug('ctors timed out\n')
+    return 0, js
   num_successful = err.count('success on')
   shared.logging.debug(err)
   if len(ctors) == num_successful:
