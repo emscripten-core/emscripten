@@ -139,8 +139,8 @@ function loadWebAssemblyModule(binary) {
     global: {
       'NaN': NaN,
       'Infinity': Infinity,
-      'Math': Math
     },
+    'global.Math': Math,
     env: env
   };
 #if ASSERTIONS
