@@ -403,7 +403,7 @@ class benchmark(RunnerCore):
       b.bench(args, output_parser, reps)
       b.display(benchmarkers[0])
 
-  def test_primes(self):
+  def test_primes(self, check=True):
     src = r'''
       #include <stdio.h>
       #include <math.h>
@@ -416,7 +416,11 @@ class benchmark(RunnerCore):
           case 3: arg = 220000; break;
           case 4: arg = 610000; break;
           case 5: arg = 1010000; break;
-          default: printf("error: %d\\n", arg); return -1;
+          default:
+#ifdef CHECK
+            printf("error: %d\\n", arg);
+#endif
+            return -1;
         }
 
         int primes = 0, curri = 2;
@@ -433,11 +437,18 @@ class benchmark(RunnerCore):
           }
           curri++;
         }
+#ifdef CHECK
         printf("lastprime: %d.\n", curri-1);
+#endif
         return 0;
       }
     '''
-    self.do_benchmark('primes', src, 'lastprime:')
+    self.do_benchmark('primes' if check else 'primes-nocheck', src, 'lastprime:' if check else '', shared_args=['-DCHECK'] if check else [])
+
+  # Also interesting to test it without the printfs which allow checking the output. Without
+  # printf, code size is dominated by the runtime itself (the compiled code is just a few lines).
+  def test_primes_nocheck(self):
+    self.test_primes(check=False)
 
   def test_memops(self):
     src = '''
