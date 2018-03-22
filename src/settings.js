@@ -910,9 +910,9 @@ var SINGLE_FILE = 0; // If set to 1, embeds all subresources in the emitted file
                      // Content Security Policy, or your CSP header doesn't include either
                      // script-src or child-src, then you can safely ignore this warning.
 
-var WASM_TEXT_FILE = ''; // name of the file containing wasm text, if relevant
-var WASM_BINARY_FILE = ''; // name of the file containing wasm binary, if relevant
-var ASMJS_CODE_FILE = ''; // name of the file containing asm.js, if relevant
+var WASM_TEXT_FILE = ''; // For internal use only (name of the file containing wasm text, if relevant).
+var WASM_BINARY_FILE = ''; // For internal use only (name of the file containing wasm binary, if relevant).
+var ASMJS_CODE_FILE = ''; // For internal use only (name of the file containing asm.js, if relevant).
 var SOURCE_MAP_BASE = ''; // Base URL the source mapfile, if relevant
 
 var MEM_INIT_IN_WASM = 0; // for internal use only
