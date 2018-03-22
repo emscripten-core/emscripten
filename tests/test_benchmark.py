@@ -143,8 +143,8 @@ class EmscriptenBenchmarker(Benchmarker):
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.filename = filename
     llvm_root = self.env.get('LLVM') or LLVM_ROOT
-    if lib_builder: emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=self.env)
-
+    if lib_builder:
+      emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=self.env.copy())
     open('hardcode.py', 'w').write('''
 def process(filename):
   js = open(filename).read()
@@ -217,7 +217,7 @@ class CheerpBenchmarker(Benchmarker):
         volatile charStarStar argv;
         argv[0] = "./cheerp.exe";
         argv[1] = "%(arg)s";
-        main(%(main_args)s);
+        volatile int exit_code = main(%(main_args)s);
       }
     ''' % {
       'arg': args[-1],
@@ -225,8 +225,10 @@ class CheerpBenchmarker(Benchmarker):
       'main_args': main_args
     })
     cheerp_args = [
-      '-target', 'cheerp', '-cheerp-mode=wasm',
+      '-target', 'cheerp',
+      '-cheerp-mode=wasm'
     ]
+    cheerp_args += self.args
     self.parent = parent
     if lib_builder:
       # build as "native" (so no emcc env stuff), but with all the cheerp stuff
@@ -239,8 +241,8 @@ class CheerpBenchmarker(Benchmarker):
         'NM': CHEERP_BIN + 'llvm-nm',
         'LDSHARED': CHEERP_BIN + 'clang',
         'RANLIB': CHEERP_BIN + 'llvm-ranlib',
-        'CFLAGS': '-target cheerp -cheerp-mode=wasm',
-        'CXXFLAGS': '-target cheerp -cheerp-mode=wasm',
+        'CFLAGS': ' '.join(cheerp_args),
+        'CXXFLAGS': ' '.join(cheerp_args),
       })
     final = os.path.dirname(filename) + os.path.sep + 'cheerp_' + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
