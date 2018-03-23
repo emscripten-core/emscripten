@@ -2415,7 +2415,7 @@ done.
 
     # full demangle support
 
-    Popen([PYTHON, EMCC, 'src.cpp', '-s', 'DEMANGLE_SUPPORT=1']).communicate()
+    run_process([PYTHON, EMCC, 'src.cpp', '-s', 'DEMANGLE_SUPPORT=1'])
     output = run_js('a.out.js')
     self.assertContained('''operator new(unsigned int)
 _main
@@ -2436,8 +2436,10 @@ FWakaGLXFleeflsMarfoo::FWakaGLXFleeflsMarfoo(unsigned int, unsigned int, unsigne
 void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::OR>(unsigned int const*, unsigned int)
 ''', output)
     # test for multiple functions in one stack trace
-    assert 'one(int)' in output
-    assert 'two(char)' in output
+    run_process([PYTHON, EMCC, 'src.cpp', '-s', 'DEMANGLE_SUPPORT=1', '-g'])
+    output = run_js('a.out.js')
+    assert 'one(int)' in output, out
+    assert 'two(char)' in output, out
 
   def test_demangle_cpp(self):
     open('src.cpp', 'w').write('''
