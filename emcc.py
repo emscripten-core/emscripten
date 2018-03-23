@@ -1213,6 +1213,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # for simplicity, we always have a mem init file, which may also be imported into the wasm module.
         #  * if we also supported js mem inits we'd have 4 modes
         #  * and js mem inits are useful for avoiding a side file, but the wasm module avoids that anyhow
+        if 'MEM_INIT_METHOD' in settings_changes:
+          logging.error('Mem init method selection is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
+          sys.exit(1)
         options.memory_init_file = True
         # async compilation requires wasm-only mode, and also not interpreting (the interpreter needs sync input)
         if shared.Settings.BINARYEN_ASYNC_COMPILATION == 1 and shared.Building.is_wasm_only() and 'interpret' not in shared.Settings.BINARYEN_METHOD:
@@ -1744,7 +1747,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if DEBUG:
             # Copy into temp dir as well, so can be run there too
             shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
-          if not shared.Settings.WASM or 'asmjs' in shared.Settings.BINARYEN_METHOD or 'interpret-asm2wasm' in shared.Settings.BINARYEN_METHOD:
+          if not shared.Settings.WASM or not shared.Settings.MEM_INIT_IN_WASM:
             return 'memoryInitializer = "%s";' % shared.JS.get_subresource_location(memfile, embed_memfile(options))
           else:
             return ''
@@ -2381,12 +2384,11 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       logging.debug('wasm-as (text => binary): ' + ' '.join(cmd))
       subprocess.check_call(cmd)
     if import_mem_init:
-      # remove and forget about the mem init file in later processing; it does not need to be prefetched in the html, etc.
+      # remove the mem init file in later processing; it does not need to be prefetched in the html, etc.
       if DEBUG:
         safe_move(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
       else:
         os.unlink(memfile)
-      options.memory_init_file = False
     log_time('asm2wasm')
   if shared.Settings.BINARYEN_PASSES:
     shutil.move(wasm_binary_target, wasm_binary_target + '.pre')
@@ -2568,7 +2570,7 @@ def generate_html(target, options, js_target, target_basename,
           emterpretXHR.send(null);
 ''' % (shared.JS.get_subresource_location(shared.Settings.EMTERPRETIFY_FILE), script.inline)
 
-    if options.memory_init_file:
+    if options.memory_init_file and not shared.Settings.MEM_INIT_IN_WASM:
       # start to load the memory init file in the HTML, in parallel with the JS
       script.un_src()
       script.inline = ('''
