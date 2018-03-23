@@ -3467,6 +3467,16 @@ window.close = function() {
   def test_pthread_clock_drift(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_clock_drift.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
+  # Tests that when using a .mem memory initializer file with .wasm, that it will get applied before main() is run
+  def test_mem_init_file_with_wasm(self):
+    for args in [
+      ['-s', 'USE_PTHREADS=1'],
+      ['--memory-init-file', '1', '-s', 'MEM_INIT_IN_WASM=0'],
+#      ['--memory-init-file', '1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'] # XXX TODO Enable when PR #6189 lands
+    ]:
+      print(str(args))
+      self.btest(path_from_root('tests', 'test_mem_init_file_with_wasm.c'), expected='1', args=args + ['-s', 'WASM=1'])
+
   # test atomicrmw i64
   def test_atomicrmw_i64(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'atomicrmw_i64.ll'), '-s', 'USE_PTHREADS=1', '-s', 'IN_TEST_HARNESS=1', '-o', 'test.html']).communicate()

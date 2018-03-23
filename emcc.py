@@ -1243,9 +1243,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
         # we will include the mem init data in the wasm, when we don't need the
         # mem init file to be loadable by itself
-        shared.Settings.MEM_INIT_IN_WASM = 'asmjs' not in shared.Settings.BINARYEN_METHOD and \
-                                           'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD and \
-                                           not shared.Settings.USE_PTHREADS
+        if shared.Settings.MEM_INIT_IN_WASM == -1:
+          shared.Settings.MEM_INIT_IN_WASM = 'asmjs' not in shared.Settings.BINARYEN_METHOD and \
+                                             'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD and \
+                                             not shared.Settings.USE_PTHREADS
 
       # wasm outputs are only possible with a side wasm
       if target.endswith(WASM_ENDINGS):
@@ -1739,7 +1740,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if DEBUG:
             # Copy into temp dir as well, so can be run there too
             shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
-          if not shared.Settings.BINARYEN or 'asmjs' in shared.Settings.BINARYEN_METHOD or 'interpret-asm2wasm' in shared.Settings.BINARYEN_METHOD:
+          if not shared.Settings.BINARYEN or 'asmjs' in shared.Settings.BINARYEN_METHOD or 'interpret-asm2wasm' in shared.Settings.BINARYEN_METHOD or (shared.Settings.BINARYEN and not shared.Settings.MEM_INIT_IN_WASM):
             return 'memoryInitializer = "%s";' % shared.JS.get_subresource_location(memfile, embed_memfile(options))
           else:
             return ''
