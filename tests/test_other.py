@@ -4904,7 +4904,7 @@ main(const int argc, const char * const * const argv)
     test(['-o', 'c.html'], True)
     test(['-c'], False)
 
-  def test_dash_g(self):
+  def test_js_dash_g(self):
     open('src.c', 'w').write('''
       #include <stdio.h>
       #include <assert.h>
@@ -4929,15 +4929,15 @@ main(const int argc, const char * const * const argv)
       assert found_line_num == has, 'Must have debug info with the line number'
       assert found_filename == has, 'Must have debug info with the filename'
 
-    Popen([PYTHON, EMCC, 'src.c', '-g']).communicate()
+    Popen([PYTHON, EMCC, '-s', 'WASM=0', 'src.c', '-g']).communicate()
     check(True)
-    Popen([PYTHON, EMCC, 'src.c']).communicate()
+    Popen([PYTHON, EMCC, '-s', 'WASM=0', 'src.c']).communicate()
     check(False)
-    Popen([PYTHON, EMCC, 'src.c', '-g0']).communicate()
+    Popen([PYTHON, EMCC, '-s', 'WASM=0', 'src.c', '-g0']).communicate()
     check(False)
-    Popen([PYTHON, EMCC, 'src.c', '-g0', '-g']).communicate() # later one overrides
+    Popen([PYTHON, EMCC, '-s', 'WASM=0', 'src.c', '-g0', '-g']).communicate() # later one overrides
     check(True)
-    Popen([PYTHON, EMCC, 'src.c', '-g', '-g0']).communicate() # later one overrides
+    Popen([PYTHON, EMCC, '-s', 'WASM=0', 'src.c', '-g', '-g0']).communicate() # later one overrides
     check(False)
 
   def test_dash_g_bc(self):
