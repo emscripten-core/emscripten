@@ -700,7 +700,7 @@ f.close()
 
   def test_asm_minify(self):
     def test(args):
-      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop_malloc.cpp')] + args).communicate()
+      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop_malloc.cpp'), '-s', 'WASM=0'] + args).communicate()
       self.assertContained('hello, world!', run_js(self.in_dir('a.out.js')))
       return open(self.in_dir('a.out.js')).read()
 
