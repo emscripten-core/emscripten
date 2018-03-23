@@ -7578,7 +7578,7 @@ int main() {
       (['-s', 'BINARYEN_METHOD="native-wasm,asmjs"'], True)
     ]:
       with temp_directory() as temp_dir:
-        cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-o', os.path.join(temp_dir, 'a.js')] + args
+        cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join(temp_dir, 'a.js')] + args
         print(' '.join(cmd))
         subprocess.check_call(cmd)
         assert os.path.exists(os.path.join(temp_dir, 'a.asm.js')) == output_asmjs
@@ -7586,12 +7586,12 @@ int main() {
 
     # Test that outputting to .wasm does not nuke an existing .asm.js file, if user wants to manually dual-deploy both to same directory.
     with temp_directory() as temp_dir:
-      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join(temp_dir, 'a.js'), '--separate-asm']
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=0', '-o', os.path.join(temp_dir, 'a.js'), '--separate-asm']
       print(' '.join(cmd))
       subprocess.check_call(cmd)
       assert os.path.exists(os.path.join(temp_dir, 'a.asm.js'))
 
-      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join(temp_dir, 'a.js'), '-s', 'WASM=1']
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=0', '-o', os.path.join(temp_dir, 'a.js'), '-s', 'WASM=1']
       print(' '.join(cmd))
       subprocess.check_call(cmd)
       assert os.path.exists(os.path.join(temp_dir, 'a.asm.js'))
