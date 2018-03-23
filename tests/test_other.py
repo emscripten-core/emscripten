@@ -2093,21 +2093,19 @@ int f() {
 
     try:
       os.environ['EMCC_DEBUG'] = '1'
-      for args, expect_llvm, expect_js in [
-          (['-O0'], False, True),
-          (['-O0', '-g'], True, True),
-          (['-O0', '-g4'], True, True),
-          (['-O1'], False, True),
-          (['-O1', '-g'], True, True),
-          (['-O2'], False, False),
-          (['-O2', '-g'], False, True), # drop llvm debug info as js opts kill it anyway
-          (['-O2', '-g4'], True, True), # drop llvm debug info as js opts kill it anyway
+      for args, expect_llvm in [
+          (['-O0'], False),
+          (['-O0', '-g'], True),
+          (['-O0', '-g4'], True),
+          (['-O1'], False),
+          (['-O1', '-g'], True),
+          (['-O2'], False),
+          (['-O2', '-g'], True),
         ]:
-        print(args, expect_llvm, expect_js)
+        print(args, expect_llvm)
         with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
           err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
-        assert expect_llvm == ('strip-debug' not in err)
-        assert expect_js == ('registerize' not in err)
+        assert expect_llvm == ('strip-debug' not in err), err
     finally:
       del os.environ['EMCC_DEBUG']
 
