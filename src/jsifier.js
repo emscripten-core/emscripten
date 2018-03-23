@@ -432,7 +432,10 @@ function JSify(data, functionsOnly) {
           print('STATIC_BASE = GLOBAL_BASE;\n');
           print('STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
         } else {
-          print('gb = alignMemory(getMemory({{{ STATIC_BUMP }}}, ' + MAX_GLOBAL_ALIGN + ' || 1));\n');
+          print('gb = alignMemory(getMemory({{{ STATIC_BUMP }}}), ' + MAX_GLOBAL_ALIGN + ' || 1);\n');
+          // Ideally, for efficiency, this would only zero memory after the static initialized
+          // data, but we don't know the size of that here.
+          print('for (let i = gb; i < gb + {{{ STATIC_BUMP }}}; ++i) HEAP8[i] = 0;\n');
           print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n'); // comment as metadata only
         }
         if (BINARYEN) {
@@ -618,4 +621,3 @@ function JSify(data, functionsOnly) {
   dprint('framework', 'Big picture: Finishing JSifier, main pass=' + mainPass);
   //B.stop('jsifier');
 }
-
