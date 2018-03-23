@@ -6226,7 +6226,7 @@ int main() {
                            # last warning flag should "win"
                            (['-O1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-Wno-almost-asm', '-Walmost-asm'], True)]:
       print(args, expected)
-      err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')] + args, stderr=PIPE).stderr
+      err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=0'] + args, stderr=PIPE).stderr
       assert (warning in err) == expected, err
       if not expected:
         assert err == '', err
