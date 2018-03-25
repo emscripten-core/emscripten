@@ -348,18 +348,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       trans_file = open(trans, 'w')
       trans_file.write('''
 import sys
-f = open(sys.argv[1], 'w')
+f = open(sys.argv[1], 'a')
 f.write('transformed!')
 f.close()
 ''')
       trans_file.close()
       output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world' + suffix), '--js-transform', '%s t.py' % (PYTHON)], stdout=PIPE, stderr=PIPE).communicate()
-      assert open('a.out.js').read() == 'transformed!', 'Transformed output must be as expected'
+      assert 'transformed!' in open('a.out.js').read(), 'Transformed output must be as expected'
 
       for opts in [0, 1, 2, 3]:
         print('mem init in', opts)
         self.clear()
-        output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world.c'), '-O' + str(opts)], stdout=PIPE, stderr=PIPE).communicate()
+        output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=0', '-O' + str(opts)], stdout=PIPE, stderr=PIPE).communicate()
         assert os.path.exists('a.out.js.mem') == (opts >= 2), 'mem file should exist in -O2+'
 
   def test_emcc_asm_v_wasm(self):
