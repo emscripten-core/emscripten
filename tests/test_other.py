@@ -261,7 +261,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             if opt_level == 0 or '-g' in params: assert 'function _main() {' in generated or 'function _main(){' in generated, 'Should be unminified'
             elif opt_level >= 2: assert ('function _main(){' in generated or '"use asm";var a=' in generated), 'Should be whitespace-minified'
 
-      # emcc -s INLINING_LIMIT=0 src.cpp ==> should pass -s to emscripten.py.
+      # asm.js optimization levels
       for params, test, text in [
         (['-O2'], lambda generated: 'function addRunDependency' in generated, 'shell has unminified utilities'),
         (['-O2', '--closure', '1'], lambda generated: 'function addRunDependency' not in generated and ';function' in generated, 'closure minifies the shell, removes whitespace'),
@@ -291,7 +291,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       ]:
         print(params, text)
         self.clear()
-        output = run_process([PYTHON, compiler, path_from_root('tests', 'hello_world_loop.cpp'), '-o', 'a.out.js'] + params, stdout=PIPE, stderr=PIPE)
+        output = run_process([PYTHON, compiler, path_from_root('tests', 'hello_world_loop.cpp'), '-o', 'a.out.js', '-s', 'WASM=0'] + params, stdout=PIPE, stderr=PIPE)
         assert len(output.stdout) == 0, output.stdout
         assert os.path.exists('a.out.js'), output.stdout + '\n' + output.stderr
         self.assertContained('hello, world!', run_js('a.out.js'))
