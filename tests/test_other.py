@@ -207,6 +207,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         (['-o', 'something.bc', '-O2'], 2, ['-O2'], 0, 0),
         (['-o', 'something.bc', '-O3'], 3, ['-O3'], 0, 0),
         (['-O1', '-o', 'something.bc'], 1, [], 0, 0),
+        # non-wasm
+        (['-s', 'WASM=0', '-o', 'something.js'],                          0, None, 0, 1),
+        (['-s', 'WASM=0', '-o', 'something.js', '-O0'],                   0, None, 0, 0),
+        (['-s', 'WASM=0', '-o', 'something.js', '-O1'],                   1, None, 0, 0),
+        (['-s', 'WASM=0', '-o', 'something.js', '-O1', '-g'],             1, None, 0, 0), # no closure since debug
+        (['-s', 'WASM=0', '-o', 'something.js', '-O2'],                   2, None, 0, 1),
+        (['-s', 'WASM=0', '-o', 'something.js', '-O2', '-g'],             2, None, 0, 0),
+        (['-s', 'WASM=0', '-o', 'something.js', '-Os'],                   2, None, 0, 1),
+        (['-s', 'WASM=0', '-o', 'something.js', '-O3'],                   3, None, 0, 1),
+        # and, test compiling to bitcode first
+        (['-s', 'WASM=0', '-o', 'something.bc'],        0, ['-s', 'WASM=0'],        0, 0),
+        (['-s', 'WASM=0', '-o', 'something.bc', '-O0'], 0, ['-s', 'WASM=0'],        0, 0),
+        (['-s', 'WASM=0', '-o', 'something.bc', '-O1'], 1, ['-s', 'WASM=0', '-O1'], 0, 0),
+        (['-s', 'WASM=0', '-o', 'something.bc', '-O2'], 2, ['-s', 'WASM=0', '-O2'], 0, 0),
+        (['-s', 'WASM=0', '-o', 'something.bc', '-O3'], 3, ['-s', 'WASM=0', '-O3'], 0, 0),
+        (['-s', 'WASM=0', '-O1', '-o', 'something.bc'], 1, ['-s', 'WASM=0'],        0, 0),
       ]:
         print(params, opt_level, bc_params, closure, has_malloc)
         self.clear()
@@ -239,11 +255,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if keep_debug:
             assert ('switch (label)' in generated or 'switch (label | 0)' in generated) == (opt_level <= 0), 'relooping should be in opt >= 1'
             assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
-            assert '$i' in generated or '$storemerge' in generated or '$original' in generated, 'micro opts should always be on'
-          if opt_level >= 2 and '-g' in params:
-            assert re.search('HEAP8\[\$?\w+ ?\+ ?\(+\$?\w+ ?', generated) or re.search('HEAP8\[HEAP32\[', generated) or re.search('[i$]\d+ & ~\(1 << [i$]\d+\)', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
-          if opt_level == 0 or '-g' in params: assert 'function _main() {' in generated or 'function _main(){' in generated, 'Should be unminified'
-          elif opt_level >= 2: assert ('function _main(){' in generated or '"use asm";var a=' in generated), 'Should be whitespace-minified'
+          if 'WASM=0' in params:
+            if opt_level >= 2 and '-g' in params:
+              assert re.search('HEAP8\[\$?\w+ ?\+ ?\(+\$?\w+ ?', generated) or re.search('HEAP8\[HEAP32\[', generated) or re.search('[i$]\d+ & ~\(1 << [i$]\d+\)', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
+            if opt_level == 0 or '-g' in params: assert 'function _main() {' in generated or 'function _main(){' in generated, 'Should be unminified'
+            elif opt_level >= 2: assert ('function _main(){' in generated or '"use asm";var a=' in generated), 'Should be whitespace-minified'
 
       # emcc -s INLINING_LIMIT=0 src.cpp ==> should pass -s to emscripten.py.
       for params, test, text in [
