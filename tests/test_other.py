@@ -3170,7 +3170,7 @@ int main() {
           abort();
         }
       ''')
-    subprocess.check_call([PYTHON, EMCC, 'src.c'])
+    subprocess.check_call([PYTHON, EMCC, 'src.c', '-s', 'BINARYEN_ASYNC_COMPILATION=0'])
     add_on_abort_and_verify()
 
     # test direct abort() JS call
@@ -3182,7 +3182,7 @@ int main() {
           EM_ASM({ abort() });
         }
       ''')
-    subprocess.check_call([PYTHON, EMCC, 'src.c'])
+    subprocess.check_call([PYTHON, EMCC, 'src.c', '-s', 'BINARYEN_ASYNC_COMPILATION=0'])
     add_on_abort_and_verify()
 
     # test throwing in an abort handler, and catching that
@@ -3203,7 +3203,7 @@ int main() {
           });
         }
       ''')
-    subprocess.check_call([PYTHON, EMCC, 'src.c'])
+    subprocess.check_call([PYTHON, EMCC, 'src.c', '-s', 'BINARYEN_ASYNC_COMPILATION=0'])
     with open('a.out.js') as f:
       js = f.read()
     with open('a.out.js', 'w') as f:
