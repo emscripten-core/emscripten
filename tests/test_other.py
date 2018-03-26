@@ -3884,16 +3884,18 @@ int main(int argc, char **argv) {
     for code in [0, 123]:
       for no_exit in [0, 1]:
         for call_exit in [0, 1]:
-          subprocess.check_call([PYTHON, EMCC, 'src.cpp', '-DCODE=%d' % code, '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-DCALL_EXIT=%d' % call_exit])
-          for engine in JS_ENGINES:
-            print(code, no_exit, call_exit, engine)
-            process = run_process(engine + ['a.out.js'], stdout=PIPE, stderr=PIPE, check=False)
-            # we always emit the right exit code, whether we exit the runtime or not
-            assert process.returncode == code, [process.returncode, process.stdout, process.stderr]
-            assert not process.stdout, process.stdout
-            if not call_exit:
-              assert not process.stderr, process.stderr
-            assert ('but NO_EXIT_RUNTIME is set, so halting execution but not exiting the runtime or preventing further async execution (build with NO_EXIT_RUNTIME=0, if you want a true shutdown)' in process.stderr) == (no_exit and call_exit), process.stderr
+          for async in [0, 1]:
+            subprocess.check_call([PYTHON, EMCC, 'src.cpp', '-DCODE=%d' % code, '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-DCALL_EXIT=%d' % call_exit, '-s', 'BINARYEN_ASYNC_COMPILATION=%d' % async])
+            for engine in JS_ENGINES:
+              if async and engine == V8_ENGINE: continue # async compilation can't return a code in d8
+              print(code, no_exit, call_exit, async, engine)
+              process = run_process(engine + ['a.out.js'], stdout=PIPE, stderr=PIPE, check=False)
+              # we always emit the right exit code, whether we exit the runtime or not
+              assert process.returncode == code, [process.returncode, process.stdout, process.stderr]
+              assert not process.stdout, process.stdout
+              if not call_exit:
+                assert not process.stderr, process.stderr
+              assert ('but NO_EXIT_RUNTIME is set, so halting execution but not exiting the runtime or preventing further async execution (build with NO_EXIT_RUNTIME=0, if you want a true shutdown)' in process.stderr) == (no_exit and call_exit), process.stderr
 
   def test_emscripten_force_exit_NO_EXIT_RUNTIME(self):
     open('src.cpp', 'w').write(r'''
