@@ -189,6 +189,8 @@ var OUTLINING_LIMIT = 0; // A function size above which we try to automatically 
                          // (outlining itself makes code less optimized, and requires
                          // emscripten to disable some passes that are incompatible with
                          // it).
+                         // Note: For wasm there is usually no need to set OUTLINING_LIMIT,
+                         //       as VMs can handle large functions well anyhow.
 
 var AGGRESSIVE_VARIABLE_ELIMINATION = 0; // Run aggressiveVariableElimination in js-optimizer.js
 var SIMPLIFY_IFS = 1; // Whether to simplify ifs in js-optimizer.js
