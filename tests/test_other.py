@@ -4396,7 +4396,7 @@ int main()
     try:
       os.environ['EMCC_FORCE_STDLIBS'] = 'libc,libcxxabi,libcxx'
       os.environ['EMCC_ONLY_FORCED_STDLIBS'] = '1'
-      Popen([PYTHON, EMXX, 'src.cpp']).communicate()
+      Popen([PYTHON, EMXX, 'src.cpp', '-s', 'DISABLE_EXCEPTION_CATCHING=0']).communicate()
       self.assertContained('Caught exception: std::exception', run_js('a.out.js', stderr=PIPE))
     finally:
       del os.environ['EMCC_FORCE_STDLIBS']
@@ -4833,7 +4833,7 @@ main(const int argc, const char * const * const argv)
   }
 }
     ''')
-    Popen([PYTHON, EMCC, 'src.cpp', '-s', 'NO_EXIT_RUNTIME=0']).communicate()
+    Popen([PYTHON, EMCC, 'src.cpp', '-s', 'NO_EXIT_RUNTIME=0', '-s', 'DISABLE_EXCEPTION_CATCHING=0']).communicate()
     self.assertContained('Constructed locale "C"\nThis locale is the global locale.\nThis locale is the C locale.', run_js('a.out.js', args=['C']))
     self.assertContained('''Can't construct locale "waka": collate_byname<char>::collate_byname failed to construct for waka''', run_js('a.out.js', args=['waka'], assert_returncode=1))
 
