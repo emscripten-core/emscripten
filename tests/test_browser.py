@@ -2538,7 +2538,9 @@ int main() {
 
   @requires_hardware
   def test_glfw3(self):
-    self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3', '-lglfw', '-lGL'], expected='1')
+    for opts in [[], ['-Os', '--closure', '1']]:
+      print(opts)
+      self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3', '-lglfw', '-lGL'] + opts, expected='1')
 
   @requires_hardware
   def test_glfw_events(self):
