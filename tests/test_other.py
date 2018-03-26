@@ -7437,7 +7437,8 @@ int main() {
     try_delete('test.bc')
 
   def test_output_eol(self):
-    for params in [[], ['--separate-asm'], ['--proxy-to-worker'], ['--proxy-to-worker', '--separate-asm']]:
+    # --separate-asm only makes sense without wasm (no asm.js with wasm)
+    for params in [[], ['--separate-asm', '-s', 'WASM=0'], ['--proxy-to-worker'], ['--proxy-to-worker', '--separate-asm', '-s', 'WASM=0']]:
       for output_suffix in ['html', 'js']:
         for eol in ['windows', 'linux']:
           files = ['a.js']
@@ -7445,7 +7446,7 @@ int main() {
           if output_suffix == 'html': files += ['a.html']
           cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a.' + output_suffix, '--output_eol', eol] + params
           print(cmd)
-          Popen(cmd).communicate()
+          run_process(cmd)
           for f in files:
             print(str(cmd) + ' ' + str(params) + ' ' + eol + ' ' + f)
             assert os.path.isfile(f)
