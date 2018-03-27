@@ -473,7 +473,7 @@ var LibraryGLFW = {
 
       if (event.target != Module["canvas"]) return;
 
-      eventButton = GLFW.DOMToGLFWMouseButton(event);
+      var eventButton = GLFW.DOMToGLFWMouseButton(event);
 
       if (status == 1) { // GLFW_PRESS
         GLFW.active.buttons |= (1 << eventButton);
@@ -1040,7 +1040,7 @@ var LibraryGLFW = {
     },
 
     GLFW2ParamToGLFW3Param: function(param) {
-      table = {
+      var table = {
         0x00030001:0, // GLFW_MOUSE_CURSOR
         0x00030002:0, // GLFW_STICKY_KEYS
         0x00030003:0, // GLFW_STICKY_MOUSE_BUTTONS

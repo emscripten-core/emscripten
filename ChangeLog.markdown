@@ -10,6 +10,8 @@ Not all changes are documented here. In particular, new features, user-oriented 
 Current Trunk
 -------------
 
+ - Breaking change: Simplify exception handling, disabling it by default. Previously it was disabled by default in -O1 and above and enabled in -O0, which could be confusing. You may notice this change if you need exceptions and only run in -O0 (since if you test in -O1 or above, you'd see you need to enable exceptions manually), in which case you will receive an error at runtime saying that exceptions are disabled by default and that you should build with -s DISABLE_EXCEPTION_CATCHING=0 to enable them.
+
 v1.37.36: 03/13/2018
 --------------------
 

@@ -190,6 +190,8 @@ var OUTLINING_LIMIT = 0; // A function size above which we try to automatically 
                          // (outlining itself makes code less optimized, and requires
                          // emscripten to disable some passes that are incompatible with
                          // it).
+                         // Note: For wasm there is usually no need to set OUTLINING_LIMIT,
+                         //       as VMs can handle large functions well anyhow.
 
 var AGGRESSIVE_VARIABLE_ELIMINATION = 0; // Run aggressiveVariableElimination in js-optimizer.js
 var SIMPLIFY_IFS = 1; // Whether to simplify ifs in js-optimizer.js
@@ -325,18 +327,18 @@ var LZ4 = 0; // Enable this to support lz4-compressed file packages. They are st
              //     preloadPlugin stuff, etc.
              //   * LZ4 files are read-only.
 
-var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catch exceptions. If the code you
-                                    // are compiling does not actually rely on catching exceptions (but the
-                                    // compiler generates code for it, maybe because of stdlibc++ stuff),
-                                    // then this can make it much faster. If an exception actually happens,
-                                    // it will not be caught and the program will halt (so this will not
-                                    // introduce silent failures, which is good).
+var DISABLE_EXCEPTION_CATCHING = 1; // Disables generating code to actually catch exceptions. This disabling is on
+                                    // by default as the overhead of exceptions is quite high in size and speed
+                                    // currently (in the future, wasm should improve that). When exceptions are
+                                    // disabled, if an exception actually happens then it will not be caught
+                                    // and the program will halt (so this will not introduce silent failures).
+                                    // There are 3 specific modes here:
                                     // DISABLE_EXCEPTION_CATCHING = 0 - generate code to actually catch exceptions
                                     // DISABLE_EXCEPTION_CATCHING = 1 - disable exception catching at all
                                     // DISABLE_EXCEPTION_CATCHING = 2 - disable exception catching, but enables
-                                    // catching in whitelist
+                                    //                                  catching in whitelist
                                     // XXX note that this removes *catching* of exceptions, which is the main
-                                    //     issue for speed, but for code size you need to build with
+                                    //     issue for speed, but you should build source files with
                                     //     -fno-exceptions to really get rid of all exceptions code overhead,
                                     //     as it may contain thrown exceptions that are never caught (e.g.
                                     //     just using std::vector can have that). -fno-rtti may help as well.
