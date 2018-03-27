@@ -4479,6 +4479,10 @@ int main()
     Popen([PYTHON, EMCC, 'src.cpp']).communicate()
     self.assertContained('ok!', run_js('a.out.js'))
 
+  def test_strptime_symmetry(self):
+    Building.emcc(path_from_root('tests','strptime_symmetry.cpp'), output_filename='a.out.js')
+    self.assertContained('TEST PASSED', run_js('a.out.js'))    
+
   def test_truncate_from_0(self):
     open('src.cpp', 'w').write(r'''
 #include <cerrno>
