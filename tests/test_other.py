@@ -7176,17 +7176,23 @@ int main() {
         });
       }
 ''')
-    # use SINGLE_FILE since we don't want to depend on loading a side .wasm file on the environment in this test
+    # use SINGLE_FILE since we don't want to depend on loading a side .wasm file on the environment in this test;
+    # with the wrong env we have very odd failures
     check_execute([PYTHON, EMCC, 'main.cpp', '-s', 'SINGLE_FILE=1'])
     src = open('a.out.js').read()
     envs = ['WEB', 'WORKER', 'NODE', 'SHELL']
     for env in envs:
-      curr = 'var Module = { ENVIRONMENT: "%s" };\n' % env
-      open('test.js', 'w').write(curr + src)
       for engine in JS_ENGINES:
         if engine == V8_ENGINE: continue # ban v8, weird failures
         actual = 'NODE' if engine == NODE_JS else 'SHELL'
         print(env, actual, engine)
+        module = { 'ENVIRONMENT': env }
+        if env != actual:
+          # avoid problems with arguments detection, which may cause very odd failures with the wrong environment code
+          module['arguments'] = []
+        curr = 'var Module = %s;\n' % str(module)
+        print('    ' + curr)
+        open('test.js', 'w').write(curr + src)
         fail = False
         try:
           seen = run_js('test.js', engine=engine, stderr=PIPE)
