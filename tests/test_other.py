@@ -1465,7 +1465,7 @@ int f() {
 
     # Sanity check: the symbol should not be linked in if not requested.
     Popen([PYTHON, EMCC, 'main.c', '-L.', '-lexport']).communicate()
-    assert not self.self.is_exported_in_wasm(full_export_name, 'a.out.wasm')
+    assert not self.is_exported_in_wasm(full_export_name, 'a.out.wasm')
 
     # Sanity check: exporting without a definition does not cause it to appear.
     # Note: exporting main prevents emcc from warning that it generated no code.
