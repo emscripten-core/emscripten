@@ -1262,6 +1262,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.SIDE_MODULE and target.endswith('.js'):
           logging.warning('output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
 
+        if options.separate_asm:
+          logging.error('cannot --separate-asm when emitting wasm, since not emitting asm.js')
+          sys.exit(1)
+
       # wasm outputs are only possible with a side wasm
       if target.endswith(WASM_ENDINGS):
         if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
