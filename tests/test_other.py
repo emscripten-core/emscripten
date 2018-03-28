@@ -8108,6 +8108,8 @@ int main() {
         if asmjs_fallback_enabled:
           method += ',asmjs'
         cmd += ['-s', 'WASM=1', '-s', "BINARYEN_METHOD='" + method + "'"]
+      else:
+        cmd += ['-s', 'WASM=0']
 
       print(' '.join(cmd))
       self.clear()
