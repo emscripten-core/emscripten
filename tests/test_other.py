@@ -7176,7 +7176,8 @@ int main() {
         });
       }
 ''')
-    check_execute([PYTHON, EMCC, 'main.cpp'])
+    # use SINGLE_FILE since we don't want to depend on loading a side .wasm file on the environment in this test
+    check_execute([PYTHON, EMCC, 'main.cpp', '-s', 'SINGLE_FILE=1'])
     src = open('a.out.js').read()
     envs = ['WEB', 'WORKER', 'NODE', 'SHELL']
     for env in envs:
