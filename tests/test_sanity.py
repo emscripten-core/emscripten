@@ -600,6 +600,9 @@ fi
           self.do([PYTHON, compiler, '--clear-ports'])
         assert not os.path.exists(PORTS_DIR)
 
+        # First invocation will get binaryen; we want to get past that and not see a port being built here.
+        self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp')])
+
         # Building a file that doesn't need ports should not trigger anything
         output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp')])
         print('no', output)
