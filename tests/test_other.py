@@ -400,10 +400,12 @@ f.close()
       tasks = []
       num_times_libc_was_built = 0
       for i in range(3):
-        p = subprocess.Popen([PYTHON, EMCC, c_file, '--cache', cache_dir_name], stderr=subprocess.STDOUT, stdout=PIPE, universal_newlines=True)
+        p = subprocess.Popen([PYTHON, EMCC, c_file, '--cache', cache_dir_name, '-o', '%d.js' % i], stderr=subprocess.STDOUT, stdout=PIPE, universal_newlines=True)
         tasks += [p]
       for p in tasks:
         stdout, stderr = p.communicate()
+        print('O\n', stdout)
+        print('E\n', stderr)
         assert not p.returncode, 'A child process failed with return code %s: %s' % (p.returncode, stderr)
         if 'generating system library: libc.bc' in stdout:
           num_times_libc_was_built += 1
