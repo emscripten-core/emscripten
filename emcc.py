@@ -1027,6 +1027,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs.append('-DSTB_IMAGE_IMPLEMENTATION')
 
       if shared.Settings.ASMFS and final_suffix in JS_CONTAINING_SUFFIXES:
+        if shared.Settings.WASM:
+          logging.error('ASMFS not yet compatible with wasm (shared.make_fetch_worker is asm.js-specific)')
+          sys.exit(1)
         input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'fetch', 'asmfs.cpp')))
         newargs.append('-D__EMSCRIPTEN_ASMFS__=1')
         next_arg_index += 1
@@ -1036,6 +1039,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           exit_with_error('-s ASMFS=1 requires either -s USE_PTHREADS=1 or -s USE_PTHREADS=2 to be set!')
 
       if shared.Settings.FETCH and final_suffix in JS_CONTAINING_SUFFIXES:
+        if shared.Settings.WASM:
+          logging.error('FETCH not yet compatible with wasm (shared.make_fetch_worker is asm.js-specific)')
+          sys.exit(1)
         input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'fetch', 'emscripten_fetch.cpp')))
         next_arg_index += 1
         options.js_libraries.append(shared.path_from_root('src', 'library_fetch.js'))
