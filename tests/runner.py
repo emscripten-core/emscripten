@@ -996,6 +996,9 @@ class BrowserCore(RunnerCore):
     src = filename if filename_is_src else ''
     filepath = path_from_root('tests', filename) if not filename_is_src else ('main.c' if force_c else 'main.cpp')
     temp_filepath = os.path.join(self.get_dir(), os.path.basename(filepath))
+    # XXX test pthreads in asm.js for now as that is all that appears to work
+    if 'USE_PTHREADS' in str(args):
+      args += ['-s', 'WASM=0']
     original_args = args[:]
     if filename_is_src:
       with open(temp_filepath, 'w') as f: f.write(src)
