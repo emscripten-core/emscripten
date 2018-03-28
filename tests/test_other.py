@@ -8105,7 +8105,7 @@ int main() {
       if closure_enabled:
         cmd += ['--closure', '1']
       if wasm_enabled:
-        method = 'interpret-binary'
+        method = 'native-wasm'
         if asmjs_fallback_enabled:
           method += ',asmjs'
         cmd += ['-s', 'WASM=1', '-s', "BINARYEN_METHOD='" + method + "'"]
