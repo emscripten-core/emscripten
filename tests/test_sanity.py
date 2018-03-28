@@ -525,6 +525,7 @@ fi
 
     for compiler in [EMCC]:
       print(compiler)
+      run_process([PYTHON, EMCC] + MINIMAL_HELLO_WORLD + ['-v']) # run once to ensure binaryen port is all ready
       output = run_process([PYTHON, EMCC] + MINIMAL_HELLO_WORLD + ['-v'], stdout=PIPE, stderr=PIPE)
       out = output.stdout
       err = output.stderr
@@ -602,7 +603,7 @@ fi
         # Building a file that doesn't need ports should not trigger anything
         output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp')])
         print('no', output)
-        assert RETRIEVING_MESSAGE not in output
+        assert RETRIEVING_MESSAGE not in output, output
         assert BUILDING_MESSAGE not in output
         assert not os.path.exists(PORTS_DIR)
 
