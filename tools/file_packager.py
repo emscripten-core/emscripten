@@ -251,11 +251,6 @@ def should_ignore(fullname):
       return True
   return False
 
-# Returns the given string with escapes added so that it can safely be placed inside a string in JS code.
-def escape_for_js_string(s):
-  s = s.replace('\\', '/').replace("'", "\\'").replace('"', '\\"')
-  return s
-
 # Expand directories into individual files
 def add(mode, rootpathsrc, rootpathdst):
   # rootpathsrc: The path name of the root directory on the local FS we are adding to emscripten virtual FS.
@@ -545,7 +540,7 @@ if has_preloaded:
             DataRequest.prototype.requests[files[i].filename].onload();
           }
     '''
-    use_data += "          Module['removeRunDependency']('datafile_%s');\n" % escape_for_js_string(data_target)
+    use_data += "          Module['removeRunDependency']('datafile_%s');\n" % shared.JS.escape_for_js_string(data_target)
 
   else:
     # LZ4FS usage
@@ -559,7 +554,7 @@ if has_preloaded:
           assert(typeof LZ4 === 'object', 'LZ4 not present - was your app build with  -s LZ4=1  ?');
           LZ4.loadPackage({ 'metadata': metadata, 'compressedData': compressedData });
           Module['removeRunDependency']('datafile_%s');
-    ''' % (meta, escape_for_js_string(data_target))
+    ''' % (meta, shared.JS.escape_for_js_string(data_target))
 
   package_uuid = uuid.uuid4();
   package_name = data_target
@@ -585,7 +580,7 @@ if has_preloaded:
     var REMOTE_PACKAGE_NAME = typeof Module['locateFile'] === 'function' ?
                               Module['locateFile'](REMOTE_PACKAGE_BASE) :
                               ((Module['filePackagePrefixURL'] || '') + REMOTE_PACKAGE_BASE);
-  ''' % (escape_for_js_string(data_target), escape_for_js_string(remote_package_name))
+  ''' % (shared.JS.escape_for_js_string(data_target), shared.JS.escape_for_js_string(remote_package_name))
   metadata['remote_package_size'] = remote_package_size
   metadata['package_uuid'] = str(package_uuid)
   ret += '''
@@ -749,7 +744,7 @@ if has_preloaded:
       %s
     };
     Module['addRunDependency']('datafile_%s');
-  ''' % (use_data, escape_for_js_string(data_target)) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
+  ''' % (use_data, shared.JS.escape_for_js_string(data_target)) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
 
   code += r'''
     if (!Module.preloadResults) Module.preloadResults = {};

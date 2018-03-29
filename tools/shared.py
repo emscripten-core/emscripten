@@ -2424,6 +2424,12 @@ class JS(object):
   def to_nice_ident(ident): # limited version of the JS function toNiceIdent
     return ident.replace('%', '$').replace('@', '_').replace('.', '_')
 
+  # Returns the given string with escapes added so that it can safely be placed inside a string in JS code.
+  @staticmethod
+  def escape_for_js_string(s):
+    s = s.replace('\\', '/').replace("'", "\\'").replace('"', '\\"')
+    return s
+
   # Returns the subresource location for run-time access
   @staticmethod
   def get_subresource_location(path, data_uri=None):
