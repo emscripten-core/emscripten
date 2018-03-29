@@ -3076,7 +3076,8 @@ window.close = function() {
         print('test on', opts, args, code)
         src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
         open('test.c', 'w').write(self.with_report_result(src))
-        Popen([PYTHON, EMCC, 'test.c', '-s', 'MODULARIZE=1'] + args + opts).communicate()
+        # this test is synchronous, so avoid async startup due to wasm features
+        Popen([PYTHON, EMCC, 'test.c', '-s', 'MODULARIZE=1', '-s', 'BINARYEN_ASYNC_COMPILATION=0', '-s', 'SINGLE_FILE=1'] + args + opts).communicate()
         open('a.html', 'w').write('''
           <script src="a.out.js"></script>
           <script>
