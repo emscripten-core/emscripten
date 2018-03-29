@@ -3110,7 +3110,8 @@ window.close = function() {
       # generate a dummy file
       open('dummy_file', 'w').write('dummy')
       # compile the code with the modularize feature and the preload-file option enabled
-      Popen([PYTHON, EMCC, 'test.c', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Foo"', '--preload-file', 'dummy_file'] + opts).communicate()
+      # no wasm, since this tests customizing total memory at runtime
+      Popen([PYTHON, EMCC, 'test.c', '-s', 'WASM=0', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Foo"', '--preload-file', 'dummy_file'] + opts).communicate()
       open('a.html', 'w').write('''
         <script src="a.out.js"></script>
         <script>
