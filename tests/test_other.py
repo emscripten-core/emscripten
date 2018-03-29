@@ -79,7 +79,7 @@ class other(RunnerCore):
       else:
         assert expected_call not in output
 
-  def test_emcc(self):
+  def test_emcc_1(self):
     for compiler in [EMCC, EMXX]:
       shortcompiler = os.path.basename(compiler)
       suffix = '.c' if compiler == EMCC else '.cpp'
@@ -128,6 +128,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       self.assertContained('errors generated', process.stderr)
       assert 'compiler frontend failed to generate LLVM bitcode, halting' in process.stderr.split('errors generated.')[1]
 
+  def test_emcc_2(self):
+    for compiler in [EMCC, EMXX]:
+      shortcompiler = os.path.basename(compiler)
+      suffix = '.c' if compiler == EMCC else '.cpp'
+
       # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
       #      regression check: -o js should create "js", with bitcode content
       for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so'], ['-o', 'js'], ['-O1', '-c', '-o', '/dev/null'], ['-O1', '-o', '/dev/null']]:
@@ -152,6 +157,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         assert len(output.stdout) == 0, output.stdout
         assert os.path.exists(target + '.js'), 'Expected %s to exist since args are %s : %s' % (target + '.js', str(args), output.stdout + '\n' + output.stderr)
         self.assertContained('hello, world!', run_js(target + '.js'))
+
+  def test_emcc_3(self):
+    for compiler in [EMCC, EMXX]:
+      shortcompiler = os.path.basename(compiler)
+      suffix = '.c' if compiler == EMCC else '.cpp'
 
       # handle singleton archives
       self.clear()
@@ -189,6 +199,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       finally:
         os.chdir(self.get_dir())
       self.clear()
+
+  def test_emcc_4(self):
+    for compiler in [EMCC, EMXX]:
+      shortcompiler = os.path.basename(compiler)
+      suffix = '.c' if compiler == EMCC else '.cpp'
 
       # Optimization: emcc src.cpp -o something.js [-Ox]. -O0 is the same as not specifying any optimization setting
       for params, opt_level, bc_params, closure, has_malloc in [ # bc params are used after compiling to bitcode
@@ -261,6 +276,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             if opt_level == 0 or '-g' in params: assert 'function _main() {' in generated or 'function _main(){' in generated, 'Should be unminified'
             elif opt_level >= 2: assert ('function _main(){' in generated or '"use asm";var a=' in generated), 'Should be whitespace-minified'
 
+  def test_emcc_5(self):
+    for compiler in [EMCC, EMXX]:
+      shortcompiler = os.path.basename(compiler)
+      suffix = '.c' if compiler == EMCC else '.cpp'
+
       # asm.js optimization levels
       for params, test, text in [
         (['-O2'], lambda generated: 'function addRunDependency' in generated, 'shell has unminified utilities'),
@@ -296,6 +316,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         assert os.path.exists('a.out.js'), output.stdout + '\n' + output.stderr
         self.assertContained('hello, world!', run_js('a.out.js'))
         assert test(open('a.out.js').read()), text
+
+  def test_emcc_6(self):
+    for compiler in [EMCC, EMXX]:
+      shortcompiler = os.path.basename(compiler)
+      suffix = '.c' if compiler == EMCC else '.cpp'
 
       # Compiling two source files into a final JS.
       for args, target in [([], 'a.out.js'), (['-o', 'combined.js'], 'combined.js')]:
@@ -341,6 +366,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         assert len(output.stdout) == 0, output.stdout
         assert os.path.exists('combined.bc.js'), 'Expected %s to exist' % ('combined.bc.js')
         self.assertContained('side got: hello from main, over', run_js('combined.bc.js'))
+
+  def test_emcc_7(self):
+    for compiler in [EMCC, EMXX]:
+      shortcompiler = os.path.basename(compiler)
+      suffix = '.c' if compiler == EMCC else '.cpp'
 
       # --js-transform <transform>
       self.clear()
