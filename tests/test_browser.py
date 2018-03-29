@@ -109,12 +109,11 @@ class browser(BrowserCore):
     # sourceContent when the maps are relative paths
     try_delete(html_file)
     try_delete(html_file + '.map')
-    Popen([PYTHON, EMCC, 'src.cpp', '-o', 'src.html', '-g4'],
+    Popen([PYTHON, EMCC, 'src.cpp', '-o', 'src.html', '-g4', '-s', 'WASM=0'],
         cwd=self.get_dir()).communicate()
     assert os.path.exists(html_file)
     assert os.path.exists(html_file + '.map')
     webbrowser.open_new('file://' + html_file)
-    time.sleep(1)
     print('''
 If manually bisecting:
   Check that you see src.cpp among the page sources.
@@ -2589,7 +2588,7 @@ Module['onRuntimeInitialized'] = function() {
 ''')
     for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2']]:
       print(opts)
-      opts += ['--pre-js', 'run.js', '-s', 'SWAPPABLE_ASM_MODULE=1'] # important that both modules are built with the same opts
+      opts += ['-s', 'WASM=0', '--pre-js', 'run.js', '-s', 'SWAPPABLE_ASM_MODULE=1'] # important that both modules are built with the same opts
       open('second.cpp', 'w').write(self.with_report_result(open(path_from_root('tests', 'asm_swap2.cpp')).read()))
       Popen([PYTHON, EMCC, 'second.cpp'] + opts).communicate()
       Popen([PYTHON, path_from_root('tools', 'distill_asm.py'), 'a.out.js', 'second.js', 'swap-in']).communicate()
