@@ -1003,8 +1003,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.SPLIT_MEMORY:
         if shared.Settings.WASM:
-          logging.warning('disabling WASM module since SPLIT_MEMORY is not compatible with it')
-          shared.Settings.WASM = 0
+          logging.error('WASM is not compatible with SPLIT_MEMORY')
+          sys.exit(1)
         assert shared.Settings.SPLIT_MEMORY > shared.Settings.TOTAL_STACK, 'SPLIT_MEMORY must be at least TOTAL_STACK (stack must fit in first chunk)'
         assert shared.Settings.SPLIT_MEMORY & (shared.Settings.SPLIT_MEMORY-1) == 0, 'SPLIT_MEMORY must be a power of 2'
         if shared.Settings.ASM_JS == 1:
