@@ -3548,7 +3548,7 @@ window.close = function() {
 
       self.clear()
       assert not os.path.exists('tests.asm.js')
-      self.btest('browser_test_hello_world.c', expected='0', args=opts + ['--separate-asm'])
+      self.btest('browser_test_hello_world.c', expected='0', args=opts + ['-s', 'WASM=0', '--separate-asm'])
       assert os.path.exists('test.asm.js')
       os.unlink('test.asm.js')
       self.run_browser('test.html', None, '[no http server activity]', timeout=5) # fail without the asm
