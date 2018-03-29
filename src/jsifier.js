@@ -433,9 +433,12 @@ function JSify(data, functionsOnly) {
           print('STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
         } else {
           print('gb = alignMemory(getMemory({{{ STATIC_BUMP }}}), ' + MAX_GLOBAL_ALIGN + ' || 1);\n');
-          // Ideally, for efficiency, this would only zero memory after the static initialized
-          // data, but we don't know the size of that here.
-          print('for (let i = gb; i < gb + {{{ STATIC_BUMP }}}; ++i) HEAP8[i] = 0;\n');
+          // The static area consists of explicitly initialized data, followed by zero-initialized data.
+          // The latter may need zeroing out if the MAIN_MODULE has already used this memory area before
+          // dlopen'ing the SIDE_MODULE.  Since we don't know the size of the explicitly initialized data
+          // here, we just zero the whole thing, which is suboptimal, but should at least resolve bugs
+          // from uninitialized memory.
+          print('for (var i = gb; i < gb + {{{ STATIC_BUMP }}}; ++i) HEAP8[i] = 0;\n');
           print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n'); // comment as metadata only
         }
         if (BINARYEN) {
