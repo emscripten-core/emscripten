@@ -600,18 +600,16 @@ fi
           self.do([PYTHON, compiler, '--clear-ports'])
         assert not os.path.exists(PORTS_DIR)
 
-        # First invocation will get binaryen; we want to get past that and not see a port being built here.
-        self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp')])
-
         # Building a file that doesn't need ports should not trigger anything
-        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp')])
+        # (avoid wasm to avoid the binaryen port)
+        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'WASM=0'])
         print('no', output)
         assert RETRIEVING_MESSAGE not in output, output
         assert BUILDING_MESSAGE not in output
         assert not os.path.exists(PORTS_DIR)
 
         # Building a file that need a port does trigger stuff
-        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'WASM=0', '-s', 'USE_SDL=2'])
         print('yes', output)
         assert RETRIEVING_MESSAGE in output, output
         assert BUILDING_MESSAGE in output, output
@@ -619,7 +617,7 @@ fi
 
         def second_use():
           # Using it again avoids retrieve and build
-          output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+          output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'WASM=0', '-s', 'USE_SDL=2'])
           assert RETRIEVING_MESSAGE not in output, output
           assert BUILDING_MESSAGE not in output, output
 
@@ -637,7 +635,7 @@ fi
         z.write(os.path.join('old-sub', 'a.txt'))
         z.write(os.path.join('old-sub', 'b.txt'))
         z.close()
-        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'WASM=0', '-s', 'USE_SDL=2'])
         assert RETRIEVING_MESSAGE in output, output
         assert BUILDING_MESSAGE in output, output
         assert os.path.exists(PORTS_DIR)
