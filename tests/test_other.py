@@ -5797,10 +5797,13 @@ int main() {
     self.assertContained('''Warning: Enlarging memory arrays, this is not fast! 16777216,1543503872\n''', output)
 
   def test_failing_alloc(self):
-    for pre_fail, post_fail, opts in [
-      ('', '', []),
-      ('EM_ASM( Module.temp = HEAP32[DYNAMICTOP_PTR>>2] );', 'EM_ASM( assert(Module.temp === HEAP32[DYNAMICTOP_PTR>>2], "must not adjust DYNAMICTOP when an alloc fails!") );', []),
-      ('', '', ['-s', 'SPLIT_MEMORY=' + str(16*1024*1024)]),
+    for pre_fail, post_fail, opts, alloc_later in [
+      ('', '', [], True),
+      ('EM_ASM( Module.temp = HEAP32[DYNAMICTOP_PTR>>2] );', 'EM_ASM( assert(Module.temp === HEAP32[DYNAMICTOP_PTR>>2], "must not adjust DYNAMICTOP when an alloc fails!") );', [], True),
+      ('', '', ['-s', 'WASM=0', '-s', 'SPLIT_MEMORY=' + str(16*1024*1024)], False), # cannot alloc later in split memory, allocs are GC objects, no way to tell when it is safe to allocate again after running out
+      # also test non-wasm in normal mode
+      ('', '', ['-s', 'WASM=0'], True),
+      ('EM_ASM( Module.temp = HEAP32[DYNAMICTOP_PTR>>2] );', 'EM_ASM( assert(Module.temp === HEAP32[DYNAMICTOP_PTR>>2], "must not adjust DYNAMICTOP when an alloc fails!") );', ['-s', 'WASM=0'], True),
     ]:
       for growth in [0, 1]:
         for aborting in [0, 1]:
@@ -5830,27 +5833,30 @@ int main() {
   }
   assert(has);
   printf("an allocation failed!\n");
-  while (1) {
-    assert(allocs.size() > 0);
-    void *curr = allocs.back();
-    allocs.pop_back();
-    free(curr);
-    printf("freed one\n");
-    if (malloc(CHUNK_SIZE)) break;
+  if (%d) {
+    while (1) {
+      assert(allocs.size() > 0);
+      void *curr = allocs.back();
+      allocs.pop_back();
+      free(curr);
+      printf("freed one\n");
+      if (malloc(CHUNK_SIZE)) break;
+    }
+    printf("managed another malloc!\n");
   }
-  printf("managed another malloc!\n");
 }
-''' % (pre_fail, post_fail))
+''' % (pre_fail, post_fail, alloc_later))
           args = [PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')] + opts
           if growth: args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
           if not aborting: args += ['-s', 'ABORTING_MALLOC=0']
-          print(args, pre_fail)
+          print('test_failing_alloc', args, pre_fail, alloc_later)
           check_execute(args)
           manage_malloc = (not aborting) or growth # growth also disables aborting
           output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=0 if manage_malloc else None)
           if manage_malloc:
-            # we should fail eventually, then free, then succeed
-            self.assertContained('''managed another malloc!\n''', output)
+            if alloc_later:
+              # we should fail eventually, then free, then succeed
+              self.assertContained('''managed another malloc!\n''', output)
           else:
             # we should see an abort
             self.assertContained('''abort("Cannot enlarge memory arrays''', output)
