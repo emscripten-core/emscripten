@@ -3431,7 +3431,7 @@ window.close = function() {
 
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where pthread-main.js will be loaded from.
     open(self.in_dir('shell2.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "pthread-main.js") return "cdn/pthread-main.js"; else return filename; }, '))
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'shell2.html', '-s', 'IN_TEST_HARNESS=1', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-o', 'test2.html']).communicate()
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'shell2.html', '-s', 'WASM=0', '-s', 'IN_TEST_HARNESS=1', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-o', 'test2.html']).communicate()
     try_delete('pthread-main.js')
     self.run_browser('test2.html', '', '/report_result?1')
 
