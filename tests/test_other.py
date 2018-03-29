@@ -188,7 +188,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if not os.path.exists('a_dir'): os.mkdir('a_dir')
           os.chdir('a_dir')
           if not os.path.exists('b_dir'): os.mkdir('b_dir')
-          output = run_process([PYTHON, compiler, path_from_root('tests', 'hello_world.ll'), '-o', path], stdout=PIPE, stderr=PIPE)
+          # use single file so we don't have more files to clean up
+          output = run_process([PYTHON, compiler, path_from_root('tests', 'hello_world.ll'), '-o', path, '-s', 'SINGLE_FILE=1'], stdout=PIPE, stderr=PIPE)
           print(output)
           assert os.path.exists(path), path + ' does not exist; ' + output.stdout + '\n' + output.stderr
           last = os.getcwd()
