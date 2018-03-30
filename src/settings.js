@@ -80,10 +80,10 @@ var ABORTING_MALLOC = 1; // If 1, then when malloc would fail we abort(). This i
                          // returning NULL (0) when it fails.
 var ALLOW_MEMORY_GROWTH = 0; // If false, we abort with an error if we try to allocate more memory than
                              // we can (TOTAL_MEMORY). If true, we will grow the memory arrays at
-                             // runtime, seamlessly and dynamically. This has a performance cost though,
+                             // runtime, seamlessly and dynamically. This has a performance cost in asm.js,
                              // both during the actual growth and in general (the latter is because in
                              // that case we must be careful about optimizations, in particular the
-                             // eliminator).
+                             // eliminator), but in wasm it is efficient and should be used whenever relevant.
                              // See https://code.google.com/p/v8/issues/detail?id=3907 regarding
                              // memory growth performance in chrome.
                              // Setting this option on will disable ABORTING_MALLOC, in other words,
