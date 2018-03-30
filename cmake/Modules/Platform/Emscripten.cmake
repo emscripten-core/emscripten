@@ -51,9 +51,6 @@ endif()
 # on the side, async startup, etc..
 set(CMAKE_REQUIRED_FLAGS "-s ERROR_ON_UNDEFINED_SYMBOLS=1 -s WASM=0")
 
-# Some CMake checks want to look at the return value, for which we need to be synchronous.
-set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -s BINARYEN_ASYNC_COMPILATION=0")
-
 # Locate where the Emscripten compiler resides in relative to this toolchain file.
 if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
 	get_filename_component(GUESS_EMSCRIPTEN_ROOT_PATH "${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
