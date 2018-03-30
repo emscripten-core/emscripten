@@ -709,7 +709,8 @@ window.close = function() {
 
   @requires_hardware
   def test_glgears_proxy(self):
-    self.btest('hello_world_gles_proxy.c', reference='gears.png', args=['--proxy-to-worker', '-s', 'GL_TESTING=1', '-DSTATIC_GEARS=1', '-lGL', '-lglut'], manual_reference=True, post_build=self.post_manual_reftest)
+    # we modify the asm.js, this is a non-wasm test
+    self.btest('hello_world_gles_proxy.c', reference='gears.png', args=['--proxy-to-worker', '-s', 'GL_TESTING=1', '-DSTATIC_GEARS=1', '-lGL', '-lglut', '-s', 'WASM=0'], manual_reference=True, post_build=self.post_manual_reftest)
 
     # test noProxy option applied at runtime
 
