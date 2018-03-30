@@ -8021,6 +8021,18 @@ int main() {
       else:
         os.environ['EMCC_WASM_BACKEND'] = old
 
+  def test_wasm_nope(self):
+    for opts in [[], ['-O2']]:
+      print(opts)
+      # check we show a good error message if there is no wasm support
+      open('pre.js', 'w').write('WebAssembly = undefined;\n')
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '--pre-js', 'pre.js'] + opts)
+      out = run_js('a.out.js', stderr=STDOUT, assert_returncode=None)
+      if opts == []:
+        self.assertContained('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.', out)
+      else:
+        self.assertContained('no native wasm support detected', out)
+
   def test_check_engine(self):
     compiler_engine = COMPILER_ENGINE
     bogus_engine = ['/fake/inline4']

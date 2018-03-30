@@ -2161,6 +2161,12 @@ function integrateWasmJS() {
 
   function doNativeWasm(global, env, providedBuffer) {
     if (typeof WebAssembly !== 'object') {
+#if BINARYEN_METHOD == 'native-wasm'
+#if ASSERTIONS
+      // when the method is just native-wasm, our error message can be very specific
+      abort('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.');
+#endif
+#endif
       Module['printErr']('no native wasm support detected');
       return false;
     }
@@ -2439,7 +2445,7 @@ function integrateWasmJS() {
     var exports;
 #if BINARYEN_METHOD == 'native-wasm'
     exports = doNativeWasm(global, env, providedBuffer);
-#else
+#else // native-wasm
 #if BINARYEN_METHOD == 'asmjs'
     exports = doJustAsm(global, env, providedBuffer);
 #else
@@ -2464,10 +2470,14 @@ function integrateWasmJS() {
         abort('bad method: ' + curr);
       }
     }
-#endif
-#endif
+#endif // asmjs
+#endif // native-wasm
 
-    if (!exports) abort('no binaryen method succeeded. consider enabling more options, like interpreting, if you want that: https://github.com/kripken/emscripten/wiki/WebAssembly#binaryen-methods');
+#if ASSERTIONS
+    assert(exports, 'no binaryen method succeeded. consider enabling more options, like interpreting, if you want that: https://github.com/kripken/emscripten/wiki/WebAssembly#binaryen-methods');
+#else
+    assert(exports, 'no binaryen method succeeded.');
+#endif
 
 #if RUNTIME_LOGGING
     Module['printErr']('binaryen method succeeded.');
