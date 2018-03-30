@@ -136,10 +136,17 @@ var JSfuncs = {
       stringToUTF8(str, ret, len);
     }
     return ret;
+  },
+  'boolToC': function (bool) {
+    return Boolean(bool);
   }
 };
 // For fast lookup of conversion functions
-var toC = {'string' : JSfuncs['stringToC'], 'array' : JSfuncs['arrayToC']};
+var toC = {
+  'string': JSfuncs['stringToC'],
+  'array': JSfuncs['arrayToC'],
+  'bool': JSfuncs['boolToC']
+};
 
 // C calling interface.
 function ccall (ident, returnType, argTypes, args, opts) {
@@ -170,6 +177,7 @@ function ccall (ident, returnType, argTypes, args, opts) {
 #endif
 #endif
   if (returnType === 'string') ret = Pointer_stringify(ret);
+  if (returnType === 'bool') ret = Boolean(ret);
   if (stack !== 0) {
 #if EMTERPRETIFY_ASYNC
     if (opts && opts.async) {
