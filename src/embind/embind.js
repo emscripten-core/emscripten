@@ -2412,6 +2412,16 @@ var LibraryEmbind = {
         return [];
     });
   },
+
+  _embind_register_constant_float__deps: ['$readLatin1String', '$whenDependentTypesAreResolved'],
+  _embind_register_constant_float: function(name, type, value) {
+    name = readLatin1String(name);
+    whenDependentTypesAreResolved([], [type], function(type) {
+        type = type[0];
+        Module[name] = type['fromWireType'](value);
+        return [];
+    });
+  },
 };
 
 mergeInto(LibraryManager.library, LibraryEmbind);

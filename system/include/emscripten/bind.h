@@ -223,6 +223,11 @@ namespace emscripten {
                 const char* name,
                 TYPEID constantType,
                 uintptr_t value);
+
+            void _embind_register_constant_float(
+                const char* name,
+                TYPEID constantType,
+                double value);
         }
     }
 }
@@ -1586,16 +1591,37 @@ namespace emscripten {
         uintptr_t asGenericValue(T* p) {
             return reinterpret_cast<uintptr_t>(p);
         }
+
+        template<typename WireType>
+        struct ConstantRegistrar {
+          static void constant(const char* name, TYPEID type, WireType value) {
+            _embind_register_constant(name, type, asGenericValue(value));
+          }
+        };
+
+        template<>
+        struct ConstantRegistrar<float> {
+          static void constant(const char* name, TYPEID type, float value) {
+            _embind_register_constant_float(name, type, value);
+          }
+        };
+
+        template<>
+        struct ConstantRegistrar<double> {
+          static void constant(const char* name, TYPEID type, double value) {
+            _embind_register_constant_float(name, type, value);
+          }
+        };
     }
 
     template<typename ConstantType>
     void constant(const char* name, const ConstantType& v) {
         using namespace internal;
         typedef BindingType<const ConstantType&> BT;
-        _embind_register_constant(
-            name,
-            TypeID<const ConstantType&>::get(),
-            asGenericValue(BT::toWireType(v)));
+	typedef typename BT::WireType WireType;
+        ConstantRegistrar<WireType>::constant(name,
+                                              TypeID<const ConstantType&>::get(),
+                                              BT::toWireType(v));
     }
 }
 
