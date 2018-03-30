@@ -7589,9 +7589,9 @@ binaryenz = make_run('binaryenz', compiler=CLANG, emcc_args=['-Oz'])
 # Secondary test modes - run directly when there is a specific need
 
 # asm.js
-asm2f = make_run('asm2f', compiler=CLANG, emcc_args=['-Oz', '-s', 'PRECISE_F32=1', '-s', 'ALLOW_MEMORY_GROWTH=1'])
-asm2i = make_run('asm2i', compiler=CLANG, emcc_args=['-O2', '-s', 'EMTERPRETIFY=1'])
-asm2nn = make_run('asm2nn', compiler=CLANG, emcc_args=['-O2'], env={'EMCC_NATIVE_OPTIMIZER': '0'})
+asm2f = make_run('asm2f', compiler=CLANG, emcc_args=['-Oz', '-s', 'PRECISE_F32=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM=0'])
+asm2i = make_run('asm2i', compiler=CLANG, emcc_args=['-O2', '-s', 'EMTERPRETIFY=1', '-s', 'WASM=0'])
+asm2nn = make_run('asm2nn', compiler=CLANG, emcc_args=['-O2', '-s', 'WASM=0'], env={'EMCC_NATIVE_OPTIMIZER': '0'})
 
 # wasm
 binaryen2jo = make_run('binaryen2jo', compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'])
