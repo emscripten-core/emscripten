@@ -3607,27 +3607,9 @@ window.close = function() {
     open('huge.dat', 'wb').write(bytearray((x*x)&255 for x in range(size*2))) # larger than a memory chunk
     self.btest('split_memory_large_file.cpp', expected='1', args=['-s', 'WASM=0', '-s', 'SPLIT_MEMORY=' + str(size), '-s', 'TOTAL_MEMORY=128MB', '-s', 'TOTAL_STACK=10240', '--preload-file', 'huge.dat'], timeout=60)
 
-  def test_binaryen(self):
+  def test_binaryen_interpreter(self):
     self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
     self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"', '-O2'])
-
-  def test_binaryen_native(self):
-    for opts in [
-        [],
-        ['-O1'],
-        ['-O2'],
-        ['-O3'],
-        ['-Os'],
-        ['-Oz'],
-        ['-O2', '--js-opts', '1'],
-        ['-O2', '-s', 'EMTERPRETIFY=1'],
-        ['-O2', '-s', 'ALLOW_MEMORY_GROWTH=1'],
-        ['-O2', '-s', 'EMTERPRETIFY=1', '-s', 'ALLOW_MEMORY_GROWTH=1'],
-        ['-O2', '-s', 'OUTLINING_LIMIT=1000'],
-        ['-O2', '--closure', '1'],
-      ]:
-      print(opts)
-      self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1'] + opts)
 
   def test_binaryen_async(self):
     # notice when we use async compilation
