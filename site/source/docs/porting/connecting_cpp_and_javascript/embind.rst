@@ -156,6 +156,90 @@ shown below:
    instance.delete();
 
 
+Optimizing property access for composite objects
+-----------------------------------------------
+
+Using :cpp:func:`property` to expose fields of a C++ object returns an object
+for the field by value, copying the field.  This behavior is inefficient and
+also results in counterintuitive behavior when accessing properties from
+JavaScript.  Consider the following C++ code:
+
+.. code:: c++
+
+    struct vec2
+    {
+      float x, y;
+    };
+
+    struct obj
+    {
+      vec2 vector;
+      float f;
+    };
+
+    EMSCRIPTEN_BINDINGS(property) {
+      class_<vec2>("vec2")
+        .constructor<>()
+        .property("x", &vec2::x)
+        .property("y", &vec2::y);
+      class_<obj>("obj")
+        .constructor<>()
+        .property("vector", &obj::vector)
+        .property("f", &obj::f);
+    }
+
+When using the above code from JavaScript:
+
+.. code:: javascript
+
+    var o = new obj();
+    o.vector.x = 5;
+    console.log("x is " + o.vector.x);
+
+The setting of ``o.vector.x`` is not persistent, because the access of
+``o.vector`` returned an entirely new object.
+
+This behavior can be worked around by providing accessors for the field and
+using those instead, but a more convenient solution is to use
+:cpp:func:`ref_property`:
+
+.. code:: c++
+
+    struct vec2
+    {
+      float x, y;
+    };
+
+    struct obj
+    {
+      vec2 vector;
+      float f;
+    };
+
+    EMSCRIPTEN_BINDINGS(property) {
+      class_<vec2>("vec2")
+        .constructor<>()
+        .property("x", &vec2::x)
+        .property("y", &vec2::y);
+      class_<obj>("obj")
+        .constructor<>()
+        .ref_property("vector", &obj::vector)
+        .property("f", &obj::f);
+    }
+
+Now when ``vector`` is accessed, the field is accessed by reference:
+
+.. code:: javascript
+
+    var o = new obj();
+    o.vector.x = 5;
+    console.log("x is " + o.vector.x);
+
+This code prints ``x is 5``, as expected.
+  
+.. warning:: This functionality uses raw pointers in its implementation,
+   and care must be taken to not corrupt the Emscripten heap.
+
 Memory management
 =================
 

@@ -537,6 +537,30 @@ namespace emscripten {
             }
         };
 
+        template<typename InstanceType, typename MemberType>
+        struct RefMemberAccess {
+            typedef MemberType InstanceType::*MemberPointer;
+            typedef internal::BindingType<MemberType*> MemberBinding;
+            typedef typename MemberBinding::WireType WireType;
+
+            template<typename ClassType>
+            static WireType getWire(
+                const MemberPointer& field,
+                ClassType& ptr
+            ) {
+                return MemberBinding::toWireType(&(ptr.*field));
+            }
+
+            template<typename ClassType>
+            static void setWire(
+                const MemberPointer& field,
+                ClassType& ptr,
+                WireType value
+            ) {
+                ptr.*field = *MemberBinding::fromWireType(value);
+            }
+        };
+
         template<typename FieldType>
         struct GlobalAccess {
             typedef internal::BindingType<FieldType> MemberBinding;
@@ -1348,6 +1372,26 @@ namespace emscripten {
                 TypeID<ClassType>::get(),
                 fieldName,
                 TypeID<FieldType>::get(),
+                getSignature(getter),
+                reinterpret_cast<GenericFunction>(getter),
+                getContext(field),
+                TypeID<FieldType>::get(),
+                getSignature(setter),
+                reinterpret_cast<GenericFunction>(setter),
+                getContext(field));
+            return *this;
+        }
+
+        template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>
+        EMSCRIPTEN_ALWAYS_INLINE const class_& ref_property(const char* fieldName, FieldType ClassType::*field) const {
+            using namespace internal;
+
+            auto getter = &RefMemberAccess<ClassType, FieldType>::template getWire<ClassType>;
+            auto setter = &MemberAccess<ClassType, FieldType>::template setWire<ClassType>;
+            _embind_register_class_property(
+                TypeID<ClassType>::get(),
+                fieldName,
+                TypeID<AllowedRawPointer<FieldType>>::get(),
                 getSignature(getter),
                 reinterpret_cast<GenericFunction>(getter),
                 getContext(field),
