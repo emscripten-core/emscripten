@@ -25,9 +25,11 @@ You might also want to go through the :ref:`Tutorial` again, as this is updated 
 I tried something: why doesn’t it work?
 =======================================
 
-If something doesn't work (for example a :ref:`compiler flag <emccdoc>`, a *libc* function, etc.) then first search the comprehensive documentation on this site.
+Some general steps that might help figure things out:
 
-Next check if there is a test for the failing functionality in the :ref:`Emscripten test suite <emscripten-test-suite>` (run ``grep -r`` in **tests/**). **All** the tests are known to pass on the master branch, so they provide concrete "known-good" examples of how various options and code are used.
+ * See if the problem happens without optimizations (`-O0`, or not specifying any optimization level). Without optimizations, emscripten enables many assertions at compile and runtime, which may catch a problem and display an error message with a suggestion for how to fix it.
+ * Search the documentation on this site.
+ * Check if there is a test for the failing functionality in the :ref:`Emscripten test suite <emscripten-test-suite>` (run ``grep -r`` in **tests/**). They should all pass (with only rare exceptions), so they provide concrete "known-good" examples of how various options and code are used.
 
 
 Do I need to change my build system to use Emscripten?
@@ -80,9 +82,7 @@ Make sure you optimize code by building with ``-O2`` (even more :ref:`aggressive
 Why is my compiled code big?
 ============================
 
-Make sure you build with ``-O2`` so code is optimized and minified. You should also set up gzip compression on your webserver, which all browsers now support.
-
-.. note:: You can :ref:`use the closure compiler <emcc-closure>` to reduce code size even further (``--closure 1``). However that will require that your code be prepared for closure compiler advanced optimizations, including proper exports and so forth. It is usually not worth the effort over an optimized build and supporting gzip on your webserver.
+Make sure you build with ``-O3`` or ``-Os`` so code is fully optimized and minified. You should use the closure compiler, gzip compression on your webserver, etc., see the :ref:`section on code size in Optimizing code <optimizing-code-size>`.
 
 
 
@@ -95,9 +95,15 @@ Make sure you are using the Emscripten bundled system headers. Using :ref:`emcc 
 How can I reduce startup time?
 ==============================
 
-Make sure that you are running an :ref:`optimized build <Optimizing-Code>` (smaller builds are faster to start up). If the sheer code size is causing the slow startup, you can try `Outlining: a workaround for JITs and big functions <http://mozakai.blogspot.com/2013/08/outlining-workaround-for-jits-and-big.html>`_.
+Make sure that you are running an :ref:`optimized build <Optimizing-Code>` (smaller builds are faster to start up).
 
 Network latency is also a possible factor in startup time. Consider putting the file loading code in a separate script element from the generated code so that the browser can start the network download in parallel to starting up the codebase (run the :ref:`file packager <packaging-files>` and put file loading code in one script element, and the generated codebase in a later script element).
+
+
+What is "No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead" or "no native wasm support detected"?
+===============================================================================================================================
+
+Those errors indicate that WebAssembly support is not present in the VM you are trying to run the code in. Compile with ``-s WASM=0`` to disable WebAssembly (and emit asm.js instead) if you want your code to run in such environments (all modern browsers support WebAssembly, but in some cases you may want to reach 100% of browsers, including legacy ones).
 
 
 Why does my code fail to compile with an error message about inline assembly (or ``{"text":"asm"}``)?
