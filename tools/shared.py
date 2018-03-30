@@ -1081,13 +1081,6 @@ except NameError:
   pass
 
 
-# Utilities
-def make_js_command(filename, engine=None, *args):
-  if engine is None:
-    engine = JS_ENGINES[0]
-  return jsrun.make_command(filename, engine, *args)
-
-
 def run_js(filename, engine=None, *args, **kw):
   if engine is None:
     engine = JS_ENGINES[0]
