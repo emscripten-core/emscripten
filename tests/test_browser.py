@@ -3193,7 +3193,7 @@ window.close = function() {
   @requires_hardware
   def test_dynamic_link_glemu(self):
     open('pre.js', 'w').write('''
-      Module.dynamicLibraries = ['side.js'];
+      Module.dynamicLibraries = ['side.wasm'];
   ''')
     open('main.cpp', 'w').write(r'''
       #include <stdio.h>
@@ -3217,7 +3217,7 @@ window.close = function() {
         return (const char *)glGetString(GL_EXTENSIONS);
       }
     ''')
-    Popen([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.js', '-lSDL']).communicate()
+    Popen([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-lSDL']).communicate()
 
     self.btest(self.in_dir('main.cpp'), '1', args=['-s', 'MAIN_MODULE=1', '-O2', '-s', 'LEGACY_GL_EMULATION=1', '-lSDL', '-lGL', '--pre-js', 'pre.js'])
 
