@@ -476,6 +476,7 @@ Environment variables
 	- ``EMMAKEN_COMPILER``
 	- ``EMMAKEN_CFLAGS``
 	- ``EMCC_DEBUG``
+        - ``EMCC_CLOSURE_ARGS`` : arguments to be passed to *Closure Compiler*
 
 Search for 'os.environ' in `emcc.py <https://github.com/kripken/emscripten/blob/master/emcc.py>`_ to see how these are used. The most interesting is possibly ``EMCC_DEBUG``, which forces the compiler to dump its build and temporary files to a temporary directory where they can be reviewed.
 
