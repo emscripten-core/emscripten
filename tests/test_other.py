@@ -5787,14 +5787,18 @@ int main() {
 #include <stdlib.h>
 
 int main() {
-  return (int)malloc(1024*1024*1400);
+  volatile int x = (int)malloc(1024*1024*1400);
+  return x == 0; // can't alloc it, but don't fail catastrophically, expect null
 }
     ''')
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'ALLOW_MEMORY_GROWTH=1']).communicate()[1]
-    assert os.path.exists('a.out.js')
-    output = run_js('a.out.js', stderr=PIPE, full_output=True, engine=SPIDERMONKEY_ENGINE, assert_returncode=None)
+    run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM=0'])
     # just care about message regarding allocating over 1GB of memory
+    output = run_js('a.out.js', stderr=PIPE, full_output=True, engine=SPIDERMONKEY_ENGINE)
     self.assertContained('''Warning: Enlarging memory arrays, this is not fast! 16777216,1543503872\n''', output)
+    print('wasm')
+    run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'ALLOW_MEMORY_GROWTH=1'])
+    # no message about growth, just check return code
+    run_js('a.out.js', stderr=PIPE, full_output=True, engine=SPIDERMONKEY_ENGINE)
 
   def test_failing_alloc(self):
     for pre_fail, post_fail, opts, alloc_later in [
