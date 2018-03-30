@@ -1192,9 +1192,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.Settings.ASMJS_CODE_FILE = shared.FilenameReplacementStrings.ASMJS_CODE_FILE
         else:
           # set file locations, so that JS glue can find what it needs
-          shared.Settings.WASM_TEXT_FILE = shared.JS.get_subresource_location(wasm_text_target)
-          shared.Settings.WASM_BINARY_FILE = shared.JS.get_subresource_location(wasm_binary_target)
-          shared.Settings.ASMJS_CODE_FILE = shared.JS.get_subresource_location(asm_target)
+          shared.Settings.WASM_TEXT_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_text_target))
+          shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_binary_target))
+          shared.Settings.ASMJS_CODE_FILE = shared.JS.escape_for_js_string(os.path.basename(asm_target))
 
         shared.Settings.ASM_JS = 2 # when targeting wasm, we use a wasm Memory, but that is not compatible with asm.js opts
         shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
