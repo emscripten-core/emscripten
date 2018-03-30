@@ -312,8 +312,11 @@ var STB_IMAGE = 0; // Enables building of stb-image, a tiny public-domain librar
                    // When enabled, stb-image will be used automatically from IMG_Load and IMG_Load_RW. You
                    // can also call the stbi_* functions directly yourself.
 
-var LEGACY_VM_SUPPORT = 0; // Enable this to get support for non-modern browsers, node.js, etc. This adds:
-                           //  * Polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround
+var LEGACY_VM_SUPPORT = 0; // Enable this to get support for non-modern browsers, node.js, etc. This gives you
+                           // the highest possible probability of the code working everywhere, even in rare old
+                           // browsers and shell environments. Specifically:
+                           //  * Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
+                           //  * Disable WebAssembly.
 
 var LZ4 = 0; // Enable this to support lz4-compressed file packages. They are stored compressed in memory, and
              // decompressed on the fly, avoiding storing the entire decompressed data in memory at once.

@@ -3175,12 +3175,15 @@ int main() {
 
   def test_LEGACY_VM_SUPPORT(self):
     # when modern features are lacking, we can polyfill them or at least warn
-    with open('pre.js', 'w') as f: f.write('Math.imul = undefined;')
     def test(expected, opts=[]):
+      self.clear()
+      with open('pre.js', 'w') as f: f.write('Math.imul = undefined;')
       subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--pre-js', 'pre.js'] + opts)
       self.assertContained(expected, run_js('a.out.js', stderr=PIPE, full_output=True, engine=NODE_JS, assert_returncode=None))
     test('this is a legacy browser, build with LEGACY_VM_SUPPORT')
+    assert os.path.exists('a.out.wasm'), 'emit wasm by default'
     test('hello, world!', ['-s', 'LEGACY_VM_SUPPORT=1'])
+    assert not os.path.exists('a.out.wasm'), 'LEGACY_VM_SUPPORT disables wasm'
 
   def test_on_abort(self):
     expected_output = 'Module.onAbort was called'
