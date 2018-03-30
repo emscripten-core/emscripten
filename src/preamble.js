@@ -1218,19 +1218,28 @@ var buffers = [], HEAP8s = [], HEAP16s = [], HEAP32s = [], HEAPU8s = [], HEAPU16
 // the browser fails to allocate the buffer.
 function allocateSplitChunk(i, data) {
   if (buffers[i]) return false; // already taken
-  var curr = data ? data : new ArrayBuffer(SPLIT_MEMORY);
+  // any of these allocations might fail; do them all before writing anything to global state
+  var currBuffer = data ? data : new ArrayBuffer(SPLIT_MEMORY);
 #if ASSERTIONS
-  assert(curr instanceof ArrayBuffer);
+  assert(currBuffer instanceof ArrayBuffer);
 #endif
-  buffers[i] = curr;
-  HEAP8s[i] = new Int8Array(curr);
-  HEAP16s[i] = new Int16Array(curr);
-  HEAP32s[i] = new Int32Array(curr);
-  HEAPU8s[i] = new Uint8Array(curr);
-  HEAPU16s[i] = new Uint16Array(curr);
-  HEAPU32s[i] = new Uint32Array(curr);
-  HEAPF32s[i] = new Float32Array(curr);
-  HEAPF64s[i] = new Float64Array(curr);
+  var currHEAP8s = new Int8Array(currBuffer);
+  var currHEAP16s = new Int16Array(currBuffer);
+  var currHEAP32s = new Int32Array(currBuffer);
+  var currHEAPU8s = new Uint8Array(currBuffer);
+  var currHEAPU16s = new Uint16Array(currBuffer);
+  var currHEAPU32s = new Uint32Array(currBuffer);
+  var currHEAPF32s = new Float32Array(currBuffer);
+  var currHEAPF64s = new Float64Array(currBuffer);
+  buffers[i] = currBuffer;
+  HEAP8s[i] = currHEAP8s;
+  HEAP16s[i] = currHEAP16s;
+  HEAP32s[i] = currHEAP32s;
+  HEAPU8s[i] = currHEAPU8s;
+  HEAPU16s[i] = currHEAPU16s;
+  HEAPU32s[i] = currHEAPU32s;
+  HEAPF32s[i] = currHEAPF32s;
+  HEAPF64s[i] = currHEAPF64s;
   return true;
 }
 function freeSplitChunk(i) {
