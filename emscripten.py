@@ -1,13 +1,11 @@
 #!/usr/bin/env python2
-
-'''
-You should normally never use this! Use emcc instead.
+"""You should normally never use this! Use emcc instead.
 
 This is a small wrapper script around the core JS compiler. This calls that
 compiler with the settings given to it. It can also read data from C/C++
 header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
-'''
+"""
 
 from tools.toolchain_profiler import ToolchainProfiler
 if __name__ == '__main__':
@@ -61,8 +59,8 @@ def access_quoter(settings):
   return access_quote
 
 
-def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
-             temp_files=None, DEBUG=None):
+def emscript(infile, settings, outfile, libraries, compiler_engine, temp_files,
+             DEBUG):
   """Runs the emscripten LLVM-to-JS compiler.
 
   Args:
@@ -71,8 +69,6 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
       defined in src/settings.js.
     outfile: The file where the output is written.
   """
-
-  if libraries is None: libraries = []
 
   assert settings['ASM_JS'], 'fastcomp is asm.js-only (mode 1 or 2)'
 
@@ -1742,14 +1738,12 @@ HEAP_TYPE_INFOS = [
 ]
 
 
-def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_engine=None,
-                          temp_files=None, DEBUG=None):
+def emscript_wasm_backend(infile, settings, outfile, libraries, compiler_engine,
+                          temp_files, DEBUG):
   # Overview:
   #   * Run LLVM backend to emit .s
   #   * Run Binaryen's s2wasm to generate WebAssembly.
   #   * We may also run some Binaryen passes here.
-
-  if libraries is None: libraries = []
 
   if shared.Settings.EXPERIMENTAL_USE_LLD:
     wasm, metadata = build_wasm_lld(temp_files, infile, outfile, settings, DEBUG)
@@ -2236,11 +2230,6 @@ def asmjs_mangle(name):
   return '_' + ''.join(['_' if not c.isalnum() else c for c in name])
 
 
-if os.environ.get('EMCC_FAST_COMPILER') == '0':
-  logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
-  sys.exit(1)
-
-
 def normalize_line_endings(text):
   """Normalize to UNIX line endings.
 
@@ -2260,7 +2249,7 @@ def main(args, compiler_engine, cache, temp_files, DEBUG):
     settings[name] = asstr(value)
 
   # libraries
-  libraries = args.libraries[0].split(',') if len(args.libraries) > 0 else []
+  libraries = args.libraries[0].split(',') if len(args.libraries) else []
 
   settings.setdefault('STRUCT_INFO', shared.path_from_root('src', 'struct_info.compiled.json'))
   struct_info = settings['STRUCT_INFO']
@@ -2276,17 +2265,19 @@ def main(args, compiler_engine, cache, temp_files, DEBUG):
              temp_files=temp_files, DEBUG=DEBUG)
 
 
-def _main(args=None):
-  if args is None:
-    args = sys.argv[1:]
+def _main():
+  if os.environ.get('EMCC_FAST_COMPILER') == '0':
+    logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
+    return 1
+
+  args = sys.argv[1:]
 
   substitute_response_files(args)
 
   parser = argparse.ArgumentParser(
     usage='%(prog)s [-h] [-H HEADERS] [-o OUTFILE] [-c COMPILER_ENGINE] [-s FOO=BAR]* infile',
     description=('You should normally never use this! Use emcc instead. '
-                 'This is a wrapper around the JS compiler, converting .ll to .js.'),
-    epilog='')
+                 'This is a wrapper around the JS compiler, converting .ll to .js.'))
   parser.add_argument('-H', '--headers',
                     default=[],
                     action='append',
@@ -2369,7 +2360,7 @@ WARNING: You should normally never use this! Use emcc instead.
     temp_files=temp_files,
     DEBUG=DEBUG,
   ))
+  return 0
 
 if __name__ == '__main__':
-  _main()
-  sys.exit(0)
+  sys.exit(_main())
