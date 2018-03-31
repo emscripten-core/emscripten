@@ -6065,9 +6065,11 @@ def process(filename):
       var ret;
       ret = Module['ccall']('get_int', 'number'); Module.print([typeof ret, ret].join(','));
       ret = ccall('get_float', 'number'); Module.print([typeof ret, ret.toFixed(2)].join(','));
+      ret = ccall('get_bool', 'boolean'); Module.print([typeof ret, ret].join(','));
       ret = ccall('get_string', 'string'); Module.print([typeof ret, ret].join(','));
       ret = ccall('print_int', null, ['number'], [12]); Module.print(typeof ret);
       ret = ccall('print_float', null, ['number'], [14.56]); Module.print(typeof ret);
+      ret = ccall('print_bool', null, ['boolean'], [true]); Module.print(typeof ret);
       ret = ccall('print_string', null, ['string'], ["cheez"]); Module.print(typeof ret);
       ret = ccall('print_string', null, ['array'], [[97, 114, 114, 45, 97, 121, 0]]); Module.print(typeof ret); // JS array
       ret = ccall('print_string', null, ['array'], [new Uint8Array([97, 114, 114, 45, 97, 121, 0])]); Module.print(typeof ret); // typed array
@@ -6093,7 +6095,7 @@ def process(filename):
   open(filename, 'w').write(src)
 '''
 
-    Settings.EXPORTED_FUNCTIONS += ['_get_int', '_get_float', '_get_string', '_print_int', '_print_float', '_print_string', '_multi', '_pointer', '_call_ccall_again', '_malloc']
+    Settings.EXPORTED_FUNCTIONS += ['_get_int', '_get_float', '_get_bool', '_get_string', '_print_int', '_print_float', '_print_bool', '_print_string', '_multi', '_pointer', '_call_ccall_again', '_malloc']
     self.do_run_in_out_file_test('tests', 'core', 'test_ccall', post_build=post)
 
     if '-O2' in self.emcc_args or self.is_emterpreter():

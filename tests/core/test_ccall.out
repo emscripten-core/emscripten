@@ -1,10 +1,13 @@
 *
 number,5
 number,3.14
+boolean,true
 string,hello world
 12
 undefined
 14.56
+undefined
+true
 undefined
 cheez
 undefined
