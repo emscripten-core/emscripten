@@ -9,7 +9,6 @@ from subprocess import Popen, PIPE, STDOUT
 
 TRACK_PROCESS_SPAWNS = int(os.getenv('EM_BUILD_VERBOSE', '0')) >= 3
 WORKING_ENGINES = {} # Holds all configured engines and whether they work: maps path -> True/False
-__rootpath__ = os.path.dirname(os.path.dirname(__file__))
 
 def timeout_run(proc, timeout=None, note='unnamed process', full_output=False, note_args=[], throw_on_failure=True):
   start = time.time()
@@ -59,7 +58,7 @@ def check_engine(engine):
     return WORKING_ENGINES[engine_path]
   try:
     logging.debug('Checking JS engine %s' % engine)
-    if 'hello, world!' in run_js(os.path.join(__rootpath__, 'src', 'hello_world.js'), engine, skip_check=True):
+    if 'hello, world!' in run_js(shared.path_from_root('src', 'hello_world.js'), engine):
       WORKING_ENGINES[engine_path] = True
   except Exception as e:
     logging.info('Checking JS engine %s failed. Check your config file. Details: %s' % (str(engine), str(e)))
@@ -76,6 +75,8 @@ def require_engine(engine):
     sys.exit(1)
 
 
+# Used only by test code.
+# TODO(sbc): Move to into test directory
 def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdout=PIPE, stderr=None, cwd=None,
            full_output=False, assert_returncode=0, error_limit=-1, skip_check=False):
   #  # code to serialize out the test suite files
@@ -99,7 +100,6 @@ def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdo
 
   command = make_command(filename, engine, args)
   try:
-    if cwd is not None: os.environ['EMCC_BUILD_DIR'] = os.getcwd()
     proc = Popen(
         command,
         stdin=stdin,
@@ -114,8 +114,6 @@ def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdo
       require_engine(engine)
     # if we got here, then require_engine succeeded, so we can raise the original error
     raise e
-  finally:
-    if cwd is not None: del os.environ['EMCC_BUILD_DIR']
   timeout = 15*60 if check_timeout else None
   if TRACK_PROCESS_SPAWNS:
     logging.info('Blocking on process ' + str(proc.pid) + ': ' + str(command) + (' for ' + str(timeout) + ' seconds' if timeout else ' until it finishes.'))
@@ -136,3 +134,9 @@ def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdo
   if assert_returncode is not None and proc.returncode is not assert_returncode:
     raise Exception('Expected the command ' + str(command) + ' to finish with return code ' + str(assert_returncode) + ', but it returned with code ' + str(proc.returncode) + ' instead! Output: ' + str(ret)[:error_limit])
   return ret
+
+try:
+  from . import shared
+except ImportError:
+  # Python 2 circular import compatibility
+  import shared

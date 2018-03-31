@@ -18,7 +18,7 @@ from collections import OrderedDict
 from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
 from tools.response_file import substitute_response_files
-from tools.shared import WINDOWS, asstr, path_from_root
+from tools.shared import WINDOWS, asstr, path_from_root, run_process_js
 from tools.toolchain_profiler import ToolchainProfiler
 
 if __name__ == '__main__':
@@ -530,9 +530,9 @@ def compile_settings(compiler_engine, libraries, temp_files):
       json.dump(shared.Settings.to_dict(), s, sort_keys=True)
 
     # Call js compiler
-    out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
-                       [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
-                       cwd=path_from_root('src'), error_limit=300)
+    out = run_process_js(path_from_root('src', 'compiler.js'), compiler_engine,
+                         [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                         cwd=path_from_root('src'))
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
   glue, forwarded_data = out.split('//FORWARDED_DATA:')
   return glue, forwarded_data

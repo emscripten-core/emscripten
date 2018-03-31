@@ -165,10 +165,21 @@ def run_process(cmd, universal_newlines=True, check=True, *args, **kw):
 
 def check_call(cmd, *args, **kw):
   try:
-    run_process(cmd, *args, **kw)
+    proc = run_process(cmd, *args, **kw)
     logging.debug('Successfully executed %s' % ' '.join(cmd))
+    return proc
   except subprocess.CalledProcessError as e:
     exit_with_error("'%s' failed (%d)", ' '.join(cmd), e.returncode)
+
+
+def run_process_js(filename, engine, jsargs=[], *args, **kw):
+  """Execute javascript tool using run_process.
+
+  This is used by emcc to run parts of the build process that are written
+  implemented in javascript.
+  """
+  command = jsrun.make_command(filename, engine, jsargs)
+  return check_call(command, *args, **kw).stdout
 
 
 def generate_config(path, first_time=False):
