@@ -1713,7 +1713,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.js_transform:
         shutil.copyfile(final, final + '.tr.js')
         final += '.tr.js'
-        posix = True if not shared.WINDOWS else False
+        posix = not shared.WINDOWS
         logging.debug('applying transform: %s', options.js_transform)
         subprocess.check_call(shared.Building.remove_quotes(shlex.split(options.js_transform, posix=posix) + [os.path.abspath(final)]))
         if DEBUG: save_intermediate('transformed')

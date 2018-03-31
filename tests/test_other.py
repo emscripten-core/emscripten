@@ -5334,7 +5334,7 @@ function _main() {
       post = post.split('\n')[0]
       seen = int(post)
       print('  seen', seen, ', expected ', expected, type(seen), type(expected))
-      assert expected == seen or (seen in expected if type(expected) in [list, tuple] else False), ['expect', expected, 'but see', seen]
+      assert expected == seen or (type(expected) in [list, tuple] and seen in expected), ['expect', expected, 'but see', seen]
 
     do_log_test(path_from_root('tests', 'primes.cpp'), list(range(88, 94)), '_main')
     do_log_test(path_from_root('tests', 'fannkuch.cpp'), list(range(226, 235)), '__Z15fannkuch_workerPv')
