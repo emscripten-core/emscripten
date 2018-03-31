@@ -75,6 +75,7 @@ if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
 import posixpath
+import subprocess
 from tools import shared
 from tools.shared import execute, suffix, unsuffixed
 from tools.jsrun import run_js
@@ -377,7 +378,7 @@ if crunch:
           raise Exception('unknown format')
       except:
         format = []
-      Popen([CRUNCH, '-outsamedir', '-file', src_dds_name, '-quality', crunch] + format, stdout=sys.stderr).communicate()
+      subprocess.check_call([CRUNCH, '-outsamedir', '-file', src_dds_name, '-quality', crunch] + format, stdout=sys.stderr)
       #if not os.path.exists(os.path.basename(crunch_name)):
       #  print >> sys.stderr, 'Failed to crunch, perhaps a weird dxt format? Looking for a source PNG for the DDS'
       #  Popen([CRUNCH, '-file', unsuffixed(file_['srcpath']) + '.png', '-quality', crunch] + format, stdout=sys.stderr).communicate()

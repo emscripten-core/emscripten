@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 import multiprocessing, os, pipes, re, shutil, subprocess, sys
+from subprocess import call, check_call, PIPE
 import itertools
 import glob
 import tools.shared
@@ -119,7 +120,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       process = run_process([PYTHON, compiler, path_from_root('tests', 'hello_world_error' + suffix)], stdout=PIPE, stderr=PIPE, check=False)
       assert not os.path.exists('a.out.js'), 'compilation failed, so no output file is expected'
       assert len(process.stdout) == 0, process.stdout
-      assert process.returncode is not 0, 'Failed compilation must return a nonzero error code!'
+      assert process.returncode != 0, 'Failed compilation must return a nonzero error code!'
       self.assertNotContained('IOError', process.stderr) # no python stack
       self.assertNotContained('Traceback', process.stderr) # no python stack
       self.assertContained('error: invalid preprocessing directive', process.stderr)
@@ -136,9 +137,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           continue
         target = args[1] if len(args) == 2 else 'hello_world.o'
         self.clear()
-        proc = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE)
-        proc.communicate()
-        assert proc.returncode == 0, [proc.returncode, args]
+        check_call([PYTHON, compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE)
         if args[-1] == '/dev/null':
           print('(no output)')
           continue
@@ -154,8 +153,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # handle singleton archives
       self.clear()
-      Popen([PYTHON, compiler, path_from_root('tests', 'hello_world' + suffix), '-o', 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
-      Popen([LLVM_AR, 'r', 'a.a', 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
+      check_call([PYTHON, compiler, path_from_root('tests', 'hello_world' + suffix), '-o', 'a.bc'], stdout=PIPE, stderr=PIPE)
+      check_call([LLVM_AR, 'r', 'a.a', 'a.bc'], stdout=PIPE, stderr=PIPE)
       assert os.path.exists('a.a')
       output = run_process([PYTHON, compiler, 'a.a'])
       assert os.path.exists('a.out.js'), output
@@ -336,13 +335,13 @@ f.write('transformed!')
 f.close()
 ''')
       trans_file.close()
-      output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world' + suffix), '--js-transform', '%s t.py' % (PYTHON)], stdout=PIPE, stderr=PIPE).communicate()
+      check_call([PYTHON, compiler, path_from_root('tests', 'hello_world' + suffix), '--js-transform', '%s t.py' % (PYTHON)], stdout=PIPE, stderr=PIPE)
       assert open('a.out.js').read() == 'transformed!', 'Transformed output must be as expected'
 
       for opts in [0, 1, 2, 3]:
         print('mem init in', opts)
         self.clear()
-        output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world.c'), '-O' + str(opts)], stdout=PIPE, stderr=PIPE).communicate()
+        check_call([PYTHON, compiler, path_from_root('tests', 'hello_world.c'), '-O' + str(opts)], stdout=PIPE, stderr=PIPE)
         assert os.path.exists('a.out.js.mem') == (opts >= 2), 'mem file should exist in -O2+'
 
   # Test that if multiple processes attempt to access or build stuff to the cache on demand, that exactly one of the processes
@@ -384,7 +383,7 @@ f.close()
           return 0;
         }
         ''')
-      subprocess.check_call([PYTHON, EMCC, c_file, '--cache', cache_dir_name])
+      check_call([PYTHON, EMCC, c_file, '--cache', cache_dir_name])
       assert os.path.exists(cache_dir_name), 'The cache directory %s must exist after the build' % cache_dir_name
       assert os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')), 'The cache directory must contain a built libc'
 
@@ -396,8 +395,8 @@ f.close()
     self.assertContained(' '.join(Building.doublequote_spaces(COMPILER_OPTS)), flags)
     # check they work
     cmd = [CLANG, path_from_root('tests', 'hello_world.cpp')] + shlex.split(flags.replace('\\', '\\\\')) + ['-c', '-emit-llvm', '-o', 'a.bc']
-    subprocess.check_call(cmd)
-    subprocess.check_call([PYTHON, EMCC, 'a.bc'])
+    check_call(cmd)
+    check_call([PYTHON, EMCC, 'a.bc'])
     self.assertContained('hello, world!', run_js(self.in_dir('a.out.js')))
 
   def test_emar_em_config_flag(self):
@@ -564,10 +563,10 @@ f.close()
       with temp_directory() as tempdirname:
         configure = [path_from_root('emcmake.bat' if WINDOWS else 'emcmake'), 'cmake', path_from_root('tests', 'cmake', 'cmake_with_emval')] + args
         print(str(configure))
-        subprocess.check_call(configure)
+        check_call(configure)
         build = ['cmake', '--build', '.']
         print(str(build))
-        subprocess.check_call(build)
+        check_call(build)
 
         ret = run_process(NODE_JS + [os.path.join(tempdirname, 'cpp_with_emscripten_val.js')], stdout=PIPE).stdout.strip()
         if '-DNO_GNU_EXTENSIONS=1' in args:
@@ -582,32 +581,31 @@ f.close()
 
     # Test that building static libraries by default generates UNIX archives (.a, with the emar tool)
     with temp_directory() as tempdirname:
-      subprocess.check_call([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib')])
-      subprocess.check_call([Building.which('cmake'), '--build', '.'])
+      check_call([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib')])
+      check_call([Building.which('cmake'), '--build', '.'])
       assert tools.shared.Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.a'))
       assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.a'))
 
     # Test that passing the -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON directive causes CMake to generate LLVM bitcode files as static libraries (.bc)
     with temp_directory() as tempdirname:
-      subprocess.check_call([emcmake, 'cmake', '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON', path_from_root('tests', 'cmake', 'static_lib')])
-      subprocess.check_call([Building.which('cmake'), '--build', '.'])
+      check_call([emcmake, 'cmake', '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON', path_from_root('tests', 'cmake', 'static_lib')])
+      check_call([Building.which('cmake'), '--build', '.'])
       assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.bc'))
       assert not tools.shared.Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.bc'))
 
     # Test that one is able to fake custom suffixes for static libraries.
     # (sometimes projects want to emulate stuff, and do weird things like files with ".so" suffix which are in fact either ar archives or bitcode files)
     with temp_directory() as tempdirname:
-      subprocess.check_call([emcmake, 'cmake', '-DSET_FAKE_SUFFIX_IN_PROJECT=1', path_from_root('tests', 'cmake', 'static_lib')])
-      subprocess.check_call([Building.which('cmake'), '--build', '.'])
+      check_call([emcmake, 'cmake', '-DSET_FAKE_SUFFIX_IN_PROJECT=1', path_from_root('tests', 'cmake', 'static_lib')])
+      check_call([Building.which('cmake'), '--build', '.'])
       assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
       assert tools.shared.Building.is_ar(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
 
   def test_failure_error_code(self):
     for compiler in [EMCC, EMXX]:
       # Test that if one file is missing from the build, then emcc shouldn't succeed, and shouldn't try to produce an output file.
-      process = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world.c'), 'this_file_is_missing.c', '-o', 'this_output_file_should_never_exist.js'], stdout=PIPE, stderr=PIPE)
-      process.communicate()
-      assert process.returncode is not 0, 'Trying to compile a nonexisting file should return with a nonzero error code!'
+      rtn = call([PYTHON, compiler, path_from_root('tests', 'hello_world.c'), 'this_file_is_missing.c', '-o', 'this_output_file_should_never_exist.js'], stdout=PIPE, stderr=PIPE)
+      assert rtn != 0, 'Trying to compile a nonexisting file should return with a nonzero error code!'
       assert os.path.exists('this_output_file_should_never_exist.js') == False, 'Emcc should not produce an output file when build fails!'
 
   def test_use_cxx(self):
@@ -622,37 +620,34 @@ f.close()
 
   def test_cxx03(self):
     for compiler in [EMCC, EMXX]:
-      process = Popen([PYTHON, compiler, path_from_root('tests', 'hello_cxx03.cpp')], stdout=PIPE, stderr=PIPE)
-      process.communicate()
-      assert process.returncode is 0, 'By default, emscripten should build using -std=c++03!'
+      rtn = call([PYTHON, compiler, path_from_root('tests', 'hello_cxx03.cpp')], stdout=PIPE, stderr=PIPE)
+      assert rtn == 0, 'By default, emscripten should build using -std=c++03!'
 
   def test_cxx11(self):
     for std in ['-std=c++11', '--std=c++11']:
       for compiler in [EMCC, EMXX]:
-        process = Popen([PYTHON, compiler, std, path_from_root('tests', 'hello_cxx11.cpp')], stdout=PIPE, stderr=PIPE)
-        process.communicate()
-        assert process.returncode is 0, 'User should be able to specify custom -std= on the command line!'
+        rtn = call([PYTHON, compiler, std, path_from_root('tests', 'hello_cxx11.cpp')], stdout=PIPE, stderr=PIPE)
+        assert rtn == 0, 'User should be able to specify custom -std= on the command line!'
 
   # Regression test for issue #4522: Incorrect CC vs CXX detection
   def test_incorrect_c_detection(self):
     for compiler in [EMCC, EMXX]:
-      process = Popen([PYTHON, compiler, "--bind", "--embed-file", path_from_root('tests', 'hello_world.c'), path_from_root('tests', 'hello_world.cpp')], stdout=PIPE, stderr=PIPE)
-      process.communicate()
-      assert process.returncode is 0, 'Emscripten should not use the embed file for CC/CXX detection'
+      rtn = call([PYTHON, compiler, "--bind", "--embed-file", path_from_root('tests', 'hello_world.c'), path_from_root('tests', 'hello_world.cpp')], stdout=PIPE, stderr=PIPE)
+      assert rtn == 0, 'Emscripten should not use the embed file for CC/CXX detection'
 
   def test_odd_suffixes(self):
     for suffix in ['CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC', 'i', 'ii']:
       self.clear()
       print(suffix)
       shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'test.' + suffix)
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'test.' + suffix)]).communicate()
+      check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'test.' + suffix)])
       self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     for suffix in ['lo']:
       self.clear()
       print(suffix)
-      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'binary.' + suffix]).communicate()
-      Popen([PYTHON, EMCC, 'binary.' + suffix]).communicate()
+      check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'binary.' + suffix])
+      check_call([PYTHON, EMCC, 'binary.' + suffix])
       self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_catch_undef(self):
@@ -672,12 +667,12 @@ f.close()
         return 0;
       }
     ''')
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-fsanitize=undefined']).communicate()
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-fsanitize=undefined'])
     self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_asm_minify(self):
     def test(args):
-      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop_malloc.cpp')] + args).communicate()
+      check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop_malloc.cpp')] + args)
       self.assertContained('hello, world!', run_js(self.in_dir('a.out.js')))
       return open(self.in_dir('a.out.js')).read()
 
@@ -719,10 +714,10 @@ f.close()
     open('src.c', 'w').write(src)
     def test(args, expected, moar_expected=None):
       print(args, expected, moar_expected)
-      out, err = Popen([PYTHON, EMCC, 'src.c'] + args, stderr=PIPE).communicate()
+      check_call([PYTHON, EMCC, 'src.c'] + args, stderr=PIPE)
       self.assertContained(expected, run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True, assert_returncode=None))
       print('with emulated function pointers')
-      Popen([PYTHON, EMCC, 'src.c'] + args + ['-s', 'EMULATED_FUNCTION_POINTERS=1'], stderr=PIPE).communicate()
+      check_call([PYTHON, EMCC, 'src.c'] + args + ['-s', 'EMULATED_FUNCTION_POINTERS=1'], stderr=PIPE)
       out = run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True, assert_returncode=None)
       self.assertContained(expected, out)
       if moar_expected: self.assertContained(moar_expected, out)
@@ -803,10 +798,10 @@ int main() {
 }
 ''')
 
-    subprocess.check_call([PYTHON, EMCC, '-o', 'a.o', 'a.c'])
-    subprocess.check_call([PYTHON, EMAR, 'rv', 'library.a', 'a.o'])
-    subprocess.check_call([PYTHON, EMCC, '-o', 'main.o', 'main.c'])
-    subprocess.check_call([PYTHON, EMCC, '-o', 'a.js', 'main.o', 'library.a', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'])
+    check_call([PYTHON, EMCC, '-o', 'a.o', 'a.c'])
+    check_call([PYTHON, EMAR, 'rv', 'library.a', 'a.o'])
+    check_call([PYTHON, EMCC, '-o', 'main.o', 'main.c'])
+    check_call([PYTHON, EMCC, '-o', 'a.js', 'main.o', 'library.a', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'])
     self.assertContained('|0|', run_js('a.js'))
 
   def test_outline(self):
@@ -841,7 +836,7 @@ int main() {
         for outlining_limit in outlining_limits:
           print('\n', Building.COMPILER_TEST_OPTS, debug, outlining_limit, '\n')
           # TODO: test without -g3, tell all sorts
-          Popen([PYTHON, EMCC, src] + libs + ['-o', 'test.js', '-O2'] + debug + ['-s', 'OUTLINING_LIMIT=%d' % outlining_limit] + args).communicate()
+          check_call([PYTHON, EMCC, src] + libs + ['-o', 'test.js', '-O2'] + debug + ['-s', 'OUTLINING_LIMIT=%d' % outlining_limit] + args)
           assert os.path.exists('test.js')
           shutil.copyfile('test.js', '%d_test.js' % outlining_limit)
           for engine in JS_ENGINES:
@@ -904,7 +899,7 @@ int main() {
 ''')
     for limit in [0, 1000, 2500, 5000]:
       print(limit)
-      subprocess.check_call([PYTHON, EMCC, 'src.c', '-s', 'ASSERTIONS=2', '-s', 'OUTLINING_LIMIT=%d' % limit, '-s', 'TOTAL_STACK=10000'])
+      check_call([PYTHON, EMCC, 'src.c', '-s', 'ASSERTIONS=2', '-s', 'OUTLINING_LIMIT=%d' % limit, '-s', 'TOTAL_STACK=10000'])
       assert 'Hello, world!' in run_js('a.out.js')
 
   def test_symlink(self):
@@ -913,7 +908,7 @@ int main() {
       return self.skip('Windows FS does not need to be tested for symlinks support, since it does not have them.')
     open(os.path.join(self.get_dir(), 'foobar.xxx'), 'w').write('int main(){ return 0; }')
     os.symlink(os.path.join(self.get_dir(), 'foobar.xxx'), os.path.join(self.get_dir(), 'foobar.c'))
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'foobar.c'), '-o', os.path.join(self.get_dir(), 'foobar')]).communicate()
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'foobar.c'), '-o', os.path.join(self.get_dir(), 'foobar')])
     assert os.path.exists(os.path.join(self.get_dir(), 'foobar'))
     try_delete(os.path.join(self.get_dir(), 'foobar'))
     try_delete(os.path.join(self.get_dir(), 'foobar.xxx'))
@@ -921,7 +916,7 @@ int main() {
 
     open(os.path.join(self.get_dir(), 'foobar.c'), 'w').write('int main(){ return 0; }')
     os.symlink(os.path.join(self.get_dir(), 'foobar.c'), os.path.join(self.get_dir(), 'foobar.xxx'))
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'foobar.xxx'), '-o', os.path.join(self.get_dir(), 'foobar')]).communicate()
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'foobar.xxx'), '-o', os.path.join(self.get_dir(), 'foobar')])
     assert os.path.exists(os.path.join(self.get_dir(), 'foobar'))
     try_delete(os.path.join(self.get_dir(), 'foobar'))
     try_delete(os.path.join(self.get_dir(), 'foobar.xxx'))
@@ -1059,11 +1054,11 @@ int f() {
 }
     ''')
 
-    Popen([PYTHON, EMCC, '-o', '1.o', '1.c']).communicate()
-    Popen([PYTHON, EMCC, '-o', '2.o', '2.c']).communicate()
-    Popen([PYTHON, EMAR, 'crs', '2.a', '2.o']).communicate()
-    Popen([PYTHON, EMCC, '-o', 'out.bc', '-Wl,--start-group', '2.a', '1.o', '-Wl,--end-group']).communicate()
-    Popen([PYTHON, EMCC, 'out.bc']).communicate()
+    check_call([PYTHON, EMCC, '-o', '1.o', '1.c'])
+    check_call([PYTHON, EMCC, '-o', '2.o', '2.c'])
+    check_call([PYTHON, EMAR, 'crs', '2.a', '2.o'])
+    check_call([PYTHON, EMCC, '-o', 'out.bc', '-Wl,--start-group', '2.a', '1.o', '-Wl,--end-group'])
+    check_call([PYTHON, EMCC, 'out.bc'])
     self.assertContained('Hello', run_js('a.out.js'))
 
   def test_circular_libs(self):
@@ -1248,8 +1243,8 @@ int f() {
       }
     ''')
 
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'libfile.cpp'), '-o', 'libfile.so']).communicate()
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), os.path.join(self.get_dir(), 'subdir', 'libfile.so'), '-L.'], stderr=PIPE).communicate()
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'libfile.cpp'), '-o', 'libfile.so'])
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), os.path.join(self.get_dir(), 'subdir', 'libfile.so'), '-L.'], stderr=PIPE)
     self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_identical_basenames(self):
@@ -1275,14 +1270,14 @@ int f() {
       void printey() { printf("hello there\\n"); }
     ''')
 
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'foo', 'main.cpp'), os.path.join(self.get_dir(), 'bar', 'main.cpp')]).communicate()
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'foo', 'main.cpp'), os.path.join(self.get_dir(), 'bar', 'main.cpp')])
     self.assertContained('hello there', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     # ditto with first creating .o files
     try_delete(os.path.join(self.get_dir(), 'a.out.js'))
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'foo', 'main.cpp'), '-o', os.path.join(self.get_dir(), 'foo', 'main.o')]).communicate()
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'bar', 'main.cpp'), '-o', os.path.join(self.get_dir(), 'bar', 'main.o')]).communicate()
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'foo', 'main.o'), os.path.join(self.get_dir(), 'bar', 'main.o')]).communicate()
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'foo', 'main.cpp'), '-o', os.path.join(self.get_dir(), 'foo', 'main.o')])
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'bar', 'main.cpp'), '-o', os.path.join(self.get_dir(), 'bar', 'main.o')])
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'foo', 'main.o'), os.path.join(self.get_dir(), 'bar', 'main.o')])
     self.assertContained('hello there', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_main_a(self):
@@ -1304,12 +1299,12 @@ int f() {
       int f() { return 12346; }
     ''')
 
-    Popen([PYTHON, EMCC, main_name, '-c', '-o', main_name+'.bc']).communicate()
-    Popen([PYTHON, EMCC, other_name, '-c', '-o', other_name+'.bc']).communicate()
+    check_call([PYTHON, EMCC, main_name, '-c', '-o', main_name+'.bc'])
+    check_call([PYTHON, EMCC, other_name, '-c', '-o', other_name+'.bc'])
 
-    Popen([PYTHON, EMAR, 'cr', main_name+'.a', main_name+'.bc']).communicate()
+    check_call([PYTHON, EMAR, 'cr', main_name+'.a', main_name+'.bc'])
 
-    Popen([PYTHON, EMCC, other_name+'.bc', main_name+'.a']).communicate()
+    check_call([PYTHON, EMCC, other_name+'.bc', main_name+'.a'])
 
     self.assertContained('result: 12346.', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
@@ -1320,8 +1315,8 @@ int f() {
         printf("a\n");
       }
     ''')
-    Popen([PYTHON, EMCC, 'common.c', '-c', '-o', 'common.o']).communicate()
-    Popen([PYTHON, EMAR, 'rc', 'liba.a', 'common.o']).communicate()
+    check_call([PYTHON, EMCC, 'common.c', '-c', '-o', 'common.o'])
+    check_call([PYTHON, EMAR, 'rc', 'liba.a', 'common.o'])
 
     open('common.c', 'w').write(r'''
       #include <stdio.h>
@@ -1329,8 +1324,8 @@ int f() {
         printf("b\n");
       }
     ''')
-    Popen([PYTHON, EMCC, 'common.c', '-c', '-o', 'common.o']).communicate()
-    Popen([PYTHON, EMAR, 'rc', 'libb.a', 'common.o']).communicate()
+    check_call([PYTHON, EMCC, 'common.c', '-c', '-o', 'common.o'])
+    check_call([PYTHON, EMAR, 'rc', 'libb.a', 'common.o'])
 
     open('main.c', 'w').write(r'''
       void a(void);
@@ -1340,7 +1335,7 @@ int f() {
         b();
       }
     ''')
-    Popen([PYTHON, EMCC, 'main.c', '-L.', '-la', '-lb']).communicate()
+    check_call([PYTHON, EMCC, 'main.c', '-L.', '-la', '-lb'])
 
     self.assertContained('a\nb\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
@@ -1351,7 +1346,7 @@ int f() {
         printf("a\n");
       }
     ''')
-    Popen([PYTHON, EMCC, 'common.c', '-c', '-o', 'common.o']).communicate()
+    check_call([PYTHON, EMCC, 'common.c', '-c', '-o', 'common.o'])
 
     try:
       os.makedirs(os.path.join(self.get_dir(), 'libdir'));
@@ -1363,9 +1358,9 @@ int f() {
         printf("b...\n");
       }
     ''')
-    Popen([PYTHON, EMCC, os.path.join('libdir', 'common.c'), '-c', '-o', os.path.join('libdir', 'common.o')]).communicate()
+    check_call([PYTHON, EMCC, os.path.join('libdir', 'common.c'), '-c', '-o', os.path.join('libdir', 'common.o')])
 
-    Popen([PYTHON, EMAR, 'rc', 'liba.a', 'common.o', os.path.join('libdir', 'common.o')]).communicate()
+    check_call([PYTHON, EMAR, 'rc', 'liba.a', 'common.o', os.path.join('libdir', 'common.o')])
 
     open('main.c', 'w').write(r'''
       void a(void);
@@ -1388,7 +1383,7 @@ int f() {
       assert len(line) < 20, line # should not have huge hash names
 
     # make the hashing fail: 'q' is just a quick append, no replacement, so hashing is not done, and dupes are easy
-    Popen([PYTHON, EMAR, 'q', 'liba.a', 'common.o', os.path.join('libdir', 'common.o')]).communicate()
+    check_call([PYTHON, EMAR, 'q', 'liba.a', 'common.o', os.path.join('libdir', 'common.o')])
     err = run_process([PYTHON, EMCC, 'main.c', '-L.', '-la'], stderr=PIPE).stderr
     assert 'loading from archive' in err, err
     assert 'which has duplicate entries' in err, err
@@ -1404,8 +1399,8 @@ int f() {
         printf("Hello, world!\n");
       }
     ''' % export_name)
-    Popen([PYTHON, EMCC, 'export.c', '-c', '-o', 'export.o']).communicate()
-    Popen([PYTHON, EMAR, 'rc', 'libexport.a', 'export.o']).communicate()
+    check_call([PYTHON, EMCC, 'export.c', '-c', '-o', 'export.o'])
+    check_call([PYTHON, EMAR, 'rc', 'libexport.a', 'export.o'])
 
     open('main.c', 'w').write(r'''
       int main() {
@@ -1416,16 +1411,16 @@ int f() {
     definition = 'function _%s(' % export_name
 
     # Sanity check: the symbol should not be linked in if not requested.
-    Popen([PYTHON, EMCC, 'main.c', '-L.', '-lexport']).communicate()
+    check_call([PYTHON, EMCC, 'main.c', '-L.', '-lexport'])
     self.assertNotContained(definition, open(os.path.join(self.get_dir(), 'a.out.js')).read())
 
     # Sanity check: exporting without a definition does not cause it to appear.
     # Note: exporting main prevents emcc from warning that it generated no code.
-    Popen([PYTHON, EMCC, 'main.c', '-s', '''EXPORTED_FUNCTIONS=['_main', '_%s']''' % export_name]).communicate()
+    check_call([PYTHON, EMCC, 'main.c', '-s', '''EXPORTED_FUNCTIONS=['_main', '_%s']''' % export_name])
     self.assertNotContained(definition, open(os.path.join(self.get_dir(), 'a.out.js')).read())
 
     # Actual test: defining symbol in library and exporting it causes it to appear in the output.
-    Popen([PYTHON, EMCC, 'main.c', '-L.', '-lexport', '-s', '''EXPORTED_FUNCTIONS=['_%s']''' % export_name]).communicate()
+    check_call([PYTHON, EMCC, 'main.c', '-L.', '-lexport', '-s', '''EXPORTED_FUNCTIONS=['_%s']''' % export_name])
     self.assertContained(definition, open(os.path.join(self.get_dir(), 'a.out.js')).read())
 
   def test_embed_file(self):
@@ -1443,11 +1438,11 @@ int f() {
       }
     ''')
 
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'somefile.txt']).communicate()
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'somefile.txt'])
     self.assertContained('|hello from a file wi|', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     # preload twice, should not err
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt']).communicate()
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt'])
     self.assertContained('|hello from a file wi|', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_embed_file_dup(self):
@@ -1479,7 +1474,7 @@ int f() {
       }
     ''')
 
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'tst']).communicate()
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'tst'])
     self.assertContained('|frist|\n|sacond|\n|thard|\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_exclude_file(self):
@@ -1504,7 +1499,7 @@ int f() {
       }
     ''')
 
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'tst', '--exclude-file', '*.exe']).communicate()
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'tst', '--exclude-file', '*.exe'])
     output = run_js(os.path.join(self.get_dir(), 'a.out.js'))
     assert output == '' or output == ' \n'
 
@@ -1556,14 +1551,14 @@ int f() {
       compiler = [PYTHON, EMCC]
 
       # Build libfile normally into an .so
-      Popen(compiler + [os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), '-o', os.path.join(self.get_dir(), 'libdir', 'libfile.so' + lib_suffix)]).communicate()
+      check_call(compiler + [os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), '-o', os.path.join(self.get_dir(), 'libdir', 'libfile.so' + lib_suffix)])
       # Build libother and dynamically link it to libfile
-      Popen(compiler + [os.path.join(self.get_dir(), 'libdir', 'libother.cpp')] + link_cmd + ['-o', os.path.join(self.get_dir(), 'libdir', 'libother.so')]).communicate()
+      check_call(compiler + [os.path.join(self.get_dir(), 'libdir', 'libother.cpp')] + link_cmd + ['-o', os.path.join(self.get_dir(), 'libdir', 'libother.so')])
       # Build the main file, linking in both the libs
-      Popen(compiler + [os.path.join(self.get_dir(), 'main.cpp')] + link_cmd + ['-lother', '-c']).communicate()
+      check_call(compiler + [os.path.join(self.get_dir(), 'main.cpp')] + link_cmd + ['-lother', '-c'])
       print('...')
       # The normal build system is over. We need to do an additional step to link in the dynamic libraries, since we ignored them before
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.o')] + link_cmd + ['-lother', '-s', 'NO_EXIT_RUNTIME=0']).communicate()
+      check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.o')] + link_cmd + ['-lother', '-s', 'NO_EXIT_RUNTIME=0'])
 
       self.assertContained('*hello from lib\n|hello from lib|\n*', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
@@ -1587,7 +1582,7 @@ int f() {
       Module.print(MESSAGE);
     ''')
 
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'before.js', '--post-js', 'after.js']).communicate()
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'before.js', '--post-js', 'after.js'])
     self.assertContained('hello from main\nhello from js\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_sdl_endianness(self):
@@ -1600,7 +1595,7 @@ int f() {
         return 0;
       }
     ''')
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')]).communicate()
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')])
     self.assertContained('1234, 1234, 4321\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_libpng(self):
@@ -1663,7 +1658,7 @@ int f() {
         return 0;
       }
     ''')
-    Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'main.cpp')]).communicate()
+    check_call([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'main.cpp')])
     output = run_js(os.path.join(self.get_dir(), 'a.out.js'), full_output=True, stderr=PIPE)
     self.assertContained('''0:0
 1:1
@@ -1765,7 +1760,7 @@ int f() {
       };
     ''')
 
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js']).communicate()
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js'])
     self.assertContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     # never run, so no preRun or postRun
@@ -1776,7 +1771,7 @@ int f() {
     # noInitialRun prevents run
     for no_initial_run, run_dep in [(0, 0), (1, 0), (0, 1)]:
       print(no_initial_run, run_dep)
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')]).communicate()
+      check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')])
       src = 'var Module = { noInitialRun: %d };\n' % no_initial_run + open(os.path.join(self.get_dir(), 'a.out.js')).read()
       if run_dep:
         src = src.replace('// {{PRE_RUN_ADDITIONS}}', '// {{PRE_RUN_ADDITIONS}}\naddRunDependency("test");') \
@@ -1799,7 +1794,7 @@ int f() {
         preInit: function() { Module.print('pre-init') }
       };
     ''')
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js']).communicate()
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js'])
     self.assertContained('pre-init\npre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_prepost2(self):
@@ -1818,7 +1813,7 @@ int f() {
     open(os.path.join(self.get_dir(), 'pre2.js'), 'w').write('''
       Module.postRun = function() { Module.print('post-run') };
     ''')
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js']).communicate()
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js'])
     self.assertContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_prepre(self):
@@ -1837,13 +1832,13 @@ int f() {
     open(os.path.join(self.get_dir(), 'pre2.js'), 'w').write('''
       Module.preRun.push(function() { Module.print('prepre') });
     ''')
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js']).communicate()
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js'])
     self.assertContained('prepre\npre-run\nhello from main\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_save_bc(self):
     for save in [0, 1]:
       self.clear()
-      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop_malloc.cpp')] + ([] if not save else ['--save-bc', self.in_dir('my_bitcode.bc')])).communicate()
+      check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop_malloc.cpp')] + ([] if not save else ['--save-bc', self.in_dir('my_bitcode.bc')]))
       assert 'hello, world!' in run_js(self.in_dir('a.out.js'))
       assert os.path.exists(self.in_dir('my_bitcode.bc')) == save
       if save:
@@ -1851,7 +1846,7 @@ int f() {
         Building.llvm_dis(self.in_dir('my_bitcode.bc'), self.in_dir('my_ll.ll'))
         try:
           os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
-          Popen([PYTHON, EMCC, 'my_ll.ll', '-o', 'two.js']).communicate()
+          check_call([PYTHON, EMCC, 'my_ll.ll', '-o', 'two.js'])
           assert 'hello, world!' in run_js(self.in_dir('two.js'))
         finally:
           del os.environ['EMCC_LEAVE_INPUTS_RAW']
@@ -1997,7 +1992,7 @@ int f() {
       if js_optimizer.use_native(passes) and js_optimizer.get_native_optimizer():
         # test calling native
         def check_json():
-          Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), output_temp, 'receiveJSON'], stdin=PIPE, stdout=open(output_temp + '.js', 'w')).communicate()
+          check_call(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), output_temp, 'receiveJSON'], stdin=PIPE, stdout=open(output_temp + '.js', 'w'))
           output = open(output_temp + '.js').read()
           check_js(output, expected)
 
@@ -2005,7 +2000,7 @@ int f() {
         input_temp = 'temp.js'
         output_temp = 'output.js'
         shutil.copyfile(input, input_temp)
-        Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input_temp, 'emitJSON'], stdin=PIPE, stdout=open(input_temp + '.js', 'w')).communicate()
+        check_call(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input_temp, 'emitJSON'], stdin=PIPE, stdout=open(input_temp + '.js', 'w'))
         original = open(input).read()
         if '// EXTRA_INFO:' in original:
           json = open(input_temp + '.js').read()
@@ -2089,7 +2084,7 @@ int f() {
     shutil.copytree(path_from_root('tests', 'scons'), os.path.join(self.get_dir(), 'test'))
     shutil.copytree(path_from_root('tools', 'scons', 'site_scons'), os.path.join(self.get_dir(), 'test', 'site_scons'))
     os.chdir(os.path.join(self.get_dir(), 'test'))
-    Popen(['scons']).communicate()
+    check_call(['scons'])
     output = run_js('scons_integration.js', assert_returncode=5)
     assert 'If you see this - the world is all right!' in output
 
@@ -2118,15 +2113,17 @@ int f() {
         path_from_root('tests', 'embind', 'embind.test.js'),
       ]
 
-      Popen(
-        [ PYTHON,
-          EMCC,
+      rtn = call([PYTHON, EMCC,
           path_from_root('tests', 'embind', 'embind_test.cpp'),
           '--pre-js', path_from_root('tests', 'embind', 'test.pre.js'),
           '--post-js', path_from_root('tests', 'embind', 'test.post.js'),
         ] + args,
         stderr=PIPE if fail else None,
-        env=environ).communicate()
+        env=environ)
+      if fail:
+        assert rtn != 0
+      else:
+        assert rtn == 0
 
       assert os.path.exists(self.in_dir('a.out.js')) == (not fail)
       if not fail:
@@ -2141,7 +2138,7 @@ int f() {
     if WINDOWS: return self.skip('test_llvm_nativizer does not work on Windows: https://github.com/kripken/emscripten/issues/702')
     if MACOS: return self.skip('test_llvm_nativizer does not work on macOS: https://github.com/kripken/emscripten/issues/709')
     try:
-      Popen(['as', '--version'], stdout=PIPE, stderr=PIPE).communicate()
+      check_call(['as', '--version'], stdout=PIPE, stderr=PIPE)
     except:
       return self.skip('no gnu as, cannot run nativizer')
 
@@ -2150,7 +2147,7 @@ int f() {
     open(os.path.join(self.get_dir(), 'somefile.binary'), 'w').write('''waka waka############################''')
     open(os.path.join(self.get_dir(), 'test.file'), 'w').write('''ay file..............,,,,,,,,,,,,,,''')
     open(os.path.join(self.get_dir(), 'stdin'), 'w').write('''inter-active''')
-    subprocess.check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'files.cpp'), '-c'])
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'files.cpp'), '-c'])
     run_process([PYTHON, path_from_root('tools', 'nativize_llvm.py'), os.path.join(self.get_dir(), 'files.o')], stdout=PIPE)
     output = run_process([os.path.join(self.get_dir(), 'files.o.run')], stdin=open(os.path.join(self.get_dir(), 'stdin')), stdout=PIPE, stderr=PIPE)
     self.assertContained('''size: 37
@@ -2207,10 +2204,10 @@ seeked= file.
         }
       }
     ''')
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'main.o']).communicate()
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'supp.cpp'), '-o', 'supp.o']).communicate()
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'main.o'])
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'supp.cpp'), '-o', 'supp.o'])
 
-    output = Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.o'), '-s', os.path.join(self.get_dir(), 'supp.o'), '-s', 'SAFE_HEAP=1'], stderr=PIPE).communicate()
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.o'), '-s', os.path.join(self.get_dir(), 'supp.o'), '-s', 'SAFE_HEAP=1'], stderr=PIPE)
     output = run_js('a.out.js')
     assert 'yello' in output, 'code works'
     code = open('a.out.js').read()
@@ -2254,11 +2251,11 @@ seeked= file.
     assert clean(output.stdout) == clean(output2.stdout)
     # verify '--separate-metadata' option produces separate metadata file
     os.chdir('..')
-    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata']).communicate()
+    check_call([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
     assert os.path.isfile('immutable.js.metadata')
     # verify js output file is immutable when metadata is separated
     shutil.copy2('immutable.js', 'immutable.js.copy') # copy with timestamp preserved
-    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata']).communicate()
+    check_call([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
     import filecmp
     assert filecmp.cmp('immutable.js.copy', 'immutable.js')
     assert str(os.path.getmtime('immutable.js.copy')) == str(os.path.getmtime('immutable.js')) # assert both file content and timestamp are the same as reference copy
@@ -2300,20 +2297,20 @@ seeked= file.
     # crunch should not be run if a .crn exists that is more recent than the .dds
     shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
     time.sleep(0.1)
-    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
+    check_call([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w'))
     assert os.stat('test.data').st_size < 0.25*os.stat('ship.dds').st_size, 'Compressed should be much smaller than dds'
     crunch_time = os.stat('ship.crn').st_mtime
     dds_time = os.stat('ship.dds').st_mtime
     assert crunch_time >= dds_time, 'Crunch is more recent'
     # run again, should not recrunch!
     time.sleep(0.1)
-    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
+    check_call([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w'))
     if 'linux' in sys.platform: # OS time reporting in other OSes (macOS) seems flaky here
       assert crunch_time == os.stat('ship.crn').st_mtime, 'Crunch is unchanged ' + str([crunch_time, os.stat('ship.crn').st_mtime])
     # update dds, so should recrunch
     time.sleep(0.1)
     os.utime('ship.dds', None)
-    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
+    check_call([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w'))
     assert crunch_time < os.stat('ship.crn').st_mtime, 'Crunch was changed'
 
   def test_file_packager_mention_FORCE_FILESYSTEM(self):
@@ -2328,7 +2325,7 @@ seeked= file.
 
   def test_headless(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'example.png'))
-    Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_headless.c'), '-s', 'HEADLESS=1']).communicate()
+    check_call([PYTHON, EMCC, path_from_root('tests', 'sdl_headless.c'), '-s', 'HEADLESS=1'])
     output = run_js('a.out.js', stderr=PIPE)
     assert '''Init: 0
 Font: 0x1
@@ -2386,7 +2383,7 @@ done.
 
     # full demangle support
 
-    Popen([PYTHON, EMCC, 'src.cpp', '-s', 'DEMANGLE_SUPPORT=1']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp', '-s', 'DEMANGLE_SUPPORT=1'])
     output = run_js('a.out.js')
     self.assertContained('''operator new(unsigned int)
 _main
@@ -2428,7 +2425,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
       }
     ''')
 
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp'])
     output = run_js('a.out.js')
     self.assertContained('Waka::f::a23412341234::point()', output)
 
@@ -2441,7 +2438,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.clear()
 
     # compile with -O2 --closure 0
-    Popen([PYTHON, EMCC, path_from_root('tests', 'Module-exports', 'test.c'), '-o', 'test.js', '-O2', '--closure', '0', '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'), '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]'], stdout=PIPE, stderr=PIPE).communicate()
+    check_call([PYTHON, EMCC, path_from_root('tests', 'Module-exports', 'test.c'), '-o', 'test.js', '-O2', '--closure', '0', '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'), '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]'], stdout=PIPE, stderr=PIPE)
 
     # Check that compilation was successful
     assert os.path.exists('test.js')
@@ -2461,7 +2458,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     assert not os.path.exists(path_from_root('tests', 'Module-exports', 'test.js'))
 
     # compile with -O2 --closure 1
-    Popen([PYTHON, EMCC, path_from_root('tests', 'Module-exports', 'test.c'), '-o', path_from_root('tests', 'Module-exports', 'test.js'), '-O2', '--closure', '1', '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'), '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]'], stdout=PIPE, stderr=PIPE).communicate()
+    check_call([PYTHON, EMCC, path_from_root('tests', 'Module-exports', 'test.c'), '-o', path_from_root('tests', 'Module-exports', 'test.js'), '-O2', '--closure', '1', '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'), '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]'], stdout=PIPE, stderr=PIPE)
 
     # Check that compilation was successful
     assert os.path.exists(path_from_root('tests', 'Module-exports', 'test.js'))
@@ -2501,13 +2498,13 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
 
     reference_error_text = 'console.log(xxx); //< here is the ReferenceError';
 
-    subprocess.check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'count.c'), '-o', 'count.js'])
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'count.c'), '-o', 'count.js'])
 
     # Check that the ReferenceError is caught and rethrown and thus the original error line is masked
     self.assertNotContained(reference_error_text,
                             run_js ('index.js', engine=NODE_JS, stderr=STDOUT, assert_returncode=None))
 
-    subprocess.check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'count.c'), '-o', 'count.js', '-s', 'NODEJS_CATCH_EXIT=0'])
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'count.c'), '-o', 'count.js', '-s', 'NODEJS_CATCH_EXIT=0'])
 
     # Check that the ReferenceError is not caught, so we see the error properly
     self.assertContained(reference_error_text,
@@ -2533,13 +2530,13 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
 
     reference_error_text = 'undefined';
 
-    subprocess.check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'count.c'), '-s', 'FORCE_FILESYSTEM=1', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["FS_writeFile"]','-o', 'count.js'])
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'count.c'), '-s', 'FORCE_FILESYSTEM=1', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["FS_writeFile"]','-o', 'count.js'])
 
     # Check that the Module.FS_writeFile exists
     self.assertNotContained(reference_error_text,
                             run_js ('index.js', engine=NODE_JS, stderr=STDOUT, assert_returncode=None))
 
-    subprocess.check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'count.c'), '-s', 'FORCE_FILESYSTEM=1', '-o', 'count.js'])
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'count.c'), '-s', 'FORCE_FILESYSTEM=1', '-o', 'count.js'])
 
     # Check that the Module.FS_writeFile is not exported
     self.assertContained(reference_error_text,
@@ -2583,7 +2580,7 @@ int main()
     return 0;
 }
     ''')
-    Popen([PYTHON, EMCC, 'src.cpp', '--embed-file', 'src.cpp']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp', '--embed-file', 'src.cpp'])
     for engine in JS_ENGINES:
       out = run_js('a.out.js', engine=engine, stderr=PIPE, full_output=True)
       self.assertContained('File size: 724', out)
@@ -2793,11 +2790,11 @@ myreade(){
 }
 ''')
 
-    Popen([PYTHON, EMCC,
+    check_call([PYTHON, EMCC,
            '-o', 'proxyfs_test.js', 'proxyfs_test.c',
            '--embed-file', 'proxyfs_embed.txt', '--pre-js', 'proxyfs_pre.js',
            '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]',
-           '-s', 'MAIN_MODULE=1']).communicate()
+           '-s', 'MAIN_MODULE=1'])
     # Following shutil.copyfile just prevent 'require' of node.js from caching js-object.
     # See https://nodejs.org/api/modules.html
     shutil.copyfile('proxyfs_test.js', 'proxyfs_test1.js')
@@ -2848,7 +2845,7 @@ myreade(){
     assert simds >= expected_simds, 'expecting to see at least %d SIMD* uses, but seeing %d' % (expected_simds, simds)
 
   def test_autovectorize_linpack(self):
-    Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '-s', 'PRECISE_F32=1', '--profiling']).communicate()
+    check_call([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '-s', 'PRECISE_F32=1', '--profiling'])
     self.check_simd(30, 'Unrolled Single  Precision')
 
   def test_dependency_file(self):
@@ -2866,8 +2863,8 @@ myreade(){
       void my_function();
     ''')
 
-    Popen([PYTHON, EMCC, '-MMD', '-c', os.path.join(self.get_dir(), 'test.cpp'), '-o',
-      os.path.join(self.get_dir(), 'test.o')]).communicate()
+    check_call([PYTHON, EMCC, '-MMD', '-c', os.path.join(self.get_dir(), 'test.cpp'), '-o',
+      os.path.join(self.get_dir(), 'test.o')])
 
     assert os.path.exists(os.path.join(self.get_dir(), 'test.d')), 'No dependency file generated'
     deps = open(os.path.join(self.get_dir(), 'test.d')).read()
@@ -2879,18 +2876,18 @@ myreade(){
   def test_dependency_file_2(self):
     self.clear()
     shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'a.c')
-    Popen([PYTHON, EMCC, 'a.c', '-MMD', '-MF', 'test.d', '-c']).communicate()
+    check_call([PYTHON, EMCC, 'a.c', '-MMD', '-MF', 'test.d', '-c'])
     self.assertContained(open('test.d').read(), 'a.o: a.c\n')
 
     self.clear()
     shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'a.c')
-    Popen([PYTHON, EMCC, 'a.c', '-MMD', '-MF', 'test.d', '-c', '-o', 'test.o']).communicate()
+    check_call([PYTHON, EMCC, 'a.c', '-MMD', '-MF', 'test.d', '-c', '-o', 'test.o'])
     self.assertContained(open('test.d').read(), 'test.o: a.c\n')
 
     self.clear()
     shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'a.c')
     os.mkdir('obj')
-    Popen([PYTHON, EMCC, 'a.c', '-MMD', '-MF', 'test.d', '-c', '-o', 'obj/test.o']).communicate()
+    check_call([PYTHON, EMCC, 'a.c', '-MMD', '-MF', 'test.d', '-c', '-o', 'obj/test.o'])
     self.assertContained(open('test.d').read(), 'obj/test.o: a.c\n')
 
   def test_quoted_js_lib_key(self):
@@ -2904,7 +2901,7 @@ mergeInto(LibraryManager.library, {
 });
 ''')
 
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '--js-library', 'lib.js']).communicate()
+    check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '--js-library', 'lib.js'])
     self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_exported_js_lib(self):
@@ -2923,7 +2920,7 @@ int main() {
   });
 }
 ''')
-    subprocess.check_call([PYTHON, EMCC, 'src.cpp', '--js-library', 'lib.js', '-s', 'EXPORTED_FUNCTIONS=["_main", "_jslibfunc"]'])
+    check_call([PYTHON, EMCC, 'src.cpp', '--js-library', 'lib.js', '-s', 'EXPORTED_FUNCTIONS=["_main", "_jslibfunc"]'])
     self.assertContained('c calling: 12\njs calling: 10.', run_js('a.out.js'))
 
   def test_js_lib_using_asm_lib(self):
@@ -2948,7 +2945,7 @@ int main() {
   printf("c calling: %d\n", jslibfunc(6));
 }
 ''')
-    subprocess.check_call([PYTHON, EMCC, 'src.cpp', '--js-library', 'lib.js'])
+    check_call([PYTHON, EMCC, 'src.cpp', '--js-library', 'lib.js'])
     self.assertContained('c calling: 14\n', run_js('a.out.js'))
 
   def test_EMCC_BUILD_DIR(self):
@@ -2963,7 +2960,7 @@ printErr('dir was ' + process.env.EMCC_BUILD_DIR);
 
   def test_float_h(self):
     process = run_process([PYTHON, EMCC, path_from_root('tests', 'float+.c')], stdout=PIPE, stderr=PIPE)
-    assert process.returncode is 0, 'float.h should agree with our system: ' + process.stdout + '\n\n\n' + process.stderr
+    assert process.returncode == 0, 'float.h should agree with our system: ' + process.stdout + '\n\n\n' + process.stderr
 
   def test_default_obj_ext(self):
     outdir = os.path.join(self.get_dir(), 'out_dir') + '/'
@@ -3005,7 +3002,7 @@ Module["preRun"].push(function () {
 });
 ''')
 
-    Popen([PYTHON, EMCC, 'code.cpp', '--pre-js', 'pre.js']).communicate()
+    check_call([PYTHON, EMCC, 'code.cpp', '--pre-js', 'pre.js'])
     output = run_js(os.path.join(self.get_dir(), 'a.out.js'), engine=NODE_JS)
 
     assert output.count('This should only appear once.') == 1, '\n'+output
@@ -3023,7 +3020,7 @@ int main(void) {
 var Module = { print: function(x) { throw '<{(' + x + ')}>' } };
 ''')
 
-    Popen([PYTHON, EMCC, 'code.cpp', '--pre-js', 'pre.js']).communicate()
+    check_call([PYTHON, EMCC, 'code.cpp', '--pre-js', 'pre.js'])
     output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True, engine=NODE_JS, assert_returncode=None)
     assert r'<{(123456789)}>' in output, output
 
@@ -3033,10 +3030,10 @@ var Module = { print: function(x) { throw '<{(' + x + ')}>' } };
       self.clear()
 
       open('header.h', 'w').write('#define X 5\n')
-      Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-c']).communicate()
+      check_call([PYTHON, EMCC, '-xc++-header', 'header.h', '-c'])
       assert os.path.exists('header.h.gch') # default output is gch
       if suffix != 'gch':
-        Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix]).communicate()
+        check_call([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix])
         assert open('header.h.gch', 'rb').read() == open('header.h.' + suffix, 'rb').read()
 
       open('src.cpp', 'w').write(r'''
@@ -3046,7 +3043,7 @@ int main() {
   return 0;
 }
 ''')
-      Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h']).communicate()
+      check_call([PYTHON, EMCC, 'src.cpp', '-include', 'header.h'])
 
       output = run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True, engine=NODE_JS)
       assert '|5|' in output, output
@@ -3061,11 +3058,11 @@ int main() {
 
       # with specified target via -o
       try_delete('header.h.' + suffix)
-      Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'my.' + suffix]).communicate()
+      check_call([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'my.' + suffix])
       assert os.path.exists('my.' + suffix)
 
       # -include-pch flag
-      Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix]).communicate()
+      check_call([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix])
       check_execute([PYTHON, EMCC, 'src.cpp', '-include-pch', 'header.h.' + suffix])
       output = run_js('a.out.js')
       assert '|5|' in output, output
@@ -3096,7 +3093,7 @@ int main() {
     # when modern features are lacking, we can polyfill them or at least warn
     with open('pre.js', 'w') as f: f.write('Math.imul = undefined;')
     def test(expected, opts=[]):
-      subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--pre-js', 'pre.js'] + opts)
+      check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--pre-js', 'pre.js'] + opts)
       self.assertContained(expected, run_js('a.out.js', stderr=PIPE, full_output=True, engine=NODE_JS, assert_returncode=None))
     test('this is a legacy browser, build with LEGACY_VM_SUPPORT')
     test('hello, world!', ['-s', 'LEGACY_VM_SUPPORT=1'])
@@ -3122,7 +3119,7 @@ int main() {
           abort();
         }
       ''')
-    subprocess.check_call([PYTHON, EMCC, 'src.c'])
+    check_call([PYTHON, EMCC, 'src.c'])
     add_on_abort_and_verify()
 
     # test direct abort() JS call
@@ -3134,7 +3131,7 @@ int main() {
           EM_ASM({ abort() });
         }
       ''')
-    subprocess.check_call([PYTHON, EMCC, 'src.c'])
+    check_call([PYTHON, EMCC, 'src.c'])
     add_on_abort_and_verify()
 
     # test throwing in an abort handler, and catching that
@@ -3155,7 +3152,7 @@ int main() {
           });
         }
       ''')
-    subprocess.check_call([PYTHON, EMCC, 'src.c'])
+    check_call([PYTHON, EMCC, 'src.c'])
     with open('a.out.js') as f:
       js = f.read()
     with open('a.out.js', 'w') as f:
@@ -3171,13 +3168,13 @@ int main() {
 
     # test an abort during startup
 
-    subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
+    check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
     os.remove('a.out.wasm') # trigger onAbort by intentionally causing startup to fail
     add_on_abort_and_verify()
 
     # test an abort due to lack of a working binaryen method
 
-    subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-s', 'BINARYEN_METHOD="asmjs"'])
+    check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-s', 'BINARYEN_METHOD="asmjs"'])
     add_on_abort_and_verify(extra='Module.asm = "string-instead-of-code, asmjs method will fail";')
 
   def test_no_exit_runtime(self):
@@ -3208,7 +3205,7 @@ int main(int argc, char **argv) {
     for no_exit in [0, 1]:
       for opts in [[], ['-O1'], ['-O2', '-g2'], ['-O2', '-g2', '--llvm-lto', '1']]:
         print(no_exit, opts)
-        Popen([PYTHON, EMCC] + opts + ['code.cpp', '-s', 'NO_EXIT_RUNTIME=' + str(no_exit)]).communicate()
+        check_call([PYTHON, EMCC] + opts + ['code.cpp', '-s', 'NO_EXIT_RUNTIME=' + str(no_exit)])
         output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True, engine=NODE_JS)
         src = open('a.out.js').read()
         exit = 1-no_exit
@@ -3248,7 +3245,7 @@ int main() {
             print(src, no_exit, assertions, flush)
             cmd = [PYTHON, EMCC, src, '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-s', 'ASSERTIONS=%d' % assertions]
             if flush: cmd += ['-DFLUSH']
-            subprocess.check_call(cmd)
+            check_call(cmd)
             output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True)
             exit = 1-no_exit
             assert 'hello' in output, output
@@ -3266,7 +3263,7 @@ int main() {
     for no_exit in [0, 1]:
       for assertions in [0, 1]:
         print(no_exit, assertions)
-        subprocess.check_call([PYTHON, EMCC, 'code.cpp', '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-s', 'ASSERTIONS=%d' % assertions])
+        check_call([PYTHON, EMCC, 'code.cpp', '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-s', 'ASSERTIONS=%d' % assertions])
         output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True)
         exit = 1-no_exit
         assert (no_exit and assertions) == ('atexit() called, but NO_EXIT_RUNTIME is set, so atexits() will not be called. set NO_EXIT_RUNTIME to 0' in output), 'warning should be shown'
@@ -3318,7 +3315,7 @@ int main() {
       ]:
       print(name, args)
       self.clear()
-      Popen([PYTHON, EMCC, path_from_root('system', 'lib', 'dlmalloc.c')] + args, stdout=PIPE, stderr=PIPE).communicate()
+      check_call([PYTHON, EMCC, path_from_root('system', 'lib', 'dlmalloc.c')] + args, stdout=PIPE, stderr=PIPE)
       sizes[name] = os.stat('dlmalloc.o').st_size
     print(sizes)
     # -c should not affect code size
@@ -3384,9 +3381,9 @@ Waste<3> *getMore() {
       (['-O2', '-g', '--llvm-lto', '1'], False),
     ]:
       print(opts, has_global)
-      Popen([PYTHON, EMCC, 'main.cpp', '-c'] + opts).communicate()
-      Popen([PYTHON, EMCC, 'side.cpp', '-c'] + opts).communicate()
-      Popen([PYTHON, EMCC, 'main.o', 'side.o'] + opts).communicate()
+      check_call([PYTHON, EMCC, 'main.cpp', '-c'] + opts)
+      check_call([PYTHON, EMCC, 'side.cpp', '-c'] + opts)
+      check_call([PYTHON, EMCC, 'main.o', 'side.o'] + opts)
       output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True, engine=NODE_JS)
       src = open('a.out.js').read()
       self.assertContained('argc: 1\n16\n17\n10\n', run_js('a.out.js'))
@@ -3448,12 +3445,11 @@ int main()
         raise Exception('cannot find llvm-lit tool')
     cmd = [PYTHON, LLVM_LIT, '-v', os.path.join(llvm_src, 'test', 'CodeGen', 'JS')]
     print(cmd)
-    p = Popen(cmd)
-    p.communicate()
-    assert p.returncode == 0, 'LLVM tests must pass with exit code 0'
+    rtn = call(cmd)
+    assert rtn == 0, 'LLVM tests must pass with exit code 0'
 
   def test_bad_triple(self):
-    Popen([CLANG, path_from_root('tests', 'hello_world.c'), '-c', '-emit-llvm', '-o', 'a.bc'] + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE, stderr=PIPE).communicate()
+    check_call([CLANG, path_from_root('tests', 'hello_world.c'), '-c', '-emit-llvm', '-o', 'a.bc'] + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE, stderr=PIPE)
     err = run_process([PYTHON, EMCC, 'a.bc'], stdout=PIPE, stderr=PIPE, check=False).stderr
     assert 'warning' in err or 'WARNING' in err, err
     assert 'incorrect target triple' in err or 'different target triples' in err, err
@@ -3482,7 +3478,7 @@ int main()
       abs_include_path = '/nowhere/at/all'
     cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--valid-abspath', abs_include_path,'-I%s' % abs_include_path]
     print(' '.join(cmd))
-    subprocess.check_call(cmd)
+    check_call(cmd)
     self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_warn_dylibs(self):
@@ -3507,7 +3503,7 @@ int main()
         print(opts, ifs)
         if type(ifs) == int: ifs = [ifs]
         try_delete('a.out.js')
-        Popen([PYTHON, EMCC, 'src.c', '-O2'] + opts, stdout=PIPE).communicate()
+        check_call([PYTHON, EMCC, 'src.c', '-O2'] + opts, stdout=PIPE)
         src = open('a.out.js').read()
         main = src[src.find('function _main'):src.find('\n}', src.find('function _main'))]
         actual_ifs = main.count('if (')
@@ -3605,9 +3601,9 @@ int main()
     # e.g. they assume our 'executable' extension is bc, and compile an .o to a .bc
     # (the user would then need to build bc to js of course, but we need to actually
     # emit the bc)
-    cmd = Popen([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c')]).communicate()
+    check_call([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c')])
     assert os.path.exists('hello_world.o')
-    cmd = Popen([PYTHON, EMCC, 'hello_world.o', '-o', 'hello_world.bc']).communicate()
+    check_call([PYTHON, EMCC, 'hello_world.o', '-o', 'hello_world.bc'])
     assert os.path.exists('hello_world.o')
     assert os.path.exists('hello_world.bc')
 
@@ -3642,7 +3638,7 @@ int main() {
               if relocate:
                 cmd += ['-s', 'RELOCATABLE=1'] # disables asm-optimized safe heap
               print(cmd)
-              Popen(cmd).communicate()
+              check_call(cmd)
               output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
               if emulate_casts:
                 assert 'Hello, world.' in output, output
@@ -3688,7 +3684,7 @@ int main(int argc, char **argv) {
       else:
         alias = -1
       print(cmd)
-      Popen(cmd).communicate()
+      check_call(cmd)
       src = open('a.out.js').read().split('\n')
       for line in src:
         if line.strip().startswith('var FUNCTION_TABLE_ii = '):
@@ -3736,16 +3732,14 @@ int main(int argc, char **argv) {
 
     # Test that -s NO_DYNAMIC_EXECUTION=1 and --closure 1 are not allowed together.
     cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1', '--closure', '1']
-    proc = Popen(cmd, stderr=PIPE)
-    proc.communicate()
-    assert proc.returncode != 0
+    rtn = call(cmd, stderr=PIPE)
+    assert rtn != 0
     try_delete('a.out.js')
 
     # Test that -s NO_DYNAMIC_EXECUTION=1 and -s RELOCATABLE=1 are not allowed together.
     cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1', '-s', 'RELOCATABLE=1']
-    proc = Popen(cmd, stderr=PIPE)
-    proc.communicate()
-    assert proc.returncode != 0
+    rtn = call(cmd, stderr=PIPE)
+    assert rtn != 0
     try_delete('a.out.js')
 
     open('test.c', 'w').write(r'''
@@ -3757,12 +3751,12 @@ int main(int argc, char **argv) {
       ''')
 
     # Test that emscripten_run_script() aborts when -s NO_DYNAMIC_EXECUTION=1
-    Popen([PYTHON, EMCC, 'test.c', '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1']).communicate()
+    check_call([PYTHON, EMCC, 'test.c', '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1'])
     self.assertContained('NO_DYNAMIC_EXECUTION=1 was set, cannot eval', run_js(os.path.join(self.get_dir(), 'a.out.js'), assert_returncode=None, full_output=True, stderr=PIPE))
     try_delete('a.out.js')
 
     # Test that emscripten_run_script() posts a warning when -s NO_DYNAMIC_EXECUTION=2
-    Popen([PYTHON, EMCC, 'test.c', '-O1', '-s', 'NO_DYNAMIC_EXECUTION=2']).communicate()
+    check_call([PYTHON, EMCC, 'test.c', '-O1', '-s', 'NO_DYNAMIC_EXECUTION=2'])
     self.assertContained('Warning: NO_DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:', run_js(os.path.join(self.get_dir(), 'a.out.js'), assert_returncode=None, full_output=True, stderr=PIPE))
     self.assertContained('hello from script', run_js(os.path.join(self.get_dir(), 'a.out.js'), assert_returncode=None, full_output=True, stderr=PIPE))
     try_delete('a.out.js')
@@ -3787,7 +3781,7 @@ int main(int argc, char **argv) {
         printf("file size is %d\n", size);
       }
     ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp'])
     self.assertContained('read: 0\nfile size is 104\n', run_js('a.out.js'))
 
   def test_argv0_node(self):
@@ -3799,7 +3793,7 @@ int main(int argc, char **argv) {
 }
 ''')
 
-    Popen([PYTHON, EMCC, 'code.cpp']).communicate()
+    check_call([PYTHON, EMCC, 'code.cpp'])
     self.assertContained('I am ' + os.path.realpath(self.get_dir()).replace('\\', '/') + '/a.out.js', run_js('a.out.js', engine=NODE_JS).replace('\\', '/'))
 
   def test_returncode(self):
@@ -3817,7 +3811,7 @@ int main(int argc, char **argv) {
     for code in [0, 123]:
       for no_exit in [0, 1]:
         for call_exit in [0, 1]:
-          subprocess.check_call([PYTHON, EMCC, 'src.cpp', '-DCODE=%d' % code, '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-DCALL_EXIT=%d' % call_exit])
+          check_call([PYTHON, EMCC, 'src.cpp', '-DCODE=%d' % code, '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-DCALL_EXIT=%d' % call_exit])
           for engine in JS_ENGINES:
             print(code, no_exit, call_exit, engine)
             process = run_process(engine + ['a.out.js'], stdout=PIPE, stderr=PIPE, check=False)
@@ -3839,7 +3833,7 @@ int main(int argc, char **argv) {
     ''')
     for no_exit in [0, 1]:
       for call_exit in [0, 1]:
-        subprocess.check_call([PYTHON, EMCC, 'src.cpp', '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-DCALL_EXIT=%d' % call_exit])
+        check_call([PYTHON, EMCC, 'src.cpp', '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-DCALL_EXIT=%d' % call_exit])
         print(no_exit, call_exit)
         out = run_js('a.out.js', stdout=PIPE, stderr=PIPE, full_output=True)
         assert ('emscripten_force_exit cannot actually shut down the runtime, as the build has NO_EXIT_RUNTIME set' in out) == (no_exit and call_exit), out
@@ -3870,7 +3864,7 @@ int main(int argc, char **argv) {
   }
 }
     ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp'])
 
     # cannot create /, can open
     self.assertContained(r'''
@@ -3930,7 +3924,7 @@ int main(int argc, char **argv) {
   }
 }
     ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp'])
 
     # cannot stat ""
     self.assertContained(r'''Failed to stat path: /a; errno=2
@@ -3954,7 +3948,7 @@ int main(int argc, char **argv) {
   }
 }
     ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp'])
 
     # cannot symlink nonexistents
     self.assertContained(r'''Failed to symlink paths: , abc; errno=2''', run_js('a.out.js', args=['', 'abc']))
@@ -3975,7 +3969,7 @@ int main(int argc, char **argv) {
   }
 }
     ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp'])
 
     # cannot symlink nonexistents
     self.assertContained(r'''Failed to rename paths: , abc; errno=2''', run_js('a.out.js', args=['', 'abc']))
@@ -4096,7 +4090,7 @@ int main()
   return 0;
 }
     ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp'])
 
     # cannot symlink nonexistents
     self.assertContained(r'''Before:
@@ -4125,7 +4119,7 @@ dir
         printf("tiny: %d\n", __EMSCRIPTEN_tiny__);
       }
     ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp'])
     self.assertContained(r'''major: %d
 minor: %d
 tiny: %d
@@ -4200,7 +4194,7 @@ int main() {
   printf("ok\n");
 }
     ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp'])
     self.assertContained('ok', run_js('a.out.js'))
 
   def test_switch64phi(self):
@@ -4333,14 +4327,14 @@ main()
   iterate_backward(answer1, int_adapter());
 }
     ''')
-    Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'SAFE_HEAP=1']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'SAFE_HEAP=1'])
     assert os.path.exists('a.out.js') # build should succeed
     self.assertContained(('trap!', 'segmentation fault loading 4 bytes from address 0'), run_js('a.out.js', assert_returncode=None, stderr=PIPE)) # program should segfault
 
   def test_only_force_stdlibs(self):
     def test(name):
       print(name)
-      Popen([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp')], stderr=PIPE).communicate()
+      check_call([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp')], stderr=PIPE)
       self.assertContained('hello, world!', run_js('a.out.js', stderr=PIPE))
 
     test('normal') # normally is ok
@@ -4396,7 +4390,7 @@ int main()
     try:
       os.environ['EMCC_FORCE_STDLIBS'] = 'libc,libcxxabi,libcxx'
       os.environ['EMCC_ONLY_FORCED_STDLIBS'] = '1'
-      Popen([PYTHON, EMXX, 'src.cpp', '-s', 'DISABLE_EXCEPTION_CATCHING=0']).communicate()
+      check_call([PYTHON, EMXX, 'src.cpp', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
       self.assertContained('Caught exception: std::exception', run_js('a.out.js', stderr=PIPE))
     finally:
       del os.environ['EMCC_FORCE_STDLIBS']
@@ -4476,7 +4470,7 @@ int main()
   std::cout << "ok!\n";
 }
 ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp'])
     self.assertContained('ok!', run_js('a.out.js'))
 
   def test_truncate_from_0(self):
@@ -4582,7 +4576,7 @@ int main()
   return 0;
 }
 ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp'])
     self.assertContained(r'''Creating file: /tmp/file with content=This is some content
 Size of file is: 20
 Truncating file=/tmp/file to length=32
@@ -4675,7 +4669,7 @@ int main()
                      "exists and is read-only.\n\n");
 }
 ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp'])
     self.assertContained(r'''Creating file: /tmp/file with content of size=292
 Data written to file=/tmp/file; successfully wrote 292 bytes
 Creating file: /tmp/file with content of size=79
@@ -4703,7 +4697,7 @@ Failed to open file for writing: /tmp/file; errno=13; Permission denied
           return 0;
       }
     ''')
-    Popen([PYTHON, EMCC, 'src.cpp', '--embed-file', 'large.txt']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp', '--embed-file', 'large.txt'])
     for engine in JS_ENGINES:
       if engine == V8_ENGINE: continue # ooms
       print(engine)
@@ -4733,7 +4727,7 @@ main()
   return 123;
 }
     ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp'])
     output = run_js('a.out.js', engine=NODE_JS, assert_returncode=42)
     assert 'callback pre()' in output
     assert 'callback post()' not in output
@@ -4759,7 +4753,7 @@ main(const int argc, const char * const * const argv)
 }
 
     ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp'])
 
     self.assertContained('locale set to C: C;C;C;C;C;C',
                          run_js('a.out.js', args=['C']))
@@ -4776,7 +4770,7 @@ main(const int argc, const char * const * const argv)
       };
     ''')
     open('src.cpp', 'w').write('')
-    subprocess.check_call([PYTHON, EMCC, 'src.cpp', '--pre-js', 'pre_main.js'])
+    check_call([PYTHON, EMCC, 'src.cpp', '--pre-js', 'pre_main.js'])
     self.assertContained('compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]',
                          run_js('a.out.js', assert_returncode=None, stderr=PIPE))
 
@@ -4795,7 +4789,7 @@ int main() {
   printf("ok.\n");
 }
     ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp'])
     self.assertContained('ok.', run_js('a.out.js', args=['C']))
 
   def test_locale_wrong(self):
@@ -4833,7 +4827,7 @@ main(const int argc, const char * const * const argv)
   }
 }
     ''')
-    Popen([PYTHON, EMCC, 'src.cpp', '-s', 'NO_EXIT_RUNTIME=0', '-s', 'DISABLE_EXCEPTION_CATCHING=0']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp', '-s', 'NO_EXIT_RUNTIME=0', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
     self.assertContained('Constructed locale "C"\nThis locale is the global locale.\nThis locale is the C locale.', run_js('a.out.js', args=['C']))
     self.assertContained('''Can't construct locale "waka": collate_byname<char>::collate_byname failed to construct for waka''', run_js('a.out.js', args=['waka'], assert_returncode=1))
 
@@ -4844,7 +4838,7 @@ main(const int argc, const char * const * const argv)
       self.clear()
       shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'a.c')
       open('b.c', 'w').write(' ')
-      Popen([PYTHON, EMCC, 'a.c', 'b.c'] + args).communicate()
+      check_call([PYTHON, EMCC, 'a.c', 'b.c'] + args)
       clutter = glob.glob('*.o')
       if be_clean: assert len(clutter) == 0, 'should not leave clutter ' + str(clutter)
       else: assert len(clutter) == 2, 'should leave .o files'
@@ -4878,15 +4872,15 @@ main(const int argc, const char * const * const argv)
       assert found_line_num == has, 'Must have debug info with the line number'
       assert found_filename == has, 'Must have debug info with the filename'
 
-    Popen([PYTHON, EMCC, 'src.c', '-g']).communicate()
+    check_call([PYTHON, EMCC, 'src.c', '-g'])
     check(True)
-    Popen([PYTHON, EMCC, 'src.c']).communicate()
+    check_call([PYTHON, EMCC, 'src.c'])
     check(False)
-    Popen([PYTHON, EMCC, 'src.c', '-g0']).communicate()
+    check_call([PYTHON, EMCC, 'src.c', '-g0'])
     check(False)
-    Popen([PYTHON, EMCC, 'src.c', '-g0', '-g']).communicate() # later one overrides
+    check_call([PYTHON, EMCC, 'src.c', '-g0', '-g']) # later one overrides
     check(True)
-    Popen([PYTHON, EMCC, 'src.c', '-g', '-g0']).communicate() # later one overrides
+    check_call([PYTHON, EMCC, 'src.c', '-g', '-g0']) # later one overrides
     check(False)
 
   def test_dash_g_bc(self):
@@ -4894,12 +4888,12 @@ main(const int argc, const char * const * const argv)
       print(opts)
       def get_size(name):
         return os.stat(name).st_size
-      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a_.bc'] + opts).communicate()
+      check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a_.bc'] + opts)
       sizes = { '_': get_size('a_.bc') }
-      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g', '-o', 'ag.bc'] + opts).communicate()
+      check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g', '-o', 'ag.bc'] + opts)
       sizes['g'] = get_size('ag.bc')
       for i in range(0, 5):
-        Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g' + str(i), '-o', 'a' + str(i) + '.bc'] + opts).communicate()
+        check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g' + str(i), '-o', 'a' + str(i) + '.bc'] + opts)
         sizes[i] = get_size('a' + str(i) + '.bc')
       print('  ', sizes)
       assert sizes['_'] == sizes[0] == sizes[1] == sizes[2] == sizes[3], 'no debug or <4 debug, means no llvm debug info ' + str(sizes)
@@ -4932,7 +4926,7 @@ main(const int argc, const char * const * const argv)
       sizes = {}
       def do(name, source, moar_opts):
         self.clear()
-        Popen([PYTHON, EMCC, path_from_root('tests', source), '-o', name + '.js'] + opts + moar_opts).communicate()
+        check_call([PYTHON, EMCC, path_from_root('tests', source), '-o', name + '.js'] + opts + moar_opts)
         sizes[name] = get_size(name + '.js')
         self.assertContained('hello, world!', run_js(name + '.js'))
       do('normal', 'hello_world_fopen.c', [])
@@ -4960,7 +4954,7 @@ main(const int argc, const char * const * const argv)
       sizes = {}
       def do(name, moar_opts):
         self.clear()
-        Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_em_asm.c'), '-o', name + '.js'] + opts + moar_opts).communicate()
+        check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world_em_asm.c'), '-o', name + '.js'] + opts + moar_opts)
         sizes[name] = get_size(name + '.js')
         self.assertContained('hello, world!', run_js(name + '.js'))
       do('normal', [])
@@ -4989,7 +4983,7 @@ main(const int argc, const char * const * const argv)
       self.clear()
       # check without assertions, as with assertions we add stubs for the things we remove (which
       # print nice error messages)
-      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASSERTIONS=0'] + opts).communicate()
+      check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASSERTIONS=0'] + opts)
       self.assertContained('hello, world!', run_js('a.out.js'))
       src = open('a.out.js').read()
       self.assertContained(has, src)
@@ -5058,7 +5052,7 @@ main()
   return fail;
 }
 ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp'])
     self.assertContained(r'''pass: mkdir("path", 0777) == 0
 pass: close(open("path/file", O_CREAT | O_WRONLY, 0644)) == 0
 pass: stat("path", &st) == 0
@@ -5089,7 +5083,7 @@ pass: error == ENOTDIR
         source = 'src.cpp'
       else:
         source = path_from_root('tests', source)
-      Popen([PYTHON, EMCC, source, '-O2', '-s', 'EMTERPRETIFY=1', '-g2'] + emcc_args).communicate()
+      check_call([PYTHON, EMCC, source, '-O2', '-s', 'EMTERPRETIFY=1', '-g2'] + emcc_args)
       self.assertTextDataContained(output, run_js('a.out.js', args=args))
       out = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, args=args, stderr=PIPE, full_output=True)
       self.assertTextDataContained(output, out)
@@ -5114,8 +5108,8 @@ pass: error == ENOTDIR
         source = 'src.cpp'
       else:
         source = path_from_root('tests', source)
-      Popen([PYTHON, EMCC, source, '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0', '-s', 'GLOBAL_BASE=2048', '-s', 'ALLOW_MEMORY_GROWTH=0']).communicate()
-      Popen([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js', 'ASYNC=0']).communicate()
+      check_call([PYTHON, EMCC, source, '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0', '-s', 'GLOBAL_BASE=2048', '-s', 'ALLOW_MEMORY_GROWTH=0'])
+      check_call([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js', 'ASYNC=0'])
       self.assertTextDataContained(output, run_js('a.out.js', args=args))
       self.assertTextDataContained(output, run_js('em.out.js', args=args))
       out = run_js('em.out.js', engine=SPIDERMONKEY_ENGINE, args=args, stderr=PIPE, full_output=True)
@@ -5124,7 +5118,7 @@ pass: error == ENOTDIR
 
     # generate default shell for js test
     def make_default(args=[]):
-      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0', '-s', 'GLOBAL_BASE=2048'] + args).communicate()
+      check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0', '-s', 'GLOBAL_BASE=2048'] + args)
       default = open('a.out.js').read()
       start = default.index('function _main(')
       end = default.index('}', start)
@@ -5145,7 +5139,7 @@ pass: error == ENOTDIR
       source = the_default.replace('{{{MAIN}}}', source)
       open('a.out.js', 'w').write(source)
       open('a.out.js.mem', 'wb').write(the_default_mem)
-      Popen([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js', 'ASYNC=0']).communicate()
+      check_call([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js', 'ASYNC=0'])
       sm_no_warn = [x for x in SPIDERMONKEY_ENGINE if x != '-w']
       self.assertTextDataContained(output, run_js('a.out.js', engine=sm_no_warn, args=args)) # run in spidermonkey for print()
       self.assertTextDataContained(output, run_js('em.out.js', engine=sm_no_warn, args=args))
@@ -5375,24 +5369,24 @@ int main(void) {
     return testy() + init_weakref(5, 6);
 }
 ''')
-      Popen([PYTHON, EMCC, 'x.c', '-o', 'x.o']).communicate()
-      Popen([PYTHON, EMCC, 'y.c', '-o', 'y.o']).communicate()
-      Popen([PYTHON, EMCC, 'z.c', '-o', 'z.o']).communicate()
-      Popen([PYTHON, EMAR, 'rc', 'libtest.a', 'y.o']).communicate()
-      Popen([PYTHON, EMAR, 'rc', 'libtest.a', 'x.o']).communicate()
-      Popen([PYTHON, EMRANLIB, 'libtest.a']).communicate()
-      Popen([PYTHON, EMCC, 'z.o', 'libtest.a', '-s', 'NO_EXIT_RUNTIME=0'] + args).communicate()
+      check_call([PYTHON, EMCC, 'x.c', '-o', 'x.o'])
+      check_call([PYTHON, EMCC, 'y.c', '-o', 'y.o'])
+      check_call([PYTHON, EMCC, 'z.c', '-o', 'z.o'])
+      check_call([PYTHON, EMAR, 'rc', 'libtest.a', 'y.o'])
+      check_call([PYTHON, EMAR, 'rc', 'libtest.a', 'x.o'])
+      check_call([PYTHON, EMRANLIB, 'libtest.a'])
+      check_call([PYTHON, EMCC, 'z.o', 'libtest.a', '-s', 'NO_EXIT_RUNTIME=0'] + args)
       out = run_js('a.out.js', assert_returncode=161)
 
   def test_link_with_bad_o_in_a(self):
     # when building a .a, we force-include all the objects inside it. but, some
     # may not be valid bitcode, e.g. if it contains metadata or something else
     # weird. we should just ignore those
-    subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a.bc'])
+    check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a.bc'])
     open('bad.bc', 'w').write('this is not a good file, it should be ignored!')
-    subprocess.check_call([LLVM_AR, 'r', 'a.a', 'a.bc', 'bad.bc'])
+    check_call([LLVM_AR, 'r', 'a.a', 'a.bc', 'bad.bc'])
     assert os.path.exists('a.a')
-    subprocess.check_call([PYTHON, EMCC, 'a.a'])
+    check_call([PYTHON, EMCC, 'a.a'])
     assert os.path.exists('a.out.js'), output
     self.assertContained('hello, world!', run_js('a.out.js'))
 
@@ -5403,23 +5397,23 @@ int main(void) {
     assert output.stdout == 'hello, world!\n' and output.stderr == '', 'expected no output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % (output.stdout, output.stderr)
 
   def test_require_modularize(self):
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1', '-s', 'ASSERTIONS=0']).communicate()
+    check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1', '-s', 'ASSERTIONS=0'])
     src = open('a.out.js').read()
     assert "module.exports = Module;" in src
     output = run_process(NODE_JS + ['-e', 'var m = require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE)
     assert output.stdout == 'hello, world!\n' and output.stderr == '', 'expected output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % (output.stdout, output.stderr)
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="NotModule"', '-s', 'ASSERTIONS=0']).communicate()
+    check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="NotModule"', '-s', 'ASSERTIONS=0'])
     src = open('a.out.js').read()
     assert "module.exports = NotModule;" in src
     output = run_process(NODE_JS + ['-e', 'var m = require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE)
     assert output.stdout == 'hello, world!\n' and output.stderr == '', 'expected output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % (output.stdout, output.stderr)
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1']).communicate()
+    check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1'])
     # We call require() twice to ensure it returns wrapper function each time
     output = run_process(NODE_JS + ['-e', 'require("./a.out.js")();var m = require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE)
     assert output.stdout == 'hello, world!\nhello, world!\n', 'expected output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % (output.stdout, output.stderr)
 
   def test_define_modularize(self):
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1', '-s', 'ASSERTIONS=0']).communicate()
+    check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1', '-s', 'ASSERTIONS=0'])
     with open('a.out.js') as f:
       src = 'var module = 0; ' + f.read()
     with open('a.out.js', 'w') as f:
@@ -5427,7 +5421,7 @@ int main(void) {
     assert "define([], function() { return Module; });" in src
     output = run_process(NODE_JS + ['-e', 'var m; (global.define = function(deps, factory) { m = factory(); }).amd = true; require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE)
     assert output.stdout == 'hello, world!\n' and output.stderr == '', 'expected output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % (output.stdout, output.stderr)
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="NotModule"', '-s', 'ASSERTIONS=0']).communicate()
+    check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="NotModule"', '-s', 'ASSERTIONS=0'])
     with open('a.out.js') as f:
       src = 'var module = 0; ' + f.read()
     with open('a.out.js', 'w') as f:
@@ -5466,8 +5460,8 @@ int main(void) {
         try:
           os.environ['EMCONFIGURE_JS'] = str(i)
           self.clear()
-          Popen([PYTHON, path_from_root('emconfigure'), PYTHON, EMCC, '-c', '-o', 'a.o', path_from_root('tests', f)]).communicate()
-          Popen([PYTHON, EMCC, 'a.o']).communicate()
+          check_call([PYTHON, path_from_root('emconfigure'), PYTHON, EMCC, '-c', '-o', 'a.o', path_from_root('tests', f)])
+          call([PYTHON, EMCC, 'a.o'])
           if f == 'hello_world.c':
             if i == 0:
               assert not os.path.exists('a.out.js') # native .o, not bitcode!
@@ -5519,7 +5513,7 @@ int main(void) {
         else:
           assert err.count(VECTORIZE) == 0, err # no optimizations
 
-        Popen([PYTHON, EMCC, main_name.replace('.c', '.o'), lib_name.replace('.c', '.o')]).communicate()
+        check_call([PYTHON, EMCC, main_name.replace('.c', '.o'), lib_name.replace('.c', '.o')])
 
         self.assertContained('result: 1', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
@@ -5551,18 +5545,18 @@ public:
 Descriptor desc;
     ''')
     try_delete('a.out.js')
-    Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EXPORT_ALL=1']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EXPORT_ALL=1'])
     assert os.path.exists('a.out.js')
 
   def test_f0(self):
-    Popen([PYTHON, EMCC, path_from_root('tests', 'fasta.cpp'), '-O2', '-s', 'PRECISE_F32=1', '-profiling']).communicate()
+    check_call([PYTHON, EMCC, path_from_root('tests', 'fasta.cpp'), '-O2', '-s', 'PRECISE_F32=1', '-profiling'])
     src = open('a.out.js').read()
     assert ' = f0;' in src or ' = f0,' in src
 
   def test_merge_pair(self):
     def test(filename, full):
       print('----', filename, full)
-      Popen([PYTHON, EMCC, path_from_root('tests', filename), '-O1', '-profiling', '-o', 'left.js']).communicate()
+      check_call([PYTHON, EMCC, path_from_root('tests', filename), '-O1', '-profiling', '-o', 'left.js'])
       src = open('left.js').read()
       open('right.js', 'w').write(src.replace('function _main() {', 'function _main() { Module.print("replaced"); '))
 
@@ -5574,7 +5568,7 @@ Descriptor desc;
       n = src.count('function _')
 
       def has(i):
-        Popen([PYTHON, path_from_root('tools', 'merge_pair.py'), 'left.js', 'right.js', str(i), 'out.js']).communicate()
+        check_call([PYTHON, path_from_root('tools', 'merge_pair.py'), 'left.js', 'right.js', str(i), 'out.js'])
         return 'replaced' in run_js('out.js')
 
       assert not has(0), 'same as left'
@@ -5647,7 +5641,7 @@ int main() {
 }
     ''')
     try_delete('a.out.js')
-    Popen([PYTHON, EMCC, 'src.cpp', '-s', 'NO_EXIT_RUNTIME=0']).communicate()
+    check_call([PYTHON, EMCC, 'src.cpp', '-s', 'NO_EXIT_RUNTIME=0'])
     self.assertContained('exiting now, status 14', run_js('a.out.js', assert_returncode=14))
 
   def test_underscore_exit(self):
@@ -5656,7 +5650,7 @@ int main() {
 int main() {
   _exit(0); // should not end up in an infinite loop with non-underscore exit
 }    ''')
-    subprocess.check_call([PYTHON, EMCC, 'src.cpp'])
+    check_call([PYTHON, EMCC, 'src.cpp'])
     self.assertContained('', run_js('a.out.js', assert_returncode=0))
 
   def test_file_packager_huge(self):
@@ -5713,7 +5707,7 @@ int main() {
     ''')
     def test(opts, expected):
       print(opts)
-      Popen([PYTHON, EMCC, 'src.cpp', '--profiling'] + opts).communicate()
+      check_call([PYTHON, EMCC, 'src.cpp', '--profiling'] + opts)
       src = open('a.out.js').read()
       main = self.get_func(src, '_main')
       rets = main.count('return ')
@@ -5735,7 +5729,7 @@ int main() {
   return (int)malloc(1024*1024*1400);
 }
     ''')
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'ALLOW_MEMORY_GROWTH=1']).communicate()[1]
+    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'ALLOW_MEMORY_GROWTH=1'])[1]
     assert os.path.exists('a.out.js')
     output = run_js('a.out.js', stderr=PIPE, full_output=True, engine=SPIDERMONKEY_ENGINE, assert_returncode=None)
     # just care about message regarding allocating over 1GB of memory
@@ -5815,8 +5809,8 @@ int main(int argc, char** argv) {
 }
 ''')
 
-    Popen([PYTHON, EMCC, '-O2', 'vector.cpp', '-o', 'vector.js']).communicate()[1]
-    Popen([PYTHON, EMCC, '-O2', path_from_root('tests', 'hello_libcxx.cpp'), '-o', 'iostream.js']).communicate()[1]
+    check_call([PYTHON, EMCC, '-O2', 'vector.cpp', '-o', 'vector.js'])
+    check_call([PYTHON, EMCC, '-O2', path_from_root('tests', 'hello_libcxx.cpp'), '-o', 'iostream.js'])
 
     vector = os.stat('vector.js').st_size
     iostream = os.stat('iostream.js').st_size
@@ -5845,7 +5839,7 @@ int main(int argc, char** argv) {
     open('src.c', 'w').write(src)
     def test(args, expected):
       print(args, expected)
-      out, err = Popen([PYTHON, EMCC, 'src.c'] + args, stderr=PIPE).communicate()
+      check_call([PYTHON, EMCC, 'src.c'] + args, stderr=PIPE)
       self.assertContained(expected, run_js(self.in_dir('a.out.js')))
 
     for opts in [0, 1, 2, 3]:
@@ -5890,7 +5884,7 @@ int main(int argc, char** argv) {
 
     def test(args, expected):
       print(args, expected.replace('\n', ' '))
-      Popen([PYTHON, EMCC, 'src.c'] + args).communicate()
+      check_call([PYTHON, EMCC, 'src.c'] + args)
       self.assertContained(expected, run_js(self.in_dir('a.out.js')))
 
     for opts in [0, 1, 2]:
@@ -6046,16 +6040,16 @@ main()
 
 ''')
 
-    Popen([PYTHON, EMCC, '-o', 'libhello1.js', 'hello1.c', '-s', 'SIDE_MODULE=1']).communicate()
-    Popen([PYTHON, EMCC, '-o', 'libhello2.js', 'hello2.c', '-s', 'SIDE_MODULE=1']).communicate()
-    Popen([PYTHON, EMCC, '-o', 'libhello3.js', 'hello3.c', '-s', 'SIDE_MODULE=1']).communicate()
-    Popen([PYTHON, EMCC, '-o', 'libhello4.js', 'hello4.c', '-s', 'SIDE_MODULE=1']).communicate()
-    Popen([PYTHON, EMCC, '-o', 'main.js', 'main.c', '-s', 'MAIN_MODULE=1',
+    check_call([PYTHON, EMCC, '-o', 'libhello1.js', 'hello1.c', '-s', 'SIDE_MODULE=1'])
+    check_call([PYTHON, EMCC, '-o', 'libhello2.js', 'hello2.c', '-s', 'SIDE_MODULE=1'])
+    check_call([PYTHON, EMCC, '-o', 'libhello3.js', 'hello3.c', '-s', 'SIDE_MODULE=1'])
+    check_call([PYTHON, EMCC, '-o', 'libhello4.js', 'hello4.c', '-s', 'SIDE_MODULE=1'])
+    check_call([PYTHON, EMCC, '-o', 'main.js', 'main.c', '-s', 'MAIN_MODULE=1',
            '--embed-file', 'libhello1.js@/lib/libhello1.js',
            '--embed-file', 'libhello2.js@/usr/lib/libhello2.js',
            '--embed-file', 'libhello3.js@/libhello3.js',
            '--embed-file', 'libhello4.js@/usr/local/lib/libhello4.js',
-           '--pre-js', 'pre.js']).communicate()
+           '--pre-js', 'pre.js'])
     out = run_js('main.js')
     self.assertContained('Hello1', out)
     self.assertContained('Hello2', out)
@@ -6115,11 +6109,11 @@ main(int argc,char** argv)
 }
 ''')
 
-    Popen([PYTHON, EMCC, '-o', 'libhello1.js', 'hello1.c', '-s', 'SIDE_MODULE=1']).communicate()
-    Popen([PYTHON, EMCC, '-o', 'libhello2.js', 'hello2.c', '-s', 'SIDE_MODULE=1']).communicate()
-    Popen([PYTHON, EMCC, '-o', 'main.js', 'main.c', '-s', 'MAIN_MODULE=1',
+    check_call([PYTHON, EMCC, '-o', 'libhello1.js', 'hello1.c', '-s', 'SIDE_MODULE=1'])
+    check_call([PYTHON, EMCC, '-o', 'libhello2.js', 'hello2.c', '-s', 'SIDE_MODULE=1'])
+    check_call([PYTHON, EMCC, '-o', 'main.js', 'main.c', '-s', 'MAIN_MODULE=1',
            '--embed-file', 'libhello1.js',
-           '--embed-file', 'libhello2.js']).communicate()
+           '--embed-file', 'libhello2.js'])
     out = run_js('main.js')
     self.assertContained('Hello1', out)
     self.assertContained('Hello2', out)
@@ -6144,7 +6138,7 @@ int main() {
   printf("hello, world!\n");
 }
 ''')
-    out, err = Popen([PYTHON, EMCC, 'src.c', '-s', 'EXPORTED_FUNCTIONS=["_main", "_treecount"]', '--minify', '0', '-g4', '-Oz']).communicate()
+    check_call([PYTHON, EMCC, 'src.c', '-s', 'EXPORTED_FUNCTIONS=["_main", "_treecount"]', '--minify', '0', '-g4', '-Oz'])
     self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_meminit_crc(self):
@@ -6153,7 +6147,7 @@ int main() {
 #include <stdio.h>
 int main() { printf("Mary had a little lamb.\n"); }
 ''')
-    out, err = Popen([PYTHON, EMCC, 'src.c', '-O2', '--memory-init-file', '0', '-s', 'MEM_INIT_METHOD=2', '-s', 'ASSERTIONS=1']).communicate()
+    check_call([PYTHON, EMCC, 'src.c', '-O2', '--memory-init-file', '0', '-s', 'MEM_INIT_METHOD=2', '-s', 'ASSERTIONS=1'])
     with open('a.out.js', 'r') as f:
       d = f.read()
     d = d.replace('Mary had', 'Paul had')
@@ -6194,7 +6188,7 @@ int main() {
   test(-1.0/0.0);
 }
 ''')
-    Popen([PYTHON, EMCC, 'src.c']).communicate()
+    check_call([PYTHON, EMCC, 'src.c'])
     out = run_js('a.out.js')
     self.assertContained('''
 |0 : 1 : 0 : 0 : 1|
@@ -6230,7 +6224,7 @@ int main() {
         assert err == '', err
 
   def test_static_syscalls(self):
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')]).communicate()
+    check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
     src = open('a.out.js').read()
     matches = re.findall('''function ___syscall(\d+)\(''', src)
     print('seen syscalls:', matches)
@@ -6249,7 +6243,7 @@ int main() {
   umask(0);
   printf("hello, world!\n");
 }''')
-    Popen([PYTHON, EMCC, 'src.c']).communicate()
+    check_call([PYTHON, EMCC, 'src.c'])
     self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_no_missing_symbols(self): # simple hello world should not show any missing symbols
@@ -6325,7 +6319,7 @@ main(int argc, char **argv)
     if not os.path.exists('boot'):
       os.mkdir('boot')
     open(os.path.join('boot', 'README.txt'), 'w').write(' ')
-    Popen([PYTHON, EMCC, 'src.c', '--embed-file', 'boot']).communicate()
+    check_call([PYTHON, EMCC, 'src.c', '--embed-file', 'boot'])
     self.assertContained('Resolved: /boot/README.txt', run_js('a.out.js'))
 
   def test_realpath_nodefs(self):
@@ -6357,7 +6351,7 @@ main(int argc, char **argv)
 }
 ''')
     open('TEST_NODEFS.txt', 'w').write(' ')
-    Popen([PYTHON, EMCC, 'src.c']).communicate()
+    check_call([PYTHON, EMCC, 'src.c'])
     self.assertContained('Resolved: /working/TEST_NODEFS.txt', run_js('a.out.js'))
 
   def test_realpath_2(self):
@@ -6410,7 +6404,7 @@ Resolved: "/" => "/"
 
   def test_no_warnings(self):
     # build once before to make sure system libs etc. exist
-    subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')])
+    check_call([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')])
     # check that there is nothing in stderr for a regular compile
     err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')], stderr=PIPE).stderr
     assert err == '', err
@@ -6459,10 +6453,10 @@ Resolved: "/" => "/"
         printf("double-freed\n");
       }
     ''')
-    subprocess.check_call([PYTHON, EMCC, 'src.cpp'])
+    check_call([PYTHON, EMCC, 'src.cpp'])
     self.assertContained('double-freed', run_js('a.out.js'))
     # in debug mode, the double-free is caught
-    subprocess.check_call([PYTHON, EMCC, 'src.cpp', '-g'])
+    check_call([PYTHON, EMCC, 'src.cpp', '-g'])
     seen_error = False
     out = '?'
     try:
@@ -6841,9 +6835,8 @@ int main() {
     assert "high = 1234" in out
 
   def test_lib_include_flags(self):
-    process = Popen([PYTHON, EMCC] + '-l m -l c -I'.split() + [path_from_root('tests', 'include_test'), path_from_root('tests', 'lib_include_flags.c')], stdout=PIPE, stderr=PIPE)
-    process.communicate()
-    assert process.returncode is 0, 'Empty -l/-L/-I flags should read the next arg as a param'
+    rtn = call([PYTHON, EMCC] + '-l m -l c -I'.split() + [path_from_root('tests', 'include_test'), path_from_root('tests', 'lib_include_flags.c')], stdout=PIPE, stderr=PIPE)
+    assert rtn == 0, 'Empty -l/-L/-I flags should read the next arg as a param'
 
   def test_dash_s(self):
     print(check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', '-std=c++03']))
@@ -7410,7 +7403,7 @@ int main() {
           if output_suffix == 'html': files += ['a.html']
           cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a.' + output_suffix, '--output_eol', eol] + params
           print(cmd)
-          Popen(cmd).communicate()
+          check_call(cmd)
           for f in files:
             print(str(cmd) + ' ' + str(params) + ' ' + eol + ' ' + f)
             assert os.path.isfile(f)
@@ -7510,7 +7503,7 @@ int main() {
       print(args, expect_names)
       try_delete('a.out.js')
       # we use dlmalloc here, as emmalloc has a bunch of asserts that contain the text "malloc" in them, which makes counting harder
-      subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'WASM=1', '-s', 'MALLOC="dlmalloc"'])
+      check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'WASM=1', '-s', 'MALLOC="dlmalloc"'])
       code = open('a.out.wasm', 'rb').read()
       assert (code.count(b'malloc') == 2) == expect_names, 'name section adds the name of malloc (there is also another one for the export)'
       sizes[str(args)] = os.stat('a.out.wasm').st_size
@@ -7521,13 +7514,13 @@ int main() {
     if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey')
     # if user changes TOTAL_MEMORY at runtime, the wasm module may not accept the memory import if it is too big/small
     open('pre.js', 'w').write('var Module = { TOTAL_MEMORY: 50*1024*1024 };\n')
-    subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'TOTAL_MEMORY=' + str(16*1024*1024), '--pre-js', 'pre.js', '-s', 'BINARYEN_ASYNC_COMPILATION=0'])
+    check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'TOTAL_MEMORY=' + str(16*1024*1024), '--pre-js', 'pre.js', '-s', 'BINARYEN_ASYNC_COMPILATION=0'])
     out = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=PIPE, assert_returncode=None)
     self.assertContained('imported Memory with incompatible size', out)
     self.assertContained('Memory size incompatibility issues may be due to changing TOTAL_MEMORY at runtime to something too large. Use ALLOW_MEMORY_GROWTH to allow any size memory (and also make sure not to set TOTAL_MEMORY at runtime to something smaller than it was at compile time).', out)
     self.assertNotContained('hello, world!', out)
     # and with memory growth, all should be good
-    subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'TOTAL_MEMORY=' + str(16*1024*1024), '--pre-js', 'pre.js', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN_ASYNC_COMPILATION=0'])
+    check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'TOTAL_MEMORY=' + str(16*1024*1024), '--pre-js', 'pre.js', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN_ASYNC_COMPILATION=0'])
     self.assertContained('hello, world!', run_js('a.out.js', engine=SPIDERMONKEY_ENGINE))
 
   def test_binaryen_warn_sync(self):
@@ -7547,9 +7540,8 @@ int main() {
         self.assertNotContained(warning, err)
 
   def test_binaryen_invalid_method(self):
-    proc = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'test.js', '-s', 'WASM=1', '-s', "BINARYEN_METHOD='invalid'"])
-    proc.communicate()
-    assert proc.returncode != 0
+    rtn = call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'test.js', '-s', 'WASM=1', '-s', "BINARYEN_METHOD='invalid'"])
+    assert rtn != 0
 
   def test_binaryen_asmjs_outputs(self):
     # Test that an .asm.js file is outputted exactly when it is requested.
@@ -7561,7 +7553,7 @@ int main() {
       with temp_directory() as temp_dir:
         cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-o', os.path.join(temp_dir, 'a.js')] + args
         print(' '.join(cmd))
-        subprocess.check_call(cmd)
+        check_call(cmd)
         assert os.path.exists(os.path.join(temp_dir, 'a.asm.js')) == output_asmjs
         assert not os.path.exists(os.path.join(temp_dir, 'a.temp.asm.js'))
 
@@ -7569,12 +7561,12 @@ int main() {
     with temp_directory() as temp_dir:
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join(temp_dir, 'a.js'), '--separate-asm']
       print(' '.join(cmd))
-      subprocess.check_call(cmd)
+      check_call(cmd)
       assert os.path.exists(os.path.join(temp_dir, 'a.asm.js'))
 
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join(temp_dir, 'a.js'), '-s', 'WASM=1']
       print(' '.join(cmd))
-      subprocess.check_call(cmd)
+      check_call(cmd)
       assert os.path.exists(os.path.join(temp_dir, 'a.asm.js'))
       assert os.path.exists(os.path.join(temp_dir, 'a.wasm'))
 
@@ -7589,7 +7581,7 @@ int main() {
       ]:
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-O2', '-s', 'BINARYEN_METHOD="interpret-s-expr"'] + args
       print(' '.join(cmd))
-      subprocess.check_call(cmd)
+      check_call(cmd)
       wast = open('a.out.wast').read()
       lines = wast.split('\n')
       for line in lines:
@@ -7603,12 +7595,12 @@ int main() {
             assert parts[6] == str(expect_max)
 
   def test_binaryen_invalid_mem(self):
-      ret = subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-s', 'TOTAL_MEMORY=33MB'])
+      ret = check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-s', 'TOTAL_MEMORY=33MB'])
 
       ret = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-s', 'TOTAL_MEMORY=32MB+1'], stderr=subprocess.PIPE, check=False).stderr
       assert 'TOTAL_MEMORY must be a multiple of 64KB' in ret, ret
 
-      ret = subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=32MB'])
+      ret = check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=32MB'])
 
       ret = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=33MB'], stderr=subprocess.PIPE, check=False).stderr
       assert 'TOTAL_MEMORY must be a multiple of 16MB' in ret, ret
@@ -7634,11 +7626,11 @@ int main() {
       B b;
       int main() {}
     ''')
-    subprocess.check_call([PYTHON, EMCC, 'src.cpp'])
+    check_call([PYTHON, EMCC, 'src.cpp'])
     correct = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE)
     for args in [[], ['-s', 'RELOCATABLE=1'], ['-s', 'MAIN_MODULE=1']]:
       print(args)
-      subprocess.check_call([PYTHON, EMCC, 'src.cpp', '-s', 'WASM=1', '-o', 'b.out.js'] + args)
+      check_call([PYTHON, EMCC, 'src.cpp', '-s', 'WASM=1', '-o', 'b.out.js'] + args)
       seen = run_js('b.out.js', engine=SPIDERMONKEY_ENGINE)
       assert correct == seen, correct + '\n vs \n' + seen
 
@@ -7715,7 +7707,7 @@ int main() {
         command = [PYTHON, EMCC, '-o', 'a.wasm.js', '-s', 'BINARYEN=1', path_from_root('tests', 'hello_world.c')]
         command += ['-s', 'BINARYEN_METHOD="' + method + '"']
         print([method, ' : ', ' '.join(command), ' => ', success])
-        subprocess.check_call(command)
+        check_call(command)
 
         see_polyfill =  'var WasmJS = ' in open('a.wasm.js').read()
 
@@ -7842,9 +7834,7 @@ int main() {
         try_delete('a.out.wast')
         cmd = [PYTHON, EMCC, path_from_root('tests', 'other', 'ffi.c'), '-s', 'WASM=1', '-g', '-o', 'a.out.js'] + args
         print(' '.join(cmd))
-        proc = Popen(cmd, stdout=PIPE)
-        output, err = proc.communicate()
-        assert proc.returncode == 0
+        check_call(cmd, stdout=PIPE)
         text = open('a.out.wast').read()
         #print "text: %s" % text
         e_add_f32 = re.search('func \$_add_f \(; \d+ ;\) \(param \$*. f32\) \(param \$*. f32\) \(result f32\)', text)
@@ -7885,7 +7875,7 @@ int main() {
       ]:
       cmd = [PYTHON, EMCC, path_from_root('tests', 'unistd', 'sysconf_phys_pages.c')] + args
       print(str(cmd))
-      subprocess.check_call(cmd)
+      check_call(cmd)
       result = run_js('a.out.js').strip()
       print(result)
       assert result == str(expected) + ', errno: 0', expected
@@ -7894,14 +7884,14 @@ int main() {
     for f in ['a.wasm', 'a.wast']:
       process = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', f], stdout=PIPE, stderr=PIPE, check=False)
       print(process.stderr)
-      assert process.returncode is not 0, 'wasm suffix is an error'
+      assert process.returncode != 0, 'wasm suffix is an error'
       self.assertContained('''output file "%s" has a wasm suffix, but we cannot emit wasm by itself, except as a dynamic library''' % f, process.stderr)
     # side modules do allow a wasm target
     for opts, target in [([], 'a.out.wasm'), (['-o', 'lib.wasm'], 'lib.wasm')]:
       # specified target
       print(target)
       self.clear()
-      subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-s', 'SIDE_MODULE=1'] + opts)
+      check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-s', 'SIDE_MODULE=1'] + opts)
       assert b'dylink' in open(target, 'rb').read()
       for x in os.listdir('.'):
         assert not x.endswith('.js'), 'we should not emit js when making a wasm side module'
@@ -7956,27 +7946,23 @@ int main() {
     env = os.environ.copy()
     if 'EMCC_STRICT' in env: del env['EMCC_STRICT']
 
-    process = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'STRICT=1'], stdout=PIPE, stderr=PIPE, env=env)
-    process.communicate()
-    assert process.returncode is not 0, '-llsomenonexistingfile is an error in strict mode'
+    rtn = call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'STRICT=1'], stdout=PIPE, stderr=PIPE, env=env)
+    assert rtn != 0, '-llsomenonexistingfile is an error in strict mode'
 
-    process = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'ERROR_ON_MISSING_LIBRARIES=0'], stdout=PIPE, stderr=PIPE, env=env)
-    process.communicate()
-    assert process.returncode is 0, '-llsomenonexistingfile is not an error if -s ERROR_ON_MISSING_LIBRARIES=0 is passed'
+    rtn = call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'ERROR_ON_MISSING_LIBRARIES=0'], stdout=PIPE, stderr=PIPE, env=env)
+    assert rtn == 0, '-llsomenonexistingfile is not an error if -s ERROR_ON_MISSING_LIBRARIES=0 is passed'
 
-    process = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'STRICT=1', '-s', 'ERROR_ON_MISSING_LIBRARIES=0'], stdout=PIPE, stderr=PIPE, env=env)
-    process.communicate()
-    assert process.returncode is 0, '-s ERROR_ON_MISSING_LIBRARIES=0 should override -s STRICT=1'
+    rtn = call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'STRICT=1', '-s', 'ERROR_ON_MISSING_LIBRARIES=0'], stdout=PIPE, stderr=PIPE, env=env)
+    assert rtn == 0, '-s ERROR_ON_MISSING_LIBRARIES=0 should override -s STRICT=1'
 
-    process = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'STRICT=0'], stdout=PIPE, stderr=PIPE, env=env)
-    process.communicate()
+    rtn = call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'STRICT=0'], stdout=PIPE, stderr=PIPE, env=env)
     # TODO: TEMPORARY: When -s ERROR_ON_MISSING_LIBRARIES=1 becomes the default, change the following line to expect failure instead of 0.
-    assert process.returncode is 0, '-llsomenonexistingfile is not yet an error in non-strict mode'
+    assert rtn == 0, '-llsomenonexistingfile is not yet an error in non-strict mode'
 
   # Tests that if user accidetally attempts to link natively compiled libraries together with Emscripten, that there should be a helpful error message that informs about what happened.
   def test_native_link_error_message(self):
-    Popen([CLANG, '-c', path_from_root('tests', 'hello_world.c'), '-o', 'hello_world.o'] + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE, stderr=PIPE).communicate()
-    Popen([LLVM_AR, 'r', 'hello_world.a', 'hello_world.o'], env=get_clang_native_env(), stdout=PIPE, stderr=PIPE).communicate()
+    check_call([CLANG, '-c', path_from_root('tests', 'hello_world.c'), '-o', 'hello_world.o'] + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE, stderr=PIPE)
+    check_call([LLVM_AR, 'r', 'hello_world.a', 'hello_world.o'], env=get_clang_native_env(), stdout=PIPE, stderr=PIPE)
     err = run_process([PYTHON, EMCC, 'hello_world.a', '-o', 'hello_world.js'], stdout=PIPE, stderr=PIPE, check=False).stderr
     assert 'exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?' in err, err
 
@@ -7989,7 +7975,7 @@ int main() {
 
   # Tests that if user specifies multiple -o output directives, then the last one will take precedence
   def test_multiple_o_files(self):
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a.js', '-o', 'b.js']).communicate()
+    check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a.js', '-o', 'b.js'])
     assert os.path.isfile('b.js')
     assert not os.path.isfile('a.js')
 
@@ -8011,7 +7997,7 @@ int main() {
           print(inc)
           open('a.c', 'w').write(inc)
           open('b.c', 'w').write(inc)
-          subprocess.check_call([PYTHON, EMCC] + std + ['a.c', 'b.c'])
+          check_call([PYTHON, EMCC] + std + ['a.c', 'b.c'])
 
   def test_single_file(self):
     for (single_file_enabled,
@@ -8066,10 +8052,9 @@ int main() {
 
       print(' '.join(cmd))
       self.clear()
-      proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
-      output, err = proc.communicate()
+      rtn = call(cmd, stdout=PIPE, stderr=PIPE)
       print(os.listdir('.'))
-      assert expect_success == (proc.returncode == 0)
+      assert expect_success == (rtn == 0)
       assert expect_asmjs_code == os.path.exists('a.out.asm.js')
       assert expect_emterpretify_file == os.path.exists('a.out.dat')
       assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
@@ -8081,8 +8066,8 @@ int main() {
   def test_emar_M(self):
     open('file1', 'w').write(' ')
     open('file2', 'w').write(' ')
-    subprocess.call([PYTHON, EMAR, 'cr', 'file1.a', 'file1'])
-    subprocess.call([PYTHON, EMAR, 'cr', 'file2.a', 'file2'])
+    check_call([PYTHON, EMAR, 'cr', 'file1.a', 'file1'])
+    check_call([PYTHON, EMAR, 'cr', 'file2.a', 'file2'])
     emar = run_process([PYTHON, EMAR, '-M'], input='''create combined.a
 addlib file1.a
 addlib file2.a
@@ -8099,7 +8084,7 @@ end
       results = {}
       for f in (flag1, flag2):
         outfile = 'aliases.js'
-        subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', f + '=' + flagarg, '-o', outfile] + extra_args)
+        check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', f + '=' + flagarg, '-o', outfile] + extra_args)
         with open(outfile) as out:
           results[f] = out.read()
       self.assertEqual(results[flag1], results[flag2], 'results should be identical')
