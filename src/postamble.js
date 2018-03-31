@@ -39,6 +39,7 @@ if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) {
 #else
 if (memoryInitializer) {
 #endif
+#if MODULE_JS_API
   if (!isDataURI(memoryInitializer)) {
     if (typeof Module['locateFile'] === 'function') {
       memoryInitializer = Module['locateFile'](memoryInitializer);
@@ -46,6 +47,7 @@ if (memoryInitializer) {
       memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
     }
   }
+#endif // MODULE_JS_API
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
     var data = Module['readBinary'](memoryInitializer);
     HEAPU8.set(data, GLOBAL_BASE);
@@ -62,7 +64,9 @@ if (memoryInitializer) {
       // Delete the typed array that contains the large blob of the memory initializer request response so that
       // we won't keep unnecessary memory lying around. However, keep the XHR object itself alive so that e.g.
       // its .status field can still be accessed later.
+#if MODULE_JS_API
       if (Module['memoryInitializerRequest']) delete Module['memoryInitializerRequest'].response;
+#endif // MODULE_JS_API
       removeRunDependency('memory initializer');
     }
     function doBrowserLoad() {
@@ -76,6 +80,7 @@ if (memoryInitializer) {
       applyMemoryInitializer(memoryInitializerBytes.buffer);
     } else
 #endif
+#if MODULE_JS_API
     if (Module['memoryInitializerRequest']) {
       // a network request has already been created, just use that
       function useRequest() {
@@ -106,9 +111,12 @@ if (memoryInitializer) {
         Module['memoryInitializerRequest'].addEventListener('load', useRequest); // wait for it
       }
     } else {
+#endif // MODULE_JS_API
       // fetch it from the network ourselves
       doBrowserLoad();
+#if MODULE_JS_API
     }
+#endif // MODULE_JS_API
   }
 }
 #endif
@@ -277,7 +285,9 @@ function run(args) {
 
     preMain();
 
+#if MODULE_JS_API
     if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
+#endif // MODULE_JS_API
 
 #if HAS_MAIN
     if (Module['_main'] && shouldRunNow) Module['callMain'](args);
@@ -290,6 +300,7 @@ function run(args) {
     postRun();
   }
 
+#if MODULE_JS_API
   if (Module['setStatus']) {
     Module['setStatus']('Running...');
     setTimeout(function() {
@@ -299,8 +310,11 @@ function run(args) {
       doRun();
     }, 1);
   } else {
+#endif // MODULE_JS_API
     doRun();
+#if MODULE_JS_API
   }
+#endif // MODULE_JS_API
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
@@ -445,12 +459,14 @@ Module['abort'] = abort;
 
 // {{PRE_RUN_ADDITIONS}}
 
+#if MODULE_JS_API
 if (Module['preInit']) {
   if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
   while (Module['preInit'].length > 0) {
     Module['preInit'].pop()();
   }
 }
+#endif // MODULE_JS_API
 
 #if HAS_MAIN
 // shouldRunNow refers to calling main(), not run().
@@ -459,9 +475,11 @@ var shouldRunNow = true;
 #else
 var shouldRunNow = false;
 #endif
+#if MODULE_JS_API
 if (Module['noInitialRun']) {
   shouldRunNow = false;
 }
+#endif // MODULE_JS_API
 #endif // HAS_MAIN
 
 #if NO_EXIT_RUNTIME

@@ -614,6 +614,13 @@ var MODULARIZE_INSTANCE = 0; // Similar to MODULARIZE, but while that mode expor
                              // available here (since you arean't creating the instance
                              // yourself).
 
+var MODULE_JS_API = 1; // When enabled, this adds support for receiving values on the Module
+                       // object from JS, such as setting Module.arguments to set the arguments
+                       // to main() or Module.preRun to set callbacks to call before running,
+                       // etc. Disabling this can avoid a bunch of code you don't need in the
+                       // support JS.
+                       // XXX NEED THIS for files. others? html, probably, others?
+
 var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
                    // print out anything at all whatsoever. This is useful for benchmarking.
 

@@ -1151,12 +1151,14 @@ updateGlobalBufferViews();
 
 #if SPLIT_MEMORY == 0
 // Use a provided buffer, if there is one, or else allocate a new one
+#if MODULE_JS_API
 if (Module['buffer']) {
   buffer = Module['buffer'];
 #if ASSERTIONS
   assert(buffer.byteLength === TOTAL_MEMORY, 'provided buffer should be ' + TOTAL_MEMORY + ' bytes, but it is ' + buffer.byteLength);
 #endif
 } else {
+#endif // MODULE_JS_API
   // Use a WebAssembly memory where available
 #if BINARYEN
   if (typeof WebAssembly === 'object' && typeof WebAssembly.Memory === 'function') {
@@ -1185,7 +1187,9 @@ if (Module['buffer']) {
   assert(buffer.byteLength === TOTAL_MEMORY);
 #endif // ASSERTIONS
   Module['buffer'] = buffer;
+#if MODULE_JS_API
 }
+#endif // MODULE_JS_API
 updateGlobalBufferViews();
 #else // SPLIT_MEMORY
 // make sure total memory is a multiple of the split memory size
@@ -1487,6 +1491,8 @@ function callRuntimeCallbacks(callbacks) {
       continue;
     }
     var func = callback.func;
+#if !NO_EXIT_RUNTIME
+    // atexit()s are runtime callbacks that are function pointers we dyncall
     if (typeof func === 'number') {
       if (callback.arg === undefined) {
         Module['dynCall_v'](func);
@@ -1494,8 +1500,11 @@ function callRuntimeCallbacks(callbacks) {
         Module['dynCall_vi'](func, callback.arg);
       }
     } else {
+#endif
       func(callback.arg === undefined ? null : callback.arg);
+#if !NO_EXIT_RUNTIME
     }
+#endif
   }
 }
 
@@ -1516,6 +1525,7 @@ function preRun() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
+#if MODULE_JS_API
   // compatibility - merge in anything from Module['preRun'] at this time
   if (Module['preRun']) {
     if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
@@ -1523,6 +1533,7 @@ function preRun() {
       addOnPreRun(Module['preRun'].shift());
     }
   }
+#endif // MODULE_JS_API
   callRuntimeCallbacks(__ATPRERUN__);
 }
 
@@ -1570,6 +1581,7 @@ function postRun() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
+#if MODULE_JS_API
   // compatibility - merge in anything from Module['postRun'] at this time
   if (Module['postRun']) {
     if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
@@ -1577,6 +1589,7 @@ function postRun() {
       addOnPostRun(Module['postRun'].shift());
     }
   }
+#endif // MODULE_JS_API
   callRuntimeCallbacks(__ATPOSTRUN__);
 }
 
@@ -1741,9 +1754,11 @@ function addRunDependency(id) {
   assert(!ENVIRONMENT_IS_PTHREAD);
 #endif
   runDependencies++;
+#if MODULE_JS_API
   if (Module['monitorRunDependencies']) {
     Module['monitorRunDependencies'](runDependencies);
   }
+#endif // MODULE_JS_API
 #if ASSERTIONS
   if (id) {
     assert(!runDependencyTracking[id]);
@@ -1777,9 +1792,11 @@ function addRunDependency(id) {
 
 function removeRunDependency(id) {
   runDependencies--;
+#if MODULE_JS_API
   if (Module['monitorRunDependencies']) {
     Module['monitorRunDependencies'](runDependencies);
   }
+#endif // MODULE_JS_API
 #if ASSERTIONS
   if (id) {
     assert(runDependencyTracking[id]);
@@ -1845,6 +1862,7 @@ addOnPreRun(function() {
     }
   }
   // if we can load dynamic libraries synchronously, do so, otherwise, preload
+#if MODULE_JS_API
 #if BINARYEN
   if (Module['dynamicLibraries'] && Module['dynamicLibraries'].length > 0 && !Module['readBinary']) {
     // we can't read binary data synchronously, so preload
@@ -1870,6 +1888,7 @@ addOnPreRun(function() {
   }
 #endif
   loadDynamicLibraries(Module['dynamicLibraries']);
+#endif // MODULE_JS_API
 });
 
 #if ASSERTIONS
@@ -1979,6 +1998,7 @@ function integrateWasmJS() {
   var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
   var asmjsCodeFile = '{{{ ASMJS_CODE_FILE }}}';
 
+#if MODULE_JS_API
   if (typeof Module['locateFile'] === 'function') {
     if (!isDataURI(wasmTextFile)) {
       wasmTextFile = Module['locateFile'](wasmTextFile);
@@ -1990,6 +2010,7 @@ function integrateWasmJS() {
       asmjsCodeFile = Module['locateFile'](asmjsCodeFile);
     }
   }
+#endif // MODULE_JS_API
 
   // utilities
 
@@ -2089,9 +2110,11 @@ function integrateWasmJS() {
 
   function getBinary() {
     try {
+#if MODULE_JS_API
       if (Module['wasmBinary']) {
         return new Uint8Array(Module['wasmBinary']);
       }
+#endif // MODULE_JS_API
 #if SUPPORT_BASE64_EMBEDDING
       var binary = tryParseAsDataURI(wasmBinaryFile);
       if (binary) {
@@ -2112,7 +2135,11 @@ function integrateWasmJS() {
   function getBinaryPromise() {
     // if we don't have the binary yet, and have the Fetch api, use that
     // in some environments, like Electron's render process, Fetch api may be present, but have a different context than expected, let's only use it on the Web
-    if (!Module['wasmBinary'] && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
+    if (
+#if MODULE_JS_API
+        !Module['wasmBinary'] &&
+#endif // MODULE_JS_API
+        (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
       return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
         if (!response['ok']) {
           throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
@@ -2203,6 +2230,7 @@ function integrateWasmJS() {
     // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
     // to manually instantiate the Wasm module themselves. This allows pages to run the instantiation parallel
     // to any other async startup actions they are performing.
+#if MODULE_JS_API
     if (Module['instantiateWasm']) {
       try {
         return Module['instantiateWasm'](info, receiveInstance);
@@ -2211,6 +2239,7 @@ function integrateWasmJS() {
         return false;
       }
     }
+#endif // MODULE_JS_API
 
 #if BINARYEN_ASYNC_COMPILATION
 #if RUNTIME_LOGGING
