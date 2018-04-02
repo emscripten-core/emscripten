@@ -138,8 +138,11 @@ var JSfuncs = {
     return ret;
   }
 };
+
 // For fast lookup of conversion functions
-var toC = {'string' : JSfuncs['stringToC'], 'array' : JSfuncs['arrayToC']};
+var toC = {
+  'string': JSfuncs['stringToC'], 'array': JSfuncs['arrayToC']
+};
 
 // C calling interface.
 function ccall (ident, returnType, argTypes, args, opts) {
@@ -170,6 +173,7 @@ function ccall (ident, returnType, argTypes, args, opts) {
 #endif
 #endif
   if (returnType === 'string') ret = Pointer_stringify(ret);
+  if (returnType === 'boolean') ret = Boolean(ret);
   if (stack !== 0) {
 #if EMTERPRETIFY_ASYNC
     if (opts && opts.async) {
