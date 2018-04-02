@@ -39,6 +39,6 @@ if not os.path.exists(filename + '.o'):
   sys.exit(1)
 
 print('o => runnable')
-check_call(['g++', path_from_root('system', 'lib', 'debugging.cpp'), filename + '.o', '-o', filename + '.run'] + ['-l' + lib for lib in libs])
+check_call(['g++', '-no-pie', path_from_root('system', 'lib', 'debugging.cpp'), filename + '.o', '-o', filename + '.run'] + ['-l' + lib for lib in libs])
 
 sys.exit(0)
