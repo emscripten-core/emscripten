@@ -1406,12 +1406,14 @@ class Building(object):
         if env.get(dangerous) and env.get(dangerous) == non_native.get(dangerous):
           del env[dangerous] # better to delete it than leave it, as the non-native one is definitely wrong
       return env
-    env['CC'] = 'python %s' % quote(EMCC)
-    env['CXX'] = 'python %s' % quote(EMXX)
-    env['AR'] = 'python %s' % quote(EMAR)
-    env['LD'] = 'python %s' % quote(EMCC)
+    # add python when necessary (on non-windows, we now support python 2 and 3 so
+    # it should be ok either way)
+    env['CC'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
+    env['CXX'] = quote(EMXX) if not WINDOWS else 'python %s' % quote(EMXX)
+    env['AR'] = quote(EMAR) if not WINDOWS else 'python %s' % quote(EMAR)
+    env['LD'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
     env['NM'] = quote(LLVM_NM)
-    env['LDSHARED'] = 'python %s' % quote(EMCC)
+    env['LDSHARED'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
     env['RANLIB'] = quote(EMRANLIB) if not WINDOWS else 'python %s' % quote(EMRANLIB)
     env['EMMAKEN_COMPILER'] = quote(Building.COMPILER)
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
