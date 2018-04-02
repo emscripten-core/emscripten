@@ -2363,7 +2363,7 @@ class Building(object):
     else:
       if Settings.ERROR_ON_MISSING_LIBRARIES:
         logging.fatal('emcc: cannot find library "%s"', library_name)
-        exit(1)
+        sys.exit(1)
       else:
         logging.warning('emcc: cannot find library "%s"', library_name)
 
@@ -2395,6 +2395,19 @@ class Building(object):
   def get_binaryen_bin():
     Building.get_binaryen()
     return os.path.join(Settings.BINARYEN_ROOT, 'bin')
+
+  @staticmethod
+  def get_binaryen_lib():
+    Building.get_binaryen()
+    # The wasm.js and binaryen.js libraries live in 'bin' in the binaryen
+    # source tree, but are installed to share/binaryen.
+    paths = (os.path.join(Settings.BINARYEN_ROOT, 'bin'),
+             os.path.join(Settings.BINARYEN_ROOT, 'share', 'binaryen'))
+    for dirname in paths:
+      if os.path.exists(os.path.join(dirname, 'binaryen.js')):
+         return dirname
+    logging.fatal('emcc: cannot find binaryen js libraries (tried: %s)' % str(paths))
+    sys.exit(1)
 
 # compatibility with existing emcc, etc. scripts
 Cache = cache.Cache(debug=DEBUG_CACHE)
