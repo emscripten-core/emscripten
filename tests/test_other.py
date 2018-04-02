@@ -5622,6 +5622,13 @@ print(os.environ.get('NM'))
 ''')
     check('emconfigure', [PYTHON, 'test.py'], expect=tools.shared.LLVM_NM)
 
+  def test_emmake_python(self):
+    # simulates a configure/make script that looks for things like CC, AR, etc., and which we should
+    # not confuse by setting those vars to something containing `python X` as the script checks for
+    # the existence of an executable.
+    result = run_process([PYTHON, path_from_root('emmake.py'), PYTHON, path_from_root('tests', 'emmake', 'make.py')], stdout=PIPE, stderr=PIPE)
+    print(result.stdout, result.stderr)
+
   def test_sdl2_config(self):
     for args, expected in [
       [['--version'], '2.0.0'],
