@@ -5763,6 +5763,19 @@ int main() {
 #define CHUNK_SIZE (10*1024*1024)
 
 int main() {
+  EM_ASM({
+    // we want to allocate a lot until eventually we can't anymore. to simulate that, we limit how much
+    // can be allocated by Buffer, so that if we don't hit a limit before that, we don't keep going into
+    // swap space and other bad things.
+    var old = Module['reallocBuffer'];
+    Module['reallocBuffer'] = function(size) {
+      if (size > 500 * 1024 * 1024) {
+        return null;
+      }
+      return old(size);
+    };
+  });
+
   std::vector<void*> allocs;
   bool has = false;
   while (1) {
