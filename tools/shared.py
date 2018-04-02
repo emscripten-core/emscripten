@@ -2399,6 +2399,8 @@ class Building(object):
   @staticmethod
   def get_binaryen_lib():
     Building.get_binaryen()
+    # The wasm.js and binaryen.js libraries live in 'bin' in the binaryen
+    # source tree, but are installed to share/binaryen.
     paths = (os.path.join(Settings.BINARYEN_ROOT, 'bin'),
              os.path.join(Settings.BINARYEN_ROOT, 'share', 'binaryen'))
     for dirname in paths:
