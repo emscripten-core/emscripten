@@ -173,8 +173,9 @@ var LibraryManager = {
     for (var i = 0; i < libraries.length; i++) {
       var filename = libraries[i];
       var src = read(filename);
+      var processed = undefined;
       try {
-        var processed = processMacros(preprocess(src, filename));
+        processed = processMacros(preprocess(src, filename));
         eval(processed);
       } catch(e) {
         var details = [e, e.lineNumber ? 'line number: ' + e.lineNumber : '', (e.stack || "").toString().replace('Object.<anonymous>', filename)];

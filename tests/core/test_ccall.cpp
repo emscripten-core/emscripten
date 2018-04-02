@@ -1,14 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <emscripten.h>
 
 extern "C" {
 int get_int() { return 5; }
 float get_float() { return 3.14; }
+bool get_bool() { return true; }
 const char *get_string() { return "hello world"; }
 void print_int(int x) { printf("%d\n", x); }
 void print_float(float x) { printf("%.2f\n", x); }
 void print_string(char *x) { printf("%s\n", x); }
+void print_bool(bool x) { 
+  if (x) printf("true\n"); 
+  else if (!x) printf("false\n");
+}
 int multi(int x, float y, int z, char *str) {
   if (x) puts(str);
   return (x + y) * z;
