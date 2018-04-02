@@ -1998,7 +1998,7 @@ class Building(object):
 
     if path_from_root() not in sys.path:
       sys.path += [path_from_root()]
-    from emscripten import _main as call_emscripten
+    import emscripten
     # Run Emscripten
     settings = Settings.serialize()
     args = settings + extra_args
@@ -2006,7 +2006,7 @@ class Building(object):
     if jsrun.TRACK_PROCESS_SPAWNS:
       logging.info('Executing emscripten.py compiler with cmdline "' + ' '.join(cmdline) + '"')
     with ToolchainProfiler.profile_block('emscripten.py'):
-      call_emscripten(cmdline)
+      emscripten._main(cmdline)
 
     # Detect compilation crashes and errors
     assert os.path.exists(filename + '.o.js'), 'Emscripten failed to generate .js'

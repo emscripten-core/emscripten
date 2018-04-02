@@ -2265,13 +2265,7 @@ def main(args, compiler_engine, cache, temp_files, DEBUG):
              temp_files=temp_files, DEBUG=DEBUG)
 
 
-def _main():
-  if os.environ.get('EMCC_FAST_COMPILER') == '0':
-    logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
-    return 1
-
-  args = sys.argv[1:]
-
+def _main(args):
   substitute_response_files(args)
 
   parser = argparse.ArgumentParser(
@@ -2330,7 +2324,9 @@ WARNING: You should normally never use this! Use emcc instead.
   ''')
 
   if len(positional) != 1:
-    raise RuntimeError('Must provide exactly one positional argument. Got ' + str(len(positional)) + ': "' + '", "'.join(positional) + '"')
+    logging.error('Must provide exactly one positional argument. Got ' + str(len(positional)) + ': "' + '", "'.join(positional) + '"')
+    return 1
+
   keywords.infile = os.path.abspath(positional[0])
   if isinstance(keywords.outfile, (type(u''), bytes)):
     keywords.outfile = open(keywords.outfile, 'w')
@@ -2363,4 +2359,4 @@ WARNING: You should normally never use this! Use emcc instead.
   return 0
 
 if __name__ == '__main__':
-  sys.exit(_main())
+  sys.exit(_main(sys.argv[1:]))
