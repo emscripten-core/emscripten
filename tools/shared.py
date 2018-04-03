@@ -1305,13 +1305,17 @@ class Building(object):
   JS_ENGINE_OVERRIDE = None # Used to pass the JS engine override from runner.py -> test_benchmark.py
   multiprocessing_pool = None
 
+  @staticmethod
+  def get_num_cores():
+    return int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+
   # Multiprocessing pools are very slow to build up and tear down, and having several pools throughout
   # the application has a problem of overallocating child processes. Therefore maintain a single
   # centralized pool that is shared between all pooled task invocations.
   @staticmethod
   def get_multiprocessing_pool():
     if not Building.multiprocessing_pool:
-      cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+      cores = Building.get_num_cores()
 
       # If running with one core only, create a mock instance of a pool that does not
       # actually spawn any new subprocesses. Very useful for internal debugging.
