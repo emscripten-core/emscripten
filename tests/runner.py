@@ -482,7 +482,7 @@ class RunnerCore(unittest.TestCase):
     return run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), wasm_binary], stdout=PIPE).stdout
 
   def is_exported_in_wasm(self, name, wasm):
-    wat = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), wasm], stdout=PIPE).stdout
+    wat = self.get_wasm_text(wasm)
     return ('(export "%s"' % name) in wat
 
   def run_generated_code(self, engine, filename, args=[], check_timeout=True, output_nicerizer=None, assert_returncode=0):
