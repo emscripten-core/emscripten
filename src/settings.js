@@ -350,6 +350,12 @@ var NODEJS_CATCH_EXIT = 1; // By default we handle exit() in node, by catching t
                            // longer do that, and exceptions work normally, which can be useful for libraries
                            // or programs that don't need exit() to work.
 
+var EXTRA_LLVM_FINAL_OPT_ARGS = ""; // A comma-separated list of additional arguments that will be appended to
+                                    // 'opt' command. You can use it for example to  run custom optimization pass:
+                                    // -s EXTRA_LLVM_FINAL_OPT_ARGS="['-load', 'llvm_pass_print_function_names.so', '-print-function-names']"
+                                    // For -load command you can also use source (.cpp) instead of shared library (.so)
+                                    // see test_llvm_custom_pass_src in test_other.py
+
 // For more explanations of this option, please visit
 // https://github.com/kripken/emscripten/wiki/Asyncify
 var ASYNCIFY = 0; // Whether to enable asyncify transformation

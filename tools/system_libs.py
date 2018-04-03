@@ -744,7 +744,7 @@ class Ports(object):
     shared.try_delete(shared.Cache.get_path(name + '.bc'))
 
   @staticmethod
-  def build_native(subdir):
+  def build_native(subdir, lists_relpath = '.', target=None):
     shared.Building.ensure_no_emmake('We cannot build the native system library in "%s" when under the influence of emmake/emconfigure. To avoid this, create system dirs beforehand, so they are not auto-built on demand. For example, for binaryen, do "python embuilder.py build binaryen"' % subdir)
 
     old = os.getcwd()
@@ -755,7 +755,7 @@ class Ports(object):
       cmake_build_type = 'Release'
 
       # Configure
-      subprocess.check_call(['cmake', '-DCMAKE_BUILD_TYPE=' + cmake_build_type, '.'])
+      subprocess.check_call(['cmake', '-DCMAKE_BUILD_TYPE=' + cmake_build_type, lists_relpath])
 
       # Check which CMake generator CMake used so we know which form to pass parameters to make/msbuild/etc. build tool.
       generator = re.search('CMAKE_GENERATOR:INTERNAL=(.*)$', open('CMakeCache.txt', 'r').read(), re.MULTILINE).group(1)
@@ -766,8 +766,12 @@ class Ports(object):
       if 'Makefiles' in generator and not 'NMake' in generator: make_args = ['--', '-j', num_cores]
       elif 'Visual Studio' in generator: make_args = ['--config', cmake_build_type, '--', '/maxcpucount:' + num_cores]
 
+      cmd = ['cmake', '--build', '.']
+      if target:
+        cmd += ['--target', target]
+      cmd += make_args
       # Kick off the build.
-      subprocess.check_call(['cmake', '--build', '.'] + make_args)
+      subprocess.check_call(cmd)
     finally:
       os.chdir(old)
 

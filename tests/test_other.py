@@ -6512,6 +6512,26 @@ Resolved: "/" => "/"
     assert sizes[1] < sizes[0]
     assert sizes[3] < sizes[0]
 
+  def test_llvm_custom_pass_src(self):
+    with temp_directory() as temp_dir:
+      custompass_src = path_from_root('tests', 'llvm_pass_print_function_names.cpp')
+      source = path_from_root('tests', 'hello_libcxx.cpp')
+
+      print('== Running custom pass (1)')
+      cmd = [PYTHON, EMCC, source, '--llvm-opts', '["-print-function-names"]', '-s', 'EXTRA_LLVM_FINAL_OPT_ARGS=["-load", "' + custompass_src + '"]']
+      print(cmd)
+      stderr = run_process(cmd, stderr=PIPE).stderr
+      self.assertContained('PrintFunctionNames: main', stderr)
+      self.assertContained('hello, world!', run_js('a.out.js'))
+
+      print('== Running custom pass (2)')
+      cmd = [PYTHON, EMCC, source, '-s', 'EXTRA_LLVM_FINAL_OPT_ARGS=["-load", "' + custompass_src + '", "-print-function-names"]']
+      print(cmd)
+      stderr = run_process(cmd, stderr=PIPE).stderr
+      self.assertContained('PrintFunctionNames: main', stderr)
+      self.assertContained('PrintFunctionNames: malloc', stderr) # link time, all functions
+      self.assertContained('hello, world!', run_js('a.out.js'))
+
   def test_dlmalloc_modes(self):
     open('src.cpp', 'w').write(r'''
       #include <stdlib.h>
