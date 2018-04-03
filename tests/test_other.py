@@ -5749,7 +5749,7 @@ int main() {
     for pre_fail, post_fail, opts in [
       ('', '', []),
       ('EM_ASM( Module.temp = HEAP32[DYNAMICTOP_PTR>>2] );', 'EM_ASM( assert(Module.temp === HEAP32[DYNAMICTOP_PTR>>2], "must not adjust DYNAMICTOP when an alloc fails!") );', []),
-      ('', '', ['-s', 'SPLIT_MEMORY=' + str(16*1024*1024)]),
+      ('', '', ['-s', 'SPLIT_MEMORY=' + str(16*1024*1024), '-DSPLIT']),
     ]:
       for growth in [0, 1]:
         for aborting in [0, 1]:
@@ -5792,6 +5792,9 @@ int main() {
   }
   assert(has);
   printf("an allocation failed!\n");
+#ifdef SPLIT
+  return 0;
+#endif
   while (1) {
     assert(allocs.size() > 0);
     void *curr = allocs.back();
@@ -5808,11 +5811,19 @@ int main() {
           if not aborting: args += ['-s', 'ABORTING_MALLOC=0']
           print(args, pre_fail)
           check_execute(args)
-          manage_malloc = (not aborting) or growth # growth also disables aborting
-          output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=0 if manage_malloc else None)
-          if manage_malloc:
-            # we should fail eventually, then free, then succeed
-            self.assertContained('''managed another malloc!\n''', output)
+          # growth also disables aborting
+          can_manage_another = (not aborting) or growth
+          split = '-DSPLIT' in args
+          print('can manage another:', can_manage_another, 'split:', split)
+          output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=0 if can_manage_another else None)
+          if can_manage_another:
+            self.assertContained('''an allocation failed!\n''', output)
+            if not split:
+              # split memory allocation may fail due to GC objects no longer being allocatable,
+              # and we can't expect to recover from that deterministically. So just check we
+              # get to the fail.
+              # otherwise, we should fail eventually, then free, then succeed
+              self.assertContained('''managed another malloc!\n''', output)
           else:
             # we should see an abort
             self.assertContained('''abort("Cannot enlarge memory arrays''', output)
