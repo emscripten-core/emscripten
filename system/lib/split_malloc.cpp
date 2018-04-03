@@ -51,7 +51,6 @@ struct Space {
   AllocateResult allocate() {
     assert(!allocated);
     assert(count == 0);
-    allocated = true;
     int start;
     if (index > 0) {
       if (int(split_memory*(index+1)) < 0) {
@@ -68,9 +67,12 @@ struct Space {
         }
       }, index, OK, NO_MEMORY, ALREADY_USED);
       if (result != OK) return result;
+      // success, we allocated this chunk
+      allocated = true;
       start = split_memory*index;
     } else {
       // small area in existing chunk 0
+      allocated = true;
       start = EM_ASM_INT({ return (HEAP32[DYNAMICTOP_PTR>>2]+3)&-4; });
       assert(start < split_memory);
     }
