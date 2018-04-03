@@ -550,7 +550,7 @@ def compile_settings(compiler_engine, settings, libraries, temp_files):
 
 
 def memory_and_global_initializers(pre, metadata, mem_init, settings):
-  global_initializers = str(', '.join(['{ func: function() { %s() } }' % i for i in metadata['initializers']]))
+  global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
 
   if settings['SIMD'] == 1:
     pre = open(path_from_root(os.path.join('src', 'ecmascript_simd.js'))).read() + '\n\n' + pre
@@ -781,11 +781,10 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
       start = table.index('[')
       end = table.rindex(']')
       body = table[start+1:end].split(',')
-      parsed = [x.strip() for x in body]
-      for i in range(len(parsed)):
-        if parsed[i] != '0':
+      for i, parsed in enumerate(x.strip() for x in body):
+        if parsed != '0':
           assert i not in function_pointer_targets
-          function_pointer_targets[i] = [sig, str(parsed[i])]
+          function_pointer_targets[i] = [sig, str(parsed)]
 
   def make_table(sig, raw):
     if '[]' in raw: return ('', '') # empty table
@@ -1028,10 +1027,7 @@ def global_simd_funcs(access_quote, metadata, settings):
     return ''
 
   def string_contains_any(s, str_list):
-    for sub in str_list:
-      if sub in s:
-        return True
-    return False
+    return any(sub in s for sub in str_list)
 
   nonexisting_simd_symbols = ['Int8x16_fromInt8x16', 'Uint8x16_fromUint8x16', 'Int16x8_fromInt16x8', 'Uint16x8_fromUint16x8', 'Int32x4_fromInt32x4', 'Uint32x4_fromUint32x4', 'Float32x4_fromFloat32x4', 'Float64x2_fromFloat64x2']
   nonexisting_simd_symbols += ['Int32x4_addSaturate', 'Int32x4_subSaturate', 'Uint32x4_addSaturate', 'Uint32x4_subSaturate']
@@ -1781,7 +1777,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
 
   # memory and global initializers
 
-  global_initializers = str(', '.join(['{ func: function() { %s() } }' % i for i in metadata['initializers']]))
+  global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
 
   staticbump = metadata['staticBump']
   while staticbump % 16 != 0: staticbump += 1
