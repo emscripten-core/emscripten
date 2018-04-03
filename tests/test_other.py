@@ -5811,10 +5811,10 @@ int main() {
     for pre_fail, post_fail, opts in [
       ('', '', []),
       ('EM_ASM( Module.temp = HEAP32[DYNAMICTOP_PTR>>2] );', 'EM_ASM( assert(Module.temp === HEAP32[DYNAMICTOP_PTR>>2], "must not adjust DYNAMICTOP when an alloc fails!") );', []),
-      ('', '', ['-s', 'SPLIT_MEMORY=' + str(16*1024*1024), '-DSPLIT'],
+      ('', '', ['-s', 'SPLIT_MEMORY=' + str(16*1024*1024), '-DSPLIT', '-s', 'WASM=0']),
       # also test non-wasm in normal mode
-      ('', '', ['-s', 'WASM=0'], True),
-      ('EM_ASM( Module.temp = HEAP32[DYNAMICTOP_PTR>>2] );', 'EM_ASM( assert(Module.temp === HEAP32[DYNAMICTOP_PTR>>2], "must not adjust DYNAMICTOP when an alloc fails!") );', ['-s', 'WASM=0'], True),
+      ('', '', ['-s', 'WASM=0']),
+      ('EM_ASM( Module.temp = HEAP32[DYNAMICTOP_PTR>>2] );', 'EM_ASM( assert(Module.temp === HEAP32[DYNAMICTOP_PTR>>2], "must not adjust DYNAMICTOP when an alloc fails!") );', ['-s', 'WASM=0']),
     ]:
       for growth in [0, 1]:
         for aborting in [0, 1]:
@@ -5868,12 +5868,13 @@ int main() {
     printf("freed one\n");
     if (malloc(CHUNK_SIZE)) break;
   }
+  printf("managed another malloc!\n");
 }
-''' % (pre_fail, post_fail, alloc_later))
+''' % (pre_fail, post_fail))
           args = [PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')] + opts
           if growth: args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
           if not aborting: args += ['-s', 'ABORTING_MALLOC=0']
-          print('test_failing_alloc', args, pre_fail, alloc_later)
+          print('test_failing_alloc', args, pre_fail)
           check_execute(args)
           # growth also disables aborting
           can_manage_another = (not aborting) or growth
