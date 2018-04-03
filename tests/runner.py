@@ -990,14 +990,15 @@ class BrowserCore(RunnerCore):
 ''' % (self.test_port, basename))
 
   def btest(self, filename, expected=None, reference=None, force_c=False, reference_slack=0, manual_reference=False, post_build=None,
-            args=[], outfile='test.html', message='.', also_proxied=False, url_suffix='', timeout=None, also_asmjs=True): # TODO: use in all other tests
+            args=[], outfile='test.html', message='.', also_proxied=False, url_suffix='', timeout=None):
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
     filepath = path_from_root('tests', filename) if not filename_is_src else ('main.c' if force_c else 'main.cpp')
     temp_filepath = os.path.join(self.get_dir(), os.path.basename(filepath))
-    # XXX test pthreads in asm.js for now as that is all that appears to work
-    if 'USE_PTHREADS' in str(args):
+    # when self.also_asmjs, we run tests in asm.js mode too, and not just the default wasm.
+    # otherwise, for now we run pthreads tests just in asm.js, no wasm, since wasm doesn't work yet.
+    if not self.also_asmjs and 'WASM=0' not in args and 'USE_PTHREADS' in str(args):
       args += ['-s', 'WASM=0']
     original_args = args[:]
     if filename_is_src:
@@ -1021,9 +1022,9 @@ class BrowserCore(RunnerCore):
     if post_build: post_build()
     if not isinstance(expected, list): expected = [expected]
     self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout)
-    if also_asmjs and self.also_asmjs:
+    if self.also_asmjs and not 'WASM=0' in args:
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
-                 ['-s', 'WASM=0'], outfile, message, also_proxied=False, timeout=timeout, also_wasm=False)
+                 args + ['-s', 'WASM=0'], outfile, message, also_proxied=False, timeout=timeout)
     if also_proxied:
       print('proxied...')
       if reference:
