@@ -74,10 +74,9 @@ class other(RunnerCore):
 
       output = run_process(py + [path_from_root('emcc'), '--version'], stdout=PIPE, stderr=PIPE, env=env).stderr
       expected_call = 'Running on Python %s which is not officially supported yet' % major
-      if major > 2:
-        assert expected_call in output
-      else:
-        assert expected_call not in output
+      # we currently support python 2 and 3 officially
+      assert expected_call not in output
+      assert output == '', output
 
   def test_emcc(self):
     for compiler in [EMCC, EMXX]:
