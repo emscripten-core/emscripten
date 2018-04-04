@@ -432,7 +432,7 @@ function JSify(data, functionsOnly) {
           print('STATIC_BASE = GLOBAL_BASE;\n');
           print('STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
         } else {
-          print('gb = alignMemory(getMemory({{{ STATIC_BUMP }}}), ' + MAX_GLOBAL_ALIGN + ' || 1);\n');
+          print('gb = alignMemory(getMemory({{{ STATIC_BUMP }}} + ' + MAX_GLOBAL_ALIGN + '), ' + MAX_GLOBAL_ALIGN + ' || 1);\n');
           // The static area consists of explicitly initialized data, followed by zero-initialized data.
           // The latter may need zeroing out if the MAIN_MODULE has already used this memory area before
           // dlopen'ing the SIDE_MODULE.  Since we don't know the size of the explicitly initialized data
