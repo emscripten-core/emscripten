@@ -2797,13 +2797,28 @@ def process(filename):
       self.emcc_args += ['--embed-file', curr]
 
     self.prep_dlfcn_main()
-    Settings.TOTAL_MEMORY = 256 * 1024 * 1024
+    Settings.TOTAL_MEMORY = 128 * 1024 * 1024
     src = r'''
       #include <stdio.h>
+      #include <stdlib.h>
+      #include <string.h>
       #include <dlfcn.h>
       #include <assert.h>
+      #include <emscripten.h>
 
       int main() {
+        printf("'prepare' memory with non-zero inited stuff\n");
+        int num = 120 * 1024 * 1024; // total is 128; we'll use 5*5 = 25 at least, so allocate pretty much all of it
+        void* mem = malloc(num);
+        assert(mem);
+        printf("setting this range to non-zero: %d - %d\n", int(mem), int(mem) + num);
+        memset(mem, 1, num);
+        EM_ASM({
+          var value = HEAP8[64*1024*1024];
+          Module.print('verify middle of memory is non-zero: ' + value);
+          assert(value === 1);
+        });
+        free(mem);
         for (int i = 0; i < 10; i++) {
           printf("loading %d\n", i);
           char* curr = "?.so";
@@ -2834,7 +2849,6 @@ def process(filename):
           assert(*postzero == 0);
           *postzero = 1;
           assert(*postzero != 0);
-          if (i % 2) dlclose(lib_handle); // close some, to see various behaviors and overwriting
         }
         printf("success.\n");
         return 0;
