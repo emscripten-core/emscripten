@@ -173,7 +173,7 @@ function ccall (ident, returnType, argTypes, args, opts) {
 #endif
 #endif
   if (returnType === 'string') ret = Pointer_stringify(ret);
-  if (returnType === 'boolean') ret = Boolean(ret);
+  else if (returnType === 'boolean') ret = Boolean(ret);
   if (stack !== 0) {
 #if EMTERPRETIFY_ASYNC
     if (opts && opts.async) {
