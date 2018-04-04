@@ -435,8 +435,8 @@ f.close()
         tasks += [p]
       for p in tasks:
         stdout, stderr = p.communicate()
-        print('O\n', stdout)
-        print('E\n', stderr)
+        print('stdout:\n', stdout)
+        print('stderr:\n', stderr)
         assert not p.returncode, 'A child process failed with return code %s: %s' % (p.returncode, stderr)
         if 'generating system library: libc.bc' in stdout:
           num_times_libc_was_built += 1
@@ -3733,29 +3733,22 @@ int main() {
                 Popen(cmd).communicate()
                 output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
                 if emulate_casts:
-                  assert 'Hello, world.' in output, output
-                elif safe:
-                  if wasm:
-                    if relocate or emulate_fps:
-                      assert 'function signature mismatch' in output, output
-                    else:
-                      if opts == 0:
-                        assert 'Invalid function pointer called' in output, output
-                      else:
-                        assert 'abort(' in output, output
-                  else:
-                    assert 'Function table mask error' in output, output
+                  # success!
+                  self.assertContained('Hello, world.', output)
                 else:
-                  if opts == 0:
-                    if wasm and (relocate or emulate_fps):
-                      assert 'function signature mismatch' in output, output
-                    else:
-                      assert 'Invalid function pointer called' in output, output
+                  # otherwise, the error depends on the mode we are in
+                  if wasm and (relocate or emulate_fps):
+                    # wasm trap raised by the vm
+                    self.assertContained('function signature mismatch', output)
+                  elif safe and not wasm:
+                    # non-wasm safe mode checks asm.js function table masks
+                    self.assertContained('Function table mask error', output)
+                  elif opts == 0:
+                    # informative error message (assertions are enabled in -O0)
+                    self.assertContained('Invalid function pointer called', output)
                   else:
-                    if wasm and (relocate or emulate_fps):
-                      assert 'function signature mismatch' in output, output
-                    else:
-                      assert 'abort(' in output, output
+                    # non-informative abort()
+                    self.assertContained('abort(', output)
 
   def test_aliased_func_pointers(self):
     open('src.cpp', 'w').write(r'''
