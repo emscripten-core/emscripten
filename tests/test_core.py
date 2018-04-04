@@ -2775,6 +2775,7 @@ def process(filename):
                 post_build=self.dlfcn_post_build)
 
   @no_wasm # wasm shared libraries are just .wasm files, and there is no way to describe alignment there yet
+           # see https://github.com/WebAssembly/tool-conventions/pull/51
   def test_dlfcn_alignment_and_zeroing(self):
     if not self.can_dlfcn(): return
 
