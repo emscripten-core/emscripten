@@ -5362,22 +5362,25 @@ function _main() {
       ('double', '18.51'),
     ]:
       print(t, out)
-      open('src.cpp', 'w').write(r'''
+      open('src.c', 'w').write(r'''
         #include <stdio.h>
         #include <emscripten.h>
 
         #define TYPE %s
 
-        TYPE func(TYPE input) {
+        TYPE marfoosh(TYPE input) {
           return input * 1.5;
         }
 
+        TYPE fleefl(TYPE input) {
+          return marfoosh(input);
+        }
+
         int main(void) {
-          emscripten_sleep(1); // just make sure we are in emterpreter-async mode
-          printf("result: %%.2f\n", (double)func((TYPE)12.34));
+          printf("result: %%.2f\n", (double)fleefl((TYPE)12.34));
         }
       ''' % t)
-      run_process([PYTHON, EMCC, 'src.cpp', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_WHITELIST=["_main"]'])
+      run_process([PYTHON, EMCC, 'src.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_WHITELIST=["_fleefl"]', '-s', 'PRECISE_F32=1'])
       self.assertContained('result: ' + out, run_js('a.out.js'))
 
   def test_link_with_a_static(self):
