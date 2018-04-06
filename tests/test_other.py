@@ -5352,6 +5352,36 @@ function _main() {
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'emterpreter_advise_synclist.c'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1', '-s', 'EMTERPRETIFY_SYNCLIST=["_j","_k"]'], stdout=PIPE).stdout
     self.assertContained('-s EMTERPRETIFY_WHITELIST=\'["_a", "_b", "_e", "_f", "_main"]\'', out)
 
+  def test_emterpreter_async_assertions(self):
+    # emterpretify-async mode with assertions adds checks on each call out of the emterpreter;
+    # make sure we handle all possible types there
+    for t, out in [
+      ('int',    '18.00'),
+      ('float',  '18.51'),
+      ('double', '18.51'),
+    ]:
+      print(t, out)
+      open('src.c', 'w').write(r'''
+        #include <stdio.h>
+        #include <emscripten.h>
+
+        #define TYPE %s
+
+        TYPE marfoosh(TYPE input) {
+          return input * 1.5;
+        }
+
+        TYPE fleefl(TYPE input) {
+          return marfoosh(input);
+        }
+
+        int main(void) {
+          printf("result: %%.2f\n", (double)fleefl((TYPE)12.34));
+        }
+      ''' % t)
+      run_process([PYTHON, EMCC, 'src.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_WHITELIST=["_fleefl"]', '-s', 'PRECISE_F32=1'])
+      self.assertContained('result: ' + out, run_js('a.out.js'))
+
   def test_link_with_a_static(self):
     for args in [[], ['-O2']]:
       print(args)
