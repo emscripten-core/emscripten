@@ -2774,6 +2774,89 @@ def process(filename):
     self.do_run(src, '100\n200\n13\n42\n',
                 post_build=self.dlfcn_post_build)
 
+  @no_wasm # wasm shared libraries are just .wasm files, and there is no way to describe alignment there yet
+           # see https://github.com/WebAssembly/tool-conventions/pull/51
+  def test_dlfcn_alignment_and_zeroing(self):
+    if not self.can_dlfcn(): return
+
+    self.prep_dlfcn_lib()
+    Settings.TOTAL_MEMORY = 16 * 1024 * 1024
+    lib_src = r'''
+      extern "C" {
+        int prezero = 0;
+        __attribute__((aligned(1024))) int superAligned = 12345;
+        int postzero = 0;
+      }
+      '''
+    dirname = self.get_dir()
+    filename = os.path.join(dirname, 'liblib.cpp')
+    self.build_dlfcn_lib(lib_src, dirname, filename)
+    for i in range(10):
+      curr = '%d.so' % i
+      shutil.copyfile('liblib.so', curr)
+      self.emcc_args += ['--embed-file', curr]
+
+    self.prep_dlfcn_main()
+    Settings.TOTAL_MEMORY = 128 * 1024 * 1024
+    src = r'''
+      #include <stdio.h>
+      #include <stdlib.h>
+      #include <string.h>
+      #include <dlfcn.h>
+      #include <assert.h>
+      #include <emscripten.h>
+
+      int main() {
+        printf("'prepare' memory with non-zero inited stuff\n");
+        int num = 120 * 1024 * 1024; // total is 128; we'll use 5*5 = 25 at least, so allocate pretty much all of it
+        void* mem = malloc(num);
+        assert(mem);
+        printf("setting this range to non-zero: %d - %d\n", int(mem), int(mem) + num);
+        memset(mem, 1, num);
+        EM_ASM({
+          var value = HEAP8[64*1024*1024];
+          Module.print('verify middle of memory is non-zero: ' + value);
+          assert(value === 1);
+        });
+        free(mem);
+        for (int i = 0; i < 10; i++) {
+          printf("loading %d\n", i);
+          char* curr = "?.so";
+          curr[0] = '0' + i;
+          void* lib_handle = dlopen(curr, RTLD_NOW);
+          if (!lib_handle) {
+            puts(dlerror());
+            assert(0);
+          }
+          printf("getting superAligned\n");
+          int* superAligned = (int*)dlsym(lib_handle, "superAligned");
+          assert(superAligned);
+          assert(int(superAligned) % 1024 == 0); // alignment
+          printf("checking value of superAligned, at %d\n", superAligned);
+          assert(*superAligned == 12345); // value
+          printf("getting prezero\n");
+          int* prezero = (int*)dlsym(lib_handle, "prezero");
+          assert(prezero);
+          printf("checking value of prezero, at %d\n", prezero);
+          assert(*prezero == 0);
+          *prezero = 1;
+          assert(*prezero != 0);
+          printf("getting postzero\n");
+          int* postzero = (int*)dlsym(lib_handle, "postzero");
+          printf("checking value of postzero, at %d\n", postzero);
+          assert(postzero);
+          printf("checking value of postzero\n");
+          assert(*postzero == 0);
+          *postzero = 1;
+          assert(*postzero != 0);
+        }
+        printf("success.\n");
+        return 0;
+      }
+      '''
+    self.do_run(src, 'success.\n',
+                post_build=self.dlfcn_post_build)
+
   @no_wasm # TODO: this needs to add JS functions to a wasm Table, need to figure that out
   def test_dlfcn_self(self):
     if not self.can_dlfcn(): return
