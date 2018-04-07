@@ -1188,6 +1188,8 @@ var LibrarySDL = {
           for(var j = 0; j < sizeSamplesPerChannel; ++j) {
             channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*4', 'float', 0, 0) }}});
           }
+        } else {
+          throw 'Invalid SDL audio format ' + SDL.audio.format + '!';
         }
       }
     },
@@ -2439,12 +2441,12 @@ var LibrarySDL = {
       var totalSamples = SDL.audio.samples*SDL.audio.channels;
       if (SDL.audio.format == 0x0008 /*AUDIO_U8*/) {
         SDL.audio.bytesPerSample = 1;
-      }
-      else if (SDL.audio.format == 0x8120 /*AUDIO_F32*/) {
-        SDL.audio.bytesPerSample = 4;
-      }
-      else {
+      } else if (SDL.audio.format == 0x8010 /*AUDIO_S16LSB*/) {
         SDL.audio.bytesPerSample = 2;
+      } else if (SDL.audio.format == 0x8120 /*AUDIO_F32*/) {
+        SDL.audio.bytesPerSample = 4;
+      } else {
+        throw 'Invalid SDL audio format ' + SDL.audio.format + '!';
       }
       SDL.audio.bufferSize = totalSamples*SDL.audio.bytesPerSample;
       SDL.audio.bufferDurationSecs = SDL.audio.bufferSize / SDL.audio.bytesPerSample / SDL.audio.channels / SDL.audio.freq; // Duration of a single queued buffer in seconds.
