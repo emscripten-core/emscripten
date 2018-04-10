@@ -18,8 +18,9 @@ WebAssembly is emitted by default, without the need for any special flags.
 
 .. note:: If you **don't** want WebAssembly, you can disable it with something like
 
-    emcc [..args..] -s WASM=1
-    and then just run the output js or html file.
+::
+
+	emcc [..args..] -s WASM=0
 
 .. note:: Emscripten's WebAssembly support depends on `Binaryen <https://github.com/WebAssembly/binaryen>`_, which will be automatically fetched and built for you (you may see logging about that, the first time you compile to WebAssembly).
 .. note:: The ``WASM``, ``BINARYEN*``, etc. options only matter when compiling to your final executable. In other words, the same .o files are used for both asm.js and WebAssembly. Only when linking them and compiling to asm.js or WebAssembly do you need to specify WebAssembly if you want that. That means that it is easy to build your project to both asm.js and WebAssembly.
