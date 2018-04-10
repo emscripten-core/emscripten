@@ -22,15 +22,10 @@ def run_by_subprocess(filename):
   return subprocess.run(py2 + [os.path.realpath(filename) + '.py'] + sys.argv[1:]).returncode
 
 def on_allowed_version():
-  major = sys.version_info.major
-  if major == 2:
-    return True
-  if os.environ.get('EMSCRIPTEN_ALLOW_NEWER_PYTHON'):
-    import logging
-    from tools import colored_logger
-    logging.warning('Running on Python %s which is not officially supported yet', major)
-    return True
-  return False
+  # we now allow python 2 or 3. eventually, we will only allow 3, and can change
+  # this. when we do that, also note that in shared.get_building_env() we'll need
+  # to specify the proper python to be executed, and need to do that carefully.
+  return True
 
 '''
 Runs filename+'.py' by opening Python 2 subprocess if required, or by importing.

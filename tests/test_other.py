@@ -74,10 +74,9 @@ class other(RunnerCore):
 
       output = run_process(py + [path_from_root('emcc'), '--version'], stdout=PIPE, stderr=PIPE, env=env).stderr
       expected_call = 'Running on Python %s which is not officially supported yet' % major
-      if major > 2:
-        assert expected_call in output
-      else:
-        assert expected_call not in output
+      # we currently support python 2 and 3 officially
+      assert expected_call not in output
+      assert output == '', output
 
   def test_emcc_1(self):
     for compiler in [EMCC, EMXX]:
@@ -5459,6 +5458,36 @@ function _main() {
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'emterpreter_advise_synclist.c'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1', '-s', 'EMTERPRETIFY_SYNCLIST=["_j","_k"]'], stdout=PIPE).stdout
     self.assertContained('-s EMTERPRETIFY_WHITELIST=\'["_a", "_b", "_e", "_f", "_main"]\'', out)
 
+  def test_emterpreter_async_assertions(self):
+    # emterpretify-async mode with assertions adds checks on each call out of the emterpreter;
+    # make sure we handle all possible types there
+    for t, out in [
+      ('int',    '18.00'),
+      ('float',  '18.51'),
+      ('double', '18.51'),
+    ]:
+      print(t, out)
+      open('src.c', 'w').write(r'''
+        #include <stdio.h>
+        #include <emscripten.h>
+
+        #define TYPE %s
+
+        TYPE marfoosh(TYPE input) {
+          return input * 1.5;
+        }
+
+        TYPE fleefl(TYPE input) {
+          return marfoosh(input);
+        }
+
+        int main(void) {
+          printf("result: %%.2f\n", (double)fleefl((TYPE)12.34));
+        }
+      ''' % t)
+      run_process([PYTHON, EMCC, 'src.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_WHITELIST=["_fleefl"]', '-s', 'PRECISE_F32=1'])
+      self.assertContained('result: ' + out, run_js('a.out.js'))
+
   def test_link_with_a_static(self):
     for args in [[], ['-O2']]:
       print(args)
@@ -5731,6 +5760,13 @@ import os
 print(os.environ.get('NM'))
 ''')
     check('emconfigure', [PYTHON, 'test.py'], expect=tools.shared.LLVM_NM)
+
+  def test_emmake_python(self):
+    # simulates a configure/make script that looks for things like CC, AR, etc., and which we should
+    # not confuse by setting those vars to something containing `python X` as the script checks for
+    # the existence of an executable.
+    result = run_process([PYTHON, path_from_root('emmake.py'), PYTHON, path_from_root('tests', 'emmake', 'make.py')], stdout=PIPE, stderr=PIPE)
+    print(result.stdout, result.stderr)
 
   def test_sdl2_config(self):
     for args, expected in [

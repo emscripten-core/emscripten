@@ -3884,6 +3884,10 @@ var LibraryGL = {
   glGetFramebufferAttachmentParameteriv__sig: 'viiii',
   glGetFramebufferAttachmentParameteriv: function(target, attachment, pname, params) {
     var result = GLctx.getFramebufferAttachmentParameter(target, attachment, pname);
+    if (result instanceof WebGLRenderbuffer ||
+        result instanceof WebGLTexture) {
+      result = result.name | 0;
+    }
     {{{ makeSetValue('params', '0', 'result', 'i32') }}};
   },
 

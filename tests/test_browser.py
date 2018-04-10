@@ -1741,6 +1741,11 @@ keydown(100);keyup(100); // trigger the end
   def test_glgetattachedshaders(self):
     self.btest('glgetattachedshaders.c', '1', args=['-lGL', '-lEGL'])
 
+  # Covered by dEQP text suite (we can remove it later if we add coverage for that).
+  @requires_hardware
+  def test_glframebufferattachmentinfo(self):
+    self.btest('glframebufferattachmentinfo.c', '1', args=['-lGLESv2', '-lEGL'])
+
   @requires_hardware
   def test_sdlglshader(self):
     self.btest('sdlglshader.c', reference='sdlglshader.png', args=['-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])

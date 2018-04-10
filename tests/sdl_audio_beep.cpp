@@ -84,8 +84,14 @@ Beeper::~Beeper() {
 
 template<typename T>
 void Beeper::generateSamples(T *stream, int length) {
-  const int AMPLITUDE = (sizeof(T) == 2) ? 28000 : 120;
-  const int offset = (sdlAudioFormat == AUDIO_U8) ? 120 : 0;
+  T AMPLITUDE;
+  if (sdlAudioFormat == AUDIO_F32) {
+    AMPLITUDE = (T) 0.8f;
+  }
+  else {
+   AMPLITUDE = (sizeof(T) == 2) ? 28000 : 120;
+  }
+  const T offset = (sdlAudioFormat == AUDIO_U8) ? 120 : 0;
 
   int i = 0;
   length /= numChannels;
@@ -108,7 +114,7 @@ void Beeper::generateSamples(T *stream, int length) {
 
     while (i < samplesToDo) {
       for(int j = 0; j < numChannels; ++j) {
-        stream[numChannels*i+j] = (T)(offset + (int)(AMPLITUDE * std::sin(phase * 2 * M_PI / frequency)));
+        stream[numChannels*i+j] = (T)(offset + (AMPLITUDE * std::sin(phase * 2 * M_PI / frequency)));
         if (numChannels > 1 && j == mutedChannel) {
           stream[numChannels*i+j] = 0;
         }
@@ -139,7 +145,7 @@ Beeper *beep = 0;
 // test will report you which work.
 const int freqs[] = { 8000, 11025, 16000, 22050, 32000, 44100, 48000, 96000 };
 const int channels[] = { 1, 2 };
-const int sdlAudioFormats[] = { AUDIO_U8, AUDIO_S16LSB /*, AUDIO_S8, AUDIO_U16LSB, AUDIO_U16MSB, AUDIO_S16MSB */ };
+const int sdlAudioFormats[] = { AUDIO_U8, AUDIO_S16LSB, AUDIO_F32 /*, AUDIO_S8, AUDIO_U16LSB, AUDIO_U16MSB, AUDIO_S16MSB */ };
 
 const char *SdlAudioFormatToString(int sdlAudioType) {
   switch(sdlAudioType) {
@@ -149,6 +155,7 @@ const char *SdlAudioFormatToString(int sdlAudioType) {
   case AUDIO_U16MSB: return "AUDIO_U16MSB";
   case AUDIO_S16LSB: return "AUDIO_S16LSB";
   case AUDIO_S16MSB: return "AUDIO_S16MSB";
+  case AUDIO_F32: return "AUDIO_F32";
   default: return "(unknown)";
   }
 }
@@ -221,6 +228,10 @@ void audio_callback(void *_beeper, Uint8 *_stream, int _length) {
   } else if (beeper->sdlAudioFormat == AUDIO_S16LSB) {
     Sint16 *stream = (Sint16*) _stream;
     int length = _length / 2;
+    beeper->generateSamples(stream, length);
+  } else if (beeper->sdlAudioFormat == AUDIO_F32) {
+    float* stream = (float*) _stream;
+    int length =_length / 4;
     beeper->generateSamples(stream, length);
   } else {
     assert(false && "Audio sample generation not implemented for current format!\n");

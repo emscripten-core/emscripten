@@ -1305,13 +1305,17 @@ class Building(object):
   JS_ENGINE_OVERRIDE = None # Used to pass the JS engine override from runner.py -> test_benchmark.py
   multiprocessing_pool = None
 
+  @staticmethod
+  def get_num_cores():
+    return int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+
   # Multiprocessing pools are very slow to build up and tear down, and having several pools throughout
   # the application has a problem of overallocating child processes. Therefore maintain a single
   # centralized pool that is shared between all pooled task invocations.
   @staticmethod
   def get_multiprocessing_pool():
     if not Building.multiprocessing_pool:
-      cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+      cores = Building.get_num_cores()
 
       # If running with one core only, create a mock instance of a pool that does not
       # actually spawn any new subprocesses. Very useful for internal debugging.
@@ -1406,12 +1410,14 @@ class Building(object):
         if env.get(dangerous) and env.get(dangerous) == non_native.get(dangerous):
           del env[dangerous] # better to delete it than leave it, as the non-native one is definitely wrong
       return env
-    env['CC'] = 'python %s' % quote(EMCC)
-    env['CXX'] = 'python %s' % quote(EMXX)
-    env['AR'] = 'python %s' % quote(EMAR)
-    env['LD'] = 'python %s' % quote(EMCC)
+    # add python when necessary (on non-windows, we now support python 2 and 3 so
+    # it should be ok either way)
+    env['CC'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
+    env['CXX'] = quote(EMXX) if not WINDOWS else 'python %s' % quote(EMXX)
+    env['AR'] = quote(EMAR) if not WINDOWS else 'python %s' % quote(EMAR)
+    env['LD'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
     env['NM'] = quote(LLVM_NM)
-    env['LDSHARED'] = 'python %s' % quote(EMCC)
+    env['LDSHARED'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
     env['RANLIB'] = quote(EMRANLIB) if not WINDOWS else 'python %s' % quote(EMRANLIB)
     env['EMMAKEN_COMPILER'] = quote(Building.COMPILER)
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
@@ -1998,7 +2004,7 @@ class Building(object):
 
     if path_from_root() not in sys.path:
       sys.path += [path_from_root()]
-    from emscripten import _main as call_emscripten
+    import emscripten
     # Run Emscripten
     settings = Settings.serialize()
     args = settings + extra_args
@@ -2006,7 +2012,7 @@ class Building(object):
     if jsrun.TRACK_PROCESS_SPAWNS:
       logging.info('Executing emscripten.py compiler with cmdline "' + ' '.join(cmdline) + '"')
     with ToolchainProfiler.profile_block('emscripten.py'):
-      call_emscripten(cmdline)
+      emscripten._main(cmdline)
 
     # Detect compilation crashes and errors
     assert os.path.exists(filename + '.o.js'), 'Emscripten failed to generate .js'
