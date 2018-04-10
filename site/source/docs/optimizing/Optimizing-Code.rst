@@ -152,7 +152,12 @@ To re-enable exceptions in optimized code, run *emcc* with ``-s DISABLE_EXCEPTIO
 
 .. note:: When exception catching is disabled, a thrown exception terminates the application. In other words, an exception is still thrown, but it isn't caught.
 
-.. note:: Even with catch blocks not being emitted, there is some code size overhead unless you build your source files with ``-fno-exceptions``, which will omit all exceptions support code (for example, it will avoid creating proper C++ exception objects in errors in std::vector, and just abort the application if they occur). `-fno-rtti` may help as well.
+.. note:: Even with catch blocks not being emitted, there is some code size overhead unless you build your source files with ``-fno-exceptions``, which will omit all exceptions support code (for example, it will avoid creating proper C++ exception objects in errors in std::vector, and just abort the application if they occur)
+
+C++ RTTI
+--------
+
+C++ run-time type info support (dynamic casts, etc.) adds overhead that is sometimes not needed. For example, in Box2D neither rtti nor exceptions are needed, and if you build the source files with ``-fno-rtti -fno-exceptions`` then it shrinks the output by 15% (!).
 
 Memory Growth
 -------------

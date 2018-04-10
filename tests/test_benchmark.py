@@ -244,6 +244,7 @@ class CheerpBenchmarker(Benchmarker):
         'CFLAGS': ' '.join(cheerp_args),
         'CXXFLAGS': ' '.join(cheerp_args),
       })
+    #cheerp_args += ['-cheerp-pretty-code'] # get function names, like emcc --profiling
     final = os.path.dirname(filename) + os.path.sep + 'cheerp_' + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
     try_delete(final)

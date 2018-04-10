@@ -435,8 +435,8 @@ f.close()
         tasks += [p]
       for p in tasks:
         stdout, stderr = p.communicate()
-        print('O\n', stdout)
-        print('E\n', stderr)
+        print('stdout:\n', stdout)
+        print('stderr:\n', stderr)
         assert not p.returncode, 'A child process failed with return code %s: %s' % (p.returncode, stderr)
         if 'generating system library: libc.bc' in stdout:
           num_times_libc_was_built += 1
@@ -2229,7 +2229,7 @@ int f() {
     open(os.path.join(self.get_dir(), 'test.file'), 'w').write('''ay file..............,,,,,,,,,,,,,,''')
     open(os.path.join(self.get_dir(), 'stdin'), 'w').write('''inter-active''')
     subprocess.check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'files.cpp'), '-c'])
-    run_process([PYTHON, path_from_root('tools', 'nativize_llvm.py'), os.path.join(self.get_dir(), 'files.o')], stdout=PIPE)
+    subprocess.check_call([PYTHON, path_from_root('tools', 'nativize_llvm.py'), os.path.join(self.get_dir(), 'files.o')])
     output = run_process([os.path.join(self.get_dir(), 'files.o.run')], stdin=open(os.path.join(self.get_dir(), 'stdin')), stdout=PIPE, stderr=PIPE)
     self.assertContained('''size: 37
 data: 119,97,107,97,32,119,97,107,97,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35
@@ -3733,29 +3733,22 @@ int main() {
                 Popen(cmd).communicate()
                 output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
                 if emulate_casts:
-                  assert 'Hello, world.' in output, output
-                elif safe:
-                  if wasm:
-                    if relocate or emulate_fps:
-                      assert 'function signature mismatch' in output, output
-                    else:
-                      if opts == 0:
-                        assert 'Invalid function pointer called' in output, output
-                      else:
-                        assert 'abort(' in output, output
-                  else:
-                    assert 'Function table mask error' in output, output
+                  # success!
+                  self.assertContained('Hello, world.', output)
                 else:
-                  if opts == 0:
-                    if wasm and (relocate or emulate_fps):
-                      assert 'function signature mismatch' in output, output
-                    else:
-                      assert 'Invalid function pointer called' in output, output
+                  # otherwise, the error depends on the mode we are in
+                  if wasm and (relocate or emulate_fps):
+                    # wasm trap raised by the vm
+                    self.assertContained('function signature mismatch', output)
+                  elif safe and not wasm:
+                    # non-wasm safe mode checks asm.js function table masks
+                    self.assertContained('Function table mask error', output)
+                  elif opts == 0:
+                    # informative error message (assertions are enabled in -O0)
+                    self.assertContained('Invalid function pointer called', output)
                   else:
-                    if wasm and (relocate or emulate_fps):
-                      assert 'function signature mismatch' in output, output
-                    else:
-                      assert 'abort(' in output, output
+                    # non-informative abort()
+                    self.assertContained('abort(', output)
 
   def test_aliased_func_pointers(self):
     open('src.cpp', 'w').write(r'''
@@ -4583,6 +4576,10 @@ int main()
 ''')
     Popen([PYTHON, EMCC, 'src.cpp']).communicate()
     self.assertContained('ok!', run_js('a.out.js'))
+
+  def test_strptime_symmetry(self):
+    Building.emcc(path_from_root('tests','strptime_symmetry.cpp'), output_filename='a.out.js')
+    self.assertContained('TEST PASSED', run_js('a.out.js'))    
 
   def test_truncate_from_0(self):
     open('src.cpp', 'w').write(r'''
@@ -5447,7 +5444,7 @@ function _main() {
       post = post.split('\n')[0]
       seen = int(post)
       print('  seen', seen, ', expected ', expected, type(seen), type(expected))
-      assert expected == seen or (seen in expected if type(expected) in [list, tuple] else False), ['expect', expected, 'but see', seen]
+      assert expected == seen or (type(expected) in [list, tuple] and seen in expected), ['expect', expected, 'but see', seen]
 
     do_log_test(path_from_root('tests', 'primes.cpp'), list(range(88, 101)), '_main')
     do_log_test(path_from_root('tests', 'fannkuch.cpp'), list(range(226, 241)), '__Z15fannkuch_workerPv')
@@ -5804,13 +5801,13 @@ int main() {
     run_js('a.out.js', stderr=PIPE, full_output=True, engine=SPIDERMONKEY_ENGINE)
 
   def test_failing_alloc(self):
-    for pre_fail, post_fail, opts, alloc_later in [
-      ('', '', [], True),
-      ('EM_ASM( Module.temp = HEAP32[DYNAMICTOP_PTR>>2] );', 'EM_ASM( assert(Module.temp === HEAP32[DYNAMICTOP_PTR>>2], "must not adjust DYNAMICTOP when an alloc fails!") );', [], True),
-      ('', '', ['-s', 'WASM=0', '-s', 'SPLIT_MEMORY=' + str(16*1024*1024)], False), # cannot alloc later in split memory, allocs are GC objects, no way to tell when it is safe to allocate again after running out
+    for pre_fail, post_fail, opts in [
+      ('', '', []),
+      ('EM_ASM( Module.temp = HEAP32[DYNAMICTOP_PTR>>2] );', 'EM_ASM( assert(Module.temp === HEAP32[DYNAMICTOP_PTR>>2], "must not adjust DYNAMICTOP when an alloc fails!") );', []),
+      ('', '', ['-s', 'SPLIT_MEMORY=' + str(16*1024*1024), '-DSPLIT', '-s', 'WASM=0']),
       # also test non-wasm in normal mode
-      ('', '', ['-s', 'WASM=0'], True),
-      ('EM_ASM( Module.temp = HEAP32[DYNAMICTOP_PTR>>2] );', 'EM_ASM( assert(Module.temp === HEAP32[DYNAMICTOP_PTR>>2], "must not adjust DYNAMICTOP when an alloc fails!") );', ['-s', 'WASM=0'], True),
+      ('', '', ['-s', 'WASM=0']),
+      ('EM_ASM( Module.temp = HEAP32[DYNAMICTOP_PTR>>2] );', 'EM_ASM( assert(Module.temp === HEAP32[DYNAMICTOP_PTR>>2], "must not adjust DYNAMICTOP when an alloc fails!") );', ['-s', 'WASM=0']),
     ]:
       for growth in [0, 1]:
         for aborting in [0, 1]:
@@ -5853,29 +5850,37 @@ int main() {
   }
   assert(has);
   printf("an allocation failed!\n");
-  if (%d) {
-    while (1) {
-      assert(allocs.size() > 0);
-      void *curr = allocs.back();
-      allocs.pop_back();
-      free(curr);
-      printf("freed one\n");
-      if (malloc(CHUNK_SIZE)) break;
-    }
-    printf("managed another malloc!\n");
+#ifdef SPLIT
+  return 0;
+#endif
+  while (1) {
+    assert(allocs.size() > 0);
+    void *curr = allocs.back();
+    allocs.pop_back();
+    free(curr);
+    printf("freed one\n");
+    if (malloc(CHUNK_SIZE)) break;
   }
+  printf("managed another malloc!\n");
 }
-''' % (pre_fail, post_fail, alloc_later))
+''' % (pre_fail, post_fail))
           args = [PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')] + opts
           if growth: args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
           if not aborting: args += ['-s', 'ABORTING_MALLOC=0']
-          print('test_failing_alloc', args, pre_fail, alloc_later)
+          print('test_failing_alloc', args, pre_fail)
           check_execute(args)
-          manage_malloc = (not aborting) or growth # growth also disables aborting
-          output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=0 if manage_malloc else None)
-          if manage_malloc:
-            if alloc_later:
-              # we should fail eventually, then free, then succeed
+          # growth also disables aborting
+          can_manage_another = (not aborting) or growth
+          split = '-DSPLIT' in args
+          print('can manage another:', can_manage_another, 'split:', split)
+          output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=0 if can_manage_another else None)
+          if can_manage_another:
+            self.assertContained('''an allocation failed!\n''', output)
+            if not split:
+              # split memory allocation may fail due to GC objects no longer being allocatable,
+              # and we can't expect to recover from that deterministically. So just check we
+              # get to the fail.
+              # otherwise, we should fail eventually, then free, then succeed
               self.assertContained('''managed another malloc!\n''', output)
           else:
             # we should see an abort

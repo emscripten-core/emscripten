@@ -106,7 +106,8 @@ def exit_with_error(message):
 
 class Intermediate(object):
   counter = 0
-# this method uses the global 'final' variable, which contains the current
+
+# this function uses the global 'final' variable, which contains the current
 # final output file. if a method alters final, and calls this method, then it
 # must modify final globally (i.e. it can't receive final as a param and
 # return it)
@@ -119,6 +120,7 @@ def save_intermediate(name=None, suffix='js'):
     return
   shutil.copyfile(final, name)
   Intermediate.counter += 1
+
 def save_intermediate_with_wasm(name, wasm_binary):
   save_intermediate(name) # save the js
   name = os.path.join(shared.get_emscripten_temp_dir(), 'emcc-%d-%s.wasm' % (Intermediate.counter - 1, name))
@@ -1736,7 +1738,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.js_transform:
         shutil.copyfile(final, final + '.tr.js')
         final += '.tr.js'
-        posix = True if not shared.WINDOWS else False
+        posix = not shared.WINDOWS
         logging.debug('applying transform: %s', options.js_transform)
         subprocess.check_call(shared.Building.remove_quotes(shlex.split(options.js_transform, posix=posix) + [os.path.abspath(final)]))
         if DEBUG: save_intermediate('transformed')
@@ -2321,6 +2323,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   global final
   logging.debug('using binaryen, with method: ' + shared.Settings.BINARYEN_METHOD)
   binaryen_bin = shared.Building.get_binaryen_bin()
+  binaryen_lib = shared.Building.get_binaryen_lib()
   # Emit wasm.js at the top of the js. This is *not* optimized with the rest of the code, since
   # (1) it contains asm.js, whose validation would be broken, and (2) it's very large so it would
   # be slow in cleanup/JSDCE etc.
@@ -2329,7 +2332,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   # BINARYEN_METHOD with something that doesn't use the polyfill, then we don't need it.
   if not shared.Settings.BINARYEN_METHOD or 'interpret' in shared.Settings.BINARYEN_METHOD:
     logging.debug('integrating wasm.js polyfill interpreter')
-    wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
+    wasm_js = open(os.path.join(binaryen_lib, 'wasm.js')).read()
     wasm_js = wasm_js.replace('EMSCRIPTEN_', 'emscripten_') # do not confuse the markers
     js = open(final).read()
     combined = open(final, 'w')
