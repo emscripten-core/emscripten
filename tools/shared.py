@@ -2643,7 +2643,6 @@ class WebAssembly(object):
     import math
     # a wasm shared library has a special "dylink" section, see tools-conventions repo
     js = open(js_file).read()
-    open('/tmp/emscripten_temp/lib.js', 'w').write(js)
     m = re.search("var STATIC_BUMP = (\d+);", js)
     mem_size = int(m.group(1))
     m = re.search("Module\['wasmTableSize'\] = (\d+);", js)
