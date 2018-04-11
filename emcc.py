@@ -908,7 +908,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         try:
           setattr(shared.Settings, key, parse_value(value))
         except Exception as e:
-          exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
+          exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s' % (change, str(e)))
 
         if key == 'EXPORTED_FUNCTIONS':
           # used for warnings in emscripten.py
@@ -2791,27 +2791,56 @@ def is_valid_abspath(options, path_name):
   return False
 
 
-def parse_string(text):
-  if text[0]=='\'' or text[0]=='"':
-    assert text[-1]==text[0] and len(text)>1, 'unclosed opened quoted string. expected final character to be "%s" and length to be greater than 1 in "%s"' % (text[0],text)
+def parse_string_value(text):
+  first = text[0]
+  if first == "'" or first == '"':
+    assert text[-1] == text[0] and len(text) > 1, 'unclosed opened quoted string. expected final character to be "%s" and length to be greater than 1 in "%s"' % (text[0],text)
     return text[1:-1]
   else:
     return text
 
-def parse_value(text):
-  if text[0]=='[':
-    assert text[-1]==']', 'unclosed opened string list. expected final character to be "]" in "%s"' % (text)
-    values = text[1:-1].split(",")
-    values = list(map(str.strip, values))
-    if len(values)!=1 and len(values[0])!=0: # Nothing between the []
-      return list(map(parse_string, values))
+def _parse_string_list_inner(text, sep): # Part of parse_value
+  values = text.split(sep)
+  result = []
+  index = 0
+  while True:
+    current = values[index].lstrip() # Cannot remove all at start/end because that could affect a string with a comma
+    first = current[0]
+    if not(first == "'" or first == '"'): # Longer logic in else.
+      assert len(current) > 0, "string array should not contain an empty value"
+      result.append(current.rstrip())
     else:
+      while True: # Continue until we find a section ending in the quote
+        start = index
+        assert index < len(values), "unclosed quoted string. expected final character to be '%s' in '%s'" % (first, values[start])
+        if values[index].rstrip()[-1] == first: # Final character exlcuding whitespace
+          if start == index:
+            result.append((current)[1:-1]) # Final output excludes quotes
+          else:
+            result.append((current + sep + values[index].rstrip())[1:-1])
+          break # Inner loop, quote found
+        else:
+          current += sep + values[index]
+          index += 1
+
+    index += 1
+    if not(index < len(values)): # Outside of the array
+      break
+  return result
+
+def parse_value(text):
+  if text[0] == '[':
+    assert text[-1] == ']', 'unclosed opened string list. expected final character to be "]" in "%s"' % (text)
+    inner = text[1:-1]
+    if inner.strip() == "":
       return []
+    else:
+      return _parse_string_list_inner(inner, ",")
   else:
     try:
-      return int(text)
+      return int(text) # Possibly needs reconsidering, what if string is expected but gets int somewhere further
     except ValueError as e:
-      return parse_string(text)
+      return parse_string_value(text)
 
 
 def check_bad_eq(arg):
