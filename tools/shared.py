@@ -2019,6 +2019,7 @@ class Building(object):
 
     return filename + '.o.js'
 
+  # TODO: deprecate this method, we should just need Settings.LINKABLE anyhow
   @staticmethod
   def can_build_standalone():
     return not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE
@@ -2225,7 +2226,7 @@ class Building(object):
     js_file = Building.js_optimizer_no_asmjs(js_file, passes)
     # if we are optimizing for size, shrink the combined wasm+JS
     # TODO: support this when a symbol map is used
-    if expensive_optimizations and not emit_symbol_map:
+    if expensive_optimizations and not emit_symbol_map and not Settings.LINKABLE:
       js_file = Building.metadce(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
       # now that we removed unneeded communication between js and wasm, we can clean up
       # the js some more.

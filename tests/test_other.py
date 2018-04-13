@@ -7854,15 +7854,18 @@ int main() {
 
     print('test on hello world')
     test(path_from_root('tests', 'hello_world.cpp'), [
-      ([],      24, ['abort', 'tempDoublePtr'], ['waka'],                  46505, 25, 19),
-      (['-O1'], 19, ['abort', 'tempDoublePtr'], ['waka'],                  12630, 16, 17),
-      (['-O2'], 19, ['abort', 'tempDoublePtr'], ['waka'],                  12616, 16, 17),
-      (['-O3'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2818, 10,  2), # in -O3, -Os and -Oz we metadce
-      (['-Os'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2771, 10,  2),
-      (['-Oz'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2765, 10,  2),
+      ([],      24, ['abort', 'tempDoublePtr'], ['waka'],                  46505,  25,   19),
+      (['-O1'], 19, ['abort', 'tempDoublePtr'], ['waka'],                  12630,  16,   17),
+      (['-O2'], 19, ['abort', 'tempDoublePtr'], ['waka'],                  12616,  16,   17),
+      (['-O3'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2818,  10,    2), # in -O3, -Os and -Oz we metadce
+      (['-Os'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2771,  10,    2),
+      (['-Oz'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2765,  10,    2),
       # finally, check what happens when we export nothing. wasm should be almost empty
       (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                 0, [],                         ['tempDoublePtr', 'waka'],     8,  0,  0), # totally empty!
+                 0, [],                         ['tempDoublePtr', 'waka'],     8,   0,    0), # totally empty!
+      # but we don't metadce with linkable code! other modules may want it
+      (['-O3', '-s', 'MAIN_MODULE=1'],
+              1542, ['invoke_i'],               ['waka'],                 496958, 168, 2558),
     ])
 
     print('test on a minimal pure computational thing')
