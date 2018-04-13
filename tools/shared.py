@@ -2640,13 +2640,18 @@ class WebAssembly(object):
 
   @staticmethod
   def make_shared_library(js_file, wasm_file):
+    import math
     # a wasm shared library has a special "dylink" section, see tools-conventions repo
     js = open(js_file).read()
     m = re.search("var STATIC_BUMP = (\d+);", js)
     mem_size = int(m.group(1))
     m = re.search("Module\['wasmTableSize'\] = (\d+);", js)
     table_size = int(m.group(1))
-    logging.debug('creating wasm dynamic library with mem size %d, table size %d' % (mem_size, table_size))
+    m = re.search('gb = alignMemory\(getMemory\(\d+ \+ (\d+)\), (\d+) \|\| 1\);', js)
+    assert m.group(1) == m.group(2), 'js must contain a clear alignment for the wasm shared library'
+    mem_align = int(m.group(1))
+    mem_align = int(math.log(mem_align, 2))
+    logging.debug('creating wasm dynamic library with mem size %d, table size %d, align %d' % (mem_size, table_size, mem_align))
     wso = js_file + '.wso'
     # write the binary
     wasm = open(wasm_file, 'rb').read()
@@ -2656,7 +2661,8 @@ class WebAssembly(object):
     f.write(b'\0') # user section is code 0
     # need to find the size of this section
     name = b"\06dylink" # section name, including prefixed size
-    contents = WebAssembly.lebify(mem_size) + WebAssembly.lebify(table_size)
+    contents = WebAssembly.lebify(mem_size) + WebAssembly.lebify(mem_align) + \
+               WebAssembly.lebify(table_size) + WebAssembly.lebify(0)
     size = len(name) + len(contents)
     f.write(WebAssembly.lebify(size))
     f.write(name)
