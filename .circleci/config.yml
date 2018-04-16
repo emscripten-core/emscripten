@@ -18,9 +18,7 @@ test-defaults: &test-defaults
 
     - run: |
         apt-get update
-        apt-get install -y python3 python3-pip cmake build-essential openjdk-9-jre-headless $TEST_DEPENDENCY
-        pip3 install --upgrade pip
-        pip3 install lit
+        apt-get install -y python3 cmake build-essential openjdk-9-jre-headless $TEST_DEPENDENCY
         EMCC_CORES=4 python3 emscripten/tests/runner.py $TEST_TARGET
 
 version: 2
