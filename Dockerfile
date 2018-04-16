@@ -7,9 +7,7 @@ COPY . /root/emscripten/
 
 RUN cd /root/ \
  && apt-get update \
- && apt-get install -y python python-pip cmake build-essential openjdk-9-jre-headless \
- && pip install --upgrade pip \
- && pip install lit \
+ && apt-get install -y python cmake build-essential openjdk-9-jre-headless \
  && wget https://github.com/juj/emsdk/archive/master.tar.gz \
  && tar -xf master.tar.gz \
  && pushd emsdk-master \
