@@ -1,6 +1,13 @@
 #include <stdio.h>
 #include <emscripten.h>
-void fib(void * arg) {
+
+// Using extern "C" so we can pass not mangled names to EMTERPRETIFY_WHITELIST
+
+extern "C" void leaf(void) {
+  printf("leaf-");
+}
+
+extern "C" void fib(void * arg) {
     int * p = (int*)arg;
     int cur = 1;
     int next = 1;
@@ -12,19 +19,23 @@ void fib(void * arg) {
         next = next2;
     }
 }
-void f(void * arg) {
+
+extern "C" void f(void * arg) {
     int * p = (int*)arg;
     *p = 0;
+    leaf();
     emscripten_yield();
     fib(arg); // emscripten_yield in fib() can `pass through` f() back to main(), and then we can assume inside fib()
 }
-void g(void * arg) {
+
+extern "C" void g(void * arg) {
     int * p = (int*)arg;
     for(int i = 0; i < 10; ++i) {
         *p = 100+i;
         emscripten_yield();
     }
 }
+
 int main(int argc, char **argv) {
     int i;
     emscripten_coroutine co = emscripten_coroutine_create(f, (void*)&i, 0);
