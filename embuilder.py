@@ -263,6 +263,8 @@ if operation == 'build':
       build_port('binaryen', None, ['-s', 'WASM=1'])
     elif what == 'cocos2d':
       build_port('cocos2d', None, ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
+    elif what == 'llvm-config':
+      build_port('llvm-config', None, [])
     else:
       shared.logging.error('unfamiliar build target: ' + what)
       sys.exit(1)

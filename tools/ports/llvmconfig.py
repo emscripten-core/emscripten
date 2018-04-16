@@ -1,28 +1,41 @@
 import os
 import logging
 from subprocess import PIPE
+from shutil import copyfile
 
 TAG = 'incoming'
+
 PORT_NAME = 'llvm-config'
-PORT_KEY = 'emscripten-fastcomp-' + TAG
+PORT_KEY = PORT_NAME + '-' + TAG
+
+FASTCOMP_PORT = 'emscripten-fastcomp'
+FASTCOMP_KEY = FASTCOMP_PORT + '-' + TAG
+
+FASTCOMP_CLANG_PORT = 'emscripten-fastcomp-clang'
+FASTCOMP_CLANG_KEY = FASTCOMP_CLANG_PORT + '-' + TAG
 
 def getroot(ports):
-    return os.path.join(ports.get_dir(), PORT_NAME, PORT_KEY)
+    return os.path.join(ports.get_dir(), PORT_NAME)
 
 def get(ports, settings, shared):
-    ports.fetch_project(PORT_NAME, 'https://github.com/kripken/emscripten-fastcomp/archive/' + TAG + '.zip', PORT_KEY)
+    ports.fetch_project(FASTCOMP_PORT, 'https://github.com/kripken/emscripten-fastcomp/archive/' + TAG + '.zip', FASTCOMP_KEY)
+    ports.fetch_project(FASTCOMP_CLANG_PORT, 'https://github.com/kripken/emscripten-fastcomp-clang/archive/' + TAG + '.zip', FASTCOMP_CLANG_KEY)
 
     def create():
-        logging.info('building: %s' % PORT_KEY)
+        logging.info('building: %s' % (PORT_NAME + '-' + TAG))
 
         root = getroot(ports)
         buildroot = os.path.join(root, 'build')
+        includeroot = os.path.join(root, 'include')
 
-        if not(os.path.exists(buildroot)):
-            os.mkdir(buildroot)
+        shared.safe_ensure_dirs(buildroot)
+        shared.safe_ensure_dirs(includeroot)
 
-        ports.build_native(buildroot, '..', target='llvm-config')
-        ports.build_native(buildroot, '..', target='intrinsics_gen')
+        ports.build_native(buildroot, os.path.join(ports.get_dir(), FASTCOMP_PORT, FASTCOMP_KEY), target='llvm-config')
+        ports.build_native(buildroot, os.path.join(ports.get_dir(), FASTCOMP_PORT, FASTCOMP_KEY), target='intrinsics_gen')
+
+        copyfile(os.path.join(ports.get_dir(), FASTCOMP_CLANG_PORT, FASTCOMP_CLANG_KEY, 'lib', 'Headers', 'stdarg.h'),
+                 os.path.join(includeroot, 'stdarg.h'))
 
         # the "output" of this port build is a tag file, saying which port we have
         tag_file = os.path.join(root, 'tag.txt')
@@ -64,25 +77,7 @@ def process_args(ports, args, settings, shared):
             compile_flags += ['-D_GLIBCXX_USE_CXX11_ABI=0']  # https://stackoverflow.com/questions/37366291/undefined-symbol-for-self-built-llvm-opt)
 
             # clang includes
-            # http://clang-developers.42468.n3.nabble.com/How-to-determine-clang-s-system-include-dirs-to-set-in-ASTVisitor-td4029080.html
-            foo = os.path.join(shared.get_emscripten_temp_dir(), 'foo.cpp')
-            with open(foo, 'w') as f:
-                pass
-
-            out = shared.run_process([shared.CLANG_CPP, '-###', '-c', foo], stderr=PIPE).stderr
-            print("========\/")
-            print(out)
-            print("===")
-
-            idx = 0
-            tokens = out.split()
-            for next in tokens:
-                idx += 1
-                if '-resource-dir' in next:
-                    break
-
-            assert(idx < len(tokens))
-            compile_flags += ['-I' + os.path.join(tokens[idx].replace("'", "").replace('"', ''), 'include')]
+            compile_flags += ['-I' + os.path.join(getroot(ports), 'include')]
             scope[1] = compile_flags
 
         cmd = [shared.CLANG_CPP]
