@@ -2227,7 +2227,7 @@ class Building(object):
       passes.append('minifyWhitespace')
     if passes:
       logging.debug('running cleanup on shell code: ' + ' '.join(passes))
-      js_file = Building.js_optimizer_no_asmjs(js_file, passes)
+      js_file = Building.js_optimizer_no_asmjs(js_file, ['noPrintMetadata'] + passes)
     # if we can optimize this js+wasm combination under the assumption no one else
     # will see the internals, do so
     if not Settings.LINKABLE:
