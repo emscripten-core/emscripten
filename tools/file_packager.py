@@ -682,63 +682,55 @@ if has_preloaded:
 
   ret += r'''
     function fetchRemotePackage(packageName, packageSize, callback, errback) {
-      /* Check if browser is Chrome/Safari/IE and if the protocol is `file:`. Gracefully exit if that is the case
-         Otherwise, run the XHR script. */
-      var isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
-      var isSafari = /Safari/.test(navigator.userAgent) && /Apple Computer/.test(navigator.vendor);
-      var isIE = /MSIE/.test(navigator.userAgent) || /Trident\//.test(navigator.userAgent) || /Edge\//.test(navigator.userAgent);
-
-      if ((isChrome || isSafari || isIE) && window.location.protocol === "file:") {
-        //Time to retreat with a fallback or polyfill
-        if (Module['setStatus']) Module['setStatus']('CORS Not allowed on a file: URL. Use `python -m SimpleHTTPServer` to create a server at this location.');
-        throw new Error('CORS Not allowed on a file: URL. Use `python -m SimpleHTTPServer` to create a server at this location.');
-      } else {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', packageName, true);
-        xhr.responseType = 'arraybuffer';
-        xhr.onprogress = function(event) {
-          var url = packageName;
-          var size = packageSize;
-          if (event.total) size = event.total;
-          if (event.loaded) {
-            if (!xhr.addedTotal) {
-              xhr.addedTotal = true;
-              if (!Module.dataFileDownloads) Module.dataFileDownloads = {};
-              Module.dataFileDownloads[url] = {
-                loaded: event.loaded,
-                total: size
-              };
-            } else {
-              Module.dataFileDownloads[url].loaded = event.loaded;
-            }
-            var total = 0;
-            var loaded = 0;
-            var num = 0;
-            for (var download in Module.dataFileDownloads) {
-            var data = Module.dataFileDownloads[download];
-              total += data.total;
-              loaded += data.loaded;
-              num++;
-            }
-            total = Math.ceil(total * Module.expectedDataFileDownloads/num);
-            if (Module['setStatus']) Module['setStatus']('Downloading data... (' + loaded + '/' + total + ')');
-          } else if (!Module.dataFileDownloads) {
-            if (Module['setStatus']) Module['setStatus']('Downloading data...');
-          }
-        };
-        xhr.onerror = function(event) {
-          throw new Error("NetworkError for: " + packageName);
-        }
-        xhr.onload = function(event) {
-          if (xhr.status == 200 || xhr.status == 304 || xhr.status == 206 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
-            var packageData = xhr.response;
-            callback(packageData);
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', packageName, true);
+      xhr.responseType = 'arraybuffer';
+      xhr.onprogress = function(event) {
+        var url = packageName;
+        var size = packageSize;
+        if (event.total) size = event.total;
+        if (event.loaded) {
+          if (!xhr.addedTotal) {
+            xhr.addedTotal = true;
+            if (!Module.dataFileDownloads) Module.dataFileDownloads = {};
+            Module.dataFileDownloads[url] = {
+              loaded: event.loaded,
+              total: size
+            };
           } else {
-            throw new Error(xhr.statusText + " : " + xhr.responseURL);
+            Module.dataFileDownloads[url].loaded = event.loaded;
           }
-        };
-        xhr.send(null);
+          var total = 0;
+          var loaded = 0;
+          var num = 0;
+          for (var download in Module.dataFileDownloads) {
+          var data = Module.dataFileDownloads[download];
+            total += data.total;
+            loaded += data.loaded;
+            num++;
+          }
+          total = Math.ceil(total * Module.expectedDataFileDownloads/num);
+          if (Module['setStatus']) Module['setStatus']('Downloading data... (' + loaded + '/' + total + ')');
+        } else if (!Module.dataFileDownloads) {
+          if (Module['setStatus']) Module['setStatus']('Downloading data...');
+        }
+      };
+      xhr.onerror = function(event) {
+        if (window.location.protocol === "file:") {
+          if (Module['setStatus']) Module['setStatus']('CORS May not be allowed on a file: URL. Use `python -m SimpleHTTPServer` to create a server at this location.');
+          throw new Error('CORS May not be allowed on a file: URL. Use `python -m SimpleHTTPServer` to create a server at this location.');
+        }
+        throw new Error("NetworkError for: " + packageName);
       }
+      xhr.onload = function(event) {
+        if (xhr.status == 200 || xhr.status == 304 || xhr.status == 206 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
+          var packageData = xhr.response;
+          callback(packageData);
+        } else {
+          throw new Error(xhr.statusText + " : " + xhr.responseURL);
+        }
+      }; 
+      xhr.send(null);
     };
 
     function handleError(error) {
