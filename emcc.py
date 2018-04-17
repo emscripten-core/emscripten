@@ -2791,44 +2791,45 @@ def is_valid_abspath(options, path_name):
   return False
 
 
-def parse_string_value(text):
-  first = text[0]
-  if first == "'" or first == '"':
-    assert text[-1] == text[0] and len(text) > 1, 'unclosed opened quoted string. expected final character to be "%s" and length to be greater than 1 in "%s"' % (text[0],text)
-    return text[1:-1]
-  else:
-    return text
-
-def _parse_string_list_inner(text, sep): # Part of parse_value
-  values = text.split(sep)
-  result = []
-  index = 0
-  while True:
-    current = values[index].lstrip() # Cannot remove all at start/end because that could affect a string with a comma
-    first = current[0]
-    if not(first == "'" or first == '"'): # Longer logic in else.
-      assert len(current) > 0, "string array should not contain an empty value"
-      result.append(current.rstrip())
-    else:
-      while True: # Continue until we find a section ending in the quote
-        start = index
-        assert index < len(values), "unclosed quoted string. expected final character to be '%s' in '%s'" % (first, values[start])
-        if values[index].rstrip()[-1] == first: # Final character exlcuding whitespace
-          if start == index:
-            result.append((current)[1:-1]) # Final output excludes quotes
-          else:
-            result.append((current + sep + values[index].rstrip())[1:-1])
-          break # Inner loop, quote found
-        else:
-          current += sep + values[index]
-          index += 1
-
-    index += 1
-    if not(index < len(values)): # Outside of the array
-      break
-  return result
 
 def parse_value(text):
+  def _parse_string_value(text):
+    first = text[0]
+    if first == "'" or first == '"':
+      assert text[-1] == text[0] and len(text) > 1, 'unclosed opened quoted string. expected final character to be "%s" and length to be greater than 1 in "%s"' % (text[0],text)
+      return text[1:-1]
+    else:
+      return text
+
+  def _parse_string_list_inner(text, sep): # Part of parse_value
+    values = text.split(sep)
+    result = []
+    index = 0
+    while True:
+      current = values[index].lstrip() # Cannot remove all at start/end because that could affect a string with a comma
+      first = current[0]
+      if not(first == "'" or first == '"'): # Longer logic in else.
+        assert len(current) > 0, "string array should not contain an empty value"
+        result.append(current.rstrip())
+      else:
+        start = index
+        while True: # Continue until we find a section ending in the quote
+          assert index < len(values), "unclosed quoted string. expected final character to be '%s' in '%s'" % (first, values[start])
+          if values[index].rstrip()[-1] == first: # Final character excluding whitespace
+            if start == index:
+              result.append((current)[1:-1]) # Final output excludes quotes
+            else:
+              result.append((current + sep + values[index].rstrip())[1:-1])
+            break # Inner loop, quote found
+          else:
+            current += sep + values[index]
+            index += 1
+
+      index += 1
+      if not(index < len(values)): # Outside of the array
+        break
+    return result
+
   if text[0] == '[':
     assert text[-1] == ']', 'unclosed opened string list. expected final character to be "]" in "%s"' % (text)
     inner = text[1:-1]
@@ -2840,7 +2841,7 @@ def parse_value(text):
     try:
       return int(text) # Possibly needs reconsidering, what if string is expected but gets int somewhere further
     except ValueError as e:
-      return parse_string_value(text)
+      return _parse_string_value(text)
 
 
 def check_bad_eq(arg):
