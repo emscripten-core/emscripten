@@ -80,10 +80,10 @@ var ABORTING_MALLOC = 1; // If 1, then when malloc would fail we abort(). This i
                          // returning NULL (0) when it fails.
 var ALLOW_MEMORY_GROWTH = 0; // If false, we abort with an error if we try to allocate more memory than
                              // we can (TOTAL_MEMORY). If true, we will grow the memory arrays at
-                             // runtime, seamlessly and dynamically. This has a performance cost though,
+                             // runtime, seamlessly and dynamically. This has a performance cost in asm.js,
                              // both during the actual growth and in general (the latter is because in
                              // that case we must be careful about optimizations, in particular the
-                             // eliminator).
+                             // eliminator), but in wasm it is efficient and should be used whenever relevant.
                              // See https://code.google.com/p/v8/issues/detail?id=3907 regarding
                              // memory growth performance in chrome.
                              // Setting this option on will disable ABORTING_MALLOC, in other words,
@@ -189,6 +189,8 @@ var OUTLINING_LIMIT = 0; // A function size above which we try to automatically 
                          // (outlining itself makes code less optimized, and requires
                          // emscripten to disable some passes that are incompatible with
                          // it).
+                         // Note: For wasm there is usually no need to set OUTLINING_LIMIT,
+                         //       as VMs can handle large functions well anyhow.
 
 var AGGRESSIVE_VARIABLE_ELIMINATION = 0; // Run aggressiveVariableElimination in js-optimizer.js
 var SIMPLIFY_IFS = 1; // Whether to simplify ifs in js-optimizer.js
@@ -324,18 +326,18 @@ var LZ4 = 0; // Enable this to support lz4-compressed file packages. They are st
              //     preloadPlugin stuff, etc.
              //   * LZ4 files are read-only.
 
-var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catch exceptions. If the code you
-                                    // are compiling does not actually rely on catching exceptions (but the
-                                    // compiler generates code for it, maybe because of stdlibc++ stuff),
-                                    // then this can make it much faster. If an exception actually happens,
-                                    // it will not be caught and the program will halt (so this will not
-                                    // introduce silent failures, which is good).
+var DISABLE_EXCEPTION_CATCHING = 1; // Disables generating code to actually catch exceptions. This disabling is on
+                                    // by default as the overhead of exceptions is quite high in size and speed
+                                    // currently (in the future, wasm should improve that). When exceptions are
+                                    // disabled, if an exception actually happens then it will not be caught
+                                    // and the program will halt (so this will not introduce silent failures).
+                                    // There are 3 specific modes here:
                                     // DISABLE_EXCEPTION_CATCHING = 0 - generate code to actually catch exceptions
                                     // DISABLE_EXCEPTION_CATCHING = 1 - disable exception catching at all
                                     // DISABLE_EXCEPTION_CATCHING = 2 - disable exception catching, but enables
-                                    // catching in whitelist
+                                    //                                  catching in whitelist
                                     // XXX note that this removes *catching* of exceptions, which is the main
-                                    //     issue for speed, but for code size you need to build with
+                                    //     issue for speed, but you should build source files with
                                     //     -fno-exceptions to really get rid of all exceptions code overhead,
                                     //     as it may contain thrown exceptions that are never caught (e.g.
                                     //     just using std::vector can have that). -fno-rtti may help as well.
@@ -910,9 +912,9 @@ var SINGLE_FILE = 0; // If set to 1, embeds all subresources in the emitted file
                      // Content Security Policy, or your CSP header doesn't include either
                      // script-src or child-src, then you can safely ignore this warning.
 
-var WASM_TEXT_FILE = ''; // name of the file containing wasm text, if relevant
-var WASM_BINARY_FILE = ''; // name of the file containing wasm binary, if relevant
-var ASMJS_CODE_FILE = ''; // name of the file containing asm.js, if relevant
+var WASM_TEXT_FILE = ''; // For internal use only (name of the file containing wasm text, if relevant).
+var WASM_BINARY_FILE = ''; // For internal use only (name of the file containing wasm binary, if relevant).
+var ASMJS_CODE_FILE = ''; // For internal use only (name of the file containing asm.js, if relevant).
 var SOURCE_MAP_BASE = ''; // Base URL the source mapfile, if relevant
 
 var MEM_INIT_IN_WASM = 0; // for internal use only

@@ -1,13 +1,11 @@
 #!/usr/bin/env python2
-
-'''
-You should normally never use this! Use emcc instead.
+"""You should normally never use this! Use emcc instead.
 
 This is a small wrapper script around the core JS compiler. This calls that
 compiler with the settings given to it. It can also read data from C/C++
 header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
-'''
+"""
 
 from tools.toolchain_profiler import ToolchainProfiler
 if __name__ == '__main__':
@@ -61,8 +59,8 @@ def access_quoter(settings):
   return access_quote
 
 
-def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
-             temp_files=None, DEBUG=None):
+def emscript(infile, settings, outfile, libraries, compiler_engine, temp_files,
+             DEBUG):
   """Runs the emscripten LLVM-to-JS compiler.
 
   Args:
@@ -71,8 +69,6 @@ def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
       defined in src/settings.js.
     outfile: The file where the output is written.
   """
-
-  if libraries is None: libraries = []
 
   assert settings['ASM_JS'], 'fastcomp is asm.js-only (mode 1 or 2)'
 
@@ -550,7 +546,7 @@ def compile_settings(compiler_engine, settings, libraries, temp_files):
 
 
 def memory_and_global_initializers(pre, metadata, mem_init, settings):
-  global_initializers = str(', '.join(['{ func: function() { %s() } }' % i for i in metadata['initializers']]))
+  global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
 
   if settings['SIMD'] == 1:
     pre = open(path_from_root(os.path.join('src', 'ecmascript_simd.js'))).read() + '\n\n' + pre
@@ -778,11 +774,10 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
       start = table.index('[')
       end = table.rindex(']')
       body = table[start+1:end].split(',')
-      parsed = [x.strip() for x in body]
-      for i in range(len(parsed)):
-        if parsed[i] != '0':
+      for i, parsed in enumerate(x.strip() for x in body):
+        if parsed != '0':
           assert i not in function_pointer_targets
-          function_pointer_targets[i] = [sig, str(parsed[i])]
+          function_pointer_targets[i] = [sig, str(parsed)]
 
   def make_table(sig, raw):
     if '[]' in raw: return ('', '') # empty table
@@ -1025,10 +1020,7 @@ def global_simd_funcs(access_quote, metadata, settings):
     return ''
 
   def string_contains_any(s, str_list):
-    for sub in str_list:
-      if sub in s:
-        return True
-    return False
+    return any(sub in s for sub in str_list)
 
   nonexisting_simd_symbols = ['Int8x16_fromInt8x16', 'Uint8x16_fromUint8x16', 'Int16x8_fromInt16x8', 'Uint16x8_fromUint16x8', 'Int32x4_fromInt32x4', 'Uint32x4_fromUint32x4', 'Float32x4_fromFloat32x4', 'Float64x2_fromFloat64x2']
   nonexisting_simd_symbols += ['Int32x4_addSaturate', 'Int32x4_subSaturate', 'Uint32x4_addSaturate', 'Uint32x4_subSaturate']
@@ -1396,7 +1388,8 @@ Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
       named_globals += '''
 for (var named in NAMED_GLOBALS) {
   (function(named) {
-    Module['g$_' + named] = function() { return Module['_' + named] };
+    var func = Module['_' + named];
+    Module['g$_' + named] = function() { return func };
   })(named);
 }
 '''
@@ -1742,14 +1735,12 @@ HEAP_TYPE_INFOS = [
 ]
 
 
-def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_engine=None,
-                          temp_files=None, DEBUG=None):
+def emscript_wasm_backend(infile, settings, outfile, libraries, compiler_engine,
+                          temp_files, DEBUG):
   # Overview:
   #   * Run LLVM backend to emit .s
   #   * Run Binaryen's s2wasm to generate WebAssembly.
   #   * We may also run some Binaryen passes here.
-
-  if libraries is None: libraries = []
 
   if shared.Settings.EXPERIMENTAL_USE_LLD:
     wasm, metadata = build_wasm_lld(temp_files, infile, outfile, settings, DEBUG)
@@ -1778,7 +1769,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
 
   # memory and global initializers
 
-  global_initializers = str(', '.join(['{ func: function() { %s() } }' % i for i in metadata['initializers']]))
+  global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
 
   staticbump = metadata['staticBump']
   while staticbump % 16 != 0: staticbump += 1
@@ -2236,11 +2227,6 @@ def asmjs_mangle(name):
   return '_' + ''.join(['_' if not c.isalnum() else c for c in name])
 
 
-if os.environ.get('EMCC_FAST_COMPILER') == '0':
-  logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
-  sys.exit(1)
-
-
 def normalize_line_endings(text):
   """Normalize to UNIX line endings.
 
@@ -2260,7 +2246,7 @@ def main(args, compiler_engine, cache, temp_files, DEBUG):
     settings[name] = asstr(value)
 
   # libraries
-  libraries = args.libraries[0].split(',') if len(args.libraries) > 0 else []
+  libraries = args.libraries[0].split(',') if len(args.libraries) else []
 
   settings.setdefault('STRUCT_INFO', shared.path_from_root('src', 'struct_info.compiled.json'))
   struct_info = settings['STRUCT_INFO']
@@ -2276,17 +2262,13 @@ def main(args, compiler_engine, cache, temp_files, DEBUG):
              temp_files=temp_files, DEBUG=DEBUG)
 
 
-def _main(args=None):
-  if args is None:
-    args = sys.argv[1:]
-
+def _main(args):
   substitute_response_files(args)
 
   parser = argparse.ArgumentParser(
     usage='%(prog)s [-h] [-H HEADERS] [-o OUTFILE] [-c COMPILER_ENGINE] [-s FOO=BAR]* infile',
     description=('You should normally never use this! Use emcc instead. '
-                 'This is a wrapper around the JS compiler, converting .ll to .js.'),
-    epilog='')
+                 'This is a wrapper around the JS compiler, converting .ll to .js.'))
   parser.add_argument('-H', '--headers',
                     default=[],
                     action='append',
@@ -2339,7 +2321,9 @@ WARNING: You should normally never use this! Use emcc instead.
   ''')
 
   if len(positional) != 1:
-    raise RuntimeError('Must provide exactly one positional argument. Got ' + str(len(positional)) + ': "' + '", "'.join(positional) + '"')
+    logging.error('Must provide exactly one positional argument. Got ' + str(len(positional)) + ': "' + '", "'.join(positional) + '"')
+    return 1
+
   keywords.infile = os.path.abspath(positional[0])
   if isinstance(keywords.outfile, (type(u''), bytes)):
     keywords.outfile = open(keywords.outfile, 'w')
@@ -2369,7 +2353,7 @@ WARNING: You should normally never use this! Use emcc instead.
     temp_files=temp_files,
     DEBUG=DEBUG,
   ))
+  return 0
 
 if __name__ == '__main__':
-  _main()
-  sys.exit(0)
+  sys.exit(_main(sys.argv[1:]))

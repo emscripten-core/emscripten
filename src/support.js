@@ -112,12 +112,29 @@ function loadWebAssemblyModule(binary) {
   assert(binary[next] === 'n'.charCodeAt(0)); next++;
   assert(binary[next] === 'k'.charCodeAt(0)); next++;
   var memorySize = getLEB();
+  var memoryAlign = getLEB();
   var tableSize = getLEB();
+  var tableAlign = getLEB();
+  // alignments are powers of 2
+  memoryAlign = Math.pow(2, memoryAlign);
+  tableAlign = Math.pow(2, tableAlign);
+  // finalize alignments and verify them
+  memoryAlign = Math.max(memoryAlign, STACK_ALIGN); // we at least need stack alignment
+  assert(tableAlign === 1);
+  // prepare memory
+  var memoryStart = alignMemory(getMemory(memorySize + memoryAlign), memoryAlign); // TODO: add to cleanups
+  // The static area consists of explicitly initialized data, followed by zero-initialized data.
+  // The latter may need zeroing out if the MAIN_MODULE has already used this memory area before
+  // dlopen'ing the SIDE_MODULE.  Since we don't know the size of the explicitly initialized data
+  // here, we just zero the whole thing, which is suboptimal, but should at least resolve bugs
+  // from uninitialized memory.
+  for (var i = memoryStart; i < memoryStart + memorySize; ++i) HEAP8[i] = 0;
+  // prepare env imports
   var env = Module['asmLibraryArg'];
   // TODO: use only memoryBase and tableBase, need to update asm.js backend
   var table = Module['wasmTable'];
   var oldTableSize = table.length;
-  env['memoryBase'] = env['gb'] = alignMemory(getMemory(memorySize + STACK_ALIGN), STACK_ALIGN); // TODO: add to cleanups
+  env['memoryBase'] = env['gb'] = memoryStart;
   env['tableBase'] = env['fb'] = oldTableSize;
   var originalTable = table;
   table.grow(tableSize);
@@ -139,8 +156,8 @@ function loadWebAssemblyModule(binary) {
     global: {
       'NaN': NaN,
       'Infinity': Infinity,
-      'Math': Math
     },
+    'global.Math': Math,
     env: env
   };
 #if ASSERTIONS

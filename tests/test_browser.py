@@ -1741,6 +1741,11 @@ keydown(100);keyup(100); // trigger the end
   def test_glgetattachedshaders(self):
     self.btest('glgetattachedshaders.c', '1', args=['-lGL', '-lEGL'])
 
+  # Covered by dEQP text suite (we can remove it later if we add coverage for that).
+  @requires_hardware
+  def test_glframebufferattachmentinfo(self):
+    self.btest('glframebufferattachmentinfo.c', '1', args=['-lGLESv2', '-lEGL'])
+
   @requires_hardware
   def test_sdlglshader(self):
     self.btest('sdlglshader.c', reference='sdlglshader.png', args=['-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
@@ -2538,7 +2543,9 @@ int main() {
 
   @requires_hardware
   def test_glfw3(self):
-    self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3', '-lglfw', '-lGL'], expected='1')
+    for opts in [[], ['-Os', '--closure', '1']]:
+      print(opts)
+      self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3', '-lglfw', '-lGL'] + opts, expected='1')
 
   @requires_hardware
   def test_glfw_events(self):
@@ -3461,7 +3468,7 @@ window.close = function() {
   def test_pthread_global_data_initialization(self):
     for mem_init_mode in [[], ['--memory-init-file', '0'], ['--memory-init-file', '1'], ['-s', 'MEM_INIT_METHOD=2']]:
       for args in [[], ['-O3']]:
-        self.btest(path_from_root('tests', 'pthread', 'test_pthread_global_data_initialization.c'), expected='20', args=args+mem_init_mode+['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+        self.btest(path_from_root('tests', 'pthread', 'test_pthread_global_data_initialization.c'), expected='20', args=args+mem_init_mode+['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'PTHREAD_POOL_SIZE=1'])
 
   # Test that emscripten_get_now() reports coherent wallclock times across all pthreads, instead of each pthread independently reporting wallclock times since the launch of that pthread.
   def test_pthread_clock_drift(self):

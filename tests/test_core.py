@@ -1599,7 +1599,7 @@ def process(filename):
 
     if self.run_name == 'asm2':
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
-    self.do_run(open(path_from_root('tests', 'emscripten_get_now.cpp')).read(), 'Timer resolution is good.')
+    self.do_run(open(path_from_root('tests', 'emscripten_get_now.cpp')).read(), 'Timer resolution is good')
 
   def test_emscripten_get_compiler_setting(self):
     test_path = path_from_root('tests', 'core', 'emscripten_get_compiler_setting')
@@ -2774,6 +2774,87 @@ def process(filename):
     self.do_run(src, '100\n200\n13\n42\n',
                 post_build=self.dlfcn_post_build)
 
+  def test_dlfcn_alignment_and_zeroing(self):
+    if not self.can_dlfcn(): return
+
+    self.prep_dlfcn_lib()
+    Settings.TOTAL_MEMORY = 16 * 1024 * 1024
+    lib_src = r'''
+      extern "C" {
+        int prezero = 0;
+        __attribute__((aligned(1024))) int superAligned = 12345;
+        int postzero = 0;
+      }
+      '''
+    dirname = self.get_dir()
+    filename = os.path.join(dirname, 'liblib.cpp')
+    self.build_dlfcn_lib(lib_src, dirname, filename)
+    for i in range(10):
+      curr = '%d.so' % i
+      shutil.copyfile('liblib.so', curr)
+      self.emcc_args += ['--embed-file', curr]
+
+    self.prep_dlfcn_main()
+    Settings.TOTAL_MEMORY = 128 * 1024 * 1024
+    src = r'''
+      #include <stdio.h>
+      #include <stdlib.h>
+      #include <string.h>
+      #include <dlfcn.h>
+      #include <assert.h>
+      #include <emscripten.h>
+
+      int main() {
+        printf("'prepare' memory with non-zero inited stuff\n");
+        int num = 120 * 1024 * 1024; // total is 128; we'll use 5*5 = 25 at least, so allocate pretty much all of it
+        void* mem = malloc(num);
+        assert(mem);
+        printf("setting this range to non-zero: %d - %d\n", int(mem), int(mem) + num);
+        memset(mem, 1, num);
+        EM_ASM({
+          var value = HEAP8[64*1024*1024];
+          Module.print('verify middle of memory is non-zero: ' + value);
+          assert(value === 1);
+        });
+        free(mem);
+        for (int i = 0; i < 10; i++) {
+          printf("loading %d\n", i);
+          char* curr = "?.so";
+          curr[0] = '0' + i;
+          void* lib_handle = dlopen(curr, RTLD_NOW);
+          if (!lib_handle) {
+            puts(dlerror());
+            assert(0);
+          }
+          printf("getting superAligned\n");
+          int* superAligned = (int*)dlsym(lib_handle, "superAligned");
+          assert(superAligned);
+          assert(int(superAligned) % 1024 == 0); // alignment
+          printf("checking value of superAligned, at %d\n", superAligned);
+          assert(*superAligned == 12345); // value
+          printf("getting prezero\n");
+          int* prezero = (int*)dlsym(lib_handle, "prezero");
+          assert(prezero);
+          printf("checking value of prezero, at %d\n", prezero);
+          assert(*prezero == 0);
+          *prezero = 1;
+          assert(*prezero != 0);
+          printf("getting postzero\n");
+          int* postzero = (int*)dlsym(lib_handle, "postzero");
+          printf("checking value of postzero, at %d\n", postzero);
+          assert(postzero);
+          printf("checking value of postzero\n");
+          assert(*postzero == 0);
+          *postzero = 1;
+          assert(*postzero != 0);
+        }
+        printf("success.\n");
+        return 0;
+      }
+      '''
+    self.do_run(src, 'success.\n',
+                post_build=self.dlfcn_post_build)
+
   @no_wasm # TODO: this needs to add JS functions to a wasm Table, need to figure that out
   def test_dlfcn_self(self):
     if not self.can_dlfcn(): return
@@ -3586,11 +3667,13 @@ Module = {
       Initter initter;
     ''', expected=['extern is 456.\n'])
 
-  def test_dylink_mallocs(self):
+  def test_dylink_stdlib(self):
     self.dylink_test(header=r'''
+      #include <math.h>
       #include <stdlib.h>
       #include <string.h>
       char *side(const char *data);
+      double pow_two(double x);
     ''', main=r'''
       #include <stdio.h>
       #include "header.h"
@@ -3600,6 +3683,7 @@ Module = {
         strcpy(ret, temp);
         temp[1] = 'x';
         puts(ret);
+        printf("pow_two: %d.\n", int(pow_two(5.9)));
         return 0;
       }
     ''', side=r'''
@@ -3609,7 +3693,10 @@ Module = {
         strcpy(ret, data);
         return ret;
       }
-    ''', expected=['hello through side\n'])
+      double pow_two(double x) {
+        return pow(2, x);
+      }
+    ''', expected=['hello through side\n\npow_two: 59.'])
 
   def test_dylink_jslib(self):
     Settings.BINARYEN_TRAP_MODE = 'clamp' # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
@@ -6059,9 +6146,11 @@ def process(filename):
       var ret;
       ret = Module['ccall']('get_int', 'number'); Module.print([typeof ret, ret].join(','));
       ret = ccall('get_float', 'number'); Module.print([typeof ret, ret.toFixed(2)].join(','));
+      ret = ccall('get_bool', 'boolean'); Module.print([typeof ret, ret].join(','));
       ret = ccall('get_string', 'string'); Module.print([typeof ret, ret].join(','));
       ret = ccall('print_int', null, ['number'], [12]); Module.print(typeof ret);
       ret = ccall('print_float', null, ['number'], [14.56]); Module.print(typeof ret);
+      ret = ccall('print_bool', null, ['boolean'], [true]); Module.print(typeof ret);
       ret = ccall('print_string', null, ['string'], ["cheez"]); Module.print(typeof ret);
       ret = ccall('print_string', null, ['array'], [[97, 114, 114, 45, 97, 121, 0]]); Module.print(typeof ret); // JS array
       ret = ccall('print_string', null, ['array'], [new Uint8Array([97, 114, 114, 45, 97, 121, 0])]); Module.print(typeof ret); // typed array
@@ -6087,7 +6176,7 @@ def process(filename):
   open(filename, 'w').write(src)
 '''
 
-    Settings.EXPORTED_FUNCTIONS += ['_get_int', '_get_float', '_get_string', '_print_int', '_print_float', '_print_string', '_multi', '_pointer', '_call_ccall_again', '_malloc']
+    Settings.EXPORTED_FUNCTIONS += ['_get_int', '_get_float', '_get_bool', '_get_string', '_print_int', '_print_float', '_print_bool', '_print_string', '_multi', '_pointer', '_call_ccall_again', '_malloc']
     self.do_run_in_out_file_test('tests', 'core', 'test_ccall', post_build=post)
 
     if '-O2' in self.emcc_args or self.is_emterpreter():

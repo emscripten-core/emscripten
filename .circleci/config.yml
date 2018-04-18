@@ -18,9 +18,7 @@ test-defaults: &test-defaults
 
     - run: |
         apt-get update
-        apt-get install -y python3 python3-pip cmake build-essential openjdk-9-jre-headless $TEST_DEPENDENCY
-        pip3 install --upgrade pip
-        pip3 install lit
+        apt-get install -y python3 cmake build-essential openjdk-9-jre-headless $TEST_DEPENDENCY
         EMCC_CORES=4 python3 emscripten/tests/runner.py $TEST_TARGET
 
 version: 2
@@ -61,9 +59,10 @@ jobs:
   test-other:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=other skip:other.test_bad_triple skip:other.test_native_link_error_message skip:other.test_emcc_v skip:other.test_failing_alloc
+      - TEST_TARGET=other skip:other.test_bad_triple skip:other.test_native_link_error_message skip:other.test_emcc_v skip:other.test_llvm_lit
       # some native-dependent tests fail because of the lack of native headers on emsdk-bundled clang
       # CircleCI actively kills memory-over-consuming process
+      # skip llvm-lit tests which need lit, and pip to get lit, but pip has broken on CI
   test-browser:
     <<: *test-defaults
     environment:

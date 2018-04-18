@@ -1931,6 +1931,7 @@ function detectType(node, asmInfo, inVarDef) {
       if (!parseHeap(node[1][1])) return ASM_NONE;
       return parseHeapTemp.float ? ASM_DOUBLE : ASM_INT; // XXX ASM_FLOAT?
     }
+    case 'stat': return ASM_NONE;
   }
   assert(0 , 'horrible ' + JSON.stringify(node));
 }
@@ -7380,18 +7381,15 @@ function emterpretify(ast) {
           var callType = ASM_NONE;
           var parent = stack[stack.length-1];
           if (parent) {
+            callType = detectType(parent, asmData);
             var temp = null;
-            if (parent[0] === 'binary' && parent[1] === '|' && parent[3][0] === 'num' && parent[3][1] === 0 &&
-                parent[2] === node) {
-              // int-coerced call
-              callType = ASM_INT;
-              temp = 'tempInt';
-            } else if (parent[0] === 'unary-prefix' && parent[1] === '+' && parent[2] === node) {
-              // double-coerced call
-              callType = ASM_DOUBLE;
-              temp = 'tempDouble';
+            switch (callType) {
+              case ASM_INT:    temp = 'tempInt'; break;
+              case ASM_DOUBLE: temp = 'tempDouble'; break;
+              case ASM_FLOAT:  temp = 'tempFloat'; break;
+              case ASM_NONE:   break;
+              default: throw 'unhandled parent type in emterpter-async-assertions: ' + callType;
             }
-            // XXX fails on other coercions of odd types, like float32, simd, etc!
             if (temp) {
               // assign to temp, assert, return proper value:     temp = call() , (asyncState ? abort() : temp)
               trample(node, ['seq',
@@ -8141,7 +8139,8 @@ function emitDCEGraph(ast) {
       return null; // don't look inside
     }
   });
-  assert(foundAsmLibraryArgAssign); // must find the info we need
+  // must find the info we need
+  assert(foundAsmLibraryArgAssign, 'could not find the assigment to "asmLibraryArg". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)');
   // Second pass: everything used in the toplevel scope is rooted;
   // things used in defun scopes create links
   function getGraphName(name, what) {

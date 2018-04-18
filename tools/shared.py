@@ -1175,9 +1175,8 @@ class SettingsManager(object):
       if opt_level >= 1:
         self.attrs['ASM_JS'] = 1
         self.attrs['ASSERTIONS'] = 0
-        self.attrs['DISABLE_EXCEPTION_CATCHING'] = 1
         self.attrs['ALIASING_FUNCTION_POINTERS'] = 1
-      if shrink_level >= 2 and not self.attrs['BINARYEN']:
+      if shrink_level >= 2:
         self.attrs['EVAL_CTORS'] = 1
 
     def __getattr__(self, attr):
@@ -1306,13 +1305,17 @@ class Building(object):
   JS_ENGINE_OVERRIDE = None # Used to pass the JS engine override from runner.py -> test_benchmark.py
   multiprocessing_pool = None
 
+  @staticmethod
+  def get_num_cores():
+    return int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+
   # Multiprocessing pools are very slow to build up and tear down, and having several pools throughout
   # the application has a problem of overallocating child processes. Therefore maintain a single
   # centralized pool that is shared between all pooled task invocations.
   @staticmethod
   def get_multiprocessing_pool():
     if not Building.multiprocessing_pool:
-      cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+      cores = Building.get_num_cores()
 
       # If running with one core only, create a mock instance of a pool that does not
       # actually spawn any new subprocesses. Very useful for internal debugging.
@@ -1407,12 +1410,14 @@ class Building(object):
         if env.get(dangerous) and env.get(dangerous) == non_native.get(dangerous):
           del env[dangerous] # better to delete it than leave it, as the non-native one is definitely wrong
       return env
-    env['CC'] = 'python %s' % quote(EMCC)
-    env['CXX'] = 'python %s' % quote(EMXX)
-    env['AR'] = 'python %s' % quote(EMAR)
-    env['LD'] = 'python %s' % quote(EMCC)
+    # add python when necessary (on non-windows, we now support python 2 and 3 so
+    # it should be ok either way)
+    env['CC'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
+    env['CXX'] = quote(EMXX) if not WINDOWS else 'python %s' % quote(EMXX)
+    env['AR'] = quote(EMAR) if not WINDOWS else 'python %s' % quote(EMAR)
+    env['LD'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
     env['NM'] = quote(LLVM_NM)
-    env['LDSHARED'] = 'python %s' % quote(EMCC)
+    env['LDSHARED'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
     env['RANLIB'] = quote(EMRANLIB) if not WINDOWS else 'python %s' % quote(EMRANLIB)
     env['EMMAKEN_COMPILER'] = quote(Building.COMPILER)
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
@@ -1999,7 +2004,7 @@ class Building(object):
 
     if path_from_root() not in sys.path:
       sys.path += [path_from_root()]
-    from emscripten import _main as call_emscripten
+    import emscripten
     # Run Emscripten
     settings = Settings.serialize()
     args = settings + extra_args
@@ -2007,13 +2012,14 @@ class Building(object):
     if jsrun.TRACK_PROCESS_SPAWNS:
       logging.info('Executing emscripten.py compiler with cmdline "' + ' '.join(cmdline) + '"')
     with ToolchainProfiler.profile_block('emscripten.py'):
-      call_emscripten(cmdline)
+      emscripten._main(cmdline)
 
     # Detect compilation crashes and errors
     assert os.path.exists(filename + '.o.js'), 'Emscripten failed to generate .js'
 
     return filename + '.o.js'
 
+  # TODO: deprecate this method, we should just need Settings.LINKABLE anyhow
   @staticmethod
   def can_build_standalone():
     return not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE
@@ -2212,27 +2218,34 @@ class Building(object):
   @staticmethod
   def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, use_closure_compiler, debug_info, emit_symbol_map):
     # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
-    # use AJSDCE (aggressive JS DCE, performs multiple iterations)
-    passes = ['noPrintMetadata', 'JSDCE' if not expensive_optimizations else 'AJSDCE']
+    # use AJSDCE (aggressive JS DCE, performs multiple iterations). Clean up
+    # whitespace if necessary too.
+    passes = []
+    if not Settings.LINKABLE:
+      passes.append('JSDCE' if not expensive_optimizations else 'AJSDCE')
     if minify_whitespace:
       passes.append('minifyWhitespace')
-    logging.debug('running cleanup on shell code: ' + ' '.join(passes))
-    js_file = Building.js_optimizer_no_asmjs(js_file, passes)
-    # if we are optimizing for size, shrink the combined wasm+JS
-    # TODO: support this when a symbol map is used
-    if expensive_optimizations and not emit_symbol_map:
-      js_file = Building.metadce(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
-      # now that we removed unneeded communication between js and wasm, we can clean up
-      # the js some more.
-      passes = ['noPrintMetadata', 'AJSDCE']
-      if minify_whitespace:
-        passes.append('minifyWhitespace')
-      logging.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
-      js_file = Building.js_optimizer_no_asmjs(js_file, passes)
-    # finally, optionally use closure compiler to finish cleaning up the JS
-    if use_closure_compiler:
-      logging.debug('running closure on shell code')
-      js_file = Building.closure_compiler(js_file, pretty=not minify_whitespace)
+    if passes:
+      logging.debug('running cleanup on shell code: ' + ' '.join(passes))
+      js_file = Building.js_optimizer_no_asmjs(js_file, ['noPrintMetadata'] + passes)
+    # if we can optimize this js+wasm combination under the assumption no one else
+    # will see the internals, do so
+    if not Settings.LINKABLE:
+      # if we are optimizing for size, shrink the combined wasm+JS
+      # TODO: support this when a symbol map is used
+      if expensive_optimizations and not emit_symbol_map:
+        js_file = Building.metadce(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
+        # now that we removed unneeded communication between js and wasm, we can clean up
+        # the js some more.
+        passes = ['noPrintMetadata', 'AJSDCE']
+        if minify_whitespace:
+          passes.append('minifyWhitespace')
+        logging.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
+        js_file = Building.js_optimizer_no_asmjs(js_file, passes)
+      # finally, optionally use closure compiler to finish cleaning up the JS
+      if use_closure_compiler:
+        logging.debug('running closure on shell code')
+        js_file = Building.closure_compiler(js_file, pretty=not minify_whitespace)
     return js_file
 
   # run binaryen's wasm-metadce to dce both js and wasm
@@ -2364,7 +2377,7 @@ class Building(object):
     else:
       if Settings.ERROR_ON_MISSING_LIBRARIES:
         logging.fatal('emcc: cannot find library "%s"', library_name)
-        exit(1)
+        sys.exit(1)
       else:
         logging.warning('emcc: cannot find library "%s"', library_name)
 
@@ -2397,6 +2410,19 @@ class Building(object):
     Building.get_binaryen()
     return os.path.join(Settings.BINARYEN_ROOT, 'bin')
 
+  @staticmethod
+  def get_binaryen_lib():
+    Building.get_binaryen()
+    # The wasm.js and binaryen.js libraries live in 'bin' in the binaryen
+    # source tree, but are installed to share/binaryen.
+    paths = (os.path.join(Settings.BINARYEN_ROOT, 'bin'),
+             os.path.join(Settings.BINARYEN_ROOT, 'share', 'binaryen'))
+    for dirname in paths:
+      if os.path.exists(os.path.join(dirname, 'binaryen.js')):
+         return dirname
+    logging.fatal('emcc: cannot find binaryen js libraries (tried: %s)' % str(paths))
+    sys.exit(1)
+
 # compatibility with existing emcc, etc. scripts
 Cache = cache.Cache(debug=DEBUG_CACHE)
 chunkify = cache.chunkify
@@ -2424,6 +2450,12 @@ class JS(object):
   @staticmethod
   def to_nice_ident(ident): # limited version of the JS function toNiceIdent
     return ident.replace('%', '$').replace('@', '_').replace('.', '_')
+
+  # Returns the given string with escapes added so that it can safely be placed inside a string in JS code.
+  @staticmethod
+  def escape_for_js_string(s):
+    s = s.replace('\\', '/').replace("'", "\\'").replace('"', '\\"')
+    return s
 
   # Returns the subresource location for run-time access
   @staticmethod
@@ -2616,13 +2648,18 @@ class WebAssembly(object):
 
   @staticmethod
   def make_shared_library(js_file, wasm_file):
+    import math
     # a wasm shared library has a special "dylink" section, see tools-conventions repo
     js = open(js_file).read()
     m = re.search("var STATIC_BUMP = (\d+);", js)
     mem_size = int(m.group(1))
     m = re.search("Module\['wasmTableSize'\] = (\d+);", js)
     table_size = int(m.group(1))
-    logging.debug('creating wasm dynamic library with mem size %d, table size %d' % (mem_size, table_size))
+    m = re.search('gb = alignMemory\(getMemory\(\d+ \+ (\d+)\), (\d+) \|\| 1\);', js)
+    assert m.group(1) == m.group(2), 'js must contain a clear alignment for the wasm shared library'
+    mem_align = int(m.group(1))
+    mem_align = int(math.log(mem_align, 2))
+    logging.debug('creating wasm dynamic library with mem size %d, table size %d, align %d' % (mem_size, table_size, mem_align))
     wso = js_file + '.wso'
     # write the binary
     wasm = open(wasm_file, 'rb').read()
@@ -2632,7 +2669,8 @@ class WebAssembly(object):
     f.write(b'\0') # user section is code 0
     # need to find the size of this section
     name = b"\06dylink" # section name, including prefixed size
-    contents = WebAssembly.lebify(mem_size) + WebAssembly.lebify(table_size)
+    contents = WebAssembly.lebify(mem_size) + WebAssembly.lebify(mem_align) + \
+               WebAssembly.lebify(table_size) + WebAssembly.lebify(0)
     size = len(name) + len(contents)
     f.write(WebAssembly.lebify(size))
     f.write(name)

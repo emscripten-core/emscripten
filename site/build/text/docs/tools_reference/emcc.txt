@@ -48,9 +48,9 @@ Options that are modified or new in *emcc* are listed below:
    optimized build that is generated as quickly as possible (it builds
    much faster than "-O2").
 
-   Note: * For details on the effects of different optimization
-     levels,
+   Note:
 
+     * For details on the effects of different optimization levels,
        see "apply_opt_level()" in tools/shared.py and also
        src/settings.js.
 
@@ -61,29 +61,34 @@ Options that are modified or new in *emcc* are listed below:
    Like "-O1", but with various JavaScript-level optimizations and
    LLVM "-O3" optimizations.
 
-   Note: This is the recommended setting for a release build,
-     offering slower compilation time in return for the smallest and
-     fastest output.
+   Note: This is a reasonable setting for a release build.
 
-"-Os"
-   Like "-O2", but with extra optimizations that reduce code size at
-   the expense of performance. This applies only for bitcode
-   optimization ("-O2" is used for JavaScript optimizations).
-
-"-Oz"
-   Like "-Os", but reduces code size even further. This applies only
-   for bitcode optimization ("-O2" is used for JavaScript
-   optimizations).
+   Note: These JavaScript optimizations can reduce code size by
+     removing things that the compiler does not see being used, in
+     particular, parts of the runtime may be stripped if they are not
+     exported on the "Module" object. The compiler is aware of code in
+     --pre-js and --post-js, so you can safely use the runtime from
+     there. Alternatively, you can use
+     "EXTRA_EXPORTED_RUNTIME_METHODS", see src/settings.js.
 
 "-O3"
    Like "-O2", but with additional JavaScript optimizations that can
-   take a significant amount of compilation time and/or are relatively
-   new.
+   take a significant amount of compilation time.
 
-   Note: This differs from "-O2" only during the bitcode to
-     JavaScript (final link and JavaScript generation) stage. It is
-     JavaScript- specific, so you can run "-Os" on your source files
-     for example, and "-O3" during JavaScript generation if you want.
+   Note: This is a good setting for a release build.
+
+"-Os"
+   Like "-O3", but with extra optimizations that reduce code size at
+   the expense of performance. This can affect both bitcode generation
+   and JavaScript.
+
+"-Oz"
+   Like "-Os", but reduces code size even further. This can affect
+   both bitcode generation and JavaScript.
+
+   For JavaScript, this turns on some code size reduction
+   optimizations that can take a significant amount of compilation
+   time.
 
    Note: For more tips on optimizing your code, see Optimizing Code.
 
@@ -105,9 +110,9 @@ Options that are modified or new in *emcc* are listed below:
 
       -s DEAD_FUNCTIONS=@/path/to/file
 
-   Note: * In this case the file might contain a JSON-formatted list
-     of
+   Note:
 
+     * In this case the file might contain a JSON-formatted list of
        functions: "["_func1", "func2"]".
 
      * The specified file path must be absolute, not relative.
@@ -166,8 +171,9 @@ Options that are modified or new in *emcc* are listed below:
         C/C++ sources, this shows line number debug comments, and
         generates source maps.
 
-           Note: * This debugging level may make compilation at
+           Note:
 
+             * This debugging level may make compilation at
                optimization level -O1 and above significantly slower,
                because JavaScript optimization will be limited to one
                core (the default in "-O0").
@@ -202,14 +208,25 @@ Options that are modified or new in *emcc* are listed below:
      to prevent minification.
 
 "--js-opts <level>"
-   Enables JavaScript optimizations. Possible "level" values are:
+   Enables JavaScript optimizations, relevant when we generate
+   JavaScript. Possible "level" values are:
 
       * "0": Prevent JavaScript optimizer from running.
 
       * "1": Use JavaScript optimizer (default).
 
+   You normally don't need to specify this option, as "-O" with an
+   optimization level will set a good value.
+
+   Note: Some options might override this flag (e.g. "EMTERPRETIFY",
+     "DEAD_FUNCTIONS", "OUTLINING_LIMIT", "SAFE_HEAP" and
+     "SPLIT_MEMORY" override the value with "js-opts=1"), because they
+     depend on the js-optimizer.
+
 "--llvm-opts <level>"
-   Enables LLVM optimizations. Possible "level" values are:
+   Enables LLVM optimizations, relevant when we call the LLVM
+   optimizer (which is done when building source files to object files
+   / bitcode). Possible "level" values are:
 
       * "0": No LLVM optimizations (default in -O0).
 
@@ -222,6 +239,9 @@ Options that are modified or new in *emcc* are listed below:
    You can also specify arbitrary LLVM options, e.g.:
 
       --llvm-opts "['-O3', '-somethingelse']"
+
+   You normally don't need to specify this option, as "-O" with an
+   optimization level will set a good value.
 
 "--llvm-lto <level>"
    Enables LLVM link-time optimizations (LTO). Possible "level" values
@@ -237,9 +257,9 @@ Options that are modified or new in *emcc* are listed below:
 
       * "3": Does level "2" and then level "1".
 
-   Note: * If LLVM optimizations are not run (see "--llvm-opts"),
-     this
+   Note:
 
+     * If LLVM optimizations are not run (see "--llvm-opts"), this
        setting has no effect.
 
      * LLVM LTO is not perfectly stable yet, and can cause code to
@@ -264,9 +284,9 @@ Options that are modified or new in *emcc* are listed below:
         optimizations, so it is not recommended unless you want to
         reduce code size at all costs.
 
-   Note: * Consider using "-s MODULARIZE=1" when using closure, as
-     it
+   Note:
 
+     * Consider using "-s MODULARIZE=1" when using closure, as it
        minifies globals to names that might conflict with others in
        the global scope. "MODULARIZE" puts all the output into a
        function (see "src/settings.js").
@@ -285,14 +305,16 @@ Options that are modified or new in *emcc* are listed below:
        or above, or "--js-opts 1").
 
 "--pre-js <file>"
-   Specify a file whose contents are added before the generated code.
-   This is done *before* optimization, so it will be minified properly
-   if the *Closure Compiler* is run.
+   Specify a file whose contents are added before the emitted code and
+   optimized together with it. Note that this might not literally be
+   the very first thing in the JS output, for example if "MODULARIZE"
+   is used (see "src/settings.js"). If you want that, you can just
+   prepend to the output from emscripten; the benefit of "--pre-js" is
+   that it optimizes the code with the rest of the emscripten output,
+   which allows better dead code elimination and minification.
 
 "--post-js <file>"
-   Specify a file whose contents are added after the generated code.
-   This is done *before* optimization, so it will be minified properly
-   if the *Closure Compiler* is run.
+   Like *--pre-js`*, but emits a file *after* the emitted code.
 
 "--embed-file <file>"
    Specify a file (with path) to embed inside the generated
@@ -338,14 +360,19 @@ Options that are modified or new in *emcc* are listed below:
    Files and directories to be excluded from --embed-file and
    --preload-file. Wildcards (*) are supported.
 
+"--use-preload-plugins"
+   Tells the file packager to run preload plugins on the files as they
+   are loaded. This performs tasks like decoding images and audio
+   using the browser's codecs.
+
 "--shell-file <path>"
    The path name to a skeleton HTML file used when generating HTML
    output. The shell file used needs to have this token inside it:
    "{{{ SCRIPT }}}".
 
-   Note: * See src/shell.html and src/shell_minimal.html for
-     examples.
+   Note:
 
+     * See src/shell.html and src/shell_minimal.html for examples.
 
      * This argument is ignored if a target other than HTML is
        specified using the "-o" option.
@@ -426,8 +453,9 @@ Options that are modified or new in *emcc* are listed below:
    data. After the cache is cleared, this process will exit.
 
 "--clear-ports"
-   Manually clears the local copies and builds of projects from the
-   Emscripten Ports repos (sdl2, etc.)
+   Manually clears the local copies of ports from the Emscripten Ports
+   repos (sdl2, etc.). This also clears the cache, to remove their
+   builds.
 
    You should only need to do this if a problem happens and you want
    all ports that you use to be downloaded and built from scratch.
@@ -493,7 +521,9 @@ Options that are modified or new in *emcc* are listed below:
 "--emrun"
    Enables the generated output to be aware of the emrun command line
    tool. This allows "stdout", "stderr" and "exit(returncode)" capture
-   when running the generated application through *emrun*.
+   when running the generated application through *emrun*. (This
+   enables *NO_EXIT_RUNTIME=0*, allowing normal runtime exiting with
+   return code passing.)
 
 "--cpuprofiler"
    Embeds a simple CPU profiler onto the generated page. Use this to
@@ -502,6 +532,11 @@ Options that are modified or new in *emcc* are listed below:
 "--memoryprofiler"
    Embeds a memory allocation tracker onto the generated page. Use
    this to profile the application usage of the Emscripten HEAP.
+
+"--threadprofiler"
+   Embeds a thread activity profiler onto the generated page. Use this
+   to profile the application usage of pthreads when targeting
+   multithreaded builds (-s USE_PTHREADS=1/2).
 
 "--em-config"
    Specifies the location of the **.emscripten** configuration file
@@ -552,22 +587,19 @@ Options that are modified or new in *emcc* are listed below:
    load during startup. See Avoid memory spikes by separating out
    asm.js.
 
-"-fsanitize=<check>"
-   Instructs the compiler to turn on runtime checks for various forms
-   of undefined or suspicious behavior. For more information, refer
-   to the appropriate compiler documentation. Only the following have
-   been tested:
-
-     * "cfi": Enable [control flow integrity](http://clang.llvm.org/docs/ControlFlowIntegrity.html)
-       checks. Note that this is only supported by Clang/LLVM, and
-       indirect function call checking requires Clang/LLVM 3.9+.
-
-"--output-eol windows|linux"
+"--output_eol windows|linux"
    Specifies the line ending to generate for the text files that are
-   outputted. If "--output-eol windows" is passed, the final output
-   files will have Windows \r\n line endings in them. With
-   "--output-eol linux", the final generated files will be written
-   with Unix \n line endings.
+   outputted. If "--output_eol windows" is passed, the final output
+   files will have Windows rn line endings in them. With "--output_eol
+   linux", the final generated files will be written with Unix n line
+   endings.
+
+"--cflags"
+   Prints out the flags "emcc" would pass to "clang" to compile source
+   code to object/bitcode form. You can use this to invoke clang
+   yourself, and then run "emcc" on those outputs just for the final
+   linking+conversion to JS.
+
 
 Environment variables
 =====================
@@ -592,7 +624,10 @@ Environment variables
 
    * "EMCC_DEBUG"
 
-Search for 'os.environ' in emcc to see how these are used. The most
+   * "EMCC_CLOSURE_ARGS" : arguments to be passed to *Closure
+     Compiler*
+
+Search for 'os.environ' in emcc.py to see how these are used. The most
 interesting is possibly "EMCC_DEBUG", which forces the compiler to
 dump its build and temporary files to a temporary directory where they
 can be reviewed.

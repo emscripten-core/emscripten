@@ -143,8 +143,8 @@ class EmscriptenBenchmarker(Benchmarker):
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.filename = filename
     llvm_root = self.env.get('LLVM') or LLVM_ROOT
-    if lib_builder: emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=self.env)
-
+    if lib_builder:
+      emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=self.env.copy())
     open('hardcode.py', 'w').write('''
 def process(filename):
   js = open(filename).read()
@@ -217,7 +217,7 @@ class CheerpBenchmarker(Benchmarker):
         volatile charStarStar argv;
         argv[0] = "./cheerp.exe";
         argv[1] = "%(arg)s";
-        main(%(main_args)s);
+        volatile int exit_code = main(%(main_args)s);
       }
     ''' % {
       'arg': args[-1],
@@ -225,8 +225,10 @@ class CheerpBenchmarker(Benchmarker):
       'main_args': main_args
     })
     cheerp_args = [
-      '-target', 'cheerp', '-cheerp-mode=wasm',
+      '-target', 'cheerp',
+      '-cheerp-mode=wasm'
     ]
+    cheerp_args += self.args
     self.parent = parent
     if lib_builder:
       # build as "native" (so no emcc env stuff), but with all the cheerp stuff
@@ -239,9 +241,10 @@ class CheerpBenchmarker(Benchmarker):
         'NM': CHEERP_BIN + 'llvm-nm',
         'LDSHARED': CHEERP_BIN + 'clang',
         'RANLIB': CHEERP_BIN + 'llvm-ranlib',
-        'CFLAGS': '-target cheerp -cheerp-mode=wasm',
-        'CXXFLAGS': '-target cheerp -cheerp-mode=wasm',
+        'CFLAGS': ' '.join(cheerp_args),
+        'CXXFLAGS': ' '.join(cheerp_args),
       })
+    #cheerp_args += ['-cheerp-pretty-code'] # get function names, like emcc --profiling
     final = os.path.dirname(filename) + os.path.sep + 'cheerp_' + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
     try_delete(final)
@@ -334,6 +337,7 @@ try:
       EmscriptenBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
       #EmscriptenBenchmarker('sm-simd',  SPIDERMONKEY_ENGINE, ['-s', 'SIMD=1']),
       EmscriptenBenchmarker('sm-asm2wasm',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['-s', 'WASM=1']),
+      EmscriptenBenchmarker('sm-asm2wasm-lto',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['-s', 'WASM=1', '--llvm-lto', '1']),
       #EmscriptenBenchmarker('sm-wasmbackend',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['-s', 'WASM=1'], env={
       #  'LLVM': '/home/alon/Dev/llvm/build/bin',
       #  'EMCC_WASM_BACKEND': '1',
@@ -403,7 +407,7 @@ class benchmark(RunnerCore):
       b.bench(args, output_parser, reps)
       b.display(benchmarkers[0])
 
-  def test_primes(self):
+  def test_primes(self, check=True):
     src = r'''
       #include <stdio.h>
       #include <math.h>
@@ -416,7 +420,11 @@ class benchmark(RunnerCore):
           case 3: arg = 220000; break;
           case 4: arg = 610000; break;
           case 5: arg = 1010000; break;
-          default: printf("error: %d\\n", arg); return -1;
+          default:
+#ifdef CHECK
+            printf("error: %d\\n", arg);
+#endif
+            return -1;
         }
 
         int primes = 0, curri = 2;
@@ -433,11 +441,18 @@ class benchmark(RunnerCore):
           }
           curri++;
         }
+#ifdef CHECK
         printf("lastprime: %d.\n", curri-1);
+#endif
         return 0;
       }
     '''
-    self.do_benchmark('primes', src, 'lastprime:')
+    self.do_benchmark('primes' if check else 'primes-nocheck', src, 'lastprime:' if check else '', shared_args=['-DCHECK'] if check else [])
+
+  # Also interesting to test it without the printfs which allow checking the output. Without
+  # printf, code size is dominated by the runtime itself (the compiled code is just a few lines).
+  def test_primes_nocheck(self):
+    self.test_primes(check=False)
 
   def test_memops(self):
     src = '''

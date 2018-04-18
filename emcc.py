@@ -106,7 +106,8 @@ def exit_with_error(message):
 
 class Intermediate(object):
   counter = 0
-# this method uses the global 'final' variable, which contains the current
+
+# this function uses the global 'final' variable, which contains the current
 # final output file. if a method alters final, and calls this method, then it
 # must modify final globally (i.e. it can't receive final as a param and
 # return it)
@@ -119,6 +120,7 @@ def save_intermediate(name=None, suffix='js'):
     return
   shutil.copyfile(final, name)
   Intermediate.counter += 1
+
 def save_intermediate_with_wasm(name, wasm_binary):
   save_intermediate(name) # save the js
   name = os.path.join(shared.get_emscripten_temp_dir(), 'emcc-%d-%s.wasm' % (Intermediate.counter - 1, name))
@@ -1192,9 +1194,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.Settings.ASMJS_CODE_FILE = shared.FilenameReplacementStrings.ASMJS_CODE_FILE
         else:
           # set file locations, so that JS glue can find what it needs
-          shared.Settings.WASM_TEXT_FILE = shared.JS.get_subresource_location(wasm_text_target)
-          shared.Settings.WASM_BINARY_FILE = shared.JS.get_subresource_location(wasm_binary_target)
-          shared.Settings.ASMJS_CODE_FILE = shared.JS.get_subresource_location(asm_target)
+          shared.Settings.WASM_TEXT_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_text_target))
+          shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_binary_target))
+          shared.Settings.ASMJS_CODE_FILE = shared.JS.escape_for_js_string(os.path.basename(asm_target))
 
         shared.Settings.ASM_JS = 2 # when targeting wasm, we use a wasm Memory, but that is not compatible with asm.js opts
         shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
@@ -1202,6 +1204,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS:
           logging.warning('for wasm there is no need to set ELIMINATE_DUPLICATE_FUNCTIONS, the binaryen optimizer does it automatically')
           shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 0
+        if shared.Settings.OUTLINING_LIMIT:
+          logging.warning('for wasm there is usually no need to set OUTLINING_LIMIT, as VMs can handle large functions well anyhow')
         # default precise-f32 to on, since it works well in wasm
         # also always use f32s when asm.js is not in the picture
         if ('PRECISE_F32=0' not in settings_changes and 'PRECISE_F32=2' not in settings_changes) or 'asmjs' not in shared.Settings.BINARYEN_METHOD:
@@ -1213,6 +1217,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # for simplicity, we always have a mem init file, which may also be imported into the wasm module.
         #  * if we also supported js mem inits we'd have 4 modes
         #  * and js mem inits are useful for avoiding a side file, but the wasm module avoids that anyhow
+        if 'MEM_INIT_METHOD' in settings_changes:
+          logging.error('Mem init method selection is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
+          sys.exit(1)
         options.memory_init_file = True
         # async compilation requires wasm-only mode, and also not interpreting (the interpreter needs sync input)
         if shared.Settings.BINARYEN_ASYNC_COMPILATION == 1 and shared.Building.is_wasm_only() and 'interpret' not in shared.Settings.BINARYEN_METHOD:
@@ -1708,7 +1715,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.js_transform:
         shutil.copyfile(final, final + '.tr.js')
         final += '.tr.js'
-        posix = True if not shared.WINDOWS else False
+        posix = not shared.WINDOWS
         logging.debug('applying transform: %s', options.js_transform)
         subprocess.check_call(shared.Building.remove_quotes(shlex.split(options.js_transform, posix=posix) + [os.path.abspath(final)]))
         if DEBUG: save_intermediate('transformed')
@@ -1739,7 +1746,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if DEBUG:
             # Copy into temp dir as well, so can be run there too
             shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
-          if not shared.Settings.BINARYEN or 'asmjs' in shared.Settings.BINARYEN_METHOD or 'interpret-asm2wasm' in shared.Settings.BINARYEN_METHOD:
+          if not shared.Settings.BINARYEN or not shared.Settings.MEM_INIT_IN_WASM:
             return 'memoryInitializer = "%s";' % shared.JS.get_subresource_location(memfile, embed_memfile(options))
           else:
             return ''
@@ -2292,6 +2299,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   global final
   logging.debug('using binaryen, with method: ' + shared.Settings.BINARYEN_METHOD)
   binaryen_bin = shared.Building.get_binaryen_bin()
+  binaryen_lib = shared.Building.get_binaryen_lib()
   # Emit wasm.js at the top of the js. This is *not* optimized with the rest of the code, since
   # (1) it contains asm.js, whose validation would be broken, and (2) it's very large so it would
   # be slow in cleanup/JSDCE etc.
@@ -2300,7 +2308,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   # BINARYEN_METHOD with something that doesn't use the polyfill, then we don't need it.
   if not shared.Settings.BINARYEN_METHOD or 'interpret' in shared.Settings.BINARYEN_METHOD:
     logging.debug('integrating wasm.js polyfill interpreter')
-    wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
+    wasm_js = open(os.path.join(binaryen_lib, 'wasm.js')).read()
     wasm_js = wasm_js.replace('EMSCRIPTEN_', 'emscripten_') # do not confuse the markers
     js = open(final).read()
     combined = open(final, 'w')
@@ -2375,12 +2383,11 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       logging.debug('wasm-as (text => binary): ' + ' '.join(cmd))
       subprocess.check_call(cmd)
     if import_mem_init:
-      # remove and forget about the mem init file in later processing; it does not need to be prefetched in the html, etc.
+      # remove the mem init file in later processing; it does not need to be prefetched in the html, etc.
       if DEBUG:
         safe_move(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
       else:
         os.unlink(memfile)
-      options.memory_init_file = False
     log_time('asm2wasm')
   if shared.Settings.BINARYEN_PASSES:
     shutil.move(wasm_binary_target, wasm_binary_target + '.pre')
@@ -2562,7 +2569,7 @@ def generate_html(target, options, js_target, target_basename,
           emterpretXHR.send(null);
 ''' % (shared.JS.get_subresource_location(shared.Settings.EMTERPRETIFY_FILE), script.inline)
 
-    if options.memory_init_file:
+    if options.memory_init_file and not shared.Settings.MEM_INIT_IN_WASM:
       # start to load the memory init file in the HTML, in parallel with the JS
       script.un_src()
       script.inline = ('''
