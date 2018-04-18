@@ -1410,15 +1410,21 @@ class Building(object):
         if env.get(dangerous) and env.get(dangerous) == non_native.get(dangerous):
           del env[dangerous] # better to delete it than leave it, as the non-native one is definitely wrong
       return env
-    # add python when necessary (on non-windows, we now support python 2 and 3 so
-    # it should be ok either way)
-    env['CC'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
-    env['CXX'] = quote(EMXX) if not WINDOWS else 'python %s' % quote(EMXX)
-    env['AR'] = quote(EMAR) if not WINDOWS else 'python %s' % quote(EMAR)
-    env['LD'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
+    # point CC etc. to the em* tools.
+    # on windows, we must specify python explicitly. on other platforms, we prefer
+    # not to, as some configure scripts expect e.g. CC to be a literal executable
+    # (but "python emcc.py" is not a file that exists).
+    # note that we point to emcc etc. here, without a suffix, instead of to
+    # emcc.py etc. The unsuffixed versions have the python_selector logic that can
+    # pick the right version as needed (which is not crucial right now as we support
+    # both 2 and 3, but eventually we may be 3-only).
+    env['CC'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
+    env['CXX'] = quote(unsuffixed(EMXX)) if not WINDOWS else 'python %s' % quote(EMXX)
+    env['AR'] = quote(unsuffixed(EMAR)) if not WINDOWS else 'python %s' % quote(EMAR)
+    env['LD'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
     env['NM'] = quote(LLVM_NM)
-    env['LDSHARED'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
-    env['RANLIB'] = quote(EMRANLIB) if not WINDOWS else 'python %s' % quote(EMRANLIB)
+    env['LDSHARED'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
+    env['RANLIB'] = quote(unsuffixed(EMRANLIB)) if not WINDOWS else 'python %s' % quote(EMRANLIB)
     env['EMMAKEN_COMPILER'] = quote(Building.COMPILER)
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(Building.COMPILER_TEST_OPTS)
