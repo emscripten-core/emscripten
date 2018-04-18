@@ -7315,7 +7315,7 @@ int main() {
 
   def do_test_coroutine(self, additional_settings):
     Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
-    src = open(path_from_root('tests', 'core', 'test_coroutines.cpp')).read()
+    src = open(path_from_root('tests', 'test_coroutines.cpp')).read()
     for (k, v) in additional_settings.items():
       Settings.__setattr__(k, v)
     self.do_run(src, '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
@@ -7325,18 +7325,8 @@ int main() {
 
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
                    'unsupported with Wasm backend')
-  def test_coroutine_emterpretify_advise(self):
-    cmd = [PYTHON, EMCC,
-           '-s', 'EMTERPRETIFY=1',
-           '-s', 'EMTERPRETIFY_ASYNC=1',
-           '-s', 'EMTERPRETIFY_ADVISE=1',
-           path_from_root('tests', 'core', 'test_coroutines.cpp')]
-    output = run_process(cmd, stdout=PIPE, stderr=STDOUT).stdout
-    self.assertContained("""-s EMTERPRETIFY_WHITELIST='["_f", "_fib", "_g"]'""", output)
-
-  @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
-                   'unsupported with Wasm backend')
   def test_coroutine_emterpretify_async(self):
+    # The same EMTERPRETIFY_WHITELIST should be in other.test_emterpreter_advise
     self.do_test_coroutine({'EMTERPRETIFY': 1, 'EMTERPRETIFY_ASYNC': 1, 'EMTERPRETIFY_WHITELIST': ['_fib', '_f', '_g'], 'ASSERTIONS': 1})
 
   @no_emterpreter
