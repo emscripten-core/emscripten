@@ -34,6 +34,7 @@ Requirements:
  * No major change recently landed.
  * No major recent regressions have been filed.
  * All tests pass locally for the person doing the update, including the main test suite (no params passed to `runner.py`), `other`, `browser`, `sockets`, `sanity`, `binaryen*`. (Not all of those are run on all the bots.)
+ * A minor version was recently tagged, no major bugs have been reported on it, and nothing major landed since it did. (Bugs are often only found on tagged versions, so a big feature should first be in a minor version update before it is in a major one.)
 
 How:
 
