@@ -2793,7 +2793,7 @@ def is_valid_abspath(options, path_name):
 
 
 def parse_value(text):
-  def _parse_string_value(text):
+  def parse_string_value(text):
     first = text[0]
     if first == "'" or first == '"':
       assert text[-1] == text[0] and len(text) > 1, 'unclosed opened quoted string. expected final character to be "%s" and length to be greater than 1 in "%s"' % (text[0],text)
@@ -2801,32 +2801,33 @@ def parse_value(text):
     else:
       return text
 
-  def _parse_string_list_inner(text, sep): # Part of parse_value
+  def parse_string_list_members(text, sep):
     values = text.split(sep)
     result = []
     index = 0
     while True:
-      current = values[index].lstrip() # Cannot remove all at start/end because that could affect a string with a comma
+      current = values[index].lstrip() # Cannot safely rstrip for cases like: "HERE-> ,"
+      assert len(current) > 0, "string array should not contain an empty value"
       first = current[0]
-      if not(first == "'" or first == '"'): # Longer logic in else.
-        assert len(current) > 0, "string array should not contain an empty value"
+      if not(first == "'" or first == '"'):
         result.append(current.rstrip())
       else:
         start = index
-        while True: # Continue until we find a section ending in the quote
+        while True: # Continue until closing quote found
           assert index < len(values), "unclosed quoted string. expected final character to be '%s' in '%s'" % (first, values[start])
-          if values[index].rstrip()[-1] == first: # Final character excluding whitespace
+          new = values[index].rstrip()
+          if not len(new) == 0 and new[-1] == first:
             if start == index:
-              result.append((current)[1:-1]) # Final output excludes quotes
+              result.append(current[1:-1])
             else:
-              result.append((current + sep + values[index].rstrip())[1:-1])
-            break # Inner loop, quote found
+              result.append((current + sep + new)[1:-1])
+            break
           else:
             current += sep + values[index]
             index += 1
 
       index += 1
-      if not(index < len(values)): # Outside of the array
+      if index >= len(values):
         break
     return result
 
@@ -2836,12 +2837,12 @@ def parse_value(text):
     if inner.strip() == "":
       return []
     else:
-      return _parse_string_list_inner(inner, ",")
+      return parse_string_list_members(inner, ",")
   else:
     try:
-      return int(text) # Possibly needs reconsidering, what if string is expected but gets int somewhere further
+      return int(text)
     except ValueError as e:
-      return _parse_string_value(text)
+      return parse_string_value(text)
 
 
 def check_bad_eq(arg):
