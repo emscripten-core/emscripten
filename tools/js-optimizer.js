@@ -8139,7 +8139,8 @@ function emitDCEGraph(ast) {
       return null; // don't look inside
     }
   });
-  assert(foundAsmLibraryArgAssign); // must find the info we need
+  // must find the info we need
+  assert(foundAsmLibraryArgAssign, 'could not find the assigment to "asmLibraryArg". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)');
   // Second pass: everything used in the toplevel scope is rooted;
   // things used in defun scopes create links
   function getGraphName(name, what) {

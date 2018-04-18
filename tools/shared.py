@@ -2019,6 +2019,7 @@ class Building(object):
 
     return filename + '.o.js'
 
+  # TODO: deprecate this method, we should just need Settings.LINKABLE anyhow
   @staticmethod
   def can_build_standalone():
     return not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE
@@ -2217,27 +2218,34 @@ class Building(object):
   @staticmethod
   def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, use_closure_compiler, debug_info, emit_symbol_map):
     # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
-    # use AJSDCE (aggressive JS DCE, performs multiple iterations)
-    passes = ['noPrintMetadata', 'JSDCE' if not expensive_optimizations else 'AJSDCE']
+    # use AJSDCE (aggressive JS DCE, performs multiple iterations). Clean up
+    # whitespace if necessary too.
+    passes = []
+    if not Settings.LINKABLE:
+      passes.append('JSDCE' if not expensive_optimizations else 'AJSDCE')
     if minify_whitespace:
       passes.append('minifyWhitespace')
-    logging.debug('running cleanup on shell code: ' + ' '.join(passes))
-    js_file = Building.js_optimizer_no_asmjs(js_file, passes)
-    # if we are optimizing for size, shrink the combined wasm+JS
-    # TODO: support this when a symbol map is used
-    if expensive_optimizations and not emit_symbol_map:
-      js_file = Building.metadce(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
-      # now that we removed unneeded communication between js and wasm, we can clean up
-      # the js some more.
-      passes = ['noPrintMetadata', 'AJSDCE']
-      if minify_whitespace:
-        passes.append('minifyWhitespace')
-      logging.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
-      js_file = Building.js_optimizer_no_asmjs(js_file, passes)
-    # finally, optionally use closure compiler to finish cleaning up the JS
-    if use_closure_compiler:
-      logging.debug('running closure on shell code')
-      js_file = Building.closure_compiler(js_file, pretty=not minify_whitespace)
+    if passes:
+      logging.debug('running cleanup on shell code: ' + ' '.join(passes))
+      js_file = Building.js_optimizer_no_asmjs(js_file, ['noPrintMetadata'] + passes)
+    # if we can optimize this js+wasm combination under the assumption no one else
+    # will see the internals, do so
+    if not Settings.LINKABLE:
+      # if we are optimizing for size, shrink the combined wasm+JS
+      # TODO: support this when a symbol map is used
+      if expensive_optimizations and not emit_symbol_map:
+        js_file = Building.metadce(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
+        # now that we removed unneeded communication between js and wasm, we can clean up
+        # the js some more.
+        passes = ['noPrintMetadata', 'AJSDCE']
+        if minify_whitespace:
+          passes.append('minifyWhitespace')
+        logging.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
+        js_file = Building.js_optimizer_no_asmjs(js_file, passes)
+      # finally, optionally use closure compiler to finish cleaning up the JS
+      if use_closure_compiler:
+        logging.debug('running closure on shell code')
+        js_file = Building.closure_compiler(js_file, pretty=not minify_whitespace)
     return js_file
 
   # run binaryen's wasm-metadce to dce both js and wasm
