@@ -77,7 +77,8 @@ def process_args(ports, args, settings, shared):
             compile_flags += ['-D_GLIBCXX_USE_CXX11_ABI=0']  # https://stackoverflow.com/questions/37366291/undefined-symbol-for-self-built-llvm-opt)
 
             # clang includes
-            compile_flags += ['-I' + os.path.join(getroot(ports), 'include')]
+            # compile_flags += ['-I' + os.path.join(getroot(ports), 'include')]
+            compile_flags += ['-I' + os.path.join(ports.get_dir(), FASTCOMP_CLANG_PORT, FASTCOMP_CLANG_KEY, 'lib', 'Headers')]
             scope[1] = compile_flags
 
         cmd = [shared.CLANG_CPP]
