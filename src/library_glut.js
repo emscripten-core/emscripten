@@ -289,7 +289,8 @@ var LibraryGLUT = {
         document.removeEventListener('mozfullscreenchange', GLUT.onFullscreenEventChange, true);
         document.removeEventListener('webkitfullscreenchange', GLUT.onFullscreenEventChange, true);
       }
-      Browser.setCanvasSize(width, height);
+      Browser.setCanvasSize(width, height, true); // N.B. GLUT.reshapeFunc is also registered as a canvas resize callback.
+                                                  // Just call it once here.
       /* Can't call _glutReshapeWindow as that requests cancelling fullscreen. */
       if (GLUT.reshapeFunc) {
         // console.log("GLUT.reshapeFunc (from FS): " + width + ", " + height);
@@ -299,7 +300,7 @@ var LibraryGLUT = {
     },
 
     requestFullscreen: function() {
-      Browser.requestFullscreen(/*lockPointer=*/false, /*resieCanvas=*/false);
+      Browser.requestFullscreen(/*lockPointer=*/false, /*resizeCanvas=*/false);
     },
 
     requestFullScreen: function() {
@@ -577,7 +578,8 @@ var LibraryGLUT = {
   glutReshapeWindow__deps: ['$GLUT', 'glutPostRedisplay'],
   glutReshapeWindow: function(width, height) {
     GLUT.exitFullscreen();
-    Browser.setCanvasSize(width, height);
+    Browser.setCanvasSize(width, height, true); // N.B. GLUT.reshapeFunc is also registered as a canvas resize callback.
+                                                // Just call it once here.
     if (GLUT.reshapeFunc) {
       Module['dynCall_vii'](GLUT.reshapeFunc, width, height);
     }
