@@ -2326,6 +2326,15 @@ public:
     DummyForOverloads dummy(DummyForOverloads d) {
         return d;
     }
+
+    static DummyForOverloads staticDummy() {
+        return DummyForOverloads();
+    }
+
+    static DummyForOverloads staticDummy(DummyForOverloads d) {
+        return d;
+    }
+
 };
 
 DummyForOverloads getDummy() {
@@ -2386,6 +2395,8 @@ EMSCRIPTEN_BINDINGS(overloads) {
         .constructor()
         .function("dummy", select_overload<DummyForOverloads()>(&MultipleOverloadsDependingOnDummy::dummy))
         .function("dummy", select_overload<DummyForOverloads(DummyForOverloads)>(&MultipleOverloadsDependingOnDummy::dummy))
+        .class_function("staticDummy", select_overload<DummyForOverloads()>(&MultipleOverloadsDependingOnDummy::staticDummy))
+        .class_function("staticDummy", select_overload<DummyForOverloads(DummyForOverloads)>(&MultipleOverloadsDependingOnDummy::staticDummy))
         ;
 
     function("getDummy", select_overload<DummyForOverloads(void)>(&getDummy));
