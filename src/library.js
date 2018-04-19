@@ -1147,7 +1147,8 @@ LibraryManager.library = {
     infos: {},
     deAdjust: function(adjusted) {
       if (!adjusted || EXCEPTIONS.infos[adjusted]) return adjusted;
-      for (var ptr in EXCEPTIONS.infos) {
+      for (var key in EXCEPTIONS.infos) {
+        var ptr = +key; // the iteration key is a string, and if we throw this, it must be an integer as that is what we look for
         var info = EXCEPTIONS.infos[ptr];
         if (info.adjusted === adjusted) {
 #if EXCEPTION_DEBUG
@@ -1257,6 +1258,7 @@ LibraryManager.library = {
   __cxa_rethrow__deps: ['__cxa_end_catch', '$EXCEPTIONS'],
   __cxa_rethrow: function() {
     var ptr = EXCEPTIONS.caught.pop();
+    ptr = EXCEPTIONS.deAdjust(ptr);
     if (!EXCEPTIONS.infos[ptr].rethrown) {
       // Only pop if the corresponding push was through rethrow_primary_exception
       EXCEPTIONS.caught.push(ptr)
