@@ -6517,17 +6517,34 @@ Resolved: "/" => "/"
       custompass_src = path_from_root('tests', 'llvm_pass_print_function_names.cpp')
       source = path_from_root('tests', 'hello_libcxx.cpp')
 
-      print('== Running custom pass (1)')
+      print('\n== Running custom pass (1)')
       cmd = [PYTHON, EMCC, source, '--llvm-opts', '["-print-function-names"]', '-s', 'EXTRA_LLVM_FINAL_OPT_ARGS=["-load", "' + custompass_src + '"]']
-      print(cmd)
-      stderr = run_process(cmd, stderr=PIPE).stderr
+      res = run_process(cmd, stdout=PIPE, stderr=PIPE, check=False)
+      code   = res.returncode
+      stdout = res.stderr
+      stderr = res.stderr
+      if code != 0:
+        print('== ERROR executing\n', cmd, 'code', code)
+        print('== STDOUT\n', stdout)
+        print('== STDERR\n', stderr)
+        assert(False)
+
       self.assertContained('PrintFunctionNames: main', stderr)
       self.assertContained('hello, world!', run_js('a.out.js'))
 
       print('== Running custom pass (2)')
       cmd = [PYTHON, EMCC, source, '-s', 'EXTRA_LLVM_FINAL_OPT_ARGS=["-load", "' + custompass_src + '", "-print-function-names"]']
       print(cmd)
-      stderr = run_process(cmd, stderr=PIPE).stderr
+      res = run_process(cmd, stdout=PIPE, stderr=PIPE, check=False)
+      code = res.returncode
+      stdout = res.stderr
+      stderr = res.stderr
+      if code != 0:
+        print('== ERROR executing\n', cmd, 'code', code)
+        print('== STDOUT\n', stdout)
+        print('== STDERR\n', stderr)
+        assert(False)
+
       self.assertContained('PrintFunctionNames: main', stderr)
       self.assertContained('PrintFunctionNames: malloc', stderr) # link time, all functions
       self.assertContained('hello, world!', run_js('a.out.js'))
