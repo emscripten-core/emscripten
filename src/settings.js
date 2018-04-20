@@ -350,6 +350,15 @@ var NODEJS_CATCH_EXIT = 1; // By default we handle exit() in node, by catching t
                            // longer do that, and exceptions work normally, which can be useful for libraries
                            // or programs that don't need exit() to work.
 
+var EXECUTE_PROCESS = [];  // Allows you to run process after one of specific build step:
+                           // -s EXECUTE_PROCESS="['COMMAND', '<BUILD_STEP_NAME>', '<cmd1>', '<args1>', ..., '<argsN>', 'COMMAND', ...]"
+                           // Known build steps:
+                           // * AFTER_LLVM_OPT - process will be called after llvm optimization step.
+                           //                    for this step you can use <TARGET> placeholder:
+                           //                    -s EXECUTE_PROCESS="['COMMAND', 'AFTER_LLVM_OPT', 'wc', '-l', '<TARGET>']"
+                           //                    <TARGET> would points to result of opt command
+
+
 // For more explanations of this option, please visit
 // https://github.com/kripken/emscripten/wiki/Asyncify
 var ASYNCIFY = 0; // Whether to enable asyncify transformation

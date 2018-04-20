@@ -6512,6 +6512,17 @@ Resolved: "/" => "/"
     assert sizes[1] < sizes[0]
     assert sizes[3] < sizes[0]
 
+  def test_execute_process_after_llvm_opt(self):
+    with temp_directory() as temp_dir:
+      target = os.path.join(temp_dir, 'a.out.bc')
+      source = path_from_root('tests', 'hello_libcxx.cpp')
+      cmd = [PYTHON, EMCC, source, '-s', 'EXECUTE_PROCESS=["COMMAND", "AFTER_LLVM_OPT", "ls", "-l", "<TARGET>", \
+                                                           "COMMAND", "AFTER_LLVM_OPT", "cp", "<TARGET>", "%s"]' % target]
+      res = run_process(cmd, stdout=PIPE)
+      filesize = os.path.getsize(target)
+      self.assertContained('a.out.bc', res.stdout)
+      self.assertContained(str(filesize), res.stdout)
+
   def test_dlmalloc_modes(self):
     open('src.cpp', 'w').write(r'''
       #include <stdlib.h>
