@@ -4737,6 +4737,13 @@ def process(filename):
     self.do_run_from_file(src, out, js_engines=js_engines)
 
   @also_with_noderawfs
+  def test_fs_closed(self, js_engines=None):
+    self.emcc_args = []
+    src = path_from_root('tests', 'fs', 'test_closed.c')
+    out = path_from_root('tests', 'fs', 'test_closed.out')
+    self.do_run_from_file(src, out, js_engines=js_engines)
+
+  @also_with_noderawfs
   def test_fs_emptyPath(self, js_engines=None):
     src = path_from_root('tests', 'fs', 'test_emptyPath.c')
     out = path_from_root('tests', 'fs', 'test_emptyPath.out')
