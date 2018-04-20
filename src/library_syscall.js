@@ -1174,9 +1174,14 @@ var SyscallsLibrary = {
     Module.printErr('warning: untested syscall');
 #endif
     var dirfd = SYSCALLS.get(), path = SYSCALLS.getStr(), flags = SYSCALLS.get();
-    assert(flags === 0);
     path = SYSCALLS.calculateAt(dirfd, path);
-    FS.unlink(path);
+    if (flags === 0) {
+      FS.unlink(path);
+    } else if (flags === {{{ cDefine('AT_REMOVEDIR') }}}) {
+      FS.rmdir(path);
+    } else {
+      abort('Invalid flags passed to unlinkat');
+    }
     return 0;
   },
   __syscall302: function(which, varargs) { // renameat
