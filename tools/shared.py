@@ -1860,7 +1860,7 @@ class Building(object):
       return link_args
 
   # LLVM optimizations
-  # @param opt A list of LLVM optimization parameters
+  # @param opts A list of LLVM optimization parameters
   @staticmethod
   def llvm_opt(filename, opts, out=None):
     inputs = filename
@@ -1882,10 +1882,21 @@ class Building(object):
     else:
       opts += ['-bb-vectorize-vector-bits=128']
 
-    logging.debug('emcc: LLVM opts: ' + ' '.join(opts) + '  [num inputs: ' + str(len(inputs)) + ']')
+    load_args = []
+    extra_args = []
+    idx = 0
+    while idx < len(Settings.EXTRA_LLVM_FINAL_OPT_ARGS):
+      if Settings.EXTRA_LLVM_FINAL_OPT_ARGS[idx].strip() == '-load':
+        idx += 1
+        load_args += ['-load', Settings.EXTRA_LLVM_FINAL_OPT_ARGS[idx]]
+      else:
+        extra_args += [Settings.EXTRA_LLVM_FINAL_OPT_ARGS[idx]]
+      idx += 1
+
+    logging.debug('emcc: LLVM opts: ' ' '.join(load_args) + ' ' + ' '.join(opts) + ' ' + ' '.join(extra_args) + ' [num inputs: ' + str(len(inputs)) + ']')
     target = out or (filename + '.opt.bc')
     try:
-      run_process([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE)
+      run_process([LLVM_OPT] + load_args + inputs + opts + extra_args +  ['-o', target], stdout=PIPE)
       assert os.path.exists(target), 'llvm optimizer emitted no output.'
     except subprocess.CalledProcessError as e:
       logging.error('Failed to run llvm optimizations: ' + e.output)
