@@ -1388,7 +1388,8 @@ Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
       named_globals += '''
 for (var named in NAMED_GLOBALS) {
   (function(named) {
-    Module['g$_' + named] = function() { return Module['_' + named] };
+    var func = Module['_' + named];
+    Module['g$_' + named] = function() { return func };
   })(named);
 }
 '''

@@ -1410,15 +1410,21 @@ class Building(object):
         if env.get(dangerous) and env.get(dangerous) == non_native.get(dangerous):
           del env[dangerous] # better to delete it than leave it, as the non-native one is definitely wrong
       return env
-    # add python when necessary (on non-windows, we now support python 2 and 3 so
-    # it should be ok either way)
-    env['CC'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
-    env['CXX'] = quote(EMXX) if not WINDOWS else 'python %s' % quote(EMXX)
-    env['AR'] = quote(EMAR) if not WINDOWS else 'python %s' % quote(EMAR)
-    env['LD'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
+    # point CC etc. to the em* tools.
+    # on windows, we must specify python explicitly. on other platforms, we prefer
+    # not to, as some configure scripts expect e.g. CC to be a literal executable
+    # (but "python emcc.py" is not a file that exists).
+    # note that we point to emcc etc. here, without a suffix, instead of to
+    # emcc.py etc. The unsuffixed versions have the python_selector logic that can
+    # pick the right version as needed (which is not crucial right now as we support
+    # both 2 and 3, but eventually we may be 3-only).
+    env['CC'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
+    env['CXX'] = quote(unsuffixed(EMXX)) if not WINDOWS else 'python %s' % quote(EMXX)
+    env['AR'] = quote(unsuffixed(EMAR)) if not WINDOWS else 'python %s' % quote(EMAR)
+    env['LD'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
     env['NM'] = quote(LLVM_NM)
-    env['LDSHARED'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
-    env['RANLIB'] = quote(EMRANLIB) if not WINDOWS else 'python %s' % quote(EMRANLIB)
+    env['LDSHARED'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
+    env['RANLIB'] = quote(unsuffixed(EMRANLIB)) if not WINDOWS else 'python %s' % quote(EMRANLIB)
     env['EMMAKEN_COMPILER'] = quote(Building.COMPILER)
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(Building.COMPILER_TEST_OPTS)
@@ -2019,6 +2025,7 @@ class Building(object):
 
     return filename + '.o.js'
 
+  # TODO: deprecate this method, we should just need Settings.LINKABLE anyhow
   @staticmethod
   def can_build_standalone():
     return not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE
@@ -2217,27 +2224,34 @@ class Building(object):
   @staticmethod
   def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, use_closure_compiler, debug_info, emit_symbol_map):
     # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
-    # use AJSDCE (aggressive JS DCE, performs multiple iterations)
-    passes = ['noPrintMetadata', 'JSDCE' if not expensive_optimizations else 'AJSDCE']
+    # use AJSDCE (aggressive JS DCE, performs multiple iterations). Clean up
+    # whitespace if necessary too.
+    passes = []
+    if not Settings.LINKABLE:
+      passes.append('JSDCE' if not expensive_optimizations else 'AJSDCE')
     if minify_whitespace:
       passes.append('minifyWhitespace')
-    logging.debug('running cleanup on shell code: ' + ' '.join(passes))
-    js_file = Building.js_optimizer_no_asmjs(js_file, passes)
-    # if we are optimizing for size, shrink the combined wasm+JS
-    # TODO: support this when a symbol map is used
-    if expensive_optimizations and not emit_symbol_map:
-      js_file = Building.metadce(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
-      # now that we removed unneeded communication between js and wasm, we can clean up
-      # the js some more.
-      passes = ['noPrintMetadata', 'AJSDCE']
-      if minify_whitespace:
-        passes.append('minifyWhitespace')
-      logging.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
-      js_file = Building.js_optimizer_no_asmjs(js_file, passes)
-    # finally, optionally use closure compiler to finish cleaning up the JS
-    if use_closure_compiler:
-      logging.debug('running closure on shell code')
-      js_file = Building.closure_compiler(js_file, pretty=not minify_whitespace)
+    if passes:
+      logging.debug('running cleanup on shell code: ' + ' '.join(passes))
+      js_file = Building.js_optimizer_no_asmjs(js_file, ['noPrintMetadata'] + passes)
+    # if we can optimize this js+wasm combination under the assumption no one else
+    # will see the internals, do so
+    if not Settings.LINKABLE:
+      # if we are optimizing for size, shrink the combined wasm+JS
+      # TODO: support this when a symbol map is used
+      if expensive_optimizations and not emit_symbol_map:
+        js_file = Building.metadce(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
+        # now that we removed unneeded communication between js and wasm, we can clean up
+        # the js some more.
+        passes = ['noPrintMetadata', 'AJSDCE']
+        if minify_whitespace:
+          passes.append('minifyWhitespace')
+        logging.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
+        js_file = Building.js_optimizer_no_asmjs(js_file, passes)
+      # finally, optionally use closure compiler to finish cleaning up the JS
+      if use_closure_compiler:
+        logging.debug('running closure on shell code')
+        js_file = Building.closure_compiler(js_file, pretty=not minify_whitespace)
     return js_file
 
   # run binaryen's wasm-metadce to dce both js and wasm
@@ -2640,13 +2654,18 @@ class WebAssembly(object):
 
   @staticmethod
   def make_shared_library(js_file, wasm_file):
+    import math
     # a wasm shared library has a special "dylink" section, see tools-conventions repo
     js = open(js_file).read()
     m = re.search("var STATIC_BUMP = (\d+);", js)
     mem_size = int(m.group(1))
     m = re.search("Module\['wasmTableSize'\] = (\d+);", js)
     table_size = int(m.group(1))
-    logging.debug('creating wasm dynamic library with mem size %d, table size %d' % (mem_size, table_size))
+    m = re.search('gb = alignMemory\(getMemory\(\d+ \+ (\d+)\), (\d+) \|\| 1\);', js)
+    assert m.group(1) == m.group(2), 'js must contain a clear alignment for the wasm shared library'
+    mem_align = int(m.group(1))
+    mem_align = int(math.log(mem_align, 2))
+    logging.debug('creating wasm dynamic library with mem size %d, table size %d, align %d' % (mem_size, table_size, mem_align))
     wso = js_file + '.wso'
     # write the binary
     wasm = open(wasm_file, 'rb').read()
@@ -2656,7 +2675,8 @@ class WebAssembly(object):
     f.write(b'\0') # user section is code 0
     # need to find the size of this section
     name = b"\06dylink" # section name, including prefixed size
-    contents = WebAssembly.lebify(mem_size) + WebAssembly.lebify(table_size)
+    contents = WebAssembly.lebify(mem_size) + WebAssembly.lebify(mem_align) + \
+               WebAssembly.lebify(table_size) + WebAssembly.lebify(0)
     size = len(name) + len(contents)
     f.write(WebAssembly.lebify(size))
     f.write(name)

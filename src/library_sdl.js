@@ -1166,7 +1166,7 @@ var LibrarySDL = {
     webAudioAvailable: function() { return !!SDL.audioContext; },
 
     fillWebAudioBufferFromHeap: function(heapPtr, sizeSamplesPerChannel, dstAudioBuffer) {
-      // The input audio data is interleaved across the channels, i.e. [L, R, L, R, L, R, ...] and is either 8-bit or 16-bit as
+      // The input audio data is interleaved across the channels, i.e. [L, R, L, R, L, R, ...] and is either 8-bit, 16-bit or float as
       // supported by the SDL API. The output audio wave data for Web Audio API must be in planar buffers of [-1,1]-normalized Float32 data,
       // so perform a buffer conversion for the data.
       var numChannels = SDL.audio.channels;
@@ -1184,6 +1184,12 @@ var LibrarySDL = {
             var v = ({{{ makeGetValue('heapPtr', 'j*numChannels + c', 'i8', 0, 0) }}});
             channelData[j] = ((v >= 0) ? v-128 : v+128) /128;
           }
+        } else if (SDL.audio.format == 0x8120 /*AUDIO_F32*/) {
+          for(var j = 0; j < sizeSamplesPerChannel; ++j) {
+            channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*4', 'float', 0, 0) }}});
+          }
+        } else {
+          throw 'Invalid SDL audio format ' + SDL.audio.format + '!';
         }
       }
     },
@@ -2397,6 +2403,8 @@ var LibrarySDL = {
         SDL.audio.silence = 128; // Audio ranges in [0, 255], so silence is half-way in between.
       } else if (SDL.audio.format == 0x8010 /*AUDIO_S16LSB*/) {
         SDL.audio.silence = 0; // Signed data in range [-32768, 32767], silence is 0.
+      } else if (SDL.audio.format == 0x8120 /*AUDIO_F32*/) {
+        SDL.audio.silence = 0.0; // Float data in range [-1.0, 1.0], silence is 0.0
       } else {
         throw 'Invalid SDL audio format ' + SDL.audio.format + '!';
       }
@@ -2431,7 +2439,15 @@ var LibrarySDL = {
       }
 
       var totalSamples = SDL.audio.samples*SDL.audio.channels;
-      SDL.audio.bytesPerSample = (SDL.audio.format == 0x0008 /*AUDIO_U8*/ || SDL.audio.format == 0x8008 /*AUDIO_S8*/) ? 1 : 2;
+      if (SDL.audio.format == 0x0008 /*AUDIO_U8*/) {
+        SDL.audio.bytesPerSample = 1;
+      } else if (SDL.audio.format == 0x8010 /*AUDIO_S16LSB*/) {
+        SDL.audio.bytesPerSample = 2;
+      } else if (SDL.audio.format == 0x8120 /*AUDIO_F32*/) {
+        SDL.audio.bytesPerSample = 4;
+      } else {
+        throw 'Invalid SDL audio format ' + SDL.audio.format + '!';
+      }
       SDL.audio.bufferSize = totalSamples*SDL.audio.bytesPerSample;
       SDL.audio.bufferDurationSecs = SDL.audio.bufferSize / SDL.audio.bytesPerSample / SDL.audio.channels / SDL.audio.freq; // Duration of a single queued buffer in seconds.
       SDL.audio.bufferingDelay = 50 / 1000; // Audio samples are played with a constant delay of this many seconds to account for browser and jitter.

@@ -31,7 +31,7 @@ def on_allowed_version():
 Runs filename+'.py' by opening Python 2 subprocess if required, or by importing.
 '''
 def run(filename, profile=False, main="run"):
-  if profile:
+  if os.environ.get('EM_PROFILE_TOOLCHAIN'):
     from tools.toolchain_profiler import ToolchainProfiler
     ToolchainProfiler.record_process_start()
 
