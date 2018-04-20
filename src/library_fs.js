@@ -1087,6 +1087,7 @@ mergeInto(LibraryManager.library, {
       } finally {
         FS.closeStream(stream.fd);
       }
+      stream.fd = null;
     },
     llseek: function(stream, offset, whence) {
       if (!stream.seekable || !stream.stream_ops.llseek) {
@@ -1099,6 +1100,9 @@ mergeInto(LibraryManager.library, {
     read: function(stream, buffer, offset, length, position) {
       if (length < 0 || position < 0) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+      }
+      if (stream.fd === null) {
+        throw new FS.ErrnoError(ERRNO_CODES.EBADF);
       }
       if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_WRONLY')}}}) {
         throw new FS.ErrnoError(ERRNO_CODES.EBADF);
@@ -1122,6 +1126,9 @@ mergeInto(LibraryManager.library, {
     write: function(stream, buffer, offset, length, position, canOwn) {
       if (length < 0 || position < 0) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+      }
+      if (stream.fd === null) {
+        throw new FS.ErrnoError(ERRNO_CODES.EBADF);
       }
       if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_RDONLY')}}}) {
         throw new FS.ErrnoError(ERRNO_CODES.EBADF);
