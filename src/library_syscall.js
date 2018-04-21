@@ -358,6 +358,13 @@ var SyscallsLibrary = {
         if (!stream.tty) return -ERRNO_CODES.ENOTTY;
         return 0;
       }
+      case {{{ cDefine('TIOCSWINSZ') }}}: {
+        // TODO: technically, this ioctl call should change the window size.
+        // but, since emscripten doesn't have any concept of a terminal window
+        // yet, we'll just silently throw it away as we do TIOCGWINSZ
+        if (!stream.tty) return -ERRNO_CODES.ENOTTY;
+        return 0;
+      }
       default: abort('bad ioctl syscall ' + op);
     }
 #endif // NO_FILESYSTEM
