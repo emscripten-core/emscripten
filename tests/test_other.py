@@ -47,6 +47,17 @@ class clean_write_access_to_canonical_temp_dir(object):
       self.clean_emcc_files_in_temp_dir()
 
 class other(RunnerCore):
+  # Utility to run a simple test in this suite. This receives a directory which
+  # should contain a test.cpp and test.out files, compiles the cpp, and runs it
+  # to verify the output, with optional compile and run arguments.
+  # TODO: use in more places
+  def do_other_test(self, dirname, emcc_args=[], run_args=[]):
+    shutil.copyfile(path_from_root('tests', dirname, 'test.cpp'), 'test.cpp')
+    run_process([PYTHON, EMCC, 'test.cpp'] + emcc_args)
+    expected = open(path_from_root('tests', dirname, 'test.out')).read()
+    seen = run_js('a.out.js', args=run_args) + '\n'
+    self.assertContained(expected, seen)
+
   def test_emcc_v(self):
     for compiler in [EMCC, EMXX]:
       # -v, without input files
@@ -4186,21 +4197,7 @@ EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny
     assert len(without_dash_o) != 0
 
   def test_malloc_implicit(self):
-    open('src.cpp', 'w').write(r'''
-#include <stdlib.h>
-#include <stdio.h>
-#include <assert.h>
-int main() {
-  const char *home = getenv("HOME");
-  for(unsigned int i = 0; i < 5; ++i) {
-    const char *curr = getenv("HOME");
-    assert(curr == home);
-  }
-  printf("ok\n");
-}
-    ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
-    self.assertContained('ok', run_js('a.out.js'))
+    self.do_other_test(os.path.join('other', 'malloc_implicit'))
 
   def test_switch64phi(self):
     # issue 2539, fastcomp segfault on phi-i64 interaction
