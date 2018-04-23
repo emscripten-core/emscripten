@@ -1238,6 +1238,10 @@ int main(int argc, char **argv)
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_libcxx')
 
+  def test_exceptions_multiple_inherit(self):
+    Settings.DISABLE_EXCEPTION_CATCHING = 0
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit')
+
   def test_bad_typeid(self):
     Settings.ERROR_ON_UNDEFINED_SYMBOLS = 1
     Settings.DISABLE_EXCEPTION_CATCHING = 0
