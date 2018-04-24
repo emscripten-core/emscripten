@@ -3800,6 +3800,9 @@ int main(int argc, char **argv) {
     Popen([PYTHON, EMCC, 'src.cpp']).communicate()
     self.assertContained('read: 0\nfile size is 104\n', run_js('a.out.js'))
 
+  def test_unlink(self):
+    self.do_other_test(os.path.join('other', 'unlink'))
+
   def test_argv0_node(self):
     open('code.cpp', 'w').write(r'''
 #include <stdio.h>
