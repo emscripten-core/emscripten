@@ -47,6 +47,17 @@ class clean_write_access_to_canonical_temp_dir(object):
       self.clean_emcc_files_in_temp_dir()
 
 class other(RunnerCore):
+  # Utility to run a simple test in this suite. This receives a directory which
+  # should contain a test.cpp and test.out files, compiles the cpp, and runs it
+  # to verify the output, with optional compile and run arguments.
+  # TODO: use in more places
+  def do_other_test(self, dirname, emcc_args=[], run_args=[]):
+    shutil.copyfile(path_from_root('tests', dirname, 'test.cpp'), 'test.cpp')
+    run_process([PYTHON, EMCC, 'test.cpp'] + emcc_args)
+    expected = open(path_from_root('tests', dirname, 'test.out')).read()
+    seen = run_js('a.out.js', args=run_args) + '\n'
+    self.assertContained(expected, seen)
+
   def test_emcc_v(self):
     for compiler in [EMCC, EMXX]:
       # -v, without input files
@@ -3885,6 +3896,9 @@ int main(int argc, char **argv) {
     Popen([PYTHON, EMCC, 'src.cpp']).communicate()
     self.assertContained('read: 0\nfile size is 104\n', run_js('a.out.js'))
 
+  def test_unlink(self):
+    self.do_other_test(os.path.join('other', 'unlink'))
+
   def test_argv0_node(self):
     open('code.cpp', 'w').write(r'''
 #include <stdio.h>
@@ -4284,21 +4298,7 @@ EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny
     assert len(without_dash_o) != 0
 
   def test_malloc_implicit(self):
-    open('src.cpp', 'w').write(r'''
-#include <stdlib.h>
-#include <stdio.h>
-#include <assert.h>
-int main() {
-  const char *home = getenv("HOME");
-  for(unsigned int i = 0; i < 5; ++i) {
-    const char *curr = getenv("HOME");
-    assert(curr == home);
-  }
-  printf("ok\n");
-}
-    ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
-    self.assertContained('ok', run_js('a.out.js'))
+    self.do_other_test(os.path.join('other', 'malloc_implicit'))
 
   def test_switch64phi(self):
     # issue 2539, fastcomp segfault on phi-i64 interaction
@@ -5457,6 +5457,10 @@ function _main() {
 
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'emterpreter_advise_synclist.c'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1', '-s', 'EMTERPRETIFY_SYNCLIST=["_j","_k"]'], stdout=PIPE).stdout
     self.assertContained('-s EMTERPRETIFY_WHITELIST=\'["_a", "_b", "_e", "_f", "_main"]\'', out)
+
+    # The same EMTERPRETIFY_WHITELIST should be in core.test_coroutine_emterpretify_async
+    out = run_process([PYTHON, EMCC, path_from_root('tests', 'test_coroutines.cpp'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1'], stdout=PIPE).stdout
+    self.assertContained('-s EMTERPRETIFY_WHITELIST=\'["_f", "_fib", "_g"]\'', out)
 
   def test_emterpreter_async_assertions(self):
     # emterpretify-async mode with assertions adds checks on each call out of the emterpreter;
@@ -7935,15 +7939,18 @@ int main() {
 
     print('test on hello world')
     test(path_from_root('tests', 'hello_world.cpp'), [
-      ([],      24, ['abort', 'tempDoublePtr'], ['waka'],                  46505, 25, 19),
-      (['-O1'], 19, ['abort', 'tempDoublePtr'], ['waka'],                  12630, 16, 17),
-      (['-O2'], 19, ['abort', 'tempDoublePtr'], ['waka'],                  12616, 16, 17),
-      (['-O3'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2818, 10,  2), # in -O3, -Os and -Oz we metadce
-      (['-Os'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2771, 10,  2),
-      (['-Oz'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2765, 10,  2),
+      ([],      24, ['abort', 'tempDoublePtr'], ['waka'],                  46505,  25,   19),
+      (['-O1'], 19, ['abort', 'tempDoublePtr'], ['waka'],                  12630,  16,   17),
+      (['-O2'], 19, ['abort', 'tempDoublePtr'], ['waka'],                  12616,  16,   17),
+      (['-O3'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2818,  10,    2), # in -O3, -Os and -Oz we metadce
+      (['-Os'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2771,  10,    2),
+      (['-Oz'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2765,  10,    2),
       # finally, check what happens when we export nothing. wasm should be almost empty
       (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                 0, [],                         ['tempDoublePtr', 'waka'],     8,  0,  0), # totally empty!
+                 0, [],                         ['tempDoublePtr', 'waka'],     8,   0,    0), # totally empty!
+      # but we don't metadce with linkable code! other modules may want it
+      (['-O3', '-s', 'MAIN_MODULE=1'],
+              1542, ['invoke_i'],               ['waka'],                 496958, 168, 2558),
     ])
 
     print('test on a minimal pure computational thing')
