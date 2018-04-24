@@ -1077,7 +1077,7 @@ mergeInto(LibraryManager.library, {
       return stream;
     },
     close: function(stream) {
-      if (this.isClosed(stream)) {
+      if (FS.isClosed(stream)) {
         throw new FS.ErrnoError(ERRNO_CODES.EBADF);
       }
       if (stream.getdents) stream.getdents = null; // free readdir state
@@ -1096,7 +1096,7 @@ mergeInto(LibraryManager.library, {
       return stream.fd === null;
     },
     llseek: function(stream, offset, whence) {
-      if (this.isClosed(stream)) {
+      if (FS.isClosed(stream)) {
         throw new FS.ErrnoError(ERRNO_CODES.EBADF);
       }
       if (!stream.seekable || !stream.stream_ops.llseek) {
@@ -1110,7 +1110,7 @@ mergeInto(LibraryManager.library, {
       if (length < 0 || position < 0) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
-      if (this.isClosed(stream)) {
+      if (FS.isClosed(stream)) {
         throw new FS.ErrnoError(ERRNO_CODES.EBADF);
       }
       if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_WRONLY')}}}) {
@@ -1136,7 +1136,7 @@ mergeInto(LibraryManager.library, {
       if (length < 0 || position < 0) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
-      if (this.isClosed(stream)) {
+      if (FS.isClosed(stream)) {
         throw new FS.ErrnoError(ERRNO_CODES.EBADF);
       }
       if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_RDONLY')}}}) {
@@ -1168,7 +1168,7 @@ mergeInto(LibraryManager.library, {
       return bytesWritten;
     },
     allocate: function(stream, offset, length) {
-      if (this.isClosed(stream)) {
+      if (FS.isClosed(stream)) {
         throw new FS.ErrnoError(ERRNO_CODES.EBADF);
       }
       if (offset < 0 || length <= 0) {
@@ -1942,4 +1942,3 @@ mergeInto(LibraryManager.library, {
 if (FORCE_FILESYSTEM) {
   DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$FS');
 }
-
