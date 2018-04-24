@@ -41,5 +41,7 @@ int main() {
     return 1;
   }
 
+  printf("ok\n");
+
   return 0;
 }

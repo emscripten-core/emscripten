@@ -3801,10 +3801,7 @@ int main(int argc, char **argv) {
     self.assertContained('read: 0\nfile size is 104\n', run_js('a.out.js'))
 
   def test_unlink(self):
-    self.emcc_args = []
-    src = path_from_root('tests', 'fs', 'test_unlink.c')
-    out = path_from_root('tests', 'fs', 'test_unlink.out')
-    self.do_run_from_file(src, out, js_engines=[NODE_JS])
+    self.do_other_test(os.path.join('other', 'unlink'))
 
   def test_argv0_node(self):
     open('code.cpp', 'w').write(r'''
