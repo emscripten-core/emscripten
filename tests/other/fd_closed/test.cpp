@@ -25,5 +25,8 @@ int main() {
   if (errno != EBADF) {
     return 1;
   }
+
+  printf("ok\n");
+
   return 0;
 }

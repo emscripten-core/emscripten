@@ -8230,3 +8230,6 @@ end
       except OSError:
         # Ignore missing python aliases.
         pass
+
+  def test_fd_closed(self):
+    self.do_other_test(os.path.join('other', 'fd_closed'))
