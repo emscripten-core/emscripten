@@ -8229,3 +8229,9 @@ end
       except OSError:
         # Ignore missing python aliases.
         pass
+        
+  def test_ioctl_window_size(self):
+      run_process([PYTHON, EMCC, path_from_root('tests', 'ioctl', 'ioctl_window_size.c')])
+      expected = open(path_from_root('tests', 'ioctl', 'ioctl_window_size.out')).read()
+      actual = run_js("a.out.js")
+      self.assertContained(expected, actual)
