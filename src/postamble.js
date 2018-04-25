@@ -119,7 +119,7 @@ if (memoryInitializer) {
 #endif
 
 #if MODULARIZE
-#if MODULARIZE_INSTANCE == 0
+
 // Modularize mode returns a function, which can be called to
 // create instances. The instances provide a then() method,
 // must like a Promise, that receives a callback. The callback
@@ -142,7 +142,18 @@ Module['then'] = function(func) {
   }
   return Module;
 };
-#endif
+
+// In MODULARIZE mode emcc.py will export the module in the proper place outside the wrapper
+#else // MODULARIZE
+
+if (typeof exports === 'object' && typeof module === 'object') {
+  module['exports'] = Module;
+} else if (typeof define === 'function' && define['amd']) {
+  define([], function() { return Module; });
+} else if (typeof exports === 'object') {
+  exports["{{{ EXPORT_NAME }}}"] = Module;
+}
+
 #endif
 
 /**

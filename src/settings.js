@@ -610,9 +610,6 @@ var MODULARIZE_INSTANCE = 0; // Similar to MODULARIZE, but while that mode expor
                              // a singleton instance. In other words, it's the same as if you
                              // used MODULARIZE and did EXPORT_NAME = EXPORT_NAME() to create
                              // the instance manually.
-                             // Note that the promise-like API MODULARIZE provides isn't
-                             // available here (since you arean't creating the instance
-                             // yourself).
 
 var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
                    // print out anything at all whatsoever. This is useful for benchmarking.
