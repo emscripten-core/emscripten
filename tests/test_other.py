@@ -47,6 +47,17 @@ class clean_write_access_to_canonical_temp_dir(object):
       self.clean_emcc_files_in_temp_dir()
 
 class other(RunnerCore):
+  # Utility to run a simple test in this suite. This receives a directory which
+  # should contain a test.cpp and test.out files, compiles the cpp, and runs it
+  # to verify the output, with optional compile and run arguments.
+  # TODO: use in more places
+  def do_other_test(self, dirname, emcc_args=[], run_args=[]):
+    shutil.copyfile(path_from_root('tests', dirname, 'test.cpp'), 'test.cpp')
+    run_process([PYTHON, EMCC, 'test.cpp'] + emcc_args)
+    expected = open(path_from_root('tests', dirname, 'test.out')).read()
+    seen = run_js('a.out.js', args=run_args) + '\n'
+    self.assertContained(expected, seen)
+
   def test_emcc_v(self):
     for compiler in [EMCC, EMXX]:
       # -v, without input files
@@ -8231,7 +8242,4 @@ end
         pass
         
   def test_ioctl_window_size(self):
-      run_process([PYTHON, EMCC, path_from_root('tests', 'ioctl', 'ioctl_window_size.c')])
-      expected = open(path_from_root('tests', 'ioctl', 'ioctl_window_size.out')).read()
-      actual = run_js("a.out.js")
-      self.assertContained(expected, actual)
+      self.do_other_test(os.path.join('other', 'ioctl', 'window_size'))
