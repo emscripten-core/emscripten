@@ -131,7 +131,7 @@ mergeInto(LibraryManager.library, {
 
     if ((stack_size|0) <= 0) stack_size = 4096;
 
-    coroutine = _malloc((stack_size + 32)|0)|0;
+    coroutine = _malloc(stack_size + 32 | 0) | 0;
     {{{ makeSetValueAsm('coroutine', 12, 0, 'i32') }}}; 
     {{{ makeSetValueAsm('coroutine', 16, '(coroutine+32)', 'i32') }}};
     {{{ makeSetValueAsm('coroutine', 20, 'stack_size', 'i32') }}};
@@ -438,7 +438,7 @@ mergeInto(LibraryManager.library, {
 
     if ((stack_size|0) <= 0) stack_size = 4096;
 
-    coroutine = _malloc(stack_size + 32)|0;
+    coroutine = _malloc(stack_size + 32 | 0) | 0;
     {{{ makeSetValueAsm('coroutine', 12, '(coroutine+32)', 'i32') }}};
     {{{ makeSetValueAsm('coroutine', 16, '(coroutine+32)', 'i32') }}};
     {{{ makeSetValueAsm('coroutine', 20, '(coroutine+32+stack_size)', 'i32') }}};
