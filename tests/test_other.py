@@ -3800,6 +3800,9 @@ int main(int argc, char **argv) {
     Popen([PYTHON, EMCC, 'src.cpp']).communicate()
     self.assertContained('read: 0\nfile size is 104\n', run_js('a.out.js'))
 
+  def test_unlink(self):
+    self.do_other_test(os.path.join('other', 'unlink'))
+
   def test_argv0_node(self):
     open('code.cpp', 'w').write(r'''
 #include <stdio.h>
@@ -4197,21 +4200,7 @@ EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny
     assert len(without_dash_o) != 0
 
   def test_malloc_implicit(self):
-    open('src.cpp', 'w').write(r'''
-#include <stdlib.h>
-#include <stdio.h>
-#include <assert.h>
-int main() {
-  const char *home = getenv("HOME");
-  for(unsigned int i = 0; i < 5; ++i) {
-    const char *curr = getenv("HOME");
-    assert(curr == home);
-  }
-  printf("ok\n");
-}
-    ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
-    self.assertContained('ok', run_js('a.out.js'))
+    self.do_other_test(os.path.join('other', 'malloc_implicit'))
 
   def test_switch64phi(self):
     # issue 2539, fastcomp segfault on phi-i64 interaction
@@ -5362,6 +5351,10 @@ function _main() {
 
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'emterpreter_advise_synclist.c'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1', '-s', 'EMTERPRETIFY_SYNCLIST=["_j","_k"]'], stdout=PIPE).stdout
     self.assertContained('-s EMTERPRETIFY_WHITELIST=\'["_a", "_b", "_e", "_f", "_main"]\'', out)
+
+    # The same EMTERPRETIFY_WHITELIST should be in core.test_coroutine_emterpretify_async
+    out = run_process([PYTHON, EMCC, path_from_root('tests', 'test_coroutines.cpp'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1'], stdout=PIPE).stdout
+    self.assertContained('-s EMTERPRETIFY_WHITELIST=\'["_f", "_fib", "_g"]\'', out)
 
   def test_emterpreter_async_assertions(self):
     # emterpretify-async mode with assertions adds checks on each call out of the emterpreter;
@@ -8243,3 +8236,6 @@ end
         
   def test_ioctl_window_size(self):
       self.do_other_test(os.path.join('other', 'ioctl', 'window_size'))
+
+  def test_fd_closed(self):
+    self.do_other_test(os.path.join('other', 'fd_closed'))
