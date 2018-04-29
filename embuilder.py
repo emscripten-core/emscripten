@@ -27,6 +27,7 @@ Available operations and tasks:
 
   build libc
         libc-mt
+        struct_info
         emmalloc
         emmalloc_debug
         dlmalloc
@@ -178,6 +179,8 @@ if operation == 'build':
       ''', ['compiler-rt.a'])
     elif what == 'libc':
       build(C_WITH_MALLOC, ['libc.bc'])
+    elif what == 'struct_info':
+      build(C_BARE, ['generated_struct_info.json'])
     elif what == 'emmalloc':
       build(C_WITH_MALLOC, ['emmalloc.bc'], ['-s', 'MALLOC="emmalloc"'])
     elif what == 'emmalloc_debug':
