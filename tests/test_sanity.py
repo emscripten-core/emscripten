@@ -863,7 +863,7 @@ fi
       del os.environ['EMCC_FORCE_STDLIBS']
 
   def test_struct_info(self):
-    struct_info_file = path_from_root('src', 'struct_info.compiled.json')
+    struct_info_file = Cache.get_path('struct_info.compiled.json')
     for debug in [1, 0]:
       print('debug', debug)
       restore_and_set_up()
