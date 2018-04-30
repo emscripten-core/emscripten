@@ -502,7 +502,8 @@
             "TCSETSF",
             "TIOCGPGRP",
             "TIOCSPGRP",
-            "TIOCGWINSZ"
+            "TIOCGWINSZ",
+            "TIOCSWINSZ"
         ],
         "structs": {}
     }, 
