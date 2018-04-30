@@ -906,10 +906,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           value = value.replace('\\', '\\\\')
         try:
-          setattr(shared.Settings, key, eval(value))
+          setattr(shared.Settings, key, parse_value(value))
         except Exception as e:
-          logging.error('a problem occurred in evaluating content after a "-s", specifically  %s . one possible cause of this is missing quotation marks (this depends on the shell you are running in; you may need quotation marks around the entire  %s , or on an individual element)' % (change, change))
-          raise e
+          exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s' % (change, str(e)))
+
         if key == 'EXPORTED_FUNCTIONS':
           # used for warnings in emscripten.py
           shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = original_exported_response or shared.Settings.EXPORTED_FUNCTIONS[:]
@@ -1963,19 +1963,19 @@ def parse_args(newargs):
       options.opt_level = validate_arg_level(options.requested_level, 3, 'Invalid optimization level: ' + newargs[i], clamp=True)
     elif newargs[i].startswith('--js-opts'):
       check_bad_eq(newargs[i])
-      options.js_opts = eval(newargs[i+1])
+      options.js_opts = int(newargs[i+1])
       if options.js_opts:
         options.force_js_opts = True
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--llvm-opts'):
       check_bad_eq(newargs[i])
-      options.llvm_opts = eval(newargs[i+1])
+      options.llvm_opts = parse_value(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--llvm-lto'):
       check_bad_eq(newargs[i])
-      options.llvm_lto = eval(newargs[i+1])
+      options.llvm_lto = int(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--closure'):
@@ -2789,6 +2789,60 @@ def is_valid_abspath(options, path_name):
     if in_directory(valid_abspath, path_name):
       return True
   return False
+
+
+
+def parse_value(text):
+  def parse_string_value(text):
+    first = text[0]
+    if first == "'" or first == '"':
+      assert text[-1] == text[0] and len(text) > 1, 'unclosed opened quoted string. expected final character to be "%s" and length to be greater than 1 in "%s"' % (text[0],text)
+      return text[1:-1]
+    else:
+      return text
+
+  def parse_string_list_members(text, sep):
+    values = text.split(sep)
+    result = []
+    index = 0
+    while True:
+      current = values[index].lstrip() # Cannot safely rstrip for cases like: "HERE-> ,"
+      assert len(current) > 0, "string array should not contain an empty value"
+      first = current[0]
+      if not(first == "'" or first == '"'):
+        result.append(current.rstrip())
+      else:
+        start = index
+        while True: # Continue until closing quote found
+          assert index < len(values), "unclosed quoted string. expected final character to be '%s' in '%s'" % (first, values[start])
+          new = values[index].rstrip()
+          if not len(new) == 0 and new[-1] == first:
+            if start == index:
+              result.append(current[1:-1])
+            else:
+              result.append((current + sep + new)[1:-1])
+            break
+          else:
+            current += sep + values[index]
+            index += 1
+
+      index += 1
+      if index >= len(values):
+        break
+    return result
+
+  if text[0] == '[':
+    assert text[-1] == ']', 'unclosed opened string list. expected final character to be "]" in "%s"' % (text)
+    inner = text[1:-1]
+    if inner.strip() == "":
+      return []
+    else:
+      return parse_string_list_members(inner, ",")
+  else:
+    try:
+      return int(text)
+    except ValueError as e:
+      return parse_string_value(text)
 
 
 def check_bad_eq(arg):

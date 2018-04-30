@@ -21,5 +21,5 @@ if len(sys.argv) != 2 or \
   print('Usage: em-config VAR_NAME')
   exit(1)
 
-print(eval('shared.' + sys.argv[1]))
+print(getattr(shared, sys.argv[1]))
 
