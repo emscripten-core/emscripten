@@ -8233,6 +8233,9 @@ end
       except OSError:
         # Ignore missing python aliases.
         pass
+        
+  def test_ioctl_window_size(self):
+      self.do_other_test(os.path.join('other', 'ioctl', 'window_size'))
 
   def test_fd_closed(self):
     self.do_other_test(os.path.join('other', 'fd_closed'))
