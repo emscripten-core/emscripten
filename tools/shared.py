@@ -2740,15 +2740,51 @@ def clang_preprocess(filename):
 
 def read_and_preprocess(filename):
   f = open(filename, 'r').read()
+#  return f
+
   pos = 0
   include_pattern = re.compile('^#include\s*["<](.*)[">]\s?$', re.MULTILINE)
   while(1):
     m = include_pattern.search(f, pos)
     if not m:
-      return f
+      break
     included_file = open(os.path.join(os.path.dirname(filename), m.groups(0)[0]), 'r').read()
 
     f = f[:m.start(0)] + included_file + f[m.end(0):]
+
+  ppfile = ""
+  showStack = [True]
+  for line in f.split('\n'):
+    if '#if' in line:
+      (attr, op, value) = line.split(' ')[1:]
+#      print('Check Setting: %s, Op: %s, Value: %s' % (attr, op, value))
+      try:
+        setting = int(getattr(Settings, attr))
+        value = int(value)
+#        print('Setting Value: %s' % setting)
+#        print(setting == value)
+        if op == '==':
+          showStack.append(True if setting == value else False)
+        elif op == '!=':
+          showStack.append(True if setting != value else False)
+        elif op == '<':
+          showStack.append(True if setting < value else False)
+        elif op == '>':
+          showStack.append(True if setting > value else False)
+      except AttributeError:
+#        print('Exception!')
+        showStack.append(False)
+    elif '#else' in line:
+      showStack[-1] = not showStack[-1]
+    elif '#endif' in line:
+      showStack.pop()
+    elif showStack[-1]:
+      ppfile += line + '\n'
+#      print('Yep: %s' % line)
+#    else:
+#      print('Nope! %s' % line)
+
+  return ppfile
 
 # Generates a suitable fetch-worker.js script from the given input source JS file (which is an asm.js build output),
 # and writes it out to location output_file. fetch-worker.js is the root entry point for a dedicated filesystem web
