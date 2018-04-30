@@ -358,6 +358,13 @@ var SyscallsLibrary = {
         if (!stream.tty) return -ERRNO_CODES.ENOTTY;
         return 0;
       }
+      case {{{ cDefine('TIOCSWINSZ') }}}: {
+        // TODO: technically, this ioctl call should change the window size.
+        // but, since emscripten doesn't have any concept of a terminal window
+        // yet, we'll just silently throw it away as we do TIOCGWINSZ
+        if (!stream.tty) return -ERRNO_CODES.ENOTTY;
+        return 0;
+      }
       default: abort('bad ioctl syscall ' + op);
     }
 #endif // NO_FILESYSTEM
@@ -1174,9 +1181,14 @@ var SyscallsLibrary = {
     Module.printErr('warning: untested syscall');
 #endif
     var dirfd = SYSCALLS.get(), path = SYSCALLS.getStr(), flags = SYSCALLS.get();
-    assert(flags === 0);
     path = SYSCALLS.calculateAt(dirfd, path);
-    FS.unlink(path);
+    if (flags === 0) {
+      FS.unlink(path);
+    } else if (flags === {{{ cDefine('AT_REMOVEDIR') }}}) {
+      FS.rmdir(path);
+    } else {
+      abort('Invalid flags passed to unlinkat');
+    }
     return 0;
   },
   __syscall302: function(which, varargs) { // renameat

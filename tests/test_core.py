@@ -1238,6 +1238,10 @@ int main(int argc, char **argv)
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_libcxx')
 
+  def test_exceptions_multiple_inherit(self):
+    Settings.DISABLE_EXCEPTION_CATCHING = 0
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit')
+
   def test_bad_typeid(self):
     Settings.ERROR_ON_UNDEFINED_SYMBOLS = 1
     Settings.DISABLE_EXCEPTION_CATCHING = 0
@@ -7404,51 +7408,10 @@ int main() {
 
   def do_test_coroutine(self, additional_settings):
     Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
-    src = r'''
-#include <stdio.h>
-#include <emscripten.h>
-void fib(void * arg) {
-    int * p = (int*)arg;
-    int cur = 1;
-    int next = 1;
-    for(int i = 0; i < 9; ++i) {
-        *p = cur;
-        emscripten_yield();
-        int next2 = cur + next;
-        cur = next;
-        next = next2;
-    }
-}
-void f(void * arg) {
-    int * p = (int*)arg;
-    *p = 0;
-    emscripten_yield();
-    fib(arg); // emscripten_yield in fib() can `pass through` f() back to main(), and then we can assume inside fib()
-}
-void g(void * arg) {
-    int * p = (int*)arg;
-    for(int i = 0; i < 10; ++i) {
-        *p = 100+i;
-        emscripten_yield();
-    }
-}
-int main(int argc, char **argv) {
-    int i;
-    emscripten_coroutine co = emscripten_coroutine_create(f, (void*)&i, 0);
-    emscripten_coroutine co2 = emscripten_coroutine_create(g, (void*)&i, 0);
-    printf("*");
-    while(emscripten_coroutine_next(co)) {
-        printf("%d-", i);
-        emscripten_coroutine_next(co2);
-        printf("%d-", i);
-    }
-    printf("*");
-    return 0;
-}
-'''
+    src = open(path_from_root('tests', 'test_coroutines.cpp')).read()
     for (k, v) in additional_settings.items():
       Settings.__setattr__(k, v)
-    self.do_run(src, '*0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
+    self.do_run(src, '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
   def test_coroutine_asyncify(self):
     self.do_test_coroutine({'ASYNCIFY': 1})
@@ -7456,7 +7419,8 @@ int main(int argc, char **argv) {
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
                    'unsupported with Wasm backend')
   def test_coroutine_emterpretify_async(self):
-    self.do_test_coroutine({'EMTERPRETIFY': 1, 'EMTERPRETIFY_ASYNC': 1})
+    # The same EMTERPRETIFY_WHITELIST should be in other.test_emterpreter_advise
+    self.do_test_coroutine({'EMTERPRETIFY': 1, 'EMTERPRETIFY_ASYNC': 1, 'EMTERPRETIFY_WHITELIST': ['_fib', '_f', '_g'], 'ASSERTIONS': 1})
 
   @no_emterpreter
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '

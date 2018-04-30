@@ -7,9 +7,12 @@ import time
 SANITY_FILE = CONFIG_FILE + '_sanity'
 commands = [[PYTHON, EMCC], [PYTHON, path_from_root('tests', 'runner.py'), 'blahblah']]
 
-# restore the config file and set it up for our uses
 def restore():
   shutil.copyfile(CONFIG_FILE + '_backup', CONFIG_FILE)
+
+# restore the config file and set it up for our uses
+def restore_and_set_up():
+  restore()
   # don't use the native optimizer from the emsdk - we want to test how it builds
   open(CONFIG_FILE, 'a').write('\nEMSCRIPTEN_NATIVE_OPTIMIZER = ""\n')
   # make LLVM_ROOT sensitive to the LLVM env var, as we test that
@@ -54,6 +57,7 @@ class sanity(RunnerCore):
   @classmethod
   def tearDownClass(self):
     super(RunnerCore, self).tearDownClass()
+    restore()
 
   def setUp(self):
     wipe()
@@ -87,7 +91,7 @@ class sanity(RunnerCore):
   def test_aaa_normal(self): # this should be the very first thing that runs. if this fails, everything else is irrelevant!
     for command in commands:
       # Your existing EM_CONFIG should work!
-      restore()
+      restore_and_set_up()
       self.check_working(command)
 
   def test_firstrun(self):
@@ -159,7 +163,7 @@ class sanity(RunnerCore):
     CLOSURE_WARNING = 'does not exist'
 
     # Sanity check should find closure
-    restore()
+    restore_and_set_up()
     output = self.check_working(EMCC)
     self.assertNotContained(CLOSURE_FATAL, output)
     self.assertNotContained(CLOSURE_WARNING, output)
@@ -177,7 +181,7 @@ class sanity(RunnerCore):
     output = self.check_working([EMCC, '-s', '--closure', '1'] + MINIMAL_HELLO_WORLD + ['-O2'], CLOSURE_FATAL)
 
     # With a working path, all is well
-    restore()
+    restore_and_set_up()
     try_delete('a.out.js')
     output = self.check_working([EMCC, '-s', '--closure', '1'] + MINIMAL_HELLO_WORLD + ['-O2'], '')
     assert os.path.exists('a.out.js'), output
@@ -185,7 +189,7 @@ class sanity(RunnerCore):
   def test_llvm(self):
     LLVM_WARNING = 'LLVM version appears incorrect'
 
-    restore()
+    restore_and_set_up()
 
     # Clang should report the version number we expect, and emcc should not warn
     assert check_clang_version()
@@ -193,7 +197,7 @@ class sanity(RunnerCore):
     assert LLVM_WARNING not in output, output
 
     # Fake a different llvm version
-    restore()
+    restore_and_set_up()
     f = open(CONFIG_FILE, 'a')
     f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake') + '"')
     f.close()
@@ -229,7 +233,7 @@ class sanity(RunnerCore):
     WARNING = 'fastcomp in use, but LLVM has not been built with the JavaScript backend as a target'
     WARNING2 = 'you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html'
 
-    restore()
+    restore_and_set_up()
 
     # Should see js backend during sanity check
     assert check_fastcomp()
@@ -238,7 +242,7 @@ class sanity(RunnerCore):
     assert WARNING2 not in output, output
 
     # Fake incorrect llc output, no mention of js backend
-    restore()
+    restore_and_set_up()
     f = open(CONFIG_FILE, 'a')
     f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake', 'bin') + '"')
     f.close()
@@ -308,7 +312,7 @@ class sanity(RunnerCore):
     output = self.check_working(EMCC, VERSION_WARNING)
     assert BUILD_VERSION_WARNING not in output
 
-    restore()
+    restore_and_set_up()
 
     self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'ASM_JS=0'], '''Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended''')
 
@@ -316,7 +320,7 @@ class sanity(RunnerCore):
     NODE_WARNING = 'node version appears too old'
     NODE_WARNING_2 = 'cannot check node version'
 
-    restore()
+    restore_and_set_up()
 
     # Clang should report the version number we expect, and emcc should not warn
     assert check_node_version()
@@ -324,7 +328,7 @@ class sanity(RunnerCore):
     assert NODE_WARNING not in output, output
 
     # Fake a different node version
-    restore()
+    restore_and_set_up()
     f = open(CONFIG_FILE, 'a')
     f.write('NODE_JS = "' + path_from_root('tests', 'fake', 'nodejs') + '"')
     f.close()
@@ -365,7 +369,7 @@ fi
     SANITY_FAIL_MESSAGE = 'sanity check failed to run'
 
     # emcc should check sanity if no ${EM_CONFIG}_sanity
-    restore()
+    restore_and_set_up()
     time.sleep(1)
     assert not os.path.exists(SANITY_FILE) # restore is just the settings, not the sanity
     output = self.check_working(EMCC)
@@ -411,7 +415,7 @@ fi
 
     # emcc should also check sanity if the file is outdated
     time.sleep(0.1)
-    restore()
+    restore_and_set_up()
     assert mtime(SANITY_FILE) < mtime(CONFIG_FILE)
     output = self.check_working(EMCC)
     self.assertContained(SANITY_MESSAGE, output)
@@ -419,7 +423,7 @@ fi
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
     # emcc should be configurable directly from EM_CONFIG without any config file
-    restore()
+    restore_and_set_up()
     config = open(CONFIG_FILE, 'r').read()
     os.environ['EM_CONFIG'] = config
     wipe()
@@ -453,7 +457,7 @@ fi
     for compiler in [EMCC]:
       print(compiler)
 
-      restore()
+      restore_and_set_up()
 
       Cache.erase()
       assert not os.path.exists(EMCC_CACHE)
@@ -491,7 +495,7 @@ fi
       finally:
         del os.environ['EMCC_DEBUG']
 
-    restore()
+    restore_and_set_up()
 
     def ensure_cache():
       self.do([PYTHON, EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
@@ -520,7 +524,7 @@ fi
     try_delete(CANONICAL_TEMP_DIR)
 
   def test_nostdincxx(self):
-    restore()
+    restore_and_set_up()
     Cache.erase()
 
     for compiler in [EMCC]:
@@ -541,7 +545,7 @@ fi
       assert err == err2, err + '\n\n\n\n' + err2
 
   def test_emconfig(self):
-    restore()
+    restore_and_set_up()
     
     (fd, custom_config_filename) = tempfile.mkstemp(prefix='.emscripten_config_')
 
@@ -569,7 +573,7 @@ fi
     self.assertContained('hello, world!', result)
 
   def test_emcc_ports(self):
-    restore()
+    restore_and_set_up()
 
     # listing ports
 
@@ -641,7 +645,7 @@ fi
         second_use()
 
   def test_native_optimizer(self):
-    restore()
+    restore_and_set_up()
 
     def build():
       return self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-O2'], 'running js post-opts')
@@ -724,7 +728,7 @@ fi
       del os.environ['EMCC_DEBUG']
 
   def test_embuilder(self):
-    restore()
+    restore_and_set_up()
 
     tests = [
       ([PYTHON, EMBUILDER], ['Emscripten System Builder Tool', 'build libc', 'native_optimizer'], True, []),
@@ -788,7 +792,7 @@ fi
   def test_d8_path(self):
     """ Test that running JS commands works for node, d8, and jsc and is not path dependent """
     # Fake some JS engines
-    restore()
+    restore_and_set_up()
 
     sample_script = path_from_root('tests', 'print_args.js')
 
@@ -834,7 +838,7 @@ fi
       del os.environ['EM_IGNORE_SANITY']
 
   def test_wacky_env(self):
-    restore()
+    restore_and_set_up()
 
     def build():
       return self.check_working([EMCC] + MINIMAL_HELLO_WORLD, '')
@@ -862,7 +866,7 @@ fi
     struct_info_file = path_from_root('src', 'struct_info.compiled.json')
     for debug in [1, 0]:
       print('debug', debug)
-      restore()
+      restore_and_set_up()
       before = open(struct_info_file).read()
       os.remove(struct_info_file)
       try:
@@ -876,7 +880,7 @@ fi
       assert len(after) == len(before), 'struct info must be already valid, recreating it should not alter anything (checking size, since order might change)'
 
   def test_vanilla(self):
-    restore()
+    restore_and_set_up()
     Cache.erase()
 
     try:
@@ -919,7 +923,7 @@ fi
       self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'asmjs-unknown-emscripten')
       del os.environ['EMCC_WASM_BACKEND']
       # check the current installed one is ok
-      restore()
+      restore_and_set_up()
       self.check_working(EMCC)
       output = self.check_working(EMCC, 'check tells us to use')
       if 'wasm backend' in output:
@@ -985,7 +989,7 @@ fi
 
     # check separate cache dirs are used
 
-    restore()
+    restore_and_set_up()
     self.check_working([EMCC], '')
 
     root_cache = os.path.expanduser('~/.emscripten_cache')
@@ -1010,7 +1014,7 @@ fi
 
   def test_wasm_backend_builds(self):
     # we can build a program using the wasm backend, rebuilding binaryen etc. as needed
-    restore()
+    restore_and_set_up()
     def check():
       print(self.do([PYTHON, EMCC, '--clear-cache']))
       print(self.do([PYTHON, EMCC, '--clear-ports']))
@@ -1039,7 +1043,7 @@ BINARYEN_ROOT = ''
       print('binaryen_root_in_config:', binaryen_root_in_config)
 
       def prep():
-        restore()
+        restore_and_set_up()
         print('clearing ports...')
         print(self.do([PYTHON, EMCC, '--clear-ports']))
         wipe()
@@ -1051,11 +1055,11 @@ BINARYEN_ROOT = ''
           assert '''BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN', ''))''' in config, config # setup created it to be ''
           print('created config:')
           print(config)
-          restore()
+          restore_and_set_up()
           config = open(CONFIG_FILE).read()
           config = config.replace('BINARYEN_ROOT', '''BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN', '')) # ''')
         else:
-          restore()
+          restore_and_set_up()
           config = open(CONFIG_FILE).read()
           config = config.replace('BINARYEN_ROOT', '#')
         print('modified config:')
