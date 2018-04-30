@@ -408,7 +408,7 @@ namespace emscripten {
         }
 
         template<typename... Args>
-        val operator()(Args&&... args) {
+        val operator()(Args&&... args) const {
             return internalCall(internal::_emval_call, std::forward<Args>(args)...);
         }
 
@@ -461,7 +461,7 @@ namespace emscripten {
         }
 
         template<typename Implementation, typename... Args>
-        val internalCall(Implementation impl, Args&&... args)const {
+        val internalCall(Implementation impl, Args&&... args) const {
             using namespace internal;
 
             WithPolicies<>::ArgTypeList<Args...> argList;
