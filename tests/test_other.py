@@ -111,7 +111,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # -dumpmachine
       output = run_process([PYTHON, compiler, '-dumpmachine'], stdout=PIPE, stderr=PIPE)
       self.assertContained(get_llvm_target(), output.stdout)
-      
+
       # -dumpversion
       output = run_process([PYTHON, compiler, '-dumpversion'], stdout=PIPE, stderr=PIPE)
       self.assertEqual(EMSCRIPTEN_VERSION + os.linesep, output.stdout, 'results should be identical')
@@ -4480,7 +4480,7 @@ int main()
 
   def test_strptime_symmetry(self):
     Building.emcc(path_from_root('tests','strptime_symmetry.cpp'), output_filename='a.out.js')
-    self.assertContained('TEST PASSED', run_js('a.out.js'))    
+    self.assertContained('TEST PASSED', run_js('a.out.js'))
 
   def test_truncate_from_0(self):
     open('src.cpp', 'w').write(r'''
@@ -6917,11 +6917,27 @@ int main() {
     print(check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', '-std=c++03']))
     self.assertContained('hello, world!', run_js('a.out.js'))
 
-  def test_dash_s_error(self):
-    # missing quotes
-    err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "EXTRA_EXPORTED_RUNTIME_METHODS=[addOnPostRun]"], stderr=PIPE, check=False).stderr
-    self.assertContained('NameError', err) # it failed
-    self.assertContained('one possible cause of this is missing quotation marks', err) # but we suggested the fix
+  def test_dash_s_unclosed_quote(self):
+    # Unclosed quote
+    err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "TEST_KEY='MISSING_QUOTE"], stderr=PIPE, check=False).stderr
+    self.assertNotContained('AssertionError', err) # Do not mention that it is an assertion error
+    self.assertContained('unclosed opened quoted string. expected final character to be "\'"', err)
+
+  def test_dash_s_single_quote(self):
+    # Only one quote
+    err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "TEST_KEY='"], stderr=PIPE, check=False).stderr
+    self.assertNotContained('AssertionError', err) # Do not mention that it is an assertion error
+    self.assertContained('unclosed opened quoted string.', err)
+
+  def text_dash_s_unclosed_list(self):
+    # Unclosed list
+    err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "TEST_KEY=[Value1, Value2"], stderr=PIPE, check=False).stderr
+    self.assertNotContained('AssertionError', err) # Do not mention that it is an assertion error
+    self.assertContained('unclosed opened string list. expected final character to be "]"', err)
+
+  def text_dash_s_valid_list(self):
+    err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "TEST_KEY=[Value1, \"Value2\"]"], stderr=PIPE, check=False).stderr
+    self.assertNotContained('a problem occured in evaluating the content after a "-s", specifically')
 
   def test_python_2_3(self): # check emcc/em++ can be called by any python
     # remove .py from EMCC(=emcc.py)
@@ -8233,6 +8249,9 @@ end
       except OSError:
         # Ignore missing python aliases.
         pass
+        
+  def test_ioctl_window_size(self):
+      self.do_other_test(os.path.join('other', 'ioctl', 'window_size'))
 
   def test_fd_closed(self):
     self.do_other_test(os.path.join('other', 'fd_closed'))
