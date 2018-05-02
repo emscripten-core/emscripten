@@ -6917,6 +6917,11 @@ int main() {
     print(check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', '-std=c++03']))
     self.assertContained('hello, world!', run_js('a.out.js'))
 
+  def test_dash_s_response_file_list(self):
+    open('response_file', 'w').write('["_main", "_malloc"]\n')
+    response_file = os.path.join(os.getcwd(), "response_file")
+    print(check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=@%s' % response_file, '-std=c++03']))
+
   def test_dash_s_unclosed_quote(self):
     # Unclosed quote
     err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "TEST_KEY='MISSING_QUOTE"], stderr=PIPE, check=False).stderr

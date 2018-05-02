@@ -2832,6 +2832,7 @@ def parse_value(text):
     return result
 
   if text[0] == '[':
+    text = text.rstrip()
     assert text[-1] == ']', 'unclosed opened string list. expected final character to be "]" in "%s"' % (text)
     inner = text[1:-1]
     if inner.strip() == "":
