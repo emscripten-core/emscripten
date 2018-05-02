@@ -22,7 +22,11 @@ services:
 before_install:
 - docker pull ubuntu:16.04
 
+install:
+- pip install flake8==3.4.1
+
 script:
+- flake8 tools/response_file.py
 - echo $TEST_TARGET
 - docker build --build-arg TEST_TARGET="$TEST_TARGET" .
 

@@ -1,14 +1,21 @@
-import os, logging
+import os
+import logging
+import shlex
+import tempfile
+
+from . import shared
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 if DEBUG == "0":
   DEBUG = None
 
-# Routes the given cmdline param list in args into a new response file and returns the filename to it.
-# The returned filename has a suffix '.rsp'.
+
 def create_response_file(args, directory):
-  import tempfile
-  from . import shared
+  """Routes the given cmdline param list in args into a new response file and
+  returns the filename to it.
+
+  The returned filename has a suffix '.rsp'.
+  """
   (response_fd, response_filename) = tempfile.mkstemp(prefix='emscripten_', suffix='.rsp', dir=directory, text=True)
   response_fd = os.fdopen(response_fd, "w")
 
@@ -18,17 +25,19 @@ def create_response_file(args, directory):
     logging.warning('Creating response file ' + response_filename + ': ' + contents)
   response_fd.write(contents)
   response_fd.close()
-  
-  # Register the created .rsp file to be automatically cleaned up once this process finishes, so that
-  # caller does not have to remember to do it.
+
+  # Register the created .rsp file to be automatically cleaned up once this
+  # process finishes, so that caller does not have to remember to do it.
   shared.configuration.get_temp_files().note(response_filename)
-  
+
   return response_filename
 
-# Reads a response file, and returns the list of cmdline params found in the file.
-# The parameter response_filename may start with '@'.
+
 def read_response_file(response_filename):
-  import shlex
+  """Reads a response file, and returns the list of cmdline params found in the
+  file.
+
+  The parameter response_filename may start with '@'."""
   if response_filename.startswith('@'):
     response_filename = response_filename[1:]
 
@@ -45,14 +54,13 @@ def read_response_file(response_filename):
 
   return args
 
+
 def substitute_response_files(args):
   """Substitute any response files found in args with their contents."""
-  found = True
-  while found:
-    found = False
-    for index in range(len(args)):
-      if args[index].startswith('@'):
-        found = True
-        new_args = read_response_file(args[index])
-        args[index:index+1] = new_args
-        break
+  new_args = []
+  for arg in args:
+    if arg.startswith('@'):
+      new_args += read_response_file(arg)
+    else:
+      new_args.append(arg)
+  return new_args
