@@ -1,2 +1,4 @@
 [flake8]
 ignore = E111,E114,E501
+# TODO: Remove some of these as we bring stuff into conformance
+exclude = ./third_party/,emmaken.py,./tools/scons/,./tools/ports/,./tests/

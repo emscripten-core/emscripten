@@ -1,0 +1,9 @@
+tools/response_file.py
+tools/wasm-sourcemap.py
+tools/clean_webconsole.py
+tools/emconfiguren.py
+tools/emdebug_cd_merger.py
+tools/emmakenxx.py
+tools/exec_llvm.py
+tools/find_bigvars.py
+tools/merge_pair.py

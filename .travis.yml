@@ -27,7 +27,7 @@ install:
 
 script:
   - set -o errexit
-  - flake8 tools/response_file.py tools/wasm-sourcemap.py
+  - cat .flake8_clean | xargs flake8
   - echo $TEST_TARGET
   - docker build --build-arg TEST_TARGET="$TEST_TARGET" .
 
