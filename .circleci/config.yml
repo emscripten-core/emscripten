@@ -145,6 +145,7 @@ workflows:
 
   build-test:
     jobs:
+      - flake8
       - build
       - test-other:
           requires:
