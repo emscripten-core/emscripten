@@ -6917,6 +6917,11 @@ int main() {
     print(check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', '-std=c++03']))
     self.assertContained('hello, world!', run_js('a.out.js'))
 
+  def test_dash_s_response_file_string(self):
+    open('response_file', 'w').write('"MyModule"\n')
+    response_file = os.path.join(os.getcwd(), "response_file")
+    print(check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'EXPORT_NAME=@%s' % response_file]))
+
   def test_dash_s_response_file_list(self):
     open('response_file', 'w').write('["_main", "_malloc"]\n')
     response_file = os.path.join(os.getcwd(), "response_file")
