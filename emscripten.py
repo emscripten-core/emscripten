@@ -2263,7 +2263,7 @@ def main(args, compiler_engine, cache, temp_files, DEBUG):
 
 
 def _main(args):
-  substitute_response_files(args)
+  args = substitute_response_files(args)
 
   parser = argparse.ArgumentParser(
     usage='%(prog)s [-h] [-H HEADERS] [-o OUTFILE] [-c COMPILER_ENGINE] [-s FOO=BAR]* infile',
