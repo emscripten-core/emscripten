@@ -57,10 +57,12 @@ def read_response_file(response_filename):
 
 def substitute_response_files(args):
   """Substitute any response files found in args with their contents."""
-  new_args = []
-  for arg in args:
-    if arg.startswith('@'):
-      new_args += read_response_file(arg)
-    else:
-      new_args.append(arg)
-  return new_args
+  found = True
+  while found:
+    found = False
+    for index in range(len(args)):
+      if args[index].startswith('@'):
+        found = True
+        new_args = read_response_file(args[index])
+        args[index:index + 1] = new_args
+        break
