@@ -2793,6 +2793,9 @@ def is_valid_abspath(options, path_name):
 
 
 def parse_value(text):
+  # Note that using response files can introduce whitespace, if the file
+  # has a newline at the end. For that reason, we rstrip() in relevant
+  # places here.
   def parse_string_value(text):
     first = text[0]
     if first == "'" or first == '"':
