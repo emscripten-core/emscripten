@@ -2796,6 +2796,7 @@ def parse_value(text):
   def parse_string_value(text):
     first = text[0]
     if first == "'" or first == '"':
+      text = text.rstrip()
       assert text[-1] == text[0] and len(text) > 1, 'unclosed opened quoted string. expected final character to be "%s" and length to be greater than 1 in "%s"' % (text[0],text)
       return text[1:-1]
     else:
@@ -2832,6 +2833,7 @@ def parse_value(text):
     return result
 
   if text[0] == '[':
+    text = text.rstrip()
     assert text[-1] == ']', 'unclosed opened string list. expected final character to be "]" in "%s"' % (text)
     inner = text[1:-1]
     if inner.strip() == "":

@@ -6917,6 +6917,16 @@ int main() {
     print(check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', '-std=c++03']))
     self.assertContained('hello, world!', run_js('a.out.js'))
 
+  def test_dash_s_response_file_string(self):
+    open('response_file', 'w').write('"MyModule"\n')
+    response_file = os.path.join(os.getcwd(), "response_file")
+    print(check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'EXPORT_NAME=@%s' % response_file]))
+
+  def test_dash_s_response_file_list(self):
+    open('response_file', 'w').write('["_main", "_malloc"]\n')
+    response_file = os.path.join(os.getcwd(), "response_file")
+    print(check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=@%s' % response_file, '-std=c++03']))
+
   def test_dash_s_unclosed_quote(self):
     # Unclosed quote
     err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "TEST_KEY='MISSING_QUOTE"], stderr=PIPE, check=False).stderr
@@ -6929,15 +6939,15 @@ int main() {
     self.assertNotContained('AssertionError', err) # Do not mention that it is an assertion error
     self.assertContained('unclosed opened quoted string.', err)
 
-  def text_dash_s_unclosed_list(self):
+  def test_dash_s_unclosed_list(self):
     # Unclosed list
     err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "TEST_KEY=[Value1, Value2"], stderr=PIPE, check=False).stderr
     self.assertNotContained('AssertionError', err) # Do not mention that it is an assertion error
     self.assertContained('unclosed opened string list. expected final character to be "]"', err)
 
-  def text_dash_s_valid_list(self):
+  def test_dash_s_valid_list(self):
     err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "TEST_KEY=[Value1, \"Value2\"]"], stderr=PIPE, check=False).stderr
-    self.assertNotContained('a problem occured in evaluating the content after a "-s", specifically')
+    self.assertNotContained('a problem occured in evaluating the content after a "-s", specifically', err)
 
   def test_python_2_3(self): # check emcc/em++ can be called by any python
     # remove .py from EMCC(=emcc.py)
