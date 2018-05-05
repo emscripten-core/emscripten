@@ -716,10 +716,8 @@ if has_preloaded:
         }
       };
       xhr.onerror = function(event) {
-        if (window.location.protocol === "file:") {
-          if (Module['setStatus']) Module['setStatus']('CORS May not be allowed on a file: URL. Use `python -m SimpleHTTPServer` to create a server at this location.');
-          throw new Error('CORS May not be allowed on a file: URL. Use `python -m SimpleHTTPServer` to create a server at this location.');
-        }
+        if (Module['setStatus']) Module['setStatus']('CORS May not be allowed on a file: URL. Use `python -m SimpleHTTPServer` to create a server at this location.');
+        throw new Error('CORS May not be allowed on a file: URL. Use `python -m SimpleHTTPServer` to create a server at this location.');
         throw new Error("NetworkError for: " + packageName);
       }
       xhr.onload = function(event) {
@@ -732,7 +730,6 @@ if has_preloaded:
       }; 
       xhr.send(null);
     };
-
     function handleError(error) {
       console.error('package error:', error);
     };
