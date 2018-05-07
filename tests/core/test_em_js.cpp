@@ -41,6 +41,14 @@ EM_JS(int, user_separator, (), {
   return 15;
 });
 
+EM_JS(const char*, return_str, (), {
+  var jsString = 'hello from js';
+  var lengthBytes = jsString.length+1;
+  var stringOnWasmHeap = _malloc(lengthBytes);
+  stringToUTF8(jsString, stringOnWasmHeap, lengthBytes+1);
+  return stringOnWasmHeap;
+});
+
 int main() {
   printf("BEGIN\n");
   noarg();
@@ -56,6 +64,8 @@ int main() {
   printf("    skip_args returned: %f\n", skip_args(5, 7));
   printf("    add_outer returned: %f\n", add_outer(5.5, 7.0, 14.375));
   printf("    user_separator returned: %d\n", user_separator());
+
+  printf("    return_str returned: %s\n", return_str());
 
   printf("END\n");
   return 0;
