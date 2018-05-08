@@ -716,9 +716,7 @@ if has_preloaded:
         }
       };
       xhr.onerror = function(event) {
-        if (Module['setStatus']) Module['setStatus']('CORS May not be allowed on a file: URL. Use `python -m SimpleHTTPServer` to create a server at this location.');
-        throw new Error('CORS May not be allowed on a file: URL. Use `python -m SimpleHTTPServer` to create a server at this location.');
-        throw new Error("NetworkError for: " + packageName);
+        throw new Error('CORS May not be allowed on a file: URL. Use `python -m SimpleHTTPServer` to create a server at this location.\nNetworkError for: ' + packageName);
       }
       xhr.onload = function(event) {
         if (xhr.status == 200 || xhr.status == 304 || xhr.status == 206 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
