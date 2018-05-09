@@ -114,7 +114,6 @@ def build(src, result_libs, args=[]):
       with_forced.append(result_lib)
 
     if need_forced:
-      print(str(need_forced))
       if os.environ.get('EMCC_FORCE_STDLIBS'):
         print('skipping forced (.bc) versions of .a libraries, since EMCC_FORCE_STDLIBS already set')
       else:

@@ -1614,12 +1614,12 @@ class Building(object):
       env[k] = v
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
       try:
-        Building.configure(configure + configure_args, env=env, stdout=open(os.path.join(project_dir, 'configure_'), 'w') if EM_BUILD_VERBOSE_LEVEL < 2 else None,
+        Building.configure(configure + configure_args, env=env, stdout=open(os.path.join(project_dir, 'configure_out'), 'w') if EM_BUILD_VERBOSE_LEVEL < 2 else None,
                                                                 stderr=open(os.path.join(project_dir, 'configure_err'), 'w') if EM_BUILD_VERBOSE_LEVEL < 1 else None)
       except subprocess.CalledProcessError as e:
         pass # Ignore exit code != 0
     def open_make_out(i, mode='r'):
-      return open(os.path.join(project_dir, 'make_' + str(i)), mode)
+      return open(os.path.join(project_dir, 'make_out' + str(i)), mode)
 
     def open_make_err(i, mode='r'):
       return open(os.path.join(project_dir, 'make_err' + str(i)), mode)

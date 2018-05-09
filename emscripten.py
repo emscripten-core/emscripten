@@ -14,6 +14,7 @@ if __name__ == '__main__':
 import difflib
 import os, sys, json, argparse, subprocess, re, time, logging
 import shutil
+import pprint
 from collections import OrderedDict
 
 from tools import shared
@@ -1934,9 +1935,9 @@ def read_metadata_wast(wast, DEBUG):
 
 
 def create_metadata_wasm(metadata_raw, DEBUG):
-  if DEBUG: logging.debug("METAraw %s", metadata_raw)
+  if DEBUG: logging.debug("Metadata raw: " + metadata_raw)
   metadata = load_metadata(metadata_raw)
-  if DEBUG: logging.debug(repr(metadata))
+  if DEBUG: logging.debug("Metadata parsed: " + pprint.pformat(metadata))
   return metadata
 
 
@@ -1946,7 +1947,7 @@ def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata, se
   all_exported_functions = set(shared.expand_response(settings['EXPORTED_FUNCTIONS'])) # both asm.js and otherwise
   for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
     all_exported_functions.add('_' + additional_export)
-  all_implemented = metadata['implementedFunctions'] + list(forwarded_json['Functions']['implementedFunctions'].keys()) # XXX perf?
+  all_implemented = get_all_implemented(forwarded_json, metadata)
 
   export_bindings = settings['EXPORT_BINDINGS']
   export_all = settings['EXPORT_ALL']
