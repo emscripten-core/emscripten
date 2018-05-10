@@ -735,6 +735,7 @@ fi
     tests = [
       ([PYTHON, EMBUILDER], ['Emscripten System Builder Tool', 'build libc', 'native_optimizer'], True, []),
       ([PYTHON, EMBUILDER, 'build', 'waka'], 'ERROR', False, []),
+      ([PYTHON, EMBUILDER, 'build', 'struct_info'], ['building and verifying struct_info', 'success'], True, ['generated_struct_info.json']),
       ([PYTHON, EMBUILDER, 'build', 'libc'], ['building and verifying libc', 'success'], True, ['libc.bc']),
       ([PYTHON, EMBUILDER, 'build', 'libc-mt'], ['building and verifying libc-mt', 'success'], True, ['libc-mt.bc']),
       ([PYTHON, EMBUILDER, 'build', 'dlmalloc'], ['building and verifying dlmalloc', 'success'], True, ['dlmalloc.bc']),
@@ -863,23 +864,6 @@ fi
       test()
     finally:
       del os.environ['EMCC_FORCE_STDLIBS']
-
-  def test_struct_info(self):
-    struct_info_file = path_from_root('src', 'struct_info.compiled.json')
-    for debug in [1, 0]:
-      print('debug', debug)
-      restore_and_set_up()
-      before = open(struct_info_file).read()
-      os.remove(struct_info_file)
-      try:
-        if debug: os.environ['EMCC_DEBUG'] = '1'
-        out = self.check_working([EMCC] + MINIMAL_HELLO_WORLD, '')
-      finally:
-        if debug: del os.environ['EMCC_DEBUG']
-      self.assertContained('hello, world!', run_js('a.out.js'))
-      assert os.path.exists(struct_info_file), out # removing the struct info file forces a rebuild
-      after = open(struct_info_file).read()
-      assert len(after) == len(before), 'struct info must be already valid, recreating it should not alter anything (checking size, since order might change)'
 
   def test_vanilla(self):
     restore_and_set_up()

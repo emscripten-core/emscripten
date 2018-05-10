@@ -2251,13 +2251,16 @@ def main(args, compiler_engine, cache, temp_files, DEBUG):
   # libraries
   libraries = args.libraries[0].split(',') if len(args.libraries) else []
 
-  settings.setdefault('STRUCT_INFO', shared.path_from_root('src', 'struct_info.compiled.json'))
-  struct_info = settings['STRUCT_INFO']
-
-  if not os.path.exists(struct_info) and not settings['BOOTSTRAPPING_STRUCT_INFO'] and not settings['ONLY_MY_CODE']:
-    if DEBUG: logging.debug('  emscript: bootstrapping struct info to %s', struct_info)
-    shared.Building.ensure_struct_info(struct_info)
-    if DEBUG: logging.debug('  emscript: bootstrapping struct info complete')
+  if not settings['BOOTSTRAPPING_STRUCT_INFO'] and not settings['ONLY_MY_CODE']:
+    generated_struct_info_name = 'generated_struct_info.json'
+    def ensure_struct_info():
+      with ToolchainProfiler.profile_block('gen_struct_info'):
+        from tools import gen_struct_info
+        out = shared.Cache.get_path(generated_struct_info_name)
+        gen_struct_info.main(['-qo', out, path_from_root('src', 'struct_info.json')])
+        return out
+    settings['STRUCT_INFO'] = shared.Cache.get(generated_struct_info_name, ensure_struct_info, extension='json')
+  # do we need an else, to define it for the bootstrap case?
 
   emscripter = emscript_wasm_backend if settings['WASM_BACKEND'] else emscript
 

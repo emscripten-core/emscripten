@@ -2337,15 +2337,6 @@ class Building(object):
     return False
 
   @staticmethod
-  def ensure_struct_info(info_path):
-    if os.path.exists(info_path): return
-    with ToolchainProfiler.profile_block('gen_struct_info'):
-      Cache.ensure()
-
-      from . import gen_struct_info
-      gen_struct_info.main(['-qo', info_path, path_from_root('src/struct_info.json')])
-
-  @staticmethod
   # Given the name of a special Emscripten-implemented system library, returns an array of absolute paths to JS library
   # files inside emscripten/src/ that corresponds to the library name.
   def path_to_system_js_libraries(library_name):
