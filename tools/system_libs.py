@@ -501,7 +501,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   force.add(malloc_name())
 
   # if building to wasm, we need more math code, since we have less builtins
-  if shared.Settings.BINARYEN:
+  if shared.Settings.WASM:
     system_libs += [('wasm-libc', 'bc', create_wasm_libc, wasm_libc_symbols, [], False)]
     # if libc is included, we definitely must be, as it might need us
     for data in system_libs:
@@ -553,7 +553,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # Handle backend compiler_rt separately because it is not a bitcode system lib like the others.
   # Here, just ensure that it's in the cache.
-  if shared.Settings.BINARYEN and shared.Settings.WASM_BACKEND:
+  if shared.Settings.WASM and shared.Settings.WASM_BACKEND:
     shared.Cache.get('wasm_compiler_rt.a', lambda: create_wasm_compiler_rt('wasm_compiler_rt.a'), extension='a')
     shared.Cache.get('wasm_libc_rt.a', lambda: create_wasm_libc_rt('wasm_libc_rt.a'), extension='a')
 

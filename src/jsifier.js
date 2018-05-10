@@ -441,7 +441,7 @@ function JSify(data, functionsOnly) {
           print('for (var i = gb; i < gb + {{{ STATIC_BUMP }}}; ++i) HEAP8[i] = 0;\n');
           print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n'); // comment as metadata only
         }
-        if (BINARYEN) {
+        if (WASM) {
           // export static base and bump, needed for linking in wasm binary's memory, dynamic linking, etc.
           print('var STATIC_BUMP = {{{ STATIC_BUMP }}};');
           print('Module["STATIC_BASE"] = STATIC_BASE;');

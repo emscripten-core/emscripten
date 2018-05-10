@@ -3,7 +3,7 @@ import os, shutil, logging
 TAG = 'version_47'
 
 def needed(settings, shared, ports):
-  if not settings.BINARYEN: return False
+  if not settings.WASM: return False
   try:
     if shared.BINARYEN_ROOT: # if defined, and not falsey, we don't need the port
       logging.debug('binaryen root already set to ' + shared.BINARYEN_ROOT)

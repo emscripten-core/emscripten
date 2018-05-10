@@ -188,7 +188,7 @@ class RunnerCore(unittest.TestCase):
       return int(self.emcc_args[self.emcc_args.index('--memory-init-file')+1])
     else:
       # side modules handle memory differently; binaryen puts the memory in the wasm module
-      return ('-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args) and not (Settings.SIDE_MODULE or Settings.BINARYEN)
+      return ('-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args) and not (Settings.SIDE_MODULE or Settings.WASM)
 
   def set_temp_dir(self, temp_dir):
     self.temp_dir = temp_dir
@@ -477,6 +477,13 @@ class RunnerCore(unittest.TestCase):
     line = [line for line in out.split('\n') if '[' + what + ']' in line][0].strip()
     ret = line.split(':')[1].strip()
     return int(ret)
+
+  def get_wasm_text(self, wasm_binary):
+    return run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), wasm_binary], stdout=PIPE).stdout
+
+  def is_exported_in_wasm(self, name, wasm):
+    wat = self.get_wasm_text(wasm)
+    return ('(export "%s"' % name) in wat
 
   def run_generated_code(self, engine, filename, args=[], check_timeout=True, output_nicerizer=None, assert_returncode=0):
     stdout = os.path.join(self.get_dir(), 'stdout') # use files, as PIPE can get too full and hang us
@@ -798,7 +805,7 @@ class BrowserCore(RunnerCore):
   @classmethod
   def setUpClass(self):
     super(BrowserCore, self).setUpClass()
-    self.also_wasm = os.environ.get('EMCC_BROWSER_ALSO_WASM', '0') == '1'
+    self.also_asmjs = os.environ.get('EMCC_BROWSER_ALSO_ASMJS', '0') == '1'
     self.test_port = int(os.environ.get('EMCC_BROWSER_TEST_PORT', '8888'))
     self.harness_port = int(os.environ.get('EMCC_BROWSER_HARNESS_PORT', '9999'))
     if not has_browser(): return
@@ -983,12 +990,16 @@ class BrowserCore(RunnerCore):
 ''' % (self.test_port, basename))
 
   def btest(self, filename, expected=None, reference=None, force_c=False, reference_slack=0, manual_reference=False, post_build=None,
-            args=[], outfile='test.html', message='.', also_proxied=False, url_suffix='', timeout=None, also_wasm=True): # TODO: use in all other tests
+            args=[], outfile='test.html', message='.', also_proxied=False, url_suffix='', timeout=None):
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
     filepath = path_from_root('tests', filename) if not filename_is_src else ('main.c' if force_c else 'main.cpp')
     temp_filepath = os.path.join(self.get_dir(), os.path.basename(filepath))
+    # when self.also_asmjs, we run tests in asm.js mode too, and not just the default wasm.
+    # otherwise, for now we run pthreads tests just in asm.js, no wasm, since wasm doesn't work yet.
+    if not self.also_asmjs and 'WASM=0' not in args and 'USE_PTHREADS' in str(args):
+      args += ['-s', 'WASM=0']
     original_args = args[:]
     if filename_is_src:
       with open(temp_filepath, 'w') as f: f.write(src)
@@ -1011,14 +1022,9 @@ class BrowserCore(RunnerCore):
     if post_build: post_build()
     if not isinstance(expected, list): expected = [expected]
     self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout)
-    if also_wasm and self.also_wasm:
-      wasm_args = args + ['-s', 'WASM=1']
-      # Filter out separate-asm, which is implied by wasm
-      wasm_args = [a for a in wasm_args if a != '--separate-asm']
-      # wasm doesn't support USE_PTHREADS=2
-      wasm_args = ['USE_PTHREADS=1' if a == 'USE_PTHREADS=2' else a for a in wasm_args]
+    if self.also_asmjs and not 'WASM=0' in args:
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
-                 wasm_args, outfile, message, also_proxied=False, timeout=timeout, also_wasm=False)
+                 args + ['-s', 'WASM=0'], outfile, message, also_proxied=False, timeout=timeout)
     if also_proxied:
       print('proxied...')
       if reference:

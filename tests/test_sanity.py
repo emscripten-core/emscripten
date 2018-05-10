@@ -529,13 +529,14 @@ fi
 
     for compiler in [EMCC]:
       print(compiler)
+      run_process([PYTHON, EMCC] + MINIMAL_HELLO_WORLD + ['-v']) # run once to ensure binaryen port is all ready
       output = run_process([PYTHON, EMCC] + MINIMAL_HELLO_WORLD + ['-v'], stdout=PIPE, stderr=PIPE)
       out = output.stdout
       err = output.stderr
       output2 = run_process([PYTHON, EMCC] + MINIMAL_HELLO_WORLD + ['-v', '-nostdinc++'], stdout=PIPE, stderr=PIPE)
       out2 = output2.stdout
       err2 = output2.stderr
-      assert out == out2
+      self.assertIdentical(out, out2)
       def focus(e):
         assert 'search starts here:' in e, e
         assert e.count('End of search list.') == 1, e
@@ -604,14 +605,15 @@ fi
         assert not os.path.exists(PORTS_DIR)
 
         # Building a file that doesn't need ports should not trigger anything
-        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp')])
+        # (avoid wasm to avoid the binaryen port)
+        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'WASM=0'])
         print('no', output)
-        assert RETRIEVING_MESSAGE not in output
+        assert RETRIEVING_MESSAGE not in output, output
         assert BUILDING_MESSAGE not in output
         assert not os.path.exists(PORTS_DIR)
 
         # Building a file that need a port does trigger stuff
-        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'WASM=0', '-s', 'USE_SDL=2'])
         print('yes', output)
         assert RETRIEVING_MESSAGE in output, output
         assert BUILDING_MESSAGE in output, output
@@ -619,7 +621,7 @@ fi
 
         def second_use():
           # Using it again avoids retrieve and build
-          output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+          output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'WASM=0', '-s', 'USE_SDL=2'])
           assert RETRIEVING_MESSAGE not in output, output
           assert BUILDING_MESSAGE not in output, output
 
@@ -637,7 +639,7 @@ fi
         z.write(os.path.join('old-sub', 'a.txt'))
         z.write(os.path.join('old-sub', 'b.txt'))
         z.close()
-        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'WASM=0', '-s', 'USE_SDL=2'])
         assert RETRIEVING_MESSAGE in output, output
         assert BUILDING_MESSAGE in output, output
         assert os.path.exists(PORTS_DIR)
@@ -648,7 +650,7 @@ fi
     restore_and_set_up()
 
     def build():
-      return self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-O2'], 'running js post-opts')
+      return self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-O2', '-s', 'WASM=0'], 'running js post-opts')
 
     def test():
       self.assertContained('hello, world!', run_js('a.out.js'))
