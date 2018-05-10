@@ -10,6 +10,9 @@ Not all changes are documented here. In particular, new features, user-oriented 
 Current Trunk
 -------------
 
+v1.38.0: 05/09/2018
+-------------------
+
 v1.37.40: 05/07/2018
 --------------------
  - Fix regression in 1.37.39 on  -s X=@file  parsing (see #6497, #6436)
