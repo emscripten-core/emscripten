@@ -60,22 +60,14 @@ To build the Fastcomp code from source:
 		mkdir build
 		cd build
 	
-- Configure the build using *either* *cmake* or the *configure* script:
-			
-	-  Using *cmake*: 
+- Configure the build using *cmake*:
 
-		::
-				
-			cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="X86;JSBackend" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF -DCLANG_INCLUDE_TESTS=OFF
+	::
 			
-		.. note:: On Windows add the ``-G "Visual Studio 10 Win64"`` directive to build using Visual Studio (Visual Studio 2011 and 2012 do NOT work).
+		cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="host;JSBackend" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF -DCLANG_INCLUDE_TESTS=OFF
+		
+	.. note:: On Windows you will need Visual Studio 2015 or newer to build.
 
-	- Using *configure* (Linux/Mac only): 
-		
-		::
-		
-			../configure --enable-optimized --disable-assertions --enable-targets=host,js
-			
 - Determine the number of available cores on your system (Emscripten can run many operations in parallel, so using more cores may have a significant impact on compilation time):
 
 	- On Mac OS X you can get the number of cores using: **Apple menu | About this mac | More info | System report**. The **Hardware overview** on the resulting dialog includes a *Total number of cores* entry.
