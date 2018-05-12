@@ -1,22 +1,3 @@
-#if NO_EXIT_RUNTIME == 1
-T1:NO_EXIT_RUNTIME == 1
-#else
-T1:(else) NO_EXIT_RUNTIME != 1
-#endif 
-#if NO_EXIT_RUNTIME != 1
-T2:NO_EXIT_RUNTIME != 1
-#else
-T2:(else) NO_EXIT_RUNTIME == 1
-#endif
-#if NO_EXIT_RUNTIME < 2
-T3:NO_EXIT_RUNTIME < 2
-#else
-T3:(else) NO_EXIT_RUNTIME >= 2
-#endif
-#if NO_EXIT_RUNTIME > 1
-T4:NO_EXIT_RUNTIME > 1
-#else
-T4:(else) NO_EXIT_RUNTIME <= 1
-#endif
+#include "test_python_preprocess1.html"
 
 {{{ SCRIPT }}}

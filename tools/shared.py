@@ -2742,10 +2742,10 @@ def read_and_preprocess(filename):
   f = open(filename, 'r').read()
 #  return f
 
-  pos = 0
   include_pattern = re.compile('^#include\s*["<](.*)[">]\s?$', re.MULTILINE)
+  if_else_pattern = re.compile('^\s*#\s*(if|else|endif)\s*(!)?([a-zA-Z_]\w*)?\s*(==|!=|<|>)?\s*([\'\"])?([^\'\"]*)?[\'\"]?', re.UNICODE)
   while(1):
-    m = include_pattern.search(f, pos)
+    m = include_pattern.search(f)
     if not m:
       break
     included_file = open(os.path.join(os.path.dirname(filename), m.groups(0)[0]), 'r').read()
@@ -2755,35 +2755,40 @@ def read_and_preprocess(filename):
   ppfile = ""
   showStack = [True]
   for line in f.split('\n'):
-    if '#if' in line:
-      (attr, op, value) = line.split(' ')[1:]
-#      print('Check Setting: %s, Op: %s, Value: %s' % (attr, op, value))
+    #print('Showstack', showStack)
+    m = if_else_pattern.match(line)
+    (tok, unot, attr, op, quot, value) = m.groups('') if m else ('','','','','','')
+    #print('Tok: %s, Unary Not: %s, Setting: %s, Op: %s, Quote: %s, Value: %s' % (tok, unot, attr, op, quot, value))
+    if tok == 'if':
       try:
-        setting = int(getattr(Settings, attr))
-        value = int(value)
-#        print('Setting Value: %s' % setting)
-#        print(setting == value)
-        if op == '==':
-          showStack.append(True if setting == value else False)
-        elif op == '!=':
-          showStack.append(True if setting != value else False)
-        elif op == '<':
-          showStack.append(True if setting < value else False)
-        elif op == '>':
-          showStack.append(True if setting > value else False)
+        setting = getattr(Settings, attr)
+        #print('Setting Value: %s' % setting)
+        if op:
+          if not quot:
+            setting = int(setting)
+            value = int(value)
+          if op == '==':
+            showStack.append(True if setting == value else False)
+          elif op == '!=':
+            showStack.append(True if setting != value else False)
+          elif op == '<':
+            showStack.append(True if setting < value else False)
+          elif op == '>':
+            showStack.append(True if setting > value else False)
+        else:
+          if unot == '!':
+            showStack.append(False if setting else True)
+          else:
+            showStack.append(True if setting else False)
       except AttributeError:
-#        print('Exception!')
+        #print('Exception!')
         showStack.append(False)
-    elif '#else' in line:
+    elif tok == 'else':
       showStack[-1] = not showStack[-1]
-    elif '#endif' in line:
+    elif tok == 'endif':
       showStack.pop()
     elif showStack[-1]:
       ppfile += line + '\n'
-#      print('Yep: %s' % line)
-#    else:
-#      print('Nope! %s' % line)
-
   return ppfile
 
 # Generates a suitable fetch-worker.js script from the given input source JS file (which is an asm.js build output),
