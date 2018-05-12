@@ -933,7 +933,7 @@ function abortStackOverflow(allocSize) {
 
 #if ABORTING_MALLOC
 function abortOnCannotGrowMemory() {
-#if BINARYEN
+#if WASM
   abort('Cannot enlarge memory arrays. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
 #else
   abort('Cannot enlarge memory arrays. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or (4) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
@@ -1086,7 +1086,7 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
 #endif
 
 #if USE_PTHREADS
-#if !BINARYEN
+#if !WASM
 if (typeof SharedArrayBuffer !== 'undefined') {
   if (!ENVIRONMENT_IS_PTHREAD) buffer = new SharedArrayBuffer(TOTAL_MEMORY);
   // Currently SharedArrayBuffer does not have a slice() operation, so polyfill it in.
@@ -1150,7 +1150,7 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 }
 
 updateGlobalBufferViews();
-#endif // !BINARYEN
+#endif // !WASM
 #else // USE_PTHREADS
 
 #if SPLIT_MEMORY == 0
@@ -1162,7 +1162,7 @@ if (Module['buffer']) {
 #endif
 } else {
   // Use a WebAssembly memory where available
-#if BINARYEN
+#if WASM
   if (typeof WebAssembly === 'object' && typeof WebAssembly.Memory === 'function') {
 #if ASSERTIONS
     assert(TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
@@ -1181,7 +1181,7 @@ if (Module['buffer']) {
 #endif // ALLOW_MEMORY_GROWTH
     buffer = Module['wasmMemory'].buffer;
   } else
-#endif // BINARYEN
+#endif // WASM
   {
     buffer = new ArrayBuffer(TOTAL_MEMORY);
   }
@@ -1858,7 +1858,7 @@ addOnPreRun(function() {
     }
   }
   // if we can load dynamic libraries synchronously, do so, otherwise, preload
-#if BINARYEN
+#if WASM
   if (Module['dynamicLibraries'] && Module['dynamicLibraries'].length > 0 && !Module['readBinary']) {
     // we can't read binary data synchronously, so preload
     addRunDependency('preload_dynamicLibraries');
@@ -1971,7 +1971,7 @@ var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
 
 #include "URIUtils.js"
 
-#if BINARYEN
+#if WASM
 function integrateWasmJS() {
   // wasm.js has several methods for creating the compiled code module here:
   //  * 'native-wasm' : use native WebAssembly support in the browser
@@ -2165,6 +2165,12 @@ function integrateWasmJS() {
 
   function doNativeWasm(global, env, providedBuffer) {
     if (typeof WebAssembly !== 'object') {
+#if BINARYEN_METHOD == 'native-wasm'
+#if ASSERTIONS
+      // when the method is just native-wasm, our error message can be very specific
+      abort('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.');
+#endif
+#endif
       Module['printErr']('no native wasm support detected');
       return false;
     }
@@ -2443,7 +2449,7 @@ function integrateWasmJS() {
     var exports;
 #if BINARYEN_METHOD == 'native-wasm'
     exports = doNativeWasm(global, env, providedBuffer);
-#else
+#else // native-wasm
 #if BINARYEN_METHOD == 'asmjs'
     exports = doJustAsm(global, env, providedBuffer);
 #else
@@ -2468,10 +2474,14 @@ function integrateWasmJS() {
         abort('bad method: ' + curr);
       }
     }
-#endif
-#endif
+#endif // asmjs
+#endif // native-wasm
 
-    if (!exports) abort('no binaryen method succeeded. consider enabling more options, like interpreting, if you want that: https://github.com/kripken/emscripten/wiki/WebAssembly#binaryen-methods');
+#if ASSERTIONS
+    assert(exports, 'no binaryen method succeeded. consider enabling more options, like interpreting, if you want that: https://github.com/kripken/emscripten/wiki/WebAssembly#binaryen-methods');
+#else
+    assert(exports, 'no binaryen method succeeded.');
+#endif
 
 #if RUNTIME_LOGGING
     Module['printErr']('binaryen method succeeded.');

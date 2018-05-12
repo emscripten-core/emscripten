@@ -2337,15 +2337,6 @@ class Building(object):
     return False
 
   @staticmethod
-  def ensure_struct_info(info_path):
-    if os.path.exists(info_path): return
-    with ToolchainProfiler.profile_block('gen_struct_info'):
-      Cache.ensure()
-
-      from . import gen_struct_info
-      gen_struct_info.main(['-qo', info_path, path_from_root('src/struct_info.json')])
-
-  @staticmethod
   # Given the name of a special Emscripten-implemented system library, returns an array of absolute paths to JS library
   # files inside emscripten/src/ that corresponds to the library name.
   def path_to_system_js_libraries(library_name):
@@ -2406,10 +2397,10 @@ class Building(object):
     # fetch the port, so we have binaryen set up. indicate we need binaryen
     # using the settings
     from . import system_libs
-    old = Settings.BINARYEN
-    Settings.BINARYEN = 1
+    old = Settings.WASM
+    Settings.WASM = 1
     system_libs.get_port('binaryen', Settings)
-    Settings.BINARYEN = old
+    Settings.WASM = old
 
   @staticmethod
   def get_binaryen_bin():
@@ -2485,7 +2476,7 @@ class JS(object):
       return 'Math_fround(0)'
     elif sig == 'j':
       if settings:
-        assert settings['BINARYEN'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
+        assert settings['WASM'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
       return 'i64(0)'
     elif sig == 'F':
       return 'SIMD_Float32x4_check(SIMD_Float32x4(0,0,0,0))'
@@ -2521,7 +2512,7 @@ class JS(object):
       return '+' + value
     elif sig == 'j':
       if settings:
-        assert settings['BINARYEN'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
+        assert settings['WASM'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
       return 'i64(' + value + ')'
     elif sig == 'F':
       return 'SIMD_Float32x4_check(' + value + ')'

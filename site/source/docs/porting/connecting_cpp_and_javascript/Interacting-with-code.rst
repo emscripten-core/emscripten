@@ -21,6 +21,7 @@ JavaScript and compiled C or C++:
 - Call JavaScript functions from **C/C++**:
 
   - :ref:`Using emscripten_run_script() <interacting-with-code-call-javascript-from-native>`.
+  - :ref:`Using EM_JS() <interacting-with-code-call-javascript-from-native>` (faster).
   - :ref:`Using EM_ASM() <interacting-with-code-call-javascript-from-native>` (faster).
   - :ref:`Using a C API implemented in JavaScript <implement-c-in-javascript>`.
   - :ref:`As function pointers from C <interacting-with-code-call-function-pointers-from-c>`.
@@ -257,9 +258,30 @@ following JavaScript:
 
 
 A faster way to call JavaScript from C is to write "inline JavaScript",
-using :c:func:`EM_ASM` (and related macros). These are used in a similar
-manner to inline assembly code. The "alert" example above might be
-written using inline JavaScript as:
+using :c:func:`EM_JS` or :c:func:`EM_ASM` (and related macros).
+
+EM_JS is used to declare JavaScript functions from inside a C file. The "alert"
+example might be written using EM_JS like:
+
+.. code-block:: c++
+
+   #include <emscripten.h>
+
+   EM_JS(void, call_alert, (), {
+     alert('hello world!');
+     throw 'all done';
+   });
+
+   int main() {
+     call_alert();
+     return 0;
+   }
+
+EM_JS's implementation is essentially a shorthand for :ref:`implementing a
+JavaScript library<implement-c-in-javascript>`.
+
+EM_ASM is used in a similar manner to inline assembly code. The "alert" example
+might be written with inline JavaScript as:
 
 .. code-block:: c++
 

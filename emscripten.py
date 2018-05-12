@@ -459,7 +459,7 @@ def create_backend_args(infile, temp_js, settings):
     args += ['-emscripten-asyncify-whitelist=' + ','.join(settings['ASYNCIFY_WHITELIST'])]
   if settings['NO_EXIT_RUNTIME']:
     args += ['-emscripten-no-exit-runtime']
-  if settings['BINARYEN']:
+  if settings['WASM']:
     args += ['-emscripten-wasm']
     if shared.Building.is_wasm_only():
       args += ['-emscripten-only-wasm']
@@ -571,7 +571,7 @@ def memory_and_global_initializers(pre, metadata, mem_init, settings):
 
   if settings['SIDE_MODULE']:
     pre = pre.replace('GLOBAL_BASE', 'gb')
-  if settings['SIDE_MODULE'] or settings['BINARYEN']:
+  if settings['SIDE_MODULE'] or settings['WASM']:
     pre = pre.replace('{{{ STATIC_BUMP }}}', str(staticbump))
 
   return pre
@@ -647,7 +647,7 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
       funcs += ['setDynamicTop']
     if not settings['RELOCATABLE']:
       funcs += ['setTempRet0', 'getTempRet0']
-    if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
+    if not (settings['WASM'] and settings['SIDE_MODULE']):
       funcs += ['setThrew']
     if settings['EMTERPRETIFY']:
       funcs += ['emterpret']
@@ -669,13 +669,16 @@ def proxy_debug_print(call_type, settings):
   return ''
 
 def include_asm_consts(pre, forwarded_json, metadata, settings):
-  if settings['BINARYEN'] and settings['SIDE_MODULE']:
+  if settings['WASM'] and settings['SIDE_MODULE']:
     assert len(metadata['asmConsts']) == 0, 'EM_ASM is not yet supported in shared wasm module (it cannot be stored in the wasm itself, need some solution)'
 
   asm_consts, all_sigs, call_types = all_asm_consts(metadata)
   asm_const_funcs = []
   for s in range(len(all_sigs)):
     sig = all_sigs[s]
+    if 'j' in sig:
+      logging.error('emscript: EM_ASM should not receive i64s as inputs, they are not valid in JS')
+      sys.exit(1)
     call_type = call_types[s] if s < len(call_types) else ''
     if '_emscripten_asm_const_' + call_type + sig in forwarded_json['Functions']['libraryFunctions']: continue # Only one invoker needs to be emitted for each ASM_CONST (signature x call_type) item
     forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + call_type + sig] = 1
@@ -859,7 +862,7 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
       # when emulating function pointers, we don't need wrappers
       # but if relocating, then we also have the copies in-module, and do
       # in wasm we never need wrappers though
-      if clean_item not in implemented_functions and not (settings['EMULATED_FUNCTION_POINTERS'] and not settings['RELOCATABLE']) and not settings['BINARYEN']:
+      if clean_item not in implemented_functions and not (settings['EMULATED_FUNCTION_POINTERS'] and not settings['RELOCATABLE']) and not settings['WASM']:
         # this is imported into asm, we must wrap it
         call_ident = clean_item
         if call_ident in metadata['redirects']: call_ident = metadata['redirects'][call_ident]
@@ -933,7 +936,7 @@ function jsCall_%s_%s(%s) {
 def create_mftCall_funcs(function_table_data, settings):
   mftCall_funcs = []
   if settings['EMULATED_FUNCTION_POINTERS']:
-    if settings['RELOCATABLE'] and not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
+    if settings['RELOCATABLE'] and not settings['WASM']: # in wasm, emulated function pointers are just simple table calls
       for sig, table in function_table_data.items():
         params = ','.join(['ptr'] + ['p%d' % p for p in range(len(sig)-1)])
         coerced_params = ','.join([shared.JS.make_coercion('ptr', 'i', settings)] + [shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
@@ -1007,7 +1010,7 @@ def create_asm_global_funcs(bg_funcs, metadata, settings):
 def create_asm_global_vars(bg_vars, settings):
   access_quote = access_quoter(settings)
   asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in bg_vars])
-  if settings['BINARYEN'] and settings['SIDE_MODULE']:
+  if settings['WASM'] and settings['SIDE_MODULE']:
     # wasm side modules internally define their stack, these are set at module startup time
     asm_global_vars += '\n  var STACKTOP = 0, STACK_MAX = 0;\n'
 
@@ -1151,7 +1154,7 @@ def create_asm_setup(debug_tables, function_table_data, metadata, settings):
   if settings['ASSERTIONS']:
     for sig in function_table_sigs:
       asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig, function_table_sigs, settings) + 'abort(x) }\n'
-  if settings['BINARYEN']:
+  if settings['WASM']:
     def table_size(table):
       table_contents = table[table.index('[') + 1: table.index(']')]
       if len(table_contents) == 0: # empty table
@@ -1247,14 +1250,14 @@ def create_basic_funcs(function_table_sigs, settings):
     if settings['RESERVED_FUNCTION_POINTERS']:
       basic_funcs.append('jsCall_%s' % sig)
     if settings['EMULATED_FUNCTION_POINTERS']:
-      if not settings['BINARYEN']: # in wasm, emulated function pointers are just simple table calls
+      if not settings['WASM']: # in wasm, emulated function pointers are just simple table calls
         basic_funcs.append('ftCall_%s' % sig)
   return basic_funcs
 
 
 def create_basic_vars(exported_implemented_functions, forwarded_json, metadata, settings):
   basic_vars = ['DYNAMICTOP_PTR', 'tempDoublePtr', 'ABORT']
-  if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
+  if not (settings['WASM'] and settings['SIDE_MODULE']):
     basic_vars += ['STACKTOP', 'STACK_MAX']
   if metadata.get('preciseI64MathUsed'):
     basic_vars += ['cttz_i8']
@@ -1262,7 +1265,7 @@ def create_basic_vars(exported_implemented_functions, forwarded_json, metadata, 
     if forwarded_json['Functions']['libraryFunctions'].get('_llvm_cttz_i32'):
       basic_vars += ['cttz_i8']
   if settings['RELOCATABLE']:
-    if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
+    if not (settings['WASM'] and settings['SIDE_MODULE']):
       basic_vars += ['gb', 'fb']
     else:
       basic_vars += ['memoryBase', 'tableBase'] # wasm side modules have a specific convention for these
@@ -1300,7 +1303,7 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
 
 def create_asm_runtime_funcs(settings):
   funcs = []
-  if not (settings['BINARYEN'] and settings['SIDE_MODULE']):
+  if not (settings['WASM'] and settings['SIDE_MODULE']):
     funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', 'setThrew']
   if not settings['RELOCATABLE']:
     funcs += ['setTempRet0', 'getTempRet0']
@@ -1353,7 +1356,7 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
     receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() {' + runtime_assertions + '  return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions + function_tables(function_table_data, settings)])
   receiving += ';\n'
 
-  if settings['EXPORT_FUNCTION_TABLES'] and not settings['BINARYEN']:
+  if settings['EXPORT_FUNCTION_TABLES'] and not settings['WASM']:
     for table in function_table_data.values():
       tableName = table.split()[1]
       table = table.replace('var ' + tableName, 'var ' + tableName + ' = Module["' + tableName + '"]')
@@ -1361,7 +1364,7 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
 
   if settings['EMULATED_FUNCTION_POINTERS']:
     receiving += '\n' + function_tables_defs.replace('// EMSCRIPTEN_END_FUNCS\n', '') + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in function_table_data])
-    if not settings['BINARYEN']:
+    if not settings['WASM']:
       for sig in function_table_data.keys():
         name = 'FUNCTION_TABLE_' + sig
         fullname = name if not settings['SIDE_MODULE'] else ('SIDE_' + name)
@@ -1380,7 +1383,7 @@ for (var named in NAMED_GLOBALS) {
 }
 Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
 ''' % ', '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].items())
-    if settings['BINARYEN']:
+    if settings['WASM']:
       # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
       # TODO: this works if we are the main module, but if the supplying module is later, it won't, so
       #       we'll need another solution for that. one option is to scan the module imports, if/when
@@ -2248,13 +2251,16 @@ def main(args, compiler_engine, cache, temp_files, DEBUG):
   # libraries
   libraries = args.libraries[0].split(',') if len(args.libraries) else []
 
-  settings.setdefault('STRUCT_INFO', shared.path_from_root('src', 'struct_info.compiled.json'))
-  struct_info = settings['STRUCT_INFO']
-
-  if not os.path.exists(struct_info) and not settings['BOOTSTRAPPING_STRUCT_INFO'] and not settings['ONLY_MY_CODE']:
-    if DEBUG: logging.debug('  emscript: bootstrapping struct info to %s', struct_info)
-    shared.Building.ensure_struct_info(struct_info)
-    if DEBUG: logging.debug('  emscript: bootstrapping struct info complete')
+  if not settings['BOOTSTRAPPING_STRUCT_INFO'] and not settings['ONLY_MY_CODE']:
+    generated_struct_info_name = 'generated_struct_info.json'
+    def ensure_struct_info():
+      with ToolchainProfiler.profile_block('gen_struct_info'):
+        from tools import gen_struct_info
+        out = shared.Cache.get_path(generated_struct_info_name)
+        gen_struct_info.main(['-qo', out, path_from_root('src', 'struct_info.json')])
+        return out
+    settings['STRUCT_INFO'] = shared.Cache.get(generated_struct_info_name, ensure_struct_info, extension='json')
+  # do we need an else, to define it for the bootstrap case?
 
   emscripter = emscript_wasm_backend if settings['WASM_BACKEND'] else emscript
 

@@ -390,7 +390,7 @@ def inspect_code(headers, cpp_opts, structs, defines):
     try:
       # Compile the program.
       show('Compiling generated code...')
-      subprocess.check_call([shared.PYTHON, shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1], '-s', 'BOOTSTRAPPING_STRUCT_INFO=1', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-Oz', '--js-opts', '0', '--memory-init-file', '0'], env=safe_env) # -Oz optimizes enough to avoid warnings on code size/num locals
+      subprocess.check_call([shared.PYTHON, shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1], '-s', 'BOOTSTRAPPING_STRUCT_INFO=1', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-Oz', '--js-opts', '0', '--memory-init-file', '0', '-s', 'SINGLE_FILE=1', '-s', 'WASM=0'], env=safe_env) # -Oz optimizes enough to avoid warnings on code size/num locals
     except:
       sys.stderr.write('FAIL: Compilation failed!\n')
       sys.exit(1)

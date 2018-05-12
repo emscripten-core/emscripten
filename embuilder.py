@@ -27,6 +27,7 @@ Available operations and tasks:
 
   build libc
         libc-mt
+        struct_info
         emmalloc
         emmalloc_debug
         dlmalloc
@@ -178,6 +179,8 @@ if operation == 'build':
       ''', ['compiler-rt.a'])
     elif what == 'libc':
       build(C_WITH_MALLOC, ['libc.bc'])
+    elif what == 'struct_info':
+      build(C_BARE, ['generated_struct_info.json'])
     elif what == 'emmalloc':
       build(C_WITH_MALLOC, ['emmalloc.bc'], ['-s', 'MALLOC="emmalloc"'])
     elif what == 'emmalloc_debug':
@@ -214,7 +217,7 @@ if operation == 'build':
         }
       ''', ['gl.bc'])
     elif what == 'native_optimizer':
-      build(C_BARE, ['optimizer.2.exe'], ['-O2'])
+      build(C_BARE, ['optimizer.2.exe'], ['-O2', '-s', 'WASM=0'])
     elif what == 'wasm_compiler_rt':
       if shared.Settings.WASM_BACKEND:
         build(C_BARE, ['wasm_compiler_rt.a'], ['-s', 'WASM=1'])

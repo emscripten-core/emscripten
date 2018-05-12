@@ -123,6 +123,7 @@ var FORCE_ALIGNED_MEMORY = 0; // If enabled, assumes all reads and writes are fu
 var WARN_UNALIGNED = 0; // Warn at compile time about instructions that LLVM tells us are not fully aligned.
                         // This is useful to find places in your code where you might refactor to ensure proper
                         // alignment.
+                        // This is currently only supported in asm.js, not wasm.
 var PRECISE_I64_MATH = 1; // If enabled, i64 addition etc. is emulated - which is slow but precise. If disabled,
                           // we use the 'double trick' which is fast but incurs rounding at high values.
                           // If set to 2, we always include the i64 math code, which is necessary in the case
@@ -311,8 +312,11 @@ var STB_IMAGE = 0; // Enables building of stb-image, a tiny public-domain librar
                    // When enabled, stb-image will be used automatically from IMG_Load and IMG_Load_RW. You
                    // can also call the stbi_* functions directly yourself.
 
-var LEGACY_VM_SUPPORT = 0; // Enable this to get support for non-modern browsers, node.js, etc. This adds:
-                           //  * Polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround
+var LEGACY_VM_SUPPORT = 0; // Enable this to get support for non-modern browsers, node.js, etc. This gives you
+                           // the highest possible probability of the code working everywhere, even in rare old
+                           // browsers and shell environments. Specifically:
+                           //  * Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
+                           //  * Disable WebAssembly.
 
 var LZ4 = 0; // Enable this to support lz4-compressed file packages. They are stored compressed in memory, and
              // decompressed on the fly, avoiding storing the entire decompressed data in memory at once.
@@ -713,11 +717,25 @@ var USE_GLFW = 2; // Specify the GLFW version that is being linked against.
                   // Only relevant, if you are linking against the GLFW library.
                   // Valid options are 2 for GLFW2 and 3 for GLFW3.
 
-var BINARYEN = 0; // Whether to use [Binaryen](https://github.com/WebAssembly/binaryen) to
-                  // compile code to WebAssembly.
-                  // This will fetch the binaryen port and build it. (If, instead, you set
-                  // BINARYEN_ROOT in your ~/.emscripten file, then we use that instead
-                  // of the port, which can useful for local dev work on binaryen itself).
+var WASM = 1; // Whether to use compile code to WebAssembly. Set this to 0 to compile
+              // to asm.js.
+              // This will fetch the binaryen port and build it. (If, instead, you set
+              // BINARYEN_ROOT in your ~/.emscripten file, then we use that instead
+              // of the port, which can useful for local dev work on binaryen itself).
+
+var WASM_BACKEND = 0; // Whether to use the WebAssembly backend that is in development in LLVM.
+                      // This requires that BINARYEN be set, as we use Binaryen's s2wasm to
+                      // translate the backend output.
+                      // You should not set this yourself, instead set EMCC_WASM_BACKEND=1 in the
+                      // environment.
+var EXPERIMENTAL_USE_LLD = 0; // Whether to use lld as a linker for the
+                              // WebAssembly backend, instead of s2wasm.
+                              // Currently an experiment, the plan is to make
+                              // this the default behavior long-term, and remove
+                              // the flag.
+                              // You should not set this yourself, instead set
+                              // EMCC_EXPERIMENTAL_USE_LLD=1 in the environment.
+
 var BINARYEN_METHOD = "native-wasm"; // How we should run WebAssembly code. By default, we run it natively.
                                      // See binaryen's src/js/wasm.js-post.js for more details and options.
 var BINARYEN_SCRIPTS = ""; // An optional comma-separated list of script hooks to run after binaryen,
@@ -754,21 +772,6 @@ var LEGALIZE_JS_FFI = 1; // Whether to legalize the JS FFI interfaces (imports/e
                          // For non-web/non-JS embeddings, setting this to 0 may be desirable.
                          // LEGALIZE_JS_FFI=0 is incompatible with RUNNING_JS_OPTS and using
                          // non-wasm BINARYEN_METHOD settings.
-
-var WASM = 0; // Alias for BINARYEN, the two are identical. Both make us compile code to WebAssembly.
-
-var WASM_BACKEND = 0; // Whether to use the WebAssembly backend that is in development in LLVM.
-                      // This requires that BINARYEN be set, as we use Binaryen's s2wasm to
-                      // translate the backend output.
-                      // You should not set this yourself, instead set EMCC_WASM_BACKEND=1 in the
-                      // environment.
-var EXPERIMENTAL_USE_LLD = 0; // Whether to use lld as a linker for the
-                              // WebAssembly backend, instead of s2wasm.
-                              // Currently an experiment, the plan is to make
-                              // this the default behavior long-term, and remove
-                              // the flag.
-                              // You should not set this yourself, instead set
-                              // EMCC_EXPERIMENTAL_USE_LLD=1 in the environment.
 
 // Ports
 

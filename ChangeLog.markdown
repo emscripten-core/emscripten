@@ -9,15 +9,27 @@ Not all changes are documented here. In particular, new features, user-oriented 
 
 Current Trunk
 -------------
+ - Breaking change: Emit WebAssembly by default. Only the default is changed - we of course still support asm.js, and will for a very long time. But changing the default makes sense as the recommended output for most use cases should be WebAssembly, given it has shipped in all major browsers and platforms and is more efficient than asm.js. Build with `-s WASM=0` to disable wasm and use asm.js if you want that (or use `-s LEGACY_VM_SUPPORT=1`, which emits output that can run in older browsers, which includes a bunch of polyfills as well as disables wasm). (#6419)
+
+v1.38.0: 05/09/2018
+-------------------
+
+v1.37.40: 05/07/2018
+--------------------
+ - Fix regression in 1.37.39 on  -s X=@file  parsing (see #6497, #6436)
+
+v1.37.39: 05/01/2018
+--------------------
+ - Regression: Parsing of  -s X=@file  broke if the file contains a newline (see #6436; fixed in 1.37.40)
 
 v1.37.38: 04/23/2018
 --------------------
  - Breaking change: Simplify exception handling, disabling it by default. Previously it was disabled by default in -O1 and above and enabled in -O0, which could be confusing. You may notice this change if you need exceptions and only run in -O0 (since if you test in -O1 or above, you'd see you need to enable exceptions manually), in which case you will receive an error at runtime saying that exceptions are disabled by default and that you should build with -s DISABLE_EXCEPTION_CATCHING=0 to enable them.
- - Fix regression in 1.37.37 on configure scripts on MacOS, see https://github.com/kripken/emscripten/issues/6456
+ - Fix regression in 1.37.37 on configure scripts on MacOS (see #6456)
 
 v1.37.37: 04/13/2018
 --------------------
- - Regression: configure scripts on MacOS may be broken, see https://github.com/kripken/emscripten/issues/6456
+ - Regression: configure scripts on MacOS may be broken (see #6456; fixed in 1.37.38)
 
 v1.37.36: 03/13/2018
 --------------------
