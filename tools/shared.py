@@ -1212,6 +1212,26 @@ class SettingsManager(object):
 
 Settings = SettingsManager()
 
+def execute_step_process(step, placeholders):
+  commands = Settings.EXECUTE_PROCESS
+  roots = [idx for idx, val in enumerate(commands) if val == 'COMMAND']
+  roots += [len(commands)]
+
+  for idx, root in enumerate(roots):
+    if root + 1 < len(commands) and commands[root + 1] == step:
+      begin = root + 2
+      end = roots[idx + 1]
+      cmd = []
+
+      for next in commands[begin:end]:
+        if next in placeholders:
+          cmd.append(placeholders[next])
+        else:
+          cmd.append(next)
+
+      logging.info('Execute process on step (%s): %s\n' % (step, ' '.join(cmd)))
+      run_process(cmd, check=True)
+
 # llvm-ar appears to just use basenames inside archives. as a result, files with the same basename
 # will trample each other when we extract them. to help warn of such situations, we warn if there
 # are duplicate entries in the archive
@@ -1860,7 +1880,7 @@ class Building(object):
       return link_args
 
   # LLVM optimizations
-  # @param opt A list of LLVM optimization parameters
+  # @param opts A list of LLVM optimization parameters
   @staticmethod
   def llvm_opt(filename, opts, out=None):
     inputs = filename
@@ -1887,6 +1907,7 @@ class Building(object):
     try:
       run_process([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE)
       assert os.path.exists(target), 'llvm optimizer emitted no output.'
+      execute_step_process('AFTER_LLVM_OPT', { '<TARGET>': target })
     except subprocess.CalledProcessError as e:
       logging.error('Failed to run llvm optimizations: ' + e.output)
       for i in inputs:
