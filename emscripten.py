@@ -1838,7 +1838,6 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
       t = time.time()
       shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
 
-    assert shared.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
     basename = shared.unsuffixed(outfile.name)
     wasm = basename + '.wasm'
     metadata_file = basename + '.metadata'
@@ -1866,7 +1865,6 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
 
 
 def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
-  assert shared.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen tools on the backend output'
   wasm_emscripten_finalize = os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-emscripten-finalize')
   wasm_as = os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-as')
   wasm_dis = os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-dis')
