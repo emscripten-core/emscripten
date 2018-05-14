@@ -2405,6 +2405,14 @@ class Building(object):
   def get_binaryen():
     # fetch the port, so we have binaryen set up. indicate we need binaryen
     # using the settings
+    try:
+      if BINARYEN_ROOT:
+        # if defined, and not falsey, we don't need the port
+        Settings.BINARYEN_ROOT = BINARYEN_ROOT
+        return
+    except:
+      pass
+
     from . import system_libs
     old = Settings.WASM
     Settings.WASM = 1
