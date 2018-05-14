@@ -2290,7 +2290,7 @@ class Building(object):
     txt = json.dumps(graph)
     with open(temp, 'w') as f: f.write(txt)
     # run wasm-metadce
-    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-metadce'), '--graph-file=' + temp, wasm_file, '-o', wasm_file]
+    cmd = [Building.get_binaryen_bin('wasm-metadce'), '--graph-file=' + temp, wasm_file, '-o', wasm_file]
     if debug_info:
       cmd += ['-g']
     out = run_process(cmd, stdout=PIPE).stdout
@@ -2420,9 +2420,12 @@ class Building(object):
     Settings.WASM = old
 
   @staticmethod
-  def get_binaryen_bin():
+  def get_binaryen_bin(program=None):
     Building.get_binaryen()
-    return os.path.join(Settings.BINARYEN_ROOT, 'bin')
+    if program is None:
+      return os.path.join(Settings.BINARYEN_ROOT, 'bin')
+    else:
+      return os.path.join(Settings.BINARYEN_ROOT, 'bin', program)
 
   @staticmethod
   def get_binaryen_lib():
