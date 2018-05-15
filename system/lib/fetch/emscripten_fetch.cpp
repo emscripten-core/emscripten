@@ -14,7 +14,7 @@ struct __emscripten_fetch_queue
 	int queueSize;
 };
 
-static void emscripten_fetch_free( emscripten_fetch_t *fetch );
+static void fetch_free( emscripten_fetch_t *fetch );
 
 extern "C" {
 	void emscripten_start_fetch(emscripten_fetch_t *fetch);
@@ -75,18 +75,18 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 	fetch->url = strdup(url);
 	if(!fetch->url)
 	{
-		emscripten_fetch_free(fetch);
+		fetch_free(fetch);
 		return 0;
 	}
 	fetch->__attributes = *fetch_attr;
 
-#define STRDUP_OR_ABORT(s)					\
+#define STRDUP_OR_ABORT(s)				\
   if (s)								\
   {										\
 	s = strdup(s);						\
 	if (!s)								\
 	{									\
-	  emscripten_fetch_free(fetch);		\
+	  fetch_free(fetch);				\
 	  return 0;							\
 	}									\
   }
@@ -101,15 +101,22 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 		const char** headers = (const char**)malloc((headersCount + 1) * sizeof(const char*));
 		if(!headers)
 		{
-			emscripten_fetch_free(fetch);
+			fetch_free(fetch);
 			return 0;
 		}
+		memset((void*)headers, 0, (headersCount + 1) * sizeof(const char*));
+
 		for(size_t i = 0; i < headersCount; ++i)
 		{
 			headers[i] = strdup(fetch->__attributes.requestHeaders[i]);
 			if(!headers[i])
 			{
-				emscripten_fetch_free(fetch);
+				for(size_t j = 0; j < i; ++j)
+				{
+					free((void*)headers[j]);
+				}
+				free((void*)headers);
+				fetch_free(fetch);
 				return 0;
 			}
 		}
@@ -189,11 +196,11 @@ EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch)
 		fetch->__attributes.onerror(fetch);
 	}
 
-	emscripten_fetch_free(fetch);
+	fetch_free(fetch);
 	return EMSCRIPTEN_RESULT_SUCCESS;
 }
 
-static void emscripten_fetch_free(emscripten_fetch_t *fetch)
+static void fetch_free(emscripten_fetch_t *fetch)
 {
 	fetch->id = 0;
 	free((void*)fetch->data);
