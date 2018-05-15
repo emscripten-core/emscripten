@@ -39,7 +39,6 @@ jobs:
           ./emsdk activate latest
           popd
           echo EMSCRIPTEN_ROOT="'~/emscripten/'" >> .emscripten
-          echo BINARYEN_ROOT="''" >> .emscripten
           EMCC_CORES=4 python3 emscripten/embuilder.py build ALL
           python3 emscripten/tests/runner.py test_hello_world
           mkdir tmp-firefox-profile/
