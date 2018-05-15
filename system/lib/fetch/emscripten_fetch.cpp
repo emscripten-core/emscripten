@@ -81,15 +81,15 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 	fetch->__attributes = *fetch_attr;
 
 #define STRDUP_OR_ABORT(s)				\
-  if (s)								\
-  {										\
-	s = strdup(s);						\
-	if (!s)								\
+	if (s)								\
 	{									\
-	  fetch_free(fetch);				\
-	  return 0;							\
-	}									\
-  }
+		s = strdup(s);					\
+		if (!s)							\
+		{								\
+			fetch_free(fetch);			\
+			return 0;					\
+		}								\
+	}
 
 	STRDUP_OR_ABORT(fetch->__attributes.destinationPath);
 	STRDUP_OR_ABORT(fetch->__attributes.userName);
