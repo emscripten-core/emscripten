@@ -93,9 +93,9 @@ typedef struct emscripten_fetch_attr_t
 
 	// If non-zero, specifies a pointer to the data that is to be passed as the body (payload) of the request
 	// that is being performed. Leave as zero if no request body needs to be sent.
-    // The memory pointed to by this field is provided by the user, and needs to be valid throughout the
+	// The memory pointed to by this field is provided by the user, and needs to be valid throughout the
 	// duration of the fetch operation. If passing a non-zero pointer into this field, make sure to implement
-	// the onsuccess and onerror handlers to be notified when the fetch finishes to know when this memory
+	// *both* the onsuccess and onerror handlers to be notified when the fetch finishes to know when this memory
 	// block can be freed. Do not pass a pointer to memory on the stack or other temporary area here.
 	const char *requestData;
 

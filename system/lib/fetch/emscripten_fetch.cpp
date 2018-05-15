@@ -68,57 +68,57 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 	}
 
 	emscripten_fetch_t *fetch = (emscripten_fetch_t *)malloc(sizeof(emscripten_fetch_t));
-    if ( !fetch ) return 0;
+	if (!fetch) return 0;
 	memset(fetch, 0, sizeof(emscripten_fetch_t));
 	fetch->id = globalFetchIdCounter++; // TODO: make this thread-safe!
 	fetch->userData = fetch_attr->userData;
-    fetch->url = strdup( url );
-    if ( !fetch->url )
-    {
-        emscripten_fetch_free( fetch );
-        return 0;
-    }
+	fetch->url = strdup(url);
+	if(!fetch->url)
+	{
+		emscripten_fetch_free(fetch);
+		return 0;
+	}
 	fetch->__attributes = *fetch_attr;
 
-#define SAFE_STRDUP(s)                  \
-  if (s)                                \
-  {                                     \
-    s = strdup(s);                      \
-    if (!s)                             \
-    {                                   \
-      emscripten_fetch_free(fetch);     \
-      return 0;                         \
-    }                                   \
+#define STRDUP_OR_ABORT(s)					\
+  if (s)								\
+  {										\
+	s = strdup(s);						\
+	if (!s)								\
+	{									\
+	  emscripten_fetch_free(fetch);		\
+	  return 0;							\
+	}									\
   }
 
-    SAFE_STRDUP( fetch->__attributes.destinationPath );
-    SAFE_STRDUP( fetch->__attributes.userName );
-    SAFE_STRDUP( fetch->__attributes.password );
-    if ( fetch->__attributes.requestHeaders )
-    {
-        size_t headersCount;
-        for ( headersCount = 0; fetch->__attributes.requestHeaders[ headersCount ]; ++headersCount );
-        const char** headers = ( const char** ) malloc( ( headersCount + 1 ) * sizeof( const char* ) );
-        if ( !headers )
-        {
-            emscripten_fetch_free( fetch );
-            return 0;
-        }
-        for ( size_t i = 0; i < headersCount; ++i )
-        {
-            headers[ i ] = strdup( fetch->__attributes.requestHeaders[ i ] );
-            if ( !headers[ i ] )
-            {
-                emscripten_fetch_free( fetch );
-                return 0;
-            }
-        }
-        headers[ headersCount ] = 0;
-        fetch->__attributes.requestHeaders = headers;
-}
-    SAFE_STRDUP( fetch->__attributes.overriddenMimeType );
+	STRDUP_OR_ABORT(fetch->__attributes.destinationPath);
+	STRDUP_OR_ABORT(fetch->__attributes.userName);
+	STRDUP_OR_ABORT(fetch->__attributes.password);
+	if(fetch->__attributes.requestHeaders)
+	{
+		size_t headersCount;
+		while(fetch->__attributes.requestHeaders[headersCount]) ++headersCount;
+		const char** headers = (const char**)malloc((headersCount + 1) * sizeof(const char*));
+		if(!headers)
+		{
+			emscripten_fetch_free(fetch);
+			return 0;
+		}
+		for(size_t i = 0; i < headersCount; ++i)
+		{
+			headers[i] = strdup(fetch->__attributes.requestHeaders[i]);
+			if(!headers[i])
+			{
+				emscripten_fetch_free(fetch);
+				return 0;
+			}
+		}
+		headers[headersCount] = 0;
+		fetch->__attributes.requestHeaders = headers;
+	}
+	STRDUP_OR_ABORT(fetch->__attributes.overriddenMimeType);
 
-#undef SAFE_STRDUP
+#undef STRDUP_OR_ABORT
 
 
 #if __EMSCRIPTEN_PTHREADS__
@@ -169,44 +169,44 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeou
 #endif
 }
 
-EMSCRIPTEN_RESULT emscripten_fetch_close( emscripten_fetch_t *fetch )
+EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch)
 {
-    if ( !fetch ) return EMSCRIPTEN_RESULT_SUCCESS; // Closing null pointer is ok, same as with free().
+	if(!fetch) return EMSCRIPTEN_RESULT_SUCCESS; // Closing null pointer is ok, same as with free().
 
 #if __EMSCRIPTEN_PTHREADS__
-    emscripten_atomic_store_u32( &fetch->__proxyState, 0 );
+	emscripten_atomic_store_u32(&fetch->__proxyState, 0);
 #endif
-    // This function frees the fetch pointer so that it is invalid to access it anymore.
-    // Use a few key fields as an integrity check that we are being passed a good pointer to a valid fetch structure,
-    // which has not been yet closed. (double close is an error)
-    if ( fetch->id == 0 || fetch->readyState > 4 ) return EMSCRIPTEN_RESULT_INVALID_PARAM;
+	// This function frees the fetch pointer so that it is invalid to access it anymore.
+	// Use a few key fields as an integrity check that we are being passed a good pointer to a valid fetch structure,
+	// which has not been yet closed. (double close is an error)
+	if(fetch->id == 0 || fetch->readyState > 4) return EMSCRIPTEN_RESULT_INVALID_PARAM;
 
-    // This fetch is aborted. Call the error handler if the fetch was still in progress and was canceled in flight.
-    if ( fetch->readyState != 4 /*DONE*/ && fetch->__attributes.onerror )
-    {
-        fetch->status = ( unsigned short ) -1;
-        strcpy( fetch->statusText, "aborted with emscripten_fetch_close()" );
-        fetch->__attributes.onerror( fetch );
-    }
+	// This fetch is aborted. Call the error handler if the fetch was still in progress and was canceled in flight.
+	if(fetch->readyState != 4 /*DONE*/ && fetch->__attributes.onerror)
+	{
+		fetch->status = (unsigned short)-1;
+		strcpy(fetch->statusText, "aborted with emscripten_fetch_close()");
+		fetch->__attributes.onerror(fetch);
+	}
 
-    emscripten_fetch_free( fetch );
-    return EMSCRIPTEN_RESULT_SUCCESS;
+	emscripten_fetch_free(fetch);
+	return EMSCRIPTEN_RESULT_SUCCESS;
 }
 
-static void emscripten_fetch_free( emscripten_fetch_t *fetch )
+static void emscripten_fetch_free(emscripten_fetch_t *fetch)
 {
 	fetch->id = 0;
 	free((void*)fetch->data);
-    free( ( void* ) fetch->url );
-    free( ( void* ) fetch->__attributes.destinationPath );
-    free( ( void* ) fetch->__attributes.userName );
-    free( ( void* ) fetch->__attributes.password );
-    if ( fetch->__attributes.requestHeaders )
-    {
-        for ( size_t i = 0; fetch->__attributes.requestHeaders[ i ]; ++i )
-            free( ( void* ) fetch->__attributes.requestHeaders[ i ] );
-        free( ( void* ) fetch->__attributes.requestHeaders );
-    }
-    free( ( void* ) fetch->__attributes.overriddenMimeType );
+	free((void*)fetch->url);
+	free((void*)fetch->__attributes.destinationPath);
+	free((void*)fetch->__attributes.userName);
+	free((void*)fetch->__attributes.password);
+	if(fetch->__attributes.requestHeaders)
+	{
+		for(size_t i = 0; fetch->__attributes.requestHeaders[i]; ++i)
+			free((void*)fetch->__attributes.requestHeaders[i]);
+		free((void*)fetch->__attributes.requestHeaders);
+	}
+	free((void*)fetch->__attributes.overriddenMimeType);
 	free(fetch);
 }
