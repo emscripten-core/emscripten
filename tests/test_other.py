@@ -6578,7 +6578,7 @@ Resolved: "/" => "/"
       print(cmd)
       check_execute(cmd)
       self.assertContained('hello, world!', run_js('a.out.js'))
-      sizes[lto] = os.stat('a.out.js').st_size
+      sizes[lto] = os.stat('a.out.wasm').st_size
     print(sizes)
 
     # LTO sizes should be distinct
