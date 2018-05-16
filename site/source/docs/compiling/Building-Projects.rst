@@ -56,15 +56,15 @@ The last step is to compile the linked bitcode into JavaScript. We do this by ca
 Building projects with optimizations
 ====================================
 
-Emscripten performs :ref:`compiler optimization <Optimizing-Code>` at two levels: each source file is optimized by LLVM as it is compiled into an object file, and then JavaScript-specific optimizations are applied when converting object files into JavaScript.
+Emscripten performs :ref:`compiler optimization <Optimizing-Code>` at two levels: each source file is optimized by LLVM as it is compiled into an object file, and then JavaScript/WebAssembly-specific optimizations are applied when converting object files into the final JavaScript/WebAssembly.
 
-In order to properly optimize code, it is important to use the **same** :ref:`optimization flags <emcc-compiler-optimization-options>` and other :ref:`compiler options <emcc-s-option-value>` when compiling source to object code, and object code to JavaScript (or HTML).
+In order to properly optimize code, it is usually best to use the **same** :ref:`optimization flags <emcc-compiler-optimization-options>` and other :ref:`compiler options <emcc-s-option-value>` when compiling source to object code, and object code to JavaScript (or HTML).
 
 Consider the examples below:
 
 .. code-block:: bash
 
-	# Sub-optimal - JavaScript optimizations are omitted
+	# Sub-optimal - JavaScript/WebAssembly optimizations are omitted
 	./emcc -O2 a.cpp -o a.bc
 	./emcc -O2 b.cpp -o b.bc
 	./emcc a.bc b.bc -o project.js
@@ -74,18 +74,19 @@ Consider the examples below:
 	./emcc b.cpp -o b.bc
 	./emcc -O2 a.bc b.bc -o project.js
 
-	# Broken! Different JavaScript and LLVM optimisations used.
-	./emcc -O1 a.cpp -o a.bc
-	./emcc -O2 b.cpp -o b.bc
-	./emcc -O3 a.bc b.bc -o project.js
-	
-	# Correct. The SAME LLVM and JavaScript options are provided at both levels.
+	# Usually the right thing: The SAME LLVM and JavaScript options are provided at both levels.
 	./emcc -O2 a.cpp -o a.bc
 	./emcc -O2 b.cpp -o b.bc
 	./emcc -O2 a.bc b.bc -o project.js
 
+However, sometimes you may want slightly different optimizations on certain files:
 
-The same rule applies when :ref:`building Emscripten using a build system <building-projects-build-system>` — both LLVM and JavaScript must be optimized using the same settings. 
+.. code-block:: bash
+
+	# Optimize the first file for size, and the rest using `-O2`.
+	./emcc -Oz a.cpp -o a.bc
+	./emcc -O2 b.cpp -o b.bc
+	./emcc -O2 a.bc b.bc -o project.js
 
 .. note:: Unfortunately each build-system defines its own mechanisms for setting compiler and optimization methods. **You will need to work out the correct approach to set the LLVM optimization flags for your system**.
 
@@ -93,7 +94,7 @@ The same rule applies when :ref:`building Emscripten using a build system <build
 	- You can control whether LLVM optimizations are run using ``--llvm-opts N`` where N is an integer in the range 0-3. Sending ``-O2 --llvm-opts 0`` to *emcc* during all compilation stages will disable LLVM optimizations but utilize JavaScript optimizations. This can be useful when debugging a build failure.
 
 
-JavaScript optimizations are specified in the final step, when you compile the linked LLVM bitcode to JavaScript. For example, to compile with :ref:`-O1 <emcc-O1>`:
+JavaScript/WebAssembly optimizations are specified in the final step (sometimes called "link", as that step typically also links together a bunch of files that are all compiled together into one JavaScript/WebAssembly output). For example, to compile with :ref:`-O1 <emcc-O1>`:
 	
 .. code-block:: bash
 

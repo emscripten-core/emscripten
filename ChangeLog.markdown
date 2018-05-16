@@ -9,6 +9,7 @@ Not all changes are documented here. In particular, new features, user-oriented 
 
 Current Trunk
 -------------
+ - Remove special-case support for src/struct_info.compiled.json: Make it a normal cached thing like system libraries, not something checked into the source tree.
  - Breaking change: Emit WebAssembly by default. Only the default is changed - we of course still support asm.js, and will for a very long time. But changing the default makes sense as the recommended output for most use cases should be WebAssembly, given it has shipped in all major browsers and platforms and is more efficient than asm.js. Build with `-s WASM=0` to disable wasm and use asm.js if you want that (or use `-s LEGACY_VM_SUPPORT=1`, which emits output that can run in older browsers, which includes a bunch of polyfills as well as disables wasm). (#6419)
 
 v1.38.0: 05/09/2018
