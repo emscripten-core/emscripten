@@ -8361,3 +8361,20 @@ end
 
   def test_fd_closed(self):
     self.do_other_test(os.path.join('other', 'fd_closed'))
+
+  def test_js_optimizer_parse_error(self):
+    # check we show a proper understandable error for JS parse problems
+    open('src.cpp', 'w').write(r'''
+#include <emscripten.h>
+int main() {
+  EM_ASM({
+    var x = !<->5.; // wtf
+  });
+}
+''')
+    output = run_process([PYTHON, EMCC, 'src.cpp', '-O2'], stdout=PIPE, stderr=PIPE, check=False)
+    self.assertContained('''
+var ASM_CONSTS = [function() { var x = !<->5.; }];
+                                        ^
+''', output.stderr)
+
