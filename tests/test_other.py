@@ -7962,8 +7962,8 @@ int main() {
         wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
         imports = wast.count('(import ')
         exports = wast.count('(export ')
-        assert imports == expected_wasm_imports, imports
-        assert exports == expected_wasm_exports, exports
+        assert imports == expected_wasm_imports, [imports, expected_wasm_imports]
+        assert exports == expected_wasm_exports, [exports, expected_wasm_exports]
 
     print('test on hello world')
     test(path_from_root('tests', 'hello_world.cpp'), [
@@ -7978,7 +7978,7 @@ int main() {
                  0, [],                         ['tempDoublePtr', 'waka'],     8,   0,    0), # totally empty!
       # but we don't metadce with linkable code! other modules may want it
       (['-O3', '-s', 'MAIN_MODULE=1'],
-              1542, ['invoke_i'],               ['waka'],                 496958, 168, 2558),
+              1542, ['invoke_i'],               ['waka'],                 496958, 168, 2560),
     ])
 
     print('test on a minimal pure computational thing')
