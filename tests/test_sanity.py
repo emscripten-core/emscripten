@@ -889,7 +889,7 @@ fi
 
     def make_fake(report):
       f = open(CONFIG_FILE, 'a')
-      f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake', 'bin') + '"\n') 
+      f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake', 'bin') + '"\n')
       # BINARYEN_ROOT needs to exist in the config, even though this test
       # doesn't actually use it.
       f.write('BINARYEN_ROOT= "%s"\n' % path_from_root('tests', 'fake', 'bin'))
