@@ -65,6 +65,16 @@ int main(void) {
   printf("%d,%d\n", (int)llvm_ctpop_i64((0x3101ULL << 32) | 1),
          llvm_ctpop_i32(0x3101));
 
+  printf("llvm_cttz_i32:\n");
+  printf("(0, 0)=%d\n", llvm_cttz_i32(0, 0));
+  printf("(1, 0)=%d\n", llvm_cttz_i32(1, 0));
+  printf("(2, 0)=%d\n", llvm_cttz_i32(2, 0));
+  printf("(0x0000FFFF, 0)=%d\n", llvm_cttz_i32(0x0000FFFF, 0));
+  printf("(0x7FFF0000, 0)=%d\n", llvm_cttz_i32(0x7FFF0000, 0));
+  printf("(0xFFFF0000, 0)=%d\n", llvm_cttz_i32(0xFFFF0000, 0));
+  printf("(0x7FFFFFFF, 0)=%d\n", llvm_cttz_i32(0x7FFFFFFF, 0));
+  printf("(0xFFFFFFFE, 0)=%d\n", llvm_cttz_i32(0xFFFFFFFE, 0));
+  printf("(0xFFFFFFFF, 0)=%d\n", llvm_cttz_i32(0xFFFFFFFF, 0));
   printf("small ctlz: %d,%d\n", (int)llvm_ctlz_i8(2, 0), llvm_ctlz_i16(2, 0));
 
   printf("llvm_ctpop_i32:\n");
