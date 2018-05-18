@@ -584,7 +584,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   temp_root = shared.TEMP_DIR
   if not os.path.exists(temp_root):
-    os.makedirs(temp_root)
+    try:
+      os.makedirs(temp_root)
+    except Exception as e:
+      if os.path.exists(temp_root):
+        pass # If running multiple emcc instances simultaneously, they may race to create the temp directory if it did not initially exist. In that case, we can proceed.
+      else:
+        raise
+
   temp_dir = tempfile.mkdtemp(dir=temp_root)
 
   def in_temp(name):

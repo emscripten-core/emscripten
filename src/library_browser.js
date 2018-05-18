@@ -335,18 +335,24 @@ var LibraryBrowser = {
           canvas.exitFullscreen = canvas.exitFullscreen.bind(document);
           if (Browser.lockPointer) canvas.requestPointerLock();
           Browser.isFullscreen = true;
-          if (Browser.resizeCanvas) Browser.setFullscreenCanvasSize();
+          if (Browser.resizeCanvas) {
+            Browser.setFullscreenCanvasSize();
+          } else {
+            Browser.updateCanvasDimensions(canvas);
+          }
         } else {
-          
           // remove the full screen specific parent of the canvas again to restore the HTML structure from before going full screen
           canvasContainer.parentNode.insertBefore(canvas, canvasContainer);
           canvasContainer.parentNode.removeChild(canvasContainer);
-          
-          if (Browser.resizeCanvas) Browser.setWindowedCanvasSize();
+
+          if (Browser.resizeCanvas) {
+            Browser.setWindowedCanvasSize();
+          } else {
+            Browser.updateCanvasDimensions(canvas);
+          }
         }
         if (Module['onFullScreen']) Module['onFullScreen'](Browser.isFullscreen);
         if (Module['onFullscreen']) Module['onFullscreen'](Browser.isFullscreen);
-        Browser.updateCanvasDimensions(canvas);
       }
 
       if (!Browser.fullscreenHandlersInstalled) {
@@ -657,22 +663,24 @@ var LibraryBrowser = {
     windowedWidth: 0,
     windowedHeight: 0,
     setFullscreenCanvasSize: function() {
-      // check if SDL is available   
+      // check if SDL is available
       if (typeof SDL != "undefined") {
         var flags = {{{ makeGetValue('SDL.screen', '0', 'i32', 0, 1) }}};
         flags = flags | 0x00800000; // set SDL_FULLSCREEN flag
         {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}}
       }
+      Browser.updateCanvasDimensions(Module['canvas']);
       Browser.updateResizeListeners();
     },
 
     setWindowedCanvasSize: function() {
-      // check if SDL is available       
+      // check if SDL is available
       if (typeof SDL != "undefined") {
         var flags = {{{ makeGetValue('SDL.screen', '0', 'i32', 0, 1) }}};
         flags = flags & ~0x00800000; // clear SDL_FULLSCREEN flag
         {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}}
       }
+      Browser.updateCanvasDimensions(Module['canvas']);
       Browser.updateResizeListeners();
     },
 

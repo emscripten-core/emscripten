@@ -2253,7 +2253,7 @@ void *getBindBuffer() {
     self.btest('worker_api_main.cpp', expected='566')
 
   def test_worker_api_2(self):
-    Popen([PYTHON, EMCC, path_from_root('tests', 'worker_api_2_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-O2', '--minify', '0', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two", "_three", "_four"]']).communicate()
+    run_process([PYTHON, EMCC, path_from_root('tests', 'worker_api_2_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-O2', '--minify', '0', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two", "_three", "_four"]', '--closure', '1'])
     self.btest('worker_api_2_main.cpp', args=['-O2', '--minify', '0'], expected='11')
 
   def test_worker_api_3(self):
