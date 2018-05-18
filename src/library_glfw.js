@@ -1551,7 +1551,7 @@ var LibraryGLFW = {
   glfwMakeContextCurrent: function(winid) {},
 
   glfwGetCurrentContext: function() {
-    return GLFW.active.id;
+    return GLFW.active ? GLFW.active.id : 0;
   },
 
   glfwSwapBuffers: function(winid) {
