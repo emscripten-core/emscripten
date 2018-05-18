@@ -183,10 +183,10 @@ process(sys.argv[1])
 
   def get_output_files(self):
     ret = [self.filename]
-    if 'WASM=0' not in self.extra_args:
-      ret.append(self.filename[:-3] + '.wasm')
-    else:
+    if 'WASM=0' in self.extra_args:
       ret.append(self.filename + '.mem')
+    else:
+      ret.append(self.filename[:-3] + '.wasm')
     return ret
 
 CHEERP_BIN = '/opt/cheerp/bin/'
