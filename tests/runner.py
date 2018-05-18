@@ -140,13 +140,14 @@ test_modes = [
 ]
 nondefault_test_modes = [
   'asm2f',
-  'asm2i',
   'binaryen0',
   'binaryen1',
   'binaryen2',
   'binaryen3',
   'binaryens',
   'binaryenz',
+  'asmi',
+  'asm2i',
 ]
 test_index = 0
 
