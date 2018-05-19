@@ -53,6 +53,6 @@
   "send": ["htons"],
   "localtime": ["_get_tzname"],
   "localtime_r": ["_get_tzname"],
-  "tzset": ["_get_tzname"],
+  "tzset": ["_get_tzname"]
 }
 
