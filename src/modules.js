@@ -269,7 +269,7 @@ var LibraryManager = {
 // Safe way to access a C define. We check that we don't add library functions with missing defines.
 function cDefine(key) {
 	if (key in C_DEFINES) return C_DEFINES[key];
-	throw 'XXX missing C define ' + key + '!';
+	throw 'Missing C define ' + key + '! If you just added it to struct_info.json, you need to ./emcc --clear-cache';
 }
 
 var EXPORTED_RUNTIME_METHODS_SET = set(EXPORTED_RUNTIME_METHODS.concat(EXTRA_EXPORTED_RUNTIME_METHODS));
