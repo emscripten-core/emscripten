@@ -2786,7 +2786,7 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.EINVAL);
       return 0;
     }
-    var ret = clock_gettime({{{ cDefine('CLOCK_REALTIME') }}}, ts);
+    var ret = _clock_gettime({{{ cDefine('CLOCK_REALTIME') }}}, ts);
     return ret < 0 ? 0 : base;
   },
 
