@@ -935,3 +935,11 @@ var MEM_INIT_IN_WASM = 0; // for internal use only
 
 var SUPPORT_BASE64_EMBEDDING = 0; // If set to 1, src/base64Utils.js will be included in the bundle.
                                   // This is set internally when needed (SINGLE_FILE)
+
+// For internal use only, the possible environments the code may run in.
+var ENVIRONMENT_MAY_BE_WEB = 1;
+var ENVIRONMENT_MAY_BE_WORKER = 1;
+var ENVIRONMENT_MAY_BE_NODE = 1;
+var ENVIRONMENT_MAY_BE_SHELL = 1;
+var ENVIRONMENT_MAY_BE_WEB_OR_WORKER = 1;
+
