@@ -7629,6 +7629,7 @@ extern "C" {
     for engine in JS_ENGINES:
       for work in (1, 0):
         for assertions in (0, 1):
+          if work and assertions: continue # we care about assertions when we fail
           # set us to test in just this engine
           self.banned_js_engines = [e for e in JS_ENGINES if e != engine]
           # tell the compiler to build with just that engine
