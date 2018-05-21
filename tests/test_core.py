@@ -7645,7 +7645,7 @@ extern "C" {
             if not work:
               if assertions:
                 # with assertions, an error should be shown
-                self.assertContained('not compiled with support for that', str(e))
+                self.assertContained('not compiled with support for this runtime environment', str(e))
             else:
               raise
           js = open('src.cpp.o.js').read()

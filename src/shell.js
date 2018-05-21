@@ -158,10 +158,6 @@ if (ENVIRONMENT_IS_NODE) {
   });
 
   Module['inspect'] = function () { return '[Emscripten Module object]'; };
-#else // ENVIRONMENT_MAY_BE_NODE
-#if ASSERTIONS
-  throw new Error('runtime environment is node, but not compiled with support for that');
-#endif // ASSERTIONS
 } else
 #endif // ENVIRONMENT_MAY_BE_NODE
 #if ENVIRONMENT_MAY_BE_SHELL
@@ -205,10 +201,6 @@ if (ENVIRONMENT_IS_SHELL) {
       quit(status);
     }
   }
-#else // ENVIRONMENT_MAY_BE_SHELL
-#if ASSERTIONS
-  throw new Error('runtime environment is shell, but not compiled with support for that');
-#endif // ASSERTIONS
 } else
 #endif // ENVIRONMENT_MAY_BE_SHELL
 #if ENVIRONMENT_MAY_BE_WEB_OR_WORKER
@@ -277,15 +269,11 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   };
 
   Module['setWindowTitle'] = function(title) { document.title = title };
-#else // ENVIRONMENT_MAY_BE_WEB_OR_WORKER
-#if ASSERTIONS
-  throw new Error('runtime environment is web or worker, but not compiled with support for that');
-#endif // ASSERTIONS
 } else
 #endif // ENVIRONMENT_MAY_BE_WEB_OR_WORKER
 {
 #if ASSERTIONS
-  throw new Error('unknown runtime environment');
+  throw new Error('not compiled with support for this runtime environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif // ASSERTIONS
 }
 
