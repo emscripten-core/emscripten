@@ -7641,7 +7641,7 @@ extern "C" {
           print(engine, work, Settings.ENVIRONMENT, assertions)
           try:
             self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
-          except Exception, e:
+          except Exception as e:
             if not work:
               if assertions:
                 # with assertions, an error should be shown
