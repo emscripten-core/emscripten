@@ -206,6 +206,10 @@ var ENVIRONMENT_MAY_BE_SHELL  = !ENVIRONMENT || ENVIRONMENT === 'shell';
 
 var ENVIRONMENT_MAY_BE_WEB_OR_WORKER = ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER;
 
+if (ENVIRONMENT && !(ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL)) {
+  throw 'Invalid environment specified in "ENVIRONMENT": ' + ENVIRONMENT + '. Should be one of: web, worker, node, shell.';
+}
+
 //===============================
 // Main
 //===============================
