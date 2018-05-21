@@ -158,6 +158,10 @@ if (ENVIRONMENT_IS_NODE) {
   });
 
   Module['inspect'] = function () { return '[Emscripten Module object]'; };
+#else // ENVIRONMENT_MAY_BE_NODE
+#if ASSERTIONS
+  throw new Error('runtime environment is node, but not compiled with support for that');
+#endif // ASSERTIONS
 #endif // ENVIRONMENT_MAY_BE_NODE
 }
 else if (ENVIRONMENT_IS_SHELL) {
@@ -201,6 +205,10 @@ else if (ENVIRONMENT_IS_SHELL) {
       quit(status);
     }
   }
+#else // ENVIRONMENT_MAY_BE_SHELL
+#if ASSERTIONS
+  throw new Error('runtime environment is shell, but not compiled with support for that');
+#endif // ASSERTIONS
 #endif // ENVIRONMENT_MAY_BE_SHELL
 }
 else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
@@ -269,6 +277,10 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   };
 
   Module['setWindowTitle'] = function(title) { document.title = title };
+#else // ENVIRONMENT_MAY_BE_WEB_OR_WORKER
+#if ASSERTIONS
+  throw new Error('runtime environment is web or worker, but not compiled with support for that');
+#endif // ASSERTIONS
 #endif // ENVIRONMENT_MAY_BE_WEB_OR_WORKER
 }
 #if ASSERTIONS
