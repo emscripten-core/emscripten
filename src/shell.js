@@ -94,8 +94,8 @@ if (!ENVIRONMENT_IS_PTHREAD) PthreadWorkerInit = {};
 var currentScriptUrl = (typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
 #endif
 
-if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT_MAY_BE_NODE
+if (ENVIRONMENT_IS_NODE) {
   // Expose functionality in the same simple way that the shells work
   // Note that we pollute the global namespace here, otherwise we break in node
   var nodeFS;
@@ -162,10 +162,10 @@ if (ENVIRONMENT_IS_NODE) {
 #if ASSERTIONS
   throw new Error('runtime environment is node, but not compiled with support for that');
 #endif // ASSERTIONS
+} else
 #endif // ENVIRONMENT_MAY_BE_NODE
-}
-else if (ENVIRONMENT_IS_SHELL) {
 #if ENVIRONMENT_MAY_BE_SHELL
+if (ENVIRONMENT_IS_SHELL) {
   if (typeof read != 'undefined') {
     Module['read'] = function shell_read(f) {
 #if SUPPORT_BASE64_EMBEDDING
@@ -209,10 +209,10 @@ else if (ENVIRONMENT_IS_SHELL) {
 #if ASSERTIONS
   throw new Error('runtime environment is shell, but not compiled with support for that');
 #endif // ASSERTIONS
+} else
 #endif // ENVIRONMENT_MAY_BE_SHELL
-}
-else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 #if ENVIRONMENT_MAY_BE_WEB_OR_WORKER
+if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   Module['read'] = function shell_read(url) {
 #if SUPPORT_BASE64_EMBEDDING
     try {
@@ -281,14 +281,13 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 #if ASSERTIONS
   throw new Error('runtime environment is web or worker, but not compiled with support for that');
 #endif // ASSERTIONS
+} else
 #endif // ENVIRONMENT_MAY_BE_WEB_OR_WORKER
-}
+{
 #if ASSERTIONS
-else {
-  // Unreachable because SHELL is dependent on the others
   throw new Error('unknown runtime environment');
-}
 #endif // ASSERTIONS
+}
 
 // console.log is checked first, as 'print' on the web will open a print dialogue
 // printErr is preferable to console.warn (works better in shells)
