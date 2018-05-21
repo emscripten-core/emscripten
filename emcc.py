@@ -1478,7 +1478,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               logging.debug('optimizing %s', input_file)
               #if DEBUG: shutil.copyfile(temp_file, os.path.join(shared.configuration.CANONICAL_TEMP_DIR, 'to_opt.bc')) # useful when LLVM opt aborts
               new_temp_file = in_temp(unsuffixed(uniquename(temp_file)) + '.o')
-              shared.Building.llvm_opt(temp_file, options.llvm_opts, new_temp_file)
+              # after optimizing, lower intrinsics to libc calls so that our linking code
+              # will find them (otherwise, llvm.cos.f32() will not link in cosf(), and
+              # we end up calling out to JS for Math.cos).
+              opts = options.llvm_opts + ['-lower-non-em-intrinsics']
+              shared.Building.llvm_opt(temp_file, opts, new_temp_file)
               temp_files[pos] = (temp_files[pos][0], new_temp_file)
 
       # Decide what we will link
