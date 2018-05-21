@@ -46,6 +46,14 @@ Module['quit'] = function(status, toThrow) {
 Module['preRun'] = [];
 Module['postRun'] = [];
 
+#if ENVIRONMENT
+
+var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT === 'web' }}};
+var ENVIRONMENT_IS_WORKER = {{{ ENVIRONMENT === 'worker' }}};
+var ENVIRONMENT_IS_NODE = {{{ ENVIRONMENT === 'node' }}};
+var ENVIRONMENT_IS_SHELL = {{{ ENVIRONMENT === 'shell' }}};
+
+#else // ENVIRONMENT
 // The environment setup code below is customized to use Module.
 // *** Environment setup code ***
 var ENVIRONMENT_IS_WEB = false;
@@ -76,6 +84,7 @@ if (Module['ENVIRONMENT']) {
   ENVIRONMENT_IS_NODE = typeof process === 'object' && typeof require === 'function' && !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_WORKER;
   ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
 }
+#endif // ENVIRONMENT
 
 #if USE_PTHREADS
 var ENVIRONMENT_IS_PTHREAD;
@@ -86,6 +95,7 @@ var currentScriptUrl = (typeof document !== 'undefined' && document.currentScrip
 #endif
 
 if (ENVIRONMENT_IS_NODE) {
+#if ENVIRONMENT_MAY_BE_NODE
   // Expose functionality in the same simple way that the shells work
   // Note that we pollute the global namespace here, otherwise we break in node
   var nodeFS;
@@ -148,8 +158,10 @@ if (ENVIRONMENT_IS_NODE) {
   });
 
   Module['inspect'] = function () { return '[Emscripten Module object]'; };
+#endif // ENVIRONMENT_MAY_BE_NODE
 }
 else if (ENVIRONMENT_IS_SHELL) {
+#if ENVIRONMENT_MAY_BE_SHELL
   if (typeof read != 'undefined') {
     Module['read'] = function shell_read(f) {
 #if SUPPORT_BASE64_EMBEDDING
@@ -189,8 +201,10 @@ else if (ENVIRONMENT_IS_SHELL) {
       quit(status);
     }
   }
+#endif // ENVIRONMENT_MAY_BE_SHELL
 }
 else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
+#if ENVIRONMENT_MAY_BE_WEB_OR_WORKER
   Module['read'] = function shell_read(url) {
 #if SUPPORT_BASE64_EMBEDDING
     try {
@@ -255,6 +269,7 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   };
 
   Module['setWindowTitle'] = function(title) { document.title = title };
+#endif // ENVIRONMENT_MAY_BE_WEB_OR_WORKER
 }
 #if ASSERTIONS
 else {

@@ -197,6 +197,15 @@ load('jsifier.js');
 globalEval(processMacros(preprocess(read('runtime.js'), 'runtime.js')));
 Runtime.QUANTUM_SIZE = QUANTUM_SIZE;
 
+// State computations
+
+var ENVIRONMENT_MAY_BE_WEB    = !ENVIRONMENT || ENVIRONMENT === 'web';
+var ENVIRONMENT_MAY_BE_WORKER = !ENVIRONMENT || ENVIRONMENT === 'worker';
+var ENVIRONMENT_MAY_BE_NODE   = !ENVIRONMENT || ENVIRONMENT === 'node';
+var ENVIRONMENT_MAY_BE_SHELL  = !ENVIRONMENT || ENVIRONMENT === 'shell';
+
+var ENVIRONMENT_MAY_BE_WEB_OR_WORKER = ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER;
+
 //===============================
 // Main
 //===============================
