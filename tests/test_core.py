@@ -7648,6 +7648,8 @@ extern "C" {
                 self.assertContained('not compiled with support for that', str(e))
             else:
               raise
+          js = open('src.cpp.o.js').read()
+          assert ('require(' in js) == (Settings.ENVIRONMENT == 'node'), 'we should have require() calls only if node js specified'
 
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
