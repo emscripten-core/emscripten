@@ -332,7 +332,7 @@ def run():
     return 1
 
   # read response files very early on
-  substitute_response_files(sys.argv)
+  sys.argv = substitute_response_files(sys.argv)
 
   if len(sys.argv) == 1 or '--help' in sys.argv:
     # Documentation for emcc and its options must be updated in:

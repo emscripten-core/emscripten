@@ -7625,6 +7625,32 @@ extern "C" {
   def test_wrap_malloc(self):
     self.do_run(open(path_from_root('tests', 'wrap_malloc.cpp')).read(), 'OK.')
 
+  def test_environment(self):
+    for engine in JS_ENGINES:
+      for work in (1, 0):
+        for assertions in (0, 1):
+          if work and assertions: continue # we care about assertions when we fail
+          # set us to test in just this engine
+          self.banned_js_engines = [e for e in JS_ENGINES if e != engine]
+          # tell the compiler to build with just that engine
+          if engine == NODE_JS and work:
+            Settings.ENVIRONMENT = 'node'
+          else:
+            Settings.ENVIRONMENT = 'shell'
+          Settings.ASSERTIONS = assertions
+          print(engine, work, Settings.ENVIRONMENT, assertions)
+          try:
+            self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+          except Exception as e:
+            if not work:
+              if assertions:
+                # with assertions, an error should be shown
+                self.assertContained('not compiled with support for this runtime environment', str(e))
+            else:
+              raise
+          js = open('src.cpp.o.js').read()
+          assert ('require(' in js) == (Settings.ENVIRONMENT == 'node'), 'we should have require() calls only if node js specified'
+
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
     typed_arrays=0, emcc_args=None, env=None):
