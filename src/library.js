@@ -1067,37 +1067,13 @@ LibraryManager.library = {
     return ret | 0;
   },
 
-  llvm_cttz_i32__deps: [function() {
-    function cttz(x) {
-      for (var i = 0; i < 8; i++) {
-        if (x & (1 << i)) {
-          return i;
-        }
-      }
-      return 8;
-    }
-    if (SIDE_MODULE) return ''; // uses it from the parent
-
-#if USE_PTHREADS
-    return 'var cttz_i8; if (ENVIRONMENT_IS_PTHREAD) cttz_i8 = PthreadWorkerInit.cttz_i8; else PthreadWorkerInit.cttz_i8 = cttz_i8 = allocate([' + range(256).map(function(x) { return cttz(x) }).join(',') + '], "i8", ALLOC_STATIC);';
-#else
-    return 'var cttz_i8 = allocate([' + range(256).map(function(x) { return cttz(x) }).join(',') + '], "i8", ALLOC_STATIC);';
-#endif
-  }],
 #if WASM == 0 // binaryen will convert these calls to wasm anyhow
   llvm_cttz_i32__asm: true,
 #endif
   llvm_cttz_i32__sig: 'ii',
-  llvm_cttz_i32: function(x) {
-    x = x|0;
-    var ret = 0;
-    ret = {{{ makeGetValueAsm('cttz_i8', 'x & 0xff', 'i8') }}};
-    if ((ret|0) < 8) return ret|0;
-    ret = {{{ makeGetValueAsm('cttz_i8', '(x >> 8)&0xff', 'i8') }}};
-    if ((ret|0) < 8) return (ret + 8)|0;
-    ret = {{{ makeGetValueAsm('cttz_i8', '(x >> 16)&0xff', 'i8') }}};
-    if ((ret|0) < 8) return (ret + 16)|0;
-    return ({{{ makeGetValueAsm('cttz_i8', 'x >>> 24', 'i8') }}} + 24)|0;
+  llvm_cttz_i32: function(x) { // Currently doesn't take isZeroUndef()
+    x = x | 0;
+    return x ? (31 - (Math_clz32((x ^ (x - 1))) | 0) | 0) : 32;
   },
 
   llvm_cttz_i64__deps: ['llvm_cttz_i32'],

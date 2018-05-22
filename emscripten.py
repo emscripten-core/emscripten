@@ -1259,11 +1259,6 @@ def create_basic_vars(exported_implemented_functions, forwarded_json, metadata, 
   basic_vars = ['DYNAMICTOP_PTR', 'tempDoublePtr', 'ABORT']
   if not (settings['WASM'] and settings['SIDE_MODULE']):
     basic_vars += ['STACKTOP', 'STACK_MAX']
-  if metadata.get('preciseI64MathUsed'):
-    basic_vars += ['cttz_i8']
-  else:
-    if forwarded_json['Functions']['libraryFunctions'].get('_llvm_cttz_i32'):
-      basic_vars += ['cttz_i8']
   if settings['RELOCATABLE']:
     if not (settings['WASM'] and settings['SIDE_MODULE']):
       basic_vars += ['gb', 'fb']
