@@ -1295,8 +1295,10 @@ mergeInto(LibraryManager.library, {
         var randomBuffer = new Uint8Array(1);
         random_device = function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
       } else if (ENVIRONMENT_IS_NODE) {
+#if ENVIRONMENT_MAY_BE_NODE
         // for nodejs
         random_device = function() { return require('crypto')['randomBytes'](1)[0]; };
+#endif // ENVIRONMENT_MAY_BE_NODE
       } else {
         // default for ES5 platforms
         random_device = function() { return (Math.random()*256)|0; };
