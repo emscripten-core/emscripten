@@ -7628,28 +7628,23 @@ extern "C" {
   def test_environment(self):
     for engine in JS_ENGINES:
       for work in (1, 0):
-        for assertions in (0, 1):
-          if work and assertions: continue # we care about assertions when we fail
-          # set us to test in just this engine
-          self.banned_js_engines = [e for e in JS_ENGINES if e != engine]
-          # tell the compiler to build with just that engine
-          if engine == NODE_JS and work:
-            Settings.ENVIRONMENT = 'node'
+        # set us to test in just this engine
+        self.banned_js_engines = [e for e in JS_ENGINES if e != engine]
+        # tell the compiler to build with just that engine
+        if engine == NODE_JS and work:
+          Settings.ENVIRONMENT = 'node'
+        else:
+          Settings.ENVIRONMENT = 'shell'
+        print(engine, work, Settings.ENVIRONMENT)
+        try:
+          self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+        except Exception as e:
+          if not work:
+            self.assertContained('not compiled for this environment', str(e))
           else:
-            Settings.ENVIRONMENT = 'shell'
-          Settings.ASSERTIONS = assertions
-          print(engine, work, Settings.ENVIRONMENT, assertions)
-          try:
-            self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
-          except Exception as e:
-            if not work:
-              if assertions:
-                # with assertions, an error should be shown
-                self.assertContained('not compiled with support for this runtime environment', str(e))
-            else:
-              raise
-          js = open('src.cpp.o.js').read()
-          assert ('require(' in js) == (Settings.ENVIRONMENT == 'node'), 'we should have require() calls only if node js specified'
+            raise
+        js = open('src.cpp.o.js').read()
+        assert ('require(' in js) == (Settings.ENVIRONMENT == 'node'), 'we should have require() calls only if node js specified'
 
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
