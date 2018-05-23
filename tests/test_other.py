@@ -7617,34 +7617,33 @@ int main() {
             (['-Os'], False, True),
             (['-Oz'], False, True), # ctor evaller turned off since only-wasm
           ]:
-          for option in ['BINARYEN', 'WASM']: # the two should be identical
-            try_delete('a.out.js')
-            try_delete('a.out.wast')
-            cmd = [PYTHON, EMCC, path_from_root('tests', 'core', 'test_i64.c'), '-s', option + '=1', '-s', 'BINARYEN_METHOD="interpret-s-expr"'] + args
-            print(args, 'js opts:', expect_js_opts, 'only-wasm:', expect_only_wasm, '   ', ' '.join(cmd))
-            err = run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
-            assert expect_js_opts == ('applying js optimization passes:' in err), err
-            assert expect_only_wasm == ('-emscripten-only-wasm' in err and '--wasm-only' in err), err # check both flag to fastcomp and to asm2wasm
-            wast = open('a.out.wast').read()
-            # i64s
-            i64s = wast.count('(i64.')
-            print('    seen i64s:', i64s)
-            assert expect_only_wasm == (i64s > 30), 'i64 opts can be emitted in only-wasm mode, but not normally' # note we emit a few i64s even without wasm-only, when we replace udivmoddi (around 15 such)
-            selects = wast.count('(select')
-            print('    seen selects:', selects)
-            if '-Os' in args or '-Oz' in args:
-              assert selects > 50, 'when optimizing for size we should create selects'
-            else:
-              assert selects < 10, 'when not optimizing for size we should not create selects'
-            # asm2wasm opt line
-            asm2wasm_line = [line for line in err.split('\n') if 'asm2wasm' in line]
-            asm2wasm_line = '' if not asm2wasm_line else asm2wasm_line[0]
-            if '-O0' in args or '-O' not in str(args):
-              assert '-O' not in asm2wasm_line, 'no opts should be passed to asm2wasm: ' + asm2wasm_line
-            else:
-              opts_str = args[0]
-              assert opts_str.startswith('-O')
-              assert opts_str in asm2wasm_line, 'expected opts: ' + asm2wasm_line
+          try_delete('a.out.js')
+          try_delete('a.out.wast')
+          cmd = [PYTHON, EMCC, path_from_root('tests', 'core', 'test_i64.c'), '-s', 'BINARYEN_METHOD="interpret-s-expr"'] + args
+          print(args, 'js opts:', expect_js_opts, 'only-wasm:', expect_only_wasm, '   ', ' '.join(cmd))
+          err = run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
+          assert expect_js_opts == ('applying js optimization passes:' in err), err
+          assert expect_only_wasm == ('-emscripten-only-wasm' in err and '--wasm-only' in err), err # check both flag to fastcomp and to asm2wasm
+          wast = open('a.out.wast').read()
+          # i64s
+          i64s = wast.count('(i64.')
+          print('    seen i64s:', i64s)
+          assert expect_only_wasm == (i64s > 30), 'i64 opts can be emitted in only-wasm mode, but not normally' # note we emit a few i64s even without wasm-only, when we replace udivmoddi (around 15 such)
+          selects = wast.count('(select')
+          print('    seen selects:', selects)
+          if '-Os' in args or '-Oz' in args:
+            assert selects > 50, 'when optimizing for size we should create selects'
+          else:
+            assert selects < 10, 'when not optimizing for size we should not create selects'
+          # asm2wasm opt line
+          asm2wasm_line = [line for line in err.split('\n') if 'asm2wasm' in line]
+          asm2wasm_line = '' if not asm2wasm_line else asm2wasm_line[0]
+          if '-O0' in args or '-O' not in str(args):
+            assert '-O' not in asm2wasm_line, 'no opts should be passed to asm2wasm: ' + asm2wasm_line
+          else:
+            opts_str = args[0]
+            assert opts_str.startswith('-O')
+            assert opts_str in asm2wasm_line, 'expected opts: ' + asm2wasm_line
       finally:
         del os.environ['EMCC_DEBUG']
 
