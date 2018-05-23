@@ -206,9 +206,13 @@ mergeInto(LibraryManager.library, {
             // If node we use the ws library.
             var WebSocketConstructor;
             if (ENVIRONMENT_IS_NODE) {
+#if ENVIRONMENT_MAY_BE_NODE
               WebSocketConstructor = require('ws');
+#endif ENVIRONMENT_MAY_BE_NODE
             } else if (ENVIRONMENT_IS_WEB) {
+#if ENVIRONMENT_MAY_BE_WEB
               WebSocketConstructor = window['WebSocket'];
+#endif // ENVIRONMENT_MAY_BE_WEB
             } else {
               WebSocketConstructor = WebSocket;
             }
@@ -482,6 +486,7 @@ mergeInto(LibraryManager.library, {
         if (!ENVIRONMENT_IS_NODE) {
           throw new FS.ErrnoError(ERRNO_CODES.EOPNOTSUPP);
         }
+#if ENVIRONMENT_MAY_BE_NODE
         if (sock.server) {
            throw new FS.ErrnoError(ERRNO_CODES.EINVAL);  // already listening
         }
@@ -535,6 +540,7 @@ mergeInto(LibraryManager.library, {
           Module['websocket'].emit('error', [sock.stream.fd, sock.error, 'EHOSTUNREACH: Host is unreachable']);
           // don't throw
         });
+#endif // ENVIRONMENT_MAY_BE_NODE
       },
       accept: function(listensock) {
         if (!listensock.server) {

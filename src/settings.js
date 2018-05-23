@@ -318,6 +318,17 @@ var LEGACY_VM_SUPPORT = 0; // Enable this to get support for non-modern browsers
                            //  * Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
                            //  * Disable WebAssembly.
 
+var ENVIRONMENT = ''; // By default, emscripten output will run on the web, in a web worker,
+                      // in node.js, or in a JS shell like d8, js, or jsc. You can set this option to
+                      // specify that the output should only run in one particular environment, which
+                      // must be one of
+                      //    'web'    - the normal web environment.
+                      //    'worker' - a web worker environment.
+                      //    'node'   - Node.js.
+                      //    'shell'  - a JS shell like d8, js, or jsc.
+                      // There is also a 'pthread' environment, see shell.js, but it cannot be specified
+                      // manually yet TODO
+
 var LZ4 = 0; // Enable this to support lz4-compressed file packages. They are stored compressed in memory, and
              // decompressed on the fly, avoiding storing the entire decompressed data in memory at once.
              // If you run the file packager separately, you still need to build the main program with this flag,
@@ -924,3 +935,11 @@ var MEM_INIT_IN_WASM = 0; // for internal use only
 
 var SUPPORT_BASE64_EMBEDDING = 0; // If set to 1, src/base64Utils.js will be included in the bundle.
                                   // This is set internally when needed (SINGLE_FILE)
+
+// For internal use only, the possible environments the code may run in.
+var ENVIRONMENT_MAY_BE_WEB = 1;
+var ENVIRONMENT_MAY_BE_WORKER = 1;
+var ENVIRONMENT_MAY_BE_NODE = 1;
+var ENVIRONMENT_MAY_BE_SHELL = 1;
+var ENVIRONMENT_MAY_BE_WEB_OR_WORKER = 1;
+

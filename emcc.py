@@ -332,7 +332,7 @@ def run():
     return 1
 
   # read response files very early on
-  substitute_response_files(sys.argv)
+  sys.argv = substitute_response_files(sys.argv)
 
   if len(sys.argv) == 1 or '--help' in sys.argv:
     # Documentation for emcc and its options must be updated in:
@@ -416,7 +416,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     debug_configure = 0 # XXX use this to debug configure stuff. ./configure's generally hide our normal output including stderr so we write to a file
 
     # Whether we fake configure tests using clang - the local, native compiler - or not. if not we generate JS and use node with a shebang
-    # Beither approach is perfect, you can try both, but may need to edit configure scripts in some cases
+    # Neither approach is perfect, you can try both, but may need to edit configure scripts in some cases
     # By default we configure in js, which can break on local filesystem access, etc., but is otherwise accurate so we
     # disable this if we think we have to. A value of '2' here will force JS checks in all cases. In summary:
     # 0 - use native compilation for configure checks

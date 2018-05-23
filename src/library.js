@@ -1067,37 +1067,13 @@ LibraryManager.library = {
     return ret | 0;
   },
 
-  llvm_cttz_i32__deps: [function() {
-    function cttz(x) {
-      for (var i = 0; i < 8; i++) {
-        if (x & (1 << i)) {
-          return i;
-        }
-      }
-      return 8;
-    }
-    if (SIDE_MODULE) return ''; // uses it from the parent
-
-#if USE_PTHREADS
-    return 'var cttz_i8; if (ENVIRONMENT_IS_PTHREAD) cttz_i8 = PthreadWorkerInit.cttz_i8; else PthreadWorkerInit.cttz_i8 = cttz_i8 = allocate([' + range(256).map(function(x) { return cttz(x) }).join(',') + '], "i8", ALLOC_STATIC);';
-#else
-    return 'var cttz_i8 = allocate([' + range(256).map(function(x) { return cttz(x) }).join(',') + '], "i8", ALLOC_STATIC);';
-#endif
-  }],
 #if WASM == 0 // binaryen will convert these calls to wasm anyhow
   llvm_cttz_i32__asm: true,
 #endif
   llvm_cttz_i32__sig: 'ii',
-  llvm_cttz_i32: function(x) {
-    x = x|0;
-    var ret = 0;
-    ret = {{{ makeGetValueAsm('cttz_i8', 'x & 0xff', 'i8') }}};
-    if ((ret|0) < 8) return ret|0;
-    ret = {{{ makeGetValueAsm('cttz_i8', '(x >> 8)&0xff', 'i8') }}};
-    if ((ret|0) < 8) return (ret + 8)|0;
-    ret = {{{ makeGetValueAsm('cttz_i8', '(x >> 16)&0xff', 'i8') }}};
-    if ((ret|0) < 8) return (ret + 16)|0;
-    return ({{{ makeGetValueAsm('cttz_i8', 'x >>> 24', 'i8') }}} + 24)|0;
+  llvm_cttz_i32: function(x) { // Currently doesn't take isZeroUndef()
+    x = x | 0;
+    return x ? (31 - (Math_clz32((x ^ (x - 1))) | 0) | 0) : 32;
   },
 
   llvm_cttz_i64__deps: ['llvm_cttz_i32'],
@@ -2108,7 +2084,7 @@ LibraryManager.library = {
     var dst = (summerOffset != winterOffset && date.getTimezoneOffset() == Math.min(winterOffset, summerOffset))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
 
-    var zonePtr = {{{ makeGetValue(makeGlobalUse('_tzname'), 'dst ? ' + Runtime.QUANTUM_SIZE + ' : 0', 'i32') }}};
+    var zonePtr = {{{ makeGetValue('__get_tzname()', 'dst ? ' + Runtime.QUANTUM_SIZE + ' : 0', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, 'zonePtr', 'i32') }}};
 
     return tmPtr;
@@ -2169,15 +2145,13 @@ LibraryManager.library = {
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
 #if USE_PTHREADS
-  tzname: '; if (ENVIRONMENT_IS_PTHREAD) _tzname = PthreadWorkerInit._tzname; else PthreadWorkerInit._tzname = _tzname = allocate({{{ 2*Runtime.QUANTUM_SIZE }}}, "i32*", ALLOC_STATIC)',
   daylight: '; if (ENVIRONMENT_IS_PTHREAD) _daylight = PthreadWorkerInit._daylight; else PthreadWorkerInit._daylight = _daylight = allocate(1, "i32*", ALLOC_STATIC)',
   timezone: '; if (ENVIRONMENT_IS_PTHREAD) _timezone = PthreadWorkerInit._timezone; else PthreadWorkerInit._timezone = _timezone = allocate(1, "i32*", ALLOC_STATIC)',
 #else
-  tzname: '{{{ makeStaticAlloc(2*Runtime.QUANTUM_SIZE) }}}',
   daylight: '{{{ makeStaticAlloc(1) }}}',
   timezone: '{{{ makeStaticAlloc(1) }}}',
 #endif
-  tzset__deps: ['tzname', 'daylight', 'timezone'],
+  tzset__deps: ['daylight', 'timezone'],
   tzset__proxy: 'sync',
   tzset__sig: 'v',
   tzset: function() {
@@ -2206,11 +2180,11 @@ LibraryManager.library = {
     var summerNamePtr = allocate(intArrayFromString(summerName), 'i8', ALLOC_NORMAL);
     if (summer.getTimezoneOffset() < winter.getTimezoneOffset()) {
       // Northern hemisphere
-      {{{ makeSetValue(makeGlobalUse('_tzname'), '0', 'winterNamePtr', 'i32') }}};
-      {{{ makeSetValue(makeGlobalUse('_tzname'), Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}};
+      {{{ makeSetValue('__get_tzname()', '0', 'winterNamePtr', 'i32') }}};
+      {{{ makeSetValue('__get_tzname()', Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}};
     } else {
-      {{{ makeSetValue(makeGlobalUse('_tzname'), '0', 'summerNamePtr', 'i32') }}};
-      {{{ makeSetValue(makeGlobalUse('_tzname'), Runtime.QUANTUM_SIZE, 'winterNamePtr', 'i32') }}};
+      {{{ makeSetValue('__get_tzname()', '0', 'summerNamePtr', 'i32') }}};
+      {{{ makeSetValue('__get_tzname()', Runtime.QUANTUM_SIZE, 'winterNamePtr', 'i32') }}};
     }
   },
 

@@ -80,6 +80,7 @@
 -------- d gb18030
 -------- d __get_locale.loc_head
 -------- d __get_locale.lock
+-------- T _get_tzname
 -------- d getmntent.linebuf
 -------- d getmntent.mnt
 -------- d getservbyname.buf

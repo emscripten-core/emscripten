@@ -44,9 +44,8 @@ def read_response_file(response_filename):
   if not os.path.exists(response_filename):
     raise Exception("Response file '%s' not found!" % response_filename)
 
-  response_fd = open(response_filename, 'r')
-  args = response_fd.read()
-  response_fd.close()
+  with open(response_filename) as f:
+    args = f.read()
   args = shlex.split(args)
 
   if DEBUG:
@@ -57,12 +56,10 @@ def read_response_file(response_filename):
 
 def substitute_response_files(args):
   """Substitute any response files found in args with their contents."""
-  found = True
-  while found:
-    found = False
-    for index in range(len(args)):
-      if args[index].startswith('@'):
-        found = True
-        new_args = read_response_file(args[index])
-        args[index:index + 1] = new_args
-        break
+  new_args = []
+  for arg in args:
+    if arg.startswith('@'):
+      new_args += read_response_file(arg)
+    else:
+      new_args.append(arg)
+  return new_args

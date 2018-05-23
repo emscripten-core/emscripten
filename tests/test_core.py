@@ -2885,7 +2885,7 @@ def process(filename):
           raise Exception('Could not find symbol table!')
       table = table[table.find('{'):table.find('}')+1]
       # ensure there aren't too many globals; we don't want unnamed_addr
-      assert table.count(',') <= 27, table.count(',')
+      assert table.count(',') <= 28, table.count(',')
 
     test_path = path_from_root('tests', 'core', 'test_dlfcn_self')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -7635,6 +7635,27 @@ extern "C" {
 
   def test_wrap_malloc(self):
     self.do_run(open(path_from_root('tests', 'wrap_malloc.cpp')).read(), 'OK.')
+
+  def test_environment(self):
+    for engine in JS_ENGINES:
+      for work in (1, 0):
+        # set us to test in just this engine
+        self.banned_js_engines = [e for e in JS_ENGINES if e != engine]
+        # tell the compiler to build with just that engine
+        if engine == NODE_JS and work:
+          Settings.ENVIRONMENT = 'node'
+        else:
+          Settings.ENVIRONMENT = 'shell'
+        print(engine, work, Settings.ENVIRONMENT)
+        try:
+          self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+        except Exception as e:
+          if not work:
+            self.assertContained('not compiled for this environment', str(e))
+          else:
+            raise
+        js = open('src.cpp.o.js').read()
+        assert ('require(' in js) == (Settings.ENVIRONMENT == 'node'), 'we should have require() calls only if node js specified'
 
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,

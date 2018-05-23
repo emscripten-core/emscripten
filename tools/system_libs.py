@@ -132,6 +132,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
               break
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
+    # Add in extra non-musl things
+    libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'extras.c'))
     # Without -fno-builtin, LLVM can optimize away or convert calls to library
     # functions to something else based on assumptions that they behave exactly
     # like the standard library. This can cause unexpected bugs when we use our

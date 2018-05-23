@@ -5,6 +5,16 @@ c5,de,15,8a
 23,21
 40,10
 5,4
+llvm_cttz_i32:
+(0, 0)=32
+(1, 0)=0
+(2, 0)=1
+(0x0000FFFF, 0)=0
+(0x7FFF0000, 0)=16
+(0xFFFF0000, 0)=16
+(0x7FFFFFFF, 0)=0
+(0xFFFFFFFE, 0)=1
+(0xFFFFFFFF, 0)=0
 small ctlz: 6,14
 llvm_ctpop_i32:
 22
