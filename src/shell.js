@@ -273,7 +273,9 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 #endif // ENVIRONMENT_MAY_BE_WEB_OR_WORKER
 {
 #if ASSERTIONS
-  throw new Error('not compiled with support for this runtime environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+  throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+#else // ASSERTIONS
+  throw new Error('not compiled for this environment');
 #endif // ASSERTIONS
 }
 
