@@ -54,7 +54,7 @@ mergeInto(LibraryManager.library, {
 
   emscripten_sleep__deps: ['emscripten_async_resume', '$Browser'],
   emscripten_sleep: function(ms) {
-    asm.setAsync(); // tell the scheduler that we have a callback on hold
+    Module['setAsync'](); // tell the scheduler that we have a callback on hold
     Browser.safeSetTimeout(_emscripten_async_resume, ms);
   },
 
@@ -107,7 +107,7 @@ mergeInto(LibraryManager.library, {
   emscripten_get_async_return_value_addr: true,
 
 /*
- * Layout of a coroutine structure
+ * Layout of an ASYNCIFY coroutine structure
  *
  *  0 callee's async ctx
  *  4 callee's STACKTOP
@@ -120,9 +120,9 @@ mergeInto(LibraryManager.library, {
  * 32 my stack:
  *    ...
  */
-  emscripten_coroutine_create__sig: 'iii',
+  emscripten_coroutine_create__sig: 'iiii',
   emscripten_coroutine_create__asm: true,
-  emscripten_coroutine_create__deps: ['malloc'],
+  emscripten_coroutine_create__deps: ['malloc', 'emscripten_alloc_async_context'],
   emscripten_coroutine_create: function(f, arg, stack_size) {
     f = f|0;
     arg = arg|0;
@@ -131,7 +131,7 @@ mergeInto(LibraryManager.library, {
 
     if ((stack_size|0) <= 0) stack_size = 4096;
 
-    coroutine = _malloc(stack_size)|0;
+    coroutine = _malloc(stack_size + 32 | 0) | 0;
     {{{ makeSetValueAsm('coroutine', 12, 0, 'i32') }}}; 
     {{{ makeSetValueAsm('coroutine', 16, '(coroutine+32)', 'i32') }}};
     {{{ makeSetValueAsm('coroutine', 20, 'stack_size', 'i32') }}};
@@ -189,7 +189,31 @@ mergeInto(LibraryManager.library, {
   emscripten_yield__asm: true,
   emscripten_yield: function() {
     ___async = 1;
-  }
+  },
+
+  emscripten_wget__deps: ['emscripten_async_resume', '$PATH', '$Browser'],
+  emscripten_wget: function(url, file) {
+    var _url = Pointer_stringify(url);
+    var _file = Pointer_stringify(file);
+    _file = PATH.resolve(FS.cwd(), _file);
+    Module['setAsync']();
+    Module['noExitRuntime'] = true;
+    var destinationDirectory = PATH.dirname(_file);
+    FS.createPreloadedFile(
+      destinationDirectory,
+      PATH.basename(_file),
+      _url, true, true,
+      _emscripten_async_resume,
+      _emscripten_async_resume,
+      undefined, // dontCreateFile
+      undefined, // canOwn
+      function() { // preFinish
+        // if the destination directory does not yet exist, create it
+        FS.mkdirTree(destinationDirectory);
+      }
+    );
+  },
+
 #else // ASYNCIFY
 
 #if EMTERPRETIFY_ASYNC
@@ -231,15 +255,15 @@ mergeInto(LibraryManager.library, {
     setState: function(s) {
       this.ensureInit();
       this.state = s;
-      asm.setAsyncState(s);
+      Module['setAsyncState'](s);
     },
     handle: function(doAsyncOp, yieldDuring) {
       Module['noExitRuntime'] = true;
       if (EmterpreterAsync.state === 0) {
         // save the stack we want to resume. this lets other code run in between
         // XXX this assumes that this stack top never ever leak! exceptions might violate that
-        var stack = new Int32Array(HEAP32.subarray(EMTSTACKTOP>>2, asm.emtStackSave()>>2));
-        var stacktop = asm.stackSave();
+        var stack = new Int32Array(HEAP32.subarray(EMTSTACKTOP>>2, Module['emtStackSave']()>>2));
+        var stacktop = Module['stackSave']();
 
         var resumedCallbacksForYield = false;
         function resumeCallbacksForYield() {
@@ -256,6 +280,9 @@ mergeInto(LibraryManager.library, {
         var callingDoAsyncOp = 1; // if resume is called synchronously - during the doAsyncOp - we must make it truly async, for consistency
 
         doAsyncOp(function resume(post) {
+          if (ABORT) {
+            return;
+          }
           if (callingDoAsyncOp) {
             assert(callingDoAsyncOp === 1); // avoid infinite recursion
             callingDoAsyncOp++;
@@ -273,7 +300,7 @@ mergeInto(LibraryManager.library, {
           // copy the stack back in and resume
           HEAP32.set(stack, EMTSTACKTOP>>2);
 #if ASSERTIONS
-          assert(stacktop === asm.stackSave()); // nothing should have modified the stack meanwhile
+          assert(stacktop === Module['stackSave']()); // nothing should have modified the stack meanwhile
 #endif
           EmterpreterAsync.setState(2);
           // Resume the main loop
@@ -282,7 +309,7 @@ mergeInto(LibraryManager.library, {
           }
           assert(!EmterpreterAsync.postAsync);
           EmterpreterAsync.postAsync = post || null;
-          asm.emterpret(stack[0]); // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
+          Module['emterpret'](stack[0]); // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
           if (!yieldDuring && EmterpreterAsync.state === 0) {
             // if we did *not* do another async operation, then we know that nothing is conceptually on the stack now, and we can re-allow async callbacks as well as run the queued ones right now
             Browser.resumeAsyncCallbacks();
@@ -331,7 +358,7 @@ mergeInto(LibraryManager.library, {
   emscripten_sleep: function(ms) {
     EmterpreterAsync.handle(function(resume) {
       setTimeout(function() {
-        if (ABORT) return; // do this manually; we can't call into Browser.safeSetTimeout, because that is paused/resumed!
+        // do this manually; we can't call into Browser.safeSetTimeout, because that is paused/resumed!
         resume();
       }, ms);
     });
@@ -344,12 +371,149 @@ mergeInto(LibraryManager.library, {
     }, true);
   },
 
-#else
+  emscripten_wget__deps: ['$EmterpreterAsync', '$PATH', '$FS', '$Browser'],
+  emscripten_wget: function(url, file) {
+    EmterpreterAsync.handle(function(resume) {
+      var _url = Pointer_stringify(url);
+      var _file = Pointer_stringify(file);
+      _file = PATH.resolve(FS.cwd(), _file);
+      var destinationDirectory = PATH.dirname(_file);
+      FS.createPreloadedFile(
+        destinationDirectory,
+        PATH.basename(_file),
+        _url, true, true,
+        resume,
+        resume,
+        undefined, // dontCreateFile
+        undefined, // canOwn
+        function() { // preFinish
+          // if the destination directory does not yet exist, create it
+          FS.mkdirTree(destinationDirectory);
+        }
+      );
+    });
+  },
+
+  emscripten_wget_data__deps: ['$EmterpreterAsync', '$Browser'],
+  emscripten_wget_data: function(url, pbuffer, pnum, perror) {
+    EmterpreterAsync.handle(function(resume) {
+      Browser.asyncLoad(Pointer_stringify(url), function(byteArray) {
+        resume(function() {
+          // can only allocate the buffer after the resume, not during an asyncing
+          var buffer = _malloc(byteArray.length); // must be freed by caller!
+          HEAPU8.set(byteArray, buffer);
+          {{{ makeSetValueAsm('pbuffer', 0, 'buffer', 'i32') }}};
+          {{{ makeSetValueAsm('pnum',  0, 'byteArray.length', 'i32') }}};
+          {{{ makeSetValueAsm('perror',  0, '0', 'i32') }}};
+        });
+      }, function() {
+        {{{ makeSetValueAsm('perror',  0, '1', 'i32') }}};
+        resume();
+      }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
+    });
+  },
+
+  /*
+   * Layout of an EMTERPRETIFY_ASYNC coroutine structure:
+   *
+   *  0 callee's EMTSTACKTOP
+   *  4 callee's EMTSTACKTOP from the compiled code
+   *  8 callee's EMT_STACK_MAX
+   * 12 my EMTSTACKTOP
+   * 16 my EMTSTACKTOP from the compiled code
+   * 20 my EMT_STACK_MAX
+   * 24 coroutine function (0 if already started)
+   * 28 coroutine arg
+   * 32 my stack:
+   *    ...
+   */
+  emscripten_coroutine_create__sig: 'iiii',
+  emscripten_coroutine_create__asm: true,
+  emscripten_coroutine_create__deps: ['malloc'],
+  emscripten_coroutine_create: function(f, arg, stack_size) {
+    f = f|0;
+    arg = arg|0;
+    stack_size = stack_size|0;
+    var coroutine = 0;
+
+    if ((stack_size|0) <= 0) stack_size = 4096;
+
+    coroutine = _malloc(stack_size + 32 | 0) | 0;
+    {{{ makeSetValueAsm('coroutine', 12, '(coroutine+32)', 'i32') }}};
+    {{{ makeSetValueAsm('coroutine', 16, '(coroutine+32)', 'i32') }}};
+    {{{ makeSetValueAsm('coroutine', 20, '(coroutine+32+stack_size)', 'i32') }}};
+    {{{ makeSetValueAsm('coroutine', 24, 'f', 'i32') }}};
+    {{{ makeSetValueAsm('coroutine', 28, 'arg', 'i32') }}};
+    return coroutine|0;
+  },
+
+  emscripten_coroutine_next__sig: 'ii',
+  emscripten_coroutine_next__deps: ['$EmterpreterAsync', 'free'],
+  emscripten_coroutine_next: function(coroutine) {
+    // this is a rewritten emscripten_coroutine_next function from ASYNCIFY
+    coroutine = coroutine|0;
+    var temp = 0, func = 0, funcArg = 0, coroutine_not_finished = 0;
+
+    // switch context
+    // TODO Save EMTSTACKTOP to EMTSTACK_BASE during startup and use it instead
+    {{{ makeSetValueAsm('coroutine', 0, 'EMTSTACKTOP', 'i32') }}};
+    temp = Module['emtStackSave']();
+    {{{ makeSetValueAsm('coroutine', 4, 'temp', 'i32') }}};
+    temp = Module['getEmtStackMax']();
+    {{{ makeSetValueAsm('coroutine', 8, 'temp', 'i32') }}};
+
+    EMTSTACKTOP = {{{ makeGetValueAsm('coroutine', 12, 'i32') }}};
+    Module['emtStackRestore']({{{ makeGetValueAsm('coroutine', 16, 'i32') }}});
+    Module['setEmtStackMax']({{{ makeGetValueAsm('coroutine', 20, 'i32') }}});
+
+    func = {{{ makeGetValueAsm('coroutine', 24, 'i32') }}};
+    if (func !== 0) {
+      // unset func
+      {{{ makeSetValueAsm('coroutine', 24, 0, 'i32') }}};
+      // first run
+      funcArg = {{{ makeGetValueAsm('coroutine', 28, 'i32') }}};
+      {{{ makeDynCall('vi') }}}(func, funcArg);
+    } else {
+      EmterpreterAsync.setState(2);
+      Module['emterpret']({{{ makeGetValue('EMTSTACKTOP', 0, 'i32')}}});
+    }
+    coroutine_not_finished = EmterpreterAsync.state !== 0;
+    EmterpreterAsync.setState(0);
+
+    // switch context
+    {{{ makeSetValueAsm('coroutine', 12, 'EMTSTACKTOP', 'i32') }}}; // cannot change?
+    temp = Module['emtStackSave']();
+    {{{ makeSetValueAsm('coroutine', 16, 'temp', 'i32') }}};
+    temp = Module['getEmtStackMax']();
+    {{{ makeSetValueAsm('coroutine', 20, 'temp', 'i32') }}}; // cannot change?
+
+    EMTSTACKTOP = {{{ makeGetValueAsm('coroutine', 0, 'i32') }}};
+    Module['emtStackRestore']({{{ makeGetValueAsm('coroutine', 4, 'i32') }}});
+    Module['setEmtStackMax']({{{ makeGetValueAsm('coroutine', 8, 'i32') }}});
+
+    if (!coroutine_not_finished) {
+      _free(coroutine);
+    }
+
+    return coroutine_not_finished|0;
+  },
+
+  emscripten_yield__sig: 'v',
+  emscripten_yield__deps: ['$EmterpreterAsync'],
+  emscripten_yield: function() {
+    if (EmterpreterAsync.state === 2) {
+      // re-entering after yield
+      EmterpreterAsync.setState(0);
+    } else {
+      EmterpreterAsync.setState(1);
+    }
+  },
+
+#else // EMTERPRETIFY_ASYNC
+
   emscripten_sleep: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
   },
-#endif
-
   emscripten_coroutine_create: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_coroutine_create';
   },
@@ -358,7 +522,17 @@ mergeInto(LibraryManager.library, {
   },
   emscripten_yield: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_yield';
-  }
-#endif
+  },
+  emscripten_wget: function(url, file) {
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget';
+  },
+  emscripten_wget_data: function(url, file) {
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget_data';
+  },
+#endif // EMTERPRETIFY_ASYNC
+#endif // ASYNCIFY
 });
 
+if (EMTERPRETIFY_ASYNC && !EMTERPRETIFY) {
+  error('You must enable EMTERPRETIFY to use EMTERPRETIFY_ASYNC');
+}

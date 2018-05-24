@@ -194,15 +194,25 @@ mergeInto(LibraryManager.library, {
             // The node ws library API for specifying optional subprotocol is slightly different than the browser's.
             var opts = ENVIRONMENT_IS_NODE ? {'protocol': subProtocols.toString()} : subProtocols;
 
+            // some webservers (azure) does not support subprotocol header
+            if (runtimeConfig && null === Module['websocket']['subprotocol']) {
+              subProtocols = 'null';
+              opts = undefined;
+            }
+
 #if SOCKET_DEBUG
             Module.print('connect: ' + url + ', ' + subProtocols.toString());
 #endif
             // If node we use the ws library.
             var WebSocketConstructor;
             if (ENVIRONMENT_IS_NODE) {
+#if ENVIRONMENT_MAY_BE_NODE
               WebSocketConstructor = require('ws');
+#endif ENVIRONMENT_MAY_BE_NODE
             } else if (ENVIRONMENT_IS_WEB) {
+#if ENVIRONMENT_MAY_BE_WEB
               WebSocketConstructor = window['WebSocket'];
+#endif // ENVIRONMENT_MAY_BE_WEB
             } else {
               WebSocketConstructor = WebSocket;
             }
@@ -280,6 +290,13 @@ mergeInto(LibraryManager.library, {
 
         function handleMessage(data) {
           assert(typeof data !== 'string' && data.byteLength !== undefined);  // must receive an ArrayBuffer
+
+          // An empty ArrayBuffer will emit a pseudo disconnect event
+          // as recv/recvmsg will return zero which indicates that a socket
+          // has performed a shutdown although the connection has not been disconnected yet.
+          if (data.byteLength == 0) {
+            return;
+          }
           data = new Uint8Array(data);  // make a typed array view on the array buffer
 
 #if SOCKET_DEBUG
@@ -469,6 +486,7 @@ mergeInto(LibraryManager.library, {
         if (!ENVIRONMENT_IS_NODE) {
           throw new FS.ErrnoError(ERRNO_CODES.EOPNOTSUPP);
         }
+#if ENVIRONMENT_MAY_BE_NODE
         if (sock.server) {
            throw new FS.ErrnoError(ERRNO_CODES.EINVAL);  // already listening
         }
@@ -522,6 +540,7 @@ mergeInto(LibraryManager.library, {
           Module['websocket'].emit('error', [sock.stream.fd, sock.error, 'EHOSTUNREACH: Host is unreachable']);
           // don't throw
         });
+#endif // ENVIRONMENT_MAY_BE_NODE
       },
       accept: function(listensock) {
         if (!listensock.server) {
@@ -580,12 +599,23 @@ mergeInto(LibraryManager.library, {
         // create a copy of the incoming data to send, as the WebSocket API
         // doesn't work entirely with an ArrayBufferView, it'll just send
         // the entire underlying buffer
-        var data;
-        if (buffer instanceof Array || buffer instanceof ArrayBuffer) {
-          data = buffer.slice(offset, offset + length);
-        } else {  // ArrayBufferView
-          data = buffer.buffer.slice(buffer.byteOffset + offset, buffer.byteOffset + offset + length);
+        if (ArrayBuffer.isView(buffer)) {
+          offset += buffer.byteOffset;
+          buffer = buffer.buffer;
         }
+
+        var data;
+#if USE_PTHREADS
+        // WebSockets .send() does not allow passing a SharedArrayBuffer, so clone the portion of the SharedArrayBuffer as a regular
+        // ArrayBuffer that we want to send.
+        if (buffer instanceof SharedArrayBuffer) {
+          data = new Uint8Array(new Uint8Array(buffer.slice(offset, offset + length))).buffer;
+        } else {
+#endif
+          data = buffer.slice(offset, offset + length);
+#if USE_PTHREADS
+        }
+#endif
 
         // if we're emulating a connection-less dgram socket and don't have
         // a cached connection, queue the buffer to send upon connect and
@@ -690,12 +720,12 @@ mergeInto(LibraryManager.library, {
     function _callback(data) {
       try {
         if (event === 'error') {
-          var sp = Runtime.stackSave();
+          var sp = stackSave();
           var msg = allocate(intArrayFromString(data[2]), 'i8', ALLOC_STACK);
-          Runtime.dynCall('viiii', callback, [data[0], data[1], msg, userData]);
-          Runtime.stackRestore(sp);
+          Module['dynCall_viiii'](callback, data[0], data[1], msg, userData);
+          stackRestore(sp);
         } else {
-          Runtime.dynCall('vii', callback, [data, userData]);
+          Module['dynCall_vii'](callback, data, userData);
         }
       } catch (e) {
         if (e instanceof ExitStatus) {

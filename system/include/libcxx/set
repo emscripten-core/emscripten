@@ -116,6 +116,7 @@ public:
     void insert(initializer_list<value_type> il);
 
     iterator  erase(const_iterator position);
+    iterator  erase(iterator position);  // C++14
     size_type erase(const key_type& k);
     iterator  erase(const_iterator first, const_iterator last);
     void clear() noexcept;
@@ -297,6 +298,7 @@ public:
     void insert(initializer_list<value_type> il);
 
     iterator  erase(const_iterator position);
+    iterator  erase(iterator position);  // C++14
     size_type erase(const key_type& k);
     iterator  erase(const_iterator first, const_iterator last);
     void clear() noexcept;
@@ -395,7 +397,7 @@ _LIBCPP_BEGIN_NAMESPACE_STD
 
 template <class _Key, class _Compare = less<_Key>,
           class _Allocator = allocator<_Key> >
-class _LIBCPP_TYPE_VIS_ONLY set
+class _LIBCPP_TEMPLATE_VIS set
 {
 public:
     // types:
@@ -406,6 +408,9 @@ public:
     typedef _Allocator                               allocator_type;
     typedef value_type&                              reference;
     typedef const value_type&                        const_reference;
+
+    static_assert((is_same<typename allocator_type::value_type, value_type>::value),
+                  "Allocator::value_type must be same type as value_type");
 
 private:
     typedef __tree<value_type, value_compare, allocator_type> __base;
@@ -667,7 +672,7 @@ public:
     template <typename _K2>
     _LIBCPP_INLINE_VISIBILITY
     typename enable_if<__is_transparent<_Compare, _K2>::value,size_type>::type
-    count(const _K2& __k)                  {return __tree_.__count_unique(__k);}
+    count(const _K2& __k) const                    {return __tree_.__count_unique(__k);}
 #endif
     _LIBCPP_INLINE_VISIBILITY
     iterator lower_bound(const key_type& __k)
@@ -805,7 +810,7 @@ swap(set<_Key, _Compare, _Allocator>& __x,
 
 template <class _Key, class _Compare = less<_Key>,
           class _Allocator = allocator<_Key> >
-class _LIBCPP_TYPE_VIS_ONLY multiset
+class _LIBCPP_TEMPLATE_VIS multiset
 {
 public:
     // types:
@@ -816,6 +821,9 @@ public:
     typedef _Allocator                                allocator_type;
     typedef value_type&                              reference;
     typedef const value_type&                        const_reference;
+
+    static_assert((is_same<typename allocator_type::value_type, value_type>::value),
+                  "Allocator::value_type must be same type as value_type");
 
 private:
     typedef __tree<value_type, value_compare, allocator_type> __base;
@@ -1015,7 +1023,7 @@ public:
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     _LIBCPP_INLINE_VISIBILITY
     iterator insert(const_iterator __p, value_type&& __v)
-        {return __tree_.__insert_multi(_VSTD::move(__v));}
+        {return __tree_.__insert_multi(__p, _VSTD::move(__v));}
 #endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
     template <class _InputIterator>
         _LIBCPP_INLINE_VISIBILITY

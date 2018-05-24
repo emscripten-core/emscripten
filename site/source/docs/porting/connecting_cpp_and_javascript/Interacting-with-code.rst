@@ -21,6 +21,7 @@ JavaScript and compiled C or C++:
 - Call JavaScript functions from **C/C++**:
 
   - :ref:`Using emscripten_run_script() <interacting-with-code-call-javascript-from-native>`.
+  - :ref:`Using EM_JS() <interacting-with-code-call-javascript-from-native>` (faster).
   - :ref:`Using EM_ASM() <interacting-with-code-call-javascript-from-native>` (faster).
   - :ref:`Using a C API implemented in JavaScript <implement-c-in-javascript>`.
   - :ref:`As function pointers from C <interacting-with-code-call-function-pointers-from-c>`.
@@ -69,7 +70,9 @@ to prevent C++ name mangling.
 To compile this code run the following command in the Emscripten
 home directory::
 
-    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS="['_int_sqrt']"
+    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS='["_int_sqrt"]' -s EXTRA_EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]'
+
+``EXPORTED_FUNCTIONS`` tells the compiler what we want to be accessible from the compiled code (everything else might be removed if it is not used), and ``EXTRA_EXPORTED_RUNTIME_METHODS`` tells the compiler that we want to use the runtime functions ``ccall`` and ``cwrap`` (otherwise, it will remove them if it does not see they are used).
 
 .. note::
 
@@ -88,8 +91,9 @@ following JavaScript::
 The first parameter is the name of the function to be wrapped, the second is
 the return type of the function (or a JavaScript `null` value if there isn't one), and the third is an array of parameter
 types (which may be omitted if there are no parameters). The types are
-native JavaScript types, "number" (for a C integer, float, or general
-pointer) or "string" (for a C ``char*`` that represents a string).
+"number" (for a JavaScript number corresponding to a C integer, float, or general
+pointer), "string" (for a JavaScript string that corresponds to a C ``char*`` that represents a string) or
+"array" (for a JavaScript array or typed array that corresponds to a C array; for typed arrays, it must be a Uint8Array or Int8Array).
 
 You can run this yourself by first opening the generated page
 **function.html** in a web browser (nothing will happen on page
@@ -145,9 +149,17 @@ parameters to pass to the function:
        as the latter will force the method to actually be included in
        the build.
 
-   - Use ``Module.ccall`` and not ``ccall`` by itself. The former will work
-     at all optimisation levels (even if the :term:`Closure Compiler`
-     minifies the function names).
+   - The compiler will remove code it does not see is used, to improve code
+     size. If you use ``ccall`` in a place it sees, like code in a ``--pre-js``
+     or ``--post-js``, it will just work. If you use it in a place the compiler
+     didn't see, like another script tag on the HTML or in the JS console like
+     we did in this tutorial, then because of optimizations
+     and minification you should export ccall from the runtime, using
+     ``EXTRA_EXPORTED_RUNTIME_METHODS``, for example using
+     ``-s 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]'``,
+     and call it on ``Module`` (which contains
+     everything exported, in a safe way that is not influenced by minification
+     or optimizations).
 
 
 Interacting with an API written in C/C++ from NodeJS
@@ -158,8 +170,8 @@ Say you have a C library that exposes some procedures:
 .. code:: c
 
     //api_example.c
-    #include<stdio.h>
-    #include<emscripten.h>
+    #include <stdio.h>
+    #include <emscripten.h>
 
     EMSCRIPTEN_KEEPALIVE
     void sayHi() {
@@ -246,9 +258,30 @@ following JavaScript:
 
 
 A faster way to call JavaScript from C is to write "inline JavaScript",
-using :c:func:`EM_ASM` (and related macros). These are used in a similar
-manner to inline assembly code. The "alert" example above might be
-written using inline JavaScript as:
+using :c:func:`EM_JS` or :c:func:`EM_ASM` (and related macros).
+
+EM_JS is used to declare JavaScript functions from inside a C file. The "alert"
+example might be written using EM_JS like:
+
+.. code-block:: c++
+
+   #include <emscripten.h>
+
+   EM_JS(void, call_alert, (), {
+     alert('hello world!');
+     throw 'all done';
+   });
+
+   int main() {
+     call_alert();
+     return 0;
+   }
+
+EM_JS's implementation is essentially a shorthand for :ref:`implementing a
+JavaScript library<implement-c-in-javascript>`.
+
+EM_ASM is used in a similar manner to inline assembly code. The "alert" example
+might be written with inline JavaScript as:
 
 .. code-block:: c++
 
@@ -335,7 +368,7 @@ As a simple example, consider the case where you have some C code like this:
 
 .. code-block:: c
 
-    extern void my_js();
+    extern void my_js(void);
 
     int main() {
       my_js();
@@ -376,10 +409,10 @@ If you add it to your own file, you should write something like
 first, so this add ``my_js`` onto ``LibraryManager.library``, the global
 object where all JavaScript library code should be.
 
-JavaScript Limits in library files
+JavaScript limits in library files
 ----------------------------------
 
-If you're not familar with JavaScript, say if you're a C/C++ programmer
+If you're not familiar with JavaScript, say if you're a C/C++ programmer
 and just using emscripten, then the following issues probably won't come up, but
 if you're an experienced JavaScript programmer you need to be aware
 some common JavaScript practices can not be used in certain ways in emscripten
@@ -397,7 +430,7 @@ key-value pairs are special. Interior code inside a function can
 have arbitrary JS, of course).
 
 To avoid this limitation of JS libraries, you can put code in another file using
-the ``--pre-js`` or ``--post-js`` options, which allow arbitary normal
+the ``--pre-js`` or ``--post-js`` options, which allow arbitrary normal
 JS, and it is included and optimized with the rest of the output. That is
 the recommended approach for most cases. Another option is another ``<script>`` tag.
 
@@ -433,7 +466,7 @@ initialization.
    });
 
 A `__postset` is a string the compiler will emit directly to the
-output file. For the example above this code will be emited.
+output file. For the example above this code will be emitted.
 
 .. code-block:: javascript
 
@@ -571,19 +604,35 @@ See the `library_*.js`_ files for other examples.
 Calling JavaScript functions as function pointers from C
 ========================================================
 
-You can use ``Runtime.addFunction`` to return an integer value that represents
-a function pointer. Passing that integer to C code then lets it call that
-value as a function pointer, and the JavaScript function you sent to
-``Runtime.addFunction`` will be called.
+You can use ``addFunction`` to return an integer value that represents a
+function pointer. Passing that integer to C code then lets it call that value as
+a function pointer, and the JavaScript function you sent to ``addFunction`` will
+be called.
 
 See `test_add_function in tests/test_core.py`_ for an example.
 
-When using ``Runtime.addFunction``, there is a backing array where these
-functions are stored. This array must be explicitly sized, which can be
-done via a compile-time setting, ``RESERVED_FUNCTION_POINTERS``. For
-example, to reserve space for 20 functions to be added::
+When using ``addFunction``, there is a backing array where these functions are
+stored. This array must be explicitly sized, which can be done via a
+compile-time setting, ``RESERVED_FUNCTION_POINTERS``. For example, to reserve
+space for 20 functions to be added::
 
     emcc ... -s RESERVED_FUNCTION_POINTERS=20 ...
+
+.. note:: When using ``addFunction`` on LLVM wasm backend, you need to provide
+   an additional second argument, a Wasm function signature string. Each
+   character within a signature string represents a type. The first character
+   represents the return type of a function, and remaining characters are for
+   parameter types.
+   - 'v': void type
+   - 'i': 32-bit integer type
+   - 'j': 64-bit integer type (currently does not exist in JavaScript)
+   - 'f': 32-bit float type
+   - 'd': 64-bit float type
+   For example, if you add a function that takes an integer and does not return
+   anything, you can do
+   ``addFunction(your_function, 'vi');``
+   See tests/interop/test_add_function_post.js for an example.
+
 
 .. _interacting-with-code-access-memory:
 

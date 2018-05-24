@@ -14,8 +14,7 @@ struct Class {
     printf("waka %d\n", x++);
 
     if (x == 7 || x < 0) {
-      int result = x;
-      REPORT_RESULT();
+      REPORT_RESULT(x);
       emscripten_cancel_main_loop();
     }
   }
@@ -28,10 +27,10 @@ struct Class {
     instance = this;
 
     EM_ASM({
-      var initial = Runtime.stackSave();
+      var initial = stackSave();
       Module.print('seeing initial stack of ' + initial);
       setTimeout(function() {
-        var current = Runtime.stackSave();
+        var current = stackSave();
         Module.print('seeing later stack of   ' + current);
         assert(current === initial);
       }, 0);

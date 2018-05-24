@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os, multiprocessing, subprocess, socket, time
 from runner import BrowserCore, path_from_root
 from tools.shared import *
@@ -25,11 +26,11 @@ def clean_processes(processes):
         pass
 
 def make_relay_server(port1, port2):
-  print >> sys.stderr, 'creating relay server on ports %d,%d' % (port1, port2)
+  print('creating relay server on ports %d,%d' % (port1, port2), file=sys.stderr)
   proc = Popen([PYTHON, path_from_root('tests', 'sockets', 'socket_relay.py'), str(port1), str(port2)])
   return proc
 
-class WebsockifyServerHarness:
+class WebsockifyServerHarness(object):
   def __init__(self, filename, args, listen_port, do_server_check=True):
     self.processes = []
     self.filename = filename
@@ -47,13 +48,13 @@ class WebsockifyServerHarness:
     if self.filename:
       sp = Popen([CLANG_CC, path_from_root('tests', self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + get_clang_native_args() + self.args, env=get_clang_native_env(), stdout=PIPE, stderr=PIPE)
       out = sp.communicate()
-      print 'Socket server build: out:', out[0] or '', '/ err:', out[1] or ''
+      print('Socket server build: out:', out[0] or '', '/ err:', out[1] or '')
       assert sp.returncode == 0
       process = Popen([os.path.abspath('server')])
       self.processes.append(process)
 
     # start the websocket proxy
-    print >> sys.stderr, 'running websockify on %d, forward to tcp %d' % (self.listen_port, self.target_port)
+    print('running websockify on %d, forward to tcp %d' % (self.listen_port, self.target_port), file=sys.stderr)
     wsp = websockify.WebSocketProxy(verbose=True, listen_port=self.listen_port, target_host="127.0.0.1", target_port=self.target_port, run_once=True)
     self.websockify = multiprocessing.Process(target=wsp.start_server)
     self.websockify.start()
@@ -73,7 +74,7 @@ class WebsockifyServerHarness:
       clean_processes(self.processes)
       raise Exception('[Websockify failed to start up in a timely manner]')
 
-    print '[Websockify on process %s]' % str(self.processes[-2:])
+    print('[Websockify on process %s]' % str(self.processes[-2:]))
 
   def __exit__(self, *args, **kwargs):
     # try to kill the websockify proxy gracefully
@@ -85,7 +86,7 @@ class WebsockifyServerHarness:
     clean_processes(self.processes)
 
 
-class CompiledServerHarness:
+class CompiledServerHarness(object):
   def __init__(self, filename, args, listen_port):
     self.processes = []
     self.filename = filename
@@ -110,7 +111,7 @@ class CompiledServerHarness:
     # compile the server
     sp = Popen([PYTHON, EMCC, path_from_root('tests', self.filename), '-o', 'server.js', '-DSOCKK=%d' % self.listen_port] + self.args)
     out = sp.communicate()
-    print 'Socket server build: out:', out[0] or '', '/ err:', out[1] or ''
+    print('Socket server build: out:', out[0] or '', '/ err:', out[1] or '')
     assert sp.returncode == 0
 
     process = Popen(NODE_JS + ['server.js'])
@@ -129,9 +130,9 @@ class sockets(BrowserCore):
   @classmethod
   def setUpClass(self):
     super(sockets, self).setUpClass()
-    print
-    print 'Running the socket tests. Make sure the browser allows popups from localhost.'
-    print
+    print()
+    print('Running the socket tests. Make sure the browser allows popups from localhost.')
+    print()
 
   def test_inet(self):
     src = r'''
@@ -338,17 +339,40 @@ ok.
   def test_getprotobyname(self):
     self.do_run(open(path_from_root('tests', 'sockets', 'test_getprotobyname.c')).read(), 'success')
 
+  def test_link(self):
+    self.emcc_args += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1']
+    self.do_run(r'''
+#include <netdb.h>
+
+#include <sys/types.h>
+#include <sys/socket.h>
+
+int main () {
+    void* thing = gethostbyname("bing.com");
+    ssize_t rval = recv (0, thing, 0, 0);
+    rval = send (0, thing, 0, 0);
+    return 0;
+}''', '', force_c=True)
+
   def test_sockets_echo(self):
     sockets_include = '-I'+path_from_root('tests', 'sockets')
 
+    # Note: in the WebsockifyServerHarness and CompiledServerHarness tests below, explicitly use consecutive server listen ports,
+    # because server teardown might not occur deterministically (python dtor time) and is a bit racy.
+    # WebsockifyServerHarness uses two port numbers, x and x-1, so increment it by two.
+    # CompiledServerHarness only uses one. Start with 49160 & 49159 as the first server port addresses. If adding new tests,
+    # increment the used port addresses below.
+
     # Websockify-proxied servers can't run dgram tests
     harnesses = [
-      (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 49160), 0),
       (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 49161), 0),
       (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1'], 49162), 1),
       # The following forces non-NULL addr and addlen parameters for the accept call
       (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1'], 49163), 0)
     ]
+
+    if not WINDOWS: # TODO: Python pickling bug causes WebsockifyServerHarness to not work on Windows.
+      harnesses += [ (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 49160), 0) ]
 
     for harness, datagram in harnesses:
       with harness:
@@ -360,24 +384,27 @@ ok.
       self.btest('sdl2_net_client.c', expected='0', args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2', '-DSOCKK=%d' % harness.listen_port])
 
   def test_sockets_async_echo(self):
-    if WINDOWS: return self.skip('This test is Unix-specific.')
     # Run with ./runner.py sockets.test_sockets_async_echo
     sockets_include = '-I'+path_from_root('tests', 'sockets')
 
     # Websockify-proxied servers can't run dgram tests
     harnesses = [
-      (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_ASYNC=1'], 49165), 0),
-      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0', '-DTEST_ASYNC=1'], 49166), 0),
-      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1', '-DTEST_ASYNC=1'], 49167), 1),
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0', '-DTEST_ASYNC=1'], 49167), 0),
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1', '-DTEST_ASYNC=1'], 49168), 1),
       # The following forces non-NULL addr and addlen parameters for the accept call
-      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1', '-DTEST_ASYNC=1'], 49168), 0)
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1', '-DTEST_ASYNC=1'], 49169), 0)
     ]
 
+    if not WINDOWS: # TODO: Python pickling bug causes WebsockifyServerHarness to not work on Windows.
+      harnesses += [ (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_ASYNC=1'], 49166), 0) ]
+
     for harness, datagram in harnesses:
+      print('harness:', harness)
       with harness:
         self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, '-DTEST_ASYNC=1', sockets_include])
 
     # Deliberately attempt a connection on a port that will fail to test the error callback and getsockopt
+    print('expect fail')
     self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=49169', '-DTEST_ASYNC=1', sockets_include])
 
   def test_sockets_echo_bigdata(self):
@@ -394,10 +421,12 @@ ok.
     output = input.replace('#define MESSAGE "pingtothepong"', '#define MESSAGE "%s"' % message)
 
     harnesses = [
-      (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 49170), 0),
-      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 49171), 0),
-      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1'], 49172), 1)
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 49172), 0),
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1'], 49173), 1)
     ]
+
+    if not WINDOWS: # TODO: Python pickling bug causes WebsockifyServerHarness to not work on Windows.
+      harnesses += [ (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 49171), 0) ]
 
     for harness, datagram in harnesses:
       with harness:
@@ -559,59 +588,62 @@ ok.
   def test_nodejs_sockets_echo(self):
     # This test checks that sockets work when the client code is run in Node.js
     # Run with ./runner.py sockets.test_nodejs_sockets_echo
-    if not NODE_JS in JS_ENGINES:
+    if NODE_JS not in JS_ENGINES:
         return self.skip('node is not present')
 
     sockets_include = '-I'+path_from_root('tests', 'sockets')
 
     harnesses = [
-      (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 59160), 0),
       (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 59162), 0),
       (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1'], 59164), 1)
     ]
 
+    if not WINDOWS: # TODO: Python pickling bug causes WebsockifyServerHarness to not work on Windows.
+      harnesses += [ (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 59160), 0) ]
+
     # Basic test of node client against both a Websockified and compiled echo server.
     for harness, datagram in harnesses:
       with harness:
-        Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, '-DREPORT_RESULT=int dummy'], stdout=PIPE, stderr=PIPE).communicate()
+        Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram], stdout=PIPE, stderr=PIPE).communicate()
 
         out = run_js('client.js', engine=NODE_JS, full_output=True)
         self.assertContained('do_msg_read: read 14 bytes', out)
 
-    # Test against a Websockified server with compile time configured WebSocket subprotocol. We use a Websockified
-    # server because as long as the subprotocol list contains binary it will configure itself to accept binary
-    # This test also checks that the connect url contains the correct subprotocols.
-    print "\nTesting compile time WebSocket configuration.\n"
-    for harness in [
-      WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 59166)
-    ]:
-      with harness:
-        Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-s', 'SOCKET_DEBUG=1', '-s', 'WEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166', '-DREPORT_RESULT=int dummy'], stdout=PIPE, stderr=PIPE).communicate()
+    if not WINDOWS: # TODO: Python pickling bug causes WebsockifyServerHarness to not work on Windows.
+      # Test against a Websockified server with compile time configured WebSocket subprotocol. We use a Websockified
+      # server because as long as the subprotocol list contains binary it will configure itself to accept binary
+      # This test also checks that the connect url contains the correct subprotocols.
+      print("\nTesting compile time WebSocket configuration.\n")
+      for harness in [
+        WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 59166)
+      ]:
+        with harness:
+          Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-s', 'SOCKET_DEBUG=1', '-s', 'WEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166'], stdout=PIPE, stderr=PIPE).communicate()
 
-        out = run_js('client.js', engine=NODE_JS, full_output=True)
-        self.assertContained('do_msg_read: read 14 bytes', out)
-        self.assertContained(['connect: ws://127.0.0.1:59166, base64,binary', 'connect: ws://127.0.0.1:59166/, base64,binary'], out)
+          out = run_js('client.js', engine=NODE_JS, full_output=True)
+          self.assertContained('do_msg_read: read 14 bytes', out)
+          self.assertContained(['connect: ws://127.0.0.1:59166, base64,binary', 'connect: ws://127.0.0.1:59166/, base64,binary'], out)
 
-    # Test against a Websockified server with runtime WebSocket configuration. We specify both url and subprotocol.
-    # In this test we have *deliberately* used the wrong port '-DSOCKK=12345' to configure the echo_client.c, so
-    # the connection would fail without us specifying a valid WebSocket URL in the configuration.
-    print "\nTesting runtime WebSocket configuration.\n"
-    for harness in [
-      WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 59168)
-    ]:
-      with harness:
-        open(os.path.join(self.get_dir(), 'websocket_pre.js'), 'w').write('''
-        var Module = {
-          websocket: {
-            url: 'ws://localhost:59168/testA/testB',
-            subprotocol: 'text, base64, binary',
-          }
-        };
-        ''')
+      # Test against a Websockified server with runtime WebSocket configuration. We specify both url and subprotocol.
+      # In this test we have *deliberately* used the wrong port '-DSOCKK=12345' to configure the echo_client.c, so
+      # the connection would fail without us specifying a valid WebSocket URL in the configuration.
+      print("\nTesting runtime WebSocket configuration.\n")
+      for harness in [
+        WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 59168)
+      ]:
+        with harness:
+          open(os.path.join(self.get_dir(), 'websocket_pre.js'), 'w').write('''
+          var Module = {
+            websocket: {
+              url: 'ws://localhost:59168/testA/testB',
+              subprotocol: 'text, base64, binary',
+            }
+          };
+          ''')
 
-        Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js', 'websocket_pre.js', '-s', 'SOCKET_DEBUG=1', '-DSOCKK=12345', '-DREPORT_RESULT=int dummy'], stdout=PIPE, stderr=PIPE).communicate()
+          Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js', 'websocket_pre.js', '-s', 'SOCKET_DEBUG=1', '-DSOCKK=12345'], stdout=PIPE, stderr=PIPE).communicate()
 
-        out = run_js('client.js', engine=NODE_JS, full_output=True)
-        self.assertContained('do_msg_read: read 14 bytes', out)
-        self.assertContained('connect: ws://localhost:59168/testA/testB, text,base64,binary', out)
+          out = run_js('client.js', engine=NODE_JS, full_output=True)
+          self.assertContained('do_msg_read: read 14 bytes', out)
+          self.assertContained('connect: ws://localhost:59168/testA/testB, text,base64,binary', out)
 

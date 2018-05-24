@@ -41,12 +41,6 @@ Emscripten tools and dependencies
 .. glossary::
 	:sorted:
 
-	vs-tool
-		*vs-tool* is a Visual Studio 2010 plugin for integrating MinGW, :term:`Clang` and Emscripten into the VS IDE.  The plugin is automatically added by the :term:`Windows NSIS Installer Emscripten SDK` if Visual Studio 2010 is present on the target system. 
-		
-		.. note:: At time of writing this only supports Visual Studio 2010 (check `here <https://github.com/juj/vs-tool/issues/5>`_ to see if VS 2012 support has been added).
-
-
 	Clang
 		Clang is a compiler front end for C, C++, and other programming languages that uses :term:`LLVM` as its back end.
 		
@@ -120,16 +114,10 @@ The following terms are used when referring to the SDK and :ref:`emsdk`:
 	SDK
 		A set of :term:`tools <Tool>`. For example, **sdk-1.5.6-32bit** is an SDK consisting of the tools: clang-3.2-32bit, node-0.10.17-32bit, python-2.7.5.1-32bit and emscripten-1.5.6. 
 		
-		There are a number of different Emscripten SDK packages, including the :term:`Portable Emscripten SDK` and :term:`Windows NSIS Installer Emscripten SDK`. SDKs can be downloaded from :ref:`here <sdk-download-and-install>`.
+		There are a number of different Emscripten SDK packages, which are provided as :term:`Portable Emscripten SDK` installations. These can be downloaded from :ref:`here <sdk-download-and-install>`.
 		
 	Active Tool/SDK
 		The :term:`emsdk` can store multiple versions of :term:`tools <Tool>` and :term:`SDKs <SDK>`. The active tools/SDK is the set of tools that are used by default on the *Emscripten Command Prompt*. This compiler configuration is stored in a user-specific persistent file (**~/.emscripten**) and can be changed using *emsdk*.
-		
-	Portable Emscripten SDK
-		A portable no-installer version of the SDK package. It is identical to the :term:`NSIS SDK installer <Windows NSIS Installer Emscripten SDK>`, except that it does not interact with the Windows registry. This allows Emscripten to be used on a computer without administrative privileges, and means that the installation can be migrated from one location (directory or computer) to another by simply copying/zipping up the directory contents.
-		
-	Windows NSIS Installer Emscripten SDK
-		A Windows NSIS installer of the Emscripten SDK. This registers the Emscripten SDK as a ‘standard’ Windows application, allowing it to be installed and removed from Windows like any other app. This installer also automatically deploys :term:`vs-tool` if Visual Studio 2010 is present on the target system.
 		
 	emsdk root directory
 		The :term:`emsdk` can manage any number of :term:`tools <Tool>` and :term:`SDKs <SDK>`, and these are stored in :term:`subdirectories <SDK root directory>` of the *emsdk root directory*. The **emsdk root** is the directory specified when you first installed an SDK.

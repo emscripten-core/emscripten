@@ -1,12 +1,12 @@
-#include<stdio.h>
-#include<emscripten.h>
+#include <stdio.h>
+#include <emscripten.h>
 
 int main() {
-  int result = EM_ASM_INT_V({
+  int result = EM_ASM_INT({
     return !!Module['memoryInitializerRequest'];
   });
   printf("memory init request: %d\n", result);
-  REPORT_RESULT();
+  REPORT_RESULT(result);
   return 0;
 }
 

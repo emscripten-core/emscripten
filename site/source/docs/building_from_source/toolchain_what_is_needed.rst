@@ -23,7 +23,7 @@ Emscripten tools and dependencies
 A complete Emscripten environment requires the following tools. First test to see if they are already installed using the :ref:`instructions below <toolchain-test-which-dependencies-are-installed>`. Then install any missing tools using the instructions in the appropriate platform-specific build topic (:ref:`building-emscripten-on-linux`, :ref:`building-emscripten-on-windows-from-source`, :ref:`building-emscripten-on-mac-osx-from-source`):
 
 	- :term:`Node.js` (0.8 or above; 0.10.17 or above to run websocket-using servers in node):
-	- :term:`Python` 2.x (2.7.3 or above preferred)
+	- :term:`Python` 2.7.12 or above (Python 3.* may also work, work is ongoing)
 	- :term:`Java` (1.6.0_31 or later).  Java is optional. It is required to use the :term:`Closure Compiler` (in order to minify your code).
 	- :term:`Git` client. Git is required if building tools from source.
 	- :term:`Fastcomp` (Emscripten's fork of LLVM and Clang)
@@ -40,11 +40,10 @@ Compiler toolchain
 
 When building Emscripten from source code, whether "manually" or using the SDK, you will need a *compiler toolchain*:
 
-- Windows: Install `Visual Studio 2010 <http://go.microsoft.com/?linkid=9709949>`_ and `cmake <http://www.cmake.org/cmake/resources/software.html>`_. You may also need `Microsoft Windows SDK for Windows 7 and .NET Framework 4 <http://www.microsoft.com/en-us/download/details.aspx?id=8279>`_).
+- Windows: Install `Visual Studio 2017 <http://go.microsoft.com/?linkid=9709949>`_ and `cmake <http://www.cmake.org/cmake/resources/software.html>`_.
 
 	.. note:: 
 	
-		- Visual Studio 2010 is required! Visual Studio 2012 and Visual Studio 2013 do not correctly compile :ref:`Fastcomp <LLVM-Backend>`. This issue will be fixed (eventually) when *Fastcomp* is migrated to use a LLVM 3.4 or later.
 		- SDK users can also install and activate the MinGW compiler toolchain in order to build their own projects:
 
 			::
@@ -52,9 +51,7 @@ When building Emscripten from source code, whether "manually" or using the SDK, 
 				emsdk install mingw-4.6.2-32bit
 				emsdk activate mingw-4.6.2-32bit
 				
-			While this toolchain can in theory also be used to build :ref:`Fastcomp <LLVM-Backend>`, Visual Studio 2010 is recommended (by the LLVM development team).
-
-		
+	
 - Linux: Install *gcc* and *cmake*:
 	
 	::

@@ -1,4 +1,5 @@
-import os, shutil, logging, subprocess, sys, stat, ogg
+import os, shutil, logging, subprocess, sys, stat
+from . import ogg
 
 TAG = 'version_1'
 
@@ -6,7 +7,7 @@ def get(ports, settings, shared):
   if settings.USE_VORBIS == 1:
     ports.fetch_project('vorbis', 'https://github.com/emscripten-ports/vorbis/archive/' + TAG + '.zip', 'Vorbis-' + TAG)
     def create():
-      logging.warning('building port: vorbis')
+      logging.info('building port: vorbis')
      
       source_path = os.path.join(ports.get_dir(), 'vorbis', 'Vorbis-' + TAG)
       dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'vorbis')

@@ -6,6 +6,11 @@
 #define HAVE_MMAP 0
 /* we can only grow the heap up anyhow, so don't try to trim */
 #define MORECORE_CANNOT_TRIM 1
+#ifndef DLMALLOC_DEBUG
+/* dlmalloc has many checks, calls to abort() increase code size,
+   leave them only in debug builds */
+#define ABORT __builtin_unreachable()
+#endif
 /* XXX Emscripten Tracing API. This defines away the code if tracing is disabled. */
 #include <emscripten/trace.h>
 
@@ -610,8 +615,15 @@
 #define MAX_SIZE_T           (~(size_t)0)
 
 #ifndef USE_LOCKS /* ensure true if spin or recursive locks set */
-#define USE_LOCKS  ((defined(USE_SPIN_LOCKS) && USE_SPIN_LOCKS != 0) || \
-(defined(USE_RECURSIVE_LOCKS) && USE_RECURSIVE_LOCKS != 0))
+/* XXX: The following block adapted locally to avoid
+        clean up new Clang -Wexpansion-to-defined warnings.
+        http://lists.llvm.org/pipermail/cfe-commits/Week-of-Mon-20160118/147239.html */
+#if (defined(USE_SPIN_LOCKS) && USE_SPIN_LOCKS != 0) || \
+    (defined(USE_RECURSIVE_LOCKS) && USE_RECURSIVE_LOCKS != 0)
+#define USE_LOCKS 1
+#else
+#define USE_LOCKS 0
+#endif
 #endif /* USE_LOCKS */
 
 #if USE_LOCKS /* Spin locks for gcc >= 4.1, older gcc on x86, MSC >= 1310 */
@@ -6010,6 +6022,15 @@ int mspace_mallopt(int param_number, int value) {
 
 #endif /* MSPACES */
 
+// Export malloc and free as duplicate names emscripten_builtin_malloc and
+// emscripten_builtin_free so that applications can replace malloc and free
+// in their code, and make those replacements refer to the original dlmalloc
+// and dlfree from this file.
+// This allows an easy mechanism for hooking into memory allocation.
+#if defined(__EMSCRIPTEN__) && !ONLY_MSPACES
+extern __typeof(malloc) emscripten_builtin_malloc __attribute__((weak, alias("malloc")));
+extern __typeof(free) emscripten_builtin_free __attribute__((weak, alias("free")));
+#endif
 
 /* -------------------- Alternative MORECORE functions ------------------- */
 

@@ -108,6 +108,34 @@ The final *emcc* command includes both the C++ and JavaScript glue code, which a
 The output now contains everything needed to use the C++ classes through JavaScript.
 
 
+Modular output
+==============
+
+When using the WebIDL binder, often what you are doing is creating a library. In that
+case, the `MODULARIZE` option makes sense to use. It wraps the entire JavaScript output
+in a function, which you call to create instances,
+
+.. code-block:: javascript
+
+	var instance = Module();
+
+(You can use the `EXPORT_NAME` option to change `Module` to something else.) This is
+good practice for libraries, as then they don't include unnecessary things in the
+global scope (and in some cases you want to create more than one).
+
+Modularize also provides a promise-like API, which is the recommended way to use it,
+
+.. code-block:: javascript
+
+	var instance = Module().then(function(instance) {
+	  // code that uses the instance here
+	});
+
+The callback is called when it is safe to run compiled code, similar
+to the `onRuntimeInitialized` callback (i.e., it waits for all
+necessary async events). It receives the instance as a parameter,
+for convenience.
+
 
 Using C++ classes in JavaScript
 ================================	
@@ -127,6 +155,7 @@ Once binding is complete, C++ objects can be created and used in JavaScript as t
 
 	While the objects are also available in the global namespace by default, there are cases where they will not be (for example, if you use the :term:`closure compiler` to minify code or wrap compiled code in a function to avoid polluting the global namespace). You can of course use whatever name you like for the module by assigning it to a new variable: ``var MyModuleName = Module;``.
 
+.. important:: You can only use this code when it is :ref:`safe to call compiled code <faq-when-safe-to-call-compiled-functions>`, see more details in that FAQ entry.
 
 JavaScript will automatically garbage collect any of the wrapped C++ objects when there are no more references. If the C++ object doesn't require specific clean up (i.e. it doesn't have a destructor) then no other action needs to be taken.
 

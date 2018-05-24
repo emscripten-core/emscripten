@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <dirent.h>
 
 #define SECRET_LEN 10
 
@@ -42,7 +43,7 @@ int main() {
   }
 
   fd2 = open("/work/file.txt", O_RDONLY, 0666);
-  if (fd == -1) {
+  if (fd2 == -1) {
     result = -5000 - errno;
     goto exit;
   }
@@ -65,7 +66,37 @@ int main() {
     result = -8000 - errno;
     goto exit;
   }
+ 
+  DIR *pDir = opendir("/work/");
+  if (pDir == NULL) {
+    result = -9000 - errno;
+    goto exit;
+  }
+  
+  int blobFileExists = 0;
+  int fileTxtExists = 0;
+  struct dirent *pDirent;
+  while ((pDirent = readdir(pDir)) != NULL) {
+    if (strcmp(pDirent->d_name, "blob.txt") == 0) {
+       blobFileExists = 1;
+    }   
+    if (strcmp(pDirent->d_name, "file.txt") == 0) {
+       fileTxtExists = 1;
+    }
+ 
+  }
+  
+  if (blobFileExists == 0) {
+    result = -10000-errno;
+    goto exit;
+  }
+  
+  if (fileTxtExists == 0) {
+    result = -20000-errno;
+    goto exit;
+  }
+
 
 exit:
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }

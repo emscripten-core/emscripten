@@ -42,6 +42,10 @@ int main(int argc, char** argv) {
   closedir(dir);
 
   printf("success\n"); 
+
+#ifdef REPORT_RESULT
+  REPORT_RESULT(0);
+#endif
   return 0;
 }
 

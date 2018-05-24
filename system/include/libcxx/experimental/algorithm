@@ -1,0 +1,70 @@
+// -*- C++ -*-
+//===-------------------------- algorithm ---------------------------------===//
+//
+//                     The LLVM Compiler Infrastructure
+//
+// This file is dual licensed under the MIT and the University of Illinois Open
+// Source Licenses. See LICENSE.TXT for details.
+//
+//===----------------------------------------------------------------------===//
+
+#ifndef _LIBCPP_EXPERIMENTAL_ALGORITHM
+#define _LIBCPP_EXPERIMENTAL_ALGORITHM
+
+/*
+   experimental/algorithm synopsis
+
+#include <algorithm>
+
+namespace std {
+namespace experimental {
+inline namespace fundamentals_v1 {
+
+template <class ForwardIterator, class Searcher>
+ForwardIterator search(ForwardIterator first, ForwardIterator last,
+                       const Searcher &searcher);
+template <class PopulationIterator, class SampleIterator, class Distance,
+          class UniformRandomNumberGenerator>
+SampleIterator sample(PopulationIterator first, PopulationIterator last,
+                      SampleIterator out, Distance n,
+                      UniformRandomNumberGenerator &&g);
+
+} // namespace fundamentals_v1
+} // namespace experimental
+} // namespace std
+
+*/
+
+#include <experimental/__config>
+#include <algorithm>
+#include <type_traits>
+
+#include <__undef_min_max>
+
+#include <__debug>
+
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
+#pragma GCC system_header
+#endif
+
+_LIBCPP_BEGIN_NAMESPACE_LFTS
+
+
+template <class _ForwardIterator, class _Searcher>
+_LIBCPP_INLINE_VISIBILITY
+_ForwardIterator search(_ForwardIterator __f, _ForwardIterator __l, const _Searcher &__s)
+{ return __s(__f, __l).first; }
+
+
+template <class _PopulationIterator, class _SampleIterator, class _Distance,
+          class _UniformRandomNumberGenerator>
+inline _LIBCPP_INLINE_VISIBILITY
+_SampleIterator sample(_PopulationIterator __first, _PopulationIterator __last,
+                       _SampleIterator __output, _Distance __n,
+                       _UniformRandomNumberGenerator &&__g) {
+  return _VSTD::__sample(__first, __last, __output, __n, __g);
+}
+
+_LIBCPP_END_NAMESPACE_LFTS
+
+#endif /* _LIBCPP_EXPERIMENTAL_ALGORITHM */

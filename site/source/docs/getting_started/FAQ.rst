@@ -25,9 +25,11 @@ You might also want to go through the :ref:`Tutorial` again, as this is updated 
 I tried something: why doesn’t it work?
 =======================================
 
-If something doesn't work (for example a :ref:`compiler flag <emccdoc>`, a *libc* function, etc.) then first search the comprehensive documentation on this site.
+Some general steps that might help figure things out:
 
-Next check if there is a test for the failing functionality in the :ref:`Emscripten test suite <emscripten-test-suite>` (run ``grep -r`` in **tests/**). **All** the tests are known to pass on the master branch, so they provide concrete "known-good" examples of how various options and code are used.
+ * See if the problem happens without optimizations (`-O0`, or not specifying any optimization level). Without optimizations, emscripten enables many assertions at compile and runtime, which may catch a problem and display an error message with a suggestion for how to fix it.
+ * Search the documentation on this site.
+ * Check if there is a test for the failing functionality in the :ref:`Emscripten test suite <emscripten-test-suite>` (run ``grep -r`` in **tests/**). They should all pass (with only rare exceptions), so they provide concrete "known-good" examples of how various options and code are used.
 
 
 Do I need to change my build system to use Emscripten?
@@ -80,9 +82,7 @@ Make sure you optimize code by building with ``-O2`` (even more :ref:`aggressive
 Why is my compiled code big?
 ============================
 
-Make sure you build with ``-O2`` so code is optimized and minified. You should also set up gzip compression on your webserver, which all browsers now support.
-
-.. note:: You can :ref:`use the closure compiler <emcc-closure>` to reduce code size even further (``--closure 1``). However that will require that your code be prepared for closure compiler advanced optimizations, including proper exports and so forth. It is usually not worth the effort over an optimized build and supporting gzip on your webserver.
+Make sure you build with ``-O3`` or ``-Os`` so code is fully optimized and minified. You should use the closure compiler, gzip compression on your webserver, etc., see the :ref:`section on code size in Optimizing code <optimizing-code-size>`.
 
 
 
@@ -95,9 +95,15 @@ Make sure you are using the Emscripten bundled system headers. Using :ref:`emcc 
 How can I reduce startup time?
 ==============================
 
-Make sure that you are running an :ref:`optimized build <Optimizing-Code>` (smaller builds are faster to start up). If the sheer code size is causing the slow startup, you can try `Outlining: a workaround for JITs and big functions <http://mozakai.blogspot.com/2013/08/outlining-workaround-for-jits-and-big.html>`_.
+Make sure that you are running an :ref:`optimized build <Optimizing-Code>` (smaller builds are faster to start up).
 
 Network latency is also a possible factor in startup time. Consider putting the file loading code in a separate script element from the generated code so that the browser can start the network download in parallel to starting up the codebase (run the :ref:`file packager <packaging-files>` and put file loading code in one script element, and the generated codebase in a later script element).
+
+
+What is "No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead" or "no native wasm support detected"?
+===============================================================================================================================
+
+Those errors indicate that WebAssembly support is not present in the VM you are trying to run the code in. Compile with ``-s WASM=0`` to disable WebAssembly (and emit asm.js instead) if you want your code to run in such environments (all modern browsers support WebAssembly, but in some cases you may want to reach 100% of browsers, including legacy ones).
 
 
 Why does my code fail to compile with an error message about inline assembly (or ``{"text":"asm"}``)?
@@ -194,7 +200,7 @@ How can I tell when the page is fully loaded and it is safe to call compiled fun
 
 (You may need this answer if you see an error saying something like ``you need to wait for the runtime to be ready (e.g. wait for main() to be called)``, which is a check enabled in ``ASSERTIONS`` builds.)
 
-Calling a compiled function before a page has fully loaded can result in an error, if the function relies on files that may not be present (for example the :ref:`.mem <emcc-memory-init-file>` file and :ref:`preloaded <emcc-preload-file>` files are loaded asynchronously).
+Calling a compiled function before a page has fully loaded can result in an error, if the function relies on files that may not be present (for example the :ref:`.mem <emcc-memory-init-file>` file and :ref:`preloaded <emcc-preload-file>` files are loaded asynchronously, and therefore if you just place some JS that calls compiled code in a ``--post-js``, that code will be called synchronously at the end of the combined JS file, potentially before the asynchronous event happens, which is bad).
 
 The easiest way to find out when loading is complete is to add a ``main()`` function, and within it call a JavaScript function to notify your code that loading is complete. 
 
@@ -210,27 +216,13 @@ For example, if ``allReady()`` is a JavaScript function you want called when eve
     EM_ASM( allReady() );
   }
 
-You can also define a ``main()`` function in JavaScript:
-
-::
-
-  Module['_main'] = function() { ... };
-
-or
-
-::
-
-  Module['_main'] = allReady;
-
-What happens in practice is that when code is ready to be run, we check for ``Module._main``. If present, we call it. If a ``main()`` function was compiled from C, it will be there (and it will be a JavaScript function). But, you can also just define a JavaScript function there, either will work.
-
 Another option is to define an ``onRuntimeInitialized`` function,
 
 ::
 
   Module['onRuntimeInitialized'] = function() { ... };
 
-That method will be called when the runtime is ready and it is ok for you to call compiled code. In practice, that is exactly the same time at which ``main()`` would be called, so ``onRuntimeInitialized`` doesn't let you do anything new, but it can be convenient in some cases - for example, if you use ``onRuntimeInitialized`` and don't define a ``main()`` function, then the runtime will not be shut down after ``main()`` exits, and you can keep calling compiled methods (you can also have a ``main()`` and build with ``-s NO_EXIT_RUNTIME=1`` to keep the runtime from being shut down). Thus, for libraries, ``onRuntimeInitialized`` can be convenient.
+That method will be called when the runtime is ready and it is ok for you to call compiled code. In practice, that is exactly the same time at which ``main()`` would be called, so ``onRuntimeInitialized`` doesn't let you do anything new, but you can set it from JavaScript at runtime in a flexible way.
 
 Here is an example of how to use it:
 
@@ -247,6 +239,34 @@ Here is an example of how to use it:
 
 The crucial thing is that ``Module`` exists, and has the property ``onRuntimeInitialized``, before the script containing emscripten output (``my_project.js`` in this example) is loaded.
 
+Another option is to use the ``MODULARIZE`` option, using ``-s MODULARIZE=1``. That will put all of the generated JavaScript in a function, which you can call to create an instance. The instance has a promise-like `.then()` method, so if you build with say ``-s MODULARIZE=1 -s 'EXPORT_NAME="MyCode"'`` (see details in settings.js), then you can do something like this:
+
+::
+
+    MyCode().then(function(Module) {
+      // this is reached when everything is ready, and you can call methods on Module
+    });
+
+.. _faq-NO_EXIT_RUNTIME:
+
+What does "exiting the runtime" mean? Why don't ``atexit()s`` run?
+==================================================================
+
+(You may need this answer if you see an error saying something like ``atexit() called, but NO_EXIT_RUNTIME`` or ``stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0``.)
+
+By default Emscripten sets ``NO_EXIT_RUNTIME=1``, which means that we don't include code to shut down the runtime. That means that when ``main()`` exits, we don't flush the stdio streams, or call the destructors of global C++ objects, or call ``atexit`` callbacks. This lets us emit smaller code by default, and is normally what you want on the web: even though ``main()`` exited, you may have something asynchronous happening later that you want to execute.
+
+In some cases, though, you may want a more "commandline" experience, where we do shut down the runtime when ``main()`` exits. You can build with ``-s NO_EXIT_RUNTIME=0``, and then we will call ``atexits`` and so forth. When you build with ``ASSERTIONS``, you should get a warning when you need this. For example, if your program prints something without a newline,
+
+::
+
+  #include <stdio.h>
+
+  int main() {
+    printf("hello"); // note no newline
+  }
+
+If we don't shut down the runtime and flush the stdio streams, "hello" won't be printed. In an ``ASSERTIONS`` build you'll get a notification saying ``stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0``.
 
 .. _faq-dead-code-elimination:
 
@@ -257,7 +277,7 @@ Emscripten does dead code elimination of functions that are not called from the 
 
 To make sure a C function remains available to be called from normal JavaScript, it must be added to the `EXPORTED_FUNCTIONS <https://github.com/kripken/emscripten/blob/1.29.12/src/settings.js#L388>`_ using the *emcc* command line. For example, to prevent functions ``my_func()`` and ``main()`` from being removed/renamed, run *emcc* with: ::
 
-	./emcc -s EXPORTED_FUNCTIONS="['_main', '_my_func']"  ...
+	./emcc -s "EXPORTED_FUNCTIONS=['_main', '_my_func']"  ...
 
 .. note:: 
 
@@ -324,6 +344,73 @@ Emscripten by default does *not* give fatal errors on undefined symbols, so you 
 
 Aside from just forgetting to link in a necessary object file, one possible cause for this error is inline functions in headers. If you have a header with ``inline int my_func() { .. }`` then *Clang* may not actually inline the function (since inline is just a hint), and also not generate code for it (since it's in a header). The result is that the generated bitcode and JavaScript will not have that function implemented. One solution is to add ``static`` to the function declaration, which forces code to be generated in the object file: ``static inline int my_func() { .. }``.
 
+.. _faq-export-stuff:
+
+Why do I get ``TypeError: Module.someThing is not a function``?
+===============================================================
+
+The ``Module`` object will contain exported methods. For something to appear there, you should add it to ``EXPORTED_FUNCTIONS`` for compiled code, or ``EXTRA_EXPORTED_RUNTIME_METHODS`` for a runtime method (like ``getValue``). For example,
+
+ ::
+
+	./emcc -s "EXPORTED_FUNCTIONS=['_main', '_my_func']" ...
+
+would export a C method ``my_func`` (in addition to ``main``, in this example). And
+
+ ::
+
+	./emcc -s "EXTRA_EXPORTED_RUNTIME_METHODS=['ccall']" ...
+
+will export ``ccall``. In both cases you can then access the exported function on the ``Module`` object.
+
+.. note:: You can use runtime methods directly, without exporting them, if the compiler can see them used. For example, you can use ``getValue`` in ``EM_ASM`` code, or a ``--pre-js``, by calling it directly. The optimizer will not remove that JS runtime method because it sees it is used. You only need to use ``Module.getValue`` if you want to call that method from outside the JS code the compiler can see, and then you need to export it.
+
+.. note:: Emscripten used to export many runtime methods by default. This increased code size, and for that reason we've changed that default. If you depend on something that used to be exported, you should see a warning pointing you to the solution, in an unoptimized build, or a build with ``ASSERTIONS`` enabled, which we hope will minimize any annoyance. See ``Changelog.markdown`` for details.
+
+.. _faq-runtime-change:
+
+Why does ``Runtime`` no longer exist? Why do I get an error trying to access ``Runtime.someThing``?
+===================================================================================================
+
+1.37.27 includes a refactoring to remove the ``Runtime`` object. This makes the generated code more efficient and compact, but requires minor changes if you used ``Runtime.*`` APIs. You just need to remove the ``Runtime.`` prefix, as those functions are now simple functions in the top scope (an error message in ``-O0`` or builds with assertions enabled with suggest this). In other words, replace
+
+ ::
+
+	x = Runtime.stackAlloc(10);
+
+with
+
+ ::
+
+	x = stackAlloc(10);
+
+.. note:: The above will work for code in a ``--pre-js`` or JS library, that is, code that is compiled together with the emscripten output. If you try to access ``Runtime.*`` methods from outside the compiled code, then you must export that function (using ``EXTRA_EXPORTED_RUNTIME_METHODS``), and use it on the Module object, see :ref:`that FAQ entry<faq-export-stuff>`.
+
+
+Why do I get a ``NameError`` or ``a problem occurred in evaluating content after a "-s"`` when I use a ``-s`` option?
+=====================================================================================================================
+
+That may occur when running something like
+
+::
+
+	# this fails on most Linuxes
+	./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']
+
+	# this fails on macOS
+	./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS="['addOnPostRun']"
+
+You may need to quote things like this:
+
+::
+
+	# this works in the shell on most Linuxes and on macOS
+	./emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']"
+
+	# or you may need something like this in a Makefile
+	./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=\"['addOnPostRun']\"
+
+The proper syntax depends on the OS and shell you are in, and if you are writing in a Makefile, etc.
 
 Why do I get an odd python error complaining about libcxx.bc or libcxxabi.bc?
 =============================================================================
@@ -332,6 +419,18 @@ A possible cause is that building *libcxx* or *libcxxabi* failed. Go to **system
 
 Another possible cause of this error is the lack of ``make``, which is necessary to build these libraries. If you are on Windows, you need *cmake*.
 
+
+Why do I get an error mentioning Uglify and ``throw new JS_Parse_Error``?
+=========================================================================
+
+In ``-O2`` and above, emscripten will optimize the JS using Uglify1. If you added any JS (using ``--pre-js``/``--post-js``/``EM_ASM``/``EM_JS``) and it contains JS that Uglify1 can't parse - like recent ES6 features - then it will throw such a parsing error.
+
+In the long term we hope to upgrade our internal JS parser. Meanwhile, you can move such code to another script tag on the page, that is, not pass it through the emscripten optimizer.
+
+See also
+
+ * https://github.com/kripken/emscripten/issues/6000
+ * https://github.com/kripken/emscripten/issues/5700
 
 Why does running LLVM bitcode generated by emcc through **lli** break with errors about ``impure_ptr``?
 =======================================================================================================
@@ -348,7 +447,7 @@ Why do I get a stack size error when optimizing: ``RangeError: Maximum call stac
 
 You may need to increase the stack size for :term:`node.js`. 
 
-On Linux and Mac OS X, you can just do ``NODE_JS = ['node', '--stack_size=8192']`` in the :ref:`compiler-configuration-file`. On Windows, you will also need ``--max-stack-size=8192``, and also run ``editbin /stack:33554432 node.exe``.
+On Linux and Mac macOS, you can just do ``NODE_JS = ['node', '--stack_size=8192']`` in the :ref:`compiler-configuration-file`. On Windows, you will also need ``--max-stack-size=8192``, and also run ``editbin /stack:33554432 node.exe``.
 
 
 Why do I get ``error: cannot compile this aggregate va_arg expression yet`` and it says ``compiler frontend failed to generate LLVM bitcode, halting`` afterwards?

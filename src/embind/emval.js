@@ -2,7 +2,7 @@
 /*global HEAP32*/
 /*global new_*/
 /*global createNamedFunction*/
-/*global readLatin1String, writeStringToMemory*/
+/*global readLatin1String, stringToUTF8*/
 /*global requireRegisteredType, throwBindingError, runDestructors*/
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
@@ -146,7 +146,19 @@ var LibraryEmVal = {
         var obj = new constructor(arg0, arg1, arg2);
         return __emval_register(obj);
     } */
-
+#if NO_DYNAMIC_EXECUTION
+    var argsList = new Array(argCount + 1);
+    return function(constructor, argTypes, args) {
+      argsList[0] = constructor;
+      for (var i = 0; i < argCount; ++i) {
+        var argType = requireRegisteredType(HEAP32[(argTypes >> 2) + i], 'parameter ' + i);
+        argsList[i + 1] = argType.readValueFromPointer(args);
+        args += argType.argPackAdvance;
+      }
+      var obj = new (constructor.bind.apply(constructor, argsList));
+      return __emval_register(obj);
+    };
+#else
     var argsList = "";
     for(var i = 0; i < argCount; ++i) {
         argsList += (i!==0?", ":"")+"arg"+i; // 'arg0, arg1, ..., argn'
@@ -169,6 +181,7 @@ var LibraryEmVal = {
     /*jshint evil:true*/
     return (new Function("requireRegisteredType", "HEAP32", "__emval_register", functionBody))(
         requireRegisteredType, HEAP32, __emval_register);
+#endif
   },
 
   _emval_new__deps: ['$craftEmvalAllocator', '$emval_newers', '$requireHandle'],
@@ -184,8 +197,33 @@ var LibraryEmVal = {
     return newer(handle, argTypes, args);
   },
 
+#if NO_DYNAMIC_EXECUTION
+  $emval_get_global: function() {
+    function testGlobal(obj) {
+      obj['$$$embind_global$$$'] = obj;
+      var success = typeof $$$embind_global$$$ === 'object' && obj['$$$embind_global$$$'] === obj;
+      if (!success) {
+	delete obj['$$$embind_global$$$'];
+      }
+      return success;
+    }
+    if (typeof $$$embind_global$$$ === 'object') {
+      return $$$embind_global$$$;
+    }
+    if (typeof global === 'object' && testGlobal(global)) {
+      $$$embind_global$$$ = global;
+    } else if (typeof window === 'object' && testGlobal(window)) {
+      $$$embind_global$$$ = window;
+    }
+    if (typeof $$$embind_global$$$ === 'object') {
+      return $$$embind_global$$$;
+    }
+    throw Error('unable to get global object.');
+  },
+#else
   // appease jshint (technically this code uses eval)
   $emval_get_global: function() { return (function(){return Function;})()('return this')(); },
+#endif
   _emval_get_global__deps: ['_emval_register', '$getStringOrSymbol', '$emval_get_global'],
   _emval_get_global: function(name) {
     if(name===0){
@@ -291,6 +329,25 @@ var LibraryEmVal = {
     var types = __emval_lookupTypes(argCount, argTypes);
 
     var retType = types[0];
+#if NO_DYNAMIC_EXECUTION
+    var argN = new Array(argCount - 1);
+    var invokerFunction = function(handle, name, destructors, args) {
+      var offset = 0;
+      for (var i = 0; i < argCount - 1; ++i) {
+        argN[i] = types[i + 1].readValueFromPointer(args + offset);
+        offset += types[i + 1].argPackAdvance;
+      }
+      var rv = handle[name].apply(handle, argN);
+      for (var i = 0; i < argCount - 1; ++i) {
+        if (types[i + 1].deleteObject) {
+          types[i + 1].deleteObject(argN[i]);
+        }
+      }
+      if (!retType.isVoid) {
+        return retType.toWireType(destructors, rv);
+      }
+    };
+#else
     var signatureName = retType.name + "_$" + types.slice(1).map(function (t) { return t.name; }).join("_") + "$";
 
     var params = ["retType"];
@@ -325,11 +382,12 @@ var LibraryEmVal = {
         functionBody +=
         "    return retType.toWireType(destructors, rv);\n";
     }
-    functionBody += 
+    functionBody +=
         "};\n";
 
     params.push(functionBody);
     var invokerFunction = new_(Function, params).apply(null, args);
+#endif
     return __emval_addMethodCaller(invokerFunction);
   },
 

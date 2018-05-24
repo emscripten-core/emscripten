@@ -15,6 +15,7 @@ This comprehensive documentation set contains everything you need to know to use
 
 - :ref:`integrating-porting-index` illustrates the main differences between the native and Emscripten runtime environments, and explains the changes you need to make to prepare your C/C++ code for the Web. 
 - :ref:`Optimizing-Code` shows how to optimise your code for size and performance.
+- :ref:`Optimizing-WebGL` gives tips for how to maximize WebGL rendering performance for your page.
 - :ref:`compiling-and-running-projects-index` demonstrates how to integrate Emscripten into your existing project build system.
 
 **Contributing:**
@@ -27,6 +28,7 @@ This comprehensive documentation set contains everything you need to know to use
 
 - :ref:`api-reference-index` is a reference for the Emscripten toolchain.
 - :ref:`tools-reference` is a reference for the Emscripten integration APIs.
+- :ref:`CyberDWARF` shows how to use the CyberDWARF debugging system
 
 The full hierarchy of articles, opened to the second level, is shown below.
 
@@ -37,11 +39,14 @@ The full hierarchy of articles, opened to the second level, is shown below.
 	getting_started/index
 	porting/index
 	optimizing/Optimizing-Code
+	optimizing/Optimizing-WebGL
+	optimizing/Profiling-Toolchain
 	compiling/index
 	building_from_source/index
 	contributing/index
 	api_reference/index
 	tools_reference/index
+	debugging/CyberDWARF
 	site/index
 
 

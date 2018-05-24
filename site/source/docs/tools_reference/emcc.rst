@@ -71,12 +71,12 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-Os: 
 	
 ``-Os``
-	Like ``-O3``, but with extra optimizations that reduce code size at the expense of performance. This can effect both bitcode generation and JavaScript.
+	Like ``-O3``, but with extra optimizations that reduce code size at the expense of performance. This can affect both bitcode generation and JavaScript.
 
 .. _emcc-Oz: 
 	
 ``-Oz``
-	Like ``-Os``, but reduces code size even further. This can effect both bitcode generation and JavaScript.
+	Like ``-Os``, but reduces code size even further. This can affect both bitcode generation and JavaScript.
 
 	For JavaScript, this turns on some code size reduction optimizations that can take a significant amount of compilation time.
 
@@ -202,6 +202,8 @@ Options that are modified or new in *emcc* are listed below:
 
 	You normally don't need to specify this option, as ``-O`` with an optimization level will set a good value.
 
+	.. note:: Some options might override this flag (e.g. ``EMTERPRETIFY``, ``DEAD_FUNCTIONS``, ``OUTLINING_LIMIT``, ``SAFE_HEAP`` and ``SPLIT_MEMORY`` override the value with ``js-opts=1``), because they depend on the js-optimizer.
+
 .. _emcc-llvm-opts: 
 		
 ``--llvm-opts <level>``
@@ -239,7 +241,7 @@ Options that are modified or new in *emcc* are listed below:
 	Runs the :term:`Closure Compiler`. Possible ``on`` values are:
 	 
 		- ``0``: No closure compiler (default in ``-O2`` and below).
-		- ``1``: Run closure compiler. This greatly reduces code size and may in some cases increase runtime speed (although the opposite can also occur). Note that it takes time to run, and may require some changes to the code. In **asm.js** mode, closure will only be used on the 'shell' code around the compiled code (the compiled code will be processed by the custom **asm.js** minifier).
+		- ``1``: Run closure compiler. This greatly reduces the size of the support JavaScript code (everything but the WebAssembly or asm.js). Note that this increases compile time significantly.
 		- ``2``: Run closure compiler on *all* the emitted code, even on **asm.js** output in **asm.js** mode. This can further reduce code size, but does prevent a significant amount of **asm.js** optimizations, so it is not recommended unless you want to reduce code size at all costs.
 
 	.. note:: 
@@ -253,12 +255,12 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-pre-js:
 		
 ``--pre-js <file>``
-	Specify a file whose contents are added before the generated code. This is done *before* optimization, so it will be minified properly if the *Closure Compiler* is run.
+	Specify a file whose contents are added before the emitted code and optimized together with it. Note that this might not literally be the very first thing in the JS output, for example if ``MODULARIZE`` is used (see ``src/settings.js``). If you want that, you can just prepend to the output from emscripten; the benefit of ``--pre-js`` is that it optimizes the code with the rest of the emscripten output, which allows better dead code elimination and minification, and it should only be used for that purpose. In particular, ``--pre-js`` code should not alter the main output from emscripten in ways that could confuse the optimizer, such as using ``--pre-js`` + ``--post-js`` to put all the output in an inner function scope (see ``MODULARIZE`` for that).
 
 .. _emcc-post-js:
 	
 ``--post-js <file>``
-	Specify a file whose contents are added after the generated code. This is done *before* optimization, so it will be minified properly if the *Closure Compiler* is run.
+	Like `--pre-js``, but emits a file *after* the emitted code.
 	
 .. _emcc-embed-file:
 	
@@ -302,6 +304,11 @@ Options that are modified or new in *emcc* are listed below:
 	
 		- See `src/shell.html <https://github.com/kripken/emscripten/blob/master/src/shell.html>`_ and `src/shell_minimal.html <https://github.com/kripken/emscripten/blob/master/src/shell_minimal.html>`_ for examples.                  
 		- This argument is ignored if a target other than HTML is specified using the ``-o`` option.
+
+.. _emcc-source-map-base:
+
+``--source-map-base <base-url>``
+	The URL for the location where WebAssembly source maps will be published. When this option is provided, the **.wasm** file is updated to have a ``sourceMappingURL`` section. The resulting URL will have format: ``<base-url>`` + ``<wasm-file-name>`` + ``.map``.
 	
 .. _emcc-minify:
 						   
@@ -335,7 +342,7 @@ Options that are modified or new in *emcc* are listed below:
 ``-v``
 	Turns on verbose output. 
 	
-	This will pass ``-v`` to *Clang*, and also enable ``EMCC_DEBUG`` to generate intermediate files for the compiler’s various stages. It will also run Emscripten's internal sanity checks on the toolchain, etc. 
+	This will pass ``-v`` to *Clang*, and also enable ``EMCC_DEBUG`` to generate intermediate files for the compiler's various stages. It will also run Emscripten's internal sanity checks on the toolchain, etc. 
 	
 	.. tip:: ``emcc -v`` is a useful tool for diagnosing errors. It works with or without other arguments. 
 
@@ -398,7 +405,7 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-emrun:
 	
 ``--emrun``
-	Enables the generated output to be aware of the :ref:`emrun <Running-html-files-with-emrun>` command line tool. This allows ``stdout``, ``stderr`` and ``exit(returncode)`` capture when running the generated application through *emrun*.     
+	Enables the generated output to be aware of the :ref:`emrun <Running-html-files-with-emrun>` command line tool. This allows ``stdout``, ``stderr`` and ``exit(returncode)`` capture when running the generated application through *emrun*. (This enables `NO_EXIT_RUNTIME=0`, allowing normal runtime exiting with return code passing.)
 
 ``--cpuprofiler``
 	Embeds a simple CPU profiler onto the generated page. Use this to perform cursory interactive performance profiling.
@@ -447,7 +454,12 @@ Options that are modified or new in *emcc* are listed below:
 ``--separate-asm``
 	Emits asm.js in one file, and the rest of the code in another, and emits HTML that loads the asm.js first, in order to reduce memory load during startup. See :ref:`optimizing-code-separating_asm`.
 
-	
+``--output_eol windows|linux``
+	Specifies the line ending to generate for the text files that are outputted. If "--output_eol windows" is passed, the final output files will have Windows \r\n line endings in them. With "--output_eol linux", the final generated files will be written with Unix \n line endings.
+
+``--cflags``
+	Prints out the flags ``emcc`` would pass to ``clang`` to compile source code to object/bitcode form. You can use this to invoke clang yourself, and then run ``emcc`` on those outputs just for the final linking+conversion to JS.
+
 .. _emcc-environment-variables:
 
 Environment variables
@@ -464,8 +476,9 @@ Environment variables
 	- ``EMMAKEN_COMPILER``
 	- ``EMMAKEN_CFLAGS``
 	- ``EMCC_DEBUG``
+        - ``EMCC_CLOSURE_ARGS`` : arguments to be passed to *Closure Compiler*
 
-Search for 'os.environ' in `emcc <https://github.com/kripken/emscripten/blob/master/emcc>`_ to see how these are used. The most interesting is possibly ``EMCC_DEBUG``, which forces the compiler to dump its build and temporary files to a temporary directory where they can be reviewed.
+Search for 'os.environ' in `emcc.py <https://github.com/kripken/emscripten/blob/master/emcc.py>`_ to see how these are used. The most interesting is possibly ``EMCC_DEBUG``, which forces the compiler to dump its build and temporary files to a temporary directory where they can be reviewed.
 
 
 .. todo:: In case we choose to document them properly in future, below are some of the :ref:`-s <emcc-s-option-value>` options that are documented in the site are listed below. Note that this is not exhaustive by any means:

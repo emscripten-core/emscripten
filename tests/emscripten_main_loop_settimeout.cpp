@@ -18,7 +18,7 @@ void looper() {
     printf("Avg. msecs/frame: %f\n", msecsPerFrame);
 #ifdef REPORT_RESULT
     int result = (msecsPerFrame > 350 && msecsPerFrame < 650); // Expecting 500msecs/frame, but allow a lot of leeway. Bad value would be 900msecs/frame (400msecs of processing below and 500msecs of delay)
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
     emscripten_cancel_main_loop();
   }

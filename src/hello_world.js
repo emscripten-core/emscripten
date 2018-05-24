@@ -27,10 +27,6 @@ if (ENVIRONMENT_IS_NODE) {
     return ret;
   };
 
-  load = function(f) {
-    globalEval(read(f));
-  };
-
   arguments_ = process['argv'].slice(2);
 
 } else if (ENVIRONMENT_IS_SHELL) {
@@ -63,20 +59,8 @@ if (ENVIRONMENT_IS_NODE) {
 } else if (ENVIRONMENT_IS_WORKER) {
   // We can do very little here...
 
-  this['load'] = importScripts;
-
 } else {
   throw 'Unknown runtime environment. Where are we?';
-}
-
-function globalEval(x) {
-  eval.call(null, x);
-}
-
-if (typeof load == 'undefined' && typeof read != 'undefined') {
-  this['load'] = function(f) {
-    globalEval(read(f));
-  };
 }
 
 if (typeof printErr === 'undefined') {

@@ -1,57 +1,79 @@
 #include <aio.h>
 #include <errno.h>
+#include <time.h>
+#include "atomic.h"
+#include "libc.h"
 #include "pthread_impl.h"
 
-/* Due to the requirement that aio_suspend be async-signal-safe, we cannot
- * use any locks, wait queues, etc. that would make it more efficient. The
- * only obviously-correct algorithm is to generate a wakeup every time any
- * aio operation finishes and have aio_suspend re-evaluate the completion
- * status of each aiocb it was waiting on. */
-
-static volatile int seq;
-
-void __aio_wake(void)
-{
-	a_inc(&seq);
-	__wake(&seq, -1, 1);
-}
+extern volatile int __aio_fut;
 
 int aio_suspend(const struct aiocb *const cbs[], int cnt, const struct timespec *ts)
 {
-	int i, last, first=1, ret=0;
+	int i, tid = 0, ret, expect = 0;
 	struct timespec at;
+	volatile int dummy_fut, *pfut;
+	int nzcnt = 0;
+	const struct aiocb *cb = 0;
+
+	pthread_testcancel();
 
 	if (cnt<0) {
 		errno = EINVAL;
 		return -1;
 	}
 
+	for (i=0; i<cnt; i++) if (cbs[i]) {
+		if (aio_error(cbs[i]) != EINPROGRESS) return 0;
+		nzcnt++;
+		cb = cbs[i];
+	}
+
+	if (ts) {
+		clock_gettime(CLOCK_MONOTONIC, &at);
+		at.tv_sec += ts->tv_sec;
+		if ((at.tv_nsec += ts->tv_nsec) >= 1000000000) {
+			at.tv_nsec -= 1000000000;
+			at.tv_sec++;
+		}
+	}
+
 	for (;;) {
-		last = seq;
-
-		for (i=0; i<cnt; i++) {
-			if (cbs[i] && cbs[i]->__err != EINPROGRESS)
+		for (i=0; i<cnt; i++)
+			if (cbs[i] && aio_error(cbs[i]) != EINPROGRESS)
 				return 0;
+
+		switch (nzcnt) {
+		case 0:
+			pfut = &dummy_fut;
+			break;
+		case 1:
+			pfut = (void *)&cb->__err;
+			expect = EINPROGRESS | 0x80000000;
+			a_cas(pfut, EINPROGRESS, expect);
+			break;
+		default:
+			pfut = &__aio_fut;
+			if (!tid) tid = __pthread_self()->tid;
+			expect = a_cas(pfut, 0, tid);
+			if (!expect) expect = tid;
+			/* Need to recheck the predicate before waiting. */
+			for (i=0; i<cnt; i++)
+				if (cbs[i] && aio_error(cbs[i]) != EINPROGRESS)
+					return 0;
+			break;
 		}
 
-		if (first && ts) {
-			clock_gettime(CLOCK_MONOTONIC, &at);
-			at.tv_sec += ts->tv_sec;
-			if ((at.tv_nsec += ts->tv_nsec) >= 1000000000) {
-				at.tv_nsec -= 1000000000;
-				at.tv_sec++;
-			}
-			first = 0;
-		}
+		ret = __timedwait_cp(pfut, expect, CLOCK_MONOTONIC, ts?&at:0, 1);
 
-		ret = __timedwait(&seq, last, CLOCK_MONOTONIC,
-			ts ? &at : 0, 0, 0, 1);
-
-		if (ret == ETIMEDOUT) ret = EAGAIN;
-
-		if (ret) {
+		switch (ret) {
+		case ETIMEDOUT:
+			ret = EAGAIN;
+		case ECANCELED:
+		case EINTR:
 			errno = ret;
 			return -1;
 		}
 	}
 }
+
+LFS64(aio_suspend);

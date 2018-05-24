@@ -139,6 +139,8 @@ int main (int argc, char *argv[])
         char title[5][20];
         int errors;
         
+        int arg = argc > 1 ? argv[1][0] - '0' : 3;
+        if (arg == 0) return 0;
  
         printf("\n");
          

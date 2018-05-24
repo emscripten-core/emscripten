@@ -1,5 +1,9 @@
 #pragma once
 
+#if __cplusplus < 201103L
+#error Including <emscripten/val.h> requires building with -std=c++11 or newer!
+#else
+
 #include <stdint.h> // uintptr_t
 #include <emscripten/wire.h>
 #include <array>
@@ -83,7 +87,7 @@ namespace emscripten {
             EM_VAL _emval_typeof(EM_VAL value);
         }
 
-        template<const char* address> 
+        template<const char* address>
         struct symbol_registrar {
             symbol_registrar() {
                 internal::_emval_register_symbol(address);
@@ -404,7 +408,7 @@ namespace emscripten {
         }
 
         template<typename... Args>
-        val operator()(Args&&... args) {
+        val operator()(Args&&... args) const {
             return internalCall(internal::_emval_call, std::forward<Args>(args)...);
         }
 
@@ -415,22 +419,31 @@ namespace emscripten {
             return MethodCaller<ReturnValue, Args...>::call(handle, name, std::forward<Args>(args)...);
         }
 
-        template<typename T>
-        T as() const {
+        template<typename T, typename ...Policies>
+        T as(Policies...) const {
             using namespace internal;
 
             typedef BindingType<T> BT;
+            typename WithPolicies<Policies...>::template ArgTypeList<T> targetType;
 
             EM_DESTRUCTORS destructors;
             EM_GENERIC_WIRE_TYPE result = _emval_as(
                 handle,
-                TypeID<T>::get(),
+                targetType.getTypes()[0],
                 &destructors);
             DestructorsRunner dr(destructors);
             return fromGenericWireType<T>(result);
         }
 
+// If code is not being compiled with GNU extensions enabled, typeof() is not a reserved keyword, so support that as a member function.
+#if __STRICT_ANSI__
         val typeof() const {
+            return val(_emval_typeof(handle));
+        }
+#endif
+
+// Prefer calling val::typeOf() over val::typeof(), since this form works in both C++11 and GNU++11 build modes. "typeof" is a reserved word in GNU++11 extensions.
+        val typeOf() const {
             return val(_emval_typeof(handle));
         }
 
@@ -448,7 +461,7 @@ namespace emscripten {
         }
 
         template<typename Implementation, typename... Args>
-        val internalCall(Implementation impl, Args&&... args)const {
+        val internalCall(Implementation impl, Args&&... args) const {
             using namespace internal;
 
             WithPolicies<>::ArgTypeList<Args...> argList;
@@ -492,3 +505,5 @@ namespace emscripten {
         return rv;
     };
 }
+
+#endif // ~C++11 version check

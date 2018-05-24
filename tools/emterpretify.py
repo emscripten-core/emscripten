@@ -6,8 +6,12 @@ Processes asm.js code to make it run in an emterpreter.
 Currently this requires the asm.js code to have been built with -s FINALIZE_ASM_JS=0
 '''
 
-import os, sys, re, json
-import asm_module, shared, shutil
+from __future__ import print_function
+import os, sys, re, json, shutil
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools import asm_module, shared
 
 # params
 
@@ -30,7 +34,7 @@ OUTPUT_FILE = None
 def handle_arg(arg):
   global ZERO, ASYNC, ASSERTIONS, PROFILING, FROUND, ADVISE, MEMORY_SAFE, OUTPUT_FILE
   if '=' in arg:
-    l, r = arg.split('=')
+    l, r = arg.split('=', 1)
     if l == 'ZERO': ZERO = int(r)
     elif l == 'ASYNC': ASYNC = int(r)
     elif l == 'ASSERTIONS': ASSERTIONS = int(r)
@@ -48,19 +52,29 @@ config = shared.Configuration()
 temp_files = config.get_temp_files()
 
 if DEBUG:
-  print >> sys.stderr, 'running emterpretify on', sys.argv
+  print('running emterpretify on', sys.argv, file=sys.stderr)
 
 if FROUND:
   shared.Settings.PRECISE_F32 = 1
 
-sys.argv = filter(handle_arg, sys.argv)
+sys.argv = list(filter(handle_arg, sys.argv))
 
 # consts
 
-BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr', 'setAsyncState', 'emtStackSave', 'emtStackRestore'])
+# The blacklist contains functions we will not emterpret in any case: they are known to be safe to run normally, e.g.
+# because they don't call anything, or they only call trivial things we know are safe.
+# One particularly interesting case is SAFE_FT_MASK: we must not emterpret it, as it appears in expressions like
+#   FUNCTION_TABLE_vi[SAFE_FT_MASK(..) & 7](..)
+# which means that if we are in async mode and reloading the stack to resume, and we need to make that call as
+# part of getting there - say, if an invoke was part of the path to get here, and invoke calls dynCall which
+# calls SAFE_FT_MASK - then we'll end up doing that call during recreating the stack, which breaks. In other
+# words, dynCall_* must be calls without running emterpreted code in them. To avoid that, we blacklist
+# SAFE_FT_MASK, which should be blacklisted anyhow as it has no need for emterpretation.
+BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr', 'setAsyncState', 'emtStackSave', 'emtStackRestore', 'getEmtStackMax', 'setEmtStackMax', 'SAFE_FT_MASK', 'SAFE_HEAP_LOAD', 'SAFE_HEAP_LOAD_D', 'SAFE_HEAP_STORE', 'SAFE_HEAP_STORE_D'])
+
 WHITELIST = []
 
-SYNC_FUNCS = set(['_emscripten_sleep', '_emscripten_sleep_with_yield', '_emscripten_wget_data', '_emscripten_idb_load', '_emscripten_idb_store', '_emscripten_idb_delete'])
+SYNC_FUNCS = set(['_emscripten_sleep', '_emscripten_sleep_with_yield', '_emscripten_wget_data', '_emscripten_idb_load', '_emscripten_idb_store', '_emscripten_idb_delete', '_emscripten_yield'])
 
 OPCODES = [ # l, lx, ly etc - one of 256 locals
   'SET',     # [lx, ly, 0]          lx = ly (int or float, not double)
@@ -241,7 +255,7 @@ def randomize_opcodes():
   global OPCODES
   import random
   random.shuffle(opcodes)
-  print OPCODES
+  print(OPCODES)
 #randomize_opcodes()
 
 assert len(OPCODES) == len(set(OPCODES)) # no dupe names
@@ -716,6 +730,13 @@ if __name__ == '__main__':
       WHITELIST = json.loads(temp)
 
       if len(sys.argv) >= 6:
+        temp = sys.argv[5]
+        if temp[0] == '"':
+          # response file
+          assert temp[1] == '@'
+          temp = open(temp[2:-1]).read()
+        SYNC_FUNCS.update(json.loads(temp))
+
         if len(sys.argv) >= 7:
           SWAPPABLE = int(sys.argv[6])
 
@@ -724,9 +745,9 @@ if __name__ == '__main__':
     data = shared.Building.calculate_reachable_functions(infile, list(SYNC_FUNCS))
     advised = data['reachable']
     total_funcs = data['total_funcs']
-    print "Suggested list of functions to run in the emterpreter:"
-    print "  -s EMTERPRETIFY_WHITELIST='" + str(sorted(advised)).replace("'", '"') + "'"
-    print "(%d%% out of %d functions)" % (int((100.0*len(advised))/total_funcs), total_funcs)
+    print("Suggested list of functions to run in the emterpreter:")
+    print("  -s EMTERPRETIFY_WHITELIST='" + str(sorted(advised)).replace("'", '"') + "'")
+    print("(%d%% out of %d functions)" % (int((100.0*len(advised))/total_funcs), total_funcs))
     sys.exit(0)
 
   # final global functions
@@ -764,12 +785,12 @@ if __name__ == '__main__':
   tabled_funcs = asm.get_table_funcs()
   exported_funcs = [func.split(':')[0] for func in asm.exports]
 
-  temp = temp_files.get('.js').name # infile + '.tmp.js'
 
   # find emterpreted functions reachable by non-emterpreted ones, we will force a trampoline for them later
 
-  shared.Building.js_optimizer(infile, ['findReachable'], extra_info={ 'blacklist': list(emterpreted_funcs) }, output_filename=temp, just_concat=True)
-  asm = asm_module.AsmModule(temp)
+  with temp_files.get_file('.js') as temp: # infile + '.tmp.js'
+    shared.Building.js_optimizer(infile, ['findReachable'], extra_info={ 'blacklist': list(emterpreted_funcs) }, output_filename=temp, just_concat=True)
+    asm = asm_module.AsmModule(temp)
   lines = asm.funcs_js.split('\n')
 
   reachable_funcs = set([])
@@ -779,13 +800,13 @@ if __name__ == '__main__':
       curr = json.loads(line[len('// REACHABLE '):])
       reachable_funcs = set(list(reachable_funcs) + curr)
 
-  external_emterpreted_funcs = filter(lambda func: func in tabled_funcs or func in exported_funcs or func in reachable_funcs, emterpreted_funcs)
+  external_emterpreted_funcs = [func for func in emterpreted_funcs if func in tabled_funcs or func in exported_funcs or func in reachable_funcs]
 
   # process functions, generating bytecode
-  shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES, 'ASYNC': ASYNC, 'PROFILING': PROFILING, 'ASSERTIONS': ASSERTIONS }, output_filename=temp, just_concat=True)
-
-  # load the module and modify it
-  asm = asm_module.AsmModule(temp)
+  with temp_files.get_file('.js') as temp:
+    shared.Building.js_optimizer(infile, ['emterpretify', 'noEmitAst'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES, 'ASYNC': ASYNC, 'PROFILING': PROFILING, 'ASSERTIONS': ASSERTIONS }, output_filename=temp, just_concat=True)
+    # load the module and modify it
+    asm = asm_module.AsmModule(temp)
 
   relocations = [] # list of places that need to contain absolute offsets, we will add eb to them at runtime to relocate them
 
@@ -836,7 +857,7 @@ if __name__ == '__main__':
     global global_func_id
     absolute_start = len(all_code) # true absolute starting point of this function (except for eb)
     #print 'processing code', func, absolute_start
-    for i in range(len(code)/4):
+    for i in range(len(code)//4):
       j = i*4
       if code[j] == 'EXTCALL':
         # fix CALL instructions' targets and signatures
@@ -870,7 +891,7 @@ if __name__ == '__main__':
         code[j+1] = global_vars[target]
       elif code[j] == 'absolute-value':
         # put the 32-bit absolute value of an abolute target here (correct except for adding eb to relocate at runtime)
-        absolute_value = absolute_start + absolute_targets[unicode(code[j+1])]
+        absolute_value = absolute_start + absolute_targets[str(code[j+1])]
         #print '  fixing absolute value', code[j+1], absolute_targets[unicode(code[j+1])], absolute_value
         assert absolute_value < (1 << 31)
         assert absolute_value % 4 == 0
@@ -888,12 +909,12 @@ if __name__ == '__main__':
     elif line.startswith('// EMTERPRET_INFO '):
       try:
         func, curr, absolute_targets = json.loads(line[len('// EMTERPRET_INFO '):])
-      except Exception, e:
-        print >> sys.stderr, 'failed to parse code from', line
+      except Exception as e:
+        print('failed to parse code from', line, file=sys.stderr)
         raise e
       assert len(curr) % 4 == 0, len(curr)
       funcs[func] = len(all_code) # no operation here should change the length
-      if LOG_CODE: print >> sys.stderr, 'raw bytecode for %s:' % func, curr, 'insts:', len(curr)/4
+      if LOG_CODE: print('raw bytecode for %s:' % func, curr, 'insts:', len(curr)//4, file=sys.stderr)
       process_code(func, curr, absolute_targets)
       #print >> sys.stderr, 'processed bytecode for %s:' % func, curr
       all_code += curr
@@ -913,7 +934,7 @@ if __name__ == '__main__':
   assert global_var_id < 256, [global_vars, global_var_id]
 
   def post_process_code(code):
-    for i in range(len(code)/4):
+    for i in range(len(code)//4):
       j = i*4
       if code[j] == 'absolute-funcaddr':
         # put the 32-bit absolute value of an abolute function here
@@ -927,9 +948,9 @@ if __name__ == '__main__':
         relocations.append(j)
 
     # finalize instruction string names to opcodes
-    for i in range(len(code)/4):
+    for i in range(len(code)//4):
       j = i*4
-      if type(code[j]) in (str, unicode):
+      if type(code[j]) in (type(u''), bytes):
         opcode_used[code[j]] = True
         code[j] = ROPCODES[code[j]]
 
@@ -959,7 +980,7 @@ if __name__ == '__main__':
         lines[i] = lines[i].replace(call, '(eb + %s | 0)' % (funcs[func]))
 
   # finalize funcs JS (first line has the marker, add emterpreters right after that)
-  asm.funcs_js = '\n'.join([lines[0], make_emterpreter(), make_emterpreter(zero=True) if ZERO else '', '\n'.join(filter(lambda line: len(line) > 0, lines[1:]))]) + '\n'
+  asm.funcs_js = '\n'.join([lines[0], make_emterpreter(), make_emterpreter(zero=True) if ZERO else '', '\n'.join([line for line in lines[1:] if len(line) > 0])]) + '\n'
   lines = None
 
   # set up emterpreter stack top (note we must use malloc if in a shared lib, or other enviroment where static memory is sealed)
@@ -980,18 +1001,20 @@ __ATPRERUN__.push(function() {
     n = len(all_code)
     while n % 4 != 0:
       n += 1
-    bytecode_file.write(''.join(map(chr, all_code)))
+    bytecode_file.write(bytearray(all_code))
     for i in range(len(all_code), n):
-      bytecode_file.write(chr(0))
+      bytecode_file.write(bytearray([0]))
     for i in range(len(relocations)):
       bytes = bytify(relocations[i])
       for j in range(4):
-        bytecode_file.write(chr(bytes[j]))
+        bytecode_file.write(bytearray([bytes[j]]))
     bytecode_file.close()
 
     js += ['''
   var bytecodeFile = Module['emterpreterFile'];
-  assert(bytecodeFile instanceof ArrayBuffer, 'bad emterpreter file');
+  if (!(bytecodeFile instanceof ArrayBuffer)) {
+    throw "bad or missing emterpreter file. If you compiled to JS (and not HTML) make sure you set Module['emterpreterFile']";
+  }
   var codeSize = %d;
   HEAPU8.set(new Uint8Array(bytecodeFile).subarray(0, codeSize), eb);
   assert(HEAPU8[eb] === %d);
@@ -1001,7 +1024,9 @@ __ATPRERUN__.push(function() {
   var relocationsStart = (codeSize+3) >> 2;
   var relocations = (new Uint32Array(bytecodeFile)).subarray(relocationsStart);
   assert(relocations.length === %d);
-  if (relocations.length > 0) assert(relocations[0] === %d);
+  if (relocations.length > 0) {
+    assert(relocations[0] === %d);
+  }
 ''' % (len(all_code), all_code[0], all_code[1], all_code[2], all_code[3], len(relocations), relocations[0])]
 
   else:

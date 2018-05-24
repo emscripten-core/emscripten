@@ -233,8 +233,7 @@ void wait_https() {
 	if (num_request == 0) {
 		printf("End of all download ... %fs\n",(emscripten_get_now() - time_elapsed) / 1000.f);
 		emscripten_cancel_main_loop();
-    int result = 0;
-    REPORT_RESULT();
+    REPORT_RESULT(0);
 	}
 }
 

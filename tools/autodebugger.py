@@ -8,6 +8,7 @@ Warning: You probably want to compile with SKIP_STACK_IN_SMALL=0! Otherwise
          there may be weird errors.
 '''
 
+from __future__ import print_function
 import os, sys, re
 
 ALLOW_POINTERS = True
@@ -117,7 +118,7 @@ f = open(filename, 'r')
 data = f.read()
 f.close()
 
-if 'declare i32 @printf(' not in data and 'define internal i32 @printf(' not in data:
+if not re.search('(declare.*@printf\(|define.*@printf\()', data):
   POSTAMBLE += '''
 ; [#uses=1]
 declare i32 @printf(i8*, ...)
@@ -264,5 +265,5 @@ meta_start = ll.find('\n!')
 f.write(ll[:meta_start] + '\n' + POSTAMBLE + '\n' + ll[meta_start:])
 f.close()
 
-print 'Success.'
+print('Success.')
 

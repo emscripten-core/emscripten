@@ -1,7 +1,8 @@
 #!/usr/bin/env python2
 
+from __future__ import print_function
 import sys
-print >> sys.stderr, '\n\nemmaken.py is deprecated! use "emcc"\n\n'
+print('\n\nemmaken.py is deprecated! use "emcc"\n\n', file=sys.stderr)
 
 '''
 emmaken - the emscripten make proxy tool
@@ -98,7 +99,7 @@ import sys
 import os
 import subprocess
 
-print >> sys.stderr, 'emmaken.py: ', ' '.join(sys.argv)
+print('emmaken.py: ', ' '.join(sys.argv), file=sys.stderr)
 
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def path_from_root(*pathelems):
@@ -112,7 +113,7 @@ CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMak
 if CONFIGURE_CONFIG or CMAKE_CONFIG:
   compiler = 'g++' if 'CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX') else 'gcc'
   cmd = [compiler] + EMSDK_OPTS + sys.argv[1:]
-  print >> sys.stderr, 'emmaken.py, just configuring: ', cmd
+  print('emmaken.py, just configuring: ', cmd, file=sys.stderr)
   exit(subprocess.call(cmd))
 
 try:
@@ -191,7 +192,7 @@ try:
         if arg == '-o':
           found_o = True
           continue
-        prefix = arg.split('=')[0]
+        prefix = arg.split('=', 1)[0]
         if prefix in ALLOWED_LINK_ARGS:
           newargs.append(arg)
         if arg in TWO_PART_DISALLOWED_LINK_ARGS:
@@ -206,14 +207,14 @@ try:
     newargs = sys.argv[1:]
     for i in range(len(newargs)):
       if newargs[i].startswith('-O'):
-        print >> sys.stderr, 'emmaken.py: WARNING: Optimization flags (-Ox) are ignored in emmaken. Tell emscripten.py to do that, or run LLVM opt.'
+        print('emmaken.py: WARNING: Optimization flags (-Ox) are ignored in emmaken. Tell emscripten.py to do that, or run LLVM opt.', file=sys.stderr)
         newargs[i] = ''
     newargs = [ arg for arg in newargs if arg is not '' ] + CC_ADDITIONAL_ARGS
     newargs.append('-emit-llvm')
     if not use_linker:
       newargs.append('-c') 
   else:
-    print >> sys.stderr, 'Just copy.'
+    print('Just copy.', file=sys.stderr)
     shutil.copy(sys.argv[-1], sys.argv[-2])
     exit(0)
 
@@ -221,10 +222,10 @@ try:
   #f.write('Calling: ' + ' '.join(newargs) + '\n\n')
   #f.close()
 
-  print >> sys.stderr, "Running:", call, ' '.join(newargs)
+  print("Running:", call, ' '.join(newargs), file=sys.stderr)
 
   subprocess.call([call] + newargs)
-except Exception, e:
-  print 'Error in emmaken.py. (Is the config file %s set up properly?) Error:' % EM_CONFIG, e
+except Exception as e:
+  print('Error in emmaken.py. (Is the config file %s set up properly?) Error:' % EM_CONFIG, e)
   raise
 

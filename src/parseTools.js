@@ -40,6 +40,15 @@ function preprocess(text, filenameHint) {
             var ident = parts[1];
             var op = parts[2];
             var value = parts[3];
+            if (typeof value === 'string') {
+              // when writing
+              // #if option == 'stringValue'
+              // we need to get rid of the quotes
+              if (value[0] === '"' || value[0] === "'") {
+                assert(value[value.length - 1] == '"' || value[value.length - 1] == "'");
+                value = value.substring(1, value.length - 1);
+              }
+            }
             if (op) {
               if (op === '==') {
                 showStack.push(ident in this && this[ident] == value);
@@ -1292,7 +1301,11 @@ function makeGetTempRet0() {
 }
 
 function makeSetTempRet0(value) {
-  return RELOCATABLE ? "setTempRet0((" + value + ") | 0)" : ("tempRet0 = " + value);
+  if (WASM_BACKEND == 1) {
+    return 'Module["asm"]["setTempRet0"](' + value + ')';
+  } else {
+    return RELOCATABLE ? "setTempRet0((" + value + ") | 0)" : ("tempRet0 = " + value);
+  }
 }
 
 function makeStructuralReturn(values, inAsm) {
@@ -1300,11 +1313,7 @@ function makeStructuralReturn(values, inAsm) {
   return 'return ' + asmCoercion(values.slice(1).map(function(value) {
     i++;
     if (!inAsm) {
-      if (!RELOCATABLE) {
-        return 'asm["setTempRet' + i + '"](' + value + ')';
-      } else {
-        return 'Runtime.setTempRet' + i + '(' + value + ')';
-      }
+      return 'setTempRet' + i + '(' + value + ')';
     }
     if (i === 0) {
       return makeSetTempRet0(value)
@@ -1462,5 +1471,16 @@ function makeEval(code) {
 function makeStaticAlloc(size) {
   size = (size + (STACK_ALIGN-1)) & -STACK_ALIGN;
   return 'STATICTOP; STATICTOP += ' + size + ';';
+}
+
+function makeRetainedCompilerSettings() {
+  var blacklist = set('STRUCT_INFO');
+  var ret = {};
+  for (var x in this) {
+    try {
+      if (x[0] !== '_' && !(x in blacklist) && x == x.toUpperCase() && (typeof this[x] === 'number' || typeof this[x] === 'string' || this.isArray())) ret[x] = this[x];
+    } catch(e){}
+  }
+  return ret;
 }
 

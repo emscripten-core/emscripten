@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
       return (EXIT_FAILURE);
     }
 
-    printf("%d\n", (uint32_t) adler32(source, bufsize));
+    printf("%u\n", (uint32_t) adler32(source, bufsize));
     
     free(source); /* Don't forget to call free() later! */
 

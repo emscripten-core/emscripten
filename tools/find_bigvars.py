@@ -2,6 +2,7 @@
 Simple tool to find functions with lots of vars.
 '''
 
+from __future__ import print_function
 import os, sys, re
 
 filename = sys.argv[1]
@@ -19,6 +20,6 @@ for line in open(filename):
   elif line.startswith('}') and curr:
     data.append([curr, size])
     curr = None
-data.sort(lambda x, y: x[1] - y[1])
-print ''.join(['%6d : %s' % (x[1], x[0]) for x in data])
+data.sort(key=lambda x: x[1])
+print(''.join(['%6d : %s' % (x[1], x[0]) for x in data]))
 

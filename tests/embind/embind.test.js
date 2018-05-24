@@ -161,16 +161,17 @@ module({
         });
 
         test("setting and getting property on unrelated class throws error", function() {
+            var className = Module['NO_DYNAMIC_EXECUTION'] ? '' : 'HasTwoBases';
             var a = new cm.HasTwoBases;
             var e = assert.throws(cm.BindingError, function() {
                 Object.getOwnPropertyDescriptor(cm.HeldBySmartPtr.prototype, 'i').set.call(a, 10);
             });
-            assert.equal('HeldBySmartPtr.i setter incompatible with "this" of type HasTwoBases', e.message);
+            assert.equal('HeldBySmartPtr.i setter incompatible with "this" of type ' + className, e.message);
 
             var e = assert.throws(cm.BindingError, function() {
                 Object.getOwnPropertyDescriptor(cm.HeldBySmartPtr.prototype, 'i').get.call(a);
             });
-            assert.equal('HeldBySmartPtr.i getter incompatible with "this" of type HasTwoBases', e.message);
+            assert.equal('HeldBySmartPtr.i getter incompatible with "this" of type ' + className, e.message);
 
             a.delete();
         });
@@ -405,6 +406,11 @@ module({
             assert.equal('ABCD', e);
         });
 
+        test("can pass Uint8ClampedArray to std::string", function() {
+            var e = cm.emval_test_take_and_return_std_string(new Uint8ClampedArray([65, 66, 67, 68]));
+            assert.equal('ABCD', e);
+        });
+
         test("can pass Int8Array to std::string", function() {
             var e = cm.emval_test_take_and_return_std_string(new Int8Array([65, 66, 67, 68]));
             assert.equal('ABCD', e);
@@ -419,6 +425,12 @@ module({
             var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(new Uint8Array([65, 66, 67, 68]));
             assert.equal('ABCD', e);
         });
+
+        test("can pass Uint8ClampedArray to std::basic_string<unsigned char>", function() {
+            var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(new Uint8ClampedArray([65, 66, 67, 68]));
+            assert.equal('ABCD', e);
+        });
+
 
         test("can pass Int8Array to std::basic_string<unsigned char>", function() {
             var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(new Int8Array([65, 66, 67, 68]));
@@ -468,6 +480,17 @@ module({
 
         test("pass const reference to primitive", function() {
             assert.equal(3, cm.const_ref_adder(1, 2));
+        });
+
+        test("get instance pointer as value", function() {
+            var v = cm.emval_test_instance_pointer();
+            assert.instanceof(v, cm.DummyForPointer);
+        });
+
+        test("cast value to instance pointer using as<T*>", function() {
+            var v = cm.emval_test_instance_pointer();
+            var p_value = cm.emval_test_value_from_instance_pointer(v);
+            assert.equal(42, p_value);
         });
 
         test("passthrough", function() {
@@ -868,6 +891,34 @@ module({
             p.delete();
         });
 */
+
+        test("no undefined entry in overload table when depending on already bound types", function() {
+            var dummy_overloads = cm.MultipleOverloadsDependingOnDummy.prototype.dummy;
+            // check if the overloadTable is correctly named
+            // it can be minimized if using closure compiler
+            if (dummy_overloads.hasOwnProperty('overloadTable')) {
+                assert.false(dummy_overloads.overloadTable.hasOwnProperty('undefined'));
+            }
+
+            // this part should fail anyway if there is no overloadTable
+            var dependOnDummy = new cm.MultipleOverloadsDependingOnDummy();
+            var dummy = dependOnDummy.dummy();
+            dependOnDummy.dummy(dummy);
+            dummy.delete();
+            dependOnDummy.delete();
+        });
+
+        test("no undefined entry in overload table for free functions", function() {
+            var dummy_free_func = cm.getDummy;
+            console.log(dummy_free_func);
+
+            if (dummy_free_func.hasOwnProperty('overloadTable')) {
+                assert.false(dummy_free_func.overloadTable.hasOwnProperty('undefined'));
+            }
+
+            var dummy = cm.getDummy();
+            cm.getDummy(dummy);
+        });
     });
 
     BaseFixture.extend("vector", function() {
@@ -1238,6 +1289,23 @@ module({
             assert.deepEqual({field: [1, 2, 3, 4]}, d);
         });
 
+        test("can pass and return arrays in structs", function() {
+            var d = cm.emval_test_take_and_return_ArrayInStruct({
+              field1: [1, 2],
+              field2: [
+                { x: 1, y: 2 },
+                { x: 3, y: 4 }
+              ]
+            });
+            assert.deepEqual({
+              field1: [1, 2],
+              field2: [
+                { x: 1, y: 2 },
+                { x: 3, y: 4 }
+              ]
+            }, d);
+        });
+
         test("can clone handles", function() {
             var a = new cm.ValHolder({});
             assert.equal(1, cm.count_emval_handles());
@@ -1483,7 +1551,8 @@ module({
 
         test("smart pointer object has correct constructor name", function() {
             var e = new cm.HeldBySmartPtr(10, "foo");
-            assert.equal('HeldBySmartPtr', e.constructor.name);
+            var expectedName = Module['NO_DYNAMIC_EXECUTION'] ? "" : "HeldBySmartPtr";
+            assert.equal(expectedName, e.constructor.name);
             e.delete();
         });
 
@@ -2226,9 +2295,15 @@ module({
     });
 
     BaseFixture.extend("function names", function() {
-        assert.equal('ValHolder', cm.ValHolder.name);
-        assert.equal('ValHolder$setVal', cm.ValHolder.prototype.setVal.name);
-        assert.equal('ValHolder$makeConst', cm.ValHolder.makeConst.name);
+        if (Module['NO_DYNAMIC_EXECUTION']) {
+          assert.equal('', cm.ValHolder.name);
+          assert.equal('', cm.ValHolder.prototype.setVal.name);
+          assert.equal('', cm.ValHolder.makeConst.name);
+        } else {
+          assert.equal('ValHolder', cm.ValHolder.name);
+          assert.equal('ValHolder$setVal', cm.ValHolder.prototype.setVal.name);
+          assert.equal('ValHolder$makeConst', cm.ValHolder.makeConst.name);
+        }
     });
 
     BaseFixture.extend("constants", function() {

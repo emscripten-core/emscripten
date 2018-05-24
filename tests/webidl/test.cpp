@@ -12,8 +12,14 @@ typedef EnumNamespace::EnumInNamespace EnumNamespace_EnumInNamespace;
 #ifdef BROWSER
 int main() {
   printf("main().\n");
-  int result = 1;
-  REPORT_RESULT();
+  EM_ASM({
+    // simple test that everything is functional
+    var sme = new Module.Parent(42);
+    sme.mulVal(2);
+    var got = sme.getVal();
+    assert(got === 84, "got: " + got);
+  });
+  REPORT_RESULT(1);
 }
 #endif
 

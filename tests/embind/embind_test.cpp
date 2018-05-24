@@ -39,6 +39,23 @@ val emval_test_new_object() {
     return rv;
 }
 
+struct DummyForPointer {
+    int value;
+    DummyForPointer(const int v) : value(v) {}
+};
+
+static DummyForPointer emval_pointer_dummy(42);
+
+val emval_test_instance_pointer() {
+    DummyForPointer* p = &emval_pointer_dummy;
+    return val(p);
+}
+
+int emval_test_value_from_instance_pointer(val v) {
+    DummyForPointer * p = v.as<DummyForPointer *>(allow_raw_pointers());
+    return p->value;
+}
+
 unsigned emval_test_passthrough_unsigned(unsigned v) {
     return v;
 }
@@ -880,6 +897,18 @@ TupleInStruct emval_test_take_and_return_TupleInStruct(TupleInStruct cs) {
     return cs;
 }
 
+struct NestedStruct {
+    int x;
+    int y;
+};
+struct ArrayInStruct {
+    int field1[2];
+    NestedStruct field2[2];
+};
+ArrayInStruct emval_test_take_and_return_ArrayInStruct(ArrayInStruct cs) {
+    return cs;
+}
+
 enum Enum { ONE, TWO };
 
 Enum emval_test_take_and_return_Enum(Enum e) {
@@ -1648,11 +1677,15 @@ EMSCRIPTEN_BINDINGS(tests) {
     register_vector<float>("FloatVector");
     register_vector<std::vector<int>>("IntegerVectorVector");
 
+    class_<DummyForPointer>("DummyForPointer");
+
     function("mallinfo", &emval_test_mallinfo);
     function("emval_test_new_integer", &emval_test_new_integer);
     function("emval_test_new_string", &emval_test_new_string);
     function("emval_test_get_string_from_val", &emval_test_get_string_from_val);
     function("emval_test_new_object", &emval_test_new_object);
+    function("emval_test_instance_pointer", &emval_test_instance_pointer);
+    function("emval_test_value_from_instance_pointer", &emval_test_value_from_instance_pointer);
     function("emval_test_passthrough_unsigned", &emval_test_passthrough_unsigned);
     function("emval_test_passthrough", &emval_test_passthrough);
     function("emval_test_return_void", &emval_test_return_void);
@@ -1715,6 +1748,26 @@ EMSCRIPTEN_BINDINGS(tests) {
         ;
 
     function("emval_test_take_and_return_TupleInStruct", &emval_test_take_and_return_TupleInStruct);
+
+
+    value_array<std::array<int, 2>>("array_int_2")
+        .element(index<0>())
+        .element(index<1>())
+        ;
+    value_array<std::array<NestedStruct, 2>>("array_NestedStruct_2")
+        .element(index<0>())
+        .element(index<1>())
+        ;
+    value_object<NestedStruct>("NestedStruct")
+        .field("x", &NestedStruct::x)
+        .field("y", &NestedStruct::y)
+        ;
+
+    value_object<ArrayInStruct>("ArrayInStruct")
+        .field("field1", &ArrayInStruct::field1)
+        .field("field2", &ArrayInStruct::field2)
+        ;
+    function("emval_test_take_and_return_ArrayInStruct", &emval_test_take_and_return_ArrayInStruct);
 
     class_<ValHolder>("ValHolder")
         .smart_ptr<std::shared_ptr<ValHolder>>("std::shared_ptr<ValHolder>")
@@ -2269,6 +2322,27 @@ struct ConstAndNonConst {
     }
 };
 
+class DummyForOverloads {};
+
+class MultipleOverloadsDependingOnDummy {
+public:
+    DummyForOverloads dummy() {
+        return DummyForOverloads();
+    }
+
+    DummyForOverloads dummy(DummyForOverloads d) {
+        return d;
+    }
+};
+
+DummyForOverloads getDummy() {
+    return DummyForOverloads();
+}
+
+DummyForOverloads getDummy(DummyForOverloads d) {
+    return d;
+}
+
 EMSCRIPTEN_BINDINGS(overloads) {
     function("overloaded_function", select_overload<int(int)>(&overloaded_function));
     function("overloaded_function", select_overload<int(int, int)>(&overloaded_function));
@@ -2312,6 +2386,17 @@ EMSCRIPTEN_BINDINGS(overloads) {
     class_<ConstAndNonConst>("ConstAndNonConst")
         .function("method", select_const(&ConstAndNonConst::method))
         ;
+
+    class_<DummyForOverloads>("DummyForOverloads").constructor();
+
+    class_<MultipleOverloadsDependingOnDummy>("MultipleOverloadsDependingOnDummy")
+        .constructor()
+        .function("dummy", select_overload<DummyForOverloads()>(&MultipleOverloadsDependingOnDummy::dummy))
+        .function("dummy", select_overload<DummyForOverloads(DummyForOverloads)>(&MultipleOverloadsDependingOnDummy::dummy))
+        ;
+
+    function("getDummy", select_overload<DummyForOverloads(void)>(&getDummy));
+    function("getDummy", select_overload<DummyForOverloads(DummyForOverloads)>(&getDummy));
 }
 
 // tests for out-of-order registration
@@ -2792,10 +2877,10 @@ EMSCRIPTEN_BINDINGS(intrusive_pointers) {
 }
 
 std::string getTypeOfVal(const val& v) {
-    return v.typeof().as<std::string>();
+    return v.typeOf().as<std::string>();
 }
 
-EMSCRIPTEN_BINDINGS(typeof) {
+EMSCRIPTEN_BINDINGS(typeOf) {
     function("getTypeOfVal", &getTypeOfVal);
 }
 

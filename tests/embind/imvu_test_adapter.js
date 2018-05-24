@@ -215,334 +215,333 @@ function module(ignore, func) {
 
     var assert = {};
 
-        ////////////////////////////////////////////////////////////////////////////////
-        // GENERAL STATUS
+    ////////////////////////////////////////////////////////////////////////////////
+    // GENERAL STATUS
 
-        assert.fail = function(info) {
-            info = info || "assert.fail()";
-            fail(new AssertionError(info));
-        },
+    assert.fail = function(info) {
+        info = info || "assert.fail()";
+        fail(new AssertionError(info));
+    };
 
-        ////////////////////////////////////////////////////////////////////////////////
-        // BOOLEAN TESTS
+    ////////////////////////////////////////////////////////////////////////////////
+    // BOOLEAN TESTS
 
-        assert['true'] = function(value) {
-            if (!value) {
-                fail(new AssertionError("expected truthy, actual " + formatTestValue(value)),
-                     {Value: value});
+    assert['true'] = function(value) {
+        if (!value) {
+            fail(new AssertionError("expected truthy, actual " + formatTestValue(value)),
+                    {Value: value});
+        }
+    };
+
+    assert['false'] = function(value) {
+        if (value) {
+            fail(new AssertionError("expected falsy, actual " + formatTestValue(value)),
+                    {Value: value});
+        }
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // SCALAR COMPARISON
+
+    assert.equal = function(expected, actual) {
+        if (expected !== actual) {
+            fail(new AssertionError('expected: ' + formatTestValue(expected) + ', actual: ' + formatTestValue(actual)),
+                    {Expected: expected, Actual: actual});
+        }
+    };
+
+    assert.notEqual = function(expected, actual) {
+        if (expected === actual) {
+            fail(new AssertionError('actual was equal to: ' + formatTestValue(expected)));
+        }
+    };
+
+    assert.greater = function(lhs, rhs) {
+        if (lhs <= rhs) {
+            fail(new AssertionError(formatTestValue(lhs) + ' not greater than ' + formatTestValue(rhs)));
+        }
+    };
+
+    assert.less = function(lhs, rhs) {
+        if (lhs >= rhs) {
+            fail(new AssertionError(formatTestValue(lhs) + ' not less than ' + formatTestValue(rhs)));
+        }
+    };
+
+    assert.greaterOrEqual = function(lhs, rhs) {
+        if (lhs < rhs) {
+            fail(new AssertionError(formatTestValue(lhs) + ' not greater than or equal to ' + formatTestValue(rhs)));
+        }
+    };
+
+    assert.lessOrEqual = function (lhs, rhs) {
+        if (lhs > rhs) {
+            fail(new AssertionError(formatTestValue(lhs) + ' not less than or equal to ' + formatTestValue(rhs)));
+        }
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // DEEP COMPARISON
+
+    assert.deepEqual = function(expected, actual) {
+        if (!_.isEqual(expected, actual)) {
+            fail(new AssertionError('expected: ' + formatTestValue(expected) + ', actual: ' + formatTestValue(actual)),
+                    {Expected: expected, Actual: actual});
+        }
+    };
+
+    assert.notDeepEqual = function(expected, actual) {
+        if (_.isEqual(expected, actual)) {
+            fail(new AssertionError('expected: ' + formatTestValue(expected) + ' and actual: ' + formatTestValue(actual) + ' were equal'));
+        }
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // FLOATING POINT
+
+    assert.nearEqual = function( expected, actual, tolerance ) {
+        if( tolerance === undefined ) {
+            tolerance = 0.0;
+        }
+        if( expected instanceof Array && actual instanceof Array ) {
+            assert.equal(expected.length, actual.length);
+            for( var i=0; i<expected.length; ++i ) {
+                assert.nearEqual(expected[i], actual[i], tolerance);
+            }
+            return;
+        }
+        if( Math.abs(expected - actual) > tolerance ) {
+            fail( new AssertionError('expected: ' + formatTestValue(expected) + ', actual: ' + formatTestValue(actual) +
+                                        ', tolerance: ' + formatTestValue(tolerance) + ', diff: ' + formatTestValue(actual-expected) ),
+                    { Expected:expected, Actual:actual, Tolerance:tolerance } );
+        }
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // STRING
+
+    assert.inString = function(expected, string){
+        if (-1 === string.indexOf(expected)){
+            fail(new AssertionError('expected: ' + formatTestValue(expected) + ' not in string: ' + formatTestValue(string)),
+                    {Expected: expected, 'String': string});
+        }
+    };
+
+    assert.notInString = function(expected, string){
+        if (-1 !== string.indexOf(expected)){
+            fail(new AssertionError('unexpected: ' + formatTestValue(expected) + ' in string: ' + formatTestValue(string)),
+                    {Expected: expected, 'String': string});
+        }
+    };
+
+    assert.matches = function(re, string) {
+        if (!re.test(string)) {
+            fail(new AssertionError('regexp ' + re + ' does not match: ' + string));
+        }
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // ARRAY
+
+    assert.inArray = function(expected, array) {
+        var found = false;
+        _.each(array, function(element){
+            if (_.isEqual(expected, element)){
+                found = true;
+            }
+        });
+        if (!found){
+            fail(new AssertionError('expected: ' + formatTestValue(expected) + ' not found in array: ' + formatTestValue(array)),
+                    {Expected: expected, 'Array': array});
+        }
+    };
+
+    assert.notInArray = function(expected, array) {
+        var found = false;
+        _.each(array, function(element){
+            if (_.isEqual(expected, element)){
+                found = true;
+            }
+        });
+        if (found){
+            fail(new AssertionError('unexpected: ' + formatTestValue(expected) + ' found in array: ' + formatTestValue(array)),
+                    {Expected: expected, 'Array': array});
+        }
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // OBJECTS
+
+    assert.hasKey = function (key, object) {
+        if (!(key in object)) {
+            fail(new AssertionError('Key ' + formatTestValue(key) + ' is not in object: ' + formatTestValue(object)));
+        }
+    };
+
+    assert.notHasKey = function (key, object) {
+        if (key in object) {
+            fail(new AssertionError('Unexpected key ' + formatTestValue(key) + ' is found in object: ' + formatTestValue(object)));
+        }
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // EXCEPTIONS
+
+    assert.throws = function(exception, fn) {
+        try {
+            fn();
+        } catch (e) {
+            if (e instanceof exception) {
+                return e;
+            }
+            fail(new AssertionError('Expected to throw "' + exception.name + '", actually threw: ' + formatTestValue(e) + ': ' + e.message),
+                    {Expected: exception, Actual: e});
+        }
+        throw new AssertionError('did not throw');
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // TYPE
+
+    assert['instanceof'] = function(actual, type) {
+        if(!(actual instanceof type)) {
+            fail(new AssertionError(formatTestValue(actual) + ' not instance of ' + formatTestValue(type)),
+                {Type: type, Actual: actual});
+        }
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // DOM ASSERTIONS
+
+    // TODO: lift into separate file?
+    assert.dom = {
+        present: function (domElement) {
+            if (!$(domElement).length) {
+                fail(new AssertionError(decipherDomElement(domElement) + ' should be present'));
             }
         },
 
-        assert['false'] = function(value) {
-            if (value) {
-                fail(new AssertionError("expected falsy, actual " + formatTestValue(value)),
-                     {Value: value});
+        notPresent: function (selector) {
+            assert.equal(0, $(selector).length);
+        },
+
+        hasTag: function (tag, domElement) {
+            var elementTag = $(domElement)[0].tagName.toLowerCase();
+            if (elementTag !== tag.toLowerCase()) {
+                fail(new AssertionError(decipherDomElement(domElement) + ' expected to have tag name ' + formatTestValue(tag) + ', was ' + formatTestValue(elementTag) + ' instead'));
             }
         },
 
-        ////////////////////////////////////////////////////////////////////////////////
-        // SCALAR COMPARISON
+        hasClass: function (className, domElement) {
+            if (!$(domElement).hasClass(className)) {
+                fail(new AssertionError(decipherDomElement(domElement) + ' expected to have class ' + formatTestValue(className) + ', has ' + formatTestValue($(domElement).attr('class')) + ' instead'));
+            }
+        },
 
-        assert.equal = function(expected, actual) {
+        notHasClass: function (className, domElement) {
+            assert.dom.present(domElement); // if domElement is empty, .hasClass will always return false
+            if ($(domElement).hasClass(className)) {
+                fail(new AssertionError(decipherDomElement(domElement) + ' expected NOT to have class ' + formatTestValue(className)));
+            }
+        },
+
+        hasAttribute: function (attributeName, selector) {
+            assert['true']($(selector).is('[' + attributeName + ']'));
+        },
+
+        notHasAttribute: function (attributeName, selector) {
+            assert.dom.present(selector);
+            assert['false']($(selector).is('[' + attributeName + ']'));
+        },
+
+        attr: function (value, attributeName, selector) {
+            assert.equal(value, $(selector).attr(attributeName));
+        },
+
+        attributeValues: function (values, selector) {
+            var $el = $(selector);
+            _(values).each(function (val, key) {
+                assert.equal(val, $el.attr(key));
+            });
+        },
+
+        text: function (expected, selector) {
+            assert.equal(expected, $(selector).text());
+        },
+
+        value: function (expected, selector) {
+            assert.equal(expected, $(selector).val());
+        },
+
+        count: function (elementCount, selector) {
+            assert.equal(elementCount, $(selector).length);
+        },
+
+        visible: function (domElement) {
+            if (!$(domElement).is(':visible')) {
+                fail(new AssertionError(decipherDomElement(domElement) + ' expected to be visible'));
+            }
+        },
+
+        notVisible: function (domElement) {
+            assert.dom.present(domElement);
+            if ($(domElement).is(':visible')) {
+                fail(new AssertionError(decipherDomElement(domElement) + ' expected to be NOT visible'));
+            }
+        },
+
+        disabled: function (domElement) {
+            if (!$(domElement).is(':disabled')) {
+                fail(new AssertionError(decipherDomElement(domElement) + ' expected to be disabled'));
+            }
+        },
+
+        enabled: function (domElement) {
+            if (!$(domElement).is(':enabled')) {
+                fail(new AssertionError(decipherDomElement(domElement) + ' expected to be enabled'));
+            }
+        },
+
+        focused: function (selector) {
+            var expected = $(selector)[0];
+            var actual = document.activeElement;
             if (expected !== actual) {
-                fail(new AssertionError('expected: ' + formatTestValue(expected) + ', actual: ' + formatTestValue(actual)),
-                     {Expected: expected, Actual: actual});
+                throw new AssertionError(actual.outerHTML + ' has focus. expected: ' + expected.outerHTML);
             }
         },
 
-        assert.notEqual = function(expected, actual) {
+        notFocused: function (selector) {
+            var expected = $(selector)[0];
+            var actual = document.activeElement;
             if (expected === actual) {
-                fail(new AssertionError('actual was equal to: ' + formatTestValue(expected)));
+                throw new AssertionError(expected.outerHTML + ' expected not to have focus.');
             }
         },
 
-        assert.greater = function(lhs, rhs) {
-            if (lhs <= rhs) {
-                fail(new AssertionError(formatTestValue(lhs) + ' not greater than ' + formatTestValue(rhs)));
+        html: function (expected, selector) {
+            assert.equal(expected, $(selector).html());
+        },
+
+        css: function (expected, propertyName, selector) {
+            assert.equal(expected, $(selector).css(propertyName));
+        },
+
+        empty: function (selectorOrJQueryObject) {
+            var el = selectorOrJQueryObject;
+            assert.dom.present(el);
+            if (!$(el).is(':empty')) {
+                fail(new AssertionError(decipherDomElement(el) + ' expected to be empty'));
             }
         },
 
-        assert.less = function(lhs, rhs) {
-            if (lhs >= rhs) {
-                fail(new AssertionError(formatTestValue(lhs) + ' not less than ' + formatTestValue(rhs)));
+        notEmpty: function (selectorOrJQueryObject) {
+            var el = selectorOrJQueryObject;
+            assert.dom.present(el);
+            if ($(el).is(':empty')) {
+                fail(new AssertionError(decipherDomElement(el) + ' expected NOT to be empty'));
             }
-        },
-
-        assert.greaterOrEqual = function(lhs, rhs) {
-            if (lhs < rhs) {
-                fail(new AssertionError(formatTestValue(lhs) + ' not greater than or equal to ' + formatTestValue(rhs)));
-            }
-        },
-
-        assert.lessOrEqual = function(lhs, rhs) {
-            if (lhs > rhs) {
-                fail(new AssertionError(formatTestValue(lhs) + ' not less than or equal to ' + formatTestValue(rhs)));
-            }
-        },
-
-        ////////////////////////////////////////////////////////////////////////////////
-        // DEEP COMPARISON
-
-        assert.deepEqual = function(expected, actual) {
-            if (!_.isEqual(expected, actual)) {
-                fail(new AssertionError('expected: ' + formatTestValue(expected) + ', actual: ' + formatTestValue(actual)),
-                     {Expected: expected, Actual: actual});
-            }
-        },
-
-        assert.notDeepEqual = function(expected, actual) {
-            if (_.isEqual(expected, actual)) {
-                fail(new AssertionError('expected: ' + formatTestValue(expected) + ' and actual: ' + formatTestValue(actual) + ' were equal'));
-            }
-        },
-
-        ////////////////////////////////////////////////////////////////////////////////
-        // FLOATING POINT
-
-        assert.nearEqual = function( expected, actual, tolerance ) {
-            if( tolerance === undefined ) {
-                tolerance = 0.0;
-            }
-            if( expected instanceof Array && actual instanceof Array ) {
-                assert.equal(expected.length, actual.length);
-                for( var i=0; i<expected.length; ++i ) {
-                    assert.nearEqual(expected[i], actual[i], tolerance);
-                }
-                return;
-            }
-            if( Math.abs(expected - actual) > tolerance ) {
-                fail( new AssertionError('expected: ' + formatTestValue(expected) + ', actual: ' + formatTestValue(actual) +
-                                         ', tolerance: ' + formatTestValue(tolerance) + ', diff: ' + formatTestValue(actual-expected) ),
-                      { Expected:expected, Actual:actual, Tolerance:tolerance } );
-            }
-        },
-
-        ////////////////////////////////////////////////////////////////////////////////
-        // STRING
-
-        assert.inString = function(expected, string){
-            if (-1 === string.indexOf(expected)){
-                fail(new AssertionError('expected: ' + formatTestValue(expected) + ' not in string: ' + formatTestValue(string)),
-                     {Expected: expected, 'String': string});
-            }
-        },
-
-        assert.notInString = function(expected, string){
-            if (-1 !== string.indexOf(expected)){
-                fail(new AssertionError('unexpected: ' + formatTestValue(expected) + ' in string: ' + formatTestValue(string)),
-                     {Expected: expected, 'String': string});
-            }
-        },
-
-        assert.matches = function(re, string) {
-            if (!re.test(string)) {
-                fail(new AssertionError('regexp ' + re + ' does not match: ' + string));
-            }
-        },
-
-        ////////////////////////////////////////////////////////////////////////////////
-        // ARRAY
-
-        assert.inArray = function(expected, array) {
-            var found = false;
-            _.each(array, function(element){
-                if (_.isEqual(expected, element)){
-                    found = true;
-                }
-            });
-            if (!found){
-                fail(new AssertionError('expected: ' + formatTestValue(expected) + ' not found in array: ' + formatTestValue(array)),
-                     {Expected: expected, 'Array': array});
-            }
-        },
-
-        assert.notInArray = function(expected, array) {
-            var found = false;
-            _.each(array, function(element){
-                if (_.isEqual(expected, element)){
-                    found = true;
-                }
-            });
-            if (found){
-                fail(new AssertionError('unexpected: ' + formatTestValue(expected) + ' found in array: ' + formatTestValue(array)),
-                     {Expected: expected, 'Array': array});
-            }
-        },
-
-        ////////////////////////////////////////////////////////////////////////////////
-        // OBJECTS
-
-        assert.hasKey = function (key, object) {
-            if (!(key in object)) {
-                fail(new AssertionError('Key ' + formatTestValue(key) + ' is not in object: ' + formatTestValue(object)));
-            }
-        },
-
-        assert.notHasKey = function (key, object) {
-            if (key in object) {
-                fail(new AssertionError('Unexpected key ' + formatTestValue(key) + ' is found in object: ' + formatTestValue(object)));
-            }
-        },
-
-        ////////////////////////////////////////////////////////////////////////////////
-        // EXCEPTIONS
-
-        assert.throws = function(exception, fn) {
-            try {
-                fn();
-            } catch (e) {
-                if (e instanceof exception) {
-                    return e;
-                }
-                fail(new AssertionError('Expected to throw "' + exception.name + '", actually threw: ' + formatTestValue(e) + ': ' + e.message),
-                     {Expected: exception, Actual: e});
-            }
-            throw new AssertionError('did not throw');
-        },
-
-        ////////////////////////////////////////////////////////////////////////////////
-        // TYPE
-
-        assert['instanceof'] = function(actual, type) {
-            if(!(actual instanceof type)) {
-                fail(new AssertionError(formatTestValue(actual) + ' not instance of ' + formatTestValue(type)),
-                    {Type: type, Actual: actual});
-            }
-        },
-
-        ////////////////////////////////////////////////////////////////////////////////
-        // DOM ASSERTIONS
-
-        // TODO: lift into separate file?
-        assert.dom = {
-            present: function(domElement){
-                if (!$(domElement).length) {
-                    fail(new AssertionError(decipherDomElement(domElement) + ' should be present'));
-                }
-            },
-
-            notPresent: function(selector){
-                assert.equal(0, $(selector).length);
-            },
-
-            hasTag: function(tag, domElement) {
-                var elementTag = $(domElement)[0].tagName.toLowerCase();
-                if (elementTag !== tag.toLowerCase()) {
-                    fail(new AssertionError(decipherDomElement(domElement) + ' expected to have tag name ' + formatTestValue(tag) + ', was ' + formatTestValue(elementTag) + ' instead'));
-                }
-            },
-
-            hasClass: function(className, domElement) {
-                if (!$(domElement).hasClass(className)){
-                    fail(new AssertionError(decipherDomElement(domElement) + ' expected to have class '+ formatTestValue(className) + ', has ' + formatTestValue($(domElement).attr('class')) + ' instead'));
-                }
-            },
-
-            notHasClass: function(className, domElement) {
-                assert.dom.present(domElement); // if domElement is empty, .hasClass will always return false
-                if ($(domElement).hasClass(className)){
-                    fail(new AssertionError(decipherDomElement(domElement) + ' expected NOT to have class '+ formatTestValue(className)));
-                }
-            },
-
-            hasAttribute: function(attributeName, selector) {
-                assert['true']($(selector).is('[' + attributeName + ']'));
-            },
-
-            notHasAttribute: function(attributeName, selector) {
-                assert.dom.present(selector);
-                assert['false']($(selector).is('[' + attributeName + ']'));
-            },
-
-            attr: function(value, attributeName, selector) {
-                assert.equal(value, $(selector).attr(attributeName));
-            },
-
-            attributeValues: function (values, selector) {
-                var $el = $(selector);
-                _(values).each(function (val, key) {
-                    assert.equal(val, $el.attr(key));
-                });
-            },
-
-            text: function(expected, selector) {
-                assert.equal(expected, $(selector).text());
-            },
-
-            value: function(expected, selector) {
-                assert.equal(expected, $(selector).val());
-            },
-
-            count: function(elementCount, selector) {
-                assert.equal(elementCount, $(selector).length);
-            },
-
-            visible: function(domElement) {
-                if (!$(domElement).is(':visible')) {
-                    fail(new AssertionError(decipherDomElement(domElement) + ' expected to be visible'));
-                }
-            },
-
-            notVisible: function(domElement) {
-                assert.dom.present(domElement);
-                if ($(domElement).is(':visible')) {
-                    fail(new AssertionError(decipherDomElement(domElement) + ' expected to be NOT visible'));
-                }
-            },
-
-            disabled: function(domElement) {
-                if (!$(domElement).is(':disabled')) {
-                    fail(new AssertionError(decipherDomElement(domElement) + ' expected to be disabled'));
-                }
-            },
-
-            enabled: function(domElement) {
-                if (!$(domElement).is(':enabled')) {
-                    fail(new AssertionError(decipherDomElement(domElement) + ' expected to be enabled'));
-                }
-            },
-
-            focused: function(selector) {
-                var expected = $(selector)[0];
-                var actual = document.activeElement;
-                if (expected !== actual) {
-                    throw new AssertionError(actual.outerHTML + ' has focus. expected: ' + expected.outerHTML);
-                }
-            },
-
-            notFocused: function(selector) {
-                var expected = $(selector)[0];
-                var actual = document.activeElement;
-                if (expected === actual) {
-                    throw new AssertionError(expected.outerHTML + ' expected not to have focus.');
-                }
-            },
-
-            html: function(expected, selector) {
-                assert.equal(expected, $(selector).html());
-            },
-
-            css: function(expected, propertyName, selector) {
-                assert.equal(expected, $(selector).css(propertyName));
-            },
-
-            empty: function(selectorOrJQueryObject) {
-                var el = selectorOrJQueryObject;
-                assert.dom.present(el);
-                if (!$(el).is(':empty')) {
-                    fail(new AssertionError(decipherDomElement(el) + ' expected to be empty'));
-                }
-            },
-
-            notEmpty: function(selectorOrJQueryObject) {
-                var el = selectorOrJQueryObject;
-                assert.dom.present(el);
-                if ($(el).is(':empty')) {
-                    fail(new AssertionError(decipherDomElement(el) + ' expected NOT to be empty'));
-                }
-            }
-        };
-//    };
+        }
+    };
 
     function decipherDomElement(selectorOrJQueryObject) {
         if (typeof selectorOrJQueryObject === 'string') {
@@ -562,10 +561,6 @@ function module(ignore, func) {
     assert.notNull = assert.notEqual.bind(null, null);
     assert['undefined'] = assert.equal.bind(null, undefined);
     assert.notUndefined = assert.notEqual.bind(null, undefined);
-
-    // ES3 synonyms
-    assert.false_ = assert['false'];
-    assert.true_ = assert['true'];
 
     g.registerSuperFixture = registerSuperFixture;
     g.test = test;

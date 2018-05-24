@@ -631,6 +631,9 @@ StringSet BREAK_CAPTURERS("do while for switch"),
           CONTINUE_CAPTURERS("do while for"),
           FUNCTIONS_THAT_ALWAYS_THROW("abort ___resumeException ___cxa_throw ___cxa_rethrow");
 
+IString DCEABLE_TYPE_DECLS("__emscripten_dceable_type_decls");
+
+
 bool isFunctionTable(const char *name) {
   static const char *functionTable = "FUNCTION_TABLE";
   static unsigned size = strlen(functionTable);
@@ -1060,7 +1063,7 @@ void eliminate(Ref ast, bool memSafe) {
             invalidateCalls();
             callsInvalidated = true;
           }
-        } else if (type == UNARY_PREFIX || type == UNARY_POSTFIX) {
+        } else if (type == UNARY_PREFIX) {
           traverseInOrder(node[2], false);
         } else if (IGNORABLE_ELIMINATOR_SCAN_NODES.has(type)) {
         } else if (type == CALL) {
@@ -2415,6 +2418,10 @@ void registerizeHarder(Ref ast) {
     });
     if (abort) return;
 
+    // Do not process the dceable helper function for wasm, which declares
+    // types, we need to alive for asm2wasm
+    if (fun[1] == DCEABLE_TYPE_DECLS) return;
+
     AsmData asmData(fun);
 
 #ifdef PROFILING
@@ -2876,7 +2883,7 @@ void registerizeHarder(Ref ast) {
         }
       } else if (type == STAT) {
         buildFlowGraph(node[1]);
-      } else if (type == UNARY_PREFIX || type == UNARY_POSTFIX) {
+      } else if (type == UNARY_PREFIX) {
         isInExpr++;
         buildFlowGraph(node[2]);
         isInExpr--;

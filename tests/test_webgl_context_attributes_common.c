@@ -282,19 +282,19 @@ extern int webglAlphaSupported(void);
 static void checkContextAttributesSupport() {
   if (!webglAntialiasSupported()) {
     resultAA = 1;
-    EM_ASM(alert('warning: no antialiasing\n'));
+    EM_ASM(Module['print']('warning: no antialiasing\n'));
   }
   if (!webglDepthSupported()) {
     resultDepth = 1;
-    EM_ASM(alert('warning: no depth\n'));
+    EM_ASM(Module['print']('warning: no depth\n'));
   }
   if (!webglStencilSupported()) {
     resultStencil = 1;
-    EM_ASM(alert('warning: no stencil\n'));
+    EM_ASM(Module['print']('warning: no stencil\n'));
   }
   if (!webglAlphaSupported()) {
     resultAlpha = 1;
-    EM_ASM(alert('warning: no alpha\n'));
+    EM_ASM(Module['print']('warning: no alpha\n'));
   }
 }
 

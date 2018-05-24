@@ -1,9 +1,9 @@
 import os, shutil, logging
 
-TAG = 'version_7'
+TAG = 'version_48'
 
 def needed(settings, shared, ports):
-  if not settings.BINARYEN: return False
+  if not settings.WASM: return False
   try:
     if shared.BINARYEN_ROOT: # if defined, and not falsey, we don't need the port
       logging.debug('binaryen root already set to ' + shared.BINARYEN_ROOT)
@@ -20,7 +20,7 @@ def get(ports, settings, shared):
     return []
   ports.fetch_project('binaryen', 'https://github.com/WebAssembly/binaryen/archive/' + TAG + '.zip', 'binaryen-' + TAG)
   def create():
-    logging.warning('building port: binaryen')
+    logging.info('building port: binaryen')
     ports.build_native(os.path.join(ports.get_dir(), 'binaryen', 'binaryen-' + TAG))
     # the "output" of this port build is a tag file, saying which port we have
     tag_file = os.path.join(ports.get_dir(), 'binaryen', 'tag.txt')
@@ -29,9 +29,6 @@ def get(ports, settings, shared):
   return [shared.Cache.get('binaryen_tag_' + TAG, create, what='port', extension='.txt')]
 
 def process_args(ports, args, settings, shared):
-  if not needed(settings, shared, ports):
-    return args
-  get(ports, settings, shared)
   return args
 
 def show():

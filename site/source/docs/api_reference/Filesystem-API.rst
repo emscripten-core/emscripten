@@ -54,7 +54,7 @@ NODEFS
 
 .. note:: This file system is only for use when running inside :term:`node.js`. 
 
-This file system lets a program in *node* directly access files on the local file system, as if the program were running normally. It uses node's synchronous `FS API <http://nodejs.org/api/fs.html>`_ to immediately persist any data written to the Emscripten file system to your local disk.
+This file system lets a program in *node* map directories (via a mount operation) on the host filesystem to directories in Emscripten's virtual filesystem. It uses node's synchronous `FS API <http://nodejs.org/api/fs.html>`_ to immediately persist any data written to the Emscripten file system to your local disk.
 
 See `this test <https://github.com/kripken/emscripten/blob/master/tests/fs/test_nodefs_rw.c>`_ for an example.
 
@@ -72,7 +72,7 @@ This is provided to overcome the limitation that browsers do not offer synchrono
 .. _filesystem-api-workerfs:
 
 WORKERFS
------
+--------
 
 .. note:: This file system is only for use when running code inside a worker.
 
@@ -312,7 +312,7 @@ File system API
 		#include <emscripten.h>
 
 		int main() {
-		  EM_ASM(
+		  MAIN_THREAD_EM_ASM(
 			FS.writeFile('file', 'foobar');
 			FS.symlink('file', 'link');
 			console.log(FS.readlink('link'));
@@ -341,7 +341,7 @@ File system API
 		#include <emscripten.h>
 
 		int main() {
-		  EM_ASM(
+		  MAIN_THREAD_EM_ASM(
 			FS.writeFile('file', 'foobar');
 			console.log(FS.stat('file'));
 		  );
@@ -459,7 +459,7 @@ File system API
 		#include <emscripten.h>
 
 		int main() {
-		  EM_ASM(
+		  MAIN_THREAD_EM_ASM(
 			FS.writeFile('file', 'foobar');
 			FS.truncate('file', 3);
 			console.log(FS.readFile('file', { encoding: 'utf8' }));
@@ -607,21 +607,17 @@ File system API
 
 .. js:function:: FS.writeFile(path, data, opts)
 
-	Writes the entire contents of ``data`` to the file at ``path``. 
-	
-	The value of ``opts`` determines whether ``data`` is treated either as a string (``encoding`` = ``utf8``), or as an ``ArrayBufferView`` (``encoding`` = ``binary``). For example:
+	Writes the entire contents of ``data`` to the file at ``path``. For example:
 
 	.. code:: javascript
 
 		FS.writeFile('file', 'foobar');
-		var contents = FS.readFile('file', { encoding: ``utf8`` });
+		var contents = FS.readFile('file', { encoding: 'utf8' });
 		
 	:param string path: The file to which to write ``data``.
-	:param ArrayBufferView data: The data to write.
+	:param string|ArrayBufferView data: The data to write. A string will always be decoded as UTF-8.
 	:param object opts:
 	
-		- **encoding** (*string*)
-			``binary`` | ``utf8``. The default is ``utf8``		
 		- **flags** (*string*)
 			Write flags, as defined in :js:func:`FS.open`. The default is 'w'.
 

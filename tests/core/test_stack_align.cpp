@@ -9,6 +9,7 @@ struct Aligned {
   char ALIGN(32) a32;
 };
 
+__attribute__((noinline))
 void Test(const void* p, int size) {
   printf("align %d: %d\n", size, reinterpret_cast<size_t>(p) % size);
 }

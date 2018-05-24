@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 #include <vector>
 
 #define NUM_BLOCKS_TO_ALLOC 50000
@@ -29,7 +30,7 @@ int main()
   int result = 0;
   if (!emscripten_has_threading_support()) {
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(0);
 #endif
     printf("Skipped: threading support is not available!\n");
     return 0;
@@ -42,7 +43,7 @@ int main()
     {
 #ifdef REPORT_RESULT
       result = (rc != EAGAIN);
-      REPORT_RESULT();
+      REPORT_RESULT(result);
       return 0;
 #endif
     }
@@ -66,6 +67,6 @@ int main()
   }
   printf("Test finished successfully!\n");
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 #endif
 }

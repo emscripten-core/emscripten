@@ -162,7 +162,7 @@ int main()
   DoubleTest();
 
 #ifdef REPORT_RESULT
-	REPORT_RESULT();
+	REPORT_RESULT(result);
 #endif
 	if (result)
 		printf("Success!\n");

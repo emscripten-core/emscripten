@@ -62,7 +62,7 @@ public:
         if (__p == (pointer)&buf_)
             __allocated_ = false;
         else
-            _VSTD::__deallocate(__p);
+            _VSTD::__libcpp_deallocate(__p);
     }
     _LIBCPP_INLINE_VISIBILITY size_type max_size() const throw() {return size_type(~0) / sizeof(_Tp);}
 

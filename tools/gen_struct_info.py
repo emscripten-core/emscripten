@@ -76,7 +76,10 @@ The JSON output format is based on the return value of Runtime.generateStructInf
 '''
 
 import sys, os, re, json, argparse, tempfile, subprocess
-import shared
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools import shared
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 if DEBUG == "0":
@@ -320,7 +323,7 @@ def gen_inspect_code(path, struct, code):
   for field in struct:
     if isinstance(field, dict):
       # We have to recurse to inspect the nested dict.
-      fname = field.keys()[0]
+      fname = list(field.keys())[0]
       gen_inspect_code(path + [fname], field[fname], code)
     else:
       c_set(field, 'i%zu', 'offsetof(' + prefix + path[0] + ', ' + '.'.join(path[1:] + [field]) + ')', code)
@@ -364,7 +367,7 @@ def inspect_code(headers, cpp_opts, structs, defines):
   src_file = tempfile.mkstemp('.c')
   js_file = tempfile.mkstemp('.js')
   
-  os.write(src_file[0], '\n'.join(code))
+  os.write(src_file[0], shared.asbytes('\n'.join(code)))
   
   # Close all unneeded FDs.
   os.close(src_file[0])
@@ -387,7 +390,7 @@ def inspect_code(headers, cpp_opts, structs, defines):
     try:
       # Compile the program.
       show('Compiling generated code...')
-      subprocess.check_call([shared.PYTHON, shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1], '-s', 'BOOTSTRAPPING_STRUCT_INFO=1', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-Oz', '--js-opts', '0', '--memory-init-file', '0'], env=safe_env) # -Oz optimizes enough to avoid warnings on code size/num locals
+      subprocess.check_call([shared.PYTHON, shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1], '-s', 'BOOTSTRAPPING_STRUCT_INFO=1', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-Oz', '--js-opts', '0', '--memory-init-file', '0', '-s', 'SINGLE_FILE=1', '-s', 'WASM=0'], env=safe_env) # -Oz optimizes enough to avoid warnings on code size/num locals
     except:
       sys.stderr.write('FAIL: Compilation failed!\n')
       sys.exit(1)

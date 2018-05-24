@@ -1,5 +1,9 @@
 #pragma once
 
+#if __cplusplus < 201103L
+#error Including <emscripten/bind.h> requires building with -std=c++11 or newer!
+#else
+
 #include <stddef.h>
 #include <assert.h>
 #include <string>
@@ -20,7 +24,8 @@ namespace emscripten {
     namespace internal {
         typedef long GenericEnumValue;
 
-        typedef void (*GenericFunction)();
+        typedef void* GenericFunction;
+        typedef void (*VoidFunctionPtr)(void);
 
         // Implemented in JavaScript.  Don't call these directly.
         extern "C" {
@@ -800,7 +805,33 @@ namespace emscripten {
                 getContext(field));
             return *this;
         }
-    
+
+        template<typename InstanceType, typename ElementType, int N>
+        value_object& field(const char* fieldName, ElementType (InstanceType::*field)[N]) {
+            using namespace internal;
+
+            typedef std::array<ElementType, N> FieldType;
+            static_assert(sizeof(FieldType) == sizeof(ElementType[N]));
+
+            auto getter = &MemberAccess<InstanceType, FieldType>
+                ::template getWire<ClassType>;
+            auto setter = &MemberAccess<InstanceType, FieldType>
+                ::template setWire<ClassType>;
+
+            _embind_register_value_object_field(
+                TypeID<ClassType>::get(),
+                fieldName,
+                TypeID<FieldType>::get(),
+                getSignature(getter),
+                reinterpret_cast<GenericFunction>(getter),
+                getContext(field),
+                TypeID<FieldType>::get(),
+                getSignature(setter),
+                reinterpret_cast<GenericFunction>(setter),
+                getContext(field));
+            return *this;
+        }
+
         template<typename Getter, typename Setter>
         value_object& field(
             const char* fieldName,
@@ -982,12 +1013,12 @@ namespace emscripten {
             }
 
             template<typename ClassType>
-            static GenericFunction getUpcaster() {
+            static VoidFunctionPtr getUpcaster() {
                 return nullptr;
             }
 
             template<typename ClassType>
-            static GenericFunction getDowncaster() {
+            static VoidFunctionPtr getDowncaster() {
                 return nullptr;
             }
         };
@@ -1090,7 +1121,7 @@ namespace emscripten {
             BaseSpecifier::template verify<ClassType>();
 
             auto _getActualType = &getActualType<ClassType>;
-            auto upcast = BaseSpecifier::template getUpcaster<ClassType>();
+            auto upcast   = BaseSpecifier::template getUpcaster<ClassType>();
             auto downcast = BaseSpecifier::template getDowncaster<ClassType>();
             auto destructor = &raw_destructor<ClassType>;
 
@@ -1573,3 +1604,5 @@ namespace emscripten {
         EmscriptenBindingInitializer_##name();                          \
     } EmscriptenBindingInitializer_##name##_instance;                   \
     EmscriptenBindingInitializer_##name::EmscriptenBindingInitializer_##name()
+
+#endif // ~C++11 version check

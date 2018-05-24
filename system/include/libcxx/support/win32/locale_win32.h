@@ -11,30 +11,17 @@
 #ifndef _LIBCPP_SUPPORT_WIN32_LOCALE_WIN32_H
 #define _LIBCPP_SUPPORT_WIN32_LOCALE_WIN32_H
 
+#include <crtversion.h>
+
+#if _VC_CRT_MAJOR_VERSION < 14
 // ctype mask table defined in msvcrt.dll
-extern "C" unsigned short  __declspec(dllimport) _ctype[];
+extern "C" unsigned short __declspec(dllimport) _ctype[];
+#endif
 
 #include "support/win32/support.h"
+#include "support/win32/locale_mgmt_win32.h"
 #include <stdio.h>
-#include <memory>
-#include <xlocinfo.h> // _locale_t
-#define locale_t _locale_t
-#define LC_COLLATE_MASK _M_COLLATE
-#define LC_CTYPE_MASK _M_CTYPE
-#define LC_MONETARY_MASK _M_MONETARY
-#define LC_NUMERIC_MASK _M_NUMERIC
-#define LC_TIME_MASK _M_TIME
-#define LC_MESSAGES_MASK _M_MESSAGES
-#define LC_ALL_MASK (  LC_COLLATE_MASK \
-                     | LC_CTYPE_MASK \
-                     | LC_MESSAGES_MASK \
-                     | LC_MONETARY_MASK \
-                     | LC_NUMERIC_MASK \
-                     | LC_TIME_MASK )
-#define freelocale _free_locale
-// FIXME: base currently unused. Needs manual work to construct the new locale
-locale_t newlocale( int mask, const char * locale, locale_t base );
-locale_t uselocale( locale_t newloc );
+
 lconv *localeconv_l( locale_t loc );
 size_t mbrlen_l( const char *__restrict s, size_t n,
                  mbstate_t *__restrict ps, locale_t loc);
@@ -50,21 +37,19 @@ size_t wcsnrtombs_l( char *__restrict dst, const wchar_t **__restrict src,
                      size_t nwc, size_t len, mbstate_t *__restrict ps, locale_t loc);
 wint_t btowc_l( int c, locale_t loc );
 int wctob_l( wint_t c, locale_t loc );
-typedef _VSTD::remove_pointer<locale_t>::type __locale_struct;
-typedef _VSTD::unique_ptr<__locale_struct, decltype(&uselocale)> __locale_raii;
 inline _LIBCPP_ALWAYS_INLINE
 decltype(MB_CUR_MAX) MB_CUR_MAX_L( locale_t __l )
 {
-  __locale_raii __current( uselocale(__l), uselocale );
-  return MB_CUR_MAX;
+  return ___mb_cur_max_l_func(__l);
 }
 
 // the *_l functions are prefixed on Windows, only available for msvcr80+, VS2005+
 #define mbtowc_l _mbtowc_l
 #define strtoll_l _strtoi64_l
 #define strtoull_l _strtoui64_l
-// FIXME: current msvcrt does not know about long double
-#define strtold_l _strtod_l
+#define strtof_l _strtof_l
+#define strtod_l _strtod_l
+#define strtold_l _strtold_l
 
 inline _LIBCPP_INLINE_VISIBILITY
 int

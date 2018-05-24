@@ -4,6 +4,11 @@
 #include "libc.h"
 #include <sys/mman.h>
 #include <string.h>
+#include <stddef.h>
+
+void *__mmap(void *, size_t, int, int, int, off_t);
+int __munmap(void *, size_t);
+int __mprotect(void *, size_t, int);
 
 static void dummy_0()
 {
@@ -11,12 +16,16 @@ static void dummy_0()
 weak_alias(dummy_0, __acquire_ptc);
 weak_alias(dummy_0, __release_ptc);
 weak_alias(dummy_0, __pthread_tsd_run_dtors);
+weak_alias(dummy_0, __do_orphaned_stdio_locks);
+weak_alias(dummy_0, __dl_thread_cleanup);
 
-_Noreturn void pthread_exit(void *result)
+_Noreturn void __pthread_exit(void *result)
 {
-	pthread_t self = pthread_self();
+	pthread_t self = __pthread_self();
 	sigset_t set;
 
+	self->canceldisable = 1;
+	self->cancelasync = 0;
 	self->result = result;
 
 	while (self->cancelbuf) {
@@ -58,6 +67,28 @@ _Noreturn void pthread_exit(void *result)
 		exit(0);
 	}
 
+	/* Process robust list in userspace to handle non-pshared mutexes
+	 * and the detached thread case where the robust list head will
+	 * be invalid when the kernel would process it. */
+	__vm_lock();
+	volatile void *volatile *rp;
+	while ((rp=self->robust_list.head) && rp != &self->robust_list.head) {
+		pthread_mutex_t *m = (void *)((char *)rp
+			- offsetof(pthread_mutex_t, _m_next));
+		int waiters = m->_m_waiters;
+		int priv = (m->_m_type & 128) ^ 128;
+		self->robust_list.pending = rp;
+		self->robust_list.head = *rp;
+		int cont = a_swap(&m->_m_lock, 0x40000000);
+		self->robust_list.pending = 0;
+		if (cont < 0 || waiters)
+			__wake(&m->_m_lock, 1, priv);
+	}
+	__vm_unlock();
+
+	__do_orphaned_stdio_locks();
+	__dl_thread_cleanup();
+
 	if (self->detached && self->map_base) {
 		/* Detached threads must avoid the kernel clear_child_tid
 		 * feature, since the virtual address will have been
@@ -67,6 +98,15 @@ _Noreturn void pthread_exit(void *result)
 		 * initial clone flags are correct, but if the thread was
 		 * detached later (== 2), we need to clear it here. */
 		if (self->detached == 2) __syscall(SYS_set_tid_address, 0);
+
+		/* Robust list will no longer be valid, and was already
+		 * processed above, so unregister it with the kernel. */
+		if (self->robust_list.off)
+			__syscall(SYS_set_robust_list, 0, 3*sizeof(long));
+
+		/* Since __unmapself bypasses the normal munmap code path,
+		 * explicitly wait for vmlock holders first. */
+		__vm_wait();
 
 		/* The following call unmaps the thread's stack mapping
 		 * and then exits without touching the stack. */
@@ -78,7 +118,7 @@ _Noreturn void pthread_exit(void *result)
 
 void __do_cleanup_push(struct __ptcb *cb)
 {
-	struct pthread *self = pthread_self();
+	struct pthread *self = __pthread_self();
 	cb->__next = self->cancelbuf;
 	self->cancelbuf = cb;
 }
@@ -102,7 +142,15 @@ static int start(void *p)
 	if (self->unblock_cancel)
 		__syscall(SYS_rt_sigprocmask, SIG_UNBLOCK,
 			SIGPT_SET, 0, _NSIG/8);
-	pthread_exit(self->start(self->start_arg));
+	__pthread_exit(self->start(self->start_arg));
+	return 0;
+}
+
+static int start_c11(void *p)
+{
+	pthread_t self = p;
+	int (*start)(void*) = (int(*)(void*)) self->start;
+	__pthread_exit((void *)(uintptr_t)start(self->start_arg));
 	return 0;
 }
 
@@ -113,6 +161,8 @@ static volatile size_t dummy = 0;
 weak_alias(dummy, __pthread_tsd_size);
 static void *dummy_tsd[1] = { 0 };
 weak_alias(dummy_tsd, __pthread_tsd_main);
+
+volatile int __block_new_threads = 0;
 
 static FILE *volatile dummy_file = 0;
 weak_alias(dummy_file, __stdin_used);
@@ -126,11 +176,11 @@ static void init_file_lock(FILE *f)
 
 void *__copy_tls(unsigned char *);
 
-int pthread_create(pthread_t *restrict res, const pthread_attr_t *restrict attrp, void *(*entry)(void *), void *restrict arg)
+int __pthread_create(pthread_t *restrict res, const pthread_attr_t *restrict attrp, void *(*entry)(void *), void *restrict arg)
 {
-	int ret;
+	int ret, c11 = (attrp == __ATTRP_C11_THREAD);
 	size_t size, guard;
-	struct pthread *self = pthread_self(), *new;
+	struct pthread *self, *new;
 	unsigned char *map = 0, *stack = 0, *tsd = 0, *stack_limit;
 	unsigned flags = CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND
 		| CLONE_THREAD | CLONE_SYSVSEM | CLONE_SETTLS
@@ -138,18 +188,23 @@ int pthread_create(pthread_t *restrict res, const pthread_attr_t *restrict attrp
 	int do_sched = 0;
 	pthread_attr_t attr = {0};
 
-	if (!self) return ENOSYS;
+	if (!libc.can_do_threads) return ENOSYS;
+	self = __pthread_self();
 	if (!libc.threaded) {
-		for (FILE *f=libc.ofl_head; f; f=f->next)
+		for (FILE *f=*__ofl_lock(); f; f=f->next)
 			init_file_lock(f);
+		__ofl_unlock();
 		init_file_lock(__stdin_used);
 		init_file_lock(__stdout_used);
 		init_file_lock(__stderr_used);
+		__syscall(SYS_rt_sigprocmask, SIG_UNBLOCK, SIGPT_SET, 0, _NSIG/8);
+		self->tsd = (void **)__pthread_tsd_main;
 		libc.threaded = 1;
 	}
-	if (attrp) attr = *attrp;
+	if (attrp && !c11) attr = *attrp;
 
 	__acquire_ptc();
+	if (__block_new_threads) __wait(&__block_new_threads, 0, 1, 1);
 
 	if (attr._a_stackaddr) {
 		size_t need = libc.tls_size + __pthread_tsd_size;
@@ -175,14 +230,15 @@ int pthread_create(pthread_t *restrict res, const pthread_attr_t *restrict attrp
 
 	if (!tsd) {
 		if (guard) {
-			map = mmap(0, size, PROT_NONE, MAP_PRIVATE|MAP_ANON, -1, 0);
+			map = __mmap(0, size, PROT_NONE, MAP_PRIVATE|MAP_ANON, -1, 0);
 			if (map == MAP_FAILED) goto fail;
-			if (mprotect(map+guard, size-guard, PROT_READ|PROT_WRITE)) {
-				munmap(map, size);
+			if (__mprotect(map+guard, size-guard, PROT_READ|PROT_WRITE)
+			    && errno != ENOSYS) {
+				__munmap(map, size);
 				goto fail;
 			}
 		} else {
-			map = mmap(0, size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0);
+			map = __mmap(0, size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0);
 			if (map == MAP_FAILED) goto fail;
 		}
 		tsd = map + size - __pthread_tsd_size;
@@ -197,12 +253,11 @@ int pthread_create(pthread_t *restrict res, const pthread_attr_t *restrict attrp
 	new->map_size = size;
 	new->stack = stack;
 	new->stack_size = stack - stack_limit;
-	new->pid = self->pid;
-	new->errno_ptr = &new->errno_val;
 	new->start = entry;
 	new->start_arg = arg;
 	new->self = new;
 	new->tsd = (void *)tsd;
+	new->locale = &libc.global_locale;
 	if (attr._a_detach) {
 		new->detached = 1;
 		flags -= CLONE_CHILD_CLEARTID;
@@ -211,11 +266,12 @@ int pthread_create(pthread_t *restrict res, const pthread_attr_t *restrict attrp
 		do_sched = new->startlock[0] = 1;
 		__block_app_sigs(new->sigmask);
 	}
+	new->robust_list.head = &new->robust_list.head;
 	new->unblock_cancel = self->cancel;
-	new->canary = self->canary;
+	new->CANARY = self->CANARY;
 
 	a_inc(&libc.threads_minus_1);
-	ret = __clone(start, stack, flags, new, &new->tid, TP_ADJ(new), &new->tid);
+	ret = __clone((c11 ? start_c11 : start), stack, flags, new, &new->tid, TP_ADJ(new), &new->tid);
 
 	__release_ptc();
 
@@ -225,7 +281,7 @@ int pthread_create(pthread_t *restrict res, const pthread_attr_t *restrict attrp
 
 	if (ret < 0) {
 		a_dec(&libc.threads_minus_1);
-		if (map) munmap(map, size);
+		if (map) __munmap(map, size);
 		return EAGAIN;
 	}
 
@@ -243,3 +299,6 @@ fail:
 	__release_ptc();
 	return EAGAIN;
 }
+
+weak_alias(__pthread_exit, pthread_exit);
+weak_alias(__pthread_create, pthread_create);

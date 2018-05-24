@@ -22,12 +22,14 @@
 
 	docs/introducing_emscripten/index
 	docs/getting_started/index
-	docs/porting/index
-	docs/optimizing/Optimizing-Code
 	docs/compiling/index
-	docs/building_from_source/index
-	docs/contributing/index
+	docs/porting/index
 	docs/api_reference/index
 	docs/tools_reference/index
+	docs/optimizing/Optimizing-Code
+	docs/optimizing/Optimizing-WebGL
+	docs/debugging/CyberDWARF
+	docs/building_from_source/index
+	docs/contributing/index
+	docs/optimizing/Profiling-Toolchain
 	docs/site/about
-

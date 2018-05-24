@@ -301,7 +301,7 @@ document.styleSheets = [{
 document.URL = 'http://worker.not.yet.ready.wait.for.window.onload?fake';
 
 function Audio() {
-  Runtime.warnOnce('faking Audio elements, no actual sound will play');
+  warnOnce('faking Audio elements, no actual sound will play');
 }
 Audio.prototype = new EventListener();
 Object.defineProperty(Audio.prototype, 'src', {
@@ -319,7 +319,7 @@ Audio.prototype.cloneNode = function() {
 }
 
 function AudioContext() {
-  Runtime.warnOnce('faking WebAudio elements, no actual sound will play');
+  warnOnce('faking WebAudio elements, no actual sound will play');
   function makeNode() {
     return {
       connect: function(){},
@@ -370,33 +370,45 @@ Module['postMainLoop'] = function() {
 
 // Wait to start running until we receive some info from the client
 
-addRunDependency('gl-prefetch');
-addRunDependency('worker-init');
+#if USE_PTHREADS
+if (!ENVIRONMENT_IS_PTHREAD) {
+#endif
+  addRunDependency('gl-prefetch');
+  addRunDependency('worker-init');
+#if USE_PTHREADS
+}
+#endif
 
 // buffer messages until the program starts to run
 
 var messageBuffer = null;
+var messageResenderTimeout = null;
 
 function messageResender() {
   if (calledMain) {
     assert(messageBuffer && messageBuffer.length > 0);
+    messageResenderTimeout = null;
     messageBuffer.forEach(function(message) {
       onmessage(message);
     });
     messageBuffer = null;
   } else {
-    setTimeout(messageResender, 100);
+    messageResenderTimeout = setTimeout(messageResender, 100);
   }
 }
 
-onmessage = function onmessage(message) {
+function onMessageFromMainEmscriptenThread(message) {
   if (!calledMain && !message.data.preMain) {
     if (!messageBuffer) {
       messageBuffer = [];
-      setTimeout(messageResender, 100);
+      messageResenderTimeout = setTimeout(messageResender, 100);
     }
     messageBuffer.push(message);
     return;
+  }
+  if (calledMain && messageResenderTimeout) {
+    clearTimeout(messageResenderTimeout);
+    messageResender();
   }
   //dump('worker got ' + JSON.stringify(message.data).substr(0, 150) + '\n');
   switch (message.data.target) {
@@ -454,11 +466,37 @@ onmessage = function onmessage(message) {
       screen.height = Module.canvas.height_ = message.data.height;
       Module.canvas.boundingClientRect = message.data.boundingClientRect;
       document.URL = message.data.URL;
+#if USE_PTHREADS
+      currentScriptUrl = message.data.currentScriptUrl;
+#endif
       window.fireEvent({ type: 'load' });
       removeRunDependency('worker-init');
+      break;
+    }
+    case 'custom': {
+      if (Module['onCustomMessage']) {
+        Module['onCustomMessage'](message);
+      } else {
+        throw 'Custom message received but worker Module.onCustomMessage not implemented.';
+      }
+      break;
+    }
+    case 'setimmediate': {
+      if (Module['setImmediates']) Module['setImmediates'].shift()();
       break;
     }
     default: throw 'wha? ' + message.data.target;
   }
 };
 
+#if USE_PTHREADS
+if (!ENVIRONMENT_IS_PTHREAD) {
+#endif
+  onmessage = onMessageFromMainEmscriptenThread;
+#if USE_PTHREADS
+}
+#endif
+
+function postCustomMessage(data) {
+  postMessage({ target: 'custom', userData: data });
+}

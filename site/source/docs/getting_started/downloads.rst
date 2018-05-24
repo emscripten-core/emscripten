@@ -4,70 +4,28 @@
 Download and install
 ====================
 
-**The Emscripten SDK provides the whole Emscripten toolchain (Clang, Python, Node.js and Visual Studio integration) in a single easy-to-install package, with integrated support for** :ref:`updating to newer SDKs <updating-the-emscripten-sdk>` **as they are released.**
-
 .. tip:: If you are :ref:`contributing <contributing>` to Emscripten you should :ref:`build Emscripten from source <installing-from-source>`.
-
-
-SDK Downloads
-==================
-
-Download one of the SDK installers below to get started with Emscripten development. The Windows NSIS installers are the easiest to set up, while the portable SDKs can be moved between computers and do not require administration privileges. 
-
-.. emscripten-sdk-windows-installers:
-
-Windows
--------
-
-- `Emscripten SDK Web Installer  <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.35.0-web-64bit.exe>`_ (emsdk-1.35.0-web-64bit.exe)
-		An NSIS installer that fetches and installs the latest Emscripten SDK from the Web. To :ref:`install <windows-installation_instructions-NSIS>`, download and open the file, then follow the installer prompts.
-
-- `Emscripten SDK Offline Installer <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.35.0-full-64bit.exe>`_ (emsdk-1.35.0-full-64bit.exe)
-		An NSIS installer that bundles together the current Emscripten toolchain as an offline-installable package. To :ref:`install <windows-installation_instructions-NSIS>`, download and open the file, then follow the installer prompts.
-
-- `Portable Emscripten SDK for Windows <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.35.0-portable-64bit.zip>`_ (emsdk-1.35.0-portable-64bit.zip)
-		A zipped package of the SDK that does not require system installation privileges. Follow the instructions below to :ref:`install the Portable Emscripten SDK on Windows <all-os-installation_instructions-portable-SDK>`.
-
-Linux and Mac OS X
-------------------
-
-.. _portable-emscripten-sdk-linux-osx:
-	
-- `Portable Emscripten SDK for Linux and OS X <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz>`_ (emsdk-portable.tar.gz) 
-		A tar.gz archive package of the SDK that does not require system installation privileges. To install, follow the :ref:`platform-specific notes <platform-notes-installation_instructions-portable-SDK>` and the :ref:`general instructions <all-os-installation_instructions-portable-SDK>`.
-
-
 
 .. _sdk-installation-instructions:
 
 Installation instructions
 =========================
 
-Check the relevant section below for instructions on installing your selected package. 
+First check the :ref:`Platform-specific notes <platform-notes-installation_instructions-SDK>` below and install any prerequisites.
 
-.. _windows-installation_instructions-NSIS:
+The core Emscripten SDK (emsdk) driver is a Python script. You can get it for the first time with
 
-Windows: Installing using an NSIS installer
---------------------------------------------
+  ::
 
-The NSIS installers register the Emscripten SDK as a *standard* Windows application. To install the SDK, download an NSIS **.exe** file, double-click on it, and run through the installer to perform the installation. 
+    # Get the emsdk repo
+    git clone https://github.com/juj/emsdk.git
 
-After the installer finishes, the full Emscripten toolchain will be available in the directory that was chosen during the installation, and no other steps are necessary. If your system has *Visual Studio 2010* installed, the :term:`vs-tool` MSBuild plugin will be automatically installed as well.
+    # Enter that directory
+    cd emsdk
 
+.. note:: You can also get the emsdk without git, by selecting "Clone or download => Download ZIP" on the `emsdk GitHub page <https://github.com/juj/emsdk>`_.
 
-.. _all-os-installation_instructions-portable-SDK:
-
-Windows, OSX and Linux: Installing the Portable SDK
-----------------------------------------------------
-
-The *Portable Emscripten SDK* is a no-installer version of the SDK package. It is identical to the NSIS installer, except that it does not interact with the Windows registry. This allows Emscripten to be used on a computer without administrative privileges, and means that the installation can be migrated from one location (directory or computer) to another by simply copying the directory contents to the new location.
-
-First check the :ref:`Platform-specific notes <platform-notes-installation_instructions-portable-SDK>` below and install any prerequisites.
-
-Install or update the SDK using the following steps:
-
-1. Download and unzip the portable SDK package to a directory of your choice. This directory will contain the Emscripten SDK.
-#. Open a command prompt inside the SDK directory and run the following :ref:`emsdk <emsdk>` commands to get the latest tools from Github and set them as :term:`active <Active Tool/SDK>`:
+Run the following :ref:`emsdk <emsdk>` commands to get the latest tools from GitHub and set them as :term:`active <Active Tool/SDK>`:
 	
 	::
 
@@ -77,30 +35,32 @@ Install or update the SDK using the following steps:
 		# Download and install the latest SDK tools.
 		./emsdk install latest
 
-		# Make the "latest" SDK "active"
+		# Make the "latest" SDK "active" for the current user. (writes ~/.emscripten file)
 		./emsdk activate latest
 		
-	.. note:: On Windows, invoke the tool with ``emsdk`` instead of ``./emsdk``. 
+		# Activate PATH and other environment variables in the current terminal
+		source ./emsdk_env.sh
 
-#. **Linux and Mac OS X only:** Call ``source ./emsdk_env.sh`` after ``activate`` to set the system path to the active version of Emscripten: 
+	.. note:: On Windows, run ``emsdk`` instead of ``./emsdk``, and ``emsdk_env.bat`` instead of ``source ./emsdk_env.sh``. 
 
-		::
-			
-			# Set the current Emscripten path on Linux/Mac OS X
-			source ./emsdk_env.sh
-			
-	This step is not required on Windows because calling the ``activate`` command also sets the correct system path (this is not possible on Linux due to security restrictions). 
-	
-Whenever you change the location of the Portable SDK (e.g. take it to another computer), re-run the ``./emsdk activate latest`` command (and ``source ./emsdk_env.sh`` for Linux). 
+If you change the location of the SDK (e.g. take it to another computer on an USB), re-run the ``./emsdk activate latest`` and ``source ./emsdk_env.sh`` commands. 
 		
-		
-.. _platform-notes-installation_instructions-portable-SDK:
+.. _platform-notes-installation_instructions-SDK:
 
 Platform-specific notes
 ----------------------------
 
+Windows
++++++++
+
+#. Install Python 2.7.12 or newer (older versions may not work due to `a GitHub change with SSL <https://github.com/kripken/emscripten/issues/6275>`_).
+
+	.. note:: Instead of running emscripten on Windows directly, you can use the Windows Subsystem for Linux to run it in a Linux environment.
+
 Mac OS X
 ++++++++
+
+If you use MacOS 10.13.3 or later then you should have a new enough version of Python installed (older versions may not work due to `a GitHub change with SSL <https://github.com/kripken/emscripten/issues/6275>`_). Otherwise you can manually install and use Python 2.7.12 or newer.
 
 These instructions explain how to install **all** the :ref:`required tools <toolchain-what-you-need>`. You can :ref:`test whether some of these are already installed <toolchain-test-which-dependencies-are-installed>` on the platform and skip those steps.
 
@@ -121,30 +81,14 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 	
 #. Install *node.js* from http://nodejs.org/ 
 
-
 	.. _getting-started-on-osx-install-python2:
 
 Linux
 ++++++++
 
-**Pre-built binaries of tools are not available on Linux.** Installing a tool will automatically clone and build that tool from the sources inside the **emsdk** directory. 
-
 .. note:: *Emsdk* does not install any tools to the system, or otherwise interact with Linux package managers. All file changes are done inside the **emsdk/** directory.
 
-- The system must have a working :ref:`compiler-toolchain` (because *emsdk* builds software from the source): 
-
-	::	
-	
-		#Update the package lists
-		sudo apt-get update
-		
-		# Install *gcc* (and related dependencies)
-		sudo apt-get install build-essential
-		
-		# Install cmake
-		sudo apt-get install cmake
-		
-- *Python*, *node.js* or *Java* are not provided by *emsdk*. The user is expected to install these beforehand with the *system package manager*:
+- *Python*, *node.js*, *CMake*, and *Java* are not provided by *emsdk*. The user is expected to install these beforehand with the *system package manager*:
 
 	::
 	
@@ -153,9 +97,14 @@ Linux
 		
 		# Install node.js
 		sudo apt-get install nodejs
+
+		# Install CMake (optional, only needed for tests and building Binaryen)
+		sudo apt-get install cmake
 		
-		# Install Java
+		# Install Java (optional, only needed for Closure Compiler minification)
 		sudo apt-get install default-jre
+
+.. note:: You need Python 2.7.12 or newer because older versions may not work due to `a GitHub change with SSL <https://github.com/kripken/emscripten/issues/6275>`_).
 
 .. note:: Your system may provide Node.js as ``node`` instead of ``nodejs``. In that case, you may need to also update the ``NODE_JS`` attribute of your ``~/.emscripten`` file.
 		
@@ -184,7 +133,7 @@ Updating the SDK
 
 .. tip:: You only need to install the SDK once! After that you can update to the latest SDK at any time using :ref:`Emscripten SDK (emsdk) <emsdk>`. 
 
-Type the following (omitting comments) on the :ref:`Emscripten Command Prompt <emcmdprompt>`: ::
+Type the following in a command prompt ::
 
 	# Fetch the latest registry of available tools.
 	./emsdk update
@@ -195,21 +144,19 @@ Type the following (omitting comments) on the :ref:`Emscripten Command Prompt <e
 	# Set up the compiler configuration to point to the "latest" SDK.
 	./emsdk activate latest
 	
-	# Linux/Mac OS X only: Set the current Emscripten path
+	# Activate PATH and other environment variables in the current terminal
 	source ./emsdk_env.sh
 
-The package manager can do many other maintenance tasks ranging from fetching specific old versions of the SDK through to using the :ref:`versions of the tools on Github <emsdk-master-or-incoming-sdk>` (or even your own fork). Check out all the possibilities in the :ref:`emsdk_howto`.
+The package manager can do many other maintenance tasks ranging from fetching specific old versions of the SDK through to using the :ref:`versions of the tools on GitHub <emsdk-master-or-incoming-sdk>` (or even your own fork). Check out all the possibilities in the :ref:`emsdk_howto`.
 
 .. _downloads-uninstall-the-sdk:
 
 Uninstalling the Emscripten SDK
 ========================================================
 
-If you installed the SDK using an NSIS installer on Windows, launch: **Control Panel -> Uninstall a program -> Emscripten SDK**.
+If you want to remove the whole SDK, just delete the directory containing the SDK.
 
-If you want to remove a Portable SDK, just delete the directory containing the Portable SDK.
-
-It is also possible to :ref:`remove specific SDKs using emsdk <emsdk-remove-tool-sdk>`.
+It is also possible to :ref:`remove specific tools in the SDK using emsdk <emsdk-remove-tool-sdk>`.
 
 
 .. _archived-nsis-windows-sdk-releases:
@@ -219,7 +166,7 @@ Archived releases
  
 You can always install old SDK and compiler toolchains using a *current SDK*. See :ref:`emsdk-install-old-tools` for more information.
 
-On Windows, you can also install one of the **old versions** via an offline NSIS installer:
+On Windows, you can also install one of the **old versions** via an offline NSIS installer. These NSIS installers are now deprecated, but still available for archived reference:
 
 - `emsdk-1.35.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.35.0-full-64bit.exe>`_
 - `emsdk-1.34.1-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.34.1-full-64bit.exe>`_ (first release based on Clang 3.7)

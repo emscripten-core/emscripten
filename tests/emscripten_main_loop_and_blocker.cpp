@@ -1,7 +1,7 @@
-#include<stdlib.h>
-#include<stdio.h>
-#include<assert.h>
-#include<emscripten.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+#include <emscripten.h>
 
 double prevTime = -1.0;
 int frame = 0;
@@ -9,17 +9,15 @@ bool blockerExecuted = false;
 
 void final(void*) {
   assert(frame == 20);
-  int result = 0;
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+  REPORT_RESULT(0);
 #endif
 }
 
 void looper() {
   if (blockerExecuted == false) {
-    int result = 1;
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(1);
 #endif
   }
 
@@ -28,16 +26,6 @@ void looper() {
   double timeSincePrevious = curTime - prevTime;
   prevTime = curTime;
   printf("frame: %d. dt: %g. absolute: %g\n", frame, timeSincePrevious, curTime);
-  if (frame > 1 && timeSincePrevious <= 14.5) // should be 16, but browser jitter
-  {
-    printf("Abort: main loop tick was called too quickly (%f ms > 16) after the previous frame!\n", timeSincePrevious);
-    int result = 1;
-#ifdef REPORT_RESULT
-    REPORT_RESULT();
-#endif
-    emscripten_cancel_main_loop();
-    exit(0);
-  }
 
   if (frame == 20) {
     emscripten_cancel_main_loop();

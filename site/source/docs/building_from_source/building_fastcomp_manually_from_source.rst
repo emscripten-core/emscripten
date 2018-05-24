@@ -16,9 +16,10 @@ This article explains how you can build Fastcomp's sources using a fully manual 
 What you'll need
 ================
 
-First follow the instructions for your platform showing how to :ref:`manually build Emscripten from source <installing-from-source>`.
+First verify you have :ref:`the compiler toolchain <compiler-toolchain>` for your platform, download and install it as necessary.
 
-Then :ref:`download and install the compiler toolchain <compiler-toolchain>` for your platform.
+Then follow the instructions for your platform showing how to :ref:`manually build Emscripten from source <installing-from-source>`. This page helps you with the specific task of building fastcomp (LLVM + clang).
+
 
 .. _building-fastcomp-from-source-building:
 
@@ -59,22 +60,14 @@ To build the Fastcomp code from source:
 		mkdir build
 		cd build
 	
-- Configure the build using *either* *cmake* or the *configure* script:
-			
-	-  Using *cmake*: 
+- Configure the build using *cmake*:
 
-		::
-				
-			cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="X86;JSBackend" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF -DCLANG_INCLUDE_EXAMPLES=OFF -DCLANG_INCLUDE_TESTS=OFF
+	::
 			
-		.. note:: On Windows add the ``-G "Visual Studio 10 Win64"`` directive to build using Visual Studio (Visual Studio 2011 and 2012 do NOT work).
+		cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="host;JSBackend" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF -DCLANG_INCLUDE_TESTS=OFF
+		
+	.. note:: On Windows you will need Visual Studio 2015 or newer to build.
 
-	- Using *configure* (Linux/Mac only): 
-		
-		::
-		
-			../configure --enable-optimized --disable-assertions --enable-targets=host,js
-			
 - Determine the number of available cores on your system (Emscripten can run many operations in parallel, so using more cores may have a significant impact on compilation time):
 
 	- On Mac OS X you can get the number of cores using: **Apple menu | About this mac | More info | System report**. The **Hardware overview** on the resulting dialog includes a *Total number of cores* entry.
@@ -143,4 +136,5 @@ Backend code structure
 ----------------------
 
 The backend is in `emscripten-fastcomp <https://github.com/kripken/emscripten-fastcomp>`_. The main file is `JSBackend.cpp <https://github.com/kripken/emscripten-fastcomp/blob/incoming/lib/Target/JSBackend/JSBackend.cpp>`_ but the other files in that directory (`lib/Target/JSBackend/ <https://github.com/kripken/emscripten-fastcomp/tree/incoming/lib/Target/JSBackend>`_) are also important.
+
 

@@ -86,8 +86,7 @@ void iter() {
   // Exit once we've processed the entire clip.
   if (offset >= size) {
 #ifdef __EMSCRIPTEN__
-    int result = 0;
-    REPORT_RESULT();
+    REPORT_RESULT(0);
 #endif
     exit(0);
   }
@@ -182,6 +181,10 @@ int main(int argc, char* argv[]) {
     offset += len;
     numBuffers++;
   }
+
+  ALint srcLen = 0;
+  alGetSourcei(source, 0x2009 /* AL_BYTE_LENGTH_SOFT */, &srcLen);
+  assert(srcLen == NUM_BUFFERS * BUFFER_SIZE);
 
 #ifdef TEST_ANIMATED_PITCH
   printf("You should hear a clip of the 1902 piano song \"The Entertainer\" played back at a high pitch rate, and animated to slow down to half playback speed.\n");

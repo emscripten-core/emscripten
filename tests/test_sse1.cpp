@@ -329,6 +329,9 @@ int main()
 	_mm_prefetch(dummyData, _MM_HINT_NTA);
 	_mm_sfence();
 
+	const char *ptr = (const char*)dummyData;
+	_mm_prefetch(ptr, _MM_HINT_T0);
+
 	// SSE1 Misc instructions:
 #ifdef TEST_M64
 	/*M64*/Assert(_mm_movemask_pi8(m1) == 100); // Return int with eight lowest bits set depending on the highest bits of the 8 uint8 input channels of the m64.
