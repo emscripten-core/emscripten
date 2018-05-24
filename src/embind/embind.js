@@ -50,6 +50,9 @@ var LibraryEmbind = {
     // names. This lets the test suite know that.
     Module['NO_DYNAMIC_EXECUTION'] = true;
 #endif
+#if EMBIND_STD_STRING_UTF8_SUPPORT
+    Module['EMBIND_STD_STRING_UTF8_SUPPORT'] = true;
+#endif
 #endif
   },
 
@@ -608,12 +611,35 @@ var LibraryEmbind = {
     '$simpleReadValueFromPointer', '$throwBindingError'],
   _embind_register_std_string: function(rawType, name) {
     name = readLatin1String(name);
+    var embindStdStringUTF8Support
+#if EMBIND_STD_STRING_UTF8_SUPPORT
+    = true;
+#else
+    = false;
+#endif
     registerType(rawType, {
         name: name,
         'fromWireType': function(value) {
             var length = HEAPU32[value >> 2];
 
-            var str = Module['UTF8ToString'](value + 4, length);
+            function mapsToStdString(name) {
+                //process only std::string bindings with UTF8 support,
+                //in contrast to e.g. std::basic_string<unsigned char>
+                return name === "std::string";
+            }
+
+            var str;
+            if(embindStdStringUTF8Support && mapsToStdString(name)) {
+                str = Module['UTF8ToString'](value + 4, length);
+            }
+            else {
+                var a = new Array(length);
+                for (var i = 0; i < length; ++i) {
+                    a[i] = String.fromCharCode(HEAPU8[value + 4 + i]);
+                }
+                str = a.join('');
+            }
+
             _free(value);
             
             return str;
@@ -624,30 +650,38 @@ var LibraryEmbind = {
             }
             
             var getLength;
+            var valueIsOfTypeString = (typeof value === 'string');
 
-            if (typeof value === 'string')
-            {
-                getLength = function() {return Module['lengthBytesUTF8'](value);};
-            }
-            else if (value instanceof Uint8Array || value instanceof Int8Array)
-            {
-                getLength = function() {return value.length;};
-            } else {
+            if (!(valueIsOfTypeString || value instanceof Uint8Array || value instanceof Uint8ClampedArray || value instanceof Int8Array)) {
                 throwBindingError('Cannot pass non-string to std::string');
+            }
+            if (valueIsOfTypeString && embindStdStringUTF8Support) {
+                getLength = function() {return Module['lengthBytesUTF8'](value);};
+            } else {
+                getLength = function() {return value.length;};
             }
             
             // assumes 4-byte alignment
             var length = getLength();
             var ptr = _malloc(4 + length);
             HEAPU32[ptr >> 2] = length;
-            
-            if (typeof value === 'string') {
+
+            if (valueIsOfTypeString && embindStdStringUTF8Support) {
                 Module['stringToUTF8'](value, ptr + 4, length, false);
-            }
-            else
-            {
+            } else {
                 for (var i = 0; i < length; ++i) {
-                    HEAPU8[ptr + 4 + i] = value[i];
+                    var heapByte;
+                    if(valueIsOfTypeString) {
+                        var charCode = value.charCodeAt(i);
+                        if (charCode > 255) {
+                            _free(ptr);
+                            throwBindingError('String has UTF-16 code units that do not fit in 8 bits');
+                        }
+                        heapByte = charCode;
+                    } else {
+                        heapByte = value[i];
+                    }
+                    HEAPU8[ptr + 4 + i] = heapByte;
                 }
             }
 

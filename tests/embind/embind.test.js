@@ -378,23 +378,38 @@ module({
     });
 
     BaseFixture.extend("string", function() {
-        test("non-ascii strings", function() {
-            //ASCII
-            var expected = 'aei';
-            //Latin-1 Supplement
-            expected += '\u00E1\u00E9\u00ED';
-            //Greek
-            expected += '\u03B1\u03B5\u03B9';
-            //Cyrillic
-            expected += '\u0416\u041B\u0424';
-            //CJK
-            expected += '\u5F9E\u7345\u5B50';
-            //Euro sign
-            expected += '\u20AC';
-                     
-            assert.equal(expected, cm.get_non_ascii_string());
-        });
+        var embindStdStringUTF8Support = (Module['EMBIND_STD_STRING_UTF8_SUPPORT'] == true);
 
+        test("non-ascii strings", function() {
+
+            if(embindStdStringUTF8Support) {
+                //ASCII
+                var expected = 'aei';
+                //Latin-1 Supplement
+                expected += '\u00E1\u00E9\u00ED';
+                //Greek
+                expected += '\u03B1\u03B5\u03B9';
+                //Cyrillic
+                expected += '\u0416\u041B\u0424';
+                //CJK
+                expected += '\u5F9E\u7345\u5B50';
+                //Euro sign
+                expected += '\u20AC';
+            } else {
+                var expected = '';
+                for (var i = 0; i < 128; ++i) {
+                    expected += String.fromCharCode(128 + i);
+                }
+            }
+            assert.equal(expected, cm.get_non_ascii_string(embindStdStringUTF8Support));
+        });
+        if(!embindStdStringUTF8Support) {
+            test("passing non-8-bit strings from JS to std::string throws", function() {
+                assert.throws(cm.BindingError, function() {
+                    cm.emval_test_take_and_return_std_string("\u1234");
+                });
+            });
+        }
         test("can't pass integers as strings", function() {
             var e = assert.throws(cm.BindingError, function() {
                 cm.emval_test_take_and_return_std_string(10);

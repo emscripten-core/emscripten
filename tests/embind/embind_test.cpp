@@ -120,20 +120,29 @@ unsigned emval_test_sum(val v) {
     return rv;
 }
 
-std::string get_non_ascii_string() {
-    //ASCII
-    std::string str{"aei"};
-    //Latin-1 Supplement
-    str += "\u00E1\u00E9\u00ED";
-    //Greek
-    str += "\u03B1\u03B5\u03B9";
-    //Cyrillic
-    str += "\u0416\u041B\u0424";
-    //CJK
-    str += "\u5F9E\u7345\u5B50";
-    //Euro sign
-    str += "\u20AC";
-    return str;
+std::string get_non_ascii_string(bool embindStdStringUTF8Support) {
+    if(embindStdStringUTF8Support) {
+        //ASCII
+        std::string testString{"aei"};
+        //Latin-1 Supplement
+        testString += "\u00E1\u00E9\u00ED";
+        //Greek
+        testString += "\u03B1\u03B5\u03B9";
+        //Cyrillic
+        testString += "\u0416\u041B\u0424";
+        //CJK
+        testString += "\u5F9E\u7345\u5B50";
+        //Euro sign
+        testString += "\u20AC";
+        return testString;
+    } else {
+        char c[128 + 1];
+        c[128] = 0;
+        for (int i = 0; i < 128; ++i) {
+            c[i] = 128 + i;
+        }
+        return c;
+    }
 }
 
 std::wstring get_non_ascii_wstring() {
