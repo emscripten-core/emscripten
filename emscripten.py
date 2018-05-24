@@ -2145,7 +2145,6 @@ def wasm_rt_fail(archive_file):
   return wrapped
 
 def create_s2wasm_args(temp_s, wasm):
-  shutil.copyfile(temp_s, '/tmp/emscripten_temp/waka.s')
   compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', wasm_rt_fail('wasm_compiler_rt.a'), 'a')
   libc_rt_lib = shared.Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
 
