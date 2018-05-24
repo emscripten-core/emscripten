@@ -7290,6 +7290,33 @@ ccall('main', null, ['number', 'string'], [2, 'waka'], { async: true });
 ''')
       self.do_run(src, 'HelloWorld');
 
+      print('check ccall callback')
+      Settings.EXPORTED_FUNCTIONS = ['_stringf', '_floatf']
+      src = r'''
+#include <stdio.h>
+#include <emscripten.h>
+extern "C" {
+  char* stringf(char* param) {
+    emscripten_sleep(20);
+    printf(param);
+    return "second";
+  }
+  double floatf() {
+    emscripten_sleep(20);
+    return 6.4;
+  }
+}
+'''
+      open('post.js', 'w').write(r'''
+ccall('stringf', 'string', ['string'], ['first\n'], {
+  callback: function(val) {
+    Module.print(val);
+    ccall('floatf', 'number', null, null, {callback: Module.print});
+  }
+});
+''')
+      self.do_run(src, 'first\nsecond\n6.4');
+
   def test_async_returnvalue(self):
     if not self.is_emterpreter(): return self.skip('emterpreter-only test')
 

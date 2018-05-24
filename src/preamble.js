@@ -164,27 +164,37 @@ function ccall (ident, returnType, argTypes, args, opts) {
     }
   }
   var ret = func.apply(null, cArgs);
-#if ASSERTIONS
 #if EMTERPRETIFY_ASYNC
+  if (opts && opts.callback) opts.async = true;
+#if ASSERTIONS
   if ((!opts || !opts.async) && typeof EmterpreterAsync === 'object') {
     assert(!EmterpreterAsync.state, 'cannot start async op with normal JS calling ccall');
   }
-  if (opts && opts.async) assert(!returnType, 'async ccalls cannot return values');
+  if (opts && opts.async && returnType) assert(opts.callback, 'async ccalls need a callback to return values');
 #endif
+  if (opts && opts.async && EmterpreterAsync.state) {
+    EmterpreterAsync.restartFunc = func;
+    EmterpreterAsync.asyncFinalizers.push(function(ret) {
+      EmterpreterAsync.restartFunc = null;
+      if (stack !== 0) stackRestore(stack);
+      if (opts.callback) {
+        if (returnType === 'string') ret = Pointer_stringify(ret);
+        else if (returnType === 'boolean') ret = Boolean(ret);
+        opts.callback(ret);
+      }
+    });
+    return;
+  }
 #endif
   if (returnType === 'string') ret = Pointer_stringify(ret);
   else if (returnType === 'boolean') ret = Boolean(ret);
-  if (stack !== 0) {
+  if (stack !== 0) stackRestore(stack);
 #if EMTERPRETIFY_ASYNC
-    if (opts && opts.async) {
-      EmterpreterAsync.asyncFinalizers.push(function() {
-        stackRestore(stack);
-      });
-      return;
-    }
-#endif
-    stackRestore(stack);
+  if (opts && opts.callback) {
+    opts.callback(ret);
+    return;
   }
+#endif
   return ret;
 }
 
