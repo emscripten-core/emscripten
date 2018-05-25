@@ -29,8 +29,11 @@ Run the following :ref:`emsdk <emsdk>` commands to get the latest tools from Git
 	
 	::
 
-		# Fetch the latest registry of available tools.
-		./emsdk update
+                # Fetch the latest verison of the emsdk script (only if you used git clone to install)
+		git pull
+		
+		# Fetch the latest registry of available tools. (use `./emsdk update` if you did NOT use git to install)
+		./emsdk update-tags
 		
 		# Download and install the latest SDK tools.
 		./emsdk install latest
@@ -135,8 +138,11 @@ Updating the SDK
 
 Type the following in a command prompt ::
 
-	# Fetch the latest registry of available tools.
-	./emsdk update
+	# Fetch the latest registry of available tools. (use `./emsdk update` if you did NOT install from git)
+	git pull
+	
+	# Fetch the latest registry of available tools. (use `./emsdk update` if you did NOT install from git)
+	./emsdk update-tags
 	
 	# Download and install the latest SDK tools.
 	./emsdk install latest
