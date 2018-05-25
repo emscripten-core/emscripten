@@ -1549,10 +1549,6 @@ LibraryManager.library = {
   llvm_ceil_f64: 'Math_ceil',
   llvm_floor_f32: 'Math_floor',
   llvm_floor_f64: 'Math_floor',
-  llvm_minnum_f32: 'Math_min',
-  llvm_minnum_f64: 'Math_min',
-  llvm_maxnum_f32: 'Math_max',
-  llvm_maxnum_f64: 'Math_max',
 
   llvm_exp2_f32: function(x) {
     return Math.pow(2, x);
@@ -1645,6 +1641,50 @@ LibraryManager.library = {
   llvm_nearbyint_f64: function(f) {
     f = +f;
     return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
+  },
+
+  // min/max num do not quite match the behavior of JS and wasm min/max:
+  // llvm and libc return the non-NaN if one is NaN, while JS and wasm
+  // return the NaN :(
+  // see also https://github.com/WebAssembly/design/issues/214
+  llvm_minnum_f32__asm: true,
+  llvm_minnum_f32__sig: 'ff',
+  llvm_minnum_f32: function(x, y) {
+    x = +x;
+    y = +y;
+    if (x != x) return +y;
+    if (y != y) return +x;
+    return +Math_min(+x, +y);
+  },
+
+  llvm_minnum_f64__asm: true,
+  llvm_minnum_f64__sig: 'dd',
+  llvm_minnum_f64: function(x, y) {
+    x = +x;
+    y = +y;
+    if (x != x) return +y;
+    if (y != y) return +x;
+    return +Math_min(+x, +y);
+  },
+
+  llvm_maxnum_f32__asm: true,
+  llvm_maxnum_f32__sig: 'ff',
+  llvm_maxnum_f32: function(x, y) {
+    x = +x;
+    y = +y;
+    if (x != x) return +y;
+    if (y != y) return +x;
+    return +Math_max(+x, +y);
+  },
+
+  llvm_maxnum_f64__asm: true,
+  llvm_maxnum_f64__sig: 'dd',
+  llvm_maxnum_f64: function(x, y) {
+    x = +x;
+    y = +y;
+    if (x != x) return +y;
+    if (y != y) return +x;
+    return +Math_max(+x, +y);
   },
 
   _reallyNegative: function(x) {
