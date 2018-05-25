@@ -51,12 +51,12 @@
   "sleep": ["usleep"],
   "recv": ["htons"],
   "send": ["htons"],
-  "ctime": ["_get_tzname"],
-  "ctime_r": ["_get_tzname"],
-  "localtime": ["_get_tzname"],
-  "localtime_r": ["_get_tzname"],
-  "mktime": ["_get_tzname"],
-  "timegm": ["_get_tzname"],
-  "tzset": ["_get_tzname"]
+  "ctime": ["_get_tzname", "_get_daylight", "_get_timezone"],
+  "ctime_r": ["_get_tzname", "_get_daylight", "_get_timezone"],
+  "localtime": ["_get_tzname", "_get_daylight", "_get_timezone"],
+  "localtime_r": ["_get_tzname", "_get_daylight", "_get_timezone"],
+  "mktime": ["_get_tzname", "_get_daylight", "_get_timezone"],
+  "timegm": ["_get_tzname", "_get_daylight", "_get_timezone"],
+  "tzset": ["_get_tzname", "_get_daylight", "_get_timezone"]
 }
 

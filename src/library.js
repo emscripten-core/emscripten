@@ -2104,14 +2104,6 @@ LibraryManager.library = {
 
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
-#if USE_PTHREADS
-  daylight: '; if (ENVIRONMENT_IS_PTHREAD) _daylight = PthreadWorkerInit._daylight; else PthreadWorkerInit._daylight = _daylight = allocate(1, "i32*", ALLOC_STATIC)',
-  timezone: '; if (ENVIRONMENT_IS_PTHREAD) _timezone = PthreadWorkerInit._timezone; else PthreadWorkerInit._timezone = _timezone = allocate(1, "i32*", ALLOC_STATIC)',
-#else
-  daylight: '{{{ makeStaticAlloc(1) }}}',
-  timezone: '{{{ makeStaticAlloc(1) }}}',
-#endif
-  tzset__deps: ['daylight', 'timezone'],
   tzset__proxy: 'sync',
   tzset__sig: 'v',
   tzset: function() {
@@ -2124,11 +2116,11 @@ LibraryManager.library = {
     // Coordinated Universal Time (UTC) and local standard time."), the same
     // as returned by getTimezoneOffset().
     // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
-    {{{ makeSetValue(makeGlobalUse('_timezone'), '0', '(new Date()).getTimezoneOffset() * 60', 'i32') }}};
+    {{{ makeSetValue('__get_timezone()', '0', '(new Date()).getTimezoneOffset() * 60', 'i32') }}};
 
     var winter = new Date(2000, 0, 1);
     var summer = new Date(2000, 6, 1);
-    {{{ makeSetValue(makeGlobalUse('_daylight'), '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}};
+    {{{ makeSetValue('__get_daylight()', '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}};
 
     function extractZone(date) {
       var match = date.toTimeString().match(/\(([A-Za-z ]+)\)$/);
