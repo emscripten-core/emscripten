@@ -73,7 +73,7 @@ def also_with_noderawfs(func):
   return decorated
 
 # A simple check whether the compiler arguments cause optimization.
-def check_if_optimizing(args):
+def is_optimizing(args):
   return '-O' in str(args) and '-O0' not in args
 
 class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
@@ -249,7 +249,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_in_out_file_test('tests', 'core', 'test_lower_intrinsics')
     # intrinsics should be lowered out
     js = open('src.cpp.o.js').read()
-    assert ('llvm_' not in js) == check_if_optimizing(self.emcc_args), 'intrinsics must be lowered when optimizing'
+    assert ('llvm_' not in js) == is_optimizing(self.emcc_args), 'intrinsics must be lowered when optimizing'
 
   def test_bswap64(self):
     test_path = path_from_root('tests', 'core', 'test_bswap64')
