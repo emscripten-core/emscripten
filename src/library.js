@@ -1071,9 +1071,9 @@ LibraryManager.library = {
   llvm_cttz_i32__asm: true,
 #endif
   llvm_cttz_i32__sig: 'ii',
-  llvm_cttz_i32: function(x) { // Currently doesn't take isZeroUndef()
+  llvm_cttz_i32: function(x) { // Note: Currently doesn't take isZeroUndef()
     x = x | 0;
-    return x ? (31 - (Math_clz32((x ^ (x - 1))) | 0) | 0) : 32;
+    return (x ? (31 - (Math_clz32((x ^ (x - 1))) | 0) | 0) : 32) | 0;
   },
 
   llvm_cttz_i64__deps: ['llvm_cttz_i32'],
