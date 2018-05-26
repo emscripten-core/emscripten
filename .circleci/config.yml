@@ -30,7 +30,12 @@ jobs:
           path: emscripten/
       - run: |
           apt-get update
-          apt-get install -y python3 cmake
+          apt-get install -y python3 cmake npm
+          # get jsvu in order to get more js engines
+          npm install jsvu -g
+          export PATH="${HOME}/.jsvu:${PATH}"
+          jsvu --os=linux64 --engines=spidermonkey
+          # get the emsdk for the binaries
           wget https://github.com/juj/emsdk/archive/master.tar.gz
           tar -xf master.tar.gz
           pushd emsdk-master
@@ -38,8 +43,12 @@ jobs:
           ./emsdk install latest
           ./emsdk activate latest
           popd
-          echo EMSCRIPTEN_ROOT="'~/emscripten/'" >> .emscripten
-          echo BINARYEN_ROOT="''" >> .emscripten
+          echo "EMSCRIPTEN_ROOT='~/emscripten/'" >> .emscripten
+          echo "BINARYEN_ROOT=''" >> .emscripten
+          echo "SPIDERMONKEY_ENGINE='spidermonkey'" >> .emscripten
+          # prefer spidermonkey for asm.js validation
+          echo "JS_ENGINES=[SPIDERMONKEY_ENGINE, NODE_JS]" >> .emscripten
+          cat .emscripten
           EMCC_CORES=4 python3 emscripten/embuilder.py build ALL
           python3 emscripten/tests/runner.py test_hello_world
           mkdir tmp-firefox-profile/
