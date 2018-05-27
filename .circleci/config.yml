@@ -1,6 +1,5 @@
 defaults: &defaults
   docker:
-    - image: buildpack-deps:xenial
     - image: circleci/node:10.2.1
       environment:
         LANG: C.UTF-8
