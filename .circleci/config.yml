@@ -30,7 +30,7 @@ jobs:
           path: emscripten/
       - run: |
           apt-get update
-          apt-get install -y python3 cmake npm
+          apt-get install -y python3 cmake npm nodejs-legacy
           # get jsvu in order to get more js engines
           npm install jsvu -g
           export PATH="${HOME}/.jsvu:${PATH}"
