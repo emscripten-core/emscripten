@@ -32,7 +32,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y python3 cmake
           # get jsvu in order to get more js engines
-          npm install jsvu -g
+          sudo npm install jsvu -g
           export PATH="${HOME}/.jsvu:${PATH}"
           jsvu --os=linux64 --engines=spidermonkey
           # get the emsdk for the binaries
