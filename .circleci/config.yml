@@ -17,8 +17,8 @@ test-defaults: &test-defaults
         at: ~/
 
     - run: |
-        apt-get update
-        apt-get install -y python3 cmake build-essential openjdk-9-jre-headless $TEST_DEPENDENCY
+        sudo apt-get update
+        sudo apt-get install -y python3 cmake build-essential openjdk-9-jre-headless $TEST_DEPENDENCY
         EMCC_CORES=4 python3 emscripten/tests/runner.py $TEST_TARGET
 
 version: 2
@@ -29,8 +29,8 @@ jobs:
       - checkout:
           path: emscripten/
       - run: |
-          apt-get update
-          apt-get install -y python3 cmake
+          sudo apt-get update
+          sudo apt-get install -y python3 cmake
           # get jsvu in order to get more js engines
           npm install jsvu -g
           export PATH="${HOME}/.jsvu:${PATH}"
@@ -70,8 +70,8 @@ jobs:
       - checkout:
           path: emscripten/
       - run: |
-          apt-get update
-          apt-get install -y python-pip
+          sudo apt-get update
+          sudo apt-get install -y python-pip
           pip install flake8==3.4.1
           flake8 tools/response_file.py
   test-other:
