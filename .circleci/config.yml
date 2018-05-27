@@ -1,7 +1,7 @@
 defaults: &defaults
   docker:
-    - image: circleci/node:10.2.1
     - image: buildpack-deps:xenial
+    - image: circleci/node:10.2.1
       environment:
         LANG: C.UTF-8
         EMSCRIPTEN_ALLOW_NEWER_PYTHON: 1
