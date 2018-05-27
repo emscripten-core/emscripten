@@ -1,5 +1,6 @@
 defaults: &defaults
   docker:
+    - image: circleci/node:10.2.1
     - image: buildpack-deps:xenial
       environment:
         LANG: C.UTF-8
@@ -30,7 +31,7 @@ jobs:
           path: emscripten/
       - run: |
           apt-get update
-          apt-get install -y python3 cmake npm nodejs-legacy
+          apt-get install -y python3 cmake
           # get jsvu in order to get more js engines
           npm install jsvu -g
           export PATH="${HOME}/.jsvu:${PATH}"
