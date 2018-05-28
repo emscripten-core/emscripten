@@ -308,7 +308,7 @@ def expected_llvm_version():
   if get_llvm_target() == WASM_TARGET:
     return "7.0"
   else:
-    return "5.0"
+    return "6.0"
 
 def get_clang_version():
   global actual_clang_version
@@ -1885,11 +1885,8 @@ class Building(object):
     #opts += ['-debug-pass=Arguments']
     if not Settings.SIMD:
       opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false']
-      if not Settings.WASM_BACKEND:
-        # This option have been removed in llvm ToT
-        opts += ['-vectorize-slp-aggressive=false']
     else:
-      opts += ['-bb-vectorize-vector-bits=128']
+      opts += ['-force-vector-width=4']
 
     logging.debug('emcc: LLVM opts: ' + ' '.join(opts) + '  [num inputs: ' + str(len(inputs)) + ']')
     target = out or (filename + '.opt.bc')

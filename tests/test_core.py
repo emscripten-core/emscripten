@@ -72,6 +72,10 @@ def also_with_noderawfs(func):
     func(self, js_engines=[NODE_JS])
   return decorated
 
+# A simple check whether the compiler arguments cause optimization.
+def is_optimizing(args):
+  return '-O' in str(args) and '-O0' not in args
+
 class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
   def is_emterpreter(self):
     return 'EMTERPRETIFY=1' in self.emcc_args
@@ -239,6 +243,13 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     Settings.PRECISE_I64_MATH = 2 # for bswap64
 
     self.do_run_in_out_file_test('tests', 'core', 'test_llvm_intrinsics')
+
+  def test_lower_intrinsics(self):
+    self.emcc_args += ['-g1']
+    self.do_run_in_out_file_test('tests', 'core', 'test_lower_intrinsics')
+    # intrinsics should be lowered out
+    js = open('src.cpp.o.js').read()
+    assert ('llvm_' not in js) == is_optimizing(self.emcc_args), 'intrinsics must be lowered when optimizing'
 
   def test_bswap64(self):
     test_path = path_from_root('tests', 'core', 'test_bswap64')
@@ -2874,7 +2885,7 @@ def process(filename):
           raise Exception('Could not find symbol table!')
       table = table[table.find('{'):table.find('}')+1]
       # ensure there aren't too many globals; we don't want unnamed_addr
-      assert table.count(',') <= 28, table.count(',')
+      assert table.count(',') <= 30, table.count(',')
 
     test_path = path_from_root('tests', 'core', 'test_dlfcn_self')
     src, output = (test_path + s for s in ('.c', '.out'))
