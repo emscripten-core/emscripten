@@ -9,6 +9,9 @@ Not all changes are documented here. In particular, new features, user-oriented 
 
 Current Trunk
 -------------
+
+v1.38.4: 05/29/2018
+-------------------
  - Fix asm.js validation regression from 1.38.2.
 
 v1.38.3: 05/25/2018
