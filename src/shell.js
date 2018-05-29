@@ -157,6 +157,10 @@ if (ENVIRONMENT_IS_NODE) {
     process['exit'](1);
   });
 
+  Module['quit'] = function(status) {
+    process['exit'](status);
+  };
+
   Module['inspect'] = function () { return '[Emscripten Module object]'; };
 } else
 #endif // ENVIRONMENT_MAY_BE_NODE
