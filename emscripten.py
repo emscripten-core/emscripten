@@ -2188,7 +2188,7 @@ def load_metadata(metadata_raw):
     metadata[k] = v
 
   # Initializers call the global var version of the export, so they get the mangled name.
-  metadata['initializers'] = list(map(asmjs_mangle, metadata['initializers']))
+  metadata['initializers'] = [asmjs_mangle(str(i)) for i in metadata['initializers']]
 
   # functions marked llvm.used in the code are exports requested by the user
   shared.Building.user_requested_exports += metadata['exports']
