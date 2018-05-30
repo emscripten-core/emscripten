@@ -611,25 +611,21 @@ var LibraryEmbind = {
     '$simpleReadValueFromPointer', '$throwBindingError'],
   _embind_register_std_string: function(rawType, name) {
     name = readLatin1String(name);
-    var embindStdStringUTF8Support
+    var enableStdStringUTF8Support
 #if EMBIND_STD_STRING_UTF8_SUPPORT
-    = true;
+    //process only std::string bindings with UTF8 support, in contrast to e.g. std::basic_string<unsigned char>
+    = (name === "std::string");
 #else
     = false;
 #endif
+
     registerType(rawType, {
         name: name,
         'fromWireType': function(value) {
             var length = HEAPU32[value >> 2];
 
-            function mapsToStdString(name) {
-                //process only std::string bindings with UTF8 support,
-                //in contrast to e.g. std::basic_string<unsigned char>
-                return name === "std::string";
-            }
-
             var str;
-            if(embindStdStringUTF8Support && mapsToStdString(name)) {
+            if(enableStdStringUTF8Support) {
                 str = Module['UTF8ToString'](value + 4, length);
             }
             else {
@@ -655,7 +651,7 @@ var LibraryEmbind = {
             if (!(valueIsOfTypeString || value instanceof Uint8Array || value instanceof Uint8ClampedArray || value instanceof Int8Array)) {
                 throwBindingError('Cannot pass non-string to std::string');
             }
-            if (valueIsOfTypeString && embindStdStringUTF8Support) {
+            if (enableStdStringUTF8Support && valueIsOfTypeString) {
                 getLength = function() {return Module['lengthBytesUTF8'](value);};
             } else {
                 getLength = function() {return value.length;};
@@ -666,7 +662,7 @@ var LibraryEmbind = {
             var ptr = _malloc(4 + length);
             HEAPU32[ptr >> 2] = length;
 
-            if (valueIsOfTypeString && embindStdStringUTF8Support) {
+            if (enableStdStringUTF8Support && valueIsOfTypeString) {
                 Module['stringToUTF8'](value, ptr + 4, length, false);
             } else {
                 for (var i = 0; i < length; ++i) {
