@@ -371,28 +371,6 @@ function getMemory(size) {
 /** @type {function(number, number=)} */
 function Pointer_stringify(ptr, length) {
   if (length === 0 || !ptr) return '';
-  if (ENVIRONMENT_IS_WEB) {
-    if (window.TextDecoder) {
-      var TextDecoder = window.TextDecoder;
-      var bytes = [];
-      if (!length) {
-        var t = 0;
-        while(1) {
-          var byte = HEAPU8[ptr + (t++)];
-          if (byte !== 0) {
-            bytes.push(byte);
-          } else {
-            break;
-          }
-        }
-      } else {
-        for (var i = 0; i < length; i++) {
-          bytes.push(HEAPU8[(ptr + i)]);
-        }
-      }
-      return new TextDecoder('utf8').decode(new Uint8Array(bytes));
-    }
-  }
   // Find the length, and check for UTF while doing so
   var hasUtf = 0;
   var t;
