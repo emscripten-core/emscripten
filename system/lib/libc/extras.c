@@ -19,3 +19,9 @@ long* _get_timezone() {
   return &timezone;
 }
 
+char** environ;
+
+char** _get_environ() {
+  return environ;
+}
+

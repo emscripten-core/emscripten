@@ -612,15 +612,6 @@ LibraryManager.library = {
     Module['abort']();
   },
 
-  environ__deps: ['$ENV'],
-#if USE_PTHREADS
-  environ: '; if (ENVIRONMENT_IS_PTHREAD) _environ = PthreadWorkerInit._environ; else PthreadWorkerInit._environ = _environ = allocate(1, "i32*", ALLOC_STATIC)',
-#else
-  environ: '{{{ makeStaticAlloc(1) }}}',
-#endif
-  __environ__deps: ['environ'],
-  __environ: 'environ',
-  __buildEnvironment__deps: ['__environ'],
   __buildEnvironment: function(env) {
     // WARNING: Arbitrary limit!
     var MAX_ENV_VALUES = 64;
@@ -642,9 +633,9 @@ LibraryManager.library = {
       poolPtr = staticAlloc(TOTAL_ENV_SIZE);
       envPtr = staticAlloc(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
       {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}};
-      {{{ makeSetValue(makeGlobalUse('_environ'), 0, 'envPtr', 'i8*') }}};
+      {{{ makeSetValue('__get_environ()', 0, 'envPtr', 'i8*') }}};
     } else {
-      envPtr = {{{ makeGetValue(makeGlobalUse('_environ'), '0', 'i8**') }}};
+      envPtr = {{{ makeGetValue('__get_environ()', '0', 'i8**') }}};
       poolPtr = {{{ makeGetValue('envPtr', '0', 'i8*') }}};
     }
 

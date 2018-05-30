@@ -59,6 +59,7 @@
 -------- d ecvt.buf
 -------- d empty_mo
 -------- d __encrypt_key
+-------- C environ
 -------- d envvars
 -------- d errid
 -------- d errmsg
@@ -81,6 +82,7 @@
 -------- d __get_locale.loc_head
 -------- d __get_locale.lock
 -------- T _get_daylight
+-------- T _get_environ
 -------- T _get_timezone
 -------- T _get_tzname
 -------- d getmntent.linebuf
