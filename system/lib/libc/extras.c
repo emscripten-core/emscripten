@@ -22,6 +22,16 @@ long* _get_timezone() {
 char** environ;
 
 char** _get_environ() {
-  return environ;
+  return &environ;
+}
+
+// Call JS to build the default environment.
+
+extern void __buildEnvironment(void*);
+
+// TODO: this needs very high priority, so user ctors that use environ do not happen first
+__attribute__((constructor))
+void __emscripten_environ_constructor(void) {
+  __buildEnvironment((void*)&environ);
 }
 
