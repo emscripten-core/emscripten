@@ -15,8 +15,8 @@
 
 // The EM_JS macro is specified as:
 //   EM_JS(return type, function name, (arguments), {body})
-// but the macro has uses __VA_ARGS__ instead of a fourth argument. This is so
-// that function bodies containing commas are seamlessly handled.
+// but the macro uses __VA_ARGS__ instead of a fourth argument. This is so that
+// function bodies containing commas are seamlessly handled.
 
 // EM_JS declares the JS function with a C function prototype, which becomes a
 // function import in asm.js/wasm. It also declares an __em_js__-prefixed
