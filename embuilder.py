@@ -27,6 +27,7 @@ Available operations and tasks:
 
   build libc
         libc-mt
+        libc-extras
         struct_info
         emmalloc
         emmalloc_debug
@@ -93,7 +94,7 @@ CXX_WITH_STDLIB = '''
         }
       '''
 
-SYSTEM_TASKS = ['compiler-rt', 'libc', 'libc-mt', 'emmalloc', 'emmalloc_debug', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'dlmalloc_debug', 'dlmalloc_threadsafe_debug', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'html5']
+SYSTEM_TASKS = ['compiler-rt', 'libc', 'libc-mt', 'libc-extras', 'emmalloc', 'emmalloc_debug', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'dlmalloc_debug', 'dlmalloc_threadsafe_debug', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'html5']
 USER_TASKS = ['al', 'gl', 'binaryen', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
 
 temp_files = shared.configuration.get_temp_files()
@@ -178,6 +179,13 @@ if operation == 'build':
       ''', ['compiler-rt.a'])
     elif what == 'libc':
       build(C_WITH_MALLOC, ['libc.bc'])
+    elif what == 'libc-extras':
+      build('''
+        extern char **environ;
+        int main() {
+          return (int)environ;
+        }
+      ''', ['libc-extras.bc'])
     elif what == 'struct_info':
       build(C_BARE, ['generated_struct_info.json'])
     elif what == 'emmalloc':
