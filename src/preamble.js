@@ -371,7 +371,6 @@ function getMemory(size) {
 /** @type {function(number, number=)} */
 function Pointer_stringify(ptr, length) {
   if (length === 0 || !ptr) return '';
-  // TODO: use TextDecoder
   // Find the length, and check for UTF while doing so
   var hasUtf = 0;
   var t;
@@ -1522,7 +1521,7 @@ var __ATPRERUN__  = []; // functions called before the runtime is initialized
 var __ATINIT__    = []; // functions called during startup
 var __ATMAIN__    = []; // functions called when main() is to be run
 var __ATEXIT__    = []; // functions called during shutdown
-var __ATPOSTRUN__ = []; // functions called after the runtime has exited
+var __ATPOSTRUN__ = []; // functions called after the main() is called
 
 var runtimeInitialized = false;
 var runtimeExited = false;
