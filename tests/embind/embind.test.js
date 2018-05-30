@@ -378,11 +378,11 @@ module({
     });
 
     BaseFixture.extend("string", function() {
-        var embindStdStringUTF8Support = (Module['EMBIND_STD_STRING_UTF8_SUPPORT'] == true);
+        var embindStdStringIsUTF8 = (Module['EMBIND_STD_STRING_IS_UTF8'] == true);
 
         test("non-ascii strings", function() {
 
-            if(embindStdStringUTF8Support) {
+            if(embindStdStringIsUTF8) {
                 //ASCII
                 var expected = 'aei';
                 //Latin-1 Supplement
@@ -401,9 +401,9 @@ module({
                     expected += String.fromCharCode(128 + i);
                 }
             }
-            assert.equal(expected, cm.get_non_ascii_string(embindStdStringUTF8Support));
+            assert.equal(expected, cm.get_non_ascii_string(embindStdStringIsUTF8));
         });
-        if(!embindStdStringUTF8Support) {
+        if(!embindStdStringIsUTF8) {
             test("passing non-8-bit strings from JS to std::string throws", function() {
                 assert.throws(cm.BindingError, function() {
                     cm.emval_test_take_and_return_std_string("\u1234");

@@ -50,8 +50,8 @@ var LibraryEmbind = {
     // names. This lets the test suite know that.
     Module['NO_DYNAMIC_EXECUTION'] = true;
 #endif
-#if EMBIND_STD_STRING_UTF8_SUPPORT
-    Module['EMBIND_STD_STRING_UTF8_SUPPORT'] = true;
+#if EMBIND_STD_STRING_IS_UTF8
+    Module['EMBIND_STD_STRING_IS_UTF8'] = true;
 #endif
 #endif
   },
@@ -611,8 +611,8 @@ var LibraryEmbind = {
     '$simpleReadValueFromPointer', '$throwBindingError'],
   _embind_register_std_string: function(rawType, name) {
     name = readLatin1String(name);
-    var enableStdStringUTF8Support
-#if EMBIND_STD_STRING_UTF8_SUPPORT
+    var stdStringIsUTF8
+#if EMBIND_STD_STRING_IS_UTF8
     //process only std::string bindings with UTF8 support, in contrast to e.g. std::basic_string<unsigned char>
     = (name === "std::string");
 #else
@@ -625,7 +625,7 @@ var LibraryEmbind = {
             var length = HEAPU32[value >> 2];
 
             var str;
-            if(enableStdStringUTF8Support) {
+            if(stdStringIsUTF8) {
                 str = Module['UTF8ToString'](value + 4, length);
             }
             else {
@@ -651,7 +651,7 @@ var LibraryEmbind = {
             if (!(valueIsOfTypeString || value instanceof Uint8Array || value instanceof Uint8ClampedArray || value instanceof Int8Array)) {
                 throwBindingError('Cannot pass non-string to std::string');
             }
-            if (enableStdStringUTF8Support && valueIsOfTypeString) {
+            if (stdStringIsUTF8 && valueIsOfTypeString) {
                 getLength = function() {return Module['lengthBytesUTF8'](value);};
             } else {
                 getLength = function() {return value.length;};
@@ -662,7 +662,7 @@ var LibraryEmbind = {
             var ptr = _malloc(4 + length);
             HEAPU32[ptr >> 2] = length;
 
-            if (enableStdStringUTF8Support && valueIsOfTypeString) {
+            if (stdStringIsUTF8 && valueIsOfTypeString) {
                 Module['stringToUTF8'](value, ptr + 4, length, false);
             } else {
                 if(valueIsOfTypeString) {
