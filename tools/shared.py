@@ -714,7 +714,7 @@ LLVM_DIS=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dis')))
 LLVM_NM=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
 LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
 LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
-LLD=os.path.expanduser(build_llvm_tool_path(exe_suffix('ld.lld')))
+LLD=os.path.expanduser(build_llvm_tool_path(exe_suffix('wasm-ld')))
 
 EMSCRIPTEN = path_from_root('emscripten.py')
 EMCC = path_from_root('emcc.py')
