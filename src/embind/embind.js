@@ -665,19 +665,19 @@ var LibraryEmbind = {
             if (enableStdStringUTF8Support && valueIsOfTypeString) {
                 Module['stringToUTF8'](value, ptr + 4, length, false);
             } else {
-                for (var i = 0; i < length; ++i) {
-                    var heapByte;
-                    if(valueIsOfTypeString) {
+                if(valueIsOfTypeString) {
+                    for (var i = 0; i < length; ++i) {
                         var charCode = value.charCodeAt(i);
                         if (charCode > 255) {
                             _free(ptr);
                             throwBindingError('String has UTF-16 code units that do not fit in 8 bits');
                         }
-                        heapByte = charCode;
-                    } else {
-                        heapByte = value[i];
+                        HEAPU8[ptr + 4 + i] = charCode;
                     }
-                    HEAPU8[ptr + 4 + i] = heapByte;
+                } else {
+                    for (var i = 0; i < length; ++i) {
+                        HEAPU8[ptr + 4 + i] = value[i];
+                    }
                 }
             }
 
