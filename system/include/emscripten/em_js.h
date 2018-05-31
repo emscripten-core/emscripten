@@ -10,6 +10,7 @@
 #endif // __cplusplus
 
 // EM_JS declares JS functions in C code.
+// Example uses can be found in tests/core/test_em_js.cpp
 
 // Implementation details:
 
@@ -38,7 +39,14 @@
 // We use <::> to separate the arguments from the function body because it isn't
 // valid anywhere in a C function declaration.
 
-// Example usages live in tests/core/test_em_js.cpp
+// Generated __em_js__-prefixed functions are read by either the JSBackend (for
+// asm.js) or by Binaryen, and the string data is extracted into the Emscripten
+// metadata dictionary under the "emJsFuncs" key. emJsFuncs itself is a
+// dictionary where the keys are function names (not prefixed with __em_js__),
+// and the values are the <::>-including description strings.
+
+// emJsFuncs metadata is read in emscripten.py's create_em_js, which creates an
+// array of JS function strings to be included in the JS output.
 
 #define EM_JS(ret, name, params, ...)          \
   _EM_JS_CPP_BEGIN                             \
