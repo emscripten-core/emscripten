@@ -29,14 +29,6 @@ def path_from_root(*pathelems):
   """
   return os.path.join(__rootpath__, *pathelems)
 
-def get_configuration():
-  if hasattr(get_configuration, 'configuration'):
-    return get_configuration.configuration
-
-  configuration = shared.Configuration(environ=os.environ)
-  get_configuration.configuration = configuration
-  return configuration
-
 STDERR_FILE = os.environ.get('EMCC_STDERR_FILE')
 if STDERR_FILE:
   STDERR_FILE = os.path.abspath(STDERR_FILE)
@@ -2317,11 +2309,10 @@ def _main(args):
                     help=('Suppress usage warning'))
   parser.add_argument('infile', nargs='*')
 
-  # Convert to the same format that argparse would have produced.
-  keywords = parser.parse_args(args)
-  positional = keywords.infile
+  options = parser.parse_args(args)
+  positional = options.infile
 
-  if not keywords.suppressUsageWarning:
+  if not options.suppressUsageWarning:
     logging.warning('''
 ==============================================================
 WARNING: You should normally never use this! Use emcc instead.
@@ -2329,37 +2320,34 @@ WARNING: You should normally never use this! Use emcc instead.
   ''')
 
   if len(positional) != 1:
-    logging.error('Must provide exactly one positional argument. Got ' + str(len(positional)) + ': "' + '", "'.join(positional) + '"')
+    logging.error('Must provide exactly one positional argument. Got ' + len(positional) + ': "' + '", "'.join(positional) + '"')
     return 1
 
-  keywords.infile = os.path.abspath(positional[0])
-  if isinstance(keywords.outfile, (type(u''), bytes)):
-    keywords.outfile = open(keywords.outfile, 'w')
+  options.infile = os.path.abspath(positional[0])
+  if isinstance(options.outfile, (type(u''), bytes)):
+    options.outfile = open(options.outfile, 'w')
 
-  if keywords.temp_dir is None:
-    temp_files = get_configuration().get_temp_files()
-    temp_dir = get_configuration().TEMP_DIR
+  if options.temp_dir is None:
+    temp_files = shared.configuration.get_temp_files()
   else:
-    temp_dir = os.path.abspath(keywords.temp_dir)
+    temp_dir = os.path.abspath(options.temp_dir)
     if not os.path.exists(temp_dir):
       os.makedirs(temp_dir)
     temp_files = tempfiles.TempFiles(temp_dir)
 
-  if keywords.compiler is None:
-    keywords.compiler = shared.COMPILER_ENGINE
+  if options.compiler is None:
+    options.compiler = shared.COMPILER_ENGINE
 
-  if keywords.verbose is None:
-    DEBUG = get_configuration().DEBUG
-  else:
-    DEBUG = keywords.verbose
+  if options.verbose is None:
+    options.verbose = shared.configuration.DEBUG
 
   cache = cache_module.Cache()
   temp_files.run_and_clean(lambda: main(
-    keywords,
-    compiler_engine=keywords.compiler,
+    options,
+    compiler_engine=options.compiler,
     cache=cache,
     temp_files=temp_files,
-    DEBUG=DEBUG,
+    DEBUG=options.verbose,
   ))
   return 0
 

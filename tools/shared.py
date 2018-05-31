@@ -834,20 +834,21 @@ class Configuration(object):
       except Exception as e:
         logging.error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + hint_config_file_location())
 
+  def apply(self):
+    global DEBUG, EMSCRIPTEN_TEMP_DIR, DEBUG_CACHE, CANONICAL_TEMP_DIR, TEMP_DIR
+    DEBUG = self.DEBUG
+    EMSCRIPTEN_TEMP_DIR = self.EMSCRIPTEN_TEMP_DIR
+    DEBUG_CACHE = self.DEBUG_CACHE
+    CANONICAL_TEMP_DIR = self.CANONICAL_TEMP_DIR
+    TEMP_DIR = self.TEMP_DIR
+
   def get_temp_files(self):
     return tempfiles.TempFiles(
       tmp=self.TEMP_DIR if not self.DEBUG else get_emscripten_temp_dir(),
       save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
 
-def apply_configuration():
-  global configuration, DEBUG, EMSCRIPTEN_TEMP_DIR, DEBUG_CACHE, CANONICAL_TEMP_DIR, TEMP_DIR
-  configuration = Configuration()
-  DEBUG = configuration.DEBUG
-  EMSCRIPTEN_TEMP_DIR = configuration.EMSCRIPTEN_TEMP_DIR
-  DEBUG_CACHE = configuration.DEBUG_CACHE
-  CANONICAL_TEMP_DIR = configuration.CANONICAL_TEMP_DIR
-  TEMP_DIR = configuration.TEMP_DIR
-apply_configuration()
+configuration = Configuration()
+configuration.apply()
 
 logging.basicConfig(format='%(levelname)-8s %(name)s: %(message)s') # can add  %(asctime)s  to see timestamps
 def set_logging():
