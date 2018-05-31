@@ -117,7 +117,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
     blacklist = set(
       ['ipc', 'passwd', 'thread', 'signal', 'sched', 'ipc', 'time', 'linux', 'aio', 'exit', 'legacy', 'mq', 'process', 'search', 'setjmp', 'env', 'ldso', 'conf'] + # musl modules
-      ['memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c', 'inet_addr.c', 'res_query.c', 'gai_strerror.c', 'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c', 'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c', 'usleep.c', 'alarm.c', 'syscall.c', '_exit.c'] + # individual files
+      ['memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c', 'inet_addr.c', 'res_query.c', 'gai_strerror.c', 'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c', 'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c', 'usleep.c', 'alarm.c', 'syscall.c', '_exit.c', 'popen.c'] + # individual files
       ['abs.c', 'cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c', 'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c', 'log.c', 'logf.c', 'logl.c', 'sqrt.c', 'sqrtf.c', 'sqrtl.c', 'fabs.c', 'fabsf.c', 'fabsl.c', 'ceil.c', 'ceilf.c', 'ceill.c', 'floor.c', 'floorf.c', 'floorl.c', 'pow.c', 'powf.c', 'powl.c', 'round.c', 'roundf.c', 'rintf.c'] # individual math files
     )
     # TODO: consider using more math code from musl, doing so makes box2d faster
@@ -488,14 +488,13 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       for dep in value:
         shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
 
-  system_libs = [('libcxx',        'a',  create_libcxx,      libcxx_symbols,      ['libcxxabi'],   True),
-                 ('libcxxabi',     'bc', create_libcxxabi,   libcxxabi_symbols,   ['libc'],        False),
-                 ('gl',            'bc', create_gl,          gl_symbols,          ['libc'],        False),
-                 ('al',            'bc', create_al,          al_symbols,          ['libc'],        False),
-                 ('html5',         'bc', create_html5,       html5_symbols,       ['html5'],       False),
-                 ('compiler-rt',   'a',  create_compiler_rt, compiler_rt_symbols, ['libc'],        False),
-                 ('libc-extras',   'bc', create_libc_extras, libc_extras_symbols, ['libc_extras'], False),
-                 (malloc_name(),   'bc', create_malloc,      [],                  [],              False)]
+  system_libs = [('libcxx',        'a',  create_libcxx,      libcxx_symbols,      ['libcxxabi'], True),
+                 ('libcxxabi',     'bc', create_libcxxabi,   libcxxabi_symbols,   ['libc'],      False),
+                 ('gl',            'bc', create_gl,          gl_symbols,          ['libc'],      False),
+                 ('al',            'bc', create_al,          al_symbols,          ['libc'],      False),
+                 ('html5',         'bc', create_html5,       html5_symbols,       ['html5'],     False),
+                 ('compiler-rt',   'a',  create_compiler_rt, compiler_rt_symbols, ['libc'],      False),
+                 (malloc_name(),   'bc', create_malloc,      [],                  [],            False)]
 
   if shared.Settings.USE_PTHREADS:
     system_libs += [('libc-mt',        'bc', create_libc,           libc_symbols,     [],       False),
@@ -518,6 +517,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         break
     else:
       raise Exception('did not find libc?')
+
+  # Add libc-extras at the end, as libc may end up requiring them, and they depend on nothing.
+  system_libs += [('libc-extras',   'bc', create_libc_extras, libc_extras_symbols, ['libc_extras'], False)]
 
   # Go over libraries to figure out which we must include
   def maybe_noexcept(name):
