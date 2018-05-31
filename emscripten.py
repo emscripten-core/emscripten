@@ -1891,7 +1891,7 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
 
     libc_rt_lib = shared.Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
     compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', wasm_rt_fail('wasm_compiler_rt.a'), 'a')
-    cmd = [shared.LLD,
+    cmd = [shared.WASM_LD,
       '-z', 'stack-size=%s' % settings['TOTAL_STACK'],
       '--global-base=%s' % shared.Settings.GLOBAL_BASE,
       '--initial-memory=%s' % shared.Settings.TOTAL_MEMORY,
