@@ -10,6 +10,8 @@
   "environ": ["_get_environ"],
   "fmtmsg": ["_get_environ"],
   "get_current_dir_name": ["_get_environ"],
+  "SDL_getenv": ["malloc", "free", "_get_environ"],
+  "SDL_putenv": ["_get_environ"],
   "dlerror": ["malloc", "free"],
   "readdir": ["malloc"],
   "ttyname": ["malloc"],
