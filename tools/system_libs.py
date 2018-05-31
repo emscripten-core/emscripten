@@ -459,6 +459,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         more = True
         for dep in deps:
           need.undefs.add(dep)
+          if shared.Settings.VERBOSE:
+            logging.debug('adding dependency on %s due to deps-info on %s' % (dep, ident))
           shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
     if more:
       add_back_deps(need) # recurse to get deps of deps
