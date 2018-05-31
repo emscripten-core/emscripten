@@ -5157,7 +5157,7 @@ int main(int argc, char** argv) {
   char buffer[11];
   buffer[10] = '\0';
   // call by a pointer, to force linking of memset, no llvm intrinsic here
-  volatile auto ptr = &memset;
+  volatile auto ptr = memset;
   (*ptr)(buffer, 'a', 10);
   depper(buffer);
   puts(buffer);
