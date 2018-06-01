@@ -1736,7 +1736,7 @@ var LibraryGLFW = {
   glfwBroadcastCond: function(cond) { throw "glfwBroadcastCond is not implemented."; },
 
   glfwGetNumberOfProcessors: function() {
-    // Threads are disabled anyway...
+    // Threads are disabled anyway…
     return 1;
   },
 
