@@ -6135,12 +6135,13 @@ hello3 ()
 ''')
     open('hello4.c', 'w').write(r'''
 #include <stdio.h>
+#include <math.h>
 
-void
-hello4 ()
+double
+hello4 (double x)
 {
   printf ("Hello4\n");
-  return;
+  return fmod(x, 2.0);
 }
 
 ''')
@@ -6160,6 +6161,7 @@ main()
 {
   void *h;
   void (*f) ();
+  double (*f2) (double);
 
   h = dlopen ("libhello1.wasm", RTLD_NOW);
   f = dlsym (h, "hello1");
@@ -6174,9 +6176,13 @@ main()
   f();
   dlclose (h);
   h = dlopen ("/usr/local/lib/libhello4.wasm", RTLD_NOW);
-  f = dlsym (h, "hello4");
-  f();
+  f2 = dlsym (h, "hello4");
+  double result = f2(5.5);
   dlclose (h);
+
+  if (result != 1.5) {
+    printf("Floating-point remainder failed\n");
+  }
   return 0;
 }
 
@@ -6197,6 +6203,7 @@ main()
     self.assertContained('Hello2', out)
     self.assertContained('Hello3', out)
     self.assertContained('Hello4', out)
+    self.assertNotContained('Floating-point remainder failed', out)
 
   def test_dlopen_rtld_global(self):
     # TODO: wasm support. this test checks RTLD_GLOBAL where a module is loaded
