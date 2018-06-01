@@ -2184,11 +2184,19 @@ def load_metadata(metadata_raw):
     'invokeFuncs': [],
   }
 
-  for k, v in metadata_json.items():
-    metadata[k] = v
+  for key, value in metadata_json.items():
+    # json.loads returns `unicode` for strings but other code in this file
+    # generally works with utf8 encoded `str` objects, and they don't alwasy
+    # mix well.  e.g. s.replace(x, y) will blow up is `s` a uts8 str containing
+    # non-ascii and either x or y are unicode objects.
+    # TODO(sbc): Remove this encoding if we switch to unicode elsewhere
+    # (specifically the glue returned from compile_settings)
+    if type(value) == list:
+      value = [asstr(v) for v in value]
+    metadata[key] = value
 
   # Initializers call the global var version of the export, so they get the mangled name.
-  metadata['initializers'] = list(map(asmjs_mangle, metadata['initializers']))
+  metadata['initializers'] = [asmjs_mangle(i) for i in metadata['initializers']]
 
   # functions marked llvm.used in the code are exports requested by the user
   shared.Building.user_requested_exports += metadata['exports']
