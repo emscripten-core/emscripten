@@ -603,7 +603,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     numbers in the name. For example for 'libz.so.1.2.8' returns '.so'"""
     while filename:
       filename, suffix = os.path.splitext(filename)
-      if not suffix.isdigit():
+      if not suffix[1:].isdigit():
         return suffix
     return ''
 
