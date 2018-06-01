@@ -626,7 +626,12 @@ var LibraryEmbind = {
 
             var str;
             if(stdStringIsUTF8) {
-                str = Module['UTF8ToString'](value + 4, length);
+                try {
+                    str = Module['UTF8ToString'](value + 4, length);
+                }
+                catch(decodeError) {
+                    throwBindingError(decodeError);
+                }
             }
             else {
                 var a = new Array(length);
@@ -663,7 +668,12 @@ var LibraryEmbind = {
             HEAPU32[ptr >> 2] = length;
 
             if (stdStringIsUTF8 && valueIsOfTypeString) {
-                Module['stringToUTF8'](value, ptr + 4, length, false);
+                try {
+                    Module['stringToUTF8'](value, ptr + 4, length + 1, false);
+                }
+                catch(decodeError) {
+                    throwBindingError(decodeError);
+                }
             } else {
                 if(valueIsOfTypeString) {
                     for (var i = 0; i < length; ++i) {

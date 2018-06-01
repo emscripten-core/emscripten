@@ -378,11 +378,11 @@ module({
     });
 
     BaseFixture.extend("string", function() {
-        var embindStdStringIsUTF8 = (Module['EMBIND_STD_STRING_IS_UTF8'] == true);
+        var stdStringIsUTF8 = (Module['EMBIND_STD_STRING_IS_UTF8'] == true);
 
         test("non-ascii strings", function() {
 
-            if(embindStdStringIsUTF8) {
+            if(stdStringIsUTF8) {
                 //ASCII
                 var expected = 'aei';
                 //Latin-1 Supplement
@@ -401,9 +401,9 @@ module({
                     expected += String.fromCharCode(128 + i);
                 }
             }
-            assert.equal(expected, cm.get_non_ascii_string(embindStdStringIsUTF8));
+            assert.equal(expected, cm.get_non_ascii_string(stdStringIsUTF8));
         });
-        if(!embindStdStringIsUTF8) {
+        if(!stdStringIsUTF8) {
             test("passing non-8-bit strings from JS to std::string throws", function() {
                 assert.throws(cm.BindingError, function() {
                     cm.emval_test_take_and_return_std_string("\u1234");
@@ -456,6 +456,52 @@ module({
             var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char((new Int8Array([65, 66, 67, 68])).buffer);
             assert.equal('ABCD', e);
         });
+
+        test("can pass string to std::string", function() {
+            var string = stdStringIsUTF8?"aeiáéíαειЖЛФ從獅子€":"ABCD";
+
+            var e = cm.emval_test_take_and_return_std_string(string);
+            assert.equal(string, e);
+        });
+
+        if(stdStringIsUTF8)
+        {
+            test("UTF-8 decode: incomplete sequences throws", function() {
+                var e = assert.throws(cm.BindingError, function() {
+                    var e = cm.get_incomplete_utf8_sequence(2);
+                });
+                var e = assert.throws(cm.BindingError, function() {
+                    var e = cm.get_incomplete_utf8_sequence(3);
+                });
+                var e = assert.throws(cm.BindingError, function() {
+                    var e = cm.get_incomplete_utf8_sequence(4);
+                });
+            });
+
+            test("UTF-8 decode: invalid multibyte start throws", function() {
+                var e = assert.throws(cm.BindingError, function() {
+                    var e = cm.get_invalid_utf8_multibyte_start();
+                });
+            });
+
+            test("UTF-8 decode: causing UTF-16 overflow in JS throws", function() {
+                var e = assert.throws(cm.BindingError, function() {
+                    var e = cm.get_utf8_sequence_causing_js_utf16_overflow();
+                });
+            });
+
+            test("UTF-8 encode: incomplete surrogate pair throws", function() {
+                var e = assert.throws(cm.BindingError, function() {
+                    cm.emval_test_take_and_return_std_string(String.fromCharCode(0xd800));
+                });
+            });
+
+            test("UTF-8 encode: surrogate pair second char code out of range throws", function() {
+                var e = assert.throws(cm.BindingError, function() {
+                    cm.emval_test_take_and_return_std_string(String.fromCharCode(0xd800) + String.fromCharCode(0xffff));
+                });
+            });
+        }
 
         test("non-ascii wstrings", function() {
             var expected = String.fromCharCode(10) +

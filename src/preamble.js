@@ -432,70 +432,56 @@ function stringToAscii(str, outPtr) {
 var UTF8Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf8') : undefined;
 #endif
 function UTF8ArrayToString(u8Array, idx, sizeInBytes) {
+    //based on https://gist.github.com/pascaldekloe/62546103a1576803dade9269ccf76330
+    var string = '';
+    var endIdx = idx;
 
-  var endIdx = idx;
-
-  if (typeof sizeInBytes === 'undefined')
-    while (u8Array[endIdx]) ++endIdx;
-  else
-    endIdx += sizeInBytes; //Length info provided externally, e. g. when embedded null bytes should be processed
+    if (typeof sizeInBytes === 'undefined')
+      while (u8Array[endIdx]) ++endIdx;
+    else
+      endIdx += sizeInBytes; //Length info provided externally, e. g. when embedded null bytes should be processed
 #if TEXTDECODER
-  // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
-  // Also, use the length info to avoid running tiny strings through TextDecoder, since .subarray() allocates garbage.
-  if (endIdx - idx > 16 && u8Array.subarray && UTF8Decoder) {
-    return UTF8Decoder.decode(u8Array.subarray(idx, endIdx));
-  } else {
-#endif
-    var u0, u1, u2, u3, u4, u5;
-
-    var str = '';
-
-  	while (idx < endIdx) {
-      // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description and https://www.ietf.org/rfc/rfc2279.txt and https://tools.ietf.org/html/rfc3629
-      u0 = u8Array[idx++];
-      if (!(u0 & 0x80)) { str += String.fromCharCode(u0); continue; }
-      if (idx >= endIdx) { break; }
-      u1 = u8Array[idx++] & 63;
-      if ((u0 & 0xE0) == 0xC0) { str += String.fromCharCode(((u0 & 31) << 6) | u1); continue; }
-      if (idx >= endIdx) { break; }
-      u2 = u8Array[idx++] & 63;
-      if ((u0 & 0xF0) == 0xE0) {
-        u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
+      // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
+      // Also, use the length info to avoid running tiny strings through TextDecoder, since .subarray() allocates garbage.
+      if (endIdx - idx > 16 && u8Array.subarray && UTF8Decoder) {
+        return UTF8Decoder.decode(u8Array.subarray(idx, endIdx));
       } else {
-        if (idx >= endIdx) { break; }
-        u3 = u8Array[idx++] & 63;
-        if ((u0 & 0xF8) == 0xF0) {
-          u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | u3;
-        } else {
-          if (idx >= endIdx) { break; }
-          u4 = u8Array[idx++] & 63;
-          if ((u0 & 0xFC) == 0xF8) {
-            u0 = ((u0 & 3) << 24) | (u1 << 18) | (u2 << 12) | (u3 << 6) | u4;
-          } else {
-            if (idx >= endIdx) { break; }
-            u5 = u8Array[idx++] & 63;
-            u0 = ((u0 & 1) << 30) | (u1 << 24) | (u2 << 18) | (u3 << 12) | (u4 << 6) | u5;
-          }
+#endif
+        while (idx < endIdx) {
+            var char = u8Array[idx++];
+            if (char > 127) {
+                if (char > 191 && char < 224) {
+                    if (idx >= endIdx) throw 'UTF-8 decode: incomplete 2-byte sequence';
+                    char = (char & 31) << 6 | u8Array[idx] & 63;
+                } else if (char > 223 && char < 240) {
+                    if (idx + 1 >= endIdx) throw 'UTF-8 decode: incomplete 3-byte sequence';
+                    char = (char & 15) << 12 | (u8Array[idx] & 63) << 6 | u8Array[++idx] & 63;
+                } else if (char > 239 && char < 248) {
+                    if (idx + 2 >= endIdx) throw 'UTF-8 decode: incomplete 4-byte sequence';
+                    char = (char & 7) << 18 | (u8Array[idx] & 63) << 12 | (u8Array[++idx] & 63) << 6 | u8Array[++idx] & 63;
+                } else throw 'UTF-8 decode: unknown multibyte start 0x' + char.toString(16) + ' at index ' + (idx - 1);
+                ++idx;
+            }
+
+            if (char <= 0xffff) string += String.fromCharCode(char);
+            else if (char <= 0x10ffff) {
+                char -= 0x10000;
+                string += String.fromCharCode(char >> 10 | 0xd800)
+                string += String.fromCharCode(char & 0x3FF | 0xdc00)
+            } else throw 'UTF-8 decode: code point 0x' + char.toString(16) + ' exceeds UTF-16 reach';
         }
-      }
-      if (u0 < 0x10000) {
-        str += String.fromCharCode(u0);
-      } else {
-        var ch = u0 - 0x10000;
-        str += String.fromCharCode(0xD800 | (ch >> 10), 0xDC00 | (ch & 0x3FF));
-      }
-    }
 #if TEXTDECODER
-  }
+      }
 #endif
-  return str;
+    return string;
 }
 
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
+// len parameter (optional): bytewise length in case string is not null terminated
 
-function UTF8ToString(ptr) {
-  return UTF8ArrayToString({{{ heapAndOffset('HEAPU8', 'ptr') }}});
+function UTF8ToString(ptr, len) {
+  return UTF8ArrayToString({{{ heapAndOffset('HEAPU8', 'ptr') }}}, len);
 }
 
 // Copies the given Javascript String object 'str' to the given byte array at address 'outIdx',
@@ -510,57 +496,53 @@ function UTF8ToString(ptr) {
 //                    i.e. if maxBytesToWrite=1, only the null terminator will be written and nothing else.
 //                    maxBytesToWrite=0 does not write any bytes to the output, not even the null terminator.
 // Returns the number of bytes written, EXCLUDING the null terminator.
-
 function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
+  //based on https://gist.github.com/pascaldekloe/62546103a1576803dade9269ccf76330
   if (!(maxBytesToWrite > 0)) // Parameter maxBytesToWrite is not optional. Negative values, 0, null, undefined and false each don't write out any bytes.
     return 0;
 
-  var startIdx = outIdx;
-  var endIdx = outIdx + maxBytesToWrite - 1; // -1 for string null terminator.
-  for (var i = 0; i < str.length; ++i) {
-    // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
-    // See http://unicode.org/faq/utf_bom.html#utf16-3
-    // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description and https://www.ietf.org/rfc/rfc2279.txt and https://tools.ietf.org/html/rfc3629
-    var u = str.charCodeAt(i); // possibly a lead surrogate
-    if (u >= 0xD800 && u <= 0xDFFF) u = 0x10000 + ((u & 0x3FF) << 10) | (str.charCodeAt(++i) & 0x3FF);
-    if (u <= 0x7F) {
-      if (outIdx >= endIdx) break;
-      outU8Array[outIdx++] = u;
-    } else if (u <= 0x7FF) {
-      if (outIdx + 1 >= endIdx) break;
-      outU8Array[outIdx++] = 0xC0 | (u >> 6);
-      outU8Array[outIdx++] = 0x80 | (u & 63);
-    } else if (u <= 0xFFFF) {
-      if (outIdx + 2 >= endIdx) break;
-      outU8Array[outIdx++] = 0xE0 | (u >> 12);
-      outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
-      outU8Array[outIdx++] = 0x80 | (u & 63);
-    } else if (u <= 0x1FFFFF) {
-      if (outIdx + 3 >= endIdx) break;
-      outU8Array[outIdx++] = 0xF0 | (u >> 18);
-      outU8Array[outIdx++] = 0x80 | ((u >> 12) & 63);
-      outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
-      outU8Array[outIdx++] = 0x80 | (u & 63);
-    } else if (u <= 0x3FFFFFF) {
-      if (outIdx + 4 >= endIdx) break;
-      outU8Array[outIdx++] = 0xF8 | (u >> 24);
-      outU8Array[outIdx++] = 0x80 | ((u >> 18) & 63);
-      outU8Array[outIdx++] = 0x80 | ((u >> 12) & 63);
-      outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
-      outU8Array[outIdx++] = 0x80 | (u & 63);
-    } else {
-      if (outIdx + 5 >= endIdx) break;
-      outU8Array[outIdx++] = 0xFC | (u >> 30);
-      outU8Array[outIdx++] = 0x80 | ((u >> 24) & 63);
-      outU8Array[outIdx++] = 0x80 | ((u >> 18) & 63);
-      outU8Array[outIdx++] = 0x80 | ((u >> 12) & 63);
-      outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
-      outU8Array[outIdx++] = 0x80 | (u & 63);
+    var fnRangeCheck = function RangeCheck(outIdx, outIdxStart, bytesToWrite)
+    {
+        //>= to reserve one byte for the null terminator
+        if((outIdx - outIdxStart + bytesToWrite) >= maxBytesToWrite) throw 'UTF-8 encode: about to exceed maximum length: ' + maxBytesToWrite + ' bytes.';
+    };
+
+    var outIdxStart = outIdx;
+	//var bytes = new Uint8Array(s.length * 4);
+    for (var inIdx = 0; inIdx != str.length; inIdx++) {
+        //throw 'hello new stringToUTF8Array';
+
+        var char = str.charCodeAt(inIdx);
+        if (char < 128) {
+            fnRangeCheck(outIdx, outIdxStart, 1);
+            outU8Array[outIdx++] = char;
+            continue;
+        }
+        if (char < 2048) {
+            fnRangeCheck(outIdx, outIdxStart, 1);
+            outU8Array[outIdx++] = char >> 6 | 192;
+        } else {
+            if (char > 0xd7ff && char < 0xdc00) {
+                if (++inIdx == str.length) throw 'UTF-8 encode: incomplete surrogate pair';
+                var char2 = str.charCodeAt(inIdx);
+                if (char2 < 0xdc00 || char2 > 0xdfff) throw 'UTF-8 encode: second char code 0x' + char2.toString(16) + ' at index ' + inIdx + ' in surrogate pair out of range';
+                char = 0x10000 + ((char & 0x03ff) << 10) + (char2 & 0x03ff);
+                fnRangeCheck(outIdx, outIdxStart, 2);
+                outU8Array[outIdx++] = char >> 18 | 240;
+                outU8Array[outIdx++] = char >> 12 & 63 | 128;
+            } else { // char <= 0xffff
+                fnRangeCheck(outIdx, outIdxStart, 1);
+                outU8Array[outIdx++] = char >> 12 | 224;
+            }
+            fnRangeCheck(outIdx, outIdxStart, 1);
+            outU8Array[outIdx++] = char >> 6 & 63 | 128;
+        }
+        fnRangeCheck(outIdx, outIdxStart, 1);
+        outU8Array[outIdx++] = char & 63 | 128;
     }
-  }
-  // Null-terminate the pointer to the buffer.
-  outU8Array[outIdx] = 0;
-  return outIdx - startIdx;
+    // Null-terminate the pointer to the buffer, already range checked
+    outU8Array[outIdx] = 0;
+	return outIdx - outIdxStart;
 }
 
 // Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
