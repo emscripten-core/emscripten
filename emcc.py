@@ -31,7 +31,7 @@ if __name__ == '__main__':
 import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
 from subprocess import PIPE
 from tools import shared, jsrun, system_libs
-from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes
+from tools.shared import execute, unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes
 from tools.response_file import substitute_response_files
 import tools.line_endings
 
@@ -62,8 +62,8 @@ SUPPORTED_LINKER_FLAGS = ('--start-group', '-(', '--end-group', '-)')
 
 LIB_PREFIXES = ('', 'lib')
 
-JS_CONTAINING_SUFFIXES = ('js', 'html')
-EXECUTABLE_SUFFIXES = JS_CONTAINING_SUFFIXES + ('wasm',)
+JS_CONTAINING_SUFFIXES = ('.js', '.html')
+EXECUTABLE_SUFFIXES = JS_CONTAINING_SUFFIXES + ('.wasm',)
 
 DEFERRED_REPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST', 'EMTERPRETIFY_SYNCLIST')
 
@@ -541,11 +541,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # ---------------- Utilities ---------------
 
+  def suffix(name):
+    """Return the file extension"""
+    return os.path.splitext(name)[1]
+
   seen_names = {}
   def uniquename(name):
     if name not in seen_names:
       seen_names[name] = str(len(seen_names))
-    return unsuffixed(name) + '_' + seen_names[name] + (('.' + suffix(name)) if suffix(name) else '')
+    return unsuffixed(name) + '_' + seen_names[name] + suffix(name)
 
   # ---------------- End configs -------------
 
@@ -569,10 +573,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   target = specified_target if specified_target is not None else 'a.out.js' # specified_target is the user-specified one, target is what we will generate
   target_basename = unsuffixed_basename(target)
 
-  if '.' in target:
-    final_suffix = target.split('.')[-1]
-  else:
-    final_suffix = ''
+  final_suffix = suffix(target)
 
   # Temporary file handling: we ensure that TEMP_DIR exists, which is the general
   # location for all temp files from us on this system. We then create a temp dir
@@ -597,18 +598,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   def in_temp(name):
     return os.path.join(temp_dir, os.path.basename(name))
 
-  # Parses the essential suffix of a filename, discarding Unix-style version numbers in the name. For example for 'libz.so.1.2.8' returns '.so'
   def filename_type_suffix(filename):
-    for i in reversed(filename.split('.')[1:]):
-      if not i.isdigit():
-        return i
+    """Parses the essential suffix of a filename, discarding Unix-style version
+    numbers in the name. For example for 'libz.so.1.2.8' returns '.so'"""
+    while filename:
+      filename, suffix = os.path.splitext(filename)
+      if not suffix.isdigit():
+        return suffix
     return ''
 
   def filename_type_ending(filename):
     if filename in SPECIAL_ENDINGLESS_FILENAMES:
       return filename
-    suffix = filename_type_suffix(filename)
-    return '' if not suffix else ('.' + suffix)
+    return filename_type_suffix(filename)
 
   def optimizing(opts):
     return '-O0' not in opts
@@ -827,12 +829,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if has_dash_c:
         assert has_source_inputs or has_header_inputs, 'Must have source code or header inputs to use -c'
         target = target_basename + '.o'
-        final_suffix = 'o'
+        final_suffix = '.o'
       if '-E' in newargs:
-        final_suffix = 'eout' # not bitcode, not js; but just result from preprocessing stage of the input file
+        final_suffix = '.eout' # not bitcode, not js; but just result from preprocessing stage of the input file
       if '-M' in newargs or '-MM' in newargs:
-        final_suffix = 'mout' # not bitcode, not js; but just dependency rule of the input file
-      final_ending = ('.' + final_suffix) if len(final_suffix) > 0 else ''
+        final_suffix = '.mout' # not bitcode, not js; but just dependency rule of the input file
 
       # target is now finalized, can finalize other _target s
       js_target = unsuffixed(target) + '.js'
@@ -841,7 +842,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       wasm_text_target = asm_target.replace('.asm.js', '.wast') # ditto, might not be used
       wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
 
-      if final_suffix == 'html' and not options.separate_asm and ('PRECISE_F32=2' in settings_changes or 'USE_PTHREADS=2' in settings_changes):
+      if final_suffix == '.html' and not options.separate_asm and ('PRECISE_F32=2' in settings_changes or 'USE_PTHREADS=2' in settings_changes):
         options.separate_asm = True
         logging.warning('forcing separate asm output (--separate-asm), because -s PRECISE_F32=2 or -s USE_PTHREADS=2 was passed.')
       if options.separate_asm:
@@ -886,7 +887,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       newargs = CC_ADDITIONAL_ARGS + newargs
 
-      if options.separate_asm and final_suffix != 'html':
+      if options.separate_asm and final_suffix != '.html':
         shared.WarningManager.warn('SEPARATE_ASM')
 
       # Apply optimization level settings
@@ -1390,7 +1391,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               if specified_target.endswith('/') or specified_target.endswith('\\') or os.path.isdir(specified_target):
                 return os.path.join(specified_target, os.path.basename(unsuffixed(input_file))) + options.default_object_extension
               return specified_target
-            return unsuffixed(input_file) + final_ending
+            return unsuffixed(input_file) + final_suffix
           else:
             if has_dash_c: return unsuffixed(input_file) + options.default_object_extension
         return in_temp(unsuffixed(uniquename(input_file)) + options.default_object_extension)
@@ -1493,12 +1494,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if not specified_target:
           assert len(temp_files) == len(input_files)
           for tempf, inputf in zip(temp_files, input_files):
-            safe_move(tempf[1], unsuffixed_basename(inputf[1]) + final_ending)
+            safe_move(tempf[1], unsuffixed_basename(inputf[1]) + final_suffix)
         else:
           if len(input_files) == 1:
             _, input_file = input_files[0]
             _, temp_file = temp_files[0]
-            bitcode_target = specified_target if specified_target else unsuffixed_basename(input_file) + final_ending
+            bitcode_target = specified_target if specified_target else unsuffixed_basename(input_file) + final_suffix
             if temp_file != input_file:
               safe_move(temp_file, bitcode_target)
             else:
@@ -1520,9 +1521,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             # Sort arg tuples and pass the extracted values to link.
             shared.Building.link(linker_inputs, specified_target)
         logging.debug('stopping at bitcode')
-        if final_suffix.lower() in ['so', 'dylib', 'dll']:
+        if final_suffix.lower() in ['.so', '.dylib', '.dll']:
           logging.warning('Dynamic libraries (.so, .dylib, .dll) are currently not supported by Emscripten. For build system emulation purposes, Emscripten'
-            + ' will now generate a static library file (.bc) with the suffix \'.' + final_suffix + '\'. For best practices,'
+            + ' will now generate a static library file (.bc) with the suffix ' + final_suffix + '. For best practices,'
             + ' please adapt your build system to directly generate a static LLVM bitcode library by setting the output suffix to \'.bc.\')')
         return 0
 
@@ -1947,7 +1948,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       generated_text_files_with_native_eols += [js_target]
 
       # If we were asked to also generate HTML, do that
-      if final_suffix == 'html':
+      if final_suffix == '.html':
         generate_html(target, options, js_target, target_basename,
                       asm_target, wasm_binary_target,
                       memfile, optimizer)

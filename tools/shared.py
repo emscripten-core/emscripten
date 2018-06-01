@@ -569,14 +569,14 @@ def check_sanity(force=False):
 # Tools/paths
 
 try:
-	LLVM_ADD_VERSION
+  LLVM_ADD_VERSION
 except NameError:
-	LLVM_ADD_VERSION = os.getenv('LLVM_ADD_VERSION')
+  LLVM_ADD_VERSION = os.getenv('LLVM_ADD_VERSION')
 
 try:
-	CLANG_ADD_VERSION
+  CLANG_ADD_VERSION
 except NameError:
-	CLANG_ADD_VERSION = os.getenv('CLANG_ADD_VERSION')
+  CLANG_ADD_VERSION = os.getenv('CLANG_ADD_VERSION')
 
 # Some distributions ship with multiple llvm versions so they add
 # the version to the binaries, cope with that
@@ -2698,10 +2698,6 @@ def asbytes(s):
     # s.encode implicitly will first call s.decode('ascii') which may fail when with Unicode characters
     return s
   return s.encode('utf-8')
-
-def suffix(name):
-  """Return the file extension *not* including the '.'."""
-  return os.path.splitext(name)[1][1:]
 
 def unsuffixed(name):
   """Return the filename without the extention.
