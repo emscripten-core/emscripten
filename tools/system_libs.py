@@ -216,6 +216,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'debug.cpp',
       'exception.cpp',
       'future.cpp',
+      'functional.cpp',
       'hash.cpp',
       'ios.cpp',
       'iostream.cpp',
