@@ -806,6 +806,7 @@ class WarningManager(object):
 
 class Configuration(object):
   def __init__(self, environ=os.environ):
+    self.tempfiles = None
     self.DEBUG = environ.get('EMCC_DEBUG')
     if self.DEBUG == "0":
       self.DEBUG = None
@@ -843,9 +844,11 @@ class Configuration(object):
     TEMP_DIR = self.TEMP_DIR
 
   def get_temp_files(self):
-    return tempfiles.TempFiles(
-      tmp=self.TEMP_DIR if not self.DEBUG else get_emscripten_temp_dir(),
-      save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
+    if not self.tempfiles:
+      self.tempfiles = tempfiles.TempFiles(
+        tmp=self.TEMP_DIR if not self.DEBUG else get_emscripten_temp_dir(),
+        save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
+    return self.tempfiles
 
 configuration = Configuration()
 configuration.apply()
