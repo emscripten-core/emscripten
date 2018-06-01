@@ -1522,9 +1522,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             shared.Building.link(linker_inputs, specified_target)
         logging.debug('stopping at bitcode')
         if final_suffix.lower() in ['.so', '.dylib', '.dll']:
-          logging.warning('Dynamic libraries (.so, .dylib, .dll) are currently not supported by Emscripten. For build system emulation purposes, Emscripten'
-            + ' will now generate a static library file (.bc) with the suffix ' + final_suffix + '. For best practices,'
-            + ' please adapt your build system to directly generate a static LLVM bitcode library by setting the output suffix to \'.bc.\')')
+          logging.warning("""\
+Dynamic libraries (.so, .dylib, .dll) are currently not supported by Emscripten.
+For build system emulation purposes, Emscripten will now generate a static
+library file (.bc) with the suffix '%s'. For best practices please adapt your
+build system to directly generate a static LLVM bitcode library by setting
+he output suffix to '.bc.'""" % (final_suffix))
         return 0
 
     # exit block 'process inputs'
