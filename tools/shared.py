@@ -1289,7 +1289,7 @@ class ObjectFileInfo(object):
     self.undefs = undefs
     self.commons = commons
 
-  def is_valid(self):
+  def is_valid_for_nm(self):
     return self.returncode == 0
 
 # Due to a python pickling issue, the following two functions must be at top level, or multiprocessing pool spawn won't find them.
@@ -1743,8 +1743,15 @@ class Building(object):
     # returns True.
     def consider_object(f, force_add=False):
       new_symbols = Building.llvm_nm(f)
-      if not new_symbols.is_valid():
-        logging.warning('object %s is not valid, cannot link' % (f))
+      # Check if the object was valid according to llvm-nm. It also accepts
+      # native object files.
+      if not new_symbols.is_valid_for_nm():
+        logging.warning('object %s is not valid according to llvm-nm, cannot link' % (f))
+        return False
+      # Check the object is valid for us, and not a native object file.
+      # TODO: for lld, also check if a wasm object file?
+      if not Building.is_bitcode(f):
+        logging.warning('object %s is not LLVM bitcode, cannot link' % (f))
         return False
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
