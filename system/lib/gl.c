@@ -572,6 +572,13 @@ GLAPI void GLAPIENTRY emscripten_glGetTexImage( GLenum target, GLint level,
                                      GLenum format, GLenum type,
                                      GLvoid *pixels );
 
+GLAPI void GLAPIENTRY emscripten_glTexStorage2D( GLenum target, GLsizei levels,
+ 	                                GLenum internalformat, GLsizei width,
+ 	                                GLsizei height );
+
+GLAPI void GLAPIENTRY emscripten_glTexStorage3D( GLenum target, GLsizei levels,
+ 	                                GLenum internalformat, GLsizei width,
+ 	                                GLsizei height,	GLsizei depth );
 
 /* 1.1 functions */
 
@@ -1572,7 +1579,10 @@ void* emscripten_GetProcAddress(const char *name_) {
   else if (!strcmp(name, "glCompressedTexImage2D")) return emscripten_glCompressedTexImage2D;
   else if (!strcmp(name, "glCompressedTexSubImage2D")) return emscripten_glCompressedTexSubImage2D;
   else if (!strcmp(name, "glTexImage2D")) return emscripten_glTexImage2D;
+  else if (!strcmp(name, "glTexStorage2D")) return emscripten_glTexStorage2D;
+  else if (!strcmp(name, "glTexStorage3D")) return emscripten_glTexStorage3D;
   else if (!strcmp(name, "glTexSubImage2D")) return emscripten_glTexSubImage2D;
+  else if (!strcmp(name, "glTexSubImage3D")) return emscripten_glTexSubImage3D;
   else if (!strcmp(name, "glReadPixels")) return emscripten_glReadPixels;
   else if (!strcmp(name, "glBindTexture")) return emscripten_glBindTexture;
   else if (!strcmp(name, "glGetTexParameterfv")) return emscripten_glGetTexParameterfv;
@@ -1674,6 +1684,7 @@ void* emscripten_GetProcAddress(const char *name_) {
   else if (!strcmp(name, "glFrustum")) return emscripten_glFrustum;
   else if (!strcmp(name, "glRotatef")) return emscripten_glRotatef;
   else if (!strcmp(name, "glVertexAttribPointer")) return emscripten_glVertexAttribPointer;
+  else if (!strcmp(name, "glVertexAttribIPointer")) return emscripten_glVertexAttribIPointer;
   else if (!strcmp(name, "glEnableVertexAttribArray")) return emscripten_glEnableVertexAttribArray;
   else if (!strcmp(name, "glDisableVertexAttribArray")) return emscripten_glDisableVertexAttribArray;
   else if (!strcmp(name, "glDrawArrays")) return emscripten_glDrawArrays;
