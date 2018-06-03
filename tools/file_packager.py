@@ -730,8 +730,7 @@ if has_preloaded:
     };
     function handleError(error) {
       console.error('package error:', error);
-    };
-  '''
+    };'''
 
   code += r'''
     function processPackageData(arrayBuffer) {
