@@ -1579,6 +1579,7 @@ void* emscripten_GetProcAddress(const char *name_) {
   else if (!strcmp(name, "glCompressedTexImage2D")) return emscripten_glCompressedTexImage2D;
   else if (!strcmp(name, "glCompressedTexSubImage2D")) return emscripten_glCompressedTexSubImage2D;
   else if (!strcmp(name, "glTexImage2D")) return emscripten_glTexImage2D;
+  else if (!strcmp(name, "glTexImage3D")) return emscripten_glTexImage3D;
   else if (!strcmp(name, "glTexStorage2D")) return emscripten_glTexStorage2D;
   else if (!strcmp(name, "glTexStorage3D")) return emscripten_glTexStorage3D;
   else if (!strcmp(name, "glTexSubImage2D")) return emscripten_glTexSubImage2D;
