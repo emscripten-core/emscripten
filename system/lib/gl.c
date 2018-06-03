@@ -99,6 +99,8 @@ GLAPI GLenum GLAPIENTRY emscripten_glGetError( void );
 
 GLAPI const GLubyte * GLAPIENTRY emscripten_glGetString( GLenum name );
 
+GLAPI const GLubyte * GLAPIENTRY emscripten_glGetStringi( GLenum name, GLuint index);
+
 GLAPI void GLAPIENTRY emscripten_glFinish( void );
 
 GLAPI void GLAPIENTRY emscripten_glFlush( void );
@@ -1561,6 +1563,7 @@ void* emscripten_GetProcAddress(const char *name_) {
   // main list
   if (!strcmp(name, "glPixelStorei")) return emscripten_glPixelStorei;
   else if (!strcmp(name, "glGetString")) return emscripten_glGetString;
+  else if (!strcmp(name, "glGetStringi")) return emscripten_glGetStringi;
   else if (!strcmp(name, "glGetIntegerv")) return emscripten_glGetIntegerv;
   else if (!strcmp(name, "glGetFloatv")) return emscripten_glGetFloatv;
   else if (!strcmp(name, "glGetBooleanv")) return emscripten_glGetBooleanv;
