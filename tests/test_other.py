@@ -6180,8 +6180,8 @@ main()
   double result = f2(5.5);
   dlclose (h);
 
-  if (result != 1.5) {
-    printf("Floating-point remainder failed\n");
+  if (result == 1.5) {
+    printf("Ok\n");
   }
   return 0;
 }
@@ -6203,7 +6203,7 @@ main()
     self.assertContained('Hello2', out)
     self.assertContained('Hello3', out)
     self.assertContained('Hello4', out)
-    self.assertNotContained('Floating-point remainder failed', out)
+    self.assertContained('Ok', out)
 
   def test_dlopen_rtld_global(self):
     # TODO: wasm support. this test checks RTLD_GLOBAL where a module is loaded
