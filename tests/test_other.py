@@ -4258,12 +4258,12 @@ tiny: %d
 
   def test_dashE(self):
     open('src.cpp', 'w').write(r'''#include <emscripten.h>
-EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
+__EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
 ''')
     def test(args=[]):
       print(args)
       out = run_process([PYTHON, EMCC, 'src.cpp', '-E'] + args, stdout=PIPE).stdout
-      self.assertContained(r'''__attribute__((used)) %d %d %d __attribute__((used))''' % (EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY), out)
+      self.assertContained('%d %d %d __attribute__((used))' % (EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY), out)
     test()
     test(['--bind'])
 
