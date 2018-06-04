@@ -85,6 +85,33 @@ function loadDynamicLibrary(lib) {
 }
 
 #if WASM
+var asm2wasmImports = { // special asm2wasm imports
+    "f64-rem": function(x, y) {
+        return x % y;
+    },
+    "debugger": function() {
+        debugger;
+    }
+#if NEED_ALL_ASM2WASM_IMPORTS
+    ,
+    "f64-to-int": function(x) {
+        return x | 0;
+    },
+    "i32s-div": function(x, y) {
+        return ((x | 0) / (y | 0)) | 0;
+    },
+    "i32u-div": function(x, y) {
+        return ((x >>> 0) / (y >>> 0)) >>> 0;
+    },
+    "i32s-rem": function(x, y) {
+        return ((x | 0) % (y | 0)) | 0;
+    },
+    "i32u-rem": function(x, y) {
+        return ((x >>> 0) % (y >>> 0)) >>> 0;
+    }
+#endif // NEED_ALL_ASM2WASM_IMPORTS
+};
+
 // Loads a side module from binary data
 function loadWebAssemblyModule(binary) {
   var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
@@ -159,32 +186,7 @@ function loadWebAssemblyModule(binary) {
     },
     'global.Math': Math,
     env: env,
-    'asm2wasm': { // special asm2wasm imports
-      "f64-rem": function(x, y) {
-        return x % y;
-      },
-      "debugger": function() {
-        debugger;
-      }
-#if NEED_ALL_ASM2WASM_IMPORTS
-      ,
-      "f64-to-int": function(x) {
-        return x | 0;
-      },
-      "i32s-div": function(x, y) {
-        return ((x | 0) / (y | 0)) | 0;
-      },
-      "i32u-div": function(x, y) {
-        return ((x >>> 0) / (y >>> 0)) >>> 0;
-      },
-      "i32s-rem": function(x, y) {
-        return ((x | 0) % (y | 0)) | 0;
-      },
-      "i32u-rem": function(x, y) {
-        return ((x >>> 0) % (y >>> 0)) >>> 0;
-      }
-#endif // NEED_ALL_ASM2WASM_IMPORTS
-    },
+    'asm2wasm': asm2wasmImports
   };
 #if ASSERTIONS
   var oldTable = [];
