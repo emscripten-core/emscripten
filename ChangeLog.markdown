@@ -9,6 +9,9 @@ Not all changes are documented here. In particular, new features, user-oriented 
 
 Current Trunk
 -------------
+
+v1.38.5: 06/04/2018
+-------------------
  - Update libc++ to 6.0, bringing c++17 support (std::byte etc.)
 
 v1.38.4: 05/29/2018
