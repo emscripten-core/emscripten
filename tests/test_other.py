@@ -1224,6 +1224,18 @@ int f() {
 
     self.assertContained('result: 1', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+  def test_dot_a_all_contents_invalid(self):
+    # check that we warn if an object file in a .a is not valid bitcode.
+    # do not silently ignore native object files, which may have been
+    # built by mistake
+    open('side.cpp', 'w').write(r'''int side() { return 5; }''')
+    open('main.cpp', 'w').write(r'''extern int side(); int main() { return side(); }''')
+    run_process([CLANG, 'side.cpp', '-c', '-o', 'native.o'])
+    run_process([PYTHON, EMAR, 'crs', 'foo.a', 'native.o'])
+    err = run_process([PYTHON, EMCC, 'main.cpp', 'foo.a'], stderr=PIPE).stderr
+    self.assertContained('warning: unresolved symbol: _Z4sidev', err) # was native, could not link it
+    self.assertContained('is not LLVM bitcode, cannot link', err)
+
   def test_export_all(self):
     lib = r'''
       #include <stdio.h>
@@ -4246,12 +4258,12 @@ tiny: %d
 
   def test_dashE(self):
     open('src.cpp', 'w').write(r'''#include <emscripten.h>
-EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
+__EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
 ''')
     def test(args=[]):
       print(args)
       out = run_process([PYTHON, EMCC, 'src.cpp', '-E'] + args, stdout=PIPE).stdout
-      self.assertContained(r'''__attribute__((used)) %d %d %d __attribute__((used))''' % (EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY), out)
+      self.assertContained('%d %d %d __attribute__((used))' % (EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY), out)
     test()
     test(['--bind'])
 

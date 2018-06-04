@@ -7569,17 +7569,17 @@ extern "C" {
     self.do_run(open(os.path.join(self.get_dir(), 'main.cpp'), 'r').read(), 'able to run memprof')
 
   def test_fs_dict(self):
-      Settings.FORCE_FILESYSTEM = 1
-      open(self.in_dir('pre.js'), 'w').write('''
-        Module = {};
-        Module['preRun'] = function() {
-            Module.print(typeof FS.filesystems['MEMFS']);
-            Module.print(typeof FS.filesystems['IDBFS']);
-            Module.print(typeof FS.filesystems['NODEFS']);
-        };
-      ''')
-      self.emcc_args += ['--pre-js', 'pre.js']
-      self.do_run('', 'object\nobject\nobject')
+    Settings.FORCE_FILESYSTEM = 1
+    open(self.in_dir('pre.js'), 'w').write('''
+      Module = {};
+      Module['preRun'] = function() {
+          Module.print(typeof FS.filesystems['MEMFS']);
+          Module.print(typeof FS.filesystems['IDBFS']);
+          Module.print(typeof FS.filesystems['NODEFS']);
+      };
+    ''')
+    self.emcc_args += ['--pre-js', 'pre.js']
+    self.do_run('int main() { return 0; }', 'object\nobject\nobject')
 
   @sync
   @no_wasm_backend("wasm backend has no support for fastcomp's -emscripten-assertions flag")

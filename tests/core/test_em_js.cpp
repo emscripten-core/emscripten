@@ -40,6 +40,14 @@ EM_JS(int, user_separator, (), {
   Module['print']("  can use <::> separator in user code");
   return 15;
 });
+EM_JS(int, user_comma, (), {
+  var x, y;
+  x = {};
+  y = 3;
+  x[y] = [1, 2, 3];
+  Module['print']("  can have commas in user code: " + x[y]);
+  return x[y][1];
+});
 
 EM_JS(const char*, return_str, (), {
   var jsString = 'hello from js';
@@ -64,6 +72,7 @@ int main() {
   printf("    skip_args returned: %f\n", skip_args(5, 7));
   printf("    add_outer returned: %f\n", add_outer(5.5, 7.0, 14.375));
   printf("    user_separator returned: %d\n", user_separator());
+  printf("    user_comma returned: %d\n", user_comma());
 
   printf("    return_str returned: %s\n", return_str());
 
