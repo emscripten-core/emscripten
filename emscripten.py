@@ -1849,7 +1849,6 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
     if DEBUG:
       logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
       t = time.time()
-      #s2wasm_args += ['--debug']
     shared.check_call(s2wasm_args, stdout=open(metadata_file, 'w'))
 
   metadata = create_metadata_wasm(open(metadata_file).read(), DEBUG)
@@ -1870,8 +1869,7 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
       shutil.copyfile(src, os.path.join(shared.CANONICAL_TEMP_DIR, dst))
       if src[-2:] == '.o' or src[-5:] == '.wasm':
         tmp = dst + '.wast'
-        shared.check_call([wasm_dis, src, '-o', tmp])
-        shutil.copyfile(tmp, os.path.join(shared.CANONICAL_TEMP_DIR, tmp))
+        shared.check_call([wasm_dis, src, '-o', os.path.join(shared.CANONICAL_TEMP_DIR, tmp)])
 
   with temp_files.get_file('.wb.o') as temp_o:
     backend_args = create_backend_args_wasm(infile, temp_o, settings)
@@ -1901,6 +1899,10 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
       '--allow-undefined',
       '--import-memory',
       '--export', '__wasm_call_ctors']
+
+    if settings['DEBUG_LEVEL'] < 2 and not settings['PROFILING_FUNCS']:
+      cmd.append('--strip-debug')
+
     for export in shared.expand_response(settings['EXPORTED_FUNCTIONS']):
       cmd += ['--export', export[1:]] # Strip the leading underscore
     shared.check_call(cmd)
@@ -1910,11 +1912,13 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
       t = time.time()
     debug_copy(base_wasm, 'base_wasm.wasm')
 
-    shared.check_call([wasm_emscripten_finalize, base_wasm, '-o', wasm,
-                       '--global-base=%s' % shared.Settings.GLOBAL_BASE,
-                       ('--emscripten-reserved-function-pointers=%d' %
-                        shared.Settings.RESERVED_FUNCTION_POINTERS)],
-                      stdout=open(metadata_file, 'w'))
+    cmd = [wasm_emscripten_finalize, base_wasm, '-o', wasm,
+           '--global-base=%s' % shared.Settings.GLOBAL_BASE,
+           ('--emscripten-reserved-function-pointers=%d' %
+            shared.Settings.RESERVED_FUNCTION_POINTERS)]
+    if settings['DEBUG_LEVEL'] >= 2 or settings['PROFILING_FUNCS']:
+      cmd.append('-g')
+    shared.check_call(cmd, stdout=open(metadata_file, 'w'))
 
     metadata = create_metadata_wasm(open(metadata_file).read(), DEBUG)
 
