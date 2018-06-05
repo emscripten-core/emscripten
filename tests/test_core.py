@@ -1711,19 +1711,7 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode', force_c=True)
 
   def test_em_asm_unused_arguments(self):
-    src = r'''
-      #include <stdio.h>
-      #include <emscripten.h>
-
-      int main(int argc, char **argv) {
-        int sum = EM_ASM_INT({
-           return $0 + $2;
-        }, 0, 1, 2);
-        printf("0+2=%d\n", sum);
-        return 0;
-      }
-    '''
-    self.do_run(src, '''0+2=2''')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unused_arguments')
 
   # Verify that EM_ASM macros support getting called with multiple arities.
   # Maybe tests will later be joined into larger compilation units?
