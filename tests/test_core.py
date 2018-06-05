@@ -1757,7 +1757,7 @@ int main(int argc, char **argv) {
     self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
     win = open('src.cpp.o.js').read()
 
-    if '-O2' in self.emcc_args:
+    if '-O2' in self.emcc_args and not Settings.WASM:
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
       possible_starts = ['// EMSCRIPTEN_START_FUNCS', 'var TOTAL_MEMORY']
       code_start = None
@@ -1797,7 +1797,7 @@ int main(int argc, char **argv) {
       self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
       win = open('src.cpp.o.js').read()
 
-      if '-O2' in self.emcc_args:
+      if '-O2' in self.emcc_args and not Settings.WASM:
         # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
         code_start = 'var TOTAL_MEMORY'
         fail = fail[fail.find(code_start):]
