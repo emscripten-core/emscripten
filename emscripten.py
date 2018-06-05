@@ -1900,8 +1900,12 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
       '--import-memory',
       '--export', '__wasm_call_ctors']
 
-    if settings['DEBUG_LEVEL'] < 2 and not settings['PROFILING_FUNCS']:
-      cmd.append('--strip-debug')
+    # emscripten-wasm-finalize currently depends on the presence of debug
+    # symbols for renaming of the __invoke symbols
+    # TODO(sbc): Re-enable once emscripten-wasm-finalize is fixed or we
+    # no longer need to rename these symbols.
+    #if settings['DEBUG_LEVEL'] < 2 and not settings['PROFILING_FUNCS']:
+    #  cmd.append('--strip-debug')
 
     for export in shared.expand_response(settings['EXPORTED_FUNCTIONS']):
       cmd += ['--export', export[1:]] # Strip the leading underscore

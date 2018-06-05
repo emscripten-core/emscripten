@@ -810,12 +810,14 @@ base align: 0, 0, 0, 0'''])
     self.do_run_in_out_file_test('tests', 'core', 'test_assert')
 
   def test_libcextra(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_libcextra')
+    self.do_run_in_out_file_test('tests', 'core', 'test_libcextra')
 
   def test_regex(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_regex')
+    self.do_run_in_out_file_test('tests', 'core', 'test_regex')
 
   def test_longjmp(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_longjmp')
+    self.emcc_args.append('-g3')
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp')
 
   def test_longjmp2(self):
