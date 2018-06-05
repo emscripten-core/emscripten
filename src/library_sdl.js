@@ -14,7 +14,8 @@ var LibrarySDL = {
 #if NO_FILESYSTEM == 0
     '$FS',
 #endif
-    '$PATH', '$Browser', 'SDL_GetTicks'
+    '$PATH', '$Browser', 'SDL_GetTicks', 'SDL_LockSurface',
+
   ],
   $SDL: {
     defaults: {
@@ -471,7 +472,6 @@ var LibrarySDL = {
         SDL.screen = null;
       }
     },
-    blitSurface__deps: ["SDL_LockSurface"],
     blitSurface: function(src, srcrect, dst, dstrect, scale) {
       var srcData = SDL.surfaces[src];
       var dstData = SDL.surfaces[dst];
