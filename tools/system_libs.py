@@ -215,6 +215,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'debug.cpp',
       'exception.cpp',
       'future.cpp',
+      'functional.cpp',
       'hash.cpp',
       'ios.cpp',
       'iostream.cpp',
@@ -234,7 +235,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'typeinfo.cpp',
       'utility.cpp',
       'valarray.cpp',
-      'variant.cpp'
+      'variant.cpp',
+      'vector.cpp'
     ]
     libcxxabi_include = shared.path_from_root('system', 'lib', 'libcxxabi', 'include')
     return build_libcxx(
