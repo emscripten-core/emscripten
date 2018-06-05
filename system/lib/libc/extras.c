@@ -21,7 +21,7 @@ long* _get_timezone() {
 
 char** environ;
 
-char** _get_environ() {
+char*** _get_environ() {
   return &environ;
 }
 
