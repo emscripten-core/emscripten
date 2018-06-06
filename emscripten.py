@@ -1895,7 +1895,7 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
       '--initial-memory=%s' % shared.Settings.TOTAL_MEMORY,
       temp_o, libc_rt_lib, compiler_rt_lib,
       '-o', base_wasm,
-      '--no-entry',
+      '--entry=main',
       '--allow-undefined',
       '--import-memory',
       '--export', '__wasm_call_ctors']
