@@ -341,13 +341,13 @@ class Library(object):
     """
     Return the appropriate file extension for this library.
     """
-    return 'a' if shared.Settings.WASM_BACKEND and shared.Settings.WASM_OBJECT_FILES else 'bc'
+    return '.a' if shared.Settings.WASM_BACKEND and shared.Settings.WASM_OBJECT_FILES else '.bc'
 
   def get_name(self):
     """
     Return the full name of the library file, including the file extension.
     """
-    return self.get_base_name() + '.' + self.get_ext()
+    return self.get_base_name() + self.get_ext()
 
   def get_symbols(self):
     """
@@ -549,7 +549,7 @@ class NoBCLibrary(Library):
   # libraries, only the object files, and by extension, their contained global constructors, that are actually needed
   # will be linked in.
   def get_ext(self):
-    return 'a'
+    return '.a'
 
 
 class libcompiler_rt(Library):
@@ -907,6 +907,34 @@ class libgl(MTLibrary):
     )
 
 
+class libembind(CXXLibrary):
+  name = 'libembind'
+  cflags = ['-std=c++11']
+  depends = ['libc++abi']
+  never_force = True
+
+  def get_files(self):
+    return [shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')]
+
+
+class libfetch(CXXLibrary, MTLibrary):
+  name = 'libfetch'
+  depends = ['libc++abi']
+  never_force = True
+
+  def get_files(self):
+    return [shared.path_from_root('system', 'lib', 'fetch', 'emscripten_fetch.cpp')]
+
+
+class libasmfs(CXXLibrary, MTLibrary):
+  name = 'libasmfs'
+  depends = ['libc++abi']
+  never_force = True
+
+  def get_files(self):
+    return [shared.path_from_root('system', 'lib', 'fetch', 'asmfs.cpp')]
+
+
 class libhtml5(Library):
   name = 'libhtml5'
   symbols = read_symbols(shared.path_from_root('system', 'lib', 'html5.symbols'))
@@ -1162,12 +1190,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   system_libs_map = Library.get_usable_variations()
   system_libs = sorted(system_libs_map.values(), key=lambda lib: lib.name)
 
-  # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
-  # 1 means include everything; otherwise it can be the name of a lib (libc++, etc.)
-  # You can provide 1 to include everything, or a comma-separated list with the ones you want
+  # Setting this in the environment will avoid checking dependencies and make
+  # building big projects a little faster 1 means include everything; otherwise
+  # it can be the name of a lib (libc++, etc.).
+  # You can provide 1 to include everything, or a comma-separated list with the
+  # ones you want
   force = os.environ.get('EMCC_FORCE_STDLIBS')
   if force == '1':
-    force = ','.join(key for key, lib in system_libs_map.items() if not lib.never_force)
+    force = ','.join(name for name, lib in system_libs_map.items() if not lib.never_force)
   force_include = set((force.split(',') if force else []) + forced)
   if force_include:
     logger.debug('forcing stdlibs: ' + str(force_include))
@@ -1186,7 +1216,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
     logger.debug('including %s (%s)' % (lib.name, lib.get_name()))
 
-    need_whole_archive = lib.name in force_include and lib.get_ext() != 'bc'
+    need_whole_archive = lib.name in force_include and lib.get_ext() == '.a'
     libs_to_link.append((lib.get_path(), need_whole_archive))
 
     # Recursively add dependencies
