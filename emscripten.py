@@ -2022,10 +2022,13 @@ def create_em_js(forwarded_json, metadata):
   em_js_funcs = []
   separator = '<::>'
   for name, raw in metadata.get('emJsFuncs', {}).items():
-    parts = raw.split(separator)
-    assert len(parts) >= 2
-    args, body = parts[0], separator.join(parts[1:])
-    args = args[1:-1].split(',')
+    assert separator in raw
+    args, body = raw.split(separator, 1)
+    args = args[1:-1]
+    if args == 'void':
+      args = []
+    else:
+      args = args.split(',')
     arg_names = [arg.split()[-1] for arg in args if arg]
     func = 'function {}({}){}'.format(name, ','.join(arg_names), body)
     em_js_funcs.append(func)
@@ -2124,11 +2127,11 @@ var establishStackSpace = Module['establishStackSpace'];
   module.append(jscall_funcs)
   return module
 
-def create_backend_args_wasm(infile, temp_s, settings):
+def create_backend_args_wasm(infile, outfile, settings):
   backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
   args = [backend_compiler, infile, '-mtriple={}'.format(shared.WASM_TARGET),
                   '-asm-verbose=false',
-                  '-o', temp_s]
+                  '-o', outfile]
   if settings['EXPERIMENTAL_USE_LLD']:
     args += ['-filetype=obj']
   else:
