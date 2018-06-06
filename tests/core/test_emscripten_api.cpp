@@ -1,6 +1,7 @@
+#include <assert.h>
+#include <limits.h>
 #include <stdio.h>
 #include "emscripten.h"
-#include "assert.h"
 
 extern "C" {
 void save_me_aimee() { printf("mann\n"); }
@@ -16,7 +17,7 @@ int main() {
   double d = 0.1234567891231219886553;
   int len = emscripten_print_double(d, NULL, -1);
   char buffer[len+1];
-  buffer[len] = 255;
+  buffer[len] = CHAR_MAX;
   emscripten_print_double(d, buffer, len+1);
   assert(buffer[len] == 0); // null terminated
   double e;
