@@ -1907,6 +1907,18 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
         cmd += ['--export', export[1:]] # Strip the leading underscore
     shared.check_call(cmd)
 
+    if settings['DEBUG_LEVEL'] >= 2 or settings['PROFILING_FUNCS']:
+      if settings['DEBUG_LEVEL'] >= 4:
+        sourcemap_cmd = [shared.PYTHON, path_from_root('tools', 'wasm-sourcemap.py'), 
+                         base_wasm,
+                         '--dwarfdump=' + shared.LLVM_DWARFDUMP,
+                         '-o',  base_wasm + '.map']
+        if not settings['SOURCE_MAP_BASE']:
+          logging.warn("Wasm source map won't be usable in a browser without --source-map-base")
+        else:
+          sourcemap_cmd += ['--source-map-url=' + settings['SOURCE_MAP_BASE'] + os.path.basename(settings['WASM_BINARY_FILE']) + '.map']
+        shared.check_call(sourcemap_cmd)
+
     if DEBUG:
       logging.debug('  emscript: lld took %s seconds' % (time.time() - t))
       t = time.time()
@@ -1917,7 +1929,8 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
            ('--emscripten-reserved-function-pointers=%d' %
             shared.Settings.RESERVED_FUNCTION_POINTERS)]
     if settings['DEBUG_LEVEL'] >= 2 or settings['PROFILING_FUNCS']:
-      cmd.append('-g')
+      cmd += ['-g', '--input-source-map=' + base_wasm + '.map']
+      cmd += ['--output-source-map=' + wasm + '.map']
     shared.check_call(cmd, stdout=open(metadata_file, 'w'))
 
     metadata = create_metadata_wasm(open(metadata_file).read(), DEBUG)
