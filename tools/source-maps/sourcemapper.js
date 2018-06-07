@@ -123,14 +123,25 @@ function generateMap(mappings, sourceRoot, mapFileBaseName, generatedLineOffset)
   var generator = new SourceMapGenerator({ file: mapFileBaseName });
   var seenFiles = Object.create(null);
 
+  // Absolute paths are slightly tweaked below to prevent them from
+  // being resolved relative to the source map. Please note this depends
+  // on the fact that the source root is not set for now. What if the
+  // source root becomes configurable in the future? We tend to stay
+  // stupid in that case because Users Are Always Right(TM) and maybe
+  // their HTTP servers are configured in a smart way to handle the
+  // absolute paths.
+  var relativeScheme = "";
+  var absoluteScheme = JSON.parse(generator.toString()).sourceRoot ? "" : "file://";
+
   for (var generatedLineNumber in mappings) {
     var generatedLineNumber = parseInt(generatedLineNumber, 10);
     var mapping = mappings[generatedLineNumber];
     var originalFileName = mapping.originalFileName;
+    var scheme = path.isAbsolute(originalFileName) ? absoluteScheme : relativeScheme;
     generator.addMapping({
       generated: { line: generatedLineNumber + generatedLineOffset, column: 0 },
       original: { line: mapping.originalLineNumber, column: 0 },
-      source: originalFileName
+      source: scheme + originalFileName,
     });
 
     // we could call setSourceContent repeatedly, but readFileSync is slow, so
@@ -139,7 +150,7 @@ function generateMap(mappings, sourceRoot, mapFileBaseName, generatedLineOffset)
       seenFiles[originalFileName] = true;
       var rootedPath = joinPath(sourceRoot, originalFileName);
       try {
-        generator.setSourceContent(originalFileName, fs.readFileSync(rootedPath, 'utf-8'));
+        generator.setSourceContent(scheme + originalFileName, fs.readFileSync(rootedPath, 'utf-8'));
       } catch (e) {
         console.warn("sourcemapper: Unable to find original file for " + originalFileName +
           " at " + rootedPath);

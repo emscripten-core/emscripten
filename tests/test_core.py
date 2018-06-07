@@ -7036,7 +7036,20 @@ Module.printErr = Module['printErr'] = function(){};
         self.assertPathsIdentical(map_referent, data['file'])
       if not self.is_wasm_backend():
         assert len(data['sources']) == 1, data['sources']
-        self.assertPathsIdentical(src_filename, data['sources'][0])
+        if os.path.isabs(src_filename):
+          if Settings.WASM:
+            # TODO: Remove this when the else branch also works with
+            # Binaryen. Both styles are tolerated in temporary so that
+            # the test can pass during the transition.
+            if data['sources'][0].startswith('file://'):
+              self.assertPathsIdentical(src_filename, data['sources'][0][len('file://'):])
+            else:
+              self.assertPathsIdentical(src_filename, data['sources'][0])
+          else:
+            assert data['sources'][0].startswith('file://'), data['sources'][0]
+            self.assertPathsIdentical(src_filename, data['sources'][0][len('file://'):])
+        else:
+          self.assertPathsIdentical(src_filename, data['sources'][0])
       else:
         # Wasm backend currently adds every file linked as part of compiler-rt
         # to the 'sources' field.
@@ -7058,7 +7071,20 @@ Module.printErr = Module['printErr'] = function(){};
         mappings = encode_utf8(mappings)
       seen_lines = set()
       for m in mappings:
-        self.assertPathsIdentical(src_filename, m['source'])
+        if os.path.isabs(src_filename):
+          if Settings.WASM:
+            # TODO: Remove this when the else branch also works with
+            # Binaryen. Both styles are tolerated in temporary so that
+            # the test can pass during the transition.
+            if m['source'].startswith('file://'):
+              self.assertPathsIdentical(src_filename, m['source'][len('file://'):])
+            else:
+              self.assertPathsIdentical(src_filename, m['source'])
+          else:
+            assert m['source'].startswith('file://'), m['source']
+            self.assertPathsIdentical(src_filename, m['source'][len('file://'):])
+        else:
+          self.assertPathsIdentical(src_filename, m['source'])
         seen_lines.add(m['originalLine'])
       # ensure that all the 'meaningful' lines in the original code get mapped
       assert seen_lines.issuperset([6, 7, 11, 12])
