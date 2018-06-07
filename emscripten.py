@@ -1900,8 +1900,11 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
     #if settings['DEBUG_LEVEL'] < 2 and not settings['PROFILING_FUNCS']:
     #  cmd.append('--strip-debug')
 
-    for export in shared.expand_response(settings['EXPORTED_FUNCTIONS']):
-      cmd += ['--export', export[1:]] # Strip the leading underscore
+    if settings['EXPORT_ALL']:
+      cmd += ['--no-gc-sections', '--export-all']
+    else:
+      for export in shared.expand_response(settings['EXPORTED_FUNCTIONS']):
+        cmd += ['--export', export[1:]] # Strip the leading underscore
     shared.check_call(cmd)
 
     if DEBUG:
