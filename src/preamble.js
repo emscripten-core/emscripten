@@ -497,47 +497,42 @@ function UTF8ToString(ptr, len) {
 //                    maxBytesToWrite=0 does not write any bytes to the output, not even the null terminator.
 // Returns the number of bytes written, EXCLUDING the null terminator.
 function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
-  //based on https://gist.github.com/pascaldekloe/62546103a1576803dade9269ccf76330
-  if (!(maxBytesToWrite > 0)) // Parameter maxBytesToWrite is not optional. Negative values, 0, null, undefined and false each don't write out any bytes.
-    return 0;
+    //based on https://gist.github.com/pascaldekloe/62546103a1576803dade9269ccf76330
+    if (!(maxBytesToWrite > 0)) // Parameter maxBytesToWrite is not optional. Negative values, 0, null, undefined and false each don't write out any bytes.
+        return 0;
 
-    var fnRangeCheck = function RangeCheck(outIdx, outIdxStart, bytesToWrite)
+    var fnRangeExceeded = function RangeExceeded(outIdx, outIdxStart, bytesToWrite)
     {
         //>= to reserve one byte for the null terminator
-        if((outIdx - outIdxStart + bytesToWrite) >= maxBytesToWrite) throw 'UTF-8 encode: about to exceed maximum length: ' + maxBytesToWrite + ' bytes.';
+        return ((outIdx - outIdxStart + bytesToWrite) >= maxBytesToWrite);
     };
 
     var outIdxStart = outIdx;
-	//var bytes = new Uint8Array(s.length * 4);
     for (var inIdx = 0; inIdx != str.length; inIdx++) {
-        //throw 'hello new stringToUTF8Array';
-
+        if (fnRangeExceeded(outIdx, outIdxStart, 1)) break;//A
         var char = str.charCodeAt(inIdx);
         if (char < 128) {
-            fnRangeCheck(outIdx, outIdxStart, 1);
-            outU8Array[outIdx++] = char;
+            outU8Array[outIdx++] = char;//range checked at A
             continue;
         }
         if (char < 2048) {
-            fnRangeCheck(outIdx, outIdxStart, 1);
-            outU8Array[outIdx++] = char >> 6 | 192;
+            outU8Array[outIdx++] = char >> 6 | 192;//range checked at A
         } else {
             if (char > 0xd7ff && char < 0xdc00) {
                 if (++inIdx == str.length) throw 'UTF-8 encode: incomplete surrogate pair';
                 var char2 = str.charCodeAt(inIdx);
                 if (char2 < 0xdc00 || char2 > 0xdfff) throw 'UTF-8 encode: second char code 0x' + char2.toString(16) + ' at index ' + inIdx + ' in surrogate pair out of range';
                 char = 0x10000 + ((char & 0x03ff) << 10) + (char2 & 0x03ff);
-                fnRangeCheck(outIdx, outIdxStart, 2);
-                outU8Array[outIdx++] = char >> 18 | 240;
+                outU8Array[outIdx++] = char >> 18 | 240;//range checked at A
+                if (fnRangeExceeded(outIdx, outIdxStart, 1)) break;
                 outU8Array[outIdx++] = char >> 12 & 63 | 128;
-            } else { // char <= 0xffff
-                fnRangeCheck(outIdx, outIdxStart, 1);
-                outU8Array[outIdx++] = char >> 12 | 224;
+            } else {
+                outU8Array[outIdx++] = char >> 12 | 224;//range checked at A
             }
-            fnRangeCheck(outIdx, outIdxStart, 1);
+            if (fnRangeExceeded(outIdx, outIdxStart, 1)) break;
             outU8Array[outIdx++] = char >> 6 & 63 | 128;
         }
-        fnRangeCheck(outIdx, outIdxStart, 1);
+        if (fnRangeExceeded(outIdx, outIdxStart, 1)) break;
         outU8Array[outIdx++] = char & 63 | 128;
     }
     // Null-terminate the pointer to the buffer, already range checked
