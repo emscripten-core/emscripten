@@ -20,14 +20,7 @@ from collections import OrderedDict
 from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
 from tools.response_file import substitute_response_files
-from tools.shared import WINDOWS, asstr
-
-__rootpath__ = os.path.abspath(os.path.dirname(__file__))
-def path_from_root(*pathelems):
-  """Returns the absolute path for which the given path elements are
-  relative to the emscripten root.
-  """
-  return os.path.join(__rootpath__, *pathelems)
+from tools.shared import WINDOWS, asstr, path_from_root
 
 def get_configuration():
   if hasattr(get_configuration, 'configuration'):
