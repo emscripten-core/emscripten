@@ -308,7 +308,7 @@ def expected_llvm_version():
   if get_llvm_target() == WASM_TARGET:
     return "7.0"
   else:
-    return "5.0"
+    return "6.0"
 
 def get_clang_version():
   global actual_clang_version
@@ -714,7 +714,7 @@ LLVM_DIS=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dis')))
 LLVM_NM=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
 LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
 LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
-LLD=os.path.expanduser(build_llvm_tool_path(exe_suffix('ld.lld')))
+WASM_LD=os.path.expanduser(build_llvm_tool_path(exe_suffix('wasm-ld')))
 
 EMSCRIPTEN = path_from_root('emscripten.py')
 EMCC = path_from_root('emcc.py')
@@ -1289,7 +1289,7 @@ class ObjectFileInfo(object):
     self.undefs = undefs
     self.commons = commons
 
-  def is_valid(self):
+  def is_valid_for_nm(self):
     return self.returncode == 0
 
 # Due to a python pickling issue, the following two functions must be at top level, or multiprocessing pool spawn won't find them.
@@ -1614,12 +1614,12 @@ class Building(object):
       env[k] = v
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
       try:
-        Building.configure(configure + configure_args, env=env, stdout=open(os.path.join(project_dir, 'configure_'), 'w') if EM_BUILD_VERBOSE_LEVEL < 2 else None,
+        Building.configure(configure + configure_args, env=env, stdout=open(os.path.join(project_dir, 'configure_out'), 'w') if EM_BUILD_VERBOSE_LEVEL < 2 else None,
                                                                 stderr=open(os.path.join(project_dir, 'configure_err'), 'w') if EM_BUILD_VERBOSE_LEVEL < 1 else None)
       except subprocess.CalledProcessError as e:
         pass # Ignore exit code != 0
     def open_make_out(i, mode='r'):
-      return open(os.path.join(project_dir, 'make_' + str(i)), mode)
+      return open(os.path.join(project_dir, 'make_out' + str(i)), mode)
 
     def open_make_err(i, mode='r'):
       return open(os.path.join(project_dir, 'make_err' + str(i)), mode)
@@ -1743,8 +1743,15 @@ class Building(object):
     # returns True.
     def consider_object(f, force_add=False):
       new_symbols = Building.llvm_nm(f)
-      if not new_symbols.is_valid():
-        logging.warning('object %s is not valid, cannot link' % (f))
+      # Check if the object was valid according to llvm-nm. It also accepts
+      # native object files.
+      if not new_symbols.is_valid_for_nm():
+        logging.warning('object %s is not valid according to llvm-nm, cannot link' % (f))
+        return False
+      # Check the object is valid for us, and not a native object file.
+      # TODO: for lld, also check if a wasm object file?
+      if not Building.is_bitcode(f):
+        logging.warning('object %s is not LLVM bitcode, cannot link' % (f))
         return False
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
@@ -1885,11 +1892,8 @@ class Building(object):
     #opts += ['-debug-pass=Arguments']
     if not Settings.SIMD:
       opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false']
-      if not Settings.WASM_BACKEND:
-        # This option have been removed in llvm ToT
-        opts += ['-vectorize-slp-aggressive=false']
     else:
-      opts += ['-bb-vectorize-vector-bits=128']
+      opts += ['-force-vector-width=4']
 
     logging.debug('emcc: LLVM opts: ' + ' '.join(opts) + '  [num inputs: ' + str(len(inputs)) + ']')
     target = out or (filename + '.opt.bc')

@@ -1478,7 +1478,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               logging.debug('optimizing %s', input_file)
               #if DEBUG: shutil.copyfile(temp_file, os.path.join(shared.configuration.CANONICAL_TEMP_DIR, 'to_opt.bc')) # useful when LLVM opt aborts
               new_temp_file = in_temp(unsuffixed(uniquename(temp_file)) + '.o')
-              shared.Building.llvm_opt(temp_file, options.llvm_opts, new_temp_file)
+              # after optimizing, lower intrinsics to libc calls so that our linking code
+              # will find them (otherwise, llvm.cos.f32() will not link in cosf(), and
+              # we end up calling out to JS for Math.cos).
+              opts = options.llvm_opts + ['-lower-non-em-intrinsics']
+              shared.Building.llvm_opt(temp_file, opts, new_temp_file)
               temp_files[pos] = (temp_files[pos][0], new_temp_file)
 
       # Decide what we will link
@@ -2499,8 +2503,8 @@ def modularize():
   src = open(final).read()
   final = final + '.modular.js'
   f = open(final, 'w')
+
   # Included code may refer to Module (e.g. from file packager), so alias it
-  # Export the function as Node module, otherwise it is lost when loaded in Node.js or similar environments
   f.write('''var %(EXPORT_NAME)s = function(%(EXPORT_NAME)s) {
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
 
@@ -2508,17 +2512,26 @@ def modularize():
 
   return %(EXPORT_NAME)s;
 }%(instantiate)s;
-if (typeof exports === 'object' && typeof module === 'object')
-  module.exports = %(EXPORT_NAME)s;
-else if (typeof define === 'function' && define['amd'])
-  define([], function() { return %(EXPORT_NAME)s; });
-else if (typeof exports === 'object')
-  exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
 ''' % {
   'EXPORT_NAME': shared.Settings.EXPORT_NAME,
   'src': src,
   'instantiate': '()' if shared.Settings.MODULARIZE_INSTANCE else ''
 })
+
+  # Export using a UMD style export, or ES6 exports if selected
+  if shared.Settings.EXPORT_ES6:
+    f.write('''export default %s;''' % shared.Settings.EXPORT_NAME)
+  else:
+    f.write('''if (typeof exports === 'object' && typeof module === 'object')
+    module.exports = %(EXPORT_NAME)s;
+  else if (typeof define === 'function' && define['amd'])
+    define([], function() { return %(EXPORT_NAME)s; });
+  else if (typeof exports === 'object')
+    exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
+  ''' % {
+    'EXPORT_NAME': shared.Settings.EXPORT_NAME
+  })
+
   f.close()
   if DEBUG: save_intermediate('modularized', 'js')
 
