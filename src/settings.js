@@ -945,3 +945,5 @@ var ENVIRONMENT_MAY_BE_NODE = 1;
 var ENVIRONMENT_MAY_BE_SHELL = 1;
 var ENVIRONMENT_MAY_BE_WEB_OR_WORKER = 1;
 
+var MODULE_CACHE = []; // Configurations for caching wasm module by IndexedDB.
+

@@ -78,6 +78,23 @@ The following compiler settings can help (see ``src/settings.js`` for more detai
 - The ``ENVIRONMENT`` flag lets you specify that the output will only run on the web, or only run in node.js, etc., which prevents the compiler from emitting code to support all possible runtime environments. (When you tell emcc to emit an HTML file, it automatically sets the output to web-only.)
 - You can use ``ELIMINATE_DUPLICATE_FUNCTIONS`` to remove duplicate functions, which C++ templates often create. (This is already done by default for wasm, in ``-O1`` and above.)
 
+
+
+Use cache to save loading time
+-------------------------------------
+
+You can enable module caching when building to WebAssembly. For example:
+.. code-block:: bash
+
+  emcc file.cpp -s MODULE_CACHE="[1, 'appName']" -s WASM=1 -o QuickSort.html
+
+Here you need to use the "MODULE_CACHE" parameter to specify the caching version (eg: 1) and module name (eg: 'appName'). With the module caching enabled, the corresponding "WebAssembly.Module" object will be load from the local cache directly rather than fetching it from remote server. This measure will reduce a lot of overhead caused by network request.
+
+
+.. note:: This option can only be used on the latest Firefox and Safari by default, due to some "`concerns <https://github.com/WebAssembly/design/issues/972>`", the "structured clone for wasm modules" feature has already been disabled by default in Chrome, you need to enable it manually if you want to use this option on Chrome.
+
+
+
 Very large codebases
 ====================
 
