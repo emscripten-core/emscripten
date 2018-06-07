@@ -91,7 +91,7 @@ You can enable module caching when building to WebAssembly. For example:
 Here you need to use the "MODULE_CACHE" parameter to specify the caching version (eg: 1) and module name (eg: 'appName'). With the module caching enabled, the corresponding "WebAssembly.Module" object will be load from the local cache directly rather than fetching it from remote server. This measure will reduce a lot of overhead caused by network request.
 
 
-.. note:: This option can only be used on the latest Firefox and Safari by default, due to some "`concerns <https://code.google.com/p/v8/issues/detail?id=4392>`", the "structured clone for wasm modules" feature has already been disabled by default in Chrome, you need to enable it if you want to use this option on Chrome.
+.. note:: This option can only be used on the latest Firefox and Safari by default, due to some "`concerns <https://github.com/WebAssembly/design/issues/972>`", the "structured clone for wasm modules" feature has already been disabled by default in Chrome, you need to enable it manually if you want to use this option on Chrome.
 
 
 
