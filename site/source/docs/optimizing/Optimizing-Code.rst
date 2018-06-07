@@ -68,11 +68,15 @@ In addition to the above, the following tips can help to reduce code size:
 - Use :ref:`the closure compiler <emcc-closure>` on the non-compiled code: ``--closure 1``. This can hugely reduce the size of the support JavaScript code, and is highly recommended. However, if you add your own additional JavaScript code (in a ``--pre-js``, for example) then you need to make sure it uses `closure annotations properly <https://developers.google.com/closure/compiler/docs/api-tutorial3>`_.
 - `Floh's blogpost on this topic <http://floooh.github.io/2016/08/27/asmjs-diet.html>`_ is very helpful.
 - Use :ref:`llvm-lto <emcc-llvm-lto>` when compiling from bitcode to JavaScript: ``--llvm-lto 1``. This can break some code as the LTO code path is less tested.
-- Disable inlining when possible, using ``-s INLINING_LIMIT=1``. Compiling with -Os or -Oz generally avoids inlining too. (Inlining can make code faster, though, so use this carefully.)
 - Make sure to use gzip compression on your webserver, which all browsers now support.
-- You can use the ``NO_FILESYSTEM`` option to disable bundling of filesystem support code (the compiler should optimize it out if not used, but may not always succeed). This can be useful if you are building a pure computational library, for example. See ``settings.js`` for more details.
-- You can use ``ELIMINATE_DUPLICATE_FUNCTIONS`` to remove duplicate functions, which C++ templates often create. See ``settings.js`` for more details.
 - You can move some of your code into the `Emterpreter <https://github.com/kripken/emscripten/wiki/Emterpreter>`_, which will then run much slower (as it is interpreted), but it will transfer all that code into a smaller amount of data.
+
+The following compiler settings can help (see ``src/settings.js`` for more details):
+
+- Disable inlining when possible, using ``-s INLINING_LIMIT=1``. Compiling with -Os or -Oz generally avoids inlining too. (Inlining can make code faster, though, so use this carefully.)
+- You can use the ``NO_FILESYSTEM`` option to disable bundling of filesystem support code (the compiler should optimize it out if not used, but may not always succeed). This can be useful if you are building a pure computational library, for example.
+- The ``ENVIRONMENT`` flag lets you specify that the output will only run on the web, or only run in node.js, etc., which prevents the compiler from emitting code to support all possible runtime environments. (When you tell emcc to emit an HTML file, it automatically sets the output to web-only.)
+- You can use ``ELIMINATE_DUPLICATE_FUNCTIONS`` to remove duplicate functions, which C++ templates often create. (This is already done by default for wasm, in ``-O1`` and above.)
 
 Very large codebases
 ====================

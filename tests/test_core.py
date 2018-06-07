@@ -1711,19 +1711,7 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode', force_c=True)
 
   def test_em_asm_unused_arguments(self):
-    src = r'''
-      #include <stdio.h>
-      #include <emscripten.h>
-
-      int main(int argc, char **argv) {
-        int sum = EM_ASM_INT({
-           return $0 + $2;
-        }, 0, 1, 2);
-        printf("0+2=%d\n", sum);
-        return 0;
-      }
-    '''
-    self.do_run(src, '''0+2=2''')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unused_arguments')
 
   # Verify that EM_ASM macros support getting called with multiple arities.
   # Maybe tests will later be joined into larger compilation units?
@@ -5163,7 +5151,7 @@ int main(int argc, char** argv) {
   puts(buffer);
 }
 '''
-    self.emcc_args += ['--js-library', 'lib.js']
+    self.emcc_args += ['--js-library', 'lib.js',  '-std=c++11']
     self.do_run(src, 'dddddddddd')
     Settings.INCLUDE_FULL_LIBRARY = 1
     self.do_run(src, 'dddddddddd')
@@ -7569,17 +7557,17 @@ extern "C" {
     self.do_run(open(os.path.join(self.get_dir(), 'main.cpp'), 'r').read(), 'able to run memprof')
 
   def test_fs_dict(self):
-      Settings.FORCE_FILESYSTEM = 1
-      open(self.in_dir('pre.js'), 'w').write('''
-        Module = {};
-        Module['preRun'] = function() {
-            Module.print(typeof FS.filesystems['MEMFS']);
-            Module.print(typeof FS.filesystems['IDBFS']);
-            Module.print(typeof FS.filesystems['NODEFS']);
-        };
-      ''')
-      self.emcc_args += ['--pre-js', 'pre.js']
-      self.do_run('', 'object\nobject\nobject')
+    Settings.FORCE_FILESYSTEM = 1
+    open(self.in_dir('pre.js'), 'w').write('''
+      Module = {};
+      Module['preRun'] = function() {
+          Module.print(typeof FS.filesystems['MEMFS']);
+          Module.print(typeof FS.filesystems['IDBFS']);
+          Module.print(typeof FS.filesystems['NODEFS']);
+      };
+    ''')
+    self.emcc_args += ['--pre-js', 'pre.js']
+    self.do_run('int main() { return 0; }', 'object\nobject\nobject')
 
   @sync
   @no_wasm_backend("wasm backend has no support for fastcomp's -emscripten-assertions flag")

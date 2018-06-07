@@ -628,6 +628,8 @@ var MODULARIZE_INSTANCE = 0; // Similar to MODULARIZE, but while that mode expor
                              // Note that the promise-like API MODULARIZE provides isn't
                              // available here (since you arean't creating the instance
                              // yourself).
+var EXPORT_ES6 = 0; // Export using an ES6 Module export rather than a UMD export.
+                    // MODULARIZE must be enabled for ES6 exports.
 
 var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
                    // print out anything at all whatsoever. This is useful for benchmarking.

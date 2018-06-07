@@ -612,16 +612,8 @@ LibraryManager.library = {
     Module['abort']();
   },
 
-  environ__deps: ['$ENV'],
-#if USE_PTHREADS
-  environ: '; if (ENVIRONMENT_IS_PTHREAD) _environ = PthreadWorkerInit._environ; else PthreadWorkerInit._environ = _environ = allocate(1, "i32*", ALLOC_STATIC)',
-#else
-  environ: '{{{ makeStaticAlloc(1) }}}',
-#endif
-  __environ__deps: ['environ'],
-  __environ: 'environ',
-  __buildEnvironment__deps: ['__environ'],
-  __buildEnvironment: function(env) {
+  __buildEnvironment__deps: ['$ENV'],
+  __buildEnvironment: function(environ) {
     // WARNING: Arbitrary limit!
     var MAX_ENV_VALUES = 64;
     var TOTAL_ENV_SIZE = 1024;
@@ -639,21 +631,21 @@ LibraryManager.library = {
       ENV['LANG'] = 'C.UTF-8';
       ENV['_'] = Module['thisProgram'];
       // Allocate memory.
-      poolPtr = staticAlloc(TOTAL_ENV_SIZE);
-      envPtr = staticAlloc(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
+      poolPtr = getMemory(TOTAL_ENV_SIZE);
+      envPtr = getMemory(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
       {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}};
-      {{{ makeSetValue(makeGlobalUse('_environ'), 0, 'envPtr', 'i8*') }}};
+      {{{ makeSetValue('environ', 0, 'envPtr', 'i8*') }}};
     } else {
-      envPtr = {{{ makeGetValue(makeGlobalUse('_environ'), '0', 'i8**') }}};
+      envPtr = {{{ makeGetValue('environ', '0', 'i8**') }}};
       poolPtr = {{{ makeGetValue('envPtr', '0', 'i8*') }}};
     }
 
     // Collect key=value lines.
     var strings = [];
     var totalSize = 0;
-    for (var key in env) {
-      if (typeof env[key] === 'string') {
-        var line = key + '=' + env[key];
+    for (var key in ENV) {
+      if (typeof ENV[key] === 'string') {
+        var line = key + '=' + ENV[key];
         strings.push(line);
         totalSize += line.length;
       }
@@ -672,12 +664,6 @@ LibraryManager.library = {
     }
     {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}};
   },
-  $ENV__deps: ['__buildEnvironment'],
-#if USE_PTHREADS
-  $ENV__postset: 'if (!ENVIRONMENT_IS_PTHREAD) ___buildEnvironment(ENV);',
-#else
-  $ENV__postset: '___buildEnvironment(ENV);',
-#endif
   $ENV: {},
   getenv__deps: ['$ENV'],
   getenv__proxy: 'sync',
@@ -700,7 +686,7 @@ LibraryManager.library = {
     // int clearenv (void);
     // http://www.gnu.org/s/hello/manual/libc/Environment-Access.html#index-clearenv-3107
     ENV = {};
-    ___buildEnvironment(ENV);
+    ___buildEnvironment(__get_environ());
     return 0;
   },
   setenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
@@ -721,7 +707,7 @@ LibraryManager.library = {
     }
     if (ENV.hasOwnProperty(name) && !overwrite) return 0;
     ENV[name] = val;
-    ___buildEnvironment(ENV);
+    ___buildEnvironment(__get_environ());
     return 0;
   },
   unsetenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
@@ -741,7 +727,7 @@ LibraryManager.library = {
     }
     if (ENV.hasOwnProperty(name)) {
       delete ENV[name];
-      ___buildEnvironment(ENV);
+      ___buildEnvironment(__get_environ());
     }
     return 0;
   },
@@ -768,7 +754,7 @@ LibraryManager.library = {
     var value = string.slice(splitPoint + 1);
     if (!(name in ENV) || ENV[name] !== value) {
       ENV[name] = value;
-      ___buildEnvironment(ENV);
+      ___buildEnvironment(__get_environ());
     }
     return 0;
   },
@@ -4781,13 +4767,12 @@ LibraryManager.library = {
 };
 
 function autoAddDeps(object, name) {
-  name = [name];
   for (var item in object) {
     if (item.substr(-6) != '__deps') {
       if (!object[item + '__deps']) {
-        object[item + '__deps'] = name;
+        object[item + '__deps'] = [name];
       } else {
-        object[item + '__deps'].push(name[0]); // add to existing list
+        object[item + '__deps'].push(name); // add to existing list
       }
     }
   }

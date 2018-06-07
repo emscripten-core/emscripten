@@ -1224,6 +1224,18 @@ int f() {
 
     self.assertContained('result: 1', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+  def test_dot_a_all_contents_invalid(self):
+    # check that we warn if an object file in a .a is not valid bitcode.
+    # do not silently ignore native object files, which may have been
+    # built by mistake
+    open('side.cpp', 'w').write(r'''int side() { return 5; }''')
+    open('main.cpp', 'w').write(r'''extern int side(); int main() { return side(); }''')
+    run_process([CLANG, 'side.cpp', '-c', '-o', 'native.o'])
+    run_process([PYTHON, EMAR, 'crs', 'foo.a', 'native.o'])
+    err = run_process([PYTHON, EMCC, 'main.cpp', 'foo.a'], stderr=PIPE).stderr
+    self.assertContained('warning: unresolved symbol: _Z4sidev', err) # was native, could not link it
+    self.assertContained('is not LLVM bitcode, cannot link', err)
+
   def test_export_all(self):
     lib = r'''
       #include <stdio.h>
@@ -4246,12 +4258,12 @@ tiny: %d
 
   def test_dashE(self):
     open('src.cpp', 'w').write(r'''#include <emscripten.h>
-EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
+__EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
 ''')
     def test(args=[]):
       print(args)
       out = run_process([PYTHON, EMCC, 'src.cpp', '-E'] + args, stdout=PIPE).stdout
-      self.assertContained(r'''__attribute__((used)) %d %d %d __attribute__((used))''' % (EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY), out)
+      self.assertContained('%d %d %d __attribute__((used))' % (EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY), out)
     test()
     test(['--bind'])
 
@@ -7976,7 +7988,7 @@ int main() {
                  0, [],                         ['tempDoublePtr', 'waka'],     8,   0,    0), # totally empty!
       # but we don't metadce with linkable code! other modules may want it
       (['-O3', '-s', 'MAIN_MODULE=1'],
-              1537, ['invoke_i'],               ['waka'],                 496958, 168, 2568),
+              1533, ['invoke_i'],               ['waka'],                 496958, 163, 2560),
     ])
 
     print('test on a minimal pure computational thing')
@@ -8164,12 +8176,11 @@ int main() {
     # TODO: TEMPORARY: When -s ERROR_ON_MISSING_LIBRARIES=1 becomes the default, change the following line to expect failure instead of 0.
     assert process.returncode is 0, '-llsomenonexistingfile is not yet an error in non-strict mode'
 
-  # Tests that if user accidetally attempts to link natively compiled libraries together with Emscripten, that there should be a helpful error message that informs about what happened.
+  # Tests that if user accidentally attempts to link native object code, we show an error
   def test_native_link_error_message(self):
-    Popen([CLANG, '-c', path_from_root('tests', 'hello_world.c'), '-o', 'hello_world.o'] + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE, stderr=PIPE).communicate()
-    Popen([LLVM_AR, 'r', 'hello_world.a', 'hello_world.o'], env=get_clang_native_env(), stdout=PIPE, stderr=PIPE).communicate()
-    err = run_process([PYTHON, EMCC, 'hello_world.a', '-o', 'hello_world.js'], stdout=PIPE, stderr=PIPE, check=False).stderr
-    assert 'exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?' in err, err
+    run_process([CLANG, '-c', path_from_root('tests', 'hello_world.cpp'), '-o', 'hello_world.o'])
+    err = run_process([PYTHON, EMCC, 'hello_world.o', '-o', 'hello_world.js'], stdout=PIPE, stderr=PIPE, check=False).stderr
+    self.assertContained('hello_world.o is not valid LLVM bitcode', err)
 
   def test_o_level_clamp(self):
     for level in [3, 4, 20]:
