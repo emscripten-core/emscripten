@@ -8389,3 +8389,19 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
                                         ^
 ''', output.stderr)
 
+  def test_wasm_sourcemap(self):
+    # The no_main.c will be read (from relative location) due to speficied "-s"
+    shutil.copyfile(path_from_root('tests', 'other', 'wasm_sourcemap', 'no_main.c'), 'no_main.c')
+    wasm_map_cmd = [PYTHON, path_from_root('tools', 'wasm-sourcemap.py'),
+                    '--sources', '--prefix', '=wasm-src:///',
+                    '--llvm-dwarfdump', path_from_root('tests', 'other', 'wasm_sourcemap', 'foo.wasm.dump'),
+                    '-o', 'a.out.wasm.map',
+                    path_from_root('tests', 'other', 'wasm_sourcemap', 'foo.wasm')]
+    subprocess.check_call(wasm_map_cmd)
+    output = open('a.out.wasm.map').read()
+    # has "sources" entry with file (includes also `--prefix =wasm-src:///` replacement)
+    self.assertContained('wasm-src:///no_main.c', output)
+    # has "sourcesContent" entry with source code (included with `-s` option)
+    self.assertContained('int foo()', output)
+    # has some entries
+    self.assertIsNotNone(re.search(r'"mappings": "[A-Za-z0-9+/]', output))
