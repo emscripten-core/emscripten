@@ -238,7 +238,7 @@ mergeInto(LibraryManager.library, {
     saveStack: '',
     yieldCallbacks: [],
     postAsync: null,
-    restartFunc: null,
+    restartFunc: null, // This is needed for obtaining the return value with the correct type
     asyncFinalizers: [], // functions to run when all asynchronicity is done
 
     ensureInit: function() {

@@ -7273,7 +7273,7 @@ try {
 }
 ''')
       self.emcc_args += ['--post-js', 'post.js']
-      self.do_run(src, 'cannot start async op with normal JS');
+      self.do_run(src, 'The call to main is running asynchronously.');
 
       print('check reasonable ccall use')
       src = r'''
@@ -7308,12 +7308,11 @@ extern "C" {
 }
 '''
       open('post.js', 'w').write(r'''
-ccall('stringf', 'string', ['string'], ['first\n'], {
-  callback: function(val) {
+ccall('stringf', 'string', ['string'], ['first\n'], { async: true })
+  .then(function(val) {
     Module.print(val);
-    ccall('floatf', 'number', null, null, {callback: Module.print});
-  }
-});
+    ccall('floatf', 'number', null, null, { async: true }).then(Module.print);
+  });
 ''')
       self.do_run(src, 'first\nsecond\n6.4');
 

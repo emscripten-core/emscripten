@@ -65,11 +65,12 @@ Calling compiled C functions from JavaScript
 
 	:param argTypes: An array of the types of arguments for the function (if there are no arguments, this can be omitted).
 	:param args: An array of the arguments to the function, as native JavaScript values (as in ``returnType``). Note that string arguments will be stored on the stack (the JavaScript string will become a C string on the stack).
-	:returns: The result of the function call as a native JavaScript value (as in ``returnType``).
+	:returns: The result of the function call as a native JavaScript value (as in ``returnType``) or, if the ``async`` option is set, a JavaScript Promise of the result.
 	:opts: An optional options object. It can contain the following properties:
 
 			- ``async``: If ``true``, implies that the ccall will perform an async operation. This assumes you are using the Emterpreter-Async option for your code.
-      - ``callback``: A function that will be called with the return value once the async operation is complete. If specified, ``async`` is automatically set.
+
+	.. note:: Async calls currently don't support promise error handling.
 
 	.. COMMENT (not rendered): The ccall/cwrap functions only work for C++ functions that use "extern C". In theory ordinary C++ names can be unmangled, but it would require tool to ship a fairly large amount of code just for this purpose.
 
@@ -111,6 +112,7 @@ Calling compiled C functions from JavaScript
 	:param ident: The name of the C function to be called.
 	:param returnType: The return type of the function. This can be ``"number"``, ``"string"`` or ``"array"``, which correspond to the appropriate JavaScript types (use ``"number"`` for any C pointer, and ``"array"`` for JavaScript arrays and typed arrays; note that arrays are 8-bit), or for a void function it can be ``null`` (note: the JavaScript ``null`` value, not a string containing the word "null").
 	:param argTypes: An array of the types of arguments for the function (if there are no arguments, this can be omitted). Types are as in ``returnType``, except that ``array`` is not supported as there is no way for us to know the length of the array).
+	:param opts: An optional options object, see :js:func:`ccall`.
 	:returns: A JavaScript function that can be used for running the C function.
 
 
