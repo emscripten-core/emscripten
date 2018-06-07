@@ -225,6 +225,32 @@ var LibraryBrowser = {
       };
       Module['preloadPlugins'].push(audioPlugin);
 
+#if WASM
+      var wasmPlugin = {};
+      wasmPlugin['asyncWasmLoadPromise'] = new Promise((resolve, reject) => resolve());
+      wasmPlugin['canHandle'] = function(name) {
+        return !Module.noWasmDecoding && (name.endsWith('.so') || name.endsWith('.wasm'));
+      };
+      wasmPlugin['handle'] = function(byteArray, name, onload, onerror) {
+        // loadWebAssemblyModule can not load modules out-of-order, so rather
+        // than just running the promises in parallel, this makes a chain of
+        // promises to run in series.
+        this.asyncWasmLoadPromise = this.asyncWasmLoadPromise.then(
+          function() {
+            return Module.loadWebAssemblyModule(byteArray, true)
+          }).then(
+            function(module) {
+              Module.preloadedWasm[name] = module;
+              onload();
+            },
+            function(err) {
+              console.warn("Couldn't instantiate wasm: " + name + " '" + err + "'");
+              onerror();
+            });
+      };
+      Module['preloadPlugins'].push(wasmPlugin);
+#endif
+
       // Canvas event setup
 
       function pointerLockChange() {
