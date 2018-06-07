@@ -449,25 +449,25 @@ function UTF8ArrayToString(u8Array, idx, sizeInBytes) {
 #endif
         while (idx < endIdx) {
             var char = u8Array[idx++];
-            if (char > 127) {
-                if (char > 191 && char < 224) {
+            if (char & 0x80) {
+                if ((char & 0xE0) == 0xC0) {
                     if (idx >= endIdx) throw 'UTF-8 decode: incomplete 2-byte sequence';
                     char = (char & 31) << 6 | u8Array[idx] & 63;
-                } else if (char > 223 && char < 240) {
+                } else if ((char & 0xF0) == 0xE0) {
                     if (idx + 1 >= endIdx) throw 'UTF-8 decode: incomplete 3-byte sequence';
                     char = (char & 15) << 12 | (u8Array[idx] & 63) << 6 | u8Array[++idx] & 63;
-                } else if (char > 239 && char < 248) {
+                } else if ((char & 0xF8) == 0xF0) {
                     if (idx + 2 >= endIdx) throw 'UTF-8 decode: incomplete 4-byte sequence';
                     char = (char & 7) << 18 | (u8Array[idx] & 63) << 12 | (u8Array[++idx] & 63) << 6 | u8Array[++idx] & 63;
                 } else throw 'UTF-8 decode: unknown multibyte start 0x' + char.toString(16) + ' at index ' + (idx - 1);
                 ++idx;
             }
 
-            if (char <= 0xffff) string += String.fromCharCode(char);
-            else if (char <= 0x10ffff) {
+            if (char <= 0xFFFF) string += String.fromCharCode(char);
+            else if (char <= 0x10FFFF) {
                 char -= 0x10000;
-                string += String.fromCharCode(char >> 10 | 0xd800)
-                string += String.fromCharCode(char & 0x3FF | 0xdc00)
+                string += String.fromCharCode(char >> 10 | 0xD800)
+                string += String.fromCharCode(char & 0x3FF | 0xDC00)
             } else throw 'UTF-8 decode: code point 0x' + char.toString(16) + ' exceeds UTF-16 reach';
         }
 #if TEXTDECODER
