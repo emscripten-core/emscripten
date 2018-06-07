@@ -145,7 +145,7 @@ var toC = {
 };
 
 
-#if MODULE_CACHE != 0
+#if MODULE_CACHE != 0 && ENVIRONMENT_IS_WEB
 var DBVERSION, APP_NAME;
 var MODULE_CACHE_PARAMS = '{{{ MODULE_CACHE }}}';
 
@@ -2346,7 +2346,7 @@ function integrateWasmJS() {
         abort(reason);
       });
     }
-#if MODULE_CACHE != 0
+#if MODULE_CACHE != 0 && ENVIRONMENT_IS_WEB
     cacheModuleInstance(APP_NAME).then(function(module) {
       if (module) {
         WebAssembly.instantiate(module, info).then(function(instance) {
@@ -2365,7 +2365,7 @@ function integrateWasmJS() {
           WebAssembly.instantiateStreaming(fetch(wasmBinaryFile, { credentials: 'same-origin' }), info)
             .then(function(output) {
               receiveInstantiatedSource(output);
-#if MODULE_CACHE != 0
+#if MODULE_CACHE != 0 && ENVIRONMENT_IS_WEB
               cacheModuleInstance(APP_NAME, output['module']);
 #endif           
             })
@@ -2379,7 +2379,7 @@ function integrateWasmJS() {
         } else {
           instantiateArrayBuffer(receiveInstantiatedSource);
         }
-#if MODULE_CACHE != 0
+#if MODULE_CACHE != 0 && ENVIRONMENT_IS_WEB
       }
     });
 #endif
