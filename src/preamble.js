@@ -144,6 +144,89 @@ var toC = {
   'string': JSfuncs['stringToC'], 'array': JSfuncs['arrayToC']
 };
 
+
+#if MODULE_CACHE != 0
+var DBVERSION, APP_NAME;
+var MODULE_CACHE_PARAMS = '{{{ MODULE_CACHE }}}';
+
+MODULE_CACHE_PARAMS.split(',').forEach(function(item) {
+  if(!DBVERSION && /^\d+$/.test(item)) {
+    DBVERSION = Number(item);
+  } else {
+    APP_NAME = item;
+  }
+});
+
+function cacheModuleInstance(appName, moduleInstance) {
+  if (!indexedDB) {
+    Module.printErr('Warning: Your current environment does not support IndexedDB!');
+    return;
+  }
+
+  var dbName = '$emscripten-cache';
+  var storeName = '$$_wasm_module_instances';
+
+  function openDatabase() {
+    return new Promise(function (resolve, reject) {
+      var request = indexedDB.open(dbName, DBVERSION);
+      request.onerror = reject.bind(null, 'Error opening wasm cache database.');
+      request.onsuccess = function() { 
+        resolve(request.result) 
+      };
+      request.onupgradeneeded = function(event) {
+        var db = request.result;
+        if (db.objectStoreNames.contains(storeName)) {
+            console.log('Clearing out module cache at version: ' + event.oldVersion);
+            db.deleteObjectStore(storeName);
+        }
+        console.log('Creating wasm cache at version: ' + event.newVersion);
+        db.createObjectStore(storeName)
+      };
+    });
+  }
+  
+  function lookupInDatabase(db) {
+    return new Promise(function (resolve, reject) {
+      var store = db.transaction([storeName]).objectStore(storeName);
+      var request = store.get(appName);
+      request.onerror = reject.bind(null, 'Error getting wasm module' + appName);
+      request.onsuccess = function(event) {
+        if (request.result)
+          resolve(request.result);
+        else
+          reject('Module was not found in wasm cache for: ' + appName);
+      }
+    });
+  }
+
+  function storeInDatabase(db, module) {
+    var store = db.transaction([storeName], 'readwrite').objectStore(storeName);
+    var request = store.put(module, appName);
+    request.onerror = function(err) { 
+      console.log('Failed to store in wasm cache: ' + err) 
+    };
+    request.onsuccess = function(err) { 
+      console.log('New record stored in wasm cache: ' + appName) 
+    };
+  }
+
+  return openDatabase().then(function(db) {
+    if (moduleInstance) {
+      if (Object.prototype.toString.call(moduleInstance) === '[object WebAssembly.Module]')
+        storeInDatabase(db, moduleInstance);
+    } else {
+      return lookupInDatabase(db).then(function(module) {
+        console.log('Found module in wasm cache: ' + appName);
+        return module;
+      }, function(err) {
+        return false;
+      })
+    }
+  });
+}
+#endif
+
+
 // C calling interface.
 function ccall (ident, returnType, argTypes, args, opts) {
   var func = getCFunc(ident);
@@ -2257,23 +2340,43 @@ function integrateWasmJS() {
         abort(reason);
       });
     }
-    // Prefer streaming instantiation if available.
-    if (!Module['wasmBinary'] &&
-        typeof WebAssembly.instantiateStreaming === 'function' &&
-        !isDataURI(wasmBinaryFile) &&
-        typeof fetch === 'function') {
-      WebAssembly.instantiateStreaming(fetch(wasmBinaryFile, { credentials: 'same-origin' }), info)
-        .then(receiveInstantiatedSource)
-        .catch(function(reason) {
-          // We expect the most common failure cause to be a bad MIME type for the binary,
-          // in which case falling back to ArrayBuffer instantiation should work.
-          Module['printErr']('wasm streaming compile failed: ' + reason);
-          Module['printErr']('falling back to ArrayBuffer instantiation');
-          instantiateArrayBuffer(receiveInstantiatedSource);
+#if MODULE_CACHE != 0
+    cacheModuleInstance(APP_NAME).then(function(module) {
+      if (module) {
+        WebAssembly.instantiate(module, info).then(function(instance) {
+          receiveInstantiatedSource({
+            instance: instance,
+            module: module
+          })
         });
-    } else {
-      instantiateArrayBuffer(receiveInstantiatedSource);
-    }
+      } else {
+#endif
+        // Prefer streaming instantiation if available.
+        if (!Module['wasmBinary'] &&
+          typeof WebAssembly.instantiateStreaming === 'function' &&
+          !isDataURI(wasmBinaryFile) &&
+          typeof fetch === 'function') {
+          WebAssembly.instantiateStreaming(fetch(wasmBinaryFile, { credentials: 'same-origin' }), info)
+            .then(function(output) {
+              receiveInstantiatedSource(output);
+#if MODULE_CACHE != 0
+              cacheModuleInstance(APP_NAME, output['module']);
+#endif           
+            })
+            .catch(function(reason) {
+              // We expect the most common failure cause to be a bad MIME type for the binary,
+              // in which case falling back to ArrayBuffer instantiation should work.
+              Module['printErr']('wasm streaming compile failed: ' + reason);
+              Module['printErr']('falling back to ArrayBuffer instantiation');
+              instantiateArrayBuffer(receiveInstantiatedSource);
+            });
+        } else {
+          instantiateArrayBuffer(receiveInstantiatedSource);
+        }
+#if MODULE_CACHE != 0
+      }
+    });
+#endif
     return {}; // no exports yet; we'll fill them in later
 #else
     var instance;
