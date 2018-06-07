@@ -284,25 +284,19 @@ int main()
   
   test("template<typename... Args> val new_(Args&&... args)");
   EM_ASM(
-    A = class
+    A = function ()
     {
-      constructor()
-      {
-        this.value = 2;
-      }
+      this.value = 2;
     }
   );
   val::global().set("a", val::global("A").new_());
   ensure_js("a instanceof A");
   ensure_js("a.value == 2");
   EM_ASM(
-    A = class
+    A = function (arg1, arg2)
     {
-      constructor(arg1, arg2)
-      {
-        this.arg1 = arg1;
-        this.arg2 = arg2;
-      }
+      this.arg1 = arg1;
+      this.arg2 = arg2;
     }
   );
   val::global().set("a", val::global("A").new_(val(2), val("b")));
@@ -357,17 +351,17 @@ int main()
   
   test("template<typename ReturnValue, typename... Args> ReturnValue call(const char* name, Args&&... args)");
   EM_ASM(
-    C = class
+    C = function ()
     {
-      method() { return this; }
+      this.method = function() { return this; };
     };
     c = new C;
   );
   ensure(val::global("c").call<val>("method") == val::global("c"));
   EM_ASM(
-    C = class
+    C = function ()
     {
-      method(arg) { return arg; }
+      this.method = function(arg) { return arg; };
     };
     c = new C;
   );
@@ -435,8 +429,8 @@ int main()
   
   test("bool instanceof(const val& v)");
   EM_ASM(
-    A = class {};
-    B = class {};
+    A = function() {};
+    B = function() {};
     a = new A;
   );
   ensure(val::global("a").instanceof(val::global("A")));
