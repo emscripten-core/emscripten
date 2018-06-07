@@ -2290,7 +2290,7 @@ class Building(object):
 
   @staticmethod
   def get_safe_internalize():
-    if not Building.can_build_standalone():
+    if Settings.EXPORT_ALL or not Building.can_build_standalone():
       return [] # do not internalize anything
 
     exps = expand_response(Settings.EXPORTED_FUNCTIONS)
