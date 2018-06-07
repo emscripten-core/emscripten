@@ -380,11 +380,11 @@ namespace emscripten {
         }
 
         bool isNumber() const {
-            return typeof().as<std::string>() == "number";
+            return typeOf().as<std::string>() == "number";
         }
 
         bool isString() const {
-            return typeof().as<std::string>() == "string";
+            return typeOf().as<std::string>() == "string";
         }
 
         bool isArray() const {
