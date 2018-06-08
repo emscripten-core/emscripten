@@ -6428,6 +6428,22 @@ def process(filename):
     shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('pgoed2.js'))
     assert open('pgoed.js').read() == open('pgoed2.js').read()
 
+  def test_response_file(self):
+    with open('rsp_file', 'w') as f:
+      f.write('-o %s/response_file.o.js %s' % (self.get_dir(), path_from_root('tests', 'hello_world.cpp')))
+    subprocess.check_call([PYTHON, EMCC, "@rsp_file"])
+    self.do_run('' , 'hello, world', basename='response_file', no_build=True)
+
+  def test_linker_response_file(self):
+    objfile = os.path.join(self.get_dir(), 'response_file.o')
+    subprocess.check_call([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.cpp'), '-o', objfile])
+    # TODO(sbc): This should expand into -Wl,foobar which is currently ignored
+    # by emscripten
+    with open('rsp_file', 'w') as f:
+      f.write(objfile + ' -foobar')
+    subprocess.check_call([PYTHON, EMCC, "-Wl,@rsp_file", '-o', os.path.join(self.get_dir(), 'response_file.o.js')])
+    self.do_run('' , 'hello, world', basename='response_file', no_build=True)
+
   def test_exported_response(self):
     src = r'''
       #include <stdio.h>

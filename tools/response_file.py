@@ -60,6 +60,11 @@ def substitute_response_files(args):
   for arg in args:
     if arg.startswith('@'):
       new_args += read_response_file(arg)
+    elif arg.startswith('-Wl,@'):
+      for a in read_response_file(arg[5:]):
+        if a.startswith('-'):
+          a = '-Wl,' + a
+        new_args.append(a)
     else:
       new_args.append(arg)
   return new_args

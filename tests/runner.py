@@ -701,6 +701,7 @@ class RunnerCore(unittest.TestCase):
 
     # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
     js_engines = self.filtered_js_engines(js_engines)
+    js_file = filename + '.o.js'
     if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     if len(js_engines) > 1 and not self.use_all_engines:
       if SPIDERMONKEY_ENGINE in js_engines: # make sure to get asm.js validation checks, using sm
@@ -709,7 +710,7 @@ class RunnerCore(unittest.TestCase):
         js_engines = js_engines[:1]
     for engine in js_engines:
       #print 'test in', engine
-      js_output = self.run_generated_code(engine, filename + '.o.js', args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
+      js_output = self.run_generated_code(engine, js_file, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       js_output = js_output.replace('\r\n', '\n')
       try:
         if assert_identical:
@@ -725,8 +726,8 @@ class RunnerCore(unittest.TestCase):
 
     if self.save_JS:
       global test_index
-      self.hardcode_arguments(filename + '.o.js', args)
-      shutil.copyfile(filename + '.o.js', os.path.join(TEMP_DIR, str(test_index) + '.js'))
+      self.hardcode_arguments(js_file, args)
+      shutil.copyfile(js_file, os.path.join(TEMP_DIR, str(test_index) + '.js'))
       test_index += 1
 
   # No building - just process an existing .ll file (or .bc, which we turn into .ll)
