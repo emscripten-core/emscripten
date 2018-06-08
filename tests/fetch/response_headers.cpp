@@ -63,6 +63,7 @@ int main()
     attr.onerror = [] ( emscripten_fetch_t *fetch )
     {
         printf( "Download failed!\n" );
+        emscripten_fetch_close(fetch);
         assert( false && "Shouldn't fail!" );
     };
 
