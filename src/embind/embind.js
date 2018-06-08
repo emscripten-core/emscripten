@@ -627,7 +627,7 @@ var LibraryEmbind = {
             var str;
             if(stdStringIsUTF8) {
                 try {
-                    str = Module['UTF8ToString'](value + 4, length);
+                    str = Module['UTF8ToString'](value + 4, length, true);
                 }
                 catch(decodeError) {
                     throwBindingError(decodeError);
@@ -669,7 +669,7 @@ var LibraryEmbind = {
 
             if (stdStringIsUTF8 && valueIsOfTypeString) {
                 try {
-                    Module['stringToUTF8'](value, ptr + 4, length + 1, false);
+                    Module['stringToUTF8'](value, ptr + 4, length + 1, true);
                 }
                 catch(decodeError) {
                     throwBindingError(decodeError);
