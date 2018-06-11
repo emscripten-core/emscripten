@@ -9,7 +9,6 @@ from subprocess import Popen, PIPE
 import re
 import json
 import argparse
-import os
 import sys
 
 
@@ -101,18 +100,18 @@ def get_code_section_offset(wasm):
 
 def read_dwarf_entries(wasm, options):
   if options.dwarfdump_output:
-    output = open(dwarfdump_output, 'r').read()
+    output = open(options.dwarfdump_output, 'r').read()
   elif options.dwarfdump:
     print('Reading DWARF information from %s' % wasm)
     process = Popen([options.dwarfdump, "-debug-line", wasm], stdout=PIPE)
-    (output, err) = process.communicate()
+    output, err = process.communicate()
     exit_code = process.wait()
     if exit_code != 0:
       print('Error during llvm-dwarfdump execution (%s)' % exit_code)
-      exit(1)
+      sys.exit(1)
   else:
     print('Please specify either --dwarfdump or --dwarfdump-output')
-    exit(1)
+    sys.exit(1)
 
   entries = []
   debug_line_chunks = re.split(r"(debug_line\[0x[0-9a-f]*\])", output)
