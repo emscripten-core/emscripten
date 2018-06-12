@@ -12,9 +12,11 @@ import logging, platform, multiprocessing
 from .tempfiles import try_delete
 
 
-class EmError(Exception):
-  """Emscripten error class.  These are usually fatal and handled at the entry
-  point of each script."""
+class FatalError(Exception):
+  """Error representing an unrecoverable error such as the failure of
+  a subprocess.
+
+  These are usually handled at the entry point of each script."""
   pass
 
 
@@ -154,14 +156,14 @@ def check_execute(cmd, *args, **kw):
     subprocess.check_output(cmd, *args, **kw)
     logging.debug("Successfuly executed %s" % " ".join(cmd))
   except subprocess.CalledProcessError as e:
-    raise EmError("'%s' failed with output:\n%s" % (" ".join(e.cmd), e.output))
+    raise FatalError("'%s' failed with output:\n%s" % (" ".join(e.cmd), e.output))
 
 def check_call(cmd, *args, **kw):
   try:
     subprocess.check_call(cmd, *args, **kw)
     logging.debug("Successfully executed %s" % " ".join(cmd))
   except subprocess.CalledProcessError as e:
-    raise EmError("'%s' failed" % " ".join(cmd))
+    raise FatalError("'%s' failed" % " ".join(cmd))
 
 
 # Emscripten configuration is done through the --em-config command line option or
