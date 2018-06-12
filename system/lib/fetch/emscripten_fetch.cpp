@@ -83,10 +83,10 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 		}									\
 	}
     STRDUP_OR_ABORT(fetch->url, url);
-    STRDUP_OR_ABORT(fetch->__attributes.destinationPath, fetch_attr->__attributes.destinationPath);
-    STRDUP_OR_ABORT(fetch->__attributes.userName, fetch_attr->__attributes.userName);
-    STRDUP_OR_ABORT(fetch->__attributes.password,fetch_attr->__attributes.password);
-    STRDUP_OR_ABORT(fetch->__attributes.overriddenMimeType, fetch_attr->__attributes.overriddenMimeType);
+    STRDUP_OR_ABORT(fetch->__attributes.destinationPath, fetch_attr->destinationPath);
+    STRDUP_OR_ABORT(fetch->__attributes.userName, fetch_attr->userName);
+    STRDUP_OR_ABORT(fetch->__attributes.password,fetch_attr->password);
+    STRDUP_OR_ABORT(fetch->__attributes.overriddenMimeType, fetch_attr->overriddenMimeType);
 	if (fetch->__attributes.requestHeaders)
 	{
 		size_t headersCount = 0;
@@ -101,7 +101,7 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 
 		for (size_t i = 0; i < headersCount; ++i)
 		{
-			headers[i] = strdup(fetch_attr->__attributes.requestHeaders[i]);
+			headers[i] = strdup(fetch_attr->requestHeaders[i]);
 			if (!headers[i])
 
 			{
