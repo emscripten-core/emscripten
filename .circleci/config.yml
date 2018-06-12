@@ -64,7 +64,7 @@ jobs:
           apt-get update
           apt-get install -y python-pip
           pip install flake8==3.4.1
-          flake8 tools/response_file.py
+          flake8 tools/response_file.py tools/wasm-sourcemap.py
   test-other:
     <<: *test-defaults
     environment:
