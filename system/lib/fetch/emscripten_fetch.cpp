@@ -72,27 +72,21 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 	memset(fetch, 0, sizeof(emscripten_fetch_t));
 	fetch->id = globalFetchIdCounter++; // TODO: make this thread-safe!
 	fetch->userData = fetch_attr->userData;
-	fetch->url = strdup(url);
-	if(!fetch->url)
-	{
-		fetch_free(fetch);
-		return 0;
+#define STRDUP_OR_ABORT(s, str_to_dup)		\
+	if (str_to_dup)							\
+	{										\
+		s = strdup(str_to_dup);				\
+		if (!s)								\
+		{									\
+			fetch_free(fetch);				\
+			return 0;						\
+		}									\
 	}
-#define STRDUP_OR_ABORT(s)				\
-	if (s)								\
-	{									\
-		char* dup = strdup(s);			\
-		if (!dup)						\
-		{								\
-			fetch_free(fetch);			\
-			return 0;					\
-		}								\
-        return dup;						\
-	}
-	fetch->__attributes.destinationPath = STRDUP_OR_ABORT(fetch_attr->__attributes.destinationPath);
-	fetch->__attributes.userName = STRDUP_OR_ABORT(fetch_attr->__attributes.userName);
-	fetch->__attributes.password = STRDUP_OR_ABORT(fetch_attr->__attributes.password);
-	fetch->__attributes.overriddenMimeType = STRDUP_OR_ABORT(fetch_attr->__attributes.overriddenMimeType);
+    STRDUP_OR_ABORT(fetch->url, url);
+    STRDUP_OR_ABORT(fetch->__attributes.destinationPath, fetch_attr->__attributes.destinationPath);
+    STRDUP_OR_ABORT(fetch->__attributes.userName, fetch_attr->__attributes.userName);
+    STRDUP_OR_ABORT(fetch->__attributes.password,fetch_attr->__attributes.password);
+    STRDUP_OR_ABORT(fetch->__attributes.overriddenMimeType, fetch_attr->__attributes.overriddenMimeType);
 	if (fetch->__attributes.requestHeaders)
 	{
 		size_t headersCount = 0;
