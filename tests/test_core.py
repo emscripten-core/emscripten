@@ -7038,14 +7038,13 @@ Module.printErr = Module['printErr'] = function(){};
         # the file attribute is optional, but if it is present it needs to refer
         # the output file.
         self.assertPathsIdentical(map_referent, data['file'])
-      if not self.is_wasm_backend():
+      if not self.is_wasm_backend() or Settings.EXPERIMENTAL_USE_LLD:
         assert len(data['sources']) == 1, data['sources']
         self.assertPathsIdentical(src_filename, data['sources'][0])
       else:
-        # Wasm backend currently adds every file linked as part of compiler-rt
+        # s2wasm currently adds every file linked as part of compiler-rt
         # to the 'sources' field.
-        # TODO(jgravelle): when LLD is the wasm-backend default, make sure it
-        # emits only the files we have lines for.
+        # TODO(sbc): Remove this once s2wasm goes away
         assert len(data['sources']) > 1, data['sources']
         normalized_srcs = [src.replace('\\', '/') for src in data['sources']]
         normalized_filename = src_filename.replace('\\', '/')

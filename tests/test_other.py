@@ -8378,7 +8378,7 @@ end
       except OSError:
         # Ignore missing python aliases.
         pass
-        
+
   def test_ioctl_window_size(self):
       self.do_other_test(os.path.join('other', 'ioctl', 'window_size'))
 
@@ -8413,8 +8413,8 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     subprocess.check_call(wasm_map_cmd)
     output = open('a.out.wasm.map').read()
     # has "sources" entry with file (includes also `--prefix =wasm-src:///` replacement)
-    self.assertContained('wasm-src:///no_main.c', output)
+    self.assertIn('wasm-src:///no_main.c', output)
     # has "sourcesContent" entry with source code (included with `-s` option)
-    self.assertContained('int foo()', output)
+    self.assertIn('int foo()', output)
     # has some entries
-    self.assertIsNotNone(re.search(r'"mappings": "[A-Za-z0-9+/]', output))
+    self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]')
