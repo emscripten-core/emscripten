@@ -8406,7 +8406,8 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     shutil.copyfile(path_from_root('tests', 'other', 'wasm_sourcemap', 'no_main.c'), 'no_main.c')
     wasm_map_cmd = [PYTHON, path_from_root('tools', 'wasm-sourcemap.py'),
                     '--sources', '--prefix', '=wasm-src:///',
-                    '--llvm-dwarfdump', path_from_root('tests', 'other', 'wasm_sourcemap', 'foo.wasm.dump'),
+                    '--dwarfdump-output',
+                    path_from_root('tests', 'other', 'wasm_sourcemap', 'foo.wasm.dump'),
                     '-o', 'a.out.wasm.map',
                     path_from_root('tests', 'other', 'wasm_sourcemap', 'foo.wasm')]
     subprocess.check_call(wasm_map_cmd)
