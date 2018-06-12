@@ -246,7 +246,7 @@ For example:
 
 .. note::
 
-   Currently the markup serves only to whitelist smart pointer use, and
+   Currently the markup serves only to whitelist raw pointer use, and
    show that you've thought about the use of the raw pointers. Eventually
    we hope to implement `Boost.Python-like raw pointer policies`_ for
    managing object ownership.
