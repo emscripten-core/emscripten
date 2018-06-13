@@ -203,10 +203,10 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
     last_line = line
     last_column = column
   return OrderedDict([('version', 3),
-      ('names', []),
-      ('sources', sources),
-      ('sourcesContent', sources_content),
-      ('mappings', ','.join(mappings))])
+                      ('names', []),
+                      ('sources', sources),
+                      ('sourcesContent', sources_content),
+                      ('mappings', ','.join(mappings))])
 
 
 def main():
