@@ -1930,9 +1930,11 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
            '--global-base=%s' % shared.Settings.GLOBAL_BASE,
            ('--emscripten-reserved-function-pointers=%d' %
             shared.Settings.RESERVED_FUNCTION_POINTERS)]
+    if settings['DEBUG_LEVEL'] >= 2 or settings['PROFILING_FUNCS']:
+      cmd.append('-g')
     if write_source_map:
-      cmd += ['-g', '--input-source-map=' + base_source_map]
-      cmd += ['--output-source-map=' + wasm + '.map' ]
+      cmd.append('--input-source-map=' + base_source_map)
+      cmd.append('--output-source-map=' + wasm + '.map')
     shared.check_call(cmd, stdout=open(metadata_file, 'w'))
     if write_source_map:
       debug_copy(wasm + '.map', 'post_finalize.map')
