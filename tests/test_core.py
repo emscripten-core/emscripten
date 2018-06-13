@@ -1754,7 +1754,7 @@ int main(int argc, char **argv) {
     self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
     win = open('src.cpp.o.js').read()
 
-    if '-O2' in self.emcc_args:
+    if '-O2' in self.emcc_args and not self.is_wasm():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
       possible_starts = ['// EMSCRIPTEN_START_FUNCS', 'var TOTAL_MEMORY']
       code_start = None
@@ -1794,7 +1794,7 @@ int main(int argc, char **argv) {
       self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
       win = open('src.cpp.o.js').read()
 
-      if '-O2' in self.emcc_args:
+      if '-O2' in self.emcc_args and not self.is_wasm():
         # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
         code_start = 'var TOTAL_MEMORY'
         fail = fail[fail.find(code_start):]
@@ -6431,6 +6431,22 @@ def process(filename):
     shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('pgoed2.js'))
     assert open('pgoed.js').read() == open('pgoed2.js').read()
 
+  def test_response_file(self):
+    with open('rsp_file', 'w') as f:
+      f.write('-o %s/response_file.o.js %s' % (self.get_dir(), path_from_root('tests', 'hello_world.cpp')))
+    subprocess.check_call([PYTHON, EMCC, "@rsp_file"])
+    self.do_run('' , 'hello, world', basename='response_file', no_build=True)
+
+  def test_linker_response_file(self):
+    objfile = os.path.join(self.get_dir(), 'response_file.o')
+    subprocess.check_call([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.cpp'), '-o', objfile])
+    # TODO(sbc): This should expand into -Wl,foobar which is currently ignored
+    # by emscripten
+    with open('rsp_file', 'w') as f:
+      f.write(objfile + ' -foobar')
+    subprocess.check_call([PYTHON, EMCC, "-Wl,@rsp_file", '-o', os.path.join(self.get_dir(), 'response_file.o.js')])
+    self.do_run('' , 'hello, world', basename='response_file', no_build=True)
+
   def test_exported_response(self):
     src = r'''
       #include <stdio.h>
@@ -7025,14 +7041,13 @@ Module.printErr = Module['printErr'] = function(){};
         # the file attribute is optional, but if it is present it needs to refer
         # the output file.
         self.assertPathsIdentical(map_referent, data['file'])
-      if not self.is_wasm_backend():
+      if not self.is_wasm_backend() or Settings.EXPERIMENTAL_USE_LLD:
         assert len(data['sources']) == 1, data['sources']
         self.assertPathsIdentical(src_filename, data['sources'][0])
       else:
-        # Wasm backend currently adds every file linked as part of compiler-rt
+        # s2wasm currently adds every file linked as part of compiler-rt
         # to the 'sources' field.
-        # TODO(jgravelle): when LLD is the wasm-backend default, make sure it
-        # emits only the files we have lines for.
+        # TODO(sbc): Remove this once s2wasm goes away
         assert len(data['sources']) > 1, data['sources']
         normalized_srcs = [src.replace('\\', '/') for src in data['sources']]
         normalized_filename = src_filename.replace('\\', '/')

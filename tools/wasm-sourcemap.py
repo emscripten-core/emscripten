@@ -1,22 +1,22 @@
 #!/usr/bin/env python
+"""Utility tools that extracts DWARF information encoded in a wasm output
+produced by the LLVM tools, and encodes it as a wasm source map. Additionally,
+it can collect original sources, change files prefixes, and strip debug
+sections from a wasm file.
+"""
 
-# Utility tools that extracts DWARF information encoded in a wasm output
-# produced by the LLVM tools, and encodes it as a wasm source map. Additionally,
-# it can collect original sources, change files prefixes, and strip debug
-# sections from a wasm file.
-
-from subprocess import Popen, PIPE
-import re
-import json
 import argparse
-import os, sys
+from collections import OrderedDict
+import json
+import logging
+import os
+import re
+from subprocess import Popen, PIPE
+import sys
 
-sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from tools.shared import LLVM_ROOT
 
 def parse_args():
-  parser = argparse.ArgumentParser(prog='wasm-sourcemap.py')
+  parser = argparse.ArgumentParser(prog='wasm-sourcemap.py', description=__doc__)
   parser.add_argument('wasm', help='wasm file')
   parser.add_argument('-o', '--output', help='output source map')
   parser.add_argument('-p', '--prefix', nargs='*', help='replace source filename prefix', default=[])
@@ -24,17 +24,20 @@ def parse_args():
   parser.add_argument('-w', nargs='?', help='set output wasm file')
   parser.add_argument('-x', '--strip', action='store_true', help='removes debug and linking sections')
   parser.add_argument('-u', '--source-map-url', nargs='?', help='specifies sourceMappingURL section contest')
-  parser.add_argument('--llvm-dwarfdump', nargs='?', help=argparse.SUPPRESS)
+  parser.add_argument('--dwarfdump', help="path to llvm-dwarfdump executable")
+  parser.add_argument('--dwarfdump-output', nargs='?', help=argparse.SUPPRESS)
   return parser.parse_args()
 
-VLQ_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+
 def encode_vlq(n):
+  VLQ_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
   x = (n << 1) if n >= 0 else ((-n << 1) + 1)
   result = ""
   while x > 31:
     result = result + VLQ_CHARS[32 + (x & 31)]
     x = x >> 5
   return result + VLQ_CHARS[x]
+
 
 def read_var_uint(wasm, pos):
   n = 0
@@ -48,8 +51,9 @@ def read_var_uint(wasm, pos):
     shift += 7
   return n + (b << shift), pos
 
+
 def strip_debug_sections(wasm):
-  print('Strip debug sections')
+  logging.debug('Strip debug sections')
   pos = 8
   stripped = wasm[:pos]
 
@@ -63,10 +67,11 @@ def strip_debug_sections(wasm):
       name_end = name_pos + name_len
       name = wasm[name_pos:name_end]
       if name == "linking" or name == "sourceMappingURL" or name.startswith("reloc..debug_") or name.startswith(".debug_"):
-        continue # skip debug related sections
+        continue  # skip debug related sections
     stripped = stripped + wasm[section_start:pos]
 
   return stripped
+
 
 def encode_uint_var(n):
   result = bytearray()
@@ -76,14 +81,16 @@ def encode_uint_var(n):
   result.append(n)
   return bytes(result)
 
+
 def append_source_mapping(wasm, url):
-  print('Append sourceMappingURL section')
+  logging.debug('Append sourceMappingURL section')
   section_name = "sourceMappingURL"
   section_content = encode_uint_var(len(section_name)) + section_name + encode_uint_var(len(url)) + url
   return wasm + encode_uint_var(0) + encode_uint_var(len(section_content)) + section_content
 
+
 def get_code_section_offset(wasm):
-  print('Read sections index')
+  logging.debug('Read sections index')
   pos = 8
 
   while pos < len(wasm):
@@ -93,22 +100,25 @@ def get_code_section_offset(wasm):
       return pos
     pos = pos + section_size
 
-def read_dwarf_entries(wasm, dwarfdump):
-  if dwarfdump:
-    output = open(dwarfdump, 'r').read()
-  else:
-    print('Reading DWARF information from %s' % wasm)
-    llvm_dwarfdump = os.path.join(LLVM_ROOT, 'llvm-dwarfdump')
-    process = Popen([llvm_dwarfdump, "-debug-line", wasm], stdout=PIPE)
-    (output, err) = process.communicate()
+
+def read_dwarf_entries(wasm, options):
+  if options.dwarfdump_output:
+    output = open(options.dwarfdump_output, 'r').read()
+  elif options.dwarfdump:
+    logging.debug('Reading DWARF information from %s' % wasm)
+    process = Popen([options.dwarfdump, "-debug-line", wasm], stdout=PIPE)
+    output, err = process.communicate()
     exit_code = process.wait()
     if exit_code != 0:
-      print('Error during llvm-dwarfdump execution (%s)' % exit_code)
-      exit(1)
+      logging.error('Error during llvm-dwarfdump execution (%s)' % exit_code)
+      sys.exit(1)
+  else:
+    logging.error('Please specify either --dwarfdump or --dwarfdump-output')
+    sys.exit(1)
 
   entries = []
   debug_line_chunks = re.split(r"(debug_line\[0x[0-9a-f]*\])", output)
-  for i in range(1,len(debug_line_chunks),2):
+  for i in range(1, len(debug_line_chunks), 2):
     line_chunk = debug_line_chunks[i + 1]
 
     # include_directories[  1] = "/Users/yury/Work/junk/sqlite-playground/src"
@@ -136,11 +146,12 @@ def read_dwarf_entries(wasm, dwarfdump):
       file_path = (dir + '/' if dir != '' else '') + file.group(2)
       files[file.group(1)] = file_path
 
-
     for line in re.finditer(r"\n0x([0-9a-f]+)\s+(\d+)\s+(\d+)\s+(\d+)", line_chunk):
       entry = {'address': int(line.group(1), 16), 'line': int(line.group(2)), 'column': int(line.group(3)), 'file': files[line.group(4)]}
       entries.append(entry)
+
   return entries
+
 
 def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
   sources = []
@@ -191,44 +202,52 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
     last_source_id = source_id
     last_line = line
     last_column = column
-  return {'version': 3, 'names': [], 'sources': sources, 'sourcesContent': sources_content, 'mappings': ','.join(mappings)}
+  return OrderedDict([('version', 3),
+                      ('names', []),
+                      ('sources', sources),
+                      ('sourcesContent', sources_content),
+                      ('mappings', ','.join(mappings))])
+
 
 def main():
-  args = parse_args()
+  options = parse_args()
 
-  wasm_input = args.wasm
+  wasm_input = options.wasm
   with open(wasm_input, 'rb') as infile:
     wasm = infile.read()
 
-  entries = read_dwarf_entries(wasm_input, args.llvm_dwarfdump)
+  entries = read_dwarf_entries(wasm_input, options)
 
   code_section_offset = get_code_section_offset(wasm)
 
   prefixes = []
-  for p in args.prefix:
+  for p in options.prefix:
     if '=' in p:
       prefix, replacement = p.split('=')
       prefixes.append({'prefix': prefix, 'replacement': replacement})
     else:
       prefixes.append({'prefix': p, 'replacement': None})
 
-  print('Saving to %s' % args.output)
-  map = build_sourcemap(entries, code_section_offset, prefixes, args.sources)
-  with open(args.output, 'w') as outfile:
-    json.dump(map, outfile)
+  logging.debug('Saving to %s' % options.output)
+  map = build_sourcemap(entries, code_section_offset, prefixes, options.sources)
+  with open(options.output, 'w') as outfile:
+    json.dump(map, outfile, separators=(',', ':'))
 
-  if args.strip:
+  if options.strip:
     wasm = strip_debug_sections(wasm)
 
-  if args.source_map_url:
-    wasm = append_source_mapping(wasm, args.source_map_url)
+  if options.source_map_url:
+    wasm = append_source_mapping(wasm, options.source_map_url)
 
-  if args.w:
-    print('Saving wasm to %s' % args.w)
-    with open(args.w, 'wb') as outfile:
+  if options.w:
+    logging.debug('Saving wasm to %s' % options.w)
+    with open(options.w, 'wb') as outfile:
       outfile.write(wasm)
 
-  print('Done.')
+  logging.debug('Done')
+  return 0
+
 
 if __name__ == '__main__':
+  logging.basicConfig(level=logging.DEBUG if os.environ.get('EMCC_DEBUG') else logging.INFO)
   sys.exit(main())
