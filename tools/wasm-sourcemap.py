@@ -5,10 +5,13 @@ it can collect original sources, change files prefixes, and strip debug
 sections from a wasm file.
 """
 
-from subprocess import Popen, PIPE
-import re
-import json
 import argparse
+from collections import OrderedDict
+import json
+import logging
+import os
+import re
+from subprocess import Popen, PIPE
 import sys
 
 
@@ -50,7 +53,7 @@ def read_var_uint(wasm, pos):
 
 
 def strip_debug_sections(wasm):
-  print('Strip debug sections')
+  logging.debug('Strip debug sections')
   pos = 8
   stripped = wasm[:pos]
 
@@ -80,14 +83,14 @@ def encode_uint_var(n):
 
 
 def append_source_mapping(wasm, url):
-  print('Append sourceMappingURL section')
+  logging.debug('Append sourceMappingURL section')
   section_name = "sourceMappingURL"
   section_content = encode_uint_var(len(section_name)) + section_name + encode_uint_var(len(url)) + url
   return wasm + encode_uint_var(0) + encode_uint_var(len(section_content)) + section_content
 
 
 def get_code_section_offset(wasm):
-  print('Read sections index')
+  logging.debug('Read sections index')
   pos = 8
 
   while pos < len(wasm):
@@ -102,15 +105,15 @@ def read_dwarf_entries(wasm, options):
   if options.dwarfdump_output:
     output = open(options.dwarfdump_output, 'r').read()
   elif options.dwarfdump:
-    print('Reading DWARF information from %s' % wasm)
+    logging.debug('Reading DWARF information from %s' % wasm)
     process = Popen([options.dwarfdump, "-debug-line", wasm], stdout=PIPE)
     output, err = process.communicate()
     exit_code = process.wait()
     if exit_code != 0:
-      print('Error during llvm-dwarfdump execution (%s)' % exit_code)
+      logging.error('Error during llvm-dwarfdump execution (%s)' % exit_code)
       sys.exit(1)
   else:
-    print('Please specify either --dwarfdump or --dwarfdump-output')
+    logging.error('Please specify either --dwarfdump or --dwarfdump-output')
     sys.exit(1)
 
   entries = []
@@ -199,7 +202,11 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
     last_source_id = source_id
     last_line = line
     last_column = column
-  return {'version': 3, 'names': [], 'sources': sources, 'sourcesContent': sources_content, 'mappings': ','.join(mappings)}
+  return OrderedDict([('version', 3),
+                      ('names', []),
+                      ('sources', sources),
+                      ('sourcesContent', sources_content),
+                      ('mappings', ','.join(mappings))])
 
 
 def main():
@@ -221,10 +228,10 @@ def main():
     else:
       prefixes.append({'prefix': p, 'replacement': None})
 
-  print('Saving to %s' % options.output)
+  logging.debug('Saving to %s' % options.output)
   map = build_sourcemap(entries, code_section_offset, prefixes, options.sources)
   with open(options.output, 'w') as outfile:
-    json.dump(map, outfile)
+    json.dump(map, outfile, separators=(',', ':'))
 
   if options.strip:
     wasm = strip_debug_sections(wasm)
@@ -233,12 +240,14 @@ def main():
     wasm = append_source_mapping(wasm, options.source_map_url)
 
   if options.w:
-    print('Saving wasm to %s' % options.w)
+    logging.debug('Saving wasm to %s' % options.w)
     with open(options.w, 'wb') as outfile:
       outfile.write(wasm)
 
-  print('Done.')
+  logging.debug('Done')
+  return 0
 
 
 if __name__ == '__main__':
+  logging.basicConfig(level=logging.DEBUG if os.environ.get('EMCC_DEBUG') else logging.INFO)
   sys.exit(main())

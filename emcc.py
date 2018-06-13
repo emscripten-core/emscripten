@@ -1679,7 +1679,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         wasm_temp = temp_basename + '.wasm'
         shutil.move(wasm_temp, wasm_binary_target)
         open(wasm_text_target + '.mappedGlobals', 'w').write('{}') # no need for mapped globals for now, but perhaps some day
-        if options.debug_level >= 4 and not shared.Settings.EXPERIMENTAL_USE_LLD:
+        if options.debug_level >= 4:
           shutil.move(wasm_temp + '.map', wasm_binary_target + '.map')
 
       if shared.Settings.CYBERDWARF:
