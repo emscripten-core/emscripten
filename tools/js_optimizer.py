@@ -505,7 +505,6 @@ EMSCRIPTEN_FUNCS();
       after = 'wakaUnknownAfter'
       start = coutput.find(after)
       end = coutput.find(')', start)
-      open('/tmp/emscripten_temp/pre2b.js', 'w').write(pre_2)
       # If the closure comment to suppress useless code is present, we need to look one
       # brace past it, as the first is in there. Otherwise, the first brace is the
       # start of the function body (what we want).
