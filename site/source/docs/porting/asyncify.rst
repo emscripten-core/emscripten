@@ -117,6 +117,8 @@ However by expanding the loop, two more async calls are introduced, such that mo
 
 Currently all function pointer calls are considered as aync, and some functions might be recognized as async incorrectly. This can be corrected by manually setting the ``ASYNCIFY_WHITELIST`` option.
 
+**Asyncify is not supported on WebAssembly.**
+
 
 Other possible implementations
 ==============================
