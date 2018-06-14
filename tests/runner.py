@@ -37,6 +37,8 @@ import tools.shared
 from tools.shared import *
 from tools.line_endings import check_line_endings
 
+logger = logging.getLogger('tests/runner.py')
+
 # User can specify an environment variable EMSCRIPTEN_BROWSER to force the browser test suite to
 # run using another browser command line than the default system browser.
 # Setting '0' as the browser disables running a browser (but we still see tests compile)
@@ -1107,7 +1109,7 @@ def print_js_engine_message():
   if use_all_engines:
     print('(using ALL js engines)')
   else:
-    logging.warning('use EM_ALL_ENGINES=1 in the env to run against all JS engines, which is slower but provides more coverage')
+    logger.warning('use EM_ALL_ENGINES=1 in the env to run against all JS engines, which is slower but provides more coverage')
 
 def sanity_checks():
   global JS_ENGINES
@@ -1346,9 +1348,12 @@ def run_tests(suites, unmatched_test_names):
       print('    ' + msg)
 
   # Return the number of failures as the process exit code for automating success/failure reporting.
-  exitcode = min(numFailures, 255)
-  sys.exit(exitcode)
+  return min(numFailures, 255)
 
 
 if __name__ == '__main__':
-  main(sys.argv)
+  try:
+    sys.exit(main(sys.argv))
+  except KeyboardInterrupt:
+    logger.warning('KeyboardInterrupt')
+    sys.exit(1)

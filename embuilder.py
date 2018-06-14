@@ -143,9 +143,12 @@ def build_port(port_name, lib_name, params):
   build(C_BARE, [os.path.join('ports-builds', port_name, lib_name)] if lib_name else None, params)
 
 
-operation = sys.argv[1]
+def main():
+  operation = sys.argv[1]
+  if operation != 'build':
+    shared.logging.error('unfamiliar operation: ' + operation)
+    return 1
 
-if operation == 'build':
   auto_tasks = False
   tasks = sys.argv[2:]
   if 'SYSTEM' in tasks:
@@ -278,7 +281,15 @@ if operation == 'build':
       sys.exit(1)
 
     shared.logging.info('...success')
+  return 0
 
-else:
-  shared.logging.error('unfamiliar operation: ' + operation)
-  sys.exit(1)
+
+if __name__ == '__main__':
+  try:
+    sys.exit(main())
+  except KeyboardInterrupt:
+    logging.warngin("KeyboardInterrupt")
+    sys.exit(1)
+  except shared.FatalError as e:
+    logging.error(str(e))
+    sys.exit(1)
