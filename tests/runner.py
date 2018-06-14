@@ -37,7 +37,7 @@ import tools.shared
 from tools.shared import *
 from tools.line_endings import check_line_endings
 
-logger = logging.getLogger('tests/runner.py')
+logger = logging.getLogger(__file__)
 
 # User can specify an environment variable EMSCRIPTEN_BROWSER to force the browser test suite to
 # run using another browser command line than the default system browser.

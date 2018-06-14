@@ -5,6 +5,7 @@ Tool to manage building of various useful things, such as libc, libc++, native o
 '''
 
 from __future__ import print_function
+import logging
 import os, sys
 import tools.shared as shared
 
@@ -98,6 +99,7 @@ SYSTEM_TASKS = ['compiler-rt', 'libc', 'libc-mt', 'libc-extras', 'emmalloc', 'em
 USER_TASKS = ['al', 'gl', 'binaryen', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
 
 temp_files = shared.configuration.get_temp_files()
+logger = logging.getLogger(__file__)
 
 def build(src, result_libs, args=[]):
   # if a library is a .a, also build the .bc, as we need it when forcing a
@@ -277,10 +279,10 @@ def main():
     elif what == 'cocos2d':
       build_port('cocos2d', None, ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
     else:
-      shared.logging.error('unfamiliar build target: ' + what)
+      logger.error('unfamiliar build target: ' + what)
       sys.exit(1)
 
-    shared.logging.info('...success')
+    logger.info('...success')
   return 0
 
 
@@ -288,8 +290,8 @@ if __name__ == '__main__':
   try:
     sys.exit(main())
   except KeyboardInterrupt:
-    logging.warngin("KeyboardInterrupt")
+    logger.warning("KeyboardInterrupt")
     sys.exit(1)
   except shared.FatalError as e:
-    logging.error(str(e))
+    logger.error(str(e))
     sys.exit(1)

@@ -2915,7 +2915,7 @@ if __name__ == '__main__':
   try:
     sys.exit(run())
   except KeyboardInterrupt:
-    logging.warngin("KeyboardInterrupt")
+    logging.warning("KeyboardInterrupt")
     sys.exit(1)
   except shared.FatalError as e:
     logging.error(str(e))
