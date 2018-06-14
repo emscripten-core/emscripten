@@ -2601,9 +2601,11 @@ class JS(object):
     args = 'index' + (',' if args else '') + args
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
     ret = '''function%s(%s) {
+  var sp = stackSave();
   try {
     %sModule["dynCall_%s"](%s);
   } catch(e) {
+    stackRestore(sp);
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
     Module["setThrew"](1, 0);
   }
