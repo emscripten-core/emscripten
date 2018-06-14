@@ -6,8 +6,10 @@ Tool to manage building of various useful things, such as libc, libc++, native o
 
 from __future__ import print_function
 import logging
-import os, sys
-import tools.shared as shared
+import os
+import sys
+
+from tools import shared
 
 if len(sys.argv) < 2 or sys.argv[1] in ['-v', '-help', '--help', '-?', '?']:
   print('''
@@ -148,7 +150,7 @@ def build_port(port_name, lib_name, params):
 def main():
   operation = sys.argv[1]
   if operation != 'build':
-    shared.logging.error('unfamiliar operation: ' + operation)
+    logger.error('unfamiliar operation: ' + operation)
     return 1
 
   auto_tasks = False
@@ -173,7 +175,7 @@ def main():
         tasks += ['native_optimizer']
     print('Building targets: %s' % ' '.join(tasks))
   for what in tasks:
-    shared.logging.info('building and verifying ' + what)
+    logger.info('building and verifying ' + what)
     if what == 'compiler-rt':
       build('''
         int main() {
@@ -234,7 +236,7 @@ def main():
       if shared.Settings.WASM_BACKEND:
         build(C_BARE, ['wasm_compiler_rt.a'], ['-s', 'WASM=1'])
       else:
-        shared.logging.warning('wasm_compiler_rt not built when using JSBackend')
+        logger.warning('wasm_compiler_rt not built when using JSBackend')
     elif what == 'html5':
       build('''
         #include <stdlib.h>
