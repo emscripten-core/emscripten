@@ -3,32 +3,33 @@ sudo: required
 language: python
 
 env:
-- TEST_TARGET=other
-- TEST_TARGET=browser
-- TEST_TARGET="ALL.test_a* ALL.test_b*"
-- TEST_TARGET=ALL.test_c*
-- TEST_TARGET="default.test_d* asm1.test_d* asm2.test_d* asm2f.test_d* asm2g.test_d* asm3.test_d*"
-- TEST_TARGET=ALL.test_e*
-- TEST_TARGET=ALL.test_f*
-- TEST_TARGET="ALL.test_g* ALL.test_h* ALL.test_i*"
-- TEST_TARGET="ALL.test_j* ALL.test_k* ALL.test_l* ALL.test_m* ALL.test_n* ALL.test_o*"
-- TEST_TARGET="default.test_p* asm1.test_p* asm2.test_p* asm2f.test_p* asm2g.test_p* asm3.test_p*"
-- TEST_TARGET="ALL.test_q* ALL.test_r* ALL.test_s* ALL.test_t*"
-- TEST_TARGET="ALL.test_u* ALL.test_v* ALL.test_w* ALL.test_x* ALL.test_y* ALL.test_z*"
+  - TEST_TARGET=other
+  - TEST_TARGET=browser
+  - TEST_TARGET="ALL.test_a* ALL.test_b*"
+  - TEST_TARGET=ALL.test_c*
+  - TEST_TARGET="default.test_d* asm1.test_d* asm2.test_d* asm2f.test_d* asm2g.test_d* asm3.test_d*"
+  - TEST_TARGET=ALL.test_e*
+  - TEST_TARGET=ALL.test_f*
+  - TEST_TARGET="ALL.test_g* ALL.test_h* ALL.test_i*"
+  - TEST_TARGET="ALL.test_j* ALL.test_k* ALL.test_l* ALL.test_m* ALL.test_n* ALL.test_o*"
+  - TEST_TARGET="default.test_p* asm1.test_p* asm2.test_p* asm2f.test_p* asm2g.test_p* asm3.test_p*"
+  - TEST_TARGET="ALL.test_q* ALL.test_r* ALL.test_s* ALL.test_t*"
+  - TEST_TARGET="ALL.test_u* ALL.test_v* ALL.test_w* ALL.test_x* ALL.test_y* ALL.test_z*"
 
 services:
-- docker
+  - docker
 
 before_install:
-- docker pull ubuntu:16.04
+  - docker pull ubuntu:16.04
 
 install:
-- pip install flake8==3.4.1
+  - pip install flake8==3.4.1
 
 script:
-- flake8 tools/response_file.py
-- echo $TEST_TARGET
-- docker build --build-arg TEST_TARGET="$TEST_TARGET" .
+  - set -o errexit
+  - flake8 tools/response_file.py tools/wasm-sourcemap.py
+  - echo $TEST_TARGET
+  - docker build --build-arg TEST_TARGET="$TEST_TARGET" .
 
 notifications:
   email: false

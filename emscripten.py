@@ -1735,9 +1735,9 @@ def emscript_wasm_backend(infile, settings, outfile, libraries, compiler_engine,
   #   * We may also run some Binaryen passes here.
 
   if shared.Settings.EXPERIMENTAL_USE_LLD:
-    wasm, metadata = build_wasm_lld(temp_files, infile, outfile, settings, DEBUG)
+    metadata = build_wasm_lld(temp_files, infile, outfile, settings, DEBUG)
   else:
-    wasm, metadata = build_wasm(temp_files, infile, outfile, settings, DEBUG)
+    metadata = build_wasm(temp_files, infile, outfile, settings, DEBUG)
 
   # optimize syscalls
 
@@ -1833,12 +1833,12 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
     s2wasm_args = create_s2wasm_args(temp_s, wasm)
     if settings['DEBUG_LEVEL'] >= 2 or settings['PROFILING_FUNCS']:
       s2wasm_args += ['-g']
-      if settings['DEBUG_LEVEL'] >= 4:
-        s2wasm_args += ['--source-map=' + wasm + '.map']
-        if not settings['SOURCE_MAP_BASE']:
-          logging.warn("Wasm source map won't be usable in a browser without --source-map-base")
-        else:
-          s2wasm_args += ['--source-map-url=' + settings['SOURCE_MAP_BASE'] + os.path.basename(settings['WASM_BINARY_FILE']) + '.map']
+    if settings['DEBUG_LEVEL'] >= 4:
+      s2wasm_args += ['--source-map=' + wasm + '.map']
+      if not settings['SOURCE_MAP_BASE']:
+        logging.warn("Wasm source map won't be usable in a browser without --source-map-base")
+      else:
+        s2wasm_args += ['--source-map-url=' + settings['SOURCE_MAP_BASE'] + os.path.basename(settings['WASM_BINARY_FILE']) + '.map']
     if DEBUG:
       logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
       t = time.time()
@@ -1849,7 +1849,7 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
   if DEBUG:
     logging.debug('  emscript: binaryen s2wasm took %s seconds' % (time.time() - t))
     t = time.time()
-  return wasm, metadata
+  return metadata
 
 
 def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
@@ -1912,17 +1912,36 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
       t = time.time()
     debug_copy(base_wasm, 'base_wasm.wasm')
 
+    write_source_map = settings['DEBUG_LEVEL'] >= 4
+    if write_source_map:
+      base_source_map = base_wasm + '.map'
+      sourcemap_cmd = [shared.PYTHON, path_from_root('tools', 'wasm-sourcemap.py'), 
+                       base_wasm,
+                       '--dwarfdump=' + shared.LLVM_DWARFDUMP,
+                       '-o',  base_source_map]
+      if not settings['SOURCE_MAP_BASE']:
+        logging.warn("Wasm source map won't be usable in a browser without --source-map-base")
+      else:
+        sourcemap_cmd += ['--source-map-url=' + settings['SOURCE_MAP_BASE'] + os.path.basename(settings['WASM_BINARY_FILE']) + '.map']
+      shared.check_call(sourcemap_cmd)
+      debug_copy(base_source_map, 'base_wasm.map')
+
     cmd = [wasm_emscripten_finalize, base_wasm, '-o', wasm,
            '--global-base=%s' % shared.Settings.GLOBAL_BASE,
            ('--emscripten-reserved-function-pointers=%d' %
             shared.Settings.RESERVED_FUNCTION_POINTERS)]
     if settings['DEBUG_LEVEL'] >= 2 or settings['PROFILING_FUNCS']:
       cmd.append('-g')
+    if write_source_map:
+      cmd.append('--input-source-map=' + base_source_map)
+      cmd.append('--output-source-map=' + wasm + '.map')
     shared.check_call(cmd, stdout=open(metadata_file, 'w'))
+    if write_source_map:
+      debug_copy(wasm + '.map', 'post_finalize.map')
 
     metadata = create_metadata_wasm(open(metadata_file).read(), DEBUG)
 
-  return wasm, metadata
+  return metadata
 
 
 def read_metadata_wast(wast, DEBUG):

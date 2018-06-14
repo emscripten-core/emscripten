@@ -1679,7 +1679,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         wasm_temp = temp_basename + '.wasm'
         shutil.move(wasm_temp, wasm_binary_target)
         open(wasm_text_target + '.mappedGlobals', 'w').write('{}') # no need for mapped globals for now, but perhaps some day
-        if options.debug_level >= 4 and not shared.Settings.EXPERIMENTAL_USE_LLD:
+        if options.debug_level >= 4:
           shutil.move(wasm_temp + '.map', wasm_binary_target + '.map')
 
       if shared.Settings.CYBERDWARF:
@@ -2912,4 +2912,8 @@ def validate_arg_level(level_string, max_level, err_msg, clamp=False):
 
 
 if __name__ == '__main__':
-  sys.exit(run())
+  try:
+    sys.exit(run())
+  except shared.FatalError as e:
+    logging.error(str(e))
+    sys.exit(1)
